@@ -2,7 +2,7 @@
 
 ## Current Status
 - **Phase**: 1 — Infrastructure Setup
-- **Status**: In Progress
+- **Status**: Complete
 - **Last Updated**: 2026-01-27
 
 ## Completed
@@ -11,30 +11,37 @@
 - [x] Next.js project initialized (TypeScript + Tailwind)
 - [x] GitHub repository created
 - [x] GSD planning files created
+- [x] Supabase project created (virtuna-v1.1, eu-west-1)
+- [x] Supabase Auth configured
+- [x] Environment variables set (.env.local)
+- [x] TypeScript strict mode configured
+- [x] Vercel deployment complete
+- [x] Vercel environment variables set
 
 ## In Progress
-- [ ] Supabase project setup
-- [ ] Vercel deployment
-- [ ] TypeScript strict mode configuration
-- [ ] GitHub Projects board
+- [ ] GitHub Projects board (requires gh auth scope upgrade)
 
 ## Blocked
-- None
+- GitHub Projects board creation requires `gh auth refresh -s project,read:project`
 
-## Next Actions
-1. Create Supabase project and configure auth
-2. Deploy to Vercel
-3. Set up environment variables
-4. Configure TypeScript strict mode
-5. Set up GitHub Projects board
+## Infrastructure URLs
+- **GitHub**: https://github.com/davideloreti4-maker/virtuna-v1.1
+- **Vercel**: https://virtuna-v11.vercel.app
+- **Supabase Dashboard**: https://supabase.com/dashboard/project/qyxvxleheckijapurisj
+
+## Supabase Details
+- **Project ID**: qyxvxleheckijapurisj
+- **Region**: eu-west-1
+- **URL**: https://qyxvxleheckijapurisj.supabase.co
 
 ## Session Notes
 - Project initialized on 2026-01-27
 - Using npm (pnpm not available)
-- GitHub repo: https://github.com/davideloreti4-maker/virtuna-v1.1
+- Next.js 16.1.5 with Turbopack
+- Middleware convention deprecated, will need to migrate to "proxy"
 
-## Environment
-- Node.js: Check with `node -v`
-- npm: Check with `npm -v`
-- Next.js: 14+ (App Router)
-- TypeScript: Strict mode (to configure)
+## Next Phase
+Phase 2: Design System & Components
+- Analyze societies.io design tokens
+- Create Tailwind config with custom theme
+- Build base components
