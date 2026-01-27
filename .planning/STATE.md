@@ -2,12 +2,12 @@
 
 ## Current Status
 - **Phase**: 2 of 2 — Design System & Components
-- **Plan**: 3 of 5
+- **Plan**: 4 of 5
 - **Status**: In progress
 - **Last Updated**: 2026-01-27
-- **Last Activity**: 2026-01-27 - Completed 02-02-PLAN.md
+- **Last Activity**: 2026-01-27 - Completed 02-04-PLAN.md
 
-**Progress**: ███░░ 60% (3/5 plans complete)
+**Progress**: ████░ 80% (4/5 plans complete)
 
 ## Completed
 - [x] Project folder created (`~/virtuna-v1.1`)
@@ -49,6 +49,9 @@
 | Input error prop toggles border and focus ring colors | 02-02 | Error state uses red-500, normal uses primary-500 |
 | Card family uses composable sub-components | 02-02 | Card, CardHeader, CardTitle, CardContent for flexible layouts |
 | Server Components for layout by default | 02-03 | Container, Header, Footer built as Server Components for optimal performance |
+| FadeIn uses gentle ease-out curve [0.4, 0, 0.2, 1] with y:20 offset | 02-04 | Smooth, natural motion suitable for content reveals |
+| SlideUp uses dramatic ease-out-expo [0.22, 1, 0.36, 1] | 02-04 | More dramatic effect on hero sections, configurable distance |
+| PageTransition has exit prop for AnimatePresence | 02-04 | Ready for future routing integration in Phase 3 |
 
 ## Session Notes
 - Project initialized on 2026-01-27
@@ -58,13 +61,13 @@
 - Phase 2 started: Design system foundation complete (02-01)
 - Core UI primitives complete (02-02): Button, Input, Card, Skeleton
 - Layout components complete (02-03): Container, Header, Footer
+- Animation components complete (02-04): FadeIn, SlideUp, PageTransition
 
 ## Session Continuity
-- **Last session**: 2026-01-27T10:49:39Z
-- **Stopped at**: Completed 02-02-PLAN.md
+- **Last session**: 2026-01-27T10:53:22Z
+- **Stopped at**: Completed 02-04-PLAN.md
 - **Resume file**: None
 
 ## Next Steps
-- Complete remaining Phase 2 plans (02-04 and 02-05)
-- Remaining UI components (02-04)
+- Complete remaining Phase 2 plan (02-05)
 - Component documentation (02-05)
