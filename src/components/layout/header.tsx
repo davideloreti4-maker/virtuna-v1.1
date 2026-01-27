@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { motion, useScroll, useMotionValueEvent } from "motion/react"
 import Link from "next/link"
-import Image from "next/image"
 import { Container } from "./container"
 import { MobileMenu } from "./mobile-menu"
 import { headerNavItems, headerCTA, type NavItemWithChildren } from "@/lib/constants/navigation"
@@ -32,19 +31,25 @@ export function Header() {
         }}
         animate={hidden ? "hidden" : "visible"}
         transition={{ duration: 0.35, ease: "easeInOut" }}
-        className="fixed top-0 left-0 right-0 z-50 bg-[#0d0d0d]"
+        className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]"
       >
         <Container>
-          <div className="flex h-[60px] items-center justify-between">
+          <div className="flex h-[66px] items-center justify-between">
             {/* Logo + Brand Name */}
             <Link href="/" className="flex items-center gap-2">
-              <Image
-                src="/images/landing/logo.png"
-                alt="Artificial Societies"
-                width={24}
-                height={24}
-                className="w-6 h-6"
-              />
+              {/* Lambda/A logo icon matching societies.io */}
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                className="text-white"
+              >
+                <path
+                  d="M12 4L4 20h3.5l4.5-10 4.5 10H20L12 4z"
+                  fill="currentColor"
+                />
+              </svg>
               <span className="text-[16px] font-medium text-white">
                 Artificial Societies
               </span>
@@ -71,7 +76,8 @@ export function Header() {
               </Link>
               <Link
                 href={headerCTA.bookMeeting.href}
-                className="inline-flex items-center justify-center bg-[#E57850] text-white font-medium text-[14px] rounded-[4px] hover:bg-[#d46a45] transition-colors px-4 py-2"
+                className="inline-flex items-center justify-center bg-[#E57850] text-white font-medium text-[14px] rounded-[4px] hover:bg-[#d46a45] px-4 py-2"
+                style={{ transition: 'background-color 0.2s' }}
               >
                 {headerCTA.bookMeeting.label}
               </Link>

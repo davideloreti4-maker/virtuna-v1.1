@@ -106,16 +106,16 @@ const features = [
     icon: <SpeedIcon />,
   },
   {
-    title: "Human-like depth",
-    description:
-      "Go beyond surface-level answers. Our personas reason, reflect, and respond with the depth of genuine human cognition.",
-    icon: <DepthIcon />,
-  },
-  {
-    title: "True diversity",
+    title: "Millions of personas",
     description:
       "Every persona is demographically and psychographically calibrated, creating responses as nuanced and diverse as real humans.",
     icon: <DiversityIcon />,
+  },
+  {
+    title: "True understanding",
+    description:
+      "Go beyond surface-level answers. Our personas reason, reflect, and respond with the depth of genuine human cognition.",
+    icon: <DepthIcon />,
   },
 ]
 
@@ -125,11 +125,22 @@ export function Features() {
       <Container>
         {/* Section header */}
         <ScrollReveal className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-light text-white mb-6">
-            Millions of personas
+          <span className="text-sm text-[#9CA3AF] uppercase tracking-wider mb-4 block">
+            Into the future
+          </span>
+          <h2
+            className="text-white mb-6"
+            style={{
+              fontFamily: '"Funnel Display", var(--font-display)',
+              fontSize: 'clamp(1.75rem, 4vw, 40px)',
+              fontWeight: 350,
+              lineHeight: 1.2,
+            }}
+          >
+            Research that was impossible<br />is now instant
           </h2>
           <p className="text-lg text-[#9CA3AF]">
-            Our AI personas achieve 86% accuracy in survey replication - within 5 points of the human replication ceiling (91%).
+            Access high-value audiences. Understand decision-makers. Discover critical insights.
           </p>
         </ScrollReveal>
 
