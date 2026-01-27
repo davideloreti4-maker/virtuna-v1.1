@@ -50,13 +50,19 @@ export interface ButtonProps
       | "onDrop"
       | "onDropCapture"
     >,
-    VariantProps<typeof buttonVariants> {}
+    VariantProps<typeof buttonVariants> {
+  fullWidth?: boolean;
+}
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, ...props }, ref) => {
+  ({ className, variant, size, fullWidth, ...props }, ref) => {
     return (
       <motion.button
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(
+          buttonVariants({ variant, size }),
+          fullWidth && "w-full",
+          className
+        )}
         ref={ref}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
