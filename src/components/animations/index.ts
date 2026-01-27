@@ -1,3 +1,6 @@
 export { FadeIn } from "./fade-in"
 export { SlideUp } from "./slide-up"
+export { ScrollReveal } from "./scroll-reveal"
+export { Parallax } from "./parallax"
+export { StaggeredGrid } from "./staggered-grid"
 export { PageTransition } from "./page-transition"
