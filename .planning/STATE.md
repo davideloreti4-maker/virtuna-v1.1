@@ -2,12 +2,12 @@
 
 ## Current Status
 - **Phase**: 3 of 10 — Landing Site
-- **Plan**: 03 of ? in phase
+- **Plan**: 04 of ? in phase
 - **Status**: In progress
 - **Last Updated**: 2026-01-27
-- **Last Activity**: 2026-01-27 - Completed 03-03-PLAN.md (Homepage Sections)
+- **Last Activity**: 2026-01-27 - Completed 03-04-PLAN.md (Pricing Page)
 
-**Progress**: ███░░░░░░░ 30% (3/10 phases)
+**Progress**: ███░░░░░░░ 32% (3.2/10 phases)
 
 ## Completed
 - [x] Project folder created (`~/virtuna-v1.1`)
@@ -59,6 +59,9 @@
 | clamp() for responsive hero typography | 03-03 | Scales fluidly from 2.5rem to 5rem based on viewport |
 | StaggeredGrid for features animation | 03-03 | Sequential reveal of feature cards with 0.1s delay |
 | Testimonial cards with real quotes | 03-03 | Using extracted quotes from societies.io |
+| Enterprise-only pricing model | 03-04 | societies.io has no /pricing route - uses contact-based pricing |
+| FAQ accordion single-open pattern | 03-04 | AnimatePresence for smooth open/close transitions |
+| Pricing data in constants file | 03-04 | Centralized for easy updates without component changes |
 
 ## Session Notes
 - Project initialized on 2026-01-27
@@ -97,11 +100,19 @@
   - Logos section with partner logos
   - Homepage assembled at / route
 
+- 03-04: Pricing Page - Complete
+  - Enterprise-focused pricing model (matches societies.io)
+  - PricingTable with animated tier cards
+  - PricingFAQ accordion component
+  - PricingToggle for future use (not displayed)
+  - Pricing page assembled at /pricing route
+
 ## Session Continuity
 - **Last session**: 2026-01-27
-- **Stopped at**: Completed 03-03-PLAN.md
+- **Stopped at**: Completed 03-04-PLAN.md
 - **Resume file**: None
 
 ## Next Steps
-- Continue Phase 3 with remaining plans (pricing, FAQ, etc.)
-- Deploy updated homepage to Vercel
+- Continue Phase 3 with 03-05 (About page)
+- Create /contact page for "Book a Meeting" CTA
+- Deploy updated site to Vercel
