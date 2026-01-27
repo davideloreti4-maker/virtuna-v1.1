@@ -1,48 +1,53 @@
 # Phase 2: Design System & Components - Research
 
 **Researched:** 2026-01-27
-**Domain:** Design Systems, Component Architecture, CSS Design Tokens
+**Domain:** Design Systems, Tailwind CSS v4, React Component Architecture, Animation Libraries
 **Confidence:** HIGH
 
 ## Summary
 
-Building a pixel-perfect design system for societies.io clone requires a Tailwind CSS v4-based approach with CSS variables using the `@theme` directive, a well-structured component library with TypeScript strict mode, and Motion (formerly Framer Motion) for animations. The project already has Next.js 16.1.5 and Tailwind CSS v4 installed, providing the foundation.
+This phase involves building a reusable component library with Tailwind CSS v4's new `@theme` directive for design tokens and Motion (formerly Framer Motion) for animations. The research confirms that Tailwind v4 has shifted to a CSS-first configuration approach using `@theme` for design tokens, eliminating the need for `tailwind.config.js` for theme customization. Motion is the successor to Framer Motion, offering better performance and modern React integration.
 
-The standard approach for 2026 is utility-first styling with Tailwind CSS (zero runtime cost), TypeScript-first component architecture with strict types, and Motion for declarative animations. Design tokens should be defined once in CSS using `@theme` and automatically generate utility classes, while component variants should use Class Variance Authority (CVA) for maintainable styling logic.
+The standard approach for 2026 is to:
+1. Define design tokens using Tailwind v4's `@theme` directive in CSS
+2. Build components as a mix of server and client components (Next.js 16 pattern)
+3. Use Motion for animations in client components only
+4. Implement skeleton loaders directly within components using React Suspense
+5. Follow semantic naming conventions for design tokens
 
-This phase builds the foundation that all subsequent phases depend on - every landing page and app screen will use these components and design tokens. Getting the design system right means extracting visual patterns from societies.io (colors, typography, spacing, shadows) and codifying them as reusable tokens and components.
-
-**Primary recommendation:** Use Tailwind v4's `@theme` directive for design tokens, Motion for animations, CVA + clsx for component variants, and organize as feature-based structure with clear separation of primitives, composites, and layouts.
+**Primary recommendation:** Use Tailwind CSS v4 `@theme` directive for all design tokens, Motion library for animations (client components only), and build-in skeleton states within components rather than separate skeleton components.
 
 ## Standard Stack
+
+The established libraries/tools for this domain:
 
 ### Core
 | Library | Version | Purpose | Why Standard |
 |---------|---------|---------|--------------|
-| Tailwind CSS | 4.x (installed) | Utility-first CSS framework | Zero runtime cost, compile-time generation, excellent performance. Industry standard for design systems in 2026. |
-| Next.js | 16.1.5 (installed) | React framework | Server Components, App Router, optimized rendering. Best-in-class React framework. |
-| TypeScript | 5.x (installed) | Type safety | Strict mode prevents runtime errors, autocomplete for props, better DX. |
-| Motion | Latest | Animation library | Evolution of Framer Motion. Production-ready, declarative animations, SSR-compatible. |
+| Tailwind CSS | 4.x | Utility-first CSS framework | Already installed, v4 introduces CSS-first config with `@theme` directive |
+| Motion | 12.26+ | React animation library | Successor to Framer Motion by same creators, 12M+ monthly downloads, production-grade performance |
+| Next.js | 16.1.5 | React framework | Already installed, React 19.2 with server/client components |
+| TypeScript | 5.x | Type safety | Already installed, industry standard for React |
 
 ### Supporting
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| clsx | 2.x | Conditional className utility | Combine multiple className conditions cleanly |
-| tailwind-merge | 2.x | Merge Tailwind classes | Prevent class conflicts when combining props |
-| class-variance-authority (CVA) | 0.7.x | Component variant system | Manage complex component states and variants |
-| @tailwindcss/typography | 0.5.x (optional) | Rich text styling | If blog/markdown content needed later |
+| react-loading-skeleton | 3.x | Skeleton loader components | If custom skeleton solution is too complex |
+| clsx | 2.x | Conditional class name utility | For dynamic className composition |
+| tailwind-merge | 2.x | Merge Tailwind classes intelligently | Prevent class conflicts in component APIs |
 
 ### Alternatives Considered
 | Instead of | Could Use | Tradeoff |
 |------------|-----------|----------|
-| Motion | react-spring | react-spring uses spring physics, more complex API. Motion is simpler, more declarative. |
-| Tailwind CSS | CSS-in-JS (styled-components, emotion) | CSS-in-JS has runtime cost (48% slower), problematic with Server Components, harder to enforce design system. |
-| CVA | Manual variant logic | Manual approach doesn't scale, becomes unmaintainable with complex states. |
+| Motion | Framer Motion | Legacy name, same library but Motion is the modern package |
+| Motion | React Spring | More physics-based, steeper learning curve, heavier bundle |
+| Motion | GSAP | More powerful but not React-first, commercial license for some features |
+| Custom skeletons | react-loading-skeleton | Less control but faster to implement |
 
 **Installation:**
 ```bash
-npm install clsx tailwind-merge class-variance-authority
-npm install motion
+npm install motion clsx tailwind-merge
+# Optional: npm install react-loading-skeleton
 ```
 
 ## Architecture Patterns
@@ -50,35 +55,21 @@ npm install motion
 ### Recommended Project Structure
 ```
 src/
-├── app/                     # Next.js App Router
-│   ├── globals.css         # Tailwind imports + @theme tokens
-│   ├── layout.tsx          # Root layout
-│   └── page.tsx            # Pages
 ├── components/
-│   ├── ui/                 # Primitive components (Button, Input, Card)
-│   │   ├── button.tsx
-│   │   ├── input.tsx
-│   │   ├── card.tsx
-│   │   └── skeleton.tsx
-│   ├── layout/             # Layout components (Header, Footer, Sidebar)
-│   │   ├── header.tsx
-│   │   ├── footer.tsx
-│   │   └── sidebar.tsx
-│   └── animations/         # Reusable animation components
-│       ├── fade-in.tsx
-│       └── slide-up.tsx
+│   ├── ui/              # Base components (Button, Input, Card)
+│   ├── layout/          # Layout components (Header, Footer, Sidebar)
+│   └── animations/      # Animation wrapper components
 ├── lib/
-│   ├── utils.ts           # cn() utility, helpers
-│   └── constants.ts       # Constants, enums
-└── types/
-    └── components.ts      # Shared component types
+│   ├── utils.ts         # cn() utility for class merging
+│   └── animations/      # Reusable animation variants
+├── app/
+│   └── globals.css      # Tailwind imports + @theme tokens
 ```
 
-### Pattern 1: Design Tokens with @theme Directive
+### Pattern 1: Tailwind v4 Design Tokens with @theme
 
-**What:** Define all design system tokens in CSS using Tailwind v4's `@theme` directive. This creates CSS variables that auto-generate utility classes.
-
-**When to use:** For all design system values: colors, spacing, typography, shadows, animations.
+**What:** Use `@theme` directive in CSS to define design tokens that automatically generate utility classes
+**When to use:** All color palettes, typography, spacing, breakpoints, and easing functions
 
 **Example:**
 ```css
@@ -86,220 +77,376 @@ src/
 @import "tailwindcss";
 
 @theme {
-  /* Color palette - extracted from societies.io */
-  --color-background: #ffffff;
-  --color-foreground: #171717;
-  --color-primary-50: oklch(0.98 0.02 270);
-  --color-primary-500: oklch(0.55 0.20 270);
-  --color-primary-900: oklch(0.25 0.15 270);
+  /* Colors - semantic naming */
+  --color-primary: oklch(0.64 0.22 27.32);
+  --color-secondary: oklch(0.70 0.14 182.5);
+  --color-accent: oklch(0.76 0.18 130.85);
 
-  /* Typography scale */
-  --font-sans: "Inter", system-ui, sans-serif;
-  --font-display: "Inter", system-ui, sans-serif;
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.875rem;
-  --font-size-base: 1rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.25rem;
-  --font-size-2xl: 1.5rem;
+  /* Typography */
+  --font-display: "Satoshi", ui-sans-serif, sans-serif;
+  --font-body: "Inter", ui-sans-serif, sans-serif;
+  --font-mono: "Fira Code", ui-monospace, monospace;
 
-  /* Spacing scale */
+  /* Spacing - if custom scale needed */
   --spacing-xs: 0.5rem;
   --spacing-sm: 0.75rem;
   --spacing-md: 1rem;
   --spacing-lg: 1.5rem;
   --spacing-xl: 2rem;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  /* Breakpoints - if extending defaults */
+  --breakpoint-3xl: 120rem;
 
-  /* Animation easing */
-  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  /* Custom easing */
+  --ease-fluid: cubic-bezier(0.3, 0, 0, 1);
+  --ease-snappy: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Regular CSS variables (not utilities) */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
 }
 ```
-**Source:** https://tailwindcss.com/docs/theme
+Source: [Tailwind CSS Theme Variables](https://tailwindcss.com/docs/theme)
 
-### Pattern 2: Component Variants with CVA
+### Pattern 2: Server vs Client Components for Animations
 
-**What:** Use Class Variance Authority to manage component variants (sizes, colors, states) without manual className logic.
-
-**When to use:** For any component with multiple variants or states.
+**What:** Server components by default, client components only when animations/interactivity needed
+**When to use:** Follow Next.js 16 server-first architecture
 
 **Example:**
-```typescript
-// src/components/ui/button.tsx
-import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "@/lib/utils"
+```tsx
+// Server Component (default) - No "use client"
+// src/components/ui/card.tsx
+import type { ReactNode } from 'react'
 
-const buttonVariants = cva(
-  // Base styles
-  "inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2",
-  {
-    variants: {
-      variant: {
-        primary: "bg-primary-500 text-white hover:bg-primary-600",
-        secondary: "bg-gray-200 text-gray-900 hover:bg-gray-300",
-        outline: "border border-gray-300 hover:bg-gray-50",
-        ghost: "hover:bg-gray-100",
-      },
-      size: {
-        sm: "h-8 px-3 text-sm",
-        md: "h-10 px-4",
-        lg: "h-12 px-6 text-lg",
-      },
-    },
-    defaultVariants: {
-      variant: "primary",
-      size: "md",
-    },
-  }
-)
-
-interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  children: React.ReactNode
+interface CardProps {
+  children: ReactNode
+  className?: string
 }
 
-export function Button({
-  className,
-  variant,
-  size,
-  ...props
-}: ButtonProps) {
+export function Card({ children, className }: CardProps) {
   return (
-    <button
-      className={cn(buttonVariants({ variant, size, className }))}
-      {...props}
-    />
+    <div className={cn("bg-white rounded-lg shadow-md p-6", className)}>
+      {children}
+    </div>
   )
 }
-```
-**Source:** https://cva.style/docs
 
-### Pattern 3: Utility Function for Class Merging
+// Client Component - Animations require "use client"
+// src/components/ui/animated-button.tsx
+"use client"
 
-**What:** Combine clsx and tailwind-merge into a single `cn()` utility.
-
-**When to use:** Everywhere you merge className props with component classes.
-
-**Example:**
-```typescript
-// src/lib/utils.ts
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
-```
-**Source:** https://www.frontendmentor.io/articles/how-to-efficiently-manage-css-classes-in-react-XD9hHfdS1J
-
-### Pattern 4: Animation Components with Motion
-
-**What:** Create reusable animation wrappers using Motion's declarative API.
-
-**When to use:** For micro-interactions, page transitions, loading states.
-
-**Example:**
-```typescript
-// src/components/ui/button.tsx (with hover animation)
 import { motion } from "motion/react"
+import type { ReactNode } from 'react'
 
-export function Button({ children, ...props }: ButtonProps) {
+interface AnimatedButtonProps {
+  children: ReactNode
+  onClick?: () => void
+  className?: string
+}
+
+export function AnimatedButton({ children, onClick, className }: AnimatedButtonProps) {
   return (
     <motion.button
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
       transition={{ duration: 0.2 }}
-      className={cn(buttonVariants({ variant, size, className }))}
-      {...props}
+      onClick={onClick}
+      className={cn("px-4 py-2 bg-primary text-white rounded-md", className)}
     >
       {children}
     </motion.button>
   )
 }
 ```
-**Source:** https://motion.dev/docs/react-hover-animation
+Source: [Next.js Server and Client Components](https://nextjs.org/docs/app/getting-started/server-and-client-components)
 
-### Pattern 5: Skeleton Loaders
+### Pattern 3: Motion Micro-interactions
 
-**What:** Create loading state components using Tailwind's animate-pulse.
-
-**When to use:** For loading states that match the shape of actual content.
+**What:** Use `whileHover`, `whileTap`, `whileFocus` for interactive elements
+**When to use:** Buttons, links, interactive cards, form inputs
 
 **Example:**
-```typescript
-// src/components/ui/skeleton.tsx
-import { cn } from "@/lib/utils"
+```tsx
+"use client"
 
-interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {}
+import { motion } from "motion/react"
 
-export function Skeleton({ className, ...props }: SkeletonProps) {
+// Button hover/active states
+export function Button({ children, ...props }) {
   return (
-    <div
-      className={cn("animate-pulse rounded-md bg-gray-200", className)}
+    <motion.button
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+      {...props}
+    >
+      {children}
+    </motion.button>
+  )
+}
+
+// Input focus states
+export function Input({ ...props }) {
+  return (
+    <motion.input
+      whileFocus={{ scale: 1.02 }}
+      transition={{ duration: 0.2 }}
       {...props}
     />
   )
 }
 
-// Usage
-<div className="space-y-2">
-  <Skeleton className="h-4 w-full" />
-  <Skeleton className="h-4 w-3/4" />
-</div>
+// Card hover effect
+export function InteractiveCard({ children, ...props }) {
+  return (
+    <motion.div
+      whileHover={{ y: -8, boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1)" }}
+      transition={{ duration: 0.3 }}
+      {...props}
+    >
+      {children}
+    </motion.div>
+  )
+}
 ```
-**Source:** https://flowbite.com/docs/components/skeleton/
+Source: [Motion Hover Animation](https://motion.dev/docs/react/-hover-animation)
 
-### Pattern 6: Layout Components with Server Components
+### Pattern 4: Layout Animations
 
-**What:** Build layout components as React Server Components by default.
+**What:** Use `layout` prop for position/size changes, `layoutId` for shared element transitions
+**When to use:** Accordions, tab switching, modal transitions, route animations
 
-**When to use:** For Header, Footer, Sidebar that don't need interactivity.
+**Example:**
+```tsx
+"use client"
+
+import { motion, LayoutGroup } from "motion/react"
+import { useState } from "react"
+
+// Accordion with layout animation
+function AccordionItem({ header, content }) {
+  const [isOpen, setIsOpen] = useState(false)
+
+  return (
+    <motion.div
+      layout
+      onClick={() => setIsOpen(!isOpen)}
+      className="border-b border-gray-200"
+    >
+      <motion.h3 layout className="p-4 font-semibold">
+        {header}
+      </motion.h3>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="p-4"
+        >
+          {content}
+        </motion.div>
+      )}
+    </motion.div>
+  )
+}
+
+// Shared element transition (tab indicator)
+function Tabs({ tabs, activeTab, setActiveTab }) {
+  return (
+    <div className="flex gap-2 border-b">
+      {tabs.map(tab => (
+        <button
+          key={tab.id}
+          onClick={() => setActiveTab(tab.id)}
+          className="relative px-4 py-2"
+        >
+          {tab.label}
+          {activeTab === tab.id && (
+            <motion.div
+              layoutId="activeTab"
+              className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+            />
+          )}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// Wrap related layout animations
+export function Accordion({ items }) {
+  return (
+    <LayoutGroup>
+      {items.map(item => (
+        <AccordionItem key={item.id} {...item} />
+      ))}
+    </LayoutGroup>
+  )
+}
+```
+Source: [Motion Layout Animations](https://motion.dev/docs/react/-motion-component)
+
+### Pattern 5: Skeleton States Within Components
+
+**What:** Build loading states directly into components rather than separate skeleton components
+**When to use:** All components that fetch data
+
+**Example:**
+```tsx
+// Server Component with loading state
+interface UserCardProps {
+  userId: string
+  isLoading?: boolean
+}
+
+export function UserCard({ userId, isLoading }: UserCardProps) {
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-lg p-6 animate-pulse">
+        <div className="h-12 w-12 bg-gray-200 rounded-full mb-4" />
+        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+        <div className="h-3 bg-gray-200 rounded w-1/2" />
+      </div>
+    )
+  }
+
+  // Actual content rendering...
+  return <div>...</div>
+}
+
+// Usage with Suspense
+import { Suspense } from 'react'
+
+export default function Page() {
+  return (
+    <Suspense fallback={<UserCard isLoading />}>
+      <UserCard userId="123" />
+    </Suspense>
+  )
+}
+```
+Source: [React Skeleton Loaders Best Practices](https://blog.logrocket.com/handling-react-loading-states-react-loading-skeleton/)
+
+### Pattern 6: Class Name Utility
+
+**What:** Use `cn()` utility to merge Tailwind classes with proper precedence
+**When to use:** All components that accept className prop
 
 **Example:**
 ```typescript
-// src/components/layout/header.tsx
-export default function Header() {
-  return (
-    <header className="border-b">
-      <div className="container flex h-16 items-center justify-between">
-        <Logo />
-        <Navigation />
-      </div>
-    </header>
-  )
+// src/lib/utils.ts
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
 }
 
-// src/app/layout.tsx
-import Header from "@/components/layout/header"
-import Footer from "@/components/layout/footer"
+// Usage in components
+import { cn } from "@/lib/utils"
 
-export default function RootLayout({ children }) {
+interface ButtonProps {
+  variant?: "primary" | "secondary"
+  className?: string
+  children: React.ReactNode
+}
+
+export function Button({ variant = "primary", className, children }: ButtonProps) {
   return (
-    <html lang="en">
-      <body>
-        <Header />
-        <main>{children}</main>
-        <Footer />
-      </body>
-    </html>
+    <button
+      className={cn(
+        "px-4 py-2 rounded-md font-medium transition-colors",
+        variant === "primary" && "bg-primary text-white hover:bg-primary/90",
+        variant === "secondary" && "bg-secondary text-white hover:bg-secondary/90",
+        className // User classes override defaults
+      )}
+    >
+      {children}
+    </button>
   )
 }
 ```
-**Source:** https://github.com/vercel/next.js/blob/v16.1.5/docs/01-app/01-getting-started/03-layouts-and-pages.mdx
+
+### Pattern 7: Animation Variants for Reusability
+
+**What:** Define reusable animation variants in separate module
+**When to use:** When same animations are used across multiple components
+
+**Example:**
+```typescript
+// src/lib/animations/variants.ts
+export const fadeIn = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 }
+}
+
+export const slideUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: 20 }
+}
+
+export const scaleIn = {
+  initial: { opacity: 0, scale: 0.95 },
+  animate: { opacity: 1, scale: 1 },
+  exit: { opacity: 0, scale: 0.95 }
+}
+
+export const staggerChildren = {
+  animate: {
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+}
+
+// Usage
+"use client"
+
+import { motion } from "motion/react"
+import { fadeIn, slideUp } from "@/lib/animations/variants"
+
+export function Modal({ children }) {
+  return (
+    <motion.div
+      variants={fadeIn}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="fixed inset-0 bg-black/50"
+    >
+      <motion.div
+        variants={slideUp}
+        className="bg-white rounded-lg p-6"
+      >
+        {children}
+      </motion.div>
+    </motion.div>
+  )
+}
+```
 
 ### Anti-Patterns to Avoid
 
-- **Inline style objects:** Use Tailwind classes, not `style={{ color: '#123456' }}`. Inline styles break design system and can't be purged.
-- **Hardcoded values:** Never use arbitrary values like `w-[247px]` without justification. Extract to design tokens first.
-- **CSS Modules with Tailwind:** Mixing CSS Modules defeats Tailwind's purpose. Stick to utility classes.
-- **Multiple component libraries:** Don't install shadcn/ui, MUI, or other libraries. Build components yourself for full control and pixel-perfect match.
-- **`any` types in TypeScript:** Use strict typing. Component props should have explicit interfaces.
+- **Using tailwind.config.js for theme** - Tailwind v4 recommends `@theme` directive in CSS instead
+- **Creating separate skeleton components** - Build loading states into the component itself for style consistency
+- **Exposing too many component props** - Keep APIs simple, don't expose every possible variant
+- **Using animations on server components** - Motion requires "use client", only add when necessary
+- **Hardcoding color values** - Always use design tokens from `@theme`
+- **Overusing animations** - Not every element needs animation; micro-interactions should be subtle
+- **Missing TypeScript interfaces** - All components must have properly typed Props interfaces
+- **Ignoring accessibility** - Animations should respect prefers-reduced-motion
 
 ## Don't Hand-Roll
 
@@ -307,347 +454,433 @@ Problems that look simple but have existing solutions:
 
 | Problem | Don't Build | Use Instead | Why |
 |---------|-------------|-------------|-----|
-| Conditional className logic | Manual string concatenation | clsx + tailwind-merge (`cn()` utility) | Handles edge cases, conflicts, performance |
-| Component variants | If/else chains for styling | class-variance-authority (CVA) | Scalable, maintainable, type-safe |
-| Animation states | Manual CSS transitions + state | Motion (Framer Motion) | Declarative, handles interruptions, gesture support |
-| Loading skeletons | Custom shimmer CSS | Tailwind `animate-pulse` + Skeleton component | Built-in, accessible, consistent |
-| Focus management | Manual focus trap | Built into modern browsers + proper HTML | Accessibility is hard, use semantic HTML |
-| Color palette generation | Manual color picking | oklch color space + Tailwind palette | Perceptually uniform, accessible contrast |
+| Class name conflicts | Manual className concatenation | `clsx` + `tailwind-merge` | Handles precedence and deduplication correctly |
+| Animation timing/easing | Custom CSS transitions | Motion library | Cross-browser consistency, gesture handling, layout animations |
+| Skeleton loaders | Complex custom implementation | Built-in or `react-loading-skeleton` | Auto-sizing, responsive, accessible |
+| Color system | Manual color variables | Tailwind `@theme` with oklch | Generates utilities automatically, better color science |
+| Responsive breakpoints | Custom media queries | Tailwind breakpoints | Consistent, mobile-first, well-tested |
+| Focus states | Manual focus-visible styles | Tailwind focus utilities | Handles keyboard vs mouse, accessibility |
+| Dark mode | Manual theme switching | Tailwind dark mode + CSS variables | Built-in, automatic, respects system preferences |
 
-**Key insight:** Design systems look simple but have subtle complexity (accessible contrast ratios, animation interruptions, class conflict resolution). Use battle-tested libraries for the foundation, custom code for the business logic.
+**Key insight:** Design systems have hidden complexity. Standard libraries like Tailwind and Motion handle edge cases (browser quirks, accessibility, performance, responsive behavior) that custom solutions often miss.
 
 ## Common Pitfalls
 
-### Pitfall 1: Design Token Sprawl
-
-**What goes wrong:** Too many one-off values (`--color-specific-button-on-homepage`), design tokens become unmanageable.
-
-**Why it happens:** Trying to be too specific, not thinking in scales/systems. Each new component adds more tokens.
-
+### Pitfall 1: Configuration Scope Confusion (@theme vs :root)
+**What goes wrong:** Mixing `@theme` directive with `:root` CSS variables incorrectly
+**Why it happens:** Not understanding that `@theme` generates utility classes while `:root` doesn't
 **How to avoid:**
-- Start with semantic scales: `primary-50` through `primary-900`, not `button-hover-blue`
-- Use 3-tier hierarchy: Global (primitives) → Alias (semantic) → Component (specific)
-- Extract from societies.io systematically: every color, every spacing value
-- Limit to 5-7 values per scale (50, 100, 200...900 for colors)
+- Use `@theme` for design tokens that should have utility classes (colors, spacing, fonts)
+- Use `:root` for runtime CSS variables that don't need utilities (e.g., dynamic theme values)
+**Warning signs:** Utility classes not appearing, or CSS variables not updating dynamically
 
-**Warning signs:**
-- More than 20 color variables
-- Token names include component names (`--button-padding`)
-- Duplicated values with different names
-
-**Source:** https://www.frontendtools.tech/blog/tailwind-css-best-practices-design-system-patterns
-
-### Pitfall 2: Premature Component Abstraction
-
-**What goes wrong:** Creating "flexible" components with dozens of props that try to handle every use case. Components become complex, hard to maintain.
-
-**Why it happens:** Fear of duplication, trying to predict future needs. Over-engineering early.
-
+### Pitfall 2: Over-Exposing Component APIs
+**What goes wrong:** Components accept 20+ props trying to cover every use case
+**Why it happens:** Trying to make components too flexible, exposing base library props (like MUI)
 **How to avoid:**
-- Start with 2-3 real use cases from societies.io
-- Only add props when you have 3+ instances needing the same variation
-- Prefer composition over configuration
-- Duplicate first, extract patterns later
+- Define specific variants instead of exposing all options
+- Use composition over configuration
+- Only expose props that are actually needed across multiple use cases
+**Warning signs:** Props like `buttonBackgroundColor`, `hoverOpacity`, `borderStyle` - these should be handled by variants
 
-**Warning signs:**
-- Components with >10 props
-- Props like `renderCustomFooter` or `onSpecialCase`
-- Boolean props that interact (`primary && outline` makes no sense)
-
-**Source:** https://www.sencha.com/blog/top-mistakes-developers-make-when-using-react-ui-component-library-and-how-to-avoid-them/
-
-### Pitfall 3: Animation Performance Issues
-
-**What goes wrong:** Janky animations, layout shifts, slow page loads. Animations look worse than no animations.
-
-**Why it happens:** Animating layout properties (width, height, top, left) instead of transforms. Not using `will-change`. Too many simultaneous animations.
-
+### Pitfall 3: Forcing Animations on Server Components
+**What goes wrong:** Attempting to use Motion in server components, causing build errors
+**Why it happens:** Forgetting that animations require client-side JavaScript
 **How to avoid:**
-- Only animate transform and opacity (GPU accelerated)
-- Use Motion's layout animations for size/position changes
-- Set `will-change` for critical animations
-- Test on slower devices (throttle CPU in DevTools)
-- Limit animations on page load (max 3-4 elements)
+- Add "use client" directive to any component using Motion
+- Keep server components for static content
+- Create separate animated wrapper components when needed
+**Warning signs:** Build error "You're importing a component that needs `useState`..."
 
-**Warning signs:**
-- Frame rate drops below 60fps
-- Scrolling feels sluggish
-- CLS (Cumulative Layout Shift) > 0.1
-
-**Source:** https://motion.dev/docs/react
-
-### Pitfall 4: Inconsistent Component API
-
-**What goes wrong:** Some components use `variant`, others use `type`. Some pass through HTML props, others don't. Inconsistent experience.
-
-**Why it happens:** Different developers, no established patterns, copying from different sources.
-
+### Pitfall 4: Design Token Drift
+**What goes wrong:** Developers bypass design tokens and hardcode values
+**Why it happens:** Quick fixes, missing tokens, unclear documentation
 **How to avoid:**
-- Establish naming conventions upfront:
-  - Use `variant` for visual styles (primary, secondary, outline)
-  - Use `size` for sizes (sm, md, lg)
-  - Always spread `...props` for HTML attributes
-  - Always accept `className` for customization
-- Create base interfaces: `ComponentProps<T>` type
-- Review existing components before adding new ones
+- Comprehensive `@theme` definition covering all needed values
+- Document all design tokens
+- ESLint rule to catch hardcoded colors/spacing
+- Code review checklist
+**Warning signs:** Seeing `#ffffff`, `rgb()`, or `16px` in component code instead of Tailwind classes
 
-**Warning signs:**
-- Same prop has different names across components
-- Can't use `ref` on some components
-- `className` doesn't work or gets overridden
-
-### Pitfall 5: Ignoring Accessibility
-
-**What goes wrong:** Keyboard navigation doesn't work. Screen readers can't use the site. Focus indicators missing.
-
-**Why it happens:** Testing only with mouse, not considering diverse users. Copying visual design without interaction design.
-
+### Pitfall 5: Animation Performance Issues
+**What goes wrong:** Janky animations, dropped frames, poor performance
+**Why it happens:** Animating expensive properties (width, height), too many simultaneous animations
 **How to avoid:**
-- Use semantic HTML first (button, not div with onClick)
-- Test keyboard navigation (Tab, Enter, Escape)
-- Use proper ARIA attributes (aria-label, role)
-- Maintain visible focus indicators (focus-visible:ring-2)
-- Test with screen reader (VoiceOver on Mac)
+- Use `layout` prop for size changes instead of animating width/height
+- Animate transform and opacity (GPU-accelerated)
+- Use `will-change` sparingly
+- Test on low-end devices
+**Warning signs:** Animations feel laggy, CPU spikes in DevTools
 
-**Warning signs:**
-- Can't tab through interactive elements
-- Focus indicator removed (`outline-none` without replacement)
-- Divs used instead of buttons
-
-**Source:** https://www.builder.io/blog/react-component-libraries-2026
-
-### Pitfall 6: Mixing Component Libraries
-
-**What goes wrong:** Installing shadcn/ui or MUI alongside custom components. Conflicting styles, larger bundle, inconsistent design.
-
-**Why it happens:** Wanting specific component quickly, not wanting to build from scratch.
-
+### Pitfall 6: Missing Accessibility Considerations
+**What goes wrong:** Animations cause motion sickness, keyboard navigation breaks, screen readers confused
+**Why it happens:** Only testing with mouse, not considering diverse user needs
 **How to avoid:**
-- Commit to building all components yourself
-- Reference shadcn/ui code as examples, don't install
-- Copy and customize individual components if needed
-- Keep bundle lean - this is a pixel-perfect clone, not a general app
+- Respect `prefers-reduced-motion` media query
+- Ensure keyboard navigation works during animations
+- Test with screen readers
+- Don't rely solely on animation to convey information
+**Warning signs:** User complaints, failed accessibility audits
 
-**Warning signs:**
-- Multiple CSS resets fighting each other
-- Bundle size > 200KB for initial JS
-- Mix of different button styles
+### Pitfall 7: Component Documentation Neglect
+**What goes wrong:** Team doesn't know what components exist or how to use them
+**Why it happens:** Building components but not documenting usage, variants, props
+**How to avoid:**
+- JSDoc comments on all component interfaces
+- Create a components directory with examples
+- Consider Storybook or similar tool
+- README with usage examples
+**Warning signs:** Developers building duplicate components, asking "do we have X?"
 
-**Source:** https://www.sencha.com/blog/top-mistakes-developers-make-when-using-react-ui-component-library-and-how-to-avoid-them/
+### Pitfall 8: Ignoring Loading States
+**What goes wrong:** Flash of empty content, layout shift, poor perceived performance
+**Why it happens:** Focusing on the "happy path" success state
+**How to avoid:**
+- Build skeleton states directly into components
+- Use React Suspense boundaries
+- Test with slow 3G throttling
+- Design loading states that match final content structure
+**Warning signs:** User reports of "janky" feeling app, layout jumping
 
 ## Code Examples
 
 Verified patterns from official sources:
 
-### Example 1: Complete Button Component
-
-```typescript
+### Complete Button Component with Variants
+```tsx
 // src/components/ui/button.tsx
-import * as React from "react"
+"use client"
+
 import { motion } from "motion/react"
-import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
+import type { ButtonHTMLAttributes, ReactNode } from "react"
 
-const buttonVariants = cva(
-  "inline-flex items-center justify-center rounded-lg font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-  {
-    variants: {
-      variant: {
-        primary: "bg-primary-500 text-white hover:bg-primary-600 focus-visible:ring-primary-500",
-        secondary: "bg-gray-100 text-gray-900 hover:bg-gray-200 focus-visible:ring-gray-500",
-        outline: "border-2 border-gray-300 bg-transparent hover:bg-gray-50 focus-visible:ring-gray-500",
-        ghost: "hover:bg-gray-100 hover:text-gray-900",
-        danger: "bg-red-500 text-white hover:bg-red-600 focus-visible:ring-red-500",
-      },
-      size: {
-        sm: "h-9 px-3 text-sm",
-        md: "h-10 px-4 text-base",
-        lg: "h-11 px-6 text-lg",
-      },
-    },
-    defaultVariants: {
-      variant: "primary",
-      size: "md",
-    },
-  }
-)
-
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: "primary" | "secondary" | "outline" | "ghost"
+  size?: "sm" | "md" | "lg"
+  isLoading?: boolean
+  children: ReactNode
 }
 
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, ...props }, ref) => {
-    return (
-      <motion.button
-        className={cn(buttonVariants({ variant, size, className }))}
-        ref={ref}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        transition={{ duration: 0.15, ease: "easeOut" }}
-        {...props}
-      />
-    )
-  }
-)
-Button.displayName = "Button"
+export function Button({
+  variant = "primary",
+  size = "md",
+  isLoading = false,
+  className,
+  children,
+  disabled,
+  ...props
+}: ButtonProps) {
+  return (
+    <motion.button
+      whileHover={!disabled ? { scale: 1.02 } : {}}
+      whileTap={!disabled ? { scale: 0.98 } : {}}
+      transition={{ duration: 0.2 }}
+      disabled={disabled || isLoading}
+      className={cn(
+        "inline-flex items-center justify-center font-medium rounded-md transition-colors",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+        "disabled:opacity-50 disabled:pointer-events-none",
+        {
+          "bg-primary text-white hover:bg-primary/90 focus-visible:ring-primary": variant === "primary",
+          "bg-secondary text-white hover:bg-secondary/90 focus-visible:ring-secondary": variant === "secondary",
+          "border border-gray-300 bg-white hover:bg-gray-50 focus-visible:ring-gray-400": variant === "outline",
+          "hover:bg-gray-100 focus-visible:ring-gray-400": variant === "ghost",
+        },
+        {
+          "h-8 px-3 text-sm": size === "sm",
+          "h-10 px-4": size === "md",
+          "h-12 px-6 text-lg": size === "lg",
+        },
+        className
+      )}
+      {...props}
+    >
+      {isLoading ? (
+        <>
+          <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          Loading...
+        </>
+      ) : children}
+    </motion.button>
+  )
+}
 ```
 
-### Example 2: Input Component
-
-```typescript
+### Input Component with Focus Animation
+```tsx
 // src/components/ui/input.tsx
-import * as React from "react"
-import { cn } from "@/lib/utils"
+"use client"
 
-export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
-  error?: boolean
+import { motion } from "motion/react"
+import { cn } from "@/lib/utils"
+import type { InputHTMLAttributes, ReactNode } from "react"
+
+interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+  label?: string
+  error?: string
+  helperText?: string
 }
 
-export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, error, ...props }, ref) => {
-    return (
-      <input
-        type={type}
+export function Input({
+  label,
+  error,
+  helperText,
+  className,
+  id,
+  ...props
+}: InputProps) {
+  const inputId = id || label?.toLowerCase().replace(/\s+/g, "-")
+
+  return (
+    <div className="w-full">
+      {label && (
+        <label
+          htmlFor={inputId}
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          {label}
+        </label>
+      )}
+      <motion.input
+        id={inputId}
+        whileFocus={{ scale: 1.01 }}
+        transition={{ duration: 0.2 }}
         className={cn(
-          "flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm transition-colors",
-          "placeholder:text-gray-400",
-          "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent",
-          "disabled:cursor-not-allowed disabled:opacity-50",
-          error && "border-red-500 focus:ring-red-500",
+          "w-full px-3 py-2 border rounded-md shadow-sm",
+          "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
+          "disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed",
+          error ? "border-red-500" : "border-gray-300",
           className
         )}
-        ref={ref}
         {...props}
       />
+      {error && (
+        <p className="mt-1 text-sm text-red-600">{error}</p>
+      )}
+      {helperText && !error && (
+        <p className="mt-1 text-sm text-gray-500">{helperText}</p>
+      )}
+    </div>
+  )
+}
+```
+
+### Card Component with Loading State
+```tsx
+// src/components/ui/card.tsx
+import { cn } from "@/lib/utils"
+import type { ReactNode, HTMLAttributes } from "react"
+
+interface CardProps extends HTMLAttributes<HTMLDivElement> {
+  isLoading?: boolean
+  children: ReactNode
+}
+
+export function Card({ isLoading = false, className, children, ...props }: CardProps) {
+  if (isLoading) {
+    return (
+      <div
+        className={cn(
+          "bg-white rounded-lg shadow-md p-6 animate-pulse",
+          className
+        )}
+        {...props}
+      >
+        <div className="h-4 bg-gray-200 rounded w-3/4 mb-4" />
+        <div className="h-3 bg-gray-200 rounded w-full mb-2" />
+        <div className="h-3 bg-gray-200 rounded w-5/6" />
+      </div>
     )
   }
-)
-Input.displayName = "Input"
+
+  return (
+    <div
+      className={cn(
+        "bg-white rounded-lg shadow-md p-6",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  )
+}
+
+// Subcomponents for composition
+export function CardHeader({ className, children, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cn("mb-4", className)} {...props}>
+      {children}
+    </div>
+  )
+}
+
+export function CardTitle({ className, children, ...props }: HTMLAttributes<HTMLHeadingElement>) {
+  return (
+    <h3 className={cn("text-lg font-semibold", className)} {...props}>
+      {children}
+    </h3>
+  )
+}
+
+export function CardContent({ className, children, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cn("text-gray-600", className)} {...props}>
+      {children}
+    </div>
+  )
+}
 ```
 
-### Example 3: Card Component
-
-```typescript
-// src/components/ui/card.tsx
-import * as React from "react"
-import { cn } from "@/lib/utils"
-
-const Card = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "rounded-xl border border-gray-200 bg-white shadow-sm",
-      className
-    )}
-    {...props}
-  />
-))
-Card.displayName = "Card"
-
-const CardHeader = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex flex-col space-y-1.5 p-6", className)}
-    {...props}
-  />
-))
-CardHeader.displayName = "CardHeader"
-
-const CardTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->(({ className, ...props }, ref) => (
-  <h3
-    ref={ref}
-    className={cn("text-xl font-semibold leading-none tracking-tight", className)}
-    {...props}
-  />
-))
-CardTitle.displayName = "CardTitle"
-
-const CardContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
-))
-CardContent.displayName = "CardContent"
-
-export { Card, CardHeader, CardTitle, CardContent }
-```
-
-### Example 4: Fade-In Animation Wrapper
-
-```typescript
-// src/components/animations/fade-in.tsx
+### Staggered List Animation
+```tsx
+// src/components/animations/staggered-list.tsx
 "use client"
 
 import { motion } from "motion/react"
 import type { ReactNode } from "react"
 
-interface FadeInProps {
+interface StaggeredListProps {
   children: ReactNode
-  delay?: number
-  duration?: number
   className?: string
 }
 
-export function FadeIn({
-  children,
-  delay = 0,
-  duration = 0.5,
-  className
-}: FadeInProps) {
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+}
+
+const item = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 }
+}
+
+export function StaggeredList({ children, className }: StaggeredListProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{
-        duration,
-        delay,
-        ease: [0.4, 0, 0.2, 1]
-      }}
+      variants={container}
+      initial="hidden"
+      animate="show"
       className={className}
     >
       {children}
     </motion.div>
   )
 }
-```
 
-### Example 5: Page Transition Wrapper
-
-```typescript
-// src/components/animations/page-transition.tsx
-"use client"
-
-import { motion } from "motion/react"
-import type { ReactNode } from "react"
-
-interface PageTransitionProps {
-  children: ReactNode
-}
-
-export function PageTransition({ children }: PageTransitionProps) {
+export function StaggeredItem({ children, className }: StaggeredListProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.3 }}
-    >
+    <motion.div variants={item} className={className}>
       {children}
     </motion.div>
+  )
+}
+
+// Usage
+import { StaggeredList, StaggeredItem } from "@/components/animations/staggered-list"
+
+export function FeatureList({ features }) {
+  return (
+    <StaggeredList className="space-y-4">
+      {features.map(feature => (
+        <StaggeredItem key={feature.id}>
+          <Card>{feature.title}</Card>
+        </StaggeredItem>
+      ))}
+    </StaggeredList>
+  )
+}
+```
+
+### Modal with Animation
+```tsx
+// src/components/ui/modal.tsx
+"use client"
+
+import { motion, AnimatePresence } from "motion/react"
+import { useEffect } from "react"
+import { cn } from "@/lib/utils"
+import type { ReactNode } from "react"
+
+interface ModalProps {
+  isOpen: boolean
+  onClose: () => void
+  title?: string
+  children: ReactNode
+  className?: string
+}
+
+export function Modal({ isOpen, onClose, title, children, className }: ModalProps) {
+  // Lock scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = "unset"
+    }
+    return () => {
+      document.body.style.overflow = "unset"
+    }
+  }, [isOpen])
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/50 z-40"
+          />
+
+          {/* Modal */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.2 }}
+              className={cn(
+                "bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-auto",
+                className
+              )}
+            >
+              {/* Header */}
+              {title && (
+                <div className="flex items-center justify-between p-6 border-b">
+                  <h2 className="text-xl font-semibold">{title}</h2>
+                  <button
+                    onClick={onClose}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+
+              {/* Content */}
+              <div className="p-6">
+                {children}
+              </div>
+            </motion.div>
+          </div>
+        </>
+      )}
+    </AnimatePresence>
   )
 }
 ```
@@ -656,140 +889,83 @@ export function PageTransition({ children }: PageTransitionProps) {
 
 | Old Approach | Current Approach | When Changed | Impact |
 |--------------|------------------|--------------|--------|
-| tailwind.config.js | @theme in CSS | Tailwind v4 (2024) | CSS-first, no JS config, better IDE support |
-| CSS-in-JS (styled-components) | Tailwind utility-first | 2024-2025 | Zero runtime, 48% better performance, Server Component compatible |
-| Framer Motion | Motion (new library) | 2025 | Faster, smaller bundle, same API |
-| Manual className strings | CVA for variants | 2024-2025 | Scalable component variants |
-| Jest for component tests | Vitest + Playwright | 2025-2026 | Faster, native ESM, visual regression |
+| `tailwind.config.js` for theme | `@theme` directive in CSS | Tailwind v4.0 (2024) | Simpler, CSS-first, better CSS variable integration |
+| Framer Motion | Motion (motion/react) | 2024-2025 | Same team, smaller bundle, better performance |
+| Separate skeleton components | Built-in loading states | 2025+ | Better style consistency, easier maintenance |
+| RGB/Hex colors | oklch color space | Tailwind v4.0 | Perceptually uniform, better dark mode |
+| `layoutTransition` prop | `layout` prop | Framer Motion v2 (2023) | Simpler API, better performance |
+| Class precedence issues | `tailwind-merge` | 2023+ | Resolves conflicting utility classes |
 
 **Deprecated/outdated:**
-- **@apply directive:** Still works but discouraged in v4. Use CVA for reusable styles instead.
-- **JIT mode:** Removed in v4, always-on now. Don't configure it.
-- **purge configuration:** Replaced by content scanning. Don't use purge key.
-- **Framer Motion:** Still works but Motion is the new evolution with better performance.
-
-**Source:** https://tailwindcss.com/docs/adding-custom-styles
+- **tailwind.config.js for theme customization**: Use `@theme` directive in CSS instead
+- **Framer Motion package name**: Use `motion` package (same library, modern name)
+- **react-loading-skeleton v2**: v3 has better TypeScript support and accessibility
+- **Custom focus-visible polyfills**: Built into Tailwind v3+
 
 ## Open Questions
 
 Things that couldn't be fully resolved:
 
-### 1. Exact societies.io Design Tokens
+1. **societies.io Design System Analysis**
+   - What we know: Could not access rendered page or CSS files
+   - What's unclear: Exact color values, typography scale, spacing system, animation timings
+   - Recommendation: Use browser DevTools to inspect live site, extract computed styles, create design tokens from actual values. Alternative: Analyze screenshots with color picker tools.
 
-**What we know:**
-- societies.io website exists but design system not publicly documented
-- Need to manually extract colors, typography, spacing from production site
-- Likely uses dark mode with purple/blue accent colors based on typical SaaS design
+2. **Component Granularity**
+   - What we know: Standard components include Button, Input, Card, Modal
+   - What's unclear: How many variants of each are truly needed for this specific project
+   - Recommendation: Start with basic variants (primary/secondary for buttons), add more only when actually needed. Avoid premature abstraction.
 
-**What's unclear:**
-- Exact color values (need to inspect with DevTools)
-- Font family (likely Inter or similar system font)
-- Specific spacing scale and component sizing
-- Animation timing and easing curves
+3. **Animation Performance Budget**
+   - What we know: Motion is production-grade, but animation performance depends on usage
+   - What's unclear: Exact performance targets for this project
+   - Recommendation: Test on target devices (mobile, low-end desktop), use Chrome DevTools Performance panel, aim for 60fps. Consider reducing animations on low-end devices.
 
-**Recommendation:**
-- Manually inspect societies.io homepage with browser DevTools
-- Take screenshots and use color picker tools
-- Extract CSS variables from production site
-- Create initial tokens, refine during implementation
-- Use Gemini AI video analysis at end to verify 95%+ match
-
-### 2. Component Documentation Tool
-
-**What we know:**
-- Storybook is industry standard for component documentation
-- Project has `formatOnSave: true` and `testAfterChanges: true` preferences
-- Documentation should be created per phase tasks
-
-**What's unclear:**
-- Whether to install Storybook now or wait until components built
-- User preference on documentation format (Storybook vs markdown)
-
-**Recommendation:**
-- Start without Storybook (adds complexity)
-- Create simple markdown documentation in `components/ui/README.md`
-- Include code examples and prop tables
-- Add Storybook in Phase 3+ if needed
-
-### 3. Animation Complexity Threshold
-
-**What we know:**
-- Requirements exclude "complex node animations"
-- Need micro-interactions (AN1), page transitions (AN2), loading states (AN3)
-- Motion handles declarative animations well
-
-**What's unclear:**
-- Exact definition of "complex" - where to draw the line
-- Whether animated data visualizations count as complex
-
-**Recommendation:**
-- Simple = transforms, fades, slides (definitely include)
-- Complex = canvas/WebGL, physics simulations, particle effects (exclude)
-- When unsure, implement simple version first, escalate if needs more
+4. **Dark Mode Strategy**
+   - What we know: Tailwind v4 supports dark mode, CSS variables can switch themes
+   - What's unclear: Whether societies.io has dark mode, if it's required for this clone
+   - Recommendation: Research societies.io for dark mode support. If none exists, defer dark mode implementation to later phase.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-
-- **/websites/tailwindcss** - Tailwind CSS v4 documentation via Context7
-  - Topics: @theme directive, design tokens, custom theme configuration
-  - Current official documentation for Tailwind v4
-
-- **/vercel/next.js/v16.1.5** - Next.js 16.1.5 documentation via Context7
-  - Topics: Layout components, component architecture, Server Components
-  - Exact version used in project
-
-- **/websites/motion_dev** - Motion documentation via Context7
-  - Topics: Animations, micro-interactions, hover states, page transitions
-  - Evolution of Framer Motion, current best practice
-
-- **https://cva.style/docs** - Class Variance Authority official docs
-  - Topics: Component variant patterns, TypeScript integration
-  - Standard for scalable component styling
+- [Tailwind CSS Theme Variables](https://tailwindcss.com/docs/theme) - Official v4 `@theme` documentation
+- [Tailwind CSS Adding Custom Styles](https://tailwindcss.com/docs/adding-custom-styles) - Design tokens best practices
+- [Motion for React Documentation](https://motion.dev/docs/react) - Official Motion library docs
+- [Motion Hover Animation](https://motion.dev/docs/react/-hover-animation) - Micro-interactions patterns
+- [Motion Layout Animations](https://motion.dev/docs/react/-motion-component) - Layout animation API
+- [Next.js Server and Client Components](https://nextjs.org/docs/app/getting-started/server-and-client-components) - Architecture guidance
+- Context7 Tailwind CSS library (/websites/tailwindcss) - Verified v4 syntax
+- Context7 Motion for React library (/websites/motion_dev_react) - Verified animation patterns
 
 ### Secondary (MEDIUM confidence)
-
-- **[15 Best React UI Libraries for 2026](https://www.builder.io/blog/react-component-libraries-2026)** - Builder.io
-  - Verified best practices: TypeScript support, accessibility, SSR compatibility
-
-- **[Tailwind CSS Best Practices 2025-2026](https://www.frontendtools.tech/blog/tailwind-css-best-practices-design-system-patterns)** - FrontendTools
-  - Design token organization, typography patterns
-
-- **[Building the Ultimate Design System 2026](https://medium.com/@padmacnu/building-the-ultimate-design-system-a-complete-architecture-guide-for-2026-6dfcab0e9999)** - Medium
-  - Folder structure, component hierarchy
-
-- **[Top Mistakes with React Component Libraries](https://www.sencha.com/blog/top-mistakes-developers-make-when-using-react-ui-component-library-and-how-to-avoid-them/)** - Sencha
-  - Common pitfalls, avoidance strategies
-
-- **[React & CSS in 2026: Best Styling Approaches](https://medium.com/@imranmsa93/react-css-in-2026-best-styling-approaches-compared-d5e99a771753)** - Medium
-  - CSS-in-JS vs Tailwind performance comparison
-
-- **[Beyond Eye Candy: Top 7 React Animation Libraries](https://www.syncfusion.com/blogs/post/top-react-animation-libraries)** - Syncfusion
-  - Animation library comparison, Motion as standard
-
-- **[Flowbite Skeleton Components](https://flowbite.com/docs/components/skeleton/)** - Flowbite
-  - Skeleton loader implementation patterns
-
-- **[Component Testing with Playwright 2026](https://www.browserstack.com/guide/component-testing-react-playwright)** - BrowserStack
-  - Visual regression testing approach
+- [Build Flawless Multi-Theme System using Tailwind CSS v4 & React](https://medium.com/render-beyond/build-a-flawless-multi-theme-ui-using-new-tailwind-css-v4-react-dca2b3c95510) - Theming patterns
+- [Tailwind CSS v4 Multi-Theme Strategy](https://simonswiss.com/posts/tailwind-v4-multi-theme) - Advanced theming
+- [Configuring Tailwind CSS v4.0](https://bryananthonio.com/blog/configuring-tailwind-css-v4/) - Migration guide
+- [Beyond Eye Candy: Top React Animation Libraries 2026](https://www.syncfusion.com/blogs/post/top-react-animation-libraries) - Ecosystem overview
+- [React Skeleton Loaders Best Practices](https://blog.logrocket.com/handling-react-loading-states-react-loading-skeleton/) - Loading state patterns
+- [The Dark Side of Design Systems](https://sakalim.com/content/the-dark-side-of-design-systems-mistakes-missteps-and-lessons-learned) - Common pitfalls
+- [The Dumbest Design System Mistakes](https://learn.thedesignsystem.guide/p/the-dumbest-design-system-mistakes) - Anti-patterns
+- [Building Components for Consumption, Not Complexity](https://www.smashingmagazine.com/2023/12/building-components-consumption-not-complexity-part1/) - Component API design
+- [Tailwind CSS Best Practices 2025-2026](https://www.frontendtools.tech/blog/tailwind-css-best-practices-design-system-patterns) - Design token organization
 
 ### Tertiary (LOW confidence)
-
-- WebSearch results about societies.io design - no specific information found
-  - Need manual inspection of production site
+- WebSearch results for "React design system component library best practices 2026" - General ecosystem trends
+- npm registry for package versions - Latest version numbers
 
 ## Metadata
 
 **Confidence breakdown:**
-- Standard stack: HIGH - Official docs (Context7), established patterns, verified versions
-- Architecture: HIGH - Next.js official patterns, CVA official docs, industry standard structure
-- Pitfalls: MEDIUM - Based on multiple blog posts and community experience, not official docs
-- Design tokens: LOW - societies.io specific tokens need manual extraction
+- Standard stack: HIGH - Context7 and official docs verified all library choices and versions
+- Architecture: HIGH - Official Next.js 16 and Motion docs, proven patterns
+- Pitfalls: MEDIUM - Based on general design system literature and best practices articles, not project-specific
 
 **Research date:** 2026-01-27
-**Valid until:** 2026-04-27 (90 days - stable ecosystem, no fast-moving changes expected)
+**Valid until:** 2026-04-27 (90 days - relatively stable domain with mature libraries)
 
-**Sources used:**
-- Context7 queries: 3 (Tailwind CSS, Next.js, Motion)
-- WebSearch queries: 8 (design systems, animations, best practices, pitfalls)
-- WebFetch attempts: 1 (societies.io - unsuccessful, needs manual inspection)
+**Notes:**
+- Tailwind v4 is stable and well-documented, `@theme` syntax is confirmed standard
+- Motion library is confirmed successor to Framer Motion, actively maintained
+- Next.js 16 server/client component pattern is production-ready
+- societies.io design system requires manual inspection (not accessible via WebFetch)
+- All code examples follow TypeScript strict mode and user's coding preferences
