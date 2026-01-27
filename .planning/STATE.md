@@ -2,12 +2,12 @@
 
 ## Current Status
 - **Phase**: 3 of 10 — Landing Site
-- **Plan**: 01 of ? in phase
+- **Plan**: 03 of ? in phase
 - **Status**: In progress
 - **Last Updated**: 2026-01-27
-- **Last Activity**: 2026-01-27 - Completed 03-01-PLAN.md (Landing Foundation)
+- **Last Activity**: 2026-01-27 - Completed 03-03-PLAN.md (Homepage Sections)
 
-**Progress**: ██░░░░░░░░ 25% (2.5/10 phases)
+**Progress**: ███░░░░░░░ 30% (3/10 phases)
 
 ## Completed
 - [x] Project folder created (`~/virtuna-v1.1`)
@@ -56,6 +56,9 @@
 | Centralized navigation constants | 03-01 | DRY principle - header and footer both consume same nav data |
 | Hide-on-scroll-down header pattern | 03-01 | Uses useScroll/useMotionValueEvent from motion/react |
 | Mobile menu slide-in with AnimatePresence | 03-01 | Includes body scroll lock when open |
+| clamp() for responsive hero typography | 03-03 | Scales fluidly from 2.5rem to 5rem based on viewport |
+| StaggeredGrid for features animation | 03-03 | Sequential reveal of feature cards with 0.1s delay |
+| Testimonial cards with real quotes | 03-03 | Using extracted quotes from societies.io |
 
 ## Session Notes
 - Project initialized on 2026-01-27
@@ -69,7 +72,7 @@
 - UI primitives: Button (10 variants), Input, Card family, Skeleton
 - Layout: Container, Header, Footer
 - Animations: FadeIn, SlideUp, PageTransition
-- Showcase page at / for visual verification
+- Showcase page at /showcase for visual verification
 
 ## Phase 3 Progress
 - 03-01: Landing Foundation - Complete
@@ -82,11 +85,23 @@
   - Created MobileMenu with slide-in animation
   - Updated Footer with societies.io structure
 
+- 03-02: Scroll Animation Primitives - Complete
+  - Enhanced FadeIn and SlideUp with scroll triggers
+  - Created ScrollReveal, Parallax, StaggeredGrid components
+
+- 03-03: Homepage Sections - Complete
+  - Hero section with headline and CTAs
+  - Features section with 4 feature cards
+  - Testimonials section with Teneo/Pulsar quotes
+  - CTA section with gradient glow effect
+  - Logos section with partner logos
+  - Homepage assembled at / route
+
 ## Session Continuity
 - **Last session**: 2026-01-27
-- **Stopped at**: Completed 03-01-PLAN.md
+- **Stopped at**: Completed 03-03-PLAN.md
 - **Resume file**: None
 
 ## Next Steps
-- Continue Phase 3 with 03-02 (Homepage) plan
-- Build homepage sections using navigation components and design tokens
+- Continue Phase 3 with remaining plans (pricing, FAQ, etc.)
+- Deploy updated homepage to Vercel
