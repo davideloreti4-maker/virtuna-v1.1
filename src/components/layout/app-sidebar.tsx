@@ -37,6 +37,7 @@ interface AppSidebarProps {
   currentSociety: Society | null
   onSocietyChange: (society: Society) => void
   onLogout?: () => void
+  onMobileClose?: () => void
 }
 
 // ===========================================
@@ -177,10 +178,17 @@ export function AppSidebar({
   currentSociety,
   onSocietyChange,
   onLogout,
+  onMobileClose,
 }: AppSidebarProps) {
   const targetSocieties = mockSocieties.filter((s) => s.type === "target")
   const selectedViewLabel =
     viewOptions.find((v) => v.id === currentView)?.label || "Country"
+
+  // Wrapper to close mobile menu after actions
+  const handleMobileAction = (action: () => void) => {
+    action()
+    onMobileClose?.()
+  }
 
   return (
     <motion.aside
@@ -190,10 +198,12 @@ export function AppSidebar({
       }}
       transition={{ duration: 0.2, ease: "easeOut" }}
       className={cn(
-        "fixed left-0 top-0 h-full z-40",
+        "fixed left-0 top-0 h-full z-50",
         "flex flex-col",
         "border-r border-app-border",
-        "bg-app-bg-sidebar"
+        "bg-app-bg-sidebar",
+        // Mobile: full width, top padding for mobile header
+        "md:top-0 top-14 md:w-auto w-[230px]"
       )}
     >
       {/* Header: Logo + Toggle */}
@@ -293,7 +303,7 @@ export function AppSidebar({
         <SidebarLinkItem
           icon={sidebarLogout.icon}
           label={sidebarLogout.label}
-          onClick={onLogout}
+          onClick={() => handleMobileAction(() => onLogout?.())}
           collapsed={collapsed}
         />
       </div>

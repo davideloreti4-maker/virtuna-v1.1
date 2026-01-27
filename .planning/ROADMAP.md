@@ -77,21 +77,23 @@ Plans:
 
 ---
 
-### Phase 4: App Layout & Navigation
+### Phase 4: App Layout & Navigation ✓
 **Goal**: Build app shell and navigation structure
 
+**Status**: Complete (2026-01-27)
+
 **Tasks**:
-- [ ] Create app layout (sidebar, header)
-- [ ] Implement sidebar navigation
-- [ ] Build user menu dropdown
-- [ ] Create mobile app navigation
-- [ ] Add breadcrumbs
-- [ ] Implement route protection (auth guard)
+- [x] Create app layout (sidebar, header)
+- [x] Implement sidebar navigation
+- [x] Build user menu dropdown
+- [x] Create mobile app navigation
+- [SKIPPED] Add breadcrumbs (societies.io doesn't have breadcrumbs)
+- [x] Implement route protection (auth guard)
 
 **Success Criteria**:
-- App layout matches societies.io
-- Navigation is fully functional
-- Auth protection works
+- [x] App layout matches societies.io
+- [x] Navigation is fully functional
+- [x] Auth protection works
 
 **Requirements Covered**: A5, R1, R2, R3
 
@@ -240,7 +242,7 @@ Phase 2 (Design System)
 ```
 
 ## Current Status
-- **Current Phase**: 4 (App Layout & Navigation)
-- **Completed Phases**: 1, 2, 3
+- **Current Phase**: 5 (Authentication)
+- **Completed Phases**: 1, 2, 3, 4
 - **Blocked By**: None
-- **Next Action**: Plan Phase 4 (`/gsd:plan-phase 4`)
+- **Next Action**: Plan Phase 5 (`/gsd:plan-phase 5`)
