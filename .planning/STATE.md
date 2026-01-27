@@ -2,12 +2,12 @@
 
 ## Current Status
 - **Phase**: 3 of 10 — Landing Site
-- **Plan**: 02 of ? in phase
+- **Plan**: 01 of ? in phase
 - **Status**: In progress
 - **Last Updated**: 2026-01-27
-- **Last Activity**: 2026-01-27 - Completed 03-02-PLAN.md (Scroll Animation Primitives)
+- **Last Activity**: 2026-01-27 - Completed 03-01-PLAN.md (Landing Foundation)
 
-**Progress**: ██░░░░░░░░ 20% (2/10 phases complete)
+**Progress**: ██░░░░░░░░ 25% (2.5/10 phases)
 
 ## Completed
 - [x] Project folder created (`~/virtuna-v1.1`)
@@ -52,9 +52,10 @@
 | FadeIn uses gentle ease-out curve [0.4, 0, 0.2, 1] with y:20 offset | 02-04 | Smooth, natural motion suitable for content reveals |
 | SlideUp uses dramatic ease-out-expo [0.22, 1, 0.36, 1] | 02-04 | More dramatic effect on hero sections, configurable distance |
 | PageTransition has exit prop for AnimatePresence | 02-04 | Ready for future routing integration in Phase 3 |
-| Scroll animation threshold defaults to 0.3 | 03-02 | 30% visibility triggers animation - balances early reveal with meaningful viewport presence |
-| All scroll animations use once:true | 03-02 | Prevents replay on re-enter for cleaner UX |
-| Parallax uses percentage-based Y translation | 03-02 | Responsive scaling across screen sizes |
+| Satoshi Variable font for body text | 03-01 | Downloaded from societies.io, stored in /public/fonts |
+| Centralized navigation constants | 03-01 | DRY principle - header and footer both consume same nav data |
+| Hide-on-scroll-down header pattern | 03-01 | Uses useScroll/useMotionValueEvent from motion/react |
+| Mobile menu slide-in with AnimatePresence | 03-01 | Includes body scroll lock when open |
 
 ## Session Notes
 - Project initialized on 2026-01-27
@@ -71,15 +72,21 @@
 - Showcase page at / for visual verification
 
 ## Phase 3 Progress
-- 03-02: Scroll Animation Primitives - Complete
-  - FadeIn/SlideUp enhanced with scroll triggers
-  - ScrollReveal, Parallax, StaggeredGrid created
+- 03-01: Landing Foundation - Complete
+  - Downloaded 11 image assets from societies.io
+  - Downloaded Satoshi Variable font
+  - Created design-tokens.ts with extracted values
+  - Updated globals.css with font-face and easing curves
+  - Created navigation.ts with header/footer nav data
+  - Updated Header with sticky scroll behavior
+  - Created MobileMenu with slide-in animation
+  - Updated Footer with societies.io structure
 
 ## Session Continuity
 - **Last session**: 2026-01-27
-- **Stopped at**: Completed 03-02-PLAN.md
+- **Stopped at**: Completed 03-01-PLAN.md
 - **Resume file**: None
 
 ## Next Steps
-- Continue Phase 3 (Landing Site) plans
-- Build landing page sections using animation primitives
+- Continue Phase 3 with 03-02 (Homepage) plan
+- Build homepage sections using navigation components and design tokens
