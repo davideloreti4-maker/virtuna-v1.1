@@ -8,6 +8,10 @@ interface FadeInProps {
   delay?: number
   duration?: number
   className?: string
+  /** If true, animates when scrolled into view. If false, animates on mount. */
+  scroll?: boolean
+  /** Viewport amount threshold (0-1). Default 0.3 */
+  threshold?: number
 }
 
 export function FadeIn({
@@ -15,11 +19,23 @@ export function FadeIn({
   delay = 0,
   duration = 0.5,
   className,
+  scroll = false,
+  threshold = 0.3,
 }: FadeInProps) {
+  const animationProps = scroll
+    ? {
+        initial: { opacity: 0, y: 20 },
+        whileInView: { opacity: 1, y: 0 },
+        viewport: { once: true, amount: threshold },
+      }
+    : {
+        initial: { opacity: 0, y: 20 },
+        animate: { opacity: 1, y: 0 },
+      }
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      {...animationProps}
       transition={{
         duration,
         delay,
