@@ -6,10 +6,93 @@
 }
 
 @theme inline {
+  /* Colors - Primary Scale (placeholder purple values, will refine in Phase 3) */
+  --color-primary-50: oklch(0.98 0.01 280);
+  --color-primary-100: oklch(0.95 0.03 280);
+  --color-primary-200: oklch(0.90 0.06 280);
+  --color-primary-300: oklch(0.82 0.12 280);
+  --color-primary-400: oklch(0.72 0.18 280);
+  --color-primary-500: oklch(0.62 0.22 280);
+  --color-primary-600: oklch(0.52 0.20 280);
+  --color-primary-700: oklch(0.42 0.16 280);
+  --color-primary-800: oklch(0.32 0.12 280);
+  --color-primary-900: oklch(0.22 0.08 280);
+
+  /* Colors - Gray Scale */
+  --color-gray-50: oklch(0.99 0 0);
+  --color-gray-100: oklch(0.97 0 0);
+  --color-gray-200: oklch(0.93 0 0);
+  --color-gray-300: oklch(0.87 0 0);
+  --color-gray-400: oklch(0.70 0 0);
+  --color-gray-500: oklch(0.55 0 0);
+  --color-gray-600: oklch(0.45 0 0);
+  --color-gray-700: oklch(0.35 0 0);
+  --color-gray-800: oklch(0.25 0 0);
+  --color-gray-900: oklch(0.15 0 0);
+
+  /* Colors - Semantic */
+  --color-success: oklch(0.65 0.18 145);
+  --color-warning: oklch(0.75 0.15 85);
+  --color-error: oklch(0.60 0.22 25);
+  --color-info: oklch(0.65 0.18 240);
+
+  /* Colors - Background & Foreground */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  /* Typography - Font Families */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Typography - Font Sizes */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+  --font-size-4xl: 2.25rem;
+
+  /* Spacing Scale */
+  --spacing-0: 0;
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-5: 1.25rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-10: 2.5rem;
+  --spacing-12: 3rem;
+  --spacing-16: 4rem;
+  --spacing-20: 5rem;
+  --spacing-24: 6rem;
+  --spacing-32: 8rem;
+
+  /* Border Radius */
+  --radius-none: 0;
+  --radius-sm: 0.125rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  /* Animation - Ease Functions */
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* Animation - Duration */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 350ms;
 }
 
 @media (prefers-color-scheme: dark) {
