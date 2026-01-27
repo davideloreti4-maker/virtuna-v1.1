@@ -2,10 +2,10 @@
 
 ## Current Status
 - **Phase**: 3 of 10 — Landing Site
-- **Plan**: 04 of ? in phase
+- **Plan**: 06 of 6 in phase
 - **Status**: In progress
 - **Last Updated**: 2026-01-27
-- **Last Activity**: 2026-01-27 - Completed 03-04-PLAN.md (Pricing Page)
+- **Last Activity**: 2026-01-27 - Converted to true one-pager, removed /pricing route
 
 **Progress**: ███░░░░░░░ 32% (3.2/10 phases)
 
@@ -59,9 +59,8 @@
 | clamp() for responsive hero typography | 03-03 | Scales fluidly from 2.5rem to 5rem based on viewport |
 | StaggeredGrid for features animation | 03-03 | Sequential reveal of feature cards with 0.1s delay |
 | Testimonial cards with real quotes | 03-03 | Using extracted quotes from societies.io |
-| Enterprise-only pricing model | 03-04 | societies.io has no /pricing route - uses contact-based pricing |
+| True one-pager architecture | 03-04 | Converted to match societies.io - no /pricing route, all content on homepage |
 | FAQ accordion single-open pattern | 03-04 | AnimatePresence for smooth open/close transitions |
-| Pricing data in constants file | 03-04 | Centralized for easy updates without component changes |
 
 ## Session Notes
 - Project initialized on 2026-01-27
@@ -100,12 +99,17 @@
   - Logos section with partner logos
   - Homepage assembled at / route
 
-- 03-04: Pricing Page - Complete
-  - Enterprise-focused pricing model (matches societies.io)
-  - PricingTable with animated tier cards
-  - PricingFAQ accordion component
-  - PricingToggle for future use (not displayed)
-  - Pricing page assembled at /pricing route
+- 03-04: True One-Pager Conversion - Complete
+  - Removed /pricing route (societies.io doesn't have it)
+  - Deleted pricing components (table, toggle, faq)
+  - Deleted pricing constants
+  - Updated barrel exports
+  - Homepage is now the only landing page (true one-pager)
+
+- 03-05: About Page - SKIPPED
+  - societies.io has no /about route
+
+- 03-06: Verification - In Progress
 
 ## Session Continuity
 - **Last session**: 2026-01-27
@@ -113,6 +117,7 @@
 - **Resume file**: None
 
 ## Next Steps
-- Continue Phase 3 with 03-05 (About page)
-- Create /contact page for "Book a Meeting" CTA
+- Complete 03-06 verification
+- Run build and verify no broken imports
+- Visual comparison at desktop (1440px) and mobile (375px)
 - Deploy updated site to Vercel

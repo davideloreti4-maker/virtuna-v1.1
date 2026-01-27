@@ -53,12 +53,12 @@ Plans:
 **Plans**: 6 plans in 3 waves
 
 Plans:
-- [ ] 03-01-PLAN.md — Asset capture & navigation setup (download images, update Header/Footer)
-- [ ] 03-02-PLAN.md — Animation components enhancement (scroll triggers, parallax)
-- [ ] 03-03-PLAN.md — Homepage (hero, features, testimonials, CTAs)
-- [ ] 03-04-PLAN.md — Pricing page (tiers, toggle, FAQ)
-- [ ] 03-05-PLAN.md — About page (mission, team, values)
-- [ ] 03-06-PLAN.md — Coming Soon page + visual verification checkpoint
+- [x] 03-01-PLAN.md — Asset capture & navigation setup (download images, update Header/Footer)
+- [x] 03-02-PLAN.md — Animation components enhancement (scroll triggers, parallax)
+- [x] 03-03-PLAN.md — Homepage (hero, features, testimonials, CTAs)
+- [x] 03-04-PLAN.md — True one-pager conversion (removed /pricing - societies.io doesn't have it)
+- [SKIPPED] 03-05-PLAN.md — About page (societies.io has no /about route)
+- [ ] 03-06-PLAN.md — Verification checkpoint
 
 **Wave Structure**:
 - Wave 1: 03-01, 03-02 (parallel - foundation work)

@@ -111,23 +111,23 @@ export function NetworkVisualization() {
         const color = `rgb(${brightness}, ${brightness}, ${brightness})`
         const isHighlighted = i === Math.floor(nodeCount * 0.35)
 
-        const nameData = names[Math.floor(Math.random() * names.length)]
+        const nameData = names[Math.floor(Math.random() * names.length)]!
         const fullName = `${nameData.first} ${nameData.last}`
         const initials = `${nameData.first[0]}${nameData.last[0]}`
 
         const persona: Persona = {
           initials,
           name: fullName,
-          role: roles[Math.floor(Math.random() * roles.length)],
-          company: companies[Math.floor(Math.random() * companies.length)],
+          role: roles[Math.floor(Math.random() * roles.length)]!,
+          company: companies[Math.floor(Math.random() * companies.length)]!,
           description: "Focused on emerging markets and sustainable investment strategies.",
           tags: [
-            { icon: "📍", label: locations[Math.floor(Math.random() * locations.length)] },
-            { icon: "👤", label: genders[Math.floor(Math.random() * genders.length)] },
-            { icon: "📅", label: generations[Math.floor(Math.random() * generations.length)] },
-            { icon: "🎯", label: attitudes[Math.floor(Math.random() * attitudes.length)] },
-            { icon: "💼", label: seniorityLevels[Math.floor(Math.random() * seniorityLevels.length)] },
-            { icon: "🏢", label: industries[Math.floor(Math.random() * industries.length)] },
+            { icon: "📍", label: locations[Math.floor(Math.random() * locations.length)]! },
+            { icon: "👤", label: genders[Math.floor(Math.random() * genders.length)]! },
+            { icon: "📅", label: generations[Math.floor(Math.random() * generations.length)]! },
+            { icon: "🎯", label: attitudes[Math.floor(Math.random() * attitudes.length)]! },
+            { icon: "💼", label: seniorityLevels[Math.floor(Math.random() * seniorityLevels.length)]! },
+            { icon: "🏢", label: industries[Math.floor(Math.random() * industries.length)]! },
           ],
         }
 
@@ -158,6 +158,7 @@ export function NetworkVisualization() {
         for (let j = i + 1; j < Math.min(i + 12, sortedNodes.length); j++) {
           const node1 = sortedNodes[i]
           const node2 = sortedNodes[j]
+          if (!node1 || !node2) continue
 
           const x1 = centerX + node1.rotatedX * radiusX
           const y1 = centerY + node1.rotatedY * radiusY
