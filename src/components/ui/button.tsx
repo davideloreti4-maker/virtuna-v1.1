@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 import { motion } from "motion/react"
 import { cn } from "@/lib/utils"
@@ -10,12 +11,12 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // Landing/Marketing variants (light theme)
-        primary: "bg-primary-500 text-white hover:bg-primary-600 focus-visible:ring-primary-500",
-        secondary: "bg-gray-100 text-gray-900 hover:bg-gray-200 focus-visible:ring-gray-500",
-        outline: "border border-gray-300 bg-transparent text-gray-700 hover:bg-gray-50 focus-visible:ring-gray-500",
-        ghost: "text-gray-700 hover:bg-gray-100 focus-visible:ring-gray-500",
-        link: "text-primary-500 underline-offset-4 hover:underline focus-visible:ring-primary-500",
+        // Landing/Marketing variants (dark theme)
+        primary: "bg-[#E57850] text-white hover:bg-[#d46a45] focus-visible:ring-[#E57850]",
+        secondary: "bg-white/10 text-landing-text hover:bg-white/20 focus-visible:ring-white/50",
+        outline: "border border-landing-border bg-transparent text-landing-text hover:bg-white/5 focus-visible:ring-white/50",
+        ghost: "text-landing-text-muted hover:bg-white/10 hover:text-landing-text focus-visible:ring-white/50",
+        link: "text-[#F97316] underline-offset-4 hover:underline focus-visible:ring-[#F97316]",
 
         // App variants (dark theme)
         "app-primary": "bg-white text-gray-900 hover:bg-gray-100 focus-visible:ring-white",
@@ -76,13 +77,25 @@ export interface ButtonProps
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, rounded, fullWidth, asChild, ...props }, ref) => {
+    const classes = cn(
+      buttonVariants({ variant, size, rounded }),
+      fullWidth && "w-full",
+      className
+    )
+
+    if (asChild) {
+      return (
+        <Slot
+          className={classes}
+          ref={ref}
+          {...props}
+        />
+      )
+    }
+
     return (
       <motion.button
-        className={cn(
-          buttonVariants({ variant, size, rounded }),
-          fullWidth && "w-full",
-          className
-        )}
+        className={classes}
         ref={ref}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}

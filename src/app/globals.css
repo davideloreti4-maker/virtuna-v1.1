@@ -6,15 +6,17 @@
 
 @theme inline {
   /* ----------------------------------------
-     LANDING/MARKETING THEME (Light)
+     LANDING/MARKETING THEME (Dark - matching societies.io)
      ---------------------------------------- */
-  --color-landing-bg: #FFFFFF;
-  --color-landing-bg-alt: #F9FAFB;
-  --color-landing-text: #111827;
-  --color-landing-text-muted: #6B7280;
-  --color-landing-accent: #F97316;
-  --color-landing-accent-hover: #EA580C;
-  --color-landing-border: #E5E7EB;
+  --color-landing-bg: #0d0d0d;
+  --color-landing-bg-alt: #141414;
+  --color-landing-bg-card: #1a1a1a;
+  --color-landing-text: #ffffff;
+  --color-landing-text-muted: #f5f5f5;
+  --color-landing-text-dim: #9CA3AF;
+  --color-landing-accent: #E57850;
+  --color-landing-accent-hover: #d46a45;
+  --color-landing-border: #262626;
 
   /* ----------------------------------------
      APP THEME (Dark)
@@ -143,9 +145,9 @@
    ======================================== */
 
 :root {
-  /* Default to light theme for landing */
-  --background: #FFFFFF;
-  --foreground: #111827;
+  /* Default to dark theme for landing */
+  --background: #0d0d0d;
+  --foreground: #ffffff;
 }
 
 /* Dark theme class for app pages */

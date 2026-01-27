@@ -2,150 +2,90 @@
 
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
-import { Button } from "@/components/ui/button"
 import { Container } from "@/components/layout/container"
-import { FadeIn } from "@/components/animations/fade-in"
-import { SlideUp } from "@/components/animations/slide-up"
 
 export default function LandingPage() {
   return (
-    <div className="bg-white">
+    <div className="bg-[#0d0d0d] min-h-screen relative overflow-hidden">
+      {/* Orange Corner Decoration - matching societies.io */}
+      <OrangeCornerDecoration />
 
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-24 overflow-hidden">
-        {/* Dot Grid Background */}
-        <DotGrid />
+      {/* Dot Grid Background - Full Page */}
+      <DotGrid />
 
+      {/* Hero Section - Full Height */}
+      <section className="relative min-h-screen flex items-center">
         <Container>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             {/* Left Side - Text */}
-            <SlideUp>
-              <div className="space-y-6">
-                <h1 className="text-5xl md:text-6xl lg:text-7xl font-semibold leading-[1.1] tracking-tight">
-                  <span className="text-gray-400">Human Behavior,</span>
-                  <br />
-                  <span className="text-primary-500">Simulated.</span>
-                </h1>
+            <div className="space-y-8 z-10">
+              <h1
+                className="text-[52px] leading-[1.2] tracking-normal"
+                style={{ fontFamily: 'var(--font-funnel-display), sans-serif', fontWeight: 350 }}
+              >
+                <span className="text-white">Human Behavior,</span>
+                <br />
+                <span className="text-[#E57850]">Simulated.</span>
+              </h1>
 
-                <p className="text-lg text-gray-500 max-w-md leading-relaxed">
-                  AI personas that replicate real-world attitudes, beliefs, and opinions.
-                </p>
+              <p
+                className="text-[28px] text-[#f5f5f5] max-w-xl leading-[1.4]"
+                style={{ fontFamily: 'var(--font-inter), system-ui, sans-serif', fontWeight: 400 }}
+              >
+                AI personas that replicate real-world attitudes, beliefs, and opinions.
+              </p>
 
-                <Button variant="primary" size="lg" rounded="default" asChild>
-                  <Link href="/contact">Get in touch</Link>
-                </Button>
-              </div>
-            </SlideUp>
+              <Link
+                href="/contact"
+                className="inline-flex items-center justify-center bg-[#E57850] text-white text-[15px] font-medium rounded-[6px] hover:bg-[#d46a45] transition-colors"
+                style={{ padding: '14px 28px' }}
+              >
+                Get in touch
+              </Link>
+            </div>
 
             {/* Right Side - Node Sphere */}
-            <FadeIn delay={0.2}>
-              <div className="relative h-[400px] lg:h-[500px]">
-                <NodeSphere />
-              </div>
-            </FadeIn>
-          </div>
-        </Container>
-
-        {/* Backed By Section */}
-        <BackedBySection />
-      </section>
-
-      {/* Features Section */}
-      <section className="py-24 bg-gray-50">
-        <Container>
-          <FadeIn>
-            <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-semibold text-gray-900 mb-4">
-                How it works
-              </h2>
-              <p className="text-lg text-gray-500 max-w-2xl mx-auto">
-                Test your content with AI-powered audience simulations before you publish.
-              </p>
+            <div className="relative h-[550px] lg:h-[650px]">
+              <NodeSphere />
             </div>
-          </FadeIn>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
-              <FadeIn key={feature.title} delay={0.1 * (index + 1)}>
-                <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
-                  <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center mb-6">
-                    <span className="text-primary-500 text-xl">{feature.icon}</span>
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                    {feature.title}
-                  </h3>
-                  <p className="text-gray-500 leading-relaxed">
-                    {feature.description}
-                  </p>
-                </div>
-              </FadeIn>
-            ))}
           </div>
-        </Container>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-24">
-        <Container>
-          <FadeIn>
-            <div className="text-center">
-              <h2 className="text-3xl md:text-4xl font-semibold text-gray-900 mb-4">
-                Ready to get started?
-              </h2>
-              <p className="text-lg text-gray-500 mb-8 max-w-2xl mx-auto">
-                Join leading brands using AI-powered audience simulation to optimize their content.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button variant="primary" size="lg" asChild>
-                  <Link href="/contact">Book a demo</Link>
-                </Button>
-                <Button variant="outline" size="lg" asChild>
-                  <Link href="/pricing">View pricing</Link>
-                </Button>
-              </div>
-            </div>
-          </FadeIn>
         </Container>
       </section>
     </div>
   )
 }
 
-const features = [
-  {
-    icon: "🎯",
-    title: "Create Your Society",
-    description:
-      "Define your target audience using demographic and psychographic attributes. Build AI personas that mirror your real customers.",
-  },
-  {
-    icon: "✍️",
-    title: "Test Your Content",
-    description:
-      "Upload your content - posts, ads, emails, or landing pages. Our AI personas analyze and provide feedback before you publish.",
-  },
-  {
-    icon: "📊",
-    title: "Optimize & Launch",
-    description:
-      "Get actionable insights on how to improve engagement. Iterate quickly and launch with confidence.",
-  },
-]
+// Orange Corner Decoration - matching societies.io top-left orange dots
+function OrangeCornerDecoration() {
+  return (
+    <div className="absolute top-[60px] left-0 w-[300px] h-[300px] pointer-events-none z-10">
+      <div
+        className="w-full h-full"
+        style={{
+          backgroundImage: `radial-gradient(circle, rgba(229, 120, 80, 0.7) 2px, transparent 2px)`,
+          backgroundSize: "14px 14px",
+          maskImage: "radial-gradient(ellipse 80% 80% at 0% 0%, black 10%, transparent 60%)",
+          WebkitMaskImage: "radial-gradient(ellipse 80% 80% at 0% 0%, black 10%, transparent 60%)",
+        }}
+      />
+    </div>
+  )
+}
 
-// Dot Grid Background Pattern
+// Dot Grid Background Pattern - Matching societies.io
 function DotGrid() {
   return (
     <div
-      className="absolute inset-0 z-0"
+      className="absolute inset-0 pointer-events-none"
       style={{
-        backgroundImage: `radial-gradient(circle, rgba(156,163,175,0.4) 1px, transparent 1px)`,
-        backgroundSize: "24px 24px",
+        backgroundImage: `radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px)`,
+        backgroundSize: "20px 20px",
       }}
     />
   )
 }
 
-// Node Sphere Visualization
+// Node Sphere Visualization - Matching societies.io
 function NodeSphere() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [hoveredNode, setHoveredNode] = useState<{
@@ -197,10 +137,10 @@ function NodeSphere() {
     const centerX = width / 2
     const centerY = height / 2
 
-    const radiusX = Math.min(width, height) * 0.42
-    const radiusY = Math.min(width, height) * 0.38
+    const radiusX = Math.min(width, height) * 0.44
+    const radiusY = Math.min(width, height) * 0.44
 
-    const nodeCount = 150
+    const nodeCount = 180
 
     const names = [
       { first: "Marcus", last: "Williams" },
@@ -209,6 +149,8 @@ function NodeSphere() {
       { first: "Sarah", last: "Thompson" },
       { first: "Michael", last: "Brown" },
       { first: "Lisa", last: "Anderson" },
+      { first: "David", last: "Kim" },
+      { first: "Rachel", last: "Garcia" },
     ]
     const roles = [
       "Financial Analyst",
@@ -217,6 +159,8 @@ function NodeSphere() {
       "Software Engineer",
       "Product Designer",
       "Data Analyst",
+      "Operations Director",
+      "Sales Manager",
     ]
 
     if (nodesRef.current.length === 0) {
@@ -228,10 +172,12 @@ function NodeSphere() {
         const y = Math.sin(phi) * Math.sin(theta)
         const z = Math.cos(phi)
 
-        const size = 4 + Math.random() * 6
-        const brightness = 140 + Math.floor(Math.random() * 80)
+        const size = 5 + Math.random() * 8
+        const brightness = 160 + Math.floor(Math.random() * 95)
         const color = `rgb(${brightness}, ${brightness}, ${brightness})`
-        const isHighlighted = i === Math.floor(nodeCount * 0.45)
+
+        // Highlighted node in upper-right area of sphere (matching societies.io)
+        const isHighlighted = i === 18
 
         const nameData = names[Math.floor(Math.random() * names.length)] ?? { first: "John", last: "Doe" }
         const fullName = `${nameData.first} ${nameData.last}`
@@ -278,12 +224,11 @@ function NodeSphere() {
         })
         .sort((a, b) => a.rotatedZ - b.rotatedZ)
 
-      // Draw connections
-      ctx.strokeStyle = "rgba(156, 163, 175, 0.2)"
+      // Draw connections - white/gray lines
       ctx.lineWidth = 0.5
 
       for (let i = 0; i < sortedNodes.length; i++) {
-        for (let j = i + 1; j < Math.min(i + 6, sortedNodes.length); j++) {
+        for (let j = i + 1; j < Math.min(i + 12, sortedNodes.length); j++) {
           const node1 = sortedNodes[i]
           const node2 = sortedNodes[j]
           if (!node1 || !node2) continue
@@ -295,9 +240,12 @@ function NodeSphere() {
 
           const dist = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
-          if (dist < 60) {
-            const opacity = (1 - dist / 60) * 0.25
-            ctx.strokeStyle = `rgba(156, 163, 175, ${opacity})`
+          if (dist < 100) {
+            const avgZ = (node1.rotatedZ + node2.rotatedZ) / 2
+            const depthOpacity = 0.3 + (avgZ + 1) * 0.35
+            const distOpacity = (1 - dist / 100)
+            const opacity = distOpacity * depthOpacity * 0.6
+            ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`
             ctx.beginPath()
             ctx.moveTo(x1, y1)
             ctx.lineTo(x2, y2)
@@ -311,20 +259,26 @@ function NodeSphere() {
         const x = centerX + node.rotatedX * radiusX
         const y = centerY + node.rotatedY * radiusY
 
-        const scale = 0.5 + (node.rotatedZ + 1) * 0.3
-        const opacity = 0.4 + (node.rotatedZ + 1) * 0.3
+        const scale = 0.4 + (node.rotatedZ + 1) * 0.35
+        const opacity = 0.3 + (node.rotatedZ + 1) * 0.35
 
         if (node.isHighlighted) {
-          // Highlighted node (coral/orange)
+          // Large outer glow - matching societies.io
+          const gradient = ctx.createRadialGradient(x, y, 0, x, y, 60 * scale)
+          gradient.addColorStop(0, `rgba(229, 120, 80, 1)`)
+          gradient.addColorStop(0.2, `rgba(229, 120, 80, 0.8)`)
+          gradient.addColorStop(0.5, `rgba(229, 120, 80, 0.3)`)
+          gradient.addColorStop(0.8, `rgba(229, 120, 80, 0.1)`)
+          gradient.addColorStop(1, `rgba(229, 120, 80, 0)`)
+          ctx.fillStyle = gradient
           ctx.beginPath()
-          ctx.arc(x, y, (node.size + 2) * scale, 0, Math.PI * 2)
-          ctx.fillStyle = `rgba(249, 115, 22, ${opacity + 0.2})`
+          ctx.arc(x, y, 60 * scale, 0, Math.PI * 2)
           ctx.fill()
 
-          // Glow
+          // Core orange node - solid and bright
           ctx.beginPath()
-          ctx.arc(x, y, (node.size + 5) * scale, 0, Math.PI * 2)
-          ctx.fillStyle = `rgba(249, 115, 22, ${opacity * 0.2})`
+          ctx.arc(x, y, (node.size + 4) * scale, 0, Math.PI * 2)
+          ctx.fillStyle = `rgba(229, 120, 80, 1)`
           ctx.fill()
         } else {
           ctx.beginPath()
@@ -354,7 +308,7 @@ function NodeSphere() {
         const y = centerY + node.baseY * radiusY
         const dist = Math.sqrt((mouseX - x) ** 2 + (mouseY - y) ** 2)
 
-        if (dist < node.size + 8) {
+        if (dist < node.size + 10) {
           setHoveredNode({ x: e.clientX, y: e.clientY, persona: node.persona })
           found = true
           break
@@ -386,16 +340,16 @@ function NodeSphere() {
             top: hoveredNode.y - 10,
           }}
         >
-          <div className="bg-white border border-gray-200 rounded-xl p-3 shadow-lg min-w-[180px]">
+          <div className="bg-[#1a1a1a] border border-[#333] rounded-xl p-3 shadow-lg min-w-[180px]">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 text-xs font-medium">
+              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white text-xs font-medium">
                 {hoveredNode.persona.initials}
               </div>
               <div>
-                <div className="text-gray-900 font-medium text-sm">
+                <div className="text-white font-medium text-sm">
                   {hoveredNode.persona.name}
                 </div>
-                <div className="text-gray-500 text-xs">
+                <div className="text-[#9CA3AF] text-xs">
                   {hoveredNode.persona.role}
                 </div>
               </div>
@@ -403,40 +357,6 @@ function NodeSphere() {
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-// Backed By Section
-function BackedBySection() {
-  return (
-    <div className="absolute bottom-0 left-0 right-0 border-t border-gray-100 bg-white/80 backdrop-blur-sm">
-      <Container>
-        <div className="py-6">
-          <p className="text-center text-xs text-gray-400 mb-4">Backed by</p>
-          <div className="flex items-center justify-center gap-12 md:gap-16">
-            <div className="flex items-center gap-2 text-gray-400">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="4" y="6" width="4" height="12" />
-                <path d="M12 6h4v4h-4z M16 10h4v8h-4z M12 14h4v4h-4z" />
-              </svg>
-              <span className="text-sm font-medium">Point72 Ventures</span>
-            </div>
-            <div className="flex items-center gap-2 text-gray-400">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M4 4v16 M12 4l-8 8 8 8" />
-              </svg>
-              <span className="text-sm font-medium">Kindred Capital</span>
-            </div>
-            <div className="hidden md:flex items-center gap-2 text-gray-400">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 14L6 4h3l3 6 3-6h3l-6 10v6h-2v-6z" />
-              </svg>
-              <span className="text-sm font-medium">Y Combinator</span>
-            </div>
-          </div>
-        </div>
-      </Container>
     </div>
   )
 }
