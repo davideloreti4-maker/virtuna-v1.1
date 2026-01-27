@@ -2,10 +2,10 @@
 
 ## Current Status
 - **Phase**: 3 of 10 — Landing Site
-- **Plan**: Not started
-- **Status**: Ready to plan
+- **Plan**: 02 of ? in phase
+- **Status**: In progress
 - **Last Updated**: 2026-01-27
-- **Last Activity**: 2026-01-27 - Phase 2 complete, verified
+- **Last Activity**: 2026-01-27 - Completed 03-02-PLAN.md (Scroll Animation Primitives)
 
 **Progress**: ██░░░░░░░░ 20% (2/10 phases complete)
 
@@ -52,6 +52,9 @@
 | FadeIn uses gentle ease-out curve [0.4, 0, 0.2, 1] with y:20 offset | 02-04 | Smooth, natural motion suitable for content reveals |
 | SlideUp uses dramatic ease-out-expo [0.22, 1, 0.36, 1] | 02-04 | More dramatic effect on hero sections, configurable distance |
 | PageTransition has exit prop for AnimatePresence | 02-04 | Ready for future routing integration in Phase 3 |
+| Scroll animation threshold defaults to 0.3 | 03-02 | 30% visibility triggers animation - balances early reveal with meaningful viewport presence |
+| All scroll animations use once:true | 03-02 | Prevents replay on re-enter for cleaner UX |
+| Parallax uses percentage-based Y translation | 03-02 | Responsive scaling across screen sizes |
 
 ## Session Notes
 - Project initialized on 2026-01-27
@@ -67,11 +70,16 @@
 - Animations: FadeIn, SlideUp, PageTransition
 - Showcase page at / for visual verification
 
+## Phase 3 Progress
+- 03-02: Scroll Animation Primitives - Complete
+  - FadeIn/SlideUp enhanced with scroll triggers
+  - ScrollReveal, Parallax, StaggeredGrid created
+
 ## Session Continuity
 - **Last session**: 2026-01-27
-- **Stopped at**: Phase 2 complete
+- **Stopped at**: Completed 03-02-PLAN.md
 - **Resume file**: None
 
 ## Next Steps
-- Plan Phase 3 (Landing Site)
-- Build pixel-perfect landing pages using Phase 2 components
+- Continue Phase 3 (Landing Site) plans
+- Build landing page sections using animation primitives
