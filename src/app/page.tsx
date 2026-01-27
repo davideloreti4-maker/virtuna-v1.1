@@ -2,8 +2,6 @@
 
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
-import { Header } from "@/components/layout/header"
-import { Footer } from "@/components/layout/footer"
 import { Button } from "@/components/ui/button"
 import { Container } from "@/components/layout/container"
 import { FadeIn } from "@/components/animations/fade-in"
@@ -11,8 +9,7 @@ import { SlideUp } from "@/components/animations/slide-up"
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-white">
-      <Header />
+    <div className="bg-white">
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-24 overflow-hidden">
@@ -110,8 +107,6 @@ export default function LandingPage() {
           </FadeIn>
         </Container>
       </section>
-
-      <Footer />
     </div>
   )
 }
