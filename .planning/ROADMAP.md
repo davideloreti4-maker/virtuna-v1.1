@@ -27,13 +27,14 @@
 ### Phase 2: Design System & Components
 **Goal**: Build reusable component library matching societies.io design
 
-**Tasks**:
-- [ ] Analyze societies.io design tokens (colors, typography, spacing)
-- [ ] Create Tailwind config with custom theme
-- [ ] Build base components (Button, Input, Card, etc.)
-- [ ] Build layout components (Header, Footer, Sidebar)
-- [ ] Create animation utilities
-- [ ] Document component usage
+**Plans**: 5 plans in 4 waves
+
+Plans:
+- [ ] 02-01-PLAN.md — Foundation setup (dependencies, utils, design tokens)
+- [ ] 02-02-PLAN.md — Base UI components (Button, Input, Card, Skeleton)
+- [ ] 02-03-PLAN.md — Layout components (Header, Footer, Container)
+- [ ] 02-04-PLAN.md — Animation components (FadeIn, SlideUp, PageTransition)
+- [ ] 02-05-PLAN.md — Visual verification (showcase page + checkpoint)
 
 **Success Criteria**:
 - All base components match societies.io styling
@@ -228,6 +229,6 @@ Phase 2 (Design System)
 ```
 
 ## Current Status
-- **Current Phase**: 1 (Infrastructure Setup)
+- **Current Phase**: 2 (Design System & Components)
 - **Blocked By**: None
-- **Next Action**: Complete infrastructure setup
+- **Next Action**: Execute Phase 2 plans
