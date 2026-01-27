@@ -1,6 +1,6 @@
 import { Hero } from "@/components/landing/hero"
 import { Features } from "@/components/landing/features"
-import { Testimonials } from "@/components/landing/testimonials"
+import { CaseStudySection, PartnershipSection } from "@/components/landing/testimonials"
 import { AccuracySection } from "@/components/landing/accuracy-section"
 import { FAQSection } from "@/components/landing/faq-section"
 import { CTASection } from "@/components/landing/cta-section"
@@ -10,8 +10,9 @@ export default function HomePage() {
     <main>
       <Hero />
       <Features />
-      <Testimonials />
+      <CaseStudySection />
       <AccuracySection />
+      <PartnershipSection />
       <FAQSection />
       <CTASection />
     </main>

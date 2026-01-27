@@ -190,6 +190,64 @@ export const zIndex = {
   backdrop: 40,
   mobileMenu: 50,
   header: 50,
+  sidebar: 40,
   modal: 60,
   tooltip: 70,
+} as const
+
+// ===========================================
+// APP LAYOUT DIMENSIONS
+// ===========================================
+
+export const appLayout = {
+  sidebar: {
+    widthExpanded: "230px",
+    widthCollapsed: "60px",
+  },
+  header: {
+    height: "56px",
+  },
+  spacing: {
+    sidebarPadding: "16px",
+    sectionGap: "24px",
+    itemGap: "8px",
+  },
+} as const
+
+// ===========================================
+// CATEGORY PILL COLORS (App)
+// ===========================================
+
+export const categoryColors = {
+  // Country/Region colors
+  "united-states": "#6366F1",
+  "united-kingdom": "#A855F7",
+  germany: "#10B981",
+  australia: "#F97316",
+  canada: "#EF4444",
+  france: "#3B82F6",
+  japan: "#EC4899",
+  brazil: "#14B8A6",
+
+  // Sector colors
+  "financial-services": "#6366F1",
+  technology: "#A855F7",
+  healthcare: "#10B981",
+  consulting: "#F97316",
+  education: "#EF4444",
+  retail: "#3B82F6",
+  manufacturing: "#EC4899",
+  media: "#14B8A6",
+
+  // Generation colors
+  "gen-z": "#6366F1",
+  millennial: "#A855F7",
+  "gen-x": "#10B981",
+  boomer: "#F97316",
+
+  // Role Level colors
+  entry: "#6366F1",
+  mid: "#A855F7",
+  senior: "#10B981",
+  executive: "#F97316",
 } as const

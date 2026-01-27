@@ -33,6 +33,13 @@ export function Header() {
         transition={{ duration: 0.35, ease: "easeInOut" }}
         className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]"
       >
+        {/* Subtle grey separator line matching societies.io */}
+        <div
+          className="absolute bottom-0 left-0 right-0 h-px"
+          style={{
+            background: 'linear-gradient(90deg, transparent, #262626 15%, #262626 85%, transparent)',
+          }}
+        />
         <Container>
           <div className="flex h-[66px] items-center justify-between">
             {/* Logo + Brand Name */}

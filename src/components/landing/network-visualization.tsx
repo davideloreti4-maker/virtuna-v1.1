@@ -1,6 +1,11 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
+
+interface PersonaTag {
+  type: 'location' | 'gender' | 'generation' | 'attitude' | 'seniority' | 'industry'
+  label: string
+}
 
 interface Persona {
   initials: string
@@ -8,7 +13,72 @@ interface Persona {
   role: string
   company: string
   description: string
-  tags: { icon: string; label: string }[]
+  tags: PersonaTag[]
+}
+
+// SVG Icon components for persona tags
+function LocationIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
+      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+    </svg>
+  )
+}
+
+function GenderIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
+      <circle cx="12" cy="8" r="4"/>
+      <path d="M12 14c-4 0-8 2-8 4v2h16v-2c0-2-4-4-8-4z"/>
+    </svg>
+  )
+}
+
+function GenerationIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
+      <rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" strokeWidth="2"/>
+      <path d="M8 10h8M8 14h5"/>
+    </svg>
+  )
+}
+
+function AttitudeIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
+      <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+  )
+}
+
+function SeniorityIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
+      <rect x="2" y="7" width="20" height="14" rx="2" fill="none" stroke="currentColor" strokeWidth="2"/>
+      <path d="M16 7V5a4 4 0 00-8 0v2"/>
+    </svg>
+  )
+}
+
+function IndustryIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
+      <path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/>
+    </svg>
+  )
+}
+
+function getTagIcon(type: PersonaTag['type']) {
+  switch (type) {
+    case 'location': return <LocationIcon />
+    case 'gender': return <GenderIcon />
+    case 'generation': return <GenerationIcon />
+    case 'attitude': return <AttitudeIcon />
+    case 'seniority': return <SeniorityIcon />
+    case 'industry': return <IndustryIcon />
+    default: return <LocationIcon />
+  }
 }
 
 interface Node {
@@ -24,6 +94,100 @@ interface Node {
   persona: Persona
 }
 
+// Predefined personas for variety
+const PERSONAS: Persona[] = [
+  {
+    initials: "SC",
+    name: "Sarah Chen",
+    role: "Product Manager",
+    company: "TechFlow Inc.",
+    description: "Passionate about building products that make a difference in people's daily lives.",
+    tags: [
+      { type: "location", label: "San Francisco, USA" },
+      { type: "gender", label: "Female" },
+      { type: "generation", label: "Millennial" },
+      { type: "attitude", label: "Liberal" },
+      { type: "seniority", label: "Senior" },
+      { type: "industry", label: "Technology" },
+    ],
+  },
+  {
+    initials: "MW",
+    name: "Marcus Williams",
+    role: "Financial Analyst",
+    company: "Goldman & Partners",
+    description: "Focused on emerging markets and sustainable investment strategies.",
+    tags: [
+      { type: "location", label: "London, UK" },
+      { type: "gender", label: "Male" },
+      { type: "generation", label: "Gen X" },
+      { type: "attitude", label: "Moderate" },
+      { type: "seniority", label: "Manager" },
+      { type: "industry", label: "Finance" },
+    ],
+  },
+  {
+    initials: "ER",
+    name: "Emma Rodriguez",
+    role: "Brand Director",
+    company: "Luxe Collective",
+    description: "Creating memorable brand experiences that resonate with global audiences.",
+    tags: [
+      { type: "location", label: "Paris, France" },
+      { type: "gender", label: "Female" },
+      { type: "generation", label: "Millennial" },
+      { type: "attitude", label: "Progressive" },
+      { type: "seniority", label: "Director" },
+      { type: "industry", label: "Fashion" },
+    ],
+  },
+  {
+    initials: "JC",
+    name: "James Chen",
+    role: "Data Scientist",
+    company: "AI Dynamics",
+    description: "Leveraging machine learning to solve complex business challenges.",
+    tags: [
+      { type: "location", label: "Berlin, Germany" },
+      { type: "gender", label: "Male" },
+      { type: "generation", label: "Gen Z" },
+      { type: "attitude", label: "Moderate" },
+      { type: "seniority", label: "Senior" },
+      { type: "industry", label: "Tech" },
+    ],
+  },
+  {
+    initials: "LT",
+    name: "Lisa Thompson",
+    role: "Marketing VP",
+    company: "Growth Labs",
+    description: "Driving customer acquisition through data-driven marketing strategies.",
+    tags: [
+      { type: "location", label: "New York, USA" },
+      { type: "gender", label: "Female" },
+      { type: "generation", label: "Gen X" },
+      { type: "attitude", label: "Conservative" },
+      { type: "seniority", label: "Executive" },
+      { type: "industry", label: "Marketing" },
+    ],
+  },
+  {
+    initials: "AK",
+    name: "Aiden Kim",
+    role: "UX Researcher",
+    company: "DesignLab Studio",
+    description: "Understanding user behavior to create intuitive digital experiences.",
+    tags: [
+      { type: "location", label: "Sydney, Australia" },
+      { type: "gender", label: "Male" },
+      { type: "generation", label: "Millennial" },
+      { type: "attitude", label: "Liberal" },
+      { type: "seniority", label: "Lead" },
+      { type: "industry", label: "Design" },
+    ],
+  },
+]
+
 export function NetworkVisualization() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [hoveredNode, setHoveredNode] = useState<{
@@ -31,8 +195,50 @@ export function NetworkVisualization() {
     y: number
     persona: Persona
   } | null>(null)
+  const [activePersona, setActivePersona] = useState<Persona>(PERSONAS[0]!)
+  const [cardOpacity, setCardOpacity] = useState(1)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+
   const nodesRef = useRef<Node[]>([])
   const rotationRef = useRef(0)
+  const pulsePhaseRef = useRef(0)
+  const highlightedIndexRef = useRef(0)
+
+  // Smooth persona transition
+  const transitionToPersona = useCallback((newPersona: Persona) => {
+    if (isTransitioning) return
+
+    setIsTransitioning(true)
+
+    // Fade out
+    const fadeOut = () => {
+      let opacity = 1
+      const fadeOutInterval = setInterval(() => {
+        opacity -= 0.1
+        setCardOpacity(Math.max(0, opacity))
+        if (opacity <= 0) {
+          clearInterval(fadeOutInterval)
+          setActivePersona(newPersona)
+          // Fade in
+          fadeIn()
+        }
+      }, 30)
+    }
+
+    const fadeIn = () => {
+      let opacity = 0
+      const fadeInInterval = setInterval(() => {
+        opacity += 0.1
+        setCardOpacity(Math.min(1, opacity))
+        if (opacity >= 1) {
+          clearInterval(fadeInInterval)
+          setIsTransitioning(false)
+        }
+      }, 30)
+    }
+
+    fadeOut()
+  }, [isTransitioning])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -54,9 +260,10 @@ export function NetworkVisualization() {
     const centerX = width / 2
     const centerY = height / 2
 
-    const radiusX = Math.min(width, height) * 0.38
-    const radiusY = Math.min(width, height) * 0.34
-    const nodeCount = 200  // Dense cluster like societies.io
+    // Increased sphere size to match societies.io
+    const radiusX = Math.min(width, height) * 0.48
+    const radiusY = Math.min(width, height) * 0.45
+    const nodeCount = 250 // More nodes for denser appearance
 
     const names = [
       { first: "Marcus", last: "Williams" },
@@ -67,6 +274,8 @@ export function NetworkVisualization() {
       { first: "Lisa", last: "Anderson" },
       { first: "David", last: "Kim" },
       { first: "Sophie", last: "Laurent" },
+      { first: "Aiden", last: "Park" },
+      { first: "Olivia", last: "Martinez" },
     ]
     const roles = [
       "Financial Analyst", "Brand Director", "Marketing Manager", "UX Researcher",
@@ -76,29 +285,29 @@ export function NetworkVisualization() {
       "Goldman & Partners", "Luxe Collective", "TechVentures Inc", "DesignLab Studio",
       "Digital Innovations", "Market Research Co", "Growth Dynamics", "Innovation Labs",
     ]
-    const locations = ["London, UK", "Paris, France", "New York, USA", "Berlin, Germany", "Sydney, Australia"]
+    const locations = ["London, UK", "Paris, France", "New York, USA", "Berlin, Germany", "Sydney, Australia", "Tokyo, Japan"]
     const genders = ["Male", "Female"]
     const generations = ["Gen X", "Millennial", "Gen Z"]
-    const attitudes = ["Moderate", "Liberal", "Conservative"]
-    const seniorityLevels = ["Manager", "Director", "Senior", "Lead"]
-    const industries = ["Finance", "Fashion", "Tech", "Marketing", "Healthcare"]
+    const attitudes = ["Moderate", "Liberal", "Conservative", "Progressive"]
+    const seniorityLevels = ["Manager", "Director", "Senior", "Lead", "Executive"]
+    const industries = ["Finance", "Fashion", "Tech", "Marketing", "Healthcare", "Design"]
 
     if (nodesRef.current.length === 0) {
       nodesRef.current = Array.from({ length: nodeCount }, (_, i) => {
-        // Mix of surface and interior nodes for filled appearance
-        const isSurface = i < nodeCount * 0.6
+        // More surface nodes for better sphere definition
+        const isSurface = i < nodeCount * 0.7
         let x, y, z
 
         if (isSurface) {
           // Fibonacci sphere for surface nodes
-          const phi = Math.acos(1 - 2 * (i + 0.5) / (nodeCount * 0.6))
+          const phi = Math.acos(1 - 2 * (i + 0.5) / (nodeCount * 0.7))
           const theta = Math.PI * (1 + Math.sqrt(5)) * i
           x = Math.sin(phi) * Math.cos(theta)
           y = Math.sin(phi) * Math.sin(theta)
           z = Math.cos(phi)
         } else {
           // Random interior nodes for filled appearance
-          const r = Math.pow(Math.random(), 0.5) * 0.85 // Bias toward outer regions
+          const r = Math.pow(Math.random(), 0.4) * 0.9
           const theta = Math.random() * Math.PI * 2
           const phi = Math.acos(2 * Math.random() - 1)
           x = r * Math.sin(phi) * Math.cos(theta)
@@ -106,10 +315,10 @@ export function NetworkVisualization() {
           z = r * Math.cos(phi)
         }
 
-        const size = 3 + Math.random() * 5
-        const brightness = 80 + Math.floor(Math.random() * 100)
+        const size = 2.5 + Math.random() * 5
+        const brightness = 90 + Math.floor(Math.random() * 90)
         const color = `rgb(${brightness}, ${brightness}, ${brightness})`
-        const isHighlighted = i === Math.floor(nodeCount * 0.35)
+        const isHighlighted = false
 
         const nameData = names[Math.floor(Math.random() * names.length)]!
         const fullName = `${nameData.first} ${nameData.last}`
@@ -122,12 +331,12 @@ export function NetworkVisualization() {
           company: companies[Math.floor(Math.random() * companies.length)]!,
           description: "Focused on emerging markets and sustainable investment strategies.",
           tags: [
-            { icon: "📍", label: locations[Math.floor(Math.random() * locations.length)]! },
-            { icon: "👤", label: genders[Math.floor(Math.random() * genders.length)]! },
-            { icon: "📅", label: generations[Math.floor(Math.random() * generations.length)]! },
-            { icon: "🎯", label: attitudes[Math.floor(Math.random() * attitudes.length)]! },
-            { icon: "💼", label: seniorityLevels[Math.floor(Math.random() * seniorityLevels.length)]! },
-            { icon: "🏢", label: industries[Math.floor(Math.random() * industries.length)]! },
+            { type: "location", label: locations[Math.floor(Math.random() * locations.length)]! },
+            { type: "gender", label: genders[Math.floor(Math.random() * genders.length)]! },
+            { type: "generation", label: generations[Math.floor(Math.random() * generations.length)]! },
+            { type: "attitude", label: attitudes[Math.floor(Math.random() * attitudes.length)]! },
+            { type: "seniority", label: seniorityLevels[Math.floor(Math.random() * seniorityLevels.length)]! },
+            { type: "industry", label: industries[Math.floor(Math.random() * industries.length)]! },
           ],
         }
 
@@ -136,26 +345,41 @@ export function NetworkVisualization() {
     }
 
     let animationId: number
+    let personaIndex = 0
+
+    // Cycle highlighted node every 4 seconds with smooth transition
+    const highlightCycleInterval = setInterval(() => {
+      highlightedIndexRef.current = (highlightedIndexRef.current + 1) % Math.min(30, nodeCount)
+      personaIndex = (personaIndex + 1) % PERSONAS.length
+      transitionToPersona(PERSONAS[personaIndex]!)
+    }, 4000)
 
     const animate = () => {
       ctx.clearRect(0, 0, width, height)
-      rotationRef.current += 0.002
+      rotationRef.current += 0.0015 // Slightly slower rotation
+      pulsePhaseRef.current += 0.04 // Smoother pulse
+
+      // Smoother pulse using eased sine wave
+      const rawPulse = (Math.sin(pulsePhaseRef.current) + 1) / 2
+      const pulseIntensity = rawPulse * rawPulse * (3 - 2 * rawPulse) // Smoothstep easing
 
       const sortedNodes = [...nodesRef.current]
-        .map((node) => {
+        .map((node, index) => {
           const cosR = Math.cos(rotationRef.current)
           const sinR = Math.sin(rotationRef.current)
           const rotatedX = node.baseX * cosR - node.baseZ * sinR
           const rotatedZ = node.baseX * sinR + node.baseZ * cosR
 
-          return { ...node, rotatedX, rotatedY: node.baseY, rotatedZ }
+          const isCurrentlyHighlighted = index === highlightedIndexRef.current
+
+          return { ...node, rotatedX, rotatedY: node.baseY, rotatedZ, isCurrentlyHighlighted }
         })
         .sort((a, b) => a.rotatedZ - b.rotatedZ)
 
-      // Draw connection lines - more prominent like societies.io
-      ctx.lineWidth = 0.6
+      // Draw connection lines - more connections for denser look
+      ctx.lineWidth = 0.5
       for (let i = 0; i < sortedNodes.length; i++) {
-        for (let j = i + 1; j < Math.min(i + 12, sortedNodes.length); j++) {
+        for (let j = i + 1; j < Math.min(i + 15, sortedNodes.length); j++) {
           const node1 = sortedNodes[i]
           const node2 = sortedNodes[j]
           if (!node1 || !node2) continue
@@ -167,9 +391,9 @@ export function NetworkVisualization() {
 
           const dist = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
-          if (dist < 90) {
-            const opacity = (1 - dist / 90) * 0.45
-            ctx.strokeStyle = `rgba(140, 140, 140, ${opacity})`
+          if (dist < 100) {
+            const opacity = (1 - dist / 100) * 0.5
+            ctx.strokeStyle = `rgba(150, 150, 150, ${opacity})`
             ctx.beginPath()
             ctx.moveTo(x1, y1)
             ctx.lineTo(x2, y2)
@@ -183,19 +407,36 @@ export function NetworkVisualization() {
         const x = centerX + node.rotatedX * radiusX
         const y = centerY + node.rotatedY * radiusY
         const scale = 0.5 + (node.rotatedZ + 1) * 0.3
-        const opacity = 0.3 + (node.rotatedZ + 1) * 0.35
+        const opacity = 0.35 + (node.rotatedZ + 1) * 0.35
 
-        if (node.isHighlighted) {
-          // Orange highlighted node
+        if (node.isCurrentlyHighlighted) {
+          // Smooth pulsing orange highlighted node
+          const pulseSize = 5 + pulseIntensity * 5
+          const pulseGlowSize = 12 + pulseIntensity * 10
+          const pulseOpacity = 0.2 + pulseIntensity * 0.3
+
+          // Outermost glow ring
           ctx.beginPath()
-          ctx.arc(x, y, (node.size + 4) * scale, 0, Math.PI * 2)
-          ctx.fillStyle = `rgba(229, 120, 80, ${opacity + 0.3})`
+          ctx.arc(x, y, (node.size + pulseGlowSize + 8) * scale, 0, Math.PI * 2)
+          ctx.fillStyle = `rgba(229, 120, 80, ${pulseOpacity * 0.2})`
           ctx.fill()
 
-          // Glow
+          // Middle glow ring
           ctx.beginPath()
-          ctx.arc(x, y, (node.size + 8) * scale, 0, Math.PI * 2)
-          ctx.fillStyle = `rgba(229, 120, 80, ${opacity * 0.2})`
+          ctx.arc(x, y, (node.size + pulseGlowSize) * scale, 0, Math.PI * 2)
+          ctx.fillStyle = `rgba(229, 120, 80, ${pulseOpacity * 0.5})`
+          ctx.fill()
+
+          // Inner glow
+          ctx.beginPath()
+          ctx.arc(x, y, (node.size + pulseSize + 2) * scale, 0, Math.PI * 2)
+          ctx.fillStyle = `rgba(229, 120, 80, ${pulseOpacity})`
+          ctx.fill()
+
+          // Core orange node
+          ctx.beginPath()
+          ctx.arc(x, y, (node.size + pulseSize) * scale, 0, Math.PI * 2)
+          ctx.fillStyle = `rgba(229, 120, 80, ${opacity + 0.4})`
           ctx.fill()
         } else {
           ctx.beginPath()
@@ -239,57 +480,52 @@ export function NetworkVisualization() {
 
     return () => {
       cancelAnimationFrame(animationId)
+      clearInterval(highlightCycleInterval)
       canvas.removeEventListener("mousemove", handleMouseMove)
     }
-  }, [])
-
-  // Default persona to show (matching societies.io style)
-  const defaultPersona: Persona = {
-    initials: "MW",
-    name: "Marcus Williams",
-    role: "Financial Analyst",
-    company: "Goldman & Partners",
-    description: "Focused on emerging markets and sustainable investment strategies.",
-    tags: [
-      { icon: "📍", label: "London, UK" },
-      { icon: "👤", label: "Male" },
-      { icon: "📅", label: "Gen X" },
-      { icon: "🎯", label: "Moderate" },
-      { icon: "💼", label: "Manager" },
-      { icon: "🏢", label: "Finance" },
-    ],
-  }
+  }, [transitionToPersona])
 
   return (
     <div className="relative w-full h-full">
+      {/* Dark radial gradient background behind visualization */}
+      <div
+        className="absolute inset-0 z-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(circle at center, rgba(0,0,0,0.5) 0%, transparent 65%)'
+        }}
+      />
+
       <canvas ref={canvasRef} className="w-full h-full" />
 
-      {/* Default Persona Card - always visible, positioned to overlap with top of sphere */}
+      {/* Active Persona Card - positioned below the sphere, centered */}
       <div
-        className="absolute z-20 pointer-events-none"
-        style={{ right: "8%", top: "12%" }}
+        className="absolute z-20 pointer-events-none transition-opacity duration-300 left-1/2 -translate-x-1/2"
+        style={{
+          bottom: "-20px",
+          opacity: cardOpacity,
+        }}
       >
-        <div className="bg-[rgba(20,20,20,0.95)] border border-[rgb(50,50,50)] rounded-xl p-4 backdrop-blur-md min-w-[260px] shadow-2xl">
+        <div className="bg-[rgba(20,20,20,0.95)] border border-[rgb(50,50,50)] rounded-xl p-4 backdrop-blur-md min-w-[280px] shadow-2xl">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-9 h-9 rounded-full bg-[rgba(255,255,255,0.1)] flex items-center justify-center text-white text-sm font-medium">
-              {defaultPersona.initials}
+              {activePersona.initials}
             </div>
             <div>
-              <div className="text-white font-medium text-sm">{defaultPersona.name}</div>
-              <div className="text-[rgb(150,150,150)] text-xs">{defaultPersona.role}</div>
+              <div className="text-white font-medium text-sm">{activePersona.name}</div>
+              <div className="text-[rgb(150,150,150)] text-xs">{activePersona.role}</div>
             </div>
           </div>
 
-          <div className="text-white text-xs font-medium mb-1">{defaultPersona.company}</div>
-          <div className="text-[rgb(100,100,100)] text-xs mb-3">{defaultPersona.description}</div>
+          <div className="text-white text-xs font-medium mb-1">{activePersona.company}</div>
+          <div className="text-[rgb(100,100,100)] text-xs mb-3">{activePersona.description}</div>
 
           <div className="flex flex-wrap gap-1.5">
-            {defaultPersona.tags.map((tag, i) => (
+            {activePersona.tags.map((tag, i) => (
               <span
                 key={i}
                 className="px-2 py-1 text-xs bg-[rgba(255,255,255,0.06)] text-[rgb(150,150,150)] rounded flex items-center gap-1"
               >
-                <span className="text-[10px]">{tag.icon}</span>
+                {getTagIcon(tag.type)}
                 {tag.label}
               </span>
             ))}
@@ -323,7 +559,7 @@ export function NetworkVisualization() {
                   key={i}
                   className="px-2 py-1 text-xs bg-[rgba(255,255,255,0.06)] text-[rgb(150,150,150)] rounded flex items-center gap-1"
                 >
-                  <span className="text-[10px]">{tag.icon}</span>
+                  {getTagIcon(tag.type)}
                   {tag.label}
                 </span>
               ))}

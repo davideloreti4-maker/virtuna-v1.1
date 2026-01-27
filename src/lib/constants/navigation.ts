@@ -22,16 +22,8 @@ export interface NavItemWithChildren extends NavItem {
 // HEADER NAVIGATION
 // ===========================================
 
-export const headerNavItems: NavItemWithChildren[] = [
-  {
-    label: "Resources",
-    href: "/coming-soon",
-    children: [
-      { label: "Documentation", href: "/coming-soon" },
-      { label: "Research Report", href: "https://storage.googleapis.com/as-website-assets/Artificial%20Societies%20Survey%20Eval%20Report%20Jan26.pdf", external: true },
-    ],
-  },
-]
+// societies.io header has no nav items - just Sign in + Book a Meeting
+export const headerNavItems: NavItemWithChildren[] = []
 
 // CTA buttons in header
 export const headerCTA = {

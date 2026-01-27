@@ -12,8 +12,8 @@ export default function ComponentShowcase() {
   return (
     <Container className="py-12">
       <FadeIn>
-        <h1 className="text-4xl font-bold mb-2">Component Showcase</h1>
-        <p className="text-gray-500 mb-12">
+        <h1 className="text-4xl font-bold text-landing-text mb-2">Component Showcase</h1>
+        <p className="text-landing-text-muted mb-12">
           Visual verification of all design system components
         </p>
       </FadeIn>
@@ -21,12 +21,12 @@ export default function ComponentShowcase() {
       {/* Buttons Section */}
       <FadeIn delay={0.1}>
         <section className="mb-16">
-          <h2 className="text-2xl font-semibold mb-6">Buttons</h2>
+          <h2 className="text-2xl font-semibold text-landing-text mb-6">Buttons</h2>
 
           <div className="space-y-8">
             {/* Variants */}
             <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-3">Variants</h3>
+              <h3 className="text-sm font-medium text-landing-text-muted mb-3">Variants</h3>
               <div className="flex flex-wrap gap-3">
                 <Button variant="primary">Primary</Button>
                 <Button variant="secondary">Secondary</Button>
@@ -39,7 +39,7 @@ export default function ComponentShowcase() {
 
             {/* Sizes */}
             <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-3">Sizes</h3>
+              <h3 className="text-sm font-medium text-landing-text-muted mb-3">Sizes</h3>
               <div className="flex flex-wrap items-center gap-3">
                 <Button size="sm">Small</Button>
                 <Button size="md">Medium</Button>
@@ -50,7 +50,7 @@ export default function ComponentShowcase() {
 
             {/* Rounded */}
             <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-3">Rounded</h3>
+              <h3 className="text-sm font-medium text-landing-text-muted mb-3">Rounded</h3>
               <div className="flex flex-wrap gap-3">
                 <Button rounded="default">Default</Button>
                 <Button rounded="full">Full</Button>
@@ -60,7 +60,7 @@ export default function ComponentShowcase() {
 
             {/* States */}
             <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-3">States</h3>
+              <h3 className="text-sm font-medium text-landing-text-muted mb-3">States</h3>
               <div className="flex flex-wrap gap-3">
                 <Button>Normal</Button>
                 <Button disabled>Disabled</Button>
@@ -74,12 +74,12 @@ export default function ComponentShowcase() {
       {/* Inputs Section */}
       <FadeIn delay={0.2}>
         <section className="mb-16">
-          <h2 className="text-2xl font-semibold mb-6">Inputs</h2>
+          <h2 className="text-2xl font-semibold text-landing-text mb-6">Inputs</h2>
 
           <div className="space-y-8 max-w-md">
             {/* Default states */}
             <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-3">States</h3>
+              <h3 className="text-sm font-medium text-landing-text-muted mb-3">States</h3>
               <div className="space-y-3">
                 <Input placeholder="Default input" />
                 <Input placeholder="With value" defaultValue="Hello World" />
@@ -90,7 +90,7 @@ export default function ComponentShowcase() {
 
             {/* Sizes */}
             <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-3">Sizes</h3>
+              <h3 className="text-sm font-medium text-landing-text-muted mb-3">Sizes</h3>
               <div className="space-y-3">
                 <Input inputSize="sm" placeholder="Small input" />
                 <Input inputSize="md" placeholder="Medium input" />
@@ -100,7 +100,7 @@ export default function ComponentShowcase() {
 
             {/* Types */}
             <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-3">Types</h3>
+              <h3 className="text-sm font-medium text-landing-text-muted mb-3">Types</h3>
               <div className="space-y-3">
                 <Input type="email" placeholder="Email input" />
                 <Input type="password" placeholder="Password input" />
@@ -114,7 +114,7 @@ export default function ComponentShowcase() {
       {/* Cards Section */}
       <FadeIn delay={0.3}>
         <section className="mb-16">
-          <h2 className="text-2xl font-semibold mb-6">Cards</h2>
+          <h2 className="text-2xl font-semibold text-landing-text mb-6">Cards</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl">
             <Card>
@@ -122,7 +122,7 @@ export default function ComponentShowcase() {
                 <CardTitle>Card with Header</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-500">
+                <p className="text-landing-text-muted">
                   This card has a header with a title and content section below.
                 </p>
               </CardContent>
@@ -130,7 +130,7 @@ export default function ComponentShowcase() {
 
             <Card>
               <CardContent className="pt-6">
-                <p className="text-gray-500">
+                <p className="text-landing-text-muted">
                   This card only has content, no header section.
                 </p>
               </CardContent>
@@ -141,7 +141,7 @@ export default function ComponentShowcase() {
                 <CardTitle>Full Width Card</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-500">
+                <p className="text-landing-text-muted">
                   Cards can span multiple columns and contain any content.
                 </p>
                 <div className="mt-4 flex gap-2">
@@ -157,12 +157,12 @@ export default function ComponentShowcase() {
       {/* Skeletons Section */}
       <FadeIn delay={0.4}>
         <section className="mb-16">
-          <h2 className="text-2xl font-semibold mb-6">Skeletons</h2>
+          <h2 className="text-2xl font-semibold text-landing-text mb-6">Skeletons</h2>
 
           <div className="space-y-8 max-w-md">
             {/* Text skeletons */}
             <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-3">Text Lines</h3>
+              <h3 className="text-sm font-medium text-landing-text-muted mb-3">Text Lines</h3>
               <div className="space-y-2">
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-4/5" />
@@ -172,7 +172,7 @@ export default function ComponentShowcase() {
 
             {/* Card skeleton */}
             <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-3">Card Skeleton</h3>
+              <h3 className="text-sm font-medium text-landing-text-muted mb-3">Card Skeleton</h3>
               <Card>
                 <CardHeader>
                   <Skeleton className="h-6 w-1/3" />
@@ -188,7 +188,7 @@ export default function ComponentShowcase() {
 
             {/* Avatar + text skeleton */}
             <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-3">Profile Skeleton</h3>
+              <h3 className="text-sm font-medium text-landing-text-muted mb-3">Profile Skeleton</h3>
               <div className="flex items-center gap-4">
                 <Skeleton className="h-12 w-12 rounded-full" />
                 <div className="space-y-2">
@@ -204,12 +204,12 @@ export default function ComponentShowcase() {
       {/* Animations Section */}
       <FadeIn delay={0.5}>
         <section className="mb-16">
-          <h2 className="text-2xl font-semibold mb-6">Animations</h2>
+          <h2 className="text-2xl font-semibold text-landing-text mb-6">Animations</h2>
 
           <div className="space-y-8">
             {/* FadeIn demo */}
             <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-3">FadeIn (staggered)</h3>
+              <h3 className="text-sm font-medium text-landing-text-muted mb-3">FadeIn (staggered)</h3>
               <div className="flex gap-4">
                 {[0, 0.1, 0.2, 0.3].map((delay, i) => (
                   <FadeIn key={i} delay={delay + 0.5}>
@@ -223,11 +223,11 @@ export default function ComponentShowcase() {
 
             {/* SlideUp demo */}
             <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-3">SlideUp</h3>
+              <h3 className="text-sm font-medium text-landing-text-muted mb-3">SlideUp</h3>
               <SlideUp delay={0.8}>
                 <Card className="max-w-sm">
                   <CardContent className="pt-6">
-                    <p className="text-gray-500">
+                    <p className="text-landing-text-muted">
                       This card slides up into view with a smooth animation.
                     </p>
                   </CardContent>
@@ -241,7 +241,7 @@ export default function ComponentShowcase() {
       {/* Typography Section */}
       <FadeIn delay={0.6}>
         <section className="mb-16">
-          <h2 className="text-2xl font-semibold mb-6">Typography</h2>
+          <h2 className="text-2xl font-semibold text-landing-text mb-6">Typography</h2>
 
           <div className="space-y-4">
             <h1 className="text-5xl font-bold">Heading 1</h1>
@@ -250,10 +250,10 @@ export default function ComponentShowcase() {
             <h4 className="text-2xl font-semibold">Heading 4</h4>
             <h5 className="text-xl font-medium">Heading 5</h5>
             <h6 className="text-lg font-medium">Heading 6</h6>
-            <p className="text-base text-gray-700">
+            <p className="text-base text-landing-text">
               Body text - Lorem ipsum dolor sit amet, consectetur adipiscing elit.
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-landing-text-muted">
               Small text - Secondary information and captions.
             </p>
           </div>
@@ -263,12 +263,12 @@ export default function ComponentShowcase() {
       {/* Colors Section */}
       <FadeIn delay={0.7}>
         <section className="mb-16">
-          <h2 className="text-2xl font-semibold mb-6">Colors</h2>
+          <h2 className="text-2xl font-semibold text-landing-text mb-6">Colors</h2>
 
           <div className="space-y-6">
             {/* Primary */}
             <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-3">Primary</h3>
+              <h3 className="text-sm font-medium text-landing-text-muted mb-3">Primary</h3>
               <div className="flex gap-2">
                 <div className="w-16 h-16 rounded-lg bg-primary-100" title="primary-100" />
                 <div className="w-16 h-16 rounded-lg bg-primary-200" title="primary-200" />
@@ -282,7 +282,7 @@ export default function ComponentShowcase() {
 
             {/* Gray */}
             <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-3">Gray</h3>
+              <h3 className="text-sm font-medium text-landing-text-muted mb-3">Gray</h3>
               <div className="flex gap-2">
                 <div className="w-16 h-16 rounded-lg bg-gray-100 border" title="gray-100" />
                 <div className="w-16 h-16 rounded-lg bg-gray-200" title="gray-200" />
@@ -296,7 +296,7 @@ export default function ComponentShowcase() {
 
             {/* Status colors */}
             <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-3">Status</h3>
+              <h3 className="text-sm font-medium text-landing-text-muted mb-3">Status</h3>
               <div className="flex gap-2">
                 <div className="w-16 h-16 rounded-lg bg-success" title="success" />
                 <div className="w-16 h-16 rounded-lg bg-warning" title="warning" />

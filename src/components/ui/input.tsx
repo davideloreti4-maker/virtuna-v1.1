@@ -7,8 +7,8 @@ const inputVariants = cva(
   {
     variants: {
       variant: {
-        // Light theme (landing/marketing)
-        default: "border border-gray-300 bg-white text-gray-900 focus:ring-primary-500",
+        // Dark theme (landing/marketing)
+        default: "border border-landing-border bg-landing-bg-card text-landing-text placeholder:text-landing-text-muted focus:ring-primary-500",
 
         // Dark theme (app)
         dark: "border border-app-border bg-app-bg-input text-app-text placeholder:text-app-text-muted focus:ring-app-accent focus:border-app-accent",

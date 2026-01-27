@@ -100,7 +100,7 @@ export function FAQSection() {
         <div className="max-w-3xl mx-auto">
           {/* Header */}
           <ScrollReveal className="text-center mb-12">
-            <span className="text-sm text-[#9CA3AF] uppercase tracking-wider mb-4 block">
+            <span className="text-sm text-[#E57850] uppercase tracking-wider mb-4 block">
               FAQ
             </span>
             <h2

@@ -1,5 +1,5 @@
 export { Hero } from "./hero"
 export { Features } from "./features"
-export { Testimonials } from "./testimonials"
+export { Testimonials, CaseStudySection, PartnershipSection } from "./testimonials"
 export { CTASection } from "./cta-section"
 export { LogosSection } from "./logos-section"

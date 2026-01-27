@@ -74,15 +74,18 @@ export function AccuracySection() {
   return (
     <section className="relative py-20 md:py-32 bg-[#0d0d0d]">
       <Container>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-0 items-center relative">
+          {/* Vertical separator line */}
+          <div className="hidden lg:block absolute left-1/2 top-0 bottom-0 w-px bg-[#262626]" />
+
           {/* Left side - Text */}
           <ScrollReveal>
-            <div>
-              <span className="text-sm text-[#9CA3AF] uppercase tracking-wider mb-4 block">
+            <div className="lg:pr-12">
+              <span className="text-sm text-[#E57850] uppercase tracking-wider mb-4 block">
                 Validated accuracy
               </span>
               <h2
-                className="text-[#E57850] mb-6"
+                className="text-white mb-6"
                 style={{
                   fontFamily: '"Funnel Display", var(--font-display)',
                   fontSize: 'clamp(3rem, 8vw, 96px)',
@@ -110,7 +113,7 @@ export function AccuracySection() {
 
           {/* Right side - Chart */}
           <ScrollReveal delay={0.2}>
-            <div className="bg-[#141414] rounded-xl p-6 border border-[#262626]">
+            <div className="bg-[#141414] rounded-xl p-6 border border-[#262626] lg:ml-12">
               <div className="space-y-1">
                 {accuracyData.map((item) => (
                   <AccuracyBar

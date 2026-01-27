@@ -47,8 +47,10 @@ Plans:
 
 ---
 
-### Phase 3: Landing Site
+### Phase 3: Landing Site ✓
 **Goal**: Build pixel-perfect landing pages matching societies.io exactly (Homepage, Pricing, About)
+
+**Status**: Complete (2026-01-27)
 
 **Plans**: 6 plans in 3 waves
 
@@ -58,7 +60,7 @@ Plans:
 - [x] 03-03-PLAN.md — Homepage (hero, features, testimonials, CTAs)
 - [x] 03-04-PLAN.md — True one-pager conversion (removed /pricing - societies.io doesn't have it)
 - [SKIPPED] 03-05-PLAN.md — About page (societies.io has no /about route)
-- [ ] 03-06-PLAN.md — Verification checkpoint
+- [x] 03-06-PLAN.md — Verification checkpoint (manual verification complete)
 
 **Wave Structure**:
 - Wave 1: 03-01, 03-02 (parallel - foundation work)
@@ -66,10 +68,10 @@ Plans:
 - Wave 3: 03-06 (verification checkpoint)
 
 **Success Criteria**:
-- All landing pages pixel-perfect match with societies.io
-- Navigation works correctly (unbuilt pages → /coming-soon)
-- Mobile experience matches societies.io exactly
-- Scroll animations match societies.io timing and behavior
+- [x] All landing pages pixel-perfect match with societies.io
+- [x] Navigation works correctly (unbuilt pages → /coming-soon)
+- [x] Mobile experience matches societies.io exactly
+- [x] Scroll animations match societies.io timing and behavior
 
 **Requirements Covered**: L1, L2, L3, L4, L5, R1, R2, R3, AN4
 
@@ -238,7 +240,7 @@ Phase 2 (Design System)
 ```
 
 ## Current Status
-- **Current Phase**: 3 (Landing Site)
-- **Completed Phases**: 1, 2
+- **Current Phase**: 4 (App Layout & Navigation)
+- **Completed Phases**: 1, 2, 3
 - **Blocked By**: None
-- **Next Action**: Execute Phase 3 (`/gsd:execute-phase 3`)
+- **Next Action**: Plan Phase 4 (`/gsd:plan-phase 4`)

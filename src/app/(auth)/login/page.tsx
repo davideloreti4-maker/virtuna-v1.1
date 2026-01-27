@@ -64,7 +64,7 @@ export default function LoginPage() {
           Trouble logging in? Email us at{" "}
           <Link
             href="mailto:support@societies.io"
-            className="text-gray-400 underline hover:text-white transition-colors"
+            className="text-app-text-muted underline hover:text-white transition-colors"
           >
             support@societies.io
           </Link>

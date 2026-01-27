@@ -11,8 +11,8 @@ interface FeatureCardProps {
 
 function FeatureCard({ title, description, icon }: FeatureCardProps) {
   return (
-    <div className="group p-6 md:p-8 rounded-lg bg-[#1a1a1a] border border-[#262626] hover:border-[#333333] transition-all duration-300">
-      <div className="mb-4 text-[#E57850]">{icon}</div>
+    <div className="group p-6 md:p-8 transition-all duration-300">
+      <div className="mb-4 p-3 rounded-lg border border-[#262626] w-fit text-white">{icon}</div>
       <h3 className="text-xl font-medium text-white mb-3">{title}</h3>
       <p className="text-[#9CA3AF] leading-relaxed">{description}</p>
     </div>
@@ -125,7 +125,7 @@ export function Features() {
       <Container>
         {/* Section header */}
         <ScrollReveal className="text-center max-w-3xl mx-auto mb-16">
-          <span className="text-sm text-[#9CA3AF] uppercase tracking-wider mb-4 block">
+          <span className="text-sm text-[#E57850] uppercase tracking-wider mb-4 block">
             Into the future
           </span>
           <h2
@@ -144,18 +144,22 @@ export function Features() {
           </p>
         </ScrollReveal>
 
-        {/* Features grid */}
+        {/* Features grid - 4-column with vertical separators */}
         <StaggeredGrid
-          className="grid grid-cols-1 md:grid-cols-2 gap-6"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
           staggerDelay={0.1}
         >
-          {features.map((feature) => (
-            <FeatureCard
+          {features.map((feature, index) => (
+            <div
               key={feature.title}
-              title={feature.title}
-              description={feature.description}
-              icon={feature.icon}
-            />
+              className={`${index < features.length - 1 ? 'lg:border-r lg:border-[#262626]' : ''}`}
+            >
+              <FeatureCard
+                title={feature.title}
+                description={feature.description}
+                icon={feature.icon}
+              />
+            </div>
           ))}
         </StaggeredGrid>
       </Container>
