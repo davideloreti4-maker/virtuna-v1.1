@@ -52,7 +52,7 @@ function XIcon({ className }: { className?: string }) {
 // STATUS BADGE (Societies.io exact style)
 // ===========================================
 
-function StatusBadge({ status, position = "left" }: { status: SocietyStatus; position?: "left" | "center" }) {
+function StatusBadge({ status }: { status: SocietyStatus }) {
   const variants: Record<SocietyStatus, { label: string; className: string }> = {
     setup: {
       label: "Setup",
@@ -76,8 +76,7 @@ function StatusBadge({ status, position = "left" }: { status: SocietyStatus; pos
     <span
       className={cn(
         "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-        variant.className,
-        position === "center" && "mx-auto"
+        variant.className
       )}
     >
       {variant.label}
@@ -146,7 +145,6 @@ function SocietyIcon({ icon }: { icon?: string }) {
 
 function SocietyCard({ society, onClick }: SocietyCardProps) {
   const isExample = society.status === "example"
-  const isSetup = society.status === "setup"
 
   return (
     <motion.button
@@ -161,27 +159,14 @@ function SocietyCard({ society, onClick }: SocietyCardProps) {
         "focus:outline-none focus:ring-2 focus:ring-app-accent focus:ring-offset-2 focus:ring-offset-app-bg"
       )}
     >
-      {/* Top row: Badge position depends on status */}
-      <div className="absolute top-4 left-4 right-4 flex items-center">
-        {/* Setup badge: top-LEFT */}
-        {isSetup && (
-          <StatusBadge status={society.status} position="left" />
-        )}
+      {/* Top row: Badge on LEFT, menu on RIGHT */}
+      <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
+        {/* Badge always top-LEFT */}
+        <StatusBadge status={society.status} />
 
-        {/* Example badge: top-CENTER with 3-dot menu on right */}
+        {/* 3-dot menu on right for example cards */}
         {isExample && (
-          <>
-            <div className="flex-1" /> {/* Spacer */}
-            <StatusBadge status={society.status} position="center" />
-            <div className="flex-1 flex justify-end">
-              <ThreeDotMenu onClick={() => console.log("Menu clicked")} />
-            </div>
-          </>
-        )}
-
-        {/* Active: top-LEFT */}
-        {society.status === "active" && (
-          <StatusBadge status={society.status} position="left" />
+          <ThreeDotMenu onClick={() => console.log("Menu clicked")} />
         )}
       </div>
 
