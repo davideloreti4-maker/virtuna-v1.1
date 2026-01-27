@@ -2,12 +2,12 @@
 
 ## Current Status
 - **Phase**: 2 of 2 — Design System & Components
-- **Plan**: 1 of 5
+- **Plan**: 3 of 5
 - **Status**: In progress
 - **Last Updated**: 2026-01-27
-- **Last Activity**: 2026-01-27 - Completed 02-01-PLAN.md
+- **Last Activity**: 2026-01-27 - Completed 02-03-PLAN.md
 
-**Progress**: █░░░░ 20% (1/5 plans complete)
+**Progress**: ███░░ 60% (3/5 plans complete)
 
 ## Completed
 - [x] Project folder created (`~/virtuna-v1.1`)
@@ -45,6 +45,7 @@
 | Used oklch color space for primary colors | 02-01 | Perceptually uniform, modern color space. Placeholder purple values will be refined in Phase 3 |
 | Established cn() utility pattern | 02-01 | Standard for className composition across all components |
 | @theme directive for design tokens | 02-01 | Centralized design token system with CSS variables |
+| Server Components for layout by default | 02-03 | Container, Header, Footer built as Server Components for optimal performance |
 
 ## Session Notes
 - Project initialized on 2026-01-27
@@ -52,15 +53,14 @@
 - Next.js 16.1.5 with Turbopack
 - Middleware convention deprecated, will need to migrate to "proxy"
 - Phase 2 started: Design system foundation complete (02-01)
+- Layout components complete (02-03): Container, Header, Footer
 
 ## Session Continuity
-- **Last session**: 2026-01-27 10:44:47Z
-- **Stopped at**: Completed 02-01-PLAN.md
+- **Last session**: 2026-01-27
+- **Stopped at**: Completed 02-03-PLAN.md
 - **Resume file**: None
 
 ## Next Steps
-- Complete remaining Phase 2 plans (02-02 through 02-05)
-- Button and Input components (02-02)
-- Card and Badge components (02-03)
-- Layout components (02-04)
+- Complete remaining Phase 2 plans (02-04 and 02-05)
+- Remaining UI components (02-04)
 - Component documentation (02-05)
