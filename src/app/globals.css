@@ -31,17 +31,24 @@
   --color-landing-border: #262626;
 
   /* ----------------------------------------
-     APP THEME (Dark)
+     APP THEME (Dark - matching societies.io exactly)
      ---------------------------------------- */
-  --color-app-bg: #0A0A0A;
+  --color-app-bg: rgb(6, 6, 6);
   --color-app-bg-sidebar: #111111;
-  --color-app-bg-card: #171717;
+  --color-app-bg-card: rgba(21, 21, 21, 0.5);
   --color-app-bg-input: #1F1F1F;
-  --color-app-border: #262626;
+  --color-app-border: rgb(58, 58, 58);
   --color-app-text: #FAFAFA;
   --color-app-text-muted: #71717A;
   --color-app-accent: #6366F1;
   --color-app-accent-hover: #818CF8;
+
+  /* Pill styling (societies.io exact) */
+  --color-app-pill-bg: rgba(21, 21, 21, 0.314);
+
+  /* Badge colors (societies.io exact) */
+  --color-badge-setup: #FF9C39;
+  --color-badge-example: rgba(0, 0, 0, 0.5);
 
   /* ----------------------------------------
      PRIMARY COLOR SCALE (Orange - Landing)
@@ -178,7 +185,7 @@
 
 /* Dark theme class for app pages */
 .dark {
-  --background: #0A0A0A;
+  --background: rgb(6, 6, 6);
   --foreground: #FAFAFA;
 }
 
@@ -259,5 +266,23 @@ h2 {
   .glass-sidebar {
     background: rgba(17, 17, 17, 0.8);
     backdrop-filter: blur(12px);
+  }
+
+  /* Hide scrollbar */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Line clamp utilities */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 }
