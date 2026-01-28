@@ -6,11 +6,11 @@ import { cn } from "@/lib/utils";
 import { ChevronDown, X, Plus, Info, Briefcase, Coins, Users } from "lucide-react";
 import { useSocietyStore } from "@/stores/society-store";
 import { CardActionMenu } from "./card-action-menu";
+import { CreateSocietyModal } from "./create-society-modal";
 import type { Society, PersonalSociety, TargetSociety } from "@/types/society";
 
 interface SocietySelectorProps {
   className?: string;
-  onCreateClick?: () => void;
 }
 
 /**
@@ -18,8 +18,9 @@ interface SocietySelectorProps {
  * Opens a modal dialog for selecting between Personal and Target societies.
  * Uses Radix Dialog for accessibility and Zustand store for state management.
  */
-export function SocietySelector({ className, onCreateClick }: SocietySelectorProps) {
+export function SocietySelector({ className }: SocietySelectorProps) {
   const [open, setOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   // Use Zustand store instead of local state
   const selectedSociety = useSocietyStore((s) => s.getSelectedSociety());
@@ -34,8 +35,8 @@ export function SocietySelector({ className, onCreateClick }: SocietySelectorPro
   };
 
   const handleCreateSociety = () => {
-    setOpen(false);
-    onCreateClick?.();
+    setOpen(false); // Close selector FIRST
+    setCreateModalOpen(true); // Then open create modal
   };
 
   const handleEdit = (id: string) => {
@@ -53,8 +54,9 @@ export function SocietySelector({ className, onCreateClick }: SocietySelectorPro
   };
 
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Trigger asChild>
+    <>
+      <Dialog.Root open={open} onOpenChange={setOpen}>
+        <Dialog.Trigger asChild>
         <button
           type="button"
           className={cn(
@@ -143,6 +145,12 @@ export function SocietySelector({ className, onCreateClick }: SocietySelectorPro
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+
+      <CreateSocietyModal
+        open={createModalOpen}
+        onOpenChange={setCreateModalOpen}
+      />
+    </>
   );
 }
 
