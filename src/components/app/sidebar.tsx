@@ -2,8 +2,9 @@
 
 import { cn } from "@/lib/utils";
 import { SidebarNavItem } from "./sidebar-nav-item";
+import { SocietySelector } from "./society-selector";
+import { ViewSelector } from "./view-selector";
 import {
-  ChevronDown,
   Plus,
   CreditCard,
   MessageSquare,
@@ -105,13 +106,7 @@ export function Sidebar({ className }: SidebarProps) {
         <label className="mb-2 block text-xs uppercase tracking-wide text-zinc-500">
           Current Society
         </label>
-        <button
-          type="button"
-          className="flex w-full items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-white transition-colors hover:border-zinc-700"
-        >
-          <span>Zurich Founders</span>
-          <ChevronDown className="h-4 w-4 text-zinc-400" />
-        </button>
+        <SocietySelector />
       </div>
 
       {/* View selector section */}
@@ -119,13 +114,7 @@ export function Sidebar({ className }: SidebarProps) {
         <label className="mb-2 block text-xs uppercase tracking-wide text-zinc-500">
           Current View
         </label>
-        <button
-          type="button"
-          className="flex w-full items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-white transition-colors hover:border-zinc-700"
-        >
-          <span>Country</span>
-          <ChevronDown className="h-4 w-4 text-zinc-400" />
-        </button>
+        <ViewSelector />
       </div>
 
       {/* Create new test button */}
