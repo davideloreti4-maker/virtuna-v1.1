@@ -502,10 +502,10 @@ Things that couldn't be fully resolved:
    - What's unclear: Whether Satoshi variable font supports 450 or needs approximation
    - Recommendation: Test with variable font; fall back to 400 if 450 not supported
 
-3. **v0 MCP Tool Integration**
+3. **v0 MCP Tool Integration** ✓ RESOLVED
    - What we know: User wants to use v0 MCP for component generation
-   - What's unclear: Exact workflow for feeding reference images to v0
-   - Recommendation: Planner should include v0 MCP usage in component creation tasks
+   - Workflow defined: Feed reference screenshots from .reference/ folder to v0 MCP with detailed prompts, then refine output to use our design tokens
+   - Plans updated: 02-02 and 02-03 now include v0 MCP workflow for Button, Input, Card, Header, Footer components
 
 ## Sources
 
