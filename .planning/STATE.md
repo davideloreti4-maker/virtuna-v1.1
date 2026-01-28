@@ -2,10 +2,10 @@
 
 ## Current Status
 - **Phase**: 5 of 10 — Society Management
-- **Plan**: 1 of 6 complete
+- **Plan**: 3 of 6 complete
 - **Status**: In progress
 - **Last Updated**: 2026-01-28
-- **Last Activity**: 2026-01-28 - Completed 05-01-PLAN.md (Society Store Foundation)
+- **Last Activity**: 2026-01-28 - Completed 05-03-PLAN.md (Create Target Society Modal)
 
 **Progress**: ████░░░░░░ 40% (4/10 phases)
 
@@ -55,6 +55,7 @@
 ## In Progress
 - [ ] Phase 5: Society Management
   - 05-01: Society Store Foundation (0ab813a, 0d366da, d2e9ec5)
+  - 05-03: Create Target Society Modal (a5e9575, 052c003)
 
 ## Blocked
 - (none)
@@ -130,6 +131,9 @@
 | Fallback on delete | 05-01 | Prevents null selection when active society deleted |
 | Type guards for discrimination | 05-01 | Runtime narrowing for PersonalSociety/TargetSociety |
 | Zustand persist middleware | 05-01 | Store state persists across browser sessions |
+| Gradient modal background | 05-03 | Purple/blue mesh gradient at 10% opacity over #18181B |
+| 1.5s AI matching delay | 05-03 | Simulated delay for UX feedback during "AI matching" |
+| Extract name from description | 05-03 | First 3 words after removing filler words |
 
 ## Project-Wide Directives
 
@@ -165,13 +169,14 @@
 - Phase 4 Plan 6 complete: Visual verification checkpoint passed, v0 polish applied
 - Phase 4 verified: 9/9 must-haves passed - app shell complete
 - Phase 5 Plan 1 complete: Zustand store with persist, society types, mock data module
+- Phase 5 Plan 3 complete: CreateSocietyModal with gradient background, AI matching loading state
 
 ## Session Continuity
 - **Last session**: 2026-01-28
-- **Stopped at**: Completed 05-01-PLAN.md (Society Store Foundation)
+- **Stopped at**: Completed 05-03-PLAN.md (Create Target Society Modal)
 - **Resume file**: None
 
 ## Next Steps
-- Execute 05-02: Integrate store with SocietySelector
-- Execute 05-03: Create Target Society modal
+- Execute 05-04: Card Action Menu
+- Execute 05-05: Wire up create society flow
 - Continue Phase 5 Society Management plans
