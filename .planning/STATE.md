@@ -1,13 +1,13 @@
 # Project State — Virtuna v1.1
 
 ## Current Status
-- **Phase**: 3 of 10 — Landing Site
-- **Plan**: 06 of 8 in phase
+- **Phase**: 4 of 10 — App Layout & Navigation
+- **Plan**: 01 of 4 in phase
 - **Status**: In progress
 - **Last Updated**: 2026-01-28
-- **Last Activity**: 2026-01-28 - Completed 03-06-PLAN.md (Testimonials Sections)
+- **Last Activity**: 2026-01-28 - Completed 04-01-PLAN.md (Route Groups Setup)
 
-**Progress**: ███░░░░░░░ 30% (3/10 phases)
+**Progress**: ████░░░░░░ 40% (4/10 phases)
 
 ## Completed
 - [x] Phase 1: Infrastructure Setup
@@ -38,9 +38,11 @@
   - 03-06: TestimonialQuote, CaseStudySection, PartnershipSection (14320f5, 38f50b8, fc576ea, 7fb8c31)
 - [x] Phase 3 Plan 7: FAQ Section
   - 03-07: FAQSection component with accordion (bcc90a9, 7c4a24e)
+- [x] Phase 4 Plan 1: Route Groups Setup
+  - 04-01: Route groups, marketing/app layouts, Radix UI packages (59bd577, 503e226)
 
 ## In Progress
-- [ ] Phase 3: Landing Site
+- [ ] Phase 4: App Layout & Navigation
 
 ## Blocked
 - (none)
@@ -93,6 +95,9 @@
 | max-w-3xl narrower FAQ container | 03-07 | FAQ section narrower than other sections |
 | Phosphor Quotes weight="fill" | 03-06 | Solid quote icon at 50% opacity for testimonials |
 | Reusable TestimonialQuote component | 03-06 | DRY pattern for quote+author in multiple sections |
+| Route groups for layout separation | 04-01 | (marketing) with Header, (app) without |
+| Each route group has own root layout | 04-01 | Allows html/body per group, no shared root |
+| App layout flex structure | 04-01 | Pre-configured for sidebar + main content pattern |
 
 ## Project-Wide Directives
 
@@ -120,13 +125,15 @@
 - Phase 3 Plan 7 complete: FAQSection with accordion
 - Phase 3 Plan 5 complete: StatsSection with ComparisonChart
 - Phase 3 Plan 6 complete: TestimonialQuote, CaseStudySection, PartnershipSection
+- Phase 4 Plan 1 complete: Route groups setup, marketing/app layouts established
 
 ## Session Continuity
 - **Last session**: 2026-01-28
-- **Stopped at**: Completed 03-06-PLAN.md — Testimonials Sections
+- **Stopped at**: Completed 04-01-PLAN.md — Route Groups Setup
 - **Resume file**: None
 
 ## Next Steps
-- Continue Phase 3 Landing Site plans (03-08)
-- Build CTA Footer section
-- Assemble full landing page
+- Continue Phase 4 App Layout & Navigation plans (04-02)
+- Build View Selector dropdown component
+- Build Society Selector modal component
+- Implement Sidebar component
