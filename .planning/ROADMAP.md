@@ -2,36 +2,21 @@
 
 ## Milestone: v1.1 — Pixel-Perfect Clone
 
-### Phase 1: Infrastructure Setup
+### Phase 1: Infrastructure Setup ✓
 **Goal**: Complete development environment and deployment pipeline
 
-**Status**: Planning Complete
+**Status**: Complete (2026-01-28)
 
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Create Next.js App Router structure + Supabase utilities
-- [ ] 01-02-PLAN.md — Verify build + Vercel deployment
-
-**Tasks** (already complete):
-- [x] Create project folder and git repo
-- [x] Initialize Next.js with TypeScript + Tailwind
-- [x] Create GitHub repository
-- [x] Set up Supabase project (auth only)
-- [x] Configure Vercel deployment
-- [x] Set up environment variables
-- [x] Configure TypeScript strict mode
-- [ ] ~~Set up GitHub Projects board~~ (skipped - not critical)
-
-**Remaining** (covered by plans):
-- [ ] Recreate src/ directory (deleted during fresh start)
-- [ ] Create Supabase client utilities
-- [ ] Verify build and deployment
+- [x] 01-01-PLAN.md — Create Next.js App Router structure + Supabase utilities
+- [x] 01-02-PLAN.md — Verify build + Vercel deployment
 
 **Success Criteria**:
-- App deploys to Vercel on push
-- Supabase Auth configured and tested
-- All env vars properly set
+- [x] App deploys to Vercel on push
+- [x] Supabase Auth configured and tested
+- [x] All env vars properly set
 
 **Requirements Covered**: I1, I2, I3
 
@@ -262,7 +247,7 @@ Phase 2 (Design System) ✓
 
 ## Current Status
 - **Current Milestone**: v1.1 (Pixel-Perfect Clone)
-- **Current Phase**: 1 (Infrastructure Setup)
-- **Completed Phases**: (none - fresh start)
+- **Current Phase**: 2 (Design System & Components)
+- **Completed Phases**: 1
 - **Blocked By**: None
-- **Next Action**: Plan and execute Phase 1
+- **Next Action**: Plan and execute Phase 2
