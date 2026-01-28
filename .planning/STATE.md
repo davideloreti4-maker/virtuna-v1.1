@@ -2,10 +2,10 @@
 
 ## Current Status
 - **Phase**: 4 of 10 — App Layout & Navigation
-- **Plan**: 01 of 4 in phase
+- **Plan**: 02 of 4 in phase
 - **Status**: In progress
 - **Last Updated**: 2026-01-28
-- **Last Activity**: 2026-01-28 - Completed 04-01-PLAN.md (Route Groups Setup)
+- **Last Activity**: 2026-01-28 - Completed 04-02-PLAN.md (App Layout Shell with Sidebar)
 
 **Progress**: ████░░░░░░ 40% (4/10 phases)
 
@@ -40,6 +40,8 @@
   - 03-07: FAQSection component with accordion (bcc90a9, 7c4a24e)
 - [x] Phase 4 Plan 1: Route Groups Setup
   - 04-01: Route groups, marketing/app layouts, Radix UI packages (59bd577, 503e226)
+- [x] Phase 4 Plan 2: App Layout Shell with Sidebar
+  - 04-02: Sidebar, SidebarNavItem, app layout integration (c4e1f58, 4fcb8a0, 4a70a86)
 
 ## In Progress
 - [ ] Phase 4: App Layout & Navigation
@@ -98,6 +100,9 @@
 | Route groups for layout separation | 04-01 | (marketing) with Header, (app) without |
 | Each route group has own root layout | 04-01 | Allows html/body per group, no shared root |
 | App layout flex structure | 04-01 | Pre-configured for sidebar + main content pattern |
+| SidebarNavItem reusable pattern | 04-02 | Label-left, icon-right for nav items |
+| Lucide icons for sidebar | 04-02 | ChevronDown, Plus, CreditCard, MessageSquare, BookOpen, LogOut, Columns2 |
+| Selector triggers only | 04-02 | Society/View selectors styled buttons, functionality in Plan 03 |
 
 ## Project-Wide Directives
 
@@ -126,14 +131,14 @@
 - Phase 3 Plan 5 complete: StatsSection with ComparisonChart
 - Phase 3 Plan 6 complete: TestimonialQuote, CaseStudySection, PartnershipSection
 - Phase 4 Plan 1 complete: Route groups setup, marketing/app layouts established
+- Phase 4 Plan 2 complete: Sidebar component, SidebarNavItem, app layout integration
 
 ## Session Continuity
 - **Last session**: 2026-01-28
-- **Stopped at**: Completed 04-01-PLAN.md — Route Groups Setup
+- **Stopped at**: Completed 04-02-PLAN.md — App Layout Shell with Sidebar
 - **Resume file**: None
 
 ## Next Steps
-- Continue Phase 4 App Layout & Navigation plans (04-02)
-- Build View Selector dropdown component
+- Continue Phase 4 App Layout & Navigation plans (04-03)
 - Build Society Selector modal component
-- Implement Sidebar component
+- Build View Selector dropdown component
