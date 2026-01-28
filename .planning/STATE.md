@@ -2,10 +2,10 @@
 
 ## Current Status
 - **Phase**: 4 of 10 — App Layout & Navigation
-- **Plan**: 02 of 4 in phase
+- **Plan**: 03 of 6 in phase
 - **Status**: In progress
 - **Last Updated**: 2026-01-28
-- **Last Activity**: 2026-01-28 - Completed 04-02-PLAN.md (App Layout Shell with Sidebar)
+- **Last Activity**: 2026-01-28 - Completed 04-03-PLAN.md (Society & View Selector Components)
 
 **Progress**: ████░░░░░░ 40% (4/10 phases)
 
@@ -42,6 +42,8 @@
   - 04-01: Route groups, marketing/app layouts, Radix UI packages (59bd577, 503e226)
 - [x] Phase 4 Plan 2: App Layout Shell with Sidebar
   - 04-02: Sidebar, SidebarNavItem, app layout integration (c4e1f58, 4fcb8a0, 4a70a86)
+- [x] Phase 4 Plan 3: Society & View Selector Components
+  - 04-03: SocietySelector modal, ViewSelector dropdown, Sidebar integration (e53cf9c, fefb604, 8f325aa)
 
 ## In Progress
 - [ ] Phase 4: App Layout & Navigation
@@ -103,6 +105,10 @@
 | SidebarNavItem reusable pattern | 04-02 | Label-left, icon-right for nav items |
 | Lucide icons for sidebar | 04-02 | ChevronDown, Plus, CreditCard, MessageSquare, BookOpen, LogOut, Columns2 |
 | Selector triggers only | 04-02 | Society/View selectors styled buttons, functionality in Plan 03 |
+| Radix Dialog for SocietySelector | 04-03 | Full accessibility (focus trap, ESC key, click outside) built-in |
+| Radix DropdownMenu for ViewSelector | 04-03 | Checkmark on selected item, proper animations |
+| Mock data structure for societies | 04-03 | Personal has platform/needsSetup; Target has type/icon/members |
+| Selection state local | 04-03 | Kept in each component for Phase 4; lifted to context in Phase 5 |
 
 ## Project-Wide Directives
 
@@ -132,13 +138,14 @@
 - Phase 3 Plan 6 complete: TestimonialQuote, CaseStudySection, PartnershipSection
 - Phase 4 Plan 1 complete: Route groups setup, marketing/app layouts established
 - Phase 4 Plan 2 complete: Sidebar component, SidebarNavItem, app layout integration
+- Phase 4 Plan 3 complete: SocietySelector modal, ViewSelector dropdown
 
 ## Session Continuity
 - **Last session**: 2026-01-28
-- **Stopped at**: Completed 04-02-PLAN.md — App Layout Shell with Sidebar
+- **Stopped at**: Completed 04-03-PLAN.md — Society & View Selector Components
 - **Resume file**: None
 
 ## Next Steps
-- Continue Phase 4 App Layout & Navigation plans (04-03)
-- Build Society Selector modal component
-- Build View Selector dropdown component
+- Continue Phase 4 App Layout & Navigation plans (04-04, 04-05, 04-06)
+- Build network visualization canvas
+- Build context bar with filter pills
