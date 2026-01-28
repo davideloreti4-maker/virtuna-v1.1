@@ -1,56 +1,55 @@
 # Phase 3: Landing Site - Context
 
-**Gathered:** 2026-01-27
+**Gathered:** 2026-01-28
 **Status:** Ready for planning
 
 <domain>
 ## Phase Boundary
 
-Build pixel-perfect landing pages matching societies.io: Homepage, Pricing, and About pages. Includes navigation, scroll animations, and full mobile responsiveness. Auth flows and app screens are separate phases.
+Build pixel-perfect landing pages matching societies.io exactly. This includes the homepage with hero, features, testimonials, CTAs, all visible sections, navigation setup, and scroll animations. Auth pages, pricing page, and blog are separate phases.
 
 </domain>
 
 <decisions>
 ## Implementation Decisions
 
-### Visual Fidelity
-- Exact clone — pixel-for-pixel match with societies.io
-- Download and use exact images from societies.io
-- Match exact fonts, sizes, weights, and line heights
-- Replicate all micro-interactions (hover states, transitions, button effects, link underlines)
+### Reference Fidelity
+- **Exact match** — every pixel, spacing, and color must match societies.io
+- When reference is unclear: **pause and ask** for clarification before proceeding
+- Source access: screenshots for reference + can inspect live site via browser dev tools
+- **Download actual assets** from societies.io (images, icons, logos)
 
-### Page Structure
-- Core pages only: Homepage, Pricing, About
-- Exact copy from societies.io (same headlines, subheadlines, CTA text)
-- Exact navigation menu structure (all items, dropdowns, structure)
-- Nav items linking to unbuilt pages route to a "Coming Soon" placeholder page
-- Update Header and Footer from Phase 2 to match societies.io pixel-perfect
-- Pricing page: match societies.io interaction pattern (if they have monthly/yearly toggle, we do too)
-- About page: full clone of every section (team, mission, values, timeline, etc.)
-- CTAs link to /login or /signup routes (even if not built yet)
+### Animation Behavior
+- Scroll trigger points: **match societies.io exactly** — inspect their triggers and replicate
+- Animation replay behavior: **match societies.io** — check if they replay on scroll-up
+- Parallax effects: **inspect site to confirm** — replicate if present
+- Reduced motion: Claude's discretion for accessibility handling
 
-### Scroll Animations
-- Match societies.io animations exactly — reverse-engineer their scroll animations
-- If they use parallax, we use parallax
-- Do NOT respect prefers-reduced-motion — animations are core to the experience
+### Navigation Handling
+- Header scroll behavior: **match societies.io** — inspect sticky/hide/blur behavior
+- Unbuilt pages (Pricing, Blog, etc.): redirect to **/coming-soon** page
+- Mobile navigation: **match societies.io exactly** — inspect and replicate their mobile menu
+- External links: **match societies.io** — check their link target behavior
 
-### Mobile Behavior
-- Pixel-perfect mobile layouts matching societies.io
-- Match societies.io breakpoints exactly (reverse-engineer from their CSS)
-- Replicate all touch interactions (swipe, tap states, gestures)
+### Section Breakdown
+- Include **all sections** visible on societies.io homepage
+- Theme: **dark mode only** — no light/dark toggle on landing
+- Hero CTAs: **match societies.io** — check their CTA destinations
+- Interactive elements (tabs, carousels): **replicate them** — user confirmed they exist
 
 ### Claude's Discretion
-- Mobile navigation pattern (hamburger, slide-out, etc.)
-- Whether to extend Phase 2 animation components or create landing-specific ones
+- Reduced motion accessibility implementation approach
+- Asset organization and naming conventions
+- Component structure for landing sections
 
 </decisions>
 
 <specifics>
 ## Specific Ideas
 
-- societies.io is the single source of truth — if in doubt, match what they do
-- This is a portfolio piece demonstrating pixel-perfect replication ability
-- No creative interpretation — fidelity is the goal
+- Use v0 MCP for UI design accuracy (user directive from Phase 2)
+- Reference inspection via browser dev tools for exact measurements
+- When in doubt, ask — don't make assumptions on this pixel-perfect clone
 
 </specifics>
 
@@ -64,4 +63,4 @@ None — discussion stayed within phase scope
 ---
 
 *Phase: 03-landing-site*
-*Context gathered: 2026-01-27*
+*Context gathered: 2026-01-28*
