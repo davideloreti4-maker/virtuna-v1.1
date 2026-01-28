@@ -65,6 +65,14 @@
 | useReducedMotion for accessibility | 02-04 | Respect user motion preferences |
 | v0 MCP for UI design accuracy | 02-05 | User directive for design quality in future phases |
 
+## Project-Wide Directives
+
+**These directives MUST be followed in ALL phases:**
+
+| Directive | Scope | Description |
+|-----------|-------|-------------|
+| **v0 MCP for UI design** | All UI components | Use v0 MCP tool to generate pixel-perfect UI components. Query v0 with reference screenshots and design specs before implementing any visual component. This ensures design accuracy and reduces iteration. |
+
 ## Session Notes
 - Fresh start on 2026-01-28
 - Using npm (pnpm not available)
