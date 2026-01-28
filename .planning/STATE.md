@@ -2,10 +2,10 @@
 
 ## Current Status
 - **Phase**: 5 of 10 — Society Management
-- **Plan**: Not started
-- **Status**: Ready to plan
+- **Plan**: 1 of 6 complete
+- **Status**: In progress
 - **Last Updated**: 2026-01-28
-- **Last Activity**: 2026-01-28 - Completed Phase 4 (App Layout & Navigation)
+- **Last Activity**: 2026-01-28 - Completed 05-01-PLAN.md (Society Store Foundation)
 
 **Progress**: ████░░░░░░ 40% (4/10 phases)
 
@@ -54,6 +54,7 @@
 
 ## In Progress
 - [ ] Phase 5: Society Management
+  - 05-01: Society Store Foundation (0ab813a, 0d366da, d2e9ec5)
 
 ## Blocked
 - (none)
@@ -124,6 +125,11 @@
 | CSS-only responsive mobile | 04-05 | No JS media queries, use md: breakpoint classes for hydration safety |
 | Mock auth delay | 04-05 | 350ms skeleton delay simulates auth check, polishes UX |
 | Context bar blue dot | 04-06 | v0 polish - changed from emerald to blue to match reference |
+| localStorage key virtuna-societies | 05-01 | Namespaced Zustand persist key for societies |
+| Auto-select on add | 05-01 | New societies immediately active after creation |
+| Fallback on delete | 05-01 | Prevents null selection when active society deleted |
+| Type guards for discrimination | 05-01 | Runtime narrowing for PersonalSociety/TargetSociety |
+| Zustand persist middleware | 05-01 | Store state persists across browser sessions |
 
 ## Project-Wide Directives
 
@@ -158,13 +164,14 @@
 - Phase 4 Plan 5 complete: MobileNav, AuthGuard, AppShell wrapper
 - Phase 4 Plan 6 complete: Visual verification checkpoint passed, v0 polish applied
 - Phase 4 verified: 9/9 must-haves passed - app shell complete
+- Phase 5 Plan 1 complete: Zustand store with persist, society types, mock data module
 
 ## Session Continuity
 - **Last session**: 2026-01-28
-- **Stopped at**: Completed Phase 4 — App Layout & Navigation
+- **Stopped at**: Completed 05-01-PLAN.md (Society Store Foundation)
 - **Resume file**: None
 
 ## Next Steps
-- Plan Phase 5: Society Management
-- Build Create Target Society modal with AI matching UI
-- Implement society CRUD operations (mock/local state)
+- Execute 05-02: Integrate store with SocietySelector
+- Execute 05-03: Create Target Society modal
+- Continue Phase 5 Society Management plans
