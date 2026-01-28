@@ -1,10 +1,27 @@
-import { HeroSection } from "@/components/landing";
+import {
+  HeroSection,
+  BackersSection,
+  FeaturesSection,
+  StatsSection,
+  CaseStudySection,
+  PartnershipSection,
+  FAQSection,
+} from "@/components/landing";
+import { Footer } from "@/components/layout/footer";
 
 export default function HomePage() {
   return (
-    <main>
-      <HeroSection />
-      {/* More sections will be added in subsequent plans */}
-    </main>
+    <>
+      <main>
+        <HeroSection />
+        <BackersSection />
+        <FeaturesSection />
+        <StatsSection />
+        <CaseStudySection />
+        <PartnershipSection />
+        <FAQSection />
+      </main>
+      <Footer />
+    </>
   );
 }
