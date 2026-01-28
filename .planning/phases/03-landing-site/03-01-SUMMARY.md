@@ -1,187 +1,130 @@
 ---
-# Summary Frontmatter
-phase: "03-landing-site"
-plan: "01"
-subsystem: "navigation"
-tags: ["navigation", "header", "footer", "mobile-menu", "assets", "design-tokens"]
+phase: 03-landing-site
+plan: 01
+subsystem: ui
+tags: [header, footer, accordion, radix-ui, societies-io]
 
-# Dependency Graph
-requires: ["02-design-system-components"]
-provides: ["navigation-components", "design-tokens", "landing-assets"]
-affects: ["03-02", "03-03", "03-04"]
+# Dependency graph
+requires:
+  - phase: 02-design-system
+    provides: Design tokens, fonts, cn() utility, Phosphor icons, Button component
+provides:
+  - Header component matching societies.io exactly
+  - Footer with CTA section and social links
+  - Accordion component for FAQ section
+  - Coming Soon page for unbuilt routes
+affects: [03-02-hero, 03-03-features, 03-04-faq, 03-05-case-studies]
 
-# Tech Tracking
+# Tech tracking
 tech-stack:
-  added: []
-  patterns:
-    - "hide-on-scroll-down sticky header with motion/react"
-    - "AnimatePresence for mobile menu slide-in animation"
-    - "centralized navigation constants for header/footer"
+  added: [@radix-ui/react-accordion]
+  patterns: [SSR-safe Phosphor imports, accordion animations]
 
-# File Tracking
 key-files:
   created:
-    - "public/images/landing/* (11 image assets)"
-    - "public/fonts/Satoshi-Variable.woff2"
-    - "src/lib/constants/design-tokens.ts"
-    - "src/lib/constants/navigation.ts"
-    - "src/components/layout/mobile-menu.tsx"
+    - src/components/ui/accordion.tsx
+    - src/app/coming-soon/page.tsx
   modified:
-    - "src/components/layout/header.tsx"
-    - "src/components/layout/footer.tsx"
-    - "src/app/globals.css"
+    - src/components/layout/header.tsx
+    - src/components/layout/footer.tsx
+    - src/components/ui/index.ts
+    - src/app/globals.css
 
-# Decisions
-decisions:
-  - id: "satoshi-font"
-    choice: "Use Satoshi Variable font from societies.io"
-    context: "societies.io uses Satoshi for body text, Funnel Display for h1"
-  - id: "navigation-structure"
-    choice: "Centralized navigation constants in src/lib/constants/navigation.ts"
-    context: "DRY principle - header and footer both consume same nav data"
-  - id: "mobile-menu-pattern"
-    choice: "Slide-in from right with AnimatePresence and body scroll lock"
-    context: "Matches common mobile menu UX patterns"
-  - id: "header-scroll-behavior"
-    choice: "Hide on scroll down, show on scroll up using useScroll/useMotionValueEvent"
-    context: "Per RESEARCH.md Pattern 3, maximizes content space on scroll"
+key-decisions:
+  - "Use @radix-ui/react-accordion for accessibility"
+  - "Header simplified to single design (no variants)"
+  - "Footer includes combined CTA + footer bar"
+  - "Legal links point to /coming-soon temporarily"
+
+patterns-established:
+  - "SSR icon import: @phosphor-icons/react/dist/ssr"
+  - "Accordion animation via CSS keyframes with Radix height vars"
 
 # Metrics
-metrics:
-  duration: "~15 minutes"
-  completed: "2026-01-27"
+duration: 3min
+completed: 2026-01-28
 ---
 
-# Phase 3 Plan 1: Landing Foundation Summary
+# Phase 03 Plan 01: Foundation Components Summary
 
-Downloaded societies.io assets and created pixel-perfect navigation components with sticky header behavior and animated mobile menu.
+**Header, Footer, Accordion, and Coming Soon page matching societies.io design**
 
-## What Was Built
+## Performance
 
-### Task 1: Asset Download and Design Token Extraction
+- **Duration:** 3 min
+- **Started:** 2026-01-28T15:12:44Z
+- **Completed:** 2026-01-28T15:16:00Z
+- **Tasks:** 4
+- **Files modified:** 6
 
-Downloaded 11 image assets from societies.io:
-- Logo (logo.png)
-- Social card (social-card.png)
-- Partner logos (DC, GP, TE in dark/light variants)
-- Teneo logos (dark/light)
-- Team photo (sparky_zivin)
+## Accomplishments
 
-Downloaded Satoshi Variable font (woff2) for body text typography.
+- Header updated to match societies.io: logo SVG, "Sign in" link, "Book a Meeting" button
+- Mobile hamburger menu with slide-down animation and overlay
+- Footer with CTA section ("Ready to understand your audience?") + social links
+- Accordion component using Radix UI for FAQ section
+- /coming-soon page for unbuilt routes
 
-Created design-tokens.ts documenting:
-- Color palette (#0d0d0d background, #E57850 accent)
-- Typography (Satoshi body, Funnel Display headings)
-- Spacing values (container max-width, section padding)
-- Animation easing curves (12 cubic-bezier definitions from societies.io CSS)
-- Z-index scale for layering
+## Task Commits
 
-Updated globals.css with:
-- Satoshi font-face declaration
-- Font family variables (--font-sans, --font-display)
-- societies.io easing curve variables
-- h1/h2 font family rules
+Each task was committed atomically:
 
-### Task 2: Navigation Components
+1. **Task 1: Update Header to match societies.io** - `17005eb` (feat)
+2. **Task 2: Create /coming-soon page** - `59fe609` (feat)
+3. **Task 3: Create Accordion component for FAQ** - `751fc73` (feat)
+4. **Task 4: Update Footer to match societies.io CTA + Footer** - `8de3720` (feat)
 
-Created navigation.ts with:
-- headerNavItems array (Resources dropdown with Documentation, Research Report)
-- headerCTA object (Sign in, Book a Meeting)
-- footerLinks array (Legal section: Privacy Notice, Terms of Service, Subprocessors)
-- socialLinks array (LinkedIn, X/Twitter)
-- footerContact object (email, copyright text)
+## Files Created/Modified
 
-Updated Header component:
-- Converted to client component for scroll behavior
-- Implemented hide-on-scroll-down, show-on-scroll-up using useScroll/useMotionValueEvent
-- Added dropdown menu support for nav items with children
-- Integrated MobileMenu with hamburger button (hidden on desktop)
-- Uses logo.png instead of text lambda
+- `src/components/layout/header.tsx` - Rewritten Header matching societies.io exactly
+- `src/components/layout/footer.tsx` - Rewritten Footer with CTA + social links
+- `src/components/ui/accordion.tsx` - New Radix-based Accordion component
+- `src/components/ui/index.ts` - Barrel export for Accordion
+- `src/app/coming-soon/page.tsx` - New Coming Soon page
+- `src/app/globals.css` - Added accordion animation keyframes
 
-Created MobileMenu component:
-- Slide-in from right animation with AnimatePresence
-- Backdrop overlay with opacity transition
-- Body scroll lock when open
-- Close button and navigation items
-- CTA buttons at bottom
+## Decisions Made
 
-Updated Footer component:
-- Simplified to match societies.io minimalist footer
-- Brand column with logo, tagline, and contact email
-- Legal links column
-- Connect column with social links
-- Copyright at bottom
+1. **Header simplified to single design** - Removed variant prop since landing page is the primary use case. App dashboard will have its own header later.
 
-## Technical Details
+2. **Use SSR-safe Phosphor imports** - Footer uses `@phosphor-icons/react/dist/ssr` for server components, avoiding hydration mismatches.
 
-### Scroll Behavior Implementation
+3. **Accordion animation via CSS keyframes** - Added `accordion-down` and `accordion-up` keyframes using Radix's `--radix-accordion-content-height` CSS variable for smooth height transitions.
 
-```typescript
-const [hidden, setHidden] = useState(false)
-const { scrollY } = useScroll()
-
-useMotionValueEvent(scrollY, "change", (latest) => {
-  const previous = scrollY.getPrevious() ?? 0
-  if (latest > previous && latest > 150) {
-    setHidden(true)
-  } else {
-    setHidden(false)
-  }
-})
-```
-
-### Mobile Menu Animation
-
-```typescript
-<motion.nav
-  initial={{ x: "100%" }}
-  animate={{ x: 0 }}
-  exit={{ x: "100%" }}
-  transition={{ type: "tween", duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
->
-```
-
-### Key Design Values
-
-| Property | Value |
-|----------|-------|
-| Header height | 60px |
-| Background | #0d0d0d |
-| Accent color | #E57850 |
-| Text color | #ffffff |
-| Muted text | #9CA3AF |
-| Border | #262626 |
-| Font (body) | Satoshi |
-| Font (display) | Funnel Display |
-
-## Verification Results
-
-- [x] /public/images/landing/ contains 11+ image files
-- [x] src/lib/constants/design-tokens.ts exists with documented values
-- [x] src/app/globals.css updated with Satoshi font and easing curves
-- [x] npm run build succeeds
-- [x] Header renders with nav items from navigation.ts
-- [x] Header uses useScroll/useMotionValueEvent for hide/show behavior
-- [x] MobileMenu uses AnimatePresence for enter/exit animation
-- [x] Footer renders with links from navigation.ts
+4. **Legal links to /coming-soon** - Privacy Policy, Terms of Service, Subprocessors all link to /coming-soon until those pages are built.
 
 ## Deviations from Plan
 
-None - plan executed exactly as written.
+### Auto-fixed Issues
+
+**1. [Rule 3 - Blocking] Fixed showcase page Header prop**
+- **Found during:** Task 1 (Header update)
+- **Issue:** Showcase page used `variant="landing"` prop which no longer exists
+- **Fix:** Removed variant prop from showcase page Header usage
+- **Files modified:** src/app/showcase/page.tsx
+- **Verification:** Build passes
+- **Committed in:** 17005eb (Task 1 commit)
+
+---
+
+**Total deviations:** 1 auto-fixed (1 blocking)
+**Impact on plan:** Minor fix to maintain build. No scope creep.
+
+## Issues Encountered
+
+None - plan executed smoothly.
+
+## User Setup Required
+
+None - no external service configuration required.
 
 ## Next Phase Readiness
 
-Ready for 03-02 (Homepage):
-- Navigation components ready to use
-- Design tokens documented for consistent styling
-- Assets available in /public/images/landing/
-- Easing curves available as CSS variables
+- Header and Footer components ready for use in all landing pages
+- Accordion component ready for FAQ section
+- /coming-soon page available for unbuilt routes
+- All foundation components in place for hero section (03-02)
 
-No blockers or concerns.
-
-## Commits
-
-| Hash | Type | Description |
-|------|------|-------------|
-| 971b26f | feat | Download assets and extract design tokens from societies.io |
-| 8d47025 | feat | Create navigation constants and update Header/Footer |
+---
+*Phase: 03-landing-site*
+*Completed: 2026-01-28*

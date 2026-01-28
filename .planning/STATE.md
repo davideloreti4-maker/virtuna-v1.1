@@ -2,12 +2,12 @@
 
 ## Current Status
 - **Phase**: 3 of 10 — Landing Site
-- **Plan**: 02 of ? in phase
+- **Plan**: 01 of 8 in phase
 - **Status**: In progress
 - **Last Updated**: 2026-01-28
-- **Last Activity**: 2026-01-28 - Completed 03-02-PLAN.md (Logo Assets)
+- **Last Activity**: 2026-01-28 - Completed 03-01-PLAN.md (Foundation Components)
 
-**Progress**: ██░░░░░░░░ 20% (2/10 phases)
+**Progress**: ██░░░░░░░░ 25% (2.5/10 phases)
 
 ## Completed
 - [x] Phase 1: Infrastructure Setup
@@ -24,8 +24,8 @@
 - [x] Phase 2 Plan 5: Component Showcase
   - 02-05: Showcase page + visual verification (97ad583, ab666d7)
 - [x] Phase 2: Design System & Components — VERIFIED COMPLETE
-- [x] Phase 3 Plan 2: Logo Assets
-  - 03-02: 12 SVG logos + teneo PNG (cf8841d)
+- [x] Phase 3 Plan 1: Foundation Components
+  - 03-01: Header, Footer, Accordion, Coming Soon page (17005eb, 59fe609, 751fc73, 8de3720)
 
 ## In Progress
 - [ ] Phase 3: Landing Site
@@ -66,8 +66,10 @@
 | FrozenRouter for AnimatePresence | 02-04 | Context preservation during exit animations |
 | useReducedMotion for accessibility | 02-04 | Respect user motion preferences |
 | v0 MCP for UI design accuracy | 02-05 | User directive for design quality in future phases |
-| SVG currentColor for logos | 03-02 | CSS color inheritance for theming |
-| 32x32 viewBox standard | 03-02 | Consistent icon sizing |
+| Header simplified to single design | 03-01 | Removed variant prop, landing is primary use |
+| SSR-safe Phosphor imports | 03-01 | Use @phosphor-icons/react/dist/ssr for server components |
+| Accordion via Radix + CSS keyframes | 03-01 | Smooth height transitions with Radix vars |
+| Legal links to /coming-soon | 03-01 | Temporary until pages built |
 
 ## Project-Wide Directives
 
@@ -89,14 +91,15 @@
 - Phase 2 Plan 4 complete: FadeIn, SlideUp, FrozenRouter, PageTransition animations
 - Phase 2 Plan 5 complete: Component showcase page, visual verification passed
 - User note: use v0 MCP for design UI accuracy and quality going forward
-- Phase 3 Plan 2 complete: All logo assets created
+- Phase 3 Plan 1 complete: Header, Footer, Accordion, Coming Soon page
 
 ## Session Continuity
 - **Last session**: 2026-01-28
-- **Stopped at**: Completed 03-02-PLAN.md — Logo Assets
+- **Stopped at**: Completed 03-01-PLAN.md — Foundation Components
 - **Resume file**: None
 
 ## Next Steps
-- Continue Phase 3 Landing Site plans
+- Continue Phase 3 Landing Site plans (03-02 through 03-08)
+- Build Hero section with 3D visualization
+- Build Features, Case Studies, FAQ sections
 - Build pixel-perfect landing pages matching societies.io
-- Use v0 MCP for UI design accuracy per user directive
