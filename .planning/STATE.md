@@ -2,12 +2,12 @@
 
 ## Current Status
 - **Phase**: 2 of 10 — Design System & Components
-- **Plan**: 01 of 5 in phase
+- **Plan**: 02 of 5 in phase
 - **Status**: In progress
 - **Last Updated**: 2026-01-28
-- **Last Activity**: 2026-01-28 - Completed 02-01-PLAN.md (Foundation Setup)
+- **Last Activity**: 2026-01-28 - Completed 02-02-PLAN.md (Base UI Components)
 
-**Progress**: █░░░░░░░░░ 12% (Plan 1 of ~10 phases)
+**Progress**: ██░░░░░░░░ 15% (Plan 2 of ~10 phases)
 
 ## Completed
 - [x] Phase 1: Infrastructure Setup
@@ -15,14 +15,16 @@
   - 01-02: Build Verification and Vercel Deploy (89c4cd9, 1a883fc)
 - [x] Phase 2 Plan 1: Foundation Setup
   - 02-01: Design tokens, cn() utility, fonts, Phosphor Icons (47b3ba0, 64bbd94, 54037fa)
+- [x] Phase 2 Plan 2: Base UI Components
+  - 02-02: Button, Input, Card, Skeleton components (9341410, 994ca00)
 
 ## In Progress
 - [ ] Phase 2: Design System & Components
   - [x] 02-01: Foundation Setup (complete)
-  - [ ] 02-02: Button Component
-  - [ ] 02-03: Input Component
-  - [ ] 02-04: Card Component
-  - [ ] 02-05: Skeleton Component
+  - [x] 02-02: Base UI Components (complete)
+  - [ ] 02-03: Additional components
+  - [ ] 02-04: (remaining plans)
+  - [ ] 02-05: (remaining plans)
 
 ## Blocked
 - (none)
@@ -49,6 +51,10 @@
 | Funnel Display via Google Fonts | 02-01 | Available in next/font/google |
 | @theme directive for tokens | 02-01 | Tailwind v4 design token pattern |
 | cn() utility pattern | 02-01 | clsx + tailwind-merge for all classNames |
+| CVA for Button variants | 02-02 | Type-safe variant management |
+| forwardRef pattern for UI | 02-02 | DOM element ref forwarding |
+| asChild pattern with Radix Slot | 02-02 | Polymorphic component composition |
+| Barrel exports from @/components/ui | 02-02 | Clean import paths |
 
 ## Session Notes
 - Fresh start on 2026-01-28
@@ -57,14 +63,14 @@
 - Vercel deployment verified working
 - Phase 1 verified: 7/7 must-haves passed
 - Phase 2 Plan 1 complete: design tokens, fonts, icons ready
+- Phase 2 Plan 2 complete: Button, Input, Card, Skeleton components
 
 ## Session Continuity
 - **Last session**: 2026-01-28
-- **Stopped at**: Completed 02-01-PLAN.md
+- **Stopped at**: Completed 02-02-PLAN.md
 - **Resume file**: None
 
 ## Next Steps
-- Execute Plan 02-02 (Button Component)
-- Execute Plan 02-03 (Input Component)
-- Execute Plan 02-04 (Card Component)
-- Execute Plan 02-05 (Skeleton Component)
+- Execute Plan 02-03 (Additional UI components)
+- Execute Plan 02-04
+- Execute Plan 02-05
