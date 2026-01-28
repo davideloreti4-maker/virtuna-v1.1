@@ -25,7 +25,7 @@ export function StatsSection({ className }: StatsSectionProps) {
               <span className="text-sm text-foreground-muted">
                 Validated accuracy
               </span>
-              <h2 className="mt-4 font-display text-[52px] font-[350] text-white">
+              <h2 className="mt-4 font-display text-[40px] font-[350] text-white sm:text-[52px]">
                 86%
               </h2>
               <p className="mt-6 text-lg leading-relaxed text-white/80">
@@ -37,7 +37,7 @@ export function StatsSection({ className }: StatsSectionProps) {
                 href="https://storage.googleapis.com/as-website-assets/Artificial%20Societies%20Survey%20Eval%20Report%20Jan26.pdf"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-6 inline-flex items-center gap-2 text-white hover:underline"
+                className="mt-6 inline-flex min-h-[44px] items-center gap-2 text-white hover:underline"
               >
                 Read the full evaluation report
                 <ArrowRight size={16} />

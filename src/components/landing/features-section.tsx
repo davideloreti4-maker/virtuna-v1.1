@@ -60,7 +60,7 @@ export function FeaturesSection({ className }: FeaturesSectionProps) {
             <span className="font-sans text-sm text-foreground-secondary">
               Into the future
             </span>
-            <h2 className="mt-4 font-display text-[40px] font-[350] leading-[44px] text-white">
+            <h2 className="mt-4 font-display text-[32px] font-[350] leading-[36px] text-white sm:text-[40px] sm:leading-[44px]">
               Research that was impossible
               <br />
               is now instant

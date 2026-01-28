@@ -69,7 +69,7 @@ export function FAQSection(): React.JSX.Element {
         <FadeIn>
           <div className="mb-12">
             <span className="text-sm text-foreground-muted">FAQ</span>
-            <h2 className="mt-4 font-display text-[40px] font-[350] leading-[44px] text-white">
+            <h2 className="mt-4 font-display text-[32px] font-[350] leading-[36px] text-white sm:text-[40px] sm:leading-[44px]">
               Common questions
             </h2>
           </div>

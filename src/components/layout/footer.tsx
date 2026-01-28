@@ -18,25 +18,25 @@ export function Footer({ className }: FooterProps) {
       <div className="mx-auto max-w-4xl px-6">
         {/* CTA Section */}
         <div className="mb-16 text-center">
-          <h2 className="font-display text-[40px] font-[350] leading-[44px] text-white">
+          <h2 className="font-display text-[32px] font-[350] leading-[36px] text-white sm:text-[40px] sm:leading-[44px]">
             Ready to understand your audience?
           </h2>
           <p className="mt-4 text-lg text-white/80">
             Join the world&apos;s leading organizations using AI to unlock human
             insights at scale.
           </p>
-          <div className="mt-8 flex items-center justify-center gap-4">
+          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
               href="https://calendly.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded bg-accent px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-accent/90"
+              className="min-h-[44px] rounded bg-accent px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-accent/90"
             >
               Book a meeting
             </Link>
             <Link
               href="mailto:founders@societies.io"
-              className="rounded border border-white/20 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-white/5"
+              className="min-h-[44px] rounded border border-white/20 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-white/5"
             >
               Contact us
             </Link>
@@ -76,12 +76,12 @@ export function Footer({ className }: FooterProps) {
           </div>
 
           {/* Right: Social Links */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <a
               href="https://www.linkedin.com/company/artificial-societies"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gray-400 transition-colors hover:text-white"
+              className="flex h-11 w-11 items-center justify-center text-gray-400 transition-colors hover:text-white"
               aria-label="LinkedIn"
             >
               <LinkedinLogo className="h-5 w-5" weight="fill" />
@@ -90,14 +90,14 @@ export function Footer({ className }: FooterProps) {
               href="https://x.com/societiesio"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gray-400 transition-colors hover:text-white"
+              className="flex h-11 w-11 items-center justify-center text-gray-400 transition-colors hover:text-white"
               aria-label="X (Twitter)"
             >
               <XLogo className="h-5 w-5" weight="fill" />
             </a>
             <a
               href="mailto:founders@societies.io"
-              className="text-gray-400 transition-colors hover:text-white"
+              className="flex h-11 w-11 items-center justify-center text-gray-400 transition-colors hover:text-white"
               aria-label="Email"
             >
               <Envelope className="h-5 w-5" weight="fill" />
