@@ -16,7 +16,12 @@ import {
 import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSocietyStore, useHasHydrated } from "@/stores/society-store";
+import {
+  useSocietyStore,
+  selectHasHydrated,
+  selectSocieties,
+  selectSelectedSocietyId,
+} from "@/stores/society-store";
 
 interface SidebarProps {
   mobileOpen?: boolean;
@@ -46,12 +51,10 @@ interface SidebarProps {
 export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarProps) {
   const router = useRouter();
 
-  // Wait for hydration to avoid SSR mismatch
-  const hasHydrated = useHasHydrated();
-
-  // Select raw state and derive with useMemo
-  const societies = useSocietyStore((s) => s.societies);
-  const selectedSocietyId = useSocietyStore((s) => s.selectedSocietyId);
+  // Use stable selectors to avoid creating new function refs each render
+  const hasHydrated = useSocietyStore(selectHasHydrated);
+  const societies = useSocietyStore(selectSocieties);
+  const selectedSocietyId = useSocietyStore(selectSelectedSocietyId);
   const selectedSociety = useMemo(
     () => (hasHydrated ? societies.find((s) => s.id === selectedSocietyId) : undefined),
     [societies, selectedSocietyId, hasHydrated]

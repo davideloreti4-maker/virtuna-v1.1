@@ -76,7 +76,10 @@ export const useSocietyStore = create<SocietyState>()(
   )
 );
 
-// Hook to wait for hydration before rendering store-dependent UI
-export const useHasHydrated = () => {
-  return useSocietyStore((s) => s._hasHydrated);
-};
+// Stable selectors (defined once, reused across renders)
+export const selectHasHydrated = (s: SocietyState) => s._hasHydrated;
+export const selectSocieties = (s: SocietyState) => s.societies;
+export const selectSelectedSocietyId = (s: SocietyState) => s.selectedSocietyId;
+export const selectSelectSociety = (s: SocietyState) => s.selectSociety;
+export const selectDeleteSociety = (s: SocietyState) => s.deleteSociety;
+export const selectAddSociety = (s: SocietyState) => s.addSociety;

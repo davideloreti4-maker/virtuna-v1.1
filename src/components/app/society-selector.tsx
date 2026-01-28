@@ -4,7 +4,14 @@ import { useState, useMemo } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
 import { ChevronDown, X, Plus, Info, Briefcase, Coins, Users } from "lucide-react";
-import { useSocietyStore, useHasHydrated } from "@/stores/society-store";
+import {
+  useSocietyStore,
+  selectHasHydrated,
+  selectSocieties,
+  selectSelectedSocietyId,
+  selectSelectSociety,
+  selectDeleteSociety,
+} from "@/stores/society-store";
 import { CardActionMenu } from "./card-action-menu";
 import { CreateSocietyModal } from "./create-society-modal";
 import type { Society, PersonalSociety, TargetSociety } from "@/types/society";
@@ -22,14 +29,12 @@ export function SocietySelector({ className }: SocietySelectorProps) {
   const [open, setOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
-  // Wait for hydration to avoid SSR mismatch
-  const hasHydrated = useHasHydrated();
-
-  // Select raw state (stable references)
-  const societies = useSocietyStore((s) => s.societies);
-  const selectedSocietyId = useSocietyStore((s) => s.selectedSocietyId);
-  const selectSociety = useSocietyStore((s) => s.selectSociety);
-  const deleteSociety = useSocietyStore((s) => s.deleteSociety);
+  // Use stable selectors to avoid creating new function refs each render
+  const hasHydrated = useSocietyStore(selectHasHydrated);
+  const societies = useSocietyStore(selectSocieties);
+  const selectedSocietyId = useSocietyStore(selectSelectedSocietyId);
+  const selectSociety = useSocietyStore(selectSelectSociety);
+  const deleteSociety = useSocietyStore(selectDeleteSociety);
 
   // Derive filtered arrays with useMemo to avoid creating new refs each render
   const selectedSociety = useMemo(
