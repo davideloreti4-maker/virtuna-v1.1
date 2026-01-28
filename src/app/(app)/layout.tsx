@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Funnel_Display } from "next/font/google";
+import { Sidebar } from "@/components/app";
 import "../globals.css";
 
 const satoshi = localFont({
@@ -31,10 +32,11 @@ export default function AppLayout({
   return (
     <html lang="en" className={`${satoshi.variable} ${funnelDisplay.variable}`}>
       <body className="min-h-screen bg-background font-sans antialiased">
-        {/* App shell with sidebar structure - sidebar component will be added in subsequent plans */}
-        <div className="flex min-h-screen">
-          {/* Future: Sidebar goes here */}
-          <main className="flex-1">{children}</main>
+        <div className="flex h-screen">
+          <Sidebar />
+          <main className="flex-1 overflow-auto bg-[#0A0A0A]">
+            {children}
+          </main>
         </div>
       </body>
     </html>

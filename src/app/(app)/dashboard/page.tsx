@@ -6,19 +6,18 @@ export const metadata: Metadata = {
 };
 
 /**
- * Dashboard page placeholder.
- * Will be replaced with full dashboard UI in subsequent phases.
+ * Dashboard page.
+ * Network visualization area will be built in Plan 04.
  */
 export default function DashboardPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="font-display text-4xl font-[350] text-white md:text-5xl">
-          Dashboard
-        </h1>
-        <p className="mt-4 text-lg text-foreground-muted">
-          Dashboard coming soon
-        </p>
+    <div className="h-full w-full">
+      {/* Accessible heading - hidden visually */}
+      <h1 className="sr-only">Dashboard</h1>
+
+      {/* Main content area - network visualization goes here in Plan 04 */}
+      <div className="flex h-full items-center justify-center">
+        {/* Placeholder for network visualization */}
       </div>
     </div>
   );
