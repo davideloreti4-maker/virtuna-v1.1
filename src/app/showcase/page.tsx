@@ -11,7 +11,7 @@ import { ArrowRight, Heart, Star, MagnifyingGlass } from "@phosphor-icons/react"
 export default function ShowcasePage() {
   return (
     <div className="min-h-screen bg-background">
-      <Header variant="landing" />
+      <Header />
 
       <main className="py-16">
         <Container>
