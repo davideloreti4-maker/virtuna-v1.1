@@ -55,6 +55,7 @@
 ## In Progress
 - [ ] Phase 5: Society Management
   - 05-01: Society Store Foundation (0ab813a, 0d366da, d2e9ec5)
+  - 05-02: Store Integration (07d097a, 90b47b0, 5eebfe8)
   - 05-03: Create Target Society Modal (a5e9575, 052c003)
 
 ## Blocked
@@ -131,6 +132,8 @@
 | Fallback on delete | 05-01 | Prevents null selection when active society deleted |
 | Type guards for discrimination | 05-01 | Runtime narrowing for PersonalSociety/TargetSociety |
 | Zustand persist middleware | 05-01 | Store state persists across browser sessions |
+| CardActionMenu stopPropagation | 05-02 | Prevents card selection when opening dropdown menu |
+| Zustand selector pattern | 05-02 | useSocietyStore selectors for minimal re-renders |
 | Gradient modal background | 05-03 | Purple/blue mesh gradient at 10% opacity over #18181B |
 | 1.5s AI matching delay | 05-03 | Simulated delay for UX feedback during "AI matching" |
 | Extract name from description | 05-03 | First 3 words after removing filler words |
@@ -169,6 +172,7 @@
 - Phase 4 Plan 6 complete: Visual verification checkpoint passed, v0 polish applied
 - Phase 4 verified: 9/9 must-haves passed - app shell complete
 - Phase 5 Plan 1 complete: Zustand store with persist, society types, mock data module
+- Phase 5 Plan 2 complete: CardActionMenu, SocietySelector refactored to Zustand store
 - Phase 5 Plan 3 complete: CreateSocietyModal with gradient background, AI matching loading state
 
 ## Session Continuity
