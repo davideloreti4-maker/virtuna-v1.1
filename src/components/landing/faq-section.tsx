@@ -6,6 +6,7 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from "@/components/ui/accordion";
+import { FadeIn } from "@/components/motion";
 
 /**
  * FAQ data for the landing page
@@ -58,34 +59,38 @@ const faqItems = [
  * - Chevron rotation animation on expand/collapse
  * - Keyboard accessible (Tab, Enter/Space)
  * - Smooth height animation using Radix primitives
+ * - Scroll-triggered fade-in animations
  */
 export function FAQSection(): React.JSX.Element {
   return (
     <section className="py-24">
       <div className="mx-auto max-w-3xl px-6">
         {/* Section Header */}
-        <div className="mb-12">
-          <span className="text-sm text-foreground-muted">FAQ</span>
-          <h2 className="mt-4 font-display text-[40px] font-[350] leading-[44px] text-white">
-            Common questions
-          </h2>
-        </div>
+        <FadeIn>
+          <div className="mb-12">
+            <span className="text-sm text-foreground-muted">FAQ</span>
+            <h2 className="mt-4 font-display text-[40px] font-[350] leading-[44px] text-white">
+              Common questions
+            </h2>
+          </div>
+        </FadeIn>
 
         {/* Accordion */}
         <AccordionRoot type="single" collapsible className="space-y-2">
           {faqItems.map((item, index) => (
-            <AccordionItem
-              key={index}
-              value={`item-${index}`}
-              className="overflow-hidden rounded-lg border border-white/10 bg-transparent"
-            >
-              <AccordionTrigger className="text-base text-white">
-                {item.question}
-              </AccordionTrigger>
-              <AccordionContent>
-                <p className="text-foreground-muted">{item.answer}</p>
-              </AccordionContent>
-            </AccordionItem>
+            <FadeIn key={index} delay={0.1 + index * 0.05}>
+              <AccordionItem
+                value={`item-${index}`}
+                className="overflow-hidden rounded-lg border border-white/10 bg-transparent"
+              >
+                <AccordionTrigger className="text-base text-white">
+                  {item.question}
+                </AccordionTrigger>
+                <AccordionContent>
+                  <p className="text-foreground-muted">{item.answer}</p>
+                </AccordionContent>
+              </AccordionItem>
+            </FadeIn>
           ))}
         </AccordionRoot>
       </div>
