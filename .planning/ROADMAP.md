@@ -5,15 +5,28 @@
 ### Phase 1: Infrastructure Setup
 **Goal**: Complete development environment and deployment pipeline
 
-**Tasks**:
+**Status**: Planning Complete
+
+**Plans**: 2 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Create Next.js App Router structure + Supabase utilities
+- [ ] 01-02-PLAN.md — Verify build + Vercel deployment
+
+**Tasks** (already complete):
 - [x] Create project folder and git repo
 - [x] Initialize Next.js with TypeScript + Tailwind
 - [x] Create GitHub repository
-- [ ] Set up Supabase project (auth only)
-- [ ] Configure Vercel deployment
-- [ ] Set up environment variables
-- [ ] Configure TypeScript strict mode
-- [ ] Set up GitHub Projects board
+- [x] Set up Supabase project (auth only)
+- [x] Configure Vercel deployment
+- [x] Set up environment variables
+- [x] Configure TypeScript strict mode
+- [ ] ~~Set up GitHub Projects board~~ (skipped - not critical)
+
+**Remaining** (covered by plans):
+- [ ] Recreate src/ directory (deleted during fresh start)
+- [ ] Create Supabase client utilities
+- [ ] Verify build and deployment
 
 **Success Criteria**:
 - App deploys to Vercel on push
@@ -24,217 +37,223 @@
 
 ---
 
-### Phase 2: Design System & Components ✓
+### Phase 2: Design System & Components
 **Goal**: Build reusable component library matching societies.io design
 
-**Status**: Complete (2026-01-27)
+**Status**: Not Started
 
-**Plans**: 5 plans in 4 waves
-
-Plans:
-- [x] 02-01-PLAN.md — Foundation setup (dependencies, utils, design tokens)
-- [x] 02-02-PLAN.md — Base UI components (Button, Input, Card, Skeleton)
-- [x] 02-03-PLAN.md — Layout components (Header, Footer, Container)
-- [x] 02-04-PLAN.md — Animation components (FadeIn, SlideUp, PageTransition)
-- [x] 02-05-PLAN.md — Visual verification (showcase page + checkpoint)
+**Tasks**:
+- [ ] Foundation setup (dependencies, utils, design tokens)
+- [ ] Base UI components (Button, Input, Card, Skeleton)
+- [ ] Layout components (Header, Footer, Container)
+- [ ] Animation components (FadeIn, SlideUp, PageTransition)
+- [ ] Visual verification (showcase page + checkpoint)
 
 **Success Criteria**:
-- [x] All base components match societies.io styling
-- [x] Consistent design tokens across project
-- [x] Components are reusable and documented
+- All base components match societies.io styling
+- Consistent design tokens across project
+- Components are reusable and documented
 
 **Requirements Covered**: AN1, AN2, AN3
 
 ---
 
-### Phase 3: Landing Site ✓
-**Goal**: Build pixel-perfect landing pages matching societies.io exactly (Homepage, Pricing, About)
+### Phase 3: Landing Site
+**Goal**: Build pixel-perfect landing pages matching societies.io exactly
 
-**Status**: Complete (2026-01-27)
+**Status**: Not Started
 
-**Plans**: 6 plans in 3 waves
-
-Plans:
-- [x] 03-01-PLAN.md — Asset capture & navigation setup (download images, update Header/Footer)
-- [x] 03-02-PLAN.md — Animation components enhancement (scroll triggers, parallax)
-- [x] 03-03-PLAN.md — Homepage (hero, features, testimonials, CTAs)
-- [x] 03-04-PLAN.md — True one-pager conversion (removed /pricing - societies.io doesn't have it)
-- [SKIPPED] 03-05-PLAN.md — About page (societies.io has no /about route)
-- [x] 03-06-PLAN.md — Verification checkpoint (manual verification complete)
-
-**Wave Structure**:
-- Wave 1: 03-01, 03-02 (parallel - foundation work)
-- Wave 2: 03-03, 03-04, 03-05 (parallel - page building)
-- Wave 3: 03-06 (verification checkpoint)
+**Tasks**:
+- [ ] Asset capture & navigation setup (download images, update Header/Footer)
+- [ ] Animation components enhancement (scroll triggers, parallax)
+- [ ] Homepage (hero, features, testimonials, CTAs)
+- [ ] Verification checkpoint
 
 **Success Criteria**:
-- [x] All landing pages pixel-perfect match with societies.io
-- [x] Navigation works correctly (unbuilt pages → /coming-soon)
-- [x] Mobile experience matches societies.io exactly
-- [x] Scroll animations match societies.io timing and behavior
+- All landing pages pixel-perfect match with societies.io
+- Navigation works correctly (unbuilt pages → /coming-soon)
+- Mobile experience matches societies.io exactly
+- Scroll animations match societies.io timing and behavior
 
 **Requirements Covered**: L1, L2, L3, L4, L5, R1, R2, R3, AN4
 
 ---
 
-### Phase 4: App Layout & Navigation ✓
+### Phase 4: App Layout & Navigation
 **Goal**: Build app shell and navigation structure
 
-**Status**: Complete (2026-01-27)
+**Status**: Not Started
 
 **Tasks**:
-- [x] Create app layout (sidebar, header)
-- [x] Implement sidebar navigation
-- [x] Build user menu dropdown
-- [x] Create mobile app navigation
-- [SKIPPED] Add breadcrumbs (societies.io doesn't have breadcrumbs)
-- [x] Implement route protection (auth guard)
+- [ ] Create app layout (sidebar, header)
+- [ ] Implement sidebar navigation
+- [ ] Build user menu dropdown
+- [ ] Create mobile app navigation
+- [ ] Implement route protection (auth guard)
 
 **Success Criteria**:
-- [x] App layout matches societies.io
-- [x] Navigation is fully functional
-- [x] Auth protection works
+- App layout matches societies.io
+- Navigation is fully functional
+- Auth protection works
 
 **Requirements Covered**: A5, R1, R2, R3
 
 ---
 
-### Phase 5: Authentication
-**Goal**: Implement complete auth flows with Supabase
+### Phase 5: Society Management
+**Goal**: Complete society selector and creation flow
+
+**Status**: Not Started
 
 **Tasks**:
-- [ ] Build sign up page
-- [ ] Build login page
-- [ ] Build forgot password flow
-- [ ] Build email verification UI
-- [ ] Integrate OAuth (Google)
-- [ ] Connect all forms to Supabase Auth
-- [ ] Handle auth errors gracefully
+- [ ] Build society selector modal (Personal + Target sections)
+- [ ] Build Create Target Society modal with AI matching UI
+- [ ] Implement society cards with status badges
+- [ ] Add CRUD operations (mock/local state)
+- [ ] Persist societies in local storage
 
 **Success Criteria**:
-- All auth flows work end-to-end
-- Error states handled
-- Session management works
+- Society selector matches societies.io reference
+- Create society modal works with local state
+- Society selection updates app context
 
-**Requirements Covered**: A1
+**Requirements Covered**: SOC-01 to SOC-05
 
 ---
 
-### Phase 6: App Screens — Dashboard
-**Goal**: Build main dashboard and home screen
+### Phase 6: Test Type Selector & Forms
+**Goal**: Build test creation flow with all 11 form types
+
+**Status**: Not Started
 
 **Tasks**:
-- [ ] Create dashboard layout
-- [ ] Build widget/card components
-- [ ] Implement data display with mock data
-- [ ] Add loading states (skeletons)
-- [ ] Add empty states
+- [ ] Build test type selector modal (11 types in 5 categories)
+- [ ] Build content form component (shared by 10 types)
+- [ ] Build survey form component (unique structure)
+- [ ] Implement TikTok Script form (functional)
+- [ ] Implement Instagram Post form (functional)
+- [ ] Add Help Me Craft button (UI only)
+- [ ] Add Upload Images button (UI only)
 
 **Success Criteria**:
-- Dashboard matches societies.io
+- All 11 test types selectable
+- Forms match societies.io styling
+- TikTok and Instagram forms submit successfully
+
+**Requirements Covered**: TEST-01 to TEST-08
+
+---
+
+### Phase 7: Simulation & Results
+**Goal**: Build simulation flow and results display
+
+**Status**: Not Started
+
+**Tasks**:
+- [ ] Build simulation loading states (4 phases)
+- [ ] Create network placeholder (animated dots or static image)
+- [ ] Build results panel layout
+- [ ] Implement Impact Score display
+- [ ] Add Attention breakdown (Full/Partial/Ignore)
+- [ ] Build Variants section (AI-generated alternatives)
+- [ ] Add Insights section
+- [ ] Build Conversation themes with sample quotes
+- [ ] Add Share Simulation button
+
+**Success Criteria**:
+- Full simulation flow from submit to results
+- Results panel matches societies.io layout
 - Mock data displays correctly
-- Loading/empty states present
 
-**Requirements Covered**: A2
+**Requirements Covered**: RES-01 to RES-08
 
 ---
 
-### Phase 7: App Screens — Analytics
-**Goal**: Build analytics and insights screens
+### Phase 8: Test History & Polish
+**Goal**: Complete test history and app polish
+
+**Status**: Not Started
 
 **Tasks**:
-- [ ] Implement chart components
-- [ ] Build data tables
-- [ ] Create filter controls
-- [ ] Add date range picker
-- [ ] Build export UI (non-functional)
+- [ ] Add test history to sidebar
+- [ ] Click to view previous results
+- [ ] Implement delete test functionality
+- [ ] Build view selector dropdown
+- [ ] Add legend pills for views
+- [ ] Complete all remaining UI polish
 
 **Success Criteria**:
-- Charts render with mock data
-- Filters work (with mock data)
-- UI matches societies.io
+- Test history persists in local storage
+- All interactions work correctly
+- UI polish complete
 
-**Requirements Covered**: A3
+**Requirements Covered**: HIST-01 to HIST-04
 
 ---
 
-### Phase 8: App Screens — Settings
-**Goal**: Build settings and profile pages
+### Phase 9: Settings & Modals
+**Goal**: Complete settings pages and modals
+
+**Status**: Not Started
 
 **Tasks**:
 - [ ] Build user profile page
 - [ ] Build account settings
 - [ ] Build notification preferences
-- [ ] Build billing/subscription UI
+- [ ] Build billing UI (link to Stripe)
 - [ ] Build team management UI
+- [ ] Build Leave Feedback modal
+- [ ] Add Product Guide link
 
 **Success Criteria**:
 - All settings screens complete
-- Forms are interactive (local state)
-- UI matches societies.io
+- Forms interactive (local state)
+- Modals match societies.io styling
 
-**Requirements Covered**: A4
-
----
-
-### Phase 9: Remaining App Screens
-**Goal**: Complete all remaining app screens
-
-**Tasks**:
-- [ ] Audit societies.io for remaining screens
-- [ ] Build each remaining screen
-- [ ] Implement modal dialogs
-- [ ] Add all empty states
-- [ ] Add all error states
-
-**Success Criteria**:
-- Every app screen from societies.io is replicated
-- All states (loading, empty, error) present
-
-**Requirements Covered**: A6
+**Requirements Covered**: SET-01 to SET-06
 
 ---
 
-### Phase 10: Polish & QA
-**Goal**: Final polish and AI verification
+### Phase 10: Final QA
+**Goal**: Visual verification and polish
+
+**Status**: Not Started
 
 **Tasks**:
-- [ ] Side-by-side visual comparison
-- [ ] Record comparison videos
-- [ ] Run AI analysis (Gemini)
+- [ ] Side-by-side comparison with societies.io
 - [ ] Fix any discrepancies found
 - [ ] Performance optimization
-- [ ] Final responsive testing
+- [ ] Responsive testing (mobile, tablet, desktop)
 
 **Success Criteria**:
-- AI verification passes (95%+ similarity)
-- Lighthouse > 90
-- All manual QA passes
+- All screens match societies.io reference
+- Console error-free
+- Responsive on all breakpoints
 
-**Requirements Covered**: QA1, QA2, QA3
+**Requirements Covered**: QA-01 to QA-03
 
 ---
 
 ## Phase Dependencies
 
 ```
-Phase 1 (Infrastructure)
+Phase 1 (Infrastructure) ✓
     ↓
-Phase 2 (Design System)
+Phase 2 (Design System) ✓
     ↓
-    ├── Phase 3 (Landing) ──────────────────────┐
+    ├── Phase 3 (Landing) ✓ ────────────────────┐
     │                                           │
-    └── Phase 4 (App Layout)                    │
+    └── Phase 4 (App Layout) ✓                  │
             ↓                                   │
-        Phase 5 (Auth)                          │
+        Phase 5 (Society Management)            │
             ↓                                   │
-        Phase 6 (Dashboard)                     │
+        Phase 6 (Test Forms)                    │
             ↓                                   │
-        Phase 7 (Analytics)                     │
+        Phase 7 (Results)                       │
             ↓                                   │
-        Phase 8 (Settings)                      │
+        Phase 8 (History)                       │
             ↓                                   │
-        Phase 9 (Remaining)                     │
+        Phase 9 (Settings)                      │
             │                                   │
             └───────────────┬───────────────────┘
                             ↓
@@ -242,7 +261,8 @@ Phase 2 (Design System)
 ```
 
 ## Current Status
-- **Current Phase**: 5 (Authentication)
-- **Completed Phases**: 1, 2, 3, 4
+- **Current Milestone**: v1.1 (Pixel-Perfect Clone)
+- **Current Phase**: 1 (Infrastructure Setup)
+- **Completed Phases**: (none - fresh start)
 - **Blocked By**: None
-- **Next Action**: Plan Phase 5 (`/gsd:plan-phase 5`)
+- **Next Action**: Plan and execute Phase 1
