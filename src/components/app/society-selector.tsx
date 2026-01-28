@@ -3,85 +3,53 @@
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
-import { ChevronDown, X, Plus, Info, MoreVertical, Briefcase, Coins } from "lucide-react";
-
-/**
- * Mock data for societies.
- * Will be replaced with real data from API in Phase 5.
- */
-const MOCK_SOCIETIES = {
-  personal: [
-    {
-      id: "linkedin",
-      name: "LinkedIn",
-      description: "Your personal LinkedIn network built around your connections.",
-      platform: "linkedin",
-      needsSetup: true,
-    },
-    {
-      id: "x",
-      name: "X (formerly Twitter)",
-      description: "Your X network built around your followers.",
-      platform: "x",
-      needsSetup: true,
-    },
-  ],
-  target: [
-    {
-      id: "zurich-founders",
-      name: "Zurich Founders",
-      description: "Entrepreneurs and startup founders in Zurich.",
-      type: "custom",
-      icon: "briefcase",
-      members: 156,
-    },
-    {
-      id: "startup-investors",
-      name: "Startup Investors",
-      description: "Individuals investing in early-stage companies.",
-      type: "example",
-      icon: "coins",
-      members: 342,
-    },
-  ],
-};
-
-interface Society {
-  id: string;
-  name: string;
-  description?: string;
-  platform?: string;
-  needsSetup?: boolean;
-  type?: string;
-  icon?: string;
-  members?: number;
-}
+import { ChevronDown, X, Plus, Info, Briefcase, Coins, Users } from "lucide-react";
+import { useSocietyStore } from "@/stores/society-store";
+import { CardActionMenu } from "./card-action-menu";
+import type { Society, PersonalSociety, TargetSociety } from "@/types/society";
 
 interface SocietySelectorProps {
   className?: string;
-  onSelect?: (society: Society) => void;
+  onCreateClick?: () => void;
 }
 
 /**
  * Society Selector modal component.
  * Opens a modal dialog for selecting between Personal and Target societies.
- * Uses Radix Dialog for accessibility and keyboard navigation.
+ * Uses Radix Dialog for accessibility and Zustand store for state management.
  */
-export function SocietySelector({ className, onSelect }: SocietySelectorProps) {
+export function SocietySelector({ className, onCreateClick }: SocietySelectorProps) {
   const [open, setOpen] = useState(false);
-  const [selectedSociety, setSelectedSociety] = useState<Society>(
-    MOCK_SOCIETIES.target[0]!
-  );
+
+  // Use Zustand store instead of local state
+  const selectedSociety = useSocietyStore((s) => s.getSelectedSociety());
+  const personalSocieties = useSocietyStore((s) => s.getPersonalSocieties());
+  const targetSocieties = useSocietyStore((s) => s.getTargetSocieties());
+  const selectSociety = useSocietyStore((s) => s.selectSociety);
+  const deleteSociety = useSocietyStore((s) => s.deleteSociety);
 
   const handleSelectSociety = (society: Society) => {
-    setSelectedSociety(society);
-    onSelect?.(society);
+    selectSociety(society.id);
     setOpen(false);
   };
 
-  const handleCreateSociety = (type: "personal" | "target") => {
-    // Placeholder - functionality in Phase 5
-    console.log(`Create ${type} society clicked`);
+  const handleCreateSociety = () => {
+    setOpen(false);
+    onCreateClick?.();
+  };
+
+  const handleEdit = (id: string) => {
+    // Placeholder - edit modal not in Phase 5 scope
+    console.log("Edit society:", id);
+  };
+
+  const handleRefresh = (id: string) => {
+    // Simulate refresh with brief loading (no-op for mock data)
+    console.log("Refresh society:", id);
+  };
+
+  const handleDelete = (id: string) => {
+    deleteSociety(id);
   };
 
   return (
@@ -94,7 +62,7 @@ export function SocietySelector({ className, onSelect }: SocietySelectorProps) {
             className
           )}
         >
-          <span>{selectedSociety.name}</span>
+          <span>{selectedSociety?.name ?? "Select Society"}</span>
           <ChevronDown className="h-4 w-4 text-zinc-400" />
         </button>
       </Dialog.Trigger>
@@ -123,11 +91,11 @@ export function SocietySelector({ className, onSelect }: SocietySelectorProps) {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              {MOCK_SOCIETIES.personal.map((society) => (
+              {personalSocieties.map((society) => (
                 <PersonalSocietyCard
                   key={society.id}
                   society={society}
-                  isSelected={selectedSociety.id === society.id}
+                  isSelected={selectedSociety?.id === society.id}
                   onSelect={() => handleSelectSociety(society)}
                 />
               ))}
@@ -150,7 +118,7 @@ export function SocietySelector({ className, onSelect }: SocietySelectorProps) {
               {/* Create Target Society Card */}
               <button
                 type="button"
-                onClick={() => handleCreateSociety("target")}
+                onClick={handleCreateSociety}
                 className="flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-zinc-700 p-6 transition-colors hover:border-zinc-600"
               >
                 <Plus className="mb-2 h-6 w-6 text-zinc-500" />
@@ -159,12 +127,15 @@ export function SocietySelector({ className, onSelect }: SocietySelectorProps) {
                 </span>
               </button>
 
-              {MOCK_SOCIETIES.target.map((society) => (
+              {targetSocieties.map((society) => (
                 <TargetSocietyCard
                   key={society.id}
                   society={society}
-                  isSelected={selectedSociety.id === society.id}
+                  isSelected={selectedSociety?.id === society.id}
                   onSelect={() => handleSelectSociety(society)}
+                  onEdit={handleEdit}
+                  onRefresh={handleRefresh}
+                  onDelete={handleDelete}
                 />
               ))}
             </div>
@@ -184,7 +155,7 @@ function PersonalSocietyCard({
   isSelected,
   onSelect,
 }: {
-  society: Society;
+  society: PersonalSociety;
   isSelected: boolean;
   onSelect: () => void;
 }) {
@@ -215,23 +186,23 @@ function PersonalSocietyCard({
 
 /**
  * Target Society Card component.
- * Displays a target society with icon, badge, and menu.
+ * Displays a target society with icon, badge, and action menu.
  */
 function TargetSocietyCard({
   society,
   isSelected,
   onSelect,
+  onEdit,
+  onRefresh,
+  onDelete,
 }: {
-  society: Society;
+  society: TargetSociety;
   isSelected: boolean;
   onSelect: () => void;
+  onEdit: (id: string) => void;
+  onRefresh: (id: string) => void;
+  onDelete: (id: string) => void;
 }) {
-  const handleMenuClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    // Placeholder - menu functionality in Phase 5
-    console.log("Menu clicked for:", society.name);
-  };
-
   return (
     <button
       type="button"
@@ -241,19 +212,19 @@ function TargetSocietyCard({
         isSelected && "border-indigo-500 ring-2 ring-indigo-500"
       )}
     >
-      {/* Menu button */}
-      <button
-        type="button"
-        onClick={handleMenuClick}
-        className="absolute right-3 top-3 text-zinc-500 transition-colors hover:text-zinc-400"
-        aria-label="More options"
-      >
-        <MoreVertical className="h-4 w-4" />
-      </button>
+      {/* Action menu */}
+      <div className="absolute right-3 top-3">
+        <CardActionMenu
+          societyId={society.id}
+          onEdit={onEdit}
+          onRefresh={onRefresh}
+          onDelete={onDelete}
+        />
+      </div>
 
       {/* Badge */}
       <span className="mb-3 inline-block rounded bg-zinc-800 px-2 py-0.5 text-[11px] font-medium capitalize text-zinc-400">
-        {society.type}
+        {society.societyType}
       </span>
 
       <div className="mb-2 flex items-center gap-2">
@@ -263,11 +234,9 @@ function TargetSocietyCard({
 
       <p className="text-xs text-zinc-400 line-clamp-2">{society.description}</p>
 
-      {society.members && (
-        <p className="mt-2 text-xs text-zinc-500">
-          {society.members.toLocaleString()} members
-        </p>
-      )}
+      <p className="mt-2 text-xs text-zinc-500">
+        {society.members.toLocaleString()} members
+      </p>
     </button>
   );
 }
@@ -275,7 +244,7 @@ function TargetSocietyCard({
 /**
  * Platform icon component for personal societies.
  */
-function PlatformIcon({ platform }: { platform?: string }) {
+function PlatformIcon({ platform }: { platform: PersonalSociety["platform"] }) {
   if (platform === "linkedin") {
     return (
       <div className="flex h-6 w-6 items-center justify-center rounded bg-[#0A66C2] text-white">
@@ -298,13 +267,17 @@ function PlatformIcon({ platform }: { platform?: string }) {
 /**
  * Society icon component for target societies.
  */
-function SocietyIcon({ icon }: { icon?: string }) {
+function SocietyIcon({ icon }: { icon: TargetSociety["icon"] }) {
   if (icon === "briefcase") {
     return <Briefcase className="h-5 w-5 text-white" />;
   }
 
   if (icon === "coins") {
     return <Coins className="h-5 w-5 text-white" />;
+  }
+
+  if (icon === "users") {
+    return <Users className="h-5 w-5 text-white" />;
   }
 
   return <Briefcase className="h-5 w-5 text-white" />;
