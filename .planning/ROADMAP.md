@@ -103,21 +103,30 @@ Plans:
 ---
 
 ### Phase 5: Society Management
-**Goal**: Complete society selector and creation flow
+**Goal**: Complete society selector and creation flow with Zustand state management
 
-**Status**: Not Started
+**Status**: Planning Complete
 
-**Tasks**:
-- [ ] Build society selector modal (Personal + Target sections)
-- [ ] Build Create Target Society modal with AI matching UI
-- [ ] Implement society cards with status badges
-- [ ] Add CRUD operations (mock/local state)
-- [ ] Persist societies in local storage
+**Plans**: 5 plans (4 waves)
+
+Plans:
+- [ ] 05-01-PLAN.md — Zustand store + types + mock data extraction
+- [ ] 05-02-PLAN.md — Refactor SocietySelector to use store + CardActionMenu
+- [ ] 05-03-PLAN.md — Create Target Society modal with AI matching UI
+- [ ] 05-04-PLAN.md — Wire up create flow + sidebar integration
+- [ ] 05-05-PLAN.md — Visual verification checkpoint
+
+**Wave Structure**:
+- Wave 1: 05-01 (Foundation - store, types, mock data)
+- Wave 2: 05-02, 05-03 (Parallel - selector refactor + create modal)
+- Wave 3: 05-04 (Integration - wire up flow)
+- Wave 4: 05-05 (Verification checkpoint)
 
 **Success Criteria**:
 - Society selector matches societies.io reference
 - Create society modal works with local state
 - Society selection updates app context
+- Persistence via localStorage (Zustand persist)
 
 **Requirements Covered**: SOC-01 to SOC-05
 
@@ -267,4 +276,4 @@ Phase 2 (Design System) ✓
 - **Current Phase**: 5 (Society Management)
 - **Completed Phases**: 1, 2, 3, 4
 - **Blocked By**: None
-- **Next Action**: Plan Phase 5
+- **Next Action**: Execute Phase 5
