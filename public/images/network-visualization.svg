@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 626 550" width="626" height="550">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="rgba(229, 120, 80, 0.3)"/>
+      <stop offset="100%" stop-color="rgba(229, 120, 80, 0)"/>
+    </radialGradient>
+    <filter id="blur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2"/>
+    </filter>
+  </defs>
+
+  <!-- Background glow around accent node -->
+  <circle cx="380" cy="230" r="100" fill="url(#glow)"/>
+
+  <!-- Connection lines (gray, thin) -->
+  <g stroke="rgba(255,255,255,0.15)" stroke-width="1" fill="none">
+    <!-- Outer connections -->
+    <line x1="120" y1="80" x2="180" y2="120"/>
+    <line x1="180" y1="120" x2="160" y2="180"/>
+    <line x1="180" y1="120" x2="250" y2="140"/>
+    <line x1="160" y1="180" x2="200" y2="220"/>
+    <line x1="250" y1="140" x2="300" y2="180"/>
+    <line x1="300" y1="180" x2="280" y2="250"/>
+    <line x1="300" y1="180" x2="380" y2="230"/>
+    <line x1="280" y1="250" x2="320" y2="300"/>
+    <line x1="200" y1="220" x2="280" y2="250"/>
+
+    <!-- Center area connections -->
+    <line x1="380" y1="230" x2="450" y2="200"/>
+    <line x1="380" y1="230" x2="420" y2="290"/>
+    <line x1="380" y1="230" x2="340" y2="280"/>
+    <line x1="450" y1="200" x2="500" y2="180"/>
+    <line x1="450" y1="200" x2="480" y2="250"/>
+    <line x1="500" y1="180" x2="540" y2="150"/>
+    <line x1="500" y1="180" x2="530" y2="220"/>
+    <line x1="480" y1="250" x2="530" y2="220"/>
+    <line x1="480" y1="250" x2="460" y2="310"/>
+    <line x1="420" y1="290" x2="460" y2="310"/>
+    <line x1="420" y1="290" x2="400" y2="350"/>
+    <line x1="340" y1="280" x2="320" y2="300"/>
+    <line x1="340" y1="280" x2="360" y2="340"/>
+
+    <!-- Lower area -->
+    <line x1="320" y1="300" x2="280" y2="350"/>
+    <line x1="320" y1="300" x2="360" y2="340"/>
+    <line x1="360" y1="340" x2="400" y2="350"/>
+    <line x1="400" y1="350" x2="460" y2="310"/>
+    <line x1="280" y1="350" x2="240" y2="400"/>
+    <line x1="360" y1="340" x2="340" y2="400"/>
+    <line x1="400" y1="350" x2="420" y2="410"/>
+    <line x1="460" y1="310" x2="500" y2="350"/>
+    <line x1="500" y1="350" x2="480" y2="400"/>
+    <line x1="500" y1="350" x2="550" y2="320"/>
+
+    <!-- Upper right -->
+    <line x1="540" y1="150" x2="580" y2="120"/>
+    <line x1="540" y1="150" x2="560" y2="190"/>
+    <line x1="530" y1="220" x2="560" y2="190"/>
+    <line x1="530" y1="220" x2="550" y2="270"/>
+    <line x1="550" y1="320" x2="550" y2="270"/>
+
+    <!-- Upper left -->
+    <line x1="120" y1="80" x2="80" y2="120"/>
+    <line x1="80" y1="120" x2="100" y2="180"/>
+    <line x1="100" y1="180" x2="160" y2="180"/>
+    <line x1="100" y1="180" x2="80" y2="240"/>
+    <line x1="80" y1="240" x2="120" y2="280"/>
+    <line x1="120" y1="280" x2="200" y2="220"/>
+
+    <!-- Bottom left -->
+    <line x1="120" y1="280" x2="100" y2="340"/>
+    <line x1="100" y1="340" x2="140" y2="380"/>
+    <line x1="140" y1="380" x2="200" y2="360"/>
+    <line x1="200" y1="360" x2="240" y2="400"/>
+    <line x1="240" y1="400" x2="300" y2="420"/>
+    <line x1="300" y1="420" x2="340" y2="400"/>
+    <line x1="340" y1="400" x2="380" y2="440"/>
+    <line x1="380" y1="440" x2="420" y2="410"/>
+    <line x1="420" y1="410" x2="480" y2="400"/>
+    <line x1="480" y1="400" x2="520" y2="440"/>
+
+    <!-- More scattered connections -->
+    <line x1="200" y1="360" x2="280" y2="350"/>
+    <line x1="140" y1="380" x2="180" y2="440"/>
+    <line x1="180" y1="440" x2="240" y2="470"/>
+    <line x1="240" y1="470" x2="300" y2="420"/>
+    <line x1="300" y1="420" x2="340" y2="480"/>
+    <line x1="340" y1="480" x2="380" y2="440"/>
+    <line x1="380" y1="440" x2="440" y2="470"/>
+    <line x1="440" y1="470" x2="480" y2="400"/>
+    <line x1="520" y1="440" x2="560" y2="400"/>
+  </g>
+
+  <!-- Nodes (white/gray dots of varying sizes) -->
+  <g fill="rgba(255,255,255,0.6)">
+    <!-- Outer nodes -->
+    <circle cx="120" cy="80" r="4"/>
+    <circle cx="80" cy="120" r="3"/>
+    <circle cx="180" cy="120" r="5"/>
+    <circle cx="160" cy="180" r="4"/>
+    <circle cx="100" cy="180" r="3"/>
+    <circle cx="250" cy="140" r="4"/>
+    <circle cx="200" cy="220" r="5"/>
+    <circle cx="80" cy="240" r="3"/>
+    <circle cx="120" cy="280" r="4"/>
+    <circle cx="280" cy="250" r="4"/>
+    <circle cx="300" cy="180" r="5"/>
+    <circle cx="320" cy="300" r="4"/>
+    <circle cx="340" cy="280" r="5"/>
+
+    <!-- Right side nodes -->
+    <circle cx="450" cy="200" r="6"/>
+    <circle cx="500" cy="180" r="5"/>
+    <circle cx="540" cy="150" r="4"/>
+    <circle cx="580" cy="120" r="3"/>
+    <circle cx="560" cy="190" r="3"/>
+    <circle cx="530" cy="220" r="5"/>
+    <circle cx="550" cy="270" r="4"/>
+    <circle cx="480" cy="250" r="5"/>
+    <circle cx="420" cy="290" r="5"/>
+    <circle cx="460" cy="310" r="5"/>
+    <circle cx="400" cy="350" r="5"/>
+    <circle cx="360" cy="340" r="4"/>
+    <circle cx="550" cy="320" r="4"/>
+    <circle cx="500" cy="350" r="5"/>
+
+    <!-- Bottom nodes -->
+    <circle cx="100" cy="340" r="3"/>
+    <circle cx="140" cy="380" r="4"/>
+    <circle cx="200" cy="360" r="4"/>
+    <circle cx="280" cy="350" r="4"/>
+    <circle cx="240" cy="400" r="5"/>
+    <circle cx="300" cy="420" r="4"/>
+    <circle cx="340" cy="400" r="4"/>
+    <circle cx="380" cy="440" r="5"/>
+    <circle cx="420" cy="410" r="4"/>
+    <circle cx="480" cy="400" r="5"/>
+    <circle cx="520" cy="440" r="4"/>
+    <circle cx="560" cy="400" r="3"/>
+    <circle cx="180" cy="440" r="3"/>
+    <circle cx="240" cy="470" r="4"/>
+    <circle cx="340" cy="480" r="3"/>
+    <circle cx="440" cy="470" r="4"/>
+  </g>
+
+  <!-- Brighter nodes -->
+  <g fill="rgba(255,255,255,0.9)">
+    <circle cx="450" cy="200" r="4"/>
+    <circle cx="300" cy="180" r="3"/>
+    <circle cx="480" cy="250" r="3"/>
+    <circle cx="400" cy="350" r="3"/>
+    <circle cx="240" cy="400" r="3"/>
+  </g>
+
+  <!-- Accent node (orange) with glow -->
+  <circle cx="380" cy="230" r="12" fill="#E57850" filter="url(#blur)"/>
+  <circle cx="380" cy="230" r="8" fill="#E57850"/>
+  <circle cx="380" cy="230" r="4" fill="#fff"/>
+</svg>
