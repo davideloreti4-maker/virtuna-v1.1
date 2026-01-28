@@ -1,5 +1,6 @@
 export { AppShell } from "./app-shell";
 export { AuthGuard } from "./auth-guard";
+export { CardActionMenu } from "./card-action-menu";
 export { ContextBar } from "./context-bar";
 export { FilterPill, FilterPillGroup } from "./filter-pills";
 export { MobileNav } from "./mobile-nav";
