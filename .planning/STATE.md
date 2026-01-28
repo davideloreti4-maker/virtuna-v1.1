@@ -2,12 +2,12 @@
 
 ## Current Status
 - **Phase**: 3 of 10 — Landing Site
-- **Plan**: 01 of 8 in phase
+- **Plan**: 03 of 8 in phase
 - **Status**: In progress
 - **Last Updated**: 2026-01-28
-- **Last Activity**: 2026-01-28 - Completed 03-01-PLAN.md (Foundation Components)
+- **Last Activity**: 2026-01-28 - Completed 03-03-PLAN.md (Hero Section)
 
-**Progress**: ██░░░░░░░░ 25% (2.5/10 phases)
+**Progress**: ███░░░░░░░ 30% (3/10 phases)
 
 ## Completed
 - [x] Phase 1: Infrastructure Setup
@@ -26,6 +26,10 @@
 - [x] Phase 2: Design System & Components — VERIFIED COMPLETE
 - [x] Phase 3 Plan 1: Foundation Components
   - 03-01: Header, Footer, Accordion, Coming Soon page (17005eb, 59fe609, 751fc73, 8de3720)
+- [x] Phase 3 Plan 2: Logo Assets
+  - 03-02: All investor/partner SVG logos (cf8841d, db51f37)
+- [x] Phase 3 Plan 3: Hero Section
+  - 03-03: HeroSection, PersonaCard, network visualization (1ad2c9a, 4b84830, ea4a450, 85a03e6)
 
 ## In Progress
 - [ ] Phase 3: Landing Site
@@ -70,6 +74,8 @@
 | SSR-safe Phosphor imports | 03-01 | Use @phosphor-icons/react/dist/ssr for server components |
 | Accordion via Radix + CSS keyframes | 03-01 | Smooth height transitions with Radix vars |
 | Legal links to /coming-soon | 03-01 | Temporary until pages built |
+| SVG network visualization | 03-03 | Vector placeholder instead of Three.js animation |
+| FadeIn stagger pattern | 03-03 | 0.1s delays for entrance animation sequences |
 
 ## Project-Wide Directives
 
@@ -92,14 +98,14 @@
 - Phase 2 Plan 5 complete: Component showcase page, visual verification passed
 - User note: use v0 MCP for design UI accuracy and quality going forward
 - Phase 3 Plan 1 complete: Header, Footer, Accordion, Coming Soon page
+- Phase 3 Plan 3 complete: Hero section with PersonaCard and network visualization
 
 ## Session Continuity
 - **Last session**: 2026-01-28
-- **Stopped at**: Completed 03-01-PLAN.md — Foundation Components
+- **Stopped at**: Completed 03-03-PLAN.md — Hero Section
 - **Resume file**: None
 
 ## Next Steps
-- Continue Phase 3 Landing Site plans (03-02 through 03-08)
-- Build Hero section with 3D visualization
+- Continue Phase 3 Landing Site plans (03-04 through 03-08)
 - Build Features, Case Studies, FAQ sections
 - Build pixel-perfect landing pages matching societies.io

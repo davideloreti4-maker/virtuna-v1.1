@@ -1,175 +1,126 @@
+# Phase 3 Plan 3: Hero Section Summary
+
 ---
-phase: 03-landing-site
-plan: 03
+phase: "03"
+plan: "03"
 subsystem: landing-page
-tags: [landing, homepage, hero, features, testimonials, cta, animations]
-
-# Dependency graph
-requires:
-  - phase: 03-01
-    provides: Navigation components, design tokens, landing assets
-  - phase: 03-02
-    provides: Scroll animation primitives (FadeIn, SlideUp, ScrollReveal, StaggeredGrid)
-provides:
-  - Complete homepage with all sections
-  - Hero section component
-  - Features section component
-  - Testimonials section component
-  - CTA section component
-  - Logos section component
-affects: [03-04, 03-05, future landing pages]
-
-# Tech tracking
+tags: [hero, animation, persona-card, network-visualization]
+dependency-graph:
+  requires: ["03-01"]
+  provides: [hero-section, persona-card-component, landing-barrel-export]
+  affects: ["03-04", "03-05", "03-06", "03-07"]
 tech-stack:
   added: []
-  patterns:
-    - "SlideUp for hero headline animations"
-    - "FadeIn with scroll trigger for section reveals"
-    - "StaggeredGrid for features card animation"
-    - "ScrollReveal for CTA section"
-
+  patterns: [FadeIn-stagger, responsive-two-column, SVG-placeholder]
 key-files:
   created:
-    - src/components/landing/hero.tsx
-    - src/components/landing/features.tsx
-    - src/components/landing/testimonials.tsx
-    - src/components/landing/cta-section.tsx
-    - src/components/landing/logos-section.tsx
+    - src/components/landing/persona-card.tsx
+    - src/components/landing/hero-section.tsx
     - src/components/landing/index.ts
+    - public/images/network-visualization.svg
   modified:
     - src/app/page.tsx
-
-key-decisions:
-  - "Used clamp() for responsive hero typography - scales fluidly from 2.5rem to 5rem"
-  - "Features grid uses 2-column layout on desktop, single column on mobile"
-  - "Testimonials include real quotes from Sparky Zivin (Teneo) and Francesco D'Orazio (Pulsar)"
-  - "CTA section has gradient glow effect for visual emphasis"
-  - "Logos section with grayscale filter, hover to reveal color"
-
-patterns-established:
-  - "Landing section structure: section > Container > content"
-  - "Feature card pattern: icon + title + description in bordered card"
-  - "Testimonial card pattern: blockquote + author info with avatar"
-
-# Metrics
-duration: 5min
-completed: 2026-01-27
+decisions:
+  - id: svg-network-viz
+    summary: "SVG placeholder for 3D network visualization"
+    rationale: "Three.js interactive animation out of scope; SVG provides clean vector aesthetic matching societies.io"
+  - id: fadein-stagger
+    summary: "Staggered FadeIn animations for hero content"
+    rationale: "0.1s delays between elements creates smooth entrance sequence"
+metrics:
+  duration: "2m 30s"
+  completed: "2026-01-28"
 ---
 
-# Phase 03 Plan 03: Homepage Sections Summary
+## One-Liner
 
-**Built complete homepage matching societies.io with Hero, Features, Testimonials, CTA, and Logos sections using scroll animations**
+Hero section with "Human Behavior, Simulated." headline, floating PersonaCard, SVG network visualization, and staggered FadeIn entrance animations.
 
-## Performance
+## What Was Built
 
-- **Duration:** 5 min
-- **Started:** 2026-01-27T14:30:15Z
-- **Completed:** 2026-01-27T14:35:42Z
-- **Tasks:** 3
-- **Files created:** 6
-- **Files modified:** 1
+### PersonaCard Component (`src/components/landing/persona-card.tsx`)
+- Reusable card displaying AI persona details
+- Avatar with initials, name, role, company, bio
+- Demographic tags with Phosphor icons (MapPin, Gender, User)
+- Props interface for all persona fields
+- Dark elevated background with shadow
 
-## Accomplishments
+### Network Visualization (`public/images/network-visualization.svg`)
+- SVG-based 3D network placeholder (626x550)
+- Interconnected gray nodes with thin connection lines
+- Orange accent node with radial glow effect
+- Matches societies.io aesthetic without Three.js complexity
 
-- Hero section with "Research that was impossible is now instant" headline
-- Features section with 4 feature cards: Unreachable audiences, Instant insights, Human-like depth, True diversity
-- Testimonials section with quotes from Teneo and Pulsar executives
-- CTA section with gradient glow effect and dual buttons
-- Logos section displaying partner company logos (Teneo, DC Advisory, GP Strategies, TE Connectivity)
-- Homepage assembled with all sections in correct order
+### HeroSection Component (`src/components/landing/hero-section.tsx`)
+- Two-column responsive layout
+- H1: "Human Behavior, Simulated." with orange accent
+- Typography: 52px Funnel Display @ 350 weight
+- Paragraph: 20px Satoshi @ 450 weight
+- "Get in touch" CTA button
+- FadeIn animations with staggered delays (0, 0.1, 0.2, 0.3, 0.5s)
+- Subtle dot grid background pattern
+- Mobile-first responsive (stacked -> side-by-side)
 
-## Task Commits
+### Landing Components Barrel Export (`src/components/landing/index.ts`)
+- Clean exports for HeroSection, PersonaCard
+- Type exports for PersonaCardProps
 
-Each task was committed atomically:
+### Homepage Integration (`src/app/page.tsx`)
+- Updated to render HeroSection
+- Placeholder structure for additional sections
 
-1. **Task 1: Build Hero section** - `d02d33d` (feat)
-2. **Task 2: Build Features, Testimonials, CTAs sections** - `f7c3ea1` (feat)
-3. **Task 3: Assemble Homepage** - `787d83f` (feat)
+## Commits
 
-## Files Created/Modified
-
-### Created
-
-- `src/components/landing/hero.tsx` - Hero section with headline, subheadline, CTAs
-- `src/components/landing/features.tsx` - Features grid with 4 feature cards
-- `src/components/landing/testimonials.tsx` - Testimonials with author details and images
-- `src/components/landing/cta-section.tsx` - CTA section with gradient glow effect
-- `src/components/landing/logos-section.tsx` - Partner logos with grayscale effect
-- `src/components/landing/index.ts` - Barrel export for all landing components
-
-### Modified
-
-- `src/app/page.tsx` - Replaced showcase with homepage assembling all sections
-
-## Component Details
-
-### Hero Section
-
-- Main headline: "Research that was impossible is now instant"
-- Accent word "impossible" in #E57850 color
-- Subheadline: "Access high-value audiences. Understand decision-makers. Discover critical insights."
-- CTAs: "Get in touch" (primary), "Sign in" (outline)
-- SlideUp animation for headline, FadeIn for subheadline
-- Responsive typography with clamp(2.5rem, 8vw, 5rem)
-
-### Features Section
-
-- Header: "Millions of personas"
-- Subtext: 86% accuracy stat
-- 4 feature cards with SVG icons:
-  1. Unreachable audiences
-  2. Instant insights
-  3. Human-like depth
-  4. True diversity
-- StaggeredGrid animation for sequential reveal
-
-### Testimonials Section
-
-- Header: "Trusted by industry leaders"
-- 2 testimonial cards:
-  1. Sparky Zivin (Global Head of Research, Teneo) - with photo
-  2. Francesco D'Orazio (Chief Executive Officer, Pulsar)
-- FadeIn with scroll trigger for each card
-
-### CTA Section
-
-- Header: "Ready to understand your audience?"
-- Gradient background with glow effect
-- Dual CTAs: "Book a Meeting", "Contact us"
-- ScrollReveal animation
-
-### Logos Section
-
-- "Trusted by industry leaders" caption
-- Partner logos: Teneo, DC Advisory, GP Strategies, TE Connectivity
-- Grayscale filter with hover color reveal
-- FadeIn with scroll trigger
-
-## Decisions Made
-
-- Used societies.io exact copy for headlines and feature descriptions
-- Testimonial quotes extracted from societies.io JavaScript bundle
-- Hero uses dark background (#0d0d0d) matching societies.io
-- Responsive breakpoints: single column on mobile, 2 columns on desktop for grids
+| Hash | Description |
+|------|-------------|
+| 1ad2c9a | feat(03-03): create PersonaCard component |
+| 4b84830 | feat(03-03): add network visualization SVG placeholder |
+| ea4a450 | feat(03-03): create HeroSection component |
+| 85a03e6 | feat(03-03): add barrel export and integrate hero on homepage |
 
 ## Deviations from Plan
 
-None - plan executed exactly as written.
+### Auto-Implemented Improvements
 
-## Issues Encountered
+**1. [Rule 2 - Enhancement] SVG instead of PNG for network visualization**
+- **Found during:** Task 2
+- **Issue:** Plan suggested PNG but SVG provides better quality and scalability
+- **Fix:** Created SVG with vector nodes, connections, and accent glow
+- **Files modified:** `public/images/network-visualization.svg`
 
-None
+**2. [Rule 2 - Enhancement] Added subtle background grid pattern**
+- **Found during:** Task 3
+- **Issue:** Hero section looked flat without visual depth
+- **Fix:** Added radial gradient dot pattern to background
+- **Files modified:** `src/components/landing/hero-section.tsx`
 
-## User Setup Required
+## Verification Results
 
-None - no external service configuration required.
+- [x] Build passes (`npm run build`)
+- [x] Hero heading: "Human Behavior, Simulated." - MATCHES
+- [x] Orange accent on "Simulated." - MATCHES
+- [x] Typography: 52px Funnel Display, 350 weight - MATCHES
+- [x] PersonaCard renders with demo data - WORKS
+- [x] Network visualization visible - WORKS
+- [x] "Get in touch" button styled correctly - WORKS
+- [x] FadeIn entrance animations - IMPLEMENTED
+- [x] Responsive layout - WORKS (stacked mobile, side-by-side desktop)
+
+## Must-Haves Checklist
+
+- [x] Hero heading typography exactly matches (52px, Funnel Display, 350 weight)
+- [x] "Simulated." text is orange accent color
+- [x] Persona card component renders with demo data
+- [x] Entrance animations implemented (opacity + translateY via FadeIn)
+- [x] Responsive layout (stacked on mobile, side-by-side on desktop)
 
 ## Next Phase Readiness
 
-- Homepage complete and responsive at all breakpoints
-- All sections use animation primitives from 03-02
-- Ready for 03-04 (additional landing pages or enhancements)
+**Ready for:** 03-04 (Features Section), 03-05 (Case Studies), etc.
 
----
-*Phase: 03-landing-site*
-*Completed: 2026-01-27*
+**Blockers:** None
+
+**Notes:**
+- Landing components barrel export established - subsequent plans can add exports
+- Homepage structure ready for additional sections
+- FadeIn pattern established for consistent entrance animations across sections
