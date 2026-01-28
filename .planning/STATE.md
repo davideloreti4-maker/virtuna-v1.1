@@ -2,10 +2,10 @@
 
 ## Current Status
 - **Phase**: 5 of 10 — Society Management
-- **Plan**: 3 of 6 complete
+- **Plan**: 4 of 6 complete
 - **Status**: In progress
 - **Last Updated**: 2026-01-28
-- **Last Activity**: 2026-01-28 - Completed 05-03-PLAN.md (Create Target Society Modal)
+- **Last Activity**: 2026-01-28 - Completed 05-04-PLAN.md (Wire Up Create Society Flow)
 
 **Progress**: ████░░░░░░ 40% (4/10 phases)
 
@@ -57,6 +57,7 @@
   - 05-01: Society Store Foundation (0ab813a, 0d366da, d2e9ec5)
   - 05-02: Store Integration (07d097a, 90b47b0, 5eebfe8)
   - 05-03: Create Target Society Modal (a5e9575, 052c003)
+  - 05-04: Wire Up Create Society Flow (410e498, e309147)
 
 ## Blocked
 - (none)
@@ -137,6 +138,9 @@
 | Gradient modal background | 05-03 | Purple/blue mesh gradient at 10% opacity over #18181B |
 | 1.5s AI matching delay | 05-03 | Simulated delay for UX feedback during "AI matching" |
 | Extract name from description | 05-03 | First 3 words after removing filler words |
+| Close selector before create modal | 05-04 | Avoids Radix nested dialog focus trap issues |
+| Emerald indicator for active society | 05-04 | Consistent with active/online status conventions |
+| Dialog sibling pattern | 05-04 | Render modals as siblings in fragment, not nested |
 
 ## Project-Wide Directives
 
@@ -174,13 +178,14 @@
 - Phase 5 Plan 1 complete: Zustand store with persist, society types, mock data module
 - Phase 5 Plan 2 complete: CardActionMenu, SocietySelector refactored to Zustand store
 - Phase 5 Plan 3 complete: CreateSocietyModal with gradient background, AI matching loading state
+- Phase 5 Plan 4 complete: Create society flow wired up, sidebar shows current society
 
 ## Session Continuity
 - **Last session**: 2026-01-28
-- **Stopped at**: Completed 05-03-PLAN.md (Create Target Society Modal)
+- **Stopped at**: Completed 05-04-PLAN.md (Wire Up Create Society Flow)
 - **Resume file**: None
 
 ## Next Steps
-- Execute 05-04: Card Action Menu
-- Execute 05-05: Wire up create society flow
+- Execute 05-05: Edit society modal
+- Execute 05-06: Delete confirmation
 - Continue Phase 5 Society Management plans
