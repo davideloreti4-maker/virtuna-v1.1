@@ -32,6 +32,8 @@
   - 03-03: HeroSection, PersonaCard, network visualization (1ad2c9a, 4b84830, ea4a450, 85a03e6)
 - [x] Phase 3 Plan 4: Backers & Features Sections
   - 03-04: BackersSection, FeatureCard, FeaturesSection (595e878, b147d9e, 8ae5294, 7366d01)
+- [x] Phase 3 Plan 5: Stats Section
+  - 03-05: ComparisonChart, StatsSection (101116a, 45b6973)
 - [x] Phase 3 Plan 7: FAQ Section
   - 03-07: FAQSection component with accordion (bcc90a9, 7c4a24e)
 
@@ -83,6 +85,8 @@
 | Phosphor icons weight="light" | 03-04 | Feature card icons match societies.io style |
 | brightness-0 invert for logos | 03-04 | CSS filter for white logo display on dark bg |
 | FadeIn delay for stagger | 03-04 | Individual FadeIn wrappers with delay prop |
+| brightness-0 invert for chart icons | 03-05 | CSS filter for white icon display in comparison chart |
+| Data-driven comparison chart | 03-05 | comparisonData array for easy model/accuracy updates |
 | Transparent bg for FAQ items | 03-07 | Override default accordion elevated bg |
 | max-w-3xl narrower FAQ container | 03-07 | FAQ section narrower than other sections |
 
@@ -110,13 +114,14 @@
 - Phase 3 Plan 3 complete: Hero section with PersonaCard and network visualization
 - Phase 3 Plan 4 complete: BackersSection, FeatureCard, FeaturesSection
 - Phase 3 Plan 7 complete: FAQSection with accordion
+- Phase 3 Plan 5 complete: StatsSection with ComparisonChart
 
 ## Session Continuity
 - **Last session**: 2026-01-28
-- **Stopped at**: Completed 03-07-PLAN.md — FAQ Section
+- **Stopped at**: Completed 03-05-PLAN.md — Stats Section
 - **Resume file**: None
 
 ## Next Steps
-- Continue Phase 3 Landing Site plans (03-05, 03-06, 03-08)
-- Build Stats, Case Study, CTA Footer sections
+- Continue Phase 3 Landing Site plans (03-06, 03-08)
+- Build Case Study, CTA Footer sections
 - Build pixel-perfect landing pages matching societies.io
