@@ -2,130 +2,101 @@
 phase: 03-landing-site
 plan: 04
 subsystem: ui
-tags: [pricing, landing, faq, accordion, motion, animations]
+tags: [react, phosphor-icons, scroll-animation, landing-page, investor-logos]
 
 # Dependency graph
 requires:
-  - phase: 03-01
-    provides: Design tokens, navigation constants, header/footer
   - phase: 03-02
-    provides: ScrollReveal and animation components
+    provides: SVG logo assets for investors/backers
+  - phase: 02-04
+    provides: FadeIn scroll animation component
 provides:
-  - Pricing page route at /pricing
-  - PricingTable component for enterprise tiers
-  - PricingToggle component for future monthly/yearly toggle
-  - PricingFAQ accordion component
-  - Pricing constants with enterprise pricing data
-affects: [03-05, contact-page, signup-flow]
+  - BackersSection component with investor logo rows
+  - FeatureCard reusable card component
+  - FeaturesSection with 2x2 grid and section header
+affects: [03-05, 03-06, 03-07, 03-08, landing-page-assembly]
 
 # Tech tracking
 tech-stack:
   added: []
   patterns:
-    - "Enterprise-only pricing model (no self-serve tiers)"
-    - "Accordion FAQ with AnimatePresence for smooth open/close"
-    - "ScrollReveal for staggered section animations"
+    - Staggered scroll animations via FadeIn delay prop
+    - Feature data as const array with icon ReactNode
 
 key-files:
   created:
-    - src/app/pricing/page.tsx
-    - src/components/landing/pricing-table.tsx
-    - src/components/landing/pricing-toggle.tsx
-    - src/components/landing/pricing-faq.tsx
-    - src/lib/constants/pricing.ts
+    - src/components/landing/backers-section.tsx
+    - src/components/landing/feature-card.tsx
+    - src/components/landing/features-section.tsx
   modified:
     - src/components/landing/index.ts
 
 key-decisions:
-  - "Enterprise-only pricing model - societies.io has no /pricing route, uses contact-based pricing"
-  - "PricingToggle created for future use but not displayed (societies.io has no monthly/yearly toggle)"
-  - "FAQ content extracted from societies.io homepage questions"
+  - "Phosphor icons with weight='light' for feature cards"
+  - "brightness-0 invert filter for white logo display on dark bg"
+  - "FadeIn wrapper with delay prop for stagger effect"
 
 patterns-established:
-  - "Pricing data stored in constants file for easy updates"
-  - "FAQ accordion pattern with single-open behavior"
-  - "Enterprise CTA pattern: 'Book a Meeting' instead of direct signup"
+  - "Section label + heading + description pattern for landing sections"
+  - "Feature data as typed const array"
 
 # Metrics
-duration: 3min
-completed: 2026-01-27
+duration: 6min
+completed: 2026-01-28
 ---
 
-# Phase 03 Plan 04: Pricing Page Summary
+# Phase 3 Plan 4: Backers & Features Sections Summary
 
-**Built enterprise-focused pricing page with animated tier cards, accordion FAQ, and CTA section matching societies.io design patterns**
+**BackersSection with 8 investor logos and FeaturesSection with 4 feature cards in 2x2 grid using Phosphor icons**
 
 ## Performance
 
-- **Duration:** 3 min
-- **Started:** 2026-01-27T14:32:56Z
-- **Completed:** 2026-01-27T14:36:09Z
-- **Tasks:** 2
-- **Files modified:** 6
+- **Duration:** 6 min
+- **Started:** 2026-01-28T15:19:17Z
+- **Completed:** 2026-01-28T15:25:30Z
+- **Tasks:** 4
+- **Files modified:** 4
 
 ## Accomplishments
-- Created /pricing route with enterprise-focused layout
-- Built PricingTable component with animated card design
-- Built PricingFAQ accordion with AnimatePresence animations
-- Created pricing constants file with societies.io pricing data
-- Integrated ScrollReveal for smooth scroll-triggered animations
+- BackersSection displays "Backed by" (Point72, Kindred, YC) and "With Investors from" (Sequoia, Google, DeepMind, Prolific, Strava)
+- FeatureCard reusable component with icon, title, description slots
+- FeaturesSection with 40px Funnel Display heading and responsive 2x2 grid
+- Phosphor icons: Crosshair, Lightning, UsersThree, Brain
 
 ## Task Commits
 
 Each task was committed atomically:
 
-1. **Task 1: Build Pricing components** - `23bc6ae` (feat)
-2. **Task 2: Assemble Pricing page** - `0eddabe` (feat)
+1. **Task 1: Create BackersSection component** - `595e878` (feat)
+2. **Task 2: Create FeatureCard component** - `b147d9e` (feat)
+3. **Task 3: Create FeaturesSection component** - `8ae5294` (feat)
+4. **Task 4: Update landing barrel exports** - `7366d01` (chore)
 
 ## Files Created/Modified
-- `src/app/pricing/page.tsx` - Pricing page route with hero, tiers, FAQ, CTA sections
-- `src/components/landing/pricing-table.tsx` - Enterprise tier card with features list
-- `src/components/landing/pricing-toggle.tsx` - Monthly/yearly toggle (for future use)
-- `src/components/landing/pricing-faq.tsx` - Accordion FAQ component
-- `src/lib/constants/pricing.ts` - Pricing data, FAQ content, page copy
-- `src/components/landing/index.ts` - Updated barrel exports
+- `src/components/landing/backers-section.tsx` - Two-row investor logo display with scroll animations
+- `src/components/landing/feature-card.tsx` - Reusable card with icon, title, description
+- `src/components/landing/features-section.tsx` - Section header + 2x2 feature grid with Phosphor icons
+- `src/components/landing/index.ts` - Barrel exports for all landing components
 
 ## Decisions Made
-
-1. **Enterprise-only pricing model**
-   - societies.io does NOT have a dedicated /pricing route (verified via JS bundle routes)
-   - Pricing info found: "Business plans start at $15k for a three month engagement"
-   - Created enterprise-focused page with "Book a Meeting" CTA instead of self-serve tiers
-
-2. **PricingToggle created but not displayed**
-   - Component built for potential future use
-   - Not rendered on page since societies.io has no monthly/yearly toggle
-
-3. **FAQ content from societies.io**
-   - Extracted actual FAQ questions from societies.io JS bundle
-   - Includes: accuracy, audiences, timeline, diversity, industries
+- Used `brightness-0 invert` CSS filter for logo SVGs instead of inline SVG modification - simpler and works with any logo
+- Phosphor icons with `weight="light"` match the societies.io visual style
+- Wrapped each logo/card in individual FadeIn with delay prop for stagger effect rather than using motion staggerChildren
 
 ## Deviations from Plan
-
-### Adaptation Required
-
-**1. [Adaptation] societies.io has no /pricing page**
-- **Found during:** Task 1 (researching societies.io)
-- **Issue:** Plan requested pixel-perfect match with societies.io/pricing, but route doesn't exist
-- **Resolution:** Created enterprise-focused pricing page using societies.io's actual pricing model and design patterns
-- **Verification:** Page built with consistent visual design and CTA patterns
-
-**Impact on plan:** Adapted to match societies.io's actual approach (enterprise pricing with "Book a Meeting" CTA) rather than fictional tiered pricing. Visual fidelity maintained using design tokens and component patterns.
+None - plan executed exactly as written.
 
 ## Issues Encountered
-
-None - adaptation handled smoothly based on actual societies.io structure.
+None - all components built successfully on first attempt.
 
 ## User Setup Required
-
 None - no external service configuration required.
 
 ## Next Phase Readiness
-- Pricing page complete and accessible at /pricing
-- CTA buttons link to /contact (to be built)
-- Design patterns consistent with other landing pages
-- Ready for 03-05 (About page) or contact page implementation
+- BackersSection and FeaturesSection ready for integration
+- Components export from `@/components/landing`
+- Ready for 03-05 (Case Studies Section) and subsequent plans
 
 ---
 *Phase: 03-landing-site*
-*Completed: 2026-01-27*
+*Completed: 2026-01-28*

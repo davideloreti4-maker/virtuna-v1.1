@@ -2,10 +2,10 @@
 
 ## Current Status
 - **Phase**: 3 of 10 — Landing Site
-- **Plan**: 03 of 8 in phase
+- **Plan**: 04 of 8 in phase
 - **Status**: In progress
 - **Last Updated**: 2026-01-28
-- **Last Activity**: 2026-01-28 - Completed 03-03-PLAN.md (Hero Section)
+- **Last Activity**: 2026-01-28 - Completed 03-04-PLAN.md (Backers & Features Sections)
 
 **Progress**: ███░░░░░░░ 30% (3/10 phases)
 
@@ -30,6 +30,8 @@
   - 03-02: All investor/partner SVG logos (cf8841d, db51f37)
 - [x] Phase 3 Plan 3: Hero Section
   - 03-03: HeroSection, PersonaCard, network visualization (1ad2c9a, 4b84830, ea4a450, 85a03e6)
+- [x] Phase 3 Plan 4: Backers & Features Sections
+  - 03-04: BackersSection, FeatureCard, FeaturesSection (595e878, b147d9e, 8ae5294, 7366d01)
 
 ## In Progress
 - [ ] Phase 3: Landing Site
@@ -76,6 +78,9 @@
 | Legal links to /coming-soon | 03-01 | Temporary until pages built |
 | SVG network visualization | 03-03 | Vector placeholder instead of Three.js animation |
 | FadeIn stagger pattern | 03-03 | 0.1s delays for entrance animation sequences |
+| Phosphor icons weight="light" | 03-04 | Feature card icons match societies.io style |
+| brightness-0 invert for logos | 03-04 | CSS filter for white logo display on dark bg |
+| FadeIn delay for stagger | 03-04 | Individual FadeIn wrappers with delay prop |
 
 ## Project-Wide Directives
 
@@ -99,13 +104,14 @@
 - User note: use v0 MCP for design UI accuracy and quality going forward
 - Phase 3 Plan 1 complete: Header, Footer, Accordion, Coming Soon page
 - Phase 3 Plan 3 complete: Hero section with PersonaCard and network visualization
+- Phase 3 Plan 4 complete: BackersSection, FeatureCard, FeaturesSection
 
 ## Session Continuity
 - **Last session**: 2026-01-28
-- **Stopped at**: Completed 03-03-PLAN.md — Hero Section
+- **Stopped at**: Completed 03-04-PLAN.md — Backers & Features Sections
 - **Resume file**: None
 
 ## Next Steps
-- Continue Phase 3 Landing Site plans (03-04 through 03-08)
-- Build Features, Case Studies, FAQ sections
+- Continue Phase 3 Landing Site plans (03-05 through 03-08)
+- Build Case Studies, FAQ sections
 - Build pixel-perfect landing pages matching societies.io
