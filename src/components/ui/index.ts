@@ -7,3 +7,10 @@ export type { InputProps } from "./input";
 export { Card, CardHeader, CardContent, CardFooter } from "./card";
 
 export { Skeleton } from "./skeleton";
+
+export {
+  AccordionRoot,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "./accordion";
