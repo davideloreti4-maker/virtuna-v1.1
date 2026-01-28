@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Funnel_Display } from "next/font/google";
+import { Header } from "@/components/layout/header";
 import "./globals.css";
 
 const satoshi = localFont({
@@ -21,8 +22,9 @@ const funnelDisplay = Funnel_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Virtuna",
-  description: "AI-powered property management platform",
+  title: "Artificial Societies | Human Behavior, Simulated",
+  description:
+    "AI personas that replicate real-world attitudes, beliefs, and opinions. Research that was impossible is now instant.",
 };
 
 export default function RootLayout({
@@ -30,7 +32,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${satoshi.variable} ${funnelDisplay.variable}`}>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="min-h-screen bg-background font-sans antialiased">
+        <Header />
+        {children}
+      </body>
     </html>
   );
 }
