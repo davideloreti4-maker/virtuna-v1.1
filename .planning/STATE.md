@@ -2,10 +2,10 @@
 
 ## Current Status
 - **Phase**: 4 of 10 — App Layout & Navigation
-- **Plan**: 04 of 6 in phase
+- **Plan**: 05 of 6 in phase
 - **Status**: In progress
 - **Last Updated**: 2026-01-28
-- **Last Activity**: 2026-01-28 - Completed 04-04-PLAN.md (Network Visualization & Dashboard)
+- **Last Activity**: 2026-01-28 - Completed 04-05-PLAN.md (Mobile Navigation & Auth Guard)
 
 **Progress**: ████░░░░░░ 40% (4/10 phases)
 
@@ -46,6 +46,8 @@
   - 04-03: SocietySelector modal, ViewSelector dropdown, Sidebar integration (e53cf9c, fefb604, 8f325aa)
 - [x] Phase 4 Plan 4: Network Visualization & Dashboard
   - 04-04: NetworkVisualization canvas, FilterPills, ContextBar, Dashboard (139d752, e6efdaf, b1180dc)
+- [x] Phase 4 Plan 5: Mobile Navigation & Auth Guard
+  - 04-05: MobileNav, AuthGuard, AppShell, mobile drawer behavior (792424a, f59584e, 232b665)
 
 ## In Progress
 - [ ] Phase 4: App Layout & Navigation
@@ -115,6 +117,9 @@
 | Role level colors palette | 04-04 | Indigo, Pink, Emerald, Orange for Executive/Mid/Senior/Entry |
 | Connection lines between dots | 04-04 | Dots within 120px distance connected with opacity fade |
 | Non-null assertion for arrays | 04-04 | TypeScript strict mode requires ! for guaranteed array access |
+| Client-wrapper pattern | 04-05 | Extract AppShell client component to keep layout as server component |
+| CSS-only responsive mobile | 04-05 | No JS media queries, use md: breakpoint classes for hydration safety |
+| Mock auth delay | 04-05 | 350ms skeleton delay simulates auth check, polishes UX |
 
 ## Project-Wide Directives
 
@@ -146,13 +151,14 @@
 - Phase 4 Plan 2 complete: Sidebar component, SidebarNavItem, app layout integration
 - Phase 4 Plan 3 complete: SocietySelector modal, ViewSelector dropdown
 - Phase 4 Plan 4 complete: NetworkVisualization canvas, FilterPills, ContextBar, Dashboard page
+- Phase 4 Plan 5 complete: MobileNav, AuthGuard, AppShell wrapper
 
 ## Session Continuity
 - **Last session**: 2026-01-28
-- **Stopped at**: Completed 04-04-PLAN.md — Network Visualization & Dashboard
+- **Stopped at**: Completed 04-05-PLAN.md — Mobile Navigation & Auth Guard
 - **Resume file**: None
 
 ## Next Steps
-- Continue Phase 4 App Layout & Navigation plans (04-05, 04-06)
+- Complete Phase 4 Plan 6 (finalization/verification)
 - Build test creation modal/flow
 - Build test history sidebar
