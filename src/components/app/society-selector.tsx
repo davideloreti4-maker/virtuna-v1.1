@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
 import { ChevronDown, X, Plus, Info, Briefcase, Coins, Users } from "lucide-react";
-import { useSocietyStore, useSelectedSociety, usePersonalSocieties, useTargetSocieties } from "@/stores/society-store";
+import { useSocietyStore } from "@/stores/society-store";
 import { CardActionMenu } from "./card-action-menu";
 import { CreateSocietyModal } from "./create-society-modal";
 import type { Society, PersonalSociety, TargetSociety } from "@/types/society";
@@ -22,12 +22,25 @@ export function SocietySelector({ className }: SocietySelectorProps) {
   const [open, setOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
-  // Use memoized selector hooks to avoid infinite loops
-  const selectedSociety = useSelectedSociety();
-  const personalSocieties = usePersonalSocieties();
-  const targetSocieties = useTargetSocieties();
+  // Select raw state (stable references)
+  const societies = useSocietyStore((s) => s.societies);
+  const selectedSocietyId = useSocietyStore((s) => s.selectedSocietyId);
   const selectSociety = useSocietyStore((s) => s.selectSociety);
   const deleteSociety = useSocietyStore((s) => s.deleteSociety);
+
+  // Derive filtered arrays with useMemo to avoid creating new refs each render
+  const selectedSociety = useMemo(
+    () => societies.find((s) => s.id === selectedSocietyId),
+    [societies, selectedSocietyId]
+  );
+  const personalSocieties = useMemo(
+    () => societies.filter((s): s is PersonalSociety => s.type === 'personal'),
+    [societies]
+  );
+  const targetSocieties = useMemo(
+    () => societies.filter((s): s is TargetSociety => s.type === 'target'),
+    [societies]
+  );
 
   const handleSelectSociety = (society: Society) => {
     selectSociety(society.id);

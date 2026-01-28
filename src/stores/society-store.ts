@@ -1,8 +1,7 @@
 // src/stores/society-store.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { useShallow } from 'zustand/react/shallow';
-import type { Society, PersonalSociety, TargetSociety } from '@/types/society';
+import type { Society } from '@/types/society';
 import {
   INITIAL_SOCIETIES,
   INITIAL_TARGET_SOCIETIES,
@@ -65,22 +64,3 @@ export const useSocietyStore = create<SocietyState>()(
     }
   )
 );
-
-// Selector hooks with proper memoization
-export function useSelectedSociety() {
-  return useSocietyStore(
-    useShallow((s) => s.societies.find((soc) => soc.id === s.selectedSocietyId))
-  );
-}
-
-export function usePersonalSocieties() {
-  return useSocietyStore(
-    useShallow((s) => s.societies.filter((soc): soc is PersonalSociety => soc.type === 'personal'))
-  );
-}
-
-export function useTargetSocieties() {
-  return useSocietyStore(
-    useShallow((s) => s.societies.filter((soc): soc is TargetSociety => soc.type === 'target'))
-  );
-}

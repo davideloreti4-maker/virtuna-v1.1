@@ -13,9 +13,10 @@ import {
   Columns2,
   X,
 } from "lucide-react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSelectedSociety } from "@/stores/society-store";
+import { useSocietyStore } from "@/stores/society-store";
 
 interface SidebarProps {
   mobileOpen?: boolean;
@@ -44,7 +45,14 @@ interface SidebarProps {
  */
 export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarProps) {
   const router = useRouter();
-  const selectedSociety = useSelectedSociety();
+
+  // Select raw state and derive with useMemo
+  const societies = useSocietyStore((s) => s.societies);
+  const selectedSocietyId = useSocietyStore((s) => s.selectedSocietyId);
+  const selectedSociety = useMemo(
+    () => societies.find((s) => s.id === selectedSocietyId),
+    [societies, selectedSocietyId]
+  );
 
   const handleLogout = () => {
     // Simulate logout by navigating to landing page
