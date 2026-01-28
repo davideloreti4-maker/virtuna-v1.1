@@ -71,20 +71,20 @@ Plans:
 
 ---
 
-### Phase 4: App Layout & Navigation
+### Phase 4: App Layout & Navigation ✓
 **Goal**: Build app shell and navigation structure
 
-**Status**: Not Started
+**Status**: Complete (2026-01-28)
 
 **Plans**: 6 plans (5 waves)
 
 Plans:
-- [ ] 04-01-PLAN.md — Route groups restructure + install Radix dependencies
-- [ ] 04-02-PLAN.md — App layout shell with sidebar
-- [ ] 04-03-PLAN.md — Society selector modal + View selector dropdown
-- [ ] 04-04-PLAN.md — Network visualization + filter pills
-- [ ] 04-05-PLAN.md — Mobile drawer navigation + auth guard
-- [ ] 04-06-PLAN.md — Visual verification checkpoint
+- [x] 04-01-PLAN.md — Route groups restructure + install Radix dependencies
+- [x] 04-02-PLAN.md — App layout shell with sidebar
+- [x] 04-03-PLAN.md — Society selector modal + View selector dropdown
+- [x] 04-04-PLAN.md — Network visualization + filter pills
+- [x] 04-05-PLAN.md — Mobile drawer navigation + auth guard
+- [x] 04-06-PLAN.md — Visual verification checkpoint
 
 **Wave Structure**:
 - Wave 1: 04-01 (Route groups + dependencies)
@@ -94,9 +94,9 @@ Plans:
 - Wave 5: 04-06 (Visual verification checkpoint)
 
 **Success Criteria**:
-- App layout matches societies.io
-- Navigation is fully functional
-- Auth protection works (mock)
+- [x] App layout matches societies.io
+- [x] Navigation is fully functional
+- [x] Auth protection works (mock)
 
 **Requirements Covered**: A5, R1, R2, R3
 
@@ -264,7 +264,7 @@ Phase 2 (Design System) ✓
 
 ## Current Status
 - **Current Milestone**: v1.1 (Pixel-Perfect Clone)
-- **Current Phase**: 4 (App Layout & Navigation)
-- **Completed Phases**: 1, 2, 3
+- **Current Phase**: 5 (Society Management)
+- **Completed Phases**: 1, 2, 3, 4
 - **Blocked By**: None
-- **Next Action**: Execute Phase 4
+- **Next Action**: Plan Phase 5
