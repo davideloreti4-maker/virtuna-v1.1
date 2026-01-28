@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { SidebarNavItem } from "./sidebar-nav-item";
 import { SocietySelector } from "./society-selector";
@@ -13,15 +14,9 @@ import {
   Columns2,
   X,
 } from "lucide-react";
-import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  useSocietyStore,
-  selectHasHydrated,
-  selectSocieties,
-  selectSelectedSocietyId,
-} from "@/stores/society-store";
+import { useSocietyStore } from "@/stores/society-store";
 
 interface SidebarProps {
   mobileOpen?: boolean;
@@ -31,57 +26,36 @@ interface SidebarProps {
 
 /**
  * Main sidebar component for the app dashboard.
- *
- * Structure from top to bottom:
- * 1. Header row: Logo + collapse button
- * 2. Society selector section with dropdown trigger
- * 3. View selector section with dropdown trigger
- * 4. Create new test button
- * 5. Spacer
- * 6. Bottom nav items
- * 7. Version text
- *
- * Dimensions:
- * - Width: 248px fixed
- * - Height: 100vh
- * - Background: #0A0A0A
- * - Border right: 1px solid #27272A
- * - Padding: 16px
  */
 export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarProps) {
   const router = useRouter();
 
-  // Use stable selectors to avoid creating new function refs each render
-  const hasHydrated = useSocietyStore(selectHasHydrated);
-  const societies = useSocietyStore(selectSocieties);
-  const selectedSocietyId = useSocietyStore(selectSelectedSocietyId);
+  // Get store state
+  const store = useSocietyStore();
+
+  // Derive selected society
   const selectedSociety = useMemo(
-    () => (hasHydrated ? societies.find((s) => s.id === selectedSocietyId) : undefined),
-    [societies, selectedSocietyId, hasHydrated]
+    () => (store._isHydrated ? store.societies.find((s) => s.id === store.selectedSocietyId) : undefined),
+    [store.societies, store.selectedSocietyId, store._isHydrated]
   );
 
   const handleLogout = () => {
-    // Simulate logout by navigating to landing page
     router.push("/");
   };
 
   const handleManagePlan = () => {
-    // Placeholder - will open Stripe portal in future
     console.log("Manage plan clicked");
   };
 
   const handleFeedback = () => {
-    // Placeholder - will open feedback modal in future
     console.log("Leave feedback clicked");
   };
 
   const handleProductGuide = () => {
-    // Placeholder - will open docs in future
     console.log("Product guide clicked");
   };
 
   const handleCreateTest = () => {
-    // Placeholder - will open create test flow in Phase 6
     console.log("Create new test clicked");
   };
 
@@ -99,9 +73,7 @@ export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarPr
       <aside
         className={cn(
           "fixed left-0 top-0 z-50 h-screen w-[248px] flex-col border-r border-zinc-800 bg-[#0A0A0A] p-4 transition-transform duration-200",
-          // Desktop: always visible, static positioning
           "md:static md:translate-x-0 md:flex md:shrink-0",
-          // Mobile: hidden by default, slides in when open
           mobileOpen ? "flex translate-x-0" : "hidden -translate-x-full",
           className
         )}

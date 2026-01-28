@@ -1,85 +1,117 @@
 // src/stores/society-store.ts
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import type { Society } from '@/types/society';
 import {
   INITIAL_SOCIETIES,
   INITIAL_TARGET_SOCIETIES,
 } from '@/lib/mock-societies';
 
-interface SocietyState {
-  // Hydration state for SSR
-  _hasHydrated: boolean;
+const STORAGE_KEY = 'virtuna-societies';
 
+interface SocietyState {
   societies: Society[];
   selectedSocietyId: string | null;
+  _isHydrated: boolean;
 
   // Actions
-  setHasHydrated: (state: boolean) => void;
   selectSociety: (id: string) => void;
   addSociety: (society: Society) => void;
   updateSociety: (id: string, updates: Partial<Society>) => void;
   deleteSociety: (id: string) => void;
   resetSocieties: () => void;
+  _hydrate: () => void;
 }
 
-export const useSocietyStore = create<SocietyState>()(
-  persist(
-    (set) => ({
-      _hasHydrated: false,
+// Helper to save to localStorage
+function saveToStorage(societies: Society[], selectedSocietyId: string | null) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ societies, selectedSocietyId }));
+  } catch {
+    // Ignore storage errors
+  }
+}
 
-      societies: INITIAL_SOCIETIES,
-      selectedSocietyId: INITIAL_TARGET_SOCIETIES[0]?.id ?? null,
-
-      // Actions
-      setHasHydrated: (state) => set({ _hasHydrated: state }),
-
-      selectSociety: (id) => set({ selectedSocietyId: id }),
-
-      addSociety: (society) =>
-        set((state) => ({
-          societies: [...state.societies, society],
-          selectedSocietyId: society.id, // Auto-select new society
-        })),
-
-      updateSociety: (id, updates) =>
-        set((state) => ({
-          societies: state.societies.map((s) =>
-            s.id === id ? ({ ...s, ...updates } as Society) : s
-          ),
-        })),
-
-      deleteSociety: (id) =>
-        set((state) => {
-          const filteredSocieties = state.societies.filter((s) => s.id !== id);
-          return {
-            societies: filteredSocieties,
-            selectedSocietyId:
-              state.selectedSocietyId === id
-                ? filteredSocieties[0]?.id ?? null
-                : state.selectedSocietyId,
-          };
-        }),
-
-      resetSocieties: () =>
-        set({
-          societies: INITIAL_SOCIETIES,
-          selectedSocietyId: INITIAL_TARGET_SOCIETIES[0]?.id ?? null,
-        }),
-    }),
-    {
-      name: 'virtuna-societies',
-      onRehydrateStorage: () => (state) => {
-        state?.setHasHydrated(true);
-      },
+// Helper to load from localStorage
+function loadFromStorage(): { societies: Society[]; selectedSocietyId: string | null } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    if (data) {
+      return JSON.parse(data);
     }
-  )
-);
+  } catch {
+    // Ignore storage errors
+  }
+  return null;
+}
 
-// Stable selectors (defined once, reused across renders)
-export const selectHasHydrated = (s: SocietyState) => s._hasHydrated;
-export const selectSocieties = (s: SocietyState) => s.societies;
-export const selectSelectedSocietyId = (s: SocietyState) => s.selectedSocietyId;
-export const selectSelectSociety = (s: SocietyState) => s.selectSociety;
-export const selectDeleteSociety = (s: SocietyState) => s.deleteSociety;
-export const selectAddSociety = (s: SocietyState) => s.addSociety;
+export const useSocietyStore = create<SocietyState>((set, get) => ({
+  societies: INITIAL_SOCIETIES,
+  selectedSocietyId: INITIAL_TARGET_SOCIETIES[0]?.id ?? null,
+  _isHydrated: false,
+
+  _hydrate: () => {
+    const stored = loadFromStorage();
+    if (stored) {
+      set({
+        societies: stored.societies,
+        selectedSocietyId: stored.selectedSocietyId,
+        _isHydrated: true,
+      });
+    } else {
+      set({ _isHydrated: true });
+    }
+  },
+
+  selectSociety: (id) => {
+    set({ selectedSocietyId: id });
+    const state = get();
+    saveToStorage(state.societies, id);
+  },
+
+  addSociety: (society) => {
+    set((state) => {
+      const newSocieties = [...state.societies, society];
+      saveToStorage(newSocieties, society.id);
+      return {
+        societies: newSocieties,
+        selectedSocietyId: society.id,
+      };
+    });
+  },
+
+  updateSociety: (id, updates) => {
+    set((state) => {
+      const newSocieties = state.societies.map((s) =>
+        s.id === id ? ({ ...s, ...updates } as Society) : s
+      );
+      saveToStorage(newSocieties, state.selectedSocietyId);
+      return { societies: newSocieties };
+    });
+  },
+
+  deleteSociety: (id) => {
+    set((state) => {
+      const filteredSocieties = state.societies.filter((s) => s.id !== id);
+      const newSelectedId =
+        state.selectedSocietyId === id
+          ? filteredSocieties[0]?.id ?? null
+          : state.selectedSocietyId;
+      saveToStorage(filteredSocieties, newSelectedId);
+      return {
+        societies: filteredSocieties,
+        selectedSocietyId: newSelectedId,
+      };
+    });
+  },
+
+  resetSocieties: () => {
+    const defaultId = INITIAL_TARGET_SOCIETIES[0]?.id ?? null;
+    saveToStorage(INITIAL_SOCIETIES, defaultId);
+    set({
+      societies: INITIAL_SOCIETIES,
+      selectedSocietyId: defaultId,
+    });
+  },
+}));

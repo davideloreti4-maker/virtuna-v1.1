@@ -4,7 +4,7 @@ import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSocietyStore, selectAddSociety } from "@/stores/society-store";
+import { useSocietyStore } from "@/stores/society-store";
 import type { TargetSociety } from "@/types/society";
 
 interface CreateSocietyModalProps {
@@ -15,7 +15,7 @@ interface CreateSocietyModalProps {
 export function CreateSocietyModal({ open, onOpenChange }: CreateSocietyModalProps) {
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const addSociety = useSocietyStore(selectAddSociety);
+  const addSociety = useSocietyStore((s) => s.addSociety);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

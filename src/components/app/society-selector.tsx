@@ -1,17 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
 import { ChevronDown, X, Plus, Info, Briefcase, Coins, Users } from "lucide-react";
-import {
-  useSocietyStore,
-  selectHasHydrated,
-  selectSocieties,
-  selectSelectedSocietyId,
-  selectSelectSociety,
-  selectDeleteSociety,
-} from "@/stores/society-store";
+import { useSocietyStore } from "@/stores/society-store";
 import { CardActionMenu } from "./card-action-menu";
 import { CreateSocietyModal } from "./create-society-modal";
 import type { Society, PersonalSociety, TargetSociety } from "@/types/society";
@@ -29,29 +22,52 @@ export function SocietySelector({ className }: SocietySelectorProps) {
   const [open, setOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
-  // Use stable selectors to avoid creating new function refs each render
-  const hasHydrated = useSocietyStore(selectHasHydrated);
-  const societies = useSocietyStore(selectSocieties);
-  const selectedSocietyId = useSocietyStore(selectSelectedSocietyId);
-  const selectSociety = useSocietyStore(selectSelectSociety);
-  const deleteSociety = useSocietyStore(selectDeleteSociety);
+  // Get store state and actions
+  const store = useSocietyStore();
 
-  // Derive filtered arrays with useMemo to avoid creating new refs each render
+  // Hydrate from localStorage on mount
+  useEffect(() => {
+    store._hydrate();
+  }, []);
+
+  // Derive filtered arrays with useMemo
   const selectedSociety = useMemo(
-    () => societies.find((s) => s.id === selectedSocietyId),
-    [societies, selectedSocietyId]
+    () => store.societies.find((s) => s.id === store.selectedSocietyId),
+    [store.societies, store.selectedSocietyId]
   );
   const personalSocieties = useMemo(
-    () => societies.filter((s): s is PersonalSociety => s.type === 'personal'),
-    [societies]
+    () => store.societies.filter((s): s is PersonalSociety => s.type === 'personal'),
+    [store.societies]
   );
   const targetSocieties = useMemo(
-    () => societies.filter((s): s is TargetSociety => s.type === 'target'),
-    [societies]
+    () => store.societies.filter((s): s is TargetSociety => s.type === 'target'),
+    [store.societies]
   );
 
+  const handleSelectSociety = (society: Society) => {
+    store.selectSociety(society.id);
+    setOpen(false);
+  };
+
+  const handleCreateSociety = () => {
+    setOpen(false);
+    setCreateModalOpen(true);
+  };
+
+  const handleEdit = (id: string) => {
+    console.log("Edit society:", id);
+  };
+
+  const handleRefresh = (id: string) => {
+    console.log("Refresh society:", id);
+  };
+
+  const handleDelete = (id: string) => {
+    store.deleteSociety(id);
+  };
+
   // Show loading state until hydrated
-  if (!hasHydrated) {
+  if (!store._isHydrated) {
     return (
       <button
         type="button"
@@ -67,122 +83,98 @@ export function SocietySelector({ className }: SocietySelectorProps) {
     );
   }
 
-  const handleSelectSociety = (society: Society) => {
-    selectSociety(society.id);
-    setOpen(false);
-  };
-
-  const handleCreateSociety = () => {
-    setOpen(false); // Close selector FIRST
-    setCreateModalOpen(true); // Then open create modal
-  };
-
-  const handleEdit = (id: string) => {
-    // Placeholder - edit modal not in Phase 5 scope
-    console.log("Edit society:", id);
-  };
-
-  const handleRefresh = (id: string) => {
-    // Simulate refresh with brief loading (no-op for mock data)
-    console.log("Refresh society:", id);
-  };
-
-  const handleDelete = (id: string) => {
-    deleteSociety(id);
-  };
-
   return (
     <>
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Trigger asChild>
-        <button
-          type="button"
-          className={cn(
-            "flex w-full items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-white transition-colors hover:border-zinc-700",
-            className
-          )}
-        >
-          <span>{selectedSociety?.name ?? "Select Society"}</span>
-          <ChevronDown className="h-4 w-4 text-zinc-400" />
-        </button>
-      </Dialog.Trigger>
+          <button
+            type="button"
+            className={cn(
+              "flex w-full items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-white transition-colors hover:border-zinc-700",
+              className
+            )}
+          >
+            <span>{selectedSociety?.name ?? "Select Society"}</span>
+            <ChevronDown className="h-4 w-4 text-zinc-400" />
+          </button>
+        </Dialog.Trigger>
 
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-[800px] min-w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-zinc-800 bg-[#18181B] p-6 shadow-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]">
-          {/* Close button */}
-          <Dialog.Close asChild>
-            <button
-              type="button"
-              className="absolute right-4 top-4 text-zinc-500 transition-colors hover:text-zinc-400"
-              aria-label="Close"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </Dialog.Close>
-
-          {/* Personal Societies Section */}
-          <div>
-            <div className="mb-4 flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-white">
-                Personal Societies
-              </h3>
-              <Info className="h-4 w-4 cursor-help text-zinc-500" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {personalSocieties.map((society) => (
-                <PersonalSocietyCard
-                  key={society.id}
-                  society={society}
-                  isSelected={selectedSociety?.id === society.id}
-                  onSelect={() => handleSelectSociety(society)}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Separator */}
-          <div className="my-6 border-t border-zinc-800" />
-
-          {/* Target Societies Section */}
-          <div>
-            <div className="mb-4 flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-white">
-                Target Societies
-              </h3>
-              <Info className="h-4 w-4 cursor-help text-zinc-500" />
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              {/* Create Target Society Card */}
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-[800px] min-w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-zinc-800 bg-[#18181B] p-6 shadow-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]">
+            {/* Close button */}
+            <Dialog.Close asChild>
               <button
                 type="button"
-                onClick={handleCreateSociety}
-                className="flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-zinc-700 p-6 transition-colors hover:border-zinc-600"
+                className="absolute right-4 top-4 text-zinc-500 transition-colors hover:text-zinc-400"
+                aria-label="Close"
               >
-                <Plus className="mb-2 h-6 w-6 text-zinc-500" />
-                <span className="text-sm text-zinc-400">
-                  Create Target Society
-                </span>
+                <X className="h-5 w-5" />
               </button>
+            </Dialog.Close>
 
-              {targetSocieties.map((society) => (
-                <TargetSocietyCard
-                  key={society.id}
-                  society={society}
-                  isSelected={selectedSociety?.id === society.id}
-                  onSelect={() => handleSelectSociety(society)}
-                  onEdit={handleEdit}
-                  onRefresh={handleRefresh}
-                  onDelete={handleDelete}
-                />
-              ))}
+            {/* Personal Societies Section */}
+            <div>
+              <div className="mb-4 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-white">
+                  Personal Societies
+                </h3>
+                <Info className="h-4 w-4 cursor-help text-zinc-500" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {personalSocieties.map((society) => (
+                  <PersonalSocietyCard
+                    key={society.id}
+                    society={society}
+                    isSelected={selectedSociety?.id === society.id}
+                    onSelect={() => handleSelectSociety(society)}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+
+            {/* Separator */}
+            <div className="my-6 border-t border-zinc-800" />
+
+            {/* Target Societies Section */}
+            <div>
+              <div className="mb-4 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-white">
+                  Target Societies
+                </h3>
+                <Info className="h-4 w-4 cursor-help text-zinc-500" />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                {/* Create Target Society Card */}
+                <button
+                  type="button"
+                  onClick={handleCreateSociety}
+                  className="flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-zinc-700 p-6 transition-colors hover:border-zinc-600"
+                >
+                  <Plus className="mb-2 h-6 w-6 text-zinc-500" />
+                  <span className="text-sm text-zinc-400">
+                    Create Target Society
+                  </span>
+                </button>
+
+                {targetSocieties.map((society) => (
+                  <TargetSocietyCard
+                    key={society.id}
+                    society={society}
+                    isSelected={selectedSociety?.id === society.id}
+                    onSelect={() => handleSelectSociety(society)}
+                    onEdit={handleEdit}
+                    onRefresh={handleRefresh}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </div>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
       <CreateSocietyModal
         open={createModalOpen}
@@ -194,7 +186,6 @@ export function SocietySelector({ className }: SocietySelectorProps) {
 
 /**
  * Personal Society Card component.
- * Displays a personal society with platform icon and setup badge.
  */
 function PersonalSocietyCard({
   society,
@@ -232,7 +223,6 @@ function PersonalSocietyCard({
 
 /**
  * Target Society Card component.
- * Displays a target society with icon, badge, and action menu.
  */
 function TargetSocietyCard({
   society,
