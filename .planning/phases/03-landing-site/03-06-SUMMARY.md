@@ -1,64 +1,98 @@
-# Phase 3.06 Summary — Verification Checkpoint
+---
+phase: 03-landing-site
+plan: 06
+subsystem: ui
+tags: [testimonials, case-study, quotes, phosphor-icons, react, nextjs]
 
-## Status: Complete
+# Dependency graph
+requires:
+  - phase: 03-02
+    provides: Logo assets (teneo-logo-dark.png, pulsar.svg)
+  - phase: 03-03
+    provides: Landing component patterns and FadeIn animations
+provides:
+  - TestimonialQuote reusable component
+  - CaseStudySection (Teneo case study with quote)
+  - PartnershipSection (Pulsar partnership with reversed layout)
+affects: [03-08-landing-assembly]
 
-## Overview
-Manual visual verification was performed to ensure pixel-perfect match with societies.io. All identified discrepancies were fixed.
+# Tech tracking
+tech-stack:
+  added: []
+  patterns: [two-column testimonial layout with quote/card swap]
 
-## Verification Method
-- Visual comparison at desktop (1440px) and mobile (375px) viewports
-- Side-by-side comparison with societies.io reference screenshots
-- Build verification to ensure no broken imports
+key-files:
+  created:
+    - src/components/landing/testimonial-quote.tsx
+    - src/components/landing/case-study-section.tsx
+    - src/components/landing/partnership-section.tsx
+  modified:
+    - src/components/landing/index.ts
 
-## Pixel-Perfect Fixes Applied
+key-decisions:
+  - "Phosphor Quotes icon with weight=fill for quote mark styling"
+  - "Reusable TestimonialQuote component for both sections"
 
-### Header
-- **Header separator**: Changed from rainbow gradient to grey line to match societies.io
+patterns-established:
+  - "Mirrored two-column layout pattern (card/quote vs quote/card)"
+  - "Testimonial quote structure with icon, blockquote, author attribution"
 
-### Section Labels
-- **All section labels**: Updated to orange color (matching societies.io brand)
+# Metrics
+duration: 2min
+completed: 2026-01-28
+---
 
-### Features Section
-- **Layout**: 4-column grid layout
-- **Icons**: White icons (not colored)
-- **Separators**: Added vertical separators between feature cards
+# Phase 3 Plan 6: Testimonials Sections Summary
 
-### Testimonials Section
-- **Quote styling**: Italic text for testimonial quotes
-- **Quote marks**: Added proper quotation marks
-- **Separators**: Added separators between testimonial cards
+**Teneo case study and Pulsar partnership sections with reusable TestimonialQuote component and mirrored two-column layouts**
 
-### Accuracy Section
-- **Percentage display**: White "86%" text
-- **Label**: Orange "Accuracy" label
+## Performance
 
-### Persona Card
-- **Icons**: SVG icons properly implemented
-- **Positioning**: Correct layout and spacing
+- **Duration:** 2 min
+- **Started:** 2026-01-28T15:25:00Z
+- **Completed:** 2026-01-28T15:27:00Z
+- **Tasks:** 4
+- **Files modified:** 4
 
-## Build Verification
-```
-✓ npm run build
-✓ All routes generated successfully
-✓ No broken imports
-```
+## Accomplishments
+- Reusable TestimonialQuote component for customer quotes
+- Teneo case study section with logo, description, and "Read more" link
+- Pulsar partnership section with mirrored layout (quote left, card right)
+- Barrel exports for all new components
 
-## Routes Generated
-- `/` (homepage)
-- `/_not-found`
-- `/app`
-- `/coming-soon`
-- `/login`
-- `/showcase`
+## Task Commits
 
-## Notes
-- 03-05 (About page) was SKIPPED because societies.io has no /about route
-- Phase marked complete by user approval after visual verification
-- All success criteria from Phase 3 have been met
+Each task was committed atomically:
 
-## Next Phase
-Phase 4: App Layout & Navigation
-- App shell with sidebar
-- User menu dropdown
-- Mobile app navigation
-- Route protection (auth guard)
+1. **Task 1: Create TestimonialQuote component** - `14320f5` (feat)
+2. **Task 2: Create CaseStudySection component** - `38f50b8` (feat)
+3. **Task 3: Create PartnershipSection component** - `fc576ea` (feat)
+4. **Task 4: Update landing components barrel export** - `7fb8c31` (chore)
+
+## Files Created/Modified
+- `src/components/landing/testimonial-quote.tsx` - Reusable quote component with Phosphor icon
+- `src/components/landing/case-study-section.tsx` - Teneo case study with two-column layout
+- `src/components/landing/partnership-section.tsx` - Pulsar partnership with reversed layout
+- `src/components/landing/index.ts` - Added exports for new components
+
+## Decisions Made
+- **Phosphor Quotes with weight="fill"**: Solid quote icon at 50% opacity matches societies.io reference
+- **Reusable TestimonialQuote**: Extracted common quote structure to DRY component used by both sections
+
+## Deviations from Plan
+None - plan executed exactly as written.
+
+## Issues Encountered
+- Build cache corruption required `rm -rf .next` clean build (resolved automatically)
+
+## User Setup Required
+None - no external service configuration required.
+
+## Next Phase Readiness
+- Testimonial sections ready for landing page assembly
+- CaseStudySection and PartnershipSection export from @/components/landing
+- Both components use existing logo assets from public/logos/
+
+---
+*Phase: 03-landing-site*
+*Completed: 2026-01-28*

@@ -2,10 +2,10 @@
 
 ## Current Status
 - **Phase**: 3 of 10 — Landing Site
-- **Plan**: 07 of 8 in phase
+- **Plan**: 06 of 8 in phase
 - **Status**: In progress
 - **Last Updated**: 2026-01-28
-- **Last Activity**: 2026-01-28 - Completed 03-07-PLAN.md (FAQ Section)
+- **Last Activity**: 2026-01-28 - Completed 03-06-PLAN.md (Testimonials Sections)
 
 **Progress**: ███░░░░░░░ 30% (3/10 phases)
 
@@ -34,6 +34,8 @@
   - 03-04: BackersSection, FeatureCard, FeaturesSection (595e878, b147d9e, 8ae5294, 7366d01)
 - [x] Phase 3 Plan 5: Stats Section
   - 03-05: ComparisonChart, StatsSection (101116a, 45b6973)
+- [x] Phase 3 Plan 6: Testimonials Sections
+  - 03-06: TestimonialQuote, CaseStudySection, PartnershipSection (14320f5, 38f50b8, fc576ea, 7fb8c31)
 - [x] Phase 3 Plan 7: FAQ Section
   - 03-07: FAQSection component with accordion (bcc90a9, 7c4a24e)
 
@@ -89,6 +91,8 @@
 | Data-driven comparison chart | 03-05 | comparisonData array for easy model/accuracy updates |
 | Transparent bg for FAQ items | 03-07 | Override default accordion elevated bg |
 | max-w-3xl narrower FAQ container | 03-07 | FAQ section narrower than other sections |
+| Phosphor Quotes weight="fill" | 03-06 | Solid quote icon at 50% opacity for testimonials |
+| Reusable TestimonialQuote component | 03-06 | DRY pattern for quote+author in multiple sections |
 
 ## Project-Wide Directives
 
@@ -115,13 +119,14 @@
 - Phase 3 Plan 4 complete: BackersSection, FeatureCard, FeaturesSection
 - Phase 3 Plan 7 complete: FAQSection with accordion
 - Phase 3 Plan 5 complete: StatsSection with ComparisonChart
+- Phase 3 Plan 6 complete: TestimonialQuote, CaseStudySection, PartnershipSection
 
 ## Session Continuity
 - **Last session**: 2026-01-28
-- **Stopped at**: Completed 03-05-PLAN.md — Stats Section
+- **Stopped at**: Completed 03-06-PLAN.md — Testimonials Sections
 - **Resume file**: None
 
 ## Next Steps
-- Continue Phase 3 Landing Site plans (03-06, 03-08)
-- Build Case Study, CTA Footer sections
-- Build pixel-perfect landing pages matching societies.io
+- Continue Phase 3 Landing Site plans (03-08)
+- Build CTA Footer section
+- Assemble full landing page
