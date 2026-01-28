@@ -4,7 +4,7 @@ import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
 import { ChevronDown, X, Plus, Info, Briefcase, Coins, Users } from "lucide-react";
-import { useSocietyStore } from "@/stores/society-store";
+import { useSocietyStore, useSelectedSociety, usePersonalSocieties, useTargetSocieties } from "@/stores/society-store";
 import { CardActionMenu } from "./card-action-menu";
 import { CreateSocietyModal } from "./create-society-modal";
 import type { Society, PersonalSociety, TargetSociety } from "@/types/society";
@@ -22,10 +22,10 @@ export function SocietySelector({ className }: SocietySelectorProps) {
   const [open, setOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
-  // Use Zustand store instead of local state
-  const selectedSociety = useSocietyStore((s) => s.getSelectedSociety());
-  const personalSocieties = useSocietyStore((s) => s.getPersonalSocieties());
-  const targetSocieties = useSocietyStore((s) => s.getTargetSocieties());
+  // Use memoized selector hooks to avoid infinite loops
+  const selectedSociety = useSelectedSociety();
+  const personalSocieties = usePersonalSocieties();
+  const targetSocieties = useTargetSocieties();
   const selectSociety = useSocietyStore((s) => s.selectSociety);
   const deleteSociety = useSocietyStore((s) => s.deleteSociety);
 

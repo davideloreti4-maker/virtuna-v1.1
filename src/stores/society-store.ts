@@ -1,6 +1,7 @@
 // src/stores/society-store.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useShallow } from 'zustand/react/shallow';
 import type { Society, PersonalSociety, TargetSociety } from '@/types/society';
 import {
   INITIAL_SOCIETIES,
@@ -10,11 +11,6 @@ import {
 interface SocietyState {
   societies: Society[];
   selectedSocietyId: string | null;
-
-  // Selectors (derived)
-  getPersonalSocieties: () => PersonalSociety[];
-  getTargetSocieties: () => TargetSociety[];
-  getSelectedSociety: () => Society | undefined;
 
   // Actions
   selectSociety: (id: string) => void;
@@ -26,19 +22,9 @@ interface SocietyState {
 
 export const useSocietyStore = create<SocietyState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       societies: INITIAL_SOCIETIES,
       selectedSocietyId: INITIAL_TARGET_SOCIETIES[0]?.id ?? null,
-
-      // Selectors
-      getPersonalSocieties: () =>
-        get().societies.filter((s): s is PersonalSociety => s.type === 'personal'),
-
-      getTargetSocieties: () =>
-        get().societies.filter((s): s is TargetSociety => s.type === 'target'),
-
-      getSelectedSociety: () =>
-        get().societies.find((s) => s.id === get().selectedSocietyId),
 
       // Actions
       selectSociety: (id) => set({ selectedSocietyId: id }),
@@ -79,3 +65,22 @@ export const useSocietyStore = create<SocietyState>()(
     }
   )
 );
+
+// Selector hooks with proper memoization
+export function useSelectedSociety() {
+  return useSocietyStore(
+    useShallow((s) => s.societies.find((soc) => soc.id === s.selectedSocietyId))
+  );
+}
+
+export function usePersonalSocieties() {
+  return useSocietyStore(
+    useShallow((s) => s.societies.filter((soc): soc is PersonalSociety => soc.type === 'personal'))
+  );
+}
+
+export function useTargetSocieties() {
+  return useSocietyStore(
+    useShallow((s) => s.societies.filter((soc): soc is TargetSociety => soc.type === 'target'))
+  );
+}
