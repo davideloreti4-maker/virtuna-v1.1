@@ -1,1 +1,40 @@
 @import "tailwindcss";
+
+@theme {
+  /* Colors */
+  --color-background: #0D0D0D;
+  --color-background-elevated: #1A1A1A;
+  --color-foreground: #FFFFFF;
+  --color-foreground-secondary: #F5F5F5;
+  --color-foreground-muted: #CCCCCC;
+  --color-accent: #E57850;
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-slate: #708090;
+
+  /* Font families - CSS variables set by next/font */
+  --font-display: var(--font-funnel-display), sans-serif;
+  --font-sans: var(--font-satoshi), ui-sans-serif, system-ui, sans-serif;
+
+  /* Custom font sizes (matching societies.io) */
+  --text-hero: 52px;
+  --text-section: 40px;
+  --text-card-title: 18px;
+
+  /* Border radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+
+  /* Easing functions */
+  --ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
+  --ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+/* Base styles */
+body {
+  @apply bg-background text-foreground font-sans;
+}
+
+h1,
+h2 {
+  @apply font-display;
+}
