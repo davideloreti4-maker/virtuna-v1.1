@@ -1,7 +1,10 @@
 export { BackersSection } from "./backers-section";
+export { ComparisonChart } from "./comparison-chart";
+export { FAQSection } from "./faq-section";
 export { FeatureCard } from "./feature-card";
 export type { FeatureCardProps } from "./feature-card";
 export { FeaturesSection } from "./features-section";
 export { HeroSection } from "./hero-section";
 export { PersonaCard } from "./persona-card";
 export type { PersonaCardProps } from "./persona-card";
+export { StatsSection } from "./stats-section";
