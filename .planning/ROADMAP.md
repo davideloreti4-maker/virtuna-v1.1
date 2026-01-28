@@ -25,14 +25,21 @@ Plans:
 ### Phase 2: Design System & Components
 **Goal**: Build reusable component library matching societies.io design
 
-**Status**: Not Started
+**Status**: Planned
 
-**Tasks**:
-- [ ] Foundation setup (dependencies, utils, design tokens)
-- [ ] Base UI components (Button, Input, Card, Skeleton)
-- [ ] Layout components (Header, Footer, Container)
-- [ ] Animation components (FadeIn, SlideUp, PageTransition)
-- [ ] Visual verification (showcase page + checkpoint)
+**Plans**: 5 plans (3 waves)
+
+Plans:
+- [ ] 02-01-PLAN.md — Foundation setup (design tokens, cn() utility, fonts)
+- [ ] 02-02-PLAN.md — Base UI components (Button, Input, Card, Skeleton)
+- [ ] 02-03-PLAN.md — Layout components (Container, Header, Footer)
+- [ ] 02-04-PLAN.md — Animation components (FadeIn, SlideUp, PageTransition)
+- [ ] 02-05-PLAN.md — Showcase page + visual verification checkpoint
+
+**Wave Structure**:
+- Wave 1: 02-01 (Foundation) — sequential, must complete first
+- Wave 2: 02-02, 02-03, 02-04 (Components) — parallel, all depend on 02-01
+- Wave 3: 02-05 (Showcase) — sequential, depends on all Wave 2 plans
 
 **Success Criteria**:
 - All base components match societies.io styling
@@ -250,4 +257,4 @@ Phase 2 (Design System) ✓
 - **Current Phase**: 2 (Design System & Components)
 - **Completed Phases**: 1
 - **Blocked By**: None
-- **Next Action**: Plan and execute Phase 2
+- **Next Action**: Execute Phase 2
