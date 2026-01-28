@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSocietyStore } from "@/stores/society-store";
 
 interface SidebarProps {
   mobileOpen?: boolean;
@@ -43,6 +44,7 @@ interface SidebarProps {
  */
 export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarProps) {
   const router = useRouter();
+  const selectedSociety = useSocietyStore((s) => s.getSelectedSociety());
 
   const handleLogout = () => {
     // Simulate logout by navigating to landing page
@@ -133,6 +135,14 @@ export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarPr
             Current Society
           </label>
           <SocietySelector />
+          {selectedSociety && (
+            <div className="mt-2 flex items-center gap-2 px-1">
+              <div className="h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="truncate text-xs text-zinc-500">
+                {selectedSociety.name}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* View selector section */}
