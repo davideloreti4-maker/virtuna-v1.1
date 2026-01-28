@@ -19,9 +19,9 @@ export function ContextBar({
   return (
     <div className={cn("flex items-center", className)}>
       <div className="flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-800/80 px-4 py-2">
-        {/* Optional: colored dot indicator */}
+        {/* Colored dot indicator - matches reference (blue) */}
         <span
-          className="h-2 w-2 rounded-full bg-emerald-500"
+          className="h-2 w-2 rounded-full bg-blue-500"
           aria-hidden="true"
         />
         <span className="text-sm text-white">{location}</span>
