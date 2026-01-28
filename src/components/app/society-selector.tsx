@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
 import { ChevronDown, X, Plus, Info, Briefcase, Coins, Users } from "lucide-react";
-import { useSocietyStore } from "@/stores/society-store";
+import { useSocietyStore, useHasHydrated } from "@/stores/society-store";
 import { CardActionMenu } from "./card-action-menu";
 import { CreateSocietyModal } from "./create-society-modal";
 import type { Society, PersonalSociety, TargetSociety } from "@/types/society";
@@ -21,6 +21,9 @@ interface SocietySelectorProps {
 export function SocietySelector({ className }: SocietySelectorProps) {
   const [open, setOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+
+  // Wait for hydration to avoid SSR mismatch
+  const hasHydrated = useHasHydrated();
 
   // Select raw state (stable references)
   const societies = useSocietyStore((s) => s.societies);
@@ -41,6 +44,23 @@ export function SocietySelector({ className }: SocietySelectorProps) {
     () => societies.filter((s): s is TargetSociety => s.type === 'target'),
     [societies]
   );
+
+  // Show loading state until hydrated
+  if (!hasHydrated) {
+    return (
+      <button
+        type="button"
+        disabled
+        className={cn(
+          "flex w-full items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-500",
+          className
+        )}
+      >
+        <span>Loading...</span>
+        <ChevronDown className="h-4 w-4 text-zinc-600" />
+      </button>
+    );
+  }
 
   const handleSelectSociety = (society: Society) => {
     selectSociety(society.id);

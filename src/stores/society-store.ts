@@ -8,10 +8,14 @@ import {
 } from '@/lib/mock-societies';
 
 interface SocietyState {
+  // Hydration state for SSR
+  _hasHydrated: boolean;
+
   societies: Society[];
   selectedSocietyId: string | null;
 
   // Actions
+  setHasHydrated: (state: boolean) => void;
   selectSociety: (id: string) => void;
   addSociety: (society: Society) => void;
   updateSociety: (id: string, updates: Partial<Society>) => void;
@@ -22,10 +26,14 @@ interface SocietyState {
 export const useSocietyStore = create<SocietyState>()(
   persist(
     (set) => ({
+      _hasHydrated: false,
+
       societies: INITIAL_SOCIETIES,
       selectedSocietyId: INITIAL_TARGET_SOCIETIES[0]?.id ?? null,
 
       // Actions
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
+
       selectSociety: (id) => set({ selectedSocietyId: id }),
 
       addSociety: (society) =>
@@ -60,7 +68,15 @@ export const useSocietyStore = create<SocietyState>()(
         }),
     }),
     {
-      name: 'virtuna-societies', // localStorage key
+      name: 'virtuna-societies',
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );
+
+// Hook to wait for hydration before rendering store-dependent UI
+export const useHasHydrated = () => {
+  return useSocietyStore((s) => s._hasHydrated);
+};
