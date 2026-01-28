@@ -2,10 +2,10 @@
 
 ## Current Status
 - **Phase**: 3 of 10 — Landing Site
-- **Plan**: 04 of 8 in phase
+- **Plan**: 07 of 8 in phase
 - **Status**: In progress
 - **Last Updated**: 2026-01-28
-- **Last Activity**: 2026-01-28 - Completed 03-04-PLAN.md (Backers & Features Sections)
+- **Last Activity**: 2026-01-28 - Completed 03-07-PLAN.md (FAQ Section)
 
 **Progress**: ███░░░░░░░ 30% (3/10 phases)
 
@@ -32,6 +32,8 @@
   - 03-03: HeroSection, PersonaCard, network visualization (1ad2c9a, 4b84830, ea4a450, 85a03e6)
 - [x] Phase 3 Plan 4: Backers & Features Sections
   - 03-04: BackersSection, FeatureCard, FeaturesSection (595e878, b147d9e, 8ae5294, 7366d01)
+- [x] Phase 3 Plan 7: FAQ Section
+  - 03-07: FAQSection component with accordion (bcc90a9, 7c4a24e)
 
 ## In Progress
 - [ ] Phase 3: Landing Site
@@ -81,6 +83,8 @@
 | Phosphor icons weight="light" | 03-04 | Feature card icons match societies.io style |
 | brightness-0 invert for logos | 03-04 | CSS filter for white logo display on dark bg |
 | FadeIn delay for stagger | 03-04 | Individual FadeIn wrappers with delay prop |
+| Transparent bg for FAQ items | 03-07 | Override default accordion elevated bg |
+| max-w-3xl narrower FAQ container | 03-07 | FAQ section narrower than other sections |
 
 ## Project-Wide Directives
 
@@ -105,13 +109,14 @@
 - Phase 3 Plan 1 complete: Header, Footer, Accordion, Coming Soon page
 - Phase 3 Plan 3 complete: Hero section with PersonaCard and network visualization
 - Phase 3 Plan 4 complete: BackersSection, FeatureCard, FeaturesSection
+- Phase 3 Plan 7 complete: FAQSection with accordion
 
 ## Session Continuity
 - **Last session**: 2026-01-28
-- **Stopped at**: Completed 03-04-PLAN.md — Backers & Features Sections
+- **Stopped at**: Completed 03-07-PLAN.md — FAQ Section
 - **Resume file**: None
 
 ## Next Steps
-- Continue Phase 3 Landing Site plans (03-05 through 03-08)
-- Build Case Studies, FAQ sections
+- Continue Phase 3 Landing Site plans (03-05, 03-06, 03-08)
+- Build Stats, Case Study, CTA Footer sections
 - Build pixel-perfect landing pages matching societies.io
