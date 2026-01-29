@@ -2,12 +2,12 @@
 
 ## Current Status
 - **Phase**: 6 of 10 — Test Type Selector & Forms
-- **Plan**: Not started
-- **Status**: Ready to plan
+- **Plan**: 1 of ? complete
+- **Status**: In progress
 - **Last Updated**: 2026-01-29
-- **Last Activity**: 2026-01-29 - Completed Phase 5 (Society Management)
+- **Last Activity**: 2026-01-29 - Completed 06-01-PLAN.md (Test Type Selector Foundation)
 
-**Progress**: █████░░░░░ 50% (5/10 phases)
+**Progress**: █████░░░░░ 55% (5.5/10 phases)
 
 ## Completed
 - [x] Phase 1: Infrastructure Setup
@@ -61,6 +61,7 @@
 
 ## In Progress
 - [ ] Phase 6: Test Type Selector & Forms
+  - 06-01: Test Type Selector Foundation (bed59d2, f286f98)
 
 ## Blocked
 - (none)
@@ -147,6 +148,9 @@
 | Manual localStorage over persist | 05-05 | Zustand persist causes SSR hydration loops, use manual save/load |
 | _hydrate() pattern | 05-05 | Call hydration in useEffect after mount for SSR safety |
 | v0 polish deferred | 05-05 | Design polish pass at end of milestone, not per-component |
+| Icon map pattern | 06-01 | Record<IconName, Component> for dynamic Lucide icon rendering |
+| TEST_TYPES as Record | 06-01 | O(1) lookup by type id for form rendering |
+| TEST_CATEGORIES as array | 06-01 | Preserves display order for modal rendering |
 
 ## Project-Wide Directives
 
@@ -191,10 +195,9 @@
 
 ## Session Continuity
 - **Last session**: 2026-01-29
-- **Stopped at**: Completed Phase 5 (Society Management)
+- **Stopped at**: Completed 06-01-PLAN.md (Test Type Selector Foundation)
 - **Resume file**: None
 
 ## Next Steps
-- Plan Phase 6: Test Type Selector & Forms
-- Build test type selector modal (11 types in 5 categories)
-- Build content form components
+- Execute 06-02-PLAN.md: Content forms and test creation flow
+- Wire up TestTypeSelector to create new tests
