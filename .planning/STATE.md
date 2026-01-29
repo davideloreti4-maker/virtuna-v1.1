@@ -76,6 +76,7 @@
 
 ## In Progress
 - [ ] Phase 8: Test History & Polish
+  - 08-01: AlertDialog & Delete Modal Foundation (7c48271)
   - 08-02: Test History List Components (de896cb, ba24e92)
 
 ## Blocked
@@ -196,6 +197,8 @@
 | Icon map pattern for history | 08-02 | Record<IconName, Component> for dynamic test type icons |
 | Dialog sibling for delete | 08-02 | Modal rendered as sibling, not nested |
 | Indigo left border active | 08-02 | Active history item indicator |
+| AlertDialog over Dialog for destructive | 08-01 | Proper ARIA role for better screen reader announcements |
+| isViewingHistory lifecycle | 08-01 | Flag set true only in viewResult, false in reset/deleteTest |
 
 ## Project-Wide Directives
 
@@ -243,7 +246,7 @@
 
 ## Session Continuity
 - **Last session**: 2026-01-29
-- **Stopped at**: Completed 08-02-PLAN.md (Test History List Components)
+- **Stopped at**: Completed 08-01-PLAN.md (AlertDialog & Delete Modal Foundation)
 - **Resume file**: None
 
 ## Next Steps
