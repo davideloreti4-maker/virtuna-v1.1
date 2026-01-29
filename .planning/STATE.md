@@ -2,12 +2,12 @@
 
 ## Current Status
 - **Phase**: 9 of 10 — Settings & Modals
-- **Plan**: Not started
-- **Status**: Ready to plan
+- **Plan**: 1 of ? complete
+- **Status**: In progress
 - **Last Updated**: 2026-01-29
-- **Last Activity**: 2026-01-29 - Completed Phase 8 (Test History & Polish)
+- **Last Activity**: 2026-01-29 - Completed 09-01-PLAN.md (Settings Foundation)
 
-**Progress**: ████████░░ 80% (8/10 phases)
+**Progress**: ████████░░ 81% (8.1/10 phases)
 
 ## Completed
 - [x] Phase 1: Infrastructure Setup
@@ -75,7 +75,8 @@
   - 07-06: Visual Comparison Verification (70bd645, 1617076) — User approved
 
 ## In Progress
-- (none)
+- [ ] Phase 9: Settings & Modals
+  - 09-01: Settings Foundation (5483af4, f6025a5, 396f457) — COMPLETE
 
 ## Recently Completed
 - [x] Phase 8: Test History & Polish — VERIFIED COMPLETE
@@ -210,6 +211,9 @@
 | Read-only form via isViewingHistory | 08-04 | Forms check store flag to disable inputs |
 | Pre-fill forms via useEffect | 08-04 | Watch currentResult changes for history viewing |
 | Create test resets then opens | 08-04 | reset() followed by setStatus("selecting-type") |
+| Settings types structure | 09-01 | Separate interfaces for UserProfile, NotificationPrefs, TeamMember, BillingInfo |
+| Manual localStorage for settings | 09-01 | SSR-safe pattern matching society-store.ts |
+| Billing not persisted | 09-01 | Would come from Stripe backend in production |
 
 ## Project-Wide Directives
 
@@ -257,7 +261,7 @@
 
 ## Session Continuity
 - **Last session**: 2026-01-29
-- **Stopped at**: Completed Phase 8 (Test History & Polish) — verified
+- **Stopped at**: Completed 09-01-PLAN.md (Settings Foundation)
 - **Resume file**: None
 
 ## Next Steps
