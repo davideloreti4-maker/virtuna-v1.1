@@ -2,12 +2,12 @@
 
 ## Current Status
 - **Phase**: 8 of 10 — Test History & Polish
-- **Plan**: Not started
-- **Status**: Ready to plan
+- **Plan**: 2 of 4 complete
+- **Status**: In progress
 - **Last Updated**: 2026-01-29
-- **Last Activity**: 2026-01-29 - Completed Phase 7 (Simulation & Results)
+- **Last Activity**: 2026-01-29 - Completed 08-02-PLAN.md (Test History List Components)
 
-**Progress**: ███████░░░ 70% (7/10 phases)
+**Progress**: ███████░░░ 72% (7.5/10 phases)
 
 ## Completed
 - [x] Phase 1: Infrastructure Setup
@@ -75,6 +75,8 @@
   - 07-06: Visual Comparison Verification (70bd645, 1617076) — User approved
 
 ## In Progress
+- [ ] Phase 8: Test History & Polish
+  - 08-02: Test History List Components (de896cb, ba24e92)
 
 ## Blocked
 - (none)
@@ -190,6 +192,10 @@
 | Attention bar red/amber/gray | 07-06 | Full attention uses red (not emerald) to match societies.io |
 | Impact label above score | 07-06 | Layout matches societies.io reference |
 | Variants vertical list | 07-06 | Vertical list layout instead of horizontal scroll cards |
+| AlertDialog for delete modal | 08-02 | Better accessibility for destructive actions |
+| Icon map pattern for history | 08-02 | Record<IconName, Component> for dynamic test type icons |
+| Dialog sibling for delete | 08-02 | Modal rendered as sibling, not nested |
+| Indigo left border active | 08-02 | Active history item indicator |
 
 ## Project-Wide Directives
 
@@ -237,8 +243,9 @@
 
 ## Session Continuity
 - **Last session**: 2026-01-29
-- **Stopped at**: Completed 07-06-PLAN.md (Visual comparison verification - user approved)
+- **Stopped at**: Completed 08-02-PLAN.md (Test History List Components)
 - **Resume file**: None
 
 ## Next Steps
-- Phase 8: Test History & Exports
+- Phase 8 Plan 3: Export functionality
+- Phase 8 Plan 4: UI polish pass
