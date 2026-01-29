@@ -162,25 +162,31 @@ Plans:
 ---
 
 ### Phase 7: Simulation & Results
-**Goal**: Build simulation flow and results display
+**Goal**: Build simulation flow and results display matching societies.io
 
-**Status**: Not Started
+**Status**: Planning Complete
 
-**Tasks**:
-- [ ] Build simulation loading states (4 phases)
-- [ ] Create network placeholder (animated dots or static image)
-- [ ] Build results panel layout
-- [ ] Implement Impact Score display
-- [ ] Add Attention breakdown (Full/Partial/Ignore)
-- [ ] Build Variants section (AI-generated alternatives)
-- [ ] Add Insights section
-- [ ] Build Conversation themes with sample quotes
-- [ ] Add Share Simulation button
+**Plans**: 6 plans (4 waves)
+
+Plans:
+- [ ] 07-01-PLAN.md — Restructure dashboard layout for floating form
+- [ ] 07-02-PLAN.md — Build 4-phase loading states with progress
+- [ ] 07-03-PLAN.md — Extend TestResult interface and mock data generators
+- [ ] 07-04-PLAN.md — Build results panel components (Impact, Variants, Insights, Themes)
+- [ ] 07-05-PLAN.md — Integrate all components into simulation flow
+- [ ] 07-06-PLAN.md — Visual comparison with societies.io using v0 MCP
+
+**Wave Structure**:
+- Wave 1: 07-01, 07-02, 07-03 (Parallel - layout, loading, data model)
+- Wave 2: 07-04 (Results components - depends on 07-03)
+- Wave 3: 07-05 (Integration - depends on all prior)
+- Wave 4: 07-06 (Visual comparison checkpoint)
 
 **Success Criteria**:
 - Full simulation flow from submit to results
 - Results panel matches societies.io layout
 - Mock data displays correctly
+- v0 MCP visual comparison completed
 
 **Requirements Covered**: RES-01 to RES-08
 
@@ -264,9 +270,9 @@ Phase 2 (Design System) ✓
             ↓                                   │
         Phase 5 (Society Management) ✓          │
             ↓                                   │
-        Phase 6 (Test Forms) ← CURRENT          │
+        Phase 6 (Test Forms) ✓                  │
             ↓                                   │
-        Phase 7 (Results)                       │
+        Phase 7 (Results) ← CURRENT             │
             ↓                                   │
         Phase 8 (History)                       │
             ↓                                   │
@@ -282,4 +288,4 @@ Phase 2 (Design System) ✓
 - **Current Phase**: 7 (Simulation & Results)
 - **Completed Phases**: 1, 2, 3, 4, 5, 6
 - **Blocked By**: None
-- **Next Action**: Plan Phase 7
+- **Next Action**: Execute Phase 7
