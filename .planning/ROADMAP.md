@@ -132,19 +132,19 @@ Plans:
 
 ---
 
-### Phase 6: Test Type Selector & Forms
+### Phase 6: Test Type Selector & Forms ✓
 **Goal**: Build test creation flow with all 11 form types
 
-**Status**: Planned
+**Status**: Complete (2026-01-29)
 
 **Plans**: 5 plans (4 waves)
 
 Plans:
-- [ ] 06-01-PLAN.md — Test type definitions + TestTypeSelector modal
-- [ ] 06-02-PLAN.md — ContentForm component (shared by 10 types)
-- [ ] 06-03-PLAN.md — SurveyForm component (unique structure)
-- [ ] 06-04-PLAN.md — Test store + TikTok/Instagram functional flows
-- [ ] 06-05-PLAN.md — Visual verification checkpoint
+- [x] 06-01-PLAN.md — Test type definitions + TestTypeSelector modal
+- [x] 06-02-PLAN.md — ContentForm component (shared by 10 types)
+- [x] 06-03-PLAN.md — SurveyForm component (unique structure)
+- [x] 06-04-PLAN.md — Test store + TikTok/Instagram functional flows
+- [x] 06-05-PLAN.md — Visual verification checkpoint
 
 **Wave Structure**:
 - Wave 1: 06-01 (Type definitions + selector modal)
@@ -153,9 +153,9 @@ Plans:
 - Wave 4: 06-05 (Verification checkpoint)
 
 **Success Criteria**:
-- All 11 test types selectable
-- Forms match societies.io styling
-- TikTok and Instagram forms submit successfully
+- [x] All 11 test types selectable
+- [x] Forms match societies.io styling
+- [x] TikTok and Instagram forms submit successfully
 
 **Requirements Covered**: TEST-01 to TEST-08
 
@@ -279,7 +279,7 @@ Phase 2 (Design System) ✓
 
 ## Current Status
 - **Current Milestone**: v1.1 (Pixel-Perfect Clone)
-- **Current Phase**: 6 (Test Type Selector & Forms)
-- **Completed Phases**: 1, 2, 3, 4, 5
+- **Current Phase**: 7 (Simulation & Results)
+- **Completed Phases**: 1, 2, 3, 4, 5, 6
 - **Blocked By**: None
-- **Next Action**: Execute Phase 6
+- **Next Action**: Plan Phase 7
