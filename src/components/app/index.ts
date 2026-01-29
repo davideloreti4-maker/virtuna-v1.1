@@ -11,3 +11,4 @@ export { SocietySelector } from "./society-selector";
 export { ViewSelector } from "./view-selector";
 export { CreateSocietyModal } from "./create-society-modal";
 export { TestTypeSelector } from "./test-type-selector";
+export { ContentForm } from "./content-form";
