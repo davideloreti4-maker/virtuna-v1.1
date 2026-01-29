@@ -1,13 +1,13 @@
 # Project State — Virtuna v1.1
 
 ## Current Status
-- **Phase**: 5 of 10 — Society Management
-- **Plan**: 4 of 6 complete
-- **Status**: In progress
-- **Last Updated**: 2026-01-28
-- **Last Activity**: 2026-01-28 - Completed 05-04-PLAN.md (Wire Up Create Society Flow)
+- **Phase**: 6 of 10 — Test Type Selector & Forms
+- **Plan**: Not started
+- **Status**: Ready to plan
+- **Last Updated**: 2026-01-29
+- **Last Activity**: 2026-01-29 - Completed Phase 5 (Society Management)
 
-**Progress**: ████░░░░░░ 40% (4/10 phases)
+**Progress**: █████░░░░░ 50% (5/10 phases)
 
 ## Completed
 - [x] Phase 1: Infrastructure Setup
@@ -52,12 +52,15 @@
   - 04-06: User-verified app shell, v0 polish applied (f05401c)
 - [x] Phase 4: App Layout & Navigation — VERIFIED COMPLETE
 
-## In Progress
-- [ ] Phase 5: Society Management
+- [x] Phase 5: Society Management — VERIFIED COMPLETE
   - 05-01: Society Store Foundation (0ab813a, 0d366da, d2e9ec5)
   - 05-02: Store Integration (07d097a, 90b47b0, 5eebfe8)
   - 05-03: Create Target Society Modal (a5e9575, 052c003)
   - 05-04: Wire Up Create Society Flow (410e498, e309147)
+  - 05-05: Visual Verification (9efd980) — User approved
+
+## In Progress
+- [ ] Phase 6: Test Type Selector & Forms
 
 ## Blocked
 - (none)
@@ -141,6 +144,9 @@
 | Close selector before create modal | 05-04 | Avoids Radix nested dialog focus trap issues |
 | Emerald indicator for active society | 05-04 | Consistent with active/online status conventions |
 | Dialog sibling pattern | 05-04 | Render modals as siblings in fragment, not nested |
+| Manual localStorage over persist | 05-05 | Zustand persist causes SSR hydration loops, use manual save/load |
+| _hydrate() pattern | 05-05 | Call hydration in useEffect after mount for SSR safety |
+| v0 polish deferred | 05-05 | Design polish pass at end of milestone, not per-component |
 
 ## Project-Wide Directives
 
@@ -179,13 +185,16 @@
 - Phase 5 Plan 2 complete: CardActionMenu, SocietySelector refactored to Zustand store
 - Phase 5 Plan 3 complete: CreateSocietyModal with gradient background, AI matching loading state
 - Phase 5 Plan 4 complete: Create society flow wired up, sidebar shows current society
+- Phase 5 Plan 5 complete: Visual verification checkpoint - user approved
+- Phase 5 verified: Society management complete - Zustand store, CRUD operations, persistence
+- Note: Replaced Zustand persist middleware with manual localStorage due to SSR issues
 
 ## Session Continuity
-- **Last session**: 2026-01-28
-- **Stopped at**: Completed 05-04-PLAN.md (Wire Up Create Society Flow)
+- **Last session**: 2026-01-29
+- **Stopped at**: Completed Phase 5 (Society Management)
 - **Resume file**: None
 
 ## Next Steps
-- Execute 05-05: Edit society modal
-- Execute 05-06: Delete confirmation
-- Continue Phase 5 Society Management plans
+- Plan Phase 6: Test Type Selector & Forms
+- Build test type selector modal (11 types in 5 categories)
+- Build content form components

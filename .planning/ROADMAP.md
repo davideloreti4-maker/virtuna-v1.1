@@ -102,19 +102,19 @@ Plans:
 
 ---
 
-### Phase 5: Society Management
+### Phase 5: Society Management ✓
 **Goal**: Complete society selector and creation flow with Zustand state management
 
-**Status**: Planning Complete
+**Status**: Complete (2026-01-29)
 
 **Plans**: 5 plans (4 waves)
 
 Plans:
-- [ ] 05-01-PLAN.md — Zustand store + types + mock data extraction
-- [ ] 05-02-PLAN.md — Refactor SocietySelector to use store + CardActionMenu
-- [ ] 05-03-PLAN.md — Create Target Society modal with AI matching UI
-- [ ] 05-04-PLAN.md — Wire up create flow + sidebar integration
-- [ ] 05-05-PLAN.md — Visual verification checkpoint
+- [x] 05-01-PLAN.md — Zustand store + types + mock data extraction
+- [x] 05-02-PLAN.md — Refactor SocietySelector to use store + CardActionMenu
+- [x] 05-03-PLAN.md — Create Target Society modal with AI matching UI
+- [x] 05-04-PLAN.md — Wire up create flow + sidebar integration
+- [x] 05-05-PLAN.md — Visual verification checkpoint
 
 **Wave Structure**:
 - Wave 1: 05-01 (Foundation - store, types, mock data)
@@ -123,10 +123,10 @@ Plans:
 - Wave 4: 05-05 (Verification checkpoint)
 
 **Success Criteria**:
-- Society selector matches societies.io reference
-- Create society modal works with local state
-- Society selection updates app context
-- Persistence via localStorage (Zustand persist)
+- [x] Society selector matches societies.io reference
+- [x] Create society modal works with local state
+- [x] Society selection updates app context
+- [x] Persistence via localStorage (manual implementation)
 
 **Requirements Covered**: SOC-01 to SOC-05
 
@@ -273,7 +273,7 @@ Phase 2 (Design System) ✓
 
 ## Current Status
 - **Current Milestone**: v1.1 (Pixel-Perfect Clone)
-- **Current Phase**: 5 (Society Management)
-- **Completed Phases**: 1, 2, 3, 4
+- **Current Phase**: 6 (Test Type Selector & Forms)
+- **Completed Phases**: 1, 2, 3, 4, 5
 - **Blocked By**: None
-- **Next Action**: Execute Phase 5
+- **Next Action**: Plan Phase 6

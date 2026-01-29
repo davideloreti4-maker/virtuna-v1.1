@@ -69,3 +69,48 @@ A pixel-perfect, AI-verified clone of societies.io (landing + app) serving as th
 ## Repository
 - GitHub: https://github.com/davideloreti4-maker/virtuna-v1.1
 - Local: ~/virtuna-v1.1
+
+---
+
+## Milestone v1.2 — Test Creation (Full App Clone)
+
+### Vision
+1:1 pixel-perfect clone of the entire societies.io app UI with functional TikTok + Instagram test forms.
+
+### What We're Building
+
+| Component | Scope |
+|-----------|-------|
+| Society Selector | Personal + Target sections, create/edit modals |
+| View Selector | Country, City, Generation, Role Level dropdowns |
+| Test Forms | All 11 test type forms (TikTok + Instagram functional) |
+| Results View | Impact score, attention, variants, insights, themes |
+| Test History | Sidebar history, delete, revisit results |
+| Settings | Profile, account, notifications, billing UI |
+| Modals | Leave Feedback, Create Society |
+
+### Excluded (This Version)
+- Network visualization (placeholder/static image only)
+- Real authentication (skip login, go straight to app)
+- Real backend (mock data only)
+
+### Success Criteria
+- All app screens match societies.io reference
+- TikTok form → simulate → results flow works
+- Instagram form → simulate → results flow works
+- Society selector shows/hides correctly
+- Create society modal works (local state)
+- Test history persists (local storage)
+- All modals open/close properly
+
+### Reference Documentation
+All reference files in `.reference/app/`:
+- `README.md` - App overview
+- `society-selector.md` - Society picker modal
+- `view-selector.md` - View dropdown specs
+- `tests/README.md` - Test feature overview
+- `tests/type-selector.md` - Test type selection
+- `tests/content-forms.md` - Content form specs
+- `tests/results.md` - Results view specs
+- `tests/history.md` - Test history sidebar
+- `modals.md` - Feedback and Create Society modals

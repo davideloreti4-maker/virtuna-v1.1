@@ -1,9 +1,0 @@
-{
-  "taskId": "2",
-  "success": false,
-  "output": "",
-  "filesModified": [],
-  "verificationPassed": false,
-  "error": "Timeout after 600s",
-  "duration": 600023
-}
