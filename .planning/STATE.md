@@ -2,10 +2,10 @@
 
 ## Current Status
 - **Phase**: 9 of 10 — Settings & Modals
-- **Plan**: 2 of ? complete
+- **Plan**: 4 of ? complete
 - **Status**: In progress
 - **Last Updated**: 2026-01-29
-- **Last Activity**: 2026-01-29 - Completed 09-02-PLAN.md (Settings Page UI)
+- **Last Activity**: 2026-01-29 - Completed 09-04-PLAN.md (Billing & Feedback)
 
 **Progress**: ████████░░ 81% (8.1/10 phases)
 
@@ -78,6 +78,8 @@
 - [ ] Phase 9: Settings & Modals
   - 09-01: Settings Foundation (5483af4, f6025a5, 396f457) — COMPLETE
   - 09-02: Settings Page UI (2b7fb6d, 31690d6, 70c6ead, 7b4a95c) — COMPLETE
+  - 09-03: Notifications & Team Sections (e9112b8, c3b8a82) — COMPLETE
+  - 09-04: Billing & Feedback (f85900c, deb442d) — COMPLETE
 
 ## Recently Completed
 - [x] Phase 8: Test History & Polish — VERIFIED COMPLETE
@@ -219,6 +221,13 @@
 | Avatar fallback initials | 09-02 | Radix Avatar with initials fallback when no image |
 | Form state sync pattern | 09-02 | Local form state synced with store via useEffect |
 | Danger zone red styling | 09-02 | Red border and background for destructive actions |
+| Stripe portal in new tab | 09-04 | Opens Stripe Customer Portal in new tab to maintain app context |
+| Emerald credits progress bar | 09-04 | Gradient from emerald-500 to emerald-400 for usage display |
+| Pre-fill pattern displayName | 09-04 | Shows profile data when hydrated, allows user override |
+| 1.5s feedback auto-close | 09-04 | Modal shows success state then closes automatically |
+| Switch emerald-600 checked | 09-03 | Consistent with other active/success states |
+| Role badge colors | 09-03 | Owner=amber, Admin=blue, Member=zinc for visual hierarchy |
+| Immediate notification persist | 09-03 | No save button for toggle switches, instant feedback |
 
 ## Project-Wide Directives
 
@@ -266,7 +275,7 @@
 
 ## Session Continuity
 - **Last session**: 2026-01-29
-- **Stopped at**: Completed 09-02-PLAN.md (Settings Page UI)
+- **Stopped at**: Completed 09-03-PLAN.md (Notifications & Team Sections)
 - **Resume file**: None
 
 ## Next Steps
