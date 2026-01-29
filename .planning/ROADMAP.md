@@ -251,20 +251,31 @@ Plans:
 ---
 
 ### Phase 10: Final QA
-**Goal**: Visual verification and polish
+**Goal**: Visual verification and polish — pixel-perfect comparison with societies.io
 
-**Status**: Not Started
+**Status**: Planned
 
-**Tasks**:
-- [ ] Side-by-side comparison with societies.io
-- [ ] Fix any discrepancies found
-- [ ] Performance optimization
-- [ ] Responsive testing (mobile, tablet, desktop)
+**Plans**: 6 plans (3 waves)
+
+Plans:
+- [ ] 10-01-PLAN.md — App dashboard shell QA (sidebar, network viz, selectors)
+- [ ] 10-02-PLAN.md — App dashboard content QA (forms, results, history)
+- [ ] 10-03-PLAN.md — Settings page design language QA
+- [ ] 10-04-PLAN.md — Landing page desktop QA
+- [ ] 10-05-PLAN.md — Mobile responsive QA (app + landing at 375px)
+- [ ] 10-06-PLAN.md — Performance verification (console errors, animations, CLS)
+
+**Wave Structure**:
+- Wave 1: 10-01, 10-02, 10-03, 10-04 (Parallel - desktop QA for each section)
+- Wave 2: 10-05 (Mobile responsive - depends on desktop fixes)
+- Wave 3: 10-06 (Final performance pass - depends on all fixes)
 
 **Success Criteria**:
-- All screens match societies.io reference
-- Console error-free
-- Responsive on all breakpoints
+- All screens match societies.io reference at 1440px
+- Mobile (375px) fully functional with responsive adaptation
+- Zero console errors
+- 60fps animations
+- No layout shift issues
 
 **Requirements Covered**: QA-01 to QA-03
 
@@ -293,7 +304,7 @@ Phase 2 (Design System) ✓
             │                                   │
             └───────────────┬───────────────────┘
                             ↓
-                    Phase 10 (QA) ← NEXT
+                    Phase 10 (QA) ← READY TO EXECUTE
 ```
 
 ## Current Status
@@ -301,4 +312,4 @@ Phase 2 (Design System) ✓
 - **Current Phase**: 10 (Final QA)
 - **Completed Phases**: 1, 2, 3, 4, 5, 6, 7, 8, 9
 - **Blocked By**: None
-- **Next Action**: Plan Phase 10
+- **Next Action**: Execute Phase 10
