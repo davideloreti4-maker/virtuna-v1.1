@@ -53,3 +53,25 @@ export interface TestCategory {
   name: string;
   types: TestType[];
 }
+
+/**
+ * Result from a test simulation
+ */
+export interface TestResult {
+  id: string;
+  testType: TestType;
+  content: string;
+  impactScore: number;
+  attention: {
+    full: number;
+    partial: number;
+    ignore: number;
+  };
+  createdAt: string;
+  societyId: string;
+}
+
+/**
+ * Status of the test creation flow
+ */
+export type TestStatus = 'idle' | 'selecting-type' | 'filling-form' | 'simulating' | 'viewing-results';
