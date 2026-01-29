@@ -87,12 +87,12 @@ export function DashboardClient() {
     reset();
   };
 
-  // Determine what to show in main content area
-  const showNetworkViz = currentStatus === "idle" || currentStatus === "selecting-type";
-
   return (
     <div className="relative flex h-full flex-col bg-background">
-      {/* Top bar with context, filters, and create button */}
+      {/* Network visualization - always visible in background */}
+      <NetworkVisualization className="absolute inset-0 z-0" />
+
+      {/* Top bar with context, filters, and create button - above network */}
       <div className="relative z-10 flex items-center justify-between px-6 py-4">
         <ContextBar location="Switzerland" />
         <div className="flex items-center gap-3">
@@ -114,44 +114,38 @@ export function DashboardClient() {
         </div>
       </div>
 
-      {/* Main content area */}
-      <div className="relative flex-1">
-        {showNetworkViz ? (
-          <NetworkVisualization />
-        ) : currentStatus === "filling-form" && currentTestType ? (
-          <div className="flex h-full items-start justify-center overflow-auto pt-8">
-            <div className="w-full max-w-2xl px-6">
-              {currentTestType === "survey" ? (
-                <SurveyForm
-                  onChangeType={handleChangeType}
-                  onSubmit={handleSurveySubmit}
-                />
-              ) : (
-                <ContentForm
-                  testType={currentTestType}
-                  onChangeType={handleChangeType}
-                  onSubmit={handleContentSubmit}
-                />
-              )}
+      {/* Floating content area at bottom center - above network */}
+      {(currentStatus === "filling-form" ||
+        currentStatus === "simulating" ||
+        currentStatus === "viewing-results") && (
+        <div className="absolute bottom-6 left-1/2 z-20 w-full max-w-2xl -translate-x-1/2 px-6">
+          {currentStatus === "filling-form" && currentTestType ? (
+            currentTestType === "survey" ? (
+              <SurveyForm
+                onChangeType={handleChangeType}
+                onSubmit={handleSurveySubmit}
+              />
+            ) : (
+              <ContentForm
+                testType={currentTestType}
+                onChangeType={handleChangeType}
+                onSubmit={handleContentSubmit}
+              />
+            )
+          ) : currentStatus === "simulating" ? (
+            <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-900/95 p-8 backdrop-blur-sm">
+              <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+              <p className="text-sm text-zinc-400">Simulating response...</p>
             </div>
-          </div>
-        ) : currentStatus === "simulating" ? (
-          <div className="flex h-full flex-col items-center justify-center gap-4">
-            <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
-            <p className="text-sm text-zinc-400">Simulating response...</p>
-          </div>
-        ) : currentStatus === "viewing-results" && currentResult ? (
-          <div className="flex h-full items-start justify-center overflow-auto pt-8">
+          ) : currentStatus === "viewing-results" && currentResult ? (
             <SimulationResultsPanel
               impactScore={currentResult.impactScore}
               attention={currentResult.attention}
               onRunAnother={handleRunAnother}
             />
-          </div>
-        ) : (
-          <NetworkVisualization />
-        )}
-      </div>
+          ) : null}
+        </div>
+      )}
 
       {/* Test Type Selector Modal */}
       <TestTypeSelector
