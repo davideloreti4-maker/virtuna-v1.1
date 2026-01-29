@@ -86,26 +86,21 @@ export function SurveyForm({ onChangeType, onSubmit, className }: SurveyFormProp
   const canSubmit = question.trim().length > 0;
 
   return (
-    <form onSubmit={handleSubmit} className={cn("space-y-4", className)}>
-      {/* Type selector button */}
-      <button
-        type="button"
-        onClick={onChangeType}
-        className="flex items-center gap-2 p-2 text-sm text-zinc-400 transition-colors hover:text-white"
-      >
-        <ClipboardList className="h-5 w-5" />
-        <span className="font-medium">Survey</span>
-        <ChevronDown className="h-4 w-4 ml-1" />
-      </button>
-
-      {/* Question textarea */}
+    <form
+      onSubmit={handleSubmit}
+      className={cn(
+        "space-y-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-4",
+        className
+      )}
+    >
+      {/* Question textarea - no separate border, integrated into card */}
       <textarea
         ref={textareaRef}
         value={question}
         onChange={(e) => setQuestion(e.target.value)}
         placeholder="What would you like to ask?"
         rows={1}
-        className="min-h-[120px] w-full resize-none overflow-hidden rounded-xl border border-zinc-800 bg-transparent px-4 py-3 text-base text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-700"
+        className="min-h-[80px] w-full resize-none overflow-hidden bg-transparent text-base text-white placeholder:text-zinc-600 focus:outline-none"
       />
 
       {/* Question type dropdown */}
@@ -139,7 +134,7 @@ export function SurveyForm({ onChangeType, onSubmit, className }: SurveyFormProp
                   value={option}
                   onChange={(e) => updateOption(index, e.target.value)}
                   placeholder={`Option ${index + 1}`}
-                  className="flex-1 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:border-zinc-700 focus:outline-none"
+                  className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:border-zinc-600 focus:outline-none"
                 />
 
                 {/* Remove button */}
@@ -168,14 +163,27 @@ export function SurveyForm({ onChangeType, onSubmit, className }: SurveyFormProp
         </div>
       )}
 
-      {/* Submit button */}
-      <button
-        type="submit"
-        disabled={!canSubmit}
-        className="w-full rounded-xl bg-white px-8 py-3 text-[15px] font-medium text-zinc-900 transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        Ask
-      </button>
+      {/* Footer with type badge and submit */}
+      <div className="flex items-center justify-between border-t border-zinc-800 pt-4">
+        {/* Type selector badge */}
+        <button
+          type="button"
+          onClick={onChangeType}
+          className="flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+        >
+          <ClipboardList className="h-4 w-4" />
+          <span className="font-medium">Survey</span>
+        </button>
+
+        {/* Submit button */}
+        <button
+          type="submit"
+          disabled={!canSubmit}
+          className="rounded-xl bg-white px-6 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Ask
+        </button>
+      </div>
     </form>
   );
 }

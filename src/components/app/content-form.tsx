@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState } from "react";
 import * as Icons from "lucide-react";
-import { ChevronDown, ImagePlus, Sparkles } from "lucide-react";
+import { ImagePlus, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TEST_TYPES } from "@/lib/test-types";
 import type { TestType, TestTypeIcon } from "@/types/test";
@@ -69,51 +69,57 @@ export function ContentForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className={cn("flex flex-col gap-4", className)}>
-      {/* Type selector button */}
-      <button
-        type="button"
-        onClick={onChangeType}
-        className={cn(
-          "flex items-center gap-2 self-start p-2",
-          "text-sm text-zinc-400",
-          "transition-colors hover:text-white"
-        )}
-      >
-        <IconComponent className="h-5 w-5" />
-        <span className="font-medium">{typeConfig.name}</span>
-        <ChevronDown className="h-4 w-4 ml-1" />
-      </button>
-
-      {/* Textarea container */}
+    <form
+      onSubmit={handleSubmit}
+      className={cn(
+        "flex flex-col gap-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-4",
+        className
+      )}
+    >
+      {/* Textarea container - no separate border, integrated into card */}
       <textarea
         ref={textareaRef}
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder={typeConfig.placeholder}
         className={cn(
-          "w-full min-h-[120px] resize-none overflow-hidden",
-          "rounded-xl border border-zinc-800 bg-transparent",
-          "px-4 py-3",
+          "w-full min-h-[100px] resize-none overflow-hidden",
+          "bg-transparent",
           "text-white text-base",
           "placeholder:text-zinc-600",
-          "focus:outline-none focus:ring-1 focus:ring-zinc-700",
+          "focus:outline-none",
           "transition-colors"
         )}
         rows={1}
       />
 
       {/* Action buttons row */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between border-t border-zinc-800 pt-4">
         <div className="flex items-center gap-4">
+          {/* Type selector badge */}
+          <button
+            type="button"
+            onClick={onChangeType}
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-3 py-1.5",
+              "border border-zinc-700 bg-zinc-800/50",
+              "text-sm text-zinc-400",
+              "transition-colors hover:bg-zinc-800 hover:text-white"
+            )}
+          >
+            <IconComponent className="h-4 w-4" />
+            <span className="font-medium">{typeConfig.name}</span>
+          </button>
+
           {/* Upload Images button */}
           <button
             type="button"
             onClick={handleUploadImages}
             className={cn(
-              "flex items-center gap-1.5",
+              "flex items-center gap-1.5 rounded-lg px-3 py-1.5",
+              "border border-zinc-700 bg-zinc-800/50",
               "text-xs text-zinc-500",
-              "transition-colors hover:text-zinc-300"
+              "transition-colors hover:bg-zinc-800 hover:text-zinc-300"
             )}
           >
             <ImagePlus className="h-4 w-4" />
@@ -125,9 +131,10 @@ export function ContentForm({
             type="button"
             onClick={handleHelpMeCraft}
             className={cn(
-              "flex items-center gap-1.5",
+              "flex items-center gap-1.5 rounded-lg px-3 py-1.5",
+              "border border-zinc-700 bg-zinc-800/50",
               "text-xs text-zinc-500",
-              "transition-colors hover:text-zinc-300"
+              "transition-colors hover:bg-zinc-800 hover:text-zinc-300"
             )}
           >
             <Sparkles className="h-4 w-4" />
@@ -140,7 +147,7 @@ export function ContentForm({
           type="submit"
           disabled={!content.trim()}
           className={cn(
-            "rounded-xl px-6 py-3",
+            "rounded-xl px-6 py-2.5",
             "bg-white text-zinc-900",
             "text-sm font-medium",
             "transition-colors",

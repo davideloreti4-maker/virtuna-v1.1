@@ -26,10 +26,10 @@ export function AttentionBreakdown({ attention }: AttentionBreakdownProps) {
         <Info className="h-4 w-4 text-zinc-500" />
       </div>
 
-      {/* Stacked bar */}
+      {/* Stacked bar - Red/Amber/Gray to match societies.io reference */}
       <div className="flex h-3 w-full overflow-hidden rounded-full">
         <div
-          className="bg-emerald-500 transition-all"
+          className="bg-red-500 transition-all"
           style={{ width: `${attention.full}%` }}
         />
         <div
@@ -45,7 +45,7 @@ export function AttentionBreakdown({ attention }: AttentionBreakdownProps) {
       {/* Legend */}
       <div className="flex flex-wrap gap-4 text-sm">
         <div className="flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-emerald-500" />
+          <div className="h-2 w-2 rounded-full bg-red-500" />
           <span className="text-zinc-400">Full</span>
           <span className="font-medium text-white">{attention.full}%</span>
         </div>

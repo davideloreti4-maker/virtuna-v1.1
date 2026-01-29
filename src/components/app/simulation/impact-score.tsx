@@ -20,10 +20,10 @@ const LABEL_COLORS: Record<ImpactLabel, string> = {
 /**
  * ImpactScore - Displays the overall impact score with a rating label
  *
- * Features:
- * - Large score number (e.g., 64/100)
- * - Color-coded rating label based on performance
- * - Info icon for context
+ * Matches societies.io layout:
+ * - Header with info icon
+ * - Label (e.g., "Average") shown first
+ * - Large score number with /100 suffix
  */
 export function ImpactScore({ score, label }: ImpactScoreProps) {
   return (
@@ -32,13 +32,13 @@ export function ImpactScore({ score, label }: ImpactScoreProps) {
         <h3 className="text-sm font-medium text-zinc-400">Impact Score</h3>
         <Info className="h-4 w-4 text-zinc-500" />
       </div>
-      <div className="flex items-baseline gap-2">
-        <span className={cn('text-4xl font-bold', LABEL_COLORS[label])}>
+      <p className={cn('text-sm font-medium', LABEL_COLORS[label])}>{label}</p>
+      <div className="flex items-baseline gap-1">
+        <span className={cn('text-5xl font-bold', LABEL_COLORS[label])}>
           {score}
         </span>
         <span className="text-lg text-zinc-500">/100</span>
       </div>
-      <p className={cn('text-sm font-medium', LABEL_COLORS[label])}>{label}</p>
     </div>
   );
 }
