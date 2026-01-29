@@ -15,4 +15,12 @@ export { ContentForm } from "./content-form";
 export { SurveyForm } from "./survey-form";
 export type { SurveySubmission } from "./survey-form";
 export { TestCreationFlow } from "./test-creation-flow";
+// Simulation components
 export { LoadingPhases } from "./simulation/loading-phases";
+export { ImpactScore } from "./simulation/impact-score";
+export { AttentionBreakdown } from "./simulation/attention-breakdown";
+export { VariantsSection } from "./simulation/variants-section";
+export { InsightsSection } from "./simulation/insights-section";
+export { ThemesSection } from "./simulation/themes-section";
+export { ShareButton } from "./simulation/share-button";
+export { ResultsPanel } from "./simulation/results-panel";
