@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useSettingsStore } from "@/stores/settings-store";
 import { ProfileSection } from "./profile-section";
 import { AccountSection } from "./account-section";
+import { NotificationsSection } from "./notifications-section";
 
 interface SettingsPageProps {
   defaultTab?: string;
@@ -73,12 +74,7 @@ export function SettingsPage({ defaultTab = "profile" }: SettingsPageProps) {
             <AccountSection />
           </Tabs.Content>
           <Tabs.Content value="notifications" className="outline-none">
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-6">
-              <h2 className="text-lg font-medium text-white">Notifications</h2>
-              <p className="mt-1 text-sm text-zinc-400">
-                Notification preferences coming in Plan 03.
-              </p>
-            </div>
+            <NotificationsSection />
           </Tabs.Content>
           <Tabs.Content value="billing" className="outline-none">
             <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-6">
