@@ -193,22 +193,29 @@ Plans:
 ---
 
 ### Phase 8: Test History & Polish
-**Goal**: Complete test history and app polish
+**Goal**: Complete test history viewing, deletion, and view selector enhancements
 
-**Status**: Not Started
+**Status**: Planned
 
-**Tasks**:
-- [ ] Add test history to sidebar
-- [ ] Click to view previous results
-- [ ] Implement delete test functionality
-- [ ] Build view selector dropdown
-- [ ] Add legend pills for views
-- [ ] Complete all remaining UI polish
+**Plans**: 4 plans (3 waves)
+
+Plans:
+- [ ] 08-01-PLAN.md — Install AlertDialog, extend test store with isViewingHistory
+- [ ] 08-02-PLAN.md — TestHistoryItem and TestHistoryList components for sidebar
+- [ ] 08-03-PLAN.md — ViewSelector role colors and LegendPills component
+- [ ] 08-04-PLAN.md — Integration, read-only forms, and visual verification
+
+**Wave Structure**:
+- Wave 1: 08-01, 08-02 (Parallel - foundation and history list)
+- Wave 2: 08-03 (View selector and legend)
+- Wave 3: 08-04 (Integration and verification checkpoint)
 
 **Success Criteria**:
-- Test history persists in local storage
-- All interactions work correctly
-- UI polish complete
+- Test history persists in localStorage
+- History list in sidebar with delete via three-dot menu
+- Read-only form viewing for past tests
+- View selector shows role level colors
+- Legend pills display in dashboard
 
 **Requirements Covered**: HIST-01 to HIST-04
 
