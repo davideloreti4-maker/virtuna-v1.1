@@ -192,18 +192,18 @@ Plans:
 
 ---
 
-### Phase 8: Test History & Polish
+### Phase 8: Test History & Polish ✓
 **Goal**: Complete test history viewing, deletion, and view selector enhancements
 
-**Status**: Planned
+**Status**: Complete (2026-01-29)
 
 **Plans**: 4 plans (3 waves)
 
 Plans:
-- [ ] 08-01-PLAN.md — Install AlertDialog, extend test store with isViewingHistory
-- [ ] 08-02-PLAN.md — TestHistoryItem and TestHistoryList components for sidebar
-- [ ] 08-03-PLAN.md — ViewSelector role colors and LegendPills component
-- [ ] 08-04-PLAN.md — Integration, read-only forms, and visual verification
+- [x] 08-01-PLAN.md — Install AlertDialog, extend test store with isViewingHistory
+- [x] 08-02-PLAN.md — TestHistoryItem and TestHistoryList components for sidebar
+- [x] 08-03-PLAN.md — ViewSelector role colors and LegendPills component
+- [x] 08-04-PLAN.md — Integration, read-only forms, and visual verification
 
 **Wave Structure**:
 - Wave 1: 08-01, 08-02 (Parallel - foundation and history list)
@@ -211,11 +211,11 @@ Plans:
 - Wave 3: 08-04 (Integration and verification checkpoint)
 
 **Success Criteria**:
-- Test history persists in localStorage
-- History list in sidebar with delete via three-dot menu
-- Read-only form viewing for past tests
-- View selector shows role level colors
-- Legend pills display in dashboard
+- [x] Test history persists in localStorage
+- [x] History list in sidebar with delete via three-dot menu
+- [x] Read-only form viewing for past tests
+- [x] View selector shows role level colors
+- [x] Legend pills display in dashboard
 
 **Requirements Covered**: HIST-01 to HIST-04
 
@@ -281,9 +281,9 @@ Phase 2 (Design System) ✓
             ↓                                   │
         Phase 7 (Results) ✓                     │
             ↓                                   │
-        Phase 8 (History) ← NEXT                │
+        Phase 8 (History) ✓                     │
             ↓                                   │
-        Phase 9 (Settings)                      │
+        Phase 9 (Settings) ← NEXT               │
             │                                   │
             └───────────────┬───────────────────┘
                             ↓
@@ -292,7 +292,7 @@ Phase 2 (Design System) ✓
 
 ## Current Status
 - **Current Milestone**: v1.1 (Pixel-Perfect Clone)
-- **Current Phase**: 8 (Test History & Polish)
-- **Completed Phases**: 1, 2, 3, 4, 5, 6, 7
+- **Current Phase**: 9 (Settings & Modals)
+- **Completed Phases**: 1, 2, 3, 4, 5, 6, 7, 8
 - **Blocked By**: None
-- **Next Action**: Plan Phase 8
+- **Next Action**: Plan Phase 9
