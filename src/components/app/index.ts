@@ -30,3 +30,7 @@ export { ResultsPanel } from "./simulation/results-panel";
 export { TestHistoryItem } from "./test-history-item";
 export { TestHistoryList } from "./test-history-list";
 export { DeleteTestModal } from "./delete-test-modal";
+// Modals
+export { LeaveFeedbackModal } from "./leave-feedback-modal";
+// Settings
+export * from "./settings";

@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { SidebarNavItem } from "./sidebar-nav-item";
 import { SocietySelector } from "./society-selector";
 import { ViewSelector } from "./view-selector";
+import { LeaveFeedbackModal } from "./leave-feedback-modal";
 import {
   Plus,
   CreditCard,
@@ -13,6 +14,7 @@ import {
   LogOut,
   Columns2,
   X,
+  Settings,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -31,6 +33,7 @@ interface SidebarProps {
  */
 export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarProps) {
   const router = useRouter();
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   // Get store state
   const store = useSocietyStore();
@@ -45,16 +48,22 @@ export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarPr
     router.push("/");
   };
 
+  const handleSettings = () => {
+    router.push("/settings");
+    onMobileOpenChange?.(false); // Close mobile drawer
+  };
+
   const handleManagePlan = () => {
-    console.log("Manage plan clicked");
+    router.push("/settings?tab=billing");
+    onMobileOpenChange?.(false); // Close mobile drawer
   };
 
   const handleFeedback = () => {
-    console.log("Leave feedback clicked");
+    setFeedbackOpen(true);
   };
 
   const handleProductGuide = () => {
-    console.log("Product guide clicked");
+    window.open("https://docs.societies.io", "_blank");
   };
 
   const reset = useTestStore((s) => s.reset);
@@ -177,6 +186,11 @@ export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarPr
         {/* Bottom nav items */}
         <nav className="mt-2">
           <SidebarNavItem
+            label="Settings"
+            icon={Settings}
+            onClick={handleSettings}
+          />
+          <SidebarNavItem
             label="Manage plan"
             icon={CreditCard}
             onClick={handleManagePlan}
@@ -201,6 +215,9 @@ export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarPr
         {/* Version text */}
         <p className="mt-2 text-center text-xs text-zinc-600">Version 2.1</p>
       </aside>
+
+      {/* Leave Feedback Modal - sibling pattern */}
+      <LeaveFeedbackModal open={feedbackOpen} onOpenChange={setFeedbackOpen} />
     </>
   );
 }
