@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   NetworkVisualization,
@@ -10,6 +10,8 @@ import {
   TestTypeSelector,
   ContentForm,
   SurveyForm,
+  LoadingPhases,
+  ResultsPanel,
 } from "@/components/app";
 import { useTestStore } from "@/stores/test-store";
 import { useSocietyStore } from "@/stores/society-store";
@@ -133,14 +135,10 @@ export function DashboardClient() {
               />
             )
           ) : currentStatus === "simulating" ? (
-            <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-900/95 p-8 backdrop-blur-sm">
-              <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
-              <p className="text-sm text-zinc-400">Simulating response...</p>
-            </div>
+            <LoadingPhases />
           ) : currentStatus === "viewing-results" && currentResult ? (
-            <SimulationResultsPanel
-              impactScore={currentResult.impactScore}
-              attention={currentResult.attention}
+            <ResultsPanel
+              result={currentResult}
               onRunAnother={handleRunAnother}
             />
           ) : null}
@@ -158,138 +156,6 @@ export function DashboardClient() {
 
       {/* Accessible heading - hidden visually */}
       <h1 className="sr-only">Dashboard</h1>
-    </div>
-  );
-}
-
-/**
- * SimulationResultsPanel - Displays test results
- */
-interface SimulationResultsPanelProps {
-  impactScore: number;
-  attention: {
-    full: number;
-    partial: number;
-    ignore: number;
-  };
-  onRunAnother: () => void;
-}
-
-function SimulationResultsPanel({
-  impactScore,
-  attention,
-  onRunAnother,
-}: SimulationResultsPanelProps) {
-  const circumference = 2 * Math.PI * 45;
-  const strokeDashoffset = circumference - (impactScore / 100) * circumference;
-
-  return (
-    <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-xl">
-      {/* Header */}
-      <h3 className="mb-6 text-center text-sm font-medium uppercase tracking-wider text-zinc-500">
-        Simulation Results
-      </h3>
-
-      {/* Impact Score with circular progress */}
-      <div className="mb-8 flex flex-col items-center">
-        <div className="relative h-32 w-32">
-          <svg className="absolute inset-0 -rotate-90" viewBox="0 0 100 100">
-            <circle
-              cx="50"
-              cy="50"
-              r="45"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="6"
-              className="text-zinc-800"
-            />
-            <circle
-              cx="50"
-              cy="50"
-              r="45"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="6"
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={strokeDashoffset}
-              className={cn(
-                "transition-all duration-1000 ease-out",
-                impactScore >= 80
-                  ? "text-emerald-500"
-                  : impactScore >= 60
-                    ? "text-blue-500"
-                    : "text-amber-500"
-              )}
-            />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-4xl font-bold text-white">{impactScore}</span>
-            <span className="text-xs text-zinc-500">Impact Score</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Attention Breakdown */}
-      <div className="mb-8 space-y-4">
-        <h4 className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-          Attention Breakdown
-        </h4>
-        <AttentionBar label="Full Attention" value={attention.full} color="emerald" />
-        <AttentionBar label="Partial Attention" value={attention.partial} color="amber" />
-        <AttentionBar label="Ignore" value={attention.ignore} color="zinc" />
-      </div>
-
-      {/* Run Another Test Button */}
-      <button
-        type="button"
-        onClick={onRunAnother}
-        className={cn(
-          "w-full rounded-xl px-6 py-3",
-          "bg-white text-zinc-900",
-          "text-sm font-medium",
-          "transition-colors hover:bg-zinc-200"
-        )}
-      >
-        Run another test
-      </button>
-    </div>
-  );
-}
-
-/**
- * AttentionBar - horizontal bar for attention breakdown
- */
-function AttentionBar({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: number;
-  color: "emerald" | "amber" | "zinc";
-}) {
-  const colorClasses = {
-    emerald: "bg-emerald-500",
-    amber: "bg-amber-400",
-    zinc: "bg-zinc-500",
-  };
-
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between text-sm">
-        <span className="text-zinc-400">{label}</span>
-        <span className="font-medium text-white">{value}%</span>
-      </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
-        <div
-          className={cn(
-            "h-full rounded-full transition-all duration-700 ease-out",
-            colorClasses[color]
-          )}
-          style={{ width: `${value}%` }}
-        />
-      </div>
     </div>
   );
 }
