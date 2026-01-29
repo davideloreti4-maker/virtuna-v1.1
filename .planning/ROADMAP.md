@@ -135,16 +135,22 @@ Plans:
 ### Phase 6: Test Type Selector & Forms
 **Goal**: Build test creation flow with all 11 form types
 
-**Status**: Not Started
+**Status**: Planned
 
-**Tasks**:
-- [ ] Build test type selector modal (11 types in 5 categories)
-- [ ] Build content form component (shared by 10 types)
-- [ ] Build survey form component (unique structure)
-- [ ] Implement TikTok Script form (functional)
-- [ ] Implement Instagram Post form (functional)
-- [ ] Add Help Me Craft button (UI only)
-- [ ] Add Upload Images button (UI only)
+**Plans**: 5 plans (4 waves)
+
+Plans:
+- [ ] 06-01-PLAN.md — Test type definitions + TestTypeSelector modal
+- [ ] 06-02-PLAN.md — ContentForm component (shared by 10 types)
+- [ ] 06-03-PLAN.md — SurveyForm component (unique structure)
+- [ ] 06-04-PLAN.md — Test store + TikTok/Instagram functional flows
+- [ ] 06-05-PLAN.md — Visual verification checkpoint
+
+**Wave Structure**:
+- Wave 1: 06-01 (Type definitions + selector modal)
+- Wave 2: 06-02, 06-03 (Parallel - content form + survey form)
+- Wave 3: 06-04 (Test store + functional flows integration)
+- Wave 4: 06-05 (Verification checkpoint)
 
 **Success Criteria**:
 - All 11 test types selectable
@@ -256,9 +262,9 @@ Phase 2 (Design System) ✓
     │                                           │
     └── Phase 4 (App Layout) ✓                  │
             ↓                                   │
-        Phase 5 (Society Management)            │
+        Phase 5 (Society Management) ✓          │
             ↓                                   │
-        Phase 6 (Test Forms)                    │
+        Phase 6 (Test Forms) ← CURRENT          │
             ↓                                   │
         Phase 7 (Results)                       │
             ↓                                   │
@@ -276,4 +282,4 @@ Phase 2 (Design System) ✓
 - **Current Phase**: 6 (Test Type Selector & Forms)
 - **Completed Phases**: 1, 2, 3, 4, 5
 - **Blocked By**: None
-- **Next Action**: Plan Phase 6
+- **Next Action**: Execute Phase 6
