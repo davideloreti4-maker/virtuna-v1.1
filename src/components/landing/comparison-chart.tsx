@@ -23,35 +23,58 @@ interface ComparisonChartProps {
 }
 
 /**
- * ComparisonChart displays a list of AI models with their accuracy scores.
- * The Artificial Societies row is highlighted with full opacity,
- * while competitor models are shown with reduced opacity.
+ * ComparisonChart displays a horizontal bar chart of AI models with accuracy scores.
+ * The Artificial Societies row is highlighted with accent color bar,
+ * while competitor models show muted bars.
+ * Matches societies.io reference design.
  */
 export function ComparisonChart({ className }: ComparisonChartProps) {
+  // Scale: max bar width represents 100%, actual width = (accuracy / 100) * 100%
+  const maxAccuracy = 100;
+
   return (
     <div className={cn("rounded-lg bg-background-elevated p-6", className)}>
-      <div className="space-y-3">
+      <div className="space-y-4">
         {comparisonData.map((item) => (
           <div
             key={item.name}
             className={cn(
-              "flex items-center justify-between py-2",
-              !item.highlighted && "opacity-70"
+              "relative",
+              !item.highlighted && "opacity-80"
             )}
           >
-            <div className="flex items-center gap-3">
-              <Image
-                src={`/logos/${item.icon}.svg`}
-                alt=""
-                width={24}
-                height={24}
-                className="h-6 w-6 brightness-0 invert"
-              />
-              <span className="text-white">{item.name}</span>
+            {/* Label row */}
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Image
+                  src={`/logos/${item.icon}.svg`}
+                  alt=""
+                  width={20}
+                  height={20}
+                  className="h-5 w-5 brightness-0 invert"
+                />
+                <span className="text-sm text-white">{item.name}</span>
+              </div>
+              <span className={cn(
+                "text-sm text-white",
+                item.highlighted && "font-medium"
+              )}>
+                {item.accuracy}%
+              </span>
             </div>
-            <span className={cn("text-white", item.highlighted && "font-medium")}>
-              {item.accuracy}%
-            </span>
+
+            {/* Bar */}
+            <div className="h-2 w-full rounded-full bg-white/10">
+              <div
+                className={cn(
+                  "h-2 rounded-full transition-all duration-500",
+                  item.highlighted
+                    ? "bg-accent"
+                    : "bg-white/30"
+                )}
+                style={{ width: `${(item.accuracy / maxAccuracy) * 100}%` }}
+              />
+            </div>
           </div>
         ))}
       </div>

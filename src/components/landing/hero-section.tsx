@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui";
 import { FadeIn } from "@/components/motion";
 import { cn } from "@/lib/utils";
+import { PersonaCard } from "./persona-card";
 
 interface HeroSectionProps {
   className?: string;
@@ -44,7 +45,7 @@ export function HeroSection({ className }: HeroSectionProps) {
             </FadeIn>
           </div>
 
-          {/* Right: Network visualization */}
+          {/* Right: Network visualization with floating persona card */}
           <div className="relative order-1 lg:order-2">
             <FadeIn delay={0.3}>
               <div className="relative w-[280px] sm:w-[400px] lg:w-[480px] xl:w-[550px] aspect-square">
@@ -56,6 +57,23 @@ export function HeroSection({ className }: HeroSectionProps) {
                   className="object-contain"
                   priority
                 />
+
+                {/* Floating persona card - positioned over the accent node */}
+                <div className="absolute right-0 top-1/3 transform translate-x-4 hidden sm:block">
+                  <FadeIn delay={0.5}>
+                    <PersonaCard
+                      initials="ER"
+                      name="Emma Rodriguez"
+                      role="UX Researcher"
+                      company="DesignLab Studio"
+                      bio="Passionate about creating user-centric solutions through collaborative design."
+                      location="Barcelona, Spain"
+                      gender="Female"
+                      generation="Gen Z"
+                      className="scale-90 lg:scale-100 shadow-xl"
+                    />
+                  </FadeIn>
+                </div>
               </div>
             </FadeIn>
           </div>

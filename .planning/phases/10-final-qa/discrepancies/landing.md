@@ -72,8 +72,8 @@ Based on societies.io reference screenshots at 1440px viewport:
 | CTA button | Text | "Get in touch" | "Get in touch" | Matches | OK |
 | CTA button | Color | Orange/coral | Emerald (accent) | Color difference | Pending |
 | Network viz | Position | Right side | Right side, order-1 lg:order-2 | Matches layout | OK |
-| Network viz | Content | Dots/lines with persona card | SVG image | Different implementation | Pending |
-| Persona card | Present | Yes, floating on network | Not visible in hero | Missing persona card | Pending |
+| Network viz | Content | Dots/lines with persona card | SVG image + persona card | Now matches | Fixed |
+| Persona card | Present | Yes, floating on network | Yes, floating on network | Now matches | Fixed |
 
 ## Backers Section Discrepancies
 
@@ -108,7 +108,7 @@ Based on societies.io reference screenshots at 1440px viewport:
 | Link | Text | "Read the full evaluation report" | Same | Matches | OK |
 | Chart | Background | Elevated card | bg-background-elevated | Matches | OK |
 | Chart | Items | Model names with percentages | Same models/values | Matches | OK |
-| Chart bars | Visual | Horizontal bars with percentages | List with percentages (no bars) | Missing bar visualization | Pending |
+| Chart bars | Visual | Horizontal bars with percentages | Horizontal bars with percentages | Now has bar visualization | Fixed |
 
 ## Testimonials Section Discrepancies
 
@@ -160,9 +160,9 @@ Based on societies.io reference screenshots at 1440px viewport:
 3. Affects: CTA buttons, "Simulated." text
 
 ### Missing/Different Features
-1. **Persona card in hero** - societies.io has floating persona card on network visualization
-2. **Comparison chart bars** - societies.io shows horizontal bar chart, Virtuna shows list
-3. **Logo treatment** - societies.io may show colored logos vs Virtuna's white (inverted)
+1. **Persona card in hero** - FIXED: Added floating persona card on network visualization
+2. **Comparison chart bars** - FIXED: Added horizontal bar visualization
+3. **Logo treatment** - societies.io may show colored logos vs Virtuna's white (inverted) - Minor, keeping dark theme treatment
 
 ### Typography Matches
 - Font families appear correct (Display + Sans)
@@ -173,10 +173,27 @@ Based on societies.io reference screenshots at 1440px viewport:
 
 ## Fix Priority
 
-1. **HIGH**: Add persona card to hero section (matches reference)
-2. **MEDIUM**: Consider accent color (orange vs emerald) - may be intentional branding difference
-3. **MEDIUM**: Comparison chart visualization (bars vs list)
-4. **LOW**: Logo treatment in backers section
+1. ~~**HIGH**: Add persona card to hero section (matches reference)~~ **FIXED**
+2. **MEDIUM**: Consider accent color (orange vs emerald) - KEPT AS IS (intentional Virtuna branding)
+3. ~~**MEDIUM**: Comparison chart visualization (bars vs list)~~ **FIXED**
+4. **LOW**: Logo treatment in backers section - KEPT AS IS (works well with dark theme)
+
+---
+
+## Fixes Applied
+
+### Fix 1: Added Persona Card to Hero Section
+- **File:** src/components/landing/hero-section.tsx
+- **Change:** Added PersonaCard component overlaid on network visualization
+- **Positioning:** absolute right-0 top-1/3 transform translate-x-4
+- **Behavior:** Hidden on mobile (sm:block), scales appropriately
+- **Persona data:** Emma Rodriguez, UX Researcher, DesignLab Studio
+
+### Fix 2: Updated Comparison Chart with Horizontal Bars
+- **File:** src/components/landing/comparison-chart.tsx
+- **Change:** Replaced list-only display with horizontal bar visualization
+- **Bar styling:** Accent color for Artificial Societies, muted for competitors
+- **Layout:** Label + percentage on top, progress bar below
 
 ---
 
