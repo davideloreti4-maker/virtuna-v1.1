@@ -6,6 +6,19 @@ import { cn } from "@/lib/utils";
 import { ChevronDown, Check } from "lucide-react";
 
 /**
+ * Role levels with colors matching accumulated decisions (Phase 4).
+ * Indigo (Executive), Emerald (Senior), Pink (Mid), Orange (Entry)
+ */
+export const ROLE_LEVELS = [
+  { id: "executive", label: "Executive", color: "bg-indigo-500" },
+  { id: "senior", label: "Senior", color: "bg-emerald-500" },
+  { id: "mid", label: "Mid", color: "bg-pink-500" },
+  { id: "entry", label: "Entry", color: "bg-orange-500" },
+] as const;
+
+export type RoleLevelId = (typeof ROLE_LEVELS)[number]["id"];
+
+/**
  * Available view options for the dashboard.
  * Each view groups/colors the network visualization differently.
  */
@@ -18,10 +31,11 @@ const VIEW_OPTIONS = [
   { id: "role-area", label: "Role Area" },
 ] as const;
 
-type ViewOption = (typeof VIEW_OPTIONS)[number];
+export type ViewOption = (typeof VIEW_OPTIONS)[number];
 
 interface ViewSelectorProps {
   className?: string;
+  value?: ViewOption;
   onSelect?: (view: ViewOption) => void;
 }
 
@@ -29,12 +43,16 @@ interface ViewSelectorProps {
  * View Selector dropdown component.
  * Allows selecting different views for the network visualization.
  * Uses Radix DropdownMenu for accessibility and keyboard navigation.
+ * Supports controlled and uncontrolled modes via value prop.
  */
-export function ViewSelector({ className, onSelect }: ViewSelectorProps) {
-  const [selectedView, setSelectedView] = useState<ViewOption>(VIEW_OPTIONS[0]);
+export function ViewSelector({ className, value, onSelect }: ViewSelectorProps) {
+  const [internalValue, setInternalValue] = useState<ViewOption>(VIEW_OPTIONS[0]);
+  const selectedView = value ?? internalValue;
 
   const handleSelect = (view: ViewOption) => {
-    setSelectedView(view);
+    if (!value) {
+      setInternalValue(view);
+    }
     onSelect?.(view);
   };
 
@@ -69,11 +87,22 @@ export function ViewSelector({ className, onSelect }: ViewSelectorProps) {
               key={view.id}
               onSelect={() => handleSelect(view)}
               className={cn(
-                "flex cursor-pointer items-center justify-between px-4 py-2.5 text-sm text-zinc-200 outline-none transition-colors hover:bg-zinc-800 focus:bg-zinc-800",
+                "flex cursor-pointer items-center gap-2 px-4 py-2.5 text-sm text-zinc-200 outline-none transition-colors hover:bg-zinc-800 focus:bg-zinc-800",
                 selectedView.id === view.id && "text-white"
               )}
             >
-              <span>{view.label}</span>
+              {/* Color dots for Role Level option */}
+              {view.id === "role-level" && (
+                <div className="flex gap-1">
+                  {ROLE_LEVELS.map((level) => (
+                    <span
+                      key={level.id}
+                      className={cn("h-2 w-2 rounded-full", level.color)}
+                    />
+                  ))}
+                </div>
+              )}
+              <span className="flex-1">{view.label}</span>
               {selectedView.id === view.id && (
                 <Check className="h-4 w-4 text-indigo-500" />
               )}
