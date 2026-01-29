@@ -2,12 +2,12 @@
 
 ## Current Status
 - **Phase**: 6 of 10 — Test Type Selector & Forms
-- **Plan**: 1 of ? complete
+- **Plan**: 2 of ? complete
 - **Status**: In progress
 - **Last Updated**: 2026-01-29
-- **Last Activity**: 2026-01-29 - Completed 06-01-PLAN.md (Test Type Selector Foundation)
+- **Last Activity**: 2026-01-29 - Completed 06-02-PLAN.md (Content Form Component)
 
-**Progress**: █████░░░░░ 55% (5.5/10 phases)
+**Progress**: █████░░░░░ 56% (5.6/10 phases)
 
 ## Completed
 - [x] Phase 1: Infrastructure Setup
@@ -62,6 +62,7 @@
 ## In Progress
 - [ ] Phase 6: Test Type Selector & Forms
   - 06-01: Test Type Selector Foundation (bed59d2, f286f98)
+  - 06-02: Content Form Component (5fc5cc1)
 
 ## Blocked
 - (none)
@@ -151,6 +152,8 @@
 | Icon map pattern | 06-01 | Record<IconName, Component> for dynamic Lucide icon rendering |
 | TEST_TYPES as Record | 06-01 | O(1) lookup by type id for form rendering |
 | TEST_CATEGORIES as array | 06-01 | Preserves display order for modal rendering |
+| Auto-expand via scrollHeight | 06-02 | Reset height to auto then set to scrollHeight for accurate measurement |
+| Action button stubs | 06-02 | Console.log placeholders for future Upload Images and Help Me Craft functionality |
 
 ## Project-Wide Directives
 
@@ -192,12 +195,13 @@
 - Phase 5 Plan 5 complete: Visual verification checkpoint - user approved
 - Phase 5 verified: Society management complete - Zustand store, CRUD operations, persistence
 - Note: Replaced Zustand persist middleware with manual localStorage due to SSR issues
+- Phase 6 Plan 2 complete: ContentForm with auto-expanding textarea, action buttons, type selector
 
 ## Session Continuity
 - **Last session**: 2026-01-29
-- **Stopped at**: Completed 06-01-PLAN.md (Test Type Selector Foundation)
+- **Stopped at**: Completed 06-02-PLAN.md (Content Form Component)
 - **Resume file**: None
 
 ## Next Steps
-- Execute 06-02-PLAN.md: Content forms and test creation flow
-- Wire up TestTypeSelector to create new tests
+- Execute 06-03-PLAN.md: Survey form with question builder
+- Wire up forms to test creation flow
