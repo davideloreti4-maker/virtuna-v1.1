@@ -54,6 +54,9 @@
 /* Base styles */
 body {
   @apply bg-background text-foreground font-sans;
+  /* Dot grid pattern across entire page - matching societies.io */
+  background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
 h1,

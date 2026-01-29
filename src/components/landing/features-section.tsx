@@ -72,8 +72,8 @@ export function FeaturesSection({ className }: FeaturesSectionProps) {
           </div>
         </FadeIn>
 
-        {/* Feature Cards Grid */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        {/* Feature Cards Grid - 4 columns on large screens */}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((feature, index) => (
             <FadeIn key={feature.title} delay={0.1 + index * 0.1}>
               <FeatureCard
