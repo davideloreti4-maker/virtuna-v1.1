@@ -57,8 +57,12 @@ export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarPr
     console.log("Product guide clicked");
   };
 
+  const reset = useTestStore((s) => s.reset);
+  const setStatus = useTestStore((s) => s.setStatus);
+
   const handleCreateTest = () => {
-    console.log("Create new test clicked");
+    reset(); // Clear any viewing state
+    setStatus("selecting-type"); // Open type selector
   };
 
   const viewResult = useTestStore((s) => s.viewResult);
