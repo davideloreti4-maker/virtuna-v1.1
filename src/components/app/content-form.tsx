@@ -5,6 +5,7 @@ import * as Icons from "lucide-react";
 import { ImagePlus, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TEST_TYPES } from "@/lib/test-types";
+import { useTestStore } from "@/stores/test-store";
 import type { TestType, TestTypeIcon } from "@/types/test";
 
 interface ContentFormProps {
@@ -41,6 +42,17 @@ export function ContentForm({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typeConfig = TEST_TYPES[testType];
   const IconComponent = iconMap[typeConfig.icon];
+
+  // Read-only mode when viewing history
+  const isViewingHistory = useTestStore((s) => s.isViewingHistory);
+  const currentResult = useTestStore((s) => s.currentResult);
+
+  // Pre-fill content when viewing history
+  useEffect(() => {
+    if (isViewingHistory && currentResult) {
+      setContent(currentResult.content);
+    }
+  }, [isViewingHistory, currentResult]);
 
   // Auto-expand textarea as content grows
   useEffect(() => {
@@ -81,14 +93,16 @@ export function ContentForm({
         ref={textareaRef}
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        placeholder={typeConfig.placeholder}
+        readOnly={isViewingHistory}
+        placeholder={isViewingHistory ? "" : typeConfig.placeholder}
         className={cn(
           "w-full min-h-[100px] resize-none overflow-hidden",
           "bg-transparent",
           "text-white text-base",
           "placeholder:text-zinc-600",
           "focus:outline-none",
-          "transition-colors"
+          "transition-colors",
+          isViewingHistory && "cursor-default text-zinc-300"
         )}
         rows={1}
       />
@@ -97,66 +111,86 @@ export function ContentForm({
       <div className="flex items-center justify-between border-t border-zinc-800 pt-4">
         <div className="flex items-center gap-4">
           {/* Type selector badge */}
-          <button
-            type="button"
-            onClick={onChangeType}
-            className={cn(
-              "flex items-center gap-2 rounded-lg px-3 py-1.5",
-              "border border-zinc-700 bg-zinc-800/50",
-              "text-sm text-zinc-400",
-              "transition-colors hover:bg-zinc-800 hover:text-white"
-            )}
-          >
-            <IconComponent className="h-4 w-4" />
-            <span className="font-medium">{typeConfig.name}</span>
-          </button>
+          {isViewingHistory ? (
+            <div
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-3 py-1.5",
+                "border border-zinc-700 bg-zinc-800/50",
+                "text-sm text-zinc-400"
+              )}
+            >
+              <IconComponent className="h-4 w-4" />
+              <span className="font-medium">{typeConfig.name}</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onChangeType}
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-3 py-1.5",
+                "border border-zinc-700 bg-zinc-800/50",
+                "text-sm text-zinc-400",
+                "transition-colors hover:bg-zinc-800 hover:text-white"
+              )}
+            >
+              <IconComponent className="h-4 w-4" />
+              <span className="font-medium">{typeConfig.name}</span>
+            </button>
+          )}
 
-          {/* Upload Images button */}
-          <button
-            type="button"
-            onClick={handleUploadImages}
-            className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5",
-              "border border-zinc-700 bg-zinc-800/50",
-              "text-xs text-zinc-500",
-              "transition-colors hover:bg-zinc-800 hover:text-zinc-300"
-            )}
-          >
-            <ImagePlus className="h-4 w-4" />
-            <span>Upload Images</span>
-          </button>
+          {/* Action buttons - hidden when viewing history */}
+          {!isViewingHistory && (
+            <>
+              {/* Upload Images button */}
+              <button
+                type="button"
+                onClick={handleUploadImages}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-lg px-3 py-1.5",
+                  "border border-zinc-700 bg-zinc-800/50",
+                  "text-xs text-zinc-500",
+                  "transition-colors hover:bg-zinc-800 hover:text-zinc-300"
+                )}
+              >
+                <ImagePlus className="h-4 w-4" />
+                <span>Upload Images</span>
+              </button>
 
-          {/* Help Me Craft button */}
-          <button
-            type="button"
-            onClick={handleHelpMeCraft}
-            className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5",
-              "border border-zinc-700 bg-zinc-800/50",
-              "text-xs text-zinc-500",
-              "transition-colors hover:bg-zinc-800 hover:text-zinc-300"
-            )}
-          >
-            <Sparkles className="h-4 w-4" />
-            <span>Help Me Craft</span>
-          </button>
+              {/* Help Me Craft button */}
+              <button
+                type="button"
+                onClick={handleHelpMeCraft}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-lg px-3 py-1.5",
+                  "border border-zinc-700 bg-zinc-800/50",
+                  "text-xs text-zinc-500",
+                  "transition-colors hover:bg-zinc-800 hover:text-zinc-300"
+                )}
+              >
+                <Sparkles className="h-4 w-4" />
+                <span>Help Me Craft</span>
+              </button>
+            </>
+          )}
         </div>
 
-        {/* Submit button */}
-        <button
-          type="submit"
-          disabled={!content.trim()}
-          className={cn(
-            "rounded-xl px-6 py-2.5",
-            "bg-white text-zinc-900",
-            "text-sm font-medium",
-            "transition-colors",
-            "hover:bg-zinc-200",
-            "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
-          )}
-        >
-          Simulate
-        </button>
+        {/* Submit button - hidden when viewing history */}
+        {!isViewingHistory && (
+          <button
+            type="submit"
+            disabled={!content.trim()}
+            className={cn(
+              "rounded-xl px-6 py-2.5",
+              "bg-white text-zinc-900",
+              "text-sm font-medium",
+              "transition-colors",
+              "hover:bg-zinc-200",
+              "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+            )}
+          >
+            Simulate
+          </button>
+        )}
       </div>
     </form>
   );

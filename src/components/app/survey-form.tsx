@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { ClipboardList, ChevronDown, Check, GripVertical, X, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTestStore } from "@/stores/test-store";
 
 /**
  * Survey question types
@@ -39,6 +40,32 @@ export function SurveyForm({ onChangeType, onSubmit, className }: SurveyFormProp
   const [questionType, setQuestionType] = useState<QuestionType>("single-select");
   const [options, setOptions] = useState<string[]>(["", ""]); // Default 2 empty options
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Read-only mode when viewing history
+  const isViewingHistory = useTestStore((s) => s.isViewingHistory);
+  const currentResult = useTestStore((s) => s.currentResult);
+
+  // Pre-fill survey data when viewing history
+  useEffect(() => {
+    if (isViewingHistory && currentResult) {
+      // Parse content: "Q: ...\nType: ...\nOptions: ..."
+      const lines = currentResult.content.split("\n");
+      const questionLine = lines.find((l) => l.startsWith("Q: "));
+      const typeLine = lines.find((l) => l.startsWith("Type: "));
+      const optionsLine = lines.find((l) => l.startsWith("Options: "));
+
+      if (questionLine) setQuestion(questionLine.replace("Q: ", ""));
+      if (typeLine) {
+        const typeValue = typeLine.replace("Type: ", "") as QuestionType;
+        if (["single-select", "open-response"].includes(typeValue)) {
+          setQuestionType(typeValue);
+        }
+      }
+      if (optionsLine) {
+        setOptions(optionsLine.replace("Options: ", "").split(", "));
+      }
+    }
+  }, [isViewingHistory, currentResult]);
 
   // Auto-expand textarea
   useEffect(() => {
@@ -98,9 +125,13 @@ export function SurveyForm({ onChangeType, onSubmit, className }: SurveyFormProp
         ref={textareaRef}
         value={question}
         onChange={(e) => setQuestion(e.target.value)}
-        placeholder="What would you like to ask?"
+        readOnly={isViewingHistory}
+        placeholder={isViewingHistory ? "" : "What would you like to ask?"}
         rows={1}
-        className="min-h-[80px] w-full resize-none overflow-hidden bg-transparent text-base text-white placeholder:text-zinc-600 focus:outline-none"
+        className={cn(
+          "min-h-[80px] w-full resize-none overflow-hidden bg-transparent text-base text-white placeholder:text-zinc-600 focus:outline-none",
+          isViewingHistory && "cursor-default text-zinc-300"
+        )}
       />
 
       {/* Question type dropdown */}
@@ -111,6 +142,7 @@ export function SurveyForm({ onChangeType, onSubmit, className }: SurveyFormProp
         <QuestionTypeDropdown
           value={questionType}
           onChange={setQuestionType}
+          disabled={isViewingHistory}
         />
       </div>
 
@@ -124,7 +156,7 @@ export function SurveyForm({ onChangeType, onSubmit, className }: SurveyFormProp
             {options.map((option, index) => (
               <div key={index} className="flex items-center gap-2">
                 {/* Drag handle (visual only) */}
-                <div className="cursor-grab text-zinc-600">
+                <div className={cn("text-zinc-600", isViewingHistory ? "cursor-default" : "cursor-grab")}>
                   <GripVertical className="h-4 w-4" />
                 </div>
 
@@ -133,56 +165,73 @@ export function SurveyForm({ onChangeType, onSubmit, className }: SurveyFormProp
                   type="text"
                   value={option}
                   onChange={(e) => updateOption(index, e.target.value)}
-                  placeholder={`Option ${index + 1}`}
-                  className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:border-zinc-600 focus:outline-none"
+                  readOnly={isViewingHistory}
+                  placeholder={isViewingHistory ? "" : `Option ${index + 1}`}
+                  className={cn(
+                    "flex-1 rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:border-zinc-600 focus:outline-none",
+                    isViewingHistory && "cursor-default text-zinc-300"
+                  )}
                 />
 
-                {/* Remove button */}
-                <button
-                  type="button"
-                  onClick={() => removeOption(index)}
-                  disabled={options.length <= 2}
-                  className="rounded p-1 text-zinc-600 transition-colors hover:text-zinc-400 disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label={`Remove option ${index + 1}`}
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                {/* Remove button - hidden when viewing history */}
+                {!isViewingHistory && (
+                  <button
+                    type="button"
+                    onClick={() => removeOption(index)}
+                    disabled={options.length <= 2}
+                    className="rounded p-1 text-zinc-600 transition-colors hover:text-zinc-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label={`Remove option ${index + 1}`}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             ))}
 
-            {/* Add option button */}
-            <button
-              type="button"
-              onClick={addOption}
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-500 transition-colors hover:text-zinc-300"
-            >
-              <Plus className="h-4 w-4" />
-              Add option
-            </button>
+            {/* Add option button - hidden when viewing history */}
+            {!isViewingHistory && (
+              <button
+                type="button"
+                onClick={addOption}
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-500 transition-colors hover:text-zinc-300"
+              >
+                <Plus className="h-4 w-4" />
+                Add option
+              </button>
+            )}
           </div>
         </div>
       )}
 
       {/* Footer with type badge and submit */}
       <div className="flex items-center justify-between border-t border-zinc-800 pt-4">
-        {/* Type selector badge */}
-        <button
-          type="button"
-          onClick={onChangeType}
-          className="flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
-        >
-          <ClipboardList className="h-4 w-4" />
-          <span className="font-medium">Survey</span>
-        </button>
+        {/* Type badge */}
+        {isViewingHistory ? (
+          <div className="flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-1.5 text-sm text-zinc-400">
+            <ClipboardList className="h-4 w-4" />
+            <span className="font-medium">Survey</span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onChangeType}
+            className="flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+          >
+            <ClipboardList className="h-4 w-4" />
+            <span className="font-medium">Survey</span>
+          </button>
+        )}
 
-        {/* Submit button */}
-        <button
-          type="submit"
-          disabled={!canSubmit}
-          className="rounded-xl bg-white px-6 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Ask
-        </button>
+        {/* Submit button - hidden when viewing history */}
+        {!isViewingHistory && (
+          <button
+            type="submit"
+            disabled={!canSubmit}
+            className="rounded-xl bg-white px-6 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Ask
+          </button>
+        )}
       </div>
     </form>
   );
@@ -194,11 +243,22 @@ export function SurveyForm({ onChangeType, onSubmit, className }: SurveyFormProp
 function QuestionTypeDropdown({
   value,
   onChange,
+  disabled = false,
 }: {
   value: QuestionType;
   onChange: (value: QuestionType) => void;
+  disabled?: boolean;
 }) {
   const selectedLabel = QUESTION_TYPES.find((t) => t.id === value)?.label ?? "Select type";
+
+  // When disabled, show as static text
+  if (disabled) {
+    return (
+      <div className="flex w-full items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-300">
+        <span>{selectedLabel}</span>
+      </div>
+    );
+  }
 
   return (
     <DropdownMenu.Root>
