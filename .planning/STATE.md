@@ -2,12 +2,12 @@
 
 ## Current Status
 - **Phase**: 8 of 10 — Test History & Polish
-- **Plan**: 3 of 4 complete
-- **Status**: In progress
+- **Plan**: 4 of 4 complete
+- **Status**: Phase complete
 - **Last Updated**: 2026-01-29
-- **Last Activity**: 2026-01-29 - Completed 08-03-PLAN.md (ViewSelector Colors & Legend Pills)
+- **Last Activity**: 2026-01-29 - Completed 08-04-PLAN.md (History Integration & Verification)
 
-**Progress**: ███████░░░ 75% (7.75/10 phases)
+**Progress**: ████████░░ 80% (8/10 phases)
 
 ## Completed
 - [x] Phase 1: Infrastructure Setup
@@ -75,10 +75,14 @@
   - 07-06: Visual Comparison Verification (70bd645, 1617076) — User approved
 
 ## In Progress
-- [ ] Phase 8: Test History & Polish
+- (none)
+
+## Recently Completed
+- [x] Phase 8: Test History & Polish — VERIFIED COMPLETE
   - 08-01: AlertDialog & Delete Modal Foundation (7c48271)
   - 08-02: Test History List Components (de896cb, ba24e92)
   - 08-03: ViewSelector Colors & Legend Pills (22eec20, 9f79fd8, 41e09bc)
+  - 08-04: History Integration & Verification (eb88ff2, cde1ce9) — User approved
 
 ## Blocked
 - (none)
@@ -203,6 +207,9 @@
 | ROLE_LEVELS in both components | 08-03 | Consistent color definitions in view-selector and legend-pills |
 | LegendPills display-only default | 08-03 | MVP needs legend display, toggle filtering optional |
 | LegendPills hidden mobile | 08-03 | Cleaner mobile layout via hidden md:flex |
+| Read-only form via isViewingHistory | 08-04 | Forms check store flag to disable inputs |
+| Pre-fill forms via useEffect | 08-04 | Watch currentResult changes for history viewing |
+| Create test resets then opens | 08-04 | reset() followed by setStatus("selecting-type") |
 
 ## Project-Wide Directives
 
@@ -250,9 +257,9 @@
 
 ## Session Continuity
 - **Last session**: 2026-01-29
-- **Stopped at**: Completed 08-03-PLAN.md (ViewSelector Colors & Legend Pills)
+- **Stopped at**: Completed 08-04-PLAN.md (History Integration & Verification)
 - **Resume file**: None
 
 ## Next Steps
-- Phase 8 Plan 3: Export functionality
-- Phase 8 Plan 4: UI polish pass
+- Phase 9: Export Features
+- Phase 10: Final Polish & Production
