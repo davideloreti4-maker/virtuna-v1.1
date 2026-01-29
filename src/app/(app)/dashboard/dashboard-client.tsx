@@ -242,7 +242,7 @@ function SimulationResultsPanel({
           Attention Breakdown
         </h4>
         <AttentionBar label="Full Attention" value={attention.full} color="emerald" />
-        <AttentionBar label="Partial Attention" value={attention.partial} color="blue" />
+        <AttentionBar label="Partial Attention" value={attention.partial} color="amber" />
         <AttentionBar label="Ignore" value={attention.ignore} color="zinc" />
       </div>
 
@@ -273,12 +273,12 @@ function AttentionBar({
 }: {
   label: string;
   value: number;
-  color: "emerald" | "blue" | "zinc";
+  color: "emerald" | "amber" | "zinc";
 }) {
   const colorClasses = {
     emerald: "bg-emerald-500",
-    blue: "bg-blue-500",
-    zinc: "bg-zinc-600",
+    amber: "bg-amber-400",
+    zinc: "bg-zinc-500",
   };
 
   return (

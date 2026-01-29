@@ -36,8 +36,9 @@ export function TestTypeSelector({
   onSelectType,
 }: TestTypeSelectorProps) {
   const handleSelectType = (type: TestType) => {
+    // Only call onSelectType - the modal will close automatically
+    // because the parent controls `open` based on status
     onSelectType(type);
-    onOpenChange(false);
   };
 
   const handleRequestNewContext = () => {
