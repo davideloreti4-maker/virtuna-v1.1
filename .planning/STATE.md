@@ -2,12 +2,12 @@
 
 ## Current Status
 - **Phase**: 9 of 10 — Settings & Modals
-- **Plan**: 4 of ? complete
-- **Status**: In progress
+- **Plan**: 5 of 5 complete
+- **Status**: Phase complete
 - **Last Updated**: 2026-01-29
-- **Last Activity**: 2026-01-29 - Completed 09-04-PLAN.md (Billing & Feedback)
+- **Last Activity**: 2026-01-29 - Completed 09-05-PLAN.md (Settings Integration)
 
-**Progress**: ████████░░ 81% (8.1/10 phases)
+**Progress**: █████████░ 90% (9/10 phases)
 
 ## Completed
 - [x] Phase 1: Infrastructure Setup
@@ -75,13 +75,17 @@
   - 07-06: Visual Comparison Verification (70bd645, 1617076) — User approved
 
 ## In Progress
-- [ ] Phase 9: Settings & Modals
-  - 09-01: Settings Foundation (5483af4, f6025a5, 396f457) — COMPLETE
-  - 09-02: Settings Page UI (2b7fb6d, 31690d6, 70c6ead, 7b4a95c) — COMPLETE
-  - 09-03: Notifications & Team Sections (e9112b8, c3b8a82) — COMPLETE
-  - 09-04: Billing & Feedback (f85900c, deb442d) — COMPLETE
+- (none)
 
 ## Recently Completed
+- [x] Phase 9: Settings & Modals — VERIFIED COMPLETE
+  - 09-01: Settings Foundation (5483af4, f6025a5, 396f457)
+  - 09-02: Settings Page UI (2b7fb6d, 31690d6, 70c6ead, 7b4a95c)
+  - 09-03: Notifications & Team Sections (e9112b8, c3b8a82)
+  - 09-04: Billing & Feedback (f85900c, deb442d)
+  - 09-05: Settings Integration (9401da0, 583e7b4, f2526d9) — User approved
+
+
 - [x] Phase 8: Test History & Polish — VERIFIED COMPLETE
   - 08-01: AlertDialog & Delete Modal Foundation (7c48271)
   - 08-02: Test History List Components (de896cb, ba24e92)
@@ -228,6 +232,10 @@
 | Switch emerald-600 checked | 09-03 | Consistent with other active/success states |
 | Role badge colors | 09-03 | Owner=amber, Admin=blue, Member=zinc for visual hierarchy |
 | Immediate notification persist | 09-03 | No save button for toggle switches, instant feedback |
+| Settings deep-linking via query param | 09-05 | /settings?tab=billing for direct tab access |
+| LeaveFeedbackModal sibling pattern | 09-05 | Modal rendered as sibling fragment, not nested in sidebar |
+| Mobile drawer close on nav | 09-05 | Call onMobileOpenChange(false) after navigation |
+| Product Guide external docs | 09-05 | Opens https://docs.societies.io in new tab |
 
 ## Project-Wide Directives
 
@@ -275,9 +283,8 @@
 
 ## Session Continuity
 - **Last session**: 2026-01-29
-- **Stopped at**: Completed 09-03-PLAN.md (Notifications & Team Sections)
+- **Stopped at**: Completed 09-05-PLAN.md (Settings Integration)
 - **Resume file**: None
 
 ## Next Steps
-- Phase 9: Settings & Modals
 - Phase 10: Final QA
