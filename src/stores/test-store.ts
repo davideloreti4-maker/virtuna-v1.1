@@ -26,6 +26,7 @@ interface TestState {
   currentResult: TestResult | null;
   simulationPhase: SimulationPhase | null;
   phaseProgress: number; // 0-100 for overall progress
+  isViewingHistory: boolean; // true when viewing a saved test from history
   _isHydrated: boolean;
 
   // Actions
@@ -86,6 +87,7 @@ export const useTestStore = create<TestState>((set, get) => ({
   currentResult: null,
   simulationPhase: null,
   phaseProgress: 0,
+  isViewingHistory: false,
   _isHydrated: false,
 
   _hydrate: () => {
@@ -189,6 +191,7 @@ export const useTestStore = create<TestState>((set, get) => ({
         currentResult: result,
         currentTestType: result.testType,
         currentStatus: 'viewing-results',
+        isViewingHistory: true,
       });
     }
   },
@@ -197,10 +200,13 @@ export const useTestStore = create<TestState>((set, get) => ({
     set((state) => {
       const newTests = state.tests.filter((t) => t.id !== testId);
       saveToStorage(newTests);
+      const wasViewing = state.currentResult?.id === testId;
       return {
         tests: newTests,
-        // Clear current result if it was the deleted test
-        currentResult: state.currentResult?.id === testId ? null : state.currentResult,
+        currentResult: wasViewing ? null : state.currentResult,
+        currentStatus: wasViewing ? 'idle' : state.currentStatus,
+        isViewingHistory: wasViewing ? false : state.isViewingHistory,
+        currentTestType: wasViewing ? null : state.currentTestType,
       };
     });
   },
@@ -212,6 +218,7 @@ export const useTestStore = create<TestState>((set, get) => ({
       currentResult: null,
       simulationPhase: null,
       phaseProgress: 0,
+      isViewingHistory: false,
     });
   },
 }));
