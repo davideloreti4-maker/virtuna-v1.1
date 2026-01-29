@@ -11,17 +11,29 @@ import type {
 
 const STORAGE_KEY = 'virtuna-tests';
 
+/**
+ * Simulation phase during AI processing
+ */
+export type SimulationPhase =
+  | 'analyzing' // Phase 1: Analyzing content
+  | 'matching' // Phase 2: Matching profiles
+  | 'simulating' // Phase 3: Running simulation
+  | 'generating'; // Phase 4: Generating insights
+
 interface TestState {
   tests: TestResult[];
   currentTestType: TestType | null;
   currentStatus: TestStatus;
   currentResult: TestResult | null;
+  simulationPhase: SimulationPhase | null;
+  phaseProgress: number; // 0-100 for overall progress
   _isHydrated: boolean;
 
   // Actions
   setTestType: (type: TestType | null) => void;
   setStatus: (status: TestStatus) => void;
   submitTest: (content: string, societyId: string) => Promise<void>;
+  cancelSimulation: () => void;
   viewResult: (testId: string) => void;
   deleteTest: (testId: string) => void;
   reset: () => void;
@@ -153,6 +165,8 @@ export const useTestStore = create<TestState>((set, get) => ({
   currentTestType: null,
   currentStatus: 'idle',
   currentResult: null,
+  simulationPhase: null,
+  phaseProgress: 0,
   _isHydrated: false,
 
   _hydrate: () => {
@@ -179,11 +193,36 @@ export const useTestStore = create<TestState>((set, get) => ({
     const { currentTestType } = get();
     if (!currentTestType) return;
 
-    // Set simulating status
-    set({ currentStatus: 'simulating' });
+    // Set simulating status and start phase 1
+    set({
+      currentStatus: 'simulating',
+      simulationPhase: 'analyzing',
+      phaseProgress: 0,
+    });
 
-    // Wait 2 seconds (mock AI processing)
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // Phase 1: Analyzing (0-25%)
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    if (get().currentStatus !== 'simulating') return; // cancelled
+
+    set({ simulationPhase: 'matching', phaseProgress: 25 });
+
+    // Phase 2: Matching (25-50%)
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    if (get().currentStatus !== 'simulating') return; // cancelled
+
+    set({ simulationPhase: 'simulating', phaseProgress: 50 });
+
+    // Phase 3: Simulating (50-75%)
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    if (get().currentStatus !== 'simulating') return; // cancelled
+
+    set({ simulationPhase: 'generating', phaseProgress: 75 });
+
+    // Phase 4: Generating (75-100%)
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    if (get().currentStatus !== 'simulating') return; // cancelled
+
+    set({ phaseProgress: 100 });
 
     // Generate mock result
     const impactScore = Math.floor(Math.random() * 36) + 60; // 60-95
@@ -209,7 +248,17 @@ export const useTestStore = create<TestState>((set, get) => ({
         tests: newTests,
         currentResult: result,
         currentStatus: 'viewing-results',
+        simulationPhase: null,
+        phaseProgress: 0,
       };
+    });
+  },
+
+  cancelSimulation: () => {
+    set({
+      currentStatus: 'filling-form',
+      simulationPhase: null,
+      phaseProgress: 0,
     });
   },
 
@@ -242,6 +291,8 @@ export const useTestStore = create<TestState>((set, get) => ({
       currentTestType: null,
       currentStatus: 'idle',
       currentResult: null,
+      simulationPhase: null,
+      phaseProgress: 0,
     });
   },
 }));
