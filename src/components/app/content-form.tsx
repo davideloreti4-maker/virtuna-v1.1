@@ -75,36 +75,33 @@ export function ContentForm({
         type="button"
         onClick={onChangeType}
         className={cn(
-          "flex items-center gap-2 self-start",
-          "rounded-lg px-3 py-2",
-          "bg-zinc-800/50 border border-zinc-700/50",
+          "flex items-center gap-2 self-start p-2",
           "text-sm text-zinc-400",
-          "transition-colors hover:text-white hover:border-zinc-600"
+          "transition-colors hover:text-white"
         )}
       >
-        <IconComponent className="h-4 w-4" />
-        <span>{typeConfig.name}</span>
-        <ChevronDown className="h-4 w-4" />
+        <IconComponent className="h-5 w-5" />
+        <span className="font-medium">{typeConfig.name}</span>
+        <ChevronDown className="h-4 w-4 ml-1" />
       </button>
 
       {/* Textarea container */}
-      <div className="relative">
-        <textarea
-          ref={textareaRef}
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder={typeConfig.placeholder}
-          className={cn(
-            "w-full min-h-[120px] resize-none",
-            "rounded-xl border border-zinc-800 bg-zinc-900",
-            "px-4 py-3",
-            "text-white text-base",
-            "placeholder:text-zinc-600",
-            "focus:outline-none focus:ring-2 focus:ring-zinc-700 focus:border-transparent",
-            "transition-colors"
-          )}
-        />
-      </div>
+      <textarea
+        ref={textareaRef}
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        placeholder={typeConfig.placeholder}
+        className={cn(
+          "w-full min-h-[120px] resize-none overflow-hidden",
+          "rounded-xl border border-zinc-800 bg-transparent",
+          "px-4 py-3",
+          "text-white text-base",
+          "placeholder:text-zinc-600",
+          "focus:outline-none focus:ring-1 focus:ring-zinc-700",
+          "transition-colors"
+        )}
+        rows={1}
+      />
 
       {/* Action buttons row */}
       <div className="flex items-center justify-between">

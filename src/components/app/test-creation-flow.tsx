@@ -234,7 +234,7 @@ function SimulationResultsPanel({
         <AttentionBar label="Full Attention" value={attention.full} color="emerald" />
 
         {/* Partial Attention */}
-        <AttentionBar label="Partial Attention" value={attention.partial} color="blue" />
+        <AttentionBar label="Partial Attention" value={attention.partial} color="amber" />
 
         {/* Ignore */}
         <AttentionBar label="Ignore" value={attention.ignore} color="zinc" />
@@ -245,10 +245,10 @@ function SimulationResultsPanel({
         type="button"
         onClick={onRunAnother}
         className={cn(
-          "w-full rounded-xl px-6 py-3",
-          "bg-white text-zinc-900",
-          "text-sm font-medium",
-          "transition-colors hover:bg-zinc-200"
+          "w-full rounded-lg px-6 py-3",
+          "border border-zinc-700 bg-transparent",
+          "text-sm font-medium text-zinc-400",
+          "transition-colors hover:bg-zinc-800 hover:text-white"
         )}
       >
         Run another test
@@ -263,14 +263,14 @@ function SimulationResultsPanel({
 interface AttentionBarProps {
   label: string;
   value: number;
-  color: "emerald" | "blue" | "zinc";
+  color: "emerald" | "amber" | "zinc";
 }
 
 function AttentionBar({ label, value, color }: AttentionBarProps) {
   const colorClasses = {
     emerald: "bg-emerald-500",
-    blue: "bg-blue-500",
-    zinc: "bg-zinc-600",
+    amber: "bg-amber-400",
+    zinc: "bg-zinc-500",
   };
 
   return (

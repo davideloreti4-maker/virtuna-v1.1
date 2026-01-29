@@ -91,24 +91,22 @@ export function SurveyForm({ onChangeType, onSubmit, className }: SurveyFormProp
       <button
         type="button"
         onClick={onChangeType}
-        className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white transition-colors hover:border-zinc-700"
+        className="flex items-center gap-2 p-2 text-sm text-zinc-400 transition-colors hover:text-white"
       >
-        <ClipboardList className="h-4 w-4 text-zinc-400" />
-        <span>Survey</span>
-        <ChevronDown className="h-3 w-3 text-zinc-500" />
+        <ClipboardList className="h-5 w-5" />
+        <span className="font-medium">Survey</span>
+        <ChevronDown className="h-4 w-4 ml-1" />
       </button>
 
       {/* Question textarea */}
-      <div>
-        <textarea
-          ref={textareaRef}
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          placeholder="What would you like to ask?"
-          rows={1}
-          className="min-h-[80px] w-full resize-none overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-[15px] text-white placeholder:text-zinc-500 focus:border-zinc-700 focus:outline-none"
-        />
-      </div>
+      <textarea
+        ref={textareaRef}
+        value={question}
+        onChange={(e) => setQuestion(e.target.value)}
+        placeholder="What would you like to ask?"
+        rows={1}
+        className="min-h-[120px] w-full resize-none overflow-hidden rounded-xl border border-zinc-800 bg-transparent px-4 py-3 text-base text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-700"
+      />
 
       {/* Question type dropdown */}
       <div>

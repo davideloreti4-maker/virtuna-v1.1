@@ -70,7 +70,7 @@ export function TestTypeSelector({
           </Dialog.Close>
 
           {/* Header */}
-          <Dialog.Title className="mb-8 pr-8 text-2xl font-semibold text-white">
+          <Dialog.Title className="mb-8 text-center text-xl font-medium text-white">
             What would you like to simulate?
           </Dialog.Title>
 
@@ -79,7 +79,7 @@ export function TestTypeSelector({
             {TEST_CATEGORIES.map((category) => (
               <div key={category.id}>
                 {/* Category label */}
-                <h3 className="mb-4 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-zinc-500">
                   {category.name}
                 </h3>
 
@@ -95,13 +95,12 @@ export function TestTypeSelector({
                         type="button"
                         onClick={() => handleSelectType(typeId)}
                         className={cn(
-                          "flex flex-col items-center justify-center gap-3 rounded-xl p-4",
-                          "border border-transparent bg-zinc-800/50",
+                          "flex flex-col items-center justify-center gap-2 rounded-xl p-4",
                           "transition-all duration-150",
-                          "hover:border-zinc-700 hover:bg-zinc-800"
+                          "hover:bg-zinc-800"
                         )}
                       >
-                        <IconComponent className="h-6 w-6 text-zinc-400" />
+                        <IconComponent className="h-5 w-5 text-zinc-400" />
                         <span className="text-sm text-white">{typeConfig.name}</span>
                       </button>
                     );
