@@ -12,6 +12,7 @@ import {
   SurveyForm,
   LoadingPhases,
   ResultsPanel,
+  LegendPills,
 } from "@/components/app";
 import { useTestStore } from "@/stores/test-store";
 import { useSocietyStore } from "@/stores/society-store";
@@ -98,6 +99,8 @@ export function DashboardClient() {
       <div className="relative z-10 flex items-center justify-between px-6 py-4">
         <ContextBar location="Switzerland" />
         <div className="flex items-center gap-3">
+          {/* Legend pills for role level view - hidden on mobile */}
+          <LegendPills className="hidden md:flex" />
           <FilterPillGroup />
           <button
             type="button"
