@@ -2,12 +2,12 @@
 
 ## Current Status
 - **Phase**: 7 of 10 — Simulation & Results
-- **Plan**: 4 of 5 complete (results panel components)
-- **Status**: In progress
+- **Plan**: 5 of 5 complete (full simulation flow integration)
+- **Status**: Phase complete
 - **Last Updated**: 2026-01-29
-- **Last Activity**: 2026-01-29 - Completed 07-04-PLAN.md (Results panel components)
+- **Last Activity**: 2026-01-29 - Completed 07-05-PLAN.md (Simulation flow integration)
 
-**Progress**: ██████░░░░ 68% (6.8/10 phases)
+**Progress**: ███████░░░ 70% (7/10 phases)
 
 ## Completed
 - [x] Phase 1: Infrastructure Setup
@@ -66,12 +66,14 @@
   - 06-04: Test Store and Flow Integration (53a097f, ff21e81, dd1dcb4)
   - 06-05: Visual Verification + v0 polish (c3d5b5b, c696f9c)
 
-## In Progress
-- [ ] Phase 7: Simulation & Results
+- [x] Phase 7: Simulation & Results — COMPLETE
   - 07-01: Floating Form Layout Restructure (97a3eb7)
   - 07-02: Simulation Loading Phases (completed separately)
   - 07-03: Results Types and Mock Data (completed separately)
   - 07-04: Results Panel Components (ee0673b, c85af5b)
+  - 07-05: Simulation Flow Integration (6645cc7, 4318ad1)
+
+## In Progress
 
 ## Blocked
 - (none)
@@ -182,6 +184,8 @@
 | Stacked bar attention viz | 07-04 | Full (emerald-500), Partial (amber-400), Ignore (zinc-600) segments |
 | First theme auto-expanded | 07-04 | Better UX for conversation themes section |
 | Share button feedback | 07-04 | 2-second "Copied!" feedback after clipboard copy |
+| Centralized mock generators | 07-05 | Import from @/lib/mock-data instead of inline definitions |
+| Composed simulation components | 07-05 | Use LoadingPhases and ResultsPanel from @/components/app |
 
 ## Project-Wide Directives
 
@@ -229,8 +233,8 @@
 
 ## Session Continuity
 - **Last session**: 2026-01-29
-- **Stopped at**: Completed 07-04-PLAN.md (Results panel components)
+- **Stopped at**: Completed 07-05-PLAN.md (Simulation flow integration)
 - **Resume file**: None
 
 ## Next Steps
-- 07-05: Visual Verification
+- Phase 8: Test History & Exports
