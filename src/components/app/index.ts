@@ -15,3 +15,4 @@ export { ContentForm } from "./content-form";
 export { SurveyForm } from "./survey-form";
 export type { SurveySubmission } from "./survey-form";
 export { TestCreationFlow } from "./test-creation-flow";
+export { LoadingPhases } from "./simulation/loading-phases";
