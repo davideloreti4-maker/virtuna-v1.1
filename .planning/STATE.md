@@ -2,12 +2,12 @@
 
 ## Current Status
 - **Phase**: 6 of 10 — Test Type Selector & Forms
-- **Plan**: 2 of ? complete
+- **Plan**: 3 of ? complete
 - **Status**: In progress
 - **Last Updated**: 2026-01-29
-- **Last Activity**: 2026-01-29 - Completed 06-02-PLAN.md (Content Form Component)
+- **Last Activity**: 2026-01-29 - Completed 06-03-PLAN.md (Survey Form Component)
 
-**Progress**: █████░░░░░ 56% (5.6/10 phases)
+**Progress**: █████░░░░░ 57% (5.7/10 phases)
 
 ## Completed
 - [x] Phase 1: Infrastructure Setup
@@ -63,6 +63,7 @@
 - [ ] Phase 6: Test Type Selector & Forms
   - 06-01: Test Type Selector Foundation (bed59d2, f286f98)
   - 06-02: Content Form Component (5fc5cc1)
+  - 06-03: Survey Form Component (a2b0420)
 
 ## Blocked
 - (none)
@@ -154,6 +155,9 @@
 | TEST_CATEGORIES as array | 06-01 | Preserves display order for modal rendering |
 | Auto-expand via scrollHeight | 06-02 | Reset height to auto then set to scrollHeight for accurate measurement |
 | Action button stubs | 06-02 | Console.log placeholders for future Upload Images and Help Me Craft functionality |
+| Min 2 options for single-select | 06-03 | Survey options list enforces minimum 2 options |
+| Visual-only drag handle | 06-03 | GripVertical icon shown but no actual drag functionality |
+| Radix DropdownMenu for form selects | 06-03 | Consistent with ViewSelector pattern |
 
 ## Project-Wide Directives
 
@@ -196,12 +200,13 @@
 - Phase 5 verified: Society management complete - Zustand store, CRUD operations, persistence
 - Note: Replaced Zustand persist middleware with manual localStorage due to SSR issues
 - Phase 6 Plan 2 complete: ContentForm with auto-expanding textarea, action buttons, type selector
+- Phase 6 Plan 3 complete: SurveyForm with question/type dropdown/dynamic options
 
 ## Session Continuity
 - **Last session**: 2026-01-29
-- **Stopped at**: Completed 06-02-PLAN.md (Content Form Component)
+- **Stopped at**: Completed 06-03-PLAN.md (Survey Form Component)
 - **Resume file**: None
 
 ## Next Steps
-- Execute 06-03-PLAN.md: Survey form with question builder
-- Wire up forms to test creation flow
+- Execute 06-04-PLAN.md: Wire up test creation flow
+- Integration testing for form components
