@@ -24,3 +24,6 @@ export { InsightsSection } from "./simulation/insights-section";
 export { ThemesSection } from "./simulation/themes-section";
 export { ShareButton } from "./simulation/share-button";
 export { ResultsPanel } from "./simulation/results-panel";
+export { TestHistoryItem } from "./test-history-item";
+export { TestHistoryList } from "./test-history-list";
+export { DeleteTestModal } from "./delete-test-modal";

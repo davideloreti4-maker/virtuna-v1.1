@@ -17,6 +17,8 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSocietyStore } from "@/stores/society-store";
+import { useTestStore } from "@/stores/test-store";
+import { TestHistoryList } from "./test-history-list";
 
 interface SidebarProps {
   mobileOpen?: boolean;
@@ -57,6 +59,12 @@ export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarPr
 
   const handleCreateTest = () => {
     console.log("Create new test clicked");
+  };
+
+  const viewResult = useTestStore((s) => s.viewResult);
+
+  const handleViewTest = (testId: string) => {
+    viewResult(testId);
   };
 
   return (
@@ -149,8 +157,15 @@ export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarPr
           <Plus className="h-4 w-4" />
         </button>
 
-        {/* Spacer */}
-        <div className="flex-1" />
+        {/* Test History Section */}
+        <div className="mt-4 flex flex-1 flex-col overflow-hidden">
+          <label className="mb-2 block text-xs uppercase tracking-wide text-zinc-500">
+            Test History
+          </label>
+          <div className="flex-1 overflow-y-auto">
+            <TestHistoryList onSelectTest={handleViewTest} />
+          </div>
+        </div>
 
         {/* Separator line */}
         <div className="border-t border-zinc-800" />
