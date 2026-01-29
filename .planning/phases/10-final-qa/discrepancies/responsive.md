@@ -62,6 +62,14 @@
 ### 5. Content Form Action Buttons (content-form.tsx)
 - Made action buttons wrap on mobile with `flex-wrap`
 - Hid secondary buttons on very small screens with `hidden sm:flex`
+- Added min-h-[44px] to type selector badge buttons
+
+### 6. Survey Form Footer (survey-form.tsx)
+- Added flex-wrap and gap-3 for mobile wrapping
+- Added min-h-[44px] to type badge and submit buttons
+
+### 7. Global CSS (globals.css)
+- Added `overflow-x: hidden` to html and body to prevent horizontal scroll
 
 ## Test Flow Verification
 

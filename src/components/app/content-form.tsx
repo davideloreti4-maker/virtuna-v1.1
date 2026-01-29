@@ -108,13 +108,13 @@ export function ContentForm({
       />
 
       {/* Action buttons row */}
-      <div className="flex items-center justify-between border-t border-zinc-800 pt-4">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-800 pt-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           {/* Type selector badge */}
           {isViewingHistory ? (
             <div
               className={cn(
-                "flex items-center gap-2 rounded-lg px-3 py-1.5",
+                "flex min-h-[44px] items-center gap-2 rounded-lg px-3 py-1.5",
                 "border border-zinc-700 bg-zinc-800/50",
                 "text-sm text-zinc-400"
               )}
@@ -127,7 +127,7 @@ export function ContentForm({
               type="button"
               onClick={onChangeType}
               className={cn(
-                "flex items-center gap-2 rounded-lg px-3 py-1.5",
+                "flex min-h-[44px] items-center gap-2 rounded-lg px-3 py-1.5",
                 "border border-zinc-700 bg-zinc-800/50",
                 "text-sm text-zinc-400",
                 "transition-colors hover:bg-zinc-800 hover:text-white"
@@ -138,15 +138,15 @@ export function ContentForm({
             </button>
           )}
 
-          {/* Action buttons - hidden when viewing history */}
+          {/* Action buttons - hidden when viewing history, hidden on mobile */}
           {!isViewingHistory && (
             <>
-              {/* Upload Images button */}
+              {/* Upload Images button - hidden on small screens */}
               <button
                 type="button"
                 onClick={handleUploadImages}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-lg px-3 py-1.5",
+                  "hidden items-center gap-1.5 rounded-lg px-3 py-1.5 sm:flex",
                   "border border-zinc-700 bg-zinc-800/50",
                   "text-xs text-zinc-500",
                   "transition-colors hover:bg-zinc-800 hover:text-zinc-300"
@@ -156,12 +156,12 @@ export function ContentForm({
                 <span>Upload Images</span>
               </button>
 
-              {/* Help Me Craft button */}
+              {/* Help Me Craft button - hidden on small screens */}
               <button
                 type="button"
                 onClick={handleHelpMeCraft}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-lg px-3 py-1.5",
+                  "hidden items-center gap-1.5 rounded-lg px-3 py-1.5 sm:flex",
                   "border border-zinc-700 bg-zinc-800/50",
                   "text-xs text-zinc-500",
                   "transition-colors hover:bg-zinc-800 hover:text-zinc-300"

@@ -46,17 +46,16 @@ export function SettingsPage({ defaultTab = "profile" }: SettingsPageProps) {
 
       <Tabs.Root
         defaultValue={defaultTab}
-        orientation="vertical"
-        className="flex gap-8"
+        className="flex flex-col gap-6 md:flex-row md:gap-8"
       >
-        {/* Tab List - Left side */}
-        <Tabs.List className="flex w-48 flex-shrink-0 flex-col gap-1">
+        {/* Tab List - Horizontal scroll on mobile, vertical on desktop */}
+        <Tabs.List className="-mx-6 flex gap-1 overflow-x-auto px-6 pb-2 md:mx-0 md:w-48 md:flex-shrink-0 md:flex-col md:overflow-x-visible md:px-0 md:pb-0">
           {TABS.map((tab) => (
             <Tabs.Trigger
               key={tab.value}
               value={tab.value}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors",
+                "flex min-h-[44px] flex-shrink-0 items-center gap-3 whitespace-nowrap rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors",
                 "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-300",
                 "data-[state=active]:bg-zinc-800 data-[state=active]:text-white"
               )}
@@ -67,8 +66,8 @@ export function SettingsPage({ defaultTab = "profile" }: SettingsPageProps) {
           ))}
         </Tabs.List>
 
-        {/* Tab Content - Right side */}
-        <div className="flex-1">
+        {/* Tab Content - Right side on desktop, below on mobile */}
+        <div className="flex-1 min-w-0">
           <Tabs.Content value="profile" className="outline-none">
             <ProfileSection />
           </Tabs.Content>

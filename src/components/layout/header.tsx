@@ -99,7 +99,7 @@ export function Header({ className }: HeaderProps) {
           {/* Mobile Menu Button */}
           <button
             type="button"
-            className="inline-flex items-center justify-center rounded-md p-2 text-white hover:text-white/80 md:hidden"
+            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-white hover:text-white/80 md:hidden"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-expanded={mobileMenuOpen}
             aria-label="Toggle navigation menu"

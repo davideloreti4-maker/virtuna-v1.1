@@ -101,7 +101,7 @@ export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarPr
       >
         {/* Mobile close button */}
         <button
-          className="absolute right-4 top-4 p-2 text-zinc-400 hover:text-white md:hidden"
+          className="absolute right-4 top-4 flex min-h-[44px] min-w-[44px] items-center justify-center text-zinc-400 hover:text-white md:hidden"
           onClick={() => onMobileOpenChange?.(false)}
           aria-label="Close menu"
         >

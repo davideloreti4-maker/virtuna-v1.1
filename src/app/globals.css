@@ -52,8 +52,14 @@
 }
 
 /* Base styles */
+html,
 body {
   @apply bg-background text-foreground font-sans;
+  /* Prevent horizontal scroll on mobile */
+  overflow-x: hidden;
+}
+
+body {
   /* Dot grid pattern across entire page - matching societies.io */
   background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px);
   background-size: 24px 24px;

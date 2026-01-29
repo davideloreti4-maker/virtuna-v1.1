@@ -204,10 +204,10 @@ export function SurveyForm({ onChangeType, onSubmit, className }: SurveyFormProp
       )}
 
       {/* Footer with type badge and submit */}
-      <div className="flex items-center justify-between border-t border-zinc-800 pt-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-800 pt-4">
         {/* Type badge */}
         {isViewingHistory ? (
-          <div className="flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-1.5 text-sm text-zinc-400">
+          <div className="flex min-h-[44px] items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-1.5 text-sm text-zinc-400">
             <ClipboardList className="h-4 w-4" />
             <span className="font-medium">Survey</span>
           </div>
@@ -215,7 +215,7 @@ export function SurveyForm({ onChangeType, onSubmit, className }: SurveyFormProp
           <button
             type="button"
             onClick={onChangeType}
-            className="flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+            className="flex min-h-[44px] items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
           >
             <ClipboardList className="h-4 w-4" />
             <span className="font-medium">Survey</span>
@@ -227,7 +227,7 @@ export function SurveyForm({ onChangeType, onSubmit, className }: SurveyFormProp
           <button
             type="submit"
             disabled={!canSubmit}
-            className="rounded-xl bg-white px-6 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-[44px] rounded-xl bg-white px-6 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Ask
           </button>
