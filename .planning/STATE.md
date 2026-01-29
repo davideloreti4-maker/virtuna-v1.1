@@ -2,12 +2,12 @@
 
 ## Current Status
 - **Phase**: 6 of 10 — Test Type Selector & Forms
-- **Plan**: 3 of ? complete
+- **Plan**: 4 of ? complete
 - **Status**: In progress
 - **Last Updated**: 2026-01-29
-- **Last Activity**: 2026-01-29 - Completed 06-03-PLAN.md (Survey Form Component)
+- **Last Activity**: 2026-01-29 - Completed 06-04-PLAN.md (Test Store and Flow Integration)
 
-**Progress**: █████░░░░░ 57% (5.7/10 phases)
+**Progress**: ██████░░░░ 60% (6/10 phases)
 
 ## Completed
 - [x] Phase 1: Infrastructure Setup
@@ -64,6 +64,7 @@
   - 06-01: Test Type Selector Foundation (bed59d2, f286f98)
   - 06-02: Content Form Component (5fc5cc1)
   - 06-03: Survey Form Component (a2b0420)
+  - 06-04: Test Store and Flow Integration (53a097f, ff21e81, dd1dcb4)
 
 ## Blocked
 - (none)
@@ -158,6 +159,9 @@
 | Min 2 options for single-select | 06-03 | Survey options list enforces minimum 2 options |
 | Visual-only drag handle | 06-03 | GripVertical icon shown but no actual drag functionality |
 | Radix DropdownMenu for form selects | 06-03 | Consistent with ViewSelector pattern |
+| Inline results panel | 06-04 | SimulationResultsPanel in dashboard-client to avoid shared store issues |
+| Mock attention breakdown | 06-04 | Full: 30-70%, Partial: 15-45%, Ignore: remainder to sum to 100% |
+| 2s mock delay | 06-04 | Simulated AI processing time for UX feedback |
 
 ## Project-Wide Directives
 
@@ -201,12 +205,14 @@
 - Note: Replaced Zustand persist middleware with manual localStorage due to SSR issues
 - Phase 6 Plan 2 complete: ContentForm with auto-expanding textarea, action buttons, type selector
 - Phase 6 Plan 3 complete: SurveyForm with question/type dropdown/dynamic options
+- Phase 6 Plan 4 complete: Test store with localStorage, flow integration in dashboard
 
 ## Session Continuity
 - **Last session**: 2026-01-29
-- **Stopped at**: Completed 06-03-PLAN.md (Survey Form Component)
+- **Stopped at**: Completed 06-04-PLAN.md (Test Store and Flow Integration)
 - **Resume file**: None
 
 ## Next Steps
-- Execute 06-04-PLAN.md: Wire up test creation flow
-- Integration testing for form components
+- Phase 6 visual verification checkpoint (if exists)
+- Manual testing of TikTok Script and Instagram Post flows
+- Future: Wire up real AI simulation API
