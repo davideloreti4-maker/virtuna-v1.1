@@ -12,3 +12,5 @@ export { ViewSelector } from "./view-selector";
 export { CreateSocietyModal } from "./create-society-modal";
 export { TestTypeSelector } from "./test-type-selector";
 export { ContentForm } from "./content-form";
+export { SurveyForm } from "./survey-form";
+export type { SurveySubmission } from "./survey-form";
