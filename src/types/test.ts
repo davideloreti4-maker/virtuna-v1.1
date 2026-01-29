@@ -3,6 +3,33 @@
  */
 
 /**
+ * Impact score label based on performance
+ */
+export type ImpactLabel = 'Poor' | 'Below Average' | 'Average' | 'Good' | 'Excellent';
+
+/**
+ * A content variant (original or AI-generated)
+ */
+export interface Variant {
+  id: string;
+  type: 'original' | 'ai-generated';
+  content: string;
+  impactScore: number;
+  label?: string;
+}
+
+/**
+ * A theme identified from conversation analysis
+ */
+export interface ConversationTheme {
+  id: string;
+  title: string;
+  percentage: number;
+  description: string;
+  quotes: string[];
+}
+
+/**
  * All available test types in the application
  */
 export type TestType =
@@ -62,11 +89,15 @@ export interface TestResult {
   testType: TestType;
   content: string;
   impactScore: number;
+  impactLabel: ImpactLabel;
   attention: {
     full: number;
     partial: number;
     ignore: number;
   };
+  variants: Variant[];
+  insights: string[];
+  conversationThemes: ConversationTheme[];
   createdAt: string;
   societyId: string;
 }
