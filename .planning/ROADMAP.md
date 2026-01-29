@@ -222,23 +222,29 @@ Plans:
 ---
 
 ### Phase 9: Settings & Modals
-**Goal**: Complete settings pages and modals
+**Goal**: Complete settings pages and modals matching societies.io
 
-**Status**: Not Started
+**Status**: Planning Complete
 
-**Tasks**:
-- [ ] Build user profile page
-- [ ] Build account settings
-- [ ] Build notification preferences
-- [ ] Build billing UI (link to Stripe)
-- [ ] Build team management UI
-- [ ] Build Leave Feedback modal
-- [ ] Add Product Guide link
+**Plans**: 5 plans (3 waves)
+
+Plans:
+- [ ] 09-01-PLAN.md — Install Radix dependencies + create settings store and types
+- [ ] 09-02-PLAN.md — Settings page with tabs, profile section, account section
+- [ ] 09-03-PLAN.md — Notifications section with switches, team section
+- [ ] 09-04-PLAN.md — Billing section with Stripe link, Leave Feedback modal
+- [ ] 09-05-PLAN.md — Integration: wire sidebar, create settings route, verification
+
+**Wave Structure**:
+- Wave 1: 09-01 (Foundation - dependencies, store, types)
+- Wave 2: 09-02, 09-03, 09-04 (Parallel - settings sections and modals)
+- Wave 3: 09-05 (Integration and verification checkpoint)
 
 **Success Criteria**:
-- All settings screens complete
-- Forms interactive (local state)
+- All settings screens complete (profile, account, notifications, billing, team)
+- Forms interactive with localStorage persistence
 - Modals match societies.io styling
+- v0 MCP used for UI design verification
 
 **Requirements Covered**: SET-01 to SET-06
 
@@ -295,4 +301,4 @@ Phase 2 (Design System) ✓
 - **Current Phase**: 9 (Settings & Modals)
 - **Completed Phases**: 1, 2, 3, 4, 5, 6, 7, 8
 - **Blocked By**: None
-- **Next Action**: Plan Phase 9
+- **Next Action**: Execute Phase 9
