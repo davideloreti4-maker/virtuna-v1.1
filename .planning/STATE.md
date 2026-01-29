@@ -2,12 +2,12 @@
 
 ## Current Status
 - **Phase**: 8 of 10 — Test History & Polish
-- **Plan**: 2 of 4 complete
+- **Plan**: 3 of 4 complete
 - **Status**: In progress
 - **Last Updated**: 2026-01-29
-- **Last Activity**: 2026-01-29 - Completed 08-02-PLAN.md (Test History List Components)
+- **Last Activity**: 2026-01-29 - Completed 08-03-PLAN.md (ViewSelector Colors & Legend Pills)
 
-**Progress**: ███████░░░ 72% (7.5/10 phases)
+**Progress**: ███████░░░ 75% (7.75/10 phases)
 
 ## Completed
 - [x] Phase 1: Infrastructure Setup
@@ -78,6 +78,7 @@
 - [ ] Phase 8: Test History & Polish
   - 08-01: AlertDialog & Delete Modal Foundation (7c48271)
   - 08-02: Test History List Components (de896cb, ba24e92)
+  - 08-03: ViewSelector Colors & Legend Pills (22eec20, 9f79fd8, 41e09bc)
 
 ## Blocked
 - (none)
@@ -199,6 +200,9 @@
 | Indigo left border active | 08-02 | Active history item indicator |
 | AlertDialog over Dialog for destructive | 08-01 | Proper ARIA role for better screen reader announcements |
 | isViewingHistory lifecycle | 08-01 | Flag set true only in viewResult, false in reset/deleteTest |
+| ROLE_LEVELS in both components | 08-03 | Consistent color definitions in view-selector and legend-pills |
+| LegendPills display-only default | 08-03 | MVP needs legend display, toggle filtering optional |
+| LegendPills hidden mobile | 08-03 | Cleaner mobile layout via hidden md:flex |
 
 ## Project-Wide Directives
 
@@ -246,7 +250,7 @@
 
 ## Session Continuity
 - **Last session**: 2026-01-29
-- **Stopped at**: Completed 08-01-PLAN.md (AlertDialog & Delete Modal Foundation)
+- **Stopped at**: Completed 08-03-PLAN.md (ViewSelector Colors & Legend Pills)
 - **Resume file**: None
 
 ## Next Steps
