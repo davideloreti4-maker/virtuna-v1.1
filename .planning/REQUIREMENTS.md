@@ -1,175 +1,90 @@
-# Requirements — Virtuna v1.1
+# Requirements — Virtuna v1.2
 
-## Landing Site Requirements
+**Defined:** 2026-01-30
+**Core Value:** 98%+ pixel accuracy against app.societies.io
 
-### L1: Homepage
-- [ ] Hero section with main value proposition
-- [ ] Feature highlights section
-- [ ] Social proof/testimonials
-- [ ] Call-to-action buttons
-- [ ] Navigation header
-- [ ] Footer with links
-- [ ] Responsive: mobile + desktop
+## v1.2 Requirements
 
-### L2: Pricing Page
-- [ ] Pricing tiers display
-- [ ] Feature comparison table
-- [ ] CTA buttons per tier
-- [ ] FAQ section (if present)
-- [ ] Responsive design
+### Wave 1: Extraction (EXT)
 
-### L3: About Page
-- [ ] Company story/mission
-- [ ] Team section (if present)
-- [ ] Values/culture content
-- [ ] Contact information
-- [ ] Responsive design
+- [ ] **EXT-01**: Capture all dashboard states (default, loading, society selected)
+- [ ] **EXT-02**: Capture society selector (closed, open, hover states, create modal)
+- [ ] **EXT-03**: Capture view selector (closed, open, each dropdown option)
+- [ ] **EXT-04**: Capture test type selector (all 11 types, hover states)
+- [ ] **EXT-05**: Capture content forms (empty, filled, validation states)
+- [ ] **EXT-06**: Capture survey form (empty, with options, validation)
+- [ ] **EXT-07**: Capture simulation flow (all 4 loading phases)
+- [ ] **EXT-08**: Capture results panel (all sections expanded/collapsed)
+- [ ] **EXT-09**: Capture test history (empty, with items, item selected, delete modal)
+- [ ] **EXT-10**: Capture settings (all tabs: profile, notifications, billing, team)
+- [ ] **EXT-11**: Capture all modals (feedback, create society, delete confirmation)
+- [ ] **EXT-12**: Capture mobile viewport (375px) for all key screens
+- [ ] **EXT-13**: Capture hover/focus states for all interactive elements
 
-### L4: Other Marketing Pages
-- [ ] Features page (detailed)
-- [ ] Contact page
-- [ ] Blog/Resources (structure only)
-- [ ] Legal pages (Privacy, Terms)
+### Wave 2: Comparison (CMP)
 
-### L5: Landing Navigation & Footer
-- [ ] Sticky header navigation
-- [ ] Mobile hamburger menu
-- [ ] Footer with all links
-- [ ] Logo and branding
+- [ ] **CMP-01**: Side-by-side comparison of dashboard layout
+- [ ] **CMP-02**: Side-by-side comparison of sidebar and navigation
+- [ ] **CMP-03**: Side-by-side comparison of society selector modal
+- [ ] **CMP-04**: Side-by-side comparison of view selector dropdown
+- [ ] **CMP-05**: Side-by-side comparison of test type selector
+- [ ] **CMP-06**: Side-by-side comparison of content/survey forms
+- [ ] **CMP-07**: Side-by-side comparison of simulation loading states
+- [ ] **CMP-08**: Side-by-side comparison of results panel
+- [ ] **CMP-09**: Side-by-side comparison of test history sidebar
+- [ ] **CMP-10**: Side-by-side comparison of settings pages
+- [ ] **CMP-11**: Side-by-side comparison of all modals
+- [ ] **CMP-12**: Document all discrepancies with screenshots and coordinates
+- [ ] **CMP-13**: Categorize issues: spacing, color, typography, layout, animation
+- [ ] **CMP-14**: Prioritize: critical (breaks layout), major (visible), minor (subtle)
 
----
+### Wave 3: Refinement (REF)
 
-## App Requirements
+- [ ] **REF-01**: Fix all critical discrepancies (layout breaks)
+- [ ] **REF-02**: Fix all major discrepancies (clearly visible differences)
+- [ ] **REF-03**: Fix all minor discrepancies (subtle spacing/color)
+- [ ] **REF-04**: Use v0 MCP for complex component fixes
+- [ ] **REF-05**: Verify each fix against reference screenshot
+- [ ] **REF-06**: Final full-screen comparison pass
+- [ ] **REF-07**: Mobile responsive verification pass
+- [ ] **REF-08**: Achieve 98%+ pixel accuracy validation
 
-### A1: Authentication UI
-- [ ] Sign up page
-- [ ] Login page
-- [ ] Forgot password flow
-- [ ] Email verification UI
-- [ ] OAuth buttons (Google, etc.)
-- [ ] Supabase Auth integration (real)
+### User Flow Testing (FLOW)
 
-### A2: Dashboard/Home Screen
-- [ ] Main dashboard layout
-- [ ] Sidebar navigation
-- [ ] Top header/navbar
-- [ ] Widget/card components
-- [ ] Data display with mock data
+- [ ] **FLOW-01**: Test create society flow (open selector → create → confirm → appears in list)
+- [ ] **FLOW-02**: Test select society flow (switch between personal/target societies)
+- [ ] **FLOW-03**: Test create test flow (select type → fill form → simulate)
+- [ ] **FLOW-04**: Test simulation flow (submit → 4 phases → results appear)
+- [ ] **FLOW-05**: Test results interaction (expand sections, copy share link, view variants)
+- [ ] **FLOW-06**: Test history flow (view past test → form pre-fills → results display)
+- [ ] **FLOW-07**: Test delete flow (select item → confirm delete → removed from list)
+- [ ] **FLOW-08**: Test settings flow (navigate tabs, edit profile, save changes)
+- [ ] **FLOW-09**: Test view selector flow (change filters, legend updates)
+- [ ] **FLOW-10**: Test mobile navigation flow (hamburger → drawer → navigate → close)
 
-### A3: Analytics/Insights Screens
-- [ ] Charts and graphs
-- [ ] Data tables
-- [ ] Filter controls
-- [ ] Date range picker
-- [ ] Export options (UI only)
+## Out of Scope
 
-### A4: Settings/Profile
-- [ ] User profile page
-- [ ] Account settings
-- [ ] Notification preferences
-- [ ] Billing/subscription UI
-- [ ] Team management UI
+| Feature | Reason |
+|---------|--------|
+| Landing page comparison | Already QA'd in v1.1, focus is app only |
+| Network visualization accuracy | Complex canvas animation, deferred |
+| Real authentication flows | Mock auth sufficient for visual QA |
+| Backend integration | Frontend-only milestone |
 
-### A5: App Navigation
-- [ ] Sidebar with all sections
-- [ ] Breadcrumbs
-- [ ] Mobile app navigation
-- [ ] User menu dropdown
+## Traceability
 
-### A6: Additional App Screens
-- [ ] All remaining screens from societies.io app
-- [ ] Modal dialogs
-- [ ] Empty states
-- [ ] Loading states
-- [ ] Error states
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| EXT-01 to EXT-13 | Phase 11 | Pending |
+| CMP-01 to CMP-14 | Phase 12 | Pending |
+| REF-01 to REF-08 | Phase 13 | Pending |
+| FLOW-01 to FLOW-10 | Phase 14 | Pending |
 
----
-
-## Responsive Requirements
-
-### R1: Desktop (1280px+)
-- [ ] Full layout with all features visible
-- [ ] Sidebar expanded by default
-- [ ] Multi-column layouts where applicable
-
-### R2: Tablet (768px - 1279px)
-- [ ] Collapsible sidebar
-- [ ] Adjusted grid layouts
-- [ ] Touch-friendly interactions
-
-### R3: Mobile (< 768px)
-- [ ] Hamburger menu navigation
-- [ ] Single column layouts
-- [ ] Bottom navigation (if applicable)
-- [ ] Touch-optimized buttons/inputs
+**Coverage:**
+- v1.2 requirements: 45 total
+- Mapped to phases: 45
+- Unmapped: 0 ✓
 
 ---
-
-## Animation Requirements
-
-### AN1: Micro-interactions ✓
-- [x] Button hover/active states
-- [x] Input focus states
-- [ ] Toggle animations
-- [ ] Dropdown animations
-
-### AN2: Page Transitions ✓
-- [x] Smooth route transitions (PageTransition ready)
-- [x] Fade in/out effects (FadeIn component)
-- [x] Slide animations for modals (SlideUp component)
-
-### AN3: Loading States ✓
-- [x] Skeleton loaders
-- [ ] Spinner animations
-- [ ] Progress indicators
-
-### AN4: Scroll Animations
-- [ ] Reveal on scroll (landing)
-- [ ] Parallax effects (if present)
-- [ ] Sticky elements behavior
-
-### AN5: Excluded Animations
-- Complex node/network animations
-- Heavy 3D animations
-- Canvas-based visualizations
-
----
-
-## QA/Verification Requirements
-
-### QA1: AI Video Analysis
-- [ ] Side-by-side comparison recordings
-- [ ] Gemini API integration for analysis
-- [ ] 95%+ similarity score target
-- [ ] Documented discrepancies
-
-### QA2: Manual Verification
-- [ ] All links functional
-- [ ] Forms validate correctly
-- [ ] Responsive breakpoints work
-- [ ] Auth flows complete
-
-### QA3: Performance
-- [ ] Lighthouse score > 90
-- [ ] First Contentful Paint < 1.5s
-- [ ] No layout shift issues
-
----
-
-## Infrastructure Requirements
-
-### I1: GitHub
-- [x] Repository created
-- [ ] Branch protection rules
-- [ ] GitHub Projects board
-
-### I2: Supabase
-- [ ] Project created
-- [ ] Auth configured
-- [ ] Environment variables set
-
-### I3: Vercel
-- [ ] Project connected
-- [ ] Auto-deploy on push
-- [ ] Environment variables set
-- [ ] Custom domain (optional)
+*Requirements defined: 2026-01-30*
+*Last updated: 2026-01-30 after initial definition*
