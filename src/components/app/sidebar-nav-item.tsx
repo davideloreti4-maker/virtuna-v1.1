@@ -31,12 +31,12 @@ export function SidebarNavItem({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex w-full items-center justify-between py-3 text-sm text-zinc-400 transition-colors hover:text-white",
+        "flex w-full items-center justify-between py-2.5 text-sm text-zinc-400 transition-colors hover:text-white",
         className
       )}
     >
       <span>{label}</span>
-      <Icon className="h-[18px] w-[18px]" />
+      <Icon className="h-4 w-4 stroke-[1.5]" />
     </button>
   );
 }

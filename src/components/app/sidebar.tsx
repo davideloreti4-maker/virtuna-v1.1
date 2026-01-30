@@ -132,7 +132,7 @@ export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarPr
 
         {/* Society selector section */}
         <div className="mt-6">
-          <label className="mb-2 block text-xs uppercase tracking-wide text-zinc-500">
+          <label className="mb-2 block text-[11px] font-medium uppercase tracking-wider text-zinc-500">
             Current Society
           </label>
           <SocietySelector />
@@ -148,7 +148,7 @@ export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarPr
 
         {/* View selector section */}
         <div className="mt-4">
-          <label className="mb-2 block text-xs uppercase tracking-wide text-zinc-500">
+          <label className="mb-2 block text-[11px] font-medium uppercase tracking-wider text-zinc-500">
             Current View
           </label>
           <ViewSelector />
@@ -166,7 +166,7 @@ export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarPr
 
         {/* Test History Section */}
         <div className="mt-4 flex flex-1 flex-col overflow-hidden">
-          <label className="mb-2 block text-xs uppercase tracking-wide text-zinc-500">
+          <label className="mb-2 block text-[11px] font-medium uppercase tracking-wider text-zinc-500">
             Test History
           </label>
           <div className="flex-1 overflow-y-auto">
