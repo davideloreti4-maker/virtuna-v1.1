@@ -12,29 +12,31 @@ See: .planning/PROJECT.md (updated 2026-01-30)
 Phase: 11 of 14 (Extraction)
 Plan: 1 of 4 complete
 Status: In progress
-Last activity: 2026-01-30 — Completed 11-01-PLAN.md
+Last activity: 2026-01-30 — Completed PLAN-01.md (test infrastructure)
 
-Progress: █░░░░░░░░░ 6% (1/16 plans)
+Progress: ██░░░░░░░░ 12% (2/16 plans)
+
+**Next action:** Execute PLAN-02 (dashboard and navigation extraction)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1 (v1.2)
-- Average duration: ~15min
-- Total execution time: ~15 min
+- Total plans completed: 3 (v1.2)
+- Average duration: ~8min
+- Total execution time: ~25 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 11 | 1/4 | ~15min | ~15min |
+| 11 | 1/4 | ~5min | ~5min |
 | 12 | 0/4 | - | - |
 | 13 | 0/4 | - | - |
 | 14 | 0/4 | - | - |
 
 **Recent Trend:**
-- Last 5 plans: 11-01 (~15min)
-- Trend: Starting
+- Last 3 plans: 11-01 (infra ~15min), 11-02 (replanning ~5min), 11-01 (test infra ~5min)
+- Trend: Accelerating
 
 *Updated after each plan completion*
 
@@ -50,6 +52,8 @@ Progress: █░░░░░░░░░ 6% (1/16 plans)
 | 3-wave approach | v1.2 | Extract -> Compare -> Refine methodology |
 | Manual Enter for auth capture | 11-01 | More reliable than URL detection for SSO flows |
 | Desktop 1440x900, mobile 375x812 | 11-01 | Standard viewport presets for extraction |
+| Proper test framework | 11-01 | Using test() and test.describe() vs plain scripts |
+| Dark mode CSS injection | 11-01 | Force dark mode via context.addInitScript() |
 
 ### Pending Todos
 
@@ -61,7 +65,7 @@ None yet.
 
 ## Completed (v1.2)
 
-- [x] 11-01: Playwright infrastructure with auth capture
+- [x] 11-01: Playwright test infrastructure with dark mode and fixtures
 
 ## Completed (v1.1)
 
@@ -79,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-01-30T10:35:12Z
-Stopped at: Completed 11-01-PLAN.md
+Last session: 2026-01-30T11:45:00Z
+Stopped at: Completed PLAN-01.md (test infrastructure)
 Resume file: None
