@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 interface Dot {
@@ -16,97 +16,120 @@ interface NetworkVisualizationProps {
   className?: string;
 }
 
-// Role level color palette
-const ROLE_COLORS = [
-  "#6366F1", // Indigo - Executive Level
-  "#EC4899", // Pink - Mid Level
-  "#10B981", // Emerald - Senior Level
-  "#F97316", // Orange - Entry Level
+// Country color palette (matching reference)
+const COUNTRY_COLORS = [
+  "#F97316", // Orange - United States
+  "#3B82F6", // Blue - United Kingdom
+  "#10B981", // Green - Germany
+  "#8B5CF6", // Purple - Australia
+  "#EF4444", // Red - Canada
 ];
 
-const DOT_COUNT = 50;
-const MIN_RADIUS = 3;
-const MAX_RADIUS = 8;
+const DOT_COUNT = 200;
+const DOT_RADIUS = 3;
 const MAX_VELOCITY = 0.3;
-const CONNECTION_DISTANCE = 120;
+const CONNECTION_DISTANCE = 150;
 
 /**
- * NetworkVisualization - Canvas-based animated dots placeholder
- * for the real network visualization (Phase 7+).
+ * NetworkVisualization - Canvas-based animated network visualization
  *
  * Features:
- * - Animated dots with role-level colors
- * - Connection lines between nearby dots
+ * - Radial/clustered dot arrangement emanating from center
+ * - Connection lines between nearby dots with distance-based opacity
+ * - Country-based color coding
+ * - Subtle glow effect on dots
  * - Respects prefers-reduced-motion
  * - Crisp rendering on retina displays
  */
 export function NetworkVisualization({ className }: NetworkVisualizationProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const dotsRef = useRef<Dot[]>([]);
-  const animationRef = useRef<number>(0);
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  // Initialize dots
-  const initializeDots = useCallback((width: number, height: number) => {
-    const dots: Dot[] = [];
-    for (let i = 0; i < DOT_COUNT; i++) {
-      dots.push({
-        x: Math.random() * width,
-        y: Math.random() * height,
-        vx: (Math.random() - 0.5) * MAX_VELOCITY,
-        vy: (Math.random() - 0.5) * MAX_VELOCITY,
-        radius: MIN_RADIUS + Math.random() * (MAX_RADIUS - MIN_RADIUS),
-        color: ROLE_COLORS[Math.floor(Math.random() * ROLE_COLORS.length)]!,
-      });
-    }
-    dotsRef.current = dots;
-  }, []);
+  useEffect(() => {
+    const container = containerRef.current;
+    const canvas = canvasRef.current;
+    if (!container || !canvas) return;
 
-  // Update dot positions
-  const updateDots = useCallback((width: number, height: number) => {
-    dotsRef.current.forEach((dot) => {
-      dot.x += dot.vx;
-      dot.y += dot.vy;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-      // Bounce off edges
-      if (dot.x <= dot.radius || dot.x >= width - dot.radius) {
-        dot.vx = -dot.vx;
-        dot.x = Math.max(dot.radius, Math.min(width - dot.radius, dot.x));
+    let animationFrameId: number;
+    let dots: Dot[] = [];
+
+    const resizeCanvas = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = container.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+      ctx.scale(dpr, dpr);
+      createDots(rect.width, rect.height);
+    };
+
+    // Create dots in radial/clustered pattern
+    const createDots = (width: number, height: number) => {
+      dots = [];
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const maxRadius = Math.min(centerX, centerY) * 0.85;
+
+      for (let i = 0; i < DOT_COUNT; i++) {
+        const angle = Math.random() * 2 * Math.PI;
+        // sqrt for even distribution across circular area
+        const radius = Math.sqrt(Math.random()) * maxRadius;
+
+        dots.push({
+          x: centerX + Math.cos(angle) * radius,
+          y: centerY + Math.sin(angle) * radius,
+          vx: (Math.random() - 0.5) * MAX_VELOCITY,
+          vy: (Math.random() - 0.5) * MAX_VELOCITY,
+          radius: DOT_RADIUS,
+          color: COUNTRY_COLORS[Math.floor(Math.random() * COUNTRY_COLORS.length)]!,
+        });
       }
-      if (dot.y <= dot.radius || dot.y >= height - dot.radius) {
-        dot.vy = -dot.vy;
-        dot.y = Math.max(dot.radius, Math.min(height - dot.radius, dot.y));
+    };
+
+    // Check prefers-reduced-motion
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+
+    const animate = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const width = canvas.width / dpr;
+      const height = canvas.height / dpr;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Update dot positions (unless reduced motion)
+      if (!prefersReducedMotion) {
+        dots.forEach((dot) => {
+          dot.x += dot.vx;
+          dot.y += dot.vy;
+
+          // Bounce off edges
+          if (dot.x < dot.radius || dot.x > width - dot.radius) dot.vx *= -1;
+          if (dot.y < dot.radius || dot.y > height - dot.radius) dot.vy *= -1;
+        });
       }
-    });
-  }, []);
-
-  // Draw frame
-  const draw = useCallback(
-    (ctx: CanvasRenderingContext2D, width: number, height: number) => {
-      // Clear canvas
-      ctx.clearRect(0, 0, width, height);
-
-      const dots = dotsRef.current;
 
       // Draw connection lines between nearby dots
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 0.5;
       for (let i = 0; i < dots.length; i++) {
-        const dotI = dots[i];
-        if (!dotI) continue;
+        const dotI = dots[i]!;
         for (let j = i + 1; j < dots.length; j++) {
-          const dotJ = dots[j];
-          if (!dotJ) continue;
+          const dotJ = dots[j]!;
           const dx = dotI.x - dotJ.x;
           const dy = dotI.y - dotJ.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
 
           if (distance < CONNECTION_DISTANCE) {
             const opacity = 1 - distance / CONNECTION_DISTANCE;
-            ctx.strokeStyle = `rgba(255, 255, 255, ${opacity * 0.15})`;
             ctx.beginPath();
-            ctx.moveTo(dotI.x, dotJ.y);
+            ctx.moveTo(dotI.x, dotI.y);
             ctx.lineTo(dotJ.x, dotJ.y);
+            ctx.strokeStyle = `rgba(255, 255, 255, ${opacity * 0.6})`;
             ctx.stroke();
           }
         }
@@ -114,111 +137,35 @@ export function NetworkVisualization({ className }: NetworkVisualizationProps) {
 
       // Draw dots with glow effect
       dots.forEach((dot) => {
-        // Glow
         ctx.beginPath();
         ctx.arc(dot.x, dot.y, dot.radius, 0, Math.PI * 2);
         ctx.fillStyle = dot.color;
-        ctx.shadowBlur = 15;
         ctx.shadowColor = dot.color;
+        ctx.shadowBlur = 15;
         ctx.fill();
-
-        // Reset shadow for next iteration
         ctx.shadowBlur = 0;
       });
-    },
-    []
-  );
 
-  // Animation loop
-  const animate = useCallback(
-    (
-      ctx: CanvasRenderingContext2D,
-      width: number,
-      height: number,
-      prefersReducedMotion: boolean
-    ) => {
-      if (!prefersReducedMotion) {
-        updateDots(width, height);
-      }
-      draw(ctx, width, height);
-
-      animationRef.current = requestAnimationFrame(() =>
-        animate(ctx, width, height, prefersReducedMotion)
-      );
-    },
-    [updateDots, draw]
-  );
-
-  // Handle resize
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleResize = () => {
-      const { width, height } = container.getBoundingClientRect();
-      setDimensions({ width, height });
+      animationFrameId = requestAnimationFrame(animate);
     };
 
-    // Initial measurement
-    handleResize();
-
     // Use ResizeObserver for responsive updates
-    const resizeObserver = new ResizeObserver(handleResize);
+    const resizeObserver = new ResizeObserver(resizeCanvas);
     resizeObserver.observe(container);
+
+    // Initial setup
+    resizeCanvas();
+    animate();
 
     return () => {
       resizeObserver.disconnect();
+      cancelAnimationFrame(animationFrameId);
     };
   }, []);
 
-  // Setup canvas and start animation
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || dimensions.width === 0 || dimensions.height === 0) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    // Scale for device pixel ratio (crisp on retina)
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = dimensions.width * dpr;
-    canvas.height = dimensions.height * dpr;
-    ctx.scale(dpr, dpr);
-
-    // Check prefers-reduced-motion
-    const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
-
-    // Initialize dots with current dimensions
-    if (dotsRef.current.length === 0) {
-      initializeDots(dimensions.width, dimensions.height);
-    } else {
-      // Reposition dots if canvas size changed significantly
-      dotsRef.current.forEach((dot) => {
-        dot.x = Math.min(dot.x, dimensions.width - dot.radius);
-        dot.y = Math.min(dot.y, dimensions.height - dot.radius);
-      });
-    }
-
-    // Start animation
-    animate(ctx, dimensions.width, dimensions.height, prefersReducedMotion);
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, [dimensions, initializeDots, animate]);
-
   return (
     <div ref={containerRef} className={cn("absolute inset-0", className)}>
-      <canvas
-        ref={canvasRef}
-        className="h-full w-full"
-        style={{ width: dimensions.width, height: dimensions.height }}
-        aria-hidden="true"
-      />
+      <canvas ref={canvasRef} className="h-full w-full" aria-hidden="true" />
     </div>
   );
 }
