@@ -97,7 +97,7 @@ export function CreateSocietyModal({ open, onOpenChange }: CreateSocietyModalPro
                 type="submit"
                 disabled={!description.trim() || isSubmitting}
                 className={cn(
-                  "flex w-full items-center justify-center gap-2 rounded-xl bg-white px-8 py-4 text-[15px] font-medium text-zinc-900 transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+                  "flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-8 py-4 text-[15px] font-medium text-white transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
                 )}
               >
                 {isSubmitting ? (
