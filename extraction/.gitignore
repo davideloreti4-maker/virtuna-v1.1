@@ -1,5 +1,15 @@
-auth/.auth/
-screenshots/*
-!screenshots/.gitkeep
-videos/*
-!videos/.gitkeep
+# Auth state (contains session tokens)
+auth/state.json
+
+# Captured outputs
+screenshots/
+videos/
+gifs/
+
+# Playwright artifacts
+playwright-report/
+test-results/
+test-results.json
+
+# Keep structure
+!**/.gitkeep
