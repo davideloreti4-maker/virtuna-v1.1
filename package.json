@@ -11,7 +11,8 @@
     "extraction:auth": "npx playwright test --project=setup --config=extraction/playwright.config.ts",
     "extraction:all": "npx playwright test --project=desktop --config=extraction/playwright.config.ts",
     "extraction:ui": "npx playwright test --ui --config=extraction/playwright.config.ts",
-    "extraction:report": "npx playwright show-report extraction/playwright-report"
+    "extraction:report": "npx playwright show-report extraction/playwright-report",
+    "extraction:gifs": "npx tsx extraction/scripts/generate-gifs.ts"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
