@@ -1,8 +1,4 @@
-import { defineConfig, devices } from '@playwright/test';
-import path from 'path';
-
-const SCREENSHOTS_DIR = path.join(__dirname, 'screenshots');
-const VIDEOS_DIR = path.join(__dirname, 'videos');
+import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',

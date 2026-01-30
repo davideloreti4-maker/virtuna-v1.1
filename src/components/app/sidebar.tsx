@@ -14,8 +14,6 @@ import {
   LogOut,
   Columns2,
   X,
-  Settings,
-  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -47,11 +45,6 @@ export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarPr
 
   const handleLogout = () => {
     router.push("/");
-  };
-
-  const handleSettings = () => {
-    router.push("/settings");
-    onMobileOpenChange?.(false); // Close mobile drawer
   };
 
   const handleManagePlan = () => {

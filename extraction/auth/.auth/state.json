@@ -1,0 +1,71 @@
+{
+  "cookies": [
+    {
+      "name": "ajs_anonymous_id",
+      "value": "ff2e9c4b-1a70-4694-a6b0-b42ae480abe1",
+      "domain": ".societies.io",
+      "path": "/",
+      "expires": 1801305021,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "analytics_session_id",
+      "value": "1769769021046",
+      "domain": ".societies.io",
+      "path": "/",
+      "expires": 1801305021,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "analytics_session_id.last_access",
+      "value": "1769769021046",
+      "domain": ".societies.io",
+      "path": "/",
+      "expires": 1801305021,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "ph_phc_GEevTOA8zY7g5WVmvCIiT2nZQNo5gBtw0EkumrbVNSf_posthog",
+      "value": "%7B%22distinct_id%22%3A%22019c0e74-2d34-79f9-85e2-24415bb7c582%22%2C%22%24sesid%22%3A%5B1769769025555%2C%22019c0e74-2d33-77a3-8ba2-da462df534e7%22%2C1769769020723%5D%7D",
+      "domain": ".societies.io",
+      "path": "/",
+      "expires": 1801305025,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "https://app.societies.io",
+      "localStorage": [
+        {
+          "name": "ph_phc_GEevTOA8zY7g5WVmvCIiT2nZQNo5gBtw0EkumrbVNSf_posthog",
+          "value": "{\"$configured_session_timeout_ms\":1800000,\"$sesid\":[1769769025555,\"019c0e74-2d33-77a3-8ba2-da462df534e7\",1769769020723],\"$client_session_props\":{\"sessionId\":\"019c0e74-2d33-77a3-8ba2-da462df534e7\",\"props\":{\"r\":\"$direct\",\"u\":\"https://app.societies.io/\"}},\"distinct_id\":\"019c0e74-2d34-79f9-85e2-24415bb7c582\",\"$device_id\":\"019c0e74-2d34-79f9-85e2-24415bb7c582\",\"$user_state\":\"anonymous\",\"$session_recording_enabled_server_side\":true,\"$console_log_recording_enabled_server_side\":true,\"$session_recording_network_payload_capture\":{\"capturePerformance\":{\"network_timing\":true,\"web_vitals\":true,\"web_vitals_allowed_metrics\":null}},\"$session_recording_masking\":null,\"$session_recording_canvas_recording\":{\"enabled\":true,\"fps\":3,\"quality\":\"0.4\"},\"$replay_sample_rate\":null,\"$replay_minimum_duration\":null,\"$replay_script_config\":{\"script\":\"posthog-recorder\"},\"$autocapture_disabled_server_side\":false,\"$heatmaps_enabled_server_side\":true,\"$web_vitals_enabled_server_side\":true,\"$web_vitals_allowed_metrics\":null,\"$exception_capture_enabled_server_side\":true,\"$dead_clicks_enabled_server_side\":true,\"$active_feature_flags\":[],\"$enabled_feature_flags\":{},\"$feature_flag_payloads\":{},\"$feature_flag_details\":{},\"$feature_flag_request_id\":\"15ea6fcf-5d1d-4459-b416-f5e9a1c6eac7\"}"
+        },
+        {
+          "name": "analytics_session_id",
+          "value": "1769769021046"
+        },
+        {
+          "name": "ajs_anonymous_id",
+          "value": "\"ff2e9c4b-1a70-4694-a6b0-b42ae480abe1\""
+        },
+        {
+          "name": "ajs_user_id",
+          "value": "null"
+        },
+        {
+          "name": "analytics_session_id.last_access",
+          "value": "1769769021046"
+        }
+      ]
+    }
+  ]
+}

@@ -86,7 +86,7 @@ export function TestTypeSelector({
 
           {/* Categories in 2-column grid */}
           <div className="grid grid-cols-2 gap-8">
-            {TEST_CATEGORIES.map((category, index) => (
+            {TEST_CATEGORIES.map((category) => (
               <div
                 key={category.id}
                 className={cn(

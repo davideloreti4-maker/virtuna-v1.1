@@ -1,8 +1,7 @@
-import { test as base, expect, Page, BrowserContext } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const AUTH_STATE_PATH = path.join(__dirname, '..', 'auth', 'state.json');
 const SCREENSHOTS_BASE = path.join(__dirname, '..', 'screenshots');
 
 // Extend base test with dark mode injection
