@@ -202,7 +202,7 @@ function PersonalSocietyCard({
       type="button"
       onClick={onSelect}
       className={cn(
-        "relative flex min-h-[180px] cursor-pointer flex-col rounded-xl border border-dashed border-zinc-700 bg-transparent p-5 text-left transition-all hover:border-zinc-600",
+        "relative flex min-h-[180px] cursor-pointer flex-col rounded-xl border border-dashed border-zinc-700 bg-transparent p-5 text-left transition-all hover:border-zinc-500 hover:bg-zinc-800/30",
         isSelected && "border-solid border-orange-500 ring-2 ring-orange-500/50"
       )}
     >
@@ -253,7 +253,7 @@ function TargetSocietyCard({
       type="button"
       onClick={onSelect}
       className={cn(
-        "relative flex min-h-[180px] cursor-pointer flex-col rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 text-left transition-all hover:border-zinc-600",
+        "relative flex min-h-[180px] cursor-pointer flex-col rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 text-left transition-all hover:border-zinc-600 hover:bg-zinc-800/50",
         isSelected && "border-orange-500 ring-2 ring-orange-500/50"
       )}
     >
