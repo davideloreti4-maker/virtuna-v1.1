@@ -1,105 +1,23 @@
-# Project State — Virtuna v1.1
+# Project State — Virtuna v1.2
 
 ## Current Status
-- **Phase**: 10 of 10 — Final QA
-- **Plan**: Complete
-- **Status**: MILESTONE COMPLETE
-- **Last Updated**: 2026-01-29
-- **Last Activity**: 2026-01-29 - Completed Phase 10 (Final QA)
+- **Phase**: Not started (defining requirements)
+- **Plan**: —
+- **Status**: Defining requirements
+- **Last Updated**: 2026-01-30
+- **Last Activity**: 2026-01-30 — Milestone v1.2 started
 
-**Progress**: ██████████ 100% (10/10 phases)
-
-## Completed
-- [x] Phase 1: Infrastructure Setup
-  - 01-01: Next.js App Router Setup (7215322, ea3e6cc)
-  - 01-02: Build Verification and Vercel Deploy (89c4cd9, 1a883fc)
-- [x] Phase 2 Plan 1: Foundation Setup
-  - 02-01: Design tokens, cn() utility, fonts, Phosphor Icons (47b3ba0, 64bbd94, 54037fa)
-- [x] Phase 2 Plan 2: Base UI Components
-  - 02-02: Button, Input, Card, Skeleton components (9341410, 994ca00)
-- [x] Phase 2 Plan 3: Layout Components
-  - 02-03: Container, Header, Footer components (c4aa053, e2f3444)
-- [x] Phase 2 Plan 4: Animation Components
-  - 02-04: FadeIn, SlideUp, FrozenRouter, PageTransition (9341410, d275577)
-- [x] Phase 2 Plan 5: Component Showcase
-  - 02-05: Showcase page + visual verification (97ad583, ab666d7)
-- [x] Phase 2: Design System & Components — VERIFIED COMPLETE
-- [x] Phase 3 Plan 1: Foundation Components
-  - 03-01: Header, Footer, Accordion, Coming Soon page (17005eb, 59fe609, 751fc73, 8de3720)
-- [x] Phase 3 Plan 2: Logo Assets
-  - 03-02: All investor/partner SVG logos (cf8841d, db51f37)
-- [x] Phase 3 Plan 3: Hero Section
-  - 03-03: HeroSection, PersonaCard, network visualization (1ad2c9a, 4b84830, ea4a450, 85a03e6)
-- [x] Phase 3 Plan 4: Backers & Features Sections
-  - 03-04: BackersSection, FeatureCard, FeaturesSection (595e878, b147d9e, 8ae5294, 7366d01)
-- [x] Phase 3 Plan 5: Stats Section
-  - 03-05: ComparisonChart, StatsSection (101116a, 45b6973)
-- [x] Phase 3 Plan 6: Testimonials Sections
-  - 03-06: TestimonialQuote, CaseStudySection, PartnershipSection (14320f5, 38f50b8, fc576ea, 7fb8c31)
-- [x] Phase 3 Plan 7: FAQ Section
-  - 03-07: FAQSection component with accordion (bcc90a9, 7c4a24e)
-- [x] Phase 4 Plan 1: Route Groups Setup
-  - 04-01: Route groups, marketing/app layouts, Radix UI packages (59bd577, 503e226)
-- [x] Phase 4 Plan 2: App Layout Shell with Sidebar
-  - 04-02: Sidebar, SidebarNavItem, app layout integration (c4e1f58, 4fcb8a0, 4a70a86)
-- [x] Phase 4 Plan 3: Society & View Selector Components
-  - 04-03: SocietySelector modal, ViewSelector dropdown, Sidebar integration (e53cf9c, fefb604, 8f325aa)
-- [x] Phase 4 Plan 4: Network Visualization & Dashboard
-  - 04-04: NetworkVisualization canvas, FilterPills, ContextBar, Dashboard (139d752, e6efdaf, b1180dc)
-- [x] Phase 4 Plan 5: Mobile Navigation & Auth Guard
-  - 04-05: MobileNav, AuthGuard, AppShell, mobile drawer behavior (792424a, f59584e, 232b665)
-- [x] Phase 4 Plan 6: Visual Verification Checkpoint
-  - 04-06: User-verified app shell, v0 polish applied (f05401c)
-- [x] Phase 4: App Layout & Navigation — VERIFIED COMPLETE
-
-- [x] Phase 5: Society Management — VERIFIED COMPLETE
-  - 05-01: Society Store Foundation (0ab813a, 0d366da, d2e9ec5)
-  - 05-02: Store Integration (07d097a, 90b47b0, 5eebfe8)
-  - 05-03: Create Target Society Modal (a5e9575, 052c003)
-  - 05-04: Wire Up Create Society Flow (410e498, e309147)
-  - 05-05: Visual Verification (9efd980) — User approved
-
-- [x] Phase 6: Test Type Selector & Forms — VERIFIED COMPLETE
-  - 06-01: Test Type Selector Foundation (bed59d2, f286f98)
-  - 06-02: Content Form Component (5fc5cc1)
-  - 06-03: Survey Form Component (a2b0420)
-  - 06-04: Test Store and Flow Integration (53a097f, ff21e81, dd1dcb4)
-  - 06-05: Visual Verification + v0 polish (c3d5b5b, c696f9c)
-
-- [x] Phase 7: Simulation & Results — VERIFIED COMPLETE
-  - 07-01: Floating Form Layout Restructure (97a3eb7)
-  - 07-02: Simulation Loading Phases (completed separately)
-  - 07-03: Results Types and Mock Data (completed separately)
-  - 07-04: Results Panel Components (ee0673b, c85af5b)
-  - 07-05: Simulation Flow Integration (6645cc7, 4318ad1)
-  - 07-06: Visual Comparison Verification (70bd645, 1617076) — User approved
+**Progress**: ░░░░░░░░░░ 0% (0/? phases)
 
 ## In Progress
-- (none)
+- Defining v1.2 requirements and roadmap
 
-## Recently Completed
-- [x] Phase 10: Final QA — VERIFIED COMPLETE
-  - 10-01: Dashboard Shell QA (eabc059, 52140cd) — 0 discrepancies
-  - 10-02: Dashboard Content QA (d046811, 73f499b) — 0 discrepancies
-  - 10-03: Settings Design Language QA (73bea52, 3179ad9) — Consistent
-  - 10-04: Landing Page QA (ba87533, 0ddaa5a) — 2 fixes applied
-  - 10-05: Mobile Responsive QA (2f161df, 34bd503) — Touch targets, overflow fixed
-  - 10-06: Performance Verification (e61dd74, 6bec541) — 0 console errors, 60fps, CLS < 0.1
-
-
-- [x] Phase 9: Settings & Modals — VERIFIED COMPLETE
-  - 09-01: Settings Foundation (5483af4, f6025a5, 396f457)
-  - 09-02: Settings Page UI (2b7fb6d, 31690d6, 70c6ead, 7b4a95c)
-  - 09-03: Notifications & Team Sections (e9112b8, c3b8a82)
-  - 09-04: Billing & Feedback (f85900c, deb442d)
-  - 09-05: Settings Integration (9401da0, 583e7b4, f2526d9) — User approved
-
-
-- [x] Phase 8: Test History & Polish — VERIFIED COMPLETE
-  - 08-01: AlertDialog & Delete Modal Foundation (7c48271)
-  - 08-02: Test History List Components (de896cb, ba24e92)
-  - 08-03: ViewSelector Colors & Legend Pills (22eec20, 9f79fd8, 41e09bc)
-  - 08-04: History Integration & Verification (eb88ff2, cde1ce9) — User approved
+## Completed (v1.1)
+- [x] All 10 phases of v1.1 milestone
+- [x] Landing site, app shell, society management
+- [x] Test forms, simulation, results, history
+- [x] Settings, modals, mobile responsive
+- [x] Final QA verification
 
 ## Blocked
 - (none)
@@ -109,192 +27,25 @@
 - **Vercel**: https://virtuna-v11.vercel.app (verified working)
 - **Supabase Dashboard**: https://supabase.com/dashboard/project/qyxvxleheckijapurisj
 
-## Supabase Details
-- **Project ID**: qyxvxleheckijapurisj
-- **Region**: eu-west-1
-- **URL**: https://qyxvxleheckijapurisj.supabase.co
-
 ## Accumulated Decisions
 
 | Decision | Phase | Context |
 |----------|-------|---------|
-| Inter font as default | 01-01 | Typography consistency |
-| Dark zinc-950 base | 01-01 | Default app styling |
-| @supabase/ssr pattern | 01-01 | Browser/server/middleware clients |
-| Push-to-deploy workflow | 01-02 | Main branch triggers Vercel |
-| Satoshi via localFont | 02-01 | Optimal FOUT prevention |
-| Funnel Display via Google Fonts | 02-01 | Available in next/font/google |
-| @theme directive for tokens | 02-01 | Tailwind v4 design token pattern |
-| cn() utility pattern | 02-01 | clsx + tailwind-merge for all classNames |
-| CVA for Button variants | 02-02 | Type-safe variant management |
-| forwardRef pattern for UI | 02-02 | DOM element ref forwarding |
-| asChild pattern with Radix Slot | 02-02 | Polymorphic component composition |
-| Barrel exports from @/components/ui | 02-02 | Clean import paths |
-| Header landing/app variants | 02-03 | Context-specific header rendering |
-| Footer minimal prop | 02-03 | Streamlined app footer |
-| Container polymorphic as prop | 02-03 | Semantic HTML flexibility |
-| as const satisfies Variants | 02-04 | Type-safe animation variants with const assertion |
-| FrozenRouter for AnimatePresence | 02-04 | Context preservation during exit animations |
-| useReducedMotion for accessibility | 02-04 | Respect user motion preferences |
-| v0 MCP for UI design accuracy | 02-05 | User directive for design quality in future phases |
-| Header simplified to single design | 03-01 | Removed variant prop, landing is primary use |
-| SSR-safe Phosphor imports | 03-01 | Use @phosphor-icons/react/dist/ssr for server components |
-| Accordion via Radix + CSS keyframes | 03-01 | Smooth height transitions with Radix vars |
-| Legal links to /coming-soon | 03-01 | Temporary until pages built |
-| SVG network visualization | 03-03 | Vector placeholder instead of Three.js animation |
-| FadeIn stagger pattern | 03-03 | 0.1s delays for entrance animation sequences |
-| Phosphor icons weight="light" | 03-04 | Feature card icons match societies.io style |
-| brightness-0 invert for logos | 03-04 | CSS filter for white logo display on dark bg |
-| FadeIn delay for stagger | 03-04 | Individual FadeIn wrappers with delay prop |
-| brightness-0 invert for chart icons | 03-05 | CSS filter for white icon display in comparison chart |
-| Data-driven comparison chart | 03-05 | comparisonData array for easy model/accuracy updates |
-| Transparent bg for FAQ items | 03-07 | Override default accordion elevated bg |
-| max-w-3xl narrower FAQ container | 03-07 | FAQ section narrower than other sections |
-| Phosphor Quotes weight="fill" | 03-06 | Solid quote icon at 50% opacity for testimonials |
-| Reusable TestimonialQuote component | 03-06 | DRY pattern for quote+author in multiple sections |
-| Route groups for layout separation | 04-01 | (marketing) with Header, (app) without |
-| Each route group has own root layout | 04-01 | Allows html/body per group, no shared root |
-| App layout flex structure | 04-01 | Pre-configured for sidebar + main content pattern |
-| SidebarNavItem reusable pattern | 04-02 | Label-left, icon-right for nav items |
-| Lucide icons for sidebar | 04-02 | ChevronDown, Plus, CreditCard, MessageSquare, BookOpen, LogOut, Columns2 |
-| Selector triggers only | 04-02 | Society/View selectors styled buttons, functionality in Plan 03 |
-| Radix Dialog for SocietySelector | 04-03 | Full accessibility (focus trap, ESC key, click outside) built-in |
-| Radix DropdownMenu for ViewSelector | 04-03 | Checkmark on selected item, proper animations |
-| Mock data structure for societies | 04-03 | Personal has platform/needsSetup; Target has type/icon/members |
-| Selection state local | 04-03 | Kept in each component for Phase 4; lifted to context in Phase 5 |
-| Canvas animation for network viz | 04-04 | requestAnimationFrame for smooth 60fps animation |
-| Role level colors palette | 04-04 | Indigo, Pink, Emerald, Orange for Executive/Mid/Senior/Entry |
-| Connection lines between dots | 04-04 | Dots within 120px distance connected with opacity fade |
-| Non-null assertion for arrays | 04-04 | TypeScript strict mode requires ! for guaranteed array access |
-| Client-wrapper pattern | 04-05 | Extract AppShell client component to keep layout as server component |
-| CSS-only responsive mobile | 04-05 | No JS media queries, use md: breakpoint classes for hydration safety |
-| Mock auth delay | 04-05 | 350ms skeleton delay simulates auth check, polishes UX |
-| Context bar blue dot | 04-06 | v0 polish - changed from emerald to blue to match reference |
-| localStorage key virtuna-societies | 05-01 | Namespaced Zustand persist key for societies |
-| Auto-select on add | 05-01 | New societies immediately active after creation |
-| Fallback on delete | 05-01 | Prevents null selection when active society deleted |
-| Type guards for discrimination | 05-01 | Runtime narrowing for PersonalSociety/TargetSociety |
-| Zustand persist middleware | 05-01 | Store state persists across browser sessions |
-| CardActionMenu stopPropagation | 05-02 | Prevents card selection when opening dropdown menu |
-| Zustand selector pattern | 05-02 | useSocietyStore selectors for minimal re-renders |
-| Gradient modal background | 05-03 | Purple/blue mesh gradient at 10% opacity over #18181B |
-| 1.5s AI matching delay | 05-03 | Simulated delay for UX feedback during "AI matching" |
-| Extract name from description | 05-03 | First 3 words after removing filler words |
-| Close selector before create modal | 05-04 | Avoids Radix nested dialog focus trap issues |
-| Emerald indicator for active society | 05-04 | Consistent with active/online status conventions |
-| Dialog sibling pattern | 05-04 | Render modals as siblings in fragment, not nested |
-| Manual localStorage over persist | 05-05 | Zustand persist causes SSR hydration loops, use manual save/load |
-| _hydrate() pattern | 05-05 | Call hydration in useEffect after mount for SSR safety |
-| v0 polish deferred | 05-05 | Design polish pass at end of milestone, not per-component |
-| Icon map pattern | 06-01 | Record<IconName, Component> for dynamic Lucide icon rendering |
-| TEST_TYPES as Record | 06-01 | O(1) lookup by type id for form rendering |
-| TEST_CATEGORIES as array | 06-01 | Preserves display order for modal rendering |
-| Auto-expand via scrollHeight | 06-02 | Reset height to auto then set to scrollHeight for accurate measurement |
-| Action button stubs | 06-02 | Console.log placeholders for future Upload Images and Help Me Craft functionality |
-| Min 2 options for single-select | 06-03 | Survey options list enforces minimum 2 options |
-| Visual-only drag handle | 06-03 | GripVertical icon shown but no actual drag functionality |
-| Radix DropdownMenu for form selects | 06-03 | Consistent with ViewSelector pattern |
-| Inline results panel | 06-04 | SimulationResultsPanel in dashboard-client to avoid shared store issues |
-| Mock attention breakdown | 06-04 | Full: 30-70%, Partial: 15-45%, Ignore: remainder to sum to 100% |
-| 2s mock delay | 06-04 | Simulated AI processing time for UX feedback |
-| SimulationPhase type | 07-02 | 4-phase loading (analyzing, matching, simulating, generating) |
-| 1s phase delays | 07-02 | Total 4s simulation with cancellation checks |
-| simulation/ subdirectory | 07-02 | Organized simulation-related components |
-| Impact label thresholds | 07-03 | 85/70/55/40 for Excellent/Good/Average/Below Average |
-| Variant count | 07-03 | Original + 2 AI variants per result |
-| Mock data templates | 07-03 | Randomized templates for realistic variation |
-| Network always visible | 07-01 | Removed showNetworkViz conditional - continuous background |
-| Floating content pattern | 07-01 | absolute bottom-6 left-1/2 -translate-x-1/2 for forms |
-| z-index layering | 07-01 | z-0 network, z-10 top bar, z-20 floating content |
-| Color-coded impact labels | 07-04 | emerald for Good/Excellent, blue for Average, amber for Below Average, red for Poor |
-| Stacked bar attention viz | 07-04 | Full (emerald-500), Partial (amber-400), Ignore (zinc-600) segments |
-| First theme auto-expanded | 07-04 | Better UX for conversation themes section |
-| Share button feedback | 07-04 | 2-second "Copied!" feedback after clipboard copy |
-| Centralized mock generators | 07-05 | Import from @/lib/mock-data instead of inline definitions |
-| Composed simulation components | 07-05 | Use LoadingPhases and ResultsPanel from @/components/app |
-| Attention bar red/amber/gray | 07-06 | Full attention uses red (not emerald) to match societies.io |
-| Impact label above score | 07-06 | Layout matches societies.io reference |
-| Variants vertical list | 07-06 | Vertical list layout instead of horizontal scroll cards |
-| AlertDialog for delete modal | 08-02 | Better accessibility for destructive actions |
-| Icon map pattern for history | 08-02 | Record<IconName, Component> for dynamic test type icons |
-| Dialog sibling for delete | 08-02 | Modal rendered as sibling, not nested |
-| Indigo left border active | 08-02 | Active history item indicator |
-| AlertDialog over Dialog for destructive | 08-01 | Proper ARIA role for better screen reader announcements |
-| isViewingHistory lifecycle | 08-01 | Flag set true only in viewResult, false in reset/deleteTest |
-| ROLE_LEVELS in both components | 08-03 | Consistent color definitions in view-selector and legend-pills |
-| LegendPills display-only default | 08-03 | MVP needs legend display, toggle filtering optional |
-| LegendPills hidden mobile | 08-03 | Cleaner mobile layout via hidden md:flex |
-| Read-only form via isViewingHistory | 08-04 | Forms check store flag to disable inputs |
-| Pre-fill forms via useEffect | 08-04 | Watch currentResult changes for history viewing |
-| Create test resets then opens | 08-04 | reset() followed by setStatus("selecting-type") |
-| Settings types structure | 09-01 | Separate interfaces for UserProfile, NotificationPrefs, TeamMember, BillingInfo |
-| Manual localStorage for settings | 09-01 | SSR-safe pattern matching society-store.ts |
-| Billing not persisted | 09-01 | Would come from Stripe backend in production |
-| Vertical tabs layout | 09-02 | Radix Tabs with orientation='vertical' for left-side navigation |
-| Avatar fallback initials | 09-02 | Radix Avatar with initials fallback when no image |
-| Form state sync pattern | 09-02 | Local form state synced with store via useEffect |
-| Danger zone red styling | 09-02 | Red border and background for destructive actions |
-| Stripe portal in new tab | 09-04 | Opens Stripe Customer Portal in new tab to maintain app context |
-| Emerald credits progress bar | 09-04 | Gradient from emerald-500 to emerald-400 for usage display |
-| Pre-fill pattern displayName | 09-04 | Shows profile data when hydrated, allows user override |
-| 1.5s feedback auto-close | 09-04 | Modal shows success state then closes automatically |
-| Switch emerald-600 checked | 09-03 | Consistent with other active/success states |
-| Role badge colors | 09-03 | Owner=amber, Admin=blue, Member=zinc for visual hierarchy |
-| Immediate notification persist | 09-03 | No save button for toggle switches, instant feedback |
-| Settings deep-linking via query param | 09-05 | /settings?tab=billing for direct tab access |
-| LeaveFeedbackModal sibling pattern | 09-05 | Modal rendered as sibling fragment, not nested in sidebar |
-| Mobile drawer close on nav | 09-05 | Call onMobileOpenChange(false) after navigation |
-| Product Guide external docs | 09-05 | Opens https://docs.societies.io in new tab |
-
-## Project-Wide Directives
-
-**These directives MUST be followed in ALL phases:**
-
-| Directive | Scope | Description |
-|-----------|-------|-------------|
-| **v0 MCP for UI design** | All UI components | Use v0 MCP tool to generate pixel-perfect UI components. Query v0 with reference screenshots and design specs before implementing any visual component. This ensures design accuracy and reduces iteration. |
+| Playwright for extraction | v1.2 | Automated browser screenshots of all screens/states |
+| v0 MCP for refinement | v1.2 | AI-assisted pixel-perfect corrections |
+| 98% accuracy target | v1.2 | Near-pixel-perfect fidelity requirement |
 
 ## Session Notes
-- Fresh start on 2026-01-28
-- Using npm (pnpm not available)
-- App Router structure restored with Supabase utilities
-- Vercel deployment verified working
-- Phase 1 verified: 7/7 must-haves passed
-- Phase 2 Plan 1 complete: design tokens, fonts, icons ready
-- Phase 2 Plan 2 complete: Button, Input, Card, Skeleton components
-- Phase 2 Plan 3 complete: Container, Header, Footer layout components
-- Phase 2 Plan 4 complete: FadeIn, SlideUp, FrozenRouter, PageTransition animations
-- Phase 2 Plan 5 complete: Component showcase page, visual verification passed
-- User note: use v0 MCP for design UI accuracy and quality going forward
-- Phase 3 Plan 1 complete: Header, Footer, Accordion, Coming Soon page
-- Phase 3 Plan 3 complete: Hero section with PersonaCard and network visualization
-- Phase 3 Plan 4 complete: BackersSection, FeatureCard, FeaturesSection
-- Phase 3 Plan 7 complete: FAQSection with accordion
-- Phase 3 Plan 5 complete: StatsSection with ComparisonChart
-- Phase 3 Plan 6 complete: TestimonialQuote, CaseStudySection, PartnershipSection
-- Phase 4 Plan 1 complete: Route groups setup, marketing/app layouts established
-- Phase 4 Plan 2 complete: Sidebar component, SidebarNavItem, app layout integration
-- Phase 4 Plan 3 complete: SocietySelector modal, ViewSelector dropdown
-- Phase 4 Plan 4 complete: NetworkVisualization canvas, FilterPills, ContextBar, Dashboard page
-- Phase 4 Plan 5 complete: MobileNav, AuthGuard, AppShell wrapper
-- Phase 4 Plan 6 complete: Visual verification checkpoint passed, v0 polish applied
-- Phase 4 verified: 9/9 must-haves passed - app shell complete
-- Phase 5 Plan 1 complete: Zustand store with persist, society types, mock data module
-- Phase 5 Plan 2 complete: CardActionMenu, SocietySelector refactored to Zustand store
-- Phase 5 Plan 3 complete: CreateSocietyModal with gradient background, AI matching loading state
-- Phase 5 Plan 4 complete: Create society flow wired up, sidebar shows current society
-- Phase 5 Plan 5 complete: Visual verification checkpoint - user approved
-- Phase 5 verified: Society management complete - Zustand store, CRUD operations, persistence
-- Note: Replaced Zustand persist middleware with manual localStorage due to SSR issues
-- Phase 6 Plan 2 complete: ContentForm with auto-expanding textarea, action buttons, type selector
-- Phase 6 Plan 3 complete: SurveyForm with question/type dropdown/dynamic options
-- Phase 6 Plan 4 complete: Test store with localStorage, flow integration in dashboard
+- Starting v1.2 milestone focused on visual accuracy refinement
+- 3-wave approach: Extract → Compare → Refine
+- Target: 98%+ pixel accuracy against app.societies.io
 
 ## Session Continuity
-- **Last session**: 2026-01-29
-- **Stopped at**: Completed Phase 10 (Final QA) — MILESTONE COMPLETE
+- **Last session**: 2026-01-30
+- **Stopped at**: Defining milestone requirements
 - **Resume file**: None
 
 ## Next Steps
-- v1.1 Milestone Complete
-- Run `/gsd:audit-milestone` or `/gsd:complete-milestone` to archive
+- Define requirements for v1.2
+- Create roadmap with phase structure
+- Start Wave 1 (extraction)

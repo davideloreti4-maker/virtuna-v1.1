@@ -72,13 +72,32 @@ A pixel-perfect, AI-verified clone of societies.io (landing + app) serving as th
 
 ---
 
-## Milestone v1.2 — Test Creation (Full App Clone)
+## Current Milestone: v1.2 — Visual Accuracy Refinement
 
-### Vision
-1:1 pixel-perfect clone of the entire societies.io app UI with functional TikTok + Instagram test forms.
+**Goal:** Achieve 98%+ pixel accuracy against app.societies.io through systematic extraction, comparison, and refinement.
 
-### What We're Building
+**Approach:** 3-wave evaluation process
+1. **Wave 1: Extract** — Playwright screenshots of every app.societies.io screen/state
+2. **Wave 2: Compare** — Detailed side-by-side analysis, document all discrepancies
+3. **Wave 3: Refine** — Use v0 MCP to fix each discrepancy to pixel-perfect accuracy
 
+**Target Features:**
+- Systematic screenshot capture of all app states
+- Side-by-side comparison tooling
+- Discrepancy tracking and prioritization
+- Iterative fixes with v0 MCP assistance
+
+### Success Criteria
+- 98%+ pixel accuracy on all screens
+- Every user flow matches societies.io exactly
+- Typography, spacing, colors all verified
+- Interactions and animations match reference
+
+---
+
+## Completed: v1.1 — Pixel-Perfect Clone ✓
+
+### What Was Built
 | Component | Scope |
 |-----------|-------|
 | Society Selector | Personal + Target sections, create/edit modals |
@@ -88,20 +107,6 @@ A pixel-perfect, AI-verified clone of societies.io (landing + app) serving as th
 | Test History | Sidebar history, delete, revisit results |
 | Settings | Profile, account, notifications, billing UI |
 | Modals | Leave Feedback, Create Society |
-
-### Excluded (This Version)
-- Network visualization (placeholder/static image only)
-- Real authentication (skip login, go straight to app)
-- Real backend (mock data only)
-
-### Success Criteria
-- All app screens match societies.io reference
-- TikTok form → simulate → results flow works
-- Instagram form → simulate → results flow works
-- Society selector shows/hides correctly
-- Create society modal works (local state)
-- Test history persists (local storage)
-- All modals open/close properly
 
 ### Reference Documentation
 All reference files in `.reference/app/`:
