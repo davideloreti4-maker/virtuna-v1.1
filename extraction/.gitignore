@@ -1,0 +1,5 @@
+auth/.auth/
+screenshots/*
+!screenshots/.gitkeep
+videos/*
+!videos/.gitkeep
