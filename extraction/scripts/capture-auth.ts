@@ -26,13 +26,16 @@ async function captureAuthState() {
 
   console.log('\n--- Waiting for login completion ---');
   console.log('Please log in via the browser window.');
-  console.log('Script will continue once you reach a page containing "/dashboard" or the main app.\n');
+  console.log('Once logged in and on the main app, press ENTER here to save the session.\n');
 
-  // Wait for user to complete login (2 minute timeout)
-  await page.waitForURL('**/*', { timeout: 120000 });
+  // Wait for user to press Enter
+  await new Promise<void>((resolve) => {
+    process.stdin.once('data', () => resolve());
+  });
 
   // Give time for the app to fully load
   await page.waitForLoadState('networkidle');
+  console.log('Saving auth state...');
   await page.waitForTimeout(2000);
 
   // Ensure auth directory exists
