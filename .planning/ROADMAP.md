@@ -272,13 +272,13 @@ For each screen/component:
   3. Issues categorized by type (spacing, color, typography, layout, animation)
   4. Issues prioritized (critical/major/minor) with clear criteria
   5. Discrepancy report ready to guide refinement work
-**Plans**: 4 plans (TBD)
+**Plans**: 4 plans
 
 Plans:
-- [ ] 12-01: v0 comparison of navigation, sidebar, and dashboard layout
-- [ ] 12-02: v0 comparison of forms, selectors, and dropdowns
-- [ ] 12-03: v0 comparison of modals, settings, and overlays
-- [ ] 12-04: Consolidate discrepancy report with prioritization
+- [ ] 12-01-PLAN.md — Dashboard, sidebar, and navigation comparison (Wave 1)
+- [ ] 12-02-PLAN.md — Forms, selectors, and dropdowns comparison (Wave 1)
+- [ ] 12-03-PLAN.md — Modals, results, and overlays comparison (Wave 1)
+- [ ] 12-04-PLAN.md — Consolidate discrepancy report with prioritization (Wave 2)
 
 ---
 
