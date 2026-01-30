@@ -34,10 +34,10 @@ export function ImpactScore({ score, label }: ImpactScoreProps) {
       </div>
       <p className={cn('text-sm font-medium', LABEL_COLORS[label])}>{label}</p>
       <div className="flex items-baseline gap-1">
-        <span className={cn('text-5xl font-bold', LABEL_COLORS[label])}>
+        <span className={cn('text-6xl font-bold', LABEL_COLORS[label])}>
           {score}
         </span>
-        <span className="text-lg text-zinc-500">/100</span>
+        <span className="text-xl text-zinc-500">/100</span>
       </div>
     </div>
   );
