@@ -151,10 +151,10 @@ export function SocietySelector({ className }: SocietySelectorProps) {
                 <button
                   type="button"
                   onClick={handleCreateSociety}
-                  className="flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-zinc-700 p-6 transition-colors hover:border-zinc-600"
+                  className="flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-zinc-700 p-6 transition-colors hover:border-zinc-600 hover:bg-zinc-900/30"
                 >
-                  <Plus className="mb-2 h-6 w-6 text-zinc-500" />
-                  <span className="text-sm text-zinc-400">
+                  <Plus className="mb-3 h-8 w-8 text-zinc-500" />
+                  <span className="text-sm font-medium text-zinc-400">
                     Create Target Society
                   </span>
                 </button>
@@ -186,6 +186,7 @@ export function SocietySelector({ className }: SocietySelectorProps) {
 
 /**
  * Personal Society Card component.
+ * Vertically stacked layout with large icon matching reference design.
  */
 function PersonalSocietyCard({
   society,
@@ -201,28 +202,36 @@ function PersonalSocietyCard({
       type="button"
       onClick={onSelect}
       className={cn(
-        "relative cursor-pointer rounded-xl border border-dashed border-zinc-700 bg-transparent p-4 text-left transition-all hover:border-zinc-600 hover:border-solid",
-        isSelected && "border-solid border-indigo-500 ring-2 ring-indigo-500"
+        "relative flex min-h-[180px] cursor-pointer flex-col rounded-xl border border-dashed border-zinc-700 bg-transparent p-5 text-left transition-all hover:border-zinc-600",
+        isSelected && "border-solid border-orange-500 ring-2 ring-orange-500/50"
       )}
     >
+      {/* Setup badge */}
       {society.needsSetup && (
-        <span className="mb-3 inline-block rounded-md bg-orange-500 px-3 py-1 text-xs font-medium text-white">
+        <span className="mb-4 inline-block w-fit rounded-md bg-orange-500 px-3 py-1 text-xs font-medium text-white">
           Setup
         </span>
       )}
 
-      <div className="mb-2 flex items-center gap-2">
-        <PlatformIcon platform={society.platform} />
-        <span className="text-sm font-medium text-white">{society.name}</span>
+      {/* Large platform icon */}
+      <div className="mb-3">
+        <PlatformIcon platform={society.platform} size="large" />
       </div>
 
-      <p className="text-xs text-zinc-400 line-clamp-2">{society.description}</p>
+      {/* Title */}
+      <h4 className="mb-2 text-base font-medium text-white">{society.name}</h4>
+
+      {/* Description */}
+      <p className="text-sm leading-relaxed text-zinc-400 line-clamp-3">
+        {society.description}
+      </p>
     </button>
   );
 }
 
 /**
  * Target Society Card component.
+ * Vertically stacked layout with badge and three-dot menu matching reference.
  */
 function TargetSocietyCard({
   society,
@@ -244,12 +253,17 @@ function TargetSocietyCard({
       type="button"
       onClick={onSelect}
       className={cn(
-        "relative cursor-pointer rounded-xl border border-zinc-800 bg-[#18181B] p-4 text-left transition-all hover:border-zinc-600",
-        isSelected && "border-indigo-500 ring-2 ring-indigo-500"
+        "relative flex min-h-[180px] cursor-pointer flex-col rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 text-left transition-all hover:border-zinc-600",
+        isSelected && "border-orange-500 ring-2 ring-orange-500/50"
       )}
     >
-      {/* Action menu */}
-      <div className="absolute right-3 top-3">
+      {/* Badge in top-left */}
+      <span className="mb-4 inline-block w-fit rounded-md bg-zinc-800 px-2.5 py-1 text-xs font-medium capitalize text-zinc-300">
+        {society.societyType}
+      </span>
+
+      {/* Action menu in top-right */}
+      <div className="absolute right-3 top-4">
         <CardActionMenu
           societyId={society.id}
           onEdit={onEdit}
@@ -258,20 +272,17 @@ function TargetSocietyCard({
         />
       </div>
 
-      {/* Badge */}
-      <span className="mb-3 inline-block rounded bg-zinc-800 px-2 py-0.5 text-[11px] font-medium capitalize text-zinc-400">
-        {society.societyType}
-      </span>
-
-      <div className="mb-2 flex items-center gap-2">
-        <SocietyIcon icon={society.icon} />
-        <span className="text-sm font-medium text-white">{society.name}</span>
+      {/* Large icon */}
+      <div className="mb-3">
+        <SocietyIcon icon={society.icon} size="large" />
       </div>
 
-      <p className="text-xs text-zinc-400 line-clamp-2">{society.description}</p>
+      {/* Title */}
+      <h4 className="mb-2 text-base font-medium text-white">{society.name}</h4>
 
-      <p className="mt-2 text-xs text-zinc-500">
-        {society.members.toLocaleString()} members
+      {/* Description */}
+      <p className="text-sm leading-relaxed text-zinc-400 line-clamp-3">
+        {society.description}
       </p>
     </button>
   );
@@ -280,19 +291,33 @@ function TargetSocietyCard({
 /**
  * Platform icon component for personal societies.
  */
-function PlatformIcon({ platform }: { platform: PersonalSociety["platform"] }) {
+function PlatformIcon({
+  platform,
+  size = "default"
+}: {
+  platform: PersonalSociety["platform"];
+  size?: "default" | "large";
+}) {
+  const isLarge = size === "large";
+
   if (platform === "linkedin") {
     return (
-      <div className="flex h-6 w-6 items-center justify-center rounded bg-[#0A66C2] text-white">
-        <span className="text-xs font-bold">in</span>
+      <div className={cn(
+        "flex items-center justify-center text-white",
+        isLarge ? "h-12 w-12" : "h-6 w-6"
+      )}>
+        <span className={cn("font-bold", isLarge ? "text-4xl" : "text-xs")}>in</span>
       </div>
     );
   }
 
   if (platform === "x") {
     return (
-      <div className="flex h-6 w-6 items-center justify-center rounded bg-white text-black">
-        <span className="text-sm font-bold">X</span>
+      <div className={cn(
+        "flex items-center justify-center text-white",
+        isLarge ? "h-12 w-12" : "h-6 w-6"
+      )}>
+        <span className={cn("font-bold", isLarge ? "text-4xl" : "text-sm")}>𝕏</span>
       </div>
     );
   }
@@ -303,18 +328,26 @@ function PlatformIcon({ platform }: { platform: PersonalSociety["platform"] }) {
 /**
  * Society icon component for target societies.
  */
-function SocietyIcon({ icon }: { icon: TargetSociety["icon"] }) {
+function SocietyIcon({
+  icon,
+  size = "default"
+}: {
+  icon: TargetSociety["icon"];
+  size?: "default" | "large";
+}) {
+  const iconClass = size === "large" ? "h-10 w-10 text-zinc-400" : "h-5 w-5 text-white";
+
   if (icon === "briefcase") {
-    return <Briefcase className="h-5 w-5 text-white" />;
+    return <Briefcase className={iconClass} />;
   }
 
   if (icon === "coins") {
-    return <Coins className="h-5 w-5 text-white" />;
+    return <Coins className={iconClass} />;
   }
 
   if (icon === "users") {
-    return <Users className="h-5 w-5 text-white" />;
+    return <Users className={iconClass} />;
   }
 
-  return <Briefcase className="h-5 w-5 text-white" />;
+  return <Briefcase className={iconClass} />;
 }
