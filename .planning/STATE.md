@@ -10,33 +10,33 @@ See: .planning/PROJECT.md (updated 2026-01-30)
 ## Current Position
 
 Phase: 12 of 14 (Comparison)
-Plan: 1 of 4 complete
+Plan: 2 of 4 complete
 Status: In progress
-Last activity: 2026-01-30 — Completed 12-01-PLAN.md (dashboard comparison)
+Last activity: 2026-01-30 — Completed 12-02-PLAN.md (forms & selectors comparison)
 
-Progress: ████████░░ 50% (8/16 plans)
+Progress: █████████░ 56% (9/16 plans)
 
-**Next action:** Execute 12-02-PLAN.md (forms comparison)
+**Next action:** Execute 12-03-PLAN.md (results & modals comparison)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9 (v1.2)
+- Total plans completed: 10 (v1.2)
 - Average duration: ~4min
-- Total execution time: ~40 min
+- Total execution time: ~45 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 11 | 6/6 | ~17min | ~3min |
-| 12 | 1/4 | ~3min | ~3min |
+| 12 | 2/4 | ~8min | ~4min |
 | 13 | 0/4 | - | - |
 | 14 | 0/4 | - | - |
 
 **Recent Trend:**
-- Last 6 plans: 11-02 (~2min), 11-03 (~2min), 11-04 (~3min), 11-05 (~2min), 11-06 (~3min), 12-01 (~3min)
-- Trend: Consistent ~3min per plan
+- Last 6 plans: 11-03 (~2min), 11-04 (~3min), 11-05 (~2min), 11-06 (~3min), 12-01 (~3min), 12-02 (~5min)
+- Trend: Comparison plans slightly longer than extraction (~4-5min)
 
 *Updated after each plan completion*
 
@@ -69,6 +69,9 @@ Progress: ████████░░ 50% (8/16 plans)
 | Plan-01 ID format (D-001-xxx) | 12-01 | Enables parallel plan execution without ID conflicts |
 | Network viz issues as Critical | 12-01 | Connection lines and clustering affect data representation |
 | Discrepancy severity levels | 12-01 | Critical (layout breaks), Major (visible), Minor (1-2px decorative) |
+| Plan-02 ID format (D-100-xxx) | 12-02 | Parallel execution with Plans 01/03 |
+| Society selector architecture | 12-02 | Reference uses full modal, Virtuna has simple dropdown |
+| Capture despite UI gaps | 12-02 | Document dashboard state when components don't trigger |
 
 ### Pending Todos
 
@@ -76,7 +79,9 @@ None yet.
 
 ### Blockers/Concerns
 
-None yet.
+- Society selector requires architectural rework (full modal vs simple dropdown)
+- Test type selector modal may not be implemented (forms not appearing in captures)
+- Form navigation flow needs investigation before refinement phase
 
 ## Completed (v1.2)
 
@@ -87,6 +92,7 @@ None yet.
 - [x] 11-05: Settings and modals extraction tests (Parts 9-10)
 - [x] 11-06: Complete user flows video recordings (Part 12)
 - [x] 12-01: Dashboard comparison - 18 discrepancies (2 critical, 8 major, 8 minor)
+- [x] 12-02: Forms & selectors comparison - 23 discrepancies (6 critical, 10 major, 7 minor)
 
 ## Completed (v1.1)
 
@@ -104,8 +110,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-01-30T18:23:00Z
-Stopped at: Completed 12-01-PLAN.md (dashboard comparison)
+Last session: 2026-01-30T18:25:30Z
+Stopped at: Completed 12-02-PLAN.md (forms & selectors comparison)
 Resume file: None
 
 ## Extraction Assets
