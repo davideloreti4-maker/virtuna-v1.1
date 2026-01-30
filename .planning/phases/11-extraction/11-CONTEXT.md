@@ -6,7 +6,7 @@
 <domain>
 ## Phase Boundary
 
-Complete screenshot coverage of every screen, state, and interactive element in app.societies.io via Playwright automation. This is the foundation for comparison — no analysis or fixes happen here, just comprehensive capture.
+Complete screenshot and video coverage of every screen, state, and interactive element in app.societies.io via Playwright automation. This is the foundation for comparison — no analysis or fixes happen here, just comprehensive capture.
 
 </domain>
 
@@ -36,10 +36,19 @@ Complete screenshot coverage of every screen, state, and interactive element in 
 - Use existing browser session (extract cookies from logged-in browser)
 - Playwright will load authenticated state from saved session
 
+### Video capture
+- Full session recordings alongside screenshots
+- Record complete user flow videos to capture:
+  - Animation timing and easing
+  - Transition effects between states
+  - Loading animations and spinners
+  - Hover/interaction micro-animations
+- Videos provide reference for animation matching in Phase 13
+
 ### Claude's Discretion
 - Folder structure and naming conventions (organize for easy lookup during comparison)
 - Exact scroll behavior implementation
-- How to handle animations/transitions during capture
+- Video format and quality settings
 - Playwright script architecture
 
 </decisions>
