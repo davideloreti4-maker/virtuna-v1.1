@@ -136,7 +136,7 @@ export function LeaveFeedbackModal({ open, onOpenChange }: LeaveFeedbackModalPro
                 <button
                   type="submit"
                   disabled={isSubmitting || !feedback.trim()}
-                  className="flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200 disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-lg bg-orange-500 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
                 >
                   {isSubmitting ? "Sending..." : "Submit"}
                   {!isSubmitting && <ArrowRight className="h-4 w-4" />}
