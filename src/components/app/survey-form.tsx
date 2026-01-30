@@ -227,7 +227,7 @@ export function SurveyForm({ onChangeType, onSubmit, className }: SurveyFormProp
           <button
             type="submit"
             disabled={!canSubmit}
-            className="min-h-[44px] rounded-xl bg-white px-6 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-[44px] rounded-xl bg-orange-500 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Ask
           </button>
