@@ -51,16 +51,16 @@
 
 ### User Flow Testing (FLOW)
 
-- [ ] **FLOW-01**: Test create society flow (open selector → create → confirm → appears in list)
+- [ ] **FLOW-01**: Test create society flow (open selector -> create -> confirm -> appears in list)
 - [ ] **FLOW-02**: Test select society flow (switch between personal/target societies)
-- [ ] **FLOW-03**: Test create test flow (select type → fill form → simulate)
-- [ ] **FLOW-04**: Test simulation flow (submit → 4 phases → results appear)
+- [ ] **FLOW-03**: Test create test flow (select type -> fill form -> simulate)
+- [ ] **FLOW-04**: Test simulation flow (submit -> 4 phases -> results appear)
 - [ ] **FLOW-05**: Test results interaction (expand sections, copy share link, view variants)
-- [ ] **FLOW-06**: Test history flow (view past test → form pre-fills → results display)
-- [ ] **FLOW-07**: Test delete flow (select item → confirm delete → removed from list)
+- [ ] **FLOW-06**: Test history flow (view past test -> form pre-fills -> results display)
+- [ ] **FLOW-07**: Test delete flow (select item -> confirm delete -> removed from list)
 - [ ] **FLOW-08**: Test settings flow (navigate tabs, edit profile, save changes)
 - [ ] **FLOW-09**: Test view selector flow (change filters, legend updates)
-- [ ] **FLOW-10**: Test mobile navigation flow (hamburger → drawer → navigate → close)
+- [ ] **FLOW-10**: Test mobile navigation flow (hamburger -> drawer -> navigate -> close)
 
 ## Out of Scope
 
@@ -75,16 +75,57 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EXT-01 to EXT-13 | Phase 11 | Pending |
-| CMP-01 to CMP-14 | Phase 12 | Pending |
-| REF-01 to REF-08 | Phase 13 | Pending |
-| FLOW-01 to FLOW-10 | Phase 14 | Pending |
+| EXT-01 | Phase 11 | Pending |
+| EXT-02 | Phase 11 | Pending |
+| EXT-03 | Phase 11 | Pending |
+| EXT-04 | Phase 11 | Pending |
+| EXT-05 | Phase 11 | Pending |
+| EXT-06 | Phase 11 | Pending |
+| EXT-07 | Phase 11 | Pending |
+| EXT-08 | Phase 11 | Pending |
+| EXT-09 | Phase 11 | Pending |
+| EXT-10 | Phase 11 | Pending |
+| EXT-11 | Phase 11 | Pending |
+| EXT-12 | Phase 11 | Pending |
+| EXT-13 | Phase 11 | Pending |
+| CMP-01 | Phase 12 | Pending |
+| CMP-02 | Phase 12 | Pending |
+| CMP-03 | Phase 12 | Pending |
+| CMP-04 | Phase 12 | Pending |
+| CMP-05 | Phase 12 | Pending |
+| CMP-06 | Phase 12 | Pending |
+| CMP-07 | Phase 12 | Pending |
+| CMP-08 | Phase 12 | Pending |
+| CMP-09 | Phase 12 | Pending |
+| CMP-10 | Phase 12 | Pending |
+| CMP-11 | Phase 12 | Pending |
+| CMP-12 | Phase 12 | Pending |
+| CMP-13 | Phase 12 | Pending |
+| CMP-14 | Phase 12 | Pending |
+| REF-01 | Phase 13 | Pending |
+| REF-02 | Phase 13 | Pending |
+| REF-03 | Phase 13 | Pending |
+| REF-04 | Phase 13 | Pending |
+| REF-05 | Phase 13 | Pending |
+| REF-06 | Phase 13 | Pending |
+| REF-07 | Phase 13 | Pending |
+| REF-08 | Phase 13 | Pending |
+| FLOW-01 | Phase 14 | Pending |
+| FLOW-02 | Phase 14 | Pending |
+| FLOW-03 | Phase 14 | Pending |
+| FLOW-04 | Phase 14 | Pending |
+| FLOW-05 | Phase 14 | Pending |
+| FLOW-06 | Phase 14 | Pending |
+| FLOW-07 | Phase 14 | Pending |
+| FLOW-08 | Phase 14 | Pending |
+| FLOW-09 | Phase 14 | Pending |
+| FLOW-10 | Phase 14 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 45 total
 - Mapped to phases: 45
-- Unmapped: 0 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-01-30*
-*Last updated: 2026-01-30 after initial definition*
+*Last updated: 2026-01-30 — Traceability updated with phase mappings*

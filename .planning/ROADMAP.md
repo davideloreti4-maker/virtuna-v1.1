@@ -1,12 +1,18 @@
-# Roadmap — Virtuna v1.1
+# Roadmap — Virtuna
 
-## Milestone: v1.1 — Pixel-Perfect Clone
+## Milestones
+
+- ✅ **v1.1 Pixel-Perfect Clone** - Phases 1-10 (shipped 2026-01-29)
+- 🚧 **v1.2 Visual Accuracy Refinement** - Phases 11-14 (in progress)
+
+---
+
+<details>
+<summary>✅ v1.1 Pixel-Perfect Clone (Phases 1-10) - SHIPPED 2026-01-29</summary>
 
 ### Phase 1: Infrastructure Setup ✓
 **Goal**: Complete development environment and deployment pipeline
-
 **Status**: Complete (2026-01-28)
-
 **Plans**: 2 plans
 
 Plans:
@@ -24,10 +30,8 @@ Plans:
 
 ### Phase 2: Design System & Components ✓
 **Goal**: Build reusable component library matching societies.io design
-
 **Status**: Complete (2026-01-28)
-
-**Plans**: 5 plans (3 waves)
+**Plans**: 5 plans
 
 Plans:
 - [x] 02-01-PLAN.md — Foundation setup (design tokens, cn() utility, fonts)
@@ -35,11 +39,6 @@ Plans:
 - [x] 02-03-PLAN.md — Layout components (Container, Header, Footer)
 - [x] 02-04-PLAN.md — Animation components (FadeIn, SlideUp, PageTransition)
 - [x] 02-05-PLAN.md — Showcase page + visual verification checkpoint
-
-**Wave Structure**:
-- Wave 1: 02-01 (Foundation) — sequential, must complete first
-- Wave 2: 02-02, 02-03, 02-04 (Components) — parallel, all depend on 02-01
-- Wave 3: 02-05 (Showcase) — sequential, depends on all Wave 2 plans
 
 **Success Criteria**:
 - [x] All base components match societies.io styling
@@ -50,22 +49,15 @@ Plans:
 
 ---
 
-### Phase 3: Landing Site
+### Phase 3: Landing Site ✓
 **Goal**: Build pixel-perfect landing pages matching societies.io exactly
-
-**Status**: Not Started
-
-**Tasks**:
-- [ ] Asset capture & navigation setup (download images, update Header/Footer)
-- [ ] Animation components enhancement (scroll triggers, parallax)
-- [ ] Homepage (hero, features, testimonials, CTAs)
-- [ ] Verification checkpoint
+**Status**: Complete
 
 **Success Criteria**:
-- All landing pages pixel-perfect match with societies.io
-- Navigation works correctly (unbuilt pages → /coming-soon)
-- Mobile experience matches societies.io exactly
-- Scroll animations match societies.io timing and behavior
+- [x] All landing pages pixel-perfect match with societies.io
+- [x] Navigation works correctly
+- [x] Mobile experience matches societies.io exactly
+- [x] Scroll animations match societies.io timing
 
 **Requirements Covered**: L1, L2, L3, L4, L5, R1, R2, R3, AN4
 
@@ -73,10 +65,8 @@ Plans:
 
 ### Phase 4: App Layout & Navigation ✓
 **Goal**: Build app shell and navigation structure
-
 **Status**: Complete (2026-01-28)
-
-**Plans**: 6 plans (5 waves)
+**Plans**: 6 plans
 
 Plans:
 - [x] 04-01-PLAN.md — Route groups restructure + install Radix dependencies
@@ -85,13 +75,6 @@ Plans:
 - [x] 04-04-PLAN.md — Network visualization + filter pills
 - [x] 04-05-PLAN.md — Mobile drawer navigation + auth guard
 - [x] 04-06-PLAN.md — Visual verification checkpoint
-
-**Wave Structure**:
-- Wave 1: 04-01 (Route groups + dependencies)
-- Wave 2: 04-02 (App layout with sidebar)
-- Wave 3: 04-03, 04-04 (Selectors and visualization — parallel)
-- Wave 4: 04-05 (Mobile nav + auth guard)
-- Wave 5: 04-06 (Visual verification checkpoint)
 
 **Success Criteria**:
 - [x] App layout matches societies.io
@@ -104,10 +87,8 @@ Plans:
 
 ### Phase 5: Society Management ✓
 **Goal**: Complete society selector and creation flow with Zustand state management
-
 **Status**: Complete (2026-01-29)
-
-**Plans**: 5 plans (4 waves)
+**Plans**: 5 plans
 
 Plans:
 - [x] 05-01-PLAN.md — Zustand store + types + mock data extraction
@@ -116,17 +97,11 @@ Plans:
 - [x] 05-04-PLAN.md — Wire up create flow + sidebar integration
 - [x] 05-05-PLAN.md — Visual verification checkpoint
 
-**Wave Structure**:
-- Wave 1: 05-01 (Foundation - store, types, mock data)
-- Wave 2: 05-02, 05-03 (Parallel - selector refactor + create modal)
-- Wave 3: 05-04 (Integration - wire up flow)
-- Wave 4: 05-05 (Verification checkpoint)
-
 **Success Criteria**:
 - [x] Society selector matches societies.io reference
 - [x] Create society modal works with local state
 - [x] Society selection updates app context
-- [x] Persistence via localStorage (manual implementation)
+- [x] Persistence via localStorage
 
 **Requirements Covered**: SOC-01 to SOC-05
 
@@ -134,10 +109,8 @@ Plans:
 
 ### Phase 6: Test Type Selector & Forms ✓
 **Goal**: Build test creation flow with all 11 form types
-
 **Status**: Complete (2026-01-29)
-
-**Plans**: 5 plans (4 waves)
+**Plans**: 5 plans
 
 Plans:
 - [x] 06-01-PLAN.md — Test type definitions + TestTypeSelector modal
@@ -145,12 +118,6 @@ Plans:
 - [x] 06-03-PLAN.md — SurveyForm component (unique structure)
 - [x] 06-04-PLAN.md — Test store + TikTok/Instagram functional flows
 - [x] 06-05-PLAN.md — Visual verification checkpoint
-
-**Wave Structure**:
-- Wave 1: 06-01 (Type definitions + selector modal)
-- Wave 2: 06-02, 06-03 (Parallel - content form + survey form)
-- Wave 3: 06-04 (Test store + functional flows integration)
-- Wave 4: 06-05 (Verification checkpoint)
 
 **Success Criteria**:
 - [x] All 11 test types selectable
@@ -163,24 +130,16 @@ Plans:
 
 ### Phase 7: Simulation & Results ✓
 **Goal**: Build simulation flow and results display matching societies.io
-
 **Status**: Complete (2026-01-29)
-
-**Plans**: 6 plans (4 waves)
+**Plans**: 6 plans
 
 Plans:
 - [x] 07-01-PLAN.md — Restructure dashboard layout for floating form
 - [x] 07-02-PLAN.md — Build 4-phase loading states with progress
 - [x] 07-03-PLAN.md — Extend TestResult interface and mock data generators
-- [x] 07-04-PLAN.md — Build results panel components (Impact, Variants, Insights, Themes)
+- [x] 07-04-PLAN.md — Build results panel components
 - [x] 07-05-PLAN.md — Integrate all components into simulation flow
 - [x] 07-06-PLAN.md — Visual comparison with societies.io using v0 MCP
-
-**Wave Structure**:
-- Wave 1: 07-01, 07-02, 07-03 (Parallel - layout, loading, data model)
-- Wave 2: 07-04 (Results components - depends on 07-03)
-- Wave 3: 07-05 (Integration - depends on all prior)
-- Wave 4: 07-06 (Visual comparison checkpoint)
 
 **Success Criteria**:
 - [x] Full simulation flow from submit to results
@@ -194,21 +153,14 @@ Plans:
 
 ### Phase 8: Test History & Polish ✓
 **Goal**: Complete test history viewing, deletion, and view selector enhancements
-
 **Status**: Complete (2026-01-29)
-
-**Plans**: 4 plans (3 waves)
+**Plans**: 4 plans
 
 Plans:
 - [x] 08-01-PLAN.md — Install AlertDialog, extend test store with isViewingHistory
 - [x] 08-02-PLAN.md — TestHistoryItem and TestHistoryList components for sidebar
 - [x] 08-03-PLAN.md — ViewSelector role colors and LegendPills component
 - [x] 08-04-PLAN.md — Integration, read-only forms, and visual verification
-
-**Wave Structure**:
-- Wave 1: 08-01, 08-02 (Parallel - foundation and history list)
-- Wave 2: 08-03 (View selector and legend)
-- Wave 3: 08-04 (Integration and verification checkpoint)
 
 **Success Criteria**:
 - [x] Test history persists in localStorage
@@ -223,10 +175,8 @@ Plans:
 
 ### Phase 9: Settings & Modals ✓
 **Goal**: Complete settings pages and modals matching societies.io
-
 **Status**: Complete (2026-01-29)
-
-**Plans**: 5 plans (3 waves)
+**Plans**: 5 plans
 
 Plans:
 - [x] 09-01-PLAN.md — Install Radix dependencies + create settings store and types
@@ -234,11 +184,6 @@ Plans:
 - [x] 09-03-PLAN.md — Notifications section with switches, team section
 - [x] 09-04-PLAN.md — Billing section with Stripe link, Leave Feedback modal
 - [x] 09-05-PLAN.md — Integration: wire sidebar, create settings route, verification
-
-**Wave Structure**:
-- Wave 1: 09-01 (Foundation - dependencies, store, types)
-- Wave 2: 09-02, 09-03, 09-04 (Parallel - settings sections and modals)
-- Wave 3: 09-05 (Integration and verification checkpoint)
 
 **Success Criteria**:
 - [x] All settings screens complete (profile, account, notifications, billing, team)
@@ -252,23 +197,16 @@ Plans:
 
 ### Phase 10: Final QA ✓
 **Goal**: Visual verification and polish — pixel-perfect comparison with societies.io
-
 **Status**: Complete (2026-01-29)
-
-**Plans**: 6 plans (3 waves)
+**Plans**: 6 plans
 
 Plans:
-- [x] 10-01-PLAN.md — App dashboard shell QA (sidebar, network viz, selectors)
-- [x] 10-02-PLAN.md — App dashboard content QA (forms, results, history)
+- [x] 10-01-PLAN.md — App dashboard shell QA
+- [x] 10-02-PLAN.md — App dashboard content QA
 - [x] 10-03-PLAN.md — Settings page design language QA
 - [x] 10-04-PLAN.md — Landing page desktop QA
-- [x] 10-05-PLAN.md — Mobile responsive QA (app + landing at 375px)
-- [x] 10-06-PLAN.md — Performance verification (console errors, animations, CLS)
-
-**Wave Structure**:
-- Wave 1: 10-01, 10-02, 10-03, 10-04 (Parallel - desktop QA for each section)
-- Wave 2: 10-05 (Mobile responsive - depends on desktop fixes)
-- Wave 3: 10-06 (Final performance pass - depends on all fixes)
+- [x] 10-05-PLAN.md — Mobile responsive QA
+- [x] 10-06-PLAN.md — Performance verification
 
 **Success Criteria**:
 - [x] All screens match societies.io reference at 1440px
@@ -279,36 +217,145 @@ Plans:
 
 **Requirements Covered**: QA-01 to QA-03
 
+</details>
+
 ---
 
-## Phase Dependencies
+## 🚧 v1.2 Visual Accuracy Refinement (In Progress)
+
+**Milestone Goal:** Achieve 98%+ pixel accuracy against app.societies.io through systematic extraction, comparison, and iterative refinement.
+
+**Approach:** 3-wave methodology
+- Wave 1: Extract all screens/states from app.societies.io via Playwright
+- Wave 2: Side-by-side comparison with detailed discrepancy documentation
+- Wave 3: Iterative fixes using v0 MCP until 98%+ accuracy achieved
+- Final: User flow verification to ensure functional correctness
+
+---
+
+### Phase 11: Extraction
+**Goal**: Complete screenshot coverage of every screen, state, and interactive element in app.societies.io
+**Depends on**: Phases 1-10 (v1.0 and v1.1 complete)
+**Requirements**: EXT-01, EXT-02, EXT-03, EXT-04, EXT-05, EXT-06, EXT-07, EXT-08, EXT-09, EXT-10, EXT-11, EXT-12, EXT-13
+**Success Criteria** (what must be TRUE):
+  1. All dashboard states captured (default, loading, society selected)
+  2. All selectors and dropdowns captured in open/closed/hover states
+  3. All forms captured empty, filled, and with validation errors
+  4. All modals and overlays captured
+  5. Mobile viewport (375px) screenshots exist for all key screens
+**Plans**: 4 plans (TBD)
+
+Plans:
+- [ ] 11-01: Setup Playwright extraction infrastructure
+- [ ] 11-02: Extract dashboard and navigation states
+- [ ] 11-03: Extract forms, selectors, and interactive elements
+- [ ] 11-04: Extract modals, settings, and mobile views
+
+---
+
+### Phase 12: Comparison
+**Goal**: Document every visual discrepancy between Virtuna and app.societies.io with v0 MCP-powered analysis
+**Depends on**: Phase 11
+**Requirements**: CMP-01, CMP-02, CMP-03, CMP-04, CMP-05, CMP-06, CMP-07, CMP-08, CMP-09, CMP-10, CMP-11, CMP-12, CMP-13, CMP-14
+
+**Methodology**:
+For each screen/component:
+1. Load reference screenshot (from Phase 11) + Virtuna screenshot
+2. Use v0 MCP to analyze: "List EVERY visual difference - spacing, colors, typography, layout, borders, shadows"
+3. Document v0's analysis with manual verification
+4. Categorize: spacing / color / typography / layout / animation
+5. Prioritize: critical (layout breaks) / major (clearly visible) / minor (subtle)
+
+**Success Criteria** (what must be TRUE):
+  1. Side-by-side comparison images exist for every screen/component
+  2. All discrepancies documented with v0 analysis and pixel-level precision
+  3. Issues categorized by type (spacing, color, typography, layout, animation)
+  4. Issues prioritized (critical/major/minor) with clear criteria
+  5. Discrepancy report ready to guide refinement work
+**Plans**: 4 plans (TBD)
+
+Plans:
+- [ ] 12-01: v0 comparison of navigation, sidebar, and dashboard layout
+- [ ] 12-02: v0 comparison of forms, selectors, and dropdowns
+- [ ] 12-03: v0 comparison of modals, settings, and overlays
+- [ ] 12-04: Consolidate discrepancy report with prioritization
+
+---
+
+### Phase 13: Refinement
+**Goal**: Fix all documented discrepancies to achieve 98%+ pixel accuracy against reference
+**Depends on**: Phase 12
+**Requirements**: REF-01, REF-02, REF-03, REF-04, REF-05, REF-06, REF-07, REF-08
+**Success Criteria** (what must be TRUE):
+  1. All critical discrepancies fixed (no layout breaks)
+  2. All major discrepancies fixed (no clearly visible differences)
+  3. Minor discrepancies addressed (subtle spacing/color aligned)
+  4. Each fix verified against reference screenshot
+  5. Final comparison shows 98%+ pixel accuracy across all screens
+**Plans**: 4 plans (TBD)
+
+Plans:
+- [ ] 13-01: Fix critical layout discrepancies
+- [ ] 13-02: Fix major visual discrepancies
+- [ ] 13-03: Fix minor discrepancies and polish
+- [ ] 13-04: Final verification pass and mobile responsive check
+
+---
+
+### Phase 14: User Flow Testing
+**Goal**: Verify all interactive flows work correctly with proper visual states throughout
+**Depends on**: Phase 13
+**Requirements**: FLOW-01, FLOW-02, FLOW-03, FLOW-04, FLOW-05, FLOW-06, FLOW-07, FLOW-08, FLOW-09, FLOW-10
+**Success Criteria** (what must be TRUE):
+  1. Society creation flow completes with correct visual feedback at each step
+  2. Test creation and simulation flow works end-to-end with proper loading states
+  3. Results panel interactions work (expand/collapse, copy, variants)
+  4. Settings navigation and save flows function correctly
+  5. Mobile navigation drawer opens/closes and navigates properly
+**Plans**: 4 plans (TBD)
+
+Plans:
+- [ ] 14-01: Test society and test creation flows
+- [ ] 14-02: Test simulation and results flows
+- [ ] 14-03: Test history, delete, and settings flows
+- [ ] 14-04: Test mobile navigation and responsive flows
+
+---
+
+## Phase Dependencies (v1.2)
 
 ```
-Phase 1 (Infrastructure) ✓
+v1.1 Complete (Phases 1-10) ✓
     ↓
-Phase 2 (Design System) ✓
+Phase 11 (Extraction)
     ↓
-    ├── Phase 3 (Landing) ✓ ────────────────────┐
-    │                                           │
-    └── Phase 4 (App Layout) ✓                  │
-            ↓                                   │
-        Phase 5 (Society Management) ✓          │
-            ↓                                   │
-        Phase 6 (Test Forms) ✓                  │
-            ↓                                   │
-        Phase 7 (Results) ✓                     │
-            ↓                                   │
-        Phase 8 (History) ✓                     │
-            ↓                                   │
-        Phase 9 (Settings) ✓                    │
-            │                                   │
-            └───────────────┬───────────────────┘
-                            ↓
-                    Phase 10 (QA) ✓ ← MILESTONE COMPLETE
+Phase 12 (Comparison)
+    ↓
+Phase 13 (Refinement)
+    ↓
+Phase 14 (User Flow Testing) ← MILESTONE COMPLETE
 ```
+
+---
+
+## Progress
+
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1-10 | v1.1 | 44/44 | Complete | 2026-01-29 |
+| 11. Extraction | v1.2 | 0/4 | Not started | - |
+| 12. Comparison | v1.2 | 0/4 | Not started | - |
+| 13. Refinement | v1.2 | 0/4 | Not started | - |
+| 14. User Flow Testing | v1.2 | 0/4 | Not started | - |
+
+---
 
 ## Current Status
-- **Current Milestone**: v1.1 (Pixel-Perfect Clone) — COMPLETE
-- **Completed Phases**: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+- **Current Milestone**: v1.2 (Visual Accuracy Refinement)
+- **Current Phase**: 11 (Extraction) — Not started
 - **Blocked By**: None
-- **Next Action**: Archive milestone
+- **Next Action**: Plan Phase 11
+
+---
+*Roadmap created: 2026-01-28*
+*Last updated: 2026-01-30 — v1.2 milestone added*
