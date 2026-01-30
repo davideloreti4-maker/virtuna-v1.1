@@ -44,12 +44,13 @@ export function FilterPill({
   );
 }
 
-// Role levels data
-const ROLE_LEVELS = [
-  { label: "Executive Level", color: "#6366F1" },
-  { label: "Mid Level", color: "#EC4899" },
-  { label: "Senior Level", color: "#10B981" },
-  { label: "Entry Level", color: "#F97316" },
+// Country filters data - matches network visualization colors
+const COUNTRY_FILTERS = [
+  { label: "United States", color: "#F97316" },
+  { label: "United Kingdom", color: "#3B82F6" },
+  { label: "Germany", color: "#10B981" },
+  { label: "Australia", color: "#8B5CF6" },
+  { label: "Canada", color: "#EF4444" },
 ] as const;
 
 interface FilterPillGroupProps {
@@ -57,17 +58,17 @@ interface FilterPillGroupProps {
 }
 
 /**
- * FilterPillGroup - Group of filter pills for role levels.
+ * FilterPillGroup - Group of filter pills for country filters.
  *
  * Features:
- * - Displays all 4 role level pills
+ * - Displays country filter pills matching network visualization
  * - Manages active state internally
  * - All active by default
  */
 export function FilterPillGroup({ className }: FilterPillGroupProps) {
   // Track which filters are active (all active by default)
   const [activeFilters, setActiveFilters] = useState<Set<string>>(
-    new Set(ROLE_LEVELS.map((r) => r.label))
+    new Set(COUNTRY_FILTERS.map((c) => c.label))
   );
 
   const toggleFilter = (label: string) => {
@@ -84,13 +85,13 @@ export function FilterPillGroup({ className }: FilterPillGroupProps) {
 
   return (
     <div className={cn("flex flex-wrap gap-2", className)}>
-      {ROLE_LEVELS.map((role) => (
+      {COUNTRY_FILTERS.map((country) => (
         <FilterPill
-          key={role.label}
-          label={role.label}
-          color={role.color}
-          active={activeFilters.has(role.label)}
-          onClick={() => toggleFilter(role.label)}
+          key={country.label}
+          label={country.label}
+          color={country.color}
+          active={activeFilters.has(country.label)}
+          onClick={() => toggleFilter(country.label)}
         />
       ))}
     </div>
