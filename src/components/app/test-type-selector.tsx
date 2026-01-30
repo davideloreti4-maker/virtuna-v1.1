@@ -70,22 +70,37 @@ export function TestTypeSelector({
             </button>
           </Dialog.Close>
 
+          {/* Role Level Legend */}
+          <div className="mb-6 flex items-center justify-center gap-6">
+            <LegendItem color="#6366F1" label="Executive Level" />
+            <LegendItem color="#EC4899" label="Mid Level" />
+            <LegendItem color="#10B981" label="Senior Level" />
+            <LegendItem color="#F97316" label="Entry Level" />
+            <LegendItem color="#71717A" label="Unknown" />
+          </div>
+
           {/* Header */}
           <Dialog.Title className="mb-8 text-center text-xl font-medium text-white">
             What would you like to simulate?
           </Dialog.Title>
 
-          {/* Categories */}
-          <div className="space-y-8">
-            {TEST_CATEGORIES.map((category) => (
-              <div key={category.id}>
+          {/* Categories in 2-column grid */}
+          <div className="grid grid-cols-2 gap-8">
+            {TEST_CATEGORIES.map((category, index) => (
+              <div
+                key={category.id}
+                className={cn(
+                  // Survey category spans full width
+                  category.id === 'survey' && "col-span-2"
+                )}
+              >
                 {/* Category label */}
-                <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                <h3 className="mb-4 text-xs font-medium uppercase tracking-wider text-zinc-500">
                   {category.name}
                 </h3>
 
-                {/* Type cards grid */}
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                {/* Type cards - vertical list for better readability */}
+                <div className="space-y-1">
                   {category.types.map((typeId) => {
                     const typeConfig = TEST_TYPES[typeId];
                     const IconComponent = iconMap[typeConfig.icon];
@@ -96,12 +111,12 @@ export function TestTypeSelector({
                         type="button"
                         onClick={() => handleSelectType(typeId)}
                         className={cn(
-                          "flex flex-col items-center justify-center gap-2 rounded-xl p-4",
-                          "transition-all duration-150",
+                          "flex w-full items-center gap-3 rounded-lg px-3 py-2.5",
+                          "text-left transition-all duration-150",
                           "hover:bg-zinc-800"
                         )}
                       >
-                        <IconComponent className="h-5 w-5 text-zinc-400" />
+                        <IconComponent className="h-5 w-5 shrink-0 text-zinc-400" />
                         <span className="text-sm text-white">{typeConfig.name}</span>
                       </button>
                     );
@@ -132,5 +147,20 @@ export function TestTypeSelector({
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+
+/**
+ * Legend item component showing role level with colored dot
+ */
+function LegendItem({ color, label }: { color: string; label: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div
+        className="h-2.5 w-2.5 rounded-full"
+        style={{ backgroundColor: color }}
+      />
+      <span className="text-xs text-zinc-400">{label}</span>
+    </div>
   );
 }
