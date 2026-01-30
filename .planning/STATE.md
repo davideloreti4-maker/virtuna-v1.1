@@ -5,37 +5,37 @@
 See: .planning/PROJECT.md (updated 2026-01-30)
 
 **Core value:** 98%+ pixel accuracy against app.societies.io
-**Current focus:** Phase 11 - Extraction (COMPLETE)
+**Current focus:** Phase 11 - Extraction (In Progress)
 
 ## Current Position
 
-Phase: 11 of 14 (Extraction) - COMPLETE
-Plan: 4 of 4 complete
-Status: Phase complete
-Last activity: 2026-01-30 — Completed PLAN-04.md (results and history extraction)
+Phase: 11 of 14 (Extraction)
+Plan: 5 of 6 complete
+Status: In progress
+Last activity: 2026-01-30 — Completed PLAN-05.md (settings and modals extraction)
 
-Progress: █████░░░░░ 31% (5/16 plans)
+Progress: ██████░░░░ 37% (6/16 plans)
 
-**Next action:** Execute Phase 12 (Comparison)
+**Next action:** Execute PLAN-06 (Mobile Navigation)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6 (v1.2)
-- Average duration: ~5min
-- Total execution time: ~32 min
+- Total plans completed: 7 (v1.2)
+- Average duration: ~4min
+- Total execution time: ~34 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 11 | 4/4 | ~12min | ~3min |
+| 11 | 5/6 | ~14min | ~3min |
 | 12 | 0/4 | - | - |
 | 13 | 0/4 | - | - |
 | 14 | 0/4 | - | - |
 
 **Recent Trend:**
-- Last 4 plans: 11-01 (test infra ~5min), 11-02 (navigation ~2min), 11-03 (forms/sim ~2min), 11-04 (results/history ~3min)
+- Last 5 plans: 11-01 (~5min), 11-02 (~2min), 11-03 (~2min), 11-04 (~3min), 11-05 (~2min)
 - Trend: Consistent ~3min per extraction plan
 
 *Updated after each plan completion*
@@ -60,6 +60,9 @@ Progress: █████░░░░░ 31% (5/16 plans)
 | Video recording per describe | 11-03 | test.use({ video: { mode: 'on' } }) at describe level |
 | Helper function pattern | 11-04 | runSimulationToResults() for reusable navigation |
 | Separate tests per section | 11-04 | Modularity for results panel sections |
+| Switch toggle capture pattern | 11-05 | Capture on/off/hover states for toggles |
+| Tab navigation helper | 11-05 | navigateToTab() for settings tabs |
+| Modal state capture sequence | 11-05 | trigger, open, interact, close for modal tests |
 
 ### Pending Todos
 
@@ -75,6 +78,7 @@ None yet.
 - [x] 11-02: Dashboard and navigation extraction tests (Parts 1-4)
 - [x] 11-03: Forms and simulation extraction tests (Parts 5-6)
 - [x] 11-04: Results and history extraction tests (Parts 7-8)
+- [x] 11-05: Settings and modals extraction tests (Parts 9-10)
 
 ## Completed (v1.1)
 
@@ -92,6 +96,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-01-30T11:58:00Z
-Stopped at: Completed PLAN-04.md (results and history extraction) - Phase 11 COMPLETE
+Last session: 2026-01-30T12:00:00Z
+Stopped at: Completed PLAN-05.md (settings and modals extraction)
 Resume file: None
