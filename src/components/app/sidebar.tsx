@@ -15,6 +15,7 @@ import {
   Columns2,
   X,
   Settings,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -93,7 +94,7 @@ export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarPr
 
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 h-screen w-[248px] flex-col border-r border-zinc-800 bg-[#0A0A0A] p-4 transition-transform duration-200",
+          "fixed left-0 top-0 z-50 h-screen w-[248px] flex-col border-r border-zinc-800 bg-[#0f0f10] p-4 transition-transform duration-200",
           "md:static md:translate-x-0 md:flex md:shrink-0",
           mobileOpen ? "flex translate-x-0" : "hidden -translate-x-full",
           className
@@ -184,12 +185,7 @@ export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarPr
         <div className="border-t border-zinc-800" />
 
         {/* Bottom nav items */}
-        <nav className="mt-2">
-          <SidebarNavItem
-            label="Settings"
-            icon={Settings}
-            onClick={handleSettings}
-          />
+        <nav className="mt-2 space-y-0.5">
           <SidebarNavItem
             label="Manage plan"
             icon={CreditCard}
