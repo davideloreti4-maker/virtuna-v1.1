@@ -57,9 +57,9 @@ export function ResultsPanel({ result, onRunAnother }: ResultsPanelProps) {
           onClick={onRunAnother}
           className={cn(
             'w-full rounded-xl px-6 py-3',
-            'bg-white text-zinc-900',
+            'bg-orange-500 text-white',
             'text-sm font-medium',
-            'transition-colors hover:bg-zinc-200'
+            'transition-colors hover:bg-orange-600'
           )}
         >
           Run another test
