@@ -243,13 +243,13 @@ Plans:
   3. All forms captured empty, filled, and with validation errors
   4. All modals and overlays captured
   5. Mobile viewport (375px) screenshots exist for all key screens
-**Plans**: 4 plans (TBD)
+**Plans**: 4 plans
 
 Plans:
-- [ ] 11-01: Setup Playwright extraction infrastructure
-- [ ] 11-02: Extract dashboard and navigation states
-- [ ] 11-03: Extract forms, selectors, and interactive elements
-- [ ] 11-04: Extract modals, settings, and mobile views
+- [ ] 11-01-PLAN.md - Setup Playwright extraction infrastructure
+- [ ] 11-02-PLAN.md - Extract dashboard and navigation states
+- [ ] 11-03-PLAN.md - Extract forms, selectors, and interactive elements
+- [ ] 11-04-PLAN.md - Extract modals, settings, simulation, and video flows
 
 ---
 
@@ -352,9 +352,9 @@ Phase 14 (User Flow Testing) ← MILESTONE COMPLETE
 
 ## Current Status
 - **Current Milestone**: v1.2 (Visual Accuracy Refinement)
-- **Current Phase**: 11 (Extraction) — Not started
+- **Current Phase**: 11 (Extraction) — Planned
 - **Blocked By**: None
-- **Next Action**: Plan Phase 11
+- **Next Action**: Execute Phase 11 (`/gsd:execute-phase 11`)
 
 ---
 *Roadmap created: 2026-01-28*
