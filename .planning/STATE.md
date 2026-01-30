@@ -10,30 +10,30 @@ See: .planning/PROJECT.md (updated 2026-01-30)
 ## Current Position
 
 Phase: 11 of 14 (Extraction)
-Plan: Planned (4 plans in 2 waves)
-Status: Ready for execution
-Last activity: 2026-01-30 — Phase 11 planned
+Plan: 1 of 4 complete
+Status: In progress
+Last activity: 2026-01-30 — Completed 11-01-PLAN.md
 
-Progress: ░░░░░░░░░░ 0% (0/16 plans)
+Progress: █░░░░░░░░░ 6% (1/16 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0 (v1.2)
-- Average duration: -
-- Total execution time: 0 hours
+- Total plans completed: 1 (v1.2)
+- Average duration: ~15min
+- Total execution time: ~15 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 11 | 0/4 | - | - |
+| 11 | 1/4 | ~15min | ~15min |
 | 12 | 0/4 | - | - |
 | 13 | 0/4 | - | - |
 | 14 | 0/4 | - | - |
 
 **Recent Trend:**
-- Last 5 plans: (none yet)
+- Last 5 plans: 11-01 (~15min)
 - Trend: Starting
 
 *Updated after each plan completion*
@@ -48,6 +48,8 @@ Progress: ░░░░░░░░░░ 0% (0/16 plans)
 | v0 MCP for refinement | v1.2 | AI-assisted pixel-perfect corrections |
 | 98% accuracy target | v1.2 | Near-pixel-perfect fidelity requirement |
 | 3-wave approach | v1.2 | Extract -> Compare -> Refine methodology |
+| Manual Enter for auth capture | 11-01 | More reliable than URL detection for SSO flows |
+| Desktop 1440x900, mobile 375x812 | 11-01 | Standard viewport presets for extraction |
 
 ### Pending Todos
 
@@ -56,6 +58,10 @@ None yet.
 ### Blockers/Concerns
 
 None yet.
+
+## Completed (v1.2)
+
+- [x] 11-01: Playwright infrastructure with auth capture
 
 ## Completed (v1.1)
 
@@ -73,6 +79,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-01-30
-Stopped at: Roadmap v1.2 created, ready to plan Phase 11
+Last session: 2026-01-30T10:35:12Z
+Stopped at: Completed 11-01-PLAN.md
 Resume file: None
