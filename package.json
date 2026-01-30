@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "extraction:auth": "npx ts-node extraction/scripts/capture-auth.ts"
+    "extraction": "npx tsx extraction/scripts/capture-all-session.ts",
+    "extraction:auth": "npx playwright test --project=setup --config=extraction/playwright.config.ts",
+    "extraction:all": "npx playwright test --project=desktop --config=extraction/playwright.config.ts",
+    "extraction:ui": "npx playwright test --ui --config=extraction/playwright.config.ts",
+    "extraction:report": "npx playwright show-report extraction/playwright-report"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
