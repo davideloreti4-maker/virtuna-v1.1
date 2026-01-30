@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "extraction:auth": "npx ts-node extraction/scripts/capture-auth.ts"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
