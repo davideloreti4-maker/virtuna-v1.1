@@ -420,6 +420,11 @@ Plans:
   3. Idle state is captivating enough to hook users before any interaction
   4. Particle system uses requestAnimationFrame for smooth animation loop
   5. Particle count is configurable for later performance optimization
+**Plans**: 2 plans
+
+Plans:
+- [ ] 21-01-PLAN.md — Core particle infrastructure (types, utilities, simplex-noise)
+- [ ] 21-02-PLAN.md — ParticleSystem component with idle flow and processing rush
 
 ---
 
@@ -485,7 +490,7 @@ Plans:
 | 18. Navigation + Animations | v1.3.2 | 0/4 | Not started | - |
 | 19. Quality & Polish | v1.3.2 | 0/3 | Not started | - |
 | 20. Visualization Foundation | v1.4 | 0/TBD | Not started | - |
-| 21. Particle System | v1.4 | 0/TBD | Not started | - |
+| 21. Particle System | v1.4 | 0/2 | Planned | - |
 | 22. Node System | v1.4 | 0/TBD | Not started | - |
 | 23. Motion & Interaction | v1.4 | 0/TBD | Not started | - |
 | 24. UX & Mobile Optimization | v1.4 | 0/TBD | Not started | - |
