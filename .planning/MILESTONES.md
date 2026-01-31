@@ -70,4 +70,32 @@
 - Animations are buttery smooth (60fps)
 - Mobile responsive with same premium feel
 
-**Phases:** TBD (starting from phase 15)
+**Phases:** 15-19
+
+---
+
+## Planned Milestone
+
+### v1.4 — Node Visualization MVP
+**Target:** Mesmerizing, addictive, TikTok-viral-worthy visualization
+
+**Vision:**
+- Hybrid visualization: central AI orb + chaos → order node crystallization
+- Particles flow toward orb during processing
+- Nodes form abstractly, crystallize into labeled insights
+- Full physics playground (drag, fling, magnetic, ripple)
+- Mobile-first with 60fps performance
+
+**Scope:**
+- Core visualization (orb, particles, nodes, connections)
+- Essential motion system (three layers, easing, spring physics)
+- Basic interactions (drag, magnetic, tap preview, hold detail)
+- Mobile optimization (60fps, adaptive particles, touch gestures)
+
+**Deferred to v1.5:**
+- Sound design
+- Advanced fidget interactions (fling, spin, burst)
+- Professional mode toggle
+- Onboarding hints
+
+**Phases:** 20-24 (31 requirements)
