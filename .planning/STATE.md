@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-01-31)
 Phase: 15 of 19 (Foundation + Primitives)
 Plan: 0 of 3 in current phase
 Status: Ready to plan
-Last activity: 2026-01-31 — v1.3.2 roadmap created
+Last activity: 2026-01-31 — v1.4 roadmap created (Phases 20-24)
 
 Progress: ░░░░░░░░░░ 0%
 
@@ -55,6 +55,19 @@ None yet.
 
 None identified.
 
+## Upcoming: v1.4 Node Visualization MVP
+
+**Planned Phases:** 20-24
+**Requirements:** 31 total (VIZ, MOTION, INTERACT, UX, PERF)
+**Goal:** Mesmerizing "wow" moment visualization — orb, particles, chaos-to-order crystallization
+
+Phase structure:
+- Phase 20: Visualization Foundation (orb, dark mode, canvas setup)
+- Phase 21: Particle System (ambient flow, processing rush)
+- Phase 22: Node System (chaos nodes, crystallization, connections)
+- Phase 23: Motion & Interaction (physics, drag, magnetic, tooltips)
+- Phase 24: UX & Mobile Optimization (60fps mobile, adaptive particles)
+
 ## Completed (v1.2)
 
 - [x] Phase 11: Extraction — 207 screenshots captured
@@ -76,5 +89,5 @@ None identified.
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: v1.3.2 roadmap created, ready to plan Phase 15
+Stopped at: v1.4 roadmap created (Phases 20-24), ready to continue v1.3.2 Phase 15
 Resume file: None

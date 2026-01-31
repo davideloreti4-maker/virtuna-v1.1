@@ -118,17 +118,51 @@ Ship the scroll-stopping visualization with essential interactions. Validate the
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VIZ-01 to VIZ-10 | TBD | Pending |
-| MOTION-01 to MOTION-05 | TBD | Pending |
-| INTERACT-01 to INTERACT-05 | TBD | Pending |
-| UX-01 to UX-04 | TBD | Pending |
-| PERF-01 to PERF-07 | TBD | Pending |
+| VIZ-01 | Phase 20 | Pending |
+| VIZ-02 | Phase 20 | Pending |
+| VIZ-03 | Phase 21 | Pending |
+| VIZ-04 | Phase 21 | Pending |
+| VIZ-05 | Phase 22 | Pending |
+| VIZ-06 | Phase 22 | Pending |
+| VIZ-07 | Phase 22 | Pending |
+| VIZ-08 | Phase 21 | Pending |
+| VIZ-09 | Phase 20 | Pending |
+| VIZ-10 | Phase 20 | Pending |
+| MOTION-01 | Phase 22 | Pending |
+| MOTION-02 | Phase 23 | Pending |
+| MOTION-03 | Phase 23 | Pending |
+| MOTION-04 | Phase 23 | Pending |
+| MOTION-05 | Phase 23 | Pending |
+| INTERACT-01 | Phase 23 | Pending |
+| INTERACT-02 | Phase 23 | Pending |
+| INTERACT-03 | Phase 23 | Pending |
+| INTERACT-04 | Phase 23 | Pending |
+| INTERACT-05 | Phase 23 | Pending |
+| UX-01 | Phase 24 | Pending |
+| UX-02 | Phase 24 | Pending |
+| UX-03 | Phase 24 | Pending |
+| UX-04 | Phase 24 | Pending |
+| PERF-01 | Phase 24 | Pending |
+| PERF-02 | Phase 24 | Pending |
+| PERF-03 | Phase 24 | Pending |
+| PERF-04 | Phase 24 | Pending |
+| PERF-05 | Phase 24 | Pending |
+| PERF-06 | Phase 24 | Pending |
+| PERF-07 | Phase 24 | Pending |
 
 **Coverage:**
 - v1.4 requirements: 31 total
 - Categories: 5 (VIZ, MOTION, INTERACT, UX, PERF)
-- Mapped to phases: 0 (roadmap pending)
+- Mapped to phases: 31/31 (100%)
+
+| Phase | Requirements | Count |
+|-------|--------------|-------|
+| Phase 20 | VIZ-01, VIZ-02, VIZ-09, VIZ-10 | 4 |
+| Phase 21 | VIZ-03, VIZ-04, VIZ-08 | 3 |
+| Phase 22 | VIZ-05, VIZ-06, VIZ-07, MOTION-01 | 4 |
+| Phase 23 | MOTION-02, MOTION-03, MOTION-04, MOTION-05, INTERACT-01 to INTERACT-05 | 9 |
+| Phase 24 | UX-01 to UX-04, PERF-01 to PERF-07 | 11 |
 
 ---
 *Requirements defined: 2026-01-31*
-*Last updated: 2026-01-31 — Scoped to MVP, v1.5 deferred*
+*Last updated: 2026-01-31 — Traceability added, 31/31 mapped to Phases 20-24*

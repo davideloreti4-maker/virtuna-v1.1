@@ -2,14 +2,15 @@
 
 ## Milestones
 
-- ✅ **v1.1 Pixel-Perfect Clone** - Phases 1-10 (shipped 2026-01-29)
-- ✅ **v1.2 Visual Accuracy Refinement** - Phases 11-14 (shipped 2026-01-30)
-- 🚧 **v1.3.2 Landing Page Redesign** - Phases 15-19 (in progress)
+- **v1.1 Pixel-Perfect Clone** - Phases 1-10 (shipped 2026-01-29)
+- **v1.2 Visual Accuracy Refinement** - Phases 11-14 (shipped 2026-01-30)
+- **v1.3.2 Landing Page Redesign** - Phases 15-19 (in progress)
+- **v1.4 Node Visualization MVP** - Phases 20-24 (planned)
 
 ---
 
 <details>
-<summary>✅ v1.1 Pixel-Perfect Clone (Phases 1-10) - SHIPPED 2026-01-29</summary>
+<summary>v1.1 Pixel-Perfect Clone (Phases 1-10) - SHIPPED 2026-01-29</summary>
 
 ### Phase 1: Infrastructure Setup
 **Goal**: Complete development environment and deployment pipeline
@@ -223,7 +224,7 @@ Plans:
 ---
 
 <details>
-<summary>✅ v1.2 Visual Accuracy Refinement (Phases 11-14) - SHIPPED 2026-01-30</summary>
+<summary>v1.2 Visual Accuracy Refinement (Phases 11-14) - SHIPPED 2026-01-30</summary>
 
 **Milestone Goal:** Achieve 98%+ pixel accuracy against app.societies.io through systematic extraction, comparison, and iterative refinement.
 
@@ -273,7 +274,7 @@ Plans:
 
 ---
 
-## 🚧 v1.3.2 Landing Page Redesign (In Progress)
+## v1.3.2 Landing Page Redesign (In Progress)
 
 **Milestone Goal:** Transform the landing page into a premium Raycast-inspired experience with iOS 26 aesthetic — glassmorphism, gradient lighting, macOS mockups, and smooth animations.
 
@@ -383,6 +384,94 @@ Plans:
 
 ---
 
+## v1.4 Node Visualization MVP (Planned)
+
+**Milestone Goal:** Ship the mesmerizing "wow" moment visualization — central orb, flowing particles, chaos-to-order node crystallization — optimized for mobile performance.
+
+**Approach:** Build visualization layers progressively
+- Phase 20: Visualization foundation (orb core, dark mode, visual foundation)
+- Phase 21: Particle system (ambient flow, processing rush, captivating idle)
+- Phase 22: Node system (chaos nodes, crystallization, connections, motion layers)
+- Phase 23: Motion and interaction (physics, gestures, drag, magnetic)
+- Phase 24: UX and mobile optimization (tooltips, sheets, 60fps mobile)
+
+---
+
+### Phase 20: Visualization Foundation
+**Goal**: Establish the visual core — central glowing orb with ambient breathing, dark mode design system, and bold effects foundation
+**Depends on**: v1.3.2 complete (Phase 19)
+**Requirements**: VIZ-01, VIZ-02, VIZ-09, VIZ-10
+**Success Criteria** (what must be TRUE):
+  1. Central glowing orb renders as the focal "AI brain" element with radial gradient and glow
+  2. Orb has ambient "breathing" animation with 2-4 second scale pulse cycle
+  3. Dark mode design tokens established (purple-to-cyan palette, gradient accents)
+  4. Visual effects are bold and high-contrast to survive video compression
+  5. Canvas or WebGL rendering context is set up for particle/node effects
+
+---
+
+### Phase 21: Particle System
+**Goal**: Create the ambient particle flow that surrounds the orb and rushes inward during processing
+**Depends on**: Phase 20
+**Requirements**: VIZ-03, VIZ-04, VIZ-08
+**Success Criteria** (what must be TRUE):
+  1. Ambient particles flow continuously around the orb in idle state
+  2. Particles rush toward the orb when processing begins (triggered state change)
+  3. Idle state is captivating enough to hook users before any interaction
+  4. Particle system uses requestAnimationFrame for smooth animation loop
+  5. Particle count is configurable for later performance optimization
+
+---
+
+### Phase 22: Node System
+**Goal**: Implement chaos-to-order node crystallization with connections and multi-layer motion
+**Depends on**: Phase 21
+**Requirements**: VIZ-05, VIZ-06, VIZ-07, MOTION-01
+**Success Criteria** (what must be TRUE):
+  1. Dynamic abstract nodes form around orb during processing (unlabeled, chaotic)
+  2. Nodes crystallize into labeled insights when analysis completes (order emerges)
+  3. Connections between nodes render with animated flow (pulsing lines or particle streams)
+  4. Three-layer motion system works: ambient (always), activity (processing), revelation (insights)
+  5. Node positions are managed with force simulation for natural clustering
+
+---
+
+### Phase 23: Motion & Interaction
+**Goal**: Add physics-based motion and essential touch/mouse interactions
+**Depends on**: Phase 22
+**Requirements**: MOTION-02, MOTION-03, MOTION-04, MOTION-05, INTERACT-01, INTERACT-02, INTERACT-03, INTERACT-04, INTERACT-05
+**Success Criteria** (what must be TRUE):
+  1. All motion uses easing curves (no linear animations)
+  2. Variable reward timing creates non-metronomic, semi-random revelation bursts
+  3. Anticipation precedes reveals (brief wind-up before payoff)
+  4. Spring physics govern settling and bounce effects on nodes
+  5. Nodes are draggable with realistic momentum and release
+  6. Magnetic attraction draws particles toward cursor/finger position
+  7. Tap on node shows quick preview tooltip near the node
+  8. Hold on node opens bottom sheet with full insight details
+  9. Basic tap feedback provides immediate visual response
+
+---
+
+### Phase 24: UX & Mobile Optimization
+**Goal**: Polish user experience flows and ensure 60fps performance on mobile devices
+**Depends on**: Phase 23
+**Requirements**: UX-01, UX-02, UX-03, UX-04, PERF-01, PERF-02, PERF-03, PERF-04, PERF-05, PERF-06, PERF-07
+**Success Criteria** (what must be TRUE):
+  1. Tap preview displays key metric near the tapped node
+  2. Bottom sheet shows full insight data with proper mobile layout
+  3. Error state handles "no insights found" gracefully with visual feedback
+  4. Processing progress indicators prevent "stuck" feeling during analysis
+  5. Visualization maintains 60fps on mid-range mobile (iPhone 11 class)
+  6. Touch gestures (tap, hold, drag) are optimized for mobile accuracy
+  7. Particle count adapts dynamically based on device capability
+  8. GPU acceleration is enabled for all animations
+  9. Intersection Observer pauses off-screen animations to save resources
+  10. Reduced motion mode respects prefers-reduced-motion preference
+  11. Labels remain readable on small screens (375px width minimum)
+
+---
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -395,6 +484,11 @@ Plans:
 | 17. Feature Cards | v1.3.2 | 0/2 | Not started | - |
 | 18. Navigation + Animations | v1.3.2 | 0/4 | Not started | - |
 | 19. Quality & Polish | v1.3.2 | 0/3 | Not started | - |
+| 20. Visualization Foundation | v1.4 | 0/TBD | Not started | - |
+| 21. Particle System | v1.4 | 0/TBD | Not started | - |
+| 22. Node System | v1.4 | 0/TBD | Not started | - |
+| 23. Motion & Interaction | v1.4 | 0/TBD | Not started | - |
+| 24. UX & Mobile Optimization | v1.4 | 0/TBD | Not started | - |
 
 ---
 
@@ -405,4 +499,4 @@ Plans:
 
 ---
 *Roadmap created: 2026-01-28*
-*Last updated: 2026-01-31 — v1.3.2 scope refined (29 reqs, 15 plans)*
+*Last updated: 2026-01-31 — v1.4 milestone added (Phases 20-24, 31 requirements)*
