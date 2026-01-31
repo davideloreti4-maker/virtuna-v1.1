@@ -1,334 +1,232 @@
-# Research Synthesis: Node Visualization for AI Prediction Engine
+# Research Summary: v1.3.2 Landing Page Redesign
 
-**Project:** Virtuna - AI Prediction Engine Node Visualization
-**Synthesized:** 2026-01-31
-**Overall Confidence:** HIGH
+**Project:** Virtuna v1.3.2 - Premium Landing Page Redesign
+**Domain:** SaaS Landing Page with Glassmorphism + iOS 26 Aesthetic
+**Researched:** 2026-01-31
+**Confidence:** HIGH
 
 ---
 
 ## Executive Summary
 
-Creating a "magical" AI visualization that captivates users requires orchestrating three psychological systems: the dopamine-driven anticipation loop, the perception of visible effort (labor illusion), and organic motion that triggers anthropomorphic intelligence attribution. The research converges on a clear formula: **variable reward timing + visible processing + organic physics = perceived intelligence that users can't look away from**.
+Building a premium Raycast-inspired landing page requires a disciplined approach to glassmorphism. The effect is GPU-intensive: limit to 2-3 glass elements per viewport with 8-15px blur values, never animate backdrop-filter directly, and always provide solid fallbacks. The existing stack (Next.js 14+, Motion v12, Tailwind CSS 4) is sufficient - no new dependencies needed.
 
-The key insight is that users find visualizations addictive when they can't fully predict what happens next, but can sense an underlying order. This is Berlyne's "optimal arousal" - high complexity with low randomness. The visualization must feel alive (breathing nodes, flowing connections) while appearing to "think" (purposeful pauses, cascading activity, emergent patterns). Never fully resolve the processing - the wanting system is stronger than the liking system, so perpetual discovery beats completion.
+The recommended approach follows a three-layer component architecture: primitives (GlassPanel, GradientGlow, TrafficLights), composites (WindowMockup, GradientCard), and page sections. This separation ensures visual consistency while enabling flexible composition. Key Raycast patterns include dramatic gradient lighting on near-black backgrounds, macOS window mockups with traffic lights, and per-feature color identities.
 
-The recommended approach: a three-layer motion system (ambient life, activity indication, revelation moments) using dark mode with gradient accents, force-directed graph physics, and particle-based data flow. The technology stack should center on D3.js for graph structure, Framer Motion or GSAP for animations, and WebGL/Three.js for particle effects. Most critically: every animation must have a job, timing must be precise to within 100ms, and the system must respect the user's attention by reserving celebration animations for genuinely meaningful moments.
-
----
-
-## The Psychology
-
-### The Dopamine Anticipation Loop
-
-The brain's reward system is driven by **anticipation of reward, not the reward itself**. Dopamine makes you want, seek, and search - it's especially sensitive to "cues" that something is about to happen. An AI visualization that hints at impending discoveries is more engaging than one that simply displays results.
-
-**Application:** Create visual cues that suggest processing breakthroughs before revealing them. Build tension, then release.
-
-### Berlyne's Optimal Arousal
-
-There's an inverted U-curve for visual pleasure:
-- Too simple = boring
-- Too complex = overwhelming
-- Optimal = **perceived complexity with underlying order**
-
-The sweet spot is high complexity combined with low randomness - complex patterns that still have discernible structure (like neural networks, flocking birds, or natural phenomena).
-
-### The Labor Illusion
-
-People associate more value with things that signal effort. Research shows users can actually prefer websites with longer waits when the system signals it's working hard. The key: make labor **visible and specific** ("Analyzing 2,847 posts...") not vague ("AI is working...").
-
-**Critical distinction:** Manus AI shows specific actions (scanning, comparing, analyzing) and feels magical. ChatGPT shows vague narration and feels slow. Specificity creates magic; vagueness creates frustration.
-
-### The Wanting vs. Liking System
-
-The wanting system (dopamine-driven) is stronger than the liking system. Users seek more than they are satisfied. **Never fully "resolve" the visualization** - keep it in perpetual discovery mode, always suggesting more patterns emerging.
-
-### Variable Reward (The Slot Machine Principle)
-
-Variable reinforcement is the most powerful type of learning. Uncertainty itself creates engagement. Processing intensity should vary, insights should appear unpredictably, and timing should be semi-random to prevent habituation.
+Critical risks center on performance (backdrop-filter abuse), Safari compatibility (requires -webkit- prefix with fixed values), and accessibility (contrast failures on glass, motion sickness from parallax). Mitigate by establishing strict component limits, cross-browser testing on real devices, and baking prefers-reduced-motion into all animations from day one.
 
 ---
 
-## The "Magic" Formula
+## Stack Decisions
+
+### CSS Techniques to Use
+
+**Glassmorphism Core:**
+- `backdrop-filter: blur(8-15px)` with `-webkit-backdrop-filter` for Safari
+- Semi-transparent backgrounds: `rgba(26, 26, 26, 0.6)` for dark theme
+- Border: `1px solid rgba(255, 255, 255, 0.08-0.15)`
+- Multiple shadows for depth: inset highlights + outer shadows
+
+**Gradient Lighting:**
+- Radial gradients with 800px+ blur radius for ambient glow
+- Animate `background-position` (not gradient colors) for movement
+- Layer glows using pseudo-elements (::before/::after)
+- Neon text glow via stacked text-shadow (5px, 10px, 20px blur)
+
+**iOS 26 Liquid Glass:**
+- Three-layer system: main element + ::before (internal depth) + ::after (blur layer)
+- Gradient backgrounds at 135deg angle
+- Mix-blend-mode: overlay for extra depth
+- Keep expectations realistic - full Liquid Glass physics not achievable on web
+
+### Animation Stack
+
+**Motion v12 (Already Installed):**
+- Import from `motion/react`
+- Use `whileInView` with `viewport={{ once: true, margin: "-50px" }}`
+- Stagger children with `staggerChildren: 0.1` in parent variants
+- Spring physics for hovers: `type: "spring", stiffness: 400, damping: 17`
+
+**Performance Rules:**
+- Only animate `transform` and `opacity` (GPU-accelerated)
+- Never animate backdrop-filter, width, height, margins, positions
+- Respect `prefers-reduced-motion` via MotionConfig or useReducedMotion hook
+- Keep UI transitions under 300ms, entrances at 400-500ms
+
+---
+
+## Design Patterns
+
+### Raycast Patterns
+
+1. **Hero Section:** Near-black background (#0A0A0B), multi-color radial gradients (purple/pink/blue), bold headline (48-72px), real product mockup (not illustration)
+
+2. **Feature Cards:** Unique color identity per feature (AI = purple, Extensions = blue), glass background with hover glow intensification, scale 1.02-1.05x on hover
+
+3. **Window Mockups:** macOS traffic lights (red #FF5F56, yellow #FEBC2E, green #28C840), glass panel background, 12-16px border radius, floating with box-shadow
+
+4. **Navigation:** Sticky with blur, ghost links (opacity change on hover), minimal branding
+
+### iOS 26 Principles
+
+1. **Three-Layer Depth:** Foreground (interactive controls), Midground (translucent panels), Background (heavy blur)
+
+2. **Translucency Values:** Subtle 0.05-0.10, Medium 0.10-0.15, Strong 0.15-0.25 opacity
+
+3. **Motion:** Spring-based curves, 150-200ms micro-interactions, 300-500ms page transitions, always respect reduced motion
+
+---
+
+## Component Architecture
+
+### Build Order (Dependencies)
+
+**Phase 1: Primitives (No Dependencies)**
+1. `GlassPanel` - reusable glassmorphism container with blur variants
+2. `TrafficLights` - macOS window control dots
+3. `GradientGlow` - static/hover/cursor glow effect
+4. `AnimatedGradient` - background gradient animations
+
+**Phase 2: Composites (Depend on Primitives)**
+1. `WindowMockup` - composes GlassPanel + TrafficLights
+2. `GradientCard` - composes GlassPanel + GradientGlow
+3. `GlowCard` - cursor-following glow card
+
+**Phase 3: Motion Extensions (Parallel)**
+1. `StaggerChildren` - staggered child animations
+2. `AnimatedSection` - scroll-triggered section entrances
+
+**Phase 4: Page Sections (Depend on All)**
+1. Hero section enhancements
+2. Features section with GradientCards
+3. Showcase section with WindowMockup
+
+### File Structure
 
 ```
-Magic = (Visible Effort x Specific Actions) + (Organic Motion x Emergence)
-        ----------------------------------------------------------------
-                    Cognitive Load x Anthropomorphization
+src/components/
+  effects/              # NEW
+    glass-panel.tsx
+    gradient-glow.tsx
+    animated-gradient.tsx
+    traffic-lights.tsx
+  motion/               # EXTEND
+    stagger-children.tsx
+    animated-section.tsx
+  landing/              # EXTEND
+    gradient-card.tsx
+    window-mockup.tsx
+    glow-card.tsx
+src/lib/
+  gradients.ts          # NEW - color palette definitions
 ```
 
-### Maximize
+---
 
-| Factor | Implementation |
-|--------|----------------|
-| **Labor visibility** | Show processing stages with specific labels |
-| **Specificity** | "Analyzing engagement patterns" not "Processing..." |
-| **Organic motion** | Spring physics, easing curves, arc paths |
-| **Emergence** | Patterns forming from apparent chaos |
-| **Variable reward** | Unpredictable timing for activity bursts |
+## Critical Pitfalls
 
-### Minimize
+### Top 5 to Avoid
 
-| Factor | Why |
-|--------|-----|
-| **Cognitive overload** | Max 7 +/- 2 distinct elements visible at once |
-| **Anthropomorphization** | No mascots, no "I found..." language - competence over charm |
-| **Fake delays** | Only as long as genuinely needed |
-| **Certainty theater** | Show honest confidence ranges |
+1. **Backdrop-filter Performance Death Spiral**
+   - Limit to 2-3 glass elements per viewport
+   - Keep blur at 8-15px (6-8px on mobile)
+   - Never animate backdrop-filter directly
+   - Test on mid-range mobile devices
 
-### The Perceived Intelligence Equation
+2. **Safari Backdrop-filter Breakage**
+   - Always include `-webkit-backdrop-filter` prefix
+   - Do NOT use CSS variables with -webkit-backdrop-filter (Safari ignores them)
+   - Add `transform: translateZ(0)` to force GPU layer
+   - Test on actual Safari, not Chrome emulation
 
-**Perceived Intelligence = Purposeful Variation + Responsive Behavior + Discovery Moments**
+3. **Animation Layout Jank**
+   - Only animate transform and opacity
+   - Never animate width, height, top, left, margin, padding
+   - Use spring physics for natural feel
+   - Keep durations under 300ms for UI interactions
 
-- **Purposeful variation:** Not random, not predictable - feels intentional
-- **Responsive behavior:** Actions lead to visible reactions (causality)
-- **Discovery moments:** Clear conclusions that reward attention
+4. **Contrast/Readability Failures**
+   - Add semi-transparent overlay behind text on glass
+   - Test against worst-case backgrounds
+   - Maintain WCAG 4.5:1 for body text, 3:1 for large text
+   - Use text-shadow as emergency contrast fallback
+
+5. **Motion Accessibility Violations**
+   - Bake `prefers-reduced-motion` into all animations
+   - No parallax or scale animations for reduced-motion users
+   - Safe alternatives: opacity/fade, color changes
+   - Avoid: continuous loops, rotation, wave effects
 
 ---
 
-## Motion Principles
+## Recommended Approach
 
-### The Three-Layer Motion System
+**Start with constraints, not effects.** Before building any glassmorphism, establish:
+- Maximum 3 glass elements visible at once
+- No glass stacked on glass
+- Glass on floating elements only (nav, modals, CTAs) - not content areas
+- Mobile blur reduced to 6-8px
 
-#### Layer 1: Ambient Life (Always Running)
-**Purpose:** Convey the system is alive and processing
+**Build primitives first.** GlassPanel and GradientGlow are used everywhere. Get them right with proper Safari prefixes, solid fallbacks, and contrast handling before moving to composites.
 
-| Element | Motion | Duration |
-|---------|--------|----------|
-| Node "breathing" | Scale pulse 0.98-1.02 | 2-4s cycle, offset per node |
-| Connection ambient | Low-opacity flowing particles | Continuous, variable speed |
-| Background field | Very subtle drift | 10-30s cycle |
+**Test early on Safari.** The biggest risk is Safari-specific backdrop-filter issues. Don't wait until the end to discover your glass effects are broken for 20% of users.
 
-**Key:** Should be possible to look away and not notice, but noticeable when focused.
-
-#### Layer 2: Activity Indication (On Data Events)
-**Purpose:** Show processing is happening
-
-| Trigger | Animation | Duration |
-|---------|-----------|----------|
-| Data ingestion | Connection pulses brighten | 200-400ms |
-| Node processing | Glow intensifies, scale increases | 300-500ms |
-| Data transfer | Particle packet along connection | 400-800ms |
-| Completion | Brief celebration, return to ambient | 500-800ms |
-
-**Key:** Variable intensity based on data volume/importance.
-
-#### Layer 3: Revelation (On Insights/Results)
-**Purpose:** Create "wow" moments, reward attention
-
-| Event | Build-up | Payoff | Total |
-|-------|----------|--------|-------|
-| Insight discovered | Network-wide tension (200ms) | Focal node reveals + particles | 600-1000ms |
-| Pattern detected | Connections highlight progressively | Pattern visualization emerges | 800-1200ms |
-| Major result | System-wide crescendo | Full celebration | 1000-1500ms |
-
-**Key:** Reserved for meaningful moments. Rarity creates value.
-
-### Timing Constants
-
-```typescript
-const TIMING = {
-  // Micro-feedback
-  hover: 150,
-  click: 200,
-
-  // State changes
-  nodeActivate: 300,
-  connectionPulse: 400,
-
-  // Transitions
-  dataFlow: 600,
-  revealSmall: 500,
-
-  // Celebrations
-  insightReveal: 800,
-  majorResult: 1200,
-
-  // Ambient cycles
-  breathingMin: 2000,
-  breathingMax: 4000,
-  backgroundDrift: 15000,
-};
-```
-
-### Easing Curves
-
-| Purpose | Easing | CSS |
-|---------|--------|-----|
-| Arrivals (settling) | ease-out | `cubic-bezier(0.0, 0.0, 0.2, 1)` |
-| Departures | ease-in | `cubic-bezier(0.4, 0.0, 1, 1)` |
-| Transitions | ease-in-out | `cubic-bezier(0.4, 0.0, 0.2, 1)` |
-| Feedback | spring/bounce | `cubic-bezier(0.175, 0.885, 0.32, 1.275)` |
-| Ambient | organic sine | `cubic-bezier(0.25, 0.1, 0.25, 1)` |
-
-**Critical rule:** Never use linear motion. Even subtle easing makes an enormous difference in perceived quality.
-
-### Disney Principles Applied
-
-- **Squash and stretch:** Nodes compress slightly on activation
-- **Anticipation:** Brief wind-up before major reveals
-- **Follow-through:** Elements continue past endpoint before settling
-- **Secondary action:** Particles flow while primary animation plays
-- **Arcs:** Natural motion follows curves, never straight lines
+**Performance budget:** Aim for 55+ fps during scroll. Use Chrome DevTools Performance panel to verify. Green "Paint" bars should stay under 5ms per frame.
 
 ---
 
-## Visual Direction
+## Phase Suggestions
 
-### Color Palette
+Based on dependencies and risk mitigation:
 
-| Element | Color | Purpose |
-|---------|-------|---------|
-| Background | #0A0A0A to #1A1A2E | Dark mode makes glows pop |
-| Accent gradient | Purple to cyan (Linear-style) | Premium, futuristic feel |
-| Activity glow | Electric blue or warm amber | Energy indication |
-| Connection lines | White at 20-40% opacity | Subtle until activated |
-| High confidence | Green | Positive prediction |
-| Low confidence | Red/orange | Requires attention |
-| Active processing | White glow | Element being analyzed |
+### Phase 1: Foundation + Primitives
+**Rationale:** Establishes constraints and builds zero-dependency components that everything else uses.
+**Delivers:** GlassPanel, TrafficLights, GradientGlow, AnimatedGradient, gradient palette utilities
+**Addresses:** Table stakes (dark theme, responsive, consistent spacing)
+**Avoids:** Backdrop-filter performance issues, Safari breakage, contrast failures (by establishing patterns upfront)
+**Effort:** 1-2 days
 
-### Visual Stack
+### Phase 2: Composites + Motion
+**Rationale:** Composes primitives into feature-ready components. Motion can be built in parallel.
+**Delivers:** WindowMockup, GradientCard, GlowCard, StaggerChildren, AnimatedSection
+**Implements:** Three-layer architecture pattern
+**Avoids:** Animation jank (by using Motion utilities with safe properties)
+**Effort:** 1-2 days
 
-| Layer | Technology | Purpose |
-|-------|------------|---------|
-| Graph structure | D3.js (d3-force) | Force-directed layout, physics |
-| Animations | Framer Motion or GSAP | Smooth, orchestrated motion |
-| Particles/Glow | WebGL (Three.js) or Canvas | Performance for effects |
-| Color theming | CSS custom properties | State-based color shifts |
+### Phase 3: Hero Section
+**Rationale:** Highest-impact section, first impression. Requires all primitives and composites.
+**Delivers:** Enhanced hero with gradient lighting, macOS mockup, staggered entrance animations
+**Addresses:** Gradient ambient lighting, macOS window mockups (differentiators)
+**Effort:** 1 day
 
-### Key Visual Elements
+### Phase 4: Features Section
+**Rationale:** Core content presentation. Uses GradientCard with per-feature color identity.
+**Delivers:** Redesigned feature cards with glass effects, hover states, scroll animations
+**Addresses:** Per-feature color identity, interactive hover states (differentiators)
+**Effort:** 1 day
 
-1. **Nodes:** Circles with subtle glow, breathing animation, size indicates importance
-2. **Connections:** Lines with animated dashes or flowing particles, thickness = strength
-3. **Processing cascade:** Activity ripples through network in sequence (not all at once)
-4. **Discovery moments:** Convergence + brightness peak + particle burst + brief pause
-5. **Depth cues:** Glassmorphism, subtle shadows, parallax on interaction
+### Phase 5: Polish + Accessibility
+**Rationale:** Final pass for reduced-motion fallbacks, performance audit, cross-browser QA.
+**Delivers:** Accessibility compliance, performance optimization, Safari/Firefox fixes
+**Addresses:** Motion accessibility, contrast requirements
+**Effort:** 0.5-1 day
 
-### Inspiration References
+### Phase Ordering Rationale
 
-| Example | What to Steal |
-|---------|---------------|
-| TensorFlow Playground | Real-time learning visualization, the "aha moment" |
-| Linear App | Dark mode + gradient accents + premium feel |
-| Stripe Connect | Obsessive timing precision, spring physics |
-| Perplexity AI | Loading states as brand expression |
-| Canvas Particle Network | Living network effect from proximity-based connections |
+- **Primitives before composites:** Everything depends on GlassPanel and GradientGlow
+- **Hero before features:** Hero sets visual tone; features follow established patterns
+- **Accessibility last:** Easier to audit complete implementation than partial
+- **This order avoids:** Building on broken foundations, discovering Safari issues late, performance debt
 
----
+### Research Flags
 
-## Design Recommendations
+**Standard patterns (skip deep research):**
+- Phase 1-2: Well-documented CSS techniques, established Motion patterns
+- Phase 3-4: Straightforward composition of established components
 
-### Must-Have Features
-
-1. **Breathing nodes** - Subtle scale/glow oscillation (2-4s cycles)
-2. **Flowing connections** - Animated dashes or particles along edges
-3. **Processing cascade** - Activity propagates through network visibly
-4. **Semantic loading states** - "Analyzing patterns..." not "Loading..."
-5. **Variable reward timing** - Non-metronomic, semi-random bursts
-6. **Revelation moments** - Reserved, earned celebrations for insights
-7. **Dark mode default** - Makes all effects pop
-8. **Physics-based interaction** - Draggable nodes with spring-back
-9. **60fps performance** - Use GPU acceleration, Intersection Observer
-
-### Should-Have Features
-
-1. **Hover states** - Connected nodes pulse when one is hovered
-2. **Zoom into detail** - Scale shifts that reveal processing detail
-3. **Confidence visualization** - Brightness/size indicates certainty
-4. **Data source attribution** - "Analyzing 2,847 posts..." visible
-5. **Staggered node appearance** - Fade in with offset timing on load
-6. **Connection draw-in** - Lines animate in after nodes appear
-
-### Defer to V2
-
-1. **3D depth** (Three.js full scene) - Complex, performance-intensive
-2. **Audio reactivity** - Cool but not core
-3. **Custom WebGL shaders** - Requires specialized expertise
-4. **AI avatar/character** - Research warns against anthropomorphization
-
-### Technical Priorities
-
-1. **Performance first** - Choppy animation destroys the illusion
-2. **Timing precision** - Test extensively, 100ms off feels wrong
-3. **Respect reduced-motion** - Accessibility requirement
-4. **Progressive enhancement** - Core experience without WebGL
-
----
-
-## Watch Out For
-
-### Critical Anti-Patterns
-
-| Anti-Pattern | Why It Fails | Fix |
-|--------------|--------------|-----|
-| **Linear motion** | Feels robotic, fake | Always use easing curves |
-| **Constant motion** | Becomes invisible (habituation) | Build in rhythmic variation |
-| **Too many moving elements** | Overwhelms working memory (26% comprehension drop) | Visual hierarchy, staging |
-| **Vague loading messages** | Feels like theater, destroys trust | Specific actions visible |
-| **Perfect confidence always** | Destroys trust when wrong | Show uncertainty ranges |
-| **Auto-play decorative animation** | Distracts, hijacks attention | Purpose-driven motion only |
-| **Jarring transitions** | Disorienting, breaks mental map | Smooth morphing between states |
-| **Motion during interaction** | Seasick feeling, frustration | Pause ambient during manipulation |
-
-### The Gratuitous Test
-
-Every animation must answer: **Does this have a job?**
-- Guide attention?
-- Signal change?
-- Provide feedback?
-- Create continuity?
-
-If the answer is "it looks cool," reconsider.
-
-### Trust Destroyers
-
-- Fake brain imagery (cliche, oversells)
-- Instant "predictions" (too fast to be believable)
-- Hiding the processing (feels like black box)
-- Overwhelming data dumps (cognitive overload)
-- Character/mascot (uncanny valley for analytical tools)
-
-### Performance Gotchas
-
-- Animation after loading = delays user further
-- Too many particles = frame drops
-- Large node counts without LOD = freezes
-- setInterval instead of requestAnimationFrame = jank
-
----
-
-## Sources
-
-### Psychology (HIGH Confidence)
-- [Psychology Today - Dopamine Seeking-Reward Loop](https://www.psychologytoday.com/us/blog/brain-wise/201802/the-dopamine-seeking-reward-loop)
-- [Stanford Medicine - Addictive Potential of Social Media](https://med.stanford.edu/news/insights/2021/10/addictive-potential-of-social-media-explained.html)
-- [Google Research - Visual Complexity and First Impressions](https://research.google/pubs/the-role-of-visual-complexity-and-prototypicality-regarding-first-impression-of-websites-working-towards-understanding-aesthetic-judgments/)
-- [UX Psychology - Designing for Flow](https://uxpsychology.substack.com/p/designing-for-flow-behavioural-insights)
-
-### AI Perception (HIGH Confidence)
-- [UX Knowledge Base - The Labor Illusion](https://uxknowledgebase.com/the-labor-illusion-a80f7d809b7f)
-- [Nielsen Norman Group - 4 Degrees of Anthropomorphism](https://www.nngroup.com/articles/anthropomorphism/)
-- [Smashing Magazine - Psychology of Trust in AI](https://www.smashingmagazine.com/2025/09/psychology-trust-ai-guide-measuring-designing-user-confidence/)
-- [Cambridge Intelligence - Graph Visualization and Trust](https://cambridge-intelligence.com/how-graph-visualization-builds-trust-in-human-ai-decision-workflows/)
-
-### Motion Design (HIGH Confidence)
-- [Nielsen Norman Group - Animation Duration](https://www.nngroup.com/articles/animation-duration/)
-- [IxDF - Disney's 12 Principles in UI](https://www.interaction-design.org/literature/article/ui-animation-how-to-apply-disney-s-12-principles-of-animation-to-ui-design)
-- [Onething Design - Science Behind Motion Design](https://www.onething.design/post/science-behind-motion-design)
-- [PixelFreeStudio - Timing and Easing](https://blog.pixelfreestudio.com/the-importance-of-timing-and-easing-in-motion-design/)
-
-### Inspiration Examples
-- [TensorFlow Playground](https://playground.tensorflow.org/)
-- [Linear App](https://linear.app)
-- [Stripe Connect Frontend](https://stripe.com/blog/connect-front-end-experience)
-- [Perplexity Animation Library](https://60fps.design/apps/perplexity)
-- [D3 Force-Directed Graph](https://observablehq.com/@d3/force-directed-graph/2)
-- [Canvas Particle Network](https://github.com/JulianLaval/canvas-particle-network)
-
-### Anti-Patterns (MEDIUM-HIGH Confidence)
-- [Trevor Calabro - Most UI Animations Shouldn't Exist](https://trevorcalabro.substack.com/p/most-ui-animations-shouldnt-exist)
-- [Nielsen Norman Group - Humanizing AI Is a Trap](https://www.nngroup.com/articles/humanizing-ai/)
-- [Cambridge Intelligence - Five Pitfalls of Network Visualization](https://cambridge-intelligence.com/five-pitfalls-network-visualization/)
+**May need validation during implementation:**
+- Safari backdrop-filter quirks on specific component combinations
+- Mobile performance on actual mid-range devices (not emulators)
 
 ---
 
@@ -336,16 +234,38 @@ If the answer is "it looks cool," reconsider.
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Psychology principles | HIGH | Research-backed, multiple source corroboration |
-| AI perception patterns | HIGH | Multiple authoritative sources (NN/g, Smashing, Cambridge) |
-| Motion timing/easing | HIGH | Established principles, design system documentation |
-| Visual direction | MEDIUM-HIGH | Based on successful examples, subjective elements |
-| Technology stack | MEDIUM | Depends on team expertise, project constraints |
+| Stack | HIGH | Existing stack sufficient, well-documented CSS techniques |
+| Features | HIGH | Raycast patterns thoroughly documented, iOS 26 officially documented |
+| Architecture | HIGH | Clear component hierarchy, follows established React patterns |
+| Pitfalls | HIGH | Multiple sources confirm performance/accessibility issues |
 
-### Gaps to Address During Implementation
+**Overall confidence:** HIGH
 
-1. **Performance benchmarking** - Need to test particle counts on target devices
-2. **Exact timing values** - Research provides ranges, testing will refine
-3. **Color accessibility** - Dark mode + glows needs contrast verification
-4. **Mobile adaptation** - Touch interactions differ from hover states
-5. **Reduced motion fallback** - Full alternative experience needed
+### Gaps to Address
+
+- **Mobile performance:** Test on actual mid-range Android device (not just iOS/emulator)
+- **Safari 18 specifics:** Verify -webkit-backdrop-filter behavior hasn't changed in latest Safari
+- **Tailwind v4 @theme integration:** Confirm CSS custom properties work as expected with new syntax
+
+---
+
+## Sources
+
+### Primary (HIGH confidence)
+- [Apple Newsroom - Liquid Glass](https://www.apple.com/newsroom/2025/06/apple-introduces-a-delightful-and-elegant-new-software-design/) - Official iOS 26 design principles
+- [Raycast.com](https://www.raycast.com/) - Primary design reference
+- [Motion.dev docs](https://motion.dev/docs/performance) - Animation performance
+- [NN/g Glassmorphism](https://www.nngroup.com/articles/glassmorphism/) - UX authority on contrast/accessibility
+- [MDN backdrop-filter](https://developer.mozilla.org/en-US/docs/Web/CSS/backdrop-filter) - Browser compatibility
+
+### Secondary (MEDIUM confidence)
+- [CSS-Tricks Liquid Glass](https://css-tricks.com/getting-clarity-on-apples-liquid-glass/) - Implementation analysis
+- [Dev.to Liquid Glass CSS](https://dev.to/kevinbism/recreating-apples-liquid-glass-effect-with-pure-css-3gpl) - Code patterns
+- [Glass UI Generator](https://ui.glass/generator/) - CSS reference values
+
+### Tertiary (LOW confidence - validate during implementation)
+- [Medium: Dark Glassmorphism 2026](https://medium.com/@developer_89726/dark-glassmorphism-the-aesthetic-that-will-define-ui-in-2026-93aa4153088f) - Trend analysis
+
+---
+*Research completed: 2026-01-31*
+*Ready for roadmap: yes*
