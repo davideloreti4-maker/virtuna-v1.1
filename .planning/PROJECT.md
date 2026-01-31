@@ -72,26 +72,44 @@ A pixel-perfect, AI-verified clone of societies.io (landing + app) serving as th
 
 ---
 
-## Current Milestone: v1.2 — Visual Accuracy Refinement
+## Current Milestone: v1.3.2 — Landing Page Redesign
 
-**Goal:** Achieve 98%+ pixel accuracy against app.societies.io through systematic extraction, comparison, and refinement.
+**Goal:** Redesign the homepage with Raycast-inspired aesthetics and iOS 26 design language, creating a premium visual experience.
 
-**Approach:** 3-wave evaluation process
-1. **Wave 1: Extract** — Playwright screenshots of every app.societies.io screen/state
-2. **Wave 2: Compare** — Detailed side-by-side analysis, document all discrepancies
-3. **Wave 3: Refine** — Use v0 MCP to fix each discrepancy to pixel-perfect accuracy
+**Design Direction:**
+- **Glassmorphism** — Frosted glass panels, translucent overlays
+- **Gradient Lighting** — Dramatic glow effects, cinematic depth
+- **macOS Window Mockups** — Traffic light buttons, app-like presentations
+- **Premium Feature Cards** — Distinct color identities, interactive feel
+- **iOS 26 Aesthetic** — Depth, translucency, smooth animations
 
-**Target Features:**
-- Systematic screenshot capture of all app states
-- Side-by-side comparison tooling
-- Discrepancy tracking and prioritization
-- Iterative fixes with v0 MCP assistance
+**Target:**
+- Homepage only (full creative freedom)
+- Not tied to societies.io structure
+- Raycast.com as primary design inspiration
 
 ### Success Criteria
-- 98%+ pixel accuracy on all screens
-- Every user flow matches societies.io exactly
-- Typography, spacing, colors all verified
-- Interactions and animations match reference
+- Landing page feels as premium/polished as Raycast
+- Glassmorphism and gradient effects implemented smoothly
+- Animations are buttery smooth (60fps)
+- Mobile responsive with same premium feel
+- All interactive elements feel refined
+
+---
+
+## Completed: v1.2 — Visual Accuracy Refinement ✓
+
+**Completed:** 2026-01-31
+
+**What Was Done:**
+- Phase 11: Extraction — 207 screenshots captured from app.societies.io
+- Phase 12: Comparison — 45 discrepancies documented (8 critical, 18 major, 19 minor)
+- Full discrepancy report with prioritization
+
+**Deliverables:**
+- `extraction/screenshots/` — Complete screenshot library
+- `.planning/phases/12-comparison/DISCREPANCY-REPORT.md`
+- `.planning/phases/12-comparison/DISCREPANCIES.json`
 
 ---
 

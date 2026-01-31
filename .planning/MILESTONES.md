@@ -47,3 +47,27 @@
 ---
 
 ## Active Milestone
+
+### v1.3.2 — Landing Page Redesign
+**Started:** 2026-01-31
+**Target:** Premium Raycast-inspired homepage with iOS 26 aesthetic
+
+**Design Direction:**
+- Glassmorphism (frosted glass panels, translucent overlays)
+- Dramatic gradient lighting/glow effects
+- macOS window mockups with traffic light buttons
+- Premium feature cards with distinct color identities
+- iOS 26 aesthetic (depth, translucency, smooth animations)
+
+**Scope:**
+- Homepage only (full creative freedom)
+- Not tied to societies.io structure
+- Raycast.com as primary design inspiration
+
+**Success Criteria:**
+- Landing page feels as premium/polished as Raycast
+- Glassmorphism and gradient effects implemented smoothly
+- Animations are buttery smooth (60fps)
+- Mobile responsive with same premium feel
+
+**Phases:** TBD (starting from phase 15)
