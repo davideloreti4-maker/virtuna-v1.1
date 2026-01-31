@@ -5,30 +5,36 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { cn } from "@/lib/utils";
 import { VisualizationResetButton } from "./visualization-reset-button";
 import { drawGlassOrb, calculateOrbRadius } from "./orb-renderer";
+import { useOrbAnimation } from "./use-orb-animation";
 import type { OrbState } from "@/lib/visualization-types";
 
 interface ProgressiveVisualizationProps {
   className?: string;
   state?: OrbState;
+  onStateChange?: (state: OrbState) => void;
 }
 
 /**
- * ProgressiveVisualization - Canvas-based visualization with pan/zoom support
+ * ProgressiveVisualization - Animated orb with pan/zoom support
  *
- * Phase 20: Central orb with glass effect and pan/zoom infrastructure
- * - Canvas 2D for orb rendering with radial gradients
- * - Pan/zoom via react-zoom-pan-pinch
- * - Responsive canvas with ResizeObserver
- * - Crisp retina display support via devicePixelRatio
+ * Phase 20: Central orb with glass effect, animations, and pan/zoom
+ * - Breathing animation (2-3s cycle) in idle state
+ * - State transitions: idle -> gathering -> analyzing -> complete
+ * - Hover/tap interaction feedback
+ * - prefers-reduced-motion support
  */
 export function ProgressiveVisualization({
   className,
-  state = 'idle'
+  state = 'idle',
+  onStateChange: _onStateChange
 }: ProgressiveVisualizationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hasTransformed, setHasTransformed] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+  // Animation state from hook
+  const { animationState, setIsHovered } = useOrbAnimation(state);
 
   // Track when user has moved the view
   const handleTransform = useCallback(() => {
@@ -74,7 +80,7 @@ export function ProgressiveVisualization({
     };
   }, []);
 
-  // Draw orb on canvas
+  // Animation loop - redraw orb with current animation state
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || dimensions.width === 0) return;
@@ -82,18 +88,58 @@ export function ProgressiveVisualization({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Clear canvas
-    const dpr = window.devicePixelRatio || 1;
-    ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+    let animationFrameId: number;
 
-    // Calculate orb position and size
-    const centerX = dimensions.width / 2;
-    const centerY = dimensions.height / 2;
-    const radius = calculateOrbRadius(dimensions.width, dimensions.height);
+    const draw = () => {
+      const dpr = window.devicePixelRatio || 1;
+      ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
 
-    // Draw the glass orb
-    drawGlassOrb(ctx, centerX, centerY, radius, 1);
-  }, [dimensions, state]);
+      const centerX = dimensions.width / 2;
+      const centerY = dimensions.height / 2;
+      const baseRadius = calculateOrbRadius(dimensions.width, dimensions.height);
+
+      // Apply animation state
+      const scaledRadius = baseRadius * animationState.scale;
+
+      // Save context for rotation
+      ctx.save();
+
+      // Apply rotation for analyzing state
+      if (animationState.rotation !== 0) {
+        ctx.translate(centerX, centerY);
+        ctx.rotate(animationState.rotation);
+        ctx.translate(-centerX, -centerY);
+      }
+
+      // Draw the glass orb with animated glow intensity
+      drawGlassOrb(ctx, centerX, centerY, scaledRadius, animationState.glowIntensity);
+
+      ctx.restore();
+
+      animationFrameId = requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [dimensions, animationState]);
+
+  // Mouse/touch handlers for interaction feedback
+  const handlePointerEnter = useCallback(() => {
+    setIsHovered(true);
+  }, [setIsHovered]);
+
+  const handlePointerLeave = useCallback(() => {
+    setIsHovered(false);
+  }, [setIsHovered]);
+
+  const handleClick = useCallback(() => {
+    // Brief glow boost on click/tap (handled via hover state for simplicity)
+    setIsHovered(true);
+    setTimeout(() => setIsHovered(false), 200);
+  }, [setIsHovered]);
 
   return (
     <div ref={containerRef} className={cn("absolute inset-0 overflow-hidden", className)}>
@@ -118,8 +164,11 @@ export function ProgressiveVisualization({
             >
               <canvas
                 ref={canvasRef}
-                className="w-full h-full"
+                className="w-full h-full cursor-pointer"
                 aria-label="AI visualization orb"
+                onPointerEnter={handlePointerEnter}
+                onPointerLeave={handlePointerLeave}
+                onClick={handleClick}
               />
             </TransformComponent>
           </>
