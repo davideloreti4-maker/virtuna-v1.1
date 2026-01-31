@@ -10,26 +10,26 @@ See: .planning/PROJECT.md (updated 2026-01-31)
 ## Current Position
 
 Phase: 15 of 19 (Foundation + Primitives)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-01-31 — Completed 15-02-PLAN.md (GlassPanel & GradientGlow primitives)
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-01-31 — Completed 15-03-PLAN.md (TrafficLights & Primitives Showcase)
 
-Progress: ██░░░░░░░░ 10%
+Progress: ███░░░░░░░ 15%
 
-**Next action:** Execute 15-03-PLAN.md (MacOS mockup component)
+**Next action:** Begin Phase 16 (Hero Section)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2 (v1.3.2)
-- Average duration: 3.5min
-- Total execution time: 7min
+- Total plans completed: 3 (v1.3.2)
+- Average duration: 3.7min
+- Total execution time: 11min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 15 | 2/3 | 7min | 3.5min |
+| 15 | 3/3 | 11min | 3.7min |
 
 *Updated after each plan completion*
 
@@ -50,6 +50,8 @@ Progress: ██░░░░░░░░ 10%
 | Hardcoded blur in -webkit- | 15-01 | Safari ignores CSS variables in vendor prefixes |
 | Inline oklch for dynamic opacity | 15-02 | CSS variables can't interpolate runtime props |
 | Polymorphic as limited to block elements | 15-02 | div/section/article/aside for semantic HTML |
+| Exact macOS traffic light colors | 15-03 | #ed6a5f, #f6be50, #61c555 for authenticity |
+| TrafficLights size variants | 15-03 | 10px/12px/14px with proportional gaps |
 
 ### Pending Todos
 
@@ -76,6 +78,7 @@ Phase structure:
 
 - [x] 15-01: Design System Tokens — dark theme, gradient palette, elevation shadows, glass effects
 - [x] 15-02: GlassPanel & GradientGlow — Safari-compatible primitives with oklch colors
+- [x] 15-03: TrafficLights & Showcase — macOS window controls, primitives showcase page
 
 ## Completed (v1.2)
 
@@ -97,6 +100,6 @@ Phase structure:
 
 ## Session Continuity
 
-Last session: 2026-01-31T10:47:10Z
-Stopped at: Completed 15-02-PLAN.md
+Last session: 2026-01-31T10:52:00Z
+Stopped at: Completed 15-03-PLAN.md (Phase 15 complete)
 Resume file: None
