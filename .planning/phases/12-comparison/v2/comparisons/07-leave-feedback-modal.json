@@ -1,0 +1,104 @@
+{
+  "comparison": "leave-feedback-modal",
+  "reference": "extraction/screenshots/reference/leave-feedback-modal.png",
+  "clone": ".playwright-mcp/06-leave-feedback-virtuna.png",
+  "timestamp": "2026-01-31",
+  "overall_accuracy": "85%",
+  "differences": [
+    {
+      "id": "FEEDBACK-001",
+      "element": "submit-button-color",
+      "type": "color",
+      "severity": "major",
+      "description": "Submit button color differs",
+      "reference": "Dark/black button with white text and arrow icon",
+      "current": "Orange button with white text and arrow icon",
+      "fix": "Change Submit button from orange to dark/black matching reference"
+    },
+    {
+      "id": "FEEDBACK-002",
+      "element": "modal-title",
+      "type": "typography",
+      "severity": "minor",
+      "description": "Modal title styling",
+      "reference": "Leave feedback - medium weight",
+      "current": "Leave feedback - appears similar",
+      "fix": "Verify font-weight and size match"
+    },
+    {
+      "id": "FEEDBACK-003",
+      "element": "input-fields-background",
+      "type": "color",
+      "severity": "minor",
+      "description": "Input field background color",
+      "reference": "Dark gray input backgrounds with subtle border",
+      "current": "Dark gray backgrounds - appears similar",
+      "fix": "Verify exact background color and border color"
+    },
+    {
+      "id": "FEEDBACK-004",
+      "element": "close-button",
+      "type": "styling",
+      "severity": "minor",
+      "description": "Close button (X) styling",
+      "reference": "X in top right corner",
+      "current": "X button present - verify styling matches",
+      "fix": "Verify close button icon and styling"
+    },
+    {
+      "id": "FEEDBACK-005",
+      "element": "section-labels",
+      "type": "typography",
+      "severity": "minor",
+      "description": "Section label styling (Your details, Your feedback)",
+      "reference": "Gray label text above sections",
+      "current": "Gray labels - appears similar",
+      "fix": "Verify font-size, color, and weight of section labels"
+    },
+    {
+      "id": "FEEDBACK-006",
+      "element": "textarea-placeholder",
+      "type": "content",
+      "severity": "minor",
+      "description": "Feedback textarea placeholder",
+      "reference": "Tell us what you think! It goes directly to the founders",
+      "current": "Tell us what you think! It goes directly to the founders - matches",
+      "fix": "No fix needed - placeholder matches"
+    },
+    {
+      "id": "FEEDBACK-007",
+      "element": "email-link",
+      "type": "styling",
+      "severity": "minor",
+      "description": "Email us at support@societies.io link",
+      "reference": "Email link with underline styling",
+      "current": "Email link present - verify underline/hover styling",
+      "fix": "Verify link styling matches"
+    },
+    {
+      "id": "FEEDBACK-008",
+      "element": "modal-padding",
+      "type": "spacing",
+      "severity": "minor",
+      "description": "Modal internal padding",
+      "reference": "Consistent padding around content",
+      "current": "Similar padding - verify exact values",
+      "fix": "Verify padding values match reference"
+    },
+    {
+      "id": "FEEDBACK-009",
+      "element": "input-placeholder-style",
+      "type": "typography",
+      "severity": "minor",
+      "description": "Input placeholder text styling",
+      "reference": "Light gray placeholder text",
+      "current": "Light gray placeholders - appears similar",
+      "fix": "Verify placeholder color matches"
+    }
+  ],
+  "critical_fixes": [
+    "FEEDBACK-001: Change Submit button from orange to dark/black"
+  ],
+  "elements_to_remove": [],
+  "missing_elements": []
+}

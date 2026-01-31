@@ -1,0 +1,116 @@
+{
+  "comparison": "sidebar",
+  "reference": "extraction/screenshots/reference/dashboard-final.png (sidebar crop)",
+  "clone": ".playwright-mcp/01-dashboard-virtuna.png (sidebar crop)",
+  "timestamp": "2026-01-31",
+  "overall_accuracy": "85%",
+  "differences": [
+    {
+      "id": "SIDEBAR-001",
+      "element": "logo-area",
+      "type": "layout",
+      "severity": "minor",
+      "description": "Logo area with 'A' logo and panel toggle icon - appears consistent",
+      "reference": "A logo left, panel icon right",
+      "current": "A logo left, panel icon right - matches",
+      "fix": "No fix needed - verify icon sizing matches"
+    },
+    {
+      "id": "SIDEBAR-002",
+      "element": "section-labels",
+      "type": "typography",
+      "severity": "minor",
+      "description": "Section labels 'CURRENT SOCIETY' and 'CURRENT VIEW' styling",
+      "reference": "Gray uppercase text, ~10-11px, letter-spacing",
+      "current": "Gray uppercase text - appears similar",
+      "fix": "Verify font-size, letter-spacing, and color (#6b7280 or similar)"
+    },
+    {
+      "id": "SIDEBAR-003",
+      "element": "dropdown-background",
+      "type": "color",
+      "severity": "minor",
+      "description": "Dropdown button background color",
+      "reference": "#1a1a1a or similar dark gray",
+      "current": "Dark gray - appears similar",
+      "fix": "Verify exact hex value matches reference"
+    },
+    {
+      "id": "SIDEBAR-004",
+      "element": "society-indicator",
+      "type": "styling",
+      "severity": "minor",
+      "description": "Green dot indicator below society dropdown",
+      "reference": "Green dot with 'Zurich Founders' text",
+      "current": "Green dot with 'Startup Investors' text - styling matches",
+      "fix": "No fix needed - just demo data difference"
+    },
+    {
+      "id": "SIDEBAR-005",
+      "element": "create-test-button",
+      "type": "styling",
+      "severity": "minor",
+      "description": "Create a new test button styling",
+      "reference": "Text left aligned, + icon right aligned, no background",
+      "current": "Text left aligned, + icon right aligned - matches",
+      "fix": "Verify exact spacing and icon size"
+    },
+    {
+      "id": "SIDEBAR-006",
+      "element": "test-history-section",
+      "type": "addition",
+      "severity": "major",
+      "description": "Clone shows TEST HISTORY section with test items that reference doesn't show",
+      "reference": "No test history visible in this state",
+      "current": "TEST HISTORY header + Instagram Post 66% + TikTok Script 76%",
+      "fix": "Conditionally hide TEST HISTORY when empty or in default state"
+    },
+    {
+      "id": "SIDEBAR-007",
+      "element": "divider-line",
+      "type": "styling",
+      "severity": "minor",
+      "description": "Horizontal divider above bottom menu",
+      "reference": "Subtle gray line",
+      "current": "Subtle gray line - appears similar",
+      "fix": "Verify border color and opacity match"
+    },
+    {
+      "id": "SIDEBAR-008",
+      "element": "bottom-menu-items",
+      "type": "layout",
+      "severity": "minor",
+      "description": "Manage plan, Leave Feedback, Product Guide, Log Out menu items",
+      "reference": "Text left, icon right for each item",
+      "current": "Text left, icon right - matches layout",
+      "fix": "Verify exact padding, font-size, and icon sizes"
+    },
+    {
+      "id": "SIDEBAR-009",
+      "element": "version-number",
+      "type": "missing",
+      "severity": "minor",
+      "description": "Version number display",
+      "reference": "Shows 'Version 2.1' below Log Out",
+      "current": "Version text not clearly visible",
+      "fix": "Add version number display below sidebar menu"
+    },
+    {
+      "id": "SIDEBAR-010",
+      "element": "user-avatar",
+      "type": "styling",
+      "severity": "minor",
+      "description": "User avatar/initial at bottom",
+      "reference": "Shows 'N' in circle at bottom-left",
+      "current": "Shows 'N' in circle - appears similar",
+      "fix": "Verify avatar size, position, and styling"
+    }
+  ],
+  "critical_fixes": [
+    "SIDEBAR-006: Hide TEST HISTORY section in default state to match reference"
+  ],
+  "elements_to_remove": [],
+  "missing_elements": [
+    "SIDEBAR-009: Version number text"
+  ]
+}

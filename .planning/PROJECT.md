@@ -97,6 +97,42 @@ A pixel-perfect, AI-verified clone of societies.io (landing + app) serving as th
 
 ---
 
+## Planned: v1.4 — Node Visualization
+
+**Goal:** Rework the dashboard node visualization into a mesmerizing, addictive, TikTok-viral-worthy experience that delivers real value to power users.
+
+**Vision:** Hybrid visualization with central AI orb + chaos → order node crystallization
+
+**Core Concept:**
+- Central glowing orb as the "AI brain"
+- Particles flow toward orb during processing
+- Nodes form dynamically, abstract at first, then crystallize into labeled insights
+- Full physics playground: drag, fling, spin, magnetic attraction, ripple effects
+
+**Key Features:**
+- Sound design layer for satisfying interactions
+- Captivating idle hook state (compelling before any action)
+- Progress indicators within chaos (subtle but present)
+- Compression-proof design (survives TikTok video recording)
+- Professional mode toggle for enterprise credibility
+- Paced revelation (insights appear sequentially)
+- Error/empty state handling
+
+**Technical Requirements:**
+- Mobile-first with 60fps performance on mid-range devices
+- Touch gesture support (tap = preview, hold = detail sheet)
+- High contrast, bold effects for video survival
+
+**Success Criteria:**
+- Scroll-stopping visual impact (TikTok-worthy)
+- Addictive fidget interactions ("can't stop touching it")
+- Real insight value for power users
+- 60fps on mobile devices
+
+**Research:** `.planning/research/` (VISUAL-PSYCHOLOGY.md, AI-PERCEPTION.md, MOTION-PSYCHOLOGY.md, INSPIRATION.md, SUMMARY.md)
+
+---
+
 ## Completed: v1.2 — Visual Accuracy Refinement ✓
 
 **Completed:** 2026-01-31

@@ -20,16 +20,14 @@
 - [ ] **HERO-02**: macOS window mockup with traffic lights and glass panels
 - [ ] **HERO-03**: Bold headline typography matching Raycast style
 - [ ] **HERO-04**: CTA buttons with premium hover effects
-- [ ] **HERO-05**: Animated product demo inside mockup (app preview)
-- [ ] **HERO-06**: Floating UI elements with depth and parallax
+- [ ] **HERO-05**: Static app preview screenshot inside mockup
 
 ### Feature Cards (CARD)
 
 - [ ] **CARD-01**: GradientCard component with distinct color identity
 - [ ] **CARD-02**: Icon + title + description layout matching Raycast
 - [ ] **CARD-03**: Hover state with scale (1.02-1.05x) and glow effect
-- [ ] **CARD-04**: Interactive demo elements within cards
-- [ ] **CARD-05**: Staggered scroll-triggered entrance animations
+- [ ] **CARD-04**: Staggered scroll-triggered entrance animations
 
 ### Navigation (NAV)
 
@@ -53,6 +51,14 @@
 - [ ] **QA-03**: Mobile performance optimization (reduced blur on mobile)
 - [ ] **QA-04**: Accessibility: text contrast on glass backgrounds
 - [ ] **QA-05**: Mobile responsive design (375px - 1440px)
+
+## v1.3.3 Requirements (Deferred)
+
+Features split from v1.3.2 for cleaner scope:
+
+- **HERO-06**: Animated product demo inside mockup (live app preview)
+- **HERO-07**: Floating UI elements with depth and parallax
+- **CARD-05**: Interactive demo elements within cards
 
 ## Out of Scope
 
@@ -79,12 +85,10 @@
 | HERO-03 | Phase 16 | Pending |
 | HERO-04 | Phase 16 | Pending |
 | HERO-05 | Phase 16 | Pending |
-| HERO-06 | Phase 16 | Pending |
 | CARD-01 | Phase 17 | Pending |
 | CARD-02 | Phase 17 | Pending |
 | CARD-03 | Phase 17 | Pending |
 | CARD-04 | Phase 17 | Pending |
-| CARD-05 | Phase 17 | Pending |
 | NAV-01 | Phase 18 | Pending |
 | NAV-02 | Phase 18 | Pending |
 | NAV-03 | Phase 18 | Pending |
@@ -101,10 +105,11 @@
 | QA-05 | Phase 19 | Pending |
 
 **Coverage:**
-- v1.3.2 requirements: 30 total
-- Mapped to phases: 30
+- v1.3.2 requirements: 29 total
+- Mapped to phases: 29
 - Unmapped: 0 ✓
+- Deferred to v1.3.3: 3
 
 ---
 *Requirements defined: 2026-01-31*
-*Last updated: 2026-01-31 — Initial definition*
+*Last updated: 2026-01-31 — Scope refined, 3 features deferred to v1.3.3*

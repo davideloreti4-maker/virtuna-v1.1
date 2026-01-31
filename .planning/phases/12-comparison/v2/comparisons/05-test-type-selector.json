@@ -1,0 +1,109 @@
+{
+  "comparison": "test-type-selector-modal",
+  "reference": "extraction/screenshots/reference/test-type-selector.png",
+  "clone": ".playwright-mcp/04-test-type-selector-virtuna.png",
+  "timestamp": "2026-01-31",
+  "overall_accuracy": "60%",
+  "differences": [
+    {
+      "id": "TESTTYPE-001",
+      "element": "modal-layout",
+      "type": "layout",
+      "severity": "critical",
+      "description": "Reference uses compact 3-column horizontal layout. Clone uses vertical sections with prominent headers.",
+      "reference": "Compact modal, 3 columns (Survey+Marketing | Social Media | Communication+Product)",
+      "current": "Large modal with vertical category sections and headers",
+      "fix": "Restructure to 3-column horizontal layout matching reference"
+    },
+    {
+      "id": "TESTTYPE-002",
+      "element": "role-level-legend",
+      "type": "addition",
+      "severity": "major",
+      "description": "Clone shows role level color legend badges at top that reference doesn't have",
+      "reference": "No role level legend in modal",
+      "current": "Executive Level, Mid Level, Senior Level, Entry Level, Unknown badges at top",
+      "fix": "Remove role level legend badges from test type selector modal"
+    },
+    {
+      "id": "TESTTYPE-003",
+      "element": "modal-size",
+      "type": "layout",
+      "severity": "major",
+      "description": "Clone modal is significantly larger/taller than reference",
+      "reference": "Compact modal ~300px height",
+      "current": "Large modal taking most of viewport",
+      "fix": "Reduce modal height and use more compact layout"
+    },
+    {
+      "id": "TESTTYPE-004",
+      "element": "section-headers",
+      "type": "styling",
+      "severity": "major",
+      "description": "Reference has subtle inline section headers. Clone has prominent uppercase headers.",
+      "reference": "Small inline headers (SURVEY, SOCIAL MEDIA POSTS, MARKETING CONTENT, COMMUNICATION, PRODUCT)",
+      "current": "Large uppercase section headers with extra spacing",
+      "fix": "Make section headers more subtle and inline with options"
+    },
+    {
+      "id": "TESTTYPE-005",
+      "element": "helper-text",
+      "type": "addition",
+      "severity": "minor",
+      "description": "Clone has helper text at bottom that reference doesn't show",
+      "reference": "No helper text",
+      "current": "Select a test type to simulate content with your target society",
+      "fix": "Remove or hide helper text to match reference"
+    },
+    {
+      "id": "TESTTYPE-006",
+      "element": "close-button",
+      "type": "styling",
+      "severity": "minor",
+      "description": "Close button visibility and position",
+      "reference": "Small X in corner",
+      "current": "X button visible - appears similar",
+      "fix": "Verify close button styling"
+    },
+    {
+      "id": "TESTTYPE-007",
+      "element": "option-icons",
+      "type": "styling",
+      "severity": "minor",
+      "description": "Icon style for options",
+      "reference": "Minimal outlined icons",
+      "current": "Similar outlined icons - verify exact match",
+      "fix": "Verify icon styles and sizes match"
+    },
+    {
+      "id": "TESTTYPE-008",
+      "element": "request-context-button",
+      "type": "styling",
+      "severity": "minor",
+      "description": "Request a new context button at bottom",
+      "reference": "+ Request a new context text button",
+      "current": "+ Request a new context - appears similar",
+      "fix": "Verify styling matches"
+    },
+    {
+      "id": "TESTTYPE-009",
+      "element": "background-color",
+      "type": "color",
+      "severity": "minor",
+      "description": "Modal background color",
+      "reference": "Dark semi-transparent background",
+      "current": "Dark background - appears similar",
+      "fix": "Verify exact background color/opacity"
+    }
+  ],
+  "critical_fixes": [
+    "TESTTYPE-001: Modal needs complete layout restructure to 3-column compact design",
+    "TESTTYPE-002: Remove role level legend badges from modal",
+    "TESTTYPE-003: Reduce modal size significantly"
+  ],
+  "elements_to_remove": [
+    "TESTTYPE-002: Role level legend badges",
+    "TESTTYPE-005: Helper text at bottom"
+  ],
+  "missing_elements": []
+}

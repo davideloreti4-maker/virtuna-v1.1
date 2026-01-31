@@ -1,126 +1,67 @@
 # Phase 12 v2 - Resume Context
 
-**Created:** 2026-01-31
-**Purpose:** Context handoff for fresh session
+**Last Updated:** 2026-01-31
+**Status:** Comparison COMPLETE, ready for fixes
 
-## What We're Doing
+## What Was Done
 
-**Phase 12: Comparison v2** — Exhaustive visual comparison using Playwright + v0 MCP for 99% clone accuracy.
+Visual comparison of Virtuna clone vs Societies.io reference completed:
+- 10 components compared
+- JSON comparison files generated
+- Summary document created
+- v0 MCP tested (limited usefulness for image comparison)
 
-## Key Decisions (from 12-CONTEXT-v2.md)
-
-### Capture
-- All app routes, every interactive state
-- Desktop 1440x900 only
-- Component-level close-ups
-
-### v0 MCP Usage
-- Side-by-side image analysis for EVERY comparison
-- Comprehensive analysis (colors hex, spacing px, typography, layout, shadows, borders)
-- Structured JSON output with CSS fix suggestions
-- **CRITICAL:** v0 MCP must be used for every single comparison
-
-### Documentation
-- Pixel-perfect specs (exact values)
-- Annotated screenshots with highlighted differences
-- Organized by component (SIDEBAR-001, FORM-001, etc.)
-
-### Element Tracking
-- Additions (Virtuna-only elements): Flag for removal
-- Missing (Societies-only elements): Flag as critical
-
-### Workflow
-- Live capture + immediate v0 comparison
-- Sequential single agent
-- Use existing Phase 11 reference screenshots
-
-## Reference Screenshots Location
-
-```
-extraction/screenshots/
-├── ref-01-society-selector-*.png (3 files)
-├── ref-02-dashboard-*.png (3 files)
-├── ref-03-test-type-selector*.png (2 files)
-├── ref-04-tiktok-form.png
-├── ref-05-view-selector-dropdown.png
-├── ref-06-feedback-modal.png
-├── ref-07-create-society-modal.png
-├── ref-08-mobile-dashboard.png
-└── desktop-fullpage/
-    ├── dashboard/01-dashboard-default.png
-    ├── forms/01-tiktok-form-empty.png, 02-filled.png, 03-survey.png
-    ├── modals/01-create-society.png, 02-leave-feedback.png
-    ├── results/01-results-panel.png, 02-insights.png
-    └── selectors/02-society-open.png, 03-hover.png, 04-menu.png, 05-view.png, 06-role.png, 08-test-type.png
-```
-
-Total: 210 reference screenshots
-
-## v2 Output Directory
+## Key Deliverables
 
 ```
 .planning/phases/12-comparison/v2/
-├── screenshots/      # Virtuna captures
-├── comparisons/      # v0 analysis JSON files
-├── annotated/        # Difference-highlighted images
-├── 12-CONTEXT-v2.md  # Decisions document
-└── RESUME.md         # This file
+├── comparisons/           # 10 JSON files with detailed diffs
+│   ├── 01-dashboard.json
+│   ├── 02-sidebar.json
+│   ├── 03-society-selector.json
+│   ├── 04-view-selector.json
+│   ├── 05-test-type-selector.json
+│   ├── 06-tiktok-form.json
+│   ├── 07-leave-feedback-modal.json
+│   ├── 08-create-society-modal.json
+│   ├── 09-results-panel.json (BLOCKED - bug)
+│   └── 10-settings-page.json (no reference)
+├── COMPARISON-SUMMARY.md  # Full summary with fix priorities
+└── RESUME.md              # This file
 ```
+
+## Critical Issues to Fix
+
+### P0 - Blocking Bug
+- **Results Panel TypeError** - clicking test history items crashes app
+
+### P1 - Critical Visual
+1. **Network visualization** - dense mesh needs to be sparse scattered dots
+2. **Test type selector** - vertical layout needs 3-column compact layout
+
+### P2 - Major Visual
+3. **Button colors** - orange buttons should be dark/black (TikTok form, Leave Feedback, Create Society)
+4. **Filter badges** - reduce from 10 to 5, add "Level" suffix
+
+### P3 - Minor
+5. Remove duplicate "Create a new test" button in header
+6. Hide TEST HISTORY section in default state
+7. Add version number text
+8. Remove dev tools (red issues badge)
 
 ## Next Steps After /clear
 
-1. Start dev server: `npm run dev` (in background)
-2. Load v0 MCP tool: `ToolSearch query: "select:mcp__v0__v0_generate_from_image"`
-3. Load Playwright MCP: `ToolSearch query: "+playwright screenshot"`
-4. Begin systematic comparison:
-   - Start with dashboard (most visible)
-   - Capture Virtuna screenshot via Playwright
-   - Send both (Virtuna + reference) to v0 MCP
-   - Document every difference in structured JSON
-   - Continue through all components
+1. Run `/gsd:resume-work` to restore context
+2. Or read `COMPARISON-SUMMARY.md` for full details
+3. Start fixing issues by priority (P0 → P1 → P2 → P3)
 
-## v0 MCP Prompt Template
+## Reference Locations
 
+- Screenshots: `~/.playwright-mcp/` (Virtuna) and `extraction/screenshots/reference/` (Societies.io)
+- Dev server: `npm run dev` on port 3000
+
+## Quick Start Command
+
+```bash
+cd ~/virtuna-v1.1 && cat .planning/phases/12-comparison/v2/COMPARISON-SUMMARY.md
 ```
-Compare these two images pixel-by-pixel:
-- Image 1: Reference (app.societies.io)
-- Image 2: Clone (Virtuna localhost)
-
-List EVERY visual difference in JSON format:
-{
-  "component": "sidebar",
-  "differences": [
-    {
-      "id": "SIDEBAR-001",
-      "element": "background",
-      "type": "color",
-      "severity": "major",
-      "reference": "#0f0f10",
-      "current": "#1a1a1a",
-      "fix": "Change bg-[#1a1a1a] to bg-[#0f0f10] in sidebar.tsx"
-    }
-  ]
-}
-
-Analyze: colors (hex), spacing (px), typography (font/size/weight), layout, shadows, borders, animations.
-Flag missing elements as critical. Flag extra elements for removal.
-```
-
-## Component Comparison Order
-
-1. **Dashboard** - ref-02-dashboard-complete.png
-2. **Sidebar** - crop from dashboard
-3. **Network Visualization** - crop from dashboard
-4. **Society Selector** - ref-01-society-selector-modal.png
-5. **View Selector** - ref-05-view-selector-dropdown.png
-6. **Test Type Selector** - ref-03-test-type-selector.png
-7. **TikTok Form** - ref-04-tiktok-form.png
-8. **Survey Form** - desktop-fullpage/forms/03-survey-form-empty.png
-9. **Results Panel** - desktop-fullpage/results/01-results-panel.png
-10. **Create Society Modal** - ref-07-create-society-modal.png
-11. **Leave Feedback Modal** - ref-06-feedback-modal.png
-12. **Settings** - need to capture reference
-
----
-
-**Ready to execute after /clear**

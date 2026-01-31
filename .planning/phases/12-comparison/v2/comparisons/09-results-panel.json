@@ -1,0 +1,61 @@
+{
+  "comparison": "results-panel",
+  "reference": "extraction/screenshots/reference/results-panel.png",
+  "clone": "Unable to capture - clicking test history item causes error",
+  "timestamp": "2026-01-31",
+  "overall_accuracy": "BLOCKED - Error in Virtuna",
+  "bug_detected": {
+    "description": "Clicking on test history items (Instagram Post, TikTok Script) causes a client-side error",
+    "error": "TypeError: Cannot read properties of undefined",
+    "location": "Likely in results panel rendering logic",
+    "severity": "critical",
+    "fix_required": "Debug and fix results panel component before visual comparison can be completed"
+  },
+  "reference_elements": [
+    {
+      "element": "results-title",
+      "description": "SIMULATION RESULTS - uppercase header",
+      "styling": "Gray uppercase text, centered"
+    },
+    {
+      "element": "impact-score-circle",
+      "description": "Large circular progress indicator showing score (76)",
+      "styling": "Blue/cyan circular progress, large number in center, 'Impact Score' label below"
+    },
+    {
+      "element": "attention-breakdown-section",
+      "description": "ATTENTION BREAKDOWN header with progress bars",
+      "styling": "Uppercase header, three progress bars below"
+    },
+    {
+      "element": "full-attention-bar",
+      "description": "Full Attention: 45%",
+      "styling": "Green progress bar"
+    },
+    {
+      "element": "partial-attention-bar",
+      "description": "Partial Attention: 40%",
+      "styling": "Blue progress bar"
+    },
+    {
+      "element": "ignore-bar",
+      "description": "Ignore: 15%",
+      "styling": "Gray progress bar"
+    },
+    {
+      "element": "run-another-test-button",
+      "description": "Run another test button at bottom",
+      "styling": "White/light button, full width"
+    }
+  ],
+  "pending_comparison": [
+    "Need to fix Virtuna test history click bug before comparing",
+    "Results panel layout and styling cannot be verified",
+    "Impact score circle styling needs verification",
+    "Attention breakdown bars need styling verification"
+  ],
+  "critical_fixes": [
+    "FIX BUG: TypeError when clicking test history items",
+    "This blocks all results panel comparison work"
+  ]
+}

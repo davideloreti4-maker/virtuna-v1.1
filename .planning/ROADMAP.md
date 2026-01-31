@@ -3,14 +3,15 @@
 ## Milestones
 
 - ✅ **v1.1 Pixel-Perfect Clone** - Phases 1-10 (shipped 2026-01-29)
-- 🚧 **v1.2 Visual Accuracy Refinement** - Phases 11-14 (in progress)
+- ✅ **v1.2 Visual Accuracy Refinement** - Phases 11-14 (shipped 2026-01-30)
+- 🚧 **v1.3.2 Landing Page Redesign** - Phases 15-19 (in progress)
 
 ---
 
 <details>
 <summary>✅ v1.1 Pixel-Perfect Clone (Phases 1-10) - SHIPPED 2026-01-29</summary>
 
-### Phase 1: Infrastructure Setup ✓
+### Phase 1: Infrastructure Setup
 **Goal**: Complete development environment and deployment pipeline
 **Status**: Complete (2026-01-28)
 **Plans**: 2 plans
@@ -28,7 +29,7 @@ Plans:
 
 ---
 
-### Phase 2: Design System & Components ✓
+### Phase 2: Design System & Components
 **Goal**: Build reusable component library matching societies.io design
 **Status**: Complete (2026-01-28)
 **Plans**: 5 plans
@@ -49,7 +50,7 @@ Plans:
 
 ---
 
-### Phase 3: Landing Site ✓
+### Phase 3: Landing Site
 **Goal**: Build pixel-perfect landing pages matching societies.io exactly
 **Status**: Complete
 
@@ -63,7 +64,7 @@ Plans:
 
 ---
 
-### Phase 4: App Layout & Navigation ✓
+### Phase 4: App Layout & Navigation
 **Goal**: Build app shell and navigation structure
 **Status**: Complete (2026-01-28)
 **Plans**: 6 plans
@@ -85,7 +86,7 @@ Plans:
 
 ---
 
-### Phase 5: Society Management ✓
+### Phase 5: Society Management
 **Goal**: Complete society selector and creation flow with Zustand state management
 **Status**: Complete (2026-01-29)
 **Plans**: 5 plans
@@ -107,7 +108,7 @@ Plans:
 
 ---
 
-### Phase 6: Test Type Selector & Forms ✓
+### Phase 6: Test Type Selector & Forms
 **Goal**: Build test creation flow with all 11 form types
 **Status**: Complete (2026-01-29)
 **Plans**: 5 plans
@@ -128,7 +129,7 @@ Plans:
 
 ---
 
-### Phase 7: Simulation & Results ✓
+### Phase 7: Simulation & Results
 **Goal**: Build simulation flow and results display matching societies.io
 **Status**: Complete (2026-01-29)
 **Plans**: 6 plans
@@ -151,7 +152,7 @@ Plans:
 
 ---
 
-### Phase 8: Test History & Polish ✓
+### Phase 8: Test History & Polish
 **Goal**: Complete test history viewing, deletion, and view selector enhancements
 **Status**: Complete (2026-01-29)
 **Plans**: 4 plans
@@ -173,7 +174,7 @@ Plans:
 
 ---
 
-### Phase 9: Settings & Modals ✓
+### Phase 9: Settings & Modals
 **Goal**: Complete settings pages and modals matching societies.io
 **Status**: Complete (2026-01-29)
 **Plans**: 5 plans
@@ -195,7 +196,7 @@ Plans:
 
 ---
 
-### Phase 10: Final QA ✓
+### Phase 10: Final QA
 **Goal**: Visual verification and polish — pixel-perfect comparison with societies.io
 **Status**: Complete (2026-01-29)
 **Plans**: 6 plans
@@ -221,58 +222,36 @@ Plans:
 
 ---
 
-## 🚧 v1.2 Visual Accuracy Refinement (In Progress)
+<details>
+<summary>✅ v1.2 Visual Accuracy Refinement (Phases 11-14) - SHIPPED 2026-01-30</summary>
 
 **Milestone Goal:** Achieve 98%+ pixel accuracy against app.societies.io through systematic extraction, comparison, and iterative refinement.
 
-**Approach:** 3-wave methodology
-- Wave 1: Extract all screens/states from app.societies.io via Playwright
-- Wave 2: Side-by-side comparison with detailed discrepancy documentation
-- Wave 3: Iterative fixes using v0 MCP until 98%+ accuracy achieved
-- Final: User flow verification to ensure functional correctness
-
----
-
 ### Phase 11: Extraction
 **Goal**: Complete screenshot coverage of every screen, state, and interactive element in app.societies.io
-**Depends on**: Phases 1-10 (v1.0 and v1.1 complete)
-**Requirements**: EXT-01, EXT-02, EXT-03, EXT-04, EXT-05, EXT-06, EXT-07, EXT-08, EXT-09, EXT-10, EXT-11, EXT-12, EXT-13
-**Success Criteria** (what must be TRUE):
-  1. All dashboard states captured (default, loading, society selected)
-  2. All selectors and dropdowns captured in open/closed/hover states
-  3. All forms captured empty, filled, and with validation errors
-  4. All modals and overlays captured
-  5. Mobile viewport (375px) screenshots exist for all key screens
+**Status**: Complete (2026-01-30)
 **Plans**: 4 plans
 
 Plans:
-- [ ] 11-01-PLAN.md - Setup Playwright extraction infrastructure
-- [ ] 11-02-PLAN.md - Extract dashboard and navigation states
-- [ ] 11-03-PLAN.md - Extract forms, selectors, and interactive elements
-- [ ] 11-04-PLAN.md - Extract modals, settings, simulation, and video flows
+- [x] 11-01-PLAN.md - Setup Playwright extraction infrastructure
+- [x] 11-02-PLAN.md - Extract dashboard and navigation states
+- [x] 11-03-PLAN.md - Extract forms, selectors, and interactive elements
+- [x] 11-04-PLAN.md - Extract modals, settings, simulation, and video flows
+
+**Success Criteria**:
+- [x] All dashboard states captured (default, loading, society selected)
+- [x] All selectors and dropdowns captured in open/closed/hover states
+- [x] All forms captured empty, filled, and with validation errors
+- [x] All modals and overlays captured
+- [x] Mobile viewport (375px) screenshots exist for all key screens
+
+**Requirements Covered**: EXT-01 to EXT-13
 
 ---
 
-### Phase 12: Comparison ✓
+### Phase 12: Comparison
 **Goal**: Document every visual discrepancy between Virtuna and app.societies.io with v0 MCP-powered analysis
-**Depends on**: Phase 11
 **Status**: Complete (2026-01-30)
-**Requirements**: CMP-01, CMP-02, CMP-03, CMP-04, CMP-05, CMP-06, CMP-07, CMP-08, CMP-09, CMP-10, CMP-11, CMP-12, CMP-13, CMP-14
-
-**Methodology**:
-For each screen/component:
-1. Load reference screenshot (from Phase 11) + Virtuna screenshot
-2. Use v0 MCP to analyze: "List EVERY visual difference - spacing, colors, typography, layout, borders, shadows"
-3. Document v0's analysis with manual verification
-4. Categorize: spacing / color / typography / layout / animation
-5. Prioritize: critical (layout breaks) / major (clearly visible) / minor (subtle)
-
-**Success Criteria** (what must be TRUE):
-  1. Side-by-side comparison images exist for every screen/component ✓
-  2. All discrepancies documented with v0 analysis and pixel-level precision ✓
-  3. Issues categorized by type (spacing, color, typography, layout, animation) ✓
-  4. Issues prioritized (critical/major/minor) with clear criteria ✓
-  5. Discrepancy report ready to guide refinement work ✓
 **Plans**: 4 plans
 
 Plans:
@@ -281,7 +260,126 @@ Plans:
 - [x] 12-03-PLAN.md — Modals, results, and overlays comparison (Wave 1)
 - [x] 12-04-PLAN.md — Consolidate discrepancy report with prioritization (Wave 2)
 
+**Success Criteria**:
+- [x] Side-by-side comparison images exist for every screen/component
+- [x] All discrepancies documented with v0 analysis and pixel-level precision
+- [x] Issues categorized by type (spacing, color, typography, layout, animation)
+- [x] Issues prioritized (critical/major/minor) with clear criteria
+- [x] Discrepancy report ready to guide refinement work
+
+**Requirements Covered**: CMP-01 to CMP-14
+
+</details>
+
 ---
+
+## 🚧 v1.3.2 Landing Page Redesign (In Progress)
+
+**Milestone Goal:** Transform the landing page into a premium Raycast-inspired experience with iOS 26 aesthetic — glassmorphism, gradient lighting, macOS mockups, and smooth animations.
+
+**Approach:** Component-first methodology
+- Phase 15: Build foundation primitives (GlassPanel, GradientGlow, TrafficLights)
+- Phase 16: Compose hero section with dramatic lighting and macOS mockup
+- Phase 17: Build feature cards with per-feature color identity
+- Phase 18: Add navigation glassmorphism and scroll animations
+- Phase 19: Cross-browser QA, accessibility, performance optimization
+
+---
+
+### Phase 15: Foundation + Primitives
+**Goal**: Establish design system constraints and build zero-dependency components that everything else uses
+**Depends on**: v1.2 complete (Phase 14)
+**Requirements**: FOUND-01, FOUND-02, FOUND-03, FOUND-04, FOUND-05, FOUND-06
+**Success Criteria** (what must be TRUE):
+  1. Dark theme tokens are defined and used consistently (background, surfaces, text, borders)
+  2. GlassPanel renders with configurable blur/opacity and proper Safari -webkit- prefixes
+  3. GradientGlow creates ambient lighting effects with controllable color and intensity
+  4. TrafficLights displays red/yellow/green macOS window buttons at correct sizes
+  5. Gradient palette provides distinct color identities (purple, blue, pink, etc.) as reusable tokens
+**Plans**: 3 plans
+
+Plans:
+- [ ] 15-01: Design tokens, gradient palette, and depth system setup
+- [ ] 15-02: GlassPanel and GradientGlow components with Safari compatibility
+- [ ] 15-03: TrafficLights component and visual verification
+
+---
+
+### Phase 16: Hero Section
+**Goal**: Create dramatic first impression with gradient lighting, macOS window mockup, and premium typography
+**Depends on**: Phase 15
+**Requirements**: HERO-01, HERO-02, HERO-03, HERO-04, HERO-05
+**Success Criteria** (what must be TRUE):
+  1. Hero background displays animated gradient lighting on near-black (#0A0A0B) base
+  2. macOS window mockup floats with traffic lights, glass panel, and static app preview
+  3. Headline typography is bold (48-72px) with proper letter-spacing and text shadows
+  4. CTA buttons have premium hover effects with spring physics
+  5. Hero section entrance animation is smooth and polished
+**Plans**: 3 plans
+
+Plans:
+- [ ] 16-01: Animated gradient background with ambient lighting
+- [ ] 16-02: WindowMockup composite component with traffic lights, glass panel, and static preview
+- [ ] 16-03: Hero typography, CTA buttons, and entrance animations
+
+---
+
+### Phase 17: Feature Cards
+**Goal**: Showcase features with glassmorphism cards, unique color identities, and polished hover states
+**Depends on**: Phase 15
+**Requirements**: CARD-01, CARD-02, CARD-03, CARD-04
+**Success Criteria** (what must be TRUE):
+  1. GradientCard component displays glass background with distinct color glow per feature
+  2. Cards follow Raycast pattern: icon + title + description with proper spacing
+  3. Hover state scales card (1.02-1.05x) and intensifies glow effect
+  4. Cards animate in with staggered scroll-triggered entrance (0.1s delay between cards)
+**Plans**: 2 plans
+
+Plans:
+- [ ] 17-01: GradientCard component with color identity, glass effects, and layout
+- [ ] 17-02: Hover states, glow intensification, and staggered scroll animations
+
+---
+
+### Phase 18: Navigation + Animations
+**Goal**: Add sticky glassmorphism navigation and polish all scroll/interaction animations
+**Depends on**: Phase 15, Phase 16
+**Requirements**: NAV-01, NAV-02, NAV-03, NAV-04, ANIM-01, ANIM-02, ANIM-03, ANIM-04, ANIM-05
+**Success Criteria** (what must be TRUE):
+  1. Header sticks on scroll with glassmorphism blur effect
+  2. Navigation links have ghost hover effect (opacity change, no background)
+  3. Header CTA button matches hero CTA styling with consistent hover state
+  4. Mobile navigation works with slide-in drawer or menu
+  5. All sections animate into view on scroll with fade/slide effect
+  6. Button hovers use spring physics (stiffness: 400, damping: 17)
+  7. Animations maintain 60fps on desktop and mobile
+  8. Users with prefers-reduced-motion see instant transitions (no parallax, no scale)
+**Plans**: 4 plans
+
+Plans:
+- [ ] 18-01: Sticky header with glassmorphism and navigation links
+- [ ] 18-02: Mobile responsive navigation (drawer or menu)
+- [ ] 18-03: Scroll-triggered section animations with stagger utilities
+- [ ] 18-04: Spring physics for hovers and reduced-motion support
+
+---
+
+### Phase 19: Quality & Polish
+**Goal**: Cross-browser compatibility, accessibility compliance, and performance optimization
+**Depends on**: Phase 16, Phase 17, Phase 18
+**Requirements**: QA-01, QA-02, QA-03, QA-04, QA-05
+**Success Criteria** (what must be TRUE):
+  1. Glassmorphism renders correctly on Chrome, Safari, and Firefox
+  2. Safari -webkit-backdrop-filter uses fixed values (no CSS variables) per research findings
+  3. Mobile uses reduced blur (6-8px) and limited glass elements for 55+ fps scroll
+  4. Text on glass backgrounds meets WCAG 4.5:1 contrast for body text
+  5. Landing page displays correctly from 375px to 1440px+ viewports
+**Plans**: 3 plans
+
+Plans:
+- [ ] 19-01: Cross-browser testing and Safari-specific fixes
+- [ ] 19-02: Mobile performance optimization (reduced blur, limited glass)
+- [ ] 19-03: Accessibility audit (contrast, reduced-motion) and responsive QA
 
 ---
 
@@ -290,16 +388,21 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1-10 | v1.1 | 44/44 | Complete | 2026-01-29 |
-| 11. Extraction | v1.2 | 6/6 | Complete | 2026-01-30 |
+| 11. Extraction | v1.2 | 4/4 | Complete | 2026-01-30 |
 | 12. Comparison | v1.2 | 4/4 | Complete | 2026-01-30 |
+| 15. Foundation + Primitives | v1.3.2 | 0/3 | Not started | - |
+| 16. Hero Section | v1.3.2 | 0/3 | Not started | - |
+| 17. Feature Cards | v1.3.2 | 0/2 | Not started | - |
+| 18. Navigation + Animations | v1.3.2 | 0/4 | Not started | - |
+| 19. Quality & Polish | v1.3.2 | 0/3 | Not started | - |
 
 ---
 
 ## Current Status
-- **Current Milestone**: v1.2 (Visual Accuracy Refinement) — Complete
-- **Phases Completed**: 11-12 (Extraction + Comparison)
-- **Next Action**: Start new milestone
+- **Current Milestone**: v1.3.2 (Landing Page Redesign)
+- **Current Phase**: 15 (Foundation + Primitives) - Ready to plan
+- **Next Action**: `/gsd:plan-phase 15`
 
 ---
 *Roadmap created: 2026-01-28*
-*Last updated: 2026-01-30 — v1.2 milestone added*
+*Last updated: 2026-01-31 — v1.3.2 scope refined (29 reqs, 15 plans)*
