@@ -479,7 +479,7 @@ Plans:
 | 1-10 | v1.1 | 44/44 | Complete | 2026-01-29 |
 | 11. Extraction | v1.2 | 4/4 | Complete | 2026-01-30 |
 | 12. Comparison | v1.2 | 4/4 | Complete | 2026-01-30 |
-| 15. Foundation + Primitives | v1.3.2 | 0/3 | Not started | - |
+| 15. Foundation + Primitives | v1.3.2 | 3/3 | Complete | 2026-01-31 |
 | 16. Hero Section | v1.3.2 | 0/3 | Not started | - |
 | 17. Feature Cards | v1.3.2 | 0/2 | Not started | - |
 | 18. Navigation + Animations | v1.3.2 | 0/4 | Not started | - |
@@ -494,9 +494,9 @@ Plans:
 
 ## Current Status
 - **Current Milestone**: v1.3.2 (Landing Page Redesign)
-- **Current Phase**: 15 (Foundation + Primitives) - Ready to plan
-- **Next Action**: `/gsd:plan-phase 15`
+- **Current Phase**: 16 (Hero Section) - Ready to plan
+- **Next Action**: `/gsd:discuss-phase 16`
 
 ---
 *Roadmap created: 2026-01-28*
-*Last updated: 2026-01-31 — v1.4 milestone added (Phases 20-24, 31 requirements)*
+*Last updated: 2026-01-31 — Phase 15 complete*

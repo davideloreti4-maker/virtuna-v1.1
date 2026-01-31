@@ -7,12 +7,12 @@
 
 ### Foundation (FOUND)
 
-- [ ] **FOUND-01**: Dark theme color system with proper design tokens
-- [ ] **FOUND-02**: GlassPanel component with configurable blur and opacity
-- [ ] **FOUND-03**: GradientGlow component for lighting effects
-- [ ] **FOUND-04**: TrafficLights component (macOS window buttons)
-- [ ] **FOUND-05**: iOS 26 depth system (shadows, layers, elevation tokens)
-- [ ] **FOUND-06**: Gradient palette with distinct color identities per feature
+- [x] **FOUND-01**: Dark theme color system with proper design tokens
+- [x] **FOUND-02**: GlassPanel component with configurable blur and opacity
+- [x] **FOUND-03**: GradientGlow component for lighting effects
+- [x] **FOUND-04**: TrafficLights component (macOS window buttons)
+- [x] **FOUND-05**: iOS 26 depth system (shadows, layers, elevation tokens)
+- [x] **FOUND-06**: Gradient palette with distinct color identities per feature
 
 ### Hero Section (HERO)
 
@@ -74,12 +74,12 @@ Features split from v1.3.2 for cleaner scope:
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUND-01 | Phase 15 | Pending |
-| FOUND-02 | Phase 15 | Pending |
-| FOUND-03 | Phase 15 | Pending |
-| FOUND-04 | Phase 15 | Pending |
-| FOUND-05 | Phase 15 | Pending |
-| FOUND-06 | Phase 15 | Pending |
+| FOUND-01 | Phase 15 | Complete |
+| FOUND-02 | Phase 15 | Complete |
+| FOUND-03 | Phase 15 | Complete |
+| FOUND-04 | Phase 15 | Complete |
+| FOUND-05 | Phase 15 | Complete |
+| FOUND-06 | Phase 15 | Complete |
 | HERO-01 | Phase 16 | Pending |
 | HERO-02 | Phase 16 | Pending |
 | HERO-03 | Phase 16 | Pending |
