@@ -1,26 +1,34 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { cn } from "@/lib/utils";
 import { VisualizationResetButton } from "./visualization-reset-button";
+import { drawGlassOrb, calculateOrbRadius } from "./orb-renderer";
+import type { OrbState } from "@/lib/visualization-types";
 
 interface ProgressiveVisualizationProps {
   className?: string;
+  state?: OrbState;
 }
 
 /**
  * ProgressiveVisualization - Canvas-based visualization with pan/zoom support
  *
- * Phase 20: Foundation component with orb placeholder
- * - Pan/zoom via react-zoom-pan-pinch (desktop drag + wheel, touch pinch + drag)
- * - Reset button appears after user moves view
- * - No momentum (direct control per CONTEXT.md)
- * - Min/max zoom limits: 0.5x to 3x (sensible defaults per RESEARCH.md)
+ * Phase 20: Central orb with glass effect and pan/zoom infrastructure
+ * - Canvas 2D for orb rendering with radial gradients
+ * - Pan/zoom via react-zoom-pan-pinch
+ * - Responsive canvas with ResizeObserver
+ * - Crisp retina display support via devicePixelRatio
  */
-export function ProgressiveVisualization({ className }: ProgressiveVisualizationProps) {
+export function ProgressiveVisualization({
+  className,
+  state = 'idle'
+}: ProgressiveVisualizationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hasTransformed, setHasTransformed] = useState(false);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   // Track when user has moved the view
   const handleTransform = useCallback(() => {
@@ -34,6 +42,59 @@ export function ProgressiveVisualization({ className }: ProgressiveVisualization
     setHasTransformed(false);
   }, []);
 
+  // Canvas setup with ResizeObserver pattern from NetworkVisualization
+  useEffect(() => {
+    const container = containerRef.current;
+    const canvas = canvasRef.current;
+    if (!container || !canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const resizeCanvas = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = container.getBoundingClientRect();
+
+      // Set canvas dimensions accounting for devicePixelRatio
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+      ctx.scale(dpr, dpr);
+
+      setDimensions({ width: rect.width, height: rect.height });
+    };
+
+    const resizeObserver = new ResizeObserver(resizeCanvas);
+    resizeObserver.observe(container);
+    resizeCanvas();
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  // Draw orb on canvas
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || dimensions.width === 0) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Clear canvas
+    const dpr = window.devicePixelRatio || 1;
+    ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+
+    // Calculate orb position and size
+    const centerX = dimensions.width / 2;
+    const centerY = dimensions.height / 2;
+    const radius = calculateOrbRadius(dimensions.width, dimensions.height);
+
+    // Draw the glass orb
+    drawGlassOrb(ctx, centerX, centerY, radius, 1);
+  }, [dimensions, state]);
+
   return (
     <div ref={containerRef} className={cn("absolute inset-0 overflow-hidden", className)}>
       <TransformWrapper
@@ -42,7 +103,7 @@ export function ProgressiveVisualization({ className }: ProgressiveVisualization
         maxScale={3}
         centerOnInit={true}
         wheel={{ smoothStep: 0.05 }}
-        panning={{ velocityDisabled: true }} // No momentum per CONTEXT.md
+        panning={{ velocityDisabled: true }}
         pinch={{ disabled: false }}
         doubleClick={{ disabled: true }}
         onTransformed={handleTransform}
@@ -53,12 +114,12 @@ export function ProgressiveVisualization({ className }: ProgressiveVisualization
             <VisualizationResetButton visible={hasTransformed} />
             <TransformComponent
               wrapperClass="!w-full !h-full"
-              contentClass="!w-full !h-full flex items-center justify-center"
+              contentClass="!w-full !h-full"
             >
-              {/* Placeholder for orb - will be replaced in 20-02 */}
-              <div
-                className="w-32 h-32 rounded-full bg-surface-elevated border border-border-glass"
-                aria-label="Visualization orb placeholder"
+              <canvas
+                ref={canvasRef}
+                className="w-full h-full"
+                aria-label="AI visualization orb"
               />
             </TransformComponent>
           </>
