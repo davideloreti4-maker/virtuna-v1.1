@@ -283,60 +283,6 @@ Plans:
 
 ---
 
-### Phase 13: Refinement
-**Goal**: Fix all documented discrepancies to achieve 98%+ pixel accuracy against reference
-**Depends on**: Phase 12
-**Requirements**: REF-01, REF-02, REF-03, REF-04, REF-05, REF-06, REF-07, REF-08
-**Success Criteria** (what must be TRUE):
-  1. All critical discrepancies fixed (no layout breaks)
-  2. All major discrepancies fixed (no clearly visible differences)
-  3. Minor discrepancies addressed (subtle spacing/color aligned)
-  4. Each fix verified against reference screenshot
-  5. Final comparison shows 98%+ pixel accuracy across all screens
-**Plans**: 4 plans (TBD)
-
-Plans:
-- [ ] 13-01: Fix critical layout discrepancies
-- [ ] 13-02: Fix major visual discrepancies
-- [ ] 13-03: Fix minor discrepancies and polish
-- [ ] 13-04: Final verification pass and mobile responsive check
-
----
-
-### Phase 14: User Flow Testing
-**Goal**: Verify all interactive flows work correctly with proper visual states throughout
-**Depends on**: Phase 13
-**Requirements**: FLOW-01, FLOW-02, FLOW-03, FLOW-04, FLOW-05, FLOW-06, FLOW-07, FLOW-08, FLOW-09, FLOW-10
-**Success Criteria** (what must be TRUE):
-  1. Society creation flow completes with correct visual feedback at each step
-  2. Test creation and simulation flow works end-to-end with proper loading states
-  3. Results panel interactions work (expand/collapse, copy, variants)
-  4. Settings navigation and save flows function correctly
-  5. Mobile navigation drawer opens/closes and navigates properly
-**Plans**: 4 plans (TBD)
-
-Plans:
-- [ ] 14-01: Test society and test creation flows
-- [ ] 14-02: Test simulation and results flows
-- [ ] 14-03: Test history, delete, and settings flows
-- [ ] 14-04: Test mobile navigation and responsive flows
-
----
-
-## Phase Dependencies (v1.2)
-
-```
-v1.1 Complete (Phases 1-10) ✓
-    ↓
-Phase 11 (Extraction)
-    ↓
-Phase 12 (Comparison)
-    ↓
-Phase 13 (Refinement)
-    ↓
-Phase 14 (User Flow Testing) ← MILESTONE COMPLETE
-```
-
 ---
 
 ## Progress
@@ -346,16 +292,13 @@ Phase 14 (User Flow Testing) ← MILESTONE COMPLETE
 | 1-10 | v1.1 | 44/44 | Complete | 2026-01-29 |
 | 11. Extraction | v1.2 | 6/6 | Complete | 2026-01-30 |
 | 12. Comparison | v1.2 | 4/4 | Complete | 2026-01-30 |
-| 13. Refinement | v1.2 | 0/4 | Not started | - |
-| 14. User Flow Testing | v1.2 | 0/4 | Not started | - |
 
 ---
 
 ## Current Status
-- **Current Milestone**: v1.2 (Visual Accuracy Refinement)
-- **Current Phase**: 12 (Comparison) — Complete
-- **Blocked By**: None
-- **Next Action**: Plan Phase 13 (`/gsd:plan-phase 13`)
+- **Current Milestone**: v1.2 (Visual Accuracy Refinement) — Complete
+- **Phases Completed**: 11-12 (Extraction + Comparison)
+- **Next Action**: Start new milestone
 
 ---
 *Roadmap created: 2026-01-28*

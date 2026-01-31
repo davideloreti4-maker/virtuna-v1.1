@@ -25,15 +25,25 @@
 
 ---
 
+### v1.2 — Visual Accuracy Refinement ✓
+**Completed:** 2026-01-31
+
+**Scope:**
+- Playwright extraction infrastructure for automated screenshots
+- Systematic screenshot capture of all app states (207 files, ~73MB)
+- Side-by-side comparison analysis with v0 MCP
+- Discrepancy documentation (45 issues identified across dashboard, forms, modals)
+- Full extraction catalog and comparison reports
+
+**Phases:** 11-12 (complete)
+
+**Key Outcomes:**
+- Complete extraction test suite with dark mode fixtures
+- Desktop and mobile viewport coverage
+- Video recordings of user flows
+- Consolidated discrepancy report with severity prioritization
+- JSON export for automation (DISCREPANCIES.json)
+
+---
+
 ## Active Milestone
-
-### v1.2 — Visual Accuracy Refinement
-**Started:** 2026-01-30
-**Target:** 98%+ pixel accuracy against app.societies.io
-
-**Approach:** 3-wave evaluation process
-1. **Extract** — Playwright screenshots of every app.societies.io screen/state
-2. **Compare** — Detailed side-by-side analysis against Virtuna
-3. **Refine** — Use v0 MCP to fix discrepancies
-
-**Phases:** TBD (starting from phase 11)
