@@ -398,15 +398,23 @@ Plans:
 ---
 
 ### Phase 20: Visualization Foundation
-**Goal**: Establish the visual core — central glowing orb with ambient breathing, dark mode design system, and bold effects foundation
+**Goal**: Establish the visual core — central glowing orb with ambient breathing, pan/zoom canvas infrastructure, and animation state system
 **Depends on**: v1.3.2 complete (Phase 19)
 **Requirements**: VIZ-01, VIZ-02, VIZ-09, VIZ-10
 **Success Criteria** (what must be TRUE):
   1. Central glowing orb renders as the focal "AI brain" element with radial gradient and glow
-  2. Orb has ambient "breathing" animation with 2-4 second scale pulse cycle
-  3. Dark mode design tokens established (purple-to-cyan palette, gradient accents)
-  4. Visual effects are bold and high-contrast to survive video compression
-  5. Canvas or WebGL rendering context is set up for particle/node effects
+  2. Orb has ambient "breathing" animation with 2-3 second scale pulse cycle
+  3. Pan/zoom works on desktop (drag + wheel) and touch (pinch + drag)
+  4. Reset button appears after user moves view and resets to centered state
+  5. Canvas rendering is crisp on retina displays
+  6. Orb responds to hover/tap with glow brighten interaction
+  7. prefers-reduced-motion shows static orb (no animation)
+**Plans**: 3 plans
+
+Plans:
+- [ ] 20-01-PLAN.md — Install react-zoom-pan-pinch, create ProgressiveVisualization with pan/zoom
+- [ ] 20-02-PLAN.md — Glass orb rendering with Canvas 2D radial gradients and glow
+- [ ] 20-03-PLAN.md — Orb animations (breathing, state transitions, hover/tap feedback)
 
 ---
 
