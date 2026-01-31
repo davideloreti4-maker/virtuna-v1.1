@@ -2,37 +2,8 @@
 
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { MoreVertical, Trash2 } from 'lucide-react';
-import {
-  ClipboardList,
-  FileText,
-  Globe,
-  Megaphone,
-  Linkedin,
-  Instagram,
-  Twitter,
-  Video,
-  Mail,
-  Send,
-  Package,
-} from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { TEST_TYPES } from '@/lib/test-types';
-import type { TestResult, TestTypeIcon } from '@/types/test';
-
-// Icon map following established pattern from test-types.ts
-const ICON_MAP: Record<TestTypeIcon, React.ComponentType<{ className?: string }>> = {
-  ClipboardList,
-  FileText,
-  Globe,
-  Megaphone,
-  Linkedin,
-  Instagram,
-  Twitter,
-  Video,
-  Mail,
-  Send,
-  Package,
-};
+import type { TestResult } from '@/types/test';
 
 interface TestHistoryItemProps {
   test: TestResult;
@@ -41,39 +12,45 @@ interface TestHistoryItemProps {
   onDelete: () => void;
 }
 
+/**
+ * Truncate content to first line or ~40 chars for display
+ */
+function getDisplayTitle(content: string): string {
+  // Get first line (with fallback for empty content)
+  const firstLine = content.split('\n')[0] ?? '';
+  // Truncate to reasonable length
+  if (firstLine.length > 50) {
+    return firstLine.slice(0, 47) + '...';
+  }
+  return firstLine;
+}
+
 export function TestHistoryItem({
   test,
   isActive,
   onClick,
   onDelete,
 }: TestHistoryItemProps) {
-  const config = TEST_TYPES[test.testType];
-  const IconComponent = ICON_MAP[config.icon];
+  const displayTitle = getDisplayTitle(test.content);
 
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors',
+        'group relative flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors',
         isActive
-          ? 'bg-zinc-800 text-white'
-          : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
+          ? 'bg-[rgba(40,40,40,0.5)] text-white'
+          : 'text-[rgb(184,184,184)] hover:bg-[rgba(40,40,40,0.3)] hover:text-white'
       )}
     >
-      {/* Left border indicator for active */}
+      {/* Left border indicator - yellow like Societies.io (only on active) */}
       {isActive && (
-        <div className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-indigo-500" />
+        <div className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-yellow-500" />
       )}
 
-      {/* Icon */}
-      <IconComponent className="h-4 w-4 shrink-0" />
-
-      {/* Test type name - truncate if needed */}
-      <span className="flex-1 truncate">{config.name}</span>
-
-      {/* Impact score */}
-      <span className="text-xs text-zinc-500">{test.impactScore}%</span>
+      {/* Content title - truncated */}
+      <span className="flex-1 truncate">{displayTitle}</span>
 
       {/* Three-dot menu */}
       <DropdownMenu.Root>

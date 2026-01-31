@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { SidebarNavItem } from "./sidebar-nav-item";
 import { SocietySelector } from "./society-selector";
@@ -8,8 +8,8 @@ import { ViewSelector } from "./view-selector";
 import { LeaveFeedbackModal } from "./leave-feedback-modal";
 import {
   Plus,
-  CreditCard,
-  MessageSquare,
+  SlidersHorizontal,
+  MessageSquareMore,
   BookOpen,
   LogOut,
   Columns2,
@@ -36,12 +36,8 @@ export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarPr
 
   // Get store state
   const store = useSocietyStore();
-
-  // Derive selected society
-  const selectedSociety = useMemo(
-    () => (store._isHydrated ? store.societies.find((s) => s.id === store.selectedSocietyId) : undefined),
-    [store.societies, store.selectedSocietyId, store._isHydrated]
-  );
+  // Note: store provides society state if needed (store.societies, store.selectedSocietyId)
+  void store; // Suppress unused warning - store will be used for future features
 
   const handleLogout = () => {
     router.push("/");
@@ -87,7 +83,7 @@ export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarPr
 
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 h-screen w-[248px] flex-col border-r border-zinc-800 bg-[#0f0f10] p-4 transition-transform duration-200",
+          "fixed left-0 top-0 z-50 h-screen w-[240px] flex-col border-r border-[rgb(40,40,40)] bg-[rgba(21,21,21,0.31)] p-4 backdrop-blur-[14px] transition-transform duration-200",
           "md:static md:translate-x-0 md:flex md:shrink-0",
           mobileOpen ? "flex translate-x-0" : "hidden -translate-x-full",
           className
@@ -132,33 +128,28 @@ export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarPr
 
         {/* Society selector section */}
         <div className="mt-6">
-          <label className="mb-2 block text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+          <label className="mb-2 block text-xs font-normal text-[rgb(153,163,169)]">
             Current Society
           </label>
           <SocietySelector />
-          {selectedSociety && (
-            <div className="mt-2 flex items-center gap-2 px-1">
-              <div className="h-2 w-2 rounded-full bg-emerald-500" />
-              <span className="truncate text-xs text-zinc-500">
-                {selectedSociety.name}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* View selector section */}
         <div className="mt-4">
-          <label className="mb-2 block text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+          <label className="mb-2 block text-xs font-normal text-[rgb(153,163,169)]">
             Current View
           </label>
           <ViewSelector />
         </div>
 
+        {/* Separator before create button */}
+        <div className="mt-4 border-t border-[rgb(40,40,40)]" />
+
         {/* Create new test button */}
         <button
           type="button"
           onClick={handleCreateTest}
-          className="mt-4 flex w-full items-center justify-between border-b border-zinc-800 py-3 text-sm text-white transition-colors hover:text-zinc-300"
+          className="flex w-full items-center justify-between py-3 text-sm text-[rgb(184,184,184)] transition-colors hover:text-white"
         >
           <span>Create a new test</span>
           <Plus className="h-4 w-4" />
@@ -166,27 +157,24 @@ export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarPr
 
         {/* Test History Section */}
         <div className="mt-4 flex flex-1 flex-col overflow-hidden">
-          <label className="mb-2 block text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-            Test History
-          </label>
           <div className="flex-1 overflow-y-auto">
             <TestHistoryList onSelectTest={handleViewTest} />
           </div>
         </div>
 
         {/* Separator line */}
-        <div className="border-t border-zinc-800" />
+        <div className="border-t border-[rgb(40,40,40)]" />
 
         {/* Bottom nav items */}
         <nav className="mt-2 space-y-0.5">
           <SidebarNavItem
             label="Manage plan"
-            icon={CreditCard}
+            icon={SlidersHorizontal}
             onClick={handleManagePlan}
           />
           <SidebarNavItem
             label="Leave Feedback"
-            icon={MessageSquare}
+            icon={MessageSquareMore}
             onClick={handleFeedback}
           />
           <SidebarNavItem
@@ -202,7 +190,7 @@ export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarPr
         </nav>
 
         {/* Version text */}
-        <p className="mt-2 text-center text-xs text-zinc-600">Version 2.1</p>
+        <p className="mt-2 text-center text-xs text-[rgb(101,101,101)]">Version 2.1</p>
       </aside>
 
       {/* Leave Feedback Modal - sibling pattern */}

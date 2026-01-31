@@ -11,6 +11,33 @@
   --color-border: rgba(255, 255, 255, 0.1);
   --color-slate: #708090;
 
+  /* Background hierarchy - near-black base (oklch for perceptual uniformity) */
+  --color-bg-base: oklch(0.13 0.02 264);        /* #0A0A0B - hero background */
+  --color-surface: oklch(0.18 0.02 264);        /* Elevated panels */
+  --color-surface-elevated: oklch(0.23 0.02 264); /* Cards, modals */
+
+  /* Text hierarchy */
+  --color-text-primary: oklch(0.98 0 0);        /* Primary text - near white */
+  --color-text-secondary: oklch(0.70 0 0);      /* Secondary/muted text */
+  --color-text-tertiary: oklch(0.50 0 0);       /* Disabled/placeholder */
+
+  /* Border for glass effects */
+  --color-border-glass: oklch(1 0 0 / 0.1);     /* 10% white border */
+  --color-border-glow: oklch(1 0 0 / 0.05);     /* 5% subtle glow border */
+
+  /* Primary gradients - each feature gets unique identity */
+  --color-gradient-purple: oklch(0.63 0.24 300);  /* AI/Intelligence */
+  --color-gradient-blue: oklch(0.62 0.19 250);    /* Analytics/Data */
+  --color-gradient-pink: oklch(0.66 0.22 350);    /* Social/Engagement */
+  --color-gradient-cyan: oklch(0.72 0.15 200);    /* Speed/Performance */
+  --color-gradient-green: oklch(0.68 0.17 145);   /* Growth/Success */
+  --color-gradient-orange: oklch(0.70 0.18 50);   /* Creativity/Content */
+
+  /* Gradient glow opacities */
+  --glow-intensity-subtle: 0.15;
+  --glow-intensity-medium: 0.3;
+  --glow-intensity-strong: 0.5;
+
   /* Font families - CSS variables set by next/font */
   --font-display: var(--font-funnel-display), sans-serif;
   --font-sans: var(--font-satoshi), ui-sans-serif, system-ui, sans-serif;
@@ -31,6 +58,9 @@
   /* Accordion animations */
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  /* Gradient border animation */
+  --animate-gradient-x: gradient-x 3s linear infinite;
 }
 
 @keyframes accordion-down {
@@ -48,6 +78,18 @@
   }
   to {
     height: 0;
+  }
+}
+
+@keyframes gradient-x {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
   }
 }
 
