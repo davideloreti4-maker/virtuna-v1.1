@@ -115,6 +115,36 @@
   }
 }
 
+/* Glass effect base styles - Safari compatible */
+.glass-base {
+  background: oklch(0.18 0.02 264 / 0.6);
+  border: 1px solid oklch(1 0 0 / 0.1);
+}
+
+.glass-blur-sm {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.glass-blur-md {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-blur-lg {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Mobile-optimized blur (6-8px per research constraint) */
+@media (max-width: 768px) {
+  .glass-blur-md,
+  .glass-blur-lg {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
 /* Base styles */
 html,
 body {
