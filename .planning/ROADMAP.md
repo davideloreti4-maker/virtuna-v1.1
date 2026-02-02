@@ -6,8 +6,9 @@
 - **v1.2 Visual Accuracy Refinement** - Phases 11-14 (shipped 2026-01-30)
 - **v1.3.2 Landing Page Redesign** - Phases 15-19 (in progress)
 - **v1.4 Node Visualization MVP** - Phases 20-24 (planned)
-- **v1.6 Brand Deals & Affiliate Hub** - Phases 25-30 (planned)
-- **v1.7 Viral Predictor Results** - Phases 35-36 (planned)
+- **v1.5 Trending Page** - Phases 25-30 (planned)
+- **v1.6 Brand Deals & Affiliate Hub** - Phases 31-36 (planned)
+- **v1.7 Viral Predictor Results** - Phases 37-38 (planned)
 
 ---
 
@@ -302,9 +303,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 15-01: Design tokens, gradient palette, and depth system setup
-- [ ] 15-02: GlassPanel and GradientGlow components with Safari compatibility
-- [ ] 15-03: TrafficLights component and visual verification
+- [x] 15-01: Design tokens, gradient palette, and depth system setup
+- [x] 15-02: GlassPanel and GradientGlow components with Safari compatibility
+- [x] 15-03: TrafficLights component and visual verification
 
 ---
 
@@ -489,25 +490,136 @@ Plans:
 
 ---
 
+## v1.5 Trending Page (Planned)
+
+**Milestone Goal:** Real-time viral video discovery feed with analysis and full storyboard remix capabilities, powered by Apify TikTok scraper.
+
+**Core Concept:**
+- Curated feed of currently viral TikTok videos
+- Fixed categories (Challenges, Sounds, Formats, etc.) + AI sub-tagging
+- Analyze action reuses Viral Predictor format
+- Remix action generates 2-3 customized storyboards with scripts, shot lists, PDF export
+
+**Approach:** Data foundation first, then UI with v0 MCP acceleration
+- Phase 25: Data Foundation (types, stores, Supabase schema, Apify setup)
+- Phase 26: Core Feed UI (VideoCard, TrendingDashboard, categories - v0 MCP)
+- Phase 27: Video Detail & Analyze (modal, analyze integration with viral predictor)
+- Phase 28: Remix System (form, AI generation, storyboard output - v0 MCP)
+- Phase 29: Storyboard & PDF (visual frames, teleprompter, React-PDF export)
+- Phase 30: Polish & Navigation (UX states, sidebar, optimizations)
+
+**v0 MCP Candidates:** VideoCard, TrendingDashboard, CategorySection, VideoDetailModal, RemixForm, RemixOutput, RemixCard, TeleprompterView (8 components, ~16-20h saved)
+
+---
+
+### Phase 25: Data Foundation
+**Goal**: Establish types, stores, Supabase schema, and Apify integration infrastructure for trending video data
+**Depends on**: v1.4 complete (Phase 24)
+**Requirements**: INFRA-01, INFRA-02, INFRA-03, INFRA-04, INFRA-05, INFRA-06, INFRA-07
+**Success Criteria** (what must be TRUE):
+  1. TypeScript types defined for TrendingVideo, RemixInput, RemixOutput, RemixVariant
+  2. Zustand stores created for trending UI state and remix form state
+  3. Supabase tables exist: trending_videos, remixes, user_niche_preferences
+  4. API route structure in place: /api/trending, /api/analyze, /api/remix
+  5. Apify TikTok scraper integration configured with rate limiting
+**Plans**: TBD
+
+---
+
+### Phase 26: Core Feed UI
+**Goal**: Build video card, dashboard layout, and category sections using v0 MCP for rapid UI development
+**Depends on**: Phase 25
+**Requirements**: FEED-01, FEED-02, FEED-03, FEED-04, FEED-06
+**Success Criteria** (what must be TRUE):
+  1. User can browse vertical list of trending videos with infinite scroll
+  2. Each video card shows thumbnail, title, creator handle, metrics, and category tags
+  3. User can filter feed by category tabs (Challenges, Sounds, Formats, etc.)
+  4. User can filter by AI-generated sub-tags within categories
+  5. User sees trending velocity indicator (rising, peaked, declining) on each card
+**v0 MCP:** VideoCard, TrendingDashboard, CategorySection
+**Plans**: TBD
+
+---
+
+### Phase 27: Video Detail & Analyze
+**Goal**: Build video detail modal with Analyze action that reuses Viral Predictor components
+**Depends on**: Phase 26
+**Requirements**: FEED-05, FEED-07, ANLZ-01, ANLZ-02, ANLZ-03, ANLZ-04, UX-03
+**Success Criteria** (what must be TRUE):
+  1. User can click video to open detail modal with full video info
+  2. User can save/bookmark videos for later from detail modal
+  3. User can analyze any trending video with one click
+  4. User sees viral score breakdown in same format as Viral Predictor
+  5. User sees attention analysis and insights explaining why video is viral
+**v0 MCP:** VideoDetailModal
+**Plans**: TBD
+
+---
+
+### Phase 28: Remix System
+**Goal**: Build remix form and AI-powered storyboard generation with 2-3 customized script variants
+**Depends on**: Phase 27
+**Requirements**: REMIX-01, REMIX-02, REMIX-03, REMIX-04, REMIX-08, UX-04
+**Success Criteria** (what must be TRUE):
+  1. User can initiate remix from any trending video
+  2. User can customize remix for their audience/goal via form inputs
+  3. User receives 2-3 customized script versions per remix
+  4. Each script includes hook, body, and CTA
+  5. Each script includes shot-by-shot filming instructions
+  6. Remix generation shows progress indication during AI processing
+**v0 MCP:** RemixForm, RemixOutput, RemixCard
+**Plans**: TBD
+
+---
+
+### Phase 29: Storyboard & PDF
+**Goal**: Add visual reference frames, teleprompter mode, and professional PDF export
+**Depends on**: Phase 28
+**Requirements**: REMIX-05, REMIX-06, REMIX-07, UX-05
+**Success Criteria** (what must be TRUE):
+  1. Each script includes visual reference frames for key shots
+  2. User can view script in teleprompter mode (full-screen, auto-scroll)
+  3. User can export storyboard as PDF document
+  4. PDF export shows download progress indicator
+  5. Exported PDF is professional quality and print-ready
+**v0 MCP:** TeleprompterView
+**Plans**: TBD
+
+---
+
+### Phase 30: Polish & Navigation
+**Goal**: Complete UX states, sidebar integration, and performance optimizations
+**Depends on**: Phase 29
+**Requirements**: NAV-01, NAV-02, UX-01, UX-02, UX-06
+**Success Criteria** (what must be TRUE):
+  1. Trending Page has dedicated sidebar item with TrendingUp icon
+  2. Sidebar item is visually distinct and discoverable
+  3. Feed loading states are smooth and non-jarring
+  4. Category/filter changes are instant (optimistic UI)
+  5. Empty states are helpful (no videos in category, search no results)
+**Plans**: TBD
+
+---
+
 ## v1.6 Brand Deals & Affiliate Hub (Planned)
 
 **Milestone Goal:** Creator monetization hub with Revolut-style wallet and tier-gated brand deals marketplace. Manual deal curation first, aggregation deferred to v1.7+.
 
 **Approach:** Foundation-first, display-only wallet (never hold funds)
-- Phase 25: Database foundation (deals, wallet, profiles, enrollments schema)
-- Phase 26: Creator Profile (social handles, metrics, eligibility)
-- Phase 27: Wallet Core (Revolut-style display, transactions, earnings breakdown)
-- Phase 28: Deal Marketplace (browse, filter, apply, status tracking)
-- Phase 29: Tier Gating & Affiliate (subscription access control, Virtuna affiliate program)
-- Phase 30: UX Polish & Navigation (eligibility, confirmations, notifications, sidebar integration)
+- Phase 31: Database foundation (deals, wallet, profiles, enrollments schema)
+- Phase 32: Creator Profile (social handles, metrics, eligibility)
+- Phase 33: Wallet Core (Revolut-style display, transactions, earnings breakdown)
+- Phase 34: Deal Marketplace (browse, filter, apply, status tracking)
+- Phase 35: Tier Gating & Affiliate (subscription access control, Virtuna affiliate program)
+- Phase 36: UX Polish & Navigation (eligibility, confirmations, notifications, sidebar integration)
 
 **Architecture Constraint:** Display earnings only — never hold creator funds (money transmission compliance).
 
 ---
 
-### Phase 25: Database Foundation
+### Phase 31: Database Foundation
 **Goal**: Establish Supabase schema for all v1.6 features — deals, wallet transactions, creator profiles, enrollments, and affiliate tracking
-**Depends on**: v1.4 complete (Phase 24)
+**Depends on**: v1.5 complete (Phase 30)
 **Requirements**: DEAL-02
 **Success Criteria** (what must be TRUE):
   1. `creator_profiles` table exists with social handles, follower counts, and niche fields
@@ -519,14 +631,14 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 25-01-PLAN.md — Supabase CLI setup, create migration with 6 tables, RLS policies, push to Supabase
-- [ ] 25-02-PLAN.md — Generate TypeScript types and update Supabase clients with Database generic
+- [ ] 31-01-PLAN.md — Supabase CLI setup, create migration with 6 tables, RLS policies, push to Supabase
+- [ ] 31-02-PLAN.md — Generate TypeScript types and update Supabase clients with Database generic
 
 ---
 
-### Phase 26: Creator Profile
+### Phase 32: Creator Profile
 **Goal**: Enable creators to set up profiles with social handles and metrics used for deal eligibility matching
-**Depends on**: Phase 25
+**Depends on**: Phase 31
 **Requirements**: PROF-01, PROF-02, PROF-03
 **Success Criteria** (what must be TRUE):
   1. User can access profile setup page from settings or onboarding
@@ -538,9 +650,9 @@ Plans:
 
 ---
 
-### Phase 27: Wallet Core
+### Phase 33: Wallet Core
 **Goal**: Build Revolut-style wallet dashboard showing earnings, transactions, and payment status — display only, never holds funds
-**Depends on**: Phase 25
+**Depends on**: Phase 31
 **Requirements**: WALT-01, WALT-02, WALT-03, WALT-04, WALT-05, WALT-06, WALT-07
 **Success Criteria** (what must be TRUE):
   1. User sees current balance prominently displayed (large, Revolut-style)
@@ -554,9 +666,9 @@ Plans:
 
 ---
 
-### Phase 28: Deal Marketplace
+### Phase 34: Deal Marketplace
 **Goal**: Build deal browsing experience with filters, details, and application flow — manual curation only
-**Depends on**: Phase 25, Phase 26
+**Depends on**: Phase 31, Phase 32
 **Requirements**: MRKT-01, MRKT-02, MRKT-03, MRKT-04, MRKT-05, MRKT-06, MRKT-07, MRKT-08, MRKT-09, MRKT-10, DEAL-01, DEAL-03
 **Success Criteria** (what must be TRUE):
   1. User can browse deals with filters (category, tier, compensation type)
@@ -572,9 +684,9 @@ Plans:
 
 ---
 
-### Phase 29: Tier Gating & Affiliate
+### Phase 35: Tier Gating & Affiliate
 **Goal**: Implement subscription-based access control and Virtuna's own affiliate program
-**Depends on**: Phase 28
+**Depends on**: Phase 34
 **Requirements**: TIER-01, TIER-02, TIER-03, AFFL-01, AFFL-02, AFFL-03, AFFL-04
 **Success Criteria** (what must be TRUE):
   1. Starter subscribers ($9/mo) can access affiliate deals only
@@ -588,9 +700,9 @@ Plans:
 
 ---
 
-### Phase 30: UX Polish & Navigation
+### Phase 36: UX Polish & Navigation
 **Goal**: Complete user experience with eligibility feedback, confirmations, notifications, and sidebar integration
-**Depends on**: Phase 27, Phase 28, Phase 29
+**Depends on**: Phase 33, Phase 34, Phase 35
 **Requirements**: UX-01, UX-02, UX-03, UX-04, UX-05, NAV-01, NAV-02, NAV-03, NAV-04
 **Success Criteria** (what must be TRUE):
   1. User sees eligibility status before applying ("You qualify" / "Requires Pro")
@@ -613,15 +725,15 @@ Plans:
 **Context:** See `.planning/DISCUSS-CONTEXT-viral-predictor-results.md`
 
 **Approach:** Research-driven design
-- Phase 35: Results Card Structure & Scoring — breakdown sections, scoring system, visual hierarchy
-- Phase 36: Results Card Implementation — build components, integrate with predictor flow
+- Phase 37: Results Card Structure & Scoring — breakdown sections, scoring system, visual hierarchy
+- Phase 38: Results Card Implementation — build components, integrate with predictor flow
 
 ---
 
-### Phase 35: Results Card Structure & Scoring
+### Phase 37: Results Card Structure & Scoring
 **Goal**: Build the viral predictor results card with animated score ring, factor breakdown, and remix CTA
 **Depends on**: Phase 15 (design tokens and primitives)
-**Requirements**: VIRAL-01 to VIRAL-06 (defined in 35-CONTEXT.md)
+**Requirements**: VIRAL-01 to VIRAL-06 (defined in 37-CONTEXT.md)
 **Success Criteria** (what must be TRUE):
   1. Animated score ring displays /100 with gradient fill (red -> yellow -> green, 1.5-2s)
   2. Factor cards show breakdown with accordion expansion and progress bars
@@ -633,18 +745,18 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 35-01-PLAN.md — Types, animated ViralScoreRing component, tier system
-- [ ] 35-02-PLAN.md — FactorCard, FactorProgressBar, FactorsList with staggered reveal
-- [ ] 35-03-PLAN.md — ViralResultsCard composition, RemixCTA, showcase page, visual verification
+- [ ] 37-01-PLAN.md — Types, animated ViralScoreRing component, tier system
+- [ ] 37-02-PLAN.md — FactorCard, FactorProgressBar, FactorsList with staggered reveal
+- [ ] 37-03-PLAN.md — ViralResultsCard composition, RemixCTA, showcase page, visual verification
 
 ---
 
-### Phase 36: Results Card Implementation
+### Phase 38: Results Card Implementation
 **Goal**: Build the results card components and integrate with viral predictor flow
-**Depends on**: Phase 35
-**Requirements**: TBD (derived from Phase 35)
+**Depends on**: Phase 37
+**Requirements**: TBD (derived from Phase 37)
 **Success Criteria** (what must be TRUE):
-  1. Results card renders breakdown per Phase 35 spec
+  1. Results card renders breakdown per Phase 37 spec
   2. Scoring displays with appropriate visual treatment
   3. Mobile-responsive layout works from 375px
   4. Reusable for Trending Page "Analyze" action
@@ -670,14 +782,20 @@ Plans:
 | 22. Node System | v1.4 | 0/TBD | Not started | - |
 | 23. Motion & Interaction | v1.4 | 0/TBD | Not started | - |
 | 24. UX & Mobile Optimization | v1.4 | 0/TBD | Not started | - |
-| 25. Database Foundation | v1.6 | 0/2 | Not started | - |
-| 26. Creator Profile | v1.6 | 0/TBD | Not started | - |
-| 27. Wallet Core | v1.6 | 0/TBD | Not started | - |
-| 28. Deal Marketplace | v1.6 | 0/TBD | Not started | - |
-| 29. Tier Gating & Affiliate | v1.6 | 0/TBD | Not started | - |
-| 30. UX Polish & Navigation | v1.6 | 0/TBD | Not started | - |
-| 35. Results Card Structure & Scoring | v1.7 | 0/3 | Ready | - |
-| 36. Results Card Implementation | v1.7 | 0/TBD | Not started | - |
+| 25. Data Foundation | v1.5 | 0/TBD | Not started | - |
+| 26. Core Feed UI | v1.5 | 0/TBD | Not started | - |
+| 27. Video Detail & Analyze | v1.5 | 0/TBD | Not started | - |
+| 28. Remix System | v1.5 | 0/TBD | Not started | - |
+| 29. Storyboard & PDF | v1.5 | 0/TBD | Not started | - |
+| 30. Polish & Navigation | v1.5 | 0/TBD | Not started | - |
+| 31. Database Foundation | v1.6 | 0/2 | Not started | - |
+| 32. Creator Profile | v1.6 | 0/TBD | Not started | - |
+| 33. Wallet Core | v1.6 | 0/TBD | Not started | - |
+| 34. Deal Marketplace | v1.6 | 0/TBD | Not started | - |
+| 35. Tier Gating & Affiliate | v1.6 | 0/TBD | Not started | - |
+| 36. UX Polish & Navigation | v1.6 | 0/TBD | Not started | - |
+| 37. Results Card Structure & Scoring | v1.7 | 0/3 | Ready | - |
+| 38. Results Card Implementation | v1.7 | 0/TBD | Not started | - |
 
 ---
 
@@ -688,4 +806,4 @@ Plans:
 
 ---
 *Roadmap created: 2026-01-28*
-*Last updated: 2026-02-02 — Created Phase 25 plans (Database Foundation)*
+*Last updated: 2026-02-02 — Added v1.5 Trending Page (Phases 25-30), renumbered v1.6 to Phases 31-36, renumbered v1.7 to Phases 37-38*

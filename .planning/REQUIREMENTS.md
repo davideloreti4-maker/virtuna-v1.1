@@ -85,46 +85,46 @@ Requirements for Trending Page milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FEED-01 | TBD | Pending |
-| FEED-02 | TBD | Pending |
-| FEED-03 | TBD | Pending |
-| FEED-04 | TBD | Pending |
-| FEED-05 | TBD | Pending |
-| FEED-06 | TBD | Pending |
-| FEED-07 | TBD | Pending |
-| ANLZ-01 | TBD | Pending |
-| ANLZ-02 | TBD | Pending |
-| ANLZ-03 | TBD | Pending |
-| ANLZ-04 | TBD | Pending |
-| REMIX-01 | TBD | Pending |
-| REMIX-02 | TBD | Pending |
-| REMIX-03 | TBD | Pending |
-| REMIX-04 | TBD | Pending |
-| REMIX-05 | TBD | Pending |
-| REMIX-06 | TBD | Pending |
-| REMIX-07 | TBD | Pending |
-| REMIX-08 | TBD | Pending |
-| INFRA-01 | TBD | Pending |
-| INFRA-02 | TBD | Pending |
-| INFRA-03 | TBD | Pending |
-| INFRA-04 | TBD | Pending |
-| INFRA-05 | TBD | Pending |
-| INFRA-06 | TBD | Pending |
-| INFRA-07 | TBD | Pending |
-| NAV-01 | TBD | Pending |
-| NAV-02 | TBD | Pending |
-| UX-01 | TBD | Pending |
-| UX-02 | TBD | Pending |
-| UX-03 | TBD | Pending |
-| UX-04 | TBD | Pending |
-| UX-05 | TBD | Pending |
-| UX-06 | TBD | Pending |
+| FEED-01 | Phase 26 | Pending |
+| FEED-02 | Phase 26 | Pending |
+| FEED-03 | Phase 26 | Pending |
+| FEED-04 | Phase 26 | Pending |
+| FEED-05 | Phase 27 | Pending |
+| FEED-06 | Phase 26 | Pending |
+| FEED-07 | Phase 27 | Pending |
+| ANLZ-01 | Phase 27 | Pending |
+| ANLZ-02 | Phase 27 | Pending |
+| ANLZ-03 | Phase 27 | Pending |
+| ANLZ-04 | Phase 27 | Pending |
+| REMIX-01 | Phase 28 | Pending |
+| REMIX-02 | Phase 28 | Pending |
+| REMIX-03 | Phase 28 | Pending |
+| REMIX-04 | Phase 28 | Pending |
+| REMIX-05 | Phase 29 | Pending |
+| REMIX-06 | Phase 29 | Pending |
+| REMIX-07 | Phase 29 | Pending |
+| REMIX-08 | Phase 28 | Pending |
+| INFRA-01 | Phase 25 | Pending |
+| INFRA-02 | Phase 25 | Pending |
+| INFRA-03 | Phase 25 | Pending |
+| INFRA-04 | Phase 25 | Pending |
+| INFRA-05 | Phase 25 | Pending |
+| INFRA-06 | Phase 25 | Pending |
+| INFRA-07 | Phase 25 | Pending |
+| NAV-01 | Phase 30 | Pending |
+| NAV-02 | Phase 30 | Pending |
+| UX-01 | Phase 30 | Pending |
+| UX-02 | Phase 30 | Pending |
+| UX-03 | Phase 27 | Pending |
+| UX-04 | Phase 28 | Pending |
+| UX-05 | Phase 29 | Pending |
+| UX-06 | Phase 30 | Pending |
 
 **Coverage:**
 - v1.5 requirements: 33 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 33 ⚠️
+- Mapped to phases: 33/33
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-02*
-*Last updated: 2026-02-02 after initial definition*
+*Last updated: 2026-02-02 — Traceability filled in after roadmap creation*
