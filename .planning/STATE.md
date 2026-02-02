@@ -1,27 +1,29 @@
-# Project State — Virtuna v1.6
+# Project State — Virtuna
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-02-02)
 
 **Core value:** Real-time viral video discovery with full storyboard remix capabilities
-**Current focus:** v1.6 Brand Deals & Affiliate Hub
 
 ## Current Position
 
-Phase: 25 of 30 (database-foundation)
-Plan: 2 of 2 complete
-Status: Phase complete
-Last activity: 2026-02-02 — Completed 25-02-PLAN.md
+**Active Milestones:** v1.3.2, v1.4, v1.5, v1.6, v1.7 (parallel development)
 
-Progress: ██████░░░░ 65% (Phase 25 complete)
+| Milestone | Phases | Status | Current Phase |
+|-----------|--------|--------|---------------|
+| v1.3.2 Landing Redesign | 15-19 | In Progress | 16 (Hero Section) |
+| v1.4 Node Visualization | 20-24 | In Progress | 20 (Spline approach) |
+| v1.5 Trending Page | 25-30 | Not Started | — |
+| v1.6 Brand Deals | 31-36 | In Progress | 31 complete, 32 next |
+| v1.7 Viral Predictor | 37-38 | Planned | 37 ready |
 
-**Next action:** Begin Phase 26 (Creator Profile)
+**Current focus:** v1.5 Trending Page (user request)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8 (v1.6)
+- Total plans completed: 8
 - Average duration: 3.2min
 - Total execution time: 27min
 
@@ -30,8 +32,8 @@ Progress: ██████░░░░ 65% (Phase 25 complete)
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 15 | 3/3 | 11min | 3.7min |
-| 20 | 3/3 | 10min | 3.3min |
-| 25 | 2/2 | 6min | 3.0min |
+| 20 | 2/2 | 10min | 5.0min |
+| 31 | 2/2 | 6min | 3.0min |
 
 *Updated after each plan completion*
 
@@ -45,12 +47,12 @@ Progress: ██████░░░░ 65% (Phase 25 complete)
 | Display-only wallet | v1.6 | Never hold funds (money transmission compliance) |
 | 6 phases for v1.6 | v1.6 | 42 requirements across 8 categories |
 | Starter $9 / Pro $29 | v1.6 | Two-tier access system |
-| INTEGER cents for money | 25-01 | Avoids floating point precision issues |
-| TEXT+CHECK over ENUM | 25-01 | More flexible for migrations |
-| (SELECT auth.uid()) RLS | 25-01 | 94% performance improvement |
-| Immutable wallet ledger | 25-01 | Trigger prevents UPDATE/DELETE |
-| Supabase CLI for type gen | 25-02 | Types always match deployed schema |
-| Type-only imports | 25-02 | No runtime bundle impact |
+| INTEGER cents for money | 31-01 | Avoids floating point precision issues |
+| TEXT+CHECK over ENUM | 31-01 | More flexible for migrations |
+| (SELECT auth.uid()) RLS | 31-01 | 94% performance improvement |
+| Immutable wallet ledger | 31-01 | Trigger prevents UPDATE/DELETE |
+| Supabase CLI for type gen | 31-02 | Types always match deployed schema |
+| Type-only imports | 31-02 | No runtime bundle impact |
 
 ### Pending Todos
 
@@ -60,21 +62,34 @@ None yet.
 
 None identified.
 
+## v1.5 Trending Page (Current Focus)
+
+**Phases:** 25-30
+**Goal:** Real-time viral video discovery feed with analysis and full storyboard remix capabilities
+
+Phase structure:
+- Phase 25: Data Foundation (types, stores, Supabase schema, Apify setup)
+- Phase 26: Core Feed UI (VideoCard, TrendingDashboard, categories)
+- Phase 27: Video Detail & Analyze (modal, analyze integration)
+- Phase 28: Remix System (form, AI generation, storyboard output)
+- Phase 29: Storyboard & PDF (visual frames, teleprompter, export)
+- Phase 30: Polish & Navigation (UX states, sidebar, optimizations)
+
 ## v1.6 Brand Deals & Affiliate Hub
 
-**Planned Phases:** 25-30
+**Phases:** 31-36
 **Requirements:** 42 total (WALT, MRKT, TIER, AFFL, DEAL, UX, PROF, NAV)
 **Goal:** Creator monetization hub with Revolut-style wallet and tier-gated brand deals
 
 Phase structure:
-- Phase 25: Database Foundation (schema for deals, wallet, profiles)
-  - [x] 25-01: Supabase schema migration (6 tables, RLS, indexes)
-  - [x] 25-02: TypeScript types and Supabase client
-- Phase 26: Creator Profile (social handles, metrics, eligibility)
-- Phase 27: Wallet Core (Revolut-style display, transactions)
-- Phase 28: Deal Marketplace (browse, filter, apply, status)
-- Phase 29: Tier Gating & Affiliate (subscription access, Virtuna program)
-- Phase 30: UX Polish & Navigation (eligibility, confirmations, sidebar)
+- Phase 31: Database Foundation (schema for deals, wallet, profiles) ✓
+  - [x] 31-01: Supabase schema migration (6 tables, RLS, indexes)
+  - [x] 31-02: TypeScript types and Supabase client
+- Phase 32: Creator Profile (social handles, metrics, eligibility)
+- Phase 33: Wallet Core (Revolut-style display, transactions)
+- Phase 34: Deal Marketplace (browse, filter, apply, status)
+- Phase 35: Tier Gating & Affiliate (subscription access, Virtuna program)
+- Phase 36: UX Polish & Navigation (eligibility, confirmations, sidebar)
 
 ## Completed (v1.3.2 + v1.4)
 
@@ -92,6 +107,6 @@ Phase structure:
 
 ## Session Continuity
 
-Last session: 2026-02-02T11:20:49Z
-Stopped at: Completed 25-02-PLAN.md
+Last session: 2026-02-02T12:30:00Z
+Stopped at: Fixed phase numbering, starting v1.5 discussion
 Resume file: None
