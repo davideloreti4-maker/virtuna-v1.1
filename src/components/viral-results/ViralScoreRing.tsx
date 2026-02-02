@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useMemo } from "react";
+import { motion, useSpring, useTransform } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { type ViralTier, VIRAL_TIERS, getTierFromScore } from "@/types/viral-results";
 
@@ -15,120 +16,36 @@ export interface ViralScoreRingProps {
 // Size configuration
 const SIZE_CONFIG = {
   sm: {
-    diameter: 120,
-    strokeWidth: 8,
+    diameter: 140,
+    strokeWidth: 10,
     scoreClass: "text-3xl",
     suffixClass: "text-sm",
     tierClass: "text-xs",
+    glowSize: 180,
   },
   md: {
-    diameter: 180,
-    strokeWidth: 10,
+    diameter: 200,
+    strokeWidth: 12,
     scoreClass: "text-5xl",
     suffixClass: "text-lg",
     tierClass: "text-sm",
+    glowSize: 260,
   },
   lg: {
-    diameter: 240,
-    strokeWidth: 12,
+    diameter: 260,
+    strokeWidth: 14,
     scoreClass: "text-7xl",
     suffixClass: "text-xl",
     tierClass: "text-base",
+    glowSize: 340,
   },
 } as const;
 
-// Animation duration in ms
-const ANIMATION_DURATION = 1500;
-
-// Get gradient colors based on score range
-function getGradientColors(score: number): { start: string; end: string } {
-  if (score >= 70) {
-    // Green range
-    return { start: "#22c55e", end: "#34d399" };
-  } else if (score >= 40) {
-    // Yellow/orange range
-    return { start: "#eab308", end: "#facc15" };
-  } else {
-    // Red range
-    return { start: "#dc2626", end: "#f87171" };
-  }
-}
-
-// Custom hook for reduced motion preference
-function useReducedMotion(): boolean {
-  const [reducedMotion, setReducedMotion] = useState(false);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReducedMotion(mediaQuery.matches);
-
-    const handler = (event: MediaQueryListEvent) => {
-      setReducedMotion(event.matches);
-    };
-
-    mediaQuery.addEventListener("change", handler);
-    return () => mediaQuery.removeEventListener("change", handler);
-  }, []);
-
-  return reducedMotion;
-}
-
-// Custom hook for count-up animation
-function useCountUp(
-  target: number,
-  duration: number,
-  enabled: boolean
-): number {
-  const [count, setCount] = useState(enabled ? 0 : target);
-  const startTimeRef = useRef<number | null>(null);
-  const rafRef = useRef<number | null>(null);
-
-  const animate = useCallback(
-    (timestamp: number) => {
-      if (startTimeRef.current === null) {
-        startTimeRef.current = timestamp;
-      }
-
-      const elapsed = timestamp - startTimeRef.current;
-      const progress = Math.min(elapsed / duration, 1);
-
-      // Ease-out cubic: 1 - (1 - t)^3
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const currentValue = Math.round(eased * target);
-
-      setCount(currentValue);
-
-      if (progress < 1) {
-        rafRef.current = requestAnimationFrame(animate);
-      }
-    },
-    [target, duration]
-  );
-
-  useEffect(() => {
-    if (!enabled) {
-      setCount(target);
-      return;
-    }
-
-    // Reset for new animation
-    setCount(0);
-    startTimeRef.current = null;
-
-    // Start animation after a small delay to ensure mount
-    const timeoutId = setTimeout(() => {
-      rafRef.current = requestAnimationFrame(animate);
-    }, 50);
-
-    return () => {
-      clearTimeout(timeoutId);
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
-      }
-    };
-  }, [target, enabled, animate]);
-
-  return count;
+// Get glow color based on score
+function getGlowColor(score: number): string {
+  if (score >= 70) return "rgba(34, 197, 94, 0.35)"; // green
+  if (score >= 40) return "rgba(234, 179, 8, 0.35)"; // yellow/orange
+  return "rgba(239, 68, 68, 0.35)"; // red
 }
 
 export function ViralScoreRing({
@@ -138,79 +55,100 @@ export function ViralScoreRing({
   animated = true,
   className,
 }: ViralScoreRingProps): React.ReactElement {
-  const reducedMotion = useReducedMotion();
-  const shouldAnimate = animated && !reducedMotion;
-
   // Derive tier from score if not provided
   const resolvedTier = tier ?? getTierFromScore(score);
   const tierConfig = VIRAL_TIERS[resolvedTier];
   const config = SIZE_CONFIG[size];
 
-  // Count-up animation for score number
-  const displayScore = useCountUp(score, ANIMATION_DURATION, shouldAnimate);
+  // Check for reduced motion preference
+  const prefersReducedMotion = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }, []);
 
-  // Ring animation state
-  const [ringProgress, setRingProgress] = useState(shouldAnimate ? 0 : score);
-  const [showTier, setShowTier] = useState(!shouldAnimate);
+  const shouldAnimate = animated && !prefersReducedMotion;
+
+  // Spring-animated score for count-up effect
+  const animatedScore = useSpring(shouldAnimate ? 0 : score, {
+    stiffness: 80,
+    damping: 25,
+  });
+  const displayScore = useTransform(animatedScore, (latest) =>
+    Math.round(latest)
+  );
+
+  // Spring-animated ring progress
+  const animatedProgress = useSpring(shouldAnimate ? 0 : score, {
+    stiffness: 60,
+    damping: 20,
+  });
 
   // Calculate ring geometry
   const radius = (config.diameter - config.strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (ringProgress / 100) * circumference;
+  const strokeDashoffset = useTransform(
+    animatedProgress,
+    [0, 100],
+    [circumference, 0]
+  );
 
-  // Gradient colors based on score
-  const gradientColors = getGradientColors(score);
+  // Glow color based on score
+  const glowColor = getGlowColor(score);
 
-  // Unique ID for gradient (needed for multiple instances)
-  const gradientId = `ring-gradient-${score}-${size}`;
+  // Unique gradient ID
+  const gradientId = `ring-gradient-${score}-${size}-${Math.random().toString(36).slice(2)}`;
 
-  // Animate ring progress
+  // Start animation on mount
   useEffect(() => {
-    if (!shouldAnimate) {
-      setRingProgress(score);
-      setShowTier(true);
-      return;
+    if (shouldAnimate) {
+      animatedScore.set(score);
+      animatedProgress.set(score);
     }
-
-    // Reset animation
-    setRingProgress(0);
-    setShowTier(false);
-
-    // Animate using CSS transition (handled in SVG)
-    const timeoutId = setTimeout(() => {
-      setRingProgress(score);
-    }, 50);
-
-    // Show tier label after animation completes
-    const tierTimeoutId = setTimeout(() => {
-      setShowTier(true);
-    }, ANIMATION_DURATION);
-
-    return () => {
-      clearTimeout(timeoutId);
-      clearTimeout(tierTimeoutId);
-    };
-  }, [score, shouldAnimate]);
+  }, [score, shouldAnimate, animatedScore, animatedProgress]);
 
   return (
-    <div className={cn("flex flex-col items-center gap-3", className)}>
-      {/* SVG Ring */}
+    <div className={cn("flex flex-col items-center gap-4", className)}>
+      {/* Ring container with ambient glow */}
       <div
-        className="relative"
-        style={{ width: config.diameter, height: config.diameter }}
+        className="relative flex items-center justify-center"
+        style={{ width: config.glowSize, height: config.glowSize }}
       >
+        {/* Ambient glow effect behind ring */}
+        <motion.div
+          className="absolute inset-0 rounded-full"
+          style={{
+            background: `radial-gradient(circle, ${glowColor} 0%, transparent 60%)`,
+          }}
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1.2, ease: "easeOut" }}
+        />
+
+        {/* SVG Ring */}
         <svg
           width={config.diameter}
           height={config.diameter}
           viewBox={`0 0 ${config.diameter} ${config.diameter}`}
-          className="transform -rotate-90"
+          className="relative z-10 transform -rotate-90"
         >
-          {/* Gradient definition */}
+          {/* Gradient definitions */}
           <defs>
             <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor={gradientColors.start} />
-              <stop offset="100%" stopColor={gradientColors.end} />
+              <stop offset="0%" stopColor={tierConfig.ringColor} />
+              <stop
+                offset="100%"
+                stopColor={tierConfig.ringColor}
+                stopOpacity="0.7"
+              />
             </linearGradient>
+            {/* Glow filter for ring stroke */}
+            <filter id={`glow-${gradientId}`} x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="4" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
           </defs>
 
           {/* Background track ring */}
@@ -224,8 +162,8 @@ export function ViralScoreRing({
             className="text-white/10"
           />
 
-          {/* Foreground progress ring */}
-          <circle
+          {/* Foreground progress ring with glow */}
+          <motion.circle
             cx={config.diameter / 2}
             cy={config.diameter / 2}
             r={radius}
@@ -234,28 +172,24 @@ export function ViralScoreRing({
             strokeWidth={config.strokeWidth}
             strokeLinecap="round"
             strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            style={{
-              transition: shouldAnimate
-                ? `stroke-dashoffset ${ANIMATION_DURATION}ms cubic-bezier(0.215, 0.61, 0.355, 1)`
-                : "none",
-            }}
+            style={{ strokeDashoffset }}
+            filter={`url(#glow-${gradientId})`}
           />
         </svg>
 
         {/* Centered score number */}
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center z-20">
           <div className="flex items-baseline">
-            <span
+            <motion.span
               className={cn(
-                "font-bold text-text-primary tabular-nums",
+                "font-bold text-white tabular-nums",
                 config.scoreClass
               )}
             >
               {displayScore}
-            </span>
+            </motion.span>
             <span
-              className={cn("text-text-secondary ml-0.5", config.suffixClass)}
+              className={cn("text-white/50 ml-0.5", config.suffixClass)}
             >
               /100
             </span>
@@ -263,17 +197,15 @@ export function ViralScoreRing({
         </div>
       </div>
 
-      {/* Tier label */}
-      <div
-        className={cn(
-          "font-medium transition-opacity duration-300",
-          config.tierClass,
-          tierConfig.color,
-          showTier ? "opacity-100" : "opacity-0"
-        )}
+      {/* Tier label with fade-in */}
+      <motion.div
+        className={cn("font-semibold", config.tierClass, tierConfig.color)}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: shouldAnimate ? 1 : 0, duration: 0.5 }}
       >
         {resolvedTier}
-      </div>
+      </motion.div>
     </div>
   );
 }

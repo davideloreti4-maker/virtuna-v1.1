@@ -41,18 +41,16 @@ export function RemixCTA({
       className={cn(
         // Sticky positioning
         "sticky bottom-0 z-10",
-        // Glass background with blur
+        // Glass background with enhanced blur
         "border-t border-white/10",
-        "bg-surface/80 backdrop-blur-md",
-        "-webkit-backdrop-filter: blur(12px)",
+        "bg-black/40 backdrop-blur-2xl",
         // Padding for touch targets
-        "p-4",
+        "p-5",
         className
       )}
       style={{
-        // Explicit backdrop filter for Safari
-        WebkitBackdropFilter: "blur(12px)",
-        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(24px)",
+        backdropFilter: "blur(24px)",
       }}
     >
       <div className="flex flex-col gap-3 max-w-md mx-auto">
@@ -63,17 +61,17 @@ export function RemixCTA({
             : "Select factors to carry into remix"}
         </p>
 
-        {/* Primary CTA button */}
+        {/* Primary CTA button with glow */}
         <button
           onClick={onRemix}
           disabled={disabled}
           className={cn(
             // Layout
-            "w-full py-3.5 px-6 rounded-xl",
-            // Gradient background matching hero CTA
-            "bg-gradient-to-r from-orange-500 to-pink-500",
+            "w-full py-4 px-6 rounded-2xl",
+            // Gradient background
+            "bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500",
             // Text styling
-            "text-white font-semibold text-base",
+            "text-white font-bold text-base",
             // Interactive states
             "hover:brightness-110 hover:scale-[1.02]",
             "active:scale-[0.98]",
@@ -81,9 +79,14 @@ export function RemixCTA({
             // Disabled state
             "disabled:opacity-50 disabled:cursor-not-allowed",
             "disabled:hover:brightness-100 disabled:hover:scale-100",
-            // Focus state for accessibility
-            "focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:ring-offset-2 focus:ring-offset-surface"
+            // Focus state
+            "focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:ring-offset-2 focus:ring-offset-black"
           )}
+          style={{
+            boxShadow: disabled
+              ? "none"
+              : "0 8px 32px -8px rgba(249, 115, 22, 0.5), 0 4px 16px -4px rgba(236, 72, 153, 0.3)",
+          }}
         >
           <span className="inline-flex items-center gap-2 justify-center">
             <Sparkles className="h-5 w-5" />
