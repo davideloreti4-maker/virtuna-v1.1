@@ -99,7 +99,51 @@ A pixel-perfect, AI-verified clone of societies.io (landing + app) serving as th
 
 ---
 
-## Current Milestone: v1.5 — Trending Page
+## Current Milestone: v1.6 — Brand Deals & Affiliate Hub
+
+**Goal:** Creator monetization hub with aggregated brand deals, tiered partnership system, and Revolut-style earnings wallet.
+
+**Core Concept:**
+- Three-tier brand deal system (Premium/Pro/Starter)
+- Aggregated deals from external platforms + Virtuna's own affiliate program
+- Platform level system that unlocks better tiers based on creator performance
+- Wallet view tracking earnings across all programs
+
+**Deal Tiers:**
+| Tier | Model | Access |
+|------|-------|--------|
+| **Premium** | Fixed pay + product | Creator metrics-gated (established creators) |
+| **Pro** | Rev-share marketplace | Brands offer deals, creators accept |
+| **Starter** | Instant affiliate | Anyone can start (Virtuna affiliate featured) |
+
+**Key Features:**
+- **Wallet** — Revolut-style earnings view, balance, transaction history
+- **Deal Marketplace** — Browse all deals, see locked/unlocked status, apply
+- **Platform Levels** — XP/progression system tied to creator performance
+- **Virtuna Affiliate** — Featured at top with highest commission tier
+- **Aggregation** — Deals scraped/imported from external affiliate networks
+
+**Technical Requirements:**
+- Deal aggregation from external sources (research needed)
+- Wallet/earnings tracking system
+- Platform level progression logic
+- Payout integration (method TBD)
+
+**Success Criteria:**
+- Creators see clear path to higher-tier deals
+- Wallet feels premium (Revolut-quality)
+- Deal volume high enough to provide real value
+- Virtuna affiliate prominently featured
+
+**Research Focus:**
+- Which platforms have scrapeable/API-accessible open deals?
+- Legal considerations of aggregating third-party deals
+- Conversion tracking as middleman
+- Deal metadata requirements
+
+---
+
+## Planned: v1.5 — Trending Page
 
 **Goal:** Real-time viral video discovery feed with analysis and remix capabilities, powered by Apify TikTok scraper.
 

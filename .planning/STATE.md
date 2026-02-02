@@ -1,22 +1,22 @@
-# Project State — Virtuna v1.5
+# Project State — Virtuna v1.6
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-02-02)
 
-**Core value:** Real-time viral video discovery with analysis and remix capabilities
-**Current focus:** Defining v1.5 requirements
+**Core value:** Creator monetization hub with aggregated brand deals and Revolut-style wallet
+**Current focus:** Defining v1.6 requirements
 
 ## Current Position
 
 Phase: Not started (defining requirements)
 Plan: —
 Status: Defining requirements
-Last activity: 2026-02-02 — Milestone v1.5 started
+Last activity: 2026-02-02 — Milestone v1.6 started
 
 Progress: ░░░░░░░░░░ 0%
 
-**Next action:** Complete requirements → create roadmap
+**Next action:** Complete research → define requirements → create roadmap
 
 ## Performance Metrics
 
