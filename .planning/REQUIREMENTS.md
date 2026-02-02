@@ -1,115 +1,153 @@
-# Requirements — Virtuna v1.3.2
+# Requirements — Virtuna v1.6
 
-**Defined:** 2026-01-31
-**Core Value:** Premium Raycast-inspired landing page with iOS 26 aesthetic
+**Defined:** 2026-02-02
+**Core Value:** Creator monetization hub with Revolut-style wallet and tier-gated brand deals
 
-## v1.3.2 Requirements
+## v1.6 Requirements
 
-### Foundation (FOUND)
+### Wallet (WALT)
 
-- [x] **FOUND-01**: Dark theme color system with proper design tokens
-- [x] **FOUND-02**: GlassPanel component with configurable blur and opacity
-- [x] **FOUND-03**: GradientGlow component for lighting effects
-- [x] **FOUND-04**: TrafficLights component (macOS window buttons)
-- [x] **FOUND-05**: iOS 26 depth system (shadows, layers, elevation tokens)
-- [x] **FOUND-06**: Gradient palette with distinct color identities per feature
+- [ ] **WALT-01**: User can view current balance (large, prominent display)
+- [ ] **WALT-02**: User can view transaction history (sortable, filterable list)
+- [ ] **WALT-03**: User can distinguish pending vs available balance
+- [ ] **WALT-04**: User can withdraw earnings to bank account
+- [ ] **WALT-05**: User can view earnings breakdown by source/deal
+- [ ] **WALT-06**: User can see payment status indicators (paid, pending, processing, failed)
+- [ ] **WALT-07**: User can see earnings velocity ("You earned $X this week")
 
-### Hero Section (HERO)
+### Marketplace (MRKT)
 
-- [ ] **HERO-01**: Dramatic gradient background with animated lighting
-- [ ] **HERO-02**: macOS window mockup with traffic lights and glass panels
-- [ ] **HERO-03**: Bold headline typography matching Raycast style
-- [ ] **HERO-04**: CTA buttons with premium hover effects
-- [ ] **HERO-05**: Static app preview screenshot inside mockup
+- [ ] **MRKT-01**: User can browse deals with filters (category, tier, compensation type)
+- [ ] **MRKT-02**: User can view deal details (brand, compensation, requirements, deliverables)
+- [ ] **MRKT-03**: User can apply to deals via application form
+- [ ] **MRKT-04**: User can track deal status (applied, accepted, rejected, active, completed)
+- [ ] **MRKT-05**: User can see compensation clearly (fixed amount, rev-share %, or hybrid)
+- [ ] **MRKT-06**: User can see deal requirements (follower count, engagement, content type)
+- [ ] **MRKT-07**: User can see brand information (logo, name, category)
+- [ ] **MRKT-08**: User can see deliverables (content count, format, timeline)
+- [ ] **MRKT-09**: User can see locked/unlocked status based on subscription tier
+- [ ] **MRKT-10**: User can save/bookmark deals for later
 
-### Feature Cards (CARD)
+### Tier Gating (TIER)
 
-- [ ] **CARD-01**: GradientCard component with distinct color identity
-- [ ] **CARD-02**: Icon + title + description layout matching Raycast
-- [ ] **CARD-03**: Hover state with scale (1.02-1.05x) and glow effect
-- [ ] **CARD-04**: Staggered scroll-triggered entrance animations
+- [ ] **TIER-01**: Starter subscribers ($9/mo) can access affiliate deals only
+- [ ] **TIER-02**: Pro subscribers ($29/mo) can access rev-share marketplace deals
+- [ ] **TIER-03**: Locked deals show "Upgrade to Pro" CTA with clear value proposition
 
-### Navigation (NAV)
+### Affiliate System (AFFL)
 
-- [ ] **NAV-01**: Sticky header with glassmorphism effect
-- [ ] **NAV-02**: Logo + navigation links layout
-- [ ] **NAV-03**: CTA button in header with hover state
-- [ ] **NAV-04**: Mobile responsive navigation
+- [ ] **AFFL-01**: Virtuna affiliate program displayed prominently (highest commission tier)
+- [ ] **AFFL-02**: User can generate affiliate links for available programs
+- [ ] **AFFL-03**: System tracks clicks and conversions for affiliate links
+- [ ] **AFFL-04**: User can see affiliate performance metrics (clicks, conversions, earnings)
 
-### Animations (ANIM)
+### Deal Management (DEAL)
 
-- [ ] **ANIM-01**: Scroll-triggered fade/slide animations for sections
-- [ ] **ANIM-02**: Button hover effects with spring physics
-- [ ] **ANIM-03**: 60fps performance on desktop and mobile
-- [ ] **ANIM-04**: `prefers-reduced-motion` support throughout
-- [ ] **ANIM-05**: Stagger utilities for grouped element animations
+- [ ] **DEAL-01**: Admin can manually add/edit/remove deals
+- [ ] **DEAL-02**: Deals have structured data (compensation, requirements, brand, deliverables, tier)
+- [ ] **DEAL-03**: Deals can be marked as active/paused/expired
 
-### Quality & Polish (QA)
+### User Experience (UX)
 
-- [ ] **QA-01**: Cross-browser testing (Chrome, Safari, Firefox)
-- [ ] **QA-02**: Safari `-webkit-backdrop-filter` prefix handling
-- [ ] **QA-03**: Mobile performance optimization (reduced blur on mobile)
-- [ ] **QA-04**: Accessibility: text contrast on glass backgrounds
-- [ ] **QA-05**: Mobile responsive design (375px - 1440px)
+- [ ] **UX-01**: User can see eligibility status before applying ("You qualify" / "Requires Pro")
+- [ ] **UX-02**: User sees confirmation after submitting application
+- [ ] **UX-03**: User can view "My Deals" — all applications and active deals in one place
+- [ ] **UX-04**: User can mark deal deliverables as complete
+- [ ] **UX-05**: User receives notifications (application accepted, payment received, deal status)
 
-## v1.3.3 Requirements (Deferred)
+### Creator Profile (PROF)
 
-Features split from v1.3.2 for cleaner scope:
+- [ ] **PROF-01**: User can set up creator profile (social handles, follower counts, niches)
+- [ ] **PROF-02**: User can connect social accounts for metric verification
+- [ ] **PROF-03**: Creator metrics used for eligibility matching
 
-- **HERO-06**: Animated product demo inside mockup (live app preview)
-- **HERO-07**: Floating UI elements with depth and parallax
-- **CARD-05**: Interactive demo elements within cards
+### Navigation & Integration (NAV)
+
+- [ ] **NAV-01**: Brand Deals accessible from app sidebar
+- [ ] **NAV-02**: Wallet accessible from app sidebar or header
+- [ ] **NAV-03**: Subscription tier displayed in relevant contexts
+- [ ] **NAV-04**: My Deals accessible from sidebar or deals page
+
+## v1.7+ Requirements (Deferred)
+
+### Premium Tier
+- **PREM-01**: Premium subscribers ($89/mo) can access fixed-pay deals
+- **PREM-02**: Premium deals include product compensation
+
+### Deal Aggregation
+- **AGGR-01**: Strackr API integration for 271+ affiliate networks
+- **AGGR-02**: Automated deal sync and updates
+- **AGGR-03**: External network conversion tracking
+
+### Advanced Features
+- **ADV-01**: Match score ("92% fit for your audience")
+- **ADV-02**: Projected earnings based on pipeline
+- **ADV-03**: Tax preparation export (CSV/PDF)
+- **ADV-04**: Earnings goals/milestones
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Additional marketing pages | Homepage focus only for v1.3.2 |
-| App dashboard redesign | Separate milestone if desired |
-| Real product data | Mock data sufficient for design |
-| Full iOS 26 Liquid Glass | Web approximation, not native fidelity |
-| Complex node network animation | Deferred from v1.1, not in scope |
+| Premium tier (fixed-pay deals) | Deferred to v1.7, focus on Starter + Pro first |
+| Strackr/external aggregation | Defer until manual curation validates concept |
+| Match scoring | Complex, requires audience analysis |
+| Multi-currency payouts | Regulatory complexity, start with USD |
+| Instant withdrawals | Premium payment rails, cash flow risk |
+| Social leaderboards | Privacy concerns, unhealthy competition |
+| Real-time chat with brands | Support burden, scope creep |
+| Commission from creators | Aspire differentiates by NOT doing this |
+| Full influencer CRM | Enterprise feature, not creator-focused |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUND-01 | Phase 15 | Complete |
-| FOUND-02 | Phase 15 | Complete |
-| FOUND-03 | Phase 15 | Complete |
-| FOUND-04 | Phase 15 | Complete |
-| FOUND-05 | Phase 15 | Complete |
-| FOUND-06 | Phase 15 | Complete |
-| HERO-01 | Phase 16 | Pending |
-| HERO-02 | Phase 16 | Pending |
-| HERO-03 | Phase 16 | Pending |
-| HERO-04 | Phase 16 | Pending |
-| HERO-05 | Phase 16 | Pending |
-| CARD-01 | Phase 17 | Pending |
-| CARD-02 | Phase 17 | Pending |
-| CARD-03 | Phase 17 | Pending |
-| CARD-04 | Phase 17 | Pending |
-| NAV-01 | Phase 18 | Pending |
-| NAV-02 | Phase 18 | Pending |
-| NAV-03 | Phase 18 | Pending |
-| NAV-04 | Phase 18 | Pending |
-| ANIM-01 | Phase 18 | Pending |
-| ANIM-02 | Phase 18 | Pending |
-| ANIM-03 | Phase 18 | Pending |
-| ANIM-04 | Phase 18 | Pending |
-| ANIM-05 | Phase 18 | Pending |
-| QA-01 | Phase 19 | Pending |
-| QA-02 | Phase 19 | Pending |
-| QA-03 | Phase 19 | Pending |
-| QA-04 | Phase 19 | Pending |
-| QA-05 | Phase 19 | Pending |
+| WALT-01 | TBD | Pending |
+| WALT-02 | TBD | Pending |
+| WALT-03 | TBD | Pending |
+| WALT-04 | TBD | Pending |
+| WALT-05 | TBD | Pending |
+| WALT-06 | TBD | Pending |
+| WALT-07 | TBD | Pending |
+| MRKT-01 | TBD | Pending |
+| MRKT-02 | TBD | Pending |
+| MRKT-03 | TBD | Pending |
+| MRKT-04 | TBD | Pending |
+| MRKT-05 | TBD | Pending |
+| MRKT-06 | TBD | Pending |
+| MRKT-07 | TBD | Pending |
+| MRKT-08 | TBD | Pending |
+| MRKT-09 | TBD | Pending |
+| MRKT-10 | TBD | Pending |
+| TIER-01 | TBD | Pending |
+| TIER-02 | TBD | Pending |
+| TIER-03 | TBD | Pending |
+| AFFL-01 | TBD | Pending |
+| AFFL-02 | TBD | Pending |
+| AFFL-03 | TBD | Pending |
+| AFFL-04 | TBD | Pending |
+| DEAL-01 | TBD | Pending |
+| DEAL-02 | TBD | Pending |
+| DEAL-03 | TBD | Pending |
+| NAV-01 | TBD | Pending |
+| NAV-02 | TBD | Pending |
+| NAV-03 | TBD | Pending |
+| NAV-04 | TBD | Pending |
+| UX-01 | TBD | Pending |
+| UX-02 | TBD | Pending |
+| UX-03 | TBD | Pending |
+| UX-04 | TBD | Pending |
+| UX-05 | TBD | Pending |
+| PROF-01 | TBD | Pending |
+| PROF-02 | TBD | Pending |
+| PROF-03 | TBD | Pending |
 
 **Coverage:**
-- v1.3.2 requirements: 29 total
-- Mapped to phases: 29
-- Unmapped: 0 ✓
-- Deferred to v1.3.3: 3
+- v1.6 requirements: 42 total
+- Mapped to phases: 0 (pending roadmap)
+- Unmapped: 42
 
 ---
-*Requirements defined: 2026-01-31*
-*Last updated: 2026-01-31 — Scope refined, 3 features deferred to v1.3.3*
+*Requirements defined: 2026-02-02*
+*Last updated: 2026-02-02 — Initial definition*
