@@ -1,29 +1,29 @@
-# Project State — Virtuna v1.5
+# Project State — Virtuna v1.6
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-02-02)
 
 **Core value:** Real-time viral video discovery with full storyboard remix capabilities
-**Current focus:** v1.5 Trending Page (defining requirements)
+**Current focus:** v1.6 Brand Deals & Affiliate Hub
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-02-02 — Milestone v1.5 started
+Phase: 25 of 30 (database-foundation)
+Plan: 1 of 2 complete
+Status: In progress
+Last activity: 2026-02-02 — Completed 25-01-PLAN.md
 
-Progress: ██████░░░░ 60% (Phase 20)
+Progress: ██████░░░░ 62% (Phase 25, Plan 01)
 
-**Next action:** Continue Phase 20 (Spline integration) or proceed to Phase 21
+**Next action:** Execute 25-02-PLAN.md (TypeScript types and Supabase client)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6 (v1.3.2)
-- Average duration: 3.5min
-- Total execution time: 21min
+- Total plans completed: 7 (v1.6)
+- Average duration: 3.4min
+- Total execution time: 25min
 
 **By Phase:**
 
@@ -31,6 +31,7 @@ Progress: ██████░░░░ 60% (Phase 20)
 |-------|-------|-------|----------|
 | 15 | 3/3 | 11min | 3.7min |
 | 20 | 3/3 | 10min | 3.3min |
+| 25 | 1/2 | 4min | 4.0min |
 
 *Updated after each plan completion*
 
@@ -44,6 +45,10 @@ Progress: ██████░░░░ 60% (Phase 20)
 | Display-only wallet | v1.6 | Never hold funds (money transmission compliance) |
 | 6 phases for v1.6 | v1.6 | 42 requirements across 8 categories |
 | Starter $9 / Pro $29 | v1.6 | Two-tier access system |
+| INTEGER cents for money | 25-01 | Avoids floating point precision issues |
+| TEXT+CHECK over ENUM | 25-01 | More flexible for migrations |
+| (SELECT auth.uid()) RLS | 25-01 | 94% performance improvement |
+| Immutable wallet ledger | 25-01 | Trigger prevents UPDATE/DELETE |
 
 ### Pending Todos
 
@@ -53,7 +58,7 @@ None yet.
 
 None identified.
 
-## Upcoming: v1.6 Brand Deals & Affiliate Hub
+## v1.6 Brand Deals & Affiliate Hub
 
 **Planned Phases:** 25-30
 **Requirements:** 42 total (WALT, MRKT, TIER, AFFL, DEAL, UX, PROF, NAV)
@@ -61,24 +66,21 @@ None identified.
 
 Phase structure:
 - Phase 25: Database Foundation (schema for deals, wallet, profiles)
+  - [x] 25-01: Supabase schema migration (6 tables, RLS, indexes)
+  - [ ] 25-02: TypeScript types and Supabase client
 - Phase 26: Creator Profile (social handles, metrics, eligibility)
 - Phase 27: Wallet Core (Revolut-style display, transactions)
 - Phase 28: Deal Marketplace (browse, filter, apply, status)
 - Phase 29: Tier Gating & Affiliate (subscription access, Virtuna program)
 - Phase 30: UX Polish & Navigation (eligibility, confirmations, sidebar)
 
-## In Progress (v1.4 / Phase 20 - Spline Approach)
-
-- [x] 20-01: R3F Canvas Infrastructure
-- [x] 20-02: Spline Integration Setup
-- [ ] 20-03: User creates glass orb scene in Spline app
-- [ ] 20-04: Integrate Spline scene, reduced motion fallback
-
-## Completed (v1.3.2)
+## Completed (v1.3.2 + v1.4)
 
 - [x] 15-01: Design System Tokens
 - [x] 15-02: GlassPanel & GradientGlow
 - [x] 15-03: TrafficLights & Showcase
+- [x] 20-01: R3F Canvas Infrastructure
+- [x] 20-02: Spline Integration Setup
 
 ## Infrastructure URLs
 
@@ -88,6 +90,6 @@ Phase structure:
 
 ## Session Continuity
 
-Last session: 2026-02-02T10:30:00Z
-Stopped at: Created v1.6 roadmap (Phases 25-30)
+Last session: 2026-02-02T11:15:00Z
+Stopped at: Completed 25-01-PLAN.md
 Resume file: None
