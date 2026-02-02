@@ -143,35 +143,39 @@ A pixel-perfect, AI-verified clone of societies.io (landing + app) serving as th
 
 ---
 
-## Planned: v1.5 — Trending Page
+## Current Milestone: v1.5 — Trending Page
 
-**Goal:** Real-time viral video discovery feed with analysis and remix capabilities, powered by Apify TikTok scraper.
+**Goal:** Real-time viral video discovery feed with analysis and full storyboard remix capabilities, powered by Apify TikTok scraper.
 
 **Core Concept:**
-- Curated feed of currently viral TikTok videos (Instagram later)
-- AI-powered tagging system (breaking out, challenges, trends, etc.)
-- Quality-filtered — narrow but high signal, no low-quality content
+- Curated feed of currently viral TikTok videos (Instagram deferred)
+- Fixed categories (Challenges, Sounds, Formats, etc.) + AI sub-tagging
+- Automated scraping with quality filter layer — high signal, no noise
+- Three equal use cases: inspiration, trend tracking, quick content creation
 
 **Key Features:**
-- **Trending Feed** — Videos currently going viral, filterable by category/tags
-- **Analyze Action** — Get viral score + breakdown + explanation (same system as predictor)
-- **Remix Action** — Generate 2-3 customized versions with hooks, scripts, CTAs tailored to user goal/audience + actionable filming steps
+- **Trending Feed** — Browse by fixed categories, AI sub-tags for granular filtering
+- **Analyze Action** — Same viral score/breakdown system as Predictor
+- **Remix Action** — 2-3 customized versions with full storyboard:
+  - Scripts with hooks and CTAs
+  - Shot-by-shot filming instructions
+  - Visual reference frames
+- **PDF Export** — Downloadable storyboard documents
 
-**User Flow:** Consume → Learn (analyze) → Create (remix)
-
-**Positioning:** Under Prediction Engine in sidebar with toggle to switch views
+**Navigation:** Separate sidebar item (own top-level entry)
 
 **Technical Requirements:**
 - Apify TikTok scraper integration
-- Backend API for video data
-- Automated AI categorization/tagging
-- Quality curation layer
+- Backend API for video data + quality filtering
+- AI categorization pipeline (fixed categories + sub-tags)
+- Storyboard generation with PDF export
 
 **Success Criteria:**
 - Feed surfaces genuinely viral, high-quality content
+- Categories intuitive to browse (creators know where to look)
 - Analysis matches viral predictor output format
-- Remix provides actionable, ready-to-film content
-- Smooth UX switching between predictor and trending
+- Storyboards are actionable and ready-to-film
+- PDF exports are professional and shareable
 
 ---
 

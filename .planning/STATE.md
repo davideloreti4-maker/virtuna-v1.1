@@ -1,18 +1,18 @@
-# Project State — Virtuna v1.6
+# Project State — Virtuna v1.5
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-02-02)
 
-**Core value:** Creator monetization hub with aggregated brand deals and Revolut-style wallet
-**Current focus:** v1.4 Node Visualization MVP (v1.6 roadmap defined, awaiting execution)
+**Core value:** Real-time viral video discovery with full storyboard remix capabilities
+**Current focus:** v1.5 Trending Page (defining requirements)
 
 ## Current Position
 
-Phase: 20 of 36 (visualization-foundation)
-Plan: 02 of 04
-Status: In progress
-Last activity: 2026-02-02 — Completed v1.6 roadmap (Phases 25-30)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-02 — Milestone v1.5 started
 
 Progress: ██████░░░░ 60% (Phase 20)
 
