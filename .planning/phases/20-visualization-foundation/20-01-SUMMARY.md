@@ -1,107 +1,165 @@
 ---
 phase: 20-visualization-foundation
 plan: 01
-subsystem: ui
-tags: [react-zoom-pan-pinch, canvas, pan-zoom, touch-gestures, visualization]
+subsystem: visualization
+tags: [react-three-fiber, three.js, webgl, r3f, drei, accessibility]
 
 # Dependency graph
 requires:
   - phase: 15-foundation-primitives
-    provides: glass-base, glass-blur-sm CSS classes for reset button styling
+    provides: design tokens for dark theme colors
 provides:
-  - ProgressiveVisualization component with pan/zoom infrastructure
-  - VisualizationResetButton component
-  - react-zoom-pan-pinch integration pattern
-affects:
-  - 20-02: Orb rendering builds on this canvas wrapper
-  - 20-03: Animation states use this foundation
-  - 21-segment-nodes: Segments will be rendered inside TransformComponent
+  - R3F Canvas wrapper with OrbitControls
+  - VisualizationContext for reducedMotion and isMobile
+  - Accessibility hooks (usePrefersReducedMotion, useIsMobile)
+  - Clean slate - old Canvas 2D code removed
+affects: [20-02-glass-orb, 20-03-animations, 21-particle-system]
 
 # Tech tracking
 tech-stack:
-  added: [react-zoom-pan-pinch@3.7.0]
-  patterns: [TransformWrapper/TransformComponent pattern, useControls hook for reset]
+  added: [three@0.182.0, @react-three/fiber@9.5.0, @react-three/drei@10.7.7, @types/three]
+  removed: [react-zoom-pan-pinch]
+  patterns: [R3F client component wrapper, useFrame for animations, refs over state for 60fps]
 
 key-files:
   created:
-    - src/components/app/progressive-visualization.tsx
-    - src/components/app/visualization-reset-button.tsx
+    - src/components/visualization/VisualizationCanvas.tsx
+    - src/components/visualization/VisualizationContext.tsx
+    - src/hooks/usePrefersReducedMotion.ts
+    - src/hooks/useIsMobile.ts
+    - src/app/(marketing)/viz-test/page.tsx
   modified:
     - package.json
+    - next.config.ts
+    - src/app/(app)/dashboard/dashboard-client.tsx
+  deleted:
+    - src/components/app/orb-renderer.ts
+    - src/components/app/use-orb-animation.ts
+    - src/components/app/progressive-visualization.tsx
+    - src/components/app/visualization-reset-button.tsx
+    - src/lib/visualization-types.ts
 
 key-decisions:
-  - "No momentum on pan (velocityDisabled: true) for direct control"
-  - "Zoom limits 0.5x to 3x as sensible defaults"
-  - "Double-click disabled to prevent accidental zoom"
-  - "Glass styling on reset button for consistency"
+  - "R3F OrbitControls with enableRotate=false for 2D-style pan/zoom"
+  - "minDistance=2, maxDistance=10 for reasonable zoom limits"
+  - "dpr=[1,2] - retina support capped at 2x for performance"
+  - "SSR-safe defaults: reducedMotion=true, isMobile=true to start conservative"
+  - "geometryDetail: 32 mobile, 64 desktop for adaptive performance"
 
 patterns-established:
-  - "TransformWrapper/TransformComponent: wrap canvas content for pan/zoom"
-  - "useControls hook: access resetTransform() from child components"
-  - "onTransformed callback: track when user has moved view"
+  - "R3F Canvas must be 'use client' component in Next.js App Router"
+  - "Use refs for animation values, never React state in useFrame"
+  - "VisualizationProvider wraps Canvas children for settings access"
+  - "powerPreference: 'high-performance' for GPU acceleration"
 
 # Metrics
-duration: 4min
-completed: 2026-01-31
+duration: 5min
+completed: 2026-02-02
 ---
 
-# Phase 20 Plan 01: Pan/Zoom Canvas Infrastructure Summary
+# Phase 20 Plan 01: R3F Canvas Infrastructure Summary
 
-**ProgressiveVisualization component with react-zoom-pan-pinch for desktop drag/wheel and touch pinch/drag gestures**
+**R3F Canvas wrapper with OrbitControls, VisualizationContext for accessibility settings, and old Canvas 2D code removed**
 
 ## Performance
 
-- **Duration:** 4 min
-- **Started:** 2026-01-31T16:25:00Z
-- **Completed:** 2026-01-31T16:29:00Z
-- **Tasks:** 3
-- **Files modified:** 4
+- **Duration:** 5 min
+- **Started:** 2026-02-02T07:41:45Z
+- **Completed:** 2026-02-02T07:46:44Z
+- **Tasks:** 5
+- **Files created:** 6
+- **Files deleted:** 5
 
 ## Accomplishments
-- Installed react-zoom-pan-pinch@3.7.0 for industry-standard pan/zoom
-- Created VisualizationResetButton with glass styling and useControls integration
-- Created ProgressiveVisualization wrapper with TransformWrapper configuration
-- Configured for no momentum, sensible zoom limits, and centered initialization
+- Installed Three.js and React Three Fiber stack (three, @react-three/fiber, @react-three/drei)
+- Created VisualizationCanvas wrapper with pan/zoom controls and reset button
+- Created VisualizationContext providing reducedMotion, isMobile, and geometryDetail
+- Created accessibility hooks (usePrefersReducedMotion, useIsMobile)
+- Removed all old Canvas 2D visualization code and react-zoom-pan-pinch dependency
+- Created /viz-test page for manual verification
 
 ## Task Commits
 
 Each task was committed atomically:
 
-1. **Task 1: Install react-zoom-pan-pinch dependency** - `2bdfebf` (chore)
-2. **Task 2: Create VisualizationResetButton component** - `ebbab39` (feat)
-3. **Task 3: Create ProgressiveVisualization component** - `04fc9e3` (feat)
+1. **Task 1: Install R3F dependencies and configure Next.js** - `c6f607b` (chore)
+2. **Task 2: Create hooks and VisualizationContext** - `7035402` (feat)
+3. **Task 3: Create VisualizationCanvas with OrbitControls** - `3a7fbd4` (feat)
+4. **Task 4: Remove old Canvas 2D visualization files** - `b8d0402` (refactor)
+5. **Task 5: Create test page to verify R3F setup** - `acafeba` (feat)
 
 ## Files Created/Modified
-- `src/components/app/progressive-visualization.tsx` - Main visualization wrapper with TransformWrapper
-- `src/components/app/visualization-reset-button.tsx` - Reset button using useControls hook
-- `package.json` - Added react-zoom-pan-pinch@3.7.0 dependency
-- `package-lock.json` - Lockfile update
+
+**Created:**
+- `src/components/visualization/VisualizationCanvas.tsx` - R3F Canvas wrapper with OrbitControls
+- `src/components/visualization/VisualizationContext.tsx` - React Context for visualization settings
+- `src/components/visualization/index.ts` - Barrel exports
+- `src/hooks/usePrefersReducedMotion.ts` - OS motion preference detection
+- `src/hooks/useIsMobile.ts` - Mobile viewport detection
+- `src/app/(marketing)/viz-test/page.tsx` - Manual verification page
+
+**Modified:**
+- `package.json` - Added R3F packages, removed react-zoom-pan-pinch
+- `next.config.ts` - Added transpilePackages for Three.js ESM
+- `src/app/(app)/dashboard/dashboard-client.tsx` - Updated to use VisualizationCanvas
+
+**Deleted:**
+- `src/components/app/orb-renderer.ts` - Old Canvas 2D renderer
+- `src/components/app/use-orb-animation.ts` - Old animation hook
+- `src/components/app/progressive-visualization.tsx` - Old visualization component
+- `src/components/app/visualization-reset-button.tsx` - Old reset button
+- `src/lib/visualization-types.ts` - Old type definitions
 
 ## Decisions Made
-- **No momentum:** Set `velocityDisabled: true` per CONTEXT.md requirement for direct control
-- **Zoom limits:** 0.5x to 3x as sensible defaults per RESEARCH.md
-- **Double-click disabled:** Prevents accidental zoom (common UX issue)
-- **Glass styling:** Reset button uses existing glass-base and glass-blur-sm classes for visual consistency
-- **Placeholder orb:** Simple div placeholder will be replaced by actual orb in 20-02
+
+| Decision | Rationale |
+|----------|-----------|
+| OrbitControls with enableRotate=false | 2D-style pan/zoom feel as per research |
+| minDistance=2, maxDistance=10 | Sensible zoom limits per research |
+| dpr=[1,2] capped | Retina support balanced with performance |
+| SSR defaults conservative (reducedMotion=true, isMobile=true) | Start with lower performance settings for safety |
+| geometryDetail 32/64 | Mobile gets 32 subdivisions (~5K vertices), desktop 64 (~40K) |
 
 ## Deviations from Plan
 
-None - plan executed exactly as written.
+### Auto-fixed Issues
+
+**1. [Rule 3 - Blocking] Dashboard import of old ProgressiveVisualization**
+- **Found during:** Task 4 (Remove old Canvas 2D files)
+- **Issue:** dashboard-client.tsx imported ProgressiveVisualization which was being deleted
+- **Fix:** Updated import to use new VisualizationCanvas with placeholder sphere
+- **Files modified:** src/app/(app)/dashboard/dashboard-client.tsx
+- **Verification:** Build passes, dashboard renders
+- **Committed in:** b8d0402 (Task 4 commit)
+
+**2. [Rule 3 - Blocking] Container.tsx polymorphic type error**
+- **Found during:** Task 4 (Build verification)
+- **Issue:** Pre-existing TypeScript error - `React.ElementType` causing 'never' type
+- **Fix:** Changed `as` prop to union type of block elements
+- **Files modified:** src/components/layout/container.tsx
+- **Verification:** Build passes
+- **Committed in:** b8d0402 (Task 4 commit)
+
+---
+
+**Total deviations:** 2 auto-fixed (2 blocking issues)
+**Impact on plan:** Both fixes necessary to complete build. No scope creep.
 
 ## Issues Encountered
-
-- pnpm not available in environment, used npm instead (same result)
+- pnpm not available in environment, used npm instead
 
 ## User Setup Required
 
 None - no external service configuration required.
 
 ## Next Phase Readiness
-- Pan/zoom infrastructure ready for orb rendering in 20-02
-- TransformWrapper configured with all required settings
-- Reset button pattern established for reuse
-- Placeholder centered and ready to be replaced with actual orb component
+
+Ready for Phase 20-02 (Glass Orb Rendering):
+- R3F Canvas infrastructure in place
+- VisualizationContext available for reducedMotion and isMobile
+- Dashboard has placeholder sphere ready to be replaced with GlassOrb
+- Test page at /viz-test for verification
 
 ---
 *Phase: 20-visualization-foundation*
-*Completed: 2026-01-31*
+*Completed: 2026-02-02*

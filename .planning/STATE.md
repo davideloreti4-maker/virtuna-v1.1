@@ -10,13 +10,13 @@ See: .planning/PROJECT.md (updated 2026-01-31)
 ## Current Position
 
 Phase: 20 of 24 (Visualization Foundation)
-Plan: 3 of 3 in current phase
-Status: Phase complete
-Last activity: 2026-01-31 — Completed 20-03-PLAN.md (Orb Animations)
+Plan: 1 of 2 in current phase
+Status: In progress (R3F rewrite)
+Last activity: 2026-02-02 — Completed 20-01-PLAN.md (R3F Canvas Infrastructure)
 
 Progress: █████░░░░░ 25%
 
-**Next action:** Execute Phase 21 (Particle System)
+**Next action:** Execute 20-02-PLAN.md (Glass Orb with Shaders)
 
 ## Performance Metrics
 
@@ -54,16 +54,11 @@ Progress: █████░░░░░ 25%
 | Exact macOS traffic light colors | 15-03 | #ed6a5f, #f6be50, #61c555 for authenticity |
 | TrafficLights size variants | 15-03 | 10px/12px/14px with proportional gaps |
 | Phase 16 reverted | 16 | Purple/cyan gradient and new hero layout not preferred by user |
-| No momentum on pan/zoom | 20-01 | velocityDisabled: true for direct control feel |
-| Zoom limits 0.5x to 3x | 20-01 | Sensible defaults per research |
-| Double-click zoom disabled | 20-01 | Prevents accidental zoom, common UX issue |
-| Orb size 17% of min dimension | 20-02 | Middle of 15-20% range per CONTEXT.md |
-| Light offset 30% for glass effect | 20-02 | Simulates light refraction through glass |
-| Math.floor for crisp rendering | 20-02 | Avoids sub-pixel anti-aliasing overhead |
-| 2.5s breathing cycle | 20-03 | Middle of 2-3s range per CONTEXT.md |
-| Sinusoidal breathing pattern | 20-03 | Math.sin for natural oscillation |
-| 30% glow boost on hover | 20-03 | Clear interaction feedback |
-| Static fallback for reduced motion | 20-03 | Accessibility per prefers-reduced-motion |
+| R3F OrbitControls enableRotate=false | 20-01 | 2D-style pan/zoom per research |
+| Zoom minDistance=2, maxDistance=10 | 20-01 | Sensible zoom limits per research |
+| dpr=[1,2] capped | 20-01 | Retina support balanced with performance |
+| SSR defaults conservative | 20-01 | reducedMotion=true, isMobile=true for safety |
+| geometryDetail 32/64 | 20-01 | Mobile 32 subdivisions, desktop 64 |
 
 ### Pending Todos
 
@@ -86,11 +81,10 @@ Phase structure:
 - Phase 23: Motion & Interaction (physics, drag, magnetic, tooltips)
 - Phase 24: UX & Mobile Optimization (60fps mobile, adaptive particles)
 
-## Completed (v1.4 / Phase 20)
+## In Progress (v1.4 / Phase 20 - R3F Rewrite)
 
-- [x] 20-01: Pan/Zoom Canvas Infrastructure — ProgressiveVisualization + react-zoom-pan-pinch
-- [x] 20-02: Glass Orb Rendering — Canvas 2D glass orb with radial gradients and orange accent glow
-- [x] 20-03: Orb Animations — Breathing animation with hover/tap feedback and state transitions
+- [x] 20-01: R3F Canvas Infrastructure — VisualizationCanvas with OrbitControls, context, hooks
+- [ ] 20-02: Glass Orb with Shaders — Custom vertex/fragment shaders for blob morphing
 
 ## Completed (v1.3.2)
 
@@ -118,6 +112,6 @@ Phase structure:
 
 ## Session Continuity
 
-Last session: 2026-01-31T15:41:00Z
-Stopped at: Completed 20-03-PLAN.md (Phase 20 complete)
+Last session: 2026-02-02T07:46:44Z
+Stopped at: Completed 20-01-PLAN.md (R3F Canvas Infrastructure)
 Resume file: None
