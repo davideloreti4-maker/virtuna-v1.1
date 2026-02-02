@@ -1,6 +1,6 @@
 # Discussion Context: Trending Page (v1.5)
 
-**Status:** In progress — feed structure defined, Remix flow pending
+**Status:** COMPLETE — Ready for requirements
 **Last updated:** 2026-02-02
 
 ---
@@ -15,7 +15,7 @@
 - **Drill-down:** Click category → grid/list view of all videos in that category
 - **Deep dive:** Click video → detail modal with Analyze/Remix actions
 
-This supports all three use cases:
+Supports all use cases:
 - Discovery browsing (dashboard overview)
 - Research/analysis (grid view for scanning)
 - Content planning (quick path to Analyze/Remix)
@@ -35,7 +35,7 @@ Multiplier = This Video's Views / Creator's Average Video Views (last 30 days)
 
 **Baseline calculation:**
 - Last 30 days of creator's videos
-- Exclude outliers (so one viral video doesn't skew baseline)
+- Exclude outliers
 - Minimum sample size required
 
 ### Video Card Design
@@ -44,18 +44,11 @@ Multiplier = This Video's Views / Creator's Average Video Views (last 30 days)
 ┌─────────────────────────────────┐
 │ [Thumbnail Preview]             │
 │ @creator_handle                 │
-│ 🔥 46x their average            │  ← PRIMARY: Why this matters
-│ 2.3M views · 18h ago            │  ← SECONDARY: Scale + recency
+│ 🔥 46x their average            │  ← PRIMARY
+│ 2.3M views · 18h ago            │  ← SECONDARY
 │ #challenge                      │  ← Category tag
 └─────────────────────────────────┘
 ```
-
-**Info shown at a glance:**
-- Thumbnail (video preview)
-- Creator handle
-- Views multiplier (primary hook)
-- Raw view count + recency
-- Category/niche tag
 
 ### Category System
 
@@ -72,61 +65,81 @@ Multiplier = This Video's Views / Creator's Average Video Views (last 30 days)
 
 ### Niche Personalization
 
-**Yes — niche-specific feed**
-
 - User sets primary + secondary niches during onboarding/settings
-- Feed prioritizes relevant content (~70% primary, ~20% secondary, ~10% cross-niche breakouts)
+- Feed prioritizes relevant content (~70% primary, ~20% secondary, ~10% cross-niche)
 - AI classifies videos by niche based on content, hashtags, audio, creator profile
 
 ---
 
-## Still To Discuss
+## Remix Flow (COMPLETE)
 
-### Remix Action Flow
+### Entry Points
+1. **Trending Page** — Tap "Remix" on any video card
+2. **Paste URL** — Direct input of any TikTok video URL
 
-What we know:
-- Remix generates 2-3 customized versions
-- Includes: hooks, scripts, CTAs
-- Tailored to user's goal, audience, niche
-- Output should be actionable (ready to film/upload)
+### Flow
+```
+Source video → Analysis (same as predictor) → Remix form → Generate → 3 Remixes → Save/Use
+```
 
-Questions to answer:
-- What's the UX flow? Modal? Separate page? Side panel?
-- What inputs does user provide? (Goal, audience, style preferences)
-- What exactly is in each remix? (Hook text, full script, shot list, CTA?)
-- How long does generation take? Loading state?
-- Can user save/export remixes?
-- Integration with user's brand voice/style (if captured elsewhere)?
+### Remix Inputs
 
-### Analyze Action
+**Required:**
+| Input | Type | Source |
+|-------|------|--------|
+| Source video | URL or selection | Paste or tap from Trending |
+| Niche | Selection | Default from profile, can override |
+| Goal | Selection (1 of 6) | See goals below |
 
-Deferred to separate session — same system as viral predictor results card.
-Context file: `.planning/DISCUSS-CONTEXT-viral-predictor-results.md`
+**Goals (6 options):**
+1. Maximize reach — "I want this to go viral"
+2. Grow followers — "I want new followers"
+3. Build authority — "I want to be seen as the expert"
+4. Drive sales — "I want people to buy/book"
+5. Educate — "I want to teach something valuable"
+6. Entertain — "I want to make people laugh/feel"
+
+**Optional Tweaks:**
+| Tweak | Type | Example |
+|-------|------|---------|
+| Target audience | Text or selection | "Beginners", "Busy moms" |
+| Tone/style | Selection | Casual, Professional, Raw, Polished, Funny, Serious |
+| Constraints | Multi-select + text | No face, Under 30 sec, etc. |
+| Brand voice notes | Text | "I always open with a question" |
+| Format preference | Selection | Talking head, B-roll heavy, Text overlay, Green screen |
+
+**Save as default:** Optional checkbox to save tweaks for future remixes
+
+### Remix Output: 3 Full Production Briefs
+
+Each remix includes:
+- **Hook** (first 3 seconds)
+- **Shot list** (visual breakdown)
+- **Full script**
+- **Audio suggestion**
+- **CTA**
+- **Hashtags**
+- **Filming tips**
+
+### Remix Features (Full Experience)
+
+| Feature | Description |
+|---------|-------------|
+| Progressive loading | Show preview instantly, breakdown loads progressively |
+| Teleprompter mode | Full-screen scrolling script for filming |
+| Clipboard auto-detect | Pre-fill if TikTok URL copied |
+| Regenerate / "More like this" | Get new remixes or variations |
+| Status tracking | To Film / Filmed / Posted tags |
+| Mobile-first design | Optimized for phone use |
+| Copy sections | One-tap copy hook, script, or full brief |
+| Save as default | Optional save of preferences |
 
 ---
 
-## Dashboard Layout Sketch
+## Analyze Action
 
-```
-┌─────────────────────────────────────────────────────┐
-│ TRENDING                          [Niche: Fitness ▼]│
-├─────────────────────────────────────────────────────┤
-│ 🔥 Breaking Out (47)                      [View All]│
-│ [All] [Challenge] [Tutorial] [Comedy] ...           │
-│ ┌─────────┐ ┌─────────┐ ┌─────────┐ →→→            │
-│ │ 46x avg │ │ 38x avg │ │ 29x avg │                │
-│ │ 2.3M    │ │ 1.8M    │ │ 890K    │                │
-│ └─────────┘ └─────────┘ └─────────┘                │
-├─────────────────────────────────────────────────────┤
-│ 📈 Sustained Viral (23)                   [View All]│
-│ ┌─────────┐ ┌─────────┐ ┌─────────┐ →→→            │
-│ │ 12x avg │ │ 9x avg  │ │ 8x avg  │                │
-│ └─────────┘ └─────────┘ └─────────┘                │
-├─────────────────────────────────────────────────────┤
-│ 🔄 Resurging (8)                          [View All]│
-│ ...                                                 │
-└─────────────────────────────────────────────────────┘
-```
+Same system as viral predictor results card.
+**Separate discussion needed:** `.planning/DISCUSS-CONTEXT-viral-predictor-results.md`
 
 ---
 
@@ -134,46 +147,47 @@ Context file: `.planning/DISCUSS-CONTEXT-viral-predictor-results.md`
 
 **Source:** Apify TikTok scraper (Instagram later)
 
-**Processing needed:**
+**Processing:**
 1. Fetch trending videos via Apify
-2. For each video, fetch creator's historical performance (last 30 days)
+2. Fetch creator's historical performance (last 30 days)
 3. Calculate views multiplier
 4. AI classify: niche, content type, strategic tags
-5. Filter for quality (remove low-quality content)
-6. Store in database with metadata
-
-**Quality curation:**
-- AI-filtered, not raw dump
-- Narrow but high signal
-- Parameters TBD for what makes content "quality"
+5. Filter for quality (narrow but high signal)
+6. Store in database
 
 ---
 
-## Technical Considerations
+## Technical Requirements
 
-### Backend Requirements
-- Apify integration (TikTok scraper)
+### Backend
+- Apify TikTok scraper integration
 - Database for video metadata + creator baselines
 - Background jobs for data refresh
 - AI classification pipeline (niche, tags)
+- Remix generation API (LLM-powered)
 
-### Frontend Requirements
+### Frontend
 - Dashboard view with category sections
 - Grid/list drill-down views
 - Video detail modal
+- Remix form with inputs
+- Teleprompter mode
 - Niche selection UI (onboarding + settings)
-- Filter chips for content/strategic tags
+- Filter chips
+- Status tracking UI
 
 ---
 
-## Resume Point
+## Next Steps
 
-To continue this discussion:
-1. Run `/gsd:discuss-phase` or start new conversation
-2. Reference this file for context
-3. Pick up at "Remix Action Flow" section
+**This discussion is COMPLETE.**
+
+To proceed:
+1. `/clear` for fresh context
+2. Run `/gsd:new-milestone` to continue requirements → roadmap
+3. Reference this file for context
 
 ---
 
 *Created: 2026-02-02*
-*Status: In progress*
+*Status: Complete — ready for requirements*
