@@ -516,7 +516,11 @@ Plans:
   4. `wallet_transactions` table exists as immutable ledger with balance snapshots
   5. `affiliate_clicks` and `conversions` tables exist for attribution tracking
   6. RLS policies enforce data access control per user
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 25-01-PLAN.md — Supabase CLI setup, create migration with 6 tables, RLS policies, push to Supabase
+- [ ] 25-02-PLAN.md — Generate TypeScript types and update Supabase clients with Database generic
 
 ---
 
@@ -659,7 +663,7 @@ Plans:
 | 22. Node System | v1.4 | 0/TBD | Not started | - |
 | 23. Motion & Interaction | v1.4 | 0/TBD | Not started | - |
 | 24. UX & Mobile Optimization | v1.4 | 0/TBD | Not started | - |
-| 25. Database Foundation | v1.6 | 0/TBD | Not started | - |
+| 25. Database Foundation | v1.6 | 0/2 | Not started | - |
 | 26. Creator Profile | v1.6 | 0/TBD | Not started | - |
 | 27. Wallet Core | v1.6 | 0/TBD | Not started | - |
 | 28. Deal Marketplace | v1.6 | 0/TBD | Not started | - |
@@ -677,4 +681,4 @@ Plans:
 
 ---
 *Roadmap created: 2026-01-28*
-*Last updated: 2026-02-02 — Added v1.6 Brand Deals & Affiliate Hub (Phases 25-30)*
+*Last updated: 2026-02-02 — Created Phase 25 plans (Database Foundation)*
