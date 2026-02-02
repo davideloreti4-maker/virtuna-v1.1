@@ -9,14 +9,14 @@ See: .planning/PROJECT.md (updated 2026-02-02)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-02-02 — Milestone v1.6 started
+Phase: 20 of 24 (visualization-foundation)
+Plan: 02 of 03
+Status: In progress
+Last activity: 2026-02-02 — Completed 20-02-PLAN.md
 
-Progress: ░░░░░░░░░░ 0%
+Progress: ██████░░░░ 60% (Phase 20)
 
-**Next action:** Complete research → define requirements → create roadmap
+**Next action:** Execute 20-03-PLAN.md (if exists) or proceed to Phase 21
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: ░░░░░░░░░░ 0%
 | dpr=[1,2] capped | 20-01 | Retina support balanced with performance |
 | SSR defaults conservative | 20-01 | reducedMotion=true, isMobile=true for safety |
 | geometryDetail 32/64 | 20-01 | Mobile 32 subdivisions, desktop 64 |
+| onSplineMouseDown for Spline events | 20-02 | Spline uses SplineEvent type, not React mouse events |
 
 ### Pending Todos
 
@@ -84,7 +85,7 @@ Phase structure:
 ## In Progress (v1.4 / Phase 20 - R3F Rewrite)
 
 - [x] 20-01: R3F Canvas Infrastructure — VisualizationCanvas with OrbitControls, context, hooks
-- [ ] 20-02: Glass Orb with Shaders — Custom vertex/fragment shaders for blob morphing
+- [x] 20-02: Spline Integration Setup — SplineOrb component with loading state and event handling
 
 ## Completed (v1.3.2)
 
@@ -112,6 +113,6 @@ Phase structure:
 
 ## Session Continuity
 
-Last session: 2026-02-02T07:46:44Z
-Stopped at: Completed 20-01-PLAN.md (R3F Canvas Infrastructure)
+Last session: 2026-02-02T08:15:00Z
+Stopped at: Completed 20-02-PLAN.md (Spline Integration Setup)
 Resume file: None

@@ -1,112 +1,127 @@
 ---
-phase: 20-visualization-foundation
+phase: 20
 plan: 02
 subsystem: visualization
-tags: [canvas-2d, radial-gradient, glass-effect, orb, retina-display]
-
-# Dependency graph
-requires:
-  - phase: 20-01
-    provides: ProgressiveVisualization component with pan/zoom infrastructure
-provides:
-  - Glass orb rendering with Canvas 2D radial gradients
-  - OrbState type and ORB_CONFIG constants
-  - Crisp retina display support
-affects:
-  - 20-03: Breathing animation will use OrbState and glowIntensity parameter
-  - 21-segment-nodes: Segments will orbit around the orb
-
-# Tech tracking
+tags: [spline, 3d, react, component]
+dependency-graph:
+  requires: [20-01]
+  provides: [SplineOrb component, Spline 3D integration]
+  affects: [20-03, 21-*]
 tech-stack:
-  added: []
-  patterns: [Canvas 2D radial gradients, devicePixelRatio scaling, ResizeObserver for responsive canvas]
-
-key-files:
+  added: ["@splinetool/react-spline@4.1.0"]
+  patterns: ["Spline scene loader", "loading placeholder", "error fallback"]
+file-tracking:
   created:
-    - src/lib/visualization-types.ts
-    - src/components/app/orb-renderer.ts
+    - src/components/visualization/SplineOrb.tsx
   modified:
-    - src/components/app/progressive-visualization.tsx
-
-key-decisions:
-  - "Orb size 17% of min dimension (middle of 15-20% range)"
-  - "Light offset 30% for glass refraction effect"
-  - "Math.floor on all coordinates for crisp rendering"
-  - "shadowBlur reset immediately after use for performance"
-
-patterns-established:
-  - "createOrbGradient: offset light source for glass refraction look"
-  - "drawGlassOrb: gradient + glow + inner highlight for depth"
-  - "calculateOrbRadius: responsive sizing based on container dimensions"
-
-# Metrics
-duration: 3min
-completed: 2026-01-31
+    - package.json
+    - package-lock.json
+    - src/components/visualization/index.ts
+decisions:
+  - id: spline-event-naming
+    choice: Use onSplineMouseDown for Spline-specific events
+    context: Spline component uses SplineEvent type, not standard React mouse events
+metrics:
+  duration: 4min
+  completed: 2026-02-02
 ---
 
-# Phase 20 Plan 02: Glass Orb Rendering Summary
+# Phase 20 Plan 02: Spline Integration Setup Summary
 
-**Canvas 2D glass orb with radial gradients, orange accent glow, inner highlight, and crisp retina display support**
+**One-liner:** Installed @splinetool/react-spline and created SplineOrb component with loading state, error handling, and Spline event integration.
 
-## Performance
+## What Was Built
 
-- **Duration:** 3 min
-- **Started:** 2026-01-31T16:33:00Z
-- **Completed:** 2026-01-31T16:36:00Z
-- **Tasks:** 3/3
-- **Files modified:** 3
+### 1. Spline React Package Installation
+- Installed `@splinetool/react-spline@4.1.0` via npm
+- Adds 8 packages total (includes @splinetool/runtime dependency)
+- Zero vulnerabilities, build passes
 
-## Accomplishments
+### 2. SplineOrb Component (`src/components/visualization/SplineOrb.tsx`)
+- **111 lines** of TypeScript
+- Loading state with animated gradient placeholder matching orb aesthetic
+- Error fallback showing static gradient circle
+- Proper TypeScript types using `SplineEvent` from package
+- Integration with `VisualizationContext` for reduced motion support
+- Click/tap interaction support via `onSplineMouseDown`
+- CSS transition for smooth scene reveal (opacity 0.3s)
 
-1. **Created visualization types** - OrbState type for animation states, ORB_CONFIG with colors, glow settings, and BREATHING_CONFIG for future animation
-2. **Created orb renderer module** - createOrbGradient for radial glass gradient with offset light source, drawGlassOrb with gradient + glow + inner highlight, calculateOrbRadius for responsive sizing
-3. **Integrated canvas rendering** - Updated ProgressiveVisualization to render glass orb on canvas with devicePixelRatio scaling for retina displays
+### 3. Barrel Export Update
+- Added `SplineOrb` to `src/components/visualization/index.ts`
+
+## Key Implementation Details
+
+### SplineOrb Props Interface
+```typescript
+interface SplineOrbProps {
+  sceneUrl: string      // Spline scene URL (.splinecode)
+  onLoad?: () => void   // Called when scene finishes loading
+  onTap?: () => void    // Called when orb is clicked
+  className?: string    // Container styling
+}
+```
+
+### Loading Placeholder
+Animated gradient matching orb color palette:
+```css
+background: radial-gradient(
+  circle,
+  rgba(255,107,53,0.3) 0%,
+  rgba(230,74,25,0.1) 70%,
+  transparent 100%
+)
+```
+
+### Spline Event Handling
+Uses `onSplineMouseDown` with `SplineEvent` type (not standard React mouse event):
+```typescript
+const handleSplineMouseDown = useCallback((e: SplineEvent) => {
+  if (e.target.name === 'orb' || e.target.name === 'Orb') {
+    onTap?.()
+  }
+}, [onTap])
+```
+
+## Deviations from Plan
+
+### Auto-fixed Issues
+
+**1. [Rule 3 - Blocking] Fixed Spline event handler type**
+- **Found during:** Task 2 build verification
+- **Issue:** Plan used `onMouseDown` with custom type, but Spline uses `onSplineMouseDown` with `SplineEvent`
+- **Fix:** Changed to `onSplineMouseDown` and imported `SplineEvent` type
+- **Files modified:** `src/components/visualization/SplineOrb.tsx`
+- **Commit:** d2fe493
 
 ## Commits
 
 | Hash | Type | Description |
 |------|------|-------------|
-| 0616a57 | feat | create visualization types and orb configuration |
-| 755c690 | feat | create orb renderer module with glass effect |
-| 3f0a746 | feat | integrate canvas rendering for glass orb |
+| 724bc8c | chore | Install @splinetool/react-spline |
+| d2fe493 | feat | Create SplineOrb component |
 
-## Technical Implementation
+## Verification Results
 
-### Orb Configuration
-```typescript
-ORB_CONFIG = {
-  sizePercent: 0.17,           // 17% of min dimension
-  baseColor: 'rgba(255, 255, 255, 0.9)',  // White/silver
-  accentColor: 'rgba(229, 120, 80, 0.4)', // Orange #E57850
-  glowColor: 'rgba(229, 120, 80, 0.5)',   // Orange glow
-  glowBlur: 15,                // Soft outer glow
-  lightOffsetPercent: 0.3,     // 30% offset for glass effect
-}
+- [x] `npm ls @splinetool/react-spline` shows v4.1.0 installed
+- [x] `npm run build` passes without errors
+- [x] SplineOrb.tsx exists (111 lines, exceeds 30 minimum)
+- [x] Import pattern `import.*@splinetool/react-spline` verified
+- [x] No @ts-ignore or any workarounds needed
+
+## Ready for Next Phase
+
+SplineOrb component is ready to receive a Spline scene URL. Next steps:
+1. User creates orb design in Spline editor
+2. Export scene and provide URL to SplineOrb
+3. Integrate with visualization page
+
+## Files Changed
+
 ```
+src/components/visualization/
+  SplineOrb.tsx (created)     - 111 lines
+  index.ts (modified)         - Added SplineOrb export
 
-### Glass Effect Technique
-1. Radial gradient with offset center simulates light refraction
-2. Four color stops: bright center -> mid-tone -> orange accent -> transparent edge
-3. shadowBlur for outer glow (reset immediately for performance)
-4. Inner highlight gradient for glass depth
-
-### Retina Support
-- Canvas dimensions scaled by devicePixelRatio
-- CSS size kept at logical pixels
-- ctx.scale(dpr, dpr) for consistent drawing
-
-## Deviations from Plan
-
-None - plan executed exactly as written.
-
-## Key Links Verified
-
-- `progressive-visualization.tsx` imports `drawGlassOrb` from `orb-renderer.ts`
-- `orb-renderer.ts` imports `ORB_CONFIG` from `visualization-types.ts`
-
-## Next Phase Readiness
-
-Ready for 20-03: Breathing animation
-- OrbState type available for animation states
-- BREATHING_CONFIG constants defined
-- glowIntensity parameter in drawGlassOrb ready for animation
+package.json (modified)       - Added @splinetool/react-spline
+package-lock.json (modified)  - Lock file updated
+```
