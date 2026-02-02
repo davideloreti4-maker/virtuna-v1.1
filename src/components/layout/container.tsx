@@ -4,7 +4,7 @@ interface ContainerProps {
   children: React.ReactNode;
   className?: string;
   size?: "default" | "narrow" | "wide";
-  as?: React.ElementType;
+  as?: "div" | "section" | "article" | "aside" | "main";
 }
 
 const sizeClasses = {

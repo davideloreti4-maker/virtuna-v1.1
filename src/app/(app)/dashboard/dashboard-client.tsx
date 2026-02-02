@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  NetworkVisualization,
+  // NetworkVisualization, // TEMP: swapped for ProgressiveVisualization testing
   FilterPillGroup,
   ContextBar,
   TestTypeSelector,
@@ -14,6 +14,7 @@ import {
   ResultsPanel,
   LegendPills,
 } from "@/components/app";
+import { VisualizationCanvas } from "@/components/visualization";
 import { useTestStore } from "@/stores/test-store";
 import { useSocietyStore } from "@/stores/society-store";
 import type { TestType } from "@/types/test";
@@ -93,7 +94,13 @@ export function DashboardClient() {
   return (
     <div className="relative flex h-full flex-col bg-background">
       {/* Network visualization - always visible in background */}
-      <NetworkVisualization className="absolute inset-0 z-0" />
+      {/* TODO: Replace placeholder sphere with GlassOrb in Phase 20-02 */}
+      <VisualizationCanvas className="absolute inset-0 z-0" showResetButton={false}>
+        <mesh>
+          <sphereGeometry args={[1, 32, 32]} />
+          <meshStandardMaterial color="#E57850" />
+        </mesh>
+      </VisualizationCanvas>
 
       {/* Top bar with context, filters, and create button - above network */}
       <div className="relative z-10 flex items-center justify-between px-6 py-4">
