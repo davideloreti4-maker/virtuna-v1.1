@@ -1,456 +1,402 @@
-# Phase 20: Visualization Foundation - Research
+# Phase 20: Visualization Foundation - Research (REVISED)
 
-**Researched:** 2026-02-02
-**Domain:** Three.js / React Three Fiber / WebGL Shaders / Organic Blob Animation
+**Researched:** 2026-02-02 (Re-research after failed attempts)
+**Domain:** Three.js / React Three Fiber / Glass Materials / Volumetric Effects
 **Confidence:** MEDIUM-HIGH
 
 ## Summary
 
-This phase establishes the visual foundation using Three.js and React Three Fiber (R3F) to create an organic, morphing orb effect matching the [Dribbble reference](https://dribbble.com/shots/24801507-Relax-Ai-Motion-Visual). The reference shows a glass-like sphere with:
-- Organic blob morphing (jelly/liquid deformation)
-- Multi-layer translucent glass effect
-- Gradient colors (orange core to coral to pink to magenta/purple rim)
-- Fresnel rim lighting (strong pink/purple edge glow)
-- Internal swirling flow patterns
-- Non-metronomic organic motion (~3-5s cycle)
+This re-research addresses the **failed attempts** at creating the glass orb effect matching the [Dribbble reference](https://dribbble.com/shots/24801507-Relax-Ai-Motion-Visual). The previous approach using dual meshes (inner core + outer shell) with basic fresnel shaders created a flat, solid-colored blob with visual artifacts instead of the desired translucent glass orb with glowing interior.
 
-The standard approach combines: **R3F for React integration**, **vertex displacement shaders with simplex noise** for blob morphing, **MeshTransmissionMaterial** or custom shaders for glass/refraction, **Fresnel shaders** for rim lighting, and **layered materials (Lamina or custom)** for color gradients. Camera controls from Drei replace react-zoom-pan-pinch for better R3F integration.
+**Key insight from failures:** The reference is NOT achievable with simple fresnel rim glow on opaque meshes. It requires:
+1. True light transmission through glass (MeshTransmissionMaterial or MeshPhysicalMaterial with transmission)
+2. Volumetric/emissive internal glow (not a second mesh — causes artifacts)
+3. Proper normal recalculation after vertex displacement
+4. Environment lighting for realistic glass reflections
 
-**Primary recommendation:** Use `@react-three/fiber` v9+ with `@react-three/drei` for MeshTransmissionMaterial and camera controls, custom vertex shaders with `simplex-noise` for blob morphing, and Fresnel-based rim lighting for the gradient glow effect.
+**Primary recommendation:** Use a **single-mesh approach** with MeshTransmissionMaterial for the glass shell combined with FakeGlowMaterial for the inner glow as a separate "aura" mesh (not nested inside). For mobile, fall back to a lightweight shader-based approach without real transmission.
 
-## Standard Stack
+## What Failed and Why
+
+### Attempt 1: Canvas 2D
+- **Problem:** Flat 2D rendering, no real 3D depth
+- **Root cause:** Canvas 2D cannot render volumetric light effects or true 3D
+
+### Attempt 2: R3F with Dual Meshes + Custom GLSL
+**Architecture tried:**
+- Inner opaque sphere (orange glowing core)
+- Outer transparent sphere (fresnel rim glow)
+- Custom vertex displacement with noise
+
+**Problems identified:**
+| Problem | Root Cause | Solution |
+|---------|-----------|----------|
+| Flat appearance | No light transmission, just alpha transparency | MeshTransmissionMaterial with IOR/transmission |
+| Inner sphere artifacts | Two meshes with overlapping render order | Single mesh OR proper depth sorting |
+| Colors wrong (magenta dominated) | Fresnel formula weighted rim over core | Balanced gradient with proper falloff |
+| No internal flow | Static inner mesh, no animation | Animated noise texture or particle system |
+| Morphing too harsh | No normal recalculation after displacement | Use CSM with tangent-based normals |
+| No true glass effect | Missing refraction, IOR, thickness | MeshTransmissionMaterial or PhysicalMaterial |
+
+## Standard Stack (Updated)
 
 ### Core
-
 | Library | Version | Purpose | Why Standard |
 |---------|---------|---------|--------------|
-| three | ^0.170+ | 3D rendering engine | Industry standard, 2.7M weekly downloads |
-| @react-three/fiber | ^9.5+ | React renderer for Three.js | Official React bindings, pairs with React 19 |
-| @react-three/drei | ^10.7+ | R3F helper components | MeshTransmissionMaterial, controls, utilities |
-| simplex-noise | ^4.x | Organic noise generation | Fast, typed, no dependencies, 70M calls/sec |
+| three | ^0.182.0 | 3D rendering engine | Already installed, stable |
+| @react-three/fiber | ^9.5.0 | React renderer for Three.js | Already installed |
+| @react-three/drei | ^10.7.7 | MeshTransmissionMaterial, controls | Already installed |
+| three-custom-shader-material | ^6.x | Extend materials with vertex displacement | **NEW** - essential for blob morphing on transmission materials |
 
 ### Supporting
-
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| @types/three | ^0.170+ | TypeScript definitions | Development type safety |
-| three-custom-shader-material | ^5.x | Extend built-in materials with custom shaders | If MeshPhysicalMaterial needs vertex modification |
-| alea | ^1.x | Seedable PRNG | Reproducible noise patterns |
+| @react-three/postprocessing | ^3.x | Selective bloom for glow | Optional - if FakeGlowMaterial not sufficient |
+| simplex-noise | ^4.x | Organic noise generation | For vertex displacement |
 
 ### Alternatives Considered
-
 | Instead of | Could Use | Tradeoff |
 |------------|-----------|----------|
-| MeshTransmissionMaterial | Custom raymarching shader | More control but significantly more complex |
-| simplex-noise | Three.js SimplexNoise addon | simplex-noise is faster and better typed |
-| Lamina layers | Custom multi-pass shaders | Lamina is archived (June 2025), custom is more future-proof |
-| OrbitControls | MapControls | MapControls for 2D pan, OrbitControls for 3D rotation |
+| MeshTransmissionMaterial | MeshPhysicalMaterial + transmission | Less control, no chromatic aberration |
+| FakeGlowMaterial | Bloom post-processing | FakeGlowMaterial is more performant |
+| CSM for displacement | onBeforeCompile | CSM is cleaner, more maintainable |
 
-**Installation:**
+**Installation (new packages only):**
 ```bash
-pnpm add three @react-three/fiber @react-three/drei simplex-noise
-pnpm add -D @types/three
+pnpm add three-custom-shader-material
 ```
 
-**Next.js Configuration (next.config.js):**
-```javascript
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  transpilePackages: ['three'],
-}
-```
+## Architecture Patterns (Revised)
 
-## Architecture Patterns
+### Pattern 1: Single Glass Mesh with External Glow Aura
 
-### Recommended Project Structure
+**What:** One transmission mesh for glass + one larger "aura" mesh behind it for inner glow illusion
+**Why:** Avoids dual-mesh artifacts. The glow mesh sits BEHIND the glass, not inside.
 
 ```
-src/
-├── components/
-│   └── visualization/
-│       ├── GlassOrb.tsx           # Main orb component with shaders
-│       ├── OrbMaterial.tsx        # Custom shader material
-│       ├── VisualizationCanvas.tsx # R3F Canvas wrapper (client component)
-│       └── shaders/
-│           ├── orbVertex.glsl     # Vertex displacement shader
-│           └── orbFragment.glsl   # Fragment shader with gradient
-├── hooks/
-│   ├── usePrefersReducedMotion.ts # Accessibility hook
-│   └── useOrbAnimation.ts         # Animation state management
-└── lib/
-    └── noise.ts                   # Noise utilities with createNoise3D
+Scene structure:
+├── Glow Aura Mesh (FakeGlowMaterial, scale: 0.85, behind glass)
+├── Glass Orb Mesh (MeshTransmissionMaterial + CSM vertex displacement)
+└── Environment (HDRI for realistic reflections)
 ```
 
-### Pattern 1: Client Component Canvas Wrapper
+**Key difference from failed attempt:** The glow is NOT a nested inner sphere. It's a background element that shows THROUGH the glass transmission.
 
-**What:** R3F Canvas must be a client component in Next.js App Router
-**When to use:** Always for R3F in Next.js
-**Example:**
-```typescript
-// Source: https://r3f.docs.pmnd.rs/getting-started/installation
-'use client'
+### Pattern 2: Proper Vertex Displacement with Normal Recalculation
 
-import { Canvas } from '@react-three/fiber'
-import { Suspense } from 'react'
-import { GlassOrb } from './GlassOrb'
+**What:** Use tangent-based normal calculation after vertex displacement
+**Why:** Prevents "flat shading" look on displaced geometry
 
-export function VisualizationCanvas() {
-  return (
-    <Canvas
-      camera={{ position: [0, 0, 5], fov: 45 }}
-      gl={{
-        antialias: true,
-        alpha: true,
-        powerPreference: 'high-performance'
-      }}
-    >
-      <Suspense fallback={null}>
-        <GlassOrb />
-      </Suspense>
-    </Canvas>
-  )
-}
-```
-
-### Pattern 2: useFrame for Animation with Delta Time
-
-**What:** Frame-rate independent animations using delta time
-**When to use:** All continuous animations
-**Example:**
-```typescript
-// Source: https://r3f.docs.pmnd.rs/tutorials/basic-animations
-import { useFrame } from '@react-three/fiber'
-import { useRef } from 'react'
-
-export function AnimatedOrb() {
-  const meshRef = useRef<THREE.Mesh>(null)
-  const materialRef = useRef<THREE.ShaderMaterial>(null)
-
-  useFrame(({ clock }, delta) => {
-    if (materialRef.current) {
-      // Use elapsed time for smooth animation
-      materialRef.current.uniforms.uTime.value = clock.getElapsedTime()
-    }
-  })
-
-  return (
-    <mesh ref={meshRef}>
-      <icosahedronGeometry args={[1, 64]} />
-      <shaderMaterial ref={materialRef} />
-    </mesh>
-  )
-}
-```
-
-### Pattern 3: Vertex Displacement with Noise
-
-**What:** Displace sphere vertices using 3D noise for organic morphing
-**When to use:** Creating blob/jelly deformation effects
-**Example:**
 ```glsl
-// Source: https://www.clicktorelease.com/blog/vertex-displacement-noise-3d-webgl-glsl-three-js/
-// Vertex shader
-
-uniform float uTime;
-uniform float uNoiseScale;
-uniform float uNoiseStrength;
-
-varying vec3 vNormal;
-varying float vDisplacement;
-
-// Include 3D noise function (cnoise or snoise)
+// Vertex shader with proper normal recalculation
+attribute vec4 tangent;
 
 void main() {
-  vNormal = normalize(normalMatrix * normal);
+  // Calculate bitangent from normal and tangent
+  vec3 biTangent = cross(normal, tangent.xyz);
+  float shift = 0.01;
 
-  // Sample 3D noise at vertex position + time offset
-  vec3 noisePos = position * uNoiseScale + vec3(uTime * 0.3);
-  float noise = cnoise(noisePos);
+  // Sample neighbor positions
+  vec3 posA = position + tangent.xyz * shift;
+  vec3 posB = position + biTangent * shift;
 
-  // Additional low-frequency noise for larger shapes
-  float largeNoise = cnoise(position * 0.5 + vec3(uTime * 0.1)) * 0.5;
+  // Apply displacement to all three positions
+  float disp = getDisplacement(position);
+  float dispA = getDisplacement(posA);
+  float dispB = getDisplacement(posB);
 
-  // Combine noise values
-  vDisplacement = noise * 0.5 + largeNoise;
+  csm_Position = position + normal * disp;
+  posA += normal * dispA;
+  posB += normal * dispB;
 
-  // Displace along normal direction
-  vec3 newPosition = position + normal * vDisplacement * uNoiseStrength;
-
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+  // Calculate new normal from displaced neighbors
+  vec3 toA = normalize(posA - csm_Position);
+  vec3 toB = normalize(posB - csm_Position);
+  csm_Normal = normalize(cross(toA, toB));
 }
 ```
 
-### Pattern 4: Fresnel Rim Lighting
+**Source:** [Codrops Displaced Sphere Tutorial](https://tympanus.net/codrops/2024/07/09/creating-an-animated-displaced-sphere-with-a-custom-three-js-material/)
 
-**What:** Glow intensity based on viewing angle (brighter at edges)
-**When to use:** Creating edge glow / rim light effects
-**Example:**
-```glsl
-// Source: https://threejsroadmap.com/blog/rim-lighting-shader
-// Fragment shader
+### Pattern 3: Environment-Dependent Glass
 
-uniform vec3 uRimColor;
-uniform float uRimPower;
-uniform float uRimIntensity;
+**What:** Glass materials REQUIRE environment maps for realism
+**Why:** Without environment, transmission materials look dull/wrong
 
-varying vec3 vNormal;
+```typescript
+// Canvas setup with environment
+import { Environment } from '@react-three/drei'
 
-void main() {
-  // Calculate fresnel term
-  vec3 viewDirection = normalize(cameraPosition - vWorldPosition);
-  float fresnel = 1.0 - dot(viewDirection, vNormal);
-  fresnel = pow(fresnel, uRimPower);
-
-  // Apply rim color
-  vec3 rimLight = uRimColor * fresnel * uRimIntensity;
-
-  gl_FragColor = vec4(baseColor + rimLight, 1.0);
-}
+<Canvas>
+  <Environment preset="studio" /> {/* Or custom HDRI */}
+  <GlassOrb />
+</Canvas>
 ```
 
-### Anti-Patterns to Avoid
+### Pattern 4: Mobile Fallback Material
 
-- **Using setState in useFrame:** Never use React state for per-frame updates. Use refs and direct mutation for 60fps performance.
-- **Creating materials/geometries inside components:** Define reusable geometries and materials outside the component or memoize them to avoid GPU overhead on every render.
-- **Linear animations without delta:** Always use `delta` or `clock.getElapsedTime()` for frame-rate independent animations.
-- **Forgetting 'use client' directive:** R3F components MUST be client components in Next.js App Router.
+**What:** Detect mobile and use simpler material without transmission
+**Why:** MeshTransmissionMaterial causes extra render pass, expensive on mobile
+
+```typescript
+const { isMobile } = useVisualization()
+
+// Desktop: Full transmission
+// Mobile: Basic physical material with emissive
+const Material = isMobile
+  ? MobileFallbackMaterial
+  : TransmissionGlassMaterial
+```
+
+### Project Structure (Revised)
+
+```
+src/components/visualization/
+├── VisualizationCanvas.tsx     # Canvas wrapper (DONE)
+├── VisualizationContext.tsx    # Context provider (DONE)
+├── GlassOrb/
+│   ├── index.tsx               # Main component, switches materials
+│   ├── TransmissionOrb.tsx     # Desktop: MeshTransmissionMaterial + CSM
+│   ├── MobileOrb.tsx           # Mobile: Simplified shader
+│   ├── GlowAura.tsx            # FakeGlowMaterial background glow
+│   └── shaders/
+│       ├── displacement.glsl.ts # Shared vertex displacement
+│       └── noise.glsl.ts        # Perlin/Simplex noise functions
+└── hooks/
+    ├── usePrefersReducedMotion.ts  # (DONE)
+    └── useIsMobile.ts              # (DONE)
+```
 
 ## Don't Hand-Roll
 
 | Problem | Don't Build | Use Instead | Why |
 |---------|-------------|-------------|-----|
-| Glass/transmission material | Custom raymarching shader | MeshTransmissionMaterial from drei | Handles chromatic aberration, refraction, and performance optimizations |
-| Noise functions in GLSL | Inline noise implementations | Import from `simplex-noise` or use glsl-noise library | Optimized, well-tested, consistent results |
-| Camera controls | Custom pan/zoom handlers | OrbitControls or CameraControls from drei | Touch support, damping, bounds built-in |
-| Reduced motion detection | Manual matchMedia logic | `usePrefersReducedMotion` hook pattern | Handles SSR, updates on OS setting change |
-| Frame loop management | Custom requestAnimationFrame | R3F's useFrame hook | Automatically integrates with React lifecycle |
+| Glass transmission | Alpha blending + fresnel | MeshTransmissionMaterial | Handles IOR, refraction, thickness properly |
+| Inner glow effect | Nested inner sphere | FakeGlowMaterial as background | Avoids z-fighting and artifacts |
+| Normal recalculation | Manual normal calculation | CSM with tangent attributes | Well-tested, handles edge cases |
+| Noise functions | Inline GLSL noise | simplex-noise library | Fast, typed, consistent |
+| Post-processing glow | Custom bloom shader | @react-three/postprocessing | Battle-tested, performant |
+| Mobile detection | navigator.userAgent parsing | useIsMobile hook (exists) | SSR-safe, React-friendly |
 
-**Key insight:** Three.js and Drei have solved most common 3D rendering problems. Custom shaders are only needed for the specific blob morphing vertex displacement and color gradient logic.
+**Key insight:** The failed attempt hand-rolled too much. MeshTransmissionMaterial and FakeGlowMaterial exist precisely because glass effects are hard to get right.
 
-## Common Pitfalls
+## Common Pitfalls (Lessons from Failure)
 
-### Pitfall 1: Hydration Mismatch with Canvas
+### Pitfall 1: Dual Nested Meshes for Core + Shell
+**What goes wrong:** Orange patches, z-fighting, wrong depth perception
+**Why it happens:** Two transparent/semi-transparent meshes at similar depths confuse depth buffer
+**How to avoid:** Single glass mesh + EXTERNAL glow aura (behind, not inside)
+**Warning signs:** Flickering, color bleeding, patches of wrong color showing through
 
-**What goes wrong:** Next.js SSR renders different output than client, causing hydration errors
-**Why it happens:** Canvas and WebGL context only exist on client
-**How to avoid:** Always use `'use client'` directive, wrap in Suspense, use dynamic import with `ssr: false` if needed
-**Warning signs:** Console errors about hydration, blank canvas on initial load
+### Pitfall 2: Fresnel-Only Glass Effect
+**What goes wrong:** Looks like colored plastic, not glass
+**Why it happens:** Fresnel only affects rim brightness, not light transmission
+**How to avoid:** Use MeshTransmissionMaterial with proper IOR (1.5), thickness, transmission
+**Warning signs:** No refraction, no "looking through" effect
 
-### Pitfall 2: Performance Death by Re-renders
+### Pitfall 3: Missing Environment Lighting
+**What goes wrong:** Transmission materials appear completely black or weird colors
+**Why it happens:** Glass reflects/refracts environment — no environment = nothing to show
+**How to avoid:** Always add `<Environment preset="..." />` or HDRI
+**Warning signs:** Black glass, no reflections, dull appearance
 
-**What goes wrong:** 60fps drops to 10fps, laggy animations
-**Why it happens:** Using React state for animation values triggers component re-renders
-**How to avoid:** Use refs exclusively for animated values, mutate directly in useFrame
-**Warning signs:** React DevTools showing constant re-renders during animation
+### Pitfall 4: Vertex Displacement Without Normal Update
+**What goes wrong:** Lighting looks wrong, flat shaded appearance despite smooth geometry
+**Why it happens:** Normals still point as if sphere were undisplaced
+**How to avoid:** Use CSM with tangent-based normal recalculation (see Pattern 2)
+**Warning signs:** Faceted look, lighting doesn't follow surface curvature
 
-```typescript
-// BAD - triggers re-render every frame
-const [rotation, setRotation] = useState(0)
-useFrame(() => setRotation(r => r + 0.01))
+### Pitfall 5: MeshTransmissionMaterial on Mobile
+**What goes wrong:** 15fps, device heating, battery drain
+**Why it happens:** Transmission requires extra scene render pass per frame
+**How to avoid:** Device detection → use simplified fallback material
+**Warning signs:** GPU 100%, thermal throttling, frame drops
 
-// GOOD - direct mutation via ref
-const meshRef = useRef<THREE.Mesh>(null)
-useFrame(() => { meshRef.current!.rotation.x += 0.01 })
-```
-
-### Pitfall 3: MeshTransmissionMaterial Performance
-
-**What goes wrong:** Severe frame drops on mobile, GPU overheating
-**Why it happens:** MeshTransmissionMaterial renders an extra pass of the entire scene
-**How to avoid:** Use low `resolution` (32-128px), reduce `samples` (2-4), consider `transmissionSampler: true` for shared buffer
-**Warning signs:** GPU usage spikes, thermal throttling on mobile
-
-```typescript
-// Performance-optimized transmission material
-<MeshTransmissionMaterial
-  resolution={64}
-  samples={4}
-  transmission={0.95}
-  thickness={0.5}
-  roughness={0.1}
-/>
-```
-
-### Pitfall 4: Shader Uniform Updates
-
-**What goes wrong:** Animations don't update, or update inconsistently
-**Why it happens:** Forgetting `needsUpdate` flags or not using refs properly
-**How to avoid:** Store material in ref, update uniforms directly each frame
-**Warning signs:** Static appearance despite useFrame running
-
-### Pitfall 5: Mobile WebGL Thermal Throttling
-
-**What goes wrong:** Performance degrades over time on mobile
-**Why it happens:** High GPU load causes device to thermal throttle
-**How to avoid:** Use `powerPreference: 'high-performance'`, reduce shader complexity on mobile, detect device capability with `PerformanceMonitor`
-**Warning signs:** Smooth initially, then gradually slows down
+### Pitfall 6: Additive Blending for Glass
+**What goes wrong:** Colors add up to white/magenta, unrealistic glow
+**Why it happens:** Additive blending is for glow effects, not glass
+**How to avoid:** Normal alpha blending for glass, additive only for external glow
+**Warning signs:** Bright magenta/white edges, colors don't mix naturally
 
 ## Code Examples
 
-### Complete Blob Orb Component
+### MeshTransmissionMaterial Configuration for Glass Orb
 
 ```typescript
-// Source: Composite from multiple official docs
-'use client'
+// Source: https://drei.docs.pmnd.rs/shaders/mesh-transmission-material
+import { MeshTransmissionMaterial } from '@react-three/drei'
 
-import { useRef, useMemo } from 'react'
-import { useFrame } from '@react-three/fiber'
-import * as THREE from 'three'
-import { createNoise3D } from 'simplex-noise'
+<mesh>
+  <icosahedronGeometry args={[1.5, 64]} />
+  <MeshTransmissionMaterial
+    // Core transmission properties
+    transmission={0.98}           // Near-full transparency
+    thickness={0.5}               // Refraction depth
+    roughness={0.05}              // Slight surface roughness for realism
+    ior={1.5}                     // Index of refraction (glass = 1.5)
 
-// Vertex shader with noise displacement
-const vertexShader = `
+    // Visual effects
+    chromaticAberration={0.02}    // Subtle color fringing
+    anisotropicBlur={0.1}         // Blur for soft internal look
+
+    // Color tinting
+    color="#FFE4E1"               // Subtle pink tint
+
+    // Performance (CRITICAL for mobile)
+    resolution={256}              // Lower = faster (try 64-128 on mobile)
+    samples={4}                   // Lower = faster
+
+    // Backside rendering for full glass effect
+    backside={true}
+    backsideThickness={0.3}
+  />
+</mesh>
+```
+
+### FakeGlowMaterial for Inner Glow Aura
+
+```typescript
+// Source: https://github.com/ektogamat/fake-glow-material-r3f
+// Create a TypeScript version based on the gist
+
+interface FakeGlowMaterialProps {
+  falloff?: number        // 0.0-1.0, default 0.1
+  glowInternalRadius?: number  // default 6.0
+  glowColor?: string      // hex color
+  glowSharpness?: number  // 0.0-1.0
+  opacity?: number        // 0.0-1.0
+}
+
+// Usage: Place BEHIND the glass orb
+<mesh scale={0.85} position={[0, 0, -0.1]}>
+  <sphereGeometry args={[1.5, 32, 32]} />
+  <FakeGlowMaterial
+    falloff={0.3}
+    glowInternalRadius={4.0}
+    glowColor="#FF6B35"   // Orange core glow
+    glowSharpness={0.2}
+    opacity={0.9}
+  />
+</mesh>
+```
+
+### Vertex Displacement with CSM
+
+```typescript
+// Source: https://github.com/FarazzShaikh/THREE-CustomShaderMaterial
+import CustomShaderMaterial from 'three-custom-shader-material'
+import { MeshTransmissionMaterial } from '@react-three/drei'
+
+const vertexShader = /* glsl */`
   uniform float uTime;
   uniform float uNoiseScale;
   uniform float uNoiseStrength;
 
-  varying vec3 vNormal;
-  varying vec3 vPosition;
-  varying float vDisplacement;
+  attribute vec4 tangent;
 
-  // Classic Perlin 3D Noise (include full implementation)
-  // ... noise function here ...
+  // Include simplex noise function here
+
+  float getDisplacement(vec3 pos) {
+    vec3 noisePos = pos * uNoiseScale + vec3(uTime * 0.2);
+
+    // Multi-octave for organic feel
+    float noise1 = snoise(noisePos) * 0.6;
+    float noise2 = snoise(noisePos * 2.0 + vec3(uTime * 0.3)) * 0.25;
+    float noise3 = snoise(noisePos * 4.0 + vec3(uTime * 0.4)) * 0.15;
+
+    return noise1 + noise2 + noise3;
+  }
 
   void main() {
-    vNormal = normalize(normalMatrix * normal);
-    vPosition = position;
+    // Tangent-based normal recalculation
+    vec3 biTangent = cross(normal, tangent.xyz);
+    float shift = 0.01;
 
-    // Multi-octave noise for organic feel
-    float noise1 = cnoise(position * uNoiseScale + uTime * 0.2) * 0.6;
-    float noise2 = cnoise(position * uNoiseScale * 2.0 + uTime * 0.3) * 0.3;
-    float noise3 = cnoise(position * uNoiseScale * 4.0 + uTime * 0.4) * 0.1;
+    vec3 posA = position + tangent.xyz * shift;
+    vec3 posB = position + biTangent * shift;
 
-    vDisplacement = noise1 + noise2 + noise3;
+    float disp = getDisplacement(position) * uNoiseStrength;
+    float dispA = getDisplacement(posA) * uNoiseStrength;
+    float dispB = getDisplacement(posB) * uNoiseStrength;
 
-    vec3 newPosition = position + normal * vDisplacement * uNoiseStrength;
+    csm_Position = position + normal * disp;
+    posA += normal * dispA;
+    posB += normal * dispB;
 
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+    vec3 toA = normalize(posA - csm_Position);
+    vec3 toB = normalize(posB - csm_Position);
+    csm_Normal = normalize(cross(toA, toB));
   }
 `
 
-// Fragment shader with gradient and fresnel
-const fragmentShader = `
-  uniform vec3 uColorCore;      // Orange
-  uniform vec3 uColorMid;       // Coral/Pink
-  uniform vec3 uColorRim;       // Magenta/Purple
-  uniform float uFresnelPower;
-  uniform float uFresnelIntensity;
+// Usage with CSM extending MeshTransmissionMaterial
+<mesh>
+  <icosahedronGeometry args={[1.5, 128]} />
+  <CustomShaderMaterial
+    baseMaterial={MeshTransmissionMaterial}
+    vertexShader={vertexShader}
+    uniforms={{
+      uTime: { value: 0 },
+      uNoiseScale: { value: 0.8 },
+      uNoiseStrength: { value: 0.12 },
+    }}
+    // Pass through MeshTransmissionMaterial props
+    transmission={0.98}
+    thickness={0.5}
+    // ... etc
+  />
+</mesh>
+```
 
-  varying vec3 vNormal;
-  varying vec3 vPosition;
-  varying float vDisplacement;
+### Geometry Preparation for Tangents
 
-  void main() {
-    // Fresnel calculation
-    vec3 viewDirection = normalize(cameraPosition - vPosition);
-    float fresnel = 1.0 - max(dot(viewDirection, vNormal), 0.0);
-    fresnel = pow(fresnel, uFresnelPower);
+```typescript
+// CRITICAL: Geometry must have tangents for normal recalculation
+import { useMemo } from 'react'
+import * as THREE from 'three'
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils'
 
-    // Gradient based on fresnel (center to rim)
-    vec3 color = mix(uColorCore, uColorMid, fresnel * 0.5);
-    color = mix(color, uColorRim, fresnel);
+function useOrbGeometry(radius: number, detail: number) {
+  return useMemo(() => {
+    // Create base geometry
+    let geometry = new THREE.IcosahedronGeometry(radius, detail)
 
-    // Add rim glow
-    color += uColorRim * fresnel * uFresnelIntensity;
+    // Merge vertices (required for tangent computation)
+    geometry = mergeVertices(geometry)
 
-    // Slight variation based on displacement
-    color += vec3(vDisplacement * 0.1);
+    // Compute tangents (required for normal recalculation)
+    geometry.computeTangents()
 
-    gl_FragColor = vec4(color, 0.9);
-  }
-`
-
-interface GlassOrbProps {
-  reducedMotion?: boolean
+    return geometry
+  }, [radius, detail])
 }
+```
 
-export function GlassOrb({ reducedMotion = false }: GlassOrbProps) {
+### Mobile Fallback Material
+
+```typescript
+// Simplified material for mobile - no transmission render pass
+const MobileOrbMaterial = () => {
   const materialRef = useRef<THREE.ShaderMaterial>(null)
 
-  const uniforms = useMemo(() => ({
-    uTime: { value: 0 },
-    uNoiseScale: { value: 1.5 },
-    uNoiseStrength: { value: 0.15 },
-    uColorCore: { value: new THREE.Color('#FF6B35') },    // Orange
-    uColorMid: { value: new THREE.Color('#FF8E72') },     // Coral
-    uColorRim: { value: new THREE.Color('#C850C0') },     // Magenta
-    uFresnelPower: { value: 2.5 },
-    uFresnelIntensity: { value: 0.8 },
-  }), [])
-
   useFrame(({ clock }) => {
-    if (materialRef.current && !reducedMotion) {
+    if (materialRef.current) {
       materialRef.current.uniforms.uTime.value = clock.getElapsedTime()
     }
   })
 
   return (
-    <mesh>
-      <icosahedronGeometry args={[1.5, 64]} />
-      <shaderMaterial
-        ref={materialRef}
-        vertexShader={vertexShader}
-        fragmentShader={fragmentShader}
-        uniforms={uniforms}
-        transparent
-        side={THREE.DoubleSide}
-      />
-    </mesh>
-  )
-}
-```
-
-### usePrefersReducedMotion Hook
-
-```typescript
-// Source: https://www.joshwcomeau.com/react/prefers-reduced-motion/
-import { useState, useEffect } from 'react'
-
-const QUERY = '(prefers-reduced-motion: no-preference)'
-
-export function usePrefersReducedMotion(): boolean {
-  // Default to reduced motion for SSR safety
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(true)
-
-  useEffect(() => {
-    const mediaQueryList = window.matchMedia(QUERY)
-    setPrefersReducedMotion(!mediaQueryList.matches)
-
-    const listener = (event: MediaQueryListEvent) => {
-      setPrefersReducedMotion(!event.matches)
-    }
-
-    mediaQueryList.addEventListener('change', listener)
-    return () => mediaQueryList.removeEventListener('change', listener)
-  }, [])
-
-  return prefersReducedMotion
-}
-```
-
-### Camera Controls Setup
-
-```typescript
-// Source: https://drei.docs.pmnd.rs/controls/introduction
-'use client'
-
-import { Canvas } from '@react-three/fiber'
-import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
-
-export function VisualizationCanvas() {
-  return (
-    <Canvas>
-      <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={45} />
-      <OrbitControls
-        enablePan={true}
-        enableZoom={true}
-        enableRotate={false}  // 2D-style for this use case
-        minDistance={3}
-        maxDistance={10}
-        // Touch support is built-in
-      />
-      {/* Orb and other scene elements */}
-    </Canvas>
+    <shaderMaterial
+      ref={materialRef}
+      vertexShader={mobileVertexShader}
+      fragmentShader={mobileFragmentShader}
+      uniforms={{
+        uTime: { value: 0 },
+        uColorCore: { value: new THREE.Color('#FF6B35') },
+        uColorRim: { value: new THREE.Color('#FFB6C1') },
+      }}
+      transparent
+    />
   )
 }
 ```
@@ -459,65 +405,91 @@ export function VisualizationCanvas() {
 
 | Old Approach | Current Approach | When Changed | Impact |
 |--------------|------------------|--------------|--------|
-| react-zoom-pan-pinch with Canvas 2D | R3F with OrbitControls/CameraControls | 2024+ | Better WebGL integration, touch support built-in |
-| Lamina for layered materials | Custom shaders or MeshTransmissionMaterial | June 2025 (archived) | Need alternative for gradient layers |
-| @react-three/fiber v8 | @react-three/fiber v9 | 2024 | Required for React 19, new scheduler |
-| WebGL only | WebGPU support emerging | 2025 | Better mobile performance, but WebGL still primary |
-| Manual transmission shaders | MeshTransmissionMaterial | 2023 | Simplified glass effects with good performance |
+| Dual meshes (core + shell) | Single mesh + external aura | 2024-2025 | Eliminates z-fighting artifacts |
+| Fresnel-only glass | MeshTransmissionMaterial | drei 9+ (2024) | True refraction and IOR |
+| Manual normal calc | CSM with tangent attributes | three-custom-shader-material 5+ | Reliable, clean code |
+| Post-processing bloom | FakeGlowMaterial | 2024 | Better mobile performance |
+| Static inner glow | Animated noise or particles | Ongoing | More dynamic, matching reference |
 
 **Deprecated/outdated:**
-- **Lamina:** Archived June 2025, needs maintenance. Use custom shaders or MeshTransmissionMaterial with shader injection instead.
-- **R3F v8 with React 19:** Not compatible. Must use v9.
-- **three.js build files (build/three.js):** Removed in r160, use ES modules.
+- **Lamina layers:** Archived June 2025, do not use for new projects
+- **Dual nested meshes:** Creates artifacts, use single mesh + external elements
+
+## Performance Strategy
+
+### Desktop (60fps target)
+- Full MeshTransmissionMaterial
+- resolution: 256, samples: 4
+- CSM vertex displacement
+- Optional bloom post-processing
+
+### Mobile (60fps target, thermal limit)
+- **Fallback material** without transmission
+- resolution: 64 if transmission used
+- samples: 2
+- Reduced geometry detail (32 vs 64)
+- Consider disabling morphing animation
+
+### Adaptive Degradation
+```typescript
+import { PerformanceMonitor } from '@react-three/drei'
+
+<PerformanceMonitor
+  onDecline={() => {
+    // Reduce quality
+    setResolution(prev => Math.max(32, prev * 0.8))
+    setMorphingEnabled(false)
+  }}
+  onIncline={() => {
+    // Restore quality
+    setResolution(256)
+    setMorphingEnabled(true)
+  }}
+/>
+```
 
 ## Open Questions
 
-1. **Internal flow/vortex effect complexity**
-   - What we know: Possible via TSL shaders or particle systems inside glass sphere
-   - What's unclear: Performance impact on mobile, whether simpler approximation suffices
-   - Recommendation: Start with simpler gradient-based "fake depth" effect, iterate if needed
+1. **CSM + MeshTransmissionMaterial Compatibility**
+   - What we know: CSM supports extending MeshPhysicalMaterial
+   - What's unclear: Direct extension of MeshTransmissionMaterial may have issues
+   - Recommendation: Test early. Fallback: extend MeshPhysicalMaterial with transmission props
 
-2. **MeshTransmissionMaterial vs custom shader for final look**
-   - What we know: MTM provides refraction easily, custom gives more control over gradient
-   - What's unclear: Exact visual match to reference may require custom approach
-   - Recommendation: Prototype both, compare visual quality and performance
+2. **Internal Flow/Wisps (deferred)**
+   - What we know: Reference shows internal swirling motion
+   - What's unclear: Whether this is essential for MVP or can be added later
+   - Recommendation: Defer to Phase 21 with particle system. Focus on glass shell first.
 
-3. **WebGPU adoption timeline**
-   - What we know: Safari iOS supports WebGPU as of Sept 2025
-   - What's unclear: User device adoption rate, R3F v10 stability
-   - Recommendation: Target WebGL for now, WebGPU as future enhancement
+3. **Exact Color Matching**
+   - What we know: Reference has orange core, pink/salmon rim, NOT magenta
+   - What's unclear: Exact hex values, may need visual iteration
+   - Recommendation: Start with #FF6B35 (orange), #FFB6C1 (light pink), iterate
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [R3F Installation Docs](https://r3f.docs.pmnd.rs/getting-started/installation) - Setup, Next.js config, version compatibility
-- [R3F Basic Animations](https://r3f.docs.pmnd.rs/tutorials/basic-animations) - useFrame, delta time, refs
-- [R3F Scaling Performance](https://r3f.docs.pmnd.rs/advanced/scaling-performance) - On-demand rendering, instancing, optimization
-- [Drei MeshTransmissionMaterial](https://drei.docs.pmnd.rs/shaders/mesh-transmission-material) - Glass material API
-- [Drei Controls](https://drei.docs.pmnd.rs/controls/introduction) - OrbitControls, CameraControls, touch support
-- [simplex-noise GitHub](https://github.com/jwagner/simplex-noise.js) - API, createNoise3D, seeding
+- [MeshTransmissionMaterial Docs](https://drei.docs.pmnd.rs/shaders/mesh-transmission-material) - Official API
+- [THREE-CustomShaderMaterial GitHub](https://github.com/FarazzShaikh/THREE-CustomShaderMaterial) - CSM usage
+- [Codrops Displaced Sphere](https://tympanus.net/codrops/2024/07/09/creating-an-animated-displaced-sphere-with-a-custom-three-js-material/) - Normal recalculation technique
 
 ### Secondary (MEDIUM confidence)
-- [Codrops Displaced Sphere](https://tympanus.net/codrops/2024/07/09/creating-an-animated-displaced-sphere-with-a-custom-three-js-material/) - Vertex displacement, normal recalculation
-- [Codrops Vortex in Glass Sphere](https://tympanus.net/codrops/2025/03/10/rendering-a-procedural-vortex-inside-a-glass-sphere-with-three-js-and-tsl/) - Internal effect techniques
-- [Clicktorelease Vertex Displacement](https://www.clicktorelease.com/blog/vertex-displacement-noise-3d-webgl-glsl-three-js/) - Classic noise displacement tutorial
-- [Fresnel Shader Material GitHub](https://github.com/otanodesignco/Fresnel-Shader-Material) - Rim lighting implementation
-- [Josh Comeau Reduced Motion](https://www.joshwcomeau.com/react/prefers-reduced-motion/) - Accessibility hook pattern
-- [Lamina GitHub](https://github.com/pmndrs/lamina) - Layer-based materials (ARCHIVED)
+- [FakeGlowMaterial R3F](https://github.com/ektogamat/fake-glow-material-r3f) - Glow without post-processing
+- [Codrops Vortex in Glass Sphere](https://tympanus.net/codrops/2025/03/10/rendering-a-procedural-vortex-inside-a-glass-sphere-with-three-js-and-tsl/) - TSL approach reference
+- [Codrops Performance Guide](https://tympanus.net/codrops/2025/02/11/building-efficient-three-js-scenes-optimize-performance-while-maintaining-quality/) - Adaptive quality
 
 ### Tertiary (LOW confidence)
-- [Three.js Roadmap Blog](https://threejsroadmap.com/blog/rim-lighting-shader) - Rim lighting concepts
-- [Maxime Heckel Shaders](https://blog.maximeheckel.com/posts/the-study-of-shaders-with-react-three-fiber/) - Shader study with R3F
 - WebSearch results for mobile optimization patterns
+- Spline community examples for glass sphere techniques
 
 ## Metadata
 
 **Confidence breakdown:**
-- Standard stack: HIGH - Official documentation verified for all core libraries
-- Architecture patterns: HIGH - Based on official R3F docs and tutorials
-- Shader techniques: MEDIUM - Composite from multiple sources, needs implementation validation
-- Mobile performance: MEDIUM - General patterns verified, specific device testing needed
-- Internal flow effect: LOW - Complex technique, may require iteration
+- Glass material approach: HIGH - Official drei docs, well-documented
+- Normal recalculation: HIGH - Codrops tutorial with working code
+- Mobile fallback strategy: MEDIUM - General patterns, needs testing
+- CSM + Transmission combo: MEDIUM - Should work, needs validation
+- Internal flow effect: LOW - Complex, deferred to future phase
 
 **Research date:** 2026-02-02
-**Valid until:** 2026-03-02 (30 days - R3F ecosystem is stable but evolving)
+**Valid until:** 2026-03-02 (30 days)
+**Supersedes:** Previous 20-RESEARCH.md (2026-02-02)
