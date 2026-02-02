@@ -1,153 +1,130 @@
-# Requirements — Virtuna v1.6
+# Requirements — Virtuna v1.5 Trending Page
 
 **Defined:** 2026-02-02
-**Core Value:** Creator monetization hub with Revolut-style wallet and tier-gated brand deals
+**Core Value:** Real-time viral video discovery with full storyboard remix capabilities
 
-## v1.6 Requirements
+## v1.5 Requirements
 
-### Wallet (WALT)
+Requirements for Trending Page milestone. Each maps to roadmap phases.
 
-- [ ] **WALT-01**: User can view current balance (large, prominent display)
-- [ ] **WALT-02**: User can view transaction history (sortable, filterable list)
-- [ ] **WALT-03**: User can distinguish pending vs available balance
-- [ ] **WALT-04**: User can withdraw earnings to bank account
-- [ ] **WALT-05**: User can view earnings breakdown by source/deal
-- [ ] **WALT-06**: User can see payment status indicators (paid, pending, processing, failed)
-- [ ] **WALT-07**: User can see earnings velocity ("You earned $X this week")
+### Feed & Discovery (FEED)
 
-### Marketplace (MRKT)
+- [ ] **FEED-01**: User can browse vertical list feed of trending TikTok videos (infinite scroll)
+- [ ] **FEED-02**: Each video card shows thumbnail, title, creator, metrics, and category tags
+- [ ] **FEED-03**: User can filter feed by category tabs (Challenges, Sounds, Formats, etc.)
+- [ ] **FEED-04**: User can filter by AI-generated sub-tags within categories
+- [ ] **FEED-05**: User can save/bookmark videos for later
+- [ ] **FEED-06**: User sees trending velocity indicator (rising, peaked, declining)
+- [ ] **FEED-07**: User can click video to open detail modal
 
-- [ ] **MRKT-01**: User can browse deals with filters (category, tier, compensation type)
-- [ ] **MRKT-02**: User can view deal details (brand, compensation, requirements, deliverables)
-- [ ] **MRKT-03**: User can apply to deals via application form
-- [ ] **MRKT-04**: User can track deal status (applied, accepted, rejected, active, completed)
-- [ ] **MRKT-05**: User can see compensation clearly (fixed amount, rev-share %, or hybrid)
-- [ ] **MRKT-06**: User can see deal requirements (follower count, engagement, content type)
-- [ ] **MRKT-07**: User can see brand information (logo, name, category)
-- [ ] **MRKT-08**: User can see deliverables (content count, format, timeline)
-- [ ] **MRKT-09**: User can see locked/unlocked status based on subscription tier
-- [ ] **MRKT-10**: User can save/bookmark deals for later
+### Analyze (ANLZ)
 
-### Tier Gating (TIER)
+- [ ] **ANLZ-01**: User can analyze any trending video
+- [ ] **ANLZ-02**: User sees viral score breakdown (same format as Predictor)
+- [ ] **ANLZ-03**: User sees attention analysis for video
+- [ ] **ANLZ-04**: User sees insights/explanation for why video is viral
 
-- [ ] **TIER-01**: Starter subscribers ($9/mo) can access affiliate deals only
-- [ ] **TIER-02**: Pro subscribers ($29/mo) can access rev-share marketplace deals
-- [ ] **TIER-03**: Locked deals show "Upgrade to Pro" CTA with clear value proposition
+### Remix & Storyboard (REMIX)
 
-### Affiliate System (AFFL)
+- [ ] **REMIX-01**: User can remix any trending video
+- [ ] **REMIX-02**: User receives 2-3 customized script versions per remix
+- [ ] **REMIX-03**: Each script includes hook, body, and CTA
+- [ ] **REMIX-04**: Each script includes shot-by-shot filming instructions
+- [ ] **REMIX-05**: Each script includes visual reference frames
+- [ ] **REMIX-06**: User can view script in teleprompter mode
+- [ ] **REMIX-07**: User can export storyboard as PDF
+- [ ] **REMIX-08**: User can customize remix for their audience/goal
 
-- [ ] **AFFL-01**: Virtuna affiliate program displayed prominently (highest commission tier)
-- [ ] **AFFL-02**: User can generate affiliate links for available programs
-- [ ] **AFFL-03**: System tracks clicks and conversions for affiliate links
-- [ ] **AFFL-04**: User can see affiliate performance metrics (clicks, conversions, earnings)
+### Backend & Infrastructure (INFRA)
 
-### Deal Management (DEAL)
+- [ ] **INFRA-01**: System integrates with Apify TikTok scraper
+- [ ] **INFRA-02**: System applies quality filter to scraped videos
+- [ ] **INFRA-03**: System caches video data for performance
+- [ ] **INFRA-04**: System runs AI categorization pipeline on videos
+- [ ] **INFRA-05**: System assigns fixed categories to each video
+- [ ] **INFRA-06**: System generates sub-tags for each video
+- [ ] **INFRA-07**: System calculates trending velocity for each video
 
-- [ ] **DEAL-01**: Admin can manually add/edit/remove deals
-- [ ] **DEAL-02**: Deals have structured data (compensation, requirements, brand, deliverables, tier)
-- [ ] **DEAL-03**: Deals can be marked as active/paused/expired
+### Navigation (NAV)
 
-### User Experience (UX)
+- [ ] **NAV-01**: Trending Page has dedicated sidebar item
+- [ ] **NAV-02**: Sidebar item is visually distinct and discoverable
 
-- [ ] **UX-01**: User can see eligibility status before applying ("You qualify" / "Requires Pro")
-- [ ] **UX-02**: User sees confirmation after submitting application
-- [ ] **UX-03**: User can view "My Deals" — all applications and active deals in one place
-- [ ] **UX-04**: User can mark deal deliverables as complete
-- [ ] **UX-05**: User receives notifications (application accepted, payment received, deal status)
+### UX Polish (UX)
 
-### Creator Profile (PROF)
+- [ ] **UX-01**: Feed loading states are smooth and non-jarring
+- [ ] **UX-02**: Category/filter changes are instant (optimistic UI)
+- [ ] **UX-03**: Video detail modal has smooth open/close transitions
+- [ ] **UX-04**: Remix generation shows progress indication
+- [ ] **UX-05**: PDF export shows download progress
+- [ ] **UX-06**: Empty states are helpful (no videos in category, etc.)
 
-- [ ] **PROF-01**: User can set up creator profile (social handles, follower counts, niches)
-- [ ] **PROF-02**: User can connect social accounts for metric verification
-- [ ] **PROF-03**: Creator metrics used for eligibility matching
+## v1.5.x Requirements (Future)
 
-### Navigation & Integration (NAV)
-
-- [ ] **NAV-01**: Brand Deals accessible from app sidebar
-- [ ] **NAV-02**: Wallet accessible from app sidebar or header
-- [ ] **NAV-03**: Subscription tier displayed in relevant contexts
-- [ ] **NAV-04**: My Deals accessible from sidebar or deals page
-
-## v1.7+ Requirements (Deferred)
-
-### Premium Tier
-- **PREM-01**: Premium subscribers ($89/mo) can access fixed-pay deals
-- **PREM-02**: Premium deals include product compensation
-
-### Deal Aggregation
-- **AGGR-01**: Strackr API integration for 271+ affiliate networks
-- **AGGR-02**: Automated deal sync and updates
-- **AGGR-03**: External network conversion tracking
+### Instagram Support
+- **FEED-IG-01**: User can browse Instagram Reels in feed
+- **FEED-IG-02**: System integrates with Apify Instagram scraper
 
 ### Advanced Features
-- **ADV-01**: Match score ("92% fit for your audience")
-- **ADV-02**: Projected earnings based on pipeline
-- **ADV-03**: Tax preparation export (CSV/PDF)
-- **ADV-04**: Earnings goals/milestones
+- **ADV-01**: User can compare multiple videos side-by-side
+- **ADV-02**: User can set notification for rising trends
+- **ADV-03**: User can share storyboard via link
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Premium tier (fixed-pay deals) | Deferred to v1.7, focus on Starter + Pro first |
-| Strackr/external aggregation | Defer until manual curation validates concept |
-| Match scoring | Complex, requires audience analysis |
-| Multi-currency payouts | Regulatory complexity, start with USD |
-| Instant withdrawals | Premium payment rails, cash flow risk |
-| Social leaderboards | Privacy concerns, unhealthy competition |
-| Real-time chat with brands | Support burden, scope creep |
-| Commission from creators | Aspire differentiates by NOT doing this |
-| Full influencer CRM | Enterprise feature, not creator-focused |
+| Video editing | CapCut dominates; not our value prop |
+| Scheduling/posting | Different product category |
+| Social features | Community features deferred to later |
+| Real-time notifications | Push infrastructure not in place |
+| Video download | Copyright concerns, ToS issues |
+| Instagram Reels | TikTok first, Instagram in v1.5.x |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| WALT-01 | Phase 27 | Pending |
-| WALT-02 | Phase 27 | Pending |
-| WALT-03 | Phase 27 | Pending |
-| WALT-04 | Phase 27 | Pending |
-| WALT-05 | Phase 27 | Pending |
-| WALT-06 | Phase 27 | Pending |
-| WALT-07 | Phase 27 | Pending |
-| MRKT-01 | Phase 28 | Pending |
-| MRKT-02 | Phase 28 | Pending |
-| MRKT-03 | Phase 28 | Pending |
-| MRKT-04 | Phase 28 | Pending |
-| MRKT-05 | Phase 28 | Pending |
-| MRKT-06 | Phase 28 | Pending |
-| MRKT-07 | Phase 28 | Pending |
-| MRKT-08 | Phase 28 | Pending |
-| MRKT-09 | Phase 28 | Pending |
-| MRKT-10 | Phase 28 | Pending |
-| TIER-01 | Phase 29 | Pending |
-| TIER-02 | Phase 29 | Pending |
-| TIER-03 | Phase 29 | Pending |
-| AFFL-01 | Phase 29 | Pending |
-| AFFL-02 | Phase 29 | Pending |
-| AFFL-03 | Phase 29 | Pending |
-| AFFL-04 | Phase 29 | Pending |
-| DEAL-01 | Phase 28 | Pending |
-| DEAL-02 | Phase 25 | Pending |
-| DEAL-03 | Phase 28 | Pending |
-| UX-01 | Phase 30 | Pending |
-| UX-02 | Phase 30 | Pending |
-| UX-03 | Phase 30 | Pending |
-| UX-04 | Phase 30 | Pending |
-| UX-05 | Phase 30 | Pending |
-| PROF-01 | Phase 26 | Pending |
-| PROF-02 | Phase 26 | Pending |
-| PROF-03 | Phase 26 | Pending |
-| NAV-01 | Phase 30 | Pending |
-| NAV-02 | Phase 30 | Pending |
-| NAV-03 | Phase 30 | Pending |
-| NAV-04 | Phase 30 | Pending |
+| FEED-01 | TBD | Pending |
+| FEED-02 | TBD | Pending |
+| FEED-03 | TBD | Pending |
+| FEED-04 | TBD | Pending |
+| FEED-05 | TBD | Pending |
+| FEED-06 | TBD | Pending |
+| FEED-07 | TBD | Pending |
+| ANLZ-01 | TBD | Pending |
+| ANLZ-02 | TBD | Pending |
+| ANLZ-03 | TBD | Pending |
+| ANLZ-04 | TBD | Pending |
+| REMIX-01 | TBD | Pending |
+| REMIX-02 | TBD | Pending |
+| REMIX-03 | TBD | Pending |
+| REMIX-04 | TBD | Pending |
+| REMIX-05 | TBD | Pending |
+| REMIX-06 | TBD | Pending |
+| REMIX-07 | TBD | Pending |
+| REMIX-08 | TBD | Pending |
+| INFRA-01 | TBD | Pending |
+| INFRA-02 | TBD | Pending |
+| INFRA-03 | TBD | Pending |
+| INFRA-04 | TBD | Pending |
+| INFRA-05 | TBD | Pending |
+| INFRA-06 | TBD | Pending |
+| INFRA-07 | TBD | Pending |
+| NAV-01 | TBD | Pending |
+| NAV-02 | TBD | Pending |
+| UX-01 | TBD | Pending |
+| UX-02 | TBD | Pending |
+| UX-03 | TBD | Pending |
+| UX-04 | TBD | Pending |
+| UX-05 | TBD | Pending |
+| UX-06 | TBD | Pending |
 
 **Coverage:**
-- v1.6 requirements: 42 total
-- Mapped to phases: 42
-- Unmapped: 0
+- v1.5 requirements: 33 total
+- Mapped to phases: 0 (pending roadmap)
+- Unmapped: 33 ⚠️
 
 ---
 *Requirements defined: 2026-02-02*
-*Last updated: 2026-02-02 — Phase assignments added (Phases 25-30)*
+*Last updated: 2026-02-02 after initial definition*
