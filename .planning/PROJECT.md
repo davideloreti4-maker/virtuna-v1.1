@@ -72,9 +72,11 @@ A pixel-perfect, AI-verified clone of societies.io (landing + app) serving as th
 
 ---
 
-## Current Milestone: v1.3.2 — Landing Page Redesign
+## In Progress: v1.3.2 — Landing Page Redesign
 
 **Goal:** Redesign the homepage with Raycast-inspired aesthetics and iOS 26 design language, creating a premium visual experience.
+
+**Status:** Phase 15 complete (Foundation Primitives), Phases 16-19 remaining
 
 **Design Direction:**
 - **Glassmorphism** — Frosted glass panels, translucent overlays
@@ -97,9 +99,43 @@ A pixel-perfect, AI-verified clone of societies.io (landing + app) serving as th
 
 ---
 
-## Planned: v1.4 — Node Visualization
+## Current Milestone: v1.5 — Trending Page
+
+**Goal:** Real-time viral video discovery feed with analysis and remix capabilities, powered by Apify TikTok scraper.
+
+**Core Concept:**
+- Curated feed of currently viral TikTok videos (Instagram later)
+- AI-powered tagging system (breaking out, challenges, trends, etc.)
+- Quality-filtered — narrow but high signal, no low-quality content
+
+**Key Features:**
+- **Trending Feed** — Videos currently going viral, filterable by category/tags
+- **Analyze Action** — Get viral score + breakdown + explanation (same system as predictor)
+- **Remix Action** — Generate 2-3 customized versions with hooks, scripts, CTAs tailored to user goal/audience + actionable filming steps
+
+**User Flow:** Consume → Learn (analyze) → Create (remix)
+
+**Positioning:** Under Prediction Engine in sidebar with toggle to switch views
+
+**Technical Requirements:**
+- Apify TikTok scraper integration
+- Backend API for video data
+- Automated AI categorization/tagging
+- Quality curation layer
+
+**Success Criteria:**
+- Feed surfaces genuinely viral, high-quality content
+- Analysis matches viral predictor output format
+- Remix provides actionable, ready-to-film content
+- Smooth UX switching between predictor and trending
+
+---
+
+## In Progress: v1.4 — Node Visualization
 
 **Goal:** Rework the dashboard node visualization into a mesmerizing, addictive, TikTok-viral-worthy experience that delivers real value to power users.
+
+**Status:** Phase 20 complete (Visualization Foundation), Phase 21 next (Particle System)
 
 **Vision:** Hybrid visualization with central AI orb + chaos → order node crystallization
 
