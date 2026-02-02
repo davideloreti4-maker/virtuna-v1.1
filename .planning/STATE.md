@@ -5,25 +5,25 @@
 See: .planning/PROJECT.md (updated 2026-02-02)
 
 **Core value:** Real-time viral video discovery with full storyboard remix capabilities
-**Current focus:** v1.6 Brand Deals & Affiliate Hub
+**Current focus:** v1.6 Brand Deals & Affiliate Hub + Phase 35 Results Card
 
 ## Current Position
 
-Phase: 25 of 30 (database-foundation)
-Plan: 1 of 2 complete
+Phase: 35 of 35 (results-card-structure)
+Plan: 1 of 3 complete
 Status: In progress
-Last activity: 2026-02-02 — Completed 25-01-PLAN.md
+Last activity: 2026-02-02 — Completed 35-01-PLAN.md
 
-Progress: ██████░░░░ 62% (Phase 25, Plan 01)
+Progress: ██████░░░░ 64% (Phase 35, Plan 01)
 
-**Next action:** Execute 25-02-PLAN.md (TypeScript types and Supabase client)
+**Next action:** Execute 35-02-PLAN.md (Factor breakdown cards)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7 (v1.6)
-- Average duration: 3.4min
-- Total execution time: 25min
+- Total plans completed: 8 (v1.6)
+- Average duration: 3.3min
+- Total execution time: 27min
 
 **By Phase:**
 
@@ -32,6 +32,7 @@ Progress: ██████░░░░ 62% (Phase 25, Plan 01)
 | 15 | 3/3 | 11min | 3.7min |
 | 20 | 3/3 | 10min | 3.3min |
 | 25 | 1/2 | 4min | 4.0min |
+| 35 | 1/3 | 2min | 2.0min |
 
 *Updated after each plan completion*
 
@@ -49,6 +50,9 @@ Progress: ██████░░░░ 62% (Phase 25, Plan 01)
 | TEXT+CHECK over ENUM | 25-01 | More flexible for migrations |
 | (SELECT auth.uid()) RLS | 25-01 | 94% performance improvement |
 | Immutable wallet ledger | 25-01 | Trigger prevents UPDATE/DELETE |
+| 6 tiers for viral scoring | 35-01 | Viral Ready to Unlikely (0-100 range) |
+| SVG stroke-dashoffset animation | 35-01 | GPU-accelerated, no JS library needed |
+| requestAnimationFrame count-up | 35-01 | Smooth 60fps synced with ring |
 
 ### Pending Todos
 
@@ -74,6 +78,12 @@ Phase structure:
 - Phase 29: Tier Gating & Affiliate (subscription access, Virtuna program)
 - Phase 30: UX Polish & Navigation (eligibility, confirmations, sidebar)
 
+## Phase 35: Results Card Structure
+
+- [x] 35-01: Viral score types and ViralScoreRing component
+- [ ] 35-02: Factor breakdown cards
+- [ ] 35-03: Results card assembly
+
 ## Completed (v1.3.2 + v1.4)
 
 - [x] 15-01: Design System Tokens
@@ -90,6 +100,6 @@ Phase structure:
 
 ## Session Continuity
 
-Last session: 2026-02-02T11:15:00Z
-Stopped at: Completed 25-01-PLAN.md
+Last session: 2026-02-02T11:17:00Z
+Stopped at: Completed 35-01-PLAN.md
 Resume file: None
