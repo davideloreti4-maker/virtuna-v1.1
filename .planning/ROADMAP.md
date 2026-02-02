@@ -619,16 +619,23 @@ Plans:
 ---
 
 ### Phase 35: Results Card Structure & Scoring
-**Goal**: Define the breakdown structure, scoring system, and visual presentation for viral analysis results
-**Depends on**: None (design phase)
-**Requirements**: TBD (after discussion)
+**Goal**: Build the viral predictor results card with animated score ring, factor breakdown, and remix CTA
+**Depends on**: Phase 15 (design tokens and primitives)
+**Requirements**: VIRAL-01 to VIRAL-06 (defined in 35-CONTEXT.md)
 **Success Criteria** (what must be TRUE):
-  1. Breakdown structure defined (sections, information hierarchy)
-  2. Scoring approach decided (single vs multi-dimensional, confidence levels)
-  3. Visual layout direction established (cards vs tabs vs expandable)
-  4. Actionability clear (how insights drive user action, connection to Remix)
-**Status**: Awaiting discussion
-**Plans**: TBD
+  1. Animated score ring displays /100 with gradient fill (red -> yellow -> green, 1.5-2s)
+  2. Factor cards show breakdown with accordion expansion and progress bars
+  3. Sticky remix CTA with factor selection checkboxes
+  4. Confidence badge shows data quality indicator
+  5. Premium "screenshot-worthy" visual quality
+  6. Mobile responsive (375px+)
+**Status**: Ready for execution
+**Plans**: 3 plans
+
+Plans:
+- [ ] 35-01-PLAN.md — Types, animated ViralScoreRing component, tier system
+- [ ] 35-02-PLAN.md — FactorCard, FactorProgressBar, FactorsList with staggered reveal
+- [ ] 35-03-PLAN.md — ViralResultsCard composition, RemixCTA, showcase page, visual verification
 
 ---
 
@@ -669,7 +676,7 @@ Plans:
 | 28. Deal Marketplace | v1.6 | 0/TBD | Not started | - |
 | 29. Tier Gating & Affiliate | v1.6 | 0/TBD | Not started | - |
 | 30. UX Polish & Navigation | v1.6 | 0/TBD | Not started | - |
-| 35. Results Card Structure & Scoring | v1.7 | 0/TBD | Awaiting discussion | - |
+| 35. Results Card Structure & Scoring | v1.7 | 0/3 | Ready | - |
 | 36. Results Card Implementation | v1.7 | 0/TBD | Not started | - |
 
 ---
