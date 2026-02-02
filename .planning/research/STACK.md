@@ -1,615 +1,388 @@
-# Stack Research: Premium Landing Page Design
+# Stack Research: Brand Deals & Affiliate Hub
 
-**Project:** Virtuna v1.3.2 - Raycast-inspired Landing Page Redesign
-**Researched:** 2026-01-31
-**Overall confidence:** HIGH
+**Project:** Virtuna v1.6
+**Researched:** 2026-02-02
+**Dimension:** Stack additions for affiliate aggregation, wallet tracking, and creator monetization
 
 ---
 
 ## Executive Summary
 
-This research covers CSS techniques and animation approaches for achieving premium visual effects inspired by Raycast.com and iOS 26's "Liquid Glass" design language. The existing stack (Next.js 14+, TypeScript, Tailwind CSS 4, Motion v12) is well-suited for this work. No additional libraries are required - the focus is on CSS techniques and Motion patterns.
+Use an **affiliate aggregator service** (Strackr or Affluent) rather than building individual network integrations. The major networks (ShareASale, CJ, Impact, Rakuten) have APIs, but they require individual integrations, rate limits, and approval processes. An aggregator provides 200+ networks through a single API for ~EUR50-100/month.
+
+For wallet/earnings tracking, **Supabase is sufficient** with proper schema design and RPC functions for atomic transactions. Recharts (already installed) handles wallet visualizations. For eventual payouts, **Stripe Connect** is the recommended path due to its creator economy focus and global coverage.
+
+**Key recommendation:** Start with mock data + UI, then integrate aggregator API in a later phase. The wallet UI and deal browsing can be built entirely with Supabase + existing stack.
 
 ---
 
-## CSS Techniques
+## Affiliate Network APIs
 
-### Glassmorphism (Frosted Glass)
+### Major Networks with Publisher APIs
 
-The core glassmorphism effect requires four CSS properties working together.
+| Network | API Access | Key Limitations | Approval Required |
+|---------|------------|-----------------|-------------------|
+| **CJ Affiliate** | Full REST API via [Developer Portal](https://developers.cj.com) | No click-through stats via API; need manual report import | Personal Access Token required |
+| **ShareASale** | REST API at `shareasale.com/x.cfm` | 200 requests/month limit; IP whitelist required | Token + Secret Key from dashboard |
+| **Impact.com** | Full REST API via [Integrations Portal](https://integrations.impact.com) | Docs only accessible to current clients | Partner ID + API Key |
+| **Rakuten Advertising** | [Affiliate APIs 1.0.0](https://developers.rakutenadvertising.com/documentation/en-US/affiliate_apis) | Client ID + Secret + Scope ID required | Publisher account required |
+| **Awin** | API available | Similar authentication requirements | Publisher account required |
 
-**Essential CSS Properties:**
+### API Capabilities Summary
 
-```css
-.glass-panel {
-  /* 1. Semi-transparent background */
-  background: rgba(255, 255, 255, 0.15);
+All major networks provide:
+- Product/deal search
+- Commission rates and details
+- Transaction/conversion reporting
+- Link generation
 
-  /* 2. Backdrop blur - the magic ingredient */
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px); /* Safari support */
+**Critical gap:** Most networks don't provide real-time click tracking via API. Conversion data is typically available with 1-24 hour delay.
 
-  /* 3. Subtle border for edge definition */
-  border: 1px solid rgba(255, 255, 255, 0.2);
+### Verdict: Don't Build Individual Integrations
 
-  /* 4. Soft shadow for depth */
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+Building direct integrations to 4-5 networks would require:
+- 4-5 different authentication schemes
+- Handling varied rate limits (ShareASale: 200/month vs others: varies)
+- Maintaining integrations as APIs change
+- Approval process for each network
 
-  border-radius: 16px;
-}
-```
-
-**Tailwind CSS 4 Implementation:**
-
-```tsx
-<div className="
-  bg-white/15
-  backdrop-blur-md
-  border border-white/20
-  shadow-lg shadow-black/10
-  rounded-2xl
-">
-```
-
-**Dark Theme Variant (for Virtuna's dark aesthetic):**
-
-```css
-.glass-panel-dark {
-  background: rgba(26, 26, 26, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-}
-```
-
-**Blur Value Guidelines:**
-- Light blur (6-8px): Subtle frosting, content behind visible
-- Medium blur (10-14px): Sweet spot for most UI elements
-- Heavy blur (16-24px): Strong frosting, near-opaque appearance
-
-**Why these values:** 10-20px is the sweet spot for blur. Below 10px, text behind becomes distractingly readable. Above 20px, you lose the translucency that gives the effect its energy.
-
-### iOS 26 "Liquid Glass" Advanced Technique
-
-Apple's Liquid Glass goes beyond basic glassmorphism with layered depth cues.
-
-**Complete Implementation:**
-
-```css
-.liquid-glass {
-  position: relative;
-  padding: 2rem;
-  border-radius: 24px;
-  color: #fff;
-
-  /* Glass core */
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.15),
-    rgba(255, 255, 255, 0.05)
-  );
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-
-  /* Depth via multiple shadows */
-  box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-
-  overflow: hidden;
-}
-
-/* Overlay gradient for extra depth */
-.liquid-glass::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 24px;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.12),
-    rgba(255, 255, 255, 0.06)
-  );
-  mix-blend-mode: overlay;
-  pointer-events: none;
-}
-
-/* Subtle highlight/reflection */
-.liquid-glass::after {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border-radius: 24px;
-  background: radial-gradient(
-    circle at 30% 30%,
-    rgba(255, 255, 255, 0.06),
-    transparent 70%
-  );
-  filter: blur(1px);
-  pointer-events: none;
-}
-```
-
-**Key Difference from Basic Glassmorphism:** The gradient background (135deg angle), multiple pseudo-elements for layered depth, and inset shadows that simulate light refraction.
-
-### Gradient Lighting / Glow Effects
-
-For dramatic Raycast-style gradient glows behind elements.
-
-**Glow Behind Cards:**
-
-```css
-.glow-container {
-  position: relative;
-}
-
-.glow-container::before {
-  content: '';
-  position: absolute;
-  inset: -20px;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(229, 120, 80, 0.4) 0%,  /* Virtuna accent color */
-    transparent 70%
-  );
-  filter: blur(40px);
-  z-index: -1;
-}
-```
-
-**Tailwind Implementation:**
-
-```tsx
-{/* Glow layer */}
-<div className="absolute -inset-5 bg-gradient-radial from-accent/40 to-transparent blur-3xl -z-10" />
-```
-
-**Animated Gradient Glow (Subtle Pulse):**
-
-```css
-@keyframes glow-pulse {
-  0%, 100% { opacity: 0.6; transform: scale(1); }
-  50% { opacity: 0.8; transform: scale(1.02); }
-}
-
-.animated-glow::before {
-  animation: glow-pulse 4s ease-in-out infinite;
-}
-```
-
-**Neon Text Glow:**
-
-```css
-.neon-text {
-  text-shadow:
-    0 0 5px rgba(229, 120, 80, 0.5),
-    0 0 10px rgba(229, 120, 80, 0.3),
-    0 0 20px rgba(229, 120, 80, 0.2);
-}
-```
-
-**Why layer shadows:** Multiple shadows with increasing blur radii create depth and light-bleed effect. Three layers (5px, 10px, 20px) is the standard for realistic glow.
-
-### Gradient Borders
-
-For premium card edges with color transitions.
-
-**Technique 1: Pseudo-element (Recommended)**
-
-```css
-.gradient-border {
-  position: relative;
-  background: var(--color-background-elevated);
-  border-radius: 16px;
-}
-
-.gradient-border::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: 17px;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.2),
-    rgba(255, 255, 255, 0.05)
-  );
-  z-index: -1;
-}
-```
-
-**Technique 2: Mask (For Complex Gradients)**
-
-```css
-.gradient-border-mask {
-  border: 2px solid transparent;
-  background:
-    linear-gradient(var(--color-background-elevated), var(--color-background-elevated)) padding-box,
-    linear-gradient(135deg, #E57850, #708090) border-box;
-  border-radius: 16px;
-}
-```
-
-**Tailwind Implementation:**
-
-```tsx
-<div className="relative">
-  {/* Gradient border layer */}
-  <div className="absolute -inset-px rounded-[17px] bg-gradient-to-br from-white/20 to-white/5" />
-  {/* Content */}
-  <div className="relative bg-background-elevated rounded-2xl p-6">
-    Content here
-  </div>
-</div>
-```
-
-### Depth & Shadows (iOS 26 Style)
-
-Multi-layer shadows create realistic depth perception.
-
-**Elevation Levels:**
-
-```css
-/* Level 1: Subtle lift (cards, panels) */
-.elevation-1 {
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.1),
-    0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-/* Level 2: Medium elevation (modals, dropdowns) */
-.elevation-2 {
-  box-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.1),
-    0 8px 16px rgba(0, 0, 0, 0.15),
-    0 16px 32px rgba(0, 0, 0, 0.1);
-}
-
-/* Level 3: High elevation (floating elements) */
-.elevation-3 {
-  box-shadow:
-    0 4px 8px rgba(0, 0, 0, 0.1),
-    0 16px 32px rgba(0, 0, 0, 0.2),
-    0 32px 64px rgba(0, 0, 0, 0.15);
-}
-```
-
-**Why multiple shadows:** Single shadows look flat. Stacking 2-3 shadows with different blur/spread values creates the perception of real-world light behavior.
+**Estimated effort:** 2-3 weeks per network, ongoing maintenance.
 
 ---
 
-## Animation Stack
+## Aggregation Approaches
 
-### Motion (Framer Motion) v12 - Already Installed
+### Recommended: Affiliate Aggregator Services
 
-The project already has `motion` v12.29.2 installed. This is the recommended library.
+| Service | Networks | API Access | Data Refresh | Pricing |
+|---------|----------|------------|--------------|---------|
+| **[Strackr](https://strackr.com)** | 271+ | Custom tier only | 10 min (custom) / 6hr (lower) | EUR10-50/mo, API: custom pricing |
+| **[wecantrack](https://wecantrack.com)** | 350+ | Medium tier+ | Hourly | EUR59-299/mo |
+| **[Affluent](https://www.affluent.io)** | 100s | Full API focus | Hourly | Custom pricing (enterprise) |
+| **[Affilimate](https://affilimate.com)** | 100+ | Shopping/loyalty focus | Near real-time | Custom pricing |
 
-**Basic Setup:**
+### Strackr (Recommended for MVP)
 
-```tsx
-import { motion } from 'motion/react';
+**Why Strackr:**
+- REST API with unified format across all networks
+- Handles disparate network technologies (REST, SOAP, XML, file)
+- Link Builder tool for generating trackable links
+- Subid support for tracking user conversions
+- EUR50/mo gets 6,000 transactions, 30 networks, 6hr refresh
+- Custom tier gets API access + 10-min refresh
 
-// Simple fade-in
-<motion.div
-  initial={{ opacity: 0, y: 20 }}
-  animate={{ opacity: 1, y: 0 }}
-  transition={{ duration: 0.4, ease: 'easeOut' }}
->
+**Strackr API Capabilities:**
+- `GET /transactions` - Conversion data with subid
+- `GET /programs` - Available affiliate programs
+- `GET /deals` - Promotional offers/coupons
+- Link generation via Link Builder
+
+**Integration pattern:**
+```typescript
+// Example: Fetch deals from Strackr
+const deals = await fetch('https://api.strackr.com/v1/programs', {
+  headers: { 'Authorization': `Bearer ${STRACKR_API_KEY}` }
+});
 ```
 
-### Recommended Animation Patterns
+### wecantrack (Alternative)
 
-**1. Viewport-triggered Animations (Scroll Reveal)**
+**When to consider:**
+- Need 350+ networks (vs Strackr's 271)
+- Need BigQuery integration for analytics
+- Need ad platform integrations (Google Ads, Facebook, TikTok)
 
-```tsx
-import { motion } from 'motion/react';
+**Drawbacks:**
+- Higher base price (EUR59/mo vs EUR50/mo)
+- Click/session limits may constrain scale
+- API only on Medium tier (EUR99/mo+)
 
-<motion.div
-  initial={{ opacity: 0, y: 30 }}
-  whileInView={{ opacity: 1, y: 0 }}
-  viewport={{ once: true, margin: '-50px' }}
-  transition={{ duration: 0.5, ease: [0.215, 0.61, 0.355, 1] }}
->
-  Content fades in on scroll
-</motion.div>
-```
+### What NOT to Use
 
-**2. Staggered Children (Feature Cards)**
+**Scraping:** Don't scrape affiliate networks. APIs exist and terms of service prohibit scraping. Legal risk with no benefit.
 
-```tsx
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.2
-    }
-  }
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.4, ease: 'easeOut' }
-  }
-};
-
-<motion.div
-  variants={containerVariants}
-  initial="hidden"
-  whileInView="visible"
-  viewport={{ once: true }}
->
-  {items.map((item) => (
-    <motion.div key={item.id} variants={itemVariants}>
-      {item.content}
-    </motion.div>
-  ))}
-</motion.div>
-```
-
-**3. Spring Physics (Interactive Elements)**
-
-```tsx
-<motion.button
-  whileHover={{ scale: 1.02 }}
-  whileTap={{ scale: 0.98 }}
-  transition={{ type: 'spring', stiffness: 400, damping: 17 }}
->
-  Click me
-</motion.button>
-```
-
-**4. Layout Animations (Smooth Transitions)**
-
-```tsx
-<motion.div layout layoutId="unique-id">
-  Content that smoothly animates between layouts
-</motion.div>
-```
-
-### Performance Optimization
-
-**Rule 1: Only Animate Transform & Opacity**
-
-```tsx
-// GOOD - GPU accelerated
-<motion.div
-  animate={{
-    opacity: 1,
-    x: 0,
-    scale: 1,
-    rotate: 0
-  }}
-/>
-
-// BAD - Triggers layout/paint
-<motion.div
-  animate={{
-    width: 100,
-    height: 100,
-    top: 0,
-    left: 0
-  }}
-/>
-```
-
-**Rule 2: Respect Reduced Motion**
-
-```tsx
-const prefersReducedMotion =
-  typeof window !== 'undefined' &&
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-<motion.div
-  initial={prefersReducedMotion ? false : { opacity: 0 }}
-  animate={{ opacity: 1 }}
-  transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.4 }}
-/>
-```
-
-Or use Motion's built-in support:
-
-```tsx
-import { MotionConfig } from 'motion/react';
-
-<MotionConfig reducedMotion="user">
-  <App />
-</MotionConfig>
-```
-
-**Rule 3: Limit Backdrop-Filter Animations**
-
-```tsx
-// AVOID - backdrop-filter is expensive
-<motion.div
-  animate={{ backdropFilter: 'blur(20px)' }}
-/>
-
-// BETTER - Animate opacity of a pre-blurred element
-<motion.div
-  className="backdrop-blur-lg"
-  animate={{ opacity: 1 }}
-/>
-```
-
-**Rule 4: Use will-change Sparingly**
-
-```tsx
-// Only use when animation is imminent
-<motion.div
-  whileHover={{ scale: 1.05 }}
-  style={{ willChange: 'transform' }}
-/>
-```
-
-### Animation Duration Guidelines
-
-| Animation Type | Duration | Easing |
-|---------------|----------|--------|
-| Micro-interactions (hover, tap) | 150-200ms | `easeOut` or spring |
-| Element entrance | 300-400ms | `[0.215, 0.61, 0.355, 1]` (ease-out-cubic) |
-| Page transitions | 400-600ms | `[0.165, 0.84, 0.44, 1]` (ease-out-quart) |
-| Background/ambient | 2000-4000ms | `easeInOut` |
-
-**Custom easing values already in globals.css:**
-- `--ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1)`
-- `--ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1)`
+**Building custom aggregation:** The aggregator services exist because this is genuinely hard. 6+ months to build what Strackr/wecantrack already provide.
 
 ---
 
-## Integration Notes
+## Conversion/Click Tracking as Middleman
 
-### Tailwind CSS 4 Custom Theme Extensions
+### How It Works
 
-Add to `globals.css` under `@theme`:
+When Virtuna mediates affiliate links:
 
-```css
-@theme {
-  /* Existing variables... */
+1. **User clicks deal in Virtuna** -> Hits Virtuna's tracking endpoint
+2. **Virtuna logs click** -> Stores user ID, deal ID, timestamp, generates click_id
+3. **Redirect to affiliate link** -> Click_id passed as subid parameter
+4. **User converts** -> Network reports conversion with subid back to aggregator
+5. **Aggregator webhook** -> Virtuna receives conversion with click_id
+6. **Credit user wallet** -> Match click_id to user, credit earnings
 
-  /* Glassmorphism utilities */
-  --backdrop-blur-glass: 12px;
-  --backdrop-blur-glass-heavy: 20px;
+### Implementation with Strackr/wecantrack
 
-  /* Glow colors */
-  --color-glow-accent: rgba(229, 120, 80, 0.4);
-  --color-glow-accent-strong: rgba(229, 120, 80, 0.6);
-}
+Both services support subid tracking (up to 6 subids):
+
+```typescript
+// Generate trackable link
+const trackableUrl = `${affiliateUrl}&subid1=${userId}&subid2=${dealId}&subid3=${clickId}`;
+
+// Store click
+await supabase.from('clicks').insert({
+  id: clickId,
+  user_id: userId,
+  deal_id: dealId,
+  created_at: new Date()
+});
+
+// Later: webhook receives conversion
+// Match click_id, credit wallet
 ```
 
-### Reusable Component Patterns
+### Server-Side Tracking (Recommended for 2026)
 
-**Glass Panel Component:**
+With cookie deprecation, server-side tracking is essential:
 
-```tsx
-// components/ui/glass-panel.tsx
-interface GlassPanelProps {
-  children: React.ReactNode;
-  className?: string;
-  intensity?: 'light' | 'medium' | 'heavy';
-}
+```typescript
+// Next.js API route for click tracking
+// /api/track/[dealId]/route.ts
+export async function GET(req: Request, { params }: { params: { dealId: string } }) {
+  const userId = await getCurrentUser();
+  const clickId = generateClickId();
 
-export function GlassPanel({
-  children,
-  className,
-  intensity = 'medium'
-}: GlassPanelProps) {
-  const blurClass = {
-    light: 'backdrop-blur-sm',
-    medium: 'backdrop-blur-md',
-    heavy: 'backdrop-blur-lg'
-  }[intensity];
+  // Log click server-side
+  await logClick(userId, params.dealId, clickId);
 
-  return (
-    <div className={cn(
-      'relative bg-white/10 border border-white/10 rounded-2xl',
-      blurClass,
-      'shadow-lg shadow-black/10',
-      className
-    )}>
-      {children}
-    </div>
-  );
-}
-```
+  // Get trackable URL from aggregator
+  const url = await getTrackableUrl(params.dealId, clickId);
 
-**Glow Container Component:**
-
-```tsx
-// components/ui/glow-container.tsx
-interface GlowContainerProps {
-  children: React.ReactNode;
-  className?: string;
-  glowColor?: string;
-}
-
-export function GlowContainer({
-  children,
-  className,
-  glowColor = 'from-accent/40'
-}: GlowContainerProps) {
-  return (
-    <div className={cn('relative', className)}>
-      <div className={cn(
-        'absolute -inset-8 rounded-full blur-3xl -z-10',
-        `bg-gradient-radial ${glowColor} to-transparent`
-      )} />
-      {children}
-    </div>
-  );
-}
-```
-
-### Browser Compatibility
-
-**Backdrop-filter support:**
-- Chrome 76+ (2019)
-- Safari 9+ (with -webkit- prefix)
-- Firefox 103+ (2022)
-- Edge 79+ (2020)
-
-**Fallback pattern:**
-
-```css
-.glass-panel {
-  /* Fallback for older browsers */
-  background: rgba(26, 26, 26, 0.9);
-}
-
-@supports (backdrop-filter: blur(10px)) {
-  .glass-panel {
-    background: rgba(26, 26, 26, 0.6);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-  }
+  return Response.redirect(url);
 }
 ```
 
 ---
 
-## Performance Checklist
+## Wallet/Fintech Stack
 
-- [ ] Limit glassmorphic elements to 2-3 per viewport
-- [ ] Reduce blur to 6-8px on mobile devices
-- [ ] Never animate backdrop-filter directly
-- [ ] Only animate transform and opacity properties
-- [ ] Use `viewport={{ once: true }}` for scroll-triggered animations
-- [ ] Test on mobile devices (glassmorphism is GPU-intensive)
-- [ ] Respect `prefers-reduced-motion`
-- [ ] Keep animation durations under 400ms for UI interactions
+### Database Schema (Supabase)
+
+```sql
+-- Wallets table
+CREATE TABLE wallets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users NOT NULL UNIQUE,
+  balance DECIMAL(10,2) DEFAULT 0.00,
+  pending_balance DECIMAL(10,2) DEFAULT 0.00,
+  lifetime_earnings DECIMAL(10,2) DEFAULT 0.00,
+  currency VARCHAR(3) DEFAULT 'USD',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Transactions table (immutable ledger)
+CREATE TABLE wallet_transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  wallet_id UUID REFERENCES wallets NOT NULL,
+  type VARCHAR(20) NOT NULL, -- 'credit', 'debit', 'pending_credit', 'pending_to_available', 'payout'
+  amount DECIMAL(10,2) NOT NULL,
+  balance_after DECIMAL(10,2) NOT NULL,
+  source VARCHAR(50), -- 'affiliate', 'referral', 'bonus', 'payout'
+  reference_id UUID, -- click_id or payout_id
+  description TEXT,
+  metadata JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Atomic balance update via RPC
+CREATE OR REPLACE FUNCTION credit_wallet(
+  p_user_id UUID,
+  p_amount DECIMAL,
+  p_source VARCHAR,
+  p_reference_id UUID,
+  p_description TEXT
+) RETURNS wallet_transactions AS $$
+DECLARE
+  v_wallet wallets;
+  v_transaction wallet_transactions;
+BEGIN
+  -- Lock wallet row
+  SELECT * INTO v_wallet FROM wallets WHERE user_id = p_user_id FOR UPDATE;
+
+  -- Update balance
+  UPDATE wallets
+  SET balance = balance + p_amount,
+      lifetime_earnings = lifetime_earnings + p_amount,
+      updated_at = NOW()
+  WHERE id = v_wallet.id
+  RETURNING * INTO v_wallet;
+
+  -- Insert transaction
+  INSERT INTO wallet_transactions (wallet_id, type, amount, balance_after, source, reference_id, description)
+  VALUES (v_wallet.id, 'credit', p_amount, v_wallet.balance, p_source, p_reference_id, p_description)
+  RETURNING * INTO v_transaction;
+
+  RETURN v_transaction;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+### UI Components
+
+**Already installed:** Recharts v3.7.0 - sufficient for wallet charts
+
+**Recommended addition:** None required. Build wallet UI with:
+- Recharts for balance charts, earnings trends
+- Existing Radix primitives for transaction list
+- Tailwind for Revolut-style card layouts
+
+**Wallet UI patterns (from Revolut/fintech research):**
+- Centralized dashboard with balance prominently displayed
+- Transaction list with clear visual hierarchy
+- Color-coded transaction types
+- Pull-to-refresh pattern
+- Skeleton loading states
+
+---
+
+## Payout Integration (Future Phase)
+
+### Recommended: Stripe Connect
+
+**Why Stripe Connect:**
+- Used by Shopify, DoorDash, Instacart, Lyft
+- 118+ countries supported
+- Instant Payouts available (24x7)
+- Handles KYC/compliance automatically
+- Creator economy focus
+
+**Pricing:**
+- 2.9% + $0.30 per transaction (standard)
+- 0.25% payout fee (capped at $25)
+- Volume discounts available
+
+**Integration complexity:** Medium - requires connected account onboarding flow
+
+### Alternative: PayPal Payouts
+
+**When to consider:**
+- Users prefer PayPal
+- Simpler integration for initial launch
+- 15,000 payments per batch
+
+**Pricing:** 2% per transaction
+
+### NOT Recommended for MVP
+
+- **Tipalti** - Enterprise focus, overkill for MVP
+- **Payoneer** - Recent fee increases (2025), cost prohibitive
+- **Wise** - Good for international, less suited for creator payouts
+
+### Payout Timeline Recommendation
+
+1. **Phase 1 (MVP):** Wallet UI only, no real payouts
+2. **Phase 2:** Manual payouts via PayPal/Stripe dashboard
+3. **Phase 3:** Stripe Connect integration for automated payouts
+
+---
+
+## Recommended Stack Additions
+
+| Addition | Version | Purpose | Rationale |
+|----------|---------|---------|-----------|
+| **Strackr API** | - | Affiliate aggregation | 271+ networks, unified API, EUR50/mo |
+| **@stripe/stripe-js** | ^4.x | Future payout integration | Industry standard, creator-focused |
+| **stripe** | ^17.x | Server-side Stripe SDK | Payout API calls |
+
+### Already Sufficient (No Addition Needed)
+
+| Existing | Purpose | Why Sufficient |
+|----------|---------|----------------|
+| **Supabase** | Wallet storage, transactions | RPC functions for atomic ops, RLS for security |
+| **Recharts** | Wallet visualizations | Already installed, full charting capability |
+| **Zod** | API response validation | Already installed |
+| **Zustand** | Client state for wallet cache | Already installed |
+
+### Installation Command (When Ready)
+
+```bash
+# Stripe SDK (for future payout phase)
+npm install stripe @stripe/stripe-js
+```
+
+---
+
+## What NOT to Add
+
+| Avoid | Reason |
+|-------|--------|
+| **Individual network SDKs** | Use aggregator instead |
+| **Custom scraping solution** | Legal risk, maintenance burden |
+| **Tremor/additional chart libraries** | Recharts already installed, sufficient |
+| **Separate fintech database** | Supabase handles this fine with proper schema |
+| **Complex event sourcing** | Overkill for wallet; simple transaction log sufficient |
+| **Blockchain/crypto payments** | Complexity without user demand |
+| **Real-time WebSocket for balance** | Polling sufficient for this use case |
+
+---
+
+## Integration with Existing Stack
+
+### Fits Naturally
+
+| Existing | New Feature | Integration |
+|----------|-------------|-------------|
+| Next.js App Router | API routes for click tracking | `/api/track/[dealId]` |
+| Supabase Auth | Wallet user association | `wallets.user_id -> auth.users` |
+| Supabase DB | Transaction storage | New tables with RLS |
+| TypeScript | Aggregator API types | Zod schemas for API responses |
+| Tailwind | Wallet UI | Existing design system |
+| Recharts | Balance charts | Already imported |
+
+### New Patterns Required
+
+| Pattern | Description |
+|---------|-------------|
+| **Webhook handler** | `/api/webhooks/strackr` for conversion callbacks |
+| **Server-side redirects** | Track clicks before redirecting to affiliate |
+| **RPC functions** | Supabase functions for atomic wallet operations |
+| **Background jobs** | Sync deal catalog from aggregator (Vercel Cron) |
+
+---
+
+## Confidence Assessment
+
+| Area | Confidence | Reasoning |
+|------|------------|-----------|
+| **Aggregator recommendation** | HIGH | Multiple sources confirm Strackr/wecantrack capabilities; pricing verified |
+| **Network API availability** | HIGH | Official documentation verified for CJ, ShareASale, Impact, Rakuten |
+| **Wallet schema** | HIGH | Standard pattern; Supabase RPC docs verified |
+| **Stripe Connect for payouts** | HIGH | Official docs, industry standard |
+| **Strackr pricing** | MEDIUM | Pricing page verified, but API tier is "custom" |
+| **Click tracking implementation** | MEDIUM | Pattern documented, but specifics depend on aggregator chosen |
 
 ---
 
 ## Sources
 
-### Glassmorphism & CSS
-- [Glass UI - CSS Glassmorphism Generator](https://ui.glass/generator/)
-- [Dark Glassmorphism: The Aesthetic That Will Define UI in 2026](https://medium.com/@developer_89726/dark-glassmorphism-the-aesthetic-that-will-define-ui-in-2026-93aa4153088f)
-- [Glassmorphism: What It Is and How to Use It in 2026](https://invernessdesignstudio.com/glassmorphism-what-it-is-and-how-to-use-it-in-2026)
-- [How to Create Glassmorphic UI Effects with Pure CSS](https://blog.openreplay.com/create-glassmorphic-ui-css/)
+### Aggregator Services
+- [Strackr Affiliate API](https://strackr.com/affiliate-api)
+- [Strackr Pricing](https://strackr.com/pricing)
+- [wecantrack Affiliate Aggregator](https://wecantrack.com/affiliate-aggregator/)
+- [Affluent Affiliate API](https://www.affluent.io/affiliate-api/)
 
-### iOS 26 Liquid Glass
-- [Tutorial: How to Recreate the iOS 26 Glassy Effect with CSS](https://therobbiedavis.com/how-to-recreate-the-ios-26-glassy-effect-with-css/)
-- [Recreating Apple's Liquid Glass Effect with Pure CSS](https://dev.to/kevinbism/recreating-apples-liquid-glass-effect-with-pure-css-3gpl)
-- [Liquid Glass UI: iOS 26 Redesign](https://www.designmonks.co/blog/liquid-glass-ui)
+### Affiliate Network APIs
+- [CJ Developer Portal](https://developers.cj.com/)
+- [ShareASale API Building Blocks](https://help.shareasale.com/hc/en-us/articles/5375832636695-API-Building-Blocks)
+- [Impact.com Integrations Portal](https://integrations.impact.com/)
+- [Rakuten Affiliate APIs Documentation](https://developers.rakutenadvertising.com/documentation/en-US/affiliate_apis)
 
-### Animation Performance
-- [Motion Animation Performance Guide](https://motion.dev/docs/performance)
-- [Framer Motion Tips for Performance in React](https://tillitsdone.com/blogs/framer-motion-performance-tips/)
-- [Smooth as Butter: Achieving 60 FPS Animations with CSS3](https://medium.com/outsystems-experts/how-to-achieve-60-fps-animations-with-css3-db7b98610108)
-- [CSS GPU Acceleration](https://www.testmu.ai/blog/css-gpu-acceleration/)
+### Payout Platforms
+- [Stripe Connect Documentation](https://docs.stripe.com/connect)
+- [PayPal Payouts API](https://developer.paypal.com/docs/payouts/standard/integrate-api/)
 
-### Tailwind CSS
-- [Tailwind CSS Backdrop Blur Documentation](https://tailwindcss.com/docs/backdrop-blur)
-- [Gradient Border with TailwindCSS](https://reniki.com/blog/gradient-border)
+### Fintech UI Patterns
+- [Mobile Banking App Design: UX & UI Best Practices for 2026](https://www.purrweb.com/blog/banking-app-design/)
+- [Top 10 Fintech UX Design Practices 2026](https://www.onething.design/post/top-10-fintech-ux-design-practices-2026)
 
-### Glow Effects
-- [Best Glowing Effects in CSS 2026](https://www.testmuai.com/blog/glowing-effects-in-css/)
-- [CSS Glow Effects Collection](https://freefrontend.com/css-glow-effects/)
+### Supabase Patterns
+- [Supabase Database Transactions Discussion](https://github.com/orgs/supabase/discussions/526)
+- [Supabase Best Practices](https://www.leanware.co/insights/supabase-best-practices)

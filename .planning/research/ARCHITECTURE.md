@@ -1,555 +1,593 @@
-# Architecture Research: Premium Landing Page Components
+# Architecture Research: Brand Deals & Affiliate Hub
 
-**Project:** Virtuna v1.3.2 - Landing Page Redesign
-**Researched:** 2026-01-31
-**Overall Confidence:** HIGH
+**Project:** Virtuna v1.6 — Creator Monetization Hub
+**Researched:** 2026-02-02
+**Confidence:** HIGH (existing patterns clear, integration points well-defined)
 
 ## Executive Summary
 
-Premium landing page components for glassmorphism, gradient effects, and smooth animations should follow a three-layer architecture: **Primitives** (visual effect building blocks), **Composites** (assembled feature components), and **Sections** (full page sections). This mirrors the existing codebase structure where `src/components/ui/` contains primitives, `src/components/landing/` contains composites, and page sections are assembled from these.
+The Brand Deals & Affiliate Hub integrates cleanly with Virtuna's existing architecture. The app already uses:
+- **Zustand stores** for client-side state with localStorage persistence
+- **Supabase** for authentication (ready to extend to database)
+- **Component-first architecture** with clear separation (`/components/app/`, `/components/ui/`)
+- **TypeScript strict mode** throughout
 
-The key insight: **separate visual effects from structural components**. A `GlassPanel` should be a visual primitive that can wrap any content. A `GradientCard` composes glass effects with gradient accents. This separation enables consistent visual language across the landing page while allowing flexibility in content structure.
+The new features (Wallet, Deal Marketplace, Levels, Affiliate Tracking) follow these same patterns. The primary architectural decision is **where data lives**: Zustand + localStorage for fast UI state vs. Supabase for persistent, cross-device, server-authoritative data.
 
----
-
-## Component Hierarchy
-
-### Layer 1: Primitives (Build First)
-
-Base components that implement single visual effects. These are the atomic building blocks.
-
-```
-src/components/effects/
-  glass-panel.tsx      # Glassmorphism container
-  gradient-glow.tsx    # Gradient lighting/glow effect
-  animated-gradient.tsx # Animated gradient backgrounds
-  traffic-lights.tsx   # macOS window control dots
-```
-
-#### 1.1 GlassPanel
-
-**Purpose:** Reusable glassmorphism container with proper fallbacks.
-
-**Props Interface:**
-```typescript
-interface GlassPanelProps {
-  children: React.ReactNode;
-  className?: string;
-  blur?: 'subtle' | 'medium' | 'heavy';  // 8px | 12px | 16px
-  opacity?: number;  // 0.05 to 0.25 recommended
-  border?: boolean;  // Show border (default: true)
-  glow?: boolean;    // Add subtle outer glow
-}
-```
-
-**Key Implementation Details:**
-- Use `backdrop-filter: blur()` with `-webkit-` prefix handled by Tailwind v4
-- Always provide fallback `bg-background-elevated/90` for unsupported browsers
-- Limit blur to 6-8px on mobile for performance
-- Border uses `border-white/10` to match existing `FeatureCard` pattern
-- Avoid animating elements with `backdrop-filter` directly
-
-**Why build first:** Every premium component (cards, modals, sections) will compose this.
-
-#### 1.2 GradientGlow
-
-**Purpose:** Cursor-following or static gradient glow effect.
-
-**Props Interface:**
-```typescript
-interface GradientGlowProps {
-  children: React.ReactNode;
-  className?: string;
-  color?: string;           // Gradient color (default: accent)
-  intensity?: 'subtle' | 'medium' | 'strong';
-  mode?: 'static' | 'hover' | 'cursor';  // Trigger mode
-  spread?: number;          // Glow spread in pixels
-  position?: 'top' | 'bottom' | 'center' | 'cursor';
-}
-```
-
-**Key Implementation Details:**
-- Use CSS `radial-gradient` positioned via CSS custom properties
-- For cursor mode, track `pointermove` and update `--glow-x`, `--glow-y` variables
-- Use `box-shadow` with blur for the actual glow (more performant than filter)
-- Keep glow layer behind content with `z-index` management
-
-**Why build second:** Used by gradient cards and hero effects.
-
-#### 1.3 TrafficLights
-
-**Purpose:** macOS window control dots (red/yellow/green).
-
-**Props Interface:**
-```typescript
-interface TrafficLightsProps {
-  className?: string;
-  size?: 'sm' | 'md';  // 10px | 12px
-  interactive?: boolean;  // Show hover states
-}
-```
-
-**Key Implementation Details:**
-- Three circles with exact macOS colors: `#FF5F57`, `#FEBC2E`, `#28C840`
-- Spacing: 8px gap between circles
-- Optional hover states showing close/minimize/maximize icons
-- Position absolute within parent container
-
-**Why build early:** Required for `WindowMockup` composite.
-
-#### 1.4 AnimatedGradient
-
-**Purpose:** Animated background gradients for sections.
-
-**Props Interface:**
-```typescript
-interface AnimatedGradientProps {
-  className?: string;
-  colors?: string[];  // Gradient color stops
-  speed?: 'slow' | 'medium' | 'fast';
-  direction?: 'horizontal' | 'vertical' | 'diagonal';
-}
-```
-
-**Key Implementation Details:**
-- Use CSS `@keyframes` with `background-position` animation
-- Set `background-size: 200%` or `400%` to enable smooth looping
-- Prefer CSS animation over Framer Motion for backgrounds (less overhead)
+**Recommendation:** Use Supabase as the source of truth for all monetization features. Zustand stores cache data locally and sync with Supabase, following the pattern established in the GitHub discussion on [Zustand with Supabase](https://github.com/pmndrs/zustand/discussions/2284).
 
 ---
 
-### Layer 2: Composites (Build Second)
+## Database Schema
 
-Components that compose primitives into feature units.
+### Core Tables
 
-```
-src/components/landing/
-  gradient-card.tsx    # Feature card with color identity
-  window-mockup.tsx    # macOS window with content
-  glow-card.tsx        # Card with hover glow effect
-```
+```sql
+-- Creator profile extension (links to auth.users)
+CREATE TABLE creator_profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
 
-#### 2.1 GradientCard
+  -- Level system
+  current_level INTEGER DEFAULT 1,
+  current_xp INTEGER DEFAULT 0,
+  lifetime_xp INTEGER DEFAULT 0,
 
-**Purpose:** Feature cards with color identity and premium styling.
+  -- Metrics that feed into levels
+  total_followers INTEGER DEFAULT 0,
+  engagement_rate DECIMAL(5,4) DEFAULT 0,
+  content_quality_score INTEGER DEFAULT 0,
 
-**Props Interface:**
-```typescript
-interface GradientCardProps {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  colorScheme: 'blue' | 'purple' | 'orange' | 'green';
-  className?: string;
-}
-```
+  -- Timestamps
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
 
-**Composition:**
-```
-GradientCard
-  GlassPanel (blur: 'subtle', border: true)
-    GradientGlow (position: 'top', intensity: 'subtle')
-      [icon slot]
-      [title slot]
-      [description slot]
-```
+-- Level definitions (static reference table)
+CREATE TABLE levels (
+  level INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,              -- e.g., "Rising Star", "Established Creator"
+  xp_required INTEGER NOT NULL,    -- XP threshold to reach this level
+  tier_access TEXT NOT NULL,       -- 'starter' | 'pro' | 'premium'
+  perks JSONB DEFAULT '[]'         -- Array of perk descriptions
+);
 
-**Key Implementation Details:**
-- Each `colorScheme` maps to gradient colors (align with Virtuna's accent palette)
-- Glow appears at top of card, fades down
-- Hover state intensifies glow slightly
-- Inherits existing `FeatureCard` padding: `py-12 px-[26px]`
+-- Deals (both aggregated and Virtuna-native)
+CREATE TABLE deals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-#### 2.2 WindowMockup
+  -- Deal identity
+  source TEXT NOT NULL,            -- 'virtuna' | 'external_network_name'
+  external_id TEXT,                -- ID from external source if aggregated
 
-**Purpose:** macOS-style window for showcasing UI/features.
+  -- Brand info
+  brand_name TEXT NOT NULL,
+  brand_logo_url TEXT,
+  brand_category TEXT,             -- e.g., 'fashion', 'tech', 'beauty'
 
-**Props Interface:**
-```typescript
-interface WindowMockupProps {
-  children: React.ReactNode;
-  title?: string;
-  className?: string;
-  variant?: 'browser' | 'app';  // Browser has URL bar
-  dark?: boolean;
-}
-```
+  -- Deal details
+  title TEXT NOT NULL,
+  description TEXT,
+  tier TEXT NOT NULL,              -- 'starter' | 'pro' | 'premium'
+  deal_type TEXT NOT NULL,         -- 'affiliate' | 'rev_share' | 'fixed_pay'
 
-**Composition:**
-```
-WindowMockup
-  GlassPanel (blur: 'medium')
-    [window header]
-      TrafficLights
-      [title or URL bar]
-    [content slot - children]
-```
+  -- Compensation
+  commission_rate DECIMAL(5,2),    -- Percentage for affiliate/rev_share
+  fixed_amount DECIMAL(10,2),      -- Fixed pay amount if applicable
+  product_included BOOLEAN DEFAULT false,
 
-**Key Implementation Details:**
-- Window header: `h-10` with border-bottom
-- Content area has subtle inner shadow for depth
-- Rounded corners: `rounded-lg` (matches existing design tokens)
-- Shadow: `shadow-xl` for elevation
+  -- Requirements
+  min_level INTEGER DEFAULT 1,
+  min_followers INTEGER DEFAULT 0,
+  min_engagement_rate DECIMAL(5,4) DEFAULT 0,
 
-#### 2.3 GlowCard
+  -- Status
+  status TEXT DEFAULT 'active',    -- 'active' | 'paused' | 'expired'
+  featured BOOLEAN DEFAULT false,  -- Show at top of marketplace
 
-**Purpose:** Interactive card with cursor-following glow.
+  -- Tracking
+  affiliate_base_url TEXT,         -- Base URL for generating affiliate links
 
-**Props Interface:**
-```typescript
-interface GlowCardProps {
-  children: React.ReactNode;
-  className?: string;
-  glowColor?: string;
-}
-```
+  -- Timestamps
+  starts_at TIMESTAMPTZ,
+  expires_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
 
-**Composition:**
-```
-GlowCard
-  GlassPanel
-    GradientGlow (mode: 'cursor')
-      [children]
-```
+-- Creator deal applications/enrollments
+CREATE TABLE deal_enrollments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID REFERENCES creator_profiles(id) ON DELETE CASCADE,
+  deal_id UUID REFERENCES deals(id) ON DELETE CASCADE,
 
----
+  status TEXT DEFAULT 'pending',   -- 'pending' | 'approved' | 'rejected' | 'active'
 
-### Layer 3: Motion Wrappers (Build in Parallel)
+  -- Generated affiliate link for this creator
+  affiliate_link TEXT,
+  affiliate_code TEXT UNIQUE,      -- Short code for tracking
 
-Extend existing motion system with new patterns.
+  created_at TIMESTAMPTZ DEFAULT now(),
+  approved_at TIMESTAMPTZ,
 
-```
-src/components/motion/
-  fade-in.tsx          # EXISTS - keep as-is
-  slide-up.tsx         # EXISTS - keep as-is
-  stagger-children.tsx # NEW - staggered child animations
-  parallax.tsx         # NEW - scroll-linked parallax
-  animated-section.tsx # NEW - full section animation wrapper
-```
+  UNIQUE(creator_id, deal_id)
+);
 
-#### 3.1 StaggerChildren
+-- Click tracking
+CREATE TABLE affiliate_clicks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  enrollment_id UUID REFERENCES deal_enrollments(id) ON DELETE CASCADE,
 
-**Purpose:** Animate children with staggered delays.
+  -- Click metadata
+  click_id TEXT UNIQUE NOT NULL,   -- Unique identifier for attribution
+  ip_hash TEXT,                    -- Hashed IP for deduplication
+  user_agent TEXT,
+  referrer TEXT,
 
-**Props Interface:**
-```typescript
-interface StaggerChildrenProps {
-  children: React.ReactNode;
-  className?: string;
-  staggerDelay?: number;  // Delay between each child (default: 0.1)
-  once?: boolean;
-}
-```
+  -- Attribution window
+  clicked_at TIMESTAMPTZ DEFAULT now(),
+  expires_at TIMESTAMPTZ           -- When attribution window ends
+);
 
-**Key Implementation Details:**
-- Use Framer Motion `staggerChildren` in parent variants
-- Children use `motion.div` with shared variants
-- Respects `prefers-reduced-motion`
+-- Conversions
+CREATE TABLE conversions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  click_id TEXT REFERENCES affiliate_clicks(click_id),
+  enrollment_id UUID REFERENCES deal_enrollments(id),
 
-#### 3.2 AnimatedSection
+  -- Conversion details
+  order_id TEXT,                   -- External order ID
+  order_amount DECIMAL(10,2),
+  commission_amount DECIMAL(10,2) NOT NULL,
 
-**Purpose:** Full page section with scroll-triggered entrance.
+  -- Status
+  status TEXT DEFAULT 'pending',   -- 'pending' | 'approved' | 'paid' | 'rejected'
 
-**Props Interface:**
-```typescript
-interface AnimatedSectionProps {
-  children: React.ReactNode;
-  className?: string;
-  animation?: 'fade' | 'slide-up' | 'scale';
-  threshold?: number;  // Viewport intersection threshold
-  delay?: number;
-}
-```
+  converted_at TIMESTAMPTZ DEFAULT now(),
+  approved_at TIMESTAMPTZ
+);
 
-**Key Implementation Details:**
-- Uses `whileInView` with `viewport={{ once: true, margin: "-100px" }}`
-- Matches existing easing: `[0.215, 0.61, 0.355, 1]` (ease-out-cubic)
-- Default animation matches existing `FadeIn` pattern
+-- Wallet transactions (earnings history)
+CREATE TABLE wallet_transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID REFERENCES creator_profiles(id) ON DELETE CASCADE,
 
----
+  -- Transaction details
+  type TEXT NOT NULL,              -- 'earning' | 'payout' | 'adjustment'
+  amount DECIMAL(10,2) NOT NULL,
+  currency TEXT DEFAULT 'USD',
 
-### Layer 4: Page Sections (Build Last)
+  -- Source reference
+  source_type TEXT,                -- 'conversion' | 'bonus' | 'payout'
+  source_id UUID,                  -- Reference to conversion/payout
 
-Full sections assembled from composites.
+  description TEXT,
 
-```
-src/components/landing/
-  hero-section.tsx         # EXISTS - enhance with new effects
-  features-section.tsx     # EXISTS - use new GradientCards
-  showcase-section.tsx     # NEW - WindowMockup with demo
-  testimonials-section.tsx # NEW - glassmorphism testimonial cards
-```
+  -- Balance snapshot
+  balance_after DECIMAL(10,2) NOT NULL,
 
----
+  created_at TIMESTAMPTZ DEFAULT now()
+);
 
-## Reusability Patterns
+-- Payouts
+CREATE TABLE payouts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID REFERENCES creator_profiles(id) ON DELETE CASCADE,
 
-### Glass Effect System
+  amount DECIMAL(10,2) NOT NULL,
+  currency TEXT DEFAULT 'USD',
+  method TEXT,                     -- 'stripe' | 'paypal' | 'bank'
 
-**Single source of truth for glassmorphism:**
+  status TEXT DEFAULT 'pending',   -- 'pending' | 'processing' | 'completed' | 'failed'
 
-```typescript
-// In GlassPanel component
-const blurValues = {
-  subtle: 'blur-sm',      // 8px
-  medium: 'blur-md',      // 12px
-  heavy: 'blur-lg',       // 16px
-} as const;
+  -- External reference
+  external_payout_id TEXT,
 
-// Consistent glass styling
-const glassBase = cn(
-  'backdrop-blur-[var(--glass-blur)]',
-  'bg-white/[var(--glass-opacity)]',
-  'border border-white/10',
-  'rounded-lg'
+  requested_at TIMESTAMPTZ DEFAULT now(),
+  completed_at TIMESTAMPTZ
+);
+
+-- XP events (for level progression)
+CREATE TABLE xp_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID REFERENCES creator_profiles(id) ON DELETE CASCADE,
+
+  event_type TEXT NOT NULL,        -- 'deal_completed' | 'milestone' | 'bonus'
+  xp_amount INTEGER NOT NULL,
+  description TEXT,
+
+  -- Reference to what triggered XP
+  source_type TEXT,
+  source_id UUID,
+
+  created_at TIMESTAMPTZ DEFAULT now()
 );
 ```
 
-**CSS custom properties in globals.css:**
-```css
-@theme {
-  --glass-blur-subtle: 8px;
-  --glass-blur-medium: 12px;
-  --glass-blur-heavy: 16px;
-  --glass-opacity-light: 0.1;
-  --glass-opacity-dark: 0.05;
+### Indexes for Performance
+
+```sql
+-- Deal queries
+CREATE INDEX idx_deals_tier ON deals(tier);
+CREATE INDEX idx_deals_status ON deals(status);
+CREATE INDEX idx_deals_featured ON deals(featured) WHERE featured = true;
+
+-- Enrollment lookups
+CREATE INDEX idx_enrollments_creator ON deal_enrollments(creator_id);
+CREATE INDEX idx_enrollments_status ON deal_enrollments(status);
+
+-- Click attribution
+CREATE INDEX idx_clicks_click_id ON affiliate_clicks(click_id);
+CREATE INDEX idx_clicks_expires ON affiliate_clicks(expires_at);
+
+-- Wallet queries
+CREATE INDEX idx_transactions_creator ON wallet_transactions(creator_id);
+CREATE INDEX idx_transactions_created ON wallet_transactions(created_at DESC);
+
+-- Level queries
+CREATE INDEX idx_profiles_level ON creator_profiles(current_level);
+```
+
+### Row-Level Security (RLS)
+
+```sql
+-- Creators can only see their own profile
+ALTER TABLE creator_profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY creator_profile_self ON creator_profiles
+  FOR ALL USING (user_id = auth.uid());
+
+-- Deals are public to read
+ALTER TABLE deals ENABLE ROW LEVEL SECURITY;
+CREATE POLICY deals_public_read ON deals
+  FOR SELECT USING (status = 'active');
+
+-- Enrollments only visible to owner
+ALTER TABLE deal_enrollments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY enrollments_self ON deal_enrollments
+  FOR ALL USING (creator_id IN (
+    SELECT id FROM creator_profiles WHERE user_id = auth.uid()
+  ));
+
+-- Transactions only visible to owner
+ALTER TABLE wallet_transactions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY transactions_self ON wallet_transactions
+  FOR ALL USING (creator_id IN (
+    SELECT id FROM creator_profiles WHERE user_id = auth.uid()
+  ));
+```
+
+---
+
+## Component Architecture
+
+### New Components
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| **WalletDashboard** | `components/app/wallet/wallet-dashboard.tsx` | Main wallet view with balance, charts |
+| **TransactionList** | `components/app/wallet/transaction-list.tsx` | Scrollable transaction history |
+| **TransactionItem** | `components/app/wallet/transaction-item.tsx` | Single transaction row |
+| **BalanceCard** | `components/app/wallet/balance-card.tsx` | Current balance display |
+| **EarningsChart** | `components/app/wallet/earnings-chart.tsx` | Time-series earnings visualization |
+| **DealsMarketplace** | `components/app/deals/deals-marketplace.tsx` | Main deals browsing view |
+| **DealCard** | `components/app/deals/deal-card.tsx` | Single deal display |
+| **DealFilters** | `components/app/deals/deal-filters.tsx` | Tier, category, status filters |
+| **DealDetail** | `components/app/deals/deal-detail.tsx` | Full deal view with apply action |
+| **TierBadge** | `components/app/deals/tier-badge.tsx` | Premium/Pro/Starter indicator |
+| **LevelProgress** | `components/app/levels/level-progress.tsx` | XP bar and level display |
+| **LevelCard** | `components/app/levels/level-card.tsx` | Current level with perks |
+| **LevelRoadmap** | `components/app/levels/level-roadmap.tsx` | All levels with unlock status |
+| **AffiliateLink** | `components/app/affiliate/affiliate-link.tsx` | Copy-able link display |
+| **ClickStats** | `components/app/affiliate/click-stats.tsx` | Click/conversion metrics |
+
+### Modified Components
+
+| Component | Modification |
+|-----------|--------------|
+| **Sidebar** | Add Wallet, Deals, Levels nav items |
+| **AppShell** | Add routes for new pages |
+| **SettingsPage** | Add Payouts section with payout method config |
+
+### New Pages
+
+| Route | Component | Purpose |
+|-------|-----------|---------|
+| `/dashboard/wallet` | WalletDashboard | Earnings view |
+| `/dashboard/deals` | DealsMarketplace | Browse/apply to deals |
+| `/dashboard/deals/[id]` | DealDetail | Single deal view |
+| `/dashboard/levels` | LevelRoadmap | Progression overview |
+
+### New Stores
+
+```typescript
+// src/stores/wallet-store.ts
+interface WalletState {
+  balance: number;
+  pendingEarnings: number;
+  transactions: Transaction[];
+  isLoading: boolean;
+
+  // Actions
+  fetchTransactions: () => Promise<void>;
+  requestPayout: (amount: number) => Promise<void>;
+}
+
+// src/stores/deals-store.ts
+interface DealsState {
+  deals: Deal[];
+  enrollments: Enrollment[];
+  filters: DealFilters;
+  isLoading: boolean;
+
+  // Actions
+  fetchDeals: () => Promise<void>;
+  applyToDeal: (dealId: string) => Promise<void>;
+  setFilters: (filters: Partial<DealFilters>) => void;
+}
+
+// src/stores/level-store.ts
+interface LevelState {
+  currentLevel: number;
+  currentXP: number;
+  xpToNextLevel: number;
+  tierAccess: 'starter' | 'pro' | 'premium';
+  levels: Level[];
+
+  // Actions
+  fetchProgress: () => Promise<void>;
 }
 ```
 
-**Why this pattern:**
-- Centralized blur/opacity values ensure consistency
-- CSS custom properties enable theme-level overrides
-- Easy to adjust globally without hunting through components
+---
 
-### Gradient System
+## Data Flow
 
-**Color identity palette:**
-```typescript
-// src/lib/gradients.ts
-export const gradientPalettes = {
-  blue: {
-    start: '#3B82F6',
-    end: '#1D4ED8',
-    glow: 'rgba(59, 130, 246, 0.4)',
-  },
-  purple: {
-    start: '#8B5CF6',
-    end: '#6D28D9',
-    glow: 'rgba(139, 92, 246, 0.4)',
-  },
-  orange: {
-    start: '#F97316',
-    end: '#EA580C',
-    glow: 'rgba(249, 115, 22, 0.4)',
-  },
-  accent: {
-    start: '#E57850',  // Virtuna accent
-    end: '#D45D3A',
-    glow: 'rgba(229, 120, 80, 0.4)',
-  },
-} as const;
+### Deal Aggregation Flow
+
+```
+External Sources (Cron Job)
+         |
+         v
++------------------+
+| Vercel Cron Job  |  <-- Runs daily via vercel.json
+| /api/cron/deals  |
++------------------+
+         |
+         | 1. Fetch from affiliate networks (API/scrape)
+         | 2. Normalize to Deal schema
+         | 3. Upsert to Supabase
+         v
++------------------+
+| Supabase: deals  |
++------------------+
+         |
+         | Zustand fetches on mount
+         v
++------------------+
+| deals-store.ts   |  <-- Caches in memory
++------------------+
+         |
+         v
++------------------+
+| DealsMarketplace |  <-- Renders with filters
++------------------+
 ```
 
-**Usage pattern:**
-```tsx
-<GradientCard colorScheme="accent" />
-<GradientGlow color={gradientPalettes.purple.glow} />
+### Affiliate Click Tracking Flow
+
+```
+Creator shares link: https://virtuna.io/go/ABC123
+                              |
+                              v
++---------------------------+
+| /api/affiliate/[code]     |  <-- API route
++---------------------------+
+         |
+         | 1. Generate unique click_id
+         | 2. Record click in affiliate_clicks
+         | 3. Set attribution cookie (30 days)
+         | 4. Redirect to brand URL with click_id
+         v
++---------------------------+
+| Brand Website             |
++---------------------------+
+         |
+         | User converts (purchase)
+         | Brand sends webhook/postback
+         v
++---------------------------+
+| /api/webhooks/conversion  |  <-- Receives conversion
++---------------------------+
+         |
+         | 1. Look up click_id
+         | 2. Create conversion record
+         | 3. Calculate commission
+         | 4. Add to pending earnings
+         | 5. Grant XP
+         v
++---------------------------+
+| Supabase: conversions     |
+| Supabase: wallet_trans    |
+| Supabase: xp_events       |
++---------------------------+
 ```
 
-### Animation System
+### Level Progression Flow
 
-**Extend existing motion patterns:**
+```
+XP-granting events:
+- Conversion approved
+- First deal completed
+- Milestones (10, 50, 100 conversions)
+         |
+         v
++---------------------------+
+| xp_events table           |  <-- Record XP grant
++---------------------------+
+         |
+         | Supabase trigger or API
+         v
++---------------------------+
+| UPDATE creator_profiles   |  <-- Add XP, check level up
+| SET current_xp = ...      |
++---------------------------+
+         |
+         | Real-time subscription
+         v
++---------------------------+
+| level-store.ts            |  <-- Updates UI
++---------------------------+
+         |
+         v
++---------------------------+
+| LevelProgress component   |  <-- Shows animation if level up
++---------------------------+
+```
 
-The codebase already has solid patterns in `src/components/motion/`:
-- `FadeIn` and `SlideUp` use consistent easing
-- Both respect `prefers-reduced-motion` via `useReducedMotion()`
-- Both use `whileInView` with `viewport={{ once: true }}`
+### Wallet Sync Flow
 
-**Extend, don't replace:**
-```typescript
-// New animations follow the same patterns
-export const motionPresets = {
-  fadeIn: {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 },
-  },
-  slideUp: {
-    hidden: { opacity: 0, y: 60 },
-    visible: { opacity: 1, y: 0 },
-  },
-  scaleIn: {
-    hidden: { opacity: 0, scale: 0.95 },
-    visible: { opacity: 1, scale: 1 },
-  },
-} as const;
-
-// Consistent easing (already defined in globals.css)
-export const easings = {
-  outCubic: [0.215, 0.61, 0.355, 1],
-  outQuart: [0.165, 0.84, 0.44, 1],
-} as const;
+```
++---------------------------+
+| Supabase: wallet_trans    |  <-- Source of truth
++---------------------------+
+         |
+         | 1. Initial fetch on mount
+         | 2. Real-time subscription for updates
+         v
++---------------------------+
+| wallet-store.ts           |  <-- Zustand cache
++---------------------------+
+         |
+         | Selector pattern
+         v
++---------------------------+
+| WalletDashboard           |  <-- Renders current state
+| TransactionList           |
++---------------------------+
 ```
 
 ---
 
-## Build Order
+## Integration Points
 
-Recommended implementation sequence based on dependencies:
+### Existing Systems
 
-### Phase 1: Visual Primitives (Foundation)
+| System | Integration Point | How |
+|--------|-------------------|-----|
+| **Auth (Supabase)** | User identity | `auth.uid()` in RLS, creator_profiles links to auth.users |
+| **Settings Store** | Payout preferences | Add payout method to settings |
+| **Sidebar** | Navigation | Add Wallet, Deals, Levels nav items |
+| **AppShell** | Routing | Add new page routes |
 
-| Order | Component | Dependencies | Estimated Effort |
-|-------|-----------|--------------|------------------|
-| 1.1 | GlassPanel | None | 2-3 hours |
-| 1.2 | TrafficLights | None | 1 hour |
-| 1.3 | GradientGlow | None | 3-4 hours |
-| 1.4 | AnimatedGradient | None | 2 hours |
+### External Services
 
-**Rationale:** These have no dependencies and are needed by all composites.
+| Service | Purpose | Integration Method |
+|---------|---------|-------------------|
+| **Affiliate Networks** | Deal aggregation | API calls from cron job |
+| **Stripe Connect** | Payouts | Stripe SDK in API routes |
+| **Supabase Realtime** | Live updates | Subscription in stores |
 
-### Phase 2: Composites
-
-| Order | Component | Dependencies | Estimated Effort |
-|-------|-----------|--------------|------------------|
-| 2.1 | WindowMockup | GlassPanel, TrafficLights | 3-4 hours |
-| 2.2 | GradientCard | GlassPanel, GradientGlow | 3-4 hours |
-| 2.3 | GlowCard | GlassPanel, GradientGlow | 2-3 hours |
-
-**Rationale:** Build WindowMockup first for early showcase ability.
-
-### Phase 3: Motion Extensions
-
-| Order | Component | Dependencies | Estimated Effort |
-|-------|-----------|--------------|------------------|
-| 3.1 | StaggerChildren | Existing motion system | 2 hours |
-| 3.2 | AnimatedSection | Existing FadeIn/SlideUp | 2-3 hours |
-
-**Rationale:** Can build in parallel with Phase 2.
-
-### Phase 4: Page Sections
-
-| Order | Component | Dependencies | Estimated Effort |
-|-------|-----------|--------------|------------------|
-| 4.1 | Showcase Section | WindowMockup | 3-4 hours |
-| 4.2 | Enhanced Features | GradientCard | 2-3 hours |
-| 4.3 | Hero Enhancements | All primitives | 3-4 hours |
-
----
-
-## File Structure
+### API Routes Needed
 
 ```
-src/
-  components/
-    effects/                    # NEW - visual effect primitives
-      index.ts
-      glass-panel.tsx
-      gradient-glow.tsx
-      animated-gradient.tsx
-      traffic-lights.tsx
-    motion/                     # EXISTS - extend
-      index.ts
-      fade-in.tsx              # EXISTS
-      slide-up.tsx             # EXISTS
-      stagger-children.tsx     # NEW
-      animated-section.tsx     # NEW
-    landing/                    # EXISTS - extend
-      index.ts
-      gradient-card.tsx        # NEW
-      window-mockup.tsx        # NEW
-      glow-card.tsx            # NEW
-      hero-section.tsx         # EXISTS - enhance
-      features-section.tsx     # EXISTS - update to use GradientCard
-    ui/                         # EXISTS - keep as-is
-      ...
-  lib/
-    gradients.ts               # NEW - gradient palette definitions
-    utils.ts                   # EXISTS
+/api/affiliate/[code]       - Redirect handler, click tracking
+/api/webhooks/conversion    - Receive conversion postbacks
+/api/cron/deals             - Aggregate deals (Vercel cron)
+/api/deals/apply            - Apply to deal
+/api/payouts/request        - Request payout
+/api/wallet/transactions    - Fetch transaction history
 ```
 
 ---
 
-## Integration with Existing Codebase
+## Suggested Build Order
 
-### Tailwind v4 Considerations
+Based on dependencies, build in this order:
 
-The project uses Tailwind CSS v4 with `@theme` directive in `globals.css`. New design tokens should follow this pattern:
+### Phase 1: Database Foundation
+1. Create Supabase tables (schema above)
+2. Set up RLS policies
+3. Create creator_profile on user signup (trigger)
+4. Add levels reference data
 
-```css
-@theme {
-  /* Existing tokens */
-  --color-accent: #E57850;
+**Dependencies:** None
+**Outputs:** Database ready for all features
 
-  /* New glass tokens */
-  --glass-blur-subtle: 8px;
-  --glass-blur-medium: 12px;
-  --glass-blur-heavy: 16px;
-}
-```
+### Phase 2: Level System
+1. Create level-store.ts
+2. Create LevelProgress, LevelCard components
+3. Add level display to sidebar/header
+4. XP granting logic (backend functions)
 
-### Motion Library
+**Dependencies:** Phase 1 (database)
+**Outputs:** Working level display, XP foundation
 
-The project uses `motion` (v12.29.2), the standalone Framer Motion successor. Key differences:
-- Import from `"motion/react"` not `"framer-motion"`
-- Same API as Framer Motion
-- Types import: `import type { Variants } from "motion/react"`
+### Phase 3: Wallet Core
+1. Create wallet-store.ts
+2. Create WalletDashboard, BalanceCard, TransactionList
+3. Add wallet page route
+4. Supabase real-time subscription
 
-### Component Patterns to Follow
+**Dependencies:** Phase 1 (database)
+**Outputs:** View earnings, transaction history
 
-The existing codebase establishes clear patterns:
+### Phase 4: Deals Marketplace
+1. Create deals-store.ts
+2. Create DealsMarketplace, DealCard, DealFilters
+3. Add deals page routes
+4. Deal application flow
 
-1. **Client components:** Mark with `"use client"` at top
-2. **cn() utility:** Use for className merging
-3. **Props interfaces:** Export interfaces for TypeScript
-4. **Ref forwarding:** Use `forwardRef` for primitive UI components
-5. **Reduced motion:** Always check `useReducedMotion()`
+**Dependencies:** Phase 2 (level system for tier access)
+**Outputs:** Browse deals, see locked/unlocked status
+
+### Phase 5: Affiliate Tracking
+1. Create click redirect API route
+2. Create conversion webhook handler
+3. Generate unique affiliate links
+4. Attribution logic
+
+**Dependencies:** Phase 4 (deal enrollments)
+**Outputs:** Full tracking pipeline
+
+### Phase 6: Deal Aggregation
+1. Set up Vercel cron job
+2. Create aggregation logic per source
+3. Normalize and upsert deals
+4. Add Virtuna affiliate as featured deal
+
+**Dependencies:** Phase 4 (deals schema)
+**Outputs:** Automated deal population
+
+### Phase 7: Payouts
+1. Stripe Connect integration
+2. Payout request flow
+3. Add payout method to settings
+4. Payout status tracking
+
+**Dependencies:** Phase 3 (wallet)
+**Outputs:** Complete money flow
 
 ---
 
-## Anti-Patterns to Avoid
+## Confidence Assessment
 
-### Performance Anti-Patterns
-
-1. **Animating backdrop-filter:** Never animate blur values. Instead, crossfade between blurred/unblurred states.
-
-2. **Stacking glass elements:** Limit to 2-3 glassmorphic elements per viewport. More causes performance issues on mobile.
-
-3. **Large blur values:** Keep blur at 8-12px for best performance. Reduce to 6px on mobile via media query.
-
-### Accessibility Anti-Patterns
-
-1. **Low contrast text on glass:** Always use `text-white` or very light text. Never dark text on glass.
-
-2. **Missing borders:** Glass without borders is hard to perceive. Always include `border-white/10`.
-
-3. **Motion without alternatives:** Always wrap animations in `useReducedMotion()` checks.
-
-### Architecture Anti-Patterns
-
-1. **Hardcoded gradient colors:** Use the centralized `gradientPalettes` object, not inline hex values.
-
-2. **Duplicated glass styles:** Use `GlassPanel` primitive, not copying backdrop-filter everywhere.
-
-3. **Mixed animation systems:** Stick to Motion library for all animations. Don't mix with CSS animations for the same elements.
+| Area | Confidence | Reason |
+|------|------------|--------|
+| Database Schema | HIGH | Standard patterns for affiliate/marketplace systems |
+| Component Architecture | HIGH | Follows existing Virtuna patterns exactly |
+| Data Flow | HIGH | Clear separation, Zustand + Supabase pattern documented |
+| Integration Points | HIGH | Existing codebase clear, modification points obvious |
+| Affiliate Tracking | MEDIUM | Webhook approach varies by network, may need per-network handling |
+| Deal Aggregation | MEDIUM | Depends on which networks have APIs vs. require scraping |
+| Payouts | MEDIUM | Stripe Connect setup straightforward, but compliance varies by region |
 
 ---
 
 ## Sources
 
-### Glassmorphism Best Practices
-- [Glass UI Generator](https://ui.glass/generator/) - CSS generator reference
-- [Josh W. Comeau - Backdrop Filter](https://www.joshwcomeau.com/css/backdrop-filter/) - Performance insights
-- [Dark Glassmorphism 2026](https://medium.com/@developer_89726/dark-glassmorphism-the-aesthetic-that-will-define-ui-in-2026-93aa4153088f) - Modern trends
-
-### React Component Patterns
-- [React Design Patterns 2026](https://www.sayonetech.com/blog/react-design-patterns/) - Composition patterns
-- [Launch UI Components](https://www.launchuicomponents.com/) - Landing page component reference
-- [Aceternity UI Glowing Effect](https://ui.aceternity.com/components/glowing-effect) - Glow implementation reference
-
-### Motion/Animation
-- [Motion.dev Scroll Animations](https://motion.dev/docs/react-scroll-animations) - Official docs
-- [React Scroll Animations with Framer Motion](https://blog.logrocket.com/react-scroll-animations-framer-motion/) - Patterns
-
-### Window Mockup
-- [react-mockup npm](https://www.npmjs.com/package/react-mockup) - Reference implementation
-- [Mac OS X Traffic Lights](https://codepen.io/atdrago/pen/yezrBR) - CSS reference
+- [Zustand with Supabase Discussion](https://github.com/pmndrs/zustand/discussions/2284)
+- [How to use Zustand with Supabase and Next.js App Router](https://medium.com/@ozergklp/how-to-use-zustand-with-supabase-and-next-js-app-router-0473d6744abc)
+- [Vercel Cron Jobs Documentation](https://vercel.com/docs/cron-jobs)
+- [Affiliate Conversion Tracking - Tapfiliate](https://tapfiliate.com/blog/affiliate-conversion-tracking/)
+- [DrawSQL Level Up Schema Template](https://drawsql.app/templates/level-up)
+- [Best Practices for Supabase](https://www.leanware.co/insights/supabase-best-practices)
