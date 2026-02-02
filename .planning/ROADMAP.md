@@ -6,6 +6,7 @@
 - **v1.2 Visual Accuracy Refinement** - Phases 11-14 (shipped 2026-01-30)
 - **v1.3.2 Landing Page Redesign** - Phases 15-19 (in progress)
 - **v1.4 Node Visualization MVP** - Phases 20-24 (planned)
+- **v1.6 Brand Deals & Affiliate Hub** - Phases 25-30 (planned)
 - **v1.7 Viral Predictor Results** - Phases 35-36 (planned)
 
 ---
@@ -488,6 +489,119 @@ Plans:
 
 ---
 
+## v1.6 Brand Deals & Affiliate Hub (Planned)
+
+**Milestone Goal:** Creator monetization hub with Revolut-style wallet and tier-gated brand deals marketplace. Manual deal curation first, aggregation deferred to v1.7+.
+
+**Approach:** Foundation-first, display-only wallet (never hold funds)
+- Phase 25: Database foundation (deals, wallet, profiles, enrollments schema)
+- Phase 26: Creator Profile (social handles, metrics, eligibility)
+- Phase 27: Wallet Core (Revolut-style display, transactions, earnings breakdown)
+- Phase 28: Deal Marketplace (browse, filter, apply, status tracking)
+- Phase 29: Tier Gating & Affiliate (subscription access control, Virtuna affiliate program)
+- Phase 30: UX Polish & Navigation (eligibility, confirmations, notifications, sidebar integration)
+
+**Architecture Constraint:** Display earnings only — never hold creator funds (money transmission compliance).
+
+---
+
+### Phase 25: Database Foundation
+**Goal**: Establish Supabase schema for all v1.6 features — deals, wallet transactions, creator profiles, enrollments, and affiliate tracking
+**Depends on**: v1.4 complete (Phase 24)
+**Requirements**: DEAL-02
+**Success Criteria** (what must be TRUE):
+  1. `creator_profiles` table exists with social handles, follower counts, and niche fields
+  2. `deals` table exists with structured data (brand, compensation, requirements, deliverables, tier)
+  3. `deal_enrollments` table exists linking creators to deals with status tracking
+  4. `wallet_transactions` table exists as immutable ledger with balance snapshots
+  5. `affiliate_clicks` and `conversions` tables exist for attribution tracking
+  6. RLS policies enforce data access control per user
+**Plans**: TBD
+
+---
+
+### Phase 26: Creator Profile
+**Goal**: Enable creators to set up profiles with social handles and metrics used for deal eligibility matching
+**Depends on**: Phase 25
+**Requirements**: PROF-01, PROF-02, PROF-03
+**Success Criteria** (what must be TRUE):
+  1. User can access profile setup page from settings or onboarding
+  2. User can enter social handles (TikTok, Instagram, YouTube, Twitter)
+  3. User can enter follower counts and engagement metrics
+  4. User can select content niches/categories
+  5. Profile data persists in Supabase and is available for eligibility checks
+**Plans**: TBD
+
+---
+
+### Phase 27: Wallet Core
+**Goal**: Build Revolut-style wallet dashboard showing earnings, transactions, and payment status — display only, never holds funds
+**Depends on**: Phase 25
+**Requirements**: WALT-01, WALT-02, WALT-03, WALT-04, WALT-05, WALT-06, WALT-07
+**Success Criteria** (what must be TRUE):
+  1. User sees current balance prominently displayed (large, Revolut-style)
+  2. User can view transaction history with sorting and filtering
+  3. User can distinguish pending vs available balance
+  4. User can see earnings breakdown by source/deal
+  5. User can see payment status indicators (paid, pending, processing, failed)
+  6. User can see earnings velocity ("You earned $X this week")
+  7. Withdrawal flow links to external provider (not in-app holding)
+**Plans**: TBD
+
+---
+
+### Phase 28: Deal Marketplace
+**Goal**: Build deal browsing experience with filters, details, and application flow — manual curation only
+**Depends on**: Phase 25, Phase 26
+**Requirements**: MRKT-01, MRKT-02, MRKT-03, MRKT-04, MRKT-05, MRKT-06, MRKT-07, MRKT-08, MRKT-09, MRKT-10, DEAL-01, DEAL-03
+**Success Criteria** (what must be TRUE):
+  1. User can browse deals with filters (category, tier, compensation type)
+  2. User can view deal details (brand info, compensation, requirements, deliverables)
+  3. User can see compensation clearly (fixed amount, rev-share %, or hybrid)
+  4. User can see deal requirements (follower count, engagement, content type)
+  5. User can apply to deals via application form
+  6. User can track deal status (applied, accepted, rejected, active, completed)
+  7. User can see locked/unlocked status based on subscription tier
+  8. User can save/bookmark deals for later
+  9. Admin can manually add/edit/remove deals and mark as active/paused/expired
+**Plans**: TBD
+
+---
+
+### Phase 29: Tier Gating & Affiliate
+**Goal**: Implement subscription-based access control and Virtuna's own affiliate program
+**Depends on**: Phase 28
+**Requirements**: TIER-01, TIER-02, TIER-03, AFFL-01, AFFL-02, AFFL-03, AFFL-04
+**Success Criteria** (what must be TRUE):
+  1. Starter subscribers ($9/mo) can access affiliate deals only
+  2. Pro subscribers ($29/mo) can access rev-share marketplace deals
+  3. Locked deals show "Upgrade to Pro" CTA with clear value proposition
+  4. Virtuna affiliate program displayed prominently (highest commission tier)
+  5. User can generate affiliate links for available programs
+  6. System tracks clicks and conversions for affiliate links
+  7. User can see affiliate performance metrics (clicks, conversions, earnings)
+**Plans**: TBD
+
+---
+
+### Phase 30: UX Polish & Navigation
+**Goal**: Complete user experience with eligibility feedback, confirmations, notifications, and sidebar integration
+**Depends on**: Phase 27, Phase 28, Phase 29
+**Requirements**: UX-01, UX-02, UX-03, UX-04, UX-05, NAV-01, NAV-02, NAV-03, NAV-04
+**Success Criteria** (what must be TRUE):
+  1. User sees eligibility status before applying ("You qualify" / "Requires Pro")
+  2. User sees confirmation after submitting deal application
+  3. User can access "My Deals" showing all applications and active deals
+  4. User can mark deal deliverables as complete
+  5. User receives notifications (application accepted, payment received, deal status)
+  6. Brand Deals accessible from app sidebar
+  7. Wallet accessible from app sidebar or header
+  8. Subscription tier displayed in relevant contexts
+  9. My Deals accessible from sidebar or deals page
+**Plans**: TBD
+
+---
+
 ## v1.7 Viral Predictor Results (Planned)
 
 **Milestone Goal:** Design and build the viral predictor results card — the breakdown/analysis shown to users after running a prediction. Same format reused in Trending Page's "Analyze" action.
@@ -545,6 +659,12 @@ Plans:
 | 22. Node System | v1.4 | 0/TBD | Not started | - |
 | 23. Motion & Interaction | v1.4 | 0/TBD | Not started | - |
 | 24. UX & Mobile Optimization | v1.4 | 0/TBD | Not started | - |
+| 25. Database Foundation | v1.6 | 0/TBD | Not started | - |
+| 26. Creator Profile | v1.6 | 0/TBD | Not started | - |
+| 27. Wallet Core | v1.6 | 0/TBD | Not started | - |
+| 28. Deal Marketplace | v1.6 | 0/TBD | Not started | - |
+| 29. Tier Gating & Affiliate | v1.6 | 0/TBD | Not started | - |
+| 30. UX Polish & Navigation | v1.6 | 0/TBD | Not started | - |
 | 35. Results Card Structure & Scoring | v1.7 | 0/TBD | Awaiting discussion | - |
 | 36. Results Card Implementation | v1.7 | 0/TBD | Not started | - |
 
@@ -557,4 +677,4 @@ Plans:
 
 ---
 *Roadmap created: 2026-01-28*
-*Last updated: 2026-02-02 — Replanned Phase 20 with Spline 3D approach (replacing failed R3F shaders)*
+*Last updated: 2026-02-02 — Added v1.6 Brand Deals & Affiliate Hub (Phases 25-30)*

@@ -5,18 +5,18 @@
 See: .planning/PROJECT.md (updated 2026-02-02)
 
 **Core value:** Creator monetization hub with aggregated brand deals and Revolut-style wallet
-**Current focus:** Defining v1.6 requirements
+**Current focus:** v1.4 Node Visualization MVP (v1.6 roadmap defined, awaiting execution)
 
 ## Current Position
 
-Phase: 20 of 24 (visualization-foundation)
-Plan: 02 of 03
+Phase: 20 of 36 (visualization-foundation)
+Plan: 02 of 04
 Status: In progress
-Last activity: 2026-02-02 — Completed 20-02-PLAN.md
+Last activity: 2026-02-02 — Completed v1.6 roadmap (Phases 25-30)
 
 Progress: ██████░░░░ 60% (Phase 20)
 
-**Next action:** Execute 20-03-PLAN.md (if exists) or proceed to Phase 21
+**Next action:** Continue Phase 20 (Spline integration) or proceed to Phase 21
 
 ## Performance Metrics
 
@@ -40,26 +40,10 @@ Progress: ██████░░░░ 60% (Phase 20)
 
 | Decision | Phase | Context |
 |----------|-------|---------|
-| Raycast as design inspiration | v1.3.2 | Premium glassmorphism, gradient lighting, macOS mockups |
-| iOS 26 aesthetic | v1.3.2 | Depth, translucency, smooth animations |
-| Homepage only | v1.3.2 | Full creative freedom, not tied to societies.io structure |
-| v0 MCP for component generation | v1.3.2 | AI-assisted premium UI component creation |
-| Max 3 glass elements per viewport | v1.3.2 | Research: performance constraint |
-| Safari -webkit- prefix mandatory | v1.3.2 | Research: no CSS variables in -webkit-backdrop-filter |
-| Mobile blur reduced to 6-8px | v1.3.2 | Research: performance on mid-range devices |
-| oklch color space for tokens | 15-01 | Perceptual uniformity for gradients and accessibility |
-| Hardcoded blur in -webkit- | 15-01 | Safari ignores CSS variables in vendor prefixes |
-| Inline oklch for dynamic opacity | 15-02 | CSS variables can't interpolate runtime props |
-| Polymorphic as limited to block elements | 15-02 | div/section/article/aside for semantic HTML |
-| Exact macOS traffic light colors | 15-03 | #ed6a5f, #f6be50, #61c555 for authenticity |
-| TrafficLights size variants | 15-03 | 10px/12px/14px with proportional gaps |
-| Phase 16 reverted | 16 | Purple/cyan gradient and new hero layout not preferred by user |
-| R3F OrbitControls enableRotate=false | 20-01 | 2D-style pan/zoom per research |
-| Zoom minDistance=2, maxDistance=10 | 20-01 | Sensible zoom limits per research |
-| dpr=[1,2] capped | 20-01 | Retina support balanced with performance |
-| SSR defaults conservative | 20-01 | reducedMotion=true, isMobile=true for safety |
-| geometryDetail 32/64 | 20-01 | Mobile 32 subdivisions, desktop 64 |
-| onSplineMouseDown for Spline events | 20-02 | Spline uses SplineEvent type, not React mouse events |
+| Manual deal curation first | v1.6 | Strackr aggregation deferred to v1.7+ |
+| Display-only wallet | v1.6 | Never hold funds (money transmission compliance) |
+| 6 phases for v1.6 | v1.6 | 42 requirements across 8 categories |
+| Starter $9 / Pro $29 | v1.6 | Two-tier access system |
 
 ### Pending Todos
 
@@ -69,41 +53,32 @@ None yet.
 
 None identified.
 
-## Upcoming: v1.4 Node Visualization MVP
+## Upcoming: v1.6 Brand Deals & Affiliate Hub
 
-**Planned Phases:** 20-24
-**Requirements:** 31 total (VIZ, MOTION, INTERACT, UX, PERF)
-**Goal:** Mesmerizing "wow" moment visualization — orb, particles, chaos-to-order crystallization
+**Planned Phases:** 25-30
+**Requirements:** 42 total (WALT, MRKT, TIER, AFFL, DEAL, UX, PROF, NAV)
+**Goal:** Creator monetization hub with Revolut-style wallet and tier-gated brand deals
 
 Phase structure:
-- Phase 20: Visualization Foundation (orb, dark mode, canvas setup) - COMPLETE
-- Phase 21: Particle System (ambient flow, processing rush) - NEXT
-- Phase 22: Node System (chaos nodes, crystallization, connections)
-- Phase 23: Motion & Interaction (physics, drag, magnetic, tooltips)
-- Phase 24: UX & Mobile Optimization (60fps mobile, adaptive particles)
+- Phase 25: Database Foundation (schema for deals, wallet, profiles)
+- Phase 26: Creator Profile (social handles, metrics, eligibility)
+- Phase 27: Wallet Core (Revolut-style display, transactions)
+- Phase 28: Deal Marketplace (browse, filter, apply, status)
+- Phase 29: Tier Gating & Affiliate (subscription access, Virtuna program)
+- Phase 30: UX Polish & Navigation (eligibility, confirmations, sidebar)
 
-## In Progress (v1.4 / Phase 20 - R3F Rewrite)
+## In Progress (v1.4 / Phase 20 - Spline Approach)
 
-- [x] 20-01: R3F Canvas Infrastructure — VisualizationCanvas with OrbitControls, context, hooks
-- [x] 20-02: Spline Integration Setup — SplineOrb component with loading state and event handling
+- [x] 20-01: R3F Canvas Infrastructure
+- [x] 20-02: Spline Integration Setup
+- [ ] 20-03: User creates glass orb scene in Spline app
+- [ ] 20-04: Integrate Spline scene, reduced motion fallback
 
 ## Completed (v1.3.2)
 
-- [x] 15-01: Design System Tokens — dark theme, gradient palette, elevation shadows, glass effects
-- [x] 15-02: GlassPanel & GradientGlow — Safari-compatible primitives with oklch colors
-- [x] 15-03: TrafficLights & Showcase — macOS window controls, primitives showcase page
-
-## Completed (v1.2)
-
-- [x] Phase 11: Extraction — 207 screenshots captured
-- [x] Phase 12: Comparison — 45 discrepancies documented
-
-## Completed (v1.1)
-
-- [x] All 10 phases (44 plans)
-- [x] Landing site, app shell, society management
-- [x] Test forms, simulation, results, history
-- [x] Settings, modals, mobile responsive
+- [x] 15-01: Design System Tokens
+- [x] 15-02: GlassPanel & GradientGlow
+- [x] 15-03: TrafficLights & Showcase
 
 ## Infrastructure URLs
 
@@ -113,6 +88,6 @@ Phase structure:
 
 ## Session Continuity
 
-Last session: 2026-02-02T08:15:00Z
-Stopped at: Completed 20-02-PLAN.md (Spline Integration Setup)
+Last session: 2026-02-02T10:30:00Z
+Stopped at: Created v1.6 roadmap (Phases 25-30)
 Resume file: None

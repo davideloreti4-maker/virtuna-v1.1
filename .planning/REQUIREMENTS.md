@@ -103,51 +103,51 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| WALT-01 | TBD | Pending |
-| WALT-02 | TBD | Pending |
-| WALT-03 | TBD | Pending |
-| WALT-04 | TBD | Pending |
-| WALT-05 | TBD | Pending |
-| WALT-06 | TBD | Pending |
-| WALT-07 | TBD | Pending |
-| MRKT-01 | TBD | Pending |
-| MRKT-02 | TBD | Pending |
-| MRKT-03 | TBD | Pending |
-| MRKT-04 | TBD | Pending |
-| MRKT-05 | TBD | Pending |
-| MRKT-06 | TBD | Pending |
-| MRKT-07 | TBD | Pending |
-| MRKT-08 | TBD | Pending |
-| MRKT-09 | TBD | Pending |
-| MRKT-10 | TBD | Pending |
-| TIER-01 | TBD | Pending |
-| TIER-02 | TBD | Pending |
-| TIER-03 | TBD | Pending |
-| AFFL-01 | TBD | Pending |
-| AFFL-02 | TBD | Pending |
-| AFFL-03 | TBD | Pending |
-| AFFL-04 | TBD | Pending |
-| DEAL-01 | TBD | Pending |
-| DEAL-02 | TBD | Pending |
-| DEAL-03 | TBD | Pending |
-| NAV-01 | TBD | Pending |
-| NAV-02 | TBD | Pending |
-| NAV-03 | TBD | Pending |
-| NAV-04 | TBD | Pending |
-| UX-01 | TBD | Pending |
-| UX-02 | TBD | Pending |
-| UX-03 | TBD | Pending |
-| UX-04 | TBD | Pending |
-| UX-05 | TBD | Pending |
-| PROF-01 | TBD | Pending |
-| PROF-02 | TBD | Pending |
-| PROF-03 | TBD | Pending |
+| WALT-01 | Phase 27 | Pending |
+| WALT-02 | Phase 27 | Pending |
+| WALT-03 | Phase 27 | Pending |
+| WALT-04 | Phase 27 | Pending |
+| WALT-05 | Phase 27 | Pending |
+| WALT-06 | Phase 27 | Pending |
+| WALT-07 | Phase 27 | Pending |
+| MRKT-01 | Phase 28 | Pending |
+| MRKT-02 | Phase 28 | Pending |
+| MRKT-03 | Phase 28 | Pending |
+| MRKT-04 | Phase 28 | Pending |
+| MRKT-05 | Phase 28 | Pending |
+| MRKT-06 | Phase 28 | Pending |
+| MRKT-07 | Phase 28 | Pending |
+| MRKT-08 | Phase 28 | Pending |
+| MRKT-09 | Phase 28 | Pending |
+| MRKT-10 | Phase 28 | Pending |
+| TIER-01 | Phase 29 | Pending |
+| TIER-02 | Phase 29 | Pending |
+| TIER-03 | Phase 29 | Pending |
+| AFFL-01 | Phase 29 | Pending |
+| AFFL-02 | Phase 29 | Pending |
+| AFFL-03 | Phase 29 | Pending |
+| AFFL-04 | Phase 29 | Pending |
+| DEAL-01 | Phase 28 | Pending |
+| DEAL-02 | Phase 25 | Pending |
+| DEAL-03 | Phase 28 | Pending |
+| UX-01 | Phase 30 | Pending |
+| UX-02 | Phase 30 | Pending |
+| UX-03 | Phase 30 | Pending |
+| UX-04 | Phase 30 | Pending |
+| UX-05 | Phase 30 | Pending |
+| PROF-01 | Phase 26 | Pending |
+| PROF-02 | Phase 26 | Pending |
+| PROF-03 | Phase 26 | Pending |
+| NAV-01 | Phase 30 | Pending |
+| NAV-02 | Phase 30 | Pending |
+| NAV-03 | Phase 30 | Pending |
+| NAV-04 | Phase 30 | Pending |
 
 **Coverage:**
 - v1.6 requirements: 42 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 42
+- Mapped to phases: 42
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-02*
-*Last updated: 2026-02-02 — Initial definition*
+*Last updated: 2026-02-02 — Phase assignments added (Phases 25-30)*
