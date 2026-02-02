@@ -6,6 +6,7 @@
 - **v1.2 Visual Accuracy Refinement** - Phases 11-14 (shipped 2026-01-30)
 - **v1.3.2 Landing Page Redesign** - Phases 15-19 (in progress)
 - **v1.4 Node Visualization MVP** - Phases 20-24 (planned)
+- **v1.7 Viral Predictor Results** - Phases 35-36 (planned)
 
 ---
 
@@ -388,8 +389,8 @@ Plans:
 
 **Milestone Goal:** Ship the mesmerizing "wow" moment visualization — central orb, flowing particles, chaos-to-order node crystallization — optimized for mobile performance.
 
-**Approach:** Build visualization layers progressively using Three.js/React Three Fiber
-- Phase 20: Visualization foundation (R3F canvas, glass orb with shaders, camera controls)
+**Approach:** Build visualization layers progressively
+- Phase 20: Visualization foundation (Spline glass orb, canvas setup, accessibility)
 - Phase 21: Particle system (ambient flow, processing rush, captivating idle)
 - Phase 22: Node system (chaos nodes, crystallization, connections, motion layers)
 - Phase 23: Motion and interaction (physics, gestures, drag, magnetic)
@@ -398,24 +399,25 @@ Plans:
 ---
 
 ### Phase 20: Visualization Foundation
-**Goal**: Establish the visual core using Three.js/React Three Fiber — organic morphing glass orb with ambient breathing, WebGL canvas with camera controls
+**Goal**: Establish the visual core — glass orb using Spline 3D (replaces failed R3F shader approach), with accessibility support and camera controls
 **Depends on**: v1.3.2 complete (Phase 19)
 **Requirements**: VIZ-01, VIZ-02, VIZ-09, VIZ-10
 **Success Criteria** (what must be TRUE):
-  1. Central glowing orb renders with organic blob morphing via vertex displacement shaders
-  2. Orb has gradient colors (orange core to coral to magenta rim) with fresnel rim lighting
-  3. Orb has ambient "breathing" animation with 2.5 second sinusoidal scale pulse cycle
-  4. Pan/zoom works via Drei OrbitControls on desktop (drag + wheel) and touch (pinch + drag)
-  5. WebGL rendering is crisp on retina displays (dpr capped at 2)
-  6. Orb responds to hover with 30% glow boost, tap with scale pulse feedback
-  7. prefers-reduced-motion shows static orb (no animation)
-**Status**: Ready for execution
-**Plans**: 3 plans
+  1. Glass orb renders using Spline 3D with translucent glass effect
+  2. Orb has gradient colors (orange core to coral to magenta rim)
+  3. Orb has ambient "breathing" animation (designed in Spline)
+  4. Pan/zoom works via camera controls on desktop and touch
+  5. WebGL rendering is crisp on retina displays
+  6. Orb responds to hover with glow boost, tap with feedback
+  7. prefers-reduced-motion shows static CSS fallback (no WebGL)
+**Status**: In Progress (replanning with Spline approach)
+**Plans**: 4 plans
 
 Plans:
-- [ ] 20-01-PLAN.md — R3F/Three.js setup, Canvas wrapper, camera controls infrastructure
-- [ ] 20-02-PLAN.md — Custom shader material with vertex displacement and gradient colors
-- [ ] 20-03-PLAN.md — Animation system (breathing, state transitions, reduced motion support)
+- [x] 20-01-PLAN.md — R3F/Three.js setup, Canvas wrapper, camera controls infrastructure
+- [ ] 20-02-PLAN.md — Install Spline React package and create SplineOrb component
+- [ ] 20-03-PLAN.md — User creates glass orb scene in Spline app (checkpoint)
+- [ ] 20-04-PLAN.md — Integrate Spline scene, reduced motion fallback, cleanup old shaders
 
 ---
 
@@ -486,6 +488,46 @@ Plans:
 
 ---
 
+## v1.7 Viral Predictor Results (Planned)
+
+**Milestone Goal:** Design and build the viral predictor results card — the breakdown/analysis shown to users after running a prediction. Same format reused in Trending Page's "Analyze" action.
+
+**Context:** See `.planning/DISCUSS-CONTEXT-viral-predictor-results.md`
+
+**Approach:** Research-driven design
+- Phase 35: Results Card Structure & Scoring — breakdown sections, scoring system, visual hierarchy
+- Phase 36: Results Card Implementation — build components, integrate with predictor flow
+
+---
+
+### Phase 35: Results Card Structure & Scoring
+**Goal**: Define the breakdown structure, scoring system, and visual presentation for viral analysis results
+**Depends on**: None (design phase)
+**Requirements**: TBD (after discussion)
+**Success Criteria** (what must be TRUE):
+  1. Breakdown structure defined (sections, information hierarchy)
+  2. Scoring approach decided (single vs multi-dimensional, confidence levels)
+  3. Visual layout direction established (cards vs tabs vs expandable)
+  4. Actionability clear (how insights drive user action, connection to Remix)
+**Status**: Awaiting discussion
+**Plans**: TBD
+
+---
+
+### Phase 36: Results Card Implementation
+**Goal**: Build the results card components and integrate with viral predictor flow
+**Depends on**: Phase 35
+**Requirements**: TBD (derived from Phase 35)
+**Success Criteria** (what must be TRUE):
+  1. Results card renders breakdown per Phase 35 spec
+  2. Scoring displays with appropriate visual treatment
+  3. Mobile-responsive layout works from 375px
+  4. Reusable for Trending Page "Analyze" action
+**Status**: Not started
+**Plans**: TBD
+
+---
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -498,19 +540,21 @@ Plans:
 | 17. Feature Cards | v1.3.2 | 0/2 | Not started | - |
 | 18. Navigation + Animations | v1.3.2 | 0/4 | Not started | - |
 | 19. Quality & Polish | v1.3.2 | 0/3 | Not started | - |
-| 20. Visualization Foundation | v1.4 | 0/3 | Ready | - |
+| 20. Visualization Foundation | v1.4 | 1/4 | In Progress | - |
 | 21. Particle System | v1.4 | 0/2 | Planned | - |
 | 22. Node System | v1.4 | 0/TBD | Not started | - |
 | 23. Motion & Interaction | v1.4 | 0/TBD | Not started | - |
 | 24. UX & Mobile Optimization | v1.4 | 0/TBD | Not started | - |
+| 35. Results Card Structure & Scoring | v1.7 | 0/TBD | Awaiting discussion | - |
+| 36. Results Card Implementation | v1.7 | 0/TBD | Not started | - |
 
 ---
 
 ## Current Status
 - **Current Milestone**: v1.4 (Node Visualization MVP)
-- **Current Phase**: 20 (Visualization Foundation) - Ready for execution
+- **Current Phase**: 20 (Visualization Foundation) - In Progress (Spline approach)
 - **Next Action**: `/gsd:execute-phase 20`
 
 ---
 *Roadmap created: 2026-01-28*
-*Last updated: 2026-02-02 — Phase 20 replanned with Three.js/R3F approach*
+*Last updated: 2026-02-02 — Replanned Phase 20 with Spline 3D approach (replacing failed R3F shaders)*
