@@ -1,312 +1,392 @@
-# Stack Research: Brand Deals & Affiliate Hub
+# Stack Research: Trending Page (v1.5)
 
-**Project:** Virtuna v1.6
+**Project:** Virtuna v1.5
 **Researched:** 2026-02-02
-**Dimension:** Stack additions for affiliate aggregation, wallet tracking, and creator monetization
+**Dimension:** Stack additions for TikTok video feed, AI categorization, remix storyboards, and PDF export
 
 ---
 
 ## Executive Summary
 
-Use an **affiliate aggregator service** (Strackr or Affluent) rather than building individual network integrations. The major networks (ShareASale, CJ, Impact, Rakuten) have APIs, but they require individual integrations, rate limits, and approval processes. An aggregator provides 200+ networks through a single API for ~EUR50-100/month.
+The Trending Page requires **four new capability domains**: video data ingestion (Apify), AI processing (OpenAI or Anthropic), client-side data fetching (TanStack Query), and PDF generation (React-PDF). The existing stack (Next.js 16, Supabase, Zustand, Tailwind) handles storage, auth, and UI.
 
-For wallet/earnings tracking, **Supabase is sufficient** with proper schema design and RPC functions for atomic transactions. Recharts (already installed) handles wallet visualizations. For eventual payouts, **Stripe Connect** is the recommended path due to its creator economy focus and global coverage.
+**Key recommendations:**
 
-**Key recommendation:** Start with mock data + UI, then integrate aggregator API in a later phase. The wallet UI and deal browsing can be built entirely with Supabase + existing stack.
+1. **Apify Client** (`apify-client` v2.22.0) — Single integration for TikTok scraping via actors
+2. **OpenAI SDK** (`openai` v6.17.0) — AI categorization and remix generation (GPT-4o)
+3. **TanStack Query** (`@tanstack/react-query` v5.x) — Server state management with caching
+4. **React-PDF** (`@react-pdf/renderer` v4.3.2) — React 19-compatible PDF generation
+5. **Upstash Redis** (`@upstash/redis` + `@upstash/ratelimit`) — API caching and rate limiting
 
----
-
-## Affiliate Network APIs
-
-### Major Networks with Publisher APIs
-
-| Network | API Access | Key Limitations | Approval Required |
-|---------|------------|-----------------|-------------------|
-| **CJ Affiliate** | Full REST API via [Developer Portal](https://developers.cj.com) | No click-through stats via API; need manual report import | Personal Access Token required |
-| **ShareASale** | REST API at `shareasale.com/x.cfm` | 200 requests/month limit; IP whitelist required | Token + Secret Key from dashboard |
-| **Impact.com** | Full REST API via [Integrations Portal](https://integrations.impact.com) | Docs only accessible to current clients | Partner ID + API Key |
-| **Rakuten Advertising** | [Affiliate APIs 1.0.0](https://developers.rakutenadvertising.com/documentation/en-US/affiliate_apis) | Client ID + Secret + Scope ID required | Publisher account required |
-| **Awin** | API available | Similar authentication requirements | Publisher account required |
-
-### API Capabilities Summary
-
-All major networks provide:
-- Product/deal search
-- Commission rates and details
-- Transaction/conversion reporting
-- Link generation
-
-**Critical gap:** Most networks don't provide real-time click tracking via API. Conversion data is typically available with 1-24 hour delay.
-
-### Verdict: Don't Build Individual Integrations
-
-Building direct integrations to 4-5 networks would require:
-- 4-5 different authentication schemes
-- Handling varied rate limits (ShareASale: 200/month vs others: varies)
-- Maintaining integrations as APIs change
-- Approval process for each network
-
-**Estimated effort:** 2-3 weeks per network, ongoing maintenance.
+**What NOT to add:** Direct TikTok API (no official public API), image generation for storyboard frames (complexity, cost, consistency issues), multiple AI providers (pick one).
 
 ---
 
-## Aggregation Approaches
+## New Capabilities Required
 
-### Recommended: Affiliate Aggregator Services
+| Capability | Purpose | Recommendation |
+|------------|---------|----------------|
+| TikTok data ingestion | Fetch trending videos + creator baselines | Apify TikTok scraper |
+| AI categorization | Classify videos by niche, content type, strategic tags | OpenAI GPT-4o |
+| AI remix generation | Generate 3 full production briefs per video | OpenAI GPT-4o |
+| Video data caching | Cache scraped data, reduce API calls | Upstash Redis |
+| API rate limiting | Protect AI endpoints, manage costs | Upstash Ratelimit |
+| Server state management | Feed data fetching with caching | TanStack Query |
+| PDF generation | Export storyboard briefs | React-PDF |
 
-| Service | Networks | API Access | Data Refresh | Pricing |
-|---------|----------|------------|--------------|---------|
-| **[Strackr](https://strackr.com)** | 271+ | Custom tier only | 10 min (custom) / 6hr (lower) | EUR10-50/mo, API: custom pricing |
-| **[wecantrack](https://wecantrack.com)** | 350+ | Medium tier+ | Hourly | EUR59-299/mo |
-| **[Affluent](https://www.affluent.io)** | 100s | Full API focus | Hourly | Custom pricing (enterprise) |
-| **[Affilimate](https://affilimate.com)** | 100+ | Shopping/loyalty focus | Near real-time | Custom pricing |
+---
 
-### Strackr (Recommended for MVP)
+## Apify Integration
 
-**Why Strackr:**
-- REST API with unified format across all networks
-- Handles disparate network technologies (REST, SOAP, XML, file)
-- Link Builder tool for generating trackable links
-- Subid support for tracking user conversions
-- EUR50/mo gets 6,000 transactions, 30 networks, 6hr refresh
-- Custom tier gets API access + 10-min refresh
+### Recommended: `apify-client`
 
-**Strackr API Capabilities:**
-- `GET /transactions` - Conversion data with subid
-- `GET /programs` - Available affiliate programs
-- `GET /deals` - Promotional offers/coupons
-- Link generation via Link Builder
+| Attribute | Value |
+|-----------|-------|
+| Package | `apify-client` |
+| Version | **2.22.0** (January 27, 2026) |
+| Source | [GitHub](https://github.com/apify/apify-client-js) |
+| Confidence | HIGH |
 
-**Integration pattern:**
+**Why Apify:**
+- No official TikTok public API exists for trending content
+- Apify provides managed, maintained scrapers with 98% success rate
+- Single SDK for all TikTok data needs (videos, profiles, hashtags)
+- Automatic retries with exponential backoff built-in
+- REST API with unified response format
+
+### Relevant Apify Actors
+
+| Actor | Purpose | Pricing |
+|-------|---------|---------|
+| [TikTok Scraper (Api Dojo)](https://apify.com/apidojo/tiktok-scraper) | Bulk video scraping, 600 posts/sec | $0.30/1K posts |
+| [TikTok Profile Scraper](https://apify.com/clockworks/tiktok-profile-scraper) | Creator historical data | Per-run pricing |
+| [TikTok Hashtag Scraper](https://apify.com/clockworks/tiktok-hashtag-scraper) | Trending hashtag discovery | Per-run pricing |
+
+### Integration Pattern
+
 ```typescript
-// Example: Fetch deals from Strackr
-const deals = await fetch('https://api.strackr.com/v1/programs', {
-  headers: { 'Authorization': `Bearer ${STRACKR_API_KEY}` }
+import { ApifyClient } from 'apify-client';
+
+const client = new ApifyClient({ token: process.env.APIFY_API_TOKEN });
+
+// Run TikTok scraper actor
+const run = await client.actor('apidojo/tiktok-scraper').call({
+  hashtags: ['trending'],
+  maxItems: 50,
+});
+
+// Fetch results
+const { items } = await client.dataset(run.defaultDatasetId).listItems();
+```
+
+### Data Flow
+
+```
+Vercel Cron (every 6h) → Apify Actor → Raw video data →
+  → Calculate views multiplier → AI classify → Store in Supabase
+```
+
+---
+
+## AI Provider
+
+### Recommended: OpenAI
+
+| Attribute | Value |
+|-----------|-------|
+| Package | `openai` |
+| Version | **6.17.0** (January 28, 2026) |
+| Source | [GitHub](https://github.com/openai/openai-node) |
+| Model | `gpt-4o` (for categorization + remix) |
+| Confidence | HIGH |
+
+**Why OpenAI over Anthropic:**
+- Slightly lower latency for short classification tasks
+- Structured outputs (JSON mode) well-suited for categorization
+- Existing ecosystem familiarity
+- Function calling for structured remix generation
+
+**Alternative:** Anthropic Claude (`@anthropic-ai/sdk`) is equally capable. Choose based on:
+- Existing API keys/billing
+- Team preference
+- Long-form output quality (Claude may be better for full scripts)
+
+### Usage Patterns
+
+**1. Video Classification (batch)**
+```typescript
+import OpenAI from 'openai';
+
+const openai = new OpenAI();
+
+const classification = await openai.chat.completions.create({
+  model: 'gpt-4o',
+  response_format: { type: 'json_object' },
+  messages: [{
+    role: 'user',
+    content: `Classify this TikTok video:
+      Caption: ${video.description}
+      Hashtags: ${video.hashtags.join(', ')}
+      Audio: ${video.music.title}
+
+      Return JSON: { "niche": string, "contentType": string, "strategicTags": string[] }`
+  }]
 });
 ```
 
-### wecantrack (Alternative)
+**2. Remix Generation**
+```typescript
+const remix = await openai.chat.completions.create({
+  model: 'gpt-4o',
+  messages: [{
+    role: 'system',
+    content: 'You are a TikTok content strategist creating production briefs...'
+  }, {
+    role: 'user',
+    content: `Generate 3 remix briefs for: ${sourceVideo}
+      Creator niche: ${niche}
+      Goal: ${goal}
+      Constraints: ${constraints}`
+  }]
+});
+```
 
-**When to consider:**
-- Need 350+ networks (vs Strackr's 271)
-- Need BigQuery integration for analytics
-- Need ad platform integrations (Google Ads, Facebook, TikTok)
+### Cost Estimation
 
-**Drawbacks:**
-- Higher base price (EUR59/mo vs EUR50/mo)
-- Click/session limits may constrain scale
-- API only on Medium tier (EUR99/mo+)
-
-### What NOT to Use
-
-**Scraping:** Don't scrape affiliate networks. APIs exist and terms of service prohibit scraping. Legal risk with no benefit.
-
-**Building custom aggregation:** The aggregator services exist because this is genuinely hard. 6+ months to build what Strackr/wecantrack already provide.
+| Operation | Tokens (est.) | Cost per call | Daily volume | Daily cost |
+|-----------|---------------|---------------|--------------|------------|
+| Classification | ~500 | $0.005 | 500 videos | $2.50 |
+| Remix generation | ~2,000 | $0.02 | 100 remixes | $2.00 |
+| **Total estimated** | | | | **~$4.50/day** |
 
 ---
 
-## Conversion/Click Tracking as Middleman
+## Data Fetching & Caching
 
-### How It Works
+### Recommended: TanStack Query
 
-When Virtuna mediates affiliate links:
+| Attribute | Value |
+|-----------|-------|
+| Package | `@tanstack/react-query` |
+| Version | **5.x** (latest stable) |
+| Source | [TanStack Docs](https://tanstack.com/query/latest) |
+| Confidence | HIGH |
 
-1. **User clicks deal in Virtuna** -> Hits Virtuna's tracking endpoint
-2. **Virtuna logs click** -> Stores user ID, deal ID, timestamp, generates click_id
-3. **Redirect to affiliate link** -> Click_id passed as subid parameter
-4. **User converts** -> Network reports conversion with subid back to aggregator
-5. **Aggregator webhook** -> Virtuna receives conversion with click_id
-6. **Credit user wallet** -> Match click_id to user, credit earnings
+**Why TanStack Query over SWR:**
+- DevTools for debugging (critical for feed development)
+- Better mutation support (for save/status tracking)
+- More sophisticated cache invalidation (by tags)
+- Pagination/infinite scroll built-in
+- Prefetching for drill-down views
 
-### Implementation with Strackr/wecantrack
+**Why NOT Zustand alone:**
+- Zustand is for client state, not server state
+- TanStack Query handles stale-while-revalidate pattern
+- Automatic background refetching
+- Built-in loading/error states
 
-Both services support subid tracking (up to 6 subids):
-
-```typescript
-// Generate trackable link
-const trackableUrl = `${affiliateUrl}&subid1=${userId}&subid2=${dealId}&subid3=${clickId}`;
-
-// Store click
-await supabase.from('clicks').insert({
-  id: clickId,
-  user_id: userId,
-  deal_id: dealId,
-  created_at: new Date()
-});
-
-// Later: webhook receives conversion
-// Match click_id, credit wallet
-```
-
-### Server-Side Tracking (Recommended for 2026)
-
-With cookie deprecation, server-side tracking is essential:
+### Integration Pattern
 
 ```typescript
-// Next.js API route for click tracking
-// /api/track/[dealId]/route.ts
-export async function GET(req: Request, { params }: { params: { dealId: string } }) {
-  const userId = await getCurrentUser();
-  const clickId = generateClickId();
+// /lib/queries/trending.ts
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 
-  // Log click server-side
-  await logClick(userId, params.dealId, clickId);
+export function useTrendingDashboard() {
+  return useQuery({
+    queryKey: ['trending', 'dashboard'],
+    queryFn: () => fetch('/api/trending/dashboard').then(r => r.json()),
+    staleTime: 5 * 60 * 1000, // 5 min
+  });
+}
 
-  // Get trackable URL from aggregator
-  const url = await getTrackableUrl(params.dealId, clickId);
-
-  return Response.redirect(url);
+export function useCategoryVideos(category: string) {
+  return useInfiniteQuery({
+    queryKey: ['trending', 'category', category],
+    queryFn: ({ pageParam = 0 }) =>
+      fetch(`/api/trending/category/${category}?offset=${pageParam}`).then(r => r.json()),
+    getNextPageParam: (lastPage) => lastPage.nextOffset,
+  });
 }
 ```
 
----
+### Caching Layer: Upstash Redis
 
-## Wallet/Fintech Stack
+| Attribute | Value |
+|-----------|-------|
+| Package | `@upstash/redis` |
+| Version | Latest |
+| Source | [Upstash Docs](https://upstash.com/docs/redis/overall/getstarted) |
+| Confidence | HIGH |
 
-### Database Schema (Supabase)
+**Why Upstash:**
+- Serverless Redis (no connection management)
+- Works on Vercel Edge
+- Built-in rate limiting package
+- Pay-per-request pricing (~$0.20/100K commands)
 
-```sql
--- Wallets table
-CREATE TABLE wallets (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users NOT NULL UNIQUE,
-  balance DECIMAL(10,2) DEFAULT 0.00,
-  pending_balance DECIMAL(10,2) DEFAULT 0.00,
-  lifetime_earnings DECIMAL(10,2) DEFAULT 0.00,
-  currency VARCHAR(3) DEFAULT 'USD',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+### Rate Limiting
 
--- Transactions table (immutable ledger)
-CREATE TABLE wallet_transactions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  wallet_id UUID REFERENCES wallets NOT NULL,
-  type VARCHAR(20) NOT NULL, -- 'credit', 'debit', 'pending_credit', 'pending_to_available', 'payout'
-  amount DECIMAL(10,2) NOT NULL,
-  balance_after DECIMAL(10,2) NOT NULL,
-  source VARCHAR(50), -- 'affiliate', 'referral', 'bonus', 'payout'
-  reference_id UUID, -- click_id or payout_id
-  description TEXT,
-  metadata JSONB,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+```typescript
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
 
--- Atomic balance update via RPC
-CREATE OR REPLACE FUNCTION credit_wallet(
-  p_user_id UUID,
-  p_amount DECIMAL,
-  p_source VARCHAR,
-  p_reference_id UUID,
-  p_description TEXT
-) RETURNS wallet_transactions AS $$
-DECLARE
-  v_wallet wallets;
-  v_transaction wallet_transactions;
-BEGIN
-  -- Lock wallet row
-  SELECT * INTO v_wallet FROM wallets WHERE user_id = p_user_id FOR UPDATE;
+const ratelimit = new Ratelimit({
+  redis: Redis.fromEnv(),
+  limiter: Ratelimit.slidingWindow(10, '60 s'), // 10 requests per minute
+});
 
-  -- Update balance
-  UPDATE wallets
-  SET balance = balance + p_amount,
-      lifetime_earnings = lifetime_earnings + p_amount,
-      updated_at = NOW()
-  WHERE id = v_wallet.id
-  RETURNING * INTO v_wallet;
-
-  -- Insert transaction
-  INSERT INTO wallet_transactions (wallet_id, type, amount, balance_after, source, reference_id, description)
-  VALUES (v_wallet.id, 'credit', p_amount, v_wallet.balance, p_source, p_reference_id, p_description)
-  RETURNING * INTO v_transaction;
-
-  RETURN v_transaction;
-END;
-$$ LANGUAGE plpgsql;
+// In API route
+const { success } = await ratelimit.limit(userId);
+if (!success) return new Response('Rate limited', { status: 429 });
 ```
 
-### UI Components
+### Caching Strategy
 
-**Already installed:** Recharts v3.7.0 - sufficient for wallet charts
-
-**Recommended addition:** None required. Build wallet UI with:
-- Recharts for balance charts, earnings trends
-- Existing Radix primitives for transaction list
-- Tailwind for Revolut-style card layouts
-
-**Wallet UI patterns (from Revolut/fintech research):**
-- Centralized dashboard with balance prominently displayed
-- Transaction list with clear visual hierarchy
-- Color-coded transaction types
-- Pull-to-refresh pattern
-- Skeleton loading states
+| Data Type | Cache Location | TTL | Invalidation |
+|-----------|----------------|-----|--------------|
+| Dashboard feed | Upstash Redis | 5 min | On Apify refresh |
+| Category lists | Upstash Redis | 5 min | On Apify refresh |
+| Video details | Supabase + TanStack | 1 hour | On view |
+| Creator baselines | Supabase | 24 hours | On Apify refresh |
+| Remix results | Supabase | Permanent | Manual delete |
 
 ---
 
-## Payout Integration (Future Phase)
+## PDF Generation
 
-### Recommended: Stripe Connect
+### Recommended: React-PDF
 
-**Why Stripe Connect:**
-- Used by Shopify, DoorDash, Instacart, Lyft
-- 118+ countries supported
-- Instant Payouts available (24x7)
-- Handles KYC/compliance automatically
-- Creator economy focus
+| Attribute | Value |
+|-----------|-------|
+| Package | `@react-pdf/renderer` |
+| Version | **4.3.2** (React 19 compatible since v4.1.0) |
+| Source | [react-pdf.org](https://react-pdf.org) |
+| Confidence | HIGH |
 
-**Pricing:**
-- 2.9% + $0.30 per transaction (standard)
-- 0.25% payout fee (capped at $25)
-- Volume discounts available
+**Why React-PDF:**
+- React 19 compatible (v4.1.0+)
+- Declarative PDF creation using React components
+- Server-side rendering support (Next.js API routes)
+- No external dependencies (pure JS)
+- Excellent for structured documents (storyboards)
 
-**Integration complexity:** Medium - requires connected account onboarding flow
+**Alternatives considered:**
+- **pdfme** (v5.5.0) — Good, but more template-focused
+- **pdfmake** — Declarative but not React-native
+- **jsPDF** — More imperative, less suited for complex layouts
 
-### Alternative: PayPal Payouts
+### Integration Pattern
 
-**When to consider:**
-- Users prefer PayPal
-- Simpler integration for initial launch
-- 15,000 payments per batch
+```typescript
+// /components/pdf/StoryboardPDF.tsx
+import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 
-**Pricing:** 2% per transaction
+const styles = StyleSheet.create({
+  page: { padding: 30 },
+  section: { marginBottom: 10 },
+  title: { fontSize: 18, fontWeight: 'bold' },
+  content: { fontSize: 12 },
+});
 
-### NOT Recommended for MVP
+interface StoryboardPDFProps {
+  remix: RemixBrief;
+}
 
-- **Tipalti** - Enterprise focus, overkill for MVP
-- **Payoneer** - Recent fee increases (2025), cost prohibitive
-- **Wise** - Good for international, less suited for creator payouts
+export function StoryboardPDF({ remix }: StoryboardPDFProps) {
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        <View style={styles.section}>
+          <Text style={styles.title}>Hook (First 3 Seconds)</Text>
+          <Text style={styles.content}>{remix.hook}</Text>
+        </View>
+        <View style={styles.section}>
+          <Text style={styles.title}>Shot List</Text>
+          {remix.shotList.map((shot, i) => (
+            <Text key={i} style={styles.content}>{i + 1}. {shot}</Text>
+          ))}
+        </View>
+        <View style={styles.section}>
+          <Text style={styles.title}>Full Script</Text>
+          <Text style={styles.content}>{remix.script}</Text>
+        </View>
+        {/* ... more sections */}
+      </Page>
+    </Document>
+  );
+}
+```
 
-### Payout Timeline Recommendation
+```typescript
+// /api/remix/[id]/pdf/route.ts
+import { renderToBuffer } from '@react-pdf/renderer';
+import { StoryboardPDF } from '@/components/pdf/StoryboardPDF';
 
-1. **Phase 1 (MVP):** Wallet UI only, no real payouts
-2. **Phase 2:** Manual payouts via PayPal/Stripe dashboard
-3. **Phase 3:** Stripe Connect integration for automated payouts
+export async function GET(req: Request, { params }: { params: { id: string } }) {
+  const remix = await getRemix(params.id);
+  const buffer = await renderToBuffer(<StoryboardPDF remix={remix} />);
+
+  return new Response(buffer, {
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="remix-${params.id}.pdf"`,
+    },
+  });
+}
+```
+
+### Storyboard Visuals
+
+**Decision:** Text-only storyboards for MVP.
+
+**Why NOT AI-generated images:**
+- DALL-E 3 deprecated May 2026, GPT Image models new
+- Character consistency issues across frames
+- Added cost ($0.04-0.12 per image)
+- Latency (2-5 seconds per image)
+- Storyboards work well as text with shot descriptions
+
+**Future enhancement:** Consider GPT Image when:
+- Character consistency improves
+- User demand validates
+- Budget allows
 
 ---
 
 ## Recommended Stack Additions
 
-| Addition | Version | Purpose | Rationale |
-|----------|---------|---------|-----------|
-| **Strackr API** | - | Affiliate aggregation | 271+ networks, unified API, EUR50/mo |
-| **@stripe/stripe-js** | ^4.x | Future payout integration | Industry standard, creator-focused |
-| **stripe** | ^17.x | Server-side Stripe SDK | Payout API calls |
+| Package | Version | Purpose | Why |
+|---------|---------|---------|-----|
+| `apify-client` | ^2.22.0 | TikTok data ingestion | Managed scraping, 98% success rate |
+| `openai` | ^6.17.0 | AI classification + remix | GPT-4o structured outputs |
+| `@tanstack/react-query` | ^5.x | Server state management | DevTools, mutations, pagination |
+| `@react-pdf/renderer` | ^4.3.2 | PDF storyboard export | React 19 compatible |
+| `@upstash/redis` | latest | Edge caching | Serverless, Vercel-optimized |
+| `@upstash/ratelimit` | latest | API rate limiting | Protect AI endpoints |
 
-### Already Sufficient (No Addition Needed)
-
-| Existing | Purpose | Why Sufficient |
-|----------|---------|----------------|
-| **Supabase** | Wallet storage, transactions | RPC functions for atomic ops, RLS for security |
-| **Recharts** | Wallet visualizations | Already installed, full charting capability |
-| **Zod** | API response validation | Already installed |
-| **Zustand** | Client state for wallet cache | Already installed |
-
-### Installation Command (When Ready)
+### Installation Command
 
 ```bash
-# Stripe SDK (for future payout phase)
-npm install stripe @stripe/stripe-js
+pnpm add apify-client openai @tanstack/react-query @react-pdf/renderer @upstash/redis @upstash/ratelimit
 ```
+
+### Dev Dependencies
+
+None required beyond existing setup.
+
+---
+
+## Already Sufficient (No Addition Needed)
+
+| Existing | Version | For Trending Page |
+|----------|---------|-------------------|
+| `next` | 16.1.5 | API routes, cron, routing |
+| `@supabase/supabase-js` | 2.93.1 | Video/remix storage |
+| `zustand` | 5.0.10 | UI state (filters, selections) |
+| `zod` | 4.3.6 | API response validation |
+| `recharts` | 3.7.0 | Views multiplier charts (if needed) |
+| `motion` | 12.29.2 | Card animations, transitions |
+| `tailwindcss` | 4 | Styling |
 
 ---
 
@@ -314,13 +394,15 @@ npm install stripe @stripe/stripe-js
 
 | Avoid | Reason |
 |-------|--------|
-| **Individual network SDKs** | Use aggregator instead |
-| **Custom scraping solution** | Legal risk, maintenance burden |
-| **Tremor/additional chart libraries** | Recharts already installed, sufficient |
-| **Separate fintech database** | Supabase handles this fine with proper schema |
-| **Complex event sourcing** | Overkill for wallet; simple transaction log sufficient |
-| **Blockchain/crypto payments** | Complexity without user demand |
-| **Real-time WebSocket for balance** | Polling sufficient for this use case |
+| **Direct TikTok API** | No official public API; use Apify |
+| **SWR** | TanStack Query has DevTools, better mutations |
+| **Multiple AI providers** | Pick one (OpenAI); switch later if needed |
+| **DALL-E/Image generation** | Consistency issues, cost, complexity |
+| **pdfmake/jsPDF** | React-PDF is more idiomatic |
+| **socket.io/real-time** | Feed doesn't need real-time; polling sufficient |
+| **Puppeteer/Playwright** | Apify handles scraping; don't DIY |
+| **Separate Redis provider** | Upstash is Vercel-optimized |
+| **GraphQL** | REST sufficient for this scope |
 
 ---
 
@@ -328,23 +410,96 @@ npm install stripe @stripe/stripe-js
 
 ### Fits Naturally
 
-| Existing | New Feature | Integration |
-|----------|-------------|-------------|
-| Next.js App Router | API routes for click tracking | `/api/track/[dealId]` |
-| Supabase Auth | Wallet user association | `wallets.user_id -> auth.users` |
-| Supabase DB | Transaction storage | New tables with RLS |
-| TypeScript | Aggregator API types | Zod schemas for API responses |
-| Tailwind | Wallet UI | Existing design system |
-| Recharts | Balance charts | Already imported |
+| Existing | Integration Point |
+|----------|-------------------|
+| Next.js App Router | `/api/trending/*`, `/api/remix/*` routes |
+| Supabase Auth | User ID for remix ownership |
+| Supabase DB | `trending_videos`, `remixes`, `creator_baselines` tables |
+| Zustand | Filter state, selected video, UI preferences |
+| Tailwind | Dashboard layout, video cards |
+| Radix UI | Modals, dropdowns, tabs |
 
 ### New Patterns Required
 
-| Pattern | Description |
-|---------|-------------|
-| **Webhook handler** | `/api/webhooks/strackr` for conversion callbacks |
-| **Server-side redirects** | Track clicks before redirecting to affiliate |
-| **RPC functions** | Supabase functions for atomic wallet operations |
-| **Background jobs** | Sync deal catalog from aggregator (Vercel Cron) |
+| Pattern | Location | Purpose |
+|---------|----------|---------|
+| TanStack Query Provider | `/app/providers.tsx` | Wrap app with QueryClientProvider |
+| Vercel Cron | `/api/cron/refresh-trending` | Scheduled Apify runs |
+| Edge caching | API routes | Upstash Redis for hot data |
+| Rate limiting middleware | `/api/remix/*` | Protect AI endpoints |
+| PDF streaming | `/api/remix/[id]/pdf` | Generate PDF on demand |
+
+### Environment Variables
+
+```env
+# Apify
+APIFY_API_TOKEN=apify_api_xxx
+
+# OpenAI
+OPENAI_API_KEY=sk-xxx
+
+# Upstash Redis
+UPSTASH_REDIS_REST_URL=https://xxx.upstash.io
+UPSTASH_REDIS_REST_TOKEN=xxx
+```
+
+---
+
+## Database Schema Additions
+
+```sql
+-- Trending videos cache
+CREATE TABLE trending_videos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tiktok_id VARCHAR(50) UNIQUE NOT NULL,
+  creator_handle VARCHAR(100) NOT NULL,
+  creator_id VARCHAR(50),
+  views BIGINT NOT NULL,
+  views_multiplier DECIMAL(6,2),
+  behavioral_category VARCHAR(20), -- 'breaking_out', 'sustained', 'resurging'
+  niche VARCHAR(50),
+  content_type VARCHAR(50),
+  strategic_tags TEXT[],
+  thumbnail_url TEXT,
+  video_url TEXT,
+  description TEXT,
+  hashtags TEXT[],
+  audio_title VARCHAR(255),
+  posted_at TIMESTAMPTZ,
+  scraped_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Creator baselines for multiplier calculation
+CREATE TABLE creator_baselines (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id VARCHAR(50) UNIQUE NOT NULL,
+  creator_handle VARCHAR(100) NOT NULL,
+  avg_views_30d BIGINT,
+  video_count_30d INT,
+  last_calculated TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- User remixes
+CREATE TABLE remixes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users NOT NULL,
+  source_video_id UUID REFERENCES trending_videos,
+  source_url TEXT,
+  niche VARCHAR(50),
+  goal VARCHAR(50),
+  constraints JSONB,
+  briefs JSONB NOT NULL, -- Array of 3 production briefs
+  status VARCHAR(20) DEFAULT 'generated', -- 'generated', 'to_film', 'filmed', 'posted'
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX idx_trending_category ON trending_videos(behavioral_category);
+CREATE INDEX idx_trending_niche ON trending_videos(niche);
+CREATE INDEX idx_trending_scraped ON trending_videos(scraped_at DESC);
+CREATE INDEX idx_remixes_user ON remixes(user_id);
+```
 
 ---
 
@@ -352,37 +507,42 @@ npm install stripe @stripe/stripe-js
 
 | Area | Confidence | Reasoning |
 |------|------------|-----------|
-| **Aggregator recommendation** | HIGH | Multiple sources confirm Strackr/wecantrack capabilities; pricing verified |
-| **Network API availability** | HIGH | Official documentation verified for CJ, ShareASale, Impact, Rakuten |
-| **Wallet schema** | HIGH | Standard pattern; Supabase RPC docs verified |
-| **Stripe Connect for payouts** | HIGH | Official docs, industry standard |
-| **Strackr pricing** | MEDIUM | Pricing page verified, but API tier is "custom" |
-| **Click tracking implementation** | MEDIUM | Pattern documented, but specifics depend on aggregator chosen |
+| Apify integration | HIGH | Official client docs verified, v2.22.0 released Jan 2026 |
+| OpenAI SDK | HIGH | v6.17.0 verified on GitHub releases |
+| TanStack Query | HIGH | Industry standard, well-documented |
+| React-PDF | HIGH | v4.3.2 React 19 support verified in GitHub issues |
+| Upstash Redis | HIGH | Official Vercel partner, documented integration |
+| PDF-only storyboards | MEDIUM | User preference unknown; may want images later |
+| AI cost estimates | MEDIUM | Based on typical usage; actual may vary |
 
 ---
 
 ## Sources
 
-### Aggregator Services
-- [Strackr Affiliate API](https://strackr.com/affiliate-api)
-- [Strackr Pricing](https://strackr.com/pricing)
-- [wecantrack Affiliate Aggregator](https://wecantrack.com/affiliate-aggregator/)
-- [Affluent Affiliate API](https://www.affluent.io/affiliate-api/)
+### Package Versions (Verified)
+- [apify-client v2.22.0](https://github.com/apify/apify-client-js) - GitHub releases
+- [openai v6.17.0](https://github.com/openai/openai-node/releases) - GitHub releases
+- [@react-pdf/renderer v4.3.2](https://github.com/diegomura/react-pdf/issues/2756) - React 19 compatibility
+- [TanStack Query](https://tanstack.com/query/latest) - Official docs
 
-### Affiliate Network APIs
-- [CJ Developer Portal](https://developers.cj.com/)
-- [ShareASale API Building Blocks](https://help.shareasale.com/hc/en-us/articles/5375832636695-API-Building-Blocks)
-- [Impact.com Integrations Portal](https://integrations.impact.com/)
-- [Rakuten Affiliate APIs Documentation](https://developers.rakutenadvertising.com/documentation/en-US/affiliate_apis)
+### Apify TikTok Scrapers
+- [TikTok Scraper (Api Dojo)](https://apify.com/apidojo/tiktok-scraper)
+- [TikTok Profile Scraper](https://apify.com/clockworks/tiktok-profile-scraper)
+- [Apify JavaScript API](https://apify.com/clockworks/tiktok-video-scraper/api/javascript)
 
-### Payout Platforms
-- [Stripe Connect Documentation](https://docs.stripe.com/connect)
-- [PayPal Payouts API](https://developer.paypal.com/docs/payouts/standard/integrate-api/)
+### Caching & Rate Limiting
+- [Upstash Rate Limiting](https://upstash.com/blog/nextjs-ratelimiting)
+- [Next.js Caching Guide](https://nextjs.org/docs/app/guides/caching)
+- [TanStack Query vs SWR](https://tanstack.com/query/v4/docs/react/comparison)
 
-### Fintech UI Patterns
-- [Mobile Banking App Design: UX & UI Best Practices for 2026](https://www.purrweb.com/blog/banking-app-design/)
-- [Top 10 Fintech UX Design Practices 2026](https://www.onething.design/post/top-10-fintech-ux-design-practices-2026)
+### PDF Generation
+- [React-PDF Official](https://react-pdf.org/)
+- [React-PDF React 19 Support](https://github.com/diegomura/react-pdf/issues/2756)
 
-### Supabase Patterns
-- [Supabase Database Transactions Discussion](https://github.com/orgs/supabase/discussions/526)
-- [Supabase Best Practices](https://www.leanware.co/insights/supabase-best-practices)
+### AI Image Generation
+- [OpenAI Image Generation](https://platform.openai.com/docs/guides/image-generation) - DALL-E 3 deprecation notice
+
+---
+
+*Research completed: 2026-02-02*
+*Ready for roadmap creation*
