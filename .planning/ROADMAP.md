@@ -388,8 +388,8 @@ Plans:
 
 **Milestone Goal:** Ship the mesmerizing "wow" moment visualization — central orb, flowing particles, chaos-to-order node crystallization — optimized for mobile performance.
 
-**Approach:** Build visualization layers progressively
-- Phase 20: Visualization foundation (orb core, dark mode, visual foundation)
+**Approach:** Build visualization layers progressively using Three.js/React Three Fiber
+- Phase 20: Visualization foundation (R3F canvas, glass orb with shaders, camera controls)
 - Phase 21: Particle system (ambient flow, processing rush, captivating idle)
 - Phase 22: Node system (chaos nodes, crystallization, connections, motion layers)
 - Phase 23: Motion and interaction (physics, gestures, drag, magnetic)
@@ -398,23 +398,24 @@ Plans:
 ---
 
 ### Phase 20: Visualization Foundation
-**Goal**: Establish the visual core — central glowing orb with ambient breathing, pan/zoom canvas infrastructure, and animation state system
+**Goal**: Establish the visual core using Three.js/React Three Fiber — organic morphing glass orb with ambient breathing, WebGL canvas with camera controls
 **Depends on**: v1.3.2 complete (Phase 19)
 **Requirements**: VIZ-01, VIZ-02, VIZ-09, VIZ-10
 **Success Criteria** (what must be TRUE):
-  1. Central glowing orb renders as the focal "AI brain" element with radial gradient and glow
-  2. Orb has ambient "breathing" animation with 2-3 second scale pulse cycle
-  3. Pan/zoom works on desktop (drag + wheel) and touch (pinch + drag)
-  4. Reset button appears after user moves view and resets to centered state
-  5. Canvas rendering is crisp on retina displays
-  6. Orb responds to hover/tap with glow brighten interaction
+  1. Central glowing orb renders with organic blob morphing via vertex displacement shaders
+  2. Orb has gradient colors (orange core to coral to magenta rim) with fresnel rim lighting
+  3. Orb has ambient "breathing" animation with 2.5 second sinusoidal scale pulse cycle
+  4. Pan/zoom works via Drei OrbitControls on desktop (drag + wheel) and touch (pinch + drag)
+  5. WebGL rendering is crisp on retina displays (dpr capped at 2)
+  6. Orb responds to hover with 30% glow boost, tap with scale pulse feedback
   7. prefers-reduced-motion shows static orb (no animation)
+**Status**: Ready for execution
 **Plans**: 3 plans
 
 Plans:
-- [ ] 20-01-PLAN.md — Install react-zoom-pan-pinch, create ProgressiveVisualization with pan/zoom
-- [ ] 20-02-PLAN.md — Glass orb rendering with Canvas 2D radial gradients and glow
-- [ ] 20-03-PLAN.md — Orb animations (breathing, state transitions, hover/tap feedback)
+- [ ] 20-01-PLAN.md — R3F/Three.js setup, Canvas wrapper, camera controls infrastructure
+- [ ] 20-02-PLAN.md — Custom shader material with vertex displacement and gradient colors
+- [ ] 20-03-PLAN.md — Animation system (breathing, state transitions, reduced motion support)
 
 ---
 
@@ -426,12 +427,12 @@ Plans:
   1. Ambient particles flow continuously around the orb in idle state
   2. Particles rush toward the orb when processing begins (triggered state change)
   3. Idle state is captivating enough to hook users before any interaction
-  4. Particle system uses requestAnimationFrame for smooth animation loop
+  4. Particle system uses R3F useFrame for smooth animation loop
   5. Particle count is configurable for later performance optimization
 **Plans**: 2 plans
 
 Plans:
-- [ ] 21-01-PLAN.md — Core particle infrastructure (types, utilities, simplex-noise)
+- [ ] 21-01-PLAN.md — Core particle infrastructure (types, utilities, instanced mesh)
 - [ ] 21-02-PLAN.md — ParticleSystem component with idle flow and processing rush
 
 ---
@@ -497,7 +498,7 @@ Plans:
 | 17. Feature Cards | v1.3.2 | 0/2 | Not started | - |
 | 18. Navigation + Animations | v1.3.2 | 0/4 | Not started | - |
 | 19. Quality & Polish | v1.3.2 | 0/3 | Not started | - |
-| 20. Visualization Foundation | v1.4 | 0/TBD | Not started | - |
+| 20. Visualization Foundation | v1.4 | 0/3 | Ready | - |
 | 21. Particle System | v1.4 | 0/2 | Planned | - |
 | 22. Node System | v1.4 | 0/TBD | Not started | - |
 | 23. Motion & Interaction | v1.4 | 0/TBD | Not started | - |
@@ -506,10 +507,10 @@ Plans:
 ---
 
 ## Current Status
-- **Current Milestone**: v1.3.2 (Landing Page Redesign)
-- **Current Phase**: 16 (Hero Section) - Ready to plan
-- **Next Action**: `/gsd:discuss-phase 16`
+- **Current Milestone**: v1.4 (Node Visualization MVP)
+- **Current Phase**: 20 (Visualization Foundation) - Ready for execution
+- **Next Action**: `/gsd:execute-phase 20`
 
 ---
 *Roadmap created: 2026-01-28*
-*Last updated: 2026-01-31 — Phase 15 complete*
+*Last updated: 2026-02-02 — Phase 20 replanned with Three.js/R3F approach*
