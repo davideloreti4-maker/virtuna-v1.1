@@ -183,3 +183,66 @@ CREATE TABLE affiliate_conversions (
 CREATE INDEX idx_affiliate_conversions_creator_id ON affiliate_conversions(creator_id);
 CREATE INDEX idx_affiliate_conversions_click_id ON affiliate_conversions(click_id);
 CREATE INDEX idx_affiliate_conversions_converted_at ON affiliate_conversions(converted_at DESC);
+
+-- =====================================================
+-- ROW LEVEL SECURITY POLICIES
+-- Using (SELECT auth.uid()) wrapper for 94%+ performance improvement
+-- =====================================================
+
+-- Enable RLS on all tables
+ALTER TABLE creator_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE deals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE deal_enrollments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wallet_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE affiliate_clicks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE affiliate_conversions ENABLE ROW LEVEL SECURITY;
+
+-- creator_profiles: Users manage their own profile
+CREATE POLICY "Users can view their own profile"
+  ON creator_profiles FOR SELECT
+  USING (user_id = (SELECT auth.uid()));
+
+CREATE POLICY "Users can create their own profile"
+  ON creator_profiles FOR INSERT
+  WITH CHECK (user_id = (SELECT auth.uid()));
+
+CREATE POLICY "Users can update their own profile"
+  ON creator_profiles FOR UPDATE
+  USING (user_id = (SELECT auth.uid()));
+
+-- deals: Active deals are publicly viewable
+CREATE POLICY "Anyone can view active deals"
+  ON deals FOR SELECT
+  USING (status = 'active');
+
+-- deal_enrollments: Users manage their own enrollments
+CREATE POLICY "Users can view their own enrollments"
+  ON deal_enrollments FOR SELECT
+  USING (user_id = (SELECT auth.uid()));
+
+CREATE POLICY "Users can apply to deals"
+  ON deal_enrollments FOR INSERT
+  WITH CHECK (user_id = (SELECT auth.uid()));
+
+CREATE POLICY "Users can update their own enrollments"
+  ON deal_enrollments FOR UPDATE
+  USING (user_id = (SELECT auth.uid()));
+
+-- wallet_transactions: Users can only view their own (no INSERT/UPDATE/DELETE via client)
+CREATE POLICY "Users can view their own transactions"
+  ON wallet_transactions FOR SELECT
+  USING (user_id = (SELECT auth.uid()));
+
+-- affiliate_clicks: Creators can view their own clicks
+CREATE POLICY "Creators can view their own clicks"
+  ON affiliate_clicks FOR SELECT
+  USING (creator_id IN (
+    SELECT id FROM creator_profiles WHERE user_id = (SELECT auth.uid())
+  ));
+
+-- affiliate_conversions: Creators can view their own conversions
+CREATE POLICY "Creators can view their own conversions"
+  ON affiliate_conversions FOR SELECT
+  USING (creator_id IN (
+    SELECT id FROM creator_profiles WHERE user_id = (SELECT auth.uid())
+  ));
