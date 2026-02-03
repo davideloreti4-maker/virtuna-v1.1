@@ -1,6 +1,6 @@
 "use client";
 
-import { Container, Header, Footer } from "@/components/layout";
+import { Container, Footer } from "@/components/layout";
 import { FadeIn, SlideUp } from "@/components/motion";
 import {
   GlassPanel,
@@ -36,8 +36,6 @@ const colorLabels: Record<GradientColor, { label: string; usage: string }> = {
 export default function ShowcasePage() {
   return (
     <div className="min-h-screen bg-bg-base">
-      <Header />
-
       <main className="py-16">
         <Container>
           {/* Page Title */}
@@ -127,8 +125,8 @@ export default function ShowcasePage() {
                 {gradientColors.map((color) => (
                   <div key={color} className="text-center">
                     <div
-                      className="mb-2 h-20 rounded-xl"
-                      style={{ background: colorMap[color] }}
+                      className="mb-2 h-20 rounded-xl border border-white/10"
+                      style={{ backgroundColor: colorMap[color] }}
                     />
                     <p className="text-sm font-medium text-text-primary">
                       {colorLabels[color].label}
@@ -146,11 +144,14 @@ export default function ShowcasePage() {
               <h3 className="mb-4 text-lg font-semibold text-text-primary">
                 Shadow Scale
               </h3>
+              <p className="mb-4 text-sm text-text-secondary">
+                Hover over each box to see the shadow more clearly.
+              </p>
               <div className="grid gap-6 md:grid-cols-5">
                 {["sm", "md", "lg", "elevated", "float"].map((shadow) => (
                   <div key={shadow} className="text-center">
                     <div
-                      className="mx-auto mb-3 h-16 w-16 rounded-xl bg-surface-elevated"
+                      className="mx-auto mb-3 h-20 w-20 rounded-xl bg-white/10 border border-white/5 transition-transform hover:scale-105"
                       style={{ boxShadow: `var(--shadow-${shadow})` }}
                     />
                     <p className="text-sm font-medium text-text-primary">shadow-{shadow}</p>
@@ -227,14 +228,15 @@ export default function ShowcasePage() {
               {/* Intensity levels */}
               <div className="mb-8 grid gap-6 md:grid-cols-3">
                 {(["subtle", "medium", "strong"] as const).map((intensity) => (
-                  <div key={intensity} className="relative h-40 rounded-xl bg-bg-base overflow-hidden">
+                  <div key={intensity} className="relative h-40 rounded-xl bg-bg-base border border-white/5">
                     <GradientGlow
                       color="purple"
                       intensity={intensity}
-                      size={200}
+                      size={250}
                       position="center"
+                      blur={60}
                     />
-                    <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="absolute inset-0 flex items-center justify-center z-10">
                       <p className="text-sm font-medium text-text-primary">
                         intensity=&quot;{intensity}&quot;
                       </p>
@@ -249,15 +251,16 @@ export default function ShowcasePage() {
                 {gradientColors.map((color) => (
                   <div
                     key={color}
-                    className="relative h-28 rounded-xl bg-bg-base overflow-hidden"
+                    className="relative h-28 rounded-xl bg-bg-base border border-white/5"
                   >
                     <GradientGlow
                       color={color}
                       intensity="medium"
-                      size={150}
+                      size={180}
                       position="center"
+                      blur={50}
                     />
-                    <div className="absolute inset-0 flex items-end justify-center pb-2">
+                    <div className="absolute inset-0 flex items-end justify-center pb-2 z-10">
                       <p className="text-xs font-medium text-text-primary">{color}</p>
                     </div>
                   </div>
@@ -307,9 +310,9 @@ export default function ShowcasePage() {
 
             <div className="grid gap-6 md:grid-cols-2">
               {/* Static mesh */}
-              <div className="relative h-64 overflow-hidden rounded-2xl bg-bg-base">
-                <GradientMesh colors={["purple", "blue"]} intensity="medium" />
-                <div className="absolute inset-0 flex items-center justify-center">
+              <div className="relative h-64 rounded-2xl bg-bg-base border border-white/5">
+                <GradientMesh colors={["purple", "blue"]} intensity="strong" />
+                <div className="absolute inset-0 flex items-center justify-center z-10">
                   <GlassPanel className="p-4">
                     <p className="text-sm text-text-primary">
                       colors=[&quot;purple&quot;, &quot;blue&quot;]
@@ -319,9 +322,9 @@ export default function ShowcasePage() {
               </div>
 
               {/* Three-color mesh */}
-              <div className="relative h-64 overflow-hidden rounded-2xl bg-bg-base">
-                <GradientMesh colors={["purple", "pink", "cyan"]} intensity="medium" />
-                <div className="absolute inset-0 flex items-center justify-center">
+              <div className="relative h-64 rounded-2xl bg-bg-base border border-white/5">
+                <GradientMesh colors={["purple", "pink", "cyan"]} intensity="strong" />
+                <div className="absolute inset-0 flex items-center justify-center z-10">
                   <GlassPanel className="p-4">
                     <p className="text-sm text-text-primary">
                       colors=[&quot;purple&quot;, &quot;pink&quot;, &quot;cyan&quot;]
@@ -331,13 +334,13 @@ export default function ShowcasePage() {
               </div>
 
               {/* Animated mesh */}
-              <div className="relative h-64 overflow-hidden rounded-2xl bg-bg-base md:col-span-2">
+              <div className="relative h-64 rounded-2xl bg-bg-base border border-white/5 md:col-span-2">
                 <GradientMesh
                   colors={["purple", "blue", "pink", "cyan"]}
-                  intensity="medium"
+                  intensity="strong"
                   animate
                 />
-                <div className="absolute inset-0 flex items-center justify-center">
+                <div className="absolute inset-0 flex items-center justify-center z-10">
                   <GlassPanel className="p-4">
                     <p className="text-sm text-text-primary">
                       4 colors + animate=true (slow drift)
