@@ -21,3 +21,17 @@ export {
   AccordionTrigger,
   AccordionContent,
 } from "./accordion";
+
+export { Badge, badgeVariants } from "./badge";
+export type { BadgeProps } from "./badge";
+
+export { Heading, Text, Caption, Code } from "./typography";
+export type {
+  HeadingProps,
+  TextProps,
+  CaptionProps,
+  CodeProps,
+} from "./typography";
+
+export { Spinner } from "./spinner";
+export type { SpinnerProps } from "./spinner";
