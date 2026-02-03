@@ -4,7 +4,14 @@ export type { ButtonProps } from "./button";
 export { Input } from "./input";
 export type { InputProps } from "./input";
 
-export { Card, CardHeader, CardContent, CardFooter } from "./card";
+export {
+  Card,
+  GlassCard,
+  CardHeader,
+  CardContent,
+  CardFooter,
+} from "./card";
+export type { CardProps, GlassCardProps } from "./card";
 
 export { Skeleton } from "./skeleton";
 
