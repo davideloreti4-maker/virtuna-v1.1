@@ -25,7 +25,7 @@ export default function UIShowcasePage() {
   const [progress, setProgress] = useState(65);
 
   return (
-    <div className="min-h-screen bg-bg-base p-8 md:p-16">
+    <div className="min-h-screen bg-background p-8 md:p-16">
       <Heading level={1} className="mb-4">
         UI Components Showcase
       </Heading>
@@ -88,18 +88,20 @@ export default function UIShowcasePage() {
             </CardFooter>
           </Card>
 
-          {/* GlassCard with gradient background */}
-          <div className="relative">
-            <div
-              className="absolute inset-0 bg-gradient-to-br from-purple-500/30 to-cyan-500/30 rounded-xl blur-xl"
-              aria-hidden="true"
-            />
+          {/* GlassCard with gradient background to show blur */}
+          <div className="relative overflow-hidden rounded-xl">
+            {/* Background elements that GlassCard will blur */}
+            <div className="absolute inset-0 bg-gradient-to-br from-coral-500/40 via-purple-500/30 to-cyan-500/40" aria-hidden="true" />
+            <div className="absolute top-4 left-4 w-20 h-20 rounded-full bg-coral-500/60" aria-hidden="true" />
+            <div className="absolute bottom-4 right-4 w-16 h-16 rounded-full bg-cyan-500/60" aria-hidden="true" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full bg-purple-500/50" aria-hidden="true" />
+
             <GlassCard blur="md" glow className="relative">
               <CardHeader>
                 <Heading level={3}>Glass Card</Heading>
               </CardHeader>
               <CardContent>
-                <Text>This card has a blur effect and inner glow border.</Text>
+                <Text>This card has a frosted glass blur effect. The colorful shapes behind are blurred through the glass.</Text>
               </CardContent>
               <CardFooter>
                 <Button variant="secondary" size="sm">Action</Button>
