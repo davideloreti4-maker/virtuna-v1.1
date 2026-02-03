@@ -21,10 +21,12 @@ export interface GradientGlowProps {
   className?: string;
   /** Animate the glow (subtle pulse) */
   animate?: boolean;
+  /** Animation type when animate is true */
+  animationType?: "pulse" | "float" | "breathe";
 }
 
 // Map color names to oklch values from design tokens
-const colorMap: Record<GradientColor, string> = {
+export const colorMap: Record<GradientColor, string> = {
   purple: "oklch(0.63 0.24 300)",
   blue: "oklch(0.62 0.19 250)",
   pink: "oklch(0.66 0.22 350)",
@@ -62,6 +64,10 @@ const positionMap: Record<string, CSSProperties> = {
  *   <GradientGlow color="purple" intensity="medium" position="top-right" />
  *   <GlassPanel>Content here</GlassPanel>
  * </div>
+ *
+ * @example
+ * // With floating animation
+ * <GradientGlow color="blue" animate animationType="float" />
  */
 export function GradientGlow({
   color,
@@ -71,17 +77,25 @@ export function GradientGlow({
   blur = 100,
   className,
   animate = false,
+  animationType = "pulse",
 }: GradientGlowProps) {
   const colorValue = colorMap[color];
   const opacityValue = intensityMap[intensity];
   const positionStyle = positionMap[position];
   const sizeValue = typeof size === "number" ? `${size}px` : size;
 
+  // Animation class mapping
+  const animationClass = animate ? {
+    pulse: "animate-pulse",
+    float: "animate-glow-float",
+    breathe: "animate-glow-breathe",
+  }[animationType] : undefined;
+
   return (
     <div
       className={cn(
         "pointer-events-none absolute rounded-full",
-        animate && "animate-pulse",
+        animationClass,
         className
       )}
       style={{
