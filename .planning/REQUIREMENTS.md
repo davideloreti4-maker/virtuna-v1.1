@@ -1,130 +1,251 @@
-# Requirements — Virtuna v1.5 Trending Page
+# Requirements: Virtuna v2.0 — Design System Foundation
 
-**Defined:** 2026-02-02
-**Core Value:** Real-time viral video discovery with full storyboard remix capabilities
+**Defined:** 2026-02-03
+**Core Value:** Raycast-quality design system enabling rapid, consistent UI development with coral branding
 
-## v1.5 Requirements
+## v2.0 Requirements
 
-Requirements for Trending Page milestone. Each maps to roadmap phases.
+Requirements for design system foundation. Each maps to roadmap phases.
 
-### Feed & Discovery (FEED)
+### Extraction (EXT)
 
-- [ ] **FEED-01**: User can browse vertical list feed of trending TikTok videos (infinite scroll)
-- [ ] **FEED-02**: Each video card shows thumbnail, title, creator, metrics, and category tags
-- [ ] **FEED-03**: User can filter feed by category tabs (Challenges, Sounds, Formats, etc.)
-- [ ] **FEED-04**: User can filter by AI-generated sub-tags within categories
-- [ ] **FEED-05**: User can save/bookmark videos for later
-- [ ] **FEED-06**: User sees trending velocity indicator (rising, peaked, declining)
-- [ ] **FEED-07**: User can click video to open detail modal
+- [ ] **EXT-01**: All Raycast color values extracted from raycast.com (backgrounds, text, accents, states)
+- [ ] **EXT-02**: All Raycast typography values extracted (fonts, sizes, weights, line heights, letter spacing)
+- [ ] **EXT-03**: All Raycast spacing values extracted (padding, margins, gaps)
+- [ ] **EXT-04**: All Raycast shadow values extracted (elevation levels, glows)
+- [ ] **EXT-05**: All Raycast border values extracted (radius scale, widths)
+- [ ] **EXT-06**: All Raycast animation values extracted (durations, easing curves)
+- [ ] **EXT-07**: All Raycast gradient definitions extracted
+- [ ] **EXT-08**: Extraction covers all interactive states (hover, focus, active, disabled)
+- [ ] **EXT-09**: Extraction documented with source references
+- [ ] **EXT-10**: Extract from all key pages: homepage, pricing, about, extensions, API docs
+- [ ] **EXT-11**: Exact font family identified (Inter vs custom) with fallback stack
+- [ ] **EXT-12**: Responsive breakpoints extracted (mobile, tablet, desktop thresholds)
+- [ ] **EXT-13**: Transition durations extracted per interaction type (hover, click, appear, exit)
 
-### Analyze (ANLZ)
+### Tokens — Colors (COL)
 
-- [ ] **ANLZ-01**: User can analyze any trending video
-- [ ] **ANLZ-02**: User sees viral score breakdown (same format as Predictor)
-- [ ] **ANLZ-03**: User sees attention analysis for video
-- [ ] **ANLZ-04**: User sees insights/explanation for why video is viral
+- [ ] **COL-01**: Coral scale generated (100-900) with perceptually uniform progression
+- [ ] **COL-02**: Coral accessibility verified — all text/background combinations pass WCAG AA (4.5:1)
+- [ ] **COL-03**: Darkened coral variant created for text on light backgrounds
+- [ ] **COL-04**: Primitive color tokens defined (raw values, not used directly)
+- [ ] **COL-05**: Semantic color tokens defined (bg, fg, accent, error, warning, success, info)
+- [ ] **COL-06**: Border color tokens defined
+- [ ] **COL-07**: State color tokens defined (hover, active, disabled variants)
+- [ ] **COL-08**: Color tokens match Raycast exactly (except coral replacing brand color)
 
-### Remix & Storyboard (REMIX)
+### Tokens — Typography (TYP)
 
-- [ ] **REMIX-01**: User can remix any trending video
-- [ ] **REMIX-02**: User receives 2-3 customized script versions per remix
-- [ ] **REMIX-03**: Each script includes hook, body, and CTA
-- [ ] **REMIX-04**: Each script includes shot-by-shot filming instructions
-- [ ] **REMIX-05**: Each script includes visual reference frames
-- [ ] **REMIX-06**: User can view script in teleprompter mode
-- [ ] **REMIX-07**: User can export storyboard as PDF
-- [ ] **REMIX-08**: User can customize remix for their audience/goal
+- [ ] **TYP-01**: Font family tokens defined (display, sans, mono)
+- [ ] **TYP-02**: Font size scale defined (h1-h6, body, caption, small)
+- [ ] **TYP-03**: Font weight tokens defined (regular, medium, semibold, bold)
+- [ ] **TYP-04**: Line height tokens defined per size
+- [ ] **TYP-05**: Letter spacing tokens defined per size
+- [ ] **TYP-06**: Typography tokens match Raycast exactly
 
-### Backend & Infrastructure (INFRA)
+### Tokens — Spacing (SPC)
 
-- [ ] **INFRA-01**: System integrates with Apify TikTok scraper
-- [ ] **INFRA-02**: System applies quality filter to scraped videos
-- [ ] **INFRA-03**: System caches video data for performance
-- [ ] **INFRA-04**: System runs AI categorization pipeline on videos
-- [ ] **INFRA-05**: System assigns fixed categories to each video
-- [ ] **INFRA-06**: System generates sub-tags for each video
-- [ ] **INFRA-07**: System calculates trending velocity for each video
+- [ ] **SPC-01**: Spacing scale defined (8px base, geometric progression)
+- [ ] **SPC-02**: Component-specific spacing tokens defined (button-padding, card-padding, section-gap)
+- [ ] **SPC-03**: Gap utilities for flex/grid layouts
+- [ ] **SPC-04**: Spacing tokens match Raycast exactly
 
-### Navigation (NAV)
+### Tokens — Shadows (SHD)
 
-- [ ] **NAV-01**: Trending Page has dedicated sidebar item
-- [ ] **NAV-02**: Sidebar item is visually distinct and discoverable
+- [ ] **SHD-01**: Elevation shadow scale defined (sm, md, lg, xl)
+- [ ] **SHD-02**: Glow effect tokens defined (for accent elements)
+- [ ] **SHD-03**: Glass shadow tokens defined (for glassmorphism)
+- [ ] **SHD-04**: Shadow tokens match Raycast exactly
 
-### UX Polish (UX)
+### Tokens — Borders (BRD)
 
-- [ ] **UX-01**: Feed loading states are smooth and non-jarring
-- [ ] **UX-02**: Category/filter changes are instant (optimistic UI)
-- [ ] **UX-03**: Video detail modal has smooth open/close transitions
-- [ ] **UX-04**: Remix generation shows progress indication
-- [ ] **UX-05**: PDF export shows download progress
-- [ ] **UX-06**: Empty states are helpful (no videos in category, etc.)
+- [ ] **BRD-01**: Border radius scale defined (none, sm, md, lg, xl, full)
+- [ ] **BRD-02**: Border width scale defined (0, 1, 2, 4)
+- [ ] **BRD-03**: Border tokens match Raycast exactly
 
-## v1.5.x Requirements (Future)
+### Tokens — Animation (ANI)
 
-### Instagram Support
-- **FEED-IG-01**: User can browse Instagram Reels in feed
-- **FEED-IG-02**: System integrates with Apify Instagram scraper
+- [ ] **ANI-01**: Duration tokens defined (fast, normal, slow)
+- [ ] **ANI-02**: Easing tokens defined (ease-out, ease-in-out, spring)
+- [ ] **ANI-03**: Z-index scale defined (base, dropdown, modal, toast)
+- [ ] **ANI-04**: Animation tokens match Raycast exactly
+- [ ] **ANI-05**: Transition duration per interaction type (hover: fast, appear: normal, exit: fast)
+
+### Tokens — Breakpoints (BRK)
+
+- [ ] **BRK-01**: Mobile breakpoint defined (max-width for phone)
+- [ ] **BRK-02**: Tablet breakpoint defined (mid-range devices)
+- [ ] **BRK-03**: Desktop breakpoint defined (standard screens)
+- [ ] **BRK-04**: Wide breakpoint defined (large displays)
+- [ ] **BRK-05**: Breakpoints match Raycast responsive behavior
+
+### Tokens — Gradients (GRD)
+
+- [ ] **GRD-01**: Coral gradient range defined (light → primary → dark)
+- [ ] **GRD-02**: Card background gradients defined
+- [ ] **GRD-03**: Overlay gradients defined
+- [ ] **GRD-04**: Radial glow gradients defined
+
+### Token Architecture (ARC)
+
+- [ ] **ARC-01**: Two-tier token system implemented (primitive → semantic)
+- [ ] **ARC-02**: Tailwind @theme updated with all tokens
+- [ ] **ARC-03**: CSS variables follow consistent naming convention
+- [ ] **ARC-04**: Shared TypeScript types defined for design system
+- [ ] **ARC-05**: Token documentation inline in globals.css
+
+### Components — Core (CMP)
+
+- [ ] **CMP-01**: Button component (primary, secondary, ghost, destructive variants)
+- [ ] **CMP-02**: Button states (default, hover, active, disabled, loading)
+- [ ] **CMP-03**: Button sizes (sm, md, lg)
+- [ ] **CMP-04**: Card component (basic variant)
+- [ ] **CMP-05**: GlassCard component (glassmorphism variant)
+- [ ] **CMP-06**: Input component (text, password, search types)
+- [ ] **CMP-07**: Input states (default, focus, error, disabled)
+- [ ] **CMP-08**: Input with label, helper text, error message
+- [ ] **CMP-09**: Badge component (semantic colors: default, success, warning, error, info)
+- [ ] **CMP-10**: Badge sizes (sm, md)
+- [ ] **CMP-11**: Typography components (Heading h1-h6, Text, Caption, Code)
+- [ ] **CMP-12**: Icon system integration pattern
+- [ ] **CMP-13**: Spinner/Loader component (sizes, determinate/indeterminate)
+
+### Components — Extended (CMX)
+
+- [ ] **CMX-01**: Select/Dropdown component
+- [ ] **CMX-02**: Modal/Dialog component with glass styling
+- [ ] **CMX-03**: Toast/Alert component
+- [ ] **CMX-04**: Tabs component
+- [ ] **CMX-05**: Avatar component (sizes, fallback, group)
+- [ ] **CMX-06**: Divider component (horizontal, vertical, with label)
+
+### Components — Raycast Patterns (RAY)
+
+- [ ] **RAY-01**: Keyboard key visualization (key caps with proper styling)
+- [ ] **RAY-02**: Shortcut badge component (⌘K style displays)
+- [ ] **RAY-03**: Extension/feature card with gradient background
+- [ ] **RAY-04**: Testimonial card pattern
+- [ ] **RAY-05**: Category tab navigation pattern
+
+### Components — Quality (CMQ)
+
+- [ ] **CMQ-01**: All components have TypeScript interfaces exported
+- [ ] **CMQ-02**: All components have JSDoc with @example blocks
+- [ ] **CMQ-03**: All components use semantic tokens (never primitives)
+- [ ] **CMQ-04**: All components have keyboard navigation
+- [ ] **CMQ-05**: All components have accessible labels (aria-*)
+- [ ] **CMQ-06**: All interactive elements meet 44x44px touch target minimum
+
+### Effects — Glassmorphism (GLS)
+
+- [ ] **GLS-01**: GlassPanel base component with configurable blur (sm, md, lg)
+- [ ] **GLS-02**: Glassmorphism opacity configurable (0.1-0.3 range)
+- [ ] **GLS-03**: Glass border effect (semi-transparent white border)
+- [ ] **GLS-04**: Performance optimized (max 2-3 glass elements per viewport)
+- [ ] **GLS-05**: Mobile blur reduced (6-8px vs 12-20px desktop)
+- [ ] **GLS-06**: Noise texture overlay for tactile feel (subtle grain effect)
+- [ ] **GLS-07**: Chromatic aberration effect for premium glass (optional, configurable)
+
+### Effects — Animation (EFX)
+
+- [ ] **EFX-01**: FadeIn animation component
+- [ ] **EFX-02**: SlideUp animation component
+- [ ] **EFX-03**: FadeInUp combined animation (Raycast signature)
+- [ ] **EFX-04**: Staggered reveal for lists/grids
+- [ ] **EFX-05**: Hover scale micro-interaction
+- [ ] **EFX-06**: Loading skeleton animation
+
+### Showcase (SHW)
+
+- [ ] **SHW-01**: /showcase main page with token visualization
+- [ ] **SHW-02**: /showcase/inputs page (Input, Select, Textarea)
+- [ ] **SHW-03**: /showcase/navigation page (Tabs, Breadcrumbs)
+- [ ] **SHW-04**: /showcase/feedback page (Toast, Modal, Progress, Alert)
+- [ ] **SHW-05**: /showcase/data-display page (Badge, Avatar, Skeleton)
+- [ ] **SHW-06**: /showcase/layout page (Container, GlassPanel, GlassCard, Divider)
+- [ ] **SHW-07**: /showcase/utilities page (Motion components, Gradients, TrafficLights)
+- [ ] **SHW-08**: Each showcase page shows all component variants
+- [ ] **SHW-09**: Each showcase page shows all component states
+- [ ] **SHW-10**: Showcase follows consistent section pattern
+
+### Verification (VER)
+
+- [ ] **VER-01**: Visual comparison between /showcase and Raycast reference
+- [ ] **VER-02**: Token values verified against extracted source values
+- [ ] **VER-03**: All color combinations verified for WCAG AA compliance
+- [ ] **VER-04**: All components tested in isolation (Storybook/showcase)
+- [ ] **VER-05**: All components tested in composition (real page contexts)
+- [ ] **VER-06**: No hardcoded values in component code (linted)
+- [ ] **VER-07**: Responsive behavior verified (mobile, tablet, desktop)
+
+### Documentation (DOC)
+
+- [ ] **DOC-01**: Token reference document (all values with usage notes)
+- [ ] **DOC-02**: Component API documentation (props, variants, examples)
+- [ ] **DOC-03**: Usage guidelines (when to use/not use each component)
+- [ ] **DOC-04**: Accessibility requirements per component
+- [ ] **DOC-05**: BRAND-BIBLE.md updated with complete design system
+- [ ] **DOC-06**: Motion guidelines document
+- [ ] **DOC-07**: Figma-ready design specs exported
+- [ ] **DOC-08**: Component index with links to showcase and source
+
+## Future Milestone
+
+Deferred to v2.1+:
+
+### Storybook Integration
+- **STB-01**: Storybook 8 initialized
+- **STB-02**: Foundation stories (Colors, Typography, Spacing)
+- **STB-03**: Component stories for all primitives
+- **STB-04**: Chromatic visual regression testing
 
 ### Advanced Features
-- **ADV-01**: User can compare multiple videos side-by-side
-- **ADV-02**: User can set notification for rising trends
-- **ADV-03**: User can share storyboard via link
+- **ADV-01**: Light mode theme variant
+- **ADV-02**: Style Dictionary pipeline (if Figma sync needed)
+- **ADV-03**: Tokens Studio integration
+- **ADV-04**: Automated token extraction CI
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Video editing | CapCut dominates; not our value prop |
-| Scheduling/posting | Different product category |
-| Social features | Community features deferred to later |
-| Real-time notifications | Push infrastructure not in place |
-| Video download | Copyright concerns, ToS issues |
-| Instagram Reels | TikTok first, Instagram in v1.5.x |
+| Light mode | Dark-mode first, light mode deferred to v2.1 |
+| Real-time Figma sync | Manual export sufficient for now |
+| Complex node animations | Already scoped for future milestone |
+| Sound design | Future polish feature |
+| Mobile native exports | Web-only for now |
 
 ## Traceability
 
+Populated during roadmap creation.
+
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FEED-01 | Phase 26 | Pending |
-| FEED-02 | Phase 26 | Pending |
-| FEED-03 | Phase 26 | Pending |
-| FEED-04 | Phase 26 | Pending |
-| FEED-05 | Phase 27 | Pending |
-| FEED-06 | Phase 26 | Pending |
-| FEED-07 | Phase 27 | Pending |
-| ANLZ-01 | Phase 27 | Pending |
-| ANLZ-02 | Phase 27 | Pending |
-| ANLZ-03 | Phase 27 | Pending |
-| ANLZ-04 | Phase 27 | Pending |
-| REMIX-01 | Phase 28 | Pending |
-| REMIX-02 | Phase 28 | Pending |
-| REMIX-03 | Phase 28 | Pending |
-| REMIX-04 | Phase 28 | Pending |
-| REMIX-05 | Phase 29 | Pending |
-| REMIX-06 | Phase 29 | Pending |
-| REMIX-07 | Phase 29 | Pending |
-| REMIX-08 | Phase 28 | Pending |
-| INFRA-01 | Phase 25 | Pending |
-| INFRA-02 | Phase 25 | Pending |
-| INFRA-03 | Phase 25 | Pending |
-| INFRA-04 | Phase 25 | Pending |
-| INFRA-05 | Phase 25 | Pending |
-| INFRA-06 | Phase 25 | Pending |
-| INFRA-07 | Phase 25 | Pending |
-| NAV-01 | Phase 30 | Pending |
-| NAV-02 | Phase 30 | Pending |
-| UX-01 | Phase 30 | Pending |
-| UX-02 | Phase 30 | Pending |
-| UX-03 | Phase 27 | Pending |
-| UX-04 | Phase 28 | Pending |
-| UX-05 | Phase 29 | Pending |
-| UX-06 | Phase 30 | Pending |
+| EXT-01 to EXT-13 | TBD | Pending |
+| COL-01 to COL-08 | TBD | Pending |
+| TYP-01 to TYP-06 | TBD | Pending |
+| SPC-01 to SPC-04 | TBD | Pending |
+| SHD-01 to SHD-04 | TBD | Pending |
+| BRD-01 to BRD-03 | TBD | Pending |
+| ANI-01 to ANI-05 | TBD | Pending |
+| BRK-01 to BRK-05 | TBD | Pending |
+| GRD-01 to GRD-04 | TBD | Pending |
+| ARC-01 to ARC-05 | TBD | Pending |
+| CMP-01 to CMP-13 | TBD | Pending |
+| CMX-01 to CMX-06 | TBD | Pending |
+| RAY-01 to RAY-05 | TBD | Pending |
+| CMQ-01 to CMQ-06 | TBD | Pending |
+| GLS-01 to GLS-07 | TBD | Pending |
+| EFX-01 to EFX-06 | TBD | Pending |
+| SHW-01 to SHW-10 | TBD | Pending |
+| VER-01 to VER-07 | TBD | Pending |
+| DOC-01 to DOC-08 | TBD | Pending |
 
 **Coverage:**
-- v1.5 requirements: 33 total
-- Mapped to phases: 33/33
-- Unmapped: 0
+- v2.0 requirements: 106 total
+- Mapped to phases: 0
+- Unmapped: 106 (pending roadmap)
 
 ---
-*Requirements defined: 2026-02-02*
-*Last updated: 2026-02-02 — Traceability filled in after roadmap creation*
+*Requirements defined: 2026-02-03*
+*Last updated: 2026-02-03 after initial definition*
