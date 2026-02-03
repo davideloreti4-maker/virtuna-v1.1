@@ -115,12 +115,13 @@ All phases completed. See archived details.
   4. Tailwind @theme updated with all tokens accessible as utilities
   5. Token values verified against raycast.com live site
 **Plans**: 4 plans
+**Status**: Complete (2026-02-03)
 
 Plans:
-- [ ] 39-01-PLAN.md — Homepage extraction via Playwright MCP (checkpoint: user verification)
-- [ ] 39-02-PLAN.md — Additional pages extraction (Store, Pro, AI, Pricing, Teams) (checkpoint: user verification)
-- [ ] 39-03-PLAN.md — Coral scale generation with WCAG verification + TypeScript types
-- [ ] 39-04-PLAN.md — Two-tier token architecture implementation in globals.css
+- [x] 39-01-PLAN.md — Homepage extraction via Playwright MCP
+- [x] 39-02-PLAN.md — Additional pages extraction (Store, Pro, AI, Pricing, Teams)
+- [x] 39-03-PLAN.md — Coral scale generation with WCAG verification + TypeScript types
+- [x] 39-04-PLAN.md — Two-tier token architecture implementation in globals.css
 
 ---
 
@@ -134,7 +135,14 @@ Plans:
   3. Input handles all types (text, password, search) with label, helper, and error states
   4. All components have TypeScript interfaces, JSDoc examples, and keyboard navigation
   5. All interactive elements meet 44x44px touch target minimum
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 40-01-PLAN.md — Button component with variants, sizes, loading state
+- [ ] 40-02-PLAN.md — Card and GlassCard with glassmorphism
+- [ ] 40-03-PLAN.md — Input and InputField with label/helper/error
+- [ ] 40-04-PLAN.md — Badge, Typography, Spinner components
+- [ ] 40-05-PLAN.md — Icon system + visual verification checkpoint
 
 ---
 
@@ -204,8 +212,8 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44
 | 1-10 | v1.1 | 44/44 | Complete | 2026-01-29 |
 | 11-14 | v1.2 | 8/8 | Complete | 2026-01-30 |
 | 15-38 | v1.3.2-v1.7 | - | Archived | 2026-02-03 |
-| 39. Token Foundation | v2.0 | 0/TBD | Not started | - |
-| 40. Core Components | v2.0 | 0/TBD | Not started | - |
+| 39. Token Foundation | v2.0 | 4/4 | Complete | 2026-02-03 |
+| 40. Core Components | v2.0 | 0/5 | Planned | - |
 | 41. Extended Components | v2.0 | 0/TBD | Not started | - |
 | 42. Effects & Animation | v2.0 | 0/TBD | Not started | - |
 | 43. Showcase Enhancement | v2.0 | 0/TBD | Not started | - |
@@ -242,4 +250,4 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44
 
 ---
 *Roadmap created: 2026-02-03*
-*Last updated: 2026-02-03 — v2.0 Design System Foundation phases defined*
+*Last updated: 2026-02-03 — Phase 40 Core Components planned (5 plans)*
