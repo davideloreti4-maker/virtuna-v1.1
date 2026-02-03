@@ -11,22 +11,24 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Milestone:** v2.0 — Design System Foundation
 **Phase:** 40 of 44 (Core Components)
-**Plan:** Completed 40-02 (Card components)
-**Status:** In progress — Button and Card components complete
-**Last activity:** 2026-02-03 — Completed 40-02-PLAN.md (Card/GlassCard)
+**Plan:** Completed 40-03 (Input/InputField)
+**Status:** In progress — Button, Card, Input components complete
+**Last activity:** 2026-02-03 — Completed 40-03-PLAN.md (Input/InputField)
 
-Progress: [##--------] 22%
+Progress: [##--------] 23%
 
 ## Phase 40 Progress
 
 Plans completed:
-- 40-01: Button component with variants, sizes, loading state ✓
-- 40-02: Card and GlassCard with glassmorphism ✓
+- 40-01: Button component with variants, sizes, loading state
+- 40-02: Card and GlassCard with glassmorphism
+- 40-03: Input with states and InputField with label/helper/error
 
 ### Artifacts Created (Phase 40)
 - `src/components/ui/button.tsx` — Enhanced Button with primary/secondary/ghost/link/coral variants
 - `src/components/ui/card.tsx` — Card, GlassCard, compound sub-components
-- `40-01-SUMMARY.md`, `40-02-SUMMARY.md` — Plan summaries
+- `src/components/ui/input.tsx` — Input with states, InputField with label/helper/error
+- `40-01-SUMMARY.md`, `40-02-SUMMARY.md`, `40-03-SUMMARY.md` — Plan summaries
 
 ## Accumulated Context
 
@@ -41,6 +43,9 @@ Plans completed:
 - Phase 40-02: GlassCard uses inline styles for backdrop-filter Safari compatibility
 - Phase 40-02: Blur variants sm=8px, md=12px, lg=20px
 - Phase 40-02: Inner glow enabled by default
+- Phase 40-03: Use semantic error token (border-error) not hardcoded red-500
+- Phase 40-03: InputField accepts error as string (message) or boolean (styling only)
+- Phase 40-03: Auto-generate input IDs when not provided for label association
 
 ## Infrastructure URLs
 
@@ -49,7 +54,7 @@ Plans completed:
 
 ## Session Continuity
 
-Last session: 2026-02-03T18:26:36Z
-Stopped at: Completed 40-02-PLAN.md (Card/GlassCard)
-Resume with: Continue Phase 40 — Core Components (40-03 if exists)
+Last session: 2026-02-03T18:27:18Z
+Stopped at: Completed 40-03-PLAN.md (Input/InputField)
+Resume with: Continue Phase 40 — Core Components (40-04 if exists)
 Resume file: .planning/phases/40-core-components/
