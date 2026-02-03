@@ -7,12 +7,12 @@ import { cn } from "@/lib/utils";
  * Based on extraction data from raycast.com.
  */
 const headingSizeClasses: Record<1 | 2 | 3 | 4 | 5 | 6, string> = {
-  1: "text-5xl font-semibold leading-tight tracking-tight font-display",
-  2: "text-4xl font-semibold leading-tight tracking-tight font-display",
-  3: "text-2xl font-medium leading-snug",
-  4: "text-xl font-medium leading-snug",
-  5: "text-lg font-medium",
-  6: "text-base font-medium",
+  1: "text-display font-semibold leading-none tracking-tight font-display", // 64px
+  2: "text-5xl font-semibold leading-tight tracking-tight font-display", // 48px
+  3: "text-2xl font-medium leading-snug", // 24px
+  4: "text-xl font-medium leading-snug", // 20px
+  5: "text-lg font-medium", // 18px
+  6: "text-base font-medium", // 16px
 };
 
 /**
