@@ -136,13 +136,14 @@ Plans:
   4. All components have TypeScript interfaces, JSDoc examples, and keyboard navigation
   5. All interactive elements meet 44x44px touch target minimum
 **Plans**: 5 plans
+**Status**: Complete (2026-02-03)
 
 Plans:
-- [ ] 40-01-PLAN.md — Button component with variants, sizes, loading state
-- [ ] 40-02-PLAN.md — Card and GlassCard with glassmorphism
-- [ ] 40-03-PLAN.md — Input and InputField with label/helper/error
-- [ ] 40-04-PLAN.md — Badge, Typography, Spinner components
-- [ ] 40-05-PLAN.md — Icon system + visual verification checkpoint
+- [x] 40-01-PLAN.md — Button component with variants, sizes, loading state
+- [x] 40-02-PLAN.md — Card and GlassCard with glassmorphism
+- [x] 40-03-PLAN.md — Input and InputField with label/helper/error
+- [x] 40-04-PLAN.md — Badge, Typography, Spinner components
+- [x] 40-05-PLAN.md — Icon system + visual verification checkpoint
 
 ---
 
@@ -213,7 +214,7 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44
 | 11-14 | v1.2 | 8/8 | Complete | 2026-01-30 |
 | 15-38 | v1.3.2-v1.7 | - | Archived | 2026-02-03 |
 | 39. Token Foundation | v2.0 | 4/4 | Complete | 2026-02-03 |
-| 40. Core Components | v2.0 | 0/5 | Planned | - |
+| 40. Core Components | v2.0 | 5/5 | Complete | 2026-02-03 |
 | 41. Extended Components | v2.0 | 0/TBD | Not started | - |
 | 42. Effects & Animation | v2.0 | 0/TBD | Not started | - |
 | 43. Showcase Enhancement | v2.0 | 0/TBD | Not started | - |
@@ -250,4 +251,4 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44
 
 ---
 *Roadmap created: 2026-02-03*
-*Last updated: 2026-02-03 — Phase 40 Core Components planned (5 plans)*
+*Last updated: 2026-02-03 — Phase 40 Core Components complete (5/5 plans, verified)*

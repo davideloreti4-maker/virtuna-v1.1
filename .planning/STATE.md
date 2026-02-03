@@ -5,34 +5,58 @@
 See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Core value:** Raycast-quality design system foundation enabling rapid, consistent UI development
-**Current focus:** Phase 40 — Core Components
+**Current focus:** Phase 40 complete — ready for Phase 41
 
 ## Current Position
 
 **Milestone:** v2.0 — Design System Foundation
-**Phase:** 40 of 44 (Core Components)
-**Plan:** Completed 40-04 (Badge, Typography, Spinner)
-**Status:** In progress — Button, Card, Input, Badge, Typography, Spinner complete
-**Last activity:** 2026-02-03 — Completed 40-04-PLAN.md (Badge, Typography, Spinner)
+**Phase:** 40 of 44 (Core Components) — COMPLETE
+**Plan:** All 5 plans complete
+**Status:** Phase 40 verified against Raycast — all components match 1:1
+**Last activity:** 2026-02-03 — Phase 40 visual verification approved
 
-Progress: [###-------] 25%
+Progress: [####------] 40%
 
-## Phase 40 Progress
+## Phase 40 Completion Summary
 
-Plans completed:
-- 40-01: Button component with variants, sizes, loading state
-- 40-02: Card and GlassCard with glassmorphism
-- 40-03: Input with states and InputField with label/helper/error
-- 40-04: Badge, Typography (Heading/Text/Caption/Code), Spinner
+All 5 plans completed and verified:
+- 40-01: Button with variants, sizes, loading state, Raycast shadow ✓
+- 40-02: Card and GlassCard with glassmorphism ✓
+- 40-03: Input and InputField with label/helper/error ✓
+- 40-04: Badge, Typography (H1 64px), Spinner ✓
+- 40-05: Icon system + visual verification ✓
 
 ### Artifacts Created (Phase 40)
-- `src/components/ui/button.tsx` — Enhanced Button with primary/secondary/ghost/link/coral variants
-- `src/components/ui/card.tsx` — Card, GlassCard, compound sub-components
-- `src/components/ui/input.tsx` — Input with states, InputField with label/helper/error
-- `src/components/ui/badge.tsx` — Badge with 5 semantic color variants
-- `src/components/ui/typography.tsx` — Heading, Text, Caption, Code components
-- `src/components/ui/spinner.tsx` — Loading spinner (indeterminate/determinate)
-- `40-01-SUMMARY.md`, `40-02-SUMMARY.md`, `40-03-SUMMARY.md`, `40-04-SUMMARY.md` — Plan summaries
+- `src/components/ui/button.tsx` — Button with primary/secondary/ghost/destructive, shadow-button
+- `src/components/ui/card.tsx` — Card, GlassCard with blur/glow
+- `src/components/ui/input.tsx` — Input, InputField with label/helper/error
+- `src/components/ui/badge.tsx` — Badge with 5 semantic variants
+- `src/components/ui/typography.tsx` — Heading (64px H1), Text, Caption, Code
+- `src/components/ui/spinner.tsx` — Indeterminate/determinate modes
+- `src/components/ui/icon.tsx` — Phosphor icon wrapper with accessibility
+- `src/app/(marketing)/ui-showcase/page.tsx` — Visual verification page
+
+### Verification Fixes Applied
+- Button: Added `shadow-button` for Raycast multi-layer shadow
+- Typography: H1 changed to 64px (`text-display`)
+- Tokens: Added `--radius-xs: 6px` for small elements
+
+## Next Session Instructions
+
+### What To Do Next
+Start Phase 41 — Extended Components + Raycast Patterns:
+1. Run `/gsd:discuss-phase 41` to gather context
+2. Or `/gsd:plan-phase 41` to plan directly
+
+### Component Library Ready
+All exports from `@/components/ui`:
+- Button, buttonVariants, ButtonProps
+- Card, GlassCard, CardHeader, CardContent, CardFooter
+- Input, InputField, InputProps, InputFieldProps
+- Badge, badgeVariants, BadgeProps
+- Heading, Text, Caption, Code
+- Spinner, SpinnerProps
+- Icon, IconProps
 
 ## Accumulated Context
 
@@ -42,26 +66,22 @@ Plans completed:
 - v2.0: Two-tier token architecture (primitive -> semantic) — IMPLEMENTED
 - v2.0: Dark-mode first design system
 - Phase 39: All pages extracted via Playwright (real data, verified)
-- Phase 39: 17 screenshots captured as visual reference
-- Coral scale: WCAG AA compliant (coral-500 on dark = 5.4:1, coral-700 on light = 7.2:1)
-- Phase 40-02: GlassCard uses inline styles for backdrop-filter Safari compatibility
-- Phase 40-02: Blur variants sm=8px, md=12px, lg=20px
-- Phase 40-02: Inner glow enabled by default
-- Phase 40-03: Use semantic error token (border-error) not hardcoded red-500
-- Phase 40-03: InputField accepts error as string (message) or boolean (styling only)
-- Phase 40-03: Auto-generate input IDs when not provided for label association
-- Phase 40-04: Badge uses semantic tokens (success/warning/error/info) from globals.css
-- Phase 40-04: Heading allows visual size override via size prop
-- Phase 40-04: Spinner uses SVG strokeDasharray for both indeterminate/determinate
+- Phase 40: Button default is secondary (not primary) — matches Raycast sparse accent usage
+- Phase 40: GlassCard uses inline styles for backdrop-filter Safari compatibility
+- Phase 40: Blur variants sm=8px, md=12px, lg=20px
+- Phase 40: H1 = 64px (text-display), verified against Raycast
+- Phase 40: Button has Raycast multi-layer shadow (shadow-button token)
+- Phase 40: 6px radius added for nav links and small elements
 
 ## Infrastructure URLs
 
 - **GitHub**: https://github.com/davideloreti4-maker/virtuna-v1.1
 - **Vercel**: https://virtuna-v11.vercel.app
+- **UI Showcase**: /ui-showcase (for visual testing)
 
 ## Session Continuity
 
-Last session: 2026-02-03T18:28:48Z
-Stopped at: Completed 40-04-PLAN.md (Badge, Typography, Spinner)
-Resume with: Continue Phase 40 — Core Components (40-05 if exists)
-Resume file: .planning/phases/40-core-components/
+Last session: 2026-02-03
+Stopped at: Completed Phase 40 — Core Components (all 5 plans, verified)
+Resume with: Start Phase 41 — Extended Components + Raycast Patterns
+Resume file: .planning/ROADMAP.md (Phase 41 section)
