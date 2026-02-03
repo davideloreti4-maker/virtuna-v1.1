@@ -11,50 +11,22 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Milestone:** v2.0 — Design System Foundation
 **Phase:** 40 of 44 (Core Components)
-**Plan:** Ready to start 40-01
-**Status:** Phase 39 complete — design token foundation established
-**Last activity:** 2026-02-03 — Completed Phase 39 (all 4 plans)
+**Plan:** Completed 40-02 (Card components)
+**Status:** In progress — Button and Card components complete
+**Last activity:** 2026-02-03 — Completed 40-02-PLAN.md (Card/GlassCard)
 
-Progress: [##--------] 20%
+Progress: [##--------] 22%
 
-## Phase 39 Completion Summary
+## Phase 40 Progress
 
-All 4 plans completed:
-- 39-01: Homepage extraction via Playwright ✓
-- 39-02: Additional pages extraction (Store, Pro, AI, Pricing, Teams, iOS, Windows) ✓
-- 39-03: Coral scale generation with WCAG verification ✓
-- 39-04: Two-tier token architecture in globals.css ✓
+Plans completed:
+- 40-01: Button component with variants, sizes, loading state ✓
+- 40-02: Card and GlassCard with glassmorphism ✓
 
-### Artifacts Created
-- `39-EXTRACTION-DATA.md` — Complete token values from 8 pages
-- `39-CORAL-SCALE.md` — WCAG-compliant coral color scale
-- `src/types/design-tokens.ts` — TypeScript token types
-- `src/app/globals.css` — Two-tier primitive/semantic token system
-- 17 verification screenshots
-
-### Key Token Values Ready
-- Coral scale (100-900) with WCAG compliance
-- Gray scale (50-950)
-- All glassmorphism patterns
-- Typography scale (12px-64px)
-- Spacing scale (4px-96px)
-- Shadow scale (sm-glow)
-- Radius scale (0-9999px)
-
-## Next Session Instructions
-
-### What To Do Next
-Start Phase 40 — Core Components:
-1. Read `.planning/ROADMAP.md` for Phase 40 requirements
-2. Create 40-01-PLAN.md for Button component
-3. Implement Button with all variants using the token system
-
-### Ready-to-Use Token System
-- `bg-background`, `bg-surface`, `bg-coral-500`
-- `text-foreground`, `text-accent`
-- `border-border-glass`
-- `rounded-md`, `rounded-lg`
-- `shadow-glass`, `shadow-button`
+### Artifacts Created (Phase 40)
+- `src/components/ui/button.tsx` — Enhanced Button with primary/secondary/ghost/link/coral variants
+- `src/components/ui/card.tsx` — Card, GlassCard, compound sub-components
+- `40-01-SUMMARY.md`, `40-02-SUMMARY.md` — Plan summaries
 
 ## Accumulated Context
 
@@ -66,6 +38,9 @@ Start Phase 40 — Core Components:
 - Phase 39: All pages extracted via Playwright (real data, verified)
 - Phase 39: 17 screenshots captured as visual reference
 - Coral scale: WCAG AA compliant (coral-500 on dark = 5.4:1, coral-700 on light = 7.2:1)
+- Phase 40-02: GlassCard uses inline styles for backdrop-filter Safari compatibility
+- Phase 40-02: Blur variants sm=8px, md=12px, lg=20px
+- Phase 40-02: Inner glow enabled by default
 
 ## Infrastructure URLs
 
@@ -74,7 +49,7 @@ Start Phase 40 — Core Components:
 
 ## Session Continuity
 
-Last session: 2026-02-03
-Stopped at: Completed Phase 39 — Token Foundation (all 4 plans)
-Resume with: Start Phase 40 — Core Components
-Resume file: .planning/ROADMAP.md (Phase 40 section)
+Last session: 2026-02-03T18:26:36Z
+Stopped at: Completed 40-02-PLAN.md (Card/GlassCard)
+Resume with: Continue Phase 40 — Core Components (40-03 if exists)
+Resume file: .planning/phases/40-core-components/
