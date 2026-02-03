@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Milestone:** v2.0 — Design System Foundation
 **Phase:** 40 of 44 (Core Components)
-**Plan:** Completed 40-03 (Input/InputField)
-**Status:** In progress — Button, Card, Input components complete
-**Last activity:** 2026-02-03 — Completed 40-03-PLAN.md (Input/InputField)
+**Plan:** Completed 40-04 (Badge, Typography, Spinner)
+**Status:** In progress — Button, Card, Input, Badge, Typography, Spinner complete
+**Last activity:** 2026-02-03 — Completed 40-04-PLAN.md (Badge, Typography, Spinner)
 
-Progress: [##--------] 23%
+Progress: [###-------] 25%
 
 ## Phase 40 Progress
 
@@ -23,12 +23,16 @@ Plans completed:
 - 40-01: Button component with variants, sizes, loading state
 - 40-02: Card and GlassCard with glassmorphism
 - 40-03: Input with states and InputField with label/helper/error
+- 40-04: Badge, Typography (Heading/Text/Caption/Code), Spinner
 
 ### Artifacts Created (Phase 40)
 - `src/components/ui/button.tsx` — Enhanced Button with primary/secondary/ghost/link/coral variants
 - `src/components/ui/card.tsx` — Card, GlassCard, compound sub-components
 - `src/components/ui/input.tsx` — Input with states, InputField with label/helper/error
-- `40-01-SUMMARY.md`, `40-02-SUMMARY.md`, `40-03-SUMMARY.md` — Plan summaries
+- `src/components/ui/badge.tsx` — Badge with 5 semantic color variants
+- `src/components/ui/typography.tsx` — Heading, Text, Caption, Code components
+- `src/components/ui/spinner.tsx` — Loading spinner (indeterminate/determinate)
+- `40-01-SUMMARY.md`, `40-02-SUMMARY.md`, `40-03-SUMMARY.md`, `40-04-SUMMARY.md` — Plan summaries
 
 ## Accumulated Context
 
@@ -46,6 +50,9 @@ Plans completed:
 - Phase 40-03: Use semantic error token (border-error) not hardcoded red-500
 - Phase 40-03: InputField accepts error as string (message) or boolean (styling only)
 - Phase 40-03: Auto-generate input IDs when not provided for label association
+- Phase 40-04: Badge uses semantic tokens (success/warning/error/info) from globals.css
+- Phase 40-04: Heading allows visual size override via size prop
+- Phase 40-04: Spinner uses SVG strokeDasharray for both indeterminate/determinate
 
 ## Infrastructure URLs
 
@@ -54,7 +61,7 @@ Plans completed:
 
 ## Session Continuity
 
-Last session: 2026-02-03T18:27:18Z
-Stopped at: Completed 40-03-PLAN.md (Input/InputField)
-Resume with: Continue Phase 40 — Core Components (40-04 if exists)
+Last session: 2026-02-03T18:28:48Z
+Stopped at: Completed 40-04-PLAN.md (Badge, Typography, Spinner)
+Resume with: Continue Phase 40 — Core Components (40-05 if exists)
 Resume file: .planning/phases/40-core-components/
