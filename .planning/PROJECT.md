@@ -99,121 +99,55 @@ A pixel-perfect, AI-verified clone of societies.io (landing + app) serving as th
 
 ---
 
-## Current Milestone: v1.6 — Brand Deals & Affiliate Hub
+## Current Milestone: v2.0 — Design System Foundation
 
-**Goal:** Creator monetization hub with aggregated brand deals, tiered partnership system, and Revolut-style earnings wallet.
+**Goal:** Extract Raycast's complete design system and implement it as Virtuna's foundation, enabling rapid future development with consistent, premium UI.
 
-**Core Concept:**
-- Three-tier brand deal system (Premium/Pro/Starter)
-- Aggregated deals from external platforms + Virtuna's own affiliate program
-- Platform level system that unlocks better tiers based on creator performance
-- Wallet view tracking earnings across all programs
+**Brand Rule:** Coral `#FF7F50` replaces Raycast's primary brand color; everything else matches Raycast 1:1.
 
-**Deal Tiers:**
-| Tier | Model | Access |
-|------|-------|--------|
-| **Premium** | Fixed pay + product | Creator metrics-gated (established creators) |
-| **Pro** | Rev-share marketplace | Brands offer deals, creators accept |
-| **Starter** | Instant affiliate | Anyone can start (Virtuna affiliate featured) |
+**Core Phases:**
+1. **Extract** — Systematically capture Raycast's full design language from raycast.com
+2. **Implement** — Update Tailwind config, CSS variables, and `/showcase` to match exactly
+3. **Verify** — Visual + code verification of 1:1 match
+4. **Document** — Comprehensive specs for future building
 
-**Key Features:**
-- **Wallet** — Revolut-style earnings view, balance, transaction history
-- **Deal Marketplace** — Browse all deals, see locked/unlocked status, apply
-- **Platform Levels** — XP/progression system tied to creator performance
-- **Virtuna Affiliate** — Featured at top with highest commission tier
-- **Aggregation** — Deals scraped/imported from external affiliate networks
+**Extraction Scope:**
+- Colors (full palette, semantic usage, gradients)
+- Typography (fonts, sizes, weights, line heights)
+- Spacing (padding, margins, gaps)
+- Shadows and depth (elevation system)
+- Border radius and borders
+- Animations and transitions
+- Component patterns (buttons, cards, inputs, navigation, etc.)
+- Responsive behavior and breakpoints
+- Glassmorphism and blur effects
 
-**Technical Requirements:**
-- Deal aggregation from external sources (research needed)
-- Wallet/earnings tracking system
-- Platform level progression logic
-- Payout integration (method TBD)
+**Deliverables:**
+- Tailwind config with all design tokens
+- CSS variables for runtime theming
+- Updated `/showcase` component library
+- Component specs with usage guidelines
+- Figma-ready design specs
+- Comprehensive documentation
 
 **Success Criteria:**
-- Creators see clear path to higher-tier deals
-- Wallet feels premium (Revolut-quality)
-- Deal volume high enough to provide real value
-- Virtuna affiliate prominently featured
+- `/showcase` visually indistinguishable from Raycast (except coral branding)
+- All design tokens documented and accessible
+- Any future component can be built using existing tokens/patterns
+- Documentation enables consistent development without reference to Raycast
 
-**Research Focus:**
-- Which platforms have scrapeable/API-accessible open deals?
-- Legal considerations of aggregating third-party deals
-- Conversion tracking as middleman
-- Deal metadata requirements
+**Reference:** raycast.com (full marketing site)
 
 ---
 
-## Current Milestone: v1.5 — Trending Page
+## Archived Milestones (v1.3.2 - v1.7)
 
-**Goal:** Real-time viral video discovery feed with analysis and full storyboard remix capabilities, powered by Apify TikTok scraper.
-
-**Core Concept:**
-- Curated feed of currently viral TikTok videos (Instagram deferred)
-- Fixed categories (Challenges, Sounds, Formats, etc.) + AI sub-tagging
-- Automated scraping with quality filter layer — high signal, no noise
-- Three equal use cases: inspiration, trend tracking, quick content creation
-
-**Key Features:**
-- **Trending Feed** — Browse by fixed categories, AI sub-tags for granular filtering
-- **Analyze Action** — Same viral score/breakdown system as Predictor
-- **Remix Action** — 2-3 customized versions with full storyboard:
-  - Scripts with hooks and CTAs
-  - Shot-by-shot filming instructions
-  - Visual reference frames
-- **PDF Export** — Downloadable storyboard documents
-
-**Navigation:** Separate sidebar item (own top-level entry)
-
-**Technical Requirements:**
-- Apify TikTok scraper integration
-- Backend API for video data + quality filtering
-- AI categorization pipeline (fixed categories + sub-tags)
-- Storyboard generation with PDF export
-
-**Success Criteria:**
-- Feed surfaces genuinely viral, high-quality content
-- Categories intuitive to browse (creators know where to look)
-- Analysis matches viral predictor output format
-- Storyboards are actionable and ready-to-film
-- PDF exports are professional and shareable
-
----
-
-## In Progress: v1.4 — Node Visualization
-
-**Goal:** Rework the dashboard node visualization into a mesmerizing, addictive, TikTok-viral-worthy experience that delivers real value to power users.
-
-**Status:** Phase 20 complete (Visualization Foundation), Phase 21 next (Particle System)
-
-**Vision:** Hybrid visualization with central AI orb + chaos → order node crystallization
-
-**Core Concept:**
-- Central glowing orb as the "AI brain"
-- Particles flow toward orb during processing
-- Nodes form dynamically, abstract at first, then crystallize into labeled insights
-- Full physics playground: drag, fling, spin, magnetic attraction, ripple effects
-
-**Key Features:**
-- Sound design layer for satisfying interactions
-- Captivating idle hook state (compelling before any action)
-- Progress indicators within chaos (subtle but present)
-- Compression-proof design (survives TikTok video recording)
-- Professional mode toggle for enterprise credibility
-- Paced revelation (insights appear sequentially)
-- Error/empty state handling
-
-**Technical Requirements:**
-- Mobile-first with 60fps performance on mid-range devices
-- Touch gesture support (tap = preview, hold = detail sheet)
-- High contrast, bold effects for video survival
-
-**Success Criteria:**
-- Scroll-stopping visual impact (TikTok-worthy)
-- Addictive fidget interactions ("can't stop touching it")
-- Real insight value for power users
-- 60fps on mobile devices
-
-**Research:** `.planning/research/` (VISUAL-PSYCHOLOGY.md, AI-PERCEPTION.md, MOTION-PSYCHOLOGY.md, INSPIRATION.md, SUMMARY.md)
+Previous milestones archived 2026-02-03 for complete rework:
+- v1.3.2 Landing Page Redesign
+- v1.4 Node Visualization
+- v1.5 Trending Page
+- v1.6 Brand Deals
+- v1.7 Viral Predictor
 
 ---
 
