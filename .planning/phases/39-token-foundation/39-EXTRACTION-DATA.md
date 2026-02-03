@@ -2,7 +2,16 @@
 
 **Extracted:** 2026-02-03
 **Method:** Playwright MCP (real browser extraction)
-**Source:** https://raycast.com (Homepage)
+**Source:** https://raycast.com (All Pages)
+**Pages Extracted:**
+- Homepage (raycast.com)
+- Store (raycast.com/store)
+- Pro (raycast.com/pro)
+- AI (raycast.com/ai)
+- Pricing (raycast.com/pricing)
+- Teams (raycast.com/teams)
+- iOS (raycast.com/ios)
+- Windows (raycast.com/windows)
 **Screenshots:** ./screenshots/
 
 ---
@@ -477,6 +486,217 @@ The navbar appears on all pages and uses glassmorphism effects.
 | `04-section-4.png` | Fourth scrolled section |
 | `04-section-5.png` | Fifth scrolled section |
 | `04-section-6.png` | Sixth scrolled section (footer area) |
+
+---
+
+---
+
+## Store Page (raycast.com/store)
+
+### Hero Section
+
+- **H1:** "Extensions"
+- **Font-size:** `80px`
+- **Font-weight:** `600`
+- **Color:** `rgb(255, 255, 255)`
+
+### Search Button
+
+- **Background:** `rgb(12, 13, 15)` / `#0c0d0f`
+- **Border:** `1px solid rgb(47, 48, 49)` / `#2f3031`
+- **Border-radius:** `12px`
+
+### Extension Cards
+
+- **Border:** `1px solid rgba(255, 255, 255, 0.06)`
+- **Border-radius:** `10px`
+- **Padding:** `32px`
+
+### Grid Layout
+
+- **Gap:** `32px`
+- **Grid-template-columns:** `358.664px 358.664px 358.664px` (3 equal columns)
+
+---
+
+## Pro Page (raycast.com/pro)
+
+### Hero Section
+
+- **H1:** "Raycast Pro"
+- **Font-size:** `48px`
+- **Font-weight:** `600`
+- **Color:** `rgb(255, 255, 255)`
+
+### Pro Badge
+
+- **Color:** `rgb(170, 225, 255)` / cyan-tinted
+- **Border-radius:** `16px`
+- **Padding:** `6px 12px 6px 10px`
+
+---
+
+## AI Page (raycast.com/ai)
+
+### Hero Section
+
+- **H1 Font-size:** `48px`
+- **Font-weight:** `600`
+- **Color:** `rgb(255, 255, 255)`
+
+### Section Headings (H2)
+
+- **Font-size:** `32px`
+- **Font-weight:** `500`
+- **Color:** `rgb(255, 255, 255)`
+
+---
+
+## Pricing Page (raycast.com/pricing)
+
+### Price Value
+
+- **Font-size:** `64px`
+- **Font-weight:** `600`
+- **Color:** `rgb(255, 255, 255)`
+
+### CTA Button (Light)
+
+- **Background:** `rgb(230, 230, 230)` / `#e6e6e6`
+- **Border-radius:** `8px`
+- **Padding:** `8px 12px`
+
+---
+
+## Teams Page (raycast.com/teams)
+
+### Hero Section
+
+- **H1:** "Your team, reimagined."
+- **Font-size:** `72px`
+- **Font-weight:** `700`
+- **Color:** `rgb(255, 255, 255)`
+
+### Section Headings (H2)
+
+- **Font-size:** `36px`
+- **Font-weight:** `700`
+- **Color:** `rgb(255, 255, 255)`
+
+### CTA Button
+
+- **Background:** `rgb(230, 230, 230)` / `#e6e6e6`
+- **Color:** `rgb(47, 48, 49)` / `#2f3031`
+- **Border-radius:** `8px`
+- **Padding:** `8px 12px`
+
+### Pill Badge (Announcement)
+
+- **Color:** `rgb(255, 146, 23)` (orange accent)
+- **Border-radius:** `16px`
+- **Padding:** `8px 16px`
+- **Border:** `1px solid rgba(255, 255, 255, 0.05)`
+
+---
+
+## iOS Page (raycast.com/ios)
+
+### Hero Section
+
+- **H1:** "Power of Raycast, now on iOS."
+- **Font-size:** `48px`
+- **Font-weight:** `600`
+- **Color:** `rgb(255, 255, 255)`
+
+### Section Headings (H2)
+
+- **Font-size:** `32px`
+- **Font-weight:** `500`
+- **Color:** `rgb(255, 255, 255)`
+
+### App Store Button
+
+- **Border-radius:** `12px`
+- **Padding:** `16px`
+- **Border:** `1px solid rgba(255, 255, 255, 0.06)`
+
+### Watch Video Button
+
+- **Border-radius:** `8px`
+- **Padding:** `8px 12px`
+
+---
+
+## Windows Page (raycast.com/windows)
+
+### Hero Section
+
+- **H1:** "A New Start" (decorative large text)
+- **Font-size:** `168px`
+- **Font-weight:** `400`
+- **Color:** `rgb(255, 255, 255)`
+
+### Section Headings (H2)
+
+- **Font-size:** `20px`
+- **Font-weight:** `500`
+- **Color:** `rgb(255, 255, 255)`
+
+### Download Button
+
+- **Background:** `rgb(230, 230, 230)` / `#e6e6e6`
+- **Color:** `rgb(47, 48, 49)` / `#2f3031`
+- **Border-radius:** `8px`
+- **Padding:** `8px 12px`
+
+### Feature Card (article)
+
+- **Border-radius:** `12px`
+- **Border:** `1px solid rgba(255, 255, 255, 0.06)`
+
+---
+
+## Screenshots Reference (Updated)
+
+| File | Description |
+|------|-------------|
+| `01-navbar.png` | Homepage with navbar visible |
+| `02-homepage-hero.png` | Hero section |
+| `03-button-hover.png` | Button hover state |
+| `04-section-1.png` | First scrolled section |
+| `04-section-2.png` | Second scrolled section |
+| `04-section-3.png` | Third scrolled section (keyboard keys) |
+| `04-section-4.png` | Fourth scrolled section |
+| `04-section-5.png` | Fifth scrolled section |
+| `04-section-6.png` | Sixth scrolled section (footer area) |
+| `05-store-hero.png` | Store page hero |
+| `05-store-cards.png` | Store page extension cards |
+| `06-pro-hero.png` | Pro page hero |
+| `07-ai-hero.png` | AI page hero |
+| `08-pricing.png` | Pricing page |
+| `09-teams.png` | Teams page hero |
+| `10-ios.png` | iOS page hero |
+| `11-windows.png` | Windows page hero |
+
+---
+
+## Typography Scale Summary (All Pages)
+
+| Context | Size | Weight | Usage |
+|---------|------|--------|-------|
+| Display XL | 168px | 400 | Windows hero decorative |
+| Display L | 80px | 600 | Store hero |
+| Display M | 72px | 700 | Teams hero |
+| H1 Standard | 64px | 600 | Homepage hero |
+| H1 Medium | 48px | 600 | Pro, AI, iOS heroes |
+| H2 Large | 36px | 700 | Teams sections |
+| H2 Standard | 32px | 500 | AI sections |
+| H2 Small | 20px | 500 | Windows sections |
+| Price | 64px | 600 | Pricing values |
+| Body | 18px | 400 | Paragraphs |
+| Body Small | 16px | 500 | Small text |
+| Button | 14px | 500 | All buttons |
+| Nav | 14px | 500 | Navigation links |
 
 ---
 

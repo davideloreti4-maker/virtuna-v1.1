@@ -1,89 +1,217 @@
 @import "tailwindcss";
 
 @theme {
-  /* Colors */
-  --color-background: #0D0D0D;
-  --color-background-elevated: #1A1A1A;
-  --color-foreground: #FFFFFF;
-  --color-foreground-secondary: #F5F5F5;
-  --color-foreground-muted: #CCCCCC;
-  --color-accent: #E57850;
-  --color-border: rgba(255, 255, 255, 0.1);
-  --color-slate: #708090;
+  /* ============================================
+   * PRIMITIVE TOKENS (Layer 1)
+   * Raw values - referenced by semantic layer
+   * Source: raycast.com extraction + coral scale
+   * ============================================ */
 
-  /* Background hierarchy - near-black base (oklch for perceptual uniformity) */
-  --color-bg-base: oklch(0.13 0.02 264);        /* #0A0A0B - hero background */
-  --color-surface: oklch(0.18 0.02 264);        /* Elevated panels */
-  --color-surface-elevated: oklch(0.23 0.02 264); /* Cards, modals */
+  /* --- Coral Scale (brand, replaces Raycast red) --- */
+  /* Source: 39-CORAL-SCALE.md */
+  --color-coral-100: oklch(0.97 0.03 40);
+  --color-coral-200: oklch(0.93 0.06 40);
+  --color-coral-300: oklch(0.87 0.10 40);
+  --color-coral-400: oklch(0.78 0.14 40);
+  --color-coral-500: oklch(0.72 0.16 40);  /* Base #FF7F50 */
+  --color-coral-600: oklch(0.60 0.14 40);
+  --color-coral-700: oklch(0.48 0.12 40);
+  --color-coral-800: oklch(0.38 0.10 40);
+  --color-coral-900: oklch(0.28 0.08 40);
 
-  /* Text hierarchy */
-  --color-text-primary: oklch(0.98 0 0);        /* Primary text - near white */
-  --color-text-secondary: oklch(0.70 0 0);      /* Secondary/muted text */
-  --color-text-tertiary: oklch(0.50 0 0);       /* Disabled/placeholder */
+  /* --- Gray Scale --- */
+  /* Source: raycast.com body/text extraction */
+  --color-gray-50: oklch(0.98 0 0);
+  --color-gray-100: oklch(0.96 0 0);
+  --color-gray-200: oklch(0.90 0 0);
+  --color-gray-300: oklch(0.80 0 0);
+  --color-gray-400: oklch(0.70 0 0);
+  --color-gray-500: oklch(0.60 0 0);
+  --color-gray-600: oklch(0.50 0 0);
+  --color-gray-700: oklch(0.40 0 0);
+  --color-gray-800: oklch(0.25 0 0);
+  --color-gray-900: oklch(0.18 0.02 264);
+  --color-gray-950: oklch(0.13 0.02 264);
 
-  /* Border for glass effects */
-  --color-border-glass: oklch(1 0 0 / 0.1);     /* 10% white border */
-  --color-border-glow: oklch(1 0 0 / 0.05);     /* 5% subtle glow border */
+  /* --- Semantic Colors (raw values) --- */
+  --color-success-raw: oklch(0.68 0.17 145);
+  --color-warning-raw: oklch(0.75 0.15 85);
+  --color-error-raw: oklch(0.60 0.20 25);
+  --color-info-raw: oklch(0.62 0.19 250);
 
-  /* Primary gradients - each feature gets unique identity */
-  --color-gradient-purple: oklch(0.63 0.24 300);  /* AI/Intelligence */
-  --color-gradient-blue: oklch(0.62 0.19 250);    /* Analytics/Data */
-  --color-gradient-pink: oklch(0.66 0.22 350);    /* Social/Engagement */
-  --color-gradient-cyan: oklch(0.72 0.15 200);    /* Speed/Performance */
-  --color-gradient-green: oklch(0.68 0.17 145);   /* Growth/Success */
-  --color-gradient-orange: oklch(0.70 0.18 50);   /* Creativity/Content */
+  /* --- Spacing Scale (8px base) --- */
+  --spacing-0: 0;
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
+  --spacing-16: 64px;
+  --spacing-20: 80px;
+  --spacing-24: 96px;
 
-  /* Gradient glow opacities */
+  /* ============================================
+   * SEMANTIC TOKENS (Layer 2)
+   * Contextual usage - used in components
+   * References primitives via var()
+   * ============================================ */
+
+  /* --- Backgrounds --- */
+  /* Source: raycast.com body background #07080a */
+  --color-background: var(--color-gray-950);
+  --color-background-elevated: var(--color-gray-900);
+  --color-surface: oklch(0.18 0.02 264);
+  --color-surface-elevated: oklch(0.23 0.02 264);
+
+  /* --- Text --- */
+  --color-foreground: var(--color-gray-50);
+  --color-foreground-secondary: var(--color-gray-400);
+  --color-foreground-muted: var(--color-gray-500);
+
+  /* --- Accent (Coral) --- */
+  --color-accent: var(--color-coral-500);
+  --color-accent-hover: var(--color-coral-400);
+  --color-accent-active: var(--color-coral-600);
+  --color-accent-foreground: var(--color-gray-50);
+
+  /* --- Semantic Status --- */
+  --color-success: var(--color-success-raw);
+  --color-warning: var(--color-warning-raw);
+  --color-error: var(--color-error-raw);
+  --color-info: var(--color-info-raw);
+
+  /* --- Borders --- */
+  /* Source: raycast.com glass borders rgba(255,255,255,0.06) */
+  --color-border: oklch(1 0 0 / 0.1);
+  --color-border-hover: oklch(1 0 0 / 0.15);
+  --color-border-glass: oklch(1 0 0 / 0.06);
+  --color-border-subtle: oklch(1 0 0 / 0.05);
+
+  /* --- States --- */
+  --color-hover: oklch(1 0 0 / 0.05);
+  --color-active: oklch(1 0 0 / 0.1);
+  --color-disabled: oklch(0.50 0 0 / 0.5);
+
+  /* --- Font Families --- */
+  /* Source: raycast.com - Inter, JetBrains Mono, Geist Mono */
+  --font-display: var(--font-funnel-display), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-satoshi), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", monospace;
+
+  /* --- Font Sizes (from extraction) --- */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 30px;
+  --text-4xl: 36px;
+  --text-5xl: 48px;
+  --text-hero: 52px;
+  --text-display: 64px;
+
+  /* --- Font Weights --- */
+  --font-regular: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* --- Line Heights --- */
+  --leading-none: 1;
+  --leading-tight: 1.1;
+  --leading-snug: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  /* --- Letter Spacing --- */
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.02em;
+
+  /* --- Shadow Scale --- */
+  /* Source: raycast.com button and card shadows */
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.2);
+  --shadow-md: 0 4px 6px oklch(0 0 0 / 0.15), 0 2px 4px oklch(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px oklch(0 0 0 / 0.15), 0 4px 6px oklch(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px oklch(0 0 0 / 0.15), 0 10px 10px oklch(0 0 0 / 0.1), 0 0 0 1px oklch(1 0 0 / 0.05);
+  --shadow-glass: 0 8px 32px oklch(0 0 0 / 0.2), inset 0 1px 0 oklch(1 0 0 / 0.1);
+  --shadow-glow-accent: 0 0 20px oklch(0.72 0.16 40 / 0.3);
+  --shadow-button: rgba(0, 0, 0, 0.5) 0px 0px 0px 2px, rgba(255, 255, 255, 0.19) 0px 0px 14px 0px, rgba(0, 0, 0, 0.2) 0px -1px 0.4px 0px inset, rgb(255, 255, 255) 0px 1px 0.4px 0px inset;
+
+  /* --- Radius Scale --- */
+  /* Source: raycast.com - 6px, 8px, 12px, 16px common */
+  --radius-none: 0;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 24px;
+  --radius-full: 9999px;
+
+  /* --- Durations --- */
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+
+  /* --- Easings --- */
+  --ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
+  --ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
+  --ease-in-out: cubic-bezier(0.42, 0, 0.58, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* --- Z-Index Scale --- */
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal-backdrop: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+
+  /* --- Breakpoints (reference values) --- */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+
+  /* --- Gradients --- */
+  /* Source: raycast.com navbar, cards, features */
+  --gradient-coral: linear-gradient(135deg, var(--color-coral-400), var(--color-coral-500), var(--color-coral-600));
+  --gradient-card-bg: linear-gradient(180deg, oklch(0.20 0.02 264), oklch(0.16 0.02 264));
+  --gradient-overlay: linear-gradient(180deg, transparent, oklch(0 0 0 / 0.8));
+  --gradient-glow-coral: radial-gradient(circle, oklch(0.72 0.16 40 / 0.2), transparent 70%);
+  --gradient-navbar: linear-gradient(137deg, rgba(17, 18, 20, 0.75) 4.87%, rgba(12, 13, 15, 0.9) 75.88%);
+  --gradient-feature: radial-gradient(85.77% 49.97% at 51% 5.12%, rgba(255, 148, 148, 0.11) 0px, rgba(222, 226, 255, 0.08) 45.83%, rgba(241, 242, 255, 0.02) 100%);
+
+  /* --- Animation Variables --- */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-gradient-x: gradient-x 3s linear infinite;
+
+  /* --- Glow Intensities --- */
   --glow-intensity-subtle: 0.15;
   --glow-intensity-medium: 0.3;
   --glow-intensity-strong: 0.5;
 
-  /* Font families - CSS variables set by next/font */
-  --font-display: var(--font-funnel-display), sans-serif;
-  --font-sans: var(--font-satoshi), ui-sans-serif, system-ui, sans-serif;
-
-  /* Custom font sizes (matching societies.io) */
-  --text-hero: 52px;
-  --text-section: 40px;
-  --text-card-title: 18px;
-
-  /* Border radius */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-
-  /* Easing functions */
-  --ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
-  --ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
-
-  /* Accordion animations */
-  --animate-accordion-down: accordion-down 0.2s ease-out;
-  --animate-accordion-up: accordion-up 0.2s ease-out;
-
-  /* Gradient border animation */
-  --animate-gradient-x: gradient-x 3s linear infinite;
-
-  /* Elevation shadows - iOS 26 depth aesthetic */
-  /* Uses layered shadows for realistic depth */
-  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.2);
-  --shadow-md:
-    0 4px 6px oklch(0 0 0 / 0.15),
-    0 2px 4px oklch(0 0 0 / 0.1);
-  --shadow-lg:
-    0 10px 15px oklch(0 0 0 / 0.15),
-    0 4px 6px oklch(0 0 0 / 0.1);
-  --shadow-elevated:
-    0 20px 25px oklch(0 0 0 / 0.15),
-    0 10px 10px oklch(0 0 0 / 0.1),
-    0 0 0 1px oklch(1 0 0 / 0.05);
-  --shadow-float:
-    0 25px 50px oklch(0 0 0 / 0.25),
-    0 12px 24px oklch(0 0 0 / 0.15);
-
-  /* Glass shadow - for glassmorphism panels */
-  --shadow-glass:
-    0 8px 32px oklch(0 0 0 / 0.2),
-    inset 0 1px 0 oklch(1 0 0 / 0.1);
+  /* --- Legacy Gradient Colors (for feature cards) --- */
+  --color-gradient-purple: oklch(0.63 0.24 300);
+  --color-gradient-blue: oklch(0.62 0.19 250);
+  --color-gradient-pink: oklch(0.66 0.22 350);
+  --color-gradient-cyan: oklch(0.72 0.15 200);
+  --color-gradient-green: oklch(0.68 0.17 145);
+  --color-gradient-orange: oklch(0.70 0.18 50);
 }
+
+/* ============================================
+ * KEYFRAME ANIMATIONS
+ * ============================================ */
 
 @keyframes accordion-down {
   from {
@@ -115,7 +243,6 @@
   }
 }
 
-/* Glow animations for GradientGlow component */
 @keyframes glow-float {
   0%, 100% {
     transform: translate(-50%, -50%) translateY(0);
@@ -151,6 +278,10 @@
   }
 }
 
+/* ============================================
+ * UTILITY CLASSES
+ * ============================================ */
+
 .animate-glow-float {
   animation: glow-float 6s ease-in-out infinite;
 }
@@ -184,6 +315,15 @@
   -webkit-backdrop-filter: blur(20px);
 }
 
+/* Raycast-style glass navbar */
+.glass-navbar {
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  background: var(--gradient-navbar);
+  border: 1px solid var(--color-border-glass);
+  box-shadow: rgba(255, 255, 255, 0.15) 0px 1px 1px 0px inset;
+}
+
 /* Mobile-optimized blur (6-8px per research constraint) */
 @media (max-width: 768px) {
   .glass-blur-md,
@@ -193,16 +333,18 @@
   }
 }
 
-/* Base styles */
+/* ============================================
+ * BASE STYLES
+ * ============================================ */
+
 html,
 body {
   @apply bg-background text-foreground font-sans;
-  /* Prevent horizontal scroll on mobile */
   overflow-x: hidden;
 }
 
 body {
-  /* Dot grid pattern across entire page - matching societies.io */
+  /* Dot grid pattern - matching raycast aesthetic */
   background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px);
   background-size: 24px 24px;
 }

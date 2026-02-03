@@ -5,58 +5,67 @@
 See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Core value:** Raycast-quality design system foundation enabling rapid, consistent UI development
-**Current focus:** Phase 39 — Token Foundation
+**Current focus:** Phase 40 — Core Components
 
 ## Current Position
 
 **Milestone:** v2.0 — Design System Foundation
-**Phase:** 39 of 44 (Token Foundation)
-**Plan:** 39-01 complete, ready for 39-02
-**Status:** Homepage extraction complete, continue to Store/Pro/AI pages
-**Last activity:** 2026-02-03 — Completed 39-01-PLAN.md (homepage extraction)
+**Phase:** 40 of 44 (Core Components)
+**Plan:** Ready to start 40-01
+**Status:** Phase 39 complete — design token foundation established
+**Last activity:** 2026-02-03 — Completed Phase 39 (all 4 plans)
 
-Progress: [#---------] 10%
+Progress: [##--------] 20%
+
+## Phase 39 Completion Summary
+
+All 4 plans completed:
+- 39-01: Homepage extraction via Playwright ✓
+- 39-02: Additional pages extraction (Store, Pro, AI, Pricing, Teams, iOS, Windows) ✓
+- 39-03: Coral scale generation with WCAG verification ✓
+- 39-04: Two-tier token architecture in globals.css ✓
+
+### Artifacts Created
+- `39-EXTRACTION-DATA.md` — Complete token values from 8 pages
+- `39-CORAL-SCALE.md` — WCAG-compliant coral color scale
+- `src/types/design-tokens.ts` — TypeScript token types
+- `src/app/globals.css` — Two-tier primitive/semantic token system
+- 17 verification screenshots
+
+### Key Token Values Ready
+- Coral scale (100-900) with WCAG compliance
+- Gray scale (50-950)
+- All glassmorphism patterns
+- Typography scale (12px-64px)
+- Spacing scale (4px-96px)
+- Shadow scale (sm-glow)
+- Radius scale (0-9999px)
 
 ## Next Session Instructions
 
-### What's Complete (39-01)
-- Global navbar extracted with glassmorphism values
-- Homepage hero typography documented
-- Raycast brand color identified (#ff6363 -> coral #FF7F50)
-- Font stack: Inter (variable), JetBrains Mono, Geist Mono
-- 8+ glassmorphism variants documented
-- 9 verification screenshots captured
-- See: `.planning/phases/39-token-foundation/39-EXTRACTION-DATA.md`
+### What To Do Next
+Start Phase 40 — Core Components:
+1. Read `.planning/ROADMAP.md` for Phase 40 requirements
+2. Create 40-01-PLAN.md for Button component
+3. Implement Button with all variants using the token system
 
-### What To Do Next (39-02)
-Continue Playwright extraction on remaining pages:
-1. Store (raycast.com/store) — cards, badges, borders
-2. Pro (raycast.com/pro) — pricing cards, feature lists
-3. AI (raycast.com/ai) — chat interface
-
-### Extraction Targets Remaining
-Pages to visit:
-- [x] Homepage (raycast.com) — COMPLETE
-- [ ] Store (raycast.com/store) — cards, badges, borders
-- [ ] Pro (raycast.com/pro) — pricing cards, feature lists
-- [ ] AI (raycast.com/ai) — chat interface
-- [ ] Pricing (raycast.com/pricing) — comparison tables
-- [ ] Teams (raycast.com/teams) — enterprise features
+### Ready-to-Use Token System
+- `bg-background`, `bg-surface`, `bg-coral-500`
+- `text-foreground`, `text-accent`
+- `border-border-glass`
+- `rounded-md`, `rounded-lg`
+- `shadow-glass`, `shadow-button`
 
 ## Accumulated Context
 
 ### Decisions
 
 - v2.0: Coral #FF7F50 replaces Raycast brand color (#ff6363); all else matches 1:1
-- v2.0: Two-tier token architecture (primitive -> semantic)
+- v2.0: Two-tier token architecture (primitive -> semantic) — IMPLEMENTED
 - v2.0: Dark-mode first design system
-- 39-01: Page background is #07080a (near-black)
-- 39-01: Navbar glassmorphism: blur 5px, gradient 137deg, white/6% border, inset shadow
-- 39-01: Font stack: Inter (300-700), JetBrains Mono, Geist Mono
-- 39-01: Typography scale: 14px (nav), 16px (small), 18px (body), 20px (h2), 56-64px (h1)
-
-### Key Constraint
-**MUST use Playwright to actually visit raycast.com** — no fabricated data.
+- Phase 39: All pages extracted via Playwright (real data, verified)
+- Phase 39: 17 screenshots captured as visual reference
+- Coral scale: WCAG AA compliant (coral-500 on dark = 5.4:1, coral-700 on light = 7.2:1)
 
 ## Infrastructure URLs
 
@@ -66,6 +75,6 @@ Pages to visit:
 ## Session Continuity
 
 Last session: 2026-02-03
-Stopped at: Completed 39-01-PLAN.md (homepage extraction)
-Resume with: Execute 39-02-PLAN.md (Store/Pro/AI extraction)
-Resume file: .planning/phases/39-token-foundation/39-02-PLAN.md
+Stopped at: Completed Phase 39 — Token Foundation (all 4 plans)
+Resume with: Start Phase 40 — Core Components
+Resume file: .planning/ROADMAP.md (Phase 40 section)
