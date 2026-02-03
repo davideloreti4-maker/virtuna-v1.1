@@ -1,366 +1,329 @@
-# Features Research: Brand Deals & Affiliate Hub
+# Feature Research
 
-**Domain:** Creator monetization platform (brand deals, affiliate marketing, earnings management)
-**Researched:** 2026-02-02
-**Overall Confidence:** MEDIUM-HIGH
+**Domain:** Design System Implementation
+**Researched:** 2026-02-03
+**Confidence:** HIGH
 
-## Executive Summary
+## Feature Landscape
 
-The creator monetization landscape in 2026 is mature and well-defined. The industry is projected at $250B with brand deals representing 68.8% of creator primary income. Successful platforms share common table-stakes features while differentiating on UX, creator experience, and value-adds.
+### Table Stakes (Must Have)
 
-**Key insight:** Creators want simplicity over features. The platforms winning in 2026 (GRIN, Aspire, CreatorIQ) succeed by reducing friction, not adding complexity. 73% of creators struggle with income tracking—there's massive opportunity in making earnings management dead simple.
+Features users expect. Missing = design system feels incomplete and unprofessional.
 
-**For Virtuna's three-tier system:**
-- **Premium tier** needs contract clarity and payment reliability (34% of creators report payment issues)
-- **Pro tier** needs deal discovery and application flow optimization
-- **Starter tier** needs instant onboarding with Virtuna affiliate as gateway drug
+#### Token Categories
 
-The wallet is the differentiator opportunity—most platforms have poor earnings UX. A Revolut-quality wallet would be genuinely novel in this space.
+| Token Category | What It Includes | Complexity | Notes |
+|----------------|------------------|------------|-------|
+| **Colors** | Primitives (palette), semantic (brand, feedback, text), component-specific | Medium | Foundation - tokenize first. Include light/dark variants |
+| **Typography** | Font families, sizes, weights, line heights, letter spacing | Medium | Composite tokens (text styles combine multiple values) |
+| **Spacing** | Scale system (4px base), margins, padding, gaps | Low | Usually 8-12 values in geometric progression |
+| **Shadows** | Elevation levels (sm, md, lg, xl), inner shadows | Low | 4-6 levels typically sufficient |
+| **Border Radius** | Scale system, semantic (button, card, input, pill) | Low | 4-6 values |
+| **Border Width** | Scale system (0, 1, 2, 4px) | Low | 3-4 values |
+| **Z-Index** | Layering scale (base, dropdown, modal, toast) | Low | Named values prevent magic numbers |
+| **Breakpoints** | Responsive breakpoints (sm, md, lg, xl, 2xl) | Low | Match Tailwind or custom |
+| **Duration** | Animation timing (fast, normal, slow) | Low | 3-5 values |
+| **Easing** | Animation curves (ease-in, ease-out, ease-in-out) | Low | CSS cubic-bezier values |
 
----
+**Priority Order:** Colors > Typography > Spacing > Shadows > Radius > Rest
 
-## Competitor Analysis
+#### Component Patterns
 
-### GRIN (Enterprise-focused)
-**Target:** Large brands managing creator programs at scale
+| Component | Variants/States | Complexity | Notes |
+|-----------|-----------------|------------|-------|
+| **Button** | Primary, secondary, ghost, destructive; disabled, loading, icon-only | Medium | Most fundamental - get this right first |
+| **Input** | Text, password, search; error, disabled, focused states | Medium | Includes label, helper text, error message |
+| **Card** | Default, interactive, elevated; with header, footer, media | Low | Container pattern - very reusable |
+| **Badge/Tag** | Semantic colors, sizes, dismissible | Low | Status indicators |
+| **Avatar** | Sizes, fallback, group/stack | Low | User representation |
+| **Icon System** | Consistent size scale, stroke width | Medium | Integration with icon library |
+| **Typography Components** | Heading (h1-h6), paragraph, caption, code | Low | Semantic HTML with styling |
+| **Link** | Inline, standalone; hover, focus, visited | Low | Accessibility critical |
+| **Divider** | Horizontal, vertical, with label | Low | Simple but necessary |
+| **Spinner/Loader** | Sizes, determinate/indeterminate | Low | Loading states |
 
-**Key Features:**
-- Influencer CRM with categorization, performance tracking, collaboration history
-- Integrated email inbox for creator communications
-- Affiliate links and discount code generation with live ROI reporting
-- Product seeding and fulfillment management
-- Content management with rights tracking
-- DocuSign integration for contracts
-- Centralized automated payouts across campaigns
-- Creator portal with real-time performance insights
+#### Documentation
 
-**Creator Experience:**
-- Live view of content performance
-- Contract clarity with DocuSign
-- Reliable, automated payments
-
-**Weakness:** Enterprise pricing ($2.5K+/month), complex for individual creators
-
-**Source:** [GRIN](https://grin.co/), [G2 Reviews](https://www.g2.com/products/grin/reviews)
-
----
-
-### Aspire (Creator-first positioning)
-**Target:** E-commerce brands and growing creators
-
-**Key Features:**
-- Creator marketplace with inbound applications
-- Direct partnerships with Instagram, TikTok, Pinterest
-- Affiliate link management and tracking
-- Campaign management from one central location
-- AI-powered creator recommendations
-- Analytics dashboard with impressions, engagement, traffic, sales
-
-**Creator Experience:**
-- Apply to campaigns instead of waiting for outreach
-- Never takes commissions from creators (key differentiator)
-- Creator Academy for education
-- 1K follower minimum requirement
-- Central portal for all brand collaborations
-
-**Notable:** "Aspire never takes commissions from creators. They never have and never will." — This is a major selling point.
-
-**Source:** [Aspire](https://www.aspire.io/), [Aspire Creator Marketplace](https://www.aspire.io/influencers)
+| Document | Purpose | Complexity | Notes |
+|----------|---------|------------|-------|
+| **Getting Started** | Installation, setup, first component | Low | Reduces friction to adoption |
+| **Token Reference** | All tokens with values and usage | Medium | Auto-generated from token files ideal |
+| **Component API** | Props, variants, examples per component | Medium | Code examples essential |
+| **Usage Guidelines** | When to use each component | Low | Prevents misuse |
+| **Accessibility** | WCAG compliance, keyboard nav, screen readers | Medium | Must-have for professional systems |
 
 ---
 
-### CreatorIQ (Enterprise intelligence)
-**Target:** Large brands needing sophisticated analytics and compliance
+### Differentiators (Premium Quality)
 
-**Key Features:**
-- AI-powered discovery analyzing 1B+ social accounts
-- Content-first approach (AI analyzes images, location, mentions, emojis)
-- Brand safety infrastructure (SafeIQ) with automated content scanning
-- Global payments in 190 countries, 120 currencies
-- Multi-touch attribution models
-- Fraud analysis
-- Enterprise compliance and audit trails
+Features that set professional design systems apart. Not expected, but valued.
 
-**Creator Experience:**
-- Payments via PayPal, ACH, wire transfer
-- 60+ currencies supported
+#### Raycast-Specific Patterns
 
-**2026 Insight:** "Creators increasingly prioritize long-term partnerships, growth opportunities, and creative control over one-off deals."
+| Pattern | Description | Complexity | Value |
+|---------|-------------|------------|-------|
+| **Glassmorphism** | Frosted glass effects with backdrop-filter blur, semi-transparent backgrounds | Medium | Signature Raycast aesthetic |
+| **Gradient System** | Multi-stop gradients, radial gradients, gradient overlays | Medium | Creates depth and visual interest |
+| **Dark-Mode First** | Designed for dark backgrounds, light mode as adaptation | Low | Matches Raycast identity |
+| **Depth Layering** | Multiple shadow depths, z-index choreography | Medium | Creates hierarchy without borders |
+| **Noise Textures** | Subtle noise overlays for tactile feel | Low | Differentiates from flat design |
+| **Chromatic Effects** | Color aberration, light refraction | High | Advanced glassmorphism |
+| **Keyboard-First Visual Language** | Key indicators, shortcut badges, command palette patterns | Medium | Core to Raycast identity |
 
-**Source:** [CreatorIQ](https://www.creatoriq.com/), [G2 Reviews](https://www.g2.com/products/creatoriq/reviews)
+#### Glassmorphism Implementation Details
 
----
+```css
+/* Core glassmorphism pattern */
+.glass {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px); /* Safari */
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+}
+```
 
-### Brandbassador/Club (Gamification-focused)
-**Target:** DTC brands building ambassador communities
+**Key Parameters (from Raycast analysis):**
+- Blur: 12-20px typical
+- Background opacity: 0.1-0.2 (very transparent)
+- Border: 1px semi-transparent white
+- Roughness: ~0.35 (texture parameter)
+- Chromatic aberration: Present for premium feel
 
-**Key Features:**
-- Gamified "Missions" system for engagement
-- Mobile app for on-the-go task completion
-- Micro-rewards building toward larger rewards
-- Custom discount codes and tracking links
-- Dynamic, engagement-based reward structures
-- Real-time analytics on engagement, community demographics, top performers
+**Performance Considerations:**
+- Limit to 2-3 glass elements per viewport
+- Reduce blur to 6-8px on mobile
+- Avoid animating backdrop-filter elements
 
-**Creator Experience:**
-- Mobile-first task execution
-- Commission monitoring and reward tracking
-- Points system building toward cash/cards/freebies
+#### Advanced Animation Patterns
 
-**Weakness:** Limited discovery tools, manual deliverable tracking, not suited for full influencer workflows
+| Pattern | Description | Complexity | Notes |
+|---------|-------------|------------|-------|
+| **Fade-in-up** | Elements animate opacity + translateY | Low | Raycast's signature entrance |
+| **Staggered reveals** | Sequential animation of lists/grids | Medium | Creates rhythm |
+| **Micro-interactions** | Hover scale, press feedback, focus rings | Medium | Polish indicator |
+| **Loading skeletons** | Content placeholder animations | Low | Better perceived performance |
+| **Page transitions** | Cross-fade, slide between views | High | SPA-level polish |
 
-**Notable:** Gamification as core mechanic—directly relevant to Virtuna's level system concept
+#### Advanced Documentation
 
-**Source:** [Brandbassador](https://www.brandbassador.com/), [Capterra](https://www.capterra.co.uk/software/218740/brandbassador)
+| Document | Purpose | Complexity | Value |
+|----------|---------|------------|-------|
+| **Figma Specifications** | Design source of truth with components | High | Designer adoption |
+| **Motion Guidelines** | Animation principles, timing, easing | Medium | Consistency in motion |
+| **Content Guidelines** | Tone, voice, microcopy patterns | Medium | (See Shopify Polaris) |
+| **Theming Guide** | How to customize/extend tokens | Medium | Adoption flexibility |
+| **Migration Guide** | Upgrading between versions | Medium | Long-term maintenance |
+| **Changelog** | Version history, breaking changes | Low | Professional signal |
 
----
+#### Advanced Features
 
-### Affiliate Aggregators (Awin, Impact, PartnerStack)
-
-**Awin/ShareASale:** 30,000+ brands, major retailers (Samsung, Under Armour)
-**Impact:** Unified platform for creators, affiliates, referrals; $100B+ partnership data
-**Levanta:** 50,000+ creators, ecommerce-focused, automatic payments, product gifting
-
-**Key trend:** First-party cookie tracking increasingly important as third-party cookies disappear. Server-side tracking for privacy compliance.
-
-**Source:** [Impact](https://impact.com/), [Affilimate](https://affilimate.com/)
-
----
-
-## Wallet Features
-
-### Table Stakes
-| Feature | Why Essential | Complexity | Notes |
-|---------|---------------|------------|-------|
-| **Balance display** | Core function—creators need to see what they've earned | Low | Large, prominent number |
-| **Transaction history** | Track where money came from | Low | Sortable, filterable list |
-| **Pending vs available** | Distinguish confirmed vs processing payments | Low | Critical for trust |
-| **Withdrawal to bank** | Get money out | Medium | Requires payment provider integration |
-| **Basic earnings breakdown** | See earnings by source/campaign | Low | Pie chart or simple list |
-| **Currency display** | Show amounts in creator's currency | Low | Use user locale |
-| **Payment status indicators** | Paid, pending, processing, failed | Low | Visual states with colors |
-
-### Differentiators
-| Feature | Competitive Advantage | Complexity | Notes |
-|---------|----------------------|------------|-------|
-| **Real-time balance updates** | Feels premium, live like Revolut | Medium | WebSocket or polling |
-| **Earnings velocity** | "You earned $X today/this week" | Low | Simple calculation, high impact |
-| **Projected earnings** | Estimate based on pending deals | Medium | Requires deal pipeline data |
-| **Multi-currency support** | International creators | High | Exchange rate management |
-| **Instant withdrawals** | Same-day access to funds | High | Premium payment rails |
-| **Earnings goals/milestones** | "You're 80% to your $1000 goal" | Low | Gamification element |
-| **Tax preparation export** | Download for tax season | Medium | CSV/PDF export with categories |
-| **Recurring income tracking** | Track monthly patterns | Medium | Analytics layer |
-| **Spending insights** | Cash App-style breakdowns | Medium | If connected to spending |
-
-**Key Insight:** 72% of successful creators use dedicated tracking systems; those with organized financial data earn 34% more annually. The wallet IS the differentiator opportunity—most creator platforms have mediocre earnings UX.
-
-**Source:** [InfluenceFlow Creator Analytics](https://influenceflow.io/resources/creator-income-analytics-master-your-earnings-in-2026/)
+| Feature | Description | Complexity | Notes |
+|---------|-------------|------------|-------|
+| **W3C Design Token Format** | Standard JSON token format | Medium | Future-proof, tool interoperable |
+| **Multi-theme Support** | Light/dark + brand variants | Medium | Enterprise requirement |
+| **CSS Custom Properties** | CSS variables output | Low | Runtime theming |
+| **TypeScript Types** | Full type coverage for all tokens | Medium | DX for TypeScript codebases |
+| **Semantic Versioning** | Proper versioning with changelogs | Low | Professional maintenance |
 
 ---
 
-## Deal Marketplace Features
+### Anti-Features (Avoid)
 
-### Table Stakes
-| Feature | Why Essential | Complexity | Notes |
-|---------|---------------|------------|-------|
-| **Deal browsing/discovery** | Core marketplace function | Medium | List/grid view with filters |
-| **Deal details** | Brand, product, compensation, requirements | Low | Clear information hierarchy |
-| **Apply/accept flow** | Express interest in deals | Medium | Application with required fields |
-| **Deal status tracking** | Applied, accepted, rejected, completed | Low | Status badges |
-| **Compensation display** | Clear earnings per deal | Low | Fixed, rev-share, or hybrid |
-| **Requirements visibility** | Follower count, engagement, content type | Low | Eligibility criteria |
-| **Brand information** | Who you're working with | Low | Logo, name, category |
-| **Deliverables clarity** | What you need to create | Low | Content count, format, timeline |
+Features to explicitly NOT build. Common mistakes in design system implementation.
 
-### Differentiators
-| Feature | Competitive Advantage | Complexity | Notes |
-|---------|----------------------|------------|-------|
-| **Locked/unlocked status** | Visual tier gating—drives progression | Low | Virtuna's level system hook |
-| **Match score** | "92% match for your audience" | High | Requires audience analysis |
-| **Earnings estimate** | "Creators like you earn $X" | Medium | Historical data analysis |
-| **Brand reputation** | Payment reliability, creator reviews | High | Requires review system |
-| **Campaign countdown** | Urgency for limited spots | Low | Timer/deadline display |
-| **Saved/bookmarked deals** | Come back to interesting opportunities | Low | Simple favoriting |
-| **Smart recommendations** | AI-powered deal suggestions | High | Based on performance/audience |
-| **Competitor exclusivity alerts** | Warn about conflicts | Medium | Category matching |
-| **Deal aggregation** | Multiple sources in one place | High | Virtuna's planned feature |
-
-**Critical Contract Elements (2026 Standard):**
-- Compensation amount and structure (flat, rev-share, hybrid)
-- Deliverables (count, format, platform, timeline)
-- Usage rights (organic, paid, perpetual)
-- Exclusivity terms (duration, competitor categories)
-- Payment terms (when, how, net-30, etc.)
-- FTC compliance requirements
-
-**Source:** [InfluenceFlow Brand Partnership Guide](https://influenceflow.io/resources/brand-partnership-deals-and-sponsorships-the-complete-2026-guide/)
-
----
-
-## Gamification/Levels
-
-### How Tier Progression Works in Creator Platforms
-
-**TikTok Creator Rewards Program:**
-- Requirements: 18+, 10K followers, 100K views/30 days, 1-minute videos
-- Rewards: $0.40-$1.00+ per 1000 qualified views
-- Accumulates as long as content performs
-
-**Marriott Bonvoy (Reference Model):**
-- Clear tier names: Silver, Gold, Platinum, Titanium, Ambassador
-- Each tier has tangible perks
-- Top tier (Ambassador): Personal concierge, flexible check-in/out, exclusive events
-
-**Key Design Principles (2026 Research):**
-
-1. **Clear progression markers** — Users need to see exactly where they stand
-2. **Achievable stages** — Break complex advancement into digestible steps
-3. **Tangible benefits at each level** — Justify the effort required
-4. **Social status indicators** — Badges, titles visible to others
-5. **Content gating** — Higher tiers unlock better opportunities
-
-**Effective Mechanics:**
-- Progress bars with clear milestones
-- Challenges that accelerate progression
-- Micro-rewards building toward larger rewards
-- Experiential perks (early access, exclusive drops)
-- Flexibility in reward choice
-
-**Virtuna Level System Recommendation:**
-
-| Level | Name | Requirements | Unlocks |
-|-------|------|--------------|---------|
-| 1 | **Starter** | Sign up | Instant affiliate access |
-| 2 | **Creator** | 5 completed deals OR $100 earned | Pro tier (rev-share marketplace) |
-| 3 | **Partner** | 25 completed deals OR $1000 earned + verified metrics | Premium tier applications |
-| 4 | **Elite** | 100 completed deals OR $10K earned + high performance | Priority access, featured deals |
-| 5 | **Ambassador** | By invitation | Exclusive brand partnerships, personal support |
-
-**Source:** [Trophy - Levels in Gamification](https://trophy.so/blog/levels-feature-gamification-examples), [TikTok Creator Rewards](https://www.tiktok.com/creator-academy/en/article/creator-rewards-program)
-
----
-
-## Anti-Features (Do NOT Build in v1.6)
-
-### Platform Complexity
 | Anti-Feature | Why Avoid | What to Do Instead |
 |--------------|-----------|-------------------|
-| **Full influencer CRM** | Enterprise feature, adds complexity | Simple deal status tracking |
-| **Content rights management** | Legal complexity, not core to creators | Link to brand's requirements |
-| **Creator discovery for brands** | Different user type entirely | Focus on creator experience |
-| **Automated outreach tools** | Brand-side feature | Creators apply, not recruit |
-| **Product fulfillment/shipping** | Logistics nightmare | Brands handle their own fulfillment |
+| **God Components** | Massive components with 50+ props trying to handle every case | Compose smaller, focused components |
+| **Over-abstracted Tokens** | 200+ semantic color tokens nobody remembers | Start with primitives, add semantic as patterns emerge |
+| **Premature Flexibility** | Building theme engine before you have one theme | Hardcode values first, abstract when you have 2+ use cases |
+| **Component Kitchen Sink** | Building every possible component upfront | Start with what you need, add when patterns emerge |
+| **Complex Variant APIs** | `<Button variant="primary-large-rounded-with-icon-left">` | Use composition: `<Button><Icon /><Text /></Button>` |
+| **Glassmorphism Everywhere** | Glass effects on every element | Reserve for key UI surfaces (cards, modals, navigation) |
+| **Animation on Everything** | Every element has motion | Animate meaningfully (state changes, entrances, feedback) |
+| **Perfect Documentation First** | Spending months on docs before shipping | Ship components with basic docs, iterate |
+| **Figma Parity Obsession** | Blocking dev work until Figma matches exactly | Develop in parallel, sync regularly |
+| **Golden Hammer Patterns** | Using one pattern (e.g., compound components) for everything | Choose patterns based on component needs |
 
-### Payment Complexity
-| Anti-Feature | Why Avoid | What to Do Instead |
-|--------------|-----------|-------------------|
-| **Multi-currency payouts** | High complexity, regulatory burden | Single currency (USD/EUR) with conversion display |
-| **Instant payouts** | Requires premium payment rails, cash flow risk | Standard payout schedule (Net-15/30) |
-| **Crypto payouts** | Regulatory uncertainty, small demand | Traditional bank/PayPal only |
-| **In-platform spending** | Completely different product | Withdrawal to external accounts |
+#### Over-Engineering Warning Signs
 
-### Gamification Overreach
-| Anti-Feature | Why Avoid | What to Do Instead |
-|--------------|-----------|-------------------|
-| **Social leaderboards** | Creates unhealthy competition, privacy concerns | Private progress tracking |
-| **Daily login rewards** | Feels cheap, doesn't drive real engagement | Achievement-based milestones |
-| **Excessive notifications** | Annoys users, drives unsubscribes | Meaningful updates only |
-| **Artificial scarcity** | Erodes trust if overused | Real deadlines for real campaigns |
+- More token categories than you have components using them
+- Component props that nobody has asked for
+- Documentation for features that don't exist yet
+- Theme variants for brands that don't exist
+- Abstraction layers "for future flexibility"
 
-### Deal Marketplace Traps
-| Anti-Feature | Why Avoid | What to Do Instead |
-|--------------|-----------|-------------------|
-| **Commission from creators** | Aspire differentiates by NOT doing this; creators hate it | Revenue from brands or premium features |
-| **Bidding/auction system** | Drives down creator rates, race to bottom | Fixed compensation or rev-share |
-| **Unlimited applications** | Spams brands, low-quality matches | Quality-gated applications |
-| **Real-time chat with brands** | Support burden, scope creep | Structured application/communication |
+**The Rule:** If you can't point to 2+ real uses, don't abstract it.
 
 ---
 
-## Feature Dependencies on Existing Virtuna Features
+## Raycast Design Language Analysis
 
-| New Feature | Depends On | Integration Points |
-|-------------|------------|-------------------|
-| **Deal Marketplace** | User authentication (Supabase) | User ID, profile data |
-| **Platform Levels** | Test History (existing) | Use test count/engagement as XP source |
-| **Match Score** | Society Management (existing) | Audience segments inform brand fit |
-| **Earnings Velocity** | Viral Predictor (existing) | Performance data for projections |
-| **Level Progression** | All app activity | Tests run, deals completed, engagement |
+### Visual Identity Summary
 
-**Virtuna-Specific Opportunities:**
-1. **Link level progression to viral predictor usage** — More tests = more XP = better deals
-2. **Use Society data for brand matching** — Audience segments inform deal recommendations
-3. **Surface earnings in existing dashboard** — Wallet preview in main app view
-4. **Integrate Virtuna affiliate as default** — Featured at Starter tier, incentivize upgrades
+Based on analysis of raycast.com:
+
+**Color Philosophy:**
+- Dark-mode first (backgrounds: #070921, #050b1c)
+- Vibrant accent gradients (electric blues, magentas, greens)
+- Each feature area has distinct color identity
+- High contrast for text legibility
+
+**Typography:**
+- Clean, modern sans-serif (likely Inter or custom)
+- Strong size hierarchy (headlines are bold)
+- Generous line height for readability
+- Keyboard-first visual language (key caps, shortcuts)
+
+**Spatial Design:**
+- Generous whitespace
+- Consistent padding scale
+- Card-based layouts with contained structure
+- Proportional spacing mimicking physical hardware
+
+**Signature Effects:**
+- Glassmorphism with high transmission (very transparent)
+- Multi-layer shadows creating depth
+- Radial gradient overlays preventing flatness
+- Subtle noise textures for tactile feel
+- Fade-in-up animations for reveals
+
+**Component Patterns:**
+- Extension cards with custom gradient backgrounds
+- Feature cards highlighting attributes
+- Testimonial cards with avatars
+- Tabbed navigation for categories
+- Keyboard visualization as UI element
+
+### Brand Colors for Coral Implementation
+
+**Target:** Coral (#FF7F50) as primary brand color
+
+**Adaptation Strategy:**
+1. Use Raycast's dark backgrounds (keep the depth)
+2. Replace their red/magenta accents with coral gradient range
+3. Coral works well with: deep teals, warm whites, soft purples
+4. Maintain glassmorphism effects (they're color-agnostic)
+5. Keep the keyboard-first visual language
+
+**Coral Gradient Range:**
+- Light: #FFB08A (peachy)
+- Primary: #FF7F50 (coral)
+- Dark: #E86942 (burnt coral)
+- Darker: #CC5533 (deep coral)
 
 ---
 
-## MVP Recommendation
+## Feature Dependencies
 
-### Phase 1: Foundation (Starter Tier + Wallet Core)
-**Table stakes only:**
-1. Wallet: Balance, pending, transaction history, withdrawal
-2. Deals: Browse, view details, apply (Starter tier only)
-3. Virtuna affiliate: Auto-enrollment, basic commission tracking
-4. Level display: Current level, progress to next
+```
+Foundation (must exist first)
+├── Color Tokens (primitives + semantic)
+├── Typography Tokens
+├── Spacing Tokens
+└── CSS Reset/Normalize
 
-### Phase 2: Marketplace (Pro Tier)
-**Enable revenue:**
-1. Pro tier deals: Rev-share marketplace with brand offers
-2. Deal status tracking: Applied, accepted, active, completed
-3. Enhanced wallet: Earnings by source, velocity display
-4. Level progression: XP from completed deals
+Core Components (build on foundation)
+├── Button (uses: colors, typography, spacing, radius)
+├── Input (uses: colors, typography, spacing, radius, borders)
+├── Card (uses: colors, shadows, spacing, radius)
+└── Badge (uses: colors, typography, spacing, radius)
 
-### Phase 3: Premium (Gating + Polish)
-**Differentiation:**
-1. Premium tier access: Locked deals with clear unlock requirements
-2. Match scoring: AI-powered deal recommendations
-3. Projected earnings: Based on pipeline
-4. Advanced analytics: Monthly patterns, tax export
+Composite Components (build on core)
+├── Form (uses: Input, Button, Typography)
+├── Modal (uses: Card, Button, shadows, z-index)
+├── Navigation (uses: Button, Typography, spacing)
+└── Command Palette (uses: Input, Card, keyboard patterns)
+
+Advanced Effects (can be added anytime)
+├── Glassmorphism (uses: colors, blur, borders)
+├── Animations (uses: duration, easing tokens)
+└── Gradients (uses: color primitives)
+```
+
+**Critical Path:** Tokens > Button > Card > Input > Everything else
 
 ---
 
-## Confidence Assessment
+## MVP Definition
 
-| Area | Confidence | Reason |
-|------|------------|--------|
-| **Table stakes features** | HIGH | Well-documented across GRIN, Aspire, CreatorIQ |
-| **Wallet features** | HIGH | Revolut, Cash App patterns well-established |
-| **Gamification patterns** | MEDIUM-HIGH | Proven in loyalty programs, less data on creator-specific |
-| **Anti-features** | MEDIUM | Based on competitive analysis and creator pain points |
-| **MVP phasing** | MEDIUM | Logical but may need adjustment based on user research |
-| **Deal aggregation** | LOW | Legal/technical research needed (flagged in PROJECT.md) |
+### Minimum Viable Design System
+
+For V1.0 that's functional and usable:
+
+**Tokens (Required):**
+- Color primitives (10-15 colors with shades)
+- Semantic colors (brand, text, background, feedback)
+- Typography scale (4-6 sizes with weights)
+- Spacing scale (6-8 values)
+- Shadow scale (3-4 elevations)
+- Border radius (4 values)
+
+**Components (Required):**
+- Button (3 variants, all states)
+- Card (basic with slots for header/body/footer)
+- Input (text with label, error state)
+- Badge (semantic colors)
+- Typography (heading levels, body, caption)
+- Icon integration pattern
+
+**Documentation (Required):**
+- Getting started (install, setup)
+- Token reference (all values)
+- Component examples (copy-paste ready)
+
+**Effects (One signature):**
+- Glassmorphism card variant (the differentiator)
+
+### Full Implementation (V2.0+)
+
+Everything in MVP plus:
+
+**Additional Tokens:**
+- Duration/easing (animation)
+- Z-index scale
+- Breakpoints
+
+**Additional Components:**
+- Select/Dropdown
+- Modal/Dialog
+- Toast/Alert
+- Tabs
+- Avatar
+- Spinner
+- Divider
+- Command palette pattern
+
+**Advanced Documentation:**
+- Figma component library
+- Motion guidelines
+- Theming guide
+- Accessibility audit
+
+**Advanced Effects:**
+- Full animation library
+- Gradient utilities
+- Noise texture overlays
 
 ---
 
 ## Sources
 
-### Creator Platforms
-- [GRIN](https://grin.co/) - Enterprise influencer marketing
-- [GRIN G2 Reviews](https://www.g2.com/products/grin/reviews) - Feature validation
-- [Aspire](https://www.aspire.io/) - Creator marketplace
-- [Aspire Creator Marketplace](https://www.aspire.io/influencers) - Creator experience
-- [CreatorIQ](https://www.creatoriq.com/) - Enterprise intelligence
-- [Brandbassador](https://www.brandbassador.com/) - Gamified missions
+### Primary (HIGH Confidence)
+- [W3C Design Tokens Specification](https://www.w3.org/community/design-tokens/2025/10/28/design-tokens-specification-reaches-first-stable-version/) - Token format standard
+- [Raycast API Colors](https://developers.raycast.com/api-reference/user-interface/colors) - Raycast color system
+- [Raycast User Interface API](https://developers.raycast.com/api-reference/user-interface) - Component patterns
 
-### Wallet & Payments
-- [Revolut](https://www.revolut.com/) - Wallet UX reference
-- [Cash App vs Revolut](https://bitcompare.net/post/cash-app-vs-revolut) - Feature comparison
-- [InfluenceFlow Creator Analytics](https://influenceflow.io/resources/creator-income-analytics-master-your-earnings-in-2026/) - Earnings tracking
+### Secondary (MEDIUM Confidence)
+- [UXPin Design System Components](https://www.uxpin.com/studio/blog/design-system-components/) - Essential component list
+- [Design System Guide](https://thedesignsystem.guide/design-tokens) - Token best practices
+- [USWDS Design Tokens](https://designsystem.digital.gov/design-tokens/) - Government standard tokens
+- [Glassmorphism CSS Generator](https://ui.glass/generator/) - Implementation reference
+- [NN/g Glassmorphism](https://www.nngroup.com/articles/glassmorphism/) - UX best practices
+- [Dan Mall: Distinct Design Systems](https://danmall.com/posts/distinct-design-systems/) - Differentiation strategy
 
-### Affiliate Networks
-- [Impact](https://impact.com/) - Partnership platform
-- [Affilimate](https://affilimate.com/) - Data aggregation
-- [Shopify Affiliate Networks](https://www.shopify.com/blog/affiliate-networks) - Network overview
-
-### Gamification
-- [Trophy - Levels in Gamification](https://trophy.so/blog/levels-feature-gamification-examples) - Design principles
-- [TikTok Creator Rewards](https://www.tiktok.com/creator-academy/en/article/creator-rewards-program) - Platform tiers
-- [LoyaltyLion Examples](https://loyaltylion.com/blog/customer-loyalty-program-examples) - Tier design
-
-### Industry Reports
-- [InfluenceFlow Brand Deals Guide](https://influenceflow.io/resources/brand-partnership-deals-and-sponsorships-the-complete-2026-guide/)
-- [InfluenceFlow Contract Template](https://influenceflow.io/resources/contract-template-for-influencer-partnerships-the-complete-2026-guide/)
-- [Sprout Social Influencer Marketing](https://sproutsocial.com/insights/influencer-marketing/)
-- [GRIN Influencer Mistakes](https://grin.co/blog/influencer-marketing-mistakes-you-should-never-make/)
+### Tertiary (for context)
+- [Superside Design System Examples 2026](https://www.superside.com/blog/design-systems-examples) - Industry trends
+- [SAP Design Tokens](https://www.sap.com/design-system/digital/foundations/tokens/design-tokens/) - Enterprise example
+- [GitLab Pajamas Tokens](https://design.gitlab.com/product-foundations/design-tokens/) - Open source example
+- [Raycast Dribbble](https://dribbble.com/raycastapp) - Visual design reference
