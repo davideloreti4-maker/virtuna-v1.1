@@ -5,21 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Core value:** Raycast-quality design system foundation enabling rapid, consistent UI development
+**Current focus:** Phase 39 — Token Foundation
 
 ## Current Position
 
 **Milestone:** v2.0 — Design System Foundation
-**Status:** Defining requirements
-**Phase:** Not started
+**Phase:** 39 of 44 (Token Foundation)
+**Plan:** Ready to plan
+**Status:** Ready to plan
+**Last activity:** 2026-02-03 — Roadmap created with 6 phases (39-44)
 
-| Milestone | Phases | Status |
-|-----------|--------|--------|
-| v1.1 Pixel-Perfect Clone | 1-10 | ✓ Complete |
-| v1.2 Visual Accuracy | 11-14 | ✓ Complete |
-| v1.3.2 - v1.7 | 15-38 | Archived |
-| **v2.0 Design System** | TBD | **Defining** |
-
-**Current focus:** Extract Raycast design system, implement with coral branding
+Progress: [----------] 0%
 
 ## Performance Metrics (Historical)
 
@@ -30,15 +26,14 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 
 ## Accumulated Context
 
-### Decisions (Archived)
+### Decisions
 
-| Decision | Phase | Context |
-|----------|-------|---------|
-| Manual deal curation first | v1.6 | Strackr aggregation deferred |
-| Display-only wallet | v1.6 | Never hold funds (money transmission compliance) |
-| INTEGER cents for money | 31-01 | Avoids floating point precision issues |
-| TEXT+CHECK over ENUM | 31-01 | More flexible for migrations |
-| Immutable wallet ledger | 31-01 | Trigger prevents UPDATE/DELETE |
+Decisions are logged in PROJECT.md Key Decisions table.
+Recent decisions affecting current work:
+
+- v2.0: Coral #FF7F50 replaces Raycast brand color; all else matches 1:1
+- v2.0: Two-tier token architecture (primitive -> semantic)
+- v2.0: Dark-mode first design system
 
 ### Pending Todos
 
@@ -57,5 +52,5 @@ None identified.
 ## Session Continuity
 
 Last session: 2026-02-03
-Stopped at: Complete rework initiated — all milestones archived
+Stopped at: v2.0 roadmap created — 6 phases defined (39-44), 125 requirements mapped
 Resume file: None

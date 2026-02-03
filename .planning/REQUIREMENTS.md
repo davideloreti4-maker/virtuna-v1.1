@@ -81,14 +81,14 @@ Requirements for design system foundation. Each maps to roadmap phases.
 
 ### Tokens — Gradients (GRD)
 
-- [ ] **GRD-01**: Coral gradient range defined (light → primary → dark)
+- [ ] **GRD-01**: Coral gradient range defined (light -> primary -> dark)
 - [ ] **GRD-02**: Card background gradients defined
 - [ ] **GRD-03**: Overlay gradients defined
 - [ ] **GRD-04**: Radial glow gradients defined
 
 ### Token Architecture (ARC)
 
-- [ ] **ARC-01**: Two-tier token system implemented (primitive → semantic)
+- [ ] **ARC-01**: Two-tier token system implemented (primitive -> semantic)
 - [ ] **ARC-02**: Tailwind @theme updated with all tokens
 - [ ] **ARC-03**: CSS variables follow consistent naming convention
 - [ ] **ARC-04**: Shared TypeScript types defined for design system
@@ -122,7 +122,7 @@ Requirements for design system foundation. Each maps to roadmap phases.
 ### Components — Raycast Patterns (RAY)
 
 - [ ] **RAY-01**: Keyboard key visualization (key caps with proper styling)
-- [ ] **RAY-02**: Shortcut badge component (⌘K style displays)
+- [ ] **RAY-02**: Shortcut badge component (Cmd+K style displays)
 - [ ] **RAY-03**: Extension/feature card with gradient background
 - [ ] **RAY-04**: Testimonial card pattern
 - [ ] **RAY-05**: Category tab navigation pattern
@@ -217,35 +217,139 @@ Deferred to v2.1+:
 
 ## Traceability
 
-Populated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EXT-01 to EXT-13 | TBD | Pending |
-| COL-01 to COL-08 | TBD | Pending |
-| TYP-01 to TYP-06 | TBD | Pending |
-| SPC-01 to SPC-04 | TBD | Pending |
-| SHD-01 to SHD-04 | TBD | Pending |
-| BRD-01 to BRD-03 | TBD | Pending |
-| ANI-01 to ANI-05 | TBD | Pending |
-| BRK-01 to BRK-05 | TBD | Pending |
-| GRD-01 to GRD-04 | TBD | Pending |
-| ARC-01 to ARC-05 | TBD | Pending |
-| CMP-01 to CMP-13 | TBD | Pending |
-| CMX-01 to CMX-06 | TBD | Pending |
-| RAY-01 to RAY-05 | TBD | Pending |
-| CMQ-01 to CMQ-06 | TBD | Pending |
-| GLS-01 to GLS-07 | TBD | Pending |
-| EFX-01 to EFX-06 | TBD | Pending |
-| SHW-01 to SHW-10 | TBD | Pending |
-| VER-01 to VER-07 | TBD | Pending |
-| DOC-01 to DOC-08 | TBD | Pending |
+| EXT-01 | Phase 39 | Pending |
+| EXT-02 | Phase 39 | Pending |
+| EXT-03 | Phase 39 | Pending |
+| EXT-04 | Phase 39 | Pending |
+| EXT-05 | Phase 39 | Pending |
+| EXT-06 | Phase 39 | Pending |
+| EXT-07 | Phase 39 | Pending |
+| EXT-08 | Phase 39 | Pending |
+| EXT-09 | Phase 39 | Pending |
+| EXT-10 | Phase 39 | Pending |
+| EXT-11 | Phase 39 | Pending |
+| EXT-12 | Phase 39 | Pending |
+| EXT-13 | Phase 39 | Pending |
+| COL-01 | Phase 39 | Pending |
+| COL-02 | Phase 39 | Pending |
+| COL-03 | Phase 39 | Pending |
+| COL-04 | Phase 39 | Pending |
+| COL-05 | Phase 39 | Pending |
+| COL-06 | Phase 39 | Pending |
+| COL-07 | Phase 39 | Pending |
+| COL-08 | Phase 39 | Pending |
+| TYP-01 | Phase 39 | Pending |
+| TYP-02 | Phase 39 | Pending |
+| TYP-03 | Phase 39 | Pending |
+| TYP-04 | Phase 39 | Pending |
+| TYP-05 | Phase 39 | Pending |
+| TYP-06 | Phase 39 | Pending |
+| SPC-01 | Phase 39 | Pending |
+| SPC-02 | Phase 39 | Pending |
+| SPC-03 | Phase 39 | Pending |
+| SPC-04 | Phase 39 | Pending |
+| SHD-01 | Phase 39 | Pending |
+| SHD-02 | Phase 39 | Pending |
+| SHD-03 | Phase 39 | Pending |
+| SHD-04 | Phase 39 | Pending |
+| BRD-01 | Phase 39 | Pending |
+| BRD-02 | Phase 39 | Pending |
+| BRD-03 | Phase 39 | Pending |
+| ANI-01 | Phase 39 | Pending |
+| ANI-02 | Phase 39 | Pending |
+| ANI-03 | Phase 39 | Pending |
+| ANI-04 | Phase 39 | Pending |
+| ANI-05 | Phase 39 | Pending |
+| BRK-01 | Phase 39 | Pending |
+| BRK-02 | Phase 39 | Pending |
+| BRK-03 | Phase 39 | Pending |
+| BRK-04 | Phase 39 | Pending |
+| BRK-05 | Phase 39 | Pending |
+| GRD-01 | Phase 39 | Pending |
+| GRD-02 | Phase 39 | Pending |
+| GRD-03 | Phase 39 | Pending |
+| GRD-04 | Phase 39 | Pending |
+| ARC-01 | Phase 39 | Pending |
+| ARC-02 | Phase 39 | Pending |
+| ARC-03 | Phase 39 | Pending |
+| ARC-04 | Phase 39 | Pending |
+| ARC-05 | Phase 39 | Pending |
+| CMP-01 | Phase 40 | Pending |
+| CMP-02 | Phase 40 | Pending |
+| CMP-03 | Phase 40 | Pending |
+| CMP-04 | Phase 40 | Pending |
+| CMP-05 | Phase 40 | Pending |
+| CMP-06 | Phase 40 | Pending |
+| CMP-07 | Phase 40 | Pending |
+| CMP-08 | Phase 40 | Pending |
+| CMP-09 | Phase 40 | Pending |
+| CMP-10 | Phase 40 | Pending |
+| CMP-11 | Phase 40 | Pending |
+| CMP-12 | Phase 40 | Pending |
+| CMP-13 | Phase 40 | Pending |
+| CMQ-01 | Phase 40 | Pending |
+| CMQ-02 | Phase 40 | Pending |
+| CMQ-03 | Phase 40 | Pending |
+| CMQ-04 | Phase 40 | Pending |
+| CMQ-05 | Phase 40 | Pending |
+| CMQ-06 | Phase 40 | Pending |
+| CMX-01 | Phase 41 | Pending |
+| CMX-02 | Phase 41 | Pending |
+| CMX-03 | Phase 41 | Pending |
+| CMX-04 | Phase 41 | Pending |
+| CMX-05 | Phase 41 | Pending |
+| CMX-06 | Phase 41 | Pending |
+| RAY-01 | Phase 41 | Pending |
+| RAY-02 | Phase 41 | Pending |
+| RAY-03 | Phase 41 | Pending |
+| RAY-04 | Phase 41 | Pending |
+| RAY-05 | Phase 41 | Pending |
+| GLS-01 | Phase 42 | Pending |
+| GLS-02 | Phase 42 | Pending |
+| GLS-03 | Phase 42 | Pending |
+| GLS-04 | Phase 42 | Pending |
+| GLS-05 | Phase 42 | Pending |
+| GLS-06 | Phase 42 | Pending |
+| GLS-07 | Phase 42 | Pending |
+| EFX-01 | Phase 42 | Pending |
+| EFX-02 | Phase 42 | Pending |
+| EFX-03 | Phase 42 | Pending |
+| EFX-04 | Phase 42 | Pending |
+| EFX-05 | Phase 42 | Pending |
+| EFX-06 | Phase 42 | Pending |
+| SHW-01 | Phase 43 | Pending |
+| SHW-02 | Phase 43 | Pending |
+| SHW-03 | Phase 43 | Pending |
+| SHW-04 | Phase 43 | Pending |
+| SHW-05 | Phase 43 | Pending |
+| SHW-06 | Phase 43 | Pending |
+| SHW-07 | Phase 43 | Pending |
+| SHW-08 | Phase 43 | Pending |
+| SHW-09 | Phase 43 | Pending |
+| SHW-10 | Phase 43 | Pending |
+| VER-01 | Phase 44 | Pending |
+| VER-02 | Phase 44 | Pending |
+| VER-03 | Phase 44 | Pending |
+| VER-04 | Phase 44 | Pending |
+| VER-05 | Phase 44 | Pending |
+| VER-06 | Phase 44 | Pending |
+| VER-07 | Phase 44 | Pending |
+| DOC-01 | Phase 44 | Pending |
+| DOC-02 | Phase 44 | Pending |
+| DOC-03 | Phase 44 | Pending |
+| DOC-04 | Phase 44 | Pending |
+| DOC-05 | Phase 44 | Pending |
+| DOC-06 | Phase 44 | Pending |
+| DOC-07 | Phase 44 | Pending |
+| DOC-08 | Phase 44 | Pending |
 
 **Coverage:**
-- v2.0 requirements: 106 total
-- Mapped to phases: 0
-- Unmapped: 106 (pending roadmap)
+- v2.0 requirements: 125 total
+- Mapped to phases: 125
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-03*
-*Last updated: 2026-02-03 after initial definition*
+*Last updated: 2026-02-03 — Traceability table populated with phase mappings*
