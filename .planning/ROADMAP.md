@@ -114,7 +114,13 @@ All phases completed. See archived details.
   3. Coral scale (100-900) generated with all text/background combinations passing WCAG AA (4.5:1)
   4. Tailwind @theme updated with all tokens accessible as utilities
   5. Token values verified against raycast.com live site
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 39-01-PLAN.md — Homepage extraction via Playwright MCP (checkpoint: user verification)
+- [ ] 39-02-PLAN.md — Additional pages extraction (Store, Pro, AI, Pricing, Teams) (checkpoint: user verification)
+- [ ] 39-03-PLAN.md — Coral scale generation with WCAG verification + TypeScript types
+- [ ] 39-04-PLAN.md — Two-tier token architecture implementation in globals.css
 
 ---
 
