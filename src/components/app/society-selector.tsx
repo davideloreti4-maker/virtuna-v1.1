@@ -30,18 +30,19 @@ export function SocietySelector({ className }: SocietySelectorProps) {
     store._hydrate();
   }, []);
 
-  // Derive filtered arrays with useMemo
+  // Derive filtered arrays with useMemo (with safety check for SSR)
+  const societies = store.societies ?? [];
   const selectedSociety = useMemo(
-    () => store.societies.find((s) => s.id === store.selectedSocietyId),
-    [store.societies, store.selectedSocietyId]
+    () => societies.find((s) => s.id === store.selectedSocietyId),
+    [societies, store.selectedSocietyId]
   );
   const personalSocieties = useMemo(
-    () => store.societies.filter((s): s is PersonalSociety => s.type === 'personal'),
-    [store.societies]
+    () => societies.filter((s): s is PersonalSociety => s.type === 'personal'),
+    [societies]
   );
   const targetSocieties = useMemo(
-    () => store.societies.filter((s): s is TargetSociety => s.type === 'target'),
-    [store.societies]
+    () => societies.filter((s): s is TargetSociety => s.type === 'target'),
+    [societies]
   );
 
   const handleSelectSociety = (society: Society) => {
