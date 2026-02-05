@@ -52,10 +52,13 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/three": "^0.182.0",
+    "@types/wcag-contrast": "^3.0.3",
     "eslint": "^9",
     "eslint-config-next": "16.1.5",
+    "pngjs": "^7.0.0",
     "supabase": "^2.74.5",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wcag-contrast": "^3.0.0"
   }
 }
