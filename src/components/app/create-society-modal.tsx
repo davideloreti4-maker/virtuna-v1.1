@@ -1,25 +1,93 @@
 "use client";
 
-import { useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
-import { ArrowLeft, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useState, useCallback } from "react";
+import { z } from "zod";
+import { ArrowLeft } from "lucide-react";
 import { useSocietyStore } from "@/stores/society-store";
 import type { TargetSociety } from "@/types/society";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { GlassTextarea } from "@/components/primitives/GlassTextarea";
+import { Button } from "@/components/ui/button";
+
+// ---------------------------------------------------------------------------
+// Validation
+// ---------------------------------------------------------------------------
+
+const createSocietySchema = z.object({
+  description: z
+    .string()
+    .min(1, { error: "Required" })
+    .min(10, { error: "At least 10 characters" }),
+});
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface CreateSocietyModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export function CreateSocietyModal({ open, onOpenChange }: CreateSocietyModalProps) {
   const [description, setDescription] = useState("");
+  const [descriptionError, setDescriptionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const addSociety = useSocietyStore((s) => s.addSociety);
+
+  const resetForm = useCallback(() => {
+    setDescription("");
+    setDescriptionError(null);
+    setIsDirty(false);
+    setShowDiscardConfirm(false);
+  }, []);
+
+  const validateDescription = useCallback((value: string): string | null => {
+    const result = createSocietySchema.safeParse({ description: value });
+    if (!result.success) {
+      const issue = result.error.issues[0];
+      return issue?.message ?? "Invalid";
+    }
+    return null;
+  }, []);
+
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setDescription(value);
+    setIsDirty(true);
+    // Clear error on change if field becomes valid
+    if (descriptionError) {
+      const error = validateDescription(value);
+      if (!error) setDescriptionError(null);
+    }
+  };
+
+  const handleDescriptionBlur = () => {
+    if (description.trim()) {
+      setDescriptionError(validateDescription(description));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description.trim()) return;
+
+    const error = validateDescription(description);
+    if (error) {
+      setDescriptionError(error);
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -33,87 +101,129 @@ export function CreateSocietyModal({ open, onOpenChange }: CreateSocietyModalPro
       id: crypto.randomUUID(),
       name,
       description: description.trim(),
-      type: 'target',
-      societyType: 'custom',
-      icon: 'briefcase',
+      type: "target",
+      societyType: "custom",
+      icon: "briefcase",
       members: Math.floor(Math.random() * 500) + 50, // Mock member count
       createdAt: new Date().toISOString(),
     };
 
     addSociety(newSociety);
-    setDescription("");
+    resetForm();
     setIsSubmitting(false);
     onOpenChange(false);
   };
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && isDirty && !isSubmitting) {
+      setShowDiscardConfirm(true);
+      return;
+    }
+    if (!nextOpen) {
+      resetForm();
+    }
+    onOpenChange(nextOpen);
+  };
+
+  const handleDiscard = () => {
+    resetForm();
+    onOpenChange(false);
+  };
+
+  const handleCancelDiscard = () => {
+    setShowDiscardConfirm(false);
+  };
+
   const handleBack = () => {
     if (!isSubmitting) {
-      onOpenChange(false);
+      handleOpenChange(false);
     }
   };
 
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-[700px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-3xl border border-zinc-800 p-8 shadow-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
-          style={{
-            background: `linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 50%, rgba(59, 130, 246, 0.05) 100%), #18181B`,
-          }}
-        >
+    <>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent size="lg" className="overflow-hidden rounded-3xl p-8">
           {/* Back button */}
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={handleBack}
             disabled={isSubmitting}
-            className="absolute left-6 top-6 text-white transition-colors hover:text-zinc-400 disabled:opacity-50"
+            className="absolute left-6 top-6"
             aria-label="Go back"
           >
             <ArrowLeft className="h-5 w-5" />
-          </button>
+          </Button>
 
           <div className="mx-auto max-w-[500px] pt-8 text-center">
-            {/* Heading */}
-            <Dialog.Title className="mb-4 text-3xl font-semibold text-white">
-              Who do you want in your society?
-            </Dialog.Title>
-
-            {/* Description */}
-            <Dialog.Description className="mb-8 text-[15px] leading-relaxed text-zinc-400">
-              Describe the people you want in your society. We&apos;ll match your description with AI personas from our database. Every AI persona is based on a real person.
-            </Dialog.Description>
+            <DialogHeader className="p-0 pb-0">
+              <DialogTitle className="mb-4 text-3xl font-semibold">
+                Who do you want in your society?
+              </DialogTitle>
+              <DialogDescription className="mb-8 text-[15px] leading-relaxed">
+                Describe the people you want in your society. We&apos;ll match your
+                description with AI personas from our database. Every AI persona is
+                based on a real person.
+              </DialogDescription>
+            </DialogHeader>
 
             {/* Form */}
             <form onSubmit={handleSubmit}>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="e.g. Founders in London..."
-                disabled={isSubmitting}
-                className="mb-4 min-h-[80px] w-full resize-none rounded-xl border border-zinc-800 bg-[#18181B] px-5 py-4 text-[15px] text-white placeholder:text-zinc-600 focus:border-zinc-700 focus:outline-none disabled:opacity-50"
-              />
+              <div className="mb-4">
+                <GlassTextarea
+                  value={description}
+                  onChange={handleDescriptionChange}
+                  onBlur={handleDescriptionBlur}
+                  placeholder="e.g. Founders in London..."
+                  disabled={isSubmitting}
+                  autoResize
+                  minRows={3}
+                  error={!!descriptionError}
+                />
+                {descriptionError && (
+                  <p className="mt-1.5 text-left text-sm text-error" role="alert">
+                    {descriptionError}
+                  </p>
+                )}
+              </div>
 
-              <button
+              <Button
                 type="submit"
+                variant="primary"
+                size="lg"
+                loading={isSubmitting}
                 disabled={!description.trim() || isSubmitting}
-                className={cn(
-                  "flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-8 py-4 text-[15px] font-medium text-white transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
-                )}
+                className="w-full"
               >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Matching AI personas...
-                  </>
-                ) : (
-                  "Create your society"
-                )}
-              </button>
+                {isSubmitting ? "Matching AI personas..." : "Create your society"}
+              </Button>
             </form>
           </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+        </DialogContent>
+      </Dialog>
+
+      {/* Discard confirmation dialog */}
+      <Dialog open={showDiscardConfirm} onOpenChange={setShowDiscardConfirm}>
+        <DialogContent size="sm" className="p-6">
+          <DialogHeader className="p-0 pb-0">
+            <DialogTitle>Discard changes?</DialogTitle>
+            <DialogDescription className="mt-2">
+              You have unsaved changes. Are you sure you want to discard them?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-6 flex justify-end gap-3">
+            <Button variant="secondary" onClick={handleCancelDiscard}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDiscard}>
+              Discard
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -124,12 +234,12 @@ export function CreateSocietyModal({ open, onOpenChange }: CreateSocietyModalPro
 function extractSocietyName(description: string): string {
   const words = description.trim().split(/\s+/);
   // Remove common filler words
-  const fillerWords = ['e.g.', 'e.g', 'eg', 'like', 'such', 'as', 'for', 'example'];
-  const cleanWords = words.filter(w =>
-    !fillerWords.includes(w.toLowerCase().replace(/[.,]/g, ''))
+  const fillerWords = ["e.g.", "e.g", "eg", "like", "such", "as", "for", "example"];
+  const cleanWords = words.filter(
+    (w) => !fillerWords.includes(w.toLowerCase().replace(/[.,]/g, ""))
   );
 
   // Take first 3 words or up to 30 characters
-  const name = cleanWords.slice(0, 3).join(' ');
-  return name.length > 30 ? name.slice(0, 30).trim() + '...' : name;
+  const name = cleanWords.slice(0, 3).join(" ");
+  return name.length > 30 ? name.slice(0, 30).trim() + "..." : name;
 }
