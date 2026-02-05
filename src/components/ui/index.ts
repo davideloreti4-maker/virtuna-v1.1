@@ -56,6 +56,38 @@ export type { KbdProps } from "./kbd";
 export { ShortcutBadge } from "./shortcut-badge";
 export type { ShortcutBadgeProps } from "./shortcut-badge";
 
+// Dialog (41-01)
+export {
+  Dialog,
+  DialogTrigger,
+  DialogPortal,
+  DialogClose,
+  DialogOverlay,
+  DialogContent,
+  dialogContentVariants,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from "./dialog";
+export type { DialogContentProps } from "./dialog";
+
+// Toggle (41-01)
+export { Toggle } from "./toggle";
+export type { ToggleProps } from "./toggle";
+
+// ExtensionCard (41-05)
+export { ExtensionCard, GRADIENT_THEMES } from "./extension-card";
+export type { ExtensionCardProps } from "./extension-card";
+
+// TestimonialCard (41-05)
+export { TestimonialCard } from "./testimonial-card";
+export type { TestimonialCardProps } from "./testimonial-card";
+
+// CategoryTabs (41-05)
+export { CategoryTabs } from "./category-tabs";
+export type { CategoryTabsProps, CategoryTab } from "./category-tabs";
+
 // Accordion (existing)
 export {
   AccordionRoot,
