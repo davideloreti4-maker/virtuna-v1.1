@@ -3,11 +3,13 @@
 import { motion, useReducedMotion } from "motion/react";
 import type { Variants } from "motion/react";
 
-interface SlideUpProps {
+export interface SlideUpProps {
   children: React.ReactNode;
   className?: string;
   delay?: number;
   duration?: number;
+  /** Vertical distance in pixels for the slide-up. Default 60. */
+  distance?: number;
   once?: boolean;
 }
 
@@ -28,6 +30,7 @@ export function SlideUp({
   className,
   delay = 0,
   duration = 0.6,
+  distance = 60,
   once = true,
 }: SlideUpProps) {
   const prefersReducedMotion = useReducedMotion();
@@ -43,7 +46,7 @@ export function SlideUp({
       whileInView="visible"
       viewport={{ once, margin: "-100px" }}
       variants={{
-        hidden: slideUpVariants.hidden,
+        hidden: { opacity: 0, y: distance },
         visible: {
           ...slideUpVariants.visible,
           transition: {

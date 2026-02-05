@@ -3,11 +3,13 @@
 import { motion, useReducedMotion } from "motion/react";
 import type { Variants } from "motion/react";
 
-interface FadeInProps {
+export interface FadeInProps {
   children: React.ReactNode;
   className?: string;
   delay?: number;
   duration?: number;
+  /** Vertical distance in pixels for the fade-in slide. Default 20. */
+  distance?: number;
   once?: boolean;
 }
 
@@ -28,6 +30,7 @@ export function FadeIn({
   className,
   delay = 0,
   duration = 0.5,
+  distance = 20,
   once = true,
 }: FadeInProps) {
   const prefersReducedMotion = useReducedMotion();
@@ -43,7 +46,7 @@ export function FadeIn({
       whileInView="visible"
       viewport={{ once, margin: "-100px" }}
       variants={{
-        hidden: fadeInVariants.hidden,
+        hidden: { opacity: 0, y: distance },
         visible: {
           ...fadeInVariants.visible,
           transition: {
