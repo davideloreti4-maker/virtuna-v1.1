@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-05)
 ## Current Position
 
 **Milestone:** v2.2 -- Trending Page UI
-**Phase:** 50 of 52 (Data Layer & Page Shell) -- in progress
-**Plan:** 01 of 02 in Phase 50 (complete)
-**Status:** In progress -- Plan 50-01 complete, ready for 50-02
-**Last activity:** 2026-02-05 -- Completed 50-01-PLAN.md (types and mock data)
+**Phase:** 50 of 52 (Data Layer & Page Shell) -- complete
+**Plan:** 02 of 02 in Phase 50 (complete)
+**Status:** Phase 50 complete -- ready for Phase 51
+**Last activity:** 2026-02-05 -- Completed 50-02 (page shell, sidebar nav, tabs, URL sync)
 
-Progress: [█░░░░░░░░░] ~10%
+Progress: [████░░░░░░] ~33%
 
 ## Session Continuity
 
-Last session: 2026-02-05T18:14:41Z
-Stopped at: Completed 50-01-PLAN.md
-Resume file: .planning/phases/50-data-layer-page-shell/50-02-PLAN.md
+Last session: 2026-02-05T18:32:00Z
+Stopped at: Completed Phase 50 (both plans)
+Resume file: .planning/ROADMAP.md (Phase 51 next)
 
 ## Phase Overview (v2.2)
 
@@ -51,6 +51,8 @@ Resume file: .planning/phases/50-data-layer-page-shell/50-02-PLAN.md
 - Mock data for all video/trending content
 - TikTok embeds in detail modal (real iframes)
 - [D-50-01-01] Multi-line import type for readability when importing 4+ types from trending.ts
+- [D-50-02-01] pushState for tab URL sync (shallow, no server re-render)
+- [D-50-02-02] Unicode middle dots via JS expressions in JSX (escapes not interpreted in JSX text)
 
 ### Key Technical Notes
 - v2.0 design system components: GlassPanel, GlassCard, GlassPill, GlassProgress, Dialog, Button, Select, Badge, Typography, Tabs, CategoryTabs, Spinner, Icon, Avatar, Skeleton, Toast
@@ -61,4 +63,4 @@ Resume file: .planning/phases/50-data-layer-page-shell/50-02-PLAN.md
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-05 -- Completed 50-01 (types and mock data)*
+*Last updated: 2026-02-05 -- Completed Phase 50 (data layer + page shell)*
