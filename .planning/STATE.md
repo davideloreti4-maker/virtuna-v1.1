@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Milestone:** v2.0 — Design System Foundation
 **Phase:** 42 of 44 (Effects & Animation)
-**Plan:** 2 of 6 complete
-**Status:** In progress — NoiseTexture + ChromaticAberration effects built
-**Last activity:** 2026-02-05 — Completed 42-02-PLAN.md
+**Plan:** 5 of 6 (42-01, 42-02, 42-05 complete)
+**Status:** In progress — Skeleton shimmer animation added
+**Last activity:** 2026-02-05 — Completed 42-05-PLAN.md
 
-Progress: [########=-] 89%
+Progress: [########=-] 86%
 
 ## Phase 41 Completion Summary
 
@@ -121,6 +121,8 @@ All exports from `@/components/ui`:
 - Phase 42: NoiseTexture uses React.useId() for SVG filter ID uniqueness (SSR-safe)
 - Phase 42: ChromaticAberration uses inline textShadow (dynamic values, not Tailwind)
 - Phase 42: Effects components in src/components/effects/ (separate from ui/)
+- Phase 42: Skeleton uses inline styles for shimmer gradient (matches GlassSkeleton pattern)
+- Phase 42: motion-reduce handled via Tailwind class overriding inline animation style
 
 ## Infrastructure URLs
 
@@ -131,6 +133,6 @@ All exports from `@/components/ui`:
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 42-02-PLAN.md (NoiseTexture + ChromaticAberration effects)
-Resume with: Continue Phase 42, plan 03
-Resume file: .planning/phases/42-effects-animation/42-02-SUMMARY.md
+Stopped at: Completed 42-05-PLAN.md (Skeleton shimmer animation)
+Resume with: Continue Phase 42, remaining plans (03, 04, 06)
+Resume file: .planning/phases/42-effects-animation/42-05-SUMMARY.md
