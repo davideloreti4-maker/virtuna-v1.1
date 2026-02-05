@@ -53,7 +53,13 @@ Plans:
 
 **Dependencies:** Phase 50 (mock data and page shell must exist)
 
-**Plans:** TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 51-01-PLAN.md -- Image config + react-intersection-observer + useInfiniteVideos hook
+- [ ] 51-02-PLAN.md -- v0 design VideoCard layout, integrate into GlassCard/GlassPill/HoverScale components
+- [ ] 51-03-PLAN.md -- VideoGrid with infinite scroll, wire into TrendingClient (replace placeholder)
+- [ ] 51-04-PLAN.md -- Visual verification checkpoint (browser testing)
 
 ---
 
