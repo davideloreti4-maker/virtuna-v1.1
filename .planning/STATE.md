@@ -11,20 +11,24 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Milestone:** v2.0 — Design System Foundation
 **Phase:** 41 of 44 (Extended Components + Raycast Patterns) — In progress
-**Plan:** 2 of 6 complete
-**Status:** In progress — Tabs, Avatar, Divider delivered
-**Last activity:** 2026-02-05 — Completed 41-02-PLAN.md
+**Plan:** 3 of 6 complete
+**Status:** In progress — Dialog, Toggle, Tabs, Avatar, Divider delivered
+**Last activity:** 2026-02-05 — Completed 41-01-PLAN.md
 
-Progress: [####------] 42%
+Progress: [####------] 43%
 
 ## Phase 41 Progress
 
-- 41-01: (pending)
+- 41-01: Dialog, Toggle — COMPLETE
 - 41-02: Tabs, Avatar, Divider — COMPLETE
 - 41-03: (pending)
 - 41-04: (pending)
 - 41-05: (pending)
 - 41-06: (pending)
+
+### Artifacts Created (Phase 41, Plan 01)
+- `src/components/ui/dialog.tsx` — Dialog with Radix, glass overlay, 5 size variants, focus trap
+- `src/components/ui/toggle.tsx` — Toggle/Switch with Radix, coral accent + glow, 3 sizes
 
 ### Artifacts Created (Phase 41, Plan 02)
 - `src/components/ui/tabs.tsx` — Tabs with Radix, Raycast glass pill styling, size variants
@@ -52,6 +56,8 @@ All exports from `@/components/ui`:
 - Tabs, TabsList, TabsTrigger, TabsContent
 - Avatar, AvatarGroup, AvatarRoot, AvatarImage, AvatarFallback, AvatarProps
 - Divider, DividerProps
+- Dialog, DialogTrigger, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription, DialogClose
+- Toggle, ToggleProps
 
 ## Accumulated Context
 
@@ -70,6 +76,9 @@ All exports from `@/components/ui`:
 - Phase 41: Avatar provides dual API — convenience component + low-level Radix primitives
 - Phase 41: Divider uses semantic bg-border token (not hardcoded white/opacity)
 - Phase 41: TabsTrigger uses data-[state=active] selector for Radix compatibility
+- Phase 41: Dialog overlay uses 4px blur (subtle) while content uses 20px blur (full glass)
+- Phase 41: Toggle glow applied via CSS data-state selector for reactive state support
+- Phase 41: tw-animate-css installed for Tailwind v4 animation utilities
 
 ## Infrastructure URLs
 
@@ -80,6 +89,6 @@ All exports from `@/components/ui`:
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 41-02-PLAN.md (Tabs, Avatar, Divider)
+Stopped at: Completed 41-01-PLAN.md (Dialog, Toggle)
 Resume with: Continue Phase 41 — next plan (41-03 or next pending)
-Resume file: .planning/phases/41-extended-components-raycast-patterns/41-02-SUMMARY.md
+Resume file: .planning/phases/41-extended-components-raycast-patterns/41-01-SUMMARY.md
