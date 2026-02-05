@@ -12,16 +12,16 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 **Milestone:** v2.0 — Design System Foundation
 **Phase:** 41 of 44 (Extended Components + Raycast Patterns) — In progress
 **Plan:** 3 of 6 complete
-**Status:** In progress — Dialog, Toggle, Tabs, Avatar, Divider delivered
-**Last activity:** 2026-02-05 — Completed 41-01-PLAN.md
+**Status:** In progress — Dialog, Toggle, Tabs, Avatar, Divider, Select delivered
+**Last activity:** 2026-02-05 — Completed 41-03-PLAN.md
 
-Progress: [####------] 43%
+Progress: [####------] 44%
 
 ## Phase 41 Progress
 
 - 41-01: Dialog, Toggle — COMPLETE
 - 41-02: Tabs, Avatar, Divider — COMPLETE
-- 41-03: (pending)
+- 41-03: Select, SearchableSelect — COMPLETE
 - 41-04: (pending)
 - 41-05: (pending)
 - 41-06: (pending)
@@ -34,6 +34,9 @@ Progress: [####------] 43%
 - `src/components/ui/tabs.tsx` — Tabs with Radix, Raycast glass pill styling, size variants
 - `src/components/ui/avatar.tsx` — Avatar with Radix image fallback, 5 sizes, AvatarGroup with +N
 - `src/components/ui/divider.tsx` — Horizontal, vertical, labeled variants with ARIA separator
+
+### Artifacts Created (Phase 41, Plan 03)
+- `src/components/ui/select.tsx` — Select and SearchableSelect with keyboard nav, CVA sizes, option groups, glass dropdown
 
 ## Phase 40 Completion Summary
 
@@ -58,6 +61,7 @@ All exports from `@/components/ui`:
 - Divider, DividerProps
 - Dialog, DialogTrigger, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription, DialogClose
 - Toggle, ToggleProps
+- Select, SearchableSelect, SelectProps, SearchableSelectProps, SelectOption, SelectGroup
 
 ## Accumulated Context
 
@@ -79,6 +83,9 @@ All exports from `@/components/ui`:
 - Phase 41: Dialog overlay uses 4px blur (subtle) while content uses 20px blur (full glass)
 - Phase 41: Toggle glow applied via CSS data-state selector for reactive state support
 - Phase 41: tw-animate-css installed for Tailwind v4 animation utilities
+- Phase 41: Select keeps custom implementation (no @radix-ui/react-select) per research recommendation
+- Phase 41: useSelect hook shared between Select and SearchableSelect for code reuse
+- Phase 41: Keyboard navigation skips disabled options with wrap-around
 
 ## Infrastructure URLs
 
@@ -89,6 +96,6 @@ All exports from `@/components/ui`:
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 41-01-PLAN.md (Dialog, Toggle)
-Resume with: Continue Phase 41 — next plan (41-03 or next pending)
-Resume file: .planning/phases/41-extended-components-raycast-patterns/41-01-SUMMARY.md
+Stopped at: Completed 41-03-PLAN.md (Select, SearchableSelect)
+Resume with: Continue Phase 41 — next plan (41-04 or next pending)
+Resume file: .planning/phases/41-extended-components-raycast-patterns/41-03-SUMMARY.md
