@@ -94,42 +94,42 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PAGE-01 | — | Pending |
-| PAGE-02 | — | Pending |
-| PAGE-03 | — | Pending |
-| PAGE-04 | — | Pending |
-| FILT-01 | — | Pending |
-| FILT-02 | — | Pending |
-| FILT-03 | — | Pending |
-| FILT-04 | — | Pending |
-| FEED-01 | — | Pending |
-| FEED-02 | — | Pending |
-| FEED-03 | — | Pending |
-| FEED-04 | — | Pending |
-| CARD-01 | — | Pending |
-| CARD-02 | — | Pending |
-| CARD-03 | — | Pending |
-| CARD-04 | — | Pending |
-| CARD-05 | — | Pending |
-| DETL-01 | — | Pending |
-| DETL-02 | — | Pending |
-| DETL-03 | — | Pending |
-| DETL-04 | — | Pending |
-| DETL-05 | — | Pending |
-| DETL-06 | — | Pending |
-| DETL-07 | — | Pending |
-| BMRK-01 | — | Pending |
-| BMRK-02 | — | Pending |
-| BMRK-03 | — | Pending |
-| MOCK-01 | — | Pending |
-| MOCK-02 | — | Pending |
-| MOCK-03 | — | Pending |
+| PAGE-01 | Phase 50 | Pending |
+| PAGE-02 | Phase 50 | Pending |
+| PAGE-03 | Phase 50 | Pending |
+| PAGE-04 | Phase 50 | Pending |
+| FILT-01 | Phase 50 | Pending |
+| FILT-02 | Phase 50 | Pending |
+| FILT-03 | Phase 50 | Pending |
+| FILT-04 | Phase 50 | Pending |
+| FEED-01 | Phase 51 | Pending |
+| FEED-02 | Phase 51 | Pending |
+| FEED-03 | Phase 51 | Pending |
+| FEED-04 | Phase 51 | Pending |
+| CARD-01 | Phase 51 | Pending |
+| CARD-02 | Phase 51 | Pending |
+| CARD-03 | Phase 51 | Pending |
+| CARD-04 | Phase 51 | Pending |
+| CARD-05 | Phase 51 | Pending |
+| DETL-01 | Phase 52 | Pending |
+| DETL-02 | Phase 52 | Pending |
+| DETL-03 | Phase 52 | Pending |
+| DETL-04 | Phase 52 | Pending |
+| DETL-05 | Phase 52 | Pending |
+| DETL-06 | Phase 52 | Pending |
+| DETL-07 | Phase 52 | Pending |
+| BMRK-01 | Phase 52 | Pending |
+| BMRK-02 | Phase 52 | Pending |
+| BMRK-03 | Phase 52 | Pending |
+| MOCK-01 | Phase 50 | Pending |
+| MOCK-02 | Phase 50 | Pending |
+| MOCK-03 | Phase 50 | Pending |
 
 **Coverage:**
 - v2.2 requirements: 30 total
-- Mapped to phases: 0
-- Unmapped: 30
+- Mapped to phases: 30
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-05*
-*Last updated: 2026-02-05 -- initial definition*
+*Last updated: 2026-02-05 -- phase assignments added (Phases 50-52)*

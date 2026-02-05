@@ -10,12 +10,20 @@ See: .planning/PROJECT.md (updated 2026-02-05)
 ## Current Position
 
 **Milestone:** v2.2 -- Trending Page UI
-**Phase:** Not started (defining requirements)
-**Plan:** —
-**Status:** Defining requirements
-**Last activity:** 2026-02-05 -- Milestone v2.2 started
+**Phase:** 50 of 52 (Data Layer & Page Shell) -- ready to plan
+**Plan:** --
+**Status:** Roadmap created, ready to plan Phase 50
+**Last activity:** 2026-02-05 -- v2.2 roadmap created (3 phases, 30 requirements)
 
 Progress: [░░░░░░░░░░] 0%
+
+## Phase Overview (v2.2)
+
+| Phase | Name | Requirements | Depends On |
+|-------|------|-------------|------------|
+| 50 | Data Layer & Page Shell | 11 (MOCK, PAGE, FILT) | None |
+| 51 | Video Feed & Cards | 9 (CARD, FEED) | Phase 50 |
+| 52 | Detail Modal & Bookmarks | 10 (DETL, BMRK) | Phase 51 |
 
 ## Shipped Milestones
 
@@ -27,19 +35,13 @@ Progress: [░░░░░░░░░░] 0%
 
 - v2.1 Dashboard Rebuild -- on main branch (Phases 45-49, 51 requirements, 0% executed)
 
-## Infrastructure URLs
-
-- **GitHub**: https://github.com/davideloreti4-maker/virtuna-v1.1
-- **Vercel**: https://virtuna-v11.vercel.app
-- **Showcase**: /showcase (component documentation, 7 pages)
-
 ## Accumulated Context
 
 ### Decisions
 - v2.2 runs on separate worktree (branch: milestone/v3.0-trending-page) to not block v2.1
 - Phase numbering continues from v2.1 (last phase 49), starting at 50
 - v0 MCP is the primary UI design tool with exact design system guidance
-- UI-only scope — no backend, no Apify, no AI classification
+- UI-only scope -- no backend, no Apify, no AI classification
 - Mock data for all video/trending content
 - TikTok embeds in detail modal (real iframes)
 
@@ -52,4 +54,4 @@ Progress: [░░░░░░░░░░] 0%
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-05 -- v2.2 milestone started*
+*Last updated: 2026-02-05 -- v2.2 roadmap created (Phases 50-52)*

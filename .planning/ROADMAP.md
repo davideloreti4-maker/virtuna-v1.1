@@ -2,11 +2,73 @@
 
 ## Milestones
 
+- v2.2 Trending Page UI -- Phases 50-52 (active)
 - v2.1 Dashboard Rebuild -- Phases 45-49 (active)
 - v2.0 Design System Foundation -- Phases 39-44 (shipped 2026-02-05) | [Archive](milestones/v2.0-ROADMAP.md)
 - v1.2 Visual Accuracy Refinement -- Phases 11-14 (shipped 2026-01-30)
 - v1.1 Pixel-Perfect Clone -- Phases 1-10 (shipped 2026-01-29)
 - v1.3.2-v1.7 -- Phases 15-38 (archived 2026-02-03)
+
+## v2.2 Trending Page UI
+
+### Phase 50: Data Layer & Page Shell
+
+**Goal:** Trending page route exists with mock data, category tabs, and filtering -- the structural foundation that all visual components build on.
+
+**Requirements:** MOCK-01, MOCK-02, MOCK-03, PAGE-01, PAGE-02, PAGE-03, PAGE-04, FILT-01, FILT-02, FILT-03, FILT-04
+
+**Description:** Create the mock data layer (20+ trending videos with full metadata across 3 categories), TypeScript types, and the `/trending` route within the `(app)` route group. Build the page shell with Typography heading, full-width AppShell layout, sidebar nav item, and category tabs (Breaking Out / Sustained Viral / Resurging) using the design system Tabs component with coral accent. Tab switching filters content client-side.
+
+**Success Criteria:**
+1. User can navigate to `/trending` via sidebar nav item and sees a page header reading "Trending" styled with Typography Heading
+2. Three category tabs (Breaking Out, Sustained Viral, Resurging) render with coral accent on the active tab
+3. Switching tabs filters content client-side without page reload
+4. Mock data file exports 20+ videos with complete metadata (id, title, thumbnail, creator, views, likes, shares, date, category, hashtags, tiktokUrl, velocity) and realistic values
+
+**Dependencies:** None (foundation phase)
+
+**Plans:** TBD
+
+---
+
+### Phase 51: Video Feed & Cards
+
+**Goal:** Users see a responsive grid of video cards with thumbnails, metadata, category tags, and trending indicators that respond to the active category tab.
+
+**Requirements:** CARD-01, CARD-02, CARD-03, CARD-04, CARD-05, FEED-01, FEED-02, FEED-03, FEED-04
+
+**Description:** Build the VideoCard component using GlassCard with HoverScale, showing thumbnail, creator name, view count, date, GlassPill category tag, and trending velocity indicator. Assemble cards into a responsive grid (3 cols desktop, 2 tablet, 1 mobile) fed by mock data. Add infinite scroll with Skeleton placeholders and an empty state for unmatched filters. VideoCard click triggers detail modal (wired in Phase 52).
+
+**Success Criteria:**
+1. VideoCard displays thumbnail image, creator name, formatted view count, date, and a GlassPill category tag
+2. VideoCard shows a trending velocity indicator (rising/peaking/declining arrow) and scales on hover via HoverScale
+3. Video grid renders 3 columns on desktop, 2 on tablet, 1 on mobile, populated from mock data matching the active tab
+4. Scrolling to the bottom loads more cards with Skeleton placeholders; switching to a tab with no matches shows an empty state message
+
+**Dependencies:** Phase 50 (mock data and page shell must exist)
+
+**Plans:** TBD
+
+---
+
+### Phase 52: Detail Modal & Bookmarks
+
+**Goal:** Users can view video details in a modal with TikTok embed and take actions (analyze, bookmark, remix stub), with bookmark state persisting across sessions.
+
+**Requirements:** DETL-01, DETL-02, DETL-03, DETL-04, DETL-05, DETL-06, DETL-07, BMRK-01, BMRK-02, BMRK-03
+
+**Description:** Build the video detail modal using design system Dialog (lg/xl size) triggered by VideoCard click. Modal shows TikTok embed iframe, full metadata (creator, views, likes, shares, date, hashtags), and three action buttons: Analyze (wired to Viral Predictor), Bookmark (Zustand + localStorage toggle), and Remix ("Coming Soon" badge). Implement Zustand bookmark store with localStorage persistence. Bookmarked videos show filled icon on their VideoCard. Add optional "Saved" filter tab to view bookmarked videos. Modal closes via overlay click, escape key, or close button.
+
+**Success Criteria:**
+1. Clicking a VideoCard opens a Dialog modal showing a TikTok embed iframe and full metadata (creator, views, likes, shares, date, hashtags)
+2. Modal shows three action buttons: Analyze (navigates to Viral Predictor flow), Bookmark (toggles filled/unfilled icon), and Remix (shows "Coming Soon" tooltip or badge)
+3. Bookmarked videos persist across page reloads (Zustand + localStorage) and show a filled bookmark icon on their VideoCard in the grid
+4. Modal closes via overlay click, escape key, or close button
+5. Optional "Saved" tab in the category bar filters the grid to show only bookmarked videos
+
+**Dependencies:** Phase 51 (VideoCard click must exist to trigger modal)
+
+**Plans:** TBD
 
 ## v2.1 Dashboard Rebuild
 
@@ -119,7 +181,10 @@ Plans:
 | 47 | v2.1 | 0/? | Pending | - |
 | 48 | v2.1 | 0/? | Pending | - |
 | 49 | v2.1 | 0/? | Pending | - |
+| 50 | v2.2 | 0/? | Not started | - |
+| 51 | v2.2 | 0/? | Not started | - |
+| 52 | v2.2 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-02-03*
-*Last updated: 2026-02-05 -- Phase 45 planned (3 plans, 3 waves)*
+*Last updated: 2026-02-05 -- v2.2 Trending Page UI roadmap added (Phases 50-52)*
