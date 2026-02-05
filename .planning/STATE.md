@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Milestone:** v2.0 — Design System Foundation
 **Phase:** 41 of 44 (Extended Components + Raycast Patterns) — In progress
-**Plan:** 4 of 6 complete
-**Status:** In progress — Toast, Kbd, ShortcutBadge delivered
-**Last activity:** 2026-02-05 — Completed 41-04-PLAN.md
+**Plan:** 5 of 6 complete
+**Status:** In progress — ExtensionCard, TestimonialCard, CategoryTabs delivered
+**Last activity:** 2026-02-05 — Completed 41-05-PLAN.md
 
-Progress: [#####-----] 46%
+Progress: [#####-----] 48%
 
 ## Phase 41 Progress
 
@@ -23,7 +23,7 @@ Progress: [#####-----] 46%
 - 41-02: Tabs, Avatar, Divider — COMPLETE
 - 41-03: Select, SearchableSelect — COMPLETE
 - 41-04: Toast, Kbd, ShortcutBadge — COMPLETE
-- 41-05: (pending)
+- 41-05: ExtensionCard, TestimonialCard, CategoryTabs — COMPLETE
 - 41-06: (pending)
 
 ### Artifacts Created (Phase 41, Plan 01)
@@ -42,6 +42,11 @@ Progress: [#####-----] 46%
 - `src/components/ui/toast.tsx` — Toast with ToastProvider, useToast hook, 5 variants, auto-dismiss progress bar, glass styling
 - `src/components/ui/kbd.tsx` — Kbd keycap with exact Raycast 4-layer 3D shadow, CVA sizes, highlighted variant
 - `src/components/ui/shortcut-badge.tsx` — ShortcutBadge composing Kbd with 18 modifier symbol mappings
+
+### Artifacts Created (Phase 41, Plan 05)
+- `src/components/ui/extension-card.tsx` — ExtensionCard with 5-theme radial gradient glow, icon/title/description, hover lift
+- `src/components/ui/testimonial-card.tsx` — TestimonialCard with blockquote, avatar/initials, featured glow variant
+- `src/components/ui/category-tabs.tsx` — CategoryTabs composing Tabs with horizontal scroll, icons, counts
 
 ## Phase 40 Completion Summary
 
@@ -70,6 +75,9 @@ All exports from `@/components/ui`:
 - ToastProvider, useToast, Toast, ToastData, ToastVariant
 - Kbd, kbdVariants, KbdProps
 - ShortcutBadge, ShortcutBadgeProps
+- ExtensionCard, ExtensionCardProps, GRADIENT_THEMES
+- TestimonialCard, TestimonialCardProps
+- CategoryTabs, CategoryTabsProps, CategoryTab
 
 ## Accumulated Context
 
@@ -97,6 +105,9 @@ All exports from `@/components/ui`:
 - Phase 41: Toast uses CSS keyframe injection for self-contained slide animations
 - Phase 41: Kbd uses inline boxShadow for exact 4-layer Raycast shadow (too complex for Tailwind)
 - Phase 41: ShortcutBadge uses Unicode symbols for modifier keys (platform-native rendering)
+- Phase 41: ExtensionCard uses inline style for oklch radial-gradient (too complex for Tailwind)
+- Phase 41: CategoryTabs re-exports TabsContent for convenience consumer imports
+- Phase 41: TestimonialCard uses semantic blockquote with decorative quote mark spans
 
 ## Infrastructure URLs
 
@@ -107,6 +118,6 @@ All exports from `@/components/ui`:
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 41-04-PLAN.md (Toast, Kbd, ShortcutBadge)
-Resume with: Continue Phase 41 — next plan (41-05)
-Resume file: .planning/phases/41-extended-components-raycast-patterns/41-04-SUMMARY.md
+Stopped at: Completed 41-05-PLAN.md (ExtensionCard, TestimonialCard, CategoryTabs)
+Resume with: Continue Phase 41 — next plan (41-06)
+Resume file: .planning/phases/41-extended-components-raycast-patterns/41-05-SUMMARY.md
