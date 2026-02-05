@@ -3,6 +3,7 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { MoreVertical, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/typography';
 import type { TestResult } from '@/types/test';
 
 interface TestHistoryItemProps {
@@ -38,19 +39,21 @@ export function TestHistoryItem({
       type="button"
       onClick={onClick}
       className={cn(
-        'group relative flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors',
+        'group relative flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left transition-colors',
         isActive
-          ? 'bg-[rgba(40,40,40,0.5)] text-white'
-          : 'text-[rgb(184,184,184)] hover:bg-[rgba(40,40,40,0.3)] hover:text-white'
+          ? 'bg-active text-foreground'
+          : 'text-foreground-secondary hover:bg-hover hover:text-foreground'
       )}
     >
-      {/* Left border indicator - yellow like Societies.io (only on active) */}
+      {/* Left border indicator - coral accent (brand color) */}
       {isActive && (
-        <div className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-yellow-500" />
+        <div className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-accent" />
       )}
 
-      {/* Content title - truncated */}
-      <span className="flex-1 truncate">{displayTitle}</span>
+      {/* Content title - truncated, using Typography */}
+      <Text as="span" size="sm" className="flex-1 truncate text-inherit">
+        {displayTitle}
+      </Text>
 
       {/* Three-dot menu */}
       <DropdownMenu.Root>
@@ -59,7 +62,7 @@ export function TestHistoryItem({
             type="button"
             onClick={(e) => e.stopPropagation()}
             className={cn(
-              'rounded p-1 text-zinc-500 opacity-0 transition-all hover:bg-zinc-700 hover:text-zinc-300 group-hover:opacity-100',
+              'rounded p-1 text-foreground-muted opacity-0 transition-all hover:bg-hover hover:text-foreground-secondary group-hover:opacity-100',
               isActive && 'opacity-100'
             )}
             aria-label="More options"
@@ -70,7 +73,7 @@ export function TestHistoryItem({
 
         <DropdownMenu.Portal>
           <DropdownMenu.Content
-            className="z-50 min-w-[120px] rounded-lg border border-zinc-700 bg-zinc-800 p-1 shadow-lg"
+            className="z-[var(--z-dropdown)] min-w-[120px] rounded-lg border border-border bg-surface p-1 shadow-lg"
             sideOffset={4}
             align="end"
           >
@@ -79,7 +82,7 @@ export function TestHistoryItem({
                 e.preventDefault();
                 onDelete();
               }}
-              className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-red-400 outline-none transition-colors hover:bg-zinc-700 hover:text-red-300 focus:bg-zinc-700"
+              className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-error outline-none transition-colors hover:bg-hover focus:bg-hover"
             >
               <Trash2 className="h-4 w-4" />
               Delete

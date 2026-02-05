@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useTestStore } from '@/stores/test-store';
+import { Caption } from '@/components/ui/typography';
 import { TestHistoryItem } from './test-history-item';
 import { DeleteTestModal } from './delete-test-modal';
 
@@ -21,17 +22,17 @@ export function TestHistoryList({ onSelectTest }: TestHistoryListProps) {
   // Guard for SSR hydration
   if (!_isHydrated) {
     return (
-      <div className="px-3 py-2 text-xs text-zinc-600">
+      <Caption className="block px-3 py-2">
         Loading history...
-      </div>
+      </Caption>
     );
   }
 
   if (tests.length === 0) {
     return (
-      <div className="px-3 py-2 text-xs text-zinc-600">
+      <Caption className="block px-3 py-2">
         No tests yet. Create your first test to see it here.
-      </div>
+      </Caption>
     );
   }
 
@@ -50,6 +51,11 @@ export function TestHistoryList({ onSelectTest }: TestHistoryListProps) {
 
   return (
     <>
+      {/* Section header matching v0 design */}
+      <Caption className="mb-2 block px-2 uppercase tracking-wider">
+        Recent Tests
+      </Caption>
+
       <div className="flex flex-col gap-1">
         {tests.map((test) => (
           <TestHistoryItem
