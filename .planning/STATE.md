@@ -11,9 +11,9 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Milestone:** v2.0 — Design System Foundation
 **Phase:** 42 of 44 (Effects & Animation)
-**Plan:** 1 of 6 complete
-**Status:** In progress — GlassPanel blur range enhanced
-**Last activity:** 2026-02-05 — Completed 42-01-PLAN.md
+**Plan:** 2 of 6 complete
+**Status:** In progress — NoiseTexture + ChromaticAberration effects built
+**Last activity:** 2026-02-05 — Completed 42-02-PLAN.md
 
 Progress: [########=-] 89%
 
@@ -118,6 +118,9 @@ All exports from `@/components/ui`:
 - Phase 42: GlassBlur type exported separately for consumer type safety
 - Phase 42: Blur levels mapped to Raycast UI contexts (xs=feature frames, sm=tooltips, md=cards/dock, lg=footer, xl=windows, 2xl=action bars)
 - Phase 42: Mobile blur reduction applies to md+ variants (768px breakpoint)
+- Phase 42: NoiseTexture uses React.useId() for SVG filter ID uniqueness (SSR-safe)
+- Phase 42: ChromaticAberration uses inline textShadow (dynamic values, not Tailwind)
+- Phase 42: Effects components in src/components/effects/ (separate from ui/)
 
 ## Infrastructure URLs
 
@@ -128,6 +131,6 @@ All exports from `@/components/ui`:
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 42-01-PLAN.md (GlassPanel blur range enhancement)
-Resume with: Continue Phase 42, plan 02
-Resume file: .planning/phases/42-effects-animation/42-01-SUMMARY.md
+Stopped at: Completed 42-02-PLAN.md (NoiseTexture + ChromaticAberration effects)
+Resume with: Continue Phase 42, plan 03
+Resume file: .planning/phases/42-effects-animation/42-02-SUMMARY.md
