@@ -51,6 +51,14 @@ Plans:
 
 **Dependencies:** Phase 45 (layout structure must exist)
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] 46-01-PLAN.md -- ContentForm + SurveyForm migration to design system with Zod v4 validation
+- [ ] 46-02-PLAN.md -- TestTypeSelector rebuild as Dialog + GlassCard responsive grid
+- [ ] 46-03-PLAN.md -- CreateSocietyModal + DeleteTestModal + LeaveFeedbackModal migration
+- [ ] 46-04-PLAN.md -- SocietySelector modal migration + visual consistency verification
+
 ---
 
 ### Phase 47: Results Panel, Top Bar & Loading States
@@ -115,7 +123,7 @@ Plans:
 | 15-38 | v1.3.2-v1.7 | - | Archived | 2026-02-03 |
 | 39-44 | v2.0 | 35/35 | Complete | 2026-02-05 |
 | 45 | v2.1 | 3/3 | Complete | 2026-02-05 |
-| 46 | v2.1 | 0/? | Pending | - |
+| 46 | v2.1 | 0/4 | Pending | - |
 | 47 | v2.1 | 0/? | Pending | - |
 | 48 | v2.1 | 0/? | Pending | - |
 | 49 | v2.1 | 0/? | Pending | - |
