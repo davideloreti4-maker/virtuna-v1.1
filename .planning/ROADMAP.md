@@ -158,14 +158,15 @@ Plans:
   4. Shortcut badge displays command combinations correctly
   5. All extended components integrate with existing token system
 **Plans**: 6 plans
+**Status**: Complete (2026-02-05)
 
 Plans:
-- [ ] 41-01-PLAN.md — Dialog + Toggle (Radix primitives with glass styling)
-- [ ] 41-02-PLAN.md — Tabs + Avatar + Divider (Radix primitives + simple)
-- [ ] 41-03-PLAN.md — Select/Dropdown with keyboard navigation
-- [ ] 41-04-PLAN.md — Toast + Kbd + ShortcutBadge (feedback + keyboard viz)
-- [ ] 41-05-PLAN.md — ExtensionCard + TestimonialCard + CategoryTabs (Raycast patterns)
-- [ ] 41-06-PLAN.md — Index exports + visual verification showcase
+- [x] 41-01-PLAN.md — Dialog + Toggle (Radix primitives with glass styling)
+- [x] 41-02-PLAN.md — Tabs + Avatar + Divider (Radix primitives + simple)
+- [x] 41-03-PLAN.md — Select/Dropdown with keyboard navigation
+- [x] 41-04-PLAN.md — Toast + Kbd + ShortcutBadge (feedback + keyboard viz)
+- [x] 41-05-PLAN.md — ExtensionCard + TestimonialCard + CategoryTabs (Raycast patterns)
+- [x] 41-06-PLAN.md — Index exports + visual verification showcase
 
 ---
 
@@ -223,7 +224,7 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44
 | 15-38 | v1.3.2-v1.7 | - | Archived | 2026-02-03 |
 | 39. Token Foundation | v2.0 | 4/4 | Complete | 2026-02-03 |
 | 40. Core Components | v2.0 | 5/5 | Complete | 2026-02-03 |
-| 41. Extended Components | v2.0 | 0/6 | Planned | - |
+| 41. Extended Components | v2.0 | 6/6 | Complete | 2026-02-05 |
 | 42. Effects & Animation | v2.0 | 0/TBD | Not started | - |
 | 43. Showcase Enhancement | v2.0 | 0/TBD | Not started | - |
 | 44. Verification & Docs | v2.0 | 0/TBD | Not started | - |
@@ -259,4 +260,4 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44
 
 ---
 *Roadmap created: 2026-02-03*
-*Last updated: 2026-02-03 — Phase 40 Core Components complete (5/5 plans, verified)*
+*Last updated: 2026-02-05 — Phase 41 Extended Components complete (6/6 plans, verified)*
