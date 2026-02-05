@@ -11,21 +11,26 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Milestone:** v2.0 — Design System Foundation
 **Phase:** 43 of 44 (Showcase Enhancement) — In progress
-**Plan:** 1 of 7 complete
-**Status:** 43-01 complete — showcase infrastructure ready
-**Last activity:** 2026-02-05 — Completed 43-01-PLAN.md
+**Plan:** 3 of 7 complete
+**Status:** 43-03 complete — inputs showcase page built
+**Last activity:** 2026-02-05 — Completed 43-03-PLAN.md
 
-Progress: [#########-] 94%
+Progress: [#########-] 95%
 
 ## Phase 43 Progress
 
 - 43-01: Showcase infrastructure (sugar-high, layout, shared components) -- COMPLETE
 - 43-02: Tokens showcase page -- PENDING
-- 43-03: Inputs showcase page -- PENDING
+- 43-03: Inputs showcase page -- COMPLETE
 - 43-04: Navigation showcase page -- PENDING
 - 43-05: Feedback showcase page -- PENDING
 - 43-06: Data Display showcase page -- PENDING
 - 43-07: Utilities showcase page -- PENDING
+
+### Artifacts Created (Phase 43, Plan 03)
+- `src/app/(marketing)/showcase/inputs/page.tsx` -- Inputs showcase page (Input, InputField, Select, SearchableSelect, Toggle)
+- `src/app/(marketing)/showcase/_components/toggle-demo.tsx` -- Interactive toggle demo client islands
+- `src/app/(marketing)/showcase/_components/select-demo.tsx` -- Interactive select/searchable-select demo client islands
 
 ### Artifacts Created (Phase 43, Plan 01)
 - `src/app/(marketing)/showcase/layout.tsx` -- Showcase layout with sidebar + content area
@@ -163,6 +168,9 @@ All exports from `@/components/ui`:
 - Phase 43: Sidebar hidden on mobile (md:block) — mobile nav deferred
 - Phase 43: ShowcaseSection pattern: Heading level={2} + Text muted + children for all showcase pages
 - Phase 43: CodeBlock + CopyButton composition: server component wraps client copy button
+- Phase 43: Client island pattern: one 'use client' file per interactive component type with multiple named exports
+- Phase 43: Input/InputField rendered statically (server component) since they only need to show visual states
+- Phase 43: Demo naming convention: {Component}{Variant}Demo (e.g., ToggleSizeDemo, SelectGroupedDemo)
 
 ## Infrastructure URLs
 
@@ -173,6 +181,6 @@ All exports from `@/components/ui`:
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 43-01-PLAN.md
-Resume with: 43-02-PLAN.md (Tokens showcase page)
-Resume file: .planning/phases/43-showcase-enhancement/43-01-SUMMARY.md
+Stopped at: Completed 43-03-PLAN.md
+Resume with: 43-04-PLAN.md (Navigation showcase page)
+Resume file: .planning/phases/43-showcase-enhancement/43-03-SUMMARY.md
