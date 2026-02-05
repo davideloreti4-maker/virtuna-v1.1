@@ -36,7 +36,11 @@
 
 **Dependencies:** None (foundation phase)
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 53-01-PLAN.md -- Types, mock data fixtures, and useCopyToClipboard hook
+- [ ] 53-02-PLAN.md -- Page route, tab shell with sliding pill, header with contextual stats, sidebar wiring
 
 ---
 
@@ -129,7 +133,7 @@
 | 39-44 | v2.0 | 35/35 | Complete | 2026-02-05 |
 | 45-49 | v2.1 | 0/3+ | In Progress | - |
 | 50-52 | v2.2 | 0/? | In Progress | - |
-| 53 | v2.3 | 0/? | Not started | - |
+| 53 | v2.3 | 0/2 | Planned | - |
 | 54 | v2.3 | 0/? | Not started | - |
 | 55 | v2.3 | 0/? | Not started | - |
 | 56 | v2.3 | 0/? | Not started | - |
