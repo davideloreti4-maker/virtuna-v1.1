@@ -1,5 +1,5 @@
 export { GlassPanel } from "./GlassPanel";
-export type { GlassPanelProps, GlassTint } from "./GlassPanel";
+export type { GlassPanelProps, GlassTint, GlassBlur } from "./GlassPanel";
 
 export { GradientGlow, colorMap } from "./GradientGlow";
 export type { GradientGlowProps, GradientColor } from "./GradientGlow";
