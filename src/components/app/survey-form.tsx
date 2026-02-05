@@ -1,20 +1,23 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
-import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { ClipboardList, ChevronDown, Check, GripVertical, X, Plus } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { ClipboardList, GripVertical, X, Plus } from "lucide-react";
+import { z } from "zod";
 import { cn } from "@/lib/utils";
 import { useTestStore } from "@/stores/test-store";
+import { GlassTextarea } from "@/components/primitives/GlassTextarea";
+import { GlassInput } from "@/components/primitives/GlassInput";
+import { Select } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+
+// ---------------------------------------------------------------------------
+// Types (exported -- other components depend on these)
+// ---------------------------------------------------------------------------
 
 /**
  * Survey question types
  */
 type QuestionType = "single-select" | "open-response";
-
-const QUESTION_TYPES = [
-  { id: "single-select", label: "Single Select" },
-  { id: "open-response", label: "Open Response" },
-] as const;
 
 /**
  * Survey submission data
@@ -24,6 +27,30 @@ export interface SurveySubmission {
   questionType: QuestionType;
   options?: string[]; // Only for single-select
 }
+
+// ---------------------------------------------------------------------------
+// Validation
+// ---------------------------------------------------------------------------
+
+const surveyFormSchema = z.object({
+  question: z
+    .string()
+    .min(1, { error: "Required" })
+    .min(5, { error: "At least 5 characters" }),
+});
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const QUESTION_TYPE_OPTIONS = [
+  { value: "single-select", label: "Single Select" },
+  { value: "open-response", label: "Open Response" },
+];
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 interface SurveyFormProps {
   onChangeType: () => void; // Opens type selector
@@ -39,7 +66,9 @@ export function SurveyForm({ onChangeType, onSubmit, className }: SurveyFormProp
   const [question, setQuestion] = useState("");
   const [questionType, setQuestionType] = useState<QuestionType>("single-select");
   const [options, setOptions] = useState<string[]>(["", ""]); // Default 2 empty options
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   // Read-only mode when viewing history
   const isViewingHistory = useTestStore((s) => s.isViewingHistory);
@@ -67,16 +96,57 @@ export function SurveyForm({ onChangeType, onSubmit, className }: SurveyFormProp
     }
   }, [isViewingHistory, currentResult]);
 
-  // Auto-expand textarea
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = "auto";
-      textarea.style.height = `${textarea.scrollHeight}px`;
+  // ---------------------------------------------------------------------------
+  // Validation helpers
+  // ---------------------------------------------------------------------------
+
+  const validateField = useCallback((field: string, value: string) => {
+    const fieldSchema = surveyFormSchema.shape[field as keyof typeof surveyFormSchema.shape];
+    if (!fieldSchema) return;
+
+    const result = fieldSchema.safeParse(value);
+    setErrors((prev) => ({
+      ...prev,
+      [field]: result.success ? "" : result.error.issues[0]?.message ?? "",
+    }));
+  }, []);
+
+  const validateForm = useCallback((): boolean => {
+    const result = surveyFormSchema.safeParse({ question });
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of result.error.issues) {
+        const field = issue.path[0] as string;
+        if (!fieldErrors[field]) fieldErrors[field] = issue.message;
+      }
+      setErrors(fieldErrors);
+      return false;
     }
+    setErrors({});
+    return true;
   }, [question]);
 
+  // Re-validate on change after first touch
+  const handleQuestionChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const value = e.target.value;
+      setQuestion(value);
+      if (touched.question) {
+        validateField("question", value);
+      }
+    },
+    [touched.question, validateField]
+  );
+
+  const handleQuestionBlur = useCallback(() => {
+    setTouched((prev) => ({ ...prev, question: true }));
+    validateField("question", question);
+  }, [question, validateField]);
+
+  // ---------------------------------------------------------------------------
   // Option management
+  // ---------------------------------------------------------------------------
+
   const addOption = useCallback(() => {
     setOptions((prev) => [...prev, ""]);
   }, []);
@@ -92,22 +162,30 @@ export function SurveyForm({ onChangeType, onSubmit, className }: SurveyFormProp
     setOptions((prev) => prev.map((opt, i) => (i === index ? value : opt)));
   }, []);
 
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
+  // ---------------------------------------------------------------------------
+  // Submit
+  // ---------------------------------------------------------------------------
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!question.trim()) return;
+    if (!validateForm()) return;
 
-    const data: SurveySubmission = {
-      question: question.trim(),
-      questionType,
-    };
+    setIsSubmitting(true);
+    try {
+      const data: SurveySubmission = {
+        question: question.trim(),
+        questionType,
+      };
 
-    if (questionType === "single-select") {
-      // Filter out empty options
-      data.options = options.filter((opt) => opt.trim());
+      if (questionType === "single-select") {
+        // Filter out empty options
+        data.options = options.filter((opt) => opt.trim());
+      }
+
+      onSubmit(data);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    onSubmit(data);
   };
 
   const canSubmit = question.trim().length > 0;
@@ -116,185 +194,143 @@ export function SurveyForm({ onChangeType, onSubmit, className }: SurveyFormProp
     <form
       onSubmit={handleSubmit}
       className={cn(
-        "space-y-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-4",
+        "space-y-4 rounded-2xl border border-border bg-surface p-4",
         className
       )}
     >
-      {/* Question textarea - no separate border, integrated into card */}
-      <textarea
-        ref={textareaRef}
-        value={question}
-        onChange={(e) => setQuestion(e.target.value)}
-        readOnly={isViewingHistory}
-        placeholder={isViewingHistory ? "" : "What would you like to ask?"}
-        rows={1}
-        className={cn(
-          "min-h-[80px] w-full resize-none overflow-hidden bg-transparent text-base text-white placeholder:text-zinc-600 focus:outline-none",
-          isViewingHistory && "cursor-default text-zinc-300"
+      {/* Question textarea */}
+      <div>
+        <GlassTextarea
+          value={question}
+          onChange={handleQuestionChange}
+          onBlur={handleQuestionBlur}
+          readOnly={isViewingHistory}
+          placeholder={isViewingHistory ? "" : "What would you like to ask?"}
+          autoResize
+          size="md"
+          error={!!errors.question}
+          className={cn(
+            "border-0 bg-transparent",
+            isViewingHistory && "cursor-default opacity-70"
+          )}
+          style={{ backgroundColor: "transparent", backdropFilter: "none", WebkitBackdropFilter: "none" }}
+        />
+        {errors.question && (
+          <p className="mt-1.5 text-sm text-error" role="alert">
+            {errors.question}
+          </p>
         )}
-      />
+      </div>
 
       {/* Question type dropdown */}
       <div>
-        <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-zinc-500">
+        <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-foreground-muted">
           Question type
         </label>
-        <QuestionTypeDropdown
+        <Select
+          options={QUESTION_TYPE_OPTIONS}
           value={questionType}
-          onChange={setQuestionType}
+          onChange={(val) => setQuestionType(val as QuestionType)}
+          placeholder="Select question type..."
           disabled={isViewingHistory}
+          size="md"
         />
       </div>
 
       {/* Options list (only for single-select) */}
       {questionType === "single-select" && (
         <div>
-          <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-zinc-500">
+          <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-foreground-muted">
             Options
           </label>
           <div className="space-y-2">
             {options.map((option, index) => (
               <div key={index} className="flex items-center gap-2">
                 {/* Drag handle (visual only) */}
-                <div className={cn("text-zinc-600", isViewingHistory ? "cursor-default" : "cursor-grab")}>
+                <div className={cn("text-foreground-muted", isViewingHistory ? "cursor-default" : "cursor-grab")}>
                   <GripVertical className="h-4 w-4" />
                 </div>
 
                 {/* Option input */}
-                <input
-                  type="text"
+                <GlassInput
                   value={option}
                   onChange={(e) => updateOption(index, e.target.value)}
                   readOnly={isViewingHistory}
                   placeholder={isViewingHistory ? "" : `Option ${index + 1}`}
+                  size="sm"
                   className={cn(
-                    "flex-1 rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:border-zinc-600 focus:outline-none",
-                    isViewingHistory && "cursor-default text-zinc-300"
+                    isViewingHistory && "cursor-default opacity-70"
                   )}
+                  wrapperClassName="flex-1"
                 />
 
                 {/* Remove button - hidden when viewing history */}
                 {!isViewingHistory && (
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => removeOption(index)}
                     disabled={options.length <= 2}
-                    className="rounded p-1 text-zinc-600 transition-colors hover:text-zinc-400 disabled:cursor-not-allowed disabled:opacity-50"
                     aria-label={`Remove option ${index + 1}`}
+                    className="h-8 w-8 min-h-0 min-w-0 p-0"
                   >
                     <X className="h-4 w-4" />
-                  </button>
+                  </Button>
                 )}
               </div>
             ))}
 
             {/* Add option button - hidden when viewing history */}
             {!isViewingHistory && (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={addOption}
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-500 transition-colors hover:text-zinc-300"
+                className="gap-2 text-foreground-muted"
               >
                 <Plus className="h-4 w-4" />
                 Add option
-              </button>
+              </Button>
             )}
           </div>
         </div>
       )}
 
       {/* Footer with type badge and submit */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-800 pt-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
         {/* Type badge */}
         {isViewingHistory ? (
-          <div className="flex min-h-[44px] items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-1.5 text-sm text-zinc-400">
+          <div className="flex min-h-[44px] items-center gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-foreground-secondary">
             <ClipboardList className="h-4 w-4" />
             <span className="font-medium">Survey</span>
           </div>
         ) : (
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
             onClick={onChangeType}
-            className="flex min-h-[44px] items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+            className="gap-2"
           >
             <ClipboardList className="h-4 w-4" />
             <span className="font-medium">Survey</span>
-          </button>
+          </Button>
         )}
 
         {/* Submit button - hidden when viewing history */}
         {!isViewingHistory && (
-          <button
+          <Button
             type="submit"
-            disabled={!canSubmit}
-            className="min-h-[44px] rounded-xl bg-orange-500 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+            variant="primary"
+            loading={isSubmitting}
+            disabled={!canSubmit || isSubmitting}
           >
             Ask
-          </button>
+          </Button>
         )}
       </div>
     </form>
-  );
-}
-
-/**
- * Question type dropdown component
- */
-function QuestionTypeDropdown({
-  value,
-  onChange,
-  disabled = false,
-}: {
-  value: QuestionType;
-  onChange: (value: QuestionType) => void;
-  disabled?: boolean;
-}) {
-  const selectedLabel = QUESTION_TYPES.find((t) => t.id === value)?.label ?? "Select type";
-
-  // When disabled, show as static text
-  if (disabled) {
-    return (
-      <div className="flex w-full items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-300">
-        <span>{selectedLabel}</span>
-      </div>
-    );
-  }
-
-  return (
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger asChild>
-        <button
-          type="button"
-          className="flex w-full items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-white transition-colors hover:border-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-        >
-          <span>{selectedLabel}</span>
-          <ChevronDown className="h-4 w-4 text-zinc-400" />
-        </button>
-      </DropdownMenu.Trigger>
-
-      <DropdownMenu.Portal>
-        <DropdownMenu.Content
-          className="z-50 min-w-[200px] rounded-lg border border-zinc-800 bg-[#18181B] py-2 shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2"
-          sideOffset={4}
-          align="start"
-        >
-          {QUESTION_TYPES.map((type) => (
-            <DropdownMenu.Item
-              key={type.id}
-              onSelect={() => onChange(type.id)}
-              className={cn(
-                "flex cursor-pointer items-center justify-between px-4 py-2.5 text-sm text-zinc-200 outline-none transition-colors hover:bg-zinc-800 focus:bg-zinc-800",
-                value === type.id && "text-white"
-              )}
-            >
-              <span>{type.label}</span>
-              {value === type.id && (
-                <Check className="h-4 w-4 text-indigo-500" />
-              )}
-            </DropdownMenu.Item>
-          ))}
-        </DropdownMenu.Content>
-      </DropdownMenu.Portal>
-    </DropdownMenu.Root>
   );
 }
