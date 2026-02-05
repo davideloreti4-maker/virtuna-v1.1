@@ -29,9 +29,9 @@
 **Plans:** 3 plans
 
 Plans:
-- [ ] 45-01-PLAN.md -- Sidebar store (Zustand persist), z-index scale, SidebarToggle component
-- [ ] 45-02-PLAN.md -- Floating GlassPanel sidebar rebuild, nav items, test history migration
-- [ ] 45-03-PLAN.md -- AppShell content push, mobile overlay, MobileNav replacement
+- [x] 45-01-PLAN.md -- Sidebar store (Zustand persist), z-index scale, SidebarToggle component
+- [x] 45-02-PLAN.md -- Floating GlassPanel sidebar rebuild, nav items, test history migration
+- [x] 45-03-PLAN.md -- AppShell content push, mobile overlay, MobileNav replacement
 
 ---
 
@@ -114,7 +114,7 @@ Plans:
 | 11-14 | v1.2 | 8/8 | Complete | 2026-01-30 |
 | 15-38 | v1.3.2-v1.7 | - | Archived | 2026-02-03 |
 | 39-44 | v2.0 | 35/35 | Complete | 2026-02-05 |
-| 45 | v2.1 | 0/3 | Planned | - |
+| 45 | v2.1 | 3/3 | Complete | 2026-02-05 |
 | 46 | v2.1 | 0/? | Pending | - |
 | 47 | v2.1 | 0/? | Pending | - |
 | 48 | v2.1 | 0/? | Pending | - |
@@ -122,4 +122,4 @@ Plans:
 
 ---
 *Roadmap created: 2026-02-03*
-*Last updated: 2026-02-05 -- Phase 45 planned (3 plans, 3 waves)*
+*Last updated: 2026-02-05 -- Phase 45 complete (3/3 plans, verified)*

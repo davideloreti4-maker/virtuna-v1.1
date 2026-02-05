@@ -7,14 +7,14 @@
 
 ### Sidebar
 
-- [ ] **SIDE-01**: Sidebar uses GlassPanel with glassmorphic blur/border as floating panel
-- [ ] **SIDE-02**: Sidebar is always visible on desktop and pushes main content
-- [ ] **SIDE-03**: Sidebar nav items use design system Button (ghost variant) + Icon
-- [ ] **SIDE-04**: SocietySelector uses design system Select component
-- [ ] **SIDE-05**: ViewSelector uses design system Select component
-- [ ] **SIDE-06**: Test history list uses design system Typography (Text, Caption)
-- [ ] **SIDE-07**: Sidebar collapses to icon-only mode with smooth animation
-- [ ] **SIDE-08**: Collapse state persists across sessions (Zustand + localStorage)
+- [x] **SIDE-01**: Sidebar uses GlassPanel with glassmorphic blur/border as floating panel
+- [x] **SIDE-02**: Sidebar is always visible on desktop and pushes main content
+- [x] **SIDE-03**: Sidebar nav items use design system Button (ghost variant) + Icon
+- [x] **SIDE-04**: SocietySelector uses design system Select component *(removed by design — no longer in sidebar)*
+- [x] **SIDE-05**: ViewSelector uses design system Select component *(removed by design — no longer in sidebar)*
+- [x] **SIDE-06**: Test history list uses design system Typography (Text, Caption)
+- [x] **SIDE-07**: Sidebar collapses to icon-only mode with smooth animation
+- [x] **SIDE-08**: Collapse state persists across sessions (Zustand + localStorage)
 
 ### Forms & Test Creation
 
@@ -57,9 +57,9 @@
 
 ### Mobile
 
-- [ ] **MOBL-01**: Mobile nav updated for floating sidebar behavior
-- [ ] **MOBL-02**: Sidebar collapses to hidden on mobile with hamburger toggle
-- [ ] **MOBL-03**: Backdrop-filter limited to 2 glass elements on mobile viewport
+- [x] **MOBL-01**: Mobile nav updated for floating sidebar behavior
+- [x] **MOBL-02**: Sidebar collapses to hidden on mobile with hamburger toggle
+- [x] **MOBL-03**: Backdrop-filter limited to 2 glass elements on mobile viewport
 
 ### Hive Visualization
 
@@ -115,14 +115,14 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SIDE-01 | Phase 45 | Pending |
-| SIDE-02 | Phase 45 | Pending |
-| SIDE-03 | Phase 45 | Pending |
-| SIDE-04 | Phase 45 | Pending |
-| SIDE-05 | Phase 45 | Pending |
-| SIDE-06 | Phase 45 | Pending |
-| SIDE-07 | Phase 45 | Pending |
-| SIDE-08 | Phase 45 | Pending |
+| SIDE-01 | Phase 45 | Complete |
+| SIDE-02 | Phase 45 | Complete |
+| SIDE-03 | Phase 45 | Complete |
+| SIDE-04 | Phase 45 | Complete |
+| SIDE-05 | Phase 45 | Complete |
+| SIDE-06 | Phase 45 | Complete |
+| SIDE-07 | Phase 45 | Complete |
+| SIDE-08 | Phase 45 | Complete |
 | FORM-01 | Phase 46 | Pending |
 | FORM-02 | Phase 46 | Pending |
 | FORM-03 | Phase 46 | Pending |
@@ -147,9 +147,9 @@
 | LOAD-01 | Phase 47 | Pending |
 | LOAD-02 | Phase 47 | Pending |
 | LOAD-03 | Phase 47 | Pending |
-| MOBL-01 | Phase 45 | Pending |
-| MOBL-02 | Phase 45 | Pending |
-| MOBL-03 | Phase 45 | Pending |
+| MOBL-01 | Phase 45 | Complete |
+| MOBL-02 | Phase 45 | Complete |
+| MOBL-03 | Phase 45 | Complete |
 | HIVE-01 | Phase 48 | Pending |
 | HIVE-02 | Phase 48 | Pending |
 | HIVE-03 | Phase 48 | Pending |
