@@ -27,7 +27,11 @@
 
 **Dependencies:** None (foundation phase)
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 50-01-PLAN.md -- TypeScript types and mock data layer (42 videos, 3 categories, filtering helpers)
+- [ ] 50-02-PLAN.md -- Page route, sidebar nav, client shell with tabs/URL sync/stats bar/skeleton states
 
 ---
 
@@ -181,7 +185,7 @@ Plans:
 | 47 | v2.1 | 0/? | Pending | - |
 | 48 | v2.1 | 0/? | Pending | - |
 | 49 | v2.1 | 0/? | Pending | - |
-| 50 | v2.2 | 0/? | Not started | - |
+| 50 | v2.2 | 0/2 | Planned | - |
 | 51 | v2.2 | 0/? | Not started | - |
 | 52 | v2.2 | 0/? | Not started | - |
 
