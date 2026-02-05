@@ -5,45 +5,27 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** Raycast-quality design system enabling rapid, consistent UI development
-**Current focus:** v2.1 Dashboard Rebuild -- Phase 45 (Structural Foundation)
+**Current focus:** v2.2 Trending Page UI
 
 ## Current Position
 
-**Milestone:** v2.1 -- Dashboard Rebuild
-**Phase:** 45 -- Structural Foundation (AppShell + Sidebar)
-**Plan:** Not started (awaiting plan-phase)
-**Status:** Roadmap created, ready for planning
-**Last activity:** 2026-02-05 -- v2.1 roadmap created (5 phases, 51 requirements)
+**Milestone:** v2.2 -- Trending Page UI
+**Phase:** Not started (defining requirements)
+**Plan:** —
+**Status:** Defining requirements
+**Last activity:** 2026-02-05 -- Milestone v2.2 started
 
 Progress: [░░░░░░░░░░] 0%
-
-## Phase Overview
-
-| Phase | Name | Requirements | Status |
-|-------|------|-------------|--------|
-| 45 | Structural Foundation | 11 (SIDE + MOBL) | Pending |
-| 46 | Forms & Modals | 10 (FORM + MODL) | Pending |
-| 47 | Results, Top Bar & Loading | 14 (RSLT + TBAR + LOAD) | Pending |
-| 48 | Hive Foundation | 9 (HIVE) | Pending |
-| 49 | Hive Interactions | 7 (HINT) | Pending |
-
-## Dependency Graph
-
-```
-Phase 45 (Foundation)
-  |---> Phase 46 (Forms & Modals)
-  |---> Phase 47 (Results, Top Bar & Loading)
-  |---> Phase 48 (Hive Foundation) ---> Phase 49 (Hive Interactions)
-```
-
-Phases 46 and 47 are independent of each other (parallel-capable).
-Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 
 ## Shipped Milestones
 
 - v2.0 Design System Foundation (2026-02-05) -- 6 phases, 35 plans, 125 requirements
 - v1.2 Visual Accuracy Refinement (2026-01-30) -- 2 phases
 - v1.1 Pixel-Perfect Clone (2026-01-29) -- 10 phases
+
+## In-Progress Milestones
+
+- v2.1 Dashboard Rebuild -- on main branch (Phases 45-49, 51 requirements, 0% executed)
 
 ## Infrastructure URLs
 
@@ -54,17 +36,20 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 ## Accumulated Context
 
 ### Decisions
-- Phase numbering continues from v2.0 (last phase 44), starting at 45
-- 5 phases derived from 9 requirement categories clustered by delivery boundary
-- Wave 1 (dashboard migration): Phases 45-47
-- Wave 2 (hive visualization): Phases 48-49
+- v2.2 runs on separate worktree (branch: milestone/v3.0-trending-page) to not block v2.1
+- Phase numbering continues from v2.1 (last phase 49), starting at 50
+- v0 MCP is the primary UI design tool with exact design system guidance
+- UI-only scope — no backend, no Apify, no AI classification
+- Mock data for all video/trending content
+- TikTok embeds in detail modal (real iframes)
 
 ### Key Technical Notes
-- v2.0 design system components are the building blocks (GlassPanel, GlassCard, GlassInput, GlassTextarea, GlassPill, GlassProgress, Dialog, Button, Select, Badge, Typography, Spinner, Icon)
-- Mobile backdrop-filter budget: max 2 glass elements (MOBL-03)
-- Hive uses Canvas 2D (not SVG) for 1000+ node performance
-- d3-hierarchy for deterministic layout, d3-quadtree for hit detection
+- v2.0 design system components: GlassPanel, GlassCard, GlassPill, GlassProgress, Dialog, Button, Select, Badge, Typography, Tabs, CategoryTabs, Spinner, Icon, Avatar, Skeleton, Toast
+- Token system: bg-background, bg-surface, text-foreground, text-foreground-secondary, text-foreground-muted, bg-accent (coral), border-border, border-border-glass
+- Typography: font-display (Funnel Display), font-sans (Satoshi), text-xs through text-display
+- Glass effects: GlassPanel with blur levels (none/xs/sm/md/lg/xl/2xl)
+- Motion: FadeIn, FadeInUp, SlideUp, StaggerReveal, HoverScale
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-05 -- v2.1 roadmap created*
+*Last updated: 2026-02-05 -- v2.2 milestone started*

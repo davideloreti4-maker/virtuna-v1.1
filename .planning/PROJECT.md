@@ -48,7 +48,7 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 
 ## Context
 
-**Current state:** Starting v2.1 Dashboard Rebuild (2026-02-05).
+**Current state:** Starting v2.2 Trending Page UI (2026-02-05).
 - 26,311 LOC TypeScript/CSS
 - Tech stack: Next.js 14+ (App Router), TypeScript strict, Tailwind CSS v4, Supabase Auth
 - 36 design system components across 4 families, 100+ design tokens
@@ -92,17 +92,25 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 - Local: ~/virtuna-v1.1
 - Vercel: https://virtuna-v11.vercel.app
 
-## Current Milestone: v2.1 Dashboard Rebuild
+## Current Milestone: v2.2 Trending Page UI
 
-**Goal:** Apply the v2.0 design system to the entire dashboard and build a hive node visualization.
+**Goal:** Build the Trending page UI with TikTok Creative Center-style feed, video cards, detail modal, and mock data — all using the v2.0 design system.
 
 **Target features:**
-- Wave 1: Rebuild all dashboard UI with design system (floating glassmorphic sidebar, forms, modals, results, top bar, loading states)
-- Wave 2: Hive node visualization (center thumbnail rectangle, 3-layer node hierarchy with 1000+ decorative nodes, click + hover interactions)
+- TikTok Creative Center-style trending feed with tab-based category filtering (Breaking Out / Sustained Viral / Resurging)
+- Video cards with thumbnails, mock metadata (views, creator, date, category tags)
+- Video detail modal with TikTok embed iframe
+- Actions: Analyze (wired to Viral Predictor), Bookmark, Remix (coming soon stub)
+- All components built with v2.0 design system (GlassCard, GlassPill, Dialog, Button, Tabs, Typography, etc.)
+- Mock data throughout — no backend/API integration
+
+**Build approach:** v0 MCP as primary UI design tool with precise design system token/component guidance for high-quality, accurate output.
 
 **Future milestones:**
-- Additional page UI design (applying design system beyond dashboard)
-- Backend implementation
+- v2.1 Dashboard Rebuild (in progress on main branch)
+- Trending page backend (Apify, AI classification, TanStack Query)
+- Remix system (multi-step wizard, storyboard generation)
+- PDF export and advanced features
 
 ---
-*Last updated: 2026-02-05 after v2.1 milestone started*
+*Last updated: 2026-02-05 after v2.2 milestone started*
