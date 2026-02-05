@@ -203,7 +203,16 @@ Plans:
   3. Each component page shows all variants and all states
   4. Showcase pages follow consistent section pattern
   5. Code snippets available for all components
-**Plans**: TBD
+**Plans**: 7 plans
+
+Plans:
+- [ ] 43-01-PLAN.md — Showcase infrastructure (sugar-high, shared components, layout, sidebar nav)
+- [ ] 43-02-PLAN.md — /showcase tokens page (color, typography, spacing, shadow, radius, animation, gradient tokens)
+- [ ] 43-03-PLAN.md — /showcase/inputs page (Input, InputField, Select, SearchableSelect, Toggle)
+- [ ] 43-04-PLAN.md — /showcase/navigation + /showcase/feedback pages (Tabs, Kbd, ShortcutBadge, Badge, Toast, Dialog, Spinner)
+- [ ] 43-05-PLAN.md — /showcase/data-display + /showcase/layout-components pages (Avatar, Skeleton, Card, GlassPanel, Divider)
+- [ ] 43-06-PLAN.md — /showcase/utilities page (motion, effects, gradient primitives, TrafficLights)
+- [ ] 43-07-PLAN.md — Remove old /ui-showcase + visual verification checkpoint
 
 ---
 
@@ -235,7 +244,7 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44
 | 40. Core Components | v2.0 | 5/5 | Complete | 2026-02-03 |
 | 41. Extended Components | v2.0 | 6/6 | Complete | 2026-02-05 |
 | 42. Effects & Animation | v2.0 | 6/6 | Complete | 2026-02-05 |
-| 43. Showcase Enhancement | v2.0 | 0/TBD | Not started | - |
+| 43. Showcase Enhancement | v2.0 | 0/7 | Planned | - |
 | 44. Verification & Docs | v2.0 | 0/TBD | Not started | - |
 
 ---
