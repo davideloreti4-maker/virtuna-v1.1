@@ -196,6 +196,7 @@
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
   --animate-gradient-x: gradient-x 3s linear infinite;
+  --animate-shimmer: shimmer 2s ease-in-out infinite;
 
   /* --- Glow Intensities --- */
   --glow-intensity-subtle: 0.15;
@@ -242,6 +243,15 @@
   }
   100% {
     background-position: 0% 50%;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
   }
 }
 
@@ -294,6 +304,10 @@
 
 .animate-glow-drift {
   animation: glow-drift 20s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s ease-in-out infinite;
 }
 
 /* Glass effect base styles - Safari compatible */
