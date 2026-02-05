@@ -1,12 +1,20 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
 import { ChevronDown, X, Plus, Info, Briefcase, Coins, Users } from "lucide-react";
 import { useSocietyStore } from "@/stores/society-store";
 import { CardActionMenu } from "./card-action-menu";
 import { CreateSocietyModal } from "./create-society-modal";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { GlassCard } from "@/components/primitives/GlassCard";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import type { Society, PersonalSociety, TargetSociety } from "@/types/society";
 
 interface SocietySelectorProps {
@@ -16,7 +24,7 @@ interface SocietySelectorProps {
 /**
  * Society Selector modal component.
  * Opens a modal dialog for selecting between Personal and Target societies.
- * Uses Radix Dialog for accessibility and Zustand store for state management.
+ * Uses design system Dialog for accessibility and Zustand store for state management.
  */
 export function SocietySelector({ className }: SocietySelectorProps) {
   const [open, setOpen] = useState(false);
@@ -70,112 +78,110 @@ export function SocietySelector({ className }: SocietySelectorProps) {
   // Show loading state until hydrated
   if (!store._isHydrated) {
     return (
-      <button
-        type="button"
+      <Button
+        variant="secondary"
         disabled
-        className={cn(
-          "flex w-full items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-500",
-          className
-        )}
+        className={cn("w-full justify-between", className)}
       >
         <span>Loading...</span>
-        <ChevronDown className="h-4 w-4 text-zinc-600" />
-      </button>
+        <ChevronDown className="h-4 w-4 text-foreground-muted" />
+      </Button>
     );
   }
 
   return (
     <>
-      <Dialog.Root open={open} onOpenChange={setOpen}>
-        <Dialog.Trigger asChild>
-          <button
-            type="button"
-            className={cn(
-              "flex w-full items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-white transition-colors hover:border-zinc-700",
-              className
-            )}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button
+            variant="secondary"
+            className={cn("w-full justify-between", className)}
           >
             <span>{selectedSociety?.name ?? "Select Society"}</span>
-            <ChevronDown className="h-4 w-4 text-zinc-400" />
-          </button>
-        </Dialog.Trigger>
+            <ChevronDown className="h-4 w-4 text-foreground-secondary" />
+          </Button>
+        </DialogTrigger>
 
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-[800px] min-w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-zinc-800 bg-[#18181B] p-6 shadow-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]">
-            {/* Close button */}
-            <Dialog.Close asChild>
-              <button
-                type="button"
-                className="absolute right-4 top-4 text-zinc-500 transition-colors hover:text-zinc-400"
-                aria-label="Close"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </Dialog.Close>
+        <DialogContent size="full" className="max-w-[800px] p-6">
+          {/* Close button */}
+          <DialogClose asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute right-4 top-4"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </DialogClose>
 
-            {/* Personal Societies Section */}
-            <div>
-              <div className="mb-4 flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-white">
-                  Personal Societies
-                </h3>
-                <Info className="h-4 w-4 cursor-help text-zinc-500" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                {personalSocieties.map((society) => (
-                  <PersonalSocietyCard
-                    key={society.id}
-                    society={society}
-                    isSelected={selectedSociety?.id === society.id}
-                    onSelect={() => handleSelectSociety(society)}
-                  />
-                ))}
-              </div>
+          {/* Personal Societies Section */}
+          <div>
+            <div className="mb-4 flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-foreground">
+                Personal Societies
+              </h3>
+              <Info className="h-4 w-4 cursor-help text-foreground-muted" />
             </div>
 
-            {/* Separator */}
-            <div className="my-6 border-t border-zinc-800" />
+            <div className="grid grid-cols-2 gap-4">
+              {personalSocieties.map((society) => (
+                <PersonalSocietyCard
+                  key={society.id}
+                  society={society}
+                  isSelected={selectedSociety?.id === society.id}
+                  onSelect={() => handleSelectSociety(society)}
+                />
+              ))}
+            </div>
+          </div>
 
-            {/* Target Societies Section */}
-            <div>
-              <div className="mb-4 flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-white">
-                  Target Societies
-                </h3>
-                <Info className="h-4 w-4 cursor-help text-zinc-500" />
-              </div>
+          {/* Separator */}
+          <div className="my-6 border-t border-border" />
 
-              <div className="grid grid-cols-3 gap-4">
-                {/* Create Target Society Card */}
-                <button
-                  type="button"
-                  onClick={handleCreateSociety}
-                  className="flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-zinc-700 p-6 transition-colors hover:border-zinc-600 hover:bg-zinc-900/30"
-                >
-                  <Plus className="mb-3 h-8 w-8 text-zinc-500" />
-                  <span className="text-sm font-medium text-zinc-400">
+          {/* Target Societies Section */}
+          <div>
+            <div className="mb-4 flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-foreground">
+                Target Societies
+              </h3>
+              <Info className="h-4 w-4 cursor-help text-foreground-muted" />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              {/* Create Target Society Card */}
+              <GlassCard
+                hover="lift"
+                padding="md"
+                className={cn(
+                  "min-h-[180px] border-dashed",
+                  "hover:border-border-hover"
+                )}
+                onClick={handleCreateSociety}
+              >
+                <div className="flex h-full flex-col items-center justify-center">
+                  <Plus className="mb-3 h-8 w-8 text-foreground-muted" />
+                  <span className="text-sm font-medium text-foreground-secondary">
                     Create Target Society
                   </span>
-                </button>
+                </div>
+              </GlassCard>
 
-                {targetSocieties.map((society) => (
-                  <TargetSocietyCard
-                    key={society.id}
-                    society={society}
-                    isSelected={selectedSociety?.id === society.id}
-                    onSelect={() => handleSelectSociety(society)}
-                    onEdit={handleEdit}
-                    onRefresh={handleRefresh}
-                    onDelete={handleDelete}
-                  />
-                ))}
-              </div>
+              {targetSocieties.map((society) => (
+                <TargetSocietyCard
+                  key={society.id}
+                  society={society}
+                  isSelected={selectedSociety?.id === society.id}
+                  onSelect={() => handleSelectSociety(society)}
+                  onEdit={handleEdit}
+                  onRefresh={handleRefresh}
+                  onDelete={handleDelete}
+                />
+              ))}
             </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <CreateSocietyModal
         open={createModalOpen}
@@ -199,34 +205,39 @@ function PersonalSocietyCard({
   onSelect: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onSelect}
+    <GlassCard
+      hover="lift"
+      padding="md"
       className={cn(
-        "relative flex min-h-[180px] cursor-pointer flex-col rounded-xl border border-dashed border-zinc-700 bg-transparent p-5 text-left transition-all hover:border-zinc-500 hover:bg-zinc-800/30",
-        isSelected && "border-solid border-orange-500 ring-2 ring-orange-500/50"
+        "min-h-[180px] border-dashed",
+        isSelected && "border-solid border-accent ring-2 ring-accent/50"
       )}
+      onClick={onSelect}
     >
-      {/* Setup badge */}
-      {society.needsSetup && (
-        <span className="mb-4 inline-block w-fit rounded-md bg-orange-500 px-3 py-1 text-xs font-medium text-white">
-          Setup
-        </span>
-      )}
+      <div className="flex h-full flex-col text-left">
+        {/* Setup badge */}
+        {society.needsSetup && (
+          <Badge variant="accent" size="sm" className="mb-4 w-fit rounded-md">
+            Setup
+          </Badge>
+        )}
 
-      {/* Large platform icon */}
-      <div className="mb-3">
-        <PlatformIcon platform={society.platform} size="large" />
+        {/* Large platform icon */}
+        <div className="mb-3">
+          <PlatformIcon platform={society.platform} size="large" />
+        </div>
+
+        {/* Title */}
+        <h4 className="mb-2 text-base font-medium text-foreground">
+          {society.name}
+        </h4>
+
+        {/* Description */}
+        <p className="text-sm leading-relaxed text-foreground-secondary line-clamp-3">
+          {society.description}
+        </p>
       </div>
-
-      {/* Title */}
-      <h4 className="mb-2 text-base font-medium text-white">{society.name}</h4>
-
-      {/* Description */}
-      <p className="text-sm leading-relaxed text-zinc-400 line-clamp-3">
-        {society.description}
-      </p>
-    </button>
+    </GlassCard>
   );
 }
 
@@ -250,42 +261,47 @@ function TargetSocietyCard({
   onDelete: (id: string) => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onSelect}
+    <GlassCard
+      hover="lift"
+      padding="md"
       className={cn(
-        "relative flex min-h-[180px] cursor-pointer flex-col rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 text-left transition-all hover:border-zinc-600 hover:bg-zinc-800/50",
-        isSelected && "border-orange-500 ring-2 ring-orange-500/50"
+        "min-h-[180px]",
+        isSelected && "border-accent ring-2 ring-accent/50"
       )}
+      onClick={onSelect}
     >
-      {/* Badge in top-left */}
-      <span className="mb-4 inline-block w-fit rounded-md bg-zinc-800 px-2.5 py-1 text-xs font-medium capitalize text-zinc-300">
-        {society.societyType}
-      </span>
+      <div className="relative flex h-full flex-col text-left">
+        {/* Badge in top-left */}
+        <Badge variant="secondary" size="sm" className="mb-4 w-fit rounded-md capitalize">
+          {society.societyType}
+        </Badge>
 
-      {/* Action menu in top-right */}
-      <div className="absolute right-3 top-4">
-        <CardActionMenu
-          societyId={society.id}
-          onEdit={onEdit}
-          onRefresh={onRefresh}
-          onDelete={onDelete}
-        />
+        {/* Action menu in top-right */}
+        <div className="absolute right-0 top-0">
+          <CardActionMenu
+            societyId={society.id}
+            onEdit={onEdit}
+            onRefresh={onRefresh}
+            onDelete={onDelete}
+          />
+        </div>
+
+        {/* Large icon */}
+        <div className="mb-3">
+          <SocietyIcon icon={society.icon} size="large" />
+        </div>
+
+        {/* Title */}
+        <h4 className="mb-2 text-base font-medium text-foreground">
+          {society.name}
+        </h4>
+
+        {/* Description */}
+        <p className="text-sm leading-relaxed text-foreground-secondary line-clamp-3">
+          {society.description}
+        </p>
       </div>
-
-      {/* Large icon */}
-      <div className="mb-3">
-        <SocietyIcon icon={society.icon} size="large" />
-      </div>
-
-      {/* Title */}
-      <h4 className="mb-2 text-base font-medium text-white">{society.name}</h4>
-
-      {/* Description */}
-      <p className="text-sm leading-relaxed text-zinc-400 line-clamp-3">
-        {society.description}
-      </p>
-    </button>
+    </GlassCard>
   );
 }
 
@@ -304,7 +320,7 @@ function PlatformIcon({
   if (platform === "linkedin") {
     return (
       <div className={cn(
-        "flex items-center justify-center text-white",
+        "flex items-center justify-center text-foreground",
         isLarge ? "h-12 w-12" : "h-6 w-6"
       )}>
         <span className={cn("font-bold", isLarge ? "text-4xl" : "text-xs")}>in</span>
@@ -315,10 +331,10 @@ function PlatformIcon({
   if (platform === "x") {
     return (
       <div className={cn(
-        "flex items-center justify-center text-white",
+        "flex items-center justify-center text-foreground",
         isLarge ? "h-12 w-12" : "h-6 w-6"
       )}>
-        <span className={cn("font-bold", isLarge ? "text-4xl" : "text-sm")}>𝕏</span>
+        <span className={cn("font-bold", isLarge ? "text-4xl" : "text-sm")}>&#x1D54F;</span>
       </div>
     );
   }
@@ -336,7 +352,9 @@ function SocietyIcon({
   icon: TargetSociety["icon"];
   size?: "default" | "large";
 }) {
-  const iconClass = size === "large" ? "h-10 w-10 text-zinc-400" : "h-5 w-5 text-white";
+  const iconClass = size === "large"
+    ? "h-10 w-10 text-foreground-secondary"
+    : "h-5 w-5 text-foreground";
 
   if (icon === "briefcase") {
     return <Briefcase className={iconClass} />;

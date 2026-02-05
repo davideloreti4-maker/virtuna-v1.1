@@ -38,6 +38,8 @@ const badgeVariants = cva(
       /**
        * Visual style variant using semantic status colors
        * - `default`: Neutral surface background for general labels
+       * - `secondary`: Subtle surface background for categorization tags
+       * - `accent`: Coral brand accent for attention-drawing badges
        * - `success`: Green tint for positive/active states
        * - `warning`: Yellow tint for pending/caution states
        * - `error`: Red tint for failed/danger states
@@ -46,6 +48,10 @@ const badgeVariants = cva(
       variant: {
         default:
           "bg-surface text-foreground-secondary border border-border",
+        secondary:
+          "bg-surface-elevated text-foreground-secondary border border-border",
+        accent:
+          "bg-accent/15 text-accent border border-accent/25",
         success:
           "bg-success/10 text-success border border-success/20",
         warning:
@@ -83,7 +89,7 @@ export interface BadgeProps
  * Badge component for displaying status indicators and labels.
  *
  * Features:
- * - 5 semantic variants: default, success, warning, error, info
+ * - 7 semantic variants: default, secondary, accent, success, warning, error, info
  * - 2 sizes: sm (20px), md (24px)
  * - Uses semantic color tokens from globals.css
  * - Display-only (non-interactive) - no hover/active states
