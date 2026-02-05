@@ -46,7 +46,7 @@
 ### Earnings Tab
 
 - [ ] **EARN-01**: 4 summary stat cards in a responsive row (Total Earned, Pending, Paid Out, This Month)
-- [ ] **EARN-02**: Stat card values animate with count-up effect on mount (respects `prefers-reduced-motion` — shows static values)
+- [ ] **EARN-02**: Stat card values animate with count-up effect on mount (respects `prefers-reduced-motion` -- shows static values)
 - [ ] **EARN-03**: Each stat card shows percentage change indicator (green for positive, red for negative)
 - [ ] **EARN-04**: Period selector pills (7D, 30D, 90D, All Time) update chart data with brief loading transition
 - [ ] **EARN-05**: Earnings area chart renders with Recharts, dark-mode themed (custom axis/grid/tick colors from design tokens)
@@ -99,55 +99,55 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PAGE-01 | — | Pending |
-| PAGE-02 | — | Pending |
-| PAGE-03 | — | Pending |
-| PAGE-04 | — | Pending |
-| PAGE-05 | — | Pending |
-| PAGE-06 | — | Pending |
-| PAGE-07 | — | Pending |
-| DEAL-01 | — | Pending |
-| DEAL-02 | — | Pending |
-| DEAL-03 | — | Pending |
-| DEAL-04 | — | Pending |
-| DEAL-05 | — | Pending |
-| DEAL-06 | — | Pending |
-| DEAL-07 | — | Pending |
-| DEAL-08 | — | Pending |
-| DEAL-09 | — | Pending |
-| DEAL-10 | — | Pending |
-| DEAL-11 | — | Pending |
-| DEAL-12 | — | Pending |
-| AFFL-01 | — | Pending |
-| AFFL-02 | — | Pending |
-| AFFL-03 | — | Pending |
-| AFFL-04 | — | Pending |
-| AFFL-05 | — | Pending |
-| AFFL-06 | — | Pending |
-| AFFL-07 | — | Pending |
-| AFFL-08 | — | Pending |
-| AFFL-09 | — | Pending |
-| AFFL-10 | — | Pending |
-| EARN-01 | — | Pending |
-| EARN-02 | — | Pending |
-| EARN-03 | — | Pending |
-| EARN-04 | — | Pending |
-| EARN-05 | — | Pending |
-| EARN-06 | — | Pending |
-| EARN-07 | — | Pending |
-| EARN-08 | — | Pending |
-| EARN-09 | — | Pending |
-| PLSH-01 | — | Pending |
-| PLSH-02 | — | Pending |
-| PLSH-03 | — | Pending |
-| PLSH-04 | — | Pending |
-| PLSH-05 | — | Pending |
+| PAGE-01 | Phase 53 | Pending |
+| PAGE-02 | Phase 53 | Pending |
+| PAGE-03 | Phase 53 | Pending |
+| PAGE-04 | Phase 53 | Pending |
+| PAGE-05 | Phase 53 | Pending |
+| PAGE-06 | Phase 53 | Pending |
+| PAGE-07 | Phase 53 | Pending |
+| DEAL-01 | Phase 54 | Pending |
+| DEAL-02 | Phase 54 | Pending |
+| DEAL-03 | Phase 54 | Pending |
+| DEAL-04 | Phase 54 | Pending |
+| DEAL-05 | Phase 54 | Pending |
+| DEAL-06 | Phase 54 | Pending |
+| DEAL-07 | Phase 54 | Pending |
+| DEAL-08 | Phase 54 | Pending |
+| DEAL-09 | Phase 54 | Pending |
+| DEAL-10 | Phase 54 | Pending |
+| DEAL-11 | Phase 54 | Pending |
+| DEAL-12 | Phase 54 | Pending |
+| AFFL-01 | Phase 55 | Pending |
+| AFFL-02 | Phase 55 | Pending |
+| AFFL-03 | Phase 55 | Pending |
+| AFFL-04 | Phase 55 | Pending |
+| AFFL-05 | Phase 55 | Pending |
+| AFFL-06 | Phase 55 | Pending |
+| AFFL-07 | Phase 55 | Pending |
+| AFFL-08 | Phase 55 | Pending |
+| AFFL-09 | Phase 55 | Pending |
+| AFFL-10 | Phase 55 | Pending |
+| EARN-01 | Phase 56 | Pending |
+| EARN-02 | Phase 56 | Pending |
+| EARN-03 | Phase 56 | Pending |
+| EARN-04 | Phase 56 | Pending |
+| EARN-05 | Phase 56 | Pending |
+| EARN-06 | Phase 56 | Pending |
+| EARN-07 | Phase 56 | Pending |
+| EARN-08 | Phase 56 | Pending |
+| EARN-09 | Phase 56 | Pending |
+| PLSH-01 | Phase 54 | Pending |
+| PLSH-02 | Phase 54 | Pending |
+| PLSH-03 | Phase 57 | Pending |
+| PLSH-04 | Phase 57 | Pending |
+| PLSH-05 | Phase 57 | Pending |
 
 **Coverage:**
 - v2.3 requirements: 43 total
-- Mapped to phases: 0 (awaiting roadmap)
-- Unmapped: 43
+- Mapped to phases: 43
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-05*
-*Last updated: 2026-02-05 -- revised after sceptical audit (added PAGE-07, DEAL-12, EARN-07, EARN-09; refined 8 existing requirements)*
+*Last updated: 2026-02-05 -- Traceability updated with phase assignments (phases 53-57); PLSH-01/02 moved to Phase 54*

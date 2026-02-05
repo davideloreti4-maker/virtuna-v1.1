@@ -2,109 +2,122 @@
 
 ## Milestones
 
-- v2.1 Dashboard Rebuild -- Phases 45-49 (active)
+- v2.3 Brand Deals & Affiliate Page -- Phases 53-57 (active)
+- v2.2 Trending Page -- Phases 50-52 (active, parallel worktree)
+- v2.1 Dashboard Rebuild -- Phases 45-49 (active, parallel worktree)
 - v2.0 Design System Foundation -- Phases 39-44 (shipped 2026-02-05) | [Archive](milestones/v2.0-ROADMAP.md)
 - v1.2 Visual Accuracy Refinement -- Phases 11-14 (shipped 2026-01-30)
 - v1.1 Pixel-Perfect Clone -- Phases 1-10 (shipped 2026-01-29)
 - v1.3.2-v1.7 -- Phases 15-38 (archived 2026-02-03)
 
-## v2.1 Dashboard Rebuild
+## v2.3 Brand Deals & Affiliate Page
 
-### Phase 45: Structural Foundation (AppShell + Sidebar)
+**Milestone Goal:** Glassmorphic brand deals & affiliate page with three-tab layout (Deals / Affiliates / Earnings) built using v0 MCP guided by the Virtuna design system. All UI with mock data -- no backend integration.
 
-**Goal:** Dashboard layout restructured with floating glassmorphic sidebar that works across desktop and mobile viewports.
+- [ ] **Phase 53: Foundation & Tab Shell** -- Route, tab navigation, sidebar wiring, mock data layer, and shared utilities
+- [ ] **Phase 54: Deals Tab** -- Brand deal card grid with filters, search, featured section, apply interaction, and color/performance foundations
+- [ ] **Phase 55: Affiliates Tab** -- Active link cards with copy-to-clipboard and available products grid with generate link action
+- [ ] **Phase 56: Earnings Tab** -- Summary stat cards with count-up, earnings chart, period selector, and breakdown list
+- [ ] **Phase 57: Responsive & Accessibility** -- Loading skeletons for all tabs, responsive mobile verification, keyboard accessibility audit
 
-**Requirements:** SIDE-01, SIDE-02, SIDE-03, SIDE-04, SIDE-05, SIDE-06, SIDE-07, SIDE-08, MOBL-01, MOBL-02, MOBL-03
+### Phase 53: Foundation & Tab Shell
 
-**Description:** Rebuild the AppShell layout with a floating GlassPanel sidebar that pushes main content on desktop and hides behind a hamburger toggle on mobile. All sidebar internals (nav items, selectors, test history) migrate to design system components. Collapse behavior with persistence, mobile backdrop-filter budget, and z-index scale are established here as the structural foundation for all subsequent phases.
+**Goal:** Brand Deals page exists with working three-tab navigation synced to URL, sidebar integration, typed mock data, and shared utilities -- ready for tab content.
+
+**Requirements:** PAGE-01, PAGE-02, PAGE-03, PAGE-04, PAGE-05, PAGE-06, PAGE-07
+
+**Description:** Establish the `/brand-deals` route under the `(app)` route group following the Settings page pattern: server component reads searchParams, client component orchestrates Radix Tabs with URL sync. Wire sidebar navigation with pathname-based active state. Define TypeScript interfaces and mock data fixtures with edge cases. Extract reusable `useCopyToClipboard` hook. Add page header with design system Typography.
 
 **Success Criteria:**
-1. Sidebar renders as a floating glassmorphic panel with blur/border on desktop, pushing main content to the right
-2. User can collapse sidebar to icon-only mode and the collapsed state survives page refresh
-3. On mobile viewport, sidebar is hidden by default and togglable via hamburger, with no more than 2 backdrop-filter elements active
-4. Nav items, SocietySelector, ViewSelector, and test history list all render using design system primitives (Button, Select, Typography)
+1. Navigating to `/brand-deals` renders a page with three tabs (Deals / Affiliates / Earnings) and placeholder content in each
+2. Clicking a tab updates the URL search param (`?tab=deals`); browser back/forward navigates between tabs correctly
+3. Sidebar "Brand Deals" nav item is highlighted when on `/brand-deals` and navigates to the page on click
+4. Mock data files export typed arrays of BrandDeal, AffiliateLink, Product, and EarningsSummary with edge cases (long names, zero values, missing optional fields)
 
 **Dependencies:** None (foundation phase)
 
-**Plans:** 3 plans
-
-Plans:
-- [ ] 45-01-PLAN.md -- Sidebar store (Zustand persist), z-index scale, SidebarToggle component
-- [ ] 45-02-PLAN.md -- Floating GlassPanel sidebar rebuild, nav items, test history migration
-- [ ] 45-03-PLAN.md -- AppShell content push, mobile overlay, MobileNav replacement
+**Plans:** TBD
 
 ---
 
-### Phase 46: Forms & Modals Migration
+### Phase 54: Deals Tab
 
-**Goal:** All form inputs and modal dialogs across the dashboard use design system components with consistent behavior.
+**Goal:** Users can browse brand deals in a filterable, searchable card grid with featured highlights and apply to deals via CTA.
 
-**Requirements:** FORM-01, FORM-02, FORM-03, FORM-04, FORM-05, MODL-01, MODL-02, MODL-03, MODL-04, MODL-05
+**Requirements:** DEAL-01, DEAL-02, DEAL-03, DEAL-04, DEAL-05, DEAL-06, DEAL-07, DEAL-08, DEAL-09, DEAL-10, DEAL-11, DEAL-12, PLSH-01, PLSH-02
 
-**Description:** Migrate every form (ContentForm, SurveyForm, TestTypeSelector) and every modal (CreateSociety, DeleteTest, LeaveFeedback, SocietySelector) to use design system GlassInput, GlassTextarea, Select, Dialog, GlassCard, and Button components. All inputs gain consistent focus rings and error states. All modals gain consistent overlay, animation, and close behavior.
+**Description:** Build the DealsTab component with a responsive 2-3 column card grid rendering 8-12 mock deals. Each DealCard uses solid `bg-surface-elevated` backgrounds (not glassmorphic blur) for grid scroll performance — glass reserved for featured deals with GradientGlow only. Card composes Badge/Button/Avatar showing brand logo, title, description (line-clamped), payout, category tags, and status badges. Color semantics follow Brand Bible: orange for creative deal categories, green for earnings values, blue for analytics. "New This Week" highlighted section at top. Filter pills for categories, debounced search by brand name. Apply button toggles to "Applied" on click. Empty state when no deals match filters. Hover states on cards. This phase establishes the color and performance patterns carried forward to Phases 55-56.
 
 **Success Criteria:**
-1. User can create content and survey tests using forms built entirely from design system inputs (GlassTextarea, GlassInput, Select, Button)
-2. All form inputs show consistent focus rings on keyboard navigation and error states on invalid input
-3. Every modal (create society, delete test, leave feedback, society selector) opens with consistent overlay/animation and closes via overlay click, escape key, or close button
-4. TestTypeSelector renders as a Dialog with a GlassCard grid for type selection
+1. Deals tab shows 8-12 deal cards in a responsive grid (3 columns on desktop, 2 on tablet, 1 on mobile) with brand logo, title, description, payout, tags, and status badge on each card
+2. Deal cards use solid surface backgrounds (no backdrop-filter blur) and scroll smoothly; only featured deal cards use GradientGlow
+3. User can filter deals by category using filter pills and search by brand name — results update live; empty state shows when no deals match with a clear-filters CTA
+4. Clicking "Apply" on a deal card changes the button to an "Applied" badge; "New This Week" section appears at top with info badge
+5. Color semantics follow Brand Bible: orange for creative categories, green for earnings values, blue for analytics — pattern established for subsequent tabs
 
-**Dependencies:** Phase 45 (layout structure must exist)
+**Dependencies:** Phase 53 (needs tab shell, mock data, page structure)
+
+**Plans:** TBD
 
 ---
 
-### Phase 47: Results Panel, Top Bar & Loading States
+### Phase 55: Affiliates Tab
 
-**Goal:** Results display, top bar filtering, and loading states all render through design system components, completing the dashboard migration.
+**Goal:** Users can view their active affiliate links with stats, copy links to clipboard, and generate new affiliate links from available products.
 
-**Requirements:** RSLT-01, RSLT-02, RSLT-03, RSLT-04, RSLT-05, RSLT-06, RSLT-07, TBAR-01, TBAR-02, TBAR-03, TBAR-04, LOAD-01, LOAD-02, LOAD-03
+**Requirements:** AFFL-01, AFFL-02, AFFL-03, AFFL-04, AFFL-05, AFFL-06, AFFL-07, AFFL-08, AFFL-09, AFFL-10
 
-**Description:** Migrate the results panel sections (ImpactScore, AttentionBreakdown, Variants, Insights, Themes) to GlassCard/GlassProgress/Badge/Typography. Rebuild the top bar ContextBar and filter/legend pills using design system tokens and GlassPill. Replace loading states with GlassPanel + GlassProgress + Spinner. This completes Wave 1 -- full dashboard design system coverage.
+**Description:** Build the AffiliatesTab with two sections: Active Links (4-5 cards) and Available Products (6-8 cards). Active link cards show product image, name, truncated URL, copy button (icon morphs Copy to Check for 2s via useCopyToClipboard), click/conversion/commission stats, and status badge. Available product cards show image, name, commission rate, and "Generate Link" CTA that adds the product to the active links list with toast feedback. Empty state for when no active links exist.
 
 **Success Criteria:**
-1. Results panel renders each section (impact score, attention breakdown, variants, insights, themes) using GlassCard, GlassProgress, Badge, and Typography -- no legacy styled components remain
-2. Top bar shows context text with Typography tokens and filter/legend pills as GlassPill components with correct tint colors
-3. Loading state displays a GlassPanel with animated GlassProgress bar, Spinner, and a functional cancel button
-4. Share button in results panel uses Button ghost variant with correct hover/active states
+1. Affiliates tab shows "Active Links" section with 4-5 affiliate link cards displaying product name, truncated URL, click count, conversions, commission earned, and status badge
+2. Clicking the copy button on an affiliate link copies the URL to clipboard, morphs the icon from Copy to Check for 2 seconds, and shows a toast confirmation
+3. "Available Products" section shows 6-8 product cards with commission rate; clicking "Generate Link" adds the product to the active links list with success feedback
+4. Empty state renders when no active links exist (before any links are generated)
 
-**Dependencies:** Phase 45 (layout structure must exist)
+**Dependencies:** Phase 53 (needs tab shell, mock data, useCopyToClipboard hook)
+
+**Plans:** TBD
 
 ---
 
-### Phase 48: Hive Foundation (Layout + Rendering)
+### Phase 56: Earnings Tab
 
-**Goal:** Canvas-based hive visualization renders 1000+ nodes in a deterministic radial layout at 60fps with retina support.
+**Goal:** Users can view their earnings overview with animated stat cards, a themed area chart with period selection, and a per-source earnings breakdown.
 
-**Requirements:** HIVE-01, HIVE-02, HIVE-03, HIVE-04, HIVE-05, HIVE-06, HIVE-07, HIVE-08, HIVE-09
+**Requirements:** EARN-01, EARN-02, EARN-03, EARN-04, EARN-05, EARN-06, EARN-07, EARN-08, EARN-09
 
-**Description:** Build the HiveCanvas component using Canvas 2D with d3-hierarchy for deterministic radial positioning. Render a center thumbnail placeholder, 10+ tier-1 nodes, 100+ tier-2 nodes, and 1000+ tier-3 leaf nodes with connection lines that fade by distance. The canvas resizes responsively via ResizeObserver, supports retina/HiDPI displays, and provides a reduced-motion fallback with static layout.
+**Description:** Build the EarningsTab with three sections: summary stat cards, earnings chart, and breakdown list. Four stat cards (Total Earned, Pending, Paid Out, This Month) with count-up animation respecting prefers-reduced-motion and percentage change indicators (green/red). Recharts area chart with dark-mode theming using Virtuna design tokens, gradient fill with green accent, glassmorphic hover tooltip, and period selector pills (7D/30D/90D/All Time). Breakdown section with per-deal/link earnings sorted by earnings descending. All monetary values formatted with Intl.NumberFormat.
 
 **Success Criteria:**
-1. Hive renders a center rounded rectangle with 3 concentric tiers of nodes (10+ main, 100+ sub, 1000+ leaf) connected by lines that fade with distance
-2. Layout positions are deterministic (same data produces identical visual output across renders) using d3-hierarchy
-3. Canvas maintains 60fps on a standard laptop and renders crisp on retina/HiDPI displays
-4. Canvas resizes fluidly when the browser window changes size
-5. Users with `prefers-reduced-motion` see a static layout with no animations
+1. Four stat cards display Total Earned, Pending, Paid Out, and This Month with values that animate on mount (count-up effect) and show green/red percentage change indicators
+2. Earnings area chart renders with dark-mode theming (visible axes, labels, grid on dark background), gradient fill with green accent, and a glassmorphic tooltip on hover showing date and formatted value
+3. Period selector pills (7D, 30D, 90D, All Time) update the chart data with a brief loading transition
+4. Earnings breakdown section lists per-source earnings (source name, clicks, conversions, earnings) sorted by earnings descending, with all monetary values formatted as USD via Intl.NumberFormat
+5. Count-up animation respects `prefers-reduced-motion` by showing static values instead
 
-**Dependencies:** Phase 45 (needs to render within the AppShell layout)
+**Dependencies:** Phase 53 (needs tab shell, mock data)
+
+**Plans:** TBD
 
 ---
 
-### Phase 49: Hive Interactions (Click, Hover & Navigation)
+### Phase 57: Responsive & Accessibility
 
-**Goal:** Users can explore the hive by hovering, clicking, and navigating nodes with responsive feedback.
+**Goal:** Page has loading skeletons, verified responsive mobile layout, and full keyboard accessibility across all tabs.
 
-**Requirements:** HINT-01, HINT-02, HINT-03, HINT-04, HINT-05, HINT-06, HINT-07
+**Requirements:** PLSH-03, PLSH-04, PLSH-05
 
-**Description:** Add interactive behaviors to the hive canvas: d3-quadtree hit detection for O(log n) pointer lookups, hover highlighting with connected-node emphasis and non-connected dimming, click glow/scale effects with a GlassCard info overlay, zoom/pan controls, and debounced hover states to prevent flicker in dense clusters.
+**Description:** Add skeleton loading states for all three tabs matching their content layout shapes. Verify responsive layout across viewports (stat cards 2-col on mobile, deal grid 1-col, affiliate cards stacked). Ensure all tab content is keyboard-navigable (Tab through interactive elements, Enter activates CTAs). Note: performance (PLSH-01) and color semantics (PLSH-02) were baked into Phase 54 as foundational patterns.
 
 **Success Criteria:**
-1. Hovering a node highlights it and its connected nodes while dimming unrelated nodes, with no flickering in dense areas
-2. Clicking a node triggers a visible glow/scale effect and shows a GlassCard info overlay positioned near the clicked node
-3. User can zoom in/out and pan across the hive to explore dense regions
-4. Hit detection performs at O(log n) via quadtree -- no perceptible lag when moving cursor across 1000+ nodes
+1. Loading skeleton states render for each tab before content appears, matching the layout shape of actual content (card grid skeleton for deals, two-section skeleton for affiliates, stat cards + chart skeleton for earnings)
+2. Page layout adapts correctly on mobile viewport: stat cards in 2 columns, deal grid single column, affiliate cards stacked vertically
+3. User can navigate all tab content with keyboard only — Tab moves through interactive elements, Enter activates buttons/CTAs
 
-**Dependencies:** Phase 48 (hive rendering must exist before adding interactions)
+**Dependencies:** Phases 53, 54, 55, 56 (all content must be built before cross-tab verification)
+
+**Plans:** TBD
 
 ## Progress
 
@@ -114,12 +127,14 @@ Plans:
 | 11-14 | v1.2 | 8/8 | Complete | 2026-01-30 |
 | 15-38 | v1.3.2-v1.7 | - | Archived | 2026-02-03 |
 | 39-44 | v2.0 | 35/35 | Complete | 2026-02-05 |
-| 45 | v2.1 | 0/3 | Planned | - |
-| 46 | v2.1 | 0/? | Pending | - |
-| 47 | v2.1 | 0/? | Pending | - |
-| 48 | v2.1 | 0/? | Pending | - |
-| 49 | v2.1 | 0/? | Pending | - |
+| 45-49 | v2.1 | 0/3+ | In Progress | - |
+| 50-52 | v2.2 | 0/? | In Progress | - |
+| 53 | v2.3 | 0/? | Not started | - |
+| 54 | v2.3 | 0/? | Not started | - |
+| 55 | v2.3 | 0/? | Not started | - |
+| 56 | v2.3 | 0/? | Not started | - |
+| 57 | v2.3 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-02-03*
-*Last updated: 2026-02-05 -- Phase 45 planned (3 plans, 3 waves)*
+*Last updated: 2026-02-05 -- v2.3 Brand Deals roadmap added (phases 53-57, 43 requirements); renumbered to avoid conflict with v2.2 trending (phases 50-52)*
