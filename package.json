@@ -55,6 +55,7 @@
     "@types/wcag-contrast": "^3.0.3",
     "eslint": "^9",
     "eslint-config-next": "16.1.5",
+    "pixelmatch": "^6.0.0",
     "pngjs": "^7.0.0",
     "supabase": "^2.74.5",
     "tailwindcss": "^4",
