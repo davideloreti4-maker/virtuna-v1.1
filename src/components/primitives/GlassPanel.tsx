@@ -6,10 +6,21 @@ import { type ReactNode, type CSSProperties } from "react";
 /** Available tint colors for glass panels */
 export type GlassTint = "neutral" | "purple" | "blue" | "pink" | "cyan" | "green" | "orange";
 
+/** Blur intensity levels matching Raycast contexts */
+export type GlassBlur = "none" | "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
+
 export interface GlassPanelProps {
   children: ReactNode;
-  /** Blur intensity: sm (8px), md (12px), lg (20px) */
-  blur?: "sm" | "md" | "lg";
+  /** Blur intensity matching Raycast contexts:
+   * - none: 0px (no blur)
+   * - xs: 2px (feature frames)
+   * - sm: 8px (tooltips, light blur)
+   * - md: 12px (cards, dock) — default
+   * - lg: 20px (footer, heavy surfaces)
+   * - xl: 36px (windows, dropdowns)
+   * - 2xl: 48px (action bars)
+   */
+  blur?: GlassBlur;
   /** Background opacity 0-1, default 0.6 */
   opacity?: number;
   /** Show border glow effect */
@@ -71,6 +82,10 @@ const tintMap: Record<GlassTint, { bg: string; border: string; glow: string }> =
  * Safari-compatible: Uses both backdrop-filter and -webkit-backdrop-filter.
  * Mobile-optimized: Blur is reduced on mobile per performance constraints.
  *
+ * @performance Limit to 2-3 GlassPanel elements with blur visible per viewport.
+ * Each backdrop-filter creates a GPU compositing layer. Too many cause frame drops.
+ * On mobile, blur is automatically reduced to 8px for variants md and above.
+ *
  * @example
  * // Neutral glass
  * <GlassPanel blur="md" opacity={0.7} borderGlow>
@@ -95,11 +110,16 @@ export function GlassPanel({
   as: Component = "div",
 }: GlassPanelProps) {
   // Map blur prop to CSS class (uses globals.css glass-blur-* classes)
-  const blurClass = {
+  const blurMap: Record<GlassBlur, string> = {
+    none: "",
+    xs: "glass-blur-xs",
     sm: "glass-blur-sm",
     md: "glass-blur-md",
     lg: "glass-blur-lg",
-  }[blur];
+    xl: "glass-blur-xl",
+    "2xl": "glass-blur-2xl",
+  };
+  const blurClass = blurMap[blur];
 
   const tintColors = tintMap[tint];
 
