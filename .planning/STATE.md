@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Milestone:** v2.0 — Design System Foundation
 **Phase:** 42 of 44 (Effects & Animation)
-**Plan:** 4 of 6 complete (42-01, 42-02, 42-03, 42-05)
-**Status:** In progress — FadeInUp combined animation created
-**Last activity:** 2026-02-05 — Completed 42-03-PLAN.md
+**Plan:** 5 of 6 complete (42-01, 42-02, 42-03, 42-04, 42-05)
+**Status:** In progress — StaggerReveal + HoverScale motion components created
+**Last activity:** 2026-02-05 — Completed 42-04-PLAN.md
 
-Progress: [########=-] 88%
+Progress: [########=-] 89%
 
 ## Phase 41 Completion Summary
 
@@ -126,6 +126,9 @@ All exports from `@/components/ui`:
 - Phase 42: FadeInUp as prop uses string union type (not React.ElementType) for type safety
 - Phase 42: FadeInUp viewport margin -80px for earlier scroll trigger than FadeIn/SlideUp (-100px)
 - Phase 42: Motion component distance props default to original hardcoded values for backward compat
+- Phase 42: StaggerReveal uses div-only (no dynamic `as` prop) to avoid TypeScript generic complexity
+- Phase 42: HoverScale spring transition: stiffness 400, damping 25 for snappy hover feel
+- Phase 42: Compound component pattern (StaggerReveal.Item) for orchestrated child animations
 
 ## Infrastructure URLs
 
@@ -136,6 +139,6 @@ All exports from `@/components/ui`:
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 42-03-PLAN.md (FadeInUp combined animation + FadeIn/SlideUp distance prop)
-Resume with: Continue Phase 42, remaining plans (04, 06)
-Resume file: .planning/phases/42-effects-animation/42-03-SUMMARY.md
+Stopped at: Completed 42-04-PLAN.md (StaggerReveal + HoverScale motion components)
+Resume with: Continue Phase 42, remaining plan (06)
+Resume file: .planning/phases/42-effects-animation/42-04-SUMMARY.md
