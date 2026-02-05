@@ -11,17 +11,17 @@ See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Milestone:** v2.3 -- Brand Deals & Affiliate Page
 **Phase:** 53 of 57 (Foundation & Tab Shell)
-**Plan:** --
-**Status:** Ready to plan
-**Last activity:** 2026-02-05 -- Roadmap created (5 phases, 43 requirements mapped)
+**Plan:** 01 of 02 (Phase 53)
+**Status:** In progress
+**Last activity:** 2026-02-05 -- Completed 53-01-PLAN.md (data layer & clipboard hook)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] ~8%
 
 ## Phase Overview
 
 | Phase | Name | Requirements | Depends On | Status |
 |-------|------|-------------|------------|--------|
-| 53 | Foundation & Tab Shell | 7 (PAGE-*) | None | Ready to plan |
+| 53 | Foundation & Tab Shell | 7 (PAGE-*) | None | In progress (plan 01/02 done) |
 | 54 | Deals Tab | 14 (DEAL-* + PLSH-01,02) | Phase 53 | Blocked |
 | 55 | Affiliates Tab | 10 (AFFL-*) | Phase 53 | Blocked |
 | 56 | Earnings Tab | 9 (EARN-*) | Phase 53 | Blocked |
@@ -67,6 +67,9 @@ Phase 53 (Foundation)
 - Deal grid cards use solid bg-surface-elevated (not glass) for performance
 - PLSH-01 (solid cards) and PLSH-02 (color semantics) baked into Phase 54 as foundational patterns
 - Phase 57 slimmed to verification-only: loading skeletons, responsive, keyboard a11y
+- [DEC-53-01-01] Use clearbit CDN for brand logos (no local assets)
+- [DEC-53-01-02] Monetary values as numbers, formatted at render time
+- [DEC-53-01-03] Simple setTimeout in clipboard hook (no useRef needed)
 
 ### Key Technical Notes
 - Settings page pattern for URL-synced tabs (server reads searchParams, client orchestrates)
@@ -81,9 +84,9 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Roadmap created with 5 phases (53-57), 43 requirements mapped
+Stopped at: Completed 53-01-PLAN.md (data layer & clipboard hook)
 Resume file: None
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-05 -- Roadmap created, phases renumbered to 53-57 (avoiding v2.2 conflict)*
+*Last updated: 2026-02-05 -- Completed 53-01 (types, mock data, clipboard hook)*
