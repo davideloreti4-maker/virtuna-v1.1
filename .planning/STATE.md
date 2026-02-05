@@ -5,26 +5,27 @@
 See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Core value:** Raycast-quality design system foundation enabling rapid, consistent UI development
-**Current focus:** Phase 41 in progress — Extended Components + Raycast Patterns
+**Current focus:** Phase 41 COMPLETE — Extended Components + Raycast Patterns
 
 ## Current Position
 
 **Milestone:** v2.0 — Design System Foundation
-**Phase:** 41 of 44 (Extended Components + Raycast Patterns) — In progress
-**Plan:** 5 of 6 complete
-**Status:** In progress — ExtensionCard, TestimonialCard, CategoryTabs delivered
-**Last activity:** 2026-02-05 — Completed 41-05-PLAN.md
+**Phase:** 41 of 44 (Extended Components + Raycast Patterns) — COMPLETE
+**Plan:** 6 of 6 complete
+**Status:** Phase complete — All components built, exported, and visually verified
+**Last activity:** 2026-02-05 — Completed 41-06-PLAN.md
 
-Progress: [#####-----] 48%
+Progress: [########--] 87%
 
-## Phase 41 Progress
+## Phase 41 Completion Summary
 
+All 6 plans completed and verified:
 - 41-01: Dialog, Toggle — COMPLETE
 - 41-02: Tabs, Avatar, Divider — COMPLETE
 - 41-03: Select, SearchableSelect — COMPLETE
 - 41-04: Toast, Kbd, ShortcutBadge — COMPLETE
 - 41-05: ExtensionCard, TestimonialCard, CategoryTabs — COMPLETE
-- 41-06: (pending)
+- 41-06: Barrel exports + visual verification — COMPLETE
 
 ### Artifacts Created (Phase 41, Plan 01)
 - `src/components/ui/dialog.tsx` — Dialog with Radix, glass overlay, 5 size variants, focus trap
@@ -47,6 +48,11 @@ Progress: [#####-----] 48%
 - `src/components/ui/extension-card.tsx` — ExtensionCard with 5-theme radial gradient glow, icon/title/description, hover lift
 - `src/components/ui/testimonial-card.tsx` — TestimonialCard with blockquote, avatar/initials, featured glow variant
 - `src/components/ui/category-tabs.tsx` — CategoryTabs composing Tabs with horizontal scroll, icons, counts
+
+### Artifacts Created (Phase 41, Plan 06)
+- `src/components/ui/index.ts` — Updated barrel exports for all Phase 41 components
+- `src/app/(marketing)/ui-showcase/page.tsx` — Extended showcase with 12 Phase 41 demo sections
+- `src/app/(marketing)/ui-showcase/_components/phase-41-demos.tsx` — Client component for interactive demos
 
 ## Phase 40 Completion Summary
 
@@ -108,6 +114,7 @@ All exports from `@/components/ui`:
 - Phase 41: ExtensionCard uses inline style for oklch radial-gradient (too complex for Tailwind)
 - Phase 41: CategoryTabs re-exports TabsContent for convenience consumer imports
 - Phase 41: TestimonialCard uses semantic blockquote with decorative quote mark spans
+- Phase 41: Phase 41 demos extracted to client component for interactive showcase
 
 ## Infrastructure URLs
 
@@ -118,6 +125,6 @@ All exports from `@/components/ui`:
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 41-05-PLAN.md (ExtensionCard, TestimonialCard, CategoryTabs)
-Resume with: Continue Phase 41 — next plan (41-06)
-Resume file: .planning/phases/41-extended-components-raycast-patterns/41-05-SUMMARY.md
+Stopped at: Completed 41-06-PLAN.md (barrel exports + visual verification) — Phase 41 COMPLETE
+Resume with: Begin next phase (42 or beyond)
+Resume file: .planning/phases/41-extended-components-raycast-patterns/41-06-SUMMARY.md
