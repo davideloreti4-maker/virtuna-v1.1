@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Milestone:** v2.0 — Design System Foundation
 **Phase:** 42 of 44 (Effects & Animation)
-**Plan:** 5 of 6 (42-01, 42-02, 42-05 complete)
-**Status:** In progress — Skeleton shimmer animation added
-**Last activity:** 2026-02-05 — Completed 42-05-PLAN.md
+**Plan:** 4 of 6 complete (42-01, 42-02, 42-03, 42-05)
+**Status:** In progress — FadeInUp combined animation created
+**Last activity:** 2026-02-05 — Completed 42-03-PLAN.md
 
-Progress: [########=-] 86%
+Progress: [########=-] 88%
 
 ## Phase 41 Completion Summary
 
@@ -123,6 +123,9 @@ All exports from `@/components/ui`:
 - Phase 42: Effects components in src/components/effects/ (separate from ui/)
 - Phase 42: Skeleton uses inline styles for shimmer gradient (matches GlassSkeleton pattern)
 - Phase 42: motion-reduce handled via Tailwind class overriding inline animation style
+- Phase 42: FadeInUp as prop uses string union type (not React.ElementType) for type safety
+- Phase 42: FadeInUp viewport margin -80px for earlier scroll trigger than FadeIn/SlideUp (-100px)
+- Phase 42: Motion component distance props default to original hardcoded values for backward compat
 
 ## Infrastructure URLs
 
@@ -133,6 +136,6 @@ All exports from `@/components/ui`:
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 42-05-PLAN.md (Skeleton shimmer animation)
-Resume with: Continue Phase 42, remaining plans (03, 04, 06)
-Resume file: .planning/phases/42-effects-animation/42-05-SUMMARY.md
+Stopped at: Completed 42-03-PLAN.md (FadeInUp combined animation + FadeIn/SlideUp distance prop)
+Resume with: Continue Phase 42, remaining plans (04, 06)
+Resume file: .planning/phases/42-effects-animation/42-03-SUMMARY.md
