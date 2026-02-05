@@ -181,14 +181,15 @@ Plans:
   4. Staggered reveal works for lists and grids
   5. Noise texture and chromatic aberration effects available as optional enhancements
 **Plans**: 6 plans
+**Status**: Complete (2026-02-05)
 
 Plans:
-- [ ] 42-01-PLAN.md — GlassPanel blur enhancement (xs through 2xl)
-- [ ] 42-02-PLAN.md — NoiseTexture + ChromaticAberration effects
-- [ ] 42-03-PLAN.md — FadeIn/SlideUp enhance + FadeInUp combined
-- [ ] 42-04-PLAN.md — StaggerReveal + HoverScale motion components
-- [ ] 42-05-PLAN.md — Skeleton shimmer animation
-- [ ] 42-06-PLAN.md — Barrel exports + visual verification showcase
+- [x] 42-01-PLAN.md — GlassPanel blur enhancement (xs through 2xl)
+- [x] 42-02-PLAN.md — NoiseTexture + ChromaticAberration effects
+- [x] 42-03-PLAN.md — FadeIn/SlideUp enhance + FadeInUp combined
+- [x] 42-04-PLAN.md — StaggerReveal + HoverScale motion components
+- [x] 42-05-PLAN.md — Skeleton shimmer animation
+- [x] 42-06-PLAN.md — Barrel exports + visual verification showcase
 
 ---
 
@@ -233,7 +234,7 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44
 | 39. Token Foundation | v2.0 | 4/4 | Complete | 2026-02-03 |
 | 40. Core Components | v2.0 | 5/5 | Complete | 2026-02-03 |
 | 41. Extended Components | v2.0 | 6/6 | Complete | 2026-02-05 |
-| 42. Effects & Animation | v2.0 | 0/TBD | Not started | - |
+| 42. Effects & Animation | v2.0 | 6/6 | Complete | 2026-02-05 |
 | 43. Showcase Enhancement | v2.0 | 0/TBD | Not started | - |
 | 44. Verification & Docs | v2.0 | 0/TBD | Not started | - |
 
@@ -268,4 +269,4 @@ Phases execute in numeric order: 39 → 40 → 41 → 42 → 43 → 44
 
 ---
 *Roadmap created: 2026-02-03*
-*Last updated: 2026-02-05 — Phase 41 Extended Components complete (6/6 plans, verified)*
+*Last updated: 2026-02-05 — Phase 42 Effects & Animation complete (6/6 plans, verified)*

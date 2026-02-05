@@ -5,17 +5,53 @@
 See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Core value:** Raycast-quality design system foundation enabling rapid, consistent UI development
-**Current focus:** Phase 42 IN PROGRESS — Effects & Animation
+**Current focus:** Phase 42 COMPLETE — Effects & Animation
 
 ## Current Position
 
 **Milestone:** v2.0 — Design System Foundation
-**Phase:** 42 of 44 (Effects & Animation)
-**Plan:** 5 of 6 complete (42-01, 42-02, 42-03, 42-04, 42-05)
-**Status:** In progress — StaggerReveal + HoverScale motion components created
-**Last activity:** 2026-02-05 — Completed 42-04-PLAN.md
+**Phase:** 42 of 44 (Effects & Animation) — COMPLETE
+**Plan:** 6 of 6 complete (all plans verified)
+**Status:** Phase 42 verified — 5/5 must-haves passed
+**Last activity:** 2026-02-05 — Phase 42 complete
 
-Progress: [########=-] 89%
+Progress: [#########-] 93%
+
+## Phase 42 Completion Summary
+
+All 6 plans completed and verified:
+- 42-01: GlassPanel blur enhancement (7 levels: none through 2xl) — COMPLETE
+- 42-02: NoiseTexture + ChromaticAberration effects — COMPLETE
+- 42-03: FadeInUp + distance props for FadeIn/SlideUp — COMPLETE
+- 42-04: StaggerReveal + HoverScale motion components — COMPLETE
+- 42-05: Skeleton shimmer animation — COMPLETE
+- 42-06: Barrel exports + visual verification + color accuracy — COMPLETE
+
+### Artifacts Created (Phase 42)
+- `src/components/primitives/GlassPanel.tsx` — Enhanced with 7 blur levels, GlassBlur type export
+- `src/components/effects/noise-texture.tsx` — SVG feTurbulence grain overlay, useId() for SSR
+- `src/components/effects/chromatic-aberration.tsx` — CSS textShadow RGB split effect
+- `src/components/motion/fade-in-up.tsx` — Combined fade + translateY scroll reveal
+- `src/components/motion/stagger-reveal.tsx` — Compound component for orchestrated stagger
+- `src/components/motion/hover-scale.tsx` — Spring-based micro-interaction wrapper
+- `src/components/ui/skeleton.tsx` — Shimmer animation with moving gradient
+- `src/app/globals.css` — Color tokens recalibrated to exact Raycast hex/rgba values
+- `src/app/(marketing)/ui-showcase/_components/phase-42-demos.tsx` — 7 demo sections
+
+### Effects & Motion Library
+Exports from `@/components/motion`:
+- FadeIn, FadeInProps, SlideUp, SlideUpProps (enhanced with distance prop)
+- FadeInUp, FadeInUpProps
+- StaggerReveal, StaggerRevealProps
+- HoverScale, HoverScaleProps
+- FrozenRouter, PageTransition
+
+Exports from `@/components/effects`:
+- NoiseTexture, NoiseTextureProps
+- ChromaticAberration, ChromaticAberrationProps
+
+Exports from `@/components/primitives`:
+- GlassPanel, GlassPanelProps, GlassTint, GlassBlur
 
 ## Phase 41 Completion Summary
 
@@ -26,33 +62,6 @@ All 6 plans completed and verified:
 - 41-04: Toast, Kbd, ShortcutBadge — COMPLETE
 - 41-05: ExtensionCard, TestimonialCard, CategoryTabs — COMPLETE
 - 41-06: Barrel exports + visual verification — COMPLETE
-
-### Artifacts Created (Phase 41, Plan 01)
-- `src/components/ui/dialog.tsx` — Dialog with Radix, glass overlay, 5 size variants, focus trap
-- `src/components/ui/toggle.tsx` — Toggle/Switch with Radix, coral accent + glow, 3 sizes
-
-### Artifacts Created (Phase 41, Plan 02)
-- `src/components/ui/tabs.tsx` — Tabs with Radix, Raycast glass pill styling, size variants
-- `src/components/ui/avatar.tsx` — Avatar with Radix image fallback, 5 sizes, AvatarGroup with +N
-- `src/components/ui/divider.tsx` — Horizontal, vertical, labeled variants with ARIA separator
-
-### Artifacts Created (Phase 41, Plan 03)
-- `src/components/ui/select.tsx` — Select and SearchableSelect with keyboard nav, CVA sizes, option groups, glass dropdown
-
-### Artifacts Created (Phase 41, Plan 04)
-- `src/components/ui/toast.tsx` — Toast with ToastProvider, useToast hook, 5 variants, auto-dismiss progress bar, glass styling
-- `src/components/ui/kbd.tsx` — Kbd keycap with exact Raycast 4-layer 3D shadow, CVA sizes, highlighted variant
-- `src/components/ui/shortcut-badge.tsx` — ShortcutBadge composing Kbd with 18 modifier symbol mappings
-
-### Artifacts Created (Phase 41, Plan 05)
-- `src/components/ui/extension-card.tsx` — ExtensionCard with 5-theme radial gradient glow, icon/title/description, hover lift
-- `src/components/ui/testimonial-card.tsx` — TestimonialCard with blockquote, avatar/initials, featured glow variant
-- `src/components/ui/category-tabs.tsx` — CategoryTabs composing Tabs with horizontal scroll, icons, counts
-
-### Artifacts Created (Phase 41, Plan 06)
-- `src/components/ui/index.ts` — Updated barrel exports for all Phase 41 components
-- `src/app/(marketing)/ui-showcase/page.tsx` — Extended showcase with 12 Phase 41 demo sections
-- `src/app/(marketing)/ui-showcase/_components/phase-41-demos.tsx` — Client component for interactive demos
 
 ## Phase 40 Completion Summary
 
@@ -72,6 +81,7 @@ All exports from `@/components/ui`:
 - Heading, Text, Caption, Code
 - Spinner, SpinnerProps
 - Icon, IconProps
+- Skeleton
 - Tabs, TabsList, TabsTrigger, TabsContent
 - Avatar, AvatarGroup, AvatarRoot, AvatarImage, AvatarFallback, AvatarProps
 - Divider, DividerProps
@@ -129,6 +139,8 @@ All exports from `@/components/ui`:
 - Phase 42: StaggerReveal uses div-only (no dynamic `as` prop) to avoid TypeScript generic complexity
 - Phase 42: HoverScale spring transition: stiffness 400, damping 25 for snappy hover feel
 - Phase 42: Compound component pattern (StaggerReveal.Item) for orchestrated child animations
+- Phase 42: Dark gray tokens use exact hex values (not oklch) — Tailwind v4 @theme oklch compilation inaccurate for low lightness
+- Phase 42: Border/state tokens use rgba() for precision — Tailwind compiles oklch alpha correctly but rgba is more predictable
 
 ## Infrastructure URLs
 
@@ -139,6 +151,6 @@ All exports from `@/components/ui`:
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 42-04-PLAN.md (StaggerReveal + HoverScale motion components)
-Resume with: Continue Phase 42, remaining plan (06)
-Resume file: .planning/phases/42-effects-animation/42-04-SUMMARY.md
+Stopped at: Phase 42 complete, verified
+Resume with: Phase 43 (Showcase Enhancement)
+Resume file: .planning/phases/42-effects-animation/42-VERIFICATION.md

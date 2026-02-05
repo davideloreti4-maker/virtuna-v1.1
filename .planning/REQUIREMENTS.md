@@ -138,22 +138,22 @@ Requirements for design system foundation. Each maps to roadmap phases.
 
 ### Effects — Glassmorphism (GLS)
 
-- [ ] **GLS-01**: GlassPanel base component with configurable blur (sm, md, lg)
-- [ ] **GLS-02**: Glassmorphism opacity configurable (0.1-0.3 range)
-- [ ] **GLS-03**: Glass border effect (semi-transparent white border)
-- [ ] **GLS-04**: Performance optimized (max 2-3 glass elements per viewport)
-- [ ] **GLS-05**: Mobile blur reduced (6-8px vs 12-20px desktop)
-- [ ] **GLS-06**: Noise texture overlay for tactile feel (subtle grain effect)
-- [ ] **GLS-07**: Chromatic aberration effect for premium glass (optional, configurable)
+- [x] **GLS-01**: GlassPanel base component with configurable blur (sm, md, lg)
+- [x] **GLS-02**: Glassmorphism opacity configurable (0.1-0.3 range)
+- [x] **GLS-03**: Glass border effect (semi-transparent white border)
+- [x] **GLS-04**: Performance optimized (max 2-3 glass elements per viewport)
+- [x] **GLS-05**: Mobile blur reduced (6-8px vs 12-20px desktop)
+- [x] **GLS-06**: Noise texture overlay for tactile feel (subtle grain effect)
+- [x] **GLS-07**: Chromatic aberration effect for premium glass (optional, configurable)
 
 ### Effects — Animation (EFX)
 
-- [ ] **EFX-01**: FadeIn animation component
-- [ ] **EFX-02**: SlideUp animation component
-- [ ] **EFX-03**: FadeInUp combined animation (Raycast signature)
-- [ ] **EFX-04**: Staggered reveal for lists/grids
-- [ ] **EFX-05**: Hover scale micro-interaction
-- [ ] **EFX-06**: Loading skeleton animation
+- [x] **EFX-01**: FadeIn animation component
+- [x] **EFX-02**: SlideUp animation component
+- [x] **EFX-03**: FadeInUp combined animation (Raycast signature)
+- [x] **EFX-04**: Staggered reveal for lists/grids
+- [x] **EFX-05**: Hover scale micro-interaction
+- [x] **EFX-06**: Loading skeleton animation
 
 ### Showcase (SHW)
 
@@ -306,19 +306,19 @@ Deferred to v2.1+:
 | RAY-03 | Phase 41 | Pending |
 | RAY-04 | Phase 41 | Pending |
 | RAY-05 | Phase 41 | Pending |
-| GLS-01 | Phase 42 | Pending |
-| GLS-02 | Phase 42 | Pending |
-| GLS-03 | Phase 42 | Pending |
-| GLS-04 | Phase 42 | Pending |
-| GLS-05 | Phase 42 | Pending |
-| GLS-06 | Phase 42 | Pending |
-| GLS-07 | Phase 42 | Pending |
-| EFX-01 | Phase 42 | Pending |
-| EFX-02 | Phase 42 | Pending |
-| EFX-03 | Phase 42 | Pending |
-| EFX-04 | Phase 42 | Pending |
-| EFX-05 | Phase 42 | Pending |
-| EFX-06 | Phase 42 | Pending |
+| GLS-01 | Phase 42 | Complete |
+| GLS-02 | Phase 42 | Complete |
+| GLS-03 | Phase 42 | Complete |
+| GLS-04 | Phase 42 | Complete |
+| GLS-05 | Phase 42 | Complete |
+| GLS-06 | Phase 42 | Complete |
+| GLS-07 | Phase 42 | Complete |
+| EFX-01 | Phase 42 | Complete |
+| EFX-02 | Phase 42 | Complete |
+| EFX-03 | Phase 42 | Complete |
+| EFX-04 | Phase 42 | Complete |
+| EFX-05 | Phase 42 | Complete |
+| EFX-06 | Phase 42 | Complete |
 | SHW-01 | Phase 43 | Pending |
 | SHW-02 | Phase 43 | Pending |
 | SHW-03 | Phase 43 | Pending |
