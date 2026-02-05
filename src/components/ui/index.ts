@@ -29,6 +29,17 @@ export type { IconProps } from "./icon";
 // Skeleton (existing)
 export { Skeleton } from "./skeleton";
 
+// Tabs
+export { Tabs, TabsList, TabsTrigger, TabsContent } from "./tabs";
+
+// Avatar
+export { Avatar, AvatarGroup, AvatarRoot, AvatarImage, AvatarFallback } from "./avatar";
+export type { AvatarProps, AvatarGroupProps } from "./avatar";
+
+// Divider
+export { Divider } from "./divider";
+export type { DividerProps } from "./divider";
+
 // Accordion (existing)
 export {
   AccordionRoot,
