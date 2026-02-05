@@ -157,16 +157,16 @@ Requirements for design system foundation. Each maps to roadmap phases.
 
 ### Showcase (SHW)
 
-- [ ] **SHW-01**: /showcase main page with token visualization
-- [ ] **SHW-02**: /showcase/inputs page (Input, Select, Textarea)
-- [ ] **SHW-03**: /showcase/navigation page (Tabs, Breadcrumbs)
-- [ ] **SHW-04**: /showcase/feedback page (Toast, Modal, Progress, Alert)
-- [ ] **SHW-05**: /showcase/data-display page (Badge, Avatar, Skeleton)
-- [ ] **SHW-06**: /showcase/layout page (Container, GlassPanel, GlassCard, Divider)
-- [ ] **SHW-07**: /showcase/utilities page (Motion components, Gradients, TrafficLights)
-- [ ] **SHW-08**: Each showcase page shows all component variants
-- [ ] **SHW-09**: Each showcase page shows all component states
-- [ ] **SHW-10**: Showcase follows consistent section pattern
+- [x] **SHW-01**: /showcase main page with token visualization
+- [x] **SHW-02**: /showcase/inputs page (Input, Select, Textarea)
+- [x] **SHW-03**: /showcase/navigation page (Tabs, Breadcrumbs)
+- [x] **SHW-04**: /showcase/feedback page (Toast, Modal, Progress, Alert)
+- [x] **SHW-05**: /showcase/data-display page (Badge, Avatar, Skeleton)
+- [x] **SHW-06**: /showcase/layout page (Container, GlassPanel, GlassCard, Divider)
+- [x] **SHW-07**: /showcase/utilities page (Motion components, Gradients, TrafficLights)
+- [x] **SHW-08**: Each showcase page shows all component variants
+- [x] **SHW-09**: Each showcase page shows all component states
+- [x] **SHW-10**: Showcase follows consistent section pattern
 
 ### Verification (VER)
 
@@ -319,16 +319,16 @@ Deferred to v2.1+:
 | EFX-04 | Phase 42 | Complete |
 | EFX-05 | Phase 42 | Complete |
 | EFX-06 | Phase 42 | Complete |
-| SHW-01 | Phase 43 | Pending |
-| SHW-02 | Phase 43 | Pending |
-| SHW-03 | Phase 43 | Pending |
-| SHW-04 | Phase 43 | Pending |
-| SHW-05 | Phase 43 | Pending |
-| SHW-06 | Phase 43 | Pending |
-| SHW-07 | Phase 43 | Pending |
-| SHW-08 | Phase 43 | Pending |
-| SHW-09 | Phase 43 | Pending |
-| SHW-10 | Phase 43 | Pending |
+| SHW-01 | Phase 43 | Complete |
+| SHW-02 | Phase 43 | Complete |
+| SHW-03 | Phase 43 | Complete |
+| SHW-04 | Phase 43 | Complete |
+| SHW-05 | Phase 43 | Complete |
+| SHW-06 | Phase 43 | Complete |
+| SHW-07 | Phase 43 | Complete |
+| SHW-08 | Phase 43 | Complete |
+| SHW-09 | Phase 43 | Complete |
+| SHW-10 | Phase 43 | Complete |
 | VER-01 | Phase 44 | Pending |
 | VER-02 | Phase 44 | Pending |
 | VER-03 | Phase 44 | Pending |
