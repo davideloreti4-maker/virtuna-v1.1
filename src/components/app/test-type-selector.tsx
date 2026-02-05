@@ -1,10 +1,19 @@
 "use client";
 
-import * as Dialog from "@radix-ui/react-dialog";
-import { X, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import * as Icons from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { TestType } from "@/types/test";
+import { TEST_TYPES } from "@/lib/test-types";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { GlassCard } from "@/components/primitives/GlassCard";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 interface TestTypeSelectorProps {
   open: boolean;
@@ -30,6 +39,52 @@ function TikTokLogo({ className }: { className?: string }) {
   );
 }
 
+/**
+ * Icon mapping for test types.
+ * Maps TestType id to the appropriate icon component or custom SVG.
+ */
+const ICON_MAP: Record<
+  TestType,
+  { icon?: React.ComponentType<{ className?: string }>; custom?: React.ReactNode }
+> = {
+  survey: { icon: Icons.ClipboardList },
+  article: { icon: Icons.FileText },
+  "website-content": { icon: Icons.Globe },
+  advertisement: { icon: Icons.Megaphone },
+  "linkedin-post": { icon: Icons.Linkedin },
+  "instagram-post": { icon: Icons.Instagram },
+  "x-post": { custom: <XLogo className="h-8 w-8" /> },
+  "tiktok-script": { custom: <TikTokLogo className="h-8 w-8" /> },
+  "email-subject-line": { icon: Icons.Mail },
+  email: { icon: Icons.Send },
+  "product-proposition": { icon: Icons.Package },
+};
+
+/**
+ * Badge configuration for specific test types.
+ */
+const BADGE_MAP: Partial<
+  Record<TestType, { label: string; variant: "info" | "success" | "warning" | "error" | "default" }>
+> = {
+  survey: { label: "Popular", variant: "info" },
+  "tiktok-script": { label: "New", variant: "info" },
+};
+
+/** All test type ids in display order */
+const TEST_TYPE_ORDER: TestType[] = [
+  "survey",
+  "article",
+  "website-content",
+  "advertisement",
+  "linkedin-post",
+  "instagram-post",
+  "x-post",
+  "tiktok-script",
+  "email-subject-line",
+  "email",
+  "product-proposition",
+];
+
 export function TestTypeSelector({
   open,
   onOpenChange,
@@ -44,188 +99,78 @@ export function TestTypeSelector({
   };
 
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <Dialog.Content
-          className={cn(
-            "fixed left-1/2 top-1/2 z-50 w-[770px] -translate-x-1/2 -translate-y-1/2",
-            "rounded-lg border border-[rgb(40,40,40)] bg-[rgba(6,6,6,0.667)] p-3 shadow-[0_4px_10px_rgba(0,0,0,0.5)] backdrop-blur-[8px]",
-            "data-[state=open]:animate-in data-[state=closed]:animate-out",
-            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-            "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
-          )}
-        >
-          {/* Close button */}
-          <Dialog.Close asChild>
-            <button
-              type="button"
-              className="absolute right-3 top-3 text-white/60 transition-colors hover:text-white"
-              aria-label="Close"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </Dialog.Close>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent size="xl" className="max-w-3xl">
+        <DialogHeader className="text-center">
+          <DialogTitle>What would you like to simulate?</DialogTitle>
+          <DialogDescription>
+            Select a test type to begin
+          </DialogDescription>
+        </DialogHeader>
 
-          {/* Title */}
-          <Dialog.Title className="py-3 text-center text-[18px] font-semibold leading-[30.6px] text-white">
-            What would you like to simulate?
-          </Dialog.Title>
+        {/* Responsive card grid */}
+        <div className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3">
+          {TEST_TYPE_ORDER.map((typeId) => {
+            const config = TEST_TYPES[typeId];
+            const iconEntry = ICON_MAP[typeId];
+            const badge = BADGE_MAP[typeId];
+            const IconComponent = iconEntry.icon;
 
-          {/* 3-column layout matching Societies.io exactly */}
-          <div className="grid grid-cols-3 gap-6 px-3">
-            {/* Column 1: Survey + Marketing Content */}
-            <div className="space-y-4">
-              {/* Survey */}
-              <div>
-                <p className="mb-1.5 text-xs font-normal uppercase leading-[18px] text-[rgb(184,184,184)]">
-                  Survey
-                </p>
-                <MenuItem
-                  icon={Icons.ClipboardList}
-                  label="Survey"
-                  onClick={() => handleSelectType("survey")}
-                />
-              </div>
+            return (
+              <GlassCard
+                key={typeId}
+                hover="lift"
+                padding="md"
+                onClick={() => handleSelectType(typeId)}
+              >
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-start justify-between">
+                    {/* Icon */}
+                    <span className="text-foreground-secondary">
+                      {iconEntry.custom ? (
+                        <span className="flex h-8 w-8 items-center justify-center">
+                          {iconEntry.custom}
+                        </span>
+                      ) : IconComponent ? (
+                        <IconComponent className="h-8 w-8" />
+                      ) : null}
+                    </span>
 
-              {/* Marketing Content */}
-              <div>
-                <p className="mb-1.5 text-xs font-normal uppercase leading-[18px] text-[rgb(184,184,184)]">
-                  Marketing Content
-                </p>
-                <div className="space-y-0.5">
-                  <MenuItem
-                    icon={Icons.Pencil}
-                    label="Article"
-                    onClick={() => handleSelectType("article")}
-                  />
-                  <MenuItem
-                    icon={Icons.AppWindow}
-                    label="Website Content"
-                    onClick={() => handleSelectType("website-content")}
-                  />
-                  <MenuItem
-                    icon={Icons.Megaphone}
-                    label="Advertisement"
-                    onClick={() => handleSelectType("advertisement")}
-                  />
+                    {/* Optional badge */}
+                    {badge && (
+                      <Badge variant={badge.variant} size="sm">
+                        {badge.label}
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Title */}
+                  <span className="font-semibold text-foreground">
+                    {config.name}
+                  </span>
+
+                  {/* Description */}
+                  <span className="line-clamp-1 text-sm text-foreground-secondary">
+                    {config.description}
+                  </span>
                 </div>
-              </div>
-            </div>
+              </GlassCard>
+            );
+          })}
+        </div>
 
-            {/* Column 2: Social Media Posts */}
-            <div>
-              <p className="mb-1.5 text-xs font-normal uppercase leading-[18px] text-[rgb(184,184,184)]">
-                Social Media Posts
-              </p>
-              <div className="space-y-0.5">
-                <MenuItem
-                  icon={Icons.Linkedin}
-                  label="LinkedIn Post"
-                  onClick={() => handleSelectType("linkedin-post")}
-                />
-                <MenuItem
-                  icon={Icons.Instagram}
-                  label="Instagram Post"
-                  onClick={() => handleSelectType("instagram-post")}
-                />
-                <MenuItem
-                  customIcon={<XLogo className="h-5 w-5" />}
-                  label="X Post"
-                  onClick={() => handleSelectType("x-post")}
-                />
-                <MenuItem
-                  customIcon={<TikTokLogo className="h-5 w-5" />}
-                  label="TikTok Script"
-                  onClick={() => handleSelectType("tiktok-script")}
-                />
-              </div>
-            </div>
-
-            {/* Column 3: Communication + Product */}
-            <div className="space-y-4">
-              {/* Communication */}
-              <div>
-                <p className="mb-1.5 text-xs font-normal uppercase leading-[18px] text-[rgb(184,184,184)]">
-                  Communication
-                </p>
-                <div className="space-y-0.5">
-                  <MenuItem
-                    icon={Icons.Mail}
-                    label="Email Subject Line"
-                    onClick={() => handleSelectType("email-subject-line")}
-                  />
-                  <MenuItem
-                    icon={Icons.Mail}
-                    label="Email"
-                    onClick={() => handleSelectType("email")}
-                  />
-                </div>
-              </div>
-
-              {/* Product */}
-              <div>
-                <p className="mb-1.5 text-xs font-normal uppercase leading-[18px] text-[rgb(184,184,184)]">
-                  Product
-                </p>
-                <MenuItem
-                  icon={Icons.Lightbulb}
-                  label="Product Proposition"
-                  onClick={() => handleSelectType("product-proposition")}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Footer separator and Request button */}
-          <div className="border-t border-[rgb(40,40,40)] pt-3">
-            <button
-              type="button"
-              onClick={handleRequestNewContext}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-[rgb(221,221,221)] transition-colors hover:text-white"
-            >
-              <Plus className="h-4 w-4" />
-              Request a new context
-            </button>
-          </div>
-
-          <Dialog.Description className="sr-only">
-            Select a test type to simulate content with your target society
-          </Dialog.Description>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
-  );
-}
-
-/**
- * Menu item component matching Societies.io exactly
- */
-function MenuItem({
-  icon: Icon,
-  customIcon,
-  label,
-  onClick,
-}: {
-  icon?: React.ComponentType<{ className?: string }>;
-  customIcon?: React.ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex h-[52px] w-full items-center gap-3 rounded-lg p-1.5 text-left transition-colors hover:bg-white/5"
-    >
-      {customIcon ? (
-        <span className="flex h-6 w-6 items-center justify-center text-white">
-          {customIcon}
-        </span>
-      ) : Icon ? (
-        <Icon className="h-6 w-6 text-white" />
-      ) : null}
-      <span className="text-sm text-white">{label}</span>
-    </button>
+        {/* Footer with request button */}
+        <div className="border-t border-border px-6 py-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRequestNewContext}
+          >
+            <Plus className="h-4 w-4" />
+            Request a new context
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
