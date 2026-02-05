@@ -1,42 +1,57 @@
 "use client";
 
+import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
+
+import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
+import { Text } from "@/components/ui/typography";
 import { cn } from "@/lib/utils";
-import type { LucideIcon } from "lucide-react";
 
 interface SidebarNavItemProps {
-  icon: LucideIcon;
+  icon: PhosphorIcon;
   label: string;
+  isActive?: boolean;
   onClick?: () => void;
   className?: string;
 }
 
 /**
- * Reusable navigation item for sidebar bottom menu.
- * Displays label on the left and icon on the right.
+ * Navigation item for sidebar menus.
+ * Displays icon-left, label-right layout using Button ghost + Icon + Text.
  *
- * Styling from reference:
- * - Full width flex with space-between
- * - Text: zinc-400, hover: white
- * - Icon: 18px
- * - Padding: py-3 (12px)
+ * Active state: filled background (bg-active) with foreground text color
+ * and icon weight changes to "fill" for visual emphasis.
  */
 export function SidebarNavItem({
-  icon: Icon,
+  icon,
   label,
+  isActive = false,
   onClick,
   className,
 }: SidebarNavItemProps) {
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="sm"
       onClick={onClick}
       className={cn(
-        "flex w-full items-center justify-between py-2.5 text-sm text-zinc-400 transition-colors hover:text-white",
+        "w-full justify-start gap-3",
+        isActive
+          ? "bg-active text-foreground"
+          : "text-foreground-secondary",
         className
       )}
     >
-      <span>{label}</span>
-      <Icon className="h-4 w-4 stroke-[1.5]" />
-    </button>
+      <Icon
+        icon={icon}
+        size={20}
+        weight={isActive ? "fill" : "regular"}
+      />
+      <Text as="span" size="sm" className={cn(
+        isActive ? "text-foreground" : "text-foreground-secondary",
+      )}>
+        {label}
+      </Text>
+    </Button>
   );
 }

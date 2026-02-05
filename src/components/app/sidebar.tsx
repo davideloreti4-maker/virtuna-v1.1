@@ -1,105 +1,116 @@
 "use client";
 
 import { useState } from "react";
-import { cn } from "@/lib/utils";
-import { SidebarNavItem } from "./sidebar-nav-item";
-import { SocietySelector } from "./society-selector";
-import { ViewSelector } from "./view-selector";
-import { LeaveFeedbackModal } from "./leave-feedback-modal";
 import {
+  Lightbulb,
+  TrendUp,
+  Briefcase,
   Plus,
   SlidersHorizontal,
-  MessageSquareMore,
+  ChatCircleDots,
   BookOpen,
-  LogOut,
-  Columns2,
-  X,
-} from "lucide-react";
+  SignOut,
+  SidebarSimple,
+} from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSocietyStore } from "@/stores/society-store";
+
+import { GlassPanel } from "@/components/primitives";
+import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
+import { Text, Caption } from "@/components/ui/typography";
+import { cn } from "@/lib/utils";
+import { useSidebarStore } from "@/stores/sidebar-store";
 import { useTestStore } from "@/stores/test-store";
+
+import { LeaveFeedbackModal } from "./leave-feedback-modal";
+import { SidebarNavItem } from "./sidebar-nav-item";
 import { TestHistoryList } from "./test-history-list";
 
-interface SidebarProps {
-  mobileOpen?: boolean;
-  onMobileOpenChange?: (open: boolean) => void;
-  className?: string;
-}
+const navItems = [
+  { label: "Content Intelligence", icon: Lightbulb, id: "content-intelligence" },
+  { label: "Trending Feed", icon: TrendUp, id: "trending-feed" },
+  { label: "Brand Deals", icon: Briefcase, id: "brand-deals" },
+] as const;
+
+const bottomNavItems = [
+  { label: "Manage Plan", icon: SlidersHorizontal, id: "manage-plan" },
+  { label: "Leave Feedback", icon: ChatCircleDots, id: "leave-feedback" },
+  { label: "Product Guide", icon: BookOpen, id: "product-guide" },
+  { label: "Log Out", icon: SignOut, id: "log-out" },
+] as const;
 
 /**
  * Main sidebar component for the app dashboard.
+ *
+ * Renders as a floating glassmorphic panel using GlassPanel primitive,
+ * inset 12px from viewport edges. Reads open/close state from useSidebarStore.
+ *
+ * Navigation uses SidebarNavItem (Button ghost + Icon + Text).
+ * SocietySelector and ViewSelector have been removed.
  */
-export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarProps) {
+export function Sidebar() {
   const router = useRouter();
+  const { isOpen, close } = useSidebarStore();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-
-  // Get store state
-  const store = useSocietyStore();
-  // Note: store provides society state if needed (store.societies, store.selectedSocietyId)
-  void store; // Suppress unused warning - store will be used for future features
-
-  const handleLogout = () => {
-    router.push("/");
-  };
-
-  const handleManagePlan = () => {
-    router.push("/settings?tab=billing");
-    onMobileOpenChange?.(false); // Close mobile drawer
-  };
-
-  const handleFeedback = () => {
-    setFeedbackOpen(true);
-  };
-
-  const handleProductGuide = () => {
-    window.open("https://docs.societies.io", "_blank");
-  };
+  const [activeNav, setActiveNav] = useState("content-intelligence");
 
   const reset = useTestStore((s) => s.reset);
   const setStatus = useTestStore((s) => s.setStatus);
+  const viewResult = useTestStore((s) => s.viewResult);
 
   const handleCreateTest = () => {
-    reset(); // Clear any viewing state
-    setStatus("selecting-type"); // Open type selector
+    reset();
+    setStatus("selecting-type");
   };
-
-  const viewResult = useTestStore((s) => s.viewResult);
 
   const handleViewTest = (testId: string) => {
     viewResult(testId);
   };
 
+  const handleBottomNav = (id: string) => {
+    switch (id) {
+      case "manage-plan":
+        router.push("/settings?tab=billing");
+        break;
+      case "leave-feedback":
+        setFeedbackOpen(true);
+        break;
+      case "product-guide":
+        window.open("https://docs.societies.io", "_blank");
+        break;
+      case "log-out":
+        router.push("/");
+        break;
+    }
+  };
+
   return (
     <>
-      {/* Mobile overlay */}
-      {mobileOpen && (
+      {/* Mobile overlay - no backdrop-filter (MOBL-03 budget) */}
+      {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
-          onClick={() => onMobileOpenChange?.(false)}
+          className="fixed inset-0 z-[calc(var(--z-sidebar)-1)] bg-black/50 md:hidden"
+          onClick={close}
           aria-hidden="true"
         />
       )}
 
-      <aside
+      <GlassPanel
+        as="aside"
+        blur="lg"
+        opacity={0.7}
+        borderGlow
+        tint="neutral"
         className={cn(
-          "fixed left-0 top-0 z-50 h-screen w-[240px] flex-col border-r border-[rgb(40,40,40)] bg-[rgba(21,21,21,0.31)] p-4 backdrop-blur-[14px] transition-transform duration-200",
-          "md:static md:translate-x-0 md:flex md:shrink-0",
-          mobileOpen ? "flex translate-x-0" : "hidden -translate-x-full",
-          className
+          "fixed top-3 left-3 bottom-3 z-[var(--z-sidebar)] w-[300px]",
+          "flex flex-col overflow-hidden",
+          "transition-transform duration-300 ease-[var(--ease-out-cubic)]",
+          isOpen ? "translate-x-0" : "-translate-x-[calc(100%+12px)]",
         )}
       >
-        {/* Mobile close button */}
-        <button
-          className="absolute right-4 top-4 flex min-h-[44px] min-w-[44px] items-center justify-center text-zinc-400 hover:text-white md:hidden"
-          onClick={() => onMobileOpenChange?.(false)}
-          aria-label="Close menu"
-        >
-          <X className="h-5 w-5" />
-        </button>
-
-        {/* Header row: Logo + Collapse button */}
-        <div className="flex items-center justify-between">
+        {/* Header: Logo + Collapse */}
+        <div className="flex items-center justify-between px-4 pt-4 pb-1">
           <Link href="/" className="flex items-center">
             <svg
               width="24"
@@ -117,81 +128,73 @@ export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarPr
               />
             </svg>
           </Link>
-          <button
-            type="button"
-            className="text-zinc-500 transition-colors hover:text-zinc-400"
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={close}
             aria-label="Collapse sidebar"
+            className="text-foreground-muted hover:text-foreground"
           >
-            <Columns2 className="h-5 w-5" />
-          </button>
+            <Icon icon={SidebarSimple} size={20} />
+          </Button>
         </div>
 
-        {/* Society selector section */}
-        <div className="mt-6">
-          <label className="mb-2 block text-xs font-normal text-[rgb(153,163,169)]">
-            Current Society
-          </label>
-          <SocietySelector />
-        </div>
+        {/* Separator */}
+        <div className="mx-4 my-2 border-t border-border-glass" />
 
-        {/* View selector section */}
-        <div className="mt-4">
-          <label className="mb-2 block text-xs font-normal text-[rgb(153,163,169)]">
-            Current View
-          </label>
-          <ViewSelector />
-        </div>
+        {/* Navigation items */}
+        <nav className="flex flex-col gap-0.5 px-2">
+          {navItems.map((item) => (
+            <SidebarNavItem
+              key={item.id}
+              icon={item.icon}
+              label={item.label}
+              isActive={activeNav === item.id}
+              onClick={() => setActiveNav(item.id)}
+            />
+          ))}
+        </nav>
 
-        {/* Separator before create button */}
-        <div className="mt-4 border-t border-[rgb(40,40,40)]" />
+        {/* Separator */}
+        <div className="mx-4 my-2 border-t border-border-glass" />
 
         {/* Create new test button */}
         <button
           type="button"
           onClick={handleCreateTest}
-          className="flex w-full items-center justify-between py-3 text-sm text-[rgb(184,184,184)] transition-colors hover:text-white"
+          className="mx-3 flex w-auto items-center justify-between text-sm text-foreground-secondary transition-colors hover:text-foreground"
         >
-          <span>Create a new test</span>
-          <Plus className="h-4 w-4" />
+          <Text as="span" size="sm" className="text-inherit">
+            Create a new test
+          </Text>
+          <Icon icon={Plus} size={16} className="text-inherit" />
         </button>
 
-        {/* Test History Section */}
-        <div className="mt-4 flex flex-1 flex-col overflow-hidden">
+        {/* Test history */}
+        <div className="mt-2 flex flex-1 flex-col overflow-hidden px-2">
           <div className="flex-1 overflow-y-auto">
             <TestHistoryList onSelectTest={handleViewTest} />
           </div>
         </div>
 
-        {/* Separator line */}
-        <div className="border-t border-[rgb(40,40,40)]" />
+        {/* Separator */}
+        <div className="mx-4 border-t border-border-glass" />
 
-        {/* Bottom nav items */}
-        <nav className="mt-2 space-y-0.5">
-          <SidebarNavItem
-            label="Manage plan"
-            icon={SlidersHorizontal}
-            onClick={handleManagePlan}
-          />
-          <SidebarNavItem
-            label="Leave Feedback"
-            icon={MessageSquareMore}
-            onClick={handleFeedback}
-          />
-          <SidebarNavItem
-            label="Product Guide"
-            icon={BookOpen}
-            onClick={handleProductGuide}
-          />
-          <SidebarNavItem
-            label="Log Out"
-            icon={LogOut}
-            onClick={handleLogout}
-          />
+        {/* Bottom navigation */}
+        <nav className="flex flex-col gap-0.5 p-2">
+          {bottomNavItems.map((item) => (
+            <SidebarNavItem
+              key={item.id}
+              icon={item.icon}
+              label={item.label}
+              onClick={() => handleBottomNav(item.id)}
+            />
+          ))}
         </nav>
 
         {/* Version text */}
-        <p className="mt-2 text-center text-xs text-[rgb(101,101,101)]">Version 2.1</p>
-      </aside>
+        <Caption className="mb-3 text-center">Version 2.1</Caption>
+      </GlassPanel>
 
       {/* Leave Feedback Modal - sibling pattern */}
       <LeaveFeedbackModal open={feedbackOpen} onOpenChange={setFeedbackOpen} />
