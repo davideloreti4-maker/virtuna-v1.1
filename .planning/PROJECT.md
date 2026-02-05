@@ -1,193 +1,86 @@
-# Virtuna v1.1
+# Virtuna
 
-## Vision
-A pixel-perfect, AI-verified clone of societies.io (landing + app) serving as the design foundation for a social media intelligence platform.
+## What This Is
 
-## Core Value Proposition
-1:1 visual and functional match with societies.io, verified by AI video analysis.
+A social media intelligence platform with a Raycast-quality design system foundation. Built as a Next.js application with 36 production components, 100+ design tokens, and comprehensive documentation — enabling rapid, consistent UI development.
 
-## What We're Building
+## Core Value
 
-| Component | Scope |
-|-----------|-------|
-| Landing Site | All marketing pages (home, pricing, about, etc.) |
-| App | 10-20 screens + full auth UI flows |
-| Responsive | Full mobile + desktop |
-| Animations | All except complex node animations |
-| Frontend | Working with mock data |
-| Auth | Real Supabase Auth integration |
-| QA | AI video analysis (Gemini) must pass |
-| Deploy | Vercel |
+Raycast-quality design system enabling rapid, consistent UI development with coral (#FF7F50) branding.
 
-## Out of Scope (This Version)
-- Real backend/data integration (v1.2+)
-- Complex node animations
-- Design customization (v1.2+)
+## Requirements
 
-## Tech Stack
+### Validated
 
-| Category | Choice |
-|----------|--------|
-| Framework | Next.js 14+ (App Router) |
-| Language | TypeScript (strict mode) |
-| Styling | Tailwind CSS |
-| Auth | Supabase Auth |
-| Deployment | Vercel |
-| Package Manager | npm |
+- Design token extraction from raycast.com (100+ tokens) -- v2.0
+- Two-tier token architecture (primitive -> semantic) in Tailwind v4 -- v2.0
+- Coral scale (100-900) with WCAG AA compliance -- v2.0
+- 36 production components (UI, Motion, Effects, Primitives) -- v2.0
+- Glassmorphism effects (7 blur levels, noise, chromatic aberration) -- v2.0
+- 7-page interactive showcase with live demos -- v2.0
+- WCAG AA contrast compliance (5.4:1+ muted, 7.2:1 AAA buttons) -- v2.0
+- Comprehensive documentation (8 docs + brand bible) -- v2.0
+- Pixel-perfect societies.io clone (landing + app) -- v1.1
+- Full auth flow with Supabase Auth -- v1.1
+- Responsive design (desktop + mobile) -- v1.1
 
-## Success Criteria
+### Active
 
-### Visual Fidelity
-- AI video analysis passes with 95%+ similarity score
-- All pages match societies.io layout pixel-perfectly
-- Responsive breakpoints match exactly
+(None -- define with `/gsd:new-milestone`)
 
-### Functional Completeness
-- All navigation works correctly
-- Auth flows function with Supabase
-- All interactive elements respond appropriately
-- Animations match (except complex node animations)
+### Out of Scope
 
-### Code Quality
-- TypeScript strict mode, no `any` types
-- Clean component architecture
-- Proper error handling
-- Well-organized file structure
+- Light mode theme variant -- dark-mode first, defer to v2.1+
+- Storybook integration -- showcase sufficient for now
+- Style Dictionary / Tokens Studio pipeline -- manual export sufficient
+- Real-time Figma sync -- manual reference sufficient
+- Mobile native exports -- web-only
+- Sound design -- future polish
+
+## Context
+
+**Current state:** Shipped v2.0 Design System Foundation (2026-02-05).
+- 26,311 LOC TypeScript/CSS
+- Tech stack: Next.js 14+ (App Router), TypeScript strict, Tailwind CSS v4, Supabase Auth
+- 36 components across 4 families, 100+ design tokens
+- 7-page showcase at /showcase
+- 8 documentation files in docs/
+- BRAND-BIBLE.md at repo root
+- Deployed to Vercel
+
+**Known issues:**
+- --text-3xl is 30px vs Raycast 32px (intentional, flagged)
+- 227 hardcoded values flagged for review (many intentional)
+- Responsive showcase clipping on mobile
+- Touch target threshold relaxed to 32x24px (desktop-first)
 
 ## Key Decisions
 
-1. **Greenfield Project**: Starting fresh, no legacy constraints
-2. **Mock Data**: Frontend-only, no real API integration
-3. **Supabase Auth**: Real authentication for user flows
-4. **AI Verification**: Using Gemini for visual QA
-5. **Vercel Deploy**: Continuous deployment from GitHub
+| Decision | Outcome |
+|----------|---------|
+| Coral #FF7F50 as brand color | Good -- distinctive identity |
+| Two-tier token architecture | Good -- clean separation, maintainable |
+| Tailwind v4 @theme block | Good -- native CSS variable integration |
+| Dark gray tokens in hex (not oklch) | Good -- workaround for Tailwind v4 compilation inaccuracy |
+| Custom Select (no Radix Select) | Good -- simpler, full keyboard nav |
+| sugar-high for syntax highlighting | Good -- zero client JS |
+| React.useId() for InputField IDs | Good -- fixed SSR hydration mismatch |
+| accent-foreground: #1a0f0a dark brown | Good -- 7.2:1 AAA contrast on coral |
+| gray-500: #848586 for muted text | Good -- 5.4:1 AA contrast on dark bg |
 
-## Target Reference
-- Production site: https://societies.io
-- Landing pages + App interface to clone
+## Constraints
+
+- Coral #FF7F50 is the brand color (non-negotiable)
+- Dark-mode first (light mode deferred)
+- Raycast.com as design reference (except coral)
+- WCAG AA minimum for all text/background combinations
+- TypeScript strict mode, no `any`
 
 ## Repository
+
 - GitHub: https://github.com/davideloreti4-maker/virtuna-v1.1
 - Local: ~/virtuna-v1.1
+- Vercel: https://virtuna-v11.vercel.app
 
 ---
-
-## In Progress: v1.3.2 — Landing Page Redesign
-
-**Goal:** Redesign the homepage with Raycast-inspired aesthetics and iOS 26 design language, creating a premium visual experience.
-
-**Status:** Phase 15 complete (Foundation Primitives), Phases 16-19 remaining
-
-**Design Direction:**
-- **Glassmorphism** — Frosted glass panels, translucent overlays
-- **Gradient Lighting** — Dramatic glow effects, cinematic depth
-- **macOS Window Mockups** — Traffic light buttons, app-like presentations
-- **Premium Feature Cards** — Distinct color identities, interactive feel
-- **iOS 26 Aesthetic** — Depth, translucency, smooth animations
-
-**Target:**
-- Homepage only (full creative freedom)
-- Not tied to societies.io structure
-- Raycast.com as primary design inspiration
-
-### Success Criteria
-- Landing page feels as premium/polished as Raycast
-- Glassmorphism and gradient effects implemented smoothly
-- Animations are buttery smooth (60fps)
-- Mobile responsive with same premium feel
-- All interactive elements feel refined
-
----
-
-## Current Milestone: v2.0 — Design System Foundation
-
-**Goal:** Extract Raycast's complete design system and implement it as Virtuna's foundation, enabling rapid future development with consistent, premium UI.
-
-**Brand Rule:** Coral `#FF7F50` replaces Raycast's primary brand color; everything else matches Raycast 1:1.
-
-**Core Phases:**
-1. **Extract** — Systematically capture Raycast's full design language from raycast.com
-2. **Implement** — Update Tailwind config, CSS variables, and `/showcase` to match exactly
-3. **Verify** — Visual + code verification of 1:1 match
-4. **Document** — Comprehensive specs for future building
-
-**Extraction Scope:**
-- Colors (full palette, semantic usage, gradients)
-- Typography (fonts, sizes, weights, line heights)
-- Spacing (padding, margins, gaps)
-- Shadows and depth (elevation system)
-- Border radius and borders
-- Animations and transitions
-- Component patterns (buttons, cards, inputs, navigation, etc.)
-- Responsive behavior and breakpoints
-- Glassmorphism and blur effects
-
-**Deliverables:**
-- Tailwind config with all design tokens
-- CSS variables for runtime theming
-- Updated `/showcase` component library
-- Component specs with usage guidelines
-- Figma-ready design specs
-- Comprehensive documentation
-
-**Success Criteria:**
-- `/showcase` visually indistinguishable from Raycast (except coral branding)
-- All design tokens documented and accessible
-- Any future component can be built using existing tokens/patterns
-- Documentation enables consistent development without reference to Raycast
-
-**Reference:** raycast.com (full marketing site)
-
----
-
-## Archived Milestones (v1.3.2 - v1.7)
-
-Previous milestones archived 2026-02-03 for complete rework:
-- v1.3.2 Landing Page Redesign
-- v1.4 Node Visualization
-- v1.5 Trending Page
-- v1.6 Brand Deals
-- v1.7 Viral Predictor
-
----
-
-## Completed: v1.2 — Visual Accuracy Refinement ✓
-
-**Completed:** 2026-01-31
-
-**What Was Done:**
-- Phase 11: Extraction — 207 screenshots captured from app.societies.io
-- Phase 12: Comparison — 45 discrepancies documented (8 critical, 18 major, 19 minor)
-- Full discrepancy report with prioritization
-
-**Deliverables:**
-- `extraction/screenshots/` — Complete screenshot library
-- `.planning/phases/12-comparison/DISCREPANCY-REPORT.md`
-- `.planning/phases/12-comparison/DISCREPANCIES.json`
-
----
-
-## Completed: v1.1 — Pixel-Perfect Clone ✓
-
-### What Was Built
-| Component | Scope |
-|-----------|-------|
-| Society Selector | Personal + Target sections, create/edit modals |
-| View Selector | Country, City, Generation, Role Level dropdowns |
-| Test Forms | All 11 test type forms (TikTok + Instagram functional) |
-| Results View | Impact score, attention, variants, insights, themes |
-| Test History | Sidebar history, delete, revisit results |
-| Settings | Profile, account, notifications, billing UI |
-| Modals | Leave Feedback, Create Society |
-
-### Reference Documentation
-All reference files in `.reference/app/`:
-- `README.md` - App overview
-- `society-selector.md` - Society picker modal
-- `view-selector.md` - View dropdown specs
-- `tests/README.md` - Test feature overview
-- `tests/type-selector.md` - Test type selection
-- `tests/content-forms.md` - Content form specs
-- `tests/results.md` - Results view specs
-- `tests/history.md` - Test history sidebar
-- `modals.md` - Feedback and Create Society modals
+*Last updated: 2026-02-05 after v2.0 milestone*

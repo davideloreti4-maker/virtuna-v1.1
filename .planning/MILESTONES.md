@@ -1,101 +1,54 @@
 # Milestones — Virtuna
 
-## Completed Milestones
+## v2.0 — Design System Foundation (Shipped: 2026-02-05)
 
-### v1.1 — Pixel-Perfect Clone ✓
-**Completed:** 2026-01-29
+**Delivered:** Complete Raycast-quality design system extracted from raycast.com with coral (#FF7F50) branding, 36 components, 100+ tokens, 7-page showcase, and comprehensive documentation.
 
-**Scope:**
-- Landing site (homepage with all sections)
-- App shell (sidebar, navigation, network visualization)
-- Society management (selector, create modal, CRUD)
-- Test forms (all 11 types, TikTok/Instagram functional)
-- Simulation flow (4-phase loading, results panel)
-- Test history (sidebar list, delete, view past results)
-- Settings (profile, notifications, billing, team)
-- Final QA (desktop, mobile, performance)
+**Phases completed:** 39-44 (35 plans total)
 
-**Phases:** 1-10 (all complete)
+**Key accomplishments:**
 
-**Key Outcomes:**
-- Full app UI clone with mock data
+- Extracted 100+ design tokens from raycast.com via Playwright automation, building a two-tier (primitive -> semantic) token architecture in Tailwind v4
+- Built 36 production components across 4 families (UI, Motion, Effects, Primitives) with full TypeScript types, JSDoc, and keyboard accessibility
+- Implemented Raycast-specific patterns: glassmorphism (7 blur levels), chromatic aberration, noise textures, stagger reveals, and signature coral gradients
+- Created 7-page interactive showcase (/showcase) with sugar-high syntax highlighting and live component demos
+- Verified 90-95% visual fidelity against raycast.com with WCAG AA contrast compliance (5.4:1+ muted text, 7.2:1 AAA button text)
+- Produced 8 documentation files: token reference, component API, usage guidelines, accessibility audit, motion guidelines, brand bible, design specs JSON, and contributing guide
+
+**Stats:**
+
+- 100 files created/modified
+- 26,311 lines of TypeScript/CSS
+- 6 phases, 35 plans
+- 3 days (2026-02-03 -> 2026-02-05)
+
+**Git range:** `chore(39)` -> `docs(44)`
+
+---
+
+## v1.2 — Visual Accuracy Refinement (Shipped: 2026-01-31)
+
+**Delivered:** Systematic extraction and comparison of societies.io screens via Playwright automation.
+
+**Phases completed:** 11-12
+
+**Key outcomes:**
+- 207 screenshots captured from app.societies.io
+- 45 discrepancies documented (8 critical, 18 major, 19 minor)
+- Complete extraction catalog and comparison reports
+
+---
+
+## v1.1 — Pixel-Perfect Clone (Shipped: 2026-01-29)
+
+**Delivered:** Full-stack UI clone of societies.io with mock data and Supabase Auth.
+
+**Phases completed:** 1-10
+
+**Key outcomes:**
+- Full app UI clone (landing + 10+ app screens)
 - Zustand state management with localStorage persistence
 - Responsive design (desktop + mobile)
 - Zero console errors, 60fps animations
 
 ---
-
-### v1.2 — Visual Accuracy Refinement ✓
-**Completed:** 2026-01-31
-
-**Scope:**
-- Playwright extraction infrastructure for automated screenshots
-- Systematic screenshot capture of all app states (207 files, ~73MB)
-- Side-by-side comparison analysis with v0 MCP
-- Discrepancy documentation (45 issues identified across dashboard, forms, modals)
-- Full extraction catalog and comparison reports
-
-**Phases:** 11-12 (complete)
-
-**Key Outcomes:**
-- Complete extraction test suite with dark mode fixtures
-- Desktop and mobile viewport coverage
-- Video recordings of user flows
-- Consolidated discrepancy report with severity prioritization
-- JSON export for automation (DISCREPANCIES.json)
-
----
-
-## Active Milestone
-
-### v1.3.2 — Landing Page Redesign
-**Started:** 2026-01-31
-**Target:** Premium Raycast-inspired homepage with iOS 26 aesthetic
-
-**Design Direction:**
-- Glassmorphism (frosted glass panels, translucent overlays)
-- Dramatic gradient lighting/glow effects
-- macOS window mockups with traffic light buttons
-- Premium feature cards with distinct color identities
-- iOS 26 aesthetic (depth, translucency, smooth animations)
-
-**Scope:**
-- Homepage only (full creative freedom)
-- Not tied to societies.io structure
-- Raycast.com as primary design inspiration
-
-**Success Criteria:**
-- Landing page feels as premium/polished as Raycast
-- Glassmorphism and gradient effects implemented smoothly
-- Animations are buttery smooth (60fps)
-- Mobile responsive with same premium feel
-
-**Phases:** 15-19
-
----
-
-## Planned Milestone
-
-### v1.4 — Node Visualization MVP
-**Target:** Mesmerizing, addictive, TikTok-viral-worthy visualization
-
-**Vision:**
-- Hybrid visualization: central AI orb + chaos → order node crystallization
-- Particles flow toward orb during processing
-- Nodes form abstractly, crystallize into labeled insights
-- Full physics playground (drag, fling, magnetic, ripple)
-- Mobile-first with 60fps performance
-
-**Scope:**
-- Core visualization (orb, particles, nodes, connections)
-- Essential motion system (three layers, easing, spring physics)
-- Basic interactions (drag, magnetic, tap preview, hold detail)
-- Mobile optimization (60fps, adaptive particles, touch gestures)
-
-**Deferred to v1.5:**
-- Sound design
-- Advanced fidget interactions (fling, spin, burst)
-- Professional mode toggle
-- Onboarding hints
-
-**Phases:** 20-24 (31 requirements)
