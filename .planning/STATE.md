@@ -12,20 +12,24 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 **Milestone:** v2.0 — Design System Foundation
 **Phase:** 43 of 44 (Showcase Enhancement) — In progress
 **Plan:** 3 of 7 complete
-**Status:** 43-03 complete — inputs showcase page built
-**Last activity:** 2026-02-05 — Completed 43-03-PLAN.md
+**Status:** 43-02 complete — tokens showcase page built
+**Last activity:** 2026-02-05 — Completed 43-02-PLAN.md
 
 Progress: [#########-] 95%
 
 ## Phase 43 Progress
 
 - 43-01: Showcase infrastructure (sugar-high, layout, shared components) -- COMPLETE
-- 43-02: Tokens showcase page -- PENDING
+- 43-02: Tokens showcase page -- COMPLETE
 - 43-03: Inputs showcase page -- COMPLETE
 - 43-04: Navigation showcase page -- PENDING
 - 43-05: Feedback showcase page -- PENDING
 - 43-06: Data Display showcase page -- PENDING
 - 43-07: Utilities showcase page -- PENDING
+
+### Artifacts Created (Phase 43, Plan 02)
+- `src/app/(marketing)/showcase/page.tsx` -- Tokens showcase page (color, typography, spacing, shadow, radius, animation, gradient tokens)
+- `src/app/(marketing)/showcase/_components/token-swatch.tsx` -- TokenSwatch and TokenRow reusable components
 
 ### Artifacts Created (Phase 43, Plan 03)
 - `src/app/(marketing)/showcase/inputs/page.tsx` -- Inputs showcase page (Input, InputField, Select, SearchableSelect, Toggle)
@@ -171,6 +175,9 @@ All exports from `@/components/ui`:
 - Phase 43: Client island pattern: one 'use client' file per interactive component type with multiple named exports
 - Phase 43: Input/InputField rendered statically (server component) since they only need to show visual states
 - Phase 43: Demo naming convention: {Component}{Variant}Demo (e.g., ToggleSizeDemo, SelectGroupedDemo)
+- Phase 43: TokenSwatch uses inline backgroundColor with var() for live CSS variable sync
+- Phase 43: Semantic colors grouped into sub-categories (backgrounds, text, accent, status, borders, states)
+- Phase 43: Spacing bars use fixed px widths for reliable visual comparison (not CSS variables)
 
 ## Infrastructure URLs
 
@@ -181,6 +188,6 @@ All exports from `@/components/ui`:
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 43-03-PLAN.md
+Stopped at: Completed 43-02-PLAN.md
 Resume with: 43-04-PLAN.md (Navigation showcase page)
-Resume file: .planning/phases/43-showcase-enhancement/43-03-SUMMARY.md
+Resume file: .planning/phases/43-showcase-enhancement/43-02-SUMMARY.md
