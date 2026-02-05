@@ -1,177 +1,153 @@
-# Requirements: Virtuna v2.1 Dashboard Rebuild
+# Requirements: Virtuna v2.3 Brand Deals & Affiliate Page
 
 **Defined:** 2026-02-05
-**Core Value:** Raycast-quality design system applied to dashboard with hive node visualization
+**Core Value:** Glassmorphic brand deals & affiliate page built with v0 MCP guided by the Virtuna design system
 
-## v2.1 Requirements
+## v2.3 Requirements
 
-### Sidebar
+### Page Foundation
 
-- [ ] **SIDE-01**: Sidebar uses GlassPanel with glassmorphic blur/border as floating panel
-- [ ] **SIDE-02**: Sidebar is always visible on desktop and pushes main content
-- [ ] **SIDE-03**: Sidebar nav items use design system Button (ghost variant) + Icon
-- [ ] **SIDE-04**: SocietySelector uses design system Select component
-- [ ] **SIDE-05**: ViewSelector uses design system Select component
-- [ ] **SIDE-06**: Test history list uses design system Typography (Text, Caption)
-- [ ] **SIDE-07**: Sidebar collapses to icon-only mode with smooth animation
-- [ ] **SIDE-08**: Collapse state persists across sessions (Zustand + localStorage)
+- [ ] **PAGE-01**: Brand Deals page route exists at `/brand-deals` under `(app)` route group
+- [ ] **PAGE-02**: Three-tab layout (Deals / Affiliates / Earnings) using existing CategoryTabs component
+- [ ] **PAGE-03**: Active tab state syncs with URL search params (`?tab=deals`); browser back/forward navigates between tabs
+- [ ] **PAGE-04**: Sidebar "Brand Deals" nav item wired to `/brand-deals` route with active state derived from `usePathname()`
+- [ ] **PAGE-05**: Mock data defined as typed TypeScript fixtures (BrandDeal, AffiliateLink, EarningsSummary interfaces) with edge cases (long names, zero values, missing fields)
+- [ ] **PAGE-06**: Page header with title and subtitle using design system Typography
+- [ ] **PAGE-07**: Reusable `useCopyToClipboard` hook extracted for affiliate link copy interactions
 
-### Forms & Test Creation
+### Deals Tab
 
-- [ ] **FORM-01**: ContentForm uses design system GlassTextarea + Button
-- [ ] **FORM-02**: SurveyForm uses design system GlassInput + Select + Button
-- [ ] **FORM-03**: TestTypeSelector uses design system Dialog + GlassCard grid
-- [ ] **FORM-04**: Create test button uses design system Button (primary variant)
-- [ ] **FORM-05**: All form inputs use design system focus rings and error states
+- [ ] **DEAL-01**: Deal card grid renders 8-12 mock brand deals in a 2-3 column responsive grid
+- [ ] **DEAL-02**: Each deal card shows brand logo/avatar, deal title, and offer description (2-3 line clamp)
+- [ ] **DEAL-03**: Each deal card shows payout amount ("$500 flat fee" or "15% commission") and compensation type Badge
+- [ ] **DEAL-04**: Each deal card shows category/niche tags as Badge or GlassPill components (1-3 per card)
+- [ ] **DEAL-05**: Each deal card has an Apply/Claim CTA Button (primary variant) that changes to "Applied" Badge on click (local state)
+- [ ] **DEAL-06**: Deal status badges display correctly (New, Applied, Active, Expired) with semantic colors
+- [ ] **DEAL-07**: Filter pills allow filtering deals by category (All, Beauty, Tech, Lifestyle, Food, Fitness)
+- [ ] **DEAL-08**: Search input allows filtering deals by brand name with debounced input
+- [ ] **DEAL-09**: "New This Week" highlighted section at top with info Badge
+- [ ] **DEAL-10**: 1-2 featured deals render with GradientGlow ambient effect
+- [ ] **DEAL-11**: Empty state shown when no deals match filters (illustration + message + clear filters CTA)
+- [ ] **DEAL-12**: Deal cards have visible hover state (subtle border/elevation change)
 
-### Modals
+### Affiliates Tab
 
-- [ ] **MODL-01**: CreateSocietyModal uses design system Dialog + GlassTextarea + Button
-- [ ] **MODL-02**: DeleteTestModal uses design system Dialog + Button (destructive)
-- [ ] **MODL-03**: LeaveFeedbackModal uses design system Dialog + GlassInput + GlassTextarea + Button
-- [ ] **MODL-04**: SocietySelector modal uses design system Dialog + GlassCard
-- [ ] **MODL-05**: All modals use consistent overlay, animation, and close behavior from design system Dialog
+- [ ] **AFFL-01**: "Active Links" section displays 4-5 active affiliate link cards with count Badge in header
+- [ ] **AFFL-02**: Each active link card shows product image/thumbnail, product name, and truncated affiliate URL
+- [ ] **AFFL-03**: Each active link card has a copy-to-clipboard button (via `useCopyToClipboard` hook) with toast confirmation
+- [ ] **AFFL-04**: Copy button icon morphs from Copy to Check icon for 2 seconds as visual feedback
+- [ ] **AFFL-05**: Each active link card shows click count, conversion count, and commission earned
+- [ ] **AFFL-06**: Each active link card shows status Badge (Active, Expired, Paused)
+- [ ] **AFFL-07**: "Available Products" section displays 6-8 products in a 2-3 column grid
+- [ ] **AFFL-08**: Each available product card shows product image, name, and commission rate
+- [ ] **AFFL-09**: "Generate Link" Button adds product to active links list with brief success feedback (toast + card appears at top of active list)
+- [ ] **AFFL-10**: Empty state for active links section when none exist
 
-### Results Panel
+### Earnings Tab
 
-- [ ] **RSLT-01**: ResultsPanel wrapper uses GlassPanel with design system tokens
-- [ ] **RSLT-02**: ImpactScore uses design system Typography + Badge
-- [ ] **RSLT-03**: AttentionBreakdown uses design system GlassProgress bars
-- [ ] **RSLT-04**: VariantsSection uses GlassCard per variant
-- [ ] **RSLT-05**: InsightsSection uses GlassCard + Badge
-- [ ] **RSLT-06**: ThemesSection uses GlassCard + GlassProgress
-- [ ] **RSLT-07**: ShareButton uses design system Button (ghost variant)
+- [ ] **EARN-01**: 4 summary stat cards in a responsive row (Total Earned, Pending, Paid Out, This Month)
+- [ ] **EARN-02**: Stat card values animate with count-up effect on mount (respects `prefers-reduced-motion` — shows static values)
+- [ ] **EARN-03**: Each stat card shows percentage change indicator (green for positive, red for negative)
+- [ ] **EARN-04**: Period selector pills (7D, 30D, 90D, All Time) update chart data with brief loading transition
+- [ ] **EARN-05**: Earnings area chart renders with Recharts, dark-mode themed (custom axis/grid/tick colors from design tokens)
+- [ ] **EARN-06**: Chart uses gradient fill with green accent color matching Brand Bible semantics
+- [ ] **EARN-07**: Chart tooltip on hover shows date and formatted earnings value in glassmorphic-styled tooltip
+- [ ] **EARN-08**: Earnings breakdown section shows per-deal/link earnings in a list (columns: source name, clicks, conversions, earnings) sorted by earnings descending
+- [ ] **EARN-09**: All monetary values formatted with Intl.NumberFormat (USD)
 
-### Top Bar
+### Polish
 
-- [ ] **TBAR-01**: ContextBar uses design system Typography tokens
-- [ ] **TBAR-02**: FilterPills use design system GlassPill components
-- [ ] **TBAR-03**: LegendPills use design system GlassPill with tint colors
-- [ ] **TBAR-04**: All top bar elements use design system spacing and color tokens
-
-### Loading States
-
-- [ ] **LOAD-01**: LoadingPhases uses GlassPanel wrapper + GlassProgress bar
-- [ ] **LOAD-02**: Loading phases use design system Spinner component
-- [ ] **LOAD-03**: Cancel button uses design system Button (secondary variant)
-
-### Mobile
-
-- [ ] **MOBL-01**: Mobile nav updated for floating sidebar behavior
-- [ ] **MOBL-02**: Sidebar collapses to hidden on mobile with hamburger toggle
-- [ ] **MOBL-03**: Backdrop-filter limited to 2 glass elements on mobile viewport
-
-### Hive Visualization
-
-- [ ] **HIVE-01**: Center rounded rectangle renders as video/script thumbnail placeholder
-- [ ] **HIVE-02**: 10+ main nodes (tier 1) positioned in radial ring around center
-- [ ] **HIVE-03**: 100+ sub-nodes (tier 2) connected to main nodes in secondary ring
-- [ ] **HIVE-04**: 1000+ leaf nodes (tier 3) as decorative outermost layer
-- [ ] **HIVE-05**: Connection lines between tiers with distance-based opacity
-- [ ] **HIVE-06**: Radial layout computed with d3-hierarchy (deterministic positions)
-- [ ] **HIVE-07**: Canvas 2D rendering at 60fps with retina/HiDPI support
-- [ ] **HIVE-08**: Responsive sizing via ResizeObserver
-- [ ] **HIVE-09**: Reduced motion fallback (static layout, no animations)
-
-### Hive Interactions
-
-- [ ] **HINT-01**: Click on node triggers glow/scale visual effect
-- [ ] **HINT-02**: Click on node shows GlassCard info overlay positioned near node
-- [ ] **HINT-03**: Hover on node highlights the node and its connected nodes
-- [ ] **HINT-04**: Hover dims non-connected nodes for contrast
-- [ ] **HINT-05**: Hit detection uses d3-quadtree for O(log n) performance
-- [ ] **HINT-06**: Hover state debounced to prevent flickering in dense clusters
-- [ ] **HINT-07**: Zoom/pan controls for exploring the hive
+- [ ] **PLSH-01**: Deal cards use solid `bg-surface-elevated` for grid performance (not glassmorphic blur on every card)
+- [ ] **PLSH-02**: Color semantics follow Brand Bible (green=earnings, orange=creative deals, blue=analytics/clicks)
+- [ ] **PLSH-03**: Loading skeleton states for all three tabs using design system Skeleton pattern
+- [ ] **PLSH-04**: Responsive layout works on mobile (stat cards 2-col, deal grid 1-col, affiliate cards stack vertically)
+- [ ] **PLSH-05**: All tab content keyboard-navigable (Tab through cards, Enter to activate CTAs)
 
 ## Future Requirements
 
-### Analysis Effects (v2.2+)
+### Backend Integration (v2.4+)
 
-- **ANIM-01**: Node entry animation (stagger reveal from center outward)
-- **ANIM-02**: Pulsing glow on active/selected node during analysis
-- **ANIM-03**: Connection line glow on hover path
-- **ANIM-04**: Smooth transition between idle and results states
+- **BACK-01**: Real brand deal data from API
+- **BACK-02**: Affiliate link generation and click tracking
+- **BACK-03**: Earnings calculation from real conversion data
+- **BACK-04**: Application/approval workflow with status persistence
 
-### Differentiators (v2.2+)
+### Advanced Features (v2.4+)
 
-- **DIFF-01**: Ambient glow behind sidebar (GradientGlow coral)
-- **DIFF-02**: Tier-based color coding (coral/purple/blue/cyan rings)
-- **DIFF-03**: Mouse proximity reactive nodes (grow/brighten on approach)
+- **ADV-01**: Deal detail slide-over panel with full requirements/deliverables
+- **ADV-02**: Tiered commission progress bars (gamification)
+- **ADV-03**: Inline sparkline charts on affiliate link cards
+- **ADV-04**: AI-powered deal match score
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Light mode theme | Dark-mode first, defer later |
-| 3D node rotation/depth | Hive is fundamentally 2D hierarchical |
-| Force-directed physics layout | Hive has fixed structure, d3-hierarchy is deterministic |
-| SVG-based node rendering | SVG DOM too expensive at 1000+ nodes |
-| Real-time data mapping to nodes | Nodes are decorative for now |
-| Backend/API integration | UI-first milestone, backend comes later |
-| AI-generated storyboard images | Different milestone scope |
-| Node analysis animations | Deferred to v2.2+ |
+| Real affiliate link generation/tracking | UI-only milestone, backend comes later |
+| Payment processing (PayPal/Stripe) | Requires backend + financial compliance |
+| Brand/merchant API integration | Mock data sufficient for UI milestone |
+| Application/approval workflow backend | Button state change only, no persistence |
+| Contract/brief signing | Legal complexity, out of scope |
+| Multi-currency support | USD only, simplifies UI |
+| Notification system for deal updates | Static "New" badges sufficient |
+| Merchant/brand messaging | No chat/messaging UI |
+| Analytics export/CSV download | View-only data |
+| Promo code management | Separate feature surface |
+| Light mode theme | Dark-mode first across all milestones |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SIDE-01 | Phase 45 | Pending |
-| SIDE-02 | Phase 45 | Pending |
-| SIDE-03 | Phase 45 | Pending |
-| SIDE-04 | Phase 45 | Pending |
-| SIDE-05 | Phase 45 | Pending |
-| SIDE-06 | Phase 45 | Pending |
-| SIDE-07 | Phase 45 | Pending |
-| SIDE-08 | Phase 45 | Pending |
-| FORM-01 | Phase 46 | Pending |
-| FORM-02 | Phase 46 | Pending |
-| FORM-03 | Phase 46 | Pending |
-| FORM-04 | Phase 46 | Pending |
-| FORM-05 | Phase 46 | Pending |
-| MODL-01 | Phase 46 | Pending |
-| MODL-02 | Phase 46 | Pending |
-| MODL-03 | Phase 46 | Pending |
-| MODL-04 | Phase 46 | Pending |
-| MODL-05 | Phase 46 | Pending |
-| RSLT-01 | Phase 47 | Pending |
-| RSLT-02 | Phase 47 | Pending |
-| RSLT-03 | Phase 47 | Pending |
-| RSLT-04 | Phase 47 | Pending |
-| RSLT-05 | Phase 47 | Pending |
-| RSLT-06 | Phase 47 | Pending |
-| RSLT-07 | Phase 47 | Pending |
-| TBAR-01 | Phase 47 | Pending |
-| TBAR-02 | Phase 47 | Pending |
-| TBAR-03 | Phase 47 | Pending |
-| TBAR-04 | Phase 47 | Pending |
-| LOAD-01 | Phase 47 | Pending |
-| LOAD-02 | Phase 47 | Pending |
-| LOAD-03 | Phase 47 | Pending |
-| MOBL-01 | Phase 45 | Pending |
-| MOBL-02 | Phase 45 | Pending |
-| MOBL-03 | Phase 45 | Pending |
-| HIVE-01 | Phase 48 | Pending |
-| HIVE-02 | Phase 48 | Pending |
-| HIVE-03 | Phase 48 | Pending |
-| HIVE-04 | Phase 48 | Pending |
-| HIVE-05 | Phase 48 | Pending |
-| HIVE-06 | Phase 48 | Pending |
-| HIVE-07 | Phase 48 | Pending |
-| HIVE-08 | Phase 48 | Pending |
-| HIVE-09 | Phase 48 | Pending |
-| HINT-01 | Phase 49 | Pending |
-| HINT-02 | Phase 49 | Pending |
-| HINT-03 | Phase 49 | Pending |
-| HINT-04 | Phase 49 | Pending |
-| HINT-05 | Phase 49 | Pending |
-| HINT-06 | Phase 49 | Pending |
-| HINT-07 | Phase 49 | Pending |
+| PAGE-01 | — | Pending |
+| PAGE-02 | — | Pending |
+| PAGE-03 | — | Pending |
+| PAGE-04 | — | Pending |
+| PAGE-05 | — | Pending |
+| PAGE-06 | — | Pending |
+| PAGE-07 | — | Pending |
+| DEAL-01 | — | Pending |
+| DEAL-02 | — | Pending |
+| DEAL-03 | — | Pending |
+| DEAL-04 | — | Pending |
+| DEAL-05 | — | Pending |
+| DEAL-06 | — | Pending |
+| DEAL-07 | — | Pending |
+| DEAL-08 | — | Pending |
+| DEAL-09 | — | Pending |
+| DEAL-10 | — | Pending |
+| DEAL-11 | — | Pending |
+| DEAL-12 | — | Pending |
+| AFFL-01 | — | Pending |
+| AFFL-02 | — | Pending |
+| AFFL-03 | — | Pending |
+| AFFL-04 | — | Pending |
+| AFFL-05 | — | Pending |
+| AFFL-06 | — | Pending |
+| AFFL-07 | — | Pending |
+| AFFL-08 | — | Pending |
+| AFFL-09 | — | Pending |
+| AFFL-10 | — | Pending |
+| EARN-01 | — | Pending |
+| EARN-02 | — | Pending |
+| EARN-03 | — | Pending |
+| EARN-04 | — | Pending |
+| EARN-05 | — | Pending |
+| EARN-06 | — | Pending |
+| EARN-07 | — | Pending |
+| EARN-08 | — | Pending |
+| EARN-09 | — | Pending |
+| PLSH-01 | — | Pending |
+| PLSH-02 | — | Pending |
+| PLSH-03 | — | Pending |
+| PLSH-04 | — | Pending |
+| PLSH-05 | — | Pending |
 
 **Coverage:**
-- v2.1 requirements: 51 total
-- Mapped to phases: 51
-- Unmapped: 0
+- v2.3 requirements: 43 total
+- Mapped to phases: 0 (awaiting roadmap)
+- Unmapped: 43
 
 ---
 *Requirements defined: 2026-02-05*
-*Last updated: 2026-02-05 -- traceability updated with phase assignments*
+*Last updated: 2026-02-05 -- revised after sceptical audit (added PAGE-07, DEAL-12, EARN-07, EARN-09; refined 8 existing requirements)*
