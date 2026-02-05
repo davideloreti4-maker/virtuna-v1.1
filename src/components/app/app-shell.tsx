@@ -37,7 +37,7 @@ export function AppShell({ children }: AppShellProps) {
           className={cn(
             "flex-1 overflow-auto",
             "transition-[margin-left] duration-300 ease-[var(--ease-out-cubic)]",
-            isOpen ? "md:ml-[324px]" : "md:ml-0",
+            isOpen ? "md:ml-[284px]" : "md:ml-0",
             "ml-0",
           )}
         >

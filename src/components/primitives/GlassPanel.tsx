@@ -40,9 +40,9 @@ export interface GlassPanelProps {
 // Map tint colors to oklch background values (subtle tinting)
 const tintMap: Record<GlassTint, { bg: string; border: string; glow: string }> = {
   neutral: {
-    bg: "oklch(0.155 0.01 264",
-    border: "rgba(255, 255, 255, 0.08)",
-    glow: "rgba(255, 255, 255, 0.05)",
+    bg: "oklch(0.18 0.01 264",
+    border: "rgba(255, 255, 255, 0.12)",
+    glow: "rgba(255, 255, 255, 0.06)",
   },
   purple: {
     bg: "oklch(0.18 0.04 300",
@@ -109,17 +109,19 @@ export function GlassPanel({
   style,
   as: Component = "div",
 }: GlassPanelProps) {
-  // Map blur prop to CSS class (uses globals.css glass-blur-* classes)
-  const blurMap: Record<GlassBlur, string> = {
-    none: "",
-    xs: "glass-blur-xs",
-    sm: "glass-blur-sm",
-    md: "glass-blur-md",
-    lg: "glass-blur-lg",
-    xl: "glass-blur-xl",
-    "2xl": "glass-blur-2xl",
+  // Map blur prop to pixel values for inline style
+  // NOTE: CSS classes (glass-blur-*) are stripped by Lightning CSS in Tailwind v4.
+  // Applying backdrop-filter via inline style bypasses this issue.
+  const blurPxMap: Record<GlassBlur, number> = {
+    none: 0,
+    xs: 2,
+    sm: 8,
+    md: 12,
+    lg: 20,
+    xl: 36,
+    "2xl": 48,
   };
-  const blurClass = blurMap[blur];
+  const blurPx = blurPxMap[blur];
 
   const tintColors = tintMap[tint];
 
@@ -133,7 +135,6 @@ export function GlassPanel({
       className={cn(
         // Base glass styling
         "glass-base",
-        blurClass,
         // Shadows for depth
         "shadow-glass",
         // Border glow variant - use tinted border if tint is set
@@ -146,6 +147,11 @@ export function GlassPanel({
       style={{
         // Dynamic opacity and tint via inline style
         backgroundColor: `${tintColors.bg} / ${opacity})`,
+        // Backdrop blur via inline style (Lightning CSS strips it from CSS classes)
+        ...(blurPx > 0 && {
+          backdropFilter: `blur(${blurPx}px)`,
+          WebkitBackdropFilter: `blur(${blurPx}px)`,
+        }),
         // Tinted border if borderGlow and tint
         ...(borderGlow && tint !== "neutral" && {
           "--tw-ring-color": tintColors.border,
