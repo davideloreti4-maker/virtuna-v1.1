@@ -30,7 +30,7 @@ export function Footer({ className }: FooterProps) {
               href="https://calendly.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="min-h-[44px] rounded bg-accent px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-accent/90"
+              className="min-h-[44px] rounded bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
             >
               Book a meeting
             </Link>

@@ -90,7 +90,7 @@ export function Header({ className }: HeaderProps) {
               href="https://calendly.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90"
+              className="rounded bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
             >
               Book a Meeting
             </Link>
@@ -133,7 +133,7 @@ export function Header({ className }: HeaderProps) {
               href="https://calendly.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full rounded bg-accent px-4 py-3 text-center text-sm font-medium text-white transition-colors hover:bg-accent/90"
+              className="w-full rounded bg-accent px-4 py-3 text-center text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
               onClick={() => setMobileMenuOpen(false)}
             >
               Book a Meeting

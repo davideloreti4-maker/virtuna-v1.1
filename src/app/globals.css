@@ -28,7 +28,7 @@
   --color-gray-200: oklch(0.90 0 0);
   --color-gray-300: oklch(0.80 0 0);
   --color-gray-400: #9c9c9d;   /* rgb(156,156,157) — Raycast secondary text */
-  --color-gray-500: #6a6b6c;   /* rgb(106,107,108) — Raycast muted text */
+  --color-gray-500: #848586;   /* rgb(132,133,134) — Lightened from Raycast #6a6b6c for WCAG AA (5.4:1 on #07080a) */
   --color-gray-600: #58595a;   /* rgb(88,89,90) — Raycast dimmed text */
   --color-gray-700: #3a3b3d;
   --color-gray-800: #222326;
@@ -78,7 +78,7 @@
   --color-accent: var(--color-coral-500);
   --color-accent-hover: var(--color-coral-400);
   --color-accent-active: var(--color-coral-600);
-  --color-accent-foreground: var(--color-gray-50);
+  --color-accent-foreground: #1a0f0a;  /* Dark brown — 7.2:1 on coral-500, WCAG AAA */
 
   /* --- Semantic Status --- */
   --color-success: var(--color-success-raw);

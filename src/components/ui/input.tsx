@@ -87,8 +87,6 @@ export interface InputFieldProps extends Omit<InputProps, "error"> {
   error?: string | boolean;
 }
 
-let inputIdCounter = 0;
-
 /**
  * InputField component with label, helper text, and error message support.
  * Wraps the base Input component with proper labeling and accessibility.
@@ -117,10 +115,9 @@ let inputIdCounter = 0;
  */
 const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(
   ({ label, helperText, error, id, className, ...props }, ref) => {
-    // Generate stable ID if not provided
-    const generatedId = React.useMemo(() => {
-      return id || `input-${++inputIdCounter}`;
-    }, [id]);
+    // Generate stable ID using React.useId() for SSR hydration safety
+    const reactId = React.useId();
+    const generatedId = id || `input${reactId}`;
 
     const hasError = !!error;
     const errorMessage = typeof error === "string" ? error : undefined;
