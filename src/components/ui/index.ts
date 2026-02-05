@@ -40,6 +40,10 @@ export type { AvatarProps, AvatarGroupProps } from "./avatar";
 export { Divider } from "./divider";
 export type { DividerProps } from "./divider";
 
+// Select
+export { Select, SearchableSelect, selectTriggerVariants } from "./select";
+export type { SelectProps, SearchableSelectProps, SelectOption, SelectGroup } from "./select";
+
 // Accordion (existing)
 export {
   AccordionRoot,
