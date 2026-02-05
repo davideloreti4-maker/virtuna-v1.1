@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Milestone:** v2.0 — Design System Foundation
 **Phase:** 41 of 44 (Extended Components + Raycast Patterns) — In progress
-**Plan:** 3 of 6 complete
-**Status:** In progress — Dialog, Toggle, Tabs, Avatar, Divider, Select delivered
-**Last activity:** 2026-02-05 — Completed 41-03-PLAN.md
+**Plan:** 4 of 6 complete
+**Status:** In progress — Toast, Kbd, ShortcutBadge delivered
+**Last activity:** 2026-02-05 — Completed 41-04-PLAN.md
 
-Progress: [####------] 44%
+Progress: [#####-----] 46%
 
 ## Phase 41 Progress
 
 - 41-01: Dialog, Toggle — COMPLETE
 - 41-02: Tabs, Avatar, Divider — COMPLETE
 - 41-03: Select, SearchableSelect — COMPLETE
-- 41-04: (pending)
+- 41-04: Toast, Kbd, ShortcutBadge — COMPLETE
 - 41-05: (pending)
 - 41-06: (pending)
 
@@ -37,6 +37,11 @@ Progress: [####------] 44%
 
 ### Artifacts Created (Phase 41, Plan 03)
 - `src/components/ui/select.tsx` — Select and SearchableSelect with keyboard nav, CVA sizes, option groups, glass dropdown
+
+### Artifacts Created (Phase 41, Plan 04)
+- `src/components/ui/toast.tsx` — Toast with ToastProvider, useToast hook, 5 variants, auto-dismiss progress bar, glass styling
+- `src/components/ui/kbd.tsx` — Kbd keycap with exact Raycast 4-layer 3D shadow, CVA sizes, highlighted variant
+- `src/components/ui/shortcut-badge.tsx` — ShortcutBadge composing Kbd with 18 modifier symbol mappings
 
 ## Phase 40 Completion Summary
 
@@ -62,6 +67,9 @@ All exports from `@/components/ui`:
 - Dialog, DialogTrigger, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription, DialogClose
 - Toggle, ToggleProps
 - Select, SearchableSelect, SelectProps, SearchableSelectProps, SelectOption, SelectGroup
+- ToastProvider, useToast, Toast, ToastData, ToastVariant
+- Kbd, kbdVariants, KbdProps
+- ShortcutBadge, ShortcutBadgeProps
 
 ## Accumulated Context
 
@@ -86,6 +94,9 @@ All exports from `@/components/ui`:
 - Phase 41: Select keeps custom implementation (no @radix-ui/react-select) per research recommendation
 - Phase 41: useSelect hook shared between Select and SearchableSelect for code reuse
 - Phase 41: Keyboard navigation skips disabled options with wrap-around
+- Phase 41: Toast uses CSS keyframe injection for self-contained slide animations
+- Phase 41: Kbd uses inline boxShadow for exact 4-layer Raycast shadow (too complex for Tailwind)
+- Phase 41: ShortcutBadge uses Unicode symbols for modifier keys (platform-native rendering)
 
 ## Infrastructure URLs
 
@@ -96,6 +107,6 @@ All exports from `@/components/ui`:
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 41-03-PLAN.md (Select, SearchableSelect)
-Resume with: Continue Phase 41 — next plan (41-04 or next pending)
-Resume file: .planning/phases/41-extended-components-raycast-patterns/41-03-SUMMARY.md
+Stopped at: Completed 41-04-PLAN.md (Toast, Kbd, ShortcutBadge)
+Resume with: Continue Phase 41 — next plan (41-05)
+Resume file: .planning/phases/41-extended-components-raycast-patterns/41-04-SUMMARY.md
