@@ -26,16 +26,12 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 
 ### Active
 
-- [ ] Floating glassmorphic sidebar (GlassPanel, always visible, pushes content)
-- [ ] Dashboard forms rebuilt with design system components (ContentForm, SurveyForm, TestTypeSelector)
-- [ ] All dashboard modals rebuilt with design system (CreateSociety, DeleteTest, LeaveFeedback, SocietySelector)
-- [ ] Results panel rebuilt with design system (ImpactScore, AttentionBreakdown, Variants, Insights, Themes)
-- [ ] Top bar rebuilt (ContextBar, FilterPills, LegendPills)
-- [ ] LoadingPhases simulation progress rebuilt with design system
-- [ ] Mobile nav updated for floating sidebar
-- [ ] Hive node visualization (center thumbnail + 3-layer node hierarchy)
-- [ ] Node click interaction (glow/scale + info card)
-- [ ] Node hover interaction (highlight connected nodes)
+- [ ] Brand deals & affiliate page with three-tab layout (Deals / Affiliates / Earnings)
+- [ ] Deal cards grid with brand logo, offer, payout, and Apply/Claim CTA
+- [ ] Affiliate link cards with copy-to-clipboard, click stats, and commission
+- [ ] Available products grid with Generate Link action
+- [ ] Earnings summary stat cards and chart
+- [ ] All UI built via v0 MCP guided by design system (BRAND-BIBLE.md, tokens, component API)
 
 ### Out of Scope
 
@@ -48,11 +44,12 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 
 ## Context
 
-**Current state:** Starting v2.1 Dashboard Rebuild (2026-02-05).
+**Current state:** Starting v2.3 Brand Deals & Affiliate Page (2026-02-05).
 - 26,311 LOC TypeScript/CSS
 - Tech stack: Next.js 14+ (App Router), TypeScript strict, Tailwind CSS v4, Supabase Auth
 - 36 design system components across 4 families, 100+ design tokens
-- Dashboard has ~30 app components with hardcoded styles (pre-design-system)
+- v0 MCP as primary UI generation tool for this milestone
+- Worktree: ~/virtuna-v2.3-brand-deals (branch: milestone/v2.3-brand-deals)
 - 7-page showcase at /showcase
 - 8 documentation files in docs/
 - BRAND-BIBLE.md at repo root
@@ -77,6 +74,7 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 | React.useId() for InputField IDs | Good -- fixed SSR hydration mismatch |
 | accent-foreground: #1a0f0a dark brown | Good -- 7.2:1 AAA contrast on coral |
 | gray-500: #848586 for muted text | Good -- 5.4:1 AA contrast on dark bg |
+| v0 MCP for v2.3 UI generation | Pending -- guided by design system docs for consistency |
 
 ## Constraints
 
@@ -92,17 +90,25 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 - Local: ~/virtuna-v1.1
 - Vercel: https://virtuna-v11.vercel.app
 
-## Current Milestone: v2.1 Dashboard Rebuild
+## Current Milestone: v2.3 Brand Deals & Affiliate Page
 
-**Goal:** Apply the v2.0 design system to the entire dashboard and build a hive node visualization.
+**Goal:** Build the Brand Deals & Affiliate page UI using v0 MCP with the Virtuna design system for high-fidelity, consistent output.
 
 **Target features:**
-- Wave 1: Rebuild all dashboard UI with design system (floating glassmorphic sidebar, forms, modals, results, top bar, loading states)
-- Wave 2: Hive node visualization (center thumbnail rectangle, 3-layer node hierarchy with 1000+ decorative nodes, click + hover interactions)
+- Three-tab layout: Deals / Affiliates / Earnings
+- Deals tab: Glassmorphic card grid with brand logo, offer description, payout/commission, Apply/Claim CTA
+- Affiliates tab: Active affiliate link cards (product, copyable link, clicks, commission) + available products grid with "Generate Link" action
+- Earnings tab: Summary stat cards (total earnings, this month, pending payout) + earnings chart
+
+**Approach:** v0 MCP as the primary UI generation tool, guided by BRAND-BIBLE.md, token reference, and component API docs for design system accuracy. Mock data throughout — no backend integration.
+
+**Parallel milestones:**
+- v2.1 Dashboard Rebuild (main worktree)
+- v2.2 Trending Page (separate worktree)
 
 **Future milestones:**
-- Additional page UI design (applying design system beyond dashboard)
-- Backend implementation
+- Backend integration for brand deals/affiliate data
+- Additional page UI design
 
 ---
-*Last updated: 2026-02-05 after v2.1 milestone started*
+*Last updated: 2026-02-05 after v2.3 milestone started*
