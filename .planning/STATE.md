@@ -4,17 +4,17 @@
 
 See: .planning/PROJECT.md (updated 2026-02-05)
 
-**Core value:** Raycast-quality design system foundation enabling rapid, consistent UI development
-**Current focus:** Planning next milestone
+**Core value:** Raycast-quality design system enabling rapid, consistent UI development
+**Current focus:** v2.1 Dashboard Rebuild
 
 ## Current Position
 
-**Milestone:** v2.0 -- Design System Foundation -- SHIPPED
-**Phase:** N/A (between milestones)
-**Status:** Ready for next milestone
-**Last activity:** 2026-02-05 -- v2.0 milestone archived
+**Milestone:** v2.1 -- Dashboard Rebuild
+**Phase:** Not started (defining requirements)
+**Status:** Defining requirements
+**Last activity:** 2026-02-05 -- Milestone v2.1 started
 
-Progress: [##########] 100% (v2.0 complete)
+Progress: [░░░░░░░░░░] 0%
 
 ## Shipped Milestones
 

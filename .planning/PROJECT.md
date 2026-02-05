@@ -26,11 +26,20 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 
 ### Active
 
-(None -- define with `/gsd:new-milestone`)
+- [ ] Floating glassmorphic sidebar (GlassPanel, always visible, pushes content)
+- [ ] Dashboard forms rebuilt with design system components (ContentForm, SurveyForm, TestTypeSelector)
+- [ ] All dashboard modals rebuilt with design system (CreateSociety, DeleteTest, LeaveFeedback, SocietySelector)
+- [ ] Results panel rebuilt with design system (ImpactScore, AttentionBreakdown, Variants, Insights, Themes)
+- [ ] Top bar rebuilt (ContextBar, FilterPills, LegendPills)
+- [ ] LoadingPhases simulation progress rebuilt with design system
+- [ ] Mobile nav updated for floating sidebar
+- [ ] Hive node visualization (center thumbnail + 3-layer node hierarchy)
+- [ ] Node click interaction (glow/scale + info card)
+- [ ] Node hover interaction (highlight connected nodes)
 
 ### Out of Scope
 
-- Light mode theme variant -- dark-mode first, defer to v2.1+
+- Light mode theme variant -- dark-mode first, defer later
 - Storybook integration -- showcase sufficient for now
 - Style Dictionary / Tokens Studio pipeline -- manual export sufficient
 - Real-time Figma sync -- manual reference sufficient
@@ -39,10 +48,11 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 
 ## Context
 
-**Current state:** Shipped v2.0 Design System Foundation (2026-02-05).
+**Current state:** Starting v2.1 Dashboard Rebuild (2026-02-05).
 - 26,311 LOC TypeScript/CSS
 - Tech stack: Next.js 14+ (App Router), TypeScript strict, Tailwind CSS v4, Supabase Auth
-- 36 components across 4 families, 100+ design tokens
+- 36 design system components across 4 families, 100+ design tokens
+- Dashboard has ~30 app components with hardcoded styles (pre-design-system)
 - 7-page showcase at /showcase
 - 8 documentation files in docs/
 - BRAND-BIBLE.md at repo root
@@ -82,5 +92,17 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 - Local: ~/virtuna-v1.1
 - Vercel: https://virtuna-v11.vercel.app
 
+## Current Milestone: v2.1 Dashboard Rebuild
+
+**Goal:** Apply the v2.0 design system to the entire dashboard and build a hive node visualization.
+
+**Target features:**
+- Wave 1: Rebuild all dashboard UI with design system (floating glassmorphic sidebar, forms, modals, results, top bar, loading states)
+- Wave 2: Hive node visualization (center thumbnail rectangle, 3-layer node hierarchy with 1000+ decorative nodes, click + hover interactions)
+
+**Future milestones:**
+- Additional page UI design (applying design system beyond dashboard)
+- Backend implementation
+
 ---
-*Last updated: 2026-02-05 after v2.0 milestone*
+*Last updated: 2026-02-05 after v2.1 milestone started*
