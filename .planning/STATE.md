@@ -11,21 +11,27 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Milestone:** v2.0 — Design System Foundation
 **Phase:** 44 of 44 (Verification & Documentation)
-**Plan:** 2 of 7 complete
-**Status:** In progress — verification infrastructure + WCAG contrast audit + token/component docs complete
-**Last activity:** 2026-02-05 — Completed 44-03-PLAN.md
+**Plan:** 3 of 7 complete
+**Status:** In progress — verification infrastructure + WCAG audit + hardcoded scan + token verification + docs complete
+**Last activity:** 2026-02-05 — Completed 44-02-PLAN.md
 
-Progress: [##--------] ~29% (Phase 44, Plan 2/7)
+Progress: [###-------] ~43% (Phase 44, Plan 3/7)
 
 ## Phase 44 Progress
 
 - 44-01: Verification infrastructure + WCAG AA contrast audit -- COMPLETE
-- 44-02: Hardcoded values scan -- PENDING
+- 44-02: Hardcoded values scan + token verification -- COMPLETE
 - 44-03: Token reference + component index documentation -- COMPLETE
 - 44-04: Visual comparison (Playwright screenshots) -- PENDING
 - 44-05: Component API documentation -- PENDING
 - 44-06: Brand bible update -- PENDING
 - 44-07: Final verification + cleanup -- PENDING
+
+### Artifacts Created (Phase 44, Plan 02)
+- `verification/scripts/hardcoded-values-scan.ts` -- Regex scanner for hardcoded values in 133 component files
+- `verification/reports/hardcoded-values.md` -- VER-06 report: 275 findings, 48 allow-listed, 227 flagged
+- `verification/scripts/token-verification.ts` -- Token comparison against Phase 39 extraction data
+- `verification/reports/token-verification.md` -- VER-02 report: 84 tokens compared, 63 match, 1 mismatch
 
 ### Artifacts Created (Phase 44, Plan 03)
 - `docs/tokens.md` -- Complete token reference (373 lines) covering all @theme values with usage guidance
@@ -227,6 +233,10 @@ All exports from `@/components/ui`:
 - Phase 44: Token doc organized by architectural layers (primitives -> semantic) with usage guidance per token
 - Phase 44: Component index covers 4 families: UI (21), Motion (7), Effects (2), Primitives (6) — 36 total
 - Phase 44: docs/ directory established for developer-facing documentation
+- Phase 44: Hardcoded values allow-list criteria: platform constants, WebGL context, compound values, animation-specific, data-driven, Safari compat
+- Phase 44: 275 hardcoded values found in 133 files — 48 allow-listed, 227 flagged for review (many are intentional Tailwind arbitrary sizes)
+- Phase 44: Token verification 84 tokens compared — 1 mismatch: --text-3xl is 30px vs Raycast 32px (flagged, not fixed)
+- Phase 44: Font family differences (Inter -> Funnel Display/Satoshi) classified as INTENTIONAL_DIFF alongside coral color
 
 ## Infrastructure URLs
 
@@ -237,6 +247,6 @@ All exports from `@/components/ui`:
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 44-03-PLAN.md
-Resume with: 44-02-PLAN.md or 44-04-PLAN.md (wave 1 parallel plans)
-Resume file: .planning/phases/44-verification-documentation/44-03-SUMMARY.md
+Stopped at: Completed 44-02-PLAN.md
+Resume with: 44-04-PLAN.md (visual comparison) or remaining wave 1/2 plans
+Resume file: .planning/phases/44-verification-documentation/44-02-SUMMARY.md
