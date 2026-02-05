@@ -101,31 +101,34 @@ skipped: 0
 ## Gaps
 
 - truth: "Card matches Raycast card style with gradient background and rounded-xl corners"
-  status: failed
+  status: fixed
   reason: "Card surface is slightly too dark/flat compared to Raycast extension cards. Raycast cards have gradient bg (top lighter, bottom darker), rounded-xl (~16px), and subtle inner highlight. Virtuna Card uses rounded-lg (~12px) and flat bg-surface."
   severity: minor
   test: 4
-  root_cause: ""
-  artifacts: []
+  root_cause: "Card used flat bg-surface and rounded-lg instead of gradient-card-bg token and rounded-xl"
+  artifacts: ["src/components/ui/card.tsx"]
   missing: []
   debug_session: ""
+  fix: "40-06-PLAN.md Task 1: Changed to rounded-xl, gradient-card-bg, inset highlight"
 
 - truth: "H1 font matches Raycast hero heading personality"
-  status: failed
+  status: accepted
   reason: "Funnel Display font has more character/flair while Raycast uses a clean geometric Inter variant. Visual feel is close but font personality differs slightly."
   severity: cosmetic
   test: 8
-  root_cause: ""
+  root_cause: "Intentional brand choice — Funnel Display gives Virtuna distinct identity"
   artifacts: []
   missing: []
   debug_session: ""
+  fix: "Accepted divergence — no code change. Documented as intentional brand choice."
 
 - truth: "Background matches Raycast.com body background exactly"
-  status: failed
+  status: fixed
   reason: "Raycast.com current homepage uses clean dark solid background with NO dot grid pattern. Virtuna has a visible dot grid at 15% opacity which adds texture Raycast doesn't have."
   severity: minor
   test: 13
-  root_cause: ""
-  artifacts: []
+  root_cause: "Dot grid pattern was assumed from older Raycast version, not present on current site"
+  artifacts: ["src/app/globals.css"]
   missing: []
   debug_session: ""
+  fix: "40-06-PLAN.md Task 2: Removed radial-gradient dot grid from body"

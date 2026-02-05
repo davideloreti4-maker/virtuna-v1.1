@@ -49,13 +49,18 @@ export interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
  * ```
  */
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, ...props }, ref) => (
+  ({ className, style, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
-        "bg-surface border border-border rounded-lg",
+        "border border-border rounded-xl",
         className
       )}
+      style={{
+        background: "var(--gradient-card-bg)",
+        boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.06)",
+        ...style,
+      }}
       {...props}
     />
   )

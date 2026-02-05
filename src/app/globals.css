@@ -344,11 +344,6 @@ body {
   overflow-x: hidden;
 }
 
-body {
-  /* Dot grid pattern - matching raycast aesthetic */
-  background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px);
-  background-size: 24px 24px;
-}
 
 h1,
 h2 {
