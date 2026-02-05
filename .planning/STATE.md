@@ -11,21 +11,25 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Milestone:** v2.0 — Design System Foundation
 **Phase:** 44 of 44 (Verification & Documentation)
-**Plan:** 1 of 7 complete
-**Status:** In progress — verification infrastructure + WCAG contrast audit complete
-**Last activity:** 2026-02-05 — Completed 44-01-PLAN.md
+**Plan:** 2 of 7 complete
+**Status:** In progress — verification infrastructure + WCAG contrast audit + token/component docs complete
+**Last activity:** 2026-02-05 — Completed 44-03-PLAN.md
 
-Progress: [#---------] ~14% (Phase 44, Plan 1/7)
+Progress: [##--------] ~29% (Phase 44, Plan 2/7)
 
 ## Phase 44 Progress
 
 - 44-01: Verification infrastructure + WCAG AA contrast audit -- COMPLETE
 - 44-02: Hardcoded values scan -- PENDING
-- 44-03: Visual comparison (Playwright screenshots) -- PENDING
-- 44-04: Token reference documentation -- PENDING
+- 44-03: Token reference + component index documentation -- COMPLETE
+- 44-04: Visual comparison (Playwright screenshots) -- PENDING
 - 44-05: Component API documentation -- PENDING
 - 44-06: Brand bible update -- PENDING
 - 44-07: Final verification + cleanup -- PENDING
+
+### Artifacts Created (Phase 44, Plan 03)
+- `docs/tokens.md` -- Complete token reference (373 lines) covering all @theme values with usage guidance
+- `docs/component-index.md` -- Component index (161 lines) mapping 36 components to source files and showcase pages
 
 ### Artifacts Created (Phase 44, Plan 01)
 - `verification/playwright.config.ts` -- Playwright config with 3 viewports (desktop, tablet, mobile)
@@ -220,6 +224,9 @@ All exports from `@/components/ui`:
 - Phase 44: Canvas 2D API used for color extraction — modern Chromium returns lab() from getComputedStyle for oklch values, canvas getImageData always returns sRGB
 - Phase 44: RGBA tokens composited against --color-background (#07080a) for contrast calculation
 - Phase 44: WCAG AA audit results: foreground-muted (#6a6b6c) fails AA on all dark surfaces; accent-foreground on accent fails at 2.48:1
+- Phase 44: Token doc organized by architectural layers (primitives -> semantic) with usage guidance per token
+- Phase 44: Component index covers 4 families: UI (21), Motion (7), Effects (2), Primitives (6) — 36 total
+- Phase 44: docs/ directory established for developer-facing documentation
 
 ## Infrastructure URLs
 
@@ -230,6 +237,6 @@ All exports from `@/components/ui`:
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 44-01-PLAN.md
-Resume with: 44-02-PLAN.md (hardcoded values scan)
-Resume file: .planning/phases/44-verification-documentation/44-01-SUMMARY.md
+Stopped at: Completed 44-03-PLAN.md
+Resume with: 44-02-PLAN.md or 44-04-PLAN.md (wave 1 parallel plans)
+Resume file: .planning/phases/44-verification-documentation/44-03-SUMMARY.md
