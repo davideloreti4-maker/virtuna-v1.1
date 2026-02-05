@@ -180,7 +180,15 @@ Plans:
   3. FadeInUp animation matches Raycast signature reveal pattern
   4. Staggered reveal works for lists and grids
   5. Noise texture and chromatic aberration effects available as optional enhancements
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+- [ ] 42-01-PLAN.md — GlassPanel blur enhancement (xs through 2xl)
+- [ ] 42-02-PLAN.md — NoiseTexture + ChromaticAberration effects
+- [ ] 42-03-PLAN.md — FadeIn/SlideUp enhance + FadeInUp combined
+- [ ] 42-04-PLAN.md — StaggerReveal + HoverScale motion components
+- [ ] 42-05-PLAN.md — Skeleton shimmer animation
+- [ ] 42-06-PLAN.md — Barrel exports + visual verification showcase
 
 ---
 
