@@ -20,6 +20,7 @@ import {
 } from "@/components/ui";
 import { MagnifyingGlass, Warning, Check, Heart, Star } from "@phosphor-icons/react";
 import { Phase41Demos } from "./_components/phase-41-demos";
+import { Phase42Demos } from "./_components/phase-42-demos";
 
 export default function UIShowcasePage() {
   const [inputValue, setInputValue] = useState("");
@@ -31,7 +32,7 @@ export default function UIShowcasePage() {
         UI Components Showcase
       </Heading>
       <Text muted className="mb-12">
-        Phase 40 & 41 Components — Visual verification page
+        Phase 40, 41, & 42 Components — Visual verification page
       </Text>
 
       {/* Section 1: Buttons */}
@@ -323,6 +324,16 @@ function greet(name: string) {
 
       {/* Phase 41 Interactive Demos */}
       <Phase41Demos />
+
+      {/* Phase 42 Divider */}
+      <div className="my-16 flex items-center gap-4 w-full">
+        <span className="flex-1 h-px bg-border" />
+        <span className="text-sm font-medium text-foreground-secondary">Phase 42 — Effects & Animation</span>
+        <span className="flex-1 h-px bg-border" />
+      </div>
+
+      {/* Phase 42 Effects & Animation Demos */}
+      <Phase42Demos />
     </div>
   );
 }
