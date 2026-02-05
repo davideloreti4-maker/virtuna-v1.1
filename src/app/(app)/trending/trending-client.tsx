@@ -54,9 +54,9 @@ function StatsBar({ stats }: { stats: TrendingStats }) {
   return (
     <div className="mt-2 flex flex-wrap items-center gap-x-1.5 text-sm text-foreground-muted">
       <span>{categoryParts.join(" \u00B7 ")}</span>
-      <span className="hidden sm:inline">\u00B7</span>
+      <span className="hidden sm:inline">{"\u00B7"}</span>
       <span className="mt-0.5 w-full sm:mt-0 sm:w-auto">
-        {stats.totalVideos} videos \u00B7 {formatCompactNumber(stats.totalViews)} total views
+        {stats.totalVideos} videos {"\u00B7"} {formatCompactNumber(stats.totalViews)} total views
       </span>
     </div>
   );
