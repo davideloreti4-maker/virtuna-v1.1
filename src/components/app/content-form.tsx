@@ -1,12 +1,33 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import * as Icons from "lucide-react";
 import { ImagePlus, Sparkles } from "lucide-react";
+import { z } from "zod";
 import { cn } from "@/lib/utils";
 import { TEST_TYPES } from "@/lib/test-types";
 import { useTestStore } from "@/stores/test-store";
+import { GlassTextarea } from "@/components/primitives/GlassTextarea";
+import { Button } from "@/components/ui/button";
 import type { TestType, TestTypeIcon } from "@/types/test";
+
+// ---------------------------------------------------------------------------
+// Validation
+// ---------------------------------------------------------------------------
+
+const MAX_LENGTH = 500;
+const COUNTER_THRESHOLD = MAX_LENGTH * 0.8;
+
+const contentFormSchema = z.object({
+  content: z
+    .string()
+    .min(1, { error: "Required" })
+    .min(10, { error: "At least 10 characters" }),
+});
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface ContentFormProps {
   testType: TestType;
@@ -32,6 +53,10 @@ const iconMap: Record<TestTypeIcon, React.ComponentType<{ className?: string }>>
   Package: Icons.Package,
 };
 
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export function ContentForm({
   testType,
   onChangeType,
@@ -39,6 +64,9 @@ export function ContentForm({
   className,
 }: ContentFormProps) {
   const [content, setContent] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typeConfig = TEST_TYPES[testType];
   const IconComponent = iconMap[typeConfig.icon];
@@ -54,21 +82,66 @@ export function ContentForm({
     }
   }, [isViewingHistory, currentResult]);
 
-  // Auto-expand textarea as content grows
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      // Reset height to auto to get the correct scrollHeight
-      textarea.style.height = "auto";
-      // Set height to scrollHeight (with minimum of 120px)
-      textarea.style.height = `${Math.max(120, textarea.scrollHeight)}px`;
+  // ---------------------------------------------------------------------------
+  // Validation helpers
+  // ---------------------------------------------------------------------------
+
+  const validateField = useCallback((field: string, value: string) => {
+    const fieldSchema = contentFormSchema.shape[field as keyof typeof contentFormSchema.shape];
+    if (!fieldSchema) return;
+
+    const result = fieldSchema.safeParse(value);
+    setErrors((prev) => ({
+      ...prev,
+      [field]: result.success ? "" : result.error.issues[0]?.message ?? "",
+    }));
+  }, []);
+
+  const validateForm = useCallback((): boolean => {
+    const result = contentFormSchema.safeParse({ content });
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of result.error.issues) {
+        const field = issue.path[0] as string;
+        if (!fieldErrors[field]) fieldErrors[field] = issue.message;
+      }
+      setErrors(fieldErrors);
+      return false;
     }
+    setErrors({});
+    return true;
   }, [content]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Re-validate on change after first touch
+  const handleContentChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const value = e.target.value;
+      setContent(value);
+      if (touched.content) {
+        validateField("content", value);
+      }
+    },
+    [touched.content, validateField]
+  );
+
+  const handleBlur = useCallback(() => {
+    setTouched((prev) => ({ ...prev, content: true }));
+    validateField("content", content);
+  }, [content, validateField]);
+
+  // ---------------------------------------------------------------------------
+  // Submit
+  // ---------------------------------------------------------------------------
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (content.trim()) {
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+    try {
       onSubmit(content);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -84,112 +157,121 @@ export function ContentForm({
     <form
       onSubmit={handleSubmit}
       className={cn(
-        "flex flex-col gap-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-4",
+        "flex flex-col gap-4 rounded-2xl border border-border bg-surface p-4",
         className
       )}
     >
-      {/* Textarea container - no separate border, integrated into card */}
-      <textarea
-        ref={textareaRef}
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        readOnly={isViewingHistory}
-        placeholder={isViewingHistory ? "" : typeConfig.placeholder}
-        className={cn(
-          "w-full min-h-[100px] resize-none overflow-hidden",
-          "bg-transparent",
-          "text-white text-base",
-          "placeholder:text-zinc-600",
-          "focus:outline-none",
-          "transition-colors",
-          isViewingHistory && "cursor-default text-zinc-300"
-        )}
-        rows={1}
-      />
+      {/* Textarea with GlassTextarea */}
+      <div>
+        <GlassTextarea
+          ref={textareaRef}
+          value={content}
+          onChange={handleContentChange}
+          onBlur={handleBlur}
+          readOnly={isViewingHistory}
+          placeholder={isViewingHistory ? "" : typeConfig.placeholder}
+          autoResize
+          size="md"
+          error={!!errors.content}
+          maxLength={MAX_LENGTH}
+          className={cn(
+            "border-0 bg-transparent",
+            isViewingHistory && "cursor-default opacity-70"
+          )}
+          style={{ backgroundColor: "transparent", backdropFilter: "none", WebkitBackdropFilter: "none" }}
+        />
+
+        {/* Error + counter row */}
+        <div className="mt-1.5 flex items-center justify-between">
+          {errors.content ? (
+            <p className="text-sm text-error" role="alert">
+              {errors.content}
+            </p>
+          ) : (
+            <span />
+          )}
+
+          {content.length >= COUNTER_THRESHOLD && (
+            <span
+              className={cn(
+                "text-sm",
+                content.length >= MAX_LENGTH
+                  ? "text-error"
+                  : "text-foreground-muted"
+              )}
+            >
+              {content.length}/{MAX_LENGTH}
+            </span>
+          )}
+        </div>
+      </div>
 
       {/* Action buttons row */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-800 pt-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
         <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           {/* Type selector badge */}
           {isViewingHistory ? (
             <div
               className={cn(
                 "flex min-h-[44px] items-center gap-2 rounded-lg px-3 py-1.5",
-                "border border-zinc-700 bg-zinc-800/50",
-                "text-sm text-zinc-400"
+                "border border-border bg-surface",
+                "text-sm text-foreground-secondary"
               )}
             >
               <IconComponent className="h-4 w-4" />
               <span className="font-medium">{typeConfig.name}</span>
             </div>
           ) : (
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={onChangeType}
-              className={cn(
-                "flex min-h-[44px] items-center gap-2 rounded-lg px-3 py-1.5",
-                "border border-zinc-700 bg-zinc-800/50",
-                "text-sm text-zinc-400",
-                "transition-colors hover:bg-zinc-800 hover:text-white"
-              )}
+              className="gap-2"
             >
               <IconComponent className="h-4 w-4" />
               <span className="font-medium">{typeConfig.name}</span>
-            </button>
+            </Button>
           )}
 
           {/* Action buttons - hidden when viewing history, hidden on mobile */}
           {!isViewingHistory && (
             <>
-              {/* Upload Images button - hidden on small screens */}
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={handleUploadImages}
-                className={cn(
-                  "hidden items-center gap-1.5 rounded-lg px-3 py-1.5 sm:flex",
-                  "border border-zinc-700 bg-zinc-800/50",
-                  "text-xs text-zinc-500",
-                  "transition-colors hover:bg-zinc-800 hover:text-zinc-300"
-                )}
+                className="hidden gap-1.5 text-xs sm:flex"
               >
                 <ImagePlus className="h-4 w-4" />
                 <span>Upload Images</span>
-              </button>
+              </Button>
 
-              {/* Help Me Craft button - hidden on small screens */}
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={handleHelpMeCraft}
-                className={cn(
-                  "hidden items-center gap-1.5 rounded-lg px-3 py-1.5 sm:flex",
-                  "border border-zinc-700 bg-zinc-800/50",
-                  "text-xs text-zinc-500",
-                  "transition-colors hover:bg-zinc-800 hover:text-zinc-300"
-                )}
+                className="hidden gap-1.5 text-xs sm:flex"
               >
                 <Sparkles className="h-4 w-4" />
                 <span>Help Me Craft</span>
-              </button>
+              </Button>
             </>
           )}
         </div>
 
         {/* Submit button - hidden when viewing history */}
         {!isViewingHistory && (
-          <button
+          <Button
             type="submit"
-            disabled={!content.trim()}
-            className={cn(
-              "rounded-xl px-6 py-2.5",
-              "bg-orange-500 text-white",
-              "text-sm font-medium",
-              "transition-colors",
-              "hover:bg-orange-600",
-              "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-orange-500"
-            )}
+            variant="primary"
+            loading={isSubmitting}
+            disabled={!content.trim() || isSubmitting}
           >
             Simulate
-          </button>
+          </Button>
         )}
       </div>
     </form>
