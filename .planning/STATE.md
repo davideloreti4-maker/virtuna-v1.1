@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Milestone:** v2.0 — Design System Foundation
 **Phase:** 44 of 44 (Verification & Documentation)
-**Plan:** 4 of 7 complete
-**Status:** In progress — verification infrastructure + WCAG audit + hardcoded scan + token verification + docs + visual comparison + responsive check complete
-**Last activity:** 2026-02-05 — Completed 44-04-PLAN.md
+**Plan:** 5 of 7 complete
+**Status:** In progress — verification infrastructure + WCAG audit + hardcoded scan + token verification + docs + visual comparison + responsive check + component API docs complete
+**Last activity:** 2026-02-05 — Completed 44-05-PLAN.md
 
-Progress: [####------] ~57% (Phase 44, Plan 4/7)
+Progress: [#####-----] ~71% (Phase 44, Plan 5/7)
 
 ## Phase 44 Progress
 
@@ -23,7 +23,7 @@ Progress: [####------] ~57% (Phase 44, Plan 4/7)
 - 44-02: Hardcoded values scan + token verification -- COMPLETE
 - 44-03: Token reference + component index documentation -- COMPLETE
 - 44-04: Visual comparison + responsive verification (Playwright screenshots) -- COMPLETE
-- 44-05: Component API documentation -- PENDING
+- 44-05: Component API docs + usage guidelines + accessibility requirements -- COMPLETE
 - 44-06: Brand bible update -- PENDING
 - 44-07: Final verification + cleanup -- PENDING
 
@@ -33,6 +33,11 @@ Progress: [####------] ~57% (Phase 44, Plan 4/7)
 - `verification/reports/visual-comparison.md` -- VER-01/04/05 report: 8 pages, 3 diffs (homepage 19.1%, features 1.08%)
 - `verification/reports/responsive-check.md` -- VER-07 report: 9 screenshots, 10 issues on mobile/tablet, 0 desktop
 - `verification/reports/screenshots/` -- 12 Virtuna + 3 diff + 9 responsive screenshots
+
+### Artifacts Created (Phase 44, Plan 05)
+- `docs/components.md` -- Complete API reference (1325 lines) for 27 components at 3 depth tiers
+- `docs/usage-guidelines.md` -- Usage guidelines (519 lines) with per-component guidance and composition patterns
+- `docs/accessibility.md` -- WCAG AA contrast requirements (244 lines) per component with measured ratios
 
 ### Artifacts Created (Phase 44, Plan 02)
 - `verification/scripts/hardcoded-values-scan.ts` -- Regex scanner for hardcoded values in 133 component files
@@ -248,6 +253,10 @@ All exports from `@/components/ui`:
 - Phase 44: Homepage features section 1.08% pixel diff vs Raycast confirms high structural similarity
 - Phase 44: Responsive showcase content clipping at mobile/tablet is known finding for future responsive improvements
 - Phase 44: Touch target threshold 32x24px (more lenient than WCAG 44x44 for desktop-first design)
+- Phase 44: Three-tier documentation depth: Full (9 components), Standard (10), Brief (8) based on complexity
+- Phase 44: Accessibility doc scoped to color contrast only; keyboard/screen reader deferred
+- Phase 44: Primary button contrast 2.48:1 flagged as critical action item
+- Phase 44: foreground-muted failures documented as known issues with remediation guidance (use foreground-secondary for important text)
 
 ## Infrastructure URLs
 
@@ -258,6 +267,6 @@ All exports from `@/components/ui`:
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 44-04-PLAN.md
-Resume with: 44-05-PLAN.md (component API docs) or remaining wave 2/3 plans
-Resume file: .planning/phases/44-verification-documentation/44-04-SUMMARY.md
+Stopped at: Completed 44-05-PLAN.md
+Resume with: 44-06-PLAN.md (brand bible) or 44-07-PLAN.md (final verification)
+Resume file: .planning/phases/44-verification-documentation/44-05-SUMMARY.md
