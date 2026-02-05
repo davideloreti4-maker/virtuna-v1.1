@@ -21,18 +21,19 @@
   --color-coral-900: oklch(0.28 0.08 40);
 
   /* --- Gray Scale --- */
-  /* Source: raycast.com body/text extraction */
+  /* Source: raycast.com computed styles extraction (2026-02-05) */
+  /* Body: rgb(7,8,10), Muted: rgb(106,107,108), Secondary: rgb(156,156,157) */
   --color-gray-50: oklch(0.98 0 0);
   --color-gray-100: oklch(0.96 0 0);
   --color-gray-200: oklch(0.90 0 0);
   --color-gray-300: oklch(0.80 0 0);
-  --color-gray-400: oklch(0.70 0 0);
-  --color-gray-500: oklch(0.60 0 0);
-  --color-gray-600: oklch(0.50 0 0);
-  --color-gray-700: oklch(0.40 0 0);
-  --color-gray-800: oklch(0.25 0 0);
-  --color-gray-900: oklch(0.18 0.02 264);
-  --color-gray-950: oklch(0.13 0.02 264);
+  --color-gray-400: #9c9c9d;   /* rgb(156,156,157) — Raycast secondary text */
+  --color-gray-500: #6a6b6c;   /* rgb(106,107,108) — Raycast muted text */
+  --color-gray-600: #58595a;   /* rgb(88,89,90) — Raycast dimmed text */
+  --color-gray-700: #3a3b3d;
+  --color-gray-800: #222326;
+  --color-gray-900: #1a1b1e;   /* rgb(26,27,30) — Raycast elevated surface */
+  --color-gray-950: #07080a;   /* rgb(7,8,10) — Raycast body background */
 
   /* --- Semantic Colors (raw values) --- */
   --color-success-raw: oklch(0.68 0.17 145);
@@ -62,11 +63,11 @@
    * ============================================ */
 
   /* --- Backgrounds --- */
-  /* Source: raycast.com body background #07080a */
+  /* Source: raycast.com body rgb(7,8,10), cards rgba(0,0,0,0.44), surfaces rgba(34,34,34,0.85) */
   --color-background: var(--color-gray-950);
   --color-background-elevated: var(--color-gray-900);
-  --color-surface: oklch(0.18 0.02 264);
-  --color-surface-elevated: oklch(0.23 0.02 264);
+  --color-surface: #18191c;     /* rgb(24,25,28) — Raycast card/surface */
+  --color-surface-elevated: #222326;  /* rgb(34,35,38) — Raycast elevated panels */
 
   /* --- Text --- */
   --color-foreground: var(--color-gray-50);
@@ -86,16 +87,16 @@
   --color-info: var(--color-info-raw);
 
   /* --- Borders --- */
-  /* Source: raycast.com glass borders rgba(255,255,255,0.06) */
-  --color-border: oklch(1 0 0 / 0.1);
-  --color-border-hover: oklch(1 0 0 / 0.15);
-  --color-border-glass: oklch(1 0 0 / 0.06);
-  --color-border-subtle: oklch(1 0 0 / 0.05);
+  /* Source: raycast.com nav border rgba(255,255,255,0.06), frame border rgba(255,255,255,0.08) */
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-hover: rgba(255, 255, 255, 0.15);
+  --color-border-glass: rgba(255, 255, 255, 0.06);
+  --color-border-subtle: rgba(255, 255, 255, 0.04);
 
   /* --- States --- */
-  --color-hover: oklch(1 0 0 / 0.05);
-  --color-active: oklch(1 0 0 / 0.1);
-  --color-disabled: oklch(0.50 0 0 / 0.5);
+  --color-hover: rgba(255, 255, 255, 0.05);
+  --color-active: rgba(255, 255, 255, 0.1);
+  --color-disabled: rgba(128, 128, 128, 0.5);
 
   /* --- Font Families --- */
   /* Source: raycast.com - Inter, JetBrains Mono, Geist Mono */
@@ -186,7 +187,7 @@
   /* --- Gradients --- */
   /* Source: raycast.com navbar, cards, features */
   --gradient-coral: linear-gradient(135deg, var(--color-coral-400), var(--color-coral-500), var(--color-coral-600));
-  --gradient-card-bg: linear-gradient(180deg, oklch(0.20 0.02 264), oklch(0.16 0.02 264));
+  --gradient-card-bg: linear-gradient(180deg, #222326, #141517);
   --gradient-overlay: linear-gradient(180deg, transparent, oklch(0 0 0 / 0.8));
   --gradient-glow-coral: radial-gradient(circle, oklch(0.72 0.16 40 / 0.2), transparent 70%);
   --gradient-navbar: linear-gradient(137deg, rgba(17, 18, 20, 0.75) 4.87%, rgba(12, 13, 15, 0.9) 75.88%);
@@ -311,9 +312,10 @@
 }
 
 /* Glass effect base styles - Safari compatible */
+/* Source: Raycast feature frame: rgba(0,0,0,0.44), border: rgba(255,255,255,0.08) */
 .glass-base {
-  background: oklch(0.18 0.02 264 / 0.6);
-  border: 1px solid oklch(1 0 0 / 0.1);
+  background: rgba(24, 25, 28, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .glass-blur-xs {

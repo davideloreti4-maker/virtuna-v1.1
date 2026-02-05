@@ -40,9 +40,9 @@ export interface GlassPanelProps {
 // Map tint colors to oklch background values (subtle tinting)
 const tintMap: Record<GlassTint, { bg: string; border: string; glow: string }> = {
   neutral: {
-    bg: "oklch(0.18 0.02 264",
-    border: "oklch(1 0 0 / 0.1)",
-    glow: "oklch(1 0 0 / 0.05)",
+    bg: "oklch(0.155 0.01 264",
+    border: "rgba(255, 255, 255, 0.08)",
+    glow: "rgba(255, 255, 255, 0.05)",
   },
   purple: {
     bg: "oklch(0.18 0.04 300",
