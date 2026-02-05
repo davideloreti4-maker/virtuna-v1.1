@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Milestone:** v2.1 -- Dashboard Rebuild
 **Phase:** 46 -- Forms & Modals -- In progress
-**Plan:** 02 of 04 complete
+**Plan:** 03 of 04 complete
 **Status:** In progress
-**Last activity:** 2026-02-05 -- Completed 46-02-PLAN.md (TestTypeSelector Dialog + GlassCard grid)
+**Last activity:** 2026-02-05 -- Completed 46-03-PLAN.md (CreateSociety + LeaveFeedback + DeleteTest modal migration)
 
-Progress: [█████-----] 50% (phase 46: 2/4 plans complete, phase 45: 3/3)
+Progress: [███████---] 75% (phase 46: 3/4 plans complete, phase 45: 3/3)
 
 ## Phase Overview
 
 | Phase | Name | Requirements | Status |
 |-------|------|-------------|--------|
 | 45 | Structural Foundation | 11 (SIDE + MOBL) | Complete (3/3) |
-| 46 | Forms & Modals | 10 (FORM + MODL) | In progress (2/4) |
+| 46 | Forms & Modals | 10 (FORM + MODL) | In progress (3/4) |
 | 47 | Results, Top Bar & Loading | 14 (RSLT + TBAR + LOAD) | Pending |
 | 48 | Hive Foundation | 9 (HIVE) | Pending |
 | 49 | Hive Interactions | 7 (HINT) | Pending |
@@ -75,6 +75,10 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 - [46-02] Badge variant="info" used for both "Popular" and "New" badges (no accent variant in Badge)
 - [46-02] App components import Dialog from @/components/ui/dialog, never from @radix-ui/react-dialog
 - [46-02] Card grids use responsive Tailwind grid (1/2/3 cols) with GlassCard hover="lift"
+- [46-03] Keep AlertDialog for destructive actions (prevents overlay-click close)
+- [46-03] Dirty-form confirmation uses second Dialog (isDirty + showDiscardConfirm state pattern)
+- [46-03] Zod validation on blur (not keystroke) to avoid noisy UX
+- [46-03] AlertDialog migration: keep Radix primitives, apply design system visual classes + inline backdrop-filter
 
 ### Key Technical Notes
 - v2.0 design system components are the building blocks (GlassPanel, GlassCard, GlassInput, GlassTextarea, GlassPill, GlassProgress, Dialog, Button, Select, Badge, Typography, Spinner, Icon)
@@ -89,10 +93,10 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 
 ### Session Continuity
 - Last session: 2026-02-05
-- Stopped at: Completed 46-02-PLAN.md
+- Stopped at: Completed 46-03-PLAN.md
 - Resume file: None
-- Next: Phase 46 plan 03 or 04
+- Next: Phase 46 plan 04 (settings modal)
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-05 -- Completed 46-02 (TestTypeSelector Dialog + GlassCard grid)*
+*Last updated: 2026-02-05 -- Completed 46-03 (CreateSociety + LeaveFeedback + DeleteTest modal migration)*
