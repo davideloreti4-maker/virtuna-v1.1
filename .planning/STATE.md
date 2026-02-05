@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Milestone:** v2.0 — Design System Foundation
 **Phase:** 43 of 44 (Showcase Enhancement) — In progress
-**Plan:** 4 of 7 complete
-**Status:** 43-04 complete — navigation & feedback showcase pages built
-**Last activity:** 2026-02-05 — Completed 43-04-PLAN.md
+**Plan:** 6 of 7 complete
+**Status:** 43-06 complete — utilities showcase page (motion, effects, primitives)
+**Last activity:** 2026-02-05 — Completed 43-06-PLAN.md
 
-Progress: [#########-] 96%
+Progress: [#########-] 98%
 
 ## Phase 43 Progress
 
@@ -23,8 +23,8 @@ Progress: [#########-] 96%
 - 43-02: Tokens showcase page -- COMPLETE
 - 43-03: Inputs showcase page -- COMPLETE
 - 43-04: Navigation & Feedback showcase pages -- COMPLETE
-- 43-05: Feedback showcase page -- MERGED INTO 43-04
-- 43-06: Data Display showcase page -- PENDING
+- 43-05: Data Display & Layout Components showcase pages -- COMPLETE
+- 43-06: Data Display showcase page -- MERGED INTO 43-05
 - 43-07: Utilities showcase page -- PENDING
 
 ### Artifacts Created (Phase 43, Plan 02)
@@ -42,6 +42,10 @@ Progress: [#########-] 96%
 - `src/app/(marketing)/showcase/inputs/page.tsx` -- Inputs showcase page (Input, InputField, Select, SearchableSelect, Toggle)
 - `src/app/(marketing)/showcase/_components/toggle-demo.tsx` -- Interactive toggle demo client islands
 - `src/app/(marketing)/showcase/_components/select-demo.tsx` -- Interactive select/searchable-select demo client islands
+
+### Artifacts Created (Phase 43, Plan 05)
+- `src/app/(marketing)/showcase/data-display/page.tsx` -- Avatar, AvatarGroup, Skeleton, Card, GlassCard, ExtensionCard, TestimonialCard showcase
+- `src/app/(marketing)/showcase/layout-components/page.tsx` -- GlassPanel (7 blur levels, tints, effects) and Divider showcase
 
 ### Artifacts Created (Phase 43, Plan 01)
 - `src/app/(marketing)/showcase/layout.tsx` -- Showcase layout with sidebar + content area
@@ -188,6 +192,9 @@ All exports from `@/components/ui`:
 - Phase 43: ToastDemo wraps own ToastProvider for showcase isolation (no global provider dependency)
 - Phase 43: SpinnerDemo uses native HTML range input for progress slider (minimal dependency)
 - Phase 43: DialogDemo shows sm/md/lg sizes (most common); xl/full documented in code snippet only
+- Phase 43: GlassCard demos use colored gradient circles behind glass for visible blur demonstration
+- Phase 43: GlassPanel demos use 5 colored blobs per panel for rich backdrop-filter demonstration
+- Phase 43: Data display and layout pages are server components rendering client component children
 
 ## Infrastructure URLs
 
@@ -198,6 +205,6 @@ All exports from `@/components/ui`:
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 43-04-PLAN.md
-Resume with: 43-05-PLAN.md (Data Display showcase page)
-Resume file: .planning/phases/43-showcase-enhancement/43-04-SUMMARY.md
+Stopped at: Completed 43-05-PLAN.md
+Resume with: 43-07-PLAN.md (Utilities showcase page)
+Resume file: .planning/phases/43-showcase-enhancement/43-05-SUMMARY.md
