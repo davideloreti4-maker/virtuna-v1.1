@@ -14,6 +14,7 @@ import {
   LogOut,
   Columns2,
   X,
+  TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -167,6 +168,14 @@ export function Sidebar({ mobileOpen, onMobileOpenChange, className }: SidebarPr
 
         {/* Bottom nav items */}
         <nav className="mt-2 space-y-0.5">
+          <SidebarNavItem
+            label="Trending"
+            icon={TrendingUp}
+            onClick={() => {
+              router.push("/trending");
+              onMobileOpenChange?.(false);
+            }}
+          />
           <SidebarNavItem
             label="Manage plan"
             icon={SlidersHorizontal}
