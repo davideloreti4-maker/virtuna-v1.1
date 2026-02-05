@@ -12,6 +12,7 @@ interface SidebarNavItemProps {
   label: string;
   isActive?: boolean;
   onClick?: () => void;
+  badge?: number;
   className?: string;
 }
 
@@ -27,6 +28,7 @@ export function SidebarNavItem({
   label,
   isActive = false,
   onClick,
+  badge,
   className,
 }: SidebarNavItemProps) {
   return (
@@ -52,6 +54,11 @@ export function SidebarNavItem({
       )}>
         {label}
       </Text>
+      {badge != null && badge > 0 && (
+        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-accent/20 px-1.5 text-xs font-medium text-accent">
+          {badge}
+        </span>
+      )}
     </Button>
   );
 }

@@ -13,7 +13,7 @@ import {
   SidebarSimple,
 } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { GlassPanel } from "@/components/primitives";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,7 @@ const bottomNavItems = [
  */
 export function Sidebar() {
   const router = useRouter();
+  const pathname = usePathname();
   const { isOpen, close } = useSidebarStore();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [activeNav, setActiveNav] = useState("content-intelligence");
@@ -144,15 +145,31 @@ export function Sidebar() {
 
         {/* Navigation items */}
         <nav className="flex flex-col gap-0.5 px-2">
-          {navItems.map((item) => (
-            <SidebarNavItem
-              key={item.id}
-              icon={item.icon}
-              label={item.label}
-              isActive={activeNav === item.id}
-              onClick={() => setActiveNav(item.id)}
-            />
-          ))}
+          {navItems.map((item) => {
+            // Brand Deals has a real route
+            if (item.id === "brand-deals") {
+              return (
+                <SidebarNavItem
+                  key={item.id}
+                  icon={item.icon}
+                  label={item.label}
+                  isActive={pathname.startsWith("/brand-deals")}
+                  onClick={() => router.push("/brand-deals")}
+                  badge={3}
+                />
+              );
+            }
+            // Other items keep existing useState behavior
+            return (
+              <SidebarNavItem
+                key={item.id}
+                icon={item.icon}
+                label={item.label}
+                isActive={activeNav === item.id && !pathname.startsWith("/brand-deals")}
+                onClick={() => setActiveNav(item.id)}
+              />
+            );
+          })}
         </nav>
 
         {/* Separator */}
