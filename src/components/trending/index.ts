@@ -8,3 +8,5 @@ export { VideoCardSkeleton } from "./video-card-skeleton";
 
 export { EmptyState } from "./empty-state";
 export type { EmptyStateProps } from "./empty-state";
+
+export { VideoGrid } from "./video-grid";
