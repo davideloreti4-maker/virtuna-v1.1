@@ -5,24 +5,24 @@
 See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** Raycast-quality design system enabling rapid, consistent UI development
-**Current focus:** v2.3.5 Design Token Alignment -- Phase 53 complete, Phase 54 next
+**Current focus:** v2.3.5 Design Token Alignment -- Phase 54 in progress (Plan 01 complete)
 
 ## Current Position
 
 **Milestone:** v2.3.5 -- Design Token Alignment
-**Phase:** 53 of 55 (Font & Color Foundation) -- COMPLETE
-**Plan:** 02 of 02 complete
-**Status:** Phase 53 complete -- ready for Phase 54 (Card & Surface Corrections)
-**Last activity:** 2026-02-06 -- Completed 53-02-PLAN.md (3 tasks, 2 commits + checkpoint)
+**Phase:** 54 of 55 (Card & Surface Corrections) -- In progress
+**Plan:** 01 of 03 complete
+**Status:** Plan 54-01 complete -- card variants + header fixed to Raycast-exact CSS
+**Last activity:** 2026-02-06 -- Completed 54-01-PLAN.md (3 tasks, 3 commits)
 
-Progress: [██████░░░░] ~22% (2 of ~9 plans estimated)
+Progress: [███████░░░] ~33% (3 of ~9 plans estimated)
 
 ### Phase Overview
 
 | Phase | Name | Requirements | Depends On | Status |
 |-------|------|-------------|------------|--------|
 | 53 | Font & Color Foundation | 12 (TYPO + COLR) | None | Complete (Plan 01 + 02 done) |
-| 54 | Card & Surface Corrections | 10 (CARD + HEAD + INPT) | Phase 53 | Ready to start |
+| 54 | Card & Surface Corrections | 10 (CARD + HEAD + INPT) | Phase 53 | In progress (Plan 01 done) |
 | 55 | Glass, Docs & Regression | 15 (GLAS + DOCS + REGR) | Phase 54 | Not started |
 
 ### Dependency Graph
@@ -43,7 +43,7 @@ Linear chain: each phase depends on the previous. Font/color tokens are now corr
 ## In-Progress Milestones
 
 - v2.1 Dashboard Rebuild -- Phases 45-49, 51 requirements, 40% executed [main branch]
-- v2.3.5 Design Token Alignment -- Phases 53-55, 37 requirements, Phase 53 complete (2/~9 plans) [worktree]
+- v2.3.5 Design Token Alignment -- Phases 53-55, 37 requirements, Phase 54 in progress (3/~9 plans) [worktree]
 
 ## Key Technical Notes
 
@@ -63,13 +63,16 @@ Linear chain: each phase depends on the previous. Font/color tokens are now corr
 - Input bg-white/5 (semi-transparent) matches Raycast pattern -- replaces opaque bg-surface
 - Components inherit font-sans from body -- no per-component font class needed
 - Full regression of all 36 components + pages after fixes -- Phase 55
+- Cards use bg-transparent instead of bg-surface (gradient overlay handles visual) -- 54-01
+- All card variants share consistent hover pattern (lift, border, bg overlay) -- 54-01
+- Header uses inline styles for glass pattern (gradient + blur + shadow) -- 54-01
 
 ### Session Continuity
-- Last session: 2026-02-06T11:45:47Z
-- Stopped at: Completed 53-02-PLAN.md (Phase 53 fully complete)
-- Resume file: None (Phase 54 needs planning)
-- Next: Plan Phase 54 (Card & Surface Corrections)
+- Last session: 2026-02-06T13:14:38Z
+- Stopped at: Completed 54-01-PLAN.md (card + header fixes)
+- Resume file: None
+- Next: 54-02-PLAN.md (input corrections) or 54-03-PLAN.md
 
 ---
 *State created: 2026-02-06*
-*Last updated: 2026-02-06 -- Phase 53 complete (font & color foundation, component migration)*
+*Last updated: 2026-02-06 -- Phase 54 Plan 01 complete (card & header corrections)*
