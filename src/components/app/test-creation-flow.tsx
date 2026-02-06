@@ -1,13 +1,15 @@
 "use client";
 
 import { ReactNode } from "react";
-import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTestStore } from "@/stores/test-store";
 import { useSocietyStore } from "@/stores/society-store";
+import { Spinner } from "@/components/ui/spinner";
+import { Text } from "@/components/ui/typography";
 import { TestTypeSelector } from "./test-type-selector";
 import { ContentForm } from "./content-form";
 import { SurveyForm } from "./survey-form";
+import { ResultsPanel } from "./simulation/results-panel";
 import type { TestType } from "@/types/test";
 import type { SurveySubmission } from "./survey-form";
 
@@ -127,8 +129,8 @@ export function TestCreationFlow({ triggerButton, className }: TestCreationFlowP
   if (currentStatus === "simulating") {
     return (
       <div className={cn("flex flex-col items-center justify-center gap-4 py-20", className)}>
-        <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
-        <p className="text-sm text-zinc-400">Simulating response...</p>
+        <Spinner size="lg" />
+        <Text size="sm" muted>Simulating response...</Text>
       </div>
     );
   }
@@ -136,9 +138,8 @@ export function TestCreationFlow({ triggerButton, className }: TestCreationFlowP
   if (currentStatus === "viewing-results" && currentResult) {
     return (
       <div className={cn("w-full max-w-md mx-auto", className)}>
-        <SimulationResultsPanel
-          impactScore={currentResult.impactScore}
-          attention={currentResult.attention}
+        <ResultsPanel
+          result={currentResult}
           onRunAnother={handleRunAnother}
         />
       </div>
@@ -149,145 +150,6 @@ export function TestCreationFlow({ triggerButton, className }: TestCreationFlowP
   return (
     <div className={className} onClick={handleTriggerClick}>
       {triggerButton}
-    </div>
-  );
-}
-
-/**
- * SimulationResultsPanel
- * Displays test results with impact score and attention breakdown
- */
-interface SimulationResultsPanelProps {
-  impactScore: number;
-  attention: {
-    full: number;
-    partial: number;
-    ignore: number;
-  };
-  onRunAnother: () => void;
-}
-
-function SimulationResultsPanel({
-  impactScore,
-  attention,
-  onRunAnother,
-}: SimulationResultsPanelProps) {
-  // Calculate stroke dash offset for circular progress
-  const circumference = 2 * Math.PI * 45; // radius = 45
-  const strokeDashoffset = circumference - (impactScore / 100) * circumference;
-
-  return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-xl">
-      {/* Header */}
-      <h3 className="mb-6 text-center text-sm font-medium uppercase tracking-wider text-zinc-500">
-        Simulation Results
-      </h3>
-
-      {/* Impact Score with circular progress */}
-      <div className="mb-8 flex flex-col items-center">
-        <div className="relative h-32 w-32">
-          {/* Background circle */}
-          <svg className="absolute inset-0 -rotate-90" viewBox="0 0 100 100">
-            <circle
-              cx="50"
-              cy="50"
-              r="45"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="6"
-              className="text-zinc-800"
-            />
-            {/* Progress circle */}
-            <circle
-              cx="50"
-              cy="50"
-              r="45"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="6"
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={strokeDashoffset}
-              className={cn(
-                "transition-all duration-1000 ease-out",
-                impactScore >= 80 ? "text-emerald-500" :
-                impactScore >= 60 ? "text-blue-500" :
-                "text-amber-500"
-              )}
-            />
-          </svg>
-          {/* Score number */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-4xl font-bold text-white">{impactScore}</span>
-            <span className="text-xs text-zinc-500">Impact Score</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Attention Breakdown */}
-      <div className="mb-8 space-y-4">
-        <h4 className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-          Attention Breakdown
-        </h4>
-
-        {/* Full Attention */}
-        <AttentionBar label="Full Attention" value={attention.full} color="emerald" />
-
-        {/* Partial Attention */}
-        <AttentionBar label="Partial Attention" value={attention.partial} color="amber" />
-
-        {/* Ignore */}
-        <AttentionBar label="Ignore" value={attention.ignore} color="zinc" />
-      </div>
-
-      {/* Run Another Test Button */}
-      <button
-        type="button"
-        onClick={onRunAnother}
-        className={cn(
-          "w-full rounded-lg px-6 py-3",
-          "border border-zinc-700 bg-transparent",
-          "text-sm font-medium text-zinc-400",
-          "transition-colors hover:bg-zinc-800 hover:text-white"
-        )}
-      >
-        Run another test
-      </button>
-    </div>
-  );
-}
-
-/**
- * AttentionBar - horizontal bar for attention breakdown
- */
-interface AttentionBarProps {
-  label: string;
-  value: number;
-  color: "emerald" | "amber" | "zinc";
-}
-
-function AttentionBar({ label, value, color }: AttentionBarProps) {
-  const colorClasses = {
-    emerald: "bg-emerald-500",
-    amber: "bg-amber-400",
-    zinc: "bg-zinc-500",
-  };
-
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between text-sm">
-        <span className="text-zinc-400">{label}</span>
-        <span className="font-medium text-white">{value}%</span>
-      </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
-        <div
-          className={cn(
-            "h-full rounded-full transition-all duration-700 ease-out",
-            colorClasses[color]
-          )}
-          style={{ width: `${value}%` }}
-        />
-      </div>
     </div>
   );
 }
