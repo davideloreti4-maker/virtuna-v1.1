@@ -32,16 +32,13 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 
 ### Active
 
-- [ ] Floating glassmorphic sidebar (GlassPanel, always visible, pushes content)
-- [ ] Dashboard forms rebuilt with design system components (ContentForm, SurveyForm, TestTypeSelector)
-- [ ] All dashboard modals rebuilt with design system (CreateSociety, DeleteTest, LeaveFeedback, SocietySelector)
-- [ ] Results panel rebuilt with design system (ImpactScore, AttentionBreakdown, Variants, Insights, Themes)
-- [ ] Top bar rebuilt (ContextBar, FilterPills, LegendPills)
-- [ ] LoadingPhases simulation progress rebuilt with design system
-- [ ] Mobile nav updated for floating sidebar
-- [ ] Hive node visualization (center thumbnail + 3-layer node hierarchy)
-- [ ] Node click interaction (glow/scale + info card)
-- [ ] Node hover interaction (highlight connected nodes)
+- [ ] Raycast-style landing page redesign presenting Virtuna as social media intelligence platform
+- [ ] Hero section with abstract design system visuals + bold messaging + "Get started" CTA
+- [ ] Feature sections with product screenshots (trending page, dashboard) and descriptions
+- [ ] New navbar with Virtuna branding and navigation links
+- [ ] Footer with links and social links
+- [ ] Responsive design (desktop + mobile)
+- [ ] Built with v0 generation per section, step by step
 
 ### Out of Scope
 
@@ -102,23 +99,31 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 - Local: ~/virtuna-v1.1
 - Vercel: https://virtuna-v11.vercel.app
 
+## Current Milestone: v3.1 Landing Page Redesign
+
+**Goal:** Replace the societies.io clone landing page with a Raycast-style landing page that presents Virtuna as a social media intelligence platform.
+
+**Target features:**
+- Raycast-style landing page with hero, features, and CTA sections
+- Hero with abstract design system visuals (glass cards, gradients) + bold messaging
+- Feature sections showcasing product screenshots (trending page, dashboard)
+- New navbar with Virtuna branding and navigation links
+- Footer with links and socials
+- Primary CTA: "Get started" → signup/dashboard
+- Built entirely with existing Raycast design system via v0 generation per section
+
+**Approach:** Dedicated v0 generation workflow — each section generated individually, reviewed, iterated, then assembled into the final page.
+
 ## Current State
 
-**Shipped:** v2.2 Trending Page UI (2026-02-06)
+**Shipped:** v2.2 Trending Page UI (2026-02-06), v2.0 Design System (2026-02-05)
 
-The trending page is complete with:
-- TikTok Creative Center-style feed at /trending
-- 42 mock videos across 3 categories
-- Video detail modal with TikTok embed
-- Bookmark system with persistence
-
-**In progress:** v2.1 Dashboard Rebuild (main branch)
+**In progress:** v2.1 Dashboard Rebuild (main branch, Phase 47 at 4/5)
 
 **Future milestones:**
 - v2.3 Brand Deals page
 - Trending page backend (Apify, AI classification, TanStack Query)
 - Remix system (multi-step wizard, storyboard generation)
-- PDF export and advanced features
 
 ---
-*Last updated: 2026-02-06 after v2.2 milestone shipped*
+*Last updated: 2026-02-06 after v3.1 milestone started*
