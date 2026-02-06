@@ -33,7 +33,11 @@ export function EarningsPeriodSelector({
   onPeriodChange,
 }: EarningsPeriodSelectorProps): React.JSX.Element {
   return (
-    <div className="inline-flex items-center gap-1 rounded-full border border-border-subtle bg-surface-elevated/50 p-1">
+    <div
+      role="radiogroup"
+      aria-label="Earnings period"
+      className="inline-flex items-center gap-1 rounded-full border border-border-subtle bg-surface-elevated/50 p-1"
+    >
       {PERIODS.map((period) => {
         const isActive = activePeriod === period.value;
 
@@ -41,6 +45,8 @@ export function EarningsPeriodSelector({
           <button
             key={period.value}
             type="button"
+            role="radio"
+            aria-checked={isActive}
             onClick={() => onPeriodChange(period.value)}
             className="relative rounded-full px-3 py-1.5 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent"
           >
