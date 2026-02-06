@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import { AnimatePresence, motion } from "motion/react";
 import { useSearchParams } from "next/navigation";
 
 import { BrandDealsHeader } from "./brand-deals-header";
 import { BrandDealsTabs } from "./brand-deals-tabs";
+import { DealsTab } from "./deals-tab";
 
 type ValidTab = "earnings" | "deals" | "affiliates";
 
@@ -17,6 +19,11 @@ interface BrandDealsPageProps {
 
 export function BrandDealsPage({ defaultTab }: BrandDealsPageProps) {
   const searchParams = useSearchParams();
+  const [appliedDeals, setAppliedDeals] = useState<Set<string>>(new Set());
+
+  function handleApplyDeal(dealId: string): void {
+    setAppliedDeals((prev) => new Set(prev).add(dealId));
+  }
 
   const tabParam = searchParams.get("tab") || "";
   const currentTab: ValidTab = VALID_TABS.includes(tabParam as ValidTab)
@@ -62,11 +69,7 @@ export function BrandDealsPage({ defaultTab }: BrandDealsPageProps) {
                 forceMount={currentTab === "deals" ? true : undefined}
                 className="outline-none"
               >
-                <div className="flex min-h-[300px] items-center justify-center rounded-xl border border-border-subtle">
-                  <p className="text-foreground-muted">
-                    Deals tab content -- Phase 54
-                  </p>
-                </div>
+                <DealsTab appliedDeals={appliedDeals} onApplyDeal={handleApplyDeal} />
               </Tabs.Content>
 
               <Tabs.Content
