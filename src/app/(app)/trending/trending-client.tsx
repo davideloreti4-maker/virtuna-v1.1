@@ -3,18 +3,21 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { TrendingUp, Flame, RotateCcw } from "lucide-react";
+import { BookmarkSimple } from "@phosphor-icons/react";
 import { Heading } from "@/components/ui/typography";
 import { CategoryTabs } from "@/components/ui/category-tabs";
 import { TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getTrendingStats } from "@/lib/trending-mock-data";
-import { VideoGrid } from "@/components/trending/video-grid";
+import { getTrendingStats, getAllVideos } from "@/lib/trending-mock-data";
+import { VideoGrid, VideoDetailModal } from "@/components/trending";
+import { useBookmarkStore } from "@/stores/bookmark-store";
 import {
   CATEGORY_LABELS,
   VALID_TABS,
-  type TrendingCategory,
-  type ValidTab,
+  FILTER_TABS,
+  type FilterTab,
   type TrendingStats,
+  type TrendingVideo,
 } from "@/types/trending";
 
 // ---------------------------------------------------------------------------
@@ -35,11 +38,18 @@ function formatCompactNumber(num: number): string {
   return num.toString();
 }
 
-/** Category icon map */
-const CATEGORY_ICONS: Record<TrendingCategory, React.ReactNode> = {
+/** Tab icon map (includes saved) */
+const TAB_ICONS: Record<FilterTab, React.ReactNode> = {
   "breaking-out": <TrendingUp className="h-3.5 w-3.5" />,
   "trending-now": <Flame className="h-3.5 w-3.5" />,
   "rising-again": <RotateCcw className="h-3.5 w-3.5" />,
+  saved: <BookmarkSimple weight="fill" className="h-3.5 w-3.5" />,
+};
+
+/** Tab labels (extends CATEGORY_LABELS with saved) */
+const TAB_LABELS: Record<FilterTab, string> = {
+  ...CATEGORY_LABELS,
+  saved: "Saved",
 };
 
 // ---------------------------------------------------------------------------
@@ -83,7 +93,7 @@ function SkeletonGrid() {
 // ---------------------------------------------------------------------------
 
 interface TrendingClientProps {
-  defaultTab: ValidTab;
+  defaultTab: FilterTab;
 }
 
 /**
@@ -91,33 +101,79 @@ interface TrendingClientProps {
  *
  * Renders heading, stats bar, category tabs with coral accent,
  * and manages tab state synced to URL search params.
+ * Includes video detail modal with keyboard navigation.
  */
 export function TrendingClient({ defaultTab }: TrendingClientProps) {
   const searchParams = useSearchParams();
 
   // Tab state: derive initial from URL, fallback to server-provided default
-  const initialTab = (searchParams.get("tab") as ValidTab) || defaultTab;
-  const [activeTab, setActiveTab] = useState<ValidTab>(initialTab);
+  const initialTab = (searchParams.get("tab") as FilterTab) || defaultTab;
+  const [activeTab, setActiveTab] = useState<FilterTab>(initialTab);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Modal state
+  const [selectedVideo, setSelectedVideo] = useState<TrendingVideo | null>(null);
+  const isModalOpen = selectedVideo !== null;
+
+  // Hydrate bookmark store on mount
+  useEffect(() => {
+    useBookmarkStore.getState()._hydrate();
+  }, []);
 
   // Compute stats once (mock data is static)
   const stats = useMemo(() => getTrendingStats(), []);
 
-  // Build category tab definitions with counts and icons
+  // Get bookmarked IDs for saved tab filtering
+  const bookmarkedIds = useBookmarkStore((s) => s.bookmarkedIds);
+
+  // Get current videos for modal navigation
+  const currentVideos = useMemo(() => {
+    if (activeTab === "saved") {
+      return getAllVideos().filter((v) => bookmarkedIds.has(v.id));
+    }
+    return getAllVideos().filter((v) => v.category === activeTab);
+  }, [activeTab, bookmarkedIds]);
+
+  // Modal navigation
+  const currentIndex = selectedVideo
+    ? currentVideos.findIndex((v) => v.id === selectedVideo.id)
+    : -1;
+
+  const handleNavigate = useCallback(
+    (direction: "prev" | "next") => {
+      if (direction === "prev" && currentIndex > 0) {
+        const prevVideo = currentVideos[currentIndex - 1];
+        if (prevVideo) setSelectedVideo(prevVideo);
+      } else if (direction === "next" && currentIndex < currentVideos.length - 1) {
+        const nextVideo = currentVideos[currentIndex + 1];
+        if (nextVideo) setSelectedVideo(nextVideo);
+      }
+    },
+    [currentIndex, currentVideos]
+  );
+
+  // Build tab definitions with counts and icons
   const categories = useMemo(
-    () =>
-      VALID_TABS.map((tab) => ({
+    () => [
+      ...VALID_TABS.map((tab) => ({
         value: tab,
-        label: CATEGORY_LABELS[tab],
-        icon: CATEGORY_ICONS[tab],
+        label: TAB_LABELS[tab],
+        icon: TAB_ICONS[tab],
         count: stats.byCategory[tab].count,
       })),
+      {
+        value: "saved" as const,
+        label: TAB_LABELS.saved,
+        icon: TAB_ICONS.saved,
+        // No count for saved per CONTEXT.md
+      },
+    ],
     [stats]
   );
 
   // Handle tab change: update local state + push to URL (shallow, no server re-render)
   const handleTabChange = useCallback((value: string) => {
-    const newTab = value as ValidTab;
+    const newTab = value as FilterTab;
     setIsLoading(true);
     setActiveTab(newTab);
     window.history.pushState(null, "", `/trending?tab=${newTab}`);
@@ -130,8 +186,8 @@ export function TrendingClient({ defaultTab }: TrendingClientProps) {
   useEffect(() => {
     function handlePopState() {
       const params = new URLSearchParams(window.location.search);
-      const tab = params.get("tab") as ValidTab | null;
-      if (tab && VALID_TABS.includes(tab)) {
+      const tab = params.get("tab") as FilterTab | null;
+      if (tab && (FILTER_TABS as readonly string[]).includes(tab)) {
         setIsLoading(true);
         setActiveTab(tab);
         setTimeout(() => setIsLoading(false), 250);
@@ -168,7 +224,7 @@ export function TrendingClient({ defaultTab }: TrendingClientProps) {
           onValueChange={handleTabChange}
           className="[&_[data-state=active]]:bg-accent/10 [&_[data-state=active]]:text-accent [&_[data-state=active]]:border-accent/20"
         >
-          {VALID_TABS.map((tab) => (
+          {FILTER_TABS.map((tab) => (
             <TabsContent key={tab} value={tab}>
               {/* Content renders outside sticky bar */}
             </TabsContent>
@@ -181,9 +237,24 @@ export function TrendingClient({ defaultTab }: TrendingClientProps) {
         {isLoading ? (
           <SkeletonGrid />
         ) : (
-          <VideoGrid category={activeTab} />
+          <VideoGrid
+            filterTab={activeTab}
+            onVideoClick={(video) => setSelectedVideo(video)}
+          />
         )}
       </div>
+
+      {/* Video detail modal */}
+      <VideoDetailModal
+        video={selectedVideo}
+        open={isModalOpen}
+        onOpenChange={(open) => {
+          if (!open) setSelectedVideo(null);
+        }}
+        onNavigate={handleNavigate}
+        hasPrevious={currentIndex > 0}
+        hasNext={currentIndex < currentVideos.length - 1}
+      />
     </div>
   );
 }

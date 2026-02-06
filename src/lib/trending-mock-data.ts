@@ -831,6 +831,13 @@ export function getVideosByCategory(
 }
 
 /**
+ * Get all trending videos.
+ */
+export function getAllVideos(): TrendingVideo[] {
+  return TRENDING_VIDEOS;
+}
+
+/**
  * Compute aggregate statistics across all trending videos.
  */
 export function getTrendingStats(): TrendingStats {

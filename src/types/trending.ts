@@ -29,6 +29,12 @@ export const VALID_TABS = [
 /** Union type derived from VALID_TABS -- identical to TrendingCategory but inferred from the runtime constant. */
 export type ValidTab = (typeof VALID_TABS)[number];
 
+/** Extended filter tab type that includes "saved" for bookmarked videos. */
+export type FilterTab = TrendingCategory | "saved";
+
+/** All filter tabs including saved. */
+export const FILTER_TABS = [...VALID_TABS, "saved"] as const;
+
 /**
  * A single trending video with full metadata.
  *
