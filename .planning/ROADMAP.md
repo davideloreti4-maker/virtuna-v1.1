@@ -35,7 +35,7 @@ Plans:
 
 ---
 
-### Phase 46: Forms & Modals Migration
+### Phase 46: Forms & Modals Migration ✅ COMPLETE
 
 **Goal:** All form inputs and modal dialogs across the dashboard use design system components with consistent behavior.
 
@@ -54,10 +54,10 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
-- [ ] 46-01-PLAN.md -- ContentForm + SurveyForm migration to design system with Zod v4 validation
-- [ ] 46-02-PLAN.md -- TestTypeSelector rebuild as Dialog + GlassCard responsive grid
-- [ ] 46-03-PLAN.md -- CreateSocietyModal + DeleteTestModal + LeaveFeedbackModal migration
-- [ ] 46-04-PLAN.md -- SocietySelector modal migration + visual consistency verification
+- [x] 46-01-PLAN.md -- ContentForm + SurveyForm migration to design system with Zod v4 validation
+- [x] 46-02-PLAN.md -- TestTypeSelector rebuild as Dialog + GlassCard responsive grid
+- [x] 46-03-PLAN.md -- CreateSocietyModal + DeleteTestModal + LeaveFeedbackModal migration
+- [x] 46-04-PLAN.md -- SocietySelector modal migration + visual consistency verification
 
 ---
 
