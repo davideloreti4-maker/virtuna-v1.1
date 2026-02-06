@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-05)
 ## Current Position
 
 **Milestone:** v2.2 -- Trending Page UI
-**Phase:** 51 of 52 (Video Feed & Cards) -- complete
-**Plan:** 04 of 04 in Phase 51 (complete)
-**Status:** Phase 51 complete, ready for Phase 52
-**Last activity:** 2026-02-06 -- Completed 51-04 (Visual verification checkpoint approved)
+**Phase:** 52 of 52 (Detail Modal & Bookmarks)
+**Plan:** 01 of 04 in Phase 52 (complete)
+**Status:** In progress
+**Last activity:** 2026-02-06 -- Completed 52-01 (Bookmark store & keyboard nav)
 
-Progress: [████████░░] ~80%
+Progress: [████████░░] ~85%
 
 ## Session Continuity
 
-Last session: 2026-02-06T08:52:00Z
-Stopped at: Completed 51-04-PLAN.md (Phase 51 visual verification approved)
-Resume file: .planning/phases/52-detail-modal-bookmarks/
+Last session: 2026-02-06T09:45:00Z
+Stopped at: Completed 52-01-PLAN.md (Bookmark store & keyboard navigation hook)
+Resume file: .planning/phases/52-detail-modal-bookmarks/52-02-PLAN.md
 
 ## Phase Overview (v2.2)
 
@@ -60,6 +60,9 @@ Resume file: .planning/phases/52-detail-modal-bookmarks/
 - [D-51-02-03] Velocity thresholds: >=10x rising (green), 5-10x peaking (coral), <5x declining (blue)
 - [D-51-03-01] useInView rootMargin 200px for smooth infinite scroll preload
 - [D-51-03-02] 3 skeleton placeholders during loadMore (matches one desktop grid row)
+- [D-52-01-01] Set<string> for bookmarks (O(1) lookups), Array for JSON serialization
+- [D-52-01-02] Manual localStorage pattern (matching settings-store.ts) for SSR control
+- [D-52-01-03] iframe check in keyboard handler to avoid TikTok embed conflicts
 
 ### Key Technical Notes
 - v2.0 design system components: GlassPanel, GlassCard, GlassPill, GlassProgress, Dialog, Button, Select, Badge, Typography, Tabs, CategoryTabs, Spinner, Icon, Avatar, Skeleton, Toast
@@ -70,4 +73,4 @@ Resume file: .planning/phases/52-detail-modal-bookmarks/
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-06 -- Completed 51-04 (Visual verification approved, Phase 51 complete)*
+*Last updated: 2026-02-06 -- Completed 52-01 (Bookmark store & keyboard nav hook)*
