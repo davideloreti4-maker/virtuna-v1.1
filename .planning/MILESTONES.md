@@ -1,5 +1,31 @@
 # Milestones — Virtuna
 
+## v2.3 — Brand Deals & Affiliate Page (Shipped: 2026-02-06)
+
+**Delivered:** Glassmorphic brand deals & affiliate page with three-tab layout (Deals / Affiliates / Earnings), 30+ components, full keyboard accessibility, and responsive design — all UI with mock data, no backend.
+
+**Phases completed:** 53-57 (12 plans total)
+
+**Key accomplishments:**
+
+- Three-tab brand deals page with URL-synced navigation and sliding pill animation
+- Filterable deal card grid with search, apply modal, and featured highlights — establishing color/surface patterns for all tabs
+- Affiliate link management with copy-to-clipboard, stats display, and generate-from-products workflow
+- Earnings dashboard with count-up stat cards, Recharts area chart with period selector, and per-source breakdown
+- Full accessibility: loading skeletons, responsive layouts, keyboard navigation, ARIA semantics, prefers-reduced-motion support
+- 43/43 requirements shipped, 67 verification truths confirmed, zero TypeScript errors
+
+**Stats:**
+
+- 76 files created/modified
+- ~10,700 lines of TypeScript/CSS added
+- 5 phases, 12 plans, 43 requirements
+- 2 days (2026-02-05 → 2026-02-06)
+
+**Git range:** `docs(53)` → `docs(57)`
+
+---
+
 ## v2.0 — Design System Foundation (Shipped: 2026-02-05)
 
 **Delivered:** Complete Raycast-quality design system extracted from raycast.com with coral (#FF7F50) branding, 36 components, 100+ tokens, 7-page showcase, and comprehensive documentation.
