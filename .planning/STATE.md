@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 ## Current Position
 
 **Milestone:** v2.1 -- Dashboard Rebuild
-**Phase:** 47 -- Results, Top Bar & Loading -- In progress
-**Plan:** 04 of 05 complete
-**Status:** In progress
-**Last activity:** 2026-02-06 -- Completed 47-04-PLAN.md
+**Phase:** 47 -- Results, Top Bar & Loading -- Complete
+**Plan:** 05 of 05 complete
+**Status:** Phase complete (Wave 1 done)
+**Last activity:** 2026-02-06 -- Completed 47-05-PLAN.md (visual verification approved)
 
-Progress: [█████████-] 90% (phase 47: 4/5, phase 46: 4/4, phase 45: 3/3, phases 48-49 pending)
+Progress: [█████████░] 92% (phases 45-47 complete, phases 48-49 pending)
 
 ## Phase Overview
 
@@ -23,7 +23,7 @@ Progress: [█████████-] 90% (phase 47: 4/5, phase 46: 4/4, phas
 |-------|------|-------------|--------|
 | 45 | Structural Foundation | 11 (SIDE + MOBL) | Complete (3/3) |
 | 46 | Forms & Modals | 10 (FORM + MODL) | Complete (4/4) |
-| 47 | Results, Top Bar & Loading | 14 (RSLT + TBAR + LOAD) | In progress (4/5) |
+| 47 | Results, Top Bar & Loading | 14 (RSLT + TBAR + LOAD) | Complete (5/5) |
 | 48 | Hive Foundation | 9 (HIVE) | Pending |
 | 49 | Hive Interactions | 7 (HINT) | Pending |
 
@@ -48,7 +48,7 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 
 ## In-Progress Milestones
 
-- v2.1 Dashboard Rebuild -- Phases 45-49, 51 requirements, ~70% executed (Phases 45-46 complete, Phase 47: 4/5)
+- v2.1 Dashboard Rebuild -- Phases 45-49, 51 requirements, ~92% executed (Phases 45-47 complete, Wave 1 done, Phases 48-49 pending)
 
 ## Key Technical Notes
 
@@ -92,6 +92,9 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 - [47-02] ResultsPanel uses plain div (bg-surface) not GlassPanel (avoid double glass with child GlassCards)
 - [47-02] ShareButton uses useToast for clipboard feedback (replaces useState/setTimeout pattern)
 - [47-02] ToastProvider wraps AppShell in server layout (client component safe as child in RSC tree)
+- [47-05] Test type selector and content form use Raycast gradient glass (user-requested override of opaque modal pattern)
+- [47-05] Simulate button uses primary variant (coral/orange) for visual prominence
+- [47-05] shadow-button inset highlight toned from solid white to rgba(255,255,255,0.2)
 
 ### Design System Components
 - v2.0 design system components are the building blocks (GlassPanel, GlassCard, GlassInput, GlassTextarea, GlassPill, GlassProgress, Dialog, Button, Select, Badge, Typography, Spinner, Icon)
@@ -111,10 +114,10 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 
 ### Session Continuity
 - Last session: 2026-02-06
-- Stopped at: Completed 47-02-PLAN.md
+- Stopped at: Completed Phase 47 (all 5 plans, visual verification approved)
 - Resume file: None
-- Next: 47-05-PLAN.md (final plan in Phase 47)
+- Next: Phase 48 (Hive Foundation) or Phase 49 (Hive Interactions)
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-06 -- Phase 47 plan 02 complete (ResultsPanel wrapper, ShareButton toast, ToastProvider)*
+*Last updated: 2026-02-06 -- Phase 47 complete (Wave 1 dashboard migration done)*

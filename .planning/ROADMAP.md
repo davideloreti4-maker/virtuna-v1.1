@@ -62,7 +62,7 @@ Plans:
 
 ---
 
-### Phase 47: Results Panel, Top Bar & Loading States
+### Phase 47: Results Panel, Top Bar & Loading States ✅ COMPLETE
 
 **Goal:** Results display, top bar filtering, and loading states all render through design system components, completing the dashboard migration.
 
@@ -81,11 +81,11 @@ Plans:
 **Plans:** 5 plans
 
 Plans:
-- [ ] 47-01-PLAN.md -- Migrate 5 results section cards (ImpactScore, AttentionBreakdown, Variants, Insights, Themes) to GlassCard/GlassProgress/Accordion
-- [ ] 47-02-PLAN.md -- ResultsPanel wrapper + ShareButton toast + ToastProvider + test-creation-flow cleanup
-- [ ] 47-03-PLAN.md -- Top bar migration (ContextBar, FilterPills, LegendPills) to GlassPill
-- [ ] 47-04-PLAN.md -- Loading state rewrite (skeleton shimmer + progressive reveal + cancel)
-- [ ] 47-05-PLAN.md -- Dashboard wiring + mobile blur budget + visual verification checkpoint
+- [x] 47-01-PLAN.md -- Migrate 5 results section cards (ImpactScore, AttentionBreakdown, Variants, Insights, Themes) to GlassCard/GlassProgress/Accordion
+- [x] 47-02-PLAN.md -- ResultsPanel wrapper + ShareButton toast + ToastProvider + test-creation-flow cleanup
+- [x] 47-03-PLAN.md -- Top bar migration (ContextBar, FilterPills, LegendPills) to GlassPill
+- [x] 47-04-PLAN.md -- Loading state rewrite (skeleton shimmer + progressive reveal + cancel)
+- [x] 47-05-PLAN.md -- Dashboard wiring + mobile blur budget + visual verification checkpoint
 
 ---
 
@@ -133,12 +133,12 @@ Plans:
 | 15-38 | v1.3.2-v1.7 | - | Archived | 2026-02-03 |
 | 39-44 | v2.0 | 35/35 | Complete | 2026-02-05 |
 | 45 | v2.1 | 3/3 | Complete | 2026-02-05 |
-| 46 | v2.1 | 0/4 | Pending | - |
-| 47 | v2.1 | 0/5 | Pending | - |
+| 46 | v2.1 | 4/4 | Complete | 2026-02-06 |
+| 47 | v2.1 | 5/5 | Complete | 2026-02-06 |
 | 48 | v2.1 | 0/? | Pending | - |
 | 49 | v2.1 | 0/? | Pending | - |
 | 50-52 | v2.2 | 10/10 | Shipped | 2026-02-06 |
 
 ---
 *Roadmap created: 2026-02-03*
-*Last updated: 2026-02-06 -- v2.2 shipped, v2.1 Phase 46 complete*
+*Last updated: 2026-02-06 -- v2.2 shipped, v2.1 Phase 47 complete (Wave 1 dashboard migration done)*
