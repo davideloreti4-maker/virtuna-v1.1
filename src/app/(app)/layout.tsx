@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Funnel_Display } from "next/font/google";
 import { AppShell } from "@/components/app";
+import { ToastProvider } from "@/components/ui/toast";
 import "../globals.css";
 
 const satoshi = localFont({
@@ -32,9 +33,11 @@ export default function AppLayout({
   return (
     <html lang="en" className={`${satoshi.variable} ${funnelDisplay.variable}`}>
       <body className="min-h-screen bg-background font-sans antialiased">
-        <AppShell>
-          {children}
-        </AppShell>
+        <ToastProvider>
+          <AppShell>
+            {children}
+          </AppShell>
+        </ToastProvider>
       </body>
     </html>
   );

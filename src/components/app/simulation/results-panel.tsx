@@ -1,7 +1,8 @@
 'use client';
 
-import { cn } from '@/lib/utils';
 import type { TestResult } from '@/types/test';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/typography';
 import { ImpactScore } from './impact-score';
 import { AttentionBreakdown } from './attention-breakdown';
 import { VariantsSection } from './variants-section';
@@ -22,18 +23,19 @@ interface ResultsPanelProps {
  * - Scrollable content area with all result sections
  * - Sticky footer with "Run another test" button
  * - Max height with overflow scroll
+ * - Plain div container (NOT GlassPanel) to avoid double glass with child GlassCards
  */
 export function ResultsPanel({ result, onRunAnother }: ResultsPanelProps) {
   return (
-    <div className="max-h-[70vh] overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-900 shadow-xl">
+    <div className="max-h-[70vh] overflow-y-auto rounded-xl border border-border bg-surface shadow-xl">
       {/* Header with share button */}
-      <div className="sticky top-0 flex items-center justify-between border-b border-zinc-800 bg-zinc-900/95 p-4 backdrop-blur">
-        <h2 className="text-sm font-medium text-zinc-400">Simulation Results</h2>
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/95 p-4 backdrop-blur">
+        <Text size="sm" muted>Simulation Results</Text>
         <ShareButton resultId={result.id} />
       </div>
 
       {/* Content */}
-      <div className="space-y-8 p-6">
+      <div className="space-y-4 p-4">
         {/* Impact Score */}
         <ImpactScore score={result.impactScore} label={result.impactLabel} />
 
@@ -51,19 +53,10 @@ export function ResultsPanel({ result, onRunAnother }: ResultsPanelProps) {
       </div>
 
       {/* Footer actions */}
-      <div className="sticky bottom-0 border-t border-zinc-800 bg-zinc-900/95 p-4 backdrop-blur">
-        <button
-          type="button"
-          onClick={onRunAnother}
-          className={cn(
-            'w-full rounded-xl px-6 py-3',
-            'bg-orange-500 text-white',
-            'text-sm font-medium',
-            'transition-colors hover:bg-orange-600'
-          )}
-        >
+      <div className="sticky bottom-0 border-t border-border bg-background/95 p-4 backdrop-blur">
+        <Button variant="primary" className="w-full" onClick={onRunAnother}>
           Run another test
-        </button>
+        </Button>
       </div>
     </div>
   );
