@@ -53,9 +53,15 @@ export function Header({ className }: HeaderProps) {
       <header
         ref={menuRef}
         className={cn(
-          "sticky top-0 z-50 w-full bg-background",
+          "sticky top-0 z-50 w-full border-b border-border",
           className
         )}
+        style={{
+          background: "var(--gradient-navbar)",
+          backdropFilter: "blur(5px)",
+          WebkitBackdropFilter: "blur(5px)",
+          boxShadow: "rgba(255, 255, 255, 0.15) 0px 1px 1px 0px inset",
+        }}
       >
         <nav className="flex items-center justify-between px-8 py-3.5">
           {/* Logo */}
@@ -115,13 +121,18 @@ export function Header({ className }: HeaderProps) {
         {/* Mobile Menu - Slide Down */}
         <div
           className={cn(
-            "absolute left-0 right-0 top-full bg-background transition-all duration-200 ease-out md:hidden",
+            "absolute left-0 right-0 top-full transition-all duration-200 ease-out md:hidden",
             mobileMenuOpen
               ? "visible translate-y-0 opacity-100"
               : "invisible -translate-y-2 opacity-0"
           )}
+          style={{
+            background: "var(--gradient-navbar)",
+            backdropFilter: "blur(5px)",
+            WebkitBackdropFilter: "blur(5px)",
+          }}
         >
-          <div className="flex flex-col gap-4 border-t border-white/10 px-8 py-6">
+          <div className="flex flex-col gap-4 border-t border-border px-8 py-6">
             <Link
               href="/auth/login"
               className="text-white transition-colors hover:text-white/80"
