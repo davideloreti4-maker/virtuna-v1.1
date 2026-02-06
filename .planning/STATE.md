@@ -10,19 +10,19 @@ See: .planning/PROJECT.md (updated 2026-02-05)
 ## Current Position
 
 **Milestone:** v2.1 -- Dashboard Rebuild
-**Phase:** 46 -- Forms & Modals -- In progress
-**Plan:** 03 of 04 complete
-**Status:** In progress
-**Last activity:** 2026-02-05 -- Completed 46-03-PLAN.md (CreateSociety + LeaveFeedback + DeleteTest modal migration)
+**Phase:** 46 -- Forms & Modals -- Complete
+**Plan:** 04 of 04 complete
+**Status:** Phase complete
+**Last activity:** 2026-02-06 -- Completed 46-04-PLAN.md (SocietySelector migration + modal consistency verification)
 
-Progress: [███████---] 75% (phase 46: 3/4 plans complete, phase 45: 3/3)
+Progress: [████████--] 80% (phase 46: 4/4 complete, phase 45: 3/3, phases 47-49 pending)
 
 ## Phase Overview
 
 | Phase | Name | Requirements | Status |
 |-------|------|-------------|--------|
 | 45 | Structural Foundation | 11 (SIDE + MOBL) | Complete (3/3) |
-| 46 | Forms & Modals | 10 (FORM + MODL) | In progress (3/4) |
+| 46 | Forms & Modals | 10 (FORM + MODL) | Complete (4/4) |
 | 47 | Results, Top Bar & Loading | 14 (RSLT + TBAR + LOAD) | Pending |
 | 48 | Hive Foundation | 9 (HIVE) | Pending |
 | 49 | Hive Interactions | 7 (HINT) | Pending |
@@ -79,6 +79,9 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 - [46-03] Dirty-form confirmation uses second Dialog (isDirty + showDiscardConfirm state pattern)
 - [46-03] Zod validation on blur (not keystroke) to avoid noisy UX
 - [46-03] AlertDialog migration: keep Radix primitives, apply design system visual classes + inline backdrop-filter
+- [46-04] SocietySelector preserves _hydrate pattern (not migrated to Zustand persist)
+- [46-04] Selected society card uses ring-2 ring-accent border-accent (coral) matching TestTypeSelector pattern
+- [46-04] DialogContent size=full with max-w-[800px] for society selector grid layout
 
 ### Key Technical Notes
 - v2.0 design system components are the building blocks (GlassPanel, GlassCard, GlassInput, GlassTextarea, GlassPill, GlassProgress, Dialog, Button, Select, Badge, Typography, Spinner, Icon)
@@ -92,11 +95,11 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 - **Character counter pattern:** Show at 80%+ of max length, text-error at/over limit.
 
 ### Session Continuity
-- Last session: 2026-02-05
-- Stopped at: Completed 46-03-PLAN.md
+- Last session: 2026-02-06
+- Stopped at: Completed 46-04-PLAN.md (phase 46 complete)
 - Resume file: None
-- Next: Phase 46 plan 04 (settings modal)
+- Next: Phase 47 (Results, Top Bar & Loading) or Phase 48 (Hive Foundation)
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-05 -- Completed 46-03 (CreateSociety + LeaveFeedback + DeleteTest modal migration)*
+*Last updated: 2026-02-06 -- Completed 46-04 (SocietySelector migration + modal consistency verification, phase 46 complete)*
