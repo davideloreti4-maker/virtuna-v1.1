@@ -5,24 +5,24 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** Raycast-quality design system enabling rapid, consistent UI development
-**Current focus:** v2.3 Brand Deals & Affiliate Page -- Phase 54 in progress (plan 2/3 complete)
+**Current focus:** v2.3 Brand Deals & Affiliate Page -- Phase 54 complete, Phase 55 next
 
 ## Current Position
 
 **Milestone:** v2.3 -- Brand Deals & Affiliate Page
-**Phase:** 54 of 57 (Deals Tab) -- IN PROGRESS
-**Plan:** 2/3 complete
-**Status:** In progress, plan 02 complete
-**Last activity:** 2026-02-06 -- Completed 54-02-PLAN.md (DealFilterBar + DealsEmptyState + useDebouncedCallback)
+**Phase:** 54 of 57 (Deals Tab) -- COMPLETE
+**Plan:** 3/3 complete
+**Status:** Phase 54 complete, ready for Phase 55
+**Last activity:** 2026-02-06 -- Completed 54-03-PLAN.md (DealsTab container + DealApplyModal + BrandDealsPage integration)
 
-Progress: [████░░░░░░] 40%
+Progress: [██████░░░░] 60%
 
 ## Phase Overview
 
 | Phase | Name | Requirements | Depends On | Status |
 |-------|------|-------------|------------|--------|
 | 53 | Foundation & Tab Shell | 7 (PAGE-*) | None | Complete (2026-02-05) |
-| 54 | Deals Tab | 14 (DEAL-* + PLSH-01,02) | Phase 53 | In progress (2/3 plans) |
+| 54 | Deals Tab | 14 (DEAL-* + PLSH-01,02) | Phase 53 | Complete (3/3 plans) |
 | 55 | Affiliates Tab | 10 (AFFL-*) | Phase 53 | Ready to plan |
 | 56 | Earnings Tab | 9 (EARN-*) | Phase 53 | Ready to plan |
 | 57 | Responsive & Accessibility | 3 (PLSH-03,04,05) | 53-56 | Blocked |
@@ -34,9 +34,9 @@ Note: Phases 54, 55, 56 are independent of each other (can build in any order af
 ```
 Phase 53 (Foundation) ✓
   |
-  +---> Phase 54 (Deals + color/perf patterns) --+
-  +---> Phase 55 (Affiliates)                    +--> Phase 57 (Verify)
-  +---> Phase 56 (Earnings)                     --+
+  +---> Phase 54 (Deals + color/perf patterns) ✓ --+
+  +---> Phase 55 (Affiliates)                      +--> Phase 57 (Verify)
+  +---> Phase 56 (Earnings)                       --+
 ```
 
 ## Shipped Milestones
@@ -80,6 +80,10 @@ Phase 53 (Foundation) ✓
 - [DEC-54-01-03] Applied cards show opacity-60 mute treatment
 - [DEC-54-02-01] Search input controlled by parent -- debounce responsibility in DealsTab container
 - [DEC-54-02-02] FILTER_CATEGORIES as explicit runtime array mirrors BrandDealCategory union
+- [DEC-54-03-01] Applied state lifted to BrandDealsPage to survive tab switches
+- [DEC-54-03-02] DealApplyModal uses design system Dialog/InputField/Button (not raw Radix)
+- [DEC-54-03-03] Search debounced at 300ms via useDebouncedCallback
+- [DEC-54-03-04] Responsive grid: 3 cols lg, 2 sm, 1 mobile
 
 ### Key Technical Notes
 - Settings page pattern for URL-synced tabs (server reads searchParams, client orchestrates)
@@ -98,9 +102,9 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 54-02-PLAN.md, ready for 54-03
+Stopped at: Completed 54-03-PLAN.md, Phase 54 complete, ready for Phase 55
 Resume file: None
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-06 -- Plan 54-02 complete (DealFilterBar + DealsEmptyState + useDebouncedCallback)*
+*Last updated: 2026-02-06 -- Phase 54 complete (DealsTab container + DealApplyModal + BrandDealsPage integration)*
