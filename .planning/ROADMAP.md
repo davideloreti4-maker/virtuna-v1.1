@@ -135,7 +135,11 @@ Plans:
 
 **Dependencies:** Phases 53, 54, 55, 56 (all content must be built before cross-tab verification)
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 57-01-PLAN.md -- Skeleton loading states for all tabs + responsive layout fixes (header, breakdown, container)
+- [ ] 57-02-PLAN.md -- Keyboard accessibility across all interactive components (cards, filters, period selector)
 
 ## Progress
 
@@ -151,8 +155,8 @@ Plans:
 | 54 | v2.3 | 3/3 | Complete | 2026-02-06 |
 | 55 | v2.3 | 2/2 | Complete | 2026-02-06 |
 | 56 | v2.3 | 3/3 | Complete | 2026-02-06 |
-| 57 | v2.3 | 0/? | Not started | - |
+| 57 | v2.3 | 0/2 | Not started | - |
 
 ---
 *Roadmap created: 2026-02-03*
-*Last updated: 2026-02-06 -- Phase 56 complete (Earnings Tab, 3/3 plans, goal verified 12/12)*
+*Last updated: 2026-02-06 -- Phase 57 planned (Responsive & Accessibility, 2 plans in 1 wave)*
