@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { GlassPill } from "@/components/primitives";
 
 /**
  * Role levels with colors matching accumulated decisions (Phase 4).
@@ -12,6 +13,14 @@ export const ROLE_LEVELS = [
   { id: "mid", label: "Mid", color: "bg-pink-500" },
   { id: "entry", label: "Entry", color: "bg-orange-500" },
 ] as const;
+
+/** Hex color values for inline dot styling (avoids Tailwind class dependencies) */
+const ROLE_LEVEL_COLORS: Record<string, string> = {
+  executive: "#6366F1", // indigo
+  senior: "#10B981",    // emerald
+  mid: "#EC4899",       // pink
+  entry: "#F97316",     // orange
+};
 
 export type RoleLevel = (typeof ROLE_LEVELS)[number]["id"];
 
@@ -25,6 +34,7 @@ interface LegendPillsProps {
 
 /**
  * LegendPills - Displays role level color legend for network visualization.
+ * Uses GlassPill primitives with neutral color and hex-based dot indicators.
  * Can optionally support click-to-toggle filtering.
  */
 export function LegendPills({
@@ -39,29 +49,25 @@ export function LegendPills({
   return (
     <div className={cn("flex items-center gap-2", className)}>
       {ROLE_LEVELS.map((level) => (
-        <button
+        <GlassPill
           key={level.id}
-          type="button"
-          onClick={() => onToggle?.(level.id)}
-          disabled={!onToggle}
-          className={cn(
-            "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-            isActive(level.id)
-              ? "bg-zinc-800/80 text-zinc-200"
-              : "bg-zinc-900/50 text-zinc-500",
-            onToggle && "cursor-pointer hover:bg-zinc-700",
-            !onToggle && "cursor-default"
-          )}
+          color="neutral"
+          size="sm"
+          variant="outline"
+          active={isActive(level.id)}
+          onClick={onToggle ? () => onToggle(level.id) : undefined}
+          className="gap-1.5"
         >
           <span
             className={cn(
-              "h-2 w-2 rounded-full",
-              level.color,
+              "h-2 w-2 rounded-full shrink-0",
               !isActive(level.id) && "opacity-40"
             )}
+            style={{ backgroundColor: ROLE_LEVEL_COLORS[level.id] }}
+            aria-hidden="true"
           />
           {level.label}
-        </button>
+        </GlassPill>
       ))}
     </div>
   );

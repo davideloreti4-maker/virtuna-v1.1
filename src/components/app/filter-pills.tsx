@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { GlassPill } from "@/components/primitives";
 
 interface FilterPillProps {
   label: string;
@@ -14,8 +15,9 @@ interface FilterPillProps {
  * FilterPill - Individual filter pill with colored indicator dot.
  *
  * Features:
+ * - Uses GlassPill primitive with neutral color
  * - Colored dot on left side
- * - Active/inactive visual states
+ * - Active/inactive visual states via GlassPill active prop
  * - Click to toggle
  */
 export function FilterPill({
@@ -25,22 +27,21 @@ export function FilterPill({
   onClick,
 }: FilterPillProps) {
   return (
-    <button
+    <GlassPill
+      color="neutral"
+      size="md"
+      variant="outline"
+      active={active}
       onClick={onClick}
-      className={cn(
-        "flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm transition-colors",
-        active
-          ? "border-zinc-600 bg-zinc-800/50 text-white"
-          : "border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:text-white"
-      )}
+      className="gap-2"
     >
       <span
-        className="h-2.5 w-2.5 rounded-full"
+        className={cn("h-2 w-2 rounded-full shrink-0", !active && "opacity-40")}
         style={{ backgroundColor: color }}
         aria-hidden="true"
       />
-      <span>{label}</span>
-    </button>
+      {label}
+    </GlassPill>
   );
 }
 
