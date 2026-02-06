@@ -65,8 +65,6 @@ export function ContentForm({
 }: ContentFormProps) {
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typeConfig = TEST_TYPES[testType];
   const IconComponent = iconMap[typeConfig.icon];
@@ -83,51 +81,19 @@ export function ContentForm({
   }, [isViewingHistory, currentResult]);
 
   // ---------------------------------------------------------------------------
-  // Validation helpers
+  // Validation
   // ---------------------------------------------------------------------------
 
-  const validateField = useCallback((field: string, value: string) => {
-    const fieldSchema = contentFormSchema.shape[field as keyof typeof contentFormSchema.shape];
-    if (!fieldSchema) return;
-
-    const result = fieldSchema.safeParse(value);
-    setErrors((prev) => ({
-      ...prev,
-      [field]: result.success ? "" : result.error.issues[0]?.message ?? "",
-    }));
-  }, []);
-
   const validateForm = useCallback((): boolean => {
-    const result = contentFormSchema.safeParse({ content });
-    if (!result.success) {
-      const fieldErrors: Record<string, string> = {};
-      for (const issue of result.error.issues) {
-        const field = issue.path[0] as string;
-        if (!fieldErrors[field]) fieldErrors[field] = issue.message;
-      }
-      setErrors(fieldErrors);
-      return false;
-    }
-    setErrors({});
-    return true;
+    return contentFormSchema.safeParse({ content }).success;
   }, [content]);
 
-  // Re-validate on change after first touch
   const handleContentChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const value = e.target.value;
-      setContent(value);
-      if (touched.content) {
-        validateField("content", value);
-      }
+      setContent(e.target.value);
     },
-    [touched.content, validateField]
+    []
   );
-
-  const handleBlur = useCallback(() => {
-    setTouched((prev) => ({ ...prev, content: true }));
-    validateField("content", content);
-  }, [content, validateField]);
 
   // ---------------------------------------------------------------------------
   // Submit
@@ -173,31 +139,21 @@ export function ContentForm({
           ref={textareaRef}
           value={content}
           onChange={handleContentChange}
-          onBlur={handleBlur}
           readOnly={isViewingHistory}
           placeholder={isViewingHistory ? "" : typeConfig.placeholder}
           autoResize
           size="md"
-          error={!!errors.content}
           maxLength={MAX_LENGTH}
           className={cn(
-            "border-0 bg-transparent",
+            "border-0 bg-transparent ring-0 focus:ring-0 focus:border-0",
             isViewingHistory && "cursor-default opacity-70"
           )}
           style={{ backgroundColor: "transparent", backdropFilter: "none", WebkitBackdropFilter: "none" }}
         />
 
-        {/* Error + counter row */}
-        <div className="mt-1.5 flex items-center justify-between">
-          {errors.content ? (
-            <p className="text-sm text-error" role="alert">
-              {errors.content}
-            </p>
-          ) : (
-            <span />
-          )}
-
-          {content.length >= COUNTER_THRESHOLD && (
+        {/* Counter row */}
+        {content.length >= COUNTER_THRESHOLD && (
+          <div className="mt-1.5 flex justify-end">
             <span
               className={cn(
                 "text-sm",
@@ -208,8 +164,8 @@ export function ContentForm({
             >
               {content.length}/{MAX_LENGTH}
             </span>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Action buttons row */}
@@ -272,7 +228,7 @@ export function ContentForm({
         {!isViewingHistory && (
           <Button
             type="submit"
-            variant="primary"
+            variant="secondary"
             loading={isSubmitting}
             disabled={!content.trim() || isSubmitting}
           >

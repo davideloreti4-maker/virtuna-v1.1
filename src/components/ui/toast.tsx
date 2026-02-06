@@ -60,7 +60,7 @@ const VARIANT_CLASSES: Record<
   { container: string; icon: string; progress: string }
 > = {
   default: {
-    container: "bg-surface-elevated border-border-glass",
+    container: "border-white/[0.06]",
     icon: "text-foreground-secondary",
     progress: "bg-foreground-secondary",
   },
@@ -210,8 +210,10 @@ const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
           reducedMotionStyle
         )}
         style={{
+          backgroundColor: "rgba(17, 18, 20, 0.95)",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
+          boxShadow: "0 10px 15px rgba(0,0,0,0.3), rgba(255,255,255,0.1) 0px 1px 0px 0px inset",
           ...animationStyle,
         }}
         onMouseEnter={handleMouseEnter}

@@ -89,8 +89,8 @@ const dialogContentVariants = cva(
     "translate-x-[-50%] translate-y-[-50%]",
     "w-full",
     // Solid dark surface (Raycast modals are opaque, not glass)
-    "rounded-lg border border-border-glass",
-    "bg-surface-elevated shadow-xl",
+    "rounded-xl border border-white/[0.06]",
+    "shadow-xl",
     // Animations
     "data-[state=open]:animate-in data-[state=closed]:animate-out",
     "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
@@ -161,7 +161,8 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(dialogContentVariants({ size, className }))}
       style={{
-        boxShadow: "0 20px 25px rgba(0,0,0,0.15), 0 10px 10px rgba(0,0,0,0.1), rgba(255,255,255,0.1) 0px 1px 0px 0px inset",
+        backgroundColor: "rgba(17, 18, 20, 0.95)",
+        boxShadow: "0 20px 25px rgba(0,0,0,0.3), 0 10px 10px rgba(0,0,0,0.2), rgba(255,255,255,0.1) 0px 1px 0px 0px inset",
       }}
       {...props}
     >

@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Plus } from "lucide-react";
 import {
-  // NetworkVisualization, // TEMP: swapped for ProgressiveVisualization testing
   FilterPillGroup,
   ContextBar,
   TestTypeSelector,
@@ -11,13 +9,10 @@ import {
   SurveyForm,
   LoadingPhases,
   ResultsPanel,
-  LegendPills,
 } from "@/components/app";
-import { VisualizationCanvas } from "@/components/visualization";
 import { useTestStore } from "@/stores/test-store";
 import { useSocietyStore } from "@/stores/society-store";
 import type { TestType } from "@/types/test";
-import { Button } from "@/components/ui/button";
 import type { SurveySubmission } from "@/components/app/survey-form";
 
 /**
@@ -54,10 +49,6 @@ export function DashboardClient() {
   }, [societyStore]);
 
   // Handlers
-  const handleOpenSelector = () => {
-    setStatus("selecting-type");
-  };
-
   const handleCloseSelector = () => {
     setStatus("idle");
     setTestType(null);
@@ -93,31 +84,11 @@ export function DashboardClient() {
 
   return (
     <div className="relative flex h-full flex-col bg-background">
-      {/* Network visualization - always visible in background */}
-      {/* TODO: Replace placeholder sphere with GlassOrb in Phase 20-02 */}
-      <VisualizationCanvas className="absolute inset-0 z-0" showResetButton={false}>
-        <mesh>
-          <sphereGeometry args={[1, 32, 32]} />
-          <meshStandardMaterial color="#E57850" />
-        </mesh>
-      </VisualizationCanvas>
-
-      {/* Top bar with context, filters, and create button - above network */}
-      <div className="relative z-10 flex items-center justify-between px-6 py-4">
+      {/* Top bar with context and filters */}
+      <div className="flex items-center justify-between px-6 py-4">
         <ContextBar location="Switzerland" />
         <div className="flex items-center gap-3">
-          {/* Legend pills for role level view - hidden on mobile */}
-          <LegendPills className="hidden md:flex" />
           <FilterPillGroup />
-          <Button
-            variant="primary"
-            onClick={handleOpenSelector}
-            className="whitespace-nowrap"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Create a new test</span>
-            <span className="sm:hidden">New</span>
-          </Button>
         </div>
       </div>
 

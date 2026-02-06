@@ -705,11 +705,13 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
               // Position
               "absolute z-[var(--z-dropdown)] w-full mt-1",
               // Styling
-              "bg-surface-elevated border border-border-glass rounded-lg shadow-xl overflow-hidden",
+              "border border-white/[0.06] rounded-lg shadow-xl overflow-hidden",
             )}
             style={{
+              backgroundColor: "rgba(17, 18, 20, 0.95)",
               backdropFilter: "blur(12px)",
               WebkitBackdropFilter: "blur(12px)",
+              boxShadow: "0 10px 15px rgba(0,0,0,0.3), rgba(255,255,255,0.1) 0px 1px 0px 0px inset",
             }}
           >
             <div className="max-h-60 overflow-y-auto py-1">
@@ -864,11 +866,13 @@ const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelectProps>
             aria-label={placeholder}
             className={cn(
               "absolute z-[var(--z-dropdown)] w-full mt-1",
-              "bg-surface-elevated border border-border-glass rounded-lg shadow-xl overflow-hidden",
+              "border border-white/[0.06] rounded-lg shadow-xl overflow-hidden",
             )}
             style={{
+              backgroundColor: "rgba(17, 18, 20, 0.95)",
               backdropFilter: "blur(12px)",
               WebkitBackdropFilter: "blur(12px)",
+              boxShadow: "0 10px 15px rgba(0,0,0,0.3), rgba(255,255,255,0.1) 0px 1px 0px 0px inset",
             }}
           >
             {/* Search Input */}
