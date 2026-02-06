@@ -34,8 +34,8 @@
 **Plans:** 2 plans
 
 Plans:
-- [ ] 53-01-PLAN.md -- Font + color token foundation (globals.css overhaul, Inter font loading, Satoshi deletion)
-- [ ] 53-02-PLAN.md -- Component font migration (remove font-display from 11 files, fix weights, input bg, showcase docs)
+- [x] 53-01-PLAN.md -- Font + color token foundation (globals.css overhaul, Inter font loading, Satoshi deletion)
+- [x] 53-02-PLAN.md -- Component font migration (remove font-display from 11 files, fix weights, input bg, showcase docs)
 
 ---
 
@@ -198,10 +198,10 @@ Plans:
 | 48 | v2.1 | 0/? | Pending | - |
 | 49 | v2.1 | 0/? | Pending | - |
 | 50-52 | v2.2 | 10/10 | Shipped | 2026-02-06 |
-| 53 | v2.3.5 | 0/? | Not started | - |
+| 53 | v2.3.5 | 2/2 | Complete | 2026-02-06 |
 | 54 | v2.3.5 | 0/? | Not started | - |
 | 55 | v2.3.5 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-02-03*
-*Last updated: 2026-02-06 -- v2.3.5 roadmap created (phases 53-55)*
+*Last updated: 2026-02-06 -- Phase 53 complete (Font & Color Foundation)*

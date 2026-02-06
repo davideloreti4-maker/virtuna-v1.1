@@ -7,21 +7,21 @@
 
 ### Typography
 
-- [ ] **TYPO-01**: All text renders in Inter font family (remove Funnel Display and Satoshi)
-- [ ] **TYPO-02**: Body text uses line-height 1.5-1.6 (not 1.15)
-- [ ] **TYPO-03**: Body text uses letter-spacing 0.2px matching Raycast
-- [ ] **TYPO-04**: Font weights use Inter's 400 (regular), 500 (medium), 600 (semibold), 700 (bold)
-- [ ] **TYPO-05**: All @theme font-size tokens verified against Raycast type scale
+- [x] **TYPO-01**: All text renders in Inter font family (remove Funnel Display and Satoshi)
+- [x] **TYPO-02**: Body text uses line-height 1.5-1.6 (not 1.15)
+- [x] **TYPO-03**: Body text uses letter-spacing 0.2px matching Raycast
+- [x] **TYPO-04**: Font weights use Inter's 400 (regular), 500 (medium), 600 (semibold), 700 (bold)
+- [x] **TYPO-05**: All @theme font-size tokens verified against Raycast type scale
 
 ### Color Tokens
 
-- [ ] **COLR-01**: Grey scale uses exact hex values (not oklch) for all dark colors (L < 0.15)
-- [ ] **COLR-02**: Card background uses Raycast 137deg gradient (`linear-gradient(137deg, #111214 4.87%, #0c0d0f 75.88%)`)
-- [ ] **COLR-03**: Surface/elevated values match Raycast extraction exactly
-- [ ] **COLR-04**: Input backgrounds use `rgba(255,255,255,0.05)` (not opaque #18191a)
-- [ ] **COLR-05**: Border opacity tokens use 6% base / 10% hover consistently
-- [ ] **COLR-06**: Glass gradient uses Raycast pattern (`linear-gradient(137deg, rgba(17,18,20,0.75) 4.87%, rgba(12,13,15,0.9) 75.88%)`)
-- [ ] **COLR-07**: Button shadow tokens include Raycast's 4-layer primary and 3-layer secondary patterns
+- [x] **COLR-01**: Grey scale uses exact hex values (not oklch) for all dark colors (L < 0.15)
+- [x] **COLR-02**: Card background uses Raycast 137deg gradient (`linear-gradient(137deg, #111214 4.87%, #0c0d0f 75.88%)`)
+- [x] **COLR-03**: Surface/elevated values match Raycast extraction exactly
+- [x] **COLR-04**: Input backgrounds use `rgba(255,255,255,0.05)` (not opaque #18191a)
+- [x] **COLR-05**: Border opacity tokens use 6% base / 10% hover consistently
+- [x] **COLR-06**: Glass gradient uses Raycast pattern (`linear-gradient(137deg, rgba(17,18,20,0.75) 4.87%, rgba(12,13,15,0.9) 75.88%)`)
+- [x] **COLR-07**: Button shadow tokens include Raycast's 4-layer primary and 3-layer secondary patterns
 
 ### Card Component
 
@@ -89,18 +89,18 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TYPO-01 | Phase 53 | Pending |
-| TYPO-02 | Phase 53 | Pending |
-| TYPO-03 | Phase 53 | Pending |
-| TYPO-04 | Phase 53 | Pending |
-| TYPO-05 | Phase 53 | Pending |
-| COLR-01 | Phase 53 | Pending |
-| COLR-02 | Phase 53 | Pending |
-| COLR-03 | Phase 53 | Pending |
-| COLR-04 | Phase 53 | Pending |
-| COLR-05 | Phase 53 | Pending |
-| COLR-06 | Phase 53 | Pending |
-| COLR-07 | Phase 53 | Pending |
+| TYPO-01 | Phase 53 | Complete |
+| TYPO-02 | Phase 53 | Complete |
+| TYPO-03 | Phase 53 | Complete |
+| TYPO-04 | Phase 53 | Complete |
+| TYPO-05 | Phase 53 | Complete |
+| COLR-01 | Phase 53 | Complete |
+| COLR-02 | Phase 53 | Complete |
+| COLR-03 | Phase 53 | Complete |
+| COLR-04 | Phase 53 | Complete |
+| COLR-05 | Phase 53 | Complete |
+| COLR-06 | Phase 53 | Complete |
+| COLR-07 | Phase 53 | Complete |
 | CARD-01 | Phase 54 | Pending |
 | CARD-02 | Phase 54 | Pending |
 | CARD-03 | Phase 54 | Pending |
@@ -134,4 +134,4 @@
 
 ---
 *Requirements defined: 2026-02-06*
-*Last updated: 2026-02-06 -- All 37 requirements mapped to phases 53-55*
+*Last updated: 2026-02-06 -- Phase 53 requirements (TYPO-01..05, COLR-01..07) marked Complete*
