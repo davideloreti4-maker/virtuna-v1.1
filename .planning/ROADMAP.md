@@ -55,7 +55,12 @@ Plans:
 3. Header/navbar uses the Raycast glass pattern (137deg gradient + blur(5px) + 6% border) and mobile menu divider uses 6% opacity
 4. All input components use rgba(255,255,255,0.05) background with 5% border opacity and 42px height, matching GlassInput/Raycast pattern
 
-**Plans:** TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 54-01-PLAN.md -- Card variants + Header glass navbar (Card, GlassCard, FeatureCard, ExtensionCard, TestimonialCard, Header)
+- [ ] 54-02-PLAN.md -- Input + Textarea consolidation (merge GlassInput features, create Textarea, update barrel)
+- [ ] 54-03-PLAN.md -- Consumer migration + deprecation re-exports + visual verification checkpoint
 
 ---
 
