@@ -25,7 +25,7 @@ export function StatsSection({ className }: StatsSectionProps) {
               <span className="text-sm text-foreground-muted">
                 Validated accuracy
               </span>
-              <h2 className="mt-4 font-display text-[40px] font-[350] text-white sm:text-[52px]">
+              <h2 className="mt-4 text-[40px] font-normal text-white sm:text-[52px]">
                 86%
               </h2>
               <p className="mt-6 text-lg leading-relaxed text-white/80">

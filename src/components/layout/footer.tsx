@@ -18,7 +18,7 @@ export function Footer({ className }: FooterProps) {
       <div className="mx-auto max-w-4xl px-6">
         {/* CTA Section */}
         <div className="mb-16 text-center">
-          <h2 className="font-display text-[32px] font-[350] leading-[36px] text-white sm:text-[40px] sm:leading-[44px]">
+          <h2 className="text-[32px] font-normal leading-[36px] text-white sm:text-[40px] sm:leading-[44px]">
             Ready to understand your audience?
           </h2>
           <p className="mt-4 text-lg text-white/80">

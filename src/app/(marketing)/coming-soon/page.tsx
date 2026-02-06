@@ -14,7 +14,7 @@ export default function ComingSoonPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
       <div className="text-center">
-        <h1 className="font-display text-4xl font-[350] text-white md:text-5xl">
+        <h1 className="text-4xl font-normal text-white md:text-5xl">
           Coming Soon
         </h1>
         <p className="mt-4 text-lg text-foreground-muted">

@@ -18,8 +18,8 @@ export interface FeatureCardProps {
  * - Padding: 48px vertical, 26px horizontal
  * - Border: 1px solid rgba(255, 255, 255, 0.1)
  * - Icon: ~28-32px, white color
- * - Title: Funnel Display, 18px, medium weight
- * - Description: Satoshi, 16px, muted color
+ * - Title: Inter, 18px, medium weight
+ * - Description: Inter, 16px, muted color
  */
 export function FeatureCard({
   icon,
@@ -37,7 +37,7 @@ export function FeatureCard({
       <div className="mb-6 h-7 w-7 text-white">
         {icon}
       </div>
-      <h3 className="mb-3 font-display text-lg font-medium text-white">
+      <h3 className="mb-3 text-lg font-medium text-white">
         {title}
       </h3>
       <p className="font-sans text-base leading-relaxed text-foreground-muted">

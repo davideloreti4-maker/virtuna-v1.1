@@ -25,7 +25,7 @@ export function HeroSection({ className }: HeroSectionProps) {
           {/* Left: Text content */}
           <div className="max-w-xl text-center lg:text-left order-2 lg:order-1">
             <FadeIn delay={0}>
-              <h1 className="font-display text-[36px] sm:text-[44px] md:text-[52px] leading-[1.15] font-[350] text-white">
+              <h1 className="text-[36px] sm:text-[44px] md:text-[52px] leading-[1.15] font-normal text-white">
                 Human Behavior,
                 <br />
                 <span className="text-accent">Simulated.</span>
@@ -33,7 +33,7 @@ export function HeroSection({ className }: HeroSectionProps) {
             </FadeIn>
 
             <FadeIn delay={0.1}>
-              <p className="font-sans text-lg sm:text-xl leading-[30px] font-[450] text-white/90 mt-6 max-w-md">
+              <p className="font-sans text-lg sm:text-xl leading-[30px] font-normal text-white/90 mt-6 max-w-md">
                 AI personas that replicate real-world attitudes, beliefs, and opinions.
               </p>
             </FadeIn>
