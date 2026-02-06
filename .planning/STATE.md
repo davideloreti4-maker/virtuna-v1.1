@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** Raycast-quality design system enabling rapid, consistent UI development
-**Current focus:** v2.3 Brand Deals & Affiliate Page -- Phase 54 complete, Phase 55 next
+**Current focus:** v2.3 Brand Deals & Affiliate Page -- Phase 55 in progress (Plan 01 complete)
 
 ## Current Position
 
 **Milestone:** v2.3 -- Brand Deals & Affiliate Page
-**Phase:** 54 of 57 (Deals Tab) -- COMPLETE
-**Plan:** 3/3 complete
-**Status:** Phase 54 complete, ready for Phase 55
-**Last activity:** 2026-02-06 -- Completed 54-03-PLAN.md (DealsTab container + DealApplyModal + BrandDealsPage integration)
+**Phase:** 55 of 57 (Affiliates Tab) -- IN PROGRESS
+**Plan:** 1/? complete
+**Status:** Phase 55 Plan 01 complete, ready for Plan 02
+**Last activity:** 2026-02-06 -- Completed 55-01-PLAN.md (Affiliates Tab presentational components + formatting utilities)
 
-Progress: [██████░░░░] 60%
+Progress: [███████░░░] 70%
 
 ## Phase Overview
 
@@ -23,7 +23,7 @@ Progress: [██████░░░░] 60%
 |-------|------|-------------|------------|--------|
 | 53 | Foundation & Tab Shell | 7 (PAGE-*) | None | Complete (2026-02-05) |
 | 54 | Deals Tab | 14 (DEAL-* + PLSH-01,02) | Phase 53 | Complete (3/3 plans) |
-| 55 | Affiliates Tab | 10 (AFFL-*) | Phase 53 | Ready to plan |
+| 55 | Affiliates Tab | 10 (AFFL-*) | Phase 53 | In progress (1/? plans) |
 | 56 | Earnings Tab | 9 (EARN-*) | Phase 53 | Ready to plan |
 | 57 | Responsive & Accessibility | 3 (PLSH-03,04,05) | 53-56 | Blocked |
 
@@ -84,6 +84,9 @@ Phase 53 (Foundation) ✓
 - [DEC-54-03-02] DealApplyModal uses design system Dialog/InputField/Button (not raw Radix)
 - [DEC-54-03-03] Search debounced at 300ms via useDebouncedCallback
 - [DEC-54-03-04] Responsive grid: 3 cols lg, 2 sm, 1 mobile
+- [DEC-55-01-01] formatCurrency uses maximumFractionDigits: 0 (whole dollars, no cents)
+- [DEC-55-01-02] StatBlock private function inside affiliate-link-card.tsx (not exported)
+- [DEC-55-01-03] STATUS_VARIANT as const Record for type-safe badge variant mapping
 
 ### Key Technical Notes
 - Settings page pattern for URL-synced tabs (server reads searchParams, client orchestrates)
@@ -95,6 +98,9 @@ Phase 53 (Foundation) ✓
 - Reusable hooks live in src/hooks/ (useDebouncedCallback, useCopyToClipboard, useIsMobile, etc.)
 - Color semantic pattern established: orange=creative, blue=tech, green=fitness/earnings, cyan=travel
 - formatPayout fallback chain: payoutRange > fee+commission > fee > commission > TBD
+- formatCurrency/formatNumber utilities in affiliate-utils.ts (reusable for Phase 56 Earnings)
+- Mini KPI stat block pattern: bg-white/[0.03] rounded-lg with bold value + uppercase muted label
+- Hero commission rate pattern: text-2xl font-bold text-green-400 centered block
 
 ### Blockers/Concerns
 None.
@@ -102,9 +108,9 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 54-03-PLAN.md, Phase 54 complete, ready for Phase 55
+Stopped at: Completed 55-01-PLAN.md, ready for 55-02
 Resume file: None
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-06 -- Phase 54 complete (DealsTab container + DealApplyModal + BrandDealsPage integration)*
+*Last updated: 2026-02-06 -- Phase 55 Plan 01 complete (Affiliates Tab presentational components + formatting utilities)*
