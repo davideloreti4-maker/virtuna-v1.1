@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** Raycast-quality design system enabling rapid, consistent UI development
-**Current focus:** v2.3 Brand Deals & Affiliate Page -- Phase 56 complete (3/3 plans), ready for Phase 57
+**Current focus:** v2.3 Brand Deals & Affiliate Page -- Phase 57 complete (2/2 plans), milestone feature-complete
 
 ## Current Position
 
 **Milestone:** v2.3 -- Brand Deals & Affiliate Page
-**Phase:** 56 of 57 (Earnings Tab) -- COMPLETE
-**Plan:** 3/3 complete
-**Status:** Phase 56 complete, ready for Phase 57 (Responsive & Accessibility)
-**Last activity:** 2026-02-06 -- Completed 56-03-PLAN.md (EarningsTab container + BrandDealsPage integration)
+**Phase:** 57 of 57 (Responsive & Accessibility) -- COMPLETE
+**Plan:** 2/2 complete
+**Status:** Phase 57 complete, milestone v2.3 feature-complete
+**Last activity:** 2026-02-06 -- Completed 57-02-PLAN.md (Keyboard accessibility across all interactive components)
 
-Progress: [██████████] 94%
+Progress: [██████████] 100%
 
 ## Phase Overview
 
@@ -25,7 +25,7 @@ Progress: [██████████] 94%
 | 54 | Deals Tab | 14 (DEAL-* + PLSH-01,02) | Phase 53 | Complete (3/3 plans) |
 | 55 | Affiliates Tab | 10 (AFFL-*) | Phase 53 | Complete (2/2 plans) |
 | 56 | Earnings Tab | 9 (EARN-*) | Phase 53 | Complete (3/3 plans) |
-| 57 | Responsive & Accessibility | 3 (PLSH-03,04,05) | 53-56 | Ready |
+| 57 | Responsive & Accessibility | 3 (PLSH-03,04,05) | 53-56 | Complete (2/2 plans) |
 
 Note: Phases 54, 55, 56 are independent of each other (can build in any order after 53).
 
@@ -35,7 +35,7 @@ Note: Phases 54, 55, 56 are independent of each other (can build in any order af
 Phase 53 (Foundation) ✓
   |
   +---> Phase 54 (Deals + color/perf patterns) ✓ --+
-  +---> Phase 55 (Affiliates) ✓                     +--> Phase 57 (Verify)
+  +---> Phase 55 (Affiliates) ✓                     +--> Phase 57 (Verify) ✓
   +---> Phase 56 (Earnings) ✓                      --+
 ```
 
@@ -94,6 +94,9 @@ Phase 53 (Foundation) ✓
 - [DEC-56-02-02] Pass tooltip as function content prop (not JSX element) for Recharts v3 type safety
 - [DEC-56-03-01] Period filtering uses proportional ratio scaling for stat cards (periodTotal/total)
 - [DEC-56-03-02] Sources list is same for all periods (mock simplification)
+- [DEC-57-02-01] AffiliateLinkCard has no onKeyDown -- relies on nested copy button for keyboard activation
+- [DEC-57-02-02] GlassPill focus ring guarded by isInteractive (only button pills, not span pills)
+- [DEC-57-02-03] Focus ring uses ring-offset-background for contrast on dark theme
 
 ### Key Technical Notes
 - Settings page pattern for URL-synced tabs (server reads searchParams, client orchestrates)
@@ -118,6 +121,9 @@ Phase 53 (Foundation) ✓
 - EarningsPeriodSelector uses layoutId="earnings-period-pill" (distinct from main tabs "brand-deals-tab-pill")
 - EarningsTab container pattern: period state + useMemo filterEarningsByPeriod + AnimatePresence fade
 - EarningsBreakdownList: sorted desc by totalEarned, Avatar xs, formatCurrency green-400 text
+- Card a11y pattern: tabIndex={0} + role=article + aria-label + focus-visible ring + onKeyDown Enter for primary CTA
+- Focus-visible ring pattern: focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background
+- EarningsPeriodSelector has role=radiogroup with role=radio + aria-checked on each button
 
 ### Blockers/Concerns
 None.
@@ -125,9 +131,9 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 56-03-PLAN.md (EarningsTab container + BrandDealsPage integration)
+Stopped at: Completed 57-02-PLAN.md (Keyboard accessibility across all interactive components)
 Resume file: None
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-06 -- Phase 56 complete (all 3 plans), ready for Phase 57*
+*Last updated: 2026-02-06 -- Phase 57 complete (2/2 plans), milestone v2.3 feature-complete*
