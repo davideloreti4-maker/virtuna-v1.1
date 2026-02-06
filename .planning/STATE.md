@@ -89,6 +89,8 @@ Phase 53 (Foundation) ✓
 - Sidebar Brand Deals nav item now routes to /brand-deals with usePathname active state
 - Git worktree may lose files on commit -- use `git checkout HEAD -- <files>` to restore if needed
 - Reusable hooks live in src/hooks/ (useDebouncedCallback, useCopyToClipboard, useIsMobile, etc.)
+- Color semantic pattern established: orange=creative, blue=tech, green=fitness/earnings, cyan=travel
+- formatPayout fallback chain: payoutRange > fee+commission > fee > commission > TBD
 
 ### Blockers/Concerns
 None.
