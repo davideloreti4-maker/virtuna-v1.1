@@ -83,21 +83,16 @@ const SEMANTIC_COLORS = [
   { name: "warning", cssVar: "color-warning", semantic: "-> warning-raw" },
   { name: "error", cssVar: "color-error", semantic: "-> error-raw" },
   { name: "info", cssVar: "color-info", semantic: "-> info-raw" },
-  { name: "border", cssVar: "color-border", semantic: "rgba(255,255,255,0.08)" },
+  { name: "border", cssVar: "color-border", semantic: "rgba(255,255,255,0.06)" },
   {
     name: "border-hover",
     cssVar: "color-border-hover",
-    semantic: "rgba(255,255,255,0.15)",
+    semantic: "rgba(255,255,255,0.1)",
   },
   {
     name: "border-glass",
     cssVar: "color-border-glass",
     semantic: "rgba(255,255,255,0.06)",
-  },
-  {
-    name: "border-subtle",
-    cssVar: "color-border-subtle",
-    semantic: "rgba(255,255,255,0.04)",
   },
   { name: "hover", cssVar: "color-hover", semantic: "rgba(255,255,255,0.05)" },
   { name: "active", cssVar: "color-active", semantic: "rgba(255,255,255,0.1)" },
@@ -166,11 +161,6 @@ const SHADOWS = [
   { name: "--shadow-lg", css: "shadow-lg", label: "Large" },
   { name: "--shadow-xl", css: "shadow-xl", label: "Extra Large" },
   { name: "--shadow-glass", css: "shadow-glass", label: "Glass" },
-  {
-    name: "--shadow-glow-accent",
-    css: "shadow-glow-accent",
-    label: "Glow Accent",
-  },
   { name: "--shadow-button", css: "shadow-button", label: "Button" },
 ];
 
@@ -222,19 +212,9 @@ const GRADIENTS = [
     label: "Overlay",
   },
   {
-    name: "--gradient-glow-coral",
-    cssVar: "gradient-glow-coral",
-    label: "Glow Coral",
-  },
-  {
     name: "--gradient-navbar",
     cssVar: "gradient-navbar",
     label: "Navbar",
-  },
-  {
-    name: "--gradient-feature",
-    cssVar: "gradient-feature",
-    label: "Feature",
   },
 ];
 
@@ -592,7 +572,7 @@ export default function ShowcasePage() {
       <ShowcaseSection
         id="shadows"
         title="Shadow Tokens"
-        description="7 shadow variants from subtle elevations to glow effects. Includes the multi-layer Raycast button shadow."
+        description="6 shadow variants from subtle elevations to glass effects. Includes the multi-layer Raycast button shadow."
       >
         <ComponentGrid columns={3}>
           {SHADOWS.map((shadow) => (
@@ -635,7 +615,7 @@ export default function ShowcasePage() {
       <ShowcaseSection
         id="radius"
         title="Border Radius Tokens"
-        description="9 radius values from 0 to full circle. 6px for nav links, 8px for cards, 12px for panels, 16px for modals."
+        description="9 radius values from 0 to full circle. 8px for inputs, 12px for cards and panels, 16px for modals."
       >
         <ComponentGrid columns={3}>
           {RADII.map((r) => (
@@ -757,7 +737,7 @@ transition: all var(--duration-normal) var(--ease-out-cubic);
       <ShowcaseSection
         id="gradients"
         title="Gradient Tokens"
-        description="6 gradient presets for brand accents, cards, overlays, glows, navbar, and feature backgrounds."
+        description="4 gradient presets for brand accents, cards, overlays, and navbar backgrounds."
       >
         <ComponentGrid columns={2}>
           {GRADIENTS.map((g) => (

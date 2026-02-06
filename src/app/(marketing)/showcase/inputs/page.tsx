@@ -158,7 +158,7 @@ export default function InputsShowcasePage() {
       <ShowcaseSection
         id="input"
         title="Input"
-        description="Base text input with support for multiple types, error state, and disabled state. Height is 44px for touch target compliance."
+        description="Base text input with support for multiple types, error state, and disabled state. Height is 42px matching Raycast input pattern."
       >
         {/* Default variants */}
         <div className="mb-8">

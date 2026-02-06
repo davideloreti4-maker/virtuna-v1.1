@@ -254,7 +254,7 @@ export default function DataDisplayPage() {
       <ShowcaseSection
         id="card"
         title="Card"
-        description="Basic surface card with gradient background, border, and inner glow. Composed with CardHeader, CardContent, and CardFooter sub-components."
+        description="Basic surface card with gradient background, border, and inset highlight. Composed with CardHeader, CardContent, and CardFooter sub-components."
       >
         <ComponentGrid columns={2}>
           {/* Full card */}
@@ -314,7 +314,7 @@ export default function DataDisplayPage() {
       <ShowcaseSection
         id="glass-card"
         title="GlassCard"
-        description="Glassmorphism card with configurable blur intensity and optional inner glow. Place over colorful backgrounds to see the frosted glass effect."
+        description="Glassmorphism card with configurable blur intensity and frosted glass effect. Place over colorful backgrounds to see the blur in action."
       >
         <div className="mb-8 space-y-8">
           {/* Blur variants with colorful background */}
@@ -408,7 +408,7 @@ export default function DataDisplayPage() {
       <ShowcaseSection
         id="extension-card"
         title="ExtensionCard"
-        description="Raycast-style feature card with radial gradient glow, icon, title, description, and optional metadata. Supports 5 color themes."
+        description="Feature card with icon, title, description, and optional metadata. Supports 5 color themes."
       >
         <ComponentGrid columns={3}>
           <ExtensionCard
@@ -487,7 +487,7 @@ export default function DataDisplayPage() {
       <ShowcaseSection
         id="testimonial-card"
         title="TestimonialCard"
-        description="Quote card with author attribution including avatar, name, role, and company. Supports a featured variant with accent glow border."
+        description="Quote card with author attribution including avatar, name, role, and company. Supports a featured variant with accent border."
       >
         <ComponentGrid columns={2}>
           <TestimonialCard

@@ -8,7 +8,7 @@ import { CodeBlock } from "../_components/code-block";
 export const metadata = {
   title: "Layout Components - Virtuna UI Showcase",
   description:
-    "GlassPanel with 7 blur levels and Divider with horizontal, vertical, and labeled variants.",
+    "GlassPanel with configurable blur levels and Divider with horizontal, vertical, and labeled variants.",
 };
 
 export default function LayoutComponentsPage() {
@@ -31,7 +31,7 @@ export default function LayoutComponentsPage() {
       <ShowcaseSection
         id="glass-panel"
         title="GlassPanel"
-        description="Glassmorphism container with 7 blur levels, configurable opacity, tint colors, border glow, and inner glow. Safari-compatible with automatic mobile blur reduction."
+        description="Glassmorphism container with configurable blur levels and opacity. Safari-compatible with automatic mobile blur reduction."
       >
         {/* All 7 blur levels */}
         <div className="mb-8">
@@ -81,126 +81,14 @@ export default function LayoutComponentsPage() {
 
         <CodeBlock
           title="GlassPanel — Blur Levels"
-          code={`// 7 blur levels mapped to Raycast UI contexts
+          code={`// 7 blur levels available
 <GlassPanel blur="none">0px — no blur</GlassPanel>
-<GlassPanel blur="xs">2px — feature frames</GlassPanel>
-<GlassPanel blur="sm">8px — tooltips</GlassPanel>
-<GlassPanel blur="md">12px — cards, dock (default)</GlassPanel>
-<GlassPanel blur="lg">20px — footer, heavy surfaces</GlassPanel>
-<GlassPanel blur="xl">36px — windows, dropdowns</GlassPanel>
-<GlassPanel blur="2xl">48px — action bars</GlassPanel>`}
-        />
-      </ShowcaseSection>
-
-      {/* ================================================
-       * GLASS PANEL — Tints & Effects
-       * ================================================ */}
-      <ShowcaseSection
-        id="glass-tints"
-        title="GlassPanel Tints & Effects"
-        description="Color tints, border glow, and inner glow effects for themed glass containers."
-      >
-        {/* Tint variants */}
-        <div className="mb-8">
-          <Text size="sm" className="mb-6 font-medium text-foreground">
-            Color Tints
-          </Text>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {(
-              [
-                "neutral",
-                "purple",
-                "blue",
-                "pink",
-                "cyan",
-                "green",
-                "orange",
-              ] as const
-            ).map((tint) => (
-              <div key={tint} className="relative overflow-hidden rounded-xl">
-                <div className="absolute inset-0" aria-hidden="true">
-                  <div className="absolute -left-4 -top-4 h-20 w-20 rounded-full bg-accent/40 blur-xl" />
-                  <div className="absolute -bottom-4 -right-4 h-16 w-16 rounded-full bg-purple-500/30 blur-xl" />
-                </div>
-                <GlassPanel
-                  blur="md"
-                  tint={tint}
-                  borderGlow
-                  className="relative px-5 py-4"
-                >
-                  <Text size="sm" className="font-medium text-foreground">
-                    tint=&quot;{tint}&quot;
-                  </Text>
-                </GlassPanel>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Border glow + inner glow */}
-        <div className="mb-8">
-          <Text size="sm" className="mb-6 font-medium text-foreground">
-            Border Glow & Inner Glow
-          </Text>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <div className="relative overflow-hidden rounded-xl">
-              <div className="absolute inset-0" aria-hidden="true">
-                <div className="absolute left-1/4 top-0 h-24 w-24 rounded-full bg-blue-500/40 blur-2xl" />
-                <div className="absolute right-1/4 bottom-0 h-20 w-20 rounded-full bg-cyan-500/30 blur-2xl" />
-              </div>
-              <GlassPanel
-                blur="lg"
-                tint="blue"
-                borderGlow
-                className="relative p-6"
-              >
-                <Text size="sm" className="font-medium text-foreground">
-                  borderGlow + tint
-                </Text>
-                <Text size="sm" muted className="mt-1">
-                  Tinted ring border with blue glass tint
-                </Text>
-              </GlassPanel>
-            </div>
-            <div className="relative overflow-hidden rounded-xl">
-              <div className="absolute inset-0" aria-hidden="true">
-                <div className="absolute left-1/4 top-0 h-24 w-24 rounded-full bg-purple-500/40 blur-2xl" />
-                <div className="absolute right-1/4 bottom-0 h-20 w-20 rounded-full bg-pink-500/30 blur-2xl" />
-              </div>
-              <GlassPanel
-                blur="lg"
-                tint="purple"
-                borderGlow
-                innerGlow={0.6}
-                className="relative p-6"
-              >
-                <Text size="sm" className="font-medium text-foreground">
-                  borderGlow + innerGlow
-                </Text>
-                <Text size="sm" muted className="mt-1">
-                  Purple tint with inner glow at 0.6 intensity
-                </Text>
-              </GlassPanel>
-            </div>
-          </div>
-        </div>
-
-        <CodeBlock
-          title="GlassPanel — Tints & Effects"
-          code={`// 7 tints: neutral, purple, blue, pink, cyan, green, orange
-<GlassPanel tint="purple" borderGlow>
-  Purple-tinted glass with border glow
-</GlassPanel>
-
-// Inner glow (0-1 intensity)
-<GlassPanel tint="blue" borderGlow innerGlow={0.6}>
-  Blue glass with inner glow effect
-</GlassPanel>
-
-// Custom opacity
-<GlassPanel blur="xl" opacity={0.8}>
-  Higher opacity = more opaque glass
-</GlassPanel>`}
+<GlassPanel blur="xs">2px — minimal</GlassPanel>
+<GlassPanel blur="sm">8px — subtle</GlassPanel>
+<GlassPanel blur="md">12px — default</GlassPanel>
+<GlassPanel blur="lg">20px — heavy</GlassPanel>
+<GlassPanel blur="xl">36px — very heavy</GlassPanel>
+<GlassPanel blur="2xl">48px — maximum</GlassPanel>`}
         />
       </ShowcaseSection>
 
