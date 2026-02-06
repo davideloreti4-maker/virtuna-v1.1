@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** Raycast-quality design system enabling rapid, consistent UI development
-**Current focus:** v2.1 Dashboard Rebuild -- Phase 48 in progress (Wave 2)
+**Current focus:** v2.1 Dashboard Rebuild -- Phase 48 complete, Phase 49 pending (Wave 2)
 
 ## Current Position
 
 **Milestone:** v2.1 -- Dashboard Rebuild
-**Phase:** 48 -- Hive Foundation -- In progress
-**Plan:** 02 of 03 complete
-**Status:** In progress (Wave 2 started)
-**Last activity:** 2026-02-06 -- Completed 48-02-PLAN.md (canvas resize hook + hive renderer)
+**Phase:** 48 -- Hive Foundation -- Complete
+**Plan:** 03 of 03 complete
+**Status:** In progress (Phase 48 complete, Phase 49 pending)
+**Last activity:** 2026-02-06 -- Completed 48-03-PLAN.md (HiveCanvas component assembly)
 
-Progress: [█████████░] 95% (phases 45-47 complete, phase 48 plan 2/3 done, phase 49 pending)
+Progress: [█████████░] 96% (phases 45-48 complete, phase 49 pending)
 
 ## Phase Overview
 
@@ -24,7 +24,7 @@ Progress: [█████████░] 95% (phases 45-47 complete, phase 48 
 | 45 | Structural Foundation | 11 (SIDE + MOBL) | Complete (3/3) |
 | 46 | Forms & Modals | 10 (FORM + MODL) | Complete (4/4) |
 | 47 | Results, Top Bar & Loading | 14 (RSLT + TBAR + LOAD) | Complete (5/5) |
-| 48 | Hive Foundation | 9 (HIVE) | In progress (2/3) |
+| 48 | Hive Foundation | 9 (HIVE) | Complete (3/3) |
 | 49 | Hive Interactions | 7 (HINT) | Pending |
 
 ## Dependency Graph
@@ -49,7 +49,7 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 
 ## In-Progress Milestones
 
-- v2.1 Dashboard Rebuild -- Phases 45-49, 51 requirements, ~95% executed (Phases 45-47 complete, Phase 48 plan 2/3 done, Phase 49 pending)
+- v2.1 Dashboard Rebuild -- Phases 45-49, 51 requirements, ~96% executed (Phases 45-48 complete, Phase 49 pending)
 
 ## Key Technical Notes
 
@@ -106,6 +106,10 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 - [48-02] CSS pixel dimensions computed from buffer/actualDpr for consistency across DPR fallback paths
 - [48-02] globalAlpha for per-tier opacity animation (reset after each tier batch)
 - [48-02] Batched Canvas 2D: single beginPath/fill per tier, no save/restore in loops
+- [48-03] Ref-based animation state with getter return object avoids React re-renders during 60fps animation
+- [48-03] Module-level globalAnimationComplete flag prevents animation replay on re-mount
+- [48-03] Empty useCallback deps for render() -- all reads are from refs, not state
+- [48-03] Reused existing usePrefersReducedMotion hook (SSR-safe defaults)
 
 ### Design System Components
 - v2.0 design system components are the building blocks (GlassPanel, GlassCard, GlassInput, GlassTextarea, GlassPill, GlassProgress, Dialog, Button, Select, Badge, Typography, Spinner, Icon)
@@ -136,14 +140,16 @@ None.
 - Pure function layout: computeHiveLayout(data, outerRadius) -> LayoutResult
 - Mock data: ~1300 nodes (1 center, 12 tier-1, ~120 tier-2, ~1200 tier-3)
 - Tier-based visual constants: white at varying opacity, tier-step line opacity
-- Files: hive-types.ts, hive-constants.ts, hive-layout.ts, hive-mock-data.ts, use-canvas-resize.ts, hive-renderer.ts
+- Progressive build animation: easeOutCubic, center -> tier-1 -> tier-2 -> tier-3, first-load-only
+- HiveCanvas: main component wiring layout + renderer + resize + animation + reduced-motion
+- Files: hive-types.ts, hive-constants.ts, hive-layout.ts, hive-mock-data.ts, use-canvas-resize.ts, hive-renderer.ts, use-hive-animation.ts, HiveCanvas.tsx
 
 ### Session Continuity
 - Last session: 2026-02-06
-- Stopped at: Completed 48-02-PLAN.md (canvas resize hook + hive renderer)
+- Stopped at: Completed 48-03-PLAN.md (HiveCanvas component assembly) -- Phase 48 complete
 - Resume file: None
-- Next: 48-03-PLAN.md (HiveCanvas component assembly)
+- Next: Phase 49 (Hive Interactions)
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-06 -- Phase 48 plan 02 complete (canvas resize hook + hive renderer)*
+*Last updated: 2026-02-06 -- Phase 48 complete (all 3 plans done, 9 HIVE requirements addressed)*
