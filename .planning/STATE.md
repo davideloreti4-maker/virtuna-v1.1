@@ -94,6 +94,9 @@ Phase 53 (Foundation) ✓
 - [DEC-56-02-02] Pass tooltip as function content prop (not JSX element) for Recharts v3 type safety
 - [DEC-56-03-01] Period filtering uses proportional ratio scaling for stat cards (periodTotal/total)
 - [DEC-56-03-02] Sources list is same for all periods (mock simplification)
+- [DEC-57-01-01] 800ms loading delay via setTimeout for skeleton visibility
+- [DEC-57-01-02] Skeletons use aria-hidden=true (no semantic content)
+- [DEC-57-01-03] Earnings breakdown hides Clicks/Conversions on mobile via hidden sm:block
 - [DEC-57-02-01] AffiliateLinkCard has no onKeyDown -- relies on nested copy button for keyboard activation
 - [DEC-57-02-02] GlassPill focus ring guarded by isInteractive (only button pills, not span pills)
 - [DEC-57-02-03] Focus ring uses ring-offset-background for contrast on dark theme
@@ -121,6 +124,8 @@ Phase 53 (Foundation) ✓
 - EarningsPeriodSelector uses layoutId="earnings-period-pill" (distinct from main tabs "brand-deals-tab-pill")
 - EarningsTab container pattern: period state + useMemo filterEarningsByPeriod + AnimatePresence fade
 - EarningsBreakdownList: sorted desc by totalEarned, Avatar xs, formatCurrency green-400 text
+- Skeleton loading pattern: useState(true) + useEffect setTimeout(800ms) + early return skeleton component
+- Responsive column hiding: grid-cols-2 sm:grid-cols-4 + hidden sm:block on non-essential columns
 - Card a11y pattern: tabIndex={0} + role=article + aria-label + focus-visible ring + onKeyDown Enter for primary CTA
 - Focus-visible ring pattern: focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background
 - EarningsPeriodSelector has role=radiogroup with role=radio + aria-checked on each button
