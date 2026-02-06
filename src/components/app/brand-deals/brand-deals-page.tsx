@@ -9,6 +9,7 @@ import { AffiliatesTab } from "./affiliates-tab";
 import { BrandDealsHeader } from "./brand-deals-header";
 import { BrandDealsTabs } from "./brand-deals-tabs";
 import { DealsTab } from "./deals-tab";
+import { EarningsTab } from "./earnings-tab";
 
 type ValidTab = "earnings" | "deals" | "affiliates";
 
@@ -58,11 +59,7 @@ export function BrandDealsPage({ defaultTab }: BrandDealsPageProps) {
                 forceMount={currentTab === "earnings" ? true : undefined}
                 className="outline-none"
               >
-                <div className="flex min-h-[300px] items-center justify-center rounded-xl border border-border-subtle">
-                  <p className="text-foreground-muted">
-                    Earnings tab content -- Phase 56
-                  </p>
-                </div>
+                <EarningsTab />
               </Tabs.Content>
 
               <Tabs.Content
