@@ -5,15 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** Raycast-quality design system enabling rapid, consistent UI development
-**Current focus:** v3.1 Landing Page Redesign
+**Current focus:** v3.1 Landing Page Redesign -- Phase 53 (Page Foundation & Navigation)
 
 ## Current Position
 
 **Milestone:** v3.1 -- Landing Page Redesign
-**Phase:** Not started (defining requirements)
-**Plan:** —
-**Status:** Defining requirements
-**Last activity:** 2026-02-06 — Milestone v3.1 started
+**Phase:** 53 of 58 (Page Foundation & Navigation)
+**Plan:** Not started
+**Status:** Ready to plan
+**Last activity:** 2026-02-06 -- Roadmap created (6 phases, 28 requirements mapped)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Shipped Milestones
 
@@ -24,22 +26,30 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 ## In-Progress Milestones
 
-- v2.1 Dashboard Rebuild -- Phases 45-49 (main branch, Phase 47: 4/5)
-- v3.1 Landing Page Redesign -- Defining requirements (this worktree)
+- v2.1 Dashboard Rebuild -- Phases 45-49 (main branch, Phase 47: 0/5)
+- v3.1 Landing Page Redesign -- Phase 53 ready to plan (this worktree)
 
 ## Key Technical Notes
 
+### v3.1 Phase Structure
+- Phase 53: Page Foundation & Navigation (NAV + FOOT + XCUT infrastructure)
+- Phase 54: Hero Section (HERO-01 through HERO-04, HERO-06)
+- Phase 55: Social Proof & Trust (SOCL-01 through SOCL-03)
+- Phase 56: Product Story & Features (FEAT-01 through FEAT-04)
+- Phase 57: Conversion & Polish (CONV + XCUT-01, XCUT-02, XCUT-06)
+- Phase 58: Premium Hero Visual (HERO-05 -- 3D element, optional polish)
+
 ### Approach
-- v0 generation per section (hero, features, navbar, footer)
-- Each section generated individually, reviewed, iterated, then assembled
-- Built on existing Raycast design system (36 components, 100+ tokens)
+- v0 generation per section, adapted to existing design system
+- SectionWrapper enforces consistent spacing (created in Phase 53)
+- v0 migration checklist: replace shadcn tokens with Virtuna tokens per section
+- backdrop-filter via inline React styles (Lightning CSS bug)
 - Worktree: ~/virtuna-v3.1-landing-page (branch: milestone/v3.1-landing-page)
 
-### Design System Components
-- v2.0 design system components are the building blocks (GlassPanel, GlassCard, GlassInput, GlassTextarea, GlassPill, GlassProgress, Dialog, Button, Select, Badge, Typography, Spinner, Icon)
-- Lightning CSS limitation: backdrop-filter via inline React styles
-- Z-index scale: base(0) > sidebar(50) > dropdown(100) > sticky(200) > modal-backdrop(300) > modal(400) > toast(500) > tooltip(600)
+### Research Flags
+- Phases 53-57: No additional research needed (standard patterns)
+- Phase 58: Needs research if pursuing 3D (Spline scene design or Three.js particle system)
 
 ---
 *State created: 2026-02-06*
-*Last updated: 2026-02-06 -- Milestone v3.1 started*
+*Last updated: 2026-02-06 -- Roadmap created, Phase 53 ready to plan*
