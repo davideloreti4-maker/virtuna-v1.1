@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Milestone:** v2.1 -- Dashboard Rebuild
 **Phase:** 48 -- Hive Foundation -- In progress
-**Plan:** 01 of 03 complete
+**Plan:** 02 of 03 complete
 **Status:** In progress (Wave 2 started)
-**Last activity:** 2026-02-06 -- Completed 48-01-PLAN.md (types, constants, layout, mock data)
+**Last activity:** 2026-02-06 -- Completed 48-02-PLAN.md (canvas resize hook + hive renderer)
 
-Progress: [█████████░] 93% (phases 45-47 complete, phase 48 plan 1/3 done, phase 49 pending)
+Progress: [█████████░] 95% (phases 45-47 complete, phase 48 plan 2/3 done, phase 49 pending)
 
 ## Phase Overview
 
@@ -24,7 +24,7 @@ Progress: [█████████░] 93% (phases 45-47 complete, phase 48 
 | 45 | Structural Foundation | 11 (SIDE + MOBL) | Complete (3/3) |
 | 46 | Forms & Modals | 10 (FORM + MODL) | Complete (4/4) |
 | 47 | Results, Top Bar & Loading | 14 (RSLT + TBAR + LOAD) | Complete (5/5) |
-| 48 | Hive Foundation | 9 (HIVE) | In progress (1/3) |
+| 48 | Hive Foundation | 9 (HIVE) | In progress (2/3) |
 | 49 | Hive Interactions | 7 (HINT) | Pending |
 
 ## Dependency Graph
@@ -49,7 +49,7 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 
 ## In-Progress Milestones
 
-- v2.1 Dashboard Rebuild -- Phases 45-49, 51 requirements, ~93% executed (Phases 45-47 complete, Phase 48 plan 1/3 done, Phase 49 pending)
+- v2.1 Dashboard Rebuild -- Phases 45-49, 51 requirements, ~95% executed (Phases 45-47 complete, Phase 48 plan 2/3 done, Phase 49 pending)
 
 ## Key Technical Notes
 
@@ -102,6 +102,10 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 - [48-01] mulberry32 seeded PRNG for reproducible mock data (seed=42)
 - [48-01] Integer rounding on cartesian coords to prevent sub-pixel anti-aliasing
 - [48-01] TIER_CONFIG uses inline values (avoids noUncheckedIndexedAccess issues with Record indexing)
+- [48-02] onResizeRef pattern avoids observer re-creation on callback identity change
+- [48-02] CSS pixel dimensions computed from buffer/actualDpr for consistency across DPR fallback paths
+- [48-02] globalAlpha for per-tier opacity animation (reset after each tier batch)
+- [48-02] Batched Canvas 2D: single beginPath/fill per tier, no save/restore in loops
 
 ### Design System Components
 - v2.0 design system components are the building blocks (GlassPanel, GlassCard, GlassInput, GlassTextarea, GlassPill, GlassProgress, Dialog, Button, Select, Badge, Typography, Spinner, Icon)
@@ -132,14 +136,14 @@ None.
 - Pure function layout: computeHiveLayout(data, outerRadius) -> LayoutResult
 - Mock data: ~1300 nodes (1 center, 12 tier-1, ~120 tier-2, ~1200 tier-3)
 - Tier-based visual constants: white at varying opacity, tier-step line opacity
-- Files: hive-types.ts, hive-constants.ts, hive-layout.ts, hive-mock-data.ts
+- Files: hive-types.ts, hive-constants.ts, hive-layout.ts, hive-mock-data.ts, use-canvas-resize.ts, hive-renderer.ts
 
 ### Session Continuity
 - Last session: 2026-02-06
-- Stopped at: Completed 48-01-PLAN.md (hive foundation types, constants, layout, mock data)
+- Stopped at: Completed 48-02-PLAN.md (canvas resize hook + hive renderer)
 - Resume file: None
-- Next: 48-02-PLAN.md (hive renderer) or 48-03-PLAN.md
+- Next: 48-03-PLAN.md (HiveCanvas component assembly)
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-06 -- Phase 48 plan 01 complete (hive foundation primitives)*
+*Last updated: 2026-02-06 -- Phase 48 plan 02 complete (canvas resize hook + hive renderer)*
