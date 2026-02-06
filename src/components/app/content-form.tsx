@@ -7,7 +7,7 @@ import { z } from "zod";
 import { cn } from "@/lib/utils";
 import { TEST_TYPES } from "@/lib/test-types";
 import { useTestStore } from "@/stores/test-store";
-import { GlassTextarea } from "@/components/primitives/GlassTextarea";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import type { TestType, TestTypeIcon } from "@/types/test";
 
@@ -167,9 +167,9 @@ export function ContentForm({
         boxShadow: "rgba(255,255,255,0.1) 0px 1px 0px 0px inset",
       }}
     >
-      {/* Textarea with GlassTextarea */}
+      {/* Textarea */}
       <div>
-        <GlassTextarea
+        <Textarea
           ref={textareaRef}
           value={content}
           onChange={handleContentChange}

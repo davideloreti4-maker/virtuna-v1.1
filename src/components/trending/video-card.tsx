@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { BookmarkSimple } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
-import { GlassCard } from "@/components/primitives";
+import { Card } from "@/components/ui/card";
 import { GlassPill } from "@/components/primitives";
 import { HoverScale } from "@/components/motion/hover-scale";
 import { useBookmarkStore } from "@/stores/bookmark-store";
@@ -101,12 +101,9 @@ export function VideoCard({ video, onClick, className }: VideoCardProps) {
 
   return (
     <HoverScale className={cn(onClick && "cursor-pointer", className)}>
-      <GlassCard
-        color="orange"
-        hover="none"
-        padding="none"
+      <Card
         onClick={onClick}
-        className="overflow-hidden"
+        className="overflow-hidden p-0"
       >
         {/* Thumbnail */}
         <div className="relative aspect-[4/5] w-full overflow-hidden">
@@ -179,7 +176,7 @@ export function VideoCard({ video, onClick, className }: VideoCardProps) {
             </div>
           </div>
         </div>
-      </GlassCard>
+      </Card>
     </HoverScale>
   );
 }

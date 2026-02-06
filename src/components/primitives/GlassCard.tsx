@@ -1,3 +1,8 @@
+/**
+ * @deprecated This component will be removed in Phase 55.
+ * For standard cards, use Card from "@/components/ui/card".
+ * This component retains its current implementation for backward compatibility.
+ */
 "use client";
 
 import { cn } from "@/lib/utils";
