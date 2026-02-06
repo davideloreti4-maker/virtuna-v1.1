@@ -5,24 +5,24 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** Raycast-quality design system enabling rapid, consistent UI development
-**Current focus:** v2.3 Brand Deals & Affiliate Page -- Phase 53 complete, ready for Phase 54
+**Current focus:** v2.3 Brand Deals & Affiliate Page -- Phase 54 in progress (plan 2/3 complete)
 
 ## Current Position
 
 **Milestone:** v2.3 -- Brand Deals & Affiliate Page
-**Phase:** 53 of 57 (Foundation & Tab Shell) -- COMPLETE
-**Plan:** 2/2 complete
-**Status:** Phase verified, ready for next phase
-**Last activity:** 2026-02-05 -- Phase 53 executed (2 plans), verified (11/11 must-haves passed)
+**Phase:** 54 of 57 (Deals Tab) -- IN PROGRESS
+**Plan:** 2/3 complete
+**Status:** In progress, plan 02 complete
+**Last activity:** 2026-02-06 -- Completed 54-02-PLAN.md (DealFilterBar + DealsEmptyState + useDebouncedCallback)
 
-Progress: [██░░░░░░░░] 20%
+Progress: [████░░░░░░] 40%
 
 ## Phase Overview
 
 | Phase | Name | Requirements | Depends On | Status |
 |-------|------|-------------|------------|--------|
 | 53 | Foundation & Tab Shell | 7 (PAGE-*) | None | Complete (2026-02-05) |
-| 54 | Deals Tab | 14 (DEAL-* + PLSH-01,02) | Phase 53 | Ready to plan |
+| 54 | Deals Tab | 14 (DEAL-* + PLSH-01,02) | Phase 53 | In progress (2/3 plans) |
 | 55 | Affiliates Tab | 10 (AFFL-*) | Phase 53 | Ready to plan |
 | 56 | Earnings Tab | 9 (EARN-*) | Phase 53 | Ready to plan |
 | 57 | Responsive & Accessibility | 3 (PLSH-03,04,05) | 53-56 | Blocked |
@@ -75,6 +75,11 @@ Phase 53 (Foundation) ✓
 - [DEC-53-02-03] Hybrid sidebar nav: usePathname for routed items, useState for non-routed
 - [DEC-53-02-04] Inline backdrop-filter on header (Lightning CSS workaround)
 - [DEC-53-02-05] LinkSimple icon instead of Link to avoid next/link conflict
+- [DEC-54-01-01] Reuse GradientColor type for CATEGORY_COLORS (no new color types)
+- [DEC-54-01-02] Featured deals use border-t-2 orange accent (not GradientGlow)
+- [DEC-54-01-03] Applied cards show opacity-60 mute treatment
+- [DEC-54-02-01] Search input controlled by parent -- debounce responsibility in DealsTab container
+- [DEC-54-02-02] FILTER_CATEGORIES as explicit runtime array mirrors BrandDealCategory union
 
 ### Key Technical Notes
 - Settings page pattern for URL-synced tabs (server reads searchParams, client orchestrates)
@@ -83,16 +88,17 @@ Phase 53 (Foundation) ✓
 - BRAND-BIBLE max 2-3 glass layers rule -- glass for hero elements only
 - Sidebar Brand Deals nav item now routes to /brand-deals with usePathname active state
 - Git worktree may lose files on commit -- use `git checkout HEAD -- <files>` to restore if needed
+- Reusable hooks live in src/hooks/ (useDebouncedCallback, useCopyToClipboard, useIsMobile, etc.)
 
 ### Blockers/Concerns
 None.
 
 ## Session Continuity
 
-Last session: 2026-02-05
-Stopped at: Phase 53 complete, verified, ready for Phase 54/55/56
+Last session: 2026-02-06
+Stopped at: Completed 54-02-PLAN.md, ready for 54-03
 Resume file: None
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-05 -- Phase 53 complete (2/2 plans, verification passed 11/11)*
+*Last updated: 2026-02-06 -- Plan 54-02 complete (DealFilterBar + DealsEmptyState + useDebouncedCallback)*
