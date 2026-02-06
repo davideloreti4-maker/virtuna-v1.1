@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** Raycast-quality design system enabling rapid, consistent UI development
-**Current focus:** v2.3 Brand Deals & Affiliate Page -- Phase 55 in progress (Plan 01 complete)
+**Current focus:** v2.3 Brand Deals & Affiliate Page -- Phase 55 complete, ready for Phase 56
 
 ## Current Position
 
 **Milestone:** v2.3 -- Brand Deals & Affiliate Page
-**Phase:** 55 of 57 (Affiliates Tab) -- IN PROGRESS
-**Plan:** 1/? complete
-**Status:** Phase 55 Plan 01 complete, ready for Plan 02
-**Last activity:** 2026-02-06 -- Completed 55-01-PLAN.md (Affiliates Tab presentational components + formatting utilities)
+**Phase:** 55 of 57 (Affiliates Tab) -- COMPLETE
+**Plan:** 2/2 complete
+**Status:** Phase 55 complete, ready for Phase 56 (Earnings Tab)
+**Last activity:** 2026-02-06 -- Completed 55-02-PLAN.md (AffiliatesTab container + BrandDealsPage wiring)
 
-Progress: [███████░░░] 70%
+Progress: [████████░░] 80%
 
 ## Phase Overview
 
@@ -23,7 +23,7 @@ Progress: [███████░░░] 70%
 |-------|------|-------------|------------|--------|
 | 53 | Foundation & Tab Shell | 7 (PAGE-*) | None | Complete (2026-02-05) |
 | 54 | Deals Tab | 14 (DEAL-* + PLSH-01,02) | Phase 53 | Complete (3/3 plans) |
-| 55 | Affiliates Tab | 10 (AFFL-*) | Phase 53 | In progress (1/? plans) |
+| 55 | Affiliates Tab | 10 (AFFL-*) | Phase 53 | Complete (2/2 plans) |
 | 56 | Earnings Tab | 9 (EARN-*) | Phase 53 | Ready to plan |
 | 57 | Responsive & Accessibility | 3 (PLSH-03,04,05) | 53-56 | Blocked |
 
@@ -35,7 +35,7 @@ Note: Phases 54, 55, 56 are independent of each other (can build in any order af
 Phase 53 (Foundation) ✓
   |
   +---> Phase 54 (Deals + color/perf patterns) ✓ --+
-  +---> Phase 55 (Affiliates)                      +--> Phase 57 (Verify)
+  +---> Phase 55 (Affiliates) ✓                     +--> Phase 57 (Verify)
   +---> Phase 56 (Earnings)                       --+
 ```
 
@@ -87,6 +87,7 @@ Phase 53 (Foundation) ✓
 - [DEC-55-01-01] formatCurrency uses maximumFractionDigits: 0 (whole dollars, no cents)
 - [DEC-55-01-02] StatBlock private function inside affiliate-link-card.tsx (not exported)
 - [DEC-55-01-03] STATUS_VARIANT as const Record for type-safe badge variant mapping
+- [DEC-55-02-01] Nullish coalesce on date split for strict TS array indexing
 
 ### Key Technical Notes
 - Settings page pattern for URL-synced tabs (server reads searchParams, client orchestrates)
@@ -101,6 +102,9 @@ Phase 53 (Foundation) ✓
 - formatCurrency/formatNumber utilities in affiliate-utils.ts (reusable for Phase 56 Earnings)
 - Mini KPI stat block pattern: bg-white/[0.03] rounded-lg with bold value + uppercase muted label
 - Hero commission rate pattern: text-2xl font-bold text-green-400 centered block
+- Container/presentational split: AffiliatesTab owns state, Plan 01 components are pure presentational
+- ToastProvider at layout level for global toast support (useToast hook available everywhere)
+- Generate Link pattern: prepend to state, show toast, derive available products via useMemo Set filter
 
 ### Blockers/Concerns
 None.
@@ -108,9 +112,9 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 55-01-PLAN.md, ready for 55-02
+Stopped at: Completed 55-02-PLAN.md, Phase 55 complete
 Resume file: None
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-06 -- Phase 55 Plan 01 complete (Affiliates Tab presentational components + formatting utilities)*
+*Last updated: 2026-02-06 -- Phase 55 complete (AffiliatesTab container + BrandDealsPage wiring)*
