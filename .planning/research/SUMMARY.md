@@ -1,250 +1,213 @@
 # Project Research Summary
 
-**Project:** Virtuna v1.5 - Trending Page
-**Domain:** TikTok viral content discovery with AI-powered remix/storyboard generation
-**Researched:** 2026-02-02
+**Project:** Virtuna v3.1 Landing Page Redesign
+**Domain:** Dark-themed SaaS Landing Page (Raycast aesthetic)
+**Researched:** 2026-02-06
 **Confidence:** HIGH
 
 ## Executive Summary
 
-The Trending Page transforms Virtuna from a single-feature viral predictor into a complete content discovery and planning platform. Research shows this bridges a genuine gap: TikTok's Creative Center provides trend discovery but no actionable output, while existing storyboard tools (Boords, Katalist) are generic film production tools, not short-form social content optimizers. The remix-to-storyboard workflow is genuinely novel.
+The Virtuna v3.1 landing page redesign is a component replacement project, not a greenfield build. The existing codebase already has the ideal architecture: a `(marketing)` route group with independent layout, a component-per-section pattern in `src/components/landing/`, and a complete 36-component design system matching the Raycast aesthetic with coral (#FF7F50) branding. The redesign replaces the current societies.io landing sections with Raycast-quality equivalents, leveraging 100% of the existing infrastructure.
 
-**Recommended approach:** Build on existing Virtuna architecture (Next.js 16, Supabase, Zustand, Tailwind) with four strategic additions: Apify for TikTok scraping, OpenAI for AI classification and remix generation, TanStack Query for server state management, and React-PDF for storyboard export. Use v0 MCP to accelerate development of complex UI components (video cards, storyboard layouts, remix forms), allowing focus on business logic and API integration. Phase implementation to validate core value (feed + basic remix) before investing in advanced features (PDF export, teleprompter).
+The recommended approach is v0-driven section-by-section generation with manual adaptation to the existing design system. No new dependencies are needed beyond cleaning up a duplicate animation package (removing `framer-motion`, keeping `motion`). The existing motion components (FadeIn, StaggerReveal, SlideUp), glass primitives (GlassCard, GlassPanel), and effects library (NoiseTexture, ChromaticAberration) provide all the building blocks. Each section can be built, reviewed, and merged incrementally following the established pattern.
 
-**Critical risks:** (1) TikTok Terms of Service violations - scraping is explicitly prohibited and enforcement has intensified under post-2026 U.S. ownership; (2) AI tagging inaccuracy destroying feed quality - 30-40% error rate without validation; (3) LLM hallucination in remix scripts producing bad filming advice; (4) PDF generation memory exhaustion with large storyboards; (5) Data completeness issues from fragmented TikTok endpoints. Mitigate through conservative rate limiting, confidence thresholds on AI outputs, RAG grounding for remixes, streaming PDF generation, and graceful degradation for incomplete data.
+Critical risks center on v0 integration friction: generated code will use default shadcn/ui conventions instead of Virtuna's custom tokens, requiring manual token replacement and component deduplication per section. The Tailwind v4 Lightning CSS backdrop-filter bug (strips blur from CSS classes, requiring inline styles) is already documented and solved via inline style patterns. Mobile performance with glass effects must be monitored, but the codebase already has mobile blur reduction media queries in place. Overall, this is a low-risk redesign with clear execution patterns and high confidence in technical feasibility.
 
 ## Key Findings
 
 ### Recommended Stack
 
-The existing stack (Next.js 16, Supabase, Zustand, Tailwind) is sufficient for 90% of the Trending Page. Add **six packages** to enable new capabilities: Apify Client for TikTok scraping, OpenAI SDK for AI processing, TanStack Query for server state management, React-PDF for storyboard export, and Upstash Redis with rate limiting for API caching and protection.
+**Zero new dependencies needed.** The existing stack contains everything required: Motion (Framer Motion's successor) for scroll-triggered animations, next/image for product screenshot optimization, 4 pre-built motion components, React Three Fiber + Spline for optional 3D (already installed), and a complete design system. The only action is cleanup: remove duplicate `framer-motion` package (keeping `motion`), add AVIF support to `next.config.ts`, and add `scroll-behavior: smooth` to `globals.css`.
 
-**Core technologies:**
-- **Apify Client (v2.22.0):** TikTok data ingestion via managed scrapers - 98% success rate, handles retries, avoids DIY Puppeteer complexity. No official TikTok API exists for trending content, making Apify the practical choice despite ToS concerns.
-- **OpenAI SDK (v6.17.0):** AI classification and remix generation using GPT-4o - structured outputs (JSON mode) for video categorization, function calling for storyboard generation. Alternative: Anthropic Claude equally capable, choose based on existing keys/preferences.
-- **TanStack Query (v5.x):** Server state management with DevTools, mutations, pagination - better than SWR for this use case due to DevTools visibility during feed development and sophisticated cache invalidation.
-- **React-PDF (v4.3.2):** React 19-compatible PDF generation - declarative PDF creation using React components, server-side rendering support, no external dependencies. Superior to Puppeteer for structured documents (avoids memory issues).
-- **Upstash Redis:** Edge-compatible caching and rate limiting - serverless Redis works on Vercel Edge, pay-per-request pricing, built-in rate limiting package protects AI endpoints.
+**Core technologies (existing):**
+- **Motion v12.29.2** (update to 12.33.0): Scroll animations, parallax, stagger reveals — provides all landing page animation patterns with existing FadeIn/StaggerReveal wrappers
+- **Next.js 16 + React 19**: Already installed, Image component with AVIF optimization covers product screenshots
+- **Tailwind CSS v4**: Design system with @theme block provides all tokens, but Lightning CSS strips backdrop-filter (use inline styles)
+- **Design system (36 components)**: Button, Card, GlassCard, Accordion, Tabs, TestimonialCard, ExtensionCard — covers every landing page UI pattern
 
-**What NOT to add:** Direct TikTok API (doesn't exist), SWR (TanStack Query has better DevTools), multiple AI providers (pick one), DALL-E/image generation (consistency issues, defer to v2), Puppeteer for PDF (memory problems), socket.io (polling sufficient), separate Redis provider (Upstash is Vercel-optimized).
-
-**Estimated costs:** $4.50/day for AI ($2.50 classification, $2.00 remix generation), plus Apify scraping costs (variable based on volume, ~$0.30/1K posts).
+**Critical cleanup:**
+- Remove `framer-motion` (duplicate package), update `motion` to latest
+- Add `formats: ['image/avif', 'image/webp']` to next.config.ts
+- Add `html { scroll-behavior: smooth; }` to globals.css
 
 ### Expected Features
 
-Research reveals a clear divide between table stakes (users expect) and differentiators (competitive advantage). The infinite scroll feed with category filtering is mandatory based on user expectations from TikTok/Instagram/Pinterest. The remix-with-storyboard feature is the core innovation - no competitor offers "see trend → get complete filming plan" in one workflow.
+Research analyzed 5 reference sites (Raycast, Linear, Resend, Clerk, Vercel) and identified 9 table stakes features and 10 differentiators. The landing page must establish credibility immediately (hero + social proof + product screenshots) before explaining features.
 
 **Must have (table stakes):**
-- **Infinite scroll feed** - Standard pattern for discovery; users expect seamless browsing without pagination. Must include virtualized lists for performance.
-- **Category filtering** - Users need to narrow discovery to relevant content type (Challenges, Sounds, Formats). Fixed top tabs or horizontal chips.
-- **Video preview/playback** - Users make decisions based on first 3 seconds; thumbnail alone insufficient. Autoplay on hover, muted by default.
-- **Analyze action** - Reuse existing Viral Predictor; users expect feature consistency across Virtuna.
-- **Basic video metadata** - Creator name, view count, date, category tag - essential context for decision-making.
+- **Hero section with clear value prop**: Large headline, subheadline, CTA, product visual — establishes what Virtuna is in 3 seconds
+- **Sticky navigation with CTA**: Logo + nav links + "Get started" button — persistent conversion path
+- **Social proof (logo bar)**: "Trusted by" logos immediately below hero — credibility signal
+- **Feature showcase**: 3-4 deep-dive sections (trending feed, analysis, scoring) with screenshots + grid of secondary features
+- **Product screenshots**: Framed in browser chrome, above and below fold — "show don't tell"
+- **Multiple CTA placements**: Hero, mid-page, bottom — repeat conversion opportunities
+- **Footer with links**: Multi-column structure, social, legal — professional finish
+- **Mobile responsiveness**: Full 320px-1440px+ support — non-negotiable
+- **FAQ section**: 5-7 questions addressing common objections
 
-**Should have (competitive):**
-- **Remix action with full storyboard** - Transforms inspiration into actionable filming plan; the core differentiator vs TikTok Creative Center. Includes AI-generated script, shot list, filming steps, and CTA/hashtags.
-- **AI-generated sub-tags** - Auto-categorization beyond fixed categories (hook type, emotional arc, format style) reveals hidden patterns.
-- **PDF export** - Professional output for production planning; industry-standard format differentiates from casual tools.
-- **Hook score display** - Shows WHY a video went viral (reuse Viral Predictor insights); educational value for creators.
-- **Save/bookmark videos** - Build personal trend library; return to inspiration later. Saves matter more than likes in 2026 TikTok algorithm.
-- **Trending velocity indicator** - Shows if trend is rising, peaking, or declining; helps creators avoid jumping on dying trends.
+**Should have (competitive differentiators):**
+- **Animated hero visual**: 3D Spline scene, Three.js particle network, or Motion-composed floating product elements — immediate "wow"
+- **Scroll-triggered reveals**: Already built (FadeIn, StaggerReveal components) — apply to every section for narrative flow
+- **Glass-morphism cards**: Use existing GlassCard/GlassPanel primitives for features, testimonials, frames — signature Raycast aesthetic
+- **Product screenshots in browser chrome**: macOS window frame with traffic lights — polished vs lazy screenshots
+- **Gradient accent dividers**: Replace `border-white/10` with coral-to-transparent gradients — premium feel
+- **Animated metrics counters**: "500K+ posts analyzed" counting up on scroll — engagement moment
+- **Interactive feature tabs**: Raycast-style tabbed showcase — depth without clutter
+- **Testimonial cards with avatars**: Named quotes from users/partners — builds trust
+- **Subtle background patterns**: Dot grid + NoiseTexture + radial spotlights — depth vs flat black
 
-**Defer (v2+):**
-- **Video editing tools** - Competes with CapCut (ByteDance's free tool); massive scope, already commoditized. Focus on pre-production guidance.
-- **Social features** - Comments/likes on Virtuna recreate TikTok poorly; link to original platform for engagement.
-- **Real-time alerts** - Push notification fatigue; trends last days not minutes. On-demand discovery is sufficient.
-- **Scheduling/posting** - OAuth complexity, TikTok API restrictions, crowded space. Stay in inspiration/planning phase only.
-- **AI video generation** - Different product category; high cost; LTX/Katalist already do this. Focus on storyboard/script; users film themselves for authenticity.
+**Defer (v2+ or not needed):**
+- Pricing section (business model not finalized)
+- Blog content on landing page (separate route)
+- Complex interactive demo (product itself is the demo)
+- Multi-page marketing site (single-page scroll is current pattern)
+- Custom cursor effects (accessibility concern, not in reference sites)
+- Newsletter signup (competes with primary CTA)
+- Chatbot widget (breaks aesthetic, not in reference sites)
 
 ### Architecture Approach
 
-The Trending Page integrates as a parallel feature domain under the existing `(app)/` route group. It follows established Virtuna patterns (Server Component + Client Component split, Zustand for client state, component composition) but introduces new concerns: API routes for external data operations (Apify, AI), TanStack Query for server state, and background jobs for scheduled scraping.
+**Component replacement, not restructuring.** The existing `(marketing)` route group with independent root layout cleanly separates landing from `(app)` dashboard. The `src/components/landing/` directory contains 12 section components following a component-per-section pattern. The redesign replaces these 12 files with Raycast-style equivalents — no routing changes, no layout rewrites.
 
-**Major components:**
-1. **Feed Infrastructure** - TrendingDashboard (3 category sections: Breaking Out, Sustained Viral, Resurging), VideoCard (thumbnail + metadata + actions), VideoGrid (infinite scroll with virtualization), VideoDetailModal (detail view with Analyze/Remix actions).
-2. **Remix System** - RemixForm (multi-step: goal selection → niche/tweaks → generate), RemixOutput (3 variant cards in grid), RemixCard (expandable with hook/shot list/script), TeleprompterView (full-screen script mode), PDFExportButton (download storyboard).
-3. **Data Pipeline** - API routes (`/api/trending`, `/api/analyze`, `/api/remix`) handle external service calls, Vercel cron job triggers Apify scrapes every 6h, Upstash Redis caches hot data (5 min TTL for feed), Supabase stores videos/remixes/baselines.
-4. **State Management** - Zustand stores for UI state only (selected video, modal open, filters), TanStack Query for server data (videos, remixes, analyze results), no server data in Zustand (avoids SSR hydration issues).
+**Major components to replace:**
+1. **Section components** (src/components/landing/) — Replace all 12 existing sections (hero, features, stats, etc.) with Raycast-style equivalents, maintaining the component-per-section pattern
+2. **Layout updates** (src/components/layout/) — Restyle Header and Footer to Raycast aesthetic, keep Container wrapper unchanged
+3. **New landing primitives** (src/components/landing/) — Add 6 landing-specific components: animated-counter, product-screenshot, video-embed, logo-marquee, feature-bento, section-header
 
-**v0 MCP candidates:** VideoCard, TrendingDashboard, CategorySection, VideoDetailModal, RemixForm, RemixOutput, RemixCard, TeleprompterView. These complex visual layouts benefit from AI-assisted design, saving 16-20 hours of UI development. Standard patterns (feed grid, filter chips, loading skeletons) build manually.
+**Server/client strategy:** Section-level "use client" for animated sections is acceptable (existing pattern). Micro-optimizing server/client boundaries adds complexity for marginal gain on a statically-generated page. Keep sections with animations as client components, use server components only for purely static sections (logo cloud, CTA, footer).
 
-**Integration points:** Sidebar nav item added (TrendingUp icon), Analyze action reuses existing Viral Predictor components (ImpactScore, AttentionBreakdown, InsightsSection), TanStack Query provider wraps app, Supabase schema extended with trending_videos, creator_baselines, remixes tables.
+**Image handling:** Product screenshots in `/public/images/landing/` with next/image, AVIF/WebP optimization, `preload` on hero image (LCP element), lazy loading below fold (default). Use existing TrafficLights component for macOS window chrome framing.
+
+**v0 workflow integration:** Generate one section at a time with v0, adapt to design system (replace shadcn imports with Virtuna components, replace hardcoded colors with tokens, replace Lucide icons with Phosphor, add Raycast design rules), place in `src/components/landing/[section].tsx`, compose in `(marketing)/page.tsx`. Each section is independent and can be merged incrementally.
 
 ### Critical Pitfalls
 
-Research identified five critical risks that could cause rewrites or major issues. TikTok ToS violations are the highest legal risk, while AI accuracy issues are the highest product quality risk.
+1. **v0 generated code ignores custom design tokens** — v0 outputs default shadcn/ui palette (bg-slate-900, text-white) instead of Virtuna's semantic tokens (bg-background, text-foreground). Every section needs manual token replacement: color classes → design tokens, font classes → font-display/font-sans, borders → white/[0.06] pattern, shadows → design system shadows, radius → 12px cards/8px inputs. Create v0 migration checklist in Phase 1, enforce per section.
 
-1. **TikTok Terms of Service Violations** - Scraping violates TikTok ToS; enforcement intensified under post-2026 U.S. ownership. Consequences: account bans, IP blocks, potential legal action. **Prevention:** Conservative rate limiting (min 10 posts per query), residential proxy rotation, monitor for CAPTCHA failures, consider TikTok Research API (4-week approval in EEA), build Instagram Reels fallback. Address in Phase 1 (Data Pipeline).
+2. **Tailwind v4 Lightning CSS strips backdrop-filter from CSS classes** — Any backdrop-filter declared in CSS classes (including existing .glass-blur-* utilities) is silently removed during build. Glass effects work in dev (browser reads source CSS), vanish in production. NEVER use CSS classes for backdrop-filter — always apply via React inline styles: `style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}`. This is already documented in MEMORY.md. Test production builds per section.
 
-2. **Incomplete or Unreliable Scraped Data** - TikTok fragments metadata across endpoints; profile data excludes video details, videos exclude comments, historical data for baseline calculation may be incomplete. Programs break when TikTok changes structures. **Prevention:** Robust null handling, minimum data completeness requirements, separate scrapers for different data types, cache creator baselines, show data freshness indicators, graceful degradation (show videos without multiplier if baseline unavailable). Address in Phase 1 (Data Pipeline).
+3. **Every section marked "use client" destroys SEO and bundle size** — All existing landing sections are "use client" because they use FadeIn. This means entire page is client-rendered (zero SSR for crawlers, full Motion bundle shipped to all visitors). While section-level "use client" is acceptable for animated sections, keep text content in server components where possible. The page is statically generated, so impact is minimized. Don't over-engineer this — existing pattern works fine.
 
-3. **AI Tagging Inaccuracy Destroying Feed Quality** - 30-40% inaccuracy rate without validation; videos mis-tagged with wrong niches or content types ruin discovery. Audio/video analysis "generally more limited" than text classification. **Prevention:** Multi-signal classification (caption + hashtags + audio + creator profile), confidence thresholds (only auto-tag above 85%), human-in-the-loop for strategic tags, user feedback mechanism ("Wrong category?" button), start with broader categories (6 types easier than 20), validate against creator-declared niche. Address in Phase 2 (AI Classification).
+4. **Glass/blur effects destroy mobile performance** — backdrop-filter is GPU-intensive. Multiple glass panels + blur(48px) + scroll animations cause jank on mobile. The codebase already has mobile blur reduction (globals.css caps blur at 8px for max-width: 768px). Limit glass effects to max 3-4 visible simultaneously, prefer rgba backgrounds over backdrop-filter for decorative elements, test on real Android device per section.
 
-4. **LLM Hallucination in Remix Generation** - Generated scripts contain fabricated techniques, impossible equipment suggestions, inaccurate trend advice, or brand-inconsistent scripts. Air Canada-style failures where AI "makes up" policies. **Prevention:** RAG grounding (retrieve actual successful scripts before generating), constraint validation (parse user constraints, verify outputs respect them), template-based generation (proven structures, LLM fills details), equipment-aware prompting, human review for "tips", prominent regenerate option, confidence disclosure ("AI-generated, review before filming"). Address in Phase 3 (Remix Generation).
+5. **v0 generates duplicate component abstractions** — Each v0 section comes with its own button styles, card patterns, badges. After 7 sections, you have 7 different button implementations. Immediately replace inline UI elements with existing components (Button, Card, GlassCard, Badge). Add component deduplication step to v0 migration checklist.
 
-5. **PDF Generation Memory Exhaustion** - Puppeteer/Playwright consume 350-450MB per document; storyboards with multiple frames can exceed 500MB. Concurrent generation exhausts server memory. Chrome DevTools 256MB WebSocket limit causes "Page crashed!" errors. **Prevention:** Use streaming output for large documents, queue system (max workers = CPU cores - 1), page limits (cap at 10 frames), close tabs after use, consider React-PDF instead of Puppeteer (no browser overhead), compress images before embedding, or offload to Browserless.io. Address in Phase 4 (PDF Export).
+6. **Inconsistent section spacing and max-width** — v0 defaults to various container widths (max-w-7xl, max-w-6xl, max-w-5xl). Existing code uses `max-w-6xl mx-auto px-6` + `py-24` consistently. Create SectionWrapper component in Phase 1 to enforce standard pattern.
 
 ## Implications for Roadmap
 
-Based on research, suggested phase structure prioritizes proving core value (feed + basic remix) before investing in polish features (PDF, teleprompter). Legal/data risks must be addressed in Phase 1 before building features.
+Based on research, the roadmap should follow a visual-completeness build order: foundation (hero + header + footer) → social proof & trust (logos + stats + testimonials) → product story (screenshots + features + capabilities) → conversion & polish (use cases + FAQ + CTA + SEO). This order maximizes incremental progress and delivers a deployable landing page at each milestone.
 
-### Phase 1: Data Foundation & Feed Infrastructure
-**Rationale:** Must establish legally defensible data sourcing and handle incomplete data gracefully before building user-facing features. Feed infrastructure is the core interaction pattern - get this right first.
-**Delivers:** Working infinite scroll feed with mock data, database schema, API route structure, Zustand stores, type definitions.
-**Addresses:**
-- Table stakes: Infinite scroll feed, category filtering, video thumbnails
-- Stack: Database schema, Zustand pattern, type definitions
-- Pitfalls: TikTok ToS compliance strategy, incomplete data handling
-**Avoids:** Building features before data pipeline is proven; committing to Puppeteer PDF before exploring React-PDF alternative.
-**Needs research:** No (standard patterns: Next.js routes, Zustand stores, Supabase tables)
+### Phase 1: Foundation & Infrastructure
+**Rationale:** Establish patterns before building content. Hero has highest visual impact and establishes Raycast design language for all subsequent sections.
+**Delivers:** Deployable minimal landing page (Header + Hero + Footer), v0 migration checklist, server/client boundary pattern, SectionWrapper component, inline backdrop-filter pattern.
+**Addresses:** TS-1 (Hero), TS-2 (Nav), TS-7 (Footer), D-9 (background patterns), setup for all differentiators.
+**Avoids:** CRIT-1 (token migration checklist), CRIT-2 (inline blur pattern), MOD-2 (SectionWrapper enforces spacing).
+**Research flag:** NO — hero patterns well-documented in reference sites, existing codebase provides structure.
 
-### Phase 2: Core Feed UI & Video Display
-**Rationale:** Use v0 MCP to accelerate complex UI components (VideoCard, TrendingDashboard, CategorySection). Validate feed UX before investing in backend integration. Test AI classification approach with smaller scope (6 content types, not 20).
-**Delivers:** VideoCard, TrendingDashboard with 3 category sections, VideoDetailModal, wire to mock data, filter chips.
-**Uses:** v0 MCP for VideoCard, CategorySection, TrendingDashboard, VideoDetailModal. Tailwind for styling. Radix UI for modals/dropdowns.
-**Implements:** Feed Infrastructure component (from Architecture research).
-**Addresses:**
-- Table stakes: Video preview, basic metadata display, loading states
-- Differentiators: Category sections (Breaking Out, Sustained, Resurging)
-- Pitfalls: Video embed CORS issues (use official TikTok embed code), quality filtering false positives (start permissive)
-**Avoids:** Monolithic components (compose from smaller pieces); using v0 output verbatim (adapt to project conventions).
-**Needs research:** No (UI patterns are well-documented; v0 handles layout complexity)
+### Phase 2: Social Proof & Trust
+**Rationale:** Credibility signals must come before feature explanations. Logos + stats + testimonials complete trust triangle immediately below hero.
+**Delivers:** Logo cloud, animated stats section, testimonial cards. Landing page that convinces (Header → Hero → Logos → Stats → Testimonials → Footer).
+**Addresses:** TS-3 (social proof), D-6 (animated counters), D-8 (testimonials with avatars).
+**Uses:** Motion useSpring for counters, TestimonialCard from design system, existing BackersSection structure as reference.
+**Avoids:** MOD-5 (contrast on glass surfaces — verify testimonial card readability).
+**Research flag:** NO — standard patterns, design system covers all components.
 
-### Phase 3: Backend Integration & AI Classification
-**Rationale:** Replace mock data with real Apify scrapes and Supabase storage. Implement AI classification with validation pipeline before it damages feed quality. Add TanStack Query for server state management.
-**Delivers:** API routes (`/api/trending`, `/api/analyze`), Supabase tables populated, TanStack Query hooks, Apify integration, AI classification with confidence thresholds.
-**Uses:** Apify Client (v2.22.0), OpenAI SDK (v6.17.0), TanStack Query (v5.x), Upstash Redis for caching.
-**Implements:** Data Pipeline component (from Architecture research).
-**Addresses:**
-- Stack: Apify, OpenAI, TanStack Query, Upstash Redis
-- Pitfalls: AI tagging accuracy (confidence thresholds, multi-signal classification), Apify cost escalation (caching, batch operations)
-**Avoids:** Storing server data in Zustand (use TanStack Query); calling Apify directly from client (expose API keys); aggressive quality filters (start permissive, tighten gradually).
-**Needs research:** Partial (Apify actor configuration, OpenAI prompt engineering for TikTok content)
+### Phase 3: Product Story
+**Rationale:** "Show don't tell" — screenshots of actual product are more convincing than feature descriptions. Product showcase + features grid + AI capabilities detail the value proposition.
+**Delivers:** Product showcase with framed screenshots, features grid with glass cards, AI capabilities deep-dive. Visitor understands what Virtuna does and why it's better.
+**Addresses:** TS-4 (features showcase), TS-5 (product screenshots), D-3 (glass cards), D-4 (browser chrome framing).
+**Uses:** TrafficLights for macOS chrome, GlassCard for feature cards, Playwright extraction scripts for screenshots.
+**Avoids:** CRIT-4 (mobile glass performance — test on real device), MOD-6 (if 3D visualization, use dynamic import).
+**Research flag:** NO — feature grids and screenshot sections are well-established landing page patterns.
 
-### Phase 4: Analyze Integration & Remix MVP
-**Rationale:** Reuse existing Viral Predictor for Analyze action (low effort, high value). Build text-only remix MVP to validate user interest before investing in visual storyboard frames or PDF export.
-**Delivers:** Analyze action wired to Viral Predictor, RemixForm (goal + niche selection), `/api/remix` route with OpenAI generation, RemixOutput showing 3 text-based variants, save/bookmark functionality.
-**Uses:** v0 MCP for RemixForm, RemixOutput, RemixCard. OpenAI GPT-4o for script generation. Existing Viral Predictor components (ImpactScore, AttentionBreakdown).
-**Implements:** Remix System component (from Architecture research).
-**Addresses:**
-- Table stakes: Analyze action (reuse existing)
-- Differentiators: Remix with storyboard (text-only MVP validates demand), hook score display, save/bookmark
-- Pitfalls: LLM hallucination (RAG grounding, template-based generation, constraint validation)
-**Avoids:** Coupling Analyze and Remix logic (keep independent); building full storyboard before validating script-only version.
-**Needs research:** Yes (prompt engineering for high-quality remix briefs, RAG implementation)
+### Phase 4: Conversion & Polish
+**Rationale:** Conversion layer (use cases, FAQ, final CTA) only matters once page has substance. SEO metadata and OG images are invisible to users, added last.
+**Delivers:** Use cases/integrations tabs, FAQ accordion, final CTA section, SEO metadata + JSON-LD, OG images. Complete production-ready landing page.
+**Addresses:** TS-6 (multiple CTAs), TS-9 (FAQ), D-5 (gradient dividers), D-7 (interactive tabs), MIN-4 (metadata).
+**Uses:** Tabs component from design system, Accordion for FAQ (already exists), existing FAQ content as reference.
+**Avoids:** MOD-4 (CTA hierarchy — max 2 primary CTAs per page), CRIT-3 (FAQ accordion is client component, rest can be server).
+**Research flag:** NO — standard conversion patterns, well-documented in SaaS landing page research.
 
-### Phase 5: Storyboard Visuals & PDF Export
-**Rationale:** Only invest in visual frames and PDF export after text-only remix proves user value. Use React-PDF (not Puppeteer) to avoid memory issues.
-**Delivers:** Storyboard visual frames (text-first approach, optional AI-generated images), PDFExportButton, StoryboardPDF component, `/api/remix/[id]/pdf` route.
-**Uses:** React-PDF (v4.3.2) for PDF generation. Optional: OpenAI GPT Image for visual frames (if character consistency improves).
-**Implements:** Export functionality for Remix System.
-**Addresses:**
-- Differentiators: Visual storyboard frames, PDF export, filming step breakdown
-- Pitfalls: PDF memory exhaustion (streaming output, queue limits), storyboard visual consistency (text-primary approach)
-**Avoids:** Puppeteer PDF generation (memory problems); AI-generated images without character consistency; complex onboarding (start on feed immediately).
-**Needs research:** Partial (React-PDF layout optimization, image compression for embedding)
-
-### Phase 6: Advanced Features & Polish
-**Rationale:** Teleprompter, trending velocity, and cron automation are nice-to-haves that enhance but don't define the core experience. Build only after core flow is validated.
-**Delivers:** TeleprompterView, trending velocity indicator, Vercel cron job for automated scraping, remix status tracking (To Film/Filmed/Posted).
-**Uses:** v0 MCP for TeleprompterView. Vercel Cron for scheduled jobs. Time-series data for velocity calculation.
-**Addresses:**
-- Differentiators: Trending velocity indicator, teleprompter mode
-- Pitfalls: Teleprompter UX issues (adjustable scroll speed, keep-awake), category taxonomy rigidity (extensible schema)
-**Avoids:** Auto-detect clipboard (privacy concerns; use opt-in); notification fatigue (pull, not push); scheduling/posting (scope creep).
-**Needs research:** No (cron jobs are standard; teleprompter is primarily UX)
+### Optional Phase 5: Premium Visuals
+**Rationale:** 3D hero animation or interactive feature demos are high-impact but high-effort. Core landing page is complete without them. This phase is a polish pass for "wow factor."
+**Delivers:** Spline 3D scene or Three.js particle network for hero, or Motion-composed animated product assembly. Video embeds for product demos.
+**Addresses:** D-1 (animated hero visual).
+**Uses:** Existing @splinetool/react-spline or @react-three/fiber + drei, dynamic import with ssr: false.
+**Avoids:** MOD-6 (Three.js bundle bloat — must use next/dynamic), CRIT-4 (3D is GPU-heavy on mobile).
+**Research flag:** YES if choosing 3D — Spline scene design or Three.js particle system implementation needs deeper research during planning.
 
 ### Phase Ordering Rationale
 
-- **Data first, UI second:** Establish legally defensible data sourcing and handle incomplete data gracefully (Phase 1) before building features that depend on reliable data.
-- **v0 for acceleration:** Use v0 MCP in Phase 2 to rapidly prototype complex UI components, allowing focus on business logic in later phases.
-- **Validate core value early:** Text-only remix (Phase 4) validates user demand before investing in visual storyboards and PDF export (Phase 5).
-- **Defer polish features:** Teleprompter and trending velocity (Phase 6) enhance but don't define the core experience; build only after feed + remix are proven.
-- **AI validation before scale:** Implement AI classification with confidence thresholds and human-in-the-loop (Phase 3) before it damages feed quality at scale.
-- **React-PDF over Puppeteer:** Defer PDF export decision to Phase 5 after evaluating React-PDF as Puppeteer alternative (avoids Phase 1 commitment to memory-problematic approach).
+- **Hero first** because it establishes the Raycast design language and has highest visual impact — all subsequent sections follow its aesthetic
+- **Social proof before features** because trust signals (logos, stats, testimonials) are more persuasive than feature lists for a SaaS product
+- **Product screenshots before feature descriptions** because showing the product is more convincing than describing it ("show don't tell")
+- **FAQ and CTA last** because they're conversion-layer elements that only matter once the page has substance
+- **SEO metadata last** because it's invisible to users and can be added after visual completeness
+- **3D/premium visuals optional** because core landing page is complete without them — this is a polish pass for differentiation
 
 ### Research Flags
 
 **Phases needing deeper research during planning:**
-- **Phase 3 (Backend Integration):** Apify actor configuration, rate limiting strategy, OpenAI prompt engineering for TikTok content classification accuracy.
-- **Phase 4 (Remix MVP):** Prompt engineering for high-quality remix briefs, RAG implementation for grounding, template library for script structures.
-- **Phase 5 (PDF Export):** React-PDF layout optimization, image compression for embedding, streaming output for large documents.
+- **Phase 5 (Premium Visuals)** — If pursuing 3D hero: Spline scene design workflow, asset optimization, or Three.js particle system implementation patterns need phase-specific research. Existing packages are installed but integration patterns for landing pages need validation.
 
 **Phases with standard patterns (skip research-phase):**
-- **Phase 1 (Data Foundation):** Standard Next.js routes, Zustand stores, Supabase schema design.
-- **Phase 2 (Core Feed UI):** UI patterns are well-documented; v0 MCP handles layout complexity.
-- **Phase 6 (Advanced Features):** Cron jobs are standard; teleprompter is primarily UX testing.
+- **Phase 1-4** — All follow well-documented landing page patterns. Hero sections, feature grids, product screenshots, FAQ accordions, and testimonial cards are standard. v0 can generate structure, existing design system covers all components, reference sites provide design direction. No phase-specific research needed.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Package versions verified on GitHub (apify-client v2.22.0, openai v6.17.0, @react-pdf/renderer v4.3.2). TanStack Query and Upstash Redis are industry standards with extensive documentation. |
-| Features | MEDIUM-HIGH | Table stakes verified via multiple 2026 sources (TikTok Creative Center, Instagram/Pinterest UX patterns, infinite scroll research). Differentiators based on competitive analysis (Boords, Katalist, StoryboardHero gaps). User behavior expectations from Buffer/OneStream TikTok research. |
-| Architecture | HIGH | Existing codebase analysis confirms patterns. Next.js App Router, Zustand, TanStack Query integration patterns well-documented. v0 MCP workflow validated through official docs. |
-| Pitfalls | HIGH | TikTok ToS violations confirmed via official TikTok documentation. AI tagging accuracy (30-40% error rate) from Kontent.ai/VideoTap industry research. LLM hallucination well-documented (EvidentlyAI, Voiceflow). PDF memory issues extensively documented (Puppeteer GitHub issues, Medium articles). |
+| Stack | HIGH | Existing stack verified via package.json + codebase audit. Zero new dependencies needed beyond cleanup. Motion, Next.js Image, design system cover all requirements. |
+| Features | HIGH | Based on live analysis of 5 reference sites (Raycast, Linear, Resend, Clerk, Vercel) + 4 SaaS landing page research sources. Table stakes and differentiators consistent across all references. |
+| Architecture | HIGH | Verified directly in codebase — (marketing) route group exists, component-per-section pattern established, design system components catalogued. Replacement architecture not restructure. |
+| Pitfalls | HIGH | CRIT-2 (backdrop-filter bug) already documented in MEMORY.md from direct experience. CRIT-1 (v0 token mismatch) confirmed via v0 docs and codebase token analysis. Other pitfalls corroborated by Next.js/Motion GitHub issues. |
 
 **Overall confidence:** HIGH
 
+The research is grounded in verified existing code (not speculation), official documentation (Next.js, Motion, Tailwind v4), and direct analysis of 5 live reference implementations. The project-specific risks (backdrop-filter bug, dual animation package) are already documented from experience. The only area of uncertainty is v0 output quality variability, which is mitigated by the established adaptation workflow.
+
 ### Gaps to Address
 
-**TikTok Research API availability:** Research shows it exists in EEA with 4-week approval process, but unclear if available outside EEA in 2026. Need to verify during Phase 1 as potential legal alternative to scraping.
+- **v0 generation quality** — v0 output with custom design tokens varies. Some sections may require more manual rework than others. This is managed by the per-section migration checklist, but actual adaptation time per section is unknown until generation. Consider generating one section as a pilot to calibrate effort estimates.
 
-**Post-2026 TikTok ownership terms:** U.S. ownership introduced new terms that make enforcement more aggressive. Need legal review of latest policies during Phase 1 before committing to Apify-based approach.
+- **Product screenshot availability** — Several features (product showcase, feature deep-dives, tabbed sections) depend on high-quality product screenshots. The existing extraction/ directory has Playwright scripts for capturing screenshots, but whether the current Virtuna app is visually polished enough for landing page use needs validation. If screenshots aren't landing-ready, consider using v0 to generate mockups or placeholder visuals.
 
-**AI tagging accuracy benchmarks for TikTok content specifically:** Industry research shows 30-40% error rate for general content, but TikTok's unique styles (trends, audio-centric content) may differ. Phase 3 should include baseline accuracy testing before scaling classification.
+- **Content completeness** — FAQ questions, feature copy, testimonial quotes, and logo assets need to exist or be created. Research assumes content is available or easy to produce. If content creation is a bottleneck, it could delay section integration even after code is written.
 
-**User preference for text vs visual storyboards:** Unknown if users want AI-generated visual frames or prefer text-only briefs. Phase 4 (text-only MVP) validates demand before Phase 5 investment in visuals.
-
-**PDF export usage patterns:** Unknown if users will export PDFs frequently (professional creators) or rarely (casual creators). Phase 5 can defer if Phase 4 shows low export demand.
-
-**Remix generation quality:** Prompt engineering for high-quality remix briefs is experimental. Phase 4 requires iteration to achieve output that matches creator expectations. Consider user testing with real creators before full rollout.
+- **3D visual design** — If Phase 5 (Premium Visuals) is pursued, the actual 3D scene design (Spline) or particle system behavior (Three.js) requires design direction that wasn't part of this research. Technical implementation is clear, but "what should it look like" is unresolved.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-
-**Stack:**
-- [apify-client v2.22.0](https://github.com/apify/apify-client-js) - GitHub releases verified
-- [openai v6.17.0](https://github.com/openai/openai-node/releases) - GitHub releases verified
-- [@react-pdf/renderer v4.3.2](https://github.com/diegomura/react-pdf/issues/2756) - React 19 compatibility verified
-- [TanStack Query v5 Docs](https://tanstack.com/query/latest) - Official documentation
-- [Upstash Redis Docs](https://upstash.com/docs/redis/overall/getstarted) - Official documentation
-
-**Features:**
-- [TikTok Algorithm Guide 2026 (Buffer)](https://buffer.com/resources/tiktok-algorithm/) - First 3 seconds priority, saves matter more than likes
-- [TikTok Trend Discovery Guide (OneStream)](https://onestream.live/blog/tiktok-trend-discovery-guide/) - User behavior expectations
-- [YouTube Ends Trending Page (eMarketer)](https://www.emarketer.com/content/youtube-ends-trending-page-prioritize-algorithmic-feeds-hyper-specific-categories) - Industry shift insights
-- [Best Storyboard Software 2026 (Boords)](https://boords.com/best-storyboard-software) - Competitive landscape
-- [AI Storyboard Generators 2026 (Boords)](https://boords.com/blog/the-6-best-ai-storyboard-generators) - Feature expectations
-
-**Architecture:**
-- [Next.js App Router Documentation](https://nextjs.org/docs/app) - Official docs
-- [Zustand + React Query Pattern (Medium)](https://medium.com/@freeyeon96/zustand-react-query-new-state-management-7aad6090af56) - State management patterns
-- [Server Actions vs API Routes (Makerkit)](https://makerkit.dev/blog/tutorials/server-actions-vs-route-handlers) - Architecture decisions
-- [v0.dev Documentation](https://v0.dev/docs) - v0 MCP workflow
-
-**Pitfalls:**
-- [TikTok: How We Combat Scraping](https://www.tiktok.com/privacy/blog/how-we-combat-scraping/en) - Official ToS enforcement stance
-- [TikTok Terms of Service](https://www.tiktok.com/legal/page/us/terms-of-service/en) - Legal restrictions
-- [AI Content Tagging Challenges (Kontent.ai)](https://kontent.ai/blog/ai-based-auto-tagging-of-content-what-you-need-to-know/) - 30-40% error rate documented
-- [LLM Hallucination Examples (EvidentlyAI)](https://www.evidentlyai.com/blog/llm-hallucination-examples) - Well-documented failure modes
-- [Puppeteer PDF Issues (Medium)](https://medium.com/@onu.khatri/puppeteer-isnt-meant-for-pdfs-here-s-why-1e3a4419263f) - Memory exhaustion documented
+- Virtuna codebase analysis — `src/app/(marketing)/`, `src/components/landing/`, `src/components/ui/`, `src/components/motion/`, `globals.css`, `package.json`, layout files
+- Virtuna MEMORY.md — backdrop-filter bug, dev cache behavior, hydration notes
+- raycast.com live CSS analysis (2026-02-06) — Glass patterns, border values, radius scale
+- [Motion npm package](https://www.npmjs.com/package/motion) — v12.33.0 latest
+- [Motion scroll animations docs](https://www.framer.com/motion/scroll-animations/)
+- [Motion upgrade guide](https://motion.dev/docs/react-upgrade-guide)
+- [Next.js 16 release blog](https://nextjs.org/blog/next-16)
+- [Next.js Image component docs](https://nextjs.org/docs/app/api-reference/components/image)
+- [Next.js Metadata API](https://nextjs.org/docs/app/api-reference/functions/generate-metadata)
+- [Next.js Server and Client Components](https://nextjs.org/docs/app/getting-started/server-and-client-components)
 
 ### Secondary (MEDIUM confidence)
-
-- [Apify TikTok Scraper Limitations](https://apify.com/clockworks/tiktok-scraper/issues/scraper-limitations-PZaIeYVOBMB4rgxWr) - Community-reported issues
-- [TikTok Scraping Guide 2026 (Scrapfly)](https://scrapfly.io/blog/posts/how-to-scrape-tiktok-python-json) - Technical implementation guidance
-- [Infinite Scroll Best Practices (Justinmind)](https://www.justinmind.com/ui-design/infinite-scroll) - UX patterns
-- [Reducing LLM Hallucinations (Voiceflow)](https://www.voiceflow.com/blog/prevent-llm-hallucinations) - 96% reduction with guardrails
-- [AI Storyboarding Tools 2025 (Celtx)](https://blog.celtx.com/modern-storyboarding-ai-technology/) - Emerging capabilities
+- linear.app, vercel.com, resend.com, clerk.com live page analysis (2026-02-06)
+- [SaaSFrame: 10 SaaS Landing Page Trends for 2026](https://www.saasframe.io/blog/10-saas-landing-page-trends-for-2026-with-real-examples)
+- [Fibr: 20 Best SaaS Landing Pages + 2026 Best Practices](https://fibr.ai/landing-page/saas-landing-pages)
+- [DesignStudioUIUX: 10 SaaS Landing Page Design Best Practices 2026](https://www.designstudiouiux.com/blog/saas-landing-page-design/)
+- [Unbounce: 26 SaaS Landing Pages](https://unbounce.com/conversion-rate-optimization/the-state-of-saas-landing-pages/)
+- [v0 documentation](https://v0.dev/docs)
+- [v0 design systems](https://vercel.com/blog/maximizing-outputs-with-v0-from-ui-generation-to-code-creation)
+- [Next.js SEO Guide 2026](https://www.djamware.com/post/697a19b07c935b6bb054313e/next-js-seo-optimization-guide--2026-edition)
 
 ### Tertiary (LOW confidence)
-
-- [WIPO Remix Culture](https://www.wipo.int/web/wipo-magazine/articles/remix-culture-and-amateur-creativity-a-copyright-dilemma-39210) - Fair use ambiguity (jurisdiction-dependent)
-- [AI Video Tagging Challenges (VideoTap)](https://videotap.com/blog/ai-video-tagging-benefits-use-cases-challenges) - "Generally more limited" for audio/video vs text
-- [Storyboarder.ai Review 2025 (Skywork)](https://skywork.ai/skypage/en/Storyboarder.ai-Review-2025-The-Ultimate-Guide-to-AI-Storyboarding/1974522243654021120) - Visual consistency issues reported but improving
+- [shadcn/ui CSS Backdrop Filter performance issue #327](https://github.com/shadcn-ui/ui/issues/327)
+- [Safari backdrop-filter performance fix](https://graffino.com/til/how-to-fix-filter-blur-performance-issue-in-safari)
+- [Dark Mode Glassmorphism tips](https://alphaefficiency.com/dark-mode-glassmorphism)
+- [SaaS Landing Page Mistakes - UX Planet](https://uxplanet.org/i-reviewed-250-saas-landing-pages-avoid-these-10-common-design-mistakes-a1a8499e6ee8)
+- [Framer Motion + Next.js App Router hydration issue](https://github.com/vercel/next.js/issues/49279)
 
 ---
-*Research completed: 2026-02-02*
+*Research completed: 2026-02-06*
 *Ready for roadmap: yes*
