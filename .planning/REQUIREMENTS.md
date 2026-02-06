@@ -45,23 +45,23 @@
 
 ### Earnings Tab
 
-- [ ] **EARN-01**: 4 summary stat cards in a responsive row (Total Earned, Pending, Paid Out, This Month)
-- [ ] **EARN-02**: Stat card values animate with count-up effect on mount (respects `prefers-reduced-motion` -- shows static values)
-- [ ] **EARN-03**: Each stat card shows percentage change indicator (green for positive, red for negative)
-- [ ] **EARN-04**: Period selector pills (7D, 30D, 90D, All Time) update chart data with brief loading transition
-- [ ] **EARN-05**: Earnings area chart renders with Recharts, dark-mode themed (custom axis/grid/tick colors from design tokens)
-- [ ] **EARN-06**: Chart uses gradient fill with green accent color matching Brand Bible semantics
-- [ ] **EARN-07**: Chart tooltip on hover shows date and formatted earnings value in glassmorphic-styled tooltip
-- [ ] **EARN-08**: Earnings breakdown section shows per-deal/link earnings in a list (columns: source name, clicks, conversions, earnings) sorted by earnings descending
-- [ ] **EARN-09**: All monetary values formatted with Intl.NumberFormat (USD)
+- [x] **EARN-01**: 4 summary stat cards in a responsive row (Total Earned, Pending, Paid Out, This Month)
+- [x] **EARN-02**: Stat card values animate with count-up effect on mount (respects `prefers-reduced-motion` -- shows static values)
+- [x] **EARN-03**: Each stat card shows percentage change indicator (green for positive, red for negative)
+- [x] **EARN-04**: Period selector pills (7D, 30D, 90D, All Time) update chart data with brief loading transition
+- [x] **EARN-05**: Earnings area chart renders with Recharts, dark-mode themed (custom axis/grid/tick colors from design tokens)
+- [x] **EARN-06**: Chart uses gradient fill with green accent color matching Brand Bible semantics
+- [x] **EARN-07**: Chart tooltip on hover shows date and formatted earnings value in glassmorphic-styled tooltip
+- [x] **EARN-08**: Earnings breakdown section shows per-deal/link earnings in a list (columns: source name, clicks, conversions, earnings) sorted by earnings descending
+- [x] **EARN-09**: All monetary values formatted with Intl.NumberFormat (USD)
 
 ### Polish
 
 - [x] **PLSH-01**: Deal cards use solid `bg-surface-elevated` for grid performance (not glassmorphic blur on every card)
 - [x] **PLSH-02**: Color semantics follow Brand Bible (green=earnings, orange=creative deals, blue=analytics/clicks)
-- [ ] **PLSH-03**: Loading skeleton states for all three tabs using design system Skeleton pattern
-- [ ] **PLSH-04**: Responsive layout works on mobile (stat cards 2-col, deal grid 1-col, affiliate cards stack vertically)
-- [ ] **PLSH-05**: All tab content keyboard-navigable (Tab through cards, Enter to activate CTAs)
+- [x] **PLSH-03**: Loading skeleton states for all three tabs using design system Skeleton pattern
+- [x] **PLSH-04**: Responsive layout works on mobile (stat cards 2-col, deal grid 1-col, affiliate cards stack vertically)
+- [x] **PLSH-05**: All tab content keyboard-navigable (Tab through cards, Enter to activate CTAs)
 
 ## Future Requirements
 
@@ -128,20 +128,20 @@
 | AFFL-08 | Phase 55 | Complete |
 | AFFL-09 | Phase 55 | Complete |
 | AFFL-10 | Phase 55 | Complete |
-| EARN-01 | Phase 56 | Pending |
-| EARN-02 | Phase 56 | Pending |
-| EARN-03 | Phase 56 | Pending |
-| EARN-04 | Phase 56 | Pending |
-| EARN-05 | Phase 56 | Pending |
-| EARN-06 | Phase 56 | Pending |
-| EARN-07 | Phase 56 | Pending |
-| EARN-08 | Phase 56 | Pending |
-| EARN-09 | Phase 56 | Pending |
+| EARN-01 | Phase 56 | Complete |
+| EARN-02 | Phase 56 | Complete |
+| EARN-03 | Phase 56 | Complete |
+| EARN-04 | Phase 56 | Complete |
+| EARN-05 | Phase 56 | Complete |
+| EARN-06 | Phase 56 | Complete |
+| EARN-07 | Phase 56 | Complete |
+| EARN-08 | Phase 56 | Complete |
+| EARN-09 | Phase 56 | Complete |
 | PLSH-01 | Phase 54 | Complete |
 | PLSH-02 | Phase 54 | Complete |
-| PLSH-03 | Phase 57 | Pending |
-| PLSH-04 | Phase 57 | Pending |
-| PLSH-05 | Phase 57 | Pending |
+| PLSH-03 | Phase 57 | Complete |
+| PLSH-04 | Phase 57 | Complete |
+| PLSH-05 | Phase 57 | Complete |
 
 **Coverage:**
 - v2.3 requirements: 43 total
@@ -150,4 +150,4 @@
 
 ---
 *Requirements defined: 2026-02-05*
-*Last updated: 2026-02-06 -- AFFL-01 through AFFL-10 marked Complete (Phase 55 verified 10/10)*
+*Last updated: 2026-02-06 -- All 43 requirements Complete (EARN-01-09, PLSH-03-05 marked Complete, Phase 57 verified 16/16)*
