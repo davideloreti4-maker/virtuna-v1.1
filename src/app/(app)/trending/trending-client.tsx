@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { Inbox, TrendingUp, Flame, RotateCcw } from "lucide-react";
+import { TrendingUp, Flame, RotateCcw } from "lucide-react";
 import { Heading } from "@/components/ui/typography";
 import { CategoryTabs } from "@/components/ui/category-tabs";
 import { TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getVideosByCategory, getTrendingStats } from "@/lib/trending-mock-data";
+import { getTrendingStats } from "@/lib/trending-mock-data";
+import { VideoGrid } from "@/components/trending/video-grid";
 import {
   CATEGORY_LABELS,
   VALID_TABS,
@@ -73,44 +74,6 @@ function SkeletonGrid() {
           <Skeleton className="h-3 w-1/2 rounded-md" />
         </div>
       ))}
-    </div>
-  );
-}
-
-/** Empty state for categories with no videos. */
-function EmptyState({ category }: { category: TrendingCategory }) {
-  return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-border-glass bg-surface px-6 py-16">
-      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-elevated">
-        <Inbox className="h-7 w-7 text-foreground-muted" />
-      </div>
-      <p className="text-sm font-medium text-foreground-secondary">
-        No videos {CATEGORY_LABELS[category].toLowerCase()} right now
-      </p>
-      <p className="mt-1 text-xs text-foreground-muted">Check back soon</p>
-    </div>
-  );
-}
-
-/** Placeholder content showing video count per category (cards come in Phase 51). */
-function VideoPlaceholder({ category }: { category: TrendingCategory }) {
-  const videos = getVideosByCategory(category);
-
-  if (videos.length === 0) {
-    return <EmptyState category={category} />;
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-border-glass bg-surface/50 px-6 py-16">
-      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10">
-        <span className="text-lg font-semibold text-accent">{videos.length}</span>
-      </div>
-      <p className="text-sm font-medium text-foreground-secondary">
-        {videos.length} videos ready
-      </p>
-      <p className="mt-1 text-xs text-foreground-muted">
-        Video cards coming in Phase 51
-      </p>
     </div>
   );
 }
@@ -218,7 +181,7 @@ export function TrendingClient({ defaultTab }: TrendingClientProps) {
         {isLoading ? (
           <SkeletonGrid />
         ) : (
-          <VideoPlaceholder category={activeTab} />
+          <VideoGrid category={activeTab} />
         )}
       </div>
     </div>
