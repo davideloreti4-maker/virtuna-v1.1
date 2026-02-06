@@ -5,17 +5,33 @@
 See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** Raycast-quality design system enabling rapid, consistent UI development
-**Current focus:** v2.3.5 Design Token Alignment — defining requirements
+**Current focus:** v2.3.5 Design Token Alignment -- Phase 53 (Font & Color Foundation)
 
 ## Current Position
 
 **Milestone:** v2.3.5 -- Design Token Alignment
-**Phase:** Not started (defining requirements)
-**Plan:** —
-**Status:** Defining requirements
-**Last activity:** 2026-02-06 — Milestone v2.3.5 started
+**Phase:** 53 of 55 (Font & Color Foundation)
+**Plan:** Ready to plan
+**Status:** Roadmap created, ready to plan Phase 53
+**Last activity:** 2026-02-06 -- Roadmap created (3 phases, 37 requirements mapped)
 
 Progress: [░░░░░░░░░░] 0%
+
+### Phase Overview
+
+| Phase | Name | Requirements | Depends On | Status |
+|-------|------|-------------|------------|--------|
+| 53 | Font & Color Foundation | 12 (TYPO + COLR) | None | Not started |
+| 54 | Card & Surface Corrections | 10 (CARD + HEAD + INPT) | Phase 53 | Not started |
+| 55 | Glass, Docs & Regression | 15 (GLAS + DOCS + REGR) | Phase 54 | Not started |
+
+### Dependency Graph
+
+```
+53 (Font & Color) --> 54 (Card & Surface) --> 55 (Glass, Docs & Regression)
+```
+
+Linear chain: each phase depends on the previous. Font/color tokens must be correct before component fixes, and all fixes must be done before regression.
 
 ## Shipped Milestones
 
@@ -26,30 +42,27 @@ Progress: [░░░░░░░░░░] 0%
 
 ## In-Progress Milestones
 
-- v2.1 Dashboard Rebuild -- Phases 45-49, 51 requirements, 40% executed (Phases 45-46 complete) [main branch]
-- v2.3.5 Design Token Alignment -- defining requirements [worktree]
+- v2.1 Dashboard Rebuild -- Phases 45-49, 51 requirements, 40% executed [main branch]
+- v2.3.5 Design Token Alignment -- Phases 53-55, 37 requirements, roadmap created [worktree]
 
 ## Key Technical Notes
 
-### Known Issues (from audit)
-- BRAND-BIBLE.md describes "iOS 26 Liquid Glass" hybrid — should be pure Raycast
-- Font families wrong: Funnel Display + Satoshi instead of Inter
-- Background value wrong: #0A0A0B vs Raycast's #07080a
-- Border opacity documented as 10% vs Raycast's 6%
-- Input height documented as 40px vs Raycast's 42px
-- Colored glass tints/glow effects don't match Raycast's minimal approach
-- Accent color in brand bible: #E57850 vs actual brand #FF7F50
-- globals.css tokens are more accurate than brand bible docs
+### Known Risks
+- Font swap (Satoshi/Funnel -> Inter) will change character widths, may break layouts
+- oklch-to-hex compilation inaccuracy for dark colors -- use exact hex in @theme
+- Lightning CSS strips backdrop-filter from CSS classes -- use inline styles
+- Browser + .next/ cache will mask CSS changes -- hard clear required
 
 ### Decisions
-- Switch to Inter font (matching Raycast 1:1)
+- Switch to Inter font exclusively (matching Raycast 1:1)
 - Strip colored glass tints, inner glow, GradientGlow/GradientMesh
-- Full regression of all components after token fixes
+- Use exact hex for dark grey tokens (not oklch)
+- Full regression of all 36 components + pages after fixes
 
 ### Session Continuity
 - Last session: 2026-02-06
-- Next: Define requirements, create roadmap
+- Next: Plan Phase 53 (Font & Color Foundation)
 
 ---
 *State created: 2026-02-06*
-*Last updated: 2026-02-06 -- Milestone v2.3.5 started*
+*Last updated: 2026-02-06 -- v2.3.5 roadmap created*

@@ -2,12 +2,77 @@
 
 ## Milestones
 
+- v2.3.5 Design Token Alignment -- Phases 53-55 (active)
 - v2.2 Trending Page UI -- Phases 50-52 (shipped 2026-02-06) | [Archive](milestones/v2.2-ROADMAP.md)
 - v2.1 Dashboard Rebuild -- Phases 45-49 (active)
 - v2.0 Design System Foundation -- Phases 39-44 (shipped 2026-02-05) | [Archive](milestones/v2.0-ROADMAP.md)
 - v1.2 Visual Accuracy Refinement -- Phases 11-14 (shipped 2026-01-30)
 - v1.1 Pixel-Perfect Clone -- Phases 1-10 (shipped 2026-01-29)
 - v1.3.2-v1.7 -- Phases 15-38 (archived 2026-02-03)
+
+## v2.3.5 Design Token Alignment
+
+**Milestone Goal:** Achieve 1:1 design alignment with Raycast.com (except coral #FF7F50 branding) by correcting all design tokens, components, reference docs, and verifying zero regressions.
+
+### Phase 53: Font & Color Foundation
+
+**Goal:** All text renders in Inter with correct line-height and letter-spacing, and every color token in globals.css matches the Raycast extraction exactly.
+
+**Dependencies:** None (foundation phase)
+
+**Requirements:** TYPO-01, TYPO-02, TYPO-03, TYPO-04, TYPO-05, COLR-01, COLR-02, COLR-03, COLR-04, COLR-05, COLR-06, COLR-07
+
+**Description:** Replace Funnel Display and Satoshi with Inter via next/font. Fix body line-height from 1.15 to 1.5-1.6 and add letter-spacing 0.2px. Correct all grey scale tokens to exact hex (not oklch). Add card gradient, glass gradient, input background, and button shadow tokens with Raycast-accurate values. This phase touches globals.css @theme, layout.tsx font loading, and token aliases.
+
+**Success Criteria** (what must be TRUE):
+1. Every page renders text in Inter font family -- no Funnel Display or Satoshi visible anywhere in the application
+2. Body text has comfortable 1.5-1.6 line-height and 0.2px letter-spacing matching Raycast's typographic rhythm
+3. All grey scale tokens in globals.css @theme use exact hex values (not oklch), and dark colors (L < 0.15) render to correct hex when compiled
+4. Card gradient, glass gradient, input background, border opacity, and button shadow token values in globals.css match the Raycast extraction document exactly
+5. Font-size scale tokens are verified against Raycast type scale with any discrepancies documented
+
+**Plans:** TBD
+
+---
+
+### Phase 54: Card & Surface Corrections
+
+**Goal:** Cards, header/navbar, and input components render with Raycast-accurate backgrounds, borders, shadows, and hover states.
+
+**Dependencies:** Phase 53 (color tokens and font must be correct before component visual fixes)
+
+**Requirements:** CARD-01, CARD-02, CARD-03, CARD-04, CARD-05, HEAD-01, HEAD-02, INPT-01, INPT-02, INPT-03
+
+**Description:** Update Card/GlassCard to use solid 137deg gradient (no backdrop-filter blur), add proper hover states (translate-y, border change, bg overlay), fix border to 6% with 12px radius and correct inset shadow. Fix FeatureCard border opacities to 6%/10%. Apply Raycast glass navbar pattern to Header. Align base Input to GlassInput pattern with white/5 background, 5% border, and 42px height.
+
+**Success Criteria** (what must be TRUE):
+1. Cards display a solid 137deg gradient background with no backdrop-filter blur, and hovering a card produces a subtle lift (-0.5 translate-y), border brightening to 10%, and white/3 background overlay
+2. Card borders use rgba(255,255,255,0.06) at 12px radius with rgba(255,255,255,0.1) inset shadow, and FeatureCard matches these exact opacities (6% base / 10% hover)
+3. Header/navbar uses the Raycast glass pattern (137deg gradient + blur(5px) + 6% border) and mobile menu divider uses 6% opacity
+4. All input components use rgba(255,255,255,0.05) background with 5% border opacity and 42px height, matching GlassInput/Raycast pattern
+
+**Plans:** TBD
+
+---
+
+### Phase 55: Glass, Documentation & Regression
+
+**Goal:** GlassPanel uses Raycast-minimal neutral glass, all reference docs contain accurate Raycast values, and every component/page passes visual regression.
+
+**Dependencies:** Phase 54 (all token and component fixes must be complete before regression)
+
+**Requirements:** GLAS-01, GLAS-02, GLAS-03, GLAS-04, GLAS-05, GLAS-06, DOCS-01, DOCS-02, DOCS-03, DOCS-04, REGR-01, REGR-02, REGR-03, REGR-04, REGR-05
+
+**Description:** Refactor GlassPanel to Raycast neutral glass only (remove colored tints, inner glow, reduce default blur to 5px, fix radius to 12px, correct inset shadow). Remove or deprecate GradientGlow and GradientMesh components. Rewrite BRAND-BIBLE.md from scratch with all Raycast-accurate values. Update all design docs and MEMORY.md. Run full visual regression across all 36 components, trending page, dashboard, and 7-page showcase. Verify WCAG AA contrast compliance maintained.
+
+**Success Criteria** (what must be TRUE):
+1. GlassPanel renders with Raycast neutral glass only (no colored tints, no inner glow), default blur of 5px, 12px radius, and correct inset shadow -- GradientGlow and GradientMesh are removed or deprecated
+2. BRAND-BIBLE.md describes "Raycast Design Language" (not iOS 26 Liquid Glass) with all token values matching the Raycast extraction
+3. All 36 design system components render correctly in the showcase after token and component changes
+4. Trending page (/trending) and dashboard render correctly with no visual regressions
+5. WCAG AA contrast compliance maintained (5.4:1+ for muted text) and all design docs + MEMORY.md updated with final verified values
+
+**Plans:** TBD
 
 ## v2.1 Dashboard Rebuild
 
@@ -36,7 +101,7 @@ Plans:
 
 ---
 
-### Phase 46: Forms & Modals Migration ✅ COMPLETE
+### Phase 46: Forms & Modals Migration
 
 **Goal:** All form inputs and modal dialogs across the dashboard use design system components with consistent behavior.
 
@@ -124,12 +189,15 @@ Plans:
 | 15-38 | v1.3.2-v1.7 | - | Archived | 2026-02-03 |
 | 39-44 | v2.0 | 35/35 | Complete | 2026-02-05 |
 | 45 | v2.1 | 3/3 | Complete | 2026-02-05 |
-| 46 | v2.1 | 0/4 | Pending | - |
+| 46 | v2.1 | 4/4 | Complete | 2026-02-06 |
 | 47 | v2.1 | 0/? | Pending | - |
 | 48 | v2.1 | 0/? | Pending | - |
 | 49 | v2.1 | 0/? | Pending | - |
 | 50-52 | v2.2 | 10/10 | Shipped | 2026-02-06 |
+| 53 | v2.3.5 | 0/? | Not started | - |
+| 54 | v2.3.5 | 0/? | Not started | - |
+| 55 | v2.3.5 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-02-03*
-*Last updated: 2026-02-06 -- v2.2 shipped, v2.1 Phase 46 complete*
+*Last updated: 2026-02-06 -- v2.3.5 roadmap created (phases 53-55)*

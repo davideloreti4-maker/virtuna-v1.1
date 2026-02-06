@@ -89,49 +89,49 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TYPO-01 | — | Pending |
-| TYPO-02 | — | Pending |
-| TYPO-03 | — | Pending |
-| TYPO-04 | — | Pending |
-| TYPO-05 | — | Pending |
-| COLR-01 | — | Pending |
-| COLR-02 | — | Pending |
-| COLR-03 | — | Pending |
-| COLR-04 | — | Pending |
-| COLR-05 | — | Pending |
-| COLR-06 | — | Pending |
-| COLR-07 | — | Pending |
-| CARD-01 | — | Pending |
-| CARD-02 | — | Pending |
-| CARD-03 | — | Pending |
-| CARD-04 | — | Pending |
-| CARD-05 | — | Pending |
-| GLAS-01 | — | Pending |
-| GLAS-02 | — | Pending |
-| GLAS-03 | — | Pending |
-| GLAS-04 | — | Pending |
-| GLAS-05 | — | Pending |
-| GLAS-06 | — | Pending |
-| HEAD-01 | — | Pending |
-| HEAD-02 | — | Pending |
-| INPT-01 | — | Pending |
-| INPT-02 | — | Pending |
-| INPT-03 | — | Pending |
-| DOCS-01 | — | Pending |
-| DOCS-02 | — | Pending |
-| DOCS-03 | — | Pending |
-| DOCS-04 | — | Pending |
-| REGR-01 | — | Pending |
-| REGR-02 | — | Pending |
-| REGR-03 | — | Pending |
-| REGR-04 | — | Pending |
-| REGR-05 | — | Pending |
+| TYPO-01 | Phase 53 | Pending |
+| TYPO-02 | Phase 53 | Pending |
+| TYPO-03 | Phase 53 | Pending |
+| TYPO-04 | Phase 53 | Pending |
+| TYPO-05 | Phase 53 | Pending |
+| COLR-01 | Phase 53 | Pending |
+| COLR-02 | Phase 53 | Pending |
+| COLR-03 | Phase 53 | Pending |
+| COLR-04 | Phase 53 | Pending |
+| COLR-05 | Phase 53 | Pending |
+| COLR-06 | Phase 53 | Pending |
+| COLR-07 | Phase 53 | Pending |
+| CARD-01 | Phase 54 | Pending |
+| CARD-02 | Phase 54 | Pending |
+| CARD-03 | Phase 54 | Pending |
+| CARD-04 | Phase 54 | Pending |
+| CARD-05 | Phase 54 | Pending |
+| GLAS-01 | Phase 55 | Pending |
+| GLAS-02 | Phase 55 | Pending |
+| GLAS-03 | Phase 55 | Pending |
+| GLAS-04 | Phase 55 | Pending |
+| GLAS-05 | Phase 55 | Pending |
+| GLAS-06 | Phase 55 | Pending |
+| HEAD-01 | Phase 54 | Pending |
+| HEAD-02 | Phase 54 | Pending |
+| INPT-01 | Phase 54 | Pending |
+| INPT-02 | Phase 54 | Pending |
+| INPT-03 | Phase 54 | Pending |
+| DOCS-01 | Phase 55 | Pending |
+| DOCS-02 | Phase 55 | Pending |
+| DOCS-03 | Phase 55 | Pending |
+| DOCS-04 | Phase 55 | Pending |
+| REGR-01 | Phase 55 | Pending |
+| REGR-02 | Phase 55 | Pending |
+| REGR-03 | Phase 55 | Pending |
+| REGR-04 | Phase 55 | Pending |
+| REGR-05 | Phase 55 | Pending |
 
 **Coverage:**
-- v2.3.5 requirements: 35 total
-- Mapped to phases: 0
-- Unmapped: 35 (pending roadmap creation)
+- v2.3.5 requirements: 37 total
+- Mapped to phases: 37
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-06*
-*Last updated: 2026-02-06 after initial definition*
+*Last updated: 2026-02-06 -- All 37 requirements mapped to phases 53-55*
