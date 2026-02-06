@@ -85,6 +85,8 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 - [47-01] 3 individual GlassProgress bars for attention breakdown (not segmented stacked bar)
 - [47-01] Short insights (<100 chars) render plain Text; long insights use Accordion with first-sentence summary
 - [47-01] Badge variant=accent for AI-generated indicator in VariantsSection
+- [47-03] ROLE_LEVELS const kept backward-compatible; separate ROLE_LEVEL_COLORS hex map for inline dot styling
+- [47-03] GlassPill className gap-2/gap-1.5 for dot-to-label spacing (GlassPill base has no gap)
 - [47-04] Staggered skeleton entry (not skeleton-to-content swap) since data arrives all at once
 - [47-04] GlassSkeleton/SkeletonText added to primitives barrel export
 
