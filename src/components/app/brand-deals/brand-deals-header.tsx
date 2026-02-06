@@ -51,7 +51,7 @@ export function BrandDealsHeader({ activeTab }: BrandDealsHeaderProps) {
       </div>
 
       {/* Right: Tab-contextual stats */}
-      <div className="flex items-center gap-0">
+      <div className="flex flex-wrap items-center gap-y-2">
         {stats.map((stat, index) => (
           <div
             key={stat.label}

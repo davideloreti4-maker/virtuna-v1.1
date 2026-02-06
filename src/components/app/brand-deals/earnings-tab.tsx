@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
 
 import type { EarningsSummary } from "@/types/brand-deals";
@@ -10,6 +10,7 @@ import { EarningsBreakdownList } from "./earnings-breakdown-list";
 import { EarningsChart } from "./earnings-chart";
 import { EarningsPeriodSelector, type Period } from "./earnings-period-selector";
 import { EarningsStatCards } from "./earnings-stat-cards";
+import { EarningsTabSkeleton } from "./earnings-tab-skeleton";
 
 // ---------------------------------------------------------------------------
 // Period Filtering
@@ -74,11 +75,19 @@ function filterEarningsByPeriod(summary: EarningsSummary, period: Period) {
  * ```
  */
 export function EarningsTab(): React.JSX.Element {
+  const [isLoading, setIsLoading] = useState(true);
   const [period, setPeriod] = useState<Period>("30d");
   const filtered = useMemo(
     () => filterEarningsByPeriod(MOCK_EARNINGS_SUMMARY, period),
     [period],
   );
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isLoading) return <EarningsTabSkeleton />;
 
   return (
     <div className="space-y-6">

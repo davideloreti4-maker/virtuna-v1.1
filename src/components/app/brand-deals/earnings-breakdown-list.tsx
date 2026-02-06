@@ -43,10 +43,10 @@ export function EarningsBreakdownList({
 
       <div className="overflow-hidden rounded-xl border border-border bg-surface-elevated">
         {/* Header row */}
-        <div className="grid grid-cols-4 gap-4 px-4 py-2 text-xs font-medium uppercase tracking-wider text-foreground-muted">
+        <div className="grid grid-cols-2 gap-4 px-4 py-2 text-xs font-medium uppercase tracking-wider text-foreground-muted sm:grid-cols-4">
           <span>Source</span>
-          <span className="text-right">Clicks</span>
-          <span className="text-right">Conversions</span>
+          <span className="hidden text-right sm:block">Clicks</span>
+          <span className="hidden text-right sm:block">Conversions</span>
           <span className="text-right">Earnings</span>
         </div>
 
@@ -55,7 +55,7 @@ export function EarningsBreakdownList({
           {sorted.map((source) => (
             <div
               key={source.brandName}
-              className="grid grid-cols-4 items-center gap-4 border-b border-white/[0.04] px-4 py-3 last:border-b-0"
+              className="grid grid-cols-2 items-center gap-4 border-b border-white/[0.04] px-4 py-3 last:border-b-0 sm:grid-cols-4"
             >
               {/* Source column: logo + name */}
               <div className="flex items-center gap-2.5">
@@ -71,12 +71,12 @@ export function EarningsBreakdownList({
               </div>
 
               {/* Clicks */}
-              <span className="text-right text-sm text-foreground-secondary">
+              <span className="hidden text-right text-sm text-foreground-secondary sm:block">
                 {formatNumber(source.clicks)}
               </span>
 
               {/* Conversions */}
-              <span className="text-right text-sm text-foreground-secondary">
+              <span className="hidden text-right text-sm text-foreground-secondary sm:block">
                 {formatNumber(source.conversions)}
               </span>
 

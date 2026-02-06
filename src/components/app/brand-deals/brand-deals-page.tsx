@@ -39,7 +39,7 @@ export function BrandDealsPage({ defaultTab }: BrandDealsPageProps) {
   }
 
   return (
-    <div className="mx-auto max-w-5xl p-6">
+    <div className="mx-auto max-w-5xl p-4 sm:p-6">
       <BrandDealsHeader activeTab={currentTab} />
 
       <Tabs.Root value={currentTab} onValueChange={handleTabChange}>

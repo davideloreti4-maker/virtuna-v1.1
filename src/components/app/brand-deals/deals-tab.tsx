@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 
 import { useDebouncedCallback } from "@/hooks/use-debounce";
 import { MOCK_DEALS } from "@/lib/mock-brand-deals";
@@ -10,6 +10,7 @@ import { DealApplyModal } from "./deal-apply-modal";
 import { DealCard } from "./deal-card";
 import { DealFilterBar } from "./deal-filter-bar";
 import { DealsEmptyState } from "./deals-empty-state";
+import { DealsTabSkeleton } from "./deals-tab-skeleton";
 import { NewThisWeekRow } from "./new-this-week-row";
 
 // ---------------------------------------------------------------------------
@@ -48,10 +49,16 @@ export function DealsTab({
   appliedDeals,
   onApplyDeal,
 }: DealsTabProps): React.JSX.Element {
+  const [isLoading, setIsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<BrandDealCategory | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [applyingDeal, setApplyingDeal] = useState<BrandDeal | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Debounce search filtering at 300ms
   const debouncedSetSearch = useDebouncedCallback(
@@ -95,6 +102,8 @@ export function DealsTab({
     onApplyDeal(dealId);
     setApplyingDeal(null);
   }
+
+  if (isLoading) return <DealsTabSkeleton />;
 
   return (
     <div>

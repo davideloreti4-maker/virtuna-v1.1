@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 import type { AffiliateLink, Product } from "@/types/brand-deals";
 import { MOCK_AFFILIATE_LINKS, MOCK_PRODUCTS } from "@/lib/mock-brand-deals";
@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/toast";
 import { Badge } from "@/components/ui/badge";
 
 import { AffiliateLinkCard } from "./affiliate-link-card";
+import { AffiliatesTabSkeleton } from "./affiliates-tab-skeleton";
 import { AvailableProductCard } from "./available-product-card";
 import { AffiliatesEmptyState } from "./affiliates-empty-state";
 
@@ -34,7 +35,13 @@ import { AffiliatesEmptyState } from "./affiliates-empty-state";
  */
 export function AffiliatesTab(): React.JSX.Element {
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(true);
   const [activeLinks, setActiveLinks] = useState<AffiliateLink[]>(MOCK_AFFILIATE_LINKS);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Derive available products by filtering out products that already have active links
   const availableProducts = useMemo(() => {
@@ -67,6 +74,8 @@ export function AffiliatesTab(): React.JSX.Element {
       title: `Affiliate link created for ${product.name}`,
     });
   }
+
+  if (isLoading) return <AffiliatesTabSkeleton />;
 
   return (
     <div className="space-y-8">
