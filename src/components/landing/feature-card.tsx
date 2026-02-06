@@ -30,9 +30,12 @@ export function FeatureCard({
   return (
     <div
       className={cn(
-        "rounded-lg border border-white/10 px-[26px] py-12 transition-colors hover:border-white/20",
+        "rounded-[12px] border border-white/[0.06] px-[26px] py-12 transition-all duration-150 hover:border-white/[0.1] hover:-translate-y-0.5 hover:bg-white/[0.03]",
         className
       )}
+      style={{
+        boxShadow: "rgba(255, 255, 255, 0.1) 0px 1px 0px 0px inset",
+      }}
     >
       <div className="mb-6 h-7 w-7 text-white">
         {icon}
