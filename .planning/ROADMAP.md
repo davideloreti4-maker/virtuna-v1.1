@@ -78,6 +78,15 @@ Plans:
 
 **Dependencies:** Phase 45 (layout structure must exist)
 
+**Plans:** 5 plans
+
+Plans:
+- [ ] 47-01-PLAN.md -- Migrate 5 results section cards (ImpactScore, AttentionBreakdown, Variants, Insights, Themes) to GlassCard/GlassProgress/Accordion
+- [ ] 47-02-PLAN.md -- ResultsPanel wrapper + ShareButton toast + ToastProvider + test-creation-flow cleanup
+- [ ] 47-03-PLAN.md -- Top bar migration (ContextBar, FilterPills, LegendPills) to GlassPill
+- [ ] 47-04-PLAN.md -- Loading state rewrite (skeleton shimmer + progressive reveal + cancel)
+- [ ] 47-05-PLAN.md -- Dashboard wiring + mobile blur budget + visual verification checkpoint
+
 ---
 
 ### Phase 48: Hive Foundation (Layout + Rendering)
@@ -125,7 +134,7 @@ Plans:
 | 39-44 | v2.0 | 35/35 | Complete | 2026-02-05 |
 | 45 | v2.1 | 3/3 | Complete | 2026-02-05 |
 | 46 | v2.1 | 0/4 | Pending | - |
-| 47 | v2.1 | 0/? | Pending | - |
+| 47 | v2.1 | 0/5 | Pending | - |
 | 48 | v2.1 | 0/? | Pending | - |
 | 49 | v2.1 | 0/? | Pending | - |
 | 50-52 | v2.2 | 10/10 | Shipped | 2026-02-06 |
