@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** Raycast-quality design system enabling rapid, consistent UI development
-**Current focus:** v2.1 Dashboard Rebuild -- Phase 47 complete, Wave 2 pending
+**Current focus:** v2.1 Dashboard Rebuild -- Phase 48 in progress (Wave 2)
 
 ## Current Position
 
 **Milestone:** v2.1 -- Dashboard Rebuild
-**Phase:** 47 -- Results, Top Bar & Loading -- Complete
-**Plan:** 05 of 05 complete
-**Status:** Phase complete (Wave 1 done)
-**Last activity:** 2026-02-06 -- Completed 47-05-PLAN.md (visual verification approved)
+**Phase:** 48 -- Hive Foundation -- In progress
+**Plan:** 01 of 03 complete
+**Status:** In progress (Wave 2 started)
+**Last activity:** 2026-02-06 -- Completed 48-01-PLAN.md (types, constants, layout, mock data)
 
-Progress: [█████████░] 92% (phases 45-47 complete, phases 48-49 pending)
+Progress: [█████████░] 93% (phases 45-47 complete, phase 48 plan 1/3 done, phase 49 pending)
 
 ## Phase Overview
 
@@ -24,7 +24,7 @@ Progress: [█████████░] 92% (phases 45-47 complete, phases 48
 | 45 | Structural Foundation | 11 (SIDE + MOBL) | Complete (3/3) |
 | 46 | Forms & Modals | 10 (FORM + MODL) | Complete (4/4) |
 | 47 | Results, Top Bar & Loading | 14 (RSLT + TBAR + LOAD) | Complete (5/5) |
-| 48 | Hive Foundation | 9 (HIVE) | Pending |
+| 48 | Hive Foundation | 9 (HIVE) | In progress (1/3) |
 | 49 | Hive Interactions | 7 (HINT) | Pending |
 
 ## Dependency Graph
@@ -49,7 +49,7 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 
 ## In-Progress Milestones
 
-- v2.1 Dashboard Rebuild -- Phases 45-49, 51 requirements, ~92% executed (Phases 45-47 complete, Wave 1 done, Phases 48-49 pending)
+- v2.1 Dashboard Rebuild -- Phases 45-49, 51 requirements, ~93% executed (Phases 45-47 complete, Phase 48 plan 1/3 done, Phase 49 pending)
 
 ## Key Technical Notes
 
@@ -97,6 +97,11 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 - [47-05] Simulate button uses primary variant (coral/orange) for visual prominence
 - [47-05] shadow-button inset highlight toned from solid white to rgba(255,255,255,0.2)
 - All v2.3 decisions archived in milestones/v2.3-ROADMAP.md
+- [48-01] HIVE_OUTER_RADIUS=1200 (not 800) for 1000+ tier-3 node circumference
+- [48-01] Sort by id (not name) for deterministic d3-hierarchy layout
+- [48-01] mulberry32 seeded PRNG for reproducible mock data (seed=42)
+- [48-01] Integer rounding on cartesian coords to prevent sub-pixel anti-aliasing
+- [48-01] TIER_CONFIG uses inline values (avoids noUncheckedIndexedAccess issues with Record indexing)
 
 ### Design System Components
 - v2.0 design system components are the building blocks (GlassPanel, GlassCard, GlassInput, GlassTextarea, GlassPill, GlassProgress, Dialog, Button, Select, Badge, Typography, Spinner, Icon)
@@ -122,12 +127,19 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 ### Blockers/Concerns
 None.
 
+### Hive Visualization Foundation
+- d3-hierarchy for deterministic radial layout, d3-quadtree for hit detection (Phase 49)
+- Pure function layout: computeHiveLayout(data, outerRadius) -> LayoutResult
+- Mock data: ~1300 nodes (1 center, 12 tier-1, ~120 tier-2, ~1200 tier-3)
+- Tier-based visual constants: white at varying opacity, tier-step line opacity
+- Files: hive-types.ts, hive-constants.ts, hive-layout.ts, hive-mock-data.ts
+
 ### Session Continuity
 - Last session: 2026-02-06
-- Stopped at: Completed Phase 47 (all 5 plans, visual verification approved); merged v2.3 Brand Deals
+- Stopped at: Completed 48-01-PLAN.md (hive foundation types, constants, layout, mock data)
 - Resume file: None
-- Next: Phase 48 (Hive Foundation) or Phase 49 (Hive Interactions)
+- Next: 48-02-PLAN.md (hive renderer) or 48-03-PLAN.md
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-06 -- v2.3 merged to main, Phase 47 complete (Wave 1 dashboard migration done)*
+*Last updated: 2026-02-06 -- Phase 48 plan 01 complete (hive foundation primitives)*
