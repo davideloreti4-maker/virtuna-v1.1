@@ -39,7 +39,7 @@ export type SemanticColor =
 export type SpacingToken = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 8 | 10 | 12 | 16 | 20 | 24;
 
 /** Shadow elevation tokens */
-export type ShadowToken = 'sm' | 'md' | 'lg' | 'xl' | 'glass' | 'glow-accent';
+export type ShadowToken = 'sm' | 'md' | 'lg' | 'xl' | 'glass' | 'glow-accent' | 'button' | 'button-secondary';
 
 /** Border radius scale tokens */
 export type RadiusToken = 'none' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
@@ -64,7 +64,7 @@ export type ZIndexToken =
 export type BreakpointToken = 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
 /** Font family tokens */
-export type FontFamilyToken = 'display' | 'sans' | 'mono';
+export type FontFamilyToken = 'sans' | 'mono';
 
 /** Font weight tokens */
 export type FontWeightToken = 'regular' | 'medium' | 'semibold' | 'bold';
@@ -103,7 +103,7 @@ export type GrayStep = GrayScale;
 /**
  * Gradient token names
  */
-export type GradientToken = 'coral' | 'card-bg' | 'overlay' | 'glow-coral';
+export type GradientToken = 'coral' | 'card-bg' | 'overlay' | 'glow-coral' | 'navbar' | 'glass';
 
 /**
  * CSS variable accessor helper
