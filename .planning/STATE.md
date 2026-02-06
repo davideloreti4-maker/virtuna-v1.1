@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Milestone:** v2.1 -- Dashboard Rebuild
 **Phase:** 47 -- Results, Top Bar & Loading -- In progress
-**Plan:** 01 of 05 complete
+**Plan:** 04 of 05 complete
 **Status:** In progress
-**Last activity:** 2026-02-06 -- Completed 47-01-PLAN.md
+**Last activity:** 2026-02-06 -- Completed 47-04-PLAN.md
 
-Progress: [████████--] 82% (phase 47: 1/5, phase 46: 4/4, phase 45: 3/3, phases 48-49 pending)
+Progress: [█████████-] 90% (phase 47: 4/5, phase 46: 4/4, phase 45: 3/3, phases 48-49 pending)
 
 ## Phase Overview
 
@@ -23,7 +23,7 @@ Progress: [████████--] 82% (phase 47: 1/5, phase 46: 4/4, phase 
 |-------|------|-------------|--------|
 | 45 | Structural Foundation | 11 (SIDE + MOBL) | Complete (3/3) |
 | 46 | Forms & Modals | 10 (FORM + MODL) | Complete (4/4) |
-| 47 | Results, Top Bar & Loading | 14 (RSLT + TBAR + LOAD) | In progress (1/5) |
+| 47 | Results, Top Bar & Loading | 14 (RSLT + TBAR + LOAD) | In progress (4/5) |
 | 48 | Hive Foundation | 9 (HIVE) | Pending |
 | 49 | Hive Interactions | 7 (HINT) | Pending |
 
@@ -48,7 +48,7 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 
 ## In-Progress Milestones
 
-- v2.1 Dashboard Rebuild -- Phases 45-49, 51 requirements, ~45% executed (Phases 45-46 complete, Phase 47: 1/5)
+- v2.1 Dashboard Rebuild -- Phases 45-49, 51 requirements, ~70% executed (Phases 45-46 complete, Phase 47: 4/5)
 
 ## Key Technical Notes
 
@@ -85,6 +85,8 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 - [47-01] 3 individual GlassProgress bars for attention breakdown (not segmented stacked bar)
 - [47-01] Short insights (<100 chars) render plain Text; long insights use Accordion with first-sentence summary
 - [47-01] Badge variant=accent for AI-generated indicator in VariantsSection
+- [47-04] Staggered skeleton entry (not skeleton-to-content swap) since data arrives all at once
+- [47-04] GlassSkeleton/SkeletonText added to primitives barrel export
 
 ### Design System Components
 - v2.0 design system components are the building blocks (GlassPanel, GlassCard, GlassInput, GlassTextarea, GlassPill, GlassProgress, Dialog, Button, Select, Badge, Typography, Spinner, Icon)
@@ -104,10 +106,10 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 
 ### Session Continuity
 - Last session: 2026-02-06
-- Stopped at: Completed 47-01-PLAN.md
+- Stopped at: Completed 47-04-PLAN.md
 - Resume file: None
-- Next: 47-02-PLAN.md (Results Panel Assembly)
+- Next: 47-05-PLAN.md (final plan in Phase 47)
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-06 -- Phase 47 plan 01 complete (results sections migration)*
+*Last updated: 2026-02-06 -- Phase 47 plan 04 complete (skeleton shimmer loading)*
