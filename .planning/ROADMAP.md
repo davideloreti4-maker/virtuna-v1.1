@@ -56,10 +56,10 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
-- [ ] 51-01-PLAN.md -- Image config + react-intersection-observer + useInfiniteVideos hook
-- [ ] 51-02-PLAN.md -- v0 design VideoCard layout, integrate into GlassCard/GlassPill/HoverScale components
-- [ ] 51-03-PLAN.md -- VideoGrid with infinite scroll, wire into TrendingClient (replace placeholder)
-- [ ] 51-04-PLAN.md -- Visual verification checkpoint (browser testing)
+- [x] 51-01-PLAN.md -- Image config + react-intersection-observer + useInfiniteVideos hook
+- [x] 51-02-PLAN.md -- v0 design VideoCard layout, integrate into GlassCard/GlassPill/HoverScale components
+- [x] 51-03-PLAN.md -- VideoGrid with infinite scroll, wire into TrendingClient (replace placeholder)
+- [x] 51-04-PLAN.md -- Visual verification checkpoint (browser testing)
 
 ---
 
@@ -196,9 +196,9 @@ Plans:
 | 48 | v2.1 | 0/? | Pending | - |
 | 49 | v2.1 | 0/? | Pending | - |
 | 50 | v2.2 | 2/2 | Complete | 2026-02-05 |
-| 51 | v2.2 | 0/? | Not started | - |
+| 51 | v2.2 | 4/4 | Complete | 2026-02-06 |
 | 52 | v2.2 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-02-03*
-*Last updated: 2026-02-05 -- Phase 50 complete (data layer + page shell)*
+*Last updated: 2026-02-06 -- Phase 51 complete (video feed & cards)*
