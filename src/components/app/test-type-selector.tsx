@@ -53,8 +53,8 @@ const ICON_MAP: Record<
   advertisement: { icon: Icons.Megaphone },
   "linkedin-post": { icon: Icons.Linkedin },
   "instagram-post": { icon: Icons.Instagram },
-  "x-post": { custom: <XLogo className="h-8 w-8" /> },
-  "tiktok-script": { custom: <TikTokLogo className="h-8 w-8" /> },
+  "x-post": { custom: <XLogo className="h-6 w-6" /> },
+  "tiktok-script": { custom: <TikTokLogo className="h-6 w-6" /> },
   "email-subject-line": { icon: Icons.Mail },
   email: { icon: Icons.Send },
   "product-proposition": { icon: Icons.Package },
@@ -100,8 +100,17 @@ export function TestTypeSelector({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="xl" className="max-w-3xl">
-        <DialogHeader className="text-center">
+      <DialogContent
+        size="xl"
+        className="max-w-[680px] border-white/[0.06]"
+        style={{
+          background: "linear-gradient(137deg, rgba(17,18,20,0.75) 4.87%, rgba(12,13,15,0.9) 75.88%)",
+          backdropFilter: "blur(5px)",
+          WebkitBackdropFilter: "blur(5px)",
+          boxShadow: "rgba(255,255,255,0.15) 0px 1px 1px 0px inset, 0 20px 40px rgba(0,0,0,0.4)",
+        }}
+      >
+        <DialogHeader className="text-center px-5 pt-5 pb-0">
           <DialogTitle>What would you like to simulate?</DialogTitle>
           <DialogDescription>
             Select a test type to begin
@@ -109,7 +118,7 @@ export function TestTypeSelector({
         </DialogHeader>
 
         {/* Responsive card grid */}
-        <div className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2.5 px-5 py-4 sm:grid-cols-2 lg:grid-cols-3">
           {TEST_TYPE_ORDER.map((typeId) => {
             const config = TEST_TYPES[typeId];
             const iconEntry = ICON_MAP[typeId];
@@ -121,25 +130,25 @@ export function TestTypeSelector({
                 key={typeId}
                 type="button"
                 className={cn(
-                  "group rounded-[12px] border border-white/[0.06] bg-transparent p-6 text-left",
+                  "group rounded-[10px] border border-white/[0.06] bg-white/[0.03] p-3.5 text-left",
                   "transition-all duration-200",
-                  "hover:-translate-y-0.5 hover:border-white/[0.1] hover:bg-white/[0.03]"
+                  "hover:-translate-y-0.5 hover:border-white/[0.1] hover:bg-white/[0.06]"
                 )}
                 style={{
-                  boxShadow: "rgba(255,255,255,0.1) 0px 1px 0px 0px inset",
+                  boxShadow: "rgba(255,255,255,0.08) 0px 1px 0px 0px inset",
                 }}
                 onClick={() => handleSelectType(typeId)}
               >
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1.5">
                   <div className="flex items-start justify-between">
                     {/* Icon */}
                     <span className="text-foreground-secondary">
                       {iconEntry.custom ? (
-                        <span className="flex h-8 w-8 items-center justify-center">
+                        <span className="flex h-6 w-6 items-center justify-center">
                           {iconEntry.custom}
                         </span>
                       ) : IconComponent ? (
-                        <IconComponent className="h-8 w-8" />
+                        <IconComponent className="h-6 w-6" />
                       ) : null}
                     </span>
 
@@ -152,12 +161,12 @@ export function TestTypeSelector({
                   </div>
 
                   {/* Title */}
-                  <span className="font-semibold text-foreground">
+                  <span className="text-sm font-semibold text-foreground">
                     {config.name}
                   </span>
 
                   {/* Description */}
-                  <span className="line-clamp-1 text-sm text-foreground-secondary">
+                  <span className="line-clamp-1 text-xs text-foreground-secondary">
                     {config.description}
                   </span>
                 </div>
@@ -167,7 +176,7 @@ export function TestTypeSelector({
         </div>
 
         {/* Footer with request button */}
-        <div className="border-t border-border px-6 py-3">
+        <div className="border-t border-white/[0.06] px-5 py-2.5">
           <Button
             variant="ghost"
             size="sm"

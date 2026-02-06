@@ -123,14 +123,14 @@ export function ContentForm({
     <form
       onSubmit={handleSubmit}
       className={cn(
-        "flex flex-col gap-4 rounded-lg border border-white/[0.06] p-4",
+        "flex flex-col gap-4 rounded-xl border border-white/[0.06] p-4",
         className
       )}
       style={{
-        backgroundColor: "rgba(24, 25, 28, 0.92)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        boxShadow: "rgba(255,255,255,0.1) 0px 1px 0px 0px inset",
+        background: "linear-gradient(137deg, rgba(17,18,20,0.75) 4.87%, rgba(12,13,15,0.9) 75.88%)",
+        backdropFilter: "blur(5px)",
+        WebkitBackdropFilter: "blur(5px)",
+        boxShadow: "rgba(255,255,255,0.15) 0px 1px 1px 0px inset, 0 8px 32px rgba(0,0,0,0.3)",
       }}
     >
       {/* Textarea with GlassTextarea */}
@@ -228,7 +228,7 @@ export function ContentForm({
         {!isViewingHistory && (
           <Button
             type="submit"
-            variant="secondary"
+            variant="primary"
             loading={isSubmitting}
             disabled={!content.trim() || isSubmitting}
           >
