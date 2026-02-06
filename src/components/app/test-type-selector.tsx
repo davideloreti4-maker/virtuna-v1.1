@@ -121,10 +121,13 @@ export function TestTypeSelector({
                 key={typeId}
                 type="button"
                 className={cn(
-                  "group rounded-xl border border-white/8 bg-white/[0.03] p-6 text-left",
+                  "group rounded-[10px] border border-white/[0.06] bg-transparent p-6 text-left",
                   "transition-all duration-200",
-                  "hover:-translate-y-0.5 hover:border-white/12 hover:bg-white/[0.06]"
+                  "hover:-translate-y-0.5 hover:border-white/[0.1] hover:bg-white/[0.03]"
                 )}
+                style={{
+                  boxShadow: "rgba(255,255,255,0.05) 0px 1px 0px 0px inset",
+                }}
                 onClick={() => handleSelectType(typeId)}
               >
                 <div className="flex flex-col gap-2">

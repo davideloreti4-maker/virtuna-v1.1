@@ -98,11 +98,10 @@ export function Sidebar() {
 
       <GlassPanel
         as="aside"
-        blur="lg"
-        opacity={0.6}
+        blur="sm"
+        opacity={0.85}
         borderGlow
         tint="neutral"
-        innerGlow={0.15}
         className={cn(
           "fixed top-3 left-3 bottom-3 z-[var(--z-sidebar)] w-[260px]",
           "flex flex-col overflow-hidden",

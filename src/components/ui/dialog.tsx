@@ -88,8 +88,8 @@ const dialogContentVariants = cva(
     "fixed left-[50%] top-[50%] z-[var(--z-modal)]",
     "translate-x-[-50%] translate-y-[-50%]",
     "w-full",
-    // Glass styling
-    "rounded-xl border border-border-glass",
+    // Solid dark surface (Raycast modals are opaque, not glass)
+    "rounded-lg border border-border-glass",
     "bg-surface-elevated shadow-xl",
     // Animations
     "data-[state=open]:animate-in data-[state=closed]:animate-out",
@@ -132,10 +132,10 @@ export interface DialogContentProps
     VariantProps<typeof dialogContentVariants> {}
 
 /**
- * Dialog content panel — glass-styled container rendered over the overlay.
+ * Dialog content panel — solid dark surface rendered over the overlay.
  *
  * Features:
- * - Glassmorphism with 20px backdrop blur (Safari compatible)
+ * - Opaque dark bg with inset shadow highlight (Raycast pattern)
  * - 5 size variants: sm, md (default), lg, xl, full
  * - Radix-managed focus trap and scroll lock (no manual implementation)
  * - Scale + fade animation on open/close via data-state
@@ -161,8 +161,7 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(dialogContentVariants({ size, className }))}
       style={{
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
+        boxShadow: "0 20px 25px rgba(0,0,0,0.15), 0 10px 10px rgba(0,0,0,0.1), rgba(255,255,255,0.05) 0px 1px 0px 0px inset",
       }}
       {...props}
     >
