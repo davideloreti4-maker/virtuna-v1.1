@@ -1,439 +1,506 @@
-# Pitfalls Research: Brand Deals & Affiliate Hub
+# Domain Pitfalls: Landing Page Redesign
 
-**Domain:** Creator monetization / affiliate aggregation platform
-**Researched:** 2026-02-02
-**Overall Confidence:** MEDIUM-HIGH
-
----
-
-## Executive Summary
-
-**Top 3 Risks to Watch:**
-
-1. **Terms of Service Violations** - Most affiliate programs explicitly prohibit aggregation on third-party sites and coupon directories. Aggregating deals without merchant authorization risks mass account terminations and legal action.
-
-2. **Money Transmission Licensing** - If Virtuna ever holds, transmits, or facilitates creator payouts, it triggers money transmitter licensing requirements across 49+ US states. This is a $500K+ compliance burden that can kill a startup.
-
-3. **FTC Disclosure Liability** - As an intermediary displaying affiliate content, Virtuna may share liability for disclosure violations. Fines reach $53,000+ per violation, and brands/platforms can be held liable for creator non-compliance.
+**Domain:** Raycast-style dark SaaS landing page with v0 generation workflow
+**Researched:** 2026-02-06
+**Project:** Virtuna v3.1 Landing Page
 
 ---
 
-## Legal & Compliance Risks
+## Critical Pitfalls
 
-### ToS Violation: Unauthorized Deal Aggregation
+Mistakes that cause rewrites, broken production builds, or fundamental UX failures.
 
-**Description:** Most affiliate programs explicitly prohibit displaying affiliate links on "coupon aggregation sites" or "third-party platforms" without authorization. Peak Design's terms are typical: "You are responsible for keeping your link/code off of coupon aggregation and other 3rd party sites... we reserve the right to suspend/cancel your account."
+---
 
-**Warning Signs:**
-- Affiliate accounts getting terminated without clear reason
-- Merchants sending cease-and-desist notices
-- Networks blocking API access or revoking credentials
-- Revenue suddenly dropping across multiple programs
+### CRIT-1: v0 Generated Code Ignores Existing Design System Tokens
+
+**What goes wrong:** v0 generates sections using its default shadcn/ui palette (`--background`, `--foreground`, `--primary`, etc.) and Tailwind v3/v4 default utilities. The generated code does NOT use Virtuna's semantic tokens (`--color-accent`, `--color-surface-elevated`, `--color-foreground-muted`, `--color-border`, etc.), its custom font families (`font-display`, `font-sans`), its shadow scale (`shadow-button`, `shadow-glass`), or its radius scale (`radius-lg`, `radius-md`). You paste in a hero section and get `bg-slate-900 text-white` instead of `bg-background text-foreground`. Every section needs a manual token replacement pass.
+
+**Why it happens:** v0 is trained on default shadcn/ui and standard Tailwind classes. Even with a custom design system uploaded, v0 struggles with customizations and may fall back to defaults. The Virtuna token layer (primitive + semantic in `globals.css`) is non-standard enough that v0 will not reproduce it.
+
+**Consequences:**
+- Visual inconsistency between v0-generated sections and existing components (feature cards, buttons, header)
+- Hardcoded color values scattered across sections instead of centralized tokens
+- Breaks dark theme cohesion -- some sections will look "off" with wrong grays/opacities
+- The `border-white/10` in existing `FeatureCard` vs v0's `border-gray-800` creates visible mismatch
+
+**Warning signs:**
+- Seeing `bg-gray-*`, `text-gray-*`, `border-gray-*` in generated code (Virtuna uses `white/[0.06]` borders and custom gray scale)
+- Seeing `rounded-lg` without awareness that Virtuna's `radius-lg` = 12px
+- Font classes like `font-bold` instead of `font-[350]` (Virtuna uses non-standard weights)
+- Missing `font-display` on headings, missing `font-sans` on body text
 
 **Prevention:**
-- Audit every affiliate program's ToS before inclusion
-- Categorize programs: "API-permitted," "explicit aggregation allowed," "prohibited"
-- For prohibited programs, only display deals the creator themselves added (user-sourced, not scraped)
-- Build relationships with networks - some offer "aggregator partner" programs
-- Consider becoming a sub-affiliate network (requires different licensing)
+1. Create a "v0 migration checklist" before any section integration:
+   - Replace all color classes with semantic tokens
+   - Replace font classes with `font-display`/`font-sans`
+   - Replace border classes with `border-white/[0.06]` pattern
+   - Replace shadows with design system shadows
+   - Replace radius with `rounded-lg` (12px cards), `rounded-md` (8px inputs)
+2. After each v0 generation, diff against existing `FeatureCard`/`HeroSection` to confirm visual language matches
+3. Consider providing v0 with a prompt prefix containing the token map
+4. Keep the existing `cn()` utility and `tailwind-merge` for class composition
 
-**Phase to Address:** Phase 1 (Foundation) - Must establish legal framework before any deal aggregation
+**Phase to address:** Every phase that generates a new section. Build the migration checklist in Phase 1 (scaffold) and enforce it as a gate for each section integration.
 
-**Confidence:** HIGH - Multiple affiliate programs explicitly prohibit this in their terms
-
-**Sources:**
-- [Peak Design Affiliate Program Rules](https://peakdesign.zendesk.com/hc/en-us/articles/207943586-Affiliate-Program-Rules)
-- [Amazon Associates Program Policies](https://affiliate-program.amazon.com/help/operating/policies)
+**Confidence:** HIGH -- observed directly in codebase analysis. v0 docs confirm custom design systems are partially supported at best.
 
 ---
 
-### FTC Disclosure Requirements for Platforms
+### CRIT-2: Tailwind v4 Lightning CSS Strips `backdrop-filter` from CSS Classes
 
-**Description:** The FTC holds brands and platforms equally responsible for affiliate disclosure compliance. In 2025, fines exceed $53,000 per violation, and every non-compliant post counts separately. As the platform displaying affiliate content, Virtuna could share liability.
+**What goes wrong:** Any `backdrop-filter: blur()` or `-webkit-backdrop-filter: blur()` declared in CSS classes (including the `.glass-blur-*` utilities already in `globals.css`) is silently stripped by Lightning CSS during the Tailwind v4 build. The compiled CSS output contains empty rule blocks. Glass/blur effects appear to work in dev (browser reads source CSS), then vanish in production builds.
 
-**Warning Signs:**
-- Creators using your platform without proper disclosures
-- FTC warning letters to similar platforms
-- User reports of misleading content
-- Content displayed without clear "#ad" or affiliate indicators
+**Why it happens:** Tailwind v4 replaced PostCSS with Lightning CSS as its build engine. Lightning CSS has an optimization pass that strips certain vendor-prefixed or non-standard properties it considers redundant. `backdrop-filter` gets caught in this stripping behavior.
+
+**Consequences:**
+- Glass panels, navbar blur, section overlays all render as flat opaque backgrounds in production
+- The entire Raycast aesthetic depends on glass effects -- losing blur destroys the premium feel
+- Debugging is frustrating because dev mode works fine (browser reads raw CSS)
+- This is ALREADY a known issue in this project (documented in MEMORY.md)
+
+**Warning signs:**
+- Elements with `.glass-blur-*` classes have no visible blur in production
+- Inspecting compiled CSS shows empty rule blocks where blur should be
+- "It works in dev but not in production" for any blur/glass effect
 
 **Prevention:**
-- Enforce mandatory disclosure badges on all affiliate content displayed
-- Auto-append disclosure language (e.g., "This link may earn a commission")
-- Provide creators with compliant disclosure templates
-- Implement content moderation for disclosure compliance
-- Document your compliance program (FTC considers "due diligence" in enforcement)
+1. NEVER use CSS classes for `backdrop-filter`. Always apply via React inline styles:
+   ```tsx
+   style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
+   ```
+2. Wrap the pattern in a reusable component or utility function:
+   ```tsx
+   function glassStyle(blur: number) {
+     return { backdropFilter: `blur(${blur}px)`, WebkitBackdropFilter: `blur(${blur}px)` };
+   }
+   ```
+3. v0 generated code WILL use Tailwind's `backdrop-blur-*` utility classes -- these MUST be replaced with inline styles during integration
+4. Test production builds (`next build && next start`) for every section that uses blur, not just dev mode
 
-**Phase to Address:** Phase 2 (UI/Deal Display) - Build disclosure requirements into display layer
+**Phase to address:** Establish the inline-style glass pattern in Phase 1 (scaffold). Every subsequent section phase must use it. Add a production build verification step at the end of each section phase.
 
-**Confidence:** HIGH - FTC guidelines are explicit and enforcement is increasing
-
-**Sources:**
-- [FTC Disclosures 101 for Social Media Influencers](https://www.ftc.gov/business-guidance/resources/disclosures-101-social-media-influencers)
-- [FTC Affiliate Disclosure Rules (ReferralCandy)](https://www.referralcandy.com/blog/ftc-affiliate-disclosure)
-- [FTC Guidelines for Influencers (inBeat)](https://inbeat.agency/blog/ftc-guidelines-for-influencers)
+**Confidence:** HIGH -- documented from direct experience in this project (MEMORY.md), confirmed by Tailwind v4 architecture.
 
 ---
 
-### Money Transmission Licensing Trap
+### CRIT-3: Every Landing Section Marked `"use client"` Destroys SEO and Bundle Size
 
-**Description:** If Virtuna holds creator funds (even temporarily), facilitates payouts, or moves money between parties, it becomes a "money transmitter" requiring licenses in 49+ states. Costs: $25,000-$1M+ in surety bonds per state, plus ongoing compliance. Many startups have been shut down for operating without licenses.
+**What goes wrong:** All existing landing components (`HeroSection`, `FeaturesSection`, `StatsSection`, `BackersSection`, etc.) are marked `"use client"`. v0-generated sections will also default to `"use client"` because they include animation or minor interactivity. This means the ENTIRE landing page is client-rendered: zero server-rendered HTML for crawlers, full Framer Motion + React bundle shipped to every visitor, no SSG/ISR benefits.
 
-**Warning Signs:**
-- Users asking for "payout" features
-- Holding any user funds, even in escrow
-- Processing payments between creators and brands
-- Operating in states with strict enforcement (NY, CA, TX)
+**Why it happens:**
+- Framer Motion's `motion.*` components and hooks (`useReducedMotion`, `useInView`) require client context
+- `FadeIn` wrapper is `"use client"` and wraps nearly everything
+- Developers default to `"use client"` at the section level instead of isolating interactive leaves
+- v0 generates `"use client"` by default for any component with state or effects
+
+**Consequences:**
+- Google sees empty `<div>` tags instead of semantic content when JavaScript is disabled or slow to load
+- First Contentful Paint (FCP) delayed because entire page waits for React hydration
+- Bundle includes all of Framer Motion (~40KB gzipped) plus component code for every section
+- Missing structured data and server-rendered metadata hurts SEO rankings
+- CLS increases because layout shifts during hydration
+
+**Warning signs:**
+- `view-source:` on the landing page shows empty `<main>` with no text content
+- Lighthouse SEO score below 90
+- Large JS bundle (>200KB) on landing page
+- All section files start with `"use client"`
 
 **Prevention:**
-- **Phase 1: Display-only** - Show earnings from external platforms, never hold funds
-- **Phase 2: Link-out** - Deep link to each network's payout portal
-- **Phase 3 (if ever): Partner with licensed provider** - Use Stripe Connect, PayPal for Marketplaces, or similar
-- Never build custom payout infrastructure without legal review
-- Consult fintech licensing attorney before any fund-handling features
+1. Keep section text content in Server Components. Only wrap animated elements in a thin client `FadeIn` boundary:
+   ```tsx
+   // server component (NO "use client")
+   export function FeaturesSection() {
+     return (
+       <section>
+         <h2>Research that was impossible is now instant</h2>
+         <p>Access high-value audiences...</p>
+         <AnimatedFeatureGrid features={features} /> {/* client boundary */}
+       </section>
+     );
+   }
+   ```
+2. Move `"use client"` to the leaf-level animation wrappers, not the section level
+3. Use CSS animations (via `@keyframes` already in `globals.css`) for simple fade-in effects instead of Framer Motion where possible
+4. The marketing layout already correctly uses `generateMetadata` -- ensure sections don't break this by wrapping the entire page in client boundaries
 
-**Phase to Address:** Phase 1 (Architecture) - Design system to explicitly avoid fund handling
+**Phase to address:** Phase 1 (scaffold) must establish the server/client component boundary pattern. Each section phase must follow it. Final polish phase must audit with `view-source:` and Lighthouse.
 
-**Confidence:** HIGH - Federal and state regulations are well-documented
-
-**Sources:**
-- [Money Transmitter License Guide (RemitSo)](https://remitso.com/blogs/money-transmitter-license)
-- [MTL Guide for Fintech Startups (Cornerstone)](https://cornerstonelicensing.com/resources/money-transmitter-licensing-guide-for-fintech-startups/)
-- [CSBS Money Transmission Modernization Act](https://www.csbs.org/csbs-money-transmission-modernization-act-mtma)
+**Confidence:** HIGH -- verified by reading every existing landing component (all have `"use client"` at top).
 
 ---
 
-### CFPB "Preferencing" Violations
+### CRIT-4: Glass/Blur Effects Destroy Mobile Performance
 
-**Description:** The Consumer Financial Protection Bureau (CFPB) ruled in 2024 that ranking offers by commission rate rather than consumer benefit is an "illegal abusive practice." If Virtuna displays deals sorted by payout rather than value to creators, it could face federal enforcement.
+**What goes wrong:** `backdrop-filter: blur()` is GPU-intensive. A landing page with 6-8 sections each containing glass panels, blurred backgrounds, and glow effects causes visible jank, battery drain, and dropped frames on mobile devices -- especially mid-range Android phones and older iPhones.
 
-**Warning Signs:**
-- Sorting algorithms that prioritize higher-commission deals
-- "Featured" placements based on payout, not quality
-- User complaints about deal quality/relevance
-- CFPB investigations into comparison shopping sites
+**Why it happens:**
+- Each `backdrop-filter` creates a new compositor layer
+- Blur radius > 12px is expensive; the existing code goes up to `blur(48px)` (`.glass-blur-2xl`)
+- Multiple overlapping blur layers compound the GPU cost
+- Scroll-triggered animations running simultaneously with blur compositing creates frame drops
+- iOS Safari has known bugs with nested `backdrop-filter` elements
+
+**Consequences:**
+- Sub-60fps scrolling on mobile (perceived as laggy/janky)
+- Battery drain complaints from users
+- iOS Safari rendering glitches (blank areas, flickering)
+- CLS increases as GPU-composited layers shift during load
+
+**Warning signs:**
+- Chrome DevTools > Performance tab shows long composite times
+- Mobile Lighthouse performance score below 70
+- Visual glitches on iOS Safari (white flash, element disappearing)
+- Fan/heat on mobile devices during scroll
 
 **Prevention:**
-- Default sort by relevance, not commission
-- Clearly label any "sponsored" or "featured" placements
-- Provide transparent sorting options (by payout, by rating, by relevance)
-- Document sorting algorithm rationale
-- Never hide that commission rates influence display
+1. The codebase already has mobile blur reduction (lines 390-398 in `globals.css` cap blur at 8px for `max-width: 768px`) -- ensure v0-generated sections use `.glass-blur-*` classes (via inline style equivalent) so this media query applies
+2. Limit glass effects to max 3-4 elements visible simultaneously (navbar + 1-2 section accents)
+3. Use `will-change: transform` on blurred elements to hint GPU layer creation ahead of time
+4. Prefer `background: rgba()` with slight opacity over `backdrop-filter` for decorative elements that don't truly need blur-through transparency
+5. Test on real mid-range Android device (not just Chrome DevTools throttling)
+6. For glow effects (`.animate-glow-*`), use `transform: translateZ(0)` to force GPU acceleration
 
-**Phase to Address:** Phase 2 (Deal Display) - Design sorting/ranking with CFPB compliance in mind
+**Phase to address:** Establish performance budget in Phase 1. Test on real mobile after each section phase. Final performance audit in polish phase.
 
-**Confidence:** MEDIUM - CFPB guidance is recent, enforcement patterns still emerging
-
-**Sources:**
-- [Tapfiliate Compliance Guide](https://tapfiliate.com/blog/affiliate-marketing-compliance-gp/)
+**Confidence:** HIGH -- confirmed by existing mobile blur media query (project already encountered this), corroborated by Safari/shadcn-ui GitHub issues.
 
 ---
 
-### Scraping Legality and Rate Limiting
+## Moderate Pitfalls
 
-**Description:** Scraping affiliate networks without authorization may violate CFAA (Computer Fraud and Abuse Act), trigger breach of contract claims, and face GDPR penalties up to 20M EUR. Recent cases (Google vs SerpApi 2025, Meta vs Bright Data 2024) show aggressive enforcement.
+Mistakes that cause delays, rework, or technical debt.
 
-**Warning Signs:**
-- Receiving cease-and-desist from scraped sites
-- IP blocks or CAPTCHAs appearing
-- Rate limit errors from target sites
-- Legal threats citing CFAA or breach of contract
+---
+
+### MOD-1: v0 Generates Duplicate Component Abstractions
+
+**What goes wrong:** v0 generates each section as a self-contained unit with its own inline button styles, card patterns, badge components, etc. When you have 7+ sections, you end up with 7 different button implementations, 4 different card borders, 3 different heading size scales -- all slightly different from each other AND from the existing `Button`, `Card`, `Badge` components in `src/components/ui/`.
+
+**Why it happens:** v0 generates in isolation. Each prompt produces a standalone section unaware of what was generated before. Even with design system context, v0 tends to inline styles rather than reference shared components.
 
 **Prevention:**
-- Prefer official APIs over scraping (CJ, Impact, ShareASale all have APIs)
-- For API-less networks, consider partnership agreements
-- If scraping is necessary:
-  - Respect robots.txt strictly
-  - Implement conservative rate limits (1 request per 10-15 seconds)
-  - Only scrape publicly accessible pages
-  - Never bypass authentication or CAPTCHAs
-- Document legal review of each data source
-- Consider third-party data providers (Trackonomics, Affluent) who handle licensing
+1. After generating each section, immediately replace inline UI elements with existing components:
+   - Buttons -> `<Button variant="primary">` / `<Button variant="secondary">`
+   - Cards -> use `border-white/[0.06]` + `rounded-lg` pattern from `FeatureCard`
+   - Badges -> `<Badge>` from `src/components/ui/badge.tsx`
+2. Create a "component mapping" reference before starting v0 generation that maps common patterns to existing components
+3. Never accept v0 output as-is. Treat it as a layout/structure scaffold, not finished code
 
-**Phase to Address:** Phase 1 (Data Layer) - Establish data sourcing strategy before implementation
+**Phase to address:** Every section integration phase. The v0 migration checklist from CRIT-1 should include a component deduplication step.
 
-**Confidence:** HIGH - Recent court cases provide clear precedent
-
-**Sources:**
-- [Web Scraping Legal Guide 2025 (GroupBWT)](https://groupbwt.com/blog/is-web-scraping-legal/)
-- [Is Web Scraping Legal (Browserless)](https://www.browserless.io/blog/is-web-scraping-legal)
-- [Web Scraping GDPR Risks (Medium)](https://medium.com/deep-tech-insights/web-scraping-in-2025-the-20-million-gdpr-mistake-you-cant-afford-to-make-07a3ce240f4f)
+**Confidence:** HIGH -- this is a universal v0 workflow issue confirmed by Vercel community discussions.
 
 ---
 
-## Technical Pitfalls
+### MOD-2: Inconsistent Section Spacing and Max-Width
 
-### Tracking Attribution Failure
+**What goes wrong:** When sections are generated independently, each gets its own `max-w-*`, `px-*`, and `py-*` values. The page ends up with jarring jumps in content width and uneven vertical rhythm between sections.
 
-**Description:** As a middleman, Virtuna faces the hardest attribution problem in affiliate marketing. Safari limits cookies to 7 days. Firefox blocks trackers. 17% of affiliate clicks are fraudulent. Server-side tracking recovers 30-40% more conversions, but requires merchant cooperation.
-
-**Warning Signs:**
-- Creators reporting clicks that don't convert
-- Discrepancies between Virtuna's click counts and network reports
-- Safari/Firefox users showing 0% conversion rates
-- Unusual conversion patterns suggesting fraud
+**Why it happens:** v0 defaults to various container widths (`max-w-7xl`, `max-w-6xl`, `max-w-5xl`) depending on the prompt. The existing codebase uses `max-w-6xl mx-auto px-6` consistently (confirmed in `FeaturesSection`, `StatsSection`, `BackersSection`).
 
 **Prevention:**
-- **Don't become the tracking middleman** - Let clicks go directly to affiliate networks
-- Use deep links that preserve original affiliate tracking
-- Display network-reported earnings, not self-calculated
-- Implement click monitoring for debugging only, not attribution
-- If building tracking: server-side only, with first-party cookies
+1. Enforce a single container pattern: `max-w-6xl mx-auto px-6`
+2. Standardize vertical section padding: `py-24` (confirmed as the existing pattern)
+3. Create a `SectionWrapper` component that enforces these constraints:
+   ```tsx
+   function SectionWrapper({ children, className }) {
+     return (
+       <section className={cn("py-24", className)}>
+         <div className="mx-auto max-w-6xl px-6">{children}</div>
+       </section>
+     );
+   }
+   ```
+4. Add this to the v0 migration checklist: verify container matches standard pattern
 
-**Phase to Address:** Phase 2 (Click Handling) - Design click flow to preserve network attribution
+**Phase to address:** Phase 1 (scaffold) should extract the `SectionWrapper` if it doesn't exist. Every section phase uses it.
 
-**Confidence:** HIGH - Industry research confirms attribution gaps
-
-**Sources:**
-- [Affiliate Tracking 2025 (AutomateToProfit)](https://automatetoprofit.com/affiliate-tracking-2025-from-pixels-to-server-side-what-really-works-now/)
-- [Affiliate Conversion Tracking (NowG)](https://www.nowg.net/affiliate-conversion-tracking-in-2025-postbacks-ga4-zero-fraud-strategies/)
-- [Cookieless Affiliate Tracking (Stape)](https://stape.io/blog/the-impact-of-third-party-cookie-deprecation-on-affiliate-marketing)
+**Confidence:** HIGH -- verified from existing section code patterns.
 
 ---
 
-### Link Rot and Stale Deals
+### MOD-3: Hydration Mismatches from Scroll-Based Animations
 
-**Description:** Industry data shows 12-16% of affiliate links are broken at any given time. Products go out of stock, merchants change networks, deals expire. Stale deals destroy user trust and make the platform feel abandoned.
+**What goes wrong:** Framer Motion's `whileInView`, `useScroll`, and `useMotionValueEvent` hooks produce different initial states on server vs client. The server renders elements at their "hidden" state (opacity: 0, y: 20), but the client immediately calculates viewport intersection and may show a different state, causing React hydration errors.
 
-**Warning Signs:**
-- Increasing 404 rates on outbound links
-- User complaints about expired deals
-- Deals showing products that no longer exist
-- Commission rates that haven't updated in weeks
+**Why it happens:**
+- `IntersectionObserver` (used by `whileInView`) doesn't exist on the server
+- `window.scrollY` doesn't exist on the server
+- Chrome extensions can modify DOM before React hydrates (documented in MEMORY.md)
+- Initial animation state on server may differ from client if element is already in viewport on load
 
 **Prevention:**
-- Implement automated link health checking (daily for high-traffic, weekly for all)
-- Use services like Geniuslink or build custom link validation
-- Show "last verified" timestamps on deals
-- Auto-hide or flag deals that fail validation
-- Implement user reporting for broken deals
-- Build deal refresh pipeline with network APIs
+1. The existing `FadeIn` component handles this correctly with `initial="hidden"` + `whileInView="visible"` + `viewport={{ once: true }}` -- reuse this pattern, don't reinvent
+2. For new scroll-based effects (parallax, scroll-linked transforms), wrap in a client component and use `useEffect` to initialize after mount:
+   ```tsx
+   const [mounted, setMounted] = useState(false);
+   useEffect(() => setMounted(true), []);
+   if (!mounted) return <StaticFallback />;
+   ```
+3. Never use `useScroll` or `useMotionValue` in the initial render of a server component tree
+4. Test with `next build && next start` (not just `next dev`) to catch SSR mismatches
 
-**Phase to Address:** Phase 3 (Deal Management) - Build link health monitoring infrastructure
+**Phase to address:** Any phase introducing scroll-linked animations (parallax hero, sticky sections, scroll progress indicators).
 
-**Confidence:** HIGH - Industry statistics are well-documented
-
-**Sources:**
-- [Link Rot Affects Publishers (Affluent)](https://www.affluent.io/ask-the-experts-how-link-rot-affects-publishers/)
-- [Broken Affiliate Links Guide (Geniuslink)](https://geniuslink.com/blog/guide-to-fix-broken-affiliate-links/)
-- [Affiliate Attribution Integrity (Influencer Marketing Hub)](https://influencermarketinghub.com/affiliate-attribution/)
+**Confidence:** HIGH -- confirmed by existing `FadeIn` pattern (project already solved basic case), Next.js GitHub issues document the broader problem.
 
 ---
 
-### API Reliability and Rate Limits
+### MOD-4: CTA Hierarchy Collapse Across Multiple Sections
 
-**Description:** Affiliate network APIs are notoriously unreliable. CJ has "frequent disruptions" per 2025 reports. APIs may lack features (CJ doesn't provide click stats). Rate limits vary wildly. Building on unstable foundations causes cascading failures.
+**What goes wrong:** Each v0-generated section includes its own CTA button. After assembling 7 sections, the page has 7+ CTAs all competing for attention, with no clear hierarchy. The primary action ("Book a Meeting" / "Get in touch") gets lost in a sea of "Learn more", "See how", "Start now" buttons.
 
-**Warning Signs:**
-- API timeouts or errors increasing
-- Missing data in creator dashboards
-- Sync jobs failing silently
-- Discrepancies between API data and network dashboards
+**Why it happens:** v0 generates sections as standalone marketing blocks, each with its own conversion goal. When assembled sequentially, there's no page-level CTA strategy.
 
 **Prevention:**
-- Design for API failure (graceful degradation, cached fallbacks)
-- Implement robust retry logic with exponential backoff
-- Store last-known-good data as fallback
-- Build health monitoring for each API integration
-- Have manual data import as backup option
-- Consider API aggregator services (Strackr, wecantrack)
+1. Define CTA hierarchy before generation:
+   - **Primary CTA** (coral accent, `variant="primary"`): Max 2 per page (hero + final section)
+   - **Secondary CTA** (`variant="secondary"`): Supporting actions in feature/stats sections
+   - **Text links**: In-content navigation ("Read the report", "See case study")
+2. Strip excess CTAs during integration -- most mid-page sections need a text link, not a button
+3. The existing page has "Get in touch" as primary (hero) and "Book a Meeting" (header) -- maintain this focus
 
-**Phase to Address:** Phase 1 (Integration Layer) - Build resilient API integration architecture
+**Phase to address:** Section integration phases. Establish CTA hierarchy document during Phase 1.
 
-**Confidence:** MEDIUM - Based on community reports and documentation gaps
-
-**Sources:**
-- [CJ Affiliate APIs (CJ Developer Portal)](https://developers.cj.com/)
-- [CJ Integration Issues (wecantrack)](https://wecantrack.com/cj-affiliate-integration/)
+**Confidence:** MEDIUM -- based on SaaS landing page best practices research, not direct codebase observation.
 
 ---
 
-### Financial Data Security
+### MOD-5: Contrast Failures on Glass Surfaces
 
-**Description:** Displaying creator earnings makes Virtuna a high-value target. Financial services see 20%+ of breaches from vulnerability exploitation. A breach exposing earnings data would destroy trust instantly and trigger regulatory scrutiny.
+**What goes wrong:** Text placed on glass/semi-transparent backgrounds fails WCAG AA contrast requirements (4.5:1 for normal text, 3:1 for large text). Glass panels with `rgba(28, 29, 33, 0.65)` background (`.glass-base`) can drop below contrast when the blurred content behind them is light-colored or varies across the page.
 
-**Warning Signs:**
-- Security audit findings on financial data handling
-- Unauthorized access attempts to earnings endpoints
-- Missing encryption or access controls
-- Third-party integrations with weak security
+**Why it happens:**
+- Glass transparency means the effective background color depends on what's behind it
+- Dark theme gives false confidence ("white on dark is always high contrast")
+- The `text-foreground-muted` token (`--color-gray-500: #848586`) is already at the edge of WCAG AA on `#07080a` (5.4:1 contrast) -- on glass it drops below
+- v0 often generates `text-white/60` or `text-gray-400` which fail on transparent backgrounds
 
 **Prevention:**
-- Encrypt earnings data at rest and in transit
-- Implement strict access controls (creators see only their data)
-- Audit logging for all earnings data access
-- Regular security assessments
-- Consider SOC 2 compliance for enterprise credibility
-- Minimize data retention (aggregate historical, delete granular)
+1. On glass surfaces, use `text-white` or `text-foreground` (gray-50) for body text, never `text-foreground-muted`
+2. For glass panel backgrounds, ensure minimum opacity of 70% (`rgba(x, y, z, 0.7)` or higher)
+3. Add a subtle solid fallback: `background-color` + `backdrop-filter` so there's a guaranteed minimum contrast even without blur
+4. Use the `wcag-contrast` dev dependency already in the project to verify ratios during development
+5. Test on external monitor with different calibration -- OLED vs LCD shows glass differently
 
-**Phase to Address:** Phase 1 (Security Architecture) - Build security foundations before handling financial data
+**Phase to address:** Every section that uses glass surfaces. Final polish phase should run a full contrast audit.
 
-**Confidence:** MEDIUM - General security best practices applied to domain
-
-**Sources:**
-- [Biggest Data Breaches in Finance (UpGuard)](https://www.upguard.com/blog/biggest-data-breaches-financial-services)
-- [FTC Data Breach Response Guide](https://www.ftc.gov/business-guidance/resources/data-breach-response-guide-business)
+**Confidence:** HIGH -- the project already has `wcag-contrast` as a dev dependency, confirming this is a known concern.
 
 ---
 
-## Business/UX Pitfalls
+### MOD-6: Spline/Three.js 3D Elements Bloat Initial Bundle
 
-### Coupon Poaching Attribution Theft
+**What goes wrong:** The project includes `@splinetool/react-spline`, `@react-three/fiber`, `@react-three/drei`, and `three` in dependencies. If any landing page section imports a 3D visualization, Three.js (~600KB minified) gets included in the landing page bundle, destroying load times.
 
-**Description:** Browser extensions and coupon aggregators can overwrite affiliate cookies, stealing attribution from legitimate creators. In 2025, extensions automatically substitute affiliate cookies and rewrite referral IDs. This undermines creator trust in earnings accuracy.
-
-**Warning Signs:**
-- Creators reporting lower-than-expected conversions
-- Coupon codes appearing that weren't from Virtuna
-- Last-click attribution consistently going to unknown sources
-- Users complaining their "clicks don't count"
+**Why it happens:** v0 or developers might add a 3D hero animation, interactive product demo, or the existing `GlassOrb` visualization to landing sections. These imports are heavy.
 
 **Prevention:**
-- Educate creators about coupon poaching
-- Partner with brands that use first-click or multi-touch attribution
-- Display deals without generic coupon codes when possible
-- Advocate for creator-specific discount codes vs. generic coupons
-- Consider sub-ID tracking to detect attribution theft
+1. NEVER import Three.js/Spline directly in landing page sections
+2. If 3D is needed on landing, use `next/dynamic` with `ssr: false` and a loading skeleton:
+   ```tsx
+   const HeroVisualization = dynamic(
+     () => import('@/components/visualization/GlassOrb'),
+     { ssr: false, loading: () => <div className="h-[400px] bg-surface animate-pulse" /> }
+   );
+   ```
+3. Prefer CSS/SVG animations over 3D for landing page decorative elements
+4. Check bundle size with `next build` -- Three.js inclusion will show as a ~600KB chunk
 
-**Phase to Address:** Phase 3 (Analytics) - Build attribution monitoring tools
+**Phase to address:** Phase 1 (scaffold) should establish the dynamic import pattern. Hero and any visualization section phases must use it.
 
-**Confidence:** MEDIUM - Industry problem, limited platform-level solutions
-
-**Sources:**
-- [Affiliate Attribution Integrity (Influencer Marketing Hub)](https://influencermarketinghub.com/affiliate-attribution/)
+**Confidence:** HIGH -- Three.js is confirmed in `package.json`, `GlassOrb` component exists in the codebase.
 
 ---
 
-### Creator Trust Erosion
+## Minor Pitfalls
 
-**Description:** Creators are skeptical of platforms. If Virtuna shows earnings that don't match network dashboards, or deals that turn out to be invalid, trust evaporates. Unlike consumer apps, creator tools have vocal communities that share negative experiences.
+Mistakes that cause annoyance but are fixable without major rework.
 
-**Warning Signs:**
-- Creators comparing Virtuna data to network dashboards (and finding discrepancies)
-- Social media complaints about accuracy
-- Creators removing Virtuna access to their accounts
-- Low return usage rates
+---
+
+### MIN-1: Missing `priority` on Hero Image Causes LCP Delay
+
+**What goes wrong:** The hero section's main visual (currently `network-visualization.svg`) is the Largest Contentful Paint (LCP) element. If `priority` is missing from the `<Image>` component, Next.js lazy-loads it, causing a 200-500ms LCP delay.
+
+**Why it happens:** Next.js `<Image>` defaults to lazy loading. Developers forget to add `priority` on above-the-fold images.
 
 **Prevention:**
-- Display earnings with clear source attribution ("From CJ Affiliate, synced 2h ago")
-- Show sync status and last-updated timestamps
-- Provide easy way to report discrepancies
-- Don't calculate/estimate earnings - show network-reported values only
-- Be transparent about data freshness and limitations
+1. The existing `HeroSection` already has `priority` on the hero image (line 58) -- maintain this in the redesign
+2. For any new hero visual (video, animation, large graphic), ensure it loads immediately
+3. Only ONE image on the page should have `priority` -- the hero LCP element
 
-**Phase to Address:** Phase 2 (Dashboard UX) - Design for trust and transparency
+**Phase to address:** Hero section phase.
 
-**Confidence:** HIGH - Based on creator platform patterns
+**Confidence:** HIGH -- verified in existing code.
 
 ---
 
-### Virtuna Program Conflict of Interest
+### MIN-2: Font Loading Flash (FOIT/FOUT) on Custom Fonts
 
-**Description:** Featuring Virtuna's own affiliate program prominently while aggregating competitors creates conflict of interest perception. If creators feel pushed toward Virtuna's program over better deals, they'll leave.
+**What goes wrong:** The page uses two custom fonts: Satoshi (local woff2) and Funnel Display (Google Fonts). If fonts load slowly, text either flashes from fallback to custom font (FOUT) or is invisible until loaded (FOIT).
 
-**Warning Signs:**
-- Creators complaining about Virtuna self-promotion
-- Perception that sorting/ranking favors Virtuna deals
-- Negative reviews citing conflict of interest
-- Competitors highlighting this as differentiation
+**Why it happens:** Both fonts use `display: "swap"` which causes FOUT. Satoshi is self-hosted (fast) but Funnel Display loads from Google Fonts (slower).
 
 **Prevention:**
-- Separate "Virtuna Partnerships" section from third-party aggregation
-- Never auto-enroll creators in Virtuna's program
-- Make Virtuna program opt-in with clear disclosure
-- Don't algorithmically favor Virtuna deals in rankings
-- Consider not including Virtuna deals in aggregated views at all
+1. `display: "swap"` is already set (correct) -- this prevents invisible text
+2. Funnel Display is already loaded via `next/font/google` which automatically self-hosts via Next.js -- no external request needed
+3. If adding new fonts from v0 output (v0 often generates with `inter` or `geist`), replace with `font-sans`/`font-display` classes
+4. Preload critical fonts in the layout head if needed
 
-**Phase to Address:** Phase 2 (Information Architecture) - Design clear separation of concerns
+**Phase to address:** Phase 1 (scaffold) -- ensure font configuration carries over correctly.
 
-**Confidence:** MEDIUM - Business risk based on market positioning
+**Confidence:** HIGH -- verified in layout code.
 
 ---
 
-### Feature Scope Creep into Regulated Territory
+### MIN-3: v0 Uses Lucide Icons Instead of Phosphor Icons
 
-**Description:** Natural feature evolution (show earnings -> track earnings -> estimate earnings -> project earnings -> pay earnings) gradually moves into money transmission territory. Each step seems small but collectively crosses regulatory lines.
+**What goes wrong:** v0 generates sections using Lucide React icons. The existing codebase uses `@phosphor-icons/react` for all icons, plus `lucide-react` only for the `Loader2` spinner in `Button`. Mixing icon libraries creates visual inconsistency (different stroke weights, sizes, visual language).
 
-**Warning Signs:**
-- Product roadmap includes "payout" features
-- Users requesting "withdraw" or "transfer" functionality
-- Building features that hold user funds
-- Considering "advances" on earnings
+**Why it happens:** v0 defaults to Lucide because it ships with shadcn/ui. The project uses Phosphor for its broader icon set and `weight="light"` aesthetic.
 
 **Prevention:**
-- Document regulatory boundaries explicitly in product strategy
-- Create "regulatory review" gate for features touching money
-- Default answer to payout features: "link to network's payout system"
-- Get legal review before any fund-touching features
-- Consider the 5-year feature evolution when designing today
+1. After v0 generation, replace all Lucide imports with Phosphor equivalents:
+   - `<ArrowRight>` (Lucide) -> `<ArrowRight weight="light">` (Phosphor)
+   - `<Check>` (Lucide) -> `<Check weight="light">` (Phosphor)
+2. Maintain `weight="light"` across all Phosphor icon usage (established pattern in `FeaturesSection`)
+3. Icon size standard: 28px for feature cards, 16-20px for inline elements (from existing code)
+4. Add to v0 migration checklist: "Replace all Lucide icons with Phosphor"
 
-**Phase to Address:** Phase 1 (Product Strategy) - Define regulatory boundaries upfront
+**Phase to address:** Every section integration phase.
 
-**Confidence:** HIGH - Many fintech startups have made this mistake
-
----
-
-## Phase-Specific Warning Summary
-
-| Phase | Topic | Likely Pitfall | Mitigation |
-|-------|-------|----------------|------------|
-| 1 - Foundation | Data Sourcing | ToS violations from scraping | API-first, legal review per source |
-| 1 - Foundation | Architecture | Accidental money transmission | Design to never hold funds |
-| 1 - Foundation | Security | Inadequate financial data protection | Encrypt earnings, audit access |
-| 2 - UI/Display | FTC Compliance | Missing/inadequate disclosures | Mandatory disclosure badges |
-| 2 - UI/Display | Deal Ranking | CFPB preferencing violations | Transparent, relevance-first sorting |
-| 2 - UI/Display | Trust | Data discrepancies with networks | Show source attribution, sync status |
-| 3 - Tracking | Attribution | Cookie/tracking failures | Don't be middleman, preserve network tracking |
-| 3 - Management | Stale Deals | Link rot destroying trust | Automated health checking |
-| 3 - Analytics | Earnings | Coupon poaching attribution theft | Education, detection tools |
-| Future | Payouts | Unlicensed money transmission | Use licensed providers only |
+**Confidence:** HIGH -- both icon libraries confirmed in `package.json`.
 
 ---
 
-## Research Gaps / Open Questions
+### MIN-4: Missing Structured Data and Social Metadata
 
-1. **Specific network policies**: Each major network (CJ, ShareASale, Impact, Awin) needs individual ToS review for aggregation permissions
+**What goes wrong:** The landing page has basic `<title>` and `<meta description>` but lacks Open Graph images, Twitter cards, JSON-LD schema markup, and canonical URL. Social shares show generic previews instead of branded cards.
 
-2. **Sub-affiliate network model**: Could Virtuna become a licensed sub-affiliate network? What are requirements?
+**Why it happens:** Developers focus on visual design and forget metadata. v0 does not generate metadata.
 
-3. **International considerations**: EU DSA, UK CMA, GDPR implications for non-US creators
+**Prevention:**
+1. In the marketing layout, expand the metadata export:
+   ```tsx
+   export const metadata: Metadata = {
+     title: "Artificial Societies | Human Behavior, Simulated",
+     description: "...",
+     openGraph: {
+       title: "...",
+       description: "...",
+       images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+       type: "website",
+     },
+     twitter: {
+       card: "summary_large_image",
+       title: "...",
+       description: "...",
+       images: ["/og-image.png"],
+     },
+   };
+   ```
+2. Create an OG image (1200x630px) matching the dark theme
+3. Add JSON-LD for Organization schema:
+   ```tsx
+   <script type="application/ld+json" dangerouslySetInnerHTML={{
+     __html: JSON.stringify({ "@context": "https://schema.org", "@type": "Organization", ... })
+   }} />
+   ```
 
-4. **Insurance**: What E&O / cyber insurance is appropriate for a creator monetization platform?
+**Phase to address:** Final polish phase or dedicated SEO phase.
+
+**Confidence:** HIGH -- verified that current metadata is minimal in marketing layout.
 
 ---
 
-## Confidence Assessment
+### MIN-5: Dev Server CSS Cache Creates Ghost Bugs
 
-| Area | Level | Reason |
-|------|-------|--------|
-| Legal/ToS | HIGH | Multiple affiliate programs explicitly prohibit aggregation; well-documented |
-| FTC Compliance | HIGH | Official FTC guidance is explicit and recent |
-| Money Transmission | HIGH | Federal/state regulations well-documented, case law exists |
-| Tracking Attribution | HIGH | Industry research confirms technical limitations |
-| Scraping Legality | HIGH | Recent court cases (2024-2025) provide clear precedent |
-| API Reliability | MEDIUM | Based on community reports, needs validation per network |
-| Creator Trust Patterns | MEDIUM | Inferred from similar platforms, no Virtuna-specific data |
-| CFPB Preferencing | MEDIUM | Guidance is new (2024), enforcement patterns still emerging |
+**What goes wrong:** After changing Tailwind tokens, glass styles, or CSS variables, the dev server continues showing old styles. Developers think their changes aren't working and add hacky overrides.
+
+**Why it happens:** Next.js dev server + Tailwind v4 + browser cache triple-cache CSS aggressively. Old compiled CSS persists in `.next/` and `node_modules/.cache/`.
+
+**Prevention:**
+1. When CSS changes don't appear: kill dev server, delete `.next/`, clear browser cache, restart
+2. This is documented in MEMORY.md -- all team members should know this workflow
+3. Consider adding a `clean` script: `"clean": "rm -rf .next node_modules/.cache"`
+
+**Phase to address:** Note in project README/contributing docs. Not phase-specific.
+
+**Confidence:** HIGH -- documented from direct experience (MEMORY.md).
 
 ---
 
-## Sources Summary
+### MIN-6: `overflow-x: hidden` on Body Breaks Sticky Navigation
 
-**Official/Authoritative:**
-- [FTC Disclosures 101](https://www.ftc.gov/business-guidance/resources/disclosures-101-social-media-influencers)
-- [FTC Data Breach Response Guide](https://www.ftc.gov/business-guidance/resources/data-breach-response-guide-business)
-- [CSBS Money Transmission Modernization Act](https://www.csbs.org/csbs-money-transmission-modernization-act-mtma)
-- [CJ Developer Portal](https://developers.cj.com/)
-- [Amazon Associates Program Policies](https://affiliate-program.amazon.com/help/operating/policies)
+**What goes wrong:** The existing `globals.css` sets `overflow-x: hidden` on `html, body` (line 407). This can interfere with `position: sticky` on the header in some browsers, causing the sticky header to stop working or creating scroll jank.
 
-**Industry Research:**
-- [Tapfiliate Affiliate Marketing Compliance 2025](https://tapfiliate.com/blog/affiliate-marketing-compliance-gp/)
-- [Web Scraping Legal Guide (GroupBWT)](https://groupbwt.com/blog/is-web-scraping-legal/)
-- [Cookieless Affiliate Tracking (Stape)](https://stape.io/blog/the-impact-of-third-party-cookie-deprecation-on-affiliate-marketing)
-- [Link Rot Study (Affluent)](https://www.affluent.io/ask-the-experts-how-link-rot-affects-publishers/)
-- [Money Transmitter License Guide (RemitSo)](https://remitso.com/blogs/money-transmitter-license)
+**Why it happens:** `overflow: hidden` on ancestors can break `position: sticky` in certain browser/OS combinations. The header uses `sticky top-0 z-50`.
 
-**Technical/Implementation:**
-- [Affiliate Tracking 2025 (AutomateToProfit)](https://automatetoprofit.com/affiliate-tracking-2025-from-pixels-to-server-side-what-really-works-now/)
-- [CJ Integration (wecantrack)](https://wecantrack.com/cj-affiliate-integration/)
-- [Affiliate Attribution Integrity (Influencer Marketing Hub)](https://influencermarketinghub.com/affiliate-attribution/)
+**Prevention:**
+1. Test sticky header behavior across Chrome, Safari, Firefox on the landing page
+2. If sticky breaks, move `overflow-x: hidden` to a wrapper div inside body instead of on body/html directly
+3. Alternatively, use `clip-path` or `overflow: clip` (supported in modern browsers) which doesn't break sticky positioning
+
+**Phase to address:** Phase 1 (scaffold) -- verify sticky header works before proceeding with section content.
+
+**Confidence:** MEDIUM -- known CSS interaction, not yet observed as broken in this project.
+
+---
+
+## Phase-Specific Warning Matrix
+
+| Phase | Likely Pitfall | Severity | Mitigation |
+|-------|---------------|----------|------------|
+| Scaffold/Setup | MOD-2 (spacing), CRIT-3 (client boundaries), MIN-6 (sticky) | High | Establish `SectionWrapper`, server/client pattern, verify sticky |
+| Hero Section | CRIT-2 (backdrop-filter), MOD-6 (Three.js bundle), MIN-1 (LCP) | High | Inline blur styles, dynamic import, `priority` on image |
+| Feature Sections | CRIT-1 (token mismatch), MOD-1 (duplicate components), MIN-3 (icons) | Medium | v0 migration checklist, reuse existing components |
+| Social Proof / Backers | CRIT-1 (tokens), MOD-5 (contrast on glass) | Medium | Verify contrast on glass surfaces |
+| Stats / Case Study | MOD-3 (hydration), CRIT-3 (client boundary) | Medium | Server-render text, client-render animated charts |
+| CTA / Partnership | MOD-4 (CTA hierarchy) | Medium | Max 2 primary CTAs per page |
+| FAQ / Footer | CRIT-1 (tokens) | Low | Standard token replacement |
+| Performance / Polish | CRIT-4 (mobile blur), MIN-4 (metadata) | High | Real device testing, full metadata, Lighthouse audit |
+
+---
+
+## v0 Integration Checklist (Per Section)
+
+A consolidated checklist to run after every v0 generation before committing:
+
+- [ ] **Tokens:** Replace all `bg-gray-*`, `text-gray-*`, `border-gray-*` with Virtuna semantic tokens
+- [ ] **Fonts:** Replace any `font-*` classes with `font-display` (headings) / `font-sans` (body)
+- [ ] **Icons:** Replace Lucide imports with `@phosphor-icons/react` equivalents, add `weight="light"`
+- [ ] **Components:** Replace inline buttons/cards/badges with `src/components/ui/*` components
+- [ ] **Borders:** Use `border-white/[0.06]` (rest) / `border-white/[0.1]` (hover), not `border-gray-*`
+- [ ] **Shadows:** Use design system shadows (`shadow-button`, `shadow-glass`, `shadow-xl`), not `shadow-lg`
+- [ ] **Radius:** Cards = `rounded-lg` (12px), inputs = `rounded-md` (8px)
+- [ ] **Blur:** Replace `backdrop-blur-*` Tailwind classes with inline `style={{ backdropFilter: 'blur(Xpx)', WebkitBackdropFilter: 'blur(Xpx)' }}`
+- [ ] **Container:** Ensure `max-w-6xl mx-auto px-6` and `py-24` section padding
+- [ ] **Client boundary:** Move `"use client"` to leaf animation components, keep section text in server components
+- [ ] **CTA:** Verify primary (coral) vs secondary (transparent border) variant matches page hierarchy
+- [ ] **Production build:** Run `next build && next start` and verify section visually
+
+---
+
+## Sources
+
+**Official / HIGH confidence:**
+- Existing codebase analysis (`globals.css`, landing components, layout files)
+- Project MEMORY.md (backdrop-filter bug, dev cache, hydration notes)
+- [Next.js Metadata API docs](https://nextjs.org/docs/app/api-reference/functions/generate-metadata)
+- [Next.js Server and Client Components](https://nextjs.org/docs/app/getting-started/server-and-client-components)
+- [Tailwind CSS v4 Backdrop Filter](https://tailwindcss.com/docs/backdrop-filter)
+
+**WebSearch / MEDIUM confidence:**
+- [v0 Design Systems docs](https://v0.app/docs/design-systems)
+- [Vercel blog: Working with custom design systems in v0](https://vercel.com/blog/working-with-figma-and-custom-design-systems-in-v0)
+- [shadcn/ui CSS Backdrop Filter performance issue #327](https://github.com/shadcn-ui/ui/issues/327)
+- [Safari backdrop-filter performance fix](https://graffino.com/til/how-to-fix-filter-blur-performance-issue-in-safari)
+- [Dark Mode Glassmorphism tips](https://alphaefficiency.com/dark-mode-glassmorphism)
+- [SaaS Landing Page Mistakes - UX Planet](https://uxplanet.org/i-reviewed-250-saas-landing-pages-avoid-these-10-common-design-mistakes-a1a8499e6ee8)
+- [Next.js SEO Optimization Guide 2026](https://www.djamware.com/post/697a19b07c935b6bb054313e/next-js-seo-optimization-guide--2026-edition)
+- [CTA Placement Strategies 2026](https://www.landingpageflow.com/post/best-cta-placement-strategies-for-landing-pages)
+- [Framer Motion + Next.js App Router hydration issue](https://github.com/vercel/next.js/issues/49279)
+- [Next.js client component bundle issue #69865](https://github.com/vercel/next.js/issues/69865)

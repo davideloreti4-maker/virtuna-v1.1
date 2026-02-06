@@ -1,548 +1,398 @@
-# Stack Research: Trending Page (v1.5)
+# Technology Stack: v3.1 Landing Page Redesign
 
-**Project:** Virtuna v1.5
-**Researched:** 2026-02-02
-**Dimension:** Stack additions for TikTok video feed, AI categorization, remix storyboards, and PDF export
+**Project:** Virtuna v3.1 Landing Page
+**Researched:** 2026-02-06
+**Mode:** Stack additions for Raycast-style SaaS landing page
+**Scope:** NEW capabilities only (existing stack validated, not re-researched)
 
 ---
 
 ## Executive Summary
 
-The Trending Page requires **four new capability domains**: video data ingestion (Apify), AI processing (OpenAI or Anthropic), client-side data fetching (TanStack Query), and PDF generation (React-PDF). The existing stack (Next.js 16, Supabase, Zustand, Tailwind) handles storage, auth, and UI.
-
-**Key recommendations:**
-
-1. **Apify Client** (`apify-client` v2.22.0) — Single integration for TikTok scraping via actors
-2. **OpenAI SDK** (`openai` v6.17.0) — AI categorization and remix generation (GPT-4o)
-3. **TanStack Query** (`@tanstack/react-query` v5.x) — Server state management with caching
-4. **React-PDF** (`@react-pdf/renderer` v4.3.2) — React 19-compatible PDF generation
-5. **Upstash Redis** (`@upstash/redis` + `@upstash/ratelimit`) — API caching and rate limiting
-
-**What NOT to add:** Direct TikTok API (no official public API), image generation for storyboard frames (complexity, cost, consistency issues), multiple AI providers (pick one).
+The landing page redesign requires **zero new package dependencies**. The existing stack already contains everything needed: `motion` (Framer Motion successor) for scroll-triggered animations, `next/image` for product screenshot optimization, 4 pre-built motion components for section reveals, and a full design system for visual composition. The only actions are a dependency cleanup (remove duplicate `framer-motion` package) and minor configuration updates (`next.config.ts` image formats, CSS smooth scroll).
 
 ---
 
-## New Capabilities Required
+## Existing Stack (Validated -- No Changes)
 
-| Capability | Purpose | Recommendation |
-|------------|---------|----------------|
-| TikTok data ingestion | Fetch trending videos + creator baselines | Apify TikTok scraper |
-| AI categorization | Classify videos by niche, content type, strategic tags | OpenAI GPT-4o |
-| AI remix generation | Generate 3 full production briefs per video | OpenAI GPT-4o |
-| Video data caching | Cache scraped data, reduce API calls | Upstash Redis |
-| API rate limiting | Protect AI endpoints, manage costs | Upstash Ratelimit |
-| Server state management | Feed data fetching with caching | TanStack Query |
-| PDF generation | Export storyboard briefs | React-PDF |
-
----
-
-## Apify Integration
-
-### Recommended: `apify-client`
-
-| Attribute | Value |
-|-----------|-------|
-| Package | `apify-client` |
-| Version | **2.22.0** (January 27, 2026) |
-| Source | [GitHub](https://github.com/apify/apify-client-js) |
-| Confidence | HIGH |
-
-**Why Apify:**
-- No official TikTok public API exists for trending content
-- Apify provides managed, maintained scrapers with 98% success rate
-- Single SDK for all TikTok data needs (videos, profiles, hashtags)
-- Automatic retries with exponential backoff built-in
-- REST API with unified response format
-
-### Relevant Apify Actors
-
-| Actor | Purpose | Pricing |
-|-------|---------|---------|
-| [TikTok Scraper (Api Dojo)](https://apify.com/apidojo/tiktok-scraper) | Bulk video scraping, 600 posts/sec | $0.30/1K posts |
-| [TikTok Profile Scraper](https://apify.com/clockworks/tiktok-profile-scraper) | Creator historical data | Per-run pricing |
-| [TikTok Hashtag Scraper](https://apify.com/clockworks/tiktok-hashtag-scraper) | Trending hashtag discovery | Per-run pricing |
-
-### Integration Pattern
-
-```typescript
-import { ApifyClient } from 'apify-client';
-
-const client = new ApifyClient({ token: process.env.APIFY_API_TOKEN });
-
-// Run TikTok scraper actor
-const run = await client.actor('apidojo/tiktok-scraper').call({
-  hashtags: ['trending'],
-  maxItems: 50,
-});
-
-// Fetch results
-const { items } = await client.dataset(run.defaultDatasetId).listItems();
-```
-
-### Data Flow
-
-```
-Vercel Cron (every 6h) → Apify Actor → Raw video data →
-  → Calculate views multiplier → AI classify → Store in Supabase
-```
+| Technology | Version | Status |
+|------------|---------|--------|
+| Next.js | 16.1.5 | Current -- latest major |
+| React | 19.2.3 | Current |
+| TypeScript | ^5 | Current |
+| Tailwind CSS | v4 | Current |
+| `motion` | 12.29.2 | Functional, update to 12.33.0 recommended |
+| `framer-motion` | 12.29.3 | **REMOVE** (duplicate, see cleanup below) |
+| `react-intersection-observer` | 10.0.2 | Current (latest) |
+| `@react-three/fiber` + `drei` | 9.5.0 / 10.7.7 | Installed, available for hero visuals |
+| `@splinetool/react-spline` | 4.1.0 | Installed, available for hero visuals |
+| `class-variance-authority` | 0.7.1 | Current |
+| `clsx` + `tailwind-merge` | 2.1.1 / 3.4.0 | Current |
+| `tw-animate-css` | 1.4.0 | Current |
 
 ---
 
-## AI Provider
+## Critical Cleanup: Dual Animation Package
 
-### Recommended: OpenAI
+**Problem:** `package.json` lists BOTH `framer-motion` (^12.29.3) and `motion` (^12.29.2). All code imports from `motion/react`, which is the correct modern path. Having both installed causes bundle bloat and potential runtime conflicts from duplicate internal state.
 
-| Attribute | Value |
-|-----------|-------|
-| Package | `openai` |
-| Version | **6.17.0** (January 28, 2026) |
-| Source | [GitHub](https://github.com/openai/openai-node) |
-| Model | `gpt-4o` (for categorization + remix) |
-| Confidence | HIGH |
+**Action:** Remove `framer-motion`, keep and update `motion`.
 
-**Why OpenAI over Anthropic:**
-- Slightly lower latency for short classification tasks
-- Structured outputs (JSON mode) well-suited for categorization
-- Existing ecosystem familiarity
-- Function calling for structured remix generation
-
-**Alternative:** Anthropic Claude (`@anthropic-ai/sdk`) is equally capable. Choose based on:
-- Existing API keys/billing
-- Team preference
-- Long-form output quality (Claude may be better for full scripts)
-
-### Usage Patterns
-
-**1. Video Classification (batch)**
-```typescript
-import OpenAI from 'openai';
-
-const openai = new OpenAI();
-
-const classification = await openai.chat.completions.create({
-  model: 'gpt-4o',
-  response_format: { type: 'json_object' },
-  messages: [{
-    role: 'user',
-    content: `Classify this TikTok video:
-      Caption: ${video.description}
-      Hashtags: ${video.hashtags.join(', ')}
-      Audio: ${video.music.title}
-
-      Return JSON: { "niche": string, "contentType": string, "strategicTags": string[] }`
-  }]
-});
+```bash
+npm uninstall framer-motion
+npm install motion@latest
 ```
 
-**2. Remix Generation**
-```typescript
-const remix = await openai.chat.completions.create({
-  model: 'gpt-4o',
-  messages: [{
-    role: 'system',
-    content: 'You are a TikTok content strategist creating production briefs...'
-  }, {
-    role: 'user',
-    content: `Generate 3 remix briefs for: ${sourceVideo}
-      Creator niche: ${niche}
-      Goal: ${goal}
-      Constraints: ${constraints}`
-  }]
-});
-```
+**Context:** Framer Motion was rebranded to Motion as an independent, multi-framework library. The `motion` package is the successor. The upgrade guide explicitly states: "Uninstall framer-motion and install motion." There are no breaking changes in Motion v12 for React.
 
-### Cost Estimation
+**Confidence:** HIGH
 
-| Operation | Tokens (est.) | Cost per call | Daily volume | Daily cost |
-|-----------|---------------|---------------|--------------|------------|
-| Classification | ~500 | $0.005 | 500 videos | $2.50 |
-| Remix generation | ~2,000 | $0.02 | 100 remixes | $2.00 |
-| **Total estimated** | | | | **~$4.50/day** |
+**Sources:**
+- [Motion upgrade guide](https://motion.dev/docs/react-upgrade-guide)
+- [motion npm](https://www.npmjs.com/package/motion) -- v12.33.0 published 2026-02-06
 
 ---
 
-## Data Fetching & Caching
+## Capability Analysis: What the Landing Page Needs
 
-### Recommended: TanStack Query
+### 1. Scroll-Triggered Section Reveals
 
-| Attribute | Value |
-|-----------|-------|
-| Package | `@tanstack/react-query` |
-| Version | **5.x** (latest stable) |
-| Source | [TanStack Docs](https://tanstack.com/query/latest) |
-| Confidence | HIGH |
+**Need:** Sections fade/slide in as user scrolls down the page.
 
-**Why TanStack Query over SWR:**
-- DevTools for debugging (critical for feed development)
-- Better mutation support (for save/status tracking)
-- More sophisticated cache invalidation (by tags)
-- Pagination/infinite scroll built-in
-- Prefetching for drill-down views
+**Already have:** 4 motion components in `src/components/motion/`:
 
-**Why NOT Zustand alone:**
-- Zustand is for client state, not server state
-- TanStack Query handles stale-while-revalidate pattern
-- Automatic background refetching
-- Built-in loading/error states
+| Component | Effect | API Used |
+|-----------|--------|----------|
+| `FadeIn` | Opacity 0->1, y 20->0, ease-out cubic | `whileInView` |
+| `FadeInUp` | Opacity 0->1, y 24->0, Raycast easing `[0.25, 0.1, 0.25, 1.0]` | `whileInView` |
+| `SlideUp` | Opacity 0->1, y 60->0, ease-out expo | `whileInView` |
+| `StaggerReveal` + `.Item` | Container orchestrates staggered children, 80ms delay | `whileInView` + `staggerChildren` |
 
-### Integration Pattern
+All four components handle `useReducedMotion` for accessibility, support `once` viewport triggering, and have configurable `delay`/`duration`/`distance` props.
 
-```typescript
-// /lib/queries/trending.ts
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
+**Verdict:** No new package needed. These components cover every scroll-reveal pattern on a SaaS landing page.
 
-export function useTrendingDashboard() {
-  return useQuery({
-    queryKey: ['trending', 'dashboard'],
-    queryFn: () => fetch('/api/trending/dashboard').then(r => r.json()),
-    staleTime: 5 * 60 * 1000, // 5 min
-  });
-}
+**Landing page mapping:**
 
-export function useCategoryVideos(category: string) {
-  return useInfiniteQuery({
-    queryKey: ['trending', 'category', category],
-    queryFn: ({ pageParam = 0 }) =>
-      fetch(`/api/trending/category/${category}?offset=${pageParam}`).then(r => r.json()),
-    getNextPageParam: (lastPage) => lastPage.nextOffset,
-  });
-}
-```
-
-### Caching Layer: Upstash Redis
-
-| Attribute | Value |
-|-----------|-------|
-| Package | `@upstash/redis` |
-| Version | Latest |
-| Source | [Upstash Docs](https://upstash.com/docs/redis/overall/getstarted) |
-| Confidence | HIGH |
-
-**Why Upstash:**
-- Serverless Redis (no connection management)
-- Works on Vercel Edge
-- Built-in rate limiting package
-- Pay-per-request pricing (~$0.20/100K commands)
-
-### Rate Limiting
-
-```typescript
-import { Ratelimit } from '@upstash/ratelimit';
-import { Redis } from '@upstash/redis';
-
-const ratelimit = new Ratelimit({
-  redis: Redis.fromEnv(),
-  limiter: Ratelimit.slidingWindow(10, '60 s'), // 10 requests per minute
-});
-
-// In API route
-const { success } = await ratelimit.limit(userId);
-if (!success) return new Response('Rate limited', { status: 429 });
-```
-
-### Caching Strategy
-
-| Data Type | Cache Location | TTL | Invalidation |
-|-----------|----------------|-----|--------------|
-| Dashboard feed | Upstash Redis | 5 min | On Apify refresh |
-| Category lists | Upstash Redis | 5 min | On Apify refresh |
-| Video details | Supabase + TanStack | 1 hour | On view |
-| Creator baselines | Supabase | 24 hours | On Apify refresh |
-| Remix results | Supabase | Permanent | Manual delete |
+| Section | Component | Config |
+|---------|-----------|--------|
+| Hero headline + subtext | `FadeInUp` with staggered `delay` (0, 0.1, 0.2) | Default 24px distance |
+| Feature cards grid | `StaggerReveal` wrapping `StaggerReveal.Item` children | 80ms stagger, 100ms initial delay |
+| Product screenshot | `SlideUp` | 60px distance for dramatic entrance |
+| Social proof / testimonials | `FadeIn` | Subtle 20px distance |
+| CTA section | `FadeInUp` | Default |
+| Footer | No animation (always visible at bottom) | N/A |
 
 ---
 
-## PDF Generation
+### 2. Hero Parallax Effect
 
-### Recommended: React-PDF
+**Need:** Product screenshot moves at different speed than background on scroll (subtle depth).
 
-| Attribute | Value |
-|-----------|-------|
-| Package | `@react-pdf/renderer` |
-| Version | **4.3.2** (React 19 compatible since v4.1.0) |
-| Source | [react-pdf.org](https://react-pdf.org) |
-| Confidence | HIGH |
+**Already have:** `motion/react` exports `useScroll` and `useTransform` -- available in the installed `motion` package with zero additional cost.
 
-**Why React-PDF:**
-- React 19 compatible (v4.1.0+)
-- Declarative PDF creation using React components
-- Server-side rendering support (Next.js API routes)
-- No external dependencies (pure JS)
-- Excellent for structured documents (storyboards)
+```tsx
+import { motion, useScroll, useTransform } from "motion/react";
 
-**Alternatives considered:**
-- **pdfme** (v5.5.0) — Good, but more template-focused
-- **pdfmake** — Declarative but not React-native
-- **jsPDF** — More imperative, less suited for complex layouts
+function HeroScreenshot() {
+  const { scrollYProgress } = useScroll();
+  const y = useTransform(scrollYProgress, [0, 0.3], [0, -60]);
 
-### Integration Pattern
-
-```typescript
-// /components/pdf/StoryboardPDF.tsx
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
-
-const styles = StyleSheet.create({
-  page: { padding: 30 },
-  section: { marginBottom: 10 },
-  title: { fontSize: 18, fontWeight: 'bold' },
-  content: { fontSize: 12 },
-});
-
-interface StoryboardPDFProps {
-  remix: RemixBrief;
-}
-
-export function StoryboardPDF({ remix }: StoryboardPDFProps) {
   return (
-    <Document>
-      <Page size="A4" style={styles.page}>
-        <View style={styles.section}>
-          <Text style={styles.title}>Hook (First 3 Seconds)</Text>
-          <Text style={styles.content}>{remix.hook}</Text>
-        </View>
-        <View style={styles.section}>
-          <Text style={styles.title}>Shot List</Text>
-          {remix.shotList.map((shot, i) => (
-            <Text key={i} style={styles.content}>{i + 1}. {shot}</Text>
-          ))}
-        </View>
-        <View style={styles.section}>
-          <Text style={styles.title}>Full Script</Text>
-          <Text style={styles.content}>{remix.script}</Text>
-        </View>
-        {/* ... more sections */}
-      </Page>
-    </Document>
+    <motion.div style={{ y }}>
+      <Image src="/images/landing/trending-screenshot.png" ... />
+    </motion.div>
   );
 }
 ```
 
+**Verdict:** No new package needed. Motion's `useScroll` + `useTransform` handles parallax natively.
+
+**Confidence:** HIGH -- These are core Motion APIs, not experimental.
+
+---
+
+### 3. Product Screenshot Optimization
+
+**Need:** High-quality product screenshots (trending page, dashboard) that load fast.
+
+**Already have:** `next/image` with Sharp built into Next.js 16.
+
+**Configuration update needed for `next.config.ts`:**
+
 ```typescript
-// /api/remix/[id]/pdf/route.ts
-import { renderToBuffer } from '@react-pdf/renderer';
-import { StoryboardPDF } from '@/components/pdf/StoryboardPDF';
+const nextConfig: NextConfig = {
+  transpilePackages: ['three'],
+  images: {
+    formats: ['image/avif', 'image/webp'], // Enable AVIF (20% smaller than WebP)
+    qualities: [75, 90], // 75 general, 90 for hero shots
+    remotePatterns: [
+      // ...existing patterns
+    ],
+  },
+};
+```
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
-  const remix = await getRemix(params.id);
-  const buffer = await renderToBuffer(<StoryboardPDF remix={remix} />);
+**Key Next.js 16 image changes to be aware of:**
 
-  return new Response(buffer, {
-    headers: {
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="remix-${params.id}.pdf"`,
-    },
+| Change | Impact |
+|--------|--------|
+| `priority` prop deprecated | Use `preload` instead for above-the-fold images |
+| `images.qualities` restricted | Must specify allowed quality values (was 1-100) |
+| `minimumCacheTTL` = 4 hours default | Good for landing pages (no change needed) |
+| AVIF support | Opt-in via `formats` config, 20% smaller than WebP |
+
+**Product screenshot workflow:**
+1. Capture actual screenshots of trending page and dashboard at 2560x1440 (2x)
+2. Save as PNG in `/public/images/landing/`
+3. Next.js optimizes to AVIF/WebP at serve time (60-80% size reduction)
+4. Hero screenshot: `<Image preload ...>` for LCP optimization
+5. Below-fold screenshots: Default lazy loading (automatic)
+
+**Browser frame mockup:** Build as a Tailwind CSS component (rounded corners, traffic light dots, toolbar bar). This is a 20-line component, NOT a library dependency.
+
+**Verdict:** No new package. Config change only.
+
+**Confidence:** HIGH -- Verified via [Next.js 16 blog](https://nextjs.org/blog/next-16) and [Image component docs](https://nextjs.org/docs/app/api-reference/components/image).
+
+---
+
+### 4. Smooth Scroll for Navbar Anchors
+
+**Need:** Clicking navbar links (#features, #pricing) scrolls smoothly to section.
+
+**Context:** Next.js 16 explicitly removed automatic `scroll-behavior: smooth` that existed in earlier versions.
+
+**Solution:** One CSS line in `globals.css`:
+
+```css
+html {
+  scroll-behavior: smooth;
+}
+```
+
+For programmatic scrolling with offset (fixed navbar compensation):
+
+```typescript
+// No library -- native browser API
+function scrollToSection(id: string) {
+  document.getElementById(id)?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start',
   });
 }
 ```
 
-### Storyboard Visuals
+**Alternatives rejected:**
 
-**Decision:** Text-only storyboards for MVP.
+| Library | Why NOT |
+|---------|---------|
+| Lenis (~15KB) | Designed for scroll-hijacking physics. Overkill for anchor navigation. |
+| `react-scroll` | Last meaningful update 2023. Native `scrollIntoView` is better. |
+| `locomotive-scroll` (~50KB) | Custom scroll container paradigm. Wrong tool entirely. |
 
-**Why NOT AI-generated images:**
-- DALL-E 3 deprecated May 2026, GPT Image models new
-- Character consistency issues across frames
-- Added cost ($0.04-0.12 per image)
-- Latency (2-5 seconds per image)
-- Storyboards work well as text with shot descriptions
+**Verdict:** CSS only. No package needed.
 
-**Future enhancement:** Consider GPT Image when:
-- Character consistency improves
-- User demand validates
-- Budget allows
+**Confidence:** HIGH -- CSS `scroll-behavior: smooth` has 97%+ browser support.
 
 ---
 
-## Recommended Stack Additions
+### 5. Hero Abstract Visual
 
-| Package | Version | Purpose | Why |
-|---------|---------|---------|-----|
-| `apify-client` | ^2.22.0 | TikTok data ingestion | Managed scraping, 98% success rate |
-| `openai` | ^6.17.0 | AI classification + remix | GPT-4o structured outputs |
-| `@tanstack/react-query` | ^5.x | Server state management | DevTools, mutations, pagination |
-| `@react-pdf/renderer` | ^4.3.2 | PDF storyboard export | React 19 compatible |
-| `@upstash/redis` | latest | Edge caching | Serverless, Vercel-optimized |
-| `@upstash/ratelimit` | latest | API rate limiting | Protect AI endpoints |
+**Need:** Visually striking hero background/visual that matches Raycast aesthetic.
 
-### Installation Command
+**Three options using EXISTING packages:**
 
-```bash
-pnpm add apify-client openai @tanstack/react-query @react-pdf/renderer @upstash/redis @upstash/ratelimit
-```
+| Option | Approach | Bundle Cost | LCP Impact |
+|--------|----------|-------------|------------|
+| **A: CSS/Design System (recommended)** | Layer `GradientGlow` + `GradientMesh` + `NoiseTexture` + floating animated `GlassCard` components | 0 KB additional | None |
+| B: Spline 3D scene | Use existing `@splinetool/react-spline` | 0 KB additional (installed) | 1-5MB scene file |
+| C: R3F 3D scene | Use existing `@react-three/fiber` + `drei` | 0 KB additional (installed) | ~150KB Three.js |
 
-### Dev Dependencies
+**Recommendation: Option A** -- Combine existing design system effects for a hero visual that is:
+- Zero additional bundle cost
+- Fast LCP (no 3D asset loading)
+- Fully matches the existing Raycast design language
+- Animatable with existing motion components
+- Works on all devices (no WebGL required)
 
-None required beyond existing setup.
+Existing components available for composition:
+- `GradientGlow` -- radial gradient backgrounds
+- `GradientMesh` -- mesh gradient with R3F (already lightweight)
+- `NoiseTexture` -- film grain overlay
+- `ChromaticAberration` -- RGB split effect
+- `GlassCard` -- glassmorphism card with Raycast styling
+- `GlassPanel` -- glass surface with blur
+
+**Defer 3D (Spline/R3F) to post-MVP** if the CSS approach doesn't deliver enough visual impact. The packages are already installed and ready.
+
+**Confidence:** MEDIUM -- Visual design is subjective. The technical approach is sound, but whether it looks "good enough" requires implementation and iteration.
 
 ---
 
-## Already Sufficient (No Addition Needed)
+### 6. v0 Generation Workflow
 
-| Existing | Version | For Trending Page |
-|----------|---------|-------------------|
-| `next` | 16.1.5 | API routes, cron, routing |
-| `@supabase/supabase-js` | 2.93.1 | Video/remix storage |
-| `zustand` | 5.0.10 | UI state (filters, selections) |
-| `zod` | 4.3.6 | API response validation |
-| `recharts` | 3.7.0 | Views multiplier charts (if needed) |
-| `motion` | 12.29.2 | Card animations, transitions |
-| `tailwindcss` | 4 | Styling |
+**Need:** Each landing page section generated individually with v0, reviewed, then assembled.
+
+**This is a workflow, not a package dependency.**
+
+**v0 prompt strategy per section:**
+
+1. **Include in every prompt:**
+   - Tailwind v4 `@theme` color tokens (coral scale, grays, border opacity values)
+   - Available motion component names (`FadeInUp`, `StaggerReveal`, etc.)
+   - Raycast design rules (border `white/[0.06]`, radius 12px cards, no colored tinting)
+   - `"use client"` directive only for interactive sections
+
+2. **v0 output adaptation:**
+   - v0 defaults to shadcn/ui components -- these MUST be swapped for Virtuna design system components
+   - Replace `<Card>` with `<GlassCard>`, `<Button>` with Virtuna `<Button>`, etc.
+   - Replace shadcn color classes with Virtuna token classes
+
+3. **v0 Design System Registry (skip for v3.1):**
+   - v0 supports custom registries that teach it your components
+   - Requires building a `registry.json` endpoint with component source + metadata
+   - **Not worth the setup cost for ~6-8 sections.** Manually including design context in prompts is faster.
+   - Consider if Virtuna design system is used across multiple projects later.
+
+**Confidence:** MEDIUM -- v0 generates valid React/Tailwind code, but quality with custom design tokens varies. Each section will need manual adaptation.
 
 ---
 
 ## What NOT to Add
 
-| Avoid | Reason |
-|-------|--------|
-| **Direct TikTok API** | No official public API; use Apify |
-| **SWR** | TanStack Query has DevTools, better mutations |
-| **Multiple AI providers** | Pick one (OpenAI); switch later if needed |
-| **DALL-E/Image generation** | Consistency issues, cost, complexity |
-| **pdfmake/jsPDF** | React-PDF is more idiomatic |
-| **socket.io/real-time** | Feed doesn't need real-time; polling sufficient |
-| **Puppeteer/Playwright** | Apify handles scraping; don't DIY |
-| **Separate Redis provider** | Upstash is Vercel-optimized |
-| **GraphQL** | REST sufficient for this scope |
+| Package | Why NOT |
+|---------|---------|
+| `gsap` / `@gsap/react` | Motion already covers all scroll-triggered, stagger, and parallax patterns. Adding GSAP creates two competing animation paradigms in the codebase. |
+| `lenis` / `@studio-freight/lenis` | CSS `scroll-behavior: smooth` + native `scrollIntoView` covers anchor navigation. Lenis is for scroll-hijacking sites. |
+| `aos` (Animate On Scroll) | Strictly inferior to existing Motion `whileInView` components. CSS-class-based, no spring physics, no gestures. |
+| `react-scroll` | Dead library. Native APIs are better. |
+| `locomotive-scroll` | Custom scroll container paradigm. Wrong tool for a SaaS landing page. |
+| `swiper` / `embla-carousel` | No carousel planned. If testimonials need one later, build with Motion + CSS `scroll-snap`. |
+| `@vercel/og` | Only needed for dynamic OG images. Static OG image is simpler for a landing page. |
+| `sharp` (manual install) | Next.js bundles Sharp internally. Never install separately. |
+| `tailwindcss-animate` | Project already has `tw-animate-css` v1.4.0. Don't add a competing utility. |
+| `shadcn/ui` | The project has its OWN 36-component design system. shadcn would conflict. v0 output using shadcn must be adapted to Virtuna components. |
+| `react-countup` / `countup.js` | If stats counters are needed, Motion's `useMotionValue` + `useTransform` + `animate` handle number animations natively. |
 
 ---
 
-## Integration with Existing Stack
+## Installation Summary
 
-### Fits Naturally
+```bash
+# Clean up dual animation package
+npm uninstall framer-motion
 
-| Existing | Integration Point |
-|----------|-------------------|
-| Next.js App Router | `/api/trending/*`, `/api/remix/*` routes |
-| Supabase Auth | User ID for remix ownership |
-| Supabase DB | `trending_videos`, `remixes`, `creator_baselines` tables |
-| Zustand | Filter state, selected video, UI preferences |
-| Tailwind | Dashboard layout, video cards |
-| Radix UI | Modals, dropdowns, tabs |
+# Update motion to latest
+npm install motion@latest
 
-### New Patterns Required
+# That's it. Zero new packages.
+```
 
-| Pattern | Location | Purpose |
-|---------|----------|---------|
-| TanStack Query Provider | `/app/providers.tsx` | Wrap app with QueryClientProvider |
-| Vercel Cron | `/api/cron/refresh-trending` | Scheduled Apify runs |
-| Edge caching | API routes | Upstash Redis for hot data |
-| Rate limiting middleware | `/api/remix/*` | Protect AI endpoints |
-| PDF streaming | `/api/remix/[id]/pdf` | Generate PDF on demand |
+**Total new dependencies: 0**
+**Removed dependencies: 1 (framer-motion)**
+**Updated dependencies: 1 (motion 12.29.2 -> 12.33.0)**
 
-### Environment Variables
+---
 
-```env
-# Apify
-APIFY_API_TOKEN=apify_api_xxx
+## Configuration Changes
 
-# OpenAI
-OPENAI_API_KEY=sk-xxx
+### next.config.ts
 
-# Upstash Redis
-UPSTASH_REDIS_REST_URL=https://xxx.upstash.io
-UPSTASH_REDIS_REST_TOKEN=xxx
+```typescript
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  transpilePackages: ['three'],
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    qualities: [75, 90],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'picsum.photos',
+      },
+      {
+        protocol: 'https',
+        hostname: 'fastly.picsum.photos',
+      },
+    ],
+  },
+};
+
+export default nextConfig;
+```
+
+### globals.css (addition)
+
+```css
+html {
+  scroll-behavior: smooth;
+}
+```
+
+### Image component usage (Next.js 16 compliance)
+
+```tsx
+// BEFORE (deprecated in Next.js 16)
+<Image src="/hero.png" priority alt="..." />
+
+// AFTER
+<Image src="/hero.png" preload alt="..." />
 ```
 
 ---
 
-## Database Schema Additions
+## Integration Points with Existing Stack
 
-```sql
--- Trending videos cache
-CREATE TABLE trending_videos (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tiktok_id VARCHAR(50) UNIQUE NOT NULL,
-  creator_handle VARCHAR(100) NOT NULL,
-  creator_id VARCHAR(50),
-  views BIGINT NOT NULL,
-  views_multiplier DECIMAL(6,2),
-  behavioral_category VARCHAR(20), -- 'breaking_out', 'sustained', 'resurging'
-  niche VARCHAR(50),
-  content_type VARCHAR(50),
-  strategic_tags TEXT[],
-  thumbnail_url TEXT,
-  video_url TEXT,
-  description TEXT,
-  hashtags TEXT[],
-  audio_title VARCHAR(255),
-  posted_at TIMESTAMPTZ,
-  scraped_at TIMESTAMPTZ DEFAULT NOW(),
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Creator baselines for multiplier calculation
-CREATE TABLE creator_baselines (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  creator_id VARCHAR(50) UNIQUE NOT NULL,
-  creator_handle VARCHAR(100) NOT NULL,
-  avg_views_30d BIGINT,
-  video_count_30d INT,
-  last_calculated TIMESTAMPTZ DEFAULT NOW()
-);
-
--- User remixes
-CREATE TABLE remixes (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users NOT NULL,
-  source_video_id UUID REFERENCES trending_videos,
-  source_url TEXT,
-  niche VARCHAR(50),
-  goal VARCHAR(50),
-  constraints JSONB,
-  briefs JSONB NOT NULL, -- Array of 3 production briefs
-  status VARCHAR(20) DEFAULT 'generated', -- 'generated', 'to_film', 'filmed', 'posted'
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Indexes
-CREATE INDEX idx_trending_category ON trending_videos(behavioral_category);
-CREATE INDEX idx_trending_niche ON trending_videos(niche);
-CREATE INDEX idx_trending_scraped ON trending_videos(scraped_at DESC);
-CREATE INDEX idx_remixes_user ON remixes(user_id);
-```
+| Existing Capability | How Landing Page Uses It |
+|---|---|
+| `FadeIn`, `FadeInUp`, `SlideUp`, `StaggerReveal` | Wrap every section for scroll-triggered reveals |
+| `GlassCard`, `GlassPanel` | Feature cards, testimonial cards, product showcase frames |
+| `GradientGlow`, `GradientMesh` | Hero abstract visual, section dividers |
+| `NoiseTexture`, `ChromaticAberration` | Hero visual depth and texture |
+| `Button` (primary/secondary) | CTAs ("Get started", "Learn more") |
+| `Heading`, `Text` (Typography) | All text with Raycast-matched sizes and weights |
+| Design tokens (coral, grays, borders) | Consistent Raycast branding across all sections |
+| `next/image` | Product screenshots with AVIF/WebP optimization |
+| Tailwind v4 `@theme` block | v0 prompts reference token names directly |
+| `useReducedMotion` in all motion components | Accessibility compliance built-in |
+| `@phosphor-icons/react` | Section icons, feature icons |
 
 ---
 
 ## Confidence Assessment
 
-| Area | Confidence | Reasoning |
-|------|------------|-----------|
-| Apify integration | HIGH | Official client docs verified, v2.22.0 released Jan 2026 |
-| OpenAI SDK | HIGH | v6.17.0 verified on GitHub releases |
-| TanStack Query | HIGH | Industry standard, well-documented |
-| React-PDF | HIGH | v4.3.2 React 19 support verified in GitHub issues |
-| Upstash Redis | HIGH | Official Vercel partner, documented integration |
-| PDF-only storyboards | MEDIUM | User preference unknown; may want images later |
-| AI cost estimates | MEDIUM | Based on typical usage; actual may vary |
+| Area | Confidence | Reason |
+|------|------------|--------|
+| Animation (no new package) | HIGH | 4 existing motion components verified in codebase, Motion v12 APIs confirmed |
+| Image optimization (config only) | HIGH | Next.js 16 blog + official docs verified |
+| Smooth scroll (CSS only) | HIGH | CSS spec, 97%+ browser support |
+| Dual-package cleanup | HIGH | Motion upgrade guide explicitly documents this |
+| Hero visual (CSS approach) | MEDIUM | Technical approach sound, visual outcome subjective |
+| v0 workflow (manual prompts) | MEDIUM | v0 works but needs per-section manual adaptation |
 
 ---
 
 ## Sources
 
-### Package Versions (Verified)
-- [apify-client v2.22.0](https://github.com/apify/apify-client-js) - GitHub releases
-- [openai v6.17.0](https://github.com/openai/openai-node/releases) - GitHub releases
-- [@react-pdf/renderer v4.3.2](https://github.com/diegomura/react-pdf/issues/2756) - React 19 compatibility
-- [TanStack Query](https://tanstack.com/query/latest) - Official docs
+### Verified (HIGH confidence)
+- [Motion npm package](https://www.npmjs.com/package/motion) -- v12.33.0 latest (2026-02-06)
+- [Motion scroll animations docs](https://www.framer.com/motion/scroll-animations/)
+- [Motion upgrade guide](https://motion.dev/docs/react-upgrade-guide)
+- [Next.js 16 release blog](https://nextjs.org/blog/next-16)
+- [Next.js Image component docs](https://nextjs.org/docs/app/api-reference/components/image)
+- [react-intersection-observer npm](https://www.npmjs.com/package/react-intersection-observer) -- v10.0.2 latest
+- [CSS scroll-behavior MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/scroll-behavior)
 
-### Apify TikTok Scrapers
-- [TikTok Scraper (Api Dojo)](https://apify.com/apidojo/tiktok-scraper)
-- [TikTok Profile Scraper](https://apify.com/clockworks/tiktok-profile-scraper)
-- [Apify JavaScript API](https://apify.com/clockworks/tiktok-video-scraper/api/javascript)
-
-### Caching & Rate Limiting
-- [Upstash Rate Limiting](https://upstash.com/blog/nextjs-ratelimiting)
-- [Next.js Caching Guide](https://nextjs.org/docs/app/guides/caching)
-- [TanStack Query vs SWR](https://tanstack.com/query/v4/docs/react/comparison)
-
-### PDF Generation
-- [React-PDF Official](https://react-pdf.org/)
-- [React-PDF React 19 Support](https://github.com/diegomura/react-pdf/issues/2756)
-
-### AI Image Generation
-- [OpenAI Image Generation](https://platform.openai.com/docs/guides/image-generation) - DALL-E 3 deprecation notice
+### Consulted (MEDIUM confidence)
+- [v0 documentation](https://v0.dev/docs)
+- [v0 design systems](https://vercel.com/blog/maximizing-outputs-with-v0-from-ui-generation-to-code-creation)
+- [SaaS landing page trends 2026](https://www.saasframe.io/blog/10-saas-landing-page-trends-for-2026-with-real-examples)
+- [Raycast landing page analysis](https://www.raycast.com)
+- [CSS scroll-driven animations MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Scroll-driven_animations)
 
 ---
 
-*Research completed: 2026-02-02*
+*Research completed: 2026-02-06*
 *Ready for roadmap creation*

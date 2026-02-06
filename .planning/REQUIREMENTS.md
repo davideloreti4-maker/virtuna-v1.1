@@ -81,34 +81,34 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| NAV-01 | Phase 53 | Pending |
-| NAV-02 | Phase 53 | Pending |
-| NAV-03 | Phase 53 | Pending |
-| NAV-04 | Phase 53 | Pending |
-| HERO-01 | Phase 54 | Pending |
-| HERO-02 | Phase 54 | Pending |
-| HERO-03 | Phase 54 | Pending |
-| HERO-04 | Phase 54 | Pending |
-| HERO-05 | Phase 58 | Pending |
-| HERO-06 | Phase 54 | Pending |
-| FEAT-01 | Phase 56 | Pending |
-| FEAT-02 | Phase 56 | Pending |
-| FEAT-03 | Phase 56 | Pending |
-| FEAT-04 | Phase 56 | Pending |
-| SOCL-01 | Phase 55 | Pending |
-| SOCL-02 | Phase 55 | Pending |
-| SOCL-03 | Phase 55 | Pending |
-| CONV-01 | Phase 57 | Pending |
-| CONV-02 | Phase 57 | Pending |
-| CONV-03 | Phase 57 | Pending |
-| CONV-04 | Phase 57 | Pending |
-| FOOT-01 | Phase 53 | Pending |
-| XCUT-01 | Phase 57 | Pending |
-| XCUT-02 | Phase 57 | Pending |
-| XCUT-03 | Phase 53 | Pending |
-| XCUT-04 | Phase 53 | Pending |
-| XCUT-05 | Phase 53 | Pending |
-| XCUT-06 | Phase 57 | Pending |
+| NAV-01 | Phase 58 | Pending |
+| NAV-02 | Phase 58 | Pending |
+| NAV-03 | Phase 58 | Pending |
+| NAV-04 | Phase 58 | Pending |
+| HERO-01 | Phase 59 | Pending |
+| HERO-02 | Phase 59 | Pending |
+| HERO-03 | Phase 59 | Pending |
+| HERO-04 | Phase 59 | Pending |
+| HERO-05 | Phase 63 | Pending |
+| HERO-06 | Phase 59 | Pending |
+| FEAT-01 | Phase 61 | Pending |
+| FEAT-02 | Phase 61 | Pending |
+| FEAT-03 | Phase 61 | Pending |
+| FEAT-04 | Phase 61 | Pending |
+| SOCL-01 | Phase 60 | Pending |
+| SOCL-02 | Phase 60 | Pending |
+| SOCL-03 | Phase 60 | Pending |
+| CONV-01 | Phase 62 | Pending |
+| CONV-02 | Phase 62 | Pending |
+| CONV-03 | Phase 62 | Pending |
+| CONV-04 | Phase 62 | Pending |
+| FOOT-01 | Phase 58 | Pending |
+| XCUT-01 | Phase 62 | Pending |
+| XCUT-02 | Phase 62 | Pending |
+| XCUT-03 | Phase 58 | Pending |
+| XCUT-04 | Phase 58 | Pending |
+| XCUT-05 | Phase 58 | Pending |
+| XCUT-06 | Phase 62 | Pending |
 
 **Coverage:**
 - v3.1 requirements: 28 total
@@ -117,4 +117,4 @@
 
 ---
 *Requirements defined: 2026-02-06*
-*Last updated: 2026-02-06 -- All 28 requirements mapped to Phases 53-58*
+*Last updated: 2026-02-06 -- All 28 requirements mapped to Phases 58-63 (renumbered from 53-58)*
