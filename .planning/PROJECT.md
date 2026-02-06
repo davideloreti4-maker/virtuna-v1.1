@@ -12,6 +12,12 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 
 ### Validated
 
+- TikTok Creative Center-style trending feed with 3 category tabs -- v2.2
+- VideoCard with GlassCard + HoverScale + GlassPill + velocity indicators -- v2.2
+- Infinite scroll with skeleton loading states -- v2.2
+- Video detail modal with TikTok embed iframe -- v2.2
+- Bookmark system with Zustand + localStorage persistence -- v2.2
+- "Saved" filter tab for bookmarked videos -- v2.2
 - Design token extraction from raycast.com (100+ tokens) -- v2.0
 - Two-tier token architecture (primitive -> semantic) in Tailwind v4 -- v2.0
 - Coral scale (100-900) with WCAG AA compliance -- v2.0
@@ -48,10 +54,13 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 
 ## Context
 
-**Current state:** Starting v2.2 Trending Page UI (2026-02-05).
-- 26,311 LOC TypeScript/CSS
+**Current state:** v2.2 Trending Page UI shipped (2026-02-06).
+- ~32,400 LOC TypeScript/CSS
 - Tech stack: Next.js 14+ (App Router), TypeScript strict, Tailwind CSS v4, Supabase Auth
 - 36 design system components across 4 families, 100+ design tokens
+- NEW: Trending page at /trending with TikTok-style video feed
+- NEW: 14 trending-specific components (VideoCard, VideoGrid, VideoDetailModal, TikTokEmbed, etc.)
+- NEW: Bookmark store with localStorage persistence
 - Dashboard has ~30 app components with hardcoded styles (pre-design-system)
 - 7-page showcase at /showcase
 - 8 documentation files in docs/
@@ -63,6 +72,7 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 - 227 hardcoded values flagged for review (many intentional)
 - Responsive showcase clipping on mobile
 - Touch target threshold relaxed to 32x24px (desktop-first)
+- Analyze button routes to /viral-predictor which doesn't exist yet (tech debt)
 
 ## Key Decisions
 
@@ -92,25 +102,23 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 - Local: ~/virtuna-v1.1
 - Vercel: https://virtuna-v11.vercel.app
 
-## Current Milestone: v2.2 Trending Page UI
+## Current State
 
-**Goal:** Build the Trending page UI with TikTok Creative Center-style feed, video cards, detail modal, and mock data — all using the v2.0 design system.
+**Shipped:** v2.2 Trending Page UI (2026-02-06)
 
-**Target features:**
-- TikTok Creative Center-style trending feed with tab-based category filtering (Breaking Out / Sustained Viral / Resurging)
-- Video cards with thumbnails, mock metadata (views, creator, date, category tags)
-- Video detail modal with TikTok embed iframe
-- Actions: Analyze (wired to Viral Predictor), Bookmark, Remix (coming soon stub)
-- All components built with v2.0 design system (GlassCard, GlassPill, Dialog, Button, Tabs, Typography, etc.)
-- Mock data throughout — no backend/API integration
+The trending page is complete with:
+- TikTok Creative Center-style feed at /trending
+- 42 mock videos across 3 categories
+- Video detail modal with TikTok embed
+- Bookmark system with persistence
 
-**Build approach:** v0 MCP as primary UI design tool with precise design system token/component guidance for high-quality, accurate output.
+**In progress:** v2.1 Dashboard Rebuild (main branch)
 
 **Future milestones:**
-- v2.1 Dashboard Rebuild (in progress on main branch)
+- v2.3 Brand Deals page
 - Trending page backend (Apify, AI classification, TanStack Query)
 - Remix system (multi-step wizard, storyboard generation)
 - PDF export and advanced features
 
 ---
-*Last updated: 2026-02-05 after v2.2 milestone started*
+*Last updated: 2026-02-06 after v2.2 milestone shipped*
