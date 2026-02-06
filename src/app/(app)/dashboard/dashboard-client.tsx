@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
 import {
   // NetworkVisualization, // TEMP: swapped for ProgressiveVisualization testing
   FilterPillGroup,
@@ -18,6 +17,7 @@ import { VisualizationCanvas } from "@/components/visualization";
 import { useTestStore } from "@/stores/test-store";
 import { useSocietyStore } from "@/stores/society-store";
 import type { TestType } from "@/types/test";
+import { Button } from "@/components/ui/button";
 import type { SurveySubmission } from "@/components/app/survey-form";
 
 /**
@@ -109,20 +109,14 @@ export function DashboardClient() {
           {/* Legend pills for role level view - hidden on mobile */}
           <LegendPills className="hidden md:flex" />
           <FilterPillGroup />
-          <button
-            type="button"
+          <Button
+            variant="primary"
             onClick={handleOpenSelector}
-            className={cn(
-              "flex items-center gap-2 rounded-xl px-4 py-2",
-              "bg-white text-zinc-900",
-              "text-sm font-medium",
-              "transition-colors hover:bg-zinc-200"
-            )}
           >
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">Create a new test</span>
             <span className="sm:hidden">New</span>
-          </button>
+          </Button>
         </div>
       </div>
 

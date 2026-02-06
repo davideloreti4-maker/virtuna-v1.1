@@ -153,6 +153,7 @@ export function SocietySelector({ className }: SocietySelectorProps) {
               <GlassCard
                 hover="lift"
                 padding="md"
+                tinted
                 className={cn(
                   "min-h-[180px] border-dashed",
                   "hover:border-border-hover"
@@ -208,6 +209,7 @@ function PersonalSocietyCard({
     <GlassCard
       hover="lift"
       padding="md"
+      tinted
       className={cn(
         "min-h-[180px] border-dashed",
         isSelected && "border-solid border-accent ring-2 ring-accent/50"
@@ -264,6 +266,7 @@ function TargetSocietyCard({
     <GlassCard
       hover="lift"
       padding="md"
+      tinted
       className={cn(
         "min-h-[180px]",
         isSelected && "border-accent ring-2 ring-accent/50"

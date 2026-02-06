@@ -194,9 +194,14 @@ export function SurveyForm({ onChangeType, onSubmit, className }: SurveyFormProp
     <form
       onSubmit={handleSubmit}
       className={cn(
-        "space-y-4 rounded-2xl border border-border bg-surface p-4",
+        "space-y-4 rounded-2xl border border-border-glass p-4",
         className
       )}
+      style={{
+        backgroundColor: "rgba(24, 25, 28, 0.8)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+      }}
     >
       {/* Question textarea */}
       <div>

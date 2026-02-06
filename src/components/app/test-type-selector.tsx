@@ -64,10 +64,10 @@ const ICON_MAP: Record<
  * Badge configuration for specific test types.
  */
 const BADGE_MAP: Partial<
-  Record<TestType, { label: string; variant: "info" | "success" | "warning" | "error" | "default" }>
+  Record<TestType, { label: string; variant: "accent" | "success" | "warning" | "error" | "default" }>
 > = {
-  survey: { label: "Popular", variant: "info" },
-  "tiktok-script": { label: "New", variant: "info" },
+  survey: { label: "Popular", variant: "accent" },
+  "tiktok-script": { label: "New", variant: "accent" },
 };
 
 /** All test type ids in display order */
@@ -121,6 +121,9 @@ export function TestTypeSelector({
                 key={typeId}
                 hover="lift"
                 padding="md"
+                glow
+                tinted
+                color="orange"
                 onClick={() => handleSelectType(typeId)}
               >
                 <div className="flex flex-col gap-2">

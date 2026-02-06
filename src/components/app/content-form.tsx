@@ -157,9 +157,14 @@ export function ContentForm({
     <form
       onSubmit={handleSubmit}
       className={cn(
-        "flex flex-col gap-4 rounded-2xl border border-border bg-surface p-4",
+        "flex flex-col gap-4 rounded-2xl border border-border-glass p-4",
         className
       )}
+      style={{
+        backgroundColor: "rgba(24, 25, 28, 0.8)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+      }}
     >
       {/* Textarea with GlassTextarea */}
       <div>
