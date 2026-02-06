@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { type ReactNode, type CSSProperties } from "react";
-import { GlassPanel, type GlassTint } from "./GlassPanel";
+import { GlassPanel, type GlassBlur, type GlassTint } from "./GlassPanel";
 import { GradientGlow, type GradientColor } from "./GradientGlow";
 
 export interface GlassCardProps {
@@ -19,6 +19,9 @@ export interface GlassCardProps {
   hover?: "none" | "lift" | "glow-boost";
   /** Padding preset */
   padding?: "none" | "sm" | "md" | "lg";
+  /** Backdrop blur intensity passed to GlassPanel (default: "md").
+   *  Set to "none" to skip backdrop-filter for mobile perf budget (MOBL-03). */
+  blur?: GlassBlur;
   /** Additional className for the card */
   className?: string;
   /** Additional className for the content wrapper */
@@ -79,6 +82,7 @@ export function GlassCard({
   glowIntensity = "subtle",
   hover = "none",
   padding = "md",
+  blur = "md",
   className,
   contentClassName,
   style,
@@ -113,7 +117,7 @@ export function GlassCard({
 
       {/* Glass card */}
       <GlassPanel
-        blur="md"
+        blur={blur}
         opacity={0.6}
         borderGlow
         tint={tinted ? colorToTint[color] : "neutral"}

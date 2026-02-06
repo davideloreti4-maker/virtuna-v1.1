@@ -20,7 +20,7 @@ interface AttentionBreakdownProps {
  */
 export function AttentionBreakdown({ attention }: AttentionBreakdownProps) {
   return (
-    <GlassCard padding="md" hover="lift">
+    <GlassCard padding="md" hover="lift" blur="none">
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Text as="span" size="sm" muted>

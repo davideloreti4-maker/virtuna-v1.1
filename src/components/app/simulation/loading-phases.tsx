@@ -23,7 +23,7 @@ const PHASE_ORDER: SimulationPhase[] = [
 /** ImpactScore section skeleton */
 function ImpactScoreSkeleton() {
   return (
-    <GlassCard padding="md">
+    <GlassCard padding="md" blur="none">
       <GlassSkeleton width="120px" height="14px" />
       <GlassSkeleton width="80px" height="12px" className="mt-2" />
       <GlassSkeleton width="160px" height="48px" className="mt-3" />
@@ -34,7 +34,7 @@ function ImpactScoreSkeleton() {
 /** AttentionBreakdown section skeleton */
 function AttentionSkeleton() {
   return (
-    <GlassCard padding="md">
+    <GlassCard padding="md" blur="none">
       <GlassSkeleton width="160px" height="14px" />
       <div className="mt-4 space-y-4">
         {[1, 2, 3].map((i) => (
@@ -54,7 +54,7 @@ function AttentionSkeleton() {
 /** Variants section skeleton */
 function VariantsSkeleton() {
   return (
-    <GlassCard padding="md">
+    <GlassCard padding="md" blur="none">
       <GlassSkeleton width="80px" height="14px" />
       <div className="mt-3 space-y-2">
         {[1, 2].map((i) => (
@@ -70,13 +70,13 @@ function InsightsThemesSkeleton() {
   return (
     <>
       {/* Insights */}
-      <GlassCard padding="md">
+      <GlassCard padding="md" blur="none">
         <GlassSkeleton width="80px" height="14px" />
         <SkeletonText lines={3} className="mt-3" />
       </GlassCard>
 
       {/* Themes */}
-      <GlassCard padding="md">
+      <GlassCard padding="md" blur="none">
         <GlassSkeleton width="120px" height="14px" />
         <div className="mt-3 space-y-2">
           {[1, 2].map((i) => (

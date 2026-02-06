@@ -4,14 +4,15 @@ import { cn } from "@/lib/utils";
 import { GlassPill } from "@/components/primitives";
 
 /**
- * Role levels with colors matching accumulated decisions (Phase 4).
+ * Role levels matching accumulated decisions (Phase 4).
  * Indigo (Executive), Emerald (Senior), Pink (Mid), Orange (Entry)
+ * Colors are rendered via ROLE_LEVEL_COLORS hex map below.
  */
 export const ROLE_LEVELS = [
-  { id: "executive", label: "Executive", color: "bg-indigo-500" },
-  { id: "senior", label: "Senior", color: "bg-emerald-500" },
-  { id: "mid", label: "Mid", color: "bg-pink-500" },
-  { id: "entry", label: "Entry", color: "bg-orange-500" },
+  { id: "executive", label: "Executive" },
+  { id: "senior", label: "Senior" },
+  { id: "mid", label: "Mid" },
+  { id: "entry", label: "Entry" },
 ] as const;
 
 /** Hex color values for inline dot styling (avoids Tailwind class dependencies) */
