@@ -106,6 +106,14 @@ Plans:
 
 **Dependencies:** Phase 45 (needs to render within the AppShell layout)
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] 48-01-PLAN.md -- Types, constants, d3-hierarchy layout computation, mock data generator
+- [ ] 48-02-PLAN.md -- Canvas resize hook + batched hive renderer with skeleton state
+- [ ] 48-03-PLAN.md -- Animation hook + HiveCanvas component wiring
+- [ ] 48-04-PLAN.md -- Visual verification checkpoint
+
 ---
 
 ### Phase 49: Hive Interactions (Click, Hover & Navigation)
@@ -135,10 +143,10 @@ Plans:
 | 45 | v2.1 | 3/3 | Complete | 2026-02-05 |
 | 46 | v2.1 | 4/4 | Complete | 2026-02-06 |
 | 47 | v2.1 | 5/5 | Complete | 2026-02-06 |
-| 48 | v2.1 | 0/? | Pending | - |
+| 48 | v2.1 | 0/4 | Planned | - |
 | 49 | v2.1 | 0/? | Pending | - |
 | 50-52 | v2.2 | 10/10 | Shipped | 2026-02-06 |
 
 ---
 *Roadmap created: 2026-02-03*
-*Last updated: 2026-02-06 -- v2.2 shipped, v2.1 Phase 47 complete (Wave 1 dashboard migration done)*
+*Last updated: 2026-02-06 -- Phase 48 planned (4 plans in 4 waves)*
