@@ -67,10 +67,14 @@ export function AffiliateLinkCard({ link }: AffiliateLinkCardProps): React.JSX.E
 
   return (
     <div
+      tabIndex={0}
+      role="article"
+      aria-label={`${link.productName} affiliate link`}
       className={cn(
         "rounded-xl border border-border bg-surface-elevated p-5",
         "transition-all duration-200",
         "hover:border-border-hover hover:-translate-y-px hover:shadow-md",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background",
       )}
     >
       {/* Top row: product info + status badge */}

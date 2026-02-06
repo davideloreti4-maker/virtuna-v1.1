@@ -51,10 +51,19 @@ export function DealCard({ deal, isApplied, onApply }: DealCardProps): React.JSX
 
   return (
     <div
+      tabIndex={0}
+      role="article"
+      aria-label={`${deal.brandName} deal: ${payout}`}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && !isApplied && !isExpired) {
+          onApply(deal);
+        }
+      }}
       className={cn(
         "relative rounded-xl border border-border bg-surface-elevated p-5",
         "transition-all duration-200",
         "hover:border-border-hover hover:-translate-y-px hover:shadow-md",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         // Featured accent: colored top border for new deals
         deal.isNew && "border-t-2 border-t-orange-400",
         // Applied deals are muted

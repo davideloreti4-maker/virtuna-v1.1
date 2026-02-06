@@ -39,10 +39,19 @@ export function AvailableProductCard({
 }: AvailableProductCardProps): React.JSX.Element {
   return (
     <div
+      tabIndex={0}
+      role="article"
+      aria-label={`${product.brandName} - ${product.name}: ${product.commissionRate}% commission`}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          onGenerateLink(product);
+        }
+      }}
       className={cn(
         "rounded-xl border border-border bg-surface-elevated p-5",
         "transition-all duration-200",
         "hover:border-border-hover hover:-translate-y-px hover:shadow-md",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background",
       )}
     >
       {/* Brand logo + name */}
