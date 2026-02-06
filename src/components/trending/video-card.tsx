@@ -1,10 +1,12 @@
 "use client";
 
 import Image from "next/image";
+import { BookmarkSimple } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { GlassCard } from "@/components/primitives";
 import { GlassPill } from "@/components/primitives";
 import { HoverScale } from "@/components/motion/hover-scale";
+import { useBookmarkStore } from "@/stores/bookmark-store";
 import { VelocityIndicator } from "./velocity-indicator";
 import {
   CATEGORY_LABELS,
@@ -95,6 +97,7 @@ export interface VideoCardProps {
  */
 export function VideoCard({ video, onClick, className }: VideoCardProps) {
   const pillColor = CATEGORY_PILL_COLOR[video.category];
+  const isBookmarked = useBookmarkStore((s) => s.bookmarkedIds.has(video.id));
 
   return (
     <HoverScale className={cn(onClick && "cursor-pointer", className)}>
@@ -122,6 +125,13 @@ export function VideoCard({ video, onClick, className }: VideoCardProps) {
                 "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%)",
             }}
           />
+
+          {/* Bookmark indicator */}
+          {isBookmarked && (
+            <div className="absolute right-2 top-2 z-10 rounded-full bg-black/50 p-1">
+              <BookmarkSimple weight="fill" className="h-4 w-4 text-accent" />
+            </div>
+          )}
         </div>
 
         {/* Content area */}
