@@ -82,7 +82,13 @@ Plans:
 
 **Dependencies:** Phase 51 (VideoCard click must exist to trigger modal)
 
-**Plans:** TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 52-01-PLAN.md -- Bookmark store + keyboard navigation hook (foundation)
+- [ ] 52-02-PLAN.md -- VideoDetailModal with TikTok embed, metadata, action buttons
+- [ ] 52-03-PLAN.md -- VideoCard bookmark overlay + Saved tab + modal wiring
+- [ ] 52-04-PLAN.md -- Visual verification checkpoint
 
 ## v2.1 Dashboard Rebuild
 
@@ -197,7 +203,7 @@ Plans:
 | 49 | v2.1 | 0/? | Pending | - |
 | 50 | v2.2 | 2/2 | Complete | 2026-02-05 |
 | 51 | v2.2 | 4/4 | Complete | 2026-02-06 |
-| 52 | v2.2 | 0/? | Not started | - |
+| 52 | v2.2 | 0/4 | Planned | - |
 
 ---
 *Roadmap created: 2026-02-03*
