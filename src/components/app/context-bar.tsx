@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { GlassPill } from "@/components/primitives";
 
 interface ContextBarProps {
   location?: string;
@@ -9,7 +10,7 @@ interface ContextBarProps {
  * ContextBar - Top context bar showing current location/filter context.
  *
  * Features:
- * - Location pill with optional colored dot
+ * - Location pill using GlassPill primitive with colored dot
  * - Positioned at top-left of visualization area
  */
 export function ContextBar({
@@ -18,14 +19,13 @@ export function ContextBar({
 }: ContextBarProps) {
   return (
     <div className={cn("flex items-center", className)}>
-      <div className="flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/90 px-3 py-1.5">
-        {/* Colored dot indicator */}
+      <GlassPill color="neutral" size="md" variant="outline" className="gap-2">
         <span
-          className="h-2.5 w-2.5 rounded-full bg-emerald-500"
+          className="h-2 w-2 rounded-full bg-success shrink-0"
           aria-hidden="true"
         />
-        <span className="text-sm text-zinc-300">{location}</span>
-      </div>
+        {location}
+      </GlassPill>
     </div>
   );
 }
