@@ -86,7 +86,11 @@ Plans:
 
 **Dependencies:** Phase 53 (needs tab shell, mock data, useCopyToClipboard hook)
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 55-01-PLAN.md -- AffiliateLinkCard, AvailableProductCard, AffiliatesEmptyState, formatting utilities
+- [ ] 55-02-PLAN.md -- AffiliatesTab container, BrandDealsPage integration, ToastProvider in app layout
 
 ---
 
