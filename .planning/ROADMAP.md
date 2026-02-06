@@ -61,7 +61,12 @@ Plans:
 
 **Dependencies:** Phase 53 (needs tab shell, mock data, page structure)
 
-**Plans:** TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 54-01-PLAN.md -- DealCard component, NewThisWeekRow, payout/color utilities
+- [ ] 54-02-PLAN.md -- DealFilterBar, DealsEmptyState, useDebouncedCallback hook
+- [ ] 54-03-PLAN.md -- DealsTab container, DealApplyModal, BrandDealsPage integration
 
 ---
 
@@ -134,7 +139,7 @@ Plans:
 | 45-49 | v2.1 | 0/3+ | In Progress | - |
 | 50-52 | v2.2 | 0/? | In Progress | - |
 | 53 | v2.3 | 2/2 | Complete | 2026-02-05 |
-| 54 | v2.3 | 0/? | Not started | - |
+| 54 | v2.3 | 0/3 | Planned | - |
 | 55 | v2.3 | 0/? | Not started | - |
 | 56 | v2.3 | 0/? | Not started | - |
 | 57 | v2.3 | 0/? | Not started | - |
