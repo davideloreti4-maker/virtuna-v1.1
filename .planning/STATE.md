@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** Raycast-quality design system enabling rapid, consistent UI development
-**Current focus:** v2.3 Brand Deals & Affiliate Page -- Phase 56 in progress (2/3 plans complete)
+**Current focus:** v2.3 Brand Deals & Affiliate Page -- Phase 56 complete (3/3 plans), ready for Phase 57
 
 ## Current Position
 
 **Milestone:** v2.3 -- Brand Deals & Affiliate Page
-**Phase:** 56 of 57 (Earnings Tab) -- IN PROGRESS
-**Plan:** 2/3 complete
-**Status:** Plan 56-02 complete (chart + period selector), ready for 56-03
-**Last activity:** 2026-02-06 -- Completed 56-02-PLAN.md (EarningsChart + EarningsPeriodSelector)
+**Phase:** 56 of 57 (Earnings Tab) -- COMPLETE
+**Plan:** 3/3 complete
+**Status:** Phase 56 complete, ready for Phase 57 (Responsive & Accessibility)
+**Last activity:** 2026-02-06 -- Completed 56-03-PLAN.md (EarningsTab container + BrandDealsPage integration)
 
-Progress: [█████████░] 88%
+Progress: [██████████] 94%
 
 ## Phase Overview
 
@@ -24,8 +24,8 @@ Progress: [█████████░] 88%
 | 53 | Foundation & Tab Shell | 7 (PAGE-*) | None | Complete (2026-02-05) |
 | 54 | Deals Tab | 14 (DEAL-* + PLSH-01,02) | Phase 53 | Complete (3/3 plans) |
 | 55 | Affiliates Tab | 10 (AFFL-*) | Phase 53 | Complete (2/2 plans) |
-| 56 | Earnings Tab | 9 (EARN-*) | Phase 53 | In progress (2/3 plans) |
-| 57 | Responsive & Accessibility | 3 (PLSH-03,04,05) | 53-56 | Blocked |
+| 56 | Earnings Tab | 9 (EARN-*) | Phase 53 | Complete (3/3 plans) |
+| 57 | Responsive & Accessibility | 3 (PLSH-03,04,05) | 53-56 | Ready |
 
 Note: Phases 54, 55, 56 are independent of each other (can build in any order after 53).
 
@@ -36,7 +36,7 @@ Phase 53 (Foundation) ✓
   |
   +---> Phase 54 (Deals + color/perf patterns) ✓ --+
   +---> Phase 55 (Affiliates) ✓                     +--> Phase 57 (Verify)
-  +---> Phase 56 (Earnings)                       --+
+  +---> Phase 56 (Earnings) ✓                      --+
 ```
 
 ## Shipped Milestones
@@ -92,6 +92,8 @@ Phase 53 (Foundation) ✓
 - [DEC-56-01-02] useCountUp returns MotionValue<string> requiring motion.span for rendering
 - [DEC-56-02-01] Use TooltipContentProps (not TooltipProps) for Recharts v3 custom tooltip
 - [DEC-56-02-02] Pass tooltip as function content prop (not JSX element) for Recharts v3 type safety
+- [DEC-56-03-01] Period filtering uses proportional ratio scaling for stat cards (periodTotal/total)
+- [DEC-56-03-02] Sources list is same for all periods (mock simplification)
 
 ### Key Technical Notes
 - Settings page pattern for URL-synced tabs (server reads searchParams, client orchestrates)
@@ -114,6 +116,8 @@ Phase 53 (Foundation) ✓
 - Recharts v3 custom tooltip: use TooltipContentProps type + function content prop (not JSX element)
 - SVG gradient IDs must be unique per chart component (prefix with component name) to avoid collisions
 - EarningsPeriodSelector uses layoutId="earnings-period-pill" (distinct from main tabs "brand-deals-tab-pill")
+- EarningsTab container pattern: period state + useMemo filterEarningsByPeriod + AnimatePresence fade
+- EarningsBreakdownList: sorted desc by totalEarned, Avatar xs, formatCurrency green-400 text
 
 ### Blockers/Concerns
 None.
@@ -121,9 +125,9 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 56-02-PLAN.md (EarningsChart + EarningsPeriodSelector)
+Stopped at: Completed 56-03-PLAN.md (EarningsTab container + BrandDealsPage integration)
 Resume file: None
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-06 -- Phase 56 plan 02 complete (EarningsChart + EarningsPeriodSelector components)*
+*Last updated: 2026-02-06 -- Phase 56 complete (all 3 plans), ready for Phase 57*
