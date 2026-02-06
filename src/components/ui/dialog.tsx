@@ -161,7 +161,7 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(dialogContentVariants({ size, className }))}
       style={{
-        backgroundColor: "rgba(34, 35, 38, 0.85)",
+        backgroundColor: "rgba(34, 35, 38, 0.95)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
       }}

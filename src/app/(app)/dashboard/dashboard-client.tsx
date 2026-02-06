@@ -112,6 +112,7 @@ export function DashboardClient() {
           <Button
             variant="primary"
             onClick={handleOpenSelector}
+            className="whitespace-nowrap"
           >
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">Create a new test</span>

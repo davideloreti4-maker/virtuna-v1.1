@@ -121,9 +121,6 @@ export function TestTypeSelector({
                 key={typeId}
                 hover="lift"
                 padding="md"
-                glow
-                tinted
-                color="orange"
                 onClick={() => handleSelectType(typeId)}
               >
                 <div className="flex flex-col gap-2">
