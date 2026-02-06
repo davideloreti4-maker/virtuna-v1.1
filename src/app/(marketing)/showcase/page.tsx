@@ -110,14 +110,8 @@ const SEMANTIC_COLORS = [
 
 const FONT_FAMILIES = [
   {
-    name: "--font-display",
-    value: "Funnel Display, ui-sans-serif, system-ui",
-    sample: "The quick brown fox",
-    className: "font-display",
-  },
-  {
     name: "--font-sans",
-    value: "Satoshi, ui-sans-serif, system-ui",
+    value: "Inter, ui-sans-serif, system-ui",
     sample: "The quick brown fox",
     className: "font-sans",
   },
@@ -466,7 +460,7 @@ export default function ShowcasePage() {
       <ShowcaseSection
         id="typography"
         title="Typography Tokens"
-        description="Font families, sizes, weights, line heights, and letter spacing. Display font for headings, sans for body, mono for code."
+        description="Font families, sizes, weights, line heights, and letter spacing. Inter for all text (headings and body), mono for code."
       >
         <div className="space-y-8">
           {/* Font Families */}
@@ -546,11 +540,11 @@ export default function ShowcasePage() {
         <div className="mt-6">
           <CodeBlock
             title="Usage"
-            code={`<h1 className="font-display text-display">
+            code={`<h1 className="text-display font-semibold">
   Hero Heading
 </h1>
-<p className="font-sans text-base font-regular">
-  Body text in Satoshi
+<p className="text-base font-normal">
+  Body text in Inter
 </p>
 <code className="font-mono text-sm">
   code snippet

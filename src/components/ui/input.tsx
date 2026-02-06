@@ -45,7 +45,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         type={type}
         className={cn(
           // Base styles
-          "flex h-11 w-full rounded-md border bg-surface px-3 text-foreground",
+          "flex h-11 w-full rounded-md border bg-white/5 px-3 text-foreground",
           "placeholder:text-foreground-muted",
           // Transitions
           "transition-colors duration-fast",
