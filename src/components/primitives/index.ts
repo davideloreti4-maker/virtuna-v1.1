@@ -13,5 +13,8 @@ export type { GlassCardProps } from "./GlassCard";
 export { GlassPill } from "./GlassPill";
 export type { GlassPillProps } from "./GlassPill";
 
+export { GlassProgress } from "./GlassProgress";
+export type { GlassProgressProps, ProgressSize, ProgressVariant } from "./GlassProgress";
+
 export { TrafficLights } from "./TrafficLights";
 export type { TrafficLightsProps } from "./TrafficLights";

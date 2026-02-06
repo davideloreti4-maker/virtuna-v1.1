@@ -1,44 +1,43 @@
 'use client';
 
-import { cn } from '@/lib/utils';
 import { Info } from 'lucide-react';
 import type { ImpactLabel } from '@/types/test';
+import { GlassCard } from '@/components/primitives';
+import { Text } from '@/components/ui/typography';
 
 interface ImpactScoreProps {
   score: number;
   label: ImpactLabel;
 }
 
-const LABEL_COLORS: Record<ImpactLabel, string> = {
-  Excellent: 'text-emerald-400',
-  Good: 'text-emerald-400',
-  Average: 'text-blue-400',
-  'Below Average': 'text-amber-400',
-  Poor: 'text-red-400',
-};
-
 /**
  * ImpactScore - Displays the overall impact score with a rating label
  *
- * Matches societies.io layout:
+ * Uses GlassCard with coral accent for the score and label.
  * - Header with info icon
- * - Label (e.g., "Average") shown first
+ * - Label (e.g., "Average") shown first in coral accent
  * - Large score number with /100 suffix
  */
 export function ImpactScore({ score, label }: ImpactScoreProps) {
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <h3 className="text-sm font-medium text-zinc-400">Impact Score</h3>
-        <Info className="h-4 w-4 text-zinc-500" />
+    <GlassCard padding="md" hover="lift">
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Text as="span" size="sm" muted>
+            Impact Score
+          </Text>
+          <Info className="h-4 w-4 text-foreground-muted" />
+        </div>
+        <Text as="p" size="sm" className="font-medium text-accent">
+          {label}
+        </Text>
+        <div className="flex items-baseline gap-1">
+          <span className="text-6xl font-bold text-accent">{score}</span>
+          <Text as="span" size="lg" muted>
+            /100
+          </Text>
+        </div>
       </div>
-      <p className={cn('text-sm font-medium', LABEL_COLORS[label])}>{label}</p>
-      <div className="flex items-baseline gap-1">
-        <span className={cn('text-6xl font-bold', LABEL_COLORS[label])}>
-          {score}
-        </span>
-        <span className="text-xl text-zinc-500">/100</span>
-      </div>
-    </div>
+    </GlassCard>
   );
 }
