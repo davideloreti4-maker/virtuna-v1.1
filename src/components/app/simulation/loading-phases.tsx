@@ -1,112 +1,165 @@
 'use client';
 
-import { cn } from '@/lib/utils';
+import { AnimatePresence, motion } from 'framer-motion';
+
+import { GlassCard, GlassSkeleton, SkeletonText } from '@/components/primitives';
+import { Button } from '@/components/ui/button';
 import { useTestStore, type SimulationPhase } from '@/stores/test-store';
-import { Check } from 'lucide-react';
 
 /**
- * Phase configuration for the loading display
+ * Phase order for mapping simulation progress to skeleton visibility.
  */
-const PHASES: { id: SimulationPhase; label: string }[] = [
-  { id: 'analyzing', label: 'Analyzing content...' },
-  { id: 'matching', label: 'Matching profiles...' },
-  { id: 'simulating', label: 'Running simulation...' },
-  { id: 'generating', label: 'Generating insights...' },
+const PHASE_ORDER: SimulationPhase[] = [
+  'analyzing',
+  'matching',
+  'simulating',
+  'generating',
 ];
 
+// ---------------------------------------------------------------------------
+// Section skeleton components -- mirror the stacked-card results layout
+// ---------------------------------------------------------------------------
+
+/** ImpactScore section skeleton */
+function ImpactScoreSkeleton() {
+  return (
+    <GlassCard padding="md">
+      <GlassSkeleton width="120px" height="14px" />
+      <GlassSkeleton width="80px" height="12px" className="mt-2" />
+      <GlassSkeleton width="160px" height="48px" className="mt-3" />
+    </GlassCard>
+  );
+}
+
+/** AttentionBreakdown section skeleton */
+function AttentionSkeleton() {
+  return (
+    <GlassCard padding="md">
+      <GlassSkeleton width="160px" height="14px" />
+      <div className="mt-4 space-y-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="space-y-1.5">
+            <div className="flex justify-between">
+              <GlassSkeleton width="100px" />
+              <GlassSkeleton width="40px" />
+            </div>
+            <GlassSkeleton shape="rectangle" height={8} />
+          </div>
+        ))}
+      </div>
+    </GlassCard>
+  );
+}
+
+/** Variants section skeleton */
+function VariantsSkeleton() {
+  return (
+    <GlassCard padding="md">
+      <GlassSkeleton width="80px" height="14px" />
+      <div className="mt-3 space-y-2">
+        {[1, 2].map((i) => (
+          <GlassSkeleton key={i} shape="rectangle" height={64} />
+        ))}
+      </div>
+    </GlassCard>
+  );
+}
+
+/** Insights + Themes combined section skeleton */
+function InsightsThemesSkeleton() {
+  return (
+    <>
+      {/* Insights */}
+      <GlassCard padding="md">
+        <GlassSkeleton width="80px" height="14px" />
+        <SkeletonText lines={3} className="mt-3" />
+      </GlassCard>
+
+      {/* Themes */}
+      <GlassCard padding="md">
+        <GlassSkeleton width="120px" height="14px" />
+        <div className="mt-3 space-y-2">
+          {[1, 2].map((i) => (
+            <GlassSkeleton key={i} shape="rectangle" height={48} />
+          ))}
+        </div>
+      </GlassCard>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Section configuration -- maps each simulation phase to its skeleton
+// ---------------------------------------------------------------------------
+
+interface SectionConfig {
+  phase: SimulationPhase;
+  skeleton: React.ReactNode;
+}
+
+const SECTIONS: SectionConfig[] = [
+  { phase: 'analyzing', skeleton: <ImpactScoreSkeleton /> },
+  { phase: 'matching', skeleton: <AttentionSkeleton /> },
+  { phase: 'simulating', skeleton: <VariantsSkeleton /> },
+  { phase: 'generating', skeleton: <InsightsThemesSkeleton /> },
+];
+
+// ---------------------------------------------------------------------------
+// LoadingPhases
+// ---------------------------------------------------------------------------
+
 /**
- * LoadingPhases - Displays 4-phase loading progress during AI simulation
+ * LoadingPhases - Skeleton shimmer loading with progressive reveal.
  *
- * Shows:
- * - 4 phases with status indicators (checkmark for complete, pulse for current)
- * - Progress bar showing overall progress (0-100%)
- * - Cancel button to abort simulation
+ * Replaces the old phase-checklist + progress-bar pattern with skeleton
+ * placeholders that mirror the stacked-card results layout. Each skeleton
+ * section fades in as its corresponding simulation phase activates,
+ * providing visual continuity between loading and results states.
+ *
+ * A cancel button below the skeleton area returns to filling-form state.
  */
 export function LoadingPhases() {
   const simulationPhase = useTestStore((s) => s.simulationPhase);
-  const phaseProgress = useTestStore((s) => s.phaseProgress);
   const cancelSimulation = useTestStore((s) => s.cancelSimulation);
 
-  // Find current phase index (-1 if null)
-  const currentPhaseIndex = simulationPhase
-    ? PHASES.findIndex((p) => p.id === simulationPhase)
+  const currentIdx = simulationPhase
+    ? PHASE_ORDER.indexOf(simulationPhase)
     : -1;
 
+  /** A section is visible once its phase has started (currentIdx >= phaseIdx). */
+  const isVisible = (phase: SimulationPhase): boolean =>
+    currentIdx >= PHASE_ORDER.indexOf(phase);
+
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-      {/* Header */}
-      <h3 className="mb-4 text-sm font-medium text-zinc-400">
-        Running Simulation
-      </h3>
-
-      {/* Phase list */}
-      <div className="space-y-3">
-        {PHASES.map((phase, index) => {
-          const isComplete = index < currentPhaseIndex;
-          const isCurrent = index === currentPhaseIndex;
-          const isPending = index > currentPhaseIndex;
-
-          return (
-            <div key={phase.id} className="flex items-center gap-3">
-              {/* Status indicator */}
-              <div
-                className={cn(
-                  'flex h-5 w-5 items-center justify-center rounded-full transition-colors',
-                  isComplete && 'bg-emerald-500',
-                  isCurrent && 'bg-emerald-500/20',
-                  isPending && 'bg-zinc-800'
-                )}
+    <div className="space-y-3">
+      <AnimatePresence mode="popLayout">
+        {SECTIONS.map(
+          (section) =>
+            isVisible(section.phase) && (
+              <motion.div
+                key={section.phase}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{
+                  duration: 0.35,
+                  ease: [0.215, 0.61, 0.355, 1],
+                }}
               >
-                {isComplete ? (
-                  <Check className="h-3 w-3 text-white" strokeWidth={3} />
-                ) : isCurrent ? (
-                  <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-                ) : null}
-              </div>
-
-              {/* Label */}
-              <span
-                className={cn(
-                  'text-sm transition-colors',
-                  isCurrent && 'font-medium text-white',
-                  isComplete && 'text-zinc-400',
-                  isPending && 'text-zinc-600'
-                )}
-              >
-                {phase.label}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Progress bar */}
-      <div className="mt-6">
-        <div className="h-1 w-full overflow-hidden rounded-full bg-zinc-800">
-          <div
-            className="h-full bg-emerald-500 transition-all duration-500 ease-out"
-            style={{ width: `${phaseProgress}%` }}
-          />
-        </div>
-        <p className="mt-2 text-right text-xs text-zinc-500">
-          {phaseProgress}% complete
-        </p>
-      </div>
+                {section.skeleton}
+              </motion.div>
+            )
+        )}
+      </AnimatePresence>
 
       {/* Cancel button */}
-      <button
-        type="button"
+      <Button
+        variant="secondary"
         onClick={cancelSimulation}
-        className={cn(
-          'mt-4 w-full rounded-xl px-4 py-2.5',
-          'border border-zinc-700 bg-transparent text-zinc-400',
-          'text-sm font-medium',
-          'transition-colors hover:border-zinc-600 hover:bg-zinc-800 hover:text-white',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900'
-        )}
+        className="mt-4 w-full"
       >
         Cancel
-      </button>
+      </Button>
     </div>
   );
 }
