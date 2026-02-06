@@ -5,7 +5,7 @@
 See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** Raycast-quality design system enabling rapid, consistent UI development
-**Current focus:** v2.1 Dashboard Rebuild -- Phase 47 in progress
+**Current focus:** v2.1 Dashboard Rebuild -- Phase 47 complete, Wave 2 pending
 
 ## Current Position
 
@@ -41,6 +41,7 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 
 ## Shipped Milestones
 
+- v2.3 Brand Deals & Affiliate Page (2026-02-06) -- 5 phases, 12 plans, 43 requirements
 - v2.2 Trending Page UI (2026-02-06) -- 3 phases, 10 plans, 30 requirements
 - v2.0 Design System Foundation (2026-02-05) -- 6 phases, 35 plans, 125 requirements
 - v1.2 Visual Accuracy Refinement (2026-01-30) -- 2 phases
@@ -95,6 +96,7 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 - [47-05] Test type selector and content form use Raycast gradient glass (user-requested override of opaque modal pattern)
 - [47-05] Simulate button uses primary variant (coral/orange) for visual prominence
 - [47-05] shadow-button inset highlight toned from solid white to rgba(255,255,255,0.2)
+- All v2.3 decisions archived in milestones/v2.3-ROADMAP.md
 
 ### Design System Components
 - v2.0 design system components are the building blocks (GlassPanel, GlassCard, GlassInput, GlassTextarea, GlassPill, GlassProgress, Dialog, Button, Select, Badge, Typography, Spinner, Icon)
@@ -112,12 +114,20 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 - useInfiniteVideos hook, bookmark-store with localStorage persistence
 - Trending page at /trending with 3 category tabs + Saved filter
 
+### v2.3 Brand Deals Components (merged from worktree)
+- 30+ components: DealCard, DealFilterBar, DealApplyModal, AffiliateLinkCard, AvailableProductCard, EarningsStatCards, EarningsChart, etc.
+- Hooks: useCopyToClipboard, useCountUp, useDebouncedCallback
+- Brand deals page at /brand-deals with 3-tab layout (Deals / Affiliates / Earnings)
+
+### Blockers/Concerns
+None.
+
 ### Session Continuity
 - Last session: 2026-02-06
-- Stopped at: Completed Phase 47 (all 5 plans, visual verification approved)
+- Stopped at: Completed Phase 47 (all 5 plans, visual verification approved); merged v2.3 Brand Deals
 - Resume file: None
 - Next: Phase 48 (Hive Foundation) or Phase 49 (Hive Interactions)
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-06 -- Phase 47 complete (Wave 1 dashboard migration done)*
+*Last updated: 2026-02-06 -- v2.3 merged to main, Phase 47 complete (Wave 1 dashboard migration done)*

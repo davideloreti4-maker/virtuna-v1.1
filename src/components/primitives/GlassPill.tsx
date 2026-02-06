@@ -118,6 +118,7 @@ export function GlassPill({
         colorConfig.text,
         // Interactive states
         isInteractive && "cursor-pointer hover:scale-105 active:scale-95",
+        isInteractive && "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
         // Active state
         active && "ring-1",
         // Disabled state

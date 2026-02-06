@@ -29,19 +29,17 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 - Pixel-perfect societies.io clone (landing + app) -- v1.1
 - Full auth flow with Supabase Auth -- v1.1
 - Responsive design (desktop + mobile) -- v1.1
+- Brand deals & affiliate page with three-tab layout (Deals / Affiliates / Earnings) -- v2.3
+- Deal cards grid with filters, search, apply modal, and featured highlights -- v2.3
+- Affiliate link cards with copy-to-clipboard, stats, and generate-from-products -- v2.3
+- Earnings dashboard with count-up stats, area chart, and per-source breakdown -- v2.3
+- Loading skeletons, responsive mobile layout, and keyboard accessibility -- v2.3
+- v0 MCP-guided UI generation with design system consistency -- v2.3
 
 ### Active
 
-- [ ] Floating glassmorphic sidebar (GlassPanel, always visible, pushes content)
-- [ ] Dashboard forms rebuilt with design system components (ContentForm, SurveyForm, TestTypeSelector)
-- [ ] All dashboard modals rebuilt with design system (CreateSociety, DeleteTest, LeaveFeedback, SocietySelector)
-- [ ] Results panel rebuilt with design system (ImpactScore, AttentionBreakdown, Variants, Insights, Themes)
-- [ ] Top bar rebuilt (ContextBar, FilterPills, LegendPills)
-- [ ] LoadingPhases simulation progress rebuilt with design system
-- [ ] Mobile nav updated for floating sidebar
-- [ ] Hive node visualization (center thumbnail + 3-layer node hierarchy)
-- [ ] Node click interaction (glow/scale + info card)
-- [ ] Node hover interaction (highlight connected nodes)
+- [ ] Backend integration for brand deals/affiliate data
+- [ ] Additional page UI milestones
 
 ### Out of Scope
 
@@ -54,14 +52,13 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 
 ## Context
 
-**Current state:** v2.2 Trending Page UI shipped (2026-02-06).
-- ~32,400 LOC TypeScript/CSS
-- Tech stack: Next.js 14+ (App Router), TypeScript strict, Tailwind CSS v4, Supabase Auth
-- 36 design system components across 4 families, 100+ design tokens
-- NEW: Trending page at /trending with TikTok-style video feed
-- NEW: 14 trending-specific components (VideoCard, VideoGrid, VideoDetailModal, TikTokEmbed, etc.)
-- NEW: Bookmark store with localStorage persistence
-- Dashboard has ~30 app components with hardcoded styles (pre-design-system)
+**Current state:** v2.3 Brand Deals shipped, v2.2 Trending shipped, v2.1 Dashboard in progress (2026-02-06).
+- ~32,400+ LOC TypeScript/CSS
+- Tech stack: Next.js 14+ (App Router), TypeScript strict, Tailwind CSS v4, Supabase Auth, Recharts
+- 36 design system components + 30+ brand deals components + 14 trending components
+- Trending page at /trending with TikTok-style video feed + bookmark store
+- Brand deals page at /brand-deals with 3-tab layout + earnings chart
+- Dashboard has ~30 app components (v2.1 migration in progress, Wave 1 done)
 - 7-page showcase at /showcase
 - 8 documentation files in docs/
 - BRAND-BIBLE.md at repo root
@@ -73,6 +70,7 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 - Responsive showcase clipping on mobile
 - Touch target threshold relaxed to 32x24px (desktop-first)
 - Analyze button routes to /viral-predictor which doesn't exist yet (tech debt)
+- 800ms hardcoded skeleton delay on brand deals page (should use Suspense with real data)
 
 ## Key Decisions
 
@@ -87,6 +85,11 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 | React.useId() for InputField IDs | Good -- fixed SSR hydration mismatch |
 | accent-foreground: #1a0f0a dark brown | Good -- 7.2:1 AAA contrast on coral |
 | gray-500: #848586 for muted text | Good -- 5.4:1 AA contrast on dark bg |
+| v0 MCP for v2.3 UI generation | Good -- design system docs ensured consistent output |
+| Solid surface cards over glass for grids | Good -- smooth scroll performance |
+| Color semantics (orange/green/blue) from Brand Bible | Good -- consistent across all 3 tabs |
+| Lifted state for applied deals/active links | Good -- state survives tab switches |
+| Recharts v3 with function content tooltip | Good -- type-safe dark-mode chart |
 
 ## Constraints
 
@@ -104,21 +107,15 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 
 ## Current State
 
-**Shipped:** v2.2 Trending Page UI (2026-02-06)
+**Shipped:** v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06)
 
-The trending page is complete with:
-- TikTok Creative Center-style feed at /trending
-- 42 mock videos across 3 categories
-- Video detail modal with TikTok embed
-- Bookmark system with persistence
-
-**In progress:** v2.1 Dashboard Rebuild (main branch)
+**In progress:** v2.1 Dashboard Rebuild (main branch, Wave 1 complete, Phases 48-49 pending)
 
 **Future milestones:**
-- v2.3 Brand Deals page
+- Backend integration for brand deals/affiliate data
 - Trending page backend (Apify, AI classification, TanStack Query)
 - Remix system (multi-step wizard, storyboard generation)
 - PDF export and advanced features
 
 ---
-*Last updated: 2026-02-06 after v2.2 milestone shipped*
+*Last updated: 2026-02-06 after v2.3 milestone merged to main*
