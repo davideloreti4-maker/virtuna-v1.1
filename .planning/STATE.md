@@ -89,6 +89,9 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 - [47-03] GlassPill className gap-2/gap-1.5 for dot-to-label spacing (GlassPill base has no gap)
 - [47-04] Staggered skeleton entry (not skeleton-to-content swap) since data arrives all at once
 - [47-04] GlassSkeleton/SkeletonText added to primitives barrel export
+- [47-02] ResultsPanel uses plain div (bg-surface) not GlassPanel (avoid double glass with child GlassCards)
+- [47-02] ShareButton uses useToast for clipboard feedback (replaces useState/setTimeout pattern)
+- [47-02] ToastProvider wraps AppShell in server layout (client component safe as child in RSC tree)
 
 ### Design System Components
 - v2.0 design system components are the building blocks (GlassPanel, GlassCard, GlassInput, GlassTextarea, GlassPill, GlassProgress, Dialog, Button, Select, Badge, Typography, Spinner, Icon)
@@ -108,10 +111,10 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 
 ### Session Continuity
 - Last session: 2026-02-06
-- Stopped at: Completed 47-04-PLAN.md
+- Stopped at: Completed 47-02-PLAN.md
 - Resume file: None
 - Next: 47-05-PLAN.md (final plan in Phase 47)
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-06 -- Phase 47 plan 04 complete (skeleton shimmer loading)*
+*Last updated: 2026-02-06 -- Phase 47 plan 02 complete (ResultsPanel wrapper, ShareButton toast, ToastProvider)*
