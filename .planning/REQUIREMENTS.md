@@ -32,16 +32,16 @@
 
 ### Affiliates Tab
 
-- [ ] **AFFL-01**: "Active Links" section displays 4-5 active affiliate link cards with count Badge in header
-- [ ] **AFFL-02**: Each active link card shows product image/thumbnail, product name, and truncated affiliate URL
-- [ ] **AFFL-03**: Each active link card has a copy-to-clipboard button (via `useCopyToClipboard` hook) with toast confirmation
-- [ ] **AFFL-04**: Copy button icon morphs from Copy to Check icon for 2 seconds as visual feedback
-- [ ] **AFFL-05**: Each active link card shows click count, conversion count, and commission earned
-- [ ] **AFFL-06**: Each active link card shows status Badge (Active, Expired, Paused)
-- [ ] **AFFL-07**: "Available Products" section displays 6-8 products in a 2-3 column grid
-- [ ] **AFFL-08**: Each available product card shows product image, name, and commission rate
-- [ ] **AFFL-09**: "Generate Link" Button adds product to active links list with brief success feedback (toast + card appears at top of active list)
-- [ ] **AFFL-10**: Empty state for active links section when none exist
+- [x] **AFFL-01**: "Active Links" section displays 4-5 active affiliate link cards with count Badge in header
+- [x] **AFFL-02**: Each active link card shows product image/thumbnail, product name, and truncated affiliate URL
+- [x] **AFFL-03**: Each active link card has a copy-to-clipboard button (via `useCopyToClipboard` hook) with toast confirmation
+- [x] **AFFL-04**: Copy button icon morphs from Copy to Check icon for 2 seconds as visual feedback
+- [x] **AFFL-05**: Each active link card shows click count, conversion count, and commission earned
+- [x] **AFFL-06**: Each active link card shows status Badge (Active, Expired, Paused)
+- [x] **AFFL-07**: "Available Products" section displays 6-8 products in a 2-3 column grid
+- [x] **AFFL-08**: Each available product card shows product image, name, and commission rate
+- [x] **AFFL-09**: "Generate Link" Button adds product to active links list with brief success feedback (toast + card appears at top of active list)
+- [x] **AFFL-10**: Empty state for active links section when none exist
 
 ### Earnings Tab
 
@@ -118,16 +118,16 @@
 | DEAL-10 | Phase 54 | Complete |
 | DEAL-11 | Phase 54 | Complete |
 | DEAL-12 | Phase 54 | Complete |
-| AFFL-01 | Phase 55 | Pending |
-| AFFL-02 | Phase 55 | Pending |
-| AFFL-03 | Phase 55 | Pending |
-| AFFL-04 | Phase 55 | Pending |
-| AFFL-05 | Phase 55 | Pending |
-| AFFL-06 | Phase 55 | Pending |
-| AFFL-07 | Phase 55 | Pending |
-| AFFL-08 | Phase 55 | Pending |
-| AFFL-09 | Phase 55 | Pending |
-| AFFL-10 | Phase 55 | Pending |
+| AFFL-01 | Phase 55 | Complete |
+| AFFL-02 | Phase 55 | Complete |
+| AFFL-03 | Phase 55 | Complete |
+| AFFL-04 | Phase 55 | Complete |
+| AFFL-05 | Phase 55 | Complete |
+| AFFL-06 | Phase 55 | Complete |
+| AFFL-07 | Phase 55 | Complete |
+| AFFL-08 | Phase 55 | Complete |
+| AFFL-09 | Phase 55 | Complete |
+| AFFL-10 | Phase 55 | Complete |
 | EARN-01 | Phase 56 | Pending |
 | EARN-02 | Phase 56 | Pending |
 | EARN-03 | Phase 56 | Pending |
@@ -150,4 +150,4 @@
 
 ---
 *Requirements defined: 2026-02-05*
-*Last updated: 2026-02-06 -- DEAL-01 through DEAL-12, PLSH-01, PLSH-02 marked Complete (Phase 54 verified)*
+*Last updated: 2026-02-06 -- AFFL-01 through AFFL-10 marked Complete (Phase 55 verified 10/10)*
