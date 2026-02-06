@@ -31,7 +31,11 @@
 4. Card gradient, glass gradient, input background, border opacity, and button shadow token values in globals.css match the Raycast extraction document exactly
 5. Font-size scale tokens are verified against Raycast type scale with any discrepancies documented
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 53-01-PLAN.md -- Font + color token foundation (globals.css overhaul, Inter font loading, Satoshi deletion)
+- [ ] 53-02-PLAN.md -- Component font migration (remove font-display from 11 files, fix weights, input bg, showcase docs)
 
 ---
 
