@@ -15,7 +15,6 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { GlassPanel } from "@/components/primitives";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Text, Caption } from "@/components/ui/typography";
@@ -96,18 +95,20 @@ export function Sidebar() {
         />
       )}
 
-      <GlassPanel
-        as="aside"
-        blur="sm"
-        opacity={0.85}
-        borderGlow
-        tint="neutral"
+      <aside
         className={cn(
           "fixed top-3 left-3 bottom-3 z-[var(--z-sidebar)] w-[260px]",
-          "flex flex-col overflow-hidden",
+          "flex flex-col overflow-hidden rounded-xl",
+          "border border-white/[0.06]",
           "transition-transform duration-300 ease-[var(--ease-out-cubic)]",
           isOpen ? "translate-x-0" : "-translate-x-[calc(100%+12px)]",
         )}
+        style={{
+          backgroundImage: "linear-gradient(137deg, rgba(17, 18, 20, 0.75) 4.87%, rgba(12, 13, 15, 0.9) 75.88%)",
+          backdropFilter: "blur(5px)",
+          WebkitBackdropFilter: "blur(5px)",
+          boxShadow: "rgba(255,255,255,0.15) 0px 1px 1px 0px inset",
+        }}
       >
         {/* Header: Logo + Collapse */}
         <div className="flex items-center justify-between px-4 pt-4 pb-1">
@@ -194,7 +195,7 @@ export function Sidebar() {
 
         {/* Version text */}
         <Caption className="mb-3 text-center">Version 2.1</Caption>
-      </GlassPanel>
+      </aside>
 
       {/* Leave Feedback Modal - sibling pattern */}
       <LeaveFeedbackModal open={feedbackOpen} onOpenChange={setFeedbackOpen} />

@@ -54,7 +54,7 @@ const buttonVariants = cva(
         primary:
           "bg-accent text-accent-foreground shadow-button hover:bg-accent-hover active:bg-accent-active",
         secondary:
-          "bg-white/[0.05] border border-white/[0.1] text-foreground hover:bg-white/[0.08] active:bg-white/[0.12]",
+          "bg-transparent border border-white/[0.06] text-foreground hover:bg-white/[0.1] active:bg-white/[0.15]",
         ghost:
           "bg-transparent text-foreground hover:bg-hover active:bg-active",
         destructive:

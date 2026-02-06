@@ -88,7 +88,7 @@
 
   /* --- Borders --- */
   /* Source: raycast.com nav border rgba(255,255,255,0.06), frame border rgba(255,255,255,0.08) */
-  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border: rgba(255, 255, 255, 0.06);
   --color-border-hover: rgba(255, 255, 255, 0.15);
   --color-border-glass: rgba(255, 255, 255, 0.06);
   --color-border-subtle: rgba(255, 255, 255, 0.04);
@@ -325,10 +325,10 @@
 }
 
 /* Glass effect base styles - Safari compatible */
-/* Source: Raycast feature frame: rgba(0,0,0,0.44), border: rgba(255,255,255,0.08) */
+/* Source: Raycast glass pattern: gradient bg, border: rgba(255,255,255,0.06) */
 .glass-base {
   background: rgba(28, 29, 33, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .glass-blur-xs {
@@ -389,6 +389,9 @@ html,
 body {
   @apply bg-background text-foreground font-sans;
   overflow-x: hidden;
+  letter-spacing: 0.2px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 

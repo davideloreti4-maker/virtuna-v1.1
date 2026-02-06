@@ -151,12 +151,12 @@ export function SocietySelector({ className }: SocietySelectorProps) {
               {/* Create Target Society Card */}
               <div
                 className={cn(
-                  "group min-h-[180px] cursor-pointer rounded-[10px] border border-dashed border-white/[0.06] bg-transparent p-6",
+                  "group min-h-[180px] cursor-pointer rounded-[12px] border border-dashed border-white/[0.06] bg-transparent p-6",
                   "transition-all duration-200",
                   "hover:-translate-y-0.5 hover:border-white/[0.1] hover:bg-white/[0.03]"
                 )}
                 style={{
-                  boxShadow: "rgba(255,255,255,0.05) 0px 1px 0px 0px inset",
+                  boxShadow: "rgba(255,255,255,0.1) 0px 1px 0px 0px inset",
                 }}
                 onClick={handleCreateSociety}
               >
@@ -208,14 +208,14 @@ function PersonalSocietyCard({
   return (
     <div
       className={cn(
-        "group min-h-[180px] cursor-pointer rounded-[10px] p-6 transition-all duration-200",
+        "group min-h-[180px] cursor-pointer rounded-[12px] p-6 transition-all duration-200",
         "hover:-translate-y-0.5",
         isSelected
           ? "border border-solid border-accent bg-white/[0.04] ring-2 ring-accent/50"
           : "border border-dashed border-white/[0.06] bg-transparent hover:border-white/[0.1] hover:bg-white/[0.03]"
       )}
       style={{
-        boxShadow: "rgba(255,255,255,0.05) 0px 1px 0px 0px inset",
+        boxShadow: "rgba(255,255,255,0.1) 0px 1px 0px 0px inset",
       }}
       onClick={onSelect}
     >
@@ -268,14 +268,14 @@ function TargetSocietyCard({
   return (
     <div
       className={cn(
-        "group min-h-[180px] cursor-pointer rounded-[10px] p-6 transition-all duration-200",
+        "group min-h-[180px] cursor-pointer rounded-[12px] p-6 transition-all duration-200",
         "hover:-translate-y-0.5",
         isSelected
           ? "border border-accent bg-white/[0.04] ring-2 ring-accent/50"
           : "border border-white/[0.06] bg-transparent hover:border-white/[0.1] hover:bg-white/[0.03]"
       )}
       style={{
-        boxShadow: "rgba(255,255,255,0.05) 0px 1px 0px 0px inset",
+        boxShadow: "rgba(255,255,255,0.1) 0px 1px 0px 0px inset",
       }}
       onClick={onSelect}
     >

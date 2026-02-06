@@ -41,7 +41,7 @@ export interface GlassPanelProps {
 const tintMap: Record<GlassTint, { bg: string; border: string; glow: string }> = {
   neutral: {
     bg: "oklch(0.18 0.01 264",
-    border: "rgba(255, 255, 255, 0.12)",
+    border: "rgba(255, 255, 255, 0.06)",
     glow: "rgba(255, 255, 255, 0.06)",
   },
   purple: {
