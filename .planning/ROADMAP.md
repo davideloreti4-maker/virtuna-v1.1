@@ -2,6 +2,7 @@
 
 ## Milestones
 
+- v2.2 Trending Page UI -- Phases 50-52 (shipped 2026-02-06) | [Archive](milestones/v2.2-ROADMAP.md)
 - v2.1 Dashboard Rebuild -- Phases 45-49 (active)
 - v2.0 Design System Foundation -- Phases 39-44 (shipped 2026-02-05) | [Archive](milestones/v2.0-ROADMAP.md)
 - v1.2 Visual Accuracy Refinement -- Phases 11-14 (shipped 2026-01-30)
@@ -127,7 +128,8 @@ Plans:
 | 47 | v2.1 | 0/? | Pending | - |
 | 48 | v2.1 | 0/? | Pending | - |
 | 49 | v2.1 | 0/? | Pending | - |
+| 50-52 | v2.2 | 10/10 | Shipped | 2026-02-06 |
 
 ---
 *Roadmap created: 2026-02-03*
-*Last updated: 2026-02-05 -- Phase 45 complete (3/3 plans, verified)*
+*Last updated: 2026-02-06 -- v2.2 shipped, v2.1 Phase 46 complete*

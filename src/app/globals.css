@@ -66,7 +66,7 @@
   /* Source: raycast.com body rgb(7,8,10), cards rgba(0,0,0,0.44), surfaces rgba(34,34,34,0.85) */
   --color-background: var(--color-gray-950);
   --color-background-elevated: var(--color-gray-900);
-  --color-surface: #18191c;     /* rgb(24,25,28) — Raycast card/surface */
+  --color-surface: #18191a;     /* rgb(24,25,26) — Raycast bg-200 exact */
   --color-surface-elevated: #222326;  /* rgb(34,35,38) — Raycast elevated panels */
 
   /* --- Text --- */
@@ -87,9 +87,9 @@
   --color-info: var(--color-info-raw);
 
   /* --- Borders --- */
-  /* Source: raycast.com nav border rgba(255,255,255,0.06), frame border rgba(255,255,255,0.08) */
+  /* Source: raycast.com universal border rgba(255,255,255,0.06), hover 0.1 */
   --color-border: rgba(255, 255, 255, 0.06);
-  --color-border-hover: rgba(255, 255, 255, 0.15);
+  --color-border-hover: rgba(255, 255, 255, 0.1);
   --color-border-glass: rgba(255, 255, 255, 0.06);
   --color-border-subtle: rgba(255, 255, 255, 0.04);
 
@@ -148,8 +148,8 @@
   /* --- Radius Scale --- */
   /* Source: raycast.com - 6px, 8px, 12px, 16px common */
   --radius-none: 0;
-  --radius-xs: 6px;
-  --radius-sm: 4px;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
@@ -224,6 +224,22 @@
   --sh-string: #a5d6ff;
   --sh-keyword: #ff7b72;
   --sh-comment: #58595a;
+}
+
+/* ============================================
+ * RAYCAST VARIABLE ALIASES
+ * Maps Raycast CSS variable names used in primitives
+ * to Virtuna semantic tokens. Keeps primitives working
+ * without rewriting 16+ component files.
+ * ============================================ */
+:root {
+  --rounding-normal: 8px;
+  --color-fg: var(--color-foreground);
+  --color-fg-300: var(--color-foreground-muted);
+  --color-accent-transparent: oklch(0.72 0.16 40 / 0.15);
+  --color-red: var(--color-error);
+  --color-red-transparent: oklch(0.60 0.20 25 / 0.15);
+  --ease-out: var(--ease-out-cubic);
 }
 
 /* ============================================
@@ -389,6 +405,7 @@ html,
 body {
   @apply bg-background text-foreground font-sans;
   overflow-x: hidden;
+  line-height: 1.15;
   letter-spacing: 0.2px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

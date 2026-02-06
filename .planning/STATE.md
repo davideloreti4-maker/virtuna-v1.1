@@ -2,7 +2,7 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-05)
+See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** Raycast-quality design system enabling rapid, consistent UI development
 **Current focus:** v2.1 Dashboard Rebuild -- Phase 46 complete, Phase 47 next
@@ -31,7 +31,7 @@ Progress: [████████--] 80% (phase 46: 4/4 complete, phase 45: 3/
 
 ```
 Phase 45 (Foundation) ✓
-  |---> Phase 46 (Forms & Modals)
+  |---> Phase 46 (Forms & Modals) ✓
   |---> Phase 47 (Results, Top Bar & Loading)
   |---> Phase 48 (Hive Foundation) ---> Phase 49 (Hive Interactions)
 ```
@@ -41,17 +41,16 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 
 ## Shipped Milestones
 
+- v2.2 Trending Page UI (2026-02-06) -- 3 phases, 10 plans, 30 requirements
 - v2.0 Design System Foundation (2026-02-05) -- 6 phases, 35 plans, 125 requirements
 - v1.2 Visual Accuracy Refinement (2026-01-30) -- 2 phases
 - v1.1 Pixel-Perfect Clone (2026-01-29) -- 10 phases
 
-## Infrastructure URLs
+## In-Progress Milestones
 
-- **GitHub**: https://github.com/davideloreti4-maker/virtuna-v1.1
-- **Vercel**: https://virtuna-v11.vercel.app
-- **Showcase**: /showcase (component documentation, 7 pages)
+- v2.1 Dashboard Rebuild -- Phases 45-49, 51 requirements, 40% executed (Phases 45-46 complete)
 
-## Accumulated Context
+## Key Technical Notes
 
 ### Decisions
 - Phase numbering continues from v2.0 (last phase 44), starting at 45
@@ -83,7 +82,7 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 - [46-04] Selected society card uses ring-2 ring-accent border-accent (coral) matching TestTypeSelector pattern
 - [46-04] DialogContent size=full with max-w-[800px] for society selector grid layout
 
-### Key Technical Notes
+### Design System Components
 - v2.0 design system components are the building blocks (GlassPanel, GlassCard, GlassInput, GlassTextarea, GlassPill, GlassProgress, Dialog, Button, Select, Badge, Typography, Spinner, Icon)
 - Mobile backdrop-filter budget: max 2 glass elements (MOBL-03)
 - Hive uses Canvas 2D (not SVG) for 1000+ node performance
@@ -94,6 +93,11 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 - **Form validation pattern:** Zod v4 schema + manual state (safeParse on blur/submit, re-validate on change after first touch). No react-hook-form needed for simple forms.
 - **Character counter pattern:** Show at 80%+ of max length, text-error at/over limit.
 
+### v2.2 Trending Components (merged from worktree)
+- VideoCard, VideoGrid, VideoDetailModal, TikTokEmbed, VelocityIndicator, EmptyState
+- useInfiniteVideos hook, bookmark-store with localStorage persistence
+- Trending page at /trending with 3 category tabs + Saved filter
+
 ### Session Continuity
 - Last session: 2026-02-06
 - Stopped at: Completed 46-04-PLAN.md (phase 46 complete)
@@ -102,4 +106,4 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-06 -- Completed 46-04 (SocietySelector migration + modal consistency verification, phase 46 complete)*
+*Last updated: 2026-02-06 -- v2.2 merged from worktree, v2.1 Phase 46 complete*
