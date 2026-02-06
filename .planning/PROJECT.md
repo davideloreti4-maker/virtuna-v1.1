@@ -102,23 +102,31 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 - Local: ~/virtuna-v1.1
 - Vercel: https://virtuna-v11.vercel.app
 
+## Current Milestone: v2.3.5 Design Token Alignment
+
+**Goal:** Achieve 1:1 design alignment with Raycast.com (except coral #FF7F50 branding) through exhaustive extraction, audit, and correction of all design tokens, reference docs, and components.
+
+**Target features:**
+- Exhaustive design extraction from Raycast.com (homepage + key pages from top nav, excluding blog/developers)
+- Full audit of every Virtuna token against Raycast extraction
+- Fix all token mismatches in globals.css @theme block
+- Switch typography from Funnel Display + Satoshi to Inter (matching Raycast)
+- Strip colored glass tints, inner glow, GradientGlow/GradientMesh to match Raycast's minimal approach
+- Rewrite BRAND-BIBLE.md as accurate Raycast-aligned reference
+- Full regression of all 36 components + trending page + dashboard after fixes
+
 ## Current State
 
 **Shipped:** v2.2 Trending Page UI (2026-02-06)
 
-The trending page is complete with:
-- TikTok Creative Center-style feed at /trending
-- 42 mock videos across 3 categories
-- Video detail modal with TikTok embed
-- Bookmark system with persistence
+**In progress:** v2.1 Dashboard Rebuild (main branch, phases 45-46 complete)
 
-**In progress:** v2.1 Dashboard Rebuild (main branch)
+**This milestone:** v2.3.5 Design Token Alignment (worktree)
 
 **Future milestones:**
 - v2.3 Brand Deals page
+- Landing page
 - Trending page backend (Apify, AI classification, TanStack Query)
-- Remix system (multi-step wizard, storyboard generation)
-- PDF export and advanced features
 
 ---
-*Last updated: 2026-02-06 after v2.2 milestone shipped*
+*Last updated: 2026-02-06 after v2.3.5 milestone started*
