@@ -5,6 +5,7 @@ import * as Tabs from "@radix-ui/react-tabs";
 import { AnimatePresence, motion } from "motion/react";
 import { useSearchParams } from "next/navigation";
 
+import { AffiliatesTab } from "./affiliates-tab";
 import { BrandDealsHeader } from "./brand-deals-header";
 import { BrandDealsTabs } from "./brand-deals-tabs";
 import { DealsTab } from "./deals-tab";
@@ -77,11 +78,7 @@ export function BrandDealsPage({ defaultTab }: BrandDealsPageProps) {
                 forceMount={currentTab === "affiliates" ? true : undefined}
                 className="outline-none"
               >
-                <div className="flex min-h-[300px] items-center justify-center rounded-xl border border-border-subtle">
-                  <p className="text-foreground-muted">
-                    Affiliates tab content -- Phase 55
-                  </p>
-                </div>
+                <AffiliatesTab />
               </Tabs.Content>
             </motion.div>
           </AnimatePresence>
