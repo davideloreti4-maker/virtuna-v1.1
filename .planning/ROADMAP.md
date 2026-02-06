@@ -111,7 +111,12 @@ Plans:
 
 **Dependencies:** Phase 53 (needs tab shell, mock data)
 
-**Plans:** TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 56-01-PLAN.md -- useCountUp hook and EarningsStatCards (2x2 grid with count-up animation, percentage change indicators)
+- [ ] 56-02-PLAN.md -- EarningsPeriodSelector and EarningsChart (sliding pill selector, coral gradient area chart, dark tooltip)
+- [ ] 56-03-PLAN.md -- EarningsBreakdownList, EarningsTab container, BrandDealsPage integration
 
 ---
 
@@ -145,7 +150,7 @@ Plans:
 | 53 | v2.3 | 2/2 | Complete | 2026-02-05 |
 | 54 | v2.3 | 3/3 | Complete | 2026-02-06 |
 | 55 | v2.3 | 2/2 | Complete | 2026-02-06 |
-| 56 | v2.3 | 0/? | Not started | - |
+| 56 | v2.3 | 0/3 | Planned | - |
 | 57 | v2.3 | 0/? | Not started | - |
 
 ---
