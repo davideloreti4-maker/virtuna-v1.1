@@ -36,19 +36,19 @@
 
 ### Video Detail Modal
 
-- [ ] **DETL-01**: Detail modal uses design system Dialog (lg or xl size)
-- [ ] **DETL-02**: Modal shows TikTok embed iframe (real embed from TikTok URL)
-- [ ] **DETL-03**: Modal shows full metadata: creator, views, likes, shares, date, hashtags
-- [ ] **DETL-04**: Modal has Analyze button (wired to existing Viral Predictor flow)
-- [ ] **DETL-05**: Modal has Bookmark button (toggles saved state, persisted in Zustand + localStorage)
-- [ ] **DETL-06**: Modal has Remix button showing "Coming Soon" tooltip/badge
-- [ ] **DETL-07**: Modal close via overlay click, escape key, or close button
+- [x] **DETL-01**: Detail modal uses design system Dialog (lg or xl size)
+- [x] **DETL-02**: Modal shows TikTok embed iframe (real embed from TikTok URL)
+- [x] **DETL-03**: Modal shows full metadata: creator, views, likes, shares, date, hashtags
+- [x] **DETL-04**: Modal has Analyze button (wired to existing Viral Predictor flow)
+- [x] **DETL-05**: Modal has Bookmark button (toggles saved state, persisted in Zustand + localStorage)
+- [x] **DETL-06**: Modal has Remix button showing "Coming Soon" tooltip/badge
+- [x] **DETL-07**: Modal close via overlay click, escape key, or close button
 
 ### Bookmarks
 
-- [ ] **BMRK-01**: Bookmark state stored in Zustand with localStorage persistence
-- [ ] **BMRK-02**: Bookmarked videos show filled bookmark icon on their VideoCard
-- [ ] **BMRK-03**: Optional "Saved" filter tab to view bookmarked videos
+- [x] **BMRK-01**: Bookmark state stored in Zustand with localStorage persistence
+- [x] **BMRK-02**: Bookmarked videos show filled bookmark icon on their VideoCard
+- [x] **BMRK-03**: Optional "Saved" filter tab to view bookmarked videos
 
 ### Mock Data
 
@@ -111,16 +111,16 @@
 | CARD-03 | Phase 51 | Complete |
 | CARD-04 | Phase 51 | Complete |
 | CARD-05 | Phase 51 | Complete |
-| DETL-01 | Phase 52 | Pending |
-| DETL-02 | Phase 52 | Pending |
-| DETL-03 | Phase 52 | Pending |
-| DETL-04 | Phase 52 | Pending |
-| DETL-05 | Phase 52 | Pending |
-| DETL-06 | Phase 52 | Pending |
-| DETL-07 | Phase 52 | Pending |
-| BMRK-01 | Phase 52 | Pending |
-| BMRK-02 | Phase 52 | Pending |
-| BMRK-03 | Phase 52 | Pending |
+| DETL-01 | Phase 52 | Complete |
+| DETL-02 | Phase 52 | Complete |
+| DETL-03 | Phase 52 | Complete |
+| DETL-04 | Phase 52 | Complete |
+| DETL-05 | Phase 52 | Complete |
+| DETL-06 | Phase 52 | Complete |
+| DETL-07 | Phase 52 | Complete |
+| BMRK-01 | Phase 52 | Complete |
+| BMRK-02 | Phase 52 | Complete |
+| BMRK-03 | Phase 52 | Complete |
 | MOCK-01 | Phase 50 | Complete |
 | MOCK-02 | Phase 50 | Complete |
 | MOCK-03 | Phase 50 | Complete |
@@ -132,4 +132,4 @@
 
 ---
 *Requirements defined: 2026-02-05*
-*Last updated: 2026-02-06 -- Phase 51 requirements complete (CARD, FEED)*
+*Last updated: 2026-02-06 -- Phase 52 requirements complete (DETL, BMRK), v2.2 milestone complete*
