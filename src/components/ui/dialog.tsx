@@ -90,7 +90,7 @@ const dialogContentVariants = cva(
     "w-full",
     // Glass styling
     "rounded-xl border border-border-glass",
-    "shadow-xl",
+    "bg-surface-elevated shadow-xl",
     // Animations
     "data-[state=open]:animate-in data-[state=closed]:animate-out",
     "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
@@ -161,7 +161,6 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(dialogContentVariants({ size, className }))}
       style={{
-        backgroundColor: "rgba(34, 35, 38, 0.95)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
       }}

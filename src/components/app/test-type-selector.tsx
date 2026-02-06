@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { GlassCard } from "@/components/primitives/GlassCard";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -117,10 +117,14 @@ export function TestTypeSelector({
             const IconComponent = iconEntry.icon;
 
             return (
-              <GlassCard
+              <button
                 key={typeId}
-                hover="lift"
-                padding="md"
+                type="button"
+                className={cn(
+                  "group rounded-xl border border-white/8 bg-white/[0.03] p-6 text-left",
+                  "transition-all duration-200",
+                  "hover:-translate-y-0.5 hover:border-white/12 hover:bg-white/[0.06]"
+                )}
                 onClick={() => handleSelectType(typeId)}
               >
                 <div className="flex flex-col gap-2">
@@ -154,7 +158,7 @@ export function TestTypeSelector({
                     {config.description}
                   </span>
                 </div>
-              </GlassCard>
+              </button>
             );
           })}
         </div>

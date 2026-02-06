@@ -12,7 +12,6 @@ import {
   DialogContent,
   DialogClose,
 } from "@/components/ui/dialog";
-import { GlassCard } from "@/components/primitives/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Society, PersonalSociety, TargetSociety } from "@/types/society";
@@ -150,12 +149,11 @@ export function SocietySelector({ className }: SocietySelectorProps) {
 
             <div className="grid grid-cols-3 gap-4">
               {/* Create Target Society Card */}
-              <GlassCard
-                hover="lift"
-                padding="md"
+              <div
                 className={cn(
-                  "min-h-[180px] border-dashed",
-                  "hover:border-border-hover"
+                  "group min-h-[180px] cursor-pointer rounded-xl border border-dashed border-white/8 bg-white/[0.03] p-6",
+                  "transition-all duration-200",
+                  "hover:-translate-y-0.5 hover:border-white/12 hover:bg-white/[0.06]"
                 )}
                 onClick={handleCreateSociety}
               >
@@ -165,7 +163,7 @@ export function SocietySelector({ className }: SocietySelectorProps) {
                     Create Target Society
                   </span>
                 </div>
-              </GlassCard>
+              </div>
 
               {targetSocieties.map((society) => (
                 <TargetSocietyCard
@@ -205,12 +203,13 @@ function PersonalSocietyCard({
   onSelect: () => void;
 }) {
   return (
-    <GlassCard
-      hover="lift"
-      padding="md"
+    <div
       className={cn(
-        "min-h-[180px] border-dashed",
-        isSelected && "border-solid border-accent ring-2 ring-accent/50"
+        "group min-h-[180px] cursor-pointer rounded-xl p-6 transition-all duration-200",
+        "hover:-translate-y-0.5",
+        isSelected
+          ? "border border-solid border-accent bg-white/[0.06] ring-2 ring-accent/50"
+          : "border border-dashed border-white/8 bg-white/[0.03] hover:border-white/12 hover:bg-white/[0.06]"
       )}
       onClick={onSelect}
     >
@@ -237,7 +236,7 @@ function PersonalSocietyCard({
           {society.description}
         </p>
       </div>
-    </GlassCard>
+    </div>
   );
 }
 
@@ -261,12 +260,13 @@ function TargetSocietyCard({
   onDelete: (id: string) => void;
 }) {
   return (
-    <GlassCard
-      hover="lift"
-      padding="md"
+    <div
       className={cn(
-        "min-h-[180px]",
-        isSelected && "border-accent ring-2 ring-accent/50"
+        "group min-h-[180px] cursor-pointer rounded-xl p-6 transition-all duration-200",
+        "hover:-translate-y-0.5",
+        isSelected
+          ? "border border-accent bg-white/[0.06] ring-2 ring-accent/50"
+          : "border border-white/8 bg-white/[0.03] hover:border-white/12 hover:bg-white/[0.06]"
       )}
       onClick={onSelect}
     >
@@ -301,7 +301,7 @@ function TargetSocietyCard({
           {society.description}
         </p>
       </div>
-    </GlassCard>
+    </div>
   );
 }
 
