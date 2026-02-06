@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** Raycast-quality design system enabling rapid, consistent UI development
-**Current focus:** v2.1 Dashboard Rebuild -- Phase 46 complete, Phase 47 next
+**Current focus:** v2.1 Dashboard Rebuild -- Phase 47 in progress
 
 ## Current Position
 
 **Milestone:** v2.1 -- Dashboard Rebuild
-**Phase:** 46 -- Forms & Modals -- Complete
-**Plan:** 04 of 04 complete
-**Status:** Phase complete, verified (24/24 truths, 10/10 requirements)
-**Last activity:** 2026-02-06 -- Phase 46 verified and complete
+**Phase:** 47 -- Results, Top Bar & Loading -- In progress
+**Plan:** 01 of 05 complete
+**Status:** In progress
+**Last activity:** 2026-02-06 -- Completed 47-01-PLAN.md
 
-Progress: [████████--] 80% (phase 46: 4/4 complete, phase 45: 3/3, phases 47-49 pending)
+Progress: [████████--] 82% (phase 47: 1/5, phase 46: 4/4, phase 45: 3/3, phases 48-49 pending)
 
 ## Phase Overview
 
@@ -23,7 +23,7 @@ Progress: [████████--] 80% (phase 46: 4/4 complete, phase 45: 3/
 |-------|------|-------------|--------|
 | 45 | Structural Foundation | 11 (SIDE + MOBL) | Complete (3/3) |
 | 46 | Forms & Modals | 10 (FORM + MODL) | Complete (4/4) |
-| 47 | Results, Top Bar & Loading | 14 (RSLT + TBAR + LOAD) | Pending |
+| 47 | Results, Top Bar & Loading | 14 (RSLT + TBAR + LOAD) | In progress (1/5) |
 | 48 | Hive Foundation | 9 (HIVE) | Pending |
 | 49 | Hive Interactions | 7 (HINT) | Pending |
 
@@ -48,7 +48,7 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 
 ## In-Progress Milestones
 
-- v2.1 Dashboard Rebuild -- Phases 45-49, 51 requirements, 40% executed (Phases 45-46 complete)
+- v2.1 Dashboard Rebuild -- Phases 45-49, 51 requirements, ~45% executed (Phases 45-46 complete, Phase 47: 1/5)
 
 ## Key Technical Notes
 
@@ -81,6 +81,10 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 - [46-04] SocietySelector preserves _hydrate pattern (not migrated to Zustand persist)
 - [46-04] Selected society card uses ring-2 ring-accent border-accent (coral) matching TestTypeSelector pattern
 - [46-04] DialogContent size=full with max-w-[800px] for society selector grid layout
+- [47-01] Single coral accent for all impact labels (replaces per-label emerald/blue/amber/red mapping)
+- [47-01] 3 individual GlassProgress bars for attention breakdown (not segmented stacked bar)
+- [47-01] Short insights (<100 chars) render plain Text; long insights use Accordion with first-sentence summary
+- [47-01] Badge variant=accent for AI-generated indicator in VariantsSection
 
 ### Design System Components
 - v2.0 design system components are the building blocks (GlassPanel, GlassCard, GlassInput, GlassTextarea, GlassPill, GlassProgress, Dialog, Button, Select, Badge, Typography, Spinner, Icon)
@@ -100,10 +104,10 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 
 ### Session Continuity
 - Last session: 2026-02-06
-- Stopped at: Completed 46-04-PLAN.md (phase 46 complete)
+- Stopped at: Completed 47-01-PLAN.md
 - Resume file: None
-- Next: Phase 47 (Results, Top Bar & Loading) or Phase 48 (Hive Foundation)
+- Next: 47-02-PLAN.md (Results Panel Assembly)
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-06 -- v2.2 merged from worktree, v2.1 Phase 46 complete*
+*Last updated: 2026-02-06 -- Phase 47 plan 01 complete (results sections migration)*
