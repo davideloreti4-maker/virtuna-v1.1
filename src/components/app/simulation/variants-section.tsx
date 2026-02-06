@@ -1,8 +1,11 @@
 'use client';
 
-import { cn } from '@/lib/utils';
 import { Info, Sparkles } from 'lucide-react';
 import type { Variant } from '@/types/test';
+import { GlassCard } from '@/components/primitives';
+import { Text } from '@/components/ui/typography';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 interface VariantsSectionProps {
   variants: Variant[];
@@ -11,70 +14,74 @@ interface VariantsSectionProps {
 /**
  * VariantsSection - Displays content variants (original + AI-generated)
  *
- * Matches societies.io layout:
+ * Uses GlassCard wrapper with design token-styled variant rows.
  * - Vertical list with variant label/preview on left, score on right
- * - Original content distinct from AI variants
- * - Generate new variants button at bottom
+ * - Badge + Sparkles icon for AI-generated variants
+ * - Ghost Button with dashed border for generate action
  */
 export function VariantsSection({ variants }: VariantsSectionProps) {
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <h3 className="text-sm font-medium text-zinc-400">Variants</h3>
-        <Info className="h-4 w-4 text-zinc-500" />
-      </div>
+    <GlassCard padding="md" hover="lift">
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Text as="span" size="sm" muted>
+            Variants
+          </Text>
+          <Info className="h-4 w-4 text-foreground-muted" />
+        </div>
 
-      <div className="space-y-2">
-        {variants.map((variant) => (
-          <div
-            key={variant.id}
-            className={cn(
-              'flex items-center justify-between rounded-xl border p-3',
-              variant.type === 'original'
-                ? 'border-zinc-700 bg-zinc-800/50'
-                : 'border-zinc-700 bg-zinc-900'
-            )}
-          >
-            {/* Left side: label and preview */}
-            <div className="flex-1 min-w-0 pr-4">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-medium text-white">
-                  {variant.type === 'original' ? 'Original' : variant.label}
-                </span>
-                {variant.type === 'ai-generated' && (
-                  <Sparkles className="h-3.5 w-3.5 text-purple-400" />
-                )}
+        <div className="space-y-2">
+          {variants.map((variant) => (
+            <div
+              key={variant.id}
+              className={
+                variant.type === 'original'
+                  ? 'flex items-center justify-between rounded-xl border border-border bg-surface-elevated/50 p-3'
+                  : 'flex items-center justify-between rounded-xl border border-border bg-surface p-3'
+              }
+            >
+              {/* Left side: label and preview */}
+              <div className="min-w-0 flex-1 pr-4">
+                <div className="mb-1 flex items-center gap-2">
+                  <Text as="span" size="sm" className="font-medium">
+                    {variant.type === 'original' ? 'Original' : variant.label}
+                  </Text>
+                  {variant.type === 'ai-generated' && (
+                    <>
+                      <Sparkles className="h-3.5 w-3.5 text-accent" />
+                      <Badge variant="accent" size="sm">
+                        AI
+                      </Badge>
+                    </>
+                  )}
+                </div>
+                <Text as="p" size="sm" muted className="truncate">
+                  {variant.content}
+                </Text>
               </div>
-              <p className="text-xs text-zinc-500 truncate">
-                {variant.content}
-              </p>
+
+              {/* Right side: score */}
+              <Text as="span" size="lg" className="flex-shrink-0 text-xl font-bold">
+                {variant.impactScore}
+              </Text>
             </div>
+          ))}
+        </div>
 
-            {/* Right side: score */}
-            <span className="text-2xl font-bold text-white flex-shrink-0">
-              {variant.impactScore}
-            </span>
-          </div>
-        ))}
+        {/* Generate button */}
+        <Button
+          variant="ghost"
+          size="md"
+          className="w-full border border-dashed border-border hover:border-foreground-muted"
+          onClick={() => {
+            // Future: generate new variants
+            console.log('Generate new variants - coming soon');
+          }}
+        >
+          <Sparkles className="h-4 w-4" />
+          Generate New Variants
+        </Button>
       </div>
-
-      {/* Generate button - UI only for now */}
-      <button
-        type="button"
-        onClick={() => {
-          // Future: generate new variants
-          console.log('Generate new variants - coming soon');
-        }}
-        className={cn(
-          'w-full flex items-center justify-center gap-2 rounded-xl p-3',
-          'border border-dashed border-zinc-700',
-          'text-sm text-zinc-400',
-          'transition-colors hover:border-zinc-500 hover:text-white'
-        )}
-      >
-        <Sparkles className="h-4 w-4" />
-        Generate New Variants
-      </button>
-    </div>
+    </GlassCard>
   );
 }
