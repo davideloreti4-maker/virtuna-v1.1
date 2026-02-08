@@ -1,0 +1,43 @@
+name: Claude PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  issue_comment:
+    types: [created]
+
+jobs:
+  claude-review:
+    # Run on PR comments that mention @claude, or on new/updated PRs
+    if: |
+      (github.event_name == 'pull_request') ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request &&
+       contains(github.event.comment.body, '@claude'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref || github.head_ref }}
+
+      - name: Run Claude Code Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          direct_prompt: |
+            Review this PR as a staff engineer. Focus on:
+            1. Correctness — will it work as intended?
+            2. Design — does it follow existing patterns in CLAUDE.md?
+            3. Simplicity — is there a simpler approach?
+            4. Edge cases — what could go wrong?
+
+            After reviewing, if you find learnings that should be recorded:
+            - Append actionable notes to CLAUDE.md under the relevant section
+            - Keep notes concise: "Always do Y when Z" not "be careful with X"
+            - Commit the CLAUDE.md update as part of this review
