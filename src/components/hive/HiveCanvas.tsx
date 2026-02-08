@@ -40,8 +40,6 @@ export function HiveCanvas({ data, className }: HiveCanvasProps): React.JSX.Elem
   const containerRef = useRef<HTMLDivElement>(null);
   const layoutRef = useRef<LayoutResult | null>(null);
   const cameraRef = useRef<Camera>({ zoom: 1, panX: 0, panY: 0 });
-  const isDraggingRef = useRef(false);
-  const lastMouseRef = useRef({ x: 0, y: 0 });
 
   // ---- Layout computation (pure, memoized) ----
   const layout = useMemo(
@@ -158,47 +156,6 @@ export function HiveCanvas({ data, className }: HiveCanvasProps): React.JSX.Elem
     canvas.addEventListener('wheel', handleWheel, { passive: false });
     return () => canvas.removeEventListener('wheel', handleWheel);
   }, [render, interaction]);
-
-  // ---- Pan (mouse drag) ----
-  // NOTE: This will be migrated into the interaction hook in Task 2b.
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const handleMouseDown = (e: MouseEvent) => {
-      if (e.button !== 0) return; // left click only
-      isDraggingRef.current = true;
-      lastMouseRef.current = { x: e.clientX, y: e.clientY };
-      canvas.style.cursor = 'grabbing';
-    };
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isDraggingRef.current) return;
-      const dx = e.clientX - lastMouseRef.current.x;
-      const dy = e.clientY - lastMouseRef.current.y;
-      lastMouseRef.current = { x: e.clientX, y: e.clientY };
-
-      cameraRef.current.panX += dx;
-      cameraRef.current.panY += dy;
-      render();
-    };
-
-    const handleMouseUp = () => {
-      isDraggingRef.current = false;
-      canvas.style.cursor = 'grab';
-    };
-
-    canvas.style.cursor = 'grab';
-    canvas.addEventListener('mousedown', handleMouseDown);
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      canvas.removeEventListener('mousedown', handleMouseDown);
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [render]);
 
   // ---- JSX ----
   return (

@@ -5,18 +5,25 @@
 // ---------------------------------------------------------------------------
 //
 // Manages quadtree-based hit detection, hover debounce, click-vs-drag
-// discrimination, selection state, camera tracking, and overlay positioning.
+// discrimination, mouse-drag panning, pinch-to-zoom, selection state,
+// camera tracking, and overlay positioning.
 //
 // Key design decisions:
 //   - Ref-based interaction state for per-frame data (no React re-renders)
 //   - useState ONLY for selectedNode (drives overlay) and isCameraMoved (reset btn)
 //   - All coordinate math in CSS pixel space (DPR handled by canvas transform)
+//   - Pan logic co-located with click-vs-drag to avoid dual-handler conflicts
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Quadtree } from 'd3-quadtree';
 
-import { CLICK_DRAG_THRESHOLD, HOVER_DEBOUNCE_MS } from './hive-constants';
+import {
+  CLICK_DRAG_THRESHOLD,
+  HOVER_DEBOUNCE_MS,
+  MAX_ZOOM,
+  MIN_ZOOM,
+} from './hive-constants';
 import {
   buildAdjacencyMap,
   buildHiveQuadtree,
@@ -85,10 +92,16 @@ export function useHiveInteraction(
   const adjacencyMapRef = useRef<Map<string, Set<string>>>(new Map());
   const fitTransformRef = useRef<FitTransform>({ scale: 1, offsetX: 0, offsetY: 0 });
 
-  // ---- Mouse tracking refs ----
+  // ---- Mouse/pointer tracking refs ----
   const mouseDownPosRef = useRef({ x: 0, y: 0 });
+  const lastDragPosRef = useRef({ x: 0, y: 0 });
   const hoverDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDraggingRef = useRef(false);
+  const isPotentialDragRef = useRef(false);
+
+  // ---- Pinch-to-zoom refs ----
+  const pointerCacheRef = useRef<Map<number, PointerEvent>>(new Map());
+  const prevPinchDistRef = useRef<number>(-1);
 
   // ---- React state (drives overlay + reset button) ----
   const [selectedNode, setSelectedNode] = useState<LayoutNode | null>(null);
@@ -216,15 +229,48 @@ export function useHiveInteraction(
     renderRef.current();
   }, [cameraRef, clearSelection]);
 
-  // ---- Attach canvas event handlers ----
+  // ---- Attach mouse event handlers (hover, click-vs-drag, pan) ----
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // -- Mousemove: hover detection with debounce --
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isDraggingRef.current) return;
+    // Set initial cursor
+    canvas.style.cursor = 'grab';
 
+    // -- Mousemove on canvas: hover detection + pan while dragging --
+    const handleMouseMove = (e: MouseEvent) => {
+      // If dragging, apply pan
+      if (isDraggingRef.current) {
+        const dx = e.clientX - lastDragPosRef.current.x;
+        const dy = e.clientY - lastDragPosRef.current.y;
+        lastDragPosRef.current = { x: e.clientX, y: e.clientY };
+
+        cameraRef.current.panX += dx;
+        cameraRef.current.panY += dy;
+        renderRef.current();
+        return;
+      }
+
+      // If potentially starting a drag, check threshold
+      if (isPotentialDragRef.current) {
+        const dx = e.clientX - mouseDownPosRef.current.x;
+        const dy = e.clientY - mouseDownPosRef.current.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist >= CLICK_DRAG_THRESHOLD) {
+          isDraggingRef.current = true;
+          lastDragPosRef.current = { x: e.clientX, y: e.clientY };
+          // Clear hover debounce during drag
+          if (hoverDebounceRef.current !== null) {
+            clearTimeout(hoverDebounceRef.current);
+            hoverDebounceRef.current = null;
+          }
+          canvas.style.cursor = 'grabbing';
+          return;
+        }
+      }
+
+      // Not dragging: do hover detection
       const tree = quadtreeRef.current;
       if (!tree) return;
 
@@ -268,7 +314,7 @@ export function useHiveInteraction(
         } else {
           interactionRef.current.connectedNodeIds = new Set();
         }
-        canvas.style.cursor = 'grab';
+        canvas.style.cursor = isPotentialDragRef.current ? canvas.style.cursor : 'grab';
         renderRef.current();
         return;
       }
@@ -301,37 +347,24 @@ export function useHiveInteraction(
     const handleMouseDown = (e: MouseEvent) => {
       if (e.button !== 0) return;
       mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
+      lastDragPosRef.current = { x: e.clientX, y: e.clientY };
+      isPotentialDragRef.current = true;
       isDraggingRef.current = false;
     };
 
-    // -- Mousemove on window: detect drag threshold --
-    const handleWindowMouseMove = (e: MouseEvent) => {
-      if (e.buttons !== 1) return;
-      if (isDraggingRef.current) return;
-
-      const dx = e.clientX - mouseDownPosRef.current.x;
-      const dy = e.clientY - mouseDownPosRef.current.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist >= CLICK_DRAG_THRESHOLD) {
-        isDraggingRef.current = true;
-        // Clear hover debounce during drag
-        if (hoverDebounceRef.current !== null) {
-          clearTimeout(hoverDebounceRef.current);
-          hoverDebounceRef.current = null;
-        }
-        canvas.style.cursor = 'grabbing';
-      }
-    };
-
-    // -- Mouseup: click-vs-drag discrimination + node selection --
+    // -- Mouseup: click-vs-drag discrimination + node selection + end pan --
     const handleMouseUp = (e: MouseEvent) => {
-      if (isDraggingRef.current) {
-        isDraggingRef.current = false;
+      const wasDragging = isDraggingRef.current;
+      isDraggingRef.current = false;
+      isPotentialDragRef.current = false;
+
+      if (wasDragging) {
         // Restore cursor based on hover state
         canvas.style.cursor = interactionRef.current.hoveredNodeId
           ? 'pointer'
           : 'grab';
+        // Notify camera changed (updates overlay position + reset button)
+        onCameraChange();
         return;
       }
 
@@ -412,26 +445,111 @@ export function useHiveInteraction(
       renderRef.current();
     };
 
+    // -- Window-level mouseup: stop drag even if mouse leaves canvas --
+    const handleWindowMouseUp = () => {
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false;
+        isPotentialDragRef.current = false;
+        canvas.style.cursor = interactionRef.current.hoveredNodeId
+          ? 'pointer'
+          : 'grab';
+        onCameraChange();
+      }
+    };
+
     // Attach listeners
     canvas.addEventListener('mousemove', handleMouseMove);
     canvas.addEventListener('mousedown', handleMouseDown);
     canvas.addEventListener('mouseup', handleMouseUp);
     canvas.addEventListener('mouseleave', handleMouseLeave);
-    window.addEventListener('mousemove', handleWindowMouseMove);
+    window.addEventListener('mouseup', handleWindowMouseUp);
 
     return () => {
       canvas.removeEventListener('mousemove', handleMouseMove);
       canvas.removeEventListener('mousedown', handleMouseDown);
       canvas.removeEventListener('mouseup', handleMouseUp);
       canvas.removeEventListener('mouseleave', handleMouseLeave);
-      window.removeEventListener('mousemove', handleWindowMouseMove);
+      window.removeEventListener('mouseup', handleWindowMouseUp);
 
       // Cleanup debounce timer
       if (hoverDebounceRef.current !== null) {
         clearTimeout(hoverDebounceRef.current);
       }
     };
-  }, [canvasRef, cameraRef, sizeRef, clearSelection, getConnectedIds]);
+  }, [canvasRef, cameraRef, sizeRef, clearSelection, getConnectedIds, onCameraChange]);
+
+  // ---- Pinch-to-zoom via pointer events ----
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const cache = pointerCacheRef.current;
+
+    const handlePointerDown = (e: PointerEvent) => {
+      cache.set(e.pointerId, e);
+    };
+
+    const handlePointerMove = (e: PointerEvent) => {
+      cache.set(e.pointerId, e);
+
+      // Only process when exactly 2 pointers (pinch gesture)
+      if (cache.size !== 2) return;
+
+      const pointers = Array.from(cache.values());
+      const p1 = pointers[0]!;
+      const p2 = pointers[1]!;
+
+      const dx = p1.clientX - p2.clientX;
+      const dy = p1.clientY - p2.clientY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (prevPinchDistRef.current > 0) {
+        const scale = dist / prevPinchDistRef.current;
+        const cam = cameraRef.current;
+
+        // Compute midpoint for zoom-toward-center-of-pinch
+        const rect = canvas.getBoundingClientRect();
+        const midX = (p1.clientX + p2.clientX) / 2 - rect.left;
+        const midY = (p1.clientY + p2.clientY) / 2 - rect.top;
+        const { width: cssWidth, height: cssHeight } = sizeRef.current;
+
+        // Point in world space before zoom
+        const worldX = (midX - cssWidth / 2 - cam.panX) / cam.zoom + cssWidth / 2;
+        const worldY = (midY - cssHeight / 2 - cam.panY) / cam.zoom + cssHeight / 2;
+
+        const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, cam.zoom * scale));
+
+        // Adjust pan so pinch midpoint stays fixed
+        cam.panX = midX - cssWidth / 2 - (worldX - cssWidth / 2) * newZoom;
+        cam.panY = midY - cssHeight / 2 - (worldY - cssHeight / 2) * newZoom;
+        cam.zoom = newZoom;
+
+        renderRef.current();
+        onCameraChange();
+      }
+
+      prevPinchDistRef.current = dist;
+    };
+
+    const handlePointerUp = (e: PointerEvent) => {
+      cache.delete(e.pointerId);
+      if (cache.size < 2) {
+        prevPinchDistRef.current = -1;
+      }
+    };
+
+    canvas.addEventListener('pointerdown', handlePointerDown);
+    canvas.addEventListener('pointermove', handlePointerMove);
+    canvas.addEventListener('pointerup', handlePointerUp);
+    canvas.addEventListener('pointercancel', handlePointerUp);
+
+    return () => {
+      canvas.removeEventListener('pointerdown', handlePointerDown);
+      canvas.removeEventListener('pointermove', handlePointerMove);
+      canvas.removeEventListener('pointerup', handlePointerUp);
+      canvas.removeEventListener('pointercancel', handlePointerUp);
+    };
+  }, [canvasRef, cameraRef, sizeRef, onCameraChange]);
 
   // ---- Return stable result ----
   return {
