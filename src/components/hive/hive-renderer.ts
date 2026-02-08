@@ -2,21 +2,24 @@
 // hive-renderer.ts -- Pure Canvas 2D drawing functions for the hive
 // ---------------------------------------------------------------------------
 //
-// All functions are side-effect-free (except drawing to the provided context).
-// No React, no hooks, no DOM queries -- only CanvasRenderingContext2D operations.
+// Societies.io style: varied node sizes, per-node opacity variation,
+// prominent connection lines, organic network feel.
 //
-// Performance: Batched draw calls group same-styled elements into a single
-// beginPath/fill or beginPath/stroke call, reducing Canvas API overhead from
-// O(n) to O(tiers) for n nodes.
+// Performance: Nodes are drawn individually (not batched per tier) to support
+// per-node size/opacity variation. Still efficient at ~150 nodes.
 // ---------------------------------------------------------------------------
 
 import {
+  DIM_LINE_OPACITY,
+  DIM_OPACITY,
   LINE_OPACITY,
   NODE_SIZES,
+  SELECTED_GLOW_BLUR,
+  SELECTED_GLOW_COLOR,
+  SELECTED_SCALE,
   SKELETON_DOT_RADII,
   SKELETON_DOTS,
   SKELETON_RINGS,
-  TIER_COLORS,
 } from './hive-constants';
 import { computeFitTransform } from './hive-layout';
 import type { LayoutLink, LayoutNode, LayoutResult } from './hive-types';
@@ -25,152 +28,223 @@ import type { LayoutLink, LayoutNode, LayoutResult } from './hive-types';
 // Types
 // ---------------------------------------------------------------------------
 
-/** Per-tier visibility for progressive build animation. */
 interface TierVisibility {
   opacity: number;
   scale: number;
 }
 
-/** Transform produced by computeFitTransform. */
 interface FitTransform {
   scale: number;
   offsetX: number;
   offsetY: number;
 }
 
+/** Interaction state passed to the renderer for dim/highlight/glow effects. */
+export interface InteractionRenderState {
+  hoveredNodeId: string | null;
+  selectedNodeId: string | null;
+  connectedNodeIds: Set<string>;
+}
+
 // ---------------------------------------------------------------------------
-// Internal helpers (not exported)
+// Deterministic per-node hash (for size/opacity variation)
+// ---------------------------------------------------------------------------
+
+function hashString(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = Math.imul(31, h) + s.charCodeAt(i) | 0;
+  }
+  return (h & 0x7fffffff) / 0x7fffffff; // [0, 1]
+}
+
+// ---------------------------------------------------------------------------
+// Interaction opacity helpers
 // ---------------------------------------------------------------------------
 
 /**
- * Draw connection lines batched by target-node tier.
+ * Compute the interaction-based opacity for a single node.
  *
- * Groups links by target tier so each tier gets a single beginPath/stroke
- * with the appropriate opacity.
+ * When no interaction is active, returns 1 (full opacity).
+ * Active/connected nodes stay at 1; unrelated dim to DIM_OPACITY.
  */
+function getNodeInteractionOpacity(
+  nodeId: string,
+  interaction: InteractionRenderState | undefined,
+): number {
+  if (!interaction) return 1;
+  const activeId = interaction.selectedNodeId ?? interaction.hoveredNodeId;
+  if (!activeId) return 1;
+  if (nodeId === activeId) return 1;
+  if (interaction.connectedNodeIds.has(nodeId)) return 1;
+  return DIM_OPACITY;
+}
+
+/**
+ * Determine whether a link should be rendered at full or dimmed opacity.
+ *
+ * A link is "relevant" when the active node is one of its endpoints and the
+ * other endpoint is connected. Otherwise it dims to DIM_LINE_OPACITY.
+ */
+function isLinkRelevant(
+  sourceId: string,
+  targetId: string,
+  interaction: InteractionRenderState | undefined,
+): boolean {
+  if (!interaction) return true;
+  const activeId = interaction.selectedNodeId ?? interaction.hoveredNodeId;
+  if (!activeId) return true;
+
+  const sourceIsRelevant =
+    sourceId === activeId || interaction.connectedNodeIds.has(sourceId);
+  const targetIsRelevant =
+    targetId === activeId || interaction.connectedNodeIds.has(targetId);
+
+  return sourceIsRelevant && targetIsRelevant;
+}
+
+// ---------------------------------------------------------------------------
+// Tier radii config (shared between drawNodes and drawSelectedGlow)
+// ---------------------------------------------------------------------------
+
+const TIER_RADII: Record<
+  number,
+  { base: number; minMult: number; maxMult: number }
+> = {
+  1: {
+    base: NODE_SIZES.tier1.radius,
+    minMult: NODE_SIZES.tier1.minMultiplier,
+    maxMult: NODE_SIZES.tier1.maxMultiplier,
+  },
+  2: {
+    base: NODE_SIZES.tier2.radius,
+    minMult: NODE_SIZES.tier2.minMultiplier,
+    maxMult: NODE_SIZES.tier2.maxMultiplier,
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
 function drawConnectionLines(
   ctx: CanvasRenderingContext2D,
   links: LayoutLink[],
   transform: FitTransform,
   visibility?: Record<number, TierVisibility>,
+  interaction?: InteractionRenderState,
 ): void {
-  // Group links by target node tier
-  const byTier = new Map<number, LayoutLink[]>();
-  for (const link of links) {
-    const tier = link.target.tier;
-    const group = byTier.get(tier);
-    if (group) {
-      group.push(link);
-    } else {
-      byTier.set(tier, [link]);
-    }
-  }
-
   const { scale, offsetX, offsetY } = transform;
 
-  for (const [tier, tierLinks] of byTier) {
-    const baseOpacity = LINE_OPACITY[tier] ?? 0;
-    if (baseOpacity <= 0) continue;
+  // Draw each link individually to support per-link coloring
+  for (const { source, target } of links) {
+    const targetTier = target.tier;
+    const sourceTier = source.tier;
 
-    // Apply animation visibility
-    const vis = visibility?.[tier];
-    if (vis !== undefined && vis.opacity <= 0) continue;
-    const finalOpacity = vis !== undefined ? baseOpacity * vis.opacity : baseOpacity;
-
-    ctx.beginPath();
-    ctx.strokeStyle = `rgba(255, 255, 255, ${finalOpacity})`;
-    ctx.lineWidth = 1;
-
-    for (const { source, target } of tierLinks) {
-      const sx = Math.round(source.x * scale + offsetX);
-      const sy = Math.round(source.y * scale + offsetY);
-      const tx = Math.round(target.x * scale + offsetX);
-      const ty = Math.round(target.y * scale + offsetY);
-
-      ctx.moveTo(sx, sy);
-      ctx.lineTo(tx, ty);
+    // Determine line opacity based on link type
+    let baseOpacity: number;
+    if (sourceTier === 0 && targetTier === 1) {
+      // Center -> tier-1: subtle white
+      baseOpacity = 0.08;
+    } else if (sourceTier === 1 && targetTier === 1) {
+      // Tier-1 <-> tier-1 mesh: very subtle white
+      baseOpacity = 0.06;
+    } else {
+      // Tier-1 -> tier-2: use LINE_OPACITY
+      baseOpacity = LINE_OPACITY[targetTier] ?? 0.10;
     }
 
+    if (baseOpacity <= 0) continue;
+
+    // Animation: use the higher tier's visibility
+    const animTier = Math.max(sourceTier, targetTier);
+    const vis = visibility?.[animTier];
+    if (vis !== undefined && vis.opacity <= 0) continue;
+    let finalOpacity = vis !== undefined ? baseOpacity * vis.opacity : baseOpacity;
+
+    // Interaction: dim unrelated links
+    if (!isLinkRelevant(source.id, target.id, interaction)) {
+      finalOpacity = DIM_LINE_OPACITY;
+    }
+
+    const strokeColor = `rgba(255, 255, 255, ${finalOpacity})`;
+
+    const sx = Math.round(source.x * scale + offsetX);
+    const sy = Math.round(source.y * scale + offsetY);
+    const tx = Math.round(target.x * scale + offsetX);
+    const ty = Math.round(target.y * scale + offsetY);
+
+    ctx.beginPath();
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = 0.7;
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(tx, ty);
     ctx.stroke();
   }
 }
 
 /**
- * Draw nodes as circles, batched by tier.
+ * Draw nodes using node.color with per-node size variation.
  *
- * Skips tier 0 (center) -- handled separately by drawCenterRect.
- * Supports optional per-tier visibility for animation (opacity + scale).
+ * Tier-1 nodes use their assigned color at full opacity.
+ * Tier-2 nodes use their inherited parent color (already at lower opacity).
+ * Size varies per node via deterministic hash.
  */
 function drawNodes(
   ctx: CanvasRenderingContext2D,
   nodes: LayoutNode[],
   transform: FitTransform,
   visibility?: Record<number, TierVisibility>,
+  interaction?: InteractionRenderState,
 ): void {
-  // Group by tier for batch rendering
-  const byTier = new Map<number, LayoutNode[]>();
-  for (const node of nodes) {
-    if (node.tier === 0) continue; // center handled by drawCenterRect
-    const group = byTier.get(node.tier);
-    if (group) {
-      group.push(node);
-    } else {
-      byTier.set(node.tier, [node]);
-    }
-  }
-
   const { scale, offsetX, offsetY } = transform;
 
-  // Tier-to-radius mapping
-  const tierRadii: Record<number, number> = {
-    1: NODE_SIZES.tier1.radius,
-    2: NODE_SIZES.tier2.radius,
-    3: NODE_SIZES.tier3.radius,
-  };
+  for (const node of nodes) {
+    if (node.tier === 0) continue;
 
-  for (const [tier, tierNodes] of byTier) {
-    const fill = TIER_COLORS[tier];
-    const baseRadius = tierRadii[tier];
-    if (!fill || baseRadius === undefined) continue;
+    const config = TIER_RADII[node.tier];
+    if (!config) continue;
 
-    // Apply animation visibility
-    const vis = visibility?.[tier];
+    // Per-node size variation
+    const sizeHash = hashString(node.id);
+    const sizeMultiplier =
+      config.minMult + sizeHash * (config.maxMult - config.minMult);
+
+    // Animation
+    const vis = visibility?.[node.tier];
     if (vis !== undefined && vis.opacity <= 0) continue;
-    const radiusScale = vis !== undefined ? vis.scale : 1;
-    const drawRadius = baseRadius * radiusScale;
+    const animScale = vis !== undefined ? vis.scale : 1;
+    const animOpacity = vis !== undefined ? vis.opacity : 1;
 
-    if (vis !== undefined && vis.opacity < 1) {
-      ctx.globalAlpha = vis.opacity;
-    }
+    // Interaction opacity
+    const interactionOpacity = getNodeInteractionOpacity(node.id, interaction);
+    const combinedAlpha = animOpacity * interactionOpacity;
+
+    const drawRadius = config.base * sizeMultiplier * animScale;
+
+    const x = Math.round(node.x * scale + offsetX);
+    const y = Math.round(node.y * scale + offsetY);
 
     ctx.beginPath();
-    for (const node of tierNodes) {
-      const x = Math.round(node.x * scale + offsetX);
-      const y = Math.round(node.y * scale + offsetY);
-      ctx.moveTo(x + drawRadius, y);
-      ctx.arc(x, y, drawRadius, 0, Math.PI * 2);
-    }
-    ctx.fillStyle = fill;
-    ctx.fill();
+    ctx.arc(x, y, drawRadius, 0, Math.PI * 2);
 
-    // Reset globalAlpha if changed
-    if (vis !== undefined && vis.opacity < 1) {
+    if (combinedAlpha < 1) {
+      ctx.globalAlpha = combinedAlpha;
+    }
+    ctx.fillStyle = node.color;
+    ctx.fill();
+    if (combinedAlpha < 1) {
       ctx.globalAlpha = 1;
     }
   }
 }
 
-/**
- * Draw the center element as a rounded rectangle.
- *
- * Dimensions from NODE_SIZES.center. Filled with subtle dark, stroked with
- * tier-0 color. Supports visibility param for animation.
- */
 function drawCenterRect(
   ctx: CanvasRenderingContext2D,
   centerNode: LayoutNode,
   transform: FitTransform,
   visibility?: Record<number, TierVisibility>,
+  interaction?: InteractionRenderState,
 ): void {
   const vis = visibility?.[0];
   if (vis !== undefined && vis.opacity <= 0) return;
@@ -185,88 +259,131 @@ function drawCenterRect(
   const cx = Math.round(centerNode.x * scale + offsetX);
   const cy = Math.round(centerNode.y * scale + offsetY);
 
-  if (vis !== undefined && vis.opacity < 1) {
-    ctx.globalAlpha = vis.opacity;
+  // Combined animation + interaction opacity
+  const animOpacity = vis !== undefined ? vis.opacity : 1;
+  const interactionOpacity = getNodeInteractionOpacity(
+    centerNode.id,
+    interaction,
+  );
+  const combinedAlpha = animOpacity * interactionOpacity;
+
+  if (combinedAlpha < 1) {
+    ctx.globalAlpha = combinedAlpha;
   }
 
-  // Fill
+  const rx = cx - drawWidth / 2;
+  const ry = cy - drawHeight / 2;
+
+  // Opaque background
   ctx.beginPath();
-  ctx.roundRect(
-    cx - drawWidth / 2,
-    cy - drawHeight / 2,
-    drawWidth,
-    drawHeight,
-    borderRadius,
-  );
+  ctx.roundRect(rx, ry, drawWidth, drawHeight, borderRadius);
+  ctx.fillStyle = '#07080a';
+  ctx.fill();
+
+  // Semi-transparent white fill
+  ctx.beginPath();
+  ctx.roundRect(rx, ry, drawWidth, drawHeight, borderRadius);
   ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
   ctx.fill();
 
   // Stroke
-  const strokeColor = TIER_COLORS[0] ?? 'rgba(255, 255, 255, 0.10)';
-  ctx.strokeStyle = strokeColor;
+  ctx.beginPath();
+  ctx.roundRect(rx, ry, drawWidth, drawHeight, borderRadius);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  // Reset globalAlpha if changed
-  if (vis !== undefined && vis.opacity < 1) {
+  if (combinedAlpha < 1) {
     ctx.globalAlpha = 1;
   }
+}
+
+/**
+ * Draw a glow + enlarged circle/rect for the selected node.
+ *
+ * Uses canvas shadowBlur for the glow effect with coral accent color.
+ * The node is redrawn slightly larger (SELECTED_SCALE) on top of the
+ * existing draw to create a visual pop effect.
+ */
+function drawSelectedGlow(
+  ctx: CanvasRenderingContext2D,
+  selectedNode: LayoutNode,
+  transform: FitTransform,
+): void {
+  const { scale, offsetX, offsetY } = transform;
+  const sx = Math.round(selectedNode.x * scale + offsetX);
+  const sy = Math.round(selectedNode.y * scale + offsetY);
+
+  ctx.save();
+  ctx.shadowBlur = SELECTED_GLOW_BLUR;
+  ctx.shadowColor = SELECTED_GLOW_COLOR;
+
+  if (selectedNode.tier === 0) {
+    // Center rectangle glow
+    const { width, height, borderRadius } = NODE_SIZES.center;
+    const w = width * SELECTED_SCALE;
+    const h = height * SELECTED_SCALE;
+
+    ctx.beginPath();
+    ctx.roundRect(sx - w / 2, sy - h / 2, w, h, borderRadius);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.fill();
+  } else {
+    // Circle node glow
+    const config = TIER_RADII[selectedNode.tier];
+    if (config) {
+      const sizeHash = hashString(selectedNode.id);
+      const baseRadius =
+        config.base *
+        (config.minMult + sizeHash * (config.maxMult - config.minMult));
+
+      ctx.beginPath();
+      ctx.arc(sx, sy, baseRadius * SELECTED_SCALE, 0, Math.PI * 2);
+      ctx.fillStyle = selectedNode.color;
+      ctx.fill();
+    }
+  }
+
+  ctx.restore();
 }
 
 // ---------------------------------------------------------------------------
 // Exported render functions
 // ---------------------------------------------------------------------------
 
-/**
- * Render a complete hive visualization from a LayoutResult.
- *
- * Draw order: connection lines (bottom) -> nodes (middle) -> center rect (top).
- *
- * The caller is responsible for clearing the canvas before calling this
- * function (ctx.clearRect) and applying ctx.scale(dpr, dpr) for retina.
- *
- * @param ctx          - Canvas 2D rendering context (already DPR-scaled)
- * @param layout       - Positioned nodes and links from computeHiveLayout
- * @param canvasWidth  - CSS pixel width
- * @param canvasHeight - CSS pixel height
- * @param visibility   - Optional per-tier visibility for progressive build animation.
- *                        Tiers not present in the record are hidden (opacity 0).
- */
 export function renderHive(
   ctx: CanvasRenderingContext2D,
   layout: LayoutResult,
   canvasWidth: number,
   canvasHeight: number,
   visibility?: Record<number, TierVisibility>,
+  interaction?: InteractionRenderState,
 ): void {
-  // Compute fit transform once, pass to all draw helpers
   const transform = computeFitTransform(layout.bounds, canvasWidth, canvasHeight);
 
-  // 1. Connection lines (underneath everything)
-  drawConnectionLines(ctx, layout.links, transform, visibility);
+  // 1. Connection lines (underneath)
+  drawConnectionLines(ctx, layout.links, transform, visibility, interaction);
 
-  // 2. Nodes by tier (on top of lines)
-  drawNodes(ctx, layout.nodes, transform, visibility);
+  // 2. Nodes with per-node variation (on top of lines)
+  drawNodes(ctx, layout.nodes, transform, visibility, interaction);
 
   // 3. Center rectangle (on top of everything)
   const centerNode = layout.nodes.find((n) => n.tier === 0);
   if (centerNode) {
-    drawCenterRect(ctx, centerNode, transform, visibility);
+    drawCenterRect(ctx, centerNode, transform, visibility, interaction);
+  }
+
+  // 4. Selected node glow (topmost layer)
+  if (interaction?.selectedNodeId) {
+    const selectedNodeObj = layout.nodes.find(
+      (n) => n.id === interaction.selectedNodeId,
+    );
+    if (selectedNodeObj) {
+      drawSelectedGlow(ctx, selectedNodeObj, transform);
+    }
   }
 }
 
-/**
- * Render a skeleton loading state with concentric rings and placeholder dots.
- *
- * Draws at canvas center. Used when hive data is loading (layout not yet
- * available). All dots are batched per ring for minimal Canvas API calls.
- *
- * The caller is responsible for clearing the canvas and applying DPR scale.
- *
- * @param ctx          - Canvas 2D rendering context (already DPR-scaled)
- * @param canvasWidth  - CSS pixel width
- * @param canvasHeight - CSS pixel height
- */
 export function renderSkeletonHive(
   ctx: CanvasRenderingContext2D,
   canvasWidth: number,
@@ -285,7 +402,7 @@ export function renderSkeletonHive(
     ctx.stroke();
   }
 
-  // 2. Draw placeholder dots on each ring (batched per ring)
+  // 2. Draw placeholder dots on each ring
   ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
 
   for (let i = 0; i < SKELETON_RINGS.length; i++) {
