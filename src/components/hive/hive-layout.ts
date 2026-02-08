@@ -1,81 +1,213 @@
 // ---------------------------------------------------------------------------
-// hive-layout.ts -- Deterministic radial layout using d3-hierarchy
+// hive-layout.ts -- Deterministic scattered layout (societies.io style)
+// ---------------------------------------------------------------------------
+//
+// Uses d3-hierarchy only for tree structure (parent-child links).
+// Node positions are computed with deterministic pseudo-random placement
+// using golden angle distribution + hash-based jitter, creating an organic
+// network graph feel rather than a hierarchical tree.
 // ---------------------------------------------------------------------------
 
-import { hierarchy, tree } from 'd3-hierarchy';
-import { HIVE_OUTER_RADIUS, VIEWPORT_PADDING } from './hive-constants';
+import { hierarchy } from 'd3-hierarchy';
+import { HIVE_OUTER_RADIUS, VIEWPORT_PADDING, getNodeColor } from './hive-constants';
 import type { HiveNode, HiveData, LayoutNode, LayoutLink, LayoutResult } from './hive-types';
+
+// ---------------------------------------------------------------------------
+// Deterministic hash (pure, no external deps)
+// ---------------------------------------------------------------------------
+
+function hashString(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = Math.imul(31, h) + s.charCodeAt(i) | 0;
+  }
+  return h;
+}
+
+/** Returns a deterministic value in [0, 1] based on string. */
+function hash01(s: string): number {
+  return (hashString(s) & 0x7fffffff) / 0x7fffffff;
+}
+
+/** Returns a deterministic value in [0, 1] with a salt. */
+function hash01s(s: string, salt: string): number {
+  return hash01(salt + s);
+}
+
+// ---------------------------------------------------------------------------
+// Golden angle for even angular distribution
+// ---------------------------------------------------------------------------
+
+const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5)); // ~2.399 radians
 
 // ---------------------------------------------------------------------------
 // computeHiveLayout
 // ---------------------------------------------------------------------------
 
 /**
- * Compute a deterministic radial tree layout for hive data.
+ * Compute a deterministic scattered layout (societies.io style).
  *
  * Pure function: same `data` always produces identical `LayoutResult`.
  *
- * Uses d3-hierarchy's Reingold-Tilford tidy tree algorithm configured for
- * radial placement. Converts polar coordinates (angle, radius) to cartesian
- * (x, y) and rounds to integers to avoid sub-pixel anti-aliasing artifacts.
+ * Uses golden angle distribution for base angles (even spacing) with
+ * per-node hash-based radius variation. Creates an organic, network-like
+ * appearance where nodes scatter freely rather than forming concentric rings.
  *
- * @param data     - Root hive node (tier 0 with children)
- * @param outerRadius - Logical radius for outermost tier (default 1200)
- * @returns Layout with positioned nodes, links, and bounding box
+ * Links are derived from the tree hierarchy but positions are independent.
  */
 export function computeHiveLayout(
   data: HiveData,
   outerRadius: number = HIVE_OUTER_RADIUS,
 ): LayoutResult {
-  // 1. Build d3 hierarchy and sort deterministically by id
+  // 1. Build d3 hierarchy for structure (links) and sort deterministically
   const root = hierarchy<HiveNode>(data)
     .sort((a, b) => a.data.id.localeCompare(b.data.id));
 
-  // 2. Create radial tree layout
-  const treeLayout = tree<HiveNode>()
-    .size([2 * Math.PI, outerRadius])
-    .separation((a, b) => (a.parent === b.parent ? 1 : 2) / a.depth);
+  const descendants = root.descendants();
 
-  // 3. Apply layout -- returns a HierarchyPointNode with x/y assigned
-  const laid = treeLayout(root);
-
-  // 4. Build a map from id -> LayoutNode for link resolution
+  // 2. Position nodes using golden angle + hash-based scatter
   const nodeMap = new Map<string, LayoutNode>();
   const nodes: LayoutNode[] = [];
 
-  for (const d of laid.descendants()) {
-    // d.x = angle (radians), d.y = distance from center
-    const angle = d.x;
-    const r = d.y;
-    const cartesianX = Math.round(r * Math.cos(angle - Math.PI / 2));
-    const cartesianY = Math.round(r * Math.sin(angle - Math.PI / 2));
+  // Separate tiers for independent positioning
+  const tier1Nodes = descendants.filter(d => d.data.tier === 1);
+  const tier2Nodes = descendants.filter(d => d.data.tier === 2);
+
+  // Center node
+  const centerDesc = descendants.find(d => d.data.tier === 0);
+  if (centerDesc) {
+    const centerLayout: LayoutNode = {
+      id: centerDesc.data.id,
+      name: centerDesc.data.name,
+      tier: 0,
+      x: 0, y: 0, angle: 0, radius: 0,
+      parentId: null,
+      color: 'rgba(255, 255, 255, 0.10)',
+      meta: centerDesc.data.meta,
+    };
+    nodes.push(centerLayout);
+    nodeMap.set(centerDesc.data.id, centerLayout);
+  }
+
+  // Tier-1: symmetrically spaced around center, each with unique color
+  const TIER1_RADIUS = outerRadius * 0.15;
+  const tier1ColorMap = new Map<string, number>(); // id → color index
+
+  for (let i = 0; i < tier1Nodes.length; i++) {
+    const d = tier1Nodes[i]!;
+    const angle = (i / tier1Nodes.length) * 2 * Math.PI;
+    const r = TIER1_RADIUS;
+
+    const x = Math.round(r * Math.cos(angle));
+    const y = Math.round(r * Math.sin(angle));
+
+    tier1ColorMap.set(d.data.id, i);
 
     const layoutNode: LayoutNode = {
       id: d.data.id,
-      tier: d.data.tier,
-      x: cartesianX,
-      y: cartesianY,
-      angle,
-      radius: r,
+      name: d.data.name,
+      tier: 1,
+      x, y, angle, radius: r,
       parentId: d.parent?.data.id ?? null,
+      color: getNodeColor(i, 0.85),
+      meta: d.data.meta,
     };
-
     nodes.push(layoutNode);
     nodeMap.set(d.data.id, layoutNode);
   }
 
-  // 5. Build links from d3 hierarchy links, resolving to LayoutNode refs
-  const links: LayoutLink[] = [];
-  for (const l of laid.links()) {
-    const source = nodeMap.get(l.source.data.id);
-    const target = nodeMap.get(l.target.data.id);
-    if (source && target) {
-      links.push({ source, target });
+  // Tier-2: clustered in a cone behind their parent tier-1 node
+  // Each color group fans out away from center, behind its tier-1 parent
+  const tier2ByParent = new Map<string, typeof tier2Nodes>();
+  for (const d of tier2Nodes) {
+    const pid = d.parent?.data.id ?? '';
+    if (!tier2ByParent.has(pid)) tier2ByParent.set(pid, []);
+    tier2ByParent.get(pid)!.push(d);
+  }
+
+  // How far the cluster extends outward from the tier-1 node
+  const CLUSTER_MIN_DIST = outerRadius * 0.04;
+  const CLUSTER_MAX_DIST = outerRadius * 0.50;
+  // Angular half-width of the cone (±50 degrees from parent direction)
+  const CONE_HALF_ANGLE = Math.PI * 0.28;
+
+  for (const [parentId, children] of tier2ByParent) {
+    const parentNode = nodeMap.get(parentId);
+    if (!parentNode) continue;
+
+    const colorIndex = tier1ColorMap.get(parentId) ?? 0;
+    // Direction from center to parent — cluster fans out along this axis
+    const parentAngle = Math.atan2(parentNode.y, parentNode.x);
+
+    for (let i = 0; i < children.length; i++) {
+      const d = children[i]!;
+
+      // Golden angle base for organic scatter within the cone
+      const goldenOffset = i * GOLDEN_ANGLE;
+      // Map golden angle into cone range using modulo + hash jitter
+      const normalizedAngle = ((goldenOffset % (2 * CONE_HALF_ANGLE)) / (2 * CONE_HALF_ANGLE)) * 2 - 1;
+      const angleJitter = (hash01s(d.data.id, 'ang') - 0.5) * 0.6;
+      const angle = parentAngle + CONE_HALF_ANGLE * (normalizedAngle + angleJitter);
+
+      // Scattered radial distance: mix sqrt distribution with hash for organic feel
+      const rNorm = Math.sqrt((i + 0.5) / children.length);
+      const rHash = hash01(d.data.id);
+      const rMix = rNorm * 0.5 + rHash * 0.5;
+      const dist = CLUSTER_MIN_DIST + (CLUSTER_MAX_DIST - CLUSTER_MIN_DIST) * rMix;
+
+      // Position: start from parent, go outward in the cone direction
+      const x = Math.round(parentNode.x + dist * Math.cos(angle));
+      const y = Math.round(parentNode.y + dist * Math.sin(angle));
+
+      const layoutNode: LayoutNode = {
+        id: d.data.id,
+        name: d.data.name,
+        tier: 2,
+        x, y, angle, radius: dist,
+        parentId: parentId || null,
+        color: getNodeColor(colorIndex, 0.55),
+        meta: d.data.meta,
+      };
+      nodes.push(layoutNode);
+      nodeMap.set(d.data.id, layoutNode);
     }
   }
 
-  // 6. Compute bounding box (account for node draw radii at edges)
-  const NODE_PADDING = 10; // max node radius buffer
+  // 3. Build links:
+  //    - center → tier-1 (hub connections)
+  //    - tier-1 ↔ tier-1 (mesh between all tier-1 nodes)
+  //    - tier-1 → tier-2 (parent-child only — same color group)
+  const links: LayoutLink[] = [];
+
+  // Center → tier-1
+  const centerNode = nodeMap.get(centerDesc?.data.id ?? '');
+  if (centerNode) {
+    for (const t1 of tier1Nodes) {
+      const t1Node = nodeMap.get(t1.data.id);
+      if (t1Node) links.push({ source: centerNode, target: t1Node });
+    }
+  }
+
+  // Tier-1 ↔ tier-1 mesh (connect every pair)
+  for (let i = 0; i < tier1Nodes.length; i++) {
+    for (let j = i + 1; j < tier1Nodes.length; j++) {
+      const a = nodeMap.get(tier1Nodes[i]!.data.id);
+      const b = nodeMap.get(tier1Nodes[j]!.data.id);
+      if (a && b) links.push({ source: a, target: b });
+    }
+  }
+
+  // Tier-1 → tier-2 (parent-child from hierarchy)
+  for (const l of root.links()) {
+    if (l.source.data.tier === 1 && l.target.data.tier === 2) {
+      const source = nodeMap.get(l.source.data.id);
+      const target = nodeMap.get(l.target.data.id);
+      if (source && target) links.push({ source, target });
+    }
+  }
+
+  // 4. Compute bounding box
+  const NODE_PADDING = 20;
   let minX = Infinity;
   let maxX = -Infinity;
   let minY = Infinity;
@@ -95,16 +227,6 @@ export function computeHiveLayout(
 // computeFitTransform
 // ---------------------------------------------------------------------------
 
-/**
- * Calculate a transform (scale + offset) that fits the layout bounds
- * inside a canvas with optional padding.
- *
- * @param bounds       - Bounding box from LayoutResult
- * @param canvasWidth  - CSS pixel width of the canvas
- * @param canvasHeight - CSS pixel height of the canvas
- * @param padding      - Viewport padding (default VIEWPORT_PADDING)
- * @returns Transform to apply to canvas context
- */
 export function computeFitTransform(
   bounds: LayoutResult['bounds'],
   canvasWidth: number,
@@ -114,7 +236,6 @@ export function computeFitTransform(
   const contentWidth = bounds.maxX - bounds.minX;
   const contentHeight = bounds.maxY - bounds.minY;
 
-  // Avoid division by zero for degenerate cases
   if (contentWidth <= 0 || contentHeight <= 0) {
     return { scale: 1, offsetX: canvasWidth / 2, offsetY: canvasHeight / 2 };
   }

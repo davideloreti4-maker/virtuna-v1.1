@@ -22,6 +22,8 @@ export type HiveData = HiveNode;
 /** A node after layout computation -- screen-space position resolved. */
 export interface LayoutNode {
   id: string;
+  /** Human-readable label (carried from HiveNode.name). */
+  name: string;
   tier: number;
   /** Cartesian x (logical units, center = 0). */
   x: number;
@@ -35,6 +37,8 @@ export interface LayoutNode {
   parentId: string | null;
   /** Node color (rgba string). Tier-1 gets unique color, tier-2 inherits from parent. */
   color: string;
+  /** Arbitrary payload from input data (e.g. thumbnail URL). */
+  meta?: Record<string, unknown>;
 }
 
 /** A connection between two positioned nodes. */
