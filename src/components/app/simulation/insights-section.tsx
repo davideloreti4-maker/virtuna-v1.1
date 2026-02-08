@@ -1,7 +1,7 @@
 'use client';
 
 import { Info } from 'lucide-react';
-import { GlassCard } from '@/components/primitives';
+import { GlassCard } from '@/components/ui/card';
 import { Text } from '@/components/ui/typography';
 import {
   AccordionRoot,

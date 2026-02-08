@@ -2,7 +2,8 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 
-import { GlassCard, GlassSkeleton, SkeletonText } from '@/components/primitives';
+import { GlassCard } from '@/components/ui/card';
+import { GlassSkeleton, SkeletonText } from '@/components/primitives';
 import { Button } from '@/components/ui/button';
 import { useTestStore, type SimulationPhase } from '@/stores/test-store';
 

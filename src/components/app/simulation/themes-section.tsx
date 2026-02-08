@@ -2,7 +2,7 @@
 
 import { Info, MessageSquare } from 'lucide-react';
 import type { ConversationTheme } from '@/types/test';
-import { GlassCard } from '@/components/primitives';
+import { GlassCard } from '@/components/ui/card';
 import { Text, Caption } from '@/components/ui/typography';
 import {
   AccordionRoot,

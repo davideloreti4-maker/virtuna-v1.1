@@ -2,7 +2,7 @@
 
 import { Info, Sparkles } from 'lucide-react';
 import type { Variant } from '@/types/test';
-import { GlassCard } from '@/components/primitives';
+import { GlassCard } from '@/components/ui/card';
 import { Text } from '@/components/ui/typography';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

@@ -1,7 +1,8 @@
 'use client';
 
 import { Info } from 'lucide-react';
-import { GlassCard, GlassProgress } from '@/components/primitives';
+import { GlassCard } from '@/components/ui/card';
+import { GlassProgress } from '@/components/primitives';
 import { Text } from '@/components/ui/typography';
 
 interface AttentionBreakdownProps {
