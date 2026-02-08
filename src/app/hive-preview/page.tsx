@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { HiveCanvas } from '@/components/hive/HiveCanvas';
 import {
   countNodes,
   generateMockHiveData,
 } from '@/components/hive/hive-mock-data';
+import { resetGlobalAnimation } from '@/components/hive/use-hive-animation';
 
 // ---------------------------------------------------------------------------
 // Temporary preview page for visual verification of HiveCanvas.
@@ -17,6 +18,20 @@ export default function HivePreviewPage(): React.JSX.Element {
   const mockData = useMemo(() => generateMockHiveData(), []);
   const nodeCount = useMemo(() => countNodes(mockData), [mockData]);
   const [showHive, setShowHive] = useState(true);
+  // Key to force HiveCanvas remount (triggers fresh animation)
+  const [canvasKey, setCanvasKey] = useState(0);
+
+  const handleShowSkeleton = useCallback(() => {
+    setShowHive(false);
+  }, []);
+
+  const handleShowHive = useCallback(() => {
+    // Reset the module-level animation flag so it replays
+    resetGlobalAnimation();
+    // Bump key to force remount so the animation hook restarts
+    setCanvasKey((k) => k + 1);
+    setShowHive(true);
+  }, []);
 
   return (
     <div className="h-screen w-full bg-[#07080a] flex flex-col">
@@ -24,7 +39,7 @@ export default function HivePreviewPage(): React.JSX.Element {
       <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06]">
         <button
           type="button"
-          onClick={() => setShowHive(false)}
+          onClick={handleShowSkeleton}
           className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
             !showHive
               ? 'bg-white/[0.1] text-white'
@@ -35,7 +50,7 @@ export default function HivePreviewPage(): React.JSX.Element {
         </button>
         <button
           type="button"
-          onClick={() => setShowHive(true)}
+          onClick={handleShowHive}
           className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
             showHive
               ? 'bg-white/[0.1] text-white'
@@ -51,7 +66,7 @@ export default function HivePreviewPage(): React.JSX.Element {
 
       {/* Canvas container */}
       <div className="flex-1 min-h-0">
-        <HiveCanvas data={showHive ? mockData : null} />
+        <HiveCanvas key={canvasKey} data={showHive ? mockData : null} />
       </div>
     </div>
   );

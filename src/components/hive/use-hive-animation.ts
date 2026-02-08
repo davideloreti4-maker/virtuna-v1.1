@@ -42,6 +42,14 @@ interface UseHiveAnimationResult {
 /** Prevents animation from replaying after initial load. */
 let globalAnimationComplete = false;
 
+/**
+ * Reset the global animation flag so the next mount triggers the build animation.
+ * Used by the preview page to allow replaying the animation.
+ */
+export function resetGlobalAnimation(): void {
+  globalAnimationComplete = false;
+}
+
 // ---------------------------------------------------------------------------
 // Easing
 // ---------------------------------------------------------------------------
