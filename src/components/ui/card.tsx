@@ -53,12 +53,12 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
     <div
       ref={ref}
       className={cn(
-        "border border-border rounded-[12px] transition-all duration-150 hover:-translate-y-0.5 hover:border-border-hover hover:bg-white/[0.03]",
+        "border border-border rounded-[12px] transition-colors duration-150 hover:bg-white/[0.02]",
         className
       )}
       style={{
-        background: "var(--gradient-card-bg)",
-        boxShadow: "rgba(255, 255, 255, 0.1) 0px 1px 0px 0px inset",
+        background: "transparent",
+        boxShadow: "rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset",
         ...style,
       }}
       {...props}
@@ -116,7 +116,7 @@ const GlassCard = React.forwardRef<HTMLDivElement, GlassCardProps>(
     return (
       <div
         ref={ref}
-        className={cn("border border-border rounded-[12px] transition-all duration-150 hover:-translate-y-0.5 hover:border-border-hover hover:bg-white/[0.03]", className)}
+        className={cn("border border-border rounded-[12px] transition-colors duration-150 hover:bg-white/[0.02]", className)}
         style={{
           // Glass background: rgba(255, 255, 255, 0.05)
           background: "rgba(255, 255, 255, 0.05)",

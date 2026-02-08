@@ -97,14 +97,14 @@ const TestimonialCard = React.forwardRef<HTMLDivElement, TestimonialCardProps>(
       <div
         ref={ref}
         className={cn(
-          "relative rounded-[12px] border bg-transparent p-6 transition-all duration-150 hover:-translate-y-0.5 hover:border-border-hover hover:bg-white/[0.03]",
+          "relative rounded-[12px] border bg-transparent p-6 transition-colors duration-150 hover:bg-white/[0.02]",
           featured
             ? "border-accent/20 shadow-[0_0_20px_oklch(0.72_0.16_40_/_0.05)]"
             : "border-border",
           className,
         )}
         style={{
-          boxShadow: "rgba(255, 255, 255, 0.1) 0px 1px 0px 0px inset",
+          boxShadow: "rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset",
         }}
         {...props}
       >
