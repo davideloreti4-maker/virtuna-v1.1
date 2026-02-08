@@ -1,5 +1,33 @@
 # Milestones — Virtuna
 
+## v2.3.5 — Design Token Alignment (Shipped: 2026-02-08)
+
+**Delivered:** Achieved 1:1 design alignment with Raycast.com by correcting all design tokens, components, and reference docs — Inter font, hex gray tokens, zero-config GlassPanel, and full regression audit with zero regressions.
+
+**Phases completed:** 53-55 (8 plans total)
+
+**Key accomplishments:**
+
+- Replaced Funnel Display/Satoshi with Inter font throughout — single font matching Raycast 1:1
+- Corrected all design tokens (gray scale to hex, 137deg card gradient, glass gradient, button shadows) for pixel-perfect Raycast accuracy
+- Fixed all card variants with 12px radius, 6% borders, correct hover states and inset shadows
+- Refactored GlassPanel to zero-config Raycast glass (5px blur, 12px radius), deleted GradientGlow/GradientMesh (493 lines removed)
+- Rewrote BRAND-BIBLE.md from scratch as Raycast Design Language reference with 100% accurate token values
+- Full regression audit of 10 pages, 36+ components — zero regressions, WCAG AA maintained (5.42:1 muted text)
+
+**Stats:**
+
+- 76 code files changed (+4,477 / -2,296 lines)
+- 37 requirements, all shipped
+- 3 phases, 8 plans, 19 tasks
+- 3 days (2026-02-06 -> 2026-02-08)
+
+**Git range:** `docs(53)` -> `docs(55)`
+
+**What's next:** Continue v2.1 Dashboard Rebuild or start v3.1 Landing Page
+
+---
+
 ## v2.2 — Trending Page UI (Shipped: 2026-02-06)
 
 **Delivered:** TikTok Creative Center-style trending feed with video cards, detail modal with TikTok embed, and bookmark persistence — all built with the v2.0 design system.

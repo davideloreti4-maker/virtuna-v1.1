@@ -2,38 +2,23 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-06)
+See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Core value:** Raycast-quality design system enabling rapid, consistent UI development
-**Current focus:** v2.3.5 Design Token Alignment -- COMPLETE. All 3 phases (53-55) delivered, 9/9 plans executed, user-approved.
+**Current focus:** v2.3.5 milestone complete and archived. Next: v2.1 Dashboard Rebuild or v3.1 Landing Page.
 
 ## Current Position
 
-**Milestone:** v2.3.5 -- Design Token Alignment
-**Phase:** 55 of 55 (Glass, Docs & Regression) -- Complete
-**Plan:** 03 of 03 complete
-**Status:** Milestone complete -- all phases delivered, regression audit passed, user visual sign-off obtained
-**Last activity:** 2026-02-08 -- Completed 55-03-PLAN.md
+**Milestone:** v2.3.5 -- Design Token Alignment (SHIPPED)
+**Phase:** All phases complete (53-55)
+**Status:** Milestone archived
+**Last activity:** 2026-02-08 -- v2.3.5 milestone complete
 
-Progress: [███████████████████] 100% (9 of 9 plans)
-
-### Phase Overview
-
-| Phase | Name | Requirements | Depends On | Status |
-|-------|------|-------------|------------|--------|
-| 53 | Font & Color Foundation | 12 (TYPO + COLR) | None | Complete |
-| 54 | Card & Surface Corrections | 10 (CARD + HEAD + INPT) | Phase 53 | Complete |
-| 55 | Glass, Docs & Regression | 15 (GLAS + DOCS + REGR) | Phase 54 | Complete (3/3 plans) |
-
-### Dependency Graph
-
-```
-53 (Font & Color) [DONE] --> 54 (Card & Surface) [DONE] --> 55 (Glass, Docs & Regression) [DONE]
-```
+Progress: [SHIPPED] 100% (8 of 8 plans, 37/37 requirements)
 
 ## Shipped Milestones
 
-- v2.3.5 Design Token Alignment (2026-02-08) -- 3 phases, 9 plans, 37 requirements
+- v2.3.5 Design Token Alignment (2026-02-08) -- 3 phases, 8 plans, 37 requirements
 - v2.2 Trending Page UI (2026-02-06) -- 3 phases, 10 plans, 30 requirements
 - v2.0 Design System Foundation (2026-02-05) -- 6 phases, 35 plans, 125 requirements
 - v1.2 Visual Accuracy Refinement (2026-01-30) -- 2 phases
@@ -51,38 +36,14 @@ Progress: [███████████████████] 100% (9 of
 - Browser + .next/ cache will mask CSS changes -- hard clear required
 
 ### Decisions
-- Switch to Inter font exclusively (matching Raycast 1:1) -- Phase 53 complete
-- Strip colored glass tints, inner glow, GradientGlow/GradientMesh -- Phase 55-01 complete
-- Use exact hex for dark grey tokens (not oklch) -- done in 53-01
-- Use hex for light gray tokens (50-300) too -- consistent and avoids oklch compilation issues
-- gradient-glass token = same values as gradient-navbar (semantic separation)
-- font-normal (400) replaces font-[350] and font-[450] -- Inter 400 closest to Funnel Display 350 / Satoshi 450
-- Input bg-white/5 (semi-transparent) matches Raycast pattern -- replaces opaque bg-surface
-- Components inherit font-sans from body -- no per-component font class needed
-- Full regression of all 36 components + pages after fixes -- Phase 55
-- **Cards use bg-transparent (not gradient) -- Raycast live audit 2026-02-08**
-- **Card inset shadow 5% (not 10%) -- Raycast live audit**
-- **Card hover: subtle bg-white/2%, NO translate-y, NO border change -- Raycast live audit**
-- **Header is floating pill with 16px radius, max-w-1204px, border all sides -- Raycast live audit**
-- **Buttons use 8px radius (rounded-lg) for all sizes -- Raycast live audit**
-- Input h-[42px] with all GlassInput features merged -- verified in 54-02
-- Textarea drops backdrop-filter (not used on Raycast inputs) -- 54-02
-- Textarea uses explicit pixel font sizes (13/14/15px) for precision -- 54-02
-- GlassCard (ui/card.tsx) keeps rgba(255,255,255,0.05) bg (intentional for glassmorphism blur effect)
-- **GlassPanel has exactly 4 props (children, className, style, as) -- zero-config Raycast glass -- 55-01**
-- **PillColor type defined locally in GlassPill.tsx (no cross-component dependency) -- 55-01**
-- **shadow-glass CSS variable kept (used by showcase/page.tsx) -- 55-01**
-- **BRAND-BIBLE.md canonical at repo root -- .planning/BRAND-BIBLE.md deleted -- 55-02**
-- **All doc token values verified against globals.css at execution time -- 55-02**
-- **Accessibility contrast ratios updated for #848586 muted (5.4:1) and #1a0f0a accent-fg (7.2:1) -- 55-02**
-- **5 WCAG AA normal-text failures accepted (status colors on elevated surfaces) -- all pass large-text AA -- 55-03**
+- All v2.3.5 decisions documented in PROJECT.md Key Decisions table and milestones/v2.3.5-ROADMAP.md
 
 ### Session Continuity
 - Last session: 2026-02-08
-- Stopped at: Completed 55-03-PLAN.md -- milestone v2.3.5 complete
+- Stopped at: v2.3.5 milestone archived
 - Resume file: None
-- Next: Milestone closure or next milestone
+- Next: /gsd:new-milestone or continue v2.1 on main branch
 
 ---
 *State created: 2026-02-06*
-*Last updated: 2026-02-08 -- Phase 55 complete, milestone v2.3.5 complete*
+*Last updated: 2026-02-08 -- v2.3.5 milestone archived*
