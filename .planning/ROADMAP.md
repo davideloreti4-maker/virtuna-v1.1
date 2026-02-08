@@ -58,9 +58,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 54-01-PLAN.md -- Card variants + Header glass navbar (Card, GlassCard, FeatureCard, ExtensionCard, TestimonialCard, Header)
-- [ ] 54-02-PLAN.md -- Input + Textarea consolidation (merge GlassInput features, create Textarea, update barrel)
-- [ ] 54-03-PLAN.md -- Consumer migration + deprecation re-exports + visual verification checkpoint
+- [x] 54-01-PLAN.md -- Card variants + Header glass navbar (Card, GlassCard, FeatureCard, ExtensionCard, TestimonialCard, Header)
+- [x] 54-02-PLAN.md -- Input + Textarea consolidation (merge GlassInput features, create Textarea, update barrel)
+- [x] 54-03-PLAN.md -- Consumer migration + deprecation re-exports + visual verification checkpoint
 
 ---
 
@@ -204,9 +204,9 @@ Plans:
 | 49 | v2.1 | 0/? | Pending | - |
 | 50-52 | v2.2 | 10/10 | Shipped | 2026-02-06 |
 | 53 | v2.3.5 | 2/2 | Complete | 2026-02-06 |
-| 54 | v2.3.5 | 0/? | Not started | - |
+| 54 | v2.3.5 | 3/3 | Complete | 2026-02-08 |
 | 55 | v2.3.5 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-02-03*
-*Last updated: 2026-02-06 -- Phase 53 complete (Font & Color Foundation)*
+*Last updated: 2026-02-08 -- Phase 54 complete (Card & Surface Corrections)*

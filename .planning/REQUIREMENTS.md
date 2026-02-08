@@ -25,11 +25,11 @@
 
 ### Card Component
 
-- [ ] **CARD-01**: Cards use solid 137deg gradient background (no backdrop-filter blur)
-- [ ] **CARD-02**: Cards have proper hover states: translate-y -0.5, border white/10, bg white/3
-- [ ] **CARD-03**: Card border uses `rgba(255,255,255,0.06)` with `border-radius: 12px`
-- [ ] **CARD-04**: Card inset shadow uses `rgba(255,255,255,0.1) 0 1px 0 0 inset`
-- [ ] **CARD-05**: FeatureCard border opacities corrected to 6% base / 10% hover
+- [x] **CARD-01**: Cards use transparent background (Raycast live extraction: `background: transparent`)
+- [x] **CARD-02**: Cards have subtle hover: `hover:bg-white/[0.02]` (no translate-y, no border change — matches Raycast live)
+- [x] **CARD-03**: Card border uses `rgba(255,255,255,0.06)` with `border-radius: 12px`
+- [x] **CARD-04**: Card inset shadow uses `rgba(255,255,255,0.05) 0 1px 0 0 inset` (5%, corrected from live audit)
+- [x] **CARD-05**: FeatureCard/ExtensionCard/TestimonialCard borders, shadows, and hover match Card baseline
 
 ### Glass & Effects
 
@@ -42,14 +42,14 @@
 
 ### Header & Navigation
 
-- [ ] **HEAD-01**: Header/navbar applies Raycast glass pattern (gradient + blur(5px) + 6% border)
-- [ ] **HEAD-02**: Mobile menu divider uses 6% opacity (not 10%)
+- [x] **HEAD-01**: Header/navbar is floating pill with 16px radius, glass pattern (gradient + blur(5px) + 6% border all sides)
+- [x] **HEAD-02**: Mobile menu expands pill, divider uses 6% opacity
 
 ### Input Components
 
-- [ ] **INPT-01**: Base Input component uses `rgba(255,255,255,0.05)` background matching GlassInput/Raycast
-- [ ] **INPT-02**: Input border uses 5% opacity (Raycast exact)
-- [ ] **INPT-03**: Input height remains 42px (already correct)
+- [x] **INPT-01**: Base Input component uses `rgba(255,255,255,0.05)` background matching GlassInput/Raycast
+- [x] **INPT-02**: Input border uses 5% opacity (Raycast exact)
+- [x] **INPT-03**: Input height remains 42px (already correct)
 
 ### Reference Documentation
 
@@ -101,22 +101,22 @@
 | COLR-05 | Phase 53 | Complete |
 | COLR-06 | Phase 53 | Complete |
 | COLR-07 | Phase 53 | Complete |
-| CARD-01 | Phase 54 | Pending |
-| CARD-02 | Phase 54 | Pending |
-| CARD-03 | Phase 54 | Pending |
-| CARD-04 | Phase 54 | Pending |
-| CARD-05 | Phase 54 | Pending |
+| CARD-01 | Phase 54 | Complete |
+| CARD-02 | Phase 54 | Complete |
+| CARD-03 | Phase 54 | Complete |
+| CARD-04 | Phase 54 | Complete |
+| CARD-05 | Phase 54 | Complete |
 | GLAS-01 | Phase 55 | Pending |
 | GLAS-02 | Phase 55 | Pending |
 | GLAS-03 | Phase 55 | Pending |
 | GLAS-04 | Phase 55 | Pending |
 | GLAS-05 | Phase 55 | Pending |
 | GLAS-06 | Phase 55 | Pending |
-| HEAD-01 | Phase 54 | Pending |
-| HEAD-02 | Phase 54 | Pending |
-| INPT-01 | Phase 54 | Pending |
-| INPT-02 | Phase 54 | Pending |
-| INPT-03 | Phase 54 | Pending |
+| HEAD-01 | Phase 54 | Complete |
+| HEAD-02 | Phase 54 | Complete |
+| INPT-01 | Phase 54 | Complete |
+| INPT-02 | Phase 54 | Complete |
+| INPT-03 | Phase 54 | Complete |
 | DOCS-01 | Phase 55 | Pending |
 | DOCS-02 | Phase 55 | Pending |
 | DOCS-03 | Phase 55 | Pending |
@@ -134,4 +134,4 @@
 
 ---
 *Requirements defined: 2026-02-06*
-*Last updated: 2026-02-06 -- Phase 53 requirements (TYPO-01..05, COLR-01..07) marked Complete*
+*Last updated: 2026-02-08 -- Phase 54 requirements (CARD-01..05, HEAD-01..02, INPT-01..03) marked Complete*
