@@ -44,6 +44,7 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 
 - [ ] Backend integration for brand deals/affiliate data
 - [ ] Additional page UI milestones
+- [ ] Landing page (v3.1 in worktree)
 
 ### Out of Scope
 
@@ -56,17 +57,16 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 
 ## Context
 
-**Current state:** v2.3.5 Design Token Alignment shipped (2026-02-08), v2.3 Brand Deals shipped, v2.2 Trending shipped, v2.1 Dashboard in progress.
-- ~32,400+ LOC TypeScript/CSS
-- Tech stack: Next.js 14+ (App Router), TypeScript strict, Tailwind CSS v4, Supabase Auth, Recharts
+**Current state:** v2.1 Dashboard Rebuild shipped (2026-02-08). All frontend milestones complete through v2.3.5.
+- ~78,000+ LOC TypeScript/CSS (including +46k from v2.1)
+- Tech stack: Next.js 14+ (App Router), TypeScript strict, Tailwind CSS v4, Supabase Auth, Recharts, d3-hierarchy, d3-quadtree
 - 36 design system components across 4 families, 100+ design tokens (all Raycast-accurate)
 - Inter font throughout (Funnel Display/Satoshi removed)
 - Zero-config GlassPanel with Raycast neutral glass
-- GradientGlow, GradientMesh, primitives/GlassCard deleted (not Raycast patterns)
-- BRAND-BIBLE.md rewritten as Raycast Design Language reference
+- Dashboard fully rebuilt with design system: sidebar, forms, modals, results, loading states
+- Canvas-based hive visualization: 1300+ nodes, 60fps, interactive (hover, click, zoom/pan, pinch-to-zoom)
 - Trending page at /trending with TikTok-style video feed + bookmark store
 - Brand deals page at /brand-deals with 3-tab layout + earnings chart
-- Dashboard has ~30 app components (v2.1 migration in progress, Wave 1 done)
 - 7-page showcase at /showcase
 - 8 documentation files in docs/
 - Deployed to Vercel
@@ -103,6 +103,13 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 | Color semantics (orange/green/blue) from Brand Bible | Good -- consistent across all 3 tabs |
 | Lifted state for applied deals/active links | Good -- state survives tab switches |
 | Recharts v3 with function content tooltip | Good -- type-safe dark-mode chart |
+| Zustand persist for sidebar state | Good -- SSR-safe, replaces manual _hydrate |
+| Zod v4 for form validation (no react-hook-form) | Good -- simple forms don't need form library |
+| Canvas 2D for hive (not SVG) | Good -- 1000+ nodes at 60fps |
+| d3-hierarchy + d3-quadtree for hive | Good -- deterministic layout + O(log n) hit detection |
+| Ref-based animation state (not useState) | Good -- avoids re-renders during 60fps loop |
+| Pointer Events for pinch-to-zoom | Good -- unified across mouse/touch/pen |
+| Inline styles for backdrop-filter | Good -- workaround for Lightning CSS stripping |
 
 ## Constraints
 
@@ -120,9 +127,9 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 
 ## Current State
 
-**Shipped:** v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06)
+**Shipped:** v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
-**In progress:** v2.1 Dashboard Rebuild (main branch, Wave 1 complete, Phases 48-49 pending)
+**In progress:** None (all milestones on main are shipped)
 
 **Future milestones:**
 - v3.1 Landing Page (worktree at ~/virtuna-v3.1-landing-page/)
@@ -130,4 +137,4 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 - Trending page backend (Apify, AI classification, TanStack Query)
 
 ---
-*Last updated: 2026-02-08 after v2.3.5 milestone merged to main*
+*Last updated: 2026-02-08 after v2.1 milestone complete*
