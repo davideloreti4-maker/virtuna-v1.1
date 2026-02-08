@@ -66,14 +66,12 @@ const FULL_VISIBILITY: Record<number, TierVisibility> = {
   0: { opacity: 1, scale: 1 },
   1: { opacity: 1, scale: 1 },
   2: { opacity: 1, scale: 1 },
-  3: { opacity: 1, scale: 1 },
 };
 
 const ZERO_VISIBILITY: Record<number, TierVisibility> = {
   0: { opacity: 0, scale: 0 },
   1: { opacity: 0, scale: 0 },
   2: { opacity: 0, scale: 0 },
-  3: { opacity: 0, scale: 0 },
 };
 
 // ---------------------------------------------------------------------------
@@ -84,7 +82,6 @@ const TIER_TIMING: Array<{ delay: number; duration: number }> = [
   ANIMATION_TIMING.center,
   ANIMATION_TIMING.tier1,
   ANIMATION_TIMING.tier2,
-  ANIMATION_TIMING.tier3,
 ];
 
 // ---------------------------------------------------------------------------

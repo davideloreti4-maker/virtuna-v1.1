@@ -8,10 +8,6 @@ import type { HiveNode, HiveData } from './hive-types';
 // Seeded PRNG (mulberry32) -- deterministic "random" numbers
 // ---------------------------------------------------------------------------
 
-/**
- * Mulberry32 PRNG. Returns a function that produces pseudo-random numbers
- * in [0, 1) from a 32-bit seed. Same seed always produces the same sequence.
- */
 function mulberry32(seed: number): () => number {
   let state = seed | 0;
   return () => {
@@ -29,10 +25,8 @@ function mulberry32(seed: number): () => number {
 export interface MockHiveOptions {
   /** Number of tier-1 children (default: 12). */
   tier1Count?: number;
-  /** [min, max] tier-2 children per tier-1 (default: [8, 12]). */
+  /** [min, max] tier-2 children per tier-1 (default: [8, 14]). */
   tier2Range?: [number, number];
-  /** [min, max] tier-3 children per tier-2 (default: [8, 12]). */
-  tier3Range?: [number, number];
   /** PRNG seed for reproducibility (default: 42). */
   seed?: number;
 }
@@ -42,27 +36,20 @@ export interface MockHiveOptions {
 // ---------------------------------------------------------------------------
 
 /**
- * Generate a mock hive data tree with realistic node counts.
+ * Generate a mock hive data tree (societies.io style -- 2 tiers only).
  *
- * Defaults produce ~1333 nodes:
- *   1 center + 12 tier-1 + ~120 tier-2 + ~1200 tier-3
- *
- * The PRNG is seeded so identical options always produce identical data.
- *
- * @param options - Configuration for node counts and seed
- * @returns Root HiveData node (tier 0) with populated children
+ * Defaults produce ~140 nodes:
+ *   1 center + 12 tier-1 + ~130 tier-2
  */
 export function generateMockHiveData(options?: MockHiveOptions): HiveData {
   const {
-    tier1Count = 12,
-    tier2Range = [8, 12],
-    tier3Range = [8, 12],
+    tier1Count = 10,
+    tier2Range = [24, 42],
     seed = 42,
   } = options ?? {};
 
   const rng = mulberry32(seed);
 
-  /** Produce a random integer in [min, max] using the seeded PRNG. */
   function randInt(min: number, max: number): number {
     return min + Math.floor(rng() * (max - min + 1));
   }
@@ -94,22 +81,10 @@ export function generateMockHiveData(options?: MockHiveOptions): HiveData {
     const tier2Children: HiveNode[] = [];
 
     for (let j = 0; j < tier2Count; j++) {
-      const tier3Count = randInt(tier3Range[0], tier3Range[1]);
-      const tier3Children: HiveNode[] = [];
-
-      for (let k = 0; k < tier3Count; k++) {
-        tier3Children.push({
-          id: `t3-${i}-${j}-${k}`,
-          name: `Leaf ${themeName}.${j + 1}.${k + 1}`,
-          tier: 3,
-        });
-      }
-
       tier2Children.push({
         id: `t2-${i}-${j}`,
         name: `Sub ${themeName}.${j + 1}`,
         tier: 2,
-        children: tier3Children,
       });
     }
 
