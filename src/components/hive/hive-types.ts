@@ -8,8 +8,8 @@ export interface HiveNode {
   id: string;
   /** Human-readable label displayed on hover / tooltip. */
   name: string;
-  /** Tier depth: 0 = center, 1 = main themes, 2 = sub-themes, 3 = leaves. */
-  tier: 0 | 1 | 2 | 3;
+  /** Tier depth: 0 = center, 1 = main themes, 2 = sub-themes. */
+  tier: 0 | 1 | 2;
   /** Child nodes (undefined or empty for leaf nodes). */
   children?: HiveNode[];
   /** Arbitrary payload for future extensibility (e.g. thumbnail URL). */
@@ -33,6 +33,8 @@ export interface LayoutNode {
   radius: number;
   /** Parent node id (null for center). */
   parentId: string | null;
+  /** Node color (rgba string). Tier-1 gets unique color, tier-2 inherits from parent. */
+  color: string;
 }
 
 /** A connection between two positioned nodes. */
@@ -71,4 +73,36 @@ export interface CanvasSize {
   height: number;
   /** Device pixel ratio. */
   dpr: number;
+}
+
+// ---------------------------------------------------------------------------
+// Interaction types (Phase 49)
+// ---------------------------------------------------------------------------
+
+/** Camera state for zoom/pan -- extracted from HiveCanvas for shared use. */
+export interface Camera {
+  zoom: number;
+  panX: number;
+  panY: number;
+}
+
+/** Fit-to-viewport transform computed from layout bounds. */
+export interface FitTransform {
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+}
+
+/** Mutable interaction state stored in refs (not React state). */
+export interface InteractionState {
+  hoveredNodeId: string | null;
+  selectedNodeId: string | null;
+  connectedNodeIds: Set<string>;
+}
+
+/** Result of a hit detection query. */
+export interface HitTestResult {
+  node: LayoutNode;
+  screenX: number;
+  screenY: number;
 }

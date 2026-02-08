@@ -121,3 +121,43 @@ export const TIER_CONFIG: Record<number, TierConfig> = {
     lineOpacity: 0.10,
   },
 } as const;
+
+// ---------------------------------------------------------------------------
+// Interaction constants (Phase 49)
+// ---------------------------------------------------------------------------
+
+/** Distance threshold (CSS px) to distinguish click from drag. */
+export const CLICK_DRAG_THRESHOLD = 5 as const;
+
+/** Hover debounce timeout (ms) for node-to-node transitions. */
+export const HOVER_DEBOUNCE_MS = 16 as const;
+
+/** Opacity for unrelated (dimmed) nodes during hover/selection. */
+export const DIM_OPACITY = 0.15 as const;
+
+/** Opacity for unrelated connection lines during hover/selection. */
+export const DIM_LINE_OPACITY = 0.03 as const;
+
+/** Base search radius for quadtree hit detection (layout units). */
+export const HIT_SEARCH_RADIUS = 20 as const;
+
+/** Minimum zoom factor for search radius scaling. */
+export const HIT_ZOOM_FLOOR = 0.3 as const;
+
+/** Shadow blur radius for selected node glow effect. */
+export const SELECTED_GLOW_BLUR = 12 as const;
+
+/** Selected node glow color (coral accent). */
+export const SELECTED_GLOW_COLOR = 'rgba(255, 127, 80, 0.6)' as const;
+
+/** Scale multiplier for selected node (visual emphasis). */
+export const SELECTED_SCALE = 1.3 as const;
+
+/** Minimum zoom level (wider range for exploration). */
+export const MIN_ZOOM = 0.2 as const;
+
+/** Maximum zoom level. */
+export const MAX_ZOOM = 8 as const;
+
+/** Zoom sensitivity per wheel delta. */
+export const ZOOM_SENSITIVITY = 0.001 as const;
