@@ -15,3 +15,6 @@ export type { PersonaCardProps } from "./persona-card";
 export { StatsSection } from "./stats-section";
 export { TestimonialQuote } from "./testimonial-quote";
 export type { TestimonialQuoteProps } from "./testimonial-quote";
+export { SocialProofStats } from "./social-proof-stats";
+export { TestimonialsSection } from "./testimonials-section";
+export { LogoCloudSection } from "./logo-cloud-section";

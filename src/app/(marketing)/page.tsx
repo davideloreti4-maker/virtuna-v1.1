@@ -1,4 +1,9 @@
-import { HeroSection } from "@/components/landing";
+import {
+  HeroSection,
+  LogoCloudSection,
+  SocialProofStats,
+  TestimonialsSection,
+} from "@/components/landing";
 import { Footer } from "@/components/layout/footer";
 
 export default function HomePage() {
@@ -9,6 +14,10 @@ export default function HomePage() {
         <HeroSection />
 
         {/* Social Proof - Phase 60 */}
+        <LogoCloudSection />
+        <SocialProofStats />
+        <TestimonialsSection />
+
         {/* Features - Phase 61 */}
         {/* Conversion - Phase 62 */}
       </main>

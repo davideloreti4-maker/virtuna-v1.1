@@ -199,6 +199,7 @@
   --animate-accordion-up: accordion-up 0.2s ease-out;
   --animate-gradient-x: gradient-x 3s linear infinite;
   --animate-shimmer: shimmer 2s ease-in-out infinite;
+  --animate-marquee: marquee 30s linear infinite;
 
   /* --- Glow Intensities --- */
   --glow-intensity-subtle: 0.15;
@@ -282,6 +283,15 @@
   }
   100% {
     background-position: 200% 0;
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
   }
 }
 
