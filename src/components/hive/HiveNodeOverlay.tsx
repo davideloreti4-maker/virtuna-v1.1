@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { X } from '@phosphor-icons/react';
 
-import { GlassCard } from '@/components/primitives/GlassCard';
+import { GlassCard } from '@/components/ui/card';
 import { Caption, Text } from '@/components/ui/typography';
 
 import { computeOverlayPosition } from './hive-interaction';
@@ -76,7 +76,7 @@ export function HiveNodeOverlay({
         transition: 'opacity 150ms ease-out',
       }}
     >
-      <GlassCard padding="sm" blur="md" className="w-[220px]">
+      <GlassCard blur="md" className="w-[220px] p-3">
         {/* Close button */}
         <button
           onClick={onClose}
