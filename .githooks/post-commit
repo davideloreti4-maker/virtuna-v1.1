@@ -2,3 +2,6 @@
 # Auto-push after commit so Web Claude sessions can access the branch.
 # Fails silently if offline or no remote configured.
 git push origin HEAD 2>/dev/null || true
+
+# Telegram notification (non-blocking)
+"$HOME/.claude/hooks/telegram-notify.sh" commit 2>/dev/null &
