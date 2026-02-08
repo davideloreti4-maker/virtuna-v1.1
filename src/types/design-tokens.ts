@@ -39,7 +39,7 @@ export type SemanticColor =
 export type SpacingToken = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 8 | 10 | 12 | 16 | 20 | 24;
 
 /** Shadow elevation tokens */
-export type ShadowToken = 'sm' | 'md' | 'lg' | 'xl' | 'glass' | 'glow-accent' | 'button' | 'button-secondary';
+export type ShadowToken = 'sm' | 'md' | 'lg' | 'xl' | 'glass' | 'glow-accent' | 'button';
 
 /** Border radius scale tokens */
 export type RadiusToken = 'none' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';

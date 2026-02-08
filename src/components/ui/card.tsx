@@ -118,8 +118,7 @@ const GlassCard = React.forwardRef<HTMLDivElement, GlassCardProps>(
         ref={ref}
         className={cn("border border-border rounded-[12px] transition-colors duration-150 hover:bg-white/[0.02]", className)}
         style={{
-          // Glass background: rgba(255, 255, 255, 0.05)
-          background: "rgba(255, 255, 255, 0.05)",
+          background: "transparent",
           // Glassmorphism blur with Safari prefix
           backdropFilter: `blur(${blurValue})`,
           WebkitBackdropFilter: `blur(${blurValue})`,
