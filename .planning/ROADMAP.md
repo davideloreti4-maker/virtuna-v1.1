@@ -2,7 +2,7 @@
 
 ## Milestones
 
-- v2.3.5 Design Token Alignment -- Phases 53-55 (active)
+- v2.3.5 Design Token Alignment -- Phases 53-55 (shipped 2026-02-08)
 - v2.2 Trending Page UI -- Phases 50-52 (shipped 2026-02-06) | [Archive](milestones/v2.2-ROADMAP.md)
 - v2.1 Dashboard Rebuild -- Phases 45-49 (active)
 - v2.0 Design System Foundation -- Phases 39-44 (shipped 2026-02-05) | [Archive](milestones/v2.0-ROADMAP.md)
@@ -84,9 +84,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 55-01-PLAN.md -- GlassPanel refactor + component deletions + CSS cleanup
-- [ ] 55-02-PLAN.md -- BRAND-BIBLE.md rewrite + design doc updates
-- [ ] 55-03-PLAN.md -- Full regression audit + WCAG contrast check + visual verification
+- [x] 55-01-PLAN.md -- GlassPanel refactor + component deletions + CSS cleanup
+- [x] 55-02-PLAN.md -- BRAND-BIBLE.md rewrite + design doc updates
+- [x] 55-03-PLAN.md -- Full regression audit + WCAG contrast check + visual verification
 
 ## v2.1 Dashboard Rebuild
 
@@ -210,8 +210,8 @@ Plans:
 | 50-52 | v2.2 | 10/10 | Shipped | 2026-02-06 |
 | 53 | v2.3.5 | 2/2 | Complete | 2026-02-06 |
 | 54 | v2.3.5 | 3/3 | Complete | 2026-02-08 |
-| 55 | v2.3.5 | 0/? | Not started | - |
+| 55 | v2.3.5 | 3/3 | Complete | 2026-02-08 |
 
 ---
 *Roadmap created: 2026-02-03*
-*Last updated: 2026-02-08 -- Phase 54 complete (Card & Surface Corrections)*
+*Last updated: 2026-02-08 -- Phase 55 complete (Glass, Docs & Regression) -- v2.3.5 milestone shipped*
