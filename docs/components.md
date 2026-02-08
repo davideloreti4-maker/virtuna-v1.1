@@ -637,7 +637,7 @@ toast({
 
 ## Card
 
-Basic card component with dark surface styling, gradient background, and subtle inner glow.
+Basic card component with transparent background, 6% border, and subtle 5% inset shadow. Raycast-accurate styling.
 
 ### Import
 
@@ -685,17 +685,17 @@ Extends `React.HTMLAttributes<HTMLDivElement>`.
 ### Accessibility
 
 - Renders semantic `<div>` -- add appropriate ARIA roles if the card is interactive
-- Card background uses gradient token (`--gradient-card-bg`) with subtle inner glow shadow
+- Card background is transparent with 5% inset shadow for subtle depth
 
 ### Do's and Don'ts
 
 **Do:**
-- Use Card for content grouping on solid dark backgrounds
+- Use Card for content grouping (transparent background blends with page)
 - Use subcomponents (CardHeader, CardContent, CardFooter) for consistent padding
 - Add headings inside CardHeader for document structure
 
 **Don't:**
-- Use Card over gradient or image backgrounds (use GlassCard instead)
+- Add gradient backgrounds to cards (use `bg-transparent` per Raycast pattern)
 - Add interactive roles without keyboard support
 
 ---

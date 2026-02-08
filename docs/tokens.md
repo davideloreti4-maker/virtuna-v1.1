@@ -9,14 +9,14 @@ Most commonly used tokens for everyday component work:
 | Category | Token | Value | When to Use |
 |----------|-------|-------|-------------|
 | Background | `--color-background` | `var(--color-gray-950)` (#07080a) | Page background |
-| Surface | `--color-surface` | #18191c | Cards, panels |
+| Surface | `--color-surface` | #18191a | Cards, panels |
 | Text | `--color-foreground` | `var(--color-gray-50)` | Primary text |
 | Muted text | `--color-foreground-muted` | `var(--color-gray-500)` | Secondary info |
 | Accent | `--color-accent` | `var(--color-coral-500)` | Brand CTA, links |
-| Border | `--color-border` | `rgba(255,255,255,0.08)` | Default borders |
+| Border | `--color-border` | `rgba(255,255,255,0.06)` | Default borders |
 | Spacing | `--spacing-4` | 16px | Standard gap/padding |
 | Radius | `--radius-md` | 8px | Default border radius |
-| Font | `--font-sans` | Satoshi, system-ui | Body text |
+| Font | `--font-sans` | Inter, system-ui | Body text |
 | Shadow | `--shadow-md` | Multi-layer | Card elevation |
 | Duration | `--duration-normal` | 200ms | Standard transitions |
 
@@ -62,12 +62,12 @@ Extracted from raycast.com computed styles. Dark grays use exact hex values for 
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--color-gray-50` | `oklch(0.98 0 0)` | Primary text (near-white) |
-| `--color-gray-100` | `oklch(0.96 0 0)` | Secondary text, bright surfaces |
-| `--color-gray-200` | `oklch(0.90 0 0)` | Disabled text on dark backgrounds |
-| `--color-gray-300` | `oklch(0.80 0 0)` | Placeholder text, dimmed labels |
+| `--color-gray-50` | `#f9f9f9` | Primary text (near-white) |
+| `--color-gray-100` | `#f2f2f2` | Secondary text, bright surfaces |
+| `--color-gray-200` | `#e0e0e0` | Disabled text on dark backgrounds |
+| `--color-gray-300` | `#c6c6c6` | Placeholder text, dimmed labels |
 | `--color-gray-400` | `#9c9c9d` | Raycast secondary text (rgb 156,156,157) |
-| `--color-gray-500` | `#6a6b6c` | Raycast muted text (rgb 106,107,108) |
+| `--color-gray-500` | `#848586` | Muted text (WCAG AA-boosted, 5.4:1 on #07080a) |
 | `--color-gray-600` | `#58595a` | Dimmed text, code comments (rgb 88,89,90) |
 | `--color-gray-700` | `#3a3b3d` | Subtle borders, separator lines |
 | `--color-gray-800` | `#222326` | Elevated surface background |
@@ -97,7 +97,7 @@ Always prefer semantic tokens over primitives in component code. They convey int
 |-------|-------|---------|-------|
 | `--color-background` | `var(--color-gray-950)` | #07080a | Page-level background |
 | `--color-background-elevated` | `var(--color-gray-900)` | #1a1b1e | Elevated sections, sidebar backgrounds |
-| `--color-surface` | `#18191c` | rgb(24,25,28) | Card surfaces, panel interiors |
+| `--color-surface` | `#18191a` | rgb(24,25,26) | Card surfaces, panel interiors |
 | `--color-surface-elevated` | `#222326` | rgb(34,35,38) | Elevated panels, dropdowns, popovers |
 
 #### Text
@@ -106,7 +106,7 @@ Always prefer semantic tokens over primitives in component code. They convey int
 |-------|-------|---------|-------|
 | `--color-foreground` | `var(--color-gray-50)` | Near-white | Primary body text, headings |
 | `--color-foreground-secondary` | `var(--color-gray-400)` | #9c9c9d | Secondary labels, descriptions |
-| `--color-foreground-muted` | `var(--color-gray-500)` | #6a6b6c | Timestamps, helper text, placeholders |
+| `--color-foreground-muted` | `var(--color-gray-500)` | #848586 | Timestamps, helper text, placeholders |
 
 #### Accent
 
@@ -115,7 +115,7 @@ Always prefer semantic tokens over primitives in component code. They convey int
 | `--color-accent` | `var(--color-coral-500)` | #FF7F50 | Primary CTA, links, focus rings |
 | `--color-accent-hover` | `var(--color-coral-400)` | Lighter coral | Hover state for accent elements |
 | `--color-accent-active` | `var(--color-coral-600)` | Darker coral | Pressed/active state for accent elements |
-| `--color-accent-foreground` | `var(--color-gray-50)` | Near-white | Text on accent backgrounds |
+| `--color-accent-foreground` | `#1a0f0a` | Dark brown | Text on accent backgrounds (7.2:1 WCAG AAA) |
 
 #### Status
 
@@ -130,8 +130,8 @@ Always prefer semantic tokens over primitives in component code. They convey int
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--color-border` | `rgba(255,255,255,0.08)` | Default borders (inputs, cards, dividers) |
-| `--color-border-hover` | `rgba(255,255,255,0.15)` | Border on hover state |
+| `--color-border` | `rgba(255,255,255,0.06)` | Default borders (inputs, cards, dividers) |
+| `--color-border-hover` | `rgba(255,255,255,0.1)` | Border on hover state |
 | `--color-border-glass` | `rgba(255,255,255,0.06)` | Glass component borders (navbar, panels) |
 | `--color-border-subtle` | `rgba(255,255,255,0.04)` | Very subtle separators, grid lines |
 
@@ -151,8 +151,7 @@ Always prefer semantic tokens over primitives in component code. They convey int
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--font-display` | Funnel Display, ui-sans-serif, system-ui, sans-serif | Hero headings (h1, h2) |
-| `--font-sans` | Satoshi, ui-sans-serif, system-ui, sans-serif | Body text, labels, UI elements |
+| `--font-sans` | `var(--font-inter)`, ui-sans-serif, system-ui, sans-serif | All text: body, headings, labels, UI elements |
 | `--font-mono` | ui-monospace, SFMono-Regular, JetBrains Mono, monospace | Code blocks, inline code, keyboard shortcuts |
 
 ### Font Sizes
@@ -321,38 +320,11 @@ Complex gradient values for branded and decorative elements.
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--gradient-coral` | `linear-gradient(135deg, coral-400, coral-500, coral-600)` | Brand gradient (CTA buttons, hero accents) |
-| `--gradient-card-bg` | `linear-gradient(180deg, #222326, #141517)` | Card background gradient (top-to-bottom fade) |
+| `--gradient-card-bg` | `linear-gradient(137deg, #111214 4.87%, #0c0d0f 75.88%)` | Card background gradient |
 | `--gradient-overlay` | `linear-gradient(180deg, transparent, oklch(0 0 0 / 0.8))` | Image overlay fade-to-black |
-| `--gradient-glow-coral` | `radial-gradient(circle, coral-500/0.2, transparent 70%)` | Coral glow halo behind elements |
-| `--gradient-navbar` | `linear-gradient(137deg, rgba(17,18,20,0.75), rgba(12,13,15,0.9))` | Glass navbar background |
+| `--gradient-navbar` | `linear-gradient(137deg, rgba(17,18,20,0.75) 4.87%, rgba(12,13,15,0.9) 75.88%)` | Glass navbar background |
+| `--gradient-glass` | `linear-gradient(137deg, rgba(17,18,20,0.75) 4.87%, rgba(12,13,15,0.9) 75.88%)` | Glass panel background (same as navbar) |
 | `--gradient-feature` | `radial-gradient(85.77% 49.97% at 51% 5.12%, ...)` | Feature card decorative radial gradient |
-
----
-
-## Glow Intensities
-
-Opacity presets for glow effects used in gradient glow components.
-
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--glow-intensity-subtle` | 0.15 | Background ambient glow |
-| `--glow-intensity-medium` | 0.3 | Standard glow effect |
-| `--glow-intensity-strong` | 0.5 | Prominent glow (featured elements, hero) |
-
----
-
-## Legacy Gradient Colors
-
-oklch-based colors used in feature card gradient themes (ExtensionCard, decorative elements).
-
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--color-gradient-purple` | `oklch(0.63 0.24 300)` | Purple gradient stops |
-| `--color-gradient-blue` | `oklch(0.62 0.19 250)` | Blue gradient stops |
-| `--color-gradient-pink` | `oklch(0.66 0.22 350)` | Pink gradient stops |
-| `--color-gradient-cyan` | `oklch(0.72 0.15 200)` | Cyan gradient stops |
-| `--color-gradient-green` | `oklch(0.68 0.17 145)` | Green gradient stops |
-| `--color-gradient-orange` | `oklch(0.70 0.18 50)` | Orange gradient stops |
 
 ---
 

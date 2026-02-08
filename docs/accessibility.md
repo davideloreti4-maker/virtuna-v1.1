@@ -34,10 +34,10 @@ These are the design system's semantic color tokens measured against all backgro
 
 | Token | Context | Ratio | Status | Impact |
 |-------|---------|-------|--------|--------|
-| `foreground-muted` (#6a6b6c) | On background | 3.75:1 | AA Large only | Used for placeholders, captions |
-| `foreground-muted` (#6a6b6c) | On surface | 3.29:1 | AA Large only | Used for muted text |
-| `foreground-muted` (#6a6b6c) | On surface-elevated | 2.94:1 | Fails all | Used in dropdowns |
-| `accent-foreground` (#f8f8f8) | On accent (#f67d51) | 2.48:1 | Fails all | White text on coral |
+| `foreground-muted` (#848586) | On background | 5.4:1 | PASS AA | Used for placeholders, captions |
+| `foreground-muted` (#848586) | On surface | 4.7:1 | PASS AA | Used for muted text |
+| `foreground-muted` (#848586) | On surface-elevated | 4.2:1 | AA Large only | Used in dropdowns |
+| `accent-foreground` (#1a0f0a) | On accent (#FF7F50) | 7.2:1 | PASS AAA | Dark brown text on coral |
 | `error` (#de3b3d) | On surface | 4.02:1 | AA Large only | Error messages |
 | `error` (#de3b3d) | On surface-elevated | 3.59:1 | AA Large only | Error in elevated context |
 | `info` (#0088f2) | On surface-elevated | 4.34:1 | AA Large only | Info in elevated context |
@@ -51,31 +51,30 @@ These are the design system's semantic color tokens measured against all backgro
 | Context | Requirement | Status |
 |---------|------------|--------|
 | `secondary`: foreground on surface | 4.5:1 normal text | PASS (16.55:1) |
-| `primary`: accent-foreground on accent | 4.5:1 normal text | FAIL (2.48:1) -- white on coral |
+| `primary`: accent-foreground on accent | 4.5:1 normal text | PASS (7.2:1) -- dark brown on coral |
 | `ghost`: foreground on transparent (inherits bg) | 4.5:1 normal text | PASS (18.87:1 on background) |
 | `destructive`: white on error | 4.5:1 normal text | Verify -- white on #de3b3d |
 | Focus ring | Visible 2px accent ring | PASS -- uses focus-visible ring-accent |
 | Disabled state | 50% opacity | Exempt (WCAG allows disabled controls to fail contrast) |
 
-**Action items:**
-- Primary variant needs contrast remediation: consider darker text on coral, or darker coral shade
+**Notes:**
+- Primary variant contrast resolved with dark brown accent-foreground (#1a0f0a)
 - Destructive variant should be verified with actual white-on-error ratio
 
 ### Input / InputField
 
 | Context | Requirement | Status |
 |---------|------------|--------|
-| Placeholder: foreground-muted on surface | 4.5:1 normal text | FAIL (3.29:1) -- acceptable per WCAG for placeholder |
+| Placeholder: foreground-muted on surface | 4.5:1 normal text | PASS (4.7:1) |
 | Label: foreground on background | 4.5:1 normal text | PASS (18.87:1) |
 | Error text: error on background | 4.5:1 normal text | PASS (4.58:1) |
 | Error text: error on surface | 4.5:1 normal text | MARGINAL (4.02:1) -- fails AA normal |
-| Helper text: foreground-muted on background | 4.5:1 normal text | FAIL (3.75:1) -- helper text is muted |
+| Helper text: foreground-muted on background | 4.5:1 normal text | PASS (5.4:1) |
 | Border: border on surface | 3:1 UI component | Verify -- border is rgba(255,255,255,0.08) |
 | Focus border: accent on surface | 3:1 UI component | PASS (6.67:1) |
 
 **Notes:**
-- Placeholder text contrast failure is acceptable per WCAG (placeholder is not a label)
-- Helper text using `foreground-muted` should be reconsidered for contrast; `foreground-secondary` passes
+- Placeholder and helper text both pass AA with updated #848586 muted color
 - Error text on elevated surfaces is borderline -- consider using error on background only
 
 ### Select / SearchableSelect
@@ -83,7 +82,7 @@ These are the design system's semantic color tokens measured against all backgro
 | Context | Requirement | Status |
 |---------|------------|--------|
 | Trigger text: foreground on surface | 4.5:1 normal text | PASS (16.55:1) |
-| Placeholder: foreground-muted on surface | 4.5:1 normal text | FAIL (3.29:1) -- acceptable for placeholder |
+| Placeholder: foreground-muted on surface | 4.5:1 normal text | PASS (4.7:1) |
 | Dropdown: foreground on surface-elevated | 4.5:1 normal text | PASS (14.8:1) |
 | Group label: foreground-secondary on surface-elevated | 4.5:1 normal text | PASS (5.73:1) |
 | Selected indicator: accent on surface-elevated | 4.5:1 normal text | PASS (5.96:1) |
@@ -109,7 +108,7 @@ These are the design system's semantic color tokens measured against all backgro
 | Error text: error on error/10 bg | 4.5:1 normal text | PASS |
 | Warning text: warning on warning/10 bg | 4.5:1 normal text | PASS |
 | Info text: info on info/10 bg | 4.5:1 normal text | PASS |
-| Dismiss button: foreground-muted | 3:1 UI component | MARGINAL -- 3.29:1 on surface |
+| Dismiss button: foreground-muted | 3:1 UI component | PASS (4.7:1 on surface) |
 | Progress bar | Decorative | Exempt |
 
 ### Card / GlassCard
@@ -179,17 +178,17 @@ These are the design system's semantic color tokens measured against all backgro
 |---------|------------|--------|
 | Quote text: foreground on surface | 4.5:1 normal text | PASS (16.55:1) |
 | Author name: foreground on surface | 4.5:1 normal text | PASS |
-| Role/company: foreground-muted on surface | 4.5:1 normal text | FAIL (3.29:1) |
+| Role/company: foreground-muted on surface | 4.5:1 normal text | PASS (4.7:1) |
 | Decorative quotes | Decorative | Exempt |
 | Featured border glow | Decorative | Exempt |
 
-**Note:** TestimonialCard role/company text uses `foreground-muted` which fails AA. Consider using `foreground-secondary` instead.
+**Note:** TestimonialCard role/company text passes AA with updated #848586 muted color.
 
 ### Spinner
 
 | Context | Requirement | Status |
 |---------|------------|--------|
-| Spinner stroke: foreground-muted (inherits currentColor) | 3:1 UI component | MARGINAL (3.75:1 on background) |
+| Spinner stroke: foreground-muted (inherits currentColor) | 3:1 UI component | PASS (5.4:1 on background) |
 | Determinate track: 20% opacity | Decorative guide | Exempt |
 
 ### Typography (Heading, Text, Caption, Code)
@@ -198,42 +197,39 @@ These are the design system's semantic color tokens measured against all backgro
 |---------|------------|--------|
 | Heading: foreground on background | 4.5:1 (3:1 for h1/h2 large text) | PASS (18.87:1) |
 | Text: foreground on background | 4.5:1 normal text | PASS (18.87:1) |
-| Text muted: foreground-muted on background | 4.5:1 normal text | FAIL (3.75:1) |
-| Caption: foreground-muted on background | 4.5:1 normal text | FAIL (3.75:1) |
+| Text muted: foreground-muted on background | 4.5:1 normal text | PASS (5.4:1) |
+| Caption: foreground-muted on background | 4.5:1 normal text | PASS (5.4:1) |
 | Code: inherits foreground on surface bg | 4.5:1 normal text | PASS (16.55:1) |
 
-**Note:** `Text muted` and `Caption` use `foreground-muted` which fails AA normal text. They pass AA Large (3:1). Consider:
-- Using `foreground-secondary` for important muted text
-- Reserving `foreground-muted` for truly secondary content where AA Large is acceptable
+**Note:** `Text muted` and `Caption` pass AA normal text with updated #848586 muted color (5.4:1 on background).
 
 ### Divider
 
 | Context | Requirement | Status |
 |---------|------------|--------|
 | Divider line: bg-border on background | 3:1 UI component | Verify -- border token is subtle |
-| Label text: foreground-muted | 4.5:1 normal text | FAIL (3.75:1) -- label text is small |
+| Label text: foreground-muted | 4.5:1 normal text | PASS (5.4:1) |
 
 ---
 
 ## Summary of Action Items
 
-### Critical (Fails AA completely)
+### Resolved (previously failing, now fixed)
 
-1. **Button primary:** `accent-foreground` on `accent` at 2.48:1 -- needs contrast fix
-2. **`foreground-muted` on `surface-elevated`:** 2.94:1 -- affects dropdowns, elevated contexts
+1. **Button primary:** `accent-foreground` updated to `#1a0f0a` -- now 7.2:1 PASS AAA
+2. **`foreground-muted`:** Updated to `#848586` -- now 5.4:1 on background (PASS AA), 4.7:1 on surface (PASS AA)
 
-### Recommended (Passes AA Large only)
+### Remaining (Passes AA Large only)
 
-3. **`foreground-muted` on all surfaces:** 3.29-3.75:1 -- affects Caption, Text muted, placeholders, helper text
+3. **`foreground-muted` on `surface-elevated`:** 4.2:1 -- borderline, passes AA Large
 4. **`error` on elevated surfaces:** 3.59-4.02:1 -- affects error messages in dialogs/cards
 5. **`info` on `surface-elevated`:** 4.34:1 -- marginal, close to passing
 
 ### Design Decisions
 
-- **Placeholder text** failing contrast is acceptable per WCAG (placeholders are not labels)
 - **Disabled states** (50% opacity) are exempt from contrast requirements per WCAG
-- **Decorative elements** (gradient glows, shadows, progress bars) are exempt
-- **`foreground-muted`** serves an intentional visual hierarchy role -- consider renaming to signal "below-AA contrast" or providing an alternative token
+- **Decorative elements** (shadows, progress bars) are exempt
+- **`foreground-muted`** (#848586) now passes AA on background and surface contexts
 
 ---
 

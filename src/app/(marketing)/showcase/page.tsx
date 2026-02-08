@@ -46,7 +46,7 @@ const SEMANTIC_COLORS = [
     cssVar: "color-background-elevated",
     semantic: "-> gray-900",
   },
-  { name: "surface", cssVar: "color-surface", semantic: "#18191c" },
+  { name: "surface", cssVar: "color-surface", semantic: "#18191a" },
   {
     name: "surface-elevated",
     cssVar: "color-surface-elevated",
