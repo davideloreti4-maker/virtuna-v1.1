@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Milestone:** v2.1 -- Dashboard Rebuild
 **Phase:** 49 -- Hive Interactions -- In progress
-**Plan:** 01 of 04 complete
-**Status:** In progress (Phase 49 Plan 01 complete, Plans 02-04 pending)
-**Last activity:** 2026-02-08 -- Completed 49-01-PLAN.md (interaction utilities)
+**Plan:** 02 of 04 complete
+**Status:** In progress (Phase 49 Plans 01-02 complete, Plans 03-04 pending)
+**Last activity:** 2026-02-08 -- Completed 49-02-PLAN.md (interaction hook + renderer augmentation)
 
-Progress: [█████████░] 97% (phases 45-48 complete, phase 49 plan 1/4 done)
+Progress: [█████████░] 98% (phases 45-48 complete, phase 49 plan 2/4 done)
 
 ## Phase Overview
 
@@ -25,7 +25,7 @@ Progress: [█████████░] 97% (phases 45-48 complete, phase 49 
 | 46 | Forms & Modals | 10 (FORM + MODL) | Complete (4/4) |
 | 47 | Results, Top Bar & Loading | 14 (RSLT + TBAR + LOAD) | Complete (5/5) |
 | 48 | Hive Foundation | 9 (HIVE) | Complete (4/4) ✓ |
-| 49 | Hive Interactions | 7 (HINT) | In progress (1/4) |
+| 49 | Hive Interactions | 7 (HINT) | In progress (2/4) |
 
 ## Dependency Graph
 
@@ -49,7 +49,7 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 
 ## In-Progress Milestones
 
-- v2.1 Dashboard Rebuild -- Phases 45-49, 51 requirements, ~97% executed (Phases 45-48 complete, Phase 49 plan 1/4 done)
+- v2.1 Dashboard Rebuild -- Phases 45-49, 51 requirements, ~98% executed (Phases 45-48 complete, Phase 49 plan 2/4 done)
 
 ## Key Technical Notes
 
@@ -114,6 +114,11 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 - [49-01] Single search radius (not per-tier) for quadtree hit detection, scaled inversely with zoom
 - [49-01] OverlayPlacement limited to right/left/bottom (no top) -- sufficient for canvas layouts
 - [49-01] HIT_ZOOM_FLOOR=0.3 prevents search radius explosion at extreme zoom-out (MIN_ZOOM=0.2)
+- [49-02] useState only for selectedNode/selectedNodeScreen/isCameraMoved (DOM-driving); all other interaction state ref-based
+- [49-02] Hover debounce: instant clear (node->null), 16ms debounced transitions (node->node)
+- [49-02] Connected IDs merge hovered + selected connections when both active
+- [49-02] TIER_RADII extracted to module scope for shared use between drawNodes and drawSelectedGlow
+- [49-02] renderHive interaction parameter optional -- backward compatible with existing callers
 
 ### Design System Components
 - v2.0 design system components are the building blocks (GlassPanel, GlassCard, GlassInput, GlassTextarea, GlassPill, GlassProgress, Dialog, Button, Select, Badge, Typography, Spinner, Icon)
@@ -148,13 +153,15 @@ None.
 - HiveCanvas: main component wiring layout + renderer + resize + animation + reduced-motion
 - Files: hive-types.ts, hive-constants.ts, hive-layout.ts, hive-mock-data.ts, use-canvas-resize.ts, hive-renderer.ts, use-hive-animation.ts, HiveCanvas.tsx, hive-interaction.ts
 - Interaction utilities (Plan 01): buildHiveQuadtree, buildAdjacencyMap, screenToWorld, worldToScreen, findHoveredNode, computeOverlayPosition
+- Interaction hook (Plan 02): useHiveInteraction managing quadtree rebuild, hover debounce, click-vs-drag, selection state, camera tracking
+- Renderer augmented (Plan 02): InteractionRenderState parameter for dimming (0.15 nodes, 0.03 lines), selected glow (coral shadowBlur + 1.3x scale)
 
 ### Session Continuity
 - Last session: 2026-02-08
-- Stopped at: Completed 49-01-PLAN.md (interaction utilities)
+- Stopped at: Completed 49-02-PLAN.md (interaction hook + renderer augmentation)
 - Resume file: None
-- Next: 49-02-PLAN.md (interaction hook)
+- Next: 49-03-PLAN.md (HiveCanvas integration)
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-08 -- Phase 49 Plan 01 complete (interaction utilities: quadtree, transforms, adjacency)*
+*Last updated: 2026-02-08 -- Phase 49 Plan 02 complete (interaction hook + renderer augmentation)*
