@@ -15,7 +15,7 @@ import { FadeIn, SlideUp, HoverScale, ... } from "@/components/motion";
 import { NoiseTexture, ChromaticAberration } from "@/components/effects";
 
 // Primitives (low-level building blocks)
-import { GlassPanel, GradientGlow, GradientMesh, ... } from "@/components/primitives";
+import { GlassPanel, GlassPill, TrafficLights, ... } from "@/components/primitives";
 ```
 
 ---
@@ -81,11 +81,10 @@ Low-level building blocks used by higher-level components and layouts.
 
 | Component | Source | Showcase | Description | Exports |
 |-----------|--------|----------|-------------|---------|
-| GlassPanel | [source](../src/components/primitives/GlassPanel.tsx) | [/showcase/layout-components](/showcase/layout-components) | Configurable glass blur with 7 levels and tint options | `GlassPanel` / `GlassPanelProps`, `GlassTint`, `GlassBlur` |
-| GradientGlow | [source](../src/components/primitives/GradientGlow.tsx) | [/showcase/utilities](/showcase/utilities) | Animated radial gradient glow orb | `GradientGlow`, `colorMap` / `GradientGlowProps`, `GradientColor` |
-| GradientMesh | [source](../src/components/primitives/GradientMesh.tsx) | [/showcase/utilities](/showcase/utilities) | Multi-orb animated gradient mesh background | `GradientMesh` / `GradientMeshProps` |
-| GlassCard | [source](../src/components/primitives/GlassCard.tsx) | [/showcase/data-display](/showcase/data-display) | Legacy glass card primitive | `GlassCard` / `GlassCardProps` |
+| GlassPanel | [source](../src/components/primitives/GlassPanel.tsx) | [/showcase/layout-components](/showcase/layout-components) | Zero-config Raycast glass container (5px blur, 12px radius) | `GlassPanel` / `GlassPanelProps` |
 | GlassPill | [source](../src/components/primitives/GlassPill.tsx) | -- | Small glass-effect pill tag | `GlassPill` / `GlassPillProps` |
+| GlassInput | [source](../src/components/primitives/GlassInput.tsx) | [/showcase/inputs](/showcase/inputs) | Glass-styled input with 42px height | `GlassInput` / `GlassInputProps`, `GlassInputSize` |
+| GlassTextarea | [source](../src/components/primitives/GlassTextarea.tsx) | [/showcase/inputs](/showcase/inputs) | Glass-styled textarea | `GlassTextarea` / `GlassTextareaProps` |
 | TrafficLights | [source](../src/components/primitives/TrafficLights.tsx) | [/showcase/utilities](/showcase/utilities) | macOS-style red/yellow/green dots | `TrafficLights` / `TrafficLightsProps` |
 
 ---
@@ -128,7 +127,7 @@ Components that communicate status to the user.
 Structural and spacing components.
 
 - **Divider** -- Horizontal/vertical separator line
-- **GlassPanel** -- Glass-effect container with 7 blur levels (none, xs, sm, md, lg, xl, 2xl) and tint options
+- **GlassPanel** -- Zero-config Raycast glass container (fixed 5px blur, 12px radius, no configurable props)
 
 ### Motion
 Scroll-reveal and interaction animation wrappers.
@@ -157,5 +156,5 @@ Visual decorative overlays.
 | Navigation | [/showcase/navigation](/showcase/navigation) | Tabs, CategoryTabs, Kbd, ShortcutBadge |
 | Feedback | [/showcase/feedback](/showcase/feedback) | Badge, Toast, Dialog, Spinner |
 | Data Display | [/showcase/data-display](/showcase/data-display) | Avatar, AvatarGroup, Skeleton, Card, GlassCard, ExtensionCard, TestimonialCard |
-| Layout | [/showcase/layout-components](/showcase/layout-components) | GlassPanel (blur levels, tints), Divider |
-| Utilities | [/showcase/utilities](/showcase/utilities) | FadeIn, FadeInUp, SlideUp, StaggerReveal, HoverScale, NoiseTexture, ChromaticAberration, GradientGlow, GradientMesh, TrafficLights |
+| Layout | [/showcase/layout-components](/showcase/layout-components) | GlassPanel, Divider |
+| Utilities | [/showcase/utilities](/showcase/utilities) | FadeIn, FadeInUp, SlideUp, StaggerReveal, HoverScale, NoiseTexture, ChromaticAberration, TrafficLights |

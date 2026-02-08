@@ -8,7 +8,7 @@ import { CodeBlock } from "../_components/code-block";
 export const metadata = {
   title: "Layout Components - Virtuna UI Showcase",
   description:
-    "GlassPanel with 7 blur levels and Divider with horizontal, vertical, and labeled variants.",
+    "GlassPanel with Raycast-style frosted glass and Divider with horizontal, vertical, and labeled variants.",
 };
 
 export default function LayoutComponentsPage() {
@@ -26,180 +26,96 @@ export default function LayoutComponentsPage() {
       </div>
 
       {/* ================================================
-       * GLASS PANEL — All 7 Blur Levels
+       * GLASS PANEL -- Zero-config Raycast Glass
        * ================================================ */}
       <ShowcaseSection
         id="glass-panel"
         title="GlassPanel"
-        description="Glassmorphism container with 7 blur levels, configurable opacity, tint colors, border glow, and inner glow. Safari-compatible with automatic mobile blur reduction."
+        description="Zero-config Raycast-style frosted glass container. Fixed 5px blur, 12px radius, neutral gradient. Safari-compatible via inline backdrop-filter."
       >
-        {/* All 7 blur levels */}
         <div className="mb-8">
           <Text size="sm" className="mb-6 font-medium text-foreground">
-            7 Blur Levels
+            Usage Examples
           </Text>
           <div className="space-y-6">
-            {(
-              [
-                { blur: "none", label: "0px", desc: "No blur" },
-                { blur: "xs", label: "2px", desc: "Feature frames" },
-                { blur: "sm", label: "8px", desc: "Tooltips" },
-                { blur: "md", label: "12px", desc: "Cards, dock" },
-                { blur: "lg", label: "20px", desc: "Footer, heavy surfaces" },
-                { blur: "xl", label: "36px", desc: "Windows, dropdowns" },
-                { blur: "2xl", label: "48px", desc: "Action bars" },
-              ] as const
-            ).map(({ blur, label, desc }) => (
-              <div key={blur} className="relative overflow-hidden rounded-xl">
-                {/* Colorful background behind each panel */}
-                <div className="absolute inset-0" aria-hidden="true">
-                  <div className="absolute -left-6 top-1/4 h-20 w-20 rounded-full bg-accent/50 blur-xl" />
-                  <div className="absolute left-1/3 -top-4 h-16 w-16 rounded-full bg-purple-500/40 blur-xl" />
-                  <div className="absolute right-1/4 bottom-0 h-18 w-18 rounded-full bg-cyan-500/35 blur-xl" />
-                  <div className="absolute -right-4 top-1/3 h-14 w-14 rounded-full bg-green-500/30 blur-lg" />
-                  <div className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full bg-pink-500/25 blur-lg" />
-                </div>
-                <GlassPanel blur={blur} className="relative px-6 py-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Text size="sm" className="font-medium text-foreground">
-                        blur=&quot;{blur}&quot;
-                      </Text>
-                      <Text size="sm" muted>
-                        {label} &mdash; {desc}
-                      </Text>
-                    </div>
-                    <Text size="sm" muted className="font-mono">
-                      {label}
+            {/* Default */}
+            <div className="relative overflow-hidden rounded-xl">
+              <div className="absolute inset-0" aria-hidden="true">
+                <div className="absolute -left-6 top-1/4 h-20 w-20 rounded-full bg-accent/50 blur-xl" />
+                <div className="absolute left-1/3 -top-4 h-16 w-16 rounded-full bg-purple-500/40 blur-xl" />
+                <div className="absolute right-1/4 bottom-0 h-18 w-18 rounded-full bg-cyan-500/35 blur-xl" />
+              </div>
+              <GlassPanel className="relative px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Text size="sm" className="font-medium text-foreground">
+                      Default
+                    </Text>
+                    <Text size="sm" muted>
+                      5px blur, 12px radius, Raycast neutral gradient
                     </Text>
                   </div>
-                </GlassPanel>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <CodeBlock
-          title="GlassPanel — Blur Levels"
-          code={`// 7 blur levels mapped to Raycast UI contexts
-<GlassPanel blur="none">0px — no blur</GlassPanel>
-<GlassPanel blur="xs">2px — feature frames</GlassPanel>
-<GlassPanel blur="sm">8px — tooltips</GlassPanel>
-<GlassPanel blur="md">12px — cards, dock (default)</GlassPanel>
-<GlassPanel blur="lg">20px — footer, heavy surfaces</GlassPanel>
-<GlassPanel blur="xl">36px — windows, dropdowns</GlassPanel>
-<GlassPanel blur="2xl">48px — action bars</GlassPanel>`}
-        />
-      </ShowcaseSection>
-
-      {/* ================================================
-       * GLASS PANEL — Tints & Effects
-       * ================================================ */}
-      <ShowcaseSection
-        id="glass-tints"
-        title="GlassPanel Tints & Effects"
-        description="Color tints, border glow, and inner glow effects for themed glass containers."
-      >
-        {/* Tint variants */}
-        <div className="mb-8">
-          <Text size="sm" className="mb-6 font-medium text-foreground">
-            Color Tints
-          </Text>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {(
-              [
-                "neutral",
-                "purple",
-                "blue",
-                "pink",
-                "cyan",
-                "green",
-                "orange",
-              ] as const
-            ).map((tint) => (
-              <div key={tint} className="relative overflow-hidden rounded-xl">
-                <div className="absolute inset-0" aria-hidden="true">
-                  <div className="absolute -left-4 -top-4 h-20 w-20 rounded-full bg-accent/40 blur-xl" />
-                  <div className="absolute -bottom-4 -right-4 h-16 w-16 rounded-full bg-purple-500/30 blur-xl" />
                 </div>
-                <GlassPanel
-                  blur="md"
-                  tint={tint}
-                  borderGlow
-                  className="relative px-5 py-4"
-                >
-                  <Text size="sm" className="font-medium text-foreground">
-                    tint=&quot;{tint}&quot;
-                  </Text>
-                </GlassPanel>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Border glow + inner glow */}
-        <div className="mb-8">
-          <Text size="sm" className="mb-6 font-medium text-foreground">
-            Border Glow & Inner Glow
-          </Text>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <div className="relative overflow-hidden rounded-xl">
-              <div className="absolute inset-0" aria-hidden="true">
-                <div className="absolute left-1/4 top-0 h-24 w-24 rounded-full bg-blue-500/40 blur-2xl" />
-                <div className="absolute right-1/4 bottom-0 h-20 w-20 rounded-full bg-cyan-500/30 blur-2xl" />
-              </div>
-              <GlassPanel
-                blur="lg"
-                tint="blue"
-                borderGlow
-                className="relative p-6"
-              >
-                <Text size="sm" className="font-medium text-foreground">
-                  borderGlow + tint
-                </Text>
-                <Text size="sm" muted className="mt-1">
-                  Tinted ring border with blue glass tint
-                </Text>
               </GlassPanel>
             </div>
+
+            {/* As section */}
             <div className="relative overflow-hidden rounded-xl">
               <div className="absolute inset-0" aria-hidden="true">
-                <div className="absolute left-1/4 top-0 h-24 w-24 rounded-full bg-purple-500/40 blur-2xl" />
-                <div className="absolute right-1/4 bottom-0 h-20 w-20 rounded-full bg-pink-500/30 blur-2xl" />
+                <div className="absolute -right-4 top-1/3 h-14 w-14 rounded-full bg-green-500/30 blur-lg" />
+                <div className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full bg-pink-500/25 blur-lg" />
               </div>
-              <GlassPanel
-                blur="lg"
-                tint="purple"
-                borderGlow
-                innerGlow={0.6}
-                className="relative p-6"
-              >
-                <Text size="sm" className="font-medium text-foreground">
-                  borderGlow + innerGlow
-                </Text>
-                <Text size="sm" muted className="mt-1">
-                  Purple tint with inner glow at 0.6 intensity
-                </Text>
+              <GlassPanel as="section" className="relative px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Text size="sm" className="font-medium text-foreground">
+                      as=&quot;section&quot;
+                    </Text>
+                    <Text size="sm" muted>
+                      Renders as a semantic &lt;section&gt; element
+                    </Text>
+                  </div>
+                </div>
+              </GlassPanel>
+            </div>
+
+            {/* With custom className */}
+            <div className="relative overflow-hidden rounded-xl">
+              <div className="absolute inset-0" aria-hidden="true">
+                <div className="absolute left-1/4 top-0 h-16 w-16 rounded-full bg-blue-500/40 blur-xl" />
+                <div className="absolute right-1/3 bottom-0 h-20 w-20 rounded-full bg-orange-500/30 blur-xl" />
+              </div>
+              <GlassPanel className="relative px-8 py-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Text size="sm" className="font-medium text-foreground">
+                      Custom padding via className
+                    </Text>
+                    <Text size="sm" muted>
+                      Layout overrides via className prop
+                    </Text>
+                  </div>
+                </div>
               </GlassPanel>
             </div>
           </div>
         </div>
 
         <CodeBlock
-          title="GlassPanel — Tints & Effects"
-          code={`// 7 tints: neutral, purple, blue, pink, cyan, green, orange
-<GlassPanel tint="purple" borderGlow>
-  Purple-tinted glass with border glow
+          title="GlassPanel -- Zero-config Raycast Glass"
+          code={`// Default -- no props needed
+<GlassPanel className="p-6">
+  <h2>Content</h2>
 </GlassPanel>
 
-// Inner glow (0-1 intensity)
-<GlassPanel tint="blue" borderGlow innerGlow={0.6}>
-  Blue glass with inner glow effect
+// Semantic element
+<GlassPanel as="aside" className="p-6">
+  <nav>Sidebar content</nav>
 </GlassPanel>
 
-// Custom opacity
-<GlassPanel blur="xl" opacity={0.8}>
-  Higher opacity = more opaque glass
+// With custom style override
+<GlassPanel style={{ maxWidth: 600 }}>
+  <p>Constrained width panel</p>
 </GlassPanel>`}
         />
       </ShowcaseSection>
@@ -263,7 +179,7 @@ export default function LayoutComponentsPage() {
 <Divider label="or" />
 <Divider label="Section Break" />
 
-// Vertical — inside a flex container with height
+// Vertical -- inside a flex container with height
 <div className="flex h-12 items-center gap-4">
   <span>Left</span>
   <Divider orientation="vertical" />

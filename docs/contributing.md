@@ -15,7 +15,7 @@ src/components/
   ui/              # Primary UI components (Button, Card, Input, etc.)
   motion/          # Scroll-reveal and animation wrappers
   effects/         # Visual overlay effects (NoiseTexture, ChromaticAberration)
-  primitives/      # Low-level building blocks (GlassPanel, GradientGlow)
+  primitives/      # Low-level building blocks (GlassPanel, GlassPill, TrafficLights)
   layout/          # Layout-level components (Navbar, Footer, etc.)
   landing/         # Page-specific landing components
 ```
@@ -252,10 +252,10 @@ src/
     primitives/              # Low-level building blocks
       index.ts
       GlassPanel.tsx
-      GradientGlow.tsx
-      GradientMesh.tsx
+      GlassPill.tsx
+      GlassInput.tsx
+      GlassTextarea.tsx
       TrafficLights.tsx
-      ...
     layout/                  # Layout-level components
     landing/                 # Page-specific components
 docs/

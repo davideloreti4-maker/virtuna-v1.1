@@ -2,12 +2,24 @@
 
 ## Milestones
 
-- v2.2 Trending Page UI -- Phases 50-52 (shipped 2026-02-06) | [Archive](milestones/v2.2-ROADMAP.md)
-- v2.1 Dashboard Rebuild -- Phases 45-49 (active)
-- v2.0 Design System Foundation -- Phases 39-44 (shipped 2026-02-05) | [Archive](milestones/v2.0-ROADMAP.md)
-- v1.2 Visual Accuracy Refinement -- Phases 11-14 (shipped 2026-01-30)
-- v1.1 Pixel-Perfect Clone -- Phases 1-10 (shipped 2026-01-29)
-- v1.3.2-v1.7 -- Phases 15-38 (archived 2026-02-03)
+- SHIPPED **v2.3.5 Design Token Alignment** -- Phases 53-55 (shipped 2026-02-08) | [Archive](milestones/v2.3.5-ROADMAP.md)
+- SHIPPED **v2.2 Trending Page UI** -- Phases 50-52 (shipped 2026-02-06) | [Archive](milestones/v2.2-ROADMAP.md)
+- IN PROGRESS **v2.1 Dashboard Rebuild** -- Phases 45-49 (active)
+- SHIPPED **v2.0 Design System Foundation** -- Phases 39-44 (shipped 2026-02-05) | [Archive](milestones/v2.0-ROADMAP.md)
+- SHIPPED **v1.2 Visual Accuracy Refinement** -- Phases 11-14 (shipped 2026-01-30)
+- SHIPPED **v1.1 Pixel-Perfect Clone** -- Phases 1-10 (shipped 2026-01-29)
+- Archived v1.3.2-v1.7 -- Phases 15-38 (archived 2026-02-03)
+
+## Phases
+
+<details>
+<summary>v2.3.5 Design Token Alignment (Phases 53-55) -- SHIPPED 2026-02-08</summary>
+
+- [x] Phase 53: Font & Color Foundation (2/2 plans) -- completed 2026-02-06
+- [x] Phase 54: Card & Surface Corrections (3/3 plans) -- completed 2026-02-08
+- [x] Phase 55: Glass, Documentation & Regression (3/3 plans) -- completed 2026-02-08
+
+</details>
 
 ## v2.1 Dashboard Rebuild
 
@@ -36,7 +48,7 @@ Plans:
 
 ---
 
-### Phase 46: Forms & Modals Migration ✅ COMPLETE
+### Phase 46: Forms & Modals Migration
 
 **Goal:** All form inputs and modal dialogs across the dashboard use design system components with consistent behavior.
 
@@ -154,7 +166,8 @@ Plans:
 | 48 | v2.1 | 4/4 | Complete | 2026-02-08 |
 | 49 | v2.1 | 0/4 | Pending | - |
 | 50-52 | v2.2 | 10/10 | Shipped | 2026-02-06 |
+| 53-55 | v2.3.5 | 8/8 | Shipped | 2026-02-08 |
 
 ---
 *Roadmap created: 2026-02-03*
-*Last updated: 2026-02-08 -- Phase 49 planned (4 plans in 4 waves)*
+*Last updated: 2026-02-08 -- v2.3.5 merged, Phase 49 planned (4 plans in 4 waves)*

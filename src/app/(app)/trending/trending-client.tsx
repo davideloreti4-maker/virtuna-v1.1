@@ -203,7 +203,7 @@ export function TrendingClient({ defaultTab }: TrendingClientProps) {
   return (
     <div className="mx-auto max-w-[1280px] px-6 py-8 md:px-8">
       {/* Page heading */}
-      <Heading level={1} size={3} className="font-display">
+      <Heading level={1} size={3}>
         Trending
       </Heading>
 

@@ -136,17 +136,17 @@ const ExtensionCard = React.forwardRef<HTMLDivElement, ExtensionCardProps>(
     );
 
     const cardClasses = cn(
-      "group relative overflow-hidden rounded-xl",
-      "border border-border-glass bg-surface",
-      "transition-all duration-200",
-      "hover:border-white/10 hover:-translate-y-px hover:shadow-lg",
+      "group relative overflow-hidden rounded-[12px]",
+      "border border-border bg-transparent",
+      "transition-colors duration-150",
+      "hover:bg-white/[0.02]",
       href && "cursor-pointer",
       className,
     );
 
     if (href) {
       return (
-        <div ref={ref} className={cardClasses} {...props}>
+        <div ref={ref} className={cardClasses} style={{ boxShadow: "rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset" }} {...props}>
           <a
             href={href}
             className="absolute inset-0 z-10"
@@ -158,7 +158,7 @@ const ExtensionCard = React.forwardRef<HTMLDivElement, ExtensionCardProps>(
     }
 
     return (
-      <div ref={ref} className={cardClasses} {...props}>
+      <div ref={ref} className={cardClasses} style={{ boxShadow: "rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset" }} {...props}>
         {content}
       </div>
     );

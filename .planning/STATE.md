@@ -2,7 +2,7 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-06)
+See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Core value:** Raycast-quality design system enabling rapid, consistent UI development
 **Current focus:** v2.1 Dashboard Rebuild -- Phase 49 in progress (Wave 2)
@@ -41,6 +41,7 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 
 ## Shipped Milestones
 
+- v2.3.5 Design Token Alignment (2026-02-08) -- 3 phases, 8 plans, 37 requirements
 - v2.3 Brand Deals & Affiliate Page (2026-02-06) -- 5 phases, 12 plans, 43 requirements
 - v2.2 Trending Page UI (2026-02-06) -- 3 phases, 10 plans, 30 requirements
 - v2.0 Design System Foundation (2026-02-05) -- 6 phases, 35 plans, 125 requirements
@@ -52,6 +53,11 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 - v2.1 Dashboard Rebuild -- Phases 45-49, 51 requirements, ~99% executed (Phases 45-48 complete, Phase 49 plan 3/4 done)
 
 ## Key Technical Notes
+
+### Known Risks
+- oklch-to-hex compilation inaccuracy for dark colors -- use exact hex in @theme
+- Lightning CSS strips backdrop-filter from CSS classes -- use inline styles
+- Browser + .next/ cache will mask CSS changes -- hard clear required
 
 ### Decisions
 - Phase numbering continues from v2.0 (last phase 44), starting at 45
@@ -124,6 +130,7 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 - [49-03] LayoutNode extended with name/meta fields propagated from HiveNode input data
 - [49-03] HiveNodeOverlay uses measure-then-position pattern (invisible render, measure, compute position, fade in)
 - [49-03] Window-level mouseup handler ensures drag ends even when cursor leaves canvas
+- All v2.3.5 decisions documented in PROJECT.md Key Decisions table and milestones/v2.3.5-ROADMAP.md
 
 ### Design System Components
 - v2.0 design system components are the building blocks (GlassPanel, GlassCard, GlassInput, GlassTextarea, GlassPill, GlassProgress, Dialog, Button, Select, Badge, Typography, Spinner, Icon)
@@ -171,4 +178,4 @@ None.
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-08 -- Phase 49 Plan 03 complete (HiveCanvas integration + overlay + pinch-to-zoom)*
+*Last updated: 2026-02-08 -- v2.3.5 merged, Phase 49 Plan 03 complete*

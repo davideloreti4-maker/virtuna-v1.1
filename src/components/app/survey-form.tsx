@@ -5,8 +5,8 @@ import { ClipboardList, GripVertical, X, Plus } from "lucide-react";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
 import { useTestStore } from "@/stores/test-store";
-import { GlassTextarea } from "@/components/primitives/GlassTextarea";
-import { GlassInput } from "@/components/primitives/GlassInput";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 
@@ -206,7 +206,7 @@ export function SurveyForm({ onChangeType, onSubmit, className }: SurveyFormProp
     >
       {/* Question textarea */}
       <div>
-        <GlassTextarea
+        <Textarea
           value={question}
           onChange={handleQuestionChange}
           onBlur={handleQuestionBlur}
@@ -258,7 +258,7 @@ export function SurveyForm({ onChangeType, onSubmit, className }: SurveyFormProp
                 </div>
 
                 {/* Option input */}
-                <GlassInput
+                <Input
                   value={option}
                   onChange={(e) => updateOption(index, e.target.value)}
                   readOnly={isViewingHistory}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import {
   FilterPillGroup,
   ContextBar,
@@ -10,6 +10,8 @@ import {
   LoadingPhases,
   ResultsPanel,
 } from "@/components/app";
+import { HiveCanvas } from "@/components/hive/HiveCanvas";
+import { generateMockHiveData } from "@/components/hive/hive-mock-data";
 import { useTestStore } from "@/stores/test-store";
 import { useSocietyStore } from "@/stores/society-store";
 import type { TestType } from "@/types/test";
@@ -82,6 +84,9 @@ export function DashboardClient() {
     reset();
   };
 
+  // Stable mock data for hive visualization (seed ensures deterministic layout)
+  const hiveData = useMemo(() => generateMockHiveData(), []);
+
   return (
     <div className="relative flex h-full flex-col bg-background">
       {/* Top bar with context and filters */}
@@ -90,6 +95,11 @@ export function DashboardClient() {
         <div className="flex items-center gap-3">
           <FilterPillGroup />
         </div>
+      </div>
+
+      {/* Hive network visualization background */}
+      <div className="absolute inset-0 top-14">
+        <HiveCanvas data={hiveData} className="h-full w-full" />
       </div>
 
       {/* Floating content area at bottom center - above network */}

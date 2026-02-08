@@ -11,8 +11,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { GlassInput } from "@/components/primitives/GlassInput";
-import { GlassTextarea } from "@/components/primitives/GlassTextarea";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
 // ---------------------------------------------------------------------------
@@ -229,7 +229,7 @@ export function LeaveFeedbackModal({ open, onOpenChange }: LeaveFeedbackModalPro
                   Your details
                 </label>
                 <div className="mb-3">
-                  <GlassInput
+                  <Input
                     type="text"
                     value={displayName}
                     onChange={handleNameChange}
@@ -237,7 +237,7 @@ export function LeaveFeedbackModal({ open, onOpenChange }: LeaveFeedbackModalPro
                     size="md"
                   />
                 </div>
-                <GlassInput
+                <Input
                   type="email"
                   value={displayEmail}
                   onChange={handleEmailChange}
@@ -253,7 +253,7 @@ export function LeaveFeedbackModal({ open, onOpenChange }: LeaveFeedbackModalPro
                 <label className="mb-3 block text-[13px] text-foreground-secondary">
                   Your feedback
                 </label>
-                <GlassTextarea
+                <Textarea
                   value={feedback}
                   onChange={handleFeedbackChange}
                   onBlur={handleFeedbackBlur}

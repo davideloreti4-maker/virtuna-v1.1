@@ -8,8 +8,8 @@ export interface HiveNode {
   id: string;
   /** Human-readable label displayed on hover / tooltip. */
   name: string;
-  /** Tier depth: 0 = center, 1 = main themes, 2 = sub-themes. */
-  tier: 0 | 1 | 2;
+  /** Tier depth: 0 = center, 1 = main themes, 2 = sub-themes, 3 = leaves. */
+  tier: 0 | 1 | 2 | 3;
   /** Child nodes (undefined or empty for leaf nodes). */
   children?: HiveNode[];
   /** Arbitrary payload for future extensibility (e.g. thumbnail URL). */

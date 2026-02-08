@@ -15,9 +15,9 @@ export interface TestimonialQuoteProps {
  *
  * Styling matches societies.io reference:
  * - Quote icon: Phosphor Quotes, 32px, 50% opacity
- * - Blockquote: Satoshi 20px, line-height 34px
- * - Author name: Satoshi medium weight, white
- * - Author title: Satoshi 14px, muted gray
+ * - Blockquote: Inter 20px, line-height 34px
+ * - Author name: Inter medium weight, white
+ * - Author title: Inter 14px, muted gray
  */
 export function TestimonialQuote({
   quote,

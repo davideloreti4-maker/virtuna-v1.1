@@ -12,7 +12,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { GlassTextarea } from "@/components/primitives/GlassTextarea";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
 // ---------------------------------------------------------------------------
@@ -172,7 +172,7 @@ export function CreateSocietyModal({ open, onOpenChange }: CreateSocietyModalPro
             {/* Form */}
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
-                <GlassTextarea
+                <Textarea
                   value={description}
                   onChange={handleDescriptionChange}
                   onBlur={handleDescriptionBlur}

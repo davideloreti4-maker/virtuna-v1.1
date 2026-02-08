@@ -4,7 +4,11 @@ export type { ButtonProps } from "./button";
 
 // Input
 export { Input, InputField } from "./input";
-export type { InputProps, InputFieldProps } from "./input";
+export type { InputProps, InputFieldProps, InputSize } from "./input";
+
+// Textarea
+export { Textarea } from "./textarea";
+export type { TextareaProps, TextareaSize } from "./textarea";
 
 // Card
 export { Card, GlassCard, CardHeader, CardContent, CardFooter } from "./card";

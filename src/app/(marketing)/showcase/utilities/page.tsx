@@ -10,9 +10,6 @@ import {
 } from "@/components/motion/stagger-reveal";
 import { NoiseTexture } from "@/components/effects/noise-texture";
 import { ChromaticAberration } from "@/components/effects/chromatic-aberration";
-import { GradientGlow } from "@/components/primitives/GradientGlow";
-import { GradientMesh } from "@/components/primitives/GradientMesh";
-
 import { ShowcaseSection } from "../_components/showcase-section";
 import { CodeBlock } from "../_components/code-block";
 import { ComponentGrid } from "../_components/component-grid";
@@ -22,7 +19,7 @@ import { TrafficLightsDemo } from "../_components/traffic-lights-demo";
 export const metadata: Metadata = {
   title: "Utilities - Virtuna UI Showcase",
   description:
-    "Motion animations, visual effects, gradient primitives, and decorative utilities.",
+    "Motion animations, visual effects, and decorative utilities.",
 };
 
 export default function UtilitiesShowcasePage() {
@@ -32,8 +29,7 @@ export default function UtilitiesShowcasePage() {
         Utilities
       </Heading>
       <Text size="lg" muted className="mb-12">
-        Motion animations, visual effects, gradient primitives, and decorative
-        components.
+        Motion animations, visual effects, and decorative components.
       </Text>
 
       {/* ===== MOTION SECTION ===== */}
@@ -336,155 +332,6 @@ export default function UtilitiesShowcasePage() {
         <Heading level={2} className="mb-8 text-accent">
           Primitives
         </Heading>
-
-        {/* GradientGlow */}
-        <ShowcaseSection
-          id="gradient-glow"
-          title="GradientGlow"
-          description="Ambient lighting effect. Blurred radial gradient for adding color identity and depth behind glass surfaces."
-        >
-          {/* All 6 colors */}
-          <div className="mb-6">
-            <Text size="sm" className="mb-4 font-medium text-foreground-secondary">
-              All colors (medium intensity)
-            </Text>
-            <ComponentGrid columns={3}>
-              {(
-                ["purple", "blue", "pink", "cyan", "green", "orange"] as const
-              ).map((color) => (
-                <div
-                  key={color}
-                  className="relative flex h-32 items-center justify-center overflow-hidden rounded-lg border border-border-glass bg-background"
-                >
-                  <GradientGlow
-                    color={color}
-                    intensity="medium"
-                    size={200}
-                    blur={60}
-                  />
-                  <Text
-                    size="sm"
-                    className="relative z-10 font-medium capitalize"
-                  >
-                    {color}
-                  </Text>
-                </div>
-              ))}
-            </ComponentGrid>
-          </div>
-
-          {/* Intensity comparison */}
-          <div className="mb-6">
-            <Text size="sm" className="mb-4 font-medium text-foreground-secondary">
-              Intensity levels (purple)
-            </Text>
-            <ComponentGrid columns={3}>
-              {(["subtle", "medium", "strong"] as const).map((intensity) => (
-                <div
-                  key={intensity}
-                  className="relative flex h-32 items-center justify-center overflow-hidden rounded-lg border border-border-glass bg-background"
-                >
-                  <GradientGlow
-                    color="purple"
-                    intensity={intensity}
-                    size={200}
-                    blur={60}
-                  />
-                  <Text
-                    size="sm"
-                    className="relative z-10 font-medium capitalize"
-                  >
-                    {intensity}
-                  </Text>
-                </div>
-              ))}
-            </ComponentGrid>
-          </div>
-
-          <CodeBlock
-            title="GradientGlow"
-            code={`<div className="relative">
-  <GradientGlow color="purple" intensity="medium" position="top-right" />
-  <GlassPanel>Content here</GlassPanel>
-</div>
-
-{/* With animation */}
-<GradientGlow color="blue" animate animationType="float" />
-
-{/* All colors: purple | blue | pink | cyan | green | orange */}
-{/* Intensities: subtle (15%) | medium (30%) | strong (50%) */}`}
-          />
-        </ShowcaseSection>
-
-        {/* GradientMesh */}
-        <ShowcaseSection
-          id="gradient-mesh"
-          title="GradientMesh"
-          description="Multi-color flowing gradient background. Ambient mesh of blended gradient glows for premium backgrounds."
-        >
-          <ComponentGrid columns={2}>
-            {/* Two-color mesh */}
-            <div className="relative h-48 overflow-hidden rounded-lg border border-border-glass bg-background">
-              <GradientMesh colors={["purple", "blue"]} intensity="medium" />
-              <div className="relative z-10 flex h-full items-center justify-center">
-                <Text size="sm" className="font-medium">
-                  Purple + Blue
-                </Text>
-              </div>
-            </div>
-
-            {/* Three-color mesh */}
-            <div className="relative h-48 overflow-hidden rounded-lg border border-border-glass bg-background">
-              <GradientMesh
-                colors={["purple", "pink", "cyan"]}
-                intensity="medium"
-              />
-              <div className="relative z-10 flex h-full items-center justify-center">
-                <Text size="sm" className="font-medium">
-                  Purple + Pink + Cyan
-                </Text>
-              </div>
-            </div>
-
-            {/* Four-color mesh */}
-            <div className="relative h-48 overflow-hidden rounded-lg border border-border-glass bg-background">
-              <GradientMesh
-                colors={["purple", "blue", "pink", "cyan"]}
-                intensity="strong"
-              />
-              <div className="relative z-10 flex h-full items-center justify-center">
-                <Text size="sm" className="font-medium">
-                  Four-color (strong)
-                </Text>
-              </div>
-            </div>
-
-            {/* Warm mesh */}
-            <div className="relative h-48 overflow-hidden rounded-lg border border-border-glass bg-background">
-              <GradientMesh
-                colors={["orange", "pink"]}
-                intensity="medium"
-              />
-              <div className="relative z-10 flex h-full items-center justify-center">
-                <Text size="sm" className="font-medium">
-                  Orange + Pink
-                </Text>
-              </div>
-            </div>
-          </ComponentGrid>
-          <div className="mt-6">
-            <CodeBlock
-              title="GradientMesh"
-              code={`<div className="relative min-h-screen">
-  <GradientMesh colors={["purple", "blue"]} intensity="medium" />
-  <div className="relative z-10">Content here</div>
-</div>
-
-{/* Animated three-color mesh */}
-<GradientMesh colors={["purple", "pink", "cyan"]} animate />`}
-            />
-          </div>
-        </ShowcaseSection>
 
         {/* TrafficLights */}
         <ShowcaseSection

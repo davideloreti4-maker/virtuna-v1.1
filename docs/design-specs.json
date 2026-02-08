@@ -20,7 +20,7 @@
       "200": { "$value": "oklch(0.90 0 0)", "$type": "color", "description": "Disabled text on dark backgrounds" },
       "300": { "$value": "oklch(0.80 0 0)", "$type": "color", "description": "Placeholder text, dimmed labels" },
       "400": { "$value": "#9c9c9d", "$type": "color", "description": "Secondary text (rgb 156,156,157)" },
-      "500": { "$value": "#6a6b6c", "$type": "color", "description": "Muted text (rgb 106,107,108)" },
+      "500": { "$value": "#848586", "$type": "color", "description": "Muted text (WCAG AA-boosted, 5.4:1 on #07080a)" },
       "600": { "$value": "#58595a", "$type": "color", "description": "Dimmed text, code comments (rgb 88,89,90)" },
       "700": { "$value": "#3a3b3d", "$type": "color", "description": "Subtle borders, separators" },
       "800": { "$value": "#222326", "$type": "color", "description": "Elevated surface background" },
@@ -36,7 +36,7 @@
     "semantic": {
       "background": { "$value": "{color.gray.950}", "$type": "color", "description": "Page-level background" },
       "background-elevated": { "$value": "{color.gray.900}", "$type": "color", "description": "Elevated sections, sidebars" },
-      "surface": { "$value": "#18191c", "$type": "color", "description": "Card surfaces, panel interiors" },
+      "surface": { "$value": "#18191a", "$type": "color", "description": "Card surfaces, panel interiors" },
       "surface-elevated": { "$value": "#222326", "$type": "color", "description": "Dropdowns, popovers, elevated panels" },
       "foreground": { "$value": "{color.gray.50}", "$type": "color", "description": "Primary body text" },
       "foreground-secondary": { "$value": "{color.gray.400}", "$type": "color", "description": "Secondary labels, descriptions" },
@@ -44,26 +44,18 @@
       "accent": { "$value": "{color.coral.500}", "$type": "color", "description": "Primary CTA, links, focus rings" },
       "accent-hover": { "$value": "{color.coral.400}", "$type": "color", "description": "Hover on accent elements" },
       "accent-active": { "$value": "{color.coral.600}", "$type": "color", "description": "Pressed accent state" },
-      "accent-foreground": { "$value": "{color.gray.50}", "$type": "color", "description": "Text on accent backgrounds" },
+      "accent-foreground": { "$value": "#1a0f0a", "$type": "color", "description": "Text on accent backgrounds (dark brown, 7.2:1 WCAG AAA)" },
       "success": { "$value": "{color.status.success}", "$type": "color", "description": "Success toasts, valid borders" },
       "warning": { "$value": "{color.status.warning}", "$type": "color", "description": "Warning badges, caution" },
       "error": { "$value": "{color.status.error}", "$type": "color", "description": "Error messages, invalid borders" },
       "info": { "$value": "{color.status.info}", "$type": "color", "description": "Info banners, help text" },
-      "border": { "$value": "rgba(255, 255, 255, 0.08)", "$type": "color", "description": "Default borders" },
-      "border-hover": { "$value": "rgba(255, 255, 255, 0.15)", "$type": "color", "description": "Border on hover" },
+      "border": { "$value": "rgba(255, 255, 255, 0.06)", "$type": "color", "description": "Default borders" },
+      "border-hover": { "$value": "rgba(255, 255, 255, 0.1)", "$type": "color", "description": "Border on hover" },
       "border-glass": { "$value": "rgba(255, 255, 255, 0.06)", "$type": "color", "description": "Glass component borders" },
       "border-subtle": { "$value": "rgba(255, 255, 255, 0.04)", "$type": "color", "description": "Very subtle separators" },
       "hover": { "$value": "rgba(255, 255, 255, 0.05)", "$type": "color", "description": "Background overlay on hover" },
       "active": { "$value": "rgba(255, 255, 255, 0.1)", "$type": "color", "description": "Background overlay on press" },
       "disabled": { "$value": "rgba(128, 128, 128, 0.5)", "$type": "color", "description": "Disabled element overlay" }
-    },
-    "gradient": {
-      "purple": { "$value": "oklch(0.63 0.24 300)", "$type": "color", "description": "Purple gradient stops" },
-      "blue": { "$value": "oklch(0.62 0.19 250)", "$type": "color", "description": "Blue gradient stops" },
-      "pink": { "$value": "oklch(0.66 0.22 350)", "$type": "color", "description": "Pink gradient stops" },
-      "cyan": { "$value": "oklch(0.72 0.15 200)", "$type": "color", "description": "Cyan gradient stops" },
-      "green": { "$value": "oklch(0.68 0.17 145)", "$type": "color", "description": "Green gradient stops" },
-      "orange": { "$value": "oklch(0.70 0.18 50)", "$type": "color", "description": "Orange gradient stops" }
     },
     "syntax-highlighting": {
       "class": { "$value": "#e5a869", "$type": "color", "description": "Class names in code" },
@@ -79,8 +71,7 @@
   },
   "typography": {
     "fontFamily": {
-      "display": { "$value": "Funnel Display, ui-sans-serif, system-ui, sans-serif", "$type": "fontFamily", "description": "Hero headings (h1, h2)" },
-      "sans": { "$value": "Satoshi, ui-sans-serif, system-ui, sans-serif", "$type": "fontFamily", "description": "Body text, labels, UI" },
+      "sans": { "$value": "Inter, ui-sans-serif, system-ui, sans-serif", "$type": "fontFamily", "description": "All text: body, headings, labels, UI" },
       "mono": { "$value": "ui-monospace, SFMono-Regular, JetBrains Mono, monospace", "$type": "fontFamily", "description": "Code blocks, inline code" }
     },
     "fontSize": {
@@ -137,7 +128,8 @@
     "xl": { "$value": "0 20px 25px oklch(0 0 0 / 0.15), 0 10px 10px oklch(0 0 0 / 0.1), 0 0 0 1px oklch(1 0 0 / 0.05)", "$type": "shadow", "description": "Dialog overlays, hero cards" },
     "glass": { "$value": "0 8px 32px oklch(0 0 0 / 0.2), inset 0 1px 0 oklch(1 0 0 / 0.1)", "$type": "shadow", "description": "Glass panels" },
     "glow-accent": { "$value": "0 0 20px oklch(0.72 0.16 40 / 0.3)", "$type": "shadow", "description": "Coral glow effect" },
-    "button": { "$value": "rgba(0,0,0,0.5) 0 0 0 2px, rgba(255,255,255,0.19) 0 0 14px, rgba(0,0,0,0.2) 0 -1px 0.4px inset, rgb(255,255,255) 0 1px 0.4px inset", "$type": "shadow", "description": "Multi-layer 3D button shadow" }
+    "button": { "$value": "rgba(0,0,0,0.5) 0 0 0 2px, rgba(255,255,255,0.19) 0 0 14px, rgba(0,0,0,0.2) 0 -1px 0.4px inset, rgb(255,255,255) 0 1px 0.4px inset", "$type": "shadow", "description": "Multi-layer 3D button shadow" },
+    "button-secondary": { "$value": "rgba(0,0,0,0.5) 0 0 0 1px, rgba(255,255,255,0.06) 0 1px 0 inset, rgba(0,0,0,0.15) 0 1px 2px", "$type": "shadow", "description": "Secondary button shadow" }
   },
   "borderRadius": {
     "none": { "$value": "0", "$type": "dimension", "description": "Square corners" },
@@ -187,15 +179,10 @@
   },
   "gradient": {
     "coral": { "$value": "linear-gradient(135deg, var(--color-coral-400), var(--color-coral-500), var(--color-coral-600))", "$type": "gradient", "description": "Brand gradient" },
-    "card-bg": { "$value": "linear-gradient(180deg, #222326, #141517)", "$type": "gradient", "description": "Card background" },
+    "card-bg": { "$value": "linear-gradient(137deg, #111214 4.87%, #0c0d0f 75.88%)", "$type": "gradient", "description": "Card background" },
     "overlay": { "$value": "linear-gradient(180deg, transparent, oklch(0 0 0 / 0.8))", "$type": "gradient", "description": "Image overlay" },
-    "glow-coral": { "$value": "radial-gradient(circle, oklch(0.72 0.16 40 / 0.2), transparent 70%)", "$type": "gradient", "description": "Coral glow halo" },
     "navbar": { "$value": "linear-gradient(137deg, rgba(17,18,20,0.75) 4.87%, rgba(12,13,15,0.9) 75.88%)", "$type": "gradient", "description": "Glass navbar" },
+    "glass": { "$value": "linear-gradient(137deg, rgba(17,18,20,0.75) 4.87%, rgba(12,13,15,0.9) 75.88%)", "$type": "gradient", "description": "Glass panel background (same as navbar)" },
     "feature": { "$value": "radial-gradient(85.77% 49.97% at 51% 5.12%, rgba(255,148,148,0.11) 0px, rgba(222,226,255,0.08) 45.83%, rgba(241,242,255,0.02) 100%)", "$type": "gradient", "description": "Feature card radial" }
-  },
-  "glow": {
-    "subtle": { "$value": "0.15", "$type": "number", "description": "Background ambient glow" },
-    "medium": { "$value": "0.3", "$type": "number", "description": "Standard glow effect" },
-    "strong": { "$value": "0.5", "$type": "number", "description": "Prominent glow (hero)" }
   }
 }

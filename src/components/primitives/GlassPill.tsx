@@ -2,12 +2,14 @@
 
 import { cn } from "@/lib/utils";
 import { type ReactNode, type CSSProperties } from "react";
-import { type GradientColor } from "./GradientGlow";
+
+/** Available gradient colors for pills */
+type PillColor = "purple" | "blue" | "pink" | "cyan" | "green" | "orange";
 
 export interface GlassPillProps {
   children: ReactNode;
   /** Color theme for the pill */
-  color?: GradientColor | "neutral";
+  color?: PillColor | "neutral";
   /** Size variant */
   size?: "sm" | "md" | "lg";
   /** Visual style variant */
@@ -25,7 +27,7 @@ export interface GlassPillProps {
 }
 
 // Color values for pills
-const colorValues: Record<GradientColor | "neutral", { bg: string; border: string; text: string }> = {
+const colorValues: Record<PillColor | "neutral", { bg: string; border: string; text: string }> = {
   neutral: {
     bg: "oklch(0.25 0.02 264 / 0.5)",
     border: "oklch(1 0 0 / 0.1)",

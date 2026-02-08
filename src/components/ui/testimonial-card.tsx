@@ -97,12 +97,15 @@ const TestimonialCard = React.forwardRef<HTMLDivElement, TestimonialCardProps>(
       <div
         ref={ref}
         className={cn(
-          "relative rounded-xl border bg-surface p-6",
+          "relative rounded-[12px] border bg-transparent p-6 transition-colors duration-150 hover:bg-white/[0.02]",
           featured
             ? "border-accent/20 shadow-[0_0_20px_oklch(0.72_0.16_40_/_0.05)]"
-            : "border-border-glass",
+            : "border-border",
           className,
         )}
+        style={{
+          boxShadow: "rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset",
+        }}
         {...props}
       >
         {/* Quote */}
@@ -125,7 +128,7 @@ const TestimonialCard = React.forwardRef<HTMLDivElement, TestimonialCardProps>(
         {/* Attribution */}
         <div className="flex items-center gap-3">
           {/* Avatar or initials fallback */}
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-glass bg-surface-elevated text-sm font-medium text-foreground-secondary">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-surface-elevated text-sm font-medium text-foreground-secondary">
             {avatar ? (
               <img
                 src={avatar}

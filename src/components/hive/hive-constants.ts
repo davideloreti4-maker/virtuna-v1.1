@@ -62,6 +62,7 @@ export const ANIMATION_TIMING = {
   center: { delay: 0, duration: 300 },
   tier1: { delay: 200, duration: 400 },
   tier2: { delay: 500, duration: 500 },
+  tier3: { delay: 700, duration: 500 },
 } as const;
 
 // ---------------------------------------------------------------------------

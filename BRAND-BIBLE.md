@@ -1,80 +1,131 @@
-# Virtuna Brand Bible
+# Virtuna Design System
 
-> Complete design system reference for Virtuna v2.0
-
----
-
-## Brand Identity
-
-### Core Color
-
-- **Coral (#FF7F50)** -- Primary brand color
-- Replaces the original accent red (#ff6363) throughout
-- Used sparingly: main CTAs, active states, key highlights
-- Everything else follows the established reference design language 1:1
-
-### Design Philosophy
-
-- **Dark-mode first** -- No light theme; every token, component, and effect is optimized for dark surfaces
-- **Glass-forward** -- Glassmorphism as a core visual language (backdrop blur, translucent surfaces, frosted panels)
-- **Subtle and professional** -- Sparse use of accent color; let the content breathe
-- **Performance-conscious** -- Reduced motion support throughout; mobile blur reduction for GPU efficiency
+> Raycast-derived dark design language with coral (#FF7F50) branding.
+> Complete design system reference for all components, tokens, and patterns.
 
 ---
 
-## Color System
+## Design Direction
 
-### Usage Rules
+**Raycast Design Language** -- Clean, dark, minimal. No colored tinting, no glow effects. Color is used only for accents and interactive elements.
 
-1. **Coral** -- Use for: primary buttons, active tab indicators, key CTAs, accent highlights
-   - DO: One coral element per section (the star of the show)
-   - DON'T: Use coral for backgrounds, borders, or secondary elements
+Core principles:
 
-2. **Gray scale** -- Use for: backgrounds, surfaces, text, borders
-   - Primary text: `foreground` (gray-50, near-white)
-   - Secondary text: `foreground-secondary` (gray-400, #9c9c9d)
-   - Muted text: `foreground-muted` (gray-500, #6a6b6c)
-   - Surfaces: `surface` (#18191c), `surface-elevated` (#222326)
-   - Background: `background` (gray-950, #07080a)
+- **Dark-mode only** -- Every token, component, and effect is optimized for dark surfaces
+- **Transparent surfaces** -- Cards use `bg-transparent`, not gradient backgrounds
+- **Subtle borders** -- Universal 6% white opacity borders, hover 10%
+- **Minimal shadows** -- Inset shadows at 5% opacity for depth, not drop shadows on cards
+- **Performance-first** -- Inline `backdrop-filter` for Safari compatibility, no animated glow effects
 
-3. **Status colors** -- Use for: success (green), warning (amber), error (red), info (blue)
-   - Only for semantic meaning, never decorative
+> **Internal note:** This design system is derived from Raycast's design language (raycast.com) with coral (#FF7F50) replacing Raycast's red (#ff6363). The Raycast relationship is internal context only -- never reference it in public-facing content.
 
-### Color Token Summary
+---
 
-| Layer | Token | Value | Purpose |
-|-------|-------|-------|---------|
-| Accent | `--color-accent` | coral-500 (#FF7F50) | Brand CTA, links, focus rings |
-| Accent | `--color-accent-hover` | coral-400 | Hover on accent elements |
-| Accent | `--color-accent-active` | coral-600 | Pressed state |
-| Background | `--color-background` | gray-950 (#07080a) | Page background |
-| Background | `--color-surface` | #18191c | Cards, panels |
-| Background | `--color-surface-elevated` | #222326 | Dropdowns, popovers |
-| Text | `--color-foreground` | gray-50 (near-white) | Primary text |
-| Text | `--color-foreground-secondary` | gray-400 (#9c9c9d) | Secondary text |
-| Text | `--color-foreground-muted` | gray-500 (#6a6b6c) | Timestamps, captions |
-| Border | `--color-border` | rgba(255,255,255,0.08) | Default borders |
-| Border | `--color-border-glass` | rgba(255,255,255,0.06) | Glass component borders |
-| Status | `--color-success` | oklch green | Success states |
-| Status | `--color-warning` | oklch amber | Warning states |
-| Status | `--color-error` | oklch red | Error states |
-| Status | `--color-info` | oklch blue | Info states |
+## Color Tokens
 
-For the complete token reference (coral scale, gray scale, semantic mappings, etc.), see [docs/tokens.md](docs/tokens.md).
+All values sourced from `src/app/globals.css` @theme block.
+
+### Brand (Coral Scale)
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--color-coral-100` | `oklch(0.97 0.03 40)` | Subtle tinted backgrounds |
+| `--color-coral-200` | `oklch(0.93 0.06 40)` | Light accent backgrounds, selected fills |
+| `--color-coral-300` | `oklch(0.87 0.10 40)` | Prominent backgrounds, focus rings |
+| `--color-coral-400` | `oklch(0.78 0.14 40)` | Hover state for accent buttons |
+| `--color-coral-500` | `oklch(0.72 0.16 40)` | **Base brand color** (#FF7F50) |
+| `--color-coral-600` | `oklch(0.60 0.14 40)` | Active/pressed state |
+| `--color-coral-700` | `oklch(0.48 0.12 40)` | Dark accent backgrounds |
+| `--color-coral-800` | `oklch(0.38 0.10 40)` | Very dark accent tint |
+| `--color-coral-900` | `oklch(0.28 0.08 40)` | Darkest accent tint |
+
+### Background
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--color-background` | `var(--color-gray-950)` (#07080a) | Page body background |
+| `--color-background-elevated` | `var(--color-gray-900)` (#1a1b1e) | Elevated sections, sidebars |
+| `--color-surface` | `#18191a` | Card surfaces, panel interiors |
+| `--color-surface-elevated` | `#222326` | Elevated panels, dropdowns, popovers |
+
+### Foreground (Text)
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--color-foreground` | `var(--color-gray-50)` (#f9f9f9) | Primary body text, headings |
+| `--color-foreground-secondary` | `var(--color-gray-400)` (#9c9c9d) | Secondary labels, descriptions |
+| `--color-foreground-muted` | `var(--color-gray-500)` (#848586) | Timestamps, helper text, placeholders |
+
+### Accent
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--color-accent` | `var(--color-coral-500)` (#FF7F50) | Primary CTA, links, focus rings |
+| `--color-accent-hover` | `var(--color-coral-400)` | Hover state for accent elements |
+| `--color-accent-active` | `var(--color-coral-600)` | Pressed/active state |
+| `--color-accent-foreground` | `#1a0f0a` | Text on accent backgrounds (dark brown, 7.2:1 contrast) |
+
+### Borders
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--color-border` | `rgba(255,255,255,0.06)` | Default borders (inputs, cards, dividers) |
+| `--color-border-hover` | `rgba(255,255,255,0.1)` | Border on hover state |
+| `--color-border-glass` | `rgba(255,255,255,0.06)` | Glass component borders |
+| `--color-border-subtle` | `rgba(255,255,255,0.04)` | Very subtle separators |
+
+### States
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--color-hover` | `rgba(255,255,255,0.05)` | Background overlay on hover |
+| `--color-active` | `rgba(255,255,255,0.1)` | Background overlay on press |
+| `--color-disabled` | `rgba(128,128,128,0.5)` | Disabled element overlay |
+
+### Status
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--color-success` | `oklch(0.68 0.17 145)` | Success toasts, valid input borders |
+| `--color-warning` | `oklch(0.75 0.15 85)` | Warning badges, cautionary states |
+| `--color-error` | `oklch(0.60 0.20 25)` | Error messages, invalid input borders |
+| `--color-info` | `oklch(0.62 0.19 250)` | Informational banners, help text |
+
+### Gray Scale
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--color-gray-50` | `#f9f9f9` | Primary text (near-white) |
+| `--color-gray-100` | `#f2f2f2` | Secondary text, bright surfaces |
+| `--color-gray-200` | `#e0e0e0` | Disabled text on dark backgrounds |
+| `--color-gray-300` | `#c6c6c6` | Placeholder text, dimmed labels |
+| `--color-gray-400` | `#9c9c9d` | Raycast secondary text |
+| `--color-gray-500` | `#848586` | Muted text (WCAG AA-boosted for contrast) |
+| `--color-gray-600` | `#58595a` | Dimmed text, code comments |
+| `--color-gray-700` | `#3a3b3d` | Subtle borders, separators |
+| `--color-gray-800` | `#222326` | Elevated surface background |
+| `--color-gray-900` | `#1a1b1e` | Elevated background |
+| `--color-gray-950` | `#07080a` | Page body background |
+
+For the complete token reference (spacing, shadows, radius, animations, gradients), see [docs/tokens.md](docs/tokens.md).
 
 ---
 
 ## Typography
 
-| Category | Token | Value | Usage |
-|----------|-------|-------|-------|
-| Display font | `--font-display` | Funnel Display | Hero headings (h1, h2) |
-| Body font | `--font-sans` | Satoshi | Body text, labels, UI |
-| Code font | `--font-mono` | ui-monospace, SFMono-Regular, JetBrains Mono | Code blocks, inline code |
-| Weight: regular | `--font-regular` | 400 | Body text |
-| Weight: medium | `--font-medium` | 500 | Labels, nav items |
-| Weight: semibold | `--font-semibold` | 600 | Headings, buttons |
-| Weight: bold | `--font-bold` | 700 | Hero headings |
+| Property | Value | Notes |
+|----------|-------|-------|
+| Font family | **Inter** | All text via `next/font/google`. Single font for all weights. |
+| Body letter-spacing | `0.2px` | Applied globally via `globals.css` body styles |
+| Body line-height | `1.5` (24px at 16px base) | Applied globally |
+| Rendering | Antialiased | `-webkit-font-smoothing: antialiased` |
+
+### Font Tokens
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--font-sans` | `var(--font-inter), ui-sans-serif, system-ui, sans-serif` | All body text, headings, UI elements |
+| `--font-mono` | `ui-monospace, SFMono-Regular, JetBrains Mono, monospace` | Code blocks, inline code |
 
 ### Type Scale
 
@@ -92,14 +143,22 @@ For the complete token reference (coral scale, gray scale, semantic mappings, et
 | `--text-hero` | 52px | Hero section text |
 | `--text-display` | 64px | Display-scale headings (H1) |
 
-For line heights, letter spacing, and detailed usage guidance, see [docs/tokens.md](docs/tokens.md).
+### Font Weights
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--font-regular` | 400 | Body text, descriptions |
+| `--font-medium` | 500 | Labels, nav items |
+| `--font-semibold` | 600 | Headings, button text |
+| `--font-bold` | 700 | Hero headings |
 
 ---
 
-## Spacing & Layout
+## Spacing & Radius
 
-- **4px base unit** (spacing-1)
-- Scale: 0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96 (px)
+### Spacing Scale (4px base unit)
+
+Scale: 0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96 (px)
 
 | Token | Value | Usage |
 |-------|-------|-------|
@@ -111,120 +170,119 @@ For line heights, letter spacing, and detailed usage guidance, see [docs/tokens.
 | `--spacing-8` | 32px | Section spacing |
 | `--spacing-16` | 64px | Major layout spacing |
 
-For the full scale, see [docs/tokens.md](docs/tokens.md).
+### Radius Scale
+
+| Token | Value | Component Usage |
+|-------|-------|----------------|
+| `--radius-xs` | 4px | Small inline elements |
+| `--radius-sm` | 6px | Nav links, small interactive elements |
+| `--radius-md` | 8px | Inputs, buttons (all sizes) |
+| `--radius-lg` | 12px | Cards, GlassPanel, modals |
+| `--radius-xl` | 16px | Header (floating pill) |
+| `--radius-2xl` | 20px | Feature cards |
+| `--radius-3xl` | 24px | Extra-large containers |
+| `--radius-full` | 9999px | Pills, avatars |
+
+---
+
+## Surface Patterns
+
+### Cards
+
+- Background: `transparent` (not gradient)
+- Border: `rgba(255,255,255,0.06)` (1px solid)
+- Border radius: 12px
+- Inset shadow: `rgba(255,255,255,0.05) 0px 1px 0px 0px inset`
+- Hover: `bg-white/[0.02]` only -- no `translate-y`, no border change
+
+### Glass (GlassPanel)
+
+- Background: `linear-gradient(137deg, rgba(17,18,20,0.75) 4.87%, rgba(12,13,15,0.9) 75.88%)`
+- Backdrop filter: `blur(5px)` (fixed, not configurable)
+- Border: `rgba(255,255,255,0.06)` (1px solid)
+- Border radius: 12px
+- Inset shadow: `rgba(255,255,255,0.15) 0px 1px 1px 0px inset`
+- Applied via inline styles to bypass Lightning CSS stripping
+
+### Modals/Dialogs
+
+- Background: Solid opaque dark, **NOT** glass
+- Inset shadow: `rgba(255,255,255,0.1) 0 1px 0 0 inset`
+
+### Inputs
+
+- Background: `rgba(255,255,255,0.05)`
+- Border: `rgba(255,255,255,0.05)` (1px solid)
+- Border radius: 8px
+- Height: 42px
+- Backdrop filter: none
 
 ---
 
 ## Shadows
 
-| Token | Usage |
-|-------|-------|
-| `--shadow-sm` | Subtle elevation (badges) |
-| `--shadow-md` | Card elevation, dropdowns |
-| `--shadow-lg` | Modal shadows, prominent cards |
-| `--shadow-xl` | Dialog overlays, hero cards |
-| `--shadow-glass` | Glass panels (inset highlight + drop) |
-| `--shadow-glow-accent` | Coral glow (focus rings) |
-| `--shadow-button` | Multi-layer 3D button shadow |
-
-For full shadow values, see [docs/tokens.md](docs/tokens.md).
-
----
-
-## Border Radius
-
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--radius-sm` | 4px | Small inline elements |
-| `--radius-xs` | 6px | Nav links, small interactive elements |
-| `--radius-md` | 8px | Default (inputs, buttons, cards) |
-| `--radius-lg` | 12px | Cards, panels, dropdowns |
-| `--radius-xl` | 16px | Large cards, modals |
-| `--radius-full` | 9999px | Pills, avatars |
+| `--shadow-sm` | `0 1px 2px oklch(0 0 0 / 0.2)` | Subtle elevation (badges) |
+| `--shadow-md` | `0 4px 6px oklch(0 0 0 / 0.15), 0 2px 4px oklch(0 0 0 / 0.1)` | Card elevation, dropdowns |
+| `--shadow-lg` | `0 10px 15px oklch(0 0 0 / 0.15), 0 4px 6px oklch(0 0 0 / 0.1)` | Modal shadows |
+| `--shadow-xl` | `0 20px 25px oklch(0 0 0 / 0.15), 0 10px 10px oklch(0 0 0 / 0.1), 0 0 0 1px oklch(1 0 0 / 0.05)` | Dialog overlays |
+| `--shadow-glass` | `0 8px 32px oklch(0 0 0 / 0.2), inset 0 1px 0 oklch(1 0 0 / 0.1)` | Glass panels |
+| `--shadow-glow-accent` | `0 0 20px oklch(0.72 0.16 40 / 0.3)` | Coral glow (focus rings) |
+| `--shadow-button` | `rgba(0,0,0,0.5) 0 0 0 2px, rgba(255,255,255,0.19) 0 0 14px, rgba(0,0,0,0.2) 0 -1px 0.4px inset, rgb(255,255,255) 0 1px 0.4px inset` | Multi-layer 3D button shadow |
+| `--shadow-button-secondary` | `rgba(0,0,0,0.5) 0 0 0 1px, rgba(255,255,255,0.06) 0 1px 0 inset, rgba(0,0,0,0.15) 0 1px 2px` | Secondary button shadow |
 
 ---
 
-## Components
+## Components Overview
 
-The design system includes 36 components across four families.
+### Primitives
 
-### Component Hierarchy
+| Component | Description |
+|-----------|-------------|
+| GlassPanel | Zero-config Raycast glass container (5px blur, 12px radius) |
+| GlassPill | Small glass-effect pill tag with color variants |
+| GlassInput | Glass-styled input with 42px height |
+| GlassTextarea | Glass-styled textarea |
+| TrafficLights | macOS-style red/yellow/green dots |
 
-- **Interactive (8):** Button, Input, InputField, Select, SearchableSelect, Toggle, Dialog, Tabs, CategoryTabs
-- **Display (11):** Badge, Card, GlassCard, ExtensionCard, TestimonialCard, Avatar, AvatarGroup, Icon, Heading, Text, Caption, Code, Kbd, ShortcutBadge
-- **Feedback (3):** Spinner, Toast, Skeleton
-- **Layout (2):** Divider, GlassPanel
-- **Motion (7):** FadeIn, FadeInUp, SlideUp, StaggerReveal, HoverScale, PageTransition, FrozenRouter
-- **Effects (2):** NoiseTexture, ChromaticAberration
-- **Primitives (6):** GlassPanel, GradientGlow, GradientMesh, GlassCard, GlassPill, TrafficLights
+### UI Components
 
-### Key Patterns
+| Component | Description |
+|-----------|-------------|
+| Button | 4 variants (primary, secondary, ghost, destructive), 3 sizes |
+| Card | Transparent card with 6% border and 5% inset shadow |
+| GlassCard | Card with backdrop blur and frosted glass background |
+| Badge | Status indicator with semantic color variants |
+| Input / InputField | Input with label, helper text, error state |
+| Select / SearchableSelect | Dropdown selection with keyboard navigation |
+| Toggle | Switch with coral accent when checked |
+| Dialog | Modal dialog with 5 sizes |
+| Toast | Notification with 5 semantic variants |
+| Tabs / CategoryTabs | Tab navigation with glass pill styling |
+| Accordion | Expandable content panels |
+| Avatar / AvatarGroup | User avatar with fallback and group stacking |
+| ExtensionCard | Feature card with radial gradient themes |
+| TestimonialCard | Quote card with author attribution |
+| Spinner | Loading indicator (indeterminate + determinate) |
+| Skeleton | Content placeholder with shimmer animation |
+| Kbd / ShortcutBadge | Keyboard keycap and shortcut display |
+| Heading / Text / Caption / Code | Semantic typography components |
+| Divider | Horizontal/vertical separator |
+| Icon | Icon wrapper with consistent sizing |
 
-- **Button default is `secondary`** (not `primary`) -- matches sparse accent usage
-- **Server components by default** -- `"use client"` only when interactivity requires it
-- **CVA for variants** -- class-variance-authority manages all variant styling
-- **Radix primitives** for complex interactive components (Dialog, Tabs, Toggle, Avatar)
-- **forwardRef** for DOM-wrapping components
-- **Compound components** -- Card/CardHeader/CardContent/CardFooter, StaggerReveal/StaggerRevealItem
+### Motion Components
+
+FadeIn, FadeInUp, SlideUp, StaggerReveal, HoverScale, PageTransition, FrozenRouter
+
+### Effects
+
+NoiseTexture, ChromaticAberration
+
+> **Removed components:** GradientGlow, GradientMesh, and primitives/GlassCard have been deleted. They are not part of the Raycast design language.
 
 For complete API reference, see [docs/components.md](docs/components.md).
 For component index with source files, see [docs/component-index.md](docs/component-index.md).
-
----
-
-## Motion & Animation
-
-All animation is built on the `motion/react` library with IntersectionObserver-based scroll triggers.
-
-| Component | Purpose | Duration | Trigger |
-|-----------|---------|----------|---------|
-| FadeIn | Opacity + slide reveal | 500ms | Viewport -100px |
-| FadeInUp | Fade + 24px upward slide | 600ms | Viewport -80px |
-| SlideUp | 60px upward slide | 600ms | Viewport -100px |
-| StaggerReveal | Sequenced child reveal | 500ms/child, 80ms stagger | Viewport -50px |
-| HoverScale | Micro-interaction on hover | Spring (stiffness 400, damping 25) | Hover/tap |
-| PageTransition | Route change animation | 300ms fade | Route change |
-
-### Timing Tokens
-
-| Token | Value | Use Case |
-|-------|-------|----------|
-| `--duration-fast` | 150ms | Hover feedback, toggles |
-| `--duration-normal` | 200ms | Standard transitions |
-| `--duration-slow` | 300ms | Complex animations |
-
-All motion components respect `prefers-reduced-motion: reduce` -- content renders instantly without animation.
-
-For detailed motion guidelines, see [docs/motion-guidelines.md](docs/motion-guidelines.md).
-
----
-
-## Glassmorphism
-
-Glass effects are a core visual language in Virtuna, applied via the GlassPanel primitive and CSS utility classes.
-
-### Blur Levels
-
-| Level | Blur | Use Context |
-|-------|------|-------------|
-| `none` | 0px | No blur |
-| `xs` | 2px | Feature frames |
-| `sm` | 8px | Tooltips |
-| `md` | 12px | Cards, dock |
-| `lg` | 20px | Footer |
-| `xl` | 36px | Windows |
-| `2xl` | 48px | Action bars |
-
-### Mobile Optimization
-
-- Blur levels `md` and above are reduced to 8px below 768px viewport width
-- This preserves visual quality while maintaining GPU performance on mobile devices
-
-### Glass Utility Classes
-
-- `.glass-base` -- Standard glass background with border
-- `.glass-blur-{level}` -- Blur level classes (xs through 2xl)
-- `.glass-navbar` -- Frosted glass navigation bar
 
 ---
 
@@ -232,25 +290,22 @@ Glass effects are a core visual language in Virtuna, applied via the GlassPanel 
 
 ### Do
 
+- Use `bg-transparent` for cards (Raycast pattern)
+- Use Inter for all text (single font family, all weights)
+- Use inline `backdrop-filter` for glass effects (bypasses Lightning CSS stripping)
 - Use semantic tokens (`--color-foreground`, not `--color-gray-50`) in components
-- Use the token system for all values (no hardcoded hex/rgb in component files)
-- Default Button to `secondary` variant (`primary` is reserved for the main CTA)
+- Use exact hex values for dark grays in @theme (not oklch -- compilation inaccuracy)
+- Default Button to `secondary` variant (primary is reserved for main CTA)
 - Use server components by default; add `"use client"` only for interactivity
-- Support `prefers-reduced-motion` in all motion components
-- Use `forwardRef` for components that wrap DOM elements
-- Use CVA for managing variant styles
-- Use Radix primitives for complex interactive patterns (modals, toggles, tabs)
 
 ### Don't
 
-- Use coral for more than one element per section
-- Hardcode color values in component code
-- Use oklch in `@theme` for very dark colors (Tailwind v4 compilation issue -- use hex/rgba)
-- Skip glass effects where the design calls for them
-- Use `primary` Button for every action
-- Nest dialogs within dialogs
-- Create multiple ToastProvider instances (one at root layout)
-- Reference the reference design language origin in any user-facing content
+- Add colored glass tints or inner glow effects on glass panels
+- Add `translate-y` hover effects on cards (Raycast cards do not lift)
+- Use oklch for very dark colors in @theme blocks (Tailwind v4 compilation issue)
+- Use multiple fonts -- Inter is the only font
+- Use `GradientGlow` or `GradientMesh` -- they have been removed
+- Reference the Raycast origin in any user-facing content
 
 ---
 
@@ -258,22 +313,23 @@ Glass effects are a core visual language in Virtuna, applied via the GlassPanel 
 
 ### Contrast Requirements (WCAG 2.1 AA)
 
-- Normal text: 4.5:1 minimum
-- Large text (24px+ or 18.66px+ bold): 3:1 minimum
-- UI components: 3:1 minimum
+| Category | Minimum Ratio |
+|----------|--------------|
+| Normal text | 4.5:1 |
+| Large text (24px+ or 18.66px+ bold) | 3:1 |
+| UI components | 3:1 |
 
-### Known Contrast Issues
+### Known Contrast Notes
 
 | Token | Context | Ratio | Status |
 |-------|---------|-------|--------|
-| `accent-foreground` on `accent` | White on coral | 2.48:1 | Fails AA |
-| `foreground-muted` on `background` | Muted text | 3.75:1 | AA Large only |
-| `foreground-muted` on `surface` | Muted text on cards | 3.29:1 | AA Large only |
+| `foreground-muted` (#848586) | On background | 5.4:1 | PASS AA |
+| `foreground-secondary` (#9c9c9d) | On background | 7.3:1 | PASS AAA |
+| `accent-foreground` (#1a0f0a) | On accent (#FF7F50) | 7.2:1 | PASS AAA |
 
 **Guidance:**
-- Use `foreground-secondary` (#9c9c9d, 7.3:1) instead of `foreground-muted` for important text
-- Reserve `foreground-muted` for truly optional content (timestamps, decorative labels)
-- Primary button contrast is a known action item for future remediation
+- Use `foreground-secondary` (#9c9c9d, 7.3:1) for important secondary text
+- Use `foreground-muted` (#848586, 5.4:1) for timestamps, captions -- passes AA
 
 For per-component accessibility requirements, see [docs/accessibility.md](docs/accessibility.md).
 
@@ -284,26 +340,12 @@ For per-component accessibility requirements, see [docs/accessibility.md](docs/a
 - [Token Reference](docs/tokens.md) -- All design tokens with values and usage guidance
 - [Component API](docs/components.md) -- Complete props, variants, and code examples
 - [Component Index](docs/component-index.md) -- Source files, showcase pages, exports per component
-- [Usage Guidelines](docs/usage-guidelines.md) -- When to use each component, composition patterns
 - [Accessibility](docs/accessibility.md) -- WCAG AA contrast requirements per component
-- [Motion Guidelines](docs/motion-guidelines.md) -- Animation patterns and when-to-use guidance
 - [Contributing](docs/contributing.md) -- How to add components, modify tokens, extend the system
 - [Design Specs](docs/design-specs.json) -- Structured token export (W3C Design Tokens-adjacent)
-- [Live Showcase](/showcase) -- Interactive component demos across 7 pages
+- [Live Showcase](/showcase) -- Interactive component demos
 
 ---
 
-## Internal Notes
-
-This design system is based on Raycast's design language (raycast.com) with coral (#FF7F50) branding. The Raycast relationship is internal context only -- never reference it in public-facing content, marketing copy, or user documentation. All component patterns, spacing, shadows, and glass effects are derived from the Raycast reference implementation.
-
-Key internal decisions:
-- Coral #FF7F50 replaces Raycast red #ff6363
-- Fonts changed from Inter to Satoshi (body) and Funnel Display (headings)
-- Dark gray tokens use exact hex values (not oklch) due to Tailwind v4 compilation inaccuracy at low lightness values
-- Border and state tokens use rgba for precision
-
----
-
-*Virtuna Design System v2.0 -- Brand Bible*
-*Last updated: 2026-02-05*
+*Virtuna Design System v2.3.5 -- Brand Bible*
+*Last updated: 2026-02-08*
