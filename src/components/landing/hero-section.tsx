@@ -1,83 +1,88 @@
 "use client";
 
-import Image from "next/image";
+import Link from "next/link";
 import { Button } from "@/components/ui";
 import { FadeIn } from "@/components/motion";
 import { cn } from "@/lib/utils";
-import { PersonaCard } from "./persona-card";
+import { HeroBackground } from "./hero-background";
+import { BrowserFrame } from "./browser-frame";
+import { ArrowRight } from "@phosphor-icons/react";
 
 interface HeroSectionProps {
   className?: string;
 }
 
+/**
+ * Hero section for the Virtuna landing page.
+ *
+ * Requirements: HERO-01, HERO-02, HERO-03, HERO-04, HERO-06
+ * - Bold headline with "social media intelligence" value proposition
+ * - Subtitle explaining what Virtuna does
+ * - Primary "Get started" CTA + secondary "Learn more" action
+ * - Product screenshot in browser chrome frame
+ * - Animated gradient/mesh/noise background
+ */
 export function HeroSection({ className }: HeroSectionProps) {
   return (
     <section
       className={cn(
-        "relative min-h-[calc(100vh-64px)] flex items-center overflow-hidden",
+        "relative min-h-[calc(100vh-64px)] flex flex-col items-center justify-center overflow-hidden",
         className
       )}
     >
-      {/* Background dot grid pattern is applied to body in globals.css */}
+      {/* HERO-06: Animated gradient background */}
+      <HeroBackground />
 
-      <div className="relative max-w-6xl mx-auto px-6 py-24 w-full">
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-8">
-          {/* Left: Text content */}
-          <div className="max-w-xl text-center lg:text-left order-2 lg:order-1">
-            <FadeIn delay={0}>
-              <h1 className="font-display text-[36px] sm:text-[44px] md:text-[52px] leading-[1.15] font-[350] text-white">
-                Human Behavior,
-                <br />
-                <span className="text-accent">Simulated.</span>
-              </h1>
-            </FadeIn>
+      {/* Content */}
+      <div className="relative z-10 mx-auto max-w-6xl w-full px-6 pt-16 pb-24 sm:pt-24 sm:pb-32">
+        {/* Text content - centered */}
+        <div className="mx-auto max-w-3xl text-center">
+          {/* HERO-01: Bold headline */}
+          <FadeIn delay={0}>
+            <h1 className="font-display text-4xl sm:text-5xl md:text-display font-semibold leading-tight tracking-tight text-foreground">
+              Social Media Intelligence,{" "}
+              <span className="text-accent">Decoded.</span>
+            </h1>
+          </FadeIn>
 
-            <FadeIn delay={0.1}>
-              <p className="font-sans text-lg sm:text-xl leading-[30px] font-[450] text-white/90 mt-6 max-w-md">
-                AI personas that replicate real-world attitudes, beliefs, and opinions.
-              </p>
-            </FadeIn>
+          {/* HERO-02: Subtitle */}
+          <FadeIn delay={0.1}>
+            <p className="mt-6 text-lg sm:text-xl leading-relaxed text-foreground-secondary max-w-2xl mx-auto">
+              Track viral trends, analyze content performance, and discover what
+              makes videos go viral — powered by AI that understands social media
+              at scale.
+            </p>
+          </FadeIn>
 
-            <FadeIn delay={0.2}>
-              <Button className="mt-8" size="md">
-                Get in touch
+          {/* HERO-03: CTAs */}
+          <FadeIn delay={0.2}>
+            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Button variant="primary" size="lg" asChild>
+                <Link href="/auth/signup">
+                  Get started
+                  <ArrowRight className="h-4 w-4" weight="bold" />
+                </Link>
               </Button>
-            </FadeIn>
-          </div>
-
-          {/* Right: Network visualization with floating persona card */}
-          <div className="relative order-1 lg:order-2">
-            <FadeIn delay={0.3}>
-              <div className="relative w-[280px] sm:w-[400px] lg:w-[480px] xl:w-[550px] aspect-square">
-                {/* Network visualization */}
-                <Image
-                  src="/images/network-visualization.svg"
-                  alt="AI persona network visualization"
-                  fill
-                  className="object-contain"
-                  priority
-                />
-
-                {/* Floating persona card - positioned over the accent node */}
-                <div className="absolute right-0 top-1/3 transform translate-x-4 hidden sm:block">
-                  <FadeIn delay={0.5}>
-                    <PersonaCard
-                      initials="ER"
-                      name="Emma Rodriguez"
-                      role="UX Researcher"
-                      company="DesignLab Studio"
-                      bio="Passionate about creating user-centric solutions through collaborative design."
-                      location="Barcelona, Spain"
-                      gender="Female"
-                      generation="Gen Z"
-                      className="scale-90 lg:scale-100 shadow-xl"
-                    />
-                  </FadeIn>
-                </div>
-              </div>
-            </FadeIn>
-          </div>
+              <Button variant="secondary" size="lg" asChild>
+                <Link href="#features">Learn more</Link>
+              </Button>
+            </div>
+          </FadeIn>
         </div>
+
+        {/* HERO-04: Product screenshot in browser frame */}
+        <FadeIn delay={0.4} duration={0.8}>
+          <div className="mt-16 sm:mt-20 mx-auto max-w-4xl">
+            <BrowserFrame
+              src="/images/landing/DC_dark-CPn4aTvq.png"
+              alt="Virtuna dashboard showing social media analytics and trend tracking"
+              width={1920}
+              height={1080}
+              priority
+              className="shadow-2xl"
+            />
+          </div>
+        </FadeIn>
       </div>
     </section>
   );
