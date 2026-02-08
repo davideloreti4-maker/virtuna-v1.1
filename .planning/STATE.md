@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Milestone:** v2.1 -- Dashboard Rebuild
 **Phase:** 49 -- Hive Interactions -- In progress
-**Plan:** 02 of 04 complete
-**Status:** In progress (Phase 49 Plans 01-02 complete, Plans 03-04 pending)
-**Last activity:** 2026-02-08 -- Completed 49-02-PLAN.md (interaction hook + renderer augmentation)
+**Plan:** 03 of 04 complete
+**Status:** In progress (Phase 49 Plans 01-03 complete, Plan 04 pending)
+**Last activity:** 2026-02-08 -- Completed 49-03-PLAN.md (HiveCanvas integration + overlay + pinch-to-zoom)
 
-Progress: [█████████░] 98% (phases 45-48 complete, phase 49 plan 2/4 done)
+Progress: [█████████░] 99% (phases 45-48 complete, phase 49 plan 3/4 done)
 
 ## Phase Overview
 
@@ -25,7 +25,7 @@ Progress: [█████████░] 98% (phases 45-48 complete, phase 49 
 | 46 | Forms & Modals | 10 (FORM + MODL) | Complete (4/4) |
 | 47 | Results, Top Bar & Loading | 14 (RSLT + TBAR + LOAD) | Complete (5/5) |
 | 48 | Hive Foundation | 9 (HIVE) | Complete (4/4) ✓ |
-| 49 | Hive Interactions | 7 (HINT) | In progress (2/4) |
+| 49 | Hive Interactions | 7 (HINT) | In progress (3/4) |
 
 ## Dependency Graph
 
@@ -49,7 +49,7 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 
 ## In-Progress Milestones
 
-- v2.1 Dashboard Rebuild -- Phases 45-49, 51 requirements, ~98% executed (Phases 45-48 complete, Phase 49 plan 2/4 done)
+- v2.1 Dashboard Rebuild -- Phases 45-49, 51 requirements, ~99% executed (Phases 45-48 complete, Phase 49 plan 3/4 done)
 
 ## Key Technical Notes
 
@@ -119,6 +119,11 @@ Phases 46-47 are independent of 48-49 (Wave 1 vs Wave 2).
 - [49-02] Connected IDs merge hovered + selected connections when both active
 - [49-02] TIER_RADII extracted to module scope for shared use between drawNodes and drawSelectedGlow
 - [49-02] renderHive interaction parameter optional -- backward compatible with existing callers
+- [49-03] Pan logic migrated from HiveCanvas into useHiveInteraction to consolidate all pointer logic
+- [49-03] Pinch-to-zoom uses Pointer Events (not Touch Events) for unified cross-device handling
+- [49-03] LayoutNode extended with name/meta fields propagated from HiveNode input data
+- [49-03] HiveNodeOverlay uses measure-then-position pattern (invisible render, measure, compute position, fade in)
+- [49-03] Window-level mouseup handler ensures drag ends even when cursor leaves canvas
 
 ### Design System Components
 - v2.0 design system components are the building blocks (GlassPanel, GlassCard, GlassInput, GlassTextarea, GlassPill, GlassProgress, Dialog, Button, Select, Badge, Typography, Spinner, Icon)
@@ -155,13 +160,15 @@ None.
 - Interaction utilities (Plan 01): buildHiveQuadtree, buildAdjacencyMap, screenToWorld, worldToScreen, findHoveredNode, computeOverlayPosition
 - Interaction hook (Plan 02): useHiveInteraction managing quadtree rebuild, hover debounce, click-vs-drag, selection state, camera tracking
 - Renderer augmented (Plan 02): InteractionRenderState parameter for dimming (0.15 nodes, 0.03 lines), selected glow (coral shadowBlur + 1.3x scale)
+- HiveCanvas integration (Plan 03): Interaction hook wired, HiveNodeOverlay component, reset view button, pan consolidated in hook, pinch-to-zoom
+- Files added: HiveNodeOverlay.tsx; modified: HiveCanvas.tsx, use-hive-interaction.ts, hive-types.ts, hive-layout.ts
 
 ### Session Continuity
 - Last session: 2026-02-08
-- Stopped at: Completed 49-02-PLAN.md (interaction hook + renderer augmentation)
+- Stopped at: Completed 49-03-PLAN.md (HiveCanvas integration + overlay + pinch-to-zoom)
 - Resume file: None
-- Next: 49-03-PLAN.md (HiveCanvas integration)
+- Next: 49-04-PLAN.md (visual polish / final integration)
 
 ---
 *State created: 2026-02-05*
-*Last updated: 2026-02-08 -- Phase 49 Plan 02 complete (interaction hook + renderer augmentation)*
+*Last updated: 2026-02-08 -- Phase 49 Plan 03 complete (HiveCanvas integration + overlay + pinch-to-zoom)*
