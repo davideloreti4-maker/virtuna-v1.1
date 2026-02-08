@@ -132,6 +132,14 @@ Plans:
 
 **Dependencies:** Phase 48 (hive rendering must exist before adding interactions)
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] 49-01-PLAN.md -- Install d3-quadtree, interaction types/constants, pure utility module (quadtree, hit detection, coordinate transforms, adjacency map)
+- [ ] 49-02-PLAN.md -- Interaction hook (hover debounce, click-vs-drag, selection state) + renderer augmentation (dim/highlight/glow)
+- [ ] 49-03-PLAN.md -- HiveCanvas integration (wire hook, overlay, pinch-to-zoom, reset button)
+- [ ] 49-04-PLAN.md -- Visual and functional verification checkpoint
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -144,9 +152,9 @@ Plans:
 | 46 | v2.1 | 4/4 | Complete | 2026-02-06 |
 | 47 | v2.1 | 5/5 | Complete | 2026-02-06 |
 | 48 | v2.1 | 4/4 | Complete | 2026-02-08 |
-| 49 | v2.1 | 0/? | Pending | - |
+| 49 | v2.1 | 0/4 | Pending | - |
 | 50-52 | v2.2 | 10/10 | Shipped | 2026-02-06 |
 
 ---
 *Roadmap created: 2026-02-03*
-*Last updated: 2026-02-06 -- Phase 48 planned (4 plans in 4 waves)*
+*Last updated: 2026-02-08 -- Phase 49 planned (4 plans in 4 waves)*
