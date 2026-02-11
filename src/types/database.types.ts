@@ -303,6 +303,51 @@ export type Database = {
         }
         Relationships: []
       }
+      user_subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          whop_user_id: string | null
+          whop_membership_id: string | null
+          whop_product_id: string | null
+          virtuna_tier: string
+          status: string
+          cancel_at_period_end: boolean | null
+          current_period_end: string | null
+          created_at: string | null
+          updated_at: string | null
+          last_synced_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          whop_user_id?: string | null
+          whop_membership_id?: string | null
+          whop_product_id?: string | null
+          virtuna_tier?: string
+          status?: string
+          cancel_at_period_end?: boolean | null
+          current_period_end?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          last_synced_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          whop_user_id?: string | null
+          whop_membership_id?: string | null
+          whop_product_id?: string | null
+          virtuna_tier?: string
+          status?: string
+          cancel_at_period_end?: boolean | null
+          current_period_end?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          last_synced_at?: string | null
+        }
+        Relationships: []
+      }
       wallet_transactions: {
         Row: {
           amount_cents: number

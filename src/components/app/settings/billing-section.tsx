@@ -1,18 +1,62 @@
 "use client";
 
-import { CreditCard, ExternalLink, Zap, Calendar } from "lucide-react";
-import { useSettingsStore } from "@/stores/settings-store";
+import { useState, useEffect, useCallback } from "react";
+import { CreditCard, ExternalLink, Zap, Calendar, Check } from "lucide-react";
+import { CheckoutModal } from "@/components/app/checkout-modal";
+import type { VirtunaTier } from "@/lib/whop/config";
+
+interface SubscriptionData {
+  tier: VirtunaTier;
+  status: string;
+  whopConnected: boolean;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: string | null;
+}
+
+const TIER_LABELS: Record<VirtunaTier, string> = {
+  free: "Free",
+  starter: "Starter",
+  pro: "Pro",
+};
+
+const PLAN_COLORS: Record<VirtunaTier, string> = {
+  free: "text-zinc-400 bg-zinc-400/10",
+  starter: "text-emerald-400 bg-emerald-400/10",
+  pro: "text-purple-400 bg-purple-400/10",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  active: "text-emerald-400 bg-emerald-400/10",
+  cancelled: "text-amber-400 bg-amber-400/10",
+  expired: "text-red-400 bg-red-400/10",
+  past_due: "text-red-400 bg-red-400/10",
+};
 
 export function BillingSection() {
-  const billing = useSettingsStore((s) => s.billing);
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [checkoutPlan, setCheckoutPlan] = useState<"starter" | "pro" | null>(null);
 
-  const handleManageSubscription = () => {
-    // Opens Stripe Customer Portal in new tab
-    // In real app: API call creates portal session, returns URL
-    window.open("https://billing.stripe.com/p/login/test", "_blank");
+  const fetchSubscription = useCallback(async () => {
+    try {
+      const res = await fetch("/api/subscription");
+      if (res.ok) {
+        setSubscription(await res.json());
+      }
+    } catch {
+      // Fallback to free
+      setSubscription({ tier: "free", status: "active", whopConnected: false, cancelAtPeriodEnd: false, currentPeriodEnd: null });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchSubscription(); }, [fetchSubscription]);
+
+  const handleCheckoutComplete = () => {
+    setCheckoutPlan(null);
+    fetchSubscription();
   };
-
-  const creditsPercentage = (billing.creditsRemaining / billing.creditsTotal) * 100;
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("en-US", {
@@ -22,18 +66,28 @@ export function BillingSection() {
     });
   };
 
-  const planColors: Record<typeof billing.plan, string> = {
-    free: "text-zinc-400 bg-zinc-400/10",
-    pro: "text-emerald-400 bg-emerald-400/10",
-    enterprise: "text-purple-400 bg-purple-400/10",
-  };
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h2 className="text-lg font-medium text-white">Billing</h2>
+          <p className="mt-1 text-sm text-zinc-400">Loading subscription details...</p>
+        </div>
+        <div className="h-32 animate-pulse rounded-lg bg-zinc-800/50" />
+      </div>
+    );
+  }
+
+  const tier = subscription?.tier ?? "free";
+  const status = subscription?.status ?? "active";
+  const nextTier: "starter" | "pro" | null = tier === "free" ? "starter" : tier === "starter" ? "pro" : null;
 
   return (
     <div className="space-y-8">
       <div>
         <h2 className="text-lg font-medium text-white">Billing</h2>
         <p className="mt-1 text-sm text-zinc-400">
-          Manage your subscription and payment details.
+          Manage your subscription and plan.
         </p>
       </div>
 
@@ -46,75 +100,95 @@ export function BillingSection() {
               <span className="text-sm text-zinc-400">Current plan</span>
             </div>
             <div className="mt-2 flex items-center gap-3">
-              <h3 className="text-2xl font-semibold text-white capitalize">
-                {billing.plan}
+              <h3 className="text-2xl font-semibold text-white">
+                {TIER_LABELS[tier]}
               </h3>
-              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${planColors[billing.plan]}`}>
-                Active
+              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${PLAN_COLORS[tier]}`}>
+                {TIER_LABELS[tier]}
+              </span>
+              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_COLORS[status] || STATUS_COLORS.active}`}>
+                {status === "past_due" ? "Past Due" : status.charAt(0).toUpperCase() + status.slice(1)}
               </span>
             </div>
-            <p className="mt-1 text-lg text-zinc-400">
-              ${billing.pricePerMonth}
-              <span className="text-sm">/month</span>
-            </p>
+            {subscription?.cancelAtPeriodEnd && (
+              <p className="mt-2 text-sm text-amber-400">
+                Your plan will be downgraded at the end of the current period.
+              </p>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={handleManageSubscription}
-            className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200"
-          >
-            Manage subscription
-            <ExternalLink className="h-4 w-4" />
-          </button>
+          <div className="flex gap-2">
+            {nextTier && (
+              <button
+                type="button"
+                onClick={() => setCheckoutPlan(nextTier)}
+                className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200"
+              >
+                <Zap className="h-4 w-4" />
+                Upgrade to {TIER_LABELS[nextTier]}
+              </button>
+            )}
+            {subscription?.whopConnected && (
+              <a
+                href="https://whop.com/hub/memberships"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 rounded-lg border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-800"
+              >
+                Manage on Whop
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Credits usage */}
+      {/* Plan features comparison */}
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-6">
-        <div className="flex items-center gap-3">
-          <Zap className="h-5 w-5 text-amber-400" />
-          <span className="text-sm font-medium text-white">Credits usage</span>
-        </div>
-        <div className="mt-4">
-          <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-semibold text-white">
-              {billing.creditsRemaining.toLocaleString()}
-            </span>
-            <span className="text-sm text-zinc-400">
-              of {billing.creditsTotal.toLocaleString()} credits
-            </span>
-          </div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-zinc-800">
+        <h3 className="text-sm font-medium text-white mb-4">Plan features</h3>
+        <div className="grid grid-cols-3 gap-4">
+          {(["free", "starter", "pro"] as const).map((t) => (
             <div
-              className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all"
-              style={{ width: `${creditsPercentage}%` }}
-            />
-          </div>
-          <p className="mt-2 text-sm text-zinc-500">
-            Credits reset on your billing date
-          </p>
+              key={t}
+              className={`rounded-lg border p-4 ${t === tier ? "border-white/20 bg-white/[0.02]" : "border-zinc-800"}`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className={`text-sm font-medium ${PLAN_COLORS[t].split(" ")[0]}`}>
+                  {TIER_LABELS[t]}
+                </span>
+                {t === tier && <Check className="h-4 w-4 text-emerald-400" />}
+              </div>
+              <p className="text-xs text-zinc-500">
+                {t === "free" && "Basic access to the platform"}
+                {t === "starter" && "Enhanced features for growing creators"}
+                {t === "pro" && "Full access to all premium features"}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Billing cycle */}
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-6">
-        <div className="flex items-center gap-3">
-          <Calendar className="h-5 w-5 text-blue-400" />
-          <span className="text-sm font-medium text-white">Next billing date</span>
+      {subscription?.currentPeriodEnd && (
+        <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-6">
+          <div className="flex items-center gap-3">
+            <Calendar className="h-5 w-5 text-blue-400" />
+            <span className="text-sm font-medium text-white">Next billing date</span>
+          </div>
+          <p className="mt-2 text-lg text-zinc-300">
+            {formatDate(subscription.currentPeriodEnd)}
+          </p>
         </div>
-        <p className="mt-2 text-lg text-zinc-300">
-          {formatDate(billing.renewalDate)}
-        </p>
-        <p className="mt-1 text-sm text-zinc-500">
-          You&apos;ll be charged ${billing.pricePerMonth} on this date
-        </p>
-      </div>
+      )}
 
-      {/* Payment method note */}
-      <p className="text-sm text-zinc-500">
-        To update your payment method or view invoices, click &quot;Manage subscription&quot;
-        above to access the Stripe billing portal.
-      </p>
+      {/* Checkout modal */}
+      {checkoutPlan && (
+        <CheckoutModal
+          open={!!checkoutPlan}
+          onClose={() => setCheckoutPlan(null)}
+          planId={checkoutPlan}
+          onComplete={handleCheckoutComplete}
+        />
+      )}
     </div>
   );
 }

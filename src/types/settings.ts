@@ -25,9 +25,11 @@ export interface TeamMember {
 }
 
 export interface BillingInfo {
-  plan: "free" | "pro" | "enterprise";
-  pricePerMonth: number;
+  plan: "free" | "starter" | "pro";
+  status: "active" | "cancelled" | "expired" | "past_due";
+  whopConnected: boolean;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: string | null; // ISO date string
   creditsRemaining: number;
   creditsTotal: number;
-  renewalDate: string; // ISO date string
 }

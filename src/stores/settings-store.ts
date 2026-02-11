@@ -35,11 +35,13 @@ const DEFAULT_TEAM: TeamMember[] = [
 ];
 
 const DEFAULT_BILLING: BillingInfo = {
-  plan: "pro",
-  pricePerMonth: 55,
-  creditsRemaining: 847,
-  creditsTotal: 1000,
-  renewalDate: "2026-02-15",
+  plan: "free",
+  status: "active",
+  whopConnected: false,
+  cancelAtPeriodEnd: false,
+  currentPeriodEnd: null,
+  creditsRemaining: 0,
+  creditsTotal: 0,
 };
 
 interface SettingsState {
