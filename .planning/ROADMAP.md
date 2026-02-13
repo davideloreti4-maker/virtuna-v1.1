@@ -19,6 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 5: Client Integration** - TanStack Query setup, query hooks for all pages, mutation hooks, cache invalidation
 - [ ] **Phase 6: Intelligence UX** - Simulation theater with real SSE events, results card with real data, analysis history migration, outcome tracking UI
 - [ ] **Phase 7: ML Scaffolding and Hardening** - ML retrain stub, adaptive weight fields, circuit breaker, vercel.json cron config, environment guardrails
+- [ ] **Phase 8: UX Gap Closure** - 4.5s theater minimum duration, SSE phase event timing, analyze button routing fix (GAP CLOSURE)
 
 ## Phase Details
 
@@ -160,6 +161,22 @@ Plans:
 Plans:
 - [ ] 07-01: ML retrain cron stub, score_weights/ml_score field validation, environment variable audit, and maxDuration configuration
 
+### Phase 8: UX Gap Closure (GAP CLOSURE)
+**Goal**: Close the 2 remaining unsatisfied requirements from audit — enforce minimum theater duration and fix broken analyze routing
+**Depends on**: Phase 6 (needs simulation theater and LoadingPhases)
+**File Ownership**: `src/hooks/queries/use-analyze.ts`, `src/app/api/analyze/route.ts`, `src/components/trending/video-detail-modal.tsx`, `src/components/app/simulation/loading-phases.tsx`
+**Requirements**: UX-02, UX-08
+**Gap Closure**: Closes gaps identified in v1.0-MILESTONE-AUDIT.md
+**Success Criteria** (what must be TRUE):
+  1. The simulation theater never reveals results before 4.5 seconds have elapsed since analysis submission — even if the backend responds in <1s
+  2. SSE phase events are spread across pipeline stages (not sent all at once before pipeline runs) so LoadingPhases progresses through phases naturally
+  3. `phaseMessage` prop is used by LoadingPhases to display phase-specific text (no longer prefixed with `_`)
+  4. Clicking "Analyze" in the trending video detail modal navigates to the dashboard with the video URL pre-filled (no `/viral-predictor` reference remains)
+**Plans**: 1 plan
+
+Plans:
+- [ ] 08-01: Theater minimum duration, SSE phase timing, phaseMessage wiring, and analyze button routing fix
+
 ## Execution Waves
 
 Wave groupings for parallel team dispatch. Phases within a wave have no inter-dependencies.
@@ -202,5 +219,6 @@ Wave-parallel execution: 1 > [2, 3] > [4, 7] > 5 > 6
 | 5.1 Wire TanStack Query Hooks | 4/4 | ✓ Complete | 2026-02-13 |
 | 6. Intelligence UX | 3/3 | ✓ Complete | 2026-02-13 |
 | 7. ML Scaffolding and Hardening | 1/1 | ✓ Complete | 2026-02-13 |
+| 8. UX Gap Closure | 0/1 | Pending | — |
 
-**Total plans: 20 (16 original + 4 inserted)**
+**Total plans: 21 (16 original + 4 inserted + 1 gap closure)**
