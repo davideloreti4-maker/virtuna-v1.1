@@ -138,17 +138,84 @@ Deferred to future release. Tracked but not in current roadmap.
 
 ## Traceability
 
-(Populated during roadmap creation)
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| — | — | — |
+| DB-01 | Phase 1 | Pending |
+| DB-02 | Phase 1 | Pending |
+| DB-03 | Phase 1 | Pending |
+| DB-04 | Phase 1 | Pending |
+| DB-05 | Phase 1 | Pending |
+| DB-06 | Phase 1 | Pending |
+| DB-07 | Phase 1 | Pending |
+| DB-08 | Phase 1 | Pending |
+| DB-09 | Phase 1 | Pending |
+| DB-10 | Phase 1 | Pending |
+| ENGINE-01 | Phase 2 | Pending |
+| ENGINE-02 | Phase 2 | Pending |
+| ENGINE-03 | Phase 2 | Pending |
+| ENGINE-04 | Phase 2 | Pending |
+| ENGINE-05 | Phase 2 | Pending |
+| ENGINE-06 | Phase 2 | Pending |
+| ENGINE-07 | Phase 2 | Pending |
+| ENGINE-08 | Phase 2 | Pending |
+| ENGINE-09 | Phase 2 | Pending |
+| ENGINE-10 | Phase 2 | Pending |
+| ENGINE-11 | Phase 2 | Pending |
+| ENGINE-12 | Phase 2 | Pending |
+| ENGINE-13 | Phase 2 | Pending |
+| ENGINE-14 | Phase 2 | Pending |
+| ENGINE-15 | Phase 2 | Pending |
+| TREND-01 | Phase 3 | Pending |
+| TREND-02 | Phase 3 | Pending |
+| TREND-03 | Phase 3 | Pending |
+| TREND-04 | Phase 3 | Pending |
+| TREND-05 | Phase 3 | Pending |
+| TREND-06 | Phase 3 | Pending |
+| TREND-07 | Phase 3 | Pending |
+| TREND-08 | Phase 3 | Pending |
+| API-01 | Phase 4 | Pending |
+| API-02 | Phase 4 | Pending |
+| API-03 | Phase 4 | Pending |
+| API-04 | Phase 4 | Pending |
+| API-05 | Phase 4 | Pending |
+| API-06 | Phase 4 | Pending |
+| API-07 | Phase 4 | Pending |
+| API-08 | Phase 4 | Pending |
+| API-09 | Phase 4 | Pending |
+| API-10 | Phase 7 | Pending |
+| API-11 | Phase 7 | Pending |
+| API-12 | Phase 4 | Pending |
+| QUERY-01 | Phase 5 | Pending |
+| QUERY-02 | Phase 5 | Pending |
+| QUERY-03 | Phase 5 | Pending |
+| QUERY-04 | Phase 5 | Pending |
+| QUERY-05 | Phase 5 | Pending |
+| QUERY-06 | Phase 5 | Pending |
+| QUERY-07 | Phase 5 | Pending |
+| QUERY-08 | Phase 5 | Pending |
+| QUERY-09 | Phase 5 | Pending |
+| QUERY-10 | Phase 5 | Pending |
+| UX-01 | Phase 6 | Pending |
+| UX-02 | Phase 6 | Pending |
+| UX-03 | Phase 6 | Pending |
+| UX-04 | Phase 6 | Pending |
+| UX-05 | Phase 6 | Pending |
+| UX-06 | Phase 6 | Pending |
+| UX-07 | Phase 6 | Pending |
+| UX-08 | Phase 6 | Pending |
+| TRACK-01 | Phase 6 | Pending |
+| TRACK-02 | Phase 6 | Pending |
+| TRACK-03 | Phase 6 | Pending |
+| TRACK-04 | Phase 6 | Pending |
+| ML-01 | Phase 7 | Pending |
+| ML-02 | Phase 7 | Pending |
+| ML-03 | Phase 7 | Pending |
 
 **Coverage:**
-- v1 requirements: 68 total
-- Mapped to phases: 0
-- Unmapped: 68
+- v1 requirements: 70 total
+- Mapped to phases: 70
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-13*
-*Last updated: 2026-02-13 after initial definition*
+*Last updated: 2026-02-13 -- Traceability populated during roadmap creation*
