@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { GlassCard } from '@/components/ui/card';
 import { GlassSkeleton, SkeletonText } from '@/components/primitives';
 import { Button } from '@/components/ui/button';
-import { useTestStore, type SimulationPhase } from '@/stores/test-store';
+import type { SimulationPhase } from '@/stores/test-store';
 
 /**
  * Phase order for mapping simulation progress to skeleton visibility.
@@ -109,20 +109,22 @@ const SECTIONS: SectionConfig[] = [
 // LoadingPhases
 // ---------------------------------------------------------------------------
 
+interface LoadingPhasesProps {
+  simulationPhase: SimulationPhase | null;
+  phaseMessage?: string;
+  onCancel: () => void;
+}
+
 /**
  * LoadingPhases - Skeleton shimmer loading with progressive reveal.
  *
- * Replaces the old phase-checklist + progress-bar pattern with skeleton
- * placeholders that mirror the stacked-card results layout. Each skeleton
- * section fades in as its corresponding simulation phase activates,
- * providing visual continuity between loading and results states.
+ * Pure presentational component driven by props. Each skeleton section
+ * fades in as its corresponding simulation phase activates, providing
+ * visual continuity between loading and results states.
  *
  * A cancel button below the skeleton area returns to filling-form state.
  */
-export function LoadingPhases() {
-  const simulationPhase = useTestStore((s) => s.simulationPhase);
-  const cancelSimulation = useTestStore((s) => s.cancelSimulation);
-
+export function LoadingPhases({ simulationPhase, phaseMessage: _phaseMessage, onCancel }: LoadingPhasesProps) {
   const currentIdx = simulationPhase
     ? PHASE_ORDER.indexOf(simulationPhase)
     : -1;
@@ -156,7 +158,7 @@ export function LoadingPhases() {
       {/* Cancel button */}
       <Button
         variant="secondary"
-        onClick={cancelSimulation}
+        onClick={onCancel}
         className="mt-4 w-full"
       >
         Cancel

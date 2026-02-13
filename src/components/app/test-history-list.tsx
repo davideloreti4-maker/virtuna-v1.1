@@ -1,32 +1,25 @@
 'use client';
 
-import { useState } from 'react';
-import { useTestStore } from '@/stores/test-store';
+import { useAnalysisHistory } from '@/hooks/queries';
 import { Caption } from '@/components/ui/typography';
 import { TestHistoryItem } from './test-history-item';
-import { DeleteTestModal } from './delete-test-modal';
 
 interface TestHistoryListProps {
   onSelectTest: (testId: string) => void;
 }
 
 export function TestHistoryList({ onSelectTest }: TestHistoryListProps) {
-  const tests = useTestStore((s) => s.tests);
-  const currentResult = useTestStore((s) => s.currentResult);
-  const deleteTest = useTestStore((s) => s.deleteTest);
-  const _isHydrated = useTestStore((s) => s._isHydrated);
+  const { data: historyData, isLoading } = useAnalysisHistory();
 
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [testToDelete, setTestToDelete] = useState<string | null>(null);
-
-  // Guard for SSR hydration
-  if (!_isHydrated) {
+  if (isLoading) {
     return (
       <Caption className="block px-3 py-2">
         Loading history...
       </Caption>
     );
   }
+
+  const tests = historyData ?? [];
 
   if (tests.length === 0) {
     return (
@@ -36,19 +29,6 @@ export function TestHistoryList({ onSelectTest }: TestHistoryListProps) {
     );
   }
 
-  const handleDeleteClick = (testId: string) => {
-    setTestToDelete(testId);
-    setDeleteModalOpen(true);
-  };
-
-  const handleConfirmDelete = () => {
-    if (testToDelete) {
-      deleteTest(testToDelete);
-      setTestToDelete(null);
-      setDeleteModalOpen(false);
-    }
-  };
-
   return (
     <>
       {/* Section header matching v0 design */}
@@ -57,23 +37,31 @@ export function TestHistoryList({ onSelectTest }: TestHistoryListProps) {
       </Caption>
 
       <div className="flex flex-col gap-1">
-        {tests.map((test) => (
+        {tests.map((test: Record<string, unknown>) => (
           <TestHistoryItem
-            key={test.id}
-            test={test}
-            isActive={currentResult?.id === test.id}
-            onClick={() => onSelectTest(test.id)}
-            onDelete={() => handleDeleteClick(test.id)}
+            key={test.id as string}
+            test={{
+              id: test.id as string,
+              testType: (test.content_type as string ?? 'article') as never,
+              content: test.content_text as string ?? '',
+              impactScore: (test.overall_score as number) ?? 0,
+              impactLabel: ((test.overall_score as number) ?? 0) >= 70 ? 'Good' : ((test.overall_score as number) ?? 0) >= 40 ? 'Average' : 'Poor',
+              attention: { full: 40, partial: 35, ignore: 25 },
+              variants: [],
+              insights: [],
+              conversationThemes: [],
+              createdAt: (test.created_at as string) ?? new Date().toISOString(),
+              societyId: (test.society_id as string) ?? '',
+            }}
+            isActive={false}
+            onClick={() => onSelectTest(test.id as string)}
+            onDelete={() => {
+              // TODO: Implement delete via API route
+              console.warn('Delete not yet implemented via API');
+            }}
           />
         ))}
       </div>
-
-      {/* Delete modal as sibling (dialog sibling pattern) */}
-      <DeleteTestModal
-        open={deleteModalOpen}
-        onOpenChange={setDeleteModalOpen}
-        onConfirm={handleConfirmDelete}
-      />
     </>
   );
 }
