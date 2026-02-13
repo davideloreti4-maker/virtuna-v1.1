@@ -323,6 +323,8 @@ export type Database = {
           status: string
           cancel_at_period_end: boolean | null
           current_period_end: string | null
+          is_trial: boolean | null
+          trial_ends_at: string | null
           created_at: string | null
           updated_at: string | null
           last_synced_at: string | null
@@ -337,6 +339,8 @@ export type Database = {
           status?: string
           cancel_at_period_end?: boolean | null
           current_period_end?: string | null
+          is_trial?: boolean | null
+          trial_ends_at?: string | null
           created_at?: string | null
           updated_at?: string | null
           last_synced_at?: string | null
@@ -351,6 +355,8 @@ export type Database = {
           status?: string
           cancel_at_period_end?: boolean | null
           current_period_end?: string | null
+          is_trial?: boolean | null
+          trial_ends_at?: string | null
           created_at?: string | null
           updated_at?: string | null
           last_synced_at?: string | null

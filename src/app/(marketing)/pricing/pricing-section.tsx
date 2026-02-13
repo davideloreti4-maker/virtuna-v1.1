@@ -1,9 +1,12 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui";
 import { FadeIn } from "@/components/motion";
 import { Check, X } from "@phosphor-icons/react";
+import { CheckoutModal } from "@/components/app/checkout-modal";
+import { createClient } from "@/lib/supabase/client";
 
 interface PricingFeature {
   name: string;
@@ -33,6 +36,18 @@ function FeatureValue({ value }: { value: boolean | string }) {
 }
 
 export function PricingSection() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [checkoutPlan, setCheckoutPlan] = useState<"starter" | "pro" | null>(null);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setIsAuthenticated(true);
+    };
+    checkAuth();
+  }, []);
+
   return (
     <section className="py-24">
       <div className="mx-auto max-w-5xl px-6">
@@ -69,9 +84,20 @@ export function PricingSection() {
                   <span className="text-foreground-muted">/month</span>
                 </div>
               </div>
-              <Button variant="secondary" size="lg" className="w-full" asChild>
-                <Link href="/auth/signup?plan=starter">Get started</Link>
-              </Button>
+              {isAuthenticated ? (
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  className="w-full"
+                  onClick={() => setCheckoutPlan("starter")}
+                >
+                  Get started
+                </Button>
+              ) : (
+                <Button variant="secondary" size="lg" className="w-full" asChild>
+                  <Link href="/auth/signup?plan=starter">Get started</Link>
+                </Button>
+              )}
             </div>
 
             {/* Pro */}
@@ -96,9 +122,20 @@ export function PricingSection() {
                   <span className="text-foreground-muted">/month</span>
                 </div>
               </div>
-              <Button variant="primary" size="lg" className="w-full" asChild>
-                <Link href="/auth/signup?plan=pro">Start free trial</Link>
-              </Button>
+              {isAuthenticated ? (
+                <Button
+                  variant="primary"
+                  size="lg"
+                  className="w-full"
+                  onClick={() => setCheckoutPlan("pro")}
+                >
+                  Start free trial
+                </Button>
+              ) : (
+                <Button variant="primary" size="lg" className="w-full" asChild>
+                  <Link href="/auth/signup?plan=pro">Start free trial</Link>
+                </Button>
+              )}
             </div>
           </div>
         </FadeIn>
@@ -146,6 +183,14 @@ export function PricingSection() {
           </div>
         </FadeIn>
       </div>
+
+      {checkoutPlan && (
+        <CheckoutModal
+          open={!!checkoutPlan}
+          onClose={() => setCheckoutPlan(null)}
+          planId={checkoutPlan}
+        />
+      )}
     </section>
   );
 }

@@ -76,6 +76,8 @@ export async function POST(request: Request) {
               virtuna_tier: tier,
               status: "active",
               current_period_end: data.renewal_period_end,
+              is_trial: data.status === "trialing",
+              trial_ends_at: data.trial_end || null,
               updated_at: new Date().toISOString(),
             },
             { onConflict: "user_id" }
@@ -105,6 +107,8 @@ export async function POST(request: Request) {
           .update({
             virtuna_tier: "free",
             status: "cancelled",
+            is_trial: false,
+            trial_ends_at: null,
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", supabaseUserId);
