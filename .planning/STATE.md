@@ -5,30 +5,31 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** AI-powered content intelligence that tells creators whether their content will resonate -- and exactly why -- before they post.
-**Current focus:** Milestone complete — all phases executed and verified
+**Current focus:** UX gap closure phase complete
 
 ## Current Position
 
 **Milestone:** Backend Foundation
-**Phase:** All complete (1-7 + 5.1)
-**Plan:** 20/20 complete
-**Status:** Milestone complete
-**Last activity:** 2026-02-13 — Phase 5.1 executed and verified (4/4 plans, all must-haves passed)
+**Phase:** 08-ux-gap-closure (complete)
+**Plan:** 1/1 complete
+**Status:** Phase 8 complete
+**Last activity:** 2026-02-13 — Phase 8 UX gap closure executed (1/1 plans, all requirements satisfied)
 
 Progress: [████████████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4 (Phase 5.1)
+- Total plans completed: 5 (Phase 5.1 + Phase 8)
 - Average duration: 3min
-- Total execution time: ~12min
+- Total execution time: ~16min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 5.1 | 4 | 12min | 3min |
+| 8 | 1 | 4min | 4min |
 
 *Updated after each plan completion*
 
@@ -52,6 +53,9 @@ Progress: [████████████████] 100%
 - [05.1-04]: Test-store thinned from 12 to 5 state fields; SSE logic now lives only in useAnalyze() hook
 - [05.1-04]: LoadingPhases converted to prop-driven (simulationPhase, phaseMessage, onCancel) — no more store coupling
 - [05.1-04]: TestCreationFlow also wired to useAnalyze() (auto-fixed deviation from plan scope)
+- [08-01]: Removed runPredictionPipeline wrapper -- inlined stages in route.ts for SSE interleaving
+- [08-01]: 4500ms minimum theater duration with useRef cancel guard to prevent stale transitions
+- [08-01]: Suspense fallback={null} for dashboard page to avoid layout flash with useSearchParams
 
 ### Roadmap Evolution
 
@@ -70,10 +74,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Phase 5.1 complete — all phases executed and verified
+Stopped at: Phase 8 UX gap closure complete — all requirements satisfied
 Resume file: None
 Next: `/gsd:complete-milestone`
 
 ---
 *State created: 2026-02-13*
-*Last updated: 2026-02-13 — Phase 5.1 complete, milestone ready for completion*
+*Last updated: 2026-02-13 — Phase 8 UX gap closure complete*
