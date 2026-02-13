@@ -1,7 +1,7 @@
 // src/lib/deal-utils.ts
 
 import type { BrandDeal, BrandDealCategory } from "@/types/brand-deals";
-import type { GradientColor } from "@/components/primitives/GradientGlow";
+type GradientColor = "orange" | "blue" | "green" | "cyan" | "purple" | "pink";
 
 // ---------------------------------------------------------------------------
 // Payout Formatting

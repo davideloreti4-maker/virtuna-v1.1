@@ -82,24 +82,28 @@ export function Header({ className }: HeaderProps) {
                   fill="currentColor"
                 />
               </svg>
-              <span className="font-sans text-white">Artificial Societies</span>
+              <span className="font-sans text-white">Virtuna</span>
             </Link>
 
             {/* Desktop Navigation */}
             <div className="hidden items-center gap-4 md:flex">
               <Link
+                href="/pricing"
+                className="cursor-pointer text-white/80 transition-colors hover:text-white"
+              >
+                Pricing
+              </Link>
+              <Link
                 href="/auth/login"
-                className="cursor-pointer text-white transition-colors hover:text-white/80"
+                className="cursor-pointer text-white/80 transition-colors hover:text-white"
               >
                 Sign in
               </Link>
               <Link
-                href="https://calendly.com"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="/auth/signup"
                 className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
               >
-                Book a Meeting
+                Start free trial
               </Link>
             </div>
 
@@ -130,20 +134,25 @@ export function Header({ className }: HeaderProps) {
           >
             <div className="flex flex-col gap-4 border-t border-border px-8 py-6">
               <Link
+                href="/pricing"
+                className="text-white/80 transition-colors hover:text-white"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Pricing
+              </Link>
+              <Link
                 href="/auth/login"
-                className="text-white transition-colors hover:text-white/80"
+                className="text-white/80 transition-colors hover:text-white"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Sign in
               </Link>
               <Link
-                href="https://calendly.com"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="/auth/signup"
                 className="w-full rounded-lg bg-accent px-4 py-3 text-center text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Book a Meeting
+                Start free trial
               </Link>
             </div>
           </div>

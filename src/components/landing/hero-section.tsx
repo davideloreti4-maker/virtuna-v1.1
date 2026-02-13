@@ -1,10 +1,9 @@
 "use client";
 
-import Image from "next/image";
+import Link from "next/link";
 import { Button } from "@/components/ui";
 import { FadeIn } from "@/components/motion";
 import { cn } from "@/lib/utils";
-import { PersonaCard } from "./persona-card";
 
 interface HeroSectionProps {
   className?: string;
@@ -18,65 +17,43 @@ export function HeroSection({ className }: HeroSectionProps) {
         className
       )}
     >
-      {/* Background dot grid pattern is applied to body in globals.css */}
-
       <div className="relative max-w-6xl mx-auto px-6 py-24 w-full">
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-8">
-          {/* Left: Text content */}
-          <div className="max-w-xl text-center lg:text-left order-2 lg:order-1">
-            <FadeIn delay={0}>
-              <h1 className="text-[36px] sm:text-[44px] md:text-[52px] leading-[1.15] font-normal text-white">
-                Human Behavior,
-                <br />
-                <span className="text-accent">Simulated.</span>
-              </h1>
-            </FadeIn>
+        <div className="flex flex-col items-center text-center">
+          <FadeIn delay={0}>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-1.5 mb-8">
+              <span className="h-2 w-2 rounded-full bg-accent animate-pulse" />
+              <span className="text-sm text-foreground-secondary">
+                AI-powered content intelligence for TikTok creators
+              </span>
+            </div>
+          </FadeIn>
 
-            <FadeIn delay={0.1}>
-              <p className="font-sans text-lg sm:text-xl leading-[30px] font-normal text-white/90 mt-6 max-w-md">
-                AI personas that replicate real-world attitudes, beliefs, and opinions.
-              </p>
-            </FadeIn>
+          <FadeIn delay={0.1}>
+            <h1 className="text-[36px] sm:text-[44px] md:text-[56px] lg:text-[64px] leading-[1.1] font-normal text-white max-w-4xl">
+              Know what will go{" "}
+              <span className="text-accent">viral</span>
+              <br />
+              before you post
+            </h1>
+          </FadeIn>
 
-            <FadeIn delay={0.2}>
-              <Button className="mt-8" size="md">
-                Get in touch
+          <FadeIn delay={0.2}>
+            <p className="font-sans text-lg sm:text-xl leading-[30px] font-normal text-white/80 mt-6 max-w-2xl">
+              Virtuna uses AI societies to predict how your content will perform,
+              find brand deals that match your niche, and maximize your earnings.
+            </p>
+          </FadeIn>
+
+          <FadeIn delay={0.3}>
+            <div className="flex flex-col sm:flex-row items-center gap-4 mt-10">
+              <Button variant="primary" size="lg" asChild>
+                <Link href="/auth/signup">Start free trial</Link>
               </Button>
-            </FadeIn>
-          </div>
-
-          {/* Right: Network visualization with floating persona card */}
-          <div className="relative order-1 lg:order-2">
-            <FadeIn delay={0.3}>
-              <div className="relative w-[280px] sm:w-[400px] lg:w-[480px] xl:w-[550px] aspect-square">
-                {/* Network visualization */}
-                <Image
-                  src="/images/network-visualization.svg"
-                  alt="AI persona network visualization"
-                  fill
-                  className="object-contain"
-                  priority
-                />
-
-                {/* Floating persona card - positioned over the accent node */}
-                <div className="absolute right-0 top-1/3 transform translate-x-4 hidden sm:block">
-                  <FadeIn delay={0.5}>
-                    <PersonaCard
-                      initials="ER"
-                      name="Emma Rodriguez"
-                      role="UX Researcher"
-                      company="DesignLab Studio"
-                      bio="Passionate about creating user-centric solutions through collaborative design."
-                      location="Barcelona, Spain"
-                      gender="Female"
-                      generation="Gen Z"
-                      className="scale-90 lg:scale-100 shadow-xl"
-                    />
-                  </FadeIn>
-                </div>
-              </div>
-            </FadeIn>
-          </div>
+              <Button variant="secondary" size="lg" asChild>
+                <Link href="/pricing">See pricing</Link>
+              </Button>
+            </div>
+          </FadeIn>
         </div>
       </div>
     </section>
