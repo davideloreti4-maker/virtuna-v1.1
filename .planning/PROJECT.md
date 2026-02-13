@@ -6,7 +6,7 @@ A social media intelligence platform with a Raycast-quality design system founda
 
 ## Core Value
 
-Raycast-quality design system enabling rapid, consistent UI development with coral (#FF7F50) branding.
+AI-powered content intelligence that tells creators whether their content will resonate — and exactly why — before they post.
 
 ## Requirements
 
@@ -42,9 +42,20 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 
 ### Active
 
-- [ ] Backend integration for brand deals/affiliate data
-- [ ] Additional page UI milestones
-- [ ] Landing page (v3.1 in worktree)
+## Current Milestone: Backend Foundation
+
+**Goal:** Build the complete backend infrastructure — Content Intelligence prediction engine, data pipeline, real API endpoints for all pages, and ML training scaffolding.
+
+**Target features:**
+- Content Intelligence engine (Gemini Flash + DeepSeek R1 prediction pipeline)
+- Simulation theater (client-side animated loading experience)
+- Results card UX (score, factors, suggestions, society reactions)
+- Database foundation (Supabase schema, migrations, RLS)
+- Trending page backend (Apify scraping, real data, TanStack Query)
+- Brand deals backend (real API endpoints replacing mock data)
+- Background jobs (scraper cron, trend calculator, rule validator)
+- ML infrastructure scaffolded (training pipeline, retrain cron, adaptive weights)
+- Outcome tracking (user performance reports, predicted vs actual delta)
 
 ### Out of Scope
 
@@ -129,12 +140,10 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 
 **Shipped:** v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
-**In progress:** None (all milestones on main are shipped)
+**In progress:** Backend Foundation (worktree at ~/virtuna-backend-foundation/)
 
-**Future milestones:**
-- v3.1 Landing Page (worktree at ~/virtuna-v3.1-landing-page/)
-- Backend integration for brand deals/affiliate data
-- Trending page backend (Apify, AI classification, TanStack Query)
+**Parallel milestones:**
+- Landing Page (worktree at ~/virtuna-landing-page/) — landing, onboarding, pricing/payments, UI polish
 
 ---
-*Last updated: 2026-02-08 after v2.1 milestone complete*
+*Last updated: 2026-02-13 after Backend Foundation milestone started*
