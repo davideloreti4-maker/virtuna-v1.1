@@ -16,13 +16,16 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Icon } from "@/components/ui/icon";
 import { Text, Caption } from "@/components/ui/typography";
 import { ContextualTooltip } from "@/components/tooltips/contextual-tooltip";
+import { TrialCountdown } from "@/components/trial-countdown";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useSidebarStore } from "@/stores/sidebar-store";
 import { useTestStore } from "@/stores/test-store";
+import { useSubscription } from "@/hooks/use-subscription";
 
 import { LeaveFeedbackModal } from "./leave-feedback-modal";
 import { SidebarNavItem } from "./sidebar-nav-item";
@@ -53,6 +56,7 @@ export function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const { isOpen, close } = useSidebarStore();
+  const { tier, isTrial } = useSubscription();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   const reset = useTestStore((s) => s.reset);
@@ -116,23 +120,31 @@ export function Sidebar() {
       >
         {/* Header: Logo + Collapse */}
         <div className="flex items-center justify-between px-4 pt-4 pb-1">
-          <Link href="/" className="flex items-center">
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 32 32"
-              fill="none"
-              className="text-white"
-              aria-hidden="true"
+          <div className="flex items-center gap-2">
+            <Link href="/" className="flex items-center">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 32 32"
+                fill="none"
+                className="text-white"
+                aria-hidden="true"
+              >
+                <path
+                  fillRule="evenodd"
+                  clipRule="evenodd"
+                  d="M16 6H13L8 27H11L16 6ZM16 6L21 27H24L19 6H16Z"
+                  fill="currentColor"
+                />
+              </svg>
+            </Link>
+            <Badge
+              variant={tier === "pro" ? "accent" : tier === "starter" ? "success" : "default"}
+              size="sm"
             >
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M16 6H13L8 27H11L16 6ZM16 6L21 27H24L19 6H16Z"
-                fill="currentColor"
-              />
-            </svg>
-          </Link>
+              {isTrial ? "Pro Trial" : tier === "free" ? "Free" : tier === "starter" ? "Starter" : "Pro"}
+            </Badge>
+          </div>
           <Button
             variant="ghost"
             size="sm"
@@ -199,6 +211,9 @@ export function Sidebar() {
             <TestHistoryList onSelectTest={handleViewTest} />
           </div>
         </div>
+
+        {/* Trial countdown (above bottom nav) */}
+        <TrialCountdown />
 
         {/* Separator */}
         <div className="mx-4 border-t border-border-glass" />
