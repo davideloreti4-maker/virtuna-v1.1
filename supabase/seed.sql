@@ -1,5 +1,5 @@
 -- Rule Library Seed Data
--- 17 expert rules across hook, retention, and platform categories
+-- 25 expert rules across hook, retention, platform, audio, text, timing, and creator categories
 -- Uses fixed UUIDs for idempotent ON CONFLICT (id) DO NOTHING
 
 INSERT INTO rule_library (id, name, description, category, pattern, score_modifier, platform, evaluation_prompt, weight, max_score, accuracy_rate, sample_count, is_active)
@@ -200,6 +200,109 @@ VALUES
   10,
   'instagram',
   'Evaluate the opening speed and impact for Instagram Reels. Does the first frame grab attention? Is there immediate visual or verbal impact within the first second? Score 0-10 where 10 means an opening that stops the Instagram scroll instantly.',
+  1.0, 10.0, NULL, 0, true
+)
+-- =====================================================
+-- AUDIO RULES (cross-platform)
+-- =====================================================
+(
+  'd1000000-0000-0000-0000-000000000001',
+  'Trending Audio Usage',
+  'Content uses a currently trending or viral audio track',
+  'audio',
+  'trending_audio',
+  12,
+  NULL,
+  'Evaluate if the content uses or references a trending audio track. Is the audio choice current and relevant to the target audience? Does the audio enhance the message or feel forced? Score 0-10 where 10 means perfect audio-content alignment with a trending track.',
+  1.0, 10.0, NULL, 0, true
+),
+(
+  'd1000000-0000-0000-0000-000000000002',
+  'Original Audio Quality',
+  'Original voiceover or audio is clear, well-paced, and professionally produced',
+  'audio',
+  'original_audio',
+  8,
+  NULL,
+  'Evaluate the quality of original audio (voiceover, narration, speaking). Is it clear, confident, and well-paced? Does the tone match the content mood? Score 0-10 where 10 means broadcast-quality audio that enhances credibility and engagement.',
+  1.0, 10.0, NULL, 0, true
+),
+
+-- =====================================================
+-- TEXT RULES (cross-platform)
+-- =====================================================
+(
+  'e1000000-0000-0000-0000-000000000001',
+  'Caption Hook Alignment',
+  'Caption/text reinforces the visual hook and adds context',
+  'text',
+  'caption_hook',
+  10,
+  NULL,
+  'Evaluate if the caption or on-screen text reinforces the hook. Does it add context the visual alone cannot? Is it concise and punchy? Would removing it weaken the content? Score 0-10 where 10 means the text is essential to the hook and perfectly crafted.',
+  1.0, 10.0, NULL, 0, true
+),
+(
+  'e1000000-0000-0000-0000-000000000002',
+  'Call to Action Clarity',
+  'Content includes a clear, compelling call to action',
+  'text',
+  'cta_clarity',
+  8,
+  NULL,
+  'Evaluate the call to action in the content. Is there a clear ask (follow, share, comment, save)? Is it naturally integrated rather than forced? Does it give the viewer a reason to act? Score 0-10 where 10 means a perfectly integrated CTA that feels like a natural next step.',
+  1.0, 10.0, NULL, 0, true
+),
+
+-- =====================================================
+-- TIMING RULES (cross-platform)
+-- =====================================================
+(
+  'f1000000-0000-0000-0000-000000000001',
+  'Optimal Post Timing',
+  'Content is optimized for peak audience activity windows',
+  'timing',
+  'post_timing',
+  6,
+  NULL,
+  'Evaluate if the content concept is time-sensitive or evergreen. Does it reference current events, trends, or seasons? Is it the kind of content that benefits from posting at a specific time? Score 0-10 where 10 means the content is perfectly timed for maximum relevance.',
+  1.0, 10.0, NULL, 0, true
+),
+(
+  'f1000000-0000-0000-0000-000000000002',
+  'Content Pacing',
+  'The pacing matches the content type and platform expectations',
+  'timing',
+  'content_pacing',
+  10,
+  NULL,
+  'Evaluate the pacing of the content. Does it move fast enough to retain attention but slow enough to communicate clearly? Is the rhythm varied to prevent monotony? Score 0-10 where 10 means impeccable pacing that keeps viewers engaged from start to finish.',
+  1.0, 10.0, NULL, 0, true
+),
+
+-- =====================================================
+-- CREATOR RULES (cross-platform)
+-- =====================================================
+(
+  'g1000000-0000-0000-0000-000000000001',
+  'Authenticity Signal',
+  'Content feels genuine and authentic rather than overly produced or scripted',
+  'creator',
+  'authenticity',
+  12,
+  NULL,
+  'Evaluate how authentic the content feels. Does it come across as genuine and relatable? Is there a personal touch that distinguishes it from generic content? Score 0-10 where 10 means the content feels deeply personal and impossible to fake.',
+  1.0, 10.0, NULL, 0, true
+),
+(
+  'g1000000-0000-0000-0000-000000000002',
+  'Niche Authority',
+  'Creator demonstrates clear expertise or authority in their niche',
+  'creator',
+  'niche_authority',
+  10,
+  NULL,
+  'Evaluate if the content demonstrates niche authority. Does the creator show expertise, insider knowledge, or unique perspective? Would viewers trust this person on this topic? Score 0-10 where 10 means undeniable authority that makes the content a must-follow.',
   1.0, 10.0, NULL, 0, true
 )
 ON CONFLICT (id) DO NOTHING;
