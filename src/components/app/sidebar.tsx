@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   Lightbulb,
   Briefcase,
+  CurrencyDollar,
   Plus,
   SlidersHorizontal,
   ChatCircleDots,
@@ -29,6 +30,7 @@ import { TestHistoryList } from "./test-history-list";
 const navItems = [
   { label: "Dashboard", icon: Lightbulb, id: "dashboard", href: "/dashboard" },
   { label: "Affiliate & Earnings", icon: Briefcase, id: "brand-deals", href: "/brand-deals" },
+  { label: "Pricing", icon: CurrencyDollar, id: "pricing", href: "/pricing" },
 ] as const;
 
 const bottomNavItems = [
