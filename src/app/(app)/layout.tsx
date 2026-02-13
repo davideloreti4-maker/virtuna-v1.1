@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { AppShell } from "@/components/app";
 import { ToastProvider } from "@/components/ui/toast";
+import { Providers } from "./providers";
 import "../globals.css";
 
 const inter = Inter({
@@ -21,11 +22,13 @@ export default function AppLayout({
   return (
     <html lang="en" className={`${inter.variable}`}>
       <body className="min-h-screen bg-background font-sans antialiased">
-        <ToastProvider>
-          <AppShell>
-            {children}
-          </AppShell>
-        </ToastProvider>
+        <Providers>
+          <ToastProvider>
+            <AppShell>
+              {children}
+            </AppShell>
+          </ToastProvider>
+        </Providers>
       </body>
     </html>
   );
