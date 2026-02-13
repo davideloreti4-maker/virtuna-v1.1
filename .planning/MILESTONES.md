@@ -134,3 +134,31 @@
 - Zero console errors, 60fps animations
 
 ---
+
+## v1.0 — Backend Foundation (Shipped: 2026-02-13)
+
+**Delivered:** Complete backend infrastructure transforming Virtuna from a frontend prototype into a functional AI-powered content intelligence platform — dual-model prediction engine, trending data pipeline, real API endpoints for all pages, TanStack Query integration, simulation theater UX, and ML scaffolding.
+
+**Phases completed:** 1-8 + 5.1 (9 phases, 21 plans)
+
+**Key accomplishments:**
+- Database foundation with 5 Supabase tables, RLS policies, type generation, and 15+ seeded expert rules
+- Dual-model AI prediction engine (Gemini Flash-Lite + DeepSeek R1) with rule engine, trend enrichment, circuit breaker, and Zod-validated output
+- Trending data pipeline with Apify scraper cron, webhook handler, trend calculator, rule validator, and stale data monitoring
+- API routes with SSE-streaming analysis, cursor-paginated trending/deals/outcomes, and server-only API keys
+- TanStack Query v5 integration replacing all mock data imports with real server state across every page
+- Simulation theater with real SSE events, 4.5s minimum duration, results card with AI scores/factors/personas/suggestions, and outcome tracking
+
+**Stats:**
+- 796 commits (331 feat, 363 docs, 68 fix)
+- 601 files changed (+68,446 / -944 lines)
+- 31,870 LOC TypeScript
+- 18 days (2026-01-27 → 2026-02-13)
+- 70 requirements, all shipped
+
+**Git range:** `docs(02)` → `docs(08-01)`
+
+**What's next:** Landing Page milestone or new milestone
+
+---
+

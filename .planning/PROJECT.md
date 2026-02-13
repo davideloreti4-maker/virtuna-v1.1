@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A social media intelligence platform with a Raycast-quality design system foundation. Built as a Next.js application with 36 production components, 100+ design tokens, and comprehensive documentation — enabling rapid, consistent UI development. All design tokens are 1:1 aligned with Raycast.com (except coral #FF7F50 branding).
+An AI-powered social media intelligence platform that predicts content performance before posting. Built as a Next.js application with a Raycast-quality design system (36 components, 100+ tokens), dual-model AI prediction engine (Gemini Flash-Lite + DeepSeek R1), real-time trending data pipeline, and full API backend. All design tokens are 1:1 aligned with Raycast.com (except coral #FF7F50 branding).
 
 ## Core Value
 
@@ -40,22 +40,19 @@ AI-powered content intelligence that tells creators whether their content will r
 - Loading skeletons, responsive mobile layout, and keyboard accessibility -- v2.3
 - v0 MCP-guided UI generation with design system consistency -- v2.3
 
+- ✓ Supabase database with 5 tables, RLS policies, type generation, and 15+ seeded rules -- v1.0
+- ✓ Dual-model AI prediction engine (Gemini Flash-Lite + DeepSeek R1) with circuit breaker -- v1.0
+- ✓ Trending data pipeline (Apify scraper, webhook, trend calculator, rule validator) -- v1.0
+- ✓ API routes with SSE-streaming analysis, cursor pagination, server-only keys -- v1.0
+- ✓ TanStack Query v5 replacing all mock data imports across every page -- v1.0
+- ✓ Simulation theater with real SSE events and 4.5s minimum duration -- v1.0
+- ✓ Results card with AI scores, factors, personas, suggestions, and variants -- v1.0
+- ✓ Outcome tracking (predicted vs actual comparison, delta calculation) -- v1.0
+- ✓ ML scaffolding (retrain cron stub, adaptive weight fields, env guardrails) -- v1.0
+
 ### Active
 
-## Current Milestone: Backend Foundation
-
-**Goal:** Build the complete backend infrastructure — Content Intelligence prediction engine, data pipeline, real API endpoints for all pages, and ML training scaffolding.
-
-**Target features:**
-- Content Intelligence engine (Gemini Flash + DeepSeek R1 prediction pipeline)
-- Simulation theater (client-side animated loading experience)
-- Results card UX (score, factors, suggestions, society reactions)
-- Database foundation (Supabase schema, migrations, RLS)
-- Trending page backend (Apify scraping, real data, TanStack Query)
-- Brand deals backend (real API endpoints replacing mock data)
-- Background jobs (scraper cron, trend calculator, rule validator)
-- ML infrastructure scaffolded (training pipeline, retrain cron, adaptive weights)
-- Outcome tracking (user performance reports, predicted vs actual delta)
+(No active milestone — next milestone to be defined)
 
 ### Out of Scope
 
@@ -68,18 +65,14 @@ AI-powered content intelligence that tells creators whether their content will r
 
 ## Context
 
-**Current state:** v2.1 Dashboard Rebuild shipped (2026-02-08). All frontend milestones complete through v2.3.5.
-- ~78,000+ LOC TypeScript/CSS (including +46k from v2.1)
-- Tech stack: Next.js 14+ (App Router), TypeScript strict, Tailwind CSS v4, Supabase Auth, Recharts, d3-hierarchy, d3-quadtree
-- 36 design system components across 4 families, 100+ design tokens (all Raycast-accurate)
-- Inter font throughout (Funnel Display/Satoshi removed)
-- Zero-config GlassPanel with Raycast neutral glass
-- Dashboard fully rebuilt with design system: sidebar, forms, modals, results, loading states
-- Canvas-based hive visualization: 1300+ nodes, 60fps, interactive (hover, click, zoom/pan, pinch-to-zoom)
-- Trending page at /trending with TikTok-style video feed + bookmark store
-- Brand deals page at /brand-deals with 3-tab layout + earnings chart
-- 7-page showcase at /showcase
-- 8 documentation files in docs/
+**Current state:** v1.0 Backend Foundation shipped (2026-02-13). All frontend milestones complete through v2.3.5. Backend fully functional.
+- ~31,870 LOC TypeScript (backend foundation worktree)
+- Tech stack: Next.js 15 (App Router), TypeScript strict, Tailwind CSS v4, Supabase (Auth + DB + RLS), TanStack Query v5, Zustand, Recharts, d3-hierarchy, d3-quadtree
+- AI: Gemini 2.5 Flash-Lite (`@google/genai`), DeepSeek R1 (OpenAI-compatible), Zod schema validation
+- Data: Apify scraper cron, webhook handler, trend calculator, rule validator, 4 cron jobs in vercel.json
+- 36 design system components, 100+ design tokens (all Raycast-accurate)
+- All pages wired to real API endpoints via TanStack Query (trending, deals, analysis, outcomes)
+- Simulation theater with SSE events interleaved across pipeline stages, 4.5s minimum duration
 - Deployed to Vercel
 
 **Known issues:**
@@ -89,8 +82,11 @@ AI-powered content intelligence that tells creators whether their content will r
 - --shadow-button-secondary token defined but not consumed
 - Responsive showcase clipping on mobile
 - Touch target threshold relaxed to 32x24px (desktop-first)
-- Analyze button routes to /viral-predictor which doesn't exist yet (tech debt)
-- 800ms hardcoded skeleton delay on brand deals page (should use Suspense with real data)
+- Pre-existing blur="none" TypeScript errors in loading-phases.tsx (not valid GlassCard prop)
+- Saved tab on trending still uses mock getAllVideos() until bookmark API exists
+- Modal prev/next navigation disabled on trending video detail
+- Analysis history limited to 50 rows (no cursor pagination)
+- viewResult() compatibility shim in test-store (sidebar/forms still read from Zustand)
 
 ## Key Decisions
 
@@ -121,6 +117,14 @@ AI-powered content intelligence that tells creators whether their content will r
 | Ref-based animation state (not useState) | Good -- avoids re-renders during 60fps loop |
 | Pointer Events for pinch-to-zoom | Good -- unified across mouse/touch/pen |
 | Inline styles for backdrop-filter | Good -- workaround for Lightning CSS stripping |
+| All backend in Next.js API routes (no Edge Functions) | Good -- simpler deployment, single runtime |
+| TanStack Query for server state, Zustand unchanged for client | Good -- clean separation |
+| Gemini 2.5 Flash-Lite (not deprecated 2.0 Flash) | Good -- future-proof from day one |
+| Inline pipeline in SSE route (not runPredictionPipeline wrapper) | Good -- enables natural SSE interleaving |
+| 4.5s theater minimum via async onSuccess + useRef cancel guard | Good -- prevents stale transitions |
+| DB-to-UI mapper pattern in src/lib/mappers/ | Good -- clean shape conversion |
+| Cursor-based pagination (base64url encoded) | Good -- scalable, no offset drift |
+| Circuit breaker for DeepSeek (3 failures → Gemini fallback) | Good -- graceful degradation |
 
 ## Constraints
 
@@ -138,12 +142,12 @@ AI-powered content intelligence that tells creators whether their content will r
 
 ## Current State
 
-**Shipped:** v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
+**Shipped:** v1.0 Backend Foundation (2026-02-13), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
-**In progress:** Backend Foundation (worktree at ~/virtuna-backend-foundation/)
+**In progress:** None — ready for next milestone
 
 **Parallel milestones:**
 - Landing Page (worktree at ~/virtuna-landing-page/) — landing, onboarding, pricing/payments, UI polish
 
 ---
-*Last updated: 2026-02-13 after Backend Foundation milestone started*
+*Last updated: 2026-02-13 after v1.0 Backend Foundation milestone*
