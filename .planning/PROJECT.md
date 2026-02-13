@@ -50,7 +50,7 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - [ ] MVP app polish (remove trending page, focus on dashboard + affiliate/earnings)
 - [ ] Contextual tooltips for first-visit guidance
 
-## Current Milestone: v3.0 MVP Launch
+## Current Milestone: MVP Launch
 
 **Goal:** Ship a conversion-ready product with landing page, onboarding, payments, and polished MVP app.
 
@@ -146,7 +146,7 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 **Shipped:** v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
-**In progress:** v3.0 MVP Launch (worktree at ~/virtuna-mvp-launch/)
+**In progress:** MVP Launch (worktree at ~/virtuna-mvp-launch/)
 
 **Parallel:** Backend Foundation (worktree at ~/virtuna-backend-foundation/) — prediction engine, data pipeline
 
@@ -156,4 +156,4 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - Trending page re-launch (when backend ready)
 
 ---
-*Last updated: 2026-02-13 after v3.0 MVP Launch milestone started*
+*Last updated: 2026-02-13 after MVP Launch milestone started*
