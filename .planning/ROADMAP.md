@@ -121,10 +121,10 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
-- [ ] 05.1-01-PLAN.md -- Type mappers (trending + deals) and /api/analysis/history route + useAnalysisHistory bug fix
-- [ ] 05.1-02-PLAN.md -- Wire trending page to useTrendingVideos and useTrendingStats
-- [ ] 05.1-03-PLAN.md -- Wire deals tab to useDeals, deal apply modal to useApplyToDeal, applied state to useDealEnrollments
-- [ ] 05.1-04-PLAN.md -- Wire dashboard to useAnalyze mutation, thin test-store, prop-driven LoadingPhases, history from API
+- [x] 05.1-01-PLAN.md -- Type mappers (trending + deals) and /api/analysis/history route + useAnalysisHistory bug fix
+- [x] 05.1-02-PLAN.md -- Wire trending page to useTrendingVideos and useTrendingStats
+- [x] 05.1-03-PLAN.md -- Wire deals tab to useDeals, deal apply modal to useApplyToDeal, applied state to useDealEnrollments
+- [x] 05.1-04-PLAN.md -- Wire dashboard to useAnalyze mutation, thin test-store, prop-driven LoadingPhases, history from API
 
 ### Phase 6: Intelligence UX
 **Goal**: Users experience the full content intelligence flow -- submit content, watch the simulation theater with real progress events, and receive results with real AI-generated scores, factors, persona reactions, suggestions, and variants
@@ -194,12 +194,13 @@ Wave-parallel execution: 1 > [2, 3] > [4, 7] > 5 > 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Database Foundation | 0/2 | Not started | - |
-| 2. Content Intelligence Engine | 0/3 | Not started | - |
-| 3. Trending Data Pipeline | 0/2 | Not started | - |
-| 4. API Routes | 0/3 | Not started | - |
-| 5. Client Integration | 0/2 | Not started | - |
-| 6. Intelligence UX | 0/3 | Not started | - |
-| 7. ML Scaffolding and Hardening | 0/1 | Not started | - |
+| 1. Database Foundation | 2/2 | ✓ Complete | 2026-02-13 |
+| 2. Content Intelligence Engine | 3/3 | ✓ Complete | 2026-02-13 |
+| 3. Trending Data Pipeline | 2/2 | ✓ Complete | 2026-02-13 |
+| 4. API Routes | 3/3 | ✓ Complete | 2026-02-13 |
+| 5. Client Integration | 2/2 | ✓ Complete | 2026-02-13 |
+| 5.1 Wire TanStack Query Hooks | 4/4 | ✓ Complete | 2026-02-13 |
+| 6. Intelligence UX | 3/3 | ✓ Complete | 2026-02-13 |
+| 7. ML Scaffolding and Hardening | 1/1 | ✓ Complete | 2026-02-13 |
 
-**Total plans: 16**
+**Total plans: 20 (16 original + 4 inserted)**
