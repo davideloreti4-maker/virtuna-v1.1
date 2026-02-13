@@ -114,7 +114,7 @@ export function useAnalysisHistory() {
   return useQuery({
     queryKey: queryKeys.analysis.history(),
     queryFn: async () => {
-      const res = await fetch("/api/outcomes");
+      const res = await fetch("/api/analysis/history");
       if (!res.ok) throw new Error("Failed to fetch analysis history");
       return res.json();
     },
