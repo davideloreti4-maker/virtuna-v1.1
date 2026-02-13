@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** AI-powered content intelligence that tells creators whether their content will resonate -- and exactly why -- before they post.
-**Current focus:** Phase 1: Database Foundation
+**Current focus:** Phase 5.1: Wire TanStack Query hooks into page components
 
 ## Current Position
 
 **Milestone:** Backend Foundation
-**Phase:** 1 of 7 (Database Foundation)
-**Plan:** 0 of 2 in current phase
+**Phase:** 5.1 (inserted -- fix integration gaps from Phases 5-6)
+**Plan:** 0 of 1 in current phase
 **Status:** Ready to plan
-**Last activity:** 2026-02-13 -- Roadmap created (7 phases, 16 plans, 70 requirements mapped)
+**Last activity:** 2026-02-13 -- Phases 1-7 executed via team, audit found Phase 5-6 wiring gaps
 
-Progress: [________________] 0%
+Progress: [██████████████__] 87%
 
 ## Performance Metrics
 
@@ -40,6 +40,10 @@ Progress: [________________] 0%
 - [Roadmap]: All backend logic in Next.js API routes (no Supabase Edge Functions)
 - [Roadmap]: TanStack Query for server state, Zustand unchanged for client state
 - [Roadmap]: Gemini 2.5 Flash-Lite (not deprecated 2.0 Flash) from day one
+
+### Roadmap Evolution
+
+- Phase 5.1 inserted after Phase 5: Wire TanStack Query hooks into page components and fix integration gaps (URGENT)
 
 ### Pending Todos
 

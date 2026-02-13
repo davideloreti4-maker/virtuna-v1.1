@@ -112,6 +112,15 @@ Plans:
 - [ ] 05-01: TanStack Query setup (provider, query client, key factory) and trending + deals query hooks
 - [ ] 05-02: Analysis mutation hook with SSE, outcome mutation hook, analysis history hook, and cache invalidation
 
+### Phase 05.1: Wire TanStack Query hooks into page components and fix integration gaps (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Depends on:** Phase 5
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 05.1 to break down)
+
 ### Phase 6: Intelligence UX
 **Goal**: Users experience the full content intelligence flow -- submit content, watch the simulation theater with real progress events, and receive results with real AI-generated scores, factors, persona reactions, suggestions, and variants
 **Depends on**: Phase 5 (needs TanStack Query hooks wired to API)
