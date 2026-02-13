@@ -124,7 +124,7 @@ interface LoadingPhasesProps {
  *
  * A cancel button below the skeleton area returns to filling-form state.
  */
-export function LoadingPhases({ simulationPhase, phaseMessage: _phaseMessage, onCancel }: LoadingPhasesProps) {
+export function LoadingPhases({ simulationPhase, phaseMessage, onCancel }: LoadingPhasesProps) {
   const currentIdx = simulationPhase
     ? PHASE_ORDER.indexOf(simulationPhase)
     : -1;
@@ -135,6 +135,11 @@ export function LoadingPhases({ simulationPhase, phaseMessage: _phaseMessage, on
 
   return (
     <div className="space-y-3">
+      {phaseMessage && (
+        <p className="text-sm text-foreground-muted text-center animate-pulse">
+          {phaseMessage}
+        </p>
+      )}
       <AnimatePresence mode="popLayout">
         {SECTIONS.map(
           (section) =>
