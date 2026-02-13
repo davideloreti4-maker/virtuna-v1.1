@@ -128,7 +128,7 @@ export function VideoDetailModal({
   // Handlers
   const handleAnalyze = () => {
     if (!video) return;
-    const url = `/viral-predictor?url=${encodeURIComponent(video.tiktokUrl)}`;
+    const url = `/dashboard?url=${encodeURIComponent(video.tiktokUrl)}`;
     router.push(url);
     onOpenChange(false);
   };

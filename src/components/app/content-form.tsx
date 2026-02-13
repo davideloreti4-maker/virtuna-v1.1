@@ -33,6 +33,7 @@ interface ContentFormProps {
   testType: TestType;
   onChangeType: () => void;
   onSubmit: (content: string) => void;
+  initialContent?: string;
   className?: string;
 }
 
@@ -61,6 +62,7 @@ export function ContentForm({
   testType,
   onChangeType,
   onSubmit,
+  initialContent,
   className,
 }: ContentFormProps) {
   const [content, setContent] = useState("");
@@ -79,6 +81,13 @@ export function ContentForm({
       setContent(currentResult.content);
     }
   }, [isViewingHistory, currentResult]);
+
+  // Pre-fill content from URL param (e.g., trending video analyze button)
+  useEffect(() => {
+    if (initialContent) {
+      setContent(initialContent);
+    }
+  }, [initialContent]);
 
   // ---------------------------------------------------------------------------
   // Validation

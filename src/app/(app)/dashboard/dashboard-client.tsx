@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   FilterPillGroup,
   ContextBar,
@@ -43,6 +44,9 @@ export function DashboardClient() {
 
   const { selectedSocietyId, _isHydrated: societyHydrated, _hydrate: hydratesSociety } = useSocietyStore();
 
+  const searchParams = useSearchParams();
+  const urlParam = searchParams.get("url");
+
   const analyzeMutation = useAnalyze();
   const isCancelledRef = useRef(false);
 
@@ -77,6 +81,14 @@ export function DashboardClient() {
       hydratesSociety();
     }
   }, [societyHydrated, hydratesSociety]);
+
+  // Auto-start flow when URL param is present (e.g., from trending video analyze button)
+  useEffect(() => {
+    if (urlParam && currentStatus === "idle") {
+      setTestType("tiktok-script" as TestType);
+      setStatus("filling-form");
+    }
+  }, [urlParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handlers
   const handleCloseSelector = () => {
@@ -210,6 +222,7 @@ export function DashboardClient() {
                 testType={currentTestType}
                 onChangeType={handleChangeType}
                 onSubmit={handleContentSubmit}
+                initialContent={urlParam ?? undefined}
               />
             )
           ) : currentStatus === "simulating" ? (
