@@ -114,12 +114,17 @@ Plans:
 
 ### Phase 05.1: Wire TanStack Query hooks into page components and fix integration gaps (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
+**Goal:** Wire existing TanStack Query hooks into page components, replacing mock data imports and Zustand server-state duplication with real API data. Create type mapper functions for DB-to-UI shape conversion. Fix useAnalysisHistory bug (wrong endpoint).
 **Depends on:** Phase 5
-**Plans:** 0 plans
+**File Ownership:** `src/lib/mappers/`, `src/app/(app)/trending/`, `src/components/trending/video-grid.tsx`, `src/components/app/brand-deals/`, `src/app/(app)/dashboard/dashboard-client.tsx`, `src/stores/test-store.ts`, `src/components/app/simulation/loading-phases.tsx`, `src/components/app/test-history-list.tsx`
+**Requirements:** QUERY-03, QUERY-05, QUERY-06, QUERY-07, QUERY-08, QUERY-09, QUERY-10, UX-01, UX-04
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 05.1 to break down)
+- [ ] 05.1-01-PLAN.md -- Type mappers (trending + deals) and /api/analysis/history route + useAnalysisHistory bug fix
+- [ ] 05.1-02-PLAN.md -- Wire trending page to useTrendingVideos and useTrendingStats
+- [ ] 05.1-03-PLAN.md -- Wire deals tab to useDeals, deal apply modal to useApplyToDeal, applied state to useDealEnrollments
+- [ ] 05.1-04-PLAN.md -- Wire dashboard to useAnalyze mutation, thin test-store, prop-driven LoadingPhases, history from API
 
 ### Phase 6: Intelligence UX
 **Goal**: Users experience the full content intelligence flow -- submit content, watch the simulation theater with real progress events, and receive results with real AI-generated scores, factors, persona reactions, suggestions, and variants
