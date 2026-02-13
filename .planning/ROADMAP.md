@@ -102,12 +102,12 @@ Plans:
   2. Clicking a referral link sets a server-side cookie that survives the OAuth redirect chain
   3. When a referred user completes a Whop purchase, the referrer is credited a one-time bonus
   4. Referral dashboard shows link, click count, conversions, and total earnings
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 05-01: Referral tables (separate from brand-deal affiliate tables) + link generation API
-- [ ] 05-02: Click tracking (server-side cookie) + conversion attribution via Whop
-- [ ] 05-03: Referral dashboard UI (link, stats, earnings)
+- [ ] 05-01-PLAN.md — Database foundation (referral tables, code generation API, wallet integration)
+- [ ] 05-02-PLAN.md — Cookie tracking through OAuth + webhook conversion attribution
+- [ ] 05-03-PLAN.md — Referral dashboard UI (link card, stats, copy button)
 
 ### Phase 6: Polish
 **Goal**: All pages are visually consistent, mobile-friendly, and free of dead code -- the app feels finished, not like a prototype
