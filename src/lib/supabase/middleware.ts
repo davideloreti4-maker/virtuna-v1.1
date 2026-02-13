@@ -1,12 +1,30 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  REFERRAL_COOKIE_NAME,
+  REFERRAL_COOKIE_MAX_AGE,
+} from "@/lib/referral/constants";
 
-const PROTECTED_ROUTES = ["/dashboard", "/settings", "/brand-deals", "/welcome"];
+const PROTECTED_ROUTES = ["/dashboard", "/settings", "/brand-deals", "/welcome", "/referrals"];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   });
+
+  // Detect ?ref=CODE and set referral cookie (before auth check)
+  const referralCode = request.nextUrl.searchParams.get("ref");
+  if (referralCode && !request.cookies.get(REFERRAL_COOKIE_NAME)) {
+    supabaseResponse.cookies.set({
+      name: REFERRAL_COOKIE_NAME,
+      value: referralCode,
+      path: "/",
+      secure: true,
+      httpOnly: true,
+      sameSite: "lax", // CRITICAL: NOT "strict" — must survive OAuth redirect
+      maxAge: REFERRAL_COOKIE_MAX_AGE,
+    });
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

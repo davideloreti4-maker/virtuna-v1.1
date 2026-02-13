@@ -121,6 +121,109 @@ export type Database = {
           },
         ]
       }
+      referral_codes: {
+        Row: {
+          id: string
+          user_id: string
+          code: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          code: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          code?: string
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      referral_clicks: {
+        Row: {
+          id: string
+          referral_code: string
+          referrer_user_id: string
+          referred_user_id: string | null
+          clicked_at: string | null
+          referrer_url: string | null
+          user_agent: string | null
+          ip_hash: string | null
+        }
+        Insert: {
+          id?: string
+          referral_code: string
+          referrer_user_id: string
+          referred_user_id?: string | null
+          clicked_at?: string | null
+          referrer_url?: string | null
+          user_agent?: string | null
+          ip_hash?: string | null
+        }
+        Update: {
+          id?: string
+          referral_code?: string
+          referrer_user_id?: string
+          referred_user_id?: string | null
+          clicked_at?: string | null
+          referrer_url?: string | null
+          user_agent?: string | null
+          ip_hash?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_clicks_referral_code_fkey"
+            columns: ["referral_code"]
+            isOneToOne: false
+            referencedRelation: "referral_codes"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      referral_conversions: {
+        Row: {
+          id: string
+          referrer_user_id: string
+          referred_user_id: string
+          referral_code: string
+          whop_membership_id: string
+          bonus_cents: number
+          converted_at: string | null
+          metadata: Json | null
+        }
+        Insert: {
+          id?: string
+          referrer_user_id: string
+          referred_user_id: string
+          referral_code: string
+          whop_membership_id: string
+          bonus_cents: number
+          converted_at?: string | null
+          metadata?: Json | null
+        }
+        Update: {
+          id?: string
+          referrer_user_id?: string
+          referred_user_id?: string
+          referral_code?: string
+          whop_membership_id?: string
+          bonus_cents?: number
+          converted_at?: string | null
+          metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_conversions_referral_code_fkey"
+            columns: ["referral_code"]
+            isOneToOne: false
+            referencedRelation: "referral_codes"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       creator_profiles: {
         Row: {
           avatar_url: string | null
@@ -379,7 +482,7 @@ export type Database = {
         }
         Insert: {
           amount_cents: number
-          balance_after_cents: number
+          balance_after_cents?: number
           created_at?: string | null
           description?: string | null
           id?: string

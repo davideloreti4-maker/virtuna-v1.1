@@ -5,6 +5,7 @@ import {
   Lightbulb,
   Briefcase,
   CurrencyDollar,
+  Gift,
   Plus,
   SlidersHorizontal,
   ChatCircleDots,
@@ -34,6 +35,7 @@ import { TestHistoryList } from "./test-history-list";
 const navItems = [
   { label: "Dashboard", icon: Lightbulb, id: "dashboard", href: "/dashboard" },
   { label: "Affiliate & Earnings", icon: Briefcase, id: "brand-deals", href: "/brand-deals" },
+  { label: "Referrals", icon: Gift, id: "referrals", href: "/referrals" },
   { label: "Pricing", icon: CurrencyDollar, id: "pricing", href: "/pricing" },
 ] as const;
 
