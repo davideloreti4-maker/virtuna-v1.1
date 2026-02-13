@@ -1,526 +1,1010 @@
-# Architecture Research: Design System Structure
+# Architecture Patterns
 
-**Domain:** Design System Organization
-**Researched:** 2026-02-03
-**Confidence:** HIGH
-
----
-
-## Executive Summary
-
-This research establishes the optimal architecture for organizing Virtuna's design system, including design tokens, CSS variables, Tailwind configuration, component library, and documentation. The recommendations leverage Tailwind CSS v4's CSS-first configuration with `@theme`, implement a two-tier token system (primitive + semantic), and establish clear patterns for the `/showcase` component library.
-
-Key findings:
-- Tailwind v4's `@theme` directive eliminates the need for separate `tailwind.config.ts` — tokens live in `globals.css`
-- Two-tier token architecture (primitives + semantic) provides optimal balance of flexibility and maintainability
-- Component showcase should follow category-based organization with consistent documentation patterns
-- Current project structure is well-organized but can benefit from explicit token layering
+**Domain:** Content Intelligence backend for existing Next.js 15 + Supabase + Vercel frontend
+**Researched:** 2026-02-13
+**Confidence:** HIGH (verified against existing codebase, Vercel docs, Supabase docs)
 
 ---
 
-## Recommended Project Structure
+## Recommended Architecture
+
+### High-Level System Diagram
 
 ```
-src/
-├── app/
-│   ├── globals.css                    # All design tokens in @theme + base styles
-│   └── (marketing)/
-│       └── showcase/                  # Component library showcase
-│           ├── page.tsx               # Main showcase (overview + tokens)
-│           ├── inputs/page.tsx        # Form inputs category
-│           ├── navigation/page.tsx    # Navigation components
-│           ├── feedback/page.tsx      # Feedback & overlays
-│           ├── data-display/page.tsx  # Data visualization components
-│           ├── layout/page.tsx        # Layout components (NEW)
-│           └── utilities/page.tsx     # Utility components (NEW)
-│
-├── components/
-│   ├── primitives/                    # Design system building blocks
-│   │   ├── index.ts                   # Barrel export with types
-│   │   ├── GlassPanel.tsx            # Core glass container
-│   │   ├── GlassCard.tsx             # Feature card variant
-│   │   ├── GlassInput.tsx            # Form input
-│   │   ├── [Component].tsx           # One file per component
-│   │   └── ...
-│   │
-│   ├── ui/                           # Generic UI (shadcn/ui style)
-│   │   ├── index.ts
-│   │   ├── Button.tsx
-│   │   └── ...
-│   │
-│   ├── layout/                       # Layout components
-│   │   ├── index.ts
-│   │   ├── Container.tsx
-│   │   ├── Header.tsx
-│   │   └── Footer.tsx
-│   │
-│   └── motion/                       # Animation wrappers
-│       ├── index.ts
-│       ├── FadeIn.tsx
-│       └── SlideUp.tsx
-│
-├── lib/
-│   └── utils.ts                      # cn() and other utilities
-│
-└── types/
-    └── design-system.ts              # Shared type definitions (NEW)
+                    CLIENT (Existing)
+                    ================
+    ContentForm -----> POST /api/analyze --------+
+    TrendingClient --> GET  /api/trending -----+  |
+    BrandDealsPage --> GET  /api/deals ------+  |  |
+                                             |  |  |
+                    API ROUTES (New)          |  |  |
+                    ===============          |  |  |
+    /api/deals/*  <-------------------------+  |  |
+    /api/trending/*  <-------------------------+  |
+    /api/analyze     <----------------------------+
+         |
+         +---> Gemini Flash (visual analysis) -----+
+         +---> DB lookups (rules, trends) ---------+
+                                                    |
+         DeepSeek R1 (reasoning) <-----------------+
+              |
+              v
+         Supabase (analysis_results, outcomes)
+
+                    CRON ROUTES (New)
+                    ================
+    /api/cron/scrape-trending  (every 6h)  ---> Apify Actor ---> scraped_videos
+    /api/cron/calculate-trends (hourly)    ---> scraped_videos --> trending_sounds
+    /api/cron/validate-rules   (daily)     ---> outcomes --> rule_library
+    /api/cron/retrain-ml       (weekly)    ---> outcomes --> ml_models
+    /api/cron/sync-whop        (daily)     ---> [EXISTS] Whop API --> user_subscriptions
 ```
 
-### Structure Rationale
+### Component Boundaries
 
-1. **`globals.css` as Single Source of Truth**: Tailwind v4's `@theme` directive allows all design tokens to live in CSS, eliminating the need for a separate `tailwind.config.ts`. This is already implemented correctly.
-
-2. **Category-Based Showcase**: The `/showcase` follows atomic design principles — grouping by function (inputs, navigation, feedback, etc.) rather than by implementation detail.
-
-3. **Primitives vs UI Separation**:
-   - `primitives/` = Virtuna design system specifics (Glass*, Gradient*, etc.)
-   - `ui/` = Generic reusable components (Button, Input, Card from shadcn patterns)
-
-4. **Barrel Exports**: Every component directory has an `index.ts` for clean imports (`from "@/components/primitives"` vs `from "@/components/primitives/GlassPanel"`).
+| Component | Responsibility | Communicates With | Location |
+|-----------|---------------|-------------------|----------|
+| **Content Intelligence Engine** | Orchestrates dual-model prediction pipeline | Gemini API, DeepSeek API, Supabase | `src/lib/engine/` |
+| **Analysis API Route** | HTTP endpoint, auth, rate limiting, request validation | Engine, Supabase Auth | `src/app/api/analyze/route.ts` |
+| **Trending API Routes** | Serve real trending data, pagination, filters | Supabase `scraped_videos` table | `src/app/api/trending/` |
+| **Deals API Routes** | Replace mock deal data with real endpoints | Supabase `deals` table | `src/app/api/deals/` |
+| **Cron Routes** | Background job entry points | Apify API, Supabase, Engine | `src/app/api/cron/` |
+| **TanStack Query Hooks** | Server state management, caching, pagination | API routes | `src/hooks/queries/` |
+| **Zustand Stores** | Client-only state (bookmarks, sidebar, form state, simulation phase) | Nothing external | `src/stores/` (exists) |
+| **Supabase Schema** | All persistent data | N/A | `supabase/migrations/` |
 
 ---
 
-## Token Organization
+## Integration Points with Existing Code
 
-### Current State Analysis
+### 1. ContentForm -> Analysis Engine (Critical Path)
 
-The existing `globals.css` already implements Tailwind v4's `@theme` correctly with:
-- Color system (background hierarchy, text colors, accents)
-- Typography (font families, sizes, weights, line heights)
-- Spacing scale
-- Border radius
-- Shadows
-- Animations
-- Gradients
+**Current state:** `ContentForm` calls `onSubmit(content)` which triggers `testStore.submitTest()` with mock `setTimeout` delays and `generateMockVariants()`.
 
-### Recommended Token Layering
+**Integration plan:**
 
-Implement a **two-tier token system** for maximum maintainability:
-
-#### Tier 1: Primitive Tokens
-Raw values that define the design vocabulary. Never used directly in components.
-
-```css
-@theme {
-  /* ============================================
-     PRIMITIVE TOKENS — Raw values
-     Do NOT use these directly in components
-     ============================================ */
-
-  /* Color Primitives */
-  --primitive-black: #07080a;
-  --primitive-grey-900: oklch(0.13 0.02 264);
-  --primitive-grey-800: oklch(0.18 0.02 264);
-  --primitive-grey-700: oklch(0.23 0.02 264);
-  --primitive-white: #f4f4f6;
-  --primitive-coral-500: #E57850;
-  --primitive-coral-600: #d96a42;
-  --primitive-blue-500: #57c1ff;
-  --primitive-red-500: #ff6161;
-  --primitive-green-500: #59d499;
-  --primitive-yellow-500: #ffc533;
-
-  /* Spacing Primitives (8px base) */
-  --primitive-space-1: 4px;
-  --primitive-space-2: 8px;
-  --primitive-space-3: 12px;
-  --primitive-space-4: 16px;
-  --primitive-space-6: 24px;
-  --primitive-space-8: 32px;
-  /* ... */
-}
+```
+ContentForm.onSubmit(content)
+    |
+    v
+testStore.submitTest(content, societyId)  <-- MODIFY: replace mock logic
+    |
+    +-- Option A: Keep Zustand orchestration, call fetch() to /api/analyze
+    +-- Option B: Use TanStack Query mutation, store result in query cache
 ```
 
-#### Tier 2: Semantic Tokens
-Intent-based tokens that reference primitives. Use these in components.
+**Recommendation: Option A for phase 1, migrate to Option B later.** The existing `submitTest` in `test-store.ts` already manages simulation phases (`analyzing`, `matching`, `simulating`, `generating`) with cancellation support. Replacing the mock `setTimeout` calls with real `fetch()` to `/api/analyze` preserves the existing UX flow with minimal changes. The simulation phases map directly to server-side pipeline stages via Server-Sent Events (SSE).
 
-```css
-@theme {
-  /* ============================================
-     SEMANTIC TOKENS — Use these in components
-     ============================================ */
+**Files to modify:**
+- `src/stores/test-store.ts` -- replace mock generation with API call
+- `src/types/test.ts` -- extend `TestResult` with engine response fields (or map)
 
-  /* Background (references primitives) */
-  --color-bg: var(--primitive-grey-900);
-  --color-bg-100: var(--primitive-grey-800);
-  --color-bg-200: var(--primitive-grey-700);
+**Files to create:**
+- `src/app/api/analyze/route.ts` -- POST handler
+- `src/lib/engine/pipeline.ts` -- orchestrator
+- `src/lib/engine/gemini.ts` -- Gemini Flash client
+- `src/lib/engine/deepseek.ts` -- DeepSeek R1 client
+- `src/lib/engine/rules.ts` -- rule lookup + scoring
+- `src/lib/engine/trends.ts` -- trend data enrichment
+- `src/lib/engine/types.ts` -- shared engine types
 
-  /* Text */
-  --color-fg: var(--primitive-white);
-  --color-fg-muted: oklch(0.70 0 0);
-  --color-fg-subtle: oklch(0.50 0 0);
+### 2. TrendingClient -> Real Data (High Impact)
 
-  /* Accent (Brand) */
-  --color-accent: var(--primitive-coral-500);
-  --color-accent-hover: var(--primitive-coral-600);
+**Current state:** `TrendingClient` imports `getTrendingStats()` and `getAllVideos()` from `src/lib/trending-mock-data.ts`. The `useInfiniteVideos` hook also imports `getVideosByCategory()` from mock data. All 42 videos are static.
 
-  /* Semantic States */
-  --color-error: var(--primitive-red-500);
-  --color-warning: var(--primitive-yellow-500);
-  --color-success: var(--primitive-green-500);
-  --color-info: var(--primitive-blue-500);
+**Integration plan:**
 
-  /* Component-specific spacing */
-  --spacing-input-padding: var(--primitive-space-3);
-  --spacing-card-padding: var(--primitive-space-4);
-  --spacing-section-gap: var(--primitive-space-8);
-}
+```
+TrendingClient
+    |
+    v
+useInfiniteVideos(category)  <-- REWRITE: TanStack Query infinite query
+    |
+    v
+GET /api/trending?category=breaking-out&cursor=xyz&limit=12
+    |
+    v
+Supabase: SELECT * FROM scraped_videos WHERE category = $1 ...
 ```
 
-### CSS Variable Naming Convention
+**Files to modify:**
+- `src/hooks/use-infinite-videos.ts` -- rewrite to use TanStack Query `useInfiniteQuery`
+- `src/app/(app)/trending/trending-client.tsx` -- adapt to async data (replace `useMemo` stats)
+- `src/types/trending.ts` -- align `TrendingVideo` type with DB schema
 
-| Pattern | Usage | Example |
-|---------|-------|---------|
-| `--primitive-*` | Raw values (never use directly) | `--primitive-grey-800` |
-| `--color-*` | Semantic color tokens | `--color-bg`, `--color-fg-muted` |
-| `--spacing-*` | Semantic spacing tokens | `--spacing-card-padding` |
-| `--radius-*` | Border radius tokens | `--radius-md`, `--radius-lg` |
-| `--shadow-*` | Shadow tokens | `--shadow-glass`, `--shadow-elevated` |
-| `--duration-*` | Animation durations | `--duration-fast`, `--duration-normal` |
-| `--ease-*` | Easing functions | `--ease-out`, `--ease-spring` |
-| `--font-*` | Font family tokens | `--font-display`, `--font-sans` |
-| `--text-*` | Font size tokens | `--text-h1`, `--text-body` |
-| `--leading-*` | Line height tokens | `--leading-h1`, `--leading-body` |
-| `--gradient-*` | Gradient definitions | `--gradient-coral`, `--gradient-card` |
+**Files to create:**
+- `src/app/api/trending/route.ts` -- GET with pagination
+- `src/app/api/trending/stats/route.ts` -- aggregated category stats
+- `src/hooks/queries/use-trending.ts` -- TanStack Query wrapper
+- `src/lib/queries/query-keys.ts` -- centralized query key factory
 
-### Tailwind Config Structure
+**Files to delete (eventually):**
+- `src/lib/trending-mock-data.ts` -- replaced by real data
 
-With Tailwind v4, most configuration lives in `globals.css` via `@theme`. However, keep `tailwind.config.ts` for:
-- Plugin configuration
-- Content paths (if non-standard)
-- Prefix customization
+### 3. Brand Deals -> Real API (Moderate Impact)
 
-**Minimal `tailwind.config.ts`:**
+**Current state:** `brand-deals-page.tsx` imports from `src/lib/mock-brand-deals.ts`. Components consume static arrays.
+
+**Integration plan:** Same pattern as trending -- TanStack Query hooks wrapping API routes that query existing `deals`, `deal_enrollments` tables. The schema already exists.
+
+**Files to create:**
+- `src/app/api/deals/route.ts` -- GET deals list with filters
+- `src/app/api/deals/[id]/apply/route.ts` -- POST enrollment
+- `src/app/api/deals/enrollments/route.ts` -- GET user's enrollments
+- `src/hooks/queries/use-deals.ts` -- TanStack Query hooks
+
+### 4. Bookmark Store -> Database Sync (Low Priority, Future)
+
+**Current state:** `bookmark-store.ts` uses `localStorage` with manual `_hydrate()`. Works entirely client-side.
+
+**Integration plan (deferred):** Keep `localStorage` for now. Later, sync to Supabase `user_bookmarks` table. The existing pattern is fine for MVP -- bookmarks are low-value data that doesn't need server persistence yet.
+
+### 5. ViralResultsCard -> Engine Results (Natural Fit)
+
+**Current state:** `ViralResultsCard` accepts a `ViralResult` prop with `overallScore`, `tier`, `confidence`, `factors[]`. Currently only shown in the showcase.
+
+**Integration plan:** The engine response type should map to `ViralResult`. The existing component needs no modification -- only the data source changes. The `/api/analyze` response should return data shaped to populate both `TestResult` (for simulation panel) and `ViralResult` (for the premium results card).
+
+---
+
+## Data Flow Patterns
+
+### Pattern 1: Analysis Request (Synchronous with SSE Progress)
+
+```
+Client                    Server                     External APIs
+------                    ------                     -------------
+POST /api/analyze    -->  Validate + auth check
+  { content, type }       Create analysis record
+
+                     <--  SSE: { phase: "analyzing" }
+
+                          Gemini Flash(content)  --> Google AI API
+                          DB: rules lookup       --> Supabase
+                          DB: trend lookup       --> Supabase
+
+                     <--  SSE: { phase: "matching" }
+
+                          Wait for Gemini result
+
+                     <--  SSE: { phase: "simulating" }
+
+                          DeepSeek R1(prompt)    --> DeepSeek API
+
+                     <--  SSE: { phase: "generating" }
+
+                          Aggregate scores
+                          Save to analysis_results
+
+                     <--  SSE: { phase: "complete", data: AnalysisResult }
+```
+
+**Why SSE over polling:** The existing simulation UI already expects sequential phase updates. SSE maps cleanly to `simulationPhase` state in `test-store.ts`. No additional client infrastructure needed -- just an `EventSource` or `fetch()` with streaming reader.
+
+**Implementation:**
+
 ```typescript
-import type { Config } from "tailwindcss";
+// src/app/api/analyze/route.ts
+export async function POST(request: Request) {
+  const { content, testType, societyId } = await request.json();
+  const user = await getAuthUser(request);
 
-const config: Config = {
-  content: ["./src/**/*.{ts,tsx}"],
-  // No theme extension needed — all in globals.css @theme
-};
+  // Rate limit check
+  // ...
 
-export default config;
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (data: unknown) => {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+      };
+
+      try {
+        send({ phase: 'analyzing' });
+
+        // Parallel: Gemini + DB lookups
+        const [geminiResult, rules, trends] = await Promise.all([
+          analyzeWithGemini(content, testType),
+          lookupRules(testType),
+          lookupTrends(testType),
+        ]);
+
+        send({ phase: 'matching' });
+
+        // Sequential: DeepSeek reasoning with all inputs
+        const deepseekResult = await reasonWithDeepSeek({
+          geminiAnalysis: geminiResult,
+          rules,
+          trends,
+          content,
+        });
+
+        send({ phase: 'simulating' });
+
+        // Score aggregation
+        const result = aggregateScores(geminiResult, deepseekResult, rules, trends);
+
+        send({ phase: 'generating' });
+
+        // Persist
+        await saveAnalysisResult(user.id, result);
+
+        send({ phase: 'complete', data: result });
+      } catch (error) {
+        send({ phase: 'error', message: 'Analysis failed' });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    },
+  });
+}
+```
+
+### Pattern 2: Apify Scraping Pipeline (Cron -> Webhook -> DB)
+
+```
+Vercel Cron (every 6h)
+    |
+    v
+GET /api/cron/scrape-trending
+    |
+    v
+Apify API: Start Actor run (tiktok-scraper)
+    |                              |
+    v                              v
+Return 200 (fire-and-forget)    Apify completes run
+                                   |
+                                   v
+                              POST /api/webhooks/apify
+                                   |
+                                   v
+                              Fetch results from Apify dataset
+                                   |
+                                   v
+                              Transform + upsert into scraped_videos
+                                   |
+                                   v
+                              Invalidate trending cache
+```
+
+**Why fire-and-forget + webhook:** Apify scraping takes 2-10 minutes. Vercel functions timeout at 300s (Hobby) / 800s (Pro with Fluid Compute). The cron route should kick off the Apify actor and return immediately. Apify's webhook calls back when done.
+
+**Implementation:**
+
+```typescript
+// src/app/api/cron/scrape-trending/route.ts
+export async function GET(request: Request) {
+  verifycronSecret(request);
+
+  const actorRun = await fetch('https://api.apify.com/v2/acts/clockworks~tiktok-scraper/runs', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${process.env.APIFY_API_TOKEN}`,
+    },
+    body: JSON.stringify({
+      input: { /* scraper config */ },
+      webhooks: [{
+        eventTypes: ['ACTOR.RUN.SUCCEEDED'],
+        requestUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/apify`,
+        headersTemplate: `{"Authorization": "Bearer ${process.env.APIFY_WEBHOOK_SECRET}"}`,
+      }],
+    }),
+  });
+
+  return NextResponse.json({ started: true, runId: (await actorRun.json()).data.id });
+}
+
+// src/app/api/webhooks/apify/route.ts
+export async function POST(request: Request) {
+  verifyApifyWebhook(request);
+
+  const { resource } = await request.json();
+  const datasetId = resource.defaultDatasetId;
+
+  // Fetch results from Apify dataset
+  const results = await fetchApifyDataset(datasetId);
+
+  // Transform and upsert
+  const supabase = createServiceClient();
+  const transformed = results.map(transformApifyToVideo);
+
+  await supabase.from('scraped_videos').upsert(transformed, {
+    onConflict: 'platform_video_id',
+  });
+
+  return NextResponse.json({ processed: transformed.length });
+}
+```
+
+### Pattern 3: Trend Calculation (Cron -> DB -> DB)
+
+```
+Vercel Cron (hourly)
+    |
+    v
+GET /api/cron/calculate-trends
+    |
+    v
+Supabase: SELECT sounds/hashtags from scraped_videos
+  WHERE scraped_at > NOW() - INTERVAL '7 days'
+  GROUP BY sound_id
+  ORDER BY velocity DESC
+    |
+    v
+Calculate: velocity = growth_rate * recency_weight
+    |
+    v
+Supabase: UPSERT into trending_sounds
+    |
+    v
+Return { calculated: count }
+```
+
+**This fits within Vercel function limits** because it's pure DB queries and math -- no external API waits. Should complete in under 30 seconds for thousands of videos.
+
+---
+
+## Database Schema Design
+
+### New Tables (Content Intelligence)
+
+```sql
+-- =====================================================
+-- SCRAPED VIDEOS (Apify pipeline output)
+-- =====================================================
+CREATE TABLE scraped_videos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  platform TEXT NOT NULL DEFAULT 'tiktok',
+  platform_video_id TEXT NOT NULL,
+
+  -- Video metadata
+  title TEXT,
+  description TEXT,
+  creator_handle TEXT,
+  creator_display_name TEXT,
+  creator_avatar_url TEXT,
+  thumbnail_url TEXT,
+  video_url TEXT,
+
+  -- Metrics (snapshotted at scrape time)
+  views BIGINT DEFAULT 0,
+  likes BIGINT DEFAULT 0,
+  shares BIGINT DEFAULT 0,
+  comments BIGINT DEFAULT 0,
+
+  -- Classification
+  hashtags TEXT[] DEFAULT '{}',
+  sound_id TEXT,
+  sound_name TEXT,
+  category TEXT CHECK (category IN ('breaking-out', 'trending-now', 'rising-again')),
+
+  -- Computed metrics
+  velocity NUMERIC(10,2),  -- views relative to creator average
+  engagement_rate NUMERIC(8,4),
+
+  -- Timestamps
+  published_at TIMESTAMPTZ,
+  scraped_at TIMESTAMPTZ DEFAULT NOW(),
+
+  -- Dedup
+  UNIQUE(platform, platform_video_id)
+);
+
+CREATE INDEX idx_scraped_videos_category ON scraped_videos(category);
+CREATE INDEX idx_scraped_videos_scraped_at ON scraped_videos(scraped_at DESC);
+CREATE INDEX idx_scraped_videos_velocity ON scraped_videos(velocity DESC NULLS LAST);
+CREATE INDEX idx_scraped_videos_sound_id ON scraped_videos(sound_id) WHERE sound_id IS NOT NULL;
+
+-- =====================================================
+-- TRENDING SOUNDS (hourly aggregation)
+-- =====================================================
+CREATE TABLE trending_sounds (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sound_id TEXT NOT NULL UNIQUE,
+  sound_name TEXT,
+
+  -- Trend metrics
+  video_count INTEGER DEFAULT 0,
+  total_views BIGINT DEFAULT 0,
+  avg_engagement_rate NUMERIC(8,4),
+  velocity_score NUMERIC(10,2),
+
+  -- Lifecycle
+  first_seen_at TIMESTAMPTZ,
+  peak_at TIMESTAMPTZ,
+  calculated_at TIMESTAMPTZ DEFAULT NOW(),
+
+  -- Status
+  trend_phase TEXT CHECK (trend_phase IN ('emerging', 'rising', 'peak', 'declining', 'dead'))
+);
+
+CREATE INDEX idx_trending_sounds_velocity ON trending_sounds(velocity_score DESC);
+CREATE INDEX idx_trending_sounds_phase ON trending_sounds(trend_phase);
+
+-- =====================================================
+-- ANALYSIS RESULTS (engine output)
+-- =====================================================
+CREATE TABLE analysis_results (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+
+  -- Input
+  content TEXT NOT NULL,
+  test_type TEXT NOT NULL,
+
+  -- Scores
+  overall_score INTEGER NOT NULL CHECK (overall_score BETWEEN 0 AND 100),
+  confidence TEXT NOT NULL CHECK (confidence IN ('High', 'Medium', 'Low')),
+
+  -- Detailed breakdown (JSONB for flexible schema evolution)
+  factors JSONB NOT NULL DEFAULT '[]',
+  -- Structure: [{ id, name, score, maxScore, description, tips[] }]
+
+  attention JSONB,
+  -- Structure: { full: number, partial: number, ignore: number }
+
+  variants JSONB DEFAULT '[]',
+  -- Structure: [{ id, type, content, impactScore, label }]
+
+  insights TEXT[] DEFAULT '{}',
+  conversation_themes JSONB DEFAULT '[]',
+
+  -- Engine metadata
+  gemini_model TEXT,
+  deepseek_model TEXT,
+  engine_version TEXT,
+  latency_ms INTEGER,
+  cost_cents NUMERIC(8,4),
+
+  -- Score components
+  rule_score NUMERIC(5,2),
+  trend_score NUMERIC(5,2),
+  ml_score NUMERIC(5,2),
+  score_weights JSONB,
+  -- Structure: { rule: 0.5, trend: 0.3, ml: 0.2 }
+
+  -- Timestamps
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_analysis_results_user_id ON analysis_results(user_id);
+CREATE INDEX idx_analysis_results_created_at ON analysis_results(created_at DESC);
+
+-- =====================================================
+-- OUTCOMES (actual performance tracking)
+-- =====================================================
+CREATE TABLE outcomes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  analysis_id UUID NOT NULL REFERENCES analysis_results(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+
+  -- Actual performance
+  actual_views BIGINT,
+  actual_likes BIGINT,
+  actual_shares BIGINT,
+  actual_engagement_rate NUMERIC(8,4),
+
+  -- Predicted vs actual
+  predicted_score INTEGER,
+  actual_score INTEGER,
+  delta INTEGER,  -- actual - predicted
+
+  -- When we collected this
+  reported_at TIMESTAMPTZ DEFAULT NOW(),
+  platform TEXT DEFAULT 'tiktok',
+  platform_post_url TEXT
+);
+
+CREATE INDEX idx_outcomes_analysis_id ON outcomes(analysis_id);
+CREATE INDEX idx_outcomes_user_id ON outcomes(user_id);
+
+-- =====================================================
+-- RULE LIBRARY (expert heuristics)
+-- =====================================================
+CREATE TABLE rule_library (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  -- Rule definition
+  name TEXT NOT NULL,
+  description TEXT,
+  category TEXT NOT NULL,
+  -- Categories: 'hook', 'emotion', 'structure', 'trend', 'audio', 'visual'
+
+  -- Scoring
+  weight NUMERIC(5,3) NOT NULL DEFAULT 1.0,
+  max_score NUMERIC(5,2) NOT NULL DEFAULT 10.0,
+
+  -- Rule logic (stored as structured evaluation criteria)
+  evaluation_prompt TEXT NOT NULL,
+  -- The prompt template sent to the LLM for scoring this factor
+
+  -- Validation
+  accuracy_rate NUMERIC(5,4),
+  -- Updated by rule validator cron
+  sample_count INTEGER DEFAULT 0,
+
+  -- Lifecycle
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_rule_library_category ON rule_library(category);
+CREATE INDEX idx_rule_library_active ON rule_library(is_active) WHERE is_active = TRUE;
+```
+
+### RLS Policies for New Tables
+
+```sql
+-- scraped_videos: Public read (trending page is public)
+ALTER TABLE scraped_videos ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view scraped videos"
+  ON scraped_videos FOR SELECT
+  USING (true);
+-- Writes: service_role only (cron routes use service client)
+
+-- trending_sounds: Public read
+ALTER TABLE trending_sounds ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view trending sounds"
+  ON trending_sounds FOR SELECT
+  USING (true);
+
+-- analysis_results: User owns their results
+ALTER TABLE analysis_results ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own analysis results"
+  ON analysis_results FOR SELECT
+  USING (user_id = (SELECT auth.uid()));
+CREATE POLICY "Users can create analysis results"
+  ON analysis_results FOR INSERT
+  WITH CHECK (user_id = (SELECT auth.uid()));
+
+-- outcomes: User owns their outcomes
+ALTER TABLE outcomes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own outcomes"
+  ON outcomes FOR SELECT
+  USING (user_id = (SELECT auth.uid()));
+CREATE POLICY "Users can create own outcomes"
+  ON outcomes FOR INSERT
+  WITH CHECK (user_id = (SELECT auth.uid()));
+
+-- rule_library: Public read (engine needs this), admin write
+ALTER TABLE rule_library ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view active rules"
+  ON rule_library FOR SELECT
+  USING (is_active = true);
+```
+
+### RLS Design Decisions
+
+1. **`(SELECT auth.uid())` wrapper everywhere** -- Already established in existing migrations. The subquery wrapper causes PostgreSQL to cache the auth function result per-statement, yielding 94%+ performance improvement on large tables. (Source: [Supabase RLS Performance](https://supabase.com/docs/guides/troubleshooting/rls-performance-and-best-practices-Z5Jjwv))
+
+2. **Public read for scraped_videos and trending_sounds** -- The trending page is accessible to all authenticated users. No per-user filtering needed.
+
+3. **Service role for all writes to scraped/trending tables** -- Cron routes use `createServiceClient()` (pattern already established in `sync-whop/route.ts`). No RLS INSERT policies needed for these tables.
+
+4. **JSONB for flexible nested data in analysis_results** -- Factors, variants, and themes are complex nested structures. JSONB allows schema evolution without migrations. Performance is fine since we query by `user_id` (indexed), not by JSONB contents.
+
+5. **TEXT + CHECK over ENUMs** -- Already established pattern in existing schema. More flexible for migrations.
+
+---
+
+## API Route Organization
+
+### Directory Structure
+
+```
+src/app/api/
+  analyze/
+    route.ts                 # POST: Submit content for analysis
+  trending/
+    route.ts                 # GET: Paginated trending videos
+    stats/route.ts           # GET: Aggregate category stats
+    [videoId]/route.ts       # GET: Single video detail
+  deals/
+    route.ts                 # GET: Filtered deal listings
+    [id]/
+      route.ts               # GET: Single deal detail
+      apply/route.ts         # POST: Apply to deal
+    enrollments/route.ts     # GET: User's deal enrollments
+  outcomes/
+    route.ts                 # POST: Report outcome, GET: User's outcomes
+  cron/
+    scrape-trending/route.ts # GET: Kick off Apify scraper
+    calculate-trends/route.ts # GET: Aggregate trend metrics
+    validate-rules/route.ts  # GET: Validate rule accuracy
+    retrain-ml/route.ts      # GET: Retrain ML models (future)
+    sync-whop/route.ts       # [EXISTS] Whop subscription sync
+  webhooks/
+    apify/route.ts           # POST: Apify run completion webhook
+    whop/route.ts            # [EXISTS] Whop payment webhooks
+  subscription/route.ts      # [EXISTS]
+  whop/checkout/route.ts     # [EXISTS]
+```
+
+### vercel.json Cron Configuration
+
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron/scrape-trending",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/calculate-trends",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/validate-rules",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/retrain-ml",
+      "schedule": "0 4 * * 1"
+    },
+    {
+      "path": "/api/cron/sync-whop",
+      "schedule": "0 2 * * *"
+    }
+  ]
+}
+```
+
+**Vercel Pro plan allows 40 cron jobs.** We use 5. Each uses `CRON_SECRET` authorization (pattern already established in `sync-whop`). (Source: [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs))
+
+**Function timeout considerations:**
+- `/api/analyze`: 60-120s (Gemini + DeepSeek sequential). Set `maxDuration: 120` in route config.
+- `/api/cron/scrape-trending`: <5s (fire-and-forget to Apify). Default timeout fine.
+- `/api/cron/calculate-trends`: <30s (DB aggregation). Default timeout fine.
+- `/api/webhooks/apify`: <60s (fetch dataset + upsert). Set `maxDuration: 60`.
+
+(Source: [Vercel Function Limits](https://vercel.com/docs/functions/limitations) -- Pro plan: up to 800s with Fluid Compute)
+
+---
+
+## TanStack Query + Zustand Coexistence
+
+### Architecture Rule
+
+**Zustand = client state. TanStack Query = server state. Never mix.**
+
+| State Type | Tool | Examples |
+|------------|------|----------|
+| Server data (fetched from API) | TanStack Query | Trending videos, deals, analysis results, user profile |
+| Client-only UI state | Zustand | Sidebar collapsed, form content, simulation phase, bookmarks |
+| Derived/computed | Neither (React `useMemo`) | Filtered video list, stats calculations |
+
+### Existing Zustand Stores -- What Changes
+
+| Store | Current Use | After Integration | Change? |
+|-------|-------------|-------------------|---------|
+| `test-store.ts` | Mock simulation + localStorage results | Real API calls + simulation phase tracking | **MODIFY** -- keep phase management, remove mock data generation, results come from API |
+| `bookmark-store.ts` | localStorage bookmark IDs | Keep as-is (client-only) | **NO CHANGE** |
+| `sidebar-store.ts` | Sidebar collapsed state | Keep as-is | **NO CHANGE** |
+| `society-store.ts` | Selected society | Keep as-is | **NO CHANGE** |
+| `settings-store.ts` | User settings | Keep as-is | **NO CHANGE** |
+
+### TanStack Query Setup
+
+```typescript
+// src/lib/queries/query-client.ts
+import { QueryClient } from '@tanstack/react-query';
+
+export function makeQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 60 * 1000,      // 1 minute
+        gcTime: 5 * 60 * 1000,     // 5 minutes
+        refetchOnWindowFocus: false, // Avoid surprise refetches
+        retry: 1,
+      },
+    },
+  });
+}
+
+// src/lib/queries/query-keys.ts
+export const queryKeys = {
+  trending: {
+    all: ['trending'] as const,
+    list: (category: string, cursor?: string) =>
+      ['trending', 'list', category, cursor] as const,
+    stats: () => ['trending', 'stats'] as const,
+    detail: (id: string) => ['trending', 'detail', id] as const,
+  },
+  deals: {
+    all: ['deals'] as const,
+    list: (filters?: Record<string, unknown>) =>
+      ['deals', 'list', filters] as const,
+    detail: (id: string) => ['deals', 'detail', id] as const,
+    enrollments: () => ['deals', 'enrollments'] as const,
+  },
+  analysis: {
+    all: ['analysis'] as const,
+    history: () => ['analysis', 'history'] as const,
+    detail: (id: string) => ['analysis', 'detail', id] as const,
+  },
+} as const;
+```
+
+### Provider Setup
+
+```typescript
+// src/app/(app)/providers.tsx
+'use client';
+
+import { QueryClientProvider } from '@tanstack/react-query';
+import { useState } from 'react';
+import { makeQueryClient } from '@/lib/queries/query-client';
+
+export function AppProviders({ children }: { children: React.ReactNode }) {
+  const [queryClient] = useState(() => makeQueryClient());
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      {children}
+    </QueryClientProvider>
+  );
+}
+
+// src/app/(app)/layout.tsx -- MODIFY existing
+// Wrap children with AppProviders
+```
+
+### Example: Trending Page Migration
+
+```typescript
+// src/hooks/queries/use-trending.ts
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queries/query-keys';
+import type { TrendingVideo, TrendingCategory, TrendingStats } from '@/types/trending';
+
+interface TrendingPage {
+  videos: TrendingVideo[];
+  nextCursor: string | null;
+  total: number;
+}
+
+export function useTrendingVideos(category: TrendingCategory) {
+  return useInfiniteQuery({
+    queryKey: queryKeys.trending.list(category),
+    queryFn: async ({ pageParam }) => {
+      const params = new URLSearchParams({ category, limit: '12' });
+      if (pageParam) params.set('cursor', pageParam);
+
+      const res = await fetch(`/api/trending?${params}`);
+      if (!res.ok) throw new Error('Failed to fetch trending');
+      return res.json() as Promise<TrendingPage>;
+    },
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    initialPageParam: undefined as string | undefined,
+  });
+}
+
+export function useTrendingStats() {
+  return useQuery({
+    queryKey: queryKeys.trending.stats(),
+    queryFn: async () => {
+      const res = await fetch('/api/trending/stats');
+      if (!res.ok) throw new Error('Failed to fetch stats');
+      return res.json() as Promise<TrendingStats>;
+    },
+    staleTime: 5 * 60 * 1000, // Stats change slowly
+  });
+}
 ```
 
 ---
 
-## Component Library Architecture
+## Patterns to Follow
 
-### /showcase Structure
+### Pattern 1: Service Client for Cron/Webhook Routes
 
-```
-/showcase
-├── page.tsx              # Overview: Design tokens + primitives demo
-├── inputs/
-│   └── page.tsx          # GlassInput, GlassTextarea, GlassSelect, etc.
-├── navigation/
-│   └── page.tsx          # GlassTabs, GlassBreadcrumbs, CommandPalette, GlassNavbar
-├── feedback/
-│   └── page.tsx          # GlassToast, GlassTooltip, GlassModal, GlassProgress, GlassAlert
-├── data-display/
-│   └── page.tsx          # Kbd, GlassBadge, GlassAvatar, GlassSkeleton
-├── layout/               # NEW
-│   └── page.tsx          # Container, GlassPanel, GlassCard, Divider
-└── utilities/            # NEW
-    └── page.tsx          # Motion components, GradientGlow, GradientMesh, TrafficLights
-```
+**What:** Use Supabase service role client (bypasses RLS) in server-only routes.
+**When:** Cron routes, webhook handlers, any route writing data on behalf of system (not user).
+**Already established:** `sync-whop/route.ts` and `webhooks/whop/route.ts` both use this pattern.
 
-### Showcase Page Sections Pattern
+```typescript
+// src/lib/supabase/service.ts (NEW -- extract from existing routes)
+import { createServerClient } from '@supabase/ssr';
+import type { Database } from '@/types/database.types';
 
-Each showcase category page should follow this consistent structure:
-
-```tsx
-// /showcase/[category]/page.tsx
-export default function CategoryShowcasePage() {
-  return (
-    <div className="min-h-screen bg-bg-base">
-      <main className="py-16">
-        <Container>
-          {/* 1. Header with back link */}
-          <FadeIn>
-            <div className="mb-12">
-              <Link href="/showcase">← Back to Showcase</Link>
-              <h1>Category Name</h1>
-              <p>Brief description of this category</p>
-            </div>
-          </FadeIn>
-
-          {/* 2. Component sections */}
-          <Section title="ComponentName" description="One-line description">
-            {/* Props showcase grid */}
-            <div className="grid gap-8 md:grid-cols-2">
-              {/* Subsection: Basic */}
-              <div className="space-y-4">
-                <h3 className="text-[14px] font-medium text-text-tertiary">Basic</h3>
-                {/* Component demo */}
-              </div>
-
-              {/* Subsection: Variants */}
-              {/* Subsection: Sizes */}
-              {/* Subsection: States */}
-            </div>
-          </Section>
-
-          {/* 3. Repeat for each component */}
-
-          {/* 4. Composition example (optional) */}
-          <Section title="Composition Example" description="Real-world usage pattern">
-            {/* Full example showing components used together */}
-          </Section>
-        </Container>
-      </main>
-      <Footer />
-    </div>
+export function createServiceClient() {
+  return createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { cookies: { getAll: () => [], setAll: () => {} } }
   );
 }
 ```
 
-### Component Documentation Pattern
+### Pattern 2: Cron Route Authorization
 
-Each component file should include:
-
-1. **Type exports** at the top (co-located with component)
-2. **JSDoc comments** with examples
-3. **Default props** clearly defined
-4. **Prop interfaces** exported for external use
-
-**Example structure:**
-
-```tsx
-// GlassPanel.tsx
-
-/** Available tint colors for glass panels */
-export type GlassTint = "neutral" | "purple" | "blue" | /* ... */;
-
-export interface GlassPanelProps {
-  children: ReactNode;
-  /** Blur intensity: sm (8px), md (12px), lg (20px) */
-  blur?: "sm" | "md" | "lg";
-  /** Background opacity 0-1, default 0.6 */
-  opacity?: number;
-  // ... more props with JSDoc
-}
-
-/**
- * GlassPanel - Glassmorphism container with configurable blur.
- *
- * @example
- * // Neutral glass
- * <GlassPanel blur="md" borderGlow>Content</GlassPanel>
- *
- * @example
- * // Tinted glass (iOS 26 style)
- * <GlassPanel tint="purple" innerGlow={0.5}>Content</GlassPanel>
- */
-export function GlassPanel({ /* props */ }: GlassPanelProps) {
-  // implementation
-}
-```
-
-### Index Barrel Export Pattern
+**What:** Verify `CRON_SECRET` Bearer token on all cron endpoints.
+**Already established:** `sync-whop/route.ts` checks `authorization` header.
 
 ```typescript
-// primitives/index.ts
+// src/lib/cron-auth.ts (NEW -- extract shared pattern)
+import { NextResponse } from 'next/server';
 
-// Component exports
-export { GlassPanel } from "./GlassPanel";
-export { GlassCard } from "./GlassCard";
-// ...
-
-// Type exports (always named, never default)
-export type { GlassPanelProps, GlassTint, RefractionLevel } from "./GlassPanel";
-export type { GlassCardProps } from "./GlassCard";
-// ...
+export function verifyCronAuth(request: Request): NextResponse | null {
+  const auth = request.headers.get('authorization');
+  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  return null; // Authorized
+}
 ```
 
----
+### Pattern 3: SSE for Long-Running Analysis
 
-## Documentation Architecture
+**What:** Stream progress phases via Server-Sent Events for the analysis endpoint.
+**When:** The `/api/analyze` route takes 3-8 seconds with parallel AI calls.
+**Why:** Maps directly to existing `simulationPhase` state machine in `test-store.ts`. The phases (`analyzing` -> `matching` -> `simulating` -> `generating`) are already defined client-side.
 
-### File Organization
+### Pattern 4: Cursor-Based Pagination
 
-```
-.planning/
-├── BRAND-BIBLE.md           # Design system overview (existing)
-├── PROJECT.md               # Project state and milestones
-├── ROADMAP.md               # Development roadmap
-└── research/
-    ├── ARCHITECTURE.md      # This file
-    ├── FEATURES.md          # Feature inventory
-    ├── STACK.md             # Technology decisions
-    └── PITFALLS.md          # Common mistakes to avoid
+**What:** Use opaque cursor strings (base64-encoded `created_at` + `id`) for infinite scroll.
+**When:** Trending videos, analysis history, deal listings.
+**Why:** Offset pagination breaks when new items are inserted. Cursor pagination is stable.
 
-src/
-├── app/globals.css          # Design tokens (self-documenting via comments)
-└── components/
-    └── primitives/
-        └── *.tsx            # Component files with JSDoc
-```
-
-### Documentation Hierarchy
-
-| Document | Purpose | Audience |
-|----------|---------|----------|
-| `BRAND-BIBLE.md` | Complete design reference, copy-paste patterns | Developers, AI assistants |
-| `globals.css` | Token definitions with inline comments | Developers |
-| `/showcase` | Visual reference, interactive demos | Everyone |
-| Component JSDoc | API reference, usage examples | Developers |
-
-### Cross-Referencing Pattern
-
-**In BRAND-BIBLE.md:**
-```markdown
-### GlassPanel Props
-See `/showcase` for visual examples.
-See `src/components/primitives/GlassPanel.tsx` for full API.
-```
-
-**In globals.css:**
-```css
-/* ============================================
-   RAYCAST-EXTRACTED COLOR SYSTEM
-   See BRAND-BIBLE.md Section 2 for usage guidelines
-   ============================================ */
-```
-
-**In Component files:**
 ```typescript
-/**
- * GlassPanel - Glassmorphism container.
- *
- * @see BRAND-BIBLE.md Section 7 for design guidelines
- * @see /showcase for visual examples
- */
+// Encoding
+const cursor = Buffer.from(`${row.created_at}|${row.id}`).toString('base64url');
+
+// Decoding + query
+const [createdAt, id] = Buffer.from(cursor, 'base64url').toString().split('|');
+const { data } = await supabase
+  .from('scraped_videos')
+  .select('*')
+  .lt('created_at', createdAt)
+  .order('created_at', { ascending: false })
+  .limit(pageSize);
 ```
 
 ---
 
-## Build Order
+## Anti-Patterns to Avoid
 
-Recommended implementation sequence based on dependencies:
+### Anti-Pattern 1: Mixing Server State into Zustand
 
-### Phase 1: Token Foundation (Do First)
-1. **Refactor `globals.css` with two-tier tokens**
-   - Add primitive token layer
-   - Refactor semantic tokens to reference primitives
-   - Maintain backward compatibility with existing class names
+**What:** Storing API response data in Zustand stores alongside client state.
+**Why bad:** Leads to stale data, cache invalidation nightmares, and manual refetch logic that TanStack Query handles automatically. The existing `test-store.ts` storing `tests[]` in localStorage is tech debt -- acceptable for now but should migrate to TanStack Query + server persistence.
+**Instead:** Zustand for UI state only. TanStack Query for all data fetched from APIs.
 
-2. **Add shared type definitions**
-   - Create `src/types/design-system.ts` for shared types
-   - Export color, size, variant unions
+### Anti-Pattern 2: Supabase Client Queries from Components
 
-### Phase 2: Component Refinement
-3. **Update component prop types**
-   - Use shared types from `design-system.ts`
-   - Ensure consistency across all primitives
+**What:** Importing Supabase client directly in components and making queries.
+**Why bad:** Bypasses API route layer, makes it harder to add rate limiting/auth/caching, and couples components to database schema.
+**Instead:** Components -> TanStack Query hooks -> API routes -> Supabase.
 
-4. **Enhance JSDoc documentation**
-   - Add `@example` blocks to all components
-   - Add `@see` references to BRAND-BIBLE
+### Anti-Pattern 3: Long-Running Cron Routes
 
-### Phase 3: Showcase Enhancement
-5. **Add missing showcase pages**
-   - `/showcase/layout` for Container, GlassPanel, GlassCard, Divider
-   - `/showcase/utilities` for motion, gradients, TrafficLights
+**What:** Waiting for external API completion inside cron route handlers.
+**Why bad:** Vercel function timeout. Apify scraping takes minutes. The cron route will 504.
+**Instead:** Fire-and-forget pattern. Cron triggers the job, webhook receives the result.
 
-6. **Standardize showcase format**
-   - Ensure all pages follow the same Section pattern
-   - Add code snippets/copy buttons where useful
+### Anti-Pattern 4: Polling for Analysis Progress
 
-### Phase 4: Documentation Polish
-7. **Update BRAND-BIBLE.md**
-   - Add token tier explanation
-   - Add cross-references to showcase pages
-   - Ensure all components documented
+**What:** Client polling `/api/analyze/status/:id` every second to check progress.
+**Why bad:** Unnecessary network requests, latency spikes, and complexity.
+**Instead:** SSE stream from the analysis endpoint. One connection, real-time updates.
 
-8. **Create component index**
-   - Add component list with links to showcase and source
+### Anti-Pattern 5: Creating New Supabase Service Clients Per-Query
+
+**What:** Calling `createServiceClient()` multiple times within a single request handler.
+**Why bad:** Each call creates a new HTTP client. Wasteful.
+**Instead:** Create once per request handler, pass to helper functions.
 
 ---
 
-## Anti-Patterns
+## File Ownership Zones for Parallel Development
 
-### Organizational Mistakes to Avoid
+### Zone A: Engine (can work independently)
 
-| Anti-Pattern | Problem | Do Instead |
-|--------------|---------|------------|
-| **Tokens in tailwind.config.ts** | Duplicates with CSS, harder to maintain | Use `@theme` in globals.css exclusively |
-| **Using primitive tokens directly** | Hard to change, no semantic meaning | Always use semantic tokens in components |
-| **Magic values in components** | `p-[13px]`, `text-[#abc]` | Use design tokens or extend `@theme` |
-| **Mixed token naming** | `--bg-primary` vs `--primary-bg` | Follow consistent `--category-modifier` pattern |
-| **Component files without types** | Poor DX, no autocomplete | Export interfaces alongside components |
-| **Showcase without states** | Incomplete documentation | Show default, hover, active, disabled, error for all components |
-| **Deep nesting in primitives/** | Hard to find components | Keep flat: one file per component |
-| **Hardcoded Raycast colors** | Brand inflexibility | Use semantic tokens (`--color-accent`) so coral can be swapped |
-
-### Token Anti-Patterns
-
-```css
-/* BAD: Raw value usage */
-.card {
-  background: #18191a;
-  padding: 16px;
-}
-
-/* GOOD: Semantic token usage */
-.card {
-  background: var(--color-bg-100);
-  padding: var(--spacing-card-padding);
-}
+```
+src/lib/engine/
+  pipeline.ts        -- Orchestrator
+  gemini.ts          -- Gemini Flash client
+  deepseek.ts        -- DeepSeek R1 client
+  rules.ts           -- Rule lookup + scoring
+  trends.ts          -- Trend data enrichment
+  aggregator.ts      -- Score aggregation
+  types.ts           -- Shared engine types
 ```
 
-```css
-/* BAD: Component token without semantic layer */
-@theme {
-  --button-padding: 16px;  /* Magic value */
-}
+**Dependencies:** Supabase client, API keys. No UI dependencies.
 
-/* GOOD: Component token referencing semantic token */
-@theme {
-  --primitive-space-4: 16px;
-  --spacing-button-padding: var(--primitive-space-4);
-}
+### Zone B: Database (can work independently)
+
+```
+supabase/migrations/
+  20260213000000_content_intelligence.sql  -- New tables
+src/types/database.types.ts                -- Regenerate after migration
 ```
 
-### Showcase Anti-Patterns
+**Dependencies:** None. Pure SQL.
 
-```tsx
-/* BAD: Inconsistent showcase structure */
-<Section>
-  <GlassInput placeholder="example" />
-  {/* No variants, no sizes, no states */}
-</Section>
+### Zone C: API Routes (depends on Zone A + B)
 
-/* GOOD: Complete showcase coverage */
-<Section title="GlassInput" description="Text input with glass styling">
-  <Subsection title="Basic">...</Subsection>
-  <Subsection title="With Icons">...</Subsection>
-  <Subsection title="Sizes">...</Subsection>
-  <Subsection title="States">...</Subsection>
-</Section>
 ```
+src/app/api/
+  analyze/route.ts
+  trending/route.ts
+  trending/stats/route.ts
+  deals/route.ts
+  deals/[id]/apply/route.ts
+  deals/enrollments/route.ts
+  outcomes/route.ts
+  cron/scrape-trending/route.ts
+  cron/calculate-trends/route.ts
+  cron/validate-rules/route.ts
+  webhooks/apify/route.ts
+src/lib/supabase/service.ts
+src/lib/cron-auth.ts
+```
+
+### Zone D: Client Integration (depends on Zone C)
+
+```
+src/hooks/queries/            -- All TanStack Query hooks
+src/lib/queries/              -- Query client, key factory
+src/app/(app)/providers.tsx   -- QueryClientProvider
+src/stores/test-store.ts      -- Modify for real API
+src/hooks/use-infinite-videos.ts  -- Rewrite for TanStack Query
+```
+
+### Zone E: UI Polish (depends on Zone D, can start in parallel with mocks)
+
+```
+src/components/app/simulation/   -- Already built, wire to real data
+src/components/viral-results/    -- Already built, wire to real data
+src/components/trending/         -- Already built, swap mock data
+src/components/app/brand-deals/  -- Already built, swap mock data
+```
+
+### Parallel Development Strategy
+
+```
+Wave 1 (no dependencies): Zone A + Zone B in parallel
+Wave 2 (depends on Wave 1): Zone C
+Wave 3 (depends on Wave 2): Zone D + Zone E in parallel
+```
+
+---
+
+## Scalability Considerations
+
+| Concern | At 100 users | At 10K users | At 1M users |
+|---------|--------------|--------------|-------------|
+| Analysis API cost | ~$1.30/day | ~$130/day | Tier-gated, cache common analyses |
+| Supabase row count | ~1K analyses, ~500 videos | ~100K analyses, ~5K videos | Partition by date, archive old |
+| Apify scraper | 1 actor run / 6h | Same (scraping is independent of users) | Same |
+| TanStack Query cache | No concern | No concern | Stale-while-revalidate for trending |
+| Function cold starts | Negligible | Negligible (Fluid Compute keeps warm) | Multi-region function deployment |
+| ML training data | Too early | Enough for basic model | Production ML pipeline |
 
 ---
 
 ## Sources
 
-- [Tailwind CSS v4.0 Documentation - Theme Variables](https://tailwindcss.com/docs/theme) (HIGH confidence)
-- [Tailwind CSS v4.0 Release Blog](https://tailwindcss.com/blog/tailwindcss-v4) (HIGH confidence)
-- [Design Token-Based UI Architecture - Martin Fowler](https://martinfowler.com/articles/design-token-based-ui-architecture.html) (HIGH confidence)
-- [Design tokens explained - Contentful](https://www.contentful.com/blog/design-token-system/) (MEDIUM confidence)
-- [The Future of Design Systems is Semantic - Figma Blog](https://www.figma.com/blog/the-future-of-design-systems-is-semantic/) (MEDIUM confidence)
-- [Tailwind CSS Best Practices 2025 - FrontendTools](https://www.frontendtools.tech/blog/tailwind-css-best-practices-design-system-patterns) (MEDIUM confidence)
-- [Exploring Typesafe design tokens in Tailwind 4 - DEV Community](https://dev.to/wearethreebears/exploring-typesafe-design-tokens-in-tailwind-4-372d) (MEDIUM confidence)
-- [Storybook for Next.js Documentation](https://storybook.js.org/docs/get-started/frameworks/nextjs) (HIGH confidence)
-
----
-
-## Confidence Assessment
-
-| Area | Level | Reason |
-|------|-------|--------|
-| Token Architecture | HIGH | Tailwind v4 official docs + established design system patterns |
-| File Structure | HIGH | Based on current working project structure + industry standards |
-| Showcase Organization | HIGH | Existing pattern already implemented, just needs extension |
-| Build Order | HIGH | Clear dependencies identified, no circular dependencies |
-| Naming Conventions | HIGH | Follows Tailwind v4 conventions and CSS custom property standards |
+- [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs) -- HIGH confidence, official docs
+- [Vercel Function Limits](https://vercel.com/docs/functions/limitations) -- HIGH confidence, official docs
+- [Supabase RLS Performance](https://supabase.com/docs/guides/troubleshooting/rls-performance-and-best-practices-Z5Jjwv) -- HIGH confidence, official docs
+- [Supabase Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security) -- HIGH confidence, official docs
+- [TanStack Query + Zustand coexistence](https://javascript.plainenglish.io/zustand-and-tanstack-query-the-dynamic-duo-that-simplified-my-react-state-management-e71b924efb90) -- MEDIUM confidence, community pattern
+- [Zustand + TanStack Query discussion](https://github.com/pmndrs/zustand/discussions/2289) -- MEDIUM confidence, maintainer-adjacent
+- [Next.js after() API](https://nextjs.org/docs/app/api-reference/functions/unstable_after) -- HIGH confidence, official docs
+- [Apify TikTok Scraper](https://apify.com/clockworks/tiktok-scraper) -- MEDIUM confidence, third-party service
+- [DeepSeek R1 API](https://api-docs.deepseek.com/) -- MEDIUM confidence, official but may change
+- [Gemini API Structured Output](https://ai.google.dev/gemini-api/docs/function-calling) -- MEDIUM confidence, rapid iteration
+- Existing codebase at `/Users/davideloreti/virtuna-backend-foundation/` -- HIGH confidence, primary source

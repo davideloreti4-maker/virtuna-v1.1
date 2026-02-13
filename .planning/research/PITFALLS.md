@@ -1,439 +1,190 @@
-# Pitfalls Research: Brand Deals & Affiliate Hub
+# Domain Pitfalls
 
-**Domain:** Creator monetization / affiliate aggregation platform
-**Researched:** 2026-02-02
-**Overall Confidence:** MEDIUM-HIGH
+**Domain:** Social media content intelligence platform (backend foundation)
+**Researched:** 2026-02-13
 
----
+## Critical Pitfalls
 
-## Executive Summary
+Mistakes that cause rewrites or major issues.
 
-**Top 3 Risks to Watch:**
+### Pitfall 1: LLM Output Parsing Without Validation
 
-1. **Terms of Service Violations** - Most affiliate programs explicitly prohibit aggregation on third-party sites and coupon directories. Aggregating deals without merchant authorization risks mass account terminations and legal action.
-
-2. **Money Transmission Licensing** - If Virtuna ever holds, transmits, or facilitates creator payouts, it triggers money transmitter licensing requirements across 49+ US states. This is a $500K+ compliance burden that can kill a startup.
-
-3. **FTC Disclosure Liability** - As an intermediary displaying affiliate content, Virtuna may share liability for disclosure violations. Fines reach $53,000+ per violation, and brands/platforms can be held liable for creator non-compliance.
-
----
-
-## Legal & Compliance Risks
-
-### ToS Violation: Unauthorized Deal Aggregation
-
-**Description:** Most affiliate programs explicitly prohibit displaying affiliate links on "coupon aggregation sites" or "third-party platforms" without authorization. Peak Design's terms are typical: "You are responsible for keeping your link/code off of coupon aggregation and other 3rd party sites... we reserve the right to suspend/cancel your account."
-
-**Warning Signs:**
-- Affiliate accounts getting terminated without clear reason
-- Merchants sending cease-and-desist notices
-- Networks blocking API access or revoking credentials
-- Revenue suddenly dropping across multiple programs
-
+**What goes wrong:** Treating LLM JSON output as reliable structured data. Gemini and DeepSeek return malformed JSON, extra markdown wrapping (```json ... ```), different field names between calls, or null values where you expect arrays.
+**Why it happens:** LLMs are probabilistic. Even with explicit "return ONLY JSON" prompts, they add explanatory text, skip fields, or change casing ~5-10% of the time.
+**Consequences:** `JSON.parse()` throws, the app crashes, users see "Analysis failed" with no recovery path. Worse: the parse succeeds but fields are wrong types, causing subtle downstream bugs in scoring.
 **Prevention:**
-- Audit every affiliate program's ToS before inclusion
-- Categorize programs: "API-permitted," "explicit aggregation allowed," "prohibited"
-- For prohibited programs, only display deals the creator themselves added (user-sourced, not scraped)
-- Build relationships with networks - some offer "aggregator partner" programs
-- Consider becoming a sub-affiliate network (requires different licensing)
+- Parse ALL LLM outputs through Zod schemas with `.safeParse()` -- never `JSON.parse()` alone
+- Strip markdown code fences before parsing (regex: `/```json?\n?([\s\S]*?)\n?```/`)
+- Implement retry logic: if parse fails, re-prompt with "Your previous response was not valid JSON. Return ONLY the JSON object."
+- Set Gemini's `responseMimeType: 'application/json'` and `responseSchema` for structured output (supported in 2.5 models)
+- For DeepSeek: use `response_format: { type: "json_object" }` in the API call
+- Have a fallback: if 3 retries fail, return a graceful error with partial results where possible
+**Detection:** Monitor parse failure rate. Alert if >5% of analyses fail at the parsing stage.
 
-**Phase to Address:** Phase 1 (Foundation) - Must establish legal framework before any deal aggregation
+### Pitfall 2: Gemini 2.0 Flash Deprecation (March 31, 2026)
 
-**Confidence:** HIGH - Multiple affiliate programs explicitly prohibit this in their terms
-
-**Sources:**
-- [Peak Design Affiliate Program Rules](https://peakdesign.zendesk.com/hc/en-us/articles/207943586-Affiliate-Program-Rules)
-- [Amazon Associates Program Policies](https://affiliate-program.amazon.com/help/operating/policies)
-
----
-
-### FTC Disclosure Requirements for Platforms
-
-**Description:** The FTC holds brands and platforms equally responsible for affiliate disclosure compliance. In 2025, fines exceed $53,000 per violation, and every non-compliant post counts separately. As the platform displaying affiliate content, Virtuna could share liability.
-
-**Warning Signs:**
-- Creators using your platform without proper disclosures
-- FTC warning letters to similar platforms
-- User reports of misleading content
-- Content displayed without clear "#ad" or affiliate indicators
-
+**What goes wrong:** Building the pipeline against `gemini-2.0-flash` and having it break when Google shuts down the model.
+**Why it happens:** The original architecture reference specifies "Gemini Flash" without a version. Gemini 2.0 Flash is the most commonly referenced model in tutorials, but it's deprecated and will be shut down March 31, 2026 -- just 6 weeks from now.
+**Consequences:** Complete pipeline failure on the deprecation date. Emergency migration under pressure.
 **Prevention:**
-- Enforce mandatory disclosure badges on all affiliate content displayed
-- Auto-append disclosure language (e.g., "This link may earn a commission")
-- Provide creators with compliant disclosure templates
-- Implement content moderation for disclosure compliance
-- Document your compliance program (FTC considers "due diligence" in enforcement)
+- Use `gemini-2.5-flash-lite` from day one (cheaper, faster, actively supported)
+- Store model ID as a constant/env var, not hardcoded in prompts
+- Test with the replacement model before you start, not after deprecation
+**Detection:** Google sends deprecation emails. Also monitor for HTTP 404/410 responses from the Gemini API.
 
-**Phase to Address:** Phase 2 (UI/Deal Display) - Build disclosure requirements into display layer
+### Pitfall 3: Vercel Function Timeout on Analysis Pipeline
 
-**Confidence:** HIGH - FTC guidelines are explicit and enforcement is increasing
-
-**Sources:**
-- [FTC Disclosures 101 for Social Media Influencers](https://www.ftc.gov/business-guidance/resources/disclosures-101-social-media-influencers)
-- [FTC Affiliate Disclosure Rules (ReferralCandy)](https://www.referralcandy.com/blog/ftc-affiliate-disclosure)
-- [FTC Guidelines for Influencers (inBeat)](https://inbeat.agency/blog/ftc-guidelines-for-influencers)
-
----
-
-### Money Transmission Licensing Trap
-
-**Description:** If Virtuna holds creator funds (even temporarily), facilitates payouts, or moves money between parties, it becomes a "money transmitter" requiring licenses in 49+ states. Costs: $25,000-$1M+ in surety bonds per state, plus ongoing compliance. Many startups have been shut down for operating without licenses.
-
-**Warning Signs:**
-- Users asking for "payout" features
-- Holding any user funds, even in escrow
-- Processing payments between creators and brands
-- Operating in states with strict enforcement (NY, CA, TX)
-
+**What goes wrong:** The dual-model analysis pipeline (Gemini + DeepSeek) exceeds Vercel's function timeout, returning a 504 to the user.
+**Why it happens:** Gemini visual analysis: 1-3s. DeepSeek R1 reasoning with chain-of-thought: 2-8s (CoT can generate up to 32K reasoning tokens). Combined with DB lookups, you're at 5-15s realistically. Add retry logic for LLM parsing failures and you could hit 30s+.
+**Consequences:** User sees "Analysis failed" after waiting. No partial results. Wasted API costs for the successful Gemini call.
 **Prevention:**
-- **Phase 1: Display-only** - Show earnings from external platforms, never hold funds
-- **Phase 2: Link-out** - Deep link to each network's payout portal
-- **Phase 3 (if ever): Partner with licensed provider** - Use Stripe Connect, PayPal for Marketplaces, or similar
-- Never build custom payout infrastructure without legal review
-- Consult fintech licensing attorney before any fund-handling features
+- Set `maxDuration: 120` on the analyze route (Vercel Pro supports this)
+- Use SSE streaming so the client gets progress updates during the wait
+- If DeepSeek times out, return Gemini-only results with a "basic analysis" label
+- Consider a two-phase approach: immediate acknowledgment + polling for result if SSE isn't viable
+- Monitor p95 latency. If consistently >10s, reduce DeepSeek prompt complexity or add `max_tokens` limit
+**Detection:** Vercel function logs show 504s. Track `latency_ms` in `analysis_results` table.
 
-**Phase to Address:** Phase 1 (Architecture) - Design system to explicitly avoid fund handling
+### Pitfall 4: API Key Exposure in Client-Side Code
 
-**Confidence:** HIGH - Federal and state regulations are well-documented
-
-**Sources:**
-- [Money Transmitter License Guide (RemitSo)](https://remitso.com/blogs/money-transmitter-license)
-- [MTL Guide for Fintech Startups (Cornerstone)](https://cornerstonelicensing.com/resources/money-transmitter-licensing-guide-for-fintech-startups/)
-- [CSBS Money Transmission Modernization Act](https://www.csbs.org/csbs-money-transmission-modernization-act-mtma)
-
----
-
-### CFPB "Preferencing" Violations
-
-**Description:** The Consumer Financial Protection Bureau (CFPB) ruled in 2024 that ranking offers by commission rate rather than consumer benefit is an "illegal abusive practice." If Virtuna displays deals sorted by payout rather than value to creators, it could face federal enforcement.
-
-**Warning Signs:**
-- Sorting algorithms that prioritize higher-commission deals
-- "Featured" placements based on payout, not quality
-- User complaints about deal quality/relevance
-- CFPB investigations into comparison shopping sites
-
+**What goes wrong:** Using `NEXT_PUBLIC_GEMINI_API_KEY` or similar, exposing AI API keys to the browser.
+**Why it happens:** Next.js convention: `NEXT_PUBLIC_` prefix makes env vars available client-side. Easy to accidentally prefix AI keys this way, especially when copying from tutorials that show client-side usage.
+**Consequences:** Anyone can inspect the network tab, extract your API key, and run up your Gemini/DeepSeek/Apify bill. No rate limiting on their end.
 **Prevention:**
-- Default sort by relevance, not commission
-- Clearly label any "sponsored" or "featured" placements
-- Provide transparent sorting options (by payout, by rating, by relevance)
-- Document sorting algorithm rationale
-- Never hide that commission rates influence display
+- AI API keys NEVER get `NEXT_PUBLIC_` prefix
+- All AI calls go through API routes (server-side only)
+- Add a `.env.local.example` comment: `# NEVER prefix these with NEXT_PUBLIC_`
+- Lint rule or CI check: reject any env var matching `NEXT_PUBLIC_.*API_KEY` or `NEXT_PUBLIC_.*SECRET`
+**Detection:** Review `.env.local.example` and all `process.env.NEXT_PUBLIC_` references in codebase.
 
-**Phase to Address:** Phase 2 (Deal Display) - Design sorting/ranking with CFPB compliance in mind
+### Pitfall 5: Apify Scraper Blocking / Rate Limiting
 
-**Confidence:** MEDIUM - CFPB guidance is recent, enforcement patterns still emerging
-
-**Sources:**
-- [Tapfiliate Compliance Guide](https://tapfiliate.com/blog/affiliate-marketing-compliance-gp/)
-
----
-
-### Scraping Legality and Rate Limiting
-
-**Description:** Scraping affiliate networks without authorization may violate CFAA (Computer Fraud and Abuse Act), trigger breach of contract claims, and face GDPR penalties up to 20M EUR. Recent cases (Google vs SerpApi 2025, Meta vs Bright Data 2024) show aggressive enforcement.
-
-**Warning Signs:**
-- Receiving cease-and-desist from scraped sites
-- IP blocks or CAPTCHAs appearing
-- Rate limit errors from target sites
-- Legal threats citing CFAA or breach of contract
-
+**What goes wrong:** Apify actors fail to scrape TikTok data, returning empty or partial datasets. The trending page shows stale data for days without anyone noticing.
+**Why it happens:** TikTok actively blocks scrapers. Apify actors are maintained by third parties (clockworks) who may not update them when TikTok changes their anti-bot measures. Actors can also exceed Apify platform usage limits.
+**Consequences:** Trending page shows week-old data (stale but looks current), or worse: completely empty if a migration assumes fresh data exists.
 **Prevention:**
-- Prefer official APIs over scraping (CJ, Impact, ShareASale all have APIs)
-- For API-less networks, consider partnership agreements
-- If scraping is necessary:
-  - Respect robots.txt strictly
-  - Implement conservative rate limits (1 request per 10-15 seconds)
-  - Only scrape publicly accessible pages
-  - Never bypass authentication or CAPTCHAs
-- Document legal review of each data source
-- Consider third-party data providers (Trackonomics, Affluent) who handle licensing
+- Track `last_successful_scrape_at` in a `system_status` table
+- If no scrape succeeds in 24h, surface a warning in the admin view (or log alert)
+- Keep mock data as a fallback for development/demo purposes
+- Don't delete old scraped data on each run -- upsert and let old data age out naturally
+- Test the specific Apify actor (clockworks/tiktok-trends-scraper) before committing to it -- run it manually once
+**Detection:** Cron route should log success/failure counts. Monitor the `scraped_at` timestamps.
 
-**Phase to Address:** Phase 1 (Data Layer) - Establish data sourcing strategy before implementation
+## Moderate Pitfalls
 
-**Confidence:** HIGH - Recent court cases provide clear precedent
+### Pitfall 1: TanStack Query + Mock Data Migration Race Condition
 
-**Sources:**
-- [Web Scraping Legal Guide 2025 (GroupBWT)](https://groupbwt.com/blog/is-web-scraping-legal/)
-- [Is Web Scraping Legal (Browserless)](https://www.browserless.io/blog/is-web-scraping-legal)
-- [Web Scraping GDPR Risks (Medium)](https://medium.com/deep-tech-insights/web-scraping-in-2025-the-20-million-gdpr-mistake-you-cant-afford-to-make-07a3ce240f4f)
-
----
-
-## Technical Pitfalls
-
-### Tracking Attribution Failure
-
-**Description:** As a middleman, Virtuna faces the hardest attribution problem in affiliate marketing. Safari limits cookies to 7 days. Firefox blocks trackers. 17% of affiliate clicks are fraudulent. Server-side tracking recovers 30-40% more conversions, but requires merchant cooperation.
-
-**Warning Signs:**
-- Creators reporting clicks that don't convert
-- Discrepancies between Virtuna's click counts and network reports
-- Safari/Firefox users showing 0% conversion rates
-- Unusual conversion patterns suggesting fraud
-
+**What goes wrong:** Partially migrating to TanStack Query while some components still import mock data. Two data sources, inconsistent state, broken filters.
 **Prevention:**
-- **Don't become the tracking middleman** - Let clicks go directly to affiliate networks
-- Use deep links that preserve original affiliate tracking
-- Display network-reported earnings, not self-calculated
-- Implement click monitoring for debugging only, not attribution
-- If building tracking: server-side only, with first-party cookies
+- Migrate one page at a time, fully. Don't leave a page half-mock, half-real.
+- Create a feature flag per page: `USE_REAL_TRENDING_DATA`, `USE_REAL_DEALS_DATA`
+- Keep mock data files until ALL consumers are migrated, then delete in a single commit
 
-**Phase to Address:** Phase 2 (Click Handling) - Design click flow to preserve network attribution
+### Pitfall 2: Supabase Type Generation Drift
 
-**Confidence:** HIGH - Industry research confirms attribution gaps
-
-**Sources:**
-- [Affiliate Tracking 2025 (AutomateToProfit)](https://automatetoprofit.com/affiliate-tracking-2025-from-pixels-to-server-side-what-really-works-now/)
-- [Affiliate Conversion Tracking (NowG)](https://www.nowg.net/affiliate-conversion-tracking-in-2025-postbacks-ga4-zero-fraud-strategies/)
-- [Cookieless Affiliate Tracking (Stape)](https://stape.io/blog/the-impact-of-third-party-cookie-deprecation-on-affiliate-marketing)
-
----
-
-### Link Rot and Stale Deals
-
-**Description:** Industry data shows 12-16% of affiliate links are broken at any given time. Products go out of stock, merchants change networks, deals expire. Stale deals destroy user trust and make the platform feel abandoned.
-
-**Warning Signs:**
-- Increasing 404 rates on outbound links
-- User complaints about expired deals
-- Deals showing products that no longer exist
-- Commission rates that haven't updated in weeks
-
+**What goes wrong:** Database schema changes via migration but `database.types.ts` isn't regenerated. TypeScript types don't match actual DB columns. Queries succeed but types are wrong.
 **Prevention:**
-- Implement automated link health checking (daily for high-traffic, weekly for all)
-- Use services like Geniuslink or build custom link validation
-- Show "last verified" timestamps on deals
-- Auto-hide or flag deals that fail validation
-- Implement user reporting for broken deals
-- Build deal refresh pipeline with network APIs
+- Run `supabase gen types typescript --local > src/types/database.types.ts` after EVERY migration
+- Add to a `postmigrate` script in package.json
+- CI check: regenerate types and diff against committed version
 
-**Phase to Address:** Phase 3 (Deal Management) - Build link health monitoring infrastructure
+### Pitfall 3: DeepSeek API Availability
 
-**Confidence:** HIGH - Industry statistics are well-documented
-
-**Sources:**
-- [Link Rot Affects Publishers (Affluent)](https://www.affluent.io/ask-the-experts-how-link-rot-affects-publishers/)
-- [Broken Affiliate Links Guide (Geniuslink)](https://geniuslink.com/blog/guide-to-fix-broken-affiliate-links/)
-- [Affiliate Attribution Integrity (Influencer Marketing Hub)](https://influencermarketinghub.com/affiliate-attribution/)
-
----
-
-### API Reliability and Rate Limits
-
-**Description:** Affiliate network APIs are notoriously unreliable. CJ has "frequent disruptions" per 2025 reports. APIs may lack features (CJ doesn't provide click stats). Rate limits vary wildly. Building on unstable foundations causes cascading failures.
-
-**Warning Signs:**
-- API timeouts or errors increasing
-- Missing data in creator dashboards
-- Sync jobs failing silently
-- Discrepancies between API data and network dashboards
-
+**What goes wrong:** DeepSeek's API has experienced significant downtime historically (Jan-Feb 2025 capacity issues, rate limiting). If DeepSeek is down, the entire analysis pipeline fails.
 **Prevention:**
-- Design for API failure (graceful degradation, cached fallbacks)
-- Implement robust retry logic with exponential backoff
-- Store last-known-good data as fallback
-- Build health monitoring for each API integration
-- Have manual data import as backup option
-- Consider API aggregator services (Strackr, wecantrack)
+- Implement circuit breaker: if 3 consecutive DeepSeek calls fail, fall back to Gemini-only scoring for 10 minutes
+- Log all API failures with status codes and response times
+- Consider having Gemini do both visual + reasoning as a fallback (less accurate but functional)
+- DeepSeek's cache hit pricing ($0.07/1M) is dramatically cheaper than cache miss ($0.56/1M) -- design prompts with cacheable prefixes
 
-**Phase to Address:** Phase 1 (Integration Layer) - Build resilient API integration architecture
+### Pitfall 4: Cost Runaway from Retry Loops
 
-**Confidence:** MEDIUM - Based on community reports and documentation gaps
-
-**Sources:**
-- [CJ Affiliate APIs (CJ Developer Portal)](https://developers.cj.com/)
-- [CJ Integration Issues (wecantrack)](https://wecantrack.com/cj-affiliate-integration/)
-
----
-
-### Financial Data Security
-
-**Description:** Displaying creator earnings makes Virtuna a high-value target. Financial services see 20%+ of breaches from vulnerability exploitation. A breach exposing earnings data would destroy trust instantly and trigger regulatory scrutiny.
-
-**Warning Signs:**
-- Security audit findings on financial data handling
-- Unauthorized access attempts to earnings endpoints
-- Missing encryption or access controls
-- Third-party integrations with weak security
-
+**What goes wrong:** Retry logic for failed LLM parsing re-calls the API 3 times per failure. At scale, a bad prompt template causes 100% parse failures, tripling API costs.
 **Prevention:**
-- Encrypt earnings data at rest and in transit
-- Implement strict access controls (creators see only their data)
-- Audit logging for all earnings data access
-- Regular security assessments
-- Consider SOC 2 compliance for enterprise credibility
-- Minimize data retention (aggregate historical, delete granular)
+- Hard cap retries at 2 (3 total attempts max)
+- Log and alert on retry rate > 10%
+- Track costs per analysis in the database (`cost_cents` column)
+- Set Google AI Studio and DeepSeek API budget alerts/limits
+- First, fix the prompt -- retries should be rare, not a crutch
 
-**Phase to Address:** Phase 1 (Security Architecture) - Build security foundations before handling financial data
+### Pitfall 5: CRON_SECRET Shared Across All Cron Routes
 
-**Confidence:** MEDIUM - General security best practices applied to domain
-
-**Sources:**
-- [Biggest Data Breaches in Finance (UpGuard)](https://www.upguard.com/blog/biggest-data-breaches-financial-services)
-- [FTC Data Breach Response Guide](https://www.ftc.gov/business-guidance/resources/data-breach-response-guide-business)
-
----
-
-## Business/UX Pitfalls
-
-### Coupon Poaching Attribution Theft
-
-**Description:** Browser extensions and coupon aggregators can overwrite affiliate cookies, stealing attribution from legitimate creators. In 2025, extensions automatically substitute affiliate cookies and rewrite referral IDs. This undermines creator trust in earnings accuracy.
-
-**Warning Signs:**
-- Creators reporting lower-than-expected conversions
-- Coupon codes appearing that weren't from Virtuna
-- Last-click attribution consistently going to unknown sources
-- Users complaining their "clicks don't count"
-
+**What goes wrong:** All cron routes use the same `CRON_SECRET`. If it leaks, all cron endpoints are exposed.
 **Prevention:**
-- Educate creators about coupon poaching
-- Partner with brands that use first-click or multi-touch attribution
-- Display deals without generic coupon codes when possible
-- Advocate for creator-specific discount codes vs. generic coupons
-- Consider sub-ID tracking to detect attribution theft
+- This is Vercel's recommended pattern and is fine for now
+- Vercel automatically sends `CRON_SECRET` as Bearer token -- it's not user-generated
+- If you need per-route secrets, create separate env vars (`CRON_SECRET_SCRAPE`, etc.) but this adds complexity for no practical benefit at current scale
 
-**Phase to Address:** Phase 3 (Analytics) - Build attribution monitoring tools
+### Pitfall 6: Infinite Scroll Pagination Instability
 
-**Confidence:** MEDIUM - Industry problem, limited platform-level solutions
-
-**Sources:**
-- [Affiliate Attribution Integrity (Influencer Marketing Hub)](https://influencermarketinghub.com/affiliate-attribution/)
-
----
-
-### Creator Trust Erosion
-
-**Description:** Creators are skeptical of platforms. If Virtuna shows earnings that don't match network dashboards, or deals that turn out to be invalid, trust evaporates. Unlike consumer apps, creator tools have vocal communities that share negative experiences.
-
-**Warning Signs:**
-- Creators comparing Virtuna data to network dashboards (and finding discrepancies)
-- Social media complaints about accuracy
-- Creators removing Virtuna access to their accounts
-- Low return usage rates
-
+**What goes wrong:** New scraped videos are inserted while a user is scrolling, causing duplicate or missing items in offset-based pagination.
 **Prevention:**
-- Display earnings with clear source attribution ("From CJ Affiliate, synced 2h ago")
-- Show sync status and last-updated timestamps
-- Provide easy way to report discrepancies
-- Don't calculate/estimate earnings - show network-reported values only
-- Be transparent about data freshness and limitations
+- Use cursor-based pagination (timestamp + id), not OFFSET/LIMIT
+- The architecture doc already specifies this pattern (base64url encoded cursor)
+- TanStack Query's `useInfiniteQuery` handles cursor pagination natively
 
-**Phase to Address:** Phase 2 (Dashboard UX) - Design for trust and transparency
+## Minor Pitfalls
 
-**Confidence:** HIGH - Based on creator platform patterns
+### Pitfall 1: SSE Connection Handling in React
 
----
-
-### Virtuna Program Conflict of Interest
-
-**Description:** Featuring Virtuna's own affiliate program prominently while aggregating competitors creates conflict of interest perception. If creators feel pushed toward Virtuna's program over better deals, they'll leave.
-
-**Warning Signs:**
-- Creators complaining about Virtuna self-promotion
-- Perception that sorting/ranking favors Virtuna deals
-- Negative reviews citing conflict of interest
-- Competitors highlighting this as differentiation
-
+**What goes wrong:** SSE EventSource connections aren't cleaned up on component unmount, causing memory leaks and zombie connections.
 **Prevention:**
-- Separate "Virtuna Partnerships" section from third-party aggregation
-- Never auto-enroll creators in Virtuna's program
-- Make Virtuna program opt-in with clear disclosure
-- Don't algorithmically favor Virtuna deals in rankings
-- Consider not including Virtuna deals in aggregated views at all
+- Close EventSource in cleanup function of useEffect
+- Or use fetch() with ReadableStream reader, which naturally closes on component unmount
+- Test with React StrictMode (development) which mounts/unmounts twice
 
-**Phase to Address:** Phase 2 (Information Architecture) - Design clear separation of concerns
+### Pitfall 2: Supabase RLS Performance on Large Tables
 
-**Confidence:** MEDIUM - Business risk based on market positioning
-
----
-
-### Feature Scope Creep into Regulated Territory
-
-**Description:** Natural feature evolution (show earnings -> track earnings -> estimate earnings -> project earnings -> pay earnings) gradually moves into money transmission territory. Each step seems small but collectively crosses regulatory lines.
-
-**Warning Signs:**
-- Product roadmap includes "payout" features
-- Users requesting "withdraw" or "transfer" functionality
-- Building features that hold user funds
-- Considering "advances" on earnings
-
+**What goes wrong:** RLS policies with subqueries slow down as tables grow. `scraped_videos` could have 100K+ rows.
 **Prevention:**
-- Document regulatory boundaries explicitly in product strategy
-- Create "regulatory review" gate for features touching money
-- Default answer to payout features: "link to network's payout system"
-- Get legal review before any fund-touching features
-- Consider the 5-year feature evolution when designing today
+- Already using `(SELECT auth.uid())` pattern (94% improvement) -- established in existing migrations
+- Public read tables (scraped_videos, trending_sounds) have simple `USING (true)` policies -- no performance concern
+- Index on all columns used in WHERE clauses of RLS policies
 
-**Phase to Address:** Phase 1 (Product Strategy) - Define regulatory boundaries upfront
+### Pitfall 3: Environment Variable Mismatch Between Local and Vercel
 
-**Confidence:** HIGH - Many fintech startups have made this mistake
+**What goes wrong:** Working locally with one set of API keys, production uses different keys with different rate limits or model access. Pipeline works locally but fails in production.
+**Prevention:**
+- Keep `.env.local.example` updated with ALL required variables
+- Document which API keys need which plan/tier (e.g., Gemini API key needs Flash Lite access enabled)
+- Test the full pipeline against production API keys at least once before deploying
 
----
+### Pitfall 4: Apify Webhook Verification
 
-## Phase-Specific Warning Summary
+**What goes wrong:** The Apify webhook endpoint (`/api/webhooks/apify`) accepts any POST request, allowing attackers to inject fake scraping results.
+**Prevention:**
+- Verify the webhook secret header (similar to existing Whop webhook verification)
+- Validate the request body matches Apify's webhook schema
+- Optionally: verify the run ID against the Apify API to confirm it's a real completed run
 
-| Phase | Topic | Likely Pitfall | Mitigation |
-|-------|-------|----------------|------------|
-| 1 - Foundation | Data Sourcing | ToS violations from scraping | API-first, legal review per source |
-| 1 - Foundation | Architecture | Accidental money transmission | Design to never hold funds |
-| 1 - Foundation | Security | Inadequate financial data protection | Encrypt earnings, audit access |
-| 2 - UI/Display | FTC Compliance | Missing/inadequate disclosures | Mandatory disclosure badges |
-| 2 - UI/Display | Deal Ranking | CFPB preferencing violations | Transparent, relevance-first sorting |
-| 2 - UI/Display | Trust | Data discrepancies with networks | Show source attribution, sync status |
-| 3 - Tracking | Attribution | Cookie/tracking failures | Don't be middleman, preserve network tracking |
-| 3 - Management | Stale Deals | Link rot destroying trust | Automated health checking |
-| 3 - Analytics | Earnings | Coupon poaching attribution theft | Education, detection tools |
-| Future | Payouts | Unlicensed money transmission | Use licensed providers only |
+### Pitfall 5: Stale TanStack Query Cache After Mutation
 
----
+**What goes wrong:** User submits an analysis, but the analysis history page still shows old data because the query cache wasn't invalidated.
+**Prevention:**
+- Use `queryClient.invalidateQueries({ queryKey: queryKeys.analysis.all })` in the mutation's `onSuccess`
+- Or use optimistic updates for instant UI feedback
 
-## Research Gaps / Open Questions
+## Phase-Specific Warnings
 
-1. **Specific network policies**: Each major network (CJ, ShareASale, Impact, Awin) needs individual ToS review for aggregation permissions
+| Phase Topic | Likely Pitfall | Mitigation |
+|-------------|---------------|------------|
+| Database schema migration | Type drift after schema changes | Automate `supabase gen types` in post-migrate script |
+| Gemini/DeepSeek integration | LLM output parsing failures | Zod validation + structured output format + retries |
+| Gemini model selection | Using deprecated 2.0 model | Use `gemini-2.5-flash-lite` from the start |
+| Apify scraper setup | Actor not returning expected data shape | Test actor manually first, validate output with Zod |
+| TanStack Query migration | Half-mock, half-real data inconsistency | Migrate one page fully before starting the next |
+| Cron job setup | Hobby plan daily-only limitation | Ensure Vercel Pro plan for per-minute cron |
+| SSE streaming for analysis | Client-side connection cleanup | useEffect cleanup, test with StrictMode |
+| Cost management | Retry loops multiplying API costs | Hard cap retries, track costs in DB, set API budget alerts |
+| Analysis pipeline timeout | DeepSeek R1 CoT generates too many tokens | Set `max_tokens`, implement per-step timeouts, fallback to Gemini-only |
+| Production deployment | Environment variable mismatch | Document all env vars, test with production keys pre-deploy |
 
-2. **Sub-affiliate network model**: Could Virtuna become a licensed sub-affiliate network? What are requirements?
+## Sources
 
-3. **International considerations**: EU DSA, UK CMA, GDPR implications for non-US creators
-
-4. **Insurance**: What E&O / cyber insurance is appropriate for a creator monetization platform?
-
----
-
-## Confidence Assessment
-
-| Area | Level | Reason |
-|------|-------|--------|
-| Legal/ToS | HIGH | Multiple affiliate programs explicitly prohibit aggregation; well-documented |
-| FTC Compliance | HIGH | Official FTC guidance is explicit and recent |
-| Money Transmission | HIGH | Federal/state regulations well-documented, case law exists |
-| Tracking Attribution | HIGH | Industry research confirms technical limitations |
-| Scraping Legality | HIGH | Recent court cases (2024-2025) provide clear precedent |
-| API Reliability | MEDIUM | Based on community reports, needs validation per network |
-| Creator Trust Patterns | MEDIUM | Inferred from similar platforms, no Virtuna-specific data |
-| CFPB Preferencing | MEDIUM | Guidance is new (2024), enforcement patterns still emerging |
-
----
-
-## Sources Summary
-
-**Official/Authoritative:**
-- [FTC Disclosures 101](https://www.ftc.gov/business-guidance/resources/disclosures-101-social-media-influencers)
-- [FTC Data Breach Response Guide](https://www.ftc.gov/business-guidance/resources/data-breach-response-guide-business)
-- [CSBS Money Transmission Modernization Act](https://www.csbs.org/csbs-money-transmission-modernization-act-mtma)
-- [CJ Developer Portal](https://developers.cj.com/)
-- [Amazon Associates Program Policies](https://affiliate-program.amazon.com/help/operating/policies)
-
-**Industry Research:**
-- [Tapfiliate Affiliate Marketing Compliance 2025](https://tapfiliate.com/blog/affiliate-marketing-compliance-gp/)
-- [Web Scraping Legal Guide (GroupBWT)](https://groupbwt.com/blog/is-web-scraping-legal/)
-- [Cookieless Affiliate Tracking (Stape)](https://stape.io/blog/the-impact-of-third-party-cookie-deprecation-on-affiliate-marketing)
-- [Link Rot Study (Affluent)](https://www.affluent.io/ask-the-experts-how-link-rot-affects-publishers/)
-- [Money Transmitter License Guide (RemitSo)](https://remitso.com/blogs/money-transmitter-license)
-
-**Technical/Implementation:**
-- [Affiliate Tracking 2025 (AutomateToProfit)](https://automatetoprofit.com/affiliate-tracking-2025-from-pixels-to-server-side-what-really-works-now/)
-- [CJ Integration (wecantrack)](https://wecantrack.com/cj-affiliate-integration/)
-- [Affiliate Attribution Integrity (Influencer Marketing Hub)](https://influencermarketinghub.com/affiliate-attribution/)
+- [Gemini Models deprecation](https://ai.google.dev/gemini-api/docs/models) -- 2.0 Flash deprecated March 31, 2026
+- [DeepSeek API Docs](https://api-docs.deepseek.com/) -- reasoning model token limits
+- [Vercel Function Duration](https://vercel.com/docs/functions/configuring-functions/duration) -- timeout configuration
+- [Vercel Cron Pricing](https://vercel.com/docs/cron-jobs/usage-and-pricing) -- Hobby vs Pro limits
+- [TanStack Query SSR Guide](https://tanstack.com/query/latest/docs/framework/react/guides/advanced-ssr) -- hydration patterns
+- Existing codebase patterns (Whop webhook verification, cron auth, Supabase client setup)
+- Domain experience: LLM integration failure modes, scraper reliability patterns

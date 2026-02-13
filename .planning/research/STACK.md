@@ -1,548 +1,172 @@
-# Stack Research: Trending Page (v1.5)
+# Technology Stack
 
-**Project:** Virtuna v1.5
-**Researched:** 2026-02-02
-**Dimension:** Stack additions for TikTok video feed, AI categorization, remix storyboards, and PDF export
+**Project:** Virtuna Backend Foundation
+**Researched:** 2026-02-13
 
----
+## Recommended Stack
 
-## Executive Summary
+### AI/ML API Clients
 
-The Trending Page requires **four new capability domains**: video data ingestion (Apify), AI processing (OpenAI or Anthropic), client-side data fetching (TanStack Query), and PDF generation (React-PDF). The existing stack (Next.js 16, Supabase, Zustand, Tailwind) handles storage, auth, and UI.
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| `@google/genai` | ^1.41.0 | Gemini 2.5 Flash-Lite for visual analysis | Official unified Google GenAI SDK (GA). Replaces deprecated `@google/generative-ai`. Supports multimodal (image+text) inputs, inline base64 data, and the File API. Use model ID `gemini-2.5-flash-lite` -- cheapest multimodal Gemini, optimized for low latency, 1M context. Note: `gemini-2.0-flash` is deprecated and shuts down March 31, 2026. |
+| `openai` | ^6.21.0 | DeepSeek R1 reasoning via OpenAI-compatible API | DeepSeek's API is OpenAI-compatible. Using the official `openai` package (not a third-party wrapper) gives us: battle-tested TypeScript types, streaming support, automatic retries, and zero maintenance risk. Configure with `baseURL: 'https://api.deepseek.com/v1'`. Model ID: `deepseek-reasoner` for R1 chain-of-thought reasoning. |
 
-**Key recommendations:**
+### Data Pipeline
 
-1. **Apify Client** (`apify-client` v2.22.0) — Single integration for TikTok scraping via actors
-2. **OpenAI SDK** (`openai` v6.17.0) — AI categorization and remix generation (GPT-4o)
-3. **TanStack Query** (`@tanstack/react-query` v5.x) — Server state management with caching
-4. **React-PDF** (`@react-pdf/renderer` v4.3.2) — React 19-compatible PDF generation
-5. **Upstash Redis** (`@upstash/redis` + `@upstash/ratelimit`) — API caching and rate limiting
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| `apify-client` | ^2.22.0 | Trigger and fetch results from Apify TikTok scraper actors | We are NOT building scrapers -- we're calling pre-built Apify actors (TikTok Trends Scraper, TikTok Scraper). `apify-client` is the correct choice over the `apify` SDK because we're an external app consuming Apify, not building Apify Actors. Lightweight, supports automatic retries, works in both Node.js and browser. |
 
-**What NOT to add:** Direct TikTok API (no official public API), image generation for storyboard frames (complexity, cost, consistency issues), multiple AI providers (pick one).
+### Server State Management
 
----
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| `@tanstack/react-query` | ^5.90.0 | Server state management for all API data | Replaces mock data imports with cached, auto-refreshing server state. Suspense support (`useSuspenseQuery`), ~20% smaller than v4, pairs naturally with Next.js App Router streaming. Keep Zustand for client-only state (sidebar, bookmarks). TanStack Query owns all server/async data. |
+| `@tanstack/react-query-devtools` | ^5.91.0 | Query debugging in development | Tree-shaken out of production builds. Essential during migration from mock data to real APIs -- lets you inspect cache state, refetch timing, stale/fresh status. |
 
-## New Capabilities Required
+### Database & Backend (Already Installed -- Extend, Don't Replace)
 
-| Capability | Purpose | Recommendation |
-|------------|---------|----------------|
-| TikTok data ingestion | Fetch trending videos + creator baselines | Apify TikTok scraper |
-| AI categorization | Classify videos by niche, content type, strategic tags | OpenAI GPT-4o |
-| AI remix generation | Generate 3 full production briefs per video | OpenAI GPT-4o |
-| Video data caching | Cache scraped data, reduce API calls | Upstash Redis |
-| API rate limiting | Protect AI endpoints, manage costs | Upstash Ratelimit |
-| Server state management | Feed data fetching with caching | TanStack Query |
-| PDF generation | Export storyboard briefs | React-PDF |
+| Technology | Version | Purpose | Notes |
+|------------|---------|---------|-------|
+| `@supabase/supabase-js` | ^2.93.1 | Database client | Already installed. Use service role client for cron/background jobs, anon client for user-facing queries. |
+| `@supabase/ssr` | ^0.8.0 | Server-side Supabase client | Already installed. createServerClient pattern already working. |
+| `supabase` (CLI) | ^2.74.5 | Migrations, local dev, type generation | Already installed as devDependency. Use `supabase gen types typescript` for type-safe database queries. |
 
----
+### Background Jobs / Cron
 
-## Apify Integration
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| Vercel Cron Jobs | N/A (config) | Schedule recurring API route invocations | Already proven pattern in the codebase (`/api/cron/sync-whop`). Define schedules in `vercel.json`. Pro plan: per-minute precision, 100 crons/project, 300s max execution. Hobby plan: daily only. |
 
-### Recommended: `apify-client`
+**No additional job queue library needed.** The workloads (Apify trigger, trend calculation, rule validation, ML retrain) all fit within Vercel's 300s function timeout on Pro. If any job exceeds 300s, split into chunks with a Supabase `job_queue` table pattern (see Architecture).
 
-| Attribute | Value |
-|-----------|-------|
-| Package | `apify-client` |
-| Version | **2.22.0** (January 27, 2026) |
-| Source | [GitHub](https://github.com/apify/apify-client-js) |
-| Confidence | HIGH |
+### Supporting Libraries
 
-**Why Apify:**
-- No official TikTok public API exists for trending content
-- Apify provides managed, maintained scrapers with 98% success rate
-- Single SDK for all TikTok data needs (videos, profiles, hashtags)
-- Automatic retries with exponential backoff built-in
-- REST API with unified response format
-
-### Relevant Apify Actors
-
-| Actor | Purpose | Pricing |
-|-------|---------|---------|
-| [TikTok Scraper (Api Dojo)](https://apify.com/apidojo/tiktok-scraper) | Bulk video scraping, 600 posts/sec | $0.30/1K posts |
-| [TikTok Profile Scraper](https://apify.com/clockworks/tiktok-profile-scraper) | Creator historical data | Per-run pricing |
-| [TikTok Hashtag Scraper](https://apify.com/clockworks/tiktok-hashtag-scraper) | Trending hashtag discovery | Per-run pricing |
-
-### Integration Pattern
-
-```typescript
-import { ApifyClient } from 'apify-client';
-
-const client = new ApifyClient({ token: process.env.APIFY_API_TOKEN });
-
-// Run TikTok scraper actor
-const run = await client.actor('apidojo/tiktok-scraper').call({
-  hashtags: ['trending'],
-  maxItems: 50,
-});
-
-// Fetch results
-const { items } = await client.dataset(run.defaultDatasetId).listItems();
-```
-
-### Data Flow
-
-```
-Vercel Cron (every 6h) → Apify Actor → Raw video data →
-  → Calculate views multiplier → AI classify → Store in Supabase
-```
-
----
-
-## AI Provider
-
-### Recommended: OpenAI
-
-| Attribute | Value |
-|-----------|-------|
-| Package | `openai` |
-| Version | **6.17.0** (January 28, 2026) |
-| Source | [GitHub](https://github.com/openai/openai-node) |
-| Model | `gpt-4o` (for categorization + remix) |
-| Confidence | HIGH |
-
-**Why OpenAI over Anthropic:**
-- Slightly lower latency for short classification tasks
-- Structured outputs (JSON mode) well-suited for categorization
-- Existing ecosystem familiarity
-- Function calling for structured remix generation
-
-**Alternative:** Anthropic Claude (`@anthropic-ai/sdk`) is equally capable. Choose based on:
-- Existing API keys/billing
-- Team preference
-- Long-form output quality (Claude may be better for full scripts)
-
-### Usage Patterns
-
-**1. Video Classification (batch)**
-```typescript
-import OpenAI from 'openai';
-
-const openai = new OpenAI();
-
-const classification = await openai.chat.completions.create({
-  model: 'gpt-4o',
-  response_format: { type: 'json_object' },
-  messages: [{
-    role: 'user',
-    content: `Classify this TikTok video:
-      Caption: ${video.description}
-      Hashtags: ${video.hashtags.join(', ')}
-      Audio: ${video.music.title}
-
-      Return JSON: { "niche": string, "contentType": string, "strategicTags": string[] }`
-  }]
-});
-```
-
-**2. Remix Generation**
-```typescript
-const remix = await openai.chat.completions.create({
-  model: 'gpt-4o',
-  messages: [{
-    role: 'system',
-    content: 'You are a TikTok content strategist creating production briefs...'
-  }, {
-    role: 'user',
-    content: `Generate 3 remix briefs for: ${sourceVideo}
-      Creator niche: ${niche}
-      Goal: ${goal}
-      Constraints: ${constraints}`
-  }]
-});
-```
-
-### Cost Estimation
-
-| Operation | Tokens (est.) | Cost per call | Daily volume | Daily cost |
-|-----------|---------------|---------------|--------------|------------|
-| Classification | ~500 | $0.005 | 500 videos | $2.50 |
-| Remix generation | ~2,000 | $0.02 | 100 remixes | $2.00 |
-| **Total estimated** | | | | **~$4.50/day** |
-
----
-
-## Data Fetching & Caching
-
-### Recommended: TanStack Query
-
-| Attribute | Value |
-|-----------|-------|
-| Package | `@tanstack/react-query` |
-| Version | **5.x** (latest stable) |
-| Source | [TanStack Docs](https://tanstack.com/query/latest) |
-| Confidence | HIGH |
-
-**Why TanStack Query over SWR:**
-- DevTools for debugging (critical for feed development)
-- Better mutation support (for save/status tracking)
-- More sophisticated cache invalidation (by tags)
-- Pagination/infinite scroll built-in
-- Prefetching for drill-down views
-
-**Why NOT Zustand alone:**
-- Zustand is for client state, not server state
-- TanStack Query handles stale-while-revalidate pattern
-- Automatic background refetching
-- Built-in loading/error states
-
-### Integration Pattern
-
-```typescript
-// /lib/queries/trending.ts
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
-
-export function useTrendingDashboard() {
-  return useQuery({
-    queryKey: ['trending', 'dashboard'],
-    queryFn: () => fetch('/api/trending/dashboard').then(r => r.json()),
-    staleTime: 5 * 60 * 1000, // 5 min
-  });
-}
-
-export function useCategoryVideos(category: string) {
-  return useInfiniteQuery({
-    queryKey: ['trending', 'category', category],
-    queryFn: ({ pageParam = 0 }) =>
-      fetch(`/api/trending/category/${category}?offset=${pageParam}`).then(r => r.json()),
-    getNextPageParam: (lastPage) => lastPage.nextOffset,
-  });
-}
-```
-
-### Caching Layer: Upstash Redis
-
-| Attribute | Value |
-|-----------|-------|
-| Package | `@upstash/redis` |
-| Version | Latest |
-| Source | [Upstash Docs](https://upstash.com/docs/redis/overall/getstarted) |
-| Confidence | HIGH |
-
-**Why Upstash:**
-- Serverless Redis (no connection management)
-- Works on Vercel Edge
-- Built-in rate limiting package
-- Pay-per-request pricing (~$0.20/100K commands)
-
-### Rate Limiting
-
-```typescript
-import { Ratelimit } from '@upstash/ratelimit';
-import { Redis } from '@upstash/redis';
-
-const ratelimit = new Ratelimit({
-  redis: Redis.fromEnv(),
-  limiter: Ratelimit.slidingWindow(10, '60 s'), // 10 requests per minute
-});
-
-// In API route
-const { success } = await ratelimit.limit(userId);
-if (!success) return new Response('Rate limited', { status: 429 });
-```
-
-### Caching Strategy
-
-| Data Type | Cache Location | TTL | Invalidation |
-|-----------|----------------|-----|--------------|
-| Dashboard feed | Upstash Redis | 5 min | On Apify refresh |
-| Category lists | Upstash Redis | 5 min | On Apify refresh |
-| Video details | Supabase + TanStack | 1 hour | On view |
-| Creator baselines | Supabase | 24 hours | On Apify refresh |
-| Remix results | Supabase | Permanent | Manual delete |
-
----
-
-## PDF Generation
-
-### Recommended: React-PDF
-
-| Attribute | Value |
-|-----------|-------|
-| Package | `@react-pdf/renderer` |
-| Version | **4.3.2** (React 19 compatible since v4.1.0) |
-| Source | [react-pdf.org](https://react-pdf.org) |
-| Confidence | HIGH |
-
-**Why React-PDF:**
-- React 19 compatible (v4.1.0+)
-- Declarative PDF creation using React components
-- Server-side rendering support (Next.js API routes)
-- No external dependencies (pure JS)
-- Excellent for structured documents (storyboards)
-
-**Alternatives considered:**
-- **pdfme** (v5.5.0) — Good, but more template-focused
-- **pdfmake** — Declarative but not React-native
-- **jsPDF** — More imperative, less suited for complex layouts
-
-### Integration Pattern
-
-```typescript
-// /components/pdf/StoryboardPDF.tsx
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
-
-const styles = StyleSheet.create({
-  page: { padding: 30 },
-  section: { marginBottom: 10 },
-  title: { fontSize: 18, fontWeight: 'bold' },
-  content: { fontSize: 12 },
-});
-
-interface StoryboardPDFProps {
-  remix: RemixBrief;
-}
-
-export function StoryboardPDF({ remix }: StoryboardPDFProps) {
-  return (
-    <Document>
-      <Page size="A4" style={styles.page}>
-        <View style={styles.section}>
-          <Text style={styles.title}>Hook (First 3 Seconds)</Text>
-          <Text style={styles.content}>{remix.hook}</Text>
-        </View>
-        <View style={styles.section}>
-          <Text style={styles.title}>Shot List</Text>
-          {remix.shotList.map((shot, i) => (
-            <Text key={i} style={styles.content}>{i + 1}. {shot}</Text>
-          ))}
-        </View>
-        <View style={styles.section}>
-          <Text style={styles.title}>Full Script</Text>
-          <Text style={styles.content}>{remix.script}</Text>
-        </View>
-        {/* ... more sections */}
-      </Page>
-    </Document>
-  );
-}
-```
-
-```typescript
-// /api/remix/[id]/pdf/route.ts
-import { renderToBuffer } from '@react-pdf/renderer';
-import { StoryboardPDF } from '@/components/pdf/StoryboardPDF';
-
-export async function GET(req: Request, { params }: { params: { id: string } }) {
-  const remix = await getRemix(params.id);
-  const buffer = await renderToBuffer(<StoryboardPDF remix={remix} />);
-
-  return new Response(buffer, {
-    headers: {
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="remix-${params.id}.pdf"`,
-    },
-  });
-}
-```
-
-### Storyboard Visuals
-
-**Decision:** Text-only storyboards for MVP.
-
-**Why NOT AI-generated images:**
-- DALL-E 3 deprecated May 2026, GPT Image models new
-- Character consistency issues across frames
-- Added cost ($0.04-0.12 per image)
-- Latency (2-5 seconds per image)
-- Storyboards work well as text with shot descriptions
-
-**Future enhancement:** Consider GPT Image when:
-- Character consistency improves
-- User demand validates
-- Budget allows
-
----
-
-## Recommended Stack Additions
-
-| Package | Version | Purpose | Why |
-|---------|---------|---------|-----|
-| `apify-client` | ^2.22.0 | TikTok data ingestion | Managed scraping, 98% success rate |
-| `openai` | ^6.17.0 | AI classification + remix | GPT-4o structured outputs |
-| `@tanstack/react-query` | ^5.x | Server state management | DevTools, mutations, pagination |
-| `@react-pdf/renderer` | ^4.3.2 | PDF storyboard export | React 19 compatible |
-| `@upstash/redis` | latest | Edge caching | Serverless, Vercel-optimized |
-| `@upstash/ratelimit` | latest | API rate limiting | Protect AI endpoints |
-
-### Installation Command
-
-```bash
-pnpm add apify-client openai @tanstack/react-query @react-pdf/renderer @upstash/redis @upstash/ratelimit
-```
-
-### Dev Dependencies
-
-None required beyond existing setup.
-
----
-
-## Already Sufficient (No Addition Needed)
-
-| Existing | Version | For Trending Page |
-|----------|---------|-------------------|
-| `next` | 16.1.5 | API routes, cron, routing |
-| `@supabase/supabase-js` | 2.93.1 | Video/remix storage |
-| `zustand` | 5.0.10 | UI state (filters, selections) |
-| `zod` | 4.3.6 | API response validation |
-| `recharts` | 3.7.0 | Views multiplier charts (if needed) |
-| `motion` | 12.29.2 | Card animations, transitions |
-| `tailwindcss` | 4 | Styling |
-
----
+| Library | Version | Purpose | When to Use |
+|---------|---------|---------|-------------|
+| `zod` | ^4.3.6 (existing) | API response validation, request schemas | Validate all external API responses (Gemini, DeepSeek, Apify). Already in project -- extend usage to all API boundaries. |
+| `zustand` | ^5.0.10 (existing) | Client-only UI state | Keep for sidebar, bookmarks, UI preferences. DO NOT use for server data -- that's TanStack Query's job. |
 
 ## What NOT to Add
 
-| Avoid | Reason |
-|-------|--------|
-| **Direct TikTok API** | No official public API; use Apify |
-| **SWR** | TanStack Query has DevTools, better mutations |
-| **Multiple AI providers** | Pick one (OpenAI); switch later if needed |
-| **DALL-E/Image generation** | Consistency issues, cost, complexity |
-| **pdfmake/jsPDF** | React-PDF is more idiomatic |
-| **socket.io/real-time** | Feed doesn't need real-time; polling sufficient |
-| **Puppeteer/Playwright** | Apify handles scraping; don't DIY |
-| **Separate Redis provider** | Upstash is Vercel-optimized |
-| **GraphQL** | REST sufficient for this scope |
+| Technology | Why Not |
+|------------|---------|
+| `@ai-sdk/google`, `@ai-sdk/deepseek` (Vercel AI SDK) | Adds unnecessary abstraction layer. We need precise control over prompts, token counting, and response parsing for the prediction engine. Direct SDK calls are simpler and more transparent for cost tracking. |
+| `apify` (full SDK) | That's for building Apify Actors. We're consuming actors from our Next.js app. `apify-client` is the right tool. |
+| `bullmq`, `quirrel`, `inngest` | Job queue systems are overkill. Our cron jobs are simple HTTP triggers (Vercel Cron -> API route -> do work). No need for Redis-backed queues or external services. If we outgrow Vercel Cron, revisit then. |
+| `@supabase/functions-js` | We're using Next.js API routes for all backend logic, not Supabase Edge Functions. Keeps deployment unified on Vercel. Edge Functions would split the deployment surface for no benefit. |
+| `tensorflow.js`, `onnxruntime-node` | The ML "pipeline" in this milestone is expert rules + API calls. No local model inference. If/when we train models, they'll run as Python services or hosted endpoints, not in-process JS. |
+| `node-cron`, `croner` | In-process schedulers don't work in serverless. Vercel functions cold-start on demand; there's no persistent process to run cron in. |
+| `react-hook-form` | Project decision (Zod v4 for simple forms). Already validated. |
+| `prisma`, `drizzle` | Supabase client handles all DB queries with generated types. Adding an ORM creates a parallel data access layer with no benefit for this project's query complexity. |
 
----
+## Alternatives Considered
 
-## Integration with Existing Stack
+| Category | Recommended | Alternative | Why Not |
+|----------|-------------|-------------|---------|
+| Gemini SDK | `@google/genai` | `@google/generative-ai` | Deprecated. Google consolidated into `@google/genai` -- the old package will stop receiving updates. |
+| DeepSeek Client | `openai` (configured) | `node-deepseek`, `deepseek-api` | Third-party wrappers with tiny npm download counts. DeepSeek's own docs recommend using the OpenAI SDK. One less dependency to maintain. |
+| Apify Integration | `apify-client` | Direct REST API calls | `apify-client` adds automatic retries, pagination handling, and TypeScript types. Worth the dependency. |
+| Server State | TanStack Query v5 | SWR | TanStack Query has richer devtools, better mutation support, built-in Suspense hooks, and more granular cache control. SWR is simpler but we need the power features for this app's complexity. |
+| Background Jobs | Vercel Cron | Supabase pg_cron + Edge Functions | Splits deployment across two platforms. Vercel Cron is already proven in this codebase and keeps all logic in Next.js API routes. pg_cron is better suited for pure database operations (cleanup queries, aggregations). |
+| Gemini Model | `gemini-2.5-flash-lite` | `gemini-2.5-flash` | Flash-Lite is cheaper ($0.075/1M input vs $0.15/1M) and faster for our use case (image description + structured extraction). We don't need Flash's deeper reasoning -- that's DeepSeek R1's job. |
 
-### Fits Naturally
+## Architecture Decision: Next.js API Routes Over Supabase Edge Functions
 
-| Existing | Integration Point |
-|----------|-------------------|
-| Next.js App Router | `/api/trending/*`, `/api/remix/*` routes |
-| Supabase Auth | User ID for remix ownership |
-| Supabase DB | `trending_videos`, `remixes`, `creator_baselines` tables |
-| Zustand | Filter state, selected video, UI preferences |
-| Tailwind | Dashboard layout, video cards |
-| Radix UI | Modals, dropdowns, tabs |
+**Decision:** All backend logic runs as Next.js API routes on Vercel. No Supabase Edge Functions.
 
-### New Patterns Required
+**Rationale:**
+1. **Unified deployment** -- one platform (Vercel), one set of logs, one deploy pipeline
+2. **Existing pattern** -- cron sync, webhooks, and checkout routes already use Next.js API routes
+3. **Full Node.js runtime** -- API routes run in Node.js (not Deno like Edge Functions), giving us full npm ecosystem access for `@google/genai`, `openai`, `apify-client`
+4. **Vercel Pro timeout** -- 300s is sufficient for all our workloads (Apify actor runs are async; we trigger and poll)
+5. **Supabase client works from API routes** -- service role client for privileged operations, no need for co-located Edge Functions
 
-| Pattern | Location | Purpose |
-|---------|----------|---------|
-| TanStack Query Provider | `/app/providers.tsx` | Wrap app with QueryClientProvider |
-| Vercel Cron | `/api/cron/refresh-trending` | Scheduled Apify runs |
-| Edge caching | API routes | Upstash Redis for hot data |
-| Rate limiting middleware | `/api/remix/*` | Protect AI endpoints |
-| PDF streaming | `/api/remix/[id]/pdf` | Generate PDF on demand |
+**When to use Supabase Edge Functions instead:**
+- If a function needs sub-10ms cold starts (edge functions boot faster than serverless)
+- If you need to respond from a region closer to Supabase DB (latency-critical reads)
+- Neither applies to our use case (prediction engine has 3-5s latency budget)
 
-### Environment Variables
+## API Cost Estimates
 
-```env
+| API | Model | Cost Basis | Per-Analysis Estimate |
+|-----|-------|------------|----------------------|
+| Gemini | `gemini-2.5-flash-lite` | $0.075/1M input, $0.30/1M output | ~$0.001 (image + prompt ~1500 tokens in, ~500 tokens out) |
+| DeepSeek | `deepseek-reasoner` | $0.56/1M input (miss), $1.68/1M output | ~$0.005 (2K tokens in, ~2K tokens out + CoT reasoning tokens) |
+| **Total per analysis** | | | **~$0.006** (lower than original $0.013 estimate due to Flash-Lite pricing) |
+| Apify | TikTok Trends Scraper | ~$0.25-0.50 per run | ~$3-4/day at 6hr intervals |
+
+## Environment Variables Required
+
+```bash
+# AI APIs
+GEMINI_API_KEY=                    # Google AI Studio API key
+DEEPSEEK_API_KEY=                  # DeepSeek platform API key
+
 # Apify
-APIFY_API_TOKEN=apify_api_xxx
+APIFY_API_TOKEN=                   # Apify platform token
 
-# OpenAI
-OPENAI_API_KEY=sk-xxx
+# Supabase (already configured)
+NEXT_PUBLIC_SUPABASE_URL=          # existing
+NEXT_PUBLIC_SUPABASE_ANON_KEY=     # existing
+SUPABASE_SERVICE_ROLE_KEY=         # existing (used in cron routes)
 
-# Upstash Redis
-UPSTASH_REDIS_REST_URL=https://xxx.upstash.io
-UPSTASH_REDIS_REST_TOKEN=xxx
+# Cron Security (already configured)
+CRON_SECRET=                       # existing (used in sync-whop cron)
 ```
 
----
+## Installation
 
-## Database Schema Additions
+```bash
+# New production dependencies
+npm install @google/genai openai apify-client @tanstack/react-query
 
-```sql
--- Trending videos cache
-CREATE TABLE trending_videos (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tiktok_id VARCHAR(50) UNIQUE NOT NULL,
-  creator_handle VARCHAR(100) NOT NULL,
-  creator_id VARCHAR(50),
-  views BIGINT NOT NULL,
-  views_multiplier DECIMAL(6,2),
-  behavioral_category VARCHAR(20), -- 'breaking_out', 'sustained', 'resurging'
-  niche VARCHAR(50),
-  content_type VARCHAR(50),
-  strategic_tags TEXT[],
-  thumbnail_url TEXT,
-  video_url TEXT,
-  description TEXT,
-  hashtags TEXT[],
-  audio_title VARCHAR(255),
-  posted_at TIMESTAMPTZ,
-  scraped_at TIMESTAMPTZ DEFAULT NOW(),
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Creator baselines for multiplier calculation
-CREATE TABLE creator_baselines (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  creator_id VARCHAR(50) UNIQUE NOT NULL,
-  creator_handle VARCHAR(100) NOT NULL,
-  avg_views_30d BIGINT,
-  video_count_30d INT,
-  last_calculated TIMESTAMPTZ DEFAULT NOW()
-);
-
--- User remixes
-CREATE TABLE remixes (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users NOT NULL,
-  source_video_id UUID REFERENCES trending_videos,
-  source_url TEXT,
-  niche VARCHAR(50),
-  goal VARCHAR(50),
-  constraints JSONB,
-  briefs JSONB NOT NULL, -- Array of 3 production briefs
-  status VARCHAR(20) DEFAULT 'generated', -- 'generated', 'to_film', 'filmed', 'posted'
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Indexes
-CREATE INDEX idx_trending_category ON trending_videos(behavioral_category);
-CREATE INDEX idx_trending_niche ON trending_videos(niche);
-CREATE INDEX idx_trending_scraped ON trending_videos(scraped_at DESC);
-CREATE INDEX idx_remixes_user ON remixes(user_id);
+# New dev dependencies
+npm install -D @tanstack/react-query-devtools
 ```
 
----
+**Total new dependencies: 4 production + 1 dev.** Minimal surface area increase.
+
+## Version Compatibility Notes
+
+| Constraint | Status |
+|------------|--------|
+| `@google/genai` requires Node.js >= 18 | OK -- Next.js 16 requires Node.js 18.18+ |
+| `@tanstack/react-query` v5 requires React >= 18 | OK -- project uses React 19.2.3 |
+| `openai` requires TypeScript >= 4.9 | OK -- project uses TypeScript 5.x |
+| `apify-client` works in Node.js and browser | OK -- we'll only use server-side |
 
 ## Confidence Assessment
 
-| Area | Confidence | Reasoning |
-|------|------------|-----------|
-| Apify integration | HIGH | Official client docs verified, v2.22.0 released Jan 2026 |
-| OpenAI SDK | HIGH | v6.17.0 verified on GitHub releases |
-| TanStack Query | HIGH | Industry standard, well-documented |
-| React-PDF | HIGH | v4.3.2 React 19 support verified in GitHub issues |
-| Upstash Redis | HIGH | Official Vercel partner, documented integration |
-| PDF-only storyboards | MEDIUM | User preference unknown; may want images later |
-| AI cost estimates | MEDIUM | Based on typical usage; actual may vary |
-
----
+| Decision | Confidence | Source |
+|----------|------------|--------|
+| `@google/genai` as Gemini SDK | HIGH | Official Google docs, npm page, deprecation notice on old SDK |
+| `openai` for DeepSeek | HIGH | DeepSeek official API docs recommend OpenAI SDK compatibility |
+| `gemini-2.5-flash-lite` model choice | HIGH | Official model page, deprecation of 2.0-flash confirmed for March 2026 |
+| `deepseek-reasoner` model name | HIGH | Official DeepSeek API docs |
+| `apify-client` over `apify` SDK | HIGH | Official Apify docs: "client for external applications" |
+| TanStack Query v5 | HIGH | npm, official docs, proven React 19 + Next.js App Router support |
+| Vercel Cron over job queues | MEDIUM | Fits current scale. May need revisiting if job complexity grows significantly. |
+| No Supabase Edge Functions | MEDIUM | Correct for unified deployment but could revisit for latency-critical DB reads |
+| Cost estimates | LOW | Based on published pricing; actual costs depend on prompt length and response verbosity |
 
 ## Sources
 
-### Package Versions (Verified)
-- [apify-client v2.22.0](https://github.com/apify/apify-client-js) - GitHub releases
-- [openai v6.17.0](https://github.com/openai/openai-node/releases) - GitHub releases
-- [@react-pdf/renderer v4.3.2](https://github.com/diegomura/react-pdf/issues/2756) - React 19 compatibility
-- [TanStack Query](https://tanstack.com/query/latest) - Official docs
-
-### Apify TikTok Scrapers
-- [TikTok Scraper (Api Dojo)](https://apify.com/apidojo/tiktok-scraper)
-- [TikTok Profile Scraper](https://apify.com/clockworks/tiktok-profile-scraper)
-- [Apify JavaScript API](https://apify.com/clockworks/tiktok-video-scraper/api/javascript)
-
-### Caching & Rate Limiting
-- [Upstash Rate Limiting](https://upstash.com/blog/nextjs-ratelimiting)
-- [Next.js Caching Guide](https://nextjs.org/docs/app/guides/caching)
-- [TanStack Query vs SWR](https://tanstack.com/query/v4/docs/react/comparison)
-
-### PDF Generation
-- [React-PDF Official](https://react-pdf.org/)
-- [React-PDF React 19 Support](https://github.com/diegomura/react-pdf/issues/2756)
-
-### AI Image Generation
-- [OpenAI Image Generation](https://platform.openai.com/docs/guides/image-generation) - DALL-E 3 deprecation notice
-
----
-
-*Research completed: 2026-02-02*
-*Ready for roadmap creation*
+- [@google/genai npm](https://www.npmjs.com/package/@google/genai)
+- [Google GenAI SDK GitHub](https://github.com/googleapis/js-genai)
+- [Gemini API Quickstart](https://ai.google.dev/gemini-api/docs/quickstart)
+- [Gemini Models](https://ai.google.dev/gemini-api/docs/models)
+- [Gemini Image Understanding](https://ai.google.dev/gemini-api/docs/image-understanding)
+- [DeepSeek API Docs](https://api-docs.deepseek.com/)
+- [DeepSeek Reasoning Model](https://api-docs.deepseek.com/guides/reasoning_model)
+- [DeepSeek Pricing](https://api-docs.deepseek.com/quick_start/pricing)
+- [Apify Client JS Docs](https://docs.apify.com/api/client/js/docs)
+- [Apify TikTok Trends Scraper](https://apify.com/clockworks/tiktok-trends-scraper)
+- [TanStack Query v5 Docs](https://tanstack.com/query/v5/docs/react/overview)
+- [TanStack Query Advanced SSR](https://tanstack.com/query/latest/docs/framework/react/guides/advanced-ssr)
+- [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs)
+- [Vercel Cron Pricing](https://vercel.com/docs/cron-jobs/usage-and-pricing)
+- [Vercel Function Duration](https://vercel.com/docs/functions/configuring-functions/duration)
+- [Supabase Edge Functions](https://supabase.com/docs/guides/functions)
+- [OpenAI Node.js SDK](https://github.com/openai/openai-node)
