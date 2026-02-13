@@ -32,11 +32,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. /trending returns 404 and no trending-related code exists in the codebase
   4. Sidebar navigation shows only MVP pages (dashboard, affiliate/earnings, pricing) with no dead links
   5. Route structure uses three groups: (marketing) for public pages, (onboarding) for post-signup, (app) for authenticated
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Replace mock AuthGuard with real Supabase auth + middleware redirects
-- [ ] 01-02: Remove trending page and restructure navigation + route groups
+- [ ] 01-01-PLAN.md -- Real Supabase auth (middleware redirects, login/signup pages, OAuth callback, AuthGuard replacement)
+- [ ] 01-02-PLAN.md -- Remove trending route, restructure sidebar navigation for MVP, create 404 page
 
 ### Phase 2: Landing Page
 **Goal**: A visitor lands on the homepage and immediately understands what Virtuna does, sees the hive demo in action, compares pricing tiers, and has a clear path to sign up
