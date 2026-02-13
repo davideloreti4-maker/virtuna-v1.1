@@ -25,9 +25,9 @@ const features = [
   },
   {
     icon: <Handshake size={28} weight="light" />,
-    title: "Brand deal matching",
+    title: "Referral rewards",
     description:
-      "Get matched with brands that fit your audience and content style. No more cold outreach — deals come to you.",
+      "Earn money by sharing Virtuna with fellow creators. Track referrals, conversions, and payouts from your dashboard.",
   },
   {
     icon: <Target size={28} weight="light" />,

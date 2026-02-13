@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/client";
 
 export type OnboardingStep = "connect" | "goal" | "preview" | "completed";
 export type PrimaryGoal =
-  | "brand_deals"
+  | "monetization"
   | "viral_content"
   | "affiliate_revenue";
 

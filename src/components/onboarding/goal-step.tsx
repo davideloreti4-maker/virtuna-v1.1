@@ -12,9 +12,9 @@ import { cn } from "@/lib/utils";
 
 const GOALS: { id: PrimaryGoal; title: string; description: string; icon: LucideIcon }[] = [
   {
-    id: "brand_deals",
-    title: "Brand Deals",
-    description: "Get matched with brands looking for creators in your niche",
+    id: "monetization",
+    title: "Monetization",
+    description: "Maximize your earnings through referrals and creator tools",
     icon: Briefcase,
   },
   {

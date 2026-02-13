@@ -20,7 +20,7 @@ const features: PricingFeature[] = [
   { name: "Viral prediction score", starter: "5 / month", pro: "Unlimited" },
   { name: "Trend intelligence", starter: "Basic", pro: "Advanced" },
   { name: "Audience insights", starter: false, pro: true },
-  { name: "Brand deal matching", starter: false, pro: true },
+  { name: "Referral rewards", starter: false, pro: true },
   { name: "Content calendar suggestions", starter: false, pro: true },
   { name: "Priority support", starter: false, pro: true },
   { name: "Hive visualization", starter: true, pro: true },
@@ -175,8 +175,8 @@ export function PricingSection() {
 
         {/* Comparison Table */}
         <FadeIn delay={0.2}>
-          <div className="rounded-[12px] border border-white/[0.06] overflow-hidden">
-            <table className="w-full">
+          <div className="rounded-[12px] border border-white/[0.06] overflow-x-auto">
+            <table className="w-full min-w-[480px]">
               <thead>
                 <tr className="border-b border-white/[0.06]">
                   <th className="py-4 px-6 text-left text-sm font-medium text-foreground-muted">

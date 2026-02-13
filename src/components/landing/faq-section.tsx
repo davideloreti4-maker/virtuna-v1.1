@@ -17,12 +17,12 @@ const faqItems = [
   {
     question: "What's included in the free trial?",
     answer:
-      "You get 7 days of full Pro access — unlimited viral predictions, brand deal matching, trend intelligence, and audience insights. No feature limits during the trial. A payment method is required to start, and you can cancel anytime before the trial ends.",
+      "You get 7 days of full Pro access — unlimited viral predictions, trend intelligence, audience insights, and referral rewards. No feature limits during the trial. A payment method is required to start, and you can cancel anytime before the trial ends.",
   },
   {
     question: "What's the difference between Starter and Pro?",
     answer:
-      "Starter gives you essential viral prediction and basic trend data. Pro unlocks unlimited predictions, advanced audience insights, brand deal matching, and priority support. Most serious creators choose Pro for the full suite of monetization tools.",
+      "Starter gives you essential viral prediction and basic trend data. Pro unlocks unlimited predictions, advanced audience insights, referral rewards, and priority support. Most serious creators choose Pro for the full suite of monetization tools.",
   },
   {
     question: "How accurate are the viral predictions?",
@@ -35,9 +35,9 @@ const faqItems = [
       "No. Virtuna works for creators of all sizes — from just starting out to millions of followers. The AI predictions are based on content quality and audience fit, not your current follower count.",
   },
   {
-    question: "How does brand deal matching work?",
+    question: "How does the referral program work?",
     answer:
-      "We analyze your content style, audience demographics, and niche to match you with brands looking for exactly your type of creator. You'll see relevant deals in your dashboard — no cold outreach needed.",
+      "Share your unique referral link with fellow creators. When someone signs up and subscribes through your link, you earn a $10 bonus per conversion. Track clicks, conversions, and earnings from your referral dashboard.",
   },
   {
     question: "Can I cancel anytime?",

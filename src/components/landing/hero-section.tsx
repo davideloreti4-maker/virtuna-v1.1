@@ -40,7 +40,7 @@ export function HeroSection({ className }: HeroSectionProps) {
           <FadeIn delay={0.2}>
             <p className="font-sans text-lg sm:text-xl leading-[30px] font-normal text-white/80 mt-6 max-w-2xl">
               Virtuna uses AI societies to predict how your content will perform,
-              find brand deals that match your niche, and maximize your earnings.
+              spot trending opportunities, and maximize your earnings.
             </p>
           </FadeIn>
 

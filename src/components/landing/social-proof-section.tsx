@@ -14,7 +14,7 @@ const testimonials = [
   },
   {
     quote:
-      "I used to spend hours guessing what brands wanted. Now Virtuna matches me with deals that actually fit my audience. My brand deal income tripled.",
+      "The trend intelligence is a game-changer. I went from posting randomly to catching every wave early. My views tripled in two months.",
     authorName: "Jordan Williams",
     authorTitle: "1.2M followers",
     authorCompany: "TikTok",

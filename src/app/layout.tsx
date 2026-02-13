@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://virtuna.ai"),
   title: "Virtuna | AI Content Intelligence for TikTok Creators",
   description:
-    "Know what will go viral before you post. AI-powered predictions, brand deal matching, and audience insights for TikTok creators.",
+    "Know what will go viral before you post. AI-powered predictions, trend intelligence, and audience insights for TikTok creators.",
   openGraph: {
     title: "Virtuna | AI Content Intelligence for TikTok Creators",
     description:

@@ -66,7 +66,7 @@ export default function WelcomePage() {
           store.setTiktokHandle(profile.tiktok_handle);
         }
         if (profile.primary_goal && !store.primaryGoal) {
-          store.setPrimaryGoal(profile.primary_goal as "brand_deals" | "viral_content" | "affiliate_revenue");
+          store.setPrimaryGoal(profile.primary_goal as "monetization" | "viral_content" | "affiliate_revenue");
         }
       }
     }
