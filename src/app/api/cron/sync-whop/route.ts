@@ -1,15 +1,6 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
 import { mapWhopProductToTier } from "@/lib/whop/config";
-import type { Database } from "@/types/database.types";
-
-function createServiceClient() {
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies: { getAll: () => [], setAll: () => {} } }
-  );
-}
+import { createServiceClient } from "@/lib/supabase/service";
 
 interface WhopMembership {
   id: string;
