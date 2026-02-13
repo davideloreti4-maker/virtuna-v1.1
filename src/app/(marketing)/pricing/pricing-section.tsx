@@ -7,6 +7,8 @@ import { FadeIn } from "@/components/motion";
 import { Check, X } from "@phosphor-icons/react";
 import { CheckoutModal } from "@/components/app/checkout-modal";
 import { createClient } from "@/lib/supabase/client";
+import { useSubscription } from "@/hooks/use-subscription";
+import { hasAccessToTier } from "@/lib/whop/config";
 
 interface PricingFeature {
   name: string;
@@ -38,6 +40,8 @@ function FeatureValue({ value }: { value: boolean | string }) {
 export function PricingSection() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState<"starter" | "pro" | null>(null);
+  const [checkoutSuccess, setCheckoutSuccess] = useState<"starter" | "pro" | null>(null);
+  const { tier, pollForTierChange, isPolling } = useSubscription();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -47,6 +51,45 @@ export function PricingSection() {
     };
     checkAuth();
   }, []);
+
+  function renderCTA(planTier: "starter" | "pro") {
+    if (!isAuthenticated) {
+      return (
+        <Button
+          variant={planTier === "pro" ? "primary" : "secondary"}
+          size="lg"
+          className="w-full"
+          asChild
+        >
+          <Link href={`/auth/signup?plan=${planTier}`}>
+            {planTier === "pro" ? "Start free trial" : "Get started"}
+          </Link>
+        </Button>
+      );
+    }
+    if (hasAccessToTier(tier, planTier)) {
+      return (
+        <Button
+          variant={planTier === "pro" ? "primary" : "secondary"}
+          size="lg"
+          className="w-full"
+          disabled
+        >
+          {tier === planTier ? "Current plan" : "Included"}
+        </Button>
+      );
+    }
+    return (
+      <Button
+        variant={planTier === "pro" ? "primary" : "secondary"}
+        size="lg"
+        className="w-full"
+        onClick={() => setCheckoutPlan(planTier)}
+      >
+        {planTier === "pro" ? "Start free trial" : "Get started"}
+      </Button>
+    );
+  }
 
   return (
     <section className="py-24">
@@ -63,6 +106,22 @@ export function PricingSection() {
             </p>
           </div>
         </FadeIn>
+
+        {/* Post-checkout feedback */}
+        {isPolling && (
+          <div className="mb-8 flex items-center justify-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+            <span className="text-sm text-foreground-secondary">Confirming your subscription...</span>
+          </div>
+        )}
+        {checkoutSuccess && !isPolling && (
+          <div className="mb-8 flex items-center justify-center gap-2 rounded-xl border border-success/20 bg-success/5 px-4 py-3">
+            <Check size={18} className="text-success" />
+            <span className="text-sm text-white">
+              Welcome to {checkoutSuccess === "pro" ? "Pro" : "Starter"}! Your plan is now active.
+            </span>
+          </div>
+        )}
 
         {/* Pricing Cards */}
         <FadeIn delay={0.1}>
@@ -84,20 +143,7 @@ export function PricingSection() {
                   <span className="text-foreground-muted">/month</span>
                 </div>
               </div>
-              {isAuthenticated ? (
-                <Button
-                  variant="secondary"
-                  size="lg"
-                  className="w-full"
-                  onClick={() => setCheckoutPlan("starter")}
-                >
-                  Get started
-                </Button>
-              ) : (
-                <Button variant="secondary" size="lg" className="w-full" asChild>
-                  <Link href="/auth/signup?plan=starter">Get started</Link>
-                </Button>
-              )}
+              {renderCTA("starter")}
             </div>
 
             {/* Pro */}
@@ -122,20 +168,7 @@ export function PricingSection() {
                   <span className="text-foreground-muted">/month</span>
                 </div>
               </div>
-              {isAuthenticated ? (
-                <Button
-                  variant="primary"
-                  size="lg"
-                  className="w-full"
-                  onClick={() => setCheckoutPlan("pro")}
-                >
-                  Start free trial
-                </Button>
-              ) : (
-                <Button variant="primary" size="lg" className="w-full" asChild>
-                  <Link href="/auth/signup?plan=pro">Start free trial</Link>
-                </Button>
-              )}
+              {renderCTA("pro")}
             </div>
           </div>
         </FadeIn>
@@ -189,6 +222,17 @@ export function PricingSection() {
           open={!!checkoutPlan}
           onClose={() => setCheckoutPlan(null)}
           planId={checkoutPlan}
+          onComplete={async () => {
+            const plan = checkoutPlan;
+            setCheckoutPlan(null);
+            if (plan) {
+              const newTier = await pollForTierChange(tier);
+              if (newTier !== tier) {
+                setCheckoutSuccess(plan);
+                setTimeout(() => setCheckoutSuccess(null), 5000);
+              }
+            }
+          }}
         />
       )}
     </section>

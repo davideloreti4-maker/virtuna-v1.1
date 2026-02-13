@@ -1,17 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { CreditCard, ExternalLink, Zap, Calendar, Check } from "lucide-react";
 import { CheckoutModal } from "@/components/app/checkout-modal";
 import type { VirtunaTier } from "@/lib/whop/config";
-
-interface SubscriptionData {
-  tier: VirtunaTier;
-  status: string;
-  whopConnected: boolean;
-  cancelAtPeriodEnd: boolean;
-  currentPeriodEnd: string | null;
-}
+import { useSubscription } from "@/hooks/use-subscription";
 
 const TIER_LABELS: Record<VirtunaTier, string> = {
   free: "Free",
@@ -33,29 +26,53 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function BillingSection() {
-  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
+  const {
+    tier,
+    status,
+    isTrial,
+    trialDaysRemaining,
+    pollForTierChange,
+    isPolling,
+  } = useSubscription();
+
+  const [billingDetails, setBillingDetails] = useState<{
+    whopConnected: boolean;
+    cancelAtPeriodEnd: boolean;
+    currentPeriodEnd: string | null;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkoutPlan, setCheckoutPlan] = useState<"starter" | "pro" | null>(null);
 
-  const fetchSubscription = useCallback(async () => {
-    try {
-      const res = await fetch("/api/subscription");
-      if (res.ok) {
-        setSubscription(await res.json());
-      }
-    } catch {
-      // Fallback to free
-      setSubscription({ tier: "free", status: "active", whopConnected: false, cancelAtPeriodEnd: false, currentPeriodEnd: null });
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    fetch("/api/subscription")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) {
+          setBillingDetails({
+            whopConnected: data.whopConnected ?? false,
+            cancelAtPeriodEnd: data.cancelAtPeriodEnd ?? false,
+            currentPeriodEnd: data.currentPeriodEnd ?? null,
+          });
+        }
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { fetchSubscription(); }, [fetchSubscription]);
-
-  const handleCheckoutComplete = () => {
+  const handleCheckoutComplete = async () => {
+    const plan = checkoutPlan;
     setCheckoutPlan(null);
-    fetchSubscription();
+    if (plan) {
+      await pollForTierChange(tier);
+      const res = await fetch("/api/subscription");
+      if (res.ok) {
+        const data = await res.json();
+        setBillingDetails({
+          whopConnected: data.whopConnected ?? false,
+          cancelAtPeriodEnd: data.cancelAtPeriodEnd ?? false,
+          currentPeriodEnd: data.currentPeriodEnd ?? null,
+        });
+      }
+    }
   };
 
   const formatDate = (dateStr: string) => {
@@ -78,8 +95,6 @@ export function BillingSection() {
     );
   }
 
-  const tier = subscription?.tier ?? "free";
-  const status = subscription?.status ?? "active";
   const nextTier: "starter" | "pro" | null = tier === "free" ? "starter" : tier === "starter" ? "pro" : null;
 
   return (
@@ -109,8 +124,18 @@ export function BillingSection() {
               <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_COLORS[status] || STATUS_COLORS.active}`}>
                 {status === "past_due" ? "Past Due" : status.charAt(0).toUpperCase() + status.slice(1)}
               </span>
+              {isTrial && trialDaysRemaining !== null && (
+                <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                  trialDaysRemaining <= 3 ? "text-warning bg-warning/10" : "text-info bg-info/10"
+                }`}>
+                  {trialDaysRemaining} {trialDaysRemaining === 1 ? "day" : "days"} left in trial
+                </span>
+              )}
+              {isPolling && (
+                <span className="text-xs text-foreground-muted animate-pulse">Updating...</span>
+              )}
             </div>
-            {subscription?.cancelAtPeriodEnd && (
+            {billingDetails?.cancelAtPeriodEnd && (
               <p className="mt-2 text-sm text-amber-400">
                 Your plan will be downgraded at the end of the current period.
               </p>
@@ -127,7 +152,7 @@ export function BillingSection() {
                 Upgrade to {TIER_LABELS[nextTier]}
               </button>
             )}
-            {subscription?.whopConnected && (
+            {billingDetails?.whopConnected && (
               <a
                 href="https://whop.com/hub/memberships"
                 target="_blank"
@@ -168,14 +193,14 @@ export function BillingSection() {
       </div>
 
       {/* Billing cycle */}
-      {subscription?.currentPeriodEnd && (
+      {billingDetails?.currentPeriodEnd && (
         <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-6">
           <div className="flex items-center gap-3">
             <Calendar className="h-5 w-5 text-blue-400" />
             <span className="text-sm font-medium text-white">Next billing date</span>
           </div>
           <p className="mt-2 text-lg text-zinc-300">
-            {formatDate(subscription.currentPeriodEnd)}
+            {formatDate(billingDetails.currentPeriodEnd)}
           </p>
         </div>
       )}
