@@ -2,11 +2,11 @@
 
 ## What This Is
 
-A social media intelligence platform with a Raycast-quality design system foundation. Built as a Next.js application with 36 production components, 100+ design tokens, and comprehensive documentation — enabling rapid, consistent UI development. All design tokens are 1:1 aligned with Raycast.com (except coral #FF7F50 branding).
+A social media intelligence platform for TikTok creators. Helps creators predict viral content, discover brand deals, and earn through an affiliate engine. Built as a Next.js application with a Raycast-quality design system (36 components, 100+ tokens, coral #FF7F50 branding). Two-tier SaaS model (Starter/Pro) with Whop payments integration.
 
 ## Core Value
 
-Raycast-quality design system enabling rapid, consistent UI development with coral (#FF7F50) branding.
+AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
 
 ## Requirements
 
@@ -42,9 +42,26 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 
 ### Active
 
-- [ ] Backend integration for brand deals/affiliate data
-- [ ] Additional page UI milestones
-- [ ] Landing page (v3.1 in worktree)
+- [ ] Landing page with interactive demo (mini hive + fake analysis preview)
+- [ ] Progressive onboarding (niche → TikTok connect → goal) with wow moments per step
+- [ ] Pricing page with two-tier model (Starter ~$19/mo, Pro ~$49/mo)
+- [ ] Whop payments integration (7-day Pro trial with card, auto-subscribe)
+- [ ] Virtuna affiliate/referral program (one-time bonus per referral)
+- [ ] MVP app polish (remove trending page, focus on dashboard + affiliate/earnings)
+- [ ] Contextual tooltips for first-visit guidance
+
+## Current Milestone: v3.0 MVP Launch
+
+**Goal:** Ship a conversion-ready product with landing page, onboarding, payments, and polished MVP app.
+
+**Target features:**
+- Fresh landing page with hero, interactive demo (mini hive + analysis preview), pricing, CTA
+- Progressive onboarding: niche → TikTok connect → goal, each step reveals value
+- Two-tier pricing (Starter/Pro) with Whop embedded payments, 7-day Pro trial
+- Virtuna affiliate program (one-time bonus referrals)
+- MVP app polish: remove trending, focus on dashboard + affiliate/earnings
+- Contextual tooltips for first-visit guidance
+- Mobile-optimized throughout
 
 ### Out of Scope
 
@@ -129,12 +146,14 @@ Raycast-quality design system enabling rapid, consistent UI development with cor
 
 **Shipped:** v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
-**In progress:** None (all milestones on main are shipped)
+**In progress:** v3.0 MVP Launch (worktree at ~/virtuna-mvp-launch/)
+
+**Parallel:** Backend Foundation (worktree at ~/virtuna-backend-foundation/) — prediction engine, data pipeline
 
 **Future milestones:**
-- v3.1 Landing Page (worktree at ~/virtuna-v3.1-landing-page/)
-- Backend integration for brand deals/affiliate data
+- External brand deals marketplace
 - Trending page backend (Apify, AI classification, TanStack Query)
+- Trending page re-launch (when backend ready)
 
 ---
-*Last updated: 2026-02-08 after v2.1 milestone complete*
+*Last updated: 2026-02-13 after v3.0 MVP Launch milestone started*
