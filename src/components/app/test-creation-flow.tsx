@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useTestStore, mapPredictionToTestResult } from "@/stores/test-store";
 import { useSocietyStore } from "@/stores/society-store";
@@ -13,6 +13,8 @@ import { SurveyForm } from "./survey-form";
 import { ResultsPanel } from "./simulation/results-panel";
 import type { TestType } from "@/types/test";
 import type { SurveySubmission } from "./survey-form";
+
+const MINIMUM_THEATER_MS = 4500;
 
 interface TestCreationFlowProps {
   triggerButton: ReactNode;
@@ -35,6 +37,7 @@ export function TestCreationFlow({ triggerButton, className }: TestCreationFlowP
   } = useTestStore();
   const { selectedSocietyId } = useSocietyStore();
   const analyzeMutation = useAnalyze();
+  const isCancelledRef = useRef(false);
   const [submittedContent, setSubmittedContent] = useState("");
 
   const contentTypeMap: Record<string, string> = {
@@ -77,6 +80,8 @@ export function TestCreationFlow({ triggerButton, className }: TestCreationFlowP
   const handleContentSubmit = (content: string) => {
     if (!selectedSocietyId || !currentTestType) return;
 
+    const theatreStart = Date.now();
+    isCancelledRef.current = false;
     setSubmittedContent(content);
     setStatus("simulating");
 
@@ -87,7 +92,16 @@ export function TestCreationFlow({ triggerButton, className }: TestCreationFlowP
         society_id: selectedSocietyId,
       },
       {
-        onSuccess: () => setStatus("viewing-results"),
+        onSuccess: async () => {
+          const elapsed = Date.now() - theatreStart;
+          const remaining = MINIMUM_THEATER_MS - elapsed;
+          if (remaining > 0) {
+            await new Promise((resolve) => setTimeout(resolve, remaining));
+          }
+          if (!isCancelledRef.current) {
+            setStatus("viewing-results");
+          }
+        },
         onError: () => setStatus("filling-form"),
       }
     );
@@ -97,6 +111,8 @@ export function TestCreationFlow({ triggerButton, className }: TestCreationFlowP
   const handleSurveySubmit = (data: SurveySubmission) => {
     if (!selectedSocietyId || !currentTestType) return;
 
+    const theatreStart = Date.now();
+    isCancelledRef.current = false;
     const content = `Q: ${data.question}\nType: ${data.questionType}${
       data.options ? `\nOptions: ${data.options.join(", ")}` : ""
     }`;
@@ -110,7 +126,16 @@ export function TestCreationFlow({ triggerButton, className }: TestCreationFlowP
         society_id: selectedSocietyId,
       },
       {
-        onSuccess: () => setStatus("viewing-results"),
+        onSuccess: async () => {
+          const elapsed = Date.now() - theatreStart;
+          const remaining = MINIMUM_THEATER_MS - elapsed;
+          if (remaining > 0) {
+            await new Promise((resolve) => setTimeout(resolve, remaining));
+          }
+          if (!isCancelledRef.current) {
+            setStatus("viewing-results");
+          }
+        },
         onError: () => setStatus("filling-form"),
       }
     );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FilterPillGroup,
   ContextBar,
@@ -18,6 +18,8 @@ import { useSocietyStore } from "@/stores/society-store";
 import { useAnalyze } from "@/hooks/queries";
 import type { TestType } from "@/types/test";
 import type { SurveySubmission } from "@/components/app/survey-form";
+
+const MINIMUM_THEATER_MS = 4500;
 
 /**
  * DashboardClient - Client component for dashboard page
@@ -42,6 +44,7 @@ export function DashboardClient() {
   const { selectedSocietyId, _isHydrated: societyHydrated, _hydrate: hydratesSociety } = useSocietyStore();
 
   const analyzeMutation = useAnalyze();
+  const isCancelledRef = useRef(false);
 
   // Track submitted content for result mapping
   const [submittedContent, setSubmittedContent] = useState("");
@@ -107,6 +110,8 @@ export function DashboardClient() {
   const handleContentSubmit = (content: string) => {
     if (!selectedSocietyId || !currentTestType) return;
 
+    const theatreStart = Date.now();
+    isCancelledRef.current = false;
     setSubmittedContent(content);
     setStatus("simulating");
 
@@ -117,7 +122,16 @@ export function DashboardClient() {
         society_id: selectedSocietyId,
       },
       {
-        onSuccess: () => setStatus("viewing-results"),
+        onSuccess: async () => {
+          const elapsed = Date.now() - theatreStart;
+          const remaining = MINIMUM_THEATER_MS - elapsed;
+          if (remaining > 0) {
+            await new Promise((resolve) => setTimeout(resolve, remaining));
+          }
+          if (!isCancelledRef.current) {
+            setStatus("viewing-results");
+          }
+        },
         onError: () => setStatus("filling-form"),
       }
     );
@@ -126,6 +140,8 @@ export function DashboardClient() {
   const handleSurveySubmit = (data: SurveySubmission) => {
     if (!selectedSocietyId || !currentTestType) return;
 
+    const theatreStart = Date.now();
+    isCancelledRef.current = false;
     const content = `Q: ${data.question}\nType: ${data.questionType}${
       data.options ? `\nOptions: ${data.options.join(", ")}` : ""
     }`;
@@ -139,7 +155,16 @@ export function DashboardClient() {
         society_id: selectedSocietyId,
       },
       {
-        onSuccess: () => setStatus("viewing-results"),
+        onSuccess: async () => {
+          const elapsed = Date.now() - theatreStart;
+          const remaining = MINIMUM_THEATER_MS - elapsed;
+          if (remaining > 0) {
+            await new Promise((resolve) => setTimeout(resolve, remaining));
+          }
+          if (!isCancelledRef.current) {
+            setStatus("viewing-results");
+          }
+        },
         onError: () => setStatus("filling-form"),
       }
     );
@@ -192,6 +217,7 @@ export function DashboardClient() {
               simulationPhase={analyzeMutation.phase as SimulationPhase | null}
               phaseMessage={analyzeMutation.phaseMessage}
               onCancel={() => {
+                isCancelledRef.current = true;
                 setStatus("filling-form");
                 analyzeMutation.reset();
               }}
