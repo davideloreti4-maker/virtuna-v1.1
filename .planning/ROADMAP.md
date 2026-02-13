@@ -85,12 +85,12 @@ Plans:
   3. Webhook handler processes membership events (valid, invalid, payment_failed) and updates user tier in database
   4. Pro-only features are gated for Starter users (TierGate component shows upgrade prompt)
   5. User sees their subscription tier (badge/label) in app UI, trial countdown during trial, and upgrade prompt near expiry
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: Wire Whop checkout to pricing CTAs + webhook handler verification
-- [ ] 04-02: TierGate component + subscription tier UI (badge, trial countdown, upgrade prompt)
-- [ ] 04-03: Post-checkout tier refresh (user sees updated access without reload)
+- [ ] 04-01-PLAN.md -- Auth-aware pricing CTAs, trial DB migration, webhook+API trial tracking
+- [ ] 04-02-PLAN.md -- useSubscription hook, TierGate, TrialCountdown, UpgradePrompt, sidebar badge
+- [ ] 04-03-PLAN.md -- Post-checkout tier refresh (polling on pricing + billing pages)
 
 ### Phase 5: Referral
 **Goal**: Users can generate a referral link, share it, and earn a one-time bonus when referred users purchase a subscription
