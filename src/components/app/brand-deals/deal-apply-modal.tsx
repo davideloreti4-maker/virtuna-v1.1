@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { InputField } from "@/components/ui/input";
+import { useApplyToDeal } from "@/hooks/queries";
 import type { BrandDeal } from "@/types/brand-deals";
 
 // ---------------------------------------------------------------------------
@@ -45,7 +46,6 @@ interface DealApplyModalProps {
  *   deal={selectedDeal}
  *   open={!!selectedDeal}
  *   onOpenChange={(open) => { if (!open) setSelectedDeal(null); }}
- *   onApplied={handleApplied}
  * />
  * ```
  */
@@ -57,8 +57,9 @@ export function DealApplyModal({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [pitch, setPitch] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  const applyMutation = useApplyToDeal();
 
   if (!deal) return null;
 
@@ -75,24 +76,31 @@ export function DealApplyModal({
     onOpenChange(nextOpen);
   }
 
-  async function handleSubmit(e: React.FormEvent): Promise<void> {
+  function handleSubmit(e: React.FormEvent): void {
     e.preventDefault();
     if (!deal) return;
 
-    setIsSubmitting(true);
-
-    // Simulate API call
-    await new Promise((r) => setTimeout(r, 800));
-
-    setIsSubmitting(false);
-    setSubmitted(true);
-
-    // Auto-close after success animation
-    setTimeout(() => {
-      resetForm();
-      setSubmitted(false);
-      onOpenChange(false);
-    }, 1500);
+    applyMutation.mutate(
+      {
+        dealId: deal.id,
+        applicationNote: pitch,
+      },
+      {
+        onSuccess: () => {
+          setSubmitted(true);
+          // Auto-close after success animation
+          setTimeout(() => {
+            resetForm();
+            setSubmitted(false);
+            onOpenChange(false);
+          }, 1500);
+        },
+        onError: (error) => {
+          // TODO: Show error toast via sonner
+          console.error("Failed to apply:", error.message);
+        },
+      }
+    );
   }
 
   const isValid = name.trim() && email.trim() && pitch.trim();
@@ -166,7 +174,7 @@ export function DealApplyModal({
               <Button
                 variant="primary"
                 type="submit"
-                loading={isSubmitting}
+                loading={applyMutation.isPending}
                 disabled={!isValid}
               >
                 Apply
