@@ -1,8 +1,8 @@
 # Requirements: Virtuna MVP Launch
 
 **Defined:** 2026-02-13
-**Core Value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
-**Parallel milestone:** Backend Foundation (worktree at ~/virtuna-backend-foundation/) — no file conflicts expected, re-run `supabase gen types` after merge.
+**Core Value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate -- and connects them to monetization opportunities.
+**Parallel milestone:** Backend Foundation (worktree at ~/virtuna-backend-foundation/) -- no file conflicts expected, re-run `supabase gen types` after merge.
 
 ## MVP Launch Requirements
 
@@ -30,9 +30,9 @@ Requirements for MVP launch. Each maps to roadmap phases.
 ### Onboarding
 
 - [ ] **ONBR-01**: User is routed to onboarding flow after first signup
-- [ ] **ONBR-02**: TikTok connect step — OAuth flow or manual handle input fallback
+- [ ] **ONBR-02**: TikTok connect step -- OAuth flow or manual handle input fallback
 - [ ] **ONBR-03**: TikTok connect shows personalized hive preview after connection
-- [ ] **ONBR-04**: Goal selection step — user picks primary goal (brand deals / viral content / affiliate revenue)
+- [ ] **ONBR-04**: Goal selection step -- user picks primary goal (brand deals / viral content / affiliate revenue)
 - [ ] **ONBR-05**: Goal selection configures initial dashboard layout/focus
 - [ ] **ONBR-06**: Onboarding state persists across sessions (Supabase, not just client)
 - [ ] **ONBR-07**: User can skip/complete onboarding and access dashboard at any time
@@ -98,63 +98,63 @@ Requirements for MVP launch. Each maps to roadmap phases.
 | Trending page | Removed for MVP, re-launch when backend ready |
 | Real-time chat/messaging | Not core to intelligence platform |
 | Mobile native app | Web-first |
-| Fake analysis preview on landing | Deferred — hive demo is primary interactive element |
-| Niche selection onboarding step | Deferred — 3-step onboarding (TikTok, goal, tooltips) |
+| Fake analysis preview on landing | Deferred -- hive demo is primary interactive element |
+| Niche selection onboarding step | Deferred -- 3-step onboarding (TikTok, goal, tooltips) |
 | Storybook | Showcase sufficient |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUN-01 | — | Pending |
-| FOUN-02 | — | Pending |
-| FOUN-03 | — | Pending |
-| FOUN-04 | — | Pending |
-| FOUN-05 | — | Pending |
-| LAND-01 | — | Pending |
-| LAND-02 | — | Pending |
-| LAND-03 | — | Pending |
-| LAND-04 | — | Pending |
-| LAND-05 | — | Pending |
-| LAND-06 | — | Pending |
-| LAND-07 | — | Pending |
-| LAND-08 | — | Pending |
-| ONBR-01 | — | Pending |
-| ONBR-02 | — | Pending |
-| ONBR-03 | — | Pending |
-| ONBR-04 | — | Pending |
-| ONBR-05 | — | Pending |
-| ONBR-06 | — | Pending |
-| ONBR-07 | — | Pending |
-| ONBR-08 | — | Pending |
-| ONBR-09 | — | Pending |
-| PAY-01 | — | Pending |
-| PAY-02 | — | Pending |
-| PAY-03 | — | Pending |
-| PAY-04 | — | Pending |
-| PAY-05 | — | Pending |
-| PAY-06 | — | Pending |
-| PAY-07 | — | Pending |
-| PAY-08 | — | Pending |
-| PAY-09 | — | Pending |
-| PAY-10 | — | Pending |
-| REF-01 | — | Pending |
-| REF-02 | — | Pending |
-| REF-03 | — | Pending |
-| REF-04 | — | Pending |
-| REF-05 | — | Pending |
-| REF-06 | — | Pending |
-| PLSH-01 | — | Pending |
-| PLSH-02 | — | Pending |
-| PLSH-03 | — | Pending |
-| PLSH-04 | — | Pending |
-| PLSH-05 | — | Pending |
+| FOUN-01 | Phase 1 | Pending |
+| FOUN-02 | Phase 1 | Pending |
+| FOUN-03 | Phase 1 | Pending |
+| FOUN-04 | Phase 1 | Pending |
+| FOUN-05 | Phase 1 | Pending |
+| LAND-01 | Phase 2 | Pending |
+| LAND-02 | Phase 2 | Pending |
+| LAND-03 | Phase 2 | Pending |
+| LAND-04 | Phase 2 | Pending |
+| LAND-05 | Phase 2 | Pending |
+| LAND-06 | Phase 2 | Pending |
+| LAND-07 | Phase 2 | Pending |
+| LAND-08 | Phase 2 | Pending |
+| ONBR-01 | Phase 3 | Pending |
+| ONBR-02 | Phase 3 | Pending |
+| ONBR-03 | Phase 3 | Pending |
+| ONBR-04 | Phase 3 | Pending |
+| ONBR-05 | Phase 3 | Pending |
+| ONBR-06 | Phase 3 | Pending |
+| ONBR-07 | Phase 3 | Pending |
+| ONBR-08 | Phase 3 | Pending |
+| ONBR-09 | Phase 3 | Pending |
+| PAY-01 | Phase 4 | Pending |
+| PAY-02 | Phase 4 | Pending |
+| PAY-03 | Phase 4 | Pending |
+| PAY-04 | Phase 4 | Pending |
+| PAY-05 | Phase 4 | Pending |
+| PAY-06 | Phase 4 | Pending |
+| PAY-07 | Phase 4 | Pending |
+| PAY-08 | Phase 4 | Pending |
+| PAY-09 | Phase 4 | Pending |
+| PAY-10 | Phase 4 | Pending |
+| REF-01 | Phase 5 | Pending |
+| REF-02 | Phase 5 | Pending |
+| REF-03 | Phase 5 | Pending |
+| REF-04 | Phase 5 | Pending |
+| REF-05 | Phase 5 | Pending |
+| REF-06 | Phase 5 | Pending |
+| PLSH-01 | Phase 6 | Pending |
+| PLSH-02 | Phase 6 | Pending |
+| PLSH-03 | Phase 6 | Pending |
+| PLSH-04 | Phase 6 | Pending |
+| PLSH-05 | Phase 6 | Pending |
 
 **Coverage:**
 - MVP Launch requirements: 39 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 39
+- Mapped to phases: 39/39
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-13*
-*Last updated: 2026-02-13 after initial definition*
+*Last updated: 2026-02-13 -- Traceability updated after roadmap creation*
