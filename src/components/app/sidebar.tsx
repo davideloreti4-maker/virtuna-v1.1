@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   Lightbulb,
-  TrendUp,
   Briefcase,
   Plus,
   SlidersHorizontal,
@@ -19,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Text, Caption } from "@/components/ui/typography";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 import { useSidebarStore } from "@/stores/sidebar-store";
 import { useTestStore } from "@/stores/test-store";
 
@@ -27,9 +27,8 @@ import { SidebarNavItem } from "./sidebar-nav-item";
 import { TestHistoryList } from "./test-history-list";
 
 const navItems = [
-  { label: "Content Intelligence", icon: Lightbulb, id: "content-intelligence" },
-  { label: "Trending Feed", icon: TrendUp, id: "trending-feed" },
-  { label: "Brand Deals", icon: Briefcase, id: "brand-deals" },
+  { label: "Dashboard", icon: Lightbulb, id: "dashboard", href: "/dashboard" },
+  { label: "Affiliate & Earnings", icon: Briefcase, id: "brand-deals", href: "/brand-deals" },
 ] as const;
 
 const bottomNavItems = [
@@ -46,14 +45,12 @@ const bottomNavItems = [
  * inset 12px from viewport edges. Reads open/close state from useSidebarStore.
  *
  * Navigation uses SidebarNavItem (Button ghost + Icon + Text).
- * SocietySelector and ViewSelector have been removed.
  */
 export function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const { isOpen, close } = useSidebarStore();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [activeNav, setActiveNav] = useState("content-intelligence");
 
   const reset = useTestStore((s) => s.reset);
   const setStatus = useTestStore((s) => s.setStatus);
@@ -68,7 +65,7 @@ export function Sidebar() {
     viewResult(testId);
   };
 
-  const handleBottomNav = (id: string) => {
+  const handleBottomNav = async (id: string) => {
     switch (id) {
       case "manage-plan":
         router.push("/settings?tab=billing");
@@ -79,9 +76,12 @@ export function Sidebar() {
       case "product-guide":
         window.open("https://docs.societies.io", "_blank");
         break;
-      case "log-out":
-        router.push("/");
+      case "log-out": {
+        const supabase = createClient();
+        await supabase.auth.signOut();
+        router.replace("/");
         break;
+      }
     }
   };
 
@@ -146,31 +146,15 @@ export function Sidebar() {
 
         {/* Navigation items */}
         <nav className="flex flex-col gap-0.5 px-2">
-          {navItems.map((item) => {
-            // Brand Deals has a real route
-            if (item.id === "brand-deals") {
-              return (
-                <SidebarNavItem
-                  key={item.id}
-                  icon={item.icon}
-                  label={item.label}
-                  isActive={pathname.startsWith("/brand-deals")}
-                  onClick={() => router.push("/brand-deals")}
-                  badge={3}
-                />
-              );
-            }
-            // Other items keep existing useState behavior
-            return (
-              <SidebarNavItem
-                key={item.id}
-                icon={item.icon}
-                label={item.label}
-                isActive={activeNav === item.id && !pathname.startsWith("/brand-deals")}
-                onClick={() => setActiveNav(item.id)}
-              />
-            );
-          })}
+          {navItems.map((item) => (
+            <SidebarNavItem
+              key={item.id}
+              icon={item.icon}
+              label={item.label}
+              isActive={pathname.startsWith(item.href)}
+              onClick={() => router.push(item.href)}
+            />
+          ))}
         </nav>
 
         {/* Separator */}
