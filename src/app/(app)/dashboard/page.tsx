@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { DashboardClient } from "./dashboard-client";
 
 export const metadata: Metadata = {
-  title: "Dashboard | Artificial Societies",
+  title: "Dashboard | Virtuna",
   description: "Manage your AI personas and research simulations.",
 };
 

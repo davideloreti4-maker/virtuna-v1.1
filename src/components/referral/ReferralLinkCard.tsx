@@ -8,7 +8,7 @@ interface ReferralLinkCardProps {
 
 export function ReferralLinkCard({ referralLink }: ReferralLinkCardProps) {
   return (
-    <div className="rounded-[12px] border border-white/[0.06] p-6 space-y-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]">
+    <div className="rounded-[12px] border border-white/[0.06] p-4 sm:p-6 space-y-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]">
       <div>
         <h2 className="text-xl font-semibold text-foreground mb-2">
           Your Referral Link

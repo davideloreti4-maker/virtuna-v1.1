@@ -115,7 +115,7 @@ export function DashboardClient() {
         >
           <ContextBar location="Switzerland" />
         </ContextualTooltip>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 overflow-x-auto">
           <FilterPillGroup />
         </div>
       </div>

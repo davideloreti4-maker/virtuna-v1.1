@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   Lightbulb,
-  Briefcase,
   CurrencyDollar,
   Gift,
   Plus,
@@ -20,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Icon } from "@/components/ui/icon";
 import { Text, Caption } from "@/components/ui/typography";
-import { ContextualTooltip } from "@/components/tooltips/contextual-tooltip";
 import { TrialCountdown } from "@/components/trial-countdown";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -34,7 +32,6 @@ import { TestHistoryList } from "./test-history-list";
 
 const navItems = [
   { label: "Dashboard", icon: Lightbulb, id: "dashboard", href: "/dashboard" },
-  { label: "Affiliate & Earnings", icon: Briefcase, id: "brand-deals", href: "/brand-deals" },
   { label: "Referrals", icon: Gift, id: "referrals", href: "/referrals" },
   { label: "Pricing", icon: CurrencyDollar, id: "pricing", href: "/pricing" },
 ] as const;
@@ -83,7 +80,7 @@ export function Sidebar() {
         setFeedbackOpen(true);
         break;
       case "product-guide":
-        window.open("https://docs.societies.io", "_blank");
+        window.open("https://docs.virtuna.ai", "_blank");
         break;
       case "log-out": {
         const supabase = createClient();
@@ -173,20 +170,6 @@ export function Sidebar() {
                 onClick={() => router.push(item.href)}
               />
             );
-
-            if (item.id === "brand-deals") {
-              return (
-                <ContextualTooltip
-                  key={item.id}
-                  id="brand-deals"
-                  title="Affiliate & Earnings"
-                  description="Find brand deals matched to your niche and track affiliate earnings"
-                  position="right"
-                >
-                  {navItem}
-                </ContextualTooltip>
-              );
-            }
 
             return navItem;
           })}

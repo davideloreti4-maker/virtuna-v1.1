@@ -16,7 +16,7 @@ export function ReferralStatsCard({
     clicks > 0 ? ((conversions / clicks) * 100).toFixed(1) : "0.0";
 
   return (
-    <div className="rounded-[12px] border border-white/[0.06] p-6 space-y-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]">
+    <div className="rounded-[12px] border border-white/[0.06] p-4 sm:p-6 space-y-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]">
       <div>
         <h2 className="text-xl font-semibold text-foreground mb-2">
           Performance
@@ -26,7 +26,7 @@ export function ReferralStatsCard({
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="rounded-lg bg-white/[0.02] border border-white/[0.05] p-4">
           <div className="text-2xl font-bold text-foreground">{clicks}</div>
           <div className="text-xs text-muted mt-1">Total Clicks</div>

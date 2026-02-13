@@ -3,7 +3,6 @@ import { create } from "zustand";
 export type TooltipId =
   | "hive-viz"
   | "test-creation"
-  | "brand-deals"
   | "settings";
 
 const STORAGE_KEY = "virtuna-tooltips";

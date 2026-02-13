@@ -5,7 +5,7 @@ import {
   REFERRAL_COOKIE_MAX_AGE,
 } from "@/lib/referral/constants";
 
-const PROTECTED_ROUTES = ["/dashboard", "/settings", "/brand-deals", "/welcome", "/referrals"];
+const PROTECTED_ROUTES = ["/dashboard", "/settings", "/welcome", "/referrals"];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({

@@ -6,7 +6,7 @@ import { ReferralLinkCard } from "@/components/referral/ReferralLinkCard";
 import { ReferralStatsCard } from "@/components/referral/ReferralStatsCard";
 
 export const metadata: Metadata = {
-  title: "Referrals | Artificial Societies",
+  title: "Referrals | Virtuna",
   description: "Share Virtuna and earn rewards for every conversion.",
 };
 
@@ -69,7 +69,7 @@ export default async function ReferralsPage() {
   const referralLink = `${appUrl}/?ref=${referralCode}`;
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
+    <div className="max-w-4xl mx-auto px-4 py-6 sm:p-6 space-y-6">
       <div className="mb-2">
         <h1 className="text-3xl font-bold text-foreground mb-2">
           Referral Program
