@@ -132,6 +132,9 @@ export type Database = {
           instagram_followers: number | null
           instagram_handle: string | null
           niches: string[] | null
+          onboarding_completed_at: string | null
+          onboarding_step: string | null
+          primary_goal: string | null
           tiktok_followers: number | null
           tiktok_handle: string | null
           twitter_followers: number | null
@@ -151,6 +154,9 @@ export type Database = {
           instagram_followers?: number | null
           instagram_handle?: string | null
           niches?: string[] | null
+          onboarding_completed_at?: string | null
+          onboarding_step?: string | null
+          primary_goal?: string | null
           tiktok_followers?: number | null
           tiktok_handle?: string | null
           twitter_followers?: number | null
@@ -170,6 +176,9 @@ export type Database = {
           instagram_followers?: number | null
           instagram_handle?: string | null
           niches?: string[] | null
+          onboarding_completed_at?: string | null
+          onboarding_step?: string | null
+          primary_goal?: string | null
           tiktok_followers?: number | null
           tiktok_handle?: string | null
           twitter_followers?: number | null

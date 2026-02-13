@@ -13,9 +13,8 @@ interface AuthGuardProps {
  * Client-side authentication guard.
  *
  * Verifies the user session with Supabase on mount. Redirects to
- * the landing page if no valid session exists. Middleware handles
- * the primary redirect — this is a client-side fallback for
- * client-navigated routes.
+ * the landing page if no valid session exists. Also checks if
+ * onboarding is complete — redirects to /welcome if not.
  */
 export function AuthGuard({ children }: AuthGuardProps) {
   const [isLoading, setIsLoading] = useState(true);
@@ -30,6 +29,19 @@ export function AuthGuard({ children }: AuthGuardProps) {
         router.replace("/");
         return;
       }
+
+      // Check onboarding completion
+      const { data: profile } = await supabase
+        .from("creator_profiles")
+        .select("onboarding_completed_at")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!profile?.onboarding_completed_at) {
+        router.replace("/welcome");
+        return;
+      }
+
       setIsLoading(false);
     }
 

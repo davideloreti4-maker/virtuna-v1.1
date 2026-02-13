@@ -12,8 +12,10 @@ import {
 } from "@/components/app";
 import { HiveCanvas } from "@/components/hive/HiveCanvas";
 import { generateMockHiveData } from "@/components/hive/hive-mock-data";
+import { ContextualTooltip } from "@/components/tooltips/contextual-tooltip";
 import { useTestStore } from "@/stores/test-store";
 import { useSocietyStore } from "@/stores/society-store";
+import { useTooltipStore } from "@/stores/tooltip-store";
 import type { TestType } from "@/types/test";
 import type { SurveySubmission } from "@/components/app/survey-form";
 
@@ -24,6 +26,7 @@ import type { SurveySubmission } from "@/components/app/survey-form";
 export function DashboardClient() {
   const testStore = useTestStore();
   const societyStore = useSocietyStore();
+  const tooltipStore = useTooltipStore();
 
   const {
     currentStatus,
@@ -49,6 +52,19 @@ export function DashboardClient() {
       societyStore._hydrate();
     }
   }, [societyStore]);
+
+  useEffect(() => {
+    if (!tooltipStore._isHydrated) {
+      tooltipStore._hydrate();
+    }
+  }, [tooltipStore]);
+
+  // Mark onboarding as complete for tooltip visibility
+  useEffect(() => {
+    if (tooltipStore._isHydrated && !tooltipStore.onboardingComplete) {
+      tooltipStore.setOnboardingComplete(true);
+    }
+  }, [tooltipStore]);
 
   // Handlers
   const handleCloseSelector = () => {
@@ -91,7 +107,14 @@ export function DashboardClient() {
     <div className="relative flex h-full flex-col bg-background">
       {/* Top bar with context and filters */}
       <div className="flex items-center justify-between px-6 py-4">
-        <ContextBar location="Switzerland" />
+        <ContextualTooltip
+          id="test-creation"
+          title="Run your first test"
+          description="Create a test to see how AI audiences react to your content ideas"
+          position="bottom"
+        >
+          <ContextBar location="Switzerland" />
+        </ContextualTooltip>
         <div className="flex items-center gap-3">
           <FilterPillGroup />
         </div>
@@ -99,7 +122,14 @@ export function DashboardClient() {
 
       {/* Hive network visualization background */}
       <div className="absolute inset-0 top-14">
-        <HiveCanvas data={hiveData} className="h-full w-full" />
+        <ContextualTooltip
+          id="hive-viz"
+          title="Your AI Society"
+          description="This network shows AI personas interacting — watch how they respond to your content"
+          position="bottom"
+        >
+          <HiveCanvas data={hiveData} className="h-full w-full" />
+        </ContextualTooltip>
       </div>
 
       {/* Floating content area at bottom center - above network */}

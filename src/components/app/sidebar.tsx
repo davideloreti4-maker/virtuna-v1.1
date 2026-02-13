@@ -18,6 +18,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Text, Caption } from "@/components/ui/typography";
+import { ContextualTooltip } from "@/components/tooltips/contextual-tooltip";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useSidebarStore } from "@/stores/sidebar-store";
@@ -148,15 +149,33 @@ export function Sidebar() {
 
         {/* Navigation items */}
         <nav className="flex flex-col gap-0.5 px-2">
-          {navItems.map((item) => (
-            <SidebarNavItem
-              key={item.id}
-              icon={item.icon}
-              label={item.label}
-              isActive={pathname.startsWith(item.href)}
-              onClick={() => router.push(item.href)}
-            />
-          ))}
+          {navItems.map((item) => {
+            const navItem = (
+              <SidebarNavItem
+                key={item.id}
+                icon={item.icon}
+                label={item.label}
+                isActive={pathname.startsWith(item.href)}
+                onClick={() => router.push(item.href)}
+              />
+            );
+
+            if (item.id === "brand-deals") {
+              return (
+                <ContextualTooltip
+                  key={item.id}
+                  id="brand-deals"
+                  title="Affiliate & Earnings"
+                  description="Find brand deals matched to your niche and track affiliate earnings"
+                  position="right"
+                >
+                  {navItem}
+                </ContextualTooltip>
+              );
+            }
+
+            return navItem;
+          })}
         </nav>
 
         {/* Separator */}
