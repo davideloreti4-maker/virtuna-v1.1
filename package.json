@@ -15,6 +15,7 @@
     "extraction:gifs": "npx tsx extraction/scripts/generate-gifs.ts"
   },
   "dependencies": {
+    "@google/genai": "^1.41.0",
     "@phosphor-icons/react": "^2.1.10",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -30,6 +31,7 @@
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.93.1",
     "@whop/checkout": "^0.0.52",
+    "apify-client": "^2.22.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "d3-hierarchy": "^3.1.2",
@@ -38,6 +40,7 @@
     "lucide-react": "^0.563.0",
     "motion": "^12.29.2",
     "next": "16.1.5",
+    "openai": "^6.21.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-intersection-observer": "^10.0.2",

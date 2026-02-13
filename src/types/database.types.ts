@@ -390,7 +390,6 @@ export type Database = {
         }
         Relationships: []
       }
-    }
       analysis_results: {
         Row: {
           id: string
@@ -741,6 +740,7 @@ export type Database = {
         }
         Relationships: []
       }
+    }
     Views: {
       [_ in never]: never
     }

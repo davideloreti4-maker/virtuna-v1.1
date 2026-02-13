@@ -1,0 +1,20 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/scrape-trending",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/calculate-trends",
+      "schedule": "30 * * * *"
+    },
+    {
+      "path": "/api/cron/validate-rules",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/sync-whop",
+      "schedule": "0 0 * * 0"
+    }
+  ]
+}
