@@ -11,24 +11,24 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Milestone:** Backend Foundation
 **Phase:** 5.1 (inserted -- fix integration gaps from Phases 5-6)
-**Plan:** 1 of 4 in current phase
+**Plan:** 2 of 4 in current phase
 **Status:** Executing
-**Last activity:** 2026-02-13 -- Completed 05.1-01 (mappers + analysis history)
+**Last activity:** 2026-02-13 -- Completed 05.1-02 (trending page wiring)
 
-Progress: [██████████████__] 89%
+Progress: [███████████████_] 93%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
+- Total plans completed: 2
 - Average duration: 2min
-- Total execution time: 0.03 hours
+- Total execution time: 0.07 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 5.1 | 1 | 2min | 2min |
+| 5.1 | 2 | 4min | 2min |
 
 *Updated after each plan completion*
 
@@ -43,6 +43,10 @@ Progress: [██████████████__] 89%
 - [05.1-01]: Placeholder thumbnails/avatars use picsum.photos seeded by ID for deterministic output
 - [05.1-01]: Analysis history returns flat JSON array (no pagination) for MVP simplicity
 - [05.1-01]: DB-to-UI mapper pattern established in src/lib/mappers/ with barrel export
+- [05.1-02]: Saved tab keeps mock getAllVideos() temporarily until bookmark API exists
+- [05.1-02]: Modal prev/next navigation disabled temporarily -- single video viewing still works
+- [05.1-02]: Stats adapter done inline (not separate mapper) for one-off API-to-UI shape transform
+- [05.1-02]: Component-owned loading pattern -- VideoGrid shows its own skeleton via TanStack Query isLoading
 
 ### Roadmap Evolution
 
@@ -61,10 +65,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 05.1-01-PLAN.md (mappers + analysis history)
+Stopped at: Completed 05.1-02-PLAN.md (trending page wiring)
 Resume file: None
-Next: Execute 05.1-02-PLAN.md (Wave 2 - trending page wiring)
+Next: Execute 05.1-03-PLAN.md (Wave 2 - deals page wiring)
 
 ---
 *State created: 2026-02-13*
-*Last updated: 2026-02-13 -- Completed 05.1-01*
+*Last updated: 2026-02-13 -- Completed 05.1-02*
