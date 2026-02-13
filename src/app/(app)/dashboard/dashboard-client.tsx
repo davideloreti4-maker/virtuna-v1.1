@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   FilterPillGroup,
   ContextBar,
@@ -12,43 +12,68 @@ import {
 } from "@/components/app";
 import { HiveCanvas } from "@/components/hive/HiveCanvas";
 import { generateMockHiveData } from "@/components/hive/hive-mock-data";
-import { useTestStore } from "@/stores/test-store";
+import { useTestStore, mapPredictionToTestResult } from "@/stores/test-store";
+import type { SimulationPhase } from "@/stores/test-store";
 import { useSocietyStore } from "@/stores/society-store";
+import { useAnalyze } from "@/hooks/queries";
 import type { TestType } from "@/types/test";
 import type { SurveySubmission } from "@/components/app/survey-form";
 
 /**
  * DashboardClient - Client component for dashboard page
- * Handles hydration and test creation flow
+ * Handles hydration and test creation flow.
+ *
+ * Analysis submission is powered by the useAnalyze() TanStack Query mutation,
+ * which handles SSE streaming and phase tracking. The Zustand test-store
+ * manages only the UI flow state (currentStatus, currentTestType, reset).
  */
 export function DashboardClient() {
-  const testStore = useTestStore();
-  const societyStore = useSocietyStore();
-
   const {
     currentStatus,
     currentTestType,
-    currentResult,
     setStatus,
     setTestType,
-    submitTest,
+    setCurrentResult,
     reset,
-  } = testStore;
+    _isHydrated,
+    _hydrate,
+  } = useTestStore();
 
-  const { selectedSocietyId } = societyStore;
+  const { selectedSocietyId, _isHydrated: societyHydrated, _hydrate: hydratesSociety } = useSocietyStore();
+
+  const analyzeMutation = useAnalyze();
+
+  // Track submitted content for result mapping
+  const [submittedContent, setSubmittedContent] = useState("");
+
+  // Derive TestResult from mutation data for backward-compatible display
+  const currentResult = useMemo(() => {
+    if (!analyzeMutation.data || !currentTestType) return null;
+    return mapPredictionToTestResult(
+      analyzeMutation.data,
+      submittedContent,
+      currentTestType,
+      selectedSocietyId ?? ""
+    );
+  }, [analyzeMutation.data, currentTestType, selectedSocietyId, submittedContent]);
+
+  // Sync derived result to store for components that still read it
+  useEffect(() => {
+    setCurrentResult(currentResult);
+  }, [currentResult, setCurrentResult]);
 
   // Hydrate stores on mount
   useEffect(() => {
-    if (!testStore._isHydrated) {
-      testStore._hydrate();
+    if (!_isHydrated) {
+      _hydrate();
     }
-  }, [testStore]);
+  }, [_isHydrated, _hydrate]);
 
   useEffect(() => {
-    if (!societyStore._isHydrated) {
-      societyStore._hydrate();
+    if (!societyHydrated) {
+      hydratesSociety();
     }
-  }, [societyStore]);
+  }, [societyHydrated, hydratesSociety]);
 
   // Handlers
   const handleCloseSelector = () => {
@@ -65,23 +90,65 @@ export function DashboardClient() {
     setStatus("selecting-type");
   };
 
+  const contentTypeMap: Record<string, string> = {
+    "tiktok-script": "video",
+    "instagram-post": "reel",
+    "x-post": "post",
+    "linkedin-post": "post",
+    "email-subject-line": "post",
+    "email": "post",
+    "article": "post",
+    "website-content": "post",
+    "advertisement": "post",
+    "product-proposition": "post",
+    "survey": "post",
+  };
+
   const handleContentSubmit = (content: string) => {
-    if (selectedSocietyId) {
-      submitTest(content, selectedSocietyId);
-    }
+    if (!selectedSocietyId || !currentTestType) return;
+
+    setSubmittedContent(content);
+    setStatus("simulating");
+
+    analyzeMutation.mutate(
+      {
+        content_text: content,
+        content_type: contentTypeMap[currentTestType] ?? "post",
+        society_id: selectedSocietyId,
+      },
+      {
+        onSuccess: () => setStatus("viewing-results"),
+        onError: () => setStatus("filling-form"),
+      }
+    );
   };
 
   const handleSurveySubmit = (data: SurveySubmission) => {
-    if (selectedSocietyId) {
-      const content = `Q: ${data.question}\nType: ${data.questionType}${
-        data.options ? `\nOptions: ${data.options.join(", ")}` : ""
-      }`;
-      submitTest(content, selectedSocietyId);
-    }
+    if (!selectedSocietyId || !currentTestType) return;
+
+    const content = `Q: ${data.question}\nType: ${data.questionType}${
+      data.options ? `\nOptions: ${data.options.join(", ")}` : ""
+    }`;
+    setSubmittedContent(content);
+    setStatus("simulating");
+
+    analyzeMutation.mutate(
+      {
+        content_text: content,
+        content_type: contentTypeMap[currentTestType] ?? "post",
+        society_id: selectedSocietyId,
+      },
+      {
+        onSuccess: () => setStatus("viewing-results"),
+        onError: () => setStatus("filling-form"),
+      }
+    );
   };
 
   const handleRunAnother = () => {
     reset();
+    analyzeMutation.reset();
+    setSubmittedContent("");
   };
 
   // Stable mock data for hive visualization (seed ensures deterministic layout)
@@ -121,7 +188,14 @@ export function DashboardClient() {
               />
             )
           ) : currentStatus === "simulating" ? (
-            <LoadingPhases />
+            <LoadingPhases
+              simulationPhase={analyzeMutation.phase as SimulationPhase | null}
+              phaseMessage={analyzeMutation.phaseMessage}
+              onCancel={() => {
+                setStatus("filling-form");
+                analyzeMutation.reset();
+              }}
+            />
           ) : currentStatus === "viewing-results" && currentResult ? (
             <ResultsPanel
               result={currentResult}

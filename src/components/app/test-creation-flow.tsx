@@ -1,9 +1,10 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { useTestStore } from "@/stores/test-store";
+import { useTestStore, mapPredictionToTestResult } from "@/stores/test-store";
 import { useSocietyStore } from "@/stores/society-store";
+import { useAnalyze } from "@/hooks/queries";
 import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/typography";
 import { TestTypeSelector } from "./test-type-selector";
@@ -21,18 +22,45 @@ interface TestCreationFlowProps {
 /**
  * TestCreationFlow orchestrator
  * Manages the full flow: type selector -> form -> loading -> results
+ *
+ * Wired to useAnalyze() mutation for SSE streaming analysis.
  */
 export function TestCreationFlow({ triggerButton, className }: TestCreationFlowProps) {
   const {
     currentStatus,
     currentTestType,
-    currentResult,
     setStatus,
     setTestType,
-    submitTest,
     reset,
   } = useTestStore();
   const { selectedSocietyId } = useSocietyStore();
+  const analyzeMutation = useAnalyze();
+  const [submittedContent, setSubmittedContent] = useState("");
+
+  const contentTypeMap: Record<string, string> = {
+    "tiktok-script": "video",
+    "instagram-post": "reel",
+    "x-post": "post",
+    "linkedin-post": "post",
+    "email-subject-line": "post",
+    "email": "post",
+    "article": "post",
+    "website-content": "post",
+    "advertisement": "post",
+    "product-proposition": "post",
+    "survey": "post",
+  };
+
+  // Derive result from mutation data
+  const currentResult = useMemo(() => {
+    if (!analyzeMutation.data || !currentTestType) return null;
+    return mapPredictionToTestResult(
+      analyzeMutation.data,
+      submittedContent,
+      currentTestType,
+      selectedSocietyId ?? ""
+    );
+  }, [analyzeMutation.data, currentTestType, selectedSocietyId, submittedContent]);
 
   // Handle trigger button click
   const handleTriggerClick = () => {
@@ -47,20 +75,45 @@ export function TestCreationFlow({ triggerButton, className }: TestCreationFlowP
 
   // Handle form submission (content-based forms)
   const handleContentSubmit = (content: string) => {
-    if (selectedSocietyId) {
-      submitTest(content, selectedSocietyId);
-    }
+    if (!selectedSocietyId || !currentTestType) return;
+
+    setSubmittedContent(content);
+    setStatus("simulating");
+
+    analyzeMutation.mutate(
+      {
+        content_text: content,
+        content_type: contentTypeMap[currentTestType] ?? "post",
+        society_id: selectedSocietyId,
+      },
+      {
+        onSuccess: () => setStatus("viewing-results"),
+        onError: () => setStatus("filling-form"),
+      }
+    );
   };
 
   // Handle survey submission
   const handleSurveySubmit = (data: SurveySubmission) => {
-    if (selectedSocietyId) {
-      // Convert survey data to content string
-      const content = `Q: ${data.question}\nType: ${data.questionType}${
-        data.options ? `\nOptions: ${data.options.join(", ")}` : ""
-      }`;
-      submitTest(content, selectedSocietyId);
-    }
+    if (!selectedSocietyId || !currentTestType) return;
+
+    const content = `Q: ${data.question}\nType: ${data.questionType}${
+      data.options ? `\nOptions: ${data.options.join(", ")}` : ""
+    }`;
+    setSubmittedContent(content);
+    setStatus("simulating");
+
+    analyzeMutation.mutate(
+      {
+        content_text: content,
+        content_type: contentTypeMap[currentTestType] ?? "post",
+        society_id: selectedSocietyId,
+      },
+      {
+        onSuccess: () => setStatus("viewing-results"),
+        onError: () => setStatus("filling-form"),
+      }
+    );
   };
 
   // Handle "change type" from forms
@@ -71,6 +124,8 @@ export function TestCreationFlow({ triggerButton, className }: TestCreationFlowP
   // Handle "run another test"
   const handleRunAnother = () => {
     reset();
+    analyzeMutation.reset();
+    setSubmittedContent("");
   };
 
   // Close type selector
