@@ -27,8 +27,6 @@ interface DealApplyModalProps {
   open: boolean;
   /** Callback to change open state */
   onOpenChange: (open: boolean) => void;
-  /** Callback when application is submitted successfully */
-  onApplied: (dealId: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -55,7 +53,6 @@ export function DealApplyModal({
   deal,
   open,
   onOpenChange,
-  onApplied,
 }: DealApplyModalProps): React.JSX.Element | null {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -82,7 +79,6 @@ export function DealApplyModal({
     e.preventDefault();
     if (!deal) return;
 
-    const dealId = deal.id;
     setIsSubmitting(true);
 
     // Simulate API call
@@ -93,7 +89,6 @@ export function DealApplyModal({
 
     // Auto-close after success animation
     setTimeout(() => {
-      onApplied(dealId);
       resetForm();
       setSubmitted(false);
       onOpenChange(false);

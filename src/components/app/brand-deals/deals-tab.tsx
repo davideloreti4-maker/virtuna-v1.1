@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 
 import { useDebouncedCallback } from "@/hooks/use-debounce";
-import { MOCK_DEALS } from "@/lib/mock-brand-deals";
+import { useDeals } from "@/hooks/queries";
+import { mapDealRowToUI } from "@/lib/mappers";
 import type { BrandDeal, BrandDealCategory } from "@/types/brand-deals";
 
 import { DealApplyModal } from "./deal-apply-modal";
@@ -18,10 +19,8 @@ import { NewThisWeekRow } from "./new-this-week-row";
 // ---------------------------------------------------------------------------
 
 interface DealsTabProps {
-  /** Set of deal IDs the user has applied to (lifted to parent for tab persistence) */
+  /** Set of deal IDs the user has applied to (derived from useDealEnrollments in parent) */
   appliedDeals: Set<string>;
-  /** Callback when user successfully applies to a deal */
-  onApplyDeal: (dealId: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -42,23 +41,23 @@ interface DealsTabProps {
  *
  * @example
  * ```tsx
- * <DealsTab appliedDeals={appliedDeals} onApplyDeal={handleApply} />
+ * <DealsTab appliedDeals={appliedDeals} />
  * ```
  */
 export function DealsTab({
   appliedDeals,
-  onApplyDeal,
 }: DealsTabProps): React.JSX.Element {
-  const [isLoading, setIsLoading] = useState(true);
+  const { data, isLoading } = useDeals({ status: "active" });
   const [activeCategory, setActiveCategory] = useState<BrandDealCategory | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [applyingDeal, setApplyingDeal] = useState<BrandDeal | null>(null);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
+  // Flatten paginated pages and map DB rows to UI types
+  const allDeals = useMemo(
+    () => data?.pages.flatMap((page) => page.data.map(mapDealRowToUI)) ?? [],
+    [data]
+  );
 
   // Debounce search filtering at 300ms
   const debouncedSetSearch = useDebouncedCallback(
@@ -73,7 +72,7 @@ export function DealsTab({
 
   // Filtered deals based on category + debounced search
   const filteredDeals = useMemo(() => {
-    return MOCK_DEALS.filter((deal) => {
+    return allDeals.filter((deal) => {
       const matchesCategory =
         activeCategory === "all" || deal.category === activeCategory;
       const matchesSearch = deal.brandName
@@ -81,10 +80,10 @@ export function DealsTab({
         .includes(debouncedSearch.toLowerCase());
       return matchesCategory && matchesSearch;
     });
-  }, [activeCategory, debouncedSearch]);
+  }, [allDeals, activeCategory, debouncedSearch]);
 
-  // New deals for the featured row (static, computed once)
-  const newDeals = useMemo(() => MOCK_DEALS.filter((d) => d.isNew), []);
+  // New deals for the featured row
+  const newDeals = useMemo(() => allDeals.filter((d) => d.isNew), [allDeals]);
 
   // Reset all filters
   function handleClearFilters(): void {
@@ -96,11 +95,6 @@ export function DealsTab({
   // Apply flow
   function handleApplyClick(deal: BrandDeal): void {
     setApplyingDeal(deal);
-  }
-
-  function handleApplied(dealId: string): void {
-    onApplyDeal(dealId);
-    setApplyingDeal(null);
   }
 
   if (isLoading) return <DealsTabSkeleton />;
@@ -147,7 +141,6 @@ export function DealsTab({
         onOpenChange={(nextOpen) => {
           if (!nextOpen) setApplyingDeal(null);
         }}
-        onApplied={handleApplied}
       />
     </div>
   );
