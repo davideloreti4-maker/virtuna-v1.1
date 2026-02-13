@@ -11,24 +11,24 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Milestone:** Backend Foundation
 **Phase:** 5.1 (inserted -- fix integration gaps from Phases 5-6)
-**Plan:** 0 of 1 in current phase
-**Status:** Ready to plan
-**Last activity:** 2026-02-13 -- Phases 1-7 executed via team, audit found Phase 5-6 wiring gaps
+**Plan:** 1 of 4 in current phase
+**Status:** Executing
+**Last activity:** 2026-02-13 -- Completed 05.1-01 (mappers + analysis history)
 
-Progress: [██████████████__] 87%
+Progress: [██████████████__] 89%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
-- Average duration: -
-- Total execution time: 0 hours
+- Total plans completed: 1
+- Average duration: 2min
+- Total execution time: 0.03 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 5.1 | 1 | 2min | 2min |
 
 *Updated after each plan completion*
 
@@ -40,6 +40,9 @@ Progress: [██████████████__] 87%
 - [Roadmap]: All backend logic in Next.js API routes (no Supabase Edge Functions)
 - [Roadmap]: TanStack Query for server state, Zustand unchanged for client state
 - [Roadmap]: Gemini 2.5 Flash-Lite (not deprecated 2.0 Flash) from day one
+- [05.1-01]: Placeholder thumbnails/avatars use picsum.photos seeded by ID for deterministic output
+- [05.1-01]: Analysis history returns flat JSON array (no pagination) for MVP simplicity
+- [05.1-01]: DB-to-UI mapper pattern established in src/lib/mappers/ with barrel export
 
 ### Roadmap Evolution
 
@@ -58,10 +61,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Roadmap created, ready to plan Phase 1
+Stopped at: Completed 05.1-01-PLAN.md (mappers + analysis history)
 Resume file: None
-Next: `/gsd:plan-phase 1`
+Next: Execute 05.1-02-PLAN.md (Wave 2 - trending page wiring)
 
 ---
 *State created: 2026-02-13*
-*Last updated: 2026-02-13 -- Roadmap created*
+*Last updated: 2026-02-13 -- Completed 05.1-01*
