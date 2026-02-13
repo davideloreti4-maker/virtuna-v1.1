@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 5: Client Integration** - TanStack Query setup, query hooks for all pages, mutation hooks, cache invalidation
 - [ ] **Phase 6: Intelligence UX** - Simulation theater with real SSE events, results card with real data, analysis history migration, outcome tracking UI
 - [ ] **Phase 7: ML Scaffolding and Hardening** - ML retrain stub, adaptive weight fields, circuit breaker, vercel.json cron config, environment guardrails
-- [ ] **Phase 8: UX Gap Closure** - 4.5s theater minimum duration, SSE phase event timing, analyze button routing fix (GAP CLOSURE)
+- [x] **Phase 8: UX Gap Closure** - 4.5s theater minimum duration, SSE phase event timing, analyze button routing fix (GAP CLOSURE)
 
 ## Phase Details
 
@@ -175,7 +175,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 08-01: Theater minimum duration, SSE phase timing, phaseMessage wiring, and analyze button routing fix
+- [x] 08-01: Theater minimum duration, SSE phase timing, phaseMessage wiring, and analyze button routing fix
 
 ## Execution Waves
 
@@ -219,6 +219,6 @@ Wave-parallel execution: 1 > [2, 3] > [4, 7] > 5 > 6
 | 5.1 Wire TanStack Query Hooks | 4/4 | ✓ Complete | 2026-02-13 |
 | 6. Intelligence UX | 3/3 | ✓ Complete | 2026-02-13 |
 | 7. ML Scaffolding and Hardening | 1/1 | ✓ Complete | 2026-02-13 |
-| 8. UX Gap Closure | 0/1 | Pending | — |
+| 8. UX Gap Closure | 1/1 | ✓ Complete | 2026-02-13 |
 
 **Total plans: 21 (16 original + 4 inserted + 1 gap closure)**
