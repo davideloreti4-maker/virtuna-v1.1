@@ -10,11 +10,13 @@ interface AuthGuardProps {
 }
 
 /**
- * Client-side authentication guard.
+ * Client-side authentication guard and loading state handler.
  *
- * Verifies the user session with Supabase on mount. Redirects to
- * the landing page if no valid session exists. Also checks if
- * onboarding is complete — redirects to /welcome if not.
+ * The middleware handles primary auth enforcement (redirecting unauth users
+ * to /login). This component is the client-side safety net that:
+ * 1. Shows the full-page skeleton while checking session
+ * 2. Handles edge cases where middleware might not catch (e.g., session expires mid-use)
+ * 3. Subscribes to auth state changes for real-time session monitoring
  */
 export function AuthGuard({ children }: AuthGuardProps) {
   const [isLoading, setIsLoading] = useState(true);
@@ -23,33 +25,24 @@ export function AuthGuard({ children }: AuthGuardProps) {
   useEffect(() => {
     const supabase = createClient();
 
-    async function checkAuth() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.replace("/");
-        return;
-      }
+    async function checkSession() {
+      const { data: { session } } = await supabase.auth.getSession();
 
-      // Check onboarding completion
-      const { data: profile } = await supabase
-        .from("creator_profiles")
-        .select("onboarding_completed_at")
-        .eq("user_id", user.id)
-        .single();
-
-      if (!profile?.onboarding_completed_at) {
-        router.replace("/welcome");
+      if (!session) {
+        // Edge case: middleware should have caught this, but handle gracefully
+        router.replace("/login");
         return;
       }
 
       setIsLoading(false);
     }
 
-    checkAuth();
+    checkSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        if (!session) {
+      (event, session) => {
+        if (event === "SIGNED_OUT" || !session) {
+          // Session expired or user signed out — redirect to landing page
           router.replace("/");
         }
       }
