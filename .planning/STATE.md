@@ -5,21 +5,21 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate -- and connects them to monetization opportunities.
-**Current focus:** Platform Refinement -- Phase 3: Trending Page
+**Current focus:** Platform Refinement -- Phase 4: Settings
 
 ## Current Position
 
-Phase: 3 of 7 (Trending Page) -- COMPLETE
-Plan: 1 of 1 in current phase
-Status: Phase Complete
-Last activity: 2026-02-16 -- Completed 03-01 Trending Page Redesign
+Phase: 4 of 7 (Settings) -- IN PROGRESS
+Plan: 1 of 2 in current phase
+Status: Plan 04-01 Complete
+Last activity: 2026-02-16 -- Completed 04-01 Settings Supabase Integration
 
-Progress: [#####.....] 36%
+Progress: [######....] 43%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
+- Total plans completed: 6
 - Average duration: 4min
 - Total execution time: 0.3 hours
 
@@ -30,6 +30,7 @@ Progress: [#####.....] 36%
 | 01-sidebar-navigation | 2 | 12min | 6min |
 | 02-landing-page | 2 | 4min | 2min |
 | 03-trending-page | 1 | 2min | 2min |
+| 04-settings | 1 | 2min | 2min |
 
 ## Shipped Milestones
 
@@ -61,6 +62,10 @@ Progress: [#####.....] 36%
 - [03-01] Controlled CategoryTabs with useState for active category instead of uncontrolled defaultValue
 - [03-01] VideoCard as internal component (not exported) since only used on trending page
 - [03-01] Gradient thumbnails per-card using Tailwind bg-gradient classes for visual variety
+- [04-01] Removed "Current password" field -- Supabase client-side updateUser doesn't verify it
+- [04-01] Delete account signs out + redirects (server-side deletion needs API route later)
+- [04-01] Company/role stay in localStorage (no DB columns), name/email from Supabase
+- [04-01] Email change disabled with "coming soon" label (requires verification flow)
 
 ### Pending Todos
 
@@ -70,7 +75,7 @@ None yet.
 
 - Dashboard test flow is 100% mock (localStorage, randomized templates)
 - ~~Trending page is placeholder only~~ (resolved in 03-01)
-- Settings profile/account/team handlers are console.log stubs
+- ~~Settings profile/account handlers are console.log stubs~~ (resolved in 04-01, team still mock)
 - Brand deals page redirects to referrals (dead route)
 - ~~"Content Intelligence" sidebar item duplicates "Dashboard" link~~ (resolved in 01-01)
 - Filter pills on dashboard have no connected filtering logic
@@ -79,9 +84,9 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 03-01-PLAN.md (Trending Page Redesign) -- Phase 3 complete
+Stopped at: Completed 04-01-PLAN.md (Settings Supabase Integration)
 Resume file: None
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Completed 03-01 (Trending Page Redesign)*
+*Last updated: 2026-02-16 -- Completed 04-01 (Settings Supabase Integration)*
