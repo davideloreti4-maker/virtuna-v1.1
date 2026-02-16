@@ -1,35 +1,72 @@
-# Project State -- Virtuna
+# Project State -- Virtuna Competitors Tool
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-02-16)
 
-**Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate -- and connects them to monetization opportunities.
-**Current focus:** Competitors Tool -- full competitor intelligence tracker
+**Core value:** AI-powered competitor intelligence that shows TikTok creators exactly what their competitors do, why it works, and how to outperform them.
+**Current focus:** Phase 1 -- Data Foundation
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: --
-Status: Defining requirements
-Last activity: 2026-02-16 -- Milestone Competitors Tool started
+Phase: 1 of 7 (Data Foundation)
+Plan: 0 of 2 in current phase
+Status: Ready to plan
+Last activity: 2026-02-16 -- Roadmap created (7 phases, 13 plans, 41 requirements)
 
-## Shipped Milestones
+Progress: [░░░░░░░░░░] 0%
 
-- MVP Launch (2026-02-16) -- 8 phases, 18 plans, 39 requirements
-- v2.1 Dashboard Rebuild (2026-02-08) -- 5 phases, 20 plans, 51 requirements
-- v2.3.5 Design Token Alignment (2026-02-08) -- 3 phases, 8 plans, 37 requirements
-- v2.3 Brand Deals & Affiliate Page (2026-02-06) -- 5 phases, 12 plans, 43 requirements
-- v2.2 Trending Page UI (2026-02-06) -- 3 phases, 10 plans, 30 requirements
-- v2.0 Design System Foundation (2026-02-05) -- 6 phases, 35 plans, 125 requirements
+## Performance Metrics
+
+**Velocity:**
+- Total plans completed: 0
+- Average duration: --
+- Total execution time: 0 hours
+
+**By Phase:**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| - | - | - | - |
+
+**Recent Trend:**
+- Last 5 plans: --
+- Trend: --
+
+*Updated after each plan completion*
+
+## Accumulated Context
+
+### Decisions
+
+Decisions are logged in PROJECT.md Key Decisions table.
+Recent decisions affecting current work:
+
+- Zero new npm packages -- reuse existing Apify client, Recharts, Zustand, Zod
+- Plain PostgreSQL for time-series (TimescaleDB deprecated on Supabase PG17)
+- Apify Clockworks actors for TikTok scraping, abstract behind provider interface
+- Webhook-driven async scraping pattern from backend-foundation
+- RLS must use `(select auth.uid())` pattern for performance
+- Vercel cron for scheduled re-scraping
+- AI insights via DeepSeek/Gemini (leverages existing prediction engine infrastructure)
+
+### Pending Todos
+
+None yet.
+
+### Blockers/Concerns
+
+- Backend-foundation merge timing: if not merged, apify-client and @tanstack/react-query need manual addition
+- Apify actor input/output schemas need runtime verification (Clockworks actors may change fields)
+- Vercel plan confirmation: cron strategy assumes Pro plan for sub-daily cron
 
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Milestone initialization
+Stopped at: Roadmap created with 7 phases
 Resume file: None
-Next: Define requirements, create roadmap
+Next: `/gsd:plan-phase 1` to plan Data Foundation
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Competitors Tool milestone started*
+*Last updated: 2026-02-16 -- Roadmap created*

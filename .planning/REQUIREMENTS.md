@@ -113,13 +113,53 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated by roadmapper) | | |
+| COMP-01 | Phase 2 | Pending |
+| COMP-02 | Phase 2 | Pending |
+| COMP-03 | Phase 3 | Pending |
+| COMP-04 | Phase 3 | Pending |
+| COMP-05 | Phase 2 | Pending |
+| COMP-06 | Phase 4 | Pending |
+| GROW-01 | Phase 3 | Pending |
+| GROW-02 | Phase 4 | Pending |
+| GROW-03 | Phase 4 | Pending |
+| GROW-04 | Phase 3 | Pending |
+| GROW-05 | Phase 3 | Pending |
+| GROW-06 | Phase 2 | Pending |
+| ENGM-01 | Phase 4 | Pending |
+| ENGM-02 | Phase 4 | Pending |
+| ENGM-03 | Phase 4 | Pending |
+| CONT-01 | Phase 4 | Pending |
+| CONT-02 | Phase 4 | Pending |
+| CONT-03 | Phase 4 | Pending |
+| CONT-04 | Phase 4 | Pending |
+| CONT-05 | Phase 4 | Pending |
+| CONT-06 | Phase 4 | Pending |
+| BENCH-01 | Phase 5 | Pending |
+| BENCH-02 | Phase 5 | Pending |
+| BENCH-03 | Phase 5 | Pending |
+| INTL-01 | Phase 6 | Pending |
+| INTL-02 | Phase 6 | Pending |
+| INTL-03 | Phase 6 | Pending |
+| INTL-04 | Phase 6 | Pending |
+| INTL-05 | Phase 6 | Pending |
+| DATA-01 | Phase 1 | Pending |
+| DATA-02 | Phase 1 | Pending |
+| DATA-03 | Phase 1 | Pending |
+| DATA-04 | Phase 1 | Pending |
+| DATA-05 | Phase 1 | Pending |
+| DATA-06 | Phase 2 | Pending |
+| UI-01 | Phase 3 | Pending |
+| UI-02 | Phase 3 | Pending |
+| UI-03 | Phase 7 | Pending |
+| UI-04 | Phase 7 | Pending |
+| UI-05 | Phase 7 | Pending |
+| UI-06 | Phase 3 | Pending |
 
 **Coverage:**
-- v1 requirements: 35 total
-- Mapped to phases: 0
-- Unmapped: 35
+- v1 requirements: 41 total
+- Mapped to phases: 41
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-16*
-*Last updated: 2026-02-16 after initial definition*
+*Last updated: 2026-02-16 -- Traceability updated after roadmap creation*
