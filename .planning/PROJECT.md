@@ -49,11 +49,13 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 ### Active
 
-- [ ] AI viral prediction engine (Gemini Flash + DeepSeek R1)
-- [ ] TikTok data pipeline (Apify scraping, trend classification)
-- [ ] Real-time trend analysis
-- [ ] Trending page with real backend data
-- [ ] External brand deal listings from partner brands
+- [ ] Platform-wide UI refinement (sidebar, dashboard, forms, pages)
+- [ ] Landing page redesign (visual polish, content, section rework)
+- [ ] Dashboard completion (hive adjustments, test flow, filter pills, input fields)
+- [ ] Trending page refinement
+- [ ] Referrals page polish and dead route cleanup
+- [ ] Settings page functionality (profile save, account actions)
+- [ ] User flow fixes across all pages (dead buttons, broken navigation, missing states)
 
 ### Out of Scope
 
@@ -121,6 +123,19 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - Local: ~/virtuna-v1.1
 - Vercel: https://virtuna-v11.vercel.app
 
+## Current Milestone: Platform Refinement
+
+**Goal:** Comprehensive UI/UX refinement across the entire platform — fix broken flows, polish visuals, complete unfinished pages, and ensure every user-facing element works correctly.
+
+**Target features:**
+- Sidebar design verification against brand bible, fix all button functionality
+- Dashboard: hive visualization adjustments, test creation flow improvements, filter pills, input field fixes
+- Landing page: visual polish, content/messaging updates, section redesigns
+- Trending page: build out beyond placeholder
+- Referrals/brand deals: clean up dead routes, polish UI
+- Settings: wire up profile save, account actions, notifications
+- Dead button audit: implement, remove, or add coming-soon states case by case
+
 ## Current State
 
 **Shipped:** MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
@@ -133,4 +148,4 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - Trending page re-launch (when backend ready)
 
 ---
-*Last updated: 2026-02-16 after MVP Launch milestone complete*
+*Last updated: 2026-02-16 after Platform Refinement milestone started*
