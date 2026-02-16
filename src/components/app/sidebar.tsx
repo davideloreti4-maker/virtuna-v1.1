@@ -45,12 +45,13 @@ const bottomNavItems = [
 /**
  * Main sidebar component for the app dashboard.
  *
- * MVP Navigation (top): Dashboard, Trending, [TikTok Account Selector], Content Intelligence, Referrals
- * MVP Navigation (bottom): Pricing
+ * Navigation (top): Dashboard, Trending, Referrals
+ * Navigation (bottom): Pricing
+ * TikTok account section above nav items.
  * Avatar dropdown with Sign out at the very bottom.
  *
- * Renders as a floating glassmorphic panel using inline styles,
- * inset 12px from viewport edges. Reads open/close state from useSidebarStore.
+ * Renders as a solid dark panel (#07080a) docked flush to left edge,
+ * full viewport height. Reads open/close state from useSidebarStore.
  */
 export function Sidebar() {
   const router = useRouter();
@@ -121,18 +122,12 @@ export function Sidebar() {
 
       <aside
         className={cn(
-          "fixed top-3 left-3 bottom-3 z-[var(--z-sidebar)] w-[260px]",
-          "flex flex-col overflow-hidden rounded-xl",
-          "border border-white/[0.06]",
+          "fixed top-0 left-0 bottom-0 z-[var(--z-sidebar)] w-[260px]",
+          "flex flex-col overflow-hidden",
+          "bg-background border-r border-white/[0.06]",
           "transition-transform duration-300 ease-[var(--ease-out-cubic)]",
-          isOpen ? "translate-x-0" : "-translate-x-[calc(100%+12px)]",
+          isOpen ? "translate-x-0" : "-translate-x-full",
         )}
-        style={{
-          backgroundImage: "linear-gradient(137deg, rgba(17, 18, 20, 0.75) 4.87%, rgba(12, 13, 15, 0.9) 75.88%)",
-          backdropFilter: "blur(5px)",
-          WebkitBackdropFilter: "blur(5px)",
-          boxShadow: "rgba(255,255,255,0.15) 0px 1px 1px 0px inset",
-        }}
       >
         {/* Header: Logo + Collapse */}
         <div className="flex items-center justify-between px-4 pt-4 pb-1">
