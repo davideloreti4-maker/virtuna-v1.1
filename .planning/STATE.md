@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Milestone:** MVP Launch
 **Phase:** 3 of 6 (Onboarding)
-**Plan:** 0 of 3 in current phase
-**Status:** Ready to plan
-**Last activity:** 2026-02-16 -- Phase 2 Landing Page complete (verified)
+**Plan:** 2 of 2 in current phase
+**Status:** Phase 3 complete
+**Last activity:** 2026-02-16 -- Phase 3 Onboarding plan 02 complete
 
-Progress: [████░░░░░░] 33%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
-- Average duration: 4 min
-- Total execution time: 0.23 hours
+- Total plans completed: 6
+- Average duration: 3 min
+- Total execution time: 0.30 hours
 
 **By Phase:**
 
@@ -30,6 +30,7 @@ Progress: [████░░░░░░] 33%
 |-------|-------|-------|----------|
 | 01-foundation | 2 | 10 min | 5 min |
 | 02-landing-page | 2 | 4 min | 2 min |
+| 03-onboarding | 2 | 4 min | 2 min |
 
 *Updated after each plan completion*
 
@@ -55,6 +56,8 @@ Progress: [████░░░░░░] 33%
 - [02-01]: Raycast 6% border opacity enforced via border-white/[0.06] in FAQ and footer
 - [02-01]: Footer text colors migrated from raw text-gray-400 to text-foreground-muted design token
 - [02-02]: useInView triggerOnce:false to unmount canvas when off-screen (battery savings over triggerOnce:true)
+- [03-01]: Deferred response creation in OAuth callback using pendingCookies array for cookie collection before redirect URL known
+- [03-01]: Header links updated from /auth/login to /login and /auth/signup to /signup (old auth pages deleted)
 
 ### Pending Todos
 
@@ -77,10 +80,10 @@ None
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Phase 2 Landing Page verified and complete
+Stopped at: Completed 03-01-PLAN.md (first-time user routing)
 Resume file: None
-Next: `/gsd:plan-phase 3`
+Next: Phase 3 complete, ready for Phase 4
 
 ---
 *State created: 2026-02-13*
-*Last updated: 2026-02-16 -- Phase 2 Landing Page complete (verified)*
+*Last updated: 2026-02-16 -- Phase 3 Onboarding plan 01 complete*
