@@ -18,7 +18,7 @@ Transform the prediction engine from ~40-55% accuracy to ~75-85% through TikTok-
 - [x] **Phase 6: Infrastructure Hardening** - Rate limiting, caching, partial failure recovery, circuit breaker
 - [ ] **Phase 7: Upload & Input UI** - Video upload, TikTok URL input, updated content form
 - [ ] **Phase 8: Results Card & Breakdown UI** - Factor breakdown, behavioral predictions, suggestions, personas
-- [ ] **Phase 9: Hybrid Rules & Dynamic Weights** - Upgrade rules to hybrid semantic+regex, signal-adaptive weights
+- [x] **Phase 9: Hybrid Rules & Dynamic Weights** - Upgrade rules to hybrid semantic+regex, signal-adaptive weights
 - [ ] **Phase 10: Calibration & ML Training** - ECE measurement, Platt scaling, ML model on scraped data
 - [ ] **Phase 11: Enhanced Signals & Audio** - Fuzzy sound matching, semantic hashtags, expanded scraper
 - [ ] **Phase 12: E2E Flow Testing, Polish & Merge** - Accuracy benchmarking, full user flow test, merge to main
@@ -165,9 +165,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 09-01: Hybrid regex+semantic rule evaluation engine with tier classification and broken rule fix
-- [ ] 09-02: Per-rule accuracy tracking via rule_contributions JSONB storage and cron-based computation
-- [ ] 09-03: Dynamic weight selection adapting to signal availability with proportional redistribution
+- [x] 09-01: Hybrid regex+semantic rule evaluation engine with tier classification and broken rule fix
+- [x] 09-02: Per-rule accuracy tracking via rule_contributions JSONB storage and cron-based computation
+- [x] 09-03: Dynamic weight selection adapting to signal availability with proportional redistribution
 
 ### Phase 10: Calibration & ML Training
 **Goal**: Calibration infrastructure measures and corrects prediction accuracy, ML model trained on scraped video data
@@ -265,11 +265,11 @@ Phases execute in wave order. Within each wave, phases can run in parallel.
 | 6. Infrastructure Hardening | 1/1 | ✓ Complete | 2026-02-16 |
 | 7. Upload & Input UI | 2/2 | ✓ Complete | 2026-02-16 |
 | 8. Results Card & Breakdown UI | 3/3 | ✓ Complete | 2026-02-16 |
-| 9. Hybrid Rules & Dynamic Weights | 0/3 | Not started | - |
+| 9. Hybrid Rules & Dynamic Weights | 3/3 | ✓ Complete | 2026-02-16 |
 | 10. Calibration & ML Training | 0/5 | Not started | - |
 | 11. Enhanced Signals & Audio | 0/3 | Not started | - |
 | 12. E2E Flow Testing, Polish & Merge | 0/2 | Not started | - |
 
 ---
 *Roadmap created: 2026-02-16*
-*Last updated: 2026-02-16 — Phase 8 complete*
+*Last updated: 2026-02-16 — Phase 9 complete*
