@@ -148,9 +148,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 8-01: Score Display + Factor Breakdown
-- [ ] 8-02: Behavioral Predictions + Suggestions Display
-- [ ] 8-03: SSE Loading + Personas + History Update
+- [ ] 08-01: Hero score with confidence badge + 5-factor breakdown with expand-on-click progress bars
+- [ ] 08-02: Behavioral predictions stat cards (4 metrics) + suggestions with effort tags in after-only format
+- [ ] 08-03: ResultsPanel v2 assembly, v2 loading skeletons, persona placeholder, warnings, dashboard/flow wiring, v1 removal
 
 ### Phase 9: Hybrid Rules & Dynamic Weights
 **Goal**: Rules use hybrid regex+semantic evaluation with per-rule tracking and signal-adaptive weight selection
