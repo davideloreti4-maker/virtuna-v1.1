@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Milestone:** Prediction Engine v2
 **Phase:** 8 of 12 (Results Card & Breakdown UI) -- IN PROGRESS
-**Plan:** 1 of 3 in current phase
-**Status:** ImpactScore and FactorBreakdown rewritten for v2 PredictionResult
-**Last activity:** 2026-02-16 -- Phase 8 Plan 1 executed (hero score + factor breakdown)
+**Plan:** 2 of 3 in current phase
+**Status:** BehavioralPredictions stat cards and SuggestionsSection with effort tags created
+**Last activity:** 2026-02-16 -- Phase 8 Plan 2 executed (behavioral predictions + suggestions)
 
-Progress: [███████████░░░░░] 42.3% (11/26 plans)
+Progress: [████████████░░░░] 46.2% (12/26 plans)
 
 ## Performance Metrics
 
@@ -32,6 +32,7 @@ Progress: [███████████░░░░░] 42.3% (11/26 plans)
 | 07    | 01   | 3min     | 2     | 2     |
 | 07    | 02   | 3min     | 2     | 4     |
 | 08    | 01   | 2min     | 2     | 2     |
+| 08    | 02   | 3min     | 2     | 2     |
 
 ## Accumulated Context
 
@@ -95,6 +96,10 @@ Progress: [███████████░░░░░] 42.3% (11/26 plans)
 - [Execute 08-01]: Fixed factor display order (Scroll-Stop, Completion, Rewatch, Share, Emotional) for muscle memory over worst-first sort
 - [Execute 08-01]: Score color thresholds: >=7 coral, >=4 default, <4 purple per LOCKED decision
 - [Execute 08-01]: FactorBreakdown re-exported as AttentionBreakdown for backward compat during migration
+- [Execute 08-02]: Caption component for xs-sized text (Text only supports sm/base/lg)
+- [Execute 08-02]: Effort tag mapping: high=Quick Win, medium=Medium, low=Major via Badge variants
+- [Execute 08-02]: Backward-compat InsightsSection re-export to avoid breaking existing imports before Plan 3
+- [Execute 08-02]: GlassCard blur=sm glow=false for stat cards — subtle glass without heavy blur
 - [Plan]: 12 phases, 26 plans derived from deep 6-agent analysis of current engine gaps
 - [Plan]: Switch DeepSeek from R1 to V3.2-reasoning (70% cheaper, 2x faster)
 - [Plan]: Full video analysis via Gemini Flash-Lite (~$0.008/30s video)
@@ -117,10 +122,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 08-01-PLAN.md (Hero score + factor breakdown rewrite)
+Stopped at: Completed 08-02-PLAN.md (Behavioral predictions + suggestions rewrite)
 Resume file: None
-Next: Execute 08-02-PLAN.md (next plan in Phase 8)
+Next: Execute 08-03-PLAN.md (next plan in Phase 8)
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Phase 8 Plan 1 complete (ImpactScore + FactorBreakdown v2 rewrite)*
+*Last updated: 2026-02-16 -- Phase 8 Plan 2 complete (BehavioralPredictions stat cards + SuggestionsSection with effort tags)*
