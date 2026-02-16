@@ -18,10 +18,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/typography";
+import { ContextualTooltip } from "@/components/tooltips/contextual-tooltip";
 import { TrialCountdown } from "@/components/trial-countdown";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useSidebarStore } from "@/stores/sidebar-store";
+import { useTooltipStore } from "@/stores/tooltip-store";
 import { useSubscription } from "@/hooks/use-subscription";
 
 import { SidebarNavItem } from "./sidebar-nav-item";
@@ -56,7 +58,36 @@ export function Sidebar() {
   const { isOpen, close } = useSidebarStore();
   const { tier, isTrial } = useSubscription();
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const [tiktokHandle, setTiktokHandle] = useState<string | null>(null);
   const avatarMenuRef = useRef<HTMLDivElement>(null);
+  const tooltipStore = useTooltipStore();
+
+  // Hydrate tooltip store
+  useEffect(() => {
+    if (!tooltipStore._isHydrated) {
+      tooltipStore._hydrate();
+    }
+  }, [tooltipStore]);
+
+  // Fetch connected TikTok handle
+  useEffect(() => {
+    async function fetchHandle() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from("creator_profiles")
+        .select("tiktok_handle")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (profile?.tiktok_handle) {
+        setTiktokHandle(profile.tiktok_handle);
+      }
+    }
+    fetchHandle();
+  }, []);
 
   // Close avatar menu when clicking outside
   useEffect(() => {
@@ -161,15 +192,40 @@ export function Sidebar() {
           ))}
         </nav>
 
-        {/* TikTok Account Selector placeholder */}
-        <div className="mx-2 my-2">
-          <div className="flex items-center gap-2 rounded-lg bg-white/[0.04] px-3 py-2">
-            <div className="h-6 w-6 shrink-0 rounded-full bg-white/[0.1]" />
-            <Text as="span" size="sm" className="text-foreground-muted truncate">
-              Connect TikTok
-            </Text>
+        {/* TikTok Account Selector */}
+        {tiktokHandle ? (
+          <div className="mx-2 my-2">
+            <div className="flex items-center gap-2 rounded-lg bg-white/[0.04] px-3 py-2">
+              <div className={cn(
+                "h-6 w-6 shrink-0 rounded-full flex items-center justify-center",
+                "bg-accent/20"
+              )}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-accent" aria-hidden="true">
+                  <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                </svg>
+              </div>
+              <Text as="span" size="sm" className="text-foreground truncate">
+                @{tiktokHandle}
+              </Text>
+            </div>
           </div>
-        </div>
+        ) : (
+          <ContextualTooltip
+            id="tiktok-connect"
+            title="Your TikTok Account"
+            description="Connect your TikTok handle to unlock personalized content intelligence"
+            position="right"
+          >
+            <div className="mx-2 my-2">
+              <div className="flex items-center gap-2 rounded-lg bg-white/[0.04] px-3 py-2">
+                <div className="h-6 w-6 shrink-0 rounded-full bg-white/[0.1]" />
+                <Text as="span" size="sm" className="text-foreground-muted truncate">
+                  Connect TikTok
+                </Text>
+              </div>
+            </div>
+          </ContextualTooltip>
+        )}
 
         {/* Navigation items after selector (Content Intelligence, Earnings) */}
         <nav className="flex flex-col gap-0.5 px-2">
