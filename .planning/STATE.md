@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Milestone:** Prediction Engine v2
 **Phase:** 9 of 12 (Hybrid Rules & Dynamic Weights) -- IN PROGRESS
-**Plan:** 2 of 3 in current phase (09-02 complete, 09-01 pending)
-**Status:** Phase 9 Plan 2 complete -- per-rule accuracy tracking with EMA weight adjustment
-**Last activity:** 2026-02-16 -- Phase 9 Plan 2 executed (rule_contributions storage + per-rule accuracy cron)
+**Plan:** 2 of 3 in current phase (09-01 + 09-02 complete, 09-03 pending)
+**Status:** Phase 9 Plans 1-2 complete -- hybrid regex+semantic rule eval + per-rule accuracy tracking
+**Last activity:** 2026-02-16 -- Phase 9 Plan 1 executed (hybrid rule evaluation engine with DeepSeek semantic tier)
 
-Progress: [██████████████░░░] 53.8% (14/26 plans)
+Progress: [███████████████░░] 57.7% (15/26 plans)
 
 ## Performance Metrics
 
@@ -34,6 +34,7 @@ Progress: [██████████████░░░] 53.8% (14/26 pla
 | 08    | 01   | 2min     | 2     | 2     |
 | 08    | 02   | 3min     | 2     | 2     |
 | 08    | 03   | 4min     | 2     | 8     |
+| 09    | 01   | 3min     | 2     | 1     |
 | 09    | 02   | 3min     | 2     | 4     |
 
 ## Accumulated Context
@@ -111,6 +112,11 @@ Progress: [██████████████░░░] 53.8% (14/26 pla
 - [Plan]: Full video analysis via Gemini Flash-Lite (~$0.008/30s video)
 - [Plan]: Behavioral predictions replace abstract scores (completion_pct, share_pct, comment_pct)
 - [Plan]: New aggregation formula: behavioral 45% + gemini 25% + rules 20% + trends 10%
+- [Execute 09-01]: Local OpenAI client in rules.ts to avoid circular dependency with deepseek.ts
+- [Execute 09-01]: deepseek-chat model for semantic eval (cheaper/faster than deepseek-reasoner)
+- [Execute 09-01]: Single batched DeepSeek call for all semantic rules per analysis (~$0.001/batch)
+- [Execute 09-01]: 15s timeout for semantic eval (simpler than 45s full reasoning)
+- [Execute 09-01]: Cast through unknown for evaluation_tier (Supabase types not regenerated)
 - [Execute 09-02]: Per-rule accuracy uses direction agreement (rule high score + actual >= predicted) not correlation
 - [Execute 09-02]: Min 10 samples per rule before weight adjustment for statistical significance
 - [Execute 09-02]: Type assertion cast for rule_contributions query -- Supabase generated types stale
@@ -132,10 +138,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 09-02-PLAN.md (per-rule accuracy tracking + rule_contributions storage)
+Stopped at: Completed 09-01-PLAN.md (hybrid regex+semantic rule evaluation engine)
 Resume file: None
-Next: Phase 9 Plans 01 and 03 remaining
+Next: Phase 9 Plan 03 remaining (dynamic weight adjustment)
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Phase 9 Plan 2 complete (per-rule accuracy tracking, rule_contributions JSONB, EMA weight adjustment)*
+*Last updated: 2026-02-16 -- Phase 9 Plan 1 complete (hybrid rule eval with batched DeepSeek semantic tier)*
