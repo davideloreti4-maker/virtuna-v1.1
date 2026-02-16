@@ -33,11 +33,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Only one "Content Intelligence" / "Dashboard" entry exists in the sidebar (duplicate resolved)
   4. Clicking "Brand Deals" in sidebar loads a proper page (not a redirect to referrals)
   5. Sidebar visually harmonizes with the overall platform -- consistent with header, cards, and other chrome
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Sidebar design audit and token alignment
-- [ ] 01-02: Navigation targets and route fixes
+- [ ] 01-01: Sidebar visual overhaul + navigation restructure (solid dark, flush, coral indicators, remove Content Intelligence)
+- [ ] 01-02: TikTok handle text input + visual verification (text input with Save, Supabase persistence, human checkpoint)
 
 ### Phase 2: Dashboard
 **Goal**: Dashboard is fully functional -- hive visualization tuned, all forms work, filter pills filter, dead buttons resolved
