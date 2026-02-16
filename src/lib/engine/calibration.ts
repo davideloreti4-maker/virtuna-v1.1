@@ -1,8 +1,16 @@
 import { createServiceClient } from "@/lib/supabase/service";
+import { createCache } from "@/lib/cache";
 
 // =====================================================
 // Types
 // =====================================================
+
+export interface PlattParameters {
+  a: number;
+  b: number;
+  fittedAt: string;
+  sampleCount: number;
+}
 
 export interface CalibrationBin {
   binStart: number;
@@ -183,4 +191,138 @@ export async function generateCalibrationReport(
     totalSamples: pairs.length,
     generatedAt: new Date().toISOString(),
   };
+}
+
+// =====================================================
+// Platt Scaling — Logistic Regression Recalibration
+// =====================================================
+
+const PLATT_MIN_SAMPLES = 50;
+const PLATT_LEARNING_RATE = 0.01;
+const PLATT_ITERATIONS = 1000;
+const PLATT_EPSILON = 1e-7;
+
+/**
+ * Pure function: fit Platt scaling parameters (A, B) from outcome pairs
+ * using gradient descent on cross-entropy loss.
+ *
+ * Logistic model: calibrated = 1 / (1 + exp(A * predicted + B))
+ *
+ * Returns null if fewer than 50 samples — insufficient data to fit reliably.
+ * A should converge to a negative value for well-calibrated models.
+ */
+export function fitPlattScaling(
+  pairs: OutcomePair[]
+): PlattParameters | null {
+  if (pairs.length < PLATT_MIN_SAMPLES) {
+    return null;
+  }
+
+  let a = -1; // Reasonable default for score recalibration
+  let b = 0;
+
+  for (let iter = 0; iter < PLATT_ITERATIONS; iter++) {
+    let gradA = 0;
+    let gradB = 0;
+
+    for (const pair of pairs) {
+      // Sigmoid: sigma = 1 / (1 + exp(A * predicted + B))
+      const logit = a * pair.predicted + b;
+      let sigma = 1 / (1 + Math.exp(logit));
+
+      // Clip to avoid log(0)
+      sigma = Math.max(PLATT_EPSILON, Math.min(1 - PLATT_EPSILON, sigma));
+
+      // Gradient of cross-entropy loss w.r.t. A and B
+      // Loss = -sum(actual * log(sigma) + (1-actual) * log(1-sigma))
+      // dL/dA = sum((sigma - actual) * predicted)
+      // dL/dB = sum(sigma - actual)
+      const diff = sigma - pair.actual;
+      gradA += diff * pair.predicted;
+      gradB += diff;
+    }
+
+    // Average gradients over sample count for stability
+    gradA /= pairs.length;
+    gradB /= pairs.length;
+
+    // Update parameters
+    a -= PLATT_LEARNING_RATE * gradA;
+    b -= PLATT_LEARNING_RATE * gradB;
+  }
+
+  return {
+    a,
+    b,
+    fittedAt: new Date().toISOString(),
+    sampleCount: pairs.length,
+  };
+}
+
+/**
+ * Pure function: apply Platt scaling to a raw 0-100 score.
+ *
+ * If params is null (insufficient data), returns rawScore unchanged (identity).
+ * Otherwise: normalize to 0-1, apply sigmoid(A * x + B), scale back to 0-100.
+ */
+export function applyPlattScaling(
+  rawScore: number,
+  params: PlattParameters | null
+): number {
+  if (params === null) {
+    return rawScore;
+  }
+
+  // Normalize from 0-100 to 0-1
+  const normalized = rawScore / 100;
+
+  // Apply Platt sigmoid: calibrated = 1 / (1 + exp(A * normalized + B))
+  const calibrated = 1 / (1 + Math.exp(params.a * normalized + params.b));
+
+  // Scale back to 0-100, clamp, and round
+  const scaled = calibrated * 100;
+  const clamped = Math.max(0, Math.min(100, scaled));
+  return Math.round(clamped * 100) / 100;
+}
+
+// =====================================================
+// Cached Platt Parameters
+// =====================================================
+
+/**
+ * Wrapper to distinguish "not in cache" (null) from "cached null result"
+ * (insufficient data). Without this, a null PlattParameters would cause
+ * cache.get() to return null, which looks like a miss, triggering re-fetch
+ * on every call.
+ */
+interface PlattCacheEntry {
+  params: PlattParameters | null;
+}
+
+/** 24-hour TTL cache for fitted Platt parameters */
+const plattCache = createCache<PlattCacheEntry>(24 * 60 * 60 * 1000);
+
+const PLATT_CACHE_KEY = "platt-params";
+
+/**
+ * Get cached Platt scaling parameters.
+ *
+ * On cache miss: fetches outcome pairs from Supabase, fits Platt scaling,
+ * caches result (24hr TTL), and returns parameters.
+ *
+ * Returns null if insufficient data (<50 outcomes) — callers should
+ * use raw scores unchanged.
+ */
+export async function getPlattParameters(): Promise<PlattParameters | null> {
+  const cached = plattCache.get(PLATT_CACHE_KEY);
+  if (cached !== null) {
+    return cached.params;
+  }
+
+  const supabase = createServiceClient();
+  const pairs = await fetchOutcomePairs(supabase);
+  const params = fitPlattScaling(pairs);
+
+  plattCache.set(PLATT_CACHE_KEY, { params });
+  return params;
 }
