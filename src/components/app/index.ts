@@ -24,10 +24,9 @@ export { TestCreationFlow } from "./test-creation-flow";
 // Simulation components
 export { LoadingPhases } from "./simulation/loading-phases";
 export { ImpactScore } from "./simulation/impact-score";
-export { AttentionBreakdown } from "./simulation/attention-breakdown";
-export { VariantsSection } from "./simulation/variants-section";
-export { InsightsSection } from "./simulation/insights-section";
-export { ThemesSection } from "./simulation/themes-section";
+export { FactorBreakdown, AttentionBreakdown } from "./simulation/attention-breakdown";
+export { BehavioralPredictionsSection } from "./simulation/behavioral-predictions";
+export { SuggestionsSection, InsightsSection } from "./simulation/insights-section";
 export { ShareButton } from "./simulation/share-button";
 export { ResultsPanel } from "./simulation/results-panel";
 export { TestHistoryItem } from "./test-history-item";
