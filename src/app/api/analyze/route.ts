@@ -149,6 +149,15 @@ export async function POST(request: Request) {
           });
           const result = aggregateScores(pipelineResult);
 
+          // Build rule_contributions JSONB for per-rule tracking (RULE-03)
+          const ruleContributions = pipelineResult.ruleResult.matched_rules.map(r => ({
+            rule_id: r.rule_id,
+            rule_name: r.rule_name,
+            score: r.score,
+            max_score: r.max_score,
+            tier: r.tier,
+          }));
+
           // Prepend pipeline warnings (partial failures) before DeepSeek warnings
           const finalResult = {
             ...result,
@@ -182,6 +191,8 @@ export async function POST(request: Request) {
             input_mode: finalResult.input_mode,
             has_video: finalResult.has_video,
             gemini_score: finalResult.gemini_score,
+            // RULE-03: Per-rule contribution tracking for accuracy computation
+            rule_contributions: ruleContributions as unknown as null,
           });
 
           // Track usage (increments AFTER successful analysis)
