@@ -111,11 +111,11 @@ Plans:
   2. Login page is visually polished with matching quality to signup
   3. Welcome/onboarding flow transitions smoothly between steps without layout jumps
   4. Auth errors (wrong password, duplicate email, network failure) show clear, user-friendly messages
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 06-01: Signup and login page polish
-- [ ] 06-02: Onboarding flow and error state handling
+- [ ] 06-01-PLAN.md -- Signup and login page visual polish (layout ambient treatment, card spacing, banner icons)
+- [ ] 06-02-PLAN.md -- Onboarding flow polish and auth error message mapping
 
 ## Execution Waves
 
