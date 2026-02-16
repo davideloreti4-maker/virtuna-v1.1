@@ -98,11 +98,11 @@ Plans:
   1. User can select 2 competitors for a side-by-side comparison view showing key metrics in parallel columns
   2. User can compare their own TikTok stats (from onboarding @handle) against any competitor in the same side-by-side layout
   3. Leaderboard table supports sorting by any metric column (followers, growth rate, engagement rate, posting frequency)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 05-01: Side-by-side comparison view with self-benchmarking
-- [ ] 05-02: Sortable leaderboard with multi-metric ranking
+- [ ] 05-01-PLAN.md -- Side-by-side comparison page with self-benchmarking (server component, client view, selectors, metric cards, bar chart, growth overlay)
+- [ ] 05-02-PLAN.md -- Sortable leaderboard table with clickable column headers and Compare navigation link from dashboard
 
 ### Phase 6: AI Intelligence
 **Goal**: Users receive AI-powered strategic insights about competitor content strategy and actionable recommendations
