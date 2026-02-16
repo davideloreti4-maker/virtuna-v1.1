@@ -3,7 +3,8 @@ import { create } from "zustand";
 export type TooltipId =
   | "hive-viz"
   | "test-creation"
-  | "settings";
+  | "settings"
+  | "tiktok-connect";
 
 const STORAGE_KEY = "virtuna-tooltips";
 
