@@ -18,6 +18,15 @@ interface EnrichedVideo extends ScrapedVideo {
   like_rate: number; // likes/views — lowest-value signal
   share_to_like_ratio: number; // shares/likes — distribution vs passive consumption
   comment_to_like_ratio: number; // comments/likes — conversation depth
+  // Save rate (bookmarks) — high-intent signal
+  save_rate: number; // bookmarks/views — saves = high intent, similar weight to shares
+  // View velocity — proxy for early traction
+  views_per_day: number | null; // views / days_since_upload
+  days_since_upload: number | null;
+  // Creator size signals
+  followers: number | null;
+  views_per_follower: number | null; // >1 = breakout beyond follower base
+  creator_size_tier: string | null; // nano/micro/mid/macro/mega
   // Legacy simple ER (kept for backwards compat)
   simple_engagement_rate: number; // (likes+comments+shares)/views
 }
@@ -185,11 +194,26 @@ async function main() {
   log("Step 3: Computing algorithm-aligned engagement metrics...");
   log("  Using TikTok 2025 point system: likes×1, comments×2, shares×3");
 
+  const now = new Date();
+
+  function getCreatorSizeTier(followers: number): string {
+    if (followers < 10_000) return "nano";
+    if (followers < 100_000) return "micro";
+    if (followers < 500_000) return "mid";
+    if (followers < 1_000_000) return "macro";
+    return "mega";
+  }
+
   const enriched: EnrichedVideo[] = filtered.map((v) => {
     const views = Number(v.views) || 1;
     const likes = Number(v.likes) || 0;
     const comments = Number(v.comments) || 0;
     const shares = Number(v.shares) || 0;
+    const meta = v.metadata as Record<string, unknown> | null;
+    const bookmarks = Number(meta?.bookmarks) || 0;
+    const followers = meta?.followers != null ? Number(meta.followers) : null;
+    const uploadedAt = meta?.uploaded_at ? new Date(String(meta.uploaded_at)) : null;
+    const daysSinceUpload = uploadedAt ? Math.max(1, (now.getTime() - uploadedAt.getTime()) / (1000 * 60 * 60 * 24)) : null;
 
     return {
       ...v,
@@ -202,6 +226,15 @@ async function main() {
       // Depth ratios — these reveal content quality independent of reach
       share_to_like_ratio: likes > 0 ? shares / likes : 0,
       comment_to_like_ratio: likes > 0 ? comments / likes : 0,
+      // Save rate (bookmarks)
+      save_rate: bookmarks / views,
+      // View velocity
+      views_per_day: daysSinceUpload != null ? views / daysSinceUpload : null,
+      days_since_upload: daysSinceUpload,
+      // Creator size
+      followers,
+      views_per_follower: followers != null && followers > 0 ? views / followers : null,
+      creator_size_tier: followers != null ? getCreatorSizeTier(followers) : null,
       // Legacy
       simple_engagement_rate: (likes + comments + shares) / views,
     };
@@ -218,6 +251,7 @@ async function main() {
   const likeRateValues = enriched.map((v) => v.like_rate);
   const stlValues = enriched.map((v) => v.share_to_like_ratio);
   const ctlValues = enriched.map((v) => v.comment_to_like_ratio);
+  const saveRateValues = enriched.map((v) => v.save_rate);
   const simpleERValues = enriched.map((v) => v.simple_engagement_rate);
   const viewsArr = enriched.map((v) => Number(v.views));
   const durationsArr = enriched.map((v) => Number(v.duration_seconds));
@@ -255,6 +289,12 @@ async function main() {
       formula: "comments / likes",
       why: "Measures conversation depth. High ratio = content that provokes discussion, not just passive approval.",
       percentiles: computePercentiles(ctlValues),
+    },
+    save_rate: {
+      formula: "bookmarks / views",
+      why: "Saves/bookmarks = high-intent signal. User deliberately saves for later — similar behavioral weight to shares. Indicates lasting value, not just momentary engagement.",
+      percentiles: computePercentiles(saveRateValues),
+      viral_threshold: round6(percentile(sortedNumbers(saveRateValues), 90)),
     },
   };
 
@@ -306,6 +346,7 @@ async function main() {
       median_share_rate: round6(median(tierVideos.map((v) => v.share_rate))),
       median_comment_rate: round6(median(tierVideos.map((v) => v.comment_rate))),
       median_like_rate: round6(median(tierVideos.map((v) => v.like_rate))),
+      median_save_rate: round6(median(tierVideos.map((v) => v.save_rate))),
       video_count: count,
       percentage: round2((count / enriched.length) * 100),
     };
@@ -335,7 +376,7 @@ async function main() {
     const diffPct = aAvg > 0 ? ((vAvg - aAvg) / aAvg) * 100 : 0;
     return {
       factor,
-      algo_weight: factor === "share_rate" ? "HIGH (3x)" : factor === "comment_rate" ? "MEDIUM (2x)" : factor === "like_rate" ? "LOW (1x)" : "CONTEXT",
+      algo_weight: factor === "share_rate" ? "HIGH (3x)" : factor === "save_rate" ? "HIGH (intent)" : factor === "comment_rate" ? "MEDIUM (2x)" : factor === "like_rate" ? "LOW (1x)" : "CONTEXT",
       viral_avg: round6(vAvg),
       average_avg: round6(aAvg),
       difference_pct: round2(diffPct),
@@ -348,6 +389,8 @@ async function main() {
     // Highest algo weight first
     diff("share_rate", viralVideos.map((v) => v.share_rate), averageVideos.map((v) => v.share_rate), "ratio",
       (v, a, p) => `Viral videos have ${Math.abs(round2(p))}% higher share rate (${pct(v)} vs ${pct(a)}). Shares are weighted 3x in TikTok's algo — this is the strongest signal we can measure.`),
+    diff("save_rate", viralVideos.map((v) => v.save_rate), averageVideos.map((v) => v.save_rate), "ratio",
+      (v, a, p) => `Viral videos have ${Math.abs(round2(p))}% higher save rate (${pct(v)} vs ${pct(a)}). Saves = high intent — user bookmarks for later. Similar behavioral weight to shares.`),
     diff("share_to_like_ratio", viralVideos.map((v) => v.share_to_like_ratio), averageVideos.map((v) => v.share_to_like_ratio), "ratio",
       (v, a, p) => `Viral videos have ${Math.abs(round2(p))}% higher share-to-like ratio (${round2(v)} vs ${round2(a)}). People don't just like viral content — they actively distribute it.`),
     diff("comment_rate", viralVideos.map((v) => v.comment_rate), averageVideos.map((v) => v.comment_rate), "ratio",
@@ -429,8 +472,114 @@ async function main() {
   const pearsonR = denomDur > 0 && denomWES > 0 ? numerator / Math.sqrt(denomDur * denomWES) : 0;
   log(`  Duration-WES Pearson correlation: ${round6(pearsonR)} (${Math.abs(pearsonR) < 0.1 ? "weak" : Math.abs(pearsonR) < 0.3 ? "moderate" : "strong"})`);
 
-  // ─── Step 8: Context Signals (hashtags, sounds — demoted) ──────
-  log("Step 8: Mining context signals (hashtags, sounds — secondary)...");
+  // ─── Step 8: Creator Size Analysis ────────────────────────────
+  log("Step 8: Analyzing creator size impact...");
+
+  const withFollowers = enriched.filter((v) => v.followers != null && v.followers > 0);
+  log(`  Videos with follower data: ${withFollowers.length}/${enriched.length}`);
+
+  // Creator size tiers
+  const sizeTiers = ["nano", "micro", "mid", "macro", "mega"];
+  const sizeTierLabels: Record<string, string> = {
+    nano: "<10K followers",
+    micro: "10K-100K followers",
+    mid: "100K-500K followers",
+    macro: "500K-1M followers",
+    mega: "1M+ followers",
+  };
+
+  const creatorSizeAnalysis = sizeTiers.map((tier) => {
+    const tierVids = withFollowers.filter((v) => v.creator_size_tier === tier);
+    if (tierVids.length === 0) return { tier, label: sizeTierLabels[tier]!, count: 0, median_wes: 0, median_share_rate: 0, median_save_rate: 0, median_views_per_follower: 0, median_followers: 0 };
+    return {
+      tier,
+      label: sizeTierLabels[tier]!,
+      count: tierVids.length,
+      median_wes: round6(median(tierVids.map((v) => v.weighted_engagement_score))),
+      median_share_rate: round6(median(tierVids.map((v) => v.share_rate))),
+      median_save_rate: round6(median(tierVids.map((v) => v.save_rate))),
+      median_views_per_follower: round2(median(tierVids.filter((v) => v.views_per_follower != null).map((v) => v.views_per_follower!))),
+      median_followers: Math.round(median(tierVids.map((v) => v.followers!))),
+    };
+  });
+
+  for (const t of creatorSizeAnalysis) {
+    if (t.count > 0) log(`  ${t.tier} (${t.label}): ${t.count} videos, WES ${pct(t.median_wes)}, share rate ${pct(t.median_share_rate)}, views/follower ${t.median_views_per_follower}x`);
+  }
+
+  // Views-per-follower (virality multiplier) — the breakout signal
+  const vpfValues = withFollowers.filter((v) => v.views_per_follower != null).map((v) => v.views_per_follower!);
+  const vpfPercentiles = vpfValues.length > 0 ? computePercentiles(vpfValues) : null;
+  if (vpfPercentiles) {
+    log(`  Views/follower — p50: ${vpfPercentiles.p50.toFixed(2)}x, p90: ${vpfPercentiles.p90.toFixed(2)}x`);
+  }
+
+  // Size-normalized WES: actual_WES / expected_WES_for_tier
+  // Expected = median WES for that creator size tier
+  const expectedWESByTier: Record<string, number> = {};
+  for (const t of creatorSizeAnalysis) {
+    if (t.count > 0) expectedWESByTier[t.tier] = t.median_wes;
+  }
+
+  const sizeNormalizedScores = withFollowers
+    .filter((v) => v.creator_size_tier && expectedWESByTier[v.creator_size_tier] && expectedWESByTier[v.creator_size_tier]! > 0)
+    .map((v) => v.weighted_engagement_score / expectedWESByTier[v.creator_size_tier!]!);
+  const sizeNormPercentiles = sizeNormalizedScores.length > 0 ? computePercentiles(sizeNormalizedScores) : null;
+  if (sizeNormPercentiles) {
+    log(`  Size-normalized WES — p50: ${sizeNormPercentiles.p50.toFixed(2)}x, p90: ${sizeNormPercentiles.p90.toFixed(2)}x (1.0 = expected for size)`);
+  }
+
+  // ─── Step 9: View Velocity Analysis ──────────────────────────
+  log("Step 9: Analyzing view velocity (traction speed)...");
+
+  const withVelocity = enriched.filter((v) => v.views_per_day != null);
+  log(`  Videos with velocity data: ${withVelocity.length}/${enriched.length}`);
+
+  const velocityValues = withVelocity.map((v) => v.views_per_day!);
+  const velocityPercentiles = velocityValues.length > 0 ? computePercentiles(velocityValues) : null;
+
+  if (velocityPercentiles) {
+    log(`  Views/day — p50: ${Math.round(velocityPercentiles.p50).toLocaleString()}, p90: ${Math.round(velocityPercentiles.p90).toLocaleString()}, p99: ${Math.round(velocityPercentiles.p99).toLocaleString()}`);
+  }
+
+  // Velocity by virality tier
+  const velocityByTier = viralityTiers.map((t) => {
+    const tierVids = withVelocity.filter((v) => {
+      const wes = v.weighted_engagement_score;
+      if (t.tier === 1) return wes < wesP25;
+      if (t.tier === 5) return wes >= wesP90;
+      const bounds = tierBoundaries[t.tier - 1]!;
+      return wes >= bounds.min && wes < bounds.max;
+    });
+    return {
+      tier: t.tier,
+      label: t.label,
+      count: tierVids.length,
+      median_views_per_day: tierVids.length > 0 ? Math.round(median(tierVids.map((v) => v.views_per_day!))) : 0,
+    };
+  });
+
+  for (const t of velocityByTier) {
+    log(`  Tier ${t.tier} velocity: ${t.median_views_per_day.toLocaleString()} views/day (${t.count} videos)`);
+  }
+
+  // Velocity-WES correlation
+  const velWESPairs = withVelocity.map((v) => ({ vel: v.views_per_day!, wes: v.weighted_engagement_score }));
+  const velMean = mean(velWESPairs.map((p) => p.vel));
+  const velWESMean = mean(velWESPairs.map((p) => p.wes));
+  let velNum = 0, velDenVel = 0, velDenWES = 0;
+  for (const p of velWESPairs) {
+    const dV = p.vel - velMean;
+    const dW = p.wes - velWESMean;
+    velNum += dV * dW;
+    velDenVel += dV * dV;
+    velDenWES += dW * dW;
+  }
+  const velocityCorrelation = velDenVel > 0 && velDenWES > 0 ? velNum / Math.sqrt(velDenVel * velDenWES) : 0;
+  log(`  Velocity-WES correlation: ${round6(velocityCorrelation)} (${Math.abs(velocityCorrelation) < 0.1 ? "weak" : Math.abs(velocityCorrelation) < 0.3 ? "moderate" : "strong"})`);
+
+  // ─── Step 10: Context Signals (hashtags, sounds — demoted) ──────
+  log("Step 10: Mining context signals (hashtags, sounds — secondary)...");
 
   // Hashtags — track weighted score, not just simple ER
   const hashtagFreq = new Map<string, { count: number; wes: number[] }>();
@@ -499,8 +648,8 @@ async function main() {
 
   log(`  Sounds: ${topSounds.length}`);
 
-  // ─── Step 9: Write calibration-baseline.json ───────────────────
-  log("Step 9: Writing algorithm-aligned calibration-baseline.json...");
+  // ─── Step 11: Write calibration-baseline.json ───────────────────
+  log("Step 11: Writing algorithm-aligned calibration-baseline.json...");
 
   const totalLikes = enriched.reduce((s, v) => s + (Number(v.likes) || 0), 0);
   const totalComments = enriched.reduce((s, v) => s + (Number(v.comments) || 0), 0);
@@ -549,6 +698,31 @@ async function main() {
       },
       buckets: durationBuckets,
     },
+    creator_size_analysis: {
+      note: "TikTok's algo is content-first, not creator-first. But creator size affects expected engagement: small accounts get higher ER naturally. Size-normalizing helps compare apples-to-apples.",
+      videos_with_follower_data: withFollowers.length,
+      size_tiers: creatorSizeAnalysis,
+      views_per_follower: {
+        note: "Virality multiplier: views / followers. >1 = content reached beyond the creator's audience. This is the 'breakout' signal.",
+        percentiles: vpfPercentiles,
+      },
+      size_normalized_wes: {
+        note: "actual_WES / expected_WES_for_creator_size. A score of 2.0 means this video's engagement is 2x what's expected for its creator's follower tier.",
+        percentiles: sizeNormPercentiles,
+      },
+      expected_wes_by_tier: expectedWESByTier,
+    },
+    view_velocity: {
+      note: "Views per day since upload. Early traction is the #1 distribution signal — videos that gain 1000+ views with 75% completion in the first hour get major algo boost. We compute views/day as a proxy (per-hour data not available from scraping).",
+      videos_with_velocity_data: withVelocity.length,
+      percentiles: velocityPercentiles,
+      by_virality_tier: velocityByTier,
+      velocity_wes_correlation: {
+        pearson_r: round6(velocityCorrelation),
+        strength: Math.abs(velocityCorrelation) < 0.1 ? "weak" : Math.abs(velocityCorrelation) < 0.3 ? "moderate" : "strong",
+        note: "Positive = faster-growing videos tend to have higher engagement scores",
+      },
+    },
     aggregate_ratios: {
       likes_per_100_views: totalViews > 0 ? round2((totalLikes / totalViews) * 100) : 0,
       comments_per_100_views: totalViews > 0 ? round2((totalComments / totalViews) * 100) : 0,
@@ -575,8 +749,8 @@ async function main() {
   writeFileSync(jsonPath, JSON.stringify(baseline, null, 2) + "\n", "utf-8");
   log(`  Written to ${jsonPath}`);
 
-  // ─── Step 10: Write markdown summary report ────────────────────
-  log("Step 10: Writing markdown summary report...");
+  // ─── Step 12: Write markdown summary report ────────────────────
+  log("Step 12: Writing markdown summary report...");
 
   const report = generateMarkdownReport(baseline, enriched, viralVideos, averageVideos);
   const reportPath = resolve(__dirname, "../.planning/phases/01-data-analysis/data-analysis-report.md");
@@ -708,16 +882,70 @@ function generateMarkdownReport(
   }
   add("");
 
-  // 8. Aggregate Ratios
-  add("## 8. Aggregate Engagement Ratios");
+  // 8. Creator Size Analysis
+  add("## 8. Creator Size Impact");
+  add("");
+  if (baseline.creator_size_analysis.videos_with_follower_data > 0) {
+    add(`*${baseline.creator_size_analysis.videos_with_follower_data} videos with follower data (${Math.round(baseline.creator_size_analysis.videos_with_follower_data / ds.analyzed_count * 100)}%)*`);
+    add("");
+    add("| Size Tier | Followers | Videos | Median WES | Median Share Rate | Median Save Rate | Views/Follower |");
+    add("|-----------|-----------|--------|------------|-------------------|------------------|----------------|");
+    for (const t of baseline.creator_size_analysis.size_tiers) {
+      if (t.count > 0) {
+        add(`| ${t.tier} | ${t.label} | ${t.count} | ${pct(t.median_wes)} | ${pct(t.median_share_rate)} | ${pct(t.median_save_rate)} | ${t.median_views_per_follower}x |`);
+      }
+    }
+    add("");
+    if (baseline.creator_size_analysis.views_per_follower.percentiles) {
+      const vpf = baseline.creator_size_analysis.views_per_follower.percentiles;
+      add(`**Virality multiplier (views/followers)**: p50 = ${vpf.p50.toFixed(2)}x, p90 = ${vpf.p90.toFixed(2)}x — videos above 1x reached beyond the creator's audience.`);
+      add("");
+    }
+    if (baseline.creator_size_analysis.size_normalized_wes.percentiles) {
+      const snw = baseline.creator_size_analysis.size_normalized_wes.percentiles;
+      add(`**Size-normalized WES**: p50 = ${snw.p50.toFixed(2)}x expected, p90 = ${snw.p90.toFixed(2)}x expected — adjusts for the natural engagement advantage of smaller accounts.`);
+      add("");
+    }
+  } else {
+    add("*No follower data available.*");
+    add("");
+  }
+
+  // 9. View Velocity
+  add("## 9. View Velocity (Traction Speed)");
+  add("");
+  if (baseline.view_velocity.videos_with_velocity_data > 0) {
+    add(`*${baseline.view_velocity.videos_with_velocity_data} videos with upload date data*`);
+    add("");
+    if (baseline.view_velocity.percentiles) {
+      const vp = baseline.view_velocity.percentiles;
+      add(`**Views/day**: p50 = ${Math.round(vp.p50).toLocaleString()}, p90 = ${Math.round(vp.p90).toLocaleString()}, p99 = ${Math.round(vp.p99).toLocaleString()}`);
+      add("");
+    }
+    add("| Virality Tier | Median Views/Day | Videos |");
+    add("|--------------|------------------|--------|");
+    for (const t of baseline.view_velocity.by_virality_tier) {
+      add(`| ${t.tier}. ${t.label} | ${t.median_views_per_day.toLocaleString()} | ${t.count} |`);
+    }
+    add("");
+    const vc = baseline.view_velocity.velocity_wes_correlation;
+    add(`**Velocity-engagement correlation**: r=${vc.pearson_r.toFixed(4)} (${vc.strength}). ${vc.pearson_r > 0 ? "Faster-growing videos tend to have higher engagement." : "Weak or no relationship between velocity and engagement."}`);
+    add("");
+  } else {
+    add("*No upload date data available.*");
+    add("");
+  }
+
+  // 10. Aggregate Ratios
+  add("## 10. Aggregate Engagement Ratios");
   add("");
   const ar = baseline.aggregate_ratios;
   add(`- Per 100 views: **${ar.likes_per_100_views}** likes, **${ar.comments_per_100_views}** comments, **${ar.shares_per_100_views}** shares`);
   add(`- Per 100 likes: **${ar.comments_per_100_likes}** comments, **${ar.shares_per_100_likes}** shares`);
   add("");
 
-  // 9. Context Signals
-  add("## 9. Context Signals (Secondary — Not Primary Algo Ranking Factors)");
+  // 11. Context Signals
+  add("## 11. Context Signals (Secondary — Not Primary Algo Ranking Factors)");
   add("");
   add("*Hashtags and sounds help TikTok categorize content but don't directly boost ranking. Engagement signals dominate.*");
   add("");
@@ -736,12 +964,16 @@ function generateMarkdownReport(
   }
   add("");
 
-  // 10. Implications for Engine
-  add("## 10. Implications for Prediction Engine v2");
+  // 12. Implications for Engine
+  add("## 12. Implications for Prediction Engine v2");
   add("");
   add("- **Scoring formula must weight by algo importance**: Use `(likes×1 + comments×2 + shares×3) / views` as base. When completion rate becomes available (video upload), weight it 4x.");
   add(`- **Share rate is the virality gateway**: Videos above ${pct(kpis.share_rate.viral_threshold)} share rate (p90) are in the viral tier. This should be the primary signal Gemini and DeepSeek evaluate.`);
+  add("- **Save rate is a high-intent confirmation signal**: Bookmarks indicate lasting value — a user deliberately choosing to revisit. Use alongside share rate for composite virality scoring.");
   add("- **Share-to-like ratio reveals content quality**: A video with high likes but low shares is passively consumed, not virally distributed. Flag this in the analysis.");
+  add("- **Creator size normalization is critical**: Small accounts naturally get higher ER. When scoring a user's draft, normalize against their tier's expected WES to give fair predictions.");
+  add("- **View velocity as confidence multiplier**: Fast-growing views/day correlates with viral content. Use as a post-publish signal to adjust predictions in real-time.");
+  add("- **Views/follower ratio detects breakout content**: Content reaching 10x+ the follower base is genuinely viral, regardless of absolute numbers.");
   add(`- **Duration sweet spot**: ${da.sweet_spot_by_weighted_score.optimal_range_seconds[0]}-${da.sweet_spot_by_weighted_score.optimal_range_seconds[1]}s for highest weighted engagement. Use as a calibration signal, not a rule.`);
   add("- **Demote hashtag/sound analysis**: These are content context signals, not ranking factors. Do NOT weight them highly in the prediction formula.");
   add("");

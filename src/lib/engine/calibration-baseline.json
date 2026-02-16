@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-02-16T10:02:56.230Z",
+  "generated_at": "2026-02-16T10:15:59.980Z",
   "methodology": "Algorithm-aligned analysis using TikTok's 2025-2026 engagement point system. Primary metrics weighted by algo importance: shares (3x) > comments (2x) > likes (1x). Completion rate and rewatches (4x, 5x) cannot be measured from scraped data.",
   "algorithm_signal_weights": {
     "rewatches": {
@@ -134,6 +134,22 @@
         "mean": 0.079546,
         "stddev": 0.212335
       }
+    },
+    "save_rate": {
+      "formula": "bookmarks / views",
+      "why": "Saves/bookmarks = high-intent signal. User deliberately saves for later — similar behavioral weight to shares. Indicates lasting value, not just momentary engagement.",
+      "percentiles": {
+        "p10": 0.000454,
+        "p25": 0.002083,
+        "p50": 0.006301,
+        "p75": 0.014346,
+        "p90": 0.026867,
+        "p95": 0.038997,
+        "p99": 0.074066,
+        "mean": 0.011285,
+        "stddev": 0.016483
+      },
+      "viral_threshold": 0.026867
     }
   },
   "virality_tiers": [
@@ -151,6 +167,7 @@
       "median_share_rate": 0.000775,
       "median_comment_rate": 0.000307,
       "median_like_rate": 0.016086,
+      "median_save_rate": 0.001488,
       "video_count": 1829,
       "percentage": 24.98
     },
@@ -168,6 +185,7 @@
       "median_share_rate": 0.002295,
       "median_comment_rate": 0.000789,
       "median_like_rate": 0.054207,
+      "median_save_rate": 0.005112,
       "video_count": 1831,
       "percentage": 25.01
     },
@@ -185,6 +203,7 @@
       "median_share_rate": 0.003899,
       "median_comment_rate": 0.001171,
       "median_like_rate": 0.10124,
+      "median_save_rate": 0.008557,
       "video_count": 1830,
       "percentage": 25
     },
@@ -202,6 +221,7 @@
       "median_share_rate": 0.007175,
       "median_comment_rate": 0.00123,
       "median_like_rate": 0.151395,
+      "median_save_rate": 0.01286,
       "video_count": 1098,
       "percentage": 15
     },
@@ -219,6 +239,7 @@
       "median_share_rate": 0.028218,
       "median_comment_rate": 0.007576,
       "median_like_rate": 0.192377,
+      "median_save_rate": 0.019266,
       "video_count": 733,
       "percentage": 10.01
     }
@@ -237,6 +258,15 @@
         "difference_pct": 1163.21,
         "unit": "ratio",
         "description": "Viral videos have 1163.21% higher share rate (5.723% vs 0.453%). Shares are weighted 3x in TikTok's algo — this is the strongest signal we can measure."
+      },
+      {
+        "factor": "save_rate",
+        "algo_weight": "HIGH (intent)",
+        "viral_avg": 0.031302,
+        "average_avg": 0.009876,
+        "difference_pct": 216.93,
+        "unit": "ratio",
+        "description": "Viral videos have 216.93% higher save rate (3.130% vs 0.988%). Saves = high intent — user bookmarks for later. Similar behavioral weight to shares."
       },
       {
         "factor": "share_to_like_ratio",
@@ -439,6 +469,149 @@
         "median_comment_rate": 0.001251
       }
     ]
+  },
+  "creator_size_analysis": {
+    "note": "TikTok's algo is content-first, not creator-first. But creator size affects expected engagement: small accounts get higher ER naturally. Size-normalizing helps compare apples-to-apples.",
+    "videos_with_follower_data": 4028,
+    "size_tiers": [
+      {
+        "tier": "nano",
+        "label": "<10K followers",
+        "count": 1094,
+        "median_wes": 0.07598,
+        "median_share_rate": 0.002608,
+        "median_save_rate": 0.005356,
+        "median_views_per_follower": 27.98,
+        "median_followers": 1982
+      },
+      {
+        "tier": "micro",
+        "label": "10K-100K followers",
+        "count": 1133,
+        "median_wes": 0.096705,
+        "median_share_rate": 0.003686,
+        "median_save_rate": 0.008927,
+        "median_views_per_follower": 10.52,
+        "median_followers": 31896
+      },
+      {
+        "tier": "mid",
+        "label": "100K-500K followers",
+        "count": 847,
+        "median_wes": 0.089493,
+        "median_share_rate": 0.003385,
+        "median_save_rate": 0.008617,
+        "median_views_per_follower": 4.69,
+        "median_followers": 215293
+      },
+      {
+        "tier": "macro",
+        "label": "500K-1M followers",
+        "count": 288,
+        "median_wes": 0.085658,
+        "median_share_rate": 0.003089,
+        "median_save_rate": 0.008117,
+        "median_views_per_follower": 2.06,
+        "median_followers": 631560
+      },
+      {
+        "tier": "mega",
+        "label": "1M+ followers",
+        "count": 666,
+        "median_wes": 0.083841,
+        "median_share_rate": 0.002066,
+        "median_save_rate": 0.005785,
+        "median_views_per_follower": 0.94,
+        "median_followers": 2741093
+      }
+    ],
+    "views_per_follower": {
+      "note": "Virality multiplier: views / followers. >1 = content reached beyond the creator's audience. This is the 'breakout' signal.",
+      "percentiles": {
+        "p10": 0.060233,
+        "p25": 0.620274,
+        "p50": 5.813356,
+        "p75": 44.244662,
+        "p90": 251.316522,
+        "p95": 735.588212,
+        "p99": 2615.092572,
+        "mean": 147.290808,
+        "stddev": 586.004073
+      }
+    },
+    "size_normalized_wes": {
+      "note": "actual_WES / expected_WES_for_creator_size. A score of 2.0 means this video's engagement is 2x what's expected for its creator's follower tier.",
+      "percentiles": {
+        "p10": 0.18911,
+        "p25": 0.466139,
+        "p50": 1.000002,
+        "p75": 1.703517,
+        "p90": 2.471248,
+        "p95": 3.036253,
+        "p99": 4.586199,
+        "mean": 1.215375,
+        "stddev": 1.022776
+      }
+    },
+    "expected_wes_by_tier": {
+      "nano": 0.07598,
+      "micro": 0.096705,
+      "mid": 0.089493,
+      "macro": 0.085658,
+      "mega": 0.083841
+    }
+  },
+  "view_velocity": {
+    "note": "Views per day since upload. Early traction is the #1 distribution signal — videos that gain 1000+ views with 75% completion in the first hour get major algo boost. We compute views/day as a proxy (per-hour data not available from scraping).",
+    "videos_with_velocity_data": 7204,
+    "percentiles": {
+      "p10": 11.18555,
+      "p25": 85.222007,
+      "p50": 1632.890225,
+      "p75": 13920.462545,
+      "p90": 57017.460735,
+      "p95": 123410.543777,
+      "p99": 504756.849522,
+      "mean": 30365.110334,
+      "stddev": 139026.012931
+    },
+    "by_virality_tier": [
+      {
+        "tier": 1,
+        "label": "Unlikely to perform",
+        "count": 1798,
+        "median_views_per_day": 1575
+      },
+      {
+        "tier": 2,
+        "label": "Below average",
+        "count": 1784,
+        "median_views_per_day": 1476
+      },
+      {
+        "tier": 3,
+        "label": "Average",
+        "count": 1804,
+        "median_views_per_day": 1966
+      },
+      {
+        "tier": 4,
+        "label": "Strong potential",
+        "count": 1087,
+        "median_views_per_day": 2516
+      },
+      {
+        "tier": 5,
+        "label": "Viral potential",
+        "count": 731,
+        "median_views_per_day": 566
+      }
+    ],
+    "velocity_wes_correlation": {
+      "pearson_r": -0.000801,
+      "strength": "weak",
+      "note": "Positive = faster-growing videos tend to have higher engagement scores"
+    }
   },
   "aggregate_ratios": {
     "likes_per_100_views": 9.48,
@@ -699,21 +872,15 @@
         "viral_overrepresentation": 0
       },
       {
-        "name": "original sound - reverse.soundeffects_",
-        "count": 11,
-        "median_weighted_score": 0.038829,
-        "viral_overrepresentation": 0
-      },
-      {
         "name": "Unstoppable (I put my armor on, show you how strong I am)",
         "count": 11,
         "median_weighted_score": 0.05367,
         "viral_overrepresentation": 0
       },
       {
-        "name": "Funny Song",
-        "count": 10,
-        "median_weighted_score": 0.056139,
+        "name": "original sound - reverse.soundeffects_",
+        "count": 11,
+        "median_weighted_score": 0.038829,
         "viral_overrepresentation": 0
       },
       {
@@ -723,22 +890,22 @@
         "viral_overrepresentation": 0
       },
       {
+        "name": "original sound - elite_think",
+        "count": 10,
+        "median_weighted_score": 0.218301,
+        "viral_overrepresentation": 2
+      },
+      {
         "name": "CHANEL",
         "count": 10,
         "median_weighted_score": 0,
         "viral_overrepresentation": 0
       },
       {
-        "name": "original sound - elite_think",
+        "name": "Funny Song",
         "count": 10,
         "median_weighted_score": 0,
-        "viral_overrepresentation": 2
-      },
-      {
-        "name": "Creepy and simple horror background music(1070744)",
-        "count": 9,
-        "median_weighted_score": 0,
-        "viral_overrepresentation": 1.11
+        "viral_overrepresentation": 0
       },
       {
         "name": "Monkeyshine-JP",
@@ -747,10 +914,16 @@
         "viral_overrepresentation": 1.11
       },
       {
-        "name": "original sound - girlslovepiinkk",
+        "name": "Creepy and simple horror background music(1070744)",
         "count": 9,
         "median_weighted_score": 0,
         "viral_overrepresentation": 1.11
+      },
+      {
+        "name": "NO BATIDÃO",
+        "count": 9,
+        "median_weighted_score": 0,
+        "viral_overrepresentation": 0
       }
     ]
   },

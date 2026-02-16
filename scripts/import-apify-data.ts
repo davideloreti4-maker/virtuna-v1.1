@@ -88,6 +88,8 @@ function mapToRecord(item: AnyVideoItem, datasetId: string, runId: string) {
         scraped_at: new Date().toISOString(),
         bookmarks: v.bookmarks ?? null,
         uploaded_at: v.uploadedAtFormatted ?? null,
+        followers: v.channel?.followers ?? null,
+        verified: v.channel?.verified ?? null,
       },
     };
   } else {

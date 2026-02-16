@@ -1,6 +1,6 @@
 # Data Analysis Report: Algorithm-Aligned TikTok Video Analysis
 
-*Generated: 2026-02-16T10:02:56.230Z*
+*Generated: 2026-02-16T10:15:59.980Z*
 *Methodology: Algorithm-aligned analysis using TikTok's 2025-2026 engagement point system. Primary metrics weighted by algo importance: shares (3x) > comments (2x) > likes (1x). Completion rate and rewatches (4x, 5x) cannot be measured from scraped data.*
 
 ## 1. Executive Summary
@@ -78,6 +78,13 @@ Sources: [Sprout Social](https://sproutsocial.com/insights/tiktok-algorithm/), [
 |-----|-----|-----|-----|-----|-----|-----|
 | 0.0017 | 0.0045 | 0.0148 | 0.0598 | 0.2000 | 0.3742 | 0.9576 |
 
+### save_rate
+*Saves/bookmarks = high-intent signal. User deliberately saves for later — similar behavioral weight to shares. Indicates lasting value, not just momentary engagement.*
+
+| p10 | p25 | p50 | p75 | p90 | p95 | p99 |
+|-----|-----|-----|-----|-----|-----|-----|
+| 0.045% | 0.208% | 0.630% | 1.435% | 2.687% | 3.900% | 7.407% |
+
 ## 5. Virality Tiers (Weighted Engagement Score)
 
 | Tier | Label | Score Range | WES Threshold | Median Share Rate | Median Comment Rate | Videos | % |
@@ -95,6 +102,7 @@ Sources: [Sprout Social](https://sproutsocial.com/insights/tiktok-algorithm/), [
 **Viral**: WES p90+ (733 videos) | **Average**: WES p40-p60 (1465 videos)
 
 - 🔴 **share_rate** [HIGH (3x)]: Viral videos have 1163.21% higher share rate (5.723% vs 0.453%). Shares are weighted 3x in TikTok's algo — this is the strongest signal we can measure.
+- ⚪ **save_rate** [HIGH (intent)]: Viral videos have 216.93% higher save rate (3.130% vs 0.988%). Saves = high intent — user bookmarks for later. Similar behavioral weight to shares.
 - ⚪ **share_to_like_ratio** [CONTEXT]: Viral videos have 266.13% higher share-to-like ratio (0.39 vs 0.11). People don't just like viral content — they actively distribute it.
 - 🟡 **comment_rate** [MEDIUM (2x)]: Viral videos have 1254.93% higher comment rate (4.387% vs 0.324%). Comments weighted 2x in algo.
 - ⚪ **comment_to_like_ratio** [CONTEXT]: Viral videos have 255.41% higher comment-to-like ratio (0.23 vs 0.06). Deeper conversation signals.
@@ -125,12 +133,44 @@ Sources: [Sprout Social](https://sproutsocial.com/insights/tiktok-algorithm/), [
 | 55-60s | 173 | 9.107% | 0.290% | 0.102% |
 | 60s+ | 1333 | 10.098% | 0.334% | 0.125% |
 
-## 8. Aggregate Engagement Ratios
+## 8. Creator Size Impact
+
+*4028 videos with follower data (55%)*
+
+| Size Tier | Followers | Videos | Median WES | Median Share Rate | Median Save Rate | Views/Follower |
+|-----------|-----------|--------|------------|-------------------|------------------|----------------|
+| nano | <10K followers | 1094 | 7.598% | 0.261% | 0.536% | 27.98x |
+| micro | 10K-100K followers | 1133 | 9.671% | 0.369% | 0.893% | 10.52x |
+| mid | 100K-500K followers | 847 | 8.949% | 0.339% | 0.862% | 4.69x |
+| macro | 500K-1M followers | 288 | 8.566% | 0.309% | 0.812% | 2.06x |
+| mega | 1M+ followers | 666 | 8.384% | 0.207% | 0.579% | 0.94x |
+
+**Virality multiplier (views/followers)**: p50 = 5.81x, p90 = 251.32x — videos above 1x reached beyond the creator's audience.
+
+**Size-normalized WES**: p50 = 1.00x expected, p90 = 2.47x expected — adjusts for the natural engagement advantage of smaller accounts.
+
+## 9. View Velocity (Traction Speed)
+
+*7204 videos with upload date data*
+
+**Views/day**: p50 = 1'633, p90 = 57'017, p99 = 504'757
+
+| Virality Tier | Median Views/Day | Videos |
+|--------------|------------------|--------|
+| 1. Unlikely to perform | 1'575 | 1798 |
+| 2. Below average | 1'476 | 1784 |
+| 3. Average | 1'966 | 1804 |
+| 4. Strong potential | 2'516 | 1087 |
+| 5. Viral potential | 566 | 731 |
+
+**Velocity-engagement correlation**: r=-0.0008 (weak). Weak or no relationship between velocity and engagement.
+
+## 10. Aggregate Engagement Ratios
 
 - Per 100 views: **9.48** likes, **0.07** comments, **1.02** shares
 - Per 100 likes: **0.73** comments, **10.71** shares
 
-## 9. Context Signals (Secondary — Not Primary Algo Ranking Factors)
+## 11. Context Signals (Secondary — Not Primary Algo Ranking Factors)
 
 *Hashtags and sounds help TikTok categorize content but don't directly boost ranking. Engagement signals dominate.*
 
@@ -167,11 +207,15 @@ Sources: [Sprout Social](https://sproutsocial.com/insights/tiktok-algorithm/), [
 | Tokyo Grift | 13 | 8.526% | 0x |
 | nhạc nền - dropship | 12 | 9.411% | 0x |
 
-## 10. Implications for Prediction Engine v2
+## 12. Implications for Prediction Engine v2
 
 - **Scoring formula must weight by algo importance**: Use `(likes×1 + comments×2 + shares×3) / views` as base. When completion rate becomes available (video upload), weight it 4x.
 - **Share rate is the virality gateway**: Videos above 1.830% share rate (p90) are in the viral tier. This should be the primary signal Gemini and DeepSeek evaluate.
+- **Save rate is a high-intent confirmation signal**: Bookmarks indicate lasting value — a user deliberately choosing to revisit. Use alongside share rate for composite virality scoring.
 - **Share-to-like ratio reveals content quality**: A video with high likes but low shares is passively consumed, not virally distributed. Flag this in the analysis.
+- **Creator size normalization is critical**: Small accounts naturally get higher ER. When scoring a user's draft, normalize against their tier's expected WES to give fair predictions.
+- **View velocity as confidence multiplier**: Fast-growing views/day correlates with viral content. Use as a post-publish signal to adjust predictions in real-time.
+- **Views/follower ratio detects breakout content**: Content reaching 10x+ the follower base is genuinely viral, regardless of absolute numbers.
 - **Duration sweet spot**: 50-55s for highest weighted engagement. Use as a calibration signal, not a rule.
 - **Demote hashtag/sound analysis**: These are content context signals, not ranking factors. Do NOT weight them highly in the prediction formula.
 
