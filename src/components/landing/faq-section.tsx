@@ -8,66 +8,50 @@ import {
 } from "@/components/ui/accordion";
 import { FadeIn } from "@/components/motion";
 
-/**
- * FAQ data for the landing page
- * Questions and answers about Artificial Societies
- */
 const faqItems = [
   {
-    question: "How accurate are your AI personas compared to real humans?",
+    question: "How does Virtuna predict if my content will go viral?",
     answer:
-      "Our AI personas achieve 86% accuracy in replicating human survey responses, compared to 61-67% for standard AI models. This is validated through rigorous testing against 1,000 real survey replications.",
+      "Virtuna uses AI-powered 'societies' — thousands of simulated personas that represent real TikTok audiences. We show your content concept to these personas and measure their predicted engagement, giving you a viral probability score before you even film.",
   },
   {
-    question: "Are your simulations backed by research?",
+    question: "What's included in the free trial?",
     answer:
-      "Yes. Our methodology is grounded in behavioral science research and has been validated through extensive academic and commercial studies. We publish our evaluation reports for transparency.",
+      "You get 7 days of full Pro access — unlimited viral predictions, trend intelligence, audience insights, and referral rewards. No feature limits during the trial. A payment method is required to start, and you can cancel anytime before the trial ends.",
   },
   {
-    question: "What audiences can you simulate?",
+    question: "What's the difference between Starter and Pro?",
     answer:
-      "We can simulate virtually any audience - from Fortune 500 executives to niche demographics that traditional panels struggle to reach. Our personas are calibrated using real-world data sources.",
+      "Starter gives you essential viral prediction and basic trend data. Pro unlocks unlimited predictions, advanced audience insights, referral rewards, and priority support. Most serious creators choose Pro for the full suite of monetization tools.",
   },
   {
-    question: "How long does it take to get results?",
+    question: "How accurate are the viral predictions?",
     answer:
-      "Results are delivered in minutes, not weeks. You can run thousands of simulated interviews in the time it takes to send one traditional survey.",
+      "Our AI societies achieve 86% accuracy in predicting content engagement patterns, validated through extensive testing against real TikTok performance data. That's significantly better than gut feeling or basic analytics.",
   },
   {
-    question: "Can I interview the personas for qualitative insights?",
+    question: "Do I need a minimum follower count?",
     answer:
-      "Absolutely. Our personas can engage in open-ended conversations, providing rich qualitative data alongside quantitative responses. They reason and reflect like real people.",
+      "No. Virtuna works for creators of all sizes — from just starting out to millions of followers. The AI predictions are based on content quality and audience fit, not your current follower count.",
   },
   {
-    question: "How do you ensure the personas reflect real human diversity?",
+    question: "How does the referral program work?",
     answer:
-      "Every persona is demographically and psychographically calibrated using real-world data. We model attitudes, beliefs, and opinions to create responses as nuanced and diverse as actual humans.",
+      "Share your unique referral link with fellow creators. When someone signs up and subscribes through your link, you earn a $10 bonus per conversion. Track clicks, conversions, and earnings from your referral dashboard.",
   },
   {
-    question: "What industries do you work with?",
+    question: "Can I cancel anytime?",
     answer:
-      "We work across industries including market research, advertising, product development, political polling, and academic research. Our technology adapts to any domain requiring human insights.",
+      "Yes. Cancel your subscription anytime from your account settings. If you cancel during a trial, you won't be charged. If you cancel a paid subscription, you keep access until the end of your billing period.",
   },
 ];
 
-/**
- * FAQSection - Frequently Asked Questions accordion section
- *
- * Features:
- * - 7 FAQ items matching societies.io content
- * - Single item open at a time (collapsible accordion)
- * - Chevron rotation animation on expand/collapse
- * - Keyboard accessible (Tab, Enter/Space)
- * - Smooth height animation using Radix primitives
- * - Scroll-triggered fade-in animations
- */
 export function FAQSection(): React.JSX.Element {
   return (
     <section className="py-24">
       <div className="mx-auto max-w-3xl px-6">
-        {/* Section Header */}
         <FadeIn>
-          <div className="mb-12">
+          <div className="mb-12 text-center">
             <span className="text-sm text-foreground-muted">FAQ</span>
             <h2 className="mt-4 text-[32px] font-normal leading-[36px] text-white sm:text-[40px] sm:leading-[44px]">
               Common questions
@@ -75,13 +59,12 @@ export function FAQSection(): React.JSX.Element {
           </div>
         </FadeIn>
 
-        {/* Accordion */}
         <AccordionRoot type="single" collapsible className="space-y-2">
           {faqItems.map((item, index) => (
             <FadeIn key={index} delay={0.1 + index * 0.05}>
               <AccordionItem
                 value={`item-${index}`}
-                className="overflow-hidden rounded-lg border border-white/10 bg-transparent"
+                className="overflow-hidden rounded-lg border border-white/[0.06] bg-transparent"
               >
                 <AccordionTrigger className="text-base text-white">
                   {item.question}

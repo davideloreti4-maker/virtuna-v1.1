@@ -9,6 +9,7 @@ import { VariantsSection } from './variants-section';
 import { InsightsSection } from './insights-section';
 import { ThemesSection } from './themes-section';
 import { ShareButton } from './share-button';
+import { TierGate } from '@/components/tier-gate';
 
 interface ResultsPanelProps {
   result: TestResult;
@@ -42,14 +43,12 @@ export function ResultsPanel({ result, onRunAnother }: ResultsPanelProps) {
         {/* Attention Breakdown */}
         <AttentionBreakdown attention={result.attention} />
 
-        {/* Variants */}
-        <VariantsSection variants={result.variants} />
-
-        {/* Insights */}
-        <InsightsSection insights={result.insights} />
-
-        {/* Conversation Themes */}
-        <ThemesSection themes={result.conversationThemes} />
+        {/* Pro-only: Variants, Insights, Themes */}
+        <TierGate requiredTier="pro">
+          <VariantsSection variants={result.variants} />
+          <InsightsSection insights={result.insights} />
+          <ThemesSection themes={result.conversationThemes} />
+        </TierGate>
       </div>
 
       {/* Footer actions */}

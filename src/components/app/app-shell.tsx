@@ -6,6 +6,7 @@ import { useSidebarStore } from "@/stores/sidebar-store";
 import { AuthGuard } from "./auth-guard";
 import { Sidebar } from "./sidebar";
 import { SidebarToggle } from "./sidebar-toggle";
+import { UpgradePrompt } from "@/components/upgrade-prompt";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -41,6 +42,7 @@ export function AppShell({ children }: AppShellProps) {
             "ml-0",
           )}
         >
+          <UpgradePrompt />
           {children}
         </main>
       </div>

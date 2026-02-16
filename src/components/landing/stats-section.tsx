@@ -2,53 +2,46 @@
 
 import { cn } from "@/lib/utils";
 import { FadeIn } from "@/components/motion";
-import { ArrowRight } from "@phosphor-icons/react/dist/ssr";
-import { ComparisonChart } from "./comparison-chart";
+
+const stats = [
+  { value: "86%", label: "Prediction accuracy" },
+  { value: "10K+", label: "AI personas simulated" },
+  { value: "< 30s", label: "Time to get results" },
+  { value: "3.2x", label: "Average engagement lift" },
+];
 
 interface StatsSectionProps {
   className?: string;
 }
 
-/**
- * StatsSection displays the 86% accuracy metric with description
- * and a comparison chart showing how Artificial Societies outperforms
- * other AI models on survey replication accuracy.
- */
 export function StatsSection({ className }: StatsSectionProps) {
   return (
-    <section className={cn("py-24", className)}>
+    <section className={cn("py-24 border-t border-white/[0.06]", className)}>
       <div className="mx-auto max-w-6xl px-6">
-        <div className="grid grid-cols-1 items-start gap-8 md:grid-cols-2">
-          {/* Left: Stats */}
-          <FadeIn>
-            <div>
-              <span className="text-sm text-foreground-muted">
-                Validated accuracy
-              </span>
-              <h2 className="mt-4 text-[40px] font-normal text-white sm:text-[52px]">
-                86%
-              </h2>
-              <p className="mt-6 text-lg leading-relaxed text-white/80">
-                Standard AI personas plateau at 61-67% accuracy. Artificial Societies
-                achieves 86%. That&apos;s 5 points off the human replication ceiling.
-                Our personas don&apos;t just answer questions, they give reasons like real people.
-              </p>
-              <a
-                href="https://storage.googleapis.com/as-website-assets/Artificial%20Societies%20Survey%20Eval%20Report%20Jan26.pdf"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-6 inline-flex min-h-[44px] items-center gap-2 text-white hover:underline"
-              >
-                Read the full evaluation report
-                <ArrowRight size={16} />
-              </a>
-            </div>
-          </FadeIn>
+        <FadeIn>
+          <div className="mb-16 text-center">
+            <span className="text-sm text-foreground-secondary">
+              The numbers speak
+            </span>
+            <h2 className="mt-4 text-[32px] font-normal leading-[36px] text-white sm:text-[40px] sm:leading-[44px]">
+              Built on validated research
+            </h2>
+          </div>
+        </FadeIn>
 
-          {/* Right: Chart */}
-          <FadeIn delay={0.15}>
-            <ComparisonChart />
-          </FadeIn>
+        <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
+          {stats.map((stat, index) => (
+            <FadeIn key={stat.label} delay={0.1 + index * 0.1}>
+              <div className="text-center">
+                <div className="text-[40px] font-normal text-accent sm:text-[48px]">
+                  {stat.value}
+                </div>
+                <div className="mt-2 text-sm text-foreground-muted">
+                  {stat.label}
+                </div>
+              </div>
+            </FadeIn>
+          ))}
         </div>
       </div>
     </section>

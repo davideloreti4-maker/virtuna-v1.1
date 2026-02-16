@@ -11,5 +11,3 @@ export type {
 } from "./stagger-reveal";
 export { HoverScale } from "./hover-scale";
 export type { HoverScaleProps } from "./hover-scale";
-export { FrozenRouter } from "./frozen-router";
-export { PageTransition } from "./page-transition";

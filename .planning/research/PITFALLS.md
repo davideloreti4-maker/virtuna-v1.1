@@ -1,439 +1,212 @@
-# Pitfalls Research: Brand Deals & Affiliate Hub
+# Domain Pitfalls
 
-**Domain:** Creator monetization / affiliate aggregation platform
-**Researched:** 2026-02-02
-**Overall Confidence:** MEDIUM-HIGH
-
----
-
-## Executive Summary
-
-**Top 3 Risks to Watch:**
-
-1. **Terms of Service Violations** - Most affiliate programs explicitly prohibit aggregation on third-party sites and coupon directories. Aggregating deals without merchant authorization risks mass account terminations and legal action.
-
-2. **Money Transmission Licensing** - If Virtuna ever holds, transmits, or facilitates creator payouts, it triggers money transmitter licensing requirements across 49+ US states. This is a $500K+ compliance burden that can kill a startup.
-
-3. **FTC Disclosure Liability** - As an intermediary displaying affiliate content, Virtuna may share liability for disclosure violations. Fines reach $53,000+ per violation, and brands/platforms can be held liable for creator non-compliance.
+**Domain:** TikTok Creator Intelligence SaaS (MVP Launch Features)
+**Researched:** 2026-02-13
 
 ---
 
-## Legal & Compliance Risks
+## Critical Pitfalls
 
-### ToS Violation: Unauthorized Deal Aggregation
+Mistakes that cause rewrites, lost revenue, or user trust damage.
 
-**Description:** Most affiliate programs explicitly prohibit displaying affiliate links on "coupon aggregation sites" or "third-party platforms" without authorization. Peak Design's terms are typical: "You are responsible for keeping your link/code off of coupon aggregation and other 3rd party sites... we reserve the right to suspend/cancel your account."
+### Pitfall 1: Whop-Supabase User Identity Mismatch
 
-**Warning Signs:**
-- Affiliate accounts getting terminated without clear reason
-- Merchants sending cease-and-desist notices
-- Networks blocking API access or revoking credentials
-- Revenue suddenly dropping across multiple programs
-
+**What goes wrong:** The checkout session passes `supabase_user_id` via Whop metadata, and the webhook reads it from `data.metadata?.supabase_user_id`. If the metadata is missing (timeout, mobile browser session loss, direct Whop page access), the webhook silently accepts the event but cannot link payment to a Supabase user. User pays but gets no tier upgrade.
+**Why it happens:** The current webhook handler (lines 57-63) logs a warning and returns `{ received: true }` with 200 status when `supabase_user_id` is missing. Whop considers this a successful delivery and never retries.
+**Consequences:** User pays but remains on "free" tier. Silent failure. No diagnostic trail. Cron sync cannot fix it because it only syncs existing records.
 **Prevention:**
-- Audit every affiliate program's ToS before inclusion
-- Categorize programs: "API-permitted," "explicit aggregation allowed," "prohibited"
-- For prohibited programs, only display deals the creator themselves added (user-sourced, not scraped)
-- Build relationships with networks - some offer "aggregator partner" programs
-- Consider becoming a sub-affiliate network (requires different licensing)
+1. Add a `whop_orphan_events` table to store webhook payloads where `supabase_user_id` is missing
+2. Implement email-based reconciliation: when user logs in post-checkout, check for orphaned Whop memberships by email match
+3. Use `supabase_email` in metadata (already sent) as fallback identifier
+4. Consider returning non-200 for missing metadata so Whop retries
+**Detection:** Monitor for users who completed checkout (Whop dashboard shows payment) but whose `user_subscriptions.virtuna_tier` is still "free". Alert on the warning log.
 
-**Phase to Address:** Phase 1 (Foundation) - Must establish legal framework before any deal aggregation
+### Pitfall 2: AuthGuard is a Mock -- Real Auth Not Wired
 
-**Confidence:** HIGH - Multiple affiliate programs explicitly prohibit this in their terms
+**What goes wrong:** The `AuthGuard` component uses a 350ms `setTimeout` mock and renders children unconditionally. Building onboarding/payments on top of this means the entire pipeline is built on a fake foundation.
+**Why it happens:** App was built as a frontend prototype with Supabase SDK installed but auth guard not wired to actual session checks.
+**Consequences:** Unauthenticated users can access the dashboard. Onboarding has no real user to associate state with. Subscription tier checks have no real user ID.
+**Prevention:** Replace the mock AuthGuard with real Supabase session verification BEFORE building any other feature. Wire to `supabase.auth.getUser()` server-side. This is the first task in the entire milestone.
+**Detection:** Open the app in incognito without logging in. If dashboard loads, auth is still mocked.
 
-**Sources:**
-- [Peak Design Affiliate Program Rules](https://peakdesign.zendesk.com/hc/en-us/articles/207943586-Affiliate-Program-Rules)
-- [Amazon Associates Program Policies](https://affiliate-program.amazon.com/help/operating/policies)
+### Pitfall 3: Referral Attribution Lost on OAuth Redirect
 
----
-
-### FTC Disclosure Requirements for Platforms
-
-**Description:** The FTC holds brands and platforms equally responsible for affiliate disclosure compliance. In 2025, fines exceed $53,000 per violation, and every non-compliant post counts separately. As the platform displaying affiliate content, Virtuna could share liability.
-
-**Warning Signs:**
-- Creators using your platform without proper disclosures
-- FTC warning letters to similar platforms
-- User reports of misleading content
-- Content displayed without clear "#ad" or affiliate indicators
-
+**What goes wrong:** User clicks referral link (`virtuna.com/?ref=ABC123`), lands on landing page, clicks "Sign Up", goes through OAuth (Google), returns to app. The `?ref=` parameter is lost during the OAuth redirect chain (app -> Supabase -> Google -> Supabase callback -> app).
+**Why it happens:** OAuth flows involve multiple redirects. Query parameters from the original URL are not preserved through the chain.
+**Consequences:** Referrers don't get credited. Program trust collapses. Revenue attribution inaccurate.
 **Prevention:**
-- Enforce mandatory disclosure badges on all affiliate content displayed
-- Auto-append disclosure language (e.g., "This link may earn a commission")
-- Provide creators with compliant disclosure templates
-- Implement content moderation for disclosure compliance
-- Document your compliance program (FTC considers "due diligence" in enforcement)
+1. Capture `?ref=` in middleware on landing page visit and set a server-side cookie (30-day, httpOnly) BEFORE any auth redirect
+2. Also store in localStorage as backup
+3. After auth callback, read cookie and create attribution record
+4. Pass ref code in Whop checkout metadata for server-side conversion attribution
+**Detection:** Click a referral link, sign up via Google OAuth, check if referral_conversions has a record.
 
-**Phase to Address:** Phase 2 (UI/Deal Display) - Build disclosure requirements into display layer
+### Pitfall 4: Trial Configuration Mismatch Between Whop and App
 
-**Confidence:** HIGH - FTC guidelines are explicit and enforcement is increasing
-
-**Sources:**
-- [FTC Disclosures 101 for Social Media Influencers](https://www.ftc.gov/business-guidance/resources/disclosures-101-social-media-influencers)
-- [FTC Affiliate Disclosure Rules (ReferralCandy)](https://www.referralcandy.com/blog/ftc-affiliate-disclosure)
-- [FTC Guidelines for Influencers (inBeat)](https://inbeat.agency/blog/ftc-guidelines-for-influencers)
-
----
-
-### Money Transmission Licensing Trap
-
-**Description:** If Virtuna holds creator funds (even temporarily), facilitates payouts, or moves money between parties, it becomes a "money transmitter" requiring licenses in 49+ states. Costs: $25,000-$1M+ in surety bonds per state, plus ongoing compliance. Many startups have been shut down for operating without licenses.
-
-**Warning Signs:**
-- Users asking for "payout" features
-- Holding any user funds, even in escrow
-- Processing payments between creators and brands
-- Operating in states with strict enforcement (NY, CA, TX)
-
+**What goes wrong:** Trial doesn't auto-convert to paid, or user gets charged on day 1, or trial length is wrong because Whop dashboard config doesn't match app expectations.
+**Why it happens:** Whop trial setup is done in their dashboard, not in code. The app assumes specific plan IDs and trial behavior.
+**Consequences:** Users charged unexpectedly = chargebacks. Or trial never converts = zero revenue.
 **Prevention:**
-- **Phase 1: Display-only** - Show earnings from external platforms, never hold funds
-- **Phase 2: Link-out** - Deep link to each network's payout portal
-- **Phase 3 (if ever): Partner with licensed provider** - Use Stripe Connect, PayPal for Marketplaces, or similar
-- Never build custom payout infrastructure without legal review
-- Consult fintech licensing attorney before any fund-handling features
-
-**Phase to Address:** Phase 1 (Architecture) - Design system to explicitly avoid fund handling
-
-**Confidence:** HIGH - Federal and state regulations are well-documented
-
-**Sources:**
-- [Money Transmitter License Guide (RemitSo)](https://remitso.com/blogs/money-transmitter-license)
-- [MTL Guide for Fintech Startups (Cornerstone)](https://cornerstonelicensing.com/resources/money-transmitter-licensing-guide-for-fintech-startups/)
-- [CSBS Money Transmission Modernization Act](https://www.csbs.org/csbs-money-transmission-modernization-act-mtma)
+1. Document exact Whop dashboard configuration in a CONFIGURATION.md
+2. Verify in Whop sandbox environment before going live
+3. Test FULL flow end-to-end: signup -> trial start -> 7 days -> auto-charge -> webhook
+4. Add defensive check: on went_valid, verify trial period matches expectations
+**Detection:** Monitor subscription status transitions. Alert if went_valid fires within 24 hours of signup (shouldn't for 7-day trial).
 
 ---
 
-### CFPB "Preferencing" Violations
+## Moderate Pitfalls
 
-**Description:** The Consumer Financial Protection Bureau (CFPB) ruled in 2024 that ranking offers by commission rate rather than consumer benefit is an "illegal abusive practice." If Virtuna displays deals sorted by payout rather than value to creators, it could face federal enforcement.
+### Pitfall 5: Canvas Demo Kills Mobile Performance
 
-**Warning Signs:**
-- Sorting algorithms that prioritize higher-commission deals
-- "Featured" placements based on payout, not quality
-- User complaints about deal quality/relevance
-- CFPB investigations into comparison shopping sites
-
+**What goes wrong:** Interactive Canvas visualization runs at 60fps on desktop but stutters or crashes on mobile. TikTok creators are 80%+ mobile users.
+**Why it happens:** Existing hive renders 1300+ nodes with d3-quadtree physics. Directly porting this to landing page creates 5+ second load on mobile.
+**Consequences:** Bounce rate spikes. The demo that should sell the product becomes the reason people leave.
 **Prevention:**
-- Default sort by relevance, not commission
-- Clearly label any "sponsored" or "featured" placements
-- Provide transparent sorting options (by payout, by rating, by relevance)
-- Document sorting algorithm rationale
-- Never hide that commission rates influence display
+- Create SEPARATE lightweight demo component (50-100 nodes, pre-computed positions, no physics)
+- Use requestAnimationFrame with visibility check (pause when not in viewport)
+- Lazy-load inside Suspense boundary with ssr: false
+- Set performance budget: < 50KB JS, < 16ms per frame
+- Test on real iPhone SE and mid-range Android
+**Detection:** Lighthouse mobile score below 80. Time to Interactive > 3 seconds on 4G.
 
-**Phase to Address:** Phase 2 (Deal Display) - Design sorting/ranking with CFPB compliance in mind
+### Pitfall 6: Canvas Touch Events Block Page Scroll on Mobile
 
-**Confidence:** MEDIUM - CFPB guidance is recent, enforcement patterns still emerging
-
-**Sources:**
-- [Tapfiliate Compliance Guide](https://tapfiliate.com/blog/affiliate-marketing-compliance-gp/)
-
----
-
-### Scraping Legality and Rate Limiting
-
-**Description:** Scraping affiliate networks without authorization may violate CFAA (Computer Fraud and Abuse Act), trigger breach of contract claims, and face GDPR penalties up to 20M EUR. Recent cases (Google vs SerpApi 2025, Meta vs Bright Data 2024) show aggressive enforcement.
-
-**Warning Signs:**
-- Receiving cease-and-desist from scraped sites
-- IP blocks or CAPTCHAs appearing
-- Rate limit errors from target sites
-- Legal threats citing CFAA or breach of contract
-
+**What goes wrong:** Canvas uses `touchAction: 'none'` and `preventDefault()` on touch events. On mobile, touch on the canvas prevents scrolling past the hero section.
+**Why it happens:** Canvas interaction requires capturing touch events, but mobile browsers stop scroll propagation when touchAction is 'none'.
+**Consequences:** Users get "stuck" on hero section. Cannot scroll to pricing. Bounce rate spikes.
 **Prevention:**
-- Prefer official APIs over scraping (CJ, Impact, ShareASale all have APIs)
-- For API-less networks, consider partnership agreements
-- If scraping is necessary:
-  - Respect robots.txt strictly
-  - Implement conservative rate limits (1 request per 10-15 seconds)
-  - Only scrape publicly accessible pages
-  - Never bypass authentication or CAPTCHAs
-- Document legal review of each data source
-- Consider third-party data providers (Trackonomics, Affluent) who handle licensing
+- Landing page demo: create read-only autoplay variant with NO touch event handlers
+- Remove `touchAction: 'none'` from landing demo version
+- Set max-height on canvas container (max-h-[60vh])
+- Test on real iOS Safari
+**Detection:** Try to scroll past canvas hero section on iPhone Safari with finger on canvas element.
 
-**Phase to Address:** Phase 1 (Data Layer) - Establish data sourcing strategy before implementation
+### Pitfall 7: Webhook Replay Causes Duplicate Bonuses
 
-**Confidence:** HIGH - Recent court cases provide clear precedent
-
-**Sources:**
-- [Web Scraping Legal Guide 2025 (GroupBWT)](https://groupbwt.com/blog/is-web-scraping-legal/)
-- [Is Web Scraping Legal (Browserless)](https://www.browserless.io/blog/is-web-scraping-legal)
-- [Web Scraping GDPR Risks (Medium)](https://medium.com/deep-tech-insights/web-scraping-in-2025-the-20-million-gdpr-mistake-you-cant-afford-to-make-07a3ce240f4f)
-
----
-
-## Technical Pitfalls
-
-### Tracking Attribution Failure
-
-**Description:** As a middleman, Virtuna faces the hardest attribution problem in affiliate marketing. Safari limits cookies to 7 days. Firefox blocks trackers. 17% of affiliate clicks are fraudulent. Server-side tracking recovers 30-40% more conversions, but requires merchant cooperation.
-
-**Warning Signs:**
-- Creators reporting clicks that don't convert
-- Discrepancies between Virtuna's click counts and network reports
-- Safari/Firefox users showing 0% conversion rates
-- Unusual conversion patterns suggesting fraud
-
+**What goes wrong:** Whop retries webhooks on non-2xx responses. Current handler has no duplicate event detection. If membership.went_valid replays after adding referral bonus logic, bonuses are credited multiple times.
+**Why it happens:** HTTP webhooks provide at-least-once delivery, not exactly-once. Handler assumes exactly-once.
+**Consequences:** Double referral bonuses, duplicate wallet transactions, incorrect analytics.
 **Prevention:**
-- **Don't become the tracking middleman** - Let clicks go directly to affiliate networks
-- Use deep links that preserve original affiliate tracking
-- Display network-reported earnings, not self-calculated
-- Implement click monitoring for debugging only, not attribution
-- If building tracking: server-side only, with first-party cookies
+1. Store `svix-id` header in a `processed_webhooks` table. Check before processing
+2. Make all side effects idempotent: INSERT ... ON CONFLICT DO NOTHING for one-time records
+3. The upsert on user_subscriptions already handles duplicates (good). Apply same pattern to referral records
+**Detection:** Search logs for duplicate svix-id values.
 
-**Phase to Address:** Phase 2 (Click Handling) - Design click flow to preserve network attribution
+### Pitfall 8: Subscription State Stale After Upgrade
 
-**Confidence:** HIGH - Industry research confirms attribution gaps
-
-**Sources:**
-- [Affiliate Tracking 2025 (AutomateToProfit)](https://automatetoprofit.com/affiliate-tracking-2025-from-pixels-to-server-side-what-really-works-now/)
-- [Affiliate Conversion Tracking (NowG)](https://www.nowg.net/affiliate-conversion-tracking-in-2025-postbacks-ga4-zero-fraud-strategies/)
-- [Cookieless Affiliate Tracking (Stape)](https://stape.io/blog/the-impact-of-third-party-cookie-deprecation-on-affiliate-marketing)
-
----
-
-### Link Rot and Stale Deals
-
-**Description:** Industry data shows 12-16% of affiliate links are broken at any given time. Products go out of stock, merchants change networks, deals expire. Stale deals destroy user trust and make the platform feel abandoned.
-
-**Warning Signs:**
-- Increasing 404 rates on outbound links
-- User complaints about expired deals
-- Deals showing products that no longer exist
-- Commission rates that haven't updated in weeks
-
+**What goes wrong:** User purchases Pro, modal closes via onComplete callback, but page still shows upgrade prompts because getUserTier() is cached.
+**Why it happens:** Server Components in Next.js can be cached. Webhook processing is asynchronous and may not complete before user's browser navigates.
+**Consequences:** User pays but sees no immediate change. Panics, contacts support.
 **Prevention:**
-- Implement automated link health checking (daily for high-traffic, weekly for all)
-- Use services like Geniuslink or build custom link validation
-- Show "last verified" timestamps on deals
-- Auto-hide or flag deals that fail validation
-- Implement user reporting for broken deals
-- Build deal refresh pipeline with network APIs
+1. After onComplete, call `router.refresh()` to re-run Server Components
+2. Also re-fetch /api/subscription and update any client state
+3. Add optimistic UI: immediately show Pro UI after onComplete
+4. Consider short polling (3 attempts, 2s apart) after checkout to wait for webhook processing
+**Detection:** Purchase subscription, do NOT refresh page, check if Pro features accessible immediately.
 
-**Phase to Address:** Phase 3 (Deal Management) - Build link health monitoring infrastructure
+### Pitfall 9: Referral Bonus Abuse via Self-Referral
 
-**Confidence:** HIGH - Industry statistics are well-documented
-
-**Sources:**
-- [Link Rot Affects Publishers (Affluent)](https://www.affluent.io/ask-the-experts-how-link-rot-affects-publishers/)
-- [Broken Affiliate Links Guide (Geniuslink)](https://geniuslink.com/blog/guide-to-fix-broken-affiliate-links/)
-- [Affiliate Attribution Integrity (Influencer Marketing Hub)](https://influencermarketinghub.com/affiliate-attribution/)
-
----
-
-### API Reliability and Rate Limits
-
-**Description:** Affiliate network APIs are notoriously unreliable. CJ has "frequent disruptions" per 2025 reports. APIs may lack features (CJ doesn't provide click stats). Rate limits vary wildly. Building on unstable foundations causes cascading failures.
-
-**Warning Signs:**
-- API timeouts or errors increasing
-- Missing data in creator dashboards
-- Sync jobs failing silently
-- Discrepancies between API data and network dashboards
-
+**What goes wrong:** Users create multiple accounts to self-refer and farm bonuses. With card-upfront trials, they can get credit before first payment.
+**Why it happens:** One-time bonuses are exploitable if triggered on trial start rather than first payment.
+**Consequences:** Bonus payouts without real conversions. Budget drain.
 **Prevention:**
-- Design for API failure (graceful degradation, cached fallbacks)
-- Implement robust retry logic with exponential backoff
-- Store last-known-good data as fallback
-- Build health monitoring for each API integration
-- Have manual data import as backup option
-- Consider API aggregator services (Strackr, wecantrack)
+- Trigger bonus ONLY after referred user's first successful PAYMENT (not trial start)
+- Rate limit: max 10 referrals per user per month
+- Deduplicate: one bonus per referred email address ever
+- Monitor patterns: same IP, same device, same payment method
+**Detection:** Check for referral clusters (multiple referred accounts from same IP/device).
 
-**Phase to Address:** Phase 1 (Integration Layer) - Build resilient API integration architecture
+### Pitfall 10: Onboarding Blocks Returning Users
 
-**Confidence:** MEDIUM - Based on community reports and documentation gaps
-
-**Sources:**
-- [CJ Affiliate APIs (CJ Developer Portal)](https://developers.cj.com/)
-- [CJ Integration Issues (wecantrack)](https://wecantrack.com/cj-affiliate-integration/)
-
----
-
-### Financial Data Security
-
-**Description:** Displaying creator earnings makes Virtuna a high-value target. Financial services see 20%+ of breaches from vulnerability exploitation. A breach exposing earnings data would destroy trust instantly and trigger regulatory scrutiny.
-
-**Warning Signs:**
-- Security audit findings on financial data handling
-- Unauthorized access attempts to earnings endpoints
-- Missing encryption or access controls
-- Third-party integrations with weak security
-
+**What goes wrong:** Onboarding state stored only in localStorage/cookie. Returning user on new device or after clearing browser data sees onboarding again.
+**Why it happens:** Using client-side storage instead of database for completion state.
+**Consequences:** Power users frustrated. Repeat onboarding on every device.
 **Prevention:**
-- Encrypt earnings data at rest and in transit
-- Implement strict access controls (creators see only their data)
-- Audit logging for all earnings data access
-- Regular security assessments
-- Consider SOC 2 compliance for enterprise credibility
-- Minimize data retention (aggregate historical, delete granular)
+1. Store completion in database (creator_profiles.onboarding_completed_at)
+2. Cookie is fast-path cache, DB is source of truth
+3. Always provide Skip button
+4. Make onboarding idempotent (going through twice doesn't break anything)
+**Detection:** Complete onboarding, clear cookies, sign in again. If onboarding reappears, storage is wrong.
 
-**Phase to Address:** Phase 1 (Security Architecture) - Build security foundations before handling financial data
+### Pitfall 11: Trending Page Removal Leaves Orphaned References
 
-**Confidence:** MEDIUM - General security best practices applied to domain
-
-**Sources:**
-- [Biggest Data Breaches in Finance (UpGuard)](https://www.upguard.com/blog/biggest-data-breaches-financial-services)
-- [FTC Data Breach Response Guide](https://www.ftc.gov/business-guidance/resources/data-breach-response-guide-business)
-
----
-
-## Business/UX Pitfalls
-
-### Coupon Poaching Attribution Theft
-
-**Description:** Browser extensions and coupon aggregators can overwrite affiliate cookies, stealing attribution from legitimate creators. In 2025, extensions automatically substitute affiliate cookies and rewrite referral IDs. This undermines creator trust in earnings accuracy.
-
-**Warning Signs:**
-- Creators reporting lower-than-expected conversions
-- Coupon codes appearing that weren't from Virtuna
-- Last-click attribution consistently going to unknown sources
-- Users complaining their "clicks don't count"
-
+**What goes wrong:** Deleting `/app/(app)/trending/` removes the route but leaves sidebar nav item, mock data, types, and hooks scattered across 11 files.
+**Why it happens:** Trending page is wired into sidebar, types, mock data, and hooks.
+**Consequences:** Sidebar shows "Trending Feed" link to 404. Dead code confuses future developers.
 **Prevention:**
-- Educate creators about coupon poaching
-- Partner with brands that use first-click or multi-touch attribution
-- Display deals without generic coupon codes when possible
-- Advocate for creator-specific discount codes vs. generic coupons
-- Consider sub-ID tracking to detect attribution theft
-
-**Phase to Address:** Phase 3 (Analytics) - Build attribution monitoring tools
-
-**Confidence:** MEDIUM - Industry problem, limited platform-level solutions
-
-**Sources:**
-- [Affiliate Attribution Integrity (Influencer Marketing Hub)](https://influencermarketinghub.com/affiliate-attribution/)
+1. Remove all 11 files (trending page, components, types, mock data, hooks)
+2. Remove "Trending Feed" from sidebar navItems
+3. Add 301 redirect in next.config.ts: /trending -> /dashboard
+4. Run build after removal to catch import errors
+**Detection:** After removal, grep for "trending" across src/ -- zero results except redirect config.
 
 ---
 
-### Creator Trust Erosion
+## Minor Pitfalls
 
-**Description:** Creators are skeptical of platforms. If Virtuna shows earnings that don't match network dashboards, or deals that turn out to be invalid, trust evaporates. Unlike consumer apps, creator tools have vocal communities that share negative experiences.
+### Pitfall 12: Whop Checkout Embed Dark Theme Mismatch
 
-**Warning Signs:**
-- Creators comparing Virtuna data to network dashboards (and finding discrepancies)
-- Social media complaints about accuracy
-- Creators removing Virtuna access to their accounts
-- Low return usage rates
+**What goes wrong:** WhopCheckoutEmbed's dark theme doesn't perfectly match Virtuna's #07080a background and Raycast tokens. Embedded iframe looks visually disconnected.
+**Prevention:** Accept slight mismatch (it's an iframe). Wrap in container with visual transition padding. Test dark theme on actual Virtuna background. Already using `theme="dark"`.
 
-**Prevention:**
-- Display earnings with clear source attribution ("From CJ Affiliate, synced 2h ago")
-- Show sync status and last-updated timestamps
-- Provide easy way to report discrepancies
-- Don't calculate/estimate earnings - show network-reported values only
-- Be transparent about data freshness and limitations
+### Pitfall 13: FAQ Accordion Accessibility
 
-**Phase to Address:** Phase 2 (Dashboard UX) - Design for trust and transparency
+**What goes wrong:** FAQ built with custom divs instead of proper accordion semantics.
+**Prevention:** Use Radix AccordionPrimitive (already installed: @radix-ui/react-accordion). Not custom div + onClick.
 
-**Confidence:** HIGH - Based on creator platform patterns
+### Pitfall 14: Tooltip Z-Index Wars
 
----
+**What goes wrong:** Contextual tooltips appear behind modals, dropdowns, or sidebar.
+**Prevention:** Set tooltip z-index above all other layers. Test with sidebar open, modals open, dropdowns open. Define z-index scale in design tokens.
 
-### Virtuna Program Conflict of Interest
+### Pitfall 15: Referral Link Missing OG Tags for Social Preview
 
-**Description:** Featuring Virtuna's own affiliate program prominently while aggregating competitors creates conflict of interest perception. If creators feel pushed toward Virtuna's program over better deals, they'll leave.
+**What goes wrong:** Sharing referral link on TikTok/Instagram shows nothing or generic 404 because /invite/[code] route doesn't generate proper OG meta tags.
+**Prevention:** Generate dynamic OG meta tags in /invite/[code] page with Next.js metadata API. Include referrer name, Virtuna branding, compelling preview image.
 
-**Warning Signs:**
-- Creators complaining about Virtuna self-promotion
-- Perception that sorting/ranking favors Virtuna deals
-- Negative reviews citing conflict of interest
-- Competitors highlighting this as differentiation
+### Pitfall 16: Safari ITP Blocks JS-Set Referral Cookies
 
-**Prevention:**
-- Separate "Virtuna Partnerships" section from third-party aggregation
-- Never auto-enroll creators in Virtuna's program
-- Make Virtuna program opt-in with clear disclosure
-- Don't algorithmically favor Virtuna deals in rankings
-- Consider not including Virtuna deals in aggregated views at all
-
-**Phase to Address:** Phase 2 (Information Architecture) - Design clear separation of concerns
-
-**Confidence:** MEDIUM - Business risk based on market positioning
+**What goes wrong:** Safari ITP limits JS-set first-party cookies to 7 days (24h if referrer is classified as tracker). Referral attribution lost if user converts after 7 days.
+**Prevention:** Set referral cookie SERVER-SIDE via middleware (Set-Cookie header). Server-set first-party cookies are not limited by ITP. Already recommended in middleware pattern.
 
 ---
 
-### Feature Scope Creep into Regulated Territory
+## Phase-Specific Warnings
 
-**Description:** Natural feature evolution (show earnings -> track earnings -> estimate earnings -> project earnings -> pay earnings) gradually moves into money transmission territory. Each step seems small but collectively crosses regulatory lines.
-
-**Warning Signs:**
-- Product roadmap includes "payout" features
-- Users requesting "withdraw" or "transfer" functionality
-- Building features that hold user funds
-- Considering "advances" on earnings
-
-**Prevention:**
-- Document regulatory boundaries explicitly in product strategy
-- Create "regulatory review" gate for features touching money
-- Default answer to payout features: "link to network's payout system"
-- Get legal review before any fund-touching features
-- Consider the 5-year feature evolution when designing today
-
-**Phase to Address:** Phase 1 (Product Strategy) - Define regulatory boundaries upfront
-
-**Confidence:** HIGH - Many fintech startups have made this mistake
+| Phase Topic | Likely Pitfall | Mitigation |
+|-------------|---------------|------------|
+| Foundation (auth fix) | Mock AuthGuard left in place (Pitfall 2) | Replace before ANY other feature work |
+| Foundation (page removal) | Orphaned trending references (Pitfall 11) | Use 11-file removal checklist |
+| Landing Page | Canvas blocks mobile scroll (Pitfall 6) | Create read-only HiveDemo variant |
+| Landing Page | Canvas performance on low-end devices (Pitfall 5) | Static fallback for mobile, performance budget |
+| Onboarding | Blocks returning users (Pitfall 10) | DB flag + cookie fast-path + skip button |
+| Payments (Whop) | User identity mismatch (Pitfall 1) | Orphan event table + email fallback |
+| Payments (Whop) | Trial config mismatch (Pitfall 4) | Document config, sandbox test, e2e verify |
+| Payments (Whop) | Webhook replay duplicates (Pitfall 7) | Store svix-id, idempotent operations |
+| Tier Gating | Stale cache after upgrade (Pitfall 8) | router.refresh() + polling after checkout |
+| Referral Program | Attribution lost on OAuth redirect (Pitfall 3) | Server-side cookie before auth redirect |
+| Referral Program | Bonus abuse (Pitfall 9) | Bonus after first payment, not trial start |
+| Referral Program | Safari ITP blocks cookies (Pitfall 16) | Server-side cookie setting in middleware |
 
 ---
 
-## Phase-Specific Warning Summary
+## Sources
 
-| Phase | Topic | Likely Pitfall | Mitigation |
-|-------|-------|----------------|------------|
-| 1 - Foundation | Data Sourcing | ToS violations from scraping | API-first, legal review per source |
-| 1 - Foundation | Architecture | Accidental money transmission | Design to never hold funds |
-| 1 - Foundation | Security | Inadequate financial data protection | Encrypt earnings, audit access |
-| 2 - UI/Display | FTC Compliance | Missing/inadequate disclosures | Mandatory disclosure badges |
-| 2 - UI/Display | Deal Ranking | CFPB preferencing violations | Transparent, relevance-first sorting |
-| 2 - UI/Display | Trust | Data discrepancies with networks | Show source attribution, sync status |
-| 3 - Tracking | Attribution | Cookie/tracking failures | Don't be middleman, preserve network tracking |
-| 3 - Management | Stale Deals | Link rot destroying trust | Automated health checking |
-| 3 - Analytics | Earnings | Coupon poaching attribution theft | Education, detection tools |
-| Future | Payouts | Unlicensed money transmission | Use licensed providers only |
+### Verified in Codebase (HIGH confidence)
+- `src/components/app/auth-guard.tsx` -- mock auth guard confirmed
+- `src/app/api/webhooks/whop/route.ts` -- silent metadata failure on line 57-63
+- `src/components/app/checkout-modal.tsx` -- WhopCheckoutEmbed with onComplete
+- `src/types/database.types.ts` -- full schema with affiliate tables
+- `src/app/(app)/trending/` -- trending page and related files
 
----
+### Official Documentation (MEDIUM-HIGH confidence)
+- [Whop Checkout Embed Docs](https://docs.whop.com/payments/checkout-embed) -- sessionId, affiliateCode, metadata
+- [Whop Affiliate Program Docs](https://docs.whop.com/manage-your-business/growth-marketing/affiliate-program) -- commission structure, payout rules
+- [Safari ITP Documentation](https://webkit.org/blog/category/privacy/) -- cookie limitations
+- [Next.js CVE-2025-29927 Postmortem](https://vercel.com/blog/postmortem-on-next-js-middleware-bypass) -- middleware bypass risk
 
-## Research Gaps / Open Questions
-
-1. **Specific network policies**: Each major network (CJ, ShareASale, Impact, Awin) needs individual ToS review for aggregation permissions
-
-2. **Sub-affiliate network model**: Could Virtuna become a licensed sub-affiliate network? What are requirements?
-
-3. **International considerations**: EU DSA, UK CMA, GDPR implications for non-US creators
-
-4. **Insurance**: What E&O / cyber insurance is appropriate for a creator monetization platform?
-
----
-
-## Confidence Assessment
-
-| Area | Level | Reason |
-|------|-------|--------|
-| Legal/ToS | HIGH | Multiple affiliate programs explicitly prohibit aggregation; well-documented |
-| FTC Compliance | HIGH | Official FTC guidance is explicit and recent |
-| Money Transmission | HIGH | Federal/state regulations well-documented, case law exists |
-| Tracking Attribution | HIGH | Industry research confirms technical limitations |
-| Scraping Legality | HIGH | Recent court cases (2024-2025) provide clear precedent |
-| API Reliability | MEDIUM | Based on community reports, needs validation per network |
-| Creator Trust Patterns | MEDIUM | Inferred from similar platforms, no Virtuna-specific data |
-| CFPB Preferencing | MEDIUM | Guidance is new (2024), enforcement patterns still emerging |
-
----
-
-## Sources Summary
-
-**Official/Authoritative:**
-- [FTC Disclosures 101](https://www.ftc.gov/business-guidance/resources/disclosures-101-social-media-influencers)
-- [FTC Data Breach Response Guide](https://www.ftc.gov/business-guidance/resources/data-breach-response-guide-business)
-- [CSBS Money Transmission Modernization Act](https://www.csbs.org/csbs-money-transmission-modernization-act-mtma)
-- [CJ Developer Portal](https://developers.cj.com/)
-- [Amazon Associates Program Policies](https://affiliate-program.amazon.com/help/operating/policies)
-
-**Industry Research:**
-- [Tapfiliate Affiliate Marketing Compliance 2025](https://tapfiliate.com/blog/affiliate-marketing-compliance-gp/)
-- [Web Scraping Legal Guide (GroupBWT)](https://groupbwt.com/blog/is-web-scraping-legal/)
-- [Cookieless Affiliate Tracking (Stape)](https://stape.io/blog/the-impact-of-third-party-cookie-deprecation-on-affiliate-marketing)
-- [Link Rot Study (Affluent)](https://www.affluent.io/ask-the-experts-how-link-rot-affects-publishers/)
-- [Money Transmitter License Guide (RemitSo)](https://remitso.com/blogs/money-transmitter-license)
-
-**Technical/Implementation:**
-- [Affiliate Tracking 2025 (AutomateToProfit)](https://automatetoprofit.com/affiliate-tracking-2025-from-pixels-to-server-side-what-really-works-now/)
-- [CJ Integration (wecantrack)](https://wecantrack.com/cj-affiliate-integration/)
-- [Affiliate Attribution Integrity (Influencer Marketing Hub)](https://influencermarketinghub.com/affiliate-attribution/)
+### Industry Research (MEDIUM confidence)
+- [SaaS Referral Attribution Best Practices](https://impact.com/referral/saas-referral-program-guide/)
+- [SaaS Trial Conversion Pitfalls](https://www.f22labs.com/blogs/saas-free-trial-best-practices-pitfalls/)
+- [SaaS Onboarding Mistakes](https://www.sales-hacking.com/en/post/best-practices-onboarding-saas)

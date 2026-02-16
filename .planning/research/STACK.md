@@ -1,548 +1,279 @@
-# Stack Research: Trending Page (v1.5)
+# Technology Stack
 
-**Project:** Virtuna v1.5
-**Researched:** 2026-02-02
-**Dimension:** Stack additions for TikTok video feed, AI categorization, remix storyboards, and PDF export
+**Project:** Virtuna v3.0 MVP Launch
+**Researched:** 2026-02-13
+**Scope:** Stack ADDITIONS only -- existing stack (Next.js 16, React 19, Tailwind v4, Supabase Auth, Zustand, Zod v4, framer-motion, @whop/checkout) is validated and not re-evaluated.
 
----
+## Current State Assessment
 
-## Executive Summary
+The codebase already has substantial infrastructure for several of the target features:
 
-The Trending Page requires **four new capability domains**: video data ingestion (Apify), AI processing (OpenAI or Anthropic), client-side data fetching (TanStack Query), and PDF generation (React-PDF). The existing stack (Next.js 16, Supabase, Zustand, Tailwind) handles storage, auth, and UI.
-
-**Key recommendations:**
-
-1. **Apify Client** (`apify-client` v2.22.0) — Single integration for TikTok scraping via actors
-2. **OpenAI SDK** (`openai` v6.17.0) — AI categorization and remix generation (GPT-4o)
-3. **TanStack Query** (`@tanstack/react-query` v5.x) — Server state management with caching
-4. **React-PDF** (`@react-pdf/renderer` v4.3.2) — React 19-compatible PDF generation
-5. **Upstash Redis** (`@upstash/redis` + `@upstash/ratelimit`) — API caching and rate limiting
-
-**What NOT to add:** Direct TikTok API (no official public API), image generation for storyboard frames (complexity, cost, consistency issues), multiple AI providers (pick one).
-
----
-
-## New Capabilities Required
-
-| Capability | Purpose | Recommendation |
-|------------|---------|----------------|
-| TikTok data ingestion | Fetch trending videos + creator baselines | Apify TikTok scraper |
-| AI categorization | Classify videos by niche, content type, strategic tags | OpenAI GPT-4o |
-| AI remix generation | Generate 3 full production briefs per video | OpenAI GPT-4o |
-| Video data caching | Cache scraped data, reduce API calls | Upstash Redis |
-| API rate limiting | Protect AI endpoints, manage costs | Upstash Ratelimit |
-| Server state management | Feed data fetching with caching | TanStack Query |
-| PDF generation | Export storyboard briefs | React-PDF |
-
----
-
-## Apify Integration
-
-### Recommended: `apify-client`
-
-| Attribute | Value |
-|-----------|-------|
-| Package | `apify-client` |
-| Version | **2.22.0** (January 27, 2026) |
-| Source | [GitHub](https://github.com/apify/apify-client-js) |
-| Confidence | HIGH |
-
-**Why Apify:**
-- No official TikTok public API exists for trending content
-- Apify provides managed, maintained scrapers with 98% success rate
-- Single SDK for all TikTok data needs (videos, profiles, hashtags)
-- Automatic retries with exponential backoff built-in
-- REST API with unified response format
-
-### Relevant Apify Actors
-
-| Actor | Purpose | Pricing |
-|-------|---------|---------|
-| [TikTok Scraper (Api Dojo)](https://apify.com/apidojo/tiktok-scraper) | Bulk video scraping, 600 posts/sec | $0.30/1K posts |
-| [TikTok Profile Scraper](https://apify.com/clockworks/tiktok-profile-scraper) | Creator historical data | Per-run pricing |
-| [TikTok Hashtag Scraper](https://apify.com/clockworks/tiktok-hashtag-scraper) | Trending hashtag discovery | Per-run pricing |
-
-### Integration Pattern
-
-```typescript
-import { ApifyClient } from 'apify-client';
-
-const client = new ApifyClient({ token: process.env.APIFY_API_TOKEN });
-
-// Run TikTok scraper actor
-const run = await client.actor('apidojo/tiktok-scraper').call({
-  hashtags: ['trending'],
-  maxItems: 50,
-});
-
-// Fetch results
-const { items } = await client.dataset(run.defaultDatasetId).listItems();
-```
-
-### Data Flow
-
-```
-Vercel Cron (every 6h) → Apify Actor → Raw video data →
-  → Calculate views multiplier → AI classify → Store in Supabase
-```
-
----
-
-## AI Provider
-
-### Recommended: OpenAI
-
-| Attribute | Value |
-|-----------|-------|
-| Package | `openai` |
-| Version | **6.17.0** (January 28, 2026) |
-| Source | [GitHub](https://github.com/openai/openai-node) |
-| Model | `gpt-4o` (for categorization + remix) |
-| Confidence | HIGH |
-
-**Why OpenAI over Anthropic:**
-- Slightly lower latency for short classification tasks
-- Structured outputs (JSON mode) well-suited for categorization
-- Existing ecosystem familiarity
-- Function calling for structured remix generation
-
-**Alternative:** Anthropic Claude (`@anthropic-ai/sdk`) is equally capable. Choose based on:
-- Existing API keys/billing
-- Team preference
-- Long-form output quality (Claude may be better for full scripts)
-
-### Usage Patterns
-
-**1. Video Classification (batch)**
-```typescript
-import OpenAI from 'openai';
-
-const openai = new OpenAI();
-
-const classification = await openai.chat.completions.create({
-  model: 'gpt-4o',
-  response_format: { type: 'json_object' },
-  messages: [{
-    role: 'user',
-    content: `Classify this TikTok video:
-      Caption: ${video.description}
-      Hashtags: ${video.hashtags.join(', ')}
-      Audio: ${video.music.title}
-
-      Return JSON: { "niche": string, "contentType": string, "strategicTags": string[] }`
-  }]
-});
-```
-
-**2. Remix Generation**
-```typescript
-const remix = await openai.chat.completions.create({
-  model: 'gpt-4o',
-  messages: [{
-    role: 'system',
-    content: 'You are a TikTok content strategist creating production briefs...'
-  }, {
-    role: 'user',
-    content: `Generate 3 remix briefs for: ${sourceVideo}
-      Creator niche: ${niche}
-      Goal: ${goal}
-      Constraints: ${constraints}`
-  }]
-});
-```
-
-### Cost Estimation
-
-| Operation | Tokens (est.) | Cost per call | Daily volume | Daily cost |
-|-----------|---------------|---------------|--------------|------------|
-| Classification | ~500 | $0.005 | 500 videos | $2.50 |
-| Remix generation | ~2,000 | $0.02 | 100 remixes | $2.00 |
-| **Total estimated** | | | | **~$4.50/day** |
-
----
-
-## Data Fetching & Caching
-
-### Recommended: TanStack Query
-
-| Attribute | Value |
-|-----------|-------|
-| Package | `@tanstack/react-query` |
-| Version | **5.x** (latest stable) |
-| Source | [TanStack Docs](https://tanstack.com/query/latest) |
-| Confidence | HIGH |
-
-**Why TanStack Query over SWR:**
-- DevTools for debugging (critical for feed development)
-- Better mutation support (for save/status tracking)
-- More sophisticated cache invalidation (by tags)
-- Pagination/infinite scroll built-in
-- Prefetching for drill-down views
-
-**Why NOT Zustand alone:**
-- Zustand is for client state, not server state
-- TanStack Query handles stale-while-revalidate pattern
-- Automatic background refetching
-- Built-in loading/error states
-
-### Integration Pattern
-
-```typescript
-// /lib/queries/trending.ts
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
-
-export function useTrendingDashboard() {
-  return useQuery({
-    queryKey: ['trending', 'dashboard'],
-    queryFn: () => fetch('/api/trending/dashboard').then(r => r.json()),
-    staleTime: 5 * 60 * 1000, // 5 min
-  });
-}
-
-export function useCategoryVideos(category: string) {
-  return useInfiniteQuery({
-    queryKey: ['trending', 'category', category],
-    queryFn: ({ pageParam = 0 }) =>
-      fetch(`/api/trending/category/${category}?offset=${pageParam}`).then(r => r.json()),
-    getNextPageParam: (lastPage) => lastPage.nextOffset,
-  });
-}
-```
-
-### Caching Layer: Upstash Redis
-
-| Attribute | Value |
-|-----------|-------|
-| Package | `@upstash/redis` |
-| Version | Latest |
-| Source | [Upstash Docs](https://upstash.com/docs/redis/overall/getstarted) |
-| Confidence | HIGH |
-
-**Why Upstash:**
-- Serverless Redis (no connection management)
-- Works on Vercel Edge
-- Built-in rate limiting package
-- Pay-per-request pricing (~$0.20/100K commands)
-
-### Rate Limiting
-
-```typescript
-import { Ratelimit } from '@upstash/ratelimit';
-import { Redis } from '@upstash/redis';
-
-const ratelimit = new Ratelimit({
-  redis: Redis.fromEnv(),
-  limiter: Ratelimit.slidingWindow(10, '60 s'), // 10 requests per minute
-});
-
-// In API route
-const { success } = await ratelimit.limit(userId);
-if (!success) return new Response('Rate limited', { status: 429 });
-```
-
-### Caching Strategy
-
-| Data Type | Cache Location | TTL | Invalidation |
-|-----------|----------------|-----|--------------|
-| Dashboard feed | Upstash Redis | 5 min | On Apify refresh |
-| Category lists | Upstash Redis | 5 min | On Apify refresh |
-| Video details | Supabase + TanStack | 1 hour | On view |
-| Creator baselines | Supabase | 24 hours | On Apify refresh |
-| Remix results | Supabase | Permanent | Manual delete |
-
----
-
-## PDF Generation
-
-### Recommended: React-PDF
-
-| Attribute | Value |
-|-----------|-------|
-| Package | `@react-pdf/renderer` |
-| Version | **4.3.2** (React 19 compatible since v4.1.0) |
-| Source | [react-pdf.org](https://react-pdf.org) |
-| Confidence | HIGH |
-
-**Why React-PDF:**
-- React 19 compatible (v4.1.0+)
-- Declarative PDF creation using React components
-- Server-side rendering support (Next.js API routes)
-- No external dependencies (pure JS)
-- Excellent for structured documents (storyboards)
-
-**Alternatives considered:**
-- **pdfme** (v5.5.0) — Good, but more template-focused
-- **pdfmake** — Declarative but not React-native
-- **jsPDF** — More imperative, less suited for complex layouts
-
-### Integration Pattern
-
-```typescript
-// /components/pdf/StoryboardPDF.tsx
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
-
-const styles = StyleSheet.create({
-  page: { padding: 30 },
-  section: { marginBottom: 10 },
-  title: { fontSize: 18, fontWeight: 'bold' },
-  content: { fontSize: 12 },
-});
-
-interface StoryboardPDFProps {
-  remix: RemixBrief;
-}
-
-export function StoryboardPDF({ remix }: StoryboardPDFProps) {
-  return (
-    <Document>
-      <Page size="A4" style={styles.page}>
-        <View style={styles.section}>
-          <Text style={styles.title}>Hook (First 3 Seconds)</Text>
-          <Text style={styles.content}>{remix.hook}</Text>
-        </View>
-        <View style={styles.section}>
-          <Text style={styles.title}>Shot List</Text>
-          {remix.shotList.map((shot, i) => (
-            <Text key={i} style={styles.content}>{i + 1}. {shot}</Text>
-          ))}
-        </View>
-        <View style={styles.section}>
-          <Text style={styles.title}>Full Script</Text>
-          <Text style={styles.content}>{remix.script}</Text>
-        </View>
-        {/* ... more sections */}
-      </Page>
-    </Document>
-  );
-}
-```
-
-```typescript
-// /api/remix/[id]/pdf/route.ts
-import { renderToBuffer } from '@react-pdf/renderer';
-import { StoryboardPDF } from '@/components/pdf/StoryboardPDF';
-
-export async function GET(req: Request, { params }: { params: { id: string } }) {
-  const remix = await getRemix(params.id);
-  const buffer = await renderToBuffer(<StoryboardPDF remix={remix} />);
-
-  return new Response(buffer, {
-    headers: {
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="remix-${params.id}.pdf"`,
-    },
-  });
-}
-```
-
-### Storyboard Visuals
-
-**Decision:** Text-only storyboards for MVP.
-
-**Why NOT AI-generated images:**
-- DALL-E 3 deprecated May 2026, GPT Image models new
-- Character consistency issues across frames
-- Added cost ($0.04-0.12 per image)
-- Latency (2-5 seconds per image)
-- Storyboards work well as text with shot descriptions
-
-**Future enhancement:** Consider GPT Image when:
-- Character consistency improves
-- User demand validates
-- Budget allows
-
----
+| Feature Area | What Exists | What's Missing |
+|-------------|-------------|----------------|
+| Whop Payments | `@whop/checkout` ^0.0.52, checkout modal, webhook handler, cron sync, subscription API, tier config | `@whop/sdk` for typed API calls (currently raw `fetch`), trial configuration, `affiliateCode` prop on checkout embed |
+| TikTok Connect | Nothing | Full OAuth flow, token management, profile data fetching |
+| Affiliate/Referral | DB schema (affiliate_clicks, affiliate_conversions, wallet_transactions), mock data, UI components | Backend logic for referral code generation, click tracking API, conversion attribution, Whop affiliateCode passthrough |
+| Landing Page | 11 landing components exist (hero, features, stats, FAQ, etc.), framer-motion ^12.29.3, react-intersection-observer ^10.0.2 | Interactive demo (mini hive canvas + analysis preview), pricing section with checkout integration |
 
 ## Recommended Stack Additions
 
-| Package | Version | Purpose | Why |
-|---------|---------|---------|-----|
-| `apify-client` | ^2.22.0 | TikTok data ingestion | Managed scraping, 98% success rate |
-| `openai` | ^6.17.0 | AI classification + remix | GPT-4o structured outputs |
-| `@tanstack/react-query` | ^5.x | Server state management | DevTools, mutations, pagination |
-| `@react-pdf/renderer` | ^4.3.2 | PDF storyboard export | React 19 compatible |
-| `@upstash/redis` | latest | Edge caching | Serverless, Vercel-optimized |
-| `@upstash/ratelimit` | latest | API rate limiting | Protect AI endpoints |
+### 1. Whop Server SDK (Replace Raw Fetch)
 
-### Installation Command
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| `@whop/sdk` | ^0.0.25 | Typed Whop API client | Replaces raw `fetch()` calls in checkout/route.ts and cron/sync-whop/route.ts with typed methods, automatic retries (2x default), and proper error types. The existing webhook handler uses manual Svix verification which works fine, but the SDK's `webhooks.unwrap()` is cleaner. |
 
-```bash
-pnpm add apify-client openai @tanstack/react-query @react-pdf/renderer @upstash/redis @upstash/ratelimit
+**Confidence:** HIGH -- verified via [npm](https://www.npmjs.com/package/@whop/sdk) and [Whop docs](https://docs.whop.com/developer/api/getting-started)
+
+**Integration notes:**
+- Initialize in `src/lib/whop/sdk.ts` with `WHOP_API_KEY` env var
+- Replace raw fetch in `src/app/api/whop/checkout/route.ts` with `client.checkoutSessions.create()`
+- Replace raw fetch in `src/app/api/cron/sync-whop/route.ts` with `client.memberships.retrieve()`
+- Can replace manual webhook verification in `src/lib/whop/webhook-verification.ts` with `client.webhooks.unwrap()`
+- Does NOT replace `@whop/checkout` -- that's the frontend embed component, separate package
+
+**What NOT to do:** Do not add `@whop-apps/sdk` -- that's for building Whop platform apps, not external integrations.
+
+### 2. TikTok OAuth (Manual Implementation, No New Dependencies)
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| Manual OAuth 2.0 | N/A (native) | TikTok account connection | TikTok Login Kit is standard OAuth 2.0. Supabase Auth does NOT have a built-in TikTok provider (confirmed via [GitHub issue #199](https://github.com/supabase/auth/issues/199)). Adding Auth.js/NextAuth would create a parallel auth system conflicting with the existing Supabase Auth setup. Manual OAuth is 2 route handlers + 1 utility. |
+
+**Confidence:** HIGH -- verified TikTok not in Supabase's [supported providers list](https://supabase.com/docs/guides/auth/social-login), confirmed Auth.js Supabase adapter uses separate `next_auth` schema (conflicts with existing auth)
+
+**Implementation pattern:**
+```
+1. /api/auth/tiktok/authorize   -- generates state, redirects to TikTok
+2. /api/auth/tiktok/callback    -- exchanges code for tokens, stores in tiktok_connections table
+3. TikTok authorization URL: https://www.tiktok.com/v2/auth/authorize/
+4. Token exchange endpoint: https://open.tiktokapis.com/v2/oauth/token/
+5. User info endpoint: https://open.tiktokapis.com/v2/user/info/
 ```
 
-### Dev Dependencies
+**Required scopes:**
+- `user.info.basic` -- display name, avatar, open_id (table stakes)
+- `user.info.profile` -- bio, verification status (valuable for creator profiles)
+- `user.info.stats` -- follower count, likes count, video count (critical for the product)
 
-None required beyond existing setup.
+**Production constraint:** TikTok requires HTTPS callback URLs, domain must be registered and approved by TikTok team. Development requires deployed preview URL (no localhost). Submit for review immediately.
 
----
+**What NOT to do:**
+- Do NOT add `next-auth` / Auth.js -- it creates a parallel auth system with its own `next_auth` DB schema, conflicting with Supabase Auth
+- Do NOT use Supabase's `signInWithOAuth` for TikTok -- TikTok is not a supported provider
+- This is account LINKING, not authentication -- the user is already signed in via Supabase Auth, we're just connecting their TikTok account for data access
 
-## Already Sufficient (No Addition Needed)
+### 3. No New Libraries for Affiliate/Referral System
 
-| Existing | Version | For Trending Page |
-|----------|---------|-------------------|
-| `next` | 16.1.5 | API routes, cron, routing |
-| `@supabase/supabase-js` | 2.93.1 | Video/remix storage |
-| `zustand` | 5.0.10 | UI state (filters, selections) |
-| `zod` | 4.3.6 | API response validation |
-| `recharts` | 3.7.0 | Views multiplier charts (if needed) |
-| `motion` | 12.29.2 | Card animations, transitions |
-| `tailwindcss` | 4 | Styling |
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| No additions | N/A | Referral tracking | The database schema already has `affiliate_clicks` and `affiliate_conversions` tables. The Whop checkout embed already accepts an `affiliateCode` prop. This is purely server-side logic (route handlers + Supabase queries) with no library dependencies. |
 
----
+**Confidence:** HIGH -- verified `affiliateCode` prop exists on [WhopCheckoutEmbed](https://docs.whop.com/payments/checkout-embed), DB schema confirmed in `database.types.ts`
 
-## What NOT to Add
+**Implementation approach:**
+- Generate referral codes with `crypto.randomBytes(4).toString('hex')` -- no library needed
+- New Supabase tables: `referral_links`, `referral_conversions` (separate from brand-deal affiliate tables)
+- Track clicks via `/api/referral/[code]` route handler with redirect + server-set cookie
+- Attribute conversions in Whop webhook handler when `affiliateCode` is present
+- Pass `affiliateCode` prop to existing `CheckoutModal` component
+- Whop's built-in affiliate system handles commission payouts (30-day window, configurable rates)
 
-| Avoid | Reason |
-|-------|--------|
-| **Direct TikTok API** | No official public API; use Apify |
-| **SWR** | TanStack Query has DevTools, better mutations |
-| **Multiple AI providers** | Pick one (OpenAI); switch later if needed |
-| **DALL-E/Image generation** | Consistency issues, cost, complexity |
-| **pdfmake/jsPDF** | React-PDF is more idiomatic |
-| **socket.io/real-time** | Feed doesn't need real-time; polling sufficient |
-| **Puppeteer/Playwright** | Apify handles scraping; don't DIY |
-| **Separate Redis provider** | Upstash is Vercel-optimized |
-| **GraphQL** | REST sufficient for this scope |
+**What NOT to do:**
+- Do NOT build custom commission payout logic -- Whop handles this natively
+- Do NOT add analytics libraries for click tracking -- Supabase + a simple route handler is sufficient for MVP
+- Do NOT reuse existing `affiliate_clicks`/`affiliate_conversions` tables for Virtuna referrals -- those are semantically for brand-deal affiliates. Create new `referral_links`/`referral_conversions` tables.
 
----
+### 4. No New Libraries for Landing Page
 
-## Integration with Existing Stack
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| No additions | N/A | Landing page with interactive demo | Already have framer-motion ^12.29.3 (animations), react-intersection-observer ^10.0.2 (scroll triggers), @react-three/fiber + @react-three/drei + @splinetool/react-spline (3D if needed). The interactive demo is a stripped-down Canvas 2D component reusing existing d3-hierarchy logic. |
 
-### Fits Naturally
+**Confidence:** HIGH -- all libraries already installed and in use
 
-| Existing | Integration Point |
-|----------|-------------------|
-| Next.js App Router | `/api/trending/*`, `/api/remix/*` routes |
-| Supabase Auth | User ID for remix ownership |
-| Supabase DB | `trending_videos`, `remixes`, `creator_baselines` tables |
-| Zustand | Filter state, selected video, UI preferences |
-| Tailwind | Dashboard layout, video cards |
-| Radix UI | Modals, dropdowns, tabs |
+**Mini hive demo approach:**
+- Extract a lightweight version of the existing Canvas hive component (already renders 1300+ nodes at 60fps)
+- Reduce to ~50 nodes with pre-computed positions (no d3 dependency needed for static demo)
+- Use framer-motion `whileInView` for scroll-triggered animations on sections
+- Use react-intersection-observer for lazy loading heavy sections
 
-### New Patterns Required
+**What NOT to do:**
+- Do NOT add GSAP -- framer-motion already handles everything needed
+- Do NOT add Lottie -- not worth the complexity for this landing page
+- Do NOT import the full HiveCanvas component with all interaction hooks -- create a separate lightweight HiveDemo
 
-| Pattern | Location | Purpose |
-|---------|----------|---------|
-| TanStack Query Provider | `/app/providers.tsx` | Wrap app with QueryClientProvider |
-| Vercel Cron | `/api/cron/refresh-trending` | Scheduled Apify runs |
-| Edge caching | API routes | Upstash Redis for hot data |
-| Rate limiting middleware | `/api/remix/*` | Protect AI endpoints |
-| PDF streaming | `/api/remix/[id]/pdf` | Generate PDF on demand |
+### 5. Contextual Tooltips (Custom, No New Dependencies)
 
-### Environment Variables
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| Custom (Zustand + Framer Motion) | N/A | First-visit tooltips | Contextual tooltips are independent per-element, not sequential tours. NextStepjs is sequential. A lightweight custom component using Zustand persist + Framer Motion (both already installed) is simpler and more flexible. |
 
-```env
-# Apify
-APIFY_API_TOKEN=apify_api_xxx
+**What NOT to do:**
+- Do NOT add NextStepjs -- overkill for independent contextual tooltips
+- Do NOT add Onborda -- requires shadcn/ui which is not our design system
+- Do NOT add Intro.js -- jQuery-era API, no Next.js optimizations
 
-# OpenAI
-OPENAI_API_KEY=sk-xxx
+## Recommended Stack (Summary)
 
-# Upstash Redis
-UPSTASH_REDIS_REST_URL=https://xxx.upstash.io
-UPSTASH_REDIS_REST_TOKEN=xxx
-```
+### New Dependencies
 
----
+| Package | Version | Category | Size Impact |
+|---------|---------|----------|-------------|
+| `@whop/sdk` | ^0.0.25 | Server-side | Minimal (server-only, tree-shakes) |
+
+**Total new packages: 1**
+
+### Already Installed (Leverage These)
+
+| Package | Current Version | Use For |
+|---------|----------------|---------|
+| `@whop/checkout` | ^0.0.52 | Embedded checkout with `affiliateCode` prop |
+| `framer-motion` | ^12.29.3 | Landing page animations, scroll triggers, tooltip animations |
+| `react-intersection-observer` | ^10.0.2 | Lazy loading, section visibility |
+| `d3-hierarchy` | ^3.1.2 | Mini hive demo data generation |
+| `d3-quadtree` | ^3.0.1 | Mini hive demo hit detection |
+| `zod` | ^4.3.6 | Form validation (onboarding flow, referral inputs) |
+| `zustand` | ^5.0.10 | Onboarding state, tooltip dismissal tracking, referral state |
+| `@supabase/ssr` | ^0.8.0 | Server-side auth, session management |
+| `@supabase/supabase-js` | ^2.93.1 | Database queries, auth |
+| `recharts` | ^3.7.0 | Referral dashboard charts |
+
+## Environment Variables
+
+### New (Required)
+
+| Variable | Purpose | Where Used |
+|----------|---------|------------|
+| `TIKTOK_CLIENT_KEY` | TikTok OAuth client ID | `/api/auth/tiktok/*` route handlers |
+| `TIKTOK_CLIENT_SECRET` | TikTok OAuth client secret | `/api/auth/tiktok/callback` |
+
+### Existing (Verify Configured)
+
+| Variable | Purpose | Status |
+|----------|---------|--------|
+| `WHOP_API_KEY` | Whop API authentication | Used in checkout + cron routes |
+| `WHOP_WEBHOOK_SECRET` | Webhook signature verification | Used in webhook handler |
+| `WHOP_PRODUCT_ID_STARTER` | Starter plan product ID | Used in config.ts |
+| `WHOP_PRODUCT_ID_PRO` | Pro plan product ID | Used in config.ts |
+| `CRON_SECRET` | Cron endpoint auth | Used in sync-whop route |
+| `NEXT_PUBLIC_APP_URL` | App base URL for redirects | Used in checkout route |
+
+## Alternatives Considered
+
+| Category | Recommended | Alternative | Why Not |
+|----------|-------------|-------------|---------|
+| TikTok OAuth | Manual OAuth 2.0 routes | Auth.js + TikTok provider | Creates parallel auth system with separate `next_auth` DB schema; conflicts with existing Supabase Auth; adds ~3 packages for what's 2 route handlers |
+| TikTok OAuth | Manual OAuth 2.0 routes | Supabase custom OIDC (upcoming) | Not yet released as of 2026-02-13; "early 2026" per Supabase discussions; can migrate later when available |
+| Whop API | `@whop/sdk` | Continue with raw `fetch()` | Raw fetch works (proven by existing code) but lacks types, auto-retry, and proper error handling; SDK is <1 dependency |
+| Referral codes | `crypto.randomBytes` | nanoid / uuid | No need for a library to generate 8-character referral codes |
+| Landing animations | framer-motion | GSAP | Already installed and used throughout; GSAP adds 60kb+ for no benefit |
+| Checkout embed | `@whop/checkout` | Custom Stripe integration | Whop is the chosen payment platform; already integrated with working modal |
+| Tooltips | Custom (Zustand + Framer Motion) | NextStepjs | Sequential tour library, not independent contextual tooltips |
+| Referral tracking | Custom (Supabase) | GrowSurf / Rewardful | External SaaS adds cost + complexity. DB schema already exists. Simple one-time bonus does not need a platform |
+| Email sequences | Skip for MVP | Resend / Loops | Not needed yet. In-app onboarding first |
 
 ## Database Schema Additions
 
+New tables needed (Supabase migrations):
+
 ```sql
--- Trending videos cache
-CREATE TABLE trending_videos (
+-- Referral links for Virtuna's referral program
+CREATE TABLE referral_links (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tiktok_id VARCHAR(50) UNIQUE NOT NULL,
-  creator_handle VARCHAR(100) NOT NULL,
-  creator_id VARCHAR(50),
-  views BIGINT NOT NULL,
-  views_multiplier DECIMAL(6,2),
-  behavioral_category VARCHAR(20), -- 'breaking_out', 'sustained', 'resurging'
-  niche VARCHAR(50),
-  content_type VARCHAR(50),
-  strategic_tags TEXT[],
-  thumbnail_url TEXT,
-  video_url TEXT,
-  description TEXT,
-  hashtags TEXT[],
-  audio_title VARCHAR(255),
-  posted_at TIMESTAMPTZ,
-  scraped_at TIMESTAMPTZ DEFAULT NOW(),
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  user_id UUID NOT NULL REFERENCES auth.users(id),
+  code VARCHAR(16) UNIQUE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  is_active BOOLEAN DEFAULT TRUE
 );
 
--- Creator baselines for multiplier calculation
-CREATE TABLE creator_baselines (
+-- Referral conversions (tracks successful signups via referral)
+CREATE TABLE referral_conversions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  creator_id VARCHAR(50) UNIQUE NOT NULL,
-  creator_handle VARCHAR(100) NOT NULL,
-  avg_views_30d BIGINT,
-  video_count_30d INT,
-  last_calculated TIMESTAMPTZ DEFAULT NOW()
+  referrer_id UUID NOT NULL REFERENCES auth.users(id),
+  referred_id UUID NOT NULL REFERENCES auth.users(id),
+  referral_code VARCHAR(16) NOT NULL,
+  converted_at TIMESTAMPTZ DEFAULT NOW(),
+  bonus_cents INTEGER NOT NULL DEFAULT 0,
+  status VARCHAR(20) DEFAULT 'pending' -- pending, credited, expired
 );
 
--- User remixes
-CREATE TABLE remixes (
+-- TikTok account connections (separate from creator_profiles for token security)
+CREATE TABLE tiktok_connections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users NOT NULL,
-  source_video_id UUID REFERENCES trending_videos,
-  source_url TEXT,
-  niche VARCHAR(50),
-  goal VARCHAR(50),
-  constraints JSONB,
-  briefs JSONB NOT NULL, -- Array of 3 production briefs
-  status VARCHAR(20) DEFAULT 'generated', -- 'generated', 'to_film', 'filmed', 'posted'
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  user_id UUID UNIQUE NOT NULL REFERENCES auth.users(id),
+  tiktok_open_id VARCHAR(255) NOT NULL,
+  display_name VARCHAR(255),
+  avatar_url TEXT,
+  follower_count INTEGER,
+  likes_count INTEGER,
+  video_count INTEGER,
+  bio TEXT,
+  is_verified BOOLEAN DEFAULT FALSE,
+  access_token TEXT NOT NULL,
+  refresh_token TEXT NOT NULL,
+  token_expires_at TIMESTAMPTZ NOT NULL,
+  connected_at TIMESTAMPTZ DEFAULT NOW(),
+  last_synced_at TIMESTAMPTZ
 );
 
--- Indexes
-CREATE INDEX idx_trending_category ON trending_videos(behavioral_category);
-CREATE INDEX idx_trending_niche ON trending_videos(niche);
-CREATE INDEX idx_trending_scraped ON trending_videos(scraped_at DESC);
-CREATE INDEX idx_remixes_user ON remixes(user_id);
+-- Onboarding state (add columns to existing creator_profiles)
+ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS
+  onboarding_completed_at TIMESTAMPTZ DEFAULT NULL;
+ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS
+  onboarding_step INTEGER DEFAULT 0;
+ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS
+  creator_goal TEXT DEFAULT NULL;
 ```
 
----
+**Note:** The existing `affiliate_clicks` and `affiliate_conversions` tables are for brand-deal affiliates. The new `referral_links` and `referral_conversions` tables are for the Virtuna user-refers-user program. Keep them separate to avoid semantic confusion. The `tiktok_connections` table stores sensitive OAuth tokens separately from `creator_profiles` (which has public profile data).
 
-## Confidence Assessment
+## Whop Plan Configuration (Dashboard, Not Code)
 
-| Area | Confidence | Reasoning |
-|------|------------|-----------|
-| Apify integration | HIGH | Official client docs verified, v2.22.0 released Jan 2026 |
-| OpenAI SDK | HIGH | v6.17.0 verified on GitHub releases |
-| TanStack Query | HIGH | Industry standard, well-documented |
-| React-PDF | HIGH | v4.3.2 React 19 support verified in GitHub issues |
-| Upstash Redis | HIGH | Official Vercel partner, documented integration |
-| PDF-only storyboards | MEDIUM | User preference unknown; may want images later |
-| AI cost estimates | MEDIUM | Based on typical usage; actual may vary |
+The 7-day Pro trial is configured in the Whop dashboard, NOT in code:
 
----
+1. Create two plans in Whop dashboard:
+   - **Starter** -- monthly renewal, $19/mo, no trial
+   - **Pro** -- monthly renewal, $49/mo, `trial_period_days: 7`
+2. Copy plan IDs to `WHOP_PRODUCT_ID_STARTER` and `WHOP_PRODUCT_ID_PRO` env vars
+3. The existing checkout flow automatically handles trials -- Whop's embed shows the trial UI when the plan has a trial configured
+
+Alternatively, plans can be created via `@whop/sdk`:
+```typescript
+const plan = await whop.plans.create({
+  company_id: "biz_xxx",
+  product_id: "prod_xxx",
+  plan_type: "renewal",
+  billing_period: 30,
+  initial_price: 0, // $0 for trial
+  renewal_price: 4900, // $49.00
+  trial_period_days: 7,
+  title: "Pro Monthly",
+});
+```
+
+## Installation
+
+```bash
+# Single new dependency
+npm install @whop/sdk
+```
+
+No dev dependencies needed. No configuration changes to Next.js, Tailwind, or TypeScript.
 
 ## Sources
 
-### Package Versions (Verified)
-- [apify-client v2.22.0](https://github.com/apify/apify-client-js) - GitHub releases
-- [openai v6.17.0](https://github.com/openai/openai-node/releases) - GitHub releases
-- [@react-pdf/renderer v4.3.2](https://github.com/diegomura/react-pdf/issues/2756) - React 19 compatibility
-- [TanStack Query](https://tanstack.com/query/latest) - Official docs
-
-### Apify TikTok Scrapers
-- [TikTok Scraper (Api Dojo)](https://apify.com/apidojo/tiktok-scraper)
-- [TikTok Profile Scraper](https://apify.com/clockworks/tiktok-profile-scraper)
-- [Apify JavaScript API](https://apify.com/clockworks/tiktok-video-scraper/api/javascript)
-
-### Caching & Rate Limiting
-- [Upstash Rate Limiting](https://upstash.com/blog/nextjs-ratelimiting)
-- [Next.js Caching Guide](https://nextjs.org/docs/app/guides/caching)
-- [TanStack Query vs SWR](https://tanstack.com/query/v4/docs/react/comparison)
-
-### PDF Generation
-- [React-PDF Official](https://react-pdf.org/)
-- [React-PDF React 19 Support](https://github.com/diegomura/react-pdf/issues/2756)
-
-### AI Image Generation
-- [OpenAI Image Generation](https://platform.openai.com/docs/guides/image-generation) - DALL-E 3 deprecation notice
-
----
-
-*Research completed: 2026-02-02*
-*Ready for roadmap creation*
+- [@whop/sdk npm](https://www.npmjs.com/package/@whop/sdk) -- v0.0.25, published 2026-02-08
+- [@whop/checkout npm](https://www.npmjs.com/package/@whop/checkout) -- v0.0.52, already installed
+- [Whop Embed Checkout docs](https://docs.whop.com/payments/checkout-embed) -- affiliateCode prop, sessionId, theme
+- [Whop Webhooks docs](https://docs.whop.com/developer/guides/webhooks) -- Standard Webhooks spec, unwrap() method
+- [Whop Accept Payments docs](https://docs.whop.com/developer/guides/accept-payments) -- checkout configuration creation
+- [Whop Create Plan API](https://docs.whop.com/api-reference/plans/create-plan) -- trial_period_days parameter
+- [Whop Affiliate Program docs](https://docs.whop.com/manage-your-business/growth-marketing/affiliate-program) -- built-in affiliate system, 30-day payout window
+- [TikTok Login Kit for Web](https://developers.tiktok.com/doc/login-kit-web) -- OAuth 2.0 authorization flow
+- [TikTok API Scopes](https://developers.tiktok.com/doc/tiktok-api-scopes) -- user.info.basic, user.info.profile, user.info.stats
+- [Auth.js TikTok provider](https://authjs.dev/getting-started/providers/tiktok) -- confirms TikTok OAuth works but requires Auth.js
+- [Supabase Auth TikTok request](https://github.com/supabase/auth/issues/199) -- confirms no built-in TikTok support
+- [Supabase Social Login docs](https://supabase.com/docs/guides/auth/social-login) -- supported provider list (no TikTok)
+- [framer-motion npm](https://www.npmjs.com/package/framer-motion) -- v12.34.0 latest (project has ^12.29.3, compatible)
+- [Whop API Getting Started](https://docs.whop.com/developer/api/getting-started) -- SDK initialization pattern

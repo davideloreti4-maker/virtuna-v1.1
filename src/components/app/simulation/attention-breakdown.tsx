@@ -21,7 +21,7 @@ interface AttentionBreakdownProps {
  */
 export function AttentionBreakdown({ attention }: AttentionBreakdownProps) {
   return (
-    <GlassCard padding="md" hover="lift" blur="none">
+    <GlassCard className="p-4">
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Text as="span" size="sm" muted>
@@ -42,7 +42,7 @@ export function AttentionBreakdown({ attention }: AttentionBreakdownProps) {
                 {attention.full}%
               </Text>
             </div>
-            <GlassProgress value={attention.full} color="coral" size="md" />
+            <GlassProgress value={attention.full} variant="accent" size="md" />
           </div>
 
           {/* Partial Attention */}
@@ -55,7 +55,7 @@ export function AttentionBreakdown({ attention }: AttentionBreakdownProps) {
                 {attention.partial}%
               </Text>
             </div>
-            <GlassProgress value={attention.partial} color="blue" size="md" />
+            <GlassProgress value={attention.partial} size="md" />
           </div>
 
           {/* Ignored */}
@@ -68,7 +68,7 @@ export function AttentionBreakdown({ attention }: AttentionBreakdownProps) {
                 {attention.ignore}%
               </Text>
             </div>
-            <GlassProgress value={attention.ignore} color="purple" size="md" />
+            <GlassProgress value={attention.ignore} size="md" />
           </div>
         </div>
       </div>
