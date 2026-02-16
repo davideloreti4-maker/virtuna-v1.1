@@ -12,7 +12,8 @@
     "extraction:all": "npx playwright test --project=desktop --config=extraction/playwright.config.ts",
     "extraction:ui": "npx playwright test --ui --config=extraction/playwright.config.ts",
     "extraction:report": "npx playwright show-report extraction/playwright-report",
-    "extraction:gifs": "npx tsx extraction/scripts/generate-gifs.ts"
+    "extraction:gifs": "npx tsx extraction/scripts/generate-gifs.ts",
+    "analyze": "npx tsx scripts/analyze-dataset.ts"
   },
   "dependencies": {
     "@google/genai": "^1.41.0",
@@ -63,6 +64,7 @@
     "@types/react-dom": "^19",
     "@types/three": "^0.182.0",
     "@types/wcag-contrast": "^3.0.3",
+    "dotenv": "^17.3.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.5",
     "pixelmatch": "^6.0.0",
