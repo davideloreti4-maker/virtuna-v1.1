@@ -2,134 +2,106 @@
 phase: 01-data-analysis
 plan: 01
 subsystem: data-analysis
-tags: [supabase, tiktok, engagement-rate, virality, statistics, typescript]
+tags: [supabase, tiktok, weighted-engagement, virality, creator-size, velocity, statistics, typescript, apify]
 
 # Dependency graph
 requires: []
 provides:
-  - calibration-baseline.json with virality tiers, engagement thresholds, duration sweet spot
-  - Data analysis report with key differentiators between viral and average content
-  - Engagement ratio patterns (likes:comments:shares)
-  - Top hashtags and sounds with viral overrepresentation scores
+  - calibration-baseline.json with algorithm-aligned weighted engagement scoring
+  - Creator size normalization (nano→mega tiers, size-adjusted WES, views/follower breakout signal)
+  - View velocity analysis (views/day as traction proxy)
+  - Save rate (bookmarks/views) as high-intent signal
+  - 5 virality tiers based on weighted engagement score
+  - Viral vs average differentiators ordered by algo weight
+  - Data analysis report with 12 sections
+  - Apify data import script for both apidojo and clockworks scraper formats
 affects: [02-gemini-prompts, 03-deepseek-cot, 05-aggregation-formula, 10-ml-training, 12-calibration]
 
 # Tech tracking
 tech-stack:
-  added: [dotenv, tsx (script runner)]
-  patterns: [paginated Supabase fetch with service role, percentile-based statistical analysis]
+  added: [dotenv, tsx (script runner), apify-client]
+  patterns: [paginated Supabase fetch with service role, percentile-based statistical analysis, dual-format Apify import]
 
 key-files:
   created:
-    - scripts/analyze-dataset.ts
-    - src/lib/engine/calibration-baseline.json
-    - .planning/phases/01-data-analysis/data-analysis-report.md
+    - scripts/analyze-dataset.ts (990 lines — analysis with 12-step pipeline)
+    - scripts/import-apify-data.ts (241 lines — dual-format Apify importer)
+    - src/lib/engine/calibration-baseline.json (968 lines — machine-readable patterns)
+    - .planning/phases/01-data-analysis/data-analysis-report.md (221 lines — human-readable report)
   modified:
     - package.json (added "analyze" script)
 
 key-decisions:
-  - "Used views-based p99.5 proxy for celebrity filtering since scraped_videos has no follower count"
-  - "Engagement rate = (likes+comments+shares)/views as primary virality metric (normalized by reach)"
-  - "5 virality tiers mapped to percentile boundaries: p25, p50, p75, p90"
-  - "Power hashtags defined as high-frequency AND above-median ER (8 found)"
-  - "Duration sweet spot 50-55s has highest median ER but small sample (130 videos); 10-15s is strongest with volume"
+  - "Algorithm-aligned weighted engagement: (likes×1 + comments×2 + shares×3) / views mirrors TikTok 2025 point system"
+  - "Share rate is #1 measurable virality KPI — viral threshold at 1.83% (p90)"
+  - "Save rate (bookmarks/views) added as high-intent signal — viral videos 217% higher"
+  - "Creator size normalization via 5 tiers (nano<10K, micro<100K, mid<500K, macro<1M, mega>1M)"
+  - "Views/follower ratio as breakout signal — nano creators reach 28x audience, mega only 0.94x"
+  - "View velocity (views/day) as traction proxy — p50=1,633, p90=57K"
+  - "Hashtags/sounds demoted to context signals — NOT primary algo ranking factors"
+  - "Dual-format Apify import supports both apidojo and clockworks TikTok scraper output"
 
 patterns-established:
   - "Standalone scripts use direct @supabase/supabase-js createClient (not SSR variant)"
   - "Scripts load .env.local via dotenv config path"
   - "Statistical analysis uses linear interpolation for percentile computation"
+  - "Apify runs imported with upsert on platform+platform_video_id conflict"
 
 # Metrics
-duration: 5min
+duration: ~45min (including research + 3 iterations)
 completed: 2026-02-16
 ---
 
-# Phase 1 Plan 1: Data Analysis Summary
+# Phase 1 Plan 1: Algorithm-Aligned TikTok Data Analysis
 
-**Mined 7,321 TikTok videos for virality patterns: 5 data-driven tiers, 8 power hashtags, 50-55s duration sweet spot, 878% higher share ratio in viral content**
+**Mined 7,321 TikTok videos with algorithm-aligned weighted engagement scoring: 5 tiers, creator size normalization, view velocity, save rate, and share rate as #1 virality signal**
 
-## Performance
+## Commits
 
-- **Duration:** 5 min 27s
-- **Started:** 2026-02-16T09:45:22Z
-- **Completed:** 2026-02-16T09:50:49Z
-- **Tasks:** 2
-- **Files modified:** 4
+1. `026659c` — feat(01-01): build and run TikTok data analysis script (initial)
+2. `3a294f1` — chore(01-01): validate outputs and add analyze script
+3. `3cff710` — feat(01-01): algorithm-aligned calibration baseline using TikTok 2025 point system
+4. `0d7594d` — feat(01-01): add creator size, view velocity, and save rate layers
 
-## Accomplishments
-- Built comprehensive 969-line TypeScript analysis script that fetches, deduplicates, filters, and mines scraped TikTok video data
-- Defined 5 virality tiers with data-driven engagement rate thresholds (p25=3.79%, p50=8.19%, p75=13.9%, p90=19.85%)
-- Identified key differentiators: viral videos are 34% shorter, have 879% higher share ratio, 950% higher comment ratio
-- Produced machine-readable calibration-baseline.json and human-readable markdown report with all 10 required sections
+## Key Findings
 
-## Task Commits
+### Weighted Engagement Score
+- Formula: `(likes×1 + comments×2 + shares×3) / views`
+- p50: 9.54%, p90: 23.97%
+- Viral videos have 704% higher WES than average
 
-Each task was committed atomically:
+### Top Differentiators (viral vs average)
+| Signal | Algo Weight | Viral vs Average |
+|--------|-------------|-----------------|
+| Share rate | 3x | +1,163% |
+| Comment rate | 2x | +1,255% |
+| Save rate | High intent | +217% |
+| Like rate | 1x | +574% |
 
-1. **Task 1: Build scraped video data analysis script** - `026659c` (feat)
-2. **Task 2: Validate outputs and sanity-check data patterns** - `3a294f1` (chore)
+### Creator Size Impact (4,028 videos with follower data)
+| Tier | WES | Share Rate | Views/Follower |
+|------|-----|------------|----------------|
+| Nano (<10K) | 7.60% | 0.26% | 27.98x |
+| Micro (10K-100K) | 9.67% | 0.37% | 10.52x |
+| Mid (100K-500K) | 8.95% | 0.34% | 4.69x |
+| Macro (500K-1M) | 8.57% | 0.31% | 2.06x |
+| Mega (1M+) | 8.38% | 0.21% | 0.94x |
 
-## Files Created/Modified
-- `scripts/analyze-dataset.ts` - 969-line TypeScript data analysis script (fetch, deduplicate, filter, compute, mine, output)
-- `src/lib/engine/calibration-baseline.json` - Machine-readable virality patterns (788 lines): tiers, percentiles, duration buckets, hashtags, sounds, differentiators
-- `.planning/phases/01-data-analysis/data-analysis-report.md` - Human-readable analysis report with 10 sections
-- `package.json` - Added "analyze" script entry
+### View Velocity
+- p50: 1,633 views/day, p90: 57,017 views/day
+- Weakly correlated with WES (r=-0.0008) — content quality > timing
 
-## Decisions Made
-- **Views-based outlier proxy:** Used p99.5 views threshold (~134M views) to filter celebrity/mega-influencer content since scraped_videos has no follower count field
-- **No deduplication needed:** 0 duplicates found in 7,389 rows (data was already clean from import)
-- **ER normalization by views:** Engagement rate relative to views IS the normalization -- a high ER on low views is a stronger virality signal than low ER on high views
-- **Duration sweet spot interpretation:** 50-55s bucket has highest median ER (9.91%) but only 130 videos; 10-15s (8.72%, 1452 videos) is the volume sweet spot
-- **Category data absent:** No category field populated in dataset; section 9 of report notes this
-
-## Deviations from Plan
-
-### Auto-fixed Issues
-
-**1. [Rule 1 - Bug] Fixed null hashtag entries causing TypeError**
-- **Found during:** Task 1 (first script run)
-- **Issue:** Some hashtag arrays contain null values, causing `tag.toLowerCase()` to throw TypeError
-- **Fix:** Added null guard `if (!tag) continue` before processing each hashtag
-- **Files modified:** scripts/analyze-dataset.ts
-- **Verification:** Script runs to completion after fix
-- **Committed in:** 026659c (Task 1 commit)
-
-**2. [Rule 1 - Bug] Fixed duration bucket boundary at 60s creating duplicate bucket**
-- **Found during:** Task 1 (output review)
-- **Issue:** `dur > 60` check meant videos at exactly 60s fell into a spurious "60-65s" bucket instead of "60s+"
-- **Fix:** Changed to `dur >= 60` so all videos 60s+ go to the "60s+" bucket
-- **Files modified:** scripts/analyze-dataset.ts
-- **Verification:** Regenerated outputs show clean 13-bucket distribution with no duplicates
-- **Committed in:** 026659c (Task 1 commit)
-
----
-
-**Total deviations:** 2 auto-fixed (2 bugs)
-**Impact on plan:** Both fixes required for data correctness. No scope creep.
-
-## Issues Encountered
-- **0% deduplication rate:** Plan estimated ~40% duplicates but none were found. The import script likely already handled deduplication. This is not a problem -- the analysis is correct on unique data.
-- **Extreme ER outliers (max 22,583%):** Some videos have more likes+comments+shares than views, which is normal TikTok behavior (engagement accumulates after initial view counting). The p99.5 view filter catches extreme view outliers but ER outliers remain. The high standard deviation (264%) reflects this skew.
-
-## User Setup Required
-
-None - no external service configuration required. The script uses existing .env.local credentials.
+### Data Pipeline
+- 7,389 videos imported from 79+ Apify runs (apidojo/tiktok-scraper)
+- Dual-format import handles both apidojo and clockworks scraper outputs
+- Follower count, verified status, bookmarks, upload date captured in metadata
 
 ## Next Phase Readiness
-- calibration-baseline.json ready for Phase 2 (Gemini prompt calibration anchors)
-- Key differentiators ready for Phase 3 (DeepSeek CoT reasoning data)
-- Duration/engagement patterns ready for Phase 5 (aggregation formula rules engine)
-- Full distribution stats ready for Phase 10 (ML training labels)
-- No blockers identified for downstream phases
-
-## Self-Check: PASSED
-
-- FOUND: scripts/analyze-dataset.ts (969 lines, min 200)
-- FOUND: src/lib/engine/calibration-baseline.json (788 lines)
-- FOUND: .planning/phases/01-data-analysis/data-analysis-report.md (185 lines)
-- FOUND: .planning/phases/01-data-analysis/01-01-SUMMARY.md
-- FOUND COMMIT: 026659c (Task 1)
-- FOUND COMMIT: 3a294f1 (Task 2)
-- JSON has all required keys: virality_tiers, engagement_percentiles, duration_sweet_spot, top_hashtags, top_sounds, key_differentiators
+- `calibration-baseline.json` ready for Phase 2 (Gemini prompt calibration anchors)
+- Algorithm signal weights ready for Phase 3 (DeepSeek CoT weighted reasoning)
+- Creator size tiers ready for Phase 5 (size-normalized aggregation)
+- Full distribution stats + velocity data ready for Phase 10 (ML features)
+- No blockers for downstream phases
 
 ---
 *Phase: 01-data-analysis*

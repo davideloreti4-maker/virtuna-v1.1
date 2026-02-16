@@ -27,10 +27,13 @@ Progress: [█░░░░░░░░░░░░░░░] 3.8% (1/26 plans)
 
 ### Decisions
 
-- [Execute 01-01]: Views-based p99.5 proxy for celebrity filtering (no follower count in scraped_videos)
-- [Execute 01-01]: 5 virality tiers at p25/p50/p75/p90 engagement rate boundaries
-- [Execute 01-01]: Duration sweet spot 50-55s (highest median ER) but 10-15s is volume sweet spot
-- [Execute 01-01]: 8 power hashtags identified (high frequency + above-median ER)
+- [Execute 01-01]: Algorithm-aligned WES: (likes×1 + comments×2 + shares×3) / views mirrors TikTok 2025 point system
+- [Execute 01-01]: Share rate is #1 measurable virality KPI — viral threshold at 1.83% (p90)
+- [Execute 01-01]: Save rate (bookmarks/views) as high-intent signal — viral videos 217% higher
+- [Execute 01-01]: Creator size normalization via 5 tiers — nano creators reach 28x audience, mega only 0.94x
+- [Execute 01-01]: View velocity (views/day) weakly correlated with WES — content quality > timing
+- [Execute 01-01]: Hashtags/sounds demoted to context signals, NOT primary algo ranking factors
+- [Execute 01-01]: 5 virality tiers at p25/p50/p75/p90 weighted engagement score boundaries
 - [Plan]: 12 phases, 26 plans derived from deep 6-agent analysis of current engine gaps
 - [Plan]: Switch DeepSeek from R1 to V3.2-reasoning (70% cheaper, 2x faster)
 - [Plan]: Full video analysis via Gemini Flash-Lite (~$0.008/30s video)
