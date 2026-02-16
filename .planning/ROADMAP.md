@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation** - Replace mock auth, restructure routes and sidebar navigation for MVP (completed 2026-02-16)
 - [x] **Phase 2: Landing Page** - Conversion-optimized landing page with interactive hive demo and pricing (completed 2026-02-16)
 - [x] **Phase 3: Onboarding** - Progressive post-signup flow with TikTok connect, goal selection, and tooltips (completed 2026-02-16)
-- [ ] **Phase 4: Payments** - Whop-powered subscriptions with 7-day Pro trial, tier gating, and trial UI
+- [x] **Phase 4: Payments** - Whop-powered subscriptions with 7-day Pro trial, tier gating, and trial UI (completed 2026-02-16)
 - [ ] **Phase 5: Referral** - In-product referral program with link generation, tracking, and one-time bonuses
 - [ ] **Phase 6: Polish** - UI fixes, mobile responsiveness pass, OG tags, and dead code cleanup
 
@@ -86,9 +86,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 04-01-PLAN.md -- Auth-aware pricing CTAs, trial DB migration, webhook+API trial tracking
-- [ ] 04-02-PLAN.md -- useSubscription hook, TierGate, TrialCountdown, UpgradePrompt, sidebar badge
-- [ ] 04-03-PLAN.md -- Post-checkout tier refresh (polling on pricing + billing pages)
+- [x] 04-01-PLAN.md -- Auth-aware pricing CTAs, trial DB migration, webhook+API trial tracking (completed 2026-02-16)
+- [x] 04-02-PLAN.md -- useSubscription hook, TierGate, TrialCountdown, UpgradePrompt, sidebar badge (completed 2026-02-16)
+- [x] 04-03-PLAN.md -- Post-checkout tier refresh (polling on pricing + billing pages) (completed 2026-02-16)
 
 ### Phase 5: Referral
 **Goal**: Users can generate a referral link, share it, and earn a one-time bonus when referred users purchase a subscription
@@ -100,12 +100,11 @@ Plans:
   2. Clicking a referral link sets a server-side cookie that survives the OAuth redirect chain
   3. When a referred user completes a Whop purchase, the referrer is credited a one-time bonus
   4. Referral dashboard shows link, click count, conversions, and total earnings
-**Plans**: 3 plans
+**Plans**: 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Database foundation (referral tables, code generation API, wallet integration)
-- [ ] 05-02-PLAN.md — Cookie tracking through OAuth + webhook conversion attribution
-- [ ] 05-03-PLAN.md — Referral dashboard UI (link card, stats, copy button)
+- [ ] 05-01-PLAN.md — Fix middleware referral cookie persistence bug + RLS INSERT policy for referral_clicks
+- [ ] 05-02-PLAN.md — Update sidebar nav to referrals link + full build verification
 
 ### Phase 6: Polish
 **Goal**: All pages are visually consistent, mobile-friendly, and free of dead code -- the app feels finished, not like a prototype
@@ -154,8 +153,8 @@ Waves 1-2 support parallel execution (see Execution Waves above).
 | 1. Foundation | 2/2 | ✓ Complete | 2026-02-16 |
 | 2. Landing Page | 2/2 | ✓ Complete | 2026-02-16 |
 | 3. Onboarding | 2/2 | ✓ Complete | 2026-02-16 |
-| 4. Payments | 0/3 | Not started | - |
-| 5. Referral | 0/3 | Not started | - |
+| 4. Payments | 3/3 | ✓ Complete | 2026-02-16 |
+| 5. Referral | 0/2 | Not started | - |
 | 6. Polish | 0/2 | Not started | - |
 
 ---
