@@ -96,16 +96,16 @@ export function AccountSection() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-lg font-medium text-white">Account</h2>
-        <p className="mt-1 text-sm text-zinc-400">
+        <h2 className="text-lg font-medium text-foreground">Account</h2>
+        <p className="mt-1 text-sm text-foreground-muted">
           Manage your account settings and security preferences.
         </p>
       </div>
 
       {/* Email section */}
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-6">
-        <h3 className="text-sm font-medium text-white">Email address</h3>
-        <p className="mt-1 text-sm text-zinc-400">
+      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6">
+        <h3 className="text-sm font-medium text-foreground">Email address</h3>
+        <p className="mt-1 text-sm text-foreground-muted">
           Your email is used for login and notifications.
         </p>
         <div className="mt-4 flex items-center gap-4">
@@ -119,22 +119,22 @@ export function AccountSection() {
             type="button"
             disabled
             title="Coming soon"
-            className="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rounded-lg border border-white/[0.06] bg-transparent px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/[0.05] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Change email <span className="text-xs text-zinc-500">(coming soon)</span>
+            Change email <span className="text-xs text-foreground-muted">(coming soon)</span>
           </button>
         </div>
       </div>
 
       {/* Password section */}
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-6">
-        <h3 className="text-sm font-medium text-white">Change password</h3>
-        <p className="mt-1 text-sm text-zinc-400">
+      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6">
+        <h3 className="text-sm font-medium text-foreground">Change password</h3>
+        <p className="mt-1 text-sm text-foreground-muted">
           Update your password to keep your account secure.
         </p>
         <div className="mt-4 space-y-4">
           <div className="max-w-sm">
-            <label className="mb-2 block text-sm text-zinc-400">
+            <label className="mb-2 block text-sm text-foreground-muted">
               New password
             </label>
             <Input
@@ -148,7 +148,7 @@ export function AccountSection() {
             />
           </div>
           <div className="max-w-sm">
-            <label className="mb-2 block text-sm text-zinc-400">
+            <label className="mb-2 block text-sm text-foreground-muted">
               Confirm new password
             </label>
             <Input
@@ -162,16 +162,16 @@ export function AccountSection() {
             />
           </div>
           {passwordError && (
-            <p className="text-sm text-red-400">{passwordError}</p>
+            <p className="text-sm text-error">{passwordError}</p>
           )}
           {passwordSuccess && (
-            <p className="text-sm text-emerald-400">{passwordSuccess}</p>
+            <p className="text-sm text-success">{passwordSuccess}</p>
           )}
           <button
             type="button"
             onClick={handlePasswordChange}
             disabled={isChangingPassword || !newPassword || !confirmPassword}
-            className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200 disabled:opacity-50"
+            className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-950 transition-colors hover:bg-gray-200 disabled:opacity-50"
           >
             {isChangingPassword ? "Updating..." : "Update password"}
           </button>
@@ -179,9 +179,9 @@ export function AccountSection() {
       </div>
 
       {/* Danger zone */}
-      <div className="rounded-lg border border-red-900/50 bg-red-950/20 p-6">
-        <h3 className="text-sm font-medium text-red-400">Danger zone</h3>
-        <p className="mt-1 text-sm text-zinc-400">
+      <div className="rounded-xl border border-error/30 bg-error/5 p-6">
+        <h3 className="text-sm font-medium text-error">Danger zone</h3>
+        <p className="mt-1 text-sm text-foreground-muted">
           Once you delete your account, there is no going back. Please be
           certain.
         </p>
@@ -189,14 +189,14 @@ export function AccountSection() {
           <button
             type="button"
             onClick={() => setShowDeleteConfirm(true)}
-            className="mt-4 rounded-lg border border-red-700 bg-red-900/30 px-4 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-900/50"
+            className="mt-4 rounded-lg border border-error/50 bg-error/10 px-4 py-2 text-sm font-medium text-error transition-colors hover:bg-error/20"
           >
             Delete account
           </button>
         ) : (
           <div className="mt-4 space-y-3">
-            <p className="text-sm text-zinc-300">
-              Type <span className="font-mono text-red-400">delete my account</span> to confirm:
+            <p className="text-sm text-foreground-secondary">
+              Type <span className="font-mono text-error">delete my account</span> to confirm:
             </p>
             <Input
               value={deleteInput}
@@ -209,7 +209,7 @@ export function AccountSection() {
                 type="button"
                 onClick={handleDeleteAccount}
                 disabled={!deleteConfirmMatch || isDeleting}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-lg bg-error px-4 py-2 text-sm font-medium text-white transition-colors hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isDeleting ? "Deleting..." : "Permanently delete"}
               </button>
@@ -219,7 +219,7 @@ export function AccountSection() {
                   setShowDeleteConfirm(false);
                   setDeleteInput("");
                 }}
-                className="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-700"
+                className="rounded-lg border border-white/[0.06] bg-transparent px-4 py-2 text-sm font-medium text-foreground-secondary transition-colors hover:bg-white/[0.05]"
               >
                 Cancel
               </button>
