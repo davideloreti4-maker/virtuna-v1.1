@@ -5,22 +5,22 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate -- and connects them to monetization opportunities.
-**Current focus:** Platform Refinement -- Phase 4: Settings COMPLETE
+**Current focus:** Platform Refinement -- Phase 5: Referrals & Brand Deals COMPLETE
 
 ## Current Position
 
-Phase: 4 of 7 (Settings) -- COMPLETE
-Plan: 2 of 2 in current phase
-Status: Phase 04 Complete
-Last activity: 2026-02-16 -- Completed 04-02 Settings Brand Alignment
+Phase: 5 of 7 (Referrals & Brand Deals) -- COMPLETE
+Plan: 1 of 1 in current phase
+Status: Phase 05 Complete
+Last activity: 2026-02-16 -- Completed 05-01 Referrals & Brand Deals Polish
 
-Progress: [######....] 50%
+Progress: [#######...] 64%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
-- Average duration: 4min
+- Total plans completed: 8
+- Average duration: 3min
 - Total execution time: 0.4 hours
 
 **By Phase:**
@@ -31,6 +31,7 @@ Progress: [######....] 50%
 | 02-landing-page | 2 | 4min | 2min |
 | 03-trending-page | 1 | 2min | 2min |
 | 04-settings | 2 | 6min | 3min |
+| 05-referrals-brand-deals | 1 | 2min | 2min |
 
 ## Shipped Milestones
 
@@ -70,6 +71,9 @@ Progress: [######....] 50%
 - [04-02] Team section replaced entirely with coming-soon placeholder (removed misleading mock)
 - [04-02] Destructive confirm button uses bg-error token instead of hardcoded bg-red-600
 - [04-02] Primary buttons keep bg-white text-gray-950 pattern per brand bible
+- [05-01] Replaced text-coral with text-accent (text-coral had no backing CSS variable)
+- [05-01] Brand deals page as server component -- no client interaction needed
+- [05-01] Affiliate card uses primary button style (bg-white text-gray-950) per brand bible
 
 ### Pending Todos
 
@@ -80,7 +84,7 @@ None yet.
 - Dashboard test flow is 100% mock (localStorage, randomized templates)
 - ~~Trending page is placeholder only~~ (resolved in 03-01)
 - ~~Settings profile/account handlers are console.log stubs~~ (resolved in 04-01, team replaced with coming-soon in 04-02)
-- Brand deals page redirects to referrals (dead route)
+- ~~Brand deals page redirects to referrals (dead route)~~ (resolved in 05-01)
 - ~~"Content Intelligence" sidebar item duplicates "Dashboard" link~~ (resolved in 01-01)
 - Filter pills on dashboard have no connected filtering logic
 - "Upload Images", "Help Me Craft", "Request new context" buttons are console.log only
@@ -88,9 +92,9 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 04-02-PLAN.md (Settings Brand Alignment) -- Phase 04 fully complete
+Stopped at: Completed 05-01-PLAN.md (Referrals & Brand Deals Polish) -- Phase 05 fully complete
 Resume file: None
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Completed 04-02 (Settings Brand Alignment, Phase 04 complete)*
+*Last updated: 2026-02-16 -- Completed 05-01 (Referrals & Brand Deals, Phase 05 complete)*
