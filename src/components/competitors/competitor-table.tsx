@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Avatar } from "@/components/ui/avatar";
 import { type CompetitorCardData } from "@/components/competitors/competitor-card";
 import { formatCount, computeGrowthVelocity, computeEngagementRate } from "@/lib/competitors-utils";
@@ -18,6 +19,8 @@ interface CompetitorTableProps {
  * Styled with Raycast dark theme conventions.
  */
 export function CompetitorTable({ competitors }: CompetitorTableProps) {
+  const router = useRouter();
+
   return (
     <div className="w-full overflow-x-auto">
       <table className="w-full text-sm">
@@ -59,6 +62,7 @@ export function CompetitorTable({ competitors }: CompetitorTableProps) {
               <tr
                 key={c.id}
                 className="border-b border-white/[0.04] transition-colors hover:bg-white/[0.02] cursor-pointer"
+                onClick={() => router.push(`/competitors/${c.tiktok_handle}`)}
               >
                 {/* Creator */}
                 <td className="py-3 px-4">

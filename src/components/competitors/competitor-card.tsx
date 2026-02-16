@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import {
@@ -47,69 +48,71 @@ export function CompetitorCard({ data }: CompetitorCardProps) {
   const fallbackInitials = data.tiktok_handle.slice(0, 2).toUpperCase();
 
   return (
-    <Card className="cursor-pointer">
-      <CardContent className="p-4">
-        {/* Top row: Avatar + Handle */}
-        <div className="flex items-center gap-3 mb-4">
-          <Avatar
-            src={data.avatar_url ?? undefined}
-            alt={data.tiktok_handle}
-            fallback={fallbackInitials}
-            size="md"
-          />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-foreground truncate">
-              @{data.tiktok_handle}
-            </p>
-            {data.display_name && (
-              <p className="text-xs text-foreground-muted truncate">
-                {data.display_name}
+    <Link href={`/competitors/${data.tiktok_handle}`}>
+      <Card className="cursor-pointer">
+        <CardContent className="p-4">
+          {/* Top row: Avatar + Handle */}
+          <div className="flex items-center gap-3 mb-4">
+            <Avatar
+              src={data.avatar_url ?? undefined}
+              alt={data.tiktok_handle}
+              fallback={fallbackInitials}
+              size="md"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-foreground truncate">
+                @{data.tiktok_handle}
               </p>
-            )}
+              {data.display_name && (
+                <p className="text-xs text-foreground-muted truncate">
+                  {data.display_name}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Stats grid: 3 columns */}
-        <div className="grid grid-cols-3 gap-3 mb-4">
-          <div>
-            <p className="text-xs text-foreground-muted">Followers</p>
-            <p className="text-sm font-medium text-foreground">
-              {formatCount(data.follower_count)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-foreground-muted">Total Likes</p>
-            <p className="text-sm font-medium text-foreground">
-              {formatCount(data.heart_count)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-foreground-muted">Videos</p>
-            <p className="text-sm font-medium text-foreground">
-              {formatCount(data.video_count)}
-            </p>
-          </div>
-        </div>
-
-        {/* Bottom row: Growth delta + Sparkline + Engagement rate */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {velocity && (
-              <GrowthDelta
-                percentage={velocity.percentage}
-                direction={velocity.direction}
-              />
-            )}
+          {/* Stats grid: 3 columns */}
+          <div className="grid grid-cols-3 gap-3 mb-4">
             <div>
-              <p className="text-xs text-foreground-muted">Eng. Rate</p>
+              <p className="text-xs text-foreground-muted">Followers</p>
               <p className="text-sm font-medium text-foreground">
-                {engagementRate !== null ? `${engagementRate}%` : "--"}
+                {formatCount(data.follower_count)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-foreground-muted">Total Likes</p>
+              <p className="text-sm font-medium text-foreground">
+                {formatCount(data.heart_count)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-foreground-muted">Videos</p>
+              <p className="text-sm font-medium text-foreground">
+                {formatCount(data.video_count)}
               </p>
             </div>
           </div>
-          <CompetitorSparkline data={sparklineData} />
-        </div>
-      </CardContent>
-    </Card>
+
+          {/* Bottom row: Growth delta + Sparkline + Engagement rate */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {velocity && (
+                <GrowthDelta
+                  percentage={velocity.percentage}
+                  direction={velocity.direction}
+                />
+              )}
+              <div>
+                <p className="text-xs text-foreground-muted">Eng. Rate</p>
+                <p className="text-sm font-medium text-foreground">
+                  {engagementRate !== null ? `${engagementRate}%` : "--"}
+                </p>
+              </div>
+            </div>
+            <CompetitorSparkline data={sparklineData} />
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }
