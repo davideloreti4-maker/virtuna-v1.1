@@ -255,6 +255,7 @@ export interface RuleScoreResult {
     rule_name: string;
     score: number;
     max_score: number;
+    tier: 'regex' | 'semantic'; // Which evaluation path produced this match
   }>;
 }
 

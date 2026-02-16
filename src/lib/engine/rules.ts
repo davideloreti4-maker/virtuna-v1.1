@@ -124,6 +124,7 @@ export async function scoreContentAgainstRules(
           rule_name: rule.name,
           score: normalized,
           max_score: maxScore,
+          tier: 'regex' as const,
         });
       }
     }
