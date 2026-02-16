@@ -277,6 +277,7 @@ Matched rules: ${matchedRuleNames}
 
 ## Trend Context
 ${context.trend_enrichment.trend_context}
+${context.creator_context ? `\n${context.creator_context}` : ""}
 
 ---
 
@@ -322,6 +323,7 @@ export interface DeepSeekInput {
   gemini_analysis: GeminiAnalysis;
   rule_result: RuleScoreResult;
   trend_enrichment: TrendEnrichment;
+  creator_context?: string;
 }
 
 /**

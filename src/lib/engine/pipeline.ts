@@ -1,61 +1,267 @@
 import { createServiceClient } from "@/lib/supabase/service";
-import { AnalysisInputSchema, type AnalysisInput, type PredictionResult } from "./types";
+import {
+  AnalysisInputSchema,
+  type AnalysisInput,
+  type ContentPayload,
+  type GeminiAnalysis,
+  type DeepSeekReasoning,
+  type RuleScoreResult,
+  type TrendEnrichment,
+} from "./types";
+import { normalizeInput } from "./normalize";
 import { analyzeWithGemini } from "./gemini";
 import { reasonWithDeepSeek } from "./deepseek";
 import { loadActiveRules, scoreContentAgainstRules } from "./rules";
 import { enrichWithTrends } from "./trends";
-import { aggregateScores } from "./aggregator";
+import {
+  fetchCreatorContext,
+  formatCreatorContext,
+  type CreatorContext,
+} from "./creator";
+
+// =====================================================
+// Pipeline Types
+// =====================================================
+
+export interface StageTiming {
+  stage: string;
+  duration_ms: number;
+}
+
+export interface PipelineResult {
+  // Stage outputs
+  payload: ContentPayload;
+  geminiResult: { analysis: GeminiAnalysis; cost_cents: number };
+  creatorContext: CreatorContext;
+  ruleResult: RuleScoreResult;
+  trendEnrichment: TrendEnrichment;
+  deepseekResult: { reasoning: DeepSeekReasoning; cost_cents: number } | null;
+  audioResult: null; // Placeholder for Phase 11
+
+  // Pipeline metadata
+  timings: StageTiming[];
+  total_duration_ms: number;
+}
+
+// =====================================================
+// Timing helper
+// =====================================================
 
 /**
- * Run the full prediction pipeline (ENGINE-03)
+ * Wrap an async operation with timing capture.
+ * Records stage name and duration to the provided timings array.
+ */
+async function timed<T>(
+  name: string,
+  timings: StageTiming[],
+  fn: () => Promise<T>
+): Promise<T> {
+  const start = performance.now();
+  const result = await fn();
+  timings.push({
+    stage: name,
+    duration_ms: Math.round(performance.now() - start),
+  });
+  return result;
+}
+
+// =====================================================
+// 10-Stage Prediction Pipeline with Wave Parallelism
+// =====================================================
+
+/**
+ * Run the full 10-stage prediction pipeline.
  *
- * Orchestration:
- * 1. Validate input (Zod)
- * 2. Parallel: Gemini analysis + rule loading/scoring + trend enrichment
- * 3. Sequential: DeepSeek reasoning with all collected context
- * 4. Aggregate all signals into PredictionResult
+ * Architecture:
+ * 1. Validate     — Parse input with AnalysisInputSchema
+ * 2. Normalize    — Convert AnalysisInput to ContentPayload
+ * 3. Wave 1 (parallel via Promise.all):
+ *    - Stage 3: Gemini Analysis
+ *    - Stage 4: Audio Analysis (placeholder)
+ *    - Stage 5: Creator Context
+ *    - Stage 6: Rule Loading + Scoring
+ * 4. Wave 2 (parallel via Promise.all):
+ *    - Stage 7: DeepSeek Reasoning (with all Wave 1 context)
+ *    - Stage 8: Trend Enrichment
+ * 5. Stage 9: Aggregate (delegated to caller in Plan 02)
+ * 6. Stage 10: Finalize (attach metadata)
+ *
+ * Strict failure mode: if any stage fails, the entire pipeline fails
+ * with a specific error identifying which stage failed.
  */
 export async function runPredictionPipeline(
   input: AnalysisInput
-): Promise<PredictionResult> {
-  const start = performance.now();
+): Promise<PipelineResult> {
+  const pipelineStart = performance.now();
+  const timings: StageTiming[] = [];
 
-  // 1. Validate input
-  const validated = AnalysisInputSchema.parse(input);
+  // -------------------------------------------------------
+  // Stage 1: Validate
+  // -------------------------------------------------------
+  const validated = await timed("validate", timings, async () => {
+    try {
+      return AnalysisInputSchema.parse(input);
+    } catch (error) {
+      throw new Error(
+        `Analysis failed: input validation — ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  });
+
+  // -------------------------------------------------------
+  // Stage 2: Normalize
+  // -------------------------------------------------------
+  const payload = await timed("normalize", timings, async () => {
+    try {
+      return normalizeInput(validated);
+    } catch (error) {
+      throw new Error(
+        `Analysis failed: input normalization — ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  });
 
   // Single service client for this pipeline run
   const supabase = createServiceClient();
 
-  // 2. Parallel: Gemini + rules + trends
-  const [geminiResult, rules, trendEnrichment] = await Promise.all([
-    analyzeWithGemini(validated),
-    loadActiveRules(supabase, validated.content_type),
-    enrichWithTrends(supabase, validated),
-  ]);
+  // -------------------------------------------------------
+  // Wave 1: Gemini + Audio + Creator Context + Rules (parallel)
+  // -------------------------------------------------------
+  const [geminiResult, audioResult, creatorContext, ruleResult] = await timed(
+    "wave_1",
+    timings,
+    () =>
+      Promise.all([
+        // Stage 3: Gemini Analysis
+        timed("gemini_analysis", timings, async () => {
+          try {
+            return await analyzeWithGemini(validated);
+          } catch (error) {
+            throw new Error(
+              `Analysis failed: Gemini content analysis — ${error instanceof Error ? error.message : String(error)}`
+            );
+          }
+        }),
 
-  // Score content against loaded rules
-  const ruleResult = await scoreContentAgainstRules(
-    validated.content_text,
-    rules
+        // Stage 4: Audio Analysis (placeholder for Phase 11)
+        timed("audio_analysis", timings, async () => {
+          return null;
+        }),
+
+        // Stage 5: Creator Context
+        timed("creator_context", timings, async () => {
+          try {
+            return await fetchCreatorContext(
+              supabase,
+              payload.creator_handle,
+              payload.niche
+            );
+          } catch (error) {
+            throw new Error(
+              `Analysis failed: Creator context — ${error instanceof Error ? error.message : String(error)}`
+            );
+          }
+        }),
+
+        // Stage 6: Rule Loading + Scoring
+        timed("rule_scoring", timings, async () => {
+          try {
+            const rules = await loadActiveRules(
+              supabase,
+              payload.content_type
+            );
+            return await scoreContentAgainstRules(
+              payload.content_text,
+              rules
+            );
+          } catch (error) {
+            throw new Error(
+              `Analysis failed: Rule scoring — ${error instanceof Error ? error.message : String(error)}`
+            );
+          }
+        }),
+      ])
   );
 
-  // 3. Sequential: DeepSeek reasoning (returns null if circuit breaker open)
-  const deepseekResult = await reasonWithDeepSeek({
-    input: validated,
-    gemini_analysis: geminiResult.analysis,
-    rule_result: ruleResult,
-    trend_enrichment: trendEnrichment,
-  });
+  // Format creator context for DeepSeek prompt injection
+  const creatorContextString = formatCreatorContext(creatorContext);
 
-  // 4. Aggregate all signals
-  const latencyMs = Math.round(performance.now() - start);
+  // -------------------------------------------------------
+  // Wave 2: DeepSeek + Trends (parallel)
+  // -------------------------------------------------------
+  const [deepseekRaw, trendEnrichment] = await timed(
+    "wave_2",
+    timings,
+    () =>
+      Promise.all([
+        // Stage 7: DeepSeek Reasoning
+        timed("deepseek_reasoning", timings, async () => {
+          try {
+            const result = await reasonWithDeepSeek({
+              input: validated,
+              gemini_analysis: geminiResult.analysis,
+              rule_result: ruleResult,
+              trend_enrichment: {
+                // Trend enrichment runs in parallel — use empty placeholder for DeepSeek prompt.
+                // The final trend data will be in the pipeline result for the aggregator.
+                trend_score: 0,
+                matched_trends: [],
+                trend_context:
+                  "Trend analysis running in parallel — results available in pipeline output.",
+              },
+              creator_context: creatorContextString,
+            });
 
-  return aggregateScores(
-    geminiResult.analysis,
+            // Per user decision: all stages are required. Circuit breaker returning null
+            // means service is unavailable — this is a stage failure.
+            if (result === null) {
+              throw new Error(
+                "service temporarily unavailable (circuit breaker open)"
+              );
+            }
+
+            return result;
+          } catch (error) {
+            throw new Error(
+              `Analysis failed: DeepSeek reasoning — ${error instanceof Error ? error.message : String(error)}`
+            );
+          }
+        }),
+
+        // Stage 8: Trend Enrichment
+        timed("trend_enrichment", timings, async () => {
+          try {
+            return await enrichWithTrends(supabase, validated);
+          } catch (error) {
+            throw new Error(
+              `Analysis failed: Trend enrichment — ${error instanceof Error ? error.message : String(error)}`
+            );
+          }
+        }),
+      ])
+  );
+
+  // -------------------------------------------------------
+  // Stage 9: Aggregate (delegated — caller uses PipelineResult)
+  // -------------------------------------------------------
+  // The pipeline returns raw stage outputs. The API route (Plan 02)
+  // calls aggregateScores with these outputs. This separates
+  // orchestration (pipeline) from scoring (aggregator).
+
+  // -------------------------------------------------------
+  // Stage 10: Finalize — attach metadata
+  // -------------------------------------------------------
+  const total_duration_ms = Math.round(performance.now() - pipelineStart);
+
+  return {
+    payload,
+    geminiResult,
+    creatorContext,
     ruleResult,
     trendEnrichment,
-    deepseekResult,
-    geminiResult.cost_cents,
-    latencyMs,
-  );
+    deepseekResult: deepseekRaw,
+    audioResult,
+    timings,
+    total_duration_ms,
+  };
 }
