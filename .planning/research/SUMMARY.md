@@ -1,105 +1,85 @@
-# Research Summary: Virtuna MVP Launch
+# Research Summary: Virtuna Competitors Tool
 
-**Domain:** TikTok Creator Intelligence SaaS -- Landing Page, Onboarding, Payments (Whop), Referral Program
-**Researched:** 2026-02-13
+**Domain:** TikTok Competitor Intelligence Tracker (new feature milestone)
+**Researched:** 2026-02-16
 **Overall confidence:** HIGH
 
 ## Executive Summary
 
-Virtuna's MVP launch adds four feature areas to an existing Next.js 16 app with an established design system, Supabase Auth, and working Whop payment integration: (1) a conversion-optimized landing page with interactive hive demo, (2) progressive onboarding with contextual tooltips, (3) Whop-powered 7-day Pro trial with card upfront, and (4) an in-product referral program with one-time bonuses.
+The competitor tracking milestone requires surprisingly few stack additions. The backend-foundation worktree (shipped 2026-02-13) already provides the core scraping infrastructure: `apify-client` ^2.22.0, webhook handler pattern, cron route pattern, service client utility, and Vercel cron configuration. This milestone extends that foundation with new Apify actor targets (profile scraper + video scraper instead of trending scraper), new database tables for competitor-specific time-series data, and new UI components built with the existing design system and Recharts.
 
-The codebase is significantly further along than the milestone scope suggests. The Whop payment integration is already built: embedded checkout modal, webhook handler (membership.went_valid, went_invalid, payment_failed), subscription API, cron sync fallback, tier configuration, and access control utilities (`hasAccessToTier()`, `FeatureGate`). The database schema includes tables for affiliate tracking (affiliate_clicks, affiliate_conversions, wallet_transactions) that were created during the brand-deals milestone. Eleven landing page components already exist. The core work is wiring existing infrastructure to new user-facing flows, not building payment systems from scratch.
+The primary technical challenge is not "what to build" but "how to avoid over-engineering." The temptation to add TimescaleDB (deprecated on Supabase PG17), external search services (overkill for <10K records), dedicated background job frameworks (Inngest/Trigger.dev solve problems already solved by Vercel Cron + Apify webhooks), and additional charting libraries (Recharts 3 already covers multi-series comparison charts) must be resisted. Zero new npm packages are needed if backend-foundation is merged first; at most two packages (`apify-client`, `@tanstack/react-query`) if it has not been merged.
 
-The critical missing piece requiring immediate attention is the mock AuthGuard -- the entire authenticated experience is built on a 350ms setTimeout that renders children unconditionally. This must be replaced with real Supabase auth verification before any other feature work. The second risk is the landing page interactive demo: the existing hive visualization renders 1300+ nodes at 60fps on desktop, but porting this directly to a mobile-first landing page (83% of TikTok creator traffic is mobile) would destroy performance. A separate lightweight demo (50 nodes, pre-computed positions, no physics) is essential.
+The highest-risk area is TikTok scraping reliability. TikTok deploys aggressive anti-bot measures that can break scrapers overnight. Using Apify Clockworks actors (maintained by a specialized team with 125K+ users) mitigates this, but the architecture must abstract data acquisition behind a clean interface so the scraping provider can be swapped without rewriting the data layer. The second highest risk is unbounded scraping costs -- the architecture must deduplicate scraping across users (scrape each unique handle once, serve to all users who track it) and implement sensible caps.
 
-Stack additions are minimal: only `@whop/sdk` needs to be added, replacing raw `fetch()` calls with a typed client. The tooltip system is built custom with Zustand + Framer Motion (both already installed). Everything else leverages existing packages. This is a feature-building milestone, not an infrastructure milestone.
-
-From a competitive standpoint, Virtuna is positioned at 10-20x lower cost than competitors (Pentos $99-$999/mo, Exolyt $199-$600/mo vs Virtuna $19-$49/mo). The hive visualization and viral score prediction are genuine differentiators no competitor offers. The interactive demo on the landing page is the primary conversion lever -- 2026 best practice confirms SaaS pages with embedded demos convert 2-3x over "book a call" CTAs, and 7-day card-upfront trials convert at ~40% due to urgency.
+The competitive landscape reveals a clear gap: every existing TikTok analytics tool (Pentos, Exolyt, Socialinsider, Analisa.io, Favikon) targets brands and agencies at $50-100+/month. No tool is built from the ground up for individual creators asking "how do I compare to creators in my niche?" Virtuna fills this gap by integrating competitor tracking into a creator-first intelligence platform.
 
 ## Key Findings
 
-**Stack:** Only 1 new package needed (`@whop/sdk`). Tooltips built custom (Zustand + Framer Motion). TikTok OAuth implemented manually (2 route handlers, no Auth.js). Everything else already installed.
+**Stack:** Zero new npm dependencies needed. Extends existing Apify + Supabase + Recharts + Zustand stack with new actors, tables, routes, and components.
 
-**Architecture:** Three route groups: (marketing) for landing, (onboarding) for post-signup flow, (app) for dashboard. Middleware captures referral cookies server-side (survives Safari ITP). Cookie + DB dual-state for onboarding persistence. New `referral_links`/`referral_conversions` tables separate from brand-deal affiliate tables.
+**Architecture:** Webhook-driven async scraping (proven pattern from backend-foundation), shared competitor profiles with per-user tracking join table, append-only snapshots for time-series, server components for initial load with client components for charts and interactivity.
 
-**Critical pitfall:** Mock AuthGuard must be replaced FIRST. Whop webhook silently drops events when `supabase_user_id` metadata is missing (user pays but stays on free tier). Referral attribution lost during OAuth redirect chain unless captured in server-side cookie before auth.
+**Critical pitfall:** TikTok anti-bot arms race can break scraping overnight. Abstract data acquisition behind a provider interface. Never build a custom scraper.
 
 ## Implications for Roadmap
 
 Based on research, suggested phase structure:
 
-1. **Foundation -- Auth + Cleanup** - Replace mock AuthGuard with real Supabase auth, remove trending page (11 files), restructure navigation
-   - Addresses: Real auth verification, dead code removal, navigation for new pages
-   - Avoids: Building features on fake auth (Pitfall 2), orphaned trending references (Pitfall 11)
+1. **Database + Scraping Foundation** - Schema migration, Apify scraping service layer, Zod validation schemas, service client extraction
+   - Addresses: competitor_profiles, competitor_snapshots, competitor_videos tables; Apify profile + video scraper integration
+   - Avoids: TimescaleDB deprecation (Pitfall #7), schema coupling user_id to snapshots (Pitfall #14), RLS performance cliff (Pitfall #3)
 
-2. **Landing Page + Pricing** - Rebuild landing components for Virtuna, add pricing section, create lightweight hive demo, mobile-first design
-   - Addresses: Conversion funnel, interactive demo (key differentiator), social proof, FAQ
-   - Avoids: Canvas scroll blocking on mobile (Pitfall 6), mobile performance death (Pitfall 5)
-   - CAN RUN IN PARALLEL with Phase 1 (public route group, no auth dependency)
+2. **API Routes + Server Actions** - Add/remove competitor actions, search API, single-competitor refresh, cron batch refresh route, vercel.json config
+   - Addresses: Data pipeline wiring, cron scheduling, webhook handler for competitor data
+   - Avoids: Serverless timeout during bulk scraping (Pitfall #9), middleware auth bypass (Pitfall #5), Hobby plan cron limitation (Pitfall #4)
 
-3. **Onboarding Flow** - Welcome screen, goal selection, TikTok connect, progressive checklist, contextual first-visit tooltips
-   - Addresses: User activation (target: first value in 3 minutes), progressive disclosure
-   - Avoids: Onboarding state lost across devices (Pitfall 10)
-   - DEPENDS ON: Phase 1 (real auth must work)
+3. **Core UI - Competitor Dashboard** - Page route, sidebar nav, competitor cards grid, table/leaderboard view, empty state, stats bar, Zustand store for UI state
+   - Addresses: Table stakes features (add, view, remove competitors), grid and table views, loading/skeleton states
+   - Avoids: Dashboard data overload (Pitfall #8), Zustand hydration conflicts (Pitfall #6), client-side Supabase queries (Pitfall #13)
 
-4. **Payments + Trial** - Configure Whop 7-day Pro trial, wire landing page CTA -> checkout, build TierGate component, trial countdown UI, post-checkout tier refresh
-   - Addresses: Revenue activation, trial-to-paid conversion, feature gating
-   - Avoids: Whop-Supabase identity mismatch (Pitfall 1), trial config mismatch (Pitfall 4), stale cache after upgrade (Pitfall 8)
-   - DEPENDS ON: Phase 1 (auth), Phase 2 (landing page CTA)
+4. **Detail Views + Charts** - Competitor detail panel, Recharts growth charts (LineChart, AreaChart), recent videos grid, engagement breakdown
+   - Addresses: Follower growth visualization, per-video engagement, content analysis, posting frequency
+   - Avoids: Payload size limits (Pitfall #10), loading all snapshots on page load
 
-5. **Referral Program** - Code generation, click tracking, Whop affiliateCode passthrough, conversion attribution, one-time bonus payout, referral dashboard
-   - Addresses: Growth lever, user acquisition cost reduction
-   - Avoids: Attribution lost on OAuth redirect (Pitfall 3), bonus abuse (Pitfall 9), Safari ITP (Pitfall 16)
-   - DEPENDS ON: Phase 4 (payments must work for conversion tracking)
+5. **Benchmarking + Comparison** - Side-by-side comparison view, own stats vs competitor, multi-competitor growth overlay chart, leaderboard sorting
+   - Addresses: Differentiator features (benchmark panel, RadarChart comparison, delta indicators)
 
-6. **Polish** - "Aha moment" referral prompt, OG tags for referral links, edge case handling, Whop webhook idempotency, final QA
-   - Addresses: Differentiators (referral prompt timing, social sharing previews)
-   - Avoids: Webhook replay duplicates (Pitfall 7)
-   - DEPENDS ON: Phases 3-5
+6. **Polish + Edge Cases** - Stale data indicators, error states, scrape failure handling, rate limiting, mobile responsive layout, search/discovery flow
+   - Addresses: Data freshness trust (Pitfall #15), error recovery, mobile UX
+   - Avoids: Stale data without visual indicators (Pitfall #15)
 
 **Phase ordering rationale:**
-- Phase 1 is foundational -- everything depends on real auth
-- Phase 2 can run in parallel because landing page is public (marketing route group)
-- Phases 3-5 are sequential: auth -> onboarding -> payments -> referrals (each depends on prior)
-- Phase 6 is last because polish is meaningless until core flows work end-to-end
+- Phase 1 (schema) has zero dependencies and unblocks everything else
+- Phase 2 (API routes) depends on Phase 1's tables and scraping layer
+- Phase 3 (UI) depends on Phase 2's server actions for add/remove
+- Phase 4 (charts) depends on Phase 1's snapshot data and Phase 3's UI shell
+- Phase 5 (comparison) depends on Phase 3's core UI + Phase 4's chart components
+- Phase 6 (polish) spans all previous phases and can start after Phase 3
 
 **Research flags for phases:**
-- Phase 2: Mobile demo performance needs REAL device testing (iPhone SE, mid-range Android), not DevTools emulation
-- Phase 3: TikTok developer app approval may block production testing -- submit during Phase 1
-- Phase 4: Whop plan configuration is a dashboard action -- create plans during Phase 1 so they exist when needed. Sandbox testing essential
-- Phase 5: Whop affiliateCode behavior with custom referral programs (vs Whop marketplace affiliates) needs validation during implementation
+- Phase 1: Standard patterns (PostgreSQL, Zod, Supabase migrations). Unlikely to need additional research.
+- Phase 2: Apify actor input/output schemas need verification at implementation time. Clockworks actors may change field names. Flag for quick validation before coding.
+- Phase 3: Standard Next.js + design system work. No additional research needed.
+- Phase 4: Recharts multi-series LineChart is documented. May need minor research on custom tooltip/legend styling to match Raycast theme.
+- Phase 5: RadarChart component in Recharts may need research for proper comparison visualization.
+- Phase 6: Mobile responsive patterns already established in codebase. No research needed.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Only 1 new package, all others verified installed and working. Codebase examined directly |
-| Features | HIGH | Table stakes verified against 2026 SaaS best practices from 20+ sources. Competitor pricing confirmed |
-| Architecture | HIGH | Patterns match existing codebase conventions. All code references verified by reading source files |
-| Pitfalls | HIGH | 16 pitfalls identified from codebase analysis + official docs + industry research |
-| Whop integration | MEDIUM | affiliateCode prop confirmed in docs, but custom referral program behavior vs marketplace affiliates needs implementation-time validation |
-| TikTok OAuth | MEDIUM | Standard OAuth 2.0 flow, but developer app approval timeline is unpredictable |
+| Stack | HIGH | Zero new dependencies. All libraries verified in existing package.json. Apify pricing confirmed via official listings. |
+| Features | HIGH | Feature landscape mapped against 8+ competitor tools. Table stakes, differentiators, and anti-features clearly delineated. |
+| Architecture | HIGH | Extends proven patterns from backend-foundation. Webhook-driven scraping, append-only snapshots, shared profiles. |
+| Pitfalls | HIGH | 15 pitfalls catalogued with official sources. Critical ones (TikTok anti-bot, unbounded costs, RLS performance, TimescaleDB deprecation) have concrete prevention strategies. |
+| Apify data schemas | MEDIUM | Profile/video field names from Apify docs and WebSearch, not Context7. Schemas may change. Zod validation at ingest is mandatory. |
+| Competitive landscape | MEDIUM | Based on WebSearch of competitor tools. Pricing and feature sets may have changed. |
 
 ## Gaps to Address
 
-- **Whop sandbox testing**: Existing checkout and webhook code has never been tested against Whop sandbox. Need end-to-end verification before launch
-- **TikTok developer app approval**: Submit immediately (during Phase 1). Production requires HTTPS domain approval. Can take days to weeks
-- **Mobile performance budget**: Hive demo on landing page needs profiling on real low-end Android devices. No benchmarks exist yet
-- **Referral bonus amount**: Business decision needed -- how much is the one-time referral bonus? Affects unit economics and abuse prevention thresholds
-- **Whop plan IDs**: Need to be created in Whop dashboard and added to environment variables before payment flows can be tested
-- **Onboarding step count**: Research says 3-5 steps optimal. Exact steps need product decision (goal, TikTok connect, first analysis?)
-
-## Sources
-
-- Codebase analysis: package.json, checkout-modal.tsx, webhook handler, auth-guard.tsx, database.types.ts, billing-section.tsx
-- [Whop Checkout Embed Docs](https://docs.whop.com/payments/checkout-embed) -- affiliateCode, sessionId, theme
-- [Whop Affiliate Program Docs](https://docs.whop.com/manage-your-business/growth-marketing/affiliate-program)
-- [@whop/sdk npm](https://www.npmjs.com/package/@whop/sdk), [@whop/checkout npm](https://www.npmjs.com/package/@whop/checkout)
-- [SaaS Landing Page Best Practices 2026](https://www.storylane.io/blog/saas-landing-pages-best-practices)
-- [SaaS Landing Page Trends 2026](https://www.saasframe.io/blog/10-saas-landing-page-trends-for-2026-with-real-examples)
-- [SaaS Onboarding Strategy](https://userpilot.com/blog/saas-onboarding-strategy/)
-- [Trial Conversion Benchmarks 2026](https://ideaproof.io/questions/good-trial-conversion)
-- [SaaS Referral Program Guide](https://impact.com/referral/saas-referral-program-guide/)
-- [TikTok Creator Metrics 2026](https://influenceflow.io/resources/tiktok-creator-metrics-the-complete-guide-to-tracking-analyzing-optimizing-your-performance-in-2026/)
-- [NextStepjs](https://nextstepjs.com/) -- evaluated and not recommended (custom solution preferred)
-- [Safari ITP Documentation](https://webkit.org/blog/category/privacy/)
+- **Apify actor input/output schemas**: Need runtime verification at implementation time. The Clockworks actors may change output field names or add/remove fields without notice.
+- **Vercel plan confirmation**: The cron strategy assumes Pro plan (sub-daily cron). If still on Hobby, daily-only cron changes the refresh strategy.
+- **Cost modeling**: Per-user scraping cost needs validation with actual Apify usage after launch. Estimated $0.005/profile/scrape, but real costs depend on proxy usage and retry rates.
+- **Legal/ToS compliance**: Scraping TikTok data via third-party services (Apify) operates in a legal gray area. Not researched here -- needs separate review.
+- **Backend-foundation merge timing**: If backend-foundation has not been merged into main before this milestone starts, the `apify-client` and `@tanstack/react-query` packages need to be added manually to this worktree.
