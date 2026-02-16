@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { createCache } from "@/lib/cache";
+import { bestFuzzyMatch } from "./fuzzy";
 import type { AnalysisInput, TrendEnrichment } from "./types";
 
 // Cached trending data types (INFRA-02)
@@ -44,19 +45,26 @@ export async function enrichWithTrends(
 
   const matched_trends: TrendEnrichment["matched_trends"] = [];
   let trendScore = 0;
+  let bestMatchScore: number | null = null; // Track best fuzzy match score for FeatureVector
 
   if (trendingSounds) {
     for (const sound of trendingSounds) {
       if (!sound.sound_name) continue;
-      const soundLower = sound.sound_name.toLowerCase();
 
-      // Check if content references this trending sound
-      if (contentLower.includes(soundLower)) {
+      // Fuzzy match: Jaro-Winkler similarity >= 0.7 threshold (SIG-01)
+      const fuzzyResult = bestFuzzyMatch(sound.sound_name, contentLower, 0.7);
+
+      if (fuzzyResult.matched) {
         matched_trends.push({
           sound_name: sound.sound_name,
           velocity_score: Number(sound.velocity_score) || 0,
           trend_phase: sound.trend_phase,
         });
+
+        // Track the highest similarity score across all matched sounds
+        if (bestMatchScore === null || fuzzyResult.score > bestMatchScore) {
+          bestMatchScore = fuzzyResult.score;
+        }
 
         // Weight by velocity and trend phase
         const phaseMultiplier =
