@@ -66,11 +66,11 @@ Plans:
   3. Empty state with clear CTA appears when user has no tracked competitors
   4. Loading skeleton states display while data is being fetched for cards, table, and page shell
   5. Competitors page is accessible via sidebar navigation
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: Competitor cards grid with stats, sparklines, and velocity indicators
-- [ ] 03-02: Table/leaderboard view toggle, empty state, skeleton loading, sidebar nav entry
+- [ ] 03-01-PLAN.md -- Data layer, utility functions, card grid view with sparklines and growth delta indicators
+- [ ] 03-02-PLAN.md -- Table/leaderboard view toggle, empty state, skeleton loading, sidebar nav entry
 
 ### Phase 4: Detail Page & Analytics
 **Goal**: Users can drill into any competitor and see comprehensive growth, engagement, and content analytics
