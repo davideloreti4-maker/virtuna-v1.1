@@ -65,10 +65,10 @@ Plans:
   2. Page shows meaningful mock content (video cards, categories, metrics) even without a live backend
   3. Trending page is reachable via sidebar navigation and back-navigates correctly
   4. Page uses brand bible design patterns (6% borders, 12px card radius, Inter font, coral accents)
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 03-01: Trending page redesign and content population
+- [ ] 03-01: Full trending page redesign with mock data, category tabs, and video card grid
 
 ### Phase 4: Settings
 **Goal**: Settings page is fully functional -- profile saves to Supabase, account actions work, preferences persist
