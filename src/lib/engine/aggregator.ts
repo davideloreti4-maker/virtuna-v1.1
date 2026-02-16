@@ -11,7 +11,7 @@ import type { PipelineResult } from "./pipeline";
 import { GEMINI_MODEL } from "./gemini";
 import { DEEPSEEK_MODEL } from "./deepseek";
 
-export const ENGINE_VERSION = "2.0.0";
+export const ENGINE_VERSION = "2.1.0";
 
 // =====================================================
 // v2 Score Weights — config-driven for maintainability
