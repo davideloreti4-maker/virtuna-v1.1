@@ -118,11 +118,12 @@ Plans:
   4. All new and existing pages pass a mobile responsiveness check (no overflow, no tiny touch targets, no broken layouts)
   5. No dead imports, unused components, or references to removed features remain in the codebase
   6. Trending page included in mobile responsiveness pass
-**Plans**: 2 plans
+**Plans**: 3 plans
 
 Plans:
-- [ ] 06-01-PLAN.md -- OG metadata fix, marketing OG image, brand-deals redirect, middleware cleanup, dashboard mobile fix
-- [ ] 06-02-PLAN.md -- Dead code deletion (landing components, test pages, visualization, effects, motion), societies.io comment cleanup
+- [x] 06-01-PLAN.md -- OG metadata fix, marketing OG image, brand-deals redirect, middleware cleanup, dashboard mobile fix (completed 2026-02-16)
+- [x] 06-02-PLAN.md -- Dead code deletion (landing components, test pages, visualization, effects, motion), societies.io comment cleanup (completed 2026-02-16)
+- [ ] 06-03-PLAN.md -- Gap closure: mobile responsiveness audit + PLSH-01 compliance verification (skeleton, cards, buttons)
 
 ## Execution Waves
 
@@ -155,7 +156,7 @@ Waves 1-2 support parallel execution (see Execution Waves above).
 | 3. Onboarding | 2/2 | ✓ Complete | 2026-02-16 |
 | 4. Payments | 3/3 | ✓ Complete | 2026-02-16 |
 | 5. Referral | 2/2 | ✓ Complete | 2026-02-16 |
-| 6. Polish | 0/2 | Not started | - |
+| 6. Polish | 2/3 | Gap closure | - |
 
 ---
 *Roadmap created: 2026-02-13*
