@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate -- and connects them to monetization opportunities.
-**Current focus:** Platform Refinement -- Phase 6: Auth & Onboarding (Plan 1 of 2 complete)
+**Current focus:** Platform Refinement -- Phase 6: Auth & Onboarding COMPLETE (all 6 phases done)
 
 ## Current Position
 
-Phase: 6 of 6 (Auth & Onboarding)
-Plan: 1 of 2 in current phase
-Status: Executing Phase 06
-Last activity: 2026-02-16 -- Completed 06-01 Auth Pages Visual Polish
+Phase: 6 of 6 (Auth & Onboarding) -- COMPLETE
+Plan: 2 of 2 in current phase
+Status: All Phases Complete
+Last activity: 2026-02-16 -- Completed 06-02 Onboarding Polish & Auth Error Mapping
 
-Progress: [#########.] 90%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
+- Total plans completed: 10
 - Average duration: 3min
-- Total execution time: 0.4 hours
+- Total execution time: 0.5 hours
 
 **By Phase:**
 
@@ -32,7 +32,7 @@ Progress: [#########.] 90%
 | 03-trending-page | 1 | 2min | 2min |
 | 04-settings | 2 | 6min | 3min |
 | 05-referrals-brand-deals | 1 | 2min | 2min |
-| 06-auth-onboarding | 1 | 2min | 2min |
+| 06-auth-onboarding | 2 | 4min | 2min |
 
 ## Shipped Milestones
 
@@ -78,6 +78,10 @@ Progress: [#########.] 90%
 - [06-01] Explicit rounded-[12px] instead of rounded-xl for brand bible clarity
 - [06-01] Info and Clock lucide icons in login banners for better UX affordance
 - [06-01] Ambient coral glow at 6% opacity -- subtle depth without overpowering glass cards
+- [06-02] Inline error mapping per action file instead of shared utility (only 2 consumers)
+- [06-02] Generic fallback "Something went wrong" hides raw Supabase errors from users
+- [06-02] Pill-shaped step indicators (h-1.5 w-8) for better visual progress feedback
+- [06-02] 320px min-height wrapper prevents card resize between onboarding steps
 
 ### Pending Todos
 
@@ -96,9 +100,9 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 06-01-PLAN.md (Auth Pages Visual Polish)
+Stopped at: Completed 06-02-PLAN.md (Onboarding Polish & Auth Error Mapping) -- Phase 06 fully complete. All 6 phases done.
 Resume file: None
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Completed 06-01 (Auth Pages Visual Polish)*
+*Last updated: 2026-02-16 -- Completed 06-02 (Onboarding Polish & Auth Error Mapping, Phase 06 complete, milestone complete)*
