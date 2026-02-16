@@ -1,201 +1,294 @@
 import type {
   ConfidenceLevel,
-  DeepSeekReasoning,
   Factor,
-  GeminiAnalysis,
+  FeatureVector,
   PredictionResult,
   RuleScoreResult,
+  Suggestion,
   TrendEnrichment,
 } from "./types";
+import type { PipelineResult } from "./pipeline";
 import { GEMINI_MODEL } from "./gemini";
 import { DEEPSEEK_MODEL } from "./deepseek";
 
-export const ENGINE_VERSION = "1.0.0";
+export const ENGINE_VERSION = "2.0.0";
 
-const SCORE_WEIGHTS = { rule: 0.5, trend: 0.3, ml: 0.2 };
+// =====================================================
+// v2 Score Weights — config-driven for maintainability
+// =====================================================
+
+const SCORE_WEIGHTS = {
+  behavioral: 0.45,
+  gemini: 0.25,
+  rules: 0.20,
+  trends: 0.10,
+} as const;
+
+// =====================================================
+// Confidence Calculation
+// =====================================================
 
 /**
- * Determine confidence level based on data quality signals
+ * Calculate numeric confidence (0-1) based on:
+ * 1. Signal availability (0-0.6) — how much data we have
+ * 2. Model agreement (0-0.4) — do Gemini and DeepSeek agree on direction
  */
-function determineConfidence(
+function calculateConfidence(
+  geminiScore: number,
+  behavioralScore: number,
   ruleResult: RuleScoreResult,
   trendEnrichment: TrendEnrichment,
-  hasDeepSeek: boolean,
-  deepseekReasoning?: string
-): ConfidenceLevel {
-  let score = 0;
+  hasVideo: boolean,
+  deepseekConfidence: "high" | "medium" | "low"
+): { confidence: number; confidence_label: ConfidenceLevel } {
+  // Signal availability component (0-0.6)
+  let signal = 0.2; // Base: always have text
+  if (hasVideo) signal += 0.1;
+  if (trendEnrichment.matched_trends.length > 0) signal += 0.1;
+  if (ruleResult.matched_rules.length >= 3) signal += 0.1;
+  if (deepseekConfidence === "high") signal += 0.1;
+  else if (deepseekConfidence === "medium") signal += 0.05;
 
-  // More matched rules = higher confidence
-  if (ruleResult.matched_rules.length >= 5) score += 0.3;
-  else if (ruleResult.matched_rules.length >= 3) score += 0.2;
-  else score += 0.1;
+  // Model agreement component (0-0.4)
+  const geminiDirection = geminiScore - 50;
+  const behavioralDirection = behavioralScore - 50;
+  let agreement: number;
 
-  // Trend data available
-  if (trendEnrichment.matched_trends.length > 0) score += 0.2;
-  else score += 0.05;
+  if (
+    (geminiDirection >= 0 && behavioralDirection >= 0) ||
+    (geminiDirection < 0 && behavioralDirection < 0)
+  ) {
+    // Same sign — both models agree on direction
+    agreement = 0.4;
+  } else if (Math.abs(geminiDirection - behavioralDirection) <= 15) {
+    // Different signs but close together
+    agreement = 0.2;
+  } else {
+    // Different signs and far apart
+    agreement = 0.0;
+  }
 
-  // DeepSeek reasoning adds confidence
-  if (hasDeepSeek) score += 0.4;
-  else score += 0.1;
+  const confidence = Math.min(1, Math.max(0, signal + agreement));
+  const confidence_label: ConfidenceLevel =
+    confidence >= 0.7 ? "HIGH" : confidence >= 0.4 ? "MEDIUM" : "LOW";
 
-  // Confidence reasoning quality
-  if (deepseekReasoning && deepseekReasoning.length > 50) score += 0.1;
-
-  if (score >= 0.8) return "HIGH";
-  if (score >= 0.5) return "MEDIUM";
-  return "LOW";
+  return { confidence, confidence_label };
 }
 
+// =====================================================
+// FeatureVector Assembly
+// =====================================================
+
+function assembleFeatureVector(pipelineResult: PipelineResult): FeatureVector {
+  const { payload, geminiResult, deepseekResult, ruleResult, trendEnrichment } =
+    pipelineResult;
+  const gemini = geminiResult.analysis;
+  const deepseek = deepseekResult?.reasoning;
+
+  // Helper to find a Gemini factor by name
+  const findFactor = (name: string) =>
+    gemini.factors.find((f) => f.name === name);
+
+  return {
+    // Gemini factors (0-10)
+    hookScore: findFactor("Scroll-Stop Power")?.score ?? 0,
+    completionPull: findFactor("Completion Pull")?.score ?? 0,
+    rewatchPotential: findFactor("Rewatch Potential")?.score ?? 0,
+    shareTrigger: findFactor("Share Trigger")?.score ?? 0,
+    emotionalCharge: findFactor("Emotional Charge")?.score ?? 0,
+
+    // Video signals (null if no video)
+    visualProductionQuality:
+      gemini.video_signals?.visual_production_quality ?? null,
+    hookVisualImpact: gemini.video_signals?.hook_visual_impact ?? null,
+    pacingScore: gemini.video_signals?.pacing_score ?? null,
+    transitionQuality: gemini.video_signals?.transition_quality ?? null,
+
+    // DeepSeek component scores (0-10)
+    hookEffectiveness: deepseek?.component_scores.hook_effectiveness ?? 0,
+    retentionStrength: deepseek?.component_scores.retention_strength ?? 0,
+    shareability: deepseek?.component_scores.shareability ?? 0,
+    commentProvocation: deepseek?.component_scores.comment_provocation ?? 0,
+    saveWorthiness: deepseek?.component_scores.save_worthiness ?? 0,
+    trendAlignment: deepseek?.component_scores.trend_alignment ?? 0,
+    originality: deepseek?.component_scores.originality ?? 0,
+
+    // Rules and trends
+    ruleScore: ruleResult.rule_score,
+    trendScore: trendEnrichment.trend_score,
+
+    // Audio (placeholder — Phase 11)
+    audioTrendingMatch: null,
+
+    // Caption/Hashtag
+    captionScore: 0, // Placeholder — populated in Phase 9
+    hashtagRelevance: 0, // Placeholder — populated in Phase 11
+    hashtagCount: payload.hashtags.length,
+
+    // Content metadata
+    durationSeconds: payload.duration_hint,
+    hasVideo: payload.input_mode !== "text",
+  };
+}
+
+// =====================================================
+// Score Aggregation
+// =====================================================
+
 /**
- * Map Gemini factor scores to standard Factor type
+ * Aggregate all pipeline stage outputs into a PredictionResult.
+ *
+ * v2 formula: behavioral 45% + gemini 25% + rules 20% + trends 10%
+ *
+ * Takes the full PipelineResult from runPredictionPipeline()
+ * and returns a complete PredictionResult.
  */
-function mapGeminiFactors(gemini: GeminiAnalysis): Factor[] {
-  return gemini.factors.map((f, i) => ({
+export function aggregateScores(
+  pipelineResult: PipelineResult
+): PredictionResult {
+  const {
+    payload,
+    geminiResult,
+    deepseekResult,
+    ruleResult,
+    trendEnrichment,
+  } = pipelineResult;
+
+  const gemini = geminiResult.analysis;
+  const deepseek = deepseekResult?.reasoning ?? null;
+
+  // -------------------------------------------------
+  // Behavioral score (45% weight)
+  // Source: DeepSeek's 7 component scores, each 0-10
+  // -------------------------------------------------
+  const cs = deepseek?.component_scores;
+  const behavioralAvg = cs
+    ? (cs.hook_effectiveness +
+        cs.retention_strength +
+        cs.shareability +
+        cs.comment_provocation +
+        cs.save_worthiness +
+        cs.trend_alignment +
+        cs.originality) /
+      7
+    : 0;
+  const behavioral_score = Math.round(behavioralAvg * 10); // Normalize to 0-100
+
+  // -------------------------------------------------
+  // Gemini score (25% weight)
+  // Source: Gemini's 5 factor scores, each 0-10
+  // -------------------------------------------------
+  const geminiAvg =
+    gemini.factors.reduce((sum, f) => sum + f.score, 0) /
+    gemini.factors.length;
+  const gemini_score = Math.round(geminiAvg * 10); // Normalize to 0-100
+
+  // -------------------------------------------------
+  // Overall score (weighted combination)
+  // -------------------------------------------------
+  const overall_score = Math.min(
+    100,
+    Math.max(
+      0,
+      Math.round(
+        behavioral_score * SCORE_WEIGHTS.behavioral +
+          gemini_score * SCORE_WEIGHTS.gemini +
+          ruleResult.rule_score * SCORE_WEIGHTS.rules +
+          trendEnrichment.trend_score * SCORE_WEIGHTS.trends
+      )
+    )
+  );
+
+  // -------------------------------------------------
+  // Confidence
+  // -------------------------------------------------
+  const hasVideo = payload.input_mode !== "text";
+  const conf = calculateConfidence(
+    gemini_score,
+    behavioral_score,
+    ruleResult,
+    trendEnrichment,
+    hasVideo,
+    deepseek?.confidence ?? "low"
+  );
+
+  // -------------------------------------------------
+  // Warnings (from DeepSeek + low confidence)
+  // -------------------------------------------------
+  const warnings: string[] = [...(deepseek?.warnings ?? [])];
+  if (conf.confidence < 0.4) {
+    warnings.push("Low confidence \u2014 limited signal data");
+  }
+
+  // -------------------------------------------------
+  // Factors (from Gemini — v2 shape with rationale/improvement_tip)
+  // -------------------------------------------------
+  const factors: Factor[] = gemini.factors.map((f, i) => ({
     id: `factor-${i + 1}`,
     name: f.name,
     score: f.score,
     max_score: 10,
-    description: f.description,
-    tips: f.tips,
+    rationale: f.rationale,
+    improvement_tip: f.improvement_tip,
   }));
-}
 
-/**
- * Aggregate all signals into a PredictionResult (ENGINE-06)
- *
- * Weighted combination: rule_score * 0.5 + trend_score * 0.3 + ml_score * 0.2
- * ml_score defaults to rule_score until ML pipeline is active (Phase 7)
- */
-export function aggregateScores(
-  geminiAnalysis: GeminiAnalysis,
-  ruleResult: RuleScoreResult,
-  trendEnrichment: TrendEnrichment,
-  deepseekResult: { reasoning: DeepSeekReasoning; cost_cents: number } | null,
-  geminiCostCents: number,
-  latencyMs: number
-): PredictionResult {
-  const hasDeepSeek = deepseekResult !== null;
-  const deepseek = deepseekResult?.reasoning;
-
-  // ml_score defaults to rule_score until ML is active
-  const mlScore = ruleResult.rule_score;
-
-  // Weighted overall score
-  const weightedScore =
-    ruleResult.rule_score * SCORE_WEIGHTS.rule +
-    trendEnrichment.trend_score * SCORE_WEIGHTS.trend +
-    mlScore * SCORE_WEIGHTS.ml;
-
-  // If DeepSeek provided a refined score, blend it
-  const overallScore = deepseek
-    ? Math.round(weightedScore * 0.6 + deepseek.refined_score * 0.4)
-    : Math.round(weightedScore);
-
-  const confidence = determineConfidence(
-    ruleResult,
-    trendEnrichment,
-    hasDeepSeek,
-    deepseek?.confidence_reasoning
+  // -------------------------------------------------
+  // Suggestions (from DeepSeek)
+  // -------------------------------------------------
+  const suggestions: Suggestion[] = (deepseek?.suggestions ?? []).map(
+    (s, i) => ({
+      id: `suggestion-${i + 1}`,
+      ...s,
+    })
   );
 
-  // Factors from Gemini
-  const factors = mapGeminiFactors(geminiAnalysis);
+  // -------------------------------------------------
+  // FeatureVector
+  // -------------------------------------------------
+  const feature_vector = assembleFeatureVector(pipelineResult);
 
-  // Ensure exactly 5 factors
-  while (factors.length < 5) {
-    factors.push({
-      id: `factor-${factors.length + 1}`,
-      name: "Content Quality",
-      score: 5,
-      max_score: 10,
-      description: "General content quality assessment",
-      tips: ["Focus on improving specific aspects of your content"],
-    });
-  }
+  // -------------------------------------------------
+  // Cost tracking
+  // -------------------------------------------------
+  const cost_cents =
+    Math.round(
+      (geminiResult.cost_cents + (deepseekResult?.cost_cents ?? 0)) * 10000
+    ) / 10000;
 
-  // Suggestions from DeepSeek or fallback
-  const suggestions = deepseek
-    ? deepseek.suggestions.map((s, i) => ({
-        id: `suggestion-${i + 1}`,
-        ...s,
-      }))
-    : [
-        {
-          id: "suggestion-1",
-          text: "Consider adding a stronger hook in the opening line",
-          priority: "high" as const,
-          category: "hook",
-        },
-        {
-          id: "suggestion-2",
-          text: "Include a clear call to action",
-          priority: "medium" as const,
-          category: "content",
-        },
-        {
-          id: "suggestion-3",
-          text: "Experiment with trending formats for your niche",
-          priority: "medium" as const,
-          category: "format",
-        },
-      ];
-
-  // Persona reactions from DeepSeek or fallback
-  const persona_reactions = deepseek
-    ? deepseek.persona_reactions.map((p) => ({
-        ...p,
-      }))
-    : [
-        { persona_name: "Gen-Z Creator", quote: "This has potential but needs more personality", sentiment: "neutral" as const, resonance_score: 5 },
-        { persona_name: "Marketing Pro", quote: "Solid structure, could use data backing", sentiment: "positive" as const, resonance_score: 6 },
-        { persona_name: "Casual Scroller", quote: "Would I stop scrolling? Maybe...", sentiment: "neutral" as const, resonance_score: 5 },
-        { persona_name: "Niche Expert", quote: "Decent topic coverage for the space", sentiment: "positive" as const, resonance_score: 6 },
-        { persona_name: "The Skeptic", quote: "I've seen better takes on this", sentiment: "negative" as const, resonance_score: 4 },
-      ];
-
-  // Variants from DeepSeek or fallback
-  const variants = deepseek
-    ? deepseek.variants.map((v, i) => ({
-        id: `variant-${i + 1}`,
-        type: "rewritten" as const,
-        ...v,
-      }))
-    : [
-        {
-          id: "variant-1",
-          type: "rewritten" as const,
-          content: "A stronger version would be generated by DeepSeek R1 (currently unavailable)",
-          predicted_score: overallScore + 5,
-          label: "Enhanced Version",
-        },
-      ];
-
-  // Conversation themes from DeepSeek or empty
-  const conversation_themes = deepseek
-    ? deepseek.conversation_themes.map((t, i) => ({
-        id: `theme-${i + 1}`,
-        ...t,
-      }))
-    : [];
-
-  const totalCost = geminiCostCents + (deepseekResult?.cost_cents ?? 0);
-
+  // -------------------------------------------------
+  // Assemble PredictionResult
+  // -------------------------------------------------
   return {
-    overall_score: Math.min(100, Math.max(0, overallScore)),
-    confidence,
+    overall_score,
+    confidence: conf.confidence,
+    confidence_label: conf.confidence_label,
+    behavioral_predictions:
+      deepseek?.behavioral_predictions ?? {
+        completion_pct: 0,
+        completion_percentile: "N/A",
+        share_pct: 0,
+        share_percentile: "N/A",
+        comment_pct: 0,
+        comment_percentile: "N/A",
+        save_pct: 0,
+        save_percentile: "N/A",
+      },
+    feature_vector,
+    reasoning: "", // DeepSeek reasoning text — not exposed in current schema
+    warnings,
     factors,
     suggestions,
-    persona_reactions,
-    variants,
-    conversation_themes,
     rule_score: ruleResult.rule_score,
     trend_score: trendEnrichment.trend_score,
-    ml_score: mlScore,
+    gemini_score,
+    behavioral_score,
     score_weights: SCORE_WEIGHTS,
-    latency_ms: latencyMs,
-    cost_cents: Math.round(totalCost * 10000) / 10000,
+    latency_ms: pipelineResult.total_duration_ms,
+    cost_cents,
     engine_version: ENGINE_VERSION,
     gemini_model: GEMINI_MODEL,
-    deepseek_model: hasDeepSeek ? DEEPSEEK_MODEL : null,
+    deepseek_model: deepseekResult ? DEEPSEEK_MODEL : null,
+    input_mode: pipelineResult.payload.input_mode,
+    has_video: hasVideo,
   };
 }
