@@ -5,24 +5,24 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate -- and connects them to monetization opportunities.
-**Current focus:** Phase 6 - Polish (ready to plan)
+**Current focus:** Phase 6 - Polish (executing)
 
 ## Current Position
 
 **Milestone:** MVP Launch
-**Phase:** 5 of 6 (Referral)
-**Plan:** 2 of 2 in current phase
-**Status:** Phase 5 complete (verified), ready for Phase 6
-**Last activity:** 2026-02-16 -- Phase 5 Referral complete (verified)
+**Phase:** 6 of 6 (Polish)
+**Plan:** 1 of 2 in current phase
+**Status:** Plan 06-01 complete, executing Phase 6
+**Last activity:** 2026-02-16 -- Plan 06-01 complete (OG metadata, dead routes, mobile fix)
 
-Progress: [████████░░] 83%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11
+- Total plans completed: 12
 - Average duration: 3 min
-- Total execution time: 0.48 hours
+- Total execution time: 0.51 hours
 
 **By Phase:**
 
@@ -33,6 +33,7 @@ Progress: [████████░░] 83%
 | 03-onboarding | 2 | 4 min | 2 min |
 | 04-payments | 3 | 9 min | 3 min |
 | 05-referral | 2 | 2 min | 1 min |
+| 06-polish | 1 | 2 min | 2 min |
 
 *Updated after each plan completion*
 
@@ -67,6 +68,9 @@ Progress: [████████░░] 83%
 - [05-01]: INSERT policy uses WITH CHECK on referred_user_id = auth.uid() for self-only inserts
 - [Phase 05-02]: Kept Briefcase icon for Referrals nav item (fits earnings/referral concept)
 - [Phase 05-02]: Updated isActive check from /brand-deals to /referrals path matching
+- [06-01]: Removed static /og-image.png from root metadata -- opengraph-image.tsx file convention auto-injects OG tags
+- [06-01]: Kept /brand-deals in middleware PROTECTED_PREFIXES (redirect still needs auth)
+- [06-01]: Kept /showcase in PUBLIC_PATHS as design system reference for development
 
 ### Pending Todos
 
@@ -89,10 +93,10 @@ None
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Phase 5 Referral verified and complete
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None
-Next: `/gsd:plan-phase 6`
+Next: Execute 06-02-PLAN.md
 
 ---
 *State created: 2026-02-13*
-*Last updated: 2026-02-16 -- Phase 5 Referral complete (verified)*
+*Last updated: 2026-02-16 -- Plan 06-01 complete (OG metadata, dead routes, mobile fix)*
