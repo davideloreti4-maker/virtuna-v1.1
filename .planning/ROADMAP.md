@@ -53,7 +53,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 2-01: Gemini Prompt Rewrite + Video Analysis
+- [ ] 02-01: Rewrite GeminiResponseSchema + prompt template + text/video analysis paths
 
 ### Phase 3: DeepSeek Prompt + Model Switch
 **Goal**: DeepSeek uses V3.2-reasoning with structured 5-step CoT and outputs behavioral predictions
