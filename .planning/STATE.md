@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered competitor intelligence that shows TikTok creators exactly what their competitors do, why it works, and how to outperform them.
-**Current focus:** Phase 3 Complete -- Ready for Phase 4
+**Current focus:** Phase 4 in progress -- Detail Page & Analytics
 
 ## Current Position
 
-Phase: 3 of 7 (Competitor Dashboard) -- COMPLETE
-Plan: 2 of 2 in current phase (all done)
-Status: Phase 3 Complete
-Last activity: 2026-02-16 -- Completed 03-02 (Table View + View Toggle)
+Phase: 4 of 7 (Detail Page & Analytics)
+Plan: 1 of 2 in current phase (04-01 complete)
+Status: Executing Phase 4
+Last activity: 2026-02-16 -- Completed 04-01 (Detail Page with Growth & Engagement)
 
-Progress: [████░░░░░░] 43%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
+- Total plans completed: 7
 - Average duration: 4 min
-- Total execution time: 0.37 hours
+- Total execution time: 0.44 hours
 
 **By Phase:**
 
@@ -30,9 +30,10 @@ Progress: [████░░░░░░] 43%
 | 01-data-foundation | 2 | 10 min | 5 min |
 | 02-competitor-management | 2 | 6 min | 3 min |
 | 03-competitor-dashboard | 2 | 6 min | 3 min |
+| 04-detail-page-analytics | 1 | 4 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-01 (2 min), 02-02 (2 min), 03-01 (3 min), 03-02 (3 min)
+- Last 5 plans: 02-02 (2 min), 03-01 (3 min), 03-02 (3 min), 04-01 (4 min)
 - Trend: stable (fast)
 
 *Updated after each plan completion*
@@ -70,6 +71,10 @@ Recent decisions affecting current work:
 - View toggle uses Radix Tabs controlled by Zustand store (value+onValueChange pattern)
 - loading.tsx renders card grid skeleton as default first-load view
 - Sidebar Competitors uses pathname.startsWith for active detection to support future sub-routes
+- Server-side analytics computation: all chart data pre-computed in server component to minimize client bundle
+- User authorization via junction table check on detail page (prevents accessing competitors not in user's list)
+- VideoMetrics interface extracted as shared named export in competitors-utils.ts
+- Chart wrapper pattern: "use client" components receive pre-computed props from server component
 
 ### Pending Todos
 
@@ -84,10 +89,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 03-02-PLAN.md (Table View + View Toggle) -- Phase 3 complete
+Stopped at: Completed 04-01-PLAN.md (Detail Page with Growth & Engagement Analytics)
 Resume file: None
-Next: Phase 4 planning (Competitor Detail Page)
+Next: 04-02 execution (Content Analysis sections)
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- 03-02 execution complete (table view, view toggle, empty state, skeletons, sidebar nav, 2 tasks, 7 files)*
+*Last updated: 2026-02-16 -- 04-01 execution complete (detail page, growth chart, engagement analytics, 2 tasks, 11 files)*
