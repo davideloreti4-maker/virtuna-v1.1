@@ -11,7 +11,7 @@ Requirements for MVP launch. Each maps to roadmap phases.
 ### Foundation
 
 - [ ] **FOUN-01**: App uses real Supabase auth verification (replace mock 350ms AuthGuard)
-- [ ] **FOUN-02**: Unauthenticated users are redirected to landing page
+- [ ] **FOUN-02**: Unauthenticated users are redirected to /login
 - [ ] **FOUN-03**: Sidebar navigation updated for MVP pages (dashboard, trending, affiliate/earnings, pricing)
 - [ ] **FOUN-04**: Trending page kept in navigation and accessible at /trending
 - [ ] **FOUN-05**: Route groups structured: (marketing) public, (onboarding) post-signup, (app) authenticated
