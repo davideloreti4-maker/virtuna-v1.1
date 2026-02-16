@@ -49,11 +49,19 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 ### Active
 
-- [ ] AI viral prediction engine (Gemini Flash + DeepSeek R1)
-- [ ] TikTok data pipeline (Apify scraping, trend classification)
-- [ ] Real-time trend analysis
-- [ ] Trending page with real backend data
-- [ ] External brand deal listings from partner brands
+- [ ] Competitor intelligence tracker — add, track, compare TikTok creators
+- [ ] Real TikTok data scraping for competitor profiles and videos
+- [ ] Growth, engagement, and content analysis for tracked competitors
+- [ ] Side-by-side benchmarking against own stats
+- [ ] Competitor search/discovery by name or niche
+
+### Parallel (other worktrees)
+
+- [ ] AI viral prediction engine (Gemini Flash + DeepSeek R1) — backend-foundation
+- [ ] TikTok data pipeline (Apify scraping, trend classification) — backend-foundation
+- [ ] Real-time trend analysis — backend-foundation
+- [ ] Trending page with real backend data — future
+- [ ] External brand deal listings from partner brands — future
 
 ### Out of Scope
 
@@ -121,6 +129,19 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - Local: ~/virtuna-v1.1
 - Vercel: https://virtuna-v11.vercel.app
 
+## Current Milestone: Competitors Tool
+
+**Goal:** Build a full competitor intelligence page where TikTok creators can add, track, and compare competitor creators with real data — growth metrics, content analysis, engagement depth, and visual benchmarking.
+
+**Target features:**
+- Add competitors via @handle paste or search by name/niche
+- Track follower growth, posting frequency, engagement rates, content categories, top videos, hashtags, posting schedules
+- Overview dashboard with growth charts, competitor cards grid, sortable leaderboard table
+- Benchmark own stats vs competitors
+- Real TikTok data via scraping (not mock)
+- Unlimited tracking for all users
+- Data model designed for future prediction engine integration
+
 ## Current State
 
 **Shipped:** MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
@@ -133,4 +154,4 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - Trending page re-launch (when backend ready)
 
 ---
-*Last updated: 2026-02-16 after MVP Launch milestone complete*
+*Last updated: 2026-02-16 after Competitors Tool milestone started*

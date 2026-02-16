@@ -1,4 +1,4 @@
-# Milestone: MVP Launch
-Branch: milestone/mvp-launch
-Created: 2026-02-13
-Worktree: /Users/davideloreti/virtuna-mvp-launch
+# Milestone: competitors-tool
+Branch: milestone/competitors-tool
+Created: 2026-02-16
+Worktree: ~/virtuna-competitors-tool/
