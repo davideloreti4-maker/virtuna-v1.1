@@ -5,22 +5,22 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate -- and connects them to monetization opportunities.
-**Current focus:** Platform Refinement -- Phase 1: Sidebar & Navigation
+**Current focus:** Platform Refinement -- Phase 2: Landing Page
 
 ## Current Position
 
-Phase: 1 of 7 (Sidebar & Navigation)
-Plan: 2 of 2 in current phase
-Status: Complete
-Last activity: 2026-02-16 -- Completed 01-02 TikTok handle input + visual verification
+Phase: 2 of 7 (Landing Page)
+Plan: 1 of 2 in current phase
+Status: In Progress
+Last activity: 2026-02-16 -- Completed 02-01 Hero, stats & features redesign
 
-Progress: [##........] 15%
+Progress: [###.......] 21%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 6min
+- Total plans completed: 3
+- Average duration: 5min
 - Total execution time: 0.2 hours
 
 **By Phase:**
@@ -28,6 +28,7 @@ Progress: [##........] 15%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-sidebar-navigation | 2 | 12min | 6min |
+| 02-landing-page | 1 | 2min | 2min |
 
 ## Shipped Milestones
 
@@ -48,6 +49,10 @@ Progress: [##........] 15%
 - [01-02] Simple text input instead of OAuth flow for TikTok handle
 - [01-02] Upsert to creator_profiles.tiktok_handle using onConflict user_id
 - [01-02] Click-to-edit pattern for saved handle (no checkmark icon)
+- [02-01] Kept headline "Know what will go viral before you post" -- already prediction-focused
+- [02-01] 3 feature cards (prediction, analytics, signal analysis) for balanced 3-col grid
+- [02-01] Gradient treatment: 3 CSS layers (radial coral, secondary depth, ambient wash)
+- [02-01] Stats heading "Prediction by the numbers" -- bold, direct, no subtitle
 
 ### Pending Todos
 
@@ -66,9 +71,9 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 01-02-PLAN.md (TikTok handle input + visual verification) -- Phase 1 complete
+Stopped at: Completed 02-01-PLAN.md (Hero, stats & features redesign)
 Resume file: None
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Completed 01-02 (Phase 1 complete)*
+*Last updated: 2026-02-16 -- Completed 02-01 (Hero, stats & features redesign)*
