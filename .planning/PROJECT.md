@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A social media intelligence platform for TikTok creators. Helps creators predict viral content, discover brand deals, and earn through an affiliate engine. Built as a Next.js application with a Raycast-quality design system (36 components, 100+ tokens, coral #FF7F50 branding). Two-tier SaaS model (Starter/Pro) with Whop payments integration.
+A social media intelligence platform for TikTok creators. Helps creators predict viral content, discover brand deals, and earn through an affiliate engine. Built as a Next.js application with a Raycast-quality design system (36 components, 100+ tokens, coral #FF7F50 branding). Two-tier SaaS model (Starter/Pro) with Whop payments integration, progressive onboarding, and in-product referral program.
 
 ## Core Value
 
@@ -12,6 +12,13 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 ### Validated
 
+- Real Supabase auth with middleware enforcement, Google OAuth PKCE, deep link preservation -- MVP Launch
+- Landing page with hero, hive demo (lazy-loaded), features, social proof, FAQ, pricing -- MVP Launch
+- Progressive onboarding: TikTok @handle connect, goal personalization, 4-tooltip system -- MVP Launch
+- Whop payments: embedded checkout, 7-day Pro trial, webhook handler, tier tracking -- MVP Launch
+- TierGate: server-side FeatureGate (referrals), client-side TierGate (simulation results) -- MVP Launch
+- Referral system: link generation, cookie persistence through OAuth, RLS policy, dashboard -- MVP Launch
+- Mobile responsiveness audit, OG metadata via file convention, dead code cleanup -- MVP Launch
 - All design tokens 1:1 aligned with Raycast.com (Inter font, hex gray scale, 6% borders, glass pattern) -- v2.3.5
 - GlassPanel zero-config with Raycast neutral glass (5px blur, 12px radius) -- v2.3.5
 - BRAND-BIBLE.md rewritten as Raycast Design Language reference -- v2.3.5
@@ -42,61 +49,39 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 ### Active
 
-- [ ] Landing page with interactive demo (mini hive + fake analysis preview)
-- [ ] Progressive onboarding (niche → TikTok connect → goal) with wow moments per step
-- [ ] Pricing page with two-tier model (Starter ~$19/mo, Pro ~$49/mo)
-- [ ] Whop payments integration (7-day Pro trial with card, auto-subscribe)
-- [ ] Virtuna affiliate/referral program (one-time bonus per referral)
-- [ ] MVP app polish (remove trending page, focus on dashboard + affiliate/earnings)
-- [ ] Contextual tooltips for first-visit guidance
-
-## Current Milestone: MVP Launch
-
-**Goal:** Ship a conversion-ready product with landing page, onboarding, payments, and polished MVP app.
-
-**Target features:**
-- Fresh landing page with hero, interactive demo (mini hive + analysis preview), pricing, CTA
-- Progressive onboarding: niche → TikTok connect → goal, each step reveals value
-- Two-tier pricing (Starter/Pro) with Whop embedded payments, 7-day Pro trial
-- Virtuna affiliate program (one-time bonus referrals)
-- MVP app polish: remove trending, focus on dashboard + affiliate/earnings
-- Contextual tooltips for first-visit guidance
-- Mobile-optimized throughout
+- [ ] AI viral prediction engine (Gemini Flash + DeepSeek R1)
+- [ ] TikTok data pipeline (Apify scraping, trend classification)
+- [ ] Real-time trend analysis
+- [ ] Trending page with real backend data
+- [ ] External brand deal listings from partner brands
 
 ### Out of Scope
 
 - Light mode theme variant -- dark-mode first, defer later
 - Storybook integration -- showcase sufficient for now
-- Style Dictionary / Tokens Studio pipeline -- manual export sufficient
-- Real-time Figma sync -- manual reference sufficient
-- Mobile native exports -- web-only
+- Mobile native app -- web-first
+- TikTok OAuth -- manual @handle input sufficient for MVP
 - Sound design -- future polish
 
 ## Context
 
-**Current state:** v2.1 Dashboard Rebuild shipped (2026-02-08). All frontend milestones complete through v2.3.5.
-- ~78,000+ LOC TypeScript/CSS (including +46k from v2.1)
-- Tech stack: Next.js 14+ (App Router), TypeScript strict, Tailwind CSS v4, Supabase Auth, Recharts, d3-hierarchy, d3-quadtree
-- 36 design system components across 4 families, 100+ design tokens (all Raycast-accurate)
-- Inter font throughout (Funnel Display/Satoshi removed)
-- Zero-config GlassPanel with Raycast neutral glass
-- Dashboard fully rebuilt with design system: sidebar, forms, modals, results, loading states
-- Canvas-based hive visualization: 1300+ nodes, 60fps, interactive (hover, click, zoom/pan, pinch-to-zoom)
-- Trending page at /trending with TikTok-style video feed + bookmark store
-- Brand deals page at /brand-deals with 3-tab layout + earnings chart
-- 7-page showcase at /showcase
-- 8 documentation files in docs/
+**Current state:** MVP Launch shipped (2026-02-16). All frontend product features complete.
+- ~23,170 LOC TypeScript (after 121k lines of dead code cleanup)
+- Tech stack: Next.js 15 (App Router), TypeScript strict, Tailwind CSS v4, Supabase Auth, Whop payments, Recharts, d3-hierarchy, d3-quadtree
+- 36 design system components, 100+ tokens (all Raycast-accurate)
+- Real auth with middleware enforcement, Google OAuth PKCE
+- Progressive onboarding with goal personalization
+- Two-tier payments (Starter/Pro) with 7-day trial via Whop
+- Referral program with cookie persistence
+- Canvas-based hive visualization: 1300+ nodes, 60fps
+- Trending page at /trending with TikTok-style video feed
 - Deployed to Vercel
 
-**Known issues:**
-- --text-3xl is 30px vs Raycast 32px (intentional, flagged)
-- GlassCard (ui/card.tsx) uses bg-white/5 instead of bg-transparent (functional, not pixel-perfect)
-- Card hover uses simple bg-white/2% instead of Raycast ::after radial gradient
-- --shadow-button-secondary token defined but not consumed
-- Responsive showcase clipping on mobile
-- Touch target threshold relaxed to 32x24px (desktop-first)
-- Analyze button routes to /viral-predictor which doesn't exist yet (tech debt)
-- 800ms hardcoded skeleton delay on brand deals page (should use Suspense with real data)
+**Known issues / blockers before go-live:**
+- Whop plan IDs need creation in Whop dashboard
+- Referral bonus amount undecided (business decision)
+- Whop sandbox never tested end-to-end
+- Analyze button routes to /viral-predictor which doesn't exist yet
 
 ## Key Decisions
 
@@ -111,22 +96,16 @@ AI-powered content intelligence that tells TikTok creators whether their content
 | React.useId() for InputField IDs | Good -- fixed SSR hydration mismatch |
 | accent-foreground: #1a0f0a dark brown | Good -- 7.2:1 AAA contrast on coral |
 | gray-500: #848586 for muted text | Good -- 5.4:1 AA contrast on dark bg |
-| Inter as sole font (replace Satoshi/Funnel Display) | Good -- 1:1 Raycast match, simpler loading |
-| GlassPanel zero-config (4 props, fixed values) | Good -- consistent Raycast glass everywhere |
-| Cards use bg-transparent (not gradient) | Good -- matches Raycast live audit |
-| 5 WCAG AA normal-text failures accepted (status colors) | Acceptable -- all pass large-text AA |
-| v0 MCP for v2.3 UI generation | Good -- design system docs ensured consistent output |
-| Solid surface cards over glass for grids | Good -- smooth scroll performance |
-| Color semantics (orange/green/blue) from Brand Bible | Good -- consistent across all 3 tabs |
-| Lifted state for applied deals/active links | Good -- state survives tab switches |
-| Recharts v3 with function content tooltip | Good -- type-safe dark-mode chart |
-| Zustand persist for sidebar state | Good -- SSR-safe, replaces manual _hydrate |
-| Zod v4 for form validation (no react-hook-form) | Good -- simple forms don't need form library |
+| Inter as sole font | Good -- 1:1 Raycast match |
+| GlassPanel zero-config | Good -- consistent Raycast glass |
+| Cards use bg-transparent | Good -- matches Raycast live audit |
 | Canvas 2D for hive (not SVG) | Good -- 1000+ nodes at 60fps |
-| d3-hierarchy + d3-quadtree for hive | Good -- deterministic layout + O(log n) hit detection |
-| Ref-based animation state (not useState) | Good -- avoids re-renders during 60fps loop |
-| Pointer Events for pinch-to-zoom | Good -- unified across mouse/touch/pen |
-| Inline styles for backdrop-filter | Good -- workaround for Lightning CSS stripping |
+| Server actions with useActionState for auth | Good -- simpler than client-side Supabase |
+| Middleware redirects to /login (not landing) | Good -- better UX for returning users |
+| Deferred response creation for OAuth cookies | Good -- solved cookie persistence through redirects |
+| useSubscription hook with polling | Good -- tier refresh without page reload |
+| Server-side FeatureGate + client-side TierGate split | Good -- accommodates Next.js server/client boundary |
+| Referral cookie set after getUser() | Good -- survives Supabase setAll response re-creation |
 
 ## Constraints
 
@@ -144,16 +123,14 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 ## Current State
 
-**Shipped:** v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
-
-**In progress:** MVP Launch (worktree at ~/virtuna-mvp-launch/)
+**Shipped:** MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
 **Parallel:** Backend Foundation (worktree at ~/virtuna-backend-foundation/) — prediction engine, data pipeline
 
 **Future milestones:**
+- Backend intelligence integration (connect prediction engine to frontend)
 - External brand deals marketplace
-- Trending page backend (Apify, AI classification, TanStack Query)
 - Trending page re-launch (when backend ready)
 
 ---
-*Last updated: 2026-02-13 after MVP Launch milestone started*
+*Last updated: 2026-02-16 after MVP Launch milestone complete*
