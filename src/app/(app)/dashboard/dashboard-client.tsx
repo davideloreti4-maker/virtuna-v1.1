@@ -7,10 +7,10 @@ import {
   ContextBar,
   TestTypeSelector,
   ContentForm,
-  SurveyForm,
   LoadingPhases,
   ResultsPanel,
 } from "@/components/app";
+import type { ContentFormData } from "@/components/app";
 import { HiveCanvas } from "@/components/hive/HiveCanvas";
 import { generateMockHiveData } from "@/components/hive/hive-mock-data";
 import { useTestStore, mapPredictionToTestResult } from "@/stores/test-store";
@@ -18,7 +18,6 @@ import type { SimulationPhase } from "@/stores/test-store";
 import { useSocietyStore } from "@/stores/society-store";
 import { useAnalyze } from "@/hooks/queries";
 import type { TestType } from "@/types/test";
-import type { SurveySubmission } from "@/components/app/survey-form";
 
 const MINIMUM_THEATER_MS = 4500;
 
@@ -101,71 +100,34 @@ export function DashboardClient() {
     setStatus("filling-form");
   };
 
-  const handleChangeType = () => {
-    setStatus("selecting-type");
-  };
-
-  const contentTypeMap: Record<string, string> = {
-    "tiktok-script": "video",
-    "instagram-post": "reel",
-    "x-post": "post",
-    "linkedin-post": "post",
-    "email-subject-line": "post",
-    "email": "post",
-    "article": "post",
-    "website-content": "post",
-    "advertisement": "post",
-    "product-proposition": "post",
-    "survey": "post",
-  };
-
-  const handleContentSubmit = (content: string) => {
-    if (!selectedSocietyId || !currentTestType) return;
+  const handleContentSubmit = (data: ContentFormData) => {
+    if (!selectedSocietyId) return;
 
     const theatreStart = Date.now();
     isCancelledRef.current = false;
-    setSubmittedContent(content);
+    setSubmittedContent(data.caption || data.video_caption || data.tiktok_url || "");
     setStatus("simulating");
 
-    analyzeMutation.mutate(
-      {
-        content_text: content,
-        content_type: contentTypeMap[currentTestType] ?? "post",
-        society_id: selectedSocietyId,
-      },
-      {
-        onSuccess: async () => {
-          const elapsed = Date.now() - theatreStart;
-          const remaining = MINIMUM_THEATER_MS - elapsed;
-          if (remaining > 0) {
-            await new Promise((resolve) => setTimeout(resolve, remaining));
-          }
-          if (!isCancelledRef.current) {
-            setStatus("viewing-results");
-          }
-        },
-        onError: () => setStatus("filling-form"),
-      }
-    );
-  };
+    // Build v2 AnalysisInput payload
+    const payload: Record<string, unknown> = {
+      input_mode: data.input_mode,
+      content_type: "video",
+      society_id: selectedSocietyId,
+    };
 
-  const handleSurveySubmit = (data: SurveySubmission) => {
-    if (!selectedSocietyId || !currentTestType) return;
-
-    const theatreStart = Date.now();
-    isCancelledRef.current = false;
-    const content = `Q: ${data.question}\nType: ${data.questionType}${
-      data.options ? `\nOptions: ${data.options.join(", ")}` : ""
-    }`;
-    setSubmittedContent(content);
-    setStatus("simulating");
+    if (data.input_mode === "text") {
+      payload.content_text = data.caption;
+      if (data.niche) payload.niche = data.niche;
+    } else if (data.input_mode === "tiktok_url") {
+      payload.tiktok_url = data.tiktok_url;
+    } else if (data.input_mode === "video_upload") {
+      payload.video_storage_path = "pending-upload";
+      payload.content_text = data.video_caption;
+      if (data.video_niche) payload.niche = data.video_niche;
+    }
 
     analyzeMutation.mutate(
-      {
-        content_text: content,
-        content_type: contentTypeMap[currentTestType] ?? "post",
-        society_id: selectedSocietyId,
-      },
+      payload as Parameters<typeof analyzeMutation.mutate>[0],
       {
         onSuccess: async () => {
           const elapsed = Date.now() - theatreStart;
@@ -211,20 +173,10 @@ export function DashboardClient() {
         currentStatus === "simulating" ||
         currentStatus === "viewing-results") && (
         <div className="absolute bottom-6 left-1/2 z-20 w-full max-w-2xl -translate-x-1/2 px-6">
-          {currentStatus === "filling-form" && currentTestType ? (
-            currentTestType === "survey" ? (
-              <SurveyForm
-                onChangeType={handleChangeType}
-                onSubmit={handleSurveySubmit}
-              />
-            ) : (
-              <ContentForm
-                testType={currentTestType}
-                onChangeType={handleChangeType}
-                onSubmit={handleContentSubmit}
-                initialContent={urlParam ?? undefined}
-              />
-            )
+          {currentStatus === "filling-form" ? (
+            <ContentForm
+              onSubmit={handleContentSubmit}
+            />
           ) : currentStatus === "simulating" ? (
             <LoadingPhases
               simulationPhase={analyzeMutation.phase as SimulationPhase | null}
