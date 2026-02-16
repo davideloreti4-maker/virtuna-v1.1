@@ -12,7 +12,7 @@ Transform Virtuna from a design-system showcase into a conversion-ready SaaS pro
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation** - Replace mock auth, remove trending page, restructure routes for MVP
+- [x] **Phase 1: Foundation** - Replace mock auth, restructure routes and sidebar navigation for MVP (completed 2026-02-16)
 - [ ] **Phase 2: Landing Page** - Conversion-optimized landing page with interactive hive demo and pricing
 - [ ] **Phase 3: Onboarding** - Progressive post-signup flow with TikTok connect, goal selection, and tooltips
 - [ ] **Phase 4: Payments** - Whop-powered subscriptions with 7-day Pro trial, tier gating, and trial UI
@@ -22,21 +22,21 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Phase Details
 
 ### Phase 1: Foundation
-**Goal**: Authenticated users interact with a real auth system, and the app structure reflects MVP scope (no trending page, correct nav, proper route groups)
+**Goal**: Authenticated users interact with a real auth system, and the app structure reflects MVP scope (trending page kept, correct nav, proper route groups)
 **Depends on**: Nothing
-**File Ownership**: `src/components/auth-guard.tsx`, `src/middleware.ts`, `src/app/(marketing)/`, `src/app/(onboarding)/`, `src/app/(app)/`, `src/components/sidebar/`, trending page files (deletion)
+**File Ownership**: `src/components/auth-guard.tsx`, `src/middleware.ts`, `src/app/(marketing)/`, `src/app/(onboarding)/`, `src/app/(app)/`, `src/components/sidebar/`
 **Requirements**: FOUN-01, FOUN-02, FOUN-03, FOUN-04, FOUN-05
 **Success Criteria** (what must be TRUE):
   1. Unauthenticated user visiting /dashboard is redirected to the landing page (not shown a loading spinner forever)
   2. Authenticated user stays logged in across browser sessions without re-authenticating
-  3. /trending returns 404 and no trending-related code exists in the codebase
-  4. Sidebar navigation shows only MVP pages (dashboard, affiliate/earnings, pricing) with no dead links
+  3. /trending is accessible and renders the existing trending page
+  4. Sidebar navigation shows MVP pages (dashboard, trending, affiliate/earnings, pricing) with no dead links
   5. Route structure uses three groups: (marketing) for public pages, (onboarding) for post-signup, (app) for authenticated
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md -- Real Supabase auth (middleware redirects, login/signup pages, OAuth callback, AuthGuard replacement)
-- [ ] 01-02-PLAN.md -- Remove trending route, restructure sidebar navigation for MVP, create 404 page
+- [x] 01-01-PLAN.md -- Real Supabase auth (middleware redirects, login/signup pages, OAuth callback, AuthGuard replacement) (completed 2026-02-16)
+- [x] 01-02-PLAN.md -- Restructure sidebar navigation for MVP (keep trending), create 404 page (completed 2026-02-16)
 
 ### Phase 2: Landing Page
 **Goal**: A visitor lands on the homepage and immediately understands what Virtuna does, sees the hive demo in action, compares pricing tiers, and has a clear path to sign up
@@ -57,20 +57,20 @@ Plans:
 - [ ] 02-03: Pricing page with tier comparison and CTAs
 
 ### Phase 3: Onboarding
-**Goal**: A new user who just signed up is guided through connecting TikTok, choosing a goal, and seeing their first personalized hive -- then gets contextual help on their first dashboard visit
+**Goal**: A new user who just signed up is guided through entering their TikTok handle, choosing a goal, and seeing their first personalized hive -- then gets contextual help on their first dashboard visit
 **Depends on**: Phase 1
 **File Ownership**: `src/app/(onboarding)/`, `src/components/onboarding/`, `src/components/tooltips/`, `src/stores/tooltip-store.ts`
 **Requirements**: ONBR-01, ONBR-02, ONBR-03, ONBR-04, ONBR-05, ONBR-06, ONBR-07, ONBR-08, ONBR-09
 **Success Criteria** (what must be TRUE):
   1. First-time user after signup is routed to onboarding flow (not dropped on empty dashboard)
-  2. User can connect TikTok (OAuth or manual handle) and sees a personalized hive preview
+  2. User can enter their TikTok @handle manually and sees a personalized hive preview
   3. User picks a primary goal and their dashboard layout/focus reflects that choice
   4. Onboarding state persists across sessions (closing browser and returning resumes where they left off)
   5. First dashboard visit shows 3-4 contextual tooltips on key features; tooltips don't reappear after dismissal
 **Plans**: TBD
 
 Plans:
-- [ ] 03-01: Onboarding flow (routing, TikTok connect step, goal selection step)
+- [ ] 03-01: Onboarding flow (routing, TikTok @handle input step, goal selection step)
 - [ ] 03-02: Onboarding persistence (Supabase state) + skip/complete logic
 - [ ] 03-03: Contextual tooltips system (Zustand + localStorage persistence)
 
@@ -120,6 +120,7 @@ Plans:
   3. Sharing the landing page or a referral link on social media shows correct OG preview image and description
   4. All new and existing pages pass a mobile responsiveness check (no overflow, no tiny touch targets, no broken layouts)
   5. No dead imports, unused components, or references to removed features remain in the codebase
+  6. Trending page included in mobile responsiveness pass
 **Plans**: TBD
 
 Plans:
@@ -152,7 +153,7 @@ Waves 1-2 support parallel execution (see Execution Waves above).
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/2 | Not started | - |
+| 1. Foundation | 2/2 | ✓ Complete | 2026-02-16 |
 | 2. Landing Page | 0/3 | Not started | - |
 | 3. Onboarding | 0/3 | Not started | - |
 | 4. Payments | 0/3 | Not started | - |
