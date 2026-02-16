@@ -23,7 +23,7 @@ export function Footer({ className }: FooterProps) {
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
-              href="/auth/signup"
+              href="/signup"
               className="min-h-[44px] rounded-lg bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
             >
               Start free trial

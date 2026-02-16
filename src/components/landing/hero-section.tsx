@@ -47,7 +47,7 @@ export function HeroSection({ className }: HeroSectionProps) {
           <FadeIn delay={0.3}>
             <div className="flex flex-col sm:flex-row items-center gap-4 mt-10">
               <Button variant="primary" size="lg" asChild>
-                <Link href="/auth/signup">Start free trial</Link>
+                <Link href="/signup">Start free trial</Link>
               </Button>
               <Button variant="secondary" size="lg" asChild>
                 <Link href="/pricing">See pricing</Link>

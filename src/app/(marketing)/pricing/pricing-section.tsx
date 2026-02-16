@@ -61,7 +61,7 @@ export function PricingSection() {
           className="w-full"
           asChild
         >
-          <Link href={`/auth/signup?plan=${planTier}`}>
+          <Link href={`/signup?plan=${planTier}`}>
             {planTier === "pro" ? "Start free trial" : "Get started"}
           </Link>
         </Button>
