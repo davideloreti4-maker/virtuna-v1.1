@@ -16,7 +16,7 @@ interface AppShellProps {
  * Client-side app shell wrapper.
  *
  * Layout behavior:
- * - Desktop open: Sidebar visible (260px flush), main content pushed right by 260px
+ * - Desktop open: Sidebar visible, main content pushed right by 324px (300 + 12 + 12)
  * - Desktop collapsed: Sidebar off-screen, main content full width, toggle visible
  * - Mobile: Sidebar overlays content (no margin push), toggle always visible
  *
@@ -24,6 +24,7 @@ interface AppShellProps {
  * transition-[margin-left] duration-300 ease-[var(--ease-out-cubic)].
  *
  * State managed via useSidebarStore (Zustand persist).
+ * MobileNav has been replaced by SidebarToggle.
  */
 export function AppShell({ children }: AppShellProps) {
   const isOpen = useSidebarStore((s) => s.isOpen);
@@ -37,7 +38,7 @@ export function AppShell({ children }: AppShellProps) {
           className={cn(
             "flex-1 overflow-auto",
             "transition-[margin-left] duration-300 ease-[var(--ease-out-cubic)]",
-            isOpen ? "md:ml-[260px]" : "md:ml-0",
+            isOpen ? "md:ml-[284px]" : "md:ml-0",
             "ml-0",
           )}
         >

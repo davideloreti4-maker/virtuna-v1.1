@@ -20,8 +20,8 @@ interface SidebarNavItemProps {
  * Navigation item for sidebar menus.
  * Displays icon-left, label-right layout using Button ghost + Icon + Text.
  *
- * Active state: coral left-border indicator (2px) with subtle bg highlight
- * (white/4%) and icon weight changes to "fill" for visual emphasis.
+ * Active state: filled background (bg-active) with foreground text color
+ * and icon weight changes to "fill" for visual emphasis.
  */
 export function SidebarNavItem({
   icon,
@@ -37,10 +37,10 @@ export function SidebarNavItem({
       size="sm"
       onClick={onClick}
       className={cn(
-        "w-full justify-start gap-3 border-l-2",
+        "w-full justify-start gap-3",
         isActive
-          ? "border-accent bg-white/[0.04] text-foreground"
-          : "border-transparent text-foreground-secondary",
+          ? "bg-active text-foreground"
+          : "text-foreground-secondary",
         className
       )}
     >

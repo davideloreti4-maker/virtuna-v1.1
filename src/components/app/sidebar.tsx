@@ -1,110 +1,85 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
-  House,
   TrendUp,
   Briefcase,
   CreditCard,
-  User,
   SignOut as SignOutIcon,
   SidebarSimple,
+  Plus,
+  ClockCounterClockwise,
+  GearSix,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Icon } from "@/components/ui/icon";
-import { Text } from "@/components/ui/typography";
 import { TrialCountdown } from "@/components/trial-countdown";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useSidebarStore } from "@/stores/sidebar-store";
 import { useSubscription } from "@/hooks/use-subscription";
 
-import { SidebarNavItem } from "./sidebar-nav-item";
-
-const navItems = [
-  { label: "Dashboard", icon: House, id: "dashboard", href: "/dashboard" },
-  { label: "Trending", icon: TrendUp, id: "trending", href: "/trending" },
-  { label: "Referrals", icon: Briefcase, id: "referrals", href: "/referrals" },
-] as const;
-
-const bottomNavItems = [
-  { label: "Pricing", icon: CreditCard, id: "pricing", href: "/pricing" },
-] as const;
-
 /**
- * Main sidebar component for the app dashboard.
+ * Main sidebar component — Raycast-style layout.
  *
- * Navigation (top): Dashboard, Trending, Referrals
- * Navigation (bottom): Pricing
- * TikTok account section above nav items.
- * Avatar dropdown with Sign out at the very bottom.
+ * Top: Logo + toggle, TikTok handle input, "Create a new test" button
+ * Middle: Test History, Trending, Referrals navigation
+ * Bottom: Credits/trial, Settings, Pricing, Log Out (icons on right)
  *
- * Renders as a solid dark panel (#07080a) docked flush to left edge,
- * full viewport height. Reads open/close state from useSidebarStore.
+ * Flush to left edge, solid dark, no floating/glass.
  */
 export function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const { isOpen, close } = useSidebarStore();
-  const { tier, isTrial } = useSubscription();
-  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  useSubscription();
+
+  // TikTok handle state
   const [tiktokHandle, setTiktokHandle] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const avatarMenuRef = useRef<HTMLDivElement>(null);
+  const [saveError, setSaveError] = useState(false);
 
-  // Fetch connected TikTok handle
-  useEffect(() => {
-    async function fetchHandle() {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+  // Fetch saved TikTok handle from creator_profiles
+  const fetchHandle = useCallback(async () => {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
 
-      const { data: profile } = await supabase
-        .from("creator_profiles")
-        .select("tiktok_handle")
-        .eq("user_id", user.id)
-        .maybeSingle();
+    const { data: profile } = await supabase
+      .from("creator_profiles")
+      .select("tiktok_handle")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-      if (profile?.tiktok_handle) {
-        setTiktokHandle(profile.tiktok_handle);
-      }
+    if (profile?.tiktok_handle) {
+      setTiktokHandle(profile.tiktok_handle);
     }
-    fetchHandle();
   }, []);
 
-  // Close avatar menu when clicking outside
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (avatarMenuRef.current && !avatarMenuRef.current.contains(event.target as Node)) {
-        setAvatarMenuOpen(false);
-      }
-    }
-    if (avatarMenuOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [avatarMenuOpen]);
+    fetchHandle();
+  }, [fetchHandle]);
 
-  const handleSignOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/");
-  };
-
+  // Save handler — upsert to creator_profiles
   const handleSaveHandle = async () => {
     const trimmed = inputValue.trim().replace(/^@/, "");
     if (!trimmed) return;
 
+    setSaveError(false);
     setIsSaving(true);
+
     try {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       const { error } = await supabase
@@ -116,6 +91,7 @@ export function Sidebar() {
 
       if (error) {
         console.error("Failed to save TikTok handle:", error);
+        setSaveError(true);
         return;
       }
 
@@ -124,14 +100,28 @@ export function Sidebar() {
       setInputValue("");
     } catch (err) {
       console.error("Failed to save TikTok handle:", err);
+      setSaveError(true);
     } finally {
       setIsSaving(false);
     }
   };
 
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/");
+  };
+
+  // Determine if we show the input or the saved handle
+  const showInput = !tiktokHandle || isEditing;
+  const isSaveDisabled =
+    !inputValue.trim() ||
+    isSaving ||
+    inputValue.trim().replace(/^@/, "") === tiktokHandle;
+
   return (
     <>
-      {/* Mobile overlay - no backdrop-filter (MOBL-03 budget) */}
+      {/* Mobile overlay */}
       {isOpen && (
         <div
           className="fixed inset-0 z-[calc(var(--z-sidebar)-1)] bg-black/50 md:hidden"
@@ -142,40 +132,32 @@ export function Sidebar() {
 
       <aside
         className={cn(
-          "fixed top-0 left-0 bottom-0 z-[var(--z-sidebar)] w-[260px]",
+          "fixed top-0 left-0 bottom-0 z-[var(--z-sidebar)] w-[220px]",
           "flex flex-col overflow-hidden",
           "bg-background border-r border-white/[0.06]",
           "transition-transform duration-300 ease-[var(--ease-out-cubic)]",
-          isOpen ? "translate-x-0" : "-translate-x-full",
+          isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         {/* Header: Logo + Collapse */}
-        <div className="flex items-center justify-between px-4 pt-4 pb-1">
-          <div className="flex items-center gap-2">
-            <Link href="/" className="flex items-center">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 32 32"
-                fill="none"
-                className="text-white"
-                aria-hidden="true"
-              >
-                <path
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                  d="M16 6H13L8 27H11L16 6ZM16 6L21 27H24L19 6H16Z"
-                  fill="currentColor"
-                />
-              </svg>
-            </Link>
-            <Badge
-              variant={tier === "pro" ? "accent" : tier === "starter" ? "success" : "default"}
-              size="sm"
+        <div className="flex items-center justify-between px-4 pt-4 pb-2">
+          <Link href="/" className="flex items-center">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 32 32"
+              fill="none"
+              className="text-white"
+              aria-hidden="true"
             >
-              {isTrial ? "Pro Trial" : tier === "free" ? "Free" : tier === "starter" ? "Starter" : "Pro"}
-            </Badge>
-          </div>
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M16 6H13L8 27H11L16 6ZM16 6L21 27H24L19 6H16Z"
+                fill="currentColor"
+              />
+            </svg>
+          </Link>
           <Button
             variant="ghost"
             size="sm"
@@ -187,135 +169,164 @@ export function Sidebar() {
           </Button>
         </div>
 
-        {/* Separator */}
-        <div className="mx-4 my-2 border-t border-border-glass" />
-
         {/* TikTok Handle Section */}
-        {tiktokHandle && !isEditing ? (
-          <div className="mx-2 my-1">
+        <div className="px-4 pt-2 pb-1">
+          <span className="text-xs text-foreground-muted">TikTok Account</span>
+        </div>
+        <div className="px-3 py-2">
+          {showInput ? (
+            <>
+              <input
+                type="text"
+                value={inputValue}
+                onChange={(e) => {
+                  setInputValue(e.target.value);
+                  setSaveError(false);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !isSaveDisabled) handleSaveHandle();
+                  if (e.key === "Escape" && tiktokHandle) {
+                    setIsEditing(false);
+                    setInputValue("");
+                  }
+                }}
+                placeholder="@handle"
+                disabled={isSaving}
+                className={cn(
+                  "w-full bg-white/[0.05] border rounded-lg h-[42px] px-3 text-sm text-foreground placeholder:text-foreground-muted focus:border-accent focus:outline-none transition-colors",
+                  saveError
+                    ? "border-error"
+                    : "border-white/[0.05]"
+                )}
+              />
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleSaveHandle}
+                disabled={isSaveDisabled}
+                className="w-full mt-2"
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </>
+          ) : (
             <button
               type="button"
               onClick={() => {
                 setIsEditing(true);
-                setInputValue(tiktokHandle);
+                setInputValue(tiktokHandle || "");
               }}
-              className="w-full cursor-pointer rounded-lg px-3 py-2 text-left transition-colors hover:text-foreground-secondary"
+              className="w-full text-left text-sm text-foreground px-3 py-2 rounded-lg transition-colors hover:text-foreground-secondary cursor-pointer"
             >
-              <Text as="span" size="sm" className="text-foreground">
-                @{tiktokHandle}
-              </Text>
+              @{tiktokHandle}
             </button>
-          </div>
-        ) : (
-          <div className="mx-2 my-1 px-3 py-2">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSaveHandle();
-              }}
-              placeholder="@handle"
-              className={cn(
-                "w-full bg-white/[0.05] border border-white/[0.05] rounded-lg",
-                "h-[42px] px-3 text-sm text-foreground placeholder:text-foreground-muted",
-                "focus:border-accent focus:outline-none",
-                "transition-colors"
-              )}
-            />
-            <Button
-              variant="primary"
-              size="sm"
-              className="mt-2 w-full"
-              onClick={handleSaveHandle}
-              disabled={!inputValue.trim() || isSaving || inputValue.trim().replace(/^@/, "") === tiktokHandle}
-              loading={isSaving}
-            >
-              {isSaving ? "Saving..." : "Save"}
-            </Button>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Separator */}
-        <div className="mx-4 my-2 border-t border-border-glass" />
+        <div className="mx-4 my-1 border-t border-white/[0.06]" />
 
-        {/* Top navigation items (Dashboard, Trending, Referrals) */}
-        <nav className="flex flex-col gap-0.5 px-2">
-          {navItems.map((item) => (
-            <SidebarNavItem
-              key={item.id}
-              icon={item.icon}
-              label={item.label}
-              isActive={
-                item.id === "dashboard"
-                  ? pathname === "/dashboard"
-                  : item.id === "referrals"
-                    ? pathname.startsWith("/referrals")
-                    : pathname === item.href
-              }
-              onClick={() => router.push(item.href)}
-            />
-          ))}
+        {/* Create a new test — societies.io style: text left, + icon right */}
+        <button
+          type="button"
+          onClick={() => router.push("/dashboard")}
+          className="mx-4 my-1 flex items-center justify-between py-2 text-sm text-foreground-secondary transition-colors hover:text-foreground"
+        >
+          <span>Create a new test</span>
+          <Plus size={16} className="shrink-0" />
+        </button>
+
+        {/* Separator */}
+        <div className="mx-4 my-1 border-t border-white/[0.06]" />
+
+        {/* Main navigation — simple text rows, icon left */}
+        <nav className="flex flex-col px-4 py-1">
+          <button
+            type="button"
+            onClick={() => router.push("/dashboard")}
+            className={cn(
+              "flex items-center gap-3 py-2 text-sm transition-colors hover:text-foreground",
+              pathname === "/dashboard"
+                ? "text-foreground"
+                : "text-foreground-secondary"
+            )}
+          >
+            <ClockCounterClockwise size={16} className="shrink-0" />
+            <span>Test History</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/trending")}
+            className={cn(
+              "flex items-center gap-3 py-2 text-sm transition-colors hover:text-foreground",
+              pathname === "/trending"
+                ? "text-foreground"
+                : "text-foreground-secondary"
+            )}
+          >
+            <TrendUp size={16} className="shrink-0" />
+            <span>Trending</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/referrals")}
+            className={cn(
+              "flex items-center gap-3 py-2 text-sm transition-colors hover:text-foreground",
+              pathname.startsWith("/referrals")
+                ? "text-foreground"
+                : "text-foreground-secondary"
+            )}
+          >
+            <Briefcase size={16} className="shrink-0" />
+            <span>Referrals</span>
+          </button>
         </nav>
 
-        {/* Spacer to push bottom content down */}
+        {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Trial countdown (above bottom nav) */}
+        {/* Trial countdown */}
         <TrialCountdown />
 
         {/* Separator */}
-        <div className="mx-4 border-t border-border-glass" />
+        <div className="mx-4 my-1 border-t border-white/[0.06]" />
 
-        {/* Bottom navigation */}
-        <nav className="flex flex-col gap-0.5 p-2">
-          {bottomNavItems.map((item) => (
-            <SidebarNavItem
-              key={item.id}
-              icon={item.icon}
-              label={item.label}
-              isActive={pathname === "/pricing"}
-              onClick={() => router.push(item.href)}
-            />
-          ))}
-        </nav>
-
-        {/* Separator */}
-        <div className="mx-4 border-t border-border-glass" />
-
-        {/* User avatar with sign-out dropdown */}
-        <div className="relative p-2" ref={avatarMenuRef}>
+        {/* Bottom items — societies.io style: text left, icon right */}
+        <div className="flex flex-col px-4 pb-4">
           <button
             type="button"
-            onClick={() => setAvatarMenuOpen((prev) => !prev)}
-            className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-foreground-secondary transition-colors hover:bg-white/[0.04] hover:text-foreground"
+            onClick={() => router.push("/settings")}
+            className={cn(
+              "flex items-center justify-between py-2 text-sm transition-colors hover:text-foreground",
+              pathname.startsWith("/settings")
+                ? "text-foreground"
+                : "text-foreground-secondary"
+            )}
           >
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/[0.08]">
-              <Icon icon={User} size={16} className="text-foreground-muted" />
-            </div>
-            <Text as="span" size="sm" className="text-inherit truncate">
-              Account
-            </Text>
+            <span>Settings</span>
+            <GearSix size={16} className="shrink-0" />
           </button>
-
-          {/* Dropdown menu */}
-          {avatarMenuOpen && (
-            <div
-              className="absolute bottom-full left-2 right-2 mb-1 rounded-lg border border-white/[0.06] bg-[#18191a] p-1 shadow-lg"
-              style={{
-                boxShadow: "rgba(255,255,255,0.05) 0px 1px 0px 0px inset, rgba(0,0,0,0.5) 0px 4px 12px",
-              }}
-            >
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground-secondary transition-colors hover:bg-white/[0.06] hover:text-foreground"
-              >
-                <Icon icon={SignOutIcon} size={16} />
-                <span>Sign out</span>
-              </button>
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={() => router.push("/pricing")}
+            className={cn(
+              "flex items-center justify-between py-2 text-sm transition-colors hover:text-foreground",
+              pathname === "/pricing"
+                ? "text-foreground"
+                : "text-foreground-secondary"
+            )}
+          >
+            <span>Pricing</span>
+            <CreditCard size={16} className="shrink-0" />
+          </button>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="flex items-center justify-between py-2 text-sm text-foreground-secondary transition-colors hover:text-foreground"
+          >
+            <span>Log Out</span>
+            <SignOutIcon size={16} className="shrink-0" />
+          </button>
         </div>
       </aside>
     </>
