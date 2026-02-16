@@ -77,6 +77,7 @@ Progress: [██████████] 100%
 - [06-03]: Dashboard floating form area uses max-h-[70vh] overflow-y-auto for short mobile viewports
 - [06-03]: Skeleton delays are intentional mock backend simulation (Zustand-driven), not Suspense candidates
 - [06-03]: Card and Button components verified as fully Raycast/Brand Bible compliant -- no changes needed
+- [07-01]: getUserTier() placed after auth redirect check to avoid redundant Supabase auth call
 - [07-02]: No custom TierGate fallback needed -- default UpgradeBanner+CheckoutModal provides inline upgrade flow for simulation results
 
 ### Pending Todos
