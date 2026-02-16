@@ -83,11 +83,11 @@ Plans:
   3. Detail page shows per-video engagement breakdown (likes, comments, shares, views) with computed engagement rate per video and average across recent videos
   4. Detail page displays top-performing videos ranked by views or engagement, recent videos feed (last 20 chronological), and posting frequency/cadence
   5. Detail page shows hashtag frequency ranking from video captions, best posting time heatmap (day-of-week x hour), and video duration format breakdown
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: Detail page layout, growth charts, and engagement metrics section
-- [ ] 04-02: Content analysis -- videos feed, hashtags, posting heatmap, duration breakdown
+- [ ] 04-01-PLAN.md -- Detail page server component, profile header, follower growth AreaChart, engagement BarChart, utility functions, dashboard Link wiring
+- [ ] 04-02-PLAN.md -- Video cards, top/recent videos feed, posting cadence, hashtag frequency, CSS grid posting heatmap, duration breakdown chart
 
 ### Phase 5: Benchmarking & Comparison
 **Goal**: Users can directly compare competitors and benchmark against their own performance
