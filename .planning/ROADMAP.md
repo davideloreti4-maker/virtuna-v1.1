@@ -148,9 +148,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 08-01: Hero score with confidence badge + 5-factor breakdown with expand-on-click progress bars
-- [ ] 08-02: Behavioral predictions stat cards (4 metrics) + suggestions with effort tags in after-only format
-- [ ] 08-03: ResultsPanel v2 assembly, v2 loading skeletons, persona placeholder, warnings, dashboard/flow wiring, v1 removal
+- [x] 08-01: Hero score with confidence badge + 5-factor breakdown with expand-on-click progress bars
+- [x] 08-02: Behavioral predictions stat cards (4 metrics) + suggestions with effort tags in after-only format
+- [x] 08-03: ResultsPanel v2 assembly, v2 loading skeletons, persona placeholder, warnings, dashboard/flow wiring, v1 removal
 
 ### Phase 9: Hybrid Rules & Dynamic Weights
 **Goal**: Rules use hybrid regex+semantic evaluation with per-rule tracking and signal-adaptive weight selection
@@ -263,8 +263,8 @@ Phases execute in wave order. Within each wave, phases can run in parallel.
 | 4. Types, Schema & DB Migration | 2/2 | ✓ Complete | 2026-02-16 |
 | 5. Pipeline Architecture | 2/2 | ✓ Complete | 2026-02-16 |
 | 6. Infrastructure Hardening | 1/1 | ✓ Complete | 2026-02-16 |
-| 7. Upload & Input UI | 0/2 | Not started | - |
-| 8. Results Card & Breakdown UI | 0/3 | Not started | - |
+| 7. Upload & Input UI | 2/2 | ✓ Complete | 2026-02-16 |
+| 8. Results Card & Breakdown UI | 3/3 | ✓ Complete | 2026-02-16 |
 | 9. Hybrid Rules & Dynamic Weights | 0/3 | Not started | - |
 | 10. Calibration & ML Training | 0/5 | Not started | - |
 | 11. Enhanced Signals & Audio | 0/3 | Not started | - |
@@ -272,4 +272,4 @@ Phases execute in wave order. Within each wave, phases can run in parallel.
 
 ---
 *Roadmap created: 2026-02-16*
-*Last updated: 2026-02-16 — Phase 6 complete*
+*Last updated: 2026-02-16 — Phase 8 complete*
