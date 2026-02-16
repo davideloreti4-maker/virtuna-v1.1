@@ -19,7 +19,7 @@ Transform the prediction engine from ~40-55% accuracy to ~75-85% through TikTok-
 - [ ] **Phase 7: Upload & Input UI** - Video upload, TikTok URL input, updated content form
 - [ ] **Phase 8: Results Card & Breakdown UI** - Factor breakdown, behavioral predictions, suggestions, personas
 - [x] **Phase 9: Hybrid Rules & Dynamic Weights** - Upgrade rules to hybrid semantic+regex, signal-adaptive weights
-- [ ] **Phase 10: Calibration & ML Training** - ECE measurement, Platt scaling, ML model on scraped data
+- [x] **Phase 10: Calibration & ML Training** - ECE measurement, Platt scaling, ML model on scraped data
 - [ ] **Phase 11: Enhanced Signals & Audio** - Fuzzy sound matching, semantic hashtags, expanded scraper
 - [ ] **Phase 12: E2E Flow Testing, Polish & Merge** - Accuracy benchmarking, full user flow test, merge to main
 
@@ -182,11 +182,11 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 10-01: ECE measurement pipeline with computeECE, calibration report, and admin API route
-- [ ] 10-02: Platt scaling fit/apply with gradient descent logistic regression and 24hr cached parameters
-- [ ] 10-03: Training data extraction from 7000+ scraped videos into 15-feature vectors with virality tier labels
-- [ ] 10-04: Multinomial logistic regression ML model training, persistence, and inference
-- [ ] 10-05: Monthly calibration audit cron (ECE + Platt refit + drift alert) and retrain-ml cron update
+- [x] 10-01: ECE measurement pipeline with computeECE, calibration report, and admin API route
+- [x] 10-02: Platt scaling fit/apply with gradient descent logistic regression and 24hr cached parameters
+- [x] 10-03: Training data extraction from 7000+ scraped videos into 15-feature vectors with virality tier labels
+- [x] 10-04: Multinomial logistic regression ML model training, persistence, and inference
+- [x] 10-05: Monthly calibration audit cron (ECE + Platt refit + drift alert) and retrain-ml cron update
 
 ### Phase 11: Enhanced Signals & Audio
 **Goal**: Signal quality improved for audio matching, hashtag scoring, and scraper coverage
@@ -266,10 +266,10 @@ Phases execute in wave order. Within each wave, phases can run in parallel.
 | 7. Upload & Input UI | 2/2 | ✓ Complete | 2026-02-16 |
 | 8. Results Card & Breakdown UI | 3/3 | ✓ Complete | 2026-02-16 |
 | 9. Hybrid Rules & Dynamic Weights | 3/3 | ✓ Complete | 2026-02-16 |
-| 10. Calibration & ML Training | 0/5 | Not started | - |
+| 10. Calibration & ML Training | 5/5 | ✓ Complete | 2026-02-16 |
 | 11. Enhanced Signals & Audio | 0/3 | Not started | - |
 | 12. E2E Flow Testing, Polish & Merge | 0/2 | Not started | - |
 
 ---
 *Roadmap created: 2026-02-16*
-*Last updated: 2026-02-16 — Phase 9 complete*
+*Last updated: 2026-02-16 — Phase 10 complete*
