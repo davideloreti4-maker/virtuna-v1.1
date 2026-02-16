@@ -25,7 +25,8 @@ export async function GET(request: NextRequest) {
   }
 
   // Create Supabase client with cookie handling for Route Handler
-  const response = NextResponse.redirect(new URL(next, origin));
+  // We collect cookies to set on the final response (created after profile check)
+  const pendingCookies: { name: string; value: string; options: Record<string, unknown> }[] = [];
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options);
+            pendingCookies.push({ name, value, options });
           });
         },
       },
@@ -50,6 +51,28 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(
       new URL("/login?error=auth_callback_failed", origin)
     );
+  }
+
+  // Detect first-time users and redirect to onboarding
+  let redirectTo = next;
+  if (data.user) {
+    const { data: profile } = await supabase
+      .from("creator_profiles")
+      .select("onboarding_completed_at")
+      .eq("user_id", data.user.id)
+      .maybeSingle();
+
+    if (!profile || !profile.onboarding_completed_at) {
+      redirectTo = "/welcome";
+    }
+  }
+
+  // Create response with determined redirect destination
+  const response = NextResponse.redirect(new URL(redirectTo, origin));
+
+  // Apply pending auth cookies to the response
+  for (const { name, value, options } of pendingCookies) {
+    response.cookies.set(name, value, options);
   }
 
   // Process referral cookie if present

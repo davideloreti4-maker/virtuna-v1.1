@@ -18,5 +18,19 @@ export async function login(_prevState: unknown, formData: FormData) {
     redirect(`/login?error=${encodeURIComponent(error.message)}&next=${encodeURIComponent(next)}`);
   }
 
+  // Detect first-time users and redirect to onboarding
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { data: profile } = await supabase
+      .from("creator_profiles")
+      .select("onboarding_completed_at")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!profile || !profile.onboarding_completed_at) {
+      redirect("/welcome");
+    }
+  }
+
   redirect(next);
 }
