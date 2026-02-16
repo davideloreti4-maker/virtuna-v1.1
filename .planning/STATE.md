@@ -5,33 +5,34 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered competitor intelligence that shows TikTok creators exactly what their competitors do, why it works, and how to outperform them.
-**Current focus:** Phase 1 -- Data Foundation
+**Current focus:** Phase 2 -- Competitor Management
 
 ## Current Position
 
-Phase: 1 of 7 (Data Foundation)
-Plan: 2 of 2 in current phase (PHASE COMPLETE)
-Status: Phase 1 Complete
-Last activity: 2026-02-16 -- Completed 01-02 (Apify Scraping Integration)
+Phase: 2 of 7 (Competitor Management)
+Plan: 2 of 2 in current phase
+Status: Executing Phase 2
+Last activity: 2026-02-16 -- Completed 02-02 (Cron Infrastructure)
 
-Progress: [██░░░░░░░░] 15%
+Progress: [███░░░░░░░] 30%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 5 min
-- Total execution time: 0.17 hours
+- Total plans completed: 4
+- Average duration: 4 min
+- Total execution time: 0.27 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-data-foundation | 2 | 10 min | 5 min |
+| 02-competitor-management | 2 | 6 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (2 min), 01-02 (8 min)
-- Trend: --
+- Last 5 plans: 01-01 (2 min), 01-02 (8 min), 02-01 (4 min), 02-02 (2 min)
+- Trend: accelerating
 
 *Updated after each plan completion*
 
@@ -56,6 +57,9 @@ Recent decisions affecting current work:
 - z.coerce.number() for all Apify numeric fields (actors sometimes return strings for large numbers)
 - Strict .parse() for profile scraping, graceful .safeParse() for video batches
 - Lazy require() in scraping factory to avoid pulling apify-client into client bundles
+- Reusable verifyCronAuth utility for all cron endpoints (returns null|NextResponse pattern)
+- maxDuration 60s default for cron routes (300s on Pro with confirmation)
+- No video scraping in daily cron (expensive, deferred to Phase 7)
 
 ### Pending Todos
 
@@ -70,10 +74,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 01-02-PLAN.md (Apify Scraping Integration) -- Phase 1 Complete
+Stopped at: Completed 02-02-PLAN.md (Cron Infrastructure) -- Phase 2 in progress
 Resume file: None
-Next: Plan Phase 2 (or execute next phase plans)
+Next: Continue Phase 2 execution or plan Phase 3
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Completed 01-02 Apify Scraping Integration (Phase 1 Complete)*
+*Last updated: 2026-02-16 -- Completed 02-02 Cron Infrastructure*
