@@ -11,7 +11,7 @@ Transform the prediction engine from ~40-55% accuracy to ~75-85% through TikTok-
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 1: Data Analysis** - Mine 5000 scraped videos for virality patterns and thresholds
-- [ ] **Phase 2: Gemini Prompt + Video Analysis** - Rewrite Gemini with TikTok factors and enable full video analysis
+- [x] **Phase 2: Gemini Prompt + Video Analysis** - Rewrite Gemini with TikTok factors and enable full video analysis
 - [ ] **Phase 3: DeepSeek Prompt + Model Switch** - Rewrite DeepSeek with 5-step CoT and switch to V3.2-reasoning
 - [ ] **Phase 4: Types, Schema & DB Migration** - Define all v2 types, expand input schema, run DB migrations
 - [ ] **Phase 5: Pipeline Architecture** - Restructure to 10-stage pipeline with new aggregation formula
@@ -53,7 +53,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 02-01: Rewrite GeminiResponseSchema + prompt template + text/video analysis paths
+- [x] 02-01: Rewrite GeminiResponseSchema + prompt template + text/video analysis paths
 
 ### Phase 3: DeepSeek Prompt + Model Switch
 **Goal**: DeepSeek uses V3.2-reasoning with structured 5-step CoT and outputs behavioral predictions
@@ -257,8 +257,8 @@ Phases execute in wave order. Within each wave, phases can run in parallel.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Data Analysis | 0/1 | Not started | - |
-| 2. Gemini Prompt + Video Analysis | 0/1 | Not started | - |
+| 1. Data Analysis | 1/1 | ✓ Complete | 2026-02-16 |
+| 2. Gemini Prompt + Video Analysis | 1/1 | ✓ Complete | 2026-02-16 |
 | 3. DeepSeek Prompt + Model Switch | 0/1 | Not started | - |
 | 4. Types, Schema & DB Migration | 0/2 | Not started | - |
 | 5. Pipeline Architecture | 0/2 | Not started | - |
@@ -272,4 +272,4 @@ Phases execute in wave order. Within each wave, phases can run in parallel.
 
 ---
 *Roadmap created: 2026-02-16*
-*Last updated: 2026-02-16*
+*Last updated: 2026-02-16 — Phase 2 complete*
