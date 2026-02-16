@@ -49,11 +49,11 @@ Plans:
   3. Features section accurately describes what Virtuna does today (not aspirational features)
   4. Stats and social proof sections contain defensible numbers and authentic-feeling content
   5. FAQ answers real questions a TikTok creator would ask, and footer is polished with working links
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: Hero and features section polish
-- [ ] 02-02: Stats, social proof, FAQ, and footer
+- [ ] 02-01: Hero, stats, and features redesign (prediction-focused messaging, capability stats, accurate features)
+- [ ] 02-02: FAQ rewrite, CTA section, and minimal footer
 
 ### Phase 3: Trending Page
 **Goal**: Trending page has a complete, designed layout with meaningful content that follows brand patterns
