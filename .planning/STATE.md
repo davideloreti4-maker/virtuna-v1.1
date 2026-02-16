@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Milestone:** Prediction Engine v2
 **Phase:** 10 of 12 (Calibration & ML Training) -- IN PROGRESS
-**Plan:** 3 of 3 in current phase (10-03 complete)
-**Status:** Plan 10-03 complete -- training data extraction from scraped videos
-**Last activity:** 2026-02-16 -- Phase 10 Plan 3 executed (training data extraction)
+**Plan:** 2 of 5 in current phase (10-01, 10-03 complete)
+**Status:** Plans 10-01, 10-03 complete -- ECE pipeline + training data extraction
+**Last activity:** 2026-02-16 -- Phase 10 Plan 1 executed (ECE measurement pipeline)
 
-Progress: [██████████████████░] 65.4% (17/26 plans)
+Progress: [███████████████████░] 69.2% (18/26 plans)
 
 ## Performance Metrics
 
@@ -37,6 +37,7 @@ Progress: [██████████████████░] 65.4% (17/
 | 09    | 01   | 3min     | 2     | 1     |
 | 09    | 02   | 3min     | 2     | 4     |
 | 09    | 03   | 2min     | 2     | 1     |
+| 10    | 01   | 2min     | 2     | 2     |
 | 10    | 03   | 2min     | 1     | 2     |
 
 ## Accumulated Context
@@ -127,6 +128,10 @@ Progress: [██████████████████░] 65.4% (17/
 - [Execute 09-03]: Signal availability checks matched_rules count AND pipeline warnings to distinguish failure from zero matches
 - [Execute 09-03]: Confidence penalty -0.05 per missing signal (rules, trends) for honest confidence
 - [Execute 09-03]: ENGINE_VERSION bumped to 2.1.0 to distinguish dynamic-weight aggregator results
+- [Execute 10-01]: Scores normalized from 0-100 (DB) to 0-1 for ECE computation
+- [Execute 10-01]: 10 equal-width bins by default for ECE, configurable via numBins parameter
+- [Execute 10-01]: Admin route reuses CRON_SECRET Bearer auth pattern from cron routes
+- [Execute 10-01]: fetchOutcomePairs exported publicly for reuse by Platt scaling (10-02) and audit cron (10-05)
 - [Execute 10-03]: All 15 training features normalized to 0-1 range for ML compatibility (clamped via clamp01)
 - [Execute 10-03]: Deterministic Fisher-Yates shuffle using video ID hash seeds for reproducible train/test splits
 - [Execute 10-03]: Virality tier assignment reuses calibration-baseline.json WES percentile thresholds
@@ -148,10 +153,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 10-03-PLAN.md (training data extraction from scraped videos)
+Stopped at: Completed 10-01-PLAN.md (ECE measurement pipeline)
 Resume file: None
-Next: Continue Phase 10 remaining plans (10-01, 10-02, 10-04)
+Next: Continue Phase 10 remaining plans (10-02, 10-04, 10-05)
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Phase 10 Plan 3 complete (training data extraction)*
+*Last updated: 2026-02-16 -- Phase 10 Plans 1+3 complete (ECE pipeline + training data)*
