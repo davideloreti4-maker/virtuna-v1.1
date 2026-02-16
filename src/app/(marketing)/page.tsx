@@ -3,6 +3,7 @@ import {
   FeaturesSection,
   StatsSection,
   FAQSection,
+  CTASection,
 } from "@/components/landing";
 import { Footer } from "@/components/layout/footer";
 
@@ -14,7 +15,7 @@ export default function HomePage() {
         <StatsSection />
         <FeaturesSection />
         <FAQSection />
-        {/* CTA section -- added in 02-02 */}
+        <CTASection />
       </main>
       <Footer />
     </>
