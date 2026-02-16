@@ -9,26 +9,26 @@ See: .planning/PROJECT.md (updated 2026-02-16)
 
 ## Current Position
 
-Phase: 2 of 7 (Landing Page)
-Plan: 1 of 2 in current phase
-Status: In Progress
-Last activity: 2026-02-16 -- Completed 02-01 Hero, stats & features redesign
+Phase: 2 of 7 (Landing Page) -- COMPLETE
+Plan: 2 of 2 in current phase
+Status: Phase Complete
+Last activity: 2026-02-16 -- Completed 02-02 FAQ, CTA & Footer
 
-Progress: [###.......] 21%
+Progress: [####......] 29%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 5min
-- Total execution time: 0.2 hours
+- Total plans completed: 4
+- Average duration: 4min
+- Total execution time: 0.3 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-sidebar-navigation | 2 | 12min | 6min |
-| 02-landing-page | 1 | 2min | 2min |
+| 02-landing-page | 2 | 4min | 2min |
 
 ## Shipped Milestones
 
@@ -53,6 +53,10 @@ Progress: [###.......] 21%
 - [02-01] 3 feature cards (prediction, analytics, signal analysis) for balanced 3-col grid
 - [02-01] Gradient treatment: 3 CSS layers (radial coral, secondary depth, ambient wash)
 - [02-01] Stats heading "Prediction by the numbers" -- bold, direct, no subtitle
+- [02-02] 6 FAQ questions focused on prediction mechanics, accuracy, content types, follower independence, speed, and signal analysis
+- [02-02] CTA heading "Ready to predict your next viral hit?" -- prediction-focused, direct
+- [02-02] Footer reduced from py-24 to py-8 -- footer, not a section
+- [02-02] Contact added as mailto link in footer nav alongside Privacy and Terms
 
 ### Pending Todos
 
@@ -71,9 +75,9 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 02-01-PLAN.md (Hero, stats & features redesign)
+Stopped at: Completed 02-02-PLAN.md (FAQ, CTA & Footer) -- Phase 2 complete
 Resume file: None
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Completed 02-01 (Hero, stats & features redesign)*
+*Last updated: 2026-02-16 -- Completed 02-02 (FAQ, CTA & Footer)*
