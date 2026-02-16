@@ -96,10 +96,10 @@ Plans:
   1. Referrals page has polished UI (consistent cards, proper spacing, working referral link display)
   2. Brand deals page shows Virtuna affiliate info and a "brand deals coming soon" section -- not a redirect
   3. No dead redirects remain between referrals and brand deals routes
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 05-01: Referrals polish and brand deals page
+- [ ] 05-01-PLAN.md — Referrals brand alignment polish + brand deals page with affiliate info and coming-soon section
 
 ### Phase 6: Auth & Onboarding
 **Goal**: Auth and onboarding pages are visually polished with graceful error handling
