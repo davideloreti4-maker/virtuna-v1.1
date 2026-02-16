@@ -1,7 +1,7 @@
-# Requirements: Virtuna — Platform Refinement
+# Requirements: Virtuna -- Platform Refinement
 
 **Defined:** 2026-02-16
-**Core Value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
+**Core Value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate -- and connects them to monetization opportunities.
 
 ## v1 Requirements
 
@@ -94,13 +94,49 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated by roadmapper) | | |
+| NAV-01 | Phase 1: Sidebar & Navigation | Pending |
+| NAV-02 | Phase 1: Sidebar & Navigation | Pending |
+| NAV-03 | Phase 1: Sidebar & Navigation | Pending |
+| NAV-04 | Phase 1: Sidebar & Navigation | Pending |
+| NAV-05 | Phase 1: Sidebar & Navigation | Pending |
+| DASH-01 | Phase 2: Dashboard | Pending |
+| DASH-02 | Phase 2: Dashboard | Pending |
+| DASH-03 | Phase 2: Dashboard | Pending |
+| DASH-04 | Phase 2: Dashboard | Pending |
+| DASH-05 | Phase 2: Dashboard | Pending |
+| DASH-06 | Phase 2: Dashboard | Pending |
+| DASH-07 | Phase 2: Dashboard | Pending |
+| DASH-08 | Phase 2: Dashboard | Pending |
+| LAND-01 | Phase 3: Landing Page | Pending |
+| LAND-02 | Phase 3: Landing Page | Pending |
+| LAND-03 | Phase 3: Landing Page | Pending |
+| LAND-04 | Phase 3: Landing Page | Pending |
+| LAND-05 | Phase 3: Landing Page | Pending |
+| LAND-06 | Phase 3: Landing Page | Pending |
+| LAND-07 | Phase 3: Landing Page | Pending |
+| TREND-01 | Phase 4: Trending Page | Pending |
+| TREND-02 | Phase 4: Trending Page | Pending |
+| TREND-03 | Phase 4: Trending Page | Pending |
+| TREND-04 | Phase 4: Trending Page | Pending |
+| SET-01 | Phase 5: Settings | Pending |
+| SET-02 | Phase 5: Settings | Pending |
+| SET-03 | Phase 5: Settings | Pending |
+| SET-04 | Phase 5: Settings | Pending |
+| SET-05 | Phase 5: Settings | Pending |
+| SET-06 | Phase 5: Settings | Pending |
+| REF-01 | Phase 6: Referrals & Brand Deals | Pending |
+| REF-02 | Phase 6: Referrals & Brand Deals | Pending |
+| REF-03 | Phase 6: Referrals & Brand Deals | Pending |
+| AUTH-01 | Phase 7: Auth & Onboarding | Pending |
+| AUTH-02 | Phase 7: Auth & Onboarding | Pending |
+| AUTH-03 | Phase 7: Auth & Onboarding | Pending |
+| AUTH-04 | Phase 7: Auth & Onboarding | Pending |
 
 **Coverage:**
 - v1 requirements: 31 total
-- Mapped to phases: 0
-- Unmapped: 31
+- Mapped to phases: 31
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-16*
-*Last updated: 2026-02-16 after initial definition*
+*Last updated: 2026-02-16 -- Traceability updated after roadmap creation*
