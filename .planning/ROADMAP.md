@@ -18,6 +18,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Payments** - Whop-powered subscriptions with 7-day Pro trial, tier gating, and trial UI (completed 2026-02-16)
 - [x] **Phase 5: Referral** - In-product referral program with link generation, tracking, and one-time bonuses (completed 2026-02-16)
 - [x] **Phase 6: Polish** - UI fixes, mobile responsiveness pass, OG tags, and dead code cleanup (completed 2026-02-16)
+- [ ] **Phase 7: Wire TierGate** - Apply TierGate component to Pro-only features so Starter users see upgrade prompts (Gap Closure)
+- [ ] **Phase 8: Dead Code & Process Cleanup** - Remove orphaned routes/exports, update FOUN-02 wording, create Phase 4 VERIFICATION.md (Gap Closure)
 
 ## Phase Details
 
@@ -125,6 +127,32 @@ Plans:
 - [x] 06-02-PLAN.md -- Dead code deletion (landing components, test pages, visualization, effects, motion), societies.io comment cleanup (completed 2026-02-16)
 - [x] 06-03-PLAN.md -- Gap closure: mobile responsiveness audit + PLSH-01 compliance verification (skeleton, cards, buttons) (completed 2026-02-16)
 
+### Phase 7: Wire TierGate
+**Goal**: Starter users are blocked from Pro-only features and shown an upgrade prompt — paying for Pro provides clear feature differentiation
+**Depends on**: Phase 4, Phase 6
+**File Ownership**: `src/components/tier-gate.tsx`, `src/app/(app)/dashboard/`, `src/app/(app)/referrals/`, feature pages with Pro gating
+**Requirements**: PAY-06
+**Gap Closure**: Closes PAY-06 (requirement) + Tier Gating (flow) from v1.0 audit
+**Success Criteria** (what must be TRUE):
+  1. At least 2-3 features are wrapped in TierGate and show upgrade prompt for Starter/Free users
+  2. Pro users can access all gated features without obstruction
+  3. TierGate upgrade prompt links to /pricing for conversion
+**Plans**: TBD
+
+### Phase 8: Dead Code & Process Cleanup
+**Goal**: Remove all orphaned code identified by audit, align requirement wording with implementation, and complete missing process artifacts
+**Depends on**: Phase 7
+**File Ownership**: `src/app/api/auth/callback/`, `src/app/api/referral/`, `src/lib/whop/config.ts`, `.planning/REQUIREMENTS.md`, `.planning/phases/04-payments/`
+**Requirements**: FOUN-02 (wording update)
+**Gap Closure**: Closes 3 integration gaps + 1 process gap from v1.0 audit
+**Success Criteria** (what must be TRUE):
+  1. /api/auth/callback/route.ts deleted (orphaned duplicate)
+  2. /api/referral/generate and /api/referral/stats routes deleted (unused)
+  3. getTierFromPlanId export removed or consumed
+  4. FOUN-02 requirement text updated to match /login redirect behavior
+  5. Phase 4 VERIFICATION.md created with retroactive verification
+**Plans**: TBD
+
 ## Execution Waves
 
 Wave groupings for parallel team dispatch. Phases within a wave have no inter-dependencies.
@@ -143,10 +171,14 @@ Wave groupings for parallel team dispatch. Phases within a wave have no inter-de
 ### Wave 4 (depends on all prior)
 - Phase 6: Polish (needs Phases 1-5)
 
+### Wave 5 — Gap Closure (depends on Wave 4)
+- Phase 7: Wire TierGate (needs Phase 4, Phase 6)
+- Phase 8: Dead Code & Process Cleanup (needs Phase 7)
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 Waves 1-2 support parallel execution (see Execution Waves above).
 
 | Phase | Plans Complete | Status | Completed |
@@ -157,7 +189,10 @@ Waves 1-2 support parallel execution (see Execution Waves above).
 | 4. Payments | 3/3 | ✓ Complete | 2026-02-16 |
 | 5. Referral | 2/2 | ✓ Complete | 2026-02-16 |
 | 6. Polish | 3/3 | ✓ Complete | 2026-02-16 |
+| 7. Wire TierGate | 0/? | Pending | — |
+| 8. Dead Code & Process | 0/? | Pending | — |
 
 ---
 *Roadmap created: 2026-02-13*
-*Depth: comprehensive (6 phases, 39 requirements)*
+*Depth: comprehensive (8 phases, 39 requirements)*
+*Updated: 2026-02-16 — Added gap closure phases 7-8 from milestone audit*
