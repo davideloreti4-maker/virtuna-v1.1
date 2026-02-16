@@ -113,13 +113,59 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (Populated by roadmapper) | | |
+| ENG-01 | Phase 2 | Pending |
+| ENG-02 | Phase 3 | Pending |
+| ENG-03 | Phase 4 | Pending |
+| ENG-04 | Phase 5 | Pending |
+| ENG-05 | Phase 2 | Pending |
+| ENG-06 | Phase 4 | Pending |
+| ENG-07 | Phase 4 | Pending |
+| VID-01 | Phase 4 | Pending |
+| VID-02 | Phase 4 | Pending |
+| VID-03 | Phase 2 | Pending |
+| VID-04 | Phase 2 | Pending |
+| VID-05 | Phase 2 | Pending |
+| MOD-01 | Phase 3 | Pending |
+| MOD-02 | Phase 3 | Pending |
+| MOD-03 | Phase 3 | Pending |
+| PIPE-01 | Phase 5 | Pending |
+| PIPE-02 | Phase 5 | Pending |
+| PIPE-03 | Phase 4 | Pending |
+| PIPE-04 | Phase 5 | Pending |
+| PIPE-05 | Phase 5 | Pending |
+| INFRA-01 | Phase 6 | Pending |
+| INFRA-02 | Phase 6 | Pending |
+| INFRA-03 | Phase 6 | Pending |
+| INFRA-04 | Phase 6 | Pending |
+| RULE-01 | Phase 9 | Pending |
+| RULE-02 | Phase 9 | Pending |
+| RULE-03 | Phase 9 | Pending |
+| RULE-04 | Phase 9 | Pending |
+| UI-01 | Phase 7 | Pending |
+| UI-02 | Phase 7 | Pending |
+| UI-03 | Phase 8 | Pending |
+| UI-04 | Phase 8 | Pending |
+| UI-05 | Phase 8 | Pending |
+| UI-06 | Phase 8 | Pending |
+| UI-07 | Phase 8 | Pending |
+| UI-08 | Phase 8 | Pending |
+| UI-09 | Phase 8 | Pending |
+| UI-10 | Phase 8 | Pending |
+| CAL-01 | Phase 1 | Pending |
+| CAL-02 | Phase 10 | Pending |
+| CAL-03 | Phase 10 | Pending |
+| CAL-04 | Phase 10 | Pending |
+| CAL-05 | Phase 10 | Pending |
+| SIG-01 | Phase 11 | Pending |
+| SIG-02 | Phase 11 | Pending |
+| SIG-03 | Phase 11 | Pending |
+| SIG-04 | Phase 11 | Pending |
 
 **Coverage:**
-- Milestone requirements: 43 total
-- Mapped to phases: 0
-- Unmapped: 43 ⚠️
+- Milestone requirements: 47 total (9 categories: ENG-7, VID-5, MOD-3, PIPE-5, INFRA-4, RULE-4, UI-10, CAL-5, SIG-4)
+- Mapped to phases: 47
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-16*
-*Last updated: 2026-02-16 after initial definition*
+*Last updated: 2026-02-16 after roadmap creation -- traceability complete*
