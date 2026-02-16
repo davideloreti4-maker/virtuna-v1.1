@@ -66,12 +66,11 @@ Plans:
   3. User picks a primary goal and their dashboard layout/focus reflects that choice
   4. Onboarding state persists across sessions (closing browser and returning resumes where they left off)
   5. First dashboard visit shows 3-4 contextual tooltips on key features; tooltips don't reappear after dismissal
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: Onboarding flow (routing, TikTok @handle input step, goal selection step)
-- [ ] 03-02: Onboarding persistence (Supabase state) + skip/complete logic
-- [ ] 03-03: Contextual tooltips system (Zustand + localStorage persistence)
+- [ ] 03-01-PLAN.md -- First-time user routing (login + OAuth redirect to /welcome) + old auth page cleanup
+- [ ] 03-02-PLAN.md -- Goal-personalized dashboard, tooltip completeness (4 tooltips), sidebar TikTok handle wiring
 
 ### Phase 4: Payments
 **Goal**: Users can subscribe to Starter or Pro plans through Whop, start a 7-day Pro trial, and see their tier reflected throughout the app with Pro-only features gated
@@ -154,7 +153,7 @@ Waves 1-2 support parallel execution (see Execution Waves above).
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | ✓ Complete | 2026-02-16 |
 | 2. Landing Page | 2/2 | ✓ Complete | 2026-02-16 |
-| 3. Onboarding | 0/3 | Not started | - |
+| 3. Onboarding | 0/2 | Planned | - |
 | 4. Payments | 0/3 | Not started | - |
 | 5. Referral | 0/3 | Not started | - |
 | 6. Polish | 0/2 | Not started | - |
