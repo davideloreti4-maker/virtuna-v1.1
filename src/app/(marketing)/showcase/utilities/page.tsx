@@ -8,18 +8,15 @@ import {
   StaggerReveal,
   StaggerRevealItem,
 } from "@/components/motion/stagger-reveal";
-import { NoiseTexture } from "@/components/effects/noise-texture";
-import { ChromaticAberration } from "@/components/effects/chromatic-aberration";
 import { ShowcaseSection } from "../_components/showcase-section";
 import { CodeBlock } from "../_components/code-block";
-import { ComponentGrid } from "../_components/component-grid";
 import { HoverScaleDemo } from "../_components/motion-demo";
 import { TrafficLightsDemo } from "../_components/traffic-lights-demo";
 
 export const metadata: Metadata = {
   title: "Utilities - Virtuna UI Showcase",
   description:
-    "Motion animations, visual effects, and decorative utilities.",
+    "Motion animations and decorative utilities.",
 };
 
 export default function UtilitiesShowcasePage() {
@@ -29,7 +26,7 @@ export default function UtilitiesShowcasePage() {
         Utilities
       </Heading>
       <Text size="lg" muted className="mb-12">
-        Motion animations, visual effects, and decorative components.
+        Motion animations and decorative components.
       </Text>
 
       {/* ===== MOTION SECTION ===== */}
@@ -192,136 +189,6 @@ export default function UtilitiesShowcasePage() {
 <HoverScale scale={1.05} tapScale={0.95}>
   <Card>Dramatic hover</Card>
 </HoverScale>`}
-          />
-        </ShowcaseSection>
-      </div>
-
-      {/* ===== EFFECTS SECTION ===== */}
-
-      <div className="mb-20">
-        <Heading level={2} className="mb-8 text-accent">
-          Effects
-        </Heading>
-
-        {/* NoiseTexture */}
-        <ShowcaseSection
-          id="noise-texture"
-          title="NoiseTexture"
-          description="SVG feTurbulence grain overlay. Adds premium glass texture to any container. Parent needs position: relative."
-        >
-          <ComponentGrid columns={3}>
-            {/* Default */}
-            <div className="relative h-40 overflow-hidden rounded-lg border border-border-glass bg-gradient-to-br from-accent/20 to-accent/5">
-              <NoiseTexture />
-              <div className="relative z-10 flex h-full items-center justify-center">
-                <div className="text-center">
-                  <Text size="sm" className="font-medium">
-                    Default
-                  </Text>
-                  <Text size="sm" muted>
-                    opacity: 0.03
-                  </Text>
-                </div>
-              </div>
-            </div>
-
-            {/* Higher opacity */}
-            <div className="relative h-40 overflow-hidden rounded-lg border border-border-glass bg-gradient-to-br from-purple-500/20 to-purple-500/5">
-              <NoiseTexture opacity={0.06} />
-              <div className="relative z-10 flex h-full items-center justify-center">
-                <div className="text-center">
-                  <Text size="sm" className="font-medium">
-                    Visible
-                  </Text>
-                  <Text size="sm" muted>
-                    opacity: 0.06
-                  </Text>
-                </div>
-              </div>
-            </div>
-
-            {/* Fine grain */}
-            <div className="relative h-40 overflow-hidden rounded-lg border border-border-glass bg-gradient-to-br from-cyan-500/20 to-cyan-500/5">
-              <NoiseTexture opacity={0.05} baseFrequency={0.9} numOctaves={4} />
-              <div className="relative z-10 flex h-full items-center justify-center">
-                <div className="text-center">
-                  <Text size="sm" className="font-medium">
-                    Fine grain
-                  </Text>
-                  <Text size="sm" muted>
-                    freq: 0.9, octaves: 4
-                  </Text>
-                </div>
-              </div>
-            </div>
-          </ComponentGrid>
-          <div className="mt-6">
-            <CodeBlock
-              title="NoiseTexture"
-              code={`<div className="relative">
-  <NoiseTexture />
-  <p>Content with subtle grain</p>
-</div>
-
-<NoiseTexture opacity={0.05} baseFrequency={0.9} numOctaves={4} />`}
-            />
-          </div>
-        </ShowcaseSection>
-
-        {/* ChromaticAberration */}
-        <ShowcaseSection
-          id="chromatic-aberration"
-          title="ChromaticAberration"
-          description="CSS text-shadow RGB split effect. Mimics camera lens chromatic aberration for decorative headings."
-        >
-          <div className="mb-6 space-y-6">
-            <div className="rounded-lg border border-border-glass bg-surface/60 p-8">
-              <ChromaticAberration>
-                <p className="text-3xl font-bold text-foreground">
-                  Default Effect
-                </p>
-              </ChromaticAberration>
-              <Text size="sm" muted className="mt-2">
-                offset: 1px, intensity: 0.15
-              </Text>
-            </div>
-
-            <div className="rounded-lg border border-border-glass bg-surface/60 p-8">
-              <ChromaticAberration offset={2} intensity={0.25}>
-                <p className="text-3xl font-bold text-foreground">
-                  Stronger Effect
-                </p>
-              </ChromaticAberration>
-              <Text size="sm" muted className="mt-2">
-                offset: 2px, intensity: 0.25
-              </Text>
-            </div>
-
-            <div className="rounded-lg border border-border-glass bg-surface/60 p-8">
-              <ChromaticAberration offset={3} intensity={0.35}>
-                <p className="text-4xl font-bold text-foreground">
-                  Dramatic
-                </p>
-              </ChromaticAberration>
-              <Text size="sm" muted className="mt-2">
-                offset: 3px, intensity: 0.35
-              </Text>
-            </div>
-          </div>
-          <CodeBlock
-            title="ChromaticAberration"
-            code={`<ChromaticAberration>
-  <h2 className="text-2xl font-bold">Premium Feature</h2>
-</ChromaticAberration>
-
-<ChromaticAberration offset={2} intensity={0.25}>
-  <h2>Stronger effect</h2>
-</ChromaticAberration>
-
-{/* Inline usage */}
-<ChromaticAberration as="span" offset={2}>
-  Glitch Text
-</ChromaticAberration>`}
           />
         </ShowcaseSection>
       </div>
