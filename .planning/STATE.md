@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered content intelligence that tells creators whether their content will resonate -- and exactly why -- before they post.
-**Current focus:** Phase 5 (Pipeline Restructure) -- Plan 1 complete, Plan 2 next
+**Current focus:** Phase 5 (Pipeline Restructure) -- COMPLETE, ready for Phase 6
 
 ## Current Position
 
 **Milestone:** Prediction Engine v2
-**Phase:** 5 of 12 (Pipeline Restructure) -- IN PROGRESS
-**Plan:** 1 of 2 in current phase -- Plan 1 complete (pipeline + creator context)
-**Status:** 10-stage wave pipeline with Creator Context stage implemented, aggregator rewrite next
-**Last activity:** 2026-02-16 -- Phase 5 Plan 1 executed (pipeline architecture + creator context)
+**Phase:** 5 of 12 (Pipeline Restructure) -- COMPLETE
+**Plan:** 2 of 2 in current phase -- Phase 5 complete
+**Status:** Full v2 pipeline: 10-stage wave architecture + v2 aggregation + API route wired
+**Last activity:** 2026-02-16 -- Phase 5 Plan 2 executed (aggregator rewrite + API route wiring)
 
-Progress: [██████░░░░░░░░░░] 23.1% (6/26 plans)
+Progress: [███████░░░░░░░░░] 26.9% (7/26 plans)
 
 ## Performance Metrics
 
@@ -27,6 +27,7 @@ Progress: [██████░░░░░░░░░░] 23.1% (6/26 plans)
 | 04    | 01   | 2min     | 2     | 1     |
 | 04    | 02   | 2min     | 2     | 2     |
 | 05    | 01   | 3min     | 2     | 3     |
+| 05    | 02   | 2min     | 2     | 3     |
 
 ## Accumulated Context
 
@@ -65,6 +66,12 @@ Progress: [██████░░░░░░░░░░] 23.1% (6/26 plans)
 - [Execute 05-01]: Trend enrichment runs parallel to DeepSeek with placeholder context -- final data in PipelineResult
 - [Execute 05-01]: Platform averages computed from scraped_videos in JS with module-level cache
 - [Execute 05-01]: Creator niche resolved from profile if not provided in input
+- [Execute 05-02]: Behavioral score = avg of 7 DeepSeek component scores normalized to 0-100
+- [Execute 05-02]: Gemini score = avg of 5 Gemini factor scores normalized to 0-100
+- [Execute 05-02]: Confidence = signal availability (0-0.6) + model agreement direction (0-0.4)
+- [Execute 05-02]: Low confidence warning auto-appended when confidence < 0.4
+- [Execute 05-02]: API route simplified to single pipeline call + aggregate, no direct engine module imports
+- [Execute 05-02]: Fallback BehavioralPredictions with 0/N-A for defensive null handling
 - [Plan]: 12 phases, 26 plans derived from deep 6-agent analysis of current engine gaps
 - [Plan]: Switch DeepSeek from R1 to V3.2-reasoning (70% cheaper, 2x faster)
 - [Plan]: Full video analysis via Gemini Flash-Lite (~$0.008/30s video)
@@ -87,10 +94,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 05-01-PLAN.md (Pipeline architecture + Creator Context stage)
+Stopped at: Completed 05-02-PLAN.md (Aggregator rewrite + API route wiring)
 Resume file: None
-Next: Execute Phase 5 Plan 2 (Aggregator rewrite + API route update)
+Next: Execute Phase 6
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Phase 5 Plan 1 complete (pipeline + creator context)*
+*Last updated: 2026-02-16 -- Phase 5 complete (pipeline architecture + aggregator + API wiring)*
