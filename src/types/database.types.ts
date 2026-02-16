@@ -14,6 +14,189 @@ export type Database = {
   }
   public: {
     Tables: {
+      competitor_profiles: {
+        Row: {
+          id: string
+          tiktok_handle: string
+          display_name: string | null
+          bio: string | null
+          avatar_url: string | null
+          verified: boolean | null
+          follower_count: number | null
+          following_count: number | null
+          heart_count: number | null
+          video_count: number | null
+          last_scraped_at: string | null
+          scrape_status: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          tiktok_handle: string
+          display_name?: string | null
+          bio?: string | null
+          avatar_url?: string | null
+          verified?: boolean | null
+          follower_count?: number | null
+          following_count?: number | null
+          heart_count?: number | null
+          video_count?: number | null
+          last_scraped_at?: string | null
+          scrape_status?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          tiktok_handle?: string
+          display_name?: string | null
+          bio?: string | null
+          avatar_url?: string | null
+          verified?: boolean | null
+          follower_count?: number | null
+          following_count?: number | null
+          heart_count?: number | null
+          video_count?: number | null
+          last_scraped_at?: string | null
+          scrape_status?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      competitor_snapshots: {
+        Row: {
+          id: string
+          competitor_id: string
+          follower_count: number
+          following_count: number
+          heart_count: number
+          video_count: number
+          snapshot_date: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          competitor_id: string
+          follower_count: number
+          following_count: number
+          heart_count: number
+          video_count: number
+          snapshot_date?: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          competitor_id?: string
+          follower_count?: number
+          following_count?: number
+          heart_count?: number
+          video_count?: number
+          snapshot_date?: string
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitor_snapshots_competitor_id_fkey"
+            columns: ["competitor_id"]
+            isOneToOne: false
+            referencedRelation: "competitor_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competitor_videos: {
+        Row: {
+          id: string
+          competitor_id: string
+          platform_video_id: string
+          video_url: string | null
+          caption: string | null
+          views: number | null
+          likes: number | null
+          comments: number | null
+          shares: number | null
+          saves: number | null
+          hashtags: string[] | null
+          duration_seconds: number | null
+          posted_at: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          competitor_id: string
+          platform_video_id: string
+          video_url?: string | null
+          caption?: string | null
+          views?: number | null
+          likes?: number | null
+          comments?: number | null
+          shares?: number | null
+          saves?: number | null
+          hashtags?: string[] | null
+          duration_seconds?: number | null
+          posted_at?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          competitor_id?: string
+          platform_video_id?: string
+          video_url?: string | null
+          caption?: string | null
+          views?: number | null
+          likes?: number | null
+          comments?: number | null
+          shares?: number | null
+          saves?: number | null
+          hashtags?: string[] | null
+          duration_seconds?: number | null
+          posted_at?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitor_videos_competitor_id_fkey"
+            columns: ["competitor_id"]
+            isOneToOne: false
+            referencedRelation: "competitor_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_competitors: {
+        Row: {
+          id: string
+          user_id: string
+          competitor_id: string
+          added_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          competitor_id: string
+          added_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          competitor_id?: string
+          added_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_competitors_competitor_id_fkey"
+            columns: ["competitor_id"]
+            isOneToOne: false
+            referencedRelation: "competitor_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       affiliate_clicks: {
         Row: {
           clicked_at: string | null
