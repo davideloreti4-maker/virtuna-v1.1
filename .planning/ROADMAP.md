@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Payments** - Whop-powered subscriptions with 7-day Pro trial, tier gating, and trial UI (completed 2026-02-16)
 - [x] **Phase 5: Referral** - In-product referral program with link generation, tracking, and one-time bonuses (completed 2026-02-16)
 - [x] **Phase 6: Polish** - UI fixes, mobile responsiveness pass, OG tags, and dead code cleanup (completed 2026-02-16)
-- [ ] **Phase 7: Wire TierGate** - Apply TierGate component to Pro-only features so Starter users see upgrade prompts (Gap Closure)
+- [x] **Phase 7: Wire TierGate** - Apply TierGate component to Pro-only features so Starter users see upgrade prompts (Gap Closure) (completed 2026-02-16)
 - [ ] **Phase 8: Dead Code & Process Cleanup** - Remove orphaned routes/exports, update FOUN-02 wording, create Phase 4 VERIFICATION.md (Gap Closure)
 
 ## Phase Details
@@ -140,8 +140,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 07-01-PLAN.md -- Gate referrals page behind Pro tier with FeatureGate + server-side getUserTier() + /pricing link fallback
-- [ ] 07-02-PLAN.md -- Gate simulation results advanced sections (Variants, Insights, Themes) behind Pro tier with client-side TierGate
+- [x] 07-01-PLAN.md -- Gate referrals page behind Pro tier with FeatureGate + server-side getUserTier() + /pricing link fallback (completed 2026-02-16)
+- [x] 07-02-PLAN.md -- Gate simulation results advanced sections (Variants, Insights, Themes) behind Pro tier with client-side TierGate (completed 2026-02-16)
 
 ### Phase 8: Dead Code & Process Cleanup
 **Goal**: Remove all orphaned code identified by audit, align requirement wording with implementation, and complete missing process artifacts
@@ -193,7 +193,7 @@ Waves 1-2 support parallel execution (see Execution Waves above).
 | 4. Payments | 3/3 | ✓ Complete | 2026-02-16 |
 | 5. Referral | 2/2 | ✓ Complete | 2026-02-16 |
 | 6. Polish | 3/3 | ✓ Complete | 2026-02-16 |
-| 7. Wire TierGate | 0/? | Pending | — |
+| 7. Wire TierGate | 2/2 | ✓ Complete | 2026-02-16 |
 | 8. Dead Code & Process | 0/? | Pending | — |
 
 ---
