@@ -10,27 +10,27 @@ See: .planning/PROJECT.md (updated 2026-02-16)
 ## Current Position
 
 Phase: 1 of 7 (Data Foundation)
-Plan: 1 of 2 in current phase
-Status: Executing
-Last activity: 2026-02-16 -- Completed 01-01 (Competitor Schema)
+Plan: 2 of 2 in current phase (PHASE COMPLETE)
+Status: Phase 1 Complete
+Last activity: 2026-02-16 -- Completed 01-02 (Apify Scraping Integration)
 
-Progress: [█░░░░░░░░░] 8%
+Progress: [██░░░░░░░░] 15%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 2 min
-- Total execution time: 0.03 hours
+- Total plans completed: 2
+- Average duration: 5 min
+- Total execution time: 0.17 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-data-foundation | 1 | 2 min | 2 min |
+| 01-data-foundation | 2 | 10 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: --
+- Last 5 plans: 01-01 (2 min), 01-02 (8 min)
 - Trend: --
 
 *Updated after each plan completion*
@@ -53,6 +53,9 @@ Recent decisions affecting current work:
 - Junction table deduplication model for shared competitor profiles
 - TEXT+CHECK for scrape_status (not ENUM) matching project convention
 - Service role client as factory function for webhook/cron contexts
+- z.coerce.number() for all Apify numeric fields (actors sometimes return strings for large numbers)
+- Strict .parse() for profile scraping, graceful .safeParse() for video batches
+- Lazy require() in scraping factory to avoid pulling apify-client into client bundles
 
 ### Pending Todos
 
@@ -60,17 +63,17 @@ None yet.
 
 ### Blockers/Concerns
 
-- Backend-foundation merge timing: if not merged, apify-client and @tanstack/react-query need manual addition
+- Backend-foundation merge timing: apify-client now installed manually; @tanstack/react-query still needs manual addition if not merged
 - Apify actor input/output schemas need runtime verification (Clockworks actors may change fields)
 - Vercel plan confirmation: cron strategy assumes Pro plan for sub-daily cron
 
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 01-01-PLAN.md (Competitor Schema)
+Stopped at: Completed 01-02-PLAN.md (Apify Scraping Integration) -- Phase 1 Complete
 Resume file: None
-Next: Execute 01-02-PLAN.md (Apify scraping integration)
+Next: Plan Phase 2 (or execute next phase plans)
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Completed 01-01 Competitor Schema*
+*Last updated: 2026-02-16 -- Completed 01-02 Apify Scraping Integration (Phase 1 Complete)*
