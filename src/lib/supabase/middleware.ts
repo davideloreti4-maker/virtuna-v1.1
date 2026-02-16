@@ -15,8 +15,6 @@ const PROTECTED_PREFIXES = [
   "/settings",
   "/welcome",
   "/referrals",
-  "/earnings",
-  "/content-intelligence",
 ];
 
 /**
@@ -27,10 +25,6 @@ const PUBLIC_PATHS = [
   "/",
   "/coming-soon",
   "/showcase",
-  "/primitives-showcase",
-  "/viral-score-test",
-  "/viral-results-showcase",
-  "/viz-test",
   "/login",
   "/signup",
   "/auth/callback",

@@ -152,7 +152,7 @@ export function DashboardClient() {
           description="Use these filters to focus on the content categories that matter most to you"
           position="bottom"
         >
-          <div className="flex items-center gap-3 overflow-x-auto">
+          <div className="flex min-w-0 items-center gap-3 overflow-x-auto">
             <FilterPillGroup />
           </div>
         </ContextualTooltip>
