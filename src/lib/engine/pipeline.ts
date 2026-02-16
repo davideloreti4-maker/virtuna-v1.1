@@ -41,6 +41,7 @@ export interface PipelineResult {
   // Pipeline metadata
   timings: StageTiming[];
   total_duration_ms: number;
+  warnings: string[]; // Pipeline-level warnings from partial failures (INFRA-03)
 }
 
 // =====================================================
@@ -66,6 +67,36 @@ async function timed<T>(
 }
 
 // =====================================================
+// Default fallback values for non-critical stages
+// =====================================================
+
+const DEFAULT_CREATOR_CONTEXT: CreatorContext = {
+  found: false,
+  follower_count: null,
+  avg_views: null,
+  engagement_rate: null,
+  niche: null,
+  posting_frequency: null,
+  platform_averages: {
+    avg_views: 50000,
+    avg_engagement_rate: 0.06,
+    avg_share_rate: 0.008,
+    avg_comment_rate: 0.005,
+  },
+};
+
+const DEFAULT_RULE_RESULT: RuleScoreResult = {
+  rule_score: 50,
+  matched_rules: [],
+};
+
+const DEFAULT_TREND_ENRICHMENT: TrendEnrichment = {
+  trend_score: 0,
+  matched_trends: [],
+  trend_context: "Trend data unavailable.",
+};
+
+// =====================================================
 // 10-Stage Prediction Pipeline with Wave Parallelism
 // =====================================================
 
@@ -73,27 +104,29 @@ async function timed<T>(
  * Run the full 10-stage prediction pipeline.
  *
  * Architecture:
- * 1. Validate     — Parse input with AnalysisInputSchema
- * 2. Normalize    — Convert AnalysisInput to ContentPayload
- * 3. Wave 1 (parallel via Promise.all):
- *    - Stage 3: Gemini Analysis
+ * 1. Validate     -- Parse input with AnalysisInputSchema
+ * 2. Normalize    -- Convert AnalysisInput to ContentPayload
+ * 3. Wave 1 (parallel):
+ *    - Stage 3: Gemini Analysis (CRITICAL -- throws on failure)
  *    - Stage 4: Audio Analysis (placeholder)
- *    - Stage 5: Creator Context
- *    - Stage 6: Rule Loading + Scoring
- * 4. Wave 2 (parallel via Promise.all):
- *    - Stage 7: DeepSeek Reasoning (with all Wave 1 context)
- *    - Stage 8: Trend Enrichment
+ *    - Stage 5: Creator Context (non-critical -- fallback with warning)
+ *    - Stage 6: Rule Loading + Scoring (non-critical -- fallback with warning)
+ * 4. Wave 2 (parallel):
+ *    - Stage 7: DeepSeek Reasoning (CRITICAL -- throws on failure)
+ *    - Stage 8: Trend Enrichment (non-critical -- fallback with warning)
  * 5. Stage 9: Aggregate (delegated to caller in Plan 02)
  * 6. Stage 10: Finalize (attach metadata)
  *
- * Strict failure mode: if any stage fails, the entire pipeline fails
- * with a specific error identifying which stage failed.
+ * INFRA-03: Non-critical stages (Creator, Rules, Trends) fail gracefully
+ * with fallback values and pipeline warnings. Gemini and DeepSeek are
+ * critical -- their failure halts the pipeline.
  */
 export async function runPredictionPipeline(
   input: AnalysisInput
 ): Promise<PipelineResult> {
   const pipelineStart = performance.now();
   const timings: StageTiming[] = [];
+  const warnings: string[] = [];
 
   // -------------------------------------------------------
   // Stage 1: Validate
@@ -125,131 +158,131 @@ export async function runPredictionPipeline(
   const supabase = createServiceClient();
 
   // -------------------------------------------------------
-  // Wave 1: Gemini + Audio + Creator Context + Rules (parallel)
+  // Wave 1: Gemini (critical) + Audio + Creator + Rules (non-critical)
   // -------------------------------------------------------
+
+  // Stage 3: Gemini Analysis -- CRITICAL (throws on failure)
+  const geminiPromise = timed("gemini_analysis", timings, async () => {
+    try {
+      return await analyzeWithGemini(validated);
+    } catch (error) {
+      throw new Error(
+        `Analysis failed: Gemini content analysis — ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  });
+
+  // Stage 4: Audio Analysis (placeholder for Phase 11)
+  const audioPromise = timed("audio_analysis", timings, async () => null);
+
+  // Stage 5: Creator Context -- NON-CRITICAL (fallback with warning)
+  const creatorPromise = (async (): Promise<CreatorContext> => {
+    try {
+      return await timed("creator_context", timings, () =>
+        fetchCreatorContext(supabase, payload.creator_handle, payload.niche)
+      );
+    } catch (error) {
+      warnings.push(
+        `Creator context unavailable: ${error instanceof Error ? error.message : String(error)}`
+      );
+      timings.push({ stage: "creator_context", duration_ms: 0 });
+      return DEFAULT_CREATOR_CONTEXT;
+    }
+  })();
+
+  // Stage 6: Rule Loading + Scoring -- NON-CRITICAL (fallback with warning)
+  const rulePromise = (async (): Promise<RuleScoreResult> => {
+    try {
+      return await timed("rule_scoring", timings, async () => {
+        const rules = await loadActiveRules(supabase, payload.content_type);
+        return scoreContentAgainstRules(payload.content_text, rules);
+      });
+    } catch (error) {
+      warnings.push(
+        `Rule scoring unavailable: ${error instanceof Error ? error.message : String(error)}`
+      );
+      timings.push({ stage: "rule_scoring", duration_ms: 0 });
+      return DEFAULT_RULE_RESULT;
+    }
+  })();
+
+  // Run Wave 1 in parallel -- Gemini throws, others gracefully degrade
   const [geminiResult, audioResult, creatorContext, ruleResult] = await timed(
     "wave_1",
     timings,
-    () =>
-      Promise.all([
-        // Stage 3: Gemini Analysis
-        timed("gemini_analysis", timings, async () => {
-          try {
-            return await analyzeWithGemini(validated);
-          } catch (error) {
-            throw new Error(
-              `Analysis failed: Gemini content analysis — ${error instanceof Error ? error.message : String(error)}`
-            );
-          }
-        }),
-
-        // Stage 4: Audio Analysis (placeholder for Phase 11)
-        timed("audio_analysis", timings, async () => {
-          return null;
-        }),
-
-        // Stage 5: Creator Context
-        timed("creator_context", timings, async () => {
-          try {
-            return await fetchCreatorContext(
-              supabase,
-              payload.creator_handle,
-              payload.niche
-            );
-          } catch (error) {
-            throw new Error(
-              `Analysis failed: Creator context — ${error instanceof Error ? error.message : String(error)}`
-            );
-          }
-        }),
-
-        // Stage 6: Rule Loading + Scoring
-        timed("rule_scoring", timings, async () => {
-          try {
-            const rules = await loadActiveRules(
-              supabase,
-              payload.content_type
-            );
-            return await scoreContentAgainstRules(
-              payload.content_text,
-              rules
-            );
-          } catch (error) {
-            throw new Error(
-              `Analysis failed: Rule scoring — ${error instanceof Error ? error.message : String(error)}`
-            );
-          }
-        }),
-      ])
+    () => Promise.all([geminiPromise, audioPromise, creatorPromise, rulePromise])
   );
 
   // Format creator context for DeepSeek prompt injection
   const creatorContextString = formatCreatorContext(creatorContext);
 
   // -------------------------------------------------------
-  // Wave 2: DeepSeek + Trends (parallel)
+  // Wave 2: DeepSeek (critical) + Trends (non-critical)
   // -------------------------------------------------------
-  const [deepseekRaw, trendEnrichment] = await timed(
-    "wave_2",
-    timings,
-    () =>
-      Promise.all([
-        // Stage 7: DeepSeek Reasoning
-        timed("deepseek_reasoning", timings, async () => {
-          try {
-            const result = await reasonWithDeepSeek({
-              input: validated,
-              gemini_analysis: geminiResult.analysis,
-              rule_result: ruleResult,
-              trend_enrichment: {
-                // Trend enrichment runs in parallel — use empty placeholder for DeepSeek prompt.
-                // The final trend data will be in the pipeline result for the aggregator.
-                trend_score: 0,
-                matched_trends: [],
-                trend_context:
-                  "Trend analysis running in parallel — results available in pipeline output.",
-              },
-              creator_context: creatorContextString,
-            });
 
-            // Per user decision: all stages are required. Circuit breaker returning null
-            // means service is unavailable — this is a stage failure.
-            if (result === null) {
-              throw new Error(
-                "service temporarily unavailable (circuit breaker open)"
-              );
-            }
+  // Stage 7: DeepSeek Reasoning -- CRITICAL (throws on failure)
+  const deepseekPromise = timed("deepseek_reasoning", timings, async () => {
+    try {
+      const result = await reasonWithDeepSeek({
+        input: validated,
+        gemini_analysis: geminiResult.analysis,
+        rule_result: ruleResult,
+        trend_enrichment: {
+          // Trend enrichment runs in parallel -- use empty placeholder for DeepSeek prompt.
+          // The final trend data will be in the pipeline result for the aggregator.
+          trend_score: 0,
+          matched_trends: [],
+          trend_context:
+            "Trend analysis running in parallel — results available in pipeline output.",
+        },
+        creator_context: creatorContextString,
+      });
 
-            return result;
-          } catch (error) {
-            throw new Error(
-              `Analysis failed: DeepSeek reasoning — ${error instanceof Error ? error.message : String(error)}`
-            );
-          }
-        }),
+      // Per user decision: all stages are required. Circuit breaker returning null
+      // means service is unavailable -- this is a stage failure.
+      if (result === null) {
+        throw new Error(
+          "service temporarily unavailable (circuit breaker open)"
+        );
+      }
 
-        // Stage 8: Trend Enrichment
-        timed("trend_enrichment", timings, async () => {
-          try {
-            return await enrichWithTrends(supabase, validated);
-          } catch (error) {
-            throw new Error(
-              `Analysis failed: Trend enrichment — ${error instanceof Error ? error.message : String(error)}`
-            );
-          }
-        }),
-      ])
+      return result;
+    } catch (error) {
+      throw new Error(
+        `Analysis failed: DeepSeek reasoning — ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  });
+
+  // Stage 8: Trend Enrichment -- NON-CRITICAL (fallback with warning)
+  const trendPromise = (async (): Promise<TrendEnrichment> => {
+    try {
+      return await timed("trend_enrichment", timings, () =>
+        enrichWithTrends(supabase, validated)
+      );
+    } catch (error) {
+      warnings.push(
+        `Trend enrichment unavailable: ${error instanceof Error ? error.message : String(error)}`
+      );
+      timings.push({ stage: "trend_enrichment", duration_ms: 0 });
+      return DEFAULT_TREND_ENRICHMENT;
+    }
+  })();
+
+  // Run Wave 2 in parallel -- DeepSeek throws, trends gracefully degrade
+  const [deepseekRaw, trendEnrichment] = await timed("wave_2", timings, () =>
+    Promise.all([deepseekPromise, trendPromise])
   );
 
   // -------------------------------------------------------
-  // Stage 9: Aggregate (delegated — caller uses PipelineResult)
+  // Stage 9: Aggregate (delegated -- caller uses PipelineResult)
   // -------------------------------------------------------
   // The pipeline returns raw stage outputs. The API route (Plan 02)
   // calls aggregateScores with these outputs. This separates
   // orchestration (pipeline) from scoring (aggregator).
 
   // -------------------------------------------------------
-  // Stage 10: Finalize — attach metadata
+  // Stage 10: Finalize -- attach metadata
   // -------------------------------------------------------
   const total_duration_ms = Math.round(performance.now() - pipelineStart);
 
@@ -263,5 +296,6 @@ export async function runPredictionPipeline(
     audioResult,
     timings,
     total_duration_ms,
+    warnings,
   };
 }

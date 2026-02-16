@@ -20,11 +20,23 @@ const OUTPUT_PRICE_PER_TOKEN = 0.42 / 1_000_000;
 const FALLBACK_INPUT_TOKENS = 3000; // Richer prompt = more input tokens
 const FALLBACK_OUTPUT_TOKENS = 2000;
 
-// Circuit breaker state (ENGINE-14)
-let consecutiveFailures = 0;
-let circuitOpenUntil = 0;
+// Circuit breaker state (INFRA-03: exponential backoff with half-open)
+interface CircuitBreakerState {
+  status: "closed" | "open" | "half-open";
+  consecutiveFailures: number;
+  nextRetryAt: number; // timestamp when half-open probe is allowed
+  backoffIndex: number; // 0, 1, 2 -> maps to 1s, 3s, 9s
+}
+
+const BACKOFF_SCHEDULE_MS = [1_000, 3_000, 9_000]; // 1s, 3s, 9s exponential
 const FAILURE_THRESHOLD = 3;
-const COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes
+
+let breaker: CircuitBreakerState = {
+  status: "closed",
+  consecutiveFailures: 0,
+  nextRetryAt: 0,
+  backoffIndex: 0,
+};
 
 let client: OpenAI | null = null;
 
@@ -80,31 +92,52 @@ function getClient(): OpenAI {
   return client;
 }
 
-/** Check if circuit breaker is open */
+/** Check if circuit breaker is open (INFRA-03: half-open probe support) */
 function isCircuitOpen(): boolean {
-  if (Date.now() < circuitOpenUntil) return true;
-  if (circuitOpenUntil > 0 && Date.now() >= circuitOpenUntil) {
-    // Reset after cooldown
-    circuitOpenUntil = 0;
-    consecutiveFailures = 0;
+  if (breaker.status === "closed") return false;
+  if (breaker.status === "open") {
+    if (Date.now() >= breaker.nextRetryAt) {
+      // Transition to half-open: allow ONE probe request
+      breaker.status = "half-open";
+      return false;
+    }
+    return true;
   }
+  // half-open: allow the probe through
   return false;
 }
 
-/** Record a failure and potentially open the circuit */
+/** Record a failure and potentially open the circuit (INFRA-03: exponential backoff) */
 function recordFailure(): void {
-  consecutiveFailures++;
-  if (consecutiveFailures >= FAILURE_THRESHOLD) {
-    circuitOpenUntil = Date.now() + COOLDOWN_MS;
+  breaker.consecutiveFailures++;
+  if (
+    breaker.status === "half-open" ||
+    breaker.consecutiveFailures >= FAILURE_THRESHOLD
+  ) {
+    // Open the circuit with exponential backoff
+    const backoffMs =
+      BACKOFF_SCHEDULE_MS[breaker.backoffIndex] ??
+      BACKOFF_SCHEDULE_MS[BACKOFF_SCHEDULE_MS.length - 1]!;
+    breaker.status = "open";
+    breaker.nextRetryAt = Date.now() + backoffMs;
+    breaker.backoffIndex = Math.min(
+      breaker.backoffIndex + 1,
+      BACKOFF_SCHEDULE_MS.length - 1
+    );
     console.warn(
-      `DeepSeek circuit breaker activated. Falling back to Gemini-only for ${COOLDOWN_MS / 60000} minutes.`
+      `[DeepSeek] Circuit breaker OPEN. Next retry in ${backoffMs}ms (backoff level ${breaker.backoffIndex})`
     );
   }
 }
 
-/** Record a success and reset failure counter */
+/** Record a success — full reset to closed state (INFRA-03) */
 function recordSuccess(): void {
-  consecutiveFailures = 0;
+  breaker = {
+    status: "closed",
+    consecutiveFailures: 0,
+    nextRetryAt: 0,
+    backoffIndex: 0,
+  };
 }
 
 /** Strip markdown code fences from LLM output */
