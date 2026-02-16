@@ -13,7 +13,7 @@ export interface TestimonialQuoteProps {
  * TestimonialQuote component for displaying customer quotes.
  * Used in case study and partnership sections.
  *
- * Styling matches societies.io reference:
+ * Styling follows Raycast design language:
  * - Quote icon: Phosphor Quotes, 32px, 50% opacity
  * - Blockquote: Inter 20px, line-height 34px
  * - Author name: Inter medium weight, white

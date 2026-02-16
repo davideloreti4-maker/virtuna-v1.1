@@ -10,7 +10,7 @@ interface HeaderProps {
 }
 
 /**
- * Header component matching societies.io design.
+ * Header component following Raycast design language.
  * - Logo: Custom SVG mark + "Artificial Societies" text
  * - Right side: "Sign in" text link + "Book a Meeting" orange button
  * - Sticky with solid dark background
