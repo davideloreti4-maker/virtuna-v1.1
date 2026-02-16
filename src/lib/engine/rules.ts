@@ -1,5 +1,9 @@
 import { createServiceClient } from "@/lib/supabase/service";
+import { createCache } from "@/lib/cache";
 import type { RuleScoreResult } from "./types";
+
+// Cache rules for 1 hour — rule_library changes infrequently
+const rulesCache = createCache<Rule[]>(60 * 60 * 1000);
 
 interface Rule {
   id: string;
@@ -21,6 +25,11 @@ export async function loadActiveRules(
   supabase: ReturnType<typeof createServiceClient>,
   platform?: string
 ): Promise<Rule[]> {
+  // Check cache first (INFRA-02)
+  const cacheKey = `rules:${platform ?? "all"}`;
+  const cached = rulesCache.get(cacheKey);
+  if (cached) return cached;
+
   let query = supabase
     .from("rule_library")
     .select("id, name, description, category, pattern, score_modifier, platform, evaluation_prompt, weight, max_score")
@@ -37,7 +46,9 @@ export async function loadActiveRules(
     return [];
   }
 
-  return (data ?? []) as Rule[];
+  const rules = (data ?? []) as Rule[];
+  rulesCache.set(cacheKey, rules);
+  return rules;
 }
 
 /**
