@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered content intelligence that tells creators whether their content will resonate -- and exactly why -- before they post.
-**Current focus:** Phase 8 in progress -- Results Card & Breakdown UI
+**Current focus:** Phase 9 in progress -- Hybrid Rules & Dynamic Weights
 
 ## Current Position
 
 **Milestone:** Prediction Engine v2
-**Phase:** 8 of 12 (Results Card & Breakdown UI) -- COMPLETE
-**Plan:** 3 of 3 in current phase (done)
-**Status:** Phase 8 complete -- all v2 results components assembled and wired
-**Last activity:** 2026-02-16 -- Phase 8 Plan 3 executed (ResultsPanel wiring + loading phases + v2 integration)
+**Phase:** 9 of 12 (Hybrid Rules & Dynamic Weights) -- IN PROGRESS
+**Plan:** 2 of 3 in current phase (09-02 complete, 09-01 pending)
+**Status:** Phase 9 Plan 2 complete -- per-rule accuracy tracking with EMA weight adjustment
+**Last activity:** 2026-02-16 -- Phase 9 Plan 2 executed (rule_contributions storage + per-rule accuracy cron)
 
-Progress: [█████████████░░░] 50.0% (13/26 plans)
+Progress: [██████████████░░░] 53.8% (14/26 plans)
 
 ## Performance Metrics
 
@@ -34,6 +34,7 @@ Progress: [█████████████░░░] 50.0% (13/26 plans)
 | 08    | 01   | 2min     | 2     | 2     |
 | 08    | 02   | 3min     | 2     | 2     |
 | 08    | 03   | 4min     | 2     | 8     |
+| 09    | 02   | 3min     | 2     | 4     |
 
 ## Accumulated Context
 
@@ -110,6 +111,10 @@ Progress: [█████████████░░░] 50.0% (13/26 plans)
 - [Plan]: Full video analysis via Gemini Flash-Lite (~$0.008/30s video)
 - [Plan]: Behavioral predictions replace abstract scores (completion_pct, share_pct, comment_pct)
 - [Plan]: New aggregation formula: behavioral 45% + gemini 25% + rules 20% + trends 10%
+- [Execute 09-02]: Per-rule accuracy uses direction agreement (rule high score + actual >= predicted) not correlation
+- [Execute 09-02]: Min 10 samples per rule before weight adjustment for statistical significance
+- [Execute 09-02]: Type assertion cast for rule_contributions query -- Supabase generated types stale
+- [Execute 09-02]: rule_contributions JSONB persisted per analysis with rule_id, score, max_score, tier
 - [Plan]: Personas are theater/UX, not accuracy signal -- lightweight 2-3 sentences each
 - [Plan]: Remove conversation_themes and variants to redirect tokens to accuracy
 - [Plan]: Pass structured Gemini signals to DeepSeek (no scores) to prevent anchoring
@@ -127,10 +132,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 08-03-PLAN.md (ResultsPanel wiring + loading phases + v2 integration)
+Stopped at: Completed 09-02-PLAN.md (per-rule accuracy tracking + rule_contributions storage)
 Resume file: None
-Next: Phase 9 (next phase after Phase 8 complete)
+Next: Phase 9 Plans 01 and 03 remaining
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Phase 8 complete (ResultsPanel v2 wiring, loading phases, dead v1 code removed)*
+*Last updated: 2026-02-16 -- Phase 9 Plan 2 complete (per-rule accuracy tracking, rule_contributions JSONB, EMA weight adjustment)*
