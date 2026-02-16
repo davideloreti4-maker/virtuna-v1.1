@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered content intelligence that tells creators whether their content will resonate -- and exactly why -- before they post.
-**Current focus:** Phase 9 in progress -- Hybrid Rules & Dynamic Weights
+**Current focus:** Phase 9 complete -- ready for Phase 10
 
 ## Current Position
 
 **Milestone:** Prediction Engine v2
-**Phase:** 9 of 12 (Hybrid Rules & Dynamic Weights) -- IN PROGRESS
-**Plan:** 2 of 3 in current phase (09-01 + 09-02 complete, 09-03 pending)
-**Status:** Phase 9 Plans 1-2 complete -- hybrid regex+semantic rule eval + per-rule accuracy tracking
-**Last activity:** 2026-02-16 -- Phase 9 Plan 1 executed (hybrid rule evaluation engine with DeepSeek semantic tier)
+**Phase:** 9 of 12 (Hybrid Rules & Dynamic Weights) -- COMPLETE
+**Plan:** 3 of 3 in current phase (all complete)
+**Status:** Phase 9 complete -- hybrid rules, per-rule accuracy, dynamic weight selection
+**Last activity:** 2026-02-16 -- Phase 9 Plan 3 executed (dynamic weight selection in aggregator)
 
-Progress: [███████████████░░] 57.7% (15/26 plans)
+Progress: [████████████████░] 61.5% (16/26 plans)
 
 ## Performance Metrics
 
@@ -36,6 +36,7 @@ Progress: [███████████████░░] 57.7% (15/26 pla
 | 08    | 03   | 4min     | 2     | 8     |
 | 09    | 01   | 3min     | 2     | 1     |
 | 09    | 02   | 3min     | 2     | 4     |
+| 09    | 03   | 2min     | 2     | 1     |
 
 ## Accumulated Context
 
@@ -121,6 +122,10 @@ Progress: [███████████████░░] 57.7% (15/26 pla
 - [Execute 09-02]: Min 10 samples per rule before weight adjustment for statistical significance
 - [Execute 09-02]: Type assertion cast for rule_contributions query -- Supabase generated types stale
 - [Execute 09-02]: rule_contributions JSONB persisted per analysis with rule_id, score, max_score, tier
+- [Execute 09-03]: Dynamic weight selection via selectWeights() — missing signal weight redistributed proportionally
+- [Execute 09-03]: Signal availability checks matched_rules count AND pipeline warnings to distinguish failure from zero matches
+- [Execute 09-03]: Confidence penalty -0.05 per missing signal (rules, trends) for honest confidence
+- [Execute 09-03]: ENGINE_VERSION bumped to 2.1.0 to distinguish dynamic-weight aggregator results
 - [Plan]: Personas are theater/UX, not accuracy signal -- lightweight 2-3 sentences each
 - [Plan]: Remove conversation_themes and variants to redirect tokens to accuracy
 - [Plan]: Pass structured Gemini signals to DeepSeek (no scores) to prevent anchoring
@@ -138,10 +143,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 09-01-PLAN.md (hybrid regex+semantic rule evaluation engine)
+Stopped at: Completed 09-03-PLAN.md (dynamic weight selection in aggregator)
 Resume file: None
-Next: Phase 9 Plan 03 remaining (dynamic weight adjustment)
+Next: Phase 10 (next phase in roadmap)
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Phase 9 Plan 1 complete (hybrid rule eval with batched DeepSeek semantic tier)*
+*Last updated: 2026-02-16 -- Phase 9 complete (all 3 plans: hybrid rules, per-rule accuracy, dynamic weights)*
