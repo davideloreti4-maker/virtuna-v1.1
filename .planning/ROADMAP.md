@@ -13,7 +13,7 @@ Transform the prediction engine from ~40-55% accuracy to ~75-85% through TikTok-
 - [x] **Phase 1: Data Analysis** - Mine 5000 scraped videos for virality patterns and thresholds
 - [x] **Phase 2: Gemini Prompt + Video Analysis** - Rewrite Gemini with TikTok factors and enable full video analysis
 - [x] **Phase 3: DeepSeek Prompt + Model Switch** - Rewrite DeepSeek with 5-step CoT and switch to V3.2-reasoning
-- [ ] **Phase 4: Types, Schema & DB Migration** - Define all v2 types, expand input schema, run DB migrations
+- [x] **Phase 4: Types, Schema & DB Migration** - Define all v2 types, expand input schema, run DB migrations
 - [ ] **Phase 5: Pipeline Architecture** - Restructure to 10-stage pipeline with new aggregation formula
 - [ ] **Phase 6: Infrastructure Hardening** - Rate limiting, caching, partial failure recovery, circuit breaker
 - [ ] **Phase 7: Upload & Input UI** - Video upload, TikTok URL input, updated content form
@@ -84,8 +84,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 4-01: FeatureVector, Input Schema & Type Definitions
-- [ ] 4-02: DB Migration & Input Normalization
+- [x] 4-01: FeatureVector, Input Schema & Type Definitions
+- [x] 4-02: DB Migration & Input Normalization
 
 ### Phase 5: Pipeline Architecture
 **Goal**: Pipeline restructured to 10 stages with Wave-based parallelism, Creator Context, and new aggregation formula
@@ -260,7 +260,7 @@ Phases execute in wave order. Within each wave, phases can run in parallel.
 | 1. Data Analysis | 1/1 | ✓ Complete | 2026-02-16 |
 | 2. Gemini Prompt + Video Analysis | 1/1 | ✓ Complete | 2026-02-16 |
 | 3. DeepSeek Prompt + Model Switch | 1/1 | ✓ Complete | 2026-02-16 |
-| 4. Types, Schema & DB Migration | 0/2 | Not started | - |
+| 4. Types, Schema & DB Migration | 2/2 | ✓ Complete | 2026-02-16 |
 | 5. Pipeline Architecture | 0/2 | Not started | - |
 | 6. Infrastructure Hardening | 0/1 | Not started | - |
 | 7. Upload & Input UI | 0/2 | Not started | - |
@@ -272,4 +272,4 @@ Phases execute in wave order. Within each wave, phases can run in parallel.
 
 ---
 *Roadmap created: 2026-02-16*
-*Last updated: 2026-02-16 — Phase 3 complete*
+*Last updated: 2026-02-16 — Phase 4 complete*
