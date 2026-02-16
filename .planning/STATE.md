@@ -58,6 +58,9 @@ Progress: [█████░░░░░] 50%
 - [02-02]: useInView triggerOnce:false to unmount canvas when off-screen (battery savings over triggerOnce:true)
 - [03-01]: Deferred response creation in OAuth callback using pendingCookies array for cookie collection before redirect URL known
 - [03-01]: Header links updated from /auth/login to /login and /auth/signup to /signup (old auth pages deleted)
+- [03-02]: Combined onboarding_completed_at + primary_goal into single Supabase query to avoid redundant requests
+- [03-02]: ContextualTooltip for tiktok-connect only renders when handle is NOT connected
+- [03-02]: Goal-to-location mapping uses fallback to "Switzerland" for null/unknown goals
 
 ### Pending Todos
 
@@ -80,10 +83,10 @@ None
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 03-01-PLAN.md (first-time user routing)
+Stopped at: Completed 03-02-PLAN.md (dashboard personalization + tooltips)
 Resume file: None
 Next: Phase 3 complete, ready for Phase 4
 
 ---
 *State created: 2026-02-13*
-*Last updated: 2026-02-16 -- Phase 3 Onboarding plan 01 complete*
+*Last updated: 2026-02-16 -- Phase 3 Onboarding plan 02 complete*
