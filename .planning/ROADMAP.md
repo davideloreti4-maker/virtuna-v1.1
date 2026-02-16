@@ -101,8 +101,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 5-01: Creator Context + Pipeline Restructure
-- [ ] 5-02: New Aggregation Formula + Expanded Result
+- [ ] 5-01: Creator Context stage + 10-stage pipeline restructure with wave parallelism and per-stage timing
+- [ ] 5-02: V2 aggregation formula (behavioral 45% + gemini 25% + rules 20% + trends 10%), confidence calculation, FeatureVector assembly, API route + hook wiring
 
 ### Phase 6: Infrastructure Hardening
 **Goal**: Production-ready infrastructure with rate limiting, caching, partial failure recovery, and improved circuit breaker
