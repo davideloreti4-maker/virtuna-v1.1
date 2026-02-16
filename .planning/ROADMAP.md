@@ -81,11 +81,11 @@ Plans:
   3. Notification preferences toggle and persist (to Supabase or localStorage)
   4. Team management section shows a clear "coming soon" state or functional placeholder
   5. Settings UI matches brand bible (correct tokens, spacing, input styling, card patterns)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: Profile save and account actions (Supabase integration)
-- [ ] 04-02: Notifications, team section, and UI polish
+- [ ] 04-01-PLAN.md — Profile save to Supabase, password change, delete account with confirmation
+- [ ] 04-02-PLAN.md — Notification persistence, team coming-soon state, brand bible UI polish
 
 ### Phase 5: Referrals & Brand Deals
 **Goal**: Referrals page is polished and brand deals has a proper page instead of a dead redirect
