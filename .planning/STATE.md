@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered content intelligence that tells creators whether their content will resonate -- and exactly why -- before they post.
-**Current focus:** Phase 5 (Pipeline Restructure) -- COMPLETE, ready for Phase 6
+**Current focus:** Phase 6 (Infrastructure Hardening) -- COMPLETE, ready for Phase 7
 
 ## Current Position
 
 **Milestone:** Prediction Engine v2
-**Phase:** 5 of 12 (Pipeline Restructure) -- COMPLETE
-**Plan:** 2 of 2 in current phase -- Phase 5 complete
-**Status:** Full v2 pipeline: 10-stage wave architecture + v2 aggregation + API route wired
-**Last activity:** 2026-02-16 -- Phase 5 Plan 2 executed (aggregator rewrite + API route wiring)
+**Phase:** 6 of 12 (Infrastructure Hardening) -- COMPLETE
+**Plan:** 1 of 1 in current phase -- Phase 6 complete
+**Status:** Rate limiting, TTL caching, exponential backoff circuit breaker, partial failure recovery
+**Last activity:** 2026-02-16 -- Phase 6 Plan 1 executed (infrastructure hardening)
 
-Progress: [███████░░░░░░░░░] 26.9% (7/26 plans)
+Progress: [████████░░░░░░░░] 30.8% (8/26 plans)
 
 ## Performance Metrics
 
@@ -28,6 +28,7 @@ Progress: [███████░░░░░░░░░] 26.9% (7/26 plans)
 | 04    | 02   | 2min     | 2     | 2     |
 | 05    | 01   | 3min     | 2     | 3     |
 | 05    | 02   | 2min     | 2     | 3     |
+| 06    | 01   | 4min     | 3     | 6     |
 
 ## Accumulated Context
 
@@ -72,6 +73,13 @@ Progress: [███████░░░░░░░░░] 26.9% (7/26 plans)
 - [Execute 05-02]: Low confidence warning auto-appended when confidence < 0.4
 - [Execute 05-02]: API route simplified to single pipeline call + aggregate, no direct engine module imports
 - [Execute 05-02]: Fallback BehavioralPredictions with 0/N-A for defensive null handling
+- [Execute 06-01]: Generic TTL cache with no LRU -- dataset sizes small (50 sounds, 200 videos, 30 rules)
+- [Execute 06-01]: Rules cached 1hr, trending sounds 5min, scraped videos 15min
+- [Execute 06-01]: Rate limit check before SSE stream, usage increment after successful analysis
+- [Execute 06-01]: Circuit breaker 1s/3s/9s exponential backoff with half-open probe state
+- [Execute 06-01]: Creator, rules, trends are non-critical stages -- fallback with warning on failure
+- [Execute 06-01]: Gemini and DeepSeek remain critical -- pipeline halts on their failure
+- [Execute 06-01]: Pipeline warnings merged in API route (avoids modifying aggregator.ts)
 - [Plan]: 12 phases, 26 plans derived from deep 6-agent analysis of current engine gaps
 - [Plan]: Switch DeepSeek from R1 to V3.2-reasoning (70% cheaper, 2x faster)
 - [Plan]: Full video analysis via Gemini Flash-Lite (~$0.008/30s video)
@@ -94,10 +102,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 05-02-PLAN.md (Aggregator rewrite + API route wiring)
+Stopped at: Completed 06-01-PLAN.md (Infrastructure hardening: rate limiting, caching, circuit breaker, resilience)
 Resume file: None
-Next: Execute Phase 6
+Next: Execute Phase 7
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Phase 5 complete (pipeline architecture + aggregator + API wiring)*
+*Last updated: 2026-02-16 -- Phase 6 complete (rate limiting + TTL caching + circuit breaker + partial failure recovery)*
