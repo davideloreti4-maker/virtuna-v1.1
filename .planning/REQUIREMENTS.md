@@ -12,8 +12,8 @@ Requirements for MVP launch. Each maps to roadmap phases.
 
 - [ ] **FOUN-01**: App uses real Supabase auth verification (replace mock 350ms AuthGuard)
 - [ ] **FOUN-02**: Unauthenticated users are redirected to landing page
-- [ ] **FOUN-03**: Trending page (/trending) and all related code removed cleanly (11 files)
-- [ ] **FOUN-04**: Sidebar navigation updated for MVP pages (dashboard, affiliate/earnings, pricing)
+- [ ] **FOUN-03**: Sidebar navigation updated for MVP pages (dashboard, trending, affiliate/earnings, pricing)
+- [ ] **FOUN-04**: Trending page kept in navigation and accessible at /trending
 - [ ] **FOUN-05**: Route groups structured: (marketing) public, (onboarding) post-signup, (app) authenticated
 
 ### Landing Page
@@ -30,7 +30,7 @@ Requirements for MVP launch. Each maps to roadmap phases.
 ### Onboarding
 
 - [ ] **ONBR-01**: User is routed to onboarding flow after first signup
-- [ ] **ONBR-02**: TikTok connect step -- OAuth flow or manual handle input fallback
+- [ ] **ONBR-02**: TikTok connect step -- manual @handle input (no OAuth)
 - [ ] **ONBR-03**: TikTok connect shows personalized hive preview after connection
 - [ ] **ONBR-04**: Goal selection step -- user picks primary goal (brand deals / viral content / affiliate revenue)
 - [ ] **ONBR-05**: Goal selection configures initial dashboard layout/focus
@@ -95,7 +95,7 @@ Requirements for MVP launch. Each maps to roadmap phases.
 | Light mode | Dark-mode first, defer later |
 | External brand deals | Handled by future marketplace milestone |
 | AI prediction engine | Handled by backend-foundation milestone |
-| Trending page | Removed for MVP, re-launch when backend ready |
+| TikTok OAuth | Manual @handle input is sufficient for MVP |
 | Real-time chat/messaging | Not core to intelligence platform |
 | Mobile native app | Web-first |
 | Fake analysis preview on landing | Deferred -- hive demo is primary interactive element |
@@ -110,6 +110,7 @@ Requirements for MVP launch. Each maps to roadmap phases.
 | FOUN-02 | Phase 1 | Pending |
 | FOUN-03 | Phase 1 | Pending |
 | FOUN-04 | Phase 1 | Pending |
+
 | FOUN-05 | Phase 1 | Pending |
 | LAND-01 | Phase 2 | Pending |
 | LAND-02 | Phase 2 | Pending |

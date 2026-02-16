@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Onboarding** - Progressive post-signup flow with TikTok connect, goal selection, and tooltips (completed 2026-02-16)
 - [x] **Phase 4: Payments** - Whop-powered subscriptions with 7-day Pro trial, tier gating, and trial UI (completed 2026-02-16)
 - [x] **Phase 5: Referral** - In-product referral program with link generation, tracking, and one-time bonuses (completed 2026-02-16)
-- [ ] **Phase 6: Polish** - UI fixes, mobile responsiveness pass, OG tags, and dead code cleanup
+- [x] **Phase 6: Polish** - UI fixes, mobile responsiveness pass, OG tags, and dead code cleanup (completed 2026-02-16)
 
 ## Phase Details
 
@@ -123,7 +123,7 @@ Plans:
 Plans:
 - [x] 06-01-PLAN.md -- OG metadata fix, marketing OG image, brand-deals redirect, middleware cleanup, dashboard mobile fix (completed 2026-02-16)
 - [x] 06-02-PLAN.md -- Dead code deletion (landing components, test pages, visualization, effects, motion), societies.io comment cleanup (completed 2026-02-16)
-- [ ] 06-03-PLAN.md -- Gap closure: mobile responsiveness audit + PLSH-01 compliance verification (skeleton, cards, buttons)
+- [x] 06-03-PLAN.md -- Gap closure: mobile responsiveness audit + PLSH-01 compliance verification (skeleton, cards, buttons) (completed 2026-02-16)
 
 ## Execution Waves
 
@@ -156,7 +156,7 @@ Waves 1-2 support parallel execution (see Execution Waves above).
 | 3. Onboarding | 2/2 | ✓ Complete | 2026-02-16 |
 | 4. Payments | 3/3 | ✓ Complete | 2026-02-16 |
 | 5. Referral | 2/2 | ✓ Complete | 2026-02-16 |
-| 6. Polish | 2/3 | Gap closure | - |
+| 6. Polish | 3/3 | ✓ Complete | 2026-02-16 |
 
 ---
 *Roadmap created: 2026-02-13*
