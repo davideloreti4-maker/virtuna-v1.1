@@ -93,22 +93,33 @@ export interface PredictionResult {
 export const FactorSchema = z.object({
   name: z.string(),
   score: z.number().min(0).max(10),
-  description: z.string(),
-  tips: z.array(z.string()).default([]),
+  rationale: z.string(),
+  improvement_tip: z.string(),
+});
+
+export const GeminiVideoSignalsSchema = z.object({
+  visual_production_quality: z.number().min(0).max(10),
+  hook_visual_impact: z.number().min(0).max(10),
+  pacing_score: z.number().min(0).max(10),
+  transition_quality: z.number().min(0).max(10),
 });
 
 export const GeminiResponseSchema = z.object({
-  factors: z.array(FactorSchema).min(1),
+  factors: z.array(FactorSchema).length(5),
   overall_impression: z.string(),
   content_summary: z.string(),
-  hook_strength: z.number().min(0).max(10),
-  emotional_resonance: z.number().min(0).max(10),
-  clarity: z.number().min(0).max(10),
-  originality: z.number().min(0).max(10),
-  call_to_action: z.number().min(0).max(10),
+  video_signals: GeminiVideoSignalsSchema.optional(),
 });
 
 export type GeminiAnalysis = z.infer<typeof GeminiResponseSchema>;
+
+export const GeminiVideoResponseSchema = GeminiResponseSchema.extend({
+  video_signals: GeminiVideoSignalsSchema,
+});
+
+export type GeminiVideoAnalysis = z.infer<typeof GeminiVideoResponseSchema>;
+
+export type GeminiVideoSignals = z.infer<typeof GeminiVideoSignalsSchema>;
 
 export const PersonaReactionSchema = z.object({
   persona_name: z.string(),
