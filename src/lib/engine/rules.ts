@@ -1,3 +1,34 @@
+/**
+ * Rule evaluation tier classification:
+ *
+ * REGEX tier (deterministic, fast, no API cost):
+ *   question_hook, curiosity_gap, negative_bias, bold_claim, story_hook,
+ *   payoff_delay, pattern_interrupt, info_density, short_duration,
+ *   caption_hook, cta_clarity, authenticity
+ *
+ * SEMANTIC tier (DeepSeek evaluation, slower, ~$0.001 per batch):
+ *   loop_structure     — requires video analysis, regex always returns false
+ *   emotional_arc      — requires full content analysis, regex always returns false
+ *   text_overlay       — regex always returns true (meaningless)
+ *   trending_sound     — needs audio context, regex returns false
+ *   trending_audio     — needs audio context, regex returns false
+ *   original_audio     — no regex pattern, needs semantic eval
+ *   post_timing        — no regex pattern, needs semantic eval
+ *   content_pacing     — no regex pattern, needs semantic eval
+ *   niche_authority    — no regex pattern, needs semantic eval
+ *   carousel_depth     — platform-specific, needs semantic eval
+ *   thumbnail_bait     — platform-specific, needs semantic eval
+ *   duet_stitch        — platform-specific, needs semantic eval
+ *   reel_hook_speed    — platform-specific, needs semantic eval
+ *
+ * NOTE: To switch a rule's tier, update its evaluation_tier column in rule_library.
+ * The code reads the tier from DB — no code change needed for reclassification.
+ *
+ * MIGRATION: The seed data (supabase/seed.sql) needs evaluation_tier updated for
+ * the semantic-tier rules listed above. The DB migration (Phase 4) added the column
+ * with DEFAULT 'regex'. Rules will be reclassified in Plan 2 or Plan 3 of this phase.
+ */
+
 import OpenAI from "openai";
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/service";
