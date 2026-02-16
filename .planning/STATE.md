@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered content intelligence that tells creators whether their content will resonate -- and exactly why -- before they post.
-**Current focus:** Phase 3 (next)
+**Current focus:** Phase 4 (next)
 
 ## Current Position
 
 **Milestone:** Prediction Engine v2
-**Phase:** 2 of 12 (Gemini Prompt & Video Analysis) -- COMPLETE
+**Phase:** 3 of 12 (DeepSeek Prompt + Model Switch) -- COMPLETE
 **Plan:** 1 of 1 in current phase
-**Status:** Phase 2 complete, ready for Phase 3
-**Last activity:** 2026-02-16 -- Phase 2 Plan 1 executed (Gemini prompt rewrite + video analysis)
+**Status:** Phase 3 complete, ready for Phase 4
+**Last activity:** 2026-02-16 -- Phase 3 Plan 1 executed (DeepSeek 5-step CoT prompt + behavioral predictions)
 
-Progress: [██░░░░░░░░░░░░░░] 7.7% (2/26 plans)
+Progress: [███░░░░░░░░░░░░░] 11.5% (3/26 plans)
 
 ## Performance Metrics
 
@@ -23,6 +23,7 @@ Progress: [██░░░░░░░░░░░░░░] 7.7% (2/26 plans)
 |-------|------|----------|-------|-------|
 | 01    | 01   | 5min     | 2     | 4     |
 | 02    | 01   | 4min     | 2     | 2     |
+| 03    | 01   | 3min     | 2     | 2     |
 
 ## Accumulated Context
 
@@ -41,6 +42,12 @@ Progress: [██░░░░░░░░░░░░░░] 7.7% (2/26 plans)
 - [Execute 02-01]: Token-based cost estimation with Flash pricing ($0.15/1M input, $0.60/1M output)
 - [Execute 02-01]: Video analysis as separate function with Gemini Files API upload/poll/cleanup lifecycle
 - [Execute 02-01]: Video errors fail hard — no partial results, no fallback to text mode
+- [Execute 03-01]: 5-step CoT framework: Completion, Engagement, Pattern Match, Fatal Flaw, Final Scores
+- [Execute 03-01]: Behavioral predictions replace refined_score (completion_pct, share_pct, comment_pct, save_pct with percentile context)
+- [Execute 03-01]: 7 component sub-scores for Phase 5 aggregator (hook_effectiveness, retention_strength, shareability, comment_provocation, save_worthiness, trend_alignment, originality)
+- [Execute 03-01]: Gemini signals stripped of numeric scores to prevent DeepSeek anchoring
+- [Execute 03-01]: Token-based cost at V3.2-reasoning pricing ($0.28/1M input, $0.42/1M output)
+- [Execute 03-01]: Dead v1 fields removed from DeepSeek schema (persona_reactions, variants, conversation_themes, refined_score)
 - [Plan]: 12 phases, 26 plans derived from deep 6-agent analysis of current engine gaps
 - [Plan]: Switch DeepSeek from R1 to V3.2-reasoning (70% cheaper, 2x faster)
 - [Plan]: Full video analysis via Gemini Flash-Lite (~$0.008/30s video)
@@ -63,10 +70,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 02-01-PLAN.md (Phase 2 Gemini Prompt & Video Analysis complete)
+Stopped at: Completed 03-01-PLAN.md (Phase 3 DeepSeek Prompt + Model Switch complete)
 Resume file: None
-Next: `/gsd:execute-phase 3`
+Next: `/gsd:execute-phase 4`
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Phase 2 complete*
+*Last updated: 2026-02-16 -- Phase 3 complete*
