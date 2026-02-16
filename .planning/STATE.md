@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-16)
 ## Current Position
 
 Phase: 2 of 7 (Competitor Management)
-Plan: 2 of 2 in current phase
-Status: Executing Phase 2
-Last activity: 2026-02-16 -- Completed 02-02 (Cron Infrastructure)
+Plan: 2 of 2 in current phase (PHASE COMPLETE)
+Status: Phase 2 Complete
+Last activity: 2026-02-16 -- Completed 02-01 (Add/Remove Competitor Server Actions)
 
 Progress: [███░░░░░░░] 30%
 
@@ -31,7 +31,7 @@ Progress: [███░░░░░░░] 30%
 | 02-competitor-management | 2 | 6 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (2 min), 01-02 (8 min), 02-01 (4 min), 02-02 (2 min)
+- Last 5 plans: 01-01 (2 min), 01-02 (8 min), 02-01 (2 min), 02-02 (2 min)
 - Trend: accelerating
 
 *Updated after each plan completion*
@@ -57,6 +57,9 @@ Recent decisions affecting current work:
 - z.coerce.number() for all Apify numeric fields (actors sometimes return strings for large numbers)
 - Strict .parse() for profile scraping, graceful .safeParse() for video batches
 - Lazy require() in scraping factory to avoid pulling apify-client into client bundles
+- Service client for profile/snapshot/video writes during addCompetitor (RLS requires existing junction row)
+- Non-fatal video scraping: profile tracked even if video scrape fails
+- Added competitor table types inline to database.types.ts (no gen-types CLI needed pre-migration)
 - Reusable verifyCronAuth utility for all cron endpoints (returns null|NextResponse pattern)
 - maxDuration 60s default for cron routes (300s on Pro with confirmation)
 - No video scraping in daily cron (expensive, deferred to Phase 7)
@@ -74,10 +77,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 02-02-PLAN.md (Cron Infrastructure) -- Phase 2 in progress
+Stopped at: Completed 02-01-PLAN.md (Add/Remove Competitor Server Actions) -- Phase 2 Complete
 Resume file: None
-Next: Continue Phase 2 execution or plan Phase 3
+Next: Plan Phase 3 (or execute next phase plans)
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Completed 02-02 Cron Infrastructure*
+*Last updated: 2026-02-16 -- Completed 02-01 Add/Remove Competitor Server Actions (Phase 2 Complete)*
