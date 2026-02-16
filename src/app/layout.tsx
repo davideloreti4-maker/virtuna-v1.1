@@ -24,14 +24,6 @@ export const metadata: Metadata = {
       "Know what will go viral before you post. AI-powered predictions and audience insights for TikTok creators.",
     url: "https://virtuna.ai",
     siteName: "Virtuna",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Virtuna - AI Content Intelligence",
-      },
-    ],
     locale: "en_US",
     type: "website",
   },
@@ -40,7 +32,6 @@ export const metadata: Metadata = {
     title: "Virtuna | AI Content Intelligence for TikTok Creators",
     description:
       "Know what will go viral before you post. AI-powered predictions and audience insights for TikTok creators.",
-    images: ["/og-image.png"],
   },
 };
 
