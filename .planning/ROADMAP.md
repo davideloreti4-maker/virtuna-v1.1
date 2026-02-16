@@ -49,12 +49,11 @@ Plans:
   3. Features section, social proof section, and FAQ section are visible below the fold
   4. Pricing comparison table shows Starter vs Pro tiers with per-tier CTAs
   5. Entire page is responsive (mobile-first) and follows Raycast design language (dark mode, coral accents, Inter font)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: Hero section + features/benefits + social proof + FAQ
-- [ ] 02-02: Lightweight hive demo component (50 nodes, pre-computed, mobile-optimized)
-- [ ] 02-03: Pricing page with tier comparison and CTAs
+- [ ] 02-01-PLAN.md -- Fix CTA link targets + Raycast design language consistency (borders, text tokens)
+- [ ] 02-02-PLAN.md -- Hive demo IntersectionObserver lazy loading (RAF pause when off-screen, battery optimization)
 
 ### Phase 3: Onboarding
 **Goal**: A new user who just signed up is guided through entering their TikTok handle, choosing a goal, and seeing their first personalized hive -- then gets contextual help on their first dashboard visit
@@ -154,7 +153,7 @@ Waves 1-2 support parallel execution (see Execution Waves above).
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | ✓ Complete | 2026-02-16 |
-| 2. Landing Page | 0/3 | Not started | - |
+| 2. Landing Page | 0/2 | Not started | - |
 | 3. Onboarding | 0/3 | Not started | - |
 | 4. Payments | 0/3 | Not started | - |
 | 5. Referral | 0/3 | Not started | - |
