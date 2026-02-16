@@ -34,7 +34,7 @@ function NotificationItem({
         id={id}
         checked={checked}
         onCheckedChange={onCheckedChange}
-        className="relative h-6 w-11 cursor-pointer rounded-full bg-zinc-700 transition-colors data-[state=checked]:bg-emerald-600"
+        className="relative h-6 w-11 cursor-pointer rounded-full bg-white/[0.1] transition-colors data-[state=checked]:bg-accent"
       >
         <Switch.Thumb className="block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow-sm transition-transform data-[state=checked]:translate-x-[22px]" />
       </Switch.Root>
