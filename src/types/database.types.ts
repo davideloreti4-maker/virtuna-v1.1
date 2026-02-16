@@ -508,6 +508,30 @@ export type Database = {
         }
         Relationships: []
       }
+      tiktok_accounts: {
+        Row: {
+          id: string
+          user_id: string
+          handle: string
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          handle: string
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          handle?: string
+          is_active?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
