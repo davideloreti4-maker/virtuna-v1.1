@@ -101,8 +101,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 5-01: Creator Context stage + 10-stage pipeline restructure with wave parallelism and per-stage timing
-- [ ] 5-02: V2 aggregation formula (behavioral 45% + gemini 25% + rules 20% + trends 10%), confidence calculation, FeatureVector assembly, API route + hook wiring
+- [x] 5-01: Creator Context stage + 10-stage pipeline restructure with wave parallelism and per-stage timing
+- [x] 5-02: V2 aggregation formula (behavioral 45% + gemini 25% + rules 20% + trends 10%), confidence calculation, FeatureVector assembly, API route + hook wiring
 
 ### Phase 6: Infrastructure Hardening
 **Goal**: Production-ready infrastructure with rate limiting, caching, partial failure recovery, and improved circuit breaker
@@ -261,7 +261,7 @@ Phases execute in wave order. Within each wave, phases can run in parallel.
 | 2. Gemini Prompt + Video Analysis | 1/1 | ✓ Complete | 2026-02-16 |
 | 3. DeepSeek Prompt + Model Switch | 1/1 | ✓ Complete | 2026-02-16 |
 | 4. Types, Schema & DB Migration | 2/2 | ✓ Complete | 2026-02-16 |
-| 5. Pipeline Architecture | 0/2 | Not started | - |
+| 5. Pipeline Architecture | 2/2 | ✓ Complete | 2026-02-16 |
 | 6. Infrastructure Hardening | 0/1 | Not started | - |
 | 7. Upload & Input UI | 0/2 | Not started | - |
 | 8. Results Card & Breakdown UI | 0/3 | Not started | - |
@@ -272,4 +272,4 @@ Phases execute in wave order. Within each wave, phases can run in parallel.
 
 ---
 *Roadmap created: 2026-02-16*
-*Last updated: 2026-02-16 — Phase 4 complete*
+*Last updated: 2026-02-16 — Phase 5 complete*
