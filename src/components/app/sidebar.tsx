@@ -35,7 +35,7 @@ const navItems = [
 
 const navItemsAfterSelector = [
   { label: "Content Intelligence", icon: Lightbulb, id: "content-intelligence", href: "/dashboard" },
-  { label: "Earnings", icon: Briefcase, id: "earnings", href: "/brand-deals" },
+  { label: "Referrals", icon: Briefcase, id: "referrals", href: "/referrals" },
 ] as const;
 
 const bottomNavItems = [
@@ -45,7 +45,7 @@ const bottomNavItems = [
 /**
  * Main sidebar component for the app dashboard.
  *
- * MVP Navigation (top): Dashboard, Trending, [TikTok Account Selector], Content Intelligence, Earnings
+ * MVP Navigation (top): Dashboard, Trending, [TikTok Account Selector], Content Intelligence, Referrals
  * MVP Navigation (bottom): Pricing
  * Avatar dropdown with Sign out at the very bottom.
  *
@@ -227,7 +227,7 @@ export function Sidebar() {
           </ContextualTooltip>
         )}
 
-        {/* Navigation items after selector (Content Intelligence, Earnings) */}
+        {/* Navigation items after selector (Content Intelligence, Referrals) */}
         <nav className="flex flex-col gap-0.5 px-2">
           {navItemsAfterSelector.map((item) => (
             <SidebarNavItem
@@ -237,7 +237,7 @@ export function Sidebar() {
               isActive={
                 item.id === "content-intelligence"
                   ? pathname === "/dashboard"
-                  : pathname.startsWith("/brand-deals")
+                  : pathname.startsWith("/referrals")
               }
               onClick={() => router.push(item.href)}
             />
