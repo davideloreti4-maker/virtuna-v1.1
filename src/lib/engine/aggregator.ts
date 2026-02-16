@@ -25,6 +25,60 @@ const SCORE_WEIGHTS = {
 } as const;
 
 // =====================================================
+// Signal Availability & Dynamic Weight Selection (RULE-04)
+// =====================================================
+
+interface SignalAvailability {
+  behavioral: boolean; // DeepSeek produced component scores
+  gemini: boolean;     // Gemini produced factor scores (always true — critical stage)
+  rules: boolean;      // Rule scoring produced real matches (not default fallback)
+  trends: boolean;     // Trend enrichment found matches (not default fallback)
+}
+
+/**
+ * Select weights based on which signal sources are available.
+ * When a source is missing, its weight is redistributed proportionally
+ * to the remaining sources so weights always sum to ~1.0.
+ *
+ * Exported for testing in Phase 12.
+ */
+export function selectWeights(
+  availability: SignalAvailability
+): { behavioral: number; gemini: number; rules: number; trends: number } {
+  const available = Object.entries(availability).filter(([, v]) => v);
+  const missing = Object.entries(availability).filter(([, v]) => !v);
+
+  // All sources available — use base weights exactly
+  if (missing.length === 0) return { ...SCORE_WEIGHTS };
+
+  // Redistribute missing weight proportionally to available sources
+  const missingWeight = missing.reduce(
+    (sum, [key]) => sum + SCORE_WEIGHTS[key as keyof typeof SCORE_WEIGHTS], 0
+  );
+  const availableWeight = available.reduce(
+    (sum, [key]) => sum + SCORE_WEIGHTS[key as keyof typeof SCORE_WEIGHTS], 0
+  );
+
+  // Each available source gets its base weight + proportional share of missing weight
+  const result = { behavioral: 0, gemini: 0, rules: 0, trends: 0 };
+  for (const [key, isAvailable] of Object.entries(availability)) {
+    const k = key as keyof typeof SCORE_WEIGHTS;
+    if (isAvailable) {
+      result[k] = SCORE_WEIGHTS[k] + (SCORE_WEIGHTS[k] / availableWeight) * missingWeight;
+    }
+    // Missing sources get weight 0
+  }
+
+  // Round to avoid floating point noise, ensure they sum to ~1
+  const total = Object.values(result).reduce((a, b) => a + b, 0);
+  for (const key of Object.keys(result) as (keyof typeof result)[]) {
+    result[key] = Math.round((result[key] / total) * 1000) / 1000;
+  }
+
+  return result;
+}
+
+// =====================================================
 // Confidence Calculation
 // =====================================================
 
@@ -32,6 +86,8 @@ const SCORE_WEIGHTS = {
  * Calculate numeric confidence (0-1) based on:
  * 1. Signal availability (0-0.6) — how much data we have
  * 2. Model agreement (0-0.4) — do Gemini and DeepSeek agree on direction
+ *
+ * RULE-04: Penalizes confidence when rules/trends signals are missing.
  */
 function calculateConfidence(
   geminiScore: number,
@@ -39,7 +95,8 @@ function calculateConfidence(
   ruleResult: RuleScoreResult,
   trendEnrichment: TrendEnrichment,
   hasVideo: boolean,
-  deepseekConfidence: "high" | "medium" | "low"
+  deepseekConfidence: "high" | "medium" | "low",
+  availability: SignalAvailability
 ): { confidence: number; confidence_label: ConfidenceLevel } {
   // Signal availability component (0-0.6)
   let signal = 0.2; // Base: always have text
@@ -48,6 +105,10 @@ function calculateConfidence(
   if (ruleResult.matched_rules.length >= 3) signal += 0.1;
   if (deepseekConfidence === "high") signal += 0.1;
   else if (deepseekConfidence === "medium") signal += 0.05;
+
+  // RULE-04: Confidence penalty for missing signals
+  if (!availability.rules) signal -= 0.05;
+  if (!availability.trends) signal -= 0.05;
 
   // Model agreement component (0-0.4)
   const geminiDirection = geminiScore - 50;
@@ -139,6 +200,7 @@ function assembleFeatureVector(pipelineResult: PipelineResult): FeatureVector {
  * Aggregate all pipeline stage outputs into a PredictionResult.
  *
  * v2 formula: behavioral 45% + gemini 25% + rules 20% + trends 10%
+ * RULE-04: Dynamic weight selection adapts when signals are missing.
  *
  * Takes the full PipelineResult from runPredictionPipeline()
  * and returns a complete PredictionResult.
@@ -158,7 +220,21 @@ export function aggregateScores(
   const deepseek = deepseekResult?.reasoning ?? null;
 
   // -------------------------------------------------
-  // Behavioral score (45% weight)
+  // RULE-04: Determine signal availability from pipeline result
+  // -------------------------------------------------
+  const availability: SignalAvailability = {
+    behavioral: deepseekResult !== null,
+    gemini: true, // Always true — critical stage, pipeline throws if it fails
+    rules: ruleResult.matched_rules.length > 0
+      && !pipelineResult.warnings.some(w => w.includes('Rule scoring unavailable')),
+    trends: trendEnrichment.matched_trends.length > 0
+      && !pipelineResult.warnings.some(w => w.includes('Trend enrichment unavailable')),
+  };
+
+  const weights = selectWeights(availability);
+
+  // -------------------------------------------------
+  // Behavioral score (45% base weight)
   // Source: DeepSeek's 7 component scores, each 0-10
   // -------------------------------------------------
   const cs = deepseek?.component_scores;
@@ -175,7 +251,7 @@ export function aggregateScores(
   const behavioral_score = Math.round(behavioralAvg * 10); // Normalize to 0-100
 
   // -------------------------------------------------
-  // Gemini score (25% weight)
+  // Gemini score (25% base weight)
   // Source: Gemini's 5 factor scores, each 0-10
   // -------------------------------------------------
   const geminiAvg =
@@ -184,23 +260,23 @@ export function aggregateScores(
   const gemini_score = Math.round(geminiAvg * 10); // Normalize to 0-100
 
   // -------------------------------------------------
-  // Overall score (weighted combination)
+  // Overall score (dynamic weighted combination)
   // -------------------------------------------------
   const overall_score = Math.min(
     100,
     Math.max(
       0,
       Math.round(
-        behavioral_score * SCORE_WEIGHTS.behavioral +
-          gemini_score * SCORE_WEIGHTS.gemini +
-          ruleResult.rule_score * SCORE_WEIGHTS.rules +
-          trendEnrichment.trend_score * SCORE_WEIGHTS.trends
+        behavioral_score * weights.behavioral +
+          gemini_score * weights.gemini +
+          ruleResult.rule_score * weights.rules +
+          trendEnrichment.trend_score * weights.trends
       )
     )
   );
 
   // -------------------------------------------------
-  // Confidence
+  // Confidence (with signal availability penalties)
   // -------------------------------------------------
   const hasVideo = payload.input_mode !== "text";
   const conf = calculateConfidence(
@@ -209,13 +285,23 @@ export function aggregateScores(
     ruleResult,
     trendEnrichment,
     hasVideo,
-    deepseek?.confidence ?? "low"
+    deepseek?.confidence ?? "low",
+    availability
   );
 
   // -------------------------------------------------
-  // Warnings (from DeepSeek + low confidence)
+  // Warnings (from DeepSeek + weight redistribution + low confidence)
   // -------------------------------------------------
   const warnings: string[] = [...(deepseek?.warnings ?? [])];
+
+  // RULE-04: Warn when weights are redistributed
+  if (Object.entries(availability).some(([, v]) => !v)) {
+    const missingSources = Object.entries(availability)
+      .filter(([, v]) => !v)
+      .map(([k]) => k);
+    warnings.push(`Weights redistributed — missing signals: ${missingSources.join(', ')}`);
+  }
+
   if (conf.confidence < 0.4) {
     warnings.push("Low confidence \u2014 limited signal data");
   }
@@ -282,7 +368,7 @@ export function aggregateScores(
     trend_score: trendEnrichment.trend_score,
     gemini_score,
     behavioral_score,
-    score_weights: SCORE_WEIGHTS,
+    score_weights: weights, // Actual weights used (may differ from BASE if signals missing)
     latency_ms: pipelineResult.total_duration_ms,
     cost_cents,
     engine_version: ENGINE_VERSION,
