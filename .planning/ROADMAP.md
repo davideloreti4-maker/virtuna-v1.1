@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - Replace mock auth, restructure routes and sidebar navigation for MVP (completed 2026-02-16)
 - [x] **Phase 2: Landing Page** - Conversion-optimized landing page with interactive hive demo and pricing (completed 2026-02-16)
-- [ ] **Phase 3: Onboarding** - Progressive post-signup flow with TikTok connect, goal selection, and tooltips
+- [x] **Phase 3: Onboarding** - Progressive post-signup flow with TikTok connect, goal selection, and tooltips (completed 2026-02-16)
 - [ ] **Phase 4: Payments** - Whop-powered subscriptions with 7-day Pro trial, tier gating, and trial UI
 - [ ] **Phase 5: Referral** - In-product referral program with link generation, tracking, and one-time bonuses
 - [ ] **Phase 6: Polish** - UI fixes, mobile responsiveness pass, OG tags, and dead code cleanup
@@ -56,7 +56,7 @@ Plans:
 - [x] 02-02-PLAN.md -- Hive demo IntersectionObserver lazy loading (RAF pause when off-screen, battery optimization) (completed 2026-02-16)
 
 ### Phase 3: Onboarding
-**Goal**: A new user who just signed up is guided through entering their TikTok handle, choosing a goal, and seeing their first personalized hive -- then gets contextual help on their first dashboard visit
+**Goal**: A new user who just signed up is routed to the onboarding flow at /welcome, sees goal-personalized dashboard content after completing onboarding, and gets contextual tooltips on their first dashboard visit
 **Depends on**: Phase 1
 **File Ownership**: `src/app/(onboarding)/`, `src/components/onboarding/`, `src/components/tooltips/`, `src/stores/tooltip-store.ts`
 **Requirements**: ONBR-01, ONBR-02, ONBR-03, ONBR-04, ONBR-05, ONBR-06, ONBR-07, ONBR-08, ONBR-09
@@ -69,8 +69,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md -- First-time user routing (login + OAuth redirect to /welcome) + old auth page cleanup
-- [ ] 03-02-PLAN.md -- Goal-personalized dashboard, tooltip completeness (4 tooltips), sidebar TikTok handle wiring
+- [x] 03-01-PLAN.md -- First-time user routing (login + OAuth redirect to /welcome) + old auth page cleanup (completed 2026-02-16)
+- [x] 03-02-PLAN.md -- Goal-personalized dashboard, tooltip completeness (4 tooltips), sidebar TikTok handle wiring (completed 2026-02-16)
 
 ### Phase 4: Payments
 **Goal**: Users can subscribe to Starter or Pro plans through Whop, start a 7-day Pro trial, and see their tier reflected throughout the app with Pro-only features gated
@@ -153,7 +153,7 @@ Waves 1-2 support parallel execution (see Execution Waves above).
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | ✓ Complete | 2026-02-16 |
 | 2. Landing Page | 2/2 | ✓ Complete | 2026-02-16 |
-| 3. Onboarding | 0/2 | Planned | - |
+| 3. Onboarding | 2/2 | ✓ Complete | 2026-02-16 |
 | 4. Payments | 0/3 | Not started | - |
 | 5. Referral | 0/3 | Not started | - |
 | 6. Polish | 0/2 | Not started | - |
