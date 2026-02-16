@@ -165,9 +165,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 9-01: Semantic Rule Evaluation
-- [ ] 9-02: Per-Rule Accuracy Tracking
-- [ ] 9-03: Dynamic Weight Selection
+- [ ] 09-01: Hybrid regex+semantic rule evaluation engine with tier classification and broken rule fix
+- [ ] 09-02: Per-rule accuracy tracking via rule_contributions JSONB storage and cron-based computation
+- [ ] 09-03: Dynamic weight selection adapting to signal availability with proportional redistribution
 
 ### Phase 10: Calibration & ML Training
 **Goal**: Calibration infrastructure measures and corrects prediction accuracy, ML model trained on scraped video data
