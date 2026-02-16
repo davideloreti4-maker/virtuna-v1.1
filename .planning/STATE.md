@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered content intelligence that tells creators whether their content will resonate -- and exactly why -- before they post.
-**Current focus:** Phase 4 (Types, Schema, DB Migration)
+**Current focus:** Phase 5 (Pipeline Restructure) -- Phase 4 complete
 
 ## Current Position
 
 **Milestone:** Prediction Engine v2
-**Phase:** 4 of 12 (Types, Schema, DB Migration) -- IN PROGRESS
-**Plan:** 1 of 2 in current phase -- COMPLETE
-**Status:** Phase 4 Plan 1 complete (v2 type definitions), Plan 2 next
-**Last activity:** 2026-02-16 -- Phase 4 Plan 1 executed (v2 type definitions: FeatureVector, AnalysisInput, ContentPayload, PredictionResult)
+**Phase:** 5 of 12 (Pipeline Restructure) -- READY
+**Plan:** 0 of N in current phase -- Phase 5 not yet started
+**Status:** Phase 4 complete (v2 types + DB schema + input normalization), Phase 5 next
+**Last activity:** 2026-02-16 -- Phase 4 Plan 2 executed (DB schema migration + input normalization)
 
-Progress: [████░░░░░░░░░░░░] 15.4% (4/26 plans)
+Progress: [█████░░░░░░░░░░░] 19.2% (5/26 plans)
 
 ## Performance Metrics
 
@@ -25,6 +25,7 @@ Progress: [████░░░░░░░░░░░░] 15.4% (4/26 plans)
 | 02    | 01   | 4min     | 2     | 2     |
 | 03    | 01   | 3min     | 2     | 2     |
 | 04    | 01   | 2min     | 2     | 1     |
+| 04    | 02   | 2min     | 2     | 2     |
 
 ## Accumulated Context
 
@@ -54,6 +55,10 @@ Progress: [████░░░░░░░░░░░░] 15.4% (4/26 plans)
 - [Execute 04-01]: PredictionResult confidence is numeric 0-1 with separate confidence_label for UI display
 - [Execute 04-01]: Deprecated v1 types removed now (PersonaReaction, Variant, ConversationTheme + Zod schemas)
 - [Execute 04-01]: score_weights uses named keys (behavioral/gemini/rules/trends) instead of v1 (rule/trend/ml)
+- [Execute 04-02]: All migration statements use IF NOT EXISTS for idempotent re-runs
+- [Execute 04-02]: Array.from(Set) instead of spread for ES2017 target compatibility
+- [Execute 04-02]: video_url passthrough in normalizeInput — actual URL resolution deferred to Phase 5
+- [Execute 04-02]: Duration hint extraction is best-effort from text, overridden by Apify/video metadata in Phase 5
 - [Plan]: 12 phases, 26 plans derived from deep 6-agent analysis of current engine gaps
 - [Plan]: Switch DeepSeek from R1 to V3.2-reasoning (70% cheaper, 2x faster)
 - [Plan]: Full video analysis via Gemini Flash-Lite (~$0.008/30s video)
@@ -76,10 +81,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 04-01-PLAN.md (Phase 4 Plan 1 v2 type definitions)
+Stopped at: Completed 04-02-PLAN.md (Phase 4 complete — DB schema migration + input normalization)
 Resume file: None
-Next: Execute 04-02-PLAN.md (DB schema migration)
+Next: Plan and execute Phase 5 (Pipeline Restructure)
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Phase 4 Plan 1 complete*
+*Last updated: 2026-02-16 -- Phase 4 complete (Plans 1-2)*
