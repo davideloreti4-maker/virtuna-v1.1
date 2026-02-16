@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered content intelligence that tells creators whether their content will resonate -- and exactly why -- before they post.
-**Current focus:** Phase 6 (Infrastructure Hardening) -- COMPLETE, ready for Phase 7
+**Current focus:** Phase 7 (Upload & Input UI) -- Plan 1 complete, Plan 2 next
 
 ## Current Position
 
 **Milestone:** Prediction Engine v2
-**Phase:** 6 of 12 (Infrastructure Hardening) -- COMPLETE
-**Plan:** 1 of 1 in current phase -- Phase 6 complete
-**Status:** Rate limiting, TTL caching, exponential backoff circuit breaker, partial failure recovery
-**Last activity:** 2026-02-16 -- Phase 6 Plan 1 executed (infrastructure hardening)
+**Phase:** 7 of 12 (Upload & Input UI)
+**Plan:** 1 of 2 in current phase -- Plan 1 complete
+**Status:** VideoUpload and TikTokUrlInput components built, ready for content form integration
+**Last activity:** 2026-02-16 -- Phase 7 Plan 1 executed (upload & input UI components)
 
-Progress: [████████░░░░░░░░] 30.8% (8/26 plans)
+Progress: [█████████░░░░░░░] 34.6% (9/26 plans)
 
 ## Performance Metrics
 
@@ -29,6 +29,7 @@ Progress: [████████░░░░░░░░] 30.8% (8/26 plans)
 | 05    | 01   | 3min     | 2     | 3     |
 | 05    | 02   | 2min     | 2     | 3     |
 | 06    | 01   | 4min     | 3     | 6     |
+| 07    | 01   | 3min     | 2     | 2     |
 
 ## Accumulated Context
 
@@ -80,6 +81,10 @@ Progress: [████████░░░░░░░░] 30.8% (8/26 plans)
 - [Execute 06-01]: Creator, rules, trends are non-critical stages -- fallback with warning on failure
 - [Execute 06-01]: Gemini and DeepSeek remain critical -- pipeline halts on their failure
 - [Execute 06-01]: Pipeline warnings merged in API route (avoids modifying aggregator.ts)
+- [Execute 07-01]: Thumbnail extraction seeks to min(0.5s, duration/4) for meaningful frame
+- [Execute 07-01]: File validation checks both MIME type and extension as fallback
+- [Execute 07-01]: TikTok URL fetch deduplication via lastFetchedUrl ref
+- [Execute 07-01]: Paste handler uses setTimeout(0) to defer fetch after input state update
 - [Plan]: 12 phases, 26 plans derived from deep 6-agent analysis of current engine gaps
 - [Plan]: Switch DeepSeek from R1 to V3.2-reasoning (70% cheaper, 2x faster)
 - [Plan]: Full video analysis via Gemini Flash-Lite (~$0.008/30s video)
@@ -102,10 +107,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 06-01-PLAN.md (Infrastructure hardening: rate limiting, caching, circuit breaker, resilience)
+Stopped at: Completed 07-01-PLAN.md (Upload & input UI components: VideoUpload + TikTokUrlInput)
 Resume file: None
-Next: Execute Phase 7
+Next: Execute 07-02-PLAN.md (Content form with tabs)
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Phase 6 complete (rate limiting + TTL caching + circuit breaker + partial failure recovery)*
+*Last updated: 2026-02-16 -- Phase 7 Plan 1 complete (VideoUpload + TikTokUrlInput components)*
