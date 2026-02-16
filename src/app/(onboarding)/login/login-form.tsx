@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
+import { Clock, Info } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { InputField } from "@/components/ui/input";
@@ -32,7 +33,7 @@ export function LoginForm({ error, expired, next, message }: LoginFormProps) {
 
   return (
     <div
-      className="w-full max-w-sm rounded-xl border border-white/[0.06] p-8"
+      className="w-full max-w-[400px] rounded-[12px] border border-white/[0.06] px-8 py-10"
       style={{
         backgroundImage:
           "linear-gradient(137deg, rgba(17, 18, 20, 0.75) 4.87%, rgba(12, 13, 15, 0.9) 75.88%)",
@@ -41,7 +42,7 @@ export function LoginForm({ error, expired, next, message }: LoginFormProps) {
         boxShadow: "rgba(255,255,255,0.15) 0px 1px 1px 0px inset",
       }}
     >
-      <div className="mb-6 text-center">
+      <div className="mb-8 text-center">
         <Heading level={3} className="mb-2">
           Welcome back
         </Heading>
@@ -51,16 +52,18 @@ export function LoginForm({ error, expired, next, message }: LoginFormProps) {
       </div>
 
       {message && (
-        <div className="mb-4 rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
-          <Text size="sm" className="text-center text-foreground-secondary">
+        <div className="mb-4 flex items-start gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
+          <Info size={14} className="mt-0.5 shrink-0 text-foreground-secondary" />
+          <Text size="sm" className="text-foreground-secondary">
             {message}
           </Text>
         </div>
       )}
 
       {expired && (
-        <div className="mb-4 rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
-          <Text size="sm" className="text-center text-foreground-secondary">
+        <div className="mb-4 flex items-start gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
+          <Clock size={14} className="mt-0.5 shrink-0 text-foreground-secondary" />
+          <Text size="sm" className="text-foreground-secondary">
             Your session has expired. Please sign in again.
           </Text>
         </div>
@@ -119,7 +122,7 @@ export function LoginForm({ error, expired, next, message }: LoginFormProps) {
         </Button>
       </div>
 
-      <Text size="sm" muted className="mt-6 text-center">
+      <Text size="sm" muted className="mt-8 text-center">
         Don&apos;t have an account?{" "}
         <Link href="/signup" className="text-accent hover:underline">
           Sign up

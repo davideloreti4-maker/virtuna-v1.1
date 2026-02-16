@@ -43,7 +43,7 @@ export function SignupForm({ error, next }: SignupFormProps) {
 
   return (
     <div
-      className="w-full max-w-sm rounded-xl border border-white/[0.06] p-8"
+      className="w-full max-w-[400px] rounded-[12px] border border-white/[0.06] px-8 py-10"
       style={{
         backgroundImage:
           "linear-gradient(137deg, rgba(17, 18, 20, 0.75) 4.87%, rgba(12, 13, 15, 0.9) 75.88%)",
@@ -52,7 +52,7 @@ export function SignupForm({ error, next }: SignupFormProps) {
         boxShadow: "rgba(255,255,255,0.15) 0px 1px 1px 0px inset",
       }}
     >
-      <div className="mb-6 text-center">
+      <div className="mb-8 text-center">
         <Heading level={3} className="mb-2">
           Create your account
         </Heading>
@@ -124,7 +124,7 @@ export function SignupForm({ error, next }: SignupFormProps) {
         </Button>
       </div>
 
-      <Text size="sm" muted className="mt-6 text-center">
+      <Text size="sm" muted className="mt-8 text-center">
         Already have an account?{" "}
         <Link href="/login" className="text-accent hover:underline">
           Sign in
