@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from "react";
 import {
   House,
   TrendUp,
-  Lightbulb,
   Briefcase,
   CreditCard,
   User,
@@ -31,10 +30,6 @@ import { SidebarNavItem } from "./sidebar-nav-item";
 const navItems = [
   { label: "Dashboard", icon: House, id: "dashboard", href: "/dashboard" },
   { label: "Trending", icon: TrendUp, id: "trending", href: "/trending" },
-] as const;
-
-const navItemsAfterSelector = [
-  { label: "Content Intelligence", icon: Lightbulb, id: "content-intelligence", href: "/dashboard" },
   { label: "Referrals", icon: Briefcase, id: "referrals", href: "/referrals" },
 ] as const;
 
@@ -170,26 +165,9 @@ export function Sidebar() {
         {/* Separator */}
         <div className="mx-4 my-2 border-t border-border-glass" />
 
-        {/* Top navigation items (Dashboard, Trending) */}
-        <nav className="flex flex-col gap-0.5 px-2">
-          {navItems.map((item) => (
-            <SidebarNavItem
-              key={item.id}
-              icon={item.icon}
-              label={item.label}
-              isActive={
-                item.id === "dashboard"
-                  ? pathname === "/dashboard"
-                  : pathname === item.href
-              }
-              onClick={() => router.push(item.href)}
-            />
-          ))}
-        </nav>
-
-        {/* TikTok Account Selector */}
+        {/* TikTok Account Section */}
         {tiktokHandle ? (
-          <div className="mx-2 my-2">
+          <div className="mx-2 my-1">
             <div className="flex items-center gap-2 rounded-lg bg-white/[0.04] px-3 py-2">
               <div className={cn(
                 "h-6 w-6 shrink-0 rounded-full flex items-center justify-center",
@@ -211,7 +189,7 @@ export function Sidebar() {
             description="Connect your TikTok handle to unlock personalized content intelligence"
             position="right"
           >
-            <div className="mx-2 my-2">
+            <div className="mx-2 my-1">
               <div className="flex items-center gap-2 rounded-lg bg-white/[0.04] px-3 py-2">
                 <div className="h-6 w-6 shrink-0 rounded-full bg-white/[0.1]" />
                 <Text as="span" size="sm" className="text-foreground-muted truncate">
@@ -222,17 +200,22 @@ export function Sidebar() {
           </ContextualTooltip>
         )}
 
-        {/* Navigation items after selector (Content Intelligence, Referrals) */}
+        {/* Separator */}
+        <div className="mx-4 my-2 border-t border-border-glass" />
+
+        {/* Top navigation items (Dashboard, Trending, Referrals) */}
         <nav className="flex flex-col gap-0.5 px-2">
-          {navItemsAfterSelector.map((item) => (
+          {navItems.map((item) => (
             <SidebarNavItem
               key={item.id}
               icon={item.icon}
               label={item.label}
               isActive={
-                item.id === "content-intelligence"
+                item.id === "dashboard"
                   ? pathname === "/dashboard"
-                  : pathname.startsWith("/referrals")
+                  : item.id === "referrals"
+                    ? pathname.startsWith("/referrals")
+                    : pathname === item.href
               }
               onClick={() => router.push(item.href)}
             />
