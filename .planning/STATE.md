@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered content intelligence that tells creators whether their content will resonate -- and exactly why -- before they post.
-**Current focus:** Phase 10 in progress -- calibration & ML training
+**Current focus:** Phase 10 complete -- calibration & ML training done
 
 ## Current Position
 
 **Milestone:** Prediction Engine v2
-**Phase:** 10 of 12 (Calibration & ML Training) -- IN PROGRESS
-**Plan:** 4 of 5 in current phase (10-01, 10-02, 10-03, 10-04 complete)
-**Status:** Plans 10-01, 10-02, 10-03, 10-04 complete -- ECE pipeline + Platt scaling + training data + ML model
-**Last activity:** 2026-02-16 -- Phase 10 Plan 4 executed (ML model training)
+**Phase:** 10 of 12 (Calibration & ML Training) -- COMPLETE
+**Plan:** 5 of 5 in current phase (all complete)
+**Status:** Phase 10 complete -- ECE pipeline + Platt scaling + training data + ML model + cron integration
+**Last activity:** 2026-02-16 -- Phase 10 Plan 5 executed (cron integration)
 
-Progress: [████████████████████░] 76.9% (20/26 plans)
+Progress: [█████████████████████] 80.8% (21/26 plans)
 
 ## Performance Metrics
 
@@ -41,6 +41,7 @@ Progress: [████████████████████░] 76.9
 | 10    | 02   | 2min     | 1     | 1     |
 | 10    | 03   | 2min     | 1     | 2     |
 | 10    | 04   | 2min     | 1     | 2     |
+| 10    | 05   | 2min     | 2     | 3     |
 
 ## Accumulated Context
 
@@ -146,6 +147,10 @@ Progress: [████████████████████░] 76.9
 - [Execute 10-04]: Module-level cachedWeights for single-load-per-cold-start performance
 - [Execute 10-04]: Tier midpoint score conversion: [12.5, 35, 55, 72.5, 90] weighted by class probabilities
 - [Execute 10-04]: featureVectorToMLInput uses 0.5 defaults for engagement metrics not in FeatureVector
+- [Execute 10-05]: 90-day lookback window for calibration audit to ensure meaningful ECE sample size
+- [Execute 10-05]: ECE drift threshold 0.15 — below 0.10 well-calibrated, 0.10-0.15 acceptable, above needs attention
+- [Execute 10-05]: Training data from scraped videos not outcomes — removed MIN_OUTCOMES_FOR_TRAINING gate
+- [Execute 10-05]: Outcome count in retrain-ml response for monitoring only, does not gate training
 - [Plan]: Personas are theater/UX, not accuracy signal -- lightweight 2-3 sentences each
 - [Plan]: Remove conversation_themes and variants to redirect tokens to accuracy
 - [Plan]: Pass structured Gemini signals to DeepSeek (no scores) to prevent anchoring
@@ -163,10 +168,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 10-04-PLAN.md (ML model training)
+Stopped at: Completed 10-05-PLAN.md (cron integration — Phase 10 complete)
 Resume file: None
-Next: Continue Phase 10 remaining plan (10-05)
+Next: Phase 11
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Phase 10 Plans 1+2+3+4 complete (ECE pipeline + Platt scaling + training data + ML model)*
+*Last updated: 2026-02-16 -- Phase 10 complete (all 5 plans: ECE + Platt + training data + ML model + crons)*
