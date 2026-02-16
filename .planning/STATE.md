@@ -10,24 +10,24 @@ See: .planning/PROJECT.md (updated 2026-02-16)
 ## Current Position
 
 Phase: 1 of 7 (Data Foundation)
-Plan: 0 of 2 in current phase
-Status: Ready to plan
-Last activity: 2026-02-16 -- Roadmap created (7 phases, 13 plans, 41 requirements)
+Plan: 1 of 2 in current phase
+Status: Executing
+Last activity: 2026-02-16 -- Completed 01-01 (Competitor Schema)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 8%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
-- Average duration: --
-- Total execution time: 0 hours
+- Total plans completed: 1
+- Average duration: 2 min
+- Total execution time: 0.03 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 01-data-foundation | 1 | 2 min | 2 min |
 
 **Recent Trend:**
 - Last 5 plans: --
@@ -49,6 +49,10 @@ Recent decisions affecting current work:
 - RLS must use `(select auth.uid())` pattern for performance
 - Vercel cron for scheduled re-scraping
 - AI insights via DeepSeek/Gemini (leverages existing prediction engine infrastructure)
+- BIGINT for all metric counters (viral creators exceed MAX_INT)
+- Junction table deduplication model for shared competitor profiles
+- TEXT+CHECK for scrape_status (not ENUM) matching project convention
+- Service role client as factory function for webhook/cron contexts
 
 ### Pending Todos
 
@@ -63,10 +67,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Roadmap created with 7 phases
+Stopped at: Completed 01-01-PLAN.md (Competitor Schema)
 Resume file: None
-Next: `/gsd:plan-phase 1` to plan Data Foundation
+Next: Execute 01-02-PLAN.md (Apify scraping integration)
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Roadmap created*
+*Last updated: 2026-02-16 -- Completed 01-01 Competitor Schema*
