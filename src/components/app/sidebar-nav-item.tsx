@@ -20,8 +20,8 @@ interface SidebarNavItemProps {
  * Navigation item for sidebar menus.
  * Displays icon-left, label-right layout using Button ghost + Icon + Text.
  *
- * Active state: filled background (bg-active) with foreground text color
- * and icon weight changes to "fill" for visual emphasis.
+ * Active state: subtle filled background (white/6%) with foreground text color
+ * and icon weight changes to "fill" for visual emphasis. Matches Raycast's selection style.
  */
 export function SidebarNavItem({
   icon,
@@ -39,7 +39,7 @@ export function SidebarNavItem({
       className={cn(
         "w-full justify-start gap-3",
         isActive
-          ? "bg-active text-foreground"
+          ? "bg-white/[0.06] text-foreground"
           : "text-foreground-secondary",
         className
       )}
