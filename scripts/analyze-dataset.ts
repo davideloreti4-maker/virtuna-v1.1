@@ -4,118 +4,32 @@ import { writeFileSync } from "fs";
 import { resolve } from "path";
 import type { Database } from "../src/types/database.types";
 
-// Load .env.local (Next.js convention) — dotenv default only loads .env
+// Load .env.local (Next.js convention)
 config({ path: resolve(__dirname, "../.env.local") });
 
 // ─── Types ──────────────────────────────────────────────────────────
 type ScrapedVideo = Database["public"]["Tables"]["scraped_videos"]["Row"];
 
 interface EnrichedVideo extends ScrapedVideo {
-  engagement_rate: number;
-  like_ratio: number;
-  comment_ratio: number;
-  share_ratio: number;
-}
-
-interface DurationBucket {
-  range: string;
-  min: number;
-  max: number;
-  count: number;
-  median_er: number;
-}
-
-interface ViralityTier {
-  tier: number;
-  label: string;
-  score_range: [number, number];
-  engagement_rate_threshold: { min: number; max: number };
-  video_count: number;
-  percentage: number;
-}
-
-interface HashtagEntry {
-  tag: string;
-  count: number;
-  median_er: number;
-  is_power_hashtag: boolean;
-}
-
-interface SoundEntry {
-  name: string;
-  count: number;
-  median_er: number;
-  viral_overrepresentation: number;
-}
-
-interface KeyDifferentiator {
-  factor: string;
-  viral_avg: number;
-  average_avg: number;
-  difference_pct: number;
-  description: string;
-}
-
-interface CategoryEntry {
-  name: string;
-  count: number;
-  median_er: number;
-  median_views: number;
-}
-
-interface CalibrationBaseline {
-  generated_at: string;
-  dataset_stats: {
-    total_fetched: number;
-    duplicates_removed: number;
-    outliers_removed: number;
-    outliers_breakdown: {
-      zero_views: number;
-      null_views: number;
-      extreme_outliers: number;
-      zero_duration: number;
-      null_duration: number;
-    };
-    analyzed_count: number;
-  };
-  virality_tiers: ViralityTier[];
-  engagement_percentiles: Record<string, number>;
-  duration_sweet_spot: {
-    optimal_range_seconds: [number, number];
-    median_engagement_rate: number;
-    duration_buckets: DurationBucket[];
-  };
-  top_hashtags: HashtagEntry[];
-  top_sounds: SoundEntry[];
-  engagement_ratios: {
-    likes_per_100_views: number;
-    comments_per_100_views: number;
-    shares_per_100_views: number;
-    like_comment_share_ratio: string;
-  };
-  key_differentiators: KeyDifferentiator[];
-  view_percentiles: Record<string, number>;
-  categories: CategoryEntry[];
-  distribution_stats: {
-    views: Record<string, number>;
-    likes: Record<string, number>;
-    shares: Record<string, number>;
-    comments: Record<string, number>;
-    engagement_rate: Record<string, number>;
-    duration_seconds: Record<string, number>;
-  };
+  // Algorithm-aligned metrics
+  weighted_engagement_score: number; // (likes×1 + comments×2 + shares×3) / views
+  share_rate: number; // shares/views — highest-value measurable signal
+  comment_rate: number; // comments/views — conversation signal
+  like_rate: number; // likes/views — lowest-value signal
+  share_to_like_ratio: number; // shares/likes — distribution vs passive consumption
+  comment_to_like_ratio: number; // comments/likes — conversation depth
+  // Legacy simple ER (kept for backwards compat)
+  simple_engagement_rate: number; // (likes+comments+shares)/views
 }
 
 // ─── Utility Functions ──────────────────────────────────────────────
 
 const log = (msg: string) => console.log(`[analyze] ${msg}`);
 
-/** Sort numbers ascending for percentile computation */
 function sortedNumbers(arr: number[]): number[] {
   return [...arr].sort((a, b) => a - b);
 }
 
-/** Compute a percentile value from a sorted array using linear interpolation */
 function percentile(sorted: number[], p: number): number {
   if (sorted.length === 0) return 0;
   const index = (p / 100) * (sorted.length - 1);
@@ -126,19 +40,15 @@ function percentile(sorted: number[], p: number): number {
   return sorted[lower]! * (1 - weight) + sorted[upper]! * weight;
 }
 
-/** Compute median (p50) */
 function median(arr: number[]): number {
-  const sorted = sortedNumbers(arr);
-  return percentile(sorted, 50);
+  return percentile(sortedNumbers(arr), 50);
 }
 
-/** Compute mean */
 function mean(arr: number[]): number {
   if (arr.length === 0) return 0;
   return arr.reduce((sum, v) => sum + v, 0) / arr.length;
 }
 
-/** Compute standard deviation */
 function stddev(arr: number[]): number {
   if (arr.length < 2) return 0;
   const m = mean(arr);
@@ -146,8 +56,7 @@ function stddev(arr: number[]): number {
   return Math.sqrt(sqDiffs.reduce((sum, v) => sum + v, 0) / (arr.length - 1));
 }
 
-/** Compute all standard percentiles for an array */
-function computePercentiles(arr: number[]): Record<string, number> {
+function computePercentiles(arr: number[]) {
   const sorted = sortedNumbers(arr);
   return {
     p10: round6(percentile(sorted, 10)),
@@ -162,14 +71,16 @@ function computePercentiles(arr: number[]): Record<string, number> {
   };
 }
 
-/** Round to 6 decimal places to avoid floating point noise */
 function round6(n: number): number {
   return Math.round(n * 1_000_000) / 1_000_000;
 }
 
-/** Round to 2 decimal places for human-readable output */
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+function pct(n: number): string {
+  return (n * 100).toFixed(3) + "%";
 }
 
 // ─── Main Script ────────────────────────────────────────────────────
@@ -180,7 +91,6 @@ async function main() {
 
   if (!supabaseUrl || !serviceRoleKey) {
     log("ERROR: Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local");
-    log("Ensure .env.local is present with both variables set.");
     process.exit(1);
   }
 
@@ -219,12 +129,12 @@ async function main() {
   log(`  Fetched ${totalFetched} total rows`);
 
   if (totalFetched === 0) {
-    log("WARNING: No data found in scraped_videos. Producing empty-state outputs.");
+    log("WARNING: No data found. Producing empty outputs.");
     writeEmptyOutputs();
     process.exit(0);
   }
 
-  // Deduplicate by platform_video_id — keep latest (highest created_at)
+  // Deduplicate by platform_video_id — keep latest
   const deduped = new Map<string, ScrapedVideo>();
   for (const row of allRows) {
     const key = row.platform_video_id;
@@ -236,497 +146,437 @@ async function main() {
 
   const uniqueVideos = Array.from(deduped.values());
   const duplicatesRemoved = totalFetched - uniqueVideos.length;
-  log(`  Duplicates removed: ${duplicatesRemoved}`);
-  log(`  Unique videos: ${uniqueVideos.length}`);
+  log(`  Duplicates removed: ${duplicatesRemoved}, unique: ${uniqueVideos.length}`);
 
   // ─── Step 2: Outlier Filtering ─────────────────────────────────
   log("Step 2: Filtering outliers...");
 
-  let nullViews = 0;
-  let zeroViews = 0;
-  let extremeOutliers = 0;
-  let zeroDuration = 0;
-  let nullDuration = 0;
+  let nullViews = 0, zeroViews = 0, extremeOutliers = 0, zeroDuration = 0, nullDuration = 0;
 
-  // First pass: remove null/0 views to compute p99.5 on valid data
   const viewsValid = uniqueVideos.filter((v) => {
-    if (v.views === null || v.views === undefined) {
-      nullViews++;
-      return false;
-    }
-    if (v.views === 0) {
-      zeroViews++;
-      return false;
-    }
+    if (v.views === null || v.views === undefined) { nullViews++; return false; }
+    if (v.views === 0) { zeroViews++; return false; }
     return true;
   });
 
-  // Compute p99.5 threshold for celebrity/extreme outlier removal
   const viewValues = viewsValid.map((v) => Number(v.views));
   const sortedViews = sortedNumbers(viewValues);
   const p995Views = percentile(sortedViews, 99.5);
   log(`  View p99.5 threshold: ${p995Views.toLocaleString()}`);
 
-  // Remove extreme outliers and null/0 duration
   const filtered = viewsValid.filter((v) => {
-    if (Number(v.views) > p995Views) {
-      extremeOutliers++;
-      return false;
-    }
-    if (v.duration_seconds === null || v.duration_seconds === undefined) {
-      nullDuration++;
-      return false;
-    }
-    if (v.duration_seconds === 0) {
-      zeroDuration++;
-      return false;
-    }
+    if (Number(v.views) > p995Views) { extremeOutliers++; return false; }
+    if (v.duration_seconds === null || v.duration_seconds === undefined) { nullDuration++; return false; }
+    if (v.duration_seconds === 0) { zeroDuration++; return false; }
     return true;
   });
 
   const outliersRemoved = nullViews + zeroViews + extremeOutliers + zeroDuration + nullDuration;
-  log(`  Null views: ${nullViews}`);
-  log(`  Zero views: ${zeroViews}`);
-  log(`  Extreme outliers (views > ${p995Views.toLocaleString()}): ${extremeOutliers}`);
-  log(`  Null duration: ${nullDuration}`);
-  log(`  Zero duration: ${zeroDuration}`);
-  log(`  Total outliers removed: ${outliersRemoved}`);
+  log(`  Outliers removed: ${outliersRemoved} (null views: ${nullViews}, zero views: ${zeroViews}, extreme: ${extremeOutliers}, null dur: ${nullDuration}, zero dur: ${zeroDuration})`);
   log(`  Analyzed count: ${filtered.length}`);
 
   if (filtered.length === 0) {
-    log("WARNING: All videos filtered out. Producing empty-state outputs.");
+    log("WARNING: All videos filtered. Producing empty outputs.");
     writeEmptyOutputs();
     process.exit(0);
   }
 
-  // ─── Step 3: Compute Engagement Metrics ────────────────────────
-  log("Step 3: Computing engagement metrics...");
+  // ─── Step 3: Compute Algorithm-Aligned Metrics ─────────────────
+  log("Step 3: Computing algorithm-aligned engagement metrics...");
+  log("  Using TikTok 2025 point system: likes×1, comments×2, shares×3");
 
   const enriched: EnrichedVideo[] = filtered.map((v) => {
-    const views = Number(v.views) || 1; // avoid division by zero (shouldn't happen after filtering)
+    const views = Number(v.views) || 1;
     const likes = Number(v.likes) || 0;
     const comments = Number(v.comments) || 0;
     const shares = Number(v.shares) || 0;
 
     return {
       ...v,
-      engagement_rate: (likes + comments + shares) / views,
-      like_ratio: likes / views,
-      comment_ratio: comments / views,
-      share_ratio: shares / views,
+      // Primary: algorithm-weighted score
+      weighted_engagement_score: (likes * 1 + comments * 2 + shares * 3) / views,
+      // Individual signal rates (ordered by algo importance)
+      share_rate: shares / views,
+      comment_rate: comments / views,
+      like_rate: likes / views,
+      // Depth ratios — these reveal content quality independent of reach
+      share_to_like_ratio: likes > 0 ? shares / likes : 0,
+      comment_to_like_ratio: likes > 0 ? comments / likes : 0,
+      // Legacy
+      simple_engagement_rate: (likes + comments + shares) / views,
     };
   });
 
-  log(`  Enriched ${enriched.length} videos with engagement metrics`);
+  log(`  Enriched ${enriched.length} videos`);
 
-  // ─── Step 4: Statistical Analysis ──────────────────────────────
-  log("Step 4: Computing statistical distributions...");
+  // ─── Step 4: Primary KPI Analysis ──────────────────────────────
+  log("Step 4: Analyzing primary KPIs...");
 
-  const erValues = enriched.map((v) => v.engagement_rate);
+  const wesValues = enriched.map((v) => v.weighted_engagement_score);
+  const shareRateValues = enriched.map((v) => v.share_rate);
+  const commentRateValues = enriched.map((v) => v.comment_rate);
+  const likeRateValues = enriched.map((v) => v.like_rate);
+  const stlValues = enriched.map((v) => v.share_to_like_ratio);
+  const ctlValues = enriched.map((v) => v.comment_to_like_ratio);
+  const simpleERValues = enriched.map((v) => v.simple_engagement_rate);
   const viewsArr = enriched.map((v) => Number(v.views));
-  const likesArr = enriched.map((v) => Number(v.likes) || 0);
-  const sharesArr = enriched.map((v) => Number(v.shares) || 0);
-  const commentsArr = enriched.map((v) => Number(v.comments) || 0);
   const durationsArr = enriched.map((v) => Number(v.duration_seconds));
 
-  const distributionStats = {
-    views: computePercentiles(viewsArr),
-    likes: computePercentiles(likesArr),
-    shares: computePercentiles(sharesArr),
-    comments: computePercentiles(commentsArr),
-    engagement_rate: computePercentiles(erValues),
-    duration_seconds: computePercentiles(durationsArr),
+  const primaryKPIs = {
+    weighted_engagement_score: {
+      formula: "(likes×1 + comments×2 + shares×3) / views",
+      why: "Mirrors TikTok's 2025 algo point system. Shares (3x) and comments (2x) weighted above likes (1x). Does NOT include completion/rewatches (not available from scraped data).",
+      percentiles: computePercentiles(wesValues),
+    },
+    share_rate: {
+      formula: "shares / views",
+      why: "Highest-value measurable signal. Shares are weighted 3x likes in TikTok's algo. A share rate of 2-5% indicates strong viral potential (industry benchmark 2025).",
+      percentiles: computePercentiles(shareRateValues),
+      viral_threshold: round6(percentile(sortedNumbers(shareRateValues), 90)),
+      industry_benchmark: "2-5% = strong viral potential",
+    },
+    comment_rate: {
+      formula: "comments / views",
+      why: "Conversation signal, weighted 2x likes. Comment quality matters more than quantity in 2025 algo, but we can only measure quantity from scraped data.",
+      percentiles: computePercentiles(commentRateValues),
+    },
+    like_rate: {
+      formula: "likes / views",
+      why: "Lowest algo signal (1x weight). 'Participation trophy' per TikTok's own point system. Still useful as baseline engagement indicator.",
+      percentiles: computePercentiles(likeRateValues),
+    },
+    share_to_like_ratio: {
+      formula: "shares / likes",
+      why: "Measures active distribution vs passive consumption. High ratio = content people feel compelled to spread, not just tap 'like'. Strong virality amplifier.",
+      percentiles: computePercentiles(stlValues),
+      viral_indicator: round6(percentile(sortedNumbers(stlValues), 90)),
+    },
+    comment_to_like_ratio: {
+      formula: "comments / likes",
+      why: "Measures conversation depth. High ratio = content that provokes discussion, not just passive approval.",
+      percentiles: computePercentiles(ctlValues),
+    },
   };
 
-  log(`  Engagement rate — p50: ${distributionStats.engagement_rate.p50}, p90: ${distributionStats.engagement_rate.p90}`);
-  log(`  Views — p50: ${distributionStats.views.p50}, p90: ${distributionStats.views.p90}`);
+  log(`  Weighted engagement score — p50: ${pct(primaryKPIs.weighted_engagement_score.percentiles.p50)}, p90: ${pct(primaryKPIs.weighted_engagement_score.percentiles.p90)}`);
+  log(`  Share rate — p50: ${pct(primaryKPIs.share_rate.percentiles.p50)}, p90 (viral threshold): ${pct(primaryKPIs.share_rate.viral_threshold)}`);
+  log(`  Share-to-like ratio — p50: ${primaryKPIs.share_to_like_ratio.percentiles.p50.toFixed(4)}, p90: ${primaryKPIs.share_to_like_ratio.viral_indicator.toFixed(4)}`);
 
-  // Category counts
-  const categoryCounts = new Map<string, number>();
-  for (const v of enriched) {
-    if (v.category) {
-      categoryCounts.set(v.category, (categoryCounts.get(v.category) || 0) + 1);
-    }
-  }
-  log(`  Categories with data: ${categoryCounts.size}`);
+  // ─── Step 5: Virality Tiers (based on weighted score) ──────────
+  log("Step 5: Deriving virality tiers from WEIGHTED engagement score...");
 
-  // ─── Step 5: Derive Virality Tiers ─────────────────────────────
-  log("Step 5: Deriving virality tiers from engagement rate distribution...");
+  const sortedWES = sortedNumbers(wesValues);
+  const wesP25 = percentile(sortedWES, 25);
+  const wesP50 = percentile(sortedWES, 50);
+  const wesP75 = percentile(sortedWES, 75);
+  const wesP90 = percentile(sortedWES, 90);
+  const wesMin = sortedWES[0]!;
+  const wesMax = sortedWES[sortedWES.length - 1]!;
 
-  const sortedER = sortedNumbers(erValues);
-  const erP25 = percentile(sortedER, 25);
-  const erP50 = percentile(sortedER, 50);
-  const erP75 = percentile(sortedER, 75);
-  const erP90 = percentile(sortedER, 90);
-  const erMin = sortedER[0]!;
-  const erMax = sortedER[sortedER.length - 1]!;
-
-  // Define tiers based on ER percentile boundaries
-  const tierBoundaries: Array<{ min: number; max: number }> = [
-    { min: erMin, max: erP25 },     // Tier 1: below p25
-    { min: erP25, max: erP50 },     // Tier 2: p25-p50
-    { min: erP50, max: erP75 },     // Tier 3: p50-p75
-    { min: erP75, max: erP90 },     // Tier 4: p75-p90
-    { min: erP90, max: erMax },     // Tier 5: above p90
+  const tierBoundaries = [
+    { min: wesMin, max: wesP25 },
+    { min: wesP25, max: wesP50 },
+    { min: wesP50, max: wesP75 },
+    { min: wesP75, max: wesP90 },
+    { min: wesP90, max: wesMax },
   ];
 
-  const tierLabels = [
-    "Unlikely to perform",
-    "Below average",
-    "Average",
-    "Strong potential",
-    "Viral potential",
-  ];
+  const tierLabels = ["Unlikely to perform", "Below average", "Average", "Strong potential", "Viral potential"];
+  const tierScoreRanges: [number, number][] = [[0, 25], [25, 45], [45, 65], [65, 80], [80, 100]];
 
-  const tierScoreRanges: Array<[number, number]> = [
-    [0, 25],
-    [25, 45],
-    [45, 65],
-    [65, 80],
-    [80, 100],
-  ];
-
-  const viralityTiers: ViralityTier[] = tierBoundaries.map((bounds, i) => {
-    // Count videos in this tier
+  const viralityTiers = tierBoundaries.map((bounds, i) => {
     const count = enriched.filter((v) => {
-      if (i === 0) return v.engagement_rate < bounds.max;
-      if (i === tierBoundaries.length - 1) return v.engagement_rate >= bounds.min;
-      return v.engagement_rate >= bounds.min && v.engagement_rate < bounds.max;
+      if (i === 0) return v.weighted_engagement_score < bounds.max;
+      if (i === tierBoundaries.length - 1) return v.weighted_engagement_score >= bounds.min;
+      return v.weighted_engagement_score >= bounds.min && v.weighted_engagement_score < bounds.max;
     }).length;
+
+    // Also compute the median share_rate and comment_rate for this tier
+    const tierVideos = enriched.filter((v) => {
+      if (i === 0) return v.weighted_engagement_score < bounds.max;
+      if (i === tierBoundaries.length - 1) return v.weighted_engagement_score >= bounds.min;
+      return v.weighted_engagement_score >= bounds.min && v.weighted_engagement_score < bounds.max;
+    });
 
     return {
       tier: i + 1,
       label: tierLabels[i]!,
       score_range: tierScoreRanges[i]!,
-      engagement_rate_threshold: {
-        min: round6(bounds.min),
-        max: round6(bounds.max),
-      },
+      weighted_score_threshold: { min: round6(bounds.min), max: round6(bounds.max) },
+      median_share_rate: round6(median(tierVideos.map((v) => v.share_rate))),
+      median_comment_rate: round6(median(tierVideos.map((v) => v.comment_rate))),
+      median_like_rate: round6(median(tierVideos.map((v) => v.like_rate))),
       video_count: count,
       percentage: round2((count / enriched.length) * 100),
     };
   });
 
-  // Validate: check distribution shape
-  const tier3Pct = viralityTiers[2]!.percentage;
-  if (tier3Pct < 15 || tier3Pct > 40) {
-    log(`  NOTE: Tier 3 (Average) has ${tier3Pct}% of videos — distribution may be skewed.`);
-  }
-
   for (const t of viralityTiers) {
-    log(`  Tier ${t.tier} (${t.label}): ${t.video_count} videos (${t.percentage}%), ER ${t.engagement_rate_threshold.min.toFixed(4)}-${t.engagement_rate_threshold.max.toFixed(4)}`);
+    log(`  Tier ${t.tier} (${t.label}): ${t.video_count} videos (${t.percentage}%), WES ${pct(t.weighted_score_threshold.min)}-${pct(t.weighted_score_threshold.max)}, share rate ${pct(t.median_share_rate)}`);
   }
 
-  // ─── Step 6: Key Differentiators (Viral vs Average) ────────────
-  log("Step 6: Computing key differentiators (viral vs average)...");
+  // ─── Step 6: Viral vs Average — Algorithm-Aligned Differentiators ─
+  log("Step 6: Computing algorithm-aligned differentiators (viral vs average)...");
 
-  const viralVideos = enriched.filter((v) => v.engagement_rate >= erP90);
+  const viralVideos = enriched.filter((v) => v.weighted_engagement_score >= wesP90);
   const averageVideos = enriched.filter((v) => {
-    const erP40 = percentile(sortedER, 40);
-    const erP60 = percentile(sortedER, 60);
-    return v.engagement_rate >= erP40 && v.engagement_rate <= erP60;
+    const wesP40 = percentile(sortedWES, 40);
+    const wesP60 = percentile(sortedWES, 60);
+    return v.weighted_engagement_score >= wesP40 && v.weighted_engagement_score <= wesP60;
   });
 
-  log(`  Viral-tier (p90+): ${viralVideos.length} videos`);
-  log(`  Average-tier (p40-p60): ${averageVideos.length} videos`);
+  log(`  Viral-tier (WES p90+): ${viralVideos.length} videos`);
+  log(`  Average-tier (WES p40-p60): ${averageVideos.length} videos`);
 
-  const differentiators: KeyDifferentiator[] = [];
-
-  // Duration comparison
-  const viralDuration = mean(viralVideos.map((v) => Number(v.duration_seconds)));
-  const avgDuration = mean(averageVideos.map((v) => Number(v.duration_seconds)));
-  const durationDiff = avgDuration > 0 ? ((viralDuration - avgDuration) / avgDuration) * 100 : 0;
-  differentiators.push({
-    factor: "duration_seconds",
-    viral_avg: round2(viralDuration),
-    average_avg: round2(avgDuration),
-    difference_pct: round2(durationDiff),
-    description: `Viral videos are ${Math.abs(round2(durationDiff))}% ${durationDiff < 0 ? "shorter" : "longer"} on average (${round2(viralDuration)}s vs ${round2(avgDuration)}s)`,
-  });
-
-  // Hashtag count comparison
-  const viralHashtagCount = mean(viralVideos.map((v) => (v.hashtags ?? []).length));
-  const avgHashtagCount = mean(averageVideos.map((v) => (v.hashtags ?? []).length));
-  const hashtagDiff = avgHashtagCount > 0 ? ((viralHashtagCount - avgHashtagCount) / avgHashtagCount) * 100 : 0;
-  differentiators.push({
-    factor: "hashtag_count",
-    viral_avg: round2(viralHashtagCount),
-    average_avg: round2(avgHashtagCount),
-    difference_pct: round2(hashtagDiff),
-    description: `Viral videos use ${Math.abs(round2(hashtagDiff))}% ${hashtagDiff < 0 ? "fewer" : "more"} hashtags (${round2(viralHashtagCount)} vs ${round2(avgHashtagCount)})`,
-  });
-
-  // Caption length comparison
-  const viralCaptionLen = mean(viralVideos.map((v) => (v.description ?? "").length));
-  const avgCaptionLen = mean(averageVideos.map((v) => (v.description ?? "").length));
-  const captionDiff = avgCaptionLen > 0 ? ((viralCaptionLen - avgCaptionLen) / avgCaptionLen) * 100 : 0;
-  differentiators.push({
-    factor: "caption_length",
-    viral_avg: round2(viralCaptionLen),
-    average_avg: round2(avgCaptionLen),
-    difference_pct: round2(captionDiff),
-    description: `Viral video captions are ${Math.abs(round2(captionDiff))}% ${captionDiff < 0 ? "shorter" : "longer"} (${round2(viralCaptionLen)} vs ${round2(avgCaptionLen)} chars)`,
-  });
-
-  // Sound usage comparison
-  const viralWithSound = viralVideos.filter((v) => v.sound_name).length;
-  const viralSoundPct = viralVideos.length > 0 ? (viralWithSound / viralVideos.length) * 100 : 0;
-  const avgWithSound = averageVideos.filter((v) => v.sound_name).length;
-  const avgSoundPct = averageVideos.length > 0 ? (avgWithSound / averageVideos.length) * 100 : 0;
-  const soundDiff = avgSoundPct > 0 ? ((viralSoundPct - avgSoundPct) / avgSoundPct) * 100 : 0;
-  differentiators.push({
-    factor: "sound_usage_pct",
-    viral_avg: round2(viralSoundPct),
-    average_avg: round2(avgSoundPct),
-    difference_pct: round2(soundDiff),
-    description: `${round2(viralSoundPct)}% of viral videos have a named sound vs ${round2(avgSoundPct)}% of average (${round2(Math.abs(soundDiff))}% ${soundDiff > 0 ? "higher" : "lower"})`,
-  });
-
-  // Share ratio comparison
-  const viralShareRatio = mean(viralVideos.map((v) => v.share_ratio));
-  const avgShareRatio = mean(averageVideos.map((v) => v.share_ratio));
-  const shareRatioDiff = avgShareRatio > 0 ? ((viralShareRatio - avgShareRatio) / avgShareRatio) * 100 : 0;
-  differentiators.push({
-    factor: "share_ratio",
-    viral_avg: round6(viralShareRatio),
-    average_avg: round6(avgShareRatio),
-    difference_pct: round2(shareRatioDiff),
-    description: `Viral videos have ${Math.abs(round2(shareRatioDiff))}% ${shareRatioDiff > 0 ? "higher" : "lower"} share ratio (${(viralShareRatio * 100).toFixed(3)}% vs ${(avgShareRatio * 100).toFixed(3)}%)`,
-  });
-
-  // Comment ratio comparison
-  const viralCommentRatio = mean(viralVideos.map((v) => v.comment_ratio));
-  const avgCommentRatio = mean(averageVideos.map((v) => v.comment_ratio));
-  const commentRatioDiff = avgCommentRatio > 0 ? ((viralCommentRatio - avgCommentRatio) / avgCommentRatio) * 100 : 0;
-  differentiators.push({
-    factor: "comment_ratio",
-    viral_avg: round6(viralCommentRatio),
-    average_avg: round6(avgCommentRatio),
-    difference_pct: round2(commentRatioDiff),
-    description: `Viral videos have ${Math.abs(round2(commentRatioDiff))}% ${commentRatioDiff > 0 ? "higher" : "lower"} comment ratio (${(viralCommentRatio * 100).toFixed(3)}% vs ${(avgCommentRatio * 100).toFixed(3)}%)`,
-  });
-
-  for (const d of differentiators) {
-    log(`  ${d.description}`);
+  // Compute differentiators — ordered by algorithm importance
+  function diff(factor: string, viralArr: number[], avgArr: number[], unit: string, description: (vAvg: number, aAvg: number, pct: number) => string) {
+    const vAvg = mean(viralArr);
+    const aAvg = mean(avgArr);
+    const diffPct = aAvg > 0 ? ((vAvg - aAvg) / aAvg) * 100 : 0;
+    return {
+      factor,
+      algo_weight: factor === "share_rate" ? "HIGH (3x)" : factor === "comment_rate" ? "MEDIUM (2x)" : factor === "like_rate" ? "LOW (1x)" : "CONTEXT",
+      viral_avg: round6(vAvg),
+      average_avg: round6(aAvg),
+      difference_pct: round2(diffPct),
+      unit,
+      description: description(vAvg, aAvg, diffPct),
+    };
   }
 
-  // ─── Step 7: Pattern Mining ────────────────────────────────────
-  log("Step 7: Mining patterns...");
+  const differentiators = [
+    // Highest algo weight first
+    diff("share_rate", viralVideos.map((v) => v.share_rate), averageVideos.map((v) => v.share_rate), "ratio",
+      (v, a, p) => `Viral videos have ${Math.abs(round2(p))}% higher share rate (${pct(v)} vs ${pct(a)}). Shares are weighted 3x in TikTok's algo — this is the strongest signal we can measure.`),
+    diff("share_to_like_ratio", viralVideos.map((v) => v.share_to_like_ratio), averageVideos.map((v) => v.share_to_like_ratio), "ratio",
+      (v, a, p) => `Viral videos have ${Math.abs(round2(p))}% higher share-to-like ratio (${round2(v)} vs ${round2(a)}). People don't just like viral content — they actively distribute it.`),
+    diff("comment_rate", viralVideos.map((v) => v.comment_rate), averageVideos.map((v) => v.comment_rate), "ratio",
+      (v, a, p) => `Viral videos have ${Math.abs(round2(p))}% higher comment rate (${pct(v)} vs ${pct(a)}). Comments weighted 2x in algo.`),
+    diff("comment_to_like_ratio", viralVideos.map((v) => v.comment_to_like_ratio), averageVideos.map((v) => v.comment_to_like_ratio), "ratio",
+      (v, a, p) => `Viral videos have ${Math.abs(round2(p))}% higher comment-to-like ratio (${round2(v)} vs ${round2(a)}). Deeper conversation signals.`),
+    diff("weighted_engagement_score", viralVideos.map((v) => v.weighted_engagement_score), averageVideos.map((v) => v.weighted_engagement_score), "score",
+      (v, a, p) => `Viral videos have ${Math.abs(round2(p))}% higher weighted engagement score (${pct(v)} vs ${pct(a)}).`),
+    diff("like_rate", viralVideos.map((v) => v.like_rate), averageVideos.map((v) => v.like_rate), "ratio",
+      (v, a, p) => `Viral videos have ${Math.abs(round2(p))}% higher like rate (${pct(v)} vs ${pct(a)}). Lowest algo signal but still present.`),
+    // Context signals
+    diff("duration_seconds", viralVideos.map((v) => Number(v.duration_seconds)), averageVideos.map((v) => Number(v.duration_seconds)), "seconds",
+      (v, a, p) => `Viral videos are ${Math.abs(round2(p))}% ${p < 0 ? "shorter" : "longer"} (${round2(v)}s vs ${round2(a)}s). Shorter = higher likely completion rate.`),
+    diff("caption_length", viralVideos.map((v) => (v.description ?? "").length), averageVideos.map((v) => (v.description ?? "").length), "chars",
+      (v, a, p) => `Viral video captions are ${Math.abs(round2(p))}% ${p < 0 ? "shorter" : "longer"} (${round2(v)} vs ${round2(a)} chars).`),
+  ];
 
-  // Duration sweet spot — bucket into 5s intervals
-  const durationBucketMap = new Map<string, { min: number; max: number; ers: number[] }>();
+  for (const d of differentiators.slice(0, 5)) {
+    log(`  ${d.factor}: ${d.description.slice(0, 100)}...`);
+  }
+
+  // ─── Step 7: Duration-Engagement Correlation ───────────────────
+  log("Step 7: Analyzing duration-engagement correlation...");
+
+  // Duration buckets with ALL metrics, not just simple ER
+  const durationBucketMap = new Map<string, { min: number; max: number; wes: number[]; share_rates: number[]; comment_rates: number[] }>();
   for (const v of enriched) {
     const dur = Number(v.duration_seconds);
-    let bucketMin: number;
-    let bucketMax: number;
-    if (dur >= 60) {
-      bucketMin = 60;
-      bucketMax = Infinity;
-    } else {
-      bucketMin = Math.floor(dur / 5) * 5;
-      bucketMax = bucketMin + 5;
-    }
+    let bucketMin: number, bucketMax: number;
+    if (dur >= 60) { bucketMin = 60; bucketMax = Infinity; }
+    else { bucketMin = Math.floor(dur / 5) * 5; bucketMax = bucketMin + 5; }
     const label = bucketMax === Infinity ? "60s+" : `${bucketMin}-${bucketMax}s`;
     if (!durationBucketMap.has(label)) {
-      durationBucketMap.set(label, { min: bucketMin, max: bucketMax, ers: [] });
+      durationBucketMap.set(label, { min: bucketMin, max: bucketMax, wes: [], share_rates: [], comment_rates: [] });
     }
-    durationBucketMap.get(label)!.ers.push(v.engagement_rate);
+    const bucket = durationBucketMap.get(label)!;
+    bucket.wes.push(v.weighted_engagement_score);
+    bucket.share_rates.push(v.share_rate);
+    bucket.comment_rates.push(v.comment_rate);
   }
 
-  const durationBuckets: DurationBucket[] = Array.from(durationBucketMap.entries())
+  const durationBuckets = Array.from(durationBucketMap.entries())
     .map(([range, data]) => ({
       range,
       min: data.min,
       max: data.max === Infinity ? 999 : data.max,
-      count: data.ers.length,
-      median_er: round6(median(data.ers)),
+      count: data.wes.length,
+      median_weighted_score: round6(median(data.wes)),
+      median_share_rate: round6(median(data.share_rates)),
+      median_comment_rate: round6(median(data.comment_rates)),
     }))
     .sort((a, b) => a.min - b.min);
 
-  // Find bucket with highest median ER (with at least 10 videos for statistical significance)
+  // Best bucket by weighted score (min 10 videos)
   const significantBuckets = durationBuckets.filter((b) => b.count >= 10);
-  const bestBucket = significantBuckets.length > 0
-    ? significantBuckets.reduce((best, b) => (b.median_er > best.median_er ? b : best))
+  const bestByWES = significantBuckets.length > 0
+    ? significantBuckets.reduce((best, b) => b.median_weighted_score > best.median_weighted_score ? b : best)
+    : durationBuckets[0]!;
+  const bestByShareRate = significantBuckets.length > 0
+    ? significantBuckets.reduce((best, b) => b.median_share_rate > best.median_share_rate ? b : best)
     : durationBuckets[0]!;
 
-  const optimalRange: [number, number] = [bestBucket.min, bestBucket.max === 999 ? 60 : bestBucket.max];
-  log(`  Duration sweet spot: ${optimalRange[0]}-${optimalRange[1]}s (median ER: ${bestBucket.median_er})`);
+  const optimalRange: [number, number] = [bestByWES.min, bestByWES.max === 999 ? 60 : bestByWES.max];
+  log(`  Duration sweet spot (by WES): ${optimalRange[0]}-${optimalRange[1]}s (median WES: ${pct(bestByWES.median_weighted_score)})`);
+  log(`  Best share rate bucket: ${bestByShareRate.range} (median share rate: ${pct(bestByShareRate.median_share_rate)})`);
 
-  // Top hashtags
-  const hashtagFreq = new Map<string, { count: number; ers: number[] }>();
+  // Correlation: compute Pearson correlation between duration and weighted score
+  const durWESPairs = enriched.map((v) => ({ dur: Number(v.duration_seconds), wes: v.weighted_engagement_score }));
+  const durMean = mean(durWESPairs.map((p) => p.dur));
+  const wesMean = mean(durWESPairs.map((p) => p.wes));
+  let numerator = 0, denomDur = 0, denomWES = 0;
+  for (const p of durWESPairs) {
+    const dDur = p.dur - durMean;
+    const dWES = p.wes - wesMean;
+    numerator += dDur * dWES;
+    denomDur += dDur * dDur;
+    denomWES += dWES * dWES;
+  }
+  const pearsonR = denomDur > 0 && denomWES > 0 ? numerator / Math.sqrt(denomDur * denomWES) : 0;
+  log(`  Duration-WES Pearson correlation: ${round6(pearsonR)} (${Math.abs(pearsonR) < 0.1 ? "weak" : Math.abs(pearsonR) < 0.3 ? "moderate" : "strong"})`);
+
+  // ─── Step 8: Context Signals (hashtags, sounds — demoted) ──────
+  log("Step 8: Mining context signals (hashtags, sounds — secondary)...");
+
+  // Hashtags — track weighted score, not just simple ER
+  const hashtagFreq = new Map<string, { count: number; wes: number[] }>();
   for (const v of enriched) {
     for (const tag of v.hashtags ?? []) {
-      if (!tag) continue; // skip null/undefined entries in hashtag arrays
+      if (!tag) continue;
       const normalized = tag.toLowerCase().replace(/^#/, "");
       if (!normalized) continue;
-      if (!hashtagFreq.has(normalized)) {
-        hashtagFreq.set(normalized, { count: 0, ers: [] });
-      }
+      if (!hashtagFreq.has(normalized)) hashtagFreq.set(normalized, { count: 0, wes: [] });
       const entry = hashtagFreq.get(normalized)!;
       entry.count++;
-      entry.ers.push(v.engagement_rate);
+      entry.wes.push(v.weighted_engagement_score);
     }
   }
 
-  const sortedHashtags = Array.from(hashtagFreq.entries())
+  const medianWES = median(wesValues);
+  const topHashtags = Array.from(hashtagFreq.entries())
     .sort((a, b) => b[1].count - a[1].count)
-    .slice(0, 50);
+    .slice(0, 30)
+    .map(([tag, data], i) => {
+      const medWES = i < 20 ? median(data.wes) : 0;
+      return {
+        tag,
+        count: data.count,
+        median_weighted_score: round6(medWES),
+        is_power_hashtag: i < 20 && medWES > medianWES && data.count >= 5,
+      };
+    });
 
-  // Compute median ER for top 20 and flag power hashtags
-  const medianEROverall = median(erValues);
-  const topHashtags: HashtagEntry[] = sortedHashtags.map(([tag, data], i) => {
-    const medER = i < 20 ? median(data.ers) : 0;
-    // Power hashtag: high frequency (top 20) AND above-median ER
-    const isPower = i < 20 && medER > medianEROverall && data.count >= 5;
-    return {
-      tag,
-      count: data.count,
-      median_er: round6(medER),
-      is_power_hashtag: isPower,
-    };
-  });
+  log(`  Hashtags: ${topHashtags.length}, power: ${topHashtags.filter((h) => h.is_power_hashtag).length}`);
 
-  const powerHashtags = topHashtags.filter((h) => h.is_power_hashtag);
-  log(`  Top hashtags: ${topHashtags.length}, power hashtags: ${powerHashtags.length}`);
-
-  // Top sounds
-  const soundFreq = new Map<string, { count: number; ers: number[] }>();
+  // Sounds
+  const soundFreq = new Map<string, { count: number; wes: number[] }>();
   for (const v of enriched) {
-    if (!v.sound_name) continue;
+    if (!v.sound_name?.trim()) continue;
     const name = v.sound_name.trim();
-    if (!name) continue;
-    if (!soundFreq.has(name)) {
-      soundFreq.set(name, { count: 0, ers: [] });
-    }
+    if (!soundFreq.has(name)) soundFreq.set(name, { count: 0, wes: [] });
     const entry = soundFreq.get(name)!;
     entry.count++;
-    entry.ers.push(v.engagement_rate);
+    entry.wes.push(v.weighted_engagement_score);
   }
 
-  const sortedSounds = Array.from(soundFreq.entries())
-    .sort((a, b) => b[1].count - a[1].count)
-    .slice(0, 30);
-
-  // Compute viral overrepresentation for top 15
-  // overrepresentation = (% of viral videos using this sound) / (% of all videos using this sound)
   const viralSoundFreqs = new Map<string, number>();
   for (const v of viralVideos) {
-    if (v.sound_name) {
-      viralSoundFreqs.set(v.sound_name.trim(), (viralSoundFreqs.get(v.sound_name.trim()) || 0) + 1);
+    if (v.sound_name?.trim()) {
+      const name = v.sound_name.trim();
+      viralSoundFreqs.set(name, (viralSoundFreqs.get(name) || 0) + 1);
     }
   }
 
-  const topSounds: SoundEntry[] = sortedSounds.map(([name, data], i) => {
-    const medER = i < 15 ? median(data.ers) : 0;
-    // Viral overrepresentation: how much more likely is this sound in viral vs overall
-    const overallPct = data.count / enriched.length;
-    const viralCount = viralSoundFreqs.get(name) || 0;
-    const viralPct = viralVideos.length > 0 ? viralCount / viralVideos.length : 0;
-    const overrep = overallPct > 0 ? round2(viralPct / overallPct) : 0;
+  const topSounds = Array.from(soundFreq.entries())
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, 20)
+    .map(([name, data], i) => {
+      const medWES = i < 15 ? median(data.wes) : 0;
+      const overallPct = data.count / enriched.length;
+      const viralCount = viralSoundFreqs.get(name) || 0;
+      const viralPct = viralVideos.length > 0 ? viralCount / viralVideos.length : 0;
+      return {
+        name,
+        count: data.count,
+        median_weighted_score: round6(medWES),
+        viral_overrepresentation: overallPct > 0 ? round2(viralPct / overallPct) : 0,
+      };
+    });
 
-    return {
-      name,
-      count: data.count,
-      median_er: round6(medER),
-      viral_overrepresentation: overrep,
-    };
-  });
+  log(`  Sounds: ${topSounds.length}`);
 
-  log(`  Top sounds: ${topSounds.length}`);
+  // ─── Step 9: Write calibration-baseline.json ───────────────────
+  log("Step 9: Writing algorithm-aligned calibration-baseline.json...");
 
-  // Engagement ratio patterns
-  const totalLikes = likesArr.reduce((s, v) => s + v, 0);
-  const totalComments = commentsArr.reduce((s, v) => s + v, 0);
-  const totalShares = sharesArr.reduce((s, v) => s + v, 0);
-  const totalViews = viewsArr.reduce((s, v) => s + v, 0);
+  const totalLikes = enriched.reduce((s, v) => s + (Number(v.likes) || 0), 0);
+  const totalComments = enriched.reduce((s, v) => s + (Number(v.comments) || 0), 0);
+  const totalShares = enriched.reduce((s, v) => s + (Number(v.shares) || 0), 0);
+  const totalViews = enriched.reduce((s, v) => s + Number(v.views), 0);
 
-  const likePer100 = totalViews > 0 ? round2((totalLikes / totalViews) * 100) : 0;
-  const commentPer100 = totalViews > 0 ? round2((totalComments / totalViews) * 100) : 0;
-  const sharePer100 = totalViews > 0 ? round2((totalShares / totalViews) * 100) : 0;
-
-  // Normalize to "per 100 likes"
-  const commentsPerLike = totalLikes > 0 ? round2((totalComments / totalLikes) * 100) : 0;
-  const sharesPerLike = totalLikes > 0 ? round2((totalShares / totalLikes) * 100) : 0;
-  const ratioStr = `100:${commentsPerLike}:${sharesPerLike}`;
-  log(`  Engagement ratio (likes:comments:shares) = ${ratioStr}`);
-
-  // Category breakdown
-  const categories: CategoryEntry[] = [];
-  if (categoryCounts.size > 0) {
-    const categoryVideos = new Map<string, EnrichedVideo[]>();
-    for (const v of enriched) {
-      if (!v.category) continue;
-      if (!categoryVideos.has(v.category)) categoryVideos.set(v.category, []);
-      categoryVideos.get(v.category)!.push(v);
-    }
-
-    for (const [cat, videos] of categoryVideos) {
-      categories.push({
-        name: cat,
-        count: videos.length,
-        median_er: round6(median(videos.map((v) => v.engagement_rate))),
-        median_views: Math.round(median(videos.map((v) => Number(v.views)))),
-      });
-    }
-    categories.sort((a, b) => b.count - a.count);
-    log(`  Categories: ${categories.length}`);
-  }
-
-  // ─── Step 8: Write calibration-baseline.json ───────────────────
-  log("Step 8: Writing calibration-baseline.json...");
-
-  const baseline: CalibrationBaseline = {
+  const baseline = {
     generated_at: new Date().toISOString(),
+    methodology: "Algorithm-aligned analysis using TikTok's 2025-2026 engagement point system. Primary metrics weighted by algo importance: shares (3x) > comments (2x) > likes (1x). Completion rate and rewatches (4x, 5x) cannot be measured from scraped data.",
+    algorithm_signal_weights: {
+      rewatches: { points: 5, measurable: false, note: "Requires analytics access" },
+      full_watch_completion: { points: 4, measurable: false, note: "Requires analytics access. 70% completion = viral threshold (2025)" },
+      shares: { points: 3, measurable: true, note: "Highest measurable signal. 2-5% share rate = strong viral potential" },
+      comments: { points: 2, measurable: true, note: "Quality > quantity in 2025 algo, but we measure quantity" },
+      likes: { points: 1, measurable: true, note: "Lowest signal — 'participation trophy'" },
+    },
     dataset_stats: {
       total_fetched: totalFetched,
       duplicates_removed: duplicatesRemoved,
       outliers_removed: outliersRemoved,
-      outliers_breakdown: {
-        zero_views: zeroViews,
-        null_views: nullViews,
-        extreme_outliers: extremeOutliers,
-        zero_duration: zeroDuration,
-        null_duration: nullDuration,
-      },
+      outliers_breakdown: { zero_views: zeroViews, null_views: nullViews, extreme_outliers: extremeOutliers, zero_duration: zeroDuration, null_duration: nullDuration },
       analyzed_count: enriched.length,
     },
+    primary_kpis: primaryKPIs,
     virality_tiers: viralityTiers,
-    engagement_percentiles: distributionStats.engagement_rate,
-    duration_sweet_spot: {
-      optimal_range_seconds: optimalRange,
-      median_engagement_rate: bestBucket.median_er,
-      duration_buckets: durationBuckets.map(({ range, count, median_er }) => ({
-        range,
-        count,
-        median_er,
-      })),
+    viral_vs_average: {
+      viral_count: viralVideos.length,
+      average_count: averageVideos.length,
+      viral_definition: "Weighted engagement score >= p90",
+      average_definition: "Weighted engagement score p40-p60",
+      differentiators,
     },
-    top_hashtags: topHashtags,
-    top_sounds: topSounds,
-    engagement_ratios: {
-      likes_per_100_views: likePer100,
-      comments_per_100_views: commentPer100,
-      shares_per_100_views: sharePer100,
-      like_comment_share_ratio: ratioStr,
+    duration_analysis: {
+      sweet_spot_by_weighted_score: {
+        optimal_range_seconds: optimalRange,
+        median_weighted_score: bestByWES.median_weighted_score,
+      },
+      sweet_spot_by_share_rate: {
+        range: bestByShareRate.range,
+        median_share_rate: bestByShareRate.median_share_rate,
+      },
+      duration_weighted_score_correlation: {
+        pearson_r: round6(pearsonR),
+        strength: Math.abs(pearsonR) < 0.1 ? "weak" : Math.abs(pearsonR) < 0.3 ? "moderate" : "strong",
+        note: "Negative = shorter videos tend to have higher engagement",
+      },
+      buckets: durationBuckets,
     },
-    key_differentiators: differentiators,
-    view_percentiles: {
-      p25: distributionStats.views.p25,
-      p50: distributionStats.views.p50,
-      p75: distributionStats.views.p75,
-      p90: distributionStats.views.p90,
-      p99: distributionStats.views.p99,
+    aggregate_ratios: {
+      likes_per_100_views: totalViews > 0 ? round2((totalLikes / totalViews) * 100) : 0,
+      comments_per_100_views: totalViews > 0 ? round2((totalComments / totalViews) * 100) : 0,
+      shares_per_100_views: totalViews > 0 ? round2((totalShares / totalViews) * 100) : 0,
+      comments_per_100_likes: totalLikes > 0 ? round2((totalComments / totalLikes) * 100) : 0,
+      shares_per_100_likes: totalLikes > 0 ? round2((totalShares / totalLikes) * 100) : 0,
     },
-    categories,
-    distribution_stats: distributionStats,
+    context_signals: {
+      note: "Hashtags and sounds are content context signals for TikTok's recommendation system, NOT primary ranking factors. They help TikTok categorize content but don't directly boost ranking like engagement does.",
+      top_hashtags: topHashtags,
+      top_sounds: topSounds,
+    },
+    simple_engagement: {
+      note: "Legacy simple (likes+comments+shares)/views. Less accurate than weighted score — treats all signals equally. Kept for backwards compatibility.",
+      percentiles: computePercentiles(simpleERValues),
+    },
+    distribution_stats: {
+      views: computePercentiles(viewsArr),
+      duration_seconds: computePercentiles(durationsArr),
+    },
   };
 
   const jsonPath = resolve(__dirname, "../src/lib/engine/calibration-baseline.json");
   writeFileSync(jsonPath, JSON.stringify(baseline, null, 2) + "\n", "utf-8");
   log(`  Written to ${jsonPath}`);
 
-  // ─── Step 9: Write markdown summary report ─────────────────────
-  log("Step 9: Writing markdown summary report...");
+  // ─── Step 10: Write markdown summary report ────────────────────
+  log("Step 10: Writing markdown summary report...");
 
   const report = generateMarkdownReport(baseline, enriched, viralVideos, averageVideos);
   const reportPath = resolve(__dirname, "../.planning/phases/01-data-analysis/data-analysis-report.md");
@@ -736,234 +586,173 @@ async function main() {
   log("Analysis complete!");
 }
 
-// ─── Empty outputs for graceful handling of empty dataset ────────
+// ─── Empty outputs ──────────────────────────────────────────────────
 
 function writeEmptyOutputs() {
-  const emptyBaseline = {
-    generated_at: new Date().toISOString(),
-    dataset_stats: {
-      total_fetched: 0,
-      duplicates_removed: 0,
-      outliers_removed: 0,
-      outliers_breakdown: { zero_views: 0, null_views: 0, extreme_outliers: 0, zero_duration: 0, null_duration: 0 },
-      analyzed_count: 0,
-    },
-    virality_tiers: [],
-    engagement_percentiles: {},
-    duration_sweet_spot: { optimal_range_seconds: [0, 0], median_engagement_rate: 0, duration_buckets: [] },
-    top_hashtags: [],
-    top_sounds: [],
-    engagement_ratios: { likes_per_100_views: 0, comments_per_100_views: 0, shares_per_100_views: 0, like_comment_share_ratio: "0:0:0" },
-    key_differentiators: [],
-    view_percentiles: {},
-    categories: [],
-    distribution_stats: {},
-  };
-
   const jsonPath = resolve(__dirname, "../src/lib/engine/calibration-baseline.json");
-  writeFileSync(jsonPath, JSON.stringify(emptyBaseline, null, 2) + "\n", "utf-8");
-
+  writeFileSync(jsonPath, JSON.stringify({ generated_at: new Date().toISOString(), dataset_stats: { analyzed_count: 0 } }, null, 2) + "\n", "utf-8");
   const reportPath = resolve(__dirname, "../.planning/phases/01-data-analysis/data-analysis-report.md");
-  writeFileSync(reportPath, "# Data Analysis Report\n\nNo data available. The scraped_videos table is empty.\n", "utf-8");
-
-  log("Empty outputs written.");
+  writeFileSync(reportPath, "# Data Analysis Report\n\nNo data available.\n", "utf-8");
 }
 
-// ─── Markdown Report Generator ──────────────────────────────────
+// ─── Markdown Report Generator ──────────────────────────────────────
 
 function generateMarkdownReport(
-  baseline: CalibrationBaseline,
+  baseline: ReturnType<typeof JSON.parse>,
   enriched: EnrichedVideo[],
   viralVideos: EnrichedVideo[],
   averageVideos: EnrichedVideo[],
 ): string {
-  const { dataset_stats: ds, virality_tiers, engagement_percentiles: ep, duration_sweet_spot, top_hashtags, top_sounds, engagement_ratios, key_differentiators, categories } = baseline;
-
   const lines: string[] = [];
   const add = (s: string) => lines.push(s);
+  const ds = baseline.dataset_stats;
+  const kpis = baseline.primary_kpis;
 
-  add("# Data Analysis Report: Scraped TikTok Videos");
+  add("# Data Analysis Report: Algorithm-Aligned TikTok Video Analysis");
   add("");
   add(`*Generated: ${baseline.generated_at}*`);
+  add(`*Methodology: ${baseline.methodology}*`);
   add("");
 
   // 1. Executive Summary
   add("## 1. Executive Summary");
   add("");
-  add(`- Analyzed **${ds.analyzed_count.toLocaleString()}** unique TikTok videos after deduplication and outlier filtering`);
-  add(`- Engagement rates range from ${(ep.p10 * 100).toFixed(2)}% (p10) to ${(ep.p99 * 100).toFixed(2)}% (p99), with a median of ${(ep.p50 * 100).toFixed(2)}%`);
-  add(`- Optimal video duration is **${duration_sweet_spot.optimal_range_seconds[0]}-${duration_sweet_spot.optimal_range_seconds[1]}s** (highest median engagement rate: ${(duration_sweet_spot.median_engagement_rate * 100).toFixed(2)}%)`);
-  const topDiff = key_differentiators[0];
-  if (topDiff) {
-    add(`- ${topDiff.description}`);
-  }
-  add(`- ${top_hashtags.filter((h) => h.is_power_hashtag).length} "power hashtags" identified (high frequency + above-median engagement)`);
+  add(`- Analyzed **${ds.analyzed_count.toLocaleString()}** TikTok videos using algorithm-aligned weighted engagement scoring`);
+  add(`- **TikTok 2025 algo weights**: rewatches (5x) > completion (4x) > shares (3x) > comments (2x) > likes (1x)`);
+  add(`- **We measure**: shares (3x), comments (2x), likes (1x). Completion/rewatches require analytics access.`);
+  add(`- **Share rate is the #1 measurable virality signal**: p50 = ${pct(kpis.share_rate.percentiles.p50)}, viral threshold (p90) = ${pct(kpis.share_rate.viral_threshold)}`);
+  const topDiff = baseline.viral_vs_average.differentiators[0];
+  if (topDiff) add(`- ${topDiff.description}`);
   add("");
 
-  // 2. Data Quality
-  add("## 2. Data Quality");
+  // 2. Algorithm Signal Hierarchy
+  add("## 2. TikTok Algorithm Signal Hierarchy (2025-2026)");
+  add("");
+  add("| Signal | Algo Points | Measurable? | Our Metric |");
+  add("|--------|-------------|-------------|------------|");
+  add("| Rewatches | 5 | No | — |");
+  add("| Full watch (completion) | 4 | No | Duration as proxy |");
+  add("| Shares | 3 | **Yes** | `share_rate` |");
+  add("| Comments | 2 | **Yes** | `comment_rate` |");
+  add("| Likes | 1 | **Yes** | `like_rate` |");
+  add("");
+  add("**Weighted engagement score formula**: `(likes×1 + comments×2 + shares×3) / views`");
+  add("");
+  add("Sources: [Sprout Social](https://sproutsocial.com/insights/tiktok-algorithm/), [Buffer](https://buffer.com/resources/tiktok-algorithm/), [Fanpage Karma](https://www.fanpagekarma.com/insights/the-2025-tiktok-algorithm-what-you-need-to-know/)");
+  add("");
+
+  // 3. Data Quality
+  add("## 3. Data Quality");
   add("");
   add("| Metric | Count |");
   add("|--------|-------|");
   add(`| Total rows fetched | ${ds.total_fetched.toLocaleString()} |`);
   add(`| Duplicates removed | ${ds.duplicates_removed.toLocaleString()} |`);
-  add(`| Unique videos | ${(ds.total_fetched - ds.duplicates_removed).toLocaleString()} |`);
-  add(`| Null views removed | ${ds.outliers_breakdown.null_views} |`);
-  add(`| Zero views removed | ${ds.outliers_breakdown.zero_views} |`);
-  add(`| Extreme outliers (p99.5+ views) | ${ds.outliers_breakdown.extreme_outliers} |`);
-  add(`| Null duration removed | ${ds.outliers_breakdown.null_duration} |`);
-  add(`| Zero duration removed | ${ds.outliers_breakdown.zero_duration} |`);
-  add(`| Total outliers removed | ${ds.outliers_removed} |`);
-  add(`| **Final analyzed count** | **${ds.analyzed_count.toLocaleString()}** |`);
-  add("");
-  add(`Deduplication rate: ${ds.total_fetched > 0 ? round2((ds.duplicates_removed / ds.total_fetched) * 100) : 0}%`);
+  add(`| Outliers removed | ${ds.outliers_removed} |`);
+  add(`| **Final analyzed** | **${ds.analyzed_count.toLocaleString()}** |`);
   add("");
 
-  // 3. Virality Tiers
-  add("## 3. Virality Tiers");
+  // 4. Primary KPIs
+  add("## 4. Primary KPIs — Percentile Distribution");
   add("");
-  add("| Tier | Label | Score Range | ER Min | ER Max | Videos | % |");
-  add("|------|-------|-------------|--------|--------|--------|---|");
-  for (const t of virality_tiers) {
-    add(`| ${t.tier} | ${t.label} | ${t.score_range[0]}-${t.score_range[1]} | ${(t.engagement_rate_threshold.min * 100).toFixed(3)}% | ${(t.engagement_rate_threshold.max * 100).toFixed(3)}% | ${t.video_count} | ${t.percentage}% |`);
-  }
-  add("");
-  add("*Thresholds derived from actual engagement rate distribution percentiles (p25, p50, p75, p90).*");
-  add("");
-
-  // 4. Key Differentiators
-  add("## 4. Key Differentiators (Viral vs Average)");
-  add("");
-  add(`Comparison: **Viral** (top 10%, p90+ ER, ${viralVideos.length} videos) vs **Average** (p40-p60 ER, ${averageVideos.length} videos)`);
-  add("");
-  for (const d of key_differentiators) {
-    add(`- **${d.factor}**: ${d.description}`);
-  }
-  add("");
-
-  // 5. Duration Analysis
-  add("## 5. Duration Analysis");
-  add("");
-  add(`**Sweet spot:** ${duration_sweet_spot.optimal_range_seconds[0]}-${duration_sweet_spot.optimal_range_seconds[1]}s (median ER: ${(duration_sweet_spot.median_engagement_rate * 100).toFixed(2)}%)`);
-  add("");
-  add("| Duration | Videos | Median ER |");
-  add("|----------|--------|-----------|");
-  for (const b of duration_sweet_spot.duration_buckets) {
-    const marker = b.range === `${duration_sweet_spot.optimal_range_seconds[0]}-${duration_sweet_spot.optimal_range_seconds[1]}s` ? " **" : "";
-    add(`| ${b.range}${marker} | ${b.count} | ${(b.median_er * 100).toFixed(3)}% |`);
-  }
-  add("");
-
-  // 6. Hashtag Analysis
-  add("## 6. Hashtag Analysis");
-  add("");
-  add("### Top 20 Hashtags");
-  add("");
-  add("| Rank | Hashtag | Count | Median ER | Power? |");
-  add("|------|---------|-------|-----------|--------|");
-  for (let i = 0; i < Math.min(20, top_hashtags.length); i++) {
-    const h = top_hashtags[i]!;
-    add(`| ${i + 1} | #${h.tag} | ${h.count} | ${(h.median_er * 100).toFixed(3)}% | ${h.is_power_hashtag ? "Yes" : ""} |`);
-  }
-  add("");
-  const powerList = top_hashtags.filter((h) => h.is_power_hashtag);
-  if (powerList.length > 0) {
-    add(`### Power Hashtags (${powerList.length})`);
+  for (const [name, kpi] of Object.entries(kpis) as [string, any][]) {
+    add(`### ${name}`);
+    add(`*${kpi.why}*`);
     add("");
-    add("High frequency AND above-median engagement rate:");
-    add("");
-    for (const h of powerList) {
-      add(`- **#${h.tag}** — ${h.count} videos, ${(h.median_er * 100).toFixed(2)}% median ER`);
+    add("| p10 | p25 | p50 | p75 | p90 | p95 | p99 |");
+    add("|-----|-----|-----|-----|-----|-----|-----|");
+    const p = kpi.percentiles;
+    if (name.includes("ratio") && !name.includes("rate")) {
+      add(`| ${p.p10.toFixed(4)} | ${p.p25.toFixed(4)} | ${p.p50.toFixed(4)} | ${p.p75.toFixed(4)} | ${p.p90.toFixed(4)} | ${p.p95.toFixed(4)} | ${p.p99.toFixed(4)} |`);
+    } else {
+      add(`| ${pct(p.p10)} | ${pct(p.p25)} | ${pct(p.p50)} | ${pct(p.p75)} | ${pct(p.p90)} | ${pct(p.p95)} | ${pct(p.p99)} |`);
     }
     add("");
   }
 
-  // 7. Sound Analysis
-  add("## 7. Sound Analysis");
+  // 5. Virality Tiers
+  add("## 5. Virality Tiers (Weighted Engagement Score)");
   add("");
-  add("### Top 15 Sounds");
-  add("");
-  add("| Rank | Sound | Count | Median ER | Viral Overrep. |");
-  add("|------|-------|-------|-----------|----------------|");
-  for (let i = 0; i < Math.min(15, top_sounds.length); i++) {
-    const s = top_sounds[i]!;
-    const overrep = s.viral_overrepresentation > 1 ? `${s.viral_overrepresentation}x` : `${s.viral_overrepresentation}x`;
-    add(`| ${i + 1} | ${s.name.slice(0, 50)} | ${s.count} | ${(s.median_er * 100).toFixed(3)}% | ${overrep} |`);
+  add("| Tier | Label | Score Range | WES Threshold | Median Share Rate | Median Comment Rate | Videos | % |");
+  add("|------|-------|-------------|---------------|-------------------|---------------------|--------|---|");
+  for (const t of baseline.virality_tiers) {
+    add(`| ${t.tier} | ${t.label} | ${t.score_range[0]}-${t.score_range[1]} | ${pct(t.weighted_score_threshold.min)}-${pct(t.weighted_score_threshold.max)} | ${pct(t.median_share_rate)} | ${pct(t.median_comment_rate)} | ${t.video_count} | ${t.percentage}% |`);
   }
   add("");
-  const viralSounds = top_sounds.filter((s) => s.viral_overrepresentation > 1.5);
-  if (viralSounds.length > 0) {
-    add(`### Viral-Overrepresented Sounds (${viralSounds.length})`);
-    add("");
-    add("Sounds appearing disproportionately in viral-tier videos (>1.5x overrepresentation):");
-    add("");
-    for (const s of viralSounds.slice(0, 10)) {
-      add(`- **${s.name.slice(0, 60)}** — ${s.viral_overrepresentation}x overrepresentation, ${s.count} videos`);
-    }
-    add("");
-  }
-
-  // 8. Engagement Patterns
-  add("## 8. Engagement Patterns");
-  add("");
-  add("### Per 100 Views");
-  add("");
-  add(`- **Likes:** ${engagement_ratios.likes_per_100_views}`);
-  add(`- **Comments:** ${engagement_ratios.comments_per_100_views}`);
-  add(`- **Shares:** ${engagement_ratios.shares_per_100_views}`);
-  add("");
-  add(`### Like:Comment:Share Ratio`);
-  add("");
-  add(`For every **100 likes**, there are approximately **${engagement_ratios.like_comment_share_ratio.split(":").slice(1).join(" comments and ")} shares**.`);
-  add("");
-  add("### Engagement Rate Distribution");
-  add("");
-  add("| Percentile | Engagement Rate |");
-  add("|------------|-----------------|");
-  for (const [key, val] of Object.entries(ep)) {
-    if (key.startsWith("p")) {
-      add(`| ${key.toUpperCase()} | ${(val * 100).toFixed(3)}% |`);
-    }
-  }
-  add(`| Mean | ${(ep.mean * 100).toFixed(3)}% |`);
-  add(`| Std Dev | ${(ep.stddev * 100).toFixed(3)}% |`);
+  add("*Tiers based on weighted engagement score distribution, NOT simple engagement rate.*");
   add("");
 
-  // 9. Category Breakdown
-  add("## 9. Category Breakdown");
+  // 6. Key Differentiators
+  add("## 6. Key Differentiators — Viral vs Average (Ordered by Algo Weight)");
   add("");
-  if (categories.length > 0) {
-    add("| Category | Videos | Median ER | Median Views |");
-    add("|----------|--------|-----------|--------------|");
-    for (const c of categories) {
-      add(`| ${c.name} | ${c.count} | ${(c.median_er * 100).toFixed(3)}% | ${c.median_views.toLocaleString()} |`);
-    }
-  } else {
-    add("*No category data available in the dataset.*");
+  add(`**Viral**: WES p90+ (${viralVideos.length} videos) | **Average**: WES p40-p60 (${averageVideos.length} videos)`);
+  add("");
+  for (const d of baseline.viral_vs_average.differentiators) {
+    const badge = d.algo_weight === "HIGH (3x)" ? "🔴" : d.algo_weight === "MEDIUM (2x)" ? "🟡" : d.algo_weight === "LOW (1x)" ? "🟢" : "⚪";
+    add(`- ${badge} **${d.factor}** [${d.algo_weight}]: ${d.description}`);
+  }
+  add("");
+
+  // 7. Duration Analysis
+  add("## 7. Duration-Engagement Analysis");
+  add("");
+  const da = baseline.duration_analysis;
+  add(`**Sweet spot (by weighted score)**: ${da.sweet_spot_by_weighted_score.optimal_range_seconds[0]}-${da.sweet_spot_by_weighted_score.optimal_range_seconds[1]}s`);
+  add(`**Best share rate bucket**: ${da.sweet_spot_by_share_rate.range}`);
+  add(`**Duration-engagement correlation**: r=${da.duration_weighted_score_correlation.pearson_r.toFixed(4)} (${da.duration_weighted_score_correlation.strength})`);
+  add("");
+  add("| Duration | Videos | Median WES | Median Share Rate | Median Comment Rate |");
+  add("|----------|--------|------------|-------------------|---------------------|");
+  for (const b of da.buckets) {
+    add(`| ${b.range} | ${b.count} | ${pct(b.median_weighted_score)} | ${pct(b.median_share_rate)} | ${pct(b.median_comment_rate)} |`);
+  }
+  add("");
+
+  // 8. Aggregate Ratios
+  add("## 8. Aggregate Engagement Ratios");
+  add("");
+  const ar = baseline.aggregate_ratios;
+  add(`- Per 100 views: **${ar.likes_per_100_views}** likes, **${ar.comments_per_100_views}** comments, **${ar.shares_per_100_views}** shares`);
+  add(`- Per 100 likes: **${ar.comments_per_100_likes}** comments, **${ar.shares_per_100_likes}** shares`);
+  add("");
+
+  // 9. Context Signals
+  add("## 9. Context Signals (Secondary — Not Primary Algo Ranking Factors)");
+  add("");
+  add("*Hashtags and sounds help TikTok categorize content but don't directly boost ranking. Engagement signals dominate.*");
+  add("");
+  add("### Top Hashtags");
+  add("| Hashtag | Count | Median WES | Power? |");
+  add("|---------|-------|------------|--------|");
+  for (const h of baseline.context_signals.top_hashtags.slice(0, 15)) {
+    add(`| #${h.tag} | ${h.count} | ${pct(h.median_weighted_score)} | ${h.is_power_hashtag ? "Yes" : ""} |`);
+  }
+  add("");
+  add("### Top Sounds");
+  add("| Sound | Count | Median WES | Viral Overrep. |");
+  add("|-------|-------|------------|----------------|");
+  for (const s of baseline.context_signals.top_sounds.slice(0, 10)) {
+    add(`| ${s.name.slice(0, 40)} | ${s.count} | ${pct(s.median_weighted_score)} | ${s.viral_overrepresentation}x |`);
   }
   add("");
 
   // 10. Implications for Engine
-  add("## 10. Implications for Engine");
+  add("## 10. Implications for Prediction Engine v2");
   add("");
-  add("Key takeaways for downstream phases:");
-  add("");
-  add("- **Phase 2 (Gemini Prompts):** Use virality tier thresholds and engagement patterns to calibrate prompt scoring anchors. The engagement rate distribution provides concrete numbers for \"what good looks like\" on TikTok.");
-  add("- **Phase 3 (DeepSeek CoT):** Key differentiators between viral and average content should inform the chain-of-thought reasoning — especially duration, share ratio, and hashtag usage patterns.");
-  add(`- **Phase 5 (Aggregation Formula):** Duration sweet spot (${duration_sweet_spot.optimal_range_seconds[0]}-${duration_sweet_spot.optimal_range_seconds[1]}s) and engagement ratio patterns provide calibration data for the rules engine component.`);
-  add("- **Phase 10 (ML Training):** The full distribution stats and per-tier breakdowns provide training labels. Use engagement rate percentile boundaries as classification thresholds.");
-  add("- **Phase 12 (Calibration):** calibration-baseline.json is the ground truth for A/B testing engine accuracy against real TikTok performance data.");
+  add("- **Scoring formula must weight by algo importance**: Use `(likes×1 + comments×2 + shares×3) / views` as base. When completion rate becomes available (video upload), weight it 4x.");
+  add(`- **Share rate is the virality gateway**: Videos above ${pct(kpis.share_rate.viral_threshold)} share rate (p90) are in the viral tier. This should be the primary signal Gemini and DeepSeek evaluate.`);
+  add("- **Share-to-like ratio reveals content quality**: A video with high likes but low shares is passively consumed, not virally distributed. Flag this in the analysis.");
+  add(`- **Duration sweet spot**: ${da.sweet_spot_by_weighted_score.optimal_range_seconds[0]}-${da.sweet_spot_by_weighted_score.optimal_range_seconds[1]}s for highest weighted engagement. Use as a calibration signal, not a rule.`);
+  add("- **Demote hashtag/sound analysis**: These are content context signals, not ranking factors. Do NOT weight them highly in the prediction formula.");
   add("");
 
   return lines.join("\n") + "\n";
 }
 
-// ─── Run ─────────────────────────────────────────────────────────
+// ─── Run ─────────────────────────────────────────────────────────────
 
 main().catch((err) => {
   log(`FATAL ERROR: ${err instanceof Error ? err.message : String(err)}`);
-  if (err instanceof Error && err.stack) {
-    console.error(err.stack);
-  }
+  if (err instanceof Error && err.stack) console.error(err.stack);
   process.exit(1);
 });

@@ -1,5 +1,33 @@
 {
-  "generated_at": "2026-02-16T09:49:47.149Z",
+  "generated_at": "2026-02-16T10:02:56.230Z",
+  "methodology": "Algorithm-aligned analysis using TikTok's 2025-2026 engagement point system. Primary metrics weighted by algo importance: shares (3x) > comments (2x) > likes (1x). Completion rate and rewatches (4x, 5x) cannot be measured from scraped data.",
+  "algorithm_signal_weights": {
+    "rewatches": {
+      "points": 5,
+      "measurable": false,
+      "note": "Requires analytics access"
+    },
+    "full_watch_completion": {
+      "points": 4,
+      "measurable": false,
+      "note": "Requires analytics access. 70% completion = viral threshold (2025)"
+    },
+    "shares": {
+      "points": 3,
+      "measurable": true,
+      "note": "Highest measurable signal. 2-5% share rate = strong viral potential"
+    },
+    "comments": {
+      "points": 2,
+      "measurable": true,
+      "note": "Quality > quantity in 2025 algo, but we measure quantity"
+    },
+    "likes": {
+      "points": 1,
+      "measurable": true,
+      "note": "Lowest signal — 'participation trophy'"
+    }
+  },
   "dataset_stats": {
     "total_fetched": 7389,
     "duplicates_removed": 0,
@@ -13,6 +41,101 @@
     },
     "analyzed_count": 7321
   },
+  "primary_kpis": {
+    "weighted_engagement_score": {
+      "formula": "(likes×1 + comments×2 + shares×3) / views",
+      "why": "Mirrors TikTok's 2025 algo point system. Shares (3x) and comments (2x) weighted above likes (1x). Does NOT include completion/rewatches (not available from scraped data).",
+      "percentiles": {
+        "p10": 0.018235,
+        "p25": 0.045752,
+        "p50": 0.095403,
+        "p75": 0.159572,
+        "p90": 0.239726,
+        "p95": 0.312466,
+        "p99": 0.843604,
+        "mean": 0.160353,
+        "stddev": 2.648484
+      }
+    },
+    "share_rate": {
+      "formula": "shares / views",
+      "why": "Highest-value measurable signal. Shares are weighted 3x likes in TikTok's algo. A share rate of 2-5% indicates strong viral potential (industry benchmark 2025).",
+      "percentiles": {
+        "p10": 0.000118,
+        "p25": 0.000825,
+        "p50": 0.002797,
+        "p75": 0.007432,
+        "p90": 0.018297,
+        "p95": 0.035189,
+        "p99": 0.134643,
+        "mean": 0.009895,
+        "stddev": 0.040542
+      },
+      "viral_threshold": 0.018297,
+      "industry_benchmark": "2-5% = strong viral potential"
+    },
+    "comment_rate": {
+      "formula": "comments / views",
+      "why": "Conversation signal, weighted 2x likes. Comment quality matters more than quantity in 2025 algo, but we can only measure quantity from scraped data.",
+      "percentiles": {
+        "p10": 0.000092,
+        "p25": 0.0003,
+        "p50": 0.00079,
+        "p75": 0.003095,
+        "p90": 0.015161,
+        "p95": 0.033892,
+        "p99": 0.113308,
+        "mean": 0.007451,
+        "stddev": 0.029584
+      }
+    },
+    "like_rate": {
+      "formula": "likes / views",
+      "why": "Lowest algo signal (1x weight). 'Participation trophy' per TikTok's own point system. Still useful as baseline engagement indicator.",
+      "percentiles": {
+        "p10": 0.012151,
+        "p25": 0.032124,
+        "p50": 0.07128,
+        "p75": 0.122684,
+        "p90": 0.1714,
+        "p95": 0.203077,
+        "p99": 0.28903,
+        "mean": 0.115767,
+        "stddev": 2.637352
+      }
+    },
+    "share_to_like_ratio": {
+      "formula": "shares / likes",
+      "why": "Measures active distribution vs passive consumption. High ratio = content people feel compelled to spread, not just tap 'like'. Strong virality amplifier.",
+      "percentiles": {
+        "p10": 0.002435,
+        "p25": 0.017473,
+        "p50": 0.047259,
+        "p75": 0.111068,
+        "p90": 0.257576,
+        "p95": 0.5,
+        "p99": 1.572917,
+        "mean": 0.138169,
+        "stddev": 0.426938
+      },
+      "viral_indicator": 0.257576
+    },
+    "comment_to_like_ratio": {
+      "formula": "comments / likes",
+      "why": "Measures conversation depth. High ratio = content that provokes discussion, not just passive approval.",
+      "percentiles": {
+        "p10": 0.001725,
+        "p25": 0.00452,
+        "p50": 0.014823,
+        "p75": 0.059832,
+        "p90": 0.2,
+        "p95": 0.374164,
+        "p99": 0.957576,
+        "mean": 0.079546,
+        "stddev": 0.212335
+      }
+    }
+  },
   "virality_tiers": [
     {
       "tier": 1,
@@ -21,12 +144,15 @@
         0,
         25
       ],
-      "engagement_rate_threshold": {
+      "weighted_score_threshold": {
         "min": 0,
-        "max": 0.037921
+        "max": 0.045752
       },
-      "video_count": 1830,
-      "percentage": 25
+      "median_share_rate": 0.000775,
+      "median_comment_rate": 0.000307,
+      "median_like_rate": 0.016086,
+      "video_count": 1829,
+      "percentage": 24.98
     },
     {
       "tier": 2,
@@ -35,12 +161,15 @@
         25,
         45
       ],
-      "engagement_rate_threshold": {
-        "min": 0.037921,
-        "max": 0.081914
+      "weighted_score_threshold": {
+        "min": 0.045752,
+        "max": 0.095403
       },
-      "video_count": 1830,
-      "percentage": 25
+      "median_share_rate": 0.002295,
+      "median_comment_rate": 0.000789,
+      "median_like_rate": 0.054207,
+      "video_count": 1831,
+      "percentage": 25.01
     },
     {
       "tier": 3,
@@ -49,10 +178,13 @@
         45,
         65
       ],
-      "engagement_rate_threshold": {
-        "min": 0.081914,
-        "max": 0.138996
+      "weighted_score_threshold": {
+        "min": 0.095403,
+        "max": 0.159572
       },
+      "median_share_rate": 0.003899,
+      "median_comment_rate": 0.001171,
+      "median_like_rate": 0.10124,
       "video_count": 1830,
       "percentage": 25
     },
@@ -63,10 +195,13 @@
         65,
         80
       ],
-      "engagement_rate_threshold": {
-        "min": 0.138996,
-        "max": 0.198534
+      "weighted_score_threshold": {
+        "min": 0.159572,
+        "max": 0.239726
       },
+      "median_share_rate": 0.007175,
+      "median_comment_rate": 0.00123,
+      "median_like_rate": 0.151395,
       "video_count": 1098,
       "percentage": 15
     },
@@ -77,641 +212,562 @@
         80,
         100
       ],
-      "engagement_rate_threshold": {
-        "min": 0.198534,
-        "max": 225.833333
+      "weighted_score_threshold": {
+        "min": 0.239726,
+        "max": 226.166667
       },
+      "median_share_rate": 0.028218,
+      "median_comment_rate": 0.007576,
+      "median_like_rate": 0.192377,
       "video_count": 733,
       "percentage": 10.01
     }
   ],
-  "engagement_percentiles": {
-    "p10": 0.015022,
-    "p25": 0.037921,
-    "p50": 0.081914,
-    "p75": 0.138996,
-    "p90": 0.198534,
-    "p95": 0.244852,
-    "p99": 0.472,
-    "mean": 0.133113,
-    "stddev": 2.640307
-  },
-  "duration_sweet_spot": {
-    "optimal_range_seconds": [
-      50,
-      55
-    ],
-    "median_engagement_rate": 0.099142,
-    "duration_buckets": [
+  "viral_vs_average": {
+    "viral_count": 733,
+    "average_count": 1465,
+    "viral_definition": "Weighted engagement score >= p90",
+    "average_definition": "Weighted engagement score p40-p60",
+    "differentiators": [
       {
-        "range": "0-5s",
-        "count": 8,
-        "median_er": 0.016677
+        "factor": "share_rate",
+        "algo_weight": "HIGH (3x)",
+        "viral_avg": 0.057235,
+        "average_avg": 0.004531,
+        "difference_pct": 1163.21,
+        "unit": "ratio",
+        "description": "Viral videos have 1163.21% higher share rate (5.723% vs 0.453%). Shares are weighted 3x in TikTok's algo — this is the strongest signal we can measure."
       },
       {
-        "range": "5-10s",
-        "count": 1083,
-        "median_er": 0.082497
+        "factor": "share_to_like_ratio",
+        "algo_weight": "CONTEXT",
+        "viral_avg": 0.394645,
+        "average_avg": 0.107787,
+        "difference_pct": 266.13,
+        "unit": "ratio",
+        "description": "Viral videos have 266.13% higher share-to-like ratio (0.39 vs 0.11). People don't just like viral content — they actively distribute it."
       },
       {
-        "range": "10-15s",
-        "count": 1452,
-        "median_er": 0.087221
+        "factor": "comment_rate",
+        "algo_weight": "MEDIUM (2x)",
+        "viral_avg": 0.043867,
+        "average_avg": 0.003238,
+        "difference_pct": 1254.93,
+        "unit": "ratio",
+        "description": "Viral videos have 1254.93% higher comment rate (4.387% vs 0.324%). Comments weighted 2x in algo."
       },
       {
-        "range": "15-20s",
-        "count": 1529,
-        "median_er": 0.083897
+        "factor": "comment_to_like_ratio",
+        "algo_weight": "CONTEXT",
+        "viral_avg": 0.229797,
+        "average_avg": 0.064657,
+        "difference_pct": 255.41,
+        "unit": "ratio",
+        "description": "Viral videos have 255.41% higher comment-to-like ratio (0.23 vs 0.06). Deeper conversation signals."
       },
       {
-        "range": "20-25s",
-        "count": 514,
-        "median_er": 0.070575
+        "factor": "weighted_engagement_score",
+        "algo_weight": "CONTEXT",
+        "viral_avg": 0.767398,
+        "average_avg": 0.095391,
+        "difference_pct": 704.48,
+        "unit": "score",
+        "description": "Viral videos have 704.48% higher weighted engagement score (76.740% vs 9.539%)."
       },
       {
-        "range": "25-30s",
-        "count": 368,
-        "median_er": 0.073223
+        "factor": "like_rate",
+        "algo_weight": "LOW (1x)",
+        "viral_avg": 0.507961,
+        "average_avg": 0.075323,
+        "difference_pct": 574.38,
+        "unit": "ratio",
+        "description": "Viral videos have 574.38% higher like rate (50.796% vs 7.532%). Lowest algo signal but still present."
       },
       {
-        "range": "30-35s",
-        "count": 267,
-        "median_er": 0.068488
+        "factor": "duration_seconds",
+        "algo_weight": "CONTEXT",
+        "viral_avg": 33.345157,
+        "average_avg": 44.150171,
+        "difference_pct": -24.47,
+        "unit": "seconds",
+        "description": "Viral videos are 24.47% shorter (33.35s vs 44.15s). Shorter = higher likely completion rate."
       },
       {
-        "range": "35-40s",
-        "count": 183,
-        "median_er": 0.065476
-      },
-      {
-        "range": "40-45s",
-        "count": 134,
-        "median_er": 0.083438
-      },
-      {
-        "range": "45-50s",
-        "count": 147,
-        "median_er": 0.060971
-      },
-      {
-        "range": "50-55s",
-        "count": 130,
-        "median_er": 0.099142
-      },
-      {
-        "range": "55-60s",
-        "count": 173,
-        "median_er": 0.07903
-      },
-      {
-        "range": "60s+",
-        "count": 1333,
-        "median_er": 0.087086
+        "factor": "caption_length",
+        "algo_weight": "CONTEXT",
+        "viral_avg": 99.583902,
+        "average_avg": 147.883959,
+        "difference_pct": -32.66,
+        "unit": "chars",
+        "description": "Viral video captions are 32.66% shorter (99.58 vs 147.88 chars)."
       }
     ]
   },
-  "top_hashtags": [
-    {
-      "tag": "fyp",
-      "count": 2897,
-      "median_er": 0.095696,
-      "is_power_hashtag": true
-    },
-    {
-      "tag": "viral",
-      "count": 1653,
-      "median_er": 0.09405,
-      "is_power_hashtag": true
-    },
-    {
-      "tag": "foryou",
-      "count": 951,
-      "median_er": 0.080396,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "contentcreator",
-      "count": 918,
-      "median_er": 0.100697,
-      "is_power_hashtag": true
-    },
-    {
-      "tag": "trending",
-      "count": 779,
-      "median_er": 0.080858,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "foryoupage",
-      "count": 668,
-      "median_er": 0.078586,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "creator",
-      "count": 578,
-      "median_er": 0.084675,
-      "is_power_hashtag": true
-    },
-    {
-      "tag": "fypシ",
-      "count": 570,
-      "median_er": 0.097516,
-      "is_power_hashtag": true
-    },
-    {
-      "tag": "tiktokmarketing",
-      "count": 540,
-      "median_er": 0.073044,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "trend",
-      "count": 406,
-      "median_er": 0.065648,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "tiktok",
-      "count": 368,
-      "median_er": 0.049668,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "motivation",
-      "count": 363,
-      "median_er": 0.123191,
-      "is_power_hashtag": true
-    },
-    {
-      "tag": "viralvideo",
-      "count": 352,
-      "median_er": 0.042118,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "entrepreneur",
-      "count": 289,
-      "median_er": 0.080774,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "dance",
-      "count": 287,
-      "median_er": 0.088339,
-      "is_power_hashtag": true
-    },
-    {
-      "tag": "smallbusiness",
-      "count": 272,
-      "median_er": 0.054938,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "digitalmarketing",
-      "count": 249,
-      "median_er": 0.079347,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "funny",
-      "count": 243,
-      "median_er": 0.056629,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "capcut",
-      "count": 208,
-      "median_er": 0.060063,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "creatorsearchinsights",
-      "count": 199,
-      "median_er": 0.093532,
-      "is_power_hashtag": true
-    },
-    {
-      "tag": "viraltiktok",
-      "count": 162,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "fypシ゚viral",
-      "count": 155,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "fy",
-      "count": 143,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "mindset",
-      "count": 136,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "fyppppppppppppppppppppppp",
-      "count": 129,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "relatable",
-      "count": 125,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "foryoupage❤️❤️",
-      "count": 125,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "tutorial",
-      "count": 123,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "viralvideos",
-      "count": 117,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "tiktokaffiliate",
-      "count": 117,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "success",
-      "count": 114,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "trendingvideo",
-      "count": 114,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "influencer",
-      "count": 111,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "contentcreatortips",
-      "count": 108,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "content",
-      "count": 93,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "goviral",
-      "count": 92,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "onlinebusiness",
-      "count": 92,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "video",
-      "count": 91,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "business",
-      "count": 89,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "sidehustle",
-      "count": 89,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "contentcreation",
-      "count": 88,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "funnyvideos",
-      "count": 87,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "fypage",
-      "count": 86,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "digitalmarketingforbeginners",
-      "count": 83,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "tiktoktips",
-      "count": 80,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "tiktokviral",
-      "count": 80,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "fypシ゚",
-      "count": 78,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "xyzbca",
-      "count": 78,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "capcutpioneer",
-      "count": 77,
-      "median_er": 0,
-      "is_power_hashtag": false
-    },
-    {
-      "tag": "smallbusinessowner",
-      "count": 75,
-      "median_er": 0,
-      "is_power_hashtag": false
-    }
-  ],
-  "top_sounds": [
-    {
-      "name": "original sound",
-      "count": 62,
-      "median_er": 0.071762,
-      "viral_overrepresentation": 0
-    },
-    {
-      "name": "Love You So",
-      "count": 60,
-      "median_er": 0.01861,
-      "viral_overrepresentation": 0
-    },
-    {
-      "name": "Big Guy - from \"The SpongeBob Movie: Search for SquarePants”",
-      "count": 30,
-      "median_er": 0.038238,
-      "viral_overrepresentation": 0.33
-    },
-    {
-      "name": "original sound - dropship",
-      "count": 24,
-      "median_er": 0.087793,
-      "viral_overrepresentation": 0
-    },
-    {
-      "name": "Original sound",
-      "count": 16,
-      "median_er": 0.18436,
-      "viral_overrepresentation": 3.12
-    },
-    {
-      "name": "Aesthetic",
-      "count": 15,
-      "median_er": 0.041151,
-      "viral_overrepresentation": 0
-    },
-    {
-      "name": "Original Sound",
-      "count": 13,
-      "median_er": 0.087202,
-      "viral_overrepresentation": 1.54
-    },
-    {
-      "name": "Yacht Club",
-      "count": 13,
-      "median_er": 0.121991,
-      "viral_overrepresentation": 1.54
-    },
-    {
-      "name": "Tokyo Grift",
-      "count": 13,
-      "median_er": 0.0721,
-      "viral_overrepresentation": 0
-    },
-    {
-      "name": "nhạc nền - dropship",
-      "count": 12,
-      "median_er": 0.079194,
-      "viral_overrepresentation": 0
-    },
-    {
-      "name": "original sound - coachhtet18",
-      "count": 11,
-      "median_er": 0.128776,
-      "viral_overrepresentation": 0
-    },
-    {
-      "name": "original sound - reverse.soundeffects_",
-      "count": 11,
-      "median_er": 0.017715,
-      "viral_overrepresentation": 0
-    },
-    {
-      "name": "Unstoppable (I put my armor on, show you how strong I am)",
-      "count": 11,
-      "median_er": 0.052486,
-      "viral_overrepresentation": 0
-    },
-    {
-      "name": "Funny Song",
-      "count": 10,
-      "median_er": 0.046029,
-      "viral_overrepresentation": 0
-    },
-    {
-      "name": "original sound - 917josh_",
-      "count": 10,
-      "median_er": 0.07168,
-      "viral_overrepresentation": 0
-    },
-    {
-      "name": "CHANEL",
-      "count": 10,
-      "median_er": 0,
-      "viral_overrepresentation": 0
-    },
-    {
-      "name": "original sound - elite_think",
-      "count": 10,
-      "median_er": 0,
-      "viral_overrepresentation": 4
-    },
-    {
-      "name": "Creepy and simple horror background music(1070744)",
-      "count": 9,
-      "median_er": 0,
-      "viral_overrepresentation": 0
-    },
-    {
-      "name": "Monkeyshine-JP",
-      "count": 9,
-      "median_er": 0,
-      "viral_overrepresentation": 1.11
-    },
-    {
-      "name": "original sound - girlslovepiinkk",
-      "count": 9,
-      "median_er": 0,
-      "viral_overrepresentation": 1.11
-    },
-    {
-      "name": "NO BATIDÃO",
-      "count": 9,
-      "median_er": 0,
-      "viral_overrepresentation": 0
-    },
-    {
-      "name": "Strut",
-      "count": 8,
-      "median_er": 0,
-      "viral_overrepresentation": 1.25
-    },
-    {
-      "name": "Cornfield Chase",
-      "count": 8,
-      "median_er": 0,
-      "viral_overrepresentation": 1.25
-    },
-    {
-      "name": "original sound - digitalcashqueenofficial",
-      "count": 8,
-      "median_er": 0,
-      "viral_overrepresentation": 0
-    },
-    {
-      "name": "Monkeys Spinning Monkeys",
-      "count": 8,
-      "median_er": 0,
-      "viral_overrepresentation": 0
-    },
-    {
-      "name": "som original - dropship",
-      "count": 8,
-      "median_er": 0,
-      "viral_overrepresentation": 0
-    },
-    {
-      "name": "original sound - miss_zhen_cuff168",
-      "count": 8,
-      "median_er": 0,
-      "viral_overrepresentation": 3.75
-    },
-    {
-      "name": "In Essence (Slowed)",
-      "count": 7,
-      "median_er": 0,
-      "viral_overrepresentation": 0
-    },
-    {
-      "name": "Sunrise",
-      "count": 7,
-      "median_er": 0,
-      "viral_overrepresentation": 0
-    },
-    {
-      "name": "nhạc nền - tradelle",
-      "count": 7,
-      "median_er": 0,
-      "viral_overrepresentation": 0
-    }
-  ],
-  "engagement_ratios": {
+  "duration_analysis": {
+    "sweet_spot_by_weighted_score": {
+      "optimal_range_seconds": [
+        50,
+        55
+      ],
+      "median_weighted_score": 0.119042
+    },
+    "sweet_spot_by_share_rate": {
+      "range": "50-55s",
+      "median_share_rate": 0.003602
+    },
+    "duration_weighted_score_correlation": {
+      "pearson_r": 0.005948,
+      "strength": "weak",
+      "note": "Negative = shorter videos tend to have higher engagement"
+    },
+    "buckets": [
+      {
+        "range": "0-5s",
+        "min": 0,
+        "max": 5,
+        "count": 8,
+        "median_weighted_score": 0.035887,
+        "median_share_rate": 0.002603,
+        "median_comment_rate": 0.000075
+      },
+      {
+        "range": "5-10s",
+        "min": 5,
+        "max": 10,
+        "count": 1083,
+        "median_weighted_score": 0.096618,
+        "median_share_rate": 0.002463,
+        "median_comment_rate": 0.000817
+      },
+      {
+        "range": "10-15s",
+        "min": 10,
+        "max": 15,
+        "count": 1452,
+        "median_weighted_score": 0.101453,
+        "median_share_rate": 0.002758,
+        "median_comment_rate": 0.000693
+      },
+      {
+        "range": "15-20s",
+        "min": 15,
+        "max": 20,
+        "count": 1529,
+        "median_weighted_score": 0.096056,
+        "median_share_rate": 0.00231,
+        "median_comment_rate": 0.000666
+      },
+      {
+        "range": "20-25s",
+        "min": 20,
+        "max": 25,
+        "count": 514,
+        "median_weighted_score": 0.083337,
+        "median_share_rate": 0.003093,
+        "median_comment_rate": 0.000554
+      },
+      {
+        "range": "25-30s",
+        "min": 25,
+        "max": 30,
+        "count": 368,
+        "median_weighted_score": 0.086394,
+        "median_share_rate": 0.00322,
+        "median_comment_rate": 0.000738
+      },
+      {
+        "range": "30-35s",
+        "min": 30,
+        "max": 35,
+        "count": 267,
+        "median_weighted_score": 0.080831,
+        "median_share_rate": 0.002612,
+        "median_comment_rate": 0.000591
+      },
+      {
+        "range": "35-40s",
+        "min": 35,
+        "max": 40,
+        "count": 183,
+        "median_weighted_score": 0.07326,
+        "median_share_rate": 0.00302,
+        "median_comment_rate": 0.000689
+      },
+      {
+        "range": "40-45s",
+        "min": 40,
+        "max": 45,
+        "count": 134,
+        "median_weighted_score": 0.095687,
+        "median_share_rate": 0.003402,
+        "median_comment_rate": 0.000943
+      },
+      {
+        "range": "45-50s",
+        "min": 45,
+        "max": 50,
+        "count": 147,
+        "median_weighted_score": 0.070363,
+        "median_share_rate": 0.002815,
+        "median_comment_rate": 0.000767
+      },
+      {
+        "range": "50-55s",
+        "min": 50,
+        "max": 55,
+        "count": 130,
+        "median_weighted_score": 0.119042,
+        "median_share_rate": 0.003602,
+        "median_comment_rate": 0.001338
+      },
+      {
+        "range": "55-60s",
+        "min": 55,
+        "max": 60,
+        "count": 173,
+        "median_weighted_score": 0.091073,
+        "median_share_rate": 0.0029,
+        "median_comment_rate": 0.001016
+      },
+      {
+        "range": "60s+",
+        "min": 60,
+        "max": 999,
+        "count": 1333,
+        "median_weighted_score": 0.100977,
+        "median_share_rate": 0.00334,
+        "median_comment_rate": 0.001251
+      }
+    ]
+  },
+  "aggregate_ratios": {
     "likes_per_100_views": 9.48,
     "comments_per_100_views": 0.07,
     "shares_per_100_views": 1.02,
-    "like_comment_share_ratio": "100:0.73:10.71"
+    "comments_per_100_likes": 0.73,
+    "shares_per_100_likes": 10.71
   },
-  "key_differentiators": [
-    {
-      "factor": "duration_seconds",
-      "viral_avg": 29.46,
-      "average_avg": 44.71,
-      "difference_pct": -34.11,
-      "description": "Viral videos are 34.11% shorter on average (29.46s vs 44.71s)"
-    },
-    {
-      "factor": "hashtag_count",
-      "viral_avg": 4.8,
-      "average_avg": 5.25,
-      "difference_pct": -8.48,
-      "description": "Viral videos use 8.48% fewer hashtags (4.8 vs 5.25)"
-    },
-    {
-      "factor": "caption_length",
-      "viral_avg": 94.14,
-      "average_avg": 136.64,
-      "difference_pct": -31.1,
-      "description": "Viral video captions are 31.1% shorter (94.14 vs 136.64 chars)"
-    },
-    {
-      "factor": "sound_usage_pct",
-      "viral_avg": 99.18,
-      "average_avg": 99.32,
-      "difference_pct": -0.14,
-      "description": "99.18% of viral videos have a named sound vs 99.32% of average (0.14% lower)"
-    },
-    {
-      "factor": "share_ratio",
-      "viral_avg": 0.050491,
-      "average_avg": 0.005158,
-      "difference_pct": 878.93,
-      "description": "Viral videos have 878.93% higher share ratio (5.049% vs 0.516%)"
-    },
-    {
-      "factor": "comment_ratio",
-      "viral_avg": 0.04101,
-      "average_avg": 0.003904,
-      "difference_pct": 950.45,
-      "description": "Viral videos have 950.45% higher comment ratio (4.101% vs 0.390%)"
+  "context_signals": {
+    "note": "Hashtags and sounds are content context signals for TikTok's recommendation system, NOT primary ranking factors. They help TikTok categorize content but don't directly boost ranking like engagement does.",
+    "top_hashtags": [
+      {
+        "tag": "fyp",
+        "count": 2897,
+        "median_weighted_score": 0.106972,
+        "is_power_hashtag": true
+      },
+      {
+        "tag": "viral",
+        "count": 1653,
+        "median_weighted_score": 0.106332,
+        "is_power_hashtag": true
+      },
+      {
+        "tag": "foryou",
+        "count": 951,
+        "median_weighted_score": 0.087849,
+        "is_power_hashtag": false
+      },
+      {
+        "tag": "contentcreator",
+        "count": 918,
+        "median_weighted_score": 0.116831,
+        "is_power_hashtag": true
+      },
+      {
+        "tag": "trending",
+        "count": 779,
+        "median_weighted_score": 0.093298,
+        "is_power_hashtag": false
+      },
+      {
+        "tag": "foryoupage",
+        "count": 668,
+        "median_weighted_score": 0.090199,
+        "is_power_hashtag": false
+      },
+      {
+        "tag": "creator",
+        "count": 578,
+        "median_weighted_score": 0.096849,
+        "is_power_hashtag": true
+      },
+      {
+        "tag": "fypシ",
+        "count": 570,
+        "median_weighted_score": 0.10667,
+        "is_power_hashtag": true
+      },
+      {
+        "tag": "tiktokmarketing",
+        "count": 540,
+        "median_weighted_score": 0.087217,
+        "is_power_hashtag": false
+      },
+      {
+        "tag": "trend",
+        "count": 406,
+        "median_weighted_score": 0.075252,
+        "is_power_hashtag": false
+      },
+      {
+        "tag": "tiktok",
+        "count": 368,
+        "median_weighted_score": 0.05751,
+        "is_power_hashtag": false
+      },
+      {
+        "tag": "motivation",
+        "count": 363,
+        "median_weighted_score": 0.141701,
+        "is_power_hashtag": true
+      },
+      {
+        "tag": "viralvideo",
+        "count": 352,
+        "median_weighted_score": 0.048292,
+        "is_power_hashtag": false
+      },
+      {
+        "tag": "entrepreneur",
+        "count": 289,
+        "median_weighted_score": 0.097063,
+        "is_power_hashtag": true
+      },
+      {
+        "tag": "dance",
+        "count": 287,
+        "median_weighted_score": 0.101056,
+        "is_power_hashtag": true
+      },
+      {
+        "tag": "smallbusiness",
+        "count": 272,
+        "median_weighted_score": 0.062658,
+        "is_power_hashtag": false
+      },
+      {
+        "tag": "digitalmarketing",
+        "count": 249,
+        "median_weighted_score": 0.098687,
+        "is_power_hashtag": true
+      },
+      {
+        "tag": "funny",
+        "count": 243,
+        "median_weighted_score": 0.069736,
+        "is_power_hashtag": false
+      },
+      {
+        "tag": "capcut",
+        "count": 208,
+        "median_weighted_score": 0.07684,
+        "is_power_hashtag": false
+      },
+      {
+        "tag": "creatorsearchinsights",
+        "count": 199,
+        "median_weighted_score": 0.118505,
+        "is_power_hashtag": true
+      },
+      {
+        "tag": "viraltiktok",
+        "count": 162,
+        "median_weighted_score": 0,
+        "is_power_hashtag": false
+      },
+      {
+        "tag": "fypシ゚viral",
+        "count": 155,
+        "median_weighted_score": 0,
+        "is_power_hashtag": false
+      },
+      {
+        "tag": "fy",
+        "count": 143,
+        "median_weighted_score": 0,
+        "is_power_hashtag": false
+      },
+      {
+        "tag": "mindset",
+        "count": 136,
+        "median_weighted_score": 0,
+        "is_power_hashtag": false
+      },
+      {
+        "tag": "fyppppppppppppppppppppppp",
+        "count": 129,
+        "median_weighted_score": 0,
+        "is_power_hashtag": false
+      },
+      {
+        "tag": "relatable",
+        "count": 125,
+        "median_weighted_score": 0,
+        "is_power_hashtag": false
+      },
+      {
+        "tag": "foryoupage❤️❤️",
+        "count": 125,
+        "median_weighted_score": 0,
+        "is_power_hashtag": false
+      },
+      {
+        "tag": "tutorial",
+        "count": 123,
+        "median_weighted_score": 0,
+        "is_power_hashtag": false
+      },
+      {
+        "tag": "viralvideos",
+        "count": 117,
+        "median_weighted_score": 0,
+        "is_power_hashtag": false
+      },
+      {
+        "tag": "tiktokaffiliate",
+        "count": 117,
+        "median_weighted_score": 0,
+        "is_power_hashtag": false
+      }
+    ],
+    "top_sounds": [
+      {
+        "name": "original sound",
+        "count": 62,
+        "median_weighted_score": 0.079139,
+        "viral_overrepresentation": 0.16
+      },
+      {
+        "name": "Love You So",
+        "count": 60,
+        "median_weighted_score": 0.021655,
+        "viral_overrepresentation": 0
+      },
+      {
+        "name": "Big Guy - from \"The SpongeBob Movie: Search for SquarePants”",
+        "count": 30,
+        "median_weighted_score": 0.040871,
+        "viral_overrepresentation": 0.33
+      },
+      {
+        "name": "original sound - dropship",
+        "count": 24,
+        "median_weighted_score": 0.106262,
+        "viral_overrepresentation": 0
+      },
+      {
+        "name": "Original sound",
+        "count": 16,
+        "median_weighted_score": 0.2052,
+        "viral_overrepresentation": 1.87
+      },
+      {
+        "name": "Aesthetic",
+        "count": 15,
+        "median_weighted_score": 0.045327,
+        "viral_overrepresentation": 0
+      },
+      {
+        "name": "Original Sound",
+        "count": 13,
+        "median_weighted_score": 0.092047,
+        "viral_overrepresentation": 1.54
+      },
+      {
+        "name": "Yacht Club",
+        "count": 13,
+        "median_weighted_score": 0.135392,
+        "viral_overrepresentation": 0.77
+      },
+      {
+        "name": "Tokyo Grift",
+        "count": 13,
+        "median_weighted_score": 0.085263,
+        "viral_overrepresentation": 0
+      },
+      {
+        "name": "nhạc nền - dropship",
+        "count": 12,
+        "median_weighted_score": 0.094114,
+        "viral_overrepresentation": 0
+      },
+      {
+        "name": "original sound - coachhtet18",
+        "count": 11,
+        "median_weighted_score": 0.147087,
+        "viral_overrepresentation": 0
+      },
+      {
+        "name": "original sound - reverse.soundeffects_",
+        "count": 11,
+        "median_weighted_score": 0.038829,
+        "viral_overrepresentation": 0
+      },
+      {
+        "name": "Unstoppable (I put my armor on, show you how strong I am)",
+        "count": 11,
+        "median_weighted_score": 0.05367,
+        "viral_overrepresentation": 0
+      },
+      {
+        "name": "Funny Song",
+        "count": 10,
+        "median_weighted_score": 0.056139,
+        "viral_overrepresentation": 0
+      },
+      {
+        "name": "original sound - 917josh_",
+        "count": 10,
+        "median_weighted_score": 0.077232,
+        "viral_overrepresentation": 0
+      },
+      {
+        "name": "CHANEL",
+        "count": 10,
+        "median_weighted_score": 0,
+        "viral_overrepresentation": 0
+      },
+      {
+        "name": "original sound - elite_think",
+        "count": 10,
+        "median_weighted_score": 0,
+        "viral_overrepresentation": 2
+      },
+      {
+        "name": "Creepy and simple horror background music(1070744)",
+        "count": 9,
+        "median_weighted_score": 0,
+        "viral_overrepresentation": 1.11
+      },
+      {
+        "name": "Monkeyshine-JP",
+        "count": 9,
+        "median_weighted_score": 0,
+        "viral_overrepresentation": 1.11
+      },
+      {
+        "name": "original sound - girlslovepiinkk",
+        "count": 9,
+        "median_weighted_score": 0,
+        "viral_overrepresentation": 1.11
+      }
+    ]
+  },
+  "simple_engagement": {
+    "note": "Legacy simple (likes+comments+shares)/views. Less accurate than weighted score — treats all signals equally. Kept for backwards compatibility.",
+    "percentiles": {
+      "p10": 0.015022,
+      "p25": 0.037921,
+      "p50": 0.081914,
+      "p75": 0.138996,
+      "p90": 0.198534,
+      "p95": 0.244852,
+      "p99": 0.472,
+      "mean": 0.133113,
+      "stddev": 2.640307
     }
-  ],
-  "view_percentiles": {
-    "p25": 5186,
-    "p50": 227803,
-    "p75": 2266250,
-    "p90": 13874967,
-    "p99": 71322739.6
   },
-  "categories": [],
   "distribution_stats": {
     "views": {
       "p10": 445,
@@ -723,50 +779,6 @@
       "p99": 71322739.6,
       "mean": 4684206.742795,
       "stddev": 13151974.204349
-    },
-    "likes": {
-      "p10": 38,
-      "p25": 273,
-      "p50": 9390,
-      "p75": 145206,
-      "p90": 1260199,
-      "p95": 2666069,
-      "p99": 6709605.4,
-      "mean": 443995.153394,
-      "stddev": 1458889.447378
-    },
-    "shares": {
-      "p10": 1,
-      "p25": 12,
-      "p50": 529,
-      "p75": 8304,
-      "p90": 58786,
-      "p95": 168333,
-      "p99": 735411.2,
-      "mean": 47559.337522,
-      "stddev": 763927.528878
-    },
-    "comments": {
-      "p10": 2,
-      "p25": 16,
-      "p50": 168,
-      "p75": 1320,
-      "p90": 6876,
-      "p95": 14932,
-      "p99": 54544.2,
-      "mean": 3248.803715,
-      "stddev": 13293.53204
-    },
-    "engagement_rate": {
-      "p10": 0.015022,
-      "p25": 0.037921,
-      "p50": 0.081914,
-      "p75": 0.138996,
-      "p90": 0.198534,
-      "p95": 0.244852,
-      "p99": 0.472,
-      "mean": 0.133113,
-      "stddev": 2.640307
     },
     "duration_seconds": {
       "p10": 8,

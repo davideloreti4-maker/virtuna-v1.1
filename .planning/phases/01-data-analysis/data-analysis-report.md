@@ -1,184 +1,177 @@
-# Data Analysis Report: Scraped TikTok Videos
+# Data Analysis Report: Algorithm-Aligned TikTok Video Analysis
 
-*Generated: 2026-02-16T09:49:47.149Z*
+*Generated: 2026-02-16T10:02:56.230Z*
+*Methodology: Algorithm-aligned analysis using TikTok's 2025-2026 engagement point system. Primary metrics weighted by algo importance: shares (3x) > comments (2x) > likes (1x). Completion rate and rewatches (4x, 5x) cannot be measured from scraped data.*
 
 ## 1. Executive Summary
 
-- Analyzed **7'321** unique TikTok videos after deduplication and outlier filtering
-- Engagement rates range from 1.50% (p10) to 47.20% (p99), with a median of 8.19%
-- Optimal video duration is **50-55s** (highest median engagement rate: 9.91%)
-- Viral videos are 34.11% shorter on average (29.46s vs 44.71s)
-- 8 "power hashtags" identified (high frequency + above-median engagement)
+- Analyzed **7'321** TikTok videos using algorithm-aligned weighted engagement scoring
+- **TikTok 2025 algo weights**: rewatches (5x) > completion (4x) > shares (3x) > comments (2x) > likes (1x)
+- **We measure**: shares (3x), comments (2x), likes (1x). Completion/rewatches require analytics access.
+- **Share rate is the #1 measurable virality signal**: p50 = 0.280%, viral threshold (p90) = 1.830%
+- Viral videos have 1163.21% higher share rate (5.723% vs 0.453%). Shares are weighted 3x in TikTok's algo — this is the strongest signal we can measure.
 
-## 2. Data Quality
+## 2. TikTok Algorithm Signal Hierarchy (2025-2026)
+
+| Signal | Algo Points | Measurable? | Our Metric |
+|--------|-------------|-------------|------------|
+| Rewatches | 5 | No | — |
+| Full watch (completion) | 4 | No | Duration as proxy |
+| Shares | 3 | **Yes** | `share_rate` |
+| Comments | 2 | **Yes** | `comment_rate` |
+| Likes | 1 | **Yes** | `like_rate` |
+
+**Weighted engagement score formula**: `(likes×1 + comments×2 + shares×3) / views`
+
+Sources: [Sprout Social](https://sproutsocial.com/insights/tiktok-algorithm/), [Buffer](https://buffer.com/resources/tiktok-algorithm/), [Fanpage Karma](https://www.fanpagekarma.com/insights/the-2025-tiktok-algorithm-what-you-need-to-know/)
+
+## 3. Data Quality
 
 | Metric | Count |
 |--------|-------|
 | Total rows fetched | 7'389 |
 | Duplicates removed | 0 |
-| Unique videos | 7'389 |
-| Null views removed | 0 |
-| Zero views removed | 19 |
-| Extreme outliers (p99.5+ views) | 37 |
-| Null duration removed | 12 |
-| Zero duration removed | 0 |
-| Total outliers removed | 68 |
-| **Final analyzed count** | **7'321** |
+| Outliers removed | 68 |
+| **Final analyzed** | **7'321** |
 
-Deduplication rate: 0%
+## 4. Primary KPIs — Percentile Distribution
 
-## 3. Virality Tiers
+### weighted_engagement_score
+*Mirrors TikTok's 2025 algo point system. Shares (3x) and comments (2x) weighted above likes (1x). Does NOT include completion/rewatches (not available from scraped data).*
 
-| Tier | Label | Score Range | ER Min | ER Max | Videos | % |
-|------|-------|-------------|--------|--------|--------|---|
-| 1 | Unlikely to perform | 0-25 | 0.000% | 3.792% | 1830 | 25% |
-| 2 | Below average | 25-45 | 3.792% | 8.191% | 1830 | 25% |
-| 3 | Average | 45-65 | 8.191% | 13.900% | 1830 | 25% |
-| 4 | Strong potential | 65-80 | 13.900% | 19.853% | 1098 | 15% |
-| 5 | Viral potential | 80-100 | 19.853% | 22583.333% | 733 | 10.01% |
+| p10 | p25 | p50 | p75 | p90 | p95 | p99 |
+|-----|-----|-----|-----|-----|-----|-----|
+| 1.824% | 4.575% | 9.540% | 15.957% | 23.973% | 31.247% | 84.360% |
 
-*Thresholds derived from actual engagement rate distribution percentiles (p25, p50, p75, p90).*
+### share_rate
+*Highest-value measurable signal. Shares are weighted 3x likes in TikTok's algo. A share rate of 2-5% indicates strong viral potential (industry benchmark 2025).*
 
-## 4. Key Differentiators (Viral vs Average)
+| p10 | p25 | p50 | p75 | p90 | p95 | p99 |
+|-----|-----|-----|-----|-----|-----|-----|
+| 0.012% | 0.083% | 0.280% | 0.743% | 1.830% | 3.519% | 13.464% |
 
-Comparison: **Viral** (top 10%, p90+ ER, 733 videos) vs **Average** (p40-p60 ER, 1465 videos)
+### comment_rate
+*Conversation signal, weighted 2x likes. Comment quality matters more than quantity in 2025 algo, but we can only measure quantity from scraped data.*
 
-- **duration_seconds**: Viral videos are 34.11% shorter on average (29.46s vs 44.71s)
-- **hashtag_count**: Viral videos use 8.48% fewer hashtags (4.8 vs 5.25)
-- **caption_length**: Viral video captions are 31.1% shorter (94.14 vs 136.64 chars)
-- **sound_usage_pct**: 99.18% of viral videos have a named sound vs 99.32% of average (0.14% lower)
-- **share_ratio**: Viral videos have 878.93% higher share ratio (5.049% vs 0.516%)
-- **comment_ratio**: Viral videos have 950.45% higher comment ratio (4.101% vs 0.390%)
+| p10 | p25 | p50 | p75 | p90 | p95 | p99 |
+|-----|-----|-----|-----|-----|-----|-----|
+| 0.009% | 0.030% | 0.079% | 0.309% | 1.516% | 3.389% | 11.331% |
 
-## 5. Duration Analysis
+### like_rate
+*Lowest algo signal (1x weight). 'Participation trophy' per TikTok's own point system. Still useful as baseline engagement indicator.*
 
-**Sweet spot:** 50-55s (median ER: 9.91%)
+| p10 | p25 | p50 | p75 | p90 | p95 | p99 |
+|-----|-----|-----|-----|-----|-----|-----|
+| 1.215% | 3.212% | 7.128% | 12.268% | 17.140% | 20.308% | 28.903% |
 
-| Duration | Videos | Median ER |
-|----------|--------|-----------|
-| 0-5s | 8 | 1.668% |
-| 5-10s | 1083 | 8.250% |
-| 10-15s | 1452 | 8.722% |
-| 15-20s | 1529 | 8.390% |
-| 20-25s | 514 | 7.058% |
-| 25-30s | 368 | 7.322% |
-| 30-35s | 267 | 6.849% |
-| 35-40s | 183 | 6.548% |
-| 40-45s | 134 | 8.344% |
-| 45-50s | 147 | 6.097% |
-| 50-55s ** | 130 | 9.914% |
-| 55-60s | 173 | 7.903% |
-| 60s+ | 1333 | 8.709% |
+### share_to_like_ratio
+*Measures active distribution vs passive consumption. High ratio = content people feel compelled to spread, not just tap 'like'. Strong virality amplifier.*
 
-## 6. Hashtag Analysis
+| p10 | p25 | p50 | p75 | p90 | p95 | p99 |
+|-----|-----|-----|-----|-----|-----|-----|
+| 0.0024 | 0.0175 | 0.0473 | 0.1111 | 0.2576 | 0.5000 | 1.5729 |
 
-### Top 20 Hashtags
+### comment_to_like_ratio
+*Measures conversation depth. High ratio = content that provokes discussion, not just passive approval.*
 
-| Rank | Hashtag | Count | Median ER | Power? |
-|------|---------|-------|-----------|--------|
-| 1 | #fyp | 2897 | 9.570% | Yes |
-| 2 | #viral | 1653 | 9.405% | Yes |
-| 3 | #foryou | 951 | 8.040% |  |
-| 4 | #contentcreator | 918 | 10.070% | Yes |
-| 5 | #trending | 779 | 8.086% |  |
-| 6 | #foryoupage | 668 | 7.859% |  |
-| 7 | #creator | 578 | 8.467% | Yes |
-| 8 | #fypシ | 570 | 9.752% | Yes |
-| 9 | #tiktokmarketing | 540 | 7.304% |  |
-| 10 | #trend | 406 | 6.565% |  |
-| 11 | #tiktok | 368 | 4.967% |  |
-| 12 | #motivation | 363 | 12.319% | Yes |
-| 13 | #viralvideo | 352 | 4.212% |  |
-| 14 | #entrepreneur | 289 | 8.077% |  |
-| 15 | #dance | 287 | 8.834% | Yes |
-| 16 | #smallbusiness | 272 | 5.494% |  |
-| 17 | #digitalmarketing | 249 | 7.935% |  |
-| 18 | #funny | 243 | 5.663% |  |
-| 19 | #capcut | 208 | 6.006% |  |
-| 20 | #creatorsearchinsights | 199 | 9.353% | Yes |
+| p10 | p25 | p50 | p75 | p90 | p95 | p99 |
+|-----|-----|-----|-----|-----|-----|-----|
+| 0.0017 | 0.0045 | 0.0148 | 0.0598 | 0.2000 | 0.3742 | 0.9576 |
 
-### Power Hashtags (8)
+## 5. Virality Tiers (Weighted Engagement Score)
 
-High frequency AND above-median engagement rate:
+| Tier | Label | Score Range | WES Threshold | Median Share Rate | Median Comment Rate | Videos | % |
+|------|-------|-------------|---------------|-------------------|---------------------|--------|---|
+| 1 | Unlikely to perform | 0-25 | 0.000%-4.575% | 0.077% | 0.031% | 1829 | 24.98% |
+| 2 | Below average | 25-45 | 4.575%-9.540% | 0.230% | 0.079% | 1831 | 25.01% |
+| 3 | Average | 45-65 | 9.540%-15.957% | 0.390% | 0.117% | 1830 | 25% |
+| 4 | Strong potential | 65-80 | 15.957%-23.973% | 0.718% | 0.123% | 1098 | 15% |
+| 5 | Viral potential | 80-100 | 23.973%-22616.667% | 2.822% | 0.758% | 733 | 10.01% |
 
-- **#fyp** — 2897 videos, 9.57% median ER
-- **#viral** — 1653 videos, 9.40% median ER
-- **#contentcreator** — 918 videos, 10.07% median ER
-- **#creator** — 578 videos, 8.47% median ER
-- **#fypシ** — 570 videos, 9.75% median ER
-- **#motivation** — 363 videos, 12.32% median ER
-- **#dance** — 287 videos, 8.83% median ER
-- **#creatorsearchinsights** — 199 videos, 9.35% median ER
+*Tiers based on weighted engagement score distribution, NOT simple engagement rate.*
 
-## 7. Sound Analysis
+## 6. Key Differentiators — Viral vs Average (Ordered by Algo Weight)
 
-### Top 15 Sounds
+**Viral**: WES p90+ (733 videos) | **Average**: WES p40-p60 (1465 videos)
 
-| Rank | Sound | Count | Median ER | Viral Overrep. |
-|------|-------|-------|-----------|----------------|
-| 1 | original sound | 62 | 7.176% | 0x |
-| 2 | Love You So | 60 | 1.861% | 0x |
-| 3 | Big Guy - from "The SpongeBob Movie: Search for Sq | 30 | 3.824% | 0.33x |
-| 4 | original sound - dropship | 24 | 8.779% | 0x |
-| 5 | Original sound | 16 | 18.436% | 3.12x |
-| 6 | Aesthetic | 15 | 4.115% | 0x |
-| 7 | Original Sound | 13 | 8.720% | 1.54x |
-| 8 | Yacht Club | 13 | 12.199% | 1.54x |
-| 9 | Tokyo Grift | 13 | 7.210% | 0x |
-| 10 | nhạc nền - dropship | 12 | 7.919% | 0x |
-| 11 | original sound - coachhtet18 | 11 | 12.878% | 0x |
-| 12 | original sound - reverse.soundeffects_ | 11 | 1.772% | 0x |
-| 13 | Unstoppable (I put my armor on, show you how stron | 11 | 5.249% | 0x |
-| 14 | Funny Song | 10 | 4.603% | 0x |
-| 15 | original sound - 917josh_ | 10 | 7.168% | 0x |
+- 🔴 **share_rate** [HIGH (3x)]: Viral videos have 1163.21% higher share rate (5.723% vs 0.453%). Shares are weighted 3x in TikTok's algo — this is the strongest signal we can measure.
+- ⚪ **share_to_like_ratio** [CONTEXT]: Viral videos have 266.13% higher share-to-like ratio (0.39 vs 0.11). People don't just like viral content — they actively distribute it.
+- 🟡 **comment_rate** [MEDIUM (2x)]: Viral videos have 1254.93% higher comment rate (4.387% vs 0.324%). Comments weighted 2x in algo.
+- ⚪ **comment_to_like_ratio** [CONTEXT]: Viral videos have 255.41% higher comment-to-like ratio (0.23 vs 0.06). Deeper conversation signals.
+- ⚪ **weighted_engagement_score** [CONTEXT]: Viral videos have 704.48% higher weighted engagement score (76.740% vs 9.539%).
+- 🟢 **like_rate** [LOW (1x)]: Viral videos have 574.38% higher like rate (50.796% vs 7.532%). Lowest algo signal but still present.
+- ⚪ **duration_seconds** [CONTEXT]: Viral videos are 24.47% shorter (33.35s vs 44.15s). Shorter = higher likely completion rate.
+- ⚪ **caption_length** [CONTEXT]: Viral video captions are 32.66% shorter (99.58 vs 147.88 chars).
 
-### Viral-Overrepresented Sounds (5)
+## 7. Duration-Engagement Analysis
 
-Sounds appearing disproportionately in viral-tier videos (>1.5x overrepresentation):
+**Sweet spot (by weighted score)**: 50-55s
+**Best share rate bucket**: 50-55s
+**Duration-engagement correlation**: r=0.0059 (weak)
 
-- **Original sound** — 3.12x overrepresentation, 16 videos
-- **Original Sound** — 1.54x overrepresentation, 13 videos
-- **Yacht Club** — 1.54x overrepresentation, 13 videos
-- **original sound - elite_think** — 4x overrepresentation, 10 videos
-- **original sound - miss_zhen_cuff168** — 3.75x overrepresentation, 8 videos
+| Duration | Videos | Median WES | Median Share Rate | Median Comment Rate |
+|----------|--------|------------|-------------------|---------------------|
+| 0-5s | 8 | 3.589% | 0.260% | 0.007% |
+| 5-10s | 1083 | 9.662% | 0.246% | 0.082% |
+| 10-15s | 1452 | 10.145% | 0.276% | 0.069% |
+| 15-20s | 1529 | 9.606% | 0.231% | 0.067% |
+| 20-25s | 514 | 8.334% | 0.309% | 0.055% |
+| 25-30s | 368 | 8.639% | 0.322% | 0.074% |
+| 30-35s | 267 | 8.083% | 0.261% | 0.059% |
+| 35-40s | 183 | 7.326% | 0.302% | 0.069% |
+| 40-45s | 134 | 9.569% | 0.340% | 0.094% |
+| 45-50s | 147 | 7.036% | 0.281% | 0.077% |
+| 50-55s | 130 | 11.904% | 0.360% | 0.134% |
+| 55-60s | 173 | 9.107% | 0.290% | 0.102% |
+| 60s+ | 1333 | 10.098% | 0.334% | 0.125% |
 
-## 8. Engagement Patterns
+## 8. Aggregate Engagement Ratios
 
-### Per 100 Views
+- Per 100 views: **9.48** likes, **0.07** comments, **1.02** shares
+- Per 100 likes: **0.73** comments, **10.71** shares
 
-- **Likes:** 9.48
-- **Comments:** 0.07
-- **Shares:** 1.02
+## 9. Context Signals (Secondary — Not Primary Algo Ranking Factors)
 
-### Like:Comment:Share Ratio
+*Hashtags and sounds help TikTok categorize content but don't directly boost ranking. Engagement signals dominate.*
 
-For every **100 likes**, there are approximately **0.73 comments and 10.71 shares**.
+### Top Hashtags
+| Hashtag | Count | Median WES | Power? |
+|---------|-------|------------|--------|
+| #fyp | 2897 | 10.697% | Yes |
+| #viral | 1653 | 10.633% | Yes |
+| #foryou | 951 | 8.785% |  |
+| #contentcreator | 918 | 11.683% | Yes |
+| #trending | 779 | 9.330% |  |
+| #foryoupage | 668 | 9.020% |  |
+| #creator | 578 | 9.685% | Yes |
+| #fypシ | 570 | 10.667% | Yes |
+| #tiktokmarketing | 540 | 8.722% |  |
+| #trend | 406 | 7.525% |  |
+| #tiktok | 368 | 5.751% |  |
+| #motivation | 363 | 14.170% | Yes |
+| #viralvideo | 352 | 4.829% |  |
+| #entrepreneur | 289 | 9.706% | Yes |
+| #dance | 287 | 10.106% | Yes |
 
-### Engagement Rate Distribution
+### Top Sounds
+| Sound | Count | Median WES | Viral Overrep. |
+|-------|-------|------------|----------------|
+| original sound | 62 | 7.914% | 0.16x |
+| Love You So | 60 | 2.166% | 0x |
+| Big Guy - from "The SpongeBob Movie: Sea | 30 | 4.087% | 0.33x |
+| original sound - dropship | 24 | 10.626% | 0x |
+| Original sound | 16 | 20.520% | 1.87x |
+| Aesthetic | 15 | 4.533% | 0x |
+| Original Sound | 13 | 9.205% | 1.54x |
+| Yacht Club | 13 | 13.539% | 0.77x |
+| Tokyo Grift | 13 | 8.526% | 0x |
+| nhạc nền - dropship | 12 | 9.411% | 0x |
 
-| Percentile | Engagement Rate |
-|------------|-----------------|
-| P10 | 1.502% |
-| P25 | 3.792% |
-| P50 | 8.191% |
-| P75 | 13.900% |
-| P90 | 19.853% |
-| P95 | 24.485% |
-| P99 | 47.200% |
-| Mean | 13.311% |
-| Std Dev | 264.031% |
+## 10. Implications for Prediction Engine v2
 
-## 9. Category Breakdown
-
-*No category data available in the dataset.*
-
-## 10. Implications for Engine
-
-Key takeaways for downstream phases:
-
-- **Phase 2 (Gemini Prompts):** Use virality tier thresholds and engagement patterns to calibrate prompt scoring anchors. The engagement rate distribution provides concrete numbers for "what good looks like" on TikTok.
-- **Phase 3 (DeepSeek CoT):** Key differentiators between viral and average content should inform the chain-of-thought reasoning — especially duration, share ratio, and hashtag usage patterns.
-- **Phase 5 (Aggregation Formula):** Duration sweet spot (50-55s) and engagement ratio patterns provide calibration data for the rules engine component.
-- **Phase 10 (ML Training):** The full distribution stats and per-tier breakdowns provide training labels. Use engagement rate percentile boundaries as classification thresholds.
-- **Phase 12 (Calibration):** calibration-baseline.json is the ground truth for A/B testing engine accuracy against real TikTok performance data.
+- **Scoring formula must weight by algo importance**: Use `(likes×1 + comments×2 + shares×3) / views` as base. When completion rate becomes available (video upload), weight it 4x.
+- **Share rate is the virality gateway**: Videos above 1.830% share rate (p90) are in the viral tier. This should be the primary signal Gemini and DeepSeek evaluate.
+- **Share-to-like ratio reveals content quality**: A video with high likes but low shares is passively consumed, not virally distributed. Flag this in the analysis.
+- **Duration sweet spot**: 50-55s for highest weighted engagement. Use as a calibration signal, not a rule.
+- **Demote hashtag/sound analysis**: These are content context signals, not ranking factors. Do NOT weight them highly in the prediction formula.
 
