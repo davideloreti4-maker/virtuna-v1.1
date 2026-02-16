@@ -182,11 +182,11 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 10-01: ECE Measurement Pipeline
-- [ ] 10-02: Platt Scaling for Score Recalibration
-- [ ] 10-03: ML Feature Extraction from Scraped Videos
-- [ ] 10-04: ML Model Training
-- [ ] 10-05: Monthly Calibration Audit Cron
+- [ ] 10-01: ECE measurement pipeline with computeECE, calibration report, and admin API route
+- [ ] 10-02: Platt scaling fit/apply with gradient descent logistic regression and 24hr cached parameters
+- [ ] 10-03: Training data extraction from 7000+ scraped videos into 15-feature vectors with virality tier labels
+- [ ] 10-04: Multinomial logistic regression ML model training, persistence, and inference
+- [ ] 10-05: Monthly calibration audit cron (ECE + Platt refit + drift alert) and retrain-ml cron update
 
 ### Phase 11: Enhanced Signals & Audio
 **Goal**: Signal quality improved for audio matching, hashtag scoring, and scraper coverage
