@@ -141,6 +141,11 @@ Progress: [████████████████████░] 76.9
 - [Execute 10-03]: Deterministic Fisher-Yates shuffle using video ID hash seeds for reproducible train/test splits
 - [Execute 10-03]: Virality tier assignment reuses calibration-baseline.json WES percentile thresholds
 - [Execute 10-03]: No extreme outlier filtering for training data -- let ML model learn from full distribution
+- [Execute 10-04]: Pure TypeScript multinomial logistic regression -- no external ML libraries for small bundle and simple deployment
+- [Execute 10-04]: 31% test accuracy on 5-class problem (vs 20% random baseline) using engagement rate features
+- [Execute 10-04]: Module-level cachedWeights for single-load-per-cold-start performance
+- [Execute 10-04]: Tier midpoint score conversion: [12.5, 35, 55, 72.5, 90] weighted by class probabilities
+- [Execute 10-04]: featureVectorToMLInput uses 0.5 defaults for engagement metrics not in FeatureVector
 - [Plan]: Personas are theater/UX, not accuracy signal -- lightweight 2-3 sentences each
 - [Plan]: Remove conversation_themes and variants to redirect tokens to accuracy
 - [Plan]: Pass structured Gemini signals to DeepSeek (no scores) to prevent anchoring
@@ -158,10 +163,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 10-02-PLAN.md (Platt scaling recalibration)
+Stopped at: Completed 10-04-PLAN.md (ML model training)
 Resume file: None
-Next: Continue Phase 10 remaining plans (10-04, 10-05)
+Next: Continue Phase 10 remaining plan (10-05)
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Phase 10 Plans 1+2+3 complete (ECE pipeline + Platt scaling + training data)*
+*Last updated: 2026-02-16 -- Phase 10 Plans 1+2+3+4 complete (ECE pipeline + Platt scaling + training data + ML model)*
