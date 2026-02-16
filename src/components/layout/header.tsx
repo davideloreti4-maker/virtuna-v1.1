@@ -94,13 +94,13 @@ export function Header({ className }: HeaderProps) {
                 Pricing
               </Link>
               <Link
-                href="/auth/login"
+                href="/login"
                 className="cursor-pointer text-white/80 transition-colors hover:text-white"
               >
                 Sign in
               </Link>
               <Link
-                href="/auth/signup"
+                href="/signup"
                 className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
               >
                 Start free trial
@@ -141,14 +141,14 @@ export function Header({ className }: HeaderProps) {
                 Pricing
               </Link>
               <Link
-                href="/auth/login"
+                href="/login"
                 className="text-white/80 transition-colors hover:text-white"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Sign in
               </Link>
               <Link
-                href="/auth/signup"
+                href="/signup"
                 className="w-full rounded-lg bg-accent px-4 py-3 text-center text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
                 onClick={() => setMobileMenuOpen(false)}
               >

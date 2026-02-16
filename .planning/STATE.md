@@ -58,7 +58,7 @@ Progress: [████░░░░░░] 33%
 
 ### Pending Todos
 
-- Clean up old auth pages at /auth/login and /auth/signup (superseded by /login and /signup)
+None
 
 ### Blockers/Concerns
 
