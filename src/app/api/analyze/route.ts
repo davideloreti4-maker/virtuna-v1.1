@@ -1,9 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { analyzeWithGemini } from "@/lib/engine/gemini";
-import { reasonWithDeepSeek } from "@/lib/engine/deepseek";
-import { loadActiveRules, scoreContentAgainstRules } from "@/lib/engine/rules";
-import { enrichWithTrends } from "@/lib/engine/trends";
+import { runPredictionPipeline } from "@/lib/engine/pipeline";
 import { aggregateScores } from "@/lib/engine/aggregator";
 import { AnalysisInputSchema } from "@/lib/engine/types";
 
@@ -14,6 +11,9 @@ export const maxDuration = 120; // API-10: Vercel Pro plan
  *
  * Accepts content + type + society, runs prediction engine,
  * streams progress via SSE, returns PredictionResult.
+ *
+ * v2: Uses runPredictionPipeline() + aggregateScores() pattern
+ * instead of direct engine module calls.
  */
 export async function POST(request: Request) {
   try {
@@ -41,62 +41,50 @@ export async function POST(request: Request) {
 
         try {
           const validated = AnalysisInputSchema.parse(body);
-          const pipelineStart = performance.now();
           const service = createServiceClient();
 
-          // Phase 1: Analyzing — Gemini + rules + trends in parallel
-          send("phase", { phase: "analyzing", message: "Analyzing content structure and patterns..." });
-          const [geminiResult, rules, trendEnrichment] = await Promise.all([
-            analyzeWithGemini(validated),
-            loadActiveRules(service, validated.content_type),
-            enrichWithTrends(service, validated),
-          ]);
-
-          // Phase 2: Matching — Score content against rules
-          send("phase", { phase: "matching", message: "Matching against rule library and trends..." });
-          const ruleResult = await scoreContentAgainstRules(validated.content_text, rules);
-
-          // Phase 3: Simulating — DeepSeek reasoning
-          send("phase", { phase: "simulating", message: "Simulating audience reactions..." });
-          const deepseekResult = await reasonWithDeepSeek({
-            input: validated,
-            gemini_analysis: geminiResult.analysis,
-            rule_result: ruleResult,
-            trend_enrichment: trendEnrichment,
+          // Phase 1: Run full pipeline (handles Wave 1 + Wave 2 internally)
+          send("phase", {
+            phase: "analyzing",
+            message:
+              "Analyzing content with Gemini and loading creator context...",
           });
+          const pipelineResult = await runPredictionPipeline(validated);
 
-          // Phase 4: Generating — Aggregate scores
-          send("phase", { phase: "generating", message: "Generating predictions and insights..." });
-          const latencyMs = Math.round(performance.now() - pipelineStart);
-          const result = aggregateScores(
-            geminiResult.analysis,
-            ruleResult,
-            trendEnrichment,
-            deepseekResult,
-            geminiResult.cost_cents,
-            latencyMs,
-          );
+          // Phase 2: Aggregate scores
+          send("phase", {
+            phase: "scoring",
+            message: "Calculating predictions and assembling results...",
+          });
+          const result = aggregateScores(pipelineResult);
+
+          // Persist to DB with v2 columns
           await service.from("analysis_results").insert({
             user_id: user.id,
-            content_text: validated.content_text,
+            content_text: validated.content_text ?? "",
             content_type: validated.content_type,
             society_id: validated.society_id ?? null,
             overall_score: result.overall_score,
-            confidence: result.confidence === "HIGH" ? 0.9 : result.confidence === "MEDIUM" ? 0.6 : 0.3,
+            confidence: result.confidence, // Now numeric 0-1 (was categorical string)
             factors: result.factors as unknown as null,
             suggestions: result.suggestions as unknown as null,
-            personas: result.persona_reactions as unknown as null,
-            variants: result.variants as unknown as null,
-            conversation_themes: result.conversation_themes as unknown as null,
             rule_score: result.rule_score,
             trend_score: result.trend_score,
-            ml_score: result.ml_score,
             score_weights: result.score_weights as unknown as null,
             latency_ms: result.latency_ms,
             cost_cents: result.cost_cents,
             engine_version: result.engine_version,
             gemini_model: result.gemini_model,
             deepseek_model: result.deepseek_model,
+            // v2 columns (from Phase 4 migration)
+            behavioral_predictions:
+              result.behavioral_predictions as unknown as null,
+            feature_vector: result.feature_vector as unknown as null,
+            reasoning: result.reasoning,
+            warnings: result.warnings,
+            input_mode: result.input_mode,
+            has_video: result.has_video,
+            gemini_score: result.gemini_score,
           });
 
           // Track usage

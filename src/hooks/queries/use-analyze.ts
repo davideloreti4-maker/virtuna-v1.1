@@ -8,9 +8,8 @@ import { useState, useCallback } from "react";
 type AnalysisPhase =
   | "idle"
   | "analyzing"
-  | "matching"
-  | "simulating"
-  | "generating"
+  | "reasoning"
+  | "scoring"
   | "complete"
   | "error";
 
@@ -21,6 +20,9 @@ interface SSEPhaseEvent {
 
 /**
  * QUERY-07: Mutation hook for content analysis with SSE streaming
+ *
+ * v2: Updated phase names (analyzing/reasoning/scoring) and input type
+ * to match AnalysisInput schema.
  */
 export function useAnalyze() {
   const queryClient = useQueryClient();
@@ -34,9 +36,14 @@ export function useAnalyze() {
 
   const mutation = useMutation({
     mutationFn: async (input: {
-      content_text: string;
+      input_mode: "text" | "tiktok_url" | "video_upload";
+      content_text?: string;
       content_type: string;
+      tiktok_url?: string;
+      video_storage_path?: string;
       society_id?: string;
+      niche?: string;
+      creator_handle?: string;
     }) => {
       setPhase("analyzing");
 
