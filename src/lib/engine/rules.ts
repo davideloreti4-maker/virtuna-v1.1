@@ -1,9 +1,16 @@
+import OpenAI from "openai";
+import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createCache } from "@/lib/cache";
 import type { RuleScoreResult } from "./types";
 
 // Cache rules for 1 hour — rule_library changes infrequently
 const rulesCache = createCache<Rule[]>(60 * 60 * 1000);
+
+// DeepSeek-chat pricing: $0.14/1M input, $0.28/1M output (cheaper than reasoner)
+const SEMANTIC_INPUT_PRICE_PER_TOKEN = 0.14 / 1_000_000;
+const SEMANTIC_OUTPUT_PRICE_PER_TOKEN = 0.28 / 1_000_000;
+const SEMANTIC_TIMEOUT_MS = 15_000; // 15s — semantic eval is simpler than full reasoning
 
 interface Rule {
   id: string;
@@ -14,8 +21,37 @@ interface Rule {
   score_modifier: number | null;
   platform: string | null;
   evaluation_prompt: string | null;
+  evaluation_tier: "regex" | "semantic";
   weight: number;
   max_score: number;
+}
+
+// Zod schema for semantic evaluation response
+const SemanticEvaluationSchema = z.object({
+  evaluations: z.array(
+    z.object({
+      rule_name: z.string(),
+      score: z.number().min(0).max(10),
+      rationale: z.string(),
+    })
+  ),
+});
+
+type SemanticEvaluation = z.infer<typeof SemanticEvaluationSchema>;
+
+// Lazy-initialized OpenAI client for semantic eval (NOT imported from deepseek.ts to avoid circular dep)
+let semanticClient: OpenAI | null = null;
+
+function getSemanticClient(): OpenAI {
+  if (!semanticClient) {
+    const apiKey = process.env.DEEPSEEK_API_KEY;
+    if (!apiKey) throw new Error("Missing DEEPSEEK_API_KEY for semantic rule evaluation");
+    semanticClient = new OpenAI({
+      apiKey,
+      baseURL: "https://api.deepseek.com",
+    });
+  }
+  return semanticClient;
 }
 
 /**
@@ -32,7 +68,9 @@ export async function loadActiveRules(
 
   let query = supabase
     .from("rule_library")
-    .select("id, name, description, category, pattern, score_modifier, platform, evaluation_prompt, weight, max_score")
+    .select(
+      "id, name, description, category, pattern, score_modifier, platform, evaluation_prompt, evaluation_tier, weight, max_score"
+    )
     .eq("is_active", true);
 
   // Include cross-platform rules (null) and platform-specific rules
@@ -46,13 +84,14 @@ export async function loadActiveRules(
     return [];
   }
 
-  const rules = (data ?? []) as Rule[];
+  // Cast through unknown — Supabase types may not include evaluation_tier until types are regenerated
+  const rules = (data ?? []) as unknown as Rule[];
   rulesCache.set(cacheKey, rules);
   return rules;
 }
 
 /**
- * Simple pattern matching for deterministic rules
+ * Simple pattern matching for deterministic rules (regex tier)
  */
 function matchesPattern(content: string, pattern: string): boolean {
   const lowerContent = content.toLowerCase();
@@ -93,13 +132,108 @@ function matchesPattern(content: string, pattern: string): boolean {
     case "authenticity":
       return /\b(i|my|me|we|our|personally)\b/i.test(content);
     default:
+      console.debug(`[rules] Unknown regex pattern: ${pattern}`);
       return false;
   }
 }
 
 /**
- * Score content against loaded rules (ENGINE-04)
- * Uses deterministic pattern matching for rules with patterns
+ * Evaluate semantic-tier rules via a single batched DeepSeek call.
+ * Returns evaluation results mapped by rule_name. On failure, returns empty array.
+ */
+async function evaluateSemanticRules(
+  content: string,
+  rules: Rule[]
+): Promise<SemanticEvaluation["evaluations"]> {
+  if (rules.length === 0) return [];
+
+  // Filter out rules without evaluation prompts (can't evaluate without one)
+  const evaluableRules = rules.filter((r) => r.evaluation_prompt);
+  const skippedRules = rules.filter((r) => !r.evaluation_prompt);
+
+  for (const skipped of skippedRules) {
+    console.warn(
+      `[rules] Skipping semantic rule "${skipped.name}": no evaluation_prompt defined`
+    );
+  }
+
+  if (evaluableRules.length === 0) return [];
+
+  try {
+    const ai = getSemanticClient();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), SEMANTIC_TIMEOUT_MS);
+
+    const ruleList = evaluableRules
+      .map((r, i) => `${i + 1}. ${r.name}: ${r.evaluation_prompt}`)
+      .join("\n");
+
+    const prompt = `Evaluate the following content against these rules. For each rule, provide a score (0-10) and brief rationale (1 sentence).
+
+Content: ${content}
+
+Rules to evaluate:
+${ruleList}
+
+Return JSON: { "evaluations": [{ "rule_name": string, "score": number, "rationale": string }] }`;
+
+    const response = await ai.chat.completions.create(
+      {
+        model: "deepseek-chat",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+      },
+      { signal: controller.signal }
+    );
+
+    clearTimeout(timeout);
+
+    const text = response.choices[0]?.message?.content ?? "";
+    // Strip markdown fences if present
+    const cleaned =
+      text.match(/```(?:json)?\n?([\s\S]*?)\n?```/)?.[1]?.trim() ?? text.trim();
+    const parsed = JSON.parse(cleaned);
+    const result = SemanticEvaluationSchema.safeParse(parsed);
+
+    if (!result.success) {
+      console.warn(
+        `[rules] Semantic eval response validation failed: ${result.error.message}`
+      );
+      return [];
+    }
+
+    // Log cost estimate
+    const promptTokens = response.usage?.prompt_tokens;
+    const completionTokens = response.usage?.completion_tokens;
+    const costCents =
+      ((promptTokens ?? 1500) * SEMANTIC_INPUT_PRICE_PER_TOKEN +
+        (completionTokens ?? 500) * SEMANTIC_OUTPUT_PRICE_PER_TOKEN) *
+      100;
+    console.log(
+      `[rules] Semantic eval: ${evaluableRules.length} rules, ~${costCents.toFixed(4)} cents` +
+        (promptTokens
+          ? ` (${promptTokens} in, ${completionTokens} out tokens)`
+          : "")
+    );
+
+    return result.data.evaluations;
+  } catch (error) {
+    console.warn(
+      `[rules] Semantic evaluation failed, falling back to regex-only:`,
+      error instanceof Error ? error.message : String(error)
+    );
+    return [];
+  }
+}
+
+/**
+ * Score content against loaded rules (ENGINE-04, RULE-01, RULE-02)
+ *
+ * Hybrid evaluation:
+ * - Regex tier: deterministic pattern matching (fast, no API cost)
+ * - Semantic tier: batched DeepSeek evaluation (slower, ~$0.001 per batch)
+ *
+ * If semantic evaluation fails, falls back to regex-only results.
  */
 export async function scoreContentAgainstRules(
   content: string,
@@ -109,25 +243,67 @@ export async function scoreContentAgainstRules(
   let totalScore = 0;
   let totalMaxScore = 0;
 
-  for (const rule of rules) {
+  // Split rules by evaluation tier
+  const regexRules = rules.filter((r) => r.evaluation_tier === "regex");
+  const semanticRules = rules.filter((r) => r.evaluation_tier === "semantic");
+
+  // --- Regex tier (synchronous, deterministic) ---
+  for (const rule of regexRules) {
     const maxScore = rule.max_score;
     totalMaxScore += maxScore;
 
     if (rule.pattern) {
-      // Deterministic scoring
       const matches = matchesPattern(content, rule.pattern);
       if (matches && rule.score_modifier) {
-        const normalized = Math.min(maxScore, (rule.score_modifier / 15) * maxScore);
+        const normalized = Math.min(
+          maxScore,
+          (rule.score_modifier / 15) * maxScore
+        );
         totalScore += normalized * rule.weight;
         matched_rules.push({
           rule_id: rule.id,
           rule_name: rule.name,
           score: normalized,
           max_score: maxScore,
-          tier: 'regex' as const,
+          tier: "regex" as const,
         });
       }
+    } else {
+      // Regex-tier rule without pattern: score 0
+      console.debug(`[rules] Regex rule "${rule.name}" has no pattern, scoring 0`);
     }
+  }
+
+  // --- Semantic tier (async, DeepSeek batch) ---
+  for (const rule of semanticRules) {
+    totalMaxScore += rule.max_score;
+  }
+
+  const semanticEvals = await evaluateSemanticRules(content, semanticRules);
+
+  // Map semantic evaluations to matched rules
+  for (const evaluation of semanticEvals) {
+    // Find matching rule by name (case-insensitive)
+    const rule = semanticRules.find(
+      (r) => r.name.toLowerCase() === evaluation.rule_name.toLowerCase()
+    );
+    if (!rule) {
+      console.debug(
+        `[rules] Semantic eval returned unknown rule: ${evaluation.rule_name}`
+      );
+      continue;
+    }
+
+    // Semantic scoring: (score/10) * max_score * weight
+    const normalizedScore = (evaluation.score / 10) * rule.max_score;
+    totalScore += normalizedScore * rule.weight;
+    matched_rules.push({
+      rule_id: rule.id,
+      rule_name: rule.name,
+      score: normalizedScore,
+      max_score: rule.max_score,
+      tier: "semantic" as const,
+    });
   }
 
   // Normalize to 0-100
