@@ -5,24 +5,24 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate -- and connects them to monetization opportunities.
-**Current focus:** Phase 4 - Payments (ready to plan)
+**Current focus:** Phase 5 - Referral (executing)
 
 ## Current Position
 
 **Milestone:** MVP Launch
-**Phase:** 4 of 6 (Payments)
-**Plan:** 0 of 3 in current phase
-**Status:** Ready to plan
-**Last activity:** 2026-02-16 -- Phase 3 Onboarding complete (verified)
+**Phase:** 5 of 6 (Referral)
+**Plan:** 2 of 2 in current phase
+**Status:** Plan 05-02 complete
+**Last activity:** 2026-02-16 -- Completed 05-02 sidebar nav + build verification
 
-Progress: [█████░░░░░] 50%
+Progress: [███████░░░] 71%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
+- Total plans completed: 9
 - Average duration: 3 min
-- Total execution time: 0.30 hours
+- Total execution time: 0.45 hours
 
 **By Phase:**
 
@@ -31,6 +31,8 @@ Progress: [█████░░░░░] 50%
 | 01-foundation | 2 | 10 min | 5 min |
 | 02-landing-page | 2 | 4 min | 2 min |
 | 03-onboarding | 2 | 4 min | 2 min |
+| 04-payments | 3 | 9 min | 3 min |
+| 05-referral | 1 | 1 min | 1 min |
 
 *Updated after each plan completion*
 
@@ -61,6 +63,8 @@ Progress: [█████░░░░░] 50%
 - [03-02]: Combined onboarding_completed_at + primary_goal into single Supabase query to avoid redundant requests
 - [03-02]: ContextualTooltip for tiktok-connect only renders when handle is NOT connected
 - [03-02]: Goal-to-location mapping uses fallback to "Switzerland" for null/unknown goals
+- [Phase 05-02]: Kept Briefcase icon for Referrals nav item (fits earnings/referral concept)
+- [Phase 05-02]: Updated isActive check from /brand-deals to /referrals path matching
 
 ### Pending Todos
 
@@ -68,7 +72,7 @@ None
 
 ### Blockers/Concerns
 
-- Whop plan IDs need to be created in Whop dashboard before Phase 4
+- Whop plan IDs need to be created in Whop dashboard before going live
 - Referral bonus amount is a business decision (not yet decided)
 - Whop sandbox has never been tested end-to-end
 
@@ -83,10 +87,10 @@ None
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Phase 3 Onboarding verified and complete
+Stopped at: Completed 05-02-PLAN.md (sidebar nav + build verification)
 Resume file: None
-Next: `/gsd:plan-phase 4`
+Next: Complete remaining 05-referral plans or advance to Phase 6
 
 ---
 *State created: 2026-02-13*
-*Last updated: 2026-02-16 -- Phase 3 Onboarding complete (verified)*
+*Last updated: 2026-02-16 -- Phase 4 Payments complete (verified)*
