@@ -4,6 +4,10 @@ import {
   CompetitorCard,
   type CompetitorCardData,
 } from "@/components/competitors/competitor-card";
+import { CompetitorTable } from "@/components/competitors/competitor-table";
+import { CompetitorEmptyState } from "@/components/competitors/competitor-empty-state";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useCompetitorsStore } from "@/stores/competitors-store";
 
 /**
  * Shape of the nested Supabase response from
@@ -45,16 +49,21 @@ interface CompetitorsClientProps {
 }
 
 /**
- * Client component rendering the competitor card grid.
+ * Client component rendering the competitor dashboard.
  *
  * Flattens the nested Supabase join response into CompetitorCardData objects
- * and renders a responsive grid (1/2/3 columns).
+ * and renders either a responsive card grid or table/leaderboard view based
+ * on the view mode stored in Zustand (persisted to localStorage).
+ *
+ * Shows CompetitorEmptyState when no competitors are tracked.
  */
 export function CompetitorsClient({
   competitors,
   snapshotMap,
   videosMap,
 }: CompetitorsClientProps) {
+  const { viewMode, setViewMode } = useCompetitorsStore();
+
   // Flatten nested Supabase response into card data
   const cards: CompetitorCardData[] = competitors
     .filter((row) => row.competitor_profiles !== null)
@@ -75,25 +84,35 @@ export function CompetitorsClient({
 
   return (
     <div className="space-y-6">
-      {/* Page header */}
+      {/* Page header with view toggle */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-medium text-foreground">Competitors</h1>
-        {/* View toggle placeholder -- added in Plan 02 */}
+        <Tabs
+          value={viewMode}
+          onValueChange={(v) => setViewMode(v as "grid" | "table")}
+        >
+          <TabsList>
+            <TabsTrigger value="grid" size="sm">
+              Grid
+            </TabsTrigger>
+            <TabsTrigger value="table" size="sm">
+              Table
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
-      {/* Card grid or empty state */}
+      {/* Content: empty state, card grid, or table */}
       {cards.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-foreground-muted text-sm">
-            No competitors yet. Add your first competitor to start tracking.
-          </p>
-        </div>
-      ) : (
+        <CompetitorEmptyState />
+      ) : viewMode === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {cards.map((card) => (
             <CompetitorCard key={card.id} data={card} />
           ))}
         </div>
+      ) : (
+        <CompetitorTable competitors={cards} />
       )}
     </div>
   );
