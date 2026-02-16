@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Trending Page** - Redesign layout and populate with meaningful content
 - [x] **Phase 4: Settings** - Wire up profile save, account actions, and notification preferences
 - [x] **Phase 5: Referrals & Brand Deals** - Polish referrals UI and replace dead brand deals route
-- [ ] **Phase 6: Auth & Onboarding** - Polish signup, login, welcome flow, and error handling
+- [x] **Phase 6: Auth & Onboarding** - Polish signup, login, welcome flow, and error handling
 
 ## Phase Details
 
@@ -143,7 +143,7 @@ All remaining phases (2-6) can execute in parallel since Phase 1 is complete.
 | 3. Trending Page | 1/1 | ✓ Complete | 2026-02-16 |
 | 4. Settings | 2/2 | ✓ Complete | 2026-02-16 |
 | 5. Referrals & Brand Deals | 1/1 | ✓ Complete | 2026-02-16 |
-| 6. Auth & Onboarding | 0/2 | Not started | - |
+| 6. Auth & Onboarding | 2/2 | ✓ Complete | 2026-02-16 |
 
 ---
 *Roadmap created: 2026-02-16*
