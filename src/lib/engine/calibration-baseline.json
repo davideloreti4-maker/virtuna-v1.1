@@ -1,0 +1,783 @@
+{
+  "generated_at": "2026-02-16T09:47:10.093Z",
+  "dataset_stats": {
+    "total_fetched": 7389,
+    "duplicates_removed": 0,
+    "outliers_removed": 68,
+    "outliers_breakdown": {
+      "zero_views": 19,
+      "null_views": 0,
+      "extreme_outliers": 37,
+      "zero_duration": 0,
+      "null_duration": 12
+    },
+    "analyzed_count": 7321
+  },
+  "virality_tiers": [
+    {
+      "tier": 1,
+      "label": "Unlikely to perform",
+      "score_range": [
+        0,
+        25
+      ],
+      "engagement_rate_threshold": {
+        "min": 0,
+        "max": 0.037921
+      },
+      "video_count": 1830,
+      "percentage": 25
+    },
+    {
+      "tier": 2,
+      "label": "Below average",
+      "score_range": [
+        25,
+        45
+      ],
+      "engagement_rate_threshold": {
+        "min": 0.037921,
+        "max": 0.081914
+      },
+      "video_count": 1830,
+      "percentage": 25
+    },
+    {
+      "tier": 3,
+      "label": "Average",
+      "score_range": [
+        45,
+        65
+      ],
+      "engagement_rate_threshold": {
+        "min": 0.081914,
+        "max": 0.138996
+      },
+      "video_count": 1830,
+      "percentage": 25
+    },
+    {
+      "tier": 4,
+      "label": "Strong potential",
+      "score_range": [
+        65,
+        80
+      ],
+      "engagement_rate_threshold": {
+        "min": 0.138996,
+        "max": 0.198534
+      },
+      "video_count": 1098,
+      "percentage": 15
+    },
+    {
+      "tier": 5,
+      "label": "Viral potential",
+      "score_range": [
+        80,
+        100
+      ],
+      "engagement_rate_threshold": {
+        "min": 0.198534,
+        "max": 225.833333
+      },
+      "video_count": 733,
+      "percentage": 10.01
+    }
+  ],
+  "engagement_percentiles": {
+    "p10": 0.015022,
+    "p25": 0.037921,
+    "p50": 0.081914,
+    "p75": 0.138996,
+    "p90": 0.198534,
+    "p95": 0.244852,
+    "p99": 0.472,
+    "mean": 0.133113,
+    "stddev": 2.640307
+  },
+  "duration_sweet_spot": {
+    "optimal_range_seconds": [
+      50,
+      55
+    ],
+    "median_engagement_rate": 0.099142,
+    "duration_buckets": [
+      {
+        "range": "0-5s",
+        "count": 8,
+        "median_er": 0.016677
+      },
+      {
+        "range": "5-10s",
+        "count": 1083,
+        "median_er": 0.082497
+      },
+      {
+        "range": "10-15s",
+        "count": 1452,
+        "median_er": 0.087221
+      },
+      {
+        "range": "15-20s",
+        "count": 1529,
+        "median_er": 0.083897
+      },
+      {
+        "range": "20-25s",
+        "count": 514,
+        "median_er": 0.070575
+      },
+      {
+        "range": "25-30s",
+        "count": 368,
+        "median_er": 0.073223
+      },
+      {
+        "range": "30-35s",
+        "count": 267,
+        "median_er": 0.068488
+      },
+      {
+        "range": "35-40s",
+        "count": 183,
+        "median_er": 0.065476
+      },
+      {
+        "range": "40-45s",
+        "count": 134,
+        "median_er": 0.083438
+      },
+      {
+        "range": "45-50s",
+        "count": 147,
+        "median_er": 0.060971
+      },
+      {
+        "range": "50-55s",
+        "count": 130,
+        "median_er": 0.099142
+      },
+      {
+        "range": "55-60s",
+        "count": 173,
+        "median_er": 0.07903
+      },
+      {
+        "range": "60s+",
+        "count": 1333,
+        "median_er": 0.087086
+      }
+    ]
+  },
+  "top_hashtags": [
+    {
+      "tag": "fyp",
+      "count": 2897,
+      "median_er": 0.095696,
+      "is_power_hashtag": true
+    },
+    {
+      "tag": "viral",
+      "count": 1653,
+      "median_er": 0.09405,
+      "is_power_hashtag": true
+    },
+    {
+      "tag": "foryou",
+      "count": 951,
+      "median_er": 0.080396,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "contentcreator",
+      "count": 918,
+      "median_er": 0.100697,
+      "is_power_hashtag": true
+    },
+    {
+      "tag": "trending",
+      "count": 779,
+      "median_er": 0.080858,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "foryoupage",
+      "count": 668,
+      "median_er": 0.078586,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "creator",
+      "count": 578,
+      "median_er": 0.084675,
+      "is_power_hashtag": true
+    },
+    {
+      "tag": "fypシ",
+      "count": 570,
+      "median_er": 0.097516,
+      "is_power_hashtag": true
+    },
+    {
+      "tag": "tiktokmarketing",
+      "count": 540,
+      "median_er": 0.073044,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "trend",
+      "count": 406,
+      "median_er": 0.065648,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "tiktok",
+      "count": 368,
+      "median_er": 0.049668,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "motivation",
+      "count": 363,
+      "median_er": 0.123191,
+      "is_power_hashtag": true
+    },
+    {
+      "tag": "viralvideo",
+      "count": 352,
+      "median_er": 0.042118,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "entrepreneur",
+      "count": 289,
+      "median_er": 0.080774,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "dance",
+      "count": 287,
+      "median_er": 0.088339,
+      "is_power_hashtag": true
+    },
+    {
+      "tag": "smallbusiness",
+      "count": 272,
+      "median_er": 0.054938,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "digitalmarketing",
+      "count": 249,
+      "median_er": 0.079347,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "funny",
+      "count": 243,
+      "median_er": 0.056629,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "capcut",
+      "count": 208,
+      "median_er": 0.060063,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "creatorsearchinsights",
+      "count": 199,
+      "median_er": 0.093532,
+      "is_power_hashtag": true
+    },
+    {
+      "tag": "viraltiktok",
+      "count": 162,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "fypシ゚viral",
+      "count": 155,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "fy",
+      "count": 143,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "mindset",
+      "count": 136,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "fyppppppppppppppppppppppp",
+      "count": 129,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "relatable",
+      "count": 125,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "foryoupage❤️❤️",
+      "count": 125,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "tutorial",
+      "count": 123,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "viralvideos",
+      "count": 117,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "tiktokaffiliate",
+      "count": 117,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "success",
+      "count": 114,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "trendingvideo",
+      "count": 114,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "influencer",
+      "count": 111,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "contentcreatortips",
+      "count": 108,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "content",
+      "count": 93,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "goviral",
+      "count": 92,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "onlinebusiness",
+      "count": 92,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "video",
+      "count": 91,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "business",
+      "count": 89,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "sidehustle",
+      "count": 89,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "contentcreation",
+      "count": 88,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "funnyvideos",
+      "count": 87,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "fypage",
+      "count": 86,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "digitalmarketingforbeginners",
+      "count": 83,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "tiktoktips",
+      "count": 80,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "tiktokviral",
+      "count": 80,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "fypシ゚",
+      "count": 78,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "xyzbca",
+      "count": 78,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "capcutpioneer",
+      "count": 77,
+      "median_er": 0,
+      "is_power_hashtag": false
+    },
+    {
+      "tag": "smallbusinessowner",
+      "count": 75,
+      "median_er": 0,
+      "is_power_hashtag": false
+    }
+  ],
+  "top_sounds": [
+    {
+      "name": "original sound",
+      "count": 62,
+      "median_er": 0.071762,
+      "viral_overrepresentation": 0
+    },
+    {
+      "name": "Love You So",
+      "count": 60,
+      "median_er": 0.01861,
+      "viral_overrepresentation": 0
+    },
+    {
+      "name": "Big Guy - from \"The SpongeBob Movie: Search for SquarePants”",
+      "count": 30,
+      "median_er": 0.038238,
+      "viral_overrepresentation": 0.33
+    },
+    {
+      "name": "original sound - dropship",
+      "count": 24,
+      "median_er": 0.087793,
+      "viral_overrepresentation": 0
+    },
+    {
+      "name": "Original sound",
+      "count": 16,
+      "median_er": 0.18436,
+      "viral_overrepresentation": 3.12
+    },
+    {
+      "name": "Aesthetic",
+      "count": 15,
+      "median_er": 0.041151,
+      "viral_overrepresentation": 0
+    },
+    {
+      "name": "Original Sound",
+      "count": 13,
+      "median_er": 0.087202,
+      "viral_overrepresentation": 1.54
+    },
+    {
+      "name": "Yacht Club",
+      "count": 13,
+      "median_er": 0.121991,
+      "viral_overrepresentation": 1.54
+    },
+    {
+      "name": "Tokyo Grift",
+      "count": 13,
+      "median_er": 0.0721,
+      "viral_overrepresentation": 0
+    },
+    {
+      "name": "nhạc nền - dropship",
+      "count": 12,
+      "median_er": 0.079194,
+      "viral_overrepresentation": 0
+    },
+    {
+      "name": "original sound - coachhtet18",
+      "count": 11,
+      "median_er": 0.128776,
+      "viral_overrepresentation": 0
+    },
+    {
+      "name": "original sound - reverse.soundeffects_",
+      "count": 11,
+      "median_er": 0.017715,
+      "viral_overrepresentation": 0
+    },
+    {
+      "name": "Unstoppable (I put my armor on, show you how strong I am)",
+      "count": 11,
+      "median_er": 0.052486,
+      "viral_overrepresentation": 0
+    },
+    {
+      "name": "Funny Song",
+      "count": 10,
+      "median_er": 0.046029,
+      "viral_overrepresentation": 0
+    },
+    {
+      "name": "original sound - 917josh_",
+      "count": 10,
+      "median_er": 0.07168,
+      "viral_overrepresentation": 0
+    },
+    {
+      "name": "CHANEL",
+      "count": 10,
+      "median_er": 0,
+      "viral_overrepresentation": 0
+    },
+    {
+      "name": "original sound - elite_think",
+      "count": 10,
+      "median_er": 0,
+      "viral_overrepresentation": 4
+    },
+    {
+      "name": "Creepy and simple horror background music(1070744)",
+      "count": 9,
+      "median_er": 0,
+      "viral_overrepresentation": 0
+    },
+    {
+      "name": "Monkeyshine-JP",
+      "count": 9,
+      "median_er": 0,
+      "viral_overrepresentation": 1.11
+    },
+    {
+      "name": "original sound - girlslovepiinkk",
+      "count": 9,
+      "median_er": 0,
+      "viral_overrepresentation": 1.11
+    },
+    {
+      "name": "NO BATIDÃO",
+      "count": 9,
+      "median_er": 0,
+      "viral_overrepresentation": 0
+    },
+    {
+      "name": "Strut",
+      "count": 8,
+      "median_er": 0,
+      "viral_overrepresentation": 1.25
+    },
+    {
+      "name": "Cornfield Chase",
+      "count": 8,
+      "median_er": 0,
+      "viral_overrepresentation": 1.25
+    },
+    {
+      "name": "original sound - digitalcashqueenofficial",
+      "count": 8,
+      "median_er": 0,
+      "viral_overrepresentation": 0
+    },
+    {
+      "name": "Monkeys Spinning Monkeys",
+      "count": 8,
+      "median_er": 0,
+      "viral_overrepresentation": 0
+    },
+    {
+      "name": "som original - dropship",
+      "count": 8,
+      "median_er": 0,
+      "viral_overrepresentation": 0
+    },
+    {
+      "name": "original sound - miss_zhen_cuff168",
+      "count": 8,
+      "median_er": 0,
+      "viral_overrepresentation": 3.75
+    },
+    {
+      "name": "In Essence (Slowed)",
+      "count": 7,
+      "median_er": 0,
+      "viral_overrepresentation": 0
+    },
+    {
+      "name": "Sunrise",
+      "count": 7,
+      "median_er": 0,
+      "viral_overrepresentation": 0
+    },
+    {
+      "name": "nhạc nền - tradelle",
+      "count": 7,
+      "median_er": 0,
+      "viral_overrepresentation": 0
+    }
+  ],
+  "engagement_ratios": {
+    "likes_per_100_views": 9.48,
+    "comments_per_100_views": 0.07,
+    "shares_per_100_views": 1.02,
+    "like_comment_share_ratio": "100:0.73:10.71"
+  },
+  "key_differentiators": [
+    {
+      "factor": "duration_seconds",
+      "viral_avg": 29.46,
+      "average_avg": 44.71,
+      "difference_pct": -34.11,
+      "description": "Viral videos are 34.11% shorter on average (29.46s vs 44.71s)"
+    },
+    {
+      "factor": "hashtag_count",
+      "viral_avg": 4.8,
+      "average_avg": 5.25,
+      "difference_pct": -8.48,
+      "description": "Viral videos use 8.48% fewer hashtags (4.8 vs 5.25)"
+    },
+    {
+      "factor": "caption_length",
+      "viral_avg": 94.14,
+      "average_avg": 136.64,
+      "difference_pct": -31.1,
+      "description": "Viral video captions are 31.1% shorter (94.14 vs 136.64 chars)"
+    },
+    {
+      "factor": "sound_usage_pct",
+      "viral_avg": 99.18,
+      "average_avg": 99.32,
+      "difference_pct": -0.14,
+      "description": "99.18% of viral videos have a named sound vs 99.32% of average (0.14% lower)"
+    },
+    {
+      "factor": "share_ratio",
+      "viral_avg": 0.050491,
+      "average_avg": 0.005158,
+      "difference_pct": 878.93,
+      "description": "Viral videos have 878.93% higher share ratio (5.049% vs 0.516%)"
+    },
+    {
+      "factor": "comment_ratio",
+      "viral_avg": 0.04101,
+      "average_avg": 0.003904,
+      "difference_pct": 950.45,
+      "description": "Viral videos have 950.45% higher comment ratio (4.101% vs 0.390%)"
+    }
+  ],
+  "view_percentiles": {
+    "p25": 5186,
+    "p50": 227803,
+    "p75": 2266250,
+    "p90": 13874967,
+    "p99": 71322739.6
+  },
+  "categories": [],
+  "distribution_stats": {
+    "views": {
+      "p10": 445,
+      "p25": 5186,
+      "p50": 227803,
+      "p75": 2266250,
+      "p90": 13874967,
+      "p95": 26276657,
+      "p99": 71322739.6,
+      "mean": 4684206.742795,
+      "stddev": 13151974.204349
+    },
+    "likes": {
+      "p10": 38,
+      "p25": 273,
+      "p50": 9390,
+      "p75": 145206,
+      "p90": 1260199,
+      "p95": 2666069,
+      "p99": 6709605.4,
+      "mean": 443995.153394,
+      "stddev": 1458889.447378
+    },
+    "shares": {
+      "p10": 1,
+      "p25": 12,
+      "p50": 529,
+      "p75": 8304,
+      "p90": 58786,
+      "p95": 168333,
+      "p99": 735411.2,
+      "mean": 47559.337522,
+      "stddev": 763927.528878
+    },
+    "comments": {
+      "p10": 2,
+      "p25": 16,
+      "p50": 168,
+      "p75": 1320,
+      "p90": 6876,
+      "p95": 14932,
+      "p99": 54544.2,
+      "mean": 3248.803715,
+      "stddev": 13293.53204
+    },
+    "engagement_rate": {
+      "p10": 0.015022,
+      "p25": 0.037921,
+      "p50": 0.081914,
+      "p75": 0.138996,
+      "p90": 0.198534,
+      "p95": 0.244852,
+      "p99": 0.472,
+      "mean": 0.133113,
+      "stddev": 2.640307
+    },
+    "duration_seconds": {
+      "p10": 8,
+      "p25": 12,
+      "p50": 17,
+      "p75": 42,
+      "p90": 83,
+      "p95": 138,
+      "p99": 301,
+      "mean": 39.287802,
+      "stddev": 73.881901
+    }
+  }
+}
