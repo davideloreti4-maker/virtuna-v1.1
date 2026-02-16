@@ -12,8 +12,8 @@ Build a full competitor intelligence tracker for TikTok creators -- from databas
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Data Foundation** - Database schema, Apify scraping service, Zod validation, deduplication logic
-- [ ] **Phase 2: Competitor Management** - Add/remove competitors, handle validation, cron scheduling, webhook handling
+- [x] **Phase 1: Data Foundation** - Database schema, Apify scraping service, Zod validation, deduplication logic *(completed 2026-02-16)*
+- [x] **Phase 2: Competitor Management** - Add/remove competitors, handle validation, cron scheduling, webhook handling *(completed 2026-02-16)*
 - [ ] **Phase 3: Competitor Dashboard** - Card grid, table/leaderboard view, stats display, sidebar nav, loading/empty states
 - [ ] **Phase 4: Detail Page & Analytics** - Competitor detail page with growth charts, engagement breakdown, content analysis sections
 - [ ] **Phase 5: Benchmarking & Comparison** - Side-by-side comparison, self-benchmarking, sortable leaderboard
@@ -164,8 +164,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Data Foundation | 0/2 | Not started | - |
-| 2. Competitor Management | 0/2 | Not started | - |
+| 1. Data Foundation | 2/2 | ✓ Complete | 2026-02-16 |
+| 2. Competitor Management | 2/2 | ✓ Complete | 2026-02-16 |
 | 3. Competitor Dashboard | 0/2 | Not started | - |
 | 4. Detail Page & Analytics | 0/2 | Not started | - |
 | 5. Benchmarking & Comparison | 0/2 | Not started | - |
