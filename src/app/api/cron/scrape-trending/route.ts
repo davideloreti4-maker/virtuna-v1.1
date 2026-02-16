@@ -6,6 +6,21 @@ import { createServiceClient } from "@/lib/supabase/service";
 const APIFY_ACTOR_ID = process.env.APIFY_ACTOR_ID ?? "clockworks~tiktok-scraper";
 const STALE_THRESHOLD_HOURS = 24;
 
+const DEFAULT_HASHTAGS = [
+  "trending", "viral", "fyp",
+  "comedy", "dance", "cooking", "fitness",
+  "fashion", "beauty", "tech", "education",
+  "storytelling", "lifehack", "motivation",
+];
+
+function getScrapeHashtags(): string[] {
+  const envHashtags = process.env.SCRAPER_HASHTAGS;
+  if (!envHashtags) return DEFAULT_HASHTAGS;
+  // Parse comma-separated, trim whitespace, filter empty
+  const parsed = envHashtags.split(",").map((h) => h.trim().toLowerCase()).filter(Boolean);
+  return parsed.length > 0 ? parsed : DEFAULT_HASHTAGS;
+}
+
 /**
  * GET /api/cron/scrape-trending
  *
@@ -39,10 +54,13 @@ export async function GET(request: Request) {
       }
     }
 
-    // Start the Apify actor run
+    // Start the Apify actor run with configurable hashtags (SIG-04)
+    const hashtags = getScrapeHashtags();
+    console.log(`[scrape-trending] Scraping hashtags: ${hashtags.join(", ")}`);
+
     const run = await client.actor(APIFY_ACTOR_ID).start(
       {
-        hashtags: ["trending", "viral", "fyp"],
+        hashtags,
         resultsPerPage: 100,
       },
       {
@@ -53,7 +71,8 @@ export async function GET(request: Request) {
             payloadTemplate: `{
               "resource": {{resource}},
               "eventType": {{eventType}},
-              "secret": "${process.env.APIFY_WEBHOOK_SECRET}"
+              "secret": "${process.env.APIFY_WEBHOOK_SECRET}",
+              "scrape_hashtags": ${JSON.stringify(hashtags)}
             }`,
           },
         ],
@@ -64,6 +83,7 @@ export async function GET(request: Request) {
       success: true,
       runId: run.id,
       actorId: APIFY_ACTOR_ID,
+      hashtags,
       startedAt: new Date().toISOString(),
     });
   } catch (error) {
