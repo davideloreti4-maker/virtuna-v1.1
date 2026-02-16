@@ -10,24 +10,24 @@ See: .planning/PROJECT.md (updated 2026-02-16)
 ## Current Position
 
 Phase: 1 of 7 (Sidebar & Navigation)
-Plan: 1 of 2 in current phase
-Status: Executing
-Last activity: 2026-02-16 -- Completed 01-01 sidebar visual overhaul
+Plan: 2 of 2 in current phase
+Status: Complete
+Last activity: 2026-02-16 -- Completed 01-02 TikTok handle input + visual verification
 
-Progress: [#.........] 8%
+Progress: [##........] 15%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 4min
-- Total execution time: 0.07 hours
+- Total plans completed: 2
+- Average duration: 6min
+- Total execution time: 0.2 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-sidebar-navigation | 1 | 4min | 4min |
+| 01-sidebar-navigation | 2 | 12min | 6min |
 
 ## Shipped Milestones
 
@@ -45,6 +45,9 @@ Progress: [#.........] 8%
 - [01-01] Used bg-background token for solid sidebar instead of hardcoded hex
 - [01-01] 2px coral left-border (border-accent) for active nav indicator, replacing filled bg
 - [01-01] TikTok section positioned above nav items with separator
+- [01-02] Simple text input instead of OAuth flow for TikTok handle
+- [01-02] Upsert to creator_profiles.tiktok_handle using onConflict user_id
+- [01-02] Click-to-edit pattern for saved handle (no checkmark icon)
 
 ### Pending Todos
 
@@ -63,9 +66,9 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 01-01-PLAN.md (sidebar visual overhaul)
+Stopped at: Completed 01-02-PLAN.md (TikTok handle input + visual verification) -- Phase 1 complete
 Resume file: None
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Completed 01-01*
+*Last updated: 2026-02-16 -- Completed 01-02 (Phase 1 complete)*
