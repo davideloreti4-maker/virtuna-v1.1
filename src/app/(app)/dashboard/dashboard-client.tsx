@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   FilterPillGroup,
@@ -13,7 +13,7 @@ import {
 import type { ContentFormData } from "@/components/app";
 import { HiveCanvas } from "@/components/hive/HiveCanvas";
 import { generateMockHiveData } from "@/components/hive/hive-mock-data";
-import { useTestStore, mapPredictionToTestResult } from "@/stores/test-store";
+import { useTestStore } from "@/stores/test-store";
 import type { SimulationPhase } from "@/stores/test-store";
 import { useSocietyStore } from "@/stores/society-store";
 import { useAnalyze } from "@/hooks/queries";
@@ -28,14 +28,14 @@ const MINIMUM_THEATER_MS = 4500;
  * Analysis submission is powered by the useAnalyze() TanStack Query mutation,
  * which handles SSE streaming and phase tracking. The Zustand test-store
  * manages only the UI flow state (currentStatus, currentTestType, reset).
+ *
+ * v2: Passes PredictionResult directly to ResultsPanel (no TestResult shim).
  */
 export function DashboardClient() {
   const {
     currentStatus,
-    currentTestType,
     setStatus,
     setTestType,
-    setCurrentResult,
     reset,
     _isHydrated,
     _hydrate,
@@ -48,25 +48,6 @@ export function DashboardClient() {
 
   const analyzeMutation = useAnalyze();
   const isCancelledRef = useRef(false);
-
-  // Track submitted content for result mapping
-  const [submittedContent, setSubmittedContent] = useState("");
-
-  // Derive TestResult from mutation data for backward-compatible display
-  const currentResult = useMemo(() => {
-    if (!analyzeMutation.data || !currentTestType) return null;
-    return mapPredictionToTestResult(
-      analyzeMutation.data,
-      submittedContent,
-      currentTestType,
-      selectedSocietyId ?? ""
-    );
-  }, [analyzeMutation.data, currentTestType, selectedSocietyId, submittedContent]);
-
-  // Sync derived result to store for components that still read it
-  useEffect(() => {
-    setCurrentResult(currentResult);
-  }, [currentResult, setCurrentResult]);
 
   // Hydrate stores on mount
   useEffect(() => {
@@ -105,7 +86,6 @@ export function DashboardClient() {
 
     const theatreStart = Date.now();
     isCancelledRef.current = false;
-    setSubmittedContent(data.caption || data.video_caption || data.tiktok_url || "");
     setStatus("simulating");
 
     // Build v2 AnalysisInput payload
@@ -147,7 +127,6 @@ export function DashboardClient() {
   const handleRunAnother = () => {
     reset();
     analyzeMutation.reset();
-    setSubmittedContent("");
   };
 
   // Stable mock data for hive visualization (seed ensures deterministic layout)
@@ -187,9 +166,9 @@ export function DashboardClient() {
                 analyzeMutation.reset();
               }}
             />
-          ) : currentStatus === "viewing-results" && currentResult ? (
+          ) : currentStatus === "viewing-results" && analyzeMutation.data ? (
             <ResultsPanel
-              result={currentResult}
+              result={analyzeMutation.data}
               onRunAnother={handleRunAnother}
             />
           ) : null}

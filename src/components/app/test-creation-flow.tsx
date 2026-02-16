@@ -1,8 +1,8 @@
 "use client";
 
-import { ReactNode, useMemo, useRef, useState } from "react";
+import { ReactNode, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { useTestStore, mapPredictionToTestResult } from "@/stores/test-store";
+import { useTestStore } from "@/stores/test-store";
 import { useSocietyStore } from "@/stores/society-store";
 import { useAnalyze } from "@/hooks/queries";
 import { Spinner } from "@/components/ui/spinner";
@@ -22,13 +22,14 @@ interface TestCreationFlowProps {
  * TestCreationFlow orchestrator (v2)
  *
  * Simplified flow: trigger -> form -> simulating -> results.
- * No type selector step — the content form handles input modes via tabs.
+ * No type selector step -- the content form handles input modes via tabs.
  * Wired to useAnalyze() mutation for SSE streaming analysis with v2 AnalysisInput payload.
+ *
+ * v2: Passes PredictionResult directly to ResultsPanel (no TestResult shim).
  */
 export function TestCreationFlow({ triggerButton, className }: TestCreationFlowProps) {
   const {
     currentStatus,
-    currentTestType,
     setStatus,
     setTestType,
     reset,
@@ -36,20 +37,8 @@ export function TestCreationFlow({ triggerButton, className }: TestCreationFlowP
   const { selectedSocietyId } = useSocietyStore();
   const analyzeMutation = useAnalyze();
   const isCancelledRef = useRef(false);
-  const [submittedContent, setSubmittedContent] = useState("");
 
-  // Derive result from mutation data
-  const currentResult = useMemo(() => {
-    if (!analyzeMutation.data) return null;
-    return mapPredictionToTestResult(
-      analyzeMutation.data,
-      submittedContent,
-      currentTestType ?? "tiktok-script",
-      selectedSocietyId ?? ""
-    );
-  }, [analyzeMutation.data, currentTestType, selectedSocietyId, submittedContent]);
-
-  // Handle trigger button click — go directly to form (skip type selector)
+  // Handle trigger button click -- go directly to form (skip type selector)
   const handleTriggerClick = () => {
     setTestType("tiktok-script");
     setStatus("filling-form");
@@ -61,7 +50,6 @@ export function TestCreationFlow({ triggerButton, className }: TestCreationFlowP
 
     const theatreStart = Date.now();
     isCancelledRef.current = false;
-    setSubmittedContent(data.caption || data.video_caption || data.tiktok_url || "");
     setStatus("simulating");
 
     // Build v2 AnalysisInput payload
@@ -77,7 +65,7 @@ export function TestCreationFlow({ triggerButton, className }: TestCreationFlowP
     } else if (data.input_mode === "tiktok_url") {
       payload.tiktok_url = data.tiktok_url;
     } else if (data.input_mode === "video_upload") {
-      // For now, set video_storage_path to empty — actual Supabase upload is Phase 8+
+      // For now, set video_storage_path to empty -- actual Supabase upload is Phase 8+
       payload.video_storage_path = "pending-upload";
       payload.content_text = data.video_caption;
       if (data.video_niche) payload.niche = data.video_niche;
@@ -105,7 +93,6 @@ export function TestCreationFlow({ triggerButton, className }: TestCreationFlowP
   const handleRunAnother = () => {
     reset();
     analyzeMutation.reset();
-    setSubmittedContent("");
   };
 
   // Render based on current status
@@ -134,11 +121,11 @@ export function TestCreationFlow({ triggerButton, className }: TestCreationFlowP
     );
   }
 
-  if (currentStatus === "viewing-results" && currentResult) {
+  if (currentStatus === "viewing-results" && analyzeMutation.data) {
     return (
       <div className={cn("w-full max-w-md mx-auto", className)}>
         <ResultsPanel
-          result={currentResult}
+          result={analyzeMutation.data}
           onRunAnother={handleRunAnother}
         />
       </div>
