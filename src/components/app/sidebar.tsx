@@ -1,15 +1,17 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import {
   House,
   TrendUp,
-  Lightbulb,
   Briefcase,
-  CreditCard,
-  User,
+  Plus,
+  Coins,
+  Sparkle,
+  ChatCircleDots,
   SignOut as SignOutIcon,
   SidebarSimple,
+  Info,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -18,89 +20,38 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/typography";
-import { ContextualTooltip } from "@/components/tooltips/contextual-tooltip";
 import { TrialCountdown } from "@/components/trial-countdown";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useSidebarStore } from "@/stores/sidebar-store";
-import { useTooltipStore } from "@/stores/tooltip-store";
 import { useSubscription } from "@/hooks/use-subscription";
+import { useTestStore } from "@/stores/test-store";
+import { LeaveFeedbackModal } from "./leave-feedback-modal";
+import { TestHistoryList } from "./test-history-list";
 
 import { SidebarNavItem } from "./sidebar-nav-item";
 
 const navItems = [
   { label: "Dashboard", icon: House, id: "dashboard", href: "/dashboard" },
   { label: "Trending", icon: TrendUp, id: "trending", href: "/trending" },
-] as const;
-
-const navItemsAfterSelector = [
-  { label: "Content Intelligence", icon: Lightbulb, id: "content-intelligence", href: "/dashboard" },
   { label: "Referrals", icon: Briefcase, id: "referrals", href: "/referrals" },
-] as const;
-
-const bottomNavItems = [
-  { label: "Pricing", icon: CreditCard, id: "pricing", href: "/pricing" },
 ] as const;
 
 /**
  * Main sidebar component for the app dashboard.
  *
- * MVP Navigation (top): Dashboard, Trending, [TikTok Account Selector], Content Intelligence, Referrals
- * MVP Navigation (bottom): Pricing
- * Avatar dropdown with Sign out at the very bottom.
- *
- * Renders as a floating glassmorphic panel using inline styles,
- * inset 12px from viewport edges. Reads open/close state from useSidebarStore.
+ * Navigation (top): Dashboard, Trending, Referrals
+ * Middle: "Create a new test" section header + test history list
+ * Navigation (bottom): Credits, Start Free Trial, Leave Feedback, Log Out
  */
 export function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const { isOpen, close } = useSidebarStore();
   const { tier, isTrial } = useSubscription();
-  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
-  const [tiktokHandle, setTiktokHandle] = useState<string | null>(null);
-  const avatarMenuRef = useRef<HTMLDivElement>(null);
-  const tooltipStore = useTooltipStore();
-
-  // Hydrate tooltip store
-  useEffect(() => {
-    if (!tooltipStore._isHydrated) {
-      tooltipStore._hydrate();
-    }
-  }, [tooltipStore]);
-
-  // Fetch connected TikTok handle
-  useEffect(() => {
-    async function fetchHandle() {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: profile } = await supabase
-        .from("creator_profiles")
-        .select("tiktok_handle")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (profile?.tiktok_handle) {
-        setTiktokHandle(profile.tiktok_handle);
-      }
-    }
-    fetchHandle();
-  }, []);
-
-  // Close avatar menu when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (avatarMenuRef.current && !avatarMenuRef.current.contains(event.target as Node)) {
-        setAvatarMenuOpen(false);
-      }
-    }
-    if (avatarMenuOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [avatarMenuOpen]);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const viewResult = useTestStore((s) => s.viewResult);
+  const setStatus = useTestStore((s) => s.setStatus);
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -108,9 +59,19 @@ export function Sidebar() {
     router.push("/");
   };
 
+  const handleCreateNewTest = () => {
+    router.push("/dashboard");
+    setStatus("selecting-type");
+  };
+
+  const handleSelectTest = (testId: string) => {
+    viewResult(testId);
+    router.push("/dashboard");
+  };
+
   return (
     <>
-      {/* Mobile overlay - no backdrop-filter (MOBL-03 budget) */}
+      {/* Mobile overlay */}
       {isOpen && (
         <div
           className="fixed inset-0 z-[calc(var(--z-sidebar)-1)] bg-black/50 md:hidden"
@@ -173,9 +134,9 @@ export function Sidebar() {
         </div>
 
         {/* Separator */}
-        <div className="mx-4 my-2 border-t border-border-glass" />
+        <div className="mx-4 my-2 border-t border-white/[0.06]" />
 
-        {/* Top navigation items (Dashboard, Trending) */}
+        {/* Main navigation */}
         <nav className="flex flex-col gap-0.5 px-2">
           {navItems.map((item) => (
             <SidebarNavItem
@@ -185,6 +146,8 @@ export function Sidebar() {
               isActive={
                 item.id === "dashboard"
                   ? pathname === "/dashboard"
+                  : item.id === "referrals"
+                  ? pathname.startsWith("/referrals")
                   : pathname === item.href
               }
               onClick={() => router.push(item.href)}
@@ -192,118 +155,75 @@ export function Sidebar() {
           ))}
         </nav>
 
-        {/* TikTok Account Selector */}
-        {tiktokHandle ? (
-          <div className="mx-2 my-2">
-            <div className="flex items-center gap-2 rounded-lg bg-white/[0.04] px-3 py-2">
-              <div className={cn(
-                "h-6 w-6 shrink-0 rounded-full flex items-center justify-center",
-                "bg-accent/20"
-              )}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-accent" aria-hidden="true">
-                  <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                </svg>
-              </div>
-              <Text as="span" size="sm" className="text-foreground truncate">
-                @{tiktokHandle}
-              </Text>
-            </div>
-          </div>
-        ) : (
-          <ContextualTooltip
-            id="tiktok-connect"
-            title="Your TikTok Account"
-            description="Connect your TikTok handle to unlock personalized content intelligence"
-            position="right"
+        {/* Separator */}
+        <div className="mx-4 my-2 border-t border-white/[0.06]" />
+
+        {/* Create a new test — section header with + icon */}
+        <div className="mx-4 mb-1">
+          <button
+            type="button"
+            onClick={handleCreateNewTest}
+            className="flex w-full items-center justify-between text-foreground-secondary transition-colors hover:text-foreground"
           >
-            <div className="mx-2 my-2">
-              <div className="flex items-center gap-2 rounded-lg bg-white/[0.04] px-3 py-2">
-                <div className="h-6 w-6 shrink-0 rounded-full bg-white/[0.1]" />
-                <Text as="span" size="sm" className="text-foreground-muted truncate">
-                  Connect TikTok
-                </Text>
-              </div>
-            </div>
-          </ContextualTooltip>
-        )}
+            <Text as="span" size="sm">Create a new test</Text>
+            <Icon icon={Plus} size={16} />
+          </button>
+        </div>
 
-        {/* Navigation items after selector (Content Intelligence, Referrals) */}
-        <nav className="flex flex-col gap-0.5 px-2">
-          {navItemsAfterSelector.map((item) => (
-            <SidebarNavItem
-              key={item.id}
-              icon={item.icon}
-              label={item.label}
-              isActive={
-                item.id === "content-intelligence"
-                  ? pathname === "/dashboard"
-                  : pathname.startsWith("/referrals")
-              }
-              onClick={() => router.push(item.href)}
-            />
-          ))}
-        </nav>
+        {/* Test history list */}
+        <div className="flex-1 overflow-y-auto px-2 pt-1">
+          <TestHistoryList onSelectTest={handleSelectTest} />
+        </div>
 
-        {/* Spacer to push bottom content down */}
-        <div className="flex-1" />
-
-        {/* Trial countdown (above bottom nav) */}
+        {/* Trial countdown */}
         <TrialCountdown />
 
         {/* Separator */}
-        <div className="mx-4 border-t border-border-glass" />
+        <div className="mx-4 border-t border-white/[0.06]" />
 
-        {/* Bottom navigation */}
-        <nav className="flex flex-col gap-0.5 p-2">
-          {bottomNavItems.map((item) => (
-            <SidebarNavItem
-              key={item.id}
-              icon={item.icon}
-              label={item.label}
-              isActive={pathname === "/pricing"}
-              onClick={() => router.push(item.href)}
-            />
-          ))}
-        </nav>
+        {/* Bottom actions */}
+        <div className="flex flex-col gap-0.5 p-2">
+          {/* Credits */}
+          <div className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-foreground-secondary">
+            <Icon icon={Coins} size={16} />
+            <Text as="span" size="sm" className="flex-1">Credits: 0</Text>
+            <Icon icon={Info} size={16} className="text-foreground-muted" />
+          </div>
 
-        {/* Separator */}
-        <div className="mx-4 border-t border-border-glass" />
-
-        {/* User avatar with sign-out dropdown */}
-        <div className="relative p-2" ref={avatarMenuRef}>
+          {/* Start Free Trial */}
           <button
             type="button"
-            onClick={() => setAvatarMenuOpen((prev) => !prev)}
-            className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-foreground-secondary transition-colors hover:bg-white/[0.04] hover:text-foreground"
+            onClick={() => router.push("/pricing")}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-foreground-secondary transition-colors hover:bg-white/[0.04] hover:text-foreground"
           >
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/[0.08]">
-              <Icon icon={User} size={16} className="text-foreground-muted" />
-            </div>
-            <Text as="span" size="sm" className="text-inherit truncate">
-              Account
-            </Text>
+            <Icon icon={Sparkle} size={16} />
+            <Text as="span" size="sm">Start Free Trial</Text>
           </button>
 
-          {/* Dropdown menu */}
-          {avatarMenuOpen && (
-            <div
-              className="absolute bottom-full left-2 right-2 mb-1 rounded-lg border border-white/[0.06] bg-[#18191a] p-1 shadow-lg"
-              style={{
-                boxShadow: "rgba(255,255,255,0.05) 0px 1px 0px 0px inset, rgba(0,0,0,0.5) 0px 4px 12px",
-              }}
-            >
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground-secondary transition-colors hover:bg-white/[0.06] hover:text-foreground"
-              >
-                <Icon icon={SignOutIcon} size={16} />
-                <span>Sign out</span>
-              </button>
-            </div>
-          )}
+          {/* Leave Feedback */}
+          <button
+            type="button"
+            onClick={() => setFeedbackOpen(true)}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-foreground-secondary transition-colors hover:bg-white/[0.04] hover:text-foreground"
+          >
+            <Icon icon={ChatCircleDots} size={16} />
+            <Text as="span" size="sm">Leave Feedback</Text>
+          </button>
+
+          {/* Log Out */}
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-foreground-secondary transition-colors hover:bg-white/[0.04] hover:text-foreground"
+          >
+            <Icon icon={SignOutIcon} size={16} />
+            <Text as="span" size="sm">Log Out</Text>
+          </button>
         </div>
       </aside>
+
+      {/* Feedback modal */}
+      <LeaveFeedbackModal open={feedbackOpen} onOpenChange={setFeedbackOpen} />
     </>
   );
 }
