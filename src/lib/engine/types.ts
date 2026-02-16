@@ -39,6 +39,10 @@ export interface Suggestion {
   category: string;
 }
 
+/**
+ * @deprecated Remove in Phase 5 cleanup. Persona reactions deferred to Phase 5/8.
+ * Still referenced by PredictionResult and aggregator.
+ */
 export interface PersonaReaction {
   persona_name: string;
   quote: string;
@@ -46,6 +50,10 @@ export interface PersonaReaction {
   resonance_score: number; // 0-10
 }
 
+/**
+ * @deprecated Remove in Phase 5 cleanup. Variants are dead v1 output.
+ * Still referenced by PredictionResult, aggregator, and UI components.
+ */
 export interface Variant {
   id: string;
   type: "original" | "rewritten";
@@ -54,6 +62,10 @@ export interface Variant {
   label: string;
 }
 
+/**
+ * @deprecated Remove in Phase 5 cleanup. Conversation themes are dead v1 output.
+ * Still referenced by PredictionResult, aggregator, and UI components.
+ */
 export interface ConversationTheme {
   id: string;
   title: string;
@@ -121,6 +133,10 @@ export type GeminiVideoAnalysis = z.infer<typeof GeminiVideoResponseSchema>;
 
 export type GeminiVideoSignals = z.infer<typeof GeminiVideoSignalsSchema>;
 
+/**
+ * @deprecated Remove in Phase 5 cleanup. PersonaReactionSchema removed from DeepSeek v2.
+ * Kept temporarily for aggregator backward compatibility.
+ */
 export const PersonaReactionSchema = z.object({
   persona_name: z.string(),
   quote: z.string(),
@@ -134,25 +150,61 @@ export const SuggestionSchema = z.object({
   category: z.string(),
 });
 
+/**
+ * @deprecated Remove in Phase 5 cleanup. VariantSchema removed from DeepSeek v2.
+ * Kept temporarily for aggregator backward compatibility.
+ */
 export const VariantSchema = z.object({
   content: z.string(),
   predicted_score: z.number().min(0).max(100),
   label: z.string(),
 });
 
+/**
+ * @deprecated Remove in Phase 5 cleanup. ConversationThemeSchema removed from DeepSeek v2.
+ * Kept temporarily for aggregator backward compatibility.
+ */
 export const ConversationThemeSchema = z.object({
   title: z.string(),
   percentage: z.number().min(0).max(100),
   description: z.string(),
 });
 
+// =====================================================
+// DeepSeek v2 Response Schema — Behavioral Predictions
+// =====================================================
+
+export const BehavioralPredictionsSchema = z.object({
+  completion_pct: z.number().min(0).max(100),
+  completion_percentile: z.string(),
+  share_pct: z.number().min(0).max(100),
+  share_percentile: z.string(),
+  comment_pct: z.number().min(0).max(100),
+  comment_percentile: z.string(),
+  save_pct: z.number().min(0).max(100),
+  save_percentile: z.string(),
+});
+
+export type BehavioralPredictions = z.infer<typeof BehavioralPredictionsSchema>;
+
+export const ComponentScoresSchema = z.object({
+  hook_effectiveness: z.number().min(0).max(10),
+  retention_strength: z.number().min(0).max(10),
+  shareability: z.number().min(0).max(10),
+  comment_provocation: z.number().min(0).max(10),
+  save_worthiness: z.number().min(0).max(10),
+  trend_alignment: z.number().min(0).max(10),
+  originality: z.number().min(0).max(10),
+});
+
+export type ComponentScores = z.infer<typeof ComponentScoresSchema>;
+
 export const DeepSeekResponseSchema = z.object({
-  persona_reactions: z.array(PersonaReactionSchema).min(1),
+  behavioral_predictions: BehavioralPredictionsSchema,
+  component_scores: ComponentScoresSchema,
   suggestions: z.array(SuggestionSchema).min(1),
-  variants: z.array(VariantSchema).min(1),
-  conversation_themes: z.array(ConversationThemeSchema).default([]),
-  refined_score: z.number().min(0).max(100),
-  confidence_reasoning: z.string(),
+  warnings: z.array(z.string()).default([]),
+  confidence: z.enum(["high", "medium", "low"]),
 });
 
 export type DeepSeekReasoning = z.infer<typeof DeepSeekResponseSchema>;
