@@ -201,9 +201,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 11-01: Fuzzy Sound Matching + Trend Phase Bug Fix
-- [ ] 11-02: Semantic Hashtag Scoring
-- [ ] 11-03: Expanded Apify Scraper
+- [ ] 11-01: Jaro-Winkler fuzzy sound matching, trend phase volume fix, audioTrendingMatch wiring
+- [ ] 11-02: Semantic hashtag scoring with popularity weighting and saturation detection
+- [ ] 11-03: Configurable Apify scraper hashtags via env var + expanded defaults + traceability
 
 ### Phase 12: E2E Flow Testing, Polish & Merge
 **Goal**: Full customer experience verified, accuracy benchmarked, code cleaned up, merged to main
