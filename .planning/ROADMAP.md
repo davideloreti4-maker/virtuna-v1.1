@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Landing Page** - Conversion-optimized landing page with interactive hive demo and pricing (completed 2026-02-16)
 - [x] **Phase 3: Onboarding** - Progressive post-signup flow with TikTok connect, goal selection, and tooltips (completed 2026-02-16)
 - [x] **Phase 4: Payments** - Whop-powered subscriptions with 7-day Pro trial, tier gating, and trial UI (completed 2026-02-16)
-- [ ] **Phase 5: Referral** - In-product referral program with link generation, tracking, and one-time bonuses
+- [x] **Phase 5: Referral** - In-product referral program with link generation, tracking, and one-time bonuses (completed 2026-02-16)
 - [ ] **Phase 6: Polish** - UI fixes, mobile responsiveness pass, OG tags, and dead code cleanup
 
 ## Phase Details
@@ -103,8 +103,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Fix middleware referral cookie persistence bug + RLS INSERT policy for referral_clicks
-- [ ] 05-02-PLAN.md — Update sidebar nav to referrals link + full build verification
+- [x] 05-01-PLAN.md — Fix middleware referral cookie persistence bug + RLS INSERT policy for referral_clicks (completed 2026-02-16)
+- [x] 05-02-PLAN.md — Update sidebar nav to referrals link + full build verification (completed 2026-02-16)
 
 ### Phase 6: Polish
 **Goal**: All pages are visually consistent, mobile-friendly, and free of dead code -- the app feels finished, not like a prototype
@@ -154,7 +154,7 @@ Waves 1-2 support parallel execution (see Execution Waves above).
 | 2. Landing Page | 2/2 | ✓ Complete | 2026-02-16 |
 | 3. Onboarding | 2/2 | ✓ Complete | 2026-02-16 |
 | 4. Payments | 3/3 | ✓ Complete | 2026-02-16 |
-| 5. Referral | 0/2 | Not started | - |
+| 5. Referral | 2/2 | ✓ Complete | 2026-02-16 |
 | 6. Polish | 0/2 | Not started | - |
 
 ---
