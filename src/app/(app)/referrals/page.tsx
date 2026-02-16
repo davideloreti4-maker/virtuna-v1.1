@@ -4,6 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { generateReferralCode } from "@/lib/referral/code-generator";
 import { ReferralLinkCard } from "@/components/referral/ReferralLinkCard";
 import { ReferralStatsCard } from "@/components/referral/ReferralStatsCard";
+import { FeatureGate } from "@/components/ui/feature-gate";
+import { getUserTier } from "@/lib/whop/subscription";
+import { ReferralsUpgradeFallback } from "@/components/referral/ReferralsUpgradeFallback";
 
 export const metadata: Metadata = {
   title: "Referrals | Virtuna",
@@ -19,6 +22,8 @@ export default async function ReferralsPage() {
   if (!user) {
     redirect("/");
   }
+
+  const tier = await getUserTier();
 
   // Fetch existing referral code
   let { data: codeData } = await supabase
@@ -69,23 +74,25 @@ export default async function ReferralsPage() {
   const referralLink = `${appUrl}/?ref=${referralCode}`;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 sm:p-6 space-y-6">
-      <div className="mb-2">
-        <h1 className="text-3xl font-bold text-foreground mb-2">
-          Referral Program
-        </h1>
-        <p className="text-muted">
-          Invite friends to Virtuna and earn $10 for every successful
-          conversion.
-        </p>
-      </div>
+    <FeatureGate requiredTier="pro" userTier={tier} fallback={<ReferralsUpgradeFallback />}>
+      <div className="max-w-4xl mx-auto px-4 py-6 sm:p-6 space-y-6">
+        <div className="mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            Referral Program
+          </h1>
+          <p className="text-muted">
+            Invite friends to Virtuna and earn $10 for every successful
+            conversion.
+          </p>
+        </div>
 
-      <ReferralLinkCard referralLink={referralLink} />
-      <ReferralStatsCard
-        clicks={totalClicks}
-        conversions={totalConversions}
-        earningsCents={totalEarningsCents}
-      />
-    </div>
+        <ReferralLinkCard referralLink={referralLink} />
+        <ReferralStatsCard
+          clicks={totalClicks}
+          conversions={totalConversions}
+          earningsCents={totalEarningsCents}
+        />
+      </div>
+    </FeatureGate>
   );
 }
