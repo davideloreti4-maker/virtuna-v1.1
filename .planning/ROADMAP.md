@@ -137,7 +137,11 @@ Plans:
   1. At least 2-3 features are wrapped in TierGate and show upgrade prompt for Starter/Free users
   2. Pro users can access all gated features without obstruction
   3. TierGate upgrade prompt links to /pricing for conversion
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 07-01-PLAN.md -- Gate referrals page behind Pro tier with FeatureGate + server-side getUserTier() + /pricing link fallback
+- [ ] 07-02-PLAN.md -- Gate simulation results advanced sections (Variants, Insights, Themes) behind Pro tier with client-side TierGate
 
 ### Phase 8: Dead Code & Process Cleanup
 **Goal**: Remove all orphaned code identified by audit, align requirement wording with implementation, and complete missing process artifacts
