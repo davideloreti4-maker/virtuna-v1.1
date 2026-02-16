@@ -117,7 +117,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 6-01: Infrastructure Hardening
+- [ ] 6-01: TTL caching, rate limiting by tier, input validation, exponential backoff circuit breaker, partial pipeline failure recovery
 
 ### Phase 7: Upload & Input UI
 **Goal**: Users can upload videos, paste TikTok URLs, or enter text through a tabbed content form
