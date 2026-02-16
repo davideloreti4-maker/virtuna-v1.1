@@ -155,7 +155,11 @@ Plans:
   3. getTierFromPlanId export removed or consumed
   4. FOUN-02 requirement text updated to match /login redirect behavior
   5. Phase 4 VERIFICATION.md created with retroactive verification
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 08-01-PLAN.md -- Delete orphaned API routes (auth/callback, referral/generate, referral/stats) and remove unused getTierFromPlanId export
+- [ ] 08-02-PLAN.md -- Update FOUN-02 requirement wording to match /login redirect, create retroactive Phase 4 VERIFICATION.md
 
 ## Execution Waves
 
