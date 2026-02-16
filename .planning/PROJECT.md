@@ -52,7 +52,22 @@ AI-powered content intelligence that tells creators whether their content will r
 
 ### Active
 
-(No active milestone — next milestone to be defined)
+**Current Milestone: Prediction Engine v2**
+
+**Goal:** Transform the prediction engine from ~40-55% accuracy to ~75-85% through TikTok-aligned prompts, full video analysis, 10-stage pipeline with FeatureVector backbone, behavioral predictions, ML training on 5000 scraped videos, and calibration infrastructure.
+
+**Target features:**
+- TikTok-aligned Gemini factors (Scroll-Stop Power, Completion Pull, Rewatch Potential, Share Trigger, Emotional Charge)
+- Full video analysis via Gemini (30s TikTok ~$0.008)
+- DeepSeek V3.2-reasoning with 5-step CoT and behavioral predictions
+- 10-stage pipeline with FeatureVector backbone and Creator Context
+- New aggregation formula (behavioral 45% + gemini 25% + rules 20% + trends 10%)
+- Hybrid semantic + regex rules with per-rule accuracy tracking
+- ML model trained on scraped video data
+- Platt scaling calibration
+- Video upload + TikTok URL input modes
+- Results UI with factor breakdown, behavioral predictions, before/after suggestions, persona quotes
+- Rate limiting, caching, partial failure recovery
 
 ### Out of Scope
 
@@ -144,10 +159,11 @@ AI-powered content intelligence that tells creators whether their content will r
 
 **Shipped:** v1.0 Backend Foundation (2026-02-13), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
-**In progress:** None — ready for next milestone
+**In progress:** Prediction Engine v2 (worktree at ~/virtuna-prediction-engine-v2/)
 
 **Parallel milestones:**
 - Landing Page (worktree at ~/virtuna-landing-page/) — landing, onboarding, pricing/payments, UI polish
+- Prediction Engine v2 (worktree at ~/virtuna-prediction-engine-v2/) — engine overhaul, video analysis, ML training
 
 ---
-*Last updated: 2026-02-13 after v1.0 Backend Foundation milestone*
+*Last updated: 2026-02-16 after Prediction Engine v2 milestone started*

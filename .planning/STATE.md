@@ -2,64 +2,37 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-13)
+See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered content intelligence that tells creators whether their content will resonate -- and exactly why -- before they post.
-**Current focus:** v1.0 Backend Foundation shipped — planning next milestone
+**Current focus:** Prediction Engine v2
 
 ## Current Position
 
-**Milestone:** v1.0 Backend Foundation (SHIPPED)
-**Phase:** All complete (1-8 + 5.1)
-**Plan:** 21/21 complete
-**Status:** Milestone archived
-**Last activity:** 2026-02-13 — v1.0 milestone archived
+**Milestone:** Prediction Engine v2
+**Phase:** Not started (defining requirements)
+**Plan:** —
+**Status:** Defining requirements
+**Last activity:** 2026-02-16 — Milestone Prediction Engine v2 started
 
-Progress: [████████████████] 100%
+Progress: [░░░░░░░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
-**Velocity:**
-- Total plans completed: 5 (Phase 5.1 + Phase 8)
-- Average duration: 3min
-- Total execution time: ~16min
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 5.1 | 4 | 12min | 3min |
-| 8 | 1 | 4min | 4min |
-
-*Updated after each plan completion*
+(No execution data yet)
 
 ## Accumulated Context
 
 ### Decisions
 
-- [Roadmap]: 7 phases derived from 8 requirement categories; ENGINE and TREND run in parallel (Wave 2)
-- [Roadmap]: All backend logic in Next.js API routes (no Supabase Edge Functions)
-- [Roadmap]: TanStack Query for server state, Zustand unchanged for client state
-- [Roadmap]: Gemini 2.5 Flash-Lite (not deprecated 2.0 Flash) from day one
-- [05.1-01]: Placeholder thumbnails/avatars use picsum.photos seeded by ID for deterministic output
-- [05.1-01]: Analysis history returns flat JSON array (no pagination) for MVP simplicity
-- [05.1-01]: DB-to-UI mapper pattern established in src/lib/mappers/ with barrel export
-- [05.1-02]: Saved tab keeps mock getAllVideos() temporarily until bookmark API exists
-- [05.1-02]: Modal prev/next navigation disabled temporarily -- single video viewing still works
-- [05.1-02]: Stats adapter done inline (not separate mapper) for one-off API-to-UI shape transform
-- [05.1-02]: Component-owned loading pattern -- VideoGrid shows its own skeleton via TanStack Query isLoading
-- [05.1-03]: Removed onApplyDeal/onApplied callback chain -- mutation cache invalidation replaces parent-child state propagation
-- [05.1-03]: Kept 1500ms success animation setTimeout (UX delay, not fake API)
-- [05.1-04]: Test-store thinned from 12 to 5 state fields; SSE logic now lives only in useAnalyze() hook
-- [05.1-04]: LoadingPhases converted to prop-driven (simulationPhase, phaseMessage, onCancel) — no more store coupling
-- [05.1-04]: TestCreationFlow also wired to useAnalyze() (auto-fixed deviation from plan scope)
-- [08-01]: Removed runPredictionPipeline wrapper -- inlined stages in route.ts for SSE interleaving
-- [08-01]: 4500ms minimum theater duration with useRef cancel guard to prevent stale transitions
-- [08-01]: Suspense fallback={null} for dashboard page to avoid layout flash with useSearchParams
-
-### Roadmap Evolution
-
-- Phase 5.1 inserted after Phase 5: Wire TanStack Query hooks into page components and fix integration gaps (URGENT)
+- [Plan]: 12 phases, 26 plans derived from deep 6-agent analysis of current engine gaps
+- [Plan]: Switch DeepSeek from R1 to V3.2-reasoning (70% cheaper, 2x faster)
+- [Plan]: Full video analysis via Gemini Flash-Lite (~$0.008/30s video)
+- [Plan]: Behavioral predictions replace abstract scores (completion_pct, share_pct, comment_pct)
+- [Plan]: New aggregation formula: behavioral 45% + gemini 25% + rules 20% + trends 10%
+- [Plan]: Personas are theater/UX, not accuracy signal — lightweight 2-3 sentences each
+- [Plan]: Remove conversation_themes and variants to redirect tokens to accuracy
+- [Plan]: Pass structured Gemini signals to DeepSeek (no scores) to prevent anchoring
 
 ### Pending Todos
 
@@ -67,17 +40,17 @@ None yet.
 
 ### Blockers/Concerns
 
-- Apify actor data shape needs manual validation before building transforms (Phase 3)
-- DeepSeek R1 prompt optimization needs iterative testing (Phase 2)
-- Vercel Pro plan required for hourly cron schedules
+- Apify actor for TikTok URL → video extraction needs testing (direct URLs expire)
+- DeepSeek V3.2-reasoning availability/API endpoint to verify
+- Supabase Storage bucket creation needed for video uploads
 
 ## Session Continuity
 
-Last session: 2026-02-13
-Stopped at: v1.0 milestone archived
+Last session: 2026-02-16
+Stopped at: Defining requirements
 Resume file: None
-Next: `/gsd:new-milestone`
+Next: Complete requirements → roadmap → `/gsd:plan-phase 1`
 
 ---
-*State created: 2026-02-13*
-*Last updated: 2026-02-13 — v1.0 Backend Foundation milestone archived*
+*State created: 2026-02-16*
+*Last updated: 2026-02-16 — Prediction Engine v2 milestone started*
