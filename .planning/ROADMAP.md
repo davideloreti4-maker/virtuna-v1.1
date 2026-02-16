@@ -13,7 +13,7 @@ Transform Virtuna from a design-system showcase into a conversion-ready SaaS pro
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - Replace mock auth, restructure routes and sidebar navigation for MVP (completed 2026-02-16)
-- [ ] **Phase 2: Landing Page** - Conversion-optimized landing page with interactive hive demo and pricing
+- [x] **Phase 2: Landing Page** - Conversion-optimized landing page with interactive hive demo and pricing (completed 2026-02-16)
 - [ ] **Phase 3: Onboarding** - Progressive post-signup flow with TikTok connect, goal selection, and tooltips
 - [ ] **Phase 4: Payments** - Whop-powered subscriptions with 7-day Pro trial, tier gating, and trial UI
 - [ ] **Phase 5: Referral** - In-product referral program with link generation, tracking, and one-time bonuses
@@ -52,8 +52,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md -- Fix CTA link targets + Raycast design language consistency (borders, text tokens)
-- [ ] 02-02-PLAN.md -- Hive demo IntersectionObserver lazy loading (RAF pause when off-screen, battery optimization)
+- [x] 02-01-PLAN.md -- Fix CTA link targets + Raycast design language consistency (borders, text tokens) (completed 2026-02-16)
+- [x] 02-02-PLAN.md -- Hive demo IntersectionObserver lazy loading (RAF pause when off-screen, battery optimization) (completed 2026-02-16)
 
 ### Phase 3: Onboarding
 **Goal**: A new user who just signed up is guided through entering their TikTok handle, choosing a goal, and seeing their first personalized hive -- then gets contextual help on their first dashboard visit
@@ -153,7 +153,7 @@ Waves 1-2 support parallel execution (see Execution Waves above).
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | ✓ Complete | 2026-02-16 |
-| 2. Landing Page | 0/2 | Not started | - |
+| 2. Landing Page | 2/2 | ✓ Complete | 2026-02-16 |
 | 3. Onboarding | 0/3 | Not started | - |
 | 4. Payments | 0/3 | Not started | - |
 | 5. Referral | 0/3 | Not started | - |
