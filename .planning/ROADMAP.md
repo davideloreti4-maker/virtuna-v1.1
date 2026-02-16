@@ -33,11 +33,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Apify video scraper fetches per-video metrics (views, likes, comments, shares), captions, timestamps, hashtags, and duration
   4. Scraping deduplicates by unique handle -- two users tracking the same creator triggers only one scrape
   5. All scraped data passes through Zod validation schemas at ingestion boundary before database insertion
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Database schema migration and RLS policies
-- [ ] 01-02: Apify scraping service layer with provider abstraction and Zod validation
+- [ ] 01-01-PLAN.md -- Database schema migration (4 tables, RLS policies, indexes, triggers) and service role client
+- [ ] 01-02-PLAN.md -- Apify scraping service with ScrapingProvider abstraction, Zod validation schemas, handle normalization
 
 ### Phase 2: Competitor Management
 **Goal**: Users can add and remove competitors with real data flowing in on a schedule
