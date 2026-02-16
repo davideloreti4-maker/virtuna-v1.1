@@ -2,10 +2,8 @@ import {
   HeroSection,
   FeaturesSection,
   StatsSection,
-  SocialProofSection,
   FAQSection,
 } from "@/components/landing";
-import { HiveDemo } from "@/components/hive-demo";
 import { Footer } from "@/components/layout/footer";
 
 export default function HomePage() {
@@ -13,11 +11,10 @@ export default function HomePage() {
     <>
       <main>
         <HeroSection />
-        <HiveDemo />
-        <FeaturesSection />
         <StatsSection />
-        <SocialProofSection />
+        <FeaturesSection />
         <FAQSection />
+        {/* CTA section -- added in 02-02 */}
       </main>
       <Footer />
     </>
