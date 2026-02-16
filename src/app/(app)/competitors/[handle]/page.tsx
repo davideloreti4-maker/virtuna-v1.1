@@ -6,10 +6,17 @@ import {
   computeAverageViews,
   computeEngagementRate,
   computeVideoEngagementRate,
+  computePostingCadence,
+  computeHashtagFrequency,
+  computePostingTimeGrid,
+  computeDurationBreakdown,
 } from "@/lib/competitors-utils";
 import { DetailHeader } from "@/components/competitors/detail/detail-header";
 import { GrowthSection } from "@/components/competitors/detail/growth-section";
 import { EngagementSection } from "@/components/competitors/detail/engagement-section";
+import { TopVideosSection } from "@/components/competitors/detail/top-videos-section";
+import { ContentAnalysisSection } from "@/components/competitors/detail/content-analysis-section";
+import type { VideoCardData } from "@/components/competitors/detail/video-card";
 
 interface DetailPageProps {
   params: Promise<{ handle: string }>;
@@ -116,6 +123,53 @@ export default async function CompetitorDetailPage({
 
   const averageEngagementRate = computeEngagementRate(safeVideos);
 
+  // --- Content analysis data (04-02) ---
+
+  // Top 10 videos by views for video feed
+  const topVideoCards: VideoCardData[] = [...safeVideos]
+    .sort((a, b) => (b.views ?? 0) - (a.views ?? 0))
+    .slice(0, 10)
+    .map((v) => ({
+      caption: v.caption,
+      views: v.views,
+      likes: v.likes,
+      comments: v.comments,
+      shares: v.shares,
+      saves: v.saves,
+      duration_seconds: v.duration_seconds,
+      posted_at: v.posted_at,
+      video_url: v.video_url,
+      engagementRate: computeVideoEngagementRate(v),
+    }));
+
+  // Recent 20 videos chronologically (already sorted desc by posted_at)
+  const recentVideoCards: VideoCardData[] = safeVideos
+    .slice(0, 20)
+    .map((v) => ({
+      caption: v.caption,
+      views: v.views,
+      likes: v.likes,
+      comments: v.comments,
+      shares: v.shares,
+      saves: v.saves,
+      duration_seconds: v.duration_seconds,
+      posted_at: v.posted_at,
+      video_url: v.video_url,
+      engagementRate: computeVideoEngagementRate(v),
+    }));
+
+  // Posting cadence
+  const cadence = computePostingCadence(safeVideos);
+
+  // Hashtag frequency
+  const hashtags = computeHashtagFrequency(safeVideos);
+
+  // Posting time heatmap grid
+  const heatmapGrid = computePostingTimeGrid(safeVideos);
+
+  // Duration breakdown
+  const durationBreakdown = computeDurationBreakdown(safeVideos);
+
   return (
     <div className="space-y-8 pb-8">
       <DetailHeader profile={profile} />
@@ -128,7 +182,16 @@ export default async function CompetitorDetailPage({
         chartData={engagementChartData}
         averageEngagementRate={averageEngagementRate}
       />
-      {/* Content analysis sections added in 04-02 */}
+      <TopVideosSection
+        topVideos={topVideoCards}
+        recentVideos={recentVideoCards}
+        cadence={cadence}
+      />
+      <ContentAnalysisSection
+        hashtags={hashtags}
+        heatmapGrid={heatmapGrid}
+        durationBreakdown={durationBreakdown}
+      />
     </div>
   );
 }
