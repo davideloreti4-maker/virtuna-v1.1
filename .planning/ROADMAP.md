@@ -68,7 +68,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 3-01: DeepSeek Prompt Rewrite + Model Switch
+- [ ] 03-01: DeepSeek prompt rewrite with 5-step CoT, behavioral predictions, V3.2-reasoning cost estimation
 
 ### Phase 4: Types, Schema & DB Migration
 **Goal**: All v2 types defined (FeatureVector, ContentPayload, PredictionResult), input schema expanded for 3 modes, DB migrated
