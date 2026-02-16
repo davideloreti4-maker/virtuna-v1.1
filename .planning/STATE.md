@@ -5,24 +5,24 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate -- and connects them to monetization opportunities.
-**Current focus:** Phase 5 - Referral (executing)
+**Current focus:** Phase 5 - Referral (complete)
 
 ## Current Position
 
 **Milestone:** MVP Launch
 **Phase:** 5 of 6 (Referral)
 **Plan:** 2 of 2 in current phase
-**Status:** Plan 05-02 complete
-**Last activity:** 2026-02-16 -- Completed 05-02 sidebar nav + build verification
+**Status:** Phase 5 complete
+**Last activity:** 2026-02-16 -- Phase 5 Referral complete (all plans)
 
-Progress: [███████░░░] 71%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
+- Total plans completed: 11
 - Average duration: 3 min
-- Total execution time: 0.45 hours
+- Total execution time: 0.48 hours
 
 **By Phase:**
 
@@ -32,7 +32,7 @@ Progress: [███████░░░] 71%
 | 02-landing-page | 2 | 4 min | 2 min |
 | 03-onboarding | 2 | 4 min | 2 min |
 | 04-payments | 3 | 9 min | 3 min |
-| 05-referral | 1 | 1 min | 1 min |
+| 05-referral | 2 | 2 min | 1 min |
 
 *Updated after each plan completion*
 
@@ -63,6 +63,8 @@ Progress: [███████░░░] 71%
 - [03-02]: Combined onboarding_completed_at + primary_goal into single Supabase query to avoid redundant requests
 - [03-02]: ContextualTooltip for tiktok-connect only renders when handle is NOT connected
 - [03-02]: Goal-to-location mapping uses fallback to "Switzerland" for null/unknown goals
+- [05-01]: Referral cookie set AFTER getUser() to survive Supabase setAll response re-creation
+- [05-01]: INSERT policy uses WITH CHECK on referred_user_id = auth.uid() for self-only inserts
 - [Phase 05-02]: Kept Briefcase icon for Referrals nav item (fits earnings/referral concept)
 - [Phase 05-02]: Updated isActive check from /brand-deals to /referrals path matching
 
@@ -87,10 +89,10 @@ None
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 05-02-PLAN.md (sidebar nav + build verification)
+Stopped at: Phase 5 Referral complete (all plans)
 Resume file: None
-Next: Complete remaining 05-referral plans or advance to Phase 6
+Next: `/gsd:plan-phase 6` or advance to Phase 6
 
 ---
 *State created: 2026-02-13*
-*Last updated: 2026-02-16 -- Phase 4 Payments complete (verified)*
+*Last updated: 2026-02-16 -- Phase 5 Referral complete*
