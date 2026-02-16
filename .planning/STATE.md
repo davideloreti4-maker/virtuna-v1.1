@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered content intelligence that tells creators whether their content will resonate -- and exactly why -- before they post.
-**Current focus:** Phase 4 (next)
+**Current focus:** Phase 4 (Types, Schema, DB Migration)
 
 ## Current Position
 
 **Milestone:** Prediction Engine v2
-**Phase:** 3 of 12 (DeepSeek Prompt + Model Switch) -- COMPLETE
-**Plan:** 1 of 1 in current phase
-**Status:** Phase 3 complete, ready for Phase 4
-**Last activity:** 2026-02-16 -- Phase 3 Plan 1 executed (DeepSeek 5-step CoT prompt + behavioral predictions)
+**Phase:** 4 of 12 (Types, Schema, DB Migration) -- IN PROGRESS
+**Plan:** 1 of 2 in current phase -- COMPLETE
+**Status:** Phase 4 Plan 1 complete (v2 type definitions), Plan 2 next
+**Last activity:** 2026-02-16 -- Phase 4 Plan 1 executed (v2 type definitions: FeatureVector, AnalysisInput, ContentPayload, PredictionResult)
 
-Progress: [███░░░░░░░░░░░░░] 11.5% (3/26 plans)
+Progress: [████░░░░░░░░░░░░] 15.4% (4/26 plans)
 
 ## Performance Metrics
 
@@ -24,6 +24,7 @@ Progress: [███░░░░░░░░░░░░░] 11.5% (3/26 plans)
 | 01    | 01   | 5min     | 2     | 4     |
 | 02    | 01   | 4min     | 2     | 2     |
 | 03    | 01   | 3min     | 2     | 2     |
+| 04    | 01   | 2min     | 2     | 1     |
 
 ## Accumulated Context
 
@@ -48,6 +49,11 @@ Progress: [███░░░░░░░░░░░░░] 11.5% (3/26 plans)
 - [Execute 03-01]: Gemini signals stripped of numeric scores to prevent DeepSeek anchoring
 - [Execute 03-01]: Token-based cost at V3.2-reasoning pricing ($0.28/1M input, $0.42/1M output)
 - [Execute 03-01]: Dead v1 fields removed from DeepSeek schema (persona_reactions, variants, conversation_themes, refined_score)
+- [Execute 04-01]: FeatureVector uses camelCase for TypeScript convention (hookScore not hook_score)
+- [Execute 04-01]: AnalysisInput uses Zod .refine() for conditional field validation based on input_mode
+- [Execute 04-01]: PredictionResult confidence is numeric 0-1 with separate confidence_label for UI display
+- [Execute 04-01]: Deprecated v1 types removed now (PersonaReaction, Variant, ConversationTheme + Zod schemas)
+- [Execute 04-01]: score_weights uses named keys (behavioral/gemini/rules/trends) instead of v1 (rule/trend/ml)
 - [Plan]: 12 phases, 26 plans derived from deep 6-agent analysis of current engine gaps
 - [Plan]: Switch DeepSeek from R1 to V3.2-reasoning (70% cheaper, 2x faster)
 - [Plan]: Full video analysis via Gemini Flash-Lite (~$0.008/30s video)
@@ -70,10 +76,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 03-01-PLAN.md (Phase 3 DeepSeek Prompt + Model Switch complete)
+Stopped at: Completed 04-01-PLAN.md (Phase 4 Plan 1 v2 type definitions)
 Resume file: None
-Next: `/gsd:execute-phase 4`
+Next: Execute 04-02-PLAN.md (DB schema migration)
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Phase 3 complete*
+*Last updated: 2026-02-16 -- Phase 4 Plan 1 complete*
