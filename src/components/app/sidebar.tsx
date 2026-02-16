@@ -17,12 +17,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/typography";
-import { ContextualTooltip } from "@/components/tooltips/contextual-tooltip";
 import { TrialCountdown } from "@/components/trial-countdown";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useSidebarStore } from "@/stores/sidebar-store";
-import { useTooltipStore } from "@/stores/tooltip-store";
 import { useSubscription } from "@/hooks/use-subscription";
 
 import { SidebarNavItem } from "./sidebar-nav-item";
@@ -55,15 +53,10 @@ export function Sidebar() {
   const { tier, isTrial } = useSubscription();
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const [tiktokHandle, setTiktokHandle] = useState<string | null>(null);
+  const [inputValue, setInputValue] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const avatarMenuRef = useRef<HTMLDivElement>(null);
-  const tooltipStore = useTooltipStore();
-
-  // Hydrate tooltip store
-  useEffect(() => {
-    if (!tooltipStore._isHydrated) {
-      tooltipStore._hydrate();
-    }
-  }, [tooltipStore]);
 
   // Fetch connected TikTok handle
   useEffect(() => {
@@ -102,6 +95,38 @@ export function Sidebar() {
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push("/");
+  };
+
+  const handleSaveHandle = async () => {
+    const trimmed = inputValue.trim().replace(/^@/, "");
+    if (!trimmed) return;
+
+    setIsSaving(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from("creator_profiles")
+        .upsert(
+          { user_id: user.id, tiktok_handle: trimmed },
+          { onConflict: "user_id" }
+        );
+
+      if (error) {
+        console.error("Failed to save TikTok handle:", error);
+        return;
+      }
+
+      setTiktokHandle(trimmed);
+      setIsEditing(false);
+      setInputValue("");
+    } catch (err) {
+      console.error("Failed to save TikTok handle:", err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -165,39 +190,50 @@ export function Sidebar() {
         {/* Separator */}
         <div className="mx-4 my-2 border-t border-border-glass" />
 
-        {/* TikTok Account Section */}
-        {tiktokHandle ? (
+        {/* TikTok Handle Section */}
+        {tiktokHandle && !isEditing ? (
           <div className="mx-2 my-1">
-            <div className="flex items-center gap-2 rounded-lg bg-white/[0.04] px-3 py-2">
-              <div className={cn(
-                "h-6 w-6 shrink-0 rounded-full flex items-center justify-center",
-                "bg-accent/20"
-              )}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-accent" aria-hidden="true">
-                  <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                </svg>
-              </div>
-              <Text as="span" size="sm" className="text-foreground truncate">
+            <button
+              type="button"
+              onClick={() => {
+                setIsEditing(true);
+                setInputValue(tiktokHandle);
+              }}
+              className="w-full cursor-pointer rounded-lg px-3 py-2 text-left transition-colors hover:text-foreground-secondary"
+            >
+              <Text as="span" size="sm" className="text-foreground">
                 @{tiktokHandle}
               </Text>
-            </div>
+            </button>
           </div>
         ) : (
-          <ContextualTooltip
-            id="tiktok-connect"
-            title="Your TikTok Account"
-            description="Connect your TikTok handle to unlock personalized content intelligence"
-            position="right"
-          >
-            <div className="mx-2 my-1">
-              <div className="flex items-center gap-2 rounded-lg bg-white/[0.04] px-3 py-2">
-                <div className="h-6 w-6 shrink-0 rounded-full bg-white/[0.1]" />
-                <Text as="span" size="sm" className="text-foreground-muted truncate">
-                  Connect TikTok
-                </Text>
-              </div>
-            </div>
-          </ContextualTooltip>
+          <div className="mx-2 my-1 px-3 py-2">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSaveHandle();
+              }}
+              placeholder="@handle"
+              className={cn(
+                "w-full bg-white/[0.05] border border-white/[0.05] rounded-lg",
+                "h-[42px] px-3 text-sm text-foreground placeholder:text-foreground-muted",
+                "focus:border-accent focus:outline-none",
+                "transition-colors"
+              )}
+            />
+            <Button
+              variant="primary"
+              size="sm"
+              className="mt-2 w-full"
+              onClick={handleSaveHandle}
+              disabled={!inputValue.trim() || isSaving || inputValue.trim().replace(/^@/, "") === tiktokHandle}
+              loading={isSaving}
+            >
+              {isSaving ? "Saving..." : "Save"}
+            </Button>
+          </div>
         )}
 
         {/* Separator */}
