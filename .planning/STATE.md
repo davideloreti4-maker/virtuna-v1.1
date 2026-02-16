@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered content intelligence that tells creators whether their content will resonate -- and exactly why -- before they post.
-**Current focus:** Phase 5 (Pipeline Restructure) -- Phase 4 complete
+**Current focus:** Phase 5 (Pipeline Restructure) -- Plan 1 complete, Plan 2 next
 
 ## Current Position
 
 **Milestone:** Prediction Engine v2
-**Phase:** 5 of 12 (Pipeline Restructure) -- READY
-**Plan:** 0 of N in current phase -- Phase 5 not yet started
-**Status:** Phase 4 complete (v2 types + DB schema + input normalization), Phase 5 next
-**Last activity:** 2026-02-16 -- Phase 4 Plan 2 executed (DB schema migration + input normalization)
+**Phase:** 5 of 12 (Pipeline Restructure) -- IN PROGRESS
+**Plan:** 1 of 2 in current phase -- Plan 1 complete (pipeline + creator context)
+**Status:** 10-stage wave pipeline with Creator Context stage implemented, aggregator rewrite next
+**Last activity:** 2026-02-16 -- Phase 5 Plan 1 executed (pipeline architecture + creator context)
 
-Progress: [█████░░░░░░░░░░░] 19.2% (5/26 plans)
+Progress: [██████░░░░░░░░░░] 23.1% (6/26 plans)
 
 ## Performance Metrics
 
@@ -26,6 +26,7 @@ Progress: [█████░░░░░░░░░░░] 19.2% (5/26 plans)
 | 03    | 01   | 3min     | 2     | 2     |
 | 04    | 01   | 2min     | 2     | 1     |
 | 04    | 02   | 2min     | 2     | 2     |
+| 05    | 01   | 3min     | 2     | 3     |
 
 ## Accumulated Context
 
@@ -59,6 +60,11 @@ Progress: [█████░░░░░░░░░░░] 19.2% (5/26 plans)
 - [Execute 04-02]: Array.from(Set) instead of spread for ES2017 target compatibility
 - [Execute 04-02]: video_url passthrough in normalizeInput — actual URL resolution deferred to Phase 5
 - [Execute 04-02]: Duration hint extraction is best-effort from text, overridden by Apify/video metadata in Phase 5
+- [Execute 05-01]: Pipeline returns raw PipelineResult instead of calling aggregateScores -- separates orchestration from scoring
+- [Execute 05-01]: Circuit breaker null treated as stage failure per LOCKED DECISION (all stages required)
+- [Execute 05-01]: Trend enrichment runs parallel to DeepSeek with placeholder context -- final data in PipelineResult
+- [Execute 05-01]: Platform averages computed from scraped_videos in JS with module-level cache
+- [Execute 05-01]: Creator niche resolved from profile if not provided in input
 - [Plan]: 12 phases, 26 plans derived from deep 6-agent analysis of current engine gaps
 - [Plan]: Switch DeepSeek from R1 to V3.2-reasoning (70% cheaper, 2x faster)
 - [Plan]: Full video analysis via Gemini Flash-Lite (~$0.008/30s video)
@@ -81,10 +87,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 04-02-PLAN.md (Phase 4 complete — DB schema migration + input normalization)
+Stopped at: Completed 05-01-PLAN.md (Pipeline architecture + Creator Context stage)
 Resume file: None
-Next: Plan and execute Phase 5 (Pipeline Restructure)
+Next: Execute Phase 5 Plan 2 (Aggregator rewrite + API route update)
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Phase 4 complete (Plans 1-2)*
+*Last updated: 2026-02-16 -- Phase 5 Plan 1 complete (pipeline + creator context)*
