@@ -326,3 +326,14 @@ export async function getPlattParameters(): Promise<PlattParameters | null> {
   plattCache.set(PLATT_CACHE_KEY, { params });
   return params;
 }
+
+/**
+ * Invalidate the cached Platt parameters so the next call to
+ * getPlattParameters() re-fetches and re-fits from the database.
+ *
+ * Called by the monthly calibration-audit cron after re-fitting
+ * to ensure the next prediction request uses fresh parameters.
+ */
+export function invalidatePlattCache(): void {
+  plattCache.invalidate(PLATT_CACHE_KEY);
+}
