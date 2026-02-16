@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered content intelligence that tells creators whether their content will resonate -- and exactly why -- before they post.
-**Current focus:** Phase 7 complete -- ready for Phase 8
+**Current focus:** Phase 8 in progress -- Results Card & Breakdown UI
 
 ## Current Position
 
 **Milestone:** Prediction Engine v2
-**Phase:** 7 of 12 (Upload & Input UI) -- COMPLETE
-**Plan:** 2 of 2 in current phase -- Phase complete
-**Status:** Content form with 3-tab input modes wired to v2 AnalysisInput payload
-**Last activity:** 2026-02-16 -- Phase 7 Plan 2 executed (content form tabs & flow integration)
+**Phase:** 8 of 12 (Results Card & Breakdown UI) -- IN PROGRESS
+**Plan:** 1 of 3 in current phase
+**Status:** ImpactScore and FactorBreakdown rewritten for v2 PredictionResult
+**Last activity:** 2026-02-16 -- Phase 8 Plan 1 executed (hero score + factor breakdown)
 
-Progress: [██████████░░░░░░] 38.5% (10/26 plans)
+Progress: [███████████░░░░░] 42.3% (11/26 plans)
 
 ## Performance Metrics
 
@@ -31,6 +31,7 @@ Progress: [██████████░░░░░░] 38.5% (10/26 plans)
 | 06    | 01   | 4min     | 3     | 6     |
 | 07    | 01   | 3min     | 2     | 2     |
 | 07    | 02   | 3min     | 2     | 4     |
+| 08    | 01   | 2min     | 2     | 2     |
 
 ## Accumulated Context
 
@@ -91,6 +92,9 @@ Progress: [██████████░░░░░░] 38.5% (10/26 plans)
 - [Execute 07-02]: Validation on submit only with Record<string, string> errors cleared per-field
 - [Execute 07-02]: Type selector step removed -- flow goes trigger -> form -> results directly
 - [Execute 07-02]: Dashboard-client updated alongside plan scope (Rule 3 deviation) for compilation
+- [Execute 08-01]: Fixed factor display order (Scroll-Stop, Completion, Rewatch, Share, Emotional) for muscle memory over worst-first sort
+- [Execute 08-01]: Score color thresholds: >=7 coral, >=4 default, <4 purple per LOCKED decision
+- [Execute 08-01]: FactorBreakdown re-exported as AttentionBreakdown for backward compat during migration
 - [Plan]: 12 phases, 26 plans derived from deep 6-agent analysis of current engine gaps
 - [Plan]: Switch DeepSeek from R1 to V3.2-reasoning (70% cheaper, 2x faster)
 - [Plan]: Full video analysis via Gemini Flash-Lite (~$0.008/30s video)
@@ -113,10 +117,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 07-02-PLAN.md (Content form tabs & flow integration)
+Stopped at: Completed 08-01-PLAN.md (Hero score + factor breakdown rewrite)
 Resume file: None
-Next: Execute Phase 8 (next phase in ROADMAP)
+Next: Execute 08-02-PLAN.md (next plan in Phase 8)
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Phase 7 complete (Upload & Input UI: VideoUpload, TikTokUrlInput, 3-tab ContentForm, TestCreationFlow v2)*
+*Last updated: 2026-02-16 -- Phase 8 Plan 1 complete (ImpactScore + FactorBreakdown v2 rewrite)*
