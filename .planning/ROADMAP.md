@@ -2,7 +2,7 @@
 
 ## Overview
 
-Comprehensive UI/UX refinement across the entire Virtuna platform. This milestone fixes broken flows, polishes visuals, completes unfinished pages, and ensures every user-facing element works correctly. Seven phases organized by page/area, with sidebar first (affects all app pages), then parallel work across dashboard, trending, settings, referrals, landing, and auth.
+Comprehensive UI/UX refinement across the Virtuna platform (excluding dashboard). This milestone fixes broken flows, polishes visuals, completes unfinished pages, and ensures every user-facing element works correctly. Six phases organized by page/area, with sidebar first (affects all app pages), then parallel work across landing, trending, settings, referrals, and auth.
 
 ## Phases
 
@@ -12,13 +12,12 @@ Comprehensive UI/UX refinement across the entire Virtuna platform. This mileston
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Sidebar & Navigation** - Fix sidebar design, navigation targets, and route integrity
-- [ ] **Phase 2: Dashboard** - Complete hive adjustments, form functionality, filter pills, and dead button resolution
-- [ ] **Phase 3: Landing Page** - Polish spacing, typography, sections, and messaging
-- [ ] **Phase 4: Trending Page** - Redesign layout and populate with meaningful content
-- [ ] **Phase 5: Settings** - Wire up profile save, account actions, and notification preferences
-- [ ] **Phase 6: Referrals & Brand Deals** - Polish referrals UI and replace dead brand deals route
-- [ ] **Phase 7: Auth & Onboarding** - Polish signup, login, welcome flow, and error handling
+- [x] **Phase 1: Sidebar & Navigation** - Fix sidebar design, navigation targets, and route integrity
+- [ ] **Phase 2: Landing Page** - Polish spacing, typography, sections, and messaging
+- [ ] **Phase 3: Trending Page** - Redesign layout and populate with meaningful content
+- [ ] **Phase 4: Settings** - Wire up profile save, account actions, and notification preferences
+- [ ] **Phase 5: Referrals & Brand Deals** - Polish referrals UI and replace dead brand deals route
+- [ ] **Phase 6: Auth & Onboarding** - Polish signup, login, welcome flow, and error handling
 
 ## Phase Details
 
@@ -39,25 +38,7 @@ Plans:
 - [ ] 01-01: Sidebar visual overhaul + navigation restructure (solid dark, flush, coral indicators, remove Content Intelligence)
 - [ ] 01-02: TikTok handle text input + visual verification (text input with Save, Supabase persistence, human checkpoint)
 
-### Phase 2: Dashboard
-**Goal**: Dashboard is fully functional -- hive visualization tuned, all forms work, filter pills filter, dead buttons resolved
-**Depends on**: Phase 1
-**File Ownership**: `src/app/(app)/dashboard/`, `src/components/app/content-form.tsx`, `src/components/app/survey-form.tsx`, `src/components/app/filter-pills.tsx`, `src/components/app/context-bar.tsx`, `src/components/app/test-type-selector.tsx`, `src/components/app/simulation/`, `src/components/hive/`
-**Requirements**: DASH-01, DASH-02, DASH-03, DASH-04, DASH-05, DASH-06, DASH-07, DASH-08
-**Success Criteria** (what must be TRUE):
-  1. Hive visualization renders at appropriate size with configurable settings accessible to the user
-  2. Content form and survey form inputs accept text, validate, and submit without console.log stubs
-  3. Filter pills reflect current platform state and clicking them visibly filters dashboard content
-  4. Dead buttons (Upload Images, Help Me Craft, Request new context, Generate variants) either perform an action, show a coming-soon tooltip, or are removed
-  5. Results panel displays data cleanly with the current data structure -- no layout breaks or empty states
-**Plans**: TBD
-
-Plans:
-- [ ] 02-01: Hive sizing and configuration
-- [ ] 02-02: Form inputs and test creation flow
-- [ ] 02-03: Filter pills, context bar, dead buttons, and results panel
-
-### Phase 3: Landing Page
+### Phase 2: Landing Page
 **Goal**: Landing page communicates Virtuna's value clearly with polished visuals, accurate content, and professional presentation
 **Depends on**: Nothing (separate marketing route group)
 **File Ownership**: `src/app/(marketing)/page.tsx`, `src/components/landing/`, `src/components/layout/footer.tsx`
@@ -71,10 +52,10 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 03-01: Hero and features section polish
-- [ ] 03-02: Stats, social proof, FAQ, and footer
+- [ ] 02-01: Hero and features section polish
+- [ ] 02-02: Stats, social proof, FAQ, and footer
 
-### Phase 4: Trending Page
+### Phase 3: Trending Page
 **Goal**: Trending page has a complete, designed layout with meaningful content that follows brand patterns
 **Depends on**: Phase 1
 **File Ownership**: `src/app/(app)/trending/page.tsx`, `src/components/app/` (trending-specific components if created)
@@ -87,9 +68,9 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 04-01: Trending page redesign and content population
+- [ ] 03-01: Trending page redesign and content population
 
-### Phase 5: Settings
+### Phase 4: Settings
 **Goal**: Settings page is fully functional -- profile saves to Supabase, account actions work, preferences persist
 **Depends on**: Phase 1
 **File Ownership**: `src/app/(app)/settings/page.tsx`, `src/components/app/settings/`
@@ -103,10 +84,10 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 05-01: Profile save and account actions (Supabase integration)
-- [ ] 05-02: Notifications, team section, and UI polish
+- [ ] 04-01: Profile save and account actions (Supabase integration)
+- [ ] 04-02: Notifications, team section, and UI polish
 
-### Phase 6: Referrals & Brand Deals
+### Phase 5: Referrals & Brand Deals
 **Goal**: Referrals page is polished and brand deals has a proper page instead of a dead redirect
 **Depends on**: Phase 1
 **File Ownership**: `src/app/(app)/referrals/page.tsx`, `src/app/(app)/brand-deals/page.tsx`, `src/components/referral/`
@@ -118,9 +99,9 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 06-01: Referrals polish and brand deals page
+- [ ] 05-01: Referrals polish and brand deals page
 
-### Phase 7: Auth & Onboarding
+### Phase 6: Auth & Onboarding
 **Goal**: Auth and onboarding pages are visually polished with graceful error handling
 **Depends on**: Nothing (separate onboarding route group)
 **File Ownership**: `src/app/(onboarding)/login/`, `src/app/(onboarding)/signup/`, `src/app/(onboarding)/welcome/`, `src/components/onboarding/`
@@ -133,39 +114,36 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 07-01: Signup and login page polish
-- [ ] 07-02: Onboarding flow and error state handling
+- [ ] 06-01: Signup and login page polish
+- [ ] 06-02: Onboarding flow and error state handling
 
 ## Execution Waves
 
 Wave groupings for parallel team dispatch. Phases within a wave have no inter-dependencies.
 
-### Wave 1 (no dependencies)
-- Phase 1: Sidebar & Navigation
-- Phase 3: Landing Page
-- Phase 7: Auth & Onboarding
+### Wave 1 (completed)
+- Phase 1: Sidebar & Navigation ✓
 
-### Wave 2 (depends on Wave 1)
-- Phase 2: Dashboard (needs Phase 1)
-- Phase 4: Trending Page (needs Phase 1)
-- Phase 5: Settings (needs Phase 1)
-- Phase 6: Referrals & Brand Deals (needs Phase 1)
+### Wave 2 (all unblocked — can run in parallel)
+- Phase 2: Landing Page (no dependencies)
+- Phase 3: Trending Page (Phase 1 done)
+- Phase 4: Settings (Phase 1 done)
+- Phase 5: Referrals & Brand Deals (Phase 1 done)
+- Phase 6: Auth & Onboarding (no dependencies)
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
-(Wave 1 phases can execute in parallel; Wave 2 phases can execute in parallel after Wave 1 completes)
+All remaining phases (2-6) can execute in parallel since Phase 1 is complete.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Sidebar & Navigation | 0/2 | Not started | - |
-| 2. Dashboard | 0/3 | Not started | - |
-| 3. Landing Page | 0/2 | Not started | - |
-| 4. Trending Page | 0/1 | Not started | - |
-| 5. Settings | 0/2 | Not started | - |
-| 6. Referrals & Brand Deals | 0/1 | Not started | - |
-| 7. Auth & Onboarding | 0/2 | Not started | - |
+| 1. Sidebar & Navigation | 2/2 | ✓ Complete | 2026-02-16 |
+| 2. Landing Page | 0/2 | Not started | - |
+| 3. Trending Page | 0/1 | Not started | - |
+| 4. Settings | 0/2 | Not started | - |
+| 5. Referrals & Brand Deals | 0/1 | Not started | - |
+| 6. Auth & Onboarding | 0/2 | Not started | - |
 
 ---
 *Roadmap created: 2026-02-16*

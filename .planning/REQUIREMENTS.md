@@ -15,17 +15,6 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [ ] **NAV-04**: Brand deals route shows proper page (Virtuna affiliate + "brand deals coming soon")
 - [ ] **NAV-05**: Sidebar has visual harmony with overall platform aesthetic
 
-### Dashboard
-
-- [ ] **DASH-01**: Hive visualization has appropriate sizing and configurable settings
-- [ ] **DASH-02**: Test creation flow has refined test type options and improved UI
-- [ ] **DASH-03**: Content form input fields fully functional (no console.log stubs)
-- [ ] **DASH-04**: Survey form input fields fully functional
-- [ ] **DASH-05**: Filter pills adjusted to reflect current platform state with working logic
-- [ ] **DASH-06**: Context bar meaningful and properly integrated
-- [ ] **DASH-07**: Dead buttons resolved per discussion (Upload Images, Help Me Craft, Request new context, Generate variants)
-- [ ] **DASH-08**: Results panel displays cleanly with current data structure
-
 ### Landing Page
 
 - [ ] **LAND-01**: Landing page has polished spacing, typography, and animations
@@ -99,42 +88,34 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NAV-03 | Phase 1: Sidebar & Navigation | Pending |
 | NAV-04 | Phase 1: Sidebar & Navigation | Pending |
 | NAV-05 | Phase 1: Sidebar & Navigation | Pending |
-| DASH-01 | Phase 2: Dashboard | Pending |
-| DASH-02 | Phase 2: Dashboard | Pending |
-| DASH-03 | Phase 2: Dashboard | Pending |
-| DASH-04 | Phase 2: Dashboard | Pending |
-| DASH-05 | Phase 2: Dashboard | Pending |
-| DASH-06 | Phase 2: Dashboard | Pending |
-| DASH-07 | Phase 2: Dashboard | Pending |
-| DASH-08 | Phase 2: Dashboard | Pending |
-| LAND-01 | Phase 3: Landing Page | Pending |
-| LAND-02 | Phase 3: Landing Page | Pending |
-| LAND-03 | Phase 3: Landing Page | Pending |
-| LAND-04 | Phase 3: Landing Page | Pending |
-| LAND-05 | Phase 3: Landing Page | Pending |
-| LAND-06 | Phase 3: Landing Page | Pending |
-| LAND-07 | Phase 3: Landing Page | Pending |
-| TREND-01 | Phase 4: Trending Page | Pending |
-| TREND-02 | Phase 4: Trending Page | Pending |
-| TREND-03 | Phase 4: Trending Page | Pending |
-| TREND-04 | Phase 4: Trending Page | Pending |
-| SET-01 | Phase 5: Settings | Pending |
-| SET-02 | Phase 5: Settings | Pending |
-| SET-03 | Phase 5: Settings | Pending |
-| SET-04 | Phase 5: Settings | Pending |
-| SET-05 | Phase 5: Settings | Pending |
-| SET-06 | Phase 5: Settings | Pending |
-| REF-01 | Phase 6: Referrals & Brand Deals | Pending |
-| REF-02 | Phase 6: Referrals & Brand Deals | Pending |
-| REF-03 | Phase 6: Referrals & Brand Deals | Pending |
-| AUTH-01 | Phase 7: Auth & Onboarding | Pending |
-| AUTH-02 | Phase 7: Auth & Onboarding | Pending |
-| AUTH-03 | Phase 7: Auth & Onboarding | Pending |
-| AUTH-04 | Phase 7: Auth & Onboarding | Pending |
+| LAND-01 | Phase 2: Landing Page | Pending |
+| LAND-02 | Phase 2: Landing Page | Pending |
+| LAND-03 | Phase 2: Landing Page | Pending |
+| LAND-04 | Phase 2: Landing Page | Pending |
+| LAND-05 | Phase 2: Landing Page | Pending |
+| LAND-06 | Phase 2: Landing Page | Pending |
+| LAND-07 | Phase 2: Landing Page | Pending |
+| TREND-01 | Phase 3: Trending Page | Pending |
+| TREND-02 | Phase 3: Trending Page | Pending |
+| TREND-03 | Phase 3: Trending Page | Pending |
+| TREND-04 | Phase 3: Trending Page | Pending |
+| SET-01 | Phase 4: Settings | Pending |
+| SET-02 | Phase 4: Settings | Pending |
+| SET-03 | Phase 4: Settings | Pending |
+| SET-04 | Phase 4: Settings | Pending |
+| SET-05 | Phase 4: Settings | Pending |
+| SET-06 | Phase 4: Settings | Pending |
+| REF-01 | Phase 5: Referrals & Brand Deals | Pending |
+| REF-02 | Phase 5: Referrals & Brand Deals | Pending |
+| REF-03 | Phase 5: Referrals & Brand Deals | Pending |
+| AUTH-01 | Phase 6: Auth & Onboarding | Pending |
+| AUTH-02 | Phase 6: Auth & Onboarding | Pending |
+| AUTH-03 | Phase 6: Auth & Onboarding | Pending |
+| AUTH-04 | Phase 6: Auth & Onboarding | Pending |
 
 **Coverage:**
-- v1 requirements: 31 total
-- Mapped to phases: 31
+- v1 requirements: 23 total
+- Mapped to phases: 23
 - Unmapped: 0
 
 ---
