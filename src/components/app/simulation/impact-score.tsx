@@ -20,7 +20,7 @@ interface ImpactScoreProps {
  */
 export function ImpactScore({ score, label }: ImpactScoreProps) {
   return (
-    <GlassCard padding="md" hover="lift" blur="none">
+    <GlassCard className="p-4">
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Text as="span" size="sm" muted>

@@ -18,7 +18,7 @@ export const HIVE_OUTER_RADIUS = 600 as const;
 export const VIEWPORT_PADDING = 60 as const;
 
 // ---------------------------------------------------------------------------
-// Node sizes (societies.io style -- varied, larger nodes)
+// Node sizes (varied, larger nodes)
 // ---------------------------------------------------------------------------
 
 export const NODE_SIZES = {
@@ -28,7 +28,7 @@ export const NODE_SIZES = {
 } as const;
 
 // ---------------------------------------------------------------------------
-// Tier colors (societies.io style -- muted grays with per-node variation)
+// Tier colors (muted grays with per-node variation)
 // ---------------------------------------------------------------------------
 
 /** Base fill opacity range per tier. Actual opacity varies per node. */
@@ -45,7 +45,7 @@ export const TIER_COLORS: Record<number, string> = {
 } as const;
 
 // ---------------------------------------------------------------------------
-// Connection line opacity (societies.io style -- more prominent)
+// Connection line opacity (more prominent)
 // ---------------------------------------------------------------------------
 
 /** Opacity for connection lines keyed by *target* node tier. */

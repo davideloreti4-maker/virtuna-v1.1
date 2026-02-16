@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { verifyWebhookSignature } from "@/lib/whop/webhook-verification";
 import { mapWhopProductToTier } from "@/lib/whop/config";
+import { REFERRAL_BONUS_CENTS } from "@/lib/referral/constants";
 import type { Database } from "@/types/database.types";
 
 function createServiceClient() {
@@ -76,6 +77,8 @@ export async function POST(request: Request) {
               virtuna_tier: tier,
               status: "active",
               current_period_end: data.renewal_period_end,
+              is_trial: data.status === "trialing",
+              trial_ends_at: data.trial_end || null,
               updated_at: new Date().toISOString(),
             },
             { onConflict: "user_id" }
@@ -84,6 +87,54 @@ export async function POST(request: Request) {
         if (error) {
           console.error("Failed to upsert subscription:", error);
           return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        // Check for referral conversion and credit referrer
+        const { data: clickData } = await supabase
+          .from("referral_clicks")
+          .select("referral_code, referrer_user_id")
+          .eq("referred_user_id", supabaseUserId)
+          .order("clicked_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (clickData) {
+          // Check for existing conversion (idempotency)
+          const { data: existingConversion } = await supabase
+            .from("referral_conversions")
+            .select("id")
+            .eq("referred_user_id", supabaseUserId)
+            .maybeSingle();
+
+          if (!existingConversion) {
+            const { data: conversion, error: conversionError } = await supabase
+              .from("referral_conversions")
+              .insert({
+                referrer_user_id: clickData.referrer_user_id,
+                referred_user_id: supabaseUserId,
+                referral_code: clickData.referral_code,
+                whop_membership_id: data.id,
+                bonus_cents: REFERRAL_BONUS_CENTS,
+                converted_at: new Date().toISOString(),
+              })
+              .select("id, bonus_cents")
+              .single();
+
+            if (conversionError) {
+              console.error("Failed to record referral conversion:", conversionError);
+            } else {
+              // Credit referrer's wallet (balance calculated by trigger)
+              await supabase.from("wallet_transactions").insert({
+                user_id: clickData.referrer_user_id,
+                amount_cents: conversion.bonus_cents,
+                type: "referral_bonus",
+                reference_type: "referral_conversion",
+                reference_id: conversion.id,
+                description: `Referral bonus for ${clickData.referral_code}`,
+                status: "completed",
+              });
+            }
+          }
         }
 
         break;
@@ -105,6 +156,8 @@ export async function POST(request: Request) {
           .update({
             virtuna_tier: "free",
             status: "cancelled",
+            is_trial: false,
+            trial_ends_at: null,
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", supabaseUserId);

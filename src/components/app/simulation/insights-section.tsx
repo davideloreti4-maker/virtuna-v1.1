@@ -40,7 +40,7 @@ export function InsightsSection({ insights }: InsightsSectionProps) {
   const longInsights = insights.filter((i) => i.length >= 100);
 
   return (
-    <GlassCard padding="md" hover="lift" blur="none">
+    <GlassCard className="p-4">
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Text as="span" size="sm" muted>

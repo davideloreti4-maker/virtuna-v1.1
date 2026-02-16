@@ -1,15 +1,11 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { LinkedinLogo, XLogo, Envelope } from "@phosphor-icons/react/dist/ssr";
+import { XLogo, Envelope } from "@phosphor-icons/react/dist/ssr";
 
 interface FooterProps {
   className?: string;
 }
 
-/**
- * Footer component matching societies.io design.
- * Includes CTA section + footer bar with social links.
- */
 export function Footer({ className }: FooterProps) {
   const currentYear = new Date().getFullYear();
 
@@ -19,85 +15,65 @@ export function Footer({ className }: FooterProps) {
         {/* CTA Section */}
         <div className="mb-16 text-center">
           <h2 className="text-[32px] font-normal leading-[36px] text-white sm:text-[40px] sm:leading-[44px]">
-            Ready to understand your audience?
+            Ready to create smarter?
           </h2>
           <p className="mt-4 text-lg text-white/80">
-            Join the world&apos;s leading organizations using AI to unlock human
-            insights at scale.
+            Join creators using AI to predict viral content and maximize
+            earnings.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
-              href="https://calendly.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="min-h-[44px] rounded bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
+              href="/signup"
+              className="min-h-[44px] rounded-lg bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
             >
-              Book a meeting
+              Start free trial
             </Link>
             <Link
-              href="mailto:founders@societies.io"
-              className="min-h-[44px] rounded border border-white/20 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-white/5"
+              href="/pricing"
+              className="min-h-[44px] rounded-lg border border-white/[0.06] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-white/5"
             >
-              Contact us
+              See pricing
             </Link>
           </div>
         </div>
 
         {/* Footer Bar */}
-        <div className="flex flex-col items-center gap-8 border-t border-white/10 pt-8 md:flex-row md:justify-between">
-          {/* Left: Brand */}
+        <div className="flex flex-col items-center gap-8 border-t border-white/[0.06] pt-8 md:flex-row md:justify-between">
           <div className="text-center md:text-left">
-            <div className="font-medium text-white">Artificial Societies</div>
-            <div className="mt-1 text-sm text-gray-400">
-              &copy; {currentYear} Artificial Societies. All rights reserved.
+            <div className="font-medium text-white">Virtuna</div>
+            <div className="mt-1 text-sm text-foreground-muted">
+              &copy; {currentYear} Virtuna. All rights reserved.
             </div>
           </div>
 
-          {/* Center: Legal Links */}
           <div className="flex flex-wrap items-center justify-center gap-6">
             <Link
               href="/coming-soon"
-              className="text-sm text-gray-400 transition-colors hover:text-white"
+              className="text-sm text-foreground-muted transition-colors hover:text-white"
             >
               Privacy Policy
             </Link>
             <Link
               href="/coming-soon"
-              className="text-sm text-gray-400 transition-colors hover:text-white"
+              className="text-sm text-foreground-muted transition-colors hover:text-white"
             >
               Terms of Service
             </Link>
-            <Link
-              href="/coming-soon"
-              className="text-sm text-gray-400 transition-colors hover:text-white"
-            >
-              Subprocessors
-            </Link>
           </div>
 
-          {/* Right: Social Links */}
           <div className="flex items-center gap-2">
             <a
-              href="https://www.linkedin.com/company/artificial-societies"
+              href="https://x.com/virtuna"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-11 w-11 items-center justify-center text-gray-400 transition-colors hover:text-white"
-              aria-label="LinkedIn"
-            >
-              <LinkedinLogo className="h-5 w-5" weight="fill" />
-            </a>
-            <a
-              href="https://x.com/societiesio"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-11 w-11 items-center justify-center text-gray-400 transition-colors hover:text-white"
+              className="flex h-11 w-11 items-center justify-center text-foreground-muted transition-colors hover:text-white"
               aria-label="X (Twitter)"
             >
               <XLogo className="h-5 w-5" weight="fill" />
             </a>
             <a
-              href="mailto:founders@societies.io"
-              className="flex h-11 w-11 items-center justify-center text-gray-400 transition-colors hover:text-white"
+              href="mailto:hello@virtuna.io"
+              className="flex h-11 w-11 items-center justify-center text-foreground-muted transition-colors hover:text-white"
               aria-label="Email"
             >
               <Envelope className="h-5 w-5" weight="fill" />

@@ -1,715 +1,211 @@
-# Design Token Comparison: Virtuna vs Raycast
+# Feature Landscape
 
-**Project:** Virtuna v2.3.5 Design Token Alignment
-**Researched:** 2026-02-06
-**Mode:** Comparison
-**Overall Confidence:** HIGH (verified against live raycast.com extraction 2026-02-06 + MEMORY.md rules)
-
-**Severity Guide:**
-- **CRITICAL** -- Fundamentally wrong design philosophy, visually jarring
-- **MAJOR** -- Wrong value, visually noticeable at a glance
-- **MINOR** -- Slight value difference, may not be visible without side-by-side comparison
+**Domain:** TikTok Creator Intelligence SaaS (MVP Launch: Landing Page, Onboarding, Payments, Referral Program)
+**Researched:** 2026-02-13
+**Overall Confidence:** HIGH (multiple verified sources, existing codebase examined)
 
 ---
 
-## 1. Background Colors
+## Table Stakes
 
-### 1.1 Body Background
-| Property | Virtuna Current | Raycast Target | Match? |
-|----------|----------------|----------------|--------|
-| Body bg | `--color-gray-950: #07080a` | `#07080a` | MATCH |
+Features users expect. Missing = product feels incomplete or untrustworthy.
 
-**Verdict:** MATCH. Correct.
+### Landing Page
 
-### 1.2 Surface Hierarchy
-| Property | Virtuna Current | Raycast Target | Match? | Severity |
-|----------|----------------|----------------|--------|----------|
-| `--color-surface` | `#18191a` (rgb 24,25,26) | No equivalent -- Raycast cards use `bg-transparent` | MAJOR | Cards should NOT have opaque surface bg |
-| `--color-surface-elevated` | `#222326` (rgb 34,35,38) | Solid opaque for modals only | MINOR | Correct for modals, wrong when used on cards |
-| `--color-background-elevated` | `var(--color-gray-900)` = `#1a1b1e` | `rgb(26,27,30)` = `#1a1b1e` | MATCH | -- |
+| Feature | Why Expected | Complexity | Dependencies | Notes |
+|---------|--------------|------------|--------------|-------|
+| Clear value proposition in hero (< 3 seconds) | 83% of traffic is mobile; if value is unclear in 3-5s, visitors leave | Low | None | Benefit-driven headline: "Find your next viral TikTok" not "Social media intelligence platform" |
+| Interactive product demo in hero | 2026 standard: the website IS the demo. Static screenshots are dead. SaaS pages with embedded demos convert 2-3x over "Book a call" CTAs | Med | Existing Canvas hive visualization | Mini hive viz with fake data + animated analysis preview. 10-15 second loop. NOT a full sandbox |
+| Social proof section | Trust signals are non-negotiable for payment-upfront SaaS | Low | None | Creator testimonials, usage stats, TikTok-native language. Even pre-launch: "Join X creators" waitlist count |
+| Pricing section with clear tier comparison | Users need to see Starter vs Pro before entering checkout. Card-upfront trials demand transparency | Low | Whop plan IDs | Two-column comparison. Starter $19/mo, Pro $49/mo. Highlight Pro trial badge |
+| Mobile-optimized layout | ~83% of visits are mobile for creator tools. TikTok creators are mobile-native. Non-negotiable | Med | None | Mobile-first design, not responsive shrinkdown. Touch-friendly CTAs (min 44px), no pop-ups, fast load (< 2s) |
+| Single clear CTA per section | Multiple competing CTAs reduce conversion. Every section drives toward trial signup | Low | None | Primary: "Start Free Pro Trial" (coral button). Secondary: "See pricing" |
+| FAQ section | Reduces support burden, addresses objections (billing, cancellation, data safety) | Low | None | Accordion. 6-8 questions: trial length, what happens after trial, cancellation, data sources |
+| Fast page load (< 2 seconds) | Every additional second costs ~4.42% of conversions | Med | Next.js SSR, image optimization | Server components for static sections, lazy-load interactive demo, optimize fonts/images |
 
-**Discrepancy D-1.2a: Card backgrounds use `--gradient-card-bg` (gradient from #222326 to #141517)**
-- Raycast target: Cards are `bg-transparent` with border only
-- Severity: **CRITICAL**
-- Impact: Cards look solid/heavy instead of the transparent Raycast style
-- Affected components: `Card` (card.tsx), `FeatureCard`, any component using `--gradient-card-bg`
-- Fix: Remove gradient background, use `bg-transparent` for cards. Reserve solid backgrounds for modals/dialogs only.
+### Onboarding Flow
 
-**Discrepancy D-1.2b: `--color-surface` used for base Input background**
-- Virtuna: `bg-surface` = `#18191a` (opaque dark)
-- Raycast: `rgba(255, 255, 255, 0.05)` (semi-transparent white)
-- Severity: **MAJOR**
-- Impact: Inputs look heavier/opaquer than Raycast
-- Affected components: `Input` (input.tsx), `Select` trigger
-- Fix: Input background should be `rgba(255, 255, 255, 0.05)`, not a solid surface color.
+| Feature | Why Expected | Complexity | Dependencies | Notes |
+|---------|--------------|------------|--------------|-------|
+| Frictionless signup (social login) | Supabase Auth already supports this. Removing friction at entry is table stakes | Low | Existing Supabase Auth | Google + email/password. Consider adding TikTok OAuth if API allows |
+| Welcome screen with goal selection | "What do you want to achieve?" personalizes the path. 86% of users more likely to stay with good onboarding | Low | None | 3-4 goals: "Find viral content ideas", "Analyze my niche", "Track competitors", "Monetize my audience" |
+| Progressive checklist (3-5 steps) | Structured path to activation. Checklists increase completion rates by 48%. Must reach first value in minutes | Med | Dashboard features | Steps: Connect TikTok handle, Run first analysis, Explore hive, Set up notifications, Invite a friend |
+| Skeleton/loading states during setup | Users need visual feedback that things are happening | Low | Existing UI primitives | Already have skeleton components in the design system |
+| Skip/dismiss option on all guidance | Forced tours cause rage-quits. Always let users skip | Low | None | "Skip tour" and "x" on every step. Remember dismissal state |
 
-### 1.3 Card Hover Background
-| Property | Virtuna Current | Raycast Target | Match? | Severity |
-|----------|----------------|----------------|--------|----------|
-| Card hover bg | No hover bg defined on Card | `rgba(255, 255, 255, 0.03)` = `white/[0.03]` | MAJOR | Missing hover feedback |
+### Payments (Whop Integration)
 
-**Discrepancy D-1.3: Missing card hover background**
-- Severity: **MAJOR**
-- Affected components: `Card`, `GlassCard`, `FeatureCard`, `VideoCard`
-- Fix: Add `hover:bg-white/[0.03]` to card hover state.
+| Feature | Why Expected | Complexity | Dependencies | Notes |
+|---------|--------------|------------|--------------|-------|
+| Embedded checkout (not redirect) | Already implemented via WhopCheckoutEmbed. Users expect seamless in-app payment | Low | Existing checkout-modal.tsx, @whop/checkout | ALREADY BUILT. Just needs landing page integration and trial configuration |
+| 7-day Pro trial with card upfront | Opt-out trials convert 25-50% (avg 25%). 7-day trials convert ~40.4% due to urgency | Low | Whop plan configuration | Configure on Whop dashboard: 7-day trial on Pro plan. Card required upfront |
+| Clear trial-to-paid messaging | Users must know exactly when they'll be charged and how to cancel | Low | None | "7-day free trial, then $49/mo. Cancel anytime." visible at checkout and in settings |
+| Billing management in settings | Already have billing-section.tsx. Users need to see plan, status, next billing date, cancel option | Low | Existing billing-section.tsx | ALREADY BUILT. May need polish for trial countdown display |
+| Webhook-driven subscription sync | Already implemented. Whop webhooks update Supabase on payment events | Low | Existing webhook handler | ALREADY BUILT. Handles went_valid, went_invalid, payment_failed |
+| Feature gating by tier | Already have FeatureGate component and hasAccessToTier utility | Low | Existing feature-gate.tsx | ALREADY BUILT. Wire into new onboarding features |
+| Upgrade prompts at gate boundaries | When free users hit a Pro feature, show contextual upgrade prompt | Med | FeatureGate, CheckoutModal | Soft-gate: show blurred preview + "Upgrade to unlock" overlay |
 
----
+### Referral Program
 
-## 2. Text Colors
-
-### 2.1 Primary Text
-| Property | Virtuna Current | Raycast Target | Match? |
-|----------|----------------|----------------|--------|
-| `--color-foreground` | `var(--color-gray-50)` = `oklch(0.98 0 0)` ~ `#fafafa` | `#f4feff` (rgb 244,254,255) | MINOR |
-
-**Discrepancy D-2.1: Primary text color slightly different**
-- Virtuna: Pure neutral white `#fafafa`
-- Raycast: Very slight cool tint `#f4feff` (bluish white)
-- Severity: **MINOR** -- Nearly imperceptible
-- Affected: All text using `text-foreground`
-- Fix: Optional. Could update `--color-gray-50` to `#f4feff` but difference is negligible. Keep as-is unless doing pixel-perfect pass.
-
-### 2.2 Secondary Text
-| Property | Virtuna Current | Raycast Target | Match? | Severity |
-|----------|----------------|----------------|--------|----------|
-| `--color-foreground-secondary` | `var(--color-gray-400)` = `#9c9c9d` | `rgb(156,156,157)` = `#9c9c9d` | MATCH | -- |
-
-**Verdict:** MATCH. Correct.
-
-### 2.3 Muted Text
-| Property | Virtuna Current | Raycast Target | Match? | Severity |
-|----------|----------------|----------------|--------|----------|
-| `--color-foreground-muted` | `var(--color-gray-500)` = `#848586` | `rgb(106,107,108)` = `#6a6b6c` | MAJOR | Virtuna is lighter |
-
-**Discrepancy D-2.3: Muted text too light**
-- Virtuna: `#848586` (lightened from `#6a6b6c` for WCAG AA -- documented in globals.css comment)
-- Raycast: `#6a6b6c`
-- Severity: **MAJOR** -- visually noticeable, muted text appears less muted
-- Affected: `Caption` component, placeholder text, all `text-foreground-muted` usage
-- Fix: This was an intentional accessibility improvement. Keep `#848586` for WCAG AA compliance (5.4:1 on #07080a). Document the deviation as a conscious accessibility choice, not a bug.
-- **Decision needed:** Accessibility vs pixel-perfect. Recommend keeping Virtuna value.
+| Feature | Why Expected | Complexity | Dependencies | Notes |
+|---------|--------------|------------|--------------|-------|
+| Unique shareable referral link per user | Core mechanic. Every user gets a link. Copy-to-clipboard in one tap | Med | Supabase, referral tracking tables | Generate short codes (e.g., virtuna.com/r/abc123). Store in DB. Already have affiliate_clicks table schema |
+| Referral dashboard showing clicks/conversions | Users need to see their referral performance | Med | Existing earnings-tab patterns | Repurpose brand-deals earnings UI patterns for referral stats |
+| One-time bonus on successful referral | Primary incentive. "Earn $X for each friend who subscribes" | Med | Whop webhooks, wallet_transactions table | Trigger on membership.went_valid webhook when referred user subscribes. Credit to wallet |
+| Clear referral program explanation | Users need to understand rules before sharing | Low | None | In-app page with how-it-works steps, reward amount, terms |
 
 ---
 
-## 3. Border Colors and Opacities
+## Differentiators
 
-### 3.1 Default Border
-| Property | Virtuna Current | Raycast Target | Match? |
-|----------|----------------|----------------|--------|
-| `--color-border` | `rgba(255, 255, 255, 0.06)` | `rgba(255, 255, 255, 0.06)` | MATCH |
+Features that set Virtuna apart. Not expected, but create "wow" moments and drive sharing.
 
-**Verdict:** MATCH. Correct.
-
-### 3.2 Hover Border
-| Property | Virtuna Current | Raycast Target | Match? |
-|----------|----------------|----------------|--------|
-| `--color-border-hover` | `rgba(255, 255, 255, 0.1)` | `rgba(255, 255, 255, 0.1)` | MATCH |
-
-**Verdict:** MATCH. Correct.
-
-### 3.3 Feature Card Border (Hardcoded)
-| Property | Virtuna Current | Raycast Target | Match? | Severity |
-|----------|----------------|----------------|--------|----------|
-| FeatureCard border | `border-white/10` (10%) | `rgba(255, 255, 255, 0.06)` (6%) | MAJOR | Too bright |
-
-**Discrepancy D-3.3: FeatureCard uses wrong border opacity**
-- Virtuna: `white/10` = 10% (this is hover-level, not resting)
-- Raycast: `white/[0.06]` = 6% (standard resting border)
-- Severity: **MAJOR**
-- Affected: `FeatureCard` component (feature-card.tsx), landing page
-- Fix: Change from `border-white/10` to `border-border` (which resolves to 6%).
-
-### 3.4 Feature Card Hover Border (Hardcoded)
-| Property | Virtuna Current | Raycast Target | Match? | Severity |
-|----------|----------------|----------------|--------|----------|
-| FeatureCard hover | `hover:border-white/20` (20%) | `hover:border-white/[0.1]` (10%) | MAJOR | Too bright |
-
-**Discrepancy D-3.4: FeatureCard hover border too bright**
-- Virtuna: 20% opacity on hover
-- Raycast: 10% opacity on hover
-- Severity: **MAJOR**
-- Affected: `FeatureCard`
-- Fix: Change to `hover:border-border-hover` (which resolves to 10%).
-
-### 3.5 Input Border
-| Property | Virtuna Current | Raycast Target | Match? | Severity |
-|----------|----------------|----------------|--------|----------|
-| GlassInput border | `border-white/5` (5%) | `rgba(255,255,255,0.05)` (5%) | MATCH | -- |
-| Base Input border | `border-border` = 6% | `rgba(255,255,255,0.05)` (5%) | MINOR | Slightly too bright |
-
-**Discrepancy D-3.5: Base Input border slightly off**
-- GlassInput: Correct at 5%
-- Base Input: Uses `border-border` (6%) instead of 5%
-- Severity: **MINOR**
-- Affected: `Input` component (input.tsx)
-- Fix: Change `Input` to use `border-white/5` instead of `border-border`.
-
-### 3.6 Mobile Menu Border (Hardcoded)
-| Property | Virtuna Current | Raycast Target | Match? | Severity |
-|----------|----------------|----------------|--------|----------|
-| Header mobile border | `border-white/10` | `rgba(255, 255, 255, 0.06)` | MINOR | Too bright |
-
-**Discrepancy D-3.6: Header mobile menu divider too bright**
-- Severity: **MINOR**
-- Affected: `Header` component (header.tsx)
-- Fix: Change to `border-border`.
+| Feature | Value Proposition | Complexity | Dependencies | Notes |
+|---------|-------------------|------------|--------------|-------|
+| **Animated hive demo on landing page** | No competitor has an interactive network visualization as their hero demo. This IS the differentiator | Med | Existing Canvas hive viz (network-visualization.tsx) | Lightweight version: 50-100 nodes (not 1300+), auto-plays, shows fake "viral score" analysis. Eye candy that sells |
+| **Contextual first-visit tooltips** | Guide users to value without blocking them. Tooltips on key features appear once, dismissed permanently | Med | NextStepjs or Onborda library | NextStepjs: lightweight, Next.js native, Framer Motion (already in deps). 5-7 tooltip steps on dashboard first visit |
+| **Trial countdown in-app** | Creates urgency. "3 days left in your Pro trial" in sidebar/header. Drives conversion at day 5-6 | Low | Subscription data (existing) | Calculate from current_period_end. Show banner in app shell when trial active |
+| **"Aha moment" referral prompt** | Surface referral CTA after user's first successful analysis (not on first visit). Timing matters: show when value is felt | Low | Onboarding state tracking | Track "first_analysis_complete" event. Show one-time modal: "Love Virtuna? Share with a creator friend and earn $X" |
+| **Animated onboarding progress** | Celebration animations on checklist completion (confetti/pulse). Gamification increases engagement by 48% | Low | Framer Motion (existing) | Subtle: checkmark animation, progress bar fill. NOT over-the-top confetti |
+| **Deep-link referral with pre-filled context** | Referral links land on personalized page: "Your friend [name] invited you to try Virtuna" | Med | Referral link params, landing page variant | Custom /invite/[code] route showing referrer name + special CTA |
+| **Bento grid feature showcase** | 2026 trend: modular layouts that make complex features scannable. Cards with micro-interactions | Med | None (new build) | Each card highlights one feature with hover animation. Better than linear "feature 1, feature 2" sections |
 
 ---
 
-## 4. Border Radius Scale
+## Anti-Features
 
-| Token | Virtuna Current | Raycast Target | Match? |
-|-------|----------------|----------------|--------|
-| `--radius-none` | `0` | `0` | MATCH |
-| `--radius-xs` | `4px` | `4px` | MATCH |
-| `--radius-sm` | `6px` | `6px` | MATCH |
-| `--radius-md` | `8px` | `8px` | MATCH |
-| `--radius-lg` | `12px` | `12px` | MATCH |
-| `--radius-xl` | `16px` | `16px` | MATCH |
-| `--radius-2xl` | `20px` | `20px` | MATCH |
-| `--radius-3xl` | `24px` | `24px` | MATCH |
-| `--radius-full` | `9999px` | `9999px` | MATCH |
+Features to explicitly NOT build for MVP. These are traps.
 
-**Verdict:** MATCH. Full scale is correct.
-
-### 4.1 Component-Level Radius Usage
-
-| Component | Virtuna Current | Raycast Target | Match? | Severity |
-|-----------|----------------|----------------|--------|----------|
-| Cards | `rounded-lg` (12px) | `border-radius: 12px` | MATCH | -- |
-| Inputs (base) | `rounded-md` (8px) | `border-radius: 8px` | MATCH | -- |
-| GlassInput | `rounded-[var(--rounding-normal)]` (8px) | `8px` | MATCH | -- |
-| Modals | `rounded-lg` (12px) | `12px` | MATCH | -- |
-| GlassPanel | `rounded-xl` (16px) | Context-dependent | MINOR | See D-4.1 |
-| Select dropdown | `rounded-lg` (12px) | `12px` | MATCH | -- |
-| Sidebar | `rounded-xl` (16px) | `12px` | MINOR | See D-4.1 |
-
-**Discrepancy D-4.1: GlassPanel and Sidebar use rounded-xl (16px) instead of 12px**
-- GlassPanel base always uses `rounded-xl` = 16px
-- Raycast glass panels (navbar, sidebar) use 12px
-- Severity: **MINOR** -- 4px difference, subtle
-- Affected: `GlassPanel`, `Sidebar`, any GlassPanel consumer
-- Fix: GlassPanel should default to `rounded-lg` (12px). Sidebar should use `rounded-lg`.
+| Anti-Feature | Why Avoid | What to Do Instead |
+|--------------|-----------|-------------------|
+| **Full interactive sandbox on landing page** | Massively complex, slow to load, confusing without context. Kills mobile performance | 10-15 second auto-playing mini demo with fake data. Let the real product be the sandbox |
+| **Multi-step signup wizard** | Every field you add loses 5-10% of signups. TikTok creators have zero patience | Email + password OR Google OAuth. Collect profile details AFTER first value moment |
+| **Recurring affiliate commissions** | Accounting complexity, Whop integration overhead, payout tracking. Way too much for MVP | One-time bonus per successful referral. Simple. Clear. Easy to implement and understand |
+| **Custom referral program outside Whop** | Building your own affiliate tracking is a months-long project. Cookie tracking, attribution, fraud prevention | Use Whop's built-in affiliate system for Whop-tracked referrals. Build lightweight in-app tracking ONLY for Virtuna-specific bonuses |
+| **A/B testing framework on landing page** | Premature optimization. You need traffic first. A/B testing with < 1000 visitors is noise | Ship one strong version. Iterate based on actual user feedback and analytics. Add A/B testing after 5K+ monthly visitors |
+| **Email drip campaigns for onboarding** | Requires email infrastructure, content creation, timing logic. Low ROI at launch scale | In-app onboarding only for MVP. Add email sequences after proving in-app activation works |
+| **Video walkthroughs/tutorials** | Production cost, maintenance burden, goes stale fast as UI changes | Tooltip-based contextual guidance that's always current. Text + interactive beats video for SaaS onboarding |
+| **Trending page** | Already decided to remove. Unfocused, hard to maintain, not core to value prop | Focus on hive visualization + analysis as the core differentiator |
+| **Leaderboard/social referral mechanics** | Gamification beyond basics adds complexity, potential for gaming, community management overhead | Simple referral dashboard with personal stats only. No competition element for MVP |
+| **Plan switching (downgrade from Pro to Starter)** | Edge case complexity. Proration logic, feature access transitions, Whop plan migration | For MVP: upgrade only. Downgrade = cancel. Revisit when churn data warrants it |
 
 ---
 
-## 5. Shadow Definitions
+## Feature Dependencies
 
-### 5.1 Button Shadow
-| Property | Virtuna Current | Raycast Target | Match? |
-|----------|----------------|----------------|--------|
-| `--shadow-button` | `rgba(0,0,0,0.5) 0px 0px 0px 2px, rgba(255,255,255,0.19) 0px 0px 14px 0px, rgba(0,0,0,0.2) 0px -1px 0.4px 0px inset, rgb(255,255,255) 0px 1px 0.4px 0px inset` | Same 4-layer shadow | MATCH |
+```
+Landing Page (new)
+  |-- Interactive Demo --> depends on: existing Canvas hive viz (network-visualization.tsx)
+  |-- Pricing Section --> depends on: Whop plan IDs configured
+  |-- "Start Trial" CTA --> depends on: Whop checkout embed (existing @whop/checkout)
 
-**Verdict:** MATCH. The Raycast 4-layer button shadow is correctly replicated.
+Onboarding Flow (new)
+  |-- Welcome Screen --> depends on: Auth flow (existing Supabase Auth)
+  |-- Checklist Steps --> depends on: Dashboard features (existing)
+  |-- First-Visit Tooltips --> depends on: NextStepjs library (new dependency)
+  |-- Goal Selection --> depends on: User profile storage (existing creator_profiles)
 
-### 5.2 Card Inset Shadow
-| Property | Virtuna Current | Raycast Target | Match? |
-|----------|----------------|----------------|--------|
-| Card boxShadow (card.tsx) | `inset 0 1px 0 0 rgba(255,255,255,0.1)` | `rgba(255,255,255,0.1) 0 1px 0 0 inset` | MATCH |
+Payments/Trial (mostly existing, needs wiring)
+  |-- Trial Configuration --> depends on: Whop dashboard setup (no code)
+  |-- Trial Countdown UI --> depends on: Subscription data API (existing /api/subscription)
+  |-- Upgrade Prompts --> depends on: FeatureGate (existing), CheckoutModal (existing)
+  |-- Landing Page Checkout --> depends on: Landing page (new), Whop checkout embed (existing)
 
-**Verdict:** MATCH. Same value, different syntax order.
+Referral Program (new, depends on payments)
+  |-- Referral Link Generation --> depends on: Auth (existing), new referral_links table
+  |-- Click Tracking --> depends on: affiliate_clicks table (existing schema!)
+  |-- Conversion Attribution --> depends on: Whop webhooks (existing), affiliate_conversions table (existing schema!)
+  |-- Bonus Payout --> depends on: wallet_transactions table (existing schema!), conversion tracking
+  |-- Referral Dashboard UI --> depends on: Referral data, existing earnings-tab patterns
 
-### 5.3 Glass Inset Shadow
-| Property | Virtuna Current | Raycast Target | Match? | Severity |
-|----------|----------------|----------------|--------|----------|
-| Glass navbar shadow (sidebar.tsx) | `rgba(255,255,255,0.15) 0px 1px 1px 0px inset` | `rgba(255,255,255,0.15) 0 1px 1px 0 inset` | MATCH | -- |
-| GlassCard glow shadow | `rgba(255,255,255,0.15) 0px 1px 1px 0px inset` | `rgba(255,255,255,0.15) 0 1px 1px 0 inset` | MATCH | -- |
-
-**Verdict:** MATCH.
-
-### 5.4 Modal Shadow
-| Property | Virtuna Current | Raycast Target | Match? |
-|----------|----------------|----------------|--------|
-| Dialog boxShadow | `0 20px 25px rgba(0,0,0,0.15), 0 10px 10px rgba(0,0,0,0.1), rgba(255,255,255,0.1) 0px 1px 0px 0px inset` | `rgba(255,255,255,0.1) 0 1px 0 0 inset` (+ depth shadow) | MATCH |
-
-**Verdict:** MATCH. Includes Raycast inset highlight.
-
-### 5.5 Generic Shadow Scale
-| Token | Virtuna Current | Raycast Equivalent | Notes |
-|-------|----------------|-------------------|-------|
-| `--shadow-sm` | `0 1px 2px oklch(0 0 0 / 0.2)` | N/A | Virtuna custom |
-| `--shadow-md` | 2-layer | N/A | Virtuna custom |
-| `--shadow-lg` | 2-layer | N/A | Virtuna custom |
-| `--shadow-xl` | 3-layer + border | N/A | Virtuna custom |
-| `--shadow-glass` | `0 8px 32px oklch(0 0 0 / 0.2), inset 0 1px 0 oklch(1 0 0 / 0.1)` | N/A | Virtuna custom |
-| `--shadow-glow-accent` | `0 0 20px oklch(0.72 0.16 40 / 0.3)` | N/A | Virtuna custom -- NO GLOW on Raycast |
-
-**Discrepancy D-5.5: Glow shadows are a Virtuna invention**
-- Raycast does NOT use glow shadows
-- `--shadow-glow-accent` and `GlassPanel`'s `shadow-glass` (with 8px 32px spread) are Virtuna additions
-- Severity: **MAJOR** (design philosophy mismatch)
-- Affected: `GlassPanel` (uses `shadow-glass` as default), `GlassCard` (inherits), `GradientGlow` component
-- Fix: Remove `shadow-glass` from GlassPanel default. Cards should only have the inset top highlight, not external glow.
+Key insight: The database schema for affiliate tracking ALREADY EXISTS
+(affiliate_clicks, affiliate_conversions, wallet_transactions tables).
+The referral program needs backend logic + UI, not schema design.
+```
 
 ---
 
-## 6. Typography
+## MVP Recommendation
 
-### 6.1 Font Families
-| Property | Virtuna Current | Raycast Target | Match? | Severity |
-|----------|----------------|----------------|--------|----------|
-| Body font | `--font-sans: Satoshi` | `Inter` | **CRITICAL** | Different font |
-| Display font | `--font-display: Funnel Display` | `Inter` (heavier weight) | **CRITICAL** | Different font |
-| Mono font | `JetBrains Mono` | `JetBrains Mono` / `Geist Mono` | MINOR | Close enough |
+### Must Ship (Phase 1-2 Priority)
 
-**Discrepancy D-6.1: Font family mismatch (INTENTIONAL)**
-- Virtuna uses Satoshi (body) + Funnel Display (headings)
-- Raycast uses Inter for everything
-- Severity: **CRITICAL** visually, but this is a DELIBERATE brand choice
-- Affected: EVERY component, every page, every piece of text
-- Fix: This is an intentional Virtuna brand deviation. Do NOT change to Inter. Document as intentional.
-- **Classification: INTENTIONAL DEVIATION** -- not a bug.
+1. **Landing page with interactive hive demo** -- This is the front door. Without a converting landing page, nothing else matters. The mini hive visualization IS the unique selling point that no competitor has.
 
-### 6.2 Font Sizes
-| Size | Virtuna Current | Raycast Usage | Match? |
-|------|----------------|---------------|--------|
-| `--text-xs` | `12px` | `12px` | MATCH |
-| `--text-sm` | `14px` | `14px` | MATCH |
-| `--text-base` | `16px` | `16px` | MATCH |
-| `--text-lg` | `18px` | `18px` | MATCH |
-| `--text-xl` | `20px` | `20px` | MATCH |
-| `--text-2xl` | `24px` | Various | MATCH |
-| `--text-hero` | `52px` | Context-dependent | MATCH |
-| `--text-display` | `64px` | Context-dependent | MATCH |
+2. **Whop trial configuration + landing page checkout flow** -- Wire existing WhopCheckoutEmbed into new landing page pricing section. Configure 7-day Pro trial on Whop dashboard. Card upfront, auto-converts. The backend is already built.
 
-**Verdict:** MATCH. Size scale is correct.
+3. **Progressive onboarding with checklist** -- Welcome screen, 3-5 step checklist, first-visit tooltips. This is the bridge between "signed up" and "activated." Without it, trial users churn before seeing value. Target: first value moment within 3 minutes.
 
-### 6.3 Font Weights
-| Weight | Virtuna Current | Raycast Usage | Match? |
-|--------|----------------|---------------|--------|
-| Regular | `400` | `400` | MATCH |
-| Medium | `500` | `500` | MATCH |
-| Semibold | `600` | `600` | MATCH |
-| Bold | `700` | `700` | MATCH |
+4. **Basic referral program** -- Unique links, click tracking, one-time bonus on conversion. Leverages existing DB schema. Simple but effective. Show referral CTA after "aha moment" (first analysis complete).
 
-**Verdict:** MATCH.
+### Defer to Post-MVP
 
-### 6.4 Line Heights
-| Token | Virtuna Current | Raycast Usage | Match? |
-|-------|----------------|---------------|--------|
-| `--leading-none` | `1` | `1` | MATCH |
-| `--leading-tight` | `1.1` | Varies | MATCH |
-| `--leading-snug` | `1.25` | Varies | MATCH |
-| `--leading-normal` | `1.5` | Varies | MATCH |
+- **Email onboarding sequences** -- In-app guidance first, email later
+- **Advanced referral analytics** -- Basic stats are enough. Deep analytics after 100+ referrers
+- **Personalized landing page variants** -- One strong page first, personalization at scale
+- **Plan downgrade flows** -- Upgrade only for MVP
+- **Referral leaderboards/tiers** -- Simple flat bonus. Tiers after proving PMF
 
-**Verdict:** MATCH for token definitions.
+### Complexity Budget
 
-### 6.5 Body Line Height
-| Property | Virtuna Current | Raycast Target | Match? | Severity |
-|----------|----------------|----------------|--------|----------|
-| body line-height | `1.15` (globals.css) | `1.5` (typical for Inter body) | MAJOR | Text feels cramped |
+| Feature Area | Estimated Effort | Confidence |
+|-------------|-----------------|------------|
+| Landing page (full rebuild) | 3-5 days | HIGH -- straightforward Next.js page, existing design system |
+| Interactive hive demo (mini) | 2-3 days | MEDIUM -- need to create lightweight version of existing viz |
+| Onboarding flow | 2-3 days | HIGH -- standard patterns, existing UI primitives |
+| Tooltip system (NextStepjs) | 1 day | HIGH -- library handles the hard parts |
+| Trial checkout integration | 0.5-1 day | HIGH -- WhopCheckoutEmbed already works, just needs landing page CTA |
+| Trial countdown UI | 0.5 day | HIGH -- existing subscription API provides the data |
+| Referral link generation + tracking | 2-3 days | MEDIUM -- DB schema exists but needs backend logic |
+| Referral dashboard UI | 1-2 days | HIGH -- reuse existing earnings-tab patterns |
+| Referral bonus payout logic | 1-2 days | MEDIUM -- webhook integration + wallet crediting |
 
-**Discrepancy D-6.5: Body line-height too tight**
-- Virtuna: `line-height: 1.15` on html/body
-- Raycast: ~`1.5` for body text with Inter
-- Severity: **MAJOR** -- Affects all body text readability
-- Affected: Global body styles, all text that inherits
-- Fix: Change body `line-height` from `1.15` to `1.5`. This is a standard for body text. The tight `1.15` is appropriate for headings, not body.
-
-### 6.6 Letter Spacing
-| Property | Virtuna Current | Raycast Target | Match? |
-|----------|----------------|----------------|--------|
-| Body letter-spacing | `0.2px` | `0.2px` | MATCH |
-| `--tracking-tight` | `-0.02em` | Headings use negative tracking | MATCH |
-| `--tracking-normal` | `0` | `0` | MATCH |
-
-**Verdict:** MATCH.
-
-### 6.7 Font Smoothing
-| Property | Virtuna Current | Raycast Target | Match? |
-|----------|----------------|----------------|--------|
-| `-webkit-font-smoothing` | `antialiased` | `antialiased` | MATCH |
-| `-moz-osx-font-smoothing` | `grayscale` | `grayscale` | MATCH |
-
-**Verdict:** MATCH.
+**Total estimated: 13-20 days** for full MVP launch feature set.
 
 ---
 
-## 7. Glass/Blur Patterns
-
-### 7.1 Navbar/Sidebar Glass
-| Property | Virtuna Current (sidebar.tsx) | Raycast Target | Match? |
-|----------|-------------------------------|----------------|--------|
-| Background gradient | `linear-gradient(137deg, rgba(17,18,20,0.75) 4.87%, rgba(12,13,15,0.9) 75.88%)` | Same | MATCH |
-| Blur | `blur(5px)` | `blur(5px)` | MATCH |
-| Border | `border-white/[0.06]` | `rgba(255,255,255,0.06)` | MATCH |
-| Inset shadow | `rgba(255,255,255,0.15) 0px 1px 1px 0px inset` | `rgba(255,255,255,0.15) 0 1px 1px 0 inset` | MATCH |
-
-**Verdict:** MATCH. Sidebar glass is correctly implemented.
-
-### 7.2 GlassPanel Component vs Raycast Glass
-| Property | Virtuna GlassPanel | Raycast Glass | Match? | Severity |
-|----------|-------------------|---------------|--------|----------|
-| Background | `oklch(0.18 0.01 264 / {opacity})` | `linear-gradient(137deg, ...)` | **CRITICAL** | Different approach |
-| Blur default | `12px` (md) | `5px` | **MAJOR** | Too much blur |
-| Border | `rgba(28,29,33,0.65)` via `.glass-base` | `rgba(255,255,255,0.06)` | MAJOR | Different color model |
-| Shadow | `shadow-glass` (external glow) | Inset-only highlight | MAJOR | Glow is wrong |
-| Tinting | Colored oklch tints (purple, blue, etc.) | NO colored tinting | **CRITICAL** | Raycast has no tinting |
-| Inner glow | Configurable via `innerGlow` prop | NO inner glow | MAJOR | Raycast has no glow |
-
-**Discrepancy D-7.2: GlassPanel is fundamentally wrong for Raycast matching**
-- GlassPanel implements an iOS 26 / liquid glass aesthetic, NOT Raycast's glass
-- Raycast glass = simple gradient bg + 5px blur + 6% border + inset highlight
-- GlassPanel = oklch tinted bg + 12px blur + external glow shadow + inner glow
-- Severity: **CRITICAL**
-- Affected: Every component that uses GlassPanel (GlassCard, VideoCard, etc.)
-- Fix: For Raycast alignment, GlassPanel should:
-  1. Use the gradient background, not oklch tint
-  2. Default blur to 5px
-  3. Remove external shadow-glass
-  4. Remove tinting system (or make it opt-in only for Virtuna-specific contexts)
-  5. Remove inner glow default
-  6. Add inset highlight shadow only
-
-### 7.3 GlassCard (card.tsx) vs Raycast Cards
-| Property | Virtuna GlassCard | Raycast Cards | Match? | Severity |
-|----------|-------------------|---------------|--------|----------|
-| Background | `rgba(255,255,255,0.05)` via inline | `bg-transparent` | MAJOR | Should be fully transparent |
-| Blur | `blur(12px)` | No blur on cards | **CRITICAL** | Cards don't have blur |
-| Border | `border-border-glass` (6%) | `rgba(255,255,255,0.06)` | MATCH | -- |
-| Inset shadow | `rgba(255,255,255,0.15) 0px 1px 1px 0px inset` | `rgba(255,255,255,0.1) 0 1px 0 0 inset` | MINOR | 0.15 vs 0.10, 1px spread vs 0 |
-| Hover translate | Not implemented on GlassCard directly | `-translate-y-0.5` (2px lift) | MAJOR | Missing |
-| Hover border | Not implemented | `white/[0.1]` | MAJOR | Missing |
-| Hover bg | Not implemented | `white/[0.03]` | MAJOR | Missing |
-
-**Discrepancy D-7.3a: GlassCard (card.tsx) inset shadow intensity wrong**
-- Virtuna: `rgba(255,255,255,0.15) 0px 1px 1px 0px inset` (15% opacity, 1px spread)
-- Raycast: `rgba(255,255,255,0.1) 0 1px 0 0 inset` (10% opacity, 0px spread)
-- Severity: **MINOR** -- subtle difference
-- Fix: Change to `rgba(255,255,255,0.1) 0 1px 0 0 inset`.
-
-**Discrepancy D-7.3b: Cards should not have backdrop blur**
-- Severity: **CRITICAL**
-- Raycast cards are transparent with border, no blur
-- Fix: Remove backdrop-filter from card components.
-
-**Discrepancy D-7.3c: Card hover states missing**
-- Severity: **MAJOR**
-- Raycast card hover: translate-y -0.5 (2px lift) + border to 10% + bg white/[0.03]
-- Fix: Add `hover:-translate-y-0.5 hover:border-white/[0.1] hover:bg-white/[0.03]` to cards.
-
----
-
-## 8. Button Styles
-
-### 8.1 Primary Button
-| Property | Virtuna Current | Raycast Target | Match? | Severity |
-|----------|----------------|----------------|--------|----------|
-| Background | `bg-accent` (coral oklch) | Coral/accent bg | MATCH | -- |
-| Text | `text-accent-foreground` (#1a0f0a) | Dark text on accent | MATCH | -- |
-| Shadow | `shadow-button` (4-layer) | Same 4-layer | MATCH | -- |
-| Hover | `hover:bg-accent-hover` | Lighter accent | MATCH | -- |
-| Border radius (md) | `rounded-md` (8px) | `8px` | MATCH | -- |
-
-**Verdict:** MATCH. Primary button is well-implemented.
-
-### 8.2 Secondary Button
-| Property | Virtuna Current | Raycast Target | Match? | Severity |
-|----------|----------------|----------------|--------|----------|
-| Background | `bg-transparent` | `bg-transparent` | MATCH | -- |
-| Border | `border-white/[0.06]` | `border-white/[0.06]` | MATCH | -- |
-| Text | `text-foreground` | White text | MATCH | -- |
-| Hover bg | `hover:bg-white/[0.1]` | `hover:bg-white/[0.1]` | MATCH | -- |
-
-**Verdict:** MATCH. Secondary button is correct.
-
-### 8.3 Ghost Button
-| Property | Virtuna Current | Raycast Target | Match? |
-|----------|----------------|----------------|--------|
-| Background | `bg-transparent` | `bg-transparent` | MATCH |
-| Hover | `hover:bg-hover` = `rgba(255,255,255,0.05)` | Similar | MATCH |
-
-**Verdict:** MATCH.
-
-### 8.4 Button Sizes
-| Size | Virtuna Height | Brand Bible | Raycast Typical | Match? | Severity |
-|------|---------------|-------------|-----------------|--------|----------|
-| sm | `36px` (h-9) | `32px` | Context-dependent | MINOR | 4px taller |
-| md | `44px` (h-11) | `40px` | `42px` for inputs, varies for buttons | MINOR | Slightly tall |
-| lg | `48px` (h-12) | `48px` | Context-dependent | MATCH | -- |
-
-**Discrepancy D-8.4: Button heights differ slightly from Brand Bible (INTENTIONAL)**
-- Brand Bible says sm=32px, md=40px, lg=48px
-- Virtuna uses sm=36px, md=44px, lg=48px (optimized for touch targets)
-- Raycast doesn't have a fixed button height system
-- Severity: **MINOR** -- touch target optimization is good UX
-- Fix: Keep current values. The 44px minimum for md is correct for mobile touch targets.
-
----
-
-## 9. Input Styles
-
-### 9.1 GlassInput (Correct Implementation)
-| Property | Virtuna GlassInput | Raycast Target | Match? |
-|----------|-------------------|----------------|--------|
-| Background | `rgba(255,255,255,0.05)` | `rgba(255,255,255,0.05)` | MATCH |
-| Border | `border-white/5` | `border: 1px solid rgba(255,255,255,0.05)` | MATCH |
-| Radius | `var(--rounding-normal)` = 8px | `8px` | MATCH |
-| Height (md) | `42px` | `42px` | MATCH |
-| Font size (md) | `14px` | `14px` | MATCH |
-| Hover border | `hover:border-white/10` | `hover:border-white/[0.1]` | MATCH |
-
-**Verdict:** GlassInput is the CORRECT Raycast-matching input. Well done.
-
-### 9.2 Base Input (Incorrect Implementation)
-| Property | Virtuna Input | Raycast Target | Match? | Severity |
-|----------|--------------|----------------|--------|----------|
-| Background | `bg-surface` = `#18191a` | `rgba(255,255,255,0.05)` | **MAJOR** | Opaque vs transparent |
-| Border | `border-border` = 6% | `rgba(255,255,255,0.05)` = 5% | MINOR | Slightly off |
-| Height | `h-11` = 44px | `42px` | MINOR | 2px taller |
-| Radius | `rounded-md` = 8px | `8px` | MATCH | -- |
-| Focus | `ring-2 ring-accent/50 border-accent` | Accent ring | MATCH | -- |
-
-**Discrepancy D-9.2: Base Input diverges from Raycast pattern**
-- GlassInput is correct, base Input is not
-- Severity: **MAJOR** -- two input implementations with different aesthetics
-- Affected: `Input`, `InputField`, any form using the base component
-- Fix: Align base Input to use `rgba(255,255,255,0.05)` background. Consider unifying Input and GlassInput into one component, or deprecating one.
-
----
-
-## 10. Modal/Dialog Styles
-
-### 10.1 Dialog Content
-| Property | Virtuna Current | Raycast Target | Match? | Severity |
-|----------|----------------|----------------|--------|----------|
-| Background | `bg-surface-elevated` = `#222326` | Solid opaque dark bg | MATCH | -- |
-| Border | `border-border-glass` = 6% | Border present | MATCH | -- |
-| Radius | `rounded-lg` = 12px | `12px` | MATCH | -- |
-| Shadow | Complex + inset highlight | Inset `rgba(255,255,255,0.1)` | MATCH | -- |
-| Glass blur | None (correctly opaque) | None (opaque) | MATCH | -- |
-
-**Verdict:** MATCH. Dialogs correctly use solid opaque background, not glass.
-
-### 10.2 Dialog Overlay
-| Property | Virtuna Current | Raycast Target | Match? | Severity |
-|----------|----------------|----------------|--------|----------|
-| Background | `bg-black/60` | Dark overlay | MATCH | -- |
-| Blur | `blur(4px)` | Varies | MATCH | -- |
-
-**Verdict:** MATCH.
-
----
-
-## 11. Navigation Patterns
-
-### 11.1 Header/Navbar
-| Property | Virtuna Current | Raycast Target | Match? | Severity |
-|----------|----------------|----------------|--------|----------|
-| Position | `sticky top-0` | Sticky/fixed | MATCH | -- |
-| Background | `bg-background` (solid) | Gradient glass + blur | **CRITICAL** | Fundamentally different |
-| Z-index | `z-50` | High z-index | MATCH | -- |
-
-**Discrepancy D-11.1: Header uses solid background instead of glass navbar**
-- Virtuna: `bg-background` = solid `#07080a`
-- Raycast: Gradient glass pattern with `blur(5px)` + semi-transparent gradient
-- Severity: **CRITICAL** -- The header is one of the most prominent UI elements
-- Affected: `Header` component (header.tsx)
-- Fix: Apply `glass-navbar` class or inline Raycast gradient glass pattern to header. Use `--gradient-navbar` background, `blur(5px)`, `border-white/[0.06]`, inset shadow.
-
-### 11.2 Sidebar
-| Property | Virtuna Current | Raycast Target | Match? |
-|----------|----------------|----------------|--------|
-| Width | `260px` | Similar | MATCH |
-| Position | Fixed, floating (inset 12px) | Floating panel | MATCH |
-| Background | Raycast gradient glass | Gradient glass | MATCH |
-| Blur | `blur(5px)` | `blur(5px)` | MATCH |
-| Border | `border-white/[0.06]` | `rgba(255,255,255,0.06)` | MATCH |
-| Inset shadow | `rgba(255,255,255,0.15)` | `rgba(255,255,255,0.15)` | MATCH |
-
-**Verdict:** MATCH. Sidebar is correctly implemented with Raycast glass.
-
----
-
-## 12. Spacing and Layout
-
-### 12.1 Spacing Scale
-| Token | Virtuna Current | Standard 4px Base | Match? |
-|-------|----------------|--------------------|--------|
-| All spacing tokens | 4px base (4/8/12/16/20/24/32/40/48/64/80/96) | Correct 4px base grid | MATCH |
-
-**Verdict:** MATCH. Spacing scale is standard and correct.
-
-### 12.2 Container Width
-| Property | Virtuna BRAND-BIBLE | Raycast Usage | Match? |
-|----------|---------------------|---------------|--------|
-| Max width | `1280px` | Varies by section | MATCH |
-
-**Verdict:** MATCH. Standard container width.
-
----
-
-## 13. Transition/Animation Values
-
-### 13.1 Durations
-| Token | Virtuna Current | Raycast Usage | Match? |
-|-------|----------------|---------------|--------|
-| `--duration-fast` | `150ms` | Micro-interactions | MATCH |
-| `--duration-normal` | `200ms` | Hover states | MATCH |
-| `--duration-slow` | `300ms` | Panel transitions | MATCH |
-
-**Verdict:** MATCH.
-
-### 13.2 Easings
-| Token | Virtuna Current | Match? |
-|-------|----------------|--------|
-| `--ease-out-cubic` | `cubic-bezier(0.215, 0.61, 0.355, 1)` | Standard |
-| `--ease-out-quart` | `cubic-bezier(0.165, 0.84, 0.44, 1)` | Standard |
-| `--ease-in-out` | `cubic-bezier(0.42, 0, 0.58, 1)` | Standard |
-| `--ease-spring` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | Virtuna custom |
-
-**Verdict:** MATCH for standard easings. Spring is a Virtuna addition (acceptable).
-
-### 13.3 Card Hover Transition
-| Property | Virtuna Current | Raycast Target | Match? | Severity |
-|----------|----------------|----------------|--------|----------|
-| Card hover translate | `group-hover:-translate-y-1` (4px) via GlassCard | `-translate-y-0.5` (2px) | MINOR | Double the lift |
-
-**Discrepancy D-13.3: Card hover lift too large**
-- Virtuna: 4px lift (`translate-y-1` = 4px in Tailwind)
-- Raycast: 2px lift (`translate-y-0.5` = 2px)
-- Severity: **MINOR** -- subtle but contributes to "heavier" feel
-- Affected: `GlassCard` hover="lift" variant
-- Fix: Change to `group-hover:-translate-y-0.5`.
-
----
-
-## 14. Z-Index Scale
-
-| Token | Virtuna Current | Reasonable Scale | Match? |
-|-------|----------------|-----------------|--------|
-| `--z-base` | `0` | Standard | MATCH |
-| `--z-sidebar` | `50` | Standard | MATCH |
-| `--z-dropdown` | `100` | Standard | MATCH |
-| `--z-sticky` | `200` | Standard | MATCH |
-| `--z-modal-backdrop` | `300` | Standard | MATCH |
-| `--z-modal` | `400` | Standard | MATCH |
-| `--z-toast` | `500` | Standard | MATCH |
-| `--z-tooltip` | `600` | Standard | MATCH |
-
-**Verdict:** MATCH. Well-structured z-index scale.
-
----
-
-## 15. Philosophical/Systemic Discrepancies
-
-### 15.1 GlassPanel Tinting System
-| Property | Virtuna Current | Raycast Target | Severity |
-|----------|----------------|----------------|----------|
-| Colored glass tints | 7 color tints (neutral, purple, blue, pink, cyan, green, orange) | NO colored tinting anywhere | **CRITICAL** |
-| Inner glow | Configurable per-panel | No inner glow | **CRITICAL** |
-| GradientGlow component | Ambient colored glow behind panels | No ambient glow | **CRITICAL** |
-| GradientMesh component | Multi-color animated mesh backgrounds | No mesh backgrounds | **CRITICAL** |
-
-**Discrepancy D-15.1: The entire Virtuna glassmorphism system is iOS 26 / liquid glass, NOT Raycast**
-- This is the BRAND-BIBLE's original design direction: "iOS 26 Liquid Glass + Raycast Premium Aesthetic"
-- Raycast's actual aesthetic: Clean, dark, minimal. No colored tinting, no glow. Color only for accents.
-- Severity: **CRITICAL** -- Fundamental design philosophy mismatch
-- Affected: `GlassPanel`, `GlassCard` (primitives), `GlassPill`, `GradientGlow`, `GradientMesh`, all consumers
-- Fix options:
-  1. **Full alignment:** Strip all colored tinting, glow, mesh from components. Make them simple transparent panels with border + inset highlight. This removes Virtuna's distinctive identity.
-  2. **Selective alignment (RECOMMENDED):** Keep tinting/glow for marketing/landing pages (Virtuna branding), but use Raycast-pure styling for the app dashboard. Two styling modes.
-  3. **Layered approach:** Add a `variant="raycast"` to GlassPanel that gives the clean Raycast style, keeping the current as `variant="liquid"`.
-
-### 15.2 BRAND-BIBLE is Inaccurate
-| BRAND-BIBLE Claim | Actual Raycast | Severity |
-|--------------------|----------------|----------|
-| `bg-base: oklch(0.13 0.02 264) / #0A0A0B` | `#07080a` | MAJOR -- wrong hex |
-| `surface: oklch(0.18 0.02 264) / ~#121214` | Cards are `bg-transparent` | CRITICAL |
-| `surface-elevated: oklch(0.23 0.02 264) / ~#1A1A1E` | Only for modals | MAJOR |
-| `text-secondary: oklch(0.70 0 0) / #B3B3B3` | `#9c9c9d` | MAJOR -- wrong value |
-| `text-tertiary: oklch(0.50 0 0) / #808080` | `#6a6b6c` or `#848586` | MAJOR |
-| Primary accent: `#E57850` | Virtuna coral = `oklch(0.72 0.16 40)` ~ `#FF7F50` | MAJOR -- wrong hex |
-| radius-sm: `4px` | Raycast uses 4/6/8/12/16/20/24. BRAND-BIBLE says 4px for "pills, small badges" -- ok | MATCH |
-| Button sm height: `32px` | Virtuna uses `36px` | MINOR |
-| Button md height: `40px` | Virtuna uses `44px` | MINOR |
-| Input border: `1px solid white/10` | Raycast: `rgba(255,255,255,0.05)` = 5% | MAJOR -- 10% vs 5% |
-
-**Discrepancy D-15.2: BRAND-BIBLE should be updated or deprecated**
-- Severity: **CRITICAL** for continued use as reference
-- Multiple values are wrong compared to actual Raycast extraction
-- Fix: Either update BRAND-BIBLE with correct values from MEMORY.md extraction, or mark it as deprecated and create a new accurate reference.
-
----
-
-## Summary: All Discrepancies Ranked
-
-### CRITICAL (5) -- Design philosophy wrong, must fix
-| ID | Issue | Components Affected |
-|----|-------|---------------------|
-| D-7.2 | GlassPanel uses iOS 26 liquid glass, not Raycast glass | GlassPanel, all consumers |
-| D-15.1 | Colored tinting/glow/mesh system is not Raycast | GlassPanel, GlassCard, GlassPill, GradientGlow, GradientMesh |
-| D-1.2a | Cards use gradient background instead of bg-transparent | Card, FeatureCard |
-| D-7.3b | Cards have backdrop-filter blur (Raycast cards don't) | GlassCard (card.tsx) |
-| D-11.1 | Header uses solid bg instead of glass navbar | Header |
-
-### MAJOR (10) -- Visually noticeable, should fix
-| ID | Issue | Components Affected |
-|----|-------|---------------------|
-| D-1.2b | Input uses opaque surface bg instead of white/5 | Input, Select |
-| D-1.3 | Missing card hover background (white/[0.03]) | Card, GlassCard, FeatureCard, VideoCard |
-| D-3.3 | FeatureCard border 10% instead of 6% | FeatureCard |
-| D-3.4 | FeatureCard hover border 20% instead of 10% | FeatureCard |
-| D-5.5 | External glow shadows (not Raycast) | GlassPanel, GlassCard |
-| D-6.5 | Body line-height 1.15 instead of 1.5 | Global body, all text |
-| D-7.3c | Card hover states missing (lift, border, bg) | All card components |
-| D-9.2 | Base Input diverges from GlassInput/Raycast | Input, InputField |
-| D-15.2 | BRAND-BIBLE contains wrong values | Reference documentation |
-| D-2.3 | Muted text color lighter than Raycast (intentional a11y) | Caption, placeholders |
-
-### MINOR (8) -- Subtle, fix if doing pixel-perfect pass
-| ID | Issue | Components Affected |
-|----|-------|---------------------|
-| D-2.1 | Primary text #fafafa vs Raycast #f4feff (negligible) | All text |
-| D-3.5 | Base Input border 6% vs 5% | Input |
-| D-3.6 | Mobile menu divider 10% vs 6% | Header |
-| D-4.1 | GlassPanel/Sidebar uses 16px radius instead of 12px | GlassPanel, Sidebar |
-| D-7.3a | Card inset shadow 15%/1px vs 10%/0px | GlassCard |
-| D-8.4 | Button heights slightly taller than Brand Bible | Button (intentional for a11y) |
-| D-9.2-h | Base Input height 44px vs 42px | Input |
-| D-13.3 | Card hover lift 4px vs 2px | GlassCard |
-
-### Intentional Deviations (keep as-is)
-| ID | Issue | Rationale |
-|----|-------|-----------|
-| D-6.1 | Font family (Satoshi/Funnel vs Inter) | Virtuna brand identity |
-| D-2.3 | Muted text lighter (#848586 vs #6a6b6c) | WCAG AA accessibility |
-| D-8.4 | Button heights 36/44/48 vs 32/40/48 | Touch target accessibility |
-
----
-
-## Recommended Fix Priority
-
-### Phase 1: Critical Alignment (5 items)
-1. Fix Card backgrounds to `bg-transparent` (D-1.2a)
-2. Remove backdrop-filter from cards (D-7.3b)
-3. Fix Header to use glass navbar pattern (D-11.1)
-4. Add proper card hover states (D-7.3c, D-1.3)
-5. Fix FeatureCard borders to use tokens (D-3.3, D-3.4)
-
-### Phase 2: Major Alignment (5 items)
-6. Fix body line-height to 1.5 (D-6.5)
-7. Align base Input to Raycast pattern (D-9.2, D-1.2b)
-8. Remove external glow shadows from default GlassPanel (D-5.5)
-9. Add Raycast variant to GlassPanel or create separate component (D-7.2)
-10. Update or deprecate BRAND-BIBLE (D-15.2)
-
-### Phase 3: Minor Polish (8 items)
-11. GlassPanel default radius to 12px (D-4.1)
-12. Card inset shadow to 10%/0px (D-7.3a)
-13. Card hover lift to 2px (D-13.3)
-14. Input border to 5% (D-3.5)
-15. Mobile menu divider to 6% (D-3.6)
-16. Primary text color to #f4feff (D-2.1)
-17. Base Input height to 42px (D-9.2-h)
-18. Consider tinting system scope (D-15.1)
+## Competitor Feature Matrix (TikTok Creator Tools)
+
+Understanding what competitors charge and offer helps position Virtuna's features.
+
+| Feature | Pentos ($99-$999/mo) | Exolyt ($199-$600/mo) | Virtuna ($19-$49/mo) | Table Stakes? |
+|---------|---------------------|-----------------------|----------------------|---------------|
+| Content performance analytics | Yes | Yes | Yes (via hive) | YES |
+| Competitor tracking | Yes | Yes | Planned (not MVP) | No (differentiator) |
+| Trend detection | Yes | Yes | Via hive visualization | YES for creator tools |
+| Viral score/prediction | No | No | YES (core feature) | No -- DIFFERENTIATOR |
+| Interactive visualization | No | No | YES (hive canvas) | No -- DIFFERENTIATOR |
+| Hashtag tracking | Yes | Yes | Planned | Yes for analytics tools |
+| Mobile-optimized | Partial | Partial | YES (mobile-first) | YES for creator audience |
+| Free trial | Varies | No | 7-day Pro trial | Expected |
+| Referral program | No | No | YES | No (growth lever) |
+| Price point | $99-999/mo | $199-600/mo | $19-49/mo | N/A |
+
+**Virtuna's positioning:** 10-20x cheaper than enterprise analytics tools, targeting individual creators (not agencies). The hive visualization and viral score prediction are genuine differentiators that no competitor offers. Price accessibility + unique UX = the moat.
 
 ---
 
 ## Sources
 
-- **HIGH confidence:** MEMORY.md "Raycast Design Language Rules" (extracted from live raycast.com CSS on 2026-02-06)
-- **HIGH confidence:** globals.css @theme block (read directly from codebase)
-- **HIGH confidence:** Component source files (read directly: button.tsx, card.tsx, input.tsx, dialog.tsx, GlassPanel.tsx, GlassCard.tsx, GlassInput.tsx, GlassPill.tsx, sidebar.tsx, header.tsx, feature-card.tsx, video-card.tsx, typography.tsx, select.tsx, badge.tsx, sidebar-nav-item.tsx)
-- **MEDIUM confidence:** WebFetch of raycast.com (limited CSS extraction due to JS rendering)
-- **LOW confidence:** BRAND-BIBLE.md (known to be inaccurate per project context)
+- [SaaS Landing Page Best Practices 2026 - Storylane](https://www.storylane.io/blog/saas-landing-pages-best-practices)
+- [SaaS Landing Page Trends 2026 - SaaSFrame](https://www.saasframe.io/blog/10-saas-landing-page-trends-for-2026-with-real-examples)
+- [High-Converting SaaS Landing Pages 2026 - SaaS Hero](https://www.saashero.net/design/enterprise-landing-page-design-2026/)
+- [SaaS Landing Pages 2026 - fibr.ai](https://fibr.ai/landing-page/saas-landing-pages)
+- [SaaS Onboarding Strategy - Userpilot](https://userpilot.com/blog/saas-onboarding-strategy/)
+- [SaaS Onboarding Best Practices 2026 - sales-hacking.com](https://www.sales-hacking.com/en/post/best-practices-onboarding-saas)
+- [Building Better SaaS Onboarding - Substack](https://ekofi.substack.com/p/building-better-saas-onboarding-flows)
+- [SaaS Onboarding Examples - Appcues](https://www.appcues.com/blog/saas-user-onboarding)
+- [Whop Embed Checkout Docs](https://docs.whop.com/payments/checkout-embed)
+- [Whop Affiliate Program Docs](https://docs.whop.com/manage-your-business/growth-marketing/affiliate-program)
+- [@whop/checkout npm](https://www.npmjs.com/package/@whop/checkout)
+- [Trial Conversion Benchmarks 2026 - IdeaProof](https://ideaproof.io/questions/good-trial-conversion)
+- [SaaS Free Trial Best Practices - Maxio](https://www.maxio.com/blog/saas-free-trials-7-best-practices-for-increased-conversions)
+- [Trial-to-Paid Benchmarks - PulseAhead](https://www.pulseahead.com/blog/trial-to-paid-conversion-benchmarks-in-saas)
+- [NextStepjs - Next.js Onboarding Library](https://nextstepjs.com/)
+- [Onborda - Next.js Onboarding](https://www.shadcn.io/template/uixmat-onborda)
+- [React Onboarding Libraries Comparison - UserGuiding](https://userguiding.com/blog/react-onboarding-tour)
+- [Website Tooltips Guide 2026 - UserGuiding](https://userguiding.com/blog/website-tooltips)
+- [SaaS Referral Programs 2026 - Refgrow](https://refgrow.com/blog/best-referral-programs)
+- [SaaS Referral Program Guide - impact.com](https://impact.com/referral/saas-referral-program-guide/)
+- [TikTok Analytics 2026 - AgencyAnalytics](https://agencyanalytics.com/blog/tiktok-analytics)
+- [TikTok Analytics Tools 2026 - Sprout Social](https://sproutsocial.com/insights/tiktok-analytics-tools/)
+- [TikTok Creator Metrics 2026 - InfluenceFlow](https://influenceflow.io/resources/tiktok-creator-metrics-the-complete-guide-to-tracking-analyzing-optimizing-your-performance-in-2026/)
