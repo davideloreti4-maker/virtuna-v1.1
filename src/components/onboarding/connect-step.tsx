@@ -44,7 +44,7 @@ export function ConnectStep() {
       <div className="space-y-4">
         <InputField
           label="TikTok Handle"
-          placeholder="yourhandle"
+          placeholder="@yourhandle"
           value={handle}
           onChange={(e) => {
             setHandle(e.target.value);

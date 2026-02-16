@@ -69,6 +69,11 @@ export function GoalStep() {
                 ? "border-accent bg-accent/[0.08]"
                 : "border-white/[0.06] bg-transparent hover:bg-white/[0.02]"
             )}
+            style={
+              selected === id
+                ? { boxShadow: "rgba(255,127,80,0.1) 0 1px 0 0 inset" }
+                : undefined
+            }
           >
             <div
               className={cn(
