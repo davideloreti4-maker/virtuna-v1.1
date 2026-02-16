@@ -109,8 +109,8 @@ export interface Factor {
   name: string;
   score: number; // 0-10
   max_score: number;
-  description: string;
-  tips: string[];
+  rationale: string; // was: description
+  improvement_tip: string; // was: tips: string[]
 }
 
 export interface Suggestion {
@@ -120,63 +120,48 @@ export interface Suggestion {
   category: string;
 }
 
-/**
- * @deprecated Remove in Phase 5 cleanup. Persona reactions deferred to Phase 5/8.
- * Still referenced by PredictionResult and aggregator.
- */
-export interface PersonaReaction {
-  persona_name: string;
-  quote: string;
-  sentiment: "positive" | "neutral" | "negative";
-  resonance_score: number; // 0-10
-}
-
-/**
- * @deprecated Remove in Phase 5 cleanup. Variants are dead v1 output.
- * Still referenced by PredictionResult, aggregator, and UI components.
- */
-export interface Variant {
-  id: string;
-  type: "original" | "rewritten";
-  content: string;
-  predicted_score: number; // 0-100
-  label: string;
-}
-
-/**
- * @deprecated Remove in Phase 5 cleanup. Conversation themes are dead v1 output.
- * Still referenced by PredictionResult, aggregator, and UI components.
- */
-export interface ConversationTheme {
-  id: string;
-  title: string;
-  percentage: number;
-  description: string;
-}
-
 export type ConfidenceLevel = "HIGH" | "MEDIUM" | "LOW";
 
 // =====================================================
-// Full Prediction Result (ENGINE-11)
+// Full Prediction Result v2
 // =====================================================
 
 export interface PredictionResult {
+  // Core prediction
   overall_score: number; // 0-100
-  confidence: ConfidenceLevel;
+  confidence: number; // 0-1 numeric (ENG-07: not categorical)
+  confidence_label: ConfidenceLevel; // "HIGH" | "MEDIUM" | "LOW" for UI display
+
+  // v2 outputs
+  behavioral_predictions: BehavioralPredictions;
+  feature_vector: FeatureVector;
+  reasoning: string; // DeepSeek's reasoning text
+  warnings: string[]; // Fatal flaw warnings from DeepSeek Step 4
+
+  // Factors and suggestions (from Gemini + DeepSeek)
   factors: Factor[];
   suggestions: Suggestion[];
-  persona_reactions: PersonaReaction[];
-  variants: Variant[];
-  conversation_themes: ConversationTheme[];
+
+  // Scoring breakdown
   rule_score: number;
   trend_score: number;
-  ml_score: number;
-  score_weights: { rule: number; trend: number; ml: number };
+  gemini_score: number; // Gemini's contribution
+  behavioral_score: number; // DeepSeek behavioral contribution
+  score_weights: {
+    behavioral: number; // 0.45
+    gemini: number; // 0.25
+    rules: number; // 0.20
+    trends: number; // 0.10
+  };
+
+  // Meta
   latency_ms: number;
   cost_cents: number;
   engine_version: string;
   gemini_model: string;
   deepseek_model: string | null;
+  input_mode: "text" | "tiktok_url" | "video_upload";
+  has_video: boolean;
 }
 
 // =====================================================
@@ -214,41 +199,10 @@ export type GeminiVideoAnalysis = z.infer<typeof GeminiVideoResponseSchema>;
 
 export type GeminiVideoSignals = z.infer<typeof GeminiVideoSignalsSchema>;
 
-/**
- * @deprecated Remove in Phase 5 cleanup. PersonaReactionSchema removed from DeepSeek v2.
- * Kept temporarily for aggregator backward compatibility.
- */
-export const PersonaReactionSchema = z.object({
-  persona_name: z.string(),
-  quote: z.string(),
-  sentiment: z.enum(["positive", "neutral", "negative"]),
-  resonance_score: z.number().min(0).max(10),
-});
-
 export const SuggestionSchema = z.object({
   text: z.string(),
   priority: z.enum(["high", "medium", "low"]),
   category: z.string(),
-});
-
-/**
- * @deprecated Remove in Phase 5 cleanup. VariantSchema removed from DeepSeek v2.
- * Kept temporarily for aggregator backward compatibility.
- */
-export const VariantSchema = z.object({
-  content: z.string(),
-  predicted_score: z.number().min(0).max(100),
-  label: z.string(),
-});
-
-/**
- * @deprecated Remove in Phase 5 cleanup. ConversationThemeSchema removed from DeepSeek v2.
- * Kept temporarily for aggregator backward compatibility.
- */
-export const ConversationThemeSchema = z.object({
-  title: z.string(),
-  percentage: z.number().min(0).max(100),
-  description: z.string(),
 });
 
 // =====================================================
