@@ -5,30 +5,31 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate -- and connects them to monetization opportunities.
-**Current focus:** Phase 2 - Landing Page (ready to plan)
+**Current focus:** Phase 2 - Landing Page (executing)
 
 ## Current Position
 
 **Milestone:** MVP Launch
 **Phase:** 2 of 6 (Landing Page)
-**Plan:** 0 of 3 in current phase
-**Status:** Ready to plan
-**Last activity:** 2026-02-16 -- Phase 1 Foundation complete (verified)
+**Plan:** 2 of 3 in current phase
+**Status:** Executing
+**Last activity:** 2026-02-16 -- Completed 02-02 (Hive Demo Lazy Loading)
 
-Progress: [██░░░░░░░░] 17%
+Progress: [███░░░░░░░] 27%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 5 min
-- Total execution time: 0.17 hours
+- Total plans completed: 3
+- Average duration: 4 min
+- Total execution time: 0.20 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 2 | 10 min | 5 min |
+| 02-landing-page | 1 | 2 min | 2 min |
 
 *Updated after each plan completion*
 
@@ -50,6 +51,7 @@ Progress: [██░░░░░░░░] 17%
 - [01-02]: Content Intelligence and Dashboard share /dashboard route
 - [01-02]: TikTok account selector is a visual placeholder (wired in Phase 3)
 - [01-02]: Placeholder route pages created for /trending and /brand-deals
+- [02-02]: useInView triggerOnce:false to unmount canvas when off-screen (battery savings over triggerOnce:true)
 
 ### Pending Todos
 
@@ -72,10 +74,10 @@ Progress: [██░░░░░░░░] 17%
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Phase 1 Foundation verified and complete
+Stopped at: Completed 02-02 (Hive Demo Lazy Loading)
 Resume file: None
-Next: `/gsd:plan-phase 2`
+Next: Execute 02-01-PLAN.md or remaining Phase 2 plans
 
 ---
 *State created: 2026-02-13*
-*Last updated: 2026-02-16 -- Completed 01-02 (Sidebar & Navigation)*
+*Last updated: 2026-02-16 -- Completed 02-02 (Hive Demo Lazy Loading)*
