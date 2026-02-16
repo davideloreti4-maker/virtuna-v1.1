@@ -131,8 +131,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 7-01: Video Upload Component
-- [ ] 7-02: Content Form Update
+- [ ] 7-01: VideoUpload + TikTokUrlInput standalone components (drag-drop, thumbnail preview, URL validation)
+- [ ] 7-02: Content form 3-tab rewrite + test-creation-flow v2 payload wiring
 
 ### Phase 8: Results Card & Breakdown UI
 **Goal**: Results display shows factor breakdown, behavioral predictions, before/after suggestions, persona reactions, and updated loading states
