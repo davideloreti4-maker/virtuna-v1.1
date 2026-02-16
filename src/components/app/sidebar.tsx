@@ -59,9 +59,12 @@ export function Sidebar() {
   const setStatus = useTestStore((s) => s.setStatus);
   const viewResult = useTestStore((s) => s.viewResult);
 
+  const setTestType = useTestStore((s) => s.setTestType);
+
   const handleCreateTest = () => {
     reset();
-    setStatus("selecting-type");
+    setTestType("tiktok-script");
+    setStatus("filling-form");
   };
 
   const handleViewTest = (testId: string) => {
