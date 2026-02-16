@@ -3,7 +3,11 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-export async function login(_prevState: unknown, formData: FormData) {
+export interface LoginState {
+  error?: string;
+}
+
+export async function login(_prevState: unknown, formData: FormData): Promise<LoginState> {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
   const next = (formData.get("next") as string) || "/dashboard";
@@ -15,7 +19,7 @@ export async function login(_prevState: unknown, formData: FormData) {
   });
 
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}&next=${encodeURIComponent(next)}`);
+    return { error: error.message };
   }
 
   // Detect first-time users and redirect to onboarding

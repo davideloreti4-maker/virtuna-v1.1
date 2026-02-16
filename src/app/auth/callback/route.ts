@@ -18,6 +18,16 @@ export async function GET(request: NextRequest) {
   const next = searchParams.get("next") ?? "/dashboard";
   const origin = request.nextUrl.origin;
 
+  // Handle OAuth error responses from Supabase
+  const errorParam = searchParams.get("error");
+  const errorDescription = searchParams.get("error_description");
+  if (errorParam) {
+    const message = errorDescription || errorParam;
+    return NextResponse.redirect(
+      new URL(`/login?error=${encodeURIComponent(message)}`, origin)
+    );
+  }
+
   if (!code) {
     return NextResponse.redirect(
       new URL("/login?error=auth_callback_failed", origin)

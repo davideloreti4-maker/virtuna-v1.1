@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { InputField } from "@/components/ui/input";
 import { Heading, Text } from "@/components/ui/typography";
 import { createClient } from "@/lib/supabase/client";
-import { signup } from "./actions";
+import { signup, type SignupState } from "./actions";
 
 interface SignupFormProps {
   error?: string;
@@ -16,19 +16,33 @@ interface SignupFormProps {
 }
 
 export function SignupForm({ error, next }: SignupFormProps) {
-  const [_state, formAction, isPending] = useActionState(signup, null);
+  const [state, formAction, isPending] = useActionState<SignupState | null, FormData>(signup, null);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [clientError, setClientError] = useState<string | null>(null);
 
+  const [oauthLoading, setOauthLoading] = useState(false);
+  const [oauthError, setOauthError] = useState<string | null>(null);
+
   const handleGoogleOAuth = async () => {
-    const supabase = createClient();
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next || "/dashboard")}`;
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo,
-      },
-    });
+    setOauthError(null);
+    setOauthLoading(true);
+    try {
+      const supabase = createClient();
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next || "/dashboard")}`;
+      const { error: oauthErr } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+        },
+      });
+      if (oauthErr) {
+        setOauthError(oauthErr.message);
+        setOauthLoading(false);
+      }
+    } catch {
+      setOauthError("Failed to connect to Google. Please try again.");
+      setOauthLoading(false);
+    }
   };
 
   const handleSubmit = (formData: FormData) => {
@@ -88,9 +102,9 @@ export function SignupForm({ error, next }: SignupFormProps) {
           required
         />
 
-        {(error || clientError) && (
+        {(error || clientError || state?.error) && (
           <p className="text-sm text-error" role="alert">
-            {clientError || error}
+            {clientError || state?.error || error}
           </p>
         )}
 
@@ -113,11 +127,17 @@ export function SignupForm({ error, next }: SignupFormProps) {
       </div>
 
       <div className="space-y-3">
+        {oauthError && (
+          <p className="text-sm text-error" role="alert">
+            {oauthError}
+          </p>
+        )}
         <Button
           type="button"
           variant="secondary"
           className="w-full"
           onClick={handleGoogleOAuth}
+          loading={oauthLoading}
         >
           <GoogleIcon />
           Continue with Google

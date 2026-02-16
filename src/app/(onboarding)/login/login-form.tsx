@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useActionState } from "react";
 import Link from "next/link";
 
@@ -7,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { InputField } from "@/components/ui/input";
 import { Heading, Text } from "@/components/ui/typography";
 import { createClient } from "@/lib/supabase/client";
-import { login } from "./actions";
+import { login, type LoginState } from "./actions";
 
 interface LoginFormProps {
   error?: string;
@@ -17,17 +18,30 @@ interface LoginFormProps {
 }
 
 export function LoginForm({ error, expired, next, message }: LoginFormProps) {
-  const [_state, formAction, isPending] = useActionState(login, null);
+  const [state, formAction, isPending] = useActionState<LoginState | null, FormData>(login, null);
+  const [oauthLoading, setOauthLoading] = useState(false);
+  const [oauthError, setOauthError] = useState<string | null>(null);
 
   const handleGoogleOAuth = async () => {
-    const supabase = createClient();
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next || "/dashboard")}`;
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo,
-      },
-    });
+    setOauthError(null);
+    setOauthLoading(true);
+    try {
+      const supabase = createClient();
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next || "/dashboard")}`;
+      const { error: oauthErr } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+        },
+      });
+      if (oauthErr) {
+        setOauthError(oauthErr.message);
+        setOauthLoading(false);
+      }
+    } catch {
+      setOauthError("Failed to connect to Google. Please try again.");
+      setOauthLoading(false);
+    }
   };
 
   return (
@@ -83,9 +97,9 @@ export function LoginForm({ error, expired, next, message }: LoginFormProps) {
           required
         />
 
-        {error && (
+        {(error || state?.error) && (
           <p className="text-sm text-error" role="alert">
-            {error}
+            {state?.error || error}
           </p>
         )}
 
@@ -108,11 +122,17 @@ export function LoginForm({ error, expired, next, message }: LoginFormProps) {
       </div>
 
       <div className="space-y-3">
+        {oauthError && (
+          <p className="text-sm text-error" role="alert">
+            {oauthError}
+          </p>
+        )}
         <Button
           type="button"
           variant="secondary"
           className="w-full"
           onClick={handleGoogleOAuth}
+          loading={oauthLoading}
         >
           <GoogleIcon />
           Continue with Google
