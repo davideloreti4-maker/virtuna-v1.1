@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Referral** - In-product referral program with link generation, tracking, and one-time bonuses (completed 2026-02-16)
 - [x] **Phase 6: Polish** - UI fixes, mobile responsiveness pass, OG tags, and dead code cleanup (completed 2026-02-16)
 - [x] **Phase 7: Wire TierGate** - Apply TierGate component to Pro-only features so Starter users see upgrade prompts (Gap Closure) (completed 2026-02-16)
-- [ ] **Phase 8: Dead Code & Process Cleanup** - Remove orphaned routes/exports, update FOUN-02 wording, create Phase 4 VERIFICATION.md (Gap Closure)
+- [x] **Phase 8: Dead Code & Process Cleanup** - Remove orphaned routes/exports, update FOUN-02 wording, create Phase 4 VERIFICATION.md (Gap Closure) (completed 2026-02-16)
 
 ## Phase Details
 
@@ -158,8 +158,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 08-01-PLAN.md -- Delete orphaned API routes (auth/callback, referral/generate, referral/stats) and remove unused getTierFromPlanId export
-- [ ] 08-02-PLAN.md -- Update FOUN-02 requirement wording to match /login redirect, create retroactive Phase 4 VERIFICATION.md
+- [x] 08-01-PLAN.md -- Delete orphaned API routes (auth/callback, referral/generate, referral/stats) and remove unused getTierFromPlanId export (completed 2026-02-16)
+- [x] 08-02-PLAN.md -- Update FOUN-02 requirement wording to match /login redirect, create retroactive Phase 4 VERIFICATION.md (completed 2026-02-16)
 
 ## Execution Waves
 
@@ -198,7 +198,7 @@ Waves 1-2 support parallel execution (see Execution Waves above).
 | 5. Referral | 2/2 | ✓ Complete | 2026-02-16 |
 | 6. Polish | 3/3 | ✓ Complete | 2026-02-16 |
 | 7. Wire TierGate | 2/2 | ✓ Complete | 2026-02-16 |
-| 8. Dead Code & Process | 0/? | Pending | — |
+| 8. Dead Code & Process | 2/2 | ✓ Complete | 2026-02-16 |
 
 ---
 *Roadmap created: 2026-02-13*
