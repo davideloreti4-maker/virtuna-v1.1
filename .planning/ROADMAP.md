@@ -49,11 +49,11 @@ Plans:
   2. User can remove a tracked competitor via confirmation dialog and it disappears from their list
   3. Vercel cron route triggers daily batch re-scraping of all tracked competitors, collecting fresh follower/engagement snapshots for time-series
   4. Scraping failures for individual handles do not block the batch -- failed handles are logged and skipped
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: Add/remove competitor server actions with handle validation
-- [ ] 02-02: Cron route for scheduled batch re-scraping and snapshot collection
+- [ ] 02-01-PLAN.md -- Add/remove competitor server actions with junction table deduplication and handle validation
+- [ ] 02-02-PLAN.md -- Cron auth utility, batch re-scraping route, and vercel.json cron schedule
 
 ### Phase 3: Competitor Dashboard
 **Goal**: Users see all their tracked competitors at a glance with key stats and can navigate between views
