@@ -55,19 +55,8 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
-  // Detect ?ref=CODE and set referral cookie (before auth check)
+  // Extract referral code early (cookie is set AFTER getUser to survive Supabase setAll re-creation)
   const referralCode = request.nextUrl.searchParams.get("ref");
-  if (referralCode && !request.cookies.get(REFERRAL_COOKIE_NAME)) {
-    supabaseResponse.cookies.set({
-      name: REFERRAL_COOKIE_NAME,
-      value: referralCode,
-      path: "/",
-      secure: true,
-      httpOnly: true,
-      sameSite: "lax", // CRITICAL: NOT "strict" — must survive OAuth redirect
-      maxAge: REFERRAL_COOKIE_MAX_AGE,
-    });
-  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -95,6 +84,21 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // Set referral cookie AFTER getUser() — Supabase's setAll may have re-created
+  // supabaseResponse via NextResponse.next(), so we set on the final response object.
+  // "First click wins": only set if user doesn't already have a referral cookie.
+  if (referralCode && !request.cookies.get(REFERRAL_COOKIE_NAME)) {
+    supabaseResponse.cookies.set({
+      name: REFERRAL_COOKIE_NAME,
+      value: referralCode,
+      path: "/",
+      secure: true,
+      httpOnly: true,
+      sameSite: "lax", // CRITICAL: NOT "strict" — must survive OAuth redirect
+      maxAge: REFERRAL_COOKIE_MAX_AGE,
+    });
+  }
 
   const pathname = request.nextUrl.pathname;
 
