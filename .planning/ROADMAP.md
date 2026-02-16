@@ -118,11 +118,11 @@ Plans:
   4. All new and existing pages pass a mobile responsiveness check (no overflow, no tiny touch targets, no broken layouts)
   5. No dead imports, unused components, or references to removed features remain in the codebase
   6. Trending page included in mobile responsiveness pass
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 06-01: Dashboard UI fixes + affiliate page rework
-- [ ] 06-02: OG meta tags + mobile responsiveness pass + dead code cleanup
+- [ ] 06-01-PLAN.md -- OG metadata fix, marketing OG image, brand-deals redirect, middleware cleanup, dashboard mobile fix
+- [ ] 06-02-PLAN.md -- Dead code deletion (landing components, test pages, visualization, effects, motion), societies.io comment cleanup
 
 ## Execution Waves
 
