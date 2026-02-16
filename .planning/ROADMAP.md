@@ -15,7 +15,7 @@ Transform the prediction engine from ~40-55% accuracy to ~75-85% through TikTok-
 - [x] **Phase 3: DeepSeek Prompt + Model Switch** - Rewrite DeepSeek with 5-step CoT and switch to V3.2-reasoning
 - [x] **Phase 4: Types, Schema & DB Migration** - Define all v2 types, expand input schema, run DB migrations
 - [ ] **Phase 5: Pipeline Architecture** - Restructure to 10-stage pipeline with new aggregation formula
-- [ ] **Phase 6: Infrastructure Hardening** - Rate limiting, caching, partial failure recovery, circuit breaker
+- [x] **Phase 6: Infrastructure Hardening** - Rate limiting, caching, partial failure recovery, circuit breaker
 - [ ] **Phase 7: Upload & Input UI** - Video upload, TikTok URL input, updated content form
 - [ ] **Phase 8: Results Card & Breakdown UI** - Factor breakdown, behavioral predictions, suggestions, personas
 - [ ] **Phase 9: Hybrid Rules & Dynamic Weights** - Upgrade rules to hybrid semantic+regex, signal-adaptive weights
@@ -117,7 +117,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 6-01: TTL caching, rate limiting by tier, input validation, exponential backoff circuit breaker, partial pipeline failure recovery
+- [x] 6-01: TTL caching, rate limiting by tier, input validation, exponential backoff circuit breaker, partial pipeline failure recovery
 
 ### Phase 7: Upload & Input UI
 **Goal**: Users can upload videos, paste TikTok URLs, or enter text through a tabbed content form
@@ -262,7 +262,7 @@ Phases execute in wave order. Within each wave, phases can run in parallel.
 | 3. DeepSeek Prompt + Model Switch | 1/1 | ✓ Complete | 2026-02-16 |
 | 4. Types, Schema & DB Migration | 2/2 | ✓ Complete | 2026-02-16 |
 | 5. Pipeline Architecture | 2/2 | ✓ Complete | 2026-02-16 |
-| 6. Infrastructure Hardening | 0/1 | Not started | - |
+| 6. Infrastructure Hardening | 1/1 | ✓ Complete | 2026-02-16 |
 | 7. Upload & Input UI | 0/2 | Not started | - |
 | 8. Results Card & Breakdown UI | 0/3 | Not started | - |
 | 9. Hybrid Rules & Dynamic Weights | 0/3 | Not started | - |
@@ -272,4 +272,4 @@ Phases execute in wave order. Within each wave, phases can run in parallel.
 
 ---
 *Roadmap created: 2026-02-16*
-*Last updated: 2026-02-16 — Phase 5 complete*
+*Last updated: 2026-02-16 — Phase 6 complete*
