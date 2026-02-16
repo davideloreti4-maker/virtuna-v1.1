@@ -30,7 +30,7 @@ export function Footer({ className }: FooterProps) {
             </Link>
             <Link
               href="/pricing"
-              className="min-h-[44px] rounded-lg border border-white/20 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-white/5"
+              className="min-h-[44px] rounded-lg border border-white/[0.06] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-white/5"
             >
               See pricing
             </Link>
@@ -38,10 +38,10 @@ export function Footer({ className }: FooterProps) {
         </div>
 
         {/* Footer Bar */}
-        <div className="flex flex-col items-center gap-8 border-t border-white/10 pt-8 md:flex-row md:justify-between">
+        <div className="flex flex-col items-center gap-8 border-t border-white/[0.06] pt-8 md:flex-row md:justify-between">
           <div className="text-center md:text-left">
             <div className="font-medium text-white">Virtuna</div>
-            <div className="mt-1 text-sm text-gray-400">
+            <div className="mt-1 text-sm text-foreground-muted">
               &copy; {currentYear} Virtuna. All rights reserved.
             </div>
           </div>
@@ -49,13 +49,13 @@ export function Footer({ className }: FooterProps) {
           <div className="flex flex-wrap items-center justify-center gap-6">
             <Link
               href="/coming-soon"
-              className="text-sm text-gray-400 transition-colors hover:text-white"
+              className="text-sm text-foreground-muted transition-colors hover:text-white"
             >
               Privacy Policy
             </Link>
             <Link
               href="/coming-soon"
-              className="text-sm text-gray-400 transition-colors hover:text-white"
+              className="text-sm text-foreground-muted transition-colors hover:text-white"
             >
               Terms of Service
             </Link>
@@ -66,14 +66,14 @@ export function Footer({ className }: FooterProps) {
               href="https://x.com/virtuna"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-11 w-11 items-center justify-center text-gray-400 transition-colors hover:text-white"
+              className="flex h-11 w-11 items-center justify-center text-foreground-muted transition-colors hover:text-white"
               aria-label="X (Twitter)"
             >
               <XLogo className="h-5 w-5" weight="fill" />
             </a>
             <a
               href="mailto:hello@virtuna.io"
-              className="flex h-11 w-11 items-center justify-center text-gray-400 transition-colors hover:text-white"
+              className="flex h-11 w-11 items-center justify-center text-foreground-muted transition-colors hover:text-white"
               aria-label="Email"
             >
               <Envelope className="h-5 w-5" weight="fill" />

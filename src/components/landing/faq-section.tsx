@@ -64,7 +64,7 @@ export function FAQSection(): React.JSX.Element {
             <FadeIn key={index} delay={0.1 + index * 0.05}>
               <AccordionItem
                 value={`item-${index}`}
-                className="overflow-hidden rounded-lg border border-white/10 bg-transparent"
+                className="overflow-hidden rounded-lg border border-white/[0.06] bg-transparent"
               >
                 <AccordionTrigger className="text-base text-white">
                   {item.question}
