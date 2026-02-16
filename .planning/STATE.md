@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered content intelligence that tells creators whether their content will resonate -- and exactly why -- before they post.
-**Current focus:** Phase 9 complete -- ready for Phase 10
+**Current focus:** Phase 10 in progress -- calibration & ML training
 
 ## Current Position
 
 **Milestone:** Prediction Engine v2
-**Phase:** 9 of 12 (Hybrid Rules & Dynamic Weights) -- COMPLETE
-**Plan:** 3 of 3 in current phase (all complete)
-**Status:** Phase 9 complete -- hybrid rules, per-rule accuracy, dynamic weight selection
-**Last activity:** 2026-02-16 -- Phase 9 Plan 3 executed (dynamic weight selection in aggregator)
+**Phase:** 10 of 12 (Calibration & ML Training) -- IN PROGRESS
+**Plan:** 3 of 3 in current phase (10-03 complete)
+**Status:** Plan 10-03 complete -- training data extraction from scraped videos
+**Last activity:** 2026-02-16 -- Phase 10 Plan 3 executed (training data extraction)
 
-Progress: [████████████████░] 61.5% (16/26 plans)
+Progress: [██████████████████░] 65.4% (17/26 plans)
 
 ## Performance Metrics
 
@@ -37,6 +37,7 @@ Progress: [████████████████░] 61.5% (16/26 pla
 | 09    | 01   | 3min     | 2     | 1     |
 | 09    | 02   | 3min     | 2     | 4     |
 | 09    | 03   | 2min     | 2     | 1     |
+| 10    | 03   | 2min     | 1     | 2     |
 
 ## Accumulated Context
 
@@ -126,6 +127,10 @@ Progress: [████████████████░] 61.5% (16/26 pla
 - [Execute 09-03]: Signal availability checks matched_rules count AND pipeline warnings to distinguish failure from zero matches
 - [Execute 09-03]: Confidence penalty -0.05 per missing signal (rules, trends) for honest confidence
 - [Execute 09-03]: ENGINE_VERSION bumped to 2.1.0 to distinguish dynamic-weight aggregator results
+- [Execute 10-03]: All 15 training features normalized to 0-1 range for ML compatibility (clamped via clamp01)
+- [Execute 10-03]: Deterministic Fisher-Yates shuffle using video ID hash seeds for reproducible train/test splits
+- [Execute 10-03]: Virality tier assignment reuses calibration-baseline.json WES percentile thresholds
+- [Execute 10-03]: No extreme outlier filtering for training data -- let ML model learn from full distribution
 - [Plan]: Personas are theater/UX, not accuracy signal -- lightweight 2-3 sentences each
 - [Plan]: Remove conversation_themes and variants to redirect tokens to accuracy
 - [Plan]: Pass structured Gemini signals to DeepSeek (no scores) to prevent anchoring
@@ -143,10 +148,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 09-03-PLAN.md (dynamic weight selection in aggregator)
+Stopped at: Completed 10-03-PLAN.md (training data extraction from scraped videos)
 Resume file: None
-Next: Phase 10 (next phase in roadmap)
+Next: Continue Phase 10 remaining plans (10-01, 10-02, 10-04)
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Phase 9 complete (all 3 plans: hybrid rules, per-rule accuracy, dynamic weights)*
+*Last updated: 2026-02-16 -- Phase 10 Plan 3 complete (training data extraction)*
