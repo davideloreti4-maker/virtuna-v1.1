@@ -5,21 +5,21 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate -- and connects them to monetization opportunities.
-**Current focus:** Platform Refinement -- Phase 5: Referrals & Brand Deals COMPLETE
+**Current focus:** Platform Refinement -- Phase 6: Auth & Onboarding (Plan 1 of 2 complete)
 
 ## Current Position
 
-Phase: 5 of 6 (Referrals & Brand Deals) -- COMPLETE
-Plan: 1 of 1 in current phase
-Status: Phase 05 Complete
-Last activity: 2026-02-16 -- Completed 05-01 Referrals & Brand Deals Polish
+Phase: 6 of 6 (Auth & Onboarding)
+Plan: 1 of 2 in current phase
+Status: Executing Phase 06
+Last activity: 2026-02-16 -- Completed 06-01 Auth Pages Visual Polish
 
-Progress: [########..] 83%
+Progress: [#########.] 90%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
+- Total plans completed: 9
 - Average duration: 3min
 - Total execution time: 0.4 hours
 
@@ -32,6 +32,7 @@ Progress: [########..] 83%
 | 03-trending-page | 1 | 2min | 2min |
 | 04-settings | 2 | 6min | 3min |
 | 05-referrals-brand-deals | 1 | 2min | 2min |
+| 06-auth-onboarding | 1 | 2min | 2min |
 
 ## Shipped Milestones
 
@@ -74,6 +75,9 @@ Progress: [########..] 83%
 - [05-01] Replaced text-coral with text-accent (text-coral had no backing CSS variable)
 - [05-01] Brand deals page as server component -- no client interaction needed
 - [05-01] Affiliate card uses primary button style (bg-white text-gray-950) per brand bible
+- [06-01] Explicit rounded-[12px] instead of rounded-xl for brand bible clarity
+- [06-01] Info and Clock lucide icons in login banners for better UX affordance
+- [06-01] Ambient coral glow at 6% opacity -- subtle depth without overpowering glass cards
 
 ### Pending Todos
 
@@ -92,9 +96,9 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 05-01-PLAN.md (Referrals & Brand Deals Polish) -- Phase 05 fully complete
+Stopped at: Completed 06-01-PLAN.md (Auth Pages Visual Polish)
 Resume file: None
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Completed 05-01 (Referrals & Brand Deals, Phase 05 complete)*
+*Last updated: 2026-02-16 -- Completed 06-01 (Auth Pages Visual Polish)*
