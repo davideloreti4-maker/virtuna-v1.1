@@ -1,4 +1,6 @@
 import OpenAI from "openai";
+import { promises as fs } from "node:fs";
+import path from "node:path";
 import {
   DeepSeekResponseSchema,
   type AnalysisInput,
@@ -10,7 +12,13 @@ import {
 
 const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL ?? "deepseek-reasoner";
 const MAX_RETRIES = 2; // 3 total attempts
-const TIMEOUT_MS = 30_000;
+const TIMEOUT_MS = 45_000; // 45s — reasoning model produces longer outputs with CoT thinking tokens
+
+// V3.2-reasoning pricing: $0.28/1M input tokens, $0.42/1M output tokens
+const INPUT_PRICE_PER_TOKEN = 0.28 / 1_000_000;
+const OUTPUT_PRICE_PER_TOKEN = 0.42 / 1_000_000;
+const FALLBACK_INPUT_TOKENS = 3000; // Richer prompt = more input tokens
+const FALLBACK_OUTPUT_TOKENS = 2000;
 
 // Circuit breaker state (ENGINE-14)
 let consecutiveFailures = 0;
@@ -19,6 +27,46 @@ const FAILURE_THRESHOLD = 3;
 const COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes
 
 let client: OpenAI | null = null;
+
+// Calibration data cache
+interface DeepSeekCalibrationData {
+  primary_kpis: {
+    share_rate: {
+      percentiles: { p50: number; p75: number; p90: number };
+    };
+    comment_rate: {
+      percentiles: { p50: number; p75: number; p90: number };
+    };
+    save_rate: {
+      percentiles: { p50: number; p75: number; p90: number };
+    };
+    weighted_engagement_score: {
+      percentiles: { p50: number; p75: number; p90: number };
+    };
+  };
+  virality_tiers: Array<{
+    tier: number;
+    label: string;
+    score_range: number[];
+    median_share_rate: number;
+    median_comment_rate: number;
+    median_save_rate: number;
+  }>;
+  viral_vs_average: {
+    differentiators: Array<{
+      factor: string;
+      difference_pct: number;
+      description: string;
+    }>;
+  };
+  duration_analysis: {
+    sweet_spot_by_weighted_score: {
+      optimal_range_seconds: number[];
+    };
+  };
+}
+
+let cachedCalibration: DeepSeekCalibrationData | null = null;
 
 function getClient(): OpenAI {
   if (!client) {
@@ -65,20 +113,208 @@ function stripFences(text: string): string {
   return fenced ? fenced[1]!.trim() : text.trim();
 }
 
-/** Strip DeepSeek R1 <think> tags */
-function stripThinkTags(text: string): string {
-  return text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
-}
-
 /** Parse and validate DeepSeek response with Zod */
 function parseDeepSeekResponse(raw: string): DeepSeekReasoning {
-  const cleaned = stripFences(stripThinkTags(raw));
+  const cleaned = stripFences(raw);
   const parsed = JSON.parse(cleaned);
   const result = DeepSeekResponseSchema.safeParse(parsed);
   if (!result.success) {
     throw new Error(`DeepSeek response validation failed: ${result.error.message}`);
   }
   return result.data;
+}
+
+/** Calculate cost in cents from token usage metadata */
+function calculateDeepSeekCost(
+  promptTokens: number | undefined,
+  completionTokens: number | undefined
+): number {
+  const input = promptTokens ?? FALLBACK_INPUT_TOKENS;
+  const output = completionTokens ?? FALLBACK_OUTPUT_TOKENS;
+  return (input * INPUT_PRICE_PER_TOKEN + output * OUTPUT_PRICE_PER_TOKEN) * 100;
+}
+
+/** Load calibration data from JSON file, cached after first read */
+async function loadCalibrationData(): Promise<DeepSeekCalibrationData> {
+  if (cachedCalibration) return cachedCalibration;
+
+  const calibrationPath = path.join(
+    path.dirname(new URL(import.meta.url).pathname),
+    "calibration-baseline.json"
+  );
+  const raw = await fs.readFile(calibrationPath, "utf-8");
+  cachedCalibration = JSON.parse(raw) as DeepSeekCalibrationData;
+  return cachedCalibration;
+}
+
+/**
+ * Format Gemini analysis signals for DeepSeek consumption.
+ * Strips numeric scores to prevent anchoring — passes only rationales and tips.
+ */
+function formatGeminiSignals(analysis: GeminiAnalysis): string {
+  const sections: string[] = [];
+
+  // Factor rationales and tips (no scores)
+  sections.push("## Gemini Content Analysis (qualitative signals only)");
+  for (const factor of analysis.factors) {
+    sections.push(`\n**${factor.name}:**`);
+    sections.push(`- Assessment: ${factor.rationale}`);
+    sections.push(`- Improvement: ${factor.improvement_tip}`);
+  }
+
+  // Overall impression
+  sections.push(`\n**Overall Impression:** ${analysis.overall_impression}`);
+
+  // Content summary
+  sections.push(`\n**Content Summary:** ${analysis.content_summary}`);
+
+  // Video signals descriptions (if available)
+  if (analysis.video_signals) {
+    sections.push(`\n**Video Production Signals:**`);
+    sections.push(`- Visual production quality: assessed`);
+    sections.push(`- Hook visual impact: assessed`);
+    sections.push(`- Pacing: assessed`);
+    sections.push(`- Transition quality: assessed`);
+    // Note: We include that video signals exist but strip the numeric values
+    // The presence of video analysis context helps DeepSeek weight visual factors
+  }
+
+  return sections.join("\n");
+}
+
+/**
+ * Build the DeepSeek prompt with 5-step CoT framework and calibration data.
+ */
+function buildDeepSeekPrompt(
+  context: DeepSeekInput,
+  calibration: DeepSeekCalibrationData
+): string {
+  const shareP = calibration.primary_kpis.share_rate.percentiles;
+  const commentP = calibration.primary_kpis.comment_rate.percentiles;
+  const saveP = calibration.primary_kpis.save_rate.percentiles;
+
+  // Get top 5 viral differentiators
+  const topDifferentiators = [...calibration.viral_vs_average.differentiators]
+    .sort((a, b) => Math.abs(b.difference_pct) - Math.abs(a.difference_pct))
+    .slice(0, 5);
+
+  const durationSweet = calibration.duration_analysis.sweet_spot_by_weighted_score.optimal_range_seconds;
+
+  // Gemini signals (no scores)
+  const geminiSignals = formatGeminiSignals(context.gemini_analysis);
+
+  // Rule context (names only, no scores)
+  const matchedRuleNames = context.rule_result.matched_rules
+    .map((r) => r.rule_name)
+    .join(", ") || "None";
+
+  const prompt = `## Your Task
+
+You are an expert TikTok content strategist. Analyze the content below using the 5-step framework. Your reasoning is INTERNAL — the user only sees your final JSON output.
+
+## 5-Step Reasoning Framework
+
+### Step 1: Completion Analysis
+Evaluate: Would viewers watch this to the end?
+Consider: Hook strength, narrative tension, pacing, payoff anticipation, information drip.
+Output: hook_effectiveness (0-10), retention_strength (0-10), completion_pct prediction.
+
+### Step 2: Engagement Prediction
+Evaluate: Would viewers take action?
+Consider: Share triggers (relatability, identity signaling, "tag someone"), comment provocation (controversy, questions, relatable frustrations), save worthiness (reference value, tutorial quality, bookmark-worthy tips).
+Output: shareability (0-10), comment_provocation (0-10), save_worthiness (0-10), share_pct/comment_pct/save_pct predictions.
+
+### Step 3: Pattern Match
+Compare this content against known viral patterns from the dataset:
+- Loop structure (videos that naturally restart)
+- Duet/stitch bait (content that invites responses)
+- Trending sound alignment
+- Hook-first structure (value in first 3 seconds)
+- Emotional escalation pattern
+- "Wait for it" payoff structure
+
+Top viral differentiators from 7,321 analyzed TikTok videos:
+${topDifferentiators.map((d) => `- ${d.factor}: ${d.description}`).join("\n")}
+
+Duration sweet spot: ${durationSweet[0]}-${durationSweet[1]} seconds
+
+Output: trend_alignment (0-10), originality (0-10).
+
+### Step 4: Fatal Flaw Check
+Identify any critical issues that would kill performance regardless of other factors:
+- No clear hook in first 2 seconds
+- Content too long for topic (>60s for simple content)
+- Misleading hook that doesn't pay off
+- Poor audio quality or no audio strategy
+- Caption too long (>100 chars for non-educational content)
+- Content that actively discourages sharing (controversial without being shareable)
+Output: Array of warning strings (empty if no fatal flaws).
+
+### Step 5: Final Scores & Predictions
+Using steps 1-4, produce your final behavioral predictions with percentile context.
+Reference these dataset benchmarks for percentile framing:
+- Share rate: p50=${(shareP.p50 * 100).toFixed(2)}%, p75=${(shareP.p75 * 100).toFixed(2)}%, p90=${(shareP.p90 * 100).toFixed(2)}%
+- Comment rate: p50=${(commentP.p50 * 100).toFixed(2)}%, p75=${(commentP.p75 * 100).toFixed(2)}%, p90=${(commentP.p90 * 100).toFixed(2)}%
+- Save rate: p50=${(saveP.p50 * 100).toFixed(2)}%, p75=${(saveP.p75 * 100).toFixed(2)}%, p90=${(saveP.p90 * 100).toFixed(2)}%
+Frame percentiles as "top X%" (e.g., p90 = "top 10%", p75 = "top 25%").
+
+---
+
+## Content to Analyze
+
+Content type: ${context.input.content_type}
+Content:
+${context.input.content_text}
+
+---
+
+${geminiSignals}
+
+---
+
+## Rule Matches
+Matched rules: ${matchedRuleNames}
+
+## Trend Context
+${context.trend_enrichment.trend_context}
+
+---
+
+## Output Format
+
+Return a JSON object with exactly these fields:
+
+{
+  "behavioral_predictions": {
+    "completion_pct": <number 0-100>,
+    "completion_percentile": "<string, e.g. 'top 30%'>",
+    "share_pct": <number 0-100>,
+    "share_percentile": "<string>",
+    "comment_pct": <number 0-100>,
+    "comment_percentile": "<string>",
+    "save_pct": <number 0-100>,
+    "save_percentile": "<string>"
+  },
+  "component_scores": {
+    "hook_effectiveness": <number 0-10>,
+    "retention_strength": <number 0-10>,
+    "shareability": <number 0-10>,
+    "comment_provocation": <number 0-10>,
+    "save_worthiness": <number 0-10>,
+    "trend_alignment": <number 0-10>,
+    "originality": <number 0-10>
+  },
+  "suggestions": [
+    { "text": "<actionable advice>", "priority": "high"|"medium"|"low", "category": "<hook|content|format|timing|audio>" }
+  ],
+  "warnings": ["<fatal flaw string>"],
+  "confidence": "high"|"medium"|"low"
+}
+
+Provide 3-5 suggestions. Warnings array should be empty if no fatal flaws found.
+Set confidence based on signal availability: "high" if video + text + trends available, "medium" if text + some signals, "low" if limited context.`;
+
+  return prompt;
 }
 
 export interface DeepSeekInput {
@@ -88,20 +324,12 @@ export interface DeepSeekInput {
   trend_enrichment: TrendEnrichment;
 }
 
-const REASONING_PROMPT = `You are an expert social media strategist analyzing content for viral potential. You have been given an initial AI analysis, rule scores, and trend data. Your job is to provide deep reasoning and produce actionable outputs.
-
-Return a JSON object with these exact fields:
-- persona_reactions: array of exactly 5 objects, each with persona_name (string), quote (string - a realistic reaction in their voice), sentiment ("positive"|"neutral"|"negative"), resonance_score (number 0-10)
-  Create diverse personas: a Gen-Z creator, a marketing professional, a casual scroller, a niche expert, and a skeptic.
-- suggestions: array of 3-5 objects, each with text (string - specific actionable advice), priority ("high"|"medium"|"low"), category (string like "hook", "content", "format", "timing")
-- variants: array of 2-3 objects, each with content (string - rewritten version), predicted_score (number 0-100), label (string like "Hook-Optimized", "Emotional Appeal")
-- conversation_themes: array of themes, each with title (string), percentage (number 0-100), description (string)
-- refined_score: number 0-100 (your refined overall viral score considering all inputs)
-- confidence_reasoning: string explaining your confidence in the prediction`;
-
 /**
- * Reason with DeepSeek R1 (ENGINE-02, ENGINE-09, ENGINE-14)
- * Returns null if circuit breaker is open
+ * Reason with DeepSeek V3.2-reasoning (ENGINE-02, ENGINE-09, ENGINE-14)
+ * Returns null if circuit breaker is open.
+ *
+ * Uses 5-step CoT framework with calibration data embedding.
+ * Gemini signals passed without numeric scores to prevent anchoring.
  */
 export async function reasonWithDeepSeek(
   context: DeepSeekInput
@@ -112,6 +340,7 @@ export async function reasonWithDeepSeek(
   }
 
   const ai = getClient();
+  const calibration = await loadCalibrationData();
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -121,20 +350,8 @@ export async function reasonWithDeepSeek(
 
       const userMessage =
         attempt === 0
-          ? `${REASONING_PROMPT}
-
-Content type: ${context.input.content_type}
-Content: ${context.input.content_text}
-
-Initial AI Analysis:
-${JSON.stringify(context.gemini_analysis, null, 2)}
-
-Rule Score: ${context.rule_result.rule_score}/100
-Matched Rules: ${context.rule_result.matched_rules.map((r) => r.rule_name).join(", ")}
-
-Trend Score: ${context.trend_enrichment.trend_score}/100
-Trend Context: ${context.trend_enrichment.trend_context}`
-          : `Your previous response was not valid JSON. Return ONLY the JSON object with no extra text.\n\n${REASONING_PROMPT}\n\nContent: ${context.input.content_text}`;
+          ? buildDeepSeekPrompt(context, calibration)
+          : `Your previous response was not valid JSON. Return ONLY the JSON object with no extra text.\n\n${buildDeepSeekPrompt(context, calibration)}`;
 
       const response = await ai.chat.completions.create(
         {
@@ -152,8 +369,17 @@ Trend Context: ${context.trend_enrichment.trend_context}`
 
       recordSuccess();
 
-      // Estimate cost: ~2K tokens in, ~2K tokens out
-      const cost_cents = 0.005 * (attempt + 1);
+      // Token-based cost estimation
+      const cost_cents = calculateDeepSeekCost(
+        response.usage?.prompt_tokens,
+        response.usage?.completion_tokens
+      );
+
+      if (cost_cents > 1.0) {
+        console.warn(
+          `[DeepSeek] Reasoning cost ${cost_cents.toFixed(4)} cents exceeds soft cap of 1.0 cents`
+        );
+      }
 
       return { reasoning, cost_cents };
     } catch (error) {
