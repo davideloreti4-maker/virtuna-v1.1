@@ -168,6 +168,53 @@ export type Database = {
           },
         ]
       }
+      competitor_intelligence: {
+        Row: {
+          id: string
+          competitor_id: string
+          analysis_type: string
+          insights: Json
+          model_used: string | null
+          prompt_tokens: number | null
+          completion_tokens: number | null
+          generated_at: string
+          user_id: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          competitor_id: string
+          analysis_type: string
+          insights: Json
+          model_used?: string | null
+          prompt_tokens?: number | null
+          completion_tokens?: number | null
+          generated_at?: string
+          user_id?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          competitor_id?: string
+          analysis_type?: string
+          insights?: Json
+          model_used?: string | null
+          prompt_tokens?: number | null
+          completion_tokens?: number | null
+          generated_at?: string
+          user_id?: string | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitor_intelligence_competitor_id_fkey"
+            columns: ["competitor_id"]
+            isOneToOne: false
+            referencedRelation: "competitor_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_competitors: {
         Row: {
           id: string
