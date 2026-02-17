@@ -21,21 +21,25 @@ export function normalizeHandle(input: string): string {
 
 /**
  * Zod schema for Apify profile scraper output.
- * Validates and normalizes a single TikTok profile.
  *
- * Uses z.coerce.number() for all numeric fields because
- * Apify actors sometimes return strings for large numbers.
+ * The clockworks/tiktok-profile-scraper actor returns video-level items
+ * with profile data nested under `authorMeta`. Field mapping:
+ *   authorMeta.name → handle, authorMeta.nickName → displayName,
+ *   authorMeta.fans → followerCount, authorMeta.heart → heartCount,
+ *   authorMeta.video → videoCount, authorMeta.following → followingCount
  */
 export const apifyProfileSchema = z.object({
-  uniqueId: z.string().transform(normalizeHandle),
-  nickname: z.string().optional().default(""),
-  signature: z.string().optional().default(""),
-  avatarLarger: z.string().url().optional(),
-  verified: z.boolean().optional().default(false),
-  followerCount: z.coerce.number().int().nonnegative().default(0),
-  followingCount: z.coerce.number().int().nonnegative().default(0),
-  heartCount: z.coerce.number().int().nonnegative().default(0),
-  videoCount: z.coerce.number().int().nonnegative().default(0),
+  authorMeta: z.object({
+    name: z.string().transform(normalizeHandle),
+    nickName: z.string().optional().default(""),
+    signature: z.string().optional().default(""),
+    avatar: z.string().url().optional(),
+    verified: z.boolean().optional().default(false),
+    fans: z.coerce.number().int().nonnegative().default(0),
+    following: z.coerce.number().int().nonnegative().default(0),
+    heart: z.coerce.number().int().nonnegative().default(0),
+    video: z.coerce.number().int().nonnegative().default(0),
+  }),
 });
 
 /**

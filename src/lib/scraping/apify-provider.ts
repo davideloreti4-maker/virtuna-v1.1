@@ -33,18 +33,18 @@ export class ApifyScrapingProvider implements ScrapingProvider {
       throw new Error(`No profile data returned for handle: ${handle}`);
     }
 
-    const parsed = apifyProfileSchema.parse(items[0]);
+    const { authorMeta } = apifyProfileSchema.parse(items[0]);
 
     return {
-      handle: parsed.uniqueId,
-      displayName: parsed.nickname,
-      bio: parsed.signature,
-      avatarUrl: parsed.avatarLarger ?? "",
-      verified: parsed.verified,
-      followerCount: parsed.followerCount,
-      followingCount: parsed.followingCount,
-      heartCount: parsed.heartCount,
-      videoCount: parsed.videoCount,
+      handle: authorMeta.name,
+      displayName: authorMeta.nickName,
+      bio: authorMeta.signature,
+      avatarUrl: authorMeta.avatar ?? "",
+      verified: authorMeta.verified,
+      followerCount: authorMeta.fans,
+      followingCount: authorMeta.following,
+      heartCount: authorMeta.heart,
+      videoCount: authorMeta.video,
     };
   }
 
