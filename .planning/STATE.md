@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered content intelligence that tells creators whether their content will resonate -- and exactly why -- before they post.
-**Current focus:** Phase 11 complete -- enhanced signals & audio done
+**Current focus:** Phase 12 in progress -- E2E flow testing, polish, merge
 
 ## Current Position
 
 **Milestone:** Prediction Engine v2
-**Phase:** 11 of 12 (Enhanced Signals & Audio) -- COMPLETE
-**Plan:** 3 of 3 in current phase (all complete)
-**Status:** Phase 11 complete -- fuzzy matching + hashtag scoring + configurable scraper
-**Last activity:** 2026-02-17 -- Phase 11 executed (all 3 plans)
+**Phase:** 12 of 12 (E2E Flow Testing, Polish, Merge)
+**Plan:** 1 of 2 in current phase (plan 01 complete)
+**Status:** Phase 12 Plan 01 complete -- accuracy benchmark script with 50 samples
+**Last activity:** 2026-02-17 -- Phase 12 Plan 01 executed
 
-Progress: [████████████████████████] 92.3% (24/26 plans)
+Progress: [█████████████████████████] 96.2% (25/26 plans)
 
 ## Performance Metrics
 
@@ -45,6 +45,7 @@ Progress: [███████████████████████
 | 11    | 01   | 10min    | 2     | 4     |
 | 11    | 02   | 2min     | 1     | 4     |
 | 11    | 03   | 5min     | 2     | 2     |
+| 12    | 01   | 12min    | 2     | 3     |
 
 ## Accumulated Context
 
@@ -163,6 +164,10 @@ Progress: [███████████████████████
 - [Execute 11-02]: Log10-scaled popularity prevents mega-view tags from dominating relevance
 - [Execute 11-02]: maxExpectedRelevance = 3 calibration: 3 highly-relevant trending hashtags scores ~1.0
 - [Execute 11-02]: Saturated tags contribute 10% of normal weight to trend_score (not useless, just not differentiating)
+- [Execute 12-01]: tsconfig-paths for runtime @/ alias resolution in scripts instead of rewriting engine imports
+- [Execute 12-01]: Benchmark uses graceful API key handling: warn and continue instead of hard exit
+- [Execute 12-01]: content_type mapped to valid schema values: image->post, text->thread, carousel->post
+- [Execute 12-01]: benchmark-results.json gitignored as runtime data varying per environment
 - [Plan]: Personas are theater/UX, not accuracy signal -- lightweight 2-3 sentences each
 - [Plan]: Remove conversation_themes and variants to redirect tokens to accuracy
 - [Plan]: Pass structured Gemini signals to DeepSeek (no scores) to prevent anchoring
@@ -180,10 +185,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed Phase 11 (all 3 plans: fuzzy matching + hashtag scoring + configurable scraper)
+Stopped at: Completed 12-01-PLAN.md (accuracy benchmark script)
 Resume file: None
-Next: Phase 12
+Next: Phase 12 Plan 02
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-17 -- Phase 11 complete (all 3 plans)*
+*Last updated: 2026-02-17 -- Phase 12 Plan 01 complete (accuracy benchmark)*
