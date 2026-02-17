@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered competitor intelligence that shows TikTok creators exactly what their competitors do, why it works, and how to outperform them.
-**Current focus:** Phase 5 complete -- Benchmarking & Comparison done
+**Current focus:** Phase 6 in progress -- AI Intelligence service layer done
 
 ## Current Position
 
-Phase: 5 of 7 (Benchmarking & Comparison) -- COMPLETE
-Plan: 2 of 2 in current phase (05-02 complete)
-Status: Phase 5 complete, ready for Phase 6
-Last activity: 2026-02-17 -- Completed 05-02 (Sortable Leaderboard & Compare Link)
+Phase: 6 of 7 (AI Intelligence)
+Plan: 1 of 2 in current phase (06-01 complete)
+Status: 06-01 complete, ready for 06-02 (Intelligence UI)
+Last activity: 2026-02-17 -- Completed 06-01 (AI Intelligence Service Layer)
 
-Progress: [███████░░░] 71%
+Progress: [████████░░] 79%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
+- Total plans completed: 11
 - Average duration: 3 min
-- Total execution time: 0.55 hours
+- Total execution time: 0.63 hours
 
 **By Phase:**
 
@@ -32,9 +32,10 @@ Progress: [███████░░░] 71%
 | 03-competitor-dashboard | 2 | 6 min | 3 min |
 | 04-detail-page-analytics | 2 | 6 min | 3 min |
 | 05-benchmarking-comparison | 2 | 5 min | 3 min |
+| 06-ai-intelligence | 1 | 5 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-01 (4 min), 04-02 (2 min), 05-01 (2 min), 05-02 (3 min)
+- Last 5 plans: 04-02 (2 min), 05-01 (2 min), 05-02 (3 min), 06-01 (5 min)
 - Trend: stable (fast)
 
 *Updated after each plan completion*
@@ -87,6 +88,12 @@ Recent decisions affecting current work:
 - Pre-compute derived metrics in separate useMemo from sort (sort-independent enrichment avoids recomputation)
 - SortableHeader inline component pattern with closure over sort state
 - Compare link conditionally rendered only with 2+ competitors
+- Delete+insert instead of upsert for COALESCE unique constraint (Supabase JS limitation)
+- DeepSeek-chat for strategy+recommendations, Gemini flash-lite for viral+hashtag gap
+- 7-day TTL + scrape-date staleness check for AI cache invalidation
+- Service client for AI cache writes (bypasses RLS), user client for reads
+- Computation before AI: pure functions for detection/frequency, AI only for insight generation
+- 1 retry on DeepSeek parse failure with stricter JSON instruction
 
 ### Pending Todos
 
@@ -101,10 +108,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 05-02-PLAN.md (Sortable Leaderboard & Compare Link)
+Stopped at: Completed 06-01-PLAN.md (AI Intelligence Service Layer)
 Resume file: None
-Next: Phase 6 planning
+Next: 06-02 execution (Intelligence UI)
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-17 -- 05-02 execution complete (sortable table, cadence column, compare link, 3 tasks, 4 files)*
+*Last updated: 2026-02-17 -- 06-01 execution complete (AI service layer, 2 tasks, 9 files)*
