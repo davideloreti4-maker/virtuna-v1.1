@@ -57,10 +57,17 @@ export function TestCreationFlow({ triggerButton, className }: TestCreationFlowP
     isCancelledRef.current = false;
     setStatus("simulating");
 
+    // Map input_mode to the correct content_type for DB storage
+    const CONTENT_TYPE_MAP: Record<string, string> = {
+      text: "thread",
+      tiktok_url: "video",
+      video_upload: "video",
+    };
+
     // Build v2 AnalysisInput payload
     const payload: Record<string, unknown> = {
       input_mode: data.input_mode,
-      content_type: "video", // TikTok content is always video type
+      content_type: CONTENT_TYPE_MAP[data.input_mode] ?? "video",
       society_id: selectedSocietyId,
     };
 

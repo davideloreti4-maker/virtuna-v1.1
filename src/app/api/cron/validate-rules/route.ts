@@ -114,7 +114,7 @@ export async function GET(request: Request) {
 
     const { data: analysisResults, error: analysisError } = await supabase
       .from("analysis_results")
-      .select("id, overall_score")
+      .select("id, overall_score, rule_contributions")
       .in("id", analysisIds) as unknown as {
         data: AnalysisRow[] | null;
         error: { message: string } | null;
