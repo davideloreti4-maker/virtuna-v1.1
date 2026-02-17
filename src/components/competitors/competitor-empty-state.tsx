@@ -2,6 +2,7 @@
 
 import { UsersThree } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { AddCompetitorDialog } from "@/components/competitors/add-competitor-dialog";
 
 /**
  * Empty state displayed when user has no tracked competitors.
@@ -26,7 +27,9 @@ export function CompetitorEmptyState() {
         Add your first TikTok competitor to start tracking their growth,
         engagement, and content strategy.
       </p>
-      <Button variant="primary">Add Competitor</Button>
+      <AddCompetitorDialog
+        trigger={<Button variant="primary">Add Competitor</Button>}
+      />
     </div>
   );
 }

@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeftRight } from "lucide-react";
+import { ArrowLeftRight, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AddCompetitorDialog } from "@/components/competitors/add-competitor-dialog";
 import {
   CompetitorCard,
   type CompetitorCardData,
@@ -93,6 +95,14 @@ export function CompetitorsClient({
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-medium text-foreground">Competitors</h1>
         <div className="flex items-center gap-3">
+          <AddCompetitorDialog
+            trigger={
+              <Button variant="primary" size="sm">
+                <Plus size={14} className="mr-1.5" />
+                Add Competitor
+              </Button>
+            }
+          />
           {cards.length >= 2 && (
             <Link
               href="/competitors/compare"

@@ -11,6 +11,7 @@ import {
   computeEngagementRate,
   computePostingCadence,
 } from "@/lib/competitors-utils";
+import { RemoveCompetitorButton } from "@/components/competitors/remove-competitor-button";
 import { StaleIndicator } from "@/components/competitors/stale-indicator";
 import { CompetitorSparkline } from "@/components/competitors/competitor-sparkline";
 import { GrowthDelta } from "@/components/competitors/growth-delta";
@@ -137,6 +138,9 @@ export function CompetitorTable({ competitors }: CompetitorTableProps) {
             <th className="py-3 px-4 text-right font-medium text-foreground-muted text-xs">
               Status
             </th>
+            <th className="py-3 px-4 w-10">
+              <span className="sr-only">Actions</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -234,6 +238,11 @@ export function CompetitorTable({ competitors }: CompetitorTableProps) {
                   ) : (
                     <StaleIndicator lastScrapedAt={s.last_scraped_at} />
                   )}
+                </td>
+
+                {/* Actions */}
+                <td className="py-3 px-4">
+                  <RemoveCompetitorButton competitorId={s.id} handle={s.tiktok_handle} />
                 </td>
               </tr>
             );

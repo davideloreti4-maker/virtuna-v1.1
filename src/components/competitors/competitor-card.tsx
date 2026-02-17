@@ -8,6 +8,7 @@ import {
   computeGrowthVelocity,
   computeEngagementRate,
 } from "@/lib/competitors-utils";
+import { RemoveCompetitorButton } from "@/components/competitors/remove-competitor-button";
 import { StaleIndicator } from "@/components/competitors/stale-indicator";
 import { CompetitorSparkline } from "@/components/competitors/competitor-sparkline";
 import { GrowthDelta } from "@/components/competitors/growth-delta";
@@ -53,8 +54,13 @@ export function CompetitorCard({ data }: CompetitorCardProps) {
 
   return (
     <Link href={`/competitors/${data.tiktok_handle}`}>
-      <Card className="cursor-pointer">
-        <CardContent className="p-4">
+      <Card className="cursor-pointer group">
+        <CardContent className="p-4 relative">
+          {/* Remove button (visible on hover) */}
+          <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+            <RemoveCompetitorButton competitorId={data.id} handle={data.tiktok_handle} />
+          </div>
+
           {/* Top row: Avatar + Handle */}
           <div className="flex items-center gap-3 mb-4">
             <Avatar
