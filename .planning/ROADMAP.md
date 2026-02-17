@@ -2,39 +2,30 @@
 
 ## Milestones
 
-- **MVP Launch** — Phases 1-8 (shipped 2026-02-16)
+- SHIPPED **Platform Refinement** — Phases 1-6 (shipped 2026-02-16)
+- SHIPPED **MVP Launch** — 8 phases (shipped 2026-02-16)
+- SHIPPED **v2.1 Dashboard Rebuild** — Phases 45-49 (shipped 2026-02-08)
+- SHIPPED **v2.3.5 Design Token Alignment** — Phases 53-55 (shipped 2026-02-08)
+- SHIPPED **v2.3 Brand Deals** — 5 phases (shipped 2026-02-06)
+- SHIPPED **v2.2 Trending Page** — Phases 50-52 (shipped 2026-02-06)
+- SHIPPED **v2.0 Design System** — Phases 39-44 (shipped 2026-02-05)
 
-## Phases
+## Completed Milestone Details
 
 <details>
-<summary>MVP Launch (Phases 1-8) — SHIPPED 2026-02-16</summary>
+<summary>Platform Refinement (Phases 1-6) — SHIPPED 2026-02-16</summary>
 
-- [x] Phase 1: Foundation (2/2 plans) — completed 2026-02-16
+- [x] Phase 1: Sidebar & Navigation (2/2 plans) — completed 2026-02-16
 - [x] Phase 2: Landing Page (2/2 plans) — completed 2026-02-16
-- [x] Phase 3: Onboarding (2/2 plans) — completed 2026-02-16
-- [x] Phase 4: Payments (3/3 plans) — completed 2026-02-16
-- [x] Phase 5: Referral (2/2 plans) — completed 2026-02-16
-- [x] Phase 6: Polish (3/3 plans) — completed 2026-02-16
-- [x] Phase 7: Wire TierGate (2/2 plans) — completed 2026-02-16
-- [x] Phase 8: Dead Code & Process Cleanup (2/2 plans) — completed 2026-02-16
+- [x] Phase 3: Trending Page (1/1 plan) — completed 2026-02-16
+- [x] Phase 4: Settings (2/2 plans) — completed 2026-02-16
+- [x] Phase 5: Referrals & Brand Deals (1/1 plan) — completed 2026-02-16
+- [x] Phase 6: Auth & Onboarding (2/2 plans) — completed 2026-02-16
 
-Full details: `.planning/milestones/mvp-launch-ROADMAP.md`
+Full details: `.planning/milestones/platform-refinement-ROADMAP.md`
 
 </details>
 
-## Progress
-
-| Phase | Milestone | Plans Complete | Status | Completed |
-|-------|-----------|----------------|--------|-----------|
-| 1. Foundation | MVP Launch | 2/2 | Complete | 2026-02-16 |
-| 2. Landing Page | MVP Launch | 2/2 | Complete | 2026-02-16 |
-| 3. Onboarding | MVP Launch | 2/2 | Complete | 2026-02-16 |
-| 4. Payments | MVP Launch | 3/3 | Complete | 2026-02-16 |
-| 5. Referral | MVP Launch | 2/2 | Complete | 2026-02-16 |
-| 6. Polish | MVP Launch | 3/3 | Complete | 2026-02-16 |
-| 7. Wire TierGate | MVP Launch | 2/2 | Complete | 2026-02-16 |
-| 8. Dead Code & Process | MVP Launch | 2/2 | Complete | 2026-02-16 |
-
 ---
-*Roadmap created: 2026-02-13*
-*Updated: 2026-02-16 — MVP Launch milestone archived*
+*Roadmap created: 2026-02-16*
+*Last updated: 2026-02-17 — Platform Refinement archived*

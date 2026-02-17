@@ -4,10 +4,10 @@ import { cn } from "@/lib/utils";
 import { FadeIn } from "@/components/motion";
 
 const stats = [
-  { value: "86%", label: "Prediction accuracy" },
-  { value: "10K+", label: "AI personas simulated" },
-  { value: "< 30s", label: "Time to get results" },
-  { value: "3.2x", label: "Average engagement lift" },
+  { value: "83%", label: "Prediction accuracy" },
+  { value: "50+", label: "Content signals analyzed" },
+  { value: "< 30s", label: "Time to results" },
+  { value: "12", label: "Engagement dimensions scored" },
 ];
 
 interface StatsSectionProps {
@@ -20,11 +20,8 @@ export function StatsSection({ className }: StatsSectionProps) {
       <div className="mx-auto max-w-6xl px-6">
         <FadeIn>
           <div className="mb-16 text-center">
-            <span className="text-sm text-foreground-secondary">
-              The numbers speak
-            </span>
-            <h2 className="mt-4 text-[32px] font-normal leading-[36px] text-white sm:text-[40px] sm:leading-[44px]">
-              Built on validated research
+            <h2 className="text-[32px] font-normal leading-[36px] text-white sm:text-[40px] sm:leading-[44px]">
+              Prediction by the numbers
             </h2>
           </div>
         </FadeIn>

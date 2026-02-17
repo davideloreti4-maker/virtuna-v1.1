@@ -19,6 +19,12 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - TierGate: server-side FeatureGate (referrals), client-side TierGate (simulation results) -- MVP Launch
 - Referral system: link generation, cookie persistence through OAuth, RLS policy, dashboard -- MVP Launch
 - Mobile responsiveness audit, OG metadata via file convention, dead code cleanup -- MVP Launch
+- Sidebar redesigned: solid dark, coral indicators, TikTok handle Supabase persistence -- Platform Refinement
+- Landing page overhauled: prediction-focused hero, features, FAQ, CTA, slim footer -- Platform Refinement
+- Trending page built: category tabs, video card grid, mock data -- Platform Refinement
+- Settings wired: profile save, password change, delete account, notification prefs -- Platform Refinement
+- Brand deals proper page replacing dead redirect, referral polish -- Platform Refinement
+- Auth/onboarding polished: brand bible quality, error mapping, smooth transitions -- Platform Refinement
 - All design tokens 1:1 aligned with Raycast.com (Inter font, hex gray scale, 6% borders, glass pattern) -- v2.3.5
 - GlassPanel zero-config with Raycast neutral glass (5px blur, 12px radius) -- v2.3.5
 - BRAND-BIBLE.md rewritten as Raycast Design Language reference -- v2.3.5
@@ -49,11 +55,10 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 ### Active
 
-- [ ] AI viral prediction engine (Gemini Flash + DeepSeek R1)
-- [ ] TikTok data pipeline (Apify scraping, trend classification)
-- [ ] Real-time trend analysis
-- [ ] Trending page with real backend data
-- [ ] External brand deal listings from partner brands
+- [ ] Dashboard completion (hive adjustments, test flow, filter pills, input fields)
+- [ ] User flow fixes (dead buttons, console.log stubs across dashboard)
+- [ ] Delete account server-side API route
+- [ ] Email change verification flow
 
 ### Out of Scope
 
@@ -65,8 +70,8 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 ## Context
 
-**Current state:** MVP Launch shipped (2026-02-16). All frontend product features complete.
-- ~23,170 LOC TypeScript (after 121k lines of dead code cleanup)
+**Current state:** Platform Refinement shipped (2026-02-16). All non-dashboard pages polished to brand bible quality.
+- ~23,170 LOC TypeScript
 - Tech stack: Next.js 15 (App Router), TypeScript strict, Tailwind CSS v4, Supabase Auth, Whop payments, Recharts, d3-hierarchy, d3-quadtree
 - 36 design system components, 100+ tokens (all Raycast-accurate)
 - Real auth with middleware enforcement, Google OAuth PKCE
@@ -74,7 +79,9 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - Two-tier payments (Starter/Pro) with 7-day trial via Whop
 - Referral program with cookie persistence
 - Canvas-based hive visualization: 1300+ nodes, 60fps
-- Trending page at /trending with TikTok-style video feed
+- Trending page rebuilt with category tabs and video card grid
+- Settings fully wired to Supabase (profile, password, delete account)
+- Sidebar redesigned per brand bible with TikTok handle persistence
 - Deployed to Vercel
 
 **Known issues / blockers before go-live:**
@@ -123,9 +130,14 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 ## Current State
 
-**Shipped:** MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
+**Shipped:** Platform Refinement (2026-02-16), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
 **Parallel:** Backend Foundation (worktree at ~/virtuna-backend-foundation/) — prediction engine, data pipeline
+
+**Remaining work:**
+- Dashboard completion (filter pills, dead buttons, test flow)
+- Delete account server-side API route
+- Email change verification flow
 
 **Future milestones:**
 - Backend intelligence integration (connect prediction engine to frontend)
@@ -133,4 +145,4 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - Trending page re-launch (when backend ready)
 
 ---
-*Last updated: 2026-02-16 after MVP Launch milestone complete*
+*Last updated: 2026-02-17 after Platform Refinement milestone completed*

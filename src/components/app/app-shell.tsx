@@ -16,7 +16,7 @@ interface AppShellProps {
  * Client-side app shell wrapper.
  *
  * Layout behavior:
- * - Desktop open: Sidebar visible, main content pushed right by 324px (300 + 12 + 12)
+ * - Desktop open: Sidebar visible (220px flush), main content pushed right by 220px
  * - Desktop collapsed: Sidebar off-screen, main content full width, toggle visible
  * - Mobile: Sidebar overlays content (no margin push), toggle always visible
  *
@@ -38,7 +38,7 @@ export function AppShell({ children }: AppShellProps) {
           className={cn(
             "flex-1 overflow-auto",
             "transition-[margin-left] duration-300 ease-[var(--ease-out-cubic)]",
-            isOpen ? "md:ml-[284px]" : "md:ml-0",
+            isOpen ? "md:ml-[220px]" : "md:ml-0",
             "ml-0",
           )}
         >

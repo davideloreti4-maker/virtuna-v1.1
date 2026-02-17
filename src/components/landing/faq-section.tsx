@@ -12,37 +12,32 @@ const faqItems = [
   {
     question: "How does Virtuna predict if my content will go viral?",
     answer:
-      "Virtuna uses AI-powered 'societies' — thousands of simulated personas that represent real TikTok audiences. We show your content concept to these personas and measure their predicted engagement, giving you a viral probability score before you even film.",
+      "Virtuna analyzes 50+ content signals — hook strength, trend alignment, engagement patterns, audience fit — using AI models trained on real TikTok performance data. You describe your content concept and get a virality score before you film.",
   },
   {
-    question: "What's included in the free trial?",
+    question: "How accurate are the predictions?",
     answer:
-      "You get 7 days of full Pro access — unlimited viral predictions, trend intelligence, audience insights, and referral rewards. No feature limits during the trial. A payment method is required to start, and you can cancel anytime before the trial ends.",
+      "Our models achieve 83% accuracy in predicting content engagement outcomes, validated against real TikTok performance data. That means 4 out of 5 predictions correctly identify whether content will outperform or underperform — significantly better than intuition alone.",
   },
   {
-    question: "What's the difference between Starter and Pro?",
+    question: "What kind of content can I test?",
     answer:
-      "Starter gives you essential viral prediction and basic trend data. Pro unlocks unlimited predictions, advanced audience insights, referral rewards, and priority support. Most serious creators choose Pro for the full suite of monetization tools.",
+      "Any TikTok content concept — video ideas, hooks, captions, trend angles, format experiments. Describe what you're planning to post and Virtuna scores it across multiple engagement dimensions. Test variations before committing to production.",
   },
   {
-    question: "How accurate are the viral predictions?",
+    question: "Do I need a lot of followers for this to work?",
     answer:
-      "Our AI societies achieve 86% accuracy in predicting content engagement patterns, validated through extensive testing against real TikTok performance data. That's significantly better than gut feeling or basic analytics.",
+      "No. Predictions are based on content quality and audience fit, not your follower count. A creator with 500 followers gets the same analysis as one with 500K. The AI evaluates the content itself, not your account metrics.",
   },
   {
-    question: "Do I need a minimum follower count?",
+    question: "How fast do I get results?",
     answer:
-      "No. Virtuna works for creators of all sizes — from just starting out to millions of followers. The AI predictions are based on content quality and audience fit, not your current follower count.",
+      "Under 30 seconds. Submit your content concept, and Virtuna runs it through signal analysis, engagement prediction, and scoring — then returns a detailed breakdown with your virality score, strengths, and areas to improve.",
   },
   {
-    question: "How does the referral program work?",
+    question: "What content signals does Virtuna analyze?",
     answer:
-      "Share your unique referral link with fellow creators. When someone signs up and subscribes through your link, you earn a $10 bonus per conversion. Track clicks, conversions, and earnings from your referral dashboard.",
-  },
-  {
-    question: "Can I cancel anytime?",
-    answer:
-      "Yes. Cancel your subscription anytime from your account settings. If you cancel during a trial, you won't be charged. If you cancel a paid subscription, you keep access until the end of your billing period.",
+      "Over 50 signals across 12 engagement dimensions: hook strength, trend relevance, emotional resonance, audience alignment, format performance, caption effectiveness, timing optimization, and more. Each signal is weighted based on current TikTok algorithm patterns.",
   },
 ];
 
@@ -52,9 +47,8 @@ export function FAQSection(): React.JSX.Element {
       <div className="mx-auto max-w-3xl px-6">
         <FadeIn>
           <div className="mb-12 text-center">
-            <span className="text-sm text-foreground-muted">FAQ</span>
-            <h2 className="mt-4 text-[32px] font-normal leading-[36px] text-white sm:text-[40px] sm:leading-[44px]">
-              Common questions
+            <h2 className="text-[32px] font-normal leading-[36px] text-white sm:text-[40px] sm:leading-[44px]">
+              Questions creators ask
             </h2>
           </div>
         </FadeIn>

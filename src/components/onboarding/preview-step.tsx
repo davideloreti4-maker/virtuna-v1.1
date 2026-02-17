@@ -25,7 +25,7 @@ export function PreviewStep() {
         </Text>
       </div>
 
-      <div className="relative mx-auto h-[280px] w-full overflow-hidden rounded-xl border border-white/[0.06]">
+      <div className="relative mx-auto h-[240px] w-full overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02]">
         <HiveDemoCanvas />
       </div>
 

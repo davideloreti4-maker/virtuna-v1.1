@@ -35,14 +35,14 @@ export function SettingsPage({ defaultTab = "profile" }: SettingsPageProps) {
   if (!_isHydrated) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-700 border-t-white" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/[0.06] border-t-foreground" />
       </div>
     );
   }
 
   return (
     <div className="mx-auto max-w-4xl p-6">
-      <h1 className="mb-8 text-2xl font-semibold text-white">Settings</h1>
+      <h1 className="mb-8 text-2xl font-semibold text-foreground">Settings</h1>
 
       <Tabs.Root
         defaultValue={defaultTab}
@@ -56,8 +56,8 @@ export function SettingsPage({ defaultTab = "profile" }: SettingsPageProps) {
               value={tab.value}
               className={cn(
                 "flex min-h-[44px] flex-shrink-0 items-center gap-3 whitespace-nowrap rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors",
-                "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-300",
-                "data-[state=active]:bg-zinc-800 data-[state=active]:text-white"
+                "text-foreground-muted hover:bg-white/[0.05] hover:text-foreground-secondary",
+                "data-[state=active]:bg-white/[0.06] data-[state=active]:text-foreground"
               )}
             >
               <tab.icon className="h-4 w-4" />

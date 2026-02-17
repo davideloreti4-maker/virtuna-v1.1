@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
   if (!code) {
     return NextResponse.redirect(
-      new URL("/login?error=auth_callback_failed", origin)
+      new URL(`/login?error=${encodeURIComponent("Sign-in was cancelled or failed. Please try again.")}`, origin)
     );
   }
 
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     return NextResponse.redirect(
-      new URL("/login?error=auth_callback_failed", origin)
+      new URL(`/login?error=${encodeURIComponent("Unable to complete sign-in. Please try again.")}`, origin)
     );
   }
 

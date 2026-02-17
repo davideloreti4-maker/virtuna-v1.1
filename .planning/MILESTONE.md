@@ -1,4 +1,4 @@
-# Milestone: MVP Launch
-Branch: milestone/mvp-launch
-Created: 2026-02-13
-Worktree: /Users/davideloreti/virtuna-mvp-launch
+# Milestone: Platform Refinement
+Branch: milestone/platform-refinement
+Created: 2026-02-16
+Worktree: /Users/davideloreti/virtuna-platform-refinement

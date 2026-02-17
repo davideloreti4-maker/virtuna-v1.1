@@ -9,12 +9,12 @@ import type {
 
 const STORAGE_KEY = "virtuna-settings";
 
-// Mock data for initial state
+// Default profile — name/email come from Supabase on mount, company/role from localStorage
 const DEFAULT_PROFILE: UserProfile = {
-  name: "Davide Loreti",
-  email: "davide.loreti4@gmail.com",
-  company: "Virtuna",
-  role: "Founder",
+  name: "",
+  email: "",
+  company: "",
+  role: "",
 };
 
 const DEFAULT_NOTIFICATIONS: NotificationPrefs = {

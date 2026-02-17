@@ -10,7 +10,7 @@ export default function OnboardingLayout({
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
       <div className="mb-8">
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2.5">
           <svg
             width="32"
             height="32"
@@ -29,7 +29,7 @@ export default function OnboardingLayout({
           <span className="text-lg font-semibold text-foreground">Virtuna</span>
         </Link>
       </div>
-      {children}
+      <div>{children}</div>
     </div>
   );
 }

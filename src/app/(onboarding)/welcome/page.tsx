@@ -82,14 +82,37 @@ export default function WelcomePage() {
   }, [step, _isHydrated, router]);
 
   if (!_isHydrated || step === "completed") {
-    return null;
+    return (
+      <div
+        className="w-full max-w-[400px] rounded-[12px] border border-white/[0.06] px-8 py-10"
+        style={{
+          backgroundImage:
+            "linear-gradient(137deg, rgba(17, 18, 20, 0.75) 4.87%, rgba(12, 13, 15, 0.9) 75.88%)",
+          backdropFilter: "blur(5px)",
+          WebkitBackdropFilter: "blur(5px)",
+          boxShadow: "rgba(255,255,255,0.15) 0px 1px 1px 0px inset",
+        }}
+      >
+        <div className="flex items-center justify-center gap-2 mb-8">
+          {STEPS.map((s) => (
+            <div key={s} className="h-1.5 w-8 rounded-full bg-white/[0.1]" />
+          ))}
+        </div>
+        <div className="space-y-4 animate-pulse">
+          <div className="h-6 w-48 mx-auto rounded bg-white/[0.05]" />
+          <div className="h-4 w-64 mx-auto rounded bg-white/[0.05]" />
+          <div className="h-[42px] w-full rounded-[8px] bg-white/[0.05]" />
+          <div className="h-11 w-full rounded-lg bg-white/[0.05]" />
+        </div>
+      </div>
+    );
   }
 
   const currentStepIndex = STEPS.indexOf(step as (typeof STEPS)[number]);
 
   return (
     <div
-      className="w-full max-w-sm rounded-xl border border-white/[0.06] p-8"
+      className="w-full max-w-[400px] rounded-[12px] border border-white/[0.06] px-8 py-10"
       style={{
         backgroundImage:
           "linear-gradient(137deg, rgba(17, 18, 20, 0.75) 4.87%, rgba(12, 13, 15, 0.9) 75.88%)",
@@ -104,16 +127,18 @@ export default function WelcomePage() {
           <div
             key={s}
             className={cn(
-              "h-2 w-2 rounded-full transition-colors",
+              "h-1.5 w-8 rounded-full transition-colors",
               i <= currentStepIndex ? "bg-accent" : "bg-white/[0.1]"
             )}
           />
         ))}
       </div>
 
-      {step === "connect" && <ConnectStep />}
-      {step === "goal" && <GoalStep />}
-      {step === "preview" && <PreviewStep />}
+      <div className="min-h-[320px]">
+        {step === "connect" && <ConnectStep />}
+        {step === "goal" && <GoalStep />}
+        {step === "preview" && <PreviewStep />}
+      </div>
     </div>
   );
 }

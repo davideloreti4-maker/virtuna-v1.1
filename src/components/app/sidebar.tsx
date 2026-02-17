@@ -1,58 +1,123 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
-  House,
   TrendUp,
   Briefcase,
   CreditCard,
-  GearSix,
   SignOut as SignOutIcon,
   SidebarSimple,
   Plus,
+  ClockCounterClockwise,
+  GearSix,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Icon } from "@/components/ui/icon";
-import { Text } from "@/components/ui/typography";
 import { TrialCountdown } from "@/components/trial-countdown";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useSidebarStore } from "@/stores/sidebar-store";
-import { useTooltipStore } from "@/stores/tooltip-store";
 import { useSubscription } from "@/hooks/use-subscription";
 
-import { SidebarNavItem } from "./sidebar-nav-item";
-import { TiktokAccountSelector } from "./tiktok-account-selector";
-
 /**
- * Main sidebar component for the app dashboard.
+ * Main sidebar component — Raycast-style layout.
  *
- * Floating glassmorphic panel inset 12px from viewport edges.
- * Layout: Logo → TikTok Account → Nav → Divider → Create Test / History → Spacer → Bottom items
+ * Top: Logo + toggle, TikTok handle input, "Create a new test" button
+ * Middle: Test History, Trending, Referrals navigation
+ * Bottom: Credits/trial, Settings, Pricing, Log Out (icons on right)
+ *
+ * Flush to left edge, solid dark, no floating/glass.
  */
 export function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const { isOpen, close } = useSidebarStore();
-  const { tier, isTrial } = useSubscription();
-  const tooltipStore = useTooltipStore();
+  useSubscription();
 
-  // Hydrate tooltip store
-  useEffect(() => {
-    if (!tooltipStore._isHydrated) {
-      tooltipStore._hydrate();
+  // TikTok handle state
+  const [tiktokHandle, setTiktokHandle] = useState<string | null>(null);
+  const [inputValue, setInputValue] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+
+  // Fetch saved TikTok handle from creator_profiles
+  const fetchHandle = useCallback(async () => {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: profile } = await supabase
+      .from("creator_profiles")
+      .select("tiktok_handle")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (profile?.tiktok_handle) {
+      setTiktokHandle(profile.tiktok_handle);
     }
-  }, [tooltipStore]);
+  }, []);
+
+  useEffect(() => {
+    fetchHandle();
+  }, [fetchHandle]);
+
+  // Save handler — upsert to creator_profiles
+  const handleSaveHandle = async () => {
+    const trimmed = inputValue.trim().replace(/^@/, "");
+    if (!trimmed) return;
+
+    setSaveError(false);
+    setIsSaving(true);
+
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from("creator_profiles")
+        .upsert(
+          { user_id: user.id, tiktok_handle: trimmed },
+          { onConflict: "user_id" }
+        );
+
+      if (error) {
+        console.error("Failed to save TikTok handle:", error);
+        setSaveError(true);
+        return;
+      }
+
+      setTiktokHandle(trimmed);
+      setIsEditing(false);
+      setInputValue("");
+    } catch (err) {
+      console.error("Failed to save TikTok handle:", err);
+      setSaveError(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleSignOut = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push("/");
   };
+
+  // Determine if we show the input or the saved handle
+  const showInput = !tiktokHandle || isEditing;
+  const isSaveDisabled =
+    !inputValue.trim() ||
+    isSaving ||
+    inputValue.trim().replace(/^@/, "") === tiktokHandle;
 
   return (
     <>
@@ -67,47 +132,32 @@ export function Sidebar() {
 
       <aside
         className={cn(
-          "fixed top-3 left-3 bottom-3 z-[var(--z-sidebar)] w-[260px]",
-          "flex flex-col overflow-hidden rounded-xl",
-          "border border-white/[0.06]",
+          "fixed top-0 left-0 bottom-0 z-[var(--z-sidebar)] w-[220px]",
+          "flex flex-col overflow-hidden",
+          "bg-background border-r border-white/[0.06]",
           "transition-transform duration-300 ease-[var(--ease-out-cubic)]",
-          isOpen ? "translate-x-0" : "-translate-x-[calc(100%+12px)]",
+          isOpen ? "translate-x-0" : "-translate-x-full"
         )}
-        style={{
-          backgroundImage:
-            "linear-gradient(137deg, rgba(17, 18, 20, 0.75) 4.87%, rgba(12, 13, 15, 0.9) 75.88%)",
-          backdropFilter: "blur(5px)",
-          WebkitBackdropFilter: "blur(5px)",
-          boxShadow: "rgba(255,255,255,0.15) 0px 1px 1px 0px inset",
-        }}
       >
-        {/* 1. Header: Logo + Collapse */}
-        <div className="flex items-center justify-between px-4 pt-4 pb-1">
-          <div className="flex items-center gap-2">
-            <Link href="/" className="flex items-center">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 32 32"
-                fill="none"
-                className="text-white"
-                aria-hidden="true"
-              >
-                <path
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                  d="M16 6H13L8 27H11L16 6ZM16 6L21 27H24L19 6H16Z"
-                  fill="currentColor"
-                />
-              </svg>
-            </Link>
-            <Badge
-              variant={tier === "pro" ? "accent" : tier === "starter" ? "success" : "default"}
-              size="sm"
+        {/* Header: Logo + Collapse */}
+        <div className="flex items-center justify-between px-4 pt-4 pb-2">
+          <Link href="/" className="flex items-center">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 32 32"
+              fill="none"
+              className="text-white"
+              aria-hidden="true"
             >
-              {isTrial ? "Pro Trial" : tier === "free" ? "Free" : tier === "starter" ? "Starter" : "Pro"}
-            </Badge>
-          </div>
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M16 6H13L8 27H11L16 6ZM16 6L21 27H24L19 6H16Z"
+                fill="currentColor"
+              />
+            </svg>
+          </Link>
           <Button
             variant="ghost"
             size="sm"
@@ -119,88 +169,165 @@ export function Sidebar() {
           </Button>
         </div>
 
-        {/* 2. TikTok Account Selector */}
-        <div className="px-3 py-1">
-          <span className="mb-1.5 block px-1 text-[11px] font-medium text-foreground-muted uppercase tracking-wider">
-            TikTok Account
-          </span>
-          <TiktokAccountSelector />
+        {/* TikTok Handle Section */}
+        <div className="px-4 pt-2 pb-1">
+          <span className="text-xs text-foreground-muted">TikTok Account</span>
+        </div>
+        <div className="px-3 py-2">
+          {showInput ? (
+            <>
+              <input
+                type="text"
+                value={inputValue}
+                onChange={(e) => {
+                  setInputValue(e.target.value);
+                  setSaveError(false);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !isSaveDisabled) handleSaveHandle();
+                  if (e.key === "Escape" && tiktokHandle) {
+                    setIsEditing(false);
+                    setInputValue("");
+                  }
+                }}
+                placeholder="@handle"
+                disabled={isSaving}
+                className={cn(
+                  "w-full bg-white/[0.05] border rounded-lg h-[42px] px-3 text-sm text-foreground placeholder:text-foreground-muted focus:border-accent focus:outline-none transition-colors",
+                  saveError
+                    ? "border-error"
+                    : "border-white/[0.05]"
+                )}
+              />
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleSaveHandle}
+                disabled={isSaveDisabled}
+                className="w-full mt-2"
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setIsEditing(true);
+                setInputValue(tiktokHandle || "");
+              }}
+              className="w-full text-left text-sm text-foreground px-3 py-2 rounded-lg transition-colors hover:text-foreground-secondary cursor-pointer"
+            >
+              @{tiktokHandle}
+            </button>
+          )}
         </div>
 
         {/* Separator */}
-        <div className="mx-4 my-2 border-t border-border-glass" />
+        <div className="mx-4 my-1 border-t border-white/[0.06]" />
 
-        {/* 3. Main navigation: Dashboard, Trending, Referrals */}
-        <nav className="flex flex-col gap-0.5 px-2">
-          <SidebarNavItem
-            icon={House}
-            label="Dashboard"
-            isActive={pathname === "/dashboard"}
-            onClick={() => router.push("/dashboard")}
-          />
-          <SidebarNavItem
-            icon={TrendUp}
-            label="Trending"
-            isActive={pathname === "/trending"}
-            onClick={() => router.push("/trending")}
-          />
-          <SidebarNavItem
-            icon={Briefcase}
-            label="Referrals"
-            isActive={pathname.startsWith("/referrals")}
-            onClick={() => router.push("/referrals")}
-          />
-        </nav>
-
-        {/* 4. Divider */}
-        <div className="mx-4 my-2 border-t border-border-glass" />
-
-        {/* 5. Create a new test — text left, + icon right */}
+        {/* Create a new test — societies.io style: text left, + icon right */}
         <button
           type="button"
-          onClick={() => router.push("/test/new")}
-          className="mx-2 flex items-center justify-between rounded-lg px-3 py-2 text-sm text-foreground-secondary transition-colors hover:bg-white/[0.04] hover:text-foreground"
+          onClick={() => router.push("/dashboard")}
+          className="mx-4 my-1 flex items-center justify-between py-2 text-sm text-foreground-secondary transition-colors hover:text-foreground"
         >
           <span>Create a new test</span>
-          <Icon icon={Plus} size={16} className="text-foreground-muted" />
+          <Plus size={16} className="shrink-0" />
         </button>
 
-        {/* 6. Test History — scrollable list */}
-        <div className="flex-1 overflow-y-auto px-2 py-1">
-          {/* TODO: map over past tests here */}
-        </div>
+        {/* Separator */}
+        <div className="mx-4 my-1 border-t border-white/[0.06]" />
 
-        {/* 8. Trial countdown */}
+        {/* Main navigation — simple text rows, icon left */}
+        <nav className="flex flex-col px-4 py-1">
+          <button
+            type="button"
+            onClick={() => router.push("/dashboard")}
+            className={cn(
+              "flex items-center gap-3 py-2 text-sm transition-colors hover:text-foreground",
+              pathname === "/dashboard"
+                ? "text-foreground"
+                : "text-foreground-secondary"
+            )}
+          >
+            <ClockCounterClockwise size={16} className="shrink-0" />
+            <span>Test History</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/trending")}
+            className={cn(
+              "flex items-center gap-3 py-2 text-sm transition-colors hover:text-foreground",
+              pathname === "/trending"
+                ? "text-foreground"
+                : "text-foreground-secondary"
+            )}
+          >
+            <TrendUp size={16} className="shrink-0" />
+            <span>Trending</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/referrals")}
+            className={cn(
+              "flex items-center gap-3 py-2 text-sm transition-colors hover:text-foreground",
+              pathname.startsWith("/referrals")
+                ? "text-foreground"
+                : "text-foreground-secondary"
+            )}
+          >
+            <Briefcase size={16} className="shrink-0" />
+            <span>Referrals</span>
+          </button>
+        </nav>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Trial countdown */}
         <TrialCountdown />
 
-        {/* 9. Divider */}
-        <div className="mx-4 border-t border-border-glass" />
+        {/* Separator */}
+        <div className="mx-4 my-1 border-t border-white/[0.06]" />
 
-        {/* 10. Bottom nav: Settings, Pricing, Log Out */}
-        <nav className="flex flex-col gap-0.5 p-2">
-          <SidebarNavItem
-            icon={GearSix}
-            label="Settings"
-            isActive={pathname === "/settings"}
+        {/* Bottom items — societies.io style: text left, icon right */}
+        <div className="flex flex-col px-4 pb-4">
+          <button
+            type="button"
             onClick={() => router.push("/settings")}
-          />
-          <SidebarNavItem
-            icon={CreditCard}
-            label="Pricing"
-            isActive={pathname === "/pricing"}
+            className={cn(
+              "flex items-center justify-between py-2 text-sm transition-colors hover:text-foreground",
+              pathname.startsWith("/settings")
+                ? "text-foreground"
+                : "text-foreground-secondary"
+            )}
+          >
+            <span>Settings</span>
+            <GearSix size={16} className="shrink-0" />
+          </button>
+          <button
+            type="button"
             onClick={() => router.push("/pricing")}
-          />
+            className={cn(
+              "flex items-center justify-between py-2 text-sm transition-colors hover:text-foreground",
+              pathname === "/pricing"
+                ? "text-foreground"
+                : "text-foreground-secondary"
+            )}
+          >
+            <span>Pricing</span>
+            <CreditCard size={16} className="shrink-0" />
+          </button>
           <button
             type="button"
             onClick={handleSignOut}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground-secondary transition-colors hover:bg-white/[0.04] hover:text-foreground"
+            className="flex items-center justify-between py-2 text-sm text-foreground-secondary transition-colors hover:text-foreground"
           >
-            <Icon icon={SignOutIcon} size={20} />
-            <Text as="span" size="sm" className="text-inherit">
-              Log Out
-            </Text>
+            <span>Log Out</span>
+            <SignOutIcon size={16} className="shrink-0" />
           </button>
-        </nav>
+        </div>
       </aside>
     </>
   );

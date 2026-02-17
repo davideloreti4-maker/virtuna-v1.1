@@ -1,3 +1,4 @@
+export { CTASection } from "./cta-section";
 export { FAQSection } from "./faq-section";
 export { FeatureCard } from "./feature-card";
 export type { FeatureCardProps } from "./feature-card";
