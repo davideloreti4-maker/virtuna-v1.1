@@ -1,5 +1,33 @@
 # Milestones — Virtuna
 
+## Prediction Engine v2 (Shipped: 2026-02-17)
+
+**Delivered:** Complete prediction engine overhaul — TikTok-aligned dual-model prompts, 10-stage wave-parallel pipeline with FeatureVector backbone, full video analysis via Gemini, ML calibration infrastructure, and 3-mode input UI (text, TikTok URL, video upload).
+
+**Phases completed:** 1-15 (32 plans total)
+
+**Key accomplishments:**
+
+- Mined 7,321 TikTok videos for algorithm-aligned weighted engagement scoring with 5 virality tiers and creator size normalization
+- Rewrote dual-model prompts: TikTok-aligned 5-factor Gemini + 5-step CoT DeepSeek with behavioral predictions and V3.2-reasoning
+- Built 10-stage wave-parallel pipeline with FeatureVector backbone, Creator Context, and new aggregation formula (behavioral 45% + gemini 25% + rules 20% + trends 10%)
+- Implemented ML calibration infrastructure: ECE measurement, Platt scaling, multinomial logistic regression, monthly audit cron
+- Wired full video analysis pipeline: Supabase Storage upload, server-side download, Gemini video analysis
+- Added production hardening: rate limiting by tier, TTL caching, exponential backoff circuit breaker, hybrid semantic+regex rules
+
+**Stats:**
+
+- 365 files changed (+19,371 / -28,664 lines)
+- 47 requirements, all shipped (2 adjusted)
+- 15 phases, 32 plans, 61 tasks
+- 2 days (2026-02-16 -> 2026-02-17)
+
+**Git range:** `feat(01-01)` -> `docs(phase-15)`
+
+**What's next:** Landing Page milestone or new milestone
+
+---
+
 ## v2.1 — Dashboard Rebuild (Shipped: 2026-02-08)
 
 **Delivered:** Full dashboard rebuild with Raycast design system migration and Canvas-based hive visualization with interactive exploration (hover, click, zoom/pan, pinch-to-zoom).

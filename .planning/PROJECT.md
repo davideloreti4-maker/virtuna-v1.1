@@ -2,7 +2,7 @@
 
 ## What This Is
 
-An AI-powered social media intelligence platform that predicts content performance before posting. Built as a Next.js application with a Raycast-quality design system (36 components, 100+ tokens), dual-model AI prediction engine (Gemini Flash-Lite + DeepSeek R1), real-time trending data pipeline, and full API backend. All design tokens are 1:1 aligned with Raycast.com (except coral #FF7F50 branding).
+An AI-powered social media intelligence platform that predicts content performance before posting. Built as a Next.js application with a Raycast-quality design system (36 components, 100+ tokens), dual-model AI prediction engine (Gemini Flash-Lite + DeepSeek V3.2-reasoning) with 10-stage wave-parallel pipeline, full video analysis, ML calibration infrastructure, real-time trending data pipeline, and full API backend. All design tokens are 1:1 aligned with Raycast.com (except coral #FF7F50 branding).
 
 ## Core Value
 
@@ -50,24 +50,21 @@ AI-powered content intelligence that tells creators whether their content will r
 - ✓ Outcome tracking (predicted vs actual comparison, delta calculation) -- v1.0
 - ✓ ML scaffolding (retrain cron stub, adaptive weight fields, env guardrails) -- v1.0
 
+- ✓ TikTok-aligned 5-factor Gemini prompt with calibration embedding and full video analysis via Files API -- Prediction Engine v2
+- ✓ DeepSeek V3.2-reasoning with 5-step CoT, behavioral predictions (completion/share/comment/save pct) -- Prediction Engine v2
+- ✓ 10-stage wave-parallel pipeline with FeatureVector backbone, Creator Context, dynamic weight selection -- Prediction Engine v2
+- ✓ New aggregation formula (behavioral 45% + gemini 25% + rules 20% + trends 10%) with signal-adaptive weights -- Prediction Engine v2
+- ✓ ML calibration infrastructure: ECE measurement, Platt scaling, multinomial logistic regression, monthly audit cron -- Prediction Engine v2
+- ✓ Hybrid semantic+regex rules with per-rule accuracy tracking via rule_contributions JSONB -- Prediction Engine v2
+- ✓ Video upload to Supabase Storage + TikTok URL input + 3-mode content form -- Prediction Engine v2
+- ✓ Results UI with 5-factor breakdown, behavioral predictions, before/after suggestions, warning banners -- Prediction Engine v2
+- ✓ Rate limiting by tier, TTL caching, exponential backoff circuit breaker, partial failure recovery -- Prediction Engine v2
+- ✓ Jaro-Winkler fuzzy sound matching, semantic hashtag scoring with saturation detection -- Prediction Engine v2
+- ✓ 7,321 TikTok videos mined for algorithm-aligned virality patterns and calibration baselines -- Prediction Engine v2
+
 ### Active
 
-**Current Milestone: Prediction Engine v2**
-
-**Goal:** Transform the prediction engine from ~40-55% accuracy to ~75-85% through TikTok-aligned prompts, full video analysis, 10-stage pipeline with FeatureVector backbone, behavioral predictions, ML training on 5000 scraped videos, and calibration infrastructure.
-
-**Target features:**
-- TikTok-aligned Gemini factors (Scroll-Stop Power, Completion Pull, Rewatch Potential, Share Trigger, Emotional Charge)
-- Full video analysis via Gemini (30s TikTok ~$0.008)
-- DeepSeek V3.2-reasoning with 5-step CoT and behavioral predictions
-- 10-stage pipeline with FeatureVector backbone and Creator Context
-- New aggregation formula (behavioral 45% + gemini 25% + rules 20% + trends 10%)
-- Hybrid semantic + regex rules with per-rule accuracy tracking
-- ML model trained on scraped video data
-- Platt scaling calibration
-- Video upload + TikTok URL input modes
-- Results UI with factor breakdown, behavioral predictions, before/after suggestions, persona quotes
-- Rate limiting, caching, partial failure recovery
+(No active milestone — use `/gsd:new-milestone` to start next)
 
 ### Out of Scope
 
@@ -80,14 +77,14 @@ AI-powered content intelligence that tells creators whether their content will r
 
 ## Context
 
-**Current state:** v1.0 Backend Foundation shipped (2026-02-13). All frontend milestones complete through v2.3.5. Backend fully functional.
-- ~31,870 LOC TypeScript (backend foundation worktree)
-- Tech stack: Next.js 15 (App Router), TypeScript strict, Tailwind CSS v4, Supabase (Auth + DB + RLS), TanStack Query v5, Zustand, Recharts, d3-hierarchy, d3-quadtree
-- AI: Gemini 2.5 Flash-Lite (`@google/genai`), DeepSeek R1 (OpenAI-compatible), Zod schema validation
-- Data: Apify scraper cron, webhook handler, trend calculator, rule validator, 4 cron jobs in vercel.json
+**Current state:** Prediction Engine v2 shipped (2026-02-17). All frontend milestones complete through v2.3.5. Full AI prediction engine operational.
+- Tech stack: Next.js 15 (App Router), TypeScript strict, Tailwind CSS v4, Supabase (Auth + DB + RLS + Storage), TanStack Query v5, Zustand, Recharts, d3-hierarchy, d3-quadtree
+- AI: Gemini 2.5 Flash-Lite (`@google/genai`) with video analysis, DeepSeek V3.2-reasoning (OpenAI-compatible) with 5-step CoT, Zod schema validation
+- Pipeline: 10-stage wave-parallel (Gemini + Audio + Creator → DeepSeek + Trends), FeatureVector backbone, dynamic weight selection
+- ML: Multinomial logistic regression, Platt scaling, ECE calibration, monthly audit cron
+- Data: Apify scraper cron, webhook handler, trend calculator, rule validator, calibration audit, ML retrain cron
 - 36 design system components, 100+ design tokens (all Raycast-accurate)
-- All pages wired to real API endpoints via TanStack Query (trending, deals, analysis, outcomes)
-- Simulation theater with SSE events interleaved across pipeline stages, 4.5s minimum duration
+- 3-mode input (text, TikTok URL, video upload), results with 5-factor breakdown and behavioral predictions
 - Deployed to Vercel
 
 **Known issues:**
@@ -140,6 +137,14 @@ AI-powered content intelligence that tells creators whether their content will r
 | DB-to-UI mapper pattern in src/lib/mappers/ | Good -- clean shape conversion |
 | Cursor-based pagination (base64url encoded) | Good -- scalable, no offset drift |
 | Circuit breaker for DeepSeek (3 failures → Gemini fallback) | Good -- graceful degradation |
+| Algorithm-aligned WES: (likes×1 + comments×2 + shares×3) / views | Good -- mirrors TikTok 2025 point system |
+| DeepSeek V3.2-reasoning over R1 | Good -- 70% cheaper, 2x faster |
+| Behavioral predictions replace abstract scores | Good -- actionable metrics (completion/share/comment pct) |
+| New aggregation formula (behavioral 45% + gemini 25% + rules 20% + trends 10%) | Good -- Gemini contributes to score |
+| Video errors fail hard (no fallback to text mode) | Good -- honest results |
+| Pure TypeScript ML (no external libraries) | Good -- small bundle, simple deployment |
+| Simulated upload progress (no native Supabase progress) | Acceptable -- real progress unavailable in Supabase JS v2 |
+| Persona reactions removed (not re-implemented) | Good -- tokens redirected to accuracy |
 
 ## Constraints
 
@@ -157,13 +162,10 @@ AI-powered content intelligence that tells creators whether their content will r
 
 ## Current State
 
-**Shipped:** v1.0 Backend Foundation (2026-02-13), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
-
-**In progress:** Prediction Engine v2 (worktree at ~/virtuna-prediction-engine-v2/)
+**Shipped:** Prediction Engine v2 (2026-02-17), v1.0 Backend Foundation (2026-02-13), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
 **Parallel milestones:**
 - Landing Page (worktree at ~/virtuna-landing-page/) — landing, onboarding, pricing/payments, UI polish
-- Prediction Engine v2 (worktree at ~/virtuna-prediction-engine-v2/) — engine overhaul, video analysis, ML training
 
 ---
-*Last updated: 2026-02-16 after Prediction Engine v2 milestone started*
+*Last updated: 2026-02-17 after Prediction Engine v2 milestone completed*
