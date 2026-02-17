@@ -1,7 +1,7 @@
 "use client";
 
 import * as Switch from "@radix-ui/react-switch";
-import { useSettingsStore } from "@/stores/settings-store";
+import { useProfile, useUpdateNotifications } from "@/hooks/queries/use-profile";
 import type { NotificationPrefs } from "@/types/settings";
 
 interface NotificationItemProps {
@@ -73,12 +73,35 @@ const NOTIFICATION_OPTIONS: {
 ];
 
 export function NotificationsSection() {
-  const notifications = useSettingsStore((s) => s.notifications);
-  const updateNotifications = useSettingsStore((s) => s.updateNotifications);
+  const { data: profile, isLoading } = useProfile();
+  const updateNotifications = useUpdateNotifications();
+
+  const notifications = profile?.notifications ?? {
+    emailUpdates: true,
+    testResults: true,
+    weeklyDigest: false,
+    marketingEmails: false,
+  };
 
   const handleToggle = (id: keyof NotificationPrefs, checked: boolean) => {
-    updateNotifications({ [id]: checked });
+    updateNotifications.mutate({ [id]: checked });
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-8 animate-pulse">
+        <div>
+          <div className="h-6 w-32 rounded bg-zinc-800" />
+          <div className="mt-2 h-4 w-64 rounded bg-zinc-800" />
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-20 rounded-lg bg-zinc-800" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

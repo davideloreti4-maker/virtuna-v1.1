@@ -20,6 +20,7 @@ export const queryKeys = {
   analysis: {
     all: ["analysis"] as const,
     history: () => ["analysis", "history"] as const,
+    detail: (id: string) => ["analysis", "detail", id] as const,
   },
   outcomes: {
     all: ["outcomes"] as const,
