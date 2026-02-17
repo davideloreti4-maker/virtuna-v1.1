@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { verifyCronAuth } from "@/lib/cron-auth";
 import { mapWhopProductToTier } from "@/lib/whop/config";
 import { createServiceClient } from "@/lib/supabase/service";
 
@@ -17,18 +18,10 @@ interface WhopMembership {
  * Called by Vercel Cron or external scheduler.
  */
 export async function GET(request: Request) {
+  const authError = verifyCronAuth(request);
+  if (authError) return authError;
+
   try {
-    // Verify cron secret authorization
-    const authHeader = request.headers.get("authorization");
-    const expectedAuth = `Bearer ${process.env.CRON_SECRET}`;
-
-    if (authHeader !== expectedAuth) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
     const supabase = createServiceClient();
 
     // Get all subscriptions linked to Whop
