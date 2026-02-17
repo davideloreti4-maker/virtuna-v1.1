@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered competitor intelligence that shows TikTok creators exactly what their competitors do, why it works, and how to outperform them.
-**Current focus:** Phase 4 complete -- Detail Page & Analytics done
+**Current focus:** Phase 5 complete -- Benchmarking & Comparison done
 
 ## Current Position
 
-Phase: 4 of 7 (Detail Page & Analytics) -- COMPLETE
-Plan: 2 of 2 in current phase (04-02 complete)
-Status: Phase 4 complete, ready for Phase 5
-Last activity: 2026-02-16 -- Completed 04-02 (Content Analysis Sections)
+Phase: 5 of 7 (Benchmarking & Comparison) -- COMPLETE
+Plan: 2 of 2 in current phase (05-02 complete)
+Status: Phase 5 complete, ready for Phase 6
+Last activity: 2026-02-17 -- Completed 05-02 (Sortable Leaderboard & Compare Link)
 
-Progress: [██████░░░░] 57%
+Progress: [███████░░░] 71%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: 4 min
-- Total execution time: 0.47 hours
+- Total plans completed: 10
+- Average duration: 3 min
+- Total execution time: 0.55 hours
 
 **By Phase:**
 
@@ -31,9 +31,10 @@ Progress: [██████░░░░] 57%
 | 02-competitor-management | 2 | 6 min | 3 min |
 | 03-competitor-dashboard | 2 | 6 min | 3 min |
 | 04-detail-page-analytics | 2 | 6 min | 3 min |
+| 05-benchmarking-comparison | 2 | 5 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-01 (3 min), 03-02 (3 min), 04-01 (4 min), 04-02 (2 min)
+- Last 5 plans: 04-01 (4 min), 04-02 (2 min), 05-01 (2 min), 05-02 (3 min)
 - Trend: stable (fast)
 
 *Updated after each plan completion*
@@ -78,6 +79,14 @@ Recent decisions affecting current work:
 - VideoCard as server component (no "use client") since it has no interactivity
 - Heatmap uses pure CSS grid with oklch opacity scaling (not Recharts) for lighter client bundle
 - Hashtag list uses proportional bar indicators for visual frequency comparison
+- ComparisonData type co-located in page.tsx and imported by client (server/client contract)
+- Self-benchmarking auto-tracks user handle via addCompetitor if not yet in competitor_profiles
+- Bar chart excludes percentage metrics to avoid scale mixing -- only absolute counts
+- Growth chart merges time series by date with Map, connectNulls for gaps
+- URL searchParams pattern for comparison: selector change -> router.push -> server re-render
+- Pre-compute derived metrics in separate useMemo from sort (sort-independent enrichment avoids recomputation)
+- SortableHeader inline component pattern with closure over sort state
+- Compare link conditionally rendered only with 2+ competitors
 
 ### Pending Todos
 
@@ -91,11 +100,11 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-16
-Stopped at: Completed 04-02-PLAN.md (Content Analysis Sections)
+Last session: 2026-02-17
+Stopped at: Completed 05-02-PLAN.md (Sortable Leaderboard & Compare Link)
 Resume file: None
-Next: Phase 5 planning (Comparison View)
+Next: Phase 6 planning
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- 04-02 execution complete (video cards, content analysis, heatmap, duration chart, 2 tasks, 6 files)*
+*Last updated: 2026-02-17 -- 05-02 execution complete (sortable table, cadence column, compare link, 3 tasks, 4 files)*
