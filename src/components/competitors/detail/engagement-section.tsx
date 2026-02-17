@@ -58,8 +58,9 @@ export function EngagementSection({
       {/* Per-video engagement table */}
       {tableSlice.length > 0 && (
         <div className="border border-white/[0.06] rounded-xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="relative">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[640px]">
               <thead>
                 <tr className="border-b border-white/[0.06]">
                   <th className="py-3 px-4 text-left font-medium text-foreground-muted text-xs">
@@ -118,6 +119,9 @@ export function EngagementSection({
                 })}
               </tbody>
             </table>
+          </div>
+          {/* Mobile scroll hint */}
+          <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[var(--color-background)] to-transparent pointer-events-none sm:hidden" />
           </div>
         </div>
       )}

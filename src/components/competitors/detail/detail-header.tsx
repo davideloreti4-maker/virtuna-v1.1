@@ -29,7 +29,7 @@ export function DetailHeader({ profile }: DetailHeaderProps) {
       </Link>
 
       {/* Profile info */}
-      <div className="flex items-start gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row items-start gap-4 mb-6">
         <Avatar
           src={profile.avatar_url ?? undefined}
           alt={profile.tiktok_handle}
@@ -54,7 +54,7 @@ export function DetailHeader({ profile }: DetailHeaderProps) {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <div className="border border-white/[0.06] rounded-xl p-4">
           <p className="text-xs text-foreground-muted">Followers</p>
           <p className="text-xl font-semibold text-foreground">
