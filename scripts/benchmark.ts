@@ -5,6 +5,31 @@ import { writeFileSync } from "fs";
 // Load .env.local (Next.js convention — same pattern as other scripts)
 config({ path: resolve(__dirname, "../.env.local") });
 
+/**
+ * Virtuna v2 Accuracy Benchmark
+ *
+ * Runs 50 diverse content samples through the full prediction pipeline and
+ * produces benchmark-results.json with score distributions, latency, cost,
+ * and completeness metrics.
+ *
+ * Prerequisites:
+ *   Copy .env.local.example to .env.local and populate:
+ *   - NEXT_PUBLIC_SUPABASE_URL — Supabase project URL
+ *   - SUPABASE_SERVICE_ROLE_KEY — Supabase service role key
+ *   - GEMINI_API_KEY — Google AI Gemini API key
+ *   - DEEPSEEK_API_KEY — DeepSeek API key
+ *
+ * Usage:
+ *   npx tsx scripts/benchmark.ts
+ *
+ * Output:
+ *   scripts/benchmark-results.json (gitignored)
+ *
+ * Note: Missing API keys will cause individual samples to fail with error
+ * messages but the script will continue and produce a results file with
+ * partial data. All 4 keys are required for meaningful benchmark results.
+ */
+
 // ─── Dynamic imports for path-aliased modules ──────────────────────
 // The engine modules use @/ path aliases. We register tsconfig-paths
 // at runtime so relative imports from ../src/lib/engine/* resolve correctly
