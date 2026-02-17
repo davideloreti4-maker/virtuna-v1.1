@@ -362,7 +362,7 @@ export function aggregateScores(
         save_percentile: "N/A",
       },
     feature_vector,
-    reasoning: "", // DeepSeek reasoning text — not exposed in current schema
+    reasoning: deepseek?.reasoning_summary ?? "",
     warnings,
     factors,
     suggestions,
