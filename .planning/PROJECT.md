@@ -56,18 +56,19 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 ### Active
 
-- [ ] Competitor search/discovery by name or niche
-- [ ] Backend intelligence integration (connect prediction engine to frontend)
-- [ ] External brand deals marketplace
-- [ ] Trending page re-launch (when backend ready)
+- [ ] Schedule 6 orphaned cron jobs and fix data pipeline wiring
+- [ ] Rehabilitate ML classifier to >75% accuracy and wire into aggregator
+- [ ] Wire Platt calibration into live predictions
+- [ ] Add Sentry + structured logging observability
+- [ ] Build test coverage for all engine modules (vitest)
+- [ ] Harden edge cases (calibration parsing, LLM double-failure, circuit breaker races)
 
 ### Parallel (other worktrees)
 
-- [ ] AI viral prediction engine (Gemini Flash + DeepSeek R1) — backend-foundation
-- [ ] TikTok data pipeline (Apify scraping, trend classification) — backend-foundation
-- [ ] Real-time trend analysis — backend-foundation
-- [ ] Trending page with real backend data — future
-- [ ] External brand deal listings from partner brands — future
+- [ ] Competitor search/discovery by name or niche — future
+- [ ] Backend intelligence integration (connect prediction engine to frontend) — future
+- [ ] External brand deals marketplace — future
+- [ ] Trending page re-launch (when backend ready) — future
 
 ### Out of Scope
 
@@ -143,11 +144,23 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - Local: ~/virtuna-v1.1
 - Vercel: https://virtuna-v11.vercel.app
 
+## Current Milestone: Backend Reliability
+
+**Goal:** Fix, wire, and harden the prediction engine — the core pipeline works but significant infrastructure is disconnected or non-functional.
+
+**Target outcomes:**
+- All 7 crons scheduled and running (6 orphaned + 1 existing)
+- ML classifier accuracy >75% (currently 31%) and wired into scoring
+- Platt calibration conditional on outcome data availability
+- Sentry error tracking + structured JSON logging
+- >80% test coverage on engine modules
+- Graceful degradation on all failure modes
+
 ## Current State
 
 **Shipped:** Competitors Tool (2026-02-17), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
-**Parallel:** Backend Foundation (worktree at ~/virtuna-backend-foundation/) — prediction engine, data pipeline
+**Active:** Backend Reliability (worktree at ~/virtuna-backend-reliability/)
 
 **Future milestones:**
 - Backend intelligence integration (connect prediction engine to frontend)
@@ -156,4 +169,4 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - Competitor search/discovery by name or niche
 
 ---
-*Last updated: 2026-02-17 after Competitors Tool milestone completed*
+*Last updated: 2026-02-17 after Backend Reliability milestone started*

@@ -1,24 +1,14 @@
-# Milestone: Backend Completion
+# Milestone: Backend Reliability
 
-**Branch:** milestone/backend-completion
-**Worktree:** /Users/davideloreti/virtuna-backend-completion
+**Branch:** milestone/backend-reliability
+**Worktree:** /Users/davideloreti/virtuna-backend-reliability
 **Created:** 2026-02-17
 
 ## Objective
-Close all critical backend gaps preventing production readiness: restore real auth (wiped by ac2edc4), replace localStorage-only settings with Supabase-backed APIs, eliminate mock data, persist ML weights, implement missing CRUD operations, and add infrastructure (error boundaries, not-found pages).
+Fix, wire, and harden the prediction engine — schedule 6 orphaned cron jobs, rehabilitate the ML classifier to >75% accuracy, wire Platt calibration into live scoring, add Sentry + structured logging, build test coverage for all engine modules, and close edge-case fragility.
 
-## Phases
-1. Auth Restoration & Middleware Hardening
-2. Profile & Settings Backend
-3. Missing CRUD & Bookmarks
-4. Brand Deals Data Integrity
-5. Prediction Engine Hardening
-6. Team Management Backend
-7. Infrastructure & Error Handling
-8. Cleanup & Polish
-
-## Key Metrics
-- 13 new API routes
-- 4 new Supabase tables
-- 2 mock data files deleted
-- 8 TODOs resolved
+## Tiers
+1. **Broken wiring** — built modules never called (crons not scheduled, ML not in aggregator)
+2. **Missing observability** — zero tests, no Sentry, no structured logging
+3. **Data quality** — ML at 31% accuracy, static training data, calibration idle
+4. **Edge-case fragility** — calibration file parsing, LLM double-failure, circuit breaker races
