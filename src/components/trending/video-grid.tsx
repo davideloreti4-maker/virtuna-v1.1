@@ -16,6 +16,8 @@ export interface VideoGridProps {
   filterTab: FilterTab;
   /** Callback when a video card is clicked */
   onVideoClick?: (video: TrendingVideo) => void;
+  /** Called when the displayed video list changes (for modal navigation) */
+  onVideosChange?: (videos: TrendingVideo[]) => void;
 }
 
 /**
@@ -34,7 +36,7 @@ export interface VideoGridProps {
  * />
  * ```
  */
-export function VideoGrid({ filterTab, onVideoClick }: VideoGridProps) {
+export function VideoGrid({ filterTab, onVideoClick, onVideosChange }: VideoGridProps) {
   const isSaved = filterTab === "saved";
 
   // For category tabs, use TanStack Query infinite scroll with cursor pagination
@@ -89,6 +91,11 @@ export function VideoGrid({ filterTab, onVideoClick }: VideoGridProps) {
   const videos = isSaved ? savedVideos : apiVideos;
   const hasMore = isSaved ? false : !!hasNextPage;
   const isLoadingMore = isSaved ? false : isFetchingNextPage;
+
+  // Report current video list to parent for modal navigation
+  useEffect(() => {
+    onVideosChange?.(videos);
+  }, [videos, onVideosChange]);
 
   // Initial loading state for category tabs
   if (isLoading && !isSaved) {
