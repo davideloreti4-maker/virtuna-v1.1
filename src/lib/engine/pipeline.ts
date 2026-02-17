@@ -94,6 +94,7 @@ const DEFAULT_TREND_ENRICHMENT: TrendEnrichment = {
   trend_score: 0,
   matched_trends: [],
   trend_context: "Trend data unavailable.",
+  hashtag_relevance: 0,
 };
 
 // =====================================================
@@ -234,6 +235,7 @@ export async function runPredictionPipeline(
           matched_trends: [],
           trend_context:
             "Trend analysis running in parallel — results available in pipeline output.",
+          hashtag_relevance: 0,
         },
         creator_context: creatorContextString,
       });

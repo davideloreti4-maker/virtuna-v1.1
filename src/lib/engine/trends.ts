@@ -78,8 +78,10 @@ export async function enrichWithTrends(
     }
   }
 
-  // Extract hashtags from content and check against recent scraped videos
+  // Semantic hashtag scoring with popularity weighting and saturation detection (SIG-03)
   const hashtags = input.content_text.match(/#\w+/g) ?? [];
+  let hashtag_relevance = 0;
+
   if (hashtags.length > 0) {
     // INFRA-02: cached for 15 minutes
     let recentVideos = videosCache.get("recent_videos");
@@ -94,21 +96,59 @@ export async function enrichWithTrends(
     }
 
     if (recentVideos.length > 0) {
-      const hashtagSet = new Set(hashtags.map((h) => h.toLowerCase()));
-      let hashtagOverlap = 0;
-
+      // 1. Build hashtag frequency map from scraped videos
+      const hashtagStats = new Map<string, { count: number; totalViews: number }>();
       for (const video of recentVideos) {
-        const videoHashtags = (video.hashtags ?? []).map((h: string) =>
-          h.toLowerCase()
-        );
-        const overlap = videoHashtags.filter((h: string) => hashtagSet.has(h));
-        if (overlap.length > 0) hashtagOverlap++;
+        const videoHashtags = (video.hashtags ?? []).map((h: string) => h.toLowerCase());
+        for (const tag of videoHashtags) {
+          const existing = hashtagStats.get(tag);
+          if (existing) {
+            existing.count++;
+            existing.totalViews += video.views ?? 0;
+          } else {
+            hashtagStats.set(tag, { count: 1, totalViews: video.views ?? 0 });
+          }
+        }
       }
 
-      // Hashtag overlap contributes to trend score
-      if (hashtagOverlap > 0) {
-        trendScore += Math.min(30, hashtagOverlap * 3);
+      // 2. Saturation detection
+      const SATURATED_BLOCKLIST = new Set([
+        "#fyp", "#foryou", "#foryoupage", "#viral", "#trending", "#xyzbca",
+      ]);
+      const saturationThreshold = recentVideos.length * 0.4;
+
+      const isSaturated = (tag: string): boolean =>
+        SATURATED_BLOCKLIST.has(tag) ||
+        (hashtagStats.get(tag)?.count ?? 0) > saturationThreshold;
+
+      // 3. Popularity-weighted scoring
+      const userHashtags = Array.from(new Set(hashtags.map((h) => h.toLowerCase())));
+      let totalRelevance = 0;
+
+      for (const tag of userHashtags) {
+        const tagData = hashtagStats.get(tag);
+        if (!tagData) continue; // Tag not found in scraped videos
+
+        if (isSaturated(tag)) {
+          // Saturated tags still contribute to trend_score at 10% weight
+          const popularity = Math.log10(Math.max(tagData.totalViews, 1));
+          const frequencyWeight = tagData.count / recentVideos.length;
+          trendScore += Math.round(popularity * frequencyWeight * 0.1 * 3);
+        } else {
+          // Non-saturated: full popularity-weighted relevance
+          const popularity = Math.log10(Math.max(tagData.totalViews, 1));
+          const frequencyWeight = tagData.count / recentVideos.length;
+          const relevance = popularity * frequencyWeight;
+          totalRelevance += relevance;
+        }
       }
+
+      // 4. Normalize to 0-1 (calibrated: 3 highly-relevant hashtags ≈ 1.0)
+      const maxExpectedRelevance = 3;
+      hashtag_relevance = Math.min(1, totalRelevance / maxExpectedRelevance);
+
+      // 5. Hashtag relevance contributes to trend_score (max 30, quality-weighted)
+      trendScore += Math.round(hashtag_relevance * 30);
     }
   }
 
@@ -127,5 +167,6 @@ export async function enrichWithTrends(
     trend_score: normalizedScore,
     matched_trends,
     trend_context: trendContext,
+    hashtag_relevance,
   };
 }

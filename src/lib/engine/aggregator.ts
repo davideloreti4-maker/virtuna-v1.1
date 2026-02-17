@@ -185,7 +185,7 @@ function assembleFeatureVector(pipelineResult: PipelineResult): FeatureVector {
 
     // Caption/Hashtag
     captionScore: 0, // Placeholder — populated in Phase 9
-    hashtagRelevance: 0, // Placeholder — populated in Phase 11 Plan 02 (hashtag relevance scoring)
+    hashtagRelevance: trendEnrichment.hashtag_relevance ?? 0,
     hashtagCount: payload.hashtags.length,
 
     // Content metadata

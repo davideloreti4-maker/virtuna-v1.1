@@ -267,4 +267,5 @@ export interface TrendEnrichment {
     trend_phase: string | null;
   }>;
   trend_context: string; // Summary for DeepSeek prompt
+  hashtag_relevance: number; // 0-1 semantic hashtag relevance (SIG-03)
 }
