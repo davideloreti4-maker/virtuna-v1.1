@@ -79,7 +79,7 @@ interface ExtractedTokens {
   glassmorphism: Array<{ name: string; blur: string }>;
 }
 
-function parseExtractionData(content: string): ExtractedTokens {
+function parseExtractionData(_content: string): ExtractedTokens {
   const tokens: ExtractedTokens = {
     colors: {
       backgrounds: [

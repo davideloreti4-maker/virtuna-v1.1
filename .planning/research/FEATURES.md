@@ -1,211 +1,255 @@
 # Feature Landscape
 
-**Domain:** TikTok Creator Intelligence SaaS (MVP Launch: Landing Page, Onboarding, Payments, Referral Program)
+**Domain:** Content Intelligence / Viral Prediction Platform (Societies.io-inspired)
 **Researched:** 2026-02-13
-**Overall Confidence:** HIGH (multiple verified sources, existing codebase examined)
-
----
+**Competitors analyzed:** Societies.io, VidIQ, TubeBuddy, quso.ai, OpusClip, Sprout Social, Hootsuite, Later.com, StreamLadder, ClipGOAT
 
 ## Table Stakes
 
-Features users expect. Missing = product feels incomplete or untrustworthy.
+Features users expect from a content intelligence tool. Missing any of these = product feels broken or incomplete.
 
-### Landing Page
-
-| Feature | Why Expected | Complexity | Dependencies | Notes |
-|---------|--------------|------------|--------------|-------|
-| Clear value proposition in hero (< 3 seconds) | 83% of traffic is mobile; if value is unclear in 3-5s, visitors leave | Low | None | Benefit-driven headline: "Find your next viral TikTok" not "Social media intelligence platform" |
-| Interactive product demo in hero | 2026 standard: the website IS the demo. Static screenshots are dead. SaaS pages with embedded demos convert 2-3x over "Book a call" CTAs | Med | Existing Canvas hive visualization | Mini hive viz with fake data + animated analysis preview. 10-15 second loop. NOT a full sandbox |
-| Social proof section | Trust signals are non-negotiable for payment-upfront SaaS | Low | None | Creator testimonials, usage stats, TikTok-native language. Even pre-launch: "Join X creators" waitlist count |
-| Pricing section with clear tier comparison | Users need to see Starter vs Pro before entering checkout. Card-upfront trials demand transparency | Low | Whop plan IDs | Two-column comparison. Starter $19/mo, Pro $49/mo. Highlight Pro trial badge |
-| Mobile-optimized layout | ~83% of visits are mobile for creator tools. TikTok creators are mobile-native. Non-negotiable | Med | None | Mobile-first design, not responsive shrinkdown. Touch-friendly CTAs (min 44px), no pop-ups, fast load (< 2s) |
-| Single clear CTA per section | Multiple competing CTAs reduce conversion. Every section drives toward trial signup | Low | None | Primary: "Start Free Pro Trial" (coral button). Secondary: "See pricing" |
-| FAQ section | Reduces support burden, addresses objections (billing, cancellation, data safety) | Low | None | Accordion. 6-8 questions: trial length, what happens after trial, cancellation, data sources |
-| Fast page load (< 2 seconds) | Every additional second costs ~4.42% of conversions | Med | Next.js SSR, image optimization | Server components for static sections, lazy-load interactive demo, optimize fonts/images |
-
-### Onboarding Flow
-
-| Feature | Why Expected | Complexity | Dependencies | Notes |
-|---------|--------------|------------|--------------|-------|
-| Frictionless signup (social login) | Supabase Auth already supports this. Removing friction at entry is table stakes | Low | Existing Supabase Auth | Google + email/password. Consider adding TikTok OAuth if API allows |
-| Welcome screen with goal selection | "What do you want to achieve?" personalizes the path. 86% of users more likely to stay with good onboarding | Low | None | 3-4 goals: "Find viral content ideas", "Analyze my niche", "Track competitors", "Monetize my audience" |
-| Progressive checklist (3-5 steps) | Structured path to activation. Checklists increase completion rates by 48%. Must reach first value in minutes | Med | Dashboard features | Steps: Connect TikTok handle, Run first analysis, Explore hive, Set up notifications, Invite a friend |
-| Skeleton/loading states during setup | Users need visual feedback that things are happening | Low | Existing UI primitives | Already have skeleton components in the design system |
-| Skip/dismiss option on all guidance | Forced tours cause rage-quits. Always let users skip | Low | None | "Skip tour" and "x" on every step. Remember dismissal state |
-
-### Payments (Whop Integration)
-
-| Feature | Why Expected | Complexity | Dependencies | Notes |
-|---------|--------------|------------|--------------|-------|
-| Embedded checkout (not redirect) | Already implemented via WhopCheckoutEmbed. Users expect seamless in-app payment | Low | Existing checkout-modal.tsx, @whop/checkout | ALREADY BUILT. Just needs landing page integration and trial configuration |
-| 7-day Pro trial with card upfront | Opt-out trials convert 25-50% (avg 25%). 7-day trials convert ~40.4% due to urgency | Low | Whop plan configuration | Configure on Whop dashboard: 7-day trial on Pro plan. Card required upfront |
-| Clear trial-to-paid messaging | Users must know exactly when they'll be charged and how to cancel | Low | None | "7-day free trial, then $49/mo. Cancel anytime." visible at checkout and in settings |
-| Billing management in settings | Already have billing-section.tsx. Users need to see plan, status, next billing date, cancel option | Low | Existing billing-section.tsx | ALREADY BUILT. May need polish for trial countdown display |
-| Webhook-driven subscription sync | Already implemented. Whop webhooks update Supabase on payment events | Low | Existing webhook handler | ALREADY BUILT. Handles went_valid, went_invalid, payment_failed |
-| Feature gating by tier | Already have FeatureGate component and hasAccessToTier utility | Low | Existing feature-gate.tsx | ALREADY BUILT. Wire into new onboarding features |
-| Upgrade prompts at gate boundaries | When free users hit a Pro feature, show contextual upgrade prompt | Med | FeatureGate, CheckoutModal | Soft-gate: show blurred preview + "Upgrade to unlock" overlay |
-
-### Referral Program
-
-| Feature | Why Expected | Complexity | Dependencies | Notes |
-|---------|--------------|------------|--------------|-------|
-| Unique shareable referral link per user | Core mechanic. Every user gets a link. Copy-to-clipboard in one tap | Med | Supabase, referral tracking tables | Generate short codes (e.g., virtuna.com/r/abc123). Store in DB. Already have affiliate_clicks table schema |
-| Referral dashboard showing clicks/conversions | Users need to see their referral performance | Med | Existing earnings-tab patterns | Repurpose brand-deals earnings UI patterns for referral stats |
-| One-time bonus on successful referral | Primary incentive. "Earn $X for each friend who subscribes" | Med | Whop webhooks, wallet_transactions table | Trigger on membership.went_valid webhook when referred user subscribes. Credit to wallet |
-| Clear referral program explanation | Users need to understand rules before sharing | Low | None | In-app page with how-it-works steps, reward amount, terms |
-
----
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| **Score 0-100 with label** | Every competitor (VidIQ, OpusClip, quso.ai) uses a 0-100 score. Creators expect a single number to anchor decisions. | Low | Already exists as `ImpactScore` component (score + label). Backend needs to produce real scores. |
+| **Factor breakdown** | OpusClip shows 4 factors (Hook/Flow/Value/Trend). VidIQ shows keyword/SEO scores. Users need to know *why* they got that score, not just the number. | Med | Virtuna architecture defines 5 factors: hook, audio, text, timing, creator. Map to the existing `AttentionBreakdown`-style UI or create dedicated factor cards. |
+| **Actionable suggestions** | quso.ai and ClipGOAT provide specific improvement recommendations alongside scores. A score without "what to fix" is decoration. | Med | Existing `InsightsSection` shows generic insights. Backend must generate specific, contextual suggestions ("Your hook is weak -- try opening with a question" not "Consider improving your hook"). |
+| **Loading experience that signals work** | Societies.io runs 30s-2min simulations. Users need to feel the system is doing real work, not just waiting. Skeleton progressive reveal is the modern standard. | Low | Already built: `LoadingPhases` with 4-phase progressive skeleton reveal (analyzing -> matching -> simulating -> generating). Wire to real backend events. |
+| **Content submission form** | Text input with platform type selection is universal across all tools. | Low | Already built: `ContentForm` with 11 test types, `SurveyForm`, `TestTypeSelector`. Needs image upload wiring and URL input for video content. |
+| **Test history** | VidIQ and TubeBuddy persist analysis history. Creators revisit past results to compare and learn. | Low | Already built: `TestHistoryList` with localStorage persistence. Needs migration to Supabase for cross-device sync. |
+| **Society/audience selection** | Societies.io's core feature: choose WHO you're testing against. Without audience context, predictions are meaningless. | Med | Already built: `SocietySelector` with Personal (LinkedIn, X) and Target societies. Backend needs real persona databases and society creation logic. |
+| **AI-generated content variants** | Societies.io auto-generates 10 alternate versions. VWO and HubSpot AI generate A/B test copy. Users expect at least 2-3 alternatives with scores. | Med | Already built: `VariantsSection` showing original + 2 AI variants with scores. Backend must generate real rewrites via LLM. |
+| **Share results** | Basic shareability (copy link, screenshot-ready card). Every SaaS tool has this. | Low | Already built: `ShareButton` copying URL to clipboard. Needs `/results/:id` public route and OG image generation for social sharing. |
+| **Platform-specific analysis** | VidIQ is YouTube-specific. quso.ai optimizes per-platform. Creators expect the tool to know platform rules and best practices. | Med | 11 test types already defined (LinkedIn, Instagram, X, TikTok, etc.). Backend rules engine must encode platform-specific heuristics (character limits, hashtag strategies, video length sweet spots). |
 
 ## Differentiators
 
-Features that set Virtuna apart. Not expected, but create "wow" moments and drive sharing.
+Features that set Virtuna apart. Not expected by default, but create "wow" moments and competitive moats.
 
-| Feature | Value Proposition | Complexity | Dependencies | Notes |
-|---------|-------------------|------------|--------------|-------|
-| **Animated hive demo on landing page** | No competitor has an interactive network visualization as their hero demo. This IS the differentiator | Med | Existing Canvas hive viz (network-visualization.tsx) | Lightweight version: 50-100 nodes (not 1300+), auto-plays, shows fake "viral score" analysis. Eye candy that sells |
-| **Contextual first-visit tooltips** | Guide users to value without blocking them. Tooltips on key features appear once, dismissed permanently | Med | NextStepjs or Onborda library | NextStepjs: lightweight, Next.js native, Framer Motion (already in deps). 5-7 tooltip steps on dashboard first visit |
-| **Trial countdown in-app** | Creates urgency. "3 days left in your Pro trial" in sidebar/header. Drives conversion at day 5-6 | Low | Subscription data (existing) | Calculate from current_period_end. Show banner in app shell when trial active |
-| **"Aha moment" referral prompt** | Surface referral CTA after user's first successful analysis (not on first visit). Timing matters: show when value is felt | Low | Onboarding state tracking | Track "first_analysis_complete" event. Show one-time modal: "Love Virtuna? Share with a creator friend and earn $X" |
-| **Animated onboarding progress** | Celebration animations on checklist completion (confetti/pulse). Gamification increases engagement by 48% | Low | Framer Motion (existing) | Subtle: checkmark animation, progress bar fill. NOT over-the-top confetti |
-| **Deep-link referral with pre-filled context** | Referral links land on personalized page: "Your friend [name] invited you to try Virtuna" | Med | Referral link params, landing page variant | Custom /invite/[code] route showing referrer name + special CTA |
-| **Bento grid feature showcase** | 2026 trend: modular layouts that make complex features scannable. Cards with micro-interactions | Med | None (new build) | Each card highlights one feature with hover animation. Better than linear "feature 1, feature 2" sections |
-
----
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| **Society persona reactions** | Societies.io shows aggregate scores. Virtuna's 5 named personas (Gen-Z, Career, Parents, Creative, Knowledge) provide *character-driven* reactions with quotes, not just numbers. This makes results feel alive and specific. | Med | Frontend has `ThemesSection` with conversation themes + quotes. Backend must generate persona-specific reactions via LLM, each with a distinct voice and perspective on the content. |
+| **Dual-model analysis pipeline** | No competitor uses Gemini Flash (vision) + DeepSeek R1 (reasoning) together. Visual analysis of images/thumbnails combined with deep reasoning about content strategy is genuinely novel. | High | Core architecture decision. Gemini Flash extracts visual signals; DeepSeek R1 synthesizes reasoning. Expert rules layer adds deterministic guardrails. This is the product's technical moat. |
+| **Outcome tracking (predicted vs actual)** | No consumer-facing tool currently shows "we predicted X, you got Y" over time. This builds trust AND feeds the ML training pipeline. TubeBuddy/VidIQ show post-hoc analytics but not prediction-vs-actual comparison. | High | New feature. Needs: (1) user reports actual performance, (2) system calculates delta, (3) accuracy score visible to user, (4) outcomes feed ML retraining pipeline. |
+| **Confidence indicator** | OpusClip explicitly disclaims "high score doesn't guarantee virality." Most tools hide uncertainty. Showing confidence level (e.g., "78/100, confidence: HIGH because your niche has 500+ data points") builds trust and sets honest expectations. | Low | Architecture already defines confidence field. Surface it prominently in results -- this is cheap to implement but high value for trust. |
+| **Simulation theater (client-side wow factor)** | While backend processes in 3-5s, the client shows a theatrical 4.5s animation that makes the analysis feel premium. This is Societies.io's core UX insight: the loading IS the product experience. | Med | Partially built (skeleton phases). Needs polish: phase-specific messaging ("Analyzing visual composition...", "Simulating Gen-Z reactions..."), particle effects, persona avatars appearing. The theater is separate from the prediction engine. |
+| **"Help Me Craft" AI assistant** | Button already exists in ContentForm (currently console.log). AI rewrites content before analysis, distinct from post-analysis variants. No competitor offers pre-analysis AI crafting. | Med | New feature. LLM call to improve content before submission. Could use DeepSeek R1 with platform-specific prompts. Separate from prediction pipeline. |
+| **Trending data integration into predictions** | VidIQ and TubeBuddy show trending topics/keywords. Virtuna's Apify scraping pipeline can feed real trend data INTO the prediction engine (not just display it separately). | High | Architecture defines trending signals as a factor in prediction. Apify scrapes real TikTok/social data, trend calculator cron processes it, prediction engine uses trend alignment as a scoring signal. |
+| **Progressive accuracy improvement** | As users track more outcomes, the system visibly gets smarter. Show accuracy history ("Your predictions were 72% accurate last month, 78% this month"). This creates stickiness. | High | Requires 1000+ tracked outcomes to activate ML. Until then, expert rules handle scoring. But the accuracy tracking UI can launch immediately with expert-rule-based predictions. |
+| **Image/thumbnail analysis** | Gemini Flash can analyze uploaded images for visual composition, text overlay quality, face detection, color psychology. No text-only competitor can do this. | Med | ContentForm has "Upload Images" button (currently console.log). Backend needs Gemini Flash vision API integration. Critical differentiator for video/social content creators. |
 
 ## Anti-Features
 
-Features to explicitly NOT build for MVP. These are traps.
+Features to explicitly NOT build. These are traps that dilute the product or create maintenance burden.
 
 | Anti-Feature | Why Avoid | What to Do Instead |
 |--------------|-----------|-------------------|
-| **Full interactive sandbox on landing page** | Massively complex, slow to load, confusing without context. Kills mobile performance | 10-15 second auto-playing mini demo with fake data. Let the real product be the sandbox |
-| **Multi-step signup wizard** | Every field you add loses 5-10% of signups. TikTok creators have zero patience | Email + password OR Google OAuth. Collect profile details AFTER first value moment |
-| **Recurring affiliate commissions** | Accounting complexity, Whop integration overhead, payout tracking. Way too much for MVP | One-time bonus per successful referral. Simple. Clear. Easy to implement and understand |
-| **Custom referral program outside Whop** | Building your own affiliate tracking is a months-long project. Cookie tracking, attribution, fraud prevention | Use Whop's built-in affiliate system for Whop-tracked referrals. Build lightweight in-app tracking ONLY for Virtuna-specific bonuses |
-| **A/B testing framework on landing page** | Premature optimization. You need traffic first. A/B testing with < 1000 visitors is noise | Ship one strong version. Iterate based on actual user feedback and analytics. Add A/B testing after 5K+ monthly visitors |
-| **Email drip campaigns for onboarding** | Requires email infrastructure, content creation, timing logic. Low ROI at launch scale | In-app onboarding only for MVP. Add email sequences after proving in-app activation works |
-| **Video walkthroughs/tutorials** | Production cost, maintenance burden, goes stale fast as UI changes | Tooltip-based contextual guidance that's always current. Text + interactive beats video for SaaS onboarding |
-| **Trending page** | Already decided to remove. Unfocused, hard to maintain, not core to value prop | Focus on hive visualization + analysis as the core differentiator |
-| **Leaderboard/social referral mechanics** | Gamification beyond basics adds complexity, potential for gaming, community management overhead | Simple referral dashboard with personal stats only. No competition element for MVP |
-| **Plan switching (downgrade from Pro to Starter)** | Edge case complexity. Proration logic, feature access transitions, Whop plan migration | For MVP: upgrade only. Downgrade = cancel. Revisit when churn data warrants it |
-
----
+| **Real-time social API connections for posting** | Hootsuite/Sprout Social territory. OAuth token management, rate limits, API changes, and compliance requirements are a massive ongoing burden. This is a scheduling tool, not what Virtuna is. | Keep analysis-only. Users copy insights and post manually or via their existing scheduling tool. |
+| **Full SEO keyword research** | VidIQ and TubeBuddy own this space with years of YouTube API data. Competing here is a losing battle for an early-stage product. | Use trending data to inform timing/hashtag suggestions within predictions, but don't build a standalone keyword research tool. |
+| **Multi-user collaboration / team features** | Adds auth complexity (roles, permissions, shared workspaces) before the core product is validated. Societies.io launched without teams. | Single-user first. Team features are a future milestone after PMF. |
+| **Custom ML model training per user** | Individual user data is too sparse for meaningful personalization. Even the global model needs 1000+ outcomes. Per-user models need 10,000+. | Global model with niche-level tuning (creator category, platform). Never per-user models until massive scale. |
+| **Automated A/B testing with real audiences** | Requires social platform integrations, ad spend management, statistical significance calculations. Massive scope. | Provide simulated A/B results (variants with predicted scores). Users run real A/B tests themselves. |
+| **Scheduling / calendar** | Feature creep into Later.com/Buffer territory. This is a decision-support tool, not a publishing tool. | "Best time to post" suggestion in results is sufficient. Never build a content calendar. |
+| **Chat-based AI interface** | Trendy but wrong for this UX. Content intelligence needs structured input (content + type + audience) and structured output (score + factors + suggestions). Chat is too unstructured. | Keep the current form-based submission with structured results panels. |
+| **Social listening / brand monitoring** | Sprout Social and Meltwater own this. It's a different product category entirely. | Use scraped trend data to inform predictions, but don't build a monitoring dashboard. |
+| **Gamification (streaks, badges, leaderboards)** | Distracts from the core value proposition. Creators want better content, not virtual rewards. | Show improvement over time via accuracy tracking. Data IS the motivator. |
 
 ## Feature Dependencies
 
 ```
-Landing Page (new)
-  |-- Interactive Demo --> depends on: existing Canvas hive viz (network-visualization.tsx)
-  |-- Pricing Section --> depends on: Whop plan IDs configured
-  |-- "Start Trial" CTA --> depends on: Whop checkout embed (existing @whop/checkout)
+Content Submission Form (exists) --> Prediction Engine (new)
+                                       |
+                                       v
+                                 Score + Factors + Suggestions
+                                       |
+                                       v
+                                 Results Panel (exists, needs real data)
+                                       |
+                                       +-----> Variants Generation (new)
+                                       +-----> Persona Reactions (new)
+                                       +-----> Share/Export (exists, needs public route)
+                                       +-----> Outcome Tracking (new, deferred until post-launch)
 
-Onboarding Flow (new)
-  |-- Welcome Screen --> depends on: Auth flow (existing Supabase Auth)
-  |-- Checklist Steps --> depends on: Dashboard features (existing)
-  |-- First-Visit Tooltips --> depends on: NextStepjs library (new dependency)
-  |-- Goal Selection --> depends on: User profile storage (existing creator_profiles)
+Society Selector (exists) --> Society/Persona Backend (new)
+                                |
+                                v
+                          Persona Database (new) --> feeds Prediction Engine
 
-Payments/Trial (mostly existing, needs wiring)
-  |-- Trial Configuration --> depends on: Whop dashboard setup (no code)
-  |-- Trial Countdown UI --> depends on: Subscription data API (existing /api/subscription)
-  |-- Upgrade Prompts --> depends on: FeatureGate (existing), CheckoutModal (existing)
-  |-- Landing Page Checkout --> depends on: Landing page (new), Whop checkout embed (existing)
+Trending Page (exists, mock data) --> Apify Scraping Pipeline (new)
+                                        |
+                                        v
+                                  Trend Calculator (new) --> feeds Prediction Engine
 
-Referral Program (new, depends on payments)
-  |-- Referral Link Generation --> depends on: Auth (existing), new referral_links table
-  |-- Click Tracking --> depends on: affiliate_clicks table (existing schema!)
-  |-- Conversion Attribution --> depends on: Whop webhooks (existing), affiliate_conversions table (existing schema!)
-  |-- Bonus Payout --> depends on: wallet_transactions table (existing schema!), conversion tracking
-  |-- Referral Dashboard UI --> depends on: Referral data, existing earnings-tab patterns
+Brand Deals Page (exists, mock data) --> Brand Deals API (new, independent)
 
-Key insight: The database schema for affiliate tracking ALREADY EXISTS
-(affiliate_clicks, affiliate_conversions, wallet_transactions tables).
-The referral program needs backend logic + UI, not schema design.
+Image Upload (frontend exists) --> Gemini Flash Vision API (new)
+                                     |
+                                     v
+                               Visual Signal Extraction --> feeds Prediction Engine
+
+Outcome Tracking (new) --> ML Training Pipeline (scaffolded, activates later)
+                             |
+                             v
+                       Adaptive Weights (future) --> improves Prediction Engine
 ```
 
----
+## UX Patterns: Content Submission to Results
+
+Based on competitor analysis, the concrete UX flow with patterns that make results feel premium and actionable.
+
+### Phase 1: Content Input (Already Built)
+**Pattern: Structured form with smart defaults**
+- User selects content type from 11 options (categorized grid)
+- User selects society/audience (Personal or Target)
+- User enters content (text, optional images)
+- Optional: "Help Me Craft" pre-improves content via AI
+- Submit triggers prediction pipeline
+
+**What makes it feel premium:**
+- Platform-specific placeholder text (already implemented)
+- Character counter with warning threshold at 80% (already implemented)
+- Image upload with thumbnail preview (needs backend)
+- Type badge showing platform icon (already implemented)
+
+### Phase 2: Simulation Theater (Partially Built)
+**Pattern: Progressive skeleton reveal with phase messaging**
+- 4.5s client-side animation while backend processes (3-5s real latency)
+- Skeleton cards appear progressively, matching final results layout
+- Each phase shows contextual messaging:
+  - "Analyzing content structure and visual elements..."
+  - "Matching against 247 society personas..."
+  - "Running engagement simulation..."
+  - "Generating insights and suggestions..."
+- Cancel button available throughout
+
+**What needs polish:**
+- Phase-specific messaging with persona counts (not generic "Simulating response...")
+- Subtle particle/connection animations during "matching" phase
+- Society persona avatars briefly appearing during "simulating" phase
+- Smooth crossfade from skeleton to real results (not a hard swap)
+- Theater duration syncs with backend: minimum 4.5s, extends if backend slower
+
+### Phase 3: Results Display (Partially Built)
+**Pattern: Stacked card waterfall with progressive disclosure**
+
+Results panels in order of importance:
+
+1. **Impact Score Card** (exists: `ImpactScore`)
+   - Large coral number (0-100) with qualitative label
+   - NEW: Confidence indicator ("HIGH/MEDIUM/LOW confidence")
+   - NEW: One-line reasoning summary ("Strong hook + trending topic + weak CTA")
+
+2. **Factor Breakdown** (needs redesign from `AttentionBreakdown`)
+   - 5 factors: Hook, Audio/Visual, Text Quality, Timing, Creator Fit
+   - Each factor: mini score (0-100) + one-line explanation
+   - Color-coded: green (strong), yellow (neutral), red (weak)
+   - Tap to expand for detailed analysis per factor
+
+3. **Persona Reactions** (evolves from `ThemesSection`)
+   - 5 society personas with avatar, name, reaction emoji, and quote
+   - Each persona: sentiment (positive/neutral/negative) + reasoning
+   - Expandable for full reaction text
+   - Shows which personas are most/least receptive
+
+4. **Actionable Suggestions** (evolves from `InsightsSection`)
+   - 3-5 specific, actionable improvements (not generic)
+   - Prioritized by impact (highest improvement potential first)
+   - Each suggestion: what to change + why + expected impact
+   - "Apply suggestion" button (rewrites content with that fix)
+
+5. **Content Variants** (exists: `VariantsSection`)
+   - Original + 2-3 AI-generated alternatives
+   - Each variant: content preview + predicted score
+   - "Use this version" button to replace original
+   - "Generate more" button for additional variants
+
+6. **Conversation Themes** (exists: `ThemesSection`)
+   - 2-3 dominant themes in simulated reactions
+   - Percentage distribution + sample quotes
+   - Expandable with full theme analysis
+
+**What makes results feel premium vs generic (based on competitor analysis):**
+- Scores have reasoning, not just numbers. OpusClip shows 4 factors, but no reasoning. Virtuna shows factors + explanations.
+- Suggestions are specific: "Change 'Check out our...' to 'You won't believe...' -- hooks with curiosity gaps score 23% higher on TikTok" not generic "Consider improving your hook."
+- Persona reactions have personality and voice -- Gen-Z reacts differently than Career persona. This is what Societies.io does well.
+- Factor breakdown shows exactly which elements are strong/weak with actionable color coding.
+- Confidence level sets honest expectations. No competitor does this transparently.
+
+### Phase 4: Post-Result Actions
+**Pattern: Results as launching pad, not dead end**
+- "Run another test" (reset flow -- exists)
+- "Share results" (copy link -- exists, future: OG image card)
+- "Track this content" (connect to outcome tracking -- defer to post-MVP)
+- "View history" (sidebar list -- exists, needs Supabase migration)
+
+### Phase 5: Outcome Tracking (New, Post-MVP)
+**Pattern: Feedback loop with accuracy visualization**
+- After posting, user reports actual performance (views, likes, shares)
+- System compares predicted vs actual
+- Shows delta: "We predicted 72, actual engagement suggests 68 -- 94% accuracy"
+- Historical accuracy chart shows system improving over time
+- Feeds ML training pipeline when 1000+ outcomes collected
+
+## Outcome Tracking Detail Design
+
+Based on research into ML feedback loops and creator analytics tools:
+
+### Input Collection
+- Prompt user 24-48h after prediction: "How did your content perform?"
+- Simple form: actual view count, like count, share count, platform
+- Optional: link to actual post for automated metric scraping (future)
+- Quick-capture: "Better/Same/Worse than predicted" for lazy reporting
+
+### Results Display
+- Per-prediction: Predicted score vs estimated-actual score with delta
+- Per-user: Accuracy trend chart over time (last 10, 30, 90 predictions)
+- Per-platform: "Your TikTok predictions are 82% accurate, LinkedIn predictions are 71% accurate"
+- Confidence calibration: "When we say HIGH confidence, we're right 89% of the time"
+
+### Motivation Loop
+- Show accuracy improving over time (even with expert rules, calibration improves)
+- "You've contributed 47 outcomes. At 1000, we unlock ML-powered predictions." (progress bar)
+- Highlight when prediction was spot-on: "Nailed it! Predicted 85, actual ~83"
 
 ## MVP Recommendation
 
-### Must Ship (Phase 1-2 Priority)
+### Must Ship (Phase 1-3)
+1. **Prediction engine with real scores** -- Table stakes. Replace mock data with Gemini Flash + DeepSeek R1 pipeline.
+2. **Factor breakdown (5 factors)** -- Users need to know WHY. Hook/Visual/Text/Timing/Creator scores.
+3. **Specific actionable suggestions** -- The gap between "decoration" and "tool." Generic insights = churn.
+4. **Society persona reactions** -- Core differentiator from VidIQ/TubeBuddy. Makes results feel alive.
+5. **Content variants with real AI rewrites** -- Already built in frontend. Backend generates real alternatives.
+6. **Database migration** -- Move from localStorage to Supabase for persistence and cross-device.
+7. **Trending page real data** -- Apify pipeline replaces mock videos. Shows the platform has real data.
 
-1. **Landing page with interactive hive demo** -- This is the front door. Without a converting landing page, nothing else matters. The mini hive visualization IS the unique selling point that no competitor has.
+### Should Ship (Phase 4-5)
+8. **Image/thumbnail analysis** -- Gemini Flash vision integration. Key differentiator for visual content.
+9. **Brand deals API** -- Replace mock data. Lower priority than core intelligence features.
+10. **Simulation theater polish** -- Phase messaging, transitions, persona avatars during loading.
+11. **"Help Me Craft" pre-analysis AI** -- Quick win. Button exists, just needs LLM call.
+12. **Confidence indicator** -- Low effort, high trust value. Show it prominently in results.
 
-2. **Whop trial configuration + landing page checkout flow** -- Wire existing WhopCheckoutEmbed into new landing page pricing section. Configure 7-day Pro trial on Whop dashboard. Card upfront, auto-converts. The backend is already built.
+### Defer (Post-MVP)
+13. **Outcome tracking** -- Needs user base generating predictions first. Ship tracking UI without ML.
+14. **ML training pipeline** -- Scaffold the infrastructure but don't activate until 1000+ outcomes.
+15. **Progressive accuracy display** -- Needs outcome data to show. Launch after outcome tracking.
+16. **Share with OG image** -- Nice-to-have polish. URL sharing works as MVP.
 
-3. **Progressive onboarding with checklist** -- Welcome screen, 3-5 step checklist, first-visit tooltips. This is the bridge between "signed up" and "activated." Without it, trial users churn before seeing value. Target: first value moment within 3 minutes.
-
-4. **Basic referral program** -- Unique links, click tracking, one-time bonus on conversion. Leverages existing DB schema. Simple but effective. Show referral CTA after "aha moment" (first analysis complete).
-
-### Defer to Post-MVP
-
-- **Email onboarding sequences** -- In-app guidance first, email later
-- **Advanced referral analytics** -- Basic stats are enough. Deep analytics after 100+ referrers
-- **Personalized landing page variants** -- One strong page first, personalization at scale
-- **Plan downgrade flows** -- Upgrade only for MVP
-- **Referral leaderboards/tiers** -- Simple flat bonus. Tiers after proving PMF
-
-### Complexity Budget
-
-| Feature Area | Estimated Effort | Confidence |
-|-------------|-----------------|------------|
-| Landing page (full rebuild) | 3-5 days | HIGH -- straightforward Next.js page, existing design system |
-| Interactive hive demo (mini) | 2-3 days | MEDIUM -- need to create lightweight version of existing viz |
-| Onboarding flow | 2-3 days | HIGH -- standard patterns, existing UI primitives |
-| Tooltip system (NextStepjs) | 1 day | HIGH -- library handles the hard parts |
-| Trial checkout integration | 0.5-1 day | HIGH -- WhopCheckoutEmbed already works, just needs landing page CTA |
-| Trial countdown UI | 0.5 day | HIGH -- existing subscription API provides the data |
-| Referral link generation + tracking | 2-3 days | MEDIUM -- DB schema exists but needs backend logic |
-| Referral dashboard UI | 1-2 days | HIGH -- reuse existing earnings-tab patterns |
-| Referral bonus payout logic | 1-2 days | MEDIUM -- webhook integration + wallet crediting |
-
-**Total estimated: 13-20 days** for full MVP launch feature set.
-
----
-
-## Competitor Feature Matrix (TikTok Creator Tools)
-
-Understanding what competitors charge and offer helps position Virtuna's features.
-
-| Feature | Pentos ($99-$999/mo) | Exolyt ($199-$600/mo) | Virtuna ($19-$49/mo) | Table Stakes? |
-|---------|---------------------|-----------------------|----------------------|---------------|
-| Content performance analytics | Yes | Yes | Yes (via hive) | YES |
-| Competitor tracking | Yes | Yes | Planned (not MVP) | No (differentiator) |
-| Trend detection | Yes | Yes | Via hive visualization | YES for creator tools |
-| Viral score/prediction | No | No | YES (core feature) | No -- DIFFERENTIATOR |
-| Interactive visualization | No | No | YES (hive canvas) | No -- DIFFERENTIATOR |
-| Hashtag tracking | Yes | Yes | Planned | Yes for analytics tools |
-| Mobile-optimized | Partial | Partial | YES (mobile-first) | YES for creator audience |
-| Free trial | Varies | No | 7-day Pro trial | Expected |
-| Referral program | No | No | YES | No (growth lever) |
-| Price point | $99-999/mo | $199-600/mo | $19-49/mo | N/A |
-
-**Virtuna's positioning:** 10-20x cheaper than enterprise analytics tools, targeting individual creators (not agencies). The hive visualization and viral score prediction are genuine differentiators that no competitor offers. Price accessibility + unique UX = the moat.
-
----
+**Defer rationale:** Outcome tracking and ML are the long-term moat but provide zero value until users are actively making predictions. Ship the prediction engine first, get users generating predictions, THEN add the feedback loop.
 
 ## Sources
 
-- [SaaS Landing Page Best Practices 2026 - Storylane](https://www.storylane.io/blog/saas-landing-pages-best-practices)
-- [SaaS Landing Page Trends 2026 - SaaSFrame](https://www.saasframe.io/blog/10-saas-landing-page-trends-for-2026-with-real-examples)
-- [High-Converting SaaS Landing Pages 2026 - SaaS Hero](https://www.saashero.net/design/enterprise-landing-page-design-2026/)
-- [SaaS Landing Pages 2026 - fibr.ai](https://fibr.ai/landing-page/saas-landing-pages)
-- [SaaS Onboarding Strategy - Userpilot](https://userpilot.com/blog/saas-onboarding-strategy/)
-- [SaaS Onboarding Best Practices 2026 - sales-hacking.com](https://www.sales-hacking.com/en/post/best-practices-onboarding-saas)
-- [Building Better SaaS Onboarding - Substack](https://ekofi.substack.com/p/building-better-saas-onboarding-flows)
-- [SaaS Onboarding Examples - Appcues](https://www.appcues.com/blog/saas-user-onboarding)
-- [Whop Embed Checkout Docs](https://docs.whop.com/payments/checkout-embed)
-- [Whop Affiliate Program Docs](https://docs.whop.com/manage-your-business/growth-marketing/affiliate-program)
-- [@whop/checkout npm](https://www.npmjs.com/package/@whop/checkout)
-- [Trial Conversion Benchmarks 2026 - IdeaProof](https://ideaproof.io/questions/good-trial-conversion)
-- [SaaS Free Trial Best Practices - Maxio](https://www.maxio.com/blog/saas-free-trials-7-best-practices-for-increased-conversions)
-- [Trial-to-Paid Benchmarks - PulseAhead](https://www.pulseahead.com/blog/trial-to-paid-conversion-benchmarks-in-saas)
-- [NextStepjs - Next.js Onboarding Library](https://nextstepjs.com/)
-- [Onborda - Next.js Onboarding](https://www.shadcn.io/template/uixmat-onborda)
-- [React Onboarding Libraries Comparison - UserGuiding](https://userguiding.com/blog/react-onboarding-tour)
-- [Website Tooltips Guide 2026 - UserGuiding](https://userguiding.com/blog/website-tooltips)
-- [SaaS Referral Programs 2026 - Refgrow](https://refgrow.com/blog/best-referral-programs)
-- [SaaS Referral Program Guide - impact.com](https://impact.com/referral/saas-referral-program-guide/)
-- [TikTok Analytics 2026 - AgencyAnalytics](https://agencyanalytics.com/blog/tiktok-analytics)
-- [TikTok Analytics Tools 2026 - Sprout Social](https://sproutsocial.com/insights/tiktok-analytics-tools/)
-- [TikTok Creator Metrics 2026 - InfluenceFlow](https://influenceflow.io/resources/tiktok-creator-metrics-the-complete-guide-to-tracking-analyzing-optimizing-your-performance-in-2026/)
+- [VidIQ Review 2026](https://kripeshadwani.com/vidiq-review/) -- MEDIUM confidence
+- [VidIQ Features & Pricing](https://sanishtech.com/reviews/vidiq-review/) -- MEDIUM confidence
+- [TubeBuddy Audience Understanding Suite](https://finance.yahoo.com/news/tubebuddy-launches-audience-understanding-suite-004000998.html) -- HIGH confidence (Yahoo Finance press release)
+- [TubeBuddy Data Analytics](https://www.tubebuddy.com/tools/data-analytics) -- HIGH confidence (official)
+- [Sprout Social AI Engine](https://sproutsocial.com/ai/) -- HIGH confidence (official)
+- [Later.com Custom Analytics](https://help.later.com/hc/en-us/articles/33109662792471-Later-s-Custom-Analytics) -- HIGH confidence (official)
+- [Hootsuite Best Time to Post](https://www.hootsuite.com/platform/best-time-to-post-on-social-media) -- HIGH confidence (official)
+- [quso.ai Virality Score](https://quso.ai/products/virality-score) -- HIGH confidence (official product page)
+- [OpusClip Virality Score](https://help.opus.pro/docs/article/virality-score) -- HIGH confidence (official docs)
+- [Societies.io HN Launch](https://news.ycombinator.com/item?id=44755654) -- HIGH confidence (founder comments)
+- [Societies.io Overview](https://bestofshowhn.com/yc-w24/societies.io) -- MEDIUM confidence
+- [Artificial Societies Press Release](https://www.businesswire.com/news/home/20250730925181/en/) -- HIGH confidence
+- [Premium Loading Patterns](https://medium.com/uxdworld/6-loading-state-patterns-that-feel-premium-716aa0fe63e8) -- LOW confidence (Medium)
+- [ML Feedback Loops](https://www.lakera.ai/ml-glossary/feedback-loop-in-ml) -- MEDIUM confidence
+- [Facebook Reels RecSys Feedback](https://engineering.fb.com/2026/01/14/ml-applications/adapting-the-facebook-reels-recsys-ai-model-based-on-user-feedback/) -- HIGH confidence (Meta Engineering blog)

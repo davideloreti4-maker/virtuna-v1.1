@@ -1,7 +1,26 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Play, Heart, TrendUp, ArrowUp } from "@phosphor-icons/react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
+import { TrendingUp, Flame, RotateCcw } from "lucide-react";
+import { BookmarkSimple } from "@phosphor-icons/react";
+import { Heading } from "@/components/ui/typography";
+import { CategoryTabs } from "@/components/ui/category-tabs";
+import { TabsContent } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useTrendingStats } from "@/hooks/queries";
+import { VideoGrid, VideoDetailModal } from "@/components/trending";
+import { useBookmarkStore } from "@/stores/bookmark-store";
+import {
+  CATEGORY_LABELS,
+  VALID_TABS,
+  FILTER_TABS,
+  type FilterTab,
+  type TrendingCategory,
+  type TrendingStats,
+  type CategoryStats,
+  type TrendingVideo,
+} from "@/types/trending";
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -178,72 +197,13 @@ function formatCount(n: number): string {
   return String(n);
 }
 
-const CATEGORIES = ["all", "dance", "comedy", "education", "music", "food"] as const;
-
-type Category = (typeof CATEGORIES)[number];
-
-const CATEGORY_LABELS: Record<Category, string> = {
-  all: "All",
-  dance: "Dance",
-  comedy: "Comedy",
-  education: "Education",
-  music: "Music",
-  food: "Food",
-};
-
-/* ============================================
- * VIDEO CARD
- * ============================================ */
-
-function VideoCard({ video }: { video: TrendingVideo }) {
+/** Skeleton placeholder for the stats bar while loading. */
+function StatsBarSkeleton() {
   return (
-    <Card className="overflow-hidden">
-      {/* Thumbnail */}
-      <div className={`relative aspect-video rounded-t-[12px] ${video.thumbnailGradient}`}>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-            <Play size={20} weight="fill" className="text-foreground" />
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="p-4">
-        <h3 className="text-sm font-medium text-foreground line-clamp-2">
-          {video.title}
-        </h3>
-        <p className="mt-1 text-xs text-foreground-muted">
-          @{video.creator}
-        </p>
-
-        {/* Metrics row */}
-        <div className="mt-3 flex items-center gap-3 text-xs text-foreground-muted">
-          <span>{formatCount(video.views)} views</span>
-          <span className="flex items-center gap-1">
-            <Heart size={12} weight="fill" />
-            {formatCount(video.likes)}
-          </span>
-          <Badge
-            variant={video.trendDirection === "up" ? "accent" : "success"}
-            size="sm"
-          >
-            {video.trendDirection === "up" ? (
-              <ArrowUp size={10} weight="bold" className="mr-0.5" />
-            ) : (
-              <TrendUp size={10} weight="bold" className="mr-0.5" />
-            )}
-            +{video.trendPercent}%
-          </Badge>
-        </div>
-
-        {/* Category pill */}
-        <div className="mt-3">
-          <Badge variant="default" size="sm">
-            {CATEGORY_LABELS[video.category]}
-          </Badge>
-        </div>
-      </div>
-    </Card>
+    <div className="mt-2 flex flex-wrap items-center gap-x-1.5">
+      <Skeleton className="h-4 w-64 rounded-md" />
+      <Skeleton className="h-4 w-40 rounded-md" />
+    </div>
   );
 }
 
@@ -254,23 +214,93 @@ function VideoCard({ video }: { video: TrendingVideo }) {
 export function TrendingClient() {
   const [activeCategory, setActiveCategory] = useState<Category>("all");
 
-  const filteredVideos = useMemo(() => {
-    if (activeCategory === "all") return TRENDING_VIDEOS;
-    return TRENDING_VIDEOS.filter((v) => v.category === activeCategory);
-  }, [activeCategory]);
+/**
+ * TrendingClient -- client shell for the /trending page.
+ *
+ * Renders heading, stats bar, category tabs with coral accent,
+ * and manages tab state synced to URL search params.
+ * Includes video detail modal for single video viewing.
+ */
+export function TrendingClient({ defaultTab }: TrendingClientProps) {
+  const searchParams = useSearchParams();
 
-  const categoryTabs = useMemo(
-    () =>
-      CATEGORIES.map((cat) => ({
-        value: cat,
-        label: CATEGORY_LABELS[cat],
-        count:
-          cat === "all"
-            ? TRENDING_VIDEOS.length
-            : TRENDING_VIDEOS.filter((v) => v.category === cat).length,
+  // Tab state: derive initial from URL, fallback to server-provided default
+  const initialTab = (searchParams.get("tab") as FilterTab) || defaultTab;
+  const [activeTab, setActiveTab] = useState<FilterTab>(initialTab);
+
+  // Modal state
+  const [selectedVideo, setSelectedVideo] = useState<TrendingVideo | null>(null);
+  const isModalOpen = selectedVideo !== null;
+
+  // Hydrate bookmark store on mount
+  useEffect(() => {
+    useBookmarkStore.getState()._hydrate();
+  }, []);
+
+  // Fetch real stats from /api/trending/stats
+  const { data: statsData, isLoading: statsLoading } = useTrendingStats();
+
+  // Adapt API stats shape to UI TrendingStats type
+  const stats: TrendingStats | null = useMemo(() => {
+    if (!statsData) return null;
+    const byCategory = {} as Record<TrendingCategory, CategoryStats>;
+    let totalViews = 0;
+    for (const cat of statsData.categories) {
+      const key = cat.category as TrendingCategory;
+      if ((VALID_TABS as readonly string[]).includes(key)) {
+        byCategory[key] = {
+          count: cat.video_count,
+          totalViews: cat.avg_views * cat.video_count,
+        };
+        totalViews += cat.avg_views * cat.video_count;
+      }
+    }
+    // Ensure all categories exist with defaults
+    for (const tab of VALID_TABS) {
+      if (!byCategory[tab]) byCategory[tab] = { count: 0, totalViews: 0 };
+    }
+    return { totalVideos: statsData.total_videos, totalViews, byCategory };
+  }, [statsData]);
+
+  // Build tab definitions with counts and icons
+  const categories = useMemo(
+    () => [
+      ...VALID_TABS.map((tab) => ({
+        value: tab,
+        label: TAB_LABELS[tab],
+        icon: TAB_ICONS[tab],
+        count: stats?.byCategory[tab].count,
       })),
     [],
   );
+
+  // Handle tab change: update local state + push to URL (shallow, no server re-render)
+  const handleTabChange = useCallback((value: string) => {
+    const newTab = value as FilterTab;
+    setActiveTab(newTab);
+    window.history.pushState(null, "", `/trending?tab=${newTab}`);
+  }, []);
+
+  // Sync active tab with browser back/forward navigation
+  useEffect(() => {
+    function handlePopState() {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab") as FilterTab | null;
+      if (tab && (FILTER_TABS as readonly string[]).includes(tab)) {
+        setActiveTab(tab);
+      } else {
+        setActiveTab("breaking-out");
+      }
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  // TODO: Re-implement modal navigation with API data
+  const handleNavigate = useCallback((_direction: "prev" | "next") => {
+    // Navigation temporarily disabled -- modal still opens for single video viewing
+  }, []);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 sm:p-6">
@@ -280,8 +310,17 @@ export function TrendingClient() {
         Discover what&apos;s trending on TikTok right now
       </p>
 
-      {/* Category tabs + filtered grid */}
-      <div className="mt-6">
+      {/* Stats bar */}
+      {statsLoading || !stats ? <StatsBarSkeleton /> : <StatsBar stats={stats} />}
+
+      {/* Sticky tab bar with blurred background */}
+      <div
+        className="sticky top-0 z-10 -mx-6 mt-6 bg-background/80 px-6 pb-3 pt-2 md:-mx-8 md:px-8"
+        style={{
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+        }}
+      >
         <CategoryTabs
           categories={categoryTabs}
           value={activeCategory}
@@ -306,6 +345,26 @@ export function TrendingClient() {
           ))}
         </CategoryTabs>
       </div>
+
+      {/* Tab content area -- VideoGrid handles its own loading state */}
+      <div className="mt-6">
+        <VideoGrid
+          filterTab={activeTab}
+          onVideoClick={(video) => setSelectedVideo(video)}
+        />
+      </div>
+
+      {/* Video detail modal */}
+      <VideoDetailModal
+        video={selectedVideo}
+        open={isModalOpen}
+        onOpenChange={(open) => {
+          if (!open) setSelectedVideo(null);
+        }}
+        onNavigate={handleNavigate}
+        hasPrevious={false}
+        hasNext={false}
+      />
     </div>
   );
 }

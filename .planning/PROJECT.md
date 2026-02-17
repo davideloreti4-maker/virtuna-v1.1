@@ -2,11 +2,11 @@
 
 ## What This Is
 
-A social media intelligence platform for TikTok creators. Helps creators predict viral content, discover brand deals, and earn through an affiliate engine. Built as a Next.js application with a Raycast-quality design system (36 components, 100+ tokens, coral #FF7F50 branding). Two-tier SaaS model (Starter/Pro) with Whop payments integration, progressive onboarding, and in-product referral program.
+An AI-powered social media intelligence platform that predicts content performance before posting. Built as a Next.js application with a Raycast-quality design system (36 components, 100+ tokens), dual-model AI prediction engine (Gemini Flash-Lite + DeepSeek R1), real-time trending data pipeline, and full API backend. All design tokens are 1:1 aligned with Raycast.com (except coral #FF7F50 branding).
 
 ## Core Value
 
-AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
+AI-powered content intelligence that tells creators whether their content will resonate — and exactly why — before they post.
 
 ## Requirements
 
@@ -53,12 +53,34 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - Loading skeletons, responsive mobile layout, and keyboard accessibility -- v2.3
 - v0 MCP-guided UI generation with design system consistency -- v2.3
 
+- ✓ Supabase database with 5 tables, RLS policies, type generation, and 15+ seeded rules -- v1.0
+- ✓ Dual-model AI prediction engine (Gemini Flash-Lite + DeepSeek R1) with circuit breaker -- v1.0
+- ✓ Trending data pipeline (Apify scraper, webhook, trend calculator, rule validator) -- v1.0
+- ✓ API routes with SSE-streaming analysis, cursor pagination, server-only keys -- v1.0
+- ✓ TanStack Query v5 replacing all mock data imports across every page -- v1.0
+- ✓ Simulation theater with real SSE events and 4.5s minimum duration -- v1.0
+- ✓ Results card with AI scores, factors, personas, suggestions, and variants -- v1.0
+- ✓ Outcome tracking (predicted vs actual comparison, delta calculation) -- v1.0
+- ✓ ML scaffolding (retrain cron stub, adaptive weight fields, env guardrails) -- v1.0
+
 ### Active
 
-- [ ] Dashboard completion (hive adjustments, test flow, filter pills, input fields)
-- [ ] User flow fixes (dead buttons, console.log stubs across dashboard)
-- [ ] Delete account server-side API route
-- [ ] Email change verification flow
+**Current Milestone: Prediction Engine v2**
+
+**Goal:** Transform the prediction engine from ~40-55% accuracy to ~75-85% through TikTok-aligned prompts, full video analysis, 10-stage pipeline with FeatureVector backbone, behavioral predictions, ML training on 5000 scraped videos, and calibration infrastructure.
+
+**Target features:**
+- TikTok-aligned Gemini factors (Scroll-Stop Power, Completion Pull, Rewatch Potential, Share Trigger, Emotional Charge)
+- Full video analysis via Gemini (30s TikTok ~$0.008)
+- DeepSeek V3.2-reasoning with 5-step CoT and behavioral predictions
+- 10-stage pipeline with FeatureVector backbone and Creator Context
+- New aggregation formula (behavioral 45% + gemini 25% + rules 20% + trends 10%)
+- Hybrid semantic + regex rules with per-rule accuracy tracking
+- ML model trained on scraped video data
+- Platt scaling calibration
+- Video upload + TikTok URL input modes
+- Results UI with factor breakdown, behavioral predictions, before/after suggestions, persona quotes
+- Rate limiting, caching, partial failure recovery
 
 ### Out of Scope
 
@@ -70,25 +92,28 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 ## Context
 
-**Current state:** Platform Refinement shipped (2026-02-16). All non-dashboard pages polished to brand bible quality.
-- ~23,170 LOC TypeScript
-- Tech stack: Next.js 15 (App Router), TypeScript strict, Tailwind CSS v4, Supabase Auth, Whop payments, Recharts, d3-hierarchy, d3-quadtree
-- 36 design system components, 100+ tokens (all Raycast-accurate)
-- Real auth with middleware enforcement, Google OAuth PKCE
-- Progressive onboarding with goal personalization
-- Two-tier payments (Starter/Pro) with 7-day trial via Whop
-- Referral program with cookie persistence
-- Canvas-based hive visualization: 1300+ nodes, 60fps
-- Trending page rebuilt with category tabs and video card grid
-- Settings fully wired to Supabase (profile, password, delete account)
-- Sidebar redesigned per brand bible with TikTok handle persistence
+**Current state:** v1.0 Backend Foundation shipped (2026-02-13). All frontend milestones complete through v2.3.5. Backend fully functional.
+- ~31,870 LOC TypeScript (backend foundation worktree)
+- Tech stack: Next.js 15 (App Router), TypeScript strict, Tailwind CSS v4, Supabase (Auth + DB + RLS), TanStack Query v5, Zustand, Recharts, d3-hierarchy, d3-quadtree
+- AI: Gemini 2.5 Flash-Lite (`@google/genai`), DeepSeek R1 (OpenAI-compatible), Zod schema validation
+- Data: Apify scraper cron, webhook handler, trend calculator, rule validator, 4 cron jobs in vercel.json
+- 36 design system components, 100+ design tokens (all Raycast-accurate)
+- All pages wired to real API endpoints via TanStack Query (trending, deals, analysis, outcomes)
+- Simulation theater with SSE events interleaved across pipeline stages, 4.5s minimum duration
 - Deployed to Vercel
 
-**Known issues / blockers before go-live:**
-- Whop plan IDs need creation in Whop dashboard
-- Referral bonus amount undecided (business decision)
-- Whop sandbox never tested end-to-end
-- Analyze button routes to /viral-predictor which doesn't exist yet
+**Known issues:**
+- --text-3xl is 30px vs Raycast 32px (intentional, flagged)
+- GlassCard (ui/card.tsx) uses bg-white/5 instead of bg-transparent (functional, not pixel-perfect)
+- Card hover uses simple bg-white/2% instead of Raycast ::after radial gradient
+- --shadow-button-secondary token defined but not consumed
+- Responsive showcase clipping on mobile
+- Touch target threshold relaxed to 32x24px (desktop-first)
+- Pre-existing blur="none" TypeScript errors in loading-phases.tsx (not valid GlassCard prop)
+- Saved tab on trending still uses mock getAllVideos() until bookmark API exists
+- Modal prev/next navigation disabled on trending video detail
+- Analysis history limited to 50 rows (no cursor pagination)
+- viewResult() compatibility shim in test-store (sidebar/forms still read from Zustand)
 
 ## Key Decisions
 
@@ -107,12 +132,18 @@ AI-powered content intelligence that tells TikTok creators whether their content
 | GlassPanel zero-config | Good -- consistent Raycast glass |
 | Cards use bg-transparent | Good -- matches Raycast live audit |
 | Canvas 2D for hive (not SVG) | Good -- 1000+ nodes at 60fps |
-| Server actions with useActionState for auth | Good -- simpler than client-side Supabase |
-| Middleware redirects to /login (not landing) | Good -- better UX for returning users |
-| Deferred response creation for OAuth cookies | Good -- solved cookie persistence through redirects |
-| useSubscription hook with polling | Good -- tier refresh without page reload |
-| Server-side FeatureGate + client-side TierGate split | Good -- accommodates Next.js server/client boundary |
-| Referral cookie set after getUser() | Good -- survives Supabase setAll response re-creation |
+| d3-hierarchy + d3-quadtree for hive | Good -- deterministic layout + O(log n) hit detection |
+| Ref-based animation state (not useState) | Good -- avoids re-renders during 60fps loop |
+| Pointer Events for pinch-to-zoom | Good -- unified across mouse/touch/pen |
+| Inline styles for backdrop-filter | Good -- workaround for Lightning CSS stripping |
+| All backend in Next.js API routes (no Edge Functions) | Good -- simpler deployment, single runtime |
+| TanStack Query for server state, Zustand unchanged for client | Good -- clean separation |
+| Gemini 2.5 Flash-Lite (not deprecated 2.0 Flash) | Good -- future-proof from day one |
+| Inline pipeline in SSE route (not runPredictionPipeline wrapper) | Good -- enables natural SSE interleaving |
+| 4.5s theater minimum via async onSuccess + useRef cancel guard | Good -- prevents stale transitions |
+| DB-to-UI mapper pattern in src/lib/mappers/ | Good -- clean shape conversion |
+| Cursor-based pagination (base64url encoded) | Good -- scalable, no offset drift |
+| Circuit breaker for DeepSeek (3 failures → Gemini fallback) | Good -- graceful degradation |
 
 ## Constraints
 
@@ -130,19 +161,13 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 ## Current State
 
-**Shipped:** Platform Refinement (2026-02-16), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
+**Shipped:** v1.0 Backend Foundation (2026-02-13), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
-**Parallel:** Backend Foundation (worktree at ~/virtuna-backend-foundation/) — prediction engine, data pipeline
+**In progress:** Prediction Engine v2 (worktree at ~/virtuna-prediction-engine-v2/)
 
-**Remaining work:**
-- Dashboard completion (filter pills, dead buttons, test flow)
-- Delete account server-side API route
-- Email change verification flow
-
-**Future milestones:**
-- Backend intelligence integration (connect prediction engine to frontend)
-- External brand deals marketplace
-- Trending page re-launch (when backend ready)
+**Parallel milestones:**
+- Landing Page (worktree at ~/virtuna-landing-page/) — landing, onboarding, pricing/payments, UI polish
+- Prediction Engine v2 (worktree at ~/virtuna-prediction-engine-v2/) — engine overhaul, video analysis, ML training
 
 ---
-*Last updated: 2026-02-17 after Platform Refinement milestone completed*
+*Last updated: 2026-02-16 after Prediction Engine v2 milestone started*

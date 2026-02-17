@@ -1,4 +1,4 @@
-# Milestone: Platform Refinement
-Branch: milestone/platform-refinement
+# Milestone: Prediction Engine v2
+Branch: milestone/prediction-engine-v2
 Created: 2026-02-16
-Worktree: /Users/davideloreti/virtuna-platform-refinement
+Worktree: ~/virtuna-prediction-engine-v2

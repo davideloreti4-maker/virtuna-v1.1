@@ -11,6 +11,8 @@ interface TestHistoryItemProps {
   isActive: boolean;
   onClick: () => void;
   onDelete: () => void;
+  inputMode?: string;      // "text" | "tiktok_url" | "video_upload"
+  thumbnailUrl?: string;    // video thumbnail URL if available
 }
 
 /**
@@ -31,8 +33,11 @@ export function TestHistoryItem({
   isActive,
   onClick,
   onDelete,
+  inputMode,
+  thumbnailUrl,
 }: TestHistoryItemProps) {
   const displayTitle = getDisplayTitle(test.content);
+  const showThumbnail = inputMode === 'video_upload' && thumbnailUrl;
 
   return (
     <button
@@ -48,6 +53,15 @@ export function TestHistoryItem({
       {/* Left border indicator - coral accent (brand color) */}
       {isActive && (
         <div className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-accent" />
+      )}
+
+      {/* Video thumbnail (UI-08 prep) */}
+      {showThumbnail && (
+        <img
+          src={thumbnailUrl}
+          alt=""
+          className="h-8 w-8 shrink-0 rounded object-cover"
+        />
       )}
 
       {/* Content title - truncated, using Typography */}

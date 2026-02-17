@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 
 interface ShareButtonProps {
-  resultId: string;
+  resultId?: string;
 }
 
 /**
@@ -20,7 +20,9 @@ export function ShareButton({ resultId }: ShareButtonProps) {
   const { toast } = useToast();
 
   const handleShare = async () => {
-    const shareUrl = `${window.location.origin}/results/${resultId}`;
+    const shareUrl = resultId
+      ? `${window.location.origin}/results/${resultId}`
+      : window.location.href;
 
     try {
       await navigator.clipboard.writeText(shareUrl);

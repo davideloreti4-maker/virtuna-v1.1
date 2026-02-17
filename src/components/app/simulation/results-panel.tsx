@@ -1,29 +1,33 @@
 'use client';
 
-import type { TestResult } from '@/types/test';
+import { AlertTriangle, Info } from 'lucide-react';
+import type { PredictionResult } from '@/lib/engine/types';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/typography';
+import { GlassCard } from '@/components/ui/card';
 import { ImpactScore } from './impact-score';
-import { AttentionBreakdown } from './attention-breakdown';
-import { VariantsSection } from './variants-section';
-import { InsightsSection } from './insights-section';
-import { ThemesSection } from './themes-section';
+import { FactorBreakdown } from './attention-breakdown';
+import { BehavioralPredictionsSection } from './behavioral-predictions';
+import { SuggestionsSection } from './insights-section';
 import { ShareButton } from './share-button';
 import { TierGate } from '@/components/tier-gate';
 
 interface ResultsPanelProps {
-  result: TestResult;
+  result: PredictionResult;
   onRunAnother: () => void;
 }
 
 /**
- * ResultsPanel - Assembled results display panel
+ * ResultsPanel - Assembled v2 results display panel
+ *
+ * Consumes PredictionResult directly (no TestResult shim).
+ * Layout: warnings -> hero score -> factor breakdown -> behavioral predictions ->
+ * suggestions -> persona reactions placeholder -> run another button.
  *
  * Features:
  * - Sticky header with share button
- * - Scrollable content area with all result sections
+ * - Scrollable content area with all v2 result sections
  * - Sticky footer with "Run another test" button
- * - Max height with overflow scroll
  * - Plain div container (NOT GlassPanel) to avoid double glass with child GlassCards
  */
 export function ResultsPanel({ result, onRunAnother }: ResultsPanelProps) {
@@ -31,24 +35,58 @@ export function ResultsPanel({ result, onRunAnother }: ResultsPanelProps) {
     <div className="max-h-[70vh] overflow-y-auto rounded-xl border border-border bg-surface shadow-xl">
       {/* Header with share button */}
       <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/95 p-4 backdrop-blur">
-        <Text size="sm" muted>Simulation Results</Text>
-        <ShareButton resultId={result.id} />
+        <Text size="sm" muted>Results</Text>
+        <ShareButton />
       </div>
 
       {/* Content */}
       <div className="space-y-4 p-4">
+        {/* Warnings */}
+        {result.warnings.length > 0 && (
+          <div className="space-y-2">
+            {result.warnings.map((warning, idx) => (
+              <div
+                key={idx}
+                className="flex items-start gap-2 rounded-lg border border-warning/20 bg-warning/10 px-3 py-2"
+              >
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                <Text size="sm" className="text-warning">
+                  {warning}
+                </Text>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Impact Score */}
-        <ImpactScore score={result.impactScore} label={result.impactLabel} />
+        <ImpactScore
+          overall_score={result.overall_score}
+          confidence_label={result.confidence_label}
+        />
 
-        {/* Attention Breakdown */}
-        <AttentionBreakdown attention={result.attention} />
+        {/* Factor Breakdown */}
+        <FactorBreakdown factors={result.factors} />
 
-        {/* Pro-only: Variants, Insights, Themes */}
-        <TierGate requiredTier="pro">
-          <VariantsSection variants={result.variants} />
-          <InsightsSection insights={result.insights} />
-          <ThemesSection themes={result.conversationThemes} />
-        </TierGate>
+        {/* Behavioral Predictions */}
+        <BehavioralPredictionsSection predictions={result.behavioral_predictions} />
+
+        {/* Suggestions */}
+        <SuggestionsSection suggestions={result.suggestions} />
+
+        {/* Persona Reactions — Placeholder */}
+        <GlassCard className="p-4" blur="sm" glow={false}>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Text as="span" size="sm" muted>
+                Audience Reactions
+              </Text>
+              <Info className="h-4 w-4 text-foreground-muted" />
+            </div>
+            <Text size="sm" muted className="italic">
+              Persona reactions will appear here once the engine generates them.
+            </Text>
+          </div>
+        </GlassCard>
       </div>
 
       {/* Footer actions */}

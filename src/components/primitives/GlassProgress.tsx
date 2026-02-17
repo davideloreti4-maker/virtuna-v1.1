@@ -3,17 +3,23 @@
 import { cn } from "@/lib/utils";
 
 export type ProgressSize = "sm" | "md" | "lg";
-export type ProgressVariant = "default" | "accent";
+export type ProgressVariant = "coral" | "blue" | "purple" | "default";
 
 export interface GlassProgressProps {
   value: number;
-  max?: number;
+  color?: ProgressVariant;
   size?: ProgressSize;
-  variant?: ProgressVariant;
   className?: string;
 }
 
-const sizeStyles: Record<ProgressSize, string> = {
+const colorMap: Record<ProgressVariant, string> = {
+  coral: "bg-accent",
+  blue: "bg-blue-500",
+  purple: "bg-purple-500",
+  default: "bg-white/20",
+};
+
+const sizeMap: Record<ProgressSize, string> = {
   sm: "h-1",
   md: "h-2",
   lg: "h-3",
@@ -21,31 +27,26 @@ const sizeStyles: Record<ProgressSize, string> = {
 
 export function GlassProgress({
   value,
-  max = 100,
+  color = "default",
   size = "md",
-  variant = "default",
   className,
 }: GlassProgressProps) {
-  const pct = Math.min(100, Math.max(0, (value / max) * 100));
+  const clamped = Math.max(0, Math.min(100, value));
 
   return (
     <div
       className={cn(
-        "w-full rounded-full bg-white/10 overflow-hidden",
-        sizeStyles[size],
+        "w-full overflow-hidden rounded-full bg-white/[0.06]",
+        sizeMap[size],
         className
       )}
-      role="progressbar"
-      aria-valuenow={value}
-      aria-valuemin={0}
-      aria-valuemax={max}
     >
       <div
         className={cn(
           "h-full rounded-full transition-all duration-300",
-          variant === "accent" ? "bg-accent" : "bg-white/30"
+          colorMap[color]
         )}
-        style={{ width: `${pct}%` }}
+        style={{ width: `${clamped}%` }}
       />
     </div>
   );

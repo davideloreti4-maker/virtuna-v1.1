@@ -1,105 +1,61 @@
 // src/stores/test-store.ts
 import { create } from 'zustand';
 import type { TestType, TestResult, TestStatus } from '@/types/test';
-import {
-  generateMockVariants,
-  generateMockInsights,
-  generateMockThemes,
-  getImpactLabel,
-} from '@/lib/mock-data';
-
-const STORAGE_KEY = 'virtuna-tests';
 
 /**
- * Simulation phase during AI processing
+ * Simulation phase during v2 AI processing (matches SSE phases from use-analyze)
  */
-export type SimulationPhase =
-  | 'analyzing' // Phase 1: Analyzing content
-  | 'matching' // Phase 2: Matching profiles
-  | 'simulating' // Phase 3: Running simulation
-  | 'generating'; // Phase 4: Generating insights
+export type SimulationPhase = 'analyzing' | 'reasoning' | 'scoring';
+
+// UX-03: Phase-specific messaging (v2 pipeline stages)
+export const PHASE_MESSAGES: Record<SimulationPhase, string> = {
+  analyzing: 'Analyzing content with AI models...',
+  reasoning: 'Processing behavioral predictions...',
+  scoring: 'Calculating final scores and insights...',
+};
+
+// ---------------------------------------------------------------------------
+// Thinned Zustand Store — UI flow state only
+// ---------------------------------------------------------------------------
+// Server state (analysis results, SSE streaming, history) lives in TanStack
+// Query hooks (useAnalyze, useAnalysisHistory). This store manages only the
+// client-side UI flow: which step is the user on, what test type is selected.
+//
+// Compatibility note: currentResult and viewResult are kept as thin shims
+// because sidebar.tsx, content-form.tsx, survey-form.tsx, and
+// test-creation-flow.tsx still reference them. They will be migrated to
+// TanStack Query in a follow-up plan.
+// ---------------------------------------------------------------------------
 
 interface TestState {
-  tests: TestResult[];
   currentTestType: TestType | null;
   currentStatus: TestStatus;
-  currentResult: TestResult | null;
-  simulationPhase: SimulationPhase | null;
-  phaseProgress: number; // 0-100 for overall progress
-  isViewingHistory: boolean; // true when viewing a saved test from history
+  isViewingHistory: boolean;
   _isHydrated: boolean;
+
+  // Compatibility shim — will be removed when all consumers migrate
+  currentResult: TestResult | null;
 
   // Actions
   setTestType: (type: TestType | null) => void;
   setStatus: (status: TestStatus) => void;
-  submitTest: (content: string, societyId: string) => Promise<void>;
-  cancelSimulation: () => void;
+  setCurrentResult: (result: TestResult | null) => void;
   viewResult: (testId: string) => void;
-  deleteTest: (testId: string) => void;
   reset: () => void;
   _hydrate: () => void;
 }
 
-// Helper to save to localStorage
-function saveToStorage(tests: TestResult[]) {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ tests }));
-  } catch {
-    // Ignore storage errors
-  }
-}
-
-// Helper to load from localStorage
-function loadFromStorage(): { tests: TestResult[] } | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    if (data) {
-      return JSON.parse(data);
-    }
-  } catch {
-    // Ignore storage errors
-  }
-  return null;
-}
-
-// Generate a unique ID
-function generateId(): string {
-  return `test_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-}
-
-// Generate mock attention breakdown that sums to 100
-function generateAttention(): { full: number; partial: number; ignore: number } {
-  const full = Math.floor(Math.random() * 40) + 30; // 30-70
-  const partial = Math.floor(Math.random() * 30) + 15; // 15-45
-  const ignore = 100 - full - partial; // Remainder
-  return { full, partial, ignore };
-}
-
-// Note: getImpactLabel, generateMockVariants, generateMockInsights, generateMockThemes
-// are imported from @/lib/mock-data
-
-export const useTestStore = create<TestState>((set, get) => ({
-  tests: [],
+export const useTestStore = create<TestState>((set) => ({
   currentTestType: null,
   currentStatus: 'idle',
-  currentResult: null,
-  simulationPhase: null,
-  phaseProgress: 0,
   isViewingHistory: false,
   _isHydrated: false,
+  currentResult: null,
 
   _hydrate: () => {
-    const stored = loadFromStorage();
-    if (stored) {
-      set({
-        tests: stored.tests,
-        _isHydrated: true,
-      });
-    } else {
-      set({ _isHydrated: true });
-    }
+    // UX-07: No longer uses localStorage — history comes from Supabase
+    // via useAnalysisHistory() hook. Just mark as hydrated.
+    set({ _isHydrated: true });
   },
 
   setTestType: (type) => {
@@ -110,104 +66,16 @@ export const useTestStore = create<TestState>((set, get) => ({
     set({ currentStatus: status });
   },
 
-  submitTest: async (content, societyId) => {
-    const { currentTestType } = get();
-    if (!currentTestType) return;
+  setCurrentResult: (result) => {
+    set({ currentResult: result });
+  },
 
-    // Set simulating status and start phase 1
+  viewResult: (_testId: string) => {
+    // TODO: Reimplement with query data — fetch result by ID from API
+    // For now, just toggle viewing state (sidebar calls this)
     set({
-      currentStatus: 'simulating',
-      simulationPhase: 'analyzing',
-      phaseProgress: 0,
-    });
-
-    // Phase 1: Analyzing (0-25%)
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    if (get().currentStatus !== 'simulating') return; // cancelled
-
-    set({ simulationPhase: 'matching', phaseProgress: 25 });
-
-    // Phase 2: Matching (25-50%)
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    if (get().currentStatus !== 'simulating') return; // cancelled
-
-    set({ simulationPhase: 'simulating', phaseProgress: 50 });
-
-    // Phase 3: Simulating (50-75%)
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    if (get().currentStatus !== 'simulating') return; // cancelled
-
-    set({ simulationPhase: 'generating', phaseProgress: 75 });
-
-    // Phase 4: Generating (75-100%)
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    if (get().currentStatus !== 'simulating') return; // cancelled
-
-    set({ phaseProgress: 100 });
-
-    // Generate mock result
-    const impactScore = Math.floor(Math.random() * 36) + 60; // 60-95
-    const result: TestResult = {
-      id: generateId(),
-      testType: currentTestType,
-      content,
-      impactScore,
-      impactLabel: getImpactLabel(impactScore),
-      attention: generateAttention(),
-      variants: generateMockVariants(content),
-      insights: generateMockInsights(),
-      conversationThemes: generateMockThemes(),
-      createdAt: new Date().toISOString(),
-      societyId,
-    };
-
-    // Add to tests array and save
-    set((state) => {
-      const newTests = [result, ...state.tests];
-      saveToStorage(newTests);
-      return {
-        tests: newTests,
-        currentResult: result,
-        currentStatus: 'viewing-results',
-        simulationPhase: null,
-        phaseProgress: 0,
-      };
-    });
-  },
-
-  cancelSimulation: () => {
-    set({
-      currentStatus: 'filling-form',
-      simulationPhase: null,
-      phaseProgress: 0,
-    });
-  },
-
-  viewResult: (testId) => {
-    const { tests } = get();
-    const result = tests.find((t) => t.id === testId);
-    if (result) {
-      set({
-        currentResult: result,
-        currentTestType: result.testType,
-        currentStatus: 'viewing-results',
-        isViewingHistory: true,
-      });
-    }
-  },
-
-  deleteTest: (testId) => {
-    set((state) => {
-      const newTests = state.tests.filter((t) => t.id !== testId);
-      saveToStorage(newTests);
-      const wasViewing = state.currentResult?.id === testId;
-      return {
-        tests: newTests,
-        currentResult: wasViewing ? null : state.currentResult,
-        currentStatus: wasViewing ? 'idle' : state.currentStatus,
-        isViewingHistory: wasViewing ? false : state.isViewingHistory,
-        currentTestType: wasViewing ? null : state.currentTestType,
-      };
+      currentStatus: 'viewing-results',
+      isViewingHistory: true,
     });
   },
 
@@ -216,8 +84,6 @@ export const useTestStore = create<TestState>((set, get) => ({
       currentTestType: null,
       currentStatus: 'idle',
       currentResult: null,
-      simulationPhase: null,
-      phaseProgress: 0,
       isViewingHistory: false,
     });
   },

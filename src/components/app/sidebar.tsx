@@ -44,13 +44,13 @@ export function Sidebar() {
   const [isEditing, setIsEditing] = useState(false);
   const [saveError, setSaveError] = useState(false);
 
-  // Fetch saved TikTok handle from creator_profiles
-  const fetchHandle = useCallback(async () => {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+  const setTestType = useTestStore((s) => s.setTestType);
+
+  const handleCreateTest = () => {
+    reset();
+    setTestType("tiktok-script");
+    setStatus("filling-form");
+  };
 
     const { data: profile } = await supabase
       .from("creator_profiles")

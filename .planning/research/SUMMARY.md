@@ -1,105 +1,83 @@
-# Research Summary: Virtuna MVP Launch
+# Research Summary: Virtuna Backend Foundation
 
-**Domain:** TikTok Creator Intelligence SaaS -- Landing Page, Onboarding, Payments (Whop), Referral Program
+**Domain:** Social media content intelligence platform -- backend infrastructure
 **Researched:** 2026-02-13
 **Overall confidence:** HIGH
 
 ## Executive Summary
 
-Virtuna's MVP launch adds four feature areas to an existing Next.js 16 app with an established design system, Supabase Auth, and working Whop payment integration: (1) a conversion-optimized landing page with interactive hive demo, (2) progressive onboarding with contextual tooltips, (3) Whop-powered 7-day Pro trial with card upfront, and (4) an in-product referral program with one-time bonuses.
+The Virtuna Backend Foundation milestone adds complete backend infrastructure to an existing frontend-only Next.js 16 application. The core challenge is building a dual-model AI prediction engine (Gemini for visual analysis + DeepSeek R1 for reasoning/scoring), integrating Apify for real trending video data, replacing all mock data with database-backed API endpoints, and establishing background job infrastructure -- all on Vercel's serverless platform with Supabase as the database.
 
-The codebase is significantly further along than the milestone scope suggests. The Whop payment integration is already built: embedded checkout modal, webhook handler (membership.went_valid, went_invalid, payment_failed), subscription API, cron sync fallback, tier configuration, and access control utilities (`hasAccessToTier()`, `FeatureGate`). The database schema includes tables for affiliate tracking (affiliate_clicks, affiliate_conversions, wallet_transactions) that were created during the brand-deals milestone. Eleven landing page components already exist. The core work is wiring existing infrastructure to new user-facing flows, not building payment systems from scratch.
+The stack additions are minimal and well-validated: 4 production dependencies (`@google/genai`, `openai`, `apify-client`, `@tanstack/react-query`) and 1 dev dependency (`@tanstack/react-query-devtools`). The key architectural decision is to use Next.js API routes for all backend logic (no Supabase Edge Functions), keeping deployment unified on Vercel. This matches the existing codebase patterns (Whop cron sync, webhooks, checkout routes all use API routes).
 
-The critical missing piece requiring immediate attention is the mock AuthGuard -- the entire authenticated experience is built on a 350ms setTimeout that renders children unconditionally. This must be replaced with real Supabase auth verification before any other feature work. The second risk is the landing page interactive demo: the existing hive visualization renders 1300+ nodes at 60fps on desktop, but porting this directly to a mobile-first landing page (83% of TikTok creator traffic is mobile) would destroy performance. A separate lightweight demo (50 nodes, pre-computed positions, no physics) is essential.
+The most significant risk is LLM output reliability -- both Gemini and DeepSeek must return structured JSON that parses consistently, and 5-10% failure rate is typical without proper validation. Zod schema validation at every API boundary, structured output modes (Gemini's `responseMimeType`, DeepSeek's `response_format`), and retry logic are non-negotiable. The second critical risk is Gemini 2.0 Flash deprecation on March 31, 2026 -- the pipeline must use `gemini-2.5-flash-lite` from day one.
 
-Stack additions are minimal: only `@whop/sdk` needs to be added, replacing raw `fetch()` calls with a typed client. The tooltip system is built custom with Zustand + Framer Motion (both already installed). Everything else leverages existing packages. This is a feature-building milestone, not an infrastructure milestone.
-
-From a competitive standpoint, Virtuna is positioned at 10-20x lower cost than competitors (Pentos $99-$999/mo, Exolyt $199-$600/mo vs Virtuna $19-$49/mo). The hive visualization and viral score prediction are genuine differentiators no competitor offers. The interactive demo on the landing page is the primary conversion lever -- 2026 best practice confirms SaaS pages with embedded demos convert 2-3x over "book a call" CTAs, and 7-day card-upfront trials convert at ~40% due to urgency.
+Cost estimates are favorable: ~$0.006 per analysis (down from the original $0.013 estimate due to Flash-Lite pricing), with Apify scraping at ~$3-4/day for 6-hour intervals. The architecture supports the existing "expert rules first, trends second, ML third" progression strategy, with the ML training pipeline scaffolded as types and cron stubs but no actual model training in this milestone.
 
 ## Key Findings
 
-**Stack:** Only 1 new package needed (`@whop/sdk`). Tooltips built custom (Zustand + Framer Motion). TikTok OAuth implemented manually (2 route handlers, no Auth.js). Everything else already installed.
+**Stack:** 4 new npm dependencies -- `@google/genai` (Gemini), `openai` (DeepSeek via OpenAI-compatible API), `apify-client` (scraper integration), `@tanstack/react-query` (server state management). No job queue library needed -- Vercel Cron handles all scheduling.
 
-**Architecture:** Three route groups: (marketing) for landing, (onboarding) for post-signup flow, (app) for dashboard. Middleware captures referral cookies server-side (survives Safari ITP). Cookie + DB dual-state for onboarding persistence. New `referral_links`/`referral_conversions` tables separate from brand-deal affiliate tables.
+**Architecture:** All backend logic in Next.js API routes on Vercel. SSE streaming for analysis progress. Fire-and-forget + webhook pattern for Apify scraping. TanStack Query for all server state, Zustand stays for client-only UI state. Cursor-based pagination for infinite scroll.
 
-**Critical pitfall:** Mock AuthGuard must be replaced FIRST. Whop webhook silently drops events when `supabase_user_id` metadata is missing (user pays but stays on free tier). Referral attribution lost during OAuth redirect chain unless captured in server-side cookie before auth.
+**Critical pitfall:** LLM output parsing failures. Without Zod validation and retry logic, 5-10% of analyses will crash. Also: `gemini-2.0-flash` is deprecated March 31, 2026 -- must use `gemini-2.5-flash-lite` from the start.
 
 ## Implications for Roadmap
 
 Based on research, suggested phase structure:
 
-1. **Foundation -- Auth + Cleanup** - Replace mock AuthGuard with real Supabase auth, remove trending page (11 files), restructure navigation
-   - Addresses: Real auth verification, dead code removal, navigation for new pages
-   - Avoids: Building features on fake auth (Pitfall 2), orphaned trending references (Pitfall 11)
+1. **Database Foundation** - Schema, migrations, types, admin client extraction
+   - Addresses: All tables (scraped_videos, trending_sounds, analysis_results, outcomes, rule_library), RLS policies, type generation
+   - Avoids: Type drift pitfall by establishing regeneration workflow early
+   - Rationale: Every other feature depends on the database. Must be first.
 
-2. **Landing Page + Pricing** - Rebuild landing components for Virtuna, add pricing section, create lightweight hive demo, mobile-first design
-   - Addresses: Conversion funnel, interactive demo (key differentiator), social proof, FAQ
-   - Avoids: Canvas scroll blocking on mobile (Pitfall 6), mobile performance death (Pitfall 5)
-   - CAN RUN IN PARALLEL with Phase 1 (public route group, no auth dependency)
+2. **AI Engine Core** - Gemini + DeepSeek client wrappers, pipeline orchestration, rule engine
+   - Addresses: Content analysis API, expert rule engine, Zod validation, structured prompts
+   - Avoids: LLM parsing failures by building validation from the start
+   - Rationale: Core value prop. Can develop independently from database work (uses types/interfaces, not live DB initially).
 
-3. **Onboarding Flow** - Welcome screen, goal selection, TikTok connect, progressive checklist, contextual first-visit tooltips
-   - Addresses: User activation (target: first value in 3 minutes), progressive disclosure
-   - Avoids: Onboarding state lost across devices (Pitfall 10)
-   - DEPENDS ON: Phase 1 (real auth must work)
+3. **Data Pipeline** - Apify integration, cron jobs, trending data flow
+   - Addresses: Apify scraper cron, webhook handler, trending data, trend calculator
+   - Avoids: Scraper reliability issues by testing actor manually first
+   - Rationale: Depends on database schema (phase 1). Populates data for phase 4.
 
-4. **Payments + Trial** - Configure Whop 7-day Pro trial, wire landing page CTA -> checkout, build TierGate component, trial countdown UI, post-checkout tier refresh
-   - Addresses: Revenue activation, trial-to-paid conversion, feature gating
-   - Avoids: Whop-Supabase identity mismatch (Pitfall 1), trial config mismatch (Pitfall 4), stale cache after upgrade (Pitfall 8)
-   - DEPENDS ON: Phase 1 (auth), Phase 2 (landing page CTA)
+4. **TanStack Query + API Routes** - Server state management, all API endpoints, mock data replacement
+   - Addresses: TanStack Query provider, query hooks, trending API, deals API, analysis API route with SSE
+   - Avoids: Half-mock/half-real inconsistency by migrating one page at a time
+   - Rationale: Depends on database (phase 1) and engine (phase 2). Replaces all mock data.
 
-5. **Referral Program** - Code generation, click tracking, Whop affiliateCode passthrough, conversion attribution, one-time bonus payout, referral dashboard
-   - Addresses: Growth lever, user acquisition cost reduction
-   - Avoids: Attribution lost on OAuth redirect (Pitfall 3), bonus abuse (Pitfall 9), Safari ITP (Pitfall 16)
-   - DEPENDS ON: Phase 4 (payments must work for conversion tracking)
-
-6. **Polish** - "Aha moment" referral prompt, OG tags for referral links, edge case handling, Whop webhook idempotency, final QA
-   - Addresses: Differentiators (referral prompt timing, social sharing previews)
-   - Avoids: Webhook replay duplicates (Pitfall 7)
-   - DEPENDS ON: Phases 3-5
+5. **Client Integration + Polish** - Wire real data to existing UI components, simulation theater
+   - Addresses: Simulation theater with real pipeline phases, results card, analysis history, outcome tracking scaffolding
+   - Avoids: UI regression by changing data source without changing component interfaces
+   - Rationale: Last phase because it depends on all backend infrastructure being in place.
 
 **Phase ordering rationale:**
-- Phase 1 is foundational -- everything depends on real auth
-- Phase 2 can run in parallel because landing page is public (marketing route group)
-- Phases 3-5 are sequential: auth -> onboarding -> payments -> referrals (each depends on prior)
-- Phase 6 is last because polish is meaningless until core flows work end-to-end
+- Phase 1 (DB) is a hard dependency for all other phases
+- Phases 2 (Engine) and 3 (Pipeline) could run in parallel since they're independent backend domains
+- Phase 4 (API + Query) ties engine and pipeline to the client
+- Phase 5 (Integration) is the final wiring -- changes existing components to use real data
 
 **Research flags for phases:**
-- Phase 2: Mobile demo performance needs REAL device testing (iPhone SE, mid-range Android), not DevTools emulation
-- Phase 3: TikTok developer app approval may block production testing -- submit during Phase 1
-- Phase 4: Whop plan configuration is a dashboard action -- create plans during Phase 1 so they exist when needed. Sandbox testing essential
-- Phase 5: Whop affiliateCode behavior with custom referral programs (vs Whop marketplace affiliates) needs validation during implementation
+- Phase 2: Likely needs deeper research on Gemini 2.5 Flash-Lite structured output capabilities and DeepSeek R1 prompt engineering for consistent JSON
+- Phase 3: May need manual testing of the specific Apify TikTok Trends Scraper actor to validate data shape before building transforms
+- Phase 4: Standard patterns, unlikely to need additional research
+- Phase 5: Standard wiring, unlikely to need research
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Only 1 new package, all others verified installed and working. Codebase examined directly |
-| Features | HIGH | Table stakes verified against 2026 SaaS best practices from 20+ sources. Competitor pricing confirmed |
-| Architecture | HIGH | Patterns match existing codebase conventions. All code references verified by reading source files |
-| Pitfalls | HIGH | 16 pitfalls identified from codebase analysis + official docs + industry research |
-| Whop integration | MEDIUM | affiliateCode prop confirmed in docs, but custom referral program behavior vs marketplace affiliates needs implementation-time validation |
-| TikTok OAuth | MEDIUM | Standard OAuth 2.0 flow, but developer app approval timeline is unpredictable |
+| Stack | HIGH | All libraries verified against npm, official docs, and compatibility confirmed with existing project versions |
+| Features | HIGH | Derived from PROJECT.md requirements and validated architecture reference |
+| Architecture | HIGH | Patterns verified against existing codebase (cron routes, Supabase client, webhook handlers) and official Vercel/Supabase docs |
+| Pitfalls | HIGH for LLM parsing, model deprecation; MEDIUM for DeepSeek availability, Apify reliability | LLM failure modes well-documented. DeepSeek uptime and Apify actor reliability are third-party risks. |
+| Cost estimates | LOW | Based on published pricing but actual costs depend on prompt verbosity, response length, retry rates |
 
 ## Gaps to Address
 
-- **Whop sandbox testing**: Existing checkout and webhook code has never been tested against Whop sandbox. Need end-to-end verification before launch
-- **TikTok developer app approval**: Submit immediately (during Phase 1). Production requires HTTPS domain approval. Can take days to weeks
-- **Mobile performance budget**: Hive demo on landing page needs profiling on real low-end Android devices. No benchmarks exist yet
-- **Referral bonus amount**: Business decision needed -- how much is the one-time referral bonus? Affects unit economics and abuse prevention thresholds
-- **Whop plan IDs**: Need to be created in Whop dashboard and added to environment variables before payment flows can be tested
-- **Onboarding step count**: Research says 3-5 steps optimal. Exact steps need product decision (goal, TikTok connect, first analysis?)
-
-## Sources
-
-- Codebase analysis: package.json, checkout-modal.tsx, webhook handler, auth-guard.tsx, database.types.ts, billing-section.tsx
-- [Whop Checkout Embed Docs](https://docs.whop.com/payments/checkout-embed) -- affiliateCode, sessionId, theme
-- [Whop Affiliate Program Docs](https://docs.whop.com/manage-your-business/growth-marketing/affiliate-program)
-- [@whop/sdk npm](https://www.npmjs.com/package/@whop/sdk), [@whop/checkout npm](https://www.npmjs.com/package/@whop/checkout)
-- [SaaS Landing Page Best Practices 2026](https://www.storylane.io/blog/saas-landing-pages-best-practices)
-- [SaaS Landing Page Trends 2026](https://www.saasframe.io/blog/10-saas-landing-page-trends-for-2026-with-real-examples)
-- [SaaS Onboarding Strategy](https://userpilot.com/blog/saas-onboarding-strategy/)
-- [Trial Conversion Benchmarks 2026](https://ideaproof.io/questions/good-trial-conversion)
-- [SaaS Referral Program Guide](https://impact.com/referral/saas-referral-program-guide/)
-- [TikTok Creator Metrics 2026](https://influenceflow.io/resources/tiktok-creator-metrics-the-complete-guide-to-tracking-analyzing-optimizing-your-performance-in-2026/)
-- [NextStepjs](https://nextstepjs.com/) -- evaluated and not recommended (custom solution preferred)
-- [Safari ITP Documentation](https://webkit.org/blog/category/privacy/)
+- **Apify actor data shape**: The exact output format of `clockworks/tiktok-trends-scraper` needs to be validated by running the actor manually. Transform code depends on this.
+- **DeepSeek R1 prompt optimization**: The optimal prompt template for consistent JSON scoring output needs iterative testing. Budget 2-3 iterations during phase 2.
+- **Gemini structured output reliability**: `gemini-2.5-flash-lite` supports `responseMimeType: 'application/json'` but accuracy of schema adherence with complex nested objects needs testing.
+- **Vercel function cold start latency**: The analysis pipeline budget is 3-5s but cold start adds 1-2s. Need to measure actual end-to-end latency on Pro plan with Fluid Compute.
+- **DeepSeek reasoning token budget**: R1 can generate up to 32K reasoning tokens (CoT) before the final answer. Need to set `max_tokens` appropriately to control cost and latency without truncating useful reasoning.
+- **Hobby vs Pro plan decision**: Vercel Hobby limits crons to daily-only. The architecture requires hourly (trend calculation) and every-6-hour (scraping) crons. Pro plan is required for this milestone.
