@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { ArrowLeftRight } from "lucide-react";
 import {
   CompetitorCard,
   type CompetitorCardData,
@@ -85,22 +87,33 @@ export function CompetitorsClient({
 
   return (
     <div className="space-y-6">
-      {/* Page header with view toggle */}
+      {/* Page header with view toggle and compare link */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-medium text-foreground">Competitors</h1>
-        <Tabs
-          value={viewMode}
-          onValueChange={(v) => setViewMode(v as "grid" | "table")}
-        >
-          <TabsList>
-            <TabsTrigger value="grid" size="sm">
-              Grid
-            </TabsTrigger>
-            <TabsTrigger value="table" size="sm">
-              Table
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex items-center gap-3">
+          {cards.length >= 2 && (
+            <Link
+              href="/competitors/compare"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-foreground-muted hover:text-foreground border border-white/[0.06] hover:bg-white/[0.02] rounded-lg transition-colors"
+            >
+              <ArrowLeftRight size={14} />
+              Compare
+            </Link>
+          )}
+          <Tabs
+            value={viewMode}
+            onValueChange={(v) => setViewMode(v as "grid" | "table")}
+          >
+            <TabsList>
+              <TabsTrigger value="grid" size="sm">
+                Grid
+              </TabsTrigger>
+              <TabsTrigger value="table" size="sm">
+                Table
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
 
       {/* Content: empty state, card grid, or table */}
