@@ -219,8 +219,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 12-01: Accuracy Benchmarking
-- [ ] 12-02: Full User Flow Test, Code Cleanup & Merge
+- [ ] 12-01: Accuracy benchmarking — 50 content samples through full pipeline with results report
+- [ ] 12-02: Build/lint fix, engine cleanup, full user flow verification in browser
 
 ## Execution Waves
 
