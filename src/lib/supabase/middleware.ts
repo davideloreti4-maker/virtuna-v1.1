@@ -15,6 +15,7 @@ const PROTECTED_PREFIXES = [
   "/settings",
   "/welcome",
   "/referrals",
+  "/trending",
 ];
 
 /**
