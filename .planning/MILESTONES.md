@@ -165,3 +165,35 @@
 
 ---
 
+
+## Competitors Tool (Shipped: 2026-02-17)
+
+**Delivered:** Full competitor intelligence tracker for TikTok creators — add/track/compare competitors with real scraped data, growth analytics, engagement metrics, content analysis, benchmarking, and AI-powered strategy insights.
+
+**Phases completed:** 8 phases, 17 plans
+
+**Key accomplishments:**
+
+- Database schema with 4 tables (profiles, snapshots, videos, junction), BIGINT metrics, RLS policies, and Apify TikTok scraping with Zod validation
+- Competitor dashboard with card grid, table/leaderboard toggle, sparklines, growth velocity deltas, and empty/loading states
+- Detail pages with follower growth charts, engagement breakdowns, top videos, hashtag frequency, posting heatmap, and duration analysis
+- Side-by-side comparison with self-benchmarking, sortable multi-metric leaderboard, and daily cron re-scraping
+- AI intelligence via DeepSeek/Gemini — strategy analysis, viral detection, hashtag gap analysis, and personalized recommendations
+- Polish: stale data indicators, error states with retry, mobile responsive layout, and gap closure for all E2E flows
+
+**Stats:**
+
+- 238 commits, 126 files changed (+22,830 / -913 lines)
+- 41 requirements, all shipped
+- 8 phases, 17 plans
+- 2 days (2026-02-16 -> 2026-02-17)
+
+**Git range:** `milestone/competitors-tool` branch
+
+**Blockers carried forward:**
+- Backend-foundation merge timing (apify-client installed manually)
+- Apify actor schemas need runtime verification (Clockworks actors may change)
+- Vercel Pro plan confirmation for sub-daily cron
+
+---
+

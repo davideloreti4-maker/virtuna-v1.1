@@ -46,14 +46,20 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - Earnings dashboard with count-up stats, area chart, and per-source breakdown -- v2.3
 - Loading skeletons, responsive mobile layout, and keyboard accessibility -- v2.3
 - v0 MCP-guided UI generation with design system consistency -- v2.3
+- Competitor intelligence tracker with add/track/compare, real Apify scraping, AI insights -- Competitors Tool
+- Database schema (4 tables, RLS, BIGINT, junction dedup) and daily cron re-scraping -- Competitors Tool
+- Dashboard with card grid, table/leaderboard, sparklines, growth deltas -- Competitors Tool
+- Detail pages with growth charts, engagement, content analysis, heatmap -- Competitors Tool
+- Side-by-side comparison, self-benchmarking, sortable leaderboard -- Competitors Tool
+- AI intelligence: strategy analysis, viral detection, hashtag gap, recommendations -- Competitors Tool
+- Polish: stale indicators, error states with retry, mobile responsive -- Competitors Tool
 
 ### Active
 
-- [ ] Competitor intelligence tracker — add, track, compare TikTok creators
-- [ ] Real TikTok data scraping for competitor profiles and videos
-- [ ] Growth, engagement, and content analysis for tracked competitors
-- [ ] Side-by-side benchmarking against own stats
 - [ ] Competitor search/discovery by name or niche
+- [ ] Backend intelligence integration (connect prediction engine to frontend)
+- [ ] External brand deals marketplace
+- [ ] Trending page re-launch (when backend ready)
 
 ### Parallel (other worktrees)
 
@@ -114,6 +120,14 @@ AI-powered content intelligence that tells TikTok creators whether their content
 | useSubscription hook with polling | Good -- tier refresh without page reload |
 | Server-side FeatureGate + client-side TierGate split | Good -- accommodates Next.js server/client boundary |
 | Referral cookie set after getUser() | Good -- survives Supabase setAll response re-creation |
+| Junction table deduplication for shared competitor profiles | Good -- scrape once, serve all trackers |
+| BIGINT for all metric counters | Good -- viral creators exceed MAX_INT |
+| Apify Clockworks behind ScrapingProvider abstraction | Good -- swappable scraping backend |
+| DeepSeek for strategy/recommendations, Gemini for viral/hashtag | Good -- cost-effective dual-model |
+| 7-day TTL + scrape-date staleness for AI cache | Good -- auto-invalidates stale insights |
+| Server-side analytics pre-computation | Good -- minimal client bundle |
+| CSS grid heatmap (not Recharts) | Good -- lighter than chart library for grid layout |
+| URL searchParams for comparison state | Good -- server re-render on selection change |
 
 ## Constraints
 
@@ -129,22 +143,9 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - Local: ~/virtuna-v1.1
 - Vercel: https://virtuna-v11.vercel.app
 
-## Current Milestone: Competitors Tool
-
-**Goal:** Build a full competitor intelligence page where TikTok creators can add, track, and compare competitor creators with real data — growth metrics, content analysis, engagement depth, and visual benchmarking.
-
-**Target features:**
-- Add competitors via @handle paste or search by name/niche
-- Track follower growth, posting frequency, engagement rates, content categories, top videos, hashtags, posting schedules
-- Overview dashboard with growth charts, competitor cards grid, sortable leaderboard table
-- Benchmark own stats vs competitors
-- Real TikTok data via scraping (not mock)
-- Unlimited tracking for all users
-- Data model designed for future prediction engine integration
-
 ## Current State
 
-**Shipped:** MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
+**Shipped:** Competitors Tool (2026-02-17), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
 **Parallel:** Backend Foundation (worktree at ~/virtuna-backend-foundation/) — prediction engine, data pipeline
 
@@ -152,6 +153,7 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - Backend intelligence integration (connect prediction engine to frontend)
 - External brand deals marketplace
 - Trending page re-launch (when backend ready)
+- Competitor search/discovery by name or niche
 
 ---
-*Last updated: 2026-02-16 after Competitors Tool milestone started*
+*Last updated: 2026-02-17 after Competitors Tool milestone completed*
