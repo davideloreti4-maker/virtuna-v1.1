@@ -9,19 +9,19 @@ See: .planning/PROJECT.md (updated 2026-02-16)
 
 ## Current Position
 
-Phase: 8 of 8 (Gap Closure)
-Plan: 1 of 2 in current phase (08-01 complete)
-Status: Phase 8 in progress
-Last activity: 2026-02-17 -- Completed 08-01 (Code Fixes: self-benchmarking, error handling, skeleton import)
+Phase: 8 of 8 (Gap Closure) -- COMPLETE
+Plan: 2 of 2 in current phase (all complete)
+Status: All phases and plans complete
+Last activity: 2026-02-17 -- Completed 08-02 (Add/Remove Competitor UI)
 
-Progress: [████████░░] 94%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 16
+- Total plans completed: 17
 - Average duration: 3 min
-- Total execution time: 0.85 hours
+- Total execution time: 0.90 hours
 
 **By Phase:**
 
@@ -34,10 +34,10 @@ Progress: [████████░░] 94%
 | 05-benchmarking-comparison | 2 | 5 min | 3 min |
 | 06-ai-intelligence | 2 | 9 min | 5 min |
 | 07-polish-edge-cases | 3 | 6 min | 2 min |
-| 08-gap-closure | 1 | 3 min | 3 min |
+| 08-gap-closure | 2 | 6 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 06-02 (4 min), 07-01 (2 min), 07-03 (2 min), 07-02 (2 min), 08-01 (3 min)
+- Last 5 plans: 07-01 (2 min), 07-03 (2 min), 07-02 (2 min), 08-01 (3 min), 08-02 (3 min)
 - Trend: stable (fast)
 
 *Updated after each plan completion*
@@ -110,6 +110,9 @@ Recent decisions affecting current work:
 - Console.error for addCompetitor failures in server component (no toast available)
 - Re-export CompetitorTableSkeleton from loading.tsx for client-side view transitions
 - Implicit verification: foundational phases validated by successful downstream execution
+- AddCompetitorDialog uses trigger prop pattern for flexible placement across header and empty state
+- RemoveCompetitorButton uses manual open state with onClick (not AlertDialog.Trigger) to block event propagation
+- Group hover reveal pattern for card actions (opacity-0 group-hover:opacity-100)
 
 ### Pending Todos
 
@@ -124,10 +127,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 08-01-PLAN.md (Code Fixes: self-benchmarking, error handling, skeleton import)
+Stopped at: Completed 08-02-PLAN.md (Add/Remove Competitor UI) -- ALL PLANS COMPLETE
 Resume file: None
-Next: 08-02-PLAN.md (Add/Remove Competitor UI)
+Next: Project complete -- all 8 phases, 17 plans executed
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-17 -- 08-01 execution complete (Code Fixes, 2 tasks, 3 files)*
+*Last updated: 2026-02-17 -- 08-02 execution complete (Add/Remove Competitor UI, 2 tasks, 6 files) -- PROJECT COMPLETE*
