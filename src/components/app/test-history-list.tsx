@@ -53,6 +53,7 @@ export function TestHistoryList({ onSelectTest }: TestHistoryListProps) {
               createdAt: (test.created_at as string) ?? new Date().toISOString(),
               societyId: (test.society_id as string) ?? '',
             }}
+            inputMode={(test.input_mode as string) ?? 'text'}
             isActive={false}
             onClick={() => onSelectTest(test.id as string)}
             onDelete={() => {

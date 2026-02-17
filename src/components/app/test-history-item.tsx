@@ -1,7 +1,7 @@
 'use client';
 
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { MoreVertical, Trash2 } from 'lucide-react';
+import { MoreVertical, Trash2, Video } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Text } from '@/components/ui/typography';
 import type { TestResult } from '@/types/test';
@@ -37,7 +37,7 @@ export function TestHistoryItem({
   thumbnailUrl,
 }: TestHistoryItemProps) {
   const displayTitle = getDisplayTitle(test.content);
-  const showThumbnail = inputMode === 'video_upload' && thumbnailUrl;
+  const isVideoUpload = inputMode === 'video_upload';
 
   return (
     <button
@@ -55,14 +55,18 @@ export function TestHistoryItem({
         <div className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-accent" />
       )}
 
-      {/* Video thumbnail (UI-08 prep) */}
-      {showThumbnail && (
+      {/* Video indicator: thumbnail image when available, Video icon fallback for video_upload */}
+      {isVideoUpload && thumbnailUrl ? (
         <img
           src={thumbnailUrl}
           alt=""
           className="h-8 w-8 shrink-0 rounded object-cover"
         />
-      )}
+      ) : isVideoUpload ? (
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-white/[0.05]">
+          <Video className="h-4 w-4 text-foreground-muted" />
+        </div>
+      ) : null}
 
       {/* Content title - truncated, using Typography */}
       <Text as="span" size="sm" className="flex-1 truncate text-inherit">
