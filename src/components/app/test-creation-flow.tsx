@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useRef } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useTestStore } from "@/stores/test-store";
 import { useSocietyStore } from "@/stores/society-store";
@@ -37,6 +37,7 @@ export function TestCreationFlow({ triggerButton, className }: TestCreationFlowP
   const { selectedSocietyId, _isHydrated: societyHydrated, _hydrate: hydrateSociety } = useSocietyStore();
   const analyzeMutation = useAnalyze();
   const isCancelledRef = useRef(false);
+  const [videoStoragePath, setVideoStoragePath] = useState<string | null>(null);
 
   // Hydrate society store on mount (needed when rendered outside dashboard)
   useEffect(() => {
@@ -77,8 +78,11 @@ export function TestCreationFlow({ triggerButton, className }: TestCreationFlowP
     } else if (data.input_mode === "tiktok_url") {
       payload.tiktok_url = data.tiktok_url;
     } else if (data.input_mode === "video_upload") {
-      // For now, set video_storage_path to empty -- actual Supabase upload is Phase 8+
-      payload.video_storage_path = "pending-upload";
+      if (!videoStoragePath) {
+        setStatus("filling-form");
+        return;
+      }
+      payload.video_storage_path = videoStoragePath;
       payload.content_text = data.video_caption;
       if (data.video_niche) payload.niche = data.video_niche;
     }
@@ -119,7 +123,15 @@ export function TestCreationFlow({ triggerButton, className }: TestCreationFlowP
   if (currentStatus === "filling-form" || currentStatus === "selecting-type") {
     return (
       <div className={cn("w-full max-w-2xl mx-auto p-6", className)}>
-        <ContentForm onSubmit={handleContentSubmit} />
+        <ContentForm
+          onSubmit={handleContentSubmit}
+          onVideoUploadComplete={(path) => {
+            setVideoStoragePath(path);
+          }}
+          onVideoUploadError={() => {
+            setVideoStoragePath(null);
+          }}
+        />
       </div>
     );
   }

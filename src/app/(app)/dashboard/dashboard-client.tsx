@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   FilterPillGroup,
@@ -48,6 +48,7 @@ export function DashboardClient() {
 
   const analyzeMutation = useAnalyze();
   const isCancelledRef = useRef(false);
+  const [videoStoragePath, setVideoStoragePath] = useState<string | null>(null);
 
   // Hydrate stores on mount
   useEffect(() => {
@@ -101,7 +102,11 @@ export function DashboardClient() {
     } else if (data.input_mode === "tiktok_url") {
       payload.tiktok_url = data.tiktok_url;
     } else if (data.input_mode === "video_upload") {
-      payload.video_storage_path = "pending-upload";
+      if (!videoStoragePath) {
+        setStatus("filling-form");
+        return;
+      }
+      payload.video_storage_path = videoStoragePath;
       payload.content_text = data.video_caption;
       if (data.video_niche) payload.niche = data.video_niche;
     }
@@ -155,6 +160,12 @@ export function DashboardClient() {
           {currentStatus === "filling-form" ? (
             <ContentForm
               onSubmit={handleContentSubmit}
+              onVideoUploadComplete={(path) => {
+                setVideoStoragePath(path);
+              }}
+              onVideoUploadError={() => {
+                setVideoStoragePath(null);
+              }}
             />
           ) : currentStatus === "simulating" ? (
             <LoadingPhases
