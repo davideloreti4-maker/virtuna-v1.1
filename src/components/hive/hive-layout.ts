@@ -90,7 +90,7 @@ export function computeHiveLayout(
   }
 
   // Tier-1: symmetrically spaced around center, each with unique color
-  const TIER1_RADIUS = outerRadius * 0.15;
+  const TIER1_RADIUS = outerRadius * 0.225;
   const tier1ColorMap = new Map<string, number>(); // id → color index
 
   for (let i = 0; i < tier1Nodes.length; i++) {

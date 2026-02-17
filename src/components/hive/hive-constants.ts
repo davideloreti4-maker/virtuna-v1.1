@@ -22,7 +22,7 @@ export const VIEWPORT_PADDING = 60 as const;
 // ---------------------------------------------------------------------------
 
 export const NODE_SIZES = {
-  center: { width: 65, height: 86, borderRadius: 8 },
+  center: { width: 110, height: 146, borderRadius: 8 },
   tier1: { radius: 8, minMultiplier: 0.8, maxMultiplier: 1.5 },
   tier2: { radius: 4, minMultiplier: 0.5, maxMultiplier: 1.8 },
 } as const;
