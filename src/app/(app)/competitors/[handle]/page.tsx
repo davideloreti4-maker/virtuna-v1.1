@@ -16,6 +16,8 @@ import { GrowthSection } from "@/components/competitors/detail/growth-section";
 import { EngagementSection } from "@/components/competitors/detail/engagement-section";
 import { TopVideosSection } from "@/components/competitors/detail/top-videos-section";
 import { ContentAnalysisSection } from "@/components/competitors/detail/content-analysis-section";
+import { IntelligenceSection } from "@/components/competitors/intelligence/intelligence-section";
+import { getAllIntelligence } from "@/lib/ai/intelligence-service";
 import type { VideoCardData } from "@/components/competitors/detail/video-card";
 
 interface DetailPageProps {
@@ -85,6 +87,32 @@ export default async function CompetitorDetailPage({
 
   const safeSnapshots = snapshots ?? [];
   const safeVideos = videos ?? [];
+
+  // Fetch cached AI intelligence (fast DB read, no AI calls)
+  const cachedIntelligence = await getAllIntelligence(supabase, profile.id);
+
+  // Check if user has self-tracked their own TikTok handle (for hashtag gap)
+  const { data: creatorProfile } = await supabase
+    .from("creator_profiles")
+    .select("tiktok_handle")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  let hasUserVideos = false;
+  if (creatorProfile?.tiktok_handle) {
+    const { data: userProfile } = await supabase
+      .from("competitor_profiles")
+      .select("id")
+      .eq("tiktok_handle", creatorProfile.tiktok_handle)
+      .maybeSingle();
+    if (userProfile) {
+      const { count } = await supabase
+        .from("competitor_videos")
+        .select("id", { count: "exact", head: true })
+        .eq("competitor_id", userProfile.id);
+      hasUserVideos = (count ?? 0) > 0;
+    }
+  }
 
   // Pre-compute analytics server-side
   const chartData = safeSnapshots.map((s) => ({
@@ -191,6 +219,15 @@ export default async function CompetitorDetailPage({
         hashtags={hashtags}
         heatmapGrid={heatmapGrid}
         durationBreakdown={durationBreakdown}
+      />
+      <IntelligenceSection
+        competitorId={profile.id}
+        competitorHandle={profile.tiktok_handle}
+        cachedStrategy={cachedIntelligence.strategy ?? null}
+        cachedViral={cachedIntelligence.viral ?? null}
+        cachedHashtagGap={cachedIntelligence.hashtag_gap ?? null}
+        cachedRecommendations={cachedIntelligence.recommendations ?? null}
+        hasUserVideos={hasUserVideos}
       />
     </div>
   );
