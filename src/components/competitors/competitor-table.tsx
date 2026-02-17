@@ -11,6 +11,7 @@ import {
   computeEngagementRate,
   computePostingCadence,
 } from "@/lib/competitors-utils";
+import { StaleIndicator } from "@/components/competitors/stale-indicator";
 import { CompetitorSparkline } from "@/components/competitors/competitor-sparkline";
 import { GrowthDelta } from "@/components/competitors/growth-delta";
 
@@ -133,6 +134,9 @@ export function CompetitorTable({ competitors }: CompetitorTableProps) {
             <th className="py-3 px-4 text-right font-medium text-foreground-muted text-xs">
               Trend
             </th>
+            <th className="py-3 px-4 text-right font-medium text-foreground-muted text-xs">
+              Status
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -221,6 +225,15 @@ export function CompetitorTable({ competitors }: CompetitorTableProps) {
                       />
                     </div>
                   ) : null}
+                </td>
+
+                {/* Status */}
+                <td className="py-3 px-4 text-right">
+                  {s.scrape_status === "failed" ? (
+                    <span className="text-[10px] text-red-400 font-medium">Failed</span>
+                  ) : (
+                    <StaleIndicator lastScrapedAt={s.last_scraped_at} />
+                  )}
                 </td>
               </tr>
             );

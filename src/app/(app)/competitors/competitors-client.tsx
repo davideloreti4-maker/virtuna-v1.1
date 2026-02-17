@@ -80,6 +80,8 @@ export function CompetitorsClient({
         follower_count: profile.follower_count,
         heart_count: profile.heart_count,
         video_count: profile.video_count,
+        last_scraped_at: profile.last_scraped_at,
+        scrape_status: profile.scrape_status,
         snapshots: snapshotMap[profile.id] ?? [],
         videos: videosMap[profile.id] ?? [],
       };

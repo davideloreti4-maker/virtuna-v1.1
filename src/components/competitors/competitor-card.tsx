@@ -8,6 +8,7 @@ import {
   computeGrowthVelocity,
   computeEngagementRate,
 } from "@/lib/competitors-utils";
+import { StaleIndicator } from "@/components/competitors/stale-indicator";
 import { CompetitorSparkline } from "@/components/competitors/competitor-sparkline";
 import { GrowthDelta } from "@/components/competitors/growth-delta";
 
@@ -19,6 +20,8 @@ export interface CompetitorCardData {
   follower_count: number | null;
   heart_count: number | null;
   video_count: number | null;
+  last_scraped_at: string | null;
+  scrape_status: string | null;
   snapshots: { follower_count: number; snapshot_date: string }[];
   videos: {
     views: number | null;
@@ -68,6 +71,10 @@ export function CompetitorCard({ data }: CompetitorCardProps) {
                 <p className="text-xs text-foreground-muted truncate">
                   {data.display_name}
                 </p>
+              )}
+              <StaleIndicator lastScrapedAt={data.last_scraped_at} />
+              {data.scrape_status === "failed" && (
+                <span className="text-[10px] text-red-400 font-medium">Scrape failed</span>
               )}
             </div>
           </div>
