@@ -135,7 +135,7 @@ export default async function ComparePage({ searchParams }: ComparePageProps) {
   const { data: creatorProfile } = await supabase
     .from("creator_profiles")
     .select("tiktok_handle")
-    .eq("id", user.id)
+    .eq("user_id", user.id)
     .single();
 
   const userHandle = creatorProfile?.tiktok_handle ?? null;
@@ -197,7 +197,10 @@ export default async function ComparePage({ searchParams }: ComparePageProps) {
         }
       } else {
         // Profile doesn't exist -- scrape via addCompetitor server action
-        await addCompetitor(userHandle);
+        const result = await addCompetitor(userHandle);
+        if (result.error) {
+          console.error("[ComparePage] Self-tracking setup failed:", result.error);
+        }
       }
 
       return userHandle;
