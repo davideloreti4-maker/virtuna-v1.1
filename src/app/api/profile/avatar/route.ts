@@ -58,9 +58,9 @@ export async function POST(request: Request) {
 
     // Update user_settings with avatar URL
     await supabase
-      .from("user_settings" as never)
+      .from("user_settings")
       .upsert(
-        { user_id: user.id, avatar_url: publicUrl } as never,
+        { user_id: user.id, avatar_url: publicUrl },
         { onConflict: "user_id" }
       );
 

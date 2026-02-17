@@ -1,8 +1,32 @@
 {
   "crons": [
     {
+      "path": "/api/cron/calculate-trends",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/scrape-trending",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/sync-whop",
+      "schedule": "0 */12 * * *"
+    },
+    {
       "path": "/api/cron/refresh-competitors",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/validate-rules",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/retrain-ml",
+      "schedule": "0 3 * * 1"
+    },
+    {
+      "path": "/api/cron/calibration-audit",
+      "schedule": "0 4 1 * *"
     }
   ]
 }

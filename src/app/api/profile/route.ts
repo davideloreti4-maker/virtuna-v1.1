@@ -22,7 +22,7 @@ export async function GET() {
 
     // Fetch user_settings (may not exist yet for new users)
     const { data: settings } = await supabase
-      .from("user_settings" as never)
+      .from("user_settings")
       .select("*")
       .eq("user_id", user.id)
       .maybeSingle();
@@ -35,21 +35,21 @@ export async function GET() {
       .maybeSingle();
 
     const profile = {
-      name: (settings as Record<string, unknown>)?.display_name
-        || (creatorProfile as Record<string, unknown>)?.display_name
+      name: settings?.display_name
+        || creatorProfile?.display_name
         || user.user_metadata?.full_name
         || "",
       email: user.email || "",
-      company: (settings as Record<string, unknown>)?.company || "",
-      role: (settings as Record<string, unknown>)?.role || "",
-      avatar: (settings as Record<string, unknown>)?.avatar_url
+      company: settings?.company || "",
+      role: settings?.role || "",
+      avatar: settings?.avatar_url
         || user.user_metadata?.avatar_url
         || null,
       notifications: {
-        emailUpdates: (settings as Record<string, unknown>)?.notification_email_updates ?? true,
-        testResults: (settings as Record<string, unknown>)?.notification_test_results ?? true,
-        weeklyDigest: (settings as Record<string, unknown>)?.notification_weekly_digest ?? false,
-        marketingEmails: (settings as Record<string, unknown>)?.notification_marketing ?? false,
+        emailUpdates: settings?.notification_email_updates ?? true,
+        testResults: settings?.notification_test_results ?? true,
+        weeklyDigest: settings?.notification_weekly_digest ?? false,
+        marketingEmails: settings?.notification_marketing ?? false,
       },
     };
 
@@ -85,12 +85,12 @@ export async function PATCH(request: Request) {
 
     // Upsert user_settings
     const { error } = await supabase
-      .from("user_settings" as never)
+      .from("user_settings")
       .upsert(
         {
           user_id: user.id,
           ...parsed.data,
-        } as never,
+        },
         { onConflict: "user_id" }
       );
 
