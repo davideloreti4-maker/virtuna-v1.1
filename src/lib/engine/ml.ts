@@ -1,5 +1,6 @@
-import { readFileSync, writeFileSync, existsSync } from "fs";
+import { readFileSync } from "fs";
 import { join } from "path";
+import { createServiceClient } from "@/lib/supabase/service";
 import type { FeatureVector } from "./types";
 
 // =====================================================
@@ -43,11 +44,10 @@ const L2_LAMBDA = 0.001;
 // Tier midpoints for score conversion (virality tiers 1-5)
 const TIER_MIDPOINTS = [12.5, 35, 55, 72.5, 90];
 
-// Paths relative to project root
-const WEIGHTS_PATH = join(
-  process.cwd(),
-  "src/lib/engine/ml-weights.json"
-);
+const STORAGE_BUCKET = "ml-weights";
+const STORAGE_PATH = "model/ml-weights.json";
+
+// Paths relative to project root (fallback for training data)
 const TRAINING_DATA_PATH = join(
   process.cwd(),
   "src/lib/engine/training-data.json"
@@ -281,9 +281,21 @@ export async function trainModel(
     confusionMatrix: testEval.confusionMatrix,
   };
 
-  // Persist to disk
-  writeFileSync(WEIGHTS_PATH, JSON.stringify(modelWeights, null, 2));
-  console.log(`Model weights saved to ${WEIGHTS_PATH}`);
+  // Persist to Supabase Storage
+  const supabase = createServiceClient();
+  const weightsJson = JSON.stringify(modelWeights, null, 2);
+  const { error: uploadError } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(STORAGE_PATH, weightsJson, {
+      contentType: "application/json",
+      upsert: true,
+    });
+
+  if (uploadError) {
+    console.error("[ml] Failed to upload weights to storage:", uploadError);
+    throw new Error(`Failed to persist ML weights: ${uploadError.message}`);
+  }
+  console.log(`[ml] Model weights saved to ${STORAGE_BUCKET}/${STORAGE_PATH}`);
 
   // Update module cache
   cachedWeights = modelWeights;
@@ -301,20 +313,25 @@ export async function trainModel(
 // =====================================================
 
 /**
- * Load model weights from disk with module-level caching.
- * Returns null if weights file doesn't exist (model not yet trained).
+ * Load model weights from Supabase Storage with module-level caching.
+ * Returns null if weights don't exist (model not yet trained).
  */
-export function loadModel(): ModelWeights | null {
+export async function loadModel(): Promise<ModelWeights | null> {
   if (cachedWeights !== null) return cachedWeights;
 
-  if (!existsSync(WEIGHTS_PATH)) return null;
-
   try {
-    const raw = readFileSync(WEIGHTS_PATH, "utf-8");
+    const supabase = createServiceClient();
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .download(STORAGE_PATH);
+
+    if (error || !data) return null;
+
+    const raw = await data.text();
     cachedWeights = JSON.parse(raw) as ModelWeights;
     return cachedWeights;
   } catch {
-    console.error("Failed to load ML model weights");
+    console.error("[ml] Failed to load ML model weights from storage");
     return null;
   }
 }
@@ -331,8 +348,8 @@ export function loadModel(): ModelWeights | null {
  *
  * Returns null if model is not available (graceful degradation).
  */
-export function predictWithML(features: number[]): number | null {
-  const model = loadModel();
+export async function predictWithML(features: number[]): Promise<number | null> {
+  const model = await loadModel();
   if (model === null) return null;
 
   const logits = computeLogits(features, model.weights, model.biases);

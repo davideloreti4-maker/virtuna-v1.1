@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/service";
+import { createCache } from "@/lib/cache";
 
 // =====================================================
 // Creator Context — Stage 5 of prediction pipeline
@@ -19,8 +20,8 @@ export interface CreatorContext {
   };
 }
 
-// Module-level cache for platform averages (same pattern as calibration data in gemini.ts/deepseek.ts)
-let cachedPlatformAverages: CreatorContext["platform_averages"] | null = null;
+// Platform averages cache with 24h TTL — averages change slowly
+const platformAveragesCache = createCache<CreatorContext["platform_averages"]>(24 * 60 * 60 * 1000);
 
 /**
  * Compute platform-wide averages from scraped_videos table.
@@ -35,7 +36,16 @@ let cachedPlatformAverages: CreatorContext["platform_averages"] | null = null;
 async function getPlatformAverages(
   supabase: ReturnType<typeof createServiceClient>
 ): Promise<CreatorContext["platform_averages"]> {
-  if (cachedPlatformAverages) return cachedPlatformAverages;
+  const CACHE_KEY = "platform_averages";
+  const cached = platformAveragesCache.get(CACHE_KEY);
+  if (cached) return cached;
+
+  const FALLBACK: CreatorContext["platform_averages"] = {
+    avg_views: 50000,
+    avg_engagement_rate: 0.06,
+    avg_share_rate: 0.008,
+    avg_comment_rate: 0.005,
+  };
 
   const { data: videos, error } = await supabase
     .from("scraped_videos")
@@ -44,14 +54,8 @@ async function getPlatformAverages(
     .limit(5000);
 
   if (error || !videos || videos.length === 0) {
-    // Hard fallback: reasonable defaults based on TikTok industry data
-    cachedPlatformAverages = {
-      avg_views: 50000,
-      avg_engagement_rate: 0.06,
-      avg_share_rate: 0.008,
-      avg_comment_rate: 0.005,
-    };
-    return cachedPlatformAverages;
+    platformAveragesCache.set(CACHE_KEY, FALLBACK);
+    return FALLBACK;
   }
 
   let totalViews = 0;
@@ -76,23 +80,19 @@ async function getPlatformAverages(
   }
 
   if (validCount === 0) {
-    cachedPlatformAverages = {
-      avg_views: 50000,
-      avg_engagement_rate: 0.06,
-      avg_share_rate: 0.008,
-      avg_comment_rate: 0.005,
-    };
-    return cachedPlatformAverages;
+    platformAveragesCache.set(CACHE_KEY, FALLBACK);
+    return FALLBACK;
   }
 
-  cachedPlatformAverages = {
+  const result: CreatorContext["platform_averages"] = {
     avg_views: Math.round(totalViews / validCount),
     avg_engagement_rate: Number((totalEngagement / validCount).toFixed(4)),
     avg_share_rate: Number((totalShareRate / validCount).toFixed(4)),
     avg_comment_rate: Number((totalCommentRate / validCount).toFixed(4)),
   };
 
-  return cachedPlatformAverages;
+  platformAveragesCache.set(CACHE_KEY, result);
+  return result;
 }
 
 /**

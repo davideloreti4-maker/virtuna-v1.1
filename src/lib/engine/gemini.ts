@@ -324,8 +324,10 @@ export async function analyzeWithGemini(
       if (lastError.name === "AbortError") {
         throw new Error(`Gemini request timed out after ${TEXT_TIMEOUT_MS}ms`);
       }
-      // Retry on parse/validation errors
       if (attempt === MAX_RETRIES) break;
+      // Exponential backoff: 1s, 3s
+      const delay = attempt === 0 ? 1000 : 3000;
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 

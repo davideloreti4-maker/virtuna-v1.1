@@ -13,9 +13,8 @@ import { trainModel } from "@/lib/engine/ml";
  * NOTE: Training runs ~200 epochs on ~7000 samples, taking 5-15 seconds.
  * Vercel Pro plan (60s timeout) recommended. Hobby plan (10s) may time out.
  *
- * TODO: ML weights are written to disk (ml-weights.json) which is ephemeral
- * on Vercel (cleared on redeploy). For production persistence, store weights
- * in Supabase Storage or as an environment variable.
+ * Weights are persisted to Supabase Storage (ml-weights bucket) for
+ * production durability across Vercel redeployments.
  */
 export async function GET(request: Request) {
   const authError = verifyCronAuth(request);

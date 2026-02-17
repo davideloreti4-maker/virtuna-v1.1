@@ -433,6 +433,9 @@ export async function reasonWithDeepSeek(
         recordFailure();
       }
       if (attempt === MAX_RETRIES) break;
+      // Exponential backoff: 1s, 3s
+      const delay = attempt === 0 ? 1000 : 3000;
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 
