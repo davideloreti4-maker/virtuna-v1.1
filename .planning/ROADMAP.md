@@ -19,6 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Benchmarking & Comparison** - Side-by-side comparison, self-benchmarking, sortable leaderboard *(completed 2026-02-17)*
 - [x] **Phase 6: AI Intelligence** - Strategy analysis, viral detection, hashtag gap analysis, actionable recommendations *(completed 2026-02-17)*
 - [x] **Phase 7: Polish & Edge Cases** - Stale data indicators, error states with retry, mobile responsive layout *(completed 2026-02-17)*
+- [ ] **Phase 8: Gap Closure** - Add/remove competitor UI, self-benchmarking bug fix, tech debt cleanup *(gap closure from audit)*
 
 ## Phase Details
 
@@ -136,6 +137,25 @@ Plans:
 - [ ] 07-02-PLAN.md -- Wire stale indicators and error states into dashboard cards, table, detail header, and comparison page
 - [ ] 07-03-PLAN.md -- Mobile responsive audit across all competitor views (detail page, tables, heatmap, comparison, intelligence)
 
+### Phase 8: Gap Closure
+**Goal**: All 3 broken E2E flows work — users can add, remove, and self-benchmark competitors. Tech debt resolved.
+**Depends on**: Phase 7 (all prior phases complete)
+**File Ownership**: `src/app/(app)/competitors/`, `src/components/competitors/`, `src/app/(app)/competitors/compare/`
+**Requirements**: COMP-01, COMP-05, BENCH-02
+**Gap Closure**: Closes all gaps from v1.0-MILESTONE-AUDIT.md
+**Success Criteria** (what must be TRUE):
+  1. User can add a competitor by pasting @handle via a dialog accessible from dashboard header button and empty state CTA
+  2. User can remove a tracked competitor via button on card/table row with confirmation dialog
+  3. Self-benchmarking shows "You" option in comparison selector (`.eq("user_id", user.id)` fix)
+  4. addCompetitor return value handled in compare/page.tsx (error surfaced, not silently ignored)
+  5. CompetitorTableSkeleton imported and rendered during table loading
+  6. Phase 1 VERIFICATION.md created documenting implicit validation
+**Plans**: 2 plans
+
+Plans:
+- [ ] 08-01-PLAN.md -- Self-benchmarking fix, addCompetitor error handling, table skeleton wiring, Phase 1 verification doc
+- [ ] 08-02-PLAN.md -- Add competitor dialog + remove competitor button with confirmation, wired to dashboard
+
 ## Execution Waves
 
 Wave groupings for parallel team dispatch. Phases within a wave have no inter-dependencies.
@@ -159,6 +179,9 @@ Wave groupings for parallel team dispatch. Phases within a wave have no inter-de
 ### Wave 6 (depends on Wave 5)
 - Phase 7: Polish & Edge Cases (needs Phase 3, Phase 4, Phase 5, Phase 6)
 
+### Wave 7 (depends on Wave 6)
+- Phase 8: Gap Closure (needs Phase 7 — all prior work complete)
+
 ## Progress
 
 **Execution Order:**
@@ -173,3 +196,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 5. Benchmarking & Comparison | 2/2 | ✓ Complete | 2026-02-17 |
 | 6. AI Intelligence | 2/2 | ✓ Complete | 2026-02-17 |
 | 7. Polish & Edge Cases | 3/3 | ✓ Complete | 2026-02-17 |
+| 8. Gap Closure | 0/2 | Pending | - |
