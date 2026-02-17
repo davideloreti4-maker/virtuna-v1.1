@@ -51,6 +51,7 @@ Progress: [███████████████████████
 | 13    | 02   | 2min     | 2     | 3     |
 | 14    | 01   | 4min     | 2     | 4     |
 | 14    | 02   | 2min     | 1     | 2     |
+| 15    | 01   | 2min     | 2     | 3     |
 | 15    | 02   | 1min     | 1     | 1     |
 
 ## Accumulated Context
@@ -194,6 +195,8 @@ Progress: [███████████████████████
 - [Execute 14-02]: Video download failure sends SSE error + closes stream (no fallback to text mode, consistent with "video errors fail hard")
 - [Execute 14-02]: PipelineResult.geminiResult typed as GeminiAnalysis | GeminiVideoAnalysis union for backward compat
 - [Execute 14-02]: SSE "downloading" phase event before video download for UI progress feedback
+- [Execute 15-01]: Clean removal of persona reactions (not re-implementation) since DeepSeek schema dropped persona_reactions in Phase 3
+- [Execute 15-01]: Video icon indicator instead of thumbnail since video_storage_path is not persisted in analysis_results
 - [Execute 15-02]: Documentation-only change to benchmark script -- no logic modifications, JSDoc header only
 
 ### Pending Todos
@@ -215,4 +218,4 @@ Next: Milestone verification and wrap-up
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-17 -- Phase 14 COMPLETE + VERIFIED (30/30 plans)*
+*Last updated: 2026-02-17 -- Phase 15 COMPLETE (32/32 plans, all milestone phases finished)*
