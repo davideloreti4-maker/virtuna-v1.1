@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered competitor intelligence that shows TikTok creators exactly what their competitors do, why it works, and how to outperform them.
-**Current focus:** Phase 6 in progress -- AI Intelligence service layer done
+**Current focus:** Phase 6 complete -- ready for Phase 7
 
 ## Current Position
 
-Phase: 6 of 7 (AI Intelligence)
-Plan: 1 of 2 in current phase (06-01 complete)
-Status: 06-01 complete, ready for 06-02 (Intelligence UI)
-Last activity: 2026-02-17 -- Completed 06-01 (AI Intelligence Service Layer)
+Phase: 6 of 7 (AI Intelligence) -- COMPLETE
+Plan: 2 of 2 in current phase (06-02 complete)
+Status: Phase 6 complete, ready for Phase 7
+Last activity: 2026-02-17 -- Completed 06-02 (Intelligence UI)
 
-Progress: [████████░░] 79%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11
+- Total plans completed: 12
 - Average duration: 3 min
-- Total execution time: 0.63 hours
+- Total execution time: 0.70 hours
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [████████░░] 79%
 | 03-competitor-dashboard | 2 | 6 min | 3 min |
 | 04-detail-page-analytics | 2 | 6 min | 3 min |
 | 05-benchmarking-comparison | 2 | 5 min | 3 min |
-| 06-ai-intelligence | 1 | 5 min | 5 min |
+| 06-ai-intelligence | 2 | 9 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-02 (2 min), 05-01 (2 min), 05-02 (3 min), 06-01 (5 min)
+- Last 5 plans: 05-01 (2 min), 05-02 (3 min), 06-01 (5 min), 06-02 (4 min)
 - Trend: stable (fast)
 
 *Updated after each plan completion*
@@ -94,6 +94,9 @@ Recent decisions affecting current work:
 - Service client for AI cache writes (bypasses RLS), user client for reads
 - Computation before AI: pure functions for detection/frequency, AI only for insight generation
 - 1 retry on DeepSeek parse failure with stricter JSON instruction
+- Server-compatible card components inside client wrapper (no "use client" on cards, serializable props only)
+- GenerateCTA inline component pattern for empty state with loading spinner
+- Hashtag gap shows self-tracking CTA when user has no videos instead of generate button
 
 ### Pending Todos
 
@@ -108,10 +111,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 06-01-PLAN.md (AI Intelligence Service Layer)
+Stopped at: Completed 06-02-PLAN.md (Intelligence UI)
 Resume file: None
-Next: 06-02 execution (Intelligence UI)
+Next: Phase 7 planning or execution
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-17 -- 06-01 execution complete (AI service layer, 2 tasks, 9 files)*
+*Last updated: 2026-02-17 -- 06-02 execution complete (Intelligence UI, 2 tasks, 6 files)*
