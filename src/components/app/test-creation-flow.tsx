@@ -125,6 +125,7 @@ export function TestCreationFlow({ triggerButton, className }: TestCreationFlowP
       <div className={cn("w-full max-w-2xl mx-auto p-6", className)}>
         <ContentForm
           onSubmit={handleContentSubmit}
+          isVideoUploading={!videoStoragePath}
           onVideoUploadComplete={(path) => {
             setVideoStoragePath(path);
           }}

@@ -62,6 +62,8 @@ interface ContentFormProps {
   onVideoUploadComplete?: (path: string) => void;
   /** Called if video upload fails */
   onVideoUploadError?: (error: string) => void;
+  /** When true, disables submit button during video upload */
+  isVideoUploading?: boolean;
   className?: string;
 }
 
@@ -71,7 +73,7 @@ type InputMode = "text" | "tiktok_url" | "video_upload";
 // Component
 // ---------------------------------------------------------------------------
 
-export function ContentForm({ onSubmit, onVideoUploadComplete, onVideoUploadError, className }: ContentFormProps) {
+export function ContentForm({ onSubmit, onVideoUploadComplete, onVideoUploadError, isVideoUploading, className }: ContentFormProps) {
   const [activeTab, setActiveTab] = useState<InputMode>("text");
   const [formData, setFormData] = useState<ContentFormData>({
     input_mode: "text",
@@ -161,7 +163,7 @@ export function ContentForm({ onSubmit, onVideoUploadComplete, onVideoUploadErro
   const isSubmitDisabled =
     (activeTab === "text" && !formData.caption.trim()) ||
     (activeTab === "tiktok_url" && !formData.tiktok_url.trim()) ||
-    (activeTab === "video_upload" && !formData.video_file);
+    (activeTab === "video_upload" && (!formData.video_file || isVideoUploading));
 
   // ---------------------------------------------------------------------------
   // Render

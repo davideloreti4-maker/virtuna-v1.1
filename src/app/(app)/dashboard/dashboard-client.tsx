@@ -160,6 +160,7 @@ export function DashboardClient() {
           {currentStatus === "filling-form" ? (
             <ContentForm
               onSubmit={handleContentSubmit}
+              isVideoUploading={!videoStoragePath}
               onVideoUploadComplete={(path) => {
                 setVideoStoragePath(path);
               }}
