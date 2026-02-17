@@ -32,6 +32,8 @@ interface TestState {
   currentStatus: TestStatus;
   isViewingHistory: boolean;
   _isHydrated: boolean;
+  /** ID of the test being viewed — use with useAnalysisDetail() */
+  _viewingTestId: string | null;
 
   // Compatibility shim — will be removed when all consumers migrate
   currentResult: TestResult | null;
@@ -50,6 +52,7 @@ export const useTestStore = create<TestState>((set) => ({
   currentStatus: 'idle',
   isViewingHistory: false,
   _isHydrated: false,
+  _viewingTestId: null,
   currentResult: null,
 
   _hydrate: () => {
@@ -70,12 +73,14 @@ export const useTestStore = create<TestState>((set) => ({
     set({ currentResult: result });
   },
 
-  viewResult: (_testId: string) => {
-    // TODO: Reimplement with query data — fetch result by ID from API
-    // For now, just toggle viewing state (sidebar calls this)
+  viewResult: (testId: string) => {
+    // Set viewing state — the actual data fetch is handled by
+    // useAnalysisDetail(testId) in the consuming component.
+    // Store the ID so components can use it with the query hook.
     set({
       currentStatus: 'viewing-results',
       isViewingHistory: true,
+      _viewingTestId: testId,
     });
   },
 
@@ -85,6 +90,7 @@ export const useTestStore = create<TestState>((set) => ({
       currentStatus: 'idle',
       currentResult: null,
       isViewingHistory: false,
+      _viewingTestId: null,
     });
   },
 }));

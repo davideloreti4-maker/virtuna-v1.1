@@ -127,3 +127,36 @@ export function useAnalysisHistory() {
     },
   });
 }
+
+/**
+ * QUERY: Fetch a single analysis result by ID
+ */
+export function useAnalysisDetail(id: string | null) {
+  return useQuery({
+    queryKey: queryKeys.analysis.detail(id ?? ""),
+    queryFn: async () => {
+      const res = await fetch(`/api/analysis/${id}`);
+      if (!res.ok) throw new Error("Failed to fetch analysis detail");
+      return res.json();
+    },
+    enabled: !!id,
+  });
+}
+
+/**
+ * MUTATION: Soft-delete an analysis result
+ */
+export function useDeleteAnalysis() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/analysis/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete analysis");
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.analysis.history() });
+    },
+  });
+}
