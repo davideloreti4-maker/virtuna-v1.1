@@ -113,14 +113,14 @@ const DEFAULT_TREND_ENRICHMENT: TrendEnrichment = {
  *    - Stage 5: Creator Context (non-critical -- fallback with warning)
  *    - Stage 6: Rule Loading + Scoring (non-critical -- fallback with warning)
  * 4. Wave 2 (parallel):
- *    - Stage 7: DeepSeek Reasoning (CRITICAL -- throws on failure)
+ *    - Stage 7: DeepSeek Reasoning (non-critical -- Gemini fallback, then weight redistribution)
  *    - Stage 8: Trend Enrichment (non-critical -- fallback with warning)
  * 5. Stage 9: Aggregate (delegated to caller in Plan 02)
  * 6. Stage 10: Finalize (attach metadata)
  *
- * INFRA-03: Non-critical stages (Creator, Rules, Trends) fail gracefully
- * with fallback values and pipeline warnings. Gemini and DeepSeek are
- * critical -- their failure halts the pipeline.
+ * INFRA-03: Non-critical stages (Creator, Rules, Trends, DeepSeek) fail
+ * gracefully with fallback values and pipeline warnings. DeepSeek has a
+ * Gemini fallback before degrading to null. Only Gemini is critical.
  */
 export async function runPredictionPipeline(
   input: AnalysisInput
@@ -218,43 +218,42 @@ export async function runPredictionPipeline(
   const creatorContextString = formatCreatorContext(creatorContext);
 
   // -------------------------------------------------------
-  // Wave 2: DeepSeek (critical) + Trends (non-critical)
+  // Wave 2: DeepSeek (non-critical, Gemini fallback) + Trends (non-critical)
   // -------------------------------------------------------
 
-  // Stage 7: DeepSeek Reasoning -- CRITICAL (throws on failure)
-  const deepseekPromise = timed("deepseek_reasoning", timings, async () => {
+  // Stage 7: DeepSeek Reasoning -- NON-CRITICAL (has Gemini fallback; degrades gracefully as last resort)
+  const deepseekPromise = (async (): Promise<{
+    reasoning: DeepSeekReasoning;
+    cost_cents: number;
+  } | null> => {
     try {
-      const result = await reasonWithDeepSeek({
-        input: validated,
-        gemini_analysis: geminiResult.analysis,
-        rule_result: ruleResult,
-        trend_enrichment: {
-          // Trend enrichment runs in parallel -- use empty placeholder for DeepSeek prompt.
-          // The final trend data will be in the pipeline result for the aggregator.
-          trend_score: 0,
-          matched_trends: [],
-          trend_context:
-            "Trend analysis running in parallel — results available in pipeline output.",
-          hashtag_relevance: 0,
-        },
-        creator_context: creatorContextString,
+      return await timed("deepseek_reasoning", timings, async () => {
+        const result = await reasonWithDeepSeek({
+          input: validated,
+          gemini_analysis: geminiResult.analysis,
+          rule_result: ruleResult,
+          trend_enrichment: {
+            // Trend enrichment runs in parallel -- use empty placeholder for DeepSeek prompt.
+            // The final trend data will be in the pipeline result for the aggregator.
+            trend_score: 0,
+            matched_trends: [],
+            trend_context:
+              "Trend analysis running in parallel — results available in pipeline output.",
+            hashtag_relevance: 0,
+          },
+          creator_context: creatorContextString,
+        });
+
+        return result;
       });
-
-      // Per user decision: all stages are required. Circuit breaker returning null
-      // means service is unavailable -- this is a stage failure.
-      if (result === null) {
-        throw new Error(
-          "service temporarily unavailable (circuit breaker open)"
-        );
-      }
-
-      return result;
     } catch (error) {
-      throw new Error(
-        `Analysis failed: DeepSeek reasoning — ${error instanceof Error ? error.message : String(error)}`
+      warnings.push(
+        `DeepSeek reasoning unavailable: ${error instanceof Error ? error.message : String(error)}`
       );
+      timings.push({ stage: "deepseek_reasoning", duration_ms: 0 });
+      return null;
     }
-  });
+  })();
 
   // Stage 8: Trend Enrichment -- NON-CRITICAL (fallback with warning)
   const trendPromise = (async (): Promise<TrendEnrichment> => {
@@ -271,7 +270,7 @@ export async function runPredictionPipeline(
     }
   })();
 
-  // Run Wave 2 in parallel -- DeepSeek throws, trends gracefully degrade
+  // Run Wave 2 in parallel -- both stages gracefully degrade
   const [deepseekRaw, trendEnrichment] = await timed("wave_2", timings, () =>
     Promise.all([deepseekPromise, trendPromise])
   );

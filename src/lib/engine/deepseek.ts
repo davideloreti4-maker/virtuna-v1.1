@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import {
@@ -443,7 +444,64 @@ export async function reasonWithDeepSeek(
   console.error(
     `DeepSeek failed after ${MAX_RETRIES + 1} attempts: ${lastError?.message}`
   );
-  return null; // Graceful degradation — pipeline continues with Gemini-only
+
+  // Fallback: use Gemini to produce the same DeepSeekReasoning output
+  console.warn("[DeepSeek] Falling back to Gemini for reasoning stage");
+  return reasonWithGeminiFallback(context);
+}
+
+// Gemini Flash pricing for fallback cost tracking
+const GEMINI_INPUT_PRICE_PER_TOKEN = 0.15 / 1_000_000;
+const GEMINI_OUTPUT_PRICE_PER_TOKEN = 0.60 / 1_000_000;
+const GEMINI_FALLBACK_MODEL = "gemini-2.5-flash";
+
+let geminiClient: GoogleGenAI | null = null;
+
+function getGeminiClient(): GoogleGenAI {
+  if (!geminiClient) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error("Missing GEMINI_API_KEY environment variable");
+    geminiClient = new GoogleGenAI({ apiKey });
+  }
+  return geminiClient;
+}
+
+/**
+ * Fallback: run the same 5-step CoT reasoning prompt through Gemini Flash
+ * when DeepSeek is unavailable. Returns the same DeepSeekReasoning shape
+ * so the pipeline can't tell the difference.
+ */
+async function reasonWithGeminiFallback(
+  context: DeepSeekInput
+): Promise<{ reasoning: DeepSeekReasoning; cost_cents: number }> {
+  const ai = getGeminiClient();
+  const calibration = await loadCalibrationData();
+  const prompt = buildDeepSeekPrompt(context, calibration);
+
+  const response = await ai.models.generateContent({
+    model: GEMINI_FALLBACK_MODEL,
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+    },
+  });
+
+  const text = response.text ?? "";
+  const reasoning = parseDeepSeekResponse(text);
+
+  // Track cost using Gemini pricing
+  const promptTokens = response.usageMetadata?.promptTokenCount ?? FALLBACK_INPUT_TOKENS;
+  const candidateTokens = response.usageMetadata?.candidatesTokenCount ?? FALLBACK_OUTPUT_TOKENS;
+  const cost_cents =
+    (promptTokens * GEMINI_INPUT_PRICE_PER_TOKEN +
+      candidateTokens * GEMINI_OUTPUT_PRICE_PER_TOKEN) *
+    100;
+
+  console.log(
+    `[DeepSeek→Gemini fallback] Reasoning complete (${cost_cents.toFixed(4)}¢)`
+  );
+
+  return { reasoning, cost_cents };
 }
 
 export { DEEPSEEK_MODEL, isCircuitOpen };
