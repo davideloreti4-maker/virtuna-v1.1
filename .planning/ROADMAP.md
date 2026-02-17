@@ -253,7 +253,11 @@ Plans:
   2. test-creation-flow passes real video_storage_path (not "pending-upload") to /api/analyze
   3. Gemini video analysis receives the uploaded file and returns video-specific signals
   4. Upload progress indicator reflects actual upload progress
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 14-01-PLAN.md — Client-side Supabase Storage upload with progress tracking and real video_storage_path wiring
+- [ ] 14-02-PLAN.md — Server-side video download from Storage and pipeline routing to Gemini video analysis
 
 ### Phase 15: UI Polish & Remaining Gaps
 **Goal**: Close remaining UI gaps — persona reactions, history thumbnails, and benchmark validation
