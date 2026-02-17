@@ -1,820 +1,134 @@
 # Architecture Patterns
 
-**Domain:** Content Intelligence backend for existing Next.js 15 + Supabase + Vercel frontend
-**Researched:** 2026-02-13
-**Confidence:** HIGH (verified against existing codebase, Vercel docs, Supabase docs)
+**Domain:** TikTok Competitor Intelligence Tracker integrated into existing Next.js 15 + Supabase platform
+**Researched:** 2026-02-16
+**Confidence:** HIGH (verified against existing codebase, Supabase docs, Vercel docs, Apify docs, backend-foundation architecture)
 
-## Recommended Architecture
+---
 
 ## Recommended Architecture
 
 ### High-Level System Diagram
 
 ```
-                    CLIENT (Existing)
-                    ================
-    ContentForm -----> POST /api/analyze --------+
-    TrendingClient --> GET  /api/trending -----+  |
-    BrandDealsPage --> GET  /api/deals ------+  |  |
-                                             |  |  |
-                    API ROUTES (New)          |  |  |
-                    ===============          |  |  |
-    /api/deals/*  <-------------------------+  |  |
-    /api/trending/*  <-------------------------+  |
-    /api/analyze     <----------------------------+
+                    CLIENT (Existing App Shell)
+                    ===========================
+    /competitors (NEW page) ------+
+         |                        |
+    CompetitorDashboard           |
+         |                        |
+    +----+----+----+----+         |
+    |    |    |    |    |         |
+  Cards Grid Charts Table       |
+  (Competitor Overview)          |
+         |                        |
+    SERVER ACTIONS + API ROUTES   |
+    ============================  |
+    addCompetitor()    <---------+ (server action)
+    removeCompetitor() <---------+ (server action)
+    refreshCompetitor() <--------+ (API route)
+    GET /api/competitors/search   (API route - Apify lookup)
+    GET /api/competitors/[id]/metrics (API route)
          |
-         +---> Gemini Flash (visual analysis) -----+
-         +---> DB lookups (rules, trends) ---------+
-                                                    |
-         DeepSeek R1 (reasoning) <-----------------+
-              |
-              v
-         Supabase (analysis_results, outcomes)
+         +---> Supabase (competitor_profiles, competitor_snapshots)
+         +---> Apify TikTok Profile Scraper (on-demand + scheduled)
 
-                    CRON ROUTES (New)
-                    ================
-    /api/cron/scrape-trending  (every 6h)  ---> Apify Actor ---> scraped_videos
-    /api/cron/calculate-trends (hourly)    ---> scraped_videos --> trending_sounds
-    /api/cron/validate-rules   (daily)     ---> outcomes --> rule_library
-    /api/cron/retrain-ml       (weekly)    ---> outcomes --> ml_models
-    /api/cron/sync-whop        (daily)     ---> [EXISTS] Whop API --> user_subscriptions
+                    CRON / SCHEDULED REFRESH
+                    ========================
+    Vercel Cron (every 12h) ---> GET /api/cron/refresh-competitors
+         |
+         v
+    For each tracked competitor:
+         |
+         +---> Apify TikTok Profile Scraper (batch)
+         +---> Upsert into competitor_snapshots
+         +---> Update competitor_profiles.latest_*
+         +---> Revalidate /competitors page cache
 ```
 
 ### Component Boundaries
 
 | Component | Responsibility | Communicates With | Location |
 |-----------|---------------|-------------------|----------|
-| **Content Intelligence Engine** | Orchestrates dual-model prediction pipeline | Gemini API, DeepSeek API, Supabase | `src/lib/engine/` |
-| **Analysis API Route** | HTTP endpoint, auth, rate limiting, request validation | Engine, Supabase Auth | `src/app/api/analyze/route.ts` |
-| **Trending API Routes** | Serve real trending data, pagination, filters | Supabase `scraped_videos` table | `src/app/api/trending/` |
-| **Deals API Routes** | Replace mock deal data with real endpoints | Supabase `deals` table | `src/app/api/deals/` |
-| **Cron Routes** | Background job entry points | Apify API, Supabase, Engine | `src/app/api/cron/` |
-| **TanStack Query Hooks** | Server state management, caching, pagination | API routes | `src/hooks/queries/` |
-| **Zustand Stores** | Client-only state (bookmarks, sidebar, form state, simulation phase) | Nothing external | `src/stores/` (exists) |
-| **Supabase Schema** | All persistent data | N/A | `supabase/migrations/` |
+| **Competitors Page** | Route entry, metadata, server data fetch | Supabase (server), child components | `src/app/(app)/competitors/page.tsx` |
+| **CompetitorDashboard** | Client orchestration, tabs, filters, state | Child components, server actions | `src/components/competitors/competitor-dashboard.tsx` |
+| **AddCompetitorModal** | Handle input, search, add flow | Server action `addCompetitor()`, search API | `src/components/competitors/add-competitor-modal.tsx` |
+| **CompetitorCard** | Display single competitor summary | Props only | `src/components/competitors/competitor-card.tsx` |
+| **CompetitorTable** | Sortable leaderboard view | Props + Zustand sort state | `src/components/competitors/competitor-table.tsx` |
+| **GrowthChart** | Time-series follower/engagement charts | Props (snapshot data), Recharts | `src/components/competitors/growth-chart.tsx` |
+| **BenchmarkPanel** | Side-by-side own stats vs competitor | Props (own profile + competitor) | `src/components/competitors/benchmark-panel.tsx` |
+| **CompetitorDetail** | Expanded view with full metrics | Props + server data | `src/components/competitors/competitor-detail.tsx` |
+| **Server Actions** | Add/remove/refresh competitors | Supabase, Apify API | `src/app/(app)/competitors/actions.ts` |
+| **Cron Route** | Batch refresh all tracked competitors | Supabase service client, Apify API | `src/app/api/cron/refresh-competitors/route.ts` |
+| **Search API** | Search TikTok profiles by handle/name | Apify API | `src/app/api/competitors/search/route.ts` |
 
 ---
 
 ## Integration Points with Existing Code
 
-### 1. ContentForm -> Analysis Engine (Critical Path)
+### 1. New Route: /competitors (App Route Group)
 
-**Current state:** `ContentForm` calls `onSubmit(content)` which triggers `testStore.submitTest()` with mock `setTimeout` delays and `generateMockVariants()`.
+**Existing pattern:** Routes live in `src/app/(app)/` under the shared `AppShell` layout with sidebar navigation, `ToastProvider`, and middleware-enforced auth. Examples: `/dashboard`, `/trending`, `/referrals`, `/settings`.
 
-**Integration plan:**
+**Integration:**
+- Add `src/app/(app)/competitors/page.tsx` as a server component (matches existing pattern from `dashboard/page.tsx`, `trending/page.tsx`)
+- Server component fetches initial competitor data, passes to client `CompetitorDashboard`
+- Add `competitors/actions.ts` for server actions (matches existing `login/actions.ts`, `signup/actions.ts` pattern)
 
-```
-ContentForm.onSubmit(content)
-    |
-    v
-testStore.submitTest(content, societyId)  <-- MODIFY: replace mock logic
-    |
-    +-- Option A: Keep Zustand orchestration, call fetch() to /api/analyze
-    +-- Option B: Use TanStack Query mutation, store result in query cache
-```
-
-**Recommendation: Option A for phase 1, migrate to Option B later.** The existing `submitTest` in `test-store.ts` already manages simulation phases (`analyzing`, `matching`, `simulating`, `generating`) with cancellation support. Replacing the mock `setTimeout` calls with real `fetch()` to `/api/analyze` preserves the existing UX flow with minimal changes. The simulation phases map directly to server-side pipeline stages via Server-Sent Events (SSE).
+**Files to create:**
+- `src/app/(app)/competitors/page.tsx` -- server component, metadata, initial data fetch
+- `src/app/(app)/competitors/actions.ts` -- server actions for add/remove/refresh
 
 **Files to modify:**
-- `src/stores/test-store.ts` -- replace mock generation with API call
-- `src/types/test.ts` -- extend `TestResult` with engine response fields (or map)
+- `src/components/app/sidebar.tsx` -- add "Competitors" nav item (between Trending and Content Intelligence)
+- `src/lib/supabase/middleware.ts` -- add `/competitors` to `PROTECTED_PREFIXES`
+- `src/types/database.types.ts` -- regenerate after migration (new tables)
 
-**Files to create:**
-- `src/app/api/analyze/route.ts` -- POST handler
-- `src/lib/engine/pipeline.ts` -- orchestrator
-- `src/lib/engine/gemini.ts` -- Gemini Flash client
-- `src/lib/engine/deepseek.ts` -- DeepSeek R1 client
-- `src/lib/engine/rules.ts` -- rule lookup + scoring
-- `src/lib/engine/trends.ts` -- trend data enrichment
-- `src/lib/engine/types.ts` -- shared engine types
+### 2. Sidebar Navigation Addition
 
-### 2. TrendingClient -> Real Data (High Impact)
+**Existing pattern:** Sidebar has two nav groups: `navItems` (Dashboard, Trending) and `navItemsAfterSelector` (Content Intelligence, Referrals). The TikTok account selector sits between them.
 
-**Current state:** `TrendingClient` imports `getTrendingStats()` and `getAllVideos()` from `src/lib/trending-mock-data.ts`. The `useInfiniteVideos` hook also imports `getVideosByCategory()` from mock data. All 42 videos are static.
-
-**Integration plan:**
-
-```
-TrendingClient
-    |
-    v
-useInfiniteVideos(category)  <-- REWRITE: TanStack Query infinite query
-    |
-    v
-GET /api/trending?category=breaking-out&cursor=xyz&limit=12
-    |
-    v
-Supabase: SELECT * FROM scraped_videos WHERE category = $1 ...
-```
-
-**Files to modify:**
-- `src/hooks/use-infinite-videos.ts` -- rewrite to use TanStack Query `useInfiniteQuery`
-- `src/app/(app)/trending/trending-client.tsx` -- adapt to async data (replace `useMemo` stats)
-- `src/types/trending.ts` -- align `TrendingVideo` type with DB schema
-
-**Files to create:**
-- `src/app/api/trending/route.ts` -- GET with pagination
-- `src/app/api/trending/stats/route.ts` -- aggregated category stats
-- `src/hooks/queries/use-trending.ts` -- TanStack Query wrapper
-- `src/lib/queries/query-keys.ts` -- centralized query key factory
-
-**Files to delete (eventually):**
-- `src/lib/trending-mock-data.ts` -- replaced by real data
-
-### 3. Brand Deals -> Real API (Moderate Impact)
-
-**Current state:** `brand-deals-page.tsx` imports from `src/lib/mock-brand-deals.ts`. Components consume static arrays.
-
-**Integration plan:** Same pattern as trending -- TanStack Query hooks wrapping API routes that query existing `deals`, `deal_enrollments` tables. The schema already exists.
-
-**Files to create:**
-- `src/app/api/deals/route.ts` -- GET deals list with filters
-- `src/app/api/deals/[id]/apply/route.ts` -- POST enrollment
-- `src/app/api/deals/enrollments/route.ts` -- GET user's enrollments
-- `src/hooks/queries/use-deals.ts` -- TanStack Query hooks
-
-### 4. Bookmark Store -> Database Sync (Low Priority, Future)
-
-**Current state:** `bookmark-store.ts` uses `localStorage` with manual `_hydrate()`. Works entirely client-side.
-
-**Integration plan (deferred):** Keep `localStorage` for now. Later, sync to Supabase `user_bookmarks` table. The existing pattern is fine for MVP -- bookmarks are low-value data that doesn't need server persistence yet.
-
-### 5. ViralResultsCard -> Engine Results (Natural Fit)
-
-**Current state:** `ViralResultsCard` accepts a `ViralResult` prop with `overallScore`, `tier`, `confidence`, `factors[]`. Currently only shown in the showcase.
-
-**Integration plan:** The engine response type should map to `ViralResult`. The existing component needs no modification -- only the data source changes. The `/api/analyze` response should return data shaped to populate both `TestResult` (for simulation panel) and `ViralResult` (for the premium results card).
-
----
-
-## Data Flow Patterns
-
-### Pattern 1: Analysis Request (Synchronous with SSE Progress)
-
-```
-Client                    Server                     External APIs
-------                    ------                     -------------
-POST /api/analyze    -->  Validate + auth check
-  { content, type }       Create analysis record
-
-                     <--  SSE: { phase: "analyzing" }
-
-                          Gemini Flash(content)  --> Google AI API
-                          DB: rules lookup       --> Supabase
-                          DB: trend lookup       --> Supabase
-
-                     <--  SSE: { phase: "matching" }
-
-                          Wait for Gemini result
-
-                     <--  SSE: { phase: "simulating" }
-
-                          DeepSeek R1(prompt)    --> DeepSeek API
-
-                     <--  SSE: { phase: "generating" }
-
-                          Aggregate scores
-                          Save to analysis_results
-
-                     <--  SSE: { phase: "complete", data: AnalysisResult }
-```
-
-**Why SSE over polling:** The existing simulation UI already expects sequential phase updates. SSE maps cleanly to `simulationPhase` state in `test-store.ts`. No additional client infrastructure needed -- just an `EventSource` or `fetch()` with streaming reader.
-
-**Implementation:**
+**Integration:** Add "Competitors" to `navItems` array, after Trending, before the TikTok account selector. This positions it logically -- Dashboard (home) > Trending (discovery) > Competitors (tracking).
 
 ```typescript
-// src/app/api/analyze/route.ts
-export async function POST(request: Request) {
-  const { content, testType, societyId } = await request.json();
-  const user = await getAuthUser(request);
+// src/components/app/sidebar.tsx -- MODIFY navItems
+import { UsersThree } from "@phosphor-icons/react"; // or UsersFour
 
-  // Rate limit check
-  // ...
-
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    async start(controller) {
-      const send = (data: unknown) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
-      };
-
-      try {
-        send({ phase: 'analyzing' });
-
-        // Parallel: Gemini + DB lookups
-        const [geminiResult, rules, trends] = await Promise.all([
-          analyzeWithGemini(content, testType),
-          lookupRules(testType),
-          lookupTrends(testType),
-        ]);
-
-        send({ phase: 'matching' });
-
-        // Sequential: DeepSeek reasoning with all inputs
-        const deepseekResult = await reasonWithDeepSeek({
-          geminiAnalysis: geminiResult,
-          rules,
-          trends,
-          content,
-        });
-
-        send({ phase: 'simulating' });
-
-        // Score aggregation
-        const result = aggregateScores(geminiResult, deepseekResult, rules, trends);
-
-        send({ phase: 'generating' });
-
-        // Persist
-        await saveAnalysisResult(user.id, result);
-
-        send({ phase: 'complete', data: result });
-      } catch (error) {
-        send({ phase: 'error', message: 'Analysis failed' });
-      } finally {
-        controller.close();
-      }
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-    },
-  });
-}
+const navItems = [
+  { label: "Dashboard", icon: House, id: "dashboard", href: "/dashboard" },
+  { label: "Trending", icon: TrendUp, id: "trending", href: "/trending" },
+  { label: "Competitors", icon: UsersThree, id: "competitors", href: "/competitors" },
+] as const;
 ```
 
-### Pattern 2: Apify Scraping Pipeline (Cron -> Webhook -> DB)
+### 3. Middleware Auth Protection
 
-```
-Vercel Cron (every 6h)
-    |
-    v
-GET /api/cron/scrape-trending
-    |
-    v
-Apify API: Start Actor run (tiktok-scraper)
-    |                              |
-    v                              v
-Return 200 (fire-and-forget)    Apify completes run
-                                   |
-                                   v
-                              POST /api/webhooks/apify
-                                   |
-                                   v
-                              Fetch results from Apify dataset
-                                   |
-                                   v
-                              Transform + upsert into scraped_videos
-                                   |
-                                   v
-                              Invalidate trending cache
-```
+**Existing pattern:** `PROTECTED_PREFIXES` array in `src/lib/supabase/middleware.ts` gates routes behind auth.
 
-**Why fire-and-forget + webhook:** Apify scraping takes 2-10 minutes. Vercel functions timeout at 300s (Hobby) / 800s (Pro with Fluid Compute). The cron route should kick off the Apify actor and return immediately. Apify's webhook calls back when done.
-
-**Implementation:**
+**Integration:** Add `/competitors` to the array:
 
 ```typescript
-// src/app/api/cron/scrape-trending/route.ts
-export async function GET(request: Request) {
-  verifycronSecret(request);
-
-  const actorRun = await fetch('https://api.apify.com/v2/acts/clockworks~tiktok-scraper/runs', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.APIFY_API_TOKEN}`,
-    },
-    body: JSON.stringify({
-      input: { /* scraper config */ },
-      webhooks: [{
-        eventTypes: ['ACTOR.RUN.SUCCEEDED'],
-        requestUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/apify`,
-        headersTemplate: `{"Authorization": "Bearer ${process.env.APIFY_WEBHOOK_SECRET}"}`,
-      }],
-    }),
-  });
-
-  return NextResponse.json({ started: true, runId: (await actorRun.json()).data.id });
-}
-
-// src/app/api/webhooks/apify/route.ts
-export async function POST(request: Request) {
-  verifyApifyWebhook(request);
-
-  const { resource } = await request.json();
-  const datasetId = resource.defaultDatasetId;
-
-  // Fetch results from Apify dataset
-  const results = await fetchApifyDataset(datasetId);
-
-  // Transform and upsert
-  const supabase = createServiceClient();
-  const transformed = results.map(transformApifyToVideo);
-
-  await supabase.from('scraped_videos').upsert(transformed, {
-    onConflict: 'platform_video_id',
-  });
-
-  return NextResponse.json({ processed: transformed.length });
-}
+const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/brand-deals",
+  "/settings",
+  "/welcome",
+  "/referrals",
+  "/competitors", // NEW
+];
 ```
 
-### Pattern 3: Trend Calculation (Cron -> DB -> DB)
+### 4. Supabase Client Reuse
 
-```
-Vercel Cron (hourly)
-    |
-    v
-GET /api/cron/calculate-trends
-    |
-    v
-Supabase: SELECT sounds/hashtags from scraped_videos
-  WHERE scraped_at > NOW() - INTERVAL '7 days'
-  GROUP BY sound_id
-  ORDER BY velocity DESC
-    |
-    v
-Calculate: velocity = growth_rate * recency_weight
-    |
-    v
-Supabase: UPSERT into trending_sounds
-    |
-    v
-Return { calculated: count }
-```
+**Existing pattern:** Two client factories:
+- `src/lib/supabase/server.ts` -- `createClient()` for server components/actions (uses cookies)
+- `src/lib/supabase/client.ts` -- `createClient()` for client components (browser client)
+- Service client pattern in `sync-whop/route.ts` -- inline `createServiceClient()` for cron/webhook routes
 
-**This fits within Vercel function limits** because it's pure DB queries and math -- no external API waits. Should complete in under 30 seconds for thousands of videos.
-
----
-
-## Database Schema Design
-
-### New Tables (Content Intelligence)
-
-```sql
--- =====================================================
--- SCRAPED VIDEOS (Apify pipeline output)
--- =====================================================
-CREATE TABLE scraped_videos (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  platform TEXT NOT NULL DEFAULT 'tiktok',
-  platform_video_id TEXT NOT NULL,
-
-  -- Video metadata
-  title TEXT,
-  description TEXT,
-  creator_handle TEXT,
-  creator_display_name TEXT,
-  creator_avatar_url TEXT,
-  thumbnail_url TEXT,
-  video_url TEXT,
-
-  -- Metrics (snapshotted at scrape time)
-  views BIGINT DEFAULT 0,
-  likes BIGINT DEFAULT 0,
-  shares BIGINT DEFAULT 0,
-  comments BIGINT DEFAULT 0,
-
-  -- Classification
-  hashtags TEXT[] DEFAULT '{}',
-  sound_id TEXT,
-  sound_name TEXT,
-  category TEXT CHECK (category IN ('breaking-out', 'trending-now', 'rising-again')),
-
-  -- Computed metrics
-  velocity NUMERIC(10,2),  -- views relative to creator average
-  engagement_rate NUMERIC(8,4),
-
-  -- Timestamps
-  published_at TIMESTAMPTZ,
-  scraped_at TIMESTAMPTZ DEFAULT NOW(),
-
-  -- Dedup
-  UNIQUE(platform, platform_video_id)
-);
-
-CREATE INDEX idx_scraped_videos_category ON scraped_videos(category);
-CREATE INDEX idx_scraped_videos_scraped_at ON scraped_videos(scraped_at DESC);
-CREATE INDEX idx_scraped_videos_velocity ON scraped_videos(velocity DESC NULLS LAST);
-CREATE INDEX idx_scraped_videos_sound_id ON scraped_videos(sound_id) WHERE sound_id IS NOT NULL;
-
--- =====================================================
--- TRENDING SOUNDS (hourly aggregation)
--- =====================================================
-CREATE TABLE trending_sounds (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  sound_id TEXT NOT NULL UNIQUE,
-  sound_name TEXT,
-
-  -- Trend metrics
-  video_count INTEGER DEFAULT 0,
-  total_views BIGINT DEFAULT 0,
-  avg_engagement_rate NUMERIC(8,4),
-  velocity_score NUMERIC(10,2),
-
-  -- Lifecycle
-  first_seen_at TIMESTAMPTZ,
-  peak_at TIMESTAMPTZ,
-  calculated_at TIMESTAMPTZ DEFAULT NOW(),
-
-  -- Status
-  trend_phase TEXT CHECK (trend_phase IN ('emerging', 'rising', 'peak', 'declining', 'dead'))
-);
-
-CREATE INDEX idx_trending_sounds_velocity ON trending_sounds(velocity_score DESC);
-CREATE INDEX idx_trending_sounds_phase ON trending_sounds(trend_phase);
-
--- =====================================================
--- ANALYSIS RESULTS (engine output)
--- =====================================================
-CREATE TABLE analysis_results (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-
-  -- Input
-  content TEXT NOT NULL,
-  test_type TEXT NOT NULL,
-
-  -- Scores
-  overall_score INTEGER NOT NULL CHECK (overall_score BETWEEN 0 AND 100),
-  confidence TEXT NOT NULL CHECK (confidence IN ('High', 'Medium', 'Low')),
-
-  -- Detailed breakdown (JSONB for flexible schema evolution)
-  factors JSONB NOT NULL DEFAULT '[]',
-  -- Structure: [{ id, name, score, maxScore, description, tips[] }]
-
-  attention JSONB,
-  -- Structure: { full: number, partial: number, ignore: number }
-
-  variants JSONB DEFAULT '[]',
-  -- Structure: [{ id, type, content, impactScore, label }]
-
-  insights TEXT[] DEFAULT '{}',
-  conversation_themes JSONB DEFAULT '[]',
-
-  -- Engine metadata
-  gemini_model TEXT,
-  deepseek_model TEXT,
-  engine_version TEXT,
-  latency_ms INTEGER,
-  cost_cents NUMERIC(8,4),
-
-  -- Score components
-  rule_score NUMERIC(5,2),
-  trend_score NUMERIC(5,2),
-  ml_score NUMERIC(5,2),
-  score_weights JSONB,
-  -- Structure: { rule: 0.5, trend: 0.3, ml: 0.2 }
-
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_analysis_results_user_id ON analysis_results(user_id);
-CREATE INDEX idx_analysis_results_created_at ON analysis_results(created_at DESC);
-
--- =====================================================
--- OUTCOMES (actual performance tracking)
--- =====================================================
-CREATE TABLE outcomes (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  analysis_id UUID NOT NULL REFERENCES analysis_results(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-
-  -- Actual performance
-  actual_views BIGINT,
-  actual_likes BIGINT,
-  actual_shares BIGINT,
-  actual_engagement_rate NUMERIC(8,4),
-
-  -- Predicted vs actual
-  predicted_score INTEGER,
-  actual_score INTEGER,
-  delta INTEGER,  -- actual - predicted
-
-  -- When we collected this
-  reported_at TIMESTAMPTZ DEFAULT NOW(),
-  platform TEXT DEFAULT 'tiktok',
-  platform_post_url TEXT
-);
-
-CREATE INDEX idx_outcomes_analysis_id ON outcomes(analysis_id);
-CREATE INDEX idx_outcomes_user_id ON outcomes(user_id);
-
--- =====================================================
--- RULE LIBRARY (expert heuristics)
--- =====================================================
-CREATE TABLE rule_library (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-
-  -- Rule definition
-  name TEXT NOT NULL,
-  description TEXT,
-  category TEXT NOT NULL,
-  -- Categories: 'hook', 'emotion', 'structure', 'trend', 'audio', 'visual'
-
-  -- Scoring
-  weight NUMERIC(5,3) NOT NULL DEFAULT 1.0,
-  max_score NUMERIC(5,2) NOT NULL DEFAULT 10.0,
-
-  -- Rule logic (stored as structured evaluation criteria)
-  evaluation_prompt TEXT NOT NULL,
-  -- The prompt template sent to the LLM for scoring this factor
-
-  -- Validation
-  accuracy_rate NUMERIC(5,4),
-  -- Updated by rule validator cron
-  sample_count INTEGER DEFAULT 0,
-
-  -- Lifecycle
-  is_active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_rule_library_category ON rule_library(category);
-CREATE INDEX idx_rule_library_active ON rule_library(is_active) WHERE is_active = TRUE;
-```
-
-### RLS Policies for New Tables
-
-```sql
--- scraped_videos: Public read (trending page is public)
-ALTER TABLE scraped_videos ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Anyone can view scraped videos"
-  ON scraped_videos FOR SELECT
-  USING (true);
--- Writes: service_role only (cron routes use service client)
-
--- trending_sounds: Public read
-ALTER TABLE trending_sounds ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Anyone can view trending sounds"
-  ON trending_sounds FOR SELECT
-  USING (true);
-
--- analysis_results: User owns their results
-ALTER TABLE analysis_results ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view own analysis results"
-  ON analysis_results FOR SELECT
-  USING (user_id = (SELECT auth.uid()));
-CREATE POLICY "Users can create analysis results"
-  ON analysis_results FOR INSERT
-  WITH CHECK (user_id = (SELECT auth.uid()));
-
--- outcomes: User owns their outcomes
-ALTER TABLE outcomes ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view own outcomes"
-  ON outcomes FOR SELECT
-  USING (user_id = (SELECT auth.uid()));
-CREATE POLICY "Users can create own outcomes"
-  ON outcomes FOR INSERT
-  WITH CHECK (user_id = (SELECT auth.uid()));
-
--- rule_library: Public read (engine needs this), admin write
-ALTER TABLE rule_library ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Anyone can view active rules"
-  ON rule_library FOR SELECT
-  USING (is_active = true);
-```
-
-### RLS Design Decisions
-
-1. **`(SELECT auth.uid())` wrapper everywhere** -- Already established in existing migrations. The subquery wrapper causes PostgreSQL to cache the auth function result per-statement, yielding 94%+ performance improvement on large tables. (Source: [Supabase RLS Performance](https://supabase.com/docs/guides/troubleshooting/rls-performance-and-best-practices-Z5Jjwv))
-
-2. **Public read for scraped_videos and trending_sounds** -- The trending page is accessible to all authenticated users. No per-user filtering needed.
-
-3. **Service role for all writes to scraped/trending tables** -- Cron routes use `createServiceClient()` (pattern already established in `sync-whop/route.ts`). No RLS INSERT policies needed for these tables.
-
-4. **JSONB for flexible nested data in analysis_results** -- Factors, variants, and themes are complex nested structures. JSONB allows schema evolution without migrations. Performance is fine since we query by `user_id` (indexed), not by JSONB contents.
-
-5. **TEXT + CHECK over ENUMs** -- Already established pattern in existing schema. More flexible for migrations.
-
----
-
-## API Route Organization
-
-### Directory Structure
-
-```
-src/app/api/
-  analyze/
-    route.ts                 # POST: Submit content for analysis
-  trending/
-    route.ts                 # GET: Paginated trending videos
-    stats/route.ts           # GET: Aggregate category stats
-    [videoId]/route.ts       # GET: Single video detail
-  deals/
-    route.ts                 # GET: Filtered deal listings
-    [id]/
-      route.ts               # GET: Single deal detail
-      apply/route.ts         # POST: Apply to deal
-    enrollments/route.ts     # GET: User's deal enrollments
-  outcomes/
-    route.ts                 # POST: Report outcome, GET: User's outcomes
-  cron/
-    scrape-trending/route.ts # GET: Kick off Apify scraper
-    calculate-trends/route.ts # GET: Aggregate trend metrics
-    validate-rules/route.ts  # GET: Validate rule accuracy
-    retrain-ml/route.ts      # GET: Retrain ML models (future)
-    sync-whop/route.ts       # [EXISTS] Whop subscription sync
-  webhooks/
-    apify/route.ts           # POST: Apify run completion webhook
-    whop/route.ts            # [EXISTS] Whop payment webhooks
-  subscription/route.ts      # [EXISTS]
-  whop/checkout/route.ts     # [EXISTS]
-```
-
-### vercel.json Cron Configuration
-
-```json
-{
-  "crons": [
-    {
-      "path": "/api/cron/scrape-trending",
-      "schedule": "0 */6 * * *"
-    },
-    {
-      "path": "/api/cron/calculate-trends",
-      "schedule": "0 * * * *"
-    },
-    {
-      "path": "/api/cron/validate-rules",
-      "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/cron/retrain-ml",
-      "schedule": "0 4 * * 1"
-    },
-    {
-      "path": "/api/cron/sync-whop",
-      "schedule": "0 2 * * *"
-    }
-  ]
-}
-```
-
-**Vercel Pro plan allows 40 cron jobs.** We use 5. Each uses `CRON_SECRET` authorization (pattern already established in `sync-whop`). (Source: [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs))
-
-**Function timeout considerations:**
-- `/api/analyze`: 60-120s (Gemini + DeepSeek sequential). Set `maxDuration: 120` in route config.
-- `/api/cron/scrape-trending`: <5s (fire-and-forget to Apify). Default timeout fine.
-- `/api/cron/calculate-trends`: <30s (DB aggregation). Default timeout fine.
-- `/api/webhooks/apify`: <60s (fetch dataset + upsert). Set `maxDuration: 60`.
-
-(Source: [Vercel Function Limits](https://vercel.com/docs/functions/limitations) -- Pro plan: up to 800s with Fluid Compute)
-
----
-
-## TanStack Query + Zustand Coexistence
-
-### Architecture Rule
-
-**Zustand = client state. TanStack Query = server state. Never mix.**
-
-| State Type | Tool | Examples |
-|------------|------|----------|
-| Server data (fetched from API) | TanStack Query | Trending videos, deals, analysis results, user profile |
-| Client-only UI state | Zustand | Sidebar collapsed, form content, simulation phase, bookmarks |
-| Derived/computed | Neither (React `useMemo`) | Filtered video list, stats calculations |
-
-### Existing Zustand Stores -- What Changes
-
-| Store | Current Use | After Integration | Change? |
-|-------|-------------|-------------------|---------|
-| `test-store.ts` | Mock simulation + localStorage results | Real API calls + simulation phase tracking | **MODIFY** -- keep phase management, remove mock data generation, results come from API |
-| `bookmark-store.ts` | localStorage bookmark IDs | Keep as-is (client-only) | **NO CHANGE** |
-| `sidebar-store.ts` | Sidebar collapsed state | Keep as-is | **NO CHANGE** |
-| `society-store.ts` | Selected society | Keep as-is | **NO CHANGE** |
-| `settings-store.ts` | User settings | Keep as-is | **NO CHANGE** |
-
-### TanStack Query Setup
+**Integration:** Use the same factories. Extract the inline service client to shared utility:
 
 ```typescript
-// src/lib/queries/query-client.ts
-import { QueryClient } from '@tanstack/react-query';
-
-export function makeQueryClient() {
-  return new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 60 * 1000,      // 1 minute
-        gcTime: 5 * 60 * 1000,     // 5 minutes
-        refetchOnWindowFocus: false, // Avoid surprise refetches
-        retry: 1,
-      },
-    },
-  });
-}
-
-// src/lib/queries/query-keys.ts
-export const queryKeys = {
-  trending: {
-    all: ['trending'] as const,
-    list: (category: string, cursor?: string) =>
-      ['trending', 'list', category, cursor] as const,
-    stats: () => ['trending', 'stats'] as const,
-    detail: (id: string) => ['trending', 'detail', id] as const,
-  },
-  deals: {
-    all: ['deals'] as const,
-    list: (filters?: Record<string, unknown>) =>
-      ['deals', 'list', filters] as const,
-    detail: (id: string) => ['deals', 'detail', id] as const,
-    enrollments: () => ['deals', 'enrollments'] as const,
-  },
-  analysis: {
-    all: ['analysis'] as const,
-    history: () => ['analysis', 'history'] as const,
-    detail: (id: string) => ['analysis', 'detail', id] as const,
-  },
-} as const;
-```
-
-### Provider Setup
-
-```typescript
-// src/app/(app)/providers.tsx
-'use client';
-
-import { QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
-import { makeQueryClient } from '@/lib/queries/query-client';
-
-export function AppProviders({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(() => makeQueryClient());
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
-  );
-}
-
-// src/app/(app)/layout.tsx -- MODIFY existing
-// Wrap children with AppProviders
-```
-
-### Example: Trending Page Migration
-
-```typescript
-// src/hooks/queries/use-trending.ts
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { queryKeys } from '@/lib/queries/query-keys';
-import type { TrendingVideo, TrendingCategory, TrendingStats } from '@/types/trending';
-
-interface TrendingPage {
-  videos: TrendingVideo[];
-  nextCursor: string | null;
-  total: number;
-}
-
-export function useTrendingVideos(category: TrendingCategory) {
-  return useInfiniteQuery({
-    queryKey: queryKeys.trending.list(category),
-    queryFn: async ({ pageParam }) => {
-      const params = new URLSearchParams({ category, limit: '12' });
-      if (pageParam) params.set('cursor', pageParam);
-
-      const res = await fetch(`/api/trending?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch trending');
-      return res.json() as Promise<TrendingPage>;
-    },
-    getNextPageParam: (lastPage) => lastPage.nextCursor,
-    initialPageParam: undefined as string | undefined,
-  });
-}
-
-export function useTrendingStats() {
-  return useQuery({
-    queryKey: queryKeys.trending.stats(),
-    queryFn: async () => {
-      const res = await fetch('/api/trending/stats');
-      if (!res.ok) throw new Error('Failed to fetch stats');
-      return res.json() as Promise<TrendingStats>;
-    },
-    staleTime: 5 * 60 * 1000, // Stats change slowly
-  });
-}
-```
-
----
-
-## Patterns to Follow
-
-### Pattern 1: Service Client for Cron/Webhook Routes
-
-**What:** Use Supabase service role client (bypasses RLS) in server-only routes.
-**When:** Cron routes, webhook handlers, any route writing data on behalf of system (not user).
-**Already established:** `sync-whop/route.ts` and `webhooks/whop/route.ts` both use this pattern.
-
-```typescript
-// src/lib/supabase/service.ts (NEW -- extract from existing routes)
+// src/lib/supabase/service.ts (NEW -- extract from sync-whop/route.ts)
 import { createServerClient } from '@supabase/ssr';
 import type { Database } from '@/types/database.types';
 
@@ -827,184 +141,1047 @@ export function createServiceClient() {
 }
 ```
 
-### Pattern 2: Cron Route Authorization
+This was already identified as a pattern to extract in the backend-foundation architecture. The competitors tool should do it first since it ships first.
 
-**What:** Verify `CRON_SECRET` Bearer token on all cron endpoints.
-**Already established:** `sync-whop/route.ts` checks `authorization` header.
+### 5. Zustand Store for Client-Only State
+
+**Existing pattern:** Zustand stores in `src/stores/` for sidebar, settings, society, tooltips. All use `localStorage` + manual `_hydrate()`. Client-only state, not server data.
+
+**Integration:** Create `src/stores/competitors-store.ts` for UI-only state:
+- Active view mode (grid vs table)
+- Sort field and direction
+- Filter state (niche, date range)
+- Selected competitor ID (for detail panel)
+
+Do NOT store competitor data in Zustand. Competitor profiles and metrics come from the server and should be fetched via server components or server actions, not cached in client state.
+
+### 6. Existing UI Components to Reuse
+
+The design system provides everything needed without new primitives:
+
+| Existing Component | Usage in Competitors |
+|-------------------|---------------------|
+| `Card` | Competitor cards |
+| `Avatar` | Competitor profile photos |
+| `Badge` | Niche tags, status indicators |
+| `Button` | Add, refresh, remove actions |
+| `Dialog` | Add competitor modal, competitor detail |
+| `Skeleton` | Loading states |
+| `Tabs` | Overview/Growth/Content tabs |
+| `Input` | Search/filter inputs |
+| `Spinner` | Refresh indicator |
+| `Toast` | Success/error feedback |
+| `CategoryTabs` | Grid/Table view switcher |
+
+New components to create (all in `src/components/competitors/`):
+- `competitor-dashboard.tsx` -- main client component
+- `competitor-card.tsx` -- card for grid view
+- `competitor-table.tsx` -- sortable table view
+- `growth-chart.tsx` -- Recharts time-series
+- `benchmark-panel.tsx` -- comparison view
+- `add-competitor-modal.tsx` -- search + add flow
+- `competitor-detail.tsx` -- expanded metrics view
+- `competitor-search.tsx` -- search input with debounce
+
+### 7. Recharts Reuse
+
+**Existing:** `recharts@3.7.0` already installed and used in the earnings dashboard. The existing area chart pattern can be adapted for competitor growth charts (follower count over time, engagement rate over time).
+
+### 8. Future Prediction Engine Hook Points
+
+**Backend-foundation architecture** defines `analysis_results`, `outcomes`, and `rule_library` tables. The competitor data model should be designed so the prediction engine can:
+
+1. **Use competitor data as context for predictions** -- When analyzing a user's content, the engine can pull competitor engagement rates and posting patterns as benchmark context
+2. **Compare predicted vs competitor performance** -- "Your content would perform 2x better than @competitor's average"
+3. **Feed competitor trend data into rule validation** -- Competitor posting patterns inform trend detection rules
+
+**Integration points designed into this architecture:**
+- `competitor_profiles.id` can be referenced by future `analysis_context` JSONB field in `analysis_results`
+- `competitor_snapshots` time-series data feeds into trend calculations
+- `competitor_videos` (future) can be analyzed by the prediction engine for pattern extraction
+
+---
+
+## Database Schema Design
+
+### New Tables
+
+```sql
+-- =====================================================
+-- COMPETITOR PROFILES (tracked competitors)
+-- One row per competitor per user (users track independently)
+-- =====================================================
+CREATE TABLE competitor_profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+
+  -- TikTok identity
+  tiktok_handle TEXT NOT NULL,
+  tiktok_id TEXT,                    -- Platform's unique ID (if available from scraper)
+  display_name TEXT,
+  avatar_url TEXT,
+  bio TEXT,
+  is_verified BOOLEAN DEFAULT FALSE,
+
+  -- Latest metrics (denormalized from most recent snapshot for fast reads)
+  latest_followers BIGINT DEFAULT 0,
+  latest_following BIGINT DEFAULT 0,
+  latest_likes BIGINT DEFAULT 0,    -- Total likes received
+  latest_video_count INTEGER DEFAULT 0,
+  latest_engagement_rate NUMERIC(8,4),
+
+  -- Classification
+  niches TEXT[] DEFAULT '{}',
+  region TEXT,
+
+  -- Tracking metadata
+  added_at TIMESTAMPTZ DEFAULT NOW(),
+  last_scraped_at TIMESTAMPTZ,
+  scrape_status TEXT DEFAULT 'pending' CHECK (scrape_status IN ('pending', 'active', 'failed', 'paused')),
+  scrape_error TEXT,
+
+  -- Unique constraint: one user can't track the same handle twice
+  UNIQUE(user_id, tiktok_handle)
+);
+
+CREATE INDEX idx_competitor_profiles_user_id ON competitor_profiles(user_id);
+CREATE INDEX idx_competitor_profiles_handle ON competitor_profiles(tiktok_handle);
+CREATE INDEX idx_competitor_profiles_scrape_status ON competitor_profiles(scrape_status);
+
+-- =====================================================
+-- COMPETITOR SNAPSHOTS (time-series metrics)
+-- One row per competitor per scrape event
+-- This is the time-series table for growth tracking
+-- =====================================================
+CREATE TABLE competitor_snapshots (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  competitor_id UUID NOT NULL REFERENCES competitor_profiles(id) ON DELETE CASCADE,
+
+  -- Metrics at this point in time
+  followers BIGINT NOT NULL DEFAULT 0,
+  following BIGINT DEFAULT 0,
+  total_likes BIGINT DEFAULT 0,
+  video_count INTEGER DEFAULT 0,
+  engagement_rate NUMERIC(8,4),
+
+  -- Computed deltas (vs previous snapshot)
+  followers_delta BIGINT DEFAULT 0,   -- followers gained/lost since last snapshot
+  likes_delta BIGINT DEFAULT 0,
+
+  -- Posting activity since last snapshot
+  new_videos_count INTEGER DEFAULT 0,
+
+  -- Snapshot metadata
+  scraped_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX idx_competitor_snapshots_competitor_id ON competitor_snapshots(competitor_id);
+CREATE INDEX idx_competitor_snapshots_scraped_at ON competitor_snapshots(scraped_at DESC);
+-- Composite index for efficient time-range queries per competitor
+CREATE INDEX idx_competitor_snapshots_competitor_time
+  ON competitor_snapshots(competitor_id, scraped_at DESC);
+
+-- =====================================================
+-- COMPETITOR VIDEOS (top/recent videos per competitor)
+-- Stores a rolling window of recent videos for content analysis
+-- =====================================================
+CREATE TABLE competitor_videos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  competitor_id UUID NOT NULL REFERENCES competitor_profiles(id) ON DELETE CASCADE,
+
+  -- TikTok video identity
+  platform_video_id TEXT NOT NULL,
+  video_url TEXT,
+  thumbnail_url TEXT,
+
+  -- Content
+  description TEXT,
+  hashtags TEXT[] DEFAULT '{}',
+  sound_name TEXT,
+
+  -- Metrics
+  views BIGINT DEFAULT 0,
+  likes BIGINT DEFAULT 0,
+  shares BIGINT DEFAULT 0,
+  comments BIGINT DEFAULT 0,
+  engagement_rate NUMERIC(8,4),
+
+  -- Timing
+  published_at TIMESTAMPTZ,
+  scraped_at TIMESTAMPTZ DEFAULT NOW(),
+
+  -- Dedup: one video per competitor entry
+  UNIQUE(competitor_id, platform_video_id)
+);
+
+CREATE INDEX idx_competitor_videos_competitor_id ON competitor_videos(competitor_id);
+CREATE INDEX idx_competitor_videos_published_at ON competitor_videos(published_at DESC);
+CREATE INDEX idx_competitor_videos_views ON competitor_videos(views DESC);
+```
+
+### RLS Policies
+
+```sql
+-- Enable RLS
+ALTER TABLE competitor_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE competitor_snapshots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE competitor_videos ENABLE ROW LEVEL SECURITY;
+
+-- competitor_profiles: Users manage their own tracked competitors
+CREATE POLICY "Users can view their own competitors"
+  ON competitor_profiles FOR SELECT
+  USING (user_id = (SELECT auth.uid()));
+
+CREATE POLICY "Users can add competitors"
+  ON competitor_profiles FOR INSERT
+  WITH CHECK (user_id = (SELECT auth.uid()));
+
+CREATE POLICY "Users can update their own competitors"
+  ON competitor_profiles FOR UPDATE
+  USING (user_id = (SELECT auth.uid()));
+
+CREATE POLICY "Users can remove their own competitors"
+  ON competitor_profiles FOR DELETE
+  USING (user_id = (SELECT auth.uid()));
+
+-- competitor_snapshots: Users can view snapshots for their tracked competitors
+-- Uses subquery join to competitor_profiles for ownership check
+CREATE POLICY "Users can view snapshots of their competitors"
+  ON competitor_snapshots FOR SELECT
+  USING (competitor_id IN (
+    SELECT id FROM competitor_profiles WHERE user_id = (SELECT auth.uid())
+  ));
+-- Writes: service_role only (cron/scraper routes)
+
+-- competitor_videos: Same pattern as snapshots
+CREATE POLICY "Users can view videos of their competitors"
+  ON competitor_videos FOR SELECT
+  USING (competitor_id IN (
+    SELECT id FROM competitor_profiles WHERE user_id = (SELECT auth.uid())
+  ));
+-- Writes: service_role only
+```
+
+### RLS Design Decisions
+
+1. **`(SELECT auth.uid())` wrapper** -- Already established pattern in all existing migrations. Provides 94%+ query performance improvement by caching the auth function result per-statement.
+
+2. **Per-user competitor tracking** -- Each user has their own set of tracked competitors. Two users tracking the same `@handle` get separate `competitor_profiles` rows. This is intentional: it keeps RLS simple (direct `user_id` ownership) and allows per-user customization (notes, categories) later. The snapshot data for the same handle could theoretically be shared, but the complexity of shared ownership with RLS is not worth the storage savings at this scale.
+
+3. **Subquery join for snapshots/videos RLS** -- Snapshots and videos don't have a direct `user_id`. The RLS policy uses `competitor_id IN (SELECT id FROM competitor_profiles WHERE user_id = auth.uid())`. This is the same pattern used for `affiliate_clicks` and `affiliate_conversions` in the existing schema. Performance is fine because the subquery is on an indexed column.
+
+4. **Service role for writes to snapshots/videos** -- Scraping results are written by cron routes using the service client (bypasses RLS). No INSERT/UPDATE policies needed for these tables. This matches the pattern planned for `scraped_videos` in the backend-foundation architecture.
+
+5. **TEXT + CHECK over ENUMs** -- Already established pattern. `scrape_status` uses CHECK constraint for flexibility.
+
+6. **Denormalized `latest_*` fields on competitor_profiles** -- The dashboard overview reads `competitor_profiles` for the card grid. Including latest metrics avoids a JOIN to `competitor_snapshots` for every card render. Updated atomically when a new snapshot is inserted (in the same transaction within the cron route).
+
+### Time-Series Strategy: Plain PostgreSQL (Not TimescaleDB)
+
+**Decision:** Use plain PostgreSQL tables with composite indexes for time-series competitor metrics.
+
+**Rationale:**
+- TimescaleDB is deprecated on Supabase Postgres 17 and will only be supported on Postgres 15 until ~May 2026
+- The data volume is small: even with 50 competitors tracked by 1000 users, refreshed every 12 hours, that is ~36,500 snapshot rows per month -- trivially handled by plain PostgreSQL
+- The `(competitor_id, scraped_at DESC)` composite index makes time-range queries per competitor efficient
+- If data grows significantly, native PostgreSQL range partitioning by `scraped_at` month can be added later without schema changes
+- Materialized views can be added for aggregated weekly/monthly metrics if query performance degrades
+
+### Migration File
+
+```
+supabase/migrations/20260216000000_competitor_tracking.sql
+```
+
+Follows the existing naming convention (`YYYYMMDDHHMMSS_description.sql`).
+
+---
+
+## Data Flow Patterns
+
+### Pattern 1: Add Competitor (Server Action)
+
+```
+User enters @handle in AddCompetitorModal
+    |
+    v
+Server action: addCompetitor(handle)
+    |
+    +--1. Validate handle format (strip @, lowercase)
+    +--2. Check user hasn't exceeded competitor limit (optional future gate)
+    +--3. INSERT into competitor_profiles (status: 'pending')
+    +--4. Kick off immediate scrape via Apify
+    |     |
+    |     v
+    |   Apify TikTok Profile Scraper (single profile)
+    |     |
+    |     v
+    |   Transform response -> UPDATE competitor_profiles + INSERT snapshot
+    |
+    +--5. revalidatePath('/competitors')
+    +--6. Return success/error to client
+```
+
+**Implementation:**
 
 ```typescript
-// src/lib/cron-auth.ts (NEW -- extract shared pattern)
-import { NextResponse } from 'next/server';
+// src/app/(app)/competitors/actions.ts
+'use server';
 
-export function verifyCronAuth(request: Request): NextResponse | null {
-  const auth = request.headers.get('authorization');
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+import { revalidatePath } from 'next/cache';
+import { createClient } from '@/lib/supabase/server';
+
+export async function addCompetitor(handle: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  // Normalize handle
+  const normalizedHandle = handle.replace(/^@/, '').toLowerCase().trim();
+  if (!normalizedHandle || normalizedHandle.length < 2) {
+    return { error: 'Invalid TikTok handle' };
   }
-  return null; // Authorized
+
+  // Insert competitor profile
+  const { data: competitor, error: insertError } = await supabase
+    .from('competitor_profiles')
+    .insert({
+      user_id: user.id,
+      tiktok_handle: normalizedHandle,
+      scrape_status: 'pending',
+    })
+    .select()
+    .single();
+
+  if (insertError) {
+    if (insertError.code === '23505') { // unique_violation
+      return { error: 'You are already tracking this competitor' };
+    }
+    return { error: 'Failed to add competitor' };
+  }
+
+  // Fire-and-forget: trigger initial scrape
+  // Uses internal API route to avoid importing Apify client in server action
+  fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/competitors/scrape`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.INTERNAL_API_SECRET}`,
+    },
+    body: JSON.stringify({ competitorId: competitor.id, handle: normalizedHandle }),
+  }).catch(console.error); // Don't await -- return immediately to user
+
+  revalidatePath('/competitors');
+  return { data: competitor };
+}
+
+export async function removeCompetitor(competitorId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('competitor_profiles')
+    .delete()
+    .eq('id', competitorId);
+
+  if (error) return { error: 'Failed to remove competitor' };
+
+  revalidatePath('/competitors');
+  return { success: true };
 }
 ```
 
-### Pattern 3: SSE for Long-Running Analysis
+**Why server actions over API routes for mutations:** The existing codebase uses server actions for auth flows (`login/actions.ts`, `signup/actions.ts`). Server actions integrate naturally with Next.js form handling and `revalidatePath`. For mutations that don't need streaming or long-running responses, they are simpler than API routes.
 
-**What:** Stream progress phases via Server-Sent Events for the analysis endpoint.
-**When:** The `/api/analyze` route takes 3-8 seconds with parallel AI calls.
-**Why:** Maps directly to existing `simulationPhase` state machine in `test-store.ts`. The phases (`analyzing` -> `matching` -> `simulating` -> `generating`) are already defined client-side.
+### Pattern 2: Scheduled Competitor Refresh (Cron)
 
-### Pattern 4: Cursor-Based Pagination
+```
+Vercel Cron (every 12h) ---> GET /api/cron/refresh-competitors
+    |
+    v
+Authorization check (CRON_SECRET Bearer token)
+    |
+    v
+Supabase service client: SELECT DISTINCT tiktok_handle
+  FROM competitor_profiles
+  WHERE scrape_status = 'active'
+    |
+    v
+Batch scrape via Apify (all unique handles in one actor run)
+    |
+    v
+For each scraped profile:
+    +--1. Find all competitor_profiles with this handle
+    +--2. UPDATE competitor_profiles SET latest_* = scraped values
+    +--3. INSERT competitor_snapshots with new metrics
+    +--4. Calculate deltas from previous snapshot
+    +--5. UPSERT competitor_videos (recent videos)
+    |
+    v
+revalidatePath('/competitors')
+Return { refreshed: count }
+```
 
-**What:** Use opaque cursor strings (base64-encoded `created_at` + `id`) for infinite scroll.
-**When:** Trending videos, analysis history, deal listings.
-**Why:** Offset pagination breaks when new items are inserted. Cursor pagination is stable.
+**Why 12-hour refresh interval:**
+- TikTok metrics don't change by the second -- daily granularity is sufficient for competitor tracking
+- Twice daily captures morning and evening shifts in follower counts
+- Keeps Apify costs low (~$0.30 per 1,000 profiles)
+- Matches the "check in once a day" usage pattern for competitor dashboards
+- Can be increased to 6h or decreased to 24h based on usage data
+
+**Why batch all unique handles, not per-user:**
+- If 100 users all track `@charlidamelio`, we scrape once, not 100 times
+- The cron route queries `SELECT DISTINCT tiktok_handle` across all users
+- After scraping, it updates ALL `competitor_profiles` rows matching each handle
+- This is a massive cost optimization for popular competitors
+
+### Pattern 3: On-Demand Single Competitor Refresh (API Route)
+
+```
+User clicks "Refresh" button on competitor card
+    |
+    v
+POST /api/competitors/[id]/refresh
+    |
+    v
+Auth check + ownership verification
+Rate limit: max 1 refresh per competitor per hour
+    |
+    v
+Apify single-profile scrape (fast, ~2-5 seconds)
+    |
+    v
+UPDATE competitor_profiles + INSERT snapshot
+    |
+    v
+Return updated competitor data
+```
+
+**Implementation note:** This is a separate API route (not server action) because it needs to return the scraped data directly and the client needs to update the UI optimistically or with the response data.
+
+### Pattern 4: Competitor Search (API Route)
+
+```
+User types in AddCompetitorModal search input
+    |
+    v (debounced 300ms)
+GET /api/competitors/search?q=charlidamelio
+    |
+    v
+Apify TikTok Profile Scraper (search mode)
+  OR TikTok User Scraper (name-based search)
+    |
+    v
+Return: [{ handle, displayName, avatarUrl, followers, verified }]
+```
+
+**Why an API route, not a server action:** Search needs to return data that the client renders immediately. Server actions are better for mutations. The search route can also implement caching (same search term within 5 minutes returns cached results).
+
+### Pattern 5: Data Flow from Storage to UI
+
+```
+SERVER COMPONENT (page.tsx)
+    |
+    v
+Supabase server client: SELECT * FROM competitor_profiles
+  WHERE user_id = auth.uid()
+  ORDER BY added_at DESC
+    |
+    v
+Pass as props to CompetitorDashboard (client component)
+    |
+    v
+CLIENT COMPONENT renders:
+  +-- Grid view: CompetitorCard[] (uses latest_* fields)
+  +-- Table view: CompetitorTable (uses latest_* fields)
+  +-- Charts: fetches snapshots on-demand when user opens detail
+  +-- Benchmark: compares with creator_profiles data
+```
+
+**Why server component for initial data fetch (not TanStack Query):**
+- The existing codebase does NOT use TanStack Query yet (it is planned for backend-foundation)
+- Adding TanStack Query as a dependency for this milestone would introduce a new pattern before the backend-foundation milestone establishes it
+- Server components with `revalidatePath` are simpler and match existing patterns
+- The competitors page doesn't need real-time updates -- data changes every 12 hours
+- When backend-foundation ships TanStack Query, the competitors page can optionally migrate
+
+**For snapshot time-series data (charts):** Load on-demand when user opens a specific competitor's detail view. Use a client-side fetch to an API route or a server action that returns the last 30 days of snapshots. This avoids loading potentially large time-series data for all competitors on page load.
+
+---
+
+## Scraping Architecture
+
+### Apify TikTok Profile Scraper
+
+**Actor:** `clockworks/tiktok-profile-scraper` (HIGH confidence -- actively maintained, widely used)
+
+**Output fields per profile:**
+- `uniqueId` (handle), `nickname` (display name), `id` (TikTok user ID)
+- `avatarLarger` (avatar URL), `signature` (bio), `verified`
+- `followerCount`, `followingCount`, `heartCount` (total likes), `videoCount`
+- `region`, `createTime`
+- Recent videos array with per-video metrics
+
+**Input:**
+```json
+{
+  "profiles": ["charlidamelio", "khaby.lame", "bellapoarch"],
+  "resultsPerPage": 1,
+  "shouldDownloadVideos": false,
+  "shouldDownloadCovers": false
+}
+```
+
+**Pricing:** ~$0.30 per 1,000 profiles. At 50 competitors refreshed twice daily = ~100 scrapes/day = $0.003/day. Negligible cost.
+
+**Error handling:** Apify actors can fail due to TikTok rate limiting or anti-bot measures. The scrape status field on `competitor_profiles` tracks failures. Failed scrapes should be retried on the next cron cycle, not immediately.
+
+### Scraping Service Layer
 
 ```typescript
-// Encoding
-const cursor = Buffer.from(`${row.created_at}|${row.id}`).toString('base64url');
+// src/lib/scraping/tiktok.ts
+interface TikTokProfileData {
+  handle: string;
+  displayName: string;
+  avatarUrl: string;
+  bio: string;
+  isVerified: boolean;
+  followers: number;
+  following: number;
+  totalLikes: number;
+  videoCount: number;
+  region: string;
+  recentVideos: TikTokVideoData[];
+}
 
-// Decoding + query
-const [createdAt, id] = Buffer.from(cursor, 'base64url').toString().split('|');
-const { data } = await supabase
-  .from('scraped_videos')
-  .select('*')
-  .lt('created_at', createdAt)
-  .order('created_at', { ascending: false })
-  .limit(pageSize);
+export async function scrapeTikTokProfiles(handles: string[]): Promise<TikTokProfileData[]> {
+  // Start Apify actor run synchronously (waits for completion)
+  // Use synchronous run for small batches (< 50 profiles)
+  // Use async run + webhook for large batches
+  const response = await fetch(
+    `https://api.apify.com/v2/acts/clockworks~tiktok-profile-scraper/run-sync-get-dataset-items`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.APIFY_API_TOKEN}`,
+      },
+      body: JSON.stringify({
+        profiles: handles,
+        shouldDownloadVideos: false,
+        shouldDownloadCovers: false,
+      }),
+    }
+  );
+
+  if (!response.ok) throw new Error(`Apify scrape failed: ${response.status}`);
+  const rawData = await response.json();
+  return rawData.map(transformApifyProfile);
+}
 ```
+
+**Why synchronous Apify runs for competitor scraping:**
+- Profile scraping is fast (2-10 seconds for < 50 profiles)
+- The cron route can wait for completion within Vercel's function timeout
+- Avoids the complexity of webhook-based async flow used for video scraping in backend-foundation
+- For the initial scrape when adding a competitor, the user waits 2-5 seconds with a loading state
+
+**When to switch to async (webhook-based):**
+- If batch size exceeds 100 profiles per cron run
+- If Apify response time exceeds 60 seconds consistently
+- At that point, adopt the same fire-and-forget + webhook pattern from backend-foundation
+
+---
+
+## Caching Strategy
+
+### Server-Side Caching
+
+| Data | Strategy | Rationale |
+|------|----------|-----------|
+| Competitor list (page load) | `revalidatePath('/competitors')` after scrape | Data changes only when scrape completes or competitor added/removed |
+| Competitor snapshots (charts) | `unstable_cache` with 1h TTL or API route with `Cache-Control: max-age=3600` | Snapshot data is immutable once written |
+| Competitor search results | In-memory cache (Map) with 5-minute TTL in API route | Same search term shouldn't hit Apify twice |
+| Competitor videos | Same as snapshots -- immutable once written | No need to re-fetch |
+
+### Client-Side Caching
+
+No TanStack Query in this milestone (see rationale above). Client caching is handled by:
+- Next.js server component caching (full route cache with `revalidatePath` invalidation)
+- React `useState` for data received as props (component-level)
+- `useSWR` is NOT recommended -- if we need client-side fetching, use simple `fetch` with `useEffect` (matches existing `useSubscription` pattern) until TanStack Query is introduced in backend-foundation
+
+### Next.js Caching Configuration
+
+```typescript
+// src/app/(app)/competitors/page.tsx
+// Dynamic because each user sees different competitors (auth-dependent)
+export const dynamic = 'force-dynamic';
+// This is already the default for server components that call cookies()/headers()
+// which our Supabase server client does. Explicit here for clarity.
+```
+
+**Why not ISR for the competitors page:** The page content is per-user (each user tracks different competitors). ISR caches at the path level, not per-user. `force-dynamic` with `revalidatePath` is the correct approach for user-specific data pages.
+
+---
+
+## Scheduling: Vercel Cron (Not pg_cron)
+
+**Decision:** Use Vercel Cron for scheduled competitor refreshes.
+
+**Rationale:**
+
+| Factor | Vercel Cron | Supabase pg_cron |
+|--------|------------|-----------------|
+| External API calls (Apify) | Native -- it's just an HTTP endpoint | Requires `net.http_get` extension, more complex |
+| Existing pattern | Already used for `sync-whop` cron | Not used in this project |
+| Monitoring | Vercel dashboard, function logs | Database logs, harder to debug |
+| Error handling | Standard try/catch, NextResponse | PL/pgSQL exception handling |
+| Complexity | Simple -- add entry to vercel.json | Moderate -- SQL function + cron job + extension setup |
+| Access to app code | Full -- can import any module | None -- pure SQL/HTTP |
+
+**pg_cron would be appropriate for:** Pure database operations like cleanup, aggregation, or partition management that don't need external API calls. For the competitor refresh (which requires Apify API calls), Vercel Cron is the clear choice.
+
+**vercel.json addition:**
+
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron/refresh-competitors",
+      "schedule": "0 */12 * * *"
+    }
+  ]
+}
+```
+
+**Note:** This requires Vercel Pro plan (Hobby plan limits cron to daily). The existing project already uses Vercel Cron for `sync-whop`, so it's presumably already on Pro or will need to be.
+
+---
+
+## Page Structure
+
+### Route: `/competitors`
+
+```
+/competitors
+  |
+  +-- CompetitorDashboard (client component, main orchestrator)
+       |
+       +-- Header section
+       |    +-- Page title + subtitle
+       |    +-- "Add Competitor" button (opens modal)
+       |    +-- View toggle (Grid / Table)
+       |    +-- Filter/sort controls
+       |
+       +-- Stats bar (summary metrics)
+       |    +-- Total competitors tracked
+       |    +-- Average engagement rate
+       |    +-- Fastest growing competitor
+       |    +-- Most recent refresh time
+       |
+       +-- Main content (conditional on view mode)
+       |    +-- Grid view: CompetitorCard grid (2-3 columns)
+       |    |    +-- Avatar, handle, followers, engagement
+       |    |    +-- Mini sparkline (last 14 days followers)
+       |    |    +-- Actions: View detail, Refresh, Remove
+       |    |
+       |    +-- Table view: CompetitorTable
+       |         +-- Sortable columns: Handle, Followers, Growth, Engagement, Videos, Last Updated
+       |         +-- Row click -> opens detail
+       |
+       +-- Empty state (when no competitors tracked)
+       |    +-- Illustration + CTA to add first competitor
+       |
+       +-- AddCompetitorModal (dialog)
+       |    +-- Search input (debounced)
+       |    +-- Search results list
+       |    +-- Or: paste handle directly
+       |    +-- Add button per result
+       |
+       +-- CompetitorDetailPanel (dialog or slide-over)
+            +-- Full profile header
+            +-- Tabs: Overview | Growth | Content | Benchmark
+            +-- Overview: Key metrics + recent activity
+            +-- Growth: Recharts line charts (followers, likes over time)
+            +-- Content: Top videos grid, posting frequency chart
+            +-- Benchmark: Side-by-side with user's own stats
+```
+
+### Component Hierarchy
+
+```
+page.tsx (Server Component)
+  |-- Fetches competitor_profiles for current user
+  |-- Passes data as props
+  |
+  +-- CompetitorDashboard (Client Component, "use client")
+       |
+       +-- CompetitorHeader
+       |    +-- Button (Add Competitor)
+       |    +-- CategoryTabs (Grid / Table toggle)
+       |    +-- Select (Sort by)
+       |
+       +-- CompetitorStatsBar
+       |
+       +-- CompetitorGrid (conditional)
+       |    +-- CompetitorCard (x N)
+       |         +-- Avatar, Badge, sparkline
+       |
+       +-- CompetitorTable (conditional)
+       |    +-- Table rows with sorting
+       |
+       +-- CompetitorEmptyState (conditional)
+       |
+       +-- AddCompetitorModal
+       |    +-- CompetitorSearch
+       |    +-- Search result items
+       |
+       +-- CompetitorDetailPanel
+            +-- Tabs
+            +-- GrowthChart
+            +-- ContentGrid
+            +-- BenchmarkPanel
+```
+
+---
+
+## File Structure (New Files)
+
+```
+src/
+  app/
+    (app)/
+      competitors/
+        page.tsx                    # Server component, metadata, data fetch
+        actions.ts                  # Server actions: add, remove, refresh
+    api/
+      competitors/
+        search/route.ts             # GET: Search TikTok profiles
+        [id]/
+          refresh/route.ts          # POST: On-demand single refresh
+      cron/
+        refresh-competitors/route.ts # GET: Batch scheduled refresh
+  components/
+    competitors/
+      competitor-dashboard.tsx      # Main client orchestrator
+      competitor-card.tsx           # Grid view card
+      competitor-table.tsx          # Table/leaderboard view
+      competitor-stats-bar.tsx      # Summary stats row
+      competitor-header.tsx         # Title + controls
+      competitor-empty-state.tsx    # No competitors CTA
+      competitor-detail.tsx         # Detail panel/modal
+      competitor-search.tsx         # Search input + results
+      add-competitor-modal.tsx      # Add flow dialog
+      growth-chart.tsx              # Recharts time-series
+      benchmark-panel.tsx           # Own stats vs competitor
+      content-grid.tsx              # Competitor's top videos
+      index.ts                      # Barrel export
+  lib/
+    scraping/
+      tiktok.ts                     # Apify TikTok profile scraper client
+      transform.ts                  # Raw Apify data -> DB types
+    supabase/
+      service.ts                    # Shared service client (extracted)
+  stores/
+    competitors-store.ts            # UI state: view mode, sort, filters
+  types/
+    competitor.ts                   # TypeScript types for competitors
+supabase/
+  migrations/
+    20260216000000_competitor_tracking.sql  # New tables + RLS
+vercel.json                         # Cron job configuration (NEW file)
+```
+
+### Modified Files
+
+| File | Change |
+|------|--------|
+| `src/components/app/sidebar.tsx` | Add "Competitors" nav item |
+| `src/lib/supabase/middleware.ts` | Add `/competitors` to protected prefixes |
+| `src/types/database.types.ts` | Regenerate after migration |
+| `src/app/api/cron/sync-whop/route.ts` | Extract `createServiceClient` to shared module |
+| `next.config.ts` | Add TikTok CDN to `images.remotePatterns` for avatar URLs |
+
+---
+
+## Patterns to Follow
+
+### Pattern 1: Server Component Page with Client Dashboard
+
+**What:** Server component fetches data, client component handles interactivity.
+**Already established:** `dashboard/page.tsx` -> `dashboard-client.tsx`.
+**Apply to:** `competitors/page.tsx` -> `competitor-dashboard.tsx`.
+
+```typescript
+// src/app/(app)/competitors/page.tsx
+import type { Metadata } from 'next';
+import { createClient } from '@/lib/supabase/server';
+import { CompetitorDashboard } from '@/components/competitors/competitor-dashboard';
+
+export const metadata: Metadata = {
+  title: 'Competitors | Virtuna',
+  description: 'Track and analyze your TikTok competitors.',
+};
+
+export default async function CompetitorsPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return null; // Middleware handles redirect
+
+  const { data: competitors } = await supabase
+    .from('competitor_profiles')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('added_at', { ascending: false });
+
+  // Also fetch user's own profile for benchmarking
+  const { data: ownProfile } = await supabase
+    .from('creator_profiles')
+    .select('*')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  return (
+    <CompetitorDashboard
+      competitors={competitors ?? []}
+      ownProfile={ownProfile}
+    />
+  );
+}
+```
+
+### Pattern 2: Server Actions for Mutations with revalidatePath
+
+**What:** Mutations (add, remove) as server actions that revalidate the page cache.
+**Already established:** Auth actions in `login/actions.ts`, `signup/actions.ts`.
+**Apply to:** `competitors/actions.ts` for add/remove/refresh.
+
+### Pattern 3: Cron Route with CRON_SECRET Authorization
+
+**What:** Verify `CRON_SECRET` Bearer token on cron endpoints using service client.
+**Already established:** `sync-whop/route.ts`.
+**Apply to:** `refresh-competitors/route.ts`.
+
+### Pattern 4: Zustand for UI-Only State
+
+**What:** Use Zustand stores for view mode, sort preferences, selected items.
+**Already established:** `sidebar-store.ts`, `settings-store.ts`.
+**Apply to:** `competitors-store.ts` for grid/table toggle, sort field, selected competitor ID.
+
+```typescript
+// src/stores/competitors-store.ts
+import { create } from 'zustand';
+
+type ViewMode = 'grid' | 'table';
+type SortField = 'followers' | 'engagement' | 'growth' | 'added';
+type SortDirection = 'asc' | 'desc';
+
+interface CompetitorsState {
+  viewMode: ViewMode;
+  sortField: SortField;
+  sortDirection: SortDirection;
+  selectedCompetitorId: string | null;
+  setViewMode: (mode: ViewMode) => void;
+  setSortField: (field: SortField) => void;
+  toggleSortDirection: () => void;
+  setSelectedCompetitor: (id: string | null) => void;
+}
+
+export const useCompetitorsStore = create<CompetitorsState>((set) => ({
+  viewMode: 'grid',
+  sortField: 'followers',
+  sortDirection: 'desc',
+  selectedCompetitorId: null,
+  setViewMode: (viewMode) => set({ viewMode }),
+  setSortField: (sortField) => set({ sortField }),
+  toggleSortDirection: () =>
+    set((state) => ({ sortDirection: state.sortDirection === 'asc' ? 'desc' : 'asc' })),
+  setSelectedCompetitor: (selectedCompetitorId) => set({ selectedCompetitorId }),
+}));
+```
+
+### Pattern 5: Debounced Search with useDebounce Hook
+
+**What:** Debounce user input before making API calls.
+**Already established:** `src/hooks/use-debounce.ts` exists in the codebase.
+**Apply to:** Competitor search input in `AddCompetitorModal`.
 
 ---
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Mixing Server State into Zustand
+### Anti-Pattern 1: Storing Competitor Data in Zustand
 
-**What:** Storing API response data in Zustand stores alongside client state.
-**Why bad:** Leads to stale data, cache invalidation nightmares, and manual refetch logic that TanStack Query handles automatically. The existing `test-store.ts` storing `tests[]` in localStorage is tech debt -- acceptable for now but should migrate to TanStack Query + server persistence.
-**Instead:** Zustand for UI state only. TanStack Query for all data fetched from APIs.
+**What:** Putting scraped competitor data into a Zustand store.
+**Why bad:** Competitor data is server state -- it lives in Supabase. Caching it in Zustand means stale data, manual invalidation, and duplicated state management. Server components already handle the data fetching.
+**Instead:** Server component passes data as props. `revalidatePath` handles cache invalidation after mutations or scrapes.
 
-### Anti-Pattern 2: Supabase Client Queries from Components
+### Anti-Pattern 2: Scraping in Server Actions Directly
 
-**What:** Importing Supabase client directly in components and making queries.
-**Why bad:** Bypasses API route layer, makes it harder to add rate limiting/auth/caching, and couples components to database schema.
-**Instead:** Components -> TanStack Query hooks -> API routes -> Supabase.
+**What:** Importing Apify client code directly into server actions.
+**Why bad:** Server actions should be thin -- validate input, call DB, revalidate. Scraping logic (API calls, transformation, error handling) is complex enough to warrant its own module.
+**Instead:** Server actions call `src/lib/scraping/tiktok.ts` or fire off a request to an internal API route. Separation of concerns.
 
-### Anti-Pattern 3: Long-Running Cron Routes
+### Anti-Pattern 3: One Snapshot per User per Scrape
 
-**What:** Waiting for external API completion inside cron route handlers.
-**Why bad:** Vercel function timeout. Apify scraping takes minutes. The cron route will 504.
-**Instead:** Fire-and-forget pattern. Cron triggers the job, webhook receives the result.
+**What:** Creating separate snapshot rows for each user tracking the same competitor.
+**Why bad:** If 100 users track `@charlidamelio`, you'd create 100 identical snapshot rows every 12 hours. Massive waste.
+**Instead:** The cron route deduplicates by handle. It scrapes each unique handle once, then updates all `competitor_profiles` rows matching that handle. Snapshots are per `competitor_id` but the actual Apify API call is per unique handle.
 
-### Anti-Pattern 4: Polling for Analysis Progress
+**Wait -- this creates a subtlety.** If two users track the same handle, they have different `competitor_profiles` rows and thus different `competitor_snapshots` time-series. This IS technically duplicated data, but it keeps the RLS model simple (ownership through `competitor_id`). The alternative -- a shared `tiktok_profiles` table with a many-to-many `user_competitors` join table -- adds schema complexity and RLS complexity for minimal storage savings. At the expected scale (< 10,000 unique handles), the duplication is acceptable.
 
-**What:** Client polling `/api/analyze/status/:id` every second to check progress.
-**Why bad:** Unnecessary network requests, latency spikes, and complexity.
-**Instead:** SSE stream from the analysis endpoint. One connection, real-time updates.
+### Anti-Pattern 4: Polling for Scrape Completion
 
-### Anti-Pattern 5: Creating New Supabase Service Clients Per-Query
+**What:** Client polling an endpoint to check if the initial scrape has completed.
+**Why bad:** The initial scrape takes 2-5 seconds. Polling adds complexity for a brief wait.
+**Instead:** The add flow uses optimistic UI: immediately show the competitor card in "pending" state. When the scrape completes (background), the next page visit (or explicit refresh) shows full data. For immediate feedback, the server action can await the Apify call if latency is acceptable (< 5s), or the page can auto-refresh after a short delay.
 
-**What:** Calling `createServiceClient()` multiple times within a single request handler.
-**Why bad:** Each call creates a new HTTP client. Wasteful.
-**Instead:** Create once per request handler, pass to helper functions.
+### Anti-Pattern 5: Loading All Snapshots on Page Load
 
----
-
-## File Ownership Zones for Parallel Development
-
-### Zone A: Engine (can work independently)
-
-```
-src/lib/engine/
-  pipeline.ts        -- Orchestrator
-  gemini.ts          -- Gemini Flash client
-  deepseek.ts        -- DeepSeek R1 client
-  rules.ts           -- Rule lookup + scoring
-  trends.ts          -- Trend data enrichment
-  aggregator.ts      -- Score aggregation
-  types.ts           -- Shared engine types
-```
-
-**Dependencies:** Supabase client, API keys. No UI dependencies.
-
-### Zone B: Database (can work independently)
-
-```
-supabase/migrations/
-  20260213000000_content_intelligence.sql  -- New tables
-src/types/database.types.ts                -- Regenerate after migration
-```
-
-**Dependencies:** None. Pure SQL.
-
-### Zone C: API Routes (depends on Zone A + B)
-
-```
-src/app/api/
-  analyze/route.ts
-  trending/route.ts
-  trending/stats/route.ts
-  deals/route.ts
-  deals/[id]/apply/route.ts
-  deals/enrollments/route.ts
-  outcomes/route.ts
-  cron/scrape-trending/route.ts
-  cron/calculate-trends/route.ts
-  cron/validate-rules/route.ts
-  webhooks/apify/route.ts
-src/lib/supabase/service.ts
-src/lib/cron-auth.ts
-```
-
-### Zone D: Client Integration (depends on Zone C)
-
-```
-src/hooks/queries/            -- All TanStack Query hooks
-src/lib/queries/              -- Query client, key factory
-src/app/(app)/providers.tsx   -- QueryClientProvider
-src/stores/test-store.ts      -- Modify for real API
-src/hooks/use-infinite-videos.ts  -- Rewrite for TanStack Query
-```
-
-### Zone E: UI Polish (depends on Zone D, can start in parallel with mocks)
-
-```
-src/components/app/simulation/   -- Already built, wire to real data
-src/components/viral-results/    -- Already built, wire to real data
-src/components/trending/         -- Already built, swap mock data
-src/components/app/brand-deals/  -- Already built, swap mock data
-```
-
-### Parallel Development Strategy
-
-```
-Wave 1 (no dependencies): Zone A + Zone B in parallel
-Wave 2 (depends on Wave 1): Zone C
-Wave 3 (depends on Wave 2): Zone D + Zone E in parallel
-```
+**What:** Fetching 30+ days of snapshots for all competitors when the page loads.
+**Why bad:** Most users view the overview grid/table. Chart data is only needed when they drill into a specific competitor.
+**Instead:** Load snapshots on-demand when user opens the competitor detail panel. This keeps the initial page load fast and database queries light.
 
 ---
 
 ## Scalability Considerations
 
-| Concern | At 100 users | At 10K users | At 1M users |
-|---------|--------------|--------------|-------------|
-| Analysis API cost | ~$1.30/day | ~$130/day | Tier-gated, cache common analyses |
-| Supabase row count | ~1K analyses, ~500 videos | ~100K analyses, ~5K videos | Partition by date, archive old |
-| Apify scraper | 1 actor run / 6h | Same (scraping is independent of users) | Same |
-| TanStack Query cache | No concern | No concern | Stale-while-revalidate for trending |
-| Function cold starts | Negligible | Negligible (Fluid Compute keeps warm) | Multi-region function deployment |
-| ML training data | Too early | Enough for basic model | Production ML pipeline |
+| Concern | At 100 users (50 competitors each) | At 10K users | At 100K users |
+|---------|-------------------------------------|--------------|---------------|
+| Unique handles to scrape | ~2,000 unique handles | ~20,000 unique | ~50,000 unique |
+| Apify cost per refresh | $0.60 (2K profiles) | $6 (20K) | $15 (50K) |
+| Snapshot rows per month | ~120K | ~12M | ~120M |
+| Cron execution time | < 30s | ~5 min (may need batching) | Needs async webhook pattern |
+| Database storage | < 100 MB | ~5 GB | ~50 GB (needs partitioning) |
+| RLS query performance | No concern | No concern | Consider read replicas |
 
-For MVP (target: first 1000 users), the current architecture handles everything without modification.
+**Scaling triggers:**
+- **> 50K unique handles:** Switch from synchronous Apify calls to async (fire-and-forget + webhook), matching the backend-foundation pattern
+- **> 10M snapshot rows:** Add PostgreSQL range partitioning by month on `competitor_snapshots`
+- **> 50K users:** Consider a shared `tiktok_profiles` table to deduplicate snapshot storage
+- **Query latency > 500ms:** Add materialized views for aggregated weekly/monthly metrics, refreshed by pg_cron
+
+---
+
+## Prediction Engine Integration Points
+
+The competitor data model is designed to serve as input context for the prediction engine (backend-foundation milestone). Here are the specific hook points:
+
+### 1. Competitor Benchmarking in Predictions
+
+When the prediction engine analyzes a user's content, it can pull competitor data as benchmark context:
+
+```typescript
+// Future: src/lib/engine/context.ts
+async function getCompetitorContext(userId: string, niche: string) {
+  const supabase = createServiceClient();
+
+  // Get user's tracked competitors in same niche
+  const { data: competitors } = await supabase
+    .from('competitor_profiles')
+    .select('latest_followers, latest_engagement_rate, latest_video_count')
+    .eq('user_id', userId)
+    .contains('niches', [niche]);
+
+  return {
+    avgCompetitorEngagement: average(competitors.map(c => c.latest_engagement_rate)),
+    avgCompetitorFollowers: average(competitors.map(c => c.latest_followers)),
+    topCompetitorEngagement: max(competitors.map(c => c.latest_engagement_rate)),
+  };
+}
+```
+
+### 2. Competitor Video Analysis
+
+Future capability: the prediction engine can analyze competitor videos to extract patterns (hooks, topics, formats) that perform well:
+
+```typescript
+// Future: competitor_videos can be fed into Gemini Flash for pattern extraction
+// This doesn't require schema changes -- the competitor_videos table already stores
+// description, hashtags, sound_name, and engagement metrics
+```
+
+### 3. Growth Prediction
+
+Competitor snapshot time-series data can train simple growth models:
+
+```typescript
+// Future: Use competitor_snapshots to predict follower growth trajectories
+// Input: 30 days of snapshots for a competitor
+// Output: Predicted followers in 7/14/30 days
+// This feeds into the prediction engine's "competitor intelligence" module
+```
+
+### 4. Schema-Level Integration
+
+No foreign keys between competitor tables and prediction engine tables. Instead, the prediction engine references competitors by ID in its JSONB fields:
+
+```sql
+-- Future addition to analysis_results (backend-foundation schema)
+-- analysis_results.metadata JSONB can include:
+-- { "competitor_context": { "competitor_ids": [...], "avg_engagement": 0.045 } }
+```
+
+This keeps the two systems loosely coupled while enabling rich integration.
+
+---
+
+## Build Order (Dependency Graph)
+
+```
+Phase 1: Schema + Foundation
+  - Migration: competitor_profiles, competitor_snapshots, competitor_videos
+  - Types: src/types/competitor.ts
+  - Extract: src/lib/supabase/service.ts
+  - Scraping: src/lib/scraping/tiktok.ts + transform.ts
+  No dependencies, can start immediately.
+
+Phase 2: Server Actions + API Routes
+  - Server actions: add, remove (competitors/actions.ts)
+  - API routes: search, single refresh, cron refresh
+  - vercel.json cron config
+  Depends on Phase 1 (schema + scraping layer).
+
+Phase 3: Page + Core Components
+  - Route: /competitors/page.tsx
+  - Middleware: add protected prefix
+  - Sidebar: add nav item
+  - Components: dashboard, card, table, header, empty state, stats bar
+  - Store: competitors-store.ts
+  Depends on Phase 2 (server actions for add/remove).
+
+Phase 4: Detail + Charts
+  - Components: detail panel, growth chart, content grid, benchmark
+  - API: snapshot data fetching for charts
+  Depends on Phase 3 (core UI) + Phase 1 (snapshot data).
+
+Phase 5: Search + Add Flow
+  - Components: add-competitor-modal, competitor-search
+  - API: search route
+  Depends on Phase 3 (modal renders within dashboard).
+  Can be built in parallel with Phase 4.
+
+Phase 6: Polish + Edge Cases
+  - Loading skeletons, error states, empty states
+  - Rate limiting on refresh
+  - Scrape failure handling + retry
+  - Mobile responsive layout
+  Can start after Phase 3.
+```
+
+---
 
 ## Sources
 
-- [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs) -- HIGH confidence, official docs
-- [Vercel Function Limits](https://vercel.com/docs/functions/limitations) -- HIGH confidence, official docs
 - [Supabase RLS Performance](https://supabase.com/docs/guides/troubleshooting/rls-performance-and-best-practices-Z5Jjwv) -- HIGH confidence, official docs
-- [Supabase Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security) -- HIGH confidence, official docs
-- [TanStack Query + Zustand coexistence](https://javascript.plainenglish.io/zustand-and-tanstack-query-the-dynamic-duo-that-simplified-my-react-state-management-e71b924efb90) -- MEDIUM confidence, community pattern
-- [Zustand + TanStack Query discussion](https://github.com/pmndrs/zustand/discussions/2289) -- MEDIUM confidence, maintainer-adjacent
-- [Next.js after() API](https://nextjs.org/docs/app/api-reference/functions/unstable_after) -- HIGH confidence, official docs
-- [Apify TikTok Scraper](https://apify.com/clockworks/tiktok-scraper) -- MEDIUM confidence, third-party service
-- [DeepSeek R1 API](https://api-docs.deepseek.com/) -- MEDIUM confidence, official but may change
-- [Gemini API Structured Output](https://ai.google.dev/gemini-api/docs/function-calling) -- MEDIUM confidence, rapid iteration
-- Existing codebase at `/Users/davideloreti/virtuna-backend-foundation/` -- HIGH confidence, primary source
+- [Supabase pg_cron](https://supabase.com/docs/guides/cron) -- HIGH confidence, official docs
+- [Supabase TimescaleDB Deprecation](https://supabase.com/docs/guides/database/extensions/timescaledb) -- HIGH confidence, official docs
+- [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs) -- HIGH confidence, official docs
+- [Vercel Cron Pricing](https://vercel.com/docs/cron-jobs/usage-and-pricing) -- HIGH confidence, official docs
+- [Vercel Function Duration](https://vercel.com/docs/functions/configuring-functions/duration) -- HIGH confidence, official docs
+- [Apify TikTok Profile Scraper](https://apify.com/clockworks/tiktok-profile-scraper) -- MEDIUM confidence, third-party service
+- [Apify TikTok Scraper API](https://apify.com/apidojo/tiktok-scraper-api) -- MEDIUM confidence, third-party service
+- [Next.js ISR & Revalidation](https://nextjs.org/docs/app/guides/incremental-static-regeneration) -- HIGH confidence, official docs
+- [Next.js revalidatePath](https://nextjs.org/docs/app/api-reference/functions/revalidatePath) -- HIGH confidence, official docs
+- Backend-foundation architecture at `/Users/davideloreti/virtuna-backend-foundation/.planning/research/ARCHITECTURE.md` -- HIGH confidence, sibling milestone
+- Existing codebase at `/Users/davideloreti/virtuna-competitors-tool/` -- HIGH confidence, primary source

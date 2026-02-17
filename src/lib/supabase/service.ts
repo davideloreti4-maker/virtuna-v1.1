@@ -1,20 +1,21 @@
-import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 
 /**
- * Creates a Supabase client using the service role key.
- * Bypasses RLS — use ONLY in server-side routes (cron, webhooks, admin).
- * NEVER import this in client components or browser-side code.
+ * Creates a Supabase client with the service role key.
+ * Bypasses RLS — use ONLY in server-side contexts:
+ * webhook handlers, cron routes, background jobs.
+ *
+ * NEVER import this in client components or expose the key.
  */
 export function createServiceClient() {
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      cookies: {
-        getAll: () => [],
-        setAll: () => {},
-      },
-    }
-  );
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+  return createClient<Database>(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
 }

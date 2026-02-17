@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 
 /**
- * Verify CRON_SECRET Bearer token from request headers.
- * Returns null if authorized, or a 401 NextResponse if not.
+ * Verify cron endpoint authorization via CRON_SECRET Bearer token.
  *
- * Usage:
- *   const authError = verifyCronAuth(request);
- *   if (authError) return authError;
+ * Returns `null` when auth passes, a 401 NextResponse when it fails.
+ * Usage: `const authError = verifyCronAuth(request); if (authError) return authError;`
  */
 export function verifyCronAuth(request: Request): NextResponse | null {
   const authHeader = request.headers.get("authorization");
@@ -16,5 +14,5 @@ export function verifyCronAuth(request: Request): NextResponse | null {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  return null;
+  return null; // Auth passed
 }

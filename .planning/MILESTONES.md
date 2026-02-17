@@ -1,32 +1,5 @@
 # Milestones — Virtuna
 
-## Platform Refinement (Shipped: 2026-02-16)
-
-**Delivered:** Comprehensive UI/UX refinement across the entire platform — sidebar, landing page, trending, settings, referrals, brand deals, auth, and onboarding all polished to brand bible quality with functional Supabase integrations.
-
-**Phases completed:** 6 phases, 10 plans
-
-**Key accomplishments:**
-- Sidebar redesigned with solid dark bg, coral left-border active indicators, and TikTok handle input with Supabase persistence
-- Landing page overhauled with prediction-focused hero, accurate features, FAQ, CTA section, and slim footer
-- Trending page built out with full client component, mock data, category tabs, and video card grid
-- Settings wired to Supabase — profile save, password change, delete account, notification prefs, brand alignment
-- Brand deals dead redirect replaced with proper page, referral components polished with design tokens
-- Auth and onboarding polished — login/signup at brand bible quality, smooth step transitions, auth error mapping
-
-**Stats:**
-- 54 commits, 739 files changed (+12,423 / -122,153 lines)
-- 23 requirements, all shipped
-- Timeline: 2026-02-16 (single day)
-
-**Blockers carried forward:**
-- Dashboard test flow remains 100% mock
-- Filter pills and several buttons are console.log stubs
-- Delete account needs server-side API route
-- Email change needs verification flow
-
----
-
 ## v2.1 — Dashboard Rebuild (Shipped: 2026-02-08)
 
 **Delivered:** Full dashboard rebuild with Raycast design system migration and Canvas-based hive visualization with interactive exploration (hover, click, zoom/pan, pinch-to-zoom).
@@ -162,30 +135,65 @@
 
 ---
 
-## v1.0 — Backend Foundation (Shipped: 2026-02-13)
+## MVP Launch (Shipped: 2026-02-16)
 
-**Delivered:** Complete backend infrastructure transforming Virtuna from a frontend prototype into a functional AI-powered content intelligence platform — dual-model prediction engine, trending data pipeline, real API endpoints for all pages, TanStack Query integration, simulation theater UX, and ML scaffolding.
+**Delivered:** Transformed Virtuna from a design-system showcase into a conversion-ready SaaS product with real auth, landing page, onboarding, payments, referrals, and tier gating.
 
-**Phases completed:** 1-8 + 5.1 (9 phases, 21 plans)
+**Phases completed:** 8 phases, 18 plans
 
 **Key accomplishments:**
-- Database foundation with 5 Supabase tables, RLS policies, type generation, and 15+ seeded expert rules
-- Dual-model AI prediction engine (Gemini Flash-Lite + DeepSeek R1) with rule engine, trend enrichment, circuit breaker, and Zod-validated output
-- Trending data pipeline with Apify scraper cron, webhook handler, trend calculator, rule validator, and stale data monitoring
-- API routes with SSE-streaming analysis, cursor-paginated trending/deals/outcomes, and server-only API keys
-- TanStack Query v5 integration replacing all mock data imports with real server state across every page
-- Simulation theater with real SSE events, 4.5s minimum duration, results card with AI scores/factors/personas/suggestions, and outcome tracking
+- Real Supabase auth with middleware enforcement, Google OAuth PKCE, login/signup server actions, and deep link preservation
+- Landing page with Raycast design alignment (6% borders, CTA routing), lazy-loading hive demo via IntersectionObserver
+- Progressive onboarding flow: TikTok @handle connect, goal personalization, 4-tooltip contextual system with Supabase-backed state
+- Whop payments integration: embedded checkout modal, 7-day Pro trial tracking, webhook handler, useSubscription hook with polling
+- TierGate component gating Pro features (referrals page server-side, simulation results client-side) with inline upgrade flow
+- Referral system: cookie persistence through OAuth redirects, RLS INSERT policy, referral dashboard with link/clicks/earnings
+- Polish: OG metadata via file convention, mobile responsiveness audit, 23 dead files removed, 3 orphaned API routes deleted
 
 **Stats:**
-- 796 commits (331 feat, 363 docs, 68 fix)
-- 601 files changed (+68,446 / -944 lines)
-- 31,870 LOC TypeScript
-- 18 days (2026-01-27 → 2026-02-13)
-- 70 requirements, all shipped
+- 87 commits, 751 files changed (+17,078 / -121,787 lines)
+- 23,170 LOC TypeScript
+- 39 requirements, all shipped
+- 4 days (2026-02-13 -> 2026-02-16)
 
-**Git range:** `docs(02)` → `docs(08-01)`
+**Git range:** `abc4ac5..78ac3c6`
 
-**What's next:** Landing Page milestone or new milestone
+**Blockers carried forward:**
+- Whop plan IDs need creation in Whop dashboard before going live
+- Referral bonus amount is a business decision (not yet decided)
+- Whop sandbox never tested end-to-end
+
+---
+
+
+## Competitors Tool (Shipped: 2026-02-17)
+
+**Delivered:** Full competitor intelligence tracker for TikTok creators — add/track/compare competitors with real scraped data, growth analytics, engagement metrics, content analysis, benchmarking, and AI-powered strategy insights.
+
+**Phases completed:** 8 phases, 17 plans
+
+**Key accomplishments:**
+
+- Database schema with 4 tables (profiles, snapshots, videos, junction), BIGINT metrics, RLS policies, and Apify TikTok scraping with Zod validation
+- Competitor dashboard with card grid, table/leaderboard toggle, sparklines, growth velocity deltas, and empty/loading states
+- Detail pages with follower growth charts, engagement breakdowns, top videos, hashtag frequency, posting heatmap, and duration analysis
+- Side-by-side comparison with self-benchmarking, sortable multi-metric leaderboard, and daily cron re-scraping
+- AI intelligence via DeepSeek/Gemini — strategy analysis, viral detection, hashtag gap analysis, and personalized recommendations
+- Polish: stale data indicators, error states with retry, mobile responsive layout, and gap closure for all E2E flows
+
+**Stats:**
+
+- 238 commits, 126 files changed (+22,830 / -913 lines)
+- 41 requirements, all shipped
+- 8 phases, 17 plans
+- 2 days (2026-02-16 -> 2026-02-17)
+
+**Git range:** `milestone/competitors-tool` branch
+
+**Blockers carried forward:**
+- Backend-foundation merge timing (apify-client installed manually)
+- Apify actor schemas need runtime verification (Clockworks actors may change)
+- Vercel Pro plan confirmation for sub-daily cron
 
 ---
 

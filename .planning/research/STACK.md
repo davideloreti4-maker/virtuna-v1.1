@@ -1,178 +1,351 @@
 # Technology Stack
 
-**Project:** Virtuna Backend Foundation
-**Researched:** 2026-02-13
+**Project:** Virtuna Competitors Tool
+**Researched:** 2026-02-16
+**Scope:** Stack ADDITIONS for competitor tracking milestone. Existing stack (Next.js 16, React 19, TypeScript, Tailwind v4, Supabase, Recharts 3, Zustand 5, Zod 4) is validated and NOT re-researched.
 
-## Recommended Stack
+## Critical Context: Backend Foundation Overlap
 
-### AI/ML API Clients
+The `backend-foundation` worktree (shipped 2026-02-13) already includes:
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| `@google/genai` | ^1.41.0 | Gemini 2.5 Flash-Lite for visual analysis | Official unified Google GenAI SDK (GA). Replaces deprecated `@google/generative-ai`. Supports multimodal (image+text) inputs, inline base64 data, and the File API. Use model ID `gemini-2.5-flash-lite` -- cheapest multimodal Gemini, optimized for low latency, 1M context. Note: `gemini-2.0-flash` is deprecated and shuts down March 31, 2026. |
-| `openai` | ^6.21.0 | DeepSeek R1 reasoning via OpenAI-compatible API | DeepSeek's API is OpenAI-compatible. Using the official `openai` package (not a third-party wrapper) gives us: battle-tested TypeScript types, streaming support, automatic retries, and zero maintenance risk. Configure with `baseURL: 'https://api.deepseek.com/v1'`. Model ID: `deepseek-reasoner` for R1 chain-of-thought reasoning. |
+| Capability | Status | Location |
+|-----------|--------|----------|
+| `apify-client` ^2.22.0 | Installed | `package.json` |
+| Apify webhook handler | Built | `src/app/api/webhooks/apify/route.ts` |
+| Trending scrape cron | Built | `src/app/api/cron/scrape-trending/route.ts` |
+| `scraped_videos` table | Migrated | `20260213000000_content_intelligence.sql` |
+| Vercel cron config | Configured | `vercel.json` (every 6h) |
+| `@tanstack/react-query` | Installed | `package.json` |
+| Service client | Built | `src/lib/supabase/service.ts` |
+| Cron auth utility | Built | `src/lib/cron-auth.ts` |
 
-### Data Pipeline
+**This milestone must NOT duplicate that infrastructure.** Instead, it extends it: new Apify actor calls (profile scraper vs. trending scraper), new database tables (competitor-specific), new cron jobs (competitor refresh), and new API routes.
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| `apify-client` | ^2.22.0 | Trigger and fetch results from Apify TikTok scraper actors | We are NOT building scrapers -- we're calling pre-built Apify actors (TikTok Trends Scraper, TikTok Scraper). `apify-client` is the correct choice over the `apify` SDK because we're an external app consuming Apify, not building Apify Actors. Lightweight, supports automatic retries, works in both Node.js and browser. |
+---
 
-### Server State Management
+## Recommended Stack Additions
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| `@tanstack/react-query` | ^5.90.0 | Server state management for all API data | Replaces mock data imports with cached, auto-refreshing server state. Suspense support (`useSuspenseQuery`), ~20% smaller than v4, pairs naturally with Next.js App Router streaming. Keep Zustand for client-only state (sidebar, bookmarks). TanStack Query owns all server/async data. |
-| `@tanstack/react-query-devtools` | ^5.91.0 | Query debugging in development | Tree-shaken out of production builds. Essential during migration from mock data to real APIs -- lets you inspect cache state, refetch timing, stale/fresh status. |
-
-### Database & Backend (Already Installed -- Extend, Don't Replace)
-
-| Technology | Version | Purpose | Notes |
-|------------|---------|---------|-------|
-| `@supabase/supabase-js` | ^2.93.1 | Database client | Already installed. Use service role client for cron/background jobs, anon client for user-facing queries. |
-| `@supabase/ssr` | ^0.8.0 | Server-side Supabase client | Already installed. createServerClient pattern already working. |
-| `supabase` (CLI) | ^2.74.5 | Migrations, local dev, type generation | Already installed as devDependency. Use `supabase gen types typescript` for type-safe database queries. |
-
-### Background Jobs / Cron
+### 1. TikTok Data Scraping
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| Vercel Cron Jobs | N/A (config) | Schedule recurring API route invocations | Already proven pattern in the codebase (`/api/cron/sync-whop`). Define schedules in `vercel.json`. Pro plan: per-minute precision, 100 crons/project, 300s max execution. Hobby plan: daily only. |
+| Apify Clockworks TikTok Profile Scraper | Actor: `clockworks/tiktok-profile-scraper` | Scrape competitor profile stats (followers, likes, videos, bio) | Most maintained TikTok actor on Apify (125K+ users, daily updates). Clockworks already used in backend-foundation for trending. Consistent data format across actors. $0.005/result. |
+| Apify Clockworks TikTok Video Scraper | Actor: `clockworks/tiktok-video-scraper` | Scrape recent videos for a competitor (views, likes, shares, comments, hashtags) | Same maintainer, compatible output schema. Needed for content analysis and engagement tracking. $0.005-0.01/result. |
+| `apify-client` | ^2.22.0 | JavaScript API client for Apify | **Already installed** in backend-foundation. Reuse same client, same webhook pattern. Zero new dependencies for scraping. |
 
-**No additional job queue library needed.** The workloads (Apify trigger, trend calculation, rule validation, ML retrain) all fit within Vercel's 300s function timeout on Pro. If any job exceeds 300s, split into chunks with a Supabase `job_queue` table pattern (see Architecture).
+**Why Apify Clockworks over alternatives:**
+- TikTok Research API is academic-only, explicitly prohibits commercial use, requires 30-day approval, rate-limited to 1000 req/day. Not viable.
+- RapidAPI TikTok endpoints are fragile, inconsistent quality, no guaranteed maintenance.
+- Bright Data/Decodo are enterprise-priced proxied scrapers -- overkill for profile-level data.
+- Clockworks is already proven in the codebase (trending scraper uses it), actively maintained (daily updates to keep pace with TikTok changes), and pay-per-result pricing is predictable.
 
-### Supporting Libraries
+**Data fields returned by profile scraper** (MEDIUM confidence -- from Apify listing, not Context7):
 
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| `zod` | ^4.3.6 (existing) | API response validation, request schemas | Validate all external API responses (Gemini, DeepSeek, Apify). Already in project -- extend usage to all API boundaries. |
-| `zustand` | ^5.0.10 (existing) | Client-only UI state | Keep for sidebar, bookmarks, UI preferences. DO NOT use for server data -- that's TanStack Query's job. |
+```typescript
+interface ApifyProfileResult {
+  id: string;                    // TikTok user ID
+  uniqueId: string;              // @handle
+  nickname: string;              // Display name
+  signature: string;             // Bio
+  bioLink?: { link: string };    // Bio URL
+  verified: boolean;
+  avatarLarger: string;          // Profile pic URL
+  followerCount: number;
+  followingCount: number;
+  heartCount: number;            // Total likes received
+  videoCount: number;
+  createTime: number;            // Account creation timestamp
+}
+```
 
-**Implementation approach:**
-- Generate referral codes with `crypto.randomBytes(4).toString('hex')` -- no library needed
-- New Supabase tables: `referral_links`, `referral_conversions` (separate from brand-deal affiliate tables)
-- Track clicks via `/api/referral/[code]` route handler with redirect + server-set cookie
-- Attribute conversions in Whop webhook handler when `affiliateCode` is present
-- Pass `affiliateCode` prop to existing `CheckoutModal` component
-- Whop's built-in affiliate system handles commission payouts (30-day window, configurable rates)
+**Data fields returned by video scraper** (MEDIUM confidence):
 
-| Technology | Why Not |
-|------------|---------|
-| `@ai-sdk/google`, `@ai-sdk/deepseek` (Vercel AI SDK) | Adds unnecessary abstraction layer. We need precise control over prompts, token counting, and response parsing for the prediction engine. Direct SDK calls are simpler and more transparent for cost tracking. |
-| `apify` (full SDK) | That's for building Apify Actors. We're consuming actors from our Next.js app. `apify-client` is the right tool. |
-| `bullmq`, `quirrel`, `inngest` | Job queue systems are overkill. Our cron jobs are simple HTTP triggers (Vercel Cron -> API route -> do work). No need for Redis-backed queues or external services. If we outgrow Vercel Cron, revisit then. |
-| `@supabase/functions-js` | We're using Next.js API routes for all backend logic, not Supabase Edge Functions. Keeps deployment unified on Vercel. Edge Functions would split the deployment surface for no benefit. |
-| `tensorflow.js`, `onnxruntime-node` | The ML "pipeline" in this milestone is expert rules + API calls. No local model inference. If/when we train models, they'll run as Python services or hosted endpoints, not in-process JS. |
-| `node-cron`, `croner` | In-process schedulers don't work in serverless. Vercel functions cold-start on demand; there's no persistent process to run cron in. |
-| `react-hook-form` | Project decision (Zod v4 for simple forms). Already validated. |
-| `prisma`, `drizzle` | Supabase client handles all DB queries with generated types. Adding an ORM creates a parallel data access layer with no benefit for this project's query complexity. |
+```typescript
+interface ApifyVideoResult {
+  id: string;                    // Video ID
+  webVideoUrl: string;           // Full URL
+  text: string;                  // Caption/description
+  createTime: number;            // Post timestamp
+  playCount: number;
+  diggCount: number;             // Likes
+  shareCount: number;
+  commentCount: number;
+  collectCount: number;          // Saves/bookmarks
+  hashtags: Array<{ name: string }>;
+  musicMeta: { musicName: string; musicAuthor: string };
+  videoMeta: { duration: number };
+  authorMeta: { name: string; fans: number };
+}
+```
+
+**Confidence:** MEDIUM -- Data structures sourced from Apify docs and WebSearch, not verified via Context7. Apify actors can change output schemas; Zod validation at ingest is mandatory.
+
+### 2. Database Schema (Supabase PostgreSQL)
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| PostgreSQL tables (Supabase) | N/A | Store competitor profiles, metric snapshots, tracked relationships | Native Supabase -- no new dependency. Extends existing migration pattern. |
+| `tsvector` full-text search | Built into PostgreSQL | Search competitors by name, handle, bio, niche | No external search service needed. PostgreSQL FTS with GIN indexes handles the scale (hundreds to low thousands of competitors, not millions). Supabase has first-class `.textSearch()` support in the JS client. |
+
+**Why NOT TimescaleDB extension:** The `timescaledb` extension is available in Supabase but is overkill for this use case. We are storing daily snapshots for at most hundreds of competitors -- tens of thousands of rows per year. Standard PostgreSQL tables with proper indexes and partitioning (if ever needed) handle this trivially. TimescaleDB adds operational complexity (hypertable management, chunk intervals) with zero benefit at this scale.
+
+**Why NOT a separate search service (Algolia, Typesense, Meilisearch):** At the scale of hundreds to low thousands of competitor profiles, PostgreSQL `tsvector` with GIN indexes provides sub-millisecond search. Adding a separate service adds cost, latency (network hop), sync complexity, and another failure point. If Virtuna grows to 100K+ competitors in the search index, revisit.
+
+**Proposed tables:**
+
+```sql
+-- Tracked competitors (one row per TikTok profile we're monitoring)
+competitor_profiles (
+  id UUID PK,
+  tiktok_id TEXT UNIQUE,           -- TikTok's internal user ID
+  handle TEXT NOT NULL UNIQUE,     -- @handle (denormalized for search)
+  display_name TEXT,
+  bio TEXT,
+  avatar_url TEXT,
+  is_verified BOOLEAN DEFAULT FALSE,
+  niche TEXT[],                    -- User-tagged categories
+  last_scraped_at TIMESTAMPTZ,
+  scrape_status TEXT CHECK (IN 'pending','active','failed','paused'),
+  metadata JSONB DEFAULT '{}',
+  search_vector TSVECTOR GENERATED ALWAYS AS (
+    to_tsvector('english', coalesce(handle, '') || ' ' || coalesce(display_name, '') || ' ' || coalesce(bio, ''))
+  ) STORED,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+-- GIN index on search_vector for full-text search
+-- Index on handle for exact lookups
+
+-- Point-in-time metric snapshots (one row per competitor per scrape)
+competitor_snapshots (
+  id UUID PK,
+  competitor_id UUID FK -> competitor_profiles,
+  followers INTEGER NOT NULL,
+  following INTEGER NOT NULL,
+  total_likes BIGINT NOT NULL,     -- heartCount
+  video_count INTEGER NOT NULL,
+  engagement_rate NUMERIC(8,4),    -- Computed: avg(likes+comments+shares)/followers across recent videos
+  avg_views BIGINT,                -- Average views on recent videos
+  avg_likes BIGINT,
+  avg_comments BIGINT,
+  avg_shares BIGINT,
+  top_hashtags TEXT[],             -- Most used hashtags in recent videos
+  posting_frequency NUMERIC(6,2), -- Videos per week
+  scraped_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  metadata JSONB DEFAULT '{}'      -- Raw Apify response stashed here
+);
+-- Index on (competitor_id, scraped_at DESC) for time-series queries
+-- Partial index WHERE scraped_at > NOW() - INTERVAL '90 days' for dashboard queries
+
+-- User-to-competitor tracking relationship
+user_competitors (
+  id UUID PK,
+  user_id UUID FK -> auth.users,
+  competitor_id UUID FK -> competitor_profiles,
+  added_at TIMESTAMPTZ DEFAULT NOW(),
+  notes TEXT,                      -- User's private notes
+  tags TEXT[],                     -- User's private tags
+  UNIQUE(user_id, competitor_id)
+);
+
+-- Competitor videos (recent videos per competitor, refreshed on scrape)
+competitor_videos (
+  id UUID PK,
+  competitor_id UUID FK -> competitor_profiles,
+  tiktok_video_id TEXT NOT NULL,
+  video_url TEXT,
+  caption TEXT,
+  views BIGINT DEFAULT 0,
+  likes BIGINT DEFAULT 0,
+  shares BIGINT DEFAULT 0,
+  comments BIGINT DEFAULT 0,
+  saves BIGINT DEFAULT 0,
+  duration_seconds INTEGER,
+  hashtags TEXT[],
+  sound_name TEXT,
+  posted_at TIMESTAMPTZ,
+  scraped_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(competitor_id, tiktok_video_id)
+);
+```
+
+**RLS strategy:**
+- `competitor_profiles`: Public SELECT (shared resource -- multiple users may track the same competitor). INSERT/UPDATE via service role only (from scrape pipeline).
+- `competitor_snapshots`: Public SELECT. INSERT via service role only.
+- `user_competitors`: User-scoped SELECT/INSERT/DELETE via `auth.uid()`. This is the privacy boundary.
+- `competitor_videos`: Public SELECT. INSERT/UPDATE via service role only.
+
+### 3. Charting / Visualization
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| Recharts | ^3.7.0 | Growth charts, comparison visualizations, engagement trend lines | **Already installed.** Recharts 3 has full support for multi-series LineChart, AreaChart, ComposedChart, and ResponsiveContainer. No new charting library needed. |
+
+**Why NOT add Nivo or Tremor:**
+- Recharts is already in the bundle, already styled to match the Raycast design system, already used in the earnings dashboard (AreaChart).
+- Adding a second charting library bloats the bundle for zero benefit.
+- Recharts multi-series LineChart directly supports the "compare follower growth across competitors" use case.
+- ComposedChart supports mixing line + bar for engagement breakdowns.
+
+**Specific Recharts components for competitor tracking:**
+
+| Component | Use Case |
+|-----------|----------|
+| `LineChart` + multiple `<Line>` | Follower growth comparison (one line per competitor) |
+| `AreaChart` | Single competitor engagement over time |
+| `BarChart` | Side-by-side engagement metrics (views, likes, shares) |
+| `ComposedChart` | Posting frequency (bars) overlaid with engagement rate (line) |
+| `RadarChart` | Competitor profile comparison (followers, engagement, frequency, diversity) |
+| `Tooltip`, `Legend` | Styled with Raycast design tokens (dark bg, 6% borders) |
+
+### 4. Background Job Scheduling
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| Vercel Cron Jobs | Built-in | Trigger competitor data refresh on schedule | **Already proven** in backend-foundation (`vercel.json`). Free on all plans. Simple GET-based invocation of API routes. |
+| Supabase pg_cron | Built-in extension | Alternative for database-level scheduled cleanup/aggregation | Already available in Supabase. Zero network latency for SQL operations. Good for retention policies (archive old snapshots). |
+
+**Why NOT Inngest or Trigger.dev:**
+- Vercel Cron + API routes already handles the use case (trigger Apify actor run -> webhook callback -> upsert data). This pattern is proven in backend-foundation.
+- Adding Inngest/Trigger.dev introduces a third-party dependency, additional billing, SDK integration, and operational complexity for a problem already solved.
+- If runs need to exceed Vercel's function timeout (60s on Pro), the Apify webhook pattern avoids this entirely: cron triggers a short API call to start the actor (< 1s), Apify runs asynchronously, webhook callback processes results (short bursts per batch).
+
+**Vercel Cron plan constraints:**
+- **Hobby plan:** Cron jobs limited to once per day. If Virtuna is on Hobby, competitor refresh is daily.
+- **Pro plan ($20/mo):** Sub-daily cron intervals. Every 6-12 hours is reasonable for competitor tracking.
+- The backend-foundation already uses `0 */6 * * *` (every 6 hours). Competitor scraping can use a similar or lower frequency (daily is fine for follower growth tracking).
+
+**Proposed cron jobs:**
+
+```json
+{
+  "path": "/api/cron/scrape-competitors",
+  "schedule": "0 2 * * *"
+}
+```
+
+One daily scrape at 2 AM UTC. Scrapes all active competitor profiles, then fetches recent videos. Webhook callback processes results into `competitor_snapshots` and `competitor_videos`.
+
+### 5. Search and Filtering
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| PostgreSQL Full-Text Search | Built-in | Search competitors by handle, name, bio keywords | Supabase JS client has `.textSearch()` method. GIN-indexed `tsvector` column on `competitor_profiles`. Zero new dependencies. |
+| Supabase `.ilike()` | Built-in | Simple prefix/contains search for handles | For typeahead "add competitor" input, `.ilike('handle', '%query%')` is simpler and more intuitive than FTS for short handle searches. |
+
+**Search strategy:**
+- **Add competitor input** (typeahead): Use `.ilike()` on `handle` column for prefix matching against already-tracked competitors. For new competitors not yet in DB, call Apify profile scraper on-demand.
+- **Competitor list filtering**: Use `.textSearch()` on the generated `search_vector` column for keyword-based filtering across handle + name + bio.
+- **Niche/tag filtering**: PostgreSQL array operators (`@>`, `&&`) on `niche TEXT[]` column. Already supported by Supabase client.
+
+### 6. State Management (Client-Side)
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| Zustand | ^5.0.10 | Client-side UI state (selected competitor, active filters, chart settings) | **Already installed.** Used for bookmarks on trending page. Same pattern for competitor selection state. |
+| `@tanstack/react-query` | ^5.90.21 | Server data fetching, caching, background refresh | **Already installed** in backend-foundation. Use for all competitor data queries with stale-while-revalidate. |
+
+**Why keep both Zustand and TanStack Query:**
+- Zustand: ephemeral UI state (which competitor is selected, filter panel state, chart toggle). Not server data.
+- TanStack Query: server data caching, refetching, optimistic updates. Competitor profiles, snapshots, videos.
+- They solve different problems. No conflict.
+
+---
 
 ## Alternatives Considered
 
 | Category | Recommended | Alternative | Why Not |
 |----------|-------------|-------------|---------|
-| Gemini SDK | `@google/genai` | `@google/generative-ai` | Deprecated. Google consolidated into `@google/genai` -- the old package will stop receiving updates. |
-| DeepSeek Client | `openai` (configured) | `node-deepseek`, `deepseek-api` | Third-party wrappers with tiny npm download counts. DeepSeek's own docs recommend using the OpenAI SDK. One less dependency to maintain. |
-| Apify Integration | `apify-client` | Direct REST API calls | `apify-client` adds automatic retries, pagination handling, and TypeScript types. Worth the dependency. |
-| Server State | TanStack Query v5 | SWR | TanStack Query has richer devtools, better mutation support, built-in Suspense hooks, and more granular cache control. SWR is simpler but we need the power features for this app's complexity. |
-| Background Jobs | Vercel Cron | Supabase pg_cron + Edge Functions | Splits deployment across two platforms. Vercel Cron is already proven in this codebase and keeps all logic in Next.js API routes. pg_cron is better suited for pure database operations (cleanup queries, aggregations). |
-| Gemini Model | `gemini-2.5-flash-lite` | `gemini-2.5-flash` | Flash-Lite is cheaper ($0.075/1M input vs $0.15/1M) and faster for our use case (image description + structured extraction). We don't need Flash's deeper reasoning -- that's DeepSeek R1's job. |
+| TikTok Data | Apify Clockworks actors | TikTok Research API | Academic-only, 30-day approval, commercial use prohibited, 1000 req/day limit |
+| TikTok Data | Apify Clockworks actors | RapidAPI TikTok APIs | Inconsistent quality, poor maintenance guarantees, fragile endpoints |
+| TikTok Data | Apify Clockworks actors | Bright Data / SociaVault | Enterprise pricing ($500+/mo), overkill for profile-level scraping |
+| TikTok Data | Apify Clockworks actors | Direct scraping (Puppeteer/Playwright) | TikTok aggressive anti-bot, weekly countermeasure updates, proxy management burden, maintenance nightmare |
+| Time-Series DB | Plain PostgreSQL tables | TimescaleDB extension | Overkill for hundreds of competitors. Adds hypertable complexity for trivial row counts |
+| Search | PostgreSQL FTS + ilike | Algolia / Typesense / Meilisearch | External service for < 10K records adds cost + sync complexity for zero benefit |
+| Background Jobs | Vercel Cron + Apify webhook | Inngest / Trigger.dev | Additional dependency + billing for a pattern already working in backend-foundation |
+| Background Jobs | Vercel Cron + Apify webhook | Supabase Edge Functions + pg_cron | Edge Functions have 2s CPU limit, 150s wall clock. Fine for triggering Apify, but API routes already do this. No advantage over existing pattern. |
+| Charting | Recharts 3 (existing) | Nivo / Tremor / Chart.js | Second charting library in bundle. Recharts already styled for Raycast theme. |
 
-## Architecture Decision: Next.js API Routes Over Supabase Edge Functions
+---
 
-**Decision:** All backend logic runs as Next.js API routes on Vercel. No Supabase Edge Functions.
+## What NOT to Add
 
-**Rationale:**
-1. **Unified deployment** -- one platform (Vercel), one set of logs, one deploy pipeline
-2. **Existing pattern** -- cron sync, webhooks, and checkout routes already use Next.js API routes
-3. **Full Node.js runtime** -- API routes run in Node.js (not Deno like Edge Functions), giving us full npm ecosystem access for `@google/genai`, `openai`, `apify-client`
-4. **Vercel Pro timeout** -- 300s is sufficient for all our workloads (Apify actor runs are async; we trigger and poll)
-5. **Supabase client works from API routes** -- service role client for privileged operations, no need for co-located Edge Functions
+These were considered and explicitly rejected to keep the stack lean:
 
-**When to use Supabase Edge Functions instead:**
-- If a function needs sub-10ms cold starts (edge functions boot faster than serverless)
-- If you need to respond from a region closer to Supabase DB (latency-critical reads)
-- Neither applies to our use case (prediction engine has 3-5s latency budget)
+| Dependency | Reason to Skip |
+|-----------|---------------|
+| Any new charting library | Recharts 3 covers all comparison/growth chart needs |
+| Any external search service | PostgreSQL FTS sufficient at this scale |
+| `date-fns` or `dayjs` | Native `Intl.DateTimeFormat` and `Date` sufficient for chart axis labels and "last scraped" displays |
+| `lodash` | ES2024+ has `Object.groupBy`, `Array.prototype.toSorted`, structuredClone. No need. |
+| `axios` | `fetch` is native in Next.js and handles all API calls |
+| New state management | Zustand + TanStack Query already cover UI state + server state |
+| `nanoid` for IDs | Already installed, but use PostgreSQL `gen_random_uuid()` for all database IDs. nanoid only for client-side ephemeral keys |
 
-## API Cost Estimates
+---
 
-| API | Model | Cost Basis | Per-Analysis Estimate |
-|-----|-------|------------|----------------------|
-| Gemini | `gemini-2.5-flash-lite` | $0.075/1M input, $0.30/1M output | ~$0.001 (image + prompt ~1500 tokens in, ~500 tokens out) |
-| DeepSeek | `deepseek-reasoner` | $0.56/1M input (miss), $1.68/1M output | ~$0.005 (2K tokens in, ~2K tokens out + CoT reasoning tokens) |
-| **Total per analysis** | | | **~$0.006** (lower than original $0.013 estimate due to Flash-Lite pricing) |
-| Apify | TikTok Trends Scraper | ~$0.25-0.50 per run | ~$3-4/day at 6hr intervals |
-
-## Environment Variables Required
+## New Dependencies Summary
 
 ```bash
-# AI APIs
-GEMINI_API_KEY=                    # Google AI Studio API key
-DEEPSEEK_API_KEY=                  # DeepSeek platform API key
+# ZERO new npm packages needed for this milestone
+# All required libraries are already in the existing stack or backend-foundation
 
-# Apify
-APIFY_API_TOKEN=                   # Apify platform token
-
-# Supabase (already configured)
-NEXT_PUBLIC_SUPABASE_URL=          # existing
-NEXT_PUBLIC_SUPABASE_ANON_KEY=     # existing
-SUPABASE_SERVICE_ROLE_KEY=         # existing (used in cron routes)
-
-# Cron Security (already configured)
-CRON_SECRET=                       # existing (used in sync-whop cron)
+# The only "new" things are:
+# 1. New Supabase migration files (SQL, no npm package)
+# 2. New API routes (TypeScript, no npm package)
+# 3. New vercel.json cron entry (config, no npm package)
+# 4. New Apify actor IDs referenced in env vars (config, no npm package)
 ```
 
-## Installation
+**If backend-foundation has not yet been merged into main when this milestone starts:**
 
 ```bash
-# New production dependencies
-npm install @google/genai openai apify-client @tanstack/react-query
-
-# New dev dependencies
-npm install -D @tanstack/react-query-devtools
+# These packages from backend-foundation will need to be added to this worktree:
+pnpm add apify-client@^2.22.0
+pnpm add @tanstack/react-query@^5.90.21
 ```
 
-**Total new dependencies: 4 production + 1 dev.** Minimal surface area increase.
+---
 
-## Version Compatibility Notes
+## Environment Variables (New)
 
-| Constraint | Status |
-|------------|--------|
-| `@google/genai` requires Node.js >= 18 | OK -- Next.js 16 requires Node.js 18.18+ |
-| `@tanstack/react-query` v5 requires React >= 18 | OK -- project uses React 19.2.3 |
-| `openai` requires TypeScript >= 4.9 | OK -- project uses TypeScript 5.x |
-| `apify-client` works in Node.js and browser | OK -- we'll only use server-side |
+```bash
+# Already defined in backend-foundation (reuse):
+APIFY_TOKEN=                         # Apify API token
+APIFY_WEBHOOK_SECRET=                # Shared secret for webhook auth
 
-## Whop Plan Configuration (Dashboard, Not Code)
+# New for competitor scraping:
+APIFY_COMPETITOR_PROFILE_ACTOR=clockworks/tiktok-profile-scraper
+APIFY_COMPETITOR_VIDEO_ACTOR=clockworks/tiktok-video-scraper
+```
 
-| Decision | Confidence | Source |
-|----------|------------|--------|
-| `@google/genai` as Gemini SDK | HIGH | Official Google docs, npm page, deprecation notice on old SDK |
-| `openai` for DeepSeek | HIGH | DeepSeek official API docs recommend OpenAI SDK compatibility |
-| `gemini-2.5-flash-lite` model choice | HIGH | Official model page, deprecation of 2.0-flash confirmed for March 2026 |
-| `deepseek-reasoner` model name | HIGH | Official DeepSeek API docs |
-| `apify-client` over `apify` SDK | HIGH | Official Apify docs: "client for external applications" |
-| TanStack Query v5 | HIGH | npm, official docs, proven React 19 + Next.js App Router support |
-| Vercel Cron over job queues | MEDIUM | Fits current scale. May need revisiting if job complexity grows significantly. |
-| No Supabase Edge Functions | MEDIUM | Correct for unified deployment but could revisit for latency-critical DB reads |
-| Cost estimates | LOW | Based on published pricing; actual costs depend on prompt length and response verbosity |
+---
 
 ## Sources
 
-- [@google/genai npm](https://www.npmjs.com/package/@google/genai)
-- [Google GenAI SDK GitHub](https://github.com/googleapis/js-genai)
-- [Gemini API Quickstart](https://ai.google.dev/gemini-api/docs/quickstart)
-- [Gemini Models](https://ai.google.dev/gemini-api/docs/models)
-- [Gemini Image Understanding](https://ai.google.dev/gemini-api/docs/image-understanding)
-- [DeepSeek API Docs](https://api-docs.deepseek.com/)
-- [DeepSeek Reasoning Model](https://api-docs.deepseek.com/guides/reasoning_model)
-- [DeepSeek Pricing](https://api-docs.deepseek.com/quick_start/pricing)
-- [Apify Client JS Docs](https://docs.apify.com/api/client/js/docs)
-- [Apify TikTok Trends Scraper](https://apify.com/clockworks/tiktok-trends-scraper)
-- [TanStack Query v5 Docs](https://tanstack.com/query/v5/docs/react/overview)
-- [TanStack Query Advanced SSR](https://tanstack.com/query/latest/docs/framework/react/guides/advanced-ssr)
-- [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs)
-- [Vercel Cron Pricing](https://vercel.com/docs/cron-jobs/usage-and-pricing)
-- [Vercel Function Duration](https://vercel.com/docs/functions/configuring-functions/duration)
-- [Supabase Edge Functions](https://supabase.com/docs/guides/functions)
-- [OpenAI Node.js SDK](https://github.com/openai/openai-node)
+- [Apify TikTok Scraper (Clockworks)](https://apify.com/clockworks/tiktok-scraper) -- Actor listing, pricing
+- [Apify TikTok Profile Scraper](https://apify.com/clockworks/tiktok-profile-scraper) -- Profile data fields
+- [Apify TikTok Video Scraper](https://apify.com/clockworks/tiktok-video-scraper) -- Video data fields
+- [Apify JS Client Documentation](https://docs.apify.com/api/client/js) -- `apify-client` npm usage
+- [Apify Run Actor and Retrieve Data](https://docs.apify.com/academy/api/run-actor-and-retrieve-data-via-api) -- Sync/async patterns, webhook callbacks
+- [Supabase Full Text Search](https://supabase.com/docs/guides/database/full-text-search) -- tsvector, GIN indexes
+- [Supabase Cron](https://supabase.com/docs/guides/cron) -- pg_cron extension, Edge Function scheduling
+- [Supabase Edge Functions Limits](https://supabase.com/docs/guides/functions/limits) -- 2s CPU, 150s wall clock
+- [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs) -- Configuration, pricing
+- [Vercel Cron Usage & Pricing](https://vercel.com/docs/cron-jobs/usage-and-pricing) -- Hobby (daily) vs Pro (sub-daily)
+- [Recharts Multi-Series LineChart](https://recharts.github.io/en-US/examples/LineChartHasMultiSeries/) -- Multi-line comparison charts
+- [TikTok Research API](https://developers.tiktok.com/products/research-api/) -- Academic-only restriction confirmed
+- [TikTok Research API FAQ](https://developers.tiktok.com/doc/research-api-faq) -- Commercial use prohibition
+- [Best TikTok Scrapers 2026](https://use-apify.com/docs/best-apify-actors/best-tiktok-scrapers) -- Clockworks as market leader
+
+## Confidence Assessment
+
+| Area | Confidence | Notes |
+|------|------------|-------|
+| Apify Clockworks actors | MEDIUM | Data field schemas from Apify docs + WebSearch, not Context7. Fields may change. Zod validation mandatory at ingest boundary. |
+| Database schema design | HIGH | Standard PostgreSQL patterns, existing Supabase migration workflow proven in 6 prior migrations. |
+| Recharts sufficiency | HIGH | Already installed, multi-series LineChart documented and verified. Earnings dashboard already uses AreaChart. |
+| Vercel Cron for scheduling | HIGH | Already working in backend-foundation. Proven pattern. |
+| PostgreSQL FTS for search | MEDIUM | Supabase docs confirm `.textSearch()` support. Not battle-tested in this codebase yet. |
+| TanStack Query for data fetching | HIGH | Already installed and integrated in backend-foundation with query hooks. |
+| Zero new dependencies claim | HIGH | Verified against existing package.json in both worktrees. |

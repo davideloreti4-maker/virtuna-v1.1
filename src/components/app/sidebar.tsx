@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import {
-  Lightbulb,
+  House,
   TrendUp,
+  UsersThree,
+  Lightbulb,
   Briefcase,
   Plus,
   SlidersHorizontal,
@@ -28,6 +30,12 @@ import { TestHistoryList } from "./test-history-list";
 import { TiktokAccountSelector } from "./tiktok-account-selector";
 
 const navItems = [
+  { label: "Dashboard", icon: House, id: "dashboard", href: "/dashboard" },
+  { label: "Trending", icon: TrendUp, id: "trending", href: "/trending" },
+  { label: "Competitors", icon: UsersThree, id: "competitors", href: "/competitors" },
+] as const;
+
+const navItemsAfterSelector = [
   { label: "Content Intelligence", icon: Lightbulb, id: "content-intelligence", href: "/dashboard" },
   { label: "Trending Feed", icon: TrendUp, id: "trending-feed", href: "/trending" },
   { label: "Brand Deals", icon: Briefcase, id: "brand-deals", href: "/brand-deals" },
@@ -151,14 +159,20 @@ export function Sidebar() {
         {/* Separator */}
         <div className="mx-4 my-2 border-t border-border-glass" />
 
-        {/* Navigation items */}
+        {/* Top navigation items (Dashboard, Trending, Competitors) */}
         <nav className="flex flex-col gap-0.5 px-2">
           {navItems.map((item) => (
             <SidebarNavItem
               key={item.id}
               icon={item.icon}
               label={item.label}
-              isActive={pathname === item.href || pathname.startsWith(item.href + "/")}
+              isActive={
+                item.id === "dashboard"
+                  ? pathname === "/dashboard"
+                  : item.id === "competitors"
+                    ? pathname.startsWith("/competitors")
+                    : pathname === item.href
+              }
               onClick={() => router.push(item.href)}
               badge={item.id === "brand-deals" ? 3 : undefined}
             />

@@ -1,83 +1,85 @@
-# Research Summary: Virtuna Backend Foundation
+# Research Summary: Virtuna Competitors Tool
 
-**Domain:** Social media content intelligence platform -- backend infrastructure
-**Researched:** 2026-02-13
+**Domain:** TikTok Competitor Intelligence Tracker (new feature milestone)
+**Researched:** 2026-02-16
 **Overall confidence:** HIGH
 
 ## Executive Summary
 
-The Virtuna Backend Foundation milestone adds complete backend infrastructure to an existing frontend-only Next.js 16 application. The core challenge is building a dual-model AI prediction engine (Gemini for visual analysis + DeepSeek R1 for reasoning/scoring), integrating Apify for real trending video data, replacing all mock data with database-backed API endpoints, and establishing background job infrastructure -- all on Vercel's serverless platform with Supabase as the database.
+The competitor tracking milestone requires surprisingly few stack additions. The backend-foundation worktree (shipped 2026-02-13) already provides the core scraping infrastructure: `apify-client` ^2.22.0, webhook handler pattern, cron route pattern, service client utility, and Vercel cron configuration. This milestone extends that foundation with new Apify actor targets (profile scraper + video scraper instead of trending scraper), new database tables for competitor-specific time-series data, and new UI components built with the existing design system and Recharts.
 
-The stack additions are minimal and well-validated: 4 production dependencies (`@google/genai`, `openai`, `apify-client`, `@tanstack/react-query`) and 1 dev dependency (`@tanstack/react-query-devtools`). The key architectural decision is to use Next.js API routes for all backend logic (no Supabase Edge Functions), keeping deployment unified on Vercel. This matches the existing codebase patterns (Whop cron sync, webhooks, checkout routes all use API routes).
+The primary technical challenge is not "what to build" but "how to avoid over-engineering." The temptation to add TimescaleDB (deprecated on Supabase PG17), external search services (overkill for <10K records), dedicated background job frameworks (Inngest/Trigger.dev solve problems already solved by Vercel Cron + Apify webhooks), and additional charting libraries (Recharts 3 already covers multi-series comparison charts) must be resisted. Zero new npm packages are needed if backend-foundation is merged first; at most two packages (`apify-client`, `@tanstack/react-query`) if it has not been merged.
 
-The most significant risk is LLM output reliability -- both Gemini and DeepSeek must return structured JSON that parses consistently, and 5-10% failure rate is typical without proper validation. Zod schema validation at every API boundary, structured output modes (Gemini's `responseMimeType`, DeepSeek's `response_format`), and retry logic are non-negotiable. The second critical risk is Gemini 2.0 Flash deprecation on March 31, 2026 -- the pipeline must use `gemini-2.5-flash-lite` from day one.
+The highest-risk area is TikTok scraping reliability. TikTok deploys aggressive anti-bot measures that can break scrapers overnight. Using Apify Clockworks actors (maintained by a specialized team with 125K+ users) mitigates this, but the architecture must abstract data acquisition behind a clean interface so the scraping provider can be swapped without rewriting the data layer. The second highest risk is unbounded scraping costs -- the architecture must deduplicate scraping across users (scrape each unique handle once, serve to all users who track it) and implement sensible caps.
 
-Cost estimates are favorable: ~$0.006 per analysis (down from the original $0.013 estimate due to Flash-Lite pricing), with Apify scraping at ~$3-4/day for 6-hour intervals. The architecture supports the existing "expert rules first, trends second, ML third" progression strategy, with the ML training pipeline scaffolded as types and cron stubs but no actual model training in this milestone.
+The competitive landscape reveals a clear gap: every existing TikTok analytics tool (Pentos, Exolyt, Socialinsider, Analisa.io, Favikon) targets brands and agencies at $50-100+/month. No tool is built from the ground up for individual creators asking "how do I compare to creators in my niche?" Virtuna fills this gap by integrating competitor tracking into a creator-first intelligence platform.
 
 ## Key Findings
 
-**Stack:** 4 new npm dependencies -- `@google/genai` (Gemini), `openai` (DeepSeek via OpenAI-compatible API), `apify-client` (scraper integration), `@tanstack/react-query` (server state management). No job queue library needed -- Vercel Cron handles all scheduling.
+**Stack:** Zero new npm dependencies needed. Extends existing Apify + Supabase + Recharts + Zustand stack with new actors, tables, routes, and components.
 
-**Architecture:** All backend logic in Next.js API routes on Vercel. SSE streaming for analysis progress. Fire-and-forget + webhook pattern for Apify scraping. TanStack Query for all server state, Zustand stays for client-only UI state. Cursor-based pagination for infinite scroll.
+**Architecture:** Webhook-driven async scraping (proven pattern from backend-foundation), shared competitor profiles with per-user tracking join table, append-only snapshots for time-series, server components for initial load with client components for charts and interactivity.
 
-**Critical pitfall:** LLM output parsing failures. Without Zod validation and retry logic, 5-10% of analyses will crash. Also: `gemini-2.0-flash` is deprecated March 31, 2026 -- must use `gemini-2.5-flash-lite` from the start.
+**Critical pitfall:** TikTok anti-bot arms race can break scraping overnight. Abstract data acquisition behind a provider interface. Never build a custom scraper.
 
 ## Implications for Roadmap
 
 Based on research, suggested phase structure:
 
-1. **Database Foundation** - Schema, migrations, types, admin client extraction
-   - Addresses: All tables (scraped_videos, trending_sounds, analysis_results, outcomes, rule_library), RLS policies, type generation
-   - Avoids: Type drift pitfall by establishing regeneration workflow early
-   - Rationale: Every other feature depends on the database. Must be first.
+1. **Database + Scraping Foundation** - Schema migration, Apify scraping service layer, Zod validation schemas, service client extraction
+   - Addresses: competitor_profiles, competitor_snapshots, competitor_videos tables; Apify profile + video scraper integration
+   - Avoids: TimescaleDB deprecation (Pitfall #7), schema coupling user_id to snapshots (Pitfall #14), RLS performance cliff (Pitfall #3)
 
-2. **AI Engine Core** - Gemini + DeepSeek client wrappers, pipeline orchestration, rule engine
-   - Addresses: Content analysis API, expert rule engine, Zod validation, structured prompts
-   - Avoids: LLM parsing failures by building validation from the start
-   - Rationale: Core value prop. Can develop independently from database work (uses types/interfaces, not live DB initially).
+2. **API Routes + Server Actions** - Add/remove competitor actions, search API, single-competitor refresh, cron batch refresh route, vercel.json config
+   - Addresses: Data pipeline wiring, cron scheduling, webhook handler for competitor data
+   - Avoids: Serverless timeout during bulk scraping (Pitfall #9), middleware auth bypass (Pitfall #5), Hobby plan cron limitation (Pitfall #4)
 
-3. **Data Pipeline** - Apify integration, cron jobs, trending data flow
-   - Addresses: Apify scraper cron, webhook handler, trending data, trend calculator
-   - Avoids: Scraper reliability issues by testing actor manually first
-   - Rationale: Depends on database schema (phase 1). Populates data for phase 4.
+3. **Core UI - Competitor Dashboard** - Page route, sidebar nav, competitor cards grid, table/leaderboard view, empty state, stats bar, Zustand store for UI state
+   - Addresses: Table stakes features (add, view, remove competitors), grid and table views, loading/skeleton states
+   - Avoids: Dashboard data overload (Pitfall #8), Zustand hydration conflicts (Pitfall #6), client-side Supabase queries (Pitfall #13)
 
-4. **TanStack Query + API Routes** - Server state management, all API endpoints, mock data replacement
-   - Addresses: TanStack Query provider, query hooks, trending API, deals API, analysis API route with SSE
-   - Avoids: Half-mock/half-real inconsistency by migrating one page at a time
-   - Rationale: Depends on database (phase 1) and engine (phase 2). Replaces all mock data.
+4. **Detail Views + Charts** - Competitor detail panel, Recharts growth charts (LineChart, AreaChart), recent videos grid, engagement breakdown
+   - Addresses: Follower growth visualization, per-video engagement, content analysis, posting frequency
+   - Avoids: Payload size limits (Pitfall #10), loading all snapshots on page load
 
-5. **Client Integration + Polish** - Wire real data to existing UI components, simulation theater
-   - Addresses: Simulation theater with real pipeline phases, results card, analysis history, outcome tracking scaffolding
-   - Avoids: UI regression by changing data source without changing component interfaces
-   - Rationale: Last phase because it depends on all backend infrastructure being in place.
+5. **Benchmarking + Comparison** - Side-by-side comparison view, own stats vs competitor, multi-competitor growth overlay chart, leaderboard sorting
+   - Addresses: Differentiator features (benchmark panel, RadarChart comparison, delta indicators)
+
+6. **Polish + Edge Cases** - Stale data indicators, error states, scrape failure handling, rate limiting, mobile responsive layout, search/discovery flow
+   - Addresses: Data freshness trust (Pitfall #15), error recovery, mobile UX
+   - Avoids: Stale data without visual indicators (Pitfall #15)
 
 **Phase ordering rationale:**
-- Phase 1 (DB) is a hard dependency for all other phases
-- Phases 2 (Engine) and 3 (Pipeline) could run in parallel since they're independent backend domains
-- Phase 4 (API + Query) ties engine and pipeline to the client
-- Phase 5 (Integration) is the final wiring -- changes existing components to use real data
+- Phase 1 (schema) has zero dependencies and unblocks everything else
+- Phase 2 (API routes) depends on Phase 1's tables and scraping layer
+- Phase 3 (UI) depends on Phase 2's server actions for add/remove
+- Phase 4 (charts) depends on Phase 1's snapshot data and Phase 3's UI shell
+- Phase 5 (comparison) depends on Phase 3's core UI + Phase 4's chart components
+- Phase 6 (polish) spans all previous phases and can start after Phase 3
 
 **Research flags for phases:**
-- Phase 2: Likely needs deeper research on Gemini 2.5 Flash-Lite structured output capabilities and DeepSeek R1 prompt engineering for consistent JSON
-- Phase 3: May need manual testing of the specific Apify TikTok Trends Scraper actor to validate data shape before building transforms
-- Phase 4: Standard patterns, unlikely to need additional research
-- Phase 5: Standard wiring, unlikely to need research
+- Phase 1: Standard patterns (PostgreSQL, Zod, Supabase migrations). Unlikely to need additional research.
+- Phase 2: Apify actor input/output schemas need verification at implementation time. Clockworks actors may change field names. Flag for quick validation before coding.
+- Phase 3: Standard Next.js + design system work. No additional research needed.
+- Phase 4: Recharts multi-series LineChart is documented. May need minor research on custom tooltip/legend styling to match Raycast theme.
+- Phase 5: RadarChart component in Recharts may need research for proper comparison visualization.
+- Phase 6: Mobile responsive patterns already established in codebase. No research needed.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All libraries verified against npm, official docs, and compatibility confirmed with existing project versions |
-| Features | HIGH | Derived from PROJECT.md requirements and validated architecture reference |
-| Architecture | HIGH | Patterns verified against existing codebase (cron routes, Supabase client, webhook handlers) and official Vercel/Supabase docs |
-| Pitfalls | HIGH for LLM parsing, model deprecation; MEDIUM for DeepSeek availability, Apify reliability | LLM failure modes well-documented. DeepSeek uptime and Apify actor reliability are third-party risks. |
-| Cost estimates | LOW | Based on published pricing but actual costs depend on prompt verbosity, response length, retry rates |
+| Stack | HIGH | Zero new dependencies. All libraries verified in existing package.json. Apify pricing confirmed via official listings. |
+| Features | HIGH | Feature landscape mapped against 8+ competitor tools. Table stakes, differentiators, and anti-features clearly delineated. |
+| Architecture | HIGH | Extends proven patterns from backend-foundation. Webhook-driven scraping, append-only snapshots, shared profiles. |
+| Pitfalls | HIGH | 15 pitfalls catalogued with official sources. Critical ones (TikTok anti-bot, unbounded costs, RLS performance, TimescaleDB deprecation) have concrete prevention strategies. |
+| Apify data schemas | MEDIUM | Profile/video field names from Apify docs and WebSearch, not Context7. Schemas may change. Zod validation at ingest is mandatory. |
+| Competitive landscape | MEDIUM | Based on WebSearch of competitor tools. Pricing and feature sets may have changed. |
 
 ## Gaps to Address
 
-- **Apify actor data shape**: The exact output format of `clockworks/tiktok-trends-scraper` needs to be validated by running the actor manually. Transform code depends on this.
-- **DeepSeek R1 prompt optimization**: The optimal prompt template for consistent JSON scoring output needs iterative testing. Budget 2-3 iterations during phase 2.
-- **Gemini structured output reliability**: `gemini-2.5-flash-lite` supports `responseMimeType: 'application/json'` but accuracy of schema adherence with complex nested objects needs testing.
-- **Vercel function cold start latency**: The analysis pipeline budget is 3-5s but cold start adds 1-2s. Need to measure actual end-to-end latency on Pro plan with Fluid Compute.
-- **DeepSeek reasoning token budget**: R1 can generate up to 32K reasoning tokens (CoT) before the final answer. Need to set `max_tokens` appropriately to control cost and latency without truncating useful reasoning.
-- **Hobby vs Pro plan decision**: Vercel Hobby limits crons to daily-only. The architecture requires hourly (trend calculation) and every-6-hour (scraping) crons. Pro plan is required for this milestone.
+- **Apify actor input/output schemas**: Need runtime verification at implementation time. The Clockworks actors may change output field names or add/remove fields without notice.
+- **Vercel plan confirmation**: The cron strategy assumes Pro plan (sub-daily cron). If still on Hobby, daily-only cron changes the refresh strategy.
+- **Cost modeling**: Per-user scraping cost needs validation with actual Apify usage after launch. Estimated $0.005/profile/scrape, but real costs depend on proxy usage and retry rates.
+- **Legal/ToS compliance**: Scraping TikTok data via third-party services (Apify) operates in a legal gray area. Not researched here -- needs separate review.
+- **Backend-foundation merge timing**: If backend-foundation has not been merged into main before this milestone starts, the `apify-client` and `@tanstack/react-query` packages need to be added manually to this worktree.
