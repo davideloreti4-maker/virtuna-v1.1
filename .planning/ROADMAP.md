@@ -129,10 +129,12 @@ Plans:
   1. All competitor views show stale data indicators displaying when data was last refreshed
   2. Failed scrapes display clear error states with a retry option
   3. All competitor views (dashboard, detail page, comparison, intelligence) are fully responsive on mobile
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 07-01: Stale data indicators, error states with retry, mobile responsive audit
+- [ ] 07-01-PLAN.md -- Utility functions (formatRelativeTime, isStale), StaleIndicator component, retryScrape server action, ScrapeErrorBanner component
+- [ ] 07-02-PLAN.md -- Wire stale indicators and error states into dashboard cards, table, detail header, and comparison page
+- [ ] 07-03-PLAN.md -- Mobile responsive audit across all competitor views (detail page, tables, heatmap, comparison, intelligence)
 
 ## Execution Waves
 
@@ -170,4 +172,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 4. Detail Page & Analytics | 2/2 | ✓ Complete | 2026-02-16 |
 | 5. Benchmarking & Comparison | 2/2 | ✓ Complete | 2026-02-17 |
 | 6. AI Intelligence | 2/2 | ✓ Complete | 2026-02-17 |
-| 7. Polish & Edge Cases | 0/1 | Not started | - |
+| 7. Polish & Edge Cases | 0/3 | Not started | - |
