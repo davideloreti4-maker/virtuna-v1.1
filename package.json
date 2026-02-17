@@ -13,7 +13,8 @@
     "extraction:ui": "npx playwright test --ui --config=extraction/playwright.config.ts",
     "extraction:report": "npx playwright show-report extraction/playwright-report",
     "extraction:gifs": "npx tsx extraction/scripts/generate-gifs.ts",
-    "analyze": "npx tsx scripts/analyze-dataset.ts"
+    "analyze": "npx tsx scripts/analyze-dataset.ts",
+    "benchmark": "npx tsx scripts/benchmark.ts"
   },
   "dependencies": {
     "@google/genai": "^1.41.0",
