@@ -66,14 +66,13 @@ export async function POST(request: Request) {
       }
     }
 
-    // Video storage path validation
-    if (body.input_mode === "video_upload" && body.video_storage_path) {
-      if (
-        typeof body.video_storage_path !== "string" ||
-        body.video_storage_path.length === 0
-      ) {
+    // Video storage path validation — reject sentinel/placeholder values
+    // that would crash the Gemini pipeline when it tries to fetch the file
+    if (body.input_mode === "video_upload") {
+      const vsp = body.video_storage_path;
+      if (!vsp || vsp === "pending-upload" || typeof vsp !== "string" || !vsp.startsWith("videos/")) {
         return Response.json(
-          { error: "Invalid video storage path" },
+          { error: "Video upload required. Please upload a video file before submitting." },
           { status: 400 }
         );
       }
