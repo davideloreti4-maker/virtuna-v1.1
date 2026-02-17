@@ -4,8 +4,9 @@ import * as React from "react";
 import { Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { createClient } from "@/lib/supabase/client";
 
-const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB — matches VIDEO_MAX_SIZE_BYTES in gemini.ts
 const ACCEPTED_VIDEO_TYPES = [
   "video/mp4",
   "video/quicktime",
@@ -22,8 +23,10 @@ export interface VideoUploadProps {
   file: File | null;
   /** Callback when a file is selected or removed */
   onFileSelect: (file: File | null) => void;
-  /** Upload progress 0-100, undefined = no upload in progress */
-  uploadProgress?: number;
+  /** Called with real storage path after successful upload */
+  onUploadComplete?: (storagePath: string) => void;
+  /** Called if upload fails */
+  onUploadError?: (error: string) => void;
   /** Additional className */
   className?: string;
 }
@@ -45,20 +48,32 @@ function formatDuration(seconds: number): string {
 }
 
 /**
- * VideoUpload component with drag-drop, thumbnail preview, progress bar, and file removal.
+ * VideoUpload component with drag-drop, thumbnail preview, Supabase Storage upload, and file removal.
  *
  * States:
  * - Empty: Drop zone with upload icon and instructions
- * - Uploading: File selected + uploadProgress defined, shows progress bar
- * - Preview: File selected, no progress, shows thumbnail + metadata
+ * - Uploading: File selected, upload in progress with progress bar
+ * - Preview: File uploaded successfully, shows thumbnail + metadata
  */
 const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
-  ({ file, onFileSelect, uploadProgress, className }, ref) => {
+  ({ file, onFileSelect, onUploadComplete, onUploadError, className }, ref) => {
     const [isDragging, setIsDragging] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
     const [thumbnail, setThumbnail] = React.useState<string | null>(null);
     const [duration, setDuration] = React.useState<number | null>(null);
+    const [uploadProgress, setUploadProgress] = React.useState<number | undefined>(undefined);
     const inputRef = React.useRef<HTMLInputElement>(null);
+    const progressIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+    const uploadAbortedRef = React.useRef(false);
+
+    // Cleanup progress interval on unmount
+    React.useEffect(() => {
+      return () => {
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+        }
+      };
+    }, []);
 
     // Extract thumbnail and duration from video file
     React.useEffect(() => {
@@ -119,9 +134,93 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
         return "Please select a video file (MP4, MOV, WebM)";
       }
       if (f.size > MAX_FILE_SIZE) {
-        return `File too large (${formatFileSize(f.size)}). Maximum size is 200MB.`;
+        return `File too large (${formatFileSize(f.size)}). Maximum size is 50MB.`;
       }
       return null;
+    }
+
+    /** Start simulated progress that increments from 0 to ~90 over estimated upload time */
+    function startSimulatedProgress(fileSize: number) {
+      // Estimate ~2MB/s upload speed as a conservative baseline
+      const estimatedSeconds = Math.max(2, fileSize / (2 * 1024 * 1024));
+      const intervalMs = 200;
+      const totalTicks = (estimatedSeconds * 1000) / intervalMs;
+      let tick = 0;
+
+      setUploadProgress(0);
+
+      progressIntervalRef.current = setInterval(() => {
+        tick++;
+        // Asymptotically approach 90% using diminishing increments
+        const progress = Math.min(90, (tick / totalTicks) * 90);
+        setUploadProgress(progress);
+
+        if (progress >= 90) {
+          if (progressIntervalRef.current) {
+            clearInterval(progressIntervalRef.current);
+            progressIntervalRef.current = null;
+          }
+        }
+      }, intervalMs);
+    }
+
+    function stopSimulatedProgress() {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+    }
+
+    async function uploadToStorage(f: File) {
+      uploadAbortedRef.current = false;
+      startSimulatedProgress(f.size);
+
+      try {
+        const supabase = createClient();
+
+        // Get current user for path namespacing
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+          throw new Error("You must be logged in to upload videos");
+        }
+
+        if (uploadAbortedRef.current) return;
+
+        // Generate unique storage path
+        const storagePath = `videos/${user.id}/${Date.now()}-${f.name}`;
+
+        // Upload to Supabase Storage
+        const { error: uploadError } = await supabase.storage
+          .from("videos")
+          .upload(storagePath, f, { upsert: false });
+
+        if (uploadAbortedRef.current) return;
+
+        if (uploadError) {
+          throw new Error(uploadError.message);
+        }
+
+        // Upload succeeded — jump to 100%
+        stopSimulatedProgress();
+        setUploadProgress(100);
+
+        // Brief delay to show 100% then clear
+        setTimeout(() => {
+          setUploadProgress(undefined);
+        }, 500);
+
+        onUploadComplete?.(storagePath);
+      } catch (err) {
+        if (uploadAbortedRef.current) return;
+
+        stopSimulatedProgress();
+        setUploadProgress(undefined);
+
+        const message = err instanceof Error ? err.message : "Upload failed";
+        setError(message);
+        onUploadError?.(message);
+        onFileSelect(null);
+      }
     }
 
     function handleFileSelection(f: File) {
@@ -132,6 +231,9 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
       }
       setError(null);
       onFileSelect(f);
+
+      // Start uploading immediately
+      uploadToStorage(f);
     }
 
     function handleDragOver(e: React.DragEvent) {
@@ -169,6 +271,10 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
     }
 
     function handleRemove() {
+      // Abort any in-progress upload
+      uploadAbortedRef.current = true;
+      stopSimulatedProgress();
+      setUploadProgress(undefined);
       setError(null);
       onFileSelect(null);
     }
@@ -225,7 +331,7 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
                   Drop your video here or click to browse
                 </p>
                 <p className="text-xs text-foreground-muted mt-1">
-                  MP4, MOV, WebM up to 200MB
+                  MP4, MOV, WebM up to 50MB
                 </p>
               </div>
             </div>
@@ -239,9 +345,18 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
                   {file.name}
                 </p>
                 <p className="text-xs text-foreground-muted mt-1">
-                  Uploading...
+                  Uploading... {Math.round(uploadProgress)}%
                 </p>
               </div>
+              {/* Remove button during upload */}
+              <button
+                type="button"
+                onClick={handleRemove}
+                className="absolute top-3 right-3 z-10 flex items-center justify-center w-7 h-7 rounded-md bg-white/[0.05] border border-white/[0.06] text-foreground-muted hover:text-foreground hover:bg-white/[0.1] transition-colors"
+                aria-label="Cancel upload"
+              >
+                <X className="w-4 h-4" />
+              </button>
               {/* Progress bar overlay at bottom */}
               <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/[0.06] rounded-b-xl overflow-hidden">
                 <div
