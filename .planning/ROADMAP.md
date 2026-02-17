@@ -239,8 +239,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 13-01-PLAN.md — Fix validate-rules cron select, content_type derivation, video upload guard
-- [ ] 13-02-PLAN.md — Wire DeepSeek reasoning_summary into PredictionResult.reasoning
+- [x] 13-01-PLAN.md — Fix validate-rules cron select, content_type derivation, video upload guard
+- [x] 13-02-PLAN.md — Wire DeepSeek reasoning_summary into PredictionResult.reasoning
 
 ### Phase 14: Video Upload Storage
 **Goal**: Wire video upload end-to-end from UI through Supabase Storage to Gemini video analysis
@@ -319,10 +319,10 @@ Phases execute in wave order. Within each wave, phases can run in parallel.
 | 10. Calibration & ML Training | 5/5 | ✓ Complete | 2026-02-16 |
 | 11. Enhanced Signals & Audio | 3/3 | ✓ Complete | 2026-02-17 |
 | 12. E2E Flow Testing, Polish & Merge | 2/2 | COMPLETE | 2026-02-17 |
-| 13. Engine Bug Fixes & Wiring | 0/? | Not started | - |
+| 13. Engine Bug Fixes & Wiring | 2/2 | ✓ Complete | 2026-02-17 |
 | 14. Video Upload Storage | 0/? | Not started | - |
 | 15. UI Polish & Remaining Gaps | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-02-16*
-*Last updated: 2026-02-17 — Gap closure phases 13-15 added from milestone audit*
+*Last updated: 2026-02-17 — Phase 13 complete (2/2 plans, verified)*
