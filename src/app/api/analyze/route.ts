@@ -133,13 +133,57 @@ export async function POST(request: Request) {
         try {
           const validated = AnalysisInputSchema.parse(body);
 
+          // Download video from Supabase Storage if video_upload mode
+          let videoData: { buffer: Buffer; mimeType: string } | undefined;
+          if (validated.input_mode === "video_upload") {
+            send("phase", {
+              phase: "downloading",
+              message: "Downloading video from storage...",
+            });
+
+            const { data: blob, error: downloadError } = await service
+              .storage
+              .from("videos")
+              .download(validated.video_storage_path!);
+
+            if (downloadError || !blob) {
+              send("error", {
+                error: "Failed to download video from storage. It may have expired or been deleted.",
+              });
+              controller.close();
+              return;
+            }
+
+            const arrayBuffer = await blob.arrayBuffer();
+            const videoBuffer = Buffer.from(arrayBuffer);
+
+            // Determine MIME type from file extension
+            const ext = validated.video_storage_path!
+              .split(".")
+              .pop()
+              ?.toLowerCase();
+            const mimeMap: Record<string, string> = {
+              mp4: "video/mp4",
+              mov: "video/quicktime",
+              webm: "video/webm",
+              avi: "video/x-msvideo",
+              mkv: "video/x-matroska",
+            };
+            const mimeType = (ext && mimeMap[ext]) || "video/mp4";
+
+            videoData = { buffer: videoBuffer, mimeType };
+          }
+
           // Phase 1: Run full pipeline (handles Wave 1 + Wave 2 internally)
           send("phase", {
             phase: "analyzing",
             message:
               "Analyzing content with Gemini and loading creator context...",
           });
-          const pipelineResult = await runPredictionPipeline(validated);
+          const pipelineResult = await runPredictionPipeline(
+            validated,
+            videoData
+          );
 
           // Phase 2: Aggregate scores
           send("phase", {

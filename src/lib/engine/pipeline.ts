@@ -4,12 +4,13 @@ import {
   type AnalysisInput,
   type ContentPayload,
   type GeminiAnalysis,
+  type GeminiVideoAnalysis,
   type DeepSeekReasoning,
   type RuleScoreResult,
   type TrendEnrichment,
 } from "./types";
 import { normalizeInput } from "./normalize";
-import { analyzeWithGemini } from "./gemini";
+import { analyzeWithGemini, analyzeVideoWithGemini } from "./gemini";
 import { reasonWithDeepSeek } from "./deepseek";
 import { loadActiveRules, scoreContentAgainstRules } from "./rules";
 import { enrichWithTrends } from "./trends";
@@ -31,7 +32,7 @@ export interface StageTiming {
 export interface PipelineResult {
   // Stage outputs
   payload: ContentPayload;
-  geminiResult: { analysis: GeminiAnalysis; cost_cents: number };
+  geminiResult: { analysis: GeminiAnalysis | GeminiVideoAnalysis; cost_cents: number };
   creatorContext: CreatorContext;
   ruleResult: RuleScoreResult;
   trendEnrichment: TrendEnrichment;
@@ -123,7 +124,8 @@ const DEFAULT_TREND_ENRICHMENT: TrendEnrichment = {
  * critical -- their failure halts the pipeline.
  */
 export async function runPredictionPipeline(
-  input: AnalysisInput
+  input: AnalysisInput,
+  videoData?: { buffer: Buffer; mimeType: string }
 ): Promise<PipelineResult> {
   const pipelineStart = performance.now();
   const timings: StageTiming[] = [];
@@ -163,8 +165,16 @@ export async function runPredictionPipeline(
   // -------------------------------------------------------
 
   // Stage 3: Gemini Analysis -- CRITICAL (throws on failure)
+  // Branch: video_upload mode uses analyzeVideoWithGemini; text/tiktok_url use analyzeWithGemini
   const geminiPromise = timed("gemini_analysis", timings, async () => {
     try {
+      if (validated.input_mode === "video_upload" && videoData) {
+        return await analyzeVideoWithGemini(
+          videoData.buffer,
+          videoData.mimeType,
+          payload.niche ?? undefined
+        );
+      }
       return await analyzeWithGemini(validated);
     } catch (error) {
       throw new Error(
