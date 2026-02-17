@@ -38,7 +38,7 @@ export function ComparisonMetricCard({
         <div>
           <p
             className={cn(
-              "text-lg font-semibold",
+              "text-base sm:text-lg font-semibold",
               aWins ? "text-accent" : "text-foreground"
             )}
           >
@@ -50,7 +50,7 @@ export function ComparisonMetricCard({
         <div className="text-right">
           <p
             className={cn(
-              "text-lg font-semibold",
+              "text-base sm:text-lg font-semibold",
               bWins ? "text-accent" : "text-foreground"
             )}
           >

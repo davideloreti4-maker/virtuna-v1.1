@@ -116,8 +116,9 @@ export function CompetitorTable({ competitors }: CompetitorTableProps) {
   }
 
   return (
+    <div className="relative">
     <div className="w-full overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full text-sm min-w-[800px]">
         <thead>
           <tr className="border-b border-white/[0.06]">
             <th className="py-3 px-4 text-left font-medium text-foreground-muted text-xs">
@@ -226,6 +227,9 @@ export function CompetitorTable({ competitors }: CompetitorTableProps) {
           })}
         </tbody>
       </table>
+    </div>
+    {/* Mobile scroll hint */}
+    <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[var(--color-background)] to-transparent pointer-events-none md:hidden" />
     </div>
   );
 }

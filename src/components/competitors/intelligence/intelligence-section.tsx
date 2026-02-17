@@ -131,7 +131,7 @@ export function IntelligenceSection({
   return (
     <section>
       {/* Section header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <div className="flex items-center gap-2">
           <Sparkle size={20} className="text-[var(--color-accent)]" />
           <h2 className="text-lg font-semibold text-foreground">
