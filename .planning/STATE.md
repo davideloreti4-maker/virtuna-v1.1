@@ -1,26 +1,54 @@
 # State — Backend Reliability
 
-## Current Position
-
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-02-17 — Milestone Backend Reliability started
-
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-02-17)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate
-**Current focus:** Backend reliability — fix broken wiring, improve ML, add observability
+**Current focus:** Phase 1 — Schedule Crons & Fix Data Pipeline Wiring
+
+## Current Position
+
+Phase: 1 of 6 (Schedule Crons & Fix Data Pipeline Wiring)
+Plan: 0 of 4 in current phase
+Status: Ready to plan
+Last activity: 2026-02-17 — ROADMAP.md created, milestone scoped
+
+Progress: [░░░░░░░░░░] 0%
+
+## Performance Metrics
+
+**Velocity:**
+- Total plans completed: 0
+- Average duration: —
+- Total execution time: —
+
+**By Phase:**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| - | - | - | - |
+
+*Updated after each plan completion*
 
 ## Accumulated Context
 
-- Prediction engine pipeline works (Gemini + DeepSeek + Rules + Trends) but 6 crons are orphaned
-- ML classifier at 31% accuracy due to class imbalance (tiers 4/5 never predicted)
-- Calibration module built but idle (no outcome data yet)
-- Zero test coverage on engine modules
-- No error monitoring (Sentry not integrated)
-- DeepSeek has Gemini fallback (added 2026-02-17) but other failure modes unhandled
-- training-data.json is 2.6MB static file, not regenerated from scraped_videos
-- Circuit breaker is per-serverless-instance (module-level state), not distributed
+### Decisions
+
+- Milestone scoped: backend-only, no frontend changes this milestone
+- Phase 2 (ML) depends on Phase 1 so fresh scraped_videos are available for retraining
+- Phases 2, 3, 4 can run in parallel once Phase 1 is complete (Wave 2)
+- Phase 5 (tests) waits for Wave 2 so pipeline is fully wired before writing integration tests
+- Phase 6 (hardening) is final cleanup pass after all substantive work lands
+
+### Blockers/Concerns
+
+- Circuit breaker is per-serverless-instance (module-level state) — not a distributed lock; HARD-04 addresses this
+- training-data.json is a static 2.6MB file — ML-08 replaces with dynamic generation from scraped_videos
+- Calibration has no outcome data yet — CAL-01/CAL-02 wire it conditionally so it degrades gracefully
+
+## Session Continuity
+
+Last session: 2026-02-17
+Stopped at: Roadmap created — ready to plan Phase 1
+Resume file: None
