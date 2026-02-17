@@ -7,6 +7,7 @@ import { ComparisonMetricCard } from "@/components/competitors/comparison/compar
 import { ComparisonBarChart } from "@/components/competitors/comparison/comparison-bar-chart";
 import { ComparisonGrowthChart } from "@/components/competitors/comparison/comparison-growth-chart";
 import { formatCount } from "@/lib/competitors-utils";
+import { StaleIndicator } from "@/components/competitors/stale-indicator";
 
 interface ComparisonClientProps {
   dataA: ComparisonData | null;
@@ -163,6 +164,7 @@ export function ComparisonClient({
             showSelfOption={true}
             selfHandle={userHandle}
           />
+          {dataA && <StaleIndicator lastScrapedAt={dataA.lastScrapedAt} />}
         </div>
         <div className="flex-1">
           <ComparisonSelector
@@ -173,6 +175,7 @@ export function ComparisonClient({
             showSelfOption={true}
             selfHandle={userHandle}
           />
+          {dataB && <StaleIndicator lastScrapedAt={dataB.lastScrapedAt} />}
         </div>
       </div>
 

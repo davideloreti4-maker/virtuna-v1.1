@@ -28,6 +28,7 @@ export interface ComparisonData {
   postingCadence: { postsPerWeek: number; postsPerMonth: number } | null;
   avgViews: number | null;
   snapshotTimeSeries: { date: string; followers: number }[];
+  lastScrapedAt: string | null;
 }
 
 interface ComparePageProps {
@@ -110,6 +111,7 @@ async function fetchCompetitorData(
     postingCadence,
     avgViews,
     snapshotTimeSeries,
+    lastScrapedAt: profile.last_scraped_at,
   };
 }
 

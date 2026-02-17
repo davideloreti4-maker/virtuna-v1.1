@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { formatCount } from "@/lib/competitors-utils";
+import { StaleIndicator } from "@/components/competitors/stale-indicator";
+import { ScrapeErrorBanner } from "@/components/competitors/scrape-error-banner";
 import type { Tables } from "@/types/database.types";
 
 interface DetailHeaderProps {
@@ -50,8 +52,18 @@ export function DetailHeader({ profile }: DetailHeaderProps) {
               {profile.bio}
             </p>
           )}
+          <div className="mt-1">
+            <StaleIndicator lastScrapedAt={profile.last_scraped_at} />
+          </div>
         </div>
       </div>
+
+      {/* Error banner for failed scrapes */}
+      {profile.scrape_status === "failed" && (
+        <div className="mb-4">
+          <ScrapeErrorBanner handle={profile.tiktok_handle} />
+        </div>
+      )}
 
       {/* Stats row */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
