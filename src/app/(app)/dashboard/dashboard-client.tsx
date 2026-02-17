@@ -82,8 +82,6 @@ export function DashboardClient() {
   };
 
   const handleContentSubmit = (data: ContentFormData) => {
-    if (!selectedSocietyId) return;
-
     const theatreStart = Date.now();
     isCancelledRef.current = false;
     setStatus("simulating");
@@ -92,7 +90,7 @@ export function DashboardClient() {
     const payload: Record<string, unknown> = {
       input_mode: data.input_mode,
       content_type: "video",
-      society_id: selectedSocietyId,
+      ...(selectedSocietyId && { society_id: selectedSocietyId }),
     };
 
     if (data.input_mode === "text") {
