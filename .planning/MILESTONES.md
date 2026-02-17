@@ -1,5 +1,32 @@
 # Milestones — Virtuna
 
+## Platform Refinement (Shipped: 2026-02-16)
+
+**Delivered:** Comprehensive UI/UX refinement across the entire platform — sidebar, landing page, trending, settings, referrals, brand deals, auth, and onboarding all polished to brand bible quality with functional Supabase integrations.
+
+**Phases completed:** 6 phases, 10 plans
+
+**Key accomplishments:**
+- Sidebar redesigned with solid dark bg, coral left-border active indicators, and TikTok handle input with Supabase persistence
+- Landing page overhauled with prediction-focused hero, accurate features, FAQ, CTA section, and slim footer
+- Trending page built out with full client component, mock data, category tabs, and video card grid
+- Settings wired to Supabase — profile save, password change, delete account, notification prefs, brand alignment
+- Brand deals dead redirect replaced with proper page, referral components polished with design tokens
+- Auth and onboarding polished — login/signup at brand bible quality, smooth step transitions, auth error mapping
+
+**Stats:**
+- 54 commits, 739 files changed (+12,423 / -122,153 lines)
+- 23 requirements, all shipped
+- Timeline: 2026-02-16 (single day)
+
+**Blockers carried forward:**
+- Dashboard test flow remains 100% mock
+- Filter pills and several buttons are console.log stubs
+- Delete account needs server-side API route
+- Email change needs verification flow
+
+---
+
 ## v2.1 — Dashboard Rebuild (Shipped: 2026-02-08)
 
 **Delivered:** Full dashboard rebuild with Raycast design system migration and Canvas-based hive visualization with interactive exploration (hover, click, zoom/pan, pinch-to-zoom).
