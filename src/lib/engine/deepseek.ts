@@ -342,11 +342,13 @@ Return a JSON object with exactly these fields:
     { "text": "<actionable advice>", "priority": "high"|"medium"|"low", "category": "<hook|content|format|timing|audio>" }
   ],
   "warnings": ["<fatal flaw string>"],
-  "confidence": "high"|"medium"|"low"
+  "confidence": "high"|"medium"|"low",
+  "reasoning_summary": "<2-3 sentences explaining the key factors driving your prediction. What makes this content likely/unlikely to perform well?>"
 }
 
 Provide 3-5 suggestions. Warnings array should be empty if no fatal flaws found.
-Set confidence based on signal availability: "high" if video + text + trends available, "medium" if text + some signals, "low" if limited context.`;
+Set confidence based on signal availability: "high" if video + text + trends available, "medium" if text + some signals, "low" if limited context.
+Write a reasoning_summary (2-3 sentences) explaining the key factors driving your prediction — what makes this content likely or unlikely to perform well.`;
 
   return prompt;
 }

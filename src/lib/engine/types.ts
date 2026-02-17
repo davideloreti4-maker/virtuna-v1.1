@@ -240,6 +240,7 @@ export const DeepSeekResponseSchema = z.object({
   suggestions: z.array(SuggestionSchema).min(1),
   warnings: z.array(z.string()).default([]),
   confidence: z.enum(["high", "medium", "low"]),
+  reasoning_summary: z.string().min(10).max(500),
 });
 
 export type DeepSeekReasoning = z.infer<typeof DeepSeekResponseSchema>;
