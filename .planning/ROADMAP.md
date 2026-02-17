@@ -20,7 +20,7 @@ Transform the prediction engine from ~40-55% accuracy to ~75-85% through TikTok-
 - [ ] **Phase 8: Results Card & Breakdown UI** - Factor breakdown, behavioral predictions, suggestions, personas
 - [x] **Phase 9: Hybrid Rules & Dynamic Weights** - Upgrade rules to hybrid semantic+regex, signal-adaptive weights
 - [x] **Phase 10: Calibration & ML Training** - ECE measurement, Platt scaling, ML model on scraped data
-- [ ] **Phase 11: Enhanced Signals & Audio** - Fuzzy sound matching, semantic hashtags, expanded scraper
+- [x] **Phase 11: Enhanced Signals & Audio** - Fuzzy sound matching, semantic hashtags, expanded scraper
 - [ ] **Phase 12: E2E Flow Testing, Polish & Merge** - Accuracy benchmarking, full user flow test, merge to main
 
 ## Phase Details
@@ -201,9 +201,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 11-01: Jaro-Winkler fuzzy sound matching, trend phase volume fix, audioTrendingMatch wiring
-- [ ] 11-02: Semantic hashtag scoring with popularity weighting and saturation detection
-- [ ] 11-03: Configurable Apify scraper hashtags via env var + expanded defaults + traceability
+- [x] 11-01: Jaro-Winkler fuzzy sound matching, trend phase volume fix, audioTrendingMatch wiring
+- [x] 11-02: Semantic hashtag scoring with popularity weighting and saturation detection
+- [x] 11-03: Configurable Apify scraper hashtags via env var + expanded defaults + traceability
 
 ### Phase 12: E2E Flow Testing, Polish & Merge
 **Goal**: Full customer experience verified, accuracy benchmarked, code cleaned up, merged to main
@@ -267,9 +267,9 @@ Phases execute in wave order. Within each wave, phases can run in parallel.
 | 8. Results Card & Breakdown UI | 3/3 | ✓ Complete | 2026-02-16 |
 | 9. Hybrid Rules & Dynamic Weights | 3/3 | ✓ Complete | 2026-02-16 |
 | 10. Calibration & ML Training | 5/5 | ✓ Complete | 2026-02-16 |
-| 11. Enhanced Signals & Audio | 0/3 | Not started | - |
+| 11. Enhanced Signals & Audio | 3/3 | ✓ Complete | 2026-02-17 |
 | 12. E2E Flow Testing, Polish & Merge | 0/2 | Not started | - |
 
 ---
 *Roadmap created: 2026-02-16*
-*Last updated: 2026-02-16 — Phase 10 complete*
+*Last updated: 2026-02-17 — Phase 11 complete*
