@@ -178,12 +178,14 @@ function assembleFeatureVector(pipelineResult: PipelineResult): FeatureVector {
     ruleScore: ruleResult.rule_score,
     trendScore: trendEnrichment.trend_score,
 
-    // Audio (placeholder — Phase 11)
-    audioTrendingMatch: null,
+    // Audio — best trending sound match score (0-1, null if no match)
+    audioTrendingMatch: trendEnrichment.matched_trends.length > 0
+      ? Math.min(1, Math.max(...trendEnrichment.matched_trends.map(t => t.velocity_score)) / 100)
+      : null,
 
     // Caption/Hashtag
     captionScore: 0, // Placeholder — populated in Phase 9
-    hashtagRelevance: 0, // Placeholder — populated in Phase 11
+    hashtagRelevance: 0, // Placeholder — populated in Phase 11 Plan 02 (hashtag relevance scoring)
     hashtagCount: payload.hashtags.length,
 
     // Content metadata

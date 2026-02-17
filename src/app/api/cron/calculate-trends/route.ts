@@ -106,8 +106,8 @@ export async function GET(request: Request) {
           data.video_count *
           (1 + Math.max(growth_rate, 0));
 
-        // Determine trend phase based on growth rate and velocity
-        const trend_phase = classifyTrendPhase(growth_rate, velocity_score);
+        // Determine trend phase based on growth rate, velocity, and absolute volume
+        const trend_phase = classifyTrendPhase(growth_rate, velocity_score, data.total_views);
 
         return {
           sound_name,
@@ -164,8 +164,11 @@ export async function GET(request: Request) {
 
 function classifyTrendPhase(
   growthRate: number,
-  velocityScore: number
+  velocityScore: number,
+  totalViews: number
 ): string {
+  // High absolute volume with modest growth = peak (not declining) — SIG-02
+  if (totalViews >= 500_000 && growthRate >= -0.2) return "peak";
   if (growthRate > 0.5 && velocityScore < 50) return "emerging";
   if (growthRate > 0.3 && velocityScore >= 50) return "rising";
   if (growthRate >= -0.1 && growthRate <= 0.3 && velocityScore >= 100)
