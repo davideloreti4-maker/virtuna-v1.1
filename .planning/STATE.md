@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-02-16)
 ## Current Position
 
 **Milestone:** Prediction Engine v2
-**Phase:** 14 of 15 (Video Upload Storage) -- Plan 01 COMPLETE
-**Plan:** 1 of 1 in current phase (all plans complete)
-**Status:** Phase 14 Plan 01 complete -- video upload wired to Supabase Storage end-to-end
-**Last activity:** 2026-02-17 -- Phase 14 Plan 01 executed
+**Phase:** 14 of 15 (Video Upload Storage) -- Plan 02 COMPLETE
+**Plan:** 2 of 2 in current phase (all plans complete)
+**Status:** Phase 14 complete -- video upload + pipeline wiring to Gemini video analysis
+**Last activity:** 2026-02-17 -- Phase 14 Plan 02 executed
 
-Progress: [███████████████████████████] 100% (29/29 plans)
+Progress: [███████████████████████████] 100% (30/30 plans)
 
 ## Performance Metrics
 
@@ -50,6 +50,7 @@ Progress: [███████████████████████
 | 13    | 01   | 2min     | 2     | 3     |
 | 13    | 02   | 2min     | 2     | 3     |
 | 14    | 01   | 4min     | 2     | 4     |
+| 14    | 02   | 2min     | 1     | 2     |
 
 ## Accumulated Context
 
@@ -188,6 +189,10 @@ Progress: [███████████████████████
 - [Execute 14-01]: Upload starts immediately on file selection, not on form submit
 - [Execute 14-01]: Storage path format: videos/{userId}/{timestamp}-{filename} for uniqueness and namespacing
 - [Execute 14-01]: Submit guard: videoStoragePath must be non-null before video_upload payload sent to /api/analyze
+- [Execute 14-02]: MIME type from file extension (mp4/mov/webm/avi/mkv) with video/mp4 fallback for Supabase Storage download
+- [Execute 14-02]: Video download failure sends SSE error + closes stream (no fallback to text mode, consistent with "video errors fail hard")
+- [Execute 14-02]: PipelineResult.geminiResult typed as GeminiAnalysis | GeminiVideoAnalysis union for backward compat
+- [Execute 14-02]: SSE "downloading" phase event before video download for UI progress feedback
 
 ### Pending Todos
 
@@ -202,10 +207,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Phase 14 Plan 01 COMPLETE (29/29 plans)
+Stopped at: Phase 14 Plan 02 COMPLETE (30/30 plans)
 Resume file: None
 Next: Plan and execute Phase 15 (Foundation Primitives)
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-17 -- Phase 14 Plan 01 COMPLETE (29/29 plans)*
+*Last updated: 2026-02-17 -- Phase 14 Plan 02 COMPLETE (30/30 plans)*
