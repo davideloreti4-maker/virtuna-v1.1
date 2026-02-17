@@ -42,4 +42,8 @@ export const queryKeys = {
     all: ["earnings"] as const,
     summary: () => ["earnings", "summary"] as const,
   },
+  team: {
+    all: ["team"] as const,
+    current: () => ["team", "current"] as const,
+  },
 } as const;
