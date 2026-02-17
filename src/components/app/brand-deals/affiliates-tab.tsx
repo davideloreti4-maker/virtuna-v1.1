@@ -1,79 +1,47 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useMemo } from "react";
 
-import type { AffiliateLink, Product } from "@/types/brand-deals";
-import { MOCK_AFFILIATE_LINKS, MOCK_PRODUCTS } from "@/lib/mock-brand-deals";
-import { useToast } from "@/components/ui/toast";
+import type { AffiliateLink } from "@/types/brand-deals";
+import { useAffiliateLinks } from "@/hooks/queries";
 import { Badge } from "@/components/ui/badge";
 
 import { AffiliateLinkCard } from "./affiliate-link-card";
 import { AffiliatesTabSkeleton } from "./affiliates-tab-skeleton";
-import { AvailableProductCard } from "./available-product-card";
 import { AffiliatesEmptyState } from "./affiliates-empty-state";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Map API row to frontend AffiliateLink type */
+function toAffiliateLink(row: Record<string, unknown>): AffiliateLink {
+  return {
+    id: row.id as string,
+    dealId: (row.deal_id as string) ?? "",
+    productName: row.product_name as string,
+    url: row.url as string,
+    shortCode: row.short_code as string,
+    clicks: row.clicks as number,
+    conversions: row.conversions as number,
+    earnings: (row.earnings_cents as number) / 100,
+    commissionRate: Number(row.commission_rate_pct),
+    status: row.status as AffiliateLink["status"],
+    createdAt: (row.created_at as string).split("T")[0] ?? "",
+  };
+}
 
 // ---------------------------------------------------------------------------
 // AffiliatesTab Container
 // ---------------------------------------------------------------------------
 
-/**
- * AffiliatesTab -- Container component managing all Affiliates tab state.
- *
- * Manages active affiliate links (initialized from mock data), derives
- * available products by filtering out already-linked products, and handles
- * the Generate Link interaction (adds to active links, shows toast,
- * removes from available products).
- *
- * Renders two sections:
- * 1. **Active Links** -- grid of AffiliateLinkCard with count Badge
- * 2. **Available Products** -- grid of AvailableProductCard with Generate Link CTA
- *
- * @example
- * ```tsx
- * <AffiliatesTab />
- * ```
- */
 export function AffiliatesTab(): React.JSX.Element {
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeLinks, setActiveLinks] = useState<AffiliateLink[]>(MOCK_AFFILIATE_LINKS);
+  const { data, isLoading } = useAffiliateLinks();
 
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Derive available products by filtering out products that already have active links
-  const availableProducts = useMemo(() => {
-    const linkedNames = new Set(activeLinks.map((link) => link.productName));
-    return MOCK_PRODUCTS.filter((product) => !linkedNames.has(product.name));
-  }, [activeLinks]);
-
-  function handleGenerateLink(product: Product): void {
-    const timestamp = Date.now();
-    const shortCode = `vtna-${timestamp.toString(36)}`;
-
-    const newLink: AffiliateLink = {
-      id: `link-gen-${timestamp}`,
-      dealId: "",
-      productName: product.name,
-      productImage: product.brandLogo,
-      url: `https://${product.brandName.toLowerCase().replace(/\s/g, "")}.com/ref/${shortCode}`,
-      shortCode,
-      clicks: 0,
-      conversions: 0,
-      earnings: 0,
-      commissionRate: product.commissionRate,
-      status: "active",
-      createdAt: new Date().toISOString().split("T")[0] ?? "",
-    };
-
-    setActiveLinks((prev) => [newLink, ...prev]);
-    toast({
-      variant: "success",
-      title: `Affiliate link created for ${product.name}`,
-    });
-  }
+  const activeLinks = useMemo(
+    () => (data?.data ?? []).map((row) => toAffiliateLink(row as unknown as Record<string, unknown>)),
+    [data],
+  );
 
   if (isLoading) return <AffiliatesTabSkeleton />;
 
@@ -97,24 +65,6 @@ export function AffiliatesTab(): React.JSX.Element {
           </div>
         )}
       </section>
-
-      {/* Available Products section */}
-      {availableProducts.length > 0 && (
-        <section>
-          <h2 className="mb-4 text-lg font-semibold text-foreground">
-            Available Products
-          </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {availableProducts.map((product) => (
-              <AvailableProductCard
-                key={product.id}
-                product={product}
-                onGenerateLink={handleGenerateLink}
-              />
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 }

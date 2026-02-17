@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { AnimatePresence, motion } from "motion/react";
 
-import type { EarningsSummary } from "@/types/brand-deals";
-import { MOCK_EARNINGS_SUMMARY } from "@/lib/mock-brand-deals";
+import type { EarningSource, MonthlyEarning } from "@/types/brand-deals";
+import { useEarnings } from "@/hooks/queries";
 
 import { EarningsBreakdownList } from "./earnings-breakdown-list";
 import { EarningsChart } from "./earnings-chart";
@@ -16,17 +16,15 @@ import { EarningsTabSkeleton } from "./earnings-tab-skeleton";
 // Period Filtering
 // ---------------------------------------------------------------------------
 
-/**
- * Derives period-filtered chart data and proportionally scaled stat values
- * from the full earnings summary.
- *
- * For mock data with 6 monthly entries:
- * - "7d"  → last 1 month
- * - "30d" → last 2 months
- * - "90d" → last 3 months
- * - "all" → all 6 months
- */
-function filterEarningsByPeriod(summary: EarningsSummary, period: Period) {
+interface EarningsData {
+  totalEarned: number;
+  pendingPayout: number;
+  thisMonth: number;
+  monthlyBreakdown: MonthlyEarning[];
+  topSources: EarningSource[];
+}
+
+function filterEarningsByPeriod(summary: EarningsData, period: Period) {
   const breakdown = summary.monthlyBreakdown;
 
   const chartData =
@@ -38,20 +36,21 @@ function filterEarningsByPeriod(summary: EarningsSummary, period: Period) {
           ? breakdown.slice(-3)
           : breakdown;
 
-  // Scale stat values proportionally for shorter periods
   const total = breakdown.reduce((s, d) => s + d.amount, 0);
   const periodTotal = chartData.reduce((s, d) => s + d.amount, 0);
   const ratio = total > 0 ? periodTotal / total : 1;
+
+  const paidOut = summary.totalEarned - summary.pendingPayout;
 
   return {
     chartData,
     stats: {
       totalEarned: Math.round(summary.totalEarned * ratio),
       pending: Math.round(summary.pendingPayout * ratio),
-      paidOut: Math.round(summary.paidOut * ratio),
-      thisMonth: summary.thisMonth, // always current month
+      paidOut: Math.round(paidOut * ratio),
+      thisMonth: summary.thisMonth,
     },
-    sources: summary.topSources, // same sources for all periods (mock simplification)
+    sources: summary.topSources,
   };
 }
 
@@ -59,33 +58,33 @@ function filterEarningsByPeriod(summary: EarningsSummary, period: Period) {
 // EarningsTab Component
 // ---------------------------------------------------------------------------
 
-/**
- * EarningsTab -- Container component for the Earnings tab.
- *
- * Manages period state (default 30D) and derives filtered data from
- * mock fixtures. Renders EarningsStatCards, EarningsPeriodSelector,
- * EarningsChart, and EarningsBreakdownList as a cohesive section.
- *
- * Period changes trigger a 200ms fade out/in transition on the chart
- * via AnimatePresence.
- *
- * @example
- * ```tsx
- * <EarningsTab />
- * ```
- */
 export function EarningsTab(): React.JSX.Element {
-  const [isLoading, setIsLoading] = useState(true);
+  const { data, isLoading } = useEarnings();
   const [period, setPeriod] = useState<Period>("30d");
-  const filtered = useMemo(
-    () => filterEarningsByPeriod(MOCK_EARNINGS_SUMMARY, period),
-    [period],
-  );
 
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
+  const earningsData = useMemo((): EarningsData => {
+    if (!data) {
+      return {
+        totalEarned: 0,
+        pendingPayout: 0,
+        thisMonth: 0,
+        monthlyBreakdown: [],
+        topSources: [],
+      };
+    }
+    return {
+      totalEarned: data.totalEarned,
+      pendingPayout: data.pendingPayout,
+      thisMonth: data.thisMonth,
+      monthlyBreakdown: data.monthlyBreakdown,
+      topSources: data.topSources,
+    };
+  }, [data]);
+
+  const filtered = useMemo(
+    () => filterEarningsByPeriod(earningsData, period),
+    [earningsData, period],
+  );
 
   if (isLoading) return <EarningsTabSkeleton />;
 
