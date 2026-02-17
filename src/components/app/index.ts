@@ -1,9 +1,18 @@
 export { AppShell } from "./app-shell";
 export { AuthGuard } from "./auth-guard";
+export { CardActionMenu } from "./card-action-menu";
 export { ContextBar } from "./context-bar";
 export { FilterPill, FilterPillGroup } from "./filter-pills";
+export { MobileNav } from "./mobile-nav";
+export { NetworkVisualization } from "./network-visualization";
 export { Sidebar } from "./sidebar";
 export { SidebarNavItem } from "./sidebar-nav-item";
+export { SocietySelector } from "./society-selector";
+export { ViewSelector, ROLE_LEVELS } from "./view-selector";
+export type { ViewOption, RoleLevelId } from "./view-selector";
+export { LegendPills } from "./legend-pills";
+export type { RoleLevel } from "./legend-pills";
+export { CreateSocietyModal } from "./create-society-modal";
 export { TestTypeSelector } from "./test-type-selector";
 export { ContentForm } from "./content-form";
 export type { ContentFormData } from "./content-form";
@@ -11,6 +20,7 @@ export { VideoUpload } from "./video-upload";
 export { TikTokUrlInput } from "./tiktok-url-input";
 export { SurveyForm } from "./survey-form";
 export type { SurveySubmission } from "./survey-form";
+export { TestCreationFlow } from "./test-creation-flow";
 // Simulation components
 export { LoadingPhases } from "./simulation/loading-phases";
 export { ImpactScore } from "./simulation/impact-score";

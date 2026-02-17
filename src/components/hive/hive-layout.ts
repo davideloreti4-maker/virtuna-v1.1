@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// hive-layout.ts -- Deterministic scattered layout
+// hive-layout.ts -- Deterministic scattered layout (societies.io style)
 // ---------------------------------------------------------------------------
 //
 // Uses d3-hierarchy only for tree structure (parent-child links).
@@ -45,7 +45,7 @@ const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5)); // ~2.399 radians
 // ---------------------------------------------------------------------------
 
 /**
- * Compute a deterministic scattered layout.
+ * Compute a deterministic scattered layout (societies.io style).
  *
  * Pure function: same `data` always produces identical `LayoutResult`.
  *

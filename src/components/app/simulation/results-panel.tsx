@@ -10,7 +10,6 @@ import { FactorBreakdown } from './attention-breakdown';
 import { BehavioralPredictionsSection } from './behavioral-predictions';
 import { SuggestionsSection } from './insights-section';
 import { ShareButton } from './share-button';
-import { TierGate } from '@/components/tier-gate';
 
 interface ResultsPanelProps {
   result: PredictionResult;

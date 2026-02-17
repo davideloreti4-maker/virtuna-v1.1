@@ -1,4 +1,4 @@
-import { createServiceClient } from "@/lib/supabase/service";
+import { createClient } from "@/lib/supabase/server";
 
 /**
  * GET /api/trending/stats
@@ -7,7 +7,7 @@ import { createServiceClient } from "@/lib/supabase/service";
  */
 export async function GET() {
   try {
-    const supabase = createServiceClient();
+    const supabase = await createClient();
 
     // Fetch non-archived videos
     const { data: videos, error: videosError } = await supabase

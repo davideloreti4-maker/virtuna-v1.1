@@ -274,10 +274,10 @@ export function LeaveFeedbackModal({ open, onOpenChange }: LeaveFeedbackModalPro
                 <p className="text-[13px] text-foreground-muted">
                   Email us at{" "}
                   <a
-                    href="mailto:support@virtuna.ai"
+                    href="mailto:support@societies.io"
                     className="text-foreground-secondary underline hover:text-foreground"
                   >
-                    support@virtuna.ai
+                    support@societies.io
                   </a>
                 </p>
                 <Button

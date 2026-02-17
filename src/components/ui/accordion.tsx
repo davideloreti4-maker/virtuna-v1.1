@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
  * - Animated expand/collapse with height transition
  * - Chevron rotation on open (0deg -> 180deg)
  * - Keyboard accessible
- * - Styled to match Raycast design language
+ * - Styled to match societies.io FAQ section
  */
 
 const AccordionRoot = React.forwardRef<

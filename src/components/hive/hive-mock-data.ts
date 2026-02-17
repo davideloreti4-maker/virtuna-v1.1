@@ -36,7 +36,7 @@ export interface MockHiveOptions {
 // ---------------------------------------------------------------------------
 
 /**
- * Generate a mock hive data tree (2 tiers only).
+ * Generate a mock hive data tree (societies.io style -- 2 tiers only).
  *
  * Defaults produce ~140 nodes:
  *   1 center + 12 tier-1 + ~130 tier-2

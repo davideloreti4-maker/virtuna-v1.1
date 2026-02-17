@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CheckIcon, ClipboardIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface CopyButtonProps {
   text: string;
@@ -32,9 +33,10 @@ export function CopyButton({ text, label = "Copy" }: CopyButtonProps) {
   };
 
   return (
-    <button
+    <Button
+      variant="primary"
+      size="sm"
       onClick={handleCopy}
-      className="inline-flex items-center gap-2 px-4 py-2 bg-coral text-accent-foreground rounded-lg hover:bg-coral/90 transition-colors shadow-button text-sm font-medium"
       aria-label={label}
     >
       {copied ? (
@@ -48,6 +50,6 @@ export function CopyButton({ text, label = "Copy" }: CopyButtonProps) {
           {label}
         </>
       )}
-    </button>
+    </Button>
   );
 }

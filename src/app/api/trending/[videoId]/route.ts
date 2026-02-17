@@ -1,4 +1,4 @@
-import { createServiceClient } from "@/lib/supabase/service";
+import { createClient } from "@/lib/supabase/server";
 
 /**
  * GET /api/trending/:videoId
@@ -11,7 +11,7 @@ export async function GET(
 ) {
   try {
     const { videoId } = await params;
-    const supabase = createServiceClient();
+    const supabase = await createClient();
 
     const { data: video, error } = await supabase
       .from("scraped_videos")

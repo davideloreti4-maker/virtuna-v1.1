@@ -23,6 +23,10 @@ export function mapWhopProductToTier(productId: string): VirtunaTier {
   return 'free';
 }
 
+export function getTierFromPlanId(planId: 'starter' | 'pro'): string {
+  return WHOP_PRODUCT_IDS[planId];
+}
+
 export function hasAccessToTier(
   userTier: VirtunaTier,
   requiredTier: VirtunaTier

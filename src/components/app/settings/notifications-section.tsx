@@ -20,21 +20,21 @@ function NotificationItem({
   onCheckedChange,
 }: NotificationItemProps) {
   return (
-    <div className="flex items-start justify-between gap-4 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+    <div className="flex items-start justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
       <div className="flex-1">
         <label
           htmlFor={id}
-          className="cursor-pointer text-sm font-medium text-foreground"
+          className="cursor-pointer text-sm font-medium text-white"
         >
           {title}
         </label>
-        <p className="mt-1 text-sm text-foreground-muted">{description}</p>
+        <p className="mt-1 text-sm text-zinc-400">{description}</p>
       </div>
       <Switch.Root
         id={id}
         checked={checked}
         onCheckedChange={onCheckedChange}
-        className="relative h-6 w-11 cursor-pointer rounded-full bg-white/[0.1] transition-colors data-[state=checked]:bg-accent"
+        className="relative h-6 w-11 cursor-pointer rounded-full bg-zinc-700 transition-colors data-[state=checked]:bg-emerald-600"
       >
         <Switch.Thumb className="block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow-sm transition-transform data-[state=checked]:translate-x-[22px]" />
       </Switch.Root>
@@ -83,15 +83,15 @@ export function NotificationsSection() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-lg font-medium text-foreground">Notifications</h2>
-        <p className="mt-1 text-sm text-foreground-muted">
+        <h2 className="text-lg font-medium text-white">Notifications</h2>
+        <p className="mt-1 text-sm text-zinc-400">
           Choose what notifications you want to receive.
         </p>
       </div>
 
       {/* Email notifications */}
       <div>
-        <h3 className="mb-4 text-sm font-medium text-foreground-secondary">
+        <h3 className="mb-4 text-sm font-medium text-zinc-300">
           Email notifications
         </h3>
         <div className="space-y-3">
@@ -109,7 +109,7 @@ export function NotificationsSection() {
       </div>
 
       {/* Info text */}
-      <p className="text-sm text-foreground-muted">
+      <p className="text-sm text-zinc-500">
         You can unsubscribe from these emails at any time by clicking the link
         in the footer of any email you receive from us.
       </p>

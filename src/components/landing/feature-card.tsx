@@ -14,7 +14,7 @@ export interface FeatureCardProps {
  * FeatureCard component for the features section.
  * Displays an icon, title, and description in a bordered card.
  *
- * Styling follows Raycast design language:
+ * Styling matches societies.io reference:
  * - Padding: 48px vertical, 26px horizontal
  * - Border: 1px solid rgba(255, 255, 255, 0.1)
  * - Icon: ~28-32px, white color

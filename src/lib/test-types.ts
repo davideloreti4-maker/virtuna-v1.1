@@ -86,7 +86,7 @@ export const TEST_TYPES: Record<TestType, TestTypeConfig> = {
 
 /**
  * Test types organized into 5 categories
- * Order matches hive visualization layout
+ * Order matches societies.io layout
  */
 export const TEST_CATEGORIES: TestCategory[] = [
   {

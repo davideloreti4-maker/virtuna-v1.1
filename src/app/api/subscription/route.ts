@@ -15,8 +15,6 @@ export async function GET() {
         whopConnected: false,
         cancelAtPeriodEnd: false,
         currentPeriodEnd: null,
-        isTrial: false,
-        trialEndsAt: null,
       });
     }
 
@@ -26,8 +24,6 @@ export async function GET() {
       whopConnected: !!subscription.whop_membership_id,
       cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
       currentPeriodEnd: subscription.current_period_end,
-      isTrial: subscription.is_trial ?? false,
-      trialEndsAt: subscription.trial_ends_at ?? null,
     });
   } catch (error) {
     console.error("Error fetching subscription:", error);

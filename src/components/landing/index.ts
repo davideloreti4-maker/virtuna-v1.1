@@ -1,10 +1,14 @@
-export { CTASection } from "./cta-section";
+export { BackersSection } from "./backers-section";
+export { CaseStudySection } from "./case-study-section";
+export { ComparisonChart } from "./comparison-chart";
 export { FAQSection } from "./faq-section";
 export { FeatureCard } from "./feature-card";
 export type { FeatureCardProps } from "./feature-card";
 export { FeaturesSection } from "./features-section";
 export { HeroSection } from "./hero-section";
-export { SocialProofSection } from "./social-proof-section";
+export { PartnershipSection } from "./partnership-section";
+export { PersonaCard } from "./persona-card";
+export type { PersonaCardProps } from "./persona-card";
 export { StatsSection } from "./stats-section";
 export { TestimonialQuote } from "./testimonial-quote";
 export type { TestimonialQuoteProps } from "./testimonial-quote";

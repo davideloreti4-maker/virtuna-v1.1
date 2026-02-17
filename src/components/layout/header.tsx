@@ -10,7 +10,7 @@ interface HeaderProps {
 }
 
 /**
- * Header component following Raycast design language.
+ * Header component matching societies.io design.
  * - Logo: Custom SVG mark + "Artificial Societies" text
  * - Right side: "Sign in" text link + "Book a Meeting" orange button
  * - Sticky with solid dark background
@@ -82,28 +82,24 @@ export function Header({ className }: HeaderProps) {
                   fill="currentColor"
                 />
               </svg>
-              <span className="font-sans text-white">Virtuna</span>
+              <span className="font-sans text-white">Artificial Societies</span>
             </Link>
 
             {/* Desktop Navigation */}
             <div className="hidden items-center gap-4 md:flex">
               <Link
-                href="/pricing"
-                className="cursor-pointer text-white/80 transition-colors hover:text-white"
-              >
-                Pricing
-              </Link>
-              <Link
-                href="/login"
-                className="cursor-pointer text-white/80 transition-colors hover:text-white"
+                href="/auth/login"
+                className="cursor-pointer text-white transition-colors hover:text-white/80"
               >
                 Sign in
               </Link>
               <Link
-                href="/signup"
+                href="https://calendly.com"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
               >
-                Start free trial
+                Book a Meeting
               </Link>
             </div>
 
@@ -134,25 +130,20 @@ export function Header({ className }: HeaderProps) {
           >
             <div className="flex flex-col gap-4 border-t border-border px-8 py-6">
               <Link
-                href="/pricing"
-                className="text-white/80 transition-colors hover:text-white"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Pricing
-              </Link>
-              <Link
-                href="/login"
-                className="text-white/80 transition-colors hover:text-white"
+                href="/auth/login"
+                className="text-white transition-colors hover:text-white/80"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Sign in
               </Link>
               <Link
-                href="/signup"
+                href="https://calendly.com"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-full rounded-lg bg-accent px-4 py-3 text-center text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Start free trial
+                Book a Meeting
               </Link>
             </div>
           </div>

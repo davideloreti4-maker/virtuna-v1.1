@@ -1,9 +1,11 @@
 import {
   HeroSection,
+  BackersSection,
   FeaturesSection,
   StatsSection,
+  CaseStudySection,
+  PartnershipSection,
   FAQSection,
-  CTASection,
 } from "@/components/landing";
 import { Footer } from "@/components/layout/footer";
 
@@ -12,10 +14,12 @@ export default function HomePage() {
     <>
       <main>
         <HeroSection />
-        <StatsSection />
+        <BackersSection />
         <FeaturesSection />
+        <StatsSection />
+        <CaseStudySection />
+        <PartnershipSection />
         <FAQSection />
-        <CTASection />
       </main>
       <Footer />
     </>

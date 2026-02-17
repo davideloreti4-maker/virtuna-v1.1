@@ -1,4 +1,4 @@
-import { createServiceClient } from "@/lib/supabase/service";
+import { createClient } from "@/lib/supabase/server";
 import {
   decodeCursor,
   encodeCursor,
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     const { cursor, limit } = parsePaginationParams(searchParams);
     const category = searchParams.get("category") ?? "trending-now";
 
-    const supabase = createServiceClient();
+    const supabase = await createClient();
 
     // Build query — fetch limit + 1 to detect has_more
     let query = supabase

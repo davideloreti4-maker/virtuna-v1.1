@@ -8,57 +8,80 @@ import {
 } from "@/components/ui/accordion";
 import { FadeIn } from "@/components/motion";
 
+/**
+ * FAQ data for the landing page
+ * Questions and answers about Artificial Societies
+ */
 const faqItems = [
   {
-    question: "How does Virtuna predict if my content will go viral?",
+    question: "How accurate are your AI personas compared to real humans?",
     answer:
-      "Virtuna analyzes 50+ content signals — hook strength, trend alignment, engagement patterns, audience fit — using AI models trained on real TikTok performance data. You describe your content concept and get a virality score before you film.",
+      "Our AI personas achieve 86% accuracy in replicating human survey responses, compared to 61-67% for standard AI models. This is validated through rigorous testing against 1,000 real survey replications.",
   },
   {
-    question: "How accurate are the predictions?",
+    question: "Are your simulations backed by research?",
     answer:
-      "Our models achieve 83% accuracy in predicting content engagement outcomes, validated against real TikTok performance data. That means 4 out of 5 predictions correctly identify whether content will outperform or underperform — significantly better than intuition alone.",
+      "Yes. Our methodology is grounded in behavioral science research and has been validated through extensive academic and commercial studies. We publish our evaluation reports for transparency.",
   },
   {
-    question: "What kind of content can I test?",
+    question: "What audiences can you simulate?",
     answer:
-      "Any TikTok content concept — video ideas, hooks, captions, trend angles, format experiments. Describe what you're planning to post and Virtuna scores it across multiple engagement dimensions. Test variations before committing to production.",
+      "We can simulate virtually any audience - from Fortune 500 executives to niche demographics that traditional panels struggle to reach. Our personas are calibrated using real-world data sources.",
   },
   {
-    question: "Do I need a lot of followers for this to work?",
+    question: "How long does it take to get results?",
     answer:
-      "No. Predictions are based on content quality and audience fit, not your follower count. A creator with 500 followers gets the same analysis as one with 500K. The AI evaluates the content itself, not your account metrics.",
+      "Results are delivered in minutes, not weeks. You can run thousands of simulated interviews in the time it takes to send one traditional survey.",
   },
   {
-    question: "How fast do I get results?",
+    question: "Can I interview the personas for qualitative insights?",
     answer:
-      "Under 30 seconds. Submit your content concept, and Virtuna runs it through signal analysis, engagement prediction, and scoring — then returns a detailed breakdown with your virality score, strengths, and areas to improve.",
+      "Absolutely. Our personas can engage in open-ended conversations, providing rich qualitative data alongside quantitative responses. They reason and reflect like real people.",
   },
   {
-    question: "What content signals does Virtuna analyze?",
+    question: "How do you ensure the personas reflect real human diversity?",
     answer:
-      "Over 50 signals across 12 engagement dimensions: hook strength, trend relevance, emotional resonance, audience alignment, format performance, caption effectiveness, timing optimization, and more. Each signal is weighted based on current TikTok algorithm patterns.",
+      "Every persona is demographically and psychographically calibrated using real-world data. We model attitudes, beliefs, and opinions to create responses as nuanced and diverse as actual humans.",
+  },
+  {
+    question: "What industries do you work with?",
+    answer:
+      "We work across industries including market research, advertising, product development, political polling, and academic research. Our technology adapts to any domain requiring human insights.",
   },
 ];
 
+/**
+ * FAQSection - Frequently Asked Questions accordion section
+ *
+ * Features:
+ * - 7 FAQ items matching societies.io content
+ * - Single item open at a time (collapsible accordion)
+ * - Chevron rotation animation on expand/collapse
+ * - Keyboard accessible (Tab, Enter/Space)
+ * - Smooth height animation using Radix primitives
+ * - Scroll-triggered fade-in animations
+ */
 export function FAQSection(): React.JSX.Element {
   return (
     <section className="py-24">
       <div className="mx-auto max-w-3xl px-6">
+        {/* Section Header */}
         <FadeIn>
-          <div className="mb-12 text-center">
-            <h2 className="text-[32px] font-normal leading-[36px] text-white sm:text-[40px] sm:leading-[44px]">
-              Questions creators ask
+          <div className="mb-12">
+            <span className="text-sm text-foreground-muted">FAQ</span>
+            <h2 className="mt-4 text-[32px] font-normal leading-[36px] text-white sm:text-[40px] sm:leading-[44px]">
+              Common questions
             </h2>
           </div>
         </FadeIn>
 
+        {/* Accordion */}
         <AccordionRoot type="single" collapsible className="space-y-2">
           {faqItems.map((item, index) => (
             <FadeIn key={index} delay={0.1 + index * 0.05}>
               <AccordionItem
                 value={`item-${index}`}
-                className="overflow-hidden rounded-lg border border-white/[0.06] bg-transparent"
+                className="overflow-hidden rounded-lg border border-white/10 bg-transparent"
               >
                 <AccordionTrigger className="text-base text-white">
                   {item.question}

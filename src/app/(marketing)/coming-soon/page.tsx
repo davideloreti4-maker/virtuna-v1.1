@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Coming Soon | Virtuna",
+  title: "Coming Soon | Artificial Societies",
   description: "This page is under construction. Check back later.",
 };
 

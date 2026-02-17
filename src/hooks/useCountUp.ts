@@ -40,8 +40,7 @@ export interface UseCountUpOptions {
  * ```tsx
  * import { motion } from "motion/react";
  * import { useCountUp } from "@/hooks/useCountUp";
- * const formatCurrency = (n: number) =>
- *   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 }).format(n);
+ * import { formatCurrency } from "@/lib/affiliate-utils";
  *
  * function StatValue({ amount }: { amount: number }) {
  *   const display = useCountUp({ to: amount, format: formatCurrency });
