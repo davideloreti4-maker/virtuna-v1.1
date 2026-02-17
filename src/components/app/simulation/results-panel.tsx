@@ -1,10 +1,9 @@
 'use client';
 
-import { AlertTriangle, Info } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import type { PredictionResult } from '@/lib/engine/types';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/typography';
-import { GlassCard } from '@/components/ui/card';
 import { ImpactScore } from './impact-score';
 import { FactorBreakdown } from './attention-breakdown';
 import { BehavioralPredictionsSection } from './behavioral-predictions';
@@ -21,7 +20,7 @@ interface ResultsPanelProps {
  *
  * Consumes PredictionResult directly (no TestResult shim).
  * Layout: warnings -> hero score -> factor breakdown -> behavioral predictions ->
- * suggestions -> persona reactions placeholder -> run another button.
+ * suggestions -> run another button.
  *
  * Features:
  * - Sticky header with share button
@@ -71,21 +70,6 @@ export function ResultsPanel({ result, onRunAnother }: ResultsPanelProps) {
 
         {/* Suggestions */}
         <SuggestionsSection suggestions={result.suggestions} />
-
-        {/* Persona Reactions — Placeholder */}
-        <GlassCard className="p-4" blur="sm" glow={false}>
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Text as="span" size="sm" muted>
-                Audience Reactions
-              </Text>
-              <Info className="h-4 w-4 text-foreground-muted" />
-            </div>
-            <Text size="sm" muted className="italic">
-              Persona reactions will appear here once the engine generates them.
-            </Text>
-          </div>
-        </GlassCard>
       </div>
 
       {/* Footer actions */}
