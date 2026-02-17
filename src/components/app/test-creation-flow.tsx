@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useRef } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useTestStore } from "@/stores/test-store";
 import { useSocietyStore } from "@/stores/society-store";
@@ -34,9 +34,14 @@ export function TestCreationFlow({ triggerButton, className }: TestCreationFlowP
     setTestType,
     reset,
   } = useTestStore();
-  const { selectedSocietyId } = useSocietyStore();
+  const { selectedSocietyId, _isHydrated: societyHydrated, _hydrate: hydrateSociety } = useSocietyStore();
   const analyzeMutation = useAnalyze();
   const isCancelledRef = useRef(false);
+
+  // Hydrate society store on mount (needed when rendered outside dashboard)
+  useEffect(() => {
+    if (!societyHydrated) hydrateSociety();
+  }, [societyHydrated, hydrateSociety]);
 
   // Handle trigger button click -- go directly to form (skip type selector)
   const handleTriggerClick = () => {
