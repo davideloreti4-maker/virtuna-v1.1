@@ -10,24 +10,24 @@ See: .planning/PROJECT.md (updated 2026-02-17)
 ## Current Position
 
 Phase: 1 of 6 (Schedule Crons & Fix Data Pipeline Wiring)
-Plan: 0 of 4 in current phase
-Status: Ready to plan
-Last activity: 2026-02-17 — ROADMAP.md created, milestone scoped
+Plan: 1 of 2 in current phase
+Status: Executing
+Last activity: 2026-02-17 — Plan 01-01 complete (cron scheduling + types)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 8%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
-- Average duration: —
-- Total execution time: —
+- Total plans completed: 1
+- Average duration: 11min
+- Total execution time: 11min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 01-schedule-crons | 1 | 11min | 11min |
 
 *Updated after each plan completion*
 
@@ -35,6 +35,8 @@ Progress: [░░░░░░░░░░] 0%
 
 ### Decisions
 
+- Comprehensive database.types.ts update: added all missing tables/columns from migrations rather than just evaluation_tier (01-01)
+- Pricing page set to force-dynamic to avoid WhopCheckoutEmbed SSG error (01-01)
 - Milestone scoped: backend-only, no frontend changes this milestone
 - Phase 2 (ML) depends on Phase 1 so fresh scraped_videos are available for retraining
 - Phases 2, 3, 4 can run in parallel once Phase 1 is complete (Wave 2)
@@ -50,5 +52,5 @@ Progress: [░░░░░░░░░░] 0%
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Roadmap created — ready to plan Phase 1
+Stopped at: Completed 01-01-PLAN.md (cron scheduling + evaluation_tier types)
 Resume file: None
