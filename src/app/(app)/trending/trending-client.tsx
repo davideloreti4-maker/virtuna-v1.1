@@ -10,7 +10,6 @@ import { TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTrendingStats } from "@/hooks/queries";
 import { VideoGrid, VideoDetailModal } from "@/components/trending";
-import { useBookmarkStore } from "@/stores/bookmark-store";
 import {
   CATEGORY_LABELS,
   VALID_TABS,
@@ -111,10 +110,8 @@ export function TrendingClient({ defaultTab }: TrendingClientProps) {
   const [selectedVideo, setSelectedVideo] = useState<TrendingVideo | null>(null);
   const isModalOpen = selectedVideo !== null;
 
-  // Hydrate bookmark store on mount
-  useEffect(() => {
-    useBookmarkStore.getState()._hydrate();
-  }, []);
+  // Bookmark store hydration is now handled by the VideoGrid component
+  // via the useBookmarks() TanStack Query hook
 
   // Fetch real stats from /api/trending/stats
   const { data: statsData, isLoading: statsLoading } = useTrendingStats();

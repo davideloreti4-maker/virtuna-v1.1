@@ -25,4 +25,20 @@ export const queryKeys = {
     all: ["outcomes"] as const,
     history: () => ["outcomes", "history"] as const,
   },
+  bookmarks: {
+    all: ["bookmarks"] as const,
+    list: () => ["bookmarks", "list"] as const,
+  },
+  profile: {
+    all: ["profile"] as const,
+    current: () => ["profile", "current"] as const,
+  },
+  affiliateLinks: {
+    all: ["affiliateLinks"] as const,
+    list: () => ["affiliateLinks", "list"] as const,
+  },
+  earnings: {
+    all: ["earnings"] as const,
+    summary: () => ["earnings", "summary"] as const,
+  },
 } as const;

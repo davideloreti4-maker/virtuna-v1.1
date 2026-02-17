@@ -3,10 +3,9 @@
 import { useEffect, useMemo } from "react";
 import { useInView } from "react-intersection-observer";
 import { StaggerReveal } from "@/components/motion";
-import { useTrendingVideos } from "@/hooks/queries";
+import { useTrendingVideos, useBookmarks } from "@/hooks/queries";
 import { mapScrapedVideoToTrendingVideo } from "@/lib/mappers";
 import { useBookmarkStore } from "@/stores/bookmark-store";
-import { getAllVideos } from "@/lib/trending-mock-data";
 import { VideoCard } from "./video-card";
 import { VideoCardSkeleton } from "./video-card-skeleton";
 import { EmptyState } from "./empty-state";
@@ -56,13 +55,23 @@ export function VideoGrid({ filterTab, onVideoClick }: VideoGridProps) {
     [data]
   );
 
-  // For saved tab, get all bookmarked videos
-  // TODO: Replace saved tab with API-backed bookmarks query when bookmark API exists
+  // For saved tab: fetch bookmarked video IDs from API and sync into store
+  const { data: bookmarksData, isLoading: bookmarksLoading } = useBookmarks();
+  const syncFromQuery = useBookmarkStore((s) => s.syncFromQuery);
   const bookmarkedIds = useBookmarkStore((s) => s.bookmarkedIds);
+
+  useEffect(() => {
+    if (bookmarksData?.video_ids) {
+      syncFromQuery(bookmarksData.video_ids);
+    }
+  }, [bookmarksData, syncFromQuery]);
+
+  // For saved tab, filter the API videos by bookmarked IDs
+  // We use the full trending API data (all categories) filtered by bookmark set
   const savedVideos = useMemo(() => {
     if (!isSaved) return [];
-    return getAllVideos().filter((v) => bookmarkedIds.has(v.id));
-  }, [isSaved, bookmarkedIds]);
+    return apiVideos.filter((v) => bookmarkedIds.has(v.id));
+  }, [isSaved, bookmarkedIds, apiVideos]);
 
   const { ref: sentinelRef, inView } = useInView({
     threshold: 0,
