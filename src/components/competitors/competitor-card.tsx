@@ -25,6 +25,7 @@ export interface CompetitorCardData {
     likes: number | null;
     comments: number | null;
     shares: number | null;
+    posted_at: string | null;
   }[];
 }
 

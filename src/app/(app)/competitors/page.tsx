@@ -54,7 +54,7 @@ export default async function CompetitorsPage() {
   // Fetch video metrics for engagement rate calculation
   const { data: videos } = await supabase
     .from("competitor_videos")
-    .select("competitor_id, views, likes, comments, shares")
+    .select("competitor_id, views, likes, comments, shares, posted_at")
     .in("competitor_id", competitorIds);
 
   // Group snapshots by competitor_id
@@ -79,6 +79,7 @@ export default async function CompetitorsPage() {
       likes: number | null;
       comments: number | null;
       shares: number | null;
+      posted_at: string | null;
     }[]
   > = {};
   for (const v of videos ?? []) {
@@ -88,6 +89,7 @@ export default async function CompetitorsPage() {
       likes: v.likes,
       comments: v.comments,
       shares: v.shares,
+      posted_at: v.posted_at,
     });
     videosMap[v.competitor_id] = arr;
   }

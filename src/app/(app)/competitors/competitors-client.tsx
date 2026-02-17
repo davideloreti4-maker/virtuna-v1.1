@@ -44,6 +44,7 @@ interface CompetitorsClientProps {
       likes: number | null;
       comments: number | null;
       shares: number | null;
+      posted_at: string | null;
     }[]
   >;
 }
