@@ -24,7 +24,7 @@ Transform the prediction engine from ~40-55% accuracy to ~75-85% through TikTok-
 - [x] **Phase 12: E2E Flow Testing, Polish & Merge** - Accuracy benchmarking, full user flow test, merge to main
 - [ ] **Phase 13: Engine Bug Fixes & Wiring** - Fix validate-rules cron, content_type, reasoning, video guard
 - [x] **Phase 14: Video Upload Storage** - Wire video upload to Supabase Storage end-to-end
-- [ ] **Phase 15: UI Polish & Remaining Gaps** - Persona reactions, history thumbnails, benchmark validation
+- [x] **Phase 15: UI Polish & Remaining Gaps** - Persona reactions, history thumbnails, benchmark validation
 
 ## Phase Details
 
@@ -272,8 +272,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 15-01-PLAN.md -- Remove persona placeholder, wire history video indicators
-- [ ] 15-02-PLAN.md -- Benchmark env-gated documentation and compilation validation
+- [x] 15-01-PLAN.md -- Remove persona placeholder, wire history video indicators
+- [x] 15-02-PLAN.md -- Benchmark env-gated documentation and compilation validation
 
 ## Execution Waves
 
@@ -329,8 +329,8 @@ Phases execute in wave order. Within each wave, phases can run in parallel.
 | 12. E2E Flow Testing, Polish & Merge | 2/2 | COMPLETE | 2026-02-17 |
 | 13. Engine Bug Fixes & Wiring | 2/2 | ✓ Complete | 2026-02-17 |
 | 14. Video Upload Storage | 2/2 | ✓ Complete | 2026-02-17 |
-| 15. UI Polish & Remaining Gaps | 0/? | Not started | - |
+| 15. UI Polish & Remaining Gaps | 2/2 | ✓ Complete | 2026-02-17 |
 
 ---
 *Roadmap created: 2026-02-16*
-*Last updated: 2026-02-17 — Phase 14 complete (2/2 plans, verified)*
+*Last updated: 2026-02-17 — Phase 15 complete (2/2 plans, verified) — ALL PHASES COMPLETE*
