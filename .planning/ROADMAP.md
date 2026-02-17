@@ -23,7 +23,7 @@ Transform the prediction engine from ~40-55% accuracy to ~75-85% through TikTok-
 - [x] **Phase 11: Enhanced Signals & Audio** - Fuzzy sound matching, semantic hashtags, expanded scraper
 - [x] **Phase 12: E2E Flow Testing, Polish & Merge** - Accuracy benchmarking, full user flow test, merge to main
 - [ ] **Phase 13: Engine Bug Fixes & Wiring** - Fix validate-rules cron, content_type, reasoning, video guard
-- [ ] **Phase 14: Video Upload Storage** - Wire video upload to Supabase Storage end-to-end
+- [x] **Phase 14: Video Upload Storage** - Wire video upload to Supabase Storage end-to-end
 - [ ] **Phase 15: UI Polish & Remaining Gaps** - Persona reactions, history thumbnails, benchmark validation
 
 ## Phase Details
@@ -256,8 +256,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 14-01-PLAN.md — Client-side Supabase Storage upload with progress tracking and real video_storage_path wiring
-- [ ] 14-02-PLAN.md — Server-side video download from Storage and pipeline routing to Gemini video analysis
+- [x] 14-01-PLAN.md — Client-side Supabase Storage upload with progress tracking and real video_storage_path wiring
+- [x] 14-02-PLAN.md — Server-side video download from Storage and pipeline routing to Gemini video analysis
 
 ### Phase 15: UI Polish & Remaining Gaps
 **Goal**: Close remaining UI gaps — persona reactions, history thumbnails, and benchmark validation
@@ -324,9 +324,9 @@ Phases execute in wave order. Within each wave, phases can run in parallel.
 | 11. Enhanced Signals & Audio | 3/3 | ✓ Complete | 2026-02-17 |
 | 12. E2E Flow Testing, Polish & Merge | 2/2 | COMPLETE | 2026-02-17 |
 | 13. Engine Bug Fixes & Wiring | 2/2 | ✓ Complete | 2026-02-17 |
-| 14. Video Upload Storage | 0/? | Not started | - |
+| 14. Video Upload Storage | 2/2 | ✓ Complete | 2026-02-17 |
 | 15. UI Polish & Remaining Gaps | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-02-16*
-*Last updated: 2026-02-17 — Phase 13 complete (2/2 plans, verified)*
+*Last updated: 2026-02-17 — Phase 14 complete (2/2 plans, verified)*
