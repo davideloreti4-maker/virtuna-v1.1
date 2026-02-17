@@ -9,16 +9,7 @@ export default function OnboardingLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
-      {/* Ambient glow */}
-      <div
-        className="pointer-events-none fixed inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse 60% 50% at 50% 40%, rgba(255,127,80,0.06) 0%, transparent 70%)",
-        }}
-      />
-
-      <div className="relative z-10 mb-8">
+      <div className="mb-8">
         <Link href="/" className="flex items-center gap-2.5">
           <svg
             width="32"
@@ -38,7 +29,7 @@ export default function OnboardingLayout({
           <span className="text-lg font-semibold text-foreground">Virtuna</span>
         </Link>
       </div>
-      <div className="relative z-10">{children}</div>
+      <div>{children}</div>
     </div>
   );
 }
