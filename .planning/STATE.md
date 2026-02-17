@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-02-16)
 ## Current Position
 
 **Milestone:** Prediction Engine v2
-**Phase:** 13 of 15 (Engine Bug Fixes & Wiring) -- COMPLETE + VERIFIED
-**Plan:** 2 of 2 in current phase (all plans complete)
-**Status:** Phase 13 complete and verified (4/4 must-haves pass) -- proceeding to Phase 14
-**Last activity:** 2026-02-17 -- Phase 13 executed and verified
+**Phase:** 14 of 15 (Video Upload Storage) -- Plan 01 COMPLETE
+**Plan:** 1 of 1 in current phase (all plans complete)
+**Status:** Phase 14 Plan 01 complete -- video upload wired to Supabase Storage end-to-end
+**Last activity:** 2026-02-17 -- Phase 14 Plan 01 executed
 
-Progress: [██████████████████████████] 100% (28/28 plans)
+Progress: [███████████████████████████] 100% (29/29 plans)
 
 ## Performance Metrics
 
@@ -49,6 +49,7 @@ Progress: [███████████████████████
 | 12    | 02   | 13min    | 4     | 11    |
 | 13    | 01   | 2min     | 2     | 3     |
 | 13    | 02   | 2min     | 2     | 3     |
+| 14    | 01   | 4min     | 2     | 4     |
 
 ## Accumulated Context
 
@@ -182,6 +183,11 @@ Progress: [███████████████████████
 - [Execute 13-01]: video_storage_path must start with "videos/" prefix (Supabase Storage bucket convention)
 - [Execute 13-02]: reasoning_summary as explicit JSON field (2-3 sentences) rather than extracting reasoning_content from API response
 - [Execute 13-02]: z.string().min(10).max(500) validation ensures non-trivial but bounded reasoning text
+- [Execute 14-01]: Simulated upload progress (0-90% via setInterval) since Supabase JS v2 lacks native progress events
+- [Execute 14-01]: 50MB client-side MAX_FILE_SIZE matches gemini.ts VIDEO_MAX_SIZE_BYTES -- prevents silent pipeline failures
+- [Execute 14-01]: Upload starts immediately on file selection, not on form submit
+- [Execute 14-01]: Storage path format: videos/{userId}/{timestamp}-{filename} for uniqueness and namespacing
+- [Execute 14-01]: Submit guard: videoStoragePath must be non-null before video_upload payload sent to /api/analyze
 
 ### Pending Todos
 
@@ -196,10 +202,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Phase 13 COMPLETE + VERIFIED (28/28 plans, 4/4 must-haves)
+Stopped at: Phase 14 Plan 01 COMPLETE (29/29 plans)
 Resume file: None
-Next: Plan and execute Phase 14 (Video Upload Storage)
+Next: Plan and execute Phase 15 (Foundation Primitives)
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-17 -- Phase 13 COMPLETE (28/28 plans)*
+*Last updated: 2026-02-17 -- Phase 14 Plan 01 COMPLETE (29/29 plans)*
