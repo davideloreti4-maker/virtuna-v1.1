@@ -40,7 +40,7 @@ interface SignalAvailability {
  * When a source is missing, its weight is redistributed proportionally
  * to the remaining sources so weights always sum to ~1.0.
  *
- * Exported for testing in Phase 12.
+ * Exported for benchmarking and testing.
  */
 export function selectWeights(
   availability: SignalAvailability
@@ -184,7 +184,7 @@ function assembleFeatureVector(pipelineResult: PipelineResult): FeatureVector {
       : null,
 
     // Caption/Hashtag
-    captionScore: 0, // Placeholder — populated in Phase 9
+    captionScore: 0, // Not yet implemented — future enhancement
     hashtagRelevance: trendEnrichment.hashtag_relevance ?? 0,
     hashtagCount: payload.hashtags.length,
 

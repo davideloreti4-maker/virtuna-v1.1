@@ -36,7 +36,7 @@ export interface PipelineResult {
   ruleResult: RuleScoreResult;
   trendEnrichment: TrendEnrichment;
   deepseekResult: { reasoning: DeepSeekReasoning; cost_cents: number } | null;
-  audioResult: null; // Placeholder for Phase 11
+  audioResult: null; // Audio analysis handled via fuzzy matching in trend enrichment -- no separate stage needed
 
   // Pipeline metadata
   timings: StageTiming[];
@@ -173,7 +173,7 @@ export async function runPredictionPipeline(
     }
   });
 
-  // Stage 4: Audio Analysis (placeholder for Phase 11)
+  // Stage 4: Audio Analysis (handled via fuzzy matching in trend enrichment -- no separate stage)
   const audioPromise = timed("audio_analysis", timings, async () => null);
 
   // Stage 5: Creator Context -- NON-CRITICAL (fallback with warning)
