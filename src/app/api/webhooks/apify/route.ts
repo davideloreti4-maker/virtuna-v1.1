@@ -82,6 +82,7 @@ export async function POST(request: Request) {
             apify_dataset_id: resource.defaultDatasetId,
             apify_run_id: resource.id,
             scraped_at: new Date().toISOString(),
+            scrape_hashtags: payload.scrape_hashtags ?? null,
           },
         }));
 
