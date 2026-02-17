@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered content intelligence that tells creators whether their content will resonate -- and exactly why -- before they post.
-**Current focus:** MILESTONE COMPLETE -- Prediction Engine v2 merged to main
+**Current focus:** Post-merge bug fixes and wiring (Phase 13)
 
 ## Current Position
 
 **Milestone:** Prediction Engine v2
-**Phase:** 12 of 12 (E2E Flow Testing, Polish, Merge) -- COMPLETE
-**Plan:** 2 of 2 in current phase (all plans complete)
-**Status:** MILESTONE COMPLETE -- all 12 phases, 26 plans executed and merged to main
-**Last activity:** 2026-02-17 -- Phase 12 Plan 02 executed, merged to main (dd03fc7)
+**Phase:** 13 (Engine Bug Fixes & Wiring)
+**Plan:** 1 of 2 in current phase (Plan 01 complete)
+**Status:** Executing Phase 13 -- post-merge bug fixes
+**Last activity:** 2026-02-17 -- Phase 13 Plan 01 executed (da3810e, bfa4027)
 
-Progress: [██████████████████████████] 100% (26/26 plans)
+Progress: [█████████████████████████░] 96% (27/28 plans)
 
 ## Performance Metrics
 
@@ -47,6 +47,7 @@ Progress: [███████████████████████
 | 11    | 03   | 5min     | 2     | 2     |
 | 12    | 01   | 12min    | 2     | 3     |
 | 12    | 02   | 13min    | 4     | 11    |
+| 13    | 01   | 2min     | 2     | 3     |
 
 ## Accumulated Context
 
@@ -176,6 +177,8 @@ Progress: [███████████████████████
 - [Plan]: Personas are theater/UX, not accuracy signal -- lightweight 2-3 sentences each
 - [Plan]: Remove conversation_themes and variants to redirect tokens to accuracy
 - [Plan]: Pass structured Gemini signals to DeepSeek (no scores) to prevent anchoring
+- [Execute 13-01]: text input_mode maps to content_type "thread" (closest DB enum for text-only content)
+- [Execute 13-01]: video_storage_path must start with "videos/" prefix (Supabase Storage bucket convention)
 
 ### Pending Todos
 
@@ -190,10 +193,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: MILESTONE COMPLETE -- all 26 plans executed, merged to main (dd03fc7)
+Stopped at: Completed 13-01-PLAN.md (engine bug fixes)
 Resume file: None
-Next: Milestone complete. Archive and start next milestone.
+Next: Execute 13-02-PLAN.md
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-17 -- MILESTONE COMPLETE (26/26 plans, merged to main)*
+*Last updated: 2026-02-17 -- Phase 13 Plan 01 complete (27/28 plans)*
