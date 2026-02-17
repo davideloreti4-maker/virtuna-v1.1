@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-16)
 
 **Core value:** AI-powered content intelligence that tells creators whether their content will resonate -- and exactly why -- before they post.
-**Current focus:** Phase 10 complete -- calibration & ML training done
+**Current focus:** Phase 11 in progress -- enhanced signals & audio
 
 ## Current Position
 
 **Milestone:** Prediction Engine v2
-**Phase:** 10 of 12 (Calibration & ML Training) -- COMPLETE
-**Plan:** 5 of 5 in current phase (all complete)
-**Status:** Phase 10 complete -- ECE pipeline + Platt scaling + training data + ML model + cron integration
-**Last activity:** 2026-02-16 -- Phase 10 Plan 5 executed (cron integration)
+**Phase:** 11 of 12 (Enhanced Signals & Audio) -- IN PROGRESS
+**Plan:** 2 of 3 in current phase (plans 01, 02 complete)
+**Status:** Phase 11 Plan 02 complete -- semantic hashtag scoring with popularity weighting
+**Last activity:** 2026-02-17 -- Phase 11 Plan 2 executed (hashtag relevance scoring)
 
-Progress: [█████████████████████] 80.8% (21/26 plans)
+Progress: [██████████████████████████] 88.5% (23/26 plans)
 
 ## Performance Metrics
 
@@ -42,6 +42,8 @@ Progress: [█████████████████████] 80.8
 | 10    | 03   | 2min     | 1     | 2     |
 | 10    | 04   | 2min     | 1     | 2     |
 | 10    | 05   | 2min     | 2     | 3     |
+| 11    | 01   | 10min    | 2     | 4     |
+| 11    | 02   | 2min     | 1     | 4     |
 
 ## Accumulated Context
 
@@ -151,6 +153,15 @@ Progress: [█████████████████████] 80.8
 - [Execute 10-05]: ECE drift threshold 0.15 — below 0.10 well-calibrated, 0.10-0.15 acceptable, above needs attention
 - [Execute 10-05]: Training data from scraped videos not outcomes — removed MIN_OUTCOMES_FOR_TRAINING gate
 - [Execute 10-05]: Outcome count in retrain-ml response for monitoring only, does not gate training
+- [Execute 11-01]: Case-insensitive Jaro-Winkler with Winkler prefix boost (p=0.1, max 4 chars)
+- [Execute 11-01]: Exact substring match short-circuits to score 1.0 before computing Jaro-Winkler
+- [Execute 11-01]: classifyTrendPhase: totalViews >= 500K with growthRate >= -0.2 classified as peak
+- [Execute 11-01]: audioTrendingMatch = max velocity_score / 100 from matched trends (0-1 normalized)
+- [Execute 11-02]: Saturation blocklist: #fyp, #foryou, #foryoupage, #viral, #trending, #xyzbca
+- [Execute 11-02]: Saturation threshold: hashtag appearing in > 40% of scraped videos
+- [Execute 11-02]: Log10-scaled popularity prevents mega-view tags from dominating relevance
+- [Execute 11-02]: maxExpectedRelevance = 3 calibration: 3 highly-relevant trending hashtags scores ~1.0
+- [Execute 11-02]: Saturated tags contribute 10% of normal weight to trend_score (not useless, just not differentiating)
 - [Plan]: Personas are theater/UX, not accuracy signal -- lightweight 2-3 sentences each
 - [Plan]: Remove conversation_themes and variants to redirect tokens to accuracy
 - [Plan]: Pass structured Gemini signals to DeepSeek (no scores) to prevent anchoring
@@ -167,11 +178,11 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-16
-Stopped at: Completed 10-05-PLAN.md (cron integration — Phase 10 complete)
+Last session: 2026-02-17
+Stopped at: Completed 11-02-PLAN.md (semantic hashtag scoring)
 Resume file: None
-Next: Phase 11
+Next: Phase 11 Plan 03
 
 ---
 *State created: 2026-02-16*
-*Last updated: 2026-02-16 -- Phase 10 complete (all 5 plans: ECE + Platt + training data + ML model + crons)*
+*Last updated: 2026-02-17 -- Phase 11 Plan 02 complete (semantic hashtag scoring with popularity weighting)*
