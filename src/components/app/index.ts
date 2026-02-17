@@ -3,7 +3,6 @@ export { AuthGuard } from "./auth-guard";
 export { CardActionMenu } from "./card-action-menu";
 export { ContextBar } from "./context-bar";
 export { FilterPill, FilterPillGroup } from "./filter-pills";
-export { MobileNav } from "./mobile-nav";
 export { NetworkVisualization } from "./network-visualization";
 export { Sidebar } from "./sidebar";
 export { SidebarNavItem } from "./sidebar-nav-item";

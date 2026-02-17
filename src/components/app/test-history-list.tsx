@@ -1,6 +1,6 @@
 'use client';
 
-import { useAnalysisHistory } from '@/hooks/queries';
+import { useAnalysisHistory, useDeleteAnalysis } from '@/hooks/queries';
 import { Caption } from '@/components/ui/typography';
 import { TestHistoryItem } from './test-history-item';
 
@@ -10,6 +10,7 @@ interface TestHistoryListProps {
 
 export function TestHistoryList({ onSelectTest }: TestHistoryListProps) {
   const { data: historyData, isLoading } = useAnalysisHistory();
+  const deleteAnalysis = useDeleteAnalysis();
 
   if (isLoading) {
     return (
@@ -56,8 +57,7 @@ export function TestHistoryList({ onSelectTest }: TestHistoryListProps) {
             isActive={false}
             onClick={() => onSelectTest(test.id as string)}
             onDelete={() => {
-              // TODO: Implement delete via API route
-              console.warn('Delete not yet implemented via API');
+              deleteAnalysis.mutate(test.id as string);
             }}
           />
         ))}

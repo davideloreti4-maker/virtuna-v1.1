@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { BookmarkSimple, Lightning, Repeat } from "@phosphor-icons/react";
@@ -14,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { GlassPill } from "@/components/primitives/GlassPill";
 import { TikTokEmbed } from "./tiktok-embed";
 import { useBookmarkStore } from "@/stores/bookmark-store";
+import { useToggleBookmark } from "@/hooks/queries";
 import { useModalKeyboardNav } from "@/hooks/use-modal-keyboard-nav";
 import type { TrendingVideo } from "@/types/trending";
 
@@ -109,12 +109,8 @@ export function VideoDetailModal({
   hasNext,
 }: VideoDetailModalProps) {
   const router = useRouter();
-  const { toggleBookmark, isBookmarked, _hydrate, _isHydrated } = useBookmarkStore();
-
-  // Hydrate bookmark store on mount (SSR safety)
-  useEffect(() => {
-    _hydrate();
-  }, [_hydrate]);
+  const { isBookmarked, _isHydrated, optimisticToggle } = useBookmarkStore();
+  const toggleBookmarkMutation = useToggleBookmark();
 
   // Wire up keyboard navigation
   useModalKeyboardNav({
@@ -135,7 +131,12 @@ export function VideoDetailModal({
 
   const handleBookmark = () => {
     if (!video) return;
-    toggleBookmark(video.id);
+    const currentlyBookmarked = isBookmarked(video.id);
+    optimisticToggle(video.id);
+    toggleBookmarkMutation.mutate({
+      videoId: video.id,
+      isCurrentlyBookmarked: currentlyBookmarked,
+    });
   };
 
   // Don't render if no video

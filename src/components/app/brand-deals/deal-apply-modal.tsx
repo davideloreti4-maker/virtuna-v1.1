@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { InputField } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 import { useApplyToDeal } from "@/hooks/queries";
 import type { BrandDeal } from "@/types/brand-deals";
 
@@ -59,6 +60,7 @@ export function DealApplyModal({
   const [pitch, setPitch] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
+  const { toast } = useToast();
   const applyMutation = useApplyToDeal();
 
   if (!deal) return null;
@@ -96,8 +98,11 @@ export function DealApplyModal({
           }, 1500);
         },
         onError: (error) => {
-          // TODO: Show error toast via sonner
-          console.error("Failed to apply:", error.message);
+          toast({
+            variant: "error",
+            title: "Failed to apply",
+            description: error.message,
+          });
         },
       }
     );

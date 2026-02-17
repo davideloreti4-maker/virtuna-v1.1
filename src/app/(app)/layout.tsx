@@ -1,35 +1,33 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app";
 import { ToastProvider } from "@/components/ui/toast";
 import { Providers } from "./providers";
-import "../globals.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-inter",
-});
 
 export const metadata: Metadata = {
-  title: "Dashboard | Artificial Societies",
-  description: "Manage your AI personas and research simulations.",
+  title: "Dashboard | Virtuna",
+  description: "AI-powered content intelligence for TikTok creators.",
 };
 
-export default function AppLayout({
+export default async function AppLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // Defense-in-depth: server-side auth check alongside middleware
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
   return (
-    <html lang="en" className={`${inter.variable}`}>
-      <body className="min-h-screen bg-background font-sans antialiased">
-        <Providers>
-          <ToastProvider>
-            <AppShell>
-              {children}
-            </AppShell>
-          </ToastProvider>
-        </Providers>
-      </body>
-    </html>
+    <Providers>
+      <ToastProvider>
+        <AppShell>
+          {children}
+        </AppShell>
+      </ToastProvider>
+    </Providers>
   );
 }

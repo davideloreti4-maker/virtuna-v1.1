@@ -2,26 +2,40 @@
 
 import { useState } from "react";
 import { Input } from "@/components/ui";
-import { useSettingsStore } from "@/stores/settings-store";
+import { useProfile, useChangePassword } from "@/hooks/queries/use-profile";
 
 export function AccountSection() {
-  const profile = useSettingsStore((s) => s.profile);
+  const { data: profile } = useProfile();
+  const changePassword = useChangePassword();
 
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
-  const handlePasswordChange = () => {
-    // Mock - would call API in real app
-    console.log("Password change requested");
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-  };
+  const handlePasswordChange = async () => {
+    setPasswordError("");
+    setPasswordSuccess(false);
 
-  const handleDeleteAccount = () => {
-    // Mock - would show confirmation modal
-    console.log("Delete account requested");
+    if (newPassword.length < 8) {
+      setPasswordError("Password must be at least 8 characters");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords do not match");
+      return;
+    }
+
+    try {
+      await changePassword.mutateAsync(newPassword);
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordSuccess(true);
+      setTimeout(() => setPasswordSuccess(false), 3000);
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : "Failed to change password");
+    }
   };
 
   return (
@@ -42,16 +56,10 @@ export function AccountSection() {
         <div className="mt-4 flex items-center gap-4">
           <Input
             type="email"
-            value={profile.email}
+            value={profile?.email || ""}
             disabled
             className="max-w-sm opacity-70"
           />
-          <button
-            type="button"
-            className="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
-          >
-            Change email
-          </button>
         </div>
       </div>
 
@@ -62,17 +70,6 @@ export function AccountSection() {
           Update your password to keep your account secure.
         </p>
         <div className="mt-4 space-y-4">
-          <div className="max-w-sm">
-            <label className="mb-2 block text-sm text-zinc-400">
-              Current password
-            </label>
-            <Input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="Enter current password"
-            />
-          </div>
           <div className="max-w-sm">
             <label className="mb-2 block text-sm text-zinc-400">
               New password
@@ -95,12 +92,19 @@ export function AccountSection() {
               placeholder="Confirm new password"
             />
           </div>
+          {passwordError && (
+            <p className="text-sm text-red-400">{passwordError}</p>
+          )}
+          {passwordSuccess && (
+            <p className="text-sm text-emerald-400">Password updated successfully!</p>
+          )}
           <button
             type="button"
             onClick={handlePasswordChange}
-            className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200"
+            disabled={changePassword.isPending}
+            className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200 disabled:opacity-50"
           >
-            Update password
+            {changePassword.isPending ? "Updating..." : "Update password"}
           </button>
         </div>
       </div>
@@ -114,11 +118,14 @@ export function AccountSection() {
         </p>
         <button
           type="button"
-          onClick={handleDeleteAccount}
-          className="mt-4 rounded-lg border border-red-700 bg-red-900/30 px-4 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-900/50"
+          disabled
+          className="mt-4 rounded-lg border border-red-700 bg-red-900/30 px-4 py-2 text-sm font-medium text-red-400 opacity-50 cursor-not-allowed"
         >
           Delete account
         </button>
+        <p className="mt-2 text-xs text-zinc-500">
+          Contact support to delete your account.
+        </p>
       </div>
     </div>
   );

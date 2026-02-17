@@ -10,7 +10,6 @@ import { TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTrendingStats } from "@/hooks/queries";
 import { VideoGrid, VideoDetailModal } from "@/components/trending";
-import { useBookmarkStore } from "@/stores/bookmark-store";
 import {
   CATEGORY_LABELS,
   VALID_TABS,
@@ -111,10 +110,8 @@ export function TrendingClient({ defaultTab }: TrendingClientProps) {
   const [selectedVideo, setSelectedVideo] = useState<TrendingVideo | null>(null);
   const isModalOpen = selectedVideo !== null;
 
-  // Hydrate bookmark store on mount
-  useEffect(() => {
-    useBookmarkStore.getState()._hydrate();
-  }, []);
+  // Current filtered video list for modal navigation
+  const [currentVideos, setCurrentVideos] = useState<TrendingVideo[]>([]);
 
   // Fetch real stats from /api/trending/stats
   const { data: statsData, isLoading: statsLoading } = useTrendingStats();
@@ -183,10 +180,24 @@ export function TrendingClient({ defaultTab }: TrendingClientProps) {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
-  // TODO: Re-implement modal navigation with API data
-  const handleNavigate = useCallback((_direction: "prev" | "next") => {
-    // Navigation temporarily disabled -- modal still opens for single video viewing
-  }, []);
+  // Modal navigation: find current index in filtered list and move prev/next
+  const selectedIndex = useMemo(() => {
+    if (!selectedVideo) return -1;
+    return currentVideos.findIndex((v) => v.id === selectedVideo.id);
+  }, [selectedVideo, currentVideos]);
+
+  const handleNavigate = useCallback(
+    (direction: "prev" | "next") => {
+      if (selectedIndex < 0) return;
+      const nextIndex =
+        direction === "prev" ? selectedIndex - 1 : selectedIndex + 1;
+      const nextVideo = currentVideos[nextIndex];
+      if (nextVideo) {
+        setSelectedVideo(nextVideo);
+      }
+    },
+    [selectedIndex, currentVideos]
+  );
 
   return (
     <div className="mx-auto max-w-[1280px] px-6 py-8 md:px-8">
@@ -225,6 +236,7 @@ export function TrendingClient({ defaultTab }: TrendingClientProps) {
         <VideoGrid
           filterTab={activeTab}
           onVideoClick={(video) => setSelectedVideo(video)}
+          onVideosChange={setCurrentVideos}
         />
       </div>
 
@@ -236,8 +248,8 @@ export function TrendingClient({ defaultTab }: TrendingClientProps) {
           if (!open) setSelectedVideo(null);
         }}
         onNavigate={handleNavigate}
-        hasPrevious={false}
-        hasNext={false}
+        hasPrevious={selectedIndex > 0}
+        hasNext={selectedIndex >= 0 && selectedIndex < currentVideos.length - 1}
       />
     </div>
   );

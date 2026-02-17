@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import { User, Settings, Bell, CreditCard, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSettingsStore } from "@/stores/settings-store";
 import { ProfileSection } from "./profile-section";
 import { AccountSection } from "./account-section";
 import { NotificationsSection } from "./notifications-section";
@@ -24,22 +22,6 @@ const TABS = [
 ] as const;
 
 export function SettingsPage({ defaultTab = "profile" }: SettingsPageProps) {
-  const _hydrate = useSettingsStore((s) => s._hydrate);
-  const _isHydrated = useSettingsStore((s) => s._isHydrated);
-
-  // Hydrate store on mount
-  useEffect(() => {
-    _hydrate();
-  }, [_hydrate]);
-
-  if (!_isHydrated) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-700 border-t-white" />
-      </div>
-    );
-  }
-
   return (
     <div className="mx-auto max-w-4xl p-6">
       <h1 className="mb-8 text-2xl font-semibold text-white">Settings</h1>

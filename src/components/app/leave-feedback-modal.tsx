@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { z } from "zod";
 import { ArrowRight } from "lucide-react";
-import { useSettingsStore } from "@/stores/settings-store";
+import { useProfile } from "@/hooks/queries/use-profile";
 import {
   Dialog,
   DialogContent,
@@ -43,8 +43,7 @@ interface LeaveFeedbackModalProps {
 // ---------------------------------------------------------------------------
 
 export function LeaveFeedbackModal({ open, onOpenChange }: LeaveFeedbackModalProps) {
-  const profile = useSettingsStore((s) => s.profile);
-  const _isHydrated = useSettingsStore((s) => s._isHydrated);
+  const { data: profile } = useProfile();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -56,9 +55,9 @@ export function LeaveFeedbackModal({ open, onOpenChange }: LeaveFeedbackModalPro
   const [isDirty, setIsDirty] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
-  // Pre-fill from profile when hydrated
-  const displayName = name || (_isHydrated ? profile.name : "");
-  const displayEmail = email || (_isHydrated ? profile.email : "");
+  // Pre-fill from profile when loaded
+  const displayName = name || (profile?.name ?? "");
+  const displayEmail = email || (profile?.email ?? "");
 
   const resetForm = useCallback(() => {
     setName("");

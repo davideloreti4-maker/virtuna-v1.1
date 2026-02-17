@@ -43,16 +43,38 @@ export async function POST(request: Request) {
     // INFRA-04: Input validation (before Zod parse for better error messages)
     // -------------------------------------------------------
 
-    // Content text length check
-    if (
-      body.content_text &&
-      typeof body.content_text === "string" &&
-      body.content_text.length > 10000
-    ) {
-      return Response.json(
-        { error: "Content text exceeds maximum length of 10,000 characters" },
-        { status: 400 }
-      );
+    // Content text basic validation
+    if (body.content_text && typeof body.content_text === "string") {
+      const trimmed = body.content_text.trim();
+
+      // Max length
+      if (body.content_text.length > 10000) {
+        return Response.json(
+          { error: "Content text exceeds maximum length of 10,000 characters" },
+          { status: 400 }
+        );
+      }
+
+      // Min length (also rejects whitespace-only since trim reduces those to "")
+      if (trimmed.length < 10) {
+        return Response.json(
+          { error: "Content text must be at least 10 characters after trimming" },
+          { status: 400 }
+        );
+      }
+
+      // Anti-spam: reject >90% repeated characters
+      const charCounts = new Map<string, number>();
+      for (const ch of trimmed) {
+        charCounts.set(ch, (charCounts.get(ch) ?? 0) + 1);
+      }
+      const maxCharCount = Math.max(...charCounts.values());
+      if (maxCharCount / trimmed.length > 0.9) {
+        return Response.json(
+          { error: "Content appears to be spam (excessive repeated characters)" },
+          { status: 400 }
+        );
+      }
     }
 
     // TikTok URL format validation

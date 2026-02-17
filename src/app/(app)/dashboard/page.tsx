@@ -3,8 +3,8 @@ import { Suspense } from "react";
 import { DashboardClient } from "./dashboard-client";
 
 export const metadata: Metadata = {
-  title: "Dashboard | Artificial Societies",
-  description: "Manage your AI personas and research simulations.",
+  title: "Dashboard | Virtuna",
+  description: "AI-powered content intelligence for TikTok creators.",
 };
 
 /**

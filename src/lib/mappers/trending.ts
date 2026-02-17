@@ -40,7 +40,7 @@ export function mapScrapedVideoToTrendingVideo(
     category,
     hashtags: row.hashtags ?? [],
     tiktokUrl: row.video_url ?? "",
-    // TODO: Derive velocity from historical view data when available
+    // Velocity requires historical snapshots (view_t vs view_t-1) — future feature
     velocity: 1.0,
   };
 }
