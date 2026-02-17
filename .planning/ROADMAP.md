@@ -29,13 +29,11 @@ The prediction engine pipeline is structurally complete but significantly discon
   3. `calculate-trends` cron reads from `scraped_videos` and writes to `trending_sounds` without throwing
   4. `rule_library` table has an `evaluation_tier` column (schema migration applied, semantic rules no longer blocked)
   5. All required env vars are listed in `.env.example` with descriptions (APIFY_TOKEN, APIFY_WEBHOOK_SECRET, APIFY_ACTOR_ID, SCRAPER_HASHTAGS)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Add all 7 cron entries to vercel.json and verify build
-- [ ] 01-02: Add evaluation_tier migration to rule_library and apply
-- [ ] 01-03: Trace and fix scrape-trending → webhook → scraped_videos → calculate-trends → trending_sounds chain
-- [ ] 01-04: Audit and document all required env vars in .env.example
+- [ ] 01-01-PLAN.md — Schedule all 7 crons in vercel.json + verify evaluation_tier migration and regen TypeScript types
+- [ ] 01-02-PLAN.md — Trace and verify end-to-end scrape pipeline chain + document all env vars in .env.example
 
 ### Phase 2: ML Model Rehabilitation
 
