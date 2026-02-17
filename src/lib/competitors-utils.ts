@@ -231,3 +231,39 @@ export function computeDurationBreakdown(
     percentage: Math.round((count / total) * 100),
   }));
 }
+
+// --- Stale data utilities ---
+
+/**
+ * Convert an ISO date string to a human-readable relative time string.
+ *
+ * @example
+ * formatRelativeTime(null)                    // "Never"
+ * formatRelativeTime("2026-02-17T09:00:00Z")  // "Just now" (< 1h)
+ * formatRelativeTime("2026-02-17T04:00:00Z")  // "5h ago"
+ * formatRelativeTime("2026-02-14T09:00:00Z")  // "3d ago"
+ * formatRelativeTime("2026-02-03T09:00:00Z")  // "2w ago"
+ */
+export function formatRelativeTime(isoDate: string | null): string {
+  if (isoDate === null) return "Never";
+
+  const elapsed = Date.now() - new Date(isoDate).getTime();
+
+  const HOUR = 60 * 60 * 1000;
+  const DAY = 24 * HOUR;
+  const WEEK = 7 * DAY;
+
+  if (elapsed < HOUR) return "Just now";
+  if (elapsed < DAY) return `${Math.floor(elapsed / HOUR)}h ago`;
+  if (elapsed < WEEK) return `${Math.floor(elapsed / DAY)}d ago`;
+  return `${Math.floor(elapsed / WEEK)}w ago`;
+}
+
+/**
+ * Returns true when data is considered stale (never scraped or older than 48 hours).
+ */
+export function isStale(isoDate: string | null): boolean {
+  if (isoDate === null) return true;
+  const elapsed = Date.now() - new Date(isoDate).getTime();
+  return elapsed > 48 * 60 * 60 * 1000;
+}
