@@ -269,7 +269,11 @@ Plans:
   1. Persona reactions section either shows real DeepSeek-generated personas OR is cleanly removed (no placeholder)
   2. Analysis history items show video thumbnails for video analyses
   3. Benchmark script produces real results with valid API keys (or documented as env-gated with instructions)
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 15-01-PLAN.md -- Remove persona placeholder, wire history video indicators
+- [ ] 15-02-PLAN.md -- Benchmark env-gated documentation and compilation validation
 
 ## Execution Waves
 
