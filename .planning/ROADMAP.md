@@ -114,11 +114,11 @@ Plans:
   2. When a competitor video exceeds 3x their average views, the system surfaces it with an AI-generated "why it worked" breakdown
   3. System performs hashtag gap analysis comparing user's hashtags vs competitor's and surfaces actionable recommendations
   4. System generates personalized recommendations (format, timing, hooks, content style) based on competitor analysis data
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 06-01: AI analysis service layer (DeepSeek/Gemini) with prompt engineering
-- [ ] 06-02: Intelligence UI section on detail page with viral detection and recommendations
+- [ ] 06-01-PLAN.md -- Database migration, Zod schemas, DeepSeek/Gemini AI clients, intelligence service with caching, API route
+- [ ] 06-02-PLAN.md -- Intelligence UI section (4 insight cards + wrapper) wired into competitor detail page
 
 ### Phase 7: Polish & Edge Cases
 **Goal**: The competitor tracker handles all edge cases gracefully and works well on mobile
