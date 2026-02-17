@@ -236,7 +236,11 @@ Plans:
   2. content_type derived from user's selected input mode (not hardcoded "video")
   3. PredictionResult.reasoning contains DeepSeek's reasoning text (not empty string)
   4. Submitting video_upload mode with no real file returns 400 error (not pipeline crash)
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 13-01-PLAN.md — Fix validate-rules cron select, content_type derivation, video upload guard
+- [ ] 13-02-PLAN.md — Wire DeepSeek reasoning_summary into PredictionResult.reasoning
 
 ### Phase 14: Video Upload Storage
 **Goal**: Wire video upload end-to-end from UI through Supabase Storage to Gemini video analysis
