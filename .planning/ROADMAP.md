@@ -2,7 +2,7 @@
 
 ## Overview
 
-Transform the prediction engine from ~40-55% accuracy to ~75-85% through TikTok-aligned prompts, full video analysis, a 10-stage pipeline with FeatureVector backbone, behavioral predictions, ML training on 5000 scraped videos, and calibration infrastructure. 12 phases, 26 plans, milestone-scoped numbering starting at 1.
+Transform the prediction engine from ~40-55% accuracy to ~75-85% through TikTok-aligned prompts, full video analysis, a 10-stage pipeline with FeatureVector backbone, behavioral predictions, ML training on 5000 scraped videos, and calibration infrastructure. 15 phases (12 original + 3 gap closure), milestone-scoped numbering starting at 1.
 
 ## Phases
 
@@ -22,6 +22,9 @@ Transform the prediction engine from ~40-55% accuracy to ~75-85% through TikTok-
 - [x] **Phase 10: Calibration & ML Training** - ECE measurement, Platt scaling, ML model on scraped data
 - [x] **Phase 11: Enhanced Signals & Audio** - Fuzzy sound matching, semantic hashtags, expanded scraper
 - [x] **Phase 12: E2E Flow Testing, Polish & Merge** - Accuracy benchmarking, full user flow test, merge to main
+- [ ] **Phase 13: Engine Bug Fixes & Wiring** - Fix validate-rules cron, content_type, reasoning, video guard
+- [ ] **Phase 14: Video Upload Storage** - Wire video upload to Supabase Storage end-to-end
+- [ ] **Phase 15: UI Polish & Remaining Gaps** - Persona reactions, history thumbnails, benchmark validation
 
 ## Phase Details
 
@@ -222,6 +225,44 @@ Plans:
 - [x] 12-01: Accuracy benchmarking — 50 content samples through full pipeline with results report
 - [x] 12-02: Build/lint fix, engine cleanup, full user flow verification in browser, merge to main
 
+### Phase 13: Engine Bug Fixes & Wiring
+**Goal**: Fix integration bugs and silent failures identified by milestone audit
+**Depends on**: Phase 12
+**File Ownership**: `src/app/api/cron/validate-rules/route.ts`, `src/components/app/test-creation-flow.tsx`, `src/lib/engine/aggregator.ts`, `src/app/api/analyze/route.ts`
+**Requirements**: RULE-03 (degraded)
+**Gap Closure**: Closes audit gaps — validate-rules cron bug, content_type hardcoding, empty reasoning field, video path guard
+**Success Criteria** (what must be TRUE):
+  1. validate-rules cron selects `rule_contributions` from DB and per-rule accuracy loop produces `rulesUpdated > 0`
+  2. content_type derived from user's selected input mode (not hardcoded "video")
+  3. PredictionResult.reasoning contains DeepSeek's reasoning text (not empty string)
+  4. Submitting video_upload mode with no real file returns 400 error (not pipeline crash)
+**Plans**: TBD
+
+### Phase 14: Video Upload Storage
+**Goal**: Wire video upload end-to-end from UI through Supabase Storage to Gemini video analysis
+**Depends on**: Phase 13
+**File Ownership**: `src/components/app/video-upload.tsx`, `src/components/app/test-creation-flow.tsx`, `src/app/api/analyze/route.ts`, `src/lib/engine/gemini.ts`
+**Requirements**: VID-02, UI-02
+**Gap Closure**: Closes video upload placeholder — actual file upload to Supabase Storage bucket
+**Success Criteria** (what must be TRUE):
+  1. VideoUpload component uploads file to Supabase Storage and returns real storage path
+  2. test-creation-flow passes real video_storage_path (not "pending-upload") to /api/analyze
+  3. Gemini video analysis receives the uploaded file and returns video-specific signals
+  4. Upload progress indicator reflects actual upload progress
+**Plans**: TBD
+
+### Phase 15: UI Polish & Remaining Gaps
+**Goal**: Close remaining UI gaps — persona reactions, history thumbnails, and benchmark validation
+**Depends on**: Phase 14
+**File Ownership**: `src/components/app/simulation/results-panel.tsx`, `src/components/app/test-history-item.tsx`, `src/lib/engine/deepseek.ts`, `scripts/benchmark.ts`
+**Requirements**: UI-06, UI-08
+**Gap Closure**: Closes persona reactions placeholder, history thumbnails, benchmark validation
+**Success Criteria** (what must be TRUE):
+  1. Persona reactions section either shows real DeepSeek-generated personas OR is cleanly removed (no placeholder)
+  2. Analysis history items show video thumbnails for video analyses
+  3. Benchmark script produces real results with valid API keys (or documented as env-gated with instructions)
+**Plans**: TBD
+
 ## Execution Waves
 
 Wave groupings for parallel team dispatch. Phases within a wave have no inter-dependencies.
@@ -250,6 +291,11 @@ Wave groupings for parallel team dispatch. Phases within a wave have no inter-de
 ### Wave 6 (depends on ALL)
 - Phase 12: E2E Flow Testing, Polish & Merge (needs Phases 1-11)
 
+### Wave 7: Gap Closure (depends on Phase 12)
+- Phase 13: Engine Bug Fixes & Wiring
+- Phase 14: Video Upload Storage (needs Phase 13)
+- Phase 15: UI Polish & Remaining Gaps (needs Phase 14)
+
 ## Progress
 
 **Execution Order:**
@@ -269,7 +315,10 @@ Phases execute in wave order. Within each wave, phases can run in parallel.
 | 10. Calibration & ML Training | 5/5 | ✓ Complete | 2026-02-16 |
 | 11. Enhanced Signals & Audio | 3/3 | ✓ Complete | 2026-02-17 |
 | 12. E2E Flow Testing, Polish & Merge | 2/2 | COMPLETE | 2026-02-17 |
+| 13. Engine Bug Fixes & Wiring | 0/? | Not started | - |
+| 14. Video Upload Storage | 0/? | Not started | - |
+| 15. UI Polish & Remaining Gaps | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-02-16*
-*Last updated: 2026-02-17 — MILESTONE COMPLETE (all 12 phases, 26 plans)*
+*Last updated: 2026-02-17 — Gap closure phases 13-15 added from milestone audit*
