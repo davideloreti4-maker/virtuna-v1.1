@@ -1,4 +1,5 @@
 import { CompetitorCardSkeletonGrid } from "@/components/competitors/competitor-card-skeleton";
+import { CompetitorTableSkeleton } from "@/components/competitors/competitor-table-skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
@@ -16,8 +17,14 @@ export default function CompetitorsLoading() {
         <Skeleton className="h-8 w-32 rounded-full" />
       </div>
 
-      {/* Card grid skeleton */}
+      {/* Card grid skeleton (default view mode is "grid").
+          CompetitorTableSkeleton is imported but not rendered here because
+          loading.tsx is a server component and cannot read the Zustand
+          viewMode store. The card skeleton matches the default first-load. */}
       <CompetitorCardSkeletonGrid />
     </div>
   );
 }
+
+// Re-export for potential use in client-side view transitions
+export { CompetitorTableSkeleton };
