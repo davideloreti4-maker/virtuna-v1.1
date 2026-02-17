@@ -141,7 +141,7 @@ export function GlassToggle({
         "relative inline-flex items-center rounded-full",
         "backdrop-blur-[10px] transition-all duration-[var(--duration-fast)]",
         "ease-[var(--ease-out)]",
-        "border border-white/10",
+        "border border-white/[0.06]",
         config.track,
         config.padding,
         // Focus styles - Coral accent

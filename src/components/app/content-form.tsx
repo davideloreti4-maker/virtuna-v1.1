@@ -1,40 +1,16 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Type, Link, Video } from "lucide-react";
+import { Type, Link, Video, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import { VideoUpload } from "./video-upload";
-import { TikTokUrlInput } from "./tiktok-url-input";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const TIKTOK_URL_PATTERN =
-  /^(https?:\/\/)?(www\.)?(tiktok\.com\/.+|vm\.tiktok\.com\/.+|@[\w.]+\/video\/\d+)$/i;
-
-const NICHE_OPTIONS = [
-  { value: "", label: "Select niche (optional)" },
-  { value: "comedy", label: "Comedy" },
-  { value: "dance", label: "Dance" },
-  { value: "education", label: "Education" },
-  { value: "fashion", label: "Fashion & Beauty" },
-  { value: "fitness", label: "Fitness & Health" },
-  { value: "food", label: "Food & Cooking" },
-  { value: "gaming", label: "Gaming" },
-  { value: "lifestyle", label: "Lifestyle" },
-  { value: "music", label: "Music" },
-  { value: "pets", label: "Pets & Animals" },
-  { value: "sports", label: "Sports" },
-  { value: "tech", label: "Tech & Science" },
-  { value: "travel", label: "Travel" },
-  { value: "other", label: "Other" },
-];
+const SOCIAL_URL_PATTERN =
+  /^(https?:\/\/)?(www\.)?(tiktok\.com\/.+|vm\.tiktok\.com\/.+|@[\w.]+\/video\/\d+|instagram\.com\/(p|reel|reels|tv)\/.+)$/i;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -42,14 +18,11 @@ const NICHE_OPTIONS = [
 
 export interface ContentFormData {
   input_mode: "text" | "tiktok_url" | "video_upload";
-  // Text mode fields
   caption: string;
   niche: string;
   hashtags: string;
   notes: string;
-  // TikTok URL mode
   tiktok_url: string;
-  // Video mode
   video_file: File | null;
   video_caption: string;
   video_niche: string;
@@ -62,6 +35,18 @@ interface ContentFormProps {
 }
 
 type InputMode = "text" | "tiktok_url" | "video_upload";
+
+const MODE_CONFIG: { value: InputMode; icon: typeof Type; label: string }[] = [
+  { value: "text", icon: Type, label: "Text" },
+  { value: "video_upload", icon: Video, label: "Video" },
+  { value: "tiktok_url", icon: Link, label: "URL" },
+];
+
+const PLACEHOLDERS: Record<InputMode, string> = {
+  text: "Paste your caption or script...",
+  tiktok_url: "Paste a TikTok or Instagram URL...",
+  video_upload: "Add a caption for your video...",
+};
 
 // ---------------------------------------------------------------------------
 // Component
@@ -83,14 +68,9 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // ---------------------------------------------------------------------------
-  // Field updaters
-  // ---------------------------------------------------------------------------
-
   const updateField = useCallback(
     <K extends keyof ContentFormData>(field: K, value: ContentFormData[K]) => {
       setFormData((prev) => ({ ...prev, [field]: value }));
-      // Clear error for this field when user edits it
       setErrors((prev) => {
         if (!prev[field]) return prev;
         const next = { ...prev };
@@ -101,20 +81,35 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
     []
   );
 
-  const handleTabChange = useCallback(
-    (value: string) => {
-      const mode = value as InputMode;
-      setActiveTab(mode);
-      setFormData((prev) => ({ ...prev, input_mode: mode }));
-      setErrors({});
-    },
-    []
-  );
+  const handleTabChange = useCallback((mode: InputMode) => {
+    setActiveTab(mode);
+    setFormData((prev) => ({ ...prev, input_mode: mode }));
+    setErrors({});
+  }, []);
 
-  // ---------------------------------------------------------------------------
-  // Validation (on submit only)
-  // ---------------------------------------------------------------------------
+  // Current text value based on active mode
+  const currentValue =
+    activeTab === "text"
+      ? formData.caption
+      : activeTab === "tiktok_url"
+        ? formData.tiktok_url
+        : formData.video_caption;
 
+  const currentField =
+    activeTab === "text"
+      ? "caption"
+      : activeTab === "tiktok_url"
+        ? "tiktok_url"
+        : "video_caption";
+
+  const errorKey =
+    activeTab === "text"
+      ? "caption"
+      : activeTab === "tiktok_url"
+        ? "tiktok_url"
+        : "video_file";
+
+  // Validation
   const validate = useCallback((): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -122,13 +117,13 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
       if (!formData.caption.trim()) {
         newErrors.caption = "Caption is required";
       } else if (formData.caption.trim().length < 10) {
-        newErrors.caption = "Caption must be at least 10 characters";
+        newErrors.caption = "Must be at least 10 characters";
       }
     } else if (activeTab === "tiktok_url") {
       if (!formData.tiktok_url.trim()) {
         newErrors.tiktok_url = "URL is required";
-      } else if (!TIKTOK_URL_PATTERN.test(formData.tiktok_url.trim())) {
-        newErrors.tiktok_url = "Enter a valid TikTok URL";
+      } else if (!SOCIAL_URL_PATTERN.test(formData.tiktok_url.trim())) {
+        newErrors.tiktok_url = "Enter a valid TikTok or Instagram URL";
       }
     } else if (activeTab === "video_upload") {
       if (!formData.video_file) {
@@ -140,34 +135,22 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
     return Object.keys(newErrors).length === 0;
   }, [activeTab, formData]);
 
-  // ---------------------------------------------------------------------------
-  // Submit
-  // ---------------------------------------------------------------------------
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
     onSubmit(formData);
   };
 
-  // ---------------------------------------------------------------------------
-  // Disable logic
-  // ---------------------------------------------------------------------------
-
   const isSubmitDisabled =
     (activeTab === "text" && !formData.caption.trim()) ||
     (activeTab === "tiktok_url" && !formData.tiktok_url.trim()) ||
     (activeTab === "video_upload" && !formData.video_file);
 
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
-
   return (
     <form
       onSubmit={handleSubmit}
       className={cn(
-        "flex flex-col gap-4 rounded-xl border border-white/[0.06] p-5",
+        "flex flex-col rounded-lg border border-white/[0.06] overflow-hidden",
         className
       )}
       style={{
@@ -179,169 +162,78 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
           "rgba(255,255,255,0.15) 0px 1px 1px 0px inset, 0 8px 32px rgba(0,0,0,0.3)",
       }}
     >
-      <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList>
-          <TabsTrigger value="text" className="gap-1.5">
-            <Type className="h-3.5 w-3.5" />
-            Text
-          </TabsTrigger>
-          <TabsTrigger value="tiktok_url" className="gap-1.5">
-            <Link className="h-3.5 w-3.5" />
-            TikTok URL
-          </TabsTrigger>
-          <TabsTrigger value="video_upload" className="gap-1.5">
-            <Video className="h-3.5 w-3.5" />
-            Video
-          </TabsTrigger>
-        </TabsList>
+      {/* Video upload zone (only when video mode active) */}
+      {activeTab === "video_upload" && (
+        <div className="px-4 pt-4">
+          <VideoUpload
+            file={formData.video_file}
+            onFileSelect={(file) => updateField("video_file", file)}
+          />
+          {errors.video_file && (
+            <p className="text-sm text-error mt-1">{errors.video_file}</p>
+          )}
+        </div>
+      )}
 
-        {/* --- Text Tab --- */}
-        <TabsContent value="text">
-          <div className="flex flex-col gap-4">
-            {/* Caption */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                Caption / Script
-              </label>
-              <Textarea
-                value={formData.caption}
-                onChange={(e) => updateField("caption", e.target.value)}
-                placeholder="Paste your caption or script..."
-                autoResize
-                minRows={3}
-                maxRows={8}
-              />
-              {errors.caption && (
-                <p className="text-sm text-error mt-1">{errors.caption}</p>
+      {/* Text input area */}
+      <textarea
+        value={currentValue}
+        onChange={(e) => updateField(currentField, e.target.value)}
+        placeholder={PLACEHOLDERS[activeTab]}
+        rows={3}
+        className={cn(
+          "w-full resize-none bg-transparent px-5 pt-5 pb-2",
+          "text-sm text-foreground placeholder:text-foreground-muted/50",
+          "focus:outline-none",
+        )}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+            handleSubmit(e);
+          }
+        }}
+      />
+
+      {/* Error message */}
+      {errors[errorKey] && (
+        <p className="px-5 text-xs text-error">{errors[errorKey]}</p>
+      )}
+
+      {/* Bottom bar: mode switcher + submit */}
+      <div className="flex items-center justify-between px-3 pb-3 pt-1">
+        {/* Mode switcher pills */}
+        <div className="flex items-center gap-0.5">
+          {MODE_CONFIG.map(({ value, icon: ModeIcon, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => handleTabChange(value)}
+              className={cn(
+                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                activeTab === value
+                  ? "bg-white/[0.08] text-foreground"
+                  : "text-foreground-muted hover:text-foreground hover:bg-white/[0.03]"
               )}
-            </div>
+            >
+              <ModeIcon className="h-3.5 w-3.5" />
+              {label}
+            </button>
+          ))}
+        </div>
 
-            {/* Niche */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                Niche
-              </label>
-              <Select
-                options={NICHE_OPTIONS}
-                value={formData.niche}
-                onChange={(value) => updateField("niche", value)}
-                placeholder="Select niche (optional)"
-                size="md"
-              />
-            </div>
-
-            {/* Hashtags */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                Hashtags
-              </label>
-              <Input
-                value={formData.hashtags}
-                onChange={(e) => updateField("hashtags", e.target.value)}
-                placeholder="#viral #fyp #trending"
-              />
-            </div>
-
-            {/* Notes */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                Notes
-              </label>
-              <Input
-                value={formData.notes}
-                onChange={(e) => updateField("notes", e.target.value)}
-                placeholder="Optional context or notes"
-              />
-            </div>
-          </div>
-        </TabsContent>
-
-        {/* --- TikTok URL Tab --- */}
-        <TabsContent value="tiktok_url">
-          <div className="flex flex-col gap-4">
-            <TikTokUrlInput
-              url={formData.tiktok_url}
-              onUrlChange={(url) => updateField("tiktok_url", url)}
-              preview={null}
-              onFetchPreview={(url) => {
-                // Preview fetching is a Phase 8+ concern
-                console.log("Fetch preview for:", url);
-              }}
-            />
-            {errors.tiktok_url && (
-              <p className="text-sm text-error mt-1">{errors.tiktok_url}</p>
-            )}
-          </div>
-        </TabsContent>
-
-        {/* --- Video Upload Tab --- */}
-        <TabsContent value="video_upload">
-          <div className="flex flex-col gap-4">
-            {/* Upload zone */}
-            <div>
-              <VideoUpload
-                file={formData.video_file}
-                onFileSelect={(file) => updateField("video_file", file)}
-              />
-              {errors.video_file && (
-                <p className="text-sm text-error mt-1">{errors.video_file}</p>
-              )}
-            </div>
-
-            {/* Caption */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                Caption / Script
-              </label>
-              <Textarea
-                value={formData.video_caption}
-                onChange={(e) => updateField("video_caption", e.target.value)}
-                placeholder="Paste your caption or script..."
-                autoResize
-                minRows={3}
-                maxRows={8}
-              />
-            </div>
-
-            {/* Niche */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                Niche
-              </label>
-              <Select
-                options={NICHE_OPTIONS}
-                value={formData.video_niche}
-                onChange={(value) => updateField("video_niche", value)}
-                placeholder="Select niche (optional)"
-                size="md"
-              />
-            </div>
-
-            {/* Hashtags */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                Hashtags
-              </label>
-              <Input
-                value={formData.video_hashtags}
-                onChange={(e) => updateField("video_hashtags", e.target.value)}
-                placeholder="#viral #fyp #trending"
-              />
-            </div>
-          </div>
-        </TabsContent>
-      </Tabs>
-
-      {/* Submit button */}
-      <div className="flex justify-end">
-        <Button
+        {/* Submit arrow */}
+        <button
           type="submit"
-          variant="primary"
           disabled={isSubmitDisabled}
-          className="w-full sm:w-auto"
+          className={cn(
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors",
+            isSubmitDisabled
+              ? "bg-white/5 text-foreground-muted cursor-not-allowed"
+              : "bg-accent text-accent-foreground hover:bg-accent/90 cursor-pointer"
+          )}
+          aria-label="Submit test"
         >
-          Test
-        </Button>
+          <ArrowUp className="h-4.5 w-4.5" />
+        </button>
       </div>
     </form>
   );

@@ -174,7 +174,7 @@ export function GlassTooltip({
         className={cn(
           "fixed z-50 px-3 py-2",
           "rounded-[var(--rounding-sm)]",
-          "border border-white/10",
+          "border border-white/[0.06]",
           "shadow-md",
           "text-[13px] text-[var(--color-fg)]",
           "animate-fade-in",
@@ -195,7 +195,7 @@ export function GlassTooltip({
         <div
           className={cn(
             "absolute w-2 h-2",
-            "border-r border-b border-white/10",
+            "border-r border-b border-white/[0.06]",
             arrowStyles[position]
           )}
           style={{

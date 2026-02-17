@@ -5,17 +5,12 @@ import { MagnifyingGlass } from "@phosphor-icons/react";
 import { GlassPill } from "@/components/primitives/GlassPill";
 import { Input } from "@/components/ui/input";
 import { CATEGORY_COLORS } from "@/lib/deal-utils";
-import type { BrandDealCategory } from "@/types/brand-deals";
+import type { BrandDealCategory, PlatformType } from "@/types/brand-deals";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-/**
- * All BrandDealCategory values as a runtime array.
- * TypeScript unions aren't iterable, so we keep an explicit list
- * that mirrors the BrandDealCategory type definition.
- */
 const FILTER_CATEGORIES: BrandDealCategory[] = [
   "tech",
   "fashion",
@@ -27,7 +22,22 @@ const FILTER_CATEGORIES: BrandDealCategory[] = [
   "finance",
 ];
 
-/** Capitalize first letter for pill display labels */
+export type ProgramTypeFilter = "all" | "ecommerce" | "marketplace" | "network" | "virtuna";
+
+const PROGRAM_TYPE_LABELS: Record<ProgramTypeFilter, string> = {
+  all: "All",
+  ecommerce: "E-Commerce",
+  marketplace: "Marketplaces",
+  network: "Networks",
+  virtuna: "Virtuna Deals",
+};
+
+const PLATFORM_LABELS: Record<"all" | PlatformType, string> = {
+  all: "All Platforms",
+  tiktok: "TikTok",
+  instagram: "Instagram",
+};
+
 function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
@@ -37,37 +47,25 @@ function capitalize(str: string): string {
 // ---------------------------------------------------------------------------
 
 interface DealFilterBarProps {
-  /** Currently selected category filter, or "all" for no filter */
   activeCategory: BrandDealCategory | "all";
-  /** Callback when a category pill is clicked */
   onCategoryChange: (category: BrandDealCategory | "all") => void;
-  /** Current search input value (controlled) */
   searchQuery: string;
-  /** Callback when search input changes */
   onSearchChange: (query: string) => void;
+  activeProgramType: ProgramTypeFilter;
+  onProgramTypeChange: (type: ProgramTypeFilter) => void;
+  activePlatform: PlatformType | "all";
+  onPlatformChange: (platform: PlatformType | "all") => void;
 }
 
-/**
- * DealFilterBar -- search input + category filter pills.
- *
- * The search input is a controlled component; the parent (DealsTab)
- * is responsible for debouncing the actual filtering logic.
- *
- * @example
- * ```tsx
- * <DealFilterBar
- *   activeCategory={category}
- *   onCategoryChange={setCategory}
- *   searchQuery={search}
- *   onSearchChange={setSearch}
- * />
- * ```
- */
 export function DealFilterBar({
   activeCategory,
   onCategoryChange,
   searchQuery,
   onSearchChange,
+  activeProgramType,
+  onProgramTypeChange,
+  activePlatform,
+  onPlatformChange,
 }: DealFilterBarProps) {
   return (
     <div className="flex flex-col gap-4">
@@ -88,9 +86,42 @@ export function DealFilterBar({
         />
       </div>
 
+      {/* Program type filter row */}
+      <div className="flex flex-wrap gap-2">
+        {(Object.entries(PROGRAM_TYPE_LABELS) as [ProgramTypeFilter, string][]).map(
+          ([key, label]) => (
+            <GlassPill
+              key={key}
+              color={key === "virtuna" ? "orange" : "neutral"}
+              size="sm"
+              active={activeProgramType === key}
+              onClick={() => onProgramTypeChange(key)}
+            >
+              {label}
+            </GlassPill>
+          )
+        )}
+      </div>
+
+      {/* Platform filter row */}
+      <div className="flex flex-wrap gap-2">
+        {(Object.entries(PLATFORM_LABELS) as [("all" | PlatformType), string][]).map(
+          ([key, label]) => (
+            <GlassPill
+              key={key}
+              color="neutral"
+              size="sm"
+              active={activePlatform === key}
+              onClick={() => onPlatformChange(key)}
+            >
+              {label}
+            </GlassPill>
+          )
+        )}
+      </div>
+
       {/* Category filter pills */}
       <div className="flex flex-wrap gap-2">
-        {/* "All" pill -- always first */}
         <GlassPill
           color="neutral"
           size="sm"
@@ -100,7 +131,6 @@ export function DealFilterBar({
           All
         </GlassPill>
 
-        {/* One pill per category */}
         {FILTER_CATEGORIES.map((category) => (
           <GlassPill
             key={category}

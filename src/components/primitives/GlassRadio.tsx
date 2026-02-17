@@ -252,7 +252,7 @@ export function GlassRadioItem({
         // Border color
         isChecked
           ? "border-[var(--color-accent)]"
-          : "border-white/10",
+          : "border-white/[0.06]",
         // Hover state
         !disabled && !isChecked && "hover:border-white/[0.1]",
         !disabled && isChecked && "hover:border-[var(--color-accent)]",

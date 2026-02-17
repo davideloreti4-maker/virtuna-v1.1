@@ -4,8 +4,11 @@ import { useState, useMemo, useCallback } from "react";
 
 import { useDebouncedCallback } from "@/hooks/use-debounce";
 import { useDeals } from "@/hooks/queries";
+import { useCJProducts } from "@/hooks/queries/use-cj-products";
 import { mapDealRowToUI } from "@/lib/mappers";
-import type { BrandDeal, BrandDealCategory } from "@/types/brand-deals";
+import { getExternalDeals, affiliateProgramToDeal } from "@/lib/affiliate-programs";
+import type { BrandDeal, BrandDealCategory, PlatformType } from "@/types/brand-deals";
+import type { ProgramTypeFilter } from "./deal-filter-bar";
 
 import { DealApplyModal } from "./deal-apply-modal";
 import { DealCard } from "./deal-card";
@@ -19,7 +22,6 @@ import { NewThisWeekRow } from "./new-this-week-row";
 // ---------------------------------------------------------------------------
 
 interface DealsTabProps {
-  /** Set of deal IDs the user has applied to (derived from useDealEnrollments in parent) */
   appliedDeals: Set<string>;
 }
 
@@ -27,37 +29,48 @@ interface DealsTabProps {
 // DealsTab
 // ---------------------------------------------------------------------------
 
-/**
- * DealsTab -- Container component for the Deals tab.
- *
- * Manages filter/search/apply state internally. Applied deals state is
- * lifted to BrandDealsPage so it survives tab switches.
- *
- * Layout (top to bottom):
- * 1. NewThisWeekRow - horizontal scroll of featured deals
- * 2. DealFilterBar - search input + category pills
- * 3. Deal grid (3 cols lg, 2 sm, 1 mobile) or empty state
- * 4. DealApplyModal (portal, rendered at bottom)
- *
- * @example
- * ```tsx
- * <DealsTab appliedDeals={appliedDeals} />
- * ```
- */
 export function DealsTab({
   appliedDeals,
 }: DealsTabProps): React.JSX.Element {
   const { data, isLoading } = useDeals({ status: "active" });
   const [activeCategory, setActiveCategory] = useState<BrandDealCategory | "all">("all");
+  const [activeProgramType, setActiveProgramType] = useState<ProgramTypeFilter>("all");
+  const [activePlatform, setActivePlatform] = useState<PlatformType | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [applyingDeal, setApplyingDeal] = useState<BrandDeal | null>(null);
 
-  // Flatten paginated pages and map DB rows to UI types
-  const allDeals = useMemo(
+  // CJ live search: enabled when query is non-empty and type filter includes networks
+  const cjEnabled =
+    debouncedSearch.trim().length > 0 &&
+    (activeProgramType === "all" || activeProgramType === "network");
+  const { data: cjData } = useCJProducts(debouncedSearch, { enabled: cjEnabled });
+
+  // Flatten paginated Supabase deals
+  const supabaseDeals = useMemo(
     () => data?.pages.flatMap((page) => page.data.map(mapDealRowToUI)) ?? [],
     [data]
   );
+
+  // Static external programs
+  const externalDeals = useMemo(() => getExternalDeals(), []);
+
+  // CJ live results converted to BrandDeal
+  const cjDeals = useMemo(() => {
+    if (!cjData?.data?.length) return [];
+    return cjData.data.map(affiliateProgramToDeal);
+  }, [cjData]);
+
+  // Merge all three sources
+  const allDeals = useMemo(() => {
+    // Deduplicate CJ results by id (they might overlap with static programs)
+    const existingIds = new Set([
+      ...supabaseDeals.map((d) => d.id),
+      ...externalDeals.map((d) => d.id),
+    ]);
+    const uniqueCJ = cjDeals.filter((d) => !existingIds.has(d.id));
+    return [...supabaseDeals, ...externalDeals, ...uniqueCJ];
+  }, [supabaseDeals, externalDeals, cjDeals]);
 
   // Debounce search filtering at 300ms
   const debouncedSetSearch = useDebouncedCallback(
@@ -66,33 +79,64 @@ export function DealsTab({
   );
 
   function handleSearchChange(query: string): void {
-    setSearchQuery(query); // Immediate UI update
-    debouncedSetSearch(query); // Debounced filter update
+    setSearchQuery(query);
+    debouncedSetSearch(query);
   }
 
-  // Filtered deals based on category + debounced search
+  // Filtered deals based on all active filters
   const filteredDeals = useMemo(() => {
-    return allDeals.filter((deal) => {
-      const matchesCategory =
-        activeCategory === "all" || deal.category === activeCategory;
-      const matchesSearch = deal.brandName
-        .toLowerCase()
-        .includes(debouncedSearch.toLowerCase());
-      return matchesCategory && matchesSearch;
-    });
-  }, [allDeals, activeCategory, debouncedSearch]);
+    return allDeals
+      .filter((deal) => {
+        // Category filter
+        if (activeCategory !== "all" && deal.category !== activeCategory) return false;
+
+        // Program type filter
+        if (activeProgramType !== "all") {
+          if (activeProgramType === "virtuna") {
+            if (deal.source === "external") return false;
+          } else {
+            if (deal.source !== "external") return false;
+            if (deal.programType !== activeProgramType) return false;
+          }
+        }
+
+        // Platform filter
+        if (activePlatform !== "all") {
+          if (deal.platforms && !deal.platforms.includes(activePlatform)) return false;
+        }
+
+        // Search filter
+        if (debouncedSearch) {
+          const matchesSearch = deal.brandName
+            .toLowerCase()
+            .includes(debouncedSearch.toLowerCase());
+          if (!matchesSearch) return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        // Featured first
+        if (a.isFeatured && !b.isFeatured) return -1;
+        if (!a.isFeatured && b.isFeatured) return 1;
+        // Virtuna deals before external
+        if (a.source !== "external" && b.source === "external") return -1;
+        if (a.source === "external" && b.source !== "external") return 1;
+        return 0;
+      });
+  }, [allDeals, activeCategory, activeProgramType, activePlatform, debouncedSearch]);
 
   // New deals for the featured row
   const newDeals = useMemo(() => allDeals.filter((d) => d.isNew), [allDeals]);
 
-  // Reset all filters
   function handleClearFilters(): void {
     setActiveCategory("all");
+    setActiveProgramType("all");
+    setActivePlatform("all");
     setSearchQuery("");
     setDebouncedSearch("");
   }
 
-  // Apply flow
   function handleApplyClick(deal: BrandDeal): void {
     setApplyingDeal(deal);
   }
@@ -108,12 +152,16 @@ export function DealsTab({
         onApply={handleApplyClick}
       />
 
-      {/* Filter bar: search + category pills */}
+      {/* Filter bar: search + type + platform + category pills */}
       <DealFilterBar
         activeCategory={activeCategory}
         onCategoryChange={setActiveCategory}
         searchQuery={searchQuery}
         onSearchChange={handleSearchChange}
+        activeProgramType={activeProgramType}
+        onProgramTypeChange={setActiveProgramType}
+        activePlatform={activePlatform}
+        onPlatformChange={setActivePlatform}
       />
 
       {/* Deal grid or empty state */}

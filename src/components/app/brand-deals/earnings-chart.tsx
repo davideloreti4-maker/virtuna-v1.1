@@ -31,7 +31,7 @@ function EarningsTooltip({
 
   return (
     <div
-      className="rounded-lg border border-white/[0.08] px-3 py-2"
+      className="rounded-lg border border-white/[0.06] px-3 py-2"
       style={{
         background: "#222326",
         boxShadow:

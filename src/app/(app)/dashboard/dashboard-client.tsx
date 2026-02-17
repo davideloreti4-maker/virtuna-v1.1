@@ -136,24 +136,25 @@ export function DashboardClient() {
   return (
     <div className="relative flex h-full flex-col bg-background">
       {/* Top bar with context and filters */}
-      <div className="flex items-center justify-between px-6 py-4">
+      <div className="relative z-10 flex items-center justify-between px-6 py-4">
         <ContextBar location="Switzerland" />
         <div className="flex items-center gap-3">
           <FilterPillGroup />
         </div>
       </div>
 
-      {/* Hive network visualization background */}
-      <div className="absolute inset-0 top-14">
+      {/* Hive network visualization background — bleeds behind sidebar + top bar for glass effect */}
+      <div className="absolute inset-0 md:-ml-[var(--sidebar-offset,0px)] md:w-[calc(100%+var(--sidebar-offset,0px))]">
         <HiveCanvas data={hiveData} className="h-full w-full" />
       </div>
 
       {/* Floating content area at bottom center - above network */}
-      {(currentStatus === "filling-form" ||
+      {(currentStatus === "idle" ||
+        currentStatus === "filling-form" ||
         currentStatus === "simulating" ||
         currentStatus === "viewing-results") && (
         <div className="absolute bottom-6 left-1/2 z-20 w-full max-w-2xl -translate-x-1/2 px-6">
-          {currentStatus === "filling-form" ? (
+          {(currentStatus === "idle" || currentStatus === "filling-form") ? (
             <ContentForm
               onSubmit={handleContentSubmit}
             />

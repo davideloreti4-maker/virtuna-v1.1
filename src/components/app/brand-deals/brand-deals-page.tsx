@@ -1,10 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
-import * as Tabs from "@radix-ui/react-tabs";
-import { AnimatePresence, motion } from "motion/react";
 import { useSearchParams } from "next/navigation";
 
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useDealEnrollments } from "@/hooks/queries";
 
 import { AffiliatesTab } from "./affiliates-tab";
@@ -42,48 +41,24 @@ export function BrandDealsPage({ defaultTab }: BrandDealsPageProps) {
   }
 
   return (
-    <div className="mx-auto max-w-5xl p-4 sm:p-6">
-      <BrandDealsHeader activeTab={currentTab} />
+    <div className="space-y-6 p-4 sm:p-6">
+      <BrandDealsHeader />
 
-      <Tabs.Root value={currentTab} onValueChange={handleTabChange}>
-        <BrandDealsTabs activeTab={currentTab} />
+      <Tabs value={currentTab} onValueChange={handleTabChange}>
+        <BrandDealsTabs />
 
-        <div className="mt-6">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentTab}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-            >
-              <Tabs.Content
-                value="earnings"
-                forceMount={currentTab === "earnings" ? true : undefined}
-                className="outline-none"
-              >
-                <EarningsTab />
-              </Tabs.Content>
+        <TabsContent value="earnings">
+          <EarningsTab />
+        </TabsContent>
 
-              <Tabs.Content
-                value="deals"
-                forceMount={currentTab === "deals" ? true : undefined}
-                className="outline-none"
-              >
-                <DealsTab appliedDeals={appliedDeals} />
-              </Tabs.Content>
+        <TabsContent value="deals">
+          <DealsTab appliedDeals={appliedDeals} />
+        </TabsContent>
 
-              <Tabs.Content
-                value="affiliates"
-                forceMount={currentTab === "affiliates" ? true : undefined}
-                className="outline-none"
-              >
-                <AffiliatesTab />
-              </Tabs.Content>
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </Tabs.Root>
+        <TabsContent value="affiliates">
+          <AffiliatesTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

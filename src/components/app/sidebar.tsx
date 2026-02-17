@@ -5,7 +5,6 @@ import {
   House,
   TrendUp,
   UsersThree,
-  Lightbulb,
   Briefcase,
   Plus,
   SlidersHorizontal,
@@ -33,12 +32,7 @@ const navItems = [
   { label: "Dashboard", icon: House, id: "dashboard", href: "/dashboard" },
   { label: "Trending", icon: TrendUp, id: "trending", href: "/trending" },
   { label: "Competitors", icon: UsersThree, id: "competitors", href: "/competitors" },
-] as const;
-
-const navItemsAfterSelector = [
-  { label: "Content Intelligence", icon: Lightbulb, id: "content-intelligence", href: "/dashboard" },
-  { label: "Trending Feed", icon: TrendUp, id: "trending-feed", href: "/trending" },
-  { label: "Brand Deals", icon: Briefcase, id: "brand-deals", href: "/brand-deals" },
+  { label: "Partnerships", icon: Briefcase, id: "brand-deals", href: "/brand-deals" },
 ] as const;
 
 const bottomNavItems = [
@@ -171,10 +165,11 @@ export function Sidebar() {
                   ? pathname === "/dashboard"
                   : item.id === "competitors"
                     ? pathname.startsWith("/competitors")
-                    : pathname === item.href
+                    : item.id === "brand-deals"
+                      ? pathname.startsWith("/brand-deals")
+                      : pathname === item.href
               }
               onClick={() => router.push(item.href)}
-              badge={item.id === "brand-deals" ? 3 : undefined}
             />
           ))}
         </nav>

@@ -50,15 +50,6 @@ function getBarColor(score: number, maxScore: number): string {
   return "bg-red-400";
 }
 
-function getGlowColor(score: number, maxScore: number): string {
-  const percentage = (score / maxScore) * 100;
-  if (percentage >= 80) return "rgba(52, 211, 153, 0.15)";
-  if (percentage >= 60) return "rgba(163, 230, 53, 0.15)";
-  if (percentage >= 40) return "rgba(250, 204, 21, 0.15)";
-  if (percentage >= 20) return "rgba(251, 146, 60, 0.15)";
-  return "rgba(248, 113, 113, 0.15)";
-}
-
 // Animation variants
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -77,7 +68,6 @@ export function FactorCard({
 
   const scoreColor = getScoreColor(score, maxScore);
   const barColor = getBarColor(score, maxScore);
-  const glowColor = getGlowColor(score, maxScore);
   const percentage = (score / maxScore) * 100;
 
   const handleCheckboxClick = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -95,18 +85,16 @@ export function FactorCard({
       <AccordionItem
         value={id}
         className={cn(
-          // Glass effect with depth
-          "group border border-white/10 rounded-2xl overflow-hidden",
-          "bg-black/30 backdrop-blur-xl",
+          // Raycast card styling
+          "group border border-white/[0.06] rounded-lg overflow-hidden",
+          "bg-transparent",
           // Hover enhancement
           "transition-all duration-300",
-          "hover:border-white/20 hover:bg-black/40",
+          "hover:bg-white/[0.02]",
           className
         )}
         style={{
-          boxShadow: selected
-            ? `0 0 20px ${glowColor}, inset 0 1px 0 rgba(255,255,255,0.05)`
-            : "inset 0 1px 0 rgba(255,255,255,0.05)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
         }}
       >
         <AccordionTrigger className="p-5 hover:no-underline w-full">
@@ -121,7 +109,7 @@ export function FactorCard({
                   "flex items-center justify-center",
                   selected
                     ? "bg-violet-500 border-violet-500"
-                    : "border-white/20 hover:border-white/40 hover:bg-white/5"
+                    : "border-white/[0.06] hover:border-white/[0.1] hover:bg-white/5"
                 )}
               >
                 {selected && <Check className="w-4 h-4 text-white" />}
@@ -146,7 +134,7 @@ export function FactorCard({
               </div>
 
               {/* Animated progress bar */}
-              <div className="w-full bg-white/10 rounded-full h-2.5 overflow-hidden mb-3">
+              <div className="w-full bg-white/[0.06] rounded-full h-2.5 overflow-hidden mb-3">
                 <motion.div
                   className={cn("h-full rounded-full", barColor)}
                   initial={{ width: 0 }}
@@ -169,7 +157,7 @@ export function FactorCard({
         <AccordionContent className="px-5 pb-5 pt-0">
           <div
             className={cn(
-              "pt-4 border-t border-white/10",
+              "pt-4 border-t border-white/[0.06]",
               selectable && "ml-10" // Indent when checkbox present
             )}
           >

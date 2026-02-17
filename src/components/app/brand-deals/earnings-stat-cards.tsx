@@ -11,6 +11,7 @@ import {
   ArrowDown,
 } from "@phosphor-icons/react";
 
+import { Card } from "@/components/ui/card";
 import { useCountUp } from "@/hooks/useCountUp";
 import { formatCurrency, formatNumber } from "@/lib/affiliate-utils";
 
@@ -54,7 +55,7 @@ function StatCard({
   const isPositive = change >= 0;
 
   return (
-    <div className="rounded-xl border border-border bg-surface-elevated p-5">
+    <Card className="p-5">
       {/* Icon + label */}
       <div className="mb-3 flex items-center gap-2 text-foreground-muted">
         {icon}
@@ -64,14 +65,14 @@ function StatCard({
       </div>
 
       {/* Animated value -- MUST use motion.span for MotionValue rendering */}
-      <motion.span className="block text-2xl font-bold text-foreground">
+      <motion.span className="block text-2xl font-semibold text-foreground">
         {display}
       </motion.span>
 
       {/* Percentage change indicator */}
       <div
         className={`mt-1 flex items-center gap-0.5 text-xs font-medium ${
-          isPositive ? "text-green-400" : "text-red-400"
+          isPositive ? "text-success" : "text-error"
         }`}
       >
         {isPositive ? (
@@ -84,7 +85,7 @@ function StatCard({
           {change}%
         </span>
       </div>
-    </div>
+    </Card>
   );
 }
 

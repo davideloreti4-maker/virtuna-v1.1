@@ -114,12 +114,12 @@ export function GlassPill({
       className={cn(
         // Base styles
         "inline-flex items-center justify-center rounded-full font-medium",
-        "backdrop-blur-sm transition-all duration-200",
+        "transition-all duration-200",
         sizeMap[size],
-        // Text color
-        colorConfig.text,
+        // Text color — dim when inactive
+        active ? colorConfig.text : "text-white/40",
         // Interactive states
-        isInteractive && "cursor-pointer hover:scale-105 active:scale-95",
+        isInteractive && "cursor-pointer",
         isInteractive && "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
         // Active state
         active && "ring-1",
@@ -128,11 +128,16 @@ export function GlassPill({
         className
       )}
       style={{
-        backgroundColor: active
-          ? colorConfig.bg.replace("0.15", "0.3")
-          : colorConfig.bg,
+        background: active
+          ? "linear-gradient(137deg, rgba(17,18,20,0.75) 4.87%, rgba(12,13,15,0.9) 75.88%)"
+          : "linear-gradient(137deg, rgba(17,18,20,0.45) 4.87%, rgba(12,13,15,0.55) 75.88%)",
+        backdropFilter: "blur(5px)",
+        WebkitBackdropFilter: "blur(5px)",
+        boxShadow: active
+          ? "rgba(255,255,255,0.15) 0px 1px 1px 0px inset"
+          : "none",
         borderWidth: variant === "outline" ? 1 : 0,
-        borderColor: colorConfig.border,
+        borderColor: active ? colorConfig.border : "rgba(255,255,255,0.06)",
         // Active ring color
         ...(active && { "--tw-ring-color": colorConfig.border } as CSSProperties),
         ...style,

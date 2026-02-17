@@ -2,48 +2,27 @@ import { MagnifyingGlass } from "@phosphor-icons/react";
 
 import { Button } from "@/components/ui/button";
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
 interface DealsEmptyStateProps {
-  /** Callback to reset all active filters */
   onClearFilters: () => void;
 }
 
-/**
- * DealsEmptyState -- shown when no deals match the current filters/search.
- *
- * Displays an illustration, message, and a "Clear filters" CTA that
- * resets both the category filter and search query.
- *
- * @example
- * ```tsx
- * <DealsEmptyState onClearFilters={() => {
- *   setCategory("all");
- *   setSearch("");
- * }} />
- * ```
- */
 export function DealsEmptyState({ onClearFilters }: DealsEmptyStateProps) {
   return (
-    <div className="flex min-h-[300px] flex-col items-center justify-center gap-4 rounded-xl border border-border-subtle p-8">
-      <MagnifyingGlass
-        className="text-foreground-muted"
-        size={40}
-        weight="thin"
-        aria-hidden="true"
-      />
-
-      <div className="text-center">
-        <h3 className="text-lg font-medium text-foreground">
-          No deals found
-        </h3>
-        <p className="mt-1 text-sm text-foreground-muted">
-          Try adjusting your filters or search query
-        </p>
+    <div className="flex flex-col items-center justify-center py-20 px-4">
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.04] mb-4">
+        <MagnifyingGlass
+          size={32}
+          weight="thin"
+          className="text-foreground-muted"
+          aria-hidden="true"
+        />
       </div>
-
+      <h2 className="text-lg font-medium text-foreground mb-1">
+        No deals found
+      </h2>
+      <p className="text-sm text-foreground-muted mb-6 text-center max-w-sm">
+        Try adjusting your filters or search query
+      </p>
       <Button variant="secondary" size="sm" onClick={onClearFilters}>
         Clear filters
       </Button>

@@ -149,7 +149,7 @@ export function BillingSection() {
           {(["free", "starter", "pro"] as const).map((t) => (
             <div
               key={t}
-              className={`rounded-lg border p-4 ${t === tier ? "border-white/20 bg-white/[0.02]" : "border-zinc-800"}`}
+              className={`rounded-lg border p-4 ${t === tier ? "border-accent bg-white/[0.02]" : "border-zinc-800"}`}
             >
               <div className="flex items-center justify-between mb-2">
                 <span className={`text-sm font-medium ${PLAN_COLORS[t].split(" ")[0]}`}>

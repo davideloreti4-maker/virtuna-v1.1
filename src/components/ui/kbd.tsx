@@ -29,7 +29,7 @@ const kbdVariants = cva(
   [
     "inline-flex items-center justify-center",
     "rounded-md font-medium font-mono",
-    "border border-white/10",
+    "border border-white/[0.06]",
     "text-foreground-secondary",
     "select-none",
   ],

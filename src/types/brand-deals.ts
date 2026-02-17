@@ -10,6 +10,10 @@ export type BrandDealCategory =
   | "travel"
   | "finance";
 
+export type ProgramType = "ecommerce" | "marketplace" | "network";
+export type PlatformType = "tiktok" | "instagram";
+export type BarrierType = "open" | "approval" | "invite";
+
 export interface BrandDeal {
   id: string;
   brandName: string;
@@ -25,6 +29,44 @@ export interface BrandDeal {
   requirements?: string; // optional eligibility requirements
   isNew?: boolean; // for "New This Week" section
   applicantCount?: number; // social proof
+  // External affiliate program fields (all optional, backward-compat)
+  source?: "virtuna" | "external";
+  programType?: ProgramType;
+  signUpUrl?: string;
+  platforms?: PlatformType[];
+  barrier?: BarrierType;
+  isFeatured?: boolean;
+  commissionRange?: string; // "5-20%" display string for external
+}
+
+export interface AffiliateProgram {
+  id: string;
+  name: string;
+  logo: string;
+  description: string;
+  commissionRange: string;
+  type: ProgramType;
+  platforms: PlatformType[];
+  signUpUrl: string;
+  category: BrandDealCategory;
+  barrier: BarrierType;
+  isNew?: boolean;
+  isFeatured?: boolean;
+  hasLiveSearch?: boolean;
+}
+
+export interface CJProduct {
+  adId: string;
+  advertiserName: string;
+  advertiserLogo?: string;
+  productName: string;
+  description: string;
+  price: number;
+  currency: string;
+  imageUrl?: string;
+  buyUrl: string;
+  category: string;
+  commission?: number;
 }
 
 export interface AffiliateLink {

@@ -275,7 +275,7 @@ export function GlassTabTrigger({
         // Active state - Raycast: border 1px solid rgba(255,255,255,0.1)
         isActive && [
           "text-[var(--color-fg)]",
-          "border border-white/10",
+          "border border-white/[0.06]",
           "shadow-sm",
         ],
         // Inactive state - Raycast: grey-200 text

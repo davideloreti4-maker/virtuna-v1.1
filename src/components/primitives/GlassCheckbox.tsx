@@ -210,7 +210,6 @@ export const GlassCheckbox = forwardRef<HTMLInputElement, GlassCheckboxProps>(
 
             // Interactive states
             !disabled && "cursor-pointer",
-            !disabled && "hover:scale-105",
 
             // Focus state (Raycast-style)
             "focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-transparent)] focus:ring-offset-2 focus:ring-offset-[var(--color-background)]",

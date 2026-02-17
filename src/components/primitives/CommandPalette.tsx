@@ -285,7 +285,7 @@ export function CommandPalette({
           "relative w-full max-w-[640px] mx-4",
           // Raycast-style glass panel
           "rounded-[var(--rounding-lg)]",
-          "border border-white/10",
+          "border border-white/[0.06]",
           "shadow-[var(--shadow-elevated)]",
           "overflow-hidden",
           // Animation
@@ -327,7 +327,7 @@ export function CommandPalette({
             className={cn(
               "flex-shrink-0 px-1.5 py-0.5 rounded-[var(--rounding-xs)]",
               "text-[11px] font-medium text-[var(--color-grey-200)]",
-              "border border-white/10",
+              "border border-white/[0.06]",
               "bg-white/5"
             )}
           >
@@ -426,7 +426,7 @@ export function CommandPalette({
                           className={cn(
                             "flex-shrink-0 px-1.5 py-0.5 rounded-[var(--rounding-xs)]",
                             "text-[11px] font-medium text-[var(--color-grey-200)]",
-                            "border border-white/10",
+                            "border border-white/[0.06]",
                             "bg-white/5"
                           )}
                         >
@@ -457,13 +457,13 @@ export function CommandPalette({
         >
           <div className="flex items-center gap-3 text-[11px] text-[var(--color-fg-400)]">
             <span className="flex items-center gap-1">
-              <kbd className="px-1 rounded bg-white/5 border border-white/10">
+              <kbd className="px-1 rounded bg-white/5 border border-white/[0.06]">
                 ↑↓
               </kbd>
               Navigate
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1 rounded bg-white/5 border border-white/10">
+              <kbd className="px-1 rounded bg-white/5 border border-white/[0.06]">
                 ↵
               </kbd>
               Select

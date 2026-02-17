@@ -10,7 +10,6 @@ import { EarningsBreakdownList } from "./earnings-breakdown-list";
 import { EarningsChart } from "./earnings-chart";
 import { EarningsPeriodSelector, type Period } from "./earnings-period-selector";
 import { EarningsStatCards } from "./earnings-stat-cards";
-import { EarningsTabSkeleton } from "./earnings-tab-skeleton";
 
 // ---------------------------------------------------------------------------
 // Period Filtering

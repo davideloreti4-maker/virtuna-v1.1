@@ -94,7 +94,7 @@ export function TrafficLights({
       aria-label={label}
       className={cn(
         "rounded-full border transition-transform",
-        interactive && !disabled && "hover:scale-110 cursor-pointer",
+        interactive && !disabled && "hover:bg-white/[0.02] cursor-pointer",
         !interactive && "cursor-default",
         disabled && "opacity-50"
       )}

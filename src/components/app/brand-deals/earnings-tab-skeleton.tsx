@@ -19,7 +19,7 @@ export function EarningsTabSkeleton(): React.JSX.Element {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="rounded-xl border border-border bg-surface-elevated p-5"
+            className="rounded-[12px] border border-border p-5"
           >
             <Skeleton className="h-4 w-24" />
             <Skeleton className="mt-2 h-7 w-32" />

@@ -196,7 +196,7 @@ export function PricingSection() {
                     key={feature.name}
                     className={
                       index < features.length - 1
-                        ? "border-b border-white/[0.04]"
+                        ? "border-b border-white/[0.06]"
                         : ""
                     }
                   >

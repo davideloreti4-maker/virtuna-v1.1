@@ -202,7 +202,7 @@ export const GlassSearchBar = forwardRef<HTMLInputElement, GlassSearchBarProps>(
             className={cn(
               "flex-shrink-0 px-1.5 py-0.5 rounded-[var(--rounding-xs)]",
               "text-[11px] font-medium text-[var(--color-grey-200)]",
-              "border border-white/10",
+              "border border-white/[0.06]",
               "bg-white/5",
               "transition-opacity duration-[var(--duration-fast)]",
               "group-focus-within:opacity-0"

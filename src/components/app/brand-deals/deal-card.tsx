@@ -4,6 +4,7 @@ import type { BrandDeal } from "@/types/brand-deals";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { GlassPill } from "@/components/primitives/GlassPill";
 import {
   formatPayout,
@@ -27,82 +28,91 @@ export interface DealCardProps {
 }
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const BARRIER_CONFIG = {
+  open: { label: "Open", variant: "success" as const },
+  approval: { label: "Approval Required", variant: "warning" as const },
+  invite: { label: "Invite Only", variant: "default" as const },
+};
+
+// ---------------------------------------------------------------------------
 // DealCard Component
 // ---------------------------------------------------------------------------
 
-/**
- * DealCard -- Presentational component for a single brand deal.
- *
- * Uses solid bg-surface-elevated background (no glass/backdrop-filter).
- * Color semantics: green payout, orange creative categories, blue tech/analytics.
- * Featured (isNew) deals show a colored top border accent.
- *
- * @example
- * ```tsx
- * <DealCard deal={deal} isApplied={false} onApply={handleApply} />
- * ```
- */
 export function DealCard({ deal, isApplied, onApply }: DealCardProps): React.JSX.Element {
   const payout = formatPayout(deal);
   const categoryColor = CATEGORY_COLORS[deal.category];
-  const statusVariant = getStatusBadgeVariant(deal.status);
-  const statusLabel = getStatusLabel(deal.status);
+  const isExternal = deal.source === "external";
   const isExpired = deal.status === "expired";
 
+  function handleCTA() {
+    if (isExternal && deal.signUpUrl) {
+      window.open(deal.signUpUrl, "_blank", "noopener,noreferrer");
+    } else {
+      onApply(deal);
+    }
+  }
+
   return (
-    <div
+    <Card
       tabIndex={0}
       role="article"
       aria-label={`${deal.brandName} deal: ${payout}`}
       onKeyDown={(e) => {
         if (e.key === "Enter" && !isApplied && !isExpired) {
-          onApply(deal);
+          handleCTA();
         }
       }}
       className={cn(
-        "relative rounded-xl border border-border bg-surface-elevated p-5",
-        "transition-all duration-200",
-        "hover:border-border-hover hover:-translate-y-px hover:shadow-md",
+        "relative p-5",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        // Featured accent: colored top border for new deals
-        deal.isNew && "border-t-2 border-t-orange-400",
-        // Applied deals are muted
         isApplied && "opacity-60",
       )}
     >
       {/* Payout -- top-right absolute */}
-      <span className="absolute right-5 top-5 text-lg font-bold text-green-400">
+      <span className="absolute right-5 top-5 text-lg font-semibold text-success">
         {payout}
       </span>
 
-      {/* Brand logo + name row */}
-      <div className="mb-3 flex items-center gap-2.5 pr-28">
+      {/* Brand logo + name + source badge row */}
+      <div className="mb-3 flex items-center gap-2.5 pr-20">
         <Avatar
           src={deal.brandLogo}
           alt={`${deal.brandName} logo`}
           fallback={deal.brandName.slice(0, 2).toUpperCase()}
           size="xs"
         />
-        <span className="max-w-[60%] truncate text-sm font-medium text-foreground-secondary">
+        <span className="max-w-[50%] truncate text-sm font-medium text-foreground-secondary">
           {deal.brandName}
         </span>
+        {deal.isNew && (
+          <Badge variant="info" size="sm">New</Badge>
+        )}
       </div>
 
       {/* Description -- 3-line clamp */}
-      <p className="mb-4 line-clamp-3 text-sm text-foreground-secondary">
+      <p className="mb-4 line-clamp-2 text-sm text-foreground-secondary">
         {deal.description}
       </p>
 
-      {/* Bottom row: category + status + action */}
+      {/* Bottom row: category + barrier/status + action */}
       <div className="flex items-center justify-between gap-2">
-        {/* Left side: category pill + status badge */}
-        <div className="flex items-center gap-2">
+        {/* Left side: category pill + barrier or status badge */}
+        <div className="flex flex-wrap items-center gap-1.5">
           <GlassPill color={categoryColor} size="sm">
             {deal.category.charAt(0).toUpperCase() + deal.category.slice(1)}
           </GlassPill>
-          <Badge variant={statusVariant} size="sm">
-            {statusLabel}
-          </Badge>
+          {isExternal && deal.barrier ? (
+            <Badge variant={BARRIER_CONFIG[deal.barrier].variant} size="sm">
+              {BARRIER_CONFIG[deal.barrier].label}
+            </Badge>
+          ) : (
+            <Badge variant={getStatusBadgeVariant(deal.status)} size="sm">
+              {getStatusLabel(deal.status)}
+            </Badge>
+          )}
         </div>
 
         {/* Right side: action */}
@@ -115,13 +125,13 @@ export function DealCard({ deal, isApplied, onApply }: DealCardProps): React.JSX
             <Button
               size="sm"
               variant="primary"
-              onClick={() => onApply(deal)}
+              onClick={handleCTA}
             >
-              Apply
+              {isExternal ? "Join Program" : "Apply"}
             </Button>
           ) : null}
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

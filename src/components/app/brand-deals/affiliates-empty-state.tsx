@@ -1,39 +1,22 @@
 import { LinkSimple } from "@phosphor-icons/react";
 
-// ---------------------------------------------------------------------------
-// AffiliatesEmptyState Component
-// ---------------------------------------------------------------------------
-
-/**
- * AffiliatesEmptyState -- Displayed when no active affiliate links exist.
- *
- * Follows the DealsEmptyState pattern from Phase 54 with a centered
- * icon, heading, and guidance text directing users to generate links
- * from available products below.
- *
- * @example
- * ```tsx
- * {activeLinks.length === 0 && <AffiliatesEmptyState />}
- * ```
- */
 export function AffiliatesEmptyState(): React.JSX.Element {
   return (
-    <div className="flex min-h-[200px] flex-col items-center justify-center gap-4 rounded-xl border border-border-subtle p-8">
-      <LinkSimple
-        className="text-foreground-muted"
-        size={40}
-        weight="thin"
-        aria-hidden="true"
-      />
-
-      <div className="text-center">
-        <h3 className="text-lg font-medium text-foreground">
-          No active affiliate links
-        </h3>
-        <p className="mt-1 text-sm text-foreground-muted">
-          Generate your first link from the products below
-        </p>
+    <div className="flex flex-col items-center justify-center py-20 px-4">
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.04] mb-4">
+        <LinkSimple
+          size={32}
+          weight="thin"
+          className="text-foreground-muted"
+          aria-hidden="true"
+        />
       </div>
+      <h2 className="text-lg font-medium text-foreground mb-1">
+        No active affiliate links
+      </h2>
+      <p className="text-sm text-foreground-muted text-center max-w-sm">
+        Generate your first link from the products below
+      </p>
     </div>
   );
 }

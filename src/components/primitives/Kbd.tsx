@@ -88,7 +88,7 @@ export function Kbd({
         "text-[var(--color-fg)]",
         "select-none",
         // Border
-        "border border-white/10",
+        "border border-white/[0.06]",
         // Size
         config.wrapper,
         config.rounded,

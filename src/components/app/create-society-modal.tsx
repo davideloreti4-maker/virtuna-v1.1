@@ -143,7 +143,7 @@ export function CreateSocietyModal({ open, onOpenChange }: CreateSocietyModalPro
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent size="lg" className="overflow-hidden rounded-3xl p-8">
+        <DialogContent size="lg" className="overflow-hidden rounded-lg p-8">
           {/* Back button */}
           <Button
             type="button"

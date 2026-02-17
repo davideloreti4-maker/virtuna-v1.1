@@ -41,7 +41,13 @@ export function EarningsBreakdownList({
         Earnings Breakdown
       </h3>
 
-      <div className="overflow-hidden rounded-xl border border-border bg-surface-elevated">
+      <div
+        className="overflow-hidden rounded-[12px] border border-border"
+        style={{
+          background: "transparent",
+          boxShadow: "rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset",
+        }}
+      >
         {/* Header row */}
         <div className="grid grid-cols-2 gap-4 px-4 py-2 text-xs font-medium uppercase tracking-wider text-foreground-muted sm:grid-cols-4">
           <span>Source</span>
@@ -55,7 +61,7 @@ export function EarningsBreakdownList({
           {sorted.map((source) => (
             <div
               key={source.brandName}
-              className="grid grid-cols-2 items-center gap-4 border-b border-white/[0.04] px-4 py-3 last:border-b-0 sm:grid-cols-4"
+              className="grid grid-cols-2 items-center gap-4 border-b border-white/[0.06] px-4 py-3 last:border-b-0 sm:grid-cols-4"
             >
               {/* Source column: logo + name */}
               <div className="flex items-center gap-2.5">
@@ -81,7 +87,7 @@ export function EarningsBreakdownList({
               </span>
 
               {/* Earnings */}
-              <span className="text-right text-sm font-semibold text-green-400">
+              <span className="text-right text-sm font-semibold text-success">
                 {formatCurrency(source.totalEarned)}
               </span>
             </div>

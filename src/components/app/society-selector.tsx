@@ -153,7 +153,7 @@ export function SocietySelector({ className }: SocietySelectorProps) {
                 className={cn(
                   "group min-h-[180px] cursor-pointer rounded-[12px] border border-dashed border-white/[0.06] bg-transparent p-6",
                   "transition-all duration-200",
-                  "hover:-translate-y-0.5 hover:border-white/[0.1] hover:bg-white/[0.03]"
+                  "hover:bg-white/[0.02]"
                 )}
                 style={{
                   boxShadow: "rgba(255,255,255,0.1) 0px 1px 0px 0px inset",
@@ -209,10 +209,9 @@ function PersonalSocietyCard({
     <div
       className={cn(
         "group min-h-[180px] cursor-pointer rounded-[12px] p-6 transition-all duration-200",
-        "hover:-translate-y-0.5",
         isSelected
           ? "border border-solid border-accent bg-white/[0.04] ring-2 ring-accent/50"
-          : "border border-dashed border-white/[0.06] bg-transparent hover:border-white/[0.1] hover:bg-white/[0.03]"
+          : "border border-dashed border-white/[0.06] bg-transparent hover:bg-white/[0.02]"
       )}
       style={{
         boxShadow: "rgba(255,255,255,0.1) 0px 1px 0px 0px inset",
@@ -269,10 +268,9 @@ function TargetSocietyCard({
     <div
       className={cn(
         "group min-h-[180px] cursor-pointer rounded-[12px] p-6 transition-all duration-200",
-        "hover:-translate-y-0.5",
         isSelected
           ? "border border-accent bg-white/[0.04] ring-2 ring-accent/50"
-          : "border border-white/[0.06] bg-transparent hover:border-white/[0.1] hover:bg-white/[0.03]"
+          : "border border-white/[0.06] bg-transparent hover:bg-white/[0.02]"
       )}
       style={{
         boxShadow: "rgba(255,255,255,0.1) 0px 1px 0px 0px inset",

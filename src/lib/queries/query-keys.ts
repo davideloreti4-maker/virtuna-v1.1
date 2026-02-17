@@ -46,4 +46,9 @@ export const queryKeys = {
     all: ["team"] as const,
     current: () => ["team", "current"] as const,
   },
+  cj: {
+    all: ["cj"] as const,
+    products: (query: string, category?: string) =>
+      ["cj", "products", query, category] as const,
+  },
 } as const;

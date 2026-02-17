@@ -53,7 +53,7 @@ export function EarningsPeriodSelector({
             {isActive && (
               <motion.div
                 layoutId="earnings-period-pill"
-                className="absolute inset-0 z-0 rounded-full border border-white/10 bg-white/10"
+                className="absolute inset-0 z-0 rounded-full border border-white/[0.06] bg-white/10"
                 transition={{ type: "spring", stiffness: 400, damping: 30 }}
               />
             )}

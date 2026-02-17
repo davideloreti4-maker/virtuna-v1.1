@@ -115,7 +115,7 @@ const ExtensionCard = React.forwardRef<HTMLDivElement, ExtensionCardProps>(
         {/* Content */}
         <div className="relative p-6">
           {/* Icon area */}
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-2xl">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.06] bg-white/5 text-2xl">
             {icon}
           </div>
 

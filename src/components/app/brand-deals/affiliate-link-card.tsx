@@ -5,6 +5,7 @@ import { Copy, Check } from "@phosphor-icons/react";
 import type { AffiliateLink } from "@/types/brand-deals";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { formatCurrency, formatNumber } from "@/lib/affiliate-utils";
 import { cn } from "@/lib/utils";
@@ -35,7 +36,7 @@ const STATUS_VARIANT: Record<AffiliateLink["status"], "success" | "warning" | "e
 function StatBlock({ label, value }: { label: string; value: string }): React.JSX.Element {
   return (
     <div className="flex flex-col items-center rounded-lg bg-white/[0.03] px-3 py-2">
-      <span className="text-lg font-bold text-foreground">{value}</span>
+      <span className="text-lg font-semibold text-foreground">{value}</span>
       <span className="text-[10px] font-medium uppercase tracking-wider text-foreground-muted">
         {label}
       </span>
@@ -66,14 +67,12 @@ export function AffiliateLinkCard({ link }: AffiliateLinkCardProps): React.JSX.E
   const { copied, copy } = useCopyToClipboard(2000);
 
   return (
-    <div
+    <Card
       tabIndex={0}
       role="article"
       aria-label={`${link.productName} affiliate link`}
       className={cn(
-        "rounded-xl border border-border bg-surface-elevated p-5",
-        "transition-all duration-200",
-        "hover:border-border-hover hover:-translate-y-px hover:shadow-md",
+        "p-5",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background",
       )}
     >
@@ -107,7 +106,7 @@ export function AffiliateLinkCard({ link }: AffiliateLinkCardProps): React.JSX.E
           aria-label={copied ? "Link copied" : "Copy affiliate link"}
         >
           {copied ? (
-            <Check size={16} className="text-green-400" weight="bold" />
+            <Check size={16} className="text-success" weight="bold" />
           ) : (
             <Copy size={16} />
           )}
@@ -120,6 +119,6 @@ export function AffiliateLinkCard({ link }: AffiliateLinkCardProps): React.JSX.E
         <StatBlock label="Conversions" value={formatNumber(link.conversions)} />
         <StatBlock label="Earned" value={formatCurrency(link.earnings)} />
       </div>
-    </div>
+    </Card>
   );
 }

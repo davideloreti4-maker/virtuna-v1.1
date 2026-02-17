@@ -30,13 +30,13 @@ export function Footer({ className }: FooterProps) {
               href="https://calendly.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="min-h-[44px] rounded bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
+              className="min-h-[44px] rounded-md bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
             >
               Book a meeting
             </Link>
             <Link
               href="mailto:founders@societies.io"
-              className="min-h-[44px] rounded border border-white/20 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-white/5"
+              className="min-h-[44px] rounded border border-white/[0.06] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-white/5"
             >
               Contact us
             </Link>
@@ -44,7 +44,7 @@ export function Footer({ className }: FooterProps) {
         </div>
 
         {/* Footer Bar */}
-        <div className="flex flex-col items-center gap-8 border-t border-white/10 pt-8 md:flex-row md:justify-between">
+        <div className="flex flex-col items-center gap-8 border-t border-white/[0.06] pt-8 md:flex-row md:justify-between">
           {/* Left: Brand */}
           <div className="text-center md:text-left">
             <div className="font-medium text-white">Artificial Societies</div>

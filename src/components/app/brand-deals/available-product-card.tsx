@@ -1,6 +1,7 @@
 import type { Product } from "@/types/brand-deals";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -8,9 +9,7 @@ import { cn } from "@/lib/utils";
 // ---------------------------------------------------------------------------
 
 export interface AvailableProductCardProps {
-  /** The product available for affiliate link generation */
   product: Product;
-  /** Callback when user clicks "Generate Link" */
   onGenerateLink: (product: Product) => void;
 }
 
@@ -18,27 +17,12 @@ export interface AvailableProductCardProps {
 // AvailableProductCard Component
 // ---------------------------------------------------------------------------
 
-/**
- * AvailableProductCard -- Presentational component for a product available
- * for affiliate link generation.
- *
- * Displays brand info, product name, a hero commission rate percentage,
- * and a "Generate Link" CTA button.
- *
- * @example
- * ```tsx
- * <AvailableProductCard
- *   product={product}
- *   onGenerateLink={handleGenerateLink}
- * />
- * ```
- */
 export function AvailableProductCard({
   product,
   onGenerateLink,
 }: AvailableProductCardProps): React.JSX.Element {
   return (
-    <div
+    <Card
       tabIndex={0}
       role="article"
       aria-label={`${product.brandName} - ${product.name}: ${product.commissionRate}% commission`}
@@ -48,9 +32,7 @@ export function AvailableProductCard({
         }
       }}
       className={cn(
-        "rounded-xl border border-border bg-surface-elevated p-5",
-        "transition-all duration-200",
-        "hover:border-border-hover hover:-translate-y-px hover:shadow-md",
+        "p-5",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background",
       )}
     >
@@ -74,7 +56,7 @@ export function AvailableProductCard({
 
       {/* Hero commission rate */}
       <div className="mb-4 text-center">
-        <div className="text-2xl font-bold text-green-400">
+        <div className="text-2xl font-semibold text-success">
           {product.commissionRate}%
         </div>
         <span className="text-[10px] uppercase tracking-wider text-foreground-muted">
@@ -91,6 +73,6 @@ export function AvailableProductCard({
       >
         Generate Link
       </Button>
-    </div>
+    </Card>
   );
 }

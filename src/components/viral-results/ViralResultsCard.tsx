@@ -23,13 +23,6 @@ export interface ViralResultsCardProps {
   className?: string;
 }
 
-// Get ambient glow color based on score
-function getAmbientGlowColor(score: number): string {
-  if (score >= 70) return "rgba(34, 197, 94, 0.08)";
-  if (score >= 40) return "rgba(234, 179, 8, 0.08)";
-  return "rgba(239, 68, 68, 0.08)";
-}
-
 // Animation timing constants
 const RING_SETTLE_DELAY = 1200;
 const CTA_REVEAL_DELAY = 1800;
@@ -80,17 +73,8 @@ export function ViralResultsCard({
     };
   }, []);
 
-  const ambientGlowColor = getAmbientGlowColor(result.overallScore);
-
   return (
     <div className={cn("relative", className)}>
-      {/* Ambient glow behind card */}
-      <div
-        className="absolute -inset-4 rounded-3xl blur-3xl"
-        style={{ background: ambientGlowColor }}
-        aria-hidden="true"
-      />
-
       {/* Main card container */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -99,17 +83,14 @@ export function ViralResultsCard({
         className={cn(
           "relative",
           "max-h-[85vh] flex flex-col overflow-hidden",
-          // Premium glass styling
-          "bg-gradient-to-b from-white/[0.08] to-white/[0.02]",
-          "backdrop-blur-2xl",
-          "border border-white/10",
-          "rounded-3xl",
-          // Layered shadow for depth
-          "shadow-[0_20px_70px_-15px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)]"
+          "bg-transparent",
+          "border border-white/[0.06]",
+          "rounded-lg",
+          "shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-white/10 shrink-0">
+        <div className="flex items-center justify-between p-5 border-b border-white/[0.06] shrink-0">
           <div className="flex flex-col">
             <h2 className="text-xl font-bold text-white">Viral Analysis</h2>
             {formattedDate && (

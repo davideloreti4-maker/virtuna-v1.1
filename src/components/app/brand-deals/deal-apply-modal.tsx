@@ -116,9 +116,9 @@ export function DealApplyModal({
         {submitted ? (
           /* ---- Success state ---- */
           <div className="flex flex-col items-center justify-center gap-3 py-12">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10">
               <Check
-                className="text-green-400"
+                className="text-success"
                 weight="bold"
                 size={24}
               />
@@ -165,7 +165,7 @@ export function DealApplyModal({
                   rows={4}
                   value={pitch}
                   onChange={(e) => setPitch(e.target.value)}
-                  className="w-full rounded-md border border-border bg-surface px-3 py-2 text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-colors"
+                  className="w-full rounded-[8px] border border-border bg-white/[0.05] px-3 py-2 text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-colors"
                 />
               </div>
             </div>

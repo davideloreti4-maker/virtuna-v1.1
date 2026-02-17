@@ -42,7 +42,7 @@ export function RemixCTA({
         // Sticky positioning
         "sticky bottom-0 z-10",
         // Glass background with enhanced blur
-        "border-t border-white/10",
+        "border-t border-white/[0.06]",
         "bg-black/40 backdrop-blur-2xl",
         // Padding for touch targets
         "p-5",
@@ -67,26 +67,20 @@ export function RemixCTA({
           disabled={disabled}
           className={cn(
             // Layout
-            "w-full py-4 px-6 rounded-2xl",
-            // Gradient background
-            "bg-gradient-to-r from-orange-500 via-pink-500 to-violet-500",
+            "w-full py-4 px-6 rounded-md",
+            // Solid accent background
+            "bg-accent text-accent-foreground shadow-button",
             // Text styling
-            "text-white font-bold text-base",
+            "font-bold text-base",
             // Interactive states
-            "hover:brightness-110 hover:scale-[1.02]",
-            "active:scale-[0.98]",
+            "hover:brightness-110",
             "transition-all duration-200",
             // Disabled state
             "disabled:opacity-50 disabled:cursor-not-allowed",
-            "disabled:hover:brightness-100 disabled:hover:scale-100",
+            "disabled:hover:brightness-100",
             // Focus state
-            "focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:ring-offset-2 focus:ring-offset-black"
+            "focus:outline-none focus:ring-2 focus:ring-accent/50 focus:ring-offset-2 focus:ring-offset-black"
           )}
-          style={{
-            boxShadow: disabled
-              ? "none"
-              : "0 8px 32px -8px rgba(249, 115, 22, 0.5), 0 4px 16px -4px rgba(236, 72, 153, 0.3)",
-          }}
         >
           <span className="inline-flex items-center gap-2 justify-center">
             <Sparkles className="h-5 w-5" />
