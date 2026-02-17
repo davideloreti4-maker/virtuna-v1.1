@@ -58,7 +58,7 @@ export function VideoGrid({ filterTab, onVideoClick, onVideosChange }: VideoGrid
   );
 
   // For saved tab: fetch bookmarked video IDs from API and sync into store
-  const { data: bookmarksData, isLoading: bookmarksLoading } = useBookmarks();
+  const { data: bookmarksData } = useBookmarks();
   const syncFromQuery = useBookmarkStore((s) => s.syncFromQuery);
   const bookmarkedIds = useBookmarkStore((s) => s.bookmarkedIds);
 
