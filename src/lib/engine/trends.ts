@@ -29,7 +29,7 @@ export async function enrichWithTrends(
   supabase: ReturnType<typeof createServiceClient>,
   input: AnalysisInput
 ): Promise<TrendEnrichment> {
-  const contentLower = input.content_text.toLowerCase();
+  const contentLower = (input.content_text ?? "").toLowerCase();
 
   // Fetch active trending sounds (INFRA-02: cached for 5 minutes)
   let trendingSounds = soundsCache.get("trending_sounds");
@@ -79,7 +79,7 @@ export async function enrichWithTrends(
   }
 
   // Semantic hashtag scoring with popularity weighting and saturation detection (SIG-03)
-  const hashtags = input.content_text.match(/#\w+/g) ?? [];
+  const hashtags = (input.content_text ?? "").match(/#\w+/g) ?? [];
   let hashtag_relevance = 0;
 
   if (hashtags.length > 0) {

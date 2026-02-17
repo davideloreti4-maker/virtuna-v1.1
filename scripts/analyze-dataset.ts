@@ -773,7 +773,7 @@ function writeEmptyOutputs() {
 
 function generateMarkdownReport(
   baseline: ReturnType<typeof JSON.parse>,
-  enriched: EnrichedVideo[],
+  _enriched: EnrichedVideo[],
   viralVideos: EnrichedVideo[],
   averageVideos: EnrichedVideo[],
 ): string {

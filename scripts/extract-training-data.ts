@@ -42,23 +42,7 @@ interface TrainingDataOutput {
 }
 
 // ─── Utility Functions ──────────────────────────────────────────────
-// Copied from analyze-dataset.ts (standalone scripts don't share imports)
-
 const log = (msg: string) => console.log(`[extract-training] ${msg}`);
-
-function sortedNumbers(arr: number[]): number[] {
-  return [...arr].sort((a, b) => a - b);
-}
-
-function percentile(sorted: number[], p: number): number {
-  if (sorted.length === 0) return 0;
-  const index = (p / 100) * (sorted.length - 1);
-  const lower = Math.floor(index);
-  const upper = Math.ceil(index);
-  if (lower === upper) return sorted[lower]!;
-  const weight = index - lower;
-  return sorted[lower]! * (1 - weight) + sorted[upper]! * weight;
-}
 
 // ─── Feature Names (order matters — must match feature array indices) ──
 const FEATURE_NAMES: (keyof TrainingFeature)[] = [

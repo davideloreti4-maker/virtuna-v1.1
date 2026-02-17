@@ -157,6 +157,7 @@ async function main() {
 
   for (let idx = 0; idx < successfulRuns.length; idx++) {
     const run = successfulRuns[idx];
+    if (!run) continue;
     console.log(`[import] [${idx + 1}/${successfulRuns.length}] Run ${run.id} (dataset: ${run.defaultDatasetId})...`);
 
     const dataset = apify.dataset(run.defaultDatasetId);

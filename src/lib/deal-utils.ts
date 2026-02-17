@@ -1,7 +1,8 @@
 // src/lib/deal-utils.ts
 
 import type { BrandDeal, BrandDealCategory } from "@/types/brand-deals";
-import type { GradientColor } from "@/components/primitives/GradientGlow";
+// GradientColor was from deleted GradientGlow component -- inlined here
+type GradientColor = "orange" | "blue" | "green" | "cyan" | "purple";
 
 // ---------------------------------------------------------------------------
 // Payout Formatting

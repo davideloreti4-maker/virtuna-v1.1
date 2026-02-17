@@ -12,7 +12,7 @@
  * Requires: dev server running on localhost:3000
  */
 
-import { chromium, Page, ConsoleMessage } from 'playwright';
+import { chromium, ConsoleMessage } from 'playwright';
 import fs from 'fs';
 import path from 'path';
 
