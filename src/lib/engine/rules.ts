@@ -115,7 +115,7 @@ export async function loadActiveRules(
     return [];
   }
 
-  // Cast through unknown — Supabase types may not include evaluation_tier until types are regenerated
+  // Cast through unknown — Supabase generated types use string literals; Rule type uses union discriminants
   const rules = (data ?? []) as unknown as Rule[];
   rulesCache.set(cacheKey, rules);
   return rules;
