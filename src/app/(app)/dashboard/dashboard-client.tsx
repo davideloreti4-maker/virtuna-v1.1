@@ -129,7 +129,8 @@ export function DashboardClient() {
     analyzeMutation.reset();
   };
 
-  // Stable mock data for hive visualization (seed ensures deterministic layout)
+  // Intentional: Hive visualization uses procedural data for the interactive demo canvas.
+  // Will wire to real analysis data when the hive feature moves beyond demo stage.
   const hiveData = useMemo(() => generateMockHiveData(), []);
 
   return (
