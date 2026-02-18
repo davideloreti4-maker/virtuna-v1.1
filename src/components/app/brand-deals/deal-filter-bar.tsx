@@ -5,7 +5,7 @@ import { MagnifyingGlass } from "@phosphor-icons/react";
 import { GlassPill } from "@/components/primitives/GlassPill";
 import { Input } from "@/components/ui/input";
 import { CATEGORY_COLORS } from "@/lib/deal-utils";
-import type { BrandDealCategory, PlatformType } from "@/types/brand-deals";
+import type { BrandDealCategory } from "@/types/brand-deals";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -22,22 +22,6 @@ const FILTER_CATEGORIES: BrandDealCategory[] = [
   "finance",
 ];
 
-export type ProgramTypeFilter = "all" | "ecommerce" | "marketplace" | "network" | "virtuna";
-
-const PROGRAM_TYPE_LABELS: Record<ProgramTypeFilter, string> = {
-  all: "All",
-  ecommerce: "E-Commerce",
-  marketplace: "Marketplaces",
-  network: "Networks",
-  virtuna: "Virtuna Deals",
-};
-
-const PLATFORM_LABELS: Record<"all" | PlatformType, string> = {
-  all: "All Platforms",
-  tiktok: "TikTok",
-  instagram: "Instagram",
-};
-
 function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
@@ -51,10 +35,7 @@ interface DealFilterBarProps {
   onCategoryChange: (category: BrandDealCategory | "all") => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  activeProgramType: ProgramTypeFilter;
-  onProgramTypeChange: (type: ProgramTypeFilter) => void;
-  activePlatform: PlatformType | "all";
-  onPlatformChange: (platform: PlatformType | "all") => void;
+  resultCount: number;
 }
 
 export function DealFilterBar({
@@ -62,62 +43,28 @@ export function DealFilterBar({
   onCategoryChange,
   searchQuery,
   onSearchChange,
-  activeProgramType,
-  onProgramTypeChange,
-  activePlatform,
-  onPlatformChange,
+  resultCount,
 }: DealFilterBarProps) {
   return (
     <div className="flex flex-col gap-4">
-      {/* Search input */}
-      <div className="relative max-w-sm">
-        <MagnifyingGlass
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-foreground-muted"
-          size={18}
-          weight="regular"
-          aria-hidden="true"
-        />
-        <Input
-          type="search"
-          placeholder="Search by brand name..."
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-9"
-        />
-      </div>
-
-      {/* Program type filter row */}
-      <div className="flex flex-wrap gap-2">
-        {(Object.entries(PROGRAM_TYPE_LABELS) as [ProgramTypeFilter, string][]).map(
-          ([key, label]) => (
-            <GlassPill
-              key={key}
-              color={key === "virtuna" ? "orange" : "neutral"}
-              size="sm"
-              active={activeProgramType === key}
-              onClick={() => onProgramTypeChange(key)}
-            >
-              {label}
-            </GlassPill>
-          )
-        )}
-      </div>
-
-      {/* Platform filter row */}
-      <div className="flex flex-wrap gap-2">
-        {(Object.entries(PLATFORM_LABELS) as [("all" | PlatformType), string][]).map(
-          ([key, label]) => (
-            <GlassPill
-              key={key}
-              color="neutral"
-              size="sm"
-              active={activePlatform === key}
-              onClick={() => onPlatformChange(key)}
-            >
-              {label}
-            </GlassPill>
-          )
-        )}
+      {/* Search input + result count */}
+      <div className="flex items-center gap-3">
+        <div className="relative max-w-sm flex-1">
+          <MagnifyingGlass
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-foreground-muted"
+            size={18}
+            weight="regular"
+            aria-hidden="true"
+          />
+          <Input
+            type="search"
+            placeholder="Search by brand name..."
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <span className="text-xs text-foreground-muted">{resultCount} deals</span>
       </div>
 
       {/* Category filter pills */}

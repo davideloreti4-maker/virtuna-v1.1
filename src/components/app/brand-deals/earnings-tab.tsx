@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { AnimatePresence, motion } from "motion/react";
-
 import type { EarningSource, MonthlyEarning } from "@/types/brand-deals";
 import { useEarnings } from "@/hooks/queries";
 
@@ -102,17 +100,7 @@ export function EarningsTab(): React.JSX.Element {
             onPeriodChange={setPeriod}
           />
         </div>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={period}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <EarningsChart data={filtered.chartData} />
-          </motion.div>
-        </AnimatePresence>
+        <EarningsChart data={filtered.chartData} />
       </div>
 
       <EarningsBreakdownList sources={filtered.sources} />

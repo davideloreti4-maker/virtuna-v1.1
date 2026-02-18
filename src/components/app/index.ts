@@ -22,7 +22,7 @@ export type { SurveySubmission } from "./survey-form";
 export { TestCreationFlow } from "./test-creation-flow";
 // Simulation components
 export { LoadingPhases } from "./simulation/loading-phases";
-export { ImpactScore } from "./simulation/impact-score";
+export { HeroScore, ImpactScore } from "./simulation/impact-score";
 export { FactorBreakdown, AttentionBreakdown } from "./simulation/attention-breakdown";
 export { BehavioralPredictionsSection } from "./simulation/behavioral-predictions";
 export { SuggestionsSection, InsightsSection } from "./simulation/insights-section";

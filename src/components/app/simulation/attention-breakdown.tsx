@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { Info } from 'lucide-react';
 import type { Factor } from '@/lib/engine/types';
-import { GlassCard } from '@/components/ui/card';
 import { GlassProgress } from '@/components/primitives';
 import type { ProgressVariant } from '@/components/primitives/GlassProgress';
 import { Text } from '@/components/ui/typography';
@@ -69,7 +68,7 @@ export function FactorBreakdown({ factors }: FactorBreakdownProps) {
   const sortedFactors = sortFactors(factors);
 
   return (
-    <GlassCard className="p-4">
+    <div className="py-1">
       <div className="space-y-4">
         {/* Section header */}
         <div className="flex items-center gap-2">
@@ -130,7 +129,7 @@ export function FactorBreakdown({ factors }: FactorBreakdownProps) {
           })}
         </div>
       </div>
-    </GlassCard>
+    </div>
   );
 }
 

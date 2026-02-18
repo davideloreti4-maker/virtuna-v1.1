@@ -1,7 +1,6 @@
 'use client';
 
 import { Info } from 'lucide-react';
-import { GlassCard } from '@/components/ui/card';
 import { Text, Caption } from '@/components/ui/typography';
 import { Badge } from '@/components/ui/badge';
 import type { Suggestion } from '@/lib/engine/types';
@@ -37,7 +36,7 @@ export function SuggestionsSection({ suggestions }: SuggestionsSectionProps) {
   if (suggestions.length === 0) return null;
 
   return (
-    <GlassCard className="p-4" blur="sm" glow={false}>
+    <div className="py-1">
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Text as="span" size="sm" muted>
@@ -71,7 +70,7 @@ export function SuggestionsSection({ suggestions }: SuggestionsSectionProps) {
           })}
         </div>
       </div>
-    </GlassCard>
+    </div>
   );
 }
 

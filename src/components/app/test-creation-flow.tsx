@@ -128,7 +128,7 @@ export function TestCreationFlow({ triggerButton, className }: TestCreationFlowP
 
   if (currentStatus === "viewing-results" && analyzeMutation.data) {
     return (
-      <div className={cn("w-full max-w-md mx-auto", className)}>
+      <div className={cn("w-full max-w-2xl mx-auto", className)}>
         <ResultsPanel
           result={analyzeMutation.data}
           onRunAnother={handleRunAnother}

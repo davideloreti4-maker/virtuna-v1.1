@@ -7,15 +7,13 @@ import { useDeals } from "@/hooks/queries";
 import { useCJProducts } from "@/hooks/queries/use-cj-products";
 import { mapDealRowToUI } from "@/lib/mappers";
 import { getExternalDeals, affiliateProgramToDeal } from "@/lib/affiliate-programs";
-import type { BrandDeal, BrandDealCategory, PlatformType } from "@/types/brand-deals";
-import type { ProgramTypeFilter } from "./deal-filter-bar";
+import type { BrandDeal, BrandDealCategory } from "@/types/brand-deals";
 
 import { DealApplyModal } from "./deal-apply-modal";
 import { DealCard } from "./deal-card";
 import { DealFilterBar } from "./deal-filter-bar";
 import { DealsEmptyState } from "./deals-empty-state";
 import { DealsTabSkeleton } from "./deals-tab-skeleton";
-import { NewThisWeekRow } from "./new-this-week-row";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -34,16 +32,12 @@ export function DealsTab({
 }: DealsTabProps): React.JSX.Element {
   const { data, isLoading } = useDeals({ status: "active" });
   const [activeCategory, setActiveCategory] = useState<BrandDealCategory | "all">("all");
-  const [activeProgramType, setActiveProgramType] = useState<ProgramTypeFilter>("all");
-  const [activePlatform, setActivePlatform] = useState<PlatformType | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [applyingDeal, setApplyingDeal] = useState<BrandDeal | null>(null);
 
-  // CJ live search: enabled when query is non-empty and type filter includes networks
-  const cjEnabled =
-    debouncedSearch.trim().length > 0 &&
-    (activeProgramType === "all" || activeProgramType === "network");
+  // CJ live search: enabled when query is non-empty
+  const cjEnabled = debouncedSearch.trim().length > 0;
   const { data: cjData } = useCJProducts(debouncedSearch, { enabled: cjEnabled });
 
   // Flatten paginated Supabase deals
@@ -83,27 +77,12 @@ export function DealsTab({
     debouncedSetSearch(query);
   }
 
-  // Filtered deals based on all active filters
+  // Filtered deals based on category + search
   const filteredDeals = useMemo(() => {
     return allDeals
       .filter((deal) => {
         // Category filter
         if (activeCategory !== "all" && deal.category !== activeCategory) return false;
-
-        // Program type filter
-        if (activeProgramType !== "all") {
-          if (activeProgramType === "virtuna") {
-            if (deal.source === "external") return false;
-          } else {
-            if (deal.source !== "external") return false;
-            if (deal.programType !== activeProgramType) return false;
-          }
-        }
-
-        // Platform filter
-        if (activePlatform !== "all") {
-          if (deal.platforms && !deal.platforms.includes(activePlatform)) return false;
-        }
 
         // Search filter
         if (debouncedSearch) {
@@ -124,15 +103,10 @@ export function DealsTab({
         if (a.source === "external" && b.source !== "external") return 1;
         return 0;
       });
-  }, [allDeals, activeCategory, activeProgramType, activePlatform, debouncedSearch]);
-
-  // New deals for the featured row
-  const newDeals = useMemo(() => allDeals.filter((d) => d.isNew), [allDeals]);
+  }, [allDeals, activeCategory, debouncedSearch]);
 
   function handleClearFilters(): void {
     setActiveCategory("all");
-    setActiveProgramType("all");
-    setActivePlatform("all");
     setSearchQuery("");
     setDebouncedSearch("");
   }
@@ -145,23 +119,13 @@ export function DealsTab({
 
   return (
     <div>
-      {/* Featured new deals row */}
-      <NewThisWeekRow
-        deals={newDeals}
-        appliedDeals={appliedDeals}
-        onApply={handleApplyClick}
-      />
-
-      {/* Filter bar: search + type + platform + category pills */}
+      {/* Filter bar: search + category pills */}
       <DealFilterBar
         activeCategory={activeCategory}
         onCategoryChange={setActiveCategory}
         searchQuery={searchQuery}
         onSearchChange={handleSearchChange}
-        activeProgramType={activeProgramType}
-        onProgramTypeChange={setActiveProgramType}
-        activePlatform={activePlatform}
-        onPlatformChange={setActivePlatform}
+        resultCount={filteredDeals.length}
       />
 
       {/* Deal grid or empty state */}

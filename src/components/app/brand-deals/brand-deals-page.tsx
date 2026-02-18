@@ -12,9 +12,9 @@ import { BrandDealsTabs } from "./brand-deals-tabs";
 import { DealsTab } from "./deals-tab";
 import { EarningsTab } from "./earnings-tab";
 
-type ValidTab = "earnings" | "deals" | "affiliates";
+type ValidTab = "deals" | "affiliates" | "earnings";
 
-const VALID_TABS: ValidTab[] = ["earnings", "deals", "affiliates"];
+const VALID_TABS: ValidTab[] = ["deals", "affiliates", "earnings"];
 
 interface BrandDealsPageProps {
   defaultTab: ValidTab;
@@ -47,16 +47,16 @@ export function BrandDealsPage({ defaultTab }: BrandDealsPageProps) {
       <Tabs value={currentTab} onValueChange={handleTabChange}>
         <BrandDealsTabs />
 
-        <TabsContent value="earnings">
-          <EarningsTab />
-        </TabsContent>
-
         <TabsContent value="deals">
           <DealsTab appliedDeals={appliedDeals} />
         </TabsContent>
 
         <TabsContent value="affiliates">
           <AffiliatesTab />
+        </TabsContent>
+
+        <TabsContent value="earnings">
+          <EarningsTab />
         </TabsContent>
       </Tabs>
     </div>

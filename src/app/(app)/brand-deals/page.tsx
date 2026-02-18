@@ -10,7 +10,7 @@ interface PageProps {
   searchParams: Promise<{ tab?: string }>;
 }
 
-const VALID_TABS = ["earnings", "deals", "affiliates"] as const;
+const VALID_TABS = ["deals", "affiliates", "earnings"] as const;
 type ValidTab = (typeof VALID_TABS)[number];
 
 export default async function BrandDeals({ searchParams }: PageProps) {
@@ -18,7 +18,7 @@ export default async function BrandDeals({ searchParams }: PageProps) {
   const tabParam = params.tab || "";
   const defaultTab: ValidTab = VALID_TABS.includes(tabParam as ValidTab)
     ? (tabParam as ValidTab)
-    : "earnings";
+    : "deals";
 
   return <BrandDealsPage defaultTab={defaultTab} />;
 }
