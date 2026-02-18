@@ -33,7 +33,7 @@ const SCORE_WEIGHTS = {
 
 interface SignalAvailability {
   behavioral: boolean; // DeepSeek produced component scores
-  gemini: boolean;     // Gemini produced factor scores (always true — critical stage)
+  gemini: boolean;     // Gemini produced real factor scores (false when using fallback — HARD-03)
   ml: boolean;         // ML model loaded and prediction succeeded
   rules: boolean;      // Rule scoring produced real matches (not default fallback)
   trends: boolean;     // Trend enrichment found matches (not default fallback)
@@ -239,12 +239,18 @@ export async function aggregateScores(
   // -------------------------------------------------
   const availability: SignalAvailability = {
     behavioral: deepseekResult !== null,
-    gemini: true, // Always true — critical stage, pipeline throws if it fails
+    gemini: geminiResult.analysis.factors.some((f) => f.score > 0), // HARD-03: false when all factors are 0 (fallback)
     ml: mlAvailable,
-    rules: ruleResult.matched_rules.length > 0
-      && !pipelineResult.warnings.some(w => w.includes('Rule scoring unavailable')),
-    trends: trendEnrichment.matched_trends.length > 0
-      && !pipelineResult.warnings.some(w => w.includes('Trend enrichment unavailable')),
+    rules:
+      ruleResult.matched_rules.length > 0 &&
+      !pipelineResult.warnings.some((w) =>
+        w.includes("Rule scoring unavailable")
+      ),
+    trends:
+      trendEnrichment.matched_trends.length > 0 &&
+      !pipelineResult.warnings.some((w) =>
+        w.includes("Trend enrichment unavailable")
+      ),
   };
 
   const weights = selectWeights(availability);
@@ -309,7 +315,7 @@ export async function aggregateScores(
   // Confidence (with signal availability penalties)
   // -------------------------------------------------
   const hasVideo = payload.input_mode !== "text";
-  const conf = calculateConfidence(
+  let conf = calculateConfidence(
     gemini_score,
     behavioral_score,
     ruleResult,
@@ -318,6 +324,15 @@ export async function aggregateScores(
     deepseek?.confidence ?? "low",
     availability
   );
+
+  // HARD-03: Override confidence to LOW when both LLM providers failed.
+  // calculateConfidence() incorrectly yields MEDIUM here because both
+  // zero-scores produce the same direction (-50), triggering the
+  // "models agree" branch (agreement = 0.4). In reality, two zeros
+  // agreeing is meaningless — force LOW to reflect actual data quality.
+  if (!availability.gemini && !availability.behavioral) {
+    conf = { confidence: 0.2, confidence_label: "LOW" };
+  }
 
   // -------------------------------------------------
   // Warnings (from DeepSeek + weight redistribution + low confidence)
@@ -329,7 +344,16 @@ export async function aggregateScores(
     const missingSources = Object.entries(availability)
       .filter(([, v]) => !v)
       .map(([k]) => k);
-    warnings.push(`Weights redistributed — missing signals: ${missingSources.join(', ')}`);
+    warnings.push(
+      `Weights redistributed — missing signals: ${missingSources.join(", ")}`
+    );
+  }
+
+  // HARD-03: Explicit dual-failure warning
+  if (!availability.gemini && !availability.behavioral) {
+    warnings.push(
+      "Both LLM providers failed — result based on rules and trends only"
+    );
   }
 
   if (conf.confidence < 0.4) {
