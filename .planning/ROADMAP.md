@@ -12,8 +12,8 @@ The prediction engine pipeline is structurally complete but significantly discon
 - [x] **Phase 2: ML Model Rehabilitation** — Fix class imbalance, real feature bridge, stratified training, achieve >75% accuracy and wire ML into the aggregator *(completed 2026-02-18)*
 - [x] **Phase 3: Calibration Wiring** — Conditionally apply Platt scaling in the aggregator and verify calibration-audit cron runs cleanly *(completed 2026-02-18)*
 - [x] **Phase 4: Observability** — Install Sentry, add structured JSON logging, replace all console.* calls, expose admin cost endpoint *(completed 2026-02-18)*
-- [ ] **Phase 5: Test Coverage** — Configure Vitest, write unit + integration tests for all engine modules, reach >80% coverage
-- [ ] **Phase 6: Hardening** — Wrap edge cases: calibration parsing, LLM double-failure, circuit breaker mutex, creator profile trigger
+- [x] **Phase 5: Test Coverage** — Configure Vitest, write unit + integration tests for all engine modules, reach >80% coverage *(completed 2026-02-18)*
+- [x] **Phase 6: Hardening** — Wrap edge cases: calibration parsing, LLM double-failure, circuit breaker mutex, creator profile trigger *(completed 2026-02-18)*
 
 ## Phase Details
 
@@ -162,4 +162,4 @@ Wave groupings for parallel dispatch. Phases within a wave have no inter-depende
 | 3. Calibration Wiring | 2/2 | ✓ Complete | 2026-02-18 |
 | 4. Observability | 4/4 | ✓ Complete | 2026-02-18 |
 | 5. Test Coverage | 8/8 | ✓ Complete | 2026-02-18 |
-| 6. Hardening | 0/4 | Not started | - |
+| 6. Hardening | 4/4 | ✓ Complete | 2026-02-18 |
