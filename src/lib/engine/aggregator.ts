@@ -75,6 +75,7 @@ export function selectWeights(
 
   // Round to avoid floating point noise, ensure they sum to ~1
   const total = Object.values(result).reduce((a, b) => a + b, 0);
+  if (total === 0) return result; // All sources unavailable — return all zeros
   for (const key of Object.keys(result) as (keyof typeof result)[]) {
     result[key] = Math.round((result[key] / total) * 1000) / 1000;
   }
