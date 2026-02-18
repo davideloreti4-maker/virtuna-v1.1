@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-17)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate
-**Current focus:** Phase 6 complete (Hardening). All 6 phases done. Milestone complete.
+**Current focus:** Phase 6 complete (Hardening). All 6 phases done. All 25 plans complete. Milestone complete.
 
 ## Current Position
 
 Phase: 6 of 6 (Hardening)
 Plan: 4 of 4 in current phase
 Status: Phase Complete
-Last activity: 2026-02-18 — Plan 06-04 complete. Profile route accepts tiktok_handle, background scrape trigger, structured logging.
+Last activity: 2026-02-18 — Plan 06-03 complete. probeInFlight mutex added to circuit breaker half-open probe (HARD-04).
 
 Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 24
+- Total plans completed: 25
 - Average duration: 3min
-- Total execution time: 76min
+- Total execution time: 80min
 
 **By Phase:**
 
@@ -32,7 +32,7 @@ Progress: [██████████] 100%
 | 03-calibration-wiring | 2 | 3min | 1.5min |
 | 04-observability | 4 | 10min | 2.5min |
 | 05-test-coverage | 8 | 24min | 3min |
-| 06-hardening | 4 | 16min | 4min |
+| 06-hardening | 5 | 20min | 4min |
 
 *Updated after each plan completion*
 
@@ -90,6 +90,10 @@ Progress: [██████████] 100%
 - Explicit confidence override to LOW (0.2) rather than patching calculateConfidence algorithm (06-02)
 - DeepSeek can still succeed when Gemini fails — it calls OpenAI directly (06-02)
 
+- Per-instance probeInFlight mutex (not distributed lock) — matches serverless-per-instance circuit breaker scope (06-03)
+- probeInFlight cleared in both recordSuccess and recordFailure for all exit paths (06-03)
+- Defensive guard in half-open branch blocks additional requests even if state reached unexpectedly (06-03)
+
 - Scrape fields mapped to existing creator_profiles columns: displayName->display_name, followerCount->tiktok_followers, avatarUrl->avatar_url, bio->bio (06-04)
 - tiktok_handle destructured from parsed.data before user_settings upsert to avoid unknown column error (06-04)
 - Service client used for creator_profiles write — bypasses RLS since user client may lack permissions (06-04)
@@ -103,5 +107,5 @@ Progress: [██████████] 100%
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Phase 6 (Hardening) complete. All 24 plans across 6 phases done. Milestone complete.
+Stopped at: Phase 6 (Hardening) complete. All 25 plans across 6 phases done (06-03 was missing, now complete). Milestone complete.
 Resume file: None
