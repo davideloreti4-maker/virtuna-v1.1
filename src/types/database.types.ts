@@ -665,6 +665,7 @@ export type Database = {
           warnings: string[] | null
           input_mode: string | null
           has_video: boolean | null
+          is_calibrated: boolean | null
           gemini_score: number | null
           deleted_at: string | null
           created_at: string | null
@@ -699,6 +700,7 @@ export type Database = {
           warnings?: string[] | null
           input_mode?: string | null
           has_video?: boolean | null
+          is_calibrated?: boolean | null
           gemini_score?: number | null
           deleted_at?: string | null
           created_at?: string | null
@@ -733,6 +735,7 @@ export type Database = {
           warnings?: string[] | null
           input_mode?: string | null
           has_video?: boolean | null
+          is_calibrated?: boolean | null
           gemini_score?: number | null
           deleted_at?: string | null
           created_at?: string | null

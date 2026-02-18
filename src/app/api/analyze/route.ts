@@ -214,6 +214,8 @@ export async function POST(request: Request) {
             has_video: finalResult.has_video,
             gemini_score: finalResult.gemini_score,
             ml_score: finalResult.ml_score,
+            // CAL-02: Calibration status for every result
+            is_calibrated: finalResult.is_calibrated,
             // RULE-03: Per-rule contribution tracking for accuracy computation
             rule_contributions: ruleContributions as unknown as null,
           });
