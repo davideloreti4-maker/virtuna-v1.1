@@ -544,4 +544,14 @@ async function reasonWithGeminiFallback(
   return { reasoning, cost_cents };
 }
 
+/** @internal -- test use only. Resets circuit breaker to closed state. */
+export function resetCircuitBreaker(): void {
+  breaker = {
+    status: "closed",
+    consecutiveFailures: 0,
+    nextRetryAt: 0,
+    backoffIndex: 0,
+  };
+}
+
 export { DEEPSEEK_MODEL, isCircuitOpen };
