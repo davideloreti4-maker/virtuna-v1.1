@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-17)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate
-**Current focus:** Phase 6 in progress (Hardening). HARD-03 dual-LLM failure graceful degradation complete.
+**Current focus:** Phase 6 complete (Hardening). All 6 phases done. Milestone complete.
 
 ## Current Position
 
 Phase: 6 of 6 (Hardening)
-Plan: 2 of 4 in current phase
-Status: In Progress
-Last activity: 2026-02-18 — Plan 06-02 complete. Gemini failure non-fatal, dual-LLM-failure LOW confidence override.
+Plan: 4 of 4 in current phase
+Status: Phase Complete
+Last activity: 2026-02-18 — Plan 06-04 complete. Profile route accepts tiktok_handle, background scrape trigger, structured logging.
 
-Progress: [█████████░] 92%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 22
+- Total plans completed: 24
 - Average duration: 3min
-- Total execution time: 68min
+- Total execution time: 76min
 
 **By Phase:**
 
@@ -32,7 +32,7 @@ Progress: [█████████░] 92%
 | 03-calibration-wiring | 2 | 3min | 1.5min |
 | 04-observability | 4 | 10min | 2.5min |
 | 05-test-coverage | 8 | 24min | 3min |
-| 06-hardening | 2 | 8min | 4min |
+| 06-hardening | 4 | 16min | 4min |
 
 *Updated after each plan completion*
 
@@ -86,6 +86,10 @@ Progress: [█████████░] 92%
 - Explicit confidence override to LOW (0.2) rather than patching calculateConfidence algorithm (06-02)
 - DeepSeek can still succeed when Gemini fails — it calls OpenAI directly (06-02)
 
+- Scrape fields mapped to existing creator_profiles columns: displayName->display_name, followerCount->tiktok_followers, avatarUrl->avatar_url, bio->bio (06-04)
+- tiktok_handle destructured from parsed.data before user_settings upsert to avoid unknown column error (06-04)
+- Service client used for creator_profiles write — bypasses RLS since user client may lack permissions (06-04)
+
 ### Blockers/Concerns
 
 - Circuit breaker is per-serverless-instance (module-level state) — not a distributed lock; HARD-04 addresses this
@@ -95,5 +99,5 @@ Progress: [█████████░] 92%
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed 06-02-PLAN.md (dual-LLM failure graceful degradation). 06-03 and 06-04 remain.
+Stopped at: Phase 6 (Hardening) complete. All 24 plans across 6 phases done. Milestone complete.
 Resume file: None
