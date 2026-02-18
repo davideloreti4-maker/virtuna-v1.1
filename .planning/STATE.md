@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-17)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate
-**Current focus:** Phase 5 complete (Test Coverage). 203 tests passing, >80% coverage. Phase 6 next.
+**Current focus:** Phase 6 in progress (Hardening). HARD-03 dual-LLM failure graceful degradation complete.
 
 ## Current Position
 
-Phase: 5 of 6 (Test Coverage)
-Plan: 8 of 8 in current phase
-Status: Phase Complete
-Last activity: 2026-02-18 — Phase 5 verified (4/4 must-haves pass). 203 tests, 93.6% stmts, 80.1% branches, 93% functions, 94.5% lines.
+Phase: 6 of 6 (Hardening)
+Plan: 2 of 4 in current phase
+Status: In Progress
+Last activity: 2026-02-18 — Plan 06-02 complete. Gemini failure non-fatal, dual-LLM-failure LOW confidence override.
 
-Progress: [████████░░] 83%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 20
+- Total plans completed: 22
 - Average duration: 3min
-- Total execution time: 60min
+- Total execution time: 68min
 
 **By Phase:**
 
@@ -32,6 +32,7 @@ Progress: [████████░░] 83%
 | 03-calibration-wiring | 2 | 3min | 1.5min |
 | 04-observability | 4 | 10min | 2.5min |
 | 05-test-coverage | 8 | 24min | 3min |
+| 06-hardening | 2 | 8min | 4min |
 
 *Updated after each plan completion*
 
@@ -81,6 +82,10 @@ Progress: [████████░░] 83%
 - Global aggregate coverage threshold (not per-file) — intentional to avoid over-testing low-value branches (05-08)
 - Pipeline integration tests use vi.useFakeTimers for DeepSeek/Gemini retry delays (05-08)
 
+- Gemini availability detected by checking if any factor score > 0 — false only for fallback (06-02)
+- Explicit confidence override to LOW (0.2) rather than patching calculateConfidence algorithm (06-02)
+- DeepSeek can still succeed when Gemini fails — it calls OpenAI directly (06-02)
+
 ### Blockers/Concerns
 
 - Circuit breaker is per-serverless-instance (module-level state) — not a distributed lock; HARD-04 addresses this
@@ -90,5 +95,5 @@ Progress: [████████░░] 83%
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Phase 5 (Test Coverage) fully complete and verified. Ready for Phase 6 (Hardening).
+Stopped at: Completed 06-02-PLAN.md (dual-LLM failure graceful degradation). 06-03 and 06-04 remain.
 Resume file: None
