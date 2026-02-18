@@ -1,7 +1,10 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { createCache } from "@/lib/cache";
+import { createLogger } from "@/lib/logger";
 import { bestFuzzyMatch } from "./fuzzy";
 import type { AnalysisInput, TrendEnrichment } from "./types";
+
+const log = createLogger({ module: "trends" });
 
 // Cached trending data types (INFRA-02)
 interface TrendingSound {
@@ -41,6 +44,7 @@ export async function enrichWithTrends(
       .limit(50);
     trendingSounds = (data ?? []) as TrendingSound[];
     soundsCache.set("trending_sounds", trendingSounds);
+    log.debug("Trending sounds loaded", { count: trendingSounds.length, cached: !!soundsCache.get("trending_sounds") });
   }
 
   const matched_trends: TrendEnrichment["matched_trends"] = [];
@@ -154,6 +158,13 @@ export async function enrichWithTrends(
 
   // Normalize to 0-100
   const normalizedScore = Math.min(100, Math.max(0, Math.round(trendScore)));
+
+  log.info("Trend enrichment complete", {
+    matched_sounds: matched_trends.length,
+    hashtag_count: hashtags.length,
+    trend_score: normalizedScore,
+    hashtag_relevance: +hashtag_relevance.toFixed(3),
+  });
 
   // Build context string for DeepSeek prompt
   const trendContext =
