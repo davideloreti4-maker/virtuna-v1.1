@@ -101,6 +101,47 @@ const DEFAULT_TREND_ENRICHMENT: TrendEnrichment = {
   hashtag_relevance: 0,
 };
 
+const DEFAULT_GEMINI_RESULT: PipelineResult["geminiResult"] = {
+  analysis: {
+    factors: [
+      {
+        name: "Scroll-Stop Power",
+        score: 0,
+        rationale: "Analysis unavailable",
+        improvement_tip: "N/A",
+      },
+      {
+        name: "Completion Pull",
+        score: 0,
+        rationale: "Analysis unavailable",
+        improvement_tip: "N/A",
+      },
+      {
+        name: "Rewatch Potential",
+        score: 0,
+        rationale: "Analysis unavailable",
+        improvement_tip: "N/A",
+      },
+      {
+        name: "Share Trigger",
+        score: 0,
+        rationale: "Analysis unavailable",
+        improvement_tip: "N/A",
+      },
+      {
+        name: "Emotional Charge",
+        score: 0,
+        rationale: "Analysis unavailable",
+        improvement_tip: "N/A",
+      },
+    ],
+    overall_impression:
+      "Content analysis unavailable — external AI service error.",
+    content_summary: "Unable to analyze content at this time.",
+  },
+  cost_cents: 0,
+};
+
 // =====================================================
 // 10-Stage Prediction Pipeline with Wave Parallelism
 // =====================================================
@@ -112,7 +153,7 @@ const DEFAULT_TREND_ENRICHMENT: TrendEnrichment = {
  * 1. Validate     -- Parse input with AnalysisInputSchema
  * 2. Normalize    -- Convert AnalysisInput to ContentPayload
  * 3. Wave 1 (parallel):
- *    - Stage 3: Gemini Analysis (CRITICAL -- throws on failure)
+ *    - Stage 3: Gemini Analysis (non-critical -- fallback with warning, HARD-03)
  *    - Stage 4: Audio Analysis (placeholder)
  *    - Stage 5: Creator Context (non-critical -- fallback with warning)
  *    - Stage 6: Rule Loading + Scoring (non-critical -- fallback with warning)
@@ -124,7 +165,9 @@ const DEFAULT_TREND_ENRICHMENT: TrendEnrichment = {
  *
  * INFRA-03: Non-critical stages (Creator, Rules, Trends, DeepSeek) fail
  * gracefully with fallback values and pipeline warnings. DeepSeek has a
- * Gemini fallback before degrading to null. Only Gemini is critical.
+ * Gemini fallback before degrading to null.
+ * HARD-03: Gemini also degrades gracefully with zero-score fallback.
+ * No stage is fatal — pipeline always produces a result.
  */
 export async function runPredictionPipeline(
   input: AnalysisInput,
@@ -174,22 +217,26 @@ export async function runPredictionPipeline(
   const supabase = createServiceClient();
 
   // -------------------------------------------------------
-  // Wave 1: Gemini (critical) + Audio + Creator + Rules (non-critical)
+  // Wave 1: Gemini + Audio + Creator + Rules (all non-critical, HARD-03)
   // -------------------------------------------------------
 
-  // Stage 3: Gemini Analysis -- CRITICAL (throws on failure)
-  const geminiPromise = timed("gemini_analysis", timings, async () => {
+  // Stage 3: Gemini Analysis -- NON-CRITICAL (fallback with warning — HARD-03)
+  const geminiPromise = (async (): Promise<PipelineResult["geminiResult"]> => {
     try {
-      return await analyzeWithGemini(validated);
+      return await timed("gemini_analysis", timings, () =>
+        analyzeWithGemini(validated)
+      );
     } catch (error) {
       Sentry.captureException(error, {
         tags: { stage: "gemini_analysis", requestId },
       });
-      throw new Error(
-        `Analysis failed: Gemini content analysis — ${error instanceof Error ? error.message : String(error)}`
+      warnings.push(
+        `Gemini analysis unavailable: ${error instanceof Error ? error.message : String(error)}`
       );
+      timings.push({ stage: "gemini_analysis", duration_ms: 0 });
+      return DEFAULT_GEMINI_RESULT;
     }
-  });
+  })();
 
   // Stage 4: Audio Analysis (handled via fuzzy matching in trend enrichment -- no separate stage)
   const audioPromise = timed("audio_analysis", timings, async () => null);
@@ -231,7 +278,7 @@ export async function runPredictionPipeline(
     }
   })();
 
-  // Run Wave 1 in parallel -- Gemini throws, others gracefully degrade
+  // Run Wave 1 in parallel -- all stages gracefully degrade (HARD-03)
   const [geminiResult, audioResult, creatorContext, ruleResult] = await timed(
     "wave_1",
     timings,

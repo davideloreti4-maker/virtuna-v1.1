@@ -327,17 +327,38 @@ describe("pipeline integration tests", () => {
   });
 
   // -------------------------------------------------------
-  // Scenario 3: Gemini failure (critical stage — pipeline throws)
+  // Scenario 3: Gemini failure degrades gracefully (HARD-03)
   // -------------------------------------------------------
-  it("Gemini failure throws — pipeline cannot proceed without critical stage", async () => {
+  it("Gemini failure produces fallback result with zero scores and warning", async () => {
     // Gemini fails on all retry attempts
     mockGeminiGenerate.mockRejectedValue(
       new Error("Gemini API unavailable")
     );
 
-    await expect(runPredictionPipeline(input)).rejects.toThrow(
-      /Gemini/i
+    const result = await runPredictionPipeline(input);
+
+    // Pipeline should complete with fallback Gemini result
+    expect(result.geminiResult.analysis.factors).toHaveLength(5);
+    expect(
+      result.geminiResult.analysis.factors.every((f) => f.score === 0)
+    ).toBe(true);
+    expect(result.geminiResult.cost_cents).toBe(0);
+    expect(result.geminiResult.analysis.overall_impression).toContain(
+      "unavailable"
     );
+
+    // Warning should indicate Gemini failure
+    expect(
+      result.warnings.some((w) => w.includes("Gemini analysis unavailable"))
+    ).toBe(true);
+
+    // DeepSeek still succeeds — it calls OpenAI directly, not Gemini
+    // It receives the fallback zero-score analysis but can still reason
+    expect(result.deepseekResult).not.toBeNull();
+
+    // Pipeline metadata still present
+    expect(result.requestId).toBe("test-req-id");
+    expect(result.total_duration_ms).toBeGreaterThanOrEqual(0);
   });
 
   // -------------------------------------------------------
