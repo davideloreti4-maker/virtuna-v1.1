@@ -6,7 +6,7 @@ The prediction engine pipeline is structurally complete but significantly discon
 
 ## Phases
 
-**Phase Numbering:** Integer phases (1–6), milestone-scoped.
+**Phase Numbering:** Integer phases (1–7), milestone-scoped.
 
 - [x] **Phase 1: Schedule Crons & Fix Data Pipeline Wiring** — Schedule all 7 crons in vercel.json and repair the end-to-end scrape → aggregate pipeline *(completed 2026-02-17)*
 - [x] **Phase 2: ML Model Rehabilitation** — Fix class imbalance, real feature bridge, stratified training, achieve >75% accuracy and wire ML into the aggregator *(completed 2026-02-18)*
@@ -14,6 +14,7 @@ The prediction engine pipeline is structurally complete but significantly discon
 - [x] **Phase 4: Observability** — Install Sentry, add structured JSON logging, replace all console.* calls, expose admin cost endpoint *(completed 2026-02-18)*
 - [x] **Phase 5: Test Coverage** — Configure Vitest, write unit + integration tests for all engine modules, reach >80% coverage *(completed 2026-02-18)*
 - [x] **Phase 6: Hardening** — Wrap edge cases: calibration parsing, LLM double-failure, circuit breaker mutex, creator profile trigger *(completed 2026-02-18)*
+- [ ] **Phase 7: Observability Completion** — Close OBS-04, complete structured logging migration across engine modules, cron routes, and webhooks *(gap closure from audit)*
 
 ## Phase Details
 
@@ -133,6 +134,28 @@ Plans:
 - [ ] 06-03-PLAN.md — Add probe mutex to circuit breaker half-open state in deepseek.ts (HARD-04)
 - [ ] 06-04-PLAN.md — Wire optional creator profile scrape trigger on tiktok_handle set in profile route (HARD-05)
 
+### Phase 7: Observability Completion
+
+**Goal**: Every pipeline stage emits a unified structured log entry with all 4 required fields (requestId, stage, duration_ms, cost_cents), and all application code uses the structured logger — no console.* remains anywhere.
+**Depends on**: Phase 4, Phase 6 (completes observability work after all engine changes are done)
+**File Ownership**: `src/lib/engine/gemini.ts`, `src/lib/engine/deepseek.ts`, `src/lib/engine/pipeline.ts`, `src/lib/engine/trends.ts`, `src/lib/engine/creator.ts`, `src/app/api/admin/costs/route.ts`, `src/app/api/cron/*/route.ts`, `src/app/api/webhooks/*/route.ts`
+**Requirements**: OBS-04 (closes partial)
+**Gap Closure**: Closes tech debt from milestone audit
+**Success Criteria** (what must be TRUE):
+  1. Each cost-bearing pipeline stage (gemini, deepseek) emits a `log.info("Stage complete", { stage, duration_ms, cost_cents })` entry on its happy path
+  2. The "Pipeline complete" log in pipeline.ts includes `cost_cents` alongside existing `stage` and `duration_ms`
+  3. `trends.ts` and `creator.ts` use `createLogger` with module binding and structured log calls
+  4. `admin/costs/route.ts` catch block uses structured logger instead of `console.error`
+  5. All 6 cron route handlers and 2 webhook handlers use `createLogger` instead of `console.*`
+  6. `pnpm test` still passes (203+ tests, >80% coverage)
+  7. `pnpm build` succeeds with no TypeScript errors
+**Plans**: 3 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — Add cost_cents to stage completion logs in gemini.ts, deepseek.ts, pipeline.ts (closes OBS-04)
+- [ ] 07-02-PLAN.md — Add structured logger to trends.ts, creator.ts, and admin/costs catch block
+- [ ] 07-03-PLAN.md — Migrate all cron route handlers and webhook handlers from console.* to createLogger
+
 ## Execution Waves
 
 Wave groupings for parallel dispatch. Phases within a wave have no inter-dependencies.
@@ -151,9 +174,12 @@ Wave groupings for parallel dispatch. Phases within a wave have no inter-depende
 ### Wave 4 (final pass — all prior phases complete)
 - Phase 6: Hardening (cleanup across all engine files after substantive work is done)
 
+### Wave 5 (gap closure — audit findings)
+- Phase 7: Observability Completion (closes OBS-04 + tech debt from audit)
+
 ## Progress
 
-**Execution Order:** 1 → 2/3/4 (parallel) → 5 → 6
+**Execution Order:** 1 → 2/3/4 (parallel) → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -163,3 +189,4 @@ Wave groupings for parallel dispatch. Phases within a wave have no inter-depende
 | 4. Observability | 4/4 | ✓ Complete | 2026-02-18 |
 | 5. Test Coverage | 8/8 | ✓ Complete | 2026-02-18 |
 | 6. Hardening | 4/4 | ✓ Complete | 2026-02-18 |
+| 7. Observability Completion | 0/3 | Pending | — |
