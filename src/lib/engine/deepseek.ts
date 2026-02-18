@@ -606,6 +606,7 @@ async function reasonWithGeminiFallback(
 
   const fallbackDuration = Math.round(performance.now() - fallbackStart);
   log.info("DeepSeek->Gemini fallback complete", {
+    stage: "deepseek_gemini_fallback",
     duration_ms: fallbackDuration,
     cost_cents: +cost_cents.toFixed(4),
   });
