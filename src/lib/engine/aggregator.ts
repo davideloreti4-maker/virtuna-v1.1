@@ -11,6 +11,7 @@ import type { PipelineResult } from "./pipeline";
 import { GEMINI_MODEL } from "./gemini";
 import { DEEPSEEK_MODEL } from "./deepseek";
 import { predictWithML, featureVectorToMLInput } from "./ml";
+import { getPlattParameters, applyPlattScaling, type PlattParameters } from "./calibration";
 
 export const ENGINE_VERSION = "2.1.0";
 
@@ -276,7 +277,7 @@ export async function aggregateScores(
   // -------------------------------------------------
   // Overall score (dynamic weighted combination)
   // -------------------------------------------------
-  const overall_score = Math.min(
+  const raw_overall_score = Math.min(
     100,
     Math.max(
       0,
@@ -289,6 +290,19 @@ export async function aggregateScores(
       )
     )
   );
+
+  // -------------------------------------------------
+  // Platt Calibration (CAL-01: conditional application)
+  // -------------------------------------------------
+  let plattParams: PlattParameters | null = null;
+  try {
+    plattParams = await getPlattParameters();
+  } catch {
+    // Calibration lookup failed — proceed uncalibrated
+    plattParams = null;
+  }
+  const overall_score = applyPlattScaling(raw_overall_score, plattParams);
+  const is_calibrated = plattParams !== null;
 
   // -------------------------------------------------
   // Confidence (with signal availability penalties)
@@ -358,6 +372,7 @@ export async function aggregateScores(
     overall_score,
     confidence: conf.confidence,
     confidence_label: conf.confidence_label,
+    is_calibrated,
     behavioral_predictions:
       deepseek?.behavioral_predictions ?? {
         completion_pct: 0,

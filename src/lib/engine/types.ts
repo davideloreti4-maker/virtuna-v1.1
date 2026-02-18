@@ -131,6 +131,7 @@ export interface PredictionResult {
   overall_score: number; // 0-100
   confidence: number; // 0-1 numeric (ENG-07: not categorical)
   confidence_label: ConfidenceLevel; // "HIGH" | "MEDIUM" | "LOW" for UI display
+  is_calibrated: boolean; // CAL-02: whether Platt scaling was applied to overall_score
 
   // v2 outputs
   behavioral_predictions: BehavioralPredictions;
