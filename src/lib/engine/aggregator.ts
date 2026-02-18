@@ -10,6 +10,8 @@ import type {
 import type { PipelineResult } from "./pipeline";
 import { GEMINI_MODEL } from "./gemini";
 import { DEEPSEEK_MODEL } from "./deepseek";
+import { predictWithML, featureVectorToMLInput } from "./ml";
+import { getPlattParameters, applyPlattScaling, type PlattParameters } from "./calibration";
 
 export const ENGINE_VERSION = "2.1.0";
 
@@ -18,9 +20,10 @@ export const ENGINE_VERSION = "2.1.0";
 // =====================================================
 
 const SCORE_WEIGHTS = {
-  behavioral: 0.45,
+  behavioral: 0.35,
   gemini: 0.25,
-  rules: 0.20,
+  ml: 0.15,
+  rules: 0.15,
   trends: 0.10,
 } as const;
 
@@ -30,7 +33,8 @@ const SCORE_WEIGHTS = {
 
 interface SignalAvailability {
   behavioral: boolean; // DeepSeek produced component scores
-  gemini: boolean;     // Gemini produced factor scores (always true — critical stage)
+  gemini: boolean;     // Gemini produced real factor scores (false when using fallback — HARD-03)
+  ml: boolean;         // ML model loaded and prediction succeeded
   rules: boolean;      // Rule scoring produced real matches (not default fallback)
   trends: boolean;     // Trend enrichment found matches (not default fallback)
 }
@@ -44,7 +48,7 @@ interface SignalAvailability {
  */
 export function selectWeights(
   availability: SignalAvailability
-): { behavioral: number; gemini: number; rules: number; trends: number } {
+): { behavioral: number; gemini: number; ml: number; rules: number; trends: number } {
   const available = Object.entries(availability).filter(([, v]) => v);
   const missing = Object.entries(availability).filter(([, v]) => !v);
 
@@ -60,7 +64,7 @@ export function selectWeights(
   );
 
   // Each available source gets its base weight + proportional share of missing weight
-  const result = { behavioral: 0, gemini: 0, rules: 0, trends: 0 };
+  const result = { behavioral: 0, gemini: 0, ml: 0, rules: 0, trends: 0 };
   for (const [key, isAvailable] of Object.entries(availability)) {
     const k = key as keyof typeof SCORE_WEIGHTS;
     if (isAvailable) {
@@ -71,6 +75,7 @@ export function selectWeights(
 
   // Round to avoid floating point noise, ensure they sum to ~1
   const total = Object.values(result).reduce((a, b) => a + b, 0);
+  if (total === 0) return result; // All sources unavailable — return all zeros
   for (const key of Object.keys(result) as (keyof typeof result)[]) {
     result[key] = Math.round((result[key] / total) * 1000) / 1000;
   }
@@ -201,15 +206,15 @@ function assembleFeatureVector(pipelineResult: PipelineResult): FeatureVector {
 /**
  * Aggregate all pipeline stage outputs into a PredictionResult.
  *
- * v2 formula: behavioral 45% + gemini 25% + rules 20% + trends 10%
+ * v2 formula: behavioral 35% + gemini 25% + ml 15% + rules 15% + trends 10%
  * RULE-04: Dynamic weight selection adapts when signals are missing.
  *
  * Takes the full PipelineResult from runPredictionPipeline()
  * and returns a complete PredictionResult.
  */
-export function aggregateScores(
+export async function aggregateScores(
   pipelineResult: PipelineResult
-): PredictionResult {
+): Promise<PredictionResult> {
   const {
     payload,
     geminiResult,
@@ -222,21 +227,36 @@ export function aggregateScores(
   const deepseek = deepseekResult?.reasoning ?? null;
 
   // -------------------------------------------------
+  // ML prediction (async — loads model from Supabase Storage on cold start)
+  // -------------------------------------------------
+  const feature_vector = assembleFeatureVector(pipelineResult);
+  const mlFeatures = featureVectorToMLInput(feature_vector);
+  const mlScore = await predictWithML(mlFeatures);
+  const mlAvailable = mlScore !== null;
+
+  // -------------------------------------------------
   // RULE-04: Determine signal availability from pipeline result
   // -------------------------------------------------
   const availability: SignalAvailability = {
     behavioral: deepseekResult !== null,
-    gemini: true, // Always true — critical stage, pipeline throws if it fails
-    rules: ruleResult.matched_rules.length > 0
-      && !pipelineResult.warnings.some(w => w.includes('Rule scoring unavailable')),
-    trends: trendEnrichment.matched_trends.length > 0
-      && !pipelineResult.warnings.some(w => w.includes('Trend enrichment unavailable')),
+    gemini: geminiResult.analysis.factors.some((f) => f.score > 0), // HARD-03: false when all factors are 0 (fallback)
+    ml: mlAvailable,
+    rules:
+      ruleResult.matched_rules.length > 0 &&
+      !pipelineResult.warnings.some((w) =>
+        w.includes("Rule scoring unavailable")
+      ),
+    trends:
+      trendEnrichment.matched_trends.length > 0 &&
+      !pipelineResult.warnings.some((w) =>
+        w.includes("Trend enrichment unavailable")
+      ),
   };
 
   const weights = selectWeights(availability);
 
   // -------------------------------------------------
-  // Behavioral score (45% base weight)
+  // Behavioral score (35% base weight)
   // Source: DeepSeek's 7 component scores, each 0-10
   // -------------------------------------------------
   const cs = deepseek?.component_scores;
@@ -264,13 +284,14 @@ export function aggregateScores(
   // -------------------------------------------------
   // Overall score (dynamic weighted combination)
   // -------------------------------------------------
-  const overall_score = Math.min(
+  const raw_overall_score = Math.min(
     100,
     Math.max(
       0,
       Math.round(
         behavioral_score * weights.behavioral +
           gemini_score * weights.gemini +
+          (mlScore ?? 0) * weights.ml +
           ruleResult.rule_score * weights.rules +
           trendEnrichment.trend_score * weights.trends
       )
@@ -278,10 +299,23 @@ export function aggregateScores(
   );
 
   // -------------------------------------------------
+  // Platt Calibration (CAL-01: conditional application)
+  // -------------------------------------------------
+  let plattParams: PlattParameters | null = null;
+  try {
+    plattParams = await getPlattParameters();
+  } catch {
+    // Calibration lookup failed — proceed uncalibrated
+    plattParams = null;
+  }
+  const overall_score = applyPlattScaling(raw_overall_score, plattParams);
+  const is_calibrated = plattParams !== null;
+
+  // -------------------------------------------------
   // Confidence (with signal availability penalties)
   // -------------------------------------------------
   const hasVideo = payload.input_mode !== "text";
-  const conf = calculateConfidence(
+  let conf = calculateConfidence(
     gemini_score,
     behavioral_score,
     ruleResult,
@@ -290,6 +324,15 @@ export function aggregateScores(
     deepseek?.confidence ?? "low",
     availability
   );
+
+  // HARD-03: Override confidence to LOW when both LLM providers failed.
+  // calculateConfidence() incorrectly yields MEDIUM here because both
+  // zero-scores produce the same direction (-50), triggering the
+  // "models agree" branch (agreement = 0.4). In reality, two zeros
+  // agreeing is meaningless — force LOW to reflect actual data quality.
+  if (!availability.gemini && !availability.behavioral) {
+    conf = { confidence: 0.2, confidence_label: "LOW" };
+  }
 
   // -------------------------------------------------
   // Warnings (from DeepSeek + weight redistribution + low confidence)
@@ -301,7 +344,16 @@ export function aggregateScores(
     const missingSources = Object.entries(availability)
       .filter(([, v]) => !v)
       .map(([k]) => k);
-    warnings.push(`Weights redistributed — missing signals: ${missingSources.join(', ')}`);
+    warnings.push(
+      `Weights redistributed — missing signals: ${missingSources.join(", ")}`
+    );
+  }
+
+  // HARD-03: Explicit dual-failure warning
+  if (!availability.gemini && !availability.behavioral) {
+    warnings.push(
+      "Both LLM providers failed — result based on rules and trends only"
+    );
   }
 
   if (conf.confidence < 0.4) {
@@ -331,11 +383,6 @@ export function aggregateScores(
   );
 
   // -------------------------------------------------
-  // FeatureVector
-  // -------------------------------------------------
-  const feature_vector = assembleFeatureVector(pipelineResult);
-
-  // -------------------------------------------------
   // Cost tracking
   // -------------------------------------------------
   const cost_cents =
@@ -350,6 +397,7 @@ export function aggregateScores(
     overall_score,
     confidence: conf.confidence,
     confidence_label: conf.confidence_label,
+    is_calibrated,
     behavioral_predictions:
       deepseek?.behavioral_predictions ?? {
         completion_pct: 0,
@@ -370,6 +418,7 @@ export function aggregateScores(
     trend_score: trendEnrichment.trend_score,
     gemini_score,
     behavioral_score,
+    ml_score: mlScore ?? 0,
     score_weights: weights, // Actual weights used (may differ from BASE if signals missing)
     latency_ms: pipelineResult.total_duration_ms,
     cost_cents,

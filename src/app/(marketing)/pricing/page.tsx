@@ -3,6 +3,8 @@ import { Footer } from "@/components/layout/footer";
 import { FAQSection } from "@/components/landing";
 import type { Metadata } from "next";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Pricing | Virtuna",
   description:

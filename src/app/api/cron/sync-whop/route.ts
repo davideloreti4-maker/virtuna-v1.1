@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
+import { verifyCronAuth } from "@/lib/cron-auth";
 import { mapWhopProductToTier } from "@/lib/whop/config";
 import { createServiceClient } from "@/lib/supabase/service";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "cron/sync-whop" });
 
 interface WhopMembership {
   id: string;
@@ -17,18 +21,10 @@ interface WhopMembership {
  * Called by Vercel Cron or external scheduler.
  */
 export async function GET(request: Request) {
+  const authError = verifyCronAuth(request);
+  if (authError) return authError;
+
   try {
-    // Verify cron secret authorization
-    const authHeader = request.headers.get("authorization");
-    const expectedAuth = `Bearer ${process.env.CRON_SECRET}`;
-
-    if (authHeader !== expectedAuth) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
     const supabase = createServiceClient();
 
     // Get all subscriptions linked to Whop
@@ -38,7 +34,7 @@ export async function GET(request: Request) {
       .not("whop_membership_id", "is", null);
 
     if (fetchError) {
-      console.error("Failed to fetch subscriptions:", fetchError);
+      log.error("Failed to fetch subscriptions", { error: fetchError.message });
       return NextResponse.json(
         { error: "Database error" },
         { status: 500 }
@@ -97,7 +93,7 @@ export async function GET(request: Request) {
       } catch (error) {
         // Log error but continue processing other subscriptions
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
-        console.error(`Failed to sync user ${subscription.user_id}:`, errorMessage);
+        log.error("Failed to sync user", { userId: subscription.user_id, error: errorMessage });
         errors.push({
           userId: subscription.user_id,
           error: errorMessage,
@@ -112,7 +108,7 @@ export async function GET(request: Request) {
       errors: errors.length > 0 ? errors : undefined,
     });
   } catch (error) {
-    console.error("Cron sync failed:", error);
+    log.error("Cron sync failed", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

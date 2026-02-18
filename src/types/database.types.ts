@@ -362,6 +362,9 @@ export type Database = {
           instagram_followers: number | null
           instagram_handle: string | null
           niches: string[] | null
+          onboarding_step: string | null
+          primary_goal: string | null
+          onboarding_completed_at: string | null
           tiktok_followers: number | null
           tiktok_handle: string | null
           twitter_followers: number | null
@@ -381,6 +384,9 @@ export type Database = {
           instagram_followers?: number | null
           instagram_handle?: string | null
           niches?: string[] | null
+          onboarding_step?: string | null
+          primary_goal?: string | null
+          onboarding_completed_at?: string | null
           tiktok_followers?: number | null
           tiktok_handle?: string | null
           twitter_followers?: number | null
@@ -400,6 +406,9 @@ export type Database = {
           instagram_followers?: number | null
           instagram_handle?: string | null
           niches?: string[] | null
+          onboarding_step?: string | null
+          primary_goal?: string | null
+          onboarding_completed_at?: string | null
           tiktok_followers?: number | null
           tiktok_handle?: string | null
           twitter_followers?: number | null
@@ -544,6 +553,8 @@ export type Database = {
           status: string
           cancel_at_period_end: boolean | null
           current_period_end: string | null
+          is_trial: boolean | null
+          trial_ends_at: string | null
           created_at: string | null
           updated_at: string | null
           last_synced_at: string | null
@@ -558,6 +569,8 @@ export type Database = {
           status?: string
           cancel_at_period_end?: boolean | null
           current_period_end?: string | null
+          is_trial?: boolean | null
+          trial_ends_at?: string | null
           created_at?: string | null
           updated_at?: string | null
           last_synced_at?: string | null
@@ -572,6 +585,8 @@ export type Database = {
           status?: string
           cancel_at_period_end?: boolean | null
           current_period_end?: string | null
+          is_trial?: boolean | null
+          trial_ends_at?: string | null
           created_at?: string | null
           updated_at?: string | null
           last_synced_at?: string | null
@@ -644,6 +659,14 @@ export type Database = {
           trend_score: number | null
           ml_score: number | null
           score_weights: Json | null
+          behavioral_predictions: Json | null
+          feature_vector: Json | null
+          reasoning: string | null
+          warnings: string[] | null
+          input_mode: string | null
+          has_video: boolean | null
+          is_calibrated: boolean | null
+          gemini_score: number | null
           deleted_at: string | null
           created_at: string | null
           updated_at: string | null
@@ -671,6 +694,14 @@ export type Database = {
           trend_score?: number | null
           ml_score?: number | null
           score_weights?: Json | null
+          behavioral_predictions?: Json | null
+          feature_vector?: Json | null
+          reasoning?: string | null
+          warnings?: string[] | null
+          input_mode?: string | null
+          has_video?: boolean | null
+          is_calibrated?: boolean | null
+          gemini_score?: number | null
           deleted_at?: string | null
           created_at?: string | null
           updated_at?: string | null
@@ -698,6 +729,14 @@ export type Database = {
           trend_score?: number | null
           ml_score?: number | null
           score_weights?: Json | null
+          behavioral_predictions?: Json | null
+          feature_vector?: Json | null
+          reasoning?: string | null
+          warnings?: string[] | null
+          input_mode?: string | null
+          has_video?: boolean | null
+          is_calibrated?: boolean | null
+          gemini_score?: number | null
           deleted_at?: string | null
           created_at?: string | null
           updated_at?: string | null
@@ -769,6 +808,109 @@ export type Database = {
           },
         ]
       }
+      referral_codes: {
+        Row: {
+          id: string
+          user_id: string
+          code: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          code: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          code?: string
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      referral_clicks: {
+        Row: {
+          id: string
+          referral_code: string
+          referrer_user_id: string
+          referred_user_id: string | null
+          clicked_at: string | null
+          referrer_url: string | null
+          user_agent: string | null
+          ip_hash: string | null
+        }
+        Insert: {
+          id?: string
+          referral_code: string
+          referrer_user_id: string
+          referred_user_id?: string | null
+          clicked_at?: string | null
+          referrer_url?: string | null
+          user_agent?: string | null
+          ip_hash?: string | null
+        }
+        Update: {
+          id?: string
+          referral_code?: string
+          referrer_user_id?: string
+          referred_user_id?: string | null
+          clicked_at?: string | null
+          referrer_url?: string | null
+          user_agent?: string | null
+          ip_hash?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_clicks_referral_code_fkey"
+            columns: ["referral_code"]
+            isOneToOne: false
+            referencedRelation: "referral_codes"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      referral_conversions: {
+        Row: {
+          id: string
+          referrer_user_id: string
+          referred_user_id: string
+          referral_code: string
+          whop_membership_id: string
+          bonus_cents: number
+          converted_at: string | null
+          metadata: Json | null
+        }
+        Insert: {
+          id?: string
+          referrer_user_id: string
+          referred_user_id: string
+          referral_code: string
+          whop_membership_id: string
+          bonus_cents: number
+          converted_at?: string | null
+          metadata?: Json | null
+        }
+        Update: {
+          id?: string
+          referrer_user_id?: string
+          referred_user_id?: string
+          referral_code?: string
+          whop_membership_id?: string
+          bonus_cents?: number
+          converted_at?: string | null
+          metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_conversions_referral_code_fkey"
+            columns: ["referral_code"]
+            isOneToOne: false
+            referencedRelation: "referral_codes"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       rule_library: {
         Row: {
           id: string
@@ -779,6 +921,8 @@ export type Database = {
           score_modifier: number | null
           platform: string | null
           evaluation_prompt: string | null
+          evaluation_tier: string | null
+          rule_contributions: Json | null
           weight: number
           max_score: number
           accuracy_rate: number | null
@@ -796,6 +940,8 @@ export type Database = {
           score_modifier?: number | null
           platform?: string | null
           evaluation_prompt?: string | null
+          evaluation_tier?: string | null
+          rule_contributions?: Json | null
           weight?: number
           max_score?: number
           accuracy_rate?: number | null
@@ -813,6 +959,8 @@ export type Database = {
           score_modifier?: number | null
           platform?: string | null
           evaluation_prompt?: string | null
+          evaluation_tier?: string | null
+          rule_contributions?: Json | null
           weight?: number
           max_score?: number
           accuracy_rate?: number | null
@@ -969,6 +1117,205 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      tiktok_accounts: {
+        Row: {
+          id: string
+          user_id: string
+          handle: string
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          handle: string
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          handle?: string
+          is_active?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          user_id: string
+          display_name: string | null
+          company: string | null
+          role: string | null
+          avatar_url: string | null
+          notification_email_updates: boolean
+          notification_test_results: boolean
+          notification_weekly_digest: boolean
+          notification_marketing: boolean
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          display_name?: string | null
+          company?: string | null
+          role?: string | null
+          avatar_url?: string | null
+          notification_email_updates?: boolean
+          notification_test_results?: boolean
+          notification_weekly_digest?: boolean
+          notification_marketing?: boolean
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          display_name?: string | null
+          company?: string | null
+          role?: string | null
+          avatar_url?: string | null
+          notification_email_updates?: boolean
+          notification_test_results?: boolean
+          notification_weekly_digest?: boolean
+          notification_marketing?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      teams: {
+        Row: {
+          id: string
+          owner_id: string
+          name: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          name?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          name?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      team_members: {
+        Row: {
+          id: string
+          team_id: string
+          user_id: string | null
+          role: string
+          invited_email: string | null
+          status: string
+          joined_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          team_id: string
+          user_id?: string | null
+          role?: string
+          invited_email?: string | null
+          status?: string
+          joined_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          team_id?: string
+          user_id?: string | null
+          role?: string
+          invited_email?: string | null
+          status?: string
+          joined_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_bookmarks: {
+        Row: {
+          user_id: string
+          video_id: string
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          video_id: string
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          video_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      affiliate_links: {
+        Row: {
+          id: string
+          user_id: string
+          deal_id: string | null
+          product_name: string
+          url: string
+          short_code: string
+          clicks: number
+          conversions: number
+          earnings_cents: number
+          commission_rate_pct: number
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          deal_id?: string | null
+          product_name: string
+          url: string
+          short_code: string
+          clicks?: number
+          conversions?: number
+          earnings_cents?: number
+          commission_rate_pct?: number
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          deal_id?: string | null
+          product_name?: string
+          url?: string
+          short_code?: string
+          clicks?: number
+          conversions?: number
+          earnings_cents?: number
+          commission_rate_pct?: number
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_links_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

@@ -1,6 +1,10 @@
+import * as Sentry from "@sentry/nextjs";
 import { NextResponse } from "next/server";
 import { verifyCronAuth } from "@/lib/cron-auth";
+import { createLogger } from "@/lib/logger";
 import { generateCalibrationReport } from "@/lib/engine/calibration";
+
+const log = createLogger({ module: "calibration_report" });
 
 /**
  * GET /api/admin/calibration-report
@@ -38,7 +42,12 @@ export async function GET(request: Request) {
 
     return NextResponse.json(report);
   } catch (error) {
-    console.error("[calibration-report] Failed to generate report:", error);
+    log.error("Failed to generate report", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    Sentry.captureException(error, {
+      tags: { stage: "calibration_report" },
+    });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

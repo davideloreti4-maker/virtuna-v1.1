@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { verifyCronAuth } from "@/lib/cron-auth";
 import { createServiceClient } from "@/lib/supabase/service";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "cron/calculate-trends" });
 
 /**
  * GET /api/cron/calculate-trends
@@ -34,7 +37,7 @@ export async function GET(request: Request) {
       .order("created_at", { ascending: false });
 
     if (fetchError) {
-      console.error("[calculate-trends] Fetch error:", fetchError);
+      log.error("Fetch error", { error: fetchError.message });
       return NextResponse.json(
         { error: "Failed to fetch videos" },
         { status: 500 }
@@ -135,18 +138,17 @@ export async function GET(request: Request) {
         .upsert(batch, { onConflict: "sound_name" });
 
       if (error) {
-        console.error(
-          `[calculate-trends] Upsert error (offset ${i}):`,
-          error
-        );
+        log.error("Upsert error", { offset: i, error: error.message });
       } else {
         upsertedCount += batch.length;
       }
     }
 
-    console.log(
-      `[calculate-trends] Processed ${videos.length} videos into ${trendRecords.length} sounds (${upsertedCount} upserted)`
-    );
+    log.info("Processed videos into sounds", {
+      videoCount: videos.length,
+      soundCount: trendRecords.length,
+      upsertedCount,
+    });
 
     return NextResponse.json({
       processed: videos.length,
@@ -154,7 +156,7 @@ export async function GET(request: Request) {
       upserted: upsertedCount,
     });
   } catch (error) {
-    console.error("[calculate-trends] Failed:", error);
+    log.error("Failed", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -1,5 +1,9 @@
+import * as Sentry from "@sentry/nextjs";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createCache } from "@/lib/cache";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "calibration" });
 
 // =====================================================
 // Types
@@ -76,7 +80,10 @@ export async function fetchOutcomePairs(
   };
 
   if (error) {
-    console.error("[calibration] Failed to fetch outcome pairs:", error);
+    log.error("Failed to fetch outcome pairs", { error: error.message });
+    Sentry.captureException(new Error(error.message), {
+      tags: { stage: "calibration" },
+    });
     throw new Error(`Failed to fetch outcome pairs: ${error.message}`);
   }
 

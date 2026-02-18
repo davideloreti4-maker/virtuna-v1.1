@@ -3,6 +3,9 @@ import { revalidatePath } from "next/cache";
 import { verifyCronAuth } from "@/lib/cron-auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createScrapingProvider } from "@/lib/scraping";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "cron/refresh-competitors" });
 
 /** Vercel function timeout — 60s default, 300s available on Pro with confirmation */
 export const maxDuration = 60;
@@ -30,7 +33,7 @@ export async function GET(request: Request) {
     .select("id, tiktok_handle");
 
   if (fetchError) {
-    console.error("[refresh-competitors] Failed to fetch profiles:", fetchError);
+    log.error("Failed to fetch profiles", { error: fetchError.message });
     return NextResponse.json(
       { error: "Failed to fetch competitor profiles" },
       { status: 500 }
@@ -80,10 +83,10 @@ export async function GET(request: Request) {
 
       refreshed++;
     } catch (error) {
-      console.error(
-        `[refresh-competitors] Failed for ${profile.tiktok_handle}:`,
-        error
-      );
+      log.error("Failed to refresh profile", {
+        handle: profile.tiktok_handle,
+        error: error instanceof Error ? error.message : String(error),
+      });
 
       // Mark profile as failed but continue to next profile
       await supabase

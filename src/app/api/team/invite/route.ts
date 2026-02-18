@@ -30,15 +30,15 @@ export async function POST(request: Request) {
 
     // Find user's team and verify they're owner/admin
     const { data: membership } = await supabase
-      .from("team_members" as never)
+      .from("team_members")
       .select("team_id, role")
       .eq("user_id", user.id)
       .eq("status", "active")
       .limit(1)
       .maybeSingle();
 
-    const teamId = (membership as Record<string, unknown>)?.team_id as string | undefined;
-    const role = (membership as Record<string, unknown>)?.role as string | undefined;
+    const teamId = membership?.team_id;
+    const role = membership?.role;
 
     if (!teamId || !["owner", "admin"].includes(role || "")) {
       return Response.json(
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
 
     // Check if email is already a member
     const { data: existing } = await supabase
-      .from("team_members" as never)
+      .from("team_members")
       .select("id, status")
       .eq("team_id", teamId)
       .eq("invited_email", parsed.data.email)
@@ -65,13 +65,13 @@ export async function POST(request: Request) {
 
     // Create invite
     const { data: invite, error: inviteError } = await supabase
-      .from("team_members" as never)
+      .from("team_members")
       .insert({
         team_id: teamId,
         invited_email: parsed.data.email,
         role: "member",
         status: "invited",
-      } as never)
+      })
       .select("*")
       .single();
 

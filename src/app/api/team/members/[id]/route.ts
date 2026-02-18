@@ -31,15 +31,15 @@ export async function PATCH(
 
     // Verify caller is owner/admin of the same team
     const { data: callerMembership } = await supabase
-      .from("team_members" as never)
+      .from("team_members")
       .select("team_id, role")
       .eq("user_id", user.id)
       .eq("status", "active")
       .limit(1)
       .maybeSingle();
 
-    const callerTeamId = (callerMembership as Record<string, unknown>)?.team_id as string | undefined;
-    const callerRole = (callerMembership as Record<string, unknown>)?.role as string | undefined;
+    const callerTeamId = callerMembership?.team_id;
+    const callerRole = callerMembership?.role;
 
     if (!callerTeamId || !["owner", "admin"].includes(callerRole || "")) {
       return Response.json({ error: "Insufficient permissions" }, { status: 403 });
@@ -47,7 +47,7 @@ export async function PATCH(
 
     // Verify target member is in same team and not the owner
     const { data: targetMember } = await supabase
-      .from("team_members" as never)
+      .from("team_members")
       .select("team_id, role, user_id")
       .eq("id", memberId)
       .single();
@@ -56,19 +56,18 @@ export async function PATCH(
       return Response.json({ error: "Member not found" }, { status: 404 });
     }
 
-    const target = targetMember as Record<string, unknown>;
-    if (target.team_id !== callerTeamId) {
+    if (targetMember.team_id !== callerTeamId) {
       return Response.json({ error: "Member not in your team" }, { status: 403 });
     }
 
-    if (target.role === "owner") {
+    if (targetMember.role === "owner") {
       return Response.json({ error: "Cannot change the owner's role" }, { status: 403 });
     }
 
     // Update role
     const { error: updateError } = await supabase
-      .from("team_members" as never)
-      .update({ role: parsed.data.role } as never)
+      .from("team_members")
+      .update({ role: parsed.data.role })
       .eq("id", memberId);
 
     if (updateError) {
@@ -102,15 +101,15 @@ export async function DELETE(
 
     // Verify caller is owner/admin
     const { data: callerMembership } = await supabase
-      .from("team_members" as never)
+      .from("team_members")
       .select("team_id, role")
       .eq("user_id", user.id)
       .eq("status", "active")
       .limit(1)
       .maybeSingle();
 
-    const callerTeamId = (callerMembership as Record<string, unknown>)?.team_id as string | undefined;
-    const callerRole = (callerMembership as Record<string, unknown>)?.role as string | undefined;
+    const callerTeamId = callerMembership?.team_id;
+    const callerRole = callerMembership?.role;
 
     if (!callerTeamId || !["owner", "admin"].includes(callerRole || "")) {
       return Response.json({ error: "Insufficient permissions" }, { status: 403 });
@@ -118,7 +117,7 @@ export async function DELETE(
 
     // Verify target member
     const { data: targetMember } = await supabase
-      .from("team_members" as never)
+      .from("team_members")
       .select("team_id, role")
       .eq("id", memberId)
       .single();
@@ -127,19 +126,18 @@ export async function DELETE(
       return Response.json({ error: "Member not found" }, { status: 404 });
     }
 
-    const target = targetMember as Record<string, unknown>;
-    if (target.team_id !== callerTeamId) {
+    if (targetMember.team_id !== callerTeamId) {
       return Response.json({ error: "Member not in your team" }, { status: 403 });
     }
 
-    if (target.role === "owner") {
+    if (targetMember.role === "owner") {
       return Response.json({ error: "Cannot remove the team owner" }, { status: 403 });
     }
 
     // Soft-remove: set status to 'removed'
     const { error: removeError } = await supabase
-      .from("team_members" as never)
-      .update({ status: "removed" } as never)
+      .from("team_members")
+      .update({ status: "removed" })
       .eq("id", memberId);
 
     if (removeError) {

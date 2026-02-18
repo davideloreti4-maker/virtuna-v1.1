@@ -1,5 +1,8 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { createCache } from "@/lib/cache";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "creator" });
 
 // =====================================================
 // Creator Context — Stage 5 of prediction pipeline
@@ -54,6 +57,7 @@ async function getPlatformAverages(
     .limit(5000);
 
   if (error || !videos || videos.length === 0) {
+    log.debug("Platform averages fallback", { reason: error ? "db_error" : "no_data" });
     platformAveragesCache.set(CACHE_KEY, FALLBACK);
     return FALLBACK;
   }
@@ -115,6 +119,7 @@ export async function fetchCreatorContext(
 
   // If no creator handle, return cold-start context
   if (!creator_handle) {
+    log.debug("No creator handle provided, using cold-start context");
     return {
       found: false,
       follower_count: null,
@@ -150,6 +155,11 @@ export async function fetchCreatorContext(
   // Derive niche from profile if not provided
   const resolvedNiche =
     niche ?? (profile.niches && profile.niches.length > 0 ? profile.niches[0] : null);
+
+  log.info("Creator context resolved", {
+    found: !!profile,
+    creator_handle: creator_handle ?? "none",
+  });
 
   return {
     found: true,

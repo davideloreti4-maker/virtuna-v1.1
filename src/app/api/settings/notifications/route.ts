@@ -1,5 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
+import type { Database } from "@/types/database.types";
+
+type UserSettingsInsert = Database["public"]["Tables"]["user_settings"]["Insert"];
 
 const updateNotificationsSchema = z.object({
   emailUpdates: z.boolean().optional(),
@@ -32,7 +35,7 @@ export async function PATCH(request: Request) {
     }
 
     // Map camelCase to snake_case DB columns
-    const updates: Record<string, unknown> = { user_id: user.id };
+    const updates: UserSettingsInsert = { user_id: user.id };
     if (parsed.data.emailUpdates !== undefined) {
       updates.notification_email_updates = parsed.data.emailUpdates;
     }
@@ -47,8 +50,8 @@ export async function PATCH(request: Request) {
     }
 
     const { error } = await supabase
-      .from("user_settings" as never)
-      .upsert(updates as never, { onConflict: "user_id" });
+      .from("user_settings")
+      .upsert(updates, { onConflict: "user_id" });
 
     if (error) {
       console.error("[notifications] PATCH error:", error);

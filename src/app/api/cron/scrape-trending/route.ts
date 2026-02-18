@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { ApifyClient } from "apify-client";
 import { verifyCronAuth } from "@/lib/cron-auth";
 import { createServiceClient } from "@/lib/supabase/service";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "cron/scrape-trending" });
 
 const APIFY_ACTOR_ID = process.env.APIFY_ACTOR_ID ?? "clockworks~tiktok-scraper";
 const STALE_THRESHOLD_HOURS = 24;
@@ -48,15 +51,13 @@ export async function GET(request: Request) {
         (Date.now() - new Date(latest.created_at).getTime()) / (1000 * 60 * 60);
 
       if (hoursSinceLastScrape > STALE_THRESHOLD_HOURS) {
-        console.warn(
-          `[scrape-trending] Stale data detected: last scrape was ${hoursSinceLastScrape.toFixed(1)}h ago`
-        );
+        log.warn("Stale data detected", { hoursSinceLastScrape: Number(hoursSinceLastScrape.toFixed(1)) });
       }
     }
 
     // Start the Apify actor run with configurable hashtags (SIG-04)
     const hashtags = getScrapeHashtags();
-    console.log(`[scrape-trending] Scraping hashtags: ${hashtags.join(", ")}`);
+    log.info("Scraping hashtags", { hashtags });
 
     const run = await client.actor(APIFY_ACTOR_ID).start(
       {
@@ -87,7 +88,7 @@ export async function GET(request: Request) {
       startedAt: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("[scrape-trending] Failed to start actor:", error);
+    log.error("Failed to start actor", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Failed to start scraper" },
       { status: 500 }

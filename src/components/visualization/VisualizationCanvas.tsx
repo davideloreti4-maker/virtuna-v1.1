@@ -3,7 +3,8 @@
 import { Suspense, useRef, useCallback } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
-import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type OrbitControlsImpl = any
 import { VisualizationProvider } from './VisualizationContext'
 
 interface VisualizationCanvasProps {

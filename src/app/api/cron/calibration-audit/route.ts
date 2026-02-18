@@ -7,6 +7,9 @@ import {
   fitPlattScaling,
   invalidatePlattCache,
 } from "@/lib/engine/calibration";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "cron/calibration-audit" });
 
 const ECE_DRIFT_THRESHOLD = 0.15;
 const MIN_SAMPLES = 50;
@@ -30,9 +33,10 @@ export async function GET(request: Request) {
 
     // 2. Check minimum sample threshold
     if (report.totalSamples < MIN_SAMPLES) {
-      console.log(
-        `[calibration-audit] Skipped: only ${report.totalSamples}/${MIN_SAMPLES} outcome samples available`
-      );
+      log.info("Skipped: insufficient outcome samples", {
+        samples: report.totalSamples,
+        required: MIN_SAMPLES,
+      });
       return NextResponse.json({
         status: "skipped",
         reason: "Insufficient outcome data",
@@ -44,14 +48,16 @@ export async function GET(request: Request) {
     // 3. Check ECE drift
     let driftDetected = false;
     if (report.ece > ECE_DRIFT_THRESHOLD) {
-      console.warn(
-        `[calibration-audit] DRIFT ALERT: ECE ${report.ece} exceeds threshold ${ECE_DRIFT_THRESHOLD}`
-      );
+      log.warn("DRIFT ALERT: ECE exceeds threshold", {
+        ece: report.ece,
+        threshold: ECE_DRIFT_THRESHOLD,
+      });
       driftDetected = true;
     } else {
-      console.log(
-        `[calibration-audit] ECE ${report.ece} within acceptable range (threshold: ${ECE_DRIFT_THRESHOLD})`
-      );
+      log.info("ECE within acceptable range", {
+        ece: report.ece,
+        threshold: ECE_DRIFT_THRESHOLD,
+      });
     }
 
     // 4. Re-fit Platt scaling parameters
@@ -62,16 +68,16 @@ export async function GET(request: Request) {
     let plattRefitted = false;
     if (plattParams !== null) {
       plattRefitted = true;
-      console.log(
-        `[calibration-audit] Platt parameters re-fitted: A=${plattParams.a.toFixed(4)}, B=${plattParams.b.toFixed(4)} (${plattParams.sampleCount} samples)`
-      );
+      log.info("Platt parameters re-fitted", {
+        a: plattParams.a,
+        b: plattParams.b,
+        sampleCount: plattParams.sampleCount,
+      });
 
       // 5. Invalidate Platt cache so next request uses fresh params
       invalidatePlattCache();
     } else {
-      console.log(
-        `[calibration-audit] Not enough data for Platt fit (need ${MIN_SAMPLES}+ pairs)`
-      );
+      log.info("Not enough data for Platt fit", { required: MIN_SAMPLES });
     }
 
     // 6. Return structured JSON response
@@ -89,10 +95,9 @@ export async function GET(request: Request) {
       auditedAt: new Date().toISOString(),
     });
   } catch (error) {
-    console.error(
-      "[calibration-audit] Failed:",
-      error instanceof Error ? error.message : error
-    );
+    log.error("Failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: "Calibration audit failed" },
       { status: 500 }

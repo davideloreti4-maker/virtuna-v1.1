@@ -17,7 +17,7 @@ export async function GET() {
     }
 
     const { data, error } = await supabase
-      .from("user_bookmarks" as never)
+      .from("user_bookmarks")
       .select("video_id, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
@@ -30,9 +30,7 @@ export async function GET() {
       );
     }
 
-    const videoIds = (data as { video_id: string }[]).map(
-      (row) => row.video_id
-    );
+    const videoIds = (data ?? []).map((row) => row.video_id);
     return Response.json({ video_ids: videoIds });
   } catch (error) {
     console.error("[bookmarks] GET error:", error);
@@ -68,9 +66,9 @@ export async function POST(request: Request) {
     }
 
     const { error } = await supabase
-      .from("user_bookmarks" as never)
+      .from("user_bookmarks")
       .upsert(
-        { user_id: user.id, video_id: videoId } as never,
+        { user_id: user.id, video_id: videoId },
         { onConflict: "user_id,video_id" }
       );
 
@@ -116,7 +114,7 @@ export async function DELETE(request: Request) {
     }
 
     const { error } = await supabase
-      .from("user_bookmarks" as never)
+      .from("user_bookmarks")
       .delete()
       .eq("user_id", user.id)
       .eq("video_id", videoId);

@@ -1,6 +1,9 @@
+import * as Sentry from "@sentry/nextjs";
 import { GoogleGenAI, Type } from "@google/genai";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { z } from "zod";
+import { createLogger } from "@/lib/logger";
 import {
   GeminiResponseSchema,
   GeminiVideoResponseSchema,
@@ -8,6 +11,8 @@ import {
   type GeminiAnalysis,
   type GeminiVideoAnalysis,
 } from "./types";
+
+const log = createLogger({ module: "gemini" });
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
 const MAX_RETRIES = 2; // 3 total attempts
@@ -42,6 +47,34 @@ interface CalibrationData {
     }>;
   };
 }
+
+export const CalibrationBaselineSchema = z.object({
+  primary_kpis: z.object({
+    share_rate: z.object({ viral_threshold: z.number() }),
+    weighted_engagement_score: z.object({ percentiles: z.object({ p90: z.number() }) }),
+  }),
+  duration_analysis: z.object({
+    sweet_spot_by_weighted_score: z.object({ optimal_range_seconds: z.array(z.number()) }),
+  }),
+  viral_vs_average: z.object({
+    differentiators: z.array(z.object({
+      factor: z.string(),
+      difference_pct: z.number(),
+      description: z.string(),
+    })),
+  }),
+});
+
+const FALLBACK_CALIBRATION: CalibrationData = {
+  primary_kpis: {
+    share_rate: { viral_threshold: 0.02 },
+    weighted_engagement_score: { percentiles: { p90: 85 } },
+  },
+  duration_analysis: {
+    sweet_spot_by_weighted_score: { optimal_range_seconds: [15, 60] },
+  },
+  viral_vs_average: { differentiators: [] },
+};
 
 let cachedCalibration: CalibrationData | null = null;
 
@@ -82,17 +115,27 @@ function parseGeminiVideoResponse(raw: string): GeminiVideoAnalysis {
   return result.data;
 }
 
-/** Load calibration data from JSON file, cached after first read */
-async function loadCalibrationData(): Promise<CalibrationData> {
+/** Load calibration data from JSON file, cached after first read.
+ *  Returns null on malformed/missing file — callers must handle null. */
+async function loadCalibrationData(): Promise<CalibrationData | null> {
   if (cachedCalibration) return cachedCalibration;
 
-  const calibrationPath = path.join(
-    path.dirname(new URL(import.meta.url).pathname),
-    "calibration-baseline.json"
-  );
-  const raw = await fs.readFile(calibrationPath, "utf-8");
-  cachedCalibration = JSON.parse(raw) as CalibrationData;
-  return cachedCalibration;
+  try {
+    const calibrationPath = path.join(
+      path.dirname(new URL(import.meta.url).pathname),
+      "calibration-baseline.json"
+    );
+    const raw = await fs.readFile(calibrationPath, "utf-8");
+    const parsed = JSON.parse(raw);
+    cachedCalibration = CalibrationBaselineSchema.parse(parsed) as CalibrationData;
+    return cachedCalibration;
+  } catch (error) {
+    log.warn("Failed to load calibration data", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    cachedCalibration = null;
+    return null;
+  }
 }
 
 /** Calculate cost in cents from token usage metadata */
@@ -277,8 +320,9 @@ const VIDEO_RESPONSE_SCHEMA = {
 export async function analyzeWithGemini(
   input: AnalysisInput
 ): Promise<{ analysis: GeminiAnalysis; cost_cents: number }> {
+  const startTime = performance.now();
   const ai = getClient();
-  const calibration = await loadCalibrationData();
+  const calibration = (await loadCalibrationData()) ?? FALLBACK_CALIBRATION;
   const niche = input.society_id ?? undefined;
   let lastError: Error | null = null;
 
@@ -313,10 +357,26 @@ export async function analyzeWithGemini(
       const cost_cents = calculateCost(promptTokens, candidateTokens);
 
       if (cost_cents > 0.5) {
-        console.warn(
-          `[Gemini] Text analysis cost ${cost_cents.toFixed(4)} cents exceeds soft cap of 0.5 cents`
-        );
+        log.warn("Text analysis cost exceeds soft cap", {
+          cost_cents: +cost_cents.toFixed(4),
+          soft_cap: 0.5,
+        });
       }
+
+      const duration_ms = Math.round(performance.now() - startTime);
+      log.info("Text analysis complete", {
+        stage: "gemini_text_analysis",
+        duration_ms,
+        cost_cents: +cost_cents.toFixed(4),
+        model: GEMINI_MODEL,
+      });
+
+      Sentry.addBreadcrumb({
+        category: "engine.gemini",
+        message: "Text analysis complete",
+        level: "info",
+        data: { duration_ms, cost_cents: +cost_cents.toFixed(4), model: GEMINI_MODEL },
+      });
 
       return { analysis, cost_cents };
     } catch (error) {
@@ -331,6 +391,9 @@ export async function analyzeWithGemini(
     }
   }
 
+  Sentry.captureException(lastError, {
+    tags: { stage: "gemini_text_analysis" },
+  });
   throw new Error(
     `Gemini analysis failed after ${MAX_RETRIES + 1} attempts: ${lastError?.message}`
   );
@@ -348,8 +411,9 @@ export async function analyzeVideoWithGemini(
   mimeType: string,
   niche?: string
 ): Promise<{ analysis: GeminiVideoAnalysis; cost_cents: number }> {
+  const videoStartTime = performance.now();
   const ai = getClient();
-  const calibration = await loadCalibrationData();
+  const calibration = (await loadCalibrationData()) ?? FALLBACK_CALIBRATION;
 
   // Size cap: reject videos over 50MB
   if (videoBuffer.byteLength > VIDEO_MAX_SIZE_BYTES) {
@@ -433,13 +497,32 @@ export async function analyzeVideoWithGemini(
     const cost_cents = calculateCost(promptTokens, candidateTokens);
 
     if (cost_cents > 2.0) {
-      console.warn(
-        `[Gemini] Video analysis cost ${cost_cents.toFixed(4)} cents exceeds soft cap of 2.0 cents`
-      );
+      log.warn("Video analysis cost exceeds soft cap", {
+        cost_cents: +cost_cents.toFixed(4),
+        soft_cap: 2.0,
+      });
     }
+
+    const duration_ms = Math.round(performance.now() - videoStartTime);
+    log.info("Video analysis complete", {
+      stage: "gemini_video_analysis",
+      duration_ms,
+      cost_cents: +cost_cents.toFixed(4),
+      model: GEMINI_MODEL,
+    });
+
+    Sentry.addBreadcrumb({
+      category: "engine.gemini",
+      message: "Video analysis complete",
+      level: "info",
+      data: { duration_ms, cost_cents: +cost_cents.toFixed(4), model: GEMINI_MODEL },
+    });
 
     return { analysis, cost_cents };
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { stage: "gemini_video_analysis" },
+    });
     if (error instanceof Error && error.name === "AbortError") {
       throw new Error(`Gemini video analysis timed out after ${VIDEO_TIMEOUT_MS}ms`);
     }

@@ -13,6 +13,9 @@
     "extraction:ui": "npx playwright test --ui --config=extraction/playwright.config.ts",
     "extraction:report": "npx playwright show-report extraction/playwright-report",
     "extraction:gifs": "npx tsx extraction/scripts/generate-gifs.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "analyze": "npx tsx scripts/analyze-dataset.ts",
     "benchmark": "npx tsx scripts/benchmark.ts"
   },
@@ -29,6 +32,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
+    "@sentry/nextjs": "^10.39.0",
     "@splinetool/react-spline": "^4.1.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.93.1",
@@ -66,6 +70,7 @@
     "@types/react-dom": "^19",
     "@types/three": "^0.182.0",
     "@types/wcag-contrast": "^3.0.3",
+    "@vitest/coverage-v8": "^4.0.18",
     "dotenv": "^17.3.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.5",
@@ -74,6 +79,7 @@
     "supabase": "^2.74.5",
     "tailwindcss": "^4",
     "typescript": "^5",
+    "vitest": "^4.0.18",
     "wcag-contrast": "^3.0.0"
   }
 }

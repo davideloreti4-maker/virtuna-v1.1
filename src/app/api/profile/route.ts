@@ -1,10 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
+import { createScrapingProvider } from "@/lib/scraping";
+import { createLogger } from "@/lib/logger";
 import { z } from "zod";
+
+const log = createLogger({ module: "profile" });
 
 const updateProfileSchema = z.object({
   display_name: z.string().min(1).max(100).optional(),
   company: z.string().max(100).optional(),
   role: z.string().max(100).optional(),
+  tiktok_handle: z.string().max(100).optional(),
 });
 
 /**
@@ -22,7 +28,7 @@ export async function GET() {
 
     // Fetch user_settings (may not exist yet for new users)
     const { data: settings } = await supabase
-      .from("user_settings" as never)
+      .from("user_settings")
       .select("*")
       .eq("user_id", user.id)
       .maybeSingle();
@@ -35,34 +41,37 @@ export async function GET() {
       .maybeSingle();
 
     const profile = {
-      name: (settings as Record<string, unknown>)?.display_name
-        || (creatorProfile as Record<string, unknown>)?.display_name
+      name: settings?.display_name
+        || creatorProfile?.display_name
         || user.user_metadata?.full_name
         || "",
       email: user.email || "",
-      company: (settings as Record<string, unknown>)?.company || "",
-      role: (settings as Record<string, unknown>)?.role || "",
-      avatar: (settings as Record<string, unknown>)?.avatar_url
+      company: settings?.company || "",
+      role: settings?.role || "",
+      tiktok_handle: creatorProfile?.tiktok_handle || "",
+      avatar: settings?.avatar_url
         || user.user_metadata?.avatar_url
         || null,
       notifications: {
-        emailUpdates: (settings as Record<string, unknown>)?.notification_email_updates ?? true,
-        testResults: (settings as Record<string, unknown>)?.notification_test_results ?? true,
-        weeklyDigest: (settings as Record<string, unknown>)?.notification_weekly_digest ?? false,
-        marketingEmails: (settings as Record<string, unknown>)?.notification_marketing ?? false,
+        emailUpdates: settings?.notification_email_updates ?? true,
+        testResults: settings?.notification_test_results ?? true,
+        weeklyDigest: settings?.notification_weekly_digest ?? false,
+        marketingEmails: settings?.notification_marketing ?? false,
       },
     };
 
     return Response.json(profile);
   } catch (error) {
-    console.error("[profile] GET error:", error);
+    log.error("GET error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
 /**
  * PATCH /api/profile
- * Update display_name, company, role.
+ * Update display_name, company, role, tiktok_handle.
  */
 export async function PATCH(request: Request) {
   try {
@@ -83,25 +92,69 @@ export async function PATCH(request: Request) {
       );
     }
 
+    // Separate tiktok_handle from user_settings fields (different tables)
+    const { tiktok_handle: _tiktokHandle, ...settingsData } = parsed.data;
+
     // Upsert user_settings
     const { error } = await supabase
-      .from("user_settings" as never)
+      .from("user_settings")
       .upsert(
         {
           user_id: user.id,
-          ...parsed.data,
-        } as never,
+          ...settingsData,
+        },
         { onConflict: "user_id" }
       );
 
     if (error) {
-      console.error("[profile] PATCH error:", error);
+      log.error("PATCH upsert error", {
+        error: error.message ?? String(error),
+      });
       return Response.json({ error: "Failed to update profile" }, { status: 500 });
+    }
+
+    // HARD-05: If tiktok_handle provided, upsert creator_profiles and trigger background scrape
+    if (parsed.data.tiktok_handle) {
+      const service = createServiceClient();
+      const handle = parsed.data.tiktok_handle.replace(/^@/, ""); // Strip leading @
+
+      // Upsert creator_profiles row — link user to their TikTok handle
+      await service.from("creator_profiles").upsert(
+        {
+          user_id: user.id,
+          tiktok_handle: handle,
+        },
+        { onConflict: "user_id" }
+      );
+
+      // Fire-and-forget background scrape — intentionally not awaited
+      // Uses void to signal intentional fire-and-forget to ESLint
+      void (async () => {
+        try {
+          const scraper = createScrapingProvider();
+          const profileData = await scraper.scrapeProfile(handle);
+          await service.from("creator_profiles").update({
+            display_name: profileData.displayName,
+            tiktok_followers: profileData.followerCount,
+            avatar_url: profileData.avatarUrl,
+            bio: profileData.bio,
+          }).eq("user_id", user.id);
+          log.info("Background creator scrape complete", { handle });
+        } catch (err) {
+          log.warn("Background creator scrape failed (non-blocking)", {
+            handle,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          // Intentionally swallowed — scrape is best-effort
+        }
+      })();
     }
 
     return Response.json({ success: true });
   } catch (error) {
-    console.error("[profile] PATCH error:", error);
+    log.error("PATCH error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }

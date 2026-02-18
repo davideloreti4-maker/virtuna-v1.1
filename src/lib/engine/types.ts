@@ -131,6 +131,7 @@ export interface PredictionResult {
   overall_score: number; // 0-100
   confidence: number; // 0-1 numeric (ENG-07: not categorical)
   confidence_label: ConfidenceLevel; // "HIGH" | "MEDIUM" | "LOW" for UI display
+  is_calibrated: boolean; // CAL-02: whether Platt scaling was applied to overall_score
 
   // v2 outputs
   behavioral_predictions: BehavioralPredictions;
@@ -147,10 +148,12 @@ export interface PredictionResult {
   trend_score: number;
   gemini_score: number; // Gemini's contribution
   behavioral_score: number; // DeepSeek behavioral contribution
+  ml_score: number; // ML classifier score (0-100), 0 if model unavailable
   score_weights: {
-    behavioral: number; // 0.45
+    behavioral: number; // 0.35
     gemini: number; // 0.25
-    rules: number; // 0.20
+    ml: number; // 0.15
+    rules: number; // 0.15
     trends: number; // 0.10
   };
 

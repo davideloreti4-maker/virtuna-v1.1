@@ -1,5 +1,8 @@
+import * as Sentry from "@sentry/nextjs";
+import { nanoid } from "nanoid";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { createLogger } from "@/lib/logger";
 import { runPredictionPipeline } from "@/lib/engine/pipeline";
 import { aggregateScores } from "@/lib/engine/aggregator";
 import { AnalysisInputSchema } from "@/lib/engine/types";
@@ -26,6 +29,9 @@ const DAILY_LIMITS: Record<string, number> = {
  * INFRA-04: Input validation (TikTok URL, content length, video path)
  */
 export async function POST(request: Request) {
+  const requestId = nanoid(12);
+  const log = createLogger({ requestId, module: "analyze" });
+
   try {
     // Authenticate user
     const supabase = await createClient();
@@ -162,14 +168,14 @@ export async function POST(request: Request) {
             message:
               "Analyzing content with Gemini and loading creator context...",
           });
-          const pipelineResult = await runPredictionPipeline(validated);
+          const pipelineResult = await runPredictionPipeline(validated, { requestId });
 
           // Phase 2: Aggregate scores
           send("phase", {
             phase: "scoring",
             message: "Calculating predictions and assembling results...",
           });
-          const result = aggregateScores(pipelineResult);
+          const result = await aggregateScores(pipelineResult);
 
           // Build rule_contributions JSONB for per-rule tracking (RULE-03)
           const ruleContributions = pipelineResult.ruleResult.matched_rules.map(r => ({
@@ -213,11 +219,15 @@ export async function POST(request: Request) {
             input_mode: finalResult.input_mode,
             has_video: finalResult.has_video,
             gemini_score: finalResult.gemini_score,
-            // NOTE: rule_contributions column not yet migrated — omitted to avoid silent insert failure
-          } as Record<string, unknown>);
+            ml_score: finalResult.ml_score,
+            // CAL-02: Calibration status for every result
+            is_calibrated: finalResult.is_calibrated,
+            // RULE-03: Per-rule contribution tracking for accuracy computation
+            rule_contributions: ruleContributions as unknown as null,
+          });
 
           if (insertError) {
-            console.error("[analyze] DB insert failed:", insertError.message);
+            log.error("DB insert failed", { error: insertError.message });
           }
 
           // Track usage (increments AFTER successful analysis)
@@ -250,7 +260,12 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    console.error("[analyze] Request error:", error);
+    log.error("Request error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    Sentry.captureException(error, {
+      tags: { stage: "analyze_route", requestId },
+    });
     return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }

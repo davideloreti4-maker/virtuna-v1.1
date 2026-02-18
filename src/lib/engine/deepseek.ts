@@ -1,7 +1,10 @@
+import * as Sentry from "@sentry/nextjs";
 import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { z } from "zod";
+import { createLogger } from "@/lib/logger";
 import {
   DeepSeekResponseSchema,
   type AnalysisInput,
@@ -10,6 +13,8 @@ import {
   type RuleScoreResult,
   type TrendEnrichment,
 } from "./types";
+
+const log = createLogger({ module: "deepseek" });
 
 const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL ?? "deepseek-reasoner";
 const MAX_RETRIES = 2; // 3 total attempts
@@ -38,6 +43,9 @@ let breaker: CircuitBreakerState = {
   nextRetryAt: 0,
   backoffIndex: 0,
 };
+
+// HARD-04: Mutex to prevent concurrent half-open probes (thundering herd prevention)
+let probeInFlight = false;
 
 let client: OpenAI | null = null;
 
@@ -79,6 +87,61 @@ interface DeepSeekCalibrationData {
   };
 }
 
+const DeepSeekCalibrationBaselineSchema = z.object({
+  primary_kpis: z.object({
+    share_rate: z.object({
+      percentiles: z.object({ p50: z.number(), p75: z.number(), p90: z.number() }),
+    }),
+    comment_rate: z.object({
+      percentiles: z.object({ p50: z.number(), p75: z.number(), p90: z.number() }),
+    }),
+    save_rate: z.object({
+      percentiles: z.object({ p50: z.number(), p75: z.number(), p90: z.number() }),
+    }),
+    weighted_engagement_score: z.object({
+      percentiles: z.object({ p50: z.number(), p75: z.number(), p90: z.number() }),
+    }),
+  }),
+  virality_tiers: z.array(
+    z.object({
+      tier: z.number(),
+      label: z.string(),
+      score_range: z.array(z.number()),
+      median_share_rate: z.number(),
+      median_comment_rate: z.number(),
+      median_save_rate: z.number(),
+    })
+  ),
+  viral_vs_average: z.object({
+    differentiators: z.array(
+      z.object({
+        factor: z.string(),
+        difference_pct: z.number(),
+        description: z.string(),
+      })
+    ),
+  }),
+  duration_analysis: z.object({
+    sweet_spot_by_weighted_score: z.object({
+      optimal_range_seconds: z.array(z.number()),
+    }),
+  }),
+});
+
+const FALLBACK_DEEPSEEK_CALIBRATION: DeepSeekCalibrationData = {
+  primary_kpis: {
+    share_rate: { percentiles: { p50: 0.005, p75: 0.01, p90: 0.02 } },
+    comment_rate: { percentiles: { p50: 0.003, p75: 0.006, p90: 0.012 } },
+    save_rate: { percentiles: { p50: 0.002, p75: 0.005, p90: 0.01 } },
+    weighted_engagement_score: { percentiles: { p50: 45, p75: 65, p90: 85 } },
+  },
+  virality_tiers: [],
+  viral_vs_average: { differentiators: [] },
+  duration_analysis: {
+    sweet_spot_by_weighted_score: { optimal_range_seconds: [15, 60] },
+  },
+};
+
 let cachedCalibration: DeepSeekCalibrationData | null = null;
 
 function getClient(): OpenAI {
@@ -93,23 +156,29 @@ function getClient(): OpenAI {
   return client;
 }
 
-/** Check if circuit breaker is open (INFRA-03: half-open probe support) */
+/** Check if circuit breaker is open (INFRA-03: half-open probe support, HARD-04: probe mutex) */
 function isCircuitOpen(): boolean {
   if (breaker.status === "closed") return false;
   if (breaker.status === "open") {
     if (Date.now() >= breaker.nextRetryAt) {
-      // Transition to half-open: allow ONE probe request
+      // HARD-04 Mutex: only one probe at a time
+      if (probeInFlight) return true; // Another request is already probing
+      probeInFlight = true;
+      // Transition to half-open: allow this ONE request through as the probe
       breaker.status = "half-open";
       return false;
     }
     return true;
   }
-  // half-open: allow the probe through
+  // half-open: if probeInFlight is true, block additional requests
+  // (defensive guard — probeInFlight gates the transition above)
+  if (probeInFlight) return true;
   return false;
 }
 
 /** Record a failure and potentially open the circuit (INFRA-03: exponential backoff) */
 function recordFailure(): void {
+  probeInFlight = false; // HARD-04: clear probe mutex on failure
   breaker.consecutiveFailures++;
   if (
     breaker.status === "half-open" ||
@@ -125,14 +194,16 @@ function recordFailure(): void {
       breaker.backoffIndex + 1,
       BACKOFF_SCHEDULE_MS.length - 1
     );
-    console.warn(
-      `[DeepSeek] Circuit breaker OPEN. Next retry in ${backoffMs}ms (backoff level ${breaker.backoffIndex})`
-    );
+    log.warn("Circuit breaker OPEN", {
+      next_retry_ms: backoffMs,
+      backoff_level: breaker.backoffIndex,
+    });
   }
 }
 
 /** Record a success — full reset to closed state (INFRA-03) */
 function recordSuccess(): void {
+  probeInFlight = false; // HARD-04: clear probe mutex on success
   breaker = {
     status: "closed",
     consecutiveFailures: 0,
@@ -168,17 +239,29 @@ function calculateDeepSeekCost(
   return (input * INPUT_PRICE_PER_TOKEN + output * OUTPUT_PRICE_PER_TOKEN) * 100;
 }
 
-/** Load calibration data from JSON file, cached after first read */
-async function loadCalibrationData(): Promise<DeepSeekCalibrationData> {
+/** Load calibration data from JSON file, cached after first read.
+ *  Returns null on malformed/missing file -- callers must handle null. */
+async function loadCalibrationData(): Promise<DeepSeekCalibrationData | null> {
   if (cachedCalibration) return cachedCalibration;
 
-  const calibrationPath = path.join(
-    path.dirname(new URL(import.meta.url).pathname),
-    "calibration-baseline.json"
-  );
-  const raw = await fs.readFile(calibrationPath, "utf-8");
-  cachedCalibration = JSON.parse(raw) as DeepSeekCalibrationData;
-  return cachedCalibration;
+  try {
+    const calibrationPath = path.join(
+      path.dirname(new URL(import.meta.url).pathname),
+      "calibration-baseline.json"
+    );
+    const raw = await fs.readFile(calibrationPath, "utf-8");
+    const parsed = JSON.parse(raw);
+    cachedCalibration = DeepSeekCalibrationBaselineSchema.parse(
+      parsed
+    ) as DeepSeekCalibrationData;
+    return cachedCalibration;
+  } catch (error) {
+    log.warn("Failed to load calibration data", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    cachedCalibration = null;
+    return null;
+  }
 }
 
 /**
@@ -375,8 +458,10 @@ export async function reasonWithDeepSeek(
     return null;
   }
 
+  const startTime = performance.now();
   const ai = getClient();
-  const calibration = await loadCalibrationData();
+  const calibration =
+    (await loadCalibrationData()) ?? FALLBACK_DEEPSEEK_CALIBRATION;
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -412,10 +497,26 @@ export async function reasonWithDeepSeek(
       );
 
       if (cost_cents > 1.0) {
-        console.warn(
-          `[DeepSeek] Reasoning cost ${cost_cents.toFixed(4)} cents exceeds soft cap of 1.0 cents`
-        );
+        log.warn("Reasoning cost exceeds soft cap", {
+          cost_cents: +cost_cents.toFixed(4),
+          soft_cap: 1.0,
+        });
       }
+
+      const duration_ms = Math.round(performance.now() - startTime);
+      log.info("Reasoning complete", {
+        stage: "deepseek_reasoning",
+        duration_ms,
+        cost_cents: +cost_cents.toFixed(4),
+        model: DEEPSEEK_MODEL,
+      });
+
+      Sentry.addBreadcrumb({
+        category: "engine.deepseek",
+        message: "Reasoning complete",
+        level: "info",
+        data: { duration_ms, cost_cents: +cost_cents.toFixed(4), model: DEEPSEEK_MODEL },
+      });
 
       return { reasoning, cost_cents };
     } catch (error) {
@@ -441,12 +542,16 @@ export async function reasonWithDeepSeek(
   }
 
   recordFailure();
-  console.error(
-    `DeepSeek failed after ${MAX_RETRIES + 1} attempts: ${lastError?.message}`
-  );
+  log.error("DeepSeek failed after retries", {
+    attempts: MAX_RETRIES + 1,
+    error: lastError?.message,
+  });
+  Sentry.captureException(lastError, {
+    tags: { stage: "deepseek_reasoning" },
+  });
 
   // Fallback: use Gemini to produce the same DeepSeekReasoning output
-  console.warn("[DeepSeek] Falling back to Gemini for reasoning stage");
+  log.warn("Falling back to Gemini for reasoning");
   return reasonWithGeminiFallback(context);
 }
 
@@ -474,8 +579,10 @@ function getGeminiClient(): GoogleGenAI {
 async function reasonWithGeminiFallback(
   context: DeepSeekInput
 ): Promise<{ reasoning: DeepSeekReasoning; cost_cents: number }> {
+  const fallbackStart = performance.now();
   const ai = getGeminiClient();
-  const calibration = await loadCalibrationData();
+  const calibration =
+    (await loadCalibrationData()) ?? FALLBACK_DEEPSEEK_CALIBRATION;
   const prompt = buildDeepSeekPrompt(context, calibration);
 
   const response = await ai.models.generateContent({
@@ -497,11 +604,36 @@ async function reasonWithGeminiFallback(
       candidateTokens * GEMINI_OUTPUT_PRICE_PER_TOKEN) *
     100;
 
-  console.log(
-    `[DeepSeek→Gemini fallback] Reasoning complete (${cost_cents.toFixed(4)}¢)`
-  );
+  const fallbackDuration = Math.round(performance.now() - fallbackStart);
+  log.info("DeepSeek->Gemini fallback complete", {
+    stage: "deepseek_gemini_fallback",
+    duration_ms: fallbackDuration,
+    cost_cents: +cost_cents.toFixed(4),
+  });
+
+  Sentry.addBreadcrumb({
+    category: "engine.deepseek",
+    message: "Gemini fallback reasoning complete",
+    level: "info",
+    data: {
+      duration_ms: fallbackDuration,
+      cost_cents: +cost_cents.toFixed(4),
+      model: GEMINI_FALLBACK_MODEL,
+    },
+  });
 
   return { reasoning, cost_cents };
+}
+
+/** @internal -- test use only. Resets circuit breaker to closed state. */
+export function resetCircuitBreaker(): void {
+  breaker = {
+    status: "closed",
+    consecutiveFailures: 0,
+    nextRetryAt: 0,
+    backoffIndex: 0,
+  };
+  probeInFlight = false; // HARD-04: clear probe mutex for test isolation
 }
 
 export { DEEPSEEK_MODEL, isCircuitOpen };
