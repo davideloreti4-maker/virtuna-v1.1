@@ -19,9 +19,9 @@ Progress: [██████░░░░] 58%
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: 4min
-- Total execution time: 21min
+- Total plans completed: 7
+- Average duration: 3min
+- Total execution time: 23min
 
 **By Phase:**
 
@@ -29,7 +29,7 @@ Progress: [██████░░░░] 58%
 |-------|-------|-------|----------|
 | 01-schedule-crons | 2 | 14min | 7min |
 | 02-ml-model-rehabilitation | 3 | 6min | 2min |
-| 03-calibration-wiring | 1 | 1min | 1min |
+| 03-calibration-wiring | 2 | 3min | 1.5min |
 
 *Updated after each plan completion*
 
@@ -59,6 +59,8 @@ Progress: [██████░░░░] 58%
 - Tier assignment uses percentile quintiles (p20/p40/p60/p80) for adaptive thresholds (02-03)
 - Fallback threshold at 500 videos minimum for dynamic training (02-03)
 
+- Import PlattParameters type at top level (no circular dependency risk — aggregator -> calibration is one-way) (03-01)
+- Try/catch around getPlattParameters() for graceful degradation to uncalibrated mode (03-01)
 - No code changes needed for calibration-audit cron or outcomes endpoint — both verified clean against current codebase (03-02)
 
 ### Blockers/Concerns
@@ -70,5 +72,5 @@ Progress: [██████░░░░] 58%
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed 03-02-PLAN.md — Calibration-audit cron and outcomes endpoint verified. Phase 3 Plan 02 done.
+Stopped at: Completed 03-01-PLAN.md — Platt scaling wired into aggregator, is_calibrated propagated through types/DB/API. Phase 3 fully complete.
 Resume file: None
