@@ -197,3 +197,33 @@
 
 ---
 
+
+## Backend Reliability (Shipped: 2026-02-18)
+
+**Delivered:** Fixed, wired, and hardened the prediction engine — scheduled 7 orphaned crons, rehabilitated the ML classifier, wired Platt calibration, added Sentry + structured logging, built 203+ tests at >80% coverage, and closed all edge-case failure modes.
+
+**Phases completed:** 7 phases, 26 plans
+
+**Key accomplishments:**
+- Scheduled all 7 crons in vercel.json and repaired the end-to-end scrape→webhook→aggregate data pipeline
+- Rehabilitated ML classifier with class weighting, real feature bridge, stratified training, and wired as 15% signal into 5-signal aggregator
+- Wired Platt calibration conditionally into aggregator with `is_calibrated` metadata on every prediction
+- Installed @sentry/nextjs + built zero-dependency structured JSON logger with requestId/stage/duration_ms/cost_cents
+- Built 203+ tests with Vitest achieving >80% coverage across all engine modules (aggregator, normalize, ml, calibration, fuzzy, rules, deepseek, pipeline)
+- Hardened all failure modes: Zod-validated calibration parsing, dual-LLM graceful degradation, circuit breaker probe mutex, creator profile trigger
+
+**Stats:**
+- 94 commits, 133 files changed (+20,269 / -679 lines)
+- 35 requirements, all shipped
+- 7 phases, 26 plans
+- 2 days (2026-02-17 -> 2026-02-18)
+
+**Git range:** `milestone/backend-reliability` branch
+
+**Blockers carried forward:**
+- Calibration has no outcome data yet — wired conditionally, degrades gracefully
+- Circuit breaker is per-serverless-instance (module-level state), not distributed
+- 68 console.* calls remain in non-engine files (API routes, client components) — tech debt for future
+
+---
+

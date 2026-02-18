@@ -53,15 +53,19 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - Side-by-side comparison, self-benchmarking, sortable leaderboard -- Competitors Tool
 - AI intelligence: strategy analysis, viral detection, hashtag gap, recommendations -- Competitors Tool
 - Polish: stale indicators, error states with retry, mobile responsive -- Competitors Tool
+- All 7 crons scheduled, end-to-end scrape→aggregate pipeline repaired -- Backend Reliability
+- ML classifier rehabilitated with class weighting, real feature bridge, wired into 5-signal aggregator -- Backend Reliability
+- Platt calibration conditionally wired into aggregator with is_calibrated metadata -- Backend Reliability
+- Sentry + structured JSON logger (requestId, stage, duration_ms, cost_cents) across all engine modules -- Backend Reliability
+- 203+ Vitest tests, >80% coverage on all engine modules -- Backend Reliability
+- Hardened failure modes: calibration parsing, dual-LLM graceful degradation, circuit breaker mutex, creator profile trigger -- Backend Reliability
 
 ### Active
 
-- [ ] Schedule 6 orphaned cron jobs and fix data pipeline wiring
-- [ ] Rehabilitate ML classifier to >75% accuracy and wire into aggregator
-- [ ] Wire Platt calibration into live predictions
-- [ ] Add Sentry + structured logging observability
-- [ ] Build test coverage for all engine modules (vitest)
-- [ ] Harden edge cases (calibration parsing, LLM double-failure, circuit breaker races)
+- [ ] Connect prediction engine to frontend (analyze button → real predictions)
+- [ ] Trending page re-launch with real backend data
+- [ ] Outcomes feedback loop (auto-scrape posted content after 48h)
+- [ ] Analytics dashboard (confidence distributions, cost trends, model drift)
 
 ### Parallel (other worktrees)
 
@@ -80,9 +84,9 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 ## Context
 
-**Current state:** MVP Launch shipped (2026-02-16). All frontend product features complete.
-- ~23,170 LOC TypeScript (after 121k lines of dead code cleanup)
-- Tech stack: Next.js 15 (App Router), TypeScript strict, Tailwind CSS v4, Supabase Auth, Whop payments, Recharts, d3-hierarchy, d3-quadtree
+**Current state:** Backend Reliability shipped (2026-02-18). Prediction engine fully wired, tested, and hardened.
+- ~43,000 LOC TypeScript (+20k lines from backend reliability work)
+- Tech stack: Next.js 15 (App Router), TypeScript strict, Tailwind CSS v4, Supabase Auth, Whop payments, Recharts, d3-hierarchy, d3-quadtree, @sentry/nextjs, Vitest
 - 36 design system components, 100+ tokens (all Raycast-accurate)
 - Real auth with middleware enforcement, Google OAuth PKCE
 - Progressive onboarding with goal personalization
@@ -97,6 +101,8 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - Referral bonus amount undecided (business decision)
 - Whop sandbox never tested end-to-end
 - Analyze button routes to /viral-predictor which doesn't exist yet
+- Calibration has no outcome data yet (wired conditionally, degrades gracefully)
+- 68 console.* calls remain in non-engine files (API routes, client components)
 
 ## Key Decisions
 
@@ -129,6 +135,11 @@ AI-powered content intelligence that tells TikTok creators whether their content
 | Server-side analytics pre-computation | Good -- minimal client bundle |
 | CSS grid heatmap (not Recharts) | Good -- lighter than chart library for grid layout |
 | URL searchParams for comparison state | Good -- server re-render on selection change |
+| Zero-dependency structured logger (not pino/winston) | Good -- edge-runtime compatible, no bundle impact |
+| Client-side cost aggregation (not SQL RPC) | Good -- avoids migration for read-only admin endpoint |
+| Class weights capped at 3x minimum | Good -- prevents ML overfitting to rare tiers |
+| Per-instance circuit breaker mutex (not distributed) | Good -- matches serverless-per-instance scope |
+| Global aggregate test coverage (not per-file) | Good -- avoids over-testing low-value branches |
 
 ## Constraints
 
@@ -144,29 +155,16 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - Local: ~/virtuna-v1.1
 - Vercel: https://virtuna-v11.vercel.app
 
-## Current Milestone: Backend Reliability
-
-**Goal:** Fix, wire, and harden the prediction engine — the core pipeline works but significant infrastructure is disconnected or non-functional.
-
-**Target outcomes:**
-- All 7 crons scheduled and running (6 orphaned + 1 existing)
-- ML classifier accuracy >75% (currently 31%) and wired into scoring
-- Platt calibration conditional on outcome data availability
-- Sentry error tracking + structured JSON logging
-- >80% test coverage on engine modules
-- Graceful degradation on all failure modes
-
 ## Current State
 
-**Shipped:** Competitors Tool (2026-02-17), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
-
-**Active:** Backend Reliability (worktree at ~/virtuna-backend-reliability/)
+**Shipped:** Backend Reliability (2026-02-18), Competitors Tool (2026-02-17), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
 **Future milestones:**
 - Backend intelligence integration (connect prediction engine to frontend)
+- Trending page re-launch with real backend data
 - External brand deals marketplace
-- Trending page re-launch (when backend ready)
 - Competitor search/discovery by name or niche
+- Outcomes feedback loop
 
 ---
-*Last updated: 2026-02-17 after Backend Reliability milestone started*
+*Last updated: 2026-02-18 after Backend Reliability milestone complete*

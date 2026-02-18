@@ -1,3 +1,12 @@
+# Requirements Archive: backend-reliability Backend Reliability
+
+**Archived:** 2026-02-18
+**Status:** SHIPPED
+
+For current requirements, see `.planning/REQUIREMENTS.md`.
+
+---
+
 # Requirements: Virtuna — Backend Reliability
 
 **Defined:** 2026-02-17
