@@ -5,30 +5,30 @@
 See: .planning/PROJECT.md (updated 2026-02-17)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate
-**Current focus:** Phase 2 (ML Model Rehabilitation) — Plan 01 complete, Plans 02-03 remaining
+**Current focus:** Phase 2 (ML Model Rehabilitation) — Plans 01-02 complete, Plan 03 remaining
 
 ## Current Position
 
 Phase: 2 of 6 (ML Model Rehabilitation)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: Executing
-Last activity: 2026-02-18 — Plan 02-01 complete (class weighting, feature bridge, data-param trainModel)
+Last activity: 2026-02-18 — Plan 02-02 complete (ML signal wired into 5-signal async aggregator)
 
-Progress: [███░░░░░░░] 25%
+Progress: [████░░░░░░] 33%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
+- Total plans completed: 4
 - Average duration: 5min
-- Total execution time: 16min
+- Total execution time: 18min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-schedule-crons | 2 | 14min | 7min |
-| 02-ml-model-rehabilitation | 1 | 2min | 2min |
+| 02-ml-model-rehabilitation | 2 | 4min | 2min |
 
 *Updated after each plan completion*
 
@@ -50,6 +50,9 @@ Progress: [███░░░░░░░] 25%
 - Class weights capped at 3x minimum to prevent overfitting to rare tiers (02-01)
 - Feature bridge maps DeepSeek shareability/commentProvocation/emotionalCharge/saveWorthiness as semantic engagement proxies (02-01)
 - trainModel accepts structured data object directly for retrain cron — avoids write-then-read JSON (02-01)
+- Feature vector assembled before ML prediction to feed featureVectorToMLInput bridge (02-02)
+- ML score defaults to 0 (not null) in PredictionResult for consistent DB storage (02-02)
+- Behavioral weight 0.45->0.35, rules 0.20->0.15 to accommodate ML at 0.15 (02-02)
 
 ### Blockers/Concerns
 
@@ -60,5 +63,5 @@ Progress: [███░░░░░░░] 25%
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed 02-01-PLAN.md — ML core rehabilitation (class weighting, feature bridge, data-param overload). Plans 02-02 and 02-03 next.
+Stopped at: Completed 02-02-PLAN.md — ML signal wired into 5-signal async aggregator. Plan 02-03 next.
 Resume file: None
