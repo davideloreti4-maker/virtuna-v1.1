@@ -169,7 +169,7 @@ export async function POST(request: Request) {
             phase: "scoring",
             message: "Calculating predictions and assembling results...",
           });
-          const result = aggregateScores(pipelineResult);
+          const result = await aggregateScores(pipelineResult);
 
           // Build rule_contributions JSONB for per-rule tracking (RULE-03)
           const ruleContributions = pipelineResult.ruleResult.matched_rules.map(r => ({
@@ -213,6 +213,7 @@ export async function POST(request: Request) {
             input_mode: finalResult.input_mode,
             has_video: finalResult.has_video,
             gemini_score: finalResult.gemini_score,
+            ml_score: finalResult.ml_score,
             // RULE-03: Per-rule contribution tracking for accuracy computation
             rule_contributions: ruleContributions as unknown as null,
           });

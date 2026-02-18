@@ -147,10 +147,12 @@ export interface PredictionResult {
   trend_score: number;
   gemini_score: number; // Gemini's contribution
   behavioral_score: number; // DeepSeek behavioral contribution
+  ml_score: number; // ML classifier score (0-100), 0 if model unavailable
   score_weights: {
-    behavioral: number; // 0.45
+    behavioral: number; // 0.35
     gemini: number; // 0.25
-    rules: number; // 0.20
+    ml: number; // 0.15
+    rules: number; // 0.15
     trends: number; // 0.10
   };
 
