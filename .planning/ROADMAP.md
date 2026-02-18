@@ -83,13 +83,13 @@ Plans:
   2. Pipeline stage logs in production are valid JSON with `requestId`, `stage`, `duration_ms`, and `cost_cents` fields
   3. No `console.log`, `console.error`, or `console.warn` calls remain in any `src/lib/engine/` file
   4. GET `/api/admin/costs` returns a JSON array of `{ date, model, total_cost_cents }` rows grouped by day
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 04-01: Install and configure @sentry/nextjs (client, server, edge, instrumentation hook)
-- [ ] 04-02: Build structured logger utility (JSON in prod, pretty in dev, requestId/stage/duration_ms/cost_cents)
-- [ ] 04-03: Replace all console.* in engine modules with structured logger; add Sentry breadcrumbs and exception captures
-- [ ] 04-04: Build /api/admin/costs aggregation endpoint
+- [ ] 04-01-PLAN.md — Install and configure @sentry/nextjs (client, server, edge, instrumentation hook, withSentryConfig)
+- [ ] 04-02-PLAN.md — Build structured logger utility (JSON in prod, pretty in dev, child loggers with bindings)
+- [ ] 04-03-PLAN.md — Replace all console.* in engine modules with structured logger; add Sentry breadcrumbs and exception captures; thread requestId
+- [ ] 04-04-PLAN.md — Build /api/admin/costs aggregation endpoint (client-side aggregation, CRON_SECRET auth)
 
 ### Phase 5: Test Coverage
 
