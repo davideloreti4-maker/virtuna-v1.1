@@ -164,27 +164,161 @@ function argmax(arr: number[]): number {
 }
 
 // =====================================================
+// Class Weighting, Stratified Split & Per-Class Metrics
+// =====================================================
+
+/**
+ * Compute inverse-frequency class weights.
+ * Formula: weight_c = total_samples / (num_classes * count_c)
+ * Capped at 3x the minimum weight to prevent overfitting to rare classes.
+ *
+ * Labels are 1-indexed (1-5). Maps label - 1 to index into counts array.
+ */
+function computeClassWeights(labels: number[], numClasses: number): number[] {
+  const counts = new Array<number>(numClasses).fill(0);
+  for (const label of labels) {
+    const idx = label - 1;
+    if (idx >= 0 && idx < numClasses) {
+      counts[idx] = (counts[idx] ?? 0) + 1;
+    }
+  }
+  const total = labels.length;
+  const rawWeights = counts.map((count) =>
+    count > 0 ? total / (numClasses * count) : 1.0
+  );
+
+  // Cap at 3x the minimum weight to prevent overfitting
+  const minWeight = Math.min(...rawWeights);
+  const maxAllowed = minWeight * 3;
+  return rawWeights.map((w) => Math.min(w, maxAllowed));
+}
+
+/**
+ * Stratified train/test split: partitions samples by label with proportional
+ * representation in both sets. Uses Fisher-Yates shuffle with provided RNG
+ * for deterministic reproducibility.
+ */
+export function stratifiedSplit(
+  features: number[][],
+  labels: number[],
+  testRatio: number,
+  rng: () => number
+): {
+  train: { features: number[][]; labels: number[] };
+  test: { features: number[][]; labels: number[] };
+} {
+  // Group indices by label value
+  const groups = new Map<number, number[]>();
+  for (let i = 0; i < labels.length; i++) {
+    const label = labels[i]!;
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label)!.push(i);
+  }
+
+  const trainIndices: number[] = [];
+  const testIndices: number[] = [];
+
+  for (const [, indices] of groups) {
+    // Fisher-Yates shuffle with seeded RNG
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [indices[i], indices[j]] = [indices[j]!, indices[i]!];
+    }
+    const splitIdx = Math.floor(indices.length * (1 - testRatio));
+    trainIndices.push(...indices.slice(0, splitIdx));
+    testIndices.push(...indices.slice(splitIdx));
+  }
+
+  return {
+    train: {
+      features: trainIndices.map((i) => features[i]!),
+      labels: trainIndices.map((i) => labels[i]!),
+    },
+    test: {
+      features: testIndices.map((i) => features[i]!),
+      labels: testIndices.map((i) => labels[i]!),
+    },
+  };
+}
+
+/**
+ * Log per-class precision and recall from a confusion matrix.
+ * confusionMatrix[actual][predicted] — rows are actual, columns are predicted.
+ */
+function logPerClassMetrics(
+  confusionMatrix: number[][],
+  setName: string
+): void {
+  for (let c = 0; c < NUM_CLASSES; c++) {
+    const row = confusionMatrix[c];
+    if (!row) continue;
+
+    const truePositive = row[c] ?? 0;
+    const rowSum = row.reduce((a, b) => a + b, 0); // All actual class c
+    const colSum = confusionMatrix.reduce(
+      (sum, r) => sum + (r?.[c] ?? 0),
+      0
+    ); // All predicted as class c
+
+    const precision = colSum > 0 ? truePositive / colSum : 0;
+    const recall = rowSum > 0 ? truePositive / rowSum : 0;
+
+    console.log(
+      `[ml] ${setName} Tier ${c + 1}: precision=${(precision * 100).toFixed(1)}% recall=${(recall * 100).toFixed(1)}% (${rowSum} samples)`
+    );
+  }
+}
+
+// =====================================================
 // Training
 // =====================================================
 
 /**
  * Train multinomial logistic regression on extracted training data.
  *
- * Uses full-batch gradient descent with softmax cross-entropy loss
- * and L2 regularization. No external ML libraries.
+ * Uses full-batch gradient descent with softmax cross-entropy loss,
+ * L2 regularization, and inverse-frequency class weighting.
+ *
+ * @param input - One of:
+ *   - string: path to training data JSON file
+ *   - object: pre-computed { trainSet, testSet, featureNames } (for retrain cron)
+ *   - undefined: uses default TRAINING_DATA_PATH
  */
 export async function trainModel(
-  trainingDataPath?: string
+  input?:
+    | string
+    | {
+        trainSet: { features: number[][]; labels: number[] };
+        testSet: { features: number[][]; labels: number[] };
+        featureNames: string[];
+      }
 ): Promise<TrainingResult> {
-  // Load training data
-  const dataPath = trainingDataPath ?? TRAINING_DATA_PATH;
-  const rawData = readFileSync(dataPath, "utf-8");
-  const data: TrainingData = JSON.parse(rawData) as TrainingData;
+  // Load training data from file or use provided data directly
+  let trainSet: { features: number[][]; labels: number[] };
+  let testSet: { features: number[][]; labels: number[] };
+  let featureNames: string[];
 
-  const { trainSet, testSet, featureNames } = data;
+  if (typeof input === "object" && input !== null) {
+    // Pre-computed data passed directly (e.g., from retrain cron)
+    ({ trainSet, testSet, featureNames } = input);
+  } else {
+    // Load from file path
+    const dataPath = (typeof input === "string" ? input : undefined) ?? TRAINING_DATA_PATH;
+    const rawData = readFileSync(dataPath, "utf-8");
+    const data: TrainingData = JSON.parse(rawData) as TrainingData;
+    ({ trainSet, testSet, featureNames } = data);
+  }
+
   const trainFeatures = trainSet.features;
   const trainLabels = trainSet.labels;
   const n = trainFeatures.length;
+
+  // Compute inverse-frequency class weights (capped at 3x min)
+  const classWeights = computeClassWeights(trainLabels, NUM_CLASSES);
+  const weightLog = classWeights
+    .map((w, i) => `Tier ${i + 1}=${w.toFixed(3)}`)
+    .join(" ");
+  console.log(`[ml] Class weights: ${weightLog} (capped at 3x min)`);
 
   // Initialize weights with small random values (seeded for reproducibility)
   const rng = seededRandom(42);
@@ -213,9 +347,11 @@ export async function trainModel(
       const probs = softmax(logits);
 
       // Cross-entropy gradient: prob - one_hot(label)
+      // Multiply by class weight for the sample's true class (inverse-frequency weighting)
       const target = label - 1; // Convert 1-5 to 0-4
+      const classWeight = classWeights[target] ?? 1;
       for (let c = 0; c < NUM_CLASSES; c++) {
-        const error = (probs[c] ?? 0) - (c === target ? 1 : 0);
+        const error = ((probs[c] ?? 0) - (c === target ? 1 : 0)) * classWeight;
         const gradBc = gradB[c];
         if (gradBc !== undefined) {
           gradB[c] = gradBc + error;
@@ -269,6 +405,10 @@ export async function trainModel(
   console.log(
     `\nFinal - Train accuracy: ${(trainEval.accuracy * 100).toFixed(1)}% | Test accuracy: ${(testEval.accuracy * 100).toFixed(1)}%`
   );
+
+  // Log per-class precision/recall for both sets
+  logPerClassMetrics(trainEval.confusionMatrix, "Train");
+  logPerClassMetrics(testEval.confusionMatrix, "Test");
 
   // Build model weights object
   const modelWeights: ModelWeights = {
