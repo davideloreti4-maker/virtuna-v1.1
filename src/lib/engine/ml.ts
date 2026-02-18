@@ -527,13 +527,16 @@ export async function predictWithML(features: number[]): Promise<number | null> 
 export function featureVectorToMLInput(fv: Partial<FeatureVector>): number[] {
   const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
-  // Engagement metrics are NOT in FeatureVector (they're from scraped data).
-  // Use 0.5 defaults -- the model learns correlations with content features
-  // that proxy these engagement signals.
-  const shareRate = 0.5;
-  const commentRate = 0.5;
-  const likeRate = 0.5;
-  const saveRate = 0.5;
+  // Map DeepSeek component scores to engagement rate proxies.
+  // The model was trained on scraped engagement rates (shares/views, etc.).
+  // At inference time, we use AI-assessed quality scores as semantic proxies.
+  // shareability -> shareRate, commentProvocation -> commentRate,
+  // emotionalCharge -> likeRate, saveWorthiness -> saveRate.
+  // Default to 5 (mid-range) when DeepSeek result is unavailable.
+  const shareRate = clamp01((fv.shareability ?? 5) / 10);
+  const commentRate = clamp01((fv.commentProvocation ?? 5) / 10);
+  const likeRate = clamp01((fv.emotionalCharge ?? 5) / 10);
+  const saveRate = clamp01((fv.saveWorthiness ?? 5) / 10);
 
   // Derive share-to-like and comment-to-like from FeatureVector signals
   // Map shareability (0-10) and commentProvocation (0-10) to proxy ratios
