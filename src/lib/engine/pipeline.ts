@@ -331,9 +331,12 @@ export async function runPredictionPipeline(
   // -------------------------------------------------------
   const total_duration_ms = Math.round(performance.now() - pipelineStart);
 
+  const total_cost_cents =
+    (geminiResult.cost_cents ?? 0) + (deepseekRaw?.cost_cents ?? 0);
   log.info("Pipeline complete", {
     stage: "pipeline",
     duration_ms: total_duration_ms,
+    cost_cents: +total_cost_cents.toFixed(4),
     warnings_count: warnings.length,
   });
 

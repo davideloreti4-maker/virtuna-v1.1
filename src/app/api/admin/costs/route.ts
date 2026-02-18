@@ -1,6 +1,10 @@
+import * as Sentry from "@sentry/nextjs";
 import { NextResponse } from "next/server";
 import { verifyCronAuth } from "@/lib/cron-auth";
 import { createServiceClient } from "@/lib/supabase/service";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "admin/costs" });
 
 /**
  * GET /api/admin/costs
@@ -83,7 +87,10 @@ export async function GET(request: Request) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error("[admin/costs] Failed to aggregate costs:", error);
+    log.error("Failed to aggregate costs", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    Sentry.captureException(error, { tags: { stage: "admin_costs" } });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

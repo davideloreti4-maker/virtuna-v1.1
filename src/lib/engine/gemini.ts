@@ -324,15 +324,19 @@ export async function analyzeWithGemini(
         });
       }
 
+      const duration_ms = Math.round(performance.now() - startTime);
+      log.info("Text analysis complete", {
+        stage: "gemini_text_analysis",
+        duration_ms,
+        cost_cents: +cost_cents.toFixed(4),
+        model: GEMINI_MODEL,
+      });
+
       Sentry.addBreadcrumb({
         category: "engine.gemini",
         message: "Text analysis complete",
         level: "info",
-        data: {
-          duration_ms: Math.round(performance.now() - startTime),
-          cost_cents: +cost_cents.toFixed(4),
-          model: GEMINI_MODEL,
-        },
+        data: { duration_ms, cost_cents: +cost_cents.toFixed(4), model: GEMINI_MODEL },
       });
 
       return { analysis, cost_cents };
@@ -460,15 +464,19 @@ export async function analyzeVideoWithGemini(
       });
     }
 
+    const duration_ms = Math.round(performance.now() - videoStartTime);
+    log.info("Video analysis complete", {
+      stage: "gemini_video_analysis",
+      duration_ms,
+      cost_cents: +cost_cents.toFixed(4),
+      model: GEMINI_MODEL,
+    });
+
     Sentry.addBreadcrumb({
       category: "engine.gemini",
       message: "Video analysis complete",
       level: "info",
-      data: {
-        duration_ms: Math.round(performance.now() - videoStartTime),
-        cost_cents: +cost_cents.toFixed(4),
-        model: GEMINI_MODEL,
-      },
+      data: { duration_ms, cost_cents: +cost_cents.toFixed(4), model: GEMINI_MODEL },
     });
 
     return { analysis, cost_cents };

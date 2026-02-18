@@ -424,15 +424,19 @@ export async function reasonWithDeepSeek(
         });
       }
 
+      const duration_ms = Math.round(performance.now() - startTime);
+      log.info("Reasoning complete", {
+        stage: "deepseek_reasoning",
+        duration_ms,
+        cost_cents: +cost_cents.toFixed(4),
+        model: DEEPSEEK_MODEL,
+      });
+
       Sentry.addBreadcrumb({
         category: "engine.deepseek",
         message: "Reasoning complete",
         level: "info",
-        data: {
-          duration_ms: Math.round(performance.now() - startTime),
-          cost_cents: +cost_cents.toFixed(4),
-          model: DEEPSEEK_MODEL,
-        },
+        data: { duration_ms, cost_cents: +cost_cents.toFixed(4), model: DEEPSEEK_MODEL },
       });
 
       return { reasoning, cost_cents };
