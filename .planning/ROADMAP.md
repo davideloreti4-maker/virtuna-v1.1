@@ -102,17 +102,17 @@ Plans:
   2. Unit tests exist for: aggregator, normalize, ml, calibration, fuzzy, rules, deepseek (7 modules)
   3. Integration tests cover: all-mocked-stages happy path, DeepSeek failure → Gemini fallback, Gemini failure, ML weight redistribution
   4. Coverage report shows >80% for all files under `src/lib/engine/`
-**Plans**: TBD
+**Plans**: 8 plans
 
 Plans:
-- [ ] 05-01: Configure Vitest with coverage, add pnpm test script, build mock factories
-- [ ] 05-02: Unit tests — aggregator (weight selection, confidence, feature vector, score clamping)
-- [ ] 05-03: Unit tests — normalize (hashtag extraction, duration hints, 3 input modes)
-- [ ] 05-04: Unit tests — ml (feature vector bridge null handling, prediction output range)
-- [ ] 05-05: Unit tests — calibration (ECE calculation, Platt scaling math)
-- [ ] 05-06: Unit tests — fuzzy (Jaro-Winkler exact/no match, threshold filtering) + rules (13 regex positive/negative)
-- [ ] 05-07: Unit tests — deepseek (circuit breaker state transitions, Zod response parsing)
-- [ ] 05-08: Integration tests — pipeline (happy path, DeepSeek failure, Gemini failure, weight redistribution) + coverage gate
+- [ ] 05-01-PLAN.md — Configure Vitest with v8 coverage, add test scripts, build mock factories, add resetCircuitBreaker export
+- [ ] 05-02-PLAN.md — Unit tests for aggregator (selectWeights redistribution, aggregateScores confidence/clamping/calibration/feature vector)
+- [ ] 05-03-PLAN.md — Unit tests for normalize (hashtag extraction, duration hints, all 3 input modes)
+- [ ] 05-04-PLAN.md — Unit tests for ml (featureVectorToMLInput null handling/clamping, predictWithML output range, stratifiedSplit)
+- [ ] 05-05-PLAN.md — Unit tests for calibration (computeECE binning, fitPlattScaling min samples, applyPlattScaling sigmoid)
+- [ ] 05-06-PLAN.md — Unit tests for fuzzy (Jaro-Winkler similarity, bestFuzzyMatch thresholds) + rules (13 regex positive/negative, scoreContentAgainstRules)
+- [ ] 05-07-PLAN.md — Unit tests for deepseek (circuit breaker state transitions, Zod response parsing)
+- [ ] 05-08-PLAN.md — Integration tests for pipeline (happy path, DeepSeek failure, Gemini failure, non-critical degradation) + coverage gate >80%
 
 ### Phase 6: Hardening
 
