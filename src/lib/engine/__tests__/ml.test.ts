@@ -1,10 +1,13 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { featureVectorToMLInput, stratifiedSplit } from "../ml";
 import { makeFeatureVector } from "./factories";
 
 // =====================================================
 // Mocks — external dependencies
 // =====================================================
+
+const mockDownload = vi.fn();
+const mockUpload = vi.fn();
 
 vi.mock("@/lib/logger", () => ({
   createLogger: () => ({
@@ -25,8 +28,8 @@ vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: vi.fn(() => ({
     storage: {
       from: vi.fn(() => ({
-        download: vi.fn(),
-        upload: vi.fn(),
+        download: mockDownload,
+        upload: mockUpload,
       })),
     },
   })),
@@ -178,5 +181,91 @@ describe("stratifiedSplit", () => {
 
     expect(result1.train.labels).toEqual(result2.train.labels);
     expect(result1.test.labels).toEqual(result2.test.labels);
+  });
+});
+
+// =====================================================
+// predictWithML
+// =====================================================
+
+describe("predictWithML", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    mockDownload.mockReset();
+    mockUpload.mockReset();
+  });
+
+  // Helper: build minimal valid ModelWeights JSON blob
+  function makeModelWeightsBlob() {
+    const weights: number[][] = Array.from({ length: 5 }, (_, c) =>
+      Array.from({ length: 15 }, (_, f) => (c * 15 + f) * 0.001)
+    );
+    const biases = [0.1, -0.05, 0.02, -0.1, 0.03];
+    const featureNames = Array.from({ length: 15 }, (_, i) => `feature_${i}`);
+
+    const modelWeights = {
+      weights,
+      biases,
+      featureNames,
+      numClasses: 5,
+      trainedAt: "2026-01-01T00:00:00Z",
+      accuracy: 0.65,
+      confusionMatrix: Array.from({ length: 5 }, () =>
+        Array.from({ length: 5 }, () => 0)
+      ),
+    };
+
+    return new Blob([JSON.stringify(modelWeights)], {
+      type: "application/json",
+    });
+  }
+
+  it("returns null when model is not available", async () => {
+    mockDownload.mockResolvedValue({
+      data: null,
+      error: { message: "not found" },
+    });
+
+    // Dynamic import to get fresh module (cleared cachedWeights)
+    const { predictWithML } = await import("../ml");
+    const result = await predictWithML(Array(15).fill(0.5));
+    expect(result).toBeNull();
+  });
+
+  it("returns 0-100 score when model is loaded", async () => {
+    const blob = makeModelWeightsBlob();
+    mockDownload.mockResolvedValue({ data: blob, error: null });
+
+    const { predictWithML } = await import("../ml");
+    const result = await predictWithML(Array(15).fill(0.5));
+
+    expect(result).not.toBeNull();
+    expect(typeof result).toBe("number");
+    expect(result!).toBeGreaterThanOrEqual(0);
+    expect(result!).toBeLessThanOrEqual(100);
+  });
+
+  it("score is deterministic", async () => {
+    const blob = makeModelWeightsBlob();
+    mockDownload.mockResolvedValue({ data: blob, error: null });
+
+    const mod = await import("../ml");
+    const features = Array(15).fill(0.5);
+    const result1 = await mod.predictWithML(features);
+    const result2 = await mod.predictWithML(features);
+
+    expect(result1).toBe(result2);
+  });
+
+  it("handles all-zero features without NaN", async () => {
+    const blob = makeModelWeightsBlob();
+    mockDownload.mockResolvedValue({ data: blob, error: null });
+
+    const { predictWithML } = await import("../ml");
+    const result = await predictWithML(Array(15).fill(0));
+
+    expect(result).not.toBeNull();
+    expect(typeof result).toBe("number");
+    expect(Number.isNaN(result)).toBe(false);
   });
 });
