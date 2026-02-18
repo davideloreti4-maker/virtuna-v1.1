@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { verifyCronAuth } from "@/lib/cron-auth";
 import { createServiceClient } from "@/lib/supabase/service";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "cron/validate-rules" });
 
 /**
  * Per-rule contribution stored in analysis_results.rule_contributions JSONB
@@ -49,7 +52,7 @@ export async function GET(request: Request) {
       .eq("is_active", true);
 
     if (rulesError) {
-      console.error("[validate-rules] Failed to fetch rules:", rulesError);
+      log.error("Failed to fetch rules", { error: rulesError.message });
       return NextResponse.json(
         { error: "Failed to fetch rules" },
         { status: 500 }
@@ -72,7 +75,7 @@ export async function GET(request: Request) {
       .not("actual_score", "is", null);
 
     if (outcomesError) {
-      console.error("[validate-rules] Failed to fetch outcomes:", outcomesError);
+      log.error("Failed to fetch outcomes", { error: outcomesError.message });
       return NextResponse.json(
         { error: "Failed to fetch outcomes" },
         { status: 500 }
@@ -121,10 +124,7 @@ export async function GET(request: Request) {
       };
 
     if (analysisError) {
-      console.error(
-        "[validate-rules] Failed to fetch analysis results:",
-        analysisError
-      );
+      log.error("Failed to fetch analysis results", { error: analysisError.message });
       return NextResponse.json(
         { error: "Failed to fetch analysis results" },
         { status: 500 }
@@ -239,10 +239,7 @@ export async function GET(request: Request) {
         .eq("id", rule.id);
 
       if (updateError) {
-        console.error(
-          `[validate-rules] Failed to update rule ${rule.name}:`,
-          updateError
-        );
+        log.error("Failed to update rule", { ruleName: rule.name, error: updateError.message });
       } else {
         updatedCount++;
         ruleUpdates.push({
@@ -254,9 +251,12 @@ export async function GET(request: Request) {
       }
     }
 
-    console.log(
-      `[validate-rules] Per-rule accuracy: updated ${updatedCount}/${rules?.length ?? 0} rules, skipped ${skippedCount} (< 10 samples). Processed ${validPairs.length} outcome pairs.`
-    );
+    log.info("Per-rule accuracy complete", {
+      updatedCount,
+      totalRules: rules?.length ?? 0,
+      skippedCount,
+      outcomePairs: validPairs.length,
+    });
 
     return NextResponse.json({
       processed: validPairs.length,
@@ -270,7 +270,7 @@ export async function GET(request: Request) {
       skippedRules: skippedCount,
     });
   } catch (error) {
-    console.error("[validate-rules] Failed:", error);
+    log.error("Failed", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

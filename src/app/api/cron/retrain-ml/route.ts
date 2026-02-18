@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { verifyCronAuth } from "@/lib/cron-auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import { trainModel, stratifiedSplit } from "@/lib/engine/ml";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "cron/retrain-ml" });
 
 export const maxDuration = 120; // Training with dynamic data may take up to ~60s
 
@@ -143,17 +146,12 @@ export async function GET(request: Request) {
       .limit(10000);
 
     if (queryError) {
-      console.error(
-        "[retrain-ml] Failed to query scraped_videos:",
-        queryError
-      );
+      log.error("Failed to query scraped_videos", { error: queryError.message });
     }
 
     // Fallback: insufficient scraped data -> use static training-data.json
     if (!videos || videos.length < 500) {
-      console.log(
-        `[retrain-ml] Only ${videos?.length ?? 0} scraped videos — falling back to training-data.json`
-      );
+      log.info("Falling back to training-data.json", { videoCount: videos?.length ?? 0 });
       const result = await trainModel(); // Uses default file path
       return NextResponse.json({
         status: "completed",
@@ -181,9 +179,13 @@ export async function GET(request: Request) {
         tierCounts[idx] = (tierCounts[idx] ?? 0) + 1;
       }
     }
-    console.log(
-      `[retrain-ml] Tier distribution: ${tierCounts.map((c, i) => `T${i + 1}=${c}`).join(" ")}`
-    );
+    log.info("Tier distribution", {
+      T1: tierCounts[0],
+      T2: tierCounts[1],
+      T3: tierCounts[2],
+      T4: tierCounts[3],
+      T5: tierCounts[4],
+    });
 
     // Stratified split for proportional train/test partitioning
     let seed = 42;
@@ -213,24 +215,27 @@ export async function GET(request: Request) {
     ];
 
     // Train model with structured data (no file I/O)
-    console.log(
-      `[retrain-ml] Training on ${videos.length} scraped videos (train=${split.train.features.length}, test=${split.test.features.length})...`
-    );
+    log.info("Training started", {
+      videoCount: videos.length,
+      trainSize: split.train.features.length,
+      testSize: split.test.features.length,
+    });
     const result = await trainModel({
       trainSet: split.train,
       testSet: split.test,
       featureNames,
     });
 
-    console.log(
-      `[retrain-ml] Training complete — train accuracy: ${(result.trainAccuracy * 100).toFixed(1)}%, test accuracy: ${(result.testAccuracy * 100).toFixed(1)}%`
-    );
+    log.info("Training complete", {
+      trainAccuracy: result.trainAccuracy,
+      testAccuracy: result.testAccuracy,
+    });
 
     // Accuracy gate: remove uploaded weights if below 60%
     if (result.testAccuracy < 0.6) {
-      console.warn(
-        `[retrain-ml] Test accuracy ${(result.testAccuracy * 100).toFixed(1)}% below 60% gate — removing uploaded weights`
-      );
+      log.warn("Test accuracy below 60% gate, removing uploaded weights", {
+        testAccuracy: result.testAccuracy,
+      });
       await supabase.storage
         .from("ml-weights")
         .remove(["model/ml-weights.json"]);
@@ -257,10 +262,9 @@ export async function GET(request: Request) {
       trainedAt: new Date().toISOString(),
     });
   } catch (error) {
-    console.error(
-      "[retrain-ml] Training failed:",
-      error instanceof Error ? error.message : error
-    );
+    log.error("Training failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       {
         status: "failed",
