@@ -1,3 +1,6 @@
+import * as Sentry from "@sentry/nextjs";
+import { nanoid } from "nanoid";
+import { createLogger } from "@/lib/logger";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
   AnalysisInputSchema,
@@ -39,6 +42,7 @@ export interface PipelineResult {
   audioResult: null; // Audio analysis handled via fuzzy matching in trend enrichment -- no separate stage needed
 
   // Pipeline metadata
+  requestId: string;
   timings: StageTiming[];
   total_duration_ms: number;
   warnings: string[]; // Pipeline-level warnings from partial failures (INFRA-03)
@@ -123,8 +127,13 @@ const DEFAULT_TREND_ENRICHMENT: TrendEnrichment = {
  * Gemini fallback before degrading to null. Only Gemini is critical.
  */
 export async function runPredictionPipeline(
-  input: AnalysisInput
+  input: AnalysisInput,
+  opts?: { requestId?: string }
 ): Promise<PipelineResult> {
+  const requestId = opts?.requestId ?? nanoid(12);
+  const log = createLogger({ requestId, module: "pipeline" });
+  log.info("Pipeline started", { input_mode: input.input_mode });
+
   const pipelineStart = performance.now();
   const timings: StageTiming[] = [];
   const warnings: string[] = [];
@@ -136,6 +145,9 @@ export async function runPredictionPipeline(
     try {
       return AnalysisInputSchema.parse(input);
     } catch (error) {
+      Sentry.captureException(error, {
+        tags: { stage: "validate", requestId },
+      });
       throw new Error(
         `Analysis failed: input validation — ${error instanceof Error ? error.message : String(error)}`
       );
@@ -149,6 +161,9 @@ export async function runPredictionPipeline(
     try {
       return normalizeInput(validated);
     } catch (error) {
+      Sentry.captureException(error, {
+        tags: { stage: "normalize", requestId },
+      });
       throw new Error(
         `Analysis failed: input normalization — ${error instanceof Error ? error.message : String(error)}`
       );
@@ -167,6 +182,9 @@ export async function runPredictionPipeline(
     try {
       return await analyzeWithGemini(validated);
     } catch (error) {
+      Sentry.captureException(error, {
+        tags: { stage: "gemini_analysis", requestId },
+      });
       throw new Error(
         `Analysis failed: Gemini content analysis — ${error instanceof Error ? error.message : String(error)}`
       );
@@ -183,6 +201,9 @@ export async function runPredictionPipeline(
         fetchCreatorContext(supabase, payload.creator_handle, payload.niche)
       );
     } catch (error) {
+      Sentry.captureException(error, {
+        tags: { stage: "creator_context", requestId },
+      });
       warnings.push(
         `Creator context unavailable: ${error instanceof Error ? error.message : String(error)}`
       );
@@ -199,6 +220,9 @@ export async function runPredictionPipeline(
         return scoreContentAgainstRules(payload.content_text, rules);
       });
     } catch (error) {
+      Sentry.captureException(error, {
+        tags: { stage: "rule_scoring", requestId },
+      });
       warnings.push(
         `Rule scoring unavailable: ${error instanceof Error ? error.message : String(error)}`
       );
@@ -213,6 +237,13 @@ export async function runPredictionPipeline(
     timings,
     () => Promise.all([geminiPromise, audioPromise, creatorPromise, rulePromise])
   );
+
+  Sentry.addBreadcrumb({
+    category: "engine.pipeline",
+    message: "Wave 1 complete",
+    level: "info",
+    data: { requestId, stages: ["gemini", "audio", "creator", "rules"] },
+  });
 
   // Format creator context for DeepSeek prompt injection
   const creatorContextString = formatCreatorContext(creatorContext);
@@ -247,6 +278,9 @@ export async function runPredictionPipeline(
         return result;
       });
     } catch (error) {
+      Sentry.captureException(error, {
+        tags: { stage: "deepseek_reasoning", requestId },
+      });
       warnings.push(
         `DeepSeek reasoning unavailable: ${error instanceof Error ? error.message : String(error)}`
       );
@@ -262,6 +296,9 @@ export async function runPredictionPipeline(
         enrichWithTrends(supabase, validated)
       );
     } catch (error) {
+      Sentry.captureException(error, {
+        tags: { stage: "trend_enrichment", requestId },
+      });
       warnings.push(
         `Trend enrichment unavailable: ${error instanceof Error ? error.message : String(error)}`
       );
@@ -275,6 +312,13 @@ export async function runPredictionPipeline(
     Promise.all([deepseekPromise, trendPromise])
   );
 
+  Sentry.addBreadcrumb({
+    category: "engine.pipeline",
+    message: "Wave 2 complete",
+    level: "info",
+    data: { requestId, stages: ["deepseek", "trends"] },
+  });
+
   // -------------------------------------------------------
   // Stage 9: Aggregate (delegated -- caller uses PipelineResult)
   // -------------------------------------------------------
@@ -287,6 +331,12 @@ export async function runPredictionPipeline(
   // -------------------------------------------------------
   const total_duration_ms = Math.round(performance.now() - pipelineStart);
 
+  log.info("Pipeline complete", {
+    stage: "pipeline",
+    duration_ms: total_duration_ms,
+    warnings_count: warnings.length,
+  });
+
   return {
     payload,
     geminiResult,
@@ -295,6 +345,7 @@ export async function runPredictionPipeline(
     trendEnrichment,
     deepseekResult: deepseekRaw,
     audioResult,
+    requestId,
     timings,
     total_duration_ms,
     warnings,
