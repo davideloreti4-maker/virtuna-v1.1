@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-17)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate
-**Current focus:** Phase 4 complete (Observability). All 4 plans done + gap fixes verified. Phase 5 next.
+**Current focus:** Phase 5 in progress (Test Coverage). Plan 01 complete — test infrastructure configured.
 
 ## Current Position
 
-Phase: 4 of 6 (Observability)
-Plan: 4 of 4 in current phase
-Status: Phase Complete
-Last activity: 2026-02-18 — Phase 4 verified (4/4 must-haves pass after gap fixes). Sentry, logger, console.* migration, costs endpoint all wired.
+Phase: 5 of 6 (Test Coverage)
+Plan: 1 of 8 in current phase
+Status: In Progress
+Last activity: 2026-02-18 — 05-01 complete: Vitest + v8 coverage + factories + resetCircuitBreaker.
 
-Progress: [████████░░] 67%
+Progress: [████████░░] 70%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11
+- Total plans completed: 12
 - Average duration: 3min
-- Total execution time: 33min
+- Total execution time: 36min
 
 **By Phase:**
 
@@ -31,6 +31,7 @@ Progress: [████████░░] 67%
 | 02-ml-model-rehabilitation | 3 | 6min | 2min |
 | 03-calibration-wiring | 2 | 3min | 1.5min |
 | 04-observability | 4 | 10min | 2.5min |
+| 05-test-coverage | 1 | 3min | 3min |
 
 *Updated after each plan completion*
 
@@ -73,6 +74,10 @@ Progress: [████████░░] 67%
 - Sentry breadcrumbs in pipeline (waves), gemini (text+video), deepseek (reasoning+fallback) (04-03)
 - Error objects always logged as error.message string for JSON serialization (04-03)
 
+- Added setup.test.ts smoke test because Vitest v4 exits 1 when no test files found (05-01)
+- Factory functions use Partial<T> spread pattern for override flexibility (05-01)
+- resetCircuitBreaker uses export function (not re-export) to avoid TS2323 redeclaration (05-01)
+
 ### Blockers/Concerns
 
 - Circuit breaker is per-serverless-instance (module-level state) — not a distributed lock; HARD-04 addresses this
@@ -82,5 +87,5 @@ Progress: [████████░░] 67%
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Phase 4 (Observability) fully complete and verified. Gap fixes committed. Ready for Phase 5 (Test Coverage).
+Stopped at: Completed 05-01-PLAN.md (test infrastructure). 05-02 through 05-08 remaining.
 Resume file: None
