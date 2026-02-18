@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { ApifyClient } from "apify-client";
 import { createServiceClient } from "@/lib/supabase/service";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "webhook/apify" });
 
 interface ApifyVideoItem {
   id: string;
@@ -29,7 +32,7 @@ export async function POST(request: Request) {
 
     // TREND-07: Verify webhook secret
     if (payload.secret !== process.env.APIFY_WEBHOOK_SECRET) {
-      console.warn("[apify-webhook] Invalid secret received");
+      log.warn("Invalid secret received");
       return NextResponse.json({ error: "Invalid secret" }, { status: 401 });
     }
 
@@ -96,19 +99,18 @@ export async function POST(request: Request) {
         });
 
       if (error) {
-        console.error(
-          `[apify-webhook] Batch upsert error (offset ${i}):`,
-          error
-        );
+        log.error("Batch upsert error", { offset: i, error: error.message });
         errorCount += records.length;
       } else {
         upsertedCount += records.length;
       }
     }
 
-    console.log(
-      `[apify-webhook] Processed ${items.length} items: ${upsertedCount} upserted, ${errorCount} errors`
-    );
+    log.info("Processed items", {
+      total: items.length,
+      upsertedCount,
+      errorCount,
+    });
 
     return NextResponse.json({
       received: true,
@@ -117,7 +119,7 @@ export async function POST(request: Request) {
       errors: errorCount,
     });
   } catch (error) {
-    console.error("[apify-webhook] Handler error:", error);
+    log.error("Handler error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

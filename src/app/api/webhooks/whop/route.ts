@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { verifyWebhookSignature } from "@/lib/whop/webhook-verification";
 import { mapWhopProductToTier } from "@/lib/whop/config";
 import { createServiceClient } from "@/lib/supabase/service";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "webhook/whop" });
 
 export async function POST(request: Request) {
   try {
@@ -42,10 +45,11 @@ export async function POST(request: Request) {
         const supabaseUserId = data.metadata?.supabase_user_id;
 
         if (!supabaseUserId) {
-          console.warn(
-            "membership.went_valid: missing supabase_user_id in metadata",
-            { whop_user_id: data.user_id, membership_id: data.id }
-          );
+          log.warn("Missing supabase_user_id in metadata", {
+            event: "membership.went_valid",
+            whop_user_id: data.user_id,
+            membership_id: data.id,
+          });
           return NextResponse.json({ received: true });
         }
 
@@ -68,7 +72,7 @@ export async function POST(request: Request) {
           );
 
         if (error) {
-          console.error("Failed to upsert subscription:", error);
+          log.error("Failed to upsert subscription", { event: "membership.went_valid", error: error.message });
           return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
@@ -79,10 +83,11 @@ export async function POST(request: Request) {
         const supabaseUserId = data.metadata?.supabase_user_id;
 
         if (!supabaseUserId) {
-          console.warn(
-            "membership.went_invalid: missing supabase_user_id in metadata",
-            { whop_user_id: data.user_id, membership_id: data.id }
-          );
+          log.warn("Missing supabase_user_id in metadata", {
+            event: "membership.went_invalid",
+            whop_user_id: data.user_id,
+            membership_id: data.id,
+          });
           return NextResponse.json({ received: true });
         }
 
@@ -96,7 +101,7 @@ export async function POST(request: Request) {
           .eq("user_id", supabaseUserId);
 
         if (error) {
-          console.error("Failed to update subscription:", error);
+          log.error("Failed to update subscription", { event: "membership.went_invalid", error: error.message });
           return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
@@ -107,10 +112,11 @@ export async function POST(request: Request) {
         const supabaseUserId = data.metadata?.supabase_user_id;
 
         if (!supabaseUserId) {
-          console.warn(
-            "membership.payment_failed: missing supabase_user_id in metadata",
-            { whop_user_id: data.user_id, membership_id: data.id }
-          );
+          log.warn("Missing supabase_user_id in metadata", {
+            event: "membership.payment_failed",
+            whop_user_id: data.user_id,
+            membership_id: data.id,
+          });
           return NextResponse.json({ received: true });
         }
 
@@ -123,7 +129,7 @@ export async function POST(request: Request) {
           .eq("user_id", supabaseUserId);
 
         if (error) {
-          console.error("Failed to update subscription:", error);
+          log.error("Failed to update subscription", { event: "membership.payment_failed", error: error.message });
           return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
@@ -131,13 +137,13 @@ export async function POST(request: Request) {
       }
 
       default:
-        console.log("Unknown webhook event:", event);
+        log.info("Unknown webhook event", { event });
         break;
     }
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("Webhook handler error:", error);
+    log.error("Webhook handler error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
