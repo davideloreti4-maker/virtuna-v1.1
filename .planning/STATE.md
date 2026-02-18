@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-17)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate
-**Current focus:** Phase 5 in progress (Test Coverage). Plan 01 complete — test infrastructure configured.
+**Current focus:** Phase 5 complete (Test Coverage). 203 tests passing, >80% coverage. Phase 6 next.
 
 ## Current Position
 
 Phase: 5 of 6 (Test Coverage)
-Plan: 1 of 8 in current phase
-Status: In Progress
-Last activity: 2026-02-18 — 05-01 complete: Vitest + v8 coverage + factories + resetCircuitBreaker.
+Plan: 8 of 8 in current phase
+Status: Phase Complete
+Last activity: 2026-02-18 — Phase 5 verified (4/4 must-haves pass). 203 tests, 93.6% stmts, 80.1% branches, 93% functions, 94.5% lines.
 
-Progress: [████████░░] 70%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
+- Total plans completed: 20
 - Average duration: 3min
-- Total execution time: 36min
+- Total execution time: 60min
 
 **By Phase:**
 
@@ -31,7 +31,7 @@ Progress: [████████░░] 70%
 | 02-ml-model-rehabilitation | 3 | 6min | 2min |
 | 03-calibration-wiring | 2 | 3min | 1.5min |
 | 04-observability | 4 | 10min | 2.5min |
-| 05-test-coverage | 1 | 3min | 3min |
+| 05-test-coverage | 8 | 24min | 3min |
 
 *Updated after each plan completion*
 
@@ -77,6 +77,9 @@ Progress: [████████░░] 70%
 - Added setup.test.ts smoke test because Vitest v4 exits 1 when no test files found (05-01)
 - Factory functions use Partial<T> spread pattern for override flexibility (05-01)
 - resetCircuitBreaker uses export function (not re-export) to avoid TS2323 redeclaration (05-01)
+- Fixed NaN bug in selectWeights when all signals unavailable — added early-return guard (05-02)
+- Global aggregate coverage threshold (not per-file) — intentional to avoid over-testing low-value branches (05-08)
+- Pipeline integration tests use vi.useFakeTimers for DeepSeek/Gemini retry delays (05-08)
 
 ### Blockers/Concerns
 
@@ -87,5 +90,5 @@ Progress: [████████░░] 70%
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed 05-01-PLAN.md (test infrastructure). 05-02 through 05-08 remaining.
+Stopped at: Phase 5 (Test Coverage) fully complete and verified. Ready for Phase 6 (Hardening).
 Resume file: None

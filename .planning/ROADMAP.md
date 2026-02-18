@@ -161,5 +161,5 @@ Wave groupings for parallel dispatch. Phases within a wave have no inter-depende
 | 2. ML Model Rehabilitation | 3/3 | ✓ Complete | 2026-02-18 |
 | 3. Calibration Wiring | 2/2 | ✓ Complete | 2026-02-18 |
 | 4. Observability | 4/4 | ✓ Complete | 2026-02-18 |
-| 5. Test Coverage | 0/8 | Not started | - |
+| 5. Test Coverage | 8/8 | ✓ Complete | 2026-02-18 |
 | 6. Hardening | 0/4 | Not started | - |
