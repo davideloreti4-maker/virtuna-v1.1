@@ -10,6 +10,7 @@ import type {
 import type { PipelineResult } from "./pipeline";
 import { GEMINI_MODEL } from "./gemini";
 import { DEEPSEEK_MODEL } from "./deepseek";
+import { predictWithML, featureVectorToMLInput } from "./ml";
 
 export const ENGINE_VERSION = "2.1.0";
 
@@ -18,9 +19,10 @@ export const ENGINE_VERSION = "2.1.0";
 // =====================================================
 
 const SCORE_WEIGHTS = {
-  behavioral: 0.45,
+  behavioral: 0.35,
   gemini: 0.25,
-  rules: 0.20,
+  ml: 0.15,
+  rules: 0.15,
   trends: 0.10,
 } as const;
 
@@ -31,6 +33,7 @@ const SCORE_WEIGHTS = {
 interface SignalAvailability {
   behavioral: boolean; // DeepSeek produced component scores
   gemini: boolean;     // Gemini produced factor scores (always true — critical stage)
+  ml: boolean;         // ML model loaded and prediction succeeded
   rules: boolean;      // Rule scoring produced real matches (not default fallback)
   trends: boolean;     // Trend enrichment found matches (not default fallback)
 }
@@ -44,7 +47,7 @@ interface SignalAvailability {
  */
 export function selectWeights(
   availability: SignalAvailability
-): { behavioral: number; gemini: number; rules: number; trends: number } {
+): { behavioral: number; gemini: number; ml: number; rules: number; trends: number } {
   const available = Object.entries(availability).filter(([, v]) => v);
   const missing = Object.entries(availability).filter(([, v]) => !v);
 
@@ -60,7 +63,7 @@ export function selectWeights(
   );
 
   // Each available source gets its base weight + proportional share of missing weight
-  const result = { behavioral: 0, gemini: 0, rules: 0, trends: 0 };
+  const result = { behavioral: 0, gemini: 0, ml: 0, rules: 0, trends: 0 };
   for (const [key, isAvailable] of Object.entries(availability)) {
     const k = key as keyof typeof SCORE_WEIGHTS;
     if (isAvailable) {
@@ -201,15 +204,15 @@ function assembleFeatureVector(pipelineResult: PipelineResult): FeatureVector {
 /**
  * Aggregate all pipeline stage outputs into a PredictionResult.
  *
- * v2 formula: behavioral 45% + gemini 25% + rules 20% + trends 10%
+ * v2 formula: behavioral 35% + gemini 25% + ml 15% + rules 15% + trends 10%
  * RULE-04: Dynamic weight selection adapts when signals are missing.
  *
  * Takes the full PipelineResult from runPredictionPipeline()
  * and returns a complete PredictionResult.
  */
-export function aggregateScores(
+export async function aggregateScores(
   pipelineResult: PipelineResult
-): PredictionResult {
+): Promise<PredictionResult> {
   const {
     payload,
     geminiResult,
@@ -222,11 +225,20 @@ export function aggregateScores(
   const deepseek = deepseekResult?.reasoning ?? null;
 
   // -------------------------------------------------
+  // ML prediction (async — loads model from Supabase Storage on cold start)
+  // -------------------------------------------------
+  const feature_vector = assembleFeatureVector(pipelineResult);
+  const mlFeatures = featureVectorToMLInput(feature_vector);
+  const mlScore = await predictWithML(mlFeatures);
+  const mlAvailable = mlScore !== null;
+
+  // -------------------------------------------------
   // RULE-04: Determine signal availability from pipeline result
   // -------------------------------------------------
   const availability: SignalAvailability = {
     behavioral: deepseekResult !== null,
     gemini: true, // Always true — critical stage, pipeline throws if it fails
+    ml: mlAvailable,
     rules: ruleResult.matched_rules.length > 0
       && !pipelineResult.warnings.some(w => w.includes('Rule scoring unavailable')),
     trends: trendEnrichment.matched_trends.length > 0
@@ -236,7 +248,7 @@ export function aggregateScores(
   const weights = selectWeights(availability);
 
   // -------------------------------------------------
-  // Behavioral score (45% base weight)
+  // Behavioral score (35% base weight)
   // Source: DeepSeek's 7 component scores, each 0-10
   // -------------------------------------------------
   const cs = deepseek?.component_scores;
@@ -271,6 +283,7 @@ export function aggregateScores(
       Math.round(
         behavioral_score * weights.behavioral +
           gemini_score * weights.gemini +
+          (mlScore ?? 0) * weights.ml +
           ruleResult.rule_score * weights.rules +
           trendEnrichment.trend_score * weights.trends
       )
@@ -331,11 +344,6 @@ export function aggregateScores(
   );
 
   // -------------------------------------------------
-  // FeatureVector
-  // -------------------------------------------------
-  const feature_vector = assembleFeatureVector(pipelineResult);
-
-  // -------------------------------------------------
   // Cost tracking
   // -------------------------------------------------
   const cost_cents =
@@ -370,6 +378,7 @@ export function aggregateScores(
     trend_score: trendEnrichment.trend_score,
     gemini_score,
     behavioral_score,
+    ml_score: mlScore ?? 0,
     score_weights: weights, // Actual weights used (may differ from BASE if signals missing)
     latency_ms: pipelineResult.total_duration_ms,
     cost_cents,
