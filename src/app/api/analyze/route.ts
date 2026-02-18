@@ -187,7 +187,7 @@ export async function POST(request: Request) {
           };
 
           // Persist to DB with v2 columns
-          await service.from("analysis_results").insert({
+          const { error: insertError } = await service.from("analysis_results").insert({
             user_id: user.id,
             content_text: validated.content_text ?? "",
             content_type: validated.content_type,
@@ -213,9 +213,12 @@ export async function POST(request: Request) {
             input_mode: finalResult.input_mode,
             has_video: finalResult.has_video,
             gemini_score: finalResult.gemini_score,
-            // RULE-03: Per-rule contribution tracking for accuracy computation
-            rule_contributions: ruleContributions as unknown as null,
-          });
+            // NOTE: rule_contributions column not yet migrated — omitted to avoid silent insert failure
+          } as Record<string, unknown>);
+
+          if (insertError) {
+            console.error("[analyze] DB insert failed:", insertError.message);
+          }
 
           // Track usage (increments AFTER successful analysis)
           await service.from("usage_tracking").upsert(
