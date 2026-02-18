@@ -140,3 +140,132 @@ describe("computeECE", () => {
     expect(result.ece).toBeLessThanOrEqual(1);
   });
 });
+
+// =====================================================
+// fitPlattScaling
+// =====================================================
+
+describe("fitPlattScaling", () => {
+  it("returns null for fewer than 50 samples", () => {
+    const pairs: OutcomePair[] = Array.from({ length: 49 }, () => ({
+      predicted: 0.5,
+      actual: 0.5,
+    }));
+    expect(fitPlattScaling(pairs)).toBeNull();
+  });
+
+  it("returns PlattParameters for >= 50 samples", () => {
+    // 100 pairs with realistic spread
+    const pairs: OutcomePair[] = Array.from({ length: 100 }, (_, i) => ({
+      predicted: i / 100,
+      actual: Math.min(1, Math.max(0, i / 100 + (i % 3 === 0 ? 0.05 : -0.03))),
+    }));
+    const result = fitPlattScaling(pairs);
+    expect(result).not.toBeNull();
+    expect(typeof result!.a).toBe("number");
+    expect(typeof result!.b).toBe("number");
+    expect(typeof result!.fittedAt).toBe("string");
+    expect(result!.sampleCount).toBe(100);
+  });
+
+  it("parameter a is negative for well-calibrated models", () => {
+    // Pairs where predicted roughly correlates with actual
+    const pairs: OutcomePair[] = Array.from({ length: 100 }, (_, i) => ({
+      predicted: i / 100,
+      actual: Math.min(1, Math.max(0, (i / 100) * 0.9 + 0.05)),
+    }));
+    const result = fitPlattScaling(pairs);
+    expect(result).not.toBeNull();
+    expect(result!.a).toBeLessThan(0);
+  });
+
+  it("returns non-null for exactly 50 samples", () => {
+    const pairs: OutcomePair[] = Array.from({ length: 50 }, () => ({
+      predicted: 0.5,
+      actual: 0.5,
+    }));
+    expect(fitPlattScaling(pairs)).not.toBeNull();
+  });
+
+  it("is deterministic (same input yields same output)", () => {
+    const pairs: OutcomePair[] = Array.from({ length: 100 }, (_, i) => ({
+      predicted: i / 100,
+      actual: Math.min(1, Math.max(0, i / 100 + 0.02)),
+    }));
+    const result1 = fitPlattScaling(pairs);
+    const result2 = fitPlattScaling(pairs);
+    expect(result1).not.toBeNull();
+    expect(result2).not.toBeNull();
+    expect(result1!.a).toBe(result2!.a);
+    expect(result1!.b).toBe(result2!.b);
+  });
+});
+
+// =====================================================
+// applyPlattScaling
+// =====================================================
+
+describe("applyPlattScaling", () => {
+  it("returns rawScore unchanged when params is null", () => {
+    expect(applyPlattScaling(75, null)).toBe(75);
+  });
+
+  it("returns value in 0-100 range for all inputs", () => {
+    const params = {
+      a: -2,
+      b: 1,
+      fittedAt: new Date().toISOString(),
+      sampleCount: 100,
+    };
+    for (const score of [0, 25, 50, 75, 100]) {
+      const result = applyPlattScaling(score, params);
+      expect(result).toBeGreaterThanOrEqual(0);
+      expect(result).toBeLessThanOrEqual(100);
+    }
+  });
+
+  it("has sigmoid shape (higher input yields higher output for negative a)", () => {
+    // With a=-2, b=0: sigmoid(a * normalized + b)
+    // normalized=0 -> 1/(1+exp(0))=0.5 -> 50
+    // normalized=1 -> 1/(1+exp(-2))~0.88 -> ~88
+    // So score 100 should map higher than score 0
+    const params = {
+      a: -2,
+      b: 0,
+      fittedAt: new Date().toISOString(),
+      sampleCount: 100,
+    };
+    expect(applyPlattScaling(100, params)).toBeGreaterThan(
+      applyPlattScaling(0, params)
+    );
+  });
+
+  it("returns a number in range for identity-ish params (a=-1, b=0)", () => {
+    const params = {
+      a: -1,
+      b: 0,
+      fittedAt: new Date().toISOString(),
+      sampleCount: 100,
+    };
+    const result = applyPlattScaling(50, params);
+    expect(result).toBeGreaterThanOrEqual(0);
+    expect(result).toBeLessThanOrEqual(100);
+    expect(typeof result).toBe("number");
+  });
+
+  it("rounds to at most 2 decimal places", () => {
+    const params = {
+      a: -2,
+      b: 1,
+      fittedAt: new Date().toISOString(),
+      sampleCount: 100,
+    };
+    for (const score of [0, 33, 50, 67, 100]) {
+      const result = applyPlattScaling(score, params);
+      const decimalPart = result.toString().split(".")[1];
+      if (decimalPart) {
+        expect(decimalPart.length).toBeLessThanOrEqual(2);
+      }
+    }
+  });
+});
