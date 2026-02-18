@@ -82,6 +82,10 @@ Progress: [██████████] 100%
 - Global aggregate coverage threshold (not per-file) — intentional to avoid over-testing low-value branches (05-08)
 - Pipeline integration tests use vi.useFakeTimers for DeepSeek/Gemini retry delays (05-08)
 
+- Zod schemas validate only the fields each module uses from calibration JSON (not full structure) (06-01)
+- Fallback calibration uses conservative hardcoded values matching approximate p90 thresholds (06-01)
+- loadCalibrationData returns null on failure — callers use ?? fallback pattern (06-01)
+
 - Gemini availability detected by checking if any factor score > 0 — false only for fallback (06-02)
 - Explicit confidence override to LOW (0.2) rather than patching calculateConfidence algorithm (06-02)
 - DeepSeek can still succeed when Gemini fails — it calls OpenAI directly (06-02)
