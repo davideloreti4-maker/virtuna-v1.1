@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-17)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate
-**Current focus:** Phase 4 in progress (Observability). Plan 02 complete.
+**Current focus:** Phase 4 complete (Observability). All 4 plans done. Phase 5 next.
 
 ## Current Position
 
-Phase: 4 of 6 (Observability)
-Plan: 4 of 4 in current phase
+Phase: 5 of 6 (Integration Tests)
+Plan: 1 of N in current phase
 Status: In Progress
-Last activity: 2026-02-18 — Plan 04-04 complete. Admin cost aggregation endpoint created.
+Last activity: 2026-02-18 — Plan 04-03 complete. Phase 4 (Observability) fully done.
 
-Progress: [██████░░░░] 62%
+Progress: [██████░░░░] 67%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
+- Total plans completed: 10
 - Average duration: 3min
-- Total execution time: 25min
+- Total execution time: 31min
 
 **By Phase:**
 
@@ -30,7 +30,7 @@ Progress: [██████░░░░] 62%
 | 01-schedule-crons | 2 | 14min | 7min |
 | 02-ml-model-rehabilitation | 3 | 6min | 2min |
 | 03-calibration-wiring | 2 | 3min | 1.5min |
-| 04-observability | 2 | 2min | 1min |
+| 04-observability | 3 | 8min | 2.7min |
 
 *Updated after each plan completion*
 
@@ -69,6 +69,9 @@ Progress: [██████░░░░] 62%
 - emit() separates bindings from per-call data for efficient child logger pattern (04-02)
 - Client-side JS aggregation instead of SQL RPC to avoid migration for cost endpoint (04-04)
 - Group by gemini_model (always present) not deepseek_model (may be null) (04-04)
+- requestId generated in analyze route and passed to pipeline via opts parameter (04-03)
+- Sentry breadcrumbs in pipeline (waves), gemini (text+video), deepseek (reasoning+fallback) (04-03)
+- Error objects always logged as error.message string for JSON serialization (04-03)
 
 ### Blockers/Concerns
 
@@ -79,5 +82,5 @@ Progress: [██████░░░░] 62%
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed 04-04-PLAN.md (Admin Cost Aggregation). Phase 4 plan 04 of 04 done.
+Stopped at: Completed 04-03-PLAN.md (Engine Structured Logging). Phase 4 fully complete (4/4 plans). Ready for Phase 5.
 Resume file: None
