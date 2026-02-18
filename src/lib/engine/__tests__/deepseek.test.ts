@@ -195,11 +195,12 @@ describe("circuit breaker state transitions", () => {
     }
     expect(isCircuitOpen()).toBe(true);
 
-    // Advance past backoff
+    // Advance past backoff — don't call isCircuitOpen() here to avoid
+    // consuming the probe slot (HARD-04 probe mutex)
     vi.advanceTimersByTime(1001);
-    expect(isCircuitOpen()).toBe(false); // half-open
 
-    // Mock a successful response
+    // Mock a successful response — reasonWithDeepSeek will transition to
+    // half-open internally via isCircuitOpen() and probe
     mockCreate.mockResolvedValue(makeSuccessResponse());
 
     const result = await reasonWithDeepSeek(makeContext());
@@ -218,11 +219,13 @@ describe("circuit breaker state transitions", () => {
     }
     expect(isCircuitOpen()).toBe(true);
 
-    // Advance past first backoff (1000ms) -> half-open
+    // Advance past first backoff (1000ms) — don't call isCircuitOpen() to
+    // avoid consuming the probe slot (HARD-04 probe mutex)
     vi.advanceTimersByTime(1001);
-    expect(isCircuitOpen()).toBe(false); // half-open
 
     // Fail again in half-open -> should reopen with 3000ms backoff
+    // reasonWithDeepSeek transitions to half-open internally, then the
+    // AbortError triggers recordFailure which re-opens the breaker
     mockCreate.mockRejectedValue(makeAbortError());
     await expect(reasonWithDeepSeek(makeContext())).rejects.toThrow();
 
@@ -234,6 +237,7 @@ describe("circuit breaker state transitions", () => {
 
     // Advance another 2001ms (total 3001ms) — should transition to half-open
     vi.advanceTimersByTime(2001);
+    // (calling isCircuitOpen here consumes the probe slot, which is fine for this assertion)
     expect(isCircuitOpen()).toBe(false);
   });
 });

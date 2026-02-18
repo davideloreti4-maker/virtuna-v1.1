@@ -44,6 +44,9 @@ let breaker: CircuitBreakerState = {
   backoffIndex: 0,
 };
 
+// HARD-04: Mutex to prevent concurrent half-open probes (thundering herd prevention)
+let probeInFlight = false;
+
 let client: OpenAI | null = null;
 
 // Calibration data cache
@@ -153,23 +156,29 @@ function getClient(): OpenAI {
   return client;
 }
 
-/** Check if circuit breaker is open (INFRA-03: half-open probe support) */
+/** Check if circuit breaker is open (INFRA-03: half-open probe support, HARD-04: probe mutex) */
 function isCircuitOpen(): boolean {
   if (breaker.status === "closed") return false;
   if (breaker.status === "open") {
     if (Date.now() >= breaker.nextRetryAt) {
-      // Transition to half-open: allow ONE probe request
+      // HARD-04 Mutex: only one probe at a time
+      if (probeInFlight) return true; // Another request is already probing
+      probeInFlight = true;
+      // Transition to half-open: allow this ONE request through as the probe
       breaker.status = "half-open";
       return false;
     }
     return true;
   }
-  // half-open: allow the probe through
+  // half-open: if probeInFlight is true, block additional requests
+  // (defensive guard — probeInFlight gates the transition above)
+  if (probeInFlight) return true;
   return false;
 }
 
 /** Record a failure and potentially open the circuit (INFRA-03: exponential backoff) */
 function recordFailure(): void {
+  probeInFlight = false; // HARD-04: clear probe mutex on failure
   breaker.consecutiveFailures++;
   if (
     breaker.status === "half-open" ||
@@ -194,6 +203,7 @@ function recordFailure(): void {
 
 /** Record a success — full reset to closed state (INFRA-03) */
 function recordSuccess(): void {
+  probeInFlight = false; // HARD-04: clear probe mutex on success
   breaker = {
     status: "closed",
     consecutiveFailures: 0,
@@ -622,6 +632,7 @@ export function resetCircuitBreaker(): void {
     nextRetryAt: 0,
     backoffIndex: 0,
   };
+  probeInFlight = false; // HARD-04: clear probe mutex for test isolation
 }
 
 export { DEEPSEEK_MODEL, isCircuitOpen };
