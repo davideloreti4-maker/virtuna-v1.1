@@ -9,7 +9,7 @@ The prediction engine pipeline is structurally complete but significantly discon
 **Phase Numbering:** Integer phases (1–6), milestone-scoped.
 
 - [x] **Phase 1: Schedule Crons & Fix Data Pipeline Wiring** — Schedule all 7 crons in vercel.json and repair the end-to-end scrape → aggregate pipeline *(completed 2026-02-17)*
-- [ ] **Phase 2: ML Model Rehabilitation** — Fix class imbalance, real feature bridge, stratified training, achieve >75% accuracy and wire ML into the aggregator
+- [x] **Phase 2: ML Model Rehabilitation** — Fix class imbalance, real feature bridge, stratified training, achieve >75% accuracy and wire ML into the aggregator *(completed 2026-02-18)*
 - [ ] **Phase 3: Calibration Wiring** — Conditionally apply Platt scaling in the aggregator and verify calibration-audit cron runs cleanly
 - [ ] **Phase 4: Observability** — Install Sentry, add structured JSON logging, replace all console.* calls, expose admin cost endpoint
 - [ ] **Phase 5: Test Coverage** — Configure Vitest, write unit + integration tests for all engine modules, reach >80% coverage
@@ -159,7 +159,7 @@ Wave groupings for parallel dispatch. Phases within a wave have no inter-depende
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Schedule Crons & Fix Data Pipeline Wiring | 2/2 | ✓ Complete | 2026-02-17 |
-| 2. ML Model Rehabilitation | 0/3 | Not started | - |
+| 2. ML Model Rehabilitation | 3/3 | ✓ Complete | 2026-02-18 |
 | 3. Calibration Wiring | 0/3 | Not started | - |
 | 4. Observability | 0/4 | Not started | - |
 | 5. Test Coverage | 0/8 | Not started | - |
