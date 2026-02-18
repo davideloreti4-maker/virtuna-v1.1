@@ -29,11 +29,15 @@
  * with DEFAULT 'regex'. Rules will be reclassified in Plan 2 or Plan 3 of this phase.
  */
 
+import * as Sentry from "@sentry/nextjs";
 import OpenAI from "openai";
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createCache } from "@/lib/cache";
+import { createLogger } from "@/lib/logger";
 import type { RuleScoreResult } from "./types";
+
+const log = createLogger({ module: "rules" });
 
 // Cache rules for 1 hour — rule_library changes infrequently
 const rulesCache = createCache<Rule[]>(60 * 60 * 1000);
@@ -111,7 +115,10 @@ export async function loadActiveRules(
 
   const { data, error } = await query;
   if (error) {
-    console.error("Failed to load rules:", error);
+    log.error("Failed to load rules", { error: error.message });
+    Sentry.captureException(new Error(error.message), {
+      tags: { stage: "rule_loading" },
+    });
     return [];
   }
 
@@ -163,7 +170,7 @@ function matchesPattern(content: string, pattern: string): boolean {
     case "authenticity":
       return /\b(i|my|me|we|our|personally)\b/i.test(content);
     default:
-      console.debug(`[rules] Unknown regex pattern: ${pattern}`);
+      log.debug("Unknown regex pattern", { pattern });
       return false;
   }
 }
@@ -183,9 +190,10 @@ async function evaluateSemanticRules(
   const skippedRules = rules.filter((r) => !r.evaluation_prompt);
 
   for (const skipped of skippedRules) {
-    console.warn(
-      `[rules] Skipping semantic rule "${skipped.name}": no evaluation_prompt defined`
-    );
+    log.warn("Skipping semantic rule", {
+      rule_name: skipped.name,
+      reason: "no evaluation_prompt defined",
+    });
   }
 
   if (evaluableRules.length === 0) return [];
@@ -227,9 +235,9 @@ Return JSON: { "evaluations": [{ "rule_name": string, "score": number, "rational
     const result = SemanticEvaluationSchema.safeParse(parsed);
 
     if (!result.success) {
-      console.warn(
-        `[rules] Semantic eval response validation failed: ${result.error.message}`
-      );
+      log.warn("Semantic eval response validation failed", {
+        error: result.error.message,
+      });
       return [];
     }
 
@@ -240,19 +248,21 @@ Return JSON: { "evaluations": [{ "rule_name": string, "score": number, "rational
       ((promptTokens ?? 1500) * SEMANTIC_INPUT_PRICE_PER_TOKEN +
         (completionTokens ?? 500) * SEMANTIC_OUTPUT_PRICE_PER_TOKEN) *
       100;
-    console.log(
-      `[rules] Semantic eval: ${evaluableRules.length} rules, ~${costCents.toFixed(4)} cents` +
-        (promptTokens
-          ? ` (${promptTokens} in, ${completionTokens} out tokens)`
-          : "")
-    );
+    log.info("Semantic evaluation complete", {
+      rule_count: evaluableRules.length,
+      cost_cents: +costCents.toFixed(4),
+      prompt_tokens: promptTokens,
+      completion_tokens: completionTokens,
+    });
 
     return result.data.evaluations;
   } catch (error) {
-    console.warn(
-      `[rules] Semantic evaluation failed, falling back to regex-only:`,
-      error instanceof Error ? error.message : String(error)
-    );
+    log.warn("Semantic evaluation failed, falling back to regex-only", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    Sentry.captureException(error, {
+      tags: { stage: "semantic_eval" },
+    });
     return [];
   }
 }
@@ -301,7 +311,7 @@ export async function scoreContentAgainstRules(
       }
     } else {
       // Regex-tier rule without pattern: score 0
-      console.debug(`[rules] Regex rule "${rule.name}" has no pattern, scoring 0`);
+      log.debug("Regex rule has no pattern", { rule_name: rule.name });
     }
   }
 
@@ -319,9 +329,9 @@ export async function scoreContentAgainstRules(
       (r) => r.name.toLowerCase() === evaluation.rule_name.toLowerCase()
     );
     if (!rule) {
-      console.debug(
-        `[rules] Semantic eval returned unknown rule: ${evaluation.rule_name}`
-      );
+      log.debug("Semantic eval returned unknown rule", {
+        rule_name: evaluation.rule_name,
+      });
       continue;
     }
 

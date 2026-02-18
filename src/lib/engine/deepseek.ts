@@ -1,7 +1,9 @@
+import * as Sentry from "@sentry/nextjs";
 import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { createLogger } from "@/lib/logger";
 import {
   DeepSeekResponseSchema,
   type AnalysisInput,
@@ -10,6 +12,8 @@ import {
   type RuleScoreResult,
   type TrendEnrichment,
 } from "./types";
+
+const log = createLogger({ module: "deepseek" });
 
 const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL ?? "deepseek-reasoner";
 const MAX_RETRIES = 2; // 3 total attempts
@@ -125,9 +129,10 @@ function recordFailure(): void {
       breaker.backoffIndex + 1,
       BACKOFF_SCHEDULE_MS.length - 1
     );
-    console.warn(
-      `[DeepSeek] Circuit breaker OPEN. Next retry in ${backoffMs}ms (backoff level ${breaker.backoffIndex})`
-    );
+    log.warn("Circuit breaker OPEN", {
+      next_retry_ms: backoffMs,
+      backoff_level: breaker.backoffIndex,
+    });
   }
 }
 
@@ -375,6 +380,7 @@ export async function reasonWithDeepSeek(
     return null;
   }
 
+  const startTime = performance.now();
   const ai = getClient();
   const calibration = await loadCalibrationData();
   let lastError: Error | null = null;
@@ -412,10 +418,22 @@ export async function reasonWithDeepSeek(
       );
 
       if (cost_cents > 1.0) {
-        console.warn(
-          `[DeepSeek] Reasoning cost ${cost_cents.toFixed(4)} cents exceeds soft cap of 1.0 cents`
-        );
+        log.warn("Reasoning cost exceeds soft cap", {
+          cost_cents: +cost_cents.toFixed(4),
+          soft_cap: 1.0,
+        });
       }
+
+      Sentry.addBreadcrumb({
+        category: "engine.deepseek",
+        message: "Reasoning complete",
+        level: "info",
+        data: {
+          duration_ms: Math.round(performance.now() - startTime),
+          cost_cents: +cost_cents.toFixed(4),
+          model: DEEPSEEK_MODEL,
+        },
+      });
 
       return { reasoning, cost_cents };
     } catch (error) {
@@ -441,12 +459,16 @@ export async function reasonWithDeepSeek(
   }
 
   recordFailure();
-  console.error(
-    `DeepSeek failed after ${MAX_RETRIES + 1} attempts: ${lastError?.message}`
-  );
+  log.error("DeepSeek failed after retries", {
+    attempts: MAX_RETRIES + 1,
+    error: lastError?.message,
+  });
+  Sentry.captureException(lastError, {
+    tags: { stage: "deepseek_reasoning" },
+  });
 
   // Fallback: use Gemini to produce the same DeepSeekReasoning output
-  console.warn("[DeepSeek] Falling back to Gemini for reasoning stage");
+  log.warn("Falling back to Gemini for reasoning");
   return reasonWithGeminiFallback(context);
 }
 
@@ -474,6 +496,7 @@ function getGeminiClient(): GoogleGenAI {
 async function reasonWithGeminiFallback(
   context: DeepSeekInput
 ): Promise<{ reasoning: DeepSeekReasoning; cost_cents: number }> {
+  const fallbackStart = performance.now();
   const ai = getGeminiClient();
   const calibration = await loadCalibrationData();
   const prompt = buildDeepSeekPrompt(context, calibration);
@@ -497,9 +520,22 @@ async function reasonWithGeminiFallback(
       candidateTokens * GEMINI_OUTPUT_PRICE_PER_TOKEN) *
     100;
 
-  console.log(
-    `[DeepSeek→Gemini fallback] Reasoning complete (${cost_cents.toFixed(4)}¢)`
-  );
+  const fallbackDuration = Math.round(performance.now() - fallbackStart);
+  log.info("DeepSeek->Gemini fallback complete", {
+    duration_ms: fallbackDuration,
+    cost_cents: +cost_cents.toFixed(4),
+  });
+
+  Sentry.addBreadcrumb({
+    category: "engine.deepseek",
+    message: "Gemini fallback reasoning complete",
+    level: "info",
+    data: {
+      duration_ms: fallbackDuration,
+      cost_cents: +cost_cents.toFixed(4),
+      model: GEMINI_FALLBACK_MODEL,
+    },
+  });
 
   return { reasoning, cost_cents };
 }

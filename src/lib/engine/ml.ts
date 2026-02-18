@@ -1,7 +1,11 @@
+import * as Sentry from "@sentry/nextjs";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { createServiceClient } from "@/lib/supabase/service";
+import { createLogger } from "@/lib/logger";
 import type { FeatureVector } from "./types";
+
+const log = createLogger({ module: "ml" });
 
 // =====================================================
 // Types
@@ -263,9 +267,13 @@ function logPerClassMetrics(
     const precision = colSum > 0 ? truePositive / colSum : 0;
     const recall = rowSum > 0 ? truePositive / rowSum : 0;
 
-    console.log(
-      `[ml] ${setName} Tier ${c + 1}: precision=${(precision * 100).toFixed(1)}% recall=${(recall * 100).toFixed(1)}% (${rowSum} samples)`
-    );
+    log.info("Training tier metrics", {
+      setName,
+      tier: c + 1,
+      precision: +(precision * 100).toFixed(1),
+      recall: +(recall * 100).toFixed(1),
+      samples: rowSum,
+    });
   }
 }
 
@@ -318,7 +326,7 @@ export async function trainModel(
   const weightLog = classWeights
     .map((w, i) => `Tier ${i + 1}=${w.toFixed(3)}`)
     .join(" ");
-  console.log(`[ml] Class weights: ${weightLog} (capped at 3x min)`);
+  log.info("Class weights computed", { weights: weightLog });
 
   // Initialize weights with small random values (seeded for reproducibility)
   const rng = seededRandom(42);
@@ -392,9 +400,12 @@ export async function trainModel(
     // Log progress every 50 epochs
     if ((epoch + 1) % 50 === 0) {
       const trainEval = evaluate(trainFeatures, trainLabels, weights, biases);
-      console.log(
-        `Epoch ${epoch + 1}/${EPOCHS} - lr: ${lr.toFixed(5)} - train accuracy: ${(trainEval.accuracy * 100).toFixed(1)}%`
-      );
+      log.debug("Training epoch", {
+        epoch: epoch + 1,
+        total: EPOCHS,
+        lr: +lr.toFixed(5),
+        train_accuracy: +(trainEval.accuracy * 100).toFixed(1),
+      });
     }
   }
 
@@ -402,9 +413,10 @@ export async function trainModel(
   const trainEval = evaluate(trainFeatures, trainLabels, weights, biases);
   const testEval = evaluate(testSet.features, testSet.labels, weights, biases);
 
-  console.log(
-    `\nFinal - Train accuracy: ${(trainEval.accuracy * 100).toFixed(1)}% | Test accuracy: ${(testEval.accuracy * 100).toFixed(1)}%`
-  );
+  log.info("Training complete", {
+    train_accuracy: +(trainEval.accuracy * 100).toFixed(1),
+    test_accuracy: +(testEval.accuracy * 100).toFixed(1),
+  });
 
   // Log per-class precision/recall for both sets
   logPerClassMetrics(trainEval.confusionMatrix, "Train");
@@ -432,10 +444,13 @@ export async function trainModel(
     });
 
   if (uploadError) {
-    console.error("[ml] Failed to upload weights to storage:", uploadError);
+    log.error("Failed to upload weights", { error: uploadError.message });
+    Sentry.captureException(new Error(uploadError.message), {
+      tags: { stage: "ml_upload" },
+    });
     throw new Error(`Failed to persist ML weights: ${uploadError.message}`);
   }
-  console.log(`[ml] Model weights saved to ${STORAGE_BUCKET}/${STORAGE_PATH}`);
+  log.info("Model weights saved", { bucket: STORAGE_BUCKET, path: STORAGE_PATH });
 
   // Update module cache
   cachedWeights = modelWeights;
@@ -470,8 +485,11 @@ export async function loadModel(): Promise<ModelWeights | null> {
     const raw = await data.text();
     cachedWeights = JSON.parse(raw) as ModelWeights;
     return cachedWeights;
-  } catch {
-    console.error("[ml] Failed to load ML model weights from storage");
+  } catch (error) {
+    log.error("Failed to load ML model weights");
+    Sentry.captureException(error, {
+      tags: { stage: "ml_load" },
+    });
     return null;
   }
 }

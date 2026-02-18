@@ -1,6 +1,8 @@
+import * as Sentry from "@sentry/nextjs";
 import { GoogleGenAI, Type } from "@google/genai";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { createLogger } from "@/lib/logger";
 import {
   GeminiResponseSchema,
   GeminiVideoResponseSchema,
@@ -8,6 +10,8 @@ import {
   type GeminiAnalysis,
   type GeminiVideoAnalysis,
 } from "./types";
+
+const log = createLogger({ module: "gemini" });
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
 const MAX_RETRIES = 2; // 3 total attempts
@@ -277,6 +281,7 @@ const VIDEO_RESPONSE_SCHEMA = {
 export async function analyzeWithGemini(
   input: AnalysisInput
 ): Promise<{ analysis: GeminiAnalysis; cost_cents: number }> {
+  const startTime = performance.now();
   const ai = getClient();
   const calibration = await loadCalibrationData();
   const niche = input.society_id ?? undefined;
@@ -313,10 +318,22 @@ export async function analyzeWithGemini(
       const cost_cents = calculateCost(promptTokens, candidateTokens);
 
       if (cost_cents > 0.5) {
-        console.warn(
-          `[Gemini] Text analysis cost ${cost_cents.toFixed(4)} cents exceeds soft cap of 0.5 cents`
-        );
+        log.warn("Text analysis cost exceeds soft cap", {
+          cost_cents: +cost_cents.toFixed(4),
+          soft_cap: 0.5,
+        });
       }
+
+      Sentry.addBreadcrumb({
+        category: "engine.gemini",
+        message: "Text analysis complete",
+        level: "info",
+        data: {
+          duration_ms: Math.round(performance.now() - startTime),
+          cost_cents: +cost_cents.toFixed(4),
+          model: GEMINI_MODEL,
+        },
+      });
 
       return { analysis, cost_cents };
     } catch (error) {
@@ -331,6 +348,9 @@ export async function analyzeWithGemini(
     }
   }
 
+  Sentry.captureException(lastError, {
+    tags: { stage: "gemini_text_analysis" },
+  });
   throw new Error(
     `Gemini analysis failed after ${MAX_RETRIES + 1} attempts: ${lastError?.message}`
   );
@@ -348,6 +368,7 @@ export async function analyzeVideoWithGemini(
   mimeType: string,
   niche?: string
 ): Promise<{ analysis: GeminiVideoAnalysis; cost_cents: number }> {
+  const videoStartTime = performance.now();
   const ai = getClient();
   const calibration = await loadCalibrationData();
 
@@ -433,13 +454,28 @@ export async function analyzeVideoWithGemini(
     const cost_cents = calculateCost(promptTokens, candidateTokens);
 
     if (cost_cents > 2.0) {
-      console.warn(
-        `[Gemini] Video analysis cost ${cost_cents.toFixed(4)} cents exceeds soft cap of 2.0 cents`
-      );
+      log.warn("Video analysis cost exceeds soft cap", {
+        cost_cents: +cost_cents.toFixed(4),
+        soft_cap: 2.0,
+      });
     }
+
+    Sentry.addBreadcrumb({
+      category: "engine.gemini",
+      message: "Video analysis complete",
+      level: "info",
+      data: {
+        duration_ms: Math.round(performance.now() - videoStartTime),
+        cost_cents: +cost_cents.toFixed(4),
+        model: GEMINI_MODEL,
+      },
+    });
 
     return { analysis, cost_cents };
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { stage: "gemini_video_analysis" },
+    });
     if (error instanceof Error && error.name === "AbortError") {
       throw new Error(`Gemini video analysis timed out after ${VIDEO_TIMEOUT_MS}ms`);
     }

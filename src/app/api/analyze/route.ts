@@ -1,5 +1,8 @@
+import * as Sentry from "@sentry/nextjs";
+import { nanoid } from "nanoid";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { createLogger } from "@/lib/logger";
 import { runPredictionPipeline } from "@/lib/engine/pipeline";
 import { aggregateScores } from "@/lib/engine/aggregator";
 import { AnalysisInputSchema } from "@/lib/engine/types";
@@ -26,6 +29,9 @@ const DAILY_LIMITS: Record<string, number> = {
  * INFRA-04: Input validation (TikTok URL, content length, video path)
  */
 export async function POST(request: Request) {
+  const requestId = nanoid(12);
+  const log = createLogger({ requestId, module: "analyze" });
+
   try {
     // Authenticate user
     const supabase = await createClient();
@@ -162,7 +168,7 @@ export async function POST(request: Request) {
             message:
               "Analyzing content with Gemini and loading creator context...",
           });
-          const pipelineResult = await runPredictionPipeline(validated);
+          const pipelineResult = await runPredictionPipeline(validated, { requestId });
 
           // Phase 2: Aggregate scores
           send("phase", {
@@ -250,7 +256,12 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    console.error("[analyze] Request error:", error);
+    log.error("Request error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    Sentry.captureException(error, {
+      tags: { stage: "analyze_route", requestId },
+    });
     return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }
