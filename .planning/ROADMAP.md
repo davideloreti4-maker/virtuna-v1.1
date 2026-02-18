@@ -48,14 +48,12 @@ Plans:
   4. A prediction result's aggregator breakdown shows `ml` at 15% weight alongside behavioral 35%, gemini 25%, rules 15%, trends 10%
   5. `ml_score` appears in every `analysis_results` DB insert row
   6. retrain-ml cron generates fresh training data from `scraped_videos` and skips model replacement when accuracy < 60%
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: Diagnose class imbalance — log tier distribution and feature correlation from scraped_videos
-- [ ] 02-02: Add inverse-frequency class weighting and stratified train/test split to trainModel()
-- [ ] 02-03: Rewrite featureVectorToMLInput() with real signal extraction (remove 0.5 stubs)
-- [ ] 02-04: Wire ML signal into aggregator with new weight schema and store ml_score in DB insert
-- [ ] 02-05: Build retrain-ml cron with scraped_videos ingestion and accuracy gate
+- [ ] 02-01-PLAN.md — Add class weighting, stratified split, per-class metrics, real feature bridge, and data-param overload to ml.ts
+- [ ] 02-02-PLAN.md — Wire ML signal into 5-signal async aggregator, update types, persist ml_score in DB
+- [ ] 02-03-PLAN.md — Rewrite retrain-ml cron with scraped_videos ingestion, percentile tiers, and accuracy gate
 
 ### Phase 3: Calibration Wiring
 
@@ -161,7 +159,7 @@ Wave groupings for parallel dispatch. Phases within a wave have no inter-depende
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Schedule Crons & Fix Data Pipeline Wiring | 2/2 | ✓ Complete | 2026-02-17 |
-| 2. ML Model Rehabilitation | 0/5 | Not started | - |
+| 2. ML Model Rehabilitation | 0/3 | Not started | - |
 | 3. Calibration Wiring | 0/3 | Not started | - |
 | 4. Observability | 0/4 | Not started | - |
 | 5. Test Coverage | 0/8 | Not started | - |
