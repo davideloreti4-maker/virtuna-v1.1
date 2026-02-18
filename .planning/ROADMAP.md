@@ -59,19 +59,18 @@ Plans:
 
 **Goal**: Every prediction result reports whether Platt scaling was applied, and the calibration-audit cron runs cleanly and logs ECE.
 **Depends on**: Phase 1 (crons running, data flowing — calibration audit depends on scraped pipeline)
-**File Ownership**: `src/lib/engine/aggregator.ts`, `src/lib/engine/calibration.ts`, `src/app/api/crons/calibration-audit/`, `src/app/api/outcomes/`, `src/types/engine.ts`
+**File Ownership**: `src/lib/engine/aggregator.ts`, `src/lib/engine/calibration.ts`, `src/app/api/cron/calibration-audit/`, `src/app/api/outcomes/`, `src/lib/engine/types.ts`
 **Requirements**: CAL-01, CAL-02, CAL-03, CAL-04
 **Success Criteria** (what must be TRUE):
   1. Aggregator calls `getPlattParameters()` on every prediction and conditionally applies scaling when parameters are available
   2. Every `PredictionResult` includes an `is_calibrated: boolean` field visible in the API response
   3. calibration-audit cron completes without throwing and logs an ECE value to stdout/logger
   4. POST `/api/outcomes` accepts a payload and persists it without error (verified via curl or test)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: Wire getPlattParameters() into aggregator with conditional Platt scaling
-- [ ] 03-02: Add is_calibrated boolean to PredictionResult type and propagate through pipeline
-- [ ] 03-03: Verify calibration-audit cron and outcomes endpoint work end-to-end
+- [ ] 03-01-PLAN.md — Wire Platt scaling into aggregator, add is_calibrated to types + DB + analyze route (CAL-01, CAL-02)
+- [ ] 03-02-PLAN.md — Verify calibration-audit cron and outcomes endpoint compile and work (CAL-03, CAL-04)
 
 ### Phase 4: Observability
 
@@ -160,7 +159,7 @@ Wave groupings for parallel dispatch. Phases within a wave have no inter-depende
 |-------|----------------|--------|-----------|
 | 1. Schedule Crons & Fix Data Pipeline Wiring | 2/2 | ✓ Complete | 2026-02-17 |
 | 2. ML Model Rehabilitation | 3/3 | ✓ Complete | 2026-02-18 |
-| 3. Calibration Wiring | 0/3 | Not started | - |
+| 3. Calibration Wiring | 0/2 | Not started | - |
 | 4. Observability | 0/4 | Not started | - |
 | 5. Test Coverage | 0/8 | Not started | - |
 | 6. Hardening | 0/4 | Not started | - |
