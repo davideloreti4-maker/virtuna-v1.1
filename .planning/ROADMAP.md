@@ -118,20 +118,20 @@ Plans:
 
 **Goal**: Every remaining failure mode degrades gracefully — no unhandled throws, no race conditions, and creator profile scraping triggers correctly.
 **Depends on**: Phase 1, Phase 2, Phase 3, Phase 4, Phase 5 (cleanup pass after all core work is done)
-**File Ownership**: `src/lib/engine/gemini.ts`, `src/lib/engine/deepseek.ts`, `src/lib/engine/calibration.ts`, `src/lib/engine/circuit-breaker.ts`, `src/app/api/` (creator profile trigger)
+**File Ownership**: `src/lib/engine/gemini.ts`, `src/lib/engine/deepseek.ts`, `src/lib/engine/pipeline.ts`, `src/lib/engine/aggregator.ts`, `src/app/api/profile/route.ts`
 **Requirements**: HARD-01, HARD-02, HARD-03, HARD-04, HARD-05
 **Success Criteria** (what must be TRUE):
   1. Passing a malformed calibration JSON file causes neither gemini.ts nor deepseek.ts to throw — both fall back to uncalibrated defaults
   2. Simulating simultaneous DeepSeek + Gemini failure returns a partial result with `confidence: "LOW"` rather than a 500 error
   3. Concurrent half-open circuit breaker probes result in exactly one probe request (mutex prevents race)
   4. Setting `creator_handle` on a user profile triggers an optional creator profile scrape without blocking the response
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 06-01: Wrap calibration file JSON.parse in try-catch in gemini.ts and deepseek.ts; add Zod schema for calibration shape
-- [ ] 06-02: Implement graceful dual-LLM-failure path returning partial result with LOW confidence
-- [ ] 06-03: Add promise-based mutex to circuit breaker half-open probe
-- [ ] 06-04: Wire optional creator profile scrape trigger on creator_handle set
+- [ ] 06-01-PLAN.md — Harden calibration-baseline.json parsing with Zod schemas + try-catch in gemini.ts and deepseek.ts (HARD-01, HARD-02)
+- [ ] 06-02-PLAN.md — Implement graceful dual-LLM-failure path returning partial result with LOW confidence (HARD-03)
+- [ ] 06-03-PLAN.md — Add probe mutex to circuit breaker half-open state in deepseek.ts (HARD-04)
+- [ ] 06-04-PLAN.md — Wire optional creator profile scrape trigger on tiktok_handle set in profile route (HARD-05)
 
 ## Execution Waves
 
