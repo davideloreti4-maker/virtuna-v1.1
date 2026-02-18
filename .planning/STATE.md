@@ -5,29 +5,30 @@
 See: .planning/PROJECT.md (updated 2026-02-17)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate
-**Current focus:** Phase 1 complete — ready for Wave 2 (Phases 2, 3, 4 in parallel)
+**Current focus:** Phase 2 (ML Model Rehabilitation) — Plan 01 complete, Plans 02-03 remaining
 
 ## Current Position
 
-Phase: 1 of 6 (Schedule Crons & Fix Data Pipeline Wiring) -- COMPLETE
-Plan: 2 of 2 in current phase
-Status: Phase Complete
-Last activity: 2026-02-17 — Plan 01-02 complete (pipeline verification + env docs)
+Phase: 2 of 6 (ML Model Rehabilitation)
+Plan: 1 of 3 in current phase
+Status: Executing
+Last activity: 2026-02-18 — Plan 02-01 complete (class weighting, feature bridge, data-param trainModel)
 
-Progress: [██░░░░░░░░] 17%
+Progress: [███░░░░░░░] 25%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 7min
-- Total execution time: 14min
+- Total plans completed: 3
+- Average duration: 5min
+- Total execution time: 16min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-schedule-crons | 2 | 14min | 7min |
+| 02-ml-model-rehabilitation | 1 | 2min | 2min |
 
 *Updated after each plan completion*
 
@@ -46,6 +47,10 @@ Progress: [██░░░░░░░░] 17%
 - Phase 5 (tests) waits for Wave 2 so pipeline is fully wired before writing integration tests
 - Phase 6 (hardening) is final cleanup pass after all substantive work lands
 
+- Class weights capped at 3x minimum to prevent overfitting to rare tiers (02-01)
+- Feature bridge maps DeepSeek shareability/commentProvocation/emotionalCharge/saveWorthiness as semantic engagement proxies (02-01)
+- trainModel accepts structured data object directly for retrain cron — avoids write-then-read JSON (02-01)
+
 ### Blockers/Concerns
 
 - Circuit breaker is per-serverless-instance (module-level state) — not a distributed lock; HARD-04 addresses this
@@ -54,6 +59,6 @@ Progress: [██░░░░░░░░] 17%
 
 ## Session Continuity
 
-Last session: 2026-02-17
-Stopped at: Completed 01-02-PLAN.md — Phase 1 complete. Wave 2 (Phases 2, 3, 4) ready for parallel execution.
+Last session: 2026-02-18
+Stopped at: Completed 02-01-PLAN.md — ML core rehabilitation (class weighting, feature bridge, data-param overload). Plans 02-02 and 02-03 next.
 Resume file: None
