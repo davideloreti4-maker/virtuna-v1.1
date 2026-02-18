@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { featureVectorToMLInput, stratifiedSplit } from "../ml";
+import { featureVectorToMLInput, stratifiedSplit, trainModel } from "../ml";
 import { makeFeatureVector } from "./factories";
 
 // =====================================================
@@ -267,5 +267,121 @@ describe("predictWithML", () => {
     expect(result).not.toBeNull();
     expect(typeof result).toBe("number");
     expect(Number.isNaN(result)).toBe(false);
+  });
+
+  it("returns null when download throws an exception", async () => {
+    mockDownload.mockRejectedValue(new Error("Network error"));
+
+    const { predictWithML } = await import("../ml");
+    const result = await predictWithML(Array(15).fill(0.5));
+    expect(result).toBeNull();
+  });
+});
+
+// =====================================================
+// trainModel
+// =====================================================
+
+describe("trainModel", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    mockDownload.mockReset();
+    mockUpload.mockReset();
+  });
+
+  // Build minimal training data with 5 tiers (labels 1-5)
+  function makeTrainingData() {
+    const features: number[][] = [];
+    const labels: number[] = [];
+
+    // 20 samples per tier = 100 total
+    for (let tier = 1; tier <= 5; tier++) {
+      for (let i = 0; i < 20; i++) {
+        // Features correlate with tier (higher tier = higher values)
+        const base = (tier - 1) * 0.2;
+        features.push(
+          Array.from({ length: 15 }, (_, f) =>
+            Math.min(1, Math.max(0, base + (f * 0.01) + (i * 0.005)))
+          )
+        );
+        labels.push(tier);
+      }
+    }
+
+    // Split 80/20
+    const splitIdx = Math.floor(features.length * 0.8);
+
+    return {
+      featureNames: Array.from({ length: 15 }, (_, i) => `feature_${i}`),
+      trainSet: {
+        features: features.slice(0, splitIdx),
+        labels: labels.slice(0, splitIdx),
+      },
+      testSet: {
+        features: features.slice(splitIdx),
+        labels: labels.slice(splitIdx),
+      },
+    };
+  }
+
+  it("trains with pre-computed data object and returns TrainingResult", async () => {
+    mockUpload.mockResolvedValue({ error: null });
+
+    const data = makeTrainingData();
+    const result = await trainModel(data);
+
+    expect(result).toBeDefined();
+    expect(result.weights).toBeDefined();
+    expect(result.weights.weights).toHaveLength(5); // 5 classes
+    expect(result.weights.weights[0]).toHaveLength(15); // 15 features
+    expect(result.weights.biases).toHaveLength(5);
+    expect(result.weights.numClasses).toBe(5);
+    expect(typeof result.trainAccuracy).toBe("number");
+    expect(typeof result.testAccuracy).toBe("number");
+    expect(result.trainAccuracy).toBeGreaterThanOrEqual(0);
+    expect(result.trainAccuracy).toBeLessThanOrEqual(1);
+  });
+
+  it("uploads weights to Supabase Storage", async () => {
+    mockUpload.mockResolvedValue({ error: null });
+
+    const data = makeTrainingData();
+    await trainModel(data);
+
+    expect(mockUpload).toHaveBeenCalledTimes(1);
+  });
+
+  it("throws when upload fails", async () => {
+    mockUpload.mockResolvedValue({
+      error: { message: "Storage quota exceeded" },
+    });
+
+    const data = makeTrainingData();
+    await expect(trainModel(data)).rejects.toThrow(
+      /Failed to persist ML weights/
+    );
+  });
+
+  it("produces confusion matrix with correct dimensions", async () => {
+    mockUpload.mockResolvedValue({ error: null });
+
+    const data = makeTrainingData();
+    const result = await trainModel(data);
+
+    expect(result.confusionMatrix).toHaveLength(5);
+    for (const row of result.confusionMatrix) {
+      expect(row).toHaveLength(5);
+    }
+  });
+
+  it("trains with non-zero accuracy on structured data", async () => {
+    mockUpload.mockResolvedValue({ error: null });
+
+    const data = makeTrainingData();
+    const result = await trainModel(data);
+
+    // With 100 well-structured samples across 5 tiers,
+    // the model should achieve > 0% accuracy
+    expect(result.trainAccuracy).toBeGreaterThan(0);
   });
 });

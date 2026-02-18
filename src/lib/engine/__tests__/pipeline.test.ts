@@ -393,4 +393,67 @@ describe("pipeline integration tests", () => {
     expect(result.requestId).toBe("test-req-id");
     expect(result.total_duration_ms).toBeGreaterThanOrEqual(0);
   });
+
+  // -------------------------------------------------------
+  // Scenario 5: Invalid input — validation throws
+  // -------------------------------------------------------
+  it("throws on invalid input (missing required field for input_mode)", async () => {
+    const invalidInput = {
+      input_mode: "text" as const,
+      // content_text is missing — required for text mode
+      content_type: "video" as const,
+    };
+
+    await expect(
+      runPredictionPipeline(invalidInput as never)
+    ).rejects.toThrow(/validation/i);
+  });
+
+  // -------------------------------------------------------
+  // Scenario 6: Custom requestId via opts
+  // -------------------------------------------------------
+  it("uses custom requestId when provided via opts", async () => {
+    const result = await runPredictionPipeline(input, {
+      requestId: "custom-req-123",
+    });
+
+    expect(result.requestId).toBe("custom-req-123");
+  });
+
+  // -------------------------------------------------------
+  // Scenario 7: DeepSeek returns null (circuit breaker open) — pipeline degrades
+  // -------------------------------------------------------
+  it("handles DeepSeek returning null gracefully (circuit breaker open)", async () => {
+    // Open circuit breaker by failing 3 times with AbortError
+    const abortError = new Error("abort");
+    abortError.name = "AbortError";
+    mockDeepSeekCreate.mockRejectedValue(abortError);
+
+    // Run pipeline 3 times to open circuit breaker (each throws in pipeline's catch)
+    for (let i = 0; i < 3; i++) {
+      try {
+        await runPredictionPipeline(input);
+      } catch {
+        // Expected — DeepSeek abort triggers pipeline catch but Gemini succeeds
+      }
+    }
+
+    // Reset DeepSeek mock but circuit is open — should return null
+    mockDeepSeekCreate.mockClear();
+
+    // Re-setup Gemini mock since it was cleared
+    mockGeminiGenerate.mockResolvedValue({
+      text: JSON.stringify(makeGeminiAnalysis()),
+      usageMetadata: {
+        promptTokenCount: 500,
+        candidatesTokenCount: 300,
+      },
+    });
+
+    const result = await runPredictionPipeline(input);
+
+    // Pipeline should complete with null deepseekResult
+    expect(result.deepseekResult).toBeNull();
+    expect(result.geminiResult.analysis.factors).toHaveLength(5);
+  });
 });

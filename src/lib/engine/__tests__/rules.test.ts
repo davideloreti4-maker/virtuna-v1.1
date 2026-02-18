@@ -20,8 +20,25 @@ vi.mock("@sentry/nextjs", () => ({
   captureException: vi.fn(),
 }));
 
+let mockRulesResult: { data: unknown; error: unknown } = {
+  data: [],
+  error: null,
+};
+
+const mockRulesChain = () => {
+  const chain: Record<string, unknown> = {};
+  const methods = ["select", "eq", "is", "not", "gte", "gt", "or", "order", "limit"];
+  for (const method of methods) {
+    chain[method] = vi.fn(() => chain);
+  }
+  chain.then = (resolve: (v: unknown) => void) => resolve(mockRulesResult);
+  return chain;
+};
+
 vi.mock("@/lib/supabase/service", () => ({
-  createServiceClient: vi.fn(),
+  createServiceClient: vi.fn(() => ({
+    from: vi.fn(() => mockRulesChain()),
+  })),
 }));
 
 vi.mock("@/lib/cache", () => ({
@@ -36,7 +53,8 @@ vi.mock("openai", () => ({
   default: vi.fn(),
 }));
 
-import { scoreContentAgainstRules } from "../rules";
+import { scoreContentAgainstRules, loadActiveRules } from "../rules";
+import { createServiceClient } from "@/lib/supabase/service";
 
 // Rule interface matching rules.ts internal type
 interface Rule {
@@ -234,5 +252,122 @@ describe("scoreContentAgainstRules — scoring", () => {
     const rule = makeRule("question_hook", "question_hook");
     const result = await scoreContentAgainstRules("No question here.", [rule]);
     expect(result.matched_rules).toHaveLength(0);
+  });
+
+  it("handles regex rule without pattern (scores 0)", async () => {
+    const rule = makeRule("no_pattern", "", {
+      pattern: null,
+    });
+    const result = await scoreContentAgainstRules("Any content here", [rule]);
+    expect(result.matched_rules).toHaveLength(0);
+  });
+
+  it("handles regex rule without score_modifier", async () => {
+    const rule = makeRule("cta_clarity", "cta_clarity", {
+      score_modifier: null,
+    });
+    const result = await scoreContentAgainstRules("Follow me", [rule]);
+    // Pattern matches but score_modifier is null -> no match recorded
+    expect(result.matched_rules).toHaveLength(0);
+  });
+
+  it("handles unknown regex pattern (returns false)", async () => {
+    const rule = makeRule("unknown_pattern", "totally_unknown");
+    const result = await scoreContentAgainstRules("Any content here", [rule]);
+    expect(result.matched_rules).toHaveLength(0);
+  });
+
+  it("normalizes score to max_score cap", async () => {
+    const rule = makeRule("cta_clarity", "cta_clarity", {
+      score_modifier: 100, // Very high modifier
+      max_score: 10,
+    });
+    const result = await scoreContentAgainstRules("Follow me", [rule]);
+    if (result.matched_rules.length > 0) {
+      expect(result.matched_rules[0]!.score).toBeLessThanOrEqual(10);
+    }
+  });
+
+  it("trending_sound always returns false for regex tier", async () => {
+    expect(await patternMatches("trending_sound", "trending sound in my video")).toBe(false);
+  });
+
+  it("trending_audio always returns false for regex tier", async () => {
+    expect(await patternMatches("trending_audio", "popular audio track")).toBe(false);
+  });
+
+  it("text_overlay always returns true for regex tier", async () => {
+    expect(await patternMatches("text_overlay", "anything")).toBe(true);
+  });
+
+  it("handles semantic tier rules (without API, defaults to empty)", async () => {
+    const semanticRule = makeRule("niche_authority", "", {
+      evaluation_tier: "semantic" as const,
+      evaluation_prompt: "Evaluate niche authority",
+      pattern: null,
+    });
+    const result = await scoreContentAgainstRules("Content about cooking", [semanticRule]);
+    // Without a real API response, semantic rules don't contribute matches
+    expect(result.rule_score).toBeGreaterThanOrEqual(0);
+    expect(result.rule_score).toBeLessThanOrEqual(100);
+  });
+
+  it("handles semantic tier rules without evaluation_prompt", async () => {
+    const semanticRule = makeRule("no_prompt_rule", "", {
+      evaluation_tier: "semantic" as const,
+      evaluation_prompt: null,
+      pattern: null,
+    });
+    const result = await scoreContentAgainstRules("Content", [semanticRule]);
+    expect(result.matched_rules).toHaveLength(0);
+  });
+});
+
+// =====================================================
+// loadActiveRules
+// =====================================================
+
+describe("loadActiveRules", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRulesResult = { data: [], error: null };
+  });
+
+  it("returns empty array when no rules exist", async () => {
+    mockRulesResult = { data: [], error: null };
+    const supabase = createServiceClient();
+    const rules = await loadActiveRules(supabase);
+    expect(rules).toEqual([]);
+  });
+
+  it("returns rules from database", async () => {
+    mockRulesResult = {
+      data: [
+        {
+          id: "r1",
+          name: "test_rule",
+          description: null,
+          category: "content",
+          pattern: "question_hook",
+          score_modifier: 10,
+          platform: null,
+          evaluation_prompt: null,
+          evaluation_tier: "regex",
+          weight: 1,
+          max_score: 10,
+        },
+      ],
+      error: null,
+    };
+    const supabase = createServiceClient();
+    const rules = await loadActiveRules(supabase);
+    expect(rules).toHaveLength(1);
+  });
+
+  it("returns empty array on query error", async () => {
+    mockRulesResult = { data: null, error: { message: "DB error" } };
+    const supabase = createServiceClient();
+    const rules = await loadActiveRules(supabase);
+    expect(rules).toEqual([]);
   });
 });

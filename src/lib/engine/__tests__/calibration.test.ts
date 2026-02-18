@@ -21,8 +21,36 @@ vi.mock("@sentry/nextjs", () => ({
   captureException: vi.fn(),
 }));
 
+let mockOutcomesResult: { data: unknown; error: unknown } = {
+  data: [],
+  error: null,
+};
+
+const mockSupabaseChain = () => {
+  const chain: Record<string, unknown> = {};
+  const methods = [
+    "select",
+    "eq",
+    "is",
+    "not",
+    "gte",
+    "gt",
+    "or",
+    "order",
+    "limit",
+  ];
+  for (const method of methods) {
+    chain[method] = vi.fn(() => chain);
+  }
+  chain.then = (resolve: (v: unknown) => void) =>
+    resolve(mockOutcomesResult);
+  return chain;
+};
+
 vi.mock("@/lib/supabase/service", () => ({
-  createServiceClient: vi.fn(),
+  createServiceClient: vi.fn(() => ({
+    from: vi.fn(() => mockSupabaseChain()),
+  })),
 }));
 
 vi.mock("@/lib/cache", () => ({
@@ -37,8 +65,13 @@ import {
   computeECE,
   fitPlattScaling,
   applyPlattScaling,
+  fetchOutcomePairs,
+  generateCalibrationReport,
+  getPlattParameters,
+  invalidatePlattCache,
 } from "../calibration";
 import type { OutcomePair } from "../calibration";
+import { createServiceClient } from "@/lib/supabase/service";
 
 // =====================================================
 // computeECE
@@ -267,5 +300,161 @@ describe("applyPlattScaling", () => {
         expect(decimalPart.length).toBeLessThanOrEqual(2);
       }
     }
+  });
+});
+
+// =====================================================
+// fetchOutcomePairs
+// =====================================================
+
+describe("fetchOutcomePairs", () => {
+  beforeEach(() => {
+    mockOutcomesResult = { data: [], error: null };
+  });
+
+  it("returns empty array when no outcome data", async () => {
+    mockOutcomesResult = { data: [], error: null };
+    const supabase = createServiceClient();
+    const result = await fetchOutcomePairs(supabase);
+    expect(result).toEqual([]);
+  });
+
+  it("normalizes 0-100 scores to 0-1 range", async () => {
+    mockOutcomesResult = {
+      data: [
+        { predicted_score: 75, actual_score: 60 },
+        { predicted_score: 30, actual_score: 45 },
+      ],
+      error: null,
+    };
+    const supabase = createServiceClient();
+    const result = await fetchOutcomePairs(supabase);
+
+    expect(result).toHaveLength(2);
+    expect(result[0]!.predicted).toBe(0.75);
+    expect(result[0]!.actual).toBe(0.6);
+    expect(result[1]!.predicted).toBe(0.3);
+    expect(result[1]!.actual).toBe(0.45);
+  });
+
+  it("clamps values to 0-1 range", async () => {
+    mockOutcomesResult = {
+      data: [{ predicted_score: 120, actual_score: -10 }],
+      error: null,
+    };
+    const supabase = createServiceClient();
+    const result = await fetchOutcomePairs(supabase);
+
+    expect(result[0]!.predicted).toBe(1);
+    expect(result[0]!.actual).toBe(0);
+  });
+
+  it("throws on query error", async () => {
+    mockOutcomesResult = {
+      data: null,
+      error: { message: "connection refused" },
+    };
+    const supabase = createServiceClient();
+
+    await expect(fetchOutcomePairs(supabase)).rejects.toThrow(
+      /Failed to fetch outcome pairs/
+    );
+  });
+
+  it("returns empty array when data is null with no error", async () => {
+    mockOutcomesResult = { data: null, error: null };
+    const supabase = createServiceClient();
+    const result = await fetchOutcomePairs(supabase);
+    expect(result).toEqual([]);
+  });
+});
+
+// =====================================================
+// generateCalibrationReport
+// =====================================================
+
+describe("generateCalibrationReport", () => {
+  beforeEach(() => {
+    mockOutcomesResult = { data: [], error: null };
+  });
+
+  it("returns report with ECE=0 when no outcomes exist", async () => {
+    mockOutcomesResult = { data: [], error: null };
+    const report = await generateCalibrationReport();
+
+    expect(report.ece).toBe(0);
+    expect(report.bins).toEqual([]);
+    expect(report.totalSamples).toBe(0);
+    expect(typeof report.generatedAt).toBe("string");
+  });
+
+  it("returns report with computed ECE when outcomes exist", async () => {
+    const outcomes = Array.from({ length: 60 }, (_, i) => ({
+      predicted_score: i + 20,
+      actual_score: i + 20 + (i % 5),
+    }));
+    mockOutcomesResult = { data: outcomes, error: null };
+
+    const report = await generateCalibrationReport();
+
+    expect(report.totalSamples).toBe(60);
+    expect(report.ece).toBeGreaterThanOrEqual(0);
+    expect(report.bins.length).toBeGreaterThan(0);
+  });
+});
+
+// =====================================================
+// getPlattParameters + invalidatePlattCache
+// =====================================================
+
+describe("getPlattParameters", () => {
+  beforeEach(() => {
+    mockOutcomesResult = { data: [], error: null };
+    invalidatePlattCache(); // Clear cache between tests
+  });
+
+  it("returns null when insufficient data (<50 outcomes)", async () => {
+    const outcomes = Array.from({ length: 30 }, (_, i) => ({
+      predicted_score: i * 3,
+      actual_score: i * 3 + 5,
+    }));
+    mockOutcomesResult = { data: outcomes, error: null };
+
+    const params = await getPlattParameters();
+    expect(params).toBeNull();
+  });
+
+  it("returns PlattParameters when >= 50 outcomes exist", async () => {
+    const outcomes = Array.from({ length: 60 }, (_, i) => ({
+      predicted_score: (i / 60) * 100,
+      actual_score: Math.min(100, (i / 60) * 100 + 5),
+    }));
+    mockOutcomesResult = { data: outcomes, error: null };
+
+    const params = await getPlattParameters();
+    expect(params).not.toBeNull();
+    expect(typeof params!.a).toBe("number");
+    expect(typeof params!.b).toBe("number");
+    expect(params!.sampleCount).toBe(60);
+  });
+
+  it("invalidatePlattCache clears cached parameters", async () => {
+    const outcomes = Array.from({ length: 60 }, (_, i) => ({
+      predicted_score: (i / 60) * 100,
+      actual_score: (i / 60) * 100,
+    }));
+    mockOutcomesResult = { data: outcomes, error: null };
+
+    // First call — fetches and caches
+    const params1 = await getPlattParameters();
+    expect(params1).not.toBeNull();
+
+    // Invalidate
+    invalidatePlattCache();
+
+    // Change mock data to empty — should re-fetch
+    mockOutcomesResult = { data: [], error: null };
+    const params2 = await getPlattParameters();
+    expect(params2).toBeNull();
   });
 });
