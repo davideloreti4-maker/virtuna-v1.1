@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-17)
 ## Current Position
 
 Phase: 4 of 6 (Observability)
-Plan: 2 of 4 in current phase
+Plan: 4 of 4 in current phase
 Status: In Progress
-Last activity: 2026-02-18 — Plan 04-02 complete. Structured logger utility created.
+Last activity: 2026-02-18 — Plan 04-04 complete. Admin cost aggregation endpoint created.
 
 Progress: [██████░░░░] 62%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
+- Total plans completed: 9
 - Average duration: 3min
-- Total execution time: 24min
+- Total execution time: 25min
 
 **By Phase:**
 
@@ -30,7 +30,7 @@ Progress: [██████░░░░] 62%
 | 01-schedule-crons | 2 | 14min | 7min |
 | 02-ml-model-rehabilitation | 3 | 6min | 2min |
 | 03-calibration-wiring | 2 | 3min | 1.5min |
-| 04-observability | 1 | 1min | 1min |
+| 04-observability | 2 | 2min | 1min |
 
 *Updated after each plan completion*
 
@@ -67,6 +67,8 @@ Progress: [██████░░░░] 62%
 - Zero-dependency structured logger — edge-runtime compatible, no pino/winston (04-02)
 - logger.ts is the ONLY sanctioned console.* location after 04-03 migration (04-02)
 - emit() separates bindings from per-call data for efficient child logger pattern (04-02)
+- Client-side JS aggregation instead of SQL RPC to avoid migration for cost endpoint (04-04)
+- Group by gemini_model (always present) not deepseek_model (may be null) (04-04)
 
 ### Blockers/Concerns
 
@@ -77,5 +79,5 @@ Progress: [██████░░░░] 62%
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed 04-02-PLAN.md (Structured Logger). Phase 4 plan 02 of 04 done.
+Stopped at: Completed 04-04-PLAN.md (Admin Cost Aggregation). Phase 4 plan 04 of 04 done.
 Resume file: None
