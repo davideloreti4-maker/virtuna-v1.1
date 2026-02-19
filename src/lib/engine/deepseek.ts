@@ -18,7 +18,7 @@ const log = createLogger({ module: "deepseek" });
 
 const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL ?? "deepseek-reasoner";
 const MAX_RETRIES = 2; // 3 total attempts
-const TIMEOUT_MS = 45_000; // 45s — reasoning model produces longer outputs with CoT thinking tokens
+const TIMEOUT_MS = 90_000; // 90s — reasoning model produces many CoT thinking tokens on complex prompts
 
 // V3.2-reasoning pricing: $0.28/1M input tokens, $0.42/1M output tokens
 const INPUT_PRICE_PER_TOKEN = 0.28 / 1_000_000;
@@ -523,7 +523,8 @@ export async function reasonWithDeepSeek(
       lastError = error instanceof Error ? error : new Error(String(error));
       if (lastError.name === "AbortError") {
         recordFailure();
-        throw new Error(`DeepSeek request timed out after ${TIMEOUT_MS}ms`);
+        log.warn("DeepSeek request timed out", { timeout_ms: TIMEOUT_MS, attempt });
+        break; // Fall through to Gemini fallback instead of throwing
       }
       // Retry on parse/validation errors, but record API failures
       if (

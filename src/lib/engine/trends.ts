@@ -103,7 +103,7 @@ export async function enrichWithTrends(
       // 1. Build hashtag frequency map from scraped videos
       const hashtagStats = new Map<string, { count: number; totalViews: number }>();
       for (const video of recentVideos) {
-        const videoHashtags = (video.hashtags ?? []).map((h: string) => h.toLowerCase());
+        const videoHashtags = (video.hashtags ?? []).filter((h): h is string => typeof h === "string").map((h) => h.toLowerCase());
         for (const tag of videoHashtags) {
           const existing = hashtagStats.get(tag);
           if (existing) {
