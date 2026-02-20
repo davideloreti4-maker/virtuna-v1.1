@@ -17,6 +17,8 @@ import { useTestStore } from "@/stores/test-store";
 import type { SimulationPhase } from "@/stores/test-store";
 import { useSocietyStore } from "@/stores/society-store";
 import { useAnalyze } from "@/hooks/queries";
+import { useVideoUpload } from "@/hooks/use-video-upload";
+import { createClient } from "@/lib/supabase/client";
 import type { TestType } from "@/types/test";
 
 const MINIMUM_THEATER_MS = 4500;
@@ -47,6 +49,7 @@ export function DashboardClient() {
   const urlParam = searchParams.get("url");
 
   const analyzeMutation = useAnalyze();
+  const videoUpload = useVideoUpload();
   const isCancelledRef = useRef(false);
 
   // Hydrate stores on mount
@@ -81,7 +84,7 @@ export function DashboardClient() {
     setStatus("filling-form");
   };
 
-  const handleContentSubmit = (data: ContentFormData) => {
+  const handleContentSubmit = async (data: ContentFormData) => {
     const theatreStart = Date.now();
     isCancelledRef.current = false;
     setStatus("simulating");
@@ -99,9 +102,23 @@ export function DashboardClient() {
     } else if (data.input_mode === "tiktok_url") {
       payload.tiktok_url = data.tiktok_url;
     } else if (data.input_mode === "video_upload") {
-      payload.video_storage_path = "pending-upload";
       payload.content_text = data.video_caption;
       if (data.video_niche) payload.niche = data.video_niche;
+
+      // Upload video to Supabase Storage before analysis
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setStatus("filling-form");
+          return;
+        }
+        const storagePath = await videoUpload.upload(data.video_file!, user.id);
+        payload.video_storage_path = storagePath;
+      } catch {
+        setStatus("filling-form");
+        return;
+      }
     }
 
     analyzeMutation.mutate(
@@ -125,6 +142,7 @@ export function DashboardClient() {
   const handleRunAnother = () => {
     reset();
     analyzeMutation.reset();
+    videoUpload.reset();
   };
 
   // Intentional: Hive visualization uses procedural data for the interactive demo canvas.
@@ -155,6 +173,7 @@ export function DashboardClient() {
           {(currentStatus === "idle" || currentStatus === "filling-form") ? (
             <ContentForm
               onSubmit={handleContentSubmit}
+              uploadProgress={videoUpload.progress}
             />
           ) : currentStatus === "simulating" ? (
             <LoadingPhases

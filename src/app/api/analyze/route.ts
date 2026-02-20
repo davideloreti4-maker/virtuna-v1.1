@@ -95,10 +95,11 @@ export async function POST(request: Request) {
     }
 
     // Video storage path validation
-    if (body.input_mode === "video_upload" && body.video_storage_path) {
+    if (body.input_mode === "video_upload") {
       if (
         typeof body.video_storage_path !== "string" ||
-        body.video_storage_path.length === 0
+        body.video_storage_path.length === 0 ||
+        body.video_storage_path === "pending-upload"
       ) {
         return Response.json(
           { error: "Invalid video storage path" },
@@ -242,6 +243,16 @@ export async function POST(request: Request) {
           );
 
           send("complete", finalResult);
+
+          // Best-effort: delete uploaded video from storage after analysis
+          if (validated.input_mode === "video_upload" && validated.video_storage_path) {
+            service.storage
+              .from("videos")
+              .remove([validated.video_storage_path])
+              .catch(() => {
+                // Best-effort cleanup — don't fail the response
+              });
+          }
         } catch (error) {
           const message =
             error instanceof Error ? error.message : "Pipeline failed";
