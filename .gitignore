@@ -47,3 +47,6 @@ next-env.d.ts
 
 # benchmark runtime data
 scripts/benchmark-results.json
+
+# test video fixtures (large binary files)
+src/lib/engine/__tests__/fixtures/

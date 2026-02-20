@@ -18,6 +18,7 @@ import type { SimulationPhase } from "@/stores/test-store";
 import { useSocietyStore } from "@/stores/society-store";
 import { useAnalyze } from "@/hooks/queries";
 import { useVideoUpload } from "@/hooks/use-video-upload";
+import { useToast } from "@/components/ui/toast";
 import { createClient } from "@/lib/supabase/client";
 import type { TestType } from "@/types/test";
 
@@ -50,6 +51,7 @@ export function DashboardClient() {
 
   const analyzeMutation = useAnalyze();
   const videoUpload = useVideoUpload();
+  const { toast } = useToast();
   const isCancelledRef = useRef(false);
 
   // Hydrate stores on mount
@@ -115,7 +117,12 @@ export function DashboardClient() {
         }
         const storagePath = await videoUpload.upload(data.video_file!, user.id);
         payload.video_storage_path = storagePath;
-      } catch {
+      } catch (err) {
+        toast({
+          variant: "error",
+          title: "Video upload failed",
+          description: err instanceof Error ? err.message : "Could not upload video. Please try again.",
+        });
         setStatus("filling-form");
         return;
       }
