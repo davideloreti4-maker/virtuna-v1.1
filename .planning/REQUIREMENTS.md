@@ -116,17 +116,73 @@
 
 ---
 
-## Traceability Matrix
+## Traceability
 
-| Phase | Requirements | Count |
-|-------|-------------|-------|
-| Phase 1: Wire UI + History + Display + Data Integrity | WIRE-01..10, HIST-01..04, DATA-01..04 | 18 |
-| Phase 2: Video Upload Pipeline | VID-01..09 | 9 |
-| Phase 3: TikTok URL Extraction | URL-01..06 | 6 |
-| Phase 4: Outcomes Feedback Loop | OUT-01..10 | 10 |
-| Phase 5: Analytics Dashboard | ANLY-01..09 | 9 |
-| Phase 6: Trending + Hive Visualization | TRND-01..06, VIZ-01..05 | 11 |
-| **Total** | | **63** |
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| WIRE-01 | Phase 1 | Pending |
+| WIRE-02 | Phase 1 | Pending |
+| WIRE-03 | Phase 1 | Pending |
+| WIRE-04 | Phase 1 | Pending |
+| WIRE-05 | Phase 1 | Pending |
+| WIRE-06 | Phase 1 | Pending |
+| WIRE-07 | Phase 1 | Pending |
+| WIRE-08 | Phase 1 | Pending |
+| WIRE-09 | Phase 1 | Pending |
+| WIRE-10 | Phase 1 | Pending |
+| HIST-01 | Phase 1 | Pending |
+| HIST-02 | Phase 1 | Pending |
+| HIST-03 | Phase 1 | Pending |
+| HIST-04 | Phase 1 | Pending |
+| DATA-01 | Phase 1 | Pending |
+| DATA-02 | Phase 1 | Pending |
+| DATA-03 | Phase 1 | Pending |
+| DATA-04 | Phase 1 | Pending |
+| VID-01 | Phase 2 | Pending |
+| VID-02 | Phase 2 | Pending |
+| VID-03 | Phase 2 | Pending |
+| VID-04 | Phase 2 | Pending |
+| VID-05 | Phase 2 | Pending |
+| VID-06 | Phase 2 | Pending |
+| VID-07 | Phase 2 | Pending |
+| VID-08 | Phase 2 | Pending |
+| VID-09 | Phase 2 | Pending |
+| URL-01 | Phase 3 | Pending |
+| URL-02 | Phase 3 | Pending |
+| URL-03 | Phase 3 | Pending |
+| URL-04 | Phase 3 | Pending |
+| URL-05 | Phase 3 | Pending |
+| URL-06 | Phase 3 | Pending |
+| OUT-01 | Phase 4 | Pending |
+| OUT-02 | Phase 4 | Pending |
+| OUT-03 | Phase 4 | Pending |
+| OUT-04 | Phase 4 | Pending |
+| OUT-05 | Phase 4 | Pending |
+| OUT-06 | Phase 4 | Pending |
+| OUT-07 | Phase 4 | Pending |
+| OUT-08 | Phase 4 | Pending |
+| OUT-09 | Phase 4 | Pending |
+| OUT-10 | Phase 4 | Pending |
+| ANLY-01 | Phase 5 | Pending |
+| ANLY-02 | Phase 5 | Pending |
+| ANLY-03 | Phase 5 | Pending |
+| ANLY-04 | Phase 5 | Pending |
+| ANLY-05 | Phase 5 | Pending |
+| ANLY-06 | Phase 5 | Pending |
+| ANLY-07 | Phase 5 | Pending |
+| ANLY-08 | Phase 5 | Pending |
+| ANLY-09 | Phase 5 | Pending |
+| TRND-01 | Phase 6 | Pending |
+| TRND-02 | Phase 6 | Pending |
+| TRND-03 | Phase 6 | Pending |
+| TRND-04 | Phase 6 | Pending |
+| TRND-05 | Phase 6 | Pending |
+| TRND-06 | Phase 6 | Pending |
+| VIZ-01 | Phase 6 | Pending |
+| VIZ-02 | Phase 6 | Pending |
+| VIZ-03 | Phase 6 | Pending |
+| VIZ-04 | Phase 6 | Pending |
+| VIZ-05 | Phase 6 | Pending |
 
 ---
 
