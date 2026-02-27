@@ -8,28 +8,17 @@
 - **Repo:** https://github.com/davideloreti/virtuna
 - **Deployed:** Vercel
 
-## Phase Number Registry
+## Phase Numbering
 
-Global sequential numbering across all milestones. No gaps, no overlaps.
-
-| Milestone | Phases | Status |
-|-----------|--------|--------|
-| v1.1 Pixel-Perfect Clone | 1-10 | Shipped |
-| v1.2 Visual Accuracy | 11-14 | Shipped |
-| v1.3.2-v1.7 (archived) | 15-38 | Archived |
-| v2.0 Design System | 39-44 | Shipped |
-| v2.1 Dashboard Rebuild | 45-49 | Active (main) |
-| v2.2 Trending Page UI | 50-52 | Shipped |
-| v2.3 Brand Deals | 53-57 | Shipped |
-| v3.1 Landing Page | 58-63 | Active (worktree) |
-| **Next available** | **64** | — |
+Phases are milestone-scoped: each milestone numbers its phases 1-N.
+Historical milestones (pre-2026-02-08) used global numbering 1-63.
 
 ## Worktrees
 
 | Path | Branch | Milestone |
 |------|--------|-----------|
 | `~/virtuna-v1.1/` | `main` | v2.1 (active) |
-| `~/virtuna-v3.1-landing-page/` | `milestone/v3.1-landing-page` | v3.1 |
+| `~/virtuna-landing-page/` | `milestone/landing-page` | Landing Page |
 
 ## Known Technical Issues
 

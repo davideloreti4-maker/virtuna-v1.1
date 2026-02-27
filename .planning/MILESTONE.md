@@ -1,10 +1,9 @@
 # Milestone Identity
 
-**Version:** v3.1
 **Name:** Landing Page Redesign
-**Branch:** milestone/v3.1-landing-page
-**Worktree:** ~/virtuna-v3.1-landing-page/
-**Phases:** 58-63
+**Branch:** milestone/landing-page
+**Worktree:** ~/virtuna-landing-page/
+**Phases:** 1-6
 **Created:** 2026-02-06
 **Branched from:** main @ 3c4d94d
 
@@ -30,11 +29,10 @@
 - [x] Requirements defined (28)
 - [x] Roadmap created (6 phases)
 - [x] Worktree restructured (stale files cleaned)
-- [x] Phases renumbered (58-63, avoids v2.3 collision)
-- [ ] Phase 58: Page Foundation & Navigation
-- [ ] Phase 59: Hero Section
-- [ ] Phase 60: Social Proof & Trust
-- [ ] Phase 61: Product Story & Features
-- [ ] Phase 62: Conversion & Polish
-- [ ] Phase 63: Premium Hero Visual
+- [ ] Phase 1: Page Foundation & Navigation
+- [ ] Phase 2: Hero Section
+- [ ] Phase 3: Social Proof & Trust
+- [ ] Phase 4: Product Story & Features
+- [ ] Phase 5: Conversion & Polish
+- [ ] Phase 6: Premium Hero Visual
 - [ ] Merged to main

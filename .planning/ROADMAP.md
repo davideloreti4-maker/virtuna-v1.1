@@ -1,21 +1,10 @@
-# Roadmap: Virtuna
+# Roadmap: Virtuna — Landing Page Redesign
 
-## Milestones
+## Overview
 
-- v3.1 Landing Page Redesign -- Phases 58-63 (active)
-- v2.3 Brand Deals & Affiliate Page -- Phases 53-57 (shipped 2026-02-06)
-- v2.2 Trending Page UI -- Phases 50-52 (shipped 2026-02-06) | [Archive](milestones/v2.2-ROADMAP.md)
-- v2.1 Dashboard Rebuild -- Phases 45-49 (active, main branch)
-- v2.0 Design System Foundation -- Phases 39-44 (shipped 2026-02-05) | [Archive](milestones/v2.0-ROADMAP.md)
-- v1.2 Visual Accuracy Refinement -- Phases 11-14 (shipped 2026-01-30)
-- v1.1 Pixel-Perfect Clone -- Phases 1-10 (shipped 2026-01-29)
-- v1.3.2-v1.7 -- Phases 15-38 (archived 2026-02-03)
+Replace the societies.io clone landing page with a Raycast-style landing page presenting Virtuna as a social media intelligence platform, built section-by-section via v0 generation adapted to the existing design system.
 
-## v3.1 Landing Page Redesign
-
-**Milestone Goal:** Replace the societies.io clone landing page with a Raycast-style landing page presenting Virtuna as a social media intelligence platform, built section-by-section via v0 generation adapted to the existing design system.
-
-### Phase 58: Page Foundation & Navigation
+### Phase 1: Page Foundation & Navigation
 
 **Goal:** Deployable minimal page skeleton with Raycast-style navbar, footer, and infrastructure patterns (SectionWrapper, v0 migration checklist, SEO metadata, SSR strategy) that all subsequent sections build on.
 
@@ -34,11 +23,11 @@
 
 ---
 
-### Phase 59: Hero Section
+### Phase 2: Hero Section
 
 **Goal:** Visitor immediately understands what Virtuna is and can take action -- bold hero with value proposition, product visual, animated background, and clear CTA.
 
-**Depends on:** Phase 58 (navbar and page skeleton must exist)
+**Depends on:** Phase 1 (navbar and page skeleton must exist)
 
 **Requirements:** HERO-01, HERO-02, HERO-03, HERO-04, HERO-06
 
@@ -52,11 +41,11 @@
 
 ---
 
-### Phase 60: Social Proof & Trust
+### Phase 3: Social Proof & Trust
 
 **Goal:** Visitor sees credibility signals immediately below the hero -- logos, metrics, and testimonials that build trust before feature explanations.
 
-**Depends on:** Phase 59 (hero must exist to establish visual language)
+**Depends on:** Phase 2 (hero must exist to establish visual language)
 
 **Requirements:** SOCL-01, SOCL-02, SOCL-03
 
@@ -69,11 +58,11 @@
 
 ---
 
-### Phase 61: Product Story & Features
+### Phase 4: Product Story & Features
 
 **Goal:** Visitor understands what Virtuna does and why it is better -- product screenshots and feature descriptions tell the story through "show don't tell."
 
-**Depends on:** Phase 59 (hero establishes design language for feature sections)
+**Depends on:** Phase 2 (hero establishes design language for feature sections)
 
 **Requirements:** FEAT-01, FEAT-02, FEAT-03, FEAT-04
 
@@ -87,11 +76,11 @@
 
 ---
 
-### Phase 62: Conversion & Polish
+### Phase 5: Conversion & Polish
 
 **Goal:** Complete, production-ready landing page with conversion layer (use cases, FAQ, pricing, final CTA), scroll animations on all sections, and verified responsive design across all breakpoints.
 
-**Depends on:** Phase 60, Phase 61 (all content sections must exist before conversion layer and full-page polish)
+**Depends on:** Phase 3, Phase 4 (all content sections must exist before conversion layer and full-page polish)
 
 **Requirements:** CONV-01, CONV-02, CONV-03, CONV-04, XCUT-01, XCUT-02, XCUT-06
 
@@ -107,11 +96,11 @@
 
 ---
 
-### Phase 63: Premium Hero Visual
+### Phase 6: Premium Hero Visual
 
 **Goal:** Hero section elevated with an interactive 3D element that creates immediate visual impact and differentiates Virtuna from standard SaaS landing pages.
 
-**Depends on:** Phase 59 (hero must exist; this phase enhances it)
+**Depends on:** Phase 2 (hero must exist; this phase enhances it)
 
 **Requirements:** HERO-05
 
@@ -126,23 +115,15 @@
 
 ## Progress
 
-| Phase | Milestone | Plans Complete | Status | Completed |
-|-------|-----------|----------------|--------|-----------|
-| 1-10 | v1.1 | 44/44 | Complete | 2026-01-29 |
-| 11-14 | v1.2 | 8/8 | Complete | 2026-01-30 |
-| 15-38 | v1.3.2-v1.7 | - | Archived | 2026-02-03 |
-| 39-44 | v2.0 | 35/35 | Complete | 2026-02-05 |
-| 45-46 | v2.1 | 7/7 | Complete | 2026-02-06 |
-| 47-49 | v2.1 | 0/? | Active (main) | - |
-| 50-52 | v2.2 | 10/10 | Shipped | 2026-02-06 |
-| 53-57 | v2.3 | 12/12 | Shipped | 2026-02-06 |
-| 58 | v3.1 | 0/? | Not started | - |
-| 59 | v3.1 | 0/? | Not started | - |
-| 60 | v3.1 | 0/? | Not started | - |
-| 61 | v3.1 | 0/? | Not started | - |
-| 62 | v3.1 | 0/? | Not started | - |
-| 63 | v3.1 | 0/? | Not started | - |
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 1. Page Foundation & Navigation | 0/? | Not started | - |
+| 2. Hero Section | 0/? | Not started | - |
+| 3. Social Proof & Trust | 0/? | Not started | - |
+| 4. Product Story & Features | 0/? | Not started | - |
+| 5. Conversion & Polish | 0/? | Not started | - |
+| 6. Premium Hero Visual | 0/? | Not started | - |
 
 ---
-*Roadmap created: 2026-02-03*
-*Last updated: 2026-02-06 -- v3.1 phases renumbered 58-63 (was 53-58) to avoid collision with v2.3*
+*Roadmap created: 2026-02-06*
+*Last updated: 2026-02-08 -- Phases renumbered to milestone-scoped (1-6)*
