@@ -47,3 +47,4 @@ next-env.d.ts
 
 # benchmark runtime data
 scripts/benchmark-results.json
+scripts/data/

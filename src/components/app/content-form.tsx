@@ -31,6 +31,7 @@ export interface ContentFormData {
 
 interface ContentFormProps {
   onSubmit: (data: ContentFormData) => void;
+  uploadProgress?: number;
   className?: string;
 }
 
@@ -52,7 +53,7 @@ const PLACEHOLDERS: Record<InputMode, string> = {
 // Component
 // ---------------------------------------------------------------------------
 
-export function ContentForm({ onSubmit, className }: ContentFormProps) {
+export function ContentForm({ onSubmit, uploadProgress, className }: ContentFormProps) {
   const [activeTab, setActiveTab] = useState<InputMode>("text");
   const [formData, setFormData] = useState<ContentFormData>({
     input_mode: "text",
@@ -168,6 +169,7 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
           <VideoUpload
             file={formData.video_file}
             onFileSelect={(file) => updateField("video_file", file)}
+            uploadProgress={uploadProgress}
           />
           {errors.video_file && (
             <p className="text-sm text-error mt-1">{errors.video_file}</p>

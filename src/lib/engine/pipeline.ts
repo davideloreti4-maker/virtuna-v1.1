@@ -12,7 +12,7 @@ import {
   type TrendEnrichment,
 } from "./types";
 import { normalizeInput } from "./normalize";
-import { analyzeWithGemini } from "./gemini";
+import { analyzeWithGemini, analyzeVideoWithGemini } from "./gemini";
 import { reasonWithDeepSeek } from "./deepseek";
 import { loadActiveRules, scoreContentAgainstRules } from "./rules";
 import { enrichWithTrends } from "./trends";
@@ -220,9 +220,41 @@ export async function runPredictionPipeline(
   // Wave 1: Gemini + Audio + Creator + Rules (all non-critical, HARD-03)
   // -------------------------------------------------------
 
+  // Extension → MIME type mapping for video downloads
+  const EXT_TO_MIME: Record<string, string> = {
+    mp4: "video/mp4",
+    mov: "video/quicktime",
+    webm: "video/webm",
+    avi: "video/x-msvideo",
+    mkv: "video/x-matroska",
+  };
+
   // Stage 3: Gemini Analysis -- NON-CRITICAL (fallback with warning — HARD-03)
   const geminiPromise = (async (): Promise<PipelineResult["geminiResult"]> => {
     try {
+      // Route video uploads to video-specific Gemini analysis
+      if (validated.input_mode === "video_upload" && validated.video_storage_path) {
+        return await timed("gemini_video_analysis", timings, async () => {
+          const { data: videoBlob, error: downloadError } = await supabase
+            .storage
+            .from("videos")
+            .download(validated.video_storage_path!);
+
+          if (downloadError || !videoBlob) {
+            throw new Error(
+              `Failed to download video from storage: ${downloadError?.message ?? "no data"}`
+            );
+          }
+
+          const buffer = Buffer.from(await videoBlob.arrayBuffer());
+          const ext = validated.video_storage_path!.split(".").pop()?.toLowerCase() ?? "mp4";
+          const mimeType = EXT_TO_MIME[ext] ?? "video/mp4";
+
+          return analyzeVideoWithGemini(buffer, mimeType, validated.niche);
+        });
+      }
+
+      // Default: text analysis
       return await timed("gemini_analysis", timings, () =>
         analyzeWithGemini(validated)
       );
