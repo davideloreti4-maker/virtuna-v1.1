@@ -1,40 +1,74 @@
-# State — Backend Reliability
+# State: Prediction Engine Integration
+
+**Milestone:** Prediction Engine Integration
+**Branch:** milestone/prediction-engine-integration
+
+---
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-18)
-
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate
-**Current focus:** Milestone complete. Ready to merge into main.
+**Current focus:** Wire prediction engine into frontend, add video/URL input modes, build outcomes loop, ship analytics
 
 ## Current Position
 
-Status: Milestone Complete
-Last activity: 2026-02-18 — Backend Reliability milestone archived. All 7 phases, 26 plans shipped.
+**Phase:** Not started
+**Plan:** -
+**Status:** Roadmap created, ready for phase planning
+**Progress:** ░░░░░░░░░░░░░░░░░░░░ 0/6 phases (0%)
 
-Progress: [██████████] 100%
+## Milestone Progress
+
+- [x] Worktree created
+- [x] Research completed (4 dimensions, HIGH confidence)
+- [x] Requirements defined (63 requirements, 9 categories)
+- [x] Roadmap created (6 phases, 3 execution waves)
+- [ ] Phase 1: Wire UI + History + Data Integrity
+- [ ] Phase 2: Video Upload Pipeline
+- [ ] Phase 3: TikTok URL Extraction
+- [ ] Phase 4: Outcomes Feedback Loop
+- [ ] Phase 5: Analytics Dashboard
+- [ ] Phase 6: Trending Re-launch + Hive Visualization
+
+## Execution Waves
+
+| Wave | Phases | Status |
+|------|--------|--------|
+| 1 | Phase 1 | Not started |
+| 2 | Phase 2, Phase 4, Phase 6 | Blocked (Wave 1) |
+| 3 | Phase 3, Phase 5 | Blocked (Wave 2) |
 
 ## Performance Metrics
 
-**Velocity:**
-- Total plans completed: 26
-- Average duration: 3min
-- Total execution time: ~89min
+| Metric | Value |
+|--------|-------|
+| Plans completed | 0 |
+| Plans total | ~16 (estimated) |
+| Requirements delivered | 0/63 |
+| Phases completed | 0/6 |
 
-**By Phase:**
+## Accumulated Context
 
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 01-schedule-crons | 2 | 14min | 7min |
-| 02-ml-model-rehabilitation | 3 | 6min | 2min |
-| 03-calibration-wiring | 2 | 3min | 1.5min |
-| 04-observability | 4 | 10min | 2.5min |
-| 05-test-coverage | 8 | 24min | 3min |
-| 06-hardening | 4 | 20min | 5min |
-| 07-observability-completion | 3 | 9min | 3min |
+### Key Decisions
+- 60% wiring existing code, 40% new infrastructure
+- No new npm dependencies needed (except possibly tus-js-client for resumable upload)
+- Client-side direct upload to Supabase Storage (Vercel 4.5MB body limit)
+- SSE heartbeat every 10s during video processing (prevent timeout)
+- Outcome validation gating before calibration pipeline feed
+- Materialized views for analytics aggregations
+
+### Research Flags
+- Phase 2 (Video Upload): YES -- needs phase research (signed URLs, SSE heartbeat, Supabase RLS)
+- Phase 3 (TikTok URL): MAYBE -- Apify single-video actor within Vercel timeout
+- Phase 4 (Outcomes): MAYBE -- actual_score normalization formula
+
+### Blockers
+None
+
+### TODOs
+None
 
 ## Session Continuity
 
-Last session: 2026-02-18
-Stopped at: Milestone complete. Archived to milestones/. Ready to merge.
-Resume file: None
+**Last session:** 2026-02-20 -- Roadmap created with 6 phases, 63 requirements mapped
+**Next action:** Plan Phase 1 (`/gsd:plan-phase 1`)

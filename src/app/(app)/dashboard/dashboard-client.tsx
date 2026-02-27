@@ -1,16 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
-  FilterPillGroup,
-  ContextBar,
   TestTypeSelector,
   ContentForm,
   LoadingPhases,
   ResultsPanel,
 } from "@/components/app";
 import type { ContentFormData } from "@/components/app";
+import { GlassPill } from "@/components/primitives";
 import { HiveCanvas } from "@/components/hive/HiveCanvas";
 import { generateMockHiveData } from "@/components/hive/hive-mock-data";
 import { useTestStore } from "@/stores/test-store";
@@ -48,6 +47,8 @@ export function DashboardClient() {
 
   const searchParams = useSearchParams();
   const urlParam = searchParams.get("url");
+
+  const [dashboardView, setDashboardView] = useState<"analysis" | "board">("analysis");
 
   const analyzeMutation = useAnalyze();
   const videoUpload = useVideoUpload();
@@ -158,57 +159,82 @@ export function DashboardClient() {
 
   return (
     <div className="relative flex h-full flex-col bg-background">
-      {/* Top bar with context and filters */}
-      <div className="relative z-10 flex items-center justify-between px-6 py-4">
-        <ContextBar location="Switzerland" />
-        <div className="flex items-center gap-3">
-          <FilterPillGroup />
+      {/* Top bar with view switcher */}
+      <div className="relative z-10 flex items-center justify-end px-6 py-4">
+        <div className="flex items-center gap-1">
+          <GlassPill
+            color="neutral"
+            variant="outline"
+            active={dashboardView === "analysis"}
+            onClick={() => setDashboardView("analysis")}
+          >
+            Analysis
+          </GlassPill>
+          <GlassPill
+            color="neutral"
+            variant="outline"
+            active={dashboardView === "board"}
+            onClick={() => setDashboardView("board")}
+          >
+            Board
+          </GlassPill>
         </div>
       </div>
 
-      {/* Hive network visualization background — bleeds behind sidebar + top bar for glass effect */}
-      <div className="absolute inset-0 md:-ml-[var(--sidebar-offset,0px)] md:w-[calc(100%+var(--sidebar-offset,0px))]">
-        <HiveCanvas data={hiveData} className="h-full w-full" />
-      </div>
+      {dashboardView === "analysis" ? (
+        <>
+          {/* Hive network visualization background — bleeds behind sidebar + top bar for glass effect */}
+          <div className="absolute inset-0 md:-ml-[var(--sidebar-offset,0px)] md:w-[calc(100%+var(--sidebar-offset,0px))]">
+            <HiveCanvas data={hiveData} className="h-full w-full" />
+          </div>
 
-      {/* Floating content area at bottom center - above network */}
-      {(currentStatus === "idle" ||
-        currentStatus === "filling-form" ||
-        currentStatus === "simulating" ||
-        currentStatus === "viewing-results") && (
-        <div className="absolute bottom-6 left-1/2 z-20 w-full max-w-2xl -translate-x-1/2 px-6">
-          {(currentStatus === "idle" || currentStatus === "filling-form") ? (
-            <ContentForm
-              onSubmit={handleContentSubmit}
-              uploadProgress={videoUpload.progress}
-            />
-          ) : currentStatus === "simulating" ? (
-            <LoadingPhases
-              simulationPhase={analyzeMutation.phase as SimulationPhase | null}
-              phaseMessage={analyzeMutation.phaseMessage}
-              onCancel={() => {
-                isCancelledRef.current = true;
-                setStatus("filling-form");
-                analyzeMutation.reset();
-              }}
-            />
-          ) : currentStatus === "viewing-results" && analyzeMutation.data ? (
-            <ResultsPanel
-              result={analyzeMutation.data}
-              onRunAnother={handleRunAnother}
-            />
-          ) : null}
+          {/* Floating content area at bottom center - above network */}
+          {(currentStatus === "idle" ||
+            currentStatus === "filling-form" ||
+            currentStatus === "simulating" ||
+            currentStatus === "viewing-results") && (
+            <div className="absolute bottom-6 left-1/2 z-20 w-full max-w-2xl -translate-x-1/2 px-6">
+              {(currentStatus === "idle" || currentStatus === "filling-form") ? (
+                <ContentForm
+                  onSubmit={handleContentSubmit}
+                  uploadProgress={videoUpload.progress}
+                />
+              ) : currentStatus === "simulating" ? (
+                <LoadingPhases
+                  simulationPhase={analyzeMutation.phase as SimulationPhase | null}
+                  phaseMessage={analyzeMutation.phaseMessage}
+                  onCancel={() => {
+                    isCancelledRef.current = true;
+                    setStatus("filling-form");
+                    analyzeMutation.reset();
+                  }}
+                />
+              ) : currentStatus === "viewing-results" && analyzeMutation.data ? (
+                <ResultsPanel
+                  result={analyzeMutation.data}
+                  onRunAnother={handleRunAnother}
+                />
+              ) : null}
+            </div>
+          )}
+
+          {/* Test Type Selector Modal */}
+          <TestTypeSelector
+            open={currentStatus === "selecting-type"}
+            onOpenChange={(open) => {
+              if (!open) handleCloseSelector();
+            }}
+            onSelectType={handleSelectType}
+          />
+        </>
+      ) : (
+        /* Board view placeholder */
+        <div className="flex flex-1 items-center justify-center">
+          <div className="rounded-xl border border-dashed border-white/[0.1] px-16 py-12 text-center">
+            <p className="text-sm text-foreground-muted">Board view coming soon</p>
+          </div>
         </div>
       )}
-
-      {/* Test Type Selector Modal */}
-      <TestTypeSelector
-        open={currentStatus === "selecting-type"}
-        onOpenChange={(open) => {
-          if (!open) handleCloseSelector();
-        }}
-        onSelectType={handleSelectType}
-      />
 
       {/* Accessible heading - hidden visually */}
       <h1 className="sr-only">Dashboard</h1>

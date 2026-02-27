@@ -19,6 +19,7 @@ Historical milestones (pre-2026-02-08) used global numbering 1-63.
 |------|--------|-----------|
 | `~/virtuna-v1.1/` | `main` | v2.1 (active) |
 | `~/virtuna-landing-page/` | `milestone/landing-page` | Landing Page |
+| `~/virtuna-prediction-engine-integration/` | `milestone/prediction-engine-integration` | Prediction Engine Integration |
 
 ## Known Technical Issues
 

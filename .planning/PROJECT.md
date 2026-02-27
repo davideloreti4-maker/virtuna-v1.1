@@ -60,12 +60,18 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - 203+ Vitest tests, >80% coverage on all engine modules -- Backend Reliability
 - Hardened failure modes: calibration parsing, dual-LLM graceful degradation, circuit breaker mutex, creator profile trigger -- Backend Reliability
 
-### Active
+### Active (Prediction Engine Integration milestone)
 
-- [ ] Connect prediction engine to frontend (analyze button → real predictions)
-- [ ] Trending page re-launch with real backend data
+- [ ] History view connected to real prediction results
+- [ ] Video upload pipeline (Supabase Storage → Gemini video analysis)
+- [ ] TikTok URL extraction (Apify scrape → video content → Gemini)
+- [ ] Hive visualization wired to real prediction data
+- [ ] DeepSeek reasoning exposed in results UI
+- [ ] Niche/hashtag fields functional in prediction flow
+- [ ] Data integrity (is_calibrated migration, reasoning field storage)
 - [ ] Outcomes feedback loop (auto-scrape posted content after 48h)
 - [ ] Analytics dashboard (confidence distributions, cost trends, model drift)
+- [ ] Trending page re-launch with real backend data
 
 ### Parallel (other worktrees)
 
@@ -84,7 +90,7 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 ## Context
 
-**Current state:** Backend Reliability shipped (2026-02-18). Prediction engine fully wired, tested, and hardened.
+**Current state:** Prediction Engine Integration milestone in progress (started 2026-02-20). Backend Reliability shipped (2026-02-18). Prediction engine fully wired, tested, and hardened on the backend.
 - ~43,000 LOC TypeScript (+20k lines from backend reliability work)
 - Tech stack: Next.js 15 (App Router), TypeScript strict, Tailwind CSS v4, Supabase Auth, Whop payments, Recharts, d3-hierarchy, d3-quadtree, @sentry/nextjs, Vitest
 - 36 design system components, 100+ tokens (all Raycast-accurate)
@@ -159,12 +165,11 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 **Shipped:** Backend Reliability (2026-02-18), Competitors Tool (2026-02-17), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
+**Current milestone:** Prediction Engine Integration (branch: milestone/prediction-engine-integration)
+
 **Future milestones:**
-- Backend intelligence integration (connect prediction engine to frontend)
-- Trending page re-launch with real backend data
 - External brand deals marketplace
 - Competitor search/discovery by name or niche
-- Outcomes feedback loop
 
 ---
-*Last updated: 2026-02-18 after Backend Reliability milestone complete*
+*Last updated: 2026-02-20 — Prediction Engine Integration milestone started*

@@ -12,6 +12,7 @@ import {
   BookOpen,
   SignOut,
   SidebarSimple,
+  CaretUp,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -53,6 +54,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { isOpen, close } = useSidebarStore();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [bottomExpanded, setBottomExpanded] = useState(false);
 
   const reset = useTestStore((s) => s.reset);
   const setStatus = useTestStore((s) => s.setStatus);
@@ -199,20 +201,44 @@ export function Sidebar() {
         {/* Separator */}
         <div className="mx-4 border-t border-border-glass" />
 
-        {/* Bottom navigation */}
-        <nav className="flex flex-col gap-0.5 p-2">
-          {bottomNavItems.map((item) => (
-            <SidebarNavItem
-              key={item.id}
-              icon={item.icon}
-              label={item.label}
-              onClick={() => handleBottomNav(item.id)}
+        {/* Toggle button for bottom nav */}
+        <div className="flex justify-end px-3 pt-2">
+          <button
+            type="button"
+            onClick={() => setBottomExpanded((prev) => !prev)}
+            className="text-foreground-muted transition-colors hover:text-foreground"
+            aria-label={bottomExpanded ? "Collapse menu" : "Expand menu"}
+          >
+            <Icon
+              icon={CaretUp}
+              size={16}
+              className={cn(
+                "transition-transform duration-200",
+                bottomExpanded && "rotate-180"
+              )}
             />
-          ))}
-        </nav>
+          </button>
+        </div>
 
-        {/* Version text */}
-        <Caption className="mb-3 text-center">Version 2.1</Caption>
+        {/* Collapsible bottom navigation */}
+        <div
+          className={cn(
+            "overflow-hidden transition-[max-height] duration-200 ease-[var(--ease-out-cubic)]",
+            bottomExpanded ? "max-h-60" : "max-h-0"
+          )}
+        >
+          <nav className="flex flex-col gap-0.5 p-2">
+            {bottomNavItems.map((item) => (
+              <SidebarNavItem
+                key={item.id}
+                icon={item.icon}
+                label={item.label}
+                onClick={() => handleBottomNav(item.id)}
+              />
+            ))}
+          </nav>
+          <Caption className="mb-3 text-center">Version 2.1</Caption>
+        </div>
       </aside>
 
       {/* Leave Feedback Modal */}

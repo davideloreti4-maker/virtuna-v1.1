@@ -32,11 +32,6 @@ export function TestHistoryList({ onSelectTest }: TestHistoryListProps) {
 
   return (
     <>
-      {/* Section header matching v0 design */}
-      <Caption className="mb-2 block px-2 uppercase tracking-wider">
-        Recent Tests
-      </Caption>
-
       <div className="flex flex-col gap-1">
         {tests.map((test: Record<string, unknown>) => (
           <TestHistoryItem
