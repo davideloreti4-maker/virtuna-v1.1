@@ -11,6 +11,7 @@ import {
 import type { ContentFormData } from "@/components/app";
 import { cn } from "@/lib/utils";
 import { HiveCanvas } from "@/components/hive/HiveCanvas";
+import { BoardCanvas } from "@/components/app/board-canvas";
 import { generateMockHiveData } from "@/components/hive/hive-mock-data";
 import { useTestStore } from "@/stores/test-store";
 import type { SimulationPhase } from "@/stores/test-store";
@@ -234,12 +235,8 @@ export function DashboardClient() {
           />
         </>
       ) : (
-        /* Board view placeholder */
-        <div className="flex flex-1 items-center justify-center">
-          <div className="rounded-xl border border-dashed border-white/[0.1] px-16 py-12 text-center">
-            <p className="text-sm text-foreground-muted">Board view coming soon</p>
-          </div>
-        </div>
+        /* Board view — infinite pannable canvas */
+        <BoardCanvas />
       )}
 
       {/* Accessible heading - hidden visually */}
