@@ -9,7 +9,7 @@ import {
   ResultsPanel,
 } from "@/components/app";
 import type { ContentFormData } from "@/components/app";
-import { GlassPill } from "@/components/primitives";
+import { cn } from "@/lib/utils";
 import { HiveCanvas } from "@/components/hive/HiveCanvas";
 import { generateMockHiveData } from "@/components/hive/hive-mock-data";
 import { useTestStore } from "@/stores/test-store";
@@ -154,23 +154,29 @@ export function DashboardClient() {
     <div className="relative flex h-full flex-col bg-background">
       {/* Top bar with view switcher */}
       <div className="relative z-10 flex items-center justify-end px-6 py-4">
-        <div className="flex items-center gap-1">
-          <GlassPill
-            color="neutral"
-            variant="outline"
-            active={dashboardView === "analysis"}
-            onClick={() => setDashboardView("analysis")}
-          >
-            Analysis
-          </GlassPill>
-          <GlassPill
-            color="neutral"
-            variant="outline"
-            active={dashboardView === "board"}
-            onClick={() => setDashboardView("board")}
-          >
-            Board
-          </GlassPill>
+        <div
+          className="flex items-center gap-0.5 rounded-lg border border-white/[0.06] p-1"
+          style={{
+            background:
+              "linear-gradient(137deg, rgba(17,18,20,0.75) 4.87%, rgba(12,13,15,0.9) 75.88%)",
+            backdropFilter: "blur(5px)",
+            WebkitBackdropFilter: "blur(5px)",
+          }}
+        >
+          {(["analysis", "board"] as const).map((view) => (
+            <button
+              key={view}
+              onClick={() => setDashboardView(view)}
+              className={cn(
+                "rounded-md px-3 py-1 text-xs font-medium transition-colors",
+                dashboardView === view
+                  ? "bg-white/[0.08] text-foreground"
+                  : "text-foreground-muted hover:text-foreground"
+              )}
+            >
+              {view === "analysis" ? "Analysis" : "Board"}
+            </button>
+          ))}
         </div>
       </div>
 
