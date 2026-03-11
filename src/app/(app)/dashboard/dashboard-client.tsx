@@ -21,6 +21,7 @@ import { useVideoUpload } from "@/hooks/use-video-upload";
 import { useToast } from "@/components/ui/toast";
 import { createClient } from "@/lib/supabase/client";
 import type { TestType } from "@/types/test";
+import { ModelSelector } from "@/components/app/model-selector";
 
 const MINIMUM_THEATER_MS = 4500;
 
@@ -202,10 +203,13 @@ export function DashboardClient() {
             currentStatus === "viewing-results") && (
             <div className="absolute bottom-6 left-1/2 z-20 w-full max-w-2xl -translate-x-1/2 px-6">
               {(currentStatus === "idle" || currentStatus === "filling-form") ? (
-                <ContentForm
-                  onSubmit={handleContentSubmit}
-                  uploadProgress={videoUpload.progress}
-                />
+                <div className="space-y-3">
+                  <ModelSelector />
+                  <ContentForm
+                    onSubmit={handleContentSubmit}
+                    uploadProgress={videoUpload.progress}
+                  />
+                </div>
               ) : currentStatus === "simulating" ? (
                 <LoadingPhases
                   simulationPhase={analyzeMutation.phase as SimulationPhase | null}
