@@ -6,7 +6,7 @@
 |----------|-------|
 | Milestone | UI Dashboard |
 | Total phases | 5 |
-| Total requirements | 22 |
+| Total requirements | 23 |
 | Estimated complexity | Medium-High |
 
 ## Execution Waves
@@ -22,7 +22,7 @@
 | Phase | Name | Requirements | Wave |
 |-------|------|-------------|------|
 | 1 | Model Selector & Oracle Placeholder | MOD-1, MOD-2, MOD-4, MOD-5, MOD-6 | 1 |
-| 2 | Top Bar Account Selector | ACC-1, ACC-2 | 1 |
+| 2 | Top Bar Account Selector + Instagram | ACC-1, ACC-2, ACC-3 | 1 |
 | 3 | Hive 2.5D Visualization | HIVE-1, HIVE-2, HIVE-3, HIVE-4, HIVE-5, HIVE-6, HIVE-7 | 2 |
 | 4 | TikTok Result Card | RES-1, RES-2, RES-3, MOD-3 | 3 |
 | 5 | Integration & Polish | INT-1, INT-2, INT-3 | 3 |
@@ -51,22 +51,25 @@
 
 ---
 
-### Phase 2: Top Bar Account Selector
-**Goal:** Add persistent TikTok account chip to the top navigation bar, visible on all pages and devices.
+### Phase 2: Top Bar Account Selector + Instagram Support
+**Goal:** Add persistent social account chip to the top navigation bar (desktop + mobile), extend account system to support both TikTok and Instagram accounts.
 **Wave:** 1
 **Dependencies:** None
-**Requirements:** ACC-1, ACC-2
+**Requirements:** ACC-1, ACC-2, ACC-3
 
 **File Ownership:**
 - `src/components/app/top-bar-account-chip.tsx` — new component
 - `src/components/app/app-shell.tsx` or equivalent — integrate chip into nav
-- `src/components/app/tiktok-account-selector.tsx` — shared hook/state
+- `src/components/app/tiktok-account-selector.tsx` — extend to multi-platform (TikTok + Instagram)
+- `src/hooks/use-social-accounts.ts` — renamed/extended account hook with platform field
 
 **Success Criteria:**
-- "@handle" chip in top bar on desktop + mobile
-- "Connect TikTok" CTA when no account
+- "@handle" chip with platform icon in top bar on desktop + mobile
+- "Connect Account ▾" CTA when no account
 - Dropdown works on mobile (full-width)
 - Syncs with sidebar selector
+- Add account supports platform toggle (TikTok / Instagram)
+- Platform icon (TikTok/Instagram) shown per account everywhere
 
 ---
 
@@ -161,8 +164,9 @@
 | MOD-6 | 1 | Planned |
 | ACC-1 | 2 | Planned |
 | ACC-2 | 2 | Planned |
+| ACC-3 | 2 | Planned |
 | INT-1 | 5 | Planned |
 | INT-2 | 5 | Planned |
 | INT-3 | 5 | Planned |
 
-All 22 requirements mapped. Zero gaps.
+All 23 requirements mapped. Zero gaps.

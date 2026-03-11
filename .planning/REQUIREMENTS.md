@@ -99,7 +99,7 @@
 **Description:** When hovering a node, the overlay shows audience segment labels (e.g., "Gen Z Female, Fashion") based on the selected TikTok account's audience profile.
 **Success Criteria:**
 - Node hover overlay includes demographic info: age range, gender, interest
-- Persona data reflects the selected TikTok account (changes when account switches)
+- Persona data reflects the selected account — TikTok or Instagram (changes when account switches)
 - Labels feel realistic and varied across nodes
 - Consistent with existing HiveNodeOverlay glass card styling
 
@@ -140,9 +140,9 @@
 **Priority:** P1
 **Description:** Below the model selector, show dynamic text indicating personas are based on the selected account's audience.
 **Success Criteria:**
-- Text reads: "{count} personas modeled from @{handle}'s audience"
+- Text reads: "{count} personas modeled from @{handle}'s {platform} audience"
 - Updates when model tier or account changes
-- Shows "Connect a TikTok account for personalized personas" when no account selected
+- Shows "Connect a TikTok or Instagram account for personalized personas" when no account selected
 - Subtle muted text styling, not prominent
 
 ### MOD-5: Oracle Model Placeholder Card
@@ -169,11 +169,12 @@
 
 ### ACC-1: Top Bar Account Chip
 **Priority:** P0
-**Description:** Persistent TikTok account chip in the top navigation bar, visible on all pages on both desktop and mobile.
+**Description:** Persistent social account chip in the top navigation bar, visible on all pages on both desktop and mobile. Supports both TikTok and Instagram accounts.
 **Success Criteria:**
-- Shows "@handle" with TikTok icon when account connected
-- Shows "Connect TikTok ▾" CTA when no account
+- Shows "@handle" with platform icon (TikTok or Instagram) when account connected
+- Shows "Connect Account ▾" CTA when no account
 - Click/tap opens account switcher dropdown
+- Dropdown shows all connected accounts with platform icons (TikTok/Instagram)
 - Visible on desktop (alongside sidebar selector) AND mobile
 - Doesn't conflict with existing nav elements
 - Updates reactively when account changes in sidebar
@@ -186,6 +187,17 @@
 - Dropdown works well on small screens (full-width on mobile)
 - Add account flow works inline from the dropdown
 - Touch-friendly tap targets (min 44px)
+
+### ACC-3: Instagram Account Support
+**Priority:** P0
+**Description:** Extend the account system to support Instagram accounts alongside TikTok. Both the sidebar selector and top bar chip handle multi-platform accounts.
+**Success Criteria:**
+- Sidebar selector supports adding Instagram @handles (platform toggle: TikTok / Instagram)
+- Each account shows its platform icon (TikTok logo or Instagram logo)
+- Active account indicates which platform it belongs to
+- Persona generation messaging adapts: "@handle's TikTok audience" vs "@handle's Instagram audience"
+- Account store (`useTiktokAccounts` hook) extended to store platform type per account
+- "Connect TikTok or Instagram" when no accounts connected
 
 ## Category: Integration & Polish (INT)
 
@@ -218,6 +230,6 @@
 
 ---
 
-**Total requirements:** 22
-**P0 (must-ship):** 11
+**Total requirements:** 23
+**P0 (must-ship):** 12
 **P1 (should-ship):** 11
