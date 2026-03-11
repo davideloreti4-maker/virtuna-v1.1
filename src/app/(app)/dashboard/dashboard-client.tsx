@@ -21,8 +21,34 @@ import { useToast } from "@/components/ui/toast";
 import { createClient } from "@/lib/supabase/client";
 import type { TestType } from "@/types/test";
 import { ModelSelector } from "@/components/app/model-selector";
+import { useSimulationStore } from "@/stores/simulation-store";
 
 const MINIMUM_THEATER_MS = 4500;
+
+function extractVideoThumbnail(file: File): Promise<string | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted = true;
+    video.playsInline = true;
+    const cleanup = () => { URL.revokeObjectURL(url); video.removeAttribute('src'); video.load(); };
+    video.onloadeddata = () => { video.currentTime = Math.min(0.5, video.duration / 4); };
+    video.onseeked = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(video, 0, 0);
+        resolve(ctx ? canvas.toDataURL('image/jpeg', 0.7) : null);
+      } catch { resolve(null); }
+      cleanup();
+    };
+    video.onerror = () => { cleanup(); resolve(null); };
+    video.src = url;
+  });
+}
 
 /**
  * DashboardClient - Client component for dashboard page
@@ -50,6 +76,12 @@ export function DashboardClient() {
   const urlParam = searchParams.get("url");
 
   const [dashboardView, setDashboardView] = useState<"analysis" | "board">("analysis");
+
+  const setVideoSrc = useSimulationStore((s) => s.setVideoSrc);
+  const setThumbnailSrc = useSimulationStore((s) => s.setThumbnailSrc);
+  const setAnalysisStatus = useSimulationStore((s) => s.setAnalysisStatus);
+  const setAnalysisResult = useSimulationStore((s) => s.setAnalysisResult);
+  const resetAnalysis = useSimulationStore((s) => s.resetAnalysis);
 
   const analyzeMutation = useAnalyze();
   const videoUpload = useVideoUpload();
@@ -91,6 +123,20 @@ export function DashboardClient() {
   const handleContentSubmit = async (data: ContentFormData) => {
     const theatreStart = Date.now();
     isCancelledRef.current = false;
+
+    // Wire video/thumbnail into simulation store
+    if (data.input_mode === "video_upload" && data.video_file) {
+      const blobUrl = URL.createObjectURL(data.video_file);
+      setVideoSrc(blobUrl);
+      extractVideoThumbnail(data.video_file).then((thumb) => {
+        if (thumb) setThumbnailSrc(thumb);
+      });
+    } else {
+      setVideoSrc(null);
+      setThumbnailSrc(null);
+    }
+
+    setAnalysisStatus('loading');
     setStatus("simulating");
 
     // Build v2 AnalysisInput payload
@@ -133,17 +179,23 @@ export function DashboardClient() {
     analyzeMutation.mutate(
       payload as Parameters<typeof analyzeMutation.mutate>[0],
       {
-        onSuccess: async () => {
+        onSuccess: async (result) => {
           const elapsed = Date.now() - theatreStart;
           const remaining = MINIMUM_THEATER_MS - elapsed;
           if (remaining > 0) {
             await new Promise((resolve) => setTimeout(resolve, remaining));
           }
           if (!isCancelledRef.current) {
+            if (result?.predicted_engagement) {
+              setAnalysisResult(result.predicted_engagement);
+            }
             setStatus("viewing-results");
           }
         },
-        onError: () => setStatus("filling-form"),
+        onError: () => {
+          setStatus("filling-form");
+          setAnalysisStatus('error');
+        },
       }
     );
   };
@@ -152,6 +204,7 @@ export function DashboardClient() {
     reset();
     analyzeMutation.reset();
     videoUpload.reset();
+    resetAnalysis();
   };
 
   return (
@@ -213,6 +266,7 @@ export function DashboardClient() {
                     isCancelledRef.current = true;
                     setStatus("filling-form");
                     analyzeMutation.reset();
+                    resetAnalysis();
                   }}
                 />
               ) : currentStatus === "viewing-results" && analyzeMutation.data ? (

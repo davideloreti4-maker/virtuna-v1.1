@@ -12,6 +12,7 @@ import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { cn } from '@/lib/utils';
 
 import { useSimulationStore } from '@/stores/simulation-store';
+import { useTiktokAccounts } from '@/hooks/use-tiktok-accounts';
 
 import { NODE_SIZES, MAX_ZOOM, MIN_ZOOM, ZOOM_SENSITIVITY } from './hive-constants';
 import { computeHiveLayout, computeFitTransform } from './hive-layout';
@@ -36,6 +37,16 @@ interface HiveCanvasProps {
 }
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+  return hash;
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -51,10 +62,16 @@ export function HiveCanvas({ data, className }: HiveCanvasProps): React.JSX.Elem
   const thumbnailSrc = useSimulationStore((s) => s.thumbnailSrc);
   const analysisStatus = useSimulationStore((s) => s.analysisStatus);
 
+  // ---- Account-aware seed for persona demographics ----
+  const { activeAccount } = useTiktokAccounts();
+
   // ---- Dynamic data generation ----
   const generatedData = useMemo(
-    () => generateMockHiveData({ totalNodeCount: nodeCount }),
-    [nodeCount],
+    () => generateMockHiveData({
+      totalNodeCount: nodeCount,
+      seed: activeAccount ? hashString(activeAccount.id) : 42,
+    }),
+    [nodeCount, activeAccount],
   );
   const effectiveData = data ?? generatedData;
 

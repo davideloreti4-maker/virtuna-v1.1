@@ -91,7 +91,7 @@ export function TikTokResultCard({
 
   return (
     <div
-      className="relative overflow-hidden rounded-xl border border-white/[0.06]"
+      className="relative mx-auto overflow-hidden rounded-xl border border-white/[0.06]"
       style={{
         aspectRatio: '9/16',
         maxHeight: '420px',
