@@ -439,17 +439,25 @@ export async function aggregateScores(
     ) / 10000;
 
   // -------------------------------------------------
+  // Behavioral predictions (single source of truth for result + engagement)
+  // -------------------------------------------------
+  const behavioral_predictions = deepseek?.behavioral_predictions ?? {
+    completion_pct: 0,
+    completion_percentile: "N/A",
+    share_pct: 0,
+    share_percentile: "N/A",
+    comment_pct: 0,
+    comment_percentile: "N/A",
+    save_pct: 0,
+    save_percentile: "N/A",
+  };
+
+  // -------------------------------------------------
   // Predicted Engagement (RES-2)
   // -------------------------------------------------
-  const behavioralForEngagement = deepseek?.behavioral_predictions ?? {
-    completion_pct: 0,
-    share_pct: 0,
-    comment_pct: 0,
-    save_pct: 0,
-  };
   const predicted_engagement = computePredictedEngagement(
     overall_score,
-    behavioralForEngagement,
+    behavioral_predictions,
   );
 
   // -------------------------------------------------
@@ -460,17 +468,7 @@ export async function aggregateScores(
     confidence: conf.confidence,
     confidence_label: conf.confidence_label,
     is_calibrated,
-    behavioral_predictions:
-      deepseek?.behavioral_predictions ?? {
-        completion_pct: 0,
-        completion_percentile: "N/A",
-        share_pct: 0,
-        share_percentile: "N/A",
-        comment_pct: 0,
-        comment_percentile: "N/A",
-        save_pct: 0,
-        save_percentile: "N/A",
-      },
+    behavioral_predictions,
     feature_vector,
     reasoning: "", // DeepSeek reasoning text — not exposed in current schema
     warnings,
