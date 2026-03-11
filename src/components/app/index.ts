@@ -28,6 +28,8 @@ export { BehavioralPredictionsSection } from "./simulation/behavioral-prediction
 export { SuggestionsSection, InsightsSection } from "./simulation/insights-section";
 export { ShareButton } from "./simulation/share-button";
 export { ResultsPanel } from "./simulation/results-panel";
+export { TikTokResultCard } from "./simulation/tiktok-result-card";
+export { AnalysisLoadingSteps } from "./simulation/analysis-loading";
 export { TestHistoryItem } from "./test-history-item";
 export { TestHistoryList } from "./test-history-list";
 export { DeleteTestModal } from "./delete-test-modal";

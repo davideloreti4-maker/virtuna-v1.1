@@ -2,6 +2,7 @@ import type {
   ConfidenceLevel,
   Factor,
   FeatureVector,
+  PredictedEngagement,
   PredictionResult,
   RuleScoreResult,
   Suggestion,
@@ -200,6 +201,53 @@ function assembleFeatureVector(pipelineResult: PipelineResult): FeatureVector {
 }
 
 // =====================================================
+// Predicted Engagement Generation (RES-2)
+// =====================================================
+
+/**
+ * Generate realistic predicted engagement numbers from the viral score
+ * and behavioral predictions. Numbers are intentionally non-round to feel
+ * authentic (e.g., 12.4K not 12,000).
+ *
+ * Base view range: 5K-500K scaled by overall_score.
+ * Engagement rates derived from behavioral_predictions percentages.
+ */
+function computePredictedEngagement(
+  overallScore: number,
+  behavioral: { share_pct: number; comment_pct: number; save_pct: number; completion_pct: number },
+): PredictedEngagement {
+  // Deterministic jitter from score (avoids true randomness for reproducibility)
+  const jitter = (seed: number) => {
+    const x = Math.sin(seed * 12.9898 + overallScore * 78.233) * 43758.5453;
+    return x - Math.floor(x); // 0-1
+  };
+
+  // Base views: exponential curve from score (low scores get ~5K, high scores get ~200K+)
+  const scoreNorm = overallScore / 100;
+  const baseViews = Math.round(
+    5000 + (scoreNorm ** 2.2) * 450000 * (0.8 + jitter(1) * 0.4)
+  );
+
+  // Like rate: 3-12% of views, influenced by score
+  const likeRate = 0.03 + scoreNorm * 0.09 + jitter(2) * 0.02;
+  const likes = Math.round(baseViews * likeRate);
+
+  // Comment rate: from behavioral prediction (0.5-3% typical)
+  const commentRate = Math.max(0.005, (behavioral.comment_pct / 100) * (0.6 + jitter(3) * 0.3));
+  const comments = Math.round(baseViews * commentRate);
+
+  // Share rate: from behavioral prediction (0.2-2% typical)
+  const shareRate = Math.max(0.002, (behavioral.share_pct / 100) * (0.5 + jitter(4) * 0.3));
+  const shares = Math.round(baseViews * shareRate);
+
+  // Save rate: from behavioral prediction (0.5-4% typical)
+  const saveRate = Math.max(0.005, (behavioral.save_pct / 100) * (0.7 + jitter(5) * 0.3));
+  const saves = Math.round(baseViews * saveRate);
+
+  return { likes, comments, shares, saves, views: baseViews };
+}
+
+// =====================================================
 // Score Aggregation
 // =====================================================
 
@@ -391,6 +439,20 @@ export async function aggregateScores(
     ) / 10000;
 
   // -------------------------------------------------
+  // Predicted Engagement (RES-2)
+  // -------------------------------------------------
+  const behavioralForEngagement = deepseek?.behavioral_predictions ?? {
+    completion_pct: 0,
+    share_pct: 0,
+    comment_pct: 0,
+    save_pct: 0,
+  };
+  const predicted_engagement = computePredictedEngagement(
+    overall_score,
+    behavioralForEngagement,
+  );
+
+  // -------------------------------------------------
   // Assemble PredictionResult
   // -------------------------------------------------
   return {
@@ -412,6 +474,7 @@ export async function aggregateScores(
     feature_vector,
     reasoning: "", // DeepSeek reasoning text — not exposed in current schema
     warnings,
+    predicted_engagement,
     factors,
     suggestions,
     rule_score: ruleResult.rule_score,
