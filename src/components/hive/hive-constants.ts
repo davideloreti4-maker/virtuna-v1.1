@@ -2,7 +2,7 @@
 // hive-constants.ts -- Visual constants for hive rendering & animation
 // ---------------------------------------------------------------------------
 
-import type { TierConfig } from './hive-types';
+import type { DepthLayer, DepthLayerConfig, TierConfig } from './hive-types';
 
 // ---------------------------------------------------------------------------
 // Layout geometry
@@ -122,6 +122,38 @@ export const TIER_CONFIG: Record<number, TierConfig> = {
     lineOpacity: 0.10,
   },
 } as const;
+
+// ---------------------------------------------------------------------------
+// Depth layer visual config (HIVE-1)
+// ---------------------------------------------------------------------------
+
+export const DEPTH_LAYER_CONFIG: Record<DepthLayer, DepthLayerConfig> = {
+  foreground: { sizeMultiplier: 1.0, opacity: 1.0, parallaxFactor: 5 },
+  midground:  { sizeMultiplier: 0.7, opacity: 0.8, parallaxFactor: 1.5 },
+  background: { sizeMultiplier: 0.4, opacity: 0.5, parallaxFactor: 0.5 },
+};
+
+// Cumulative hash thresholds: 20% foreground, 35% midground, 45% background
+export const DEPTH_DISTRIBUTION = { foreground: 0.20, midground: 0.55 } as const;
+
+// ---------------------------------------------------------------------------
+// Bezier connection constants (HIVE-4)
+// ---------------------------------------------------------------------------
+
+export const BEZIER_CURVE_INTENSITY = 0.3;
+export const CONNECTION_FADE_START = 0.15; // fraction of outerRadius — full opacity below
+export const CONNECTION_FADE_END = 0.30;   // fully transparent above
+
+// ---------------------------------------------------------------------------
+// Persona demographic pools (HIVE-7)
+// ---------------------------------------------------------------------------
+
+export const PERSONA_AGE_RANGES = ['13-17', '18-24', '25-34', '35-44', '45-54', '55+'] as const;
+export const PERSONA_GENDERS = ['Male', 'Female', 'Non-binary'] as const;
+export const PERSONA_INTERESTS = [
+  'Fashion', 'Gaming', 'Fitness', 'Comedy', 'Music', 'Food',
+  'Travel', 'Tech', 'Beauty', 'Education', 'Sports', 'Art',
+] as const;
 
 // ---------------------------------------------------------------------------
 // Interaction constants (Phase 49)

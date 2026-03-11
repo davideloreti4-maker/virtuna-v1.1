@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { HiveNode, HiveData } from './hive-types';
+import { PERSONA_AGE_RANGES, PERSONA_GENDERS, PERSONA_INTERESTS } from './hive-constants';
 
 // ---------------------------------------------------------------------------
 // Seeded PRNG (mulberry32) -- deterministic "random" numbers
@@ -29,6 +30,8 @@ export interface MockHiveOptions {
   tier2Range?: [number, number];
   /** PRNG seed for reproducibility (default: 42). */
   seed?: number;
+  /** Total node count (overrides tier1Count/tier2Range when provided). */
+  totalNodeCount?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -43,9 +46,9 @@ export interface MockHiveOptions {
  */
 export function generateMockHiveData(options?: MockHiveOptions): HiveData {
   const {
-    tier1Count = 10,
     tier2Range = [24, 42],
     seed = 42,
+    totalNodeCount,
   } = options ?? {};
 
   const rng = mulberry32(seed);
@@ -73,11 +76,31 @@ export function generateMockHiveData(options?: MockHiveOptions): HiveData {
     'Empathy',
   ];
 
+  // Compute tier-1 count and per-parent tier-2 counts
+  let tier1Count: number;
+  let tier2Counts: number[];
+
+  if (totalNodeCount !== undefined) {
+    // Dynamic scaling: derive tier structure from total count
+    tier1Count = Math.min(15, Math.max(8, Math.round(Math.sqrt(totalNodeCount) / 3)));
+    const tier2Total = totalNodeCount - 1 - tier1Count; // subtract center + tier-1 nodes
+    const baseTier2 = Math.floor(tier2Total / tier1Count);
+    const remainder = tier2Total % tier1Count;
+    tier2Counts = Array.from({ length: tier1Count }, (_, i) =>
+      baseTier2 + (i < remainder ? 1 : 0),
+    );
+  } else {
+    tier1Count = options?.tier1Count ?? 10;
+    tier2Counts = Array.from({ length: tier1Count }, () =>
+      randInt(tier2Range[0], tier2Range[1]),
+    );
+  }
+
   const tier1Children: HiveNode[] = [];
 
   for (let i = 0; i < tier1Count; i++) {
     const themeName = THEME_NAMES[i % THEME_NAMES.length];
-    const tier2Count = randInt(tier2Range[0], tier2Range[1]);
+    const tier2Count = tier2Counts[i]!;
     const tier2Children: HiveNode[] = [];
 
     for (let j = 0; j < tier2Count; j++) {
@@ -85,6 +108,11 @@ export function generateMockHiveData(options?: MockHiveOptions): HiveData {
         id: `t2-${i}-${j}`,
         name: `Sub ${themeName}.${j + 1}`,
         tier: 2,
+        meta: {
+          ageRange: PERSONA_AGE_RANGES[Math.floor(rng() * PERSONA_AGE_RANGES.length)],
+          gender: PERSONA_GENDERS[Math.floor(rng() * PERSONA_GENDERS.length)],
+          interest: PERSONA_INTERESTS[Math.floor(rng() * PERSONA_INTERESTS.length)],
+        },
       });
     }
 

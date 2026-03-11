@@ -9,8 +9,8 @@
 // ---------------------------------------------------------------------------
 
 import { hierarchy } from 'd3-hierarchy';
-import { HIVE_OUTER_RADIUS, VIEWPORT_PADDING, getNodeColor } from './hive-constants';
-import type { HiveNode, HiveData, LayoutNode, LayoutLink, LayoutResult } from './hive-types';
+import { DEPTH_DISTRIBUTION, HIVE_OUTER_RADIUS, VIEWPORT_PADDING, getNodeColor } from './hive-constants';
+import type { DepthLayer, HiveNode, HiveData, LayoutNode, LayoutLink, LayoutResult } from './hive-types';
 
 // ---------------------------------------------------------------------------
 // Deterministic hash (pure, no external deps)
@@ -32,6 +32,17 @@ function hash01(s: string): number {
 /** Returns a deterministic value in [0, 1] with a salt. */
 function hash01s(s: string, salt: string): number {
   return hash01(salt + s);
+}
+
+// ---------------------------------------------------------------------------
+// Depth layer assignment
+// ---------------------------------------------------------------------------
+
+function assignDepthLayer(nodeId: string): DepthLayer {
+  const h = hash01(nodeId + ':depth');
+  if (h < DEPTH_DISTRIBUTION.foreground) return 'foreground';
+  if (h < DEPTH_DISTRIBUTION.midground) return 'midground';
+  return 'background';
 }
 
 // ---------------------------------------------------------------------------
@@ -83,6 +94,7 @@ export function computeHiveLayout(
       x: 0, y: 0, angle: 0, radius: 0,
       parentId: null,
       color: 'rgba(255, 255, 255, 0.10)',
+      depthLayer: 'foreground',
       meta: centerDesc.data.meta,
     };
     nodes.push(centerLayout);
@@ -95,11 +107,12 @@ export function computeHiveLayout(
 
   for (let i = 0; i < tier1Nodes.length; i++) {
     const d = tier1Nodes[i]!;
-    const angle = (i / tier1Nodes.length) * 2 * Math.PI;
-    const r = TIER1_RADIUS;
+    // Organic scatter: golden angle base + hash jitter (HIVE-3)
+    const angle = i * GOLDEN_ANGLE + hash01s(d.data.id, 'a1') * 0.4;
+    const r = TIER1_RADIUS * (0.7 + hash01s(d.data.id, 'r1') * 0.6);
 
-    const x = Math.round(r * Math.cos(angle));
-    const y = Math.round(r * Math.sin(angle));
+    const x = r * Math.cos(angle);
+    const y = r * Math.sin(angle);
 
     tier1ColorMap.set(d.data.id, i);
 
@@ -110,6 +123,7 @@ export function computeHiveLayout(
       x, y, angle, radius: r,
       parentId: d.parent?.data.id ?? null,
       color: getNodeColor(i, 0.85),
+      depthLayer: 'foreground',
       meta: d.data.meta,
     };
     nodes.push(layoutNode);
@@ -125,11 +139,12 @@ export function computeHiveLayout(
     tier2ByParent.get(pid)!.push(d);
   }
 
+  // Scale outer radius for large node counts (HIVE-3)
+  const effectiveRadius = outerRadius * (0.8 + Math.log10(Math.max(nodes.length + tier2Nodes.length, 100)) * 0.3);
+
   // How far the cluster extends outward from the tier-1 node
-  const CLUSTER_MIN_DIST = outerRadius * 0.04;
-  const CLUSTER_MAX_DIST = outerRadius * 0.50;
-  // Angular half-width of the cone (±50 degrees from parent direction)
-  const CONE_HALF_ANGLE = Math.PI * 0.28;
+  const CLUSTER_MIN_DIST = effectiveRadius * 0.04;
+  const CLUSTER_MAX_DIST = effectiveRadius * 0.50;
 
   for (const [parentId, children] of tier2ByParent) {
     const parentNode = nodeMap.get(parentId);
@@ -142,12 +157,9 @@ export function computeHiveLayout(
     for (let i = 0; i < children.length; i++) {
       const d = children[i]!;
 
-      // Golden angle base for organic scatter within the cone
-      const goldenOffset = i * GOLDEN_ANGLE;
-      // Map golden angle into cone range using modulo + hash jitter
-      const normalizedAngle = ((goldenOffset % (2 * CONE_HALF_ANGLE)) / (2 * CONE_HALF_ANGLE)) * 2 - 1;
-      const angleJitter = (hash01s(d.data.id, 'ang') - 0.5) * 0.6;
-      const angle = parentAngle + CONE_HALF_ANGLE * (normalizedAngle + angleJitter);
+      // Wider angular spread — nodes scatter more freely around parent direction (HIVE-3)
+      const angleSpread = (hash01s(d.data.id, 'a2') - 0.5) * Math.PI * 1.6;
+      const angle = parentAngle + angleSpread;
 
       // Scattered radial distance: mix sqrt distribution with hash for organic feel
       const rNorm = Math.sqrt((i + 0.5) / children.length);
@@ -155,9 +167,9 @@ export function computeHiveLayout(
       const rMix = rNorm * 0.5 + rHash * 0.5;
       const dist = CLUSTER_MIN_DIST + (CLUSTER_MAX_DIST - CLUSTER_MIN_DIST) * rMix;
 
-      // Position: start from parent, go outward in the cone direction
-      const x = Math.round(parentNode.x + dist * Math.cos(angle));
-      const y = Math.round(parentNode.y + dist * Math.sin(angle));
+      // Position: start from parent, go outward in the cone direction (sub-pixel for organic feel)
+      const x = parentNode.x + dist * Math.cos(angle);
+      const y = parentNode.y + dist * Math.sin(angle);
 
       const layoutNode: LayoutNode = {
         id: d.data.id,
@@ -166,6 +178,7 @@ export function computeHiveLayout(
         x, y, angle, radius: dist,
         parentId: parentId || null,
         color: getNodeColor(colorIndex, 0.55),
+        depthLayer: assignDepthLayer(d.data.id),
         meta: d.data.meta,
       };
       nodes.push(layoutNode);

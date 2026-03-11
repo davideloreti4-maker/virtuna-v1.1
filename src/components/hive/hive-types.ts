@@ -37,6 +37,8 @@ export interface LayoutNode {
   parentId: string | null;
   /** Node color (rgba string). Tier-1 gets unique color, tier-2 inherits from parent. */
   color: string;
+  /** Visual depth layer for 2.5D parallax effect. */
+  depthLayer: DepthLayer;
   /** Arbitrary payload from input data (e.g. thumbnail URL). */
   meta?: Record<string, unknown>;
 }
@@ -95,6 +97,32 @@ export interface FitTransform {
   scale: number;
   offsetX: number;
   offsetY: number;
+}
+
+/** Visual depth layer for 2.5D parallax effect (orthogonal to semantic tiers). */
+export type DepthLayer = 'foreground' | 'midground' | 'background';
+
+/** Configuration for a single depth layer's visual treatment. */
+export interface DepthLayerConfig {
+  /** Node size multiplier (1.0 = full, 0.4 = small). */
+  sizeMultiplier: number;
+  /** Base opacity multiplier (1.0 = full, 0.5 = faded). */
+  opacity: number;
+  /** Parallax shift in px at maximum mouse offset. */
+  parallaxFactor: number;
+}
+
+/** Normalized mouse offset for parallax calculation. */
+export interface ParallaxOffset {
+  x: number; // [-1, 1] from canvas center
+  y: number;
+}
+
+/** Persona demographic data attached to hive nodes. */
+export interface PersonaDemographic {
+  ageRange: string;
+  gender: string;
+  interest: string;
 }
 
 /** Mutable interaction state stored in refs (not React state). */

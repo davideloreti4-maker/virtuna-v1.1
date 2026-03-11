@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   TestTypeSelector,
@@ -12,7 +12,6 @@ import type { ContentFormData } from "@/components/app";
 import { cn } from "@/lib/utils";
 import { HiveCanvas } from "@/components/hive/HiveCanvas";
 import { BoardCanvas } from "@/components/app/board-canvas";
-import { generateMockHiveData } from "@/components/hive/hive-mock-data";
 import { useTestStore } from "@/stores/test-store";
 import type { SimulationPhase } from "@/stores/test-store";
 import { useSocietyStore } from "@/stores/society-store";
@@ -155,10 +154,6 @@ export function DashboardClient() {
     videoUpload.reset();
   };
 
-  // Intentional: Hive visualization uses procedural data for the interactive demo canvas.
-  // Will wire to real analysis data when the hive feature moves beyond demo stage.
-  const hiveData = useMemo(() => generateMockHiveData(), []);
-
   return (
     <div className="relative flex h-full flex-col bg-background">
       {/* Top bar with view switcher */}
@@ -193,7 +188,7 @@ export function DashboardClient() {
         <>
           {/* Hive network visualization background — bleeds behind sidebar + top bar for glass effect */}
           <div className="absolute inset-0 md:-ml-[var(--sidebar-offset,0px)] md:w-[calc(100%+var(--sidebar-offset,0px))]">
-            <HiveCanvas data={hiveData} className="h-full w-full" />
+            <HiveCanvas data={null} className="h-full w-full" />
           </div>
 
           {/* Floating content area at bottom center - above network */}

@@ -17,7 +17,7 @@ import { GlassCard } from '@/components/ui/card';
 import { Caption, Text } from '@/components/ui/typography';
 
 import { computeOverlayPosition } from './hive-interaction';
-import type { LayoutNode } from './hive-types';
+import type { LayoutNode, PersonaDemographic } from './hive-types';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -98,18 +98,22 @@ export function HiveNodeOverlay({
             />
             <Caption className="text-white/50">{tierLabel}</Caption>
           </div>
-          {/* Show meta values if present */}
-          {node.meta &&
-            Object.entries(node.meta)
-              .slice(0, 3)
-              .map(([key, value]) => (
-                <div key={key} className="flex justify-between items-center">
-                  <Caption className="text-white/40 capitalize">{key}</Caption>
-                  <Caption className="text-white/70">
-                    {String(value)}
-                  </Caption>
-                </div>
+          {/* Persona demographic labels (HIVE-7) */}
+          {node.meta && 'ageRange' in node.meta && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {(() => {
+                const demo = node.meta as unknown as PersonaDemographic;
+                return [demo.ageRange, demo.gender, demo.interest];
+              })().filter(Boolean).map((label) => (
+                <span
+                  key={label}
+                  className="px-1.5 py-0.5 text-[10px] rounded bg-white/[0.06] text-white/60"
+                >
+                  {label}
+                </span>
               ))}
+            </div>
+          )}
         </div>
       </GlassCard>
     </div>

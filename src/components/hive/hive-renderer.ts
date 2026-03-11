@@ -10,8 +10,13 @@
 // ---------------------------------------------------------------------------
 
 import {
+  BEZIER_CURVE_INTENSITY,
+  CONNECTION_FADE_END,
+  CONNECTION_FADE_START,
+  DEPTH_LAYER_CONFIG,
   DIM_LINE_OPACITY,
   DIM_OPACITY,
+  HIVE_OUTER_RADIUS,
   LINE_OPACITY,
   NODE_SIZES,
   SELECTED_GLOW_BLUR,
@@ -22,7 +27,7 @@ import {
   SKELETON_RINGS,
 } from './hive-constants';
 import { computeFitTransform } from './hive-layout';
-import type { LayoutLink, LayoutNode, LayoutResult } from './hive-types';
+import type { DepthLayer, LayoutLink, LayoutNode, LayoutResult, ParallaxOffset } from './hive-types';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -127,77 +132,113 @@ const TIER_RADII: Record<
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function drawConnectionLines(
+function drawBezierConnections(
   ctx: CanvasRenderingContext2D,
   links: LayoutLink[],
   transform: FitTransform,
+  depthLayer: DepthLayer,
   visibility?: Record<number, TierVisibility>,
   interaction?: InteractionRenderState,
+  parallaxOffset?: ParallaxOffset,
 ): void {
   const { scale, offsetX, offsetY } = transform;
 
-  // Draw each link individually to support per-link coloring
   for (const { source, target } of links) {
+    // Background culling: skip background-to-background links
+    if (source.depthLayer === 'background' && target.depthLayer === 'background') continue;
+
+    // Only draw links that belong to this depth layer pass
+    // A link belongs to a layer if its higher-depth endpoint matches
+    const linkLayer = source.depthLayer === depthLayer || target.depthLayer === depthLayer;
+    if (!linkLayer) continue;
+
     const targetTier = target.tier;
     const sourceTier = source.tier;
 
     // Determine line opacity based on link type
     let baseOpacity: number;
     if (sourceTier === 0 && targetTier === 1) {
-      // Center -> tier-1: subtle white
       baseOpacity = 0.08;
     } else if (sourceTier === 1 && targetTier === 1) {
-      // Tier-1 <-> tier-1 mesh: very subtle white
       baseOpacity = 0.06;
     } else {
-      // Tier-1 -> tier-2: use LINE_OPACITY
       baseOpacity = LINE_OPACITY[targetTier] ?? 0.10;
     }
 
     if (baseOpacity <= 0) continue;
 
-    // Animation: use the higher tier's visibility
+    // Distance-based opacity fade (HIVE-4)
+    const worldDist = Math.sqrt((source.x - target.x) ** 2 + (source.y - target.y) ** 2);
+    const normalized = worldDist / HIVE_OUTER_RADIUS;
+    if (normalized > CONNECTION_FADE_END) continue;
+    const distFade = normalized < CONNECTION_FADE_START ? 1
+      : 1 - (normalized - CONNECTION_FADE_START) / (CONNECTION_FADE_END - CONNECTION_FADE_START);
+
+    // Animation
     const animTier = Math.max(sourceTier, targetTier);
     const vis = visibility?.[animTier];
     if (vis !== undefined && vis.opacity <= 0) continue;
     let finalOpacity = vis !== undefined ? baseOpacity * vis.opacity : baseOpacity;
+    finalOpacity *= Math.max(0, distFade);
 
     // Interaction: dim unrelated links
     if (!isLinkRelevant(source.id, target.id, interaction)) {
       finalOpacity = DIM_LINE_OPACITY;
     }
 
-    const strokeColor = `rgba(255, 255, 255, ${finalOpacity})`;
+    if (finalOpacity <= 0.001) continue;
 
-    const sx = Math.round(source.x * scale + offsetX);
-    const sy = Math.round(source.y * scale + offsetY);
-    const tx = Math.round(target.x * scale + offsetX);
-    const ty = Math.round(target.y * scale + offsetY);
+    // Apply parallax offset based on each endpoint's depth layer
+    const srcConfig = DEPTH_LAYER_CONFIG[source.depthLayer];
+    const tgtConfig = DEPTH_LAYER_CONFIG[target.depthLayer];
+    const px = parallaxOffset?.x ?? 0;
+    const py = parallaxOffset?.y ?? 0;
+
+    const sx = source.x * scale + offsetX + px * srcConfig.parallaxFactor;
+    const sy = source.y * scale + offsetY + py * srcConfig.parallaxFactor;
+    const tx = target.x * scale + offsetX + px * tgtConfig.parallaxFactor;
+    const ty = target.y * scale + offsetY + py * tgtConfig.parallaxFactor;
+
+    // Bezier control point (HIVE-4)
+    const mx = (sx + tx) / 2, my = (sy + ty) / 2;
+    const dx = tx - sx, dy = ty - sy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 0.5) continue;
+    const curveDir = hashString(source.id + target.id) > 0.5 ? 1 : -1;
+    const cpx = mx + (-dy / dist) * dist * BEZIER_CURVE_INTENSITY * curveDir;
+    const cpy = my + (dx / dist) * dist * BEZIER_CURVE_INTENSITY * curveDir;
 
     ctx.beginPath();
-    ctx.strokeStyle = strokeColor;
+    ctx.strokeStyle = `rgba(255, 255, 255, ${finalOpacity})`;
     ctx.lineWidth = 0.7;
     ctx.moveTo(sx, sy);
-    ctx.lineTo(tx, ty);
+    ctx.quadraticCurveTo(cpx, cpy, tx, ty);
     ctx.stroke();
   }
 }
 
 /**
- * Draw nodes using node.color with per-node size variation.
+ * Draw nodes for a single depth layer using batched draw calls.
  *
- * Tier-1 nodes use their assigned color at full opacity.
- * Tier-2 nodes use their inherited parent color (already at lower opacity).
- * Size varies per node via deterministic hash.
+ * Nodes are grouped by fill color for fewer state changes.
+ * Depth layer config scales size and opacity for 2.5D effect.
  */
 function drawNodes(
   ctx: CanvasRenderingContext2D,
   nodes: LayoutNode[],
+  depthLayer: DepthLayer,
   transform: FitTransform,
   visibility?: Record<number, TierVisibility>,
   interaction?: InteractionRenderState,
+  parallaxOffset?: ParallaxOffset,
 ): void {
   const { scale, offsetX, offsetY } = transform;
+  const depthConfig = DEPTH_LAYER_CONFIG[depthLayer];
+  const px = (parallaxOffset?.x ?? 0) * depthConfig.parallaxFactor;
+  const py = (parallaxOffset?.y ?? 0) * depthConfig.parallaxFactor;
+
+  // Group nodes by color+alpha for batched drawing
+  const colorGroups = new Map<string, Array<{ x: number; y: number; r: number }>>();
 
   for (const node of nodes) {
     if (node.tier === 0) continue;
@@ -216,26 +257,43 @@ function drawNodes(
     const animScale = vis !== undefined ? vis.scale : 1;
     const animOpacity = vis !== undefined ? vis.opacity : 1;
 
-    // Interaction opacity
+    // Interaction opacity + depth layer opacity
     const interactionOpacity = getNodeInteractionOpacity(node.id, interaction);
-    const combinedAlpha = animOpacity * interactionOpacity;
+    const combinedAlpha = animOpacity * interactionOpacity * depthConfig.opacity;
 
-    const drawRadius = config.base * sizeMultiplier * animScale;
+    const drawRadius = config.base * sizeMultiplier * animScale * depthConfig.sizeMultiplier;
 
-    const x = Math.round(node.x * scale + offsetX);
-    const y = Math.round(node.y * scale + offsetY);
+    // Sub-pixel optimization: skip nodes too small to see
+    if (drawRadius * scale < 0.5) continue;
 
+    const x = node.x * scale + offsetX + px;
+    const y = node.y * scale + offsetY + py;
+
+    // Create color key including alpha for batching
+    const colorKey = combinedAlpha < 1 ? `${node.color}|${combinedAlpha.toFixed(2)}` : node.color;
+    let group = colorGroups.get(colorKey);
+    if (!group) {
+      group = [];
+      colorGroups.set(colorKey, group);
+    }
+    group.push({ x, y, r: drawRadius });
+  }
+
+  // Batch draw per color group
+  for (const [key, circles] of colorGroups) {
+    const pipeIdx = key.indexOf('|');
+    const color = pipeIdx >= 0 ? key.slice(0, pipeIdx) : key;
+    const alpha = pipeIdx >= 0 ? parseFloat(key.slice(pipeIdx + 1)) : 1;
+
+    if (alpha < 1) ctx.globalAlpha = alpha;
+    ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.arc(x, y, drawRadius, 0, Math.PI * 2);
-
-    if (combinedAlpha < 1) {
-      ctx.globalAlpha = combinedAlpha;
+    for (const c of circles) {
+      ctx.moveTo(c.x + c.r, c.y);
+      ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
     }
-    ctx.fillStyle = node.color;
     ctx.fill();
-    if (combinedAlpha < 1) {
-      ctx.globalAlpha = 1;
-    }
+    if (alpha < 1) ctx.globalAlpha = 1;
   }
 }
 
@@ -245,19 +303,23 @@ function drawCenterRect(
   transform: FitTransform,
   visibility?: Record<number, TierVisibility>,
   interaction?: InteractionRenderState,
+  parallaxOffset?: ParallaxOffset,
 ): void {
   const vis = visibility?.[0];
   if (vis !== undefined && vis.opacity <= 0) return;
 
   const { scale, offsetX, offsetY } = transform;
   const { width, height, borderRadius } = NODE_SIZES.center;
+  const fgConfig = DEPTH_LAYER_CONFIG.foreground;
 
   const scaleMultiplier = vis !== undefined ? vis.scale : 1;
   const drawWidth = width * scaleMultiplier;
   const drawHeight = height * scaleMultiplier;
 
-  const cx = Math.round(centerNode.x * scale + offsetX);
-  const cy = Math.round(centerNode.y * scale + offsetY);
+  const px = (parallaxOffset?.x ?? 0) * fgConfig.parallaxFactor;
+  const py = (parallaxOffset?.y ?? 0) * fgConfig.parallaxFactor;
+  const cx = Math.round(centerNode.x * scale + offsetX + px);
+  const cy = Math.round(centerNode.y * scale + offsetY + py);
 
   // Combined animation + interaction opacity
   const animOpacity = vis !== undefined ? vis.opacity : 1;
@@ -309,10 +371,14 @@ function drawSelectedGlow(
   ctx: CanvasRenderingContext2D,
   selectedNode: LayoutNode,
   transform: FitTransform,
+  parallaxOffset?: ParallaxOffset,
 ): void {
   const { scale, offsetX, offsetY } = transform;
-  const sx = Math.round(selectedNode.x * scale + offsetX);
-  const sy = Math.round(selectedNode.y * scale + offsetY);
+  const depthConfig = DEPTH_LAYER_CONFIG[selectedNode.depthLayer];
+  const px = (parallaxOffset?.x ?? 0) * depthConfig.parallaxFactor;
+  const py = (parallaxOffset?.y ?? 0) * depthConfig.parallaxFactor;
+  const sx = Math.round(selectedNode.x * scale + offsetX + px);
+  const sy = Math.round(selectedNode.y * scale + offsetY + py);
 
   ctx.save();
   ctx.shadowBlur = SELECTED_GLOW_BLUR;
@@ -358,28 +424,39 @@ export function renderHive(
   canvasHeight: number,
   visibility?: Record<number, TierVisibility>,
   interaction?: InteractionRenderState,
+  parallaxOffset?: ParallaxOffset,
 ): void {
   const transform = computeFitTransform(layout.bounds, canvasWidth, canvasHeight);
 
-  // 1. Connection lines (underneath)
-  drawConnectionLines(ctx, layout.links, transform, visibility, interaction);
-
-  // 2. Nodes with per-node variation (on top of lines)
-  drawNodes(ctx, layout.nodes, transform, visibility, interaction);
-
-  // 3. Center rectangle (on top of everything)
-  const centerNode = layout.nodes.find((n) => n.tier === 0);
-  if (centerNode) {
-    drawCenterRect(ctx, centerNode, transform, visibility, interaction);
+  // Pre-bucket nodes by depth layer (HIVE-1)
+  const buckets: Record<DepthLayer, LayoutNode[]> = {
+    background: [], midground: [], foreground: [],
+  };
+  for (const node of layout.nodes) {
+    if (node.tier === 0) continue;
+    buckets[node.depthLayer].push(node);
   }
 
-  // 4. Selected node glow (topmost layer)
+  // Render back-to-front: background → midground → foreground
+  const layers: DepthLayer[] = ['background', 'midground', 'foreground'];
+  for (const layer of layers) {
+    drawBezierConnections(ctx, layout.links, transform, layer, visibility, interaction, parallaxOffset);
+    drawNodes(ctx, buckets[layer], layer, transform, visibility, interaction, parallaxOffset);
+  }
+
+  // Center rectangle (foreground, on top of everything)
+  const centerNode = layout.nodes.find((n) => n.tier === 0);
+  if (centerNode) {
+    drawCenterRect(ctx, centerNode, transform, visibility, interaction, parallaxOffset);
+  }
+
+  // Selected node glow (topmost layer)
   if (interaction?.selectedNodeId) {
     const selectedNodeObj = layout.nodes.find(
       (n) => n.id === interaction.selectedNodeId,
     );
     if (selectedNodeObj) {
-      drawSelectedGlow(ctx, selectedNodeObj, transform);
+      drawSelectedGlow(ctx, selectedNodeObj, transform, parallaxOffset);
     }
   }
 }

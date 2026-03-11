@@ -11,10 +11,14 @@ import { ArrowsIn } from '@phosphor-icons/react';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { cn } from '@/lib/utils';
 
-import { MAX_ZOOM, MIN_ZOOM, ZOOM_SENSITIVITY } from './hive-constants';
-import { computeHiveLayout } from './hive-layout';
+import { useSimulationStore } from '@/stores/simulation-store';
+
+import { NODE_SIZES, MAX_ZOOM, MIN_ZOOM, ZOOM_SENSITIVITY } from './hive-constants';
+import { computeHiveLayout, computeFitTransform } from './hive-layout';
+import { worldToScreen } from './hive-interaction';
+import { generateMockHiveData } from './hive-mock-data';
 import { renderHive, renderSkeletonHive } from './hive-renderer';
-import type { Camera, HiveData, LayoutResult } from './hive-types';
+import type { Camera, HiveData, LayoutResult, ParallaxOffset } from './hive-types';
 import { HiveNodeOverlay } from './HiveNodeOverlay';
 import { useCanvasResize } from './use-canvas-resize';
 import { useHiveAnimation } from './use-hive-animation';
@@ -41,10 +45,23 @@ export function HiveCanvas({ data, className }: HiveCanvasProps): React.JSX.Elem
   const layoutRef = useRef<LayoutResult | null>(null);
   const cameraRef = useRef<Camera>({ zoom: 1, panX: 0, panY: 0 });
 
+  // ---- Simulation store (HIVE-5, HIVE-6) ----
+  const nodeCount = useSimulationStore((s) => s.nodeCount);
+  const videoSrc = useSimulationStore((s) => s.videoSrc);
+  const thumbnailSrc = useSimulationStore((s) => s.thumbnailSrc);
+  const analysisStatus = useSimulationStore((s) => s.analysisStatus);
+
+  // ---- Dynamic data generation ----
+  const generatedData = useMemo(
+    () => generateMockHiveData({ totalNodeCount: nodeCount }),
+    [nodeCount],
+  );
+  const effectiveData = data ?? generatedData;
+
   // ---- Layout computation (pure, memoized) ----
   const layout = useMemo(
-    () => (data ? computeHiveLayout(data) : null),
-    [data],
+    () => (effectiveData ? computeHiveLayout(effectiveData) : null),
+    [effectiveData],
   );
 
   // Sync layout to ref for synchronous reads in render()
@@ -54,6 +71,60 @@ export function HiveCanvas({ data, className }: HiveCanvasProps): React.JSX.Elem
 
   // ---- Accessibility ----
   const reducedMotion = usePrefersReducedMotion();
+
+  // ---- Parallax tracking (HIVE-2) ----
+  const parallaxRef = useRef<ParallaxOffset>({ x: 0, y: 0 });
+  const smoothParallaxRef = useRef<ParallaxOffset>({ x: 0, y: 0 });
+  const parallaxActiveRef = useRef(false);
+  const parallaxRafRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (reducedMotion) return;
+    // Skip on touch devices
+    if (typeof window !== 'undefined' && 'ontouchstart' in window) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      parallaxRef.current = {
+        x: (e.clientX - cx) / (rect.width / 2),
+        y: (e.clientY - cy) / (rect.height / 2),
+      };
+
+      // Start parallax animation loop if not running
+      if (!parallaxActiveRef.current) {
+        parallaxActiveRef.current = true;
+        const animateParallax = () => {
+          const sp = smoothParallaxRef.current;
+          const tp = parallaxRef.current;
+          sp.x += (tp.x - sp.x) * 0.08;
+          sp.y += (tp.y - sp.y) * 0.08;
+
+          // Keep animating while there's meaningful difference
+          const diff = Math.abs(sp.x - tp.x) + Math.abs(sp.y - tp.y);
+          if (diff > 0.001) {
+            render();
+            parallaxRafRef.current = requestAnimationFrame(animateParallax);
+          } else {
+            parallaxActiveRef.current = false;
+          }
+        };
+        parallaxRafRef.current = requestAnimationFrame(animateParallax);
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      if (parallaxRafRef.current) cancelAnimationFrame(parallaxRafRef.current);
+      parallaxActiveRef.current = false;
+    };
+    // render is stable (useCallback with [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reducedMotion]);
 
   // ---- Render function (reads refs synchronously, no React state) ----
   const render = useCallback(() => {
@@ -87,6 +158,7 @@ export function HiveCanvas({ data, className }: HiveCanvasProps): React.JSX.Elem
         cssHeight,
         animation.visibility,
         interactionRef.current,
+        smoothParallaxRef.current,
       );
     } else {
       renderSkeletonHive(ctx, cssWidth, cssHeight);
@@ -171,6 +243,36 @@ export function HiveCanvas({ data, className }: HiveCanvasProps): React.JSX.Elem
         aria-label="Hive visualization showing test content analysis"
         role="img"
       />
+      {/* Video overlay for center rectangle (HIVE-5) */}
+      {(videoSrc || thumbnailSrc) && layout && (() => {
+        const { width: cw, height: ch } = sizeRef.current;
+        if (cw <= 0 || ch <= 0) return null;
+        const ft = computeFitTransform(layout.bounds, cw, ch);
+        const cam = cameraRef.current;
+        const center = worldToScreen(0, 0, cam, cw, ch, ft);
+        const scaledW = NODE_SIZES.center.width * ft.scale * cam.zoom;
+        const scaledH = NODE_SIZES.center.height * ft.scale * cam.zoom;
+        return (
+          <div
+            className="absolute pointer-events-none overflow-hidden"
+            style={{
+              left: center.x - scaledW / 2,
+              top: center.y - scaledH / 2,
+              width: scaledW,
+              height: scaledH,
+              borderRadius: NODE_SIZES.center.borderRadius,
+            }}
+          >
+            {analysisStatus === 'complete' && videoSrc ? (
+              <video src={videoSrc} autoPlay muted loop playsInline
+                className="w-full h-full object-cover" />
+            ) : thumbnailSrc ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={thumbnailSrc} alt="" className="w-full h-full object-cover" />
+            ) : null}
+          </div>
+        );
+      })()}
       {/* Overlay rendered when a node is selected */}
       {interaction.selectedNode && interaction.selectedNodeScreen && (
         <HiveNodeOverlay
