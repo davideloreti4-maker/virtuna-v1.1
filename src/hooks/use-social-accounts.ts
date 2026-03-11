@@ -89,7 +89,7 @@ export function useSocialAccounts() {
 
   // Initial fetch
   useEffect(() => {
-    fetchAccounts();
+    void fetchAccounts();
   }, [fetchAccounts]);
 
   // Cross-instance sync: re-fetch when another component mutates accounts
