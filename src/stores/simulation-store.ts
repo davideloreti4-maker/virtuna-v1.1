@@ -1,14 +1,7 @@
 import { create } from 'zustand';
 import { NODE_COUNT_MAP } from '@/lib/models';
 import type { ApolloTier, ModelFamily } from '@/lib/models';
-
-interface PredictedEngagement {
-  likes: number;
-  comments: number;
-  shares: number;
-  saves: number;
-  views: number;
-}
+import type { PredictedEngagement } from '@/lib/engine/types';
 
 interface SimulationStore {
   modelFamily: ModelFamily;
@@ -44,10 +37,8 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   predictedEngagement: null,
   setAnalysisStatus: (status) => set({ analysisStatus: status }),
   setAnalysisResult: (engagement) => set({ predictedEngagement: engagement, analysisStatus: 'complete' }),
-  resetAnalysis: () => set({
-    videoSrc: null,
-    thumbnailSrc: null,
-    analysisStatus: 'idle',
-    predictedEngagement: null,
+  resetAnalysis: () => set((state) => {
+    if (state.videoSrc?.startsWith('blob:')) URL.revokeObjectURL(state.videoSrc);
+    return { videoSrc: null, thumbnailSrc: null, analysisStatus: 'idle', predictedEngagement: null };
   }),
 }));
