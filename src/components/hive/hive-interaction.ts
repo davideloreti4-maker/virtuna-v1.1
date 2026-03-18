@@ -11,7 +11,7 @@
 
 import { quadtree, type Quadtree } from 'd3-quadtree';
 
-import { HIT_SEARCH_RADIUS, HIT_ZOOM_FLOOR } from './hive-constants';
+import { DEPTH_LAYER_CONFIG, HIT_SEARCH_RADIUS, HIT_ZOOM_FLOOR } from './hive-constants';
 import type {
   Camera,
   FitTransform,
@@ -136,9 +136,9 @@ export function worldToScreen(
 /**
  * Find the closest node to a world-space point using quadtree search.
  *
- * The search radius scales inversely with zoom level -- at high zoom,
- * nodes are visually larger so the search area shrinks in world space.
- * A floor prevents the radius from becoming too small at extreme zoom.
+ * Uses depth-weighted distance: foreground nodes have larger effective
+ * hit areas (divided by sizeMultiplier 1.0), background nodes have
+ * smaller areas (divided by 0.4, so effectively 2.5x further).
  *
  * @returns The closest LayoutNode within the search radius, or undefined.
  */
@@ -150,8 +150,46 @@ export function findHoveredNode(
 ): LayoutNode | undefined {
   const searchRadius =
     HIT_SEARCH_RADIUS / Math.max(zoomLevel * 0.5, HIT_ZOOM_FLOOR);
-  const found = tree.find(worldX, worldY, searchRadius);
-  return found ?? undefined;
+
+  // Use quadtree to find candidate, then do depth-weighted comparison
+  // The d3 quadtree .find() returns the nearest, but we need to weight by depth
+  // So we visit all nodes within search radius and pick the best
+  let bestNode: LayoutNode | undefined;
+  let bestEffectiveDist = Infinity;
+
+  tree.visit((node, x0, y0, x1, y1) => {
+    // If this quadrant is entirely outside search radius, skip
+    const closestX = Math.max(x0, Math.min(worldX, x1));
+    const closestY = Math.max(y0, Math.min(worldY, y1));
+    const quadDist = Math.sqrt((closestX - worldX) ** 2 + (closestY - worldY) ** 2);
+    if (quadDist > searchRadius) return true; // skip this branch
+
+    // Check leaf nodes
+    if (!node.length) {
+      let leaf = node as { data?: LayoutNode; next?: typeof node };
+      do {
+        const d = leaf.data;
+        if (d) {
+          const dx = d.x - worldX;
+          const dy = d.y - worldY;
+          const actualDist = Math.sqrt(dx * dx + dy * dy);
+          if (actualDist <= searchRadius) {
+            // Weight by depth — foreground nodes win ties
+            const depthConfig = DEPTH_LAYER_CONFIG[d.depthLayer];
+            const effectiveDist = actualDist / depthConfig.sizeMultiplier;
+            if (effectiveDist < bestEffectiveDist) {
+              bestEffectiveDist = effectiveDist;
+              bestNode = d;
+            }
+          }
+        }
+        leaf = leaf.next as typeof leaf;
+      } while (leaf);
+    }
+    return false;
+  });
+
+  return bestNode;
 }
 
 // ---------------------------------------------------------------------------

@@ -1125,6 +1125,7 @@ export type Database = {
           handle: string
           is_active: boolean
           created_at: string
+          platform: string
         }
         Insert: {
           id?: string
@@ -1132,6 +1133,7 @@ export type Database = {
           handle: string
           is_active?: boolean
           created_at?: string
+          platform?: string
         }
         Update: {
           id?: string
@@ -1139,6 +1141,7 @@ export type Database = {
           handle?: string
           is_active?: boolean
           created_at?: string
+          platform?: string
         }
         Relationships: []
       }

@@ -147,7 +147,7 @@ export function Sidebar() {
         {/* TikTok Account Selector (dropdown, multi-account) */}
         <div className="px-3 py-1">
           <span className="mb-1.5 block px-1 text-[11px] font-medium text-foreground-muted uppercase tracking-wider">
-            TikTok Account
+            Social Account
           </span>
           <TiktokAccountSelector />
         </div>

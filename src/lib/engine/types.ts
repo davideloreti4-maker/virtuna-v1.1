@@ -123,6 +123,18 @@ export interface Suggestion {
 export type ConfidenceLevel = "HIGH" | "MEDIUM" | "LOW";
 
 // =====================================================
+// Predicted Engagement — TikTok-style engagement metrics
+// =====================================================
+
+export interface PredictedEngagement {
+  likes: number;
+  comments: number;
+  shares: number;
+  saves: number;
+  views: number;
+}
+
+// =====================================================
 // Full Prediction Result v2
 // =====================================================
 
@@ -138,6 +150,9 @@ export interface PredictionResult {
   feature_vector: FeatureVector;
   reasoning: string; // DeepSeek's reasoning text
   warnings: string[]; // Fatal flaw warnings from DeepSeek Step 4
+
+  // Predicted engagement metrics (RES-2)
+  predicted_engagement: PredictedEngagement;
 
   // Factors and suggestions (from Gemini + DeepSeek)
   factors: Factor[];

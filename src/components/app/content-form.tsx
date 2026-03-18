@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
-import { Type, Link, Video, ArrowUp, ChevronDown, Check } from "lucide-react";
+import { useState, useCallback } from "react";
+import { Type, Link, Video, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { VideoUpload } from "./video-upload";
+import { useSimulationStore } from "@/stores/simulation-store";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -43,14 +44,6 @@ const MODE_CONFIG: { value: InputMode; icon: typeof Type; label: string }[] = [
   { value: "tiktok_url", icon: Link, label: "URL" },
 ];
 
-type ModelTier = "mini" | "pro" | "max";
-
-const MODEL_TIERS: { value: ModelTier; label: string }[] = [
-  { value: "mini", label: "Apollo 1.5 mini" },
-  { value: "pro", label: "Apollo 1.5 pro" },
-  { value: "max", label: "Apollo 1.5 max" },
-];
-
 const PLACEHOLDERS: Record<InputMode, string> = {
   text: "Paste your caption or script...",
   tiktok_url: "Paste a TikTok or Instagram URL...",
@@ -63,9 +56,7 @@ const PLACEHOLDERS: Record<InputMode, string> = {
 
 export function ContentForm({ onSubmit, uploadProgress, className }: ContentFormProps) {
   const [activeTab, setActiveTab] = useState<InputMode>("video_upload");
-  const [modelTier, setModelTier] = useState<ModelTier>("pro");
-  const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
-  const modelDropdownRef = useRef<HTMLDivElement>(null);
+  const apolloTier = useSimulationStore((s) => s.apolloTier);
   const [formData, setFormData] = useState<ContentFormData>({
     input_mode: "video_upload",
     caption: "",
@@ -79,18 +70,6 @@ export function ContentForm({ onSubmit, uploadProgress, className }: ContentForm
     video_hashtags: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Close model dropdown on click outside
-  useEffect(() => {
-    if (!modelDropdownOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (modelDropdownRef.current && !modelDropdownRef.current.contains(e.target as Node)) {
-        setModelDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [modelDropdownOpen]);
 
   const updateField = useCallback(
     <K extends keyof ContentFormData>(field: K, value: ContentFormData[K]) => {
@@ -245,53 +224,11 @@ export function ContentForm({ onSubmit, uploadProgress, className }: ContentForm
           ))}
         </div>
 
-        {/* Right side: model tier + submit */}
+        {/* Right side: model tier label + submit */}
         <div className="flex items-center gap-2">
-          {/* Apollo model tier switcher */}
-          <div className="relative" ref={modelDropdownRef}>
-            <button
-              type="button"
-              onClick={() => setModelDropdownOpen((prev) => !prev)}
-              className="flex items-center gap-1 rounded-md px-2 py-1.5 text-xs text-foreground-muted hover:text-foreground hover:bg-white/[0.03] transition-colors"
-            >
-              Apollo 1.5 {modelTier}
-              <ChevronDown className="h-3 w-3" />
-            </button>
-
-            {modelDropdownOpen && (
-              <div
-                className="absolute bottom-full right-0 mb-1.5 w-44 rounded-lg border border-white/[0.06] py-1 z-50"
-                style={{
-                  background:
-                    "linear-gradient(137deg, rgba(17,18,20,0.95) 4.87%, rgba(12,13,15,0.98) 75.88%)",
-                  backdropFilter: "blur(5px)",
-                  WebkitBackdropFilter: "blur(5px)",
-                  boxShadow:
-                    "rgba(255,255,255,0.15) 0px 1px 1px 0px inset, 0 8px 32px rgba(0,0,0,0.4)",
-                }}
-              >
-                {MODEL_TIERS.map((tier) => (
-                  <button
-                    key={tier.value}
-                    type="button"
-                    onClick={() => {
-                      setModelTier(tier.value);
-                      setModelDropdownOpen(false);
-                    }}
-                    className={cn(
-                      "flex w-full items-center justify-between px-3 py-1.5 text-xs transition-colors",
-                      modelTier === tier.value
-                        ? "text-foreground"
-                        : "text-foreground-muted hover:text-foreground hover:bg-white/[0.03]"
-                    )}
-                  >
-                    {tier.label}
-                    {modelTier === tier.value && <Check className="h-3.5 w-3.5" />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <span className="text-xs text-foreground-muted px-2 py-1.5">
+            Apollo {apolloTier}
+          </span>
 
           {/* Submit arrow */}
           <button

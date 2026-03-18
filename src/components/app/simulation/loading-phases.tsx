@@ -6,6 +6,7 @@ import { GlassCard } from '@/components/ui/card';
 import { GlassSkeleton, SkeletonText } from '@/components/primitives';
 import { Button } from '@/components/ui/button';
 import type { SimulationPhase } from '@/stores/test-store';
+import { AnalysisLoadingSteps } from './analysis-loading';
 
 /**
  * v2 phase order matching SSE pipeline stages (analyzing -> reasoning -> scoring).
@@ -132,7 +133,7 @@ interface LoadingPhasesProps {
  *
  * A cancel button below the skeleton area returns to filling-form state.
  */
-export function LoadingPhases({ simulationPhase, phaseMessage, onCancel }: LoadingPhasesProps) {
+export function LoadingPhases({ simulationPhase, onCancel }: LoadingPhasesProps) {
   const currentIdx = simulationPhase
     ? PHASE_ORDER.indexOf(simulationPhase)
     : -1;
@@ -143,11 +144,9 @@ export function LoadingPhases({ simulationPhase, phaseMessage, onCancel }: Loadi
 
   return (
     <div className="space-y-3">
-      {phaseMessage && (
-        <p className="text-sm text-foreground-muted text-center animate-pulse">
-          {phaseMessage}
-        </p>
-      )}
+      {/* Analysis loading steps with database scan (MOD-3) */}
+      <AnalysisLoadingSteps />
+
       <AnimatePresence mode="popLayout">
         {SECTIONS.map(
           (section) =>

@@ -6,11 +6,13 @@ import type { PredictionResult } from '@/lib/engine/types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Text, Caption } from '@/components/ui/typography';
+import { useSimulationStore } from '@/stores/simulation-store';
 import { HeroScore } from './impact-score';
 import { FactorBreakdown } from './attention-breakdown';
 import { BehavioralPredictionsSection } from './behavioral-predictions';
 import { SuggestionsSection } from './insights-section';
 import { ShareButton } from './share-button';
+import { TikTokResultCard } from './tiktok-result-card';
 
 interface ResultsPanelProps {
   result: PredictionResult;
@@ -129,8 +131,20 @@ function BottomBar({
 }
 
 export function ResultsPanel({ result, onRunAnother }: ResultsPanelProps) {
+  const videoSrc = useSimulationStore((s) => s.videoSrc);
+  const thumbnailSrc = useSimulationStore((s) => s.thumbnailSrc);
+
   return (
     <div className="space-y-3 max-h-[70vh] overflow-y-auto">
+      {/* TikTok Result Card — shows video + predicted engagement (RES-1) */}
+      {result.predicted_engagement && (
+        <TikTokResultCard
+          videoSrc={videoSrc}
+          thumbnailSrc={thumbnailSrc}
+          engagement={result.predicted_engagement}
+        />
+      )}
+
       {/* Warnings */}
       {result.warnings.length > 0 && (
         <GlassSection>

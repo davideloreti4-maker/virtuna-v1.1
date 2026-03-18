@@ -6,6 +6,7 @@ import { useSidebarStore } from "@/stores/sidebar-store";
 import { AuthGuard } from "./auth-guard";
 import { Sidebar } from "./sidebar";
 import { SidebarToggle } from "./sidebar-toggle";
+import { TopBarAccountChip } from "./top-bar-account-chip";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -30,6 +31,7 @@ export function AppShell({ children }: AppShellProps) {
       <div className="h-screen bg-background">
         <SidebarToggle />
         <Sidebar />
+        <TopBarAccountChip />
         <main
           className={cn(
             "h-full overflow-auto",

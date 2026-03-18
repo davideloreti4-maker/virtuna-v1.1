@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import {
-  CaretUpDown,
+  CaretDown,
   Check,
   Plus,
   X,
@@ -10,10 +10,10 @@ import {
   InstagramLogo,
 } from "@phosphor-icons/react";
 
-import { Text } from "@/components/ui/typography";
 import { cn } from "@/lib/utils";
-import { useTiktokAccounts } from "@/hooks/use-tiktok-accounts";
+import { useSocialAccounts } from "@/hooks/use-social-accounts";
 import type { Platform } from "@/hooks/use-social-accounts";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 function PlatformIcon({
   platform,
@@ -29,7 +29,7 @@ function PlatformIcon({
   );
 }
 
-export function TiktokAccountSelector() {
+export function TopBarAccountChip() {
   const {
     accounts,
     activeAccount,
@@ -37,8 +37,9 @@ export function TiktokAccountSelector() {
     switchAccount,
     addAccount,
     removeAccount,
-  } = useTiktokAccounts();
+  } = useSocialAccounts();
 
+  const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [newHandle, setNewHandle] = useState("");
@@ -95,50 +96,52 @@ export function TiktokAccountSelector() {
     setIsAdding(false);
   };
 
-  if (isLoading) {
-    return <div className="h-9 rounded-lg bg-white/[0.06] animate-pulse" />;
-  }
+  if (isLoading) return null;
 
   return (
-    <div ref={containerRef} className="relative">
-      {/* Trigger */}
+    <div ref={containerRef} className="fixed top-4 right-4 z-[var(--z-sticky)]">
+      {/* Trigger chip */}
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         className={cn(
-          "flex w-full items-center justify-between rounded-lg px-3 py-2",
-          "bg-white/[0.05] transition-colors hover:bg-white/[0.02]",
-          "text-left",
+          "flex items-center gap-1.5 h-9 rounded-full px-3",
+          "border border-white/[0.06] transition-colors",
+          "hover:bg-white/[0.05]",
+          activeAccount ? "text-foreground" : "text-foreground-secondary",
         )}
+        style={{
+          backgroundColor: "rgba(17, 18, 20, 0.8)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+        }}
       >
-        <span className="flex items-center gap-1.5 min-w-0">
-          {activeAccount && (
+        {activeAccount ? (
+          <>
             <PlatformIcon
               platform={activeAccount.platform as Platform}
-              className="h-3.5 w-3.5 shrink-0 text-foreground-secondary"
+              className="h-4 w-4 text-foreground-secondary"
             />
-          )}
-          <Text
-            as="span"
-            size="sm"
-            className={cn(
-              "truncate",
-              activeAccount ? "text-foreground" : "text-foreground-muted",
-            )}
-          >
-            {activeAccount ? `@${activeAccount.handle}` : "Add Account"}
-          </Text>
-        </span>
-        <CaretUpDown
+            <span className="text-sm">@{activeAccount.handle}</span>
+          </>
+        ) : (
+          <span className="text-sm">Connect Account</span>
+        )}
+        <CaretDown
           weight="bold"
-          className="h-3.5 w-3.5 shrink-0 text-foreground-secondary"
+          className="h-3 w-3 text-foreground-muted"
         />
       </button>
 
       {/* Dropdown */}
       {isOpen && (
         <div
-          className="absolute left-0 right-0 top-full z-[var(--z-dropdown)] mt-1 overflow-hidden rounded-lg border border-white/[0.06]"
+          className={cn(
+            "overflow-hidden rounded-lg border border-white/[0.06]",
+            isMobile
+              ? "fixed left-4 right-4 top-14"
+              : "absolute right-0 top-full mt-2 w-[260px]",
+          )}
           style={{
             backgroundColor: "rgba(17, 18, 20, 0.95)",
             backdropFilter: "blur(12px)",
@@ -154,7 +157,7 @@ export function TiktokAccountSelector() {
                 <div
                   key={account.id}
                   className={cn(
-                    "group flex items-center gap-2 px-3 py-2 text-sm transition-colors",
+                    "group flex items-center gap-2 px-3 min-h-[44px] text-sm transition-colors",
                     "hover:bg-white/[0.05] cursor-pointer",
                   )}
                   onClick={() => {
@@ -165,14 +168,14 @@ export function TiktokAccountSelector() {
                   {account.is_active ? (
                     <Check
                       weight="bold"
-                      className="h-3.5 w-3.5 shrink-0 text-accent"
+                      className="h-4 w-4 shrink-0 text-accent"
                     />
                   ) : (
-                    <span className="h-3.5 w-3.5 shrink-0" />
+                    <span className="h-4 w-4 shrink-0" />
                   )}
                   <PlatformIcon
                     platform={account.platform as Platform}
-                    className="h-3.5 w-3.5 shrink-0 text-foreground-muted"
+                    className="h-4 w-4 shrink-0 text-foreground-muted"
                   />
                   <span
                     className={cn(
@@ -193,7 +196,7 @@ export function TiktokAccountSelector() {
                     className="opacity-0 group-hover:opacity-100 text-foreground-muted hover:text-foreground transition-opacity"
                     aria-label={`Remove @${account.handle}`}
                   >
-                    <X weight="bold" className="h-3.5 w-3.5" />
+                    <X weight="bold" className="h-4 w-4" />
                   </button>
                 </div>
               ))}
@@ -207,34 +210,34 @@ export function TiktokAccountSelector() {
 
           {/* Add account */}
           {isAdding ? (
-            <div className="p-2 space-y-2">
+            <div className="p-3 space-y-2">
               {/* Platform toggle */}
               <div className="flex gap-1">
                 <button
                   type="button"
                   onClick={() => setNewPlatform("tiktok")}
                   className={cn(
-                    "flex items-center justify-center h-7 w-7 rounded-md transition-colors",
+                    "flex items-center justify-center h-8 w-8 rounded-md transition-colors",
                     newPlatform === "tiktok"
                       ? "bg-white/[0.1] text-foreground"
                       : "text-foreground-muted hover:text-foreground",
                   )}
                   aria-label="TikTok"
                 >
-                  <TiktokLogo weight="bold" className="h-3.5 w-3.5" />
+                  <TiktokLogo weight="bold" className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setNewPlatform("instagram")}
                   className={cn(
-                    "flex items-center justify-center h-7 w-7 rounded-md transition-colors",
+                    "flex items-center justify-center h-8 w-8 rounded-md transition-colors",
                     newPlatform === "instagram"
                       ? "bg-white/[0.1] text-foreground"
                       : "text-foreground-muted hover:text-foreground",
                   )}
                   aria-label="Instagram"
                 >
-                  <InstagramLogo weight="bold" className="h-3.5 w-3.5" />
+                  <InstagramLogo weight="bold" className="h-4 w-4" />
                 </button>
               </div>
               {/* Input */}
@@ -253,13 +256,13 @@ export function TiktokAccountSelector() {
                     }
                   }}
                   placeholder="@handle"
-                  className="flex-1 rounded-md bg-white/[0.05] border border-white/[0.06] px-2.5 py-1.5 text-sm text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-1 focus:ring-accent/30"
+                  className="flex-1 min-h-[44px] rounded-md bg-white/[0.05] border border-white/[0.06] px-3 text-sm text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-1 focus:ring-accent/30"
                 />
                 <button
                   type="button"
                   onClick={handleAdd}
                   disabled={!newHandle.trim()}
-                  className="shrink-0 rounded-md bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-foreground transition-opacity disabled:opacity-50"
+                  className="shrink-0 min-h-[44px] rounded-md bg-accent px-3 text-sm font-medium text-accent-foreground transition-opacity disabled:opacity-50"
                 >
                   Add
                 </button>
@@ -269,9 +272,9 @@ export function TiktokAccountSelector() {
             <button
               type="button"
               onClick={() => setIsAdding(true)}
-              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-foreground-secondary transition-colors hover:bg-white/[0.05] hover:text-foreground"
+              className="flex w-full items-center gap-2 px-3 min-h-[44px] text-sm text-foreground-secondary transition-colors hover:bg-white/[0.05] hover:text-foreground"
             >
-              <Plus weight="bold" className="h-3.5 w-3.5" />
+              <Plus weight="bold" className="h-4 w-4" />
               <span>Add account</span>
             </button>
           )}
