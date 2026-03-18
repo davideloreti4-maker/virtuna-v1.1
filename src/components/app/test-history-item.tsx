@@ -55,6 +55,11 @@ export function TestHistoryItem({
         <div className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-accent" />
       )}
 
+      {/* Dashed circle icon */}
+      <svg width="16" height="16" viewBox="0 0 16 16" className="shrink-0 text-foreground-muted">
+        <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 2" fill="none" />
+      </svg>
+
       {/* Video thumbnail (UI-08 prep) */}
       {showThumbnail && (
         <img

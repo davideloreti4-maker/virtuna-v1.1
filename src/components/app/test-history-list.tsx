@@ -3,6 +3,7 @@
 import { useAnalysisHistory, useDeleteAnalysis } from '@/hooks/queries';
 import { Caption } from '@/components/ui/typography';
 import { TestHistoryItem } from './test-history-item';
+import { useTestStore } from '@/stores/test-store';
 
 interface TestHistoryListProps {
   onSelectTest: (testId: string) => void;
@@ -11,6 +12,7 @@ interface TestHistoryListProps {
 export function TestHistoryList({ onSelectTest }: TestHistoryListProps) {
   const { data: historyData, isLoading } = useAnalysisHistory();
   const deleteAnalysis = useDeleteAnalysis();
+  const viewingTestId = useTestStore((s) => s._viewingTestId);
 
   if (isLoading) {
     return (
@@ -49,7 +51,7 @@ export function TestHistoryList({ onSelectTest }: TestHistoryListProps) {
               createdAt: (test.created_at as string) ?? new Date().toISOString(),
               societyId: (test.society_id as string) ?? '',
             }}
-            isActive={false}
+            isActive={test.id === viewingTestId}
             onClick={() => onSelectTest(test.id as string)}
             onDelete={() => {
               deleteAnalysis.mutate(test.id as string);
