@@ -3,10 +3,19 @@
 import { useState } from 'react'
 import { VisualizationCanvas } from '@/components/visualization/VisualizationCanvas'
 import { GlassOrb } from '@/components/visualization/GlassOrb'
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
 
 export default function VizTestPage() {
   const [forceReducedMotion, setForceReducedMotion] = useState(false)
   const [tapCount, setTapCount] = useState(0)
+  const [commandOpen, setCommandOpen] = useState(false)
 
   return (
     <main className="min-h-screen bg-background-base">
@@ -45,7 +54,43 @@ export default function VizTestPage() {
             </ul>
           </div>
         </div>
+
+        <div className="border-t border-border-subtle pt-2 mt-2 space-y-2">
+          <div className="text-text-primary text-xs font-medium">
+            shadcn Command (smoke test)
+          </div>
+          <button
+            type="button"
+            onClick={() => setCommandOpen(true)}
+            className="w-full px-3 py-1.5 text-xs rounded-md bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.06] text-text-secondary transition-colors"
+          >
+            Open CommandDialog
+          </button>
+        </div>
       </div>
+
+      <CommandDialog
+        open={commandOpen}
+        onOpenChange={setCommandOpen}
+        title="Smoke Test"
+        description="Verify shadcn command primitives work end-to-end"
+      >
+        <CommandInput placeholder="Type to filter..." />
+        <CommandList>
+          <CommandEmpty>No results found.</CommandEmpty>
+          <CommandGroup heading="Actions">
+            <CommandItem onSelect={() => setCommandOpen(false)}>
+              Open Search
+            </CommandItem>
+            <CommandItem onSelect={() => setCommandOpen(false)}>
+              Go to Dashboard
+            </CommandItem>
+            <CommandItem onSelect={() => setCommandOpen(false)}>
+              Toggle Theme
+            </CommandItem>
+          </CommandGroup>
+        </CommandList>
+      </CommandDialog>
 
       {/* Canvas */}
       <div className="h-screen w-full">
