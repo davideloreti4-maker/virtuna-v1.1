@@ -68,7 +68,14 @@ None
 ### TODOs
 None
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260505-jdk | Initialize shadcn/ui CLI: components.json + command component | 2026-05-05 | a19b6f8 | [260505-jdk-initialize-shadcn-ui-cli-components-json](./quick/260505-jdk-initialize-shadcn-ui-cli-components-json/) |
+
 ## Session Continuity
 
 **Last session:** 2026-02-20 -- Roadmap created with 6 phases, 63 requirements mapped
+**Last activity:** 2026-05-05 -- Completed quick task 260505-jdk: Initialize shadcn/ui CLI
 **Next action:** Plan Phase 1 (`/gsd:plan-phase 1`)
