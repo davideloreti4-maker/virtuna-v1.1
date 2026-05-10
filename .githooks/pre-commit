@@ -1,0 +1,5 @@
+#!/bin/sh
+# Vocab guardrail: block commits that introduce banned brand-spine vocabulary.
+# See .planning/reference/BRAND-SPINE.md §4 for the rules.
+# Bypass for emergency: git commit --no-verify (use sparingly).
+node scripts/lint-vocab.mjs src/app src/components/landing src/components/onboarding || exit 1
