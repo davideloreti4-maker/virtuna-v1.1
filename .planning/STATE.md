@@ -1,34 +1,34 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.0
-milestone_name: milestone
-status: ready_to_plan
-stopped_at: Phase 2 context gathered
-last_updated: "2026-05-10T21:40:46.494Z"
-last_activity: 2026-05-10 -- Phase 02 marked complete
+milestone: Landing Page Redesign
+milestone_name: Landing Page Redesign
+status: planning
+last_updated: "2026-05-10T23:26:06.755Z"
+last_activity: 2026-05-10
 progress:
-  total_phases: 6
-  completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
-  percent: 33
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-10)
+See: `.planning/MILESTONE.md` (worktree identity for this milestone)
+See: `.planning/PROJECT.md` (project-wide context — read-only in worktrees)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
-**Current focus:** Phase 02 — foundation-hero
+**Current focus:** Defining requirements for Landing Page Redesign milestone.
 
 ## Current Position
 
-Phase: 3
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-10
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-11 — Milestone Landing Page Redesign started (planning)
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -36,26 +36,30 @@ Progress: [░░░░░░░░░░] 0%
 
 **Velocity:**
 
-- Total plans completed: 4
+- Total plans completed: 0
 - Average duration: —
 - Total execution time: 0 hours
 
 **By Phase:**
 
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 02 | 4 | - | - |
+(No phases yet — roadmap pending.)
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
+Milestone-level decisions (logged here for fast retrieval; PROJECT.md updated at merge):
 
-- Milestone start: Fresh page from scratch — `milestone/landing-page` branch officially abandoned
-- Phase 1: BRAND-06 requires copy sign-off by Davide before Phase 2 build starts
-- Phase 1: VIZ-04 requires implementation technology decision (canvas/SVG/WebGL/framer-motion) with < 50KB JS budget
+- **Bar:** Production landing — not MVP redo, not $100M venture statement piece
+- **Brand spine:** NOT pre-locked; discovered through implementation
+- **Component approach:** Magic UI primary + selective shadcn / Aceternity / Origin UI / Cult UI vetted to feel native to existing 36-component Raycast-aligned design system
+- **Hero visual format:** Layered UI fragments (Raycast pattern); upgrade-to-video kept as in-milestone option
+- **Audience strategy:** Dual (creators + investors/press); audience-tab section serves both
+- **Demo approach:** Static (screenshots / short loops) — no live `paste TikTok URL → see prediction` backend call this milestone
+- **Page scope:** `/` only this milestone; `/about`, `/research`, `/manifesto` deferred
+- **Pricing surface:** Starter/Pro tiers visible on landing
+- **Primary CTA:** `Sign up free / Start trial` (Whop-backed funnel already shipped)
+- **Phase numbering:** starts at 1 (milestone-scoped per worktree rule)
 
 ### Pending Todos
 
@@ -63,10 +67,10 @@ None yet.
 
 ### Blockers/Concerns
 
-None yet — roadmap complete, Phase 1 ready to plan.
+None yet — defining requirements next.
 
 ## Session Continuity
 
-Last session: 2026-05-10T20:13:27.625Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-foundation-hero/02-CONTEXT.md
+Last session: 2026-05-11
+Stopped at: Milestone summary approved; writing requirements next.
+Resume file: `.planning/REQUIREMENTS.md` (when written) or `.planning/MILESTONE.md` for context.
