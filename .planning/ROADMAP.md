@@ -9,7 +9,7 @@ Six phases that move from brand foundation to live page. Phase 1 locks brand spi
 **Phase Numbering:** Milestone-scoped, starts at 1.
 
 - [ ] **Phase 1: Brand Spine & Visual Metaphor** - Lock brand voice, vocab guardrails, and visual language before any build work starts
-- [ ] **Phase 2: Foundation & Hero** - Scaffold the page, vet external component sources, build above-fold (viewport 1)
+- [x] **Phase 2: Foundation & Hero** - Scaffold the page, vet external component sources, build above-fold (viewport 1)
 - [ ] **Phase 3: Demo + How It Works + Bento** - Build viewports 2-4 (live demo, engine pipeline, three surfaces)
 - [ ] **Phase 4: Science + Social Proof + Pricing** - Build viewports 5-7 plus footer
 - [ ] **Phase 5: Quality, Performance & Accessibility** - Lighthouse ≥ 95, Core Web Vitals, WCAG AA, mobile audit, TypeScript clean
