@@ -168,17 +168,82 @@
 
 ## Traceability
 
-<!-- Filled by roadmapper: maps each REQ-ID to its phase. -->
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (empty — populated when roadmap is created) | | |
+| BRAND-01 | Phase 1 | Pending |
+| BRAND-02 | Phase 1 | Pending |
+| BRAND-03 | Phase 1 | Pending |
+| BRAND-04 | Phase 1 | Pending |
+| BRAND-05 | Phase 1 | Pending |
+| BRAND-06 | Phase 1 | Pending |
+| VIZ-01 | Phase 1 | Pending |
+| VIZ-02 | Phase 1 | Pending |
+| VIZ-03 | Phase 1 | Pending |
+| VIZ-04 | Phase 1 | Pending |
+| VIZ-05 | Phase 1 | Pending |
+| BUILD-01 | Phase 2 | Pending |
+| BUILD-02 | Phase 2 | Pending |
+| HERO-01 | Phase 2 | Pending |
+| HERO-02 | Phase 2 | Pending |
+| HERO-03 | Phase 2 | Pending |
+| HERO-04 | Phase 2 | Pending |
+| HERO-05 | Phase 2 | Pending |
+| HERO-06 | Phase 2 | Pending |
+| HERO-07 | Phase 2 | Pending |
+| HERO-08 | Phase 2 | Pending |
+| HERO-09 | Phase 2 | Pending |
+| HERO-10 | Phase 2 | Pending |
+| DEMO-01 | Phase 3 | Pending |
+| DEMO-02 | Phase 3 | Pending |
+| DEMO-03 | Phase 3 | Pending |
+| DEMO-04 | Phase 3 | Pending |
+| DEMO-05 | Phase 3 | Pending |
+| DEMO-06 | Phase 3 | Pending |
+| DEMO-07 | Phase 3 | Pending |
+| DEMO-08 | Phase 3 | Pending |
+| WORKS-01 | Phase 3 | Pending |
+| WORKS-02 | Phase 3 | Pending |
+| WORKS-03 | Phase 3 | Pending |
+| WORKS-04 | Phase 3 | Pending |
+| WORKS-05 | Phase 3 | Pending |
+| WORKS-06 | Phase 3 | Pending |
+| SURF-01 | Phase 3 | Pending |
+| SURF-02 | Phase 3 | Pending |
+| SURF-03 | Phase 3 | Pending |
+| SURF-04 | Phase 3 | Pending |
+| SURF-05 | Phase 3 | Pending |
+| SURF-06 | Phase 3 | Pending |
+| SCI-01 | Phase 4 | Pending |
+| SCI-02 | Phase 4 | Pending |
+| SCI-03 | Phase 4 | Pending |
+| SCI-04 | Phase 4 | Pending |
+| SCI-05 | Phase 4 | Pending |
+| SCI-06 | Phase 4 | Pending |
+| PROOF-01 | Phase 4 | Pending |
+| PROOF-02 | Phase 4 | Pending |
+| PROOF-03 | Phase 4 | Pending |
+| PROOF-04 | Phase 4 | Pending |
+| PROOF-05 | Phase 4 | Pending |
+| PRICE-01 | Phase 4 | Pending |
+| PRICE-02 | Phase 4 | Pending |
+| PRICE-03 | Phase 4 | Pending |
+| PRICE-04 | Phase 4 | Pending |
+| PRICE-05 | Phase 4 | Pending |
+| PRICE-06 | Phase 4 | Pending |
+| BUILD-03 | Phase 5 | Pending |
+| BUILD-04 | Phase 5 | Pending |
+| BUILD-05 | Phase 5 | Pending |
+| BUILD-06 | Phase 5 | Pending |
+| BUILD-08 | Phase 5 | Pending |
+| BUILD-10 | Phase 5 | Pending |
+| BUILD-07 | Phase 6 | Pending |
+| BUILD-09 | Phase 6 | Pending |
 
 **Coverage:**
 - v1 requirements: 56 total
-- Mapped to phases: 0
-- Unmapped: 56 ⚠️ (filled by roadmapper)
+- Mapped to phases: 56
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-10*
-*Last updated: 2026-05-10 after initial definition for Brand Statement Landing milestone*
+*Last updated: 2026-05-10 — Traceability filled by roadmapper (Brand Statement Landing)*
