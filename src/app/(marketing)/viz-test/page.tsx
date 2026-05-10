@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { VisualizationCanvas } from '@/components/visualization/VisualizationCanvas'
 import { GlassOrb } from '@/components/visualization/GlassOrb'
+import { useId } from 'react'
 import {
   CommandDialog,
   CommandEmpty,
@@ -11,11 +12,15 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
+import { Marquee } from '@/components/ui/marquee'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 export default function VizTestPage() {
   const [forceReducedMotion, setForceReducedMotion] = useState(false)
   const [tapCount, setTapCount] = useState(0)
   const [commandOpen, setCommandOpen] = useState(false)
+  const originInputId = useId()
 
   return (
     <main className="min-h-screen bg-background-base">
@@ -67,6 +72,19 @@ export default function VizTestPage() {
             Open CommandDialog
           </button>
         </div>
+
+        <div className="border-t border-border-subtle pt-2 mt-2 space-y-2">
+          <div className="text-text-primary text-xs font-medium">
+            Origin UI Input (smoke test)
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <Label className="leading-6 text-xs" htmlFor={originInputId}>
+              Email
+            </Label>
+            <span className="text-text-tertiary text-[10px]">Optional</span>
+          </div>
+          <Input id={originInputId} placeholder="you@example.com" type="email" />
+        </div>
       </div>
 
       <CommandDialog
@@ -100,6 +118,35 @@ export default function VizTestPage() {
         >
           <GlassOrb onTap={() => setTapCount((c) => c + 1)} />
         </VisualizationCanvas>
+      </div>
+
+      {/* Magic UI Marquee (smoke test) — bottom strip */}
+      <div className="absolute bottom-4 left-0 right-0 z-10 px-4">
+        <div className="rounded-lg bg-surface-elevated/80 backdrop-blur-sm py-3">
+          <div className="text-text-tertiary text-[10px] uppercase tracking-wider px-4 mb-2">
+            Magic UI Marquee (smoke test)
+          </div>
+          <Marquee
+            pauseOnHover
+            className="[--duration:30s] [--gap:2rem]"
+          >
+            {[
+              'TikTok Creator',
+              'Brand Deals',
+              'Affiliate Engine',
+              'Viral Predictor',
+              'Content Intelligence',
+              'Hive Visualization',
+            ].map((label) => (
+              <span
+                key={label}
+                className="text-text-secondary text-sm px-4 py-1 rounded-full border border-white/[0.06] bg-white/[0.02]"
+              >
+                {label}
+              </span>
+            ))}
+          </Marquee>
+        </div>
       </div>
     </main>
   )
