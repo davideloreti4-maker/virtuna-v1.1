@@ -297,12 +297,16 @@ export function BehavioralCanvas({
   }, [reducedMotion, render, size]);
 
   return (
+    // The canvas is decorative -- the DOM confidence chip rendered by
+    // BehavioralHero.tsx carries the canonical "87 percent" accessible name
+    // (role="status" + aria-label). Announcing the figure twice (once via
+    // canvas aria-label, once via the chip) is verbose for screen readers,
+    // so this element is marked aria-hidden. WR-03.
     <canvas
       ref={canvasRef}
       className={className}
       style={{ width: '100%', height: '100%', touchAction: 'none' }}
-      role="img"
-      aria-label="Audience particles aggregating into a confidence score of 87 percent"
+      aria-hidden="true"
     />
   );
 }
