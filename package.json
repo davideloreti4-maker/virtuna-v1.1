@@ -7,7 +7,6 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "lint:vocab": "node scripts/lint-vocab.mjs src/app src/components/landing src/components/onboarding",
     "extraction": "npx tsx extraction/scripts/capture-all-session.ts",
     "extraction:auth": "npx playwright test --project=setup --config=extraction/playwright.config.ts",
     "extraction:all": "npx playwright test --project=desktop --config=extraction/playwright.config.ts",
