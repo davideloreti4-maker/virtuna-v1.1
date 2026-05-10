@@ -157,6 +157,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const Comp = asChild ? Slot : "button";
     const isDisabled = disabled || loading;
 
+    // When asChild=true, Radix Slot requires exactly one React element child
+    // (React.Children.only). The `{loading && <Loader2 />}` fragment produces
+    // a `false` sibling even when loading=false, which counts as a child and
+    // breaks SSR prerender. Spinner composition into a Link/anchor is also
+    // semantically incoherent, so the spinner is skipped in asChild mode.
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
@@ -166,13 +171,19 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         aria-busy={loading || undefined}
         {...props}
       >
-        {loading && (
-          <Loader2
-            className="h-4 w-4 animate-spin"
-            aria-hidden="true"
-          />
+        {asChild ? (
+          children
+        ) : (
+          <>
+            {loading && (
+              <Loader2
+                className="h-4 w-4 animate-spin"
+                aria-hidden="true"
+              />
+            )}
+            {children}
+          </>
         )}
-        {children}
       </Comp>
     );
   }
