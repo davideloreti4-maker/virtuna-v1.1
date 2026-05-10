@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: engine-foundation
 milestone_name: Engine Foundation
-status: planning
-stopped_at: roadmap complete, ready to plan Phase 1
-last_updated: "2026-05-11T00:00:00.000Z"
-last_activity: 2026-05-11 -- Milestone Engine Foundation started; ROADMAP.md complete
+status: completed
+stopped_at: Phase 1 context gathered
+last_updated: "2026-05-10T23:27:12.073Z"
+last_activity: 2026-05-11 — Milestone Engine Foundation started
 progress:
   total_phases: 12
   completed_phases: 0
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 Decisions are logged in PROJECT.md Key Decisions table and the milestone summary at top of PROJECT.md.
 
 Milestone-start decisions:
+
 - Two-milestone split: Engine Foundation (this) → Intelligence Surface (next). Enabled by training-corpus insight that lets us measure engine accuracy without waiting for users to post content.
 - Engine extension is **additive only** — no rewrite of existing `pipeline.ts` or `aggregator.ts`. New stages slot into existing wave pattern (Wave 0 added; Wave 3 added for personas; Stage 10 critique; Stage 11 counterfactuals).
 - Video segmentation via **native Gemini `videoMetadata`** (no ffmpeg). Single Files API upload, parallel scoped calls.
@@ -73,7 +74,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-11T00:00:00.000Z
-Stopped at: Roadmap complete; ready to plan Phase 1
-Resume file: .planning/ROADMAP.md
+Last session: 2026-05-10T23:27:12.070Z
+Stopped at: Phase 1 context gathered
+Resume file: .planning/phases/01-training-corpus-eval-foundation/01-CONTEXT.md
 Resume command: `/gsd-discuss-phase 1` or `/gsd-plan-phase 1`
