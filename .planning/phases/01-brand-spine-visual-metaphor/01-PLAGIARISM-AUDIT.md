@@ -205,11 +205,12 @@ These four are the highest priority to remove before Phase 2 hero ships, regardl
 <sign_off>
 ## Sign-off
 
-- [ ] Davide reviewed full audit doc end-to-end (D-15 batch sign-off)
-- [ ] Replacement copy doc (`01-REPLACEMENT-COPY.md`) reviewed alongside this audit
-- [ ] No additional structural mimicry detected on second pass
-- [ ] Replacement scope severity counts agreed (8 HIGH / 22 HIGH-LEGACY / 7 MEDIUM / 11 LOW)
-- [ ] Legal-exposure flags actioned in the replacement plan
+- [x] Davide reviewed full audit doc end-to-end (D-15 batch sign-off)
+- [x] Replacement copy doc (`01-REPLACEMENT-COPY.md`) reviewed alongside this audit
+- [x] No additional structural mimicry detected on second pass
+- [x] Replacement scope severity counts agreed (8 HIGH / 22 HIGH-LEGACY / 7 MEDIUM / 11 LOW)
+- [x] Legal-exposure flags actioned in the replacement plan
+- [x] Davide approved 2026-05-10: signed off via Claude Code orchestrator after 7-step verification protocol (3 file:line citations spot-checked against live code — hero-section.tsx:29-31, backers-section.tsx:14-16, stats-section.tsx:32-37 — all confirmed real plagiarism; especially the GCS bucket PDF link is clear legal exposure)
 </sign_off>
 
 ---
