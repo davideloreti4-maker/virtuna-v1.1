@@ -43,7 +43,11 @@ Six phases that move from brand foundation to live page. Phase 1 locks brand spi
   3. Hero copy contains zero instances of "viral" or "AI"
   4. Mobile hero at 375px stacks vertically with hierarchy preserved and simulation scales or simplifies gracefully
   5. Rejection criteria for any Magic UI / Aceternity / Origin UI / Cult UI component imports are documented and applied
-**Plans**: TBD
+**Plans**: 4 plans across 2 waves
+  - [ ] 02-01-PLAN.md — Scaffold: swap page hero, update barrel, delete plagiarized hero-section.tsx, add scroll-behavior CSS (BUILD-01) [Wave 1, parallel]
+  - [ ] 02-02-PLAN.md — Canvas + constants + Vitest invariants: BehavioralCanvas client island, behavioral-hero-constants (HERO_GRADIENT + chip + motion), constants test (HERO-06, HERO-07, HERO-08, HERO-10) [Wave 1, parallel]
+  - [ ] 02-03-PLAN.md — External component policy doc + BRAND-BIBLE cross-reference (BUILD-02) [Wave 1, parallel]
+  - [ ] 02-04-PLAN.md — BehavioralHero server composition: locked copy, dual CTA, gradient backdrop, DOM-accessible 87% chip overlay (HERO-01..05, HERO-07, HERO-09, HERO-10) [Wave 2, depends on 02-01, 02-02, 02-03]
 **UI hint**: yes
 
 ### Phase 3: Demo + How It Works + Bento
@@ -101,7 +105,7 @@ Six phases that move from brand foundation to live page. Phase 1 locks brand spi
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Brand Spine & Visual Metaphor | 0/4 | Planned | - |
-| 2. Foundation & Hero | 0/TBD | Not started | - |
+| 2. Foundation & Hero | 0/4 | Planned | - |
 | 3. Demo + How It Works + Bento | 0/TBD | Not started | - |
 | 4. Science + Social Proof + Pricing | 0/TBD | Not started | - |
 | 5. Quality, Performance & Accessibility | 0/TBD | Not started | - |
