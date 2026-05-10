@@ -132,17 +132,57 @@ Explicitly excluded for this milestone.
 
 ## Traceability
 
-Filled by roadmap creation.
+Populated by ROADMAP.md creation (2026-05-11). All 36 requirements mapped to exactly one phase. No orphans, no duplicates.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (To be populated by gsd-roadmapper) | | |
+| HERO-01 | Phase 2 — Hero & Trust Band | Pending |
+| HERO-02 | Phase 2 — Hero & Trust Band | Pending |
+| HERO-03 | Phase 2 — Hero & Trust Band | Pending |
+| HERO-04 | Phase 2 — Hero & Trust Band | Pending |
+| HERO-05 | Phase 2 — Hero & Trust Band | Pending |
+| TRUST-01 | Phase 2 — Hero & Trust Band | Pending |
+| TRUST-02 | Phase 2 — Hero & Trust Band | Pending |
+| SURF-01 | Phase 3 — Three Surfaces Bento | Pending |
+| SURF-02 | Phase 3 — Three Surfaces Bento | Pending |
+| SURF-03 | Phase 3 — Three Surfaces Bento | Pending |
+| SURF-04 | Phase 3 — Three Surfaces Bento | Pending |
+| PIPE-01 | Phase 4 — How It Works + The Science | Pending |
+| PIPE-02 | Phase 4 — How It Works + The Science | Pending |
+| PIPE-03 | Phase 4 — How It Works + The Science | Pending |
+| SCI-01 | Phase 4 — How It Works + The Science | Pending |
+| SCI-02 | Phase 4 — How It Works + The Science | Pending |
+| SCI-03 | Phase 4 — How It Works + The Science | Pending |
+| AUD-01 | Phase 5 — Audience Tabs + Social Proof | Pending |
+| AUD-02 | Phase 5 — Audience Tabs + Social Proof | Pending |
+| AUD-03 | Phase 5 — Audience Tabs + Social Proof | Pending |
+| PROOF-01 | Phase 5 — Audience Tabs + Social Proof | Pending |
+| PROOF-02 | Phase 5 — Audience Tabs + Social Proof | Pending |
+| PROOF-03 | Phase 5 — Audience Tabs + Social Proof | Pending |
+| CALC-01 | Phase 6 — Calculator + Pricing | Pending |
+| CALC-02 | Phase 6 — Calculator + Pricing | Pending |
+| CALC-03 | Phase 6 — Calculator + Pricing | Pending |
+| CALC-04 | Phase 6 — Calculator + Pricing | Pending |
+| PRICE-01 | Phase 6 — Calculator + Pricing | Pending |
+| PRICE-02 | Phase 6 — Calculator + Pricing | Pending |
+| PRICE-03 | Phase 6 — Calculator + Pricing | Pending |
+| PRICE-04 | Phase 6 — Calculator + Pricing | Pending |
+| FAQ-01 | Phase 7 — FAQ + Final CTA + Footer | Pending |
+| FAQ-02 | Phase 7 — FAQ + Final CTA + Footer | Pending |
+| FAQ-03 | Phase 7 — FAQ + Final CTA + Footer | Pending |
+| COPY-01 | Phase 8 — Copy + System Hardening | Pending |
+| COPY-02 | Phase 8 — Copy + System Hardening | Pending |
+| SYS-01 | Phase 8 — Copy + System Hardening | Pending |
+| SYS-02 | Phase 8 — Copy + System Hardening | Pending |
+| SYS-03 | Phase 8 — Copy + System Hardening | Pending |
+| SYS-04 | Phase 8 — Copy + System Hardening | Pending |
 
 **Coverage:**
 - Milestone requirements: 36 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 36 ⚠️ (will resolve at roadmap creation)
+- Mapped to phases: 36 (100%)
+- Unmapped: 0
+- Phase 1 (Foundation & Route Scaffolding) has no direct requirement mapping — it is enabling infrastructure that every later phase depends on (Magic UI vetting, route scaffolding to replace plagiarized template). Without Phase 1, Phase 2 cannot ship a hero on a clean route.
 
 ---
 *Requirements defined: 2026-05-11*
-*Last updated: 2026-05-11 after initial definition*
+*Last updated: 2026-05-11 — Traceability populated by gsd-roadmapper*
