@@ -32,7 +32,7 @@
 //       parent gradient shows through
 // ---------------------------------------------------------------------------
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useCanvasResize } from '@/components/hive/use-canvas-resize';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
@@ -103,15 +103,28 @@ export function BehavioralCanvas({
 
   const reducedMotion = usePrefersReducedMotion();
 
+  // ---- Size mirror (CR-01 fix)
+  // `useCanvasResize` returns a ref that's populated *asynchronously* on the
+  // first ResizeObserver callback. The original code read `sizeRef.current`
+  // inside the init `useEffect` and bailed when width was 0 -- but the effect
+  // never re-ran when size later became available because its deps didn't
+  // include the size. Mirror the size into React state so the init effect
+  // re-runs when ResizeObserver fires its first callback.
+  const [size, setSize] = useState({ width: 0, height: 0, dpr: 1 });
+
   // ---- Render callback (reads refs synchronously, no React state per frame)
   // PATTERN: HiveCanvas.tsx:147-186
+  // Reads from `sizeRef.current` (declared below) lazily at call time, so
+  // lexical order is fine -- but `react-hooks/immutability` static-analyzes
+  // identifier order, so we use the captured `size` state instead. The
+  // values are kept in lockstep by the `useCanvasResize` onResize callback.
   const render = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const { width, height, dpr } = sizeRef.current;
+    const { width, height, dpr } = size;
     if (width <= 0 || height <= 0) return;
 
     // Clear full buffer (pixel space, not CSS pixels) -- Pitfall 10
@@ -122,8 +135,9 @@ export function BehavioralCanvas({
     ctx.scale(dpr, dpr);
 
     // Color batching -- PATTERN: hive-renderer.ts:240-298
+    const particles = particlesRef.current;
     const colorGroups = new Map<string, Particle[]>();
-    for (const p of particlesRef.current) {
+    for (const p of particles) {
       let group = colorGroups.get(p.color);
       if (!group) {
         group = [];
@@ -132,10 +146,10 @@ export function BehavioralCanvas({
       group.push(p);
     }
 
-    for (const [color, particles] of colorGroups) {
+    for (const [color, group] of colorGroups) {
       ctx.fillStyle = color;
       ctx.beginPath();
-      for (const p of particles) {
+      for (const p of group) {
         ctx.moveTo(p.x + p.size, p.y);
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
       }
@@ -146,14 +160,26 @@ export function BehavioralCanvas({
     // NOTE: NO chip drawing here. The "87 percent" chip is rendered by Plan 04
     // (BehavioralHero.tsx) as a positioned DOM element so screen readers can
     // pick it up and the coral chip inherits the page font stack.
-  }, []);
+  }, [size]);
 
   // ---- Canvas resize (ResizeObserver + DPR) -- VERBATIM REUSE
-  const sizeRef = useCanvasResize(canvasRef, render);
+  // The onResize callback writes through React state (so the init effect
+  // re-runs when size lands) and then drives an immediate render so the
+  // pre-converged frame paints before RAF kicks in.
+  useCanvasResize(
+    canvasRef,
+    useCallback(
+      (next) => {
+        setSize(next);
+        render();
+      },
+      [render],
+    ),
+  );
 
   // ---- Initialize particles + drive RAF
   useEffect(() => {
-    const { width, height } = sizeRef.current;
+    const { width, height } = size;
     if (width <= 0 || height <= 0) return;
 
     const isMobile = width < 640;
@@ -163,8 +189,44 @@ export function BehavioralCanvas({
       : PARTICLE_MOTION.brownianSigmaPxPerSec;
     const sizeMultiplier = isMobile ? PARTICLE_SIZES.mobileScale : 1;
 
-    // Uniform random distribution -- 70% coral / 30% neutral
-    particlesRef.current = Array.from({ length: count }, () => {
+    const target = {
+      x: width / 2,
+      y: height * (0.5 + PARTICLE_MOTION.targetOffsetY),
+    };
+
+    // Branch A: reduced-motion or already-played -- build particles directly
+    // at the converged cluster position (no animation needed).
+    // Building a fresh array (not mutating particlesRef.current) keeps
+    // react-hooks/immutability happy and is functionally identical.
+    if (reducedMotion || behavioralHeroAnimationComplete) {
+      const clusterRadius = Math.min(width, height) * 0.12;
+      const converged: Particle[] = Array.from({ length: count }, () => {
+        const isCoral = Math.random() < PARTICLE_COLORS.coralRatio;
+        const baseSize =
+          PARTICLE_SIZES.min +
+          Math.random() * (PARTICLE_SIZES.max - PARTICLE_SIZES.min);
+        const angle = Math.random() * Math.PI * 2;
+        const r = Math.random() * clusterRadius;
+        return {
+          x: target.x + Math.cos(angle) * r,
+          y: target.y + Math.sin(angle) * r,
+          vx: 0,
+          vy: 0,
+          color: isCoral ? PARTICLE_COLORS.coral : PARTICLE_COLORS.neutral,
+          size: baseSize * sizeMultiplier,
+        };
+      });
+      particlesRef.current = converged;
+      behavioralHeroAnimationComplete = true;
+      render();
+      return;
+    }
+
+    // Branch B: animation path -- build a local particle array, hand it to
+    // the ref so render() can read it, and mutate the local array in the RAF
+    // tick (the lint rule tracks `particlesRef` directly so we operate on a
+    // local binding that aliases the same array).
+    const particles: Particle[] = Array.from({ length: count }, () => {
       const isCoral = Math.random() < PARTICLE_COLORS.coralRatio;
       const baseSize =
         PARTICLE_SIZES.min +
@@ -178,29 +240,8 @@ export function BehavioralCanvas({
         size: baseSize * sizeMultiplier,
       };
     });
+    particlesRef.current = particles;
 
-    const target = {
-      x: width / 2,
-      y: height * (0.5 + PARTICLE_MOTION.targetOffsetY),
-    };
-
-    // Branch A: reduced-motion or already-played -- jump to converged state
-    if (reducedMotion || behavioralHeroAnimationComplete) {
-      const clusterRadius = Math.min(width, height) * 0.12;
-      for (const p of particlesRef.current) {
-        const angle = Math.random() * Math.PI * 2;
-        const r = Math.random() * clusterRadius;
-        p.x = target.x + Math.cos(angle) * r;
-        p.y = target.y + Math.sin(angle) * r;
-        p.vx = 0;
-        p.vy = 0;
-      }
-      behavioralHeroAnimationComplete = true;
-      render();
-      return;
-    }
-
-    // Branch B: animation path -- one-shot RAF for ~animationDurationMs
     startTimeRef.current = performance.now();
     lastFrameRef.current = startTimeRef.current;
 
@@ -215,7 +256,7 @@ export function BehavioralCanvas({
       const easedProgress = easeOutCubic(t);
       const k = PARTICLE_MOTION.attractorPeakStrength * easedProgress;
 
-      for (const p of particlesRef.current) {
+      for (const p of particles) {
         // Brownian (per-component independent gaussian samples)
         p.vx += gaussian() * sigmaScale * dt;
         p.vy += gaussian() * sigmaScale * dt;
@@ -246,7 +287,7 @@ export function BehavioralCanvas({
     rafId = requestAnimationFrame(tick);
 
     return () => cancelAnimationFrame(rafId);
-  }, [reducedMotion, render]);
+  }, [reducedMotion, render, size]);
 
   return (
     <canvas
