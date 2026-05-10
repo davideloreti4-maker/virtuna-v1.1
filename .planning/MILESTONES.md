@@ -1,5 +1,39 @@
 # Milestones — Virtuna
 
+## UI Dashboard (Shipped: 2026-03-18)
+
+**Delivered:** 5-phase dashboard refresh — Apollo Lite/Pro/Ultra model selector with Oracle placeholder, top-bar account chip with Instagram support, 2.5D hive visualization (depth layers, parallax, bezier connections), TikTok-style result card with predicted engagement metrics, and full state sync via simulation-store.
+
+**Phases:** 1-5 (Model Selector & Oracle Placeholder, Top Bar Account + Instagram, Hive 2.5D Visualization, TikTok Result Card, Integration & Polish)
+
+**Note:** Phase 3 visual UAT was started 2026-03-11 but not completed before the worktree was retired. Code is shipped on main; visual verification implicit via downstream usage.
+
+**Git range:** `2a2379a chore: initialize UI Dashboard milestone` → `6d7598d merge: ui-dashboard milestone into main`
+
+**Stub entry:** Detailed planning artifacts not preserved on main; backfilled 2026-05-10 from git history.
+
+---
+
+## Prediction Engine Integration (Shipped: 2026-02-27)
+
+**Delivered:** Wired the prediction engine into the dashboard frontend with infinite canvas Board view, dotted-grid background, and ContentForm/dashboard view-switcher redesign.
+
+**Git range:** `7ffc1a4 feat(ui): redesign ContentForm input and dashboard view switcher` → `843d57d merge: prediction-engine-integration milestone into main` / `8ee0aef Merge milestone/prediction-engine-integration into main`
+
+**Stub entry:** Detailed planning artifacts not preserved on main; backfilled 2026-05-10 from git history.
+
+---
+
+## Prediction Engine v2 (Shipped: 2026-02-17)
+
+**Delivered:** 15-phase ML rehabilitation — Platt calibration wired conditionally into aggregator with `is_calibrated` metadata, persona removal, video indicators on history items, benchmark documentation.
+
+**Git range:** `eb040a4 feat(15-01): wire video indicator to analysis history items` → `dd03fc7 Merge milestone/prediction-engine-v2: complete Prediction Engine v2` / `7cc2230 chore: complete Prediction Engine v2 milestone`
+
+**Stub entry:** Detailed snapshot not preserved in `.planning/milestones/`; backfilled 2026-05-10 from git history.
+
+---
+
 ## v2.1 — Dashboard Rebuild (Shipped: 2026-02-08)
 
 **Delivered:** Full dashboard rebuild with Raycast design system migration and Canvas-based hive visualization with interactive exploration (hover, click, zoom/pan, pinch-to-zoom).

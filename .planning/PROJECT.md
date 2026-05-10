@@ -163,13 +163,15 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 ## Current State
 
-**Shipped:** Backend Reliability (2026-02-18), Competitors Tool (2026-02-17), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
+**Shipped:** UI Dashboard (2026-03-18), Prediction Engine Integration (2026-02-27), Backend Reliability (2026-02-18), Prediction Engine v2 (2026-02-17), Competitors Tool (2026-02-17), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
-**Current milestone:** Prediction Engine Integration (branch: milestone/prediction-engine-integration)
+**Current milestone:** None — ready to plan next milestone
+
+**Paused:** Landing Page (branch: `milestone/landing-page`, phases 58-59 done, may revive — restore via `git worktree add ../virtuna-landing-page milestone/landing-page`)
 
 **Future milestones:**
 - External brand deals marketplace
 - Competitor search/discovery by name or niche
 
 ---
-*Last updated: 2026-02-20 — Prediction Engine Integration milestone started*
+*Last updated: 2026-05-10 — Returning after pause; reconciled .planning/ state, planning fresh milestone*
