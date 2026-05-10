@@ -785,27 +785,31 @@ This skeleton is **not** the Phase 1 deliverable — it's an illustration in the
 - A2 (Wayback timestamp choice) — researcher should confirm v1.1 milestone date from PROJECT.md timeline before pinning the snapshot.
 - A5 (GSAP pricing) — only matters if Davide wants the addendum to cite a specific cost number; otherwise "commercial license risk" is sufficient.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should the vocab-lint script be Phase 1 scope or Phase 5 scope?**
    - What we know: D-04 says BRAND-SPINE.md MUST be the source of truth Phase 2-6 obey, and the planner should produce a task that "explicitly verifies BRAND-SPINE.md compliance per section." The lint script automates that.
    - What's unclear: Whether the script ships as a Phase 1 deliverable (alongside BRAND-SPINE.md) or as part of Phase 5's "Quality Gates" task.
    - Recommendation: **Ship in Phase 1 as a minimal regex scanner** (≤100 LOC, no deps). Reasoning: Phase 2 starts immediately after Phase 1 sign-off; if vocab compliance isn't enforced from the first commit, accumulated drift across Phase 2-4 will be expensive to clean up in Phase 5.
+   - **Resolution:** RESOLVED — Phase 1 scope. Plan 04 ships `scripts/lint-vocab.mjs` + `.githooks/pre-commit` + `package.json` `scripts.lint:vocab` entry this phase. Wave 1 sibling of Plans 01 and 02; Plan 03 (Wave 2) consumes it via `node scripts/lint-vocab.mjs` for replacement-copy compliance verification.
 
 2. **Does the addendum belong inside `BRAND-BIBLE.md` or as a separate file `BRAND-VISUAL-METAPHOR.md`?**
    - What we know: D-06 says "BRAND-BIBLE.md addendum"; success criterion #3 says "BRAND-BIBLE addendum documents... as the locked visual language."
    - What's unclear: "Addendum" technically allows either inline or separate-file interpretations.
    - Recommendation: **Inline append.** Phase 2-6 readers will look for visual-language guidance inside BRAND-BIBLE.md (it's the canonical design doc). A separate file fragments the source of truth. The existing file is only 351 lines; 200+ more lines for the addendum keeps it under 600 — well within "single-file readable" range.
+   - **Resolution:** RESOLVED — inline append to `BRAND-BIBLE.md` after line 351, per Plan 02 `<append_protocol>`. The existing 348 lines (1-348) are preserved verbatim; the existing footer at lines 350-351 is replaced with an updated date stamp + appended `## Visual Metaphor Lock` section + new footer. No separate `BRAND-VISUAL-METAPHOR.md` file is created.
 
 3. **For the "tone-mimicry" pass in plagiarism audit — should this be a structured rubric or free-form prose?**
    - What we know: D-14 says "Flag both literal copy and structural mimicry (e.g., same paragraph shape, same headline pattern)."
    - What's unclear: The mechanism for flagging structural mimicry.
    - Recommendation: **Structured rubric with 4 columns: surface, structural pattern (headline / 4-card grid / FAQ accordion / quote pull), source mimicry (yes / partial / no), severity (HIGH / MED / LOW).** Free-form prose is harder to review at the end of phase.
+   - **Resolution:** RESOLVED — structured rubric per Plan 01 Task 1 spec. The Tone DO/DON'T table in `.planning/reference/BRAND-SPINE.md` §2 uses a 4-column structure (Voice trait | DO | DON'T | Why). Audit-side mimicry uses the severity rubric (HIGH/MEDIUM/LOW) documented in Plan 03 Task 2's `01-PLAGIARISM-AUDIT.md` skeleton (`<method>` block).
 
 4. **What's the canonical sample of Davide's voice for the BRAND-SPINE.md DO/DON'T examples?**
    - What we know: D-02 requires DO/DON'T copy examples; PROJECT.md has vocab guardrails; REQUIREMENTS.md has hero copy; the existing site has plagiarized copy that's NOT canonical.
    - What's unclear: Whether the writer should source DO/DON'T pairs from existing approved copy (decks? founder bio? social posts?), generate them from scratch, or pull from Davide's prior writing.
    - Recommendation: **Ask Davide for 1-2 paragraphs of his own writing on the product as voice ground truth before drafting the §2 DO/DON'T table.** A 5-minute conversation here saves hours of iteration. Failing that, generate DO/DON'T from REQUIREMENTS.md hero copy + the banned table, and let Davide redline at D-15 sign-off.
+   - **Resolution:** RESOLVED — Plan 01 Task 1 produces 6 hardcoded provisional DO/DON'T pairs derived from existing Virtuna copy: PROJECT.md vocab guardrails ("Avoid 'viral' and 'AI'... Lead with audience + behavioral + simulated language"), BRAND-BIBLE.md tone notes, and REQUIREMENTS.md hero copy locks (HERO-01..05). These pairs are explicitly **provisional**; Davide redlines at the D-15 batch sign-off captured by Plan 03 Task 3 (CONTEXT.md D-15). Cascade-rework risk is acknowledged and accepted per CONTEXT.md D-15 ("Davide accepts cascade-rework risk if early decisions get rejected").
 
 ## Environment Availability
 

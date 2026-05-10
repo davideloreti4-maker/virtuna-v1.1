@@ -46,7 +46,7 @@ created: 2026-05-10
 | 1-02-* | 02 | 1 | VIZ-01 | — | Hero behavioral-simulation visual locked in addendum | smoke | `grep -q "Behavioral Simulation\|Behavioral-Simulation" BRAND-BIBLE.md` | ❌ W0 | ⬜ pending |
 | 1-02-* | 02 | 1 | VIZ-02 | — | 4-stage engine pipeline visual locked in addendum | smoke | `grep -qE "4-stage|Engine.*Pipeline|Engine Diagram" BRAND-BIBLE.md` | ❌ W0 | ⬜ pending |
 | 1-02-* | 02 | 1 | VIZ-03 | — | Scale affordances (mobile/desktop) documented | smoke | `grep -q "Scale Affordances\|mobile scale\|reduced-motion" BRAND-BIBLE.md` | ❌ W0 | ⬜ pending |
-| 1-02-* | 02 | 1 | VIZ-04 | — | Tech rationale + bundle numbers documented | smoke | `grep -E "Canvas 2D.*30 ?KB\|motion/react.*15 ?KB\|LazyMotion" BRAND-BIBLE.md` | ❌ W0 | ⬜ pending |
+| 1-02-* | 02 | 1 | VIZ-04 | — | Tech rationale + bundle numbers documented | smoke | `grep -E "Canvas 2D.*30 ?KB|motion/react.*15 ?KB|LazyMotion" BRAND-BIBLE.md` | ❌ W0 | ⬜ pending |
 | 1-02-* | 02 | 1 | VIZ-05 | — | Composite: VIZ-01 + VIZ-02 + VIZ-03 all pass | smoke | (chained) | ❌ W0 | ⬜ pending |
 | 1-03-* | 03 | 2 | BRAND-05 | — | Plagiarism audit + replacement copy on disk | smoke | `test -f .planning/phases/01-brand-spine-visual-metaphor/01-PLAGIARISM-AUDIT.md && test -f .planning/phases/01-brand-spine-visual-metaphor/01-REPLACEMENT-COPY.md` | ❌ W0 | ⬜ pending |
 | 1-03-* | 03 | 2 | BRAND-06 | — | Hero copy signed off (D-15 batch) | manual | Davide reviews REPLACEMENT-COPY.md, marks `- [x] Davide approved YYYY-MM-DD` | — | ⬜ pending |
