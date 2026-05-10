@@ -8,6 +8,39 @@ A social media intelligence platform for TikTok creators. Helps creators predict
 
 AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
 
+## Current Milestone: Brand Statement Landing
+
+**Goal:** Ship a from-scratch landing page that codifies Virtuna's brand spine ("Your audience, simulated"), positions the product as a $100M+ venture statement piece, and locks the visual metaphor for the prediction engine across all future surfaces.
+
+**Brand spine** (used everywhere — site, deck, social bios, manifesto):
+> **Your audience, simulated.**
+
+**Hero treatment** (locked):
+- Pre-headline: `VIRTUNA · A NUMEN MACHINES PRODUCT`
+- H1: *"Predict how your audience will respond. Before you post."*
+- Sub-headline: *"Virtuna simulates your audience to forecast every video before it ships."*
+- Subline: *"Trained on decades of behavioral research. Self-improving with every outcome."*
+- CTAs: `[ Run a prediction → ]` `[ See the science ]`
+
+**Reference set** (primary): Anthropic + Linear + Raycast + Vercel.
+
+**Narrative arc** (7 viewports, single-page):
+1. Above-fold — brand stance + behavioral-simulation hero
+2. Try it — live "paste TikTok URL → see prediction" demo (placeholder viz acceptable)
+3. How it works — engine-pipeline diagram (Linear/Vercel-style)
+4. Three Surfaces — bento (Prediction · Competitor Intelligence · Brand Deals)
+5. The Science — behavioral-research moat, citation chips, dataset stats
+6. Social proof / metrics — creator quotes + accuracy + platform stats
+7. Pricing + final CTA — two-tier (Starter/Pro), Numen Machines lockup in footer
+
+**Approach:** Built from scratch on shadcn + Tailwind v4 + existing 36-component design system. Selective imports from Magic UI / Aceternity / Origin UI / Cult UI vetted to feel native to Raycast aesthetic. No template lock-in.
+
+**Audience strategy:** Single page serves three audiences — TikTok creators (primary conversion), broader short-form creators (Reels/Shorts), investors/press/partners (brand impression). Sectioned narrative serves all without splitting.
+
+**Out of scope this milestone:** in-app prediction-viz rebuild (visual metaphor locked here, implementation deferred); separate /about, /research, /manifesto pages (CTAs may stub them).
+
+**Vocab guardrails:** Avoid "viral" and "AI" in H1 / brand spine. Lead with audience + behavioral + simulated language.
+
 ## Requirements
 
 ### Validated
@@ -60,12 +93,30 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - 203+ Vitest tests, >80% coverage on all engine modules -- Backend Reliability
 - Hardened failure modes: calibration parsing, dual-LLM graceful degradation, circuit breaker mutex, creator profile trigger -- Backend Reliability
 
-### Active (Prediction Engine Integration milestone)
+### Active (Brand Statement Landing milestone)
+
+- [ ] New landing page built from scratch with shadcn + Tailwind v4 + existing 36-component design system; selective Magic UI / Aceternity / Origin UI / Cult UI imports vetted for Raycast-native feel
+- [ ] Hero (above-fold) with brand-stance H1 + behavioral-simulation visual + dual CTA
+- [ ] Live "paste TikTok URL → see prediction" demo (viewport 2) — placeholder/abstract viz acceptable
+- [ ] "How it works" engine-pipeline diagram (viewport 3) — Linear/Vercel-style with subtle motion
+- [ ] Bento "Three Surfaces" section (Prediction · Competitor Intelligence · Brand Deals) — viewport 4
+- [ ] "The Science" section (lab-coded behavioral-research moat with citation chips and dataset stats) — viewport 5
+- [ ] Social proof / metrics section (creator quotes, accuracy stats if shippable, platform metrics) — viewport 6
+- [ ] Pricing + final CTA (two-tier Starter/Pro, Numen Machines lockup in footer) — viewport 7
+- [ ] Brand-spine system codified ("Your audience, simulated." propagated across deck cover, social bios, future surfaces) — voice & language doc
+- [ ] Visual metaphor locked for prediction (behavioral simulation + engine pipeline as paired concepts) — defines future in-app viz direction
+- [ ] Reference-set fidelity audit (Anthropic + Linear + Raycast + Vercel) — landing reads at $100M+ venture quality bar
+- [ ] Mobile responsive across all 7 viewports — single-column stack, hero hierarchy preserved
+- [ ] Replace plagiarized Artificial Societies copy across all surfaces — every customer-facing word original
+
+### Backlog (deferred from prior milestones)
+
+<!-- Items deferred during prior milestone churn; reactivate selectively in future milestones. -->
 
 - [ ] History view connected to real prediction results
 - [ ] Video upload pipeline (Supabase Storage → Gemini video analysis)
 - [ ] TikTok URL extraction (Apify scrape → video content → Gemini)
-- [ ] Hive visualization wired to real prediction data
+- [ ] In-app prediction viz rebuild (replaces current hive — visual metaphor locked in Brand Statement Landing milestone, implementation deferred)
 - [ ] DeepSeek reasoning exposed in results UI
 - [ ] Niche/hashtag fields functional in prediction flow
 - [ ] Data integrity (is_calibrated migration, reasoning field storage)
@@ -87,6 +138,9 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - Mobile native app -- web-first
 - TikTok OAuth -- manual @handle input sufficient for MVP
 - Sound design -- future polish
+- Reviving paused `milestone/landing-page` branch -- starting fresh per Brand Statement Landing milestone; old branch abandoned
+- "Viral" and "AI" in landing H1 / brand spine -- overused; weakens $100M+ venture positioning
+- Maximalist motion-template aesthetic (animated beams everywhere, neon glow) -- conflicts with Anthropic/Linear/Raycast vibe
 
 ## Context
 
@@ -165,13 +219,32 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 **Shipped:** UI Dashboard (2026-03-18), Prediction Engine Integration (2026-02-27), Backend Reliability (2026-02-18), Prediction Engine v2 (2026-02-17), Competitors Tool (2026-02-17), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
-**Current milestone:** None — ready to plan next milestone
+**Current milestone:** Brand Statement Landing — landing-page rebuild from scratch + brand-spine codification (started 2026-05-10)
 
-**Paused:** Landing Page (branch: `milestone/landing-page`, phases 58-59 done, may revive — restore via `git worktree add ../virtuna-landing-page milestone/landing-page`)
+**Paused:** None (`milestone/landing-page` branch officially abandoned in favor of fresh start)
 
 **Future milestones:**
+- In-app prediction viz rebuild (uses visual metaphor locked in Brand Statement Landing)
+- /about, /research, /manifesto supporting pages (extend brand spine)
 - External brand deals marketplace
 - Competitor search/discovery by name or niche
 
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
 ---
-*Last updated: 2026-05-10 — Returning after pause; reconciled .planning/ state, planning fresh milestone*
+*Last updated: 2026-05-10 — Started Brand Statement Landing milestone (landing-page rebuild + brand-spine codification)*
