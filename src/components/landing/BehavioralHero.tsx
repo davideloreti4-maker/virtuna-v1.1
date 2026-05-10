@@ -142,15 +142,19 @@ export function BehavioralHero({ className }: BehavioralHeroProps) {
 
             {/* ----- DOM-accessible confidence chip overlay (HERO-06) ----- */}
             {/* Orchestrator decision #6: chip is a real <div>, NOT canvas text. */}
-            {/* role="status" + aria-live="off" -- value is static after mount; */}
-            {/* screen readers announce on focus / page scan via aria-label. */}
+            {/* The value is static after mount, so the chip is NOT a live */}
+            {/* region -- it announces only when a screen reader scans the page. */}
+            {/* The previous `role="status"` + `aria-live="off"` combination was */}
+            {/* internally contradictory (role="status" implies aria-live="polite") */}
+            {/* and is dropped here; the chip stays decorative-but-labelled via */}
+            {/* aria-label so assistive tech still gets the figure. WR-04. */}
+            {/* Paired with WR-03 (canvas is aria-hidden), this is now the */}
+            {/* single accessible announcement of the 87 figure. */}
             {/* pointer-events-none makes the chip decorative (no click target) */}
             {/* per CONTEXT.md Deferred Ideas -- chip is illustration, not interactive. */}
             {/* Positioned at top: 45% (matches PARTICLE_MOTION.targetOffsetY) so */}
             {/* the chip center aligns with the canvas particle convergence point. */}
             <div
-              role="status"
-              aria-live="off"
               aria-label={`Predicted audience response confidence: ${CONFIDENCE_CHIP.label}`}
               className="pointer-events-none absolute left-1/2 -translate-x-1/2 -translate-y-1/2 font-sans"
               style={{
