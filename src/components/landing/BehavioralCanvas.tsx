@@ -81,12 +81,19 @@ interface BehavioralCanvasProps {
 /**
  * Box-Muller transform for a standard-normal Gaussian sample (mean 0,
  * variance 1). Used for Brownian velocity perturbation each frame.
+ *
+ * Rejects `Math.random() === 0` because `Math.log(0) === -Infinity`
+ * propagates `NaN` into particle velocity (and, transitively, every
+ * subsequent frame's position math) -- a particle with NaN velocity
+ * disappears for the rest of the session, since `ctx.arc(NaN, NaN, ...)`
+ * is a no-op. Probability per call is ~1 / 2^53, but gaussian() runs
+ * ~2 * 250 * 132 = ~66k times per page-view, so the bug is reachable
+ * over a long-enough horizon. WR-02.
  */
-function gaussian(): number {
-  return (
-    Math.sqrt(-2 * Math.log(Math.random())) *
-    Math.cos(2 * Math.PI * Math.random())
-  );
+export function gaussian(): number {
+  let u = 0;
+  while (u === 0) u = Math.random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * Math.random());
 }
 
 // ---------------------------------------------------------------------------
