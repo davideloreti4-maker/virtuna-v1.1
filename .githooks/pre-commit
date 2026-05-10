@@ -1,5 +1,15 @@
 #!/bin/sh
 # Vocab guardrail: block commits that introduce banned brand-spine vocabulary.
 # See .planning/reference/BRAND-SPINE.md §4 for the rules.
+# Only lints files staged in this commit (under allowlisted roots — the script enforces this).
 # Bypass for emergency: git commit --no-verify (use sparingly).
-node scripts/lint-vocab.mjs src/app src/components/landing src/components/onboarding || exit 1
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^(src/app|src/components/landing|src/components/onboarding)/.*\.(ts|tsx|md)$')
+
+if [ -z "$STAGED" ]; then
+  # No staged files under guardrail-protected roots — skip lint.
+  exit 0
+fi
+
+# shellcheck disable=SC2086
+node scripts/lint-vocab.mjs $STAGED || exit 1

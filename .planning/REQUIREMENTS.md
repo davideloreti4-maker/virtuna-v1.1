@@ -1,249 +1,255 @@
-# Requirements: Brand Statement Landing
+# Requirements — Engine Foundation Milestone
 
-**Defined:** 2026-05-10
-**Milestone:** Brand Statement Landing
-**Core Value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
+**Milestone goal:** Build, train, and validate the content intelligence engine. Ship measurable accuracy improvements before UX investment.
 
-**Brand spine** (used everywhere): *"Your audience, simulated."*
-
-**Hero treatment** (locked):
-- Pre-headline: `VIRTUNA · A NUMEN MACHINES PRODUCT`
-- H1: *"Predict how your audience will respond. Before you post."*
-- Sub-headline: *"Virtuna simulates your audience to forecast every video before it ships."*
-- Subline: *"Trained on decades of behavioral research. Self-improving with every outcome."*
-- CTAs: `Run a prediction →` (primary) + `See the science` (secondary)
-
-**Reference set:** Anthropic + Linear + Raycast + Vercel.
-
-**Quality bar:** Every section reads at a $100M+ venture standard against the reference set.
+**Acceptance gate:** Engine v3 demonstrates measurable accuracy improvement vs v2.1 baseline on training corpus. Target threshold set in Phase 1 after baseline measurement.
 
 ---
 
-## v1 Requirements
+## Training Corpus
 
-### Hero / Above-fold (HERO)
+<!-- The unlock — labeled training data scraped from competitor videos with known outcomes. -->
 
-- [ ] **HERO-01**: Pre-headline lockup `VIRTUNA · A NUMEN MACHINES PRODUCT` rendered in small monospaced uppercase, restrained
-- [ ] **HERO-02**: H1 "Predict how your audience will respond. Before you post." rendered oversized, light weight, Inter, with two-line break preserved on all viewports
-- [ ] **HERO-03**: Sub-headline "Virtuna simulates your audience to forecast every video before it ships." rendered medium weight, distinct hierarchy from H1
-- [ ] **HERO-04**: Subline carries behavioral-research moat language (decades of research, self-improving) without "viral" or "AI"
-- [ ] **HERO-05**: Dual CTA — primary `Run a prediction →` (auth-gated, routes to dashboard) + secondary `See the science` (jumps to Science section)
-- [ ] **HERO-06**: Behavioral-simulation visual — animated audience-particles reacting to a video stimulus, aggregating into a confidence score
-- [ ] **HERO-07**: Ambient gradient backdrop using coral #FF7F50 + Raycast neutral palette; subtle, non-distracting, respects reduced-motion
-- [ ] **HERO-08**: Mobile hero stacks vertically with hero hierarchy preserved; behavioral simulation scales gracefully or simplifies under 640px
-- [ ] **HERO-09**: Above-fold passes reference-fidelity audit against Anthropic / Linear / Vercel / Raycast comparable heroes
-- [ ] **HERO-10**: Hero copy contains zero "viral" or "AI" terms (vocab guardrail)
+- [ ] **CORPUS-01**: 500-video training corpus built, stratified across 100 viral / 200 average / 200 underperforming
+- [ ] **CORPUS-02**: 30-day rolling refresh mechanism (Apify scrape scheduled)
+- [ ] **CORPUS-03**: Multi-niche coverage — minimum 5 niches represented (beauty, fitness, edu, comedy, lifestyle)
+- [ ] **CORPUS-04**: Outcome metadata captured per video — views, completion %, shares, comments, saves, creator follower tier
+- [ ] **CORPUS-05**: Outcome bucketing logic (viral / average / underperforming thresholds per niche percentile)
+- [ ] **CORPUS-06**: Corpus storage schema in Supabase (`training_corpus` table with video metadata + outcomes)
+- [ ] **CORPUS-07**: Apify scrape job for corpus refresh (separate from competitor scraping)
+- [ ] **CORPUS-08**: Corpus quality validation (no duplicates, valid outcomes, recent within window)
 
-### Try It / Live Demo (DEMO)
+## Evaluation Framework
 
-- [ ] **DEMO-01**: TikTok URL input field with controlled state and pattern validation
-- [ ] **DEMO-02**: On submit, prediction result UI renders (placeholder/abstract viz acceptable for this milestone)
-- [ ] **DEMO-03**: Loading state shows simulated processing steps for 3-5 seconds — visible "engine working" feedback
-- [ ] **DEMO-04**: Result includes prediction score + confidence interval + 1-2 audience-response indicators (e.g. "78% of your audience would watch past 3s")
-- [ ] **DEMO-05**: Empty / error / invalid-URL states render friendly recovery UI; never broken-looking
-- [ ] **DEMO-06**: "Try a sample video" fallback button with pre-baked URL for visitors who don't want to paste their own
-- [ ] **DEMO-07**: Demo viewport scrolls naturally from hero (no scroll-jacking)
-- [ ] **DEMO-08**: Mobile demo flow has no horizontal scroll, input is keyboard-friendly
+<!-- Objective measurement of engine accuracy before/after each change. -->
 
-### How It Works (WORKS)
+- [ ] **EVAL-01**: Engine evaluation harness runs predictions across full corpus, batched
+- [ ] **EVAL-02**: Accuracy metrics computed — prediction error vs actual (MAE for engagement, classification accuracy for viral bucket)
+- [ ] **EVAL-03**: Per-signal contribution analysis — which signals add accuracy, which subtract
+- [ ] **EVAL-04**: Calibration drift measurement — how well predicted percentiles map to actual percentiles
+- [ ] **EVAL-05**: Regression detection — compare engine versions, flag accuracy decrease
+- [ ] **EVAL-06**: Benchmark report generation (markdown summary + JSON metrics, persisted)
+- [ ] **EVAL-07**: Pass/fail gate against accuracy target (defined in Phase 1)
+- [ ] **EVAL-08**: Baseline measurement of current engine (v2.1) on corpus before any changes ship
 
-- [ ] **WORKS-01**: Engine-pipeline diagram showing 4 stages — video → analyze → simulate audience → predict
-- [ ] **WORKS-02**: Subtle motion triggered by intersection observer; pulses through stages once on viewport entry, not loop-spam
-- [ ] **WORKS-03**: Each stage has 1-line label and iconographic representation
-- [ ] **WORKS-04**: Section headline frames the moat without duplicating hero language
-- [ ] **WORKS-05**: Mobile renders vertical stage stack with same labels and icons; motion preserved or simplified
-- [ ] **WORKS-06**: Pipeline visual reads as Linear/Vercel-style structured (not Magic UI maximalist)
+## Creator Profile + Interview
 
-### Three Surfaces / Bento (SURF)
+<!-- 9-card modal on first upload click. Skippable individually, flow mandatory. -->
 
-- [ ] **SURF-01**: Bento grid with 3 cells — Prediction · Competitor Intelligence · Brand Deals (existing validated capabilities)
-- [ ] **SURF-02**: Each cell contains short headline + 1-sentence description + mini-screenshot or abstract iconography + "Learn more" link (CTA stub if destination doesn't exist yet)
-- [ ] **SURF-03**: Cells use Raycast card pattern — bg-transparent, 6% borders, 12px radius, inset shadow per BRAND-BIBLE
-- [ ] **SURF-04**: Hover state on each cell is `bg-white/[0.02]` only — no translate-y, no border change (Raycast convention)
-- [ ] **SURF-05**: Mobile collapses to 1-column stack; cell heights normalize for visual consistency
-- [ ] **SURF-06**: Section frames Virtuna as a *platform* rather than single tool — multi-audience signal
+- [ ] **PROFILE-01**: `creator_profiles` table schema in Supabase with RLS policies
+- [ ] **PROFILE-02**: 9-card interview modal flow with progressive disclosure
+- [ ] **PROFILE-03**: Card 0 — Target platform (multi-select: TikTok, IG Reels, YT Shorts)
+- [ ] **PROFILE-04**: Card 1 — Niche (hierarchical: primary → sub-niche → micro-niche)
+- [ ] **PROFILE-05**: Card 2 — Target audience (age range, gender skew, geo, language)
+- [ ] **PROFILE-06**: Card 3 — Goal (growth / engagement / brand deals / conversion) + stage (new / growing / established)
+- [ ] **PROFILE-07**: Card 4 — Content style (talking head / B-roll / edu / comedy / tutorial / vlog) + cuts/sec preference
+- [ ] **PROFILE-08**: Card 5 — Reference creators (1-3 aspirational, adds to scrape queue if not present)
+- [ ] **PROFILE-09**: Card 6 — Past wins (1-2 URLs) + past flops (1-2 URLs)
+- [ ] **PROFILE-10**: Card 7 — Posting cadence (frequency + time-of-day awareness)
+- [ ] **PROFILE-11**: Card 8 — Pain points (text input)
+- [ ] **PROFILE-12**: Truthfulness messaging surfaced — UI emphasizes honest answers improve prediction accuracy
+- [ ] **PROFILE-13**: Individual cards skippable; full flow mandatory before first analysis
+- [ ] **PROFILE-14**: Modal-on-first-upload-click trigger (intercept upload action for users without profile)
+- [ ] **PROFILE-15**: Edit-from-settings flow allows profile updates anytime
+- [ ] **PROFILE-16**: Re-prompt micro-card every 10 analyses (single question, "Is your goal still X?")
+- [ ] **PROFILE-17**: Profile loaded into every analysis as enriched `CreatorContext` (extends existing `creator.ts`)
 
-### The Science (SCI)
+## Pipeline Infrastructure
 
-- [ ] **SCI-01**: Section headline frames behavioral-research moat (e.g. "Why audience matters more than trends")
-- [ ] **SCI-02**: 3-5 citation chips or research surfaces — datasets, papers, principles — surface credibility without academic stuffiness
-- [ ] **SCI-03**: Dataset stats — number of behavioral data points, training scale, or honest "growing dataset" framing if not yet impressive
-- [ ] **SCI-04**: Self-improving loop visualized — feedback → retrain → improve as small inline diagram or kinetic text
-- [ ] **SCI-05**: Lab-coded aesthetic — monospace accents, restrained color, research-paper feel; Anthropic-grade polish, not academic ugliness
-- [ ] **SCI-06**: Section reads as Numen Machines lab credibility without overselling or fabricating
+<!-- Event callback, versioning, provenance — sets up SSE infra for M2 viz. -->
 
-### Social Proof / Metrics (PROOF)
+- [ ] **PIPE-01**: `onStageEvent` callback parameter added to `runPredictionPipeline()` (optional, backward-compatible)
+- [ ] **PIPE-02**: Pipeline event schema defined (stage start/end, per-signal results, persona reactions, costs)
+- [ ] **PIPE-03**: Stage events emitted at each `timed()` boundary
+- [ ] **PIPE-04**: SSE infrastructure in `/api/analyze` route (Vercel-compatible streaming)
+- [ ] **PIPE-05**: Engine version tagged on every prediction (`engine_version` field; v3.0.0 after this milestone)
+- [ ] **PIPE-06**: Prediction provenance — which signals fired, which degraded, signal availability flags persisted
+- [ ] **PIPE-07**: Wave 0 stage support (V3 calls before Wave 1)
+- [ ] **PIPE-08**: Wave 3 stage support (parallel persona simulation after Wave 2)
+- [ ] **PIPE-09**: Stage 10 (self-critique) and Stage 11 (counterfactuals) added post-aggregator
 
-- [ ] **PROOF-01**: 3-5 creator quotes with attribution — handle, niche, follower count if shippable
-- [ ] **PROOF-02**: Quotes use marquee or static grid; chosen format vetted for Raycast-native feel
-- [ ] **PROOF-03**: Platform metrics — predictions run, creators using Virtuna, accuracy / confidence intervals — only metrics that hold up under scrutiny ship here
-- [ ] **PROOF-04**: Honest framing — early-stage metrics framed as "early signal" rather than fake-impressive numbers
-- [ ] **PROOF-05**: Optional logo strip if any meaningful brand partnerships exist; skip if forced
+## Caching Layer
 
-### Pricing & Conversion (PRICE)
+<!-- 30-40% cost reduction on heavy users, sub-5s latency on re-uploads. -->
 
-- [ ] **PRICE-01**: Two-tier comparison — Starter (free or low) vs Pro (paid) with feature matrix
-- [ ] **PRICE-02**: Pricing card uses Raycast card aesthetic; primary CTA highlighted on Pro tier
-- [ ] **PRICE-03**: 7-day Pro trial messaging surfaced (matches existing Whop integration)
-- [ ] **PRICE-04**: Single primary CTA at bottom — "Start free" or "Run a prediction" — reuses existing dashboard auth flow
-- [ ] **PRICE-05**: Footer with Numen Machines lockup, social links, legal links, copyright
-- [ ] **PRICE-06**: Mobile pricing cards stack vertically; comparison reflows clearly without losing scan-ability
+- [ ] **CACHE-01**: Content hash computed on video upload (SHA-256 of buffer)
+- [ ] **CACHE-02**: Cache lookup by content hash before pipeline runs; return cached result if hit
+- [ ] **CACHE-03**: Persona prompt caching via DeepSeek input cache (80% input discount)
+- [ ] **CACHE-04**: Niche taxonomy cached in-memory (no DB roundtrip per analysis)
+- [ ] **CACHE-05**: Cache TTL policy (24h for full predictions, 7d for niche taxonomy, persistent for persona prompts)
+- [ ] **CACHE-06**: Cache invalidation triggers on engine version bump
 
-### Brand Spine & Voice (BRAND)
+## Content Type + Niche Detection (Wave 0)
 
-- [ ] **BRAND-01**: Brand spine "Your audience, simulated." codified in `.planning/reference/BRAND-SPINE.md` as the canonical one-liner
-- [ ] **BRAND-02**: Voice & language doc captures tone, vocab guardrails (avoid "viral" / "AI" / "go viral" / generic marketing-speak), preferred verbs (predict, simulate, forecast, learn, improve)
-- [ ] **BRAND-03**: Numen Machines lockup pattern documented — when to lead with it vs use as tag
-- [ ] **BRAND-04**: Three-audience framing (creators primary; investors/partners absorb) encoded in voice doc
-- [ ] **BRAND-05**: Plagiarized Artificial Societies copy replaced across the live site — every customer-facing word audited for originality
-- [ ] **BRAND-06**: Headline + subline + CTA copy authored to brand-spine standard before build, signed off by Davide
+<!-- Pre-Wave 1 classification drives downstream signal weighting. -->
 
-### Build & Quality (BUILD)
+- [ ] **CONTENT-01**: Content type classifier (V3, ~$0.001/call) — talking head / B-roll / slideshow / action / tutorial / vlog
+- [ ] **CONTENT-02**: Hierarchical niche detector (V3, ~$0.001/call) — primary / sub-niche / micro-niche from content + creator profile
+- [ ] **CONTENT-03**: Niche taxonomy stored as tree structure with mappings to persona archetypes and benchmark filters
+- [ ] **CONTENT-04**: Content-type-aware signal weighting passed to aggregator (e.g., slideshows down-weight pacing signal)
 
-- [ ] **BUILD-01**: Built from scratch on shadcn primitives + Tailwind v4 + existing 36-component design system
-- [ ] **BUILD-02**: External component imports (Magic UI / Aceternity / Origin UI / Cult UI) vetted for Raycast-native feel; rejection criteria documented
-- [ ] **BUILD-03**: Lighthouse ≥ 95 on Performance / Accessibility / Best Practices, mobile and desktop
-- [ ] **BUILD-04**: Core Web Vitals — LCP < 2.5s, CLS < 0.1, INP < 200ms
-- [ ] **BUILD-05**: WCAG AA throughout; reduced-motion fallback for all animations; full keyboard navigation
-- [ ] **BUILD-06**: Mobile responsiveness verified across all 7 viewports on iPhone-class viewport (375px) and tablet
-- [ ] **BUILD-07**: Reference-fidelity audit — each viewport reviewed against Anthropic / Linear / Vercel / Raycast equivalents; passes $100M+ bar
-- [ ] **BUILD-08**: TypeScript strict; zero `any`; `pnpm lint` and `pnpm build` clean
-- [ ] **BUILD-09**: Replaces existing `/src/app/page.tsx` (live landing page); no parallel `/landing-v2` route — this *is* the landing
-- [ ] **BUILD-10**: Auth-gated CTAs route correctly to dashboard onboarding for logged-out vs logged-in users
+## Video Segmentation
 
-### Visual Metaphor Lock (VIZ)
+<!-- Native Gemini videoMetadata — single upload, parallel scoped calls. -->
 
-- [ ] **VIZ-01**: Behavioral-simulation visual concept locked — animated audience particles reacting to a video stimulus, aggregating into a confidence score
-- [ ] **VIZ-02**: Engine-pipeline visual concept locked — 4-stage diagram (analyze → simulate → predict → score) with subtle pulse motion
-- [ ] **VIZ-03**: Visual concepts work at hero scale, mobile scale, and future in-app embed scale
-- [ ] **VIZ-04**: Implementation choice (canvas / SVG / WebGL / framer-motion / motion / GSAP) decided in plan-phase research; performance budget < 50KB JS for hero motion
-- [ ] **VIZ-05**: Both visuals documented in BRAND-BIBLE addendum as "the visual language of Virtuna" — used everywhere going forward
+- [ ] **SEGMENT-01**: Gemini 2.5 Pro analysis of hook segment (0-3s) via `videoMetadata: { startOffset, endOffset }`
+- [ ] **SEGMENT-02**: Gemini 2.5 Flash analysis of body segment (3s → end-3s) via `videoMetadata`
+- [ ] **SEGMENT-03**: Gemini 2.5 Flash analysis of CTA segment (last 3s) via `videoMetadata`
+- [ ] **SEGMENT-04**: Parallel execution of 3 segments (single Gemini Files upload reused)
+- [ ] **SEGMENT-05**: Segment results merged into single Gemini analysis output (timestamps preserved)
+- [ ] **SEGMENT-06**: Model selection per segment configurable via env
+
+## Multi-Modal Hook Decomposition
+
+<!-- Decompose the 0-3s hook into 4 sub-signals + cross-modal scores. -->
+
+- [ ] **HOOK-01**: Visual stop power score (0-10, from Pro hook segment)
+- [ ] **HOOK-02**: Audio hook quality score (0-10, first 2s audio analysis)
+- [ ] **HOOK-03**: Text overlay readability + impact score (0-10)
+- [ ] **HOOK-04**: First-words / speech hook score (0-10, transcription-based)
+- [ ] **HOOK-05**: Weakest hook modality identified (one of visual/audio/text/speech)
+- [ ] **HOOK-06**: Visual-audio coherence score — mood match across modalities (0-10)
+- [ ] **HOOK-07**: Cognitive load score — information density per second (0-10, higher = more load = lower retention)
+
+## Audio Analysis
+
+<!-- Fill the no-op stage with real audio signals. -->
+
+- [ ] **AUDIO-01**: Audio analysis stage replaces existing no-op (`audioResult: null` → real result)
+- [ ] **AUDIO-02**: Voice clarity / SNR score (0-10)
+- [ ] **AUDIO-03**: Audio hook score for first 2s (0-10)
+- [ ] **AUDIO-04**: Silence / voiceover / music ratio computed
+- [ ] **AUDIO-05**: Audio fingerprint matching against trending sounds DB (replaces fuzzy string match)
+- [ ] **AUDIO-06**: Trending sound detection: bool + velocity (rising / peak / declining)
+
+## Multi-Persona Simulation (Wave 3)
+
+<!-- 10 personas allocated FYP-first. The defining engine improvement. -->
+
+- [ ] **PERSONA-01**: 10-persona simulation running in Wave 3 of pipeline (parallel V3 calls)
+- [ ] **PERSONA-02**: 6 FYP non-follower personas (demographically diverse — Gen Z, Millennial, female/male skew, geo variants)
+- [ ] **PERSONA-03**: 2 niche-aligned discovery personas (already-interested in topic but new to creator)
+- [ ] **PERSONA-04**: 1 returning follower / loyalist persona
+- [ ] **PERSONA-05**: 1 cross-niche curiosity persona
+- [ ] **PERSONA-06**: Per-persona output schema: scroll-past second, watch-through %, comment intent, share intent, save intent
+- [ ] **PERSONA-07**: Persona allocation tunable per content type (FYP-heavy for short discovery content, follower-heavier for serial/community content)
+- [ ] **PERSONA-08**: Persona definitions cached for cost efficiency (DeepSeek input cache + niche-specific variants)
+- [ ] **PERSONA-09**: `deepseek-chat` (V3) model used for all persona calls; configurable via env
+- [ ] **PERSONA-10**: Aggregate persona outputs into behavioral signal (replaces single DeepSeek behavioral_predictions)
+- [ ] **PERSONA-11**: Per-persona drop-off second stored on prediction (feeds retention curve in M2)
+
+## Benchmark Retrieval (pgvector)
+
+<!-- Top-K similar competitor videos as evidence. -->
+
+- [ ] **RETRIEVAL-01**: `pgvector` extension installed in Supabase
+- [ ] **RETRIEVAL-02**: Competitor video embedding pipeline (embeddings computed at scrape time, stored in `competitor_videos.embedding` column)
+- [ ] **RETRIEVAL-03**: Predict-time embedding of input video summary (text-embedding-3-small or Gemini embedding)
+- [ ] **RETRIEVAL-04**: Top-K similarity search (K=5) filtered by niche, platform, creator tier
+- [ ] **RETRIEVAL-05**: Similar videos returned as `retrieval_evidence` field on prediction (top 5 with similarity scores + outcomes)
+- [ ] **RETRIEVAL-06**: Backfill embedding pipeline for existing competitor videos (one-time job)
+
+## Platform Algorithm Fit
+
+<!-- Per-platform signal weighting + creator-tier awareness. -->
+
+- [ ] **ALGO-01**: TikTok algorithm fit signal — completion >> shares > saves > comments > likes
+- [ ] **ALGO-02**: Instagram Reels algorithm fit signal — sends-to-DM > comments > shares > saves + original audio bonus + watermark penalty
+- [ ] **ALGO-03**: YouTube Shorts algorithm fit signal — watch time + subscribes > replays > likes
+- [ ] **ALGO-04**: Per-platform fit score computed and returned on prediction (one score per platform user targets in Card 0)
+- [ ] **ALGO-05**: Creator-tier-aware adjustment (nano-creator algo favor on TikTok, established-creator penalty for low engagement, etc.)
+- [ ] **ALGO-06**: Watermark detection on uploaded video (Gemini prompt extension, ~free) — flags for IG penalty
+
+## Self-Critique + Counterfactuals
+
+<!-- Honest accuracy via second-pass reasoning. -->
+
+- [ ] **CRITIQUE-01**: Self-critique V3 call on aggregator output
+- [ ] **CRITIQUE-02**: Critique cross-references creator's past wins/flops (Card 6) — flags when prediction contradicts creator history
+- [ ] **CRITIQUE-03**: Critique adjusts `confidence` field downward when reasoning is internally inconsistent
+- [ ] **COUNTER-01**: Counterfactual suggestions generated via V3 ("what if hook moved to 0:02")
+- [ ] **COUNTER-02**: Counterfactuals tied to timestamped suggestions + retention curve drop points
+- [ ] **COUNTER-03**: Counterfactuals returned in prediction result, available to all tiers (no premium gate)
+- [ ] **COUNTER-04**: Anti-virality "this will likely flop" warning when prediction confidence is high but score is low
+
+## ML Classifier Audit + Calibration
+
+<!-- The corpus enables this work. -->
+
+- [ ] **ML-01**: Run existing ML classifier against corpus benchmark — measure current accuracy
+- [ ] **ML-02**: Accuracy report with current weight (0.15) impact analysis — does ML signal help or hurt?
+- [ ] **ML-03**: Decision: retrain on corpus, down-weight, or disable signal
+- [ ] **ML-04**: Platt calibration training on corpus predictions vs actual outcomes
+- [ ] **ML-05**: `is_calibrated` flag flips to `true` for predictions where calibration applies
+- [ ] **ML-06**: ML weights file regenerated if retrained (commit to repo)
+
+## Aggregator Extension
+
+<!-- SignalAvailability pattern extends naturally. -->
+
+- [ ] **AGG-01**: SignalAvailability extended with new signals — personas, audio, retrieval, hook, algo-fit
+- [ ] **AGG-02**: Dynamic weight redistribution rules updated for new signals
+- [ ] **AGG-03**: Engine version bumped to v3.0.0 in `ENGINE_VERSION` constant
+- [ ] **AGG-04**: PredictionResult schema extended with new fields (per-persona reactions, hook decomp, retrieval evidence, algo-fit per platform, counterfactuals, critique notes)
+- [ ] **AGG-05**: Existing 203 tests pass without modification (additive change discipline)
+- [ ] **AGG-06**: New aggregator tests cover dynamic redistribution with new signals
+
+## Integration + Privacy
+
+<!-- Wire to existing UI; honest video retention. -->
+
+- [ ] **INT-01**: Existing `/api/analyze` endpoint switched to new pipeline (Engine v3)
+- [ ] **INT-02**: Existing `src/components/app/video-upload.tsx` integrated with creator profile gate
+- [ ] **INT-03**: Existing dashboard renders updated `PredictionResult` (basic display; polished card ships in M2)
+- [ ] **INT-04**: Existing onboarding (TikTok handle + goal personalization + 4 tooltips) integrates with 9-card profile (no duplication)
+- [ ] **INT-05**: Storage retention policy — uploaded videos auto-deleted after 30 days unless user opts in to "save for re-analysis"
+- [ ] **INT-06**: Retention policy surfaced in upload UI before user uploads
+- [ ] **INT-07**: GDPR-compliant: user can request video deletion + profile data export
+
+## Acceptance Benchmark
+
+<!-- Ship gate: engine must measurably improve. -->
+
+- [ ] **BENCH-01**: Full benchmark run on corpus before milestone completion
+- [ ] **BENCH-02**: Target accuracy improvement vs v2.1 baseline met (target set in Phase 1)
+- [ ] **BENCH-03**: Cost per analysis within budget — ≤$0.075 average (~$0.065 target with off-peak)
+- [ ] **BENCH-04**: Calibration loss reduced vs v2.1 baseline
+- [ ] **BENCH-05**: No regressions in existing 203 tests
+- [ ] **BENCH-06**: Per-signal contribution analysis shows new signals contribute positively (none subtract)
 
 ---
 
-## Future Requirements (deferred)
+## Out of Scope (Intelligence Surface Milestone)
 
-### Supporting Pages
+- Live audience simulation viz (SSE-driven hive extension)
+- Polished result card UI (retention curve, persona panels, hook decomp UI, similar videos panel, reasoning narrative card, confidence/calibration banner UI)
+- Mobile-first analysis route (camera roll picker, paste-from-clipboard, simplified card, push notif)
+- Concept mode (text-only "predict this idea" before filming)
+- A/B variant generation (alternate hook scripts, side-by-side predictions)
+- Hook archetype library (pre-curated successful hook patterns)
+- Trend velocity / lifecycle prediction
+- Cross-platform repurposing analysis ("same content scored per platform")
+- Comparative baseline display ("X% vs your average")
+- Emotion arc visualization
+- Anti-virality / don't-post-yet UI surfaces (logic ships M1, surfacing waits for M2)
+- Watermark detection UI surface (detection ships M1, UI waits for M2)
 
-- **PAGES-01**: /about page extending brand spine
-- **PAGES-02**: /research or /science page with deeper behavioral-research story
-- **PAGES-03**: /manifesto page (Numen Machines → Virtuna lineage)
-- **PAGES-04**: Press kit page with media assets
-- **PAGES-05**: Founders / team section with photos and bios
+## Deferred (Future Milestones)
 
-### Long-form & Content
-
-- **CONTENT-01**: Long-form blog architecture for research posts
-- **CONTENT-02**: Changelog / "what's new" page
-
-### Optimization
-
-- **OPT-01**: A/B testing framework for hero variants
-- **OPT-02**: Light-mode variant for landing
-- **OPT-03**: i18n / multi-language support
-- **OPT-04**: Sound design / audio reactivity in behavioral simulation
-
-### In-app Continuation
-
-- **APP-01**: In-app prediction viz rebuild using locked visual metaphor (separate future milestone)
-
----
-
-## Out of Scope (this milestone)
-
-| Feature | Reason |
-|---------|--------|
-| Reviving paused `milestone/landing-page` branch | Officially abandoned in favor of fresh start |
-| In-app prediction viz implementation | Visual metaphor locked here; build deferred to a separate milestone |
-| Separate /about, /research, /manifesto pages | Out of scope this milestone; landing CTAs may stub them |
-| Maximalist motion-template aesthetic (animated beams everywhere, neon glow, particle swarms) | Conflicts with Anthropic / Linear / Raycast reference vibe |
-| "Viral" and "AI" in H1 / brand spine | Overused, weakens $100M+ venture positioning |
-| Multi-language i18n | English-only first |
-| Storybook integration for landing-only components | Existing showcase sufficient |
-| Dedicated mobile native landing | Web responsive sufficient |
-| Real-time A/B testing infrastructure | Premature; ship one strong v1 first |
-| TikTok OAuth on landing | Manual @handle input sufficient; matches existing onboarding |
-
----
+- Outcome auto-scraper (post-analysis automatic outcome ingestion from creator's posted content)
+- Creator-fingerprint embedding from past 20 videos (interview cards seed it manually for now)
+- TikTok Insights / IG OAuth integration (creator analytics)
+- Multi-language / region-specific predictions
+- Brand-deal alignment scoring (lives in Brand Deals tool)
+- TikTok Shop / commerce scoring
+- Collaboration / guest analysis
+- Audience drift detection (30-day longitudinal)
+- Shadow-ban detection
 
 ## Traceability
 
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| BRAND-01 | Phase 1 | Pending |
-| BRAND-02 | Phase 1 | Pending |
-| BRAND-03 | Phase 1 | Pending |
-| BRAND-04 | Phase 1 | Pending |
-| BRAND-05 | Phase 1 | Pending |
-| BRAND-06 | Phase 1 | Pending |
-| VIZ-01 | Phase 1 | Pending |
-| VIZ-02 | Phase 1 | Pending |
-| VIZ-03 | Phase 1 | Pending |
-| VIZ-04 | Phase 1 | Pending |
-| VIZ-05 | Phase 1 | Pending |
-| BUILD-01 | Phase 2 | Pending |
-| BUILD-02 | Phase 2 | Pending |
-| HERO-01 | Phase 2 | Pending |
-| HERO-02 | Phase 2 | Pending |
-| HERO-03 | Phase 2 | Pending |
-| HERO-04 | Phase 2 | Pending |
-| HERO-05 | Phase 2 | Pending |
-| HERO-06 | Phase 2 | Pending |
-| HERO-07 | Phase 2 | Pending |
-| HERO-08 | Phase 2 | Pending |
-| HERO-09 | Phase 2 | Pending |
-| HERO-10 | Phase 2 | Pending |
-| DEMO-01 | Phase 3 | Pending |
-| DEMO-02 | Phase 3 | Pending |
-| DEMO-03 | Phase 3 | Pending |
-| DEMO-04 | Phase 3 | Pending |
-| DEMO-05 | Phase 3 | Pending |
-| DEMO-06 | Phase 3 | Pending |
-| DEMO-07 | Phase 3 | Pending |
-| DEMO-08 | Phase 3 | Pending |
-| WORKS-01 | Phase 3 | Pending |
-| WORKS-02 | Phase 3 | Pending |
-| WORKS-03 | Phase 3 | Pending |
-| WORKS-04 | Phase 3 | Pending |
-| WORKS-05 | Phase 3 | Pending |
-| WORKS-06 | Phase 3 | Pending |
-| SURF-01 | Phase 3 | Pending |
-| SURF-02 | Phase 3 | Pending |
-| SURF-03 | Phase 3 | Pending |
-| SURF-04 | Phase 3 | Pending |
-| SURF-05 | Phase 3 | Pending |
-| SURF-06 | Phase 3 | Pending |
-| SCI-01 | Phase 4 | Pending |
-| SCI-02 | Phase 4 | Pending |
-| SCI-03 | Phase 4 | Pending |
-| SCI-04 | Phase 4 | Pending |
-| SCI-05 | Phase 4 | Pending |
-| SCI-06 | Phase 4 | Pending |
-| PROOF-01 | Phase 4 | Pending |
-| PROOF-02 | Phase 4 | Pending |
-| PROOF-03 | Phase 4 | Pending |
-| PROOF-04 | Phase 4 | Pending |
-| PROOF-05 | Phase 4 | Pending |
-| PRICE-01 | Phase 4 | Pending |
-| PRICE-02 | Phase 4 | Pending |
-| PRICE-03 | Phase 4 | Pending |
-| PRICE-04 | Phase 4 | Pending |
-| PRICE-05 | Phase 4 | Pending |
-| PRICE-06 | Phase 4 | Pending |
-| BUILD-03 | Phase 5 | Pending |
-| BUILD-04 | Phase 5 | Pending |
-| BUILD-05 | Phase 5 | Pending |
-| BUILD-06 | Phase 5 | Pending |
-| BUILD-08 | Phase 5 | Pending |
-| BUILD-10 | Phase 5 | Pending |
-| BUILD-07 | Phase 6 | Pending |
-| BUILD-09 | Phase 6 | Pending |
+<!-- Filled by /gsd-plan-phase as phases plan against requirements. -->
 
-**Coverage:**
-- v1 requirements: 56 total
-- Mapped to phases: 56
-- Unmapped: 0 ✓
-
----
-*Requirements defined: 2026-05-10*
-*Last updated: 2026-05-10 — Traceability filled by roadmapper (Brand Statement Landing)*
+| REQ-ID | Phase | Plan(s) | Status |
+|--------|-------|---------|--------|
+| (filled during planning) | | | |

@@ -1,34 +1,34 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.0
-milestone_name: milestone
-status: ready_to_plan
-stopped_at: Phase 2 context gathered
-last_updated: "2026-05-10T21:40:46.494Z"
-last_activity: 2026-05-10 -- Phase 02 marked complete
+milestone: engine-foundation
+milestone_name: Engine Foundation
+status: planning
+stopped_at: roadmap complete, ready to plan Phase 1
+last_updated: "2026-05-11T00:00:00.000Z"
+last_activity: 2026-05-11 -- Milestone Engine Foundation started; ROADMAP.md complete
 progress:
-  total_phases: 6
-  completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
-  percent: 33
+  total_phases: 12
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-10)
+See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
-**Current focus:** Phase 02 — foundation-hero
+**Current focus:** Phase 1 — Training Corpus & Eval Foundation (not yet started)
 
 ## Current Position
 
-Phase: 3
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-10
+Phase: Not started (planning Phase 1)
+Plan: —
+Status: Roadmap complete; ready to start `/gsd-discuss-phase 1` or `/gsd-plan-phase 1`
+Last activity: 2026-05-11 — Milestone Engine Foundation started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -36,7 +36,7 @@ Progress: [░░░░░░░░░░] 0%
 
 **Velocity:**
 
-- Total plans completed: 4
+- Total plans completed: 0
 - Average duration: —
 - Total execution time: 0 hours
 
@@ -44,18 +44,23 @@ Progress: [░░░░░░░░░░] 0%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 02 | 4 | - | - |
+| - | - | - | - |
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
+Decisions are logged in PROJECT.md Key Decisions table and the milestone summary at top of PROJECT.md.
 
-- Milestone start: Fresh page from scratch — `milestone/landing-page` branch officially abandoned
-- Phase 1: BRAND-06 requires copy sign-off by Davide before Phase 2 build starts
-- Phase 1: VIZ-04 requires implementation technology decision (canvas/SVG/WebGL/framer-motion) with < 50KB JS budget
+Milestone-start decisions:
+- Two-milestone split: Engine Foundation (this) → Intelligence Surface (next). Enabled by training-corpus insight that lets us measure engine accuracy without waiting for users to post content.
+- Engine extension is **additive only** — no rewrite of existing `pipeline.ts` or `aggregator.ts`. New stages slot into existing wave pattern (Wave 0 added; Wave 3 added for personas; Stage 10 critique; Stage 11 counterfactuals).
+- Video segmentation via **native Gemini `videoMetadata`** (no ffmpeg). Single Files API upload, parallel scoped calls.
+- Gemini mix: 2.5 Pro on hook segment (0-3s), 2.5 Flash on body + CTA.
+- Personas: 10 on `deepseek-chat` V3, FYP-weighted (6 FYP + 2 niche + 1 loyalist + 1 cross-niche) — TikTok pushes mostly to non-followers via FYP, so persona allocation must reflect this.
+- Pipeline gains optional `onStageEvent` callback for SSE — no event-emitter rewrite needed.
+- Outcome learning loop is **no longer deferred** — training corpus enables it as the foundation, not a future phase.
+- Acceptance gate: engine v3 must demonstrate measurable accuracy improvement vs v2.1 baseline on corpus before milestone ships.
 
 ### Pending Todos
 
@@ -63,10 +68,12 @@ None yet.
 
 ### Blockers/Concerns
 
-None yet — roadmap complete, Phase 1 ready to plan.
+- Whop plan IDs still need creation in Whop dashboard (carries forward from MVP Launch milestone) — not blocking M1 work
+- Pro tier pricing review deferred — heavy-user worst case ~$190/mo at ~$0.065/analysis × 100/day
 
 ## Session Continuity
 
-Last session: 2026-05-10T20:13:27.625Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-foundation-hero/02-CONTEXT.md
+Last session: 2026-05-11T00:00:00.000Z
+Stopped at: Roadmap complete; ready to plan Phase 1
+Resume file: .planning/ROADMAP.md
+Resume command: `/gsd-discuss-phase 1` or `/gsd-plan-phase 1`

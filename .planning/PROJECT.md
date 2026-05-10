@@ -8,38 +8,91 @@ A social media intelligence platform for TikTok creators. Helps creators predict
 
 AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
 
-## Current Milestone: Brand Statement Landing
+## Current Milestone: Engine Foundation
 
-**Goal:** Ship a from-scratch landing page that codifies Virtuna's brand spine ("Your audience, simulated"), positions the product as a $100M+ venture statement piece, and locks the visual metaphor for the prediction engine across all future surfaces.
+**Worktree:** `~/virtuna-engine-foundation/` (branch `milestone/engine-foundation`)
+**Companion milestone "Brand Statement Landing" continues on main; this is parallel work.**
 
-**Brand spine** (used everywhere — site, deck, social bios, manifesto):
-> **Your audience, simulated.**
+**Goal:** Build, train, and validate the Virtuna content intelligence engine. Ship measurable accuracy improvements *before* investing in polished UX. The follow-up milestone "Intelligence Surface" builds live audience viz, polished result card, mobile route, and concept mode on top of a *validated* engine.
 
-**Hero treatment** (locked):
-- Pre-headline: `VIRTUNA · A NUMEN MACHINES PRODUCT`
-- H1: *"Predict how your audience will respond. Before you post."*
-- Sub-headline: *"Virtuna simulates your audience to forecast every video before it ships."*
-- Subline: *"Trained on decades of behavioral research. Self-improving with every outcome."*
-- CTAs: `[ Run a prediction → ]` `[ See the science ]`
+**Why split into two milestones:** A new insight enabled it — we can build a labeled training corpus by scraping competitor videos with known real outcomes (viral / average / underperforming). This makes the engine **objectively measurable** before we invest in expensive UX. M1 ships when accuracy improves on the corpus by a target threshold. M2 ships when UX is polished.
 
-**Reference set** (primary): Anthropic + Linear + Raycast + Vercel.
+**Engine architecture (all additive — no rewrite of existing pipeline.ts or aggregator.ts):**
 
-**Narrative arc** (7 viewports, single-page):
-1. Above-fold — brand stance + behavioral-simulation hero
-2. Try it — live "paste TikTok URL → see prediction" demo (placeholder viz acceptable)
-3. How it works — engine-pipeline diagram (Linear/Vercel-style)
-4. Three Surfaces — bento (Prediction · Competitor Intelligence · Brand Deals)
-5. The Science — behavioral-research moat, citation chips, dataset stats
-6. Social proof / metrics — creator quotes + accuracy + platform stats
-7. Pricing + final CTA — two-tier (Starter/Pro), Numen Machines lockup in footer
+```
+Wave 0 (new): Content type + hierarchical niche detection (V3, ~$0.001)
 
-**Approach:** Built from scratch on shadcn + Tailwind v4 + existing 36-component design system. Selective imports from Magic UI / Aceternity / Origin UI / Cult UI vetted to feel native to Raycast aesthetic. No template lock-in.
+Wave 1 (parallel, expanded):
+ ├ Gemini hook segment (0-3s, 2.5 Pro)
+ ├ Gemini body segment (2.5 Flash)
+ ├ Gemini CTA segment (last 3s, 2.5 Flash)
+ ├ Audio analysis + fingerprint match (folded into video calls)
+ ├ Creator context (enriched with 9-card profile)
+ ├ Rule scoring (existing)
+ └ Benchmark retrieval (pgvector top-K similar competitor videos)
 
-**Audience strategy:** Single page serves three audiences — TikTok creators (primary conversion), broader short-form creators (Reels/Shorts), investors/press/partners (brand impression). Sectioned narrative serves all without splitting.
+Wave 2: DeepSeek R1 synthesis (existing) + Trend enrichment (existing)
 
-**Out of scope this milestone:** in-app prediction-viz rebuild (visual metaphor locked here, implementation deferred); separate /about, /research, /manifesto pages (CTAs may stub them).
+Wave 3 (new): 10 personas (FYP-weighted) on deepseek-chat V3
+ - 6 FYP non-followers (demographically diverse) — TikTok pushes mostly to FYP
+ - 2 niche-aligned discovery
+ - 1 returning follower / loyalist
+ - 1 cross-niche curiosity (cross-pollination signal)
 
-**Vocab guardrails:** Avoid "viral" and "AI" in H1 / brand spine. Lead with audience + behavioral + simulated language.
+Stage 9: Aggregator (extended via existing SignalAvailability pattern)
+ New signals: personas (replaces single behavioral),
+              audio, retrieval, hook decomp, platform-fit
+ Platt calibration trained on the new corpus
+
+Stage 10 (new): Self-critique pass
+ V3 grades aggregator output for internal consistency,
+ cross-references creator's wins/flops (Card 6)
+
+Stage 11 (new): Counterfactual suggestions
+ V3 generates "what if hook moved to 0:02" alternatives
+```
+
+**Pipeline gains `onStageEvent` callback** — SSE infrastructure ready for M2 viz consumption.
+
+**Creator profile (9-card interview, modal on first upload click, individually skippable, truthfulness emphasized):**
+1. **Card 0** — Target platform (TikTok / IG Reels / YT Shorts, multi-select)
+2. **Card 1** — Niche (hierarchical: primary → sub-niche → micro-niche)
+3. **Card 2** — Target audience (age, gender, geo, language)
+4. **Card 3** — Goal + stage (growth / engagement / brand deals / conversion × new / growing / established)
+5. **Card 4** — Content style (talking head / B-roll / edu / comedy / tutorial / vlog)
+6. **Card 5** — Reference creators (1-3 aspirational)
+7. **Card 6** — Past wins + flops (1-2 each)
+8. **Card 7** — Posting cadence
+9. **Card 8** — Pain points
+
+Profile feeds the engine: persona allocation weighting, suggestion framing, benchmark pool filtering, self-critique grounding, platform-fit weighting.
+
+**Training corpus (the unlock):**
+- 500 videos, 30-day rolling
+- Stratified: 100 viral, 200 average, 200 underperforming
+- Multi-niche (beauty, fitness, edu, comedy, lifestyle, more)
+- Outcome metadata: views, completion %, shares, comments, saves
+- Powers: eval framework + ML classifier audit + Platt calibration training + regression detection across engine versions
+
+**Cost per analysis (30s video):** ~$0.065 (~$0.05 off-peak DeepSeek discount). Full breakdown in REQUIREMENTS.md.
+
+**Engine accuracy acceptance gate:** Engine v3 must demonstrate measurable improvement vs v2.1 baseline on corpus benchmark before this milestone ships. Target threshold set in Phase 1 after baseline measurement.
+
+**Platform algorithm targets:** TikTok (primary), Instagram Reels (secondary), YouTube Shorts (tertiary). Per-platform algorithm-fit signal in aggregator.
+
+**Out of scope this milestone (deferred to "Intelligence Surface" milestone):**
+- Live audience simulation viz (SSE-driven hive extension)
+- Polished result card (retention curve, persona panels, hook decomp UI, similar videos panel, reasoning narrative)
+- Mobile-first analysis route
+- Concept mode (text-only "predict my hook idea")
+- A/B variant generation
+- Hook archetype library
+- Trend velocity / lifecycle prediction
+- Cross-platform repurposing analysis
+- Comparative baseline display
+- Watermark detection UI
+- Emotion arc visualization
+- Anti-virality / don't-post-yet UI
 
 ## Requirements
 
@@ -93,21 +146,30 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - 203+ Vitest tests, >80% coverage on all engine modules -- Backend Reliability
 - Hardened failure modes: calibration parsing, dual-LLM graceful degradation, circuit breaker mutex, creator profile trigger -- Backend Reliability
 
-### Active (Brand Statement Landing milestone)
+### Active (Engine Foundation milestone — this worktree)
 
-- [ ] New landing page built from scratch with shadcn + Tailwind v4 + existing 36-component design system; selective Magic UI / Aceternity / Origin UI / Cult UI imports vetted for Raycast-native feel
-- [ ] Hero (above-fold) with brand-stance H1 + behavioral-simulation visual + dual CTA
-- [ ] Live "paste TikTok URL → see prediction" demo (viewport 2) — placeholder/abstract viz acceptable
-- [ ] "How it works" engine-pipeline diagram (viewport 3) — Linear/Vercel-style with subtle motion
-- [ ] Bento "Three Surfaces" section (Prediction · Competitor Intelligence · Brand Deals) — viewport 4
-- [ ] "The Science" section (lab-coded behavioral-research moat with citation chips and dataset stats) — viewport 5
-- [ ] Social proof / metrics section (creator quotes, accuracy stats if shippable, platform metrics) — viewport 6
-- [ ] Pricing + final CTA (two-tier Starter/Pro, Numen Machines lockup in footer) — viewport 7
-- [ ] Brand-spine system codified ("Your audience, simulated." propagated across deck cover, social bios, future surfaces) — voice & language doc
-- [ ] Visual metaphor locked for prediction (behavioral simulation + engine pipeline as paired concepts) — defines future in-app viz direction
-- [ ] Reference-set fidelity audit (Anthropic + Linear + Raycast + Vercel) — landing reads at $100M+ venture quality bar
-- [ ] Mobile responsive across all 7 viewports — single-column stack, hero hierarchy preserved
-- [ ] Replace plagiarized Artificial Societies copy across all surfaces — every customer-facing word original
+- [ ] Training corpus built (500 stratified competitor videos with known outcomes, 30-day rolling, multi-niche)
+- [ ] Engine evaluation harness: predictions vs actual outcomes, per-signal contribution analysis, calibration drift, regression detection
+- [ ] 9-card creator interview modal (mandatory first-time, individually skippable, modal on first upload click)
+- [ ] `creator_profiles` table schema + edit-from-settings flow
+- [ ] Pipeline `onStageEvent` callback + SSE infrastructure in /api/analyze
+- [ ] Engine versioning + prediction provenance instrumented
+- [ ] Caching layer (content hash, persona prompts via DeepSeek input cache, niche taxonomy)
+- [ ] Wave 0: content type classifier + hierarchical niche detector (V3)
+- [ ] Video segmentation via native Gemini videoMetadata (Pro hook + Flash body/CTA, parallel)
+- [ ] Multi-modal hook decomposition (visual / audio / text / speech sub-scores + coherence + cognitive load)
+- [ ] Audio analysis stage (real, fills no-op) + audio fingerprint match against trending sounds DB
+- [ ] Wave 3: 10-persona audience simulation on V3 with FYP-weighted allocation (6 FYP + 2 niche + 1 loyalist + 1 cross-niche)
+- [ ] Benchmark retrieval: pgvector setup, embedding pipeline, top-K similar competitor videos
+- [ ] Platform algorithm-fit signal (TikTok / IG Reels / YT Shorts specific weighting + creator-tier awareness)
+- [ ] Self-critique pass on aggregator output (V3, references creator wins/flops)
+- [ ] Counterfactual suggestions (V3, free for all tiers)
+- [ ] ML classifier audit on corpus benchmark + Platt calibration training (is_calibrated finally true)
+- [ ] Aggregator extension via SignalAvailability pattern (new signals + dynamic weights + engine v3.0 tag)
+- [ ] Existing /api/analyze + video-upload component integrated with new engine
+- [ ] Storage retention policy (auto-delete uploads after 30 days unless opted-in)
+- [ ] Existing onboarding integration (new 9-card profile complements existing TikTok handle + goal personalization)
+- [ ] Full accuracy benchmark run vs v2.1 baseline (acceptance gate before ship)
 
 ### Backlog (deferred from prior milestones)
 
@@ -219,11 +281,14 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 **Shipped:** UI Dashboard (2026-03-18), Prediction Engine Integration (2026-02-27), Backend Reliability (2026-02-18), Prediction Engine v2 (2026-02-17), Competitors Tool (2026-02-17), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
-**Current milestone:** Brand Statement Landing — landing-page rebuild from scratch + brand-spine codification (started 2026-05-10)
+**Current milestone (this worktree):** Engine Foundation — engine accuracy + creator profile + training corpus (started 2026-05-11)
 
-**Paused:** None (`milestone/landing-page` branch officially abandoned in favor of fresh start)
+**Parallel milestone (main worktree):** Brand Statement Landing — landing-page rebuild + brand-spine codification (Phase 2 complete on main)
+
+**Paused:** None
 
 **Future milestones:**
+- Intelligence Surface — live audience viz, polished result card, mobile route, concept mode (built on validated Engine Foundation)
 - In-app prediction viz rebuild (uses visual metaphor locked in Brand Statement Landing)
 - /about, /research, /manifesto supporting pages (extend brand spine)
 - External brand deals marketplace
@@ -247,4 +312,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-10 — Started Brand Statement Landing milestone (landing-page rebuild + brand-spine codification)*
+*Last updated: 2026-05-11 — Started Engine Foundation milestone in `~/virtuna-engine-foundation/` worktree (engine accuracy + creator profile + training corpus). Brand Statement Landing continues on main worktree.*
