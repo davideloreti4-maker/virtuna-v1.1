@@ -1,5 +1,8 @@
 {
   "model_profile": "balanced",
+  "model_overrides": {
+    "gsd-executor": "opus"
+  },
   "mode": "interactive",
   "parallelization": true,
   "gitTracking": true,

@@ -28,10 +28,10 @@ Six phases that move from brand foundation to live page. Phase 1 locks brand spi
   4. Plagiarized Artificial Societies copy is identified and replacement copy is written and approved across all live customer-facing surfaces
   5. Implementation technology choice (canvas / SVG / WebGL / framer-motion) for hero motion is decided with performance rationale documented
 **Plans**: 4 plans across 2 waves
-  - [ ] 01-01-PLAN.md — Author BRAND-SPINE.md voice/vocab/lockup/audience reference (BRAND-01..04) [Wave 1, parallel]
-  - [ ] 01-02-PLAN.md — Append Visual Metaphor Lock addendum to BRAND-BIBLE.md (VIZ-01..05) [Wave 1, parallel]
+  - [x] 01-01-PLAN.md — Author BRAND-SPINE.md voice/vocab/lockup/audience reference (BRAND-01..04) [Wave 1, parallel]
+  - [x] 01-02-PLAN.md — Append Visual Metaphor Lock addendum to BRAND-BIBLE.md (VIZ-01..05) [Wave 1, parallel]
   - [ ] 01-03-PLAN.md — Plagiarism audit + replacement copy with Davide D-15 batch sign-off (BRAND-05, BRAND-06) [Wave 2, depends on 01-01]
-  - [ ] 01-04-PLAN.md — Vocab-lint script + pre-commit hook + package.json wiring (BRAND-02 enforcement, downstream Phase 2-6) [Wave 1, parallel]
+  - [x] 01-04-PLAN.md — Vocab-lint script + pre-commit hook + package.json wiring (BRAND-02 enforcement, downstream Phase 2-6) [Wave 1, parallel]
 
 ### Phase 2: Foundation & Hero
 **Goal**: Page scaffold exists using the correct tech stack, external component sources are vetted, and the above-fold section (viewport 1) is built and visually correct
