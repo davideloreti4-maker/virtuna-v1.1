@@ -347,5 +347,209 @@ For per-component accessibility requirements, see [docs/accessibility.md](docs/a
 
 ---
 
-*Virtuna Design System v2.3.5 -- Brand Bible*
-*Last updated: 2026-02-08*
+
+
+---
+
+## Visual Metaphor Lock
+
+> Phase 1 of the Brand Statement Landing milestone locked the paired visual language of Virtuna. This section is the source of truth for both visuals; Phase 2 implementation honors these specs verbatim.
+
+### 1. Hero -- Behavioral Simulation Visual
+
+**Concept (VIZ-01):** Animated audience particles reacting to a video stimulus, aggregating into a confidence score. The particles represent simulated audience reactions; their convergence into a single shape (a number, a coral pill, or a video frame -- Phase 2 picks) communicates the prediction. One-shot animation on viewport entry, NOT a loop.
+
+**Technical implementation (VIZ-04, D-08):** Canvas 2D, ~30 KB. No third-party motion library for the particle physics.
+
+**Why Canvas (not WebGL or SVG):**
+
+- Direct evidence base -- `src/components/hive/HiveCanvas.tsx` proves Canvas 2D handles 1300+ nodes at 60fps in this codebase.
+- WebGL is overkill for 150-300 particles + adds bundle bloat (Three.js is 600 KB+ even tree-shaken).
+- SVG degrades sharply past ~100 simultaneous animated DOM nodes.
+
+**Patterns Phase 2 reuses verbatim:**
+
+| Pattern | File:line | What it solves |
+|---------|-----------|----------------|
+| DPR-aware resize | `src/components/hive/use-canvas-resize.ts:43-100` | Crisp rendering on retina + Safari fallback chain |
+| RAF-driven animation with module-level "complete" flag | `src/components/hive/use-hive-animation.ts:42-49, 121-193` | Animation plays once per session, doesn't replay on remount |
+| Ref-based render state (no React re-renders per frame) | `src/components/hive/HiveCanvas.tsx:54-57, 147-186` | Camera, layout, interaction in refs; `render()` reads synchronously |
+| Reduced-motion early return + full-visibility constant | `src/components/hive/use-hive-animation.ts:65-69, 122-130` | Static keyframe fallback in 4 lines |
+| Color batching via `Map<colorKey, circles>` | `src/components/hive/hive-renderer.ts:240-298` | Fewer fillStyle changes per frame at high node counts |
+| Reduced-motion hook (reuse verbatim) | `src/hooks/usePrefersReducedMotion.ts:1-29` | Returns boolean, defaults to `true` for SSR safety |
+| Easing token | `docs/tokens.md` § Easings -- `--ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1)` matches `easeOutCubic(t)` at `src/components/hive/use-hive-animation.ts:57` | Consistent motion language with rest of design system |
+
+**Reference visuals (D-19):**
+
+- Stripe homepage hero gradient -- restrained motion, premium feel: https://stripe.com
+- Anthropic Claude product page -- calm, lab-credible motion: https://www.anthropic.com/claude
+- Linear homepage hero -- minimal motion, structural feel: https://linear.app
+- Raycast homepage hero -- ambient gradient + screenshot composition: https://raycast.com
+
+**What Phase 1 locks (concept, per D-05, D-06, D-07):**
+
+- Particles aggregate into a confidence-score shape on viewport entry.
+- Coral accent (#FF7F50) for the converged "majority" particles; Raycast neutrals for the minority.
+- One-shot animation, never a loop (matches WORKS-02 pulse-once intent).
+- Reduced-motion fallback: render the static converged keyframe with the confidence number visible. No animation. (D-10)
+
+**What Phase 2 finalizes (execution, per D-07):**
+
+- Exact particle count (suggest target 200-400 -- matches density of `hive` viz at smaller scale).
+- Easing curves (suggest `easeOutCubic` matching `src/components/hive/use-hive-animation.ts:57`).
+- Convergence vector field (geometry of the aggregation).
+- Initial particle distribution (uniform / normal / perlin).
+- Aggregation icon / center treatment (a number / a coral pill / a video frame).
+
+**Reference Phase 2 skeleton (illustrative, NOT Phase 1 deliverable):**
+
+```tsx
+// Source pattern: src/components/hive/HiveCanvas.tsx (proven 1300+ nodes / 60fps)
+'use client';
+import { useCallback, useEffect, useRef } from "react";
+import { useCanvasResize } from "@/components/hive/use-canvas-resize"; // REUSE VERBATIM
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"; // REUSE VERBATIM
+
+let globalAnimationPlayed = false; // module-level -- same pattern as use-hive-animation.ts:42-49
+
+export function BehavioralSimulationHero() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const reducedMotion = usePrefersReducedMotion();
+  // … RAF loop reading from sizeRef = useCanvasResize(canvasRef, render);
+  // If reducedMotion || globalAnimationPlayed -> render static keyframe and return.
+}
+```
+
+### 2. Pipeline -- Engine Diagram
+
+**Concept (VIZ-02):** 4-stage horizontal diagram -- `video -> analyze -> simulate audience -> predict`. Subtle pulse motion fires once on viewport entry. Each stage has a 1-line label and an iconographic representation (icon source TBD in Phase 2 -- codebase has `@phosphor-icons/react` + `lucide-react` available).
+
+**Technical implementation (VIZ-04, D-08, D-17):** SVG + `motion/react` (LazyMotion + `m` + `domAnimation` features), ~15 KB gzipped.
+
+**Why SVG (not Canvas) for this visual:**
+
+- Crisp at any DPI -- pipeline is small, label-led, structural.
+- Stage labels are screen-reader accessible (Canvas 2D has no native a11y; pipeline labels are essential).
+- One-shot motion fits SVG's strength -- no re-render every frame.
+
+**Why `motion/react` (not framer-motion or plain CSS):**
+
+- Already a project dep (`motion@^12.29.2`).
+- Same API as framer-motion (which is also installed but used in legacy files); standardizing on `motion/react` reduces import inconsistency (per Pitfall 5).
+- LazyMotion + `m` + `domAnimation` keeps bundle at ~15 KB instead of full 42.5 KB.
+- Plain CSS keyframes considered and rejected: codebase standardized on `motion/react` for all scroll-reveal components (FadeIn, FadeInUp, SlideUp, StaggerReveal); mixing two animation paradigms increases maintenance cost.
+- GSAP rejected: commercial license risk for paid plans + larger bundle than tree-shaken motion.
+
+**Reference Phase 2 skeleton (illustrative, per RESEARCH.md Code Example 1):**
+
+```tsx
+'use client';
+import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
+import { useId } from "react";
+
+const STAGES = [
+  { label: "Video", icon: "video" },
+  { label: "Analyze", icon: "analyze" },
+  { label: "Simulate audience", icon: "audience" },
+  { label: "Predict", icon: "predict" },
+] as const;
+
+export function EnginePipeline() {
+  const reducedMotion = useReducedMotion();
+  const titleId = useId();
+  return (
+    <LazyMotion strict features={domAnimation}>
+      <svg role="img" aria-labelledby={titleId} viewBox="0 0 800 120" className="w-full h-auto">
+        <title id={titleId}>4-stage prediction engine pipeline</title>
+        {STAGES.map((stage, i) => (
+          <m.g
+            key={stage.label}
+            initial={reducedMotion ? false : { opacity: 0.3, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.6, delay: reducedMotion ? 0 : i * 0.15, ease: [0.215, 0.61, 0.355, 1] }}
+          >
+            {/* stage rendering */}
+          </m.g>
+        ))}
+      </svg>
+    </LazyMotion>
+  );
+}
+```
+
+**Reference visuals (D-19):**
+
+- Linear Insights cycle graph -- pipeline-style with structural stages: https://linear.app/insights
+- Vercel Observability product page -- section transitions with restrained motion: https://vercel.com/products/observability
+- Stripe Atlas process diagrams -- clear step-by-step structural feel: https://stripe.com/atlas
+
+**What Phase 1 locks (concept):**
+
+- Exactly 4 stages: `video -> analyze -> simulate audience -> predict`.
+- One-shot pulse on intersection-observer entry, NOT a continuous loop (matches WORKS-02).
+- Reduced-motion fallback: static stages, no pulse, full visibility. (D-10)
+- Stage labels are real text inside `<text>` SVG nodes for screen-reader access.
+
+**What Phase 2 finalizes:**
+
+- Specific icons per stage (Phosphor / Lucide picks).
+- Pulse easing + duration (suggest `--ease-out-cubic` 600ms with 100-150ms stagger between stages, matching existing `StaggerReveal`).
+- Connector style (line / arrow / dashed).
+- Hover state on each stage (if any -- WORKS spec doesn't require).
+- Mobile vertical-stack layout (per WORKS-05).
+
+### 3. Scale Affordances (VIZ-03)
+
+Both visuals must work at three scales: hero (desktop, full-bleed), mobile (≤640px), and future in-app embed (compact, ~400-600px wide).
+
+| Visual | Hero (desktop) | Mobile (≤640px) | In-app embed |
+|--------|----------------|-----------------|--------------|
+| Hero behavioral simulation | Full-bleed canvas, 200-400 particles, ambient gradient backdrop | Reduce particle count to ~100; consider simplified static glyph if perf budget tight (per HERO-08) | 100-150 particles in card-bound area; aggregation target shrinks proportionally |
+| Engine pipeline | Horizontal 4-stage diagram with icons + labels + pulse | Vertical 4-stage stack, same labels and icons, motion preserved or simplified (per WORKS-05) | Horizontal compact form, smaller icons, no labels (icon-only with tooltip) |
+
+Reduced-motion fallback applies at all three scales: render static keyframe, no animation.
+
+### 4. Rejected Alternatives (don't re-litigate)
+
+| Considered | Rejected because | Reference |
+|------------|------------------|-----------|
+| WebGL hero | Bundle bloat (Three.js 600 KB+); no perceptual benefit at 150-400 particles | D-11 |
+| GSAP for either visual | Commercial license cost on paid Business tier ($199/yr/dev) + larger than `motion/react` LazyMotion | D-11 |
+| SVG for hero particles | DOM node count exceeds performant range past ~100 simultaneous particles | RESEARCH.md Pattern 2 |
+| Canvas for pipeline | Stage labels need screen-reader access; Canvas has no native a11y | RESEARCH.md Pattern 2 |
+| Plain CSS keyframes for pipeline | Codebase standardized on `motion/react`; mixing paradigms increases maintenance cost | RESEARCH.md Pattern 2 |
+| Lottie animations | Asset-driven; doesn't fit hand-tuned canvas particle behavior; 50 KB+ even for simple animations | RESEARCH.md Pattern 2 |
+| Figma frames or animated prototypes | D-05 chose written-only -- written spec + reference URLs is enough | D-05 |
+
+### 5. Performance Budget (VIZ-04)
+
+| Visual | Implementation | Gzipped Bundle Cost |
+|--------|---------------|---------------------|
+| Hero particles | Canvas 2D (no library, direct API) | ~30 KB (component code only) |
+| Pipeline | SVG + `motion/react` LazyMotion + m + domAnimation | ~15 KB (motion subset, see motion.dev/docs/react-lazy-motion + motion.dev/docs/react-reduce-bundle-size) |
+| **Total hero motion JS** | | **~45 KB** -- under VIZ-04 ceiling of 50 KB |
+
+**Bundle pinning rule (per Pitfall 5):** All NEW motion code uses `motion/react` import path. The two `framer-motion` imports in `src/components/app/simulation/*.tsx` are legacy and slated for migration in a future cleanup. The vocab-lint script (Plan 04) flags new framer-motion import paths at commit time.
+
+### 6. How Phase 2-6 use this section
+
+- Phase 2 plan researcher: read §1 + §2 to choose particle behaviors / pipeline icons / motion easing during build prep. Read all referenced file:line landmarks before writing the hero canvas component.
+- Phase 2 executor: import `motion/react` (NOT `framer-motion`), use `LazyMotion` + `m` + `domAnimation` for SVG pipeline, reuse `useCanvasResize` and `usePrefersReducedMotion` verbatim from existing hooks.
+- Phase 5 quality gates: bundle audit MUST verify hero JS ≤ 45 KB gzipped (under 50 KB ceiling). Lighthouse Performance MUST stay ≥ 95.
+- Phase 6 reference audit: visuals reviewed against the reference URLs in §1 and §2.
+
+### Phase 2 implementation notes (per CLAUDE.md)
+
+Phase 2 build of these visuals must respect:
+
+- **Tailwind v4 oklch inaccuracy** -- coral `#FF7F50` is referenced as exact hex above; do NOT round-trip through `oklch()` for colors with L < 0.15.
+- **Lightning CSS strips backdrop-filter** -- N/A for canvas particles, but if any glass surface frames either visual, apply `backdropFilter` via React inline `style={{ ... }}`, not a CSS class.
+- **Dev cache hygiene** -- when Phase 2 motion changes don't render, kill dev + clear `.next/` + clear `node_modules/.cache/` + clear browser cache.
+
+Source: `CLAUDE.md` "Known Technical Issues" section.
+
+---
+
+*Virtuna Design System v2.3.6 -- Brand Bible*
+*Last updated: 2026-05-10*
