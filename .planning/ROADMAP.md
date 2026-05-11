@@ -39,7 +39,13 @@ Anti-patterns explicitly avoided in this decomposition:
   2. At least one Magic UI primitive is installed, vetted to feel native to the Raycast aesthetic (6% borders, GlassPanel pattern, Inter font), and exported through a documented integration path
   3. A documented vetting checklist exists for selectively importing Magic UI / Aceternity / Origin UI / Cult UI components without breaking the Raycast design language
   4. The route renders without console errors and without React hydration warnings on first load
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+- [ ] 01-01-PLAN.md — Wave 0 invariant test scaffolds (4 file-content vitest invariants for primitives + shell)
+- [ ] 01-02-PLAN.md — Install + tune 3 Magic UI primitives (Magic Card / Border Beam / Shine Border) + barrel export
+- [ ] 01-03-PLAN.md — Marketing shell + layout metadata + header stub + landing/ deletion + vetting checklist
+- [ ] 01-04-PLAN.md — Add Magic UI Primitives section to /showcase for Raycast-native verification
+- [ ] 01-05-PLAN.md — Final automated verification + manual browser smoke (/, /pricing, /showcase) — closing gate
 **UI hint**: yes
 
 ### Phase 2: Hero & Trust Band (Above-Fold)
@@ -132,7 +138,7 @@ Anti-patterns explicitly avoided in this decomposition:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Route Scaffolding | 0/0 | Not started | - |
+| 1. Foundation & Route Scaffolding | 0/5 | Not started | - |
 | 2. Hero & Trust Band (Above-Fold) | 0/0 | Not started | - |
 | 3. Three Surfaces Bento | 0/0 | Not started | - |
 | 4. How It Works + The Science | 0/0 | Not started | - |
