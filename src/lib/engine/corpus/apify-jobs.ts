@@ -5,6 +5,29 @@
  * Pure config builder; no Apify calls in this module. The orchestrator
  * (Plan D) is responsible for actually invoking client.actor().call().
  *
+ * ─── MIGRATION: clockworks → apidojo (Block A, 2026-05-11) ──────────────────
+ * Switched from the clockworks actor (~$3.70/1K posts) to
+ * apidojo/tiktok-scraper (~$0.30/1K posts) — ~12× cheaper.
+ *
+ * Input shape changes:
+ *   - `startUrls: string[]` replaces `hashtags: string[]`
+ *     (apidojo expects full TikTok hashtag page URLs)
+ *   - `maxItems: number` replaces the old clockworks count-per-page field
+ *   - `location: "US"` is required
+ *   - Dropped: `newestPostDate`, `oldestPostDate`, `excludePinnedPosts`
+ *     (`dateRange` is only available on search-type URLs, not hashtag URLs;
+ *      the 7-day age filter is applied client-side in normalize-scrape.ts:190)
+ *   - Dropped: `sortType` (search-only; TikTok default ordering applies)
+ *
+ * Known apidojo asymmetries vs the former clockworks actor (documented for evaluators):
+ *   1. `follower_count` is NOT in the per-post payload. `follower_tier` will
+ *      be null for all apidojo-scraped rows. (v2.1 eval reads follower data
+ *      from `tiktok_creator_profiles`, a separate table — no regression.)
+ *   2. `sound_name` is not reliably exposed; always mapped to null.
+ *
+ * Normalizer: `normalize-scrape.ts:170-217` handles the apidojo output shape.
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
  * NOTE: `Niche` and `NICHES` are also defined here (and re-exported) so this
  * module is self-contained. The sibling Wave 1 plan 01-02 creates
  * `eval-config.ts` which will also export `Niche` (identical string-literal
@@ -49,76 +72,64 @@ const TRENDING_FEED_HASHTAGS: Record<Niche, string[]> = {
   lifestyle: ["lifestyle", "fyp"],
 };
 
-/** D-04: min video age = 7 days. Apify date helper (UTC date, no time). */
-function daysAgoISO(n: number): string {
-  const d = new Date(Date.now() - n * 24 * 60 * 60 * 1000);
-  const iso = d.toISOString();
-  // toISOString returns YYYY-MM-DDTHH:mm:ss.sssZ — slice the date part safely
-  const datePart = iso.split("T")[0];
-  if (!datePart) {
-    // Should never happen — defensive guard for strict typing
-    throw new Error("daysAgoISO: failed to format date");
-  }
-  return datePart;
-}
+const ACTOR_APIDOJO_TIKTOK = "apidojo/tiktok-scraper";
 
-const ACTOR_CLOCKWORKS_TIKTOK = "clockworks/tiktok-scraper";
+/** Convert a hashtag name to a full TikTok tag URL (apidojo input format). */
+function hashtagToUrl(hashtag: string): string {
+  return `https://www.tiktok.com/tag/${hashtag}`;
+}
 
 /**
  * Build the three Apify configs per niche (D-06).
- * Pilot uses smaller resultsPerPage; full uses ~5x larger.
  *
- * IMPORTANT (Pitfall 1): `newestPostDate` is 7 days ago, not today.
- * This means "only videos uploaded ON OR BEFORE 7 days ago" — i.e., the
- * video has had ≥ 7 days to plateau (D-04).
+ * Pilot mode: smaller maxItems for smoke testing / calibration runs.
+ * Full mode: targets ~25K raw items across 5 niches; after the ~25% qualifying
+ * rate (Pitfall 1 age filter + CORPUS-08 quality filter), expect ~6-8K labeled
+ * rows. Bump maxItems here if calibration shows we need more headroom.
+ *
+ * maxItems budget (full mode):
+ *   trending: 800, average: 1200, under: 3000
+ *   → 5000 raw per niche × 5 niches = 25K raw total
+ *   → ~6-8K labeled (at ~25% qualifying rate)
+ *
+ * NOTE: `dateRange` is NOT used — it only applies to search-type URLs.
+ * The 7-day Pitfall 1 age filter is applied client-side in normalize-scrape.ts.
+ * apidojo minimum: 10 posts per startUrl (enforced by the actor).
  */
 export function buildApifyJobs(
   niche: Niche,
   isPilot: boolean
 ): Record<ScrapeConfigKind, ApifyScrapeConfig> {
-  const sizeMultiplier = isPilot ? 1 : 5;
-  const newestPostDate = daysAgoISO(7); // D-04 age floor
-  const oldestPostDate = daysAgoISO(90); // sanity ceiling
-
-  const baseInput = {
-    newestPostDate,
-    oldestPostDate,
-    excludePinnedPosts: true,
-  };
-
   return {
     trending: {
-      actorId: ACTOR_CLOCKWORKS_TIKTOK,
+      actorId: ACTOR_APIDOJO_TIKTOK,
       input: {
-        ...baseInput,
-        hashtags: TRENDING_FEED_HASHTAGS[niche],
-        resultsPerPage: 40 * sizeMultiplier,
+        startUrls: TRENDING_FEED_HASHTAGS[niche].map(hashtagToUrl),
+        maxItems: isPilot ? 80 : 800,
+        location: "US",
       },
-      expectedItems: isPilot ? 15 : 60,
+      expectedItems: isPilot ? 80 : 800,
     },
     average: {
-      actorId: ACTOR_CLOCKWORKS_TIKTOK,
+      actorId: ACTOR_APIDOJO_TIKTOK,
       input: {
-        ...baseInput,
-        hashtags: NICHE_HASHTAGS[niche],
-        resultsPerPage: 60 * sizeMultiplier,
+        startUrls: NICHE_HASHTAGS[niche].map(hashtagToUrl),
+        maxItems: isPilot ? 120 : 1200,
+        location: "US",
       },
-      expectedItems: isPilot ? 25 : 100,
+      expectedItems: isPilot ? 120 : 1200,
     },
     under: {
-      actorId: ACTOR_CLOCKWORKS_TIKTOK,
+      actorId: ACTOR_APIDOJO_TIKTOK,
       input: {
-        ...baseInput,
-        hashtags: NICHE_HASHTAGS[niche],
-        // Pitfall 2 mitigation (2026-05-12): Attempt 1 showed only 1.7% of scraped
-        // items fall below the underCeiling. To reliably fill 20 under slots, we
-        // need to scrape broadly. Bumped from 80→200 (pilot) / 400→1000 (full)
-        // so the client-side view filter (Plan D orchestrator) has enough raw
-        // material to populate the under bucket without re-running.
-        // No server-side ascending-by-views sort available in clockworks actor.
-        resultsPerPage: 200 * sizeMultiplier,
+        startUrls: NICHE_HASHTAGS[niche].map(hashtagToUrl),
+        // Larger maxItems to ensure enough low-view content passes the
+        // client-side under-ceiling filter (Pitfall 2 — no server-side
+        // ascending-views sort available in apidojo for hashtag URLs).
+        maxItems: isPilot ? 300 : 3000,
+        location: "US",
       },
-      expectedItems: isPilot ? 25 : 100,
+      expectedItems: isPilot ? 300 : 3000,
     },
   };
 }
