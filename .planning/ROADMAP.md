@@ -41,10 +41,15 @@ Anti-patterns explicitly avoided in this decomposition:
   4. The route renders without console errors and without React hydration warnings on first load
 **Plans**: 5 plans
 Plans:
+**Wave 1**
 - [ ] 01-01-PLAN.md — Wave 0 invariant test scaffolds (4 file-content vitest invariants for primitives + shell)
 - [ ] 01-02-PLAN.md — Install + tune 3 Magic UI primitives (Magic Card / Border Beam / Shine Border) + barrel export
 - [ ] 01-03-PLAN.md — Marketing shell + layout metadata + header stub + landing/ deletion + vetting checklist
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 01-04-PLAN.md — Add Magic UI Primitives section to /showcase for Raycast-native verification
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 01-05-PLAN.md — Final automated verification + manual browser smoke (/, /pricing, /showcase) — closing gate
 **UI hint**: yes
 
