@@ -12,7 +12,7 @@
   "aliases": {
     "components": "@/components",
     "utils": "@/lib/utils",
-    "ui": "@/components/magic-ui"
+    "ui": "@/components/ui"
   },
   "registries": {
     "@magicui": "https://magicui.design/r/{name}.json"
