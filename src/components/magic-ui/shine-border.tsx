@@ -1,5 +1,13 @@
 "use client"
 
+/**
+ * Magic UI — ShineBorder
+ * Source: https://magicui.design/r/shine-border.json
+ * Installed: 2026-05-11 via npx shadcn@latest add @magicui/shine-border
+ * Tuned for Virtuna Raycast design language per 01-UI-SPEC.md
+ * 'use client' — consumes @keyframes shine via motion-safe:animate-shine
+ */
+
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
@@ -29,8 +37,12 @@ interface ShineBorderProps extends React.HTMLAttributes<HTMLDivElement> {
  */
 export function ShineBorder({
   borderWidth = 1,
-  duration = 14,
-  shineColor = "#000000",
+  duration = 18,
+  shineColor = [
+    "rgba(255,127,80,0.8)",
+    "rgba(255,127,80,0.15)",
+    "rgba(255,127,80,0.8)",
+  ],
   className,
   style,
   ...props
