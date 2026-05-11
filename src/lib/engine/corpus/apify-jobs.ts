@@ -110,9 +110,13 @@ export function buildApifyJobs(
       input: {
         ...baseInput,
         hashtags: NICHE_HASHTAGS[niche],
-        resultsPerPage: 80 * sizeMultiplier,
-        // Pitfall 2: no server-side ascending-by-views sort. Scrape broadly;
-        // client-side filter (in orchestrator, Plan D) drops to ≤ underCeiling.
+        // Pitfall 2 mitigation (2026-05-12): Attempt 1 showed only 1.7% of scraped
+        // items fall below the underCeiling. To reliably fill 20 under slots, we
+        // need to scrape broadly. Bumped from 80→200 (pilot) / 400→1000 (full)
+        // so the client-side view filter (Plan D orchestrator) has enough raw
+        // material to populate the under bucket without re-running.
+        // No server-side ascending-by-views sort available in clockworks actor.
+        resultsPerPage: 200 * sizeMultiplier,
       },
       expectedItems: isPilot ? 25 : 100,
     },
