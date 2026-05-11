@@ -1,10 +1,11 @@
 ---
 phase: 1
 slug: foundation-route-scaffolding
-status: draft
+status: approved
 shadcn_initialized: true
 preset: "new-york / slate / cssVariables (existing components.json)"
 created: 2026-05-11
+reviewed_at: 2026-05-11
 ---
 
 # Phase 1 — UI Design Contract
@@ -62,8 +63,11 @@ Exceptions:
 ## Typography
 
 Source: globals.css @theme — pre-existing scale. Phase 1 does not add
-new font sizes or weights. Phase 1 introduces no new typographic elements
-in the marketing route (shell is content-free); typography contract here
+new font sizes or weights. The 3 weights used below (400 / 500 / 600)
+are inherited from the established 4-weight global scale (400 / 500 /
+600 / 700 defined in BRAND-BIBLE.md) — they are consumed, not declared
+as new in Phase 1. Phase 1 introduces no new typographic elements in
+the marketing route (shell is content-free); typography contract here
 applies to /showcase Magic UI section labels and header stub copy.
 
 | Role | Size | Weight | Line Height | Letter Spacing | Usage in Phase 1 |
@@ -345,6 +349,14 @@ Visual contract:
 - Confirmed production-ready: no placeholder text, no "coming soon" copy,
   no centered spinner — pure empty `<main>` with bg token applied
 
+Focal point: **None by design.** Phase 1's marketing shell intentionally
+has no visual focal point — there is no hero, no headline, no CTA. The
+header is the only rendered chrome (it persists from the marketing
+layout); the `<main>` is a deliberate empty surface. Phase 2 owns the
+hero composition and will introduce the first focal point at `/`.
+A reviewer who lands on `/` during Phase 1 should see: header (stubbed),
+then darkness. That IS the contract.
+
 ---
 
 ## Marketing Layout Metadata Contract
@@ -460,6 +472,23 @@ Section title: "Magic UI Primitives"
 Section description: "Three vetted primitives tuned to the Raycast design
 language. These are the tuned versions — stock defaults have been overridden
 to use coral accent and Raycast motion timing."
+
+Visual hierarchy within the Magic UI section (reading order, eye-weight
+order from top to bottom):
+1. **Section title** — "Magic UI Primitives" (24px / 600). First focal
+   point in the section; section description sits directly beneath at
+   body weight.
+2. **Magic Card demo (2-column ComponentGrid)** — Largest visual mass.
+   Two 200px-height cards sitting side-by-side draw the eye first
+   because of dual-card width + interactive hover spotlight.
+3. **Border Beam demo (single card)** — Below the Magic Card row. One
+   card, single-column. Animation (coral beam sweep) draws focus.
+4. **Shine Border demo (single card)** — Below Border Beam. One card,
+   marked with eyebrow label "Featured" to test reserved-accent usage.
+
+This is an eyeball-test surface, not a primary user-facing screen. The
+hierarchy is for the executor's layout fidelity, not for end-user
+narrative pacing.
 
 Section layout contract:
 
@@ -653,11 +682,11 @@ For tuned Magic UI primitives (to guide executor implementation):
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS (FLAG resolved — focal-point declaration + showcase hierarchy added)
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS (FLAG resolved — inherited-weights note added)
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** APPROVED (2026-05-11)
