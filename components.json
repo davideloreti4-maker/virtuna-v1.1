@@ -13,5 +13,8 @@
     "components": "@/components",
     "utils": "@/lib/utils",
     "ui": "@/components/ui"
+  },
+  "registries": {
+    "@magicui": "https://magicui.design/r/{name}.json"
   }
 }
