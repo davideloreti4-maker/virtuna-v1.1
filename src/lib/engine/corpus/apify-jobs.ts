@@ -73,6 +73,7 @@ const TRENDING_FEED_HASHTAGS: Record<Niche, string[]> = {
 };
 
 const ACTOR_APIDOJO_TIKTOK = "apidojo/tiktok-scraper";
+const ACTOR_CLOCKWORKS_TIKTOK = "clockworks/tiktok-scraper";
 
 /** Convert a hashtag name to a full TikTok tag URL (apidojo input format). */
 function hashtagToUrl(hashtag: string): string {
@@ -80,56 +81,105 @@ function hashtagToUrl(hashtag: string): string {
 }
 
 /**
+ * Legacy fallback escape hatch: when `APIFY_ACTOR_LEGACY=clockworks` is set
+ * in env, the orchestrator uses `clockworks/tiktok-scraper` with the legacy
+ * input shape. Use case: Apify FREE-tier accounts that cannot run apidojo
+ * (apidojo's actor refuses unpaid Apify plans). Default: apidojo (12× cheaper).
+ *
+ * The polyglot normalizer (`normalize-scrape.ts:71-105`) handles both output
+ * formats transparently — no code path differences downstream of the scrape.
+ */
+function isClockworksMode(): boolean {
+  return process.env.APIFY_ACTOR_LEGACY === "clockworks";
+}
+
+/** clockworks UTC-date helper (Pitfall 1 server-side filter for legacy actor). */
+function daysAgoISO(n: number): string {
+  const d = new Date(Date.now() - n * 86400_000);
+  const datePart = d.toISOString().split("T")[0];
+  if (!datePart) throw new Error("daysAgoISO: failed to format date");
+  return datePart;
+}
+
+function buildClockworksInput(hashtags: string[], perPage: number): Record<string, unknown> {
+  return {
+    hashtags,
+    resultsPerPage: perPage,
+    newestPostDate: daysAgoISO(7),
+    oldestPostDate: daysAgoISO(90),
+    excludePinnedPosts: true,
+  };
+}
+
+function buildApidojoInput(hashtags: string[], maxItems: number): Record<string, unknown> {
+  return {
+    startUrls: hashtags.map(hashtagToUrl),
+    maxItems,
+    location: "US",
+  };
+}
+
+/**
  * Build the three Apify configs per niche (D-06).
  *
- * Pilot mode: smaller maxItems for smoke testing / calibration runs.
- * Full mode: targets ~25K raw items across 5 niches; after the ~25% qualifying
- * rate (Pitfall 1 age filter + CORPUS-08 quality filter), expect ~6-8K labeled
- * rows. Bump maxItems here if calibration shows we need more headroom.
+ * Mode-dependent volume targets (each config = hashtags × per-config-cap):
  *
- * maxItems budget (full mode):
- *   trending: 800, average: 1200, under: 3000
- *   → 5000 raw per niche × 5 niches = 25K raw total
- *   → ~6-8K labeled (at ~25% qualifying rate)
+ *   apidojo (default, requires paid Apify plan):
+ *     Pilot:  trending=80,  average=120,  under=300  → ~25K raw / 5 niches ≈ $1.50
+ *     Full:   trending=800, average=1200, under=3000 → ~25K raw / 5 niches ≈ $7.50
  *
- * NOTE: `dateRange` is NOT used — it only applies to search-type URLs.
- * The 7-day Pitfall 1 age filter is applied client-side in normalize-scrape.ts.
+ *   clockworks (APIFY_ACTOR_LEGACY=clockworks, FREE-tier fallback):
+ *     Pilot:  trending=10,  average=8,    under=20   → ~660 raw  / 5 niches ≈ $2.45
+ *     Full:   trending=20,  average=15,   under=40   → ~1300 raw / 5 niches ≈ $4.80
+ *
+ * Clockworks budgets are TIGHTLY tuned to fit a $5 FREE Apify quota — bump only
+ * if you've verified additional headroom. apidojo budgets target ~6-8K labeled
+ * rows after Pitfall 1 (age) + CORPUS-08 (quality) filters apply (~25% pass).
+ *
+ * NOTE on `dateRange` (apidojo): apidojo's `dateRange` only applies to search
+ * URLs, not hashtag URLs. The 7-day Pitfall 1 age filter is applied
+ * client-side in normalize-scrape.ts:190 for BOTH actor shapes.
  * apidojo minimum: 10 posts per startUrl (enforced by the actor).
  */
 export function buildApifyJobs(
   niche: Niche,
   isPilot: boolean
 ): Record<ScrapeConfigKind, ApifyScrapeConfig> {
+  const clockworks = isClockworksMode();
+  const actorId = clockworks ? ACTOR_CLOCKWORKS_TIKTOK : ACTOR_APIDOJO_TIKTOK;
+  const buildInput = clockworks ? buildClockworksInput : buildApidojoInput;
+
+  // Per-hashtag / per-call caps.
+  const caps = clockworks
+    ? (isPilot
+        ? { trending: 10, average: 8,  under: 20 }
+        : { trending: 20, average: 15, under: 40 })
+    : (isPilot
+        ? { trending: 80,  average: 120,  under: 300 }
+        : { trending: 800, average: 1200, under: 3000 });
+
   return {
     trending: {
-      actorId: ACTOR_APIDOJO_TIKTOK,
-      input: {
-        startUrls: TRENDING_FEED_HASHTAGS[niche].map(hashtagToUrl),
-        maxItems: isPilot ? 80 : 800,
-        location: "US",
-      },
-      expectedItems: isPilot ? 80 : 800,
+      actorId,
+      input: buildInput(TRENDING_FEED_HASHTAGS[niche], caps.trending),
+      // For clockworks resultsPerPage is per-hashtag; for apidojo maxItems is total
+      expectedItems: clockworks
+        ? caps.trending * TRENDING_FEED_HASHTAGS[niche].length
+        : caps.trending,
     },
     average: {
-      actorId: ACTOR_APIDOJO_TIKTOK,
-      input: {
-        startUrls: NICHE_HASHTAGS[niche].map(hashtagToUrl),
-        maxItems: isPilot ? 120 : 1200,
-        location: "US",
-      },
-      expectedItems: isPilot ? 120 : 1200,
+      actorId,
+      input: buildInput(NICHE_HASHTAGS[niche], caps.average),
+      expectedItems: clockworks
+        ? caps.average * NICHE_HASHTAGS[niche].length
+        : caps.average,
     },
     under: {
-      actorId: ACTOR_APIDOJO_TIKTOK,
-      input: {
-        startUrls: NICHE_HASHTAGS[niche].map(hashtagToUrl),
-        // Larger maxItems to ensure enough low-view content passes the
-        // client-side under-ceiling filter (Pitfall 2 — no server-side
-        // ascending-views sort available in apidojo for hashtag URLs).
-        maxItems: isPilot ? 300 : 3000,
-        location: "US",
-      },
-      expectedItems: isPilot ? 300 : 3000,
+      actorId,
+      input: buildInput(NICHE_HASHTAGS[niche], caps.under),
+      expectedItems: clockworks
+        ? caps.under * NICHE_HASHTAGS[niche].length
+        : caps.under,
     },
   };
 }
