@@ -55,3 +55,6 @@ scripts/data/
 
 # GSD corpus scrape cache (operator-local, not versioned)
 .planning/cache/
+
+# Corpus video downloads — large binaries, regeneratable from training_corpus
+.planning/videos-cache/
