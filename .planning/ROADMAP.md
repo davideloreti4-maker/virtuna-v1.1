@@ -64,7 +64,7 @@ Plans:
 - [x] 01-02-PLAN.md — Wave 1: eval-config, thresholds, bucketing, pure metrics
 - [x] 01-03-PLAN.md — Wave 1: cron stub + apify-jobs + normalize-scrape
 - [x] 01-04-PLAN.md — Wave 2: orchestrator + build-corpus CLI
-- [ ] 01-05-PLAN.md — Wave 2: eval-harness + baseline + eval CLI
+- [x] 01-05-PLAN.md — Wave 2: eval-harness + baseline + eval CLI
 - [ ] 01-06-PLAN.md — Wave 3: pilot run + threshold recalibration
 - [ ] 01-07-PLAN.md — Wave 4: full corpus + v2.1 baseline + threshold doc
 
