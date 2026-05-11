@@ -61,6 +61,17 @@ const apidojoVideoSchema = z.object({
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
+ * Max age (180 days). Discovered 2026-05-11 during full.2026-05-11 calibration:
+ * clockworks silently ignores `oldestPostDate`, surfacing multi-year-old videos
+ * tagged with target hashtags. apidojo's `dateRange` is also search-only.
+ *
+ * 180 days = wide enough to fill buckets (P25 ≈ 16d, P75 ≈ 108d on filtered cache),
+ * narrow enough that the corpus reflects the current TikTok algorithm rather than
+ * relics of past trends. Future scrapes have this filter applied automatically.
+ */
+const MAX_AGE_MS = 180 * 24 * 60 * 60 * 1000;
+
+/**
  * Normalize an Apify scrape item (clockworks OR apidojo format) into a
  * NormalizedCorpusRow. Returns null on parse failure or age-filter failure
  * (skip-on-fail pattern; never throws).
@@ -126,7 +137,9 @@ function normalizeClockworks(
   const createTimeSec = parsed.createTime ?? 0;
   const posted_at = new Date(createTimeSec * 1000);
   if (!isFinite(posted_at.getTime())) return null;
-  if (Date.now() - posted_at.getTime() < SEVEN_DAYS_MS) return null; // Pitfall 1
+  const ageMs = Date.now() - posted_at.getTime();
+  if (ageMs < SEVEN_DAYS_MS) return null; // Pitfall 1 (min age)
+  if (ageMs > MAX_AGE_MS) return null;    // Recency ceiling (clockworks oldestPostDate is silently ignored)
 
   const authorMeta = (raw["authorMeta"] as Record<string, unknown> | undefined) ?? {};
   const videoMeta = (raw["videoMeta"] as Record<string, unknown> | undefined) ?? {};
@@ -187,7 +200,9 @@ function normalizeApidojo(
       : toNumber(uploadedRaw);
   const posted_at = new Date(uploadedMs);
   if (!isFinite(posted_at.getTime())) return null;
-  if (Date.now() - posted_at.getTime() < SEVEN_DAYS_MS) return null;
+  const ageMs = Date.now() - posted_at.getTime();
+  if (ageMs < SEVEN_DAYS_MS) return null; // Pitfall 1 (min age)
+  if (ageMs > MAX_AGE_MS) return null;    // Recency ceiling
 
   const follower_count = toNullableNumber(item.channel?.followers);
 

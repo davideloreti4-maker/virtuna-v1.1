@@ -97,6 +97,17 @@ describe("normalizeScrapedItem — clockworks format", () => {
     expect(row).toBeNull();
   });
 
+  it("returns null when createTime is older than 180 days (recency ceiling)", () => {
+    const TWO_HUNDRED_DAYS_AGO_SEC = Math.floor((Date.now() - 200 * 24 * 60 * 60 * 1000) / 1000);
+    const row = normalizeScrapedItem(
+      clockworksFixture({ createTime: TWO_HUNDRED_DAYS_AGO_SEC }),
+      NICHE,
+      CORPUS,
+      "trending"
+    );
+    expect(row).toBeNull();
+  });
+
   it("returns null when id is missing", () => {
     const fixture = clockworksFixture();
     delete (fixture as { id?: unknown }).id;
@@ -153,6 +164,17 @@ describe("normalizeScrapedItem — apidojo format", () => {
   it("returns null when views = 0", () => {
     const row = normalizeScrapedItem(
       apidojoFixture({ views: 0 }),
+      NICHE,
+      CORPUS,
+      "trending"
+    );
+    expect(row).toBeNull();
+  });
+
+  it("returns null when uploadedAt is older than 180 days (recency ceiling)", () => {
+    const twoHundredDaysAgoMs = Date.now() - 200 * 24 * 60 * 60 * 1000;
+    const row = normalizeScrapedItem(
+      apidojoFixture({ uploadedAt: twoHundredDaysAgoMs }),
       NICHE,
       CORPUS,
       "trending"
