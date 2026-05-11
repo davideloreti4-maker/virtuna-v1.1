@@ -23,6 +23,16 @@ const NON_UNIFORM: SignalScores = {
   trends: 50,
 };
 
+// Distinct scores in every signal to exercise the "5 distinct ablations" test
+// (ml and rules share weight 0.15; with equal scores their ablations coincide).
+const ALL_DISTINCT: SignalScores = {
+  behavioral: 80,
+  gemini: 20,
+  ml: 40,
+  rules: 60,
+  trends: 70,
+};
+
 describe("leave-one-out / scoreBaseline (canonical weights)", () => {
   it("all-50 uniform → baseline === 50 (weights sum to 1.0)", () => {
     expect(scoreBaseline(UNIFORM_50)).toBe(50);
@@ -52,10 +62,11 @@ describe("leave-one-out / scoreWithoutSignal", () => {
     expect(withoutBehavioral).toBeCloseTo(38.46, 1);
   });
 
-  it("ablating each signal in sequence yields 5 distinct values for non-uniform input", () => {
+  it("ablating each signal in sequence yields 5 distinct values for fully non-uniform input", () => {
+    // ml & rules share weight 0.15; with distinct score inputs the ablations differ.
     const ablations = new Set<number>();
     for (const sig of SIGNALS) {
-      ablations.add(scoreWithoutSignal(NON_UNIFORM, sig));
+      ablations.add(scoreWithoutSignal(ALL_DISTINCT, sig));
     }
     expect(ablations.size).toBe(SIGNALS.length);
   });
