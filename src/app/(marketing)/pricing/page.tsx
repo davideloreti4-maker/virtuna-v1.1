@@ -1,6 +1,5 @@
 import { PricingSection } from "./pricing-section";
 import { Footer } from "@/components/layout/footer";
-import { FAQSection } from "@/components/landing";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +15,8 @@ export default function PricingPage() {
     <>
       <main>
         <PricingSection />
-        <FAQSection />
+        {/* FAQ section removed in Phase 1 (was AS-plagiarized).
+            Phase 7 may add a new FAQ here if /pricing needs one. */}
       </main>
       <Footer />
     </>
