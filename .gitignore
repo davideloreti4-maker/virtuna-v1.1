@@ -52,3 +52,6 @@ scripts/benchmark-results.json
 # test video fixtures (large binary files)
 src/lib/engine/__tests__/fixtures/
 scripts/data/
+
+# GSD corpus scrape cache (operator-local, not versioned)
+.planning/cache/
