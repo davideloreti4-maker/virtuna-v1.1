@@ -238,9 +238,23 @@ export async function buildCorpus(
     bucket_target: bucketTargetFor(r), // W6: from scrape_kind, not from bucket
   }));
 
+  // Dedup within the batch on (corpus_version, platform_video_id) — a video
+  // can appear in multiple scrape configs (e.g., trending + average feeds both
+  // return the same viral video). PostgreSQL ON CONFLICT DO UPDATE throws if
+  // the same row appears twice in a single batch; deduplicate here to avoid it.
+  const seenVideoIds = new Set<string>();
+  const dedupedDbRows = dbRows.filter((r) => {
+    if (seenVideoIds.has(r.platform_video_id)) return false;
+    seenVideoIds.add(r.platform_video_id);
+    return true;
+  });
+
   const { error } = await supabase
     .from("training_corpus")
-    .upsert(dbRows, { onConflict: "corpus_version,platform_video_id" });
+    .upsert(dedupedDbRows, {
+      onConflict: "corpus_version,platform_video_id",
+      ignoreDuplicates: false, // update any pre-existing rows with fresh data
+    });
 
   if (error) {
     log.error("Upsert failed", { error: error.message });
