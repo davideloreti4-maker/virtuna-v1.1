@@ -1320,6 +1320,183 @@ export type Database = {
           },
         ]
       }
+      // NOTE: training_corpus + benchmark_results entries below are hand-augmented
+      // to mirror `supabase gen types typescript --local` output. Migrations
+      // 20260512000000_training_corpus.sql + 20260512000100_benchmark_results.sql.
+      // When local Supabase (Docker) is back online, re-run:
+      //   npx supabase gen types typescript --local > src/types/database.types.ts
+      // and the regenerator will overwrite these blocks identically.
+      training_corpus: {
+        Row: {
+          id: string
+          platform: string
+          platform_video_id: string
+          video_url: string | null
+          creator_handle: string | null
+          posted_at: string | null
+          scraped_at: string | null
+          views: number | null
+          likes: number | null
+          comments: number | null
+          shares: number | null
+          saves: number | null
+          duration_seconds: number | null
+          completion_pct: number | null
+          follower_count: number | null
+          follower_tier: string | null
+          caption: string | null
+          hashtags: string[] | null
+          sound_name: string | null
+          corpus_version: string
+          niche: string
+          bucket: string
+          bucket_target: string | null
+          metadata: Json | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          platform?: string
+          platform_video_id: string
+          video_url?: string | null
+          creator_handle?: string | null
+          posted_at?: string | null
+          scraped_at?: string | null
+          views?: number | null
+          likes?: number | null
+          comments?: number | null
+          shares?: number | null
+          saves?: number | null
+          duration_seconds?: number | null
+          completion_pct?: number | null
+          follower_count?: number | null
+          follower_tier?: string | null
+          caption?: string | null
+          hashtags?: string[] | null
+          sound_name?: string | null
+          corpus_version: string
+          niche: string
+          bucket: string
+          bucket_target?: string | null
+          metadata?: Json | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          platform?: string
+          platform_video_id?: string
+          video_url?: string | null
+          creator_handle?: string | null
+          posted_at?: string | null
+          scraped_at?: string | null
+          views?: number | null
+          likes?: number | null
+          comments?: number | null
+          shares?: number | null
+          saves?: number | null
+          duration_seconds?: number | null
+          completion_pct?: number | null
+          follower_count?: number | null
+          follower_tier?: string | null
+          caption?: string | null
+          hashtags?: string[] | null
+          sound_name?: string | null
+          corpus_version?: string
+          niche?: string
+          bucket?: string
+          bucket_target?: string | null
+          metadata?: Json | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      benchmark_results: {
+        Row: {
+          id: string
+          corpus_version: string
+          engine_version: string
+          macro_f1: number
+          per_niche_f1: Json
+          ece: number | null
+          per_class_metrics: Json | null
+          signal_contribution: Json | null
+          spearman_within_niche: Json | null
+          mae_engagement_rate: number | null
+          cost_cents_avg: number | null
+          cost_cents_total: number | null
+          latency_p50: number | null
+          latency_p95: number | null
+          latency_p99: number | null
+          stage_timings: Json | null
+          drift_metrics: Json | null
+          failure_cases: Json | null
+          viral_recall: number | null
+          under_precision: number | null
+          notes: string | null
+          run_at: string | null
+          created_at: string | null
+          updated_at: string | null
+          deleted_at: string | null
+        }
+        Insert: {
+          id?: string
+          corpus_version: string
+          engine_version: string
+          macro_f1: number
+          per_niche_f1: Json
+          ece?: number | null
+          per_class_metrics?: Json | null
+          signal_contribution?: Json | null
+          spearman_within_niche?: Json | null
+          mae_engagement_rate?: number | null
+          cost_cents_avg?: number | null
+          cost_cents_total?: number | null
+          latency_p50?: number | null
+          latency_p95?: number | null
+          latency_p99?: number | null
+          stage_timings?: Json | null
+          drift_metrics?: Json | null
+          failure_cases?: Json | null
+          viral_recall?: number | null
+          under_precision?: number | null
+          notes?: string | null
+          run_at?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          deleted_at?: string | null
+        }
+        Update: {
+          id?: string
+          corpus_version?: string
+          engine_version?: string
+          macro_f1?: number
+          per_niche_f1?: Json
+          ece?: number | null
+          per_class_metrics?: Json | null
+          signal_contribution?: Json | null
+          spearman_within_niche?: Json | null
+          mae_engagement_rate?: number | null
+          cost_cents_avg?: number | null
+          cost_cents_total?: number | null
+          latency_p50?: number | null
+          latency_p95?: number | null
+          latency_p99?: number | null
+          stage_timings?: Json | null
+          drift_metrics?: Json | null
+          failure_cases?: Json | null
+          viral_recall?: number | null
+          under_precision?: number | null
+          notes?: string | null
+          run_at?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          deleted_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
