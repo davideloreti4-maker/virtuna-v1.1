@@ -10,10 +10,10 @@ interface HeaderProps {
 }
 
 /**
- * Header component matching societies.io design.
- * - Logo: Custom SVG mark + "Artificial Societies" text
- * - Right side: "Sign in" text link + "Book a Meeting" orange button
- * - Sticky with solid dark background
+ * Header component — Virtuna marketing chrome (floating pill).
+ * - Logo: Custom V-mark SVG + wordmark
+ * - Right side: sign-in text link + primary CTA routing to /signup
+ * - Sticky with glass gradient background and inset highlight
  * - Mobile hamburger menu with slide-down animation and overlay
  */
 export function Header({ className }: HeaderProps) {
@@ -82,7 +82,7 @@ export function Header({ className }: HeaderProps) {
                   fill="currentColor"
                 />
               </svg>
-              <span className="font-sans text-white">Artificial Societies</span>
+              <span className="font-sans text-white">Virtuna</span>
             </Link>
 
             {/* Desktop Navigation */}
@@ -94,12 +94,10 @@ export function Header({ className }: HeaderProps) {
                 Sign in
               </Link>
               <Link
-                href="https://calendly.com"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="/signup"
                 className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
               >
-                Book a Meeting
+                Sign up free
               </Link>
             </div>
 
@@ -137,13 +135,11 @@ export function Header({ className }: HeaderProps) {
                 Sign in
               </Link>
               <Link
-                href="https://calendly.com"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="/signup"
                 className="w-full rounded-lg bg-accent px-4 py-3 text-center text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Book a Meeting
+                Sign up free
               </Link>
             </div>
           </div>

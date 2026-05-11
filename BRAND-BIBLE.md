@@ -309,6 +309,77 @@ For component index with source files, see [docs/component-index.md](docs/compon
 
 ---
 
+## External Library Vetting Checklist
+
+Before committing any component from Magic UI, Aceternity UI, Origin UI,
+Cult UI, or any third-party shadcn registry, ALL of the following gates
+must PASS. Record pass/fail + date in the component's source file comment.
+
+### Gate 1 — Color Audit
+- [ ] No purple, violet, blue, or pink DEFAULT props bleed through to
+      rendered output without being overridden
+- [ ] gradientFrom / gradientTo / colorFrom / colorTo / shineColor /
+      glowFrom / glowTo or equivalent color props all set to Raycast tokens
+      (coral-500 for accent, gray-950/surface/surface-elevated for fills,
+      transparent for neutral zones)
+- [ ] No hardcoded hex values remain in tuned file that aren't Raycast tokens
+
+### Gate 2 — Border Opacity
+- [ ] Component border (if any) uses rgba(255,255,255,0.06) for resting
+- [ ] Component border hover (if any) uses rgba(255,255,255,0.10)
+- [ ] No 8%, 12%, or other non-standard opacities
+
+### Gate 3 — Radius Scale
+- [ ] Card-shaped containers: 12px (--radius-lg)
+- [ ] Button-shaped containers: 8px (--radius-md)
+- [ ] Modal-shaped containers: 12px (--radius-lg)
+- [ ] Component does not introduce non-standard radii
+
+### Gate 4 — Motion Audit
+- [ ] No auto-looping high-contrast animations at duration < 6s
+- [ ] No neon glow effects (colored box-shadow at high opacity on
+      non-accent colors)
+- [ ] No continuous scale/bounce effects that repeat without user action
+- [ ] prefers-reduced-motion respected: either via motion-safe: Tailwind
+      class, useReducedMotion() from motion/react, or usePrefersReducedMotion
+      hook from src/hooks/usePrefersReducedMotion.ts
+
+### Gate 5 — Font Audit
+- [ ] Component source contains no embedded font-family CSS property
+- [ ] No @font-face declarations
+- [ ] All text inherits Inter via --font-sans (globals.css body declaration)
+
+### Gate 6 — GlassPanel Compatibility
+- [ ] Component does not declare competing backdrop-filter values in CSS
+      (backdrop-filter must only be applied via React inline styles to
+      bypass Lightning CSS stripping — per CLAUDE.md Known Technical Issues)
+- [ ] Component composes as a child or sibling of GlassPanel without
+      visual conflict (test in /showcase)
+
+### Gate 7 — Dark-Mode-First
+- [ ] Component has no `dark:` conditional logic that implies light mode
+      as the default state
+- [ ] If component uses useTheme(): dark theme resolves correctly on
+      initial mount without flash (mounted-state guard in place)
+- [ ] Component does not assume a white or light background
+
+### Gate 8 — Bundle Size Sanity
+- [ ] Component introduces no motion/animation library not already in
+      package.json (motion/react is approved; framer-motion is legacy
+      and not to be extended; GSAP is rejected per BRAND-BIBLE.md §4)
+- [ ] Component introduces no third-party icon library beyond
+      @phosphor-icons/react and lucide-react (both already installed)
+- [ ] Component .tsx source is < 150 lines (if larger, split or simplify
+      before commit)
+
+### Gate 9 — Security Scan
+- [ ] No fetch(), XMLHttpRequest, or navigator.sendBeacon calls
+- [ ] No process.env references
+- [ ] No eval(), new Function(), or dynamic imports from external URLs
+- [ ] No obfuscated variable names in non-minified source
+
+---
+
 ## Accessibility
 
 ### Contrast Requirements (WCAG 2.1 AA)
