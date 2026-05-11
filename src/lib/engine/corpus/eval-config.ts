@@ -1,5 +1,11 @@
 // Threshold formula constants for the v3 acceptance benchmark (BENCH-01..06).
-// Cross-referenced by: .planning/research/v2.1-baseline.md (D-19).
+//
+// D-19: This file is CO-AUTHORITATIVE with .planning/research/v2.1-baseline.md.
+// - The doc references the constants below by name (requiredImprovementFor,
+//   MAX_PER_NICHE_REGRESSION_PP, BOOTSTRAP_ITERATIONS, SIGNIFICANCE_ALPHA).
+// - When the baseline is re-measured (Phase 10 recalibration), this file does
+//   NOT change — the threshold FORMULA is fixed (D-18 sliding scale). Only the
+//   baseline doc updates with new measured macro_f1 values.
 //
 // IMPORTANT: NICHE_THRESHOLDS here are PILOT starting values (D-08). They are
 // initial guesses, not load-bearing. D-09 mandates empirical recalibration from
@@ -36,6 +42,19 @@ export const NICHE_THRESHOLDS = {
   comedy: { viralFloor: 500_000, underCeiling: 10_000 },
   lifestyle: { viralFloor: 250_000, underCeiling: 5_000 },
 } as const;
+
+/**
+ * D-19: canonical cross-reference to the v2.1 baseline documentation.
+ * This constant makes the bidirectional link machine-readable so future
+ * tooling can locate the baseline doc without string-searching .planning/.
+ *
+ * Update this constant when sealing a new baseline (new corpus_version +
+ * engine_version). Create a new versioned doc (e.g., v3.0-baseline.md) —
+ * do NOT overwrite the existing file; it is the immutable D-20 reference
+ * for the Phase 12 acceptance gate comparison.
+ */
+export const BASELINE_REFERENCE_DOC =
+  ".planning/research/v2.1-baseline.md" as const;
 
 // D-01: target distribution counts per build.
 export const TARGET_DISTRIBUTION_PILOT = {
