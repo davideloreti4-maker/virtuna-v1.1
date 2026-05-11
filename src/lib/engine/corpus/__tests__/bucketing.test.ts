@@ -101,27 +101,29 @@ describe("bucketing / boundary semantics (D-10 hard cutoff)", () => {
 describe("bucketing / bigint input handling", () => {
   it("bigint views classify identically to number views", () => {
     expect(
-      bucketByViews({ views: 1_000_000n, niche: "beauty" }, pilot),
+      bucketByViews({ views: BigInt(1_000_000), niche: "beauty" }, pilot),
     ).toBe("viral");
-    expect(bucketByViews({ views: 250_000n, niche: "beauty" }, pilot)).toBe(
-      "viral",
-    );
-    expect(bucketByViews({ views: 249_999n, niche: "beauty" }, pilot)).toBe(
-      "average",
-    );
-    expect(bucketByViews({ views: 5_000n, niche: "beauty" }, pilot)).toBe(
+    expect(
+      bucketByViews({ views: BigInt(250_000), niche: "beauty" }, pilot),
+    ).toBe("viral");
+    expect(
+      bucketByViews({ views: BigInt(249_999), niche: "beauty" }, pilot),
+    ).toBe("average");
+    expect(
+      bucketByViews({ views: BigInt(5_000), niche: "beauty" }, pilot),
+    ).toBe("under");
+    expect(bucketByViews({ views: BigInt(0), niche: "beauty" }, pilot)).toBe(
       "under",
     );
-    expect(bucketByViews({ views: 0n, niche: "beauty" }, pilot)).toBe("under");
   });
 
   it("very large bigint (above Number.MAX_SAFE_INTEGER) still classifies as viral", () => {
-    expect(
-      bucketByViews(
-        { views: 9_007_199_254_740_993n, niche: "beauty" },
-        pilot,
-      ),
-    ).toBe("viral");
+    // 2^53 + 1 — beyond Number.MAX_SAFE_INTEGER. Number() coerces to a value
+    // well above any niche's viralFloor, so this should still classify as viral.
+    const huge = BigInt("9007199254740993");
+    expect(bucketByViews({ views: huge, niche: "beauty" }, pilot)).toBe(
+      "viral",
+    );
   });
 });
 
