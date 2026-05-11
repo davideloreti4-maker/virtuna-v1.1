@@ -101,6 +101,7 @@ Phase 01 decisions:
 - Spawn gsd-verifier for Phase 01 sign-off
 - Phase 02 (Creator Profile) can begin independently
 - Phase 03 (Pipeline Infrastructure) can begin after verifier sign-off
+- **[DEFERRED]** Stage 2 corpus-video persistence — migration `20260512010000_corpus_videos_storage.sql` + `scripts/upload-corpus-videos.ts` are written and committed but NOT pushed to remote Supabase. Blocked on free-tier limits (50 MB per-file cap, 1 GB project Storage cap; corpus is 1.68 GB with 2 files >50 MB). Run after upgrading tier OR when video-mode eval is actually needed (Phase 10/12 per 01-05 SUMMARY deferral). 222/225 mp4s already on disk at `.planning/videos-cache/` (1.68 GB, gitignored).
 
 ### Blockers/Concerns
 
@@ -108,6 +109,7 @@ Phase 01 decisions:
 - **[CARRY-FORWARD]** apidojo Starter plan still needs activation for future corpus refreshes (Phase 4+ scraping)
 - **[CARRY-FORWARD]** completion_pct = null on all 225 rows (KNOWN GAP — no Apify actor provides watch-time data)
 - **[CARRY-FORWARD]** Whop plan IDs still need creation in Whop dashboard — not blocking Phase 01 or 02
+- **[CARRY-FORWARD]** Supabase free-tier blocks Stage 2 corpus-video upload (see Pending Todos)
 
 ## Session Continuity
 

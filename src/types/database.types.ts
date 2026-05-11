@@ -1351,6 +1351,7 @@ export type Database = {
           niche: string
           bucket: string
           bucket_target: string | null
+          video_storage_path: string | null
           metadata: Json | null
           created_at: string | null
           updated_at: string | null
@@ -1379,6 +1380,7 @@ export type Database = {
           niche: string
           bucket: string
           bucket_target?: string | null
+          video_storage_path?: string | null
           metadata?: Json | null
           created_at?: string | null
           updated_at?: string | null
@@ -1407,6 +1409,7 @@ export type Database = {
           niche?: string
           bucket?: string
           bucket_target?: string | null
+          video_storage_path?: string | null
           metadata?: Json | null
           created_at?: string | null
           updated_at?: string | null
