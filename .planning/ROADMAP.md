@@ -60,13 +60,13 @@ Wave 8 (final gate): P12 (accuracy benchmark + acceptance)
   5. Target accuracy threshold for v3 acceptance is documented in `.planning/research/` and committed (e.g., "v3 must reduce MAE on engagement prediction by ≥20% vs v2.1")
 **Plans:** 7 plans across 4 waves
 Plans:
-- [ ] 01-PLAN-A-schema-migrations.md — Wave 1: training_corpus + benchmark_results migrations
-- [ ] 01-PLAN-B-config-thresholds-metrics.md — Wave 1: eval-config, thresholds, bucketing, pure metrics
-- [ ] 01-PLAN-C-cron-stub-scrape-primitives.md — Wave 1: cron stub + apify-jobs + normalize-scrape
-- [ ] 01-PLAN-D-corpus-orchestrator-cli.md — Wave 2: orchestrator + build-corpus CLI
-- [ ] 01-PLAN-E-eval-harness-cli.md — Wave 2: eval-harness + baseline + eval CLI
-- [ ] 01-PLAN-F-pilot-run-threshold-recalibration.md — Wave 3: pilot run + threshold recalibration
-- [ ] 01-PLAN-G-full-corpus-v21-baseline.md — Wave 4: full corpus + v2.1 baseline + threshold doc
+- [ ] 01-01-PLAN.md — Wave 1: training_corpus + benchmark_results migrations
+- [ ] 01-02-PLAN.md — Wave 1: eval-config, thresholds, bucketing, pure metrics
+- [ ] 01-03-PLAN.md — Wave 1: cron stub + apify-jobs + normalize-scrape
+- [ ] 01-04-PLAN.md — Wave 2: orchestrator + build-corpus CLI
+- [ ] 01-05-PLAN.md — Wave 2: eval-harness + baseline + eval CLI
+- [ ] 01-06-PLAN.md — Wave 3: pilot run + threshold recalibration
+- [ ] 01-07-PLAN.md — Wave 4: full corpus + v2.1 baseline + threshold doc
 
 ### Phase 2: Creator Profile & 9-Card Interview
 **Goal:** Creators complete a 9-card interview before their first analysis; profile is loaded into every analysis as enriched `CreatorContext`.
