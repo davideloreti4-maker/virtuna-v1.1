@@ -10,9 +10,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Artificial Societies | Human Behavior, Simulated",
-  description:
-    "AI personas that replicate real-world attitudes, beliefs, and opinions. Research that was impossible is now instant.",
+  title: "Virtuna",
+  description: "Virtuna — TikTok creator intelligence.",
 };
 
 export default function MarketingLayout({
