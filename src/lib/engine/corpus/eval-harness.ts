@@ -2,7 +2,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { createLogger } from "@/lib/logger";
 import * as Sentry from "@sentry/nextjs";
 import { ENGINE_VERSION } from "@/lib/engine/aggregator";
-import { runEvalOverCorpus, type RawEvalResult } from "./eval-runner";
+import { runEvalOverCorpus } from "./eval-runner";
 import { computeMacroF1, type MacroF1Result } from "./metrics/macro-f1";
 import { computeECE } from "./metrics";        // re-exported from calibration
 import { bucketFromScore } from "./metrics/score-to-bucket";
@@ -186,28 +186,29 @@ export async function runEvalHarness(
 
 async function persistBenchmarkRow(report: BenchmarkReport): Promise<void> {
   const supabase = createServiceClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await supabase.from("benchmark_results").insert({
     corpus_version: report.corpus_version,
     engine_version: report.engine_version,
     macro_f1: report.macro_f1,
-    per_niche_f1: report.per_niche_f1,
+    per_niche_f1: report.per_niche_f1 as unknown as Record<string, unknown>,
     ece: report.ece,
-    per_class_metrics: report.per_class_metrics,
-    signal_contribution: report.signal_contribution ?? {},
-    spearman_within_niche: report.spearman_within_niche,
+    per_class_metrics: report.per_class_metrics as unknown as Record<string, unknown>,
+    signal_contribution: (report.signal_contribution ?? {}) as unknown as Record<string, unknown>,
+    spearman_within_niche: report.spearman_within_niche as unknown as Record<string, unknown>,
     mae_engagement_rate: report.mae_engagement_rate,
     cost_cents_avg: report.cost_cents_avg,
     cost_cents_total: report.cost_cents_total,
     latency_p50: report.latency_p50,
     latency_p95: report.latency_p95,
     latency_p99: report.latency_p99,
-    stage_timings: report.stage_timings,
-    drift_metrics: report.drift_metrics,
-    failure_cases: report.failure_cases,
+    stage_timings: report.stage_timings as unknown as Record<string, unknown>,
+    drift_metrics: report.drift_metrics as unknown as Record<string, unknown>,
+    failure_cases: report.failure_cases as unknown as Record<string, unknown>[],
     viral_recall: report.viral_recall,
     under_precision: report.under_precision,
     notes: `rows_processed=${report.rows_processed} rows_failed=${report.rows_failed}`,
-  });
+  } as never);
   if (error) {
     log.error("benchmark_results insert failed", { error: error.message });
     Sentry.captureException(error, { tags: { stage: "eval_harness_persist" } });
