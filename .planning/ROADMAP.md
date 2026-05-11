@@ -58,7 +58,15 @@ Wave 8 (final gate): P12 (accuracy benchmark + acceptance)
   3. Eval harness can run any engine version over the corpus and produce a report with prediction error per signal, calibration drift, and overall accuracy metrics
   4. Baseline measurement of current engine v2.1 against corpus is persisted (`benchmark_results` table) — every future phase compares against it
   5. Target accuracy threshold for v3 acceptance is documented in `.planning/research/` and committed (e.g., "v3 must reduce MAE on engagement prediction by ≥20% vs v2.1")
-**Plans:** TBD (~4-5 plans across waves)
+**Plans:** 7 plans across 4 waves
+Plans:
+- [ ] 01-PLAN-A-schema-migrations.md — Wave 1: training_corpus + benchmark_results migrations
+- [ ] 01-PLAN-B-config-thresholds-metrics.md — Wave 1: eval-config, thresholds, bucketing, pure metrics
+- [ ] 01-PLAN-C-cron-stub-scrape-primitives.md — Wave 1: cron stub + apify-jobs + normalize-scrape
+- [ ] 01-PLAN-D-corpus-orchestrator-cli.md — Wave 2: orchestrator + build-corpus CLI
+- [ ] 01-PLAN-E-eval-harness-cli.md — Wave 2: eval-harness + baseline + eval CLI
+- [ ] 01-PLAN-F-pilot-run-threshold-recalibration.md — Wave 3: pilot run + threshold recalibration
+- [ ] 01-PLAN-G-full-corpus-v21-baseline.md — Wave 4: full corpus + v2.1 baseline + threshold doc
 
 ### Phase 2: Creator Profile & 9-Card Interview
 **Goal:** Creators complete a 9-card interview before their first analysis; profile is loaded into every analysis as enriched `CreatorContext`.
@@ -205,7 +213,7 @@ Wave 8 (final gate): P12 (accuracy benchmark + acceptance)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Training Corpus & Eval Foundation | 0/TBD | Not started | - |
+| 1. Training Corpus & Eval Foundation | 0/7 | Not started | - |
 | 2. Creator Profile & 9-Card Interview | 0/TBD | Not started | - |
 | 3. Pipeline Infrastructure | 0/TBD | Not started | - |
 | 4. Wave 0 — Content Type + Niche Detection | 0/TBD | Not started | - |

@@ -1,0 +1,365 @@
+---
+phase: 1
+plan: F
+title: Pilot run (50 videos) + threshold recalibration + seal full corpus_version
+status: pending
+type: execute
+wave: 3
+depends_on: [A, B, C, D]
+files_modified:
+  - src/lib/engine/corpus/thresholds.ts
+  - .planning/phases/01-training-corpus-eval-foundation/01-F-PILOT-RETROSPECTIVE.md
+autonomous: false
+requirements: [CORPUS-01, CORPUS-03, CORPUS-08]
+must_haves:
+  truths:
+    - "Pilot corpus_version pilot.2026-05-12 contains ~50 videos in training_corpus with all 5 niches represented"
+    - "Per-niche view distribution P90 (viral) and P30 (under) computed from pilot data and recorded in retrospective"
+    - "thresholds.ts THRESHOLD_SNAPSHOTS contains a new full.YYYY-MM-DD entry with the recalibrated values (D-09)"
+    - "Pilot retrospective doc captures the empirical thresholds, bucket fill rates, and any blockers discovered"
+    - "Per-bucket creator diversity confirmed: at least 34 distinct creators in each filled bucket (or documented why not)"
+  artifacts:
+    - path: src/lib/engine/corpus/thresholds.ts
+      provides: "Appended full.YYYY-MM-DD threshold snapshot (D-09 recalibrated values, D-13 immutable)"
+      contains: "full."
+    - path: .planning/phases/01-training-corpus-eval-foundation/01-F-PILOT-RETROSPECTIVE.md
+      provides: "Pilot scrape outcomes, per-niche view distributions, recalibrated thresholds rationale, any deferred issues"
+      contains: "## Per-Niche View Distributions"
+  key_links:
+    - from: src/lib/engine/corpus/thresholds.ts
+      to: ".planning/phases/01-training-corpus-eval-foundation/01-F-PILOT-RETROSPECTIVE.md"
+      via: "Code comment on the full.YYYY-MM-DD entry references the retrospective for the empirical derivation"
+      pattern: "01-F-PILOT-RETROSPECTIVE"
+---
+
+<objective>
+Run the 50-video pilot scrape end-to-end against live Apify, validate the infrastructure works under real conditions (CORPUS-01 distribution + CORPUS-03 5-niche coverage + CORPUS-08 quality validation), extract per-niche view distributions, compute empirical thresholds (P90 viral floor, P30 under ceiling per D-09), and append a sealed `full.YYYY-MM-DD` snapshot to `thresholds.ts` for Plan G to consume.
+
+This plan is operationally-driven (NOT autonomous): includes a human checkpoint after the pilot scrape to verify infrastructure worked before committing recalibrated thresholds. The pilot is load-bearing — D-01/D-09 explicitly designate it as the threshold calibration step.
+
+Purpose: De-risks the full 500-video build (Plan G) by validating infrastructure and calibrating thresholds empirically.
+Output: Pilot rows in training_corpus + retrospective doc + new `full.YYYY-MM-DD` threshold snapshot.
+</objective>
+
+<execution_context>
+@$HOME/.claude/get-shit-done/workflows/execute-plan.md
+@$HOME/.claude/get-shit-done/templates/summary.md
+</execution_context>
+
+<context>
+@.planning/PROJECT.md
+@.planning/STATE.md
+@.planning/phases/01-training-corpus-eval-foundation/01-CONTEXT.md
+@.planning/phases/01-training-corpus-eval-foundation/01-RESEARCH.md
+@.planning/phases/01-training-corpus-eval-foundation/01-PATTERNS.md
+@src/lib/engine/corpus/thresholds.ts
+@src/lib/engine/corpus/eval-config.ts
+@scripts/build-corpus.ts
+</context>
+
+<tasks>
+
+<task type="auto">
+  <name>Task 1: Execute the pilot corpus build against live Apify</name>
+  <files>(none new — produces rows in training_corpus table; outputs go to stdout/logs only)</files>
+  <action>
+**Preconditions** (verify before running):
+- `.env.local` has `APIFY_TOKEN` and `SUPABASE_SERVICE_ROLE_KEY` set
+- Supabase is reachable; `training_corpus` table exists (Plan A applied)
+- `scripts/build-corpus.ts` exists and parses args (Plan D)
+- `THRESHOLD_SNAPSHOTS["pilot.2026-05-12"]` exists in `thresholds.ts` (Plan B)
+
+**Step 1 — Live pilot scrape:**
+
+```bash
+npx tsx scripts/build-corpus.ts --version pilot.2026-05-12 --pilot 2>&1 | tee /tmp/pilot-build.log
+```
+
+The pilot version literal `pilot.2026-05-12` is the one Plan B registered. Use it directly.
+
+Expected behavior:
+- 5 niches × 3 configs = 15 sequential Apify calls
+- Each call may take 30s-3min
+- Total wall time: ~10-25 min
+- Total Apify cost: ~$3-10 (well under the operator-budget ceiling)
+- Output: ~50 rows in `training_corpus` (target 10 viral / 20 average / 20 under)
+
+**Step 2 — Capture distribution data:**
+
+After the scrape completes, query the pilot rows via the Supabase service client (use a quick one-off node script or the dashboard SQL editor):
+
+Per-niche × bucket breakdown:
+```sql
+SELECT
+  niche,
+  bucket,
+  COUNT(*) AS row_count,
+  COUNT(DISTINCT creator_handle) AS distinct_creators,
+  MIN(views) AS min_views,
+  MAX(views) AS max_views,
+  AVG(views)::BIGINT AS avg_views
+FROM training_corpus
+WHERE corpus_version = 'pilot.2026-05-12'
+GROUP BY niche, bucket
+ORDER BY niche, bucket;
+```
+
+Per-niche distributions (the recalibration source — D-09):
+```sql
+SELECT
+  niche,
+  COUNT(*) AS total_rows,
+  PERCENTILE_CONT(0.10) WITHIN GROUP (ORDER BY views) AS p10,
+  PERCENTILE_CONT(0.30) WITHIN GROUP (ORDER BY views) AS p30_new_under,
+  PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY views) AS p50,
+  PERCENTILE_CONT(0.70) WITHIN GROUP (ORDER BY views) AS p70,
+  PERCENTILE_CONT(0.90) WITHIN GROUP (ORDER BY views) AS p90_new_viral
+FROM training_corpus
+WHERE corpus_version = 'pilot.2026-05-12'
+GROUP BY niche
+ORDER BY niche;
+```
+
+Save both query outputs as input data for the retrospective (Task 2) and the threshold append (Task 3b).
+
+**Failure handling:**
+- If the build crashes mid-run (Apify timeout, Supabase rejection): inspect `/tmp/pilot-build.log`. The orchestrator's per-config isolation means most niche/config pairs will still succeed. Re-run the same command — upsert is idempotent on `(corpus_version, platform_video_id)`.
+- If a niche fills <10 rows: log it in the retrospective. RESEARCH "Open Questions A2" defers cross-validation to Phase 10; small per-niche fills are noted but not fatal.
+- If the under bucket fills <40 across all niches: Pitfall 2 is biting (no server-side ascending sort). Document in retrospective; Plan G can bump `resultsPerPage` in apify-jobs.ts before the full build OR accept the smaller under bucket.
+  </action>
+  <verify>
+    <automated>node -e "require('dotenv').config({path:'.env.local'});const{createClient}=require('@supabase/supabase-js');const c=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY);c.from('training_corpus').select('niche,bucket',{count:'exact'}).eq('corpus_version','pilot.2026-05-12').then(r=>{const n=new Set((r.data||[]).map(x=>x.niche));console.log('niches:',[...n],'count:',r.count);process.exit(n.size===5&&(r.count||0)>=30?0:1)})"</automated>
+  </verify>
+  <done>training_corpus contains at least 30 rows under corpus_version='pilot.2026-05-12' spanning all 5 niches (allowing some under-fill tolerance vs the 50 target).</done>
+</task>
+
+<task type="auto">
+  <name>Task 2: Write pilot retrospective with empirical distributions</name>
+  <files>.planning/phases/01-training-corpus-eval-foundation/01-F-PILOT-RETROSPECTIVE.md</files>
+  <action>
+Author the pilot retrospective document. Fill in actual numbers from Task 1's SQL queries. Use this exact structure:
+
+```markdown
+# Phase 1: Pilot Corpus Retrospective
+
+**Pilot version:** `pilot.2026-05-12`
+**Scrape date:** YYYY-MM-DD
+**Target distribution:** 10 viral / 20 average / 20 under = 50 total (D-01)
+
+## Outcome Summary
+
+| Bucket | Target | Actual | Notes |
+|---|---|---|---|
+| Viral | 10 | <fill> | <e.g., "underfilled by 2 — beauty trending feed weak"> |
+| Average | 20 | <fill> | |
+| Under | 20 | <fill> | <e.g., "Pitfall 2 noticeable; client-side filter dropped 60% of items"> |
+| Total | 50 | <fill> | |
+
+## Per-Niche View Distributions
+
+| Niche | Rows | Distinct creators | P10 | P30 | P50 | P70 | P90 |
+|---|---|---|---|---|---|---|---|
+| beauty | | | | | | | |
+| fitness | | | | | | | |
+| edu | | | | | | | |
+| comedy | | | | | | | |
+| lifestyle | | | | | | | |
+
+(Fill from the SQL `PERCENTILE_CONT` queries in Task 1)
+
+## Per-Niche × Bucket Breakdown
+
+| Niche | Bucket | Rows | Distinct creators | View range |
+|---|---|---|---|---|
+| beauty | viral | | | <min> – <max> |
+| beauty | average | | | |
+| beauty | under | | | |
+
+(continue for all 5 niches × 3 buckets)
+
+## Recalibrated Thresholds (D-09)
+
+Per D-09, full corpus_version thresholds are recomputed from pilot data:
+- viralFloor = niche P90 from pilot distribution
+- underCeiling = niche P30 from pilot distribution
+
+| Niche | viralFloor (P90) | underCeiling (P30) | vs Pilot (D-08) |
+|---|---|---|---|
+| beauty | <fill> | <fill> | started 250k/5k → <diff> |
+| fitness | <fill> | <fill> | started 200k/5k → <diff> |
+| edu | <fill> | <fill> | started 100k/2k → <diff> |
+| comedy | <fill> | <fill> | started 500k/10k → <diff> |
+| lifestyle | <fill> | <fill> | started 250k/5k → <diff> |
+
+These values are sealed into `thresholds.ts` THRESHOLD_SNAPSHOTS["full.YYYY-MM-DD"] in Task 3b. Per D-13, the snapshot is immutable once committed.
+
+## Infrastructure Validation
+
+- [ ] All 15 scrape configs (5 × 3) completed OR per-config failures documented
+- [ ] Quality filter (CORPUS-08) rejected expected rows (views<1, all-zero engagement)
+- [ ] Pitfall 1 (date filter) working — no rows newer than 7 days
+- [ ] Pitfall 3 (dedup after bucketing) working — no creator dominates any bucket
+- [ ] No Apify timeout > 10 min on any single config
+- [ ] Total Apify cost stayed within budget — actual cost: $<fill>
+
+## Open Questions Surfaced
+
+(Reference RESEARCH "Open Questions" A2-A5)
+
+- A2 — Cross-niche-label validation: RESEARCH recommends deferring to Phase 10 (V3 niche classifier). Decision: <confirmed defer | revisit reason>.
+- A3 — bucketFromScore per-niche calibration: RESEARCH recommends deferring to Phase 10. Decision: <confirmed defer | revisit reason>.
+- A4 — follower_count source: clockworks profile-scraper not always populated. % of pilot rows with NULL follower_count: <fill>%. Fallback documented in code (`getFollowerTier(null)` → null).
+- A5 — corpus refresh per-version: Each 30-day refresh = new corpus_version. Phase 11/12 cron stub encodes this.
+
+## Deferred Issues
+
+- completion_pct gap (user decision 2026-05-11): All pilot rows have `completion_pct = NULL`. CORPUS-04 satisfaction note: column exists; data populated when in-product outcome scraper lands. Eval harness handles NULL without error. Documented at top of `.planning/research/v2.1-baseline.md` (Plan G) and in migration header comments (Plan A).
+- <Any other issues observed during the pilot>
+
+## Recommended Adjustments for Full Build (Plan G)
+
+- Use `full.YYYY-MM-DD` corpus_version (today's date in YYYY-MM-DD format)
+- Use recalibrated thresholds from this retrospective
+- <Any adjustments based on under-fill or anomalies>
+
+## Next Step
+
+Proceed with Plan G — full 500-video corpus build using the recalibrated thresholds, then v2.1 baseline measurement.
+```
+
+Fill ALL the `<fill>` placeholders with actual numbers from the SQL queries in Task 1. If a query returned 0 rows for a niche/bucket combination, document it explicitly with a hypothesis (Pitfall 2 for under, low-traffic hashtags for viral, etc.).
+
+If pilot under-filled significantly (<30 total rows) or a niche has zero viral candidates, STOP and surface to the user before proceeding to Task 3a. The recommended remediation is to adjust apify-jobs.ts hashtag selection (NOT to lower the threshold) and re-run the pilot.
+  </action>
+  <verify>
+    <automated>test -f .planning/phases/01-training-corpus-eval-foundation/01-F-PILOT-RETROSPECTIVE.md && grep -q "Per-Niche View Distributions" .planning/phases/01-training-corpus-eval-foundation/01-F-PILOT-RETROSPECTIVE.md && grep -q "Recalibrated Thresholds" .planning/phases/01-training-corpus-eval-foundation/01-F-PILOT-RETROSPECTIVE.md && ! grep -F "<fill>" .planning/phases/01-training-corpus-eval-foundation/01-F-PILOT-RETROSPECTIVE.md</automated>
+  </verify>
+  <done>Retrospective doc exists, has all sections, no `<fill>` placeholders remain (actual numbers populated).</done>
+</task>
+
+<task type="checkpoint:human-verify" gate="blocking">
+  <name>Task 3a: Operator review of pilot retrospective + threshold proposal</name>
+  <what-built>
+The pilot scrape ran end-to-end against live Apify and produced ~50 rows in training_corpus across 5 niches. The retrospective doc captures per-niche view distributions and proposes recalibrated thresholds (niche P90 for viral, niche P30 for under) for the full corpus build.
+
+This checkpoint exists because D-01/D-09 explicitly designate the pilot as load-bearing for threshold calibration. The recalibrated numbers will be sealed into code in Task 3b and become immutable per D-13 — once committed, every benchmark_results row for the full corpus uses these values forever.
+  </what-built>
+  <how-to-verify>
+1. Read `.planning/phases/01-training-corpus-eval-foundation/01-F-PILOT-RETROSPECTIVE.md`
+2. Confirm the per-niche distribution looks sensible:
+   - Each niche has at least 10 rows total (small samples below this make P90/P30 noisy)
+   - P90 viralFloor numbers should be 3-10× the P30 underCeiling for the same niche (separation between buckets)
+   - No niche should be empty
+3. Confirm the recalibrated thresholds in the "Recalibrated Thresholds (D-09)" table are what you want sealed into code
+4. If under-fill is severe or numbers look wrong, type "rerun pilot" — Plan F task 1 needs to be repeated, possibly with adjusted apify-jobs.ts hashtags
+5. If thresholds look right, type "approved" to proceed to Task 3b (code commit)
+  </how-to-verify>
+  <resume-signal>Type "approved" to commit the recalibrated thresholds, OR "rerun pilot" to re-execute Task 1, OR describe issues</resume-signal>
+</task>
+
+<task type="auto">
+  <name>Task 3b: Append full.YYYY-MM-DD snapshot to thresholds.ts</name>
+  <files>src/lib/engine/corpus/thresholds.ts</files>
+  <action>
+After operator approval in Task 3a, append a new entry to `THRESHOLD_SNAPSHOTS` in `src/lib/engine/corpus/thresholds.ts`. CRITICAL: do NOT modify the existing `pilot.2026-05-12` entry (D-13 immutability).
+
+The new entry uses the recalibrated thresholds from the retrospective. Example shape (replace numbers with actual values):
+
+```typescript
+const THRESHOLD_SNAPSHOTS: Record<string, ThresholdsByNiche> = {
+  "pilot.2026-05-12": NICHE_THRESHOLDS,
+  // ──────────────────────────────────────────────────────────────────────
+  // Empirically recalibrated from pilot.2026-05-12 distributions (D-09).
+  // See .planning/phases/01-training-corpus-eval-foundation/01-F-PILOT-RETROSPECTIVE.md
+  // for the per-niche P30/P90 derivation.
+  // Sealed YYYY-MM-DD — per D-13 these values are IMMUTABLE.
+  // ──────────────────────────────────────────────────────────────────────
+  "full.YYYY-MM-DD": {
+    beauty:    { viralFloor: <P90>, underCeiling: <P30> },
+    fitness:   { viralFloor: <P90>, underCeiling: <P30> },
+    edu:       { viralFloor: <P90>, underCeiling: <P30> },
+    comedy:    { viralFloor: <P90>, underCeiling: <P30> },
+    lifestyle: { viralFloor: <P90>, underCeiling: <P30> },
+  },
+};
+```
+
+Use today's actual date in YYYY-MM-DD format for the version identifier. Replace `<P90>` and `<P30>` with actual numbers from the retrospective. Use underscore separators for readability (e.g., `250_000` not `250000`).
+
+After editing, run the thresholds tests to confirm the new entry is registered and existing assertions still hold:
+```bash
+npx vitest run src/lib/engine/corpus/__tests__/thresholds.test.ts
+```
+
+If the existing tests assert exact contents of `THRESHOLD_SNAPSHOTS`, ALSO add a new test assertion verifying the new entry exists (do NOT modify the pilot entry assertions — D-13 immutability extends to the test suite).
+
+Add a test case along these lines to `thresholds.test.ts`:
+```typescript
+it("contains the recalibrated full.YYYY-MM-DD snapshot (D-09)", () => {
+  const full = getThresholds("full.YYYY-MM-DD");      // use actual date
+  for (const niche of NICHES) {
+    expect(full[niche].viralFloor).toBeGreaterThan(full[niche].underCeiling);
+  }
+});
+```
+  </action>
+  <verify>
+    <automated>npx vitest run src/lib/engine/corpus/__tests__/thresholds.test.ts && grep -E '"full\.[0-9]{4}-[0-9]{2}-[0-9]{2}"' src/lib/engine/corpus/thresholds.ts && grep -q "01-F-PILOT-RETROSPECTIVE" src/lib/engine/corpus/thresholds.ts && grep -q "pilot.2026-05-12" src/lib/engine/corpus/thresholds.ts</automated>
+  </verify>
+  <done>thresholds.ts contains a new full.YYYY-MM-DD entry with the recalibrated values AND retains the pilot.2026-05-12 entry unchanged. Comment references the retrospective. Tests pass.</done>
+</task>
+
+</tasks>
+
+<threat_model>
+## Trust Boundaries
+
+| Boundary | Description |
+|----------|-------------|
+| Operator → live Apify | Pilot runs against live infra with operator's APIFY_TOKEN |
+| Pilot data → recalibrated thresholds | Empirical numbers from one scrape become immutable per D-13 — error here propagates to every future benchmark |
+
+## STRIDE Threat Register
+
+| Threat ID | Category | Component | Disposition | Mitigation Plan |
+|-----------|----------|-----------|-------------|-----------------|
+| T-01-F-01 | Tampering | Skewed pilot data biasing thresholds | mitigate | Human checkpoint (Task 3a) validates distribution shape before sealing. Operator can request rerun if numbers look wrong. |
+| T-01-F-02 | DoS (self-inflicted) | Apify cost overrun during pilot | accept | Pilot is small (~$3-10). No hard cap in build-corpus.ts (orchestrator); operator monitors via `/tmp/pilot-build.log`. Full build cap is enforced in Plan G via eval harness. |
+| T-01-F-03 | Repudiation | Recalibrated thresholds committed without audit trail | mitigate | Retrospective doc is committed alongside thresholds.ts edit. Code comment links to retrospective. Git commit message references plan F. |
+| T-01-F-04 | Information disclosure | Pilot scrape captures public TikTok handles | accept | Public-by-design; same posture as Plans A/C/D. |
+</threat_model>
+
+<verification>
+- training_corpus has at least 30 rows under corpus_version='pilot.2026-05-12' covering all 5 niches
+- .planning/phases/01-training-corpus-eval-foundation/01-F-PILOT-RETROSPECTIVE.md exists with all sections populated (no `<fill>` placeholders)
+- src/lib/engine/corpus/thresholds.ts contains both `pilot.2026-05-12` (unchanged) and a new `full.YYYY-MM-DD` entry
+- npx vitest run src/lib/engine/corpus/__tests__/thresholds.test.ts passes including the new full-version assertion
+</verification>
+
+<success_criteria>
+1. Pilot scrape completes; rows present in training_corpus with all 5 niches
+2. Retrospective doc captures empirical distributions with concrete numbers
+3. Operator approves the recalibrated thresholds via the checkpoint
+4. New `full.YYYY-MM-DD` snapshot sealed into thresholds.ts with retrospective cross-reference
+5. Existing tests still pass; new test asserts the new snapshot's shape
+</success_criteria>
+
+<requirement_coverage>
+| Requirement | Cross-link | Task |
+|---|---|---|
+| CORPUS-01 | REQUIREMENTS.md §Training Corpus | T1 (50-video pilot — Plan G builds the full 500) |
+| CORPUS-03 | REQUIREMENTS.md §Training Corpus | T1 (5-niche coverage validated) + T2 (per-niche distribution documented) |
+| CORPUS-08 | REQUIREMENTS.md §Training Corpus | T1 (Plan D quality filter applied at scrape time) + T2 (validation checklist) |
+</requirement_coverage>
+
+<out_of_scope>
+- Full 500-video corpus build (Plan G)
+- v2.1 baseline measurement (Plan G)
+- Eval harness execution (Plan G)
+- Re-running the pilot without explicit user request (idempotent — same `pilot.2026-05-12` corpus_version)
+- Modifying the pilot threshold snapshot (D-13 immutability)
+</out_of_scope>
+
+<output>
+After completion, create `.planning/phases/01-training-corpus-eval-foundation/01-F-SUMMARY.md` per `@$HOME/.claude/get-shit-done/templates/summary.md`.
+</output>

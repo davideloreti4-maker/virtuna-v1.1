@@ -1,0 +1,462 @@
+---
+phase: 1
+plan: G
+title: Full 500-video corpus build + v2.1 baseline measurement + threshold doc
+status: pending
+type: execute
+wave: 4
+depends_on: [A, B, C, D, E, F]
+files_modified:
+  - .planning/research/v2.1-baseline.md
+  - .planning/benchmarks/.gitkeep
+  - .gitignore
+  - src/lib/engine/corpus/eval-config.ts
+autonomous: false
+requirements: [CORPUS-01, CORPUS-03, CORPUS-04, EVAL-06, EVAL-07, EVAL-08]
+must_haves:
+  truths:
+    - "training_corpus has exactly 500 rows under corpus_version='full.YYYY-MM-DD' stratified 100/200/200 across viral/average/under"
+    - "All 5 niches represented in the full corpus (CORPUS-03)"
+    - "benchmark_results has exactly one row with engine_version='2.1.0' and corpus_version='full.YYYY-MM-DD' (D-20 baseline)"
+    - "eval-harness cost stayed within $50 hard cap (Pitfall 5) — actual cost recorded in baseline doc"
+    - ".planning/research/v2.1-baseline.md exists, documents the measured macro_f1 + ECE + per-niche breakdown + the resolved D-18 sliding-scale threshold for v3 acceptance"
+    - "eval-config.ts header comment cross-references .planning/research/v2.1-baseline.md (D-19)"
+    - "completion_pct gap documented at the top of v2.1-baseline.md per user decision 2026-05-11"
+  artifacts:
+    - path: .planning/research/v2.1-baseline.md
+      provides: "v2.1 baseline metrics + threshold rule rationale + completion_pct gap note (D-19, D-20)"
+      contains: "## Threshold Rule"
+      min_lines: 80
+    - path: .planning/benchmarks/.gitkeep
+      provides: "Empty file to keep .planning/benchmarks/ directory in git (per-run JSON dumps live here, .gitignored content)"
+    - path: src/lib/engine/corpus/eval-config.ts
+      provides: "Updated header comment cross-linking to v2.1-baseline.md (D-19)"
+      contains: ".planning/research/v2.1-baseline.md"
+  key_links:
+    - from: ".planning/research/v2.1-baseline.md"
+      to: src/lib/engine/corpus/eval-config.ts
+      via: "Doc references the code constants by name (requiredImprovementFor, MAX_PER_NICHE_REGRESSION_PP, BOOTSTRAP_ITERATIONS)"
+      pattern: "requiredImprovementFor"
+    - from: src/lib/engine/corpus/eval-config.ts
+      to: ".planning/research/v2.1-baseline.md"
+      via: "Top-of-file header comment names the doc explicitly"
+      pattern: "v2.1-baseline.md"
+---
+
+<objective>
+Operationally execute the full corpus build and v2.1 baseline measurement against live infrastructure. Persist the canonical baseline row to `benchmark_results` (D-20). Author `.planning/research/v2.1-baseline.md` with measured metrics + threshold formula explanation + completion_pct gap disclosure. Cross-link the doc with `eval-config.ts` (D-19). This is the milestone-defining artifact: every subsequent phase (4-12) benchmarks against this row.
+
+Plan G is operationally-driven (NOT autonomous) — includes a human checkpoint to confirm the full corpus build looks sound before running the (expensive) baseline eval.
+
+Purpose: Phase 1's final deliverable. Closes Phase 1 success criteria 4 and 5 from ROADMAP.md.
+Output: 500-row corpus + 1 baseline row + 1 baseline doc + 1 directory placeholder.
+</objective>
+
+<execution_context>
+@$HOME/.claude/get-shit-done/workflows/execute-plan.md
+@$HOME/.claude/get-shit-done/templates/summary.md
+</execution_context>
+
+<context>
+@.planning/PROJECT.md
+@.planning/ROADMAP.md
+@.planning/STATE.md
+@.planning/phases/01-training-corpus-eval-foundation/01-CONTEXT.md
+@.planning/phases/01-training-corpus-eval-foundation/01-RESEARCH.md
+@.planning/phases/01-training-corpus-eval-foundation/01-PATTERNS.md
+@.planning/phases/01-training-corpus-eval-foundation/01-F-PILOT-RETROSPECTIVE.md
+@src/lib/engine/corpus/eval-config.ts
+@src/lib/engine/corpus/thresholds.ts
+@scripts/build-corpus.ts
+@scripts/eval.ts
+</context>
+
+<tasks>
+
+<task type="auto">
+  <name>Task 1: Execute the full 500-video corpus build</name>
+  <files>(none new — produces rows in training_corpus table)</files>
+  <action>
+**Preconditions:**
+- Plan F complete: `full.YYYY-MM-DD` snapshot exists in `thresholds.ts` with recalibrated values
+- Operator confirms Apify budget remains (~$15-40 expected for full build)
+- `.env.local` has APIFY_TOKEN and SUPABASE_SERVICE_ROLE_KEY
+
+**Step 1 — Determine the actual full version identifier:**
+
+Read Plan F's `01-F-PILOT-RETROSPECTIVE.md` and `thresholds.ts` to find the actual `full.YYYY-MM-DD` identifier sealed in Plan F task 3b. Use that exact string in the next command. For convenience the rest of this plan refers to it as `<FULL_VERSION>`.
+
+**Step 2 — Build the full corpus:**
+
+```bash
+npx tsx scripts/build-corpus.ts --version <FULL_VERSION> --full 2>&1 | tee /tmp/full-build.log
+```
+
+Expected behavior (5× the pilot per the size multiplier in `apify-jobs.ts`):
+- 15 sequential Apify calls
+- Total wall time: ~30-90 min
+- Total Apify cost: ~$15-40
+- Output: ~500 rows in `training_corpus` (target 100 viral / 200 average / 200 under)
+
+The orchestrator stratifies down to target counts after dedup. If the under bucket fills <200 (Pitfall 2 noticeable at scale), document in the baseline doc and proceed — partial fill is acceptable as long as all 5 niches are represented.
+
+**Step 3 — Verify counts:**
+
+```sql
+SELECT
+  bucket,
+  COUNT(*) AS row_count,
+  COUNT(DISTINCT niche) AS distinct_niches,
+  COUNT(DISTINCT creator_handle) AS distinct_creators
+FROM training_corpus
+WHERE corpus_version = '<FULL_VERSION>'
+GROUP BY bucket
+ORDER BY bucket;
+```
+
+Acceptance: total >= 400 rows, all 5 niches present, distinct_creators per bucket >= 30. If acceptance fails, surface to operator before proceeding to Task 2 (baseline eval).
+
+**Failure handling:** same as Plan F task 1 — per-config isolated failures, idempotent re-runs via upsert on `(corpus_version, platform_video_id)`.
+  </action>
+  <verify>
+    <automated>node -e "require('dotenv').config({path:'.env.local'});const{createClient}=require('@supabase/supabase-js');const c=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY);(async()=>{const{data,error,count}=await c.from('training_corpus').select('niche,bucket',{count:'exact'}).like('corpus_version','full.%');const niches=new Set((data||[]).map(x=>x.niche));console.log('count:',count,'niches:',[...niches]);process.exit(niches.size===5&&(count||0)>=400?0:1)})()"</automated>
+  </verify>
+  <done>training_corpus contains at least 400 rows under a corpus_version starting with "full." spanning all 5 niches.</done>
+</task>
+
+<task type="checkpoint:human-verify" gate="blocking">
+  <name>Task 2a: Operator green-light before baseline eval run</name>
+  <what-built>
+The full corpus is built and verified (Task 1 acceptance gate passed). The next step is the v2.1 baseline eval — running the full pipeline (Gemini Pro + Flash, DeepSeek R1, etc.) against all ~500 rows. This is the most expensive operation in Phase 1.
+
+Cost estimate: 500 rows × ~$0.075/analysis = ~$37.50 worst case. Hard cap of $50 (Pitfall 5) enforced via CLI flag. Wall time: ~30-60 min (rate-limited 2s between calls per benchmark.ts:582 + actual API latency).
+
+This checkpoint protects against unintentional cost runaways. Cap can be relaxed via the CLI flag if the operator chooses.
+  </what-built>
+  <how-to-verify>
+1. Confirm the count and niche coverage from Task 1's verify output looks correct
+2. Confirm `.env.local` has GEMINI_API_KEY + DEEPSEEK_API_KEY set (eval pipeline requires both)
+3. Confirm OK with the ~$37.50 cost estimate (or specify a lower `--max-total-cost-cents`)
+4. Type "approved" to proceed with the live eval, OR "skip-baseline" to defer baseline measurement (Phase 1 success criteria 4 will fail), OR "lower-cap N" to set a lower cap (in cents)
+  </how-to-verify>
+  <resume-signal>Type "approved" / "skip-baseline" / "lower-cap N" / or describe issues</resume-signal>
+</task>
+
+<task type="auto">
+  <name>Task 2b: Run the v2.1 baseline eval and persist the canonical row</name>
+  <files>.planning/benchmarks/.gitkeep, .gitignore</files>
+  <action>
+**Step 1 — Run the eval CLI in baseline mode against the full corpus:**
+
+Substitute `<FULL_VERSION>` with the actual full corpus_version sealed in Plan F.
+
+```bash
+# Create the benchmarks output directory if missing
+mkdir -p .planning/benchmarks
+touch .planning/benchmarks/.gitkeep
+
+# Gitignore the JSON payloads but keep the directory in git
+if [ ! -f .gitignore ] || ! grep -q '^\.planning/benchmarks/\*\.json' .gitignore; then
+  echo '' >> .gitignore
+  echo '# Per-run benchmark JSON dumps (kept locally; directory tracked via .gitkeep)' >> .gitignore
+  echo '.planning/benchmarks/*.json' >> .gitignore
+fi
+
+# Run the baseline. --leave-one-out is OPT-IN (6x cost) — skip for the initial baseline.
+# Future phase runs can re-execute with --leave-one-out for per-signal contribution.
+npx tsx scripts/eval.ts \
+  --corpus-version <FULL_VERSION> \
+  --baseline \
+  --max-total-cost-cents 5000 \
+  --output ".planning/benchmarks/$(date +%Y-%m-%d)-v2.1-baseline.json" 2>&1 | tee /tmp/baseline-eval.log
+```
+
+**Expected output:**
+- CLI prints macro_f1, ece, cost_cents_avg/total, latency p50/p95/p99, per-niche f1, viral_recall, under_precision, rows_processed/failed, failure_cases count
+- JSON file written to `.planning/benchmarks/YYYY-MM-DD-v2.1-baseline.json` with the full BenchmarkReport
+- One row inserted into `benchmark_results` with `engine_version="2.1.0"` and `corpus_version=<FULL_VERSION>`
+
+**Step 2 — Capture the actual measured values:**
+
+```bash
+node -e "require('dotenv').config({path:'.env.local'});const{createClient}=require('@supabase/supabase-js');const c=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY);c.from('benchmark_results').select('*').eq('engine_version','2.1.0').order('run_at',{ascending:false}).limit(1).then(r=>console.log(JSON.stringify(r.data?.[0],null,2)))"
+```
+
+Save the output (or the JSON file from `--output`) — Task 3 uses these numbers verbatim in the baseline doc.
+
+**Failure handling:**
+- `CostCapExceededError` mid-run: the eval aborts cleanly; partial data is in memory but the persist step is skipped. Surface to operator before re-running with a higher cap. Already-paid pipeline cost is NOT lost — operator can re-run with `--max-total-cost-cents N` set higher.
+- Per-row failures (e.g., DeepSeek timeout): isolated in eval-runner; the run completes with `rows_failed > 0`. Document in baseline doc.
+- ECE returns null: indicates all rows had no `predicted_overall_score` (catastrophic pipeline failure). Stop and investigate.
+- macro_f1 = 0: indicates every prediction matched no actuals. Stop and investigate `bucketFromScore` mapping.
+
+**Step 3 — Commit the .gitkeep + .gitignore changes:**
+
+These housekeeping artifacts ensure the `.planning/benchmarks/` directory is tracked but per-run JSON dumps stay local.
+  </action>
+  <verify>
+    <automated>node -e "require('dotenv').config({path:'.env.local'});const{createClient}=require('@supabase/supabase-js');const c=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY);c.from('benchmark_results').select('*',{count:'exact'}).eq('engine_version','2.1.0').then(r=>{console.log('baseline_rows:',r.count);process.exit(r.count>=1?0:1)})" && test -f .planning/benchmarks/.gitkeep && grep -q '.planning/benchmarks/\*\.json' .gitignore</automated>
+  </verify>
+  <done>At least 1 row exists in benchmark_results with engine_version='2.1.0'. .planning/benchmarks/.gitkeep exists. .gitignore excludes the JSON dumps. JSON output file produced under .planning/benchmarks/.</done>
+</task>
+
+<task type="auto">
+  <name>Task 3: Write .planning/research/v2.1-baseline.md (baseline doc + threshold rationale + completion_pct gap)</name>
+  <files>.planning/research/v2.1-baseline.md</files>
+  <action>
+Read the persisted baseline row + the JSON output file from Task 2b. Use the actual measured values to populate this doc. Create the `.planning/research/` directory if missing.
+
+```bash
+mkdir -p .planning/research
+```
+
+Author `.planning/research/v2.1-baseline.md` with this exact structure:
+
+```markdown
+# v2.1 Engine Baseline
+
+**Measured:** YYYY-MM-DD
+**Corpus:** `<FULL_VERSION>` (~500 videos, 100 viral / 200 average / 200 under, 5 niches)
+**Engine version:** `2.1.0` (literal from `src/lib/engine/aggregator.ts:17`; D-21 — hardcoded until Phase 3 refactors versioning)
+**Eval harness:** `src/lib/engine/corpus/` + `tsx scripts/eval.ts --baseline`
+
+---
+
+## Known Gap (User Decision 2026-05-11)
+
+**`completion_pct` is NOT captured.** Apify TikTok scrapers (clockworks/tiktok-scraper, apidojo/tiktok-scraper-api) do not expose actual completion percentage from the platform. The `completion_pct NUMERIC(5,2)` column exists on `training_corpus` (and is NULL on every Phase 1 row) for forward compatibility with the **in-product outcome scraper** planned for a deferred milestone.
+
+**CORPUS-04 satisfaction:** every outcome metric the requirement enumerates is captured EXCEPT `completion_pct`. The column exists; data populated when the in-product scraper lands. The eval harness handles NULL without error (verified — `runEvalOverCorpus` does not pass `completion_pct` to the pipeline).
+
+This gap is also documented in:
+- Migration header: `supabase/migrations/20260512000000_training_corpus.sql`
+- Pilot retrospective: `.planning/phases/01-training-corpus-eval-foundation/01-F-PILOT-RETROSPECTIVE.md`
+
+---
+
+## Measured Baseline
+
+| Metric | Value | Source |
+|---|---|---|
+| **Primary gate — macro_f1** | <fill from benchmark_results.macro_f1> | D-14 |
+| ECE | <fill from benchmark_results.ece> | D-16, EVAL-04 |
+| Cost per analysis (avg) | $<fill cost_cents_avg / 100> | BENCH-03 target <= $0.075 |
+| Cost total | $<fill cost_cents_total / 100> | within $50 hard cap |
+| Latency p50 / p95 / p99 | <fill ms> | per-row total pipeline duration |
+| Viral recall | <fill> | D-16 |
+| Under precision | <fill> | D-16 |
+| MAE engagement rate | <fill> | EVAL-02 (Pitfall 4 — restricted to views >= 1000) |
+| Rows processed | <fill> | |
+| Rows failed | <fill> | per-row isolated failures |
+
+### Per-Niche macro_f1 (D-15)
+
+| Niche | macro_f1 |
+|---|---|
+| beauty | <fill> |
+| fitness | <fill> |
+| edu | <fill> |
+| comedy | <fill> |
+| lifestyle | <fill> |
+
+### Per-Class Precision / Recall
+
+| Class | Precision | Recall | F1 | Support |
+|---|---|---|---|---|
+| viral | | | | |
+| average | | | | |
+| under | | | | |
+
+### Per-Signal Leave-One-Out (deferred)
+
+`--leave-one-out` was NOT enabled for the Phase 1 baseline run (6× cost — RESEARCH §C.3 makes this opt-in). Phase 12 acceptance benchmark runs with `--leave-one-out` to populate `signal_contribution`. Phase 1 captures only the aggregate baseline.
+
+---
+
+## Threshold Rule (D-17, D-18) — v3 Acceptance Formula
+
+The v3 engine must demonstrate measurable accuracy improvement vs this baseline before the milestone ships. Two gates BOTH apply:
+
+**1. Relative-improvement floor (D-18 sliding scale)**
+
+Based on measured baseline macro_f1 = `<fill>`:
+
+```
+v2.1 macro_f1 <= 0.40 → require >= 15% relative improvement
+0.40 < v2.1 macro_f1 <= 0.55 → require >= 10% relative improvement
+v2.1 macro_f1 > 0.55 → require >= 7% relative improvement
+```
+
+For this baseline (`<fill>`), v3 must achieve macro_f1 >= `<fill v2.1 * (1 + required_improvement)>` to clear the relative-improvement gate.
+
+The formula lives in code at `src/lib/engine/corpus/eval-config.ts` (`requiredImprovementFor()`). Phase 12 reads it at acceptance-time:
+```typescript
+import { requiredImprovementFor } from "@/lib/engine/corpus/eval-config";
+const minImprovement = requiredImprovementFor(BASELINE_MACRO_F1);  // 0.15 | 0.10 | 0.07
+```
+
+**2. Statistical significance (D-17)**
+
+Paired bootstrap test on the SAME corpus (`<FULL_VERSION>`), at least 200 iterations (configurable via CLI), p-value < 0.05:
+
+```typescript
+import { pairedBootstrapMacroF1 } from "@/lib/engine/corpus/metrics/bootstrap";
+const result = pairedBootstrapMacroF1(predictedV21, predictedV3, actual, 200, 42);
+// Acceptance: result.pValue < 0.05
+```
+
+**3. Per-niche floor (D-15)**
+
+No individual niche's macro_f1 may regress by more than 5 percentage points vs that niche's v2.1 baseline. Per-niche baselines for the comparison:
+
+| Niche | v2.1 macro_f1 | v3 floor (max acceptable regression) |
+|---|---|---|
+| beauty | <fill> | <fill v2.1 - 0.05> |
+| fitness | <fill> | <fill v2.1 - 0.05> |
+| edu | <fill> | <fill v2.1 - 0.05> |
+| comedy | <fill> | <fill v2.1 - 0.05> |
+| lifestyle | <fill> | <fill v2.1 - 0.05> |
+
+Constant: `MAX_PER_NICHE_REGRESSION_PP = 0.05` in `eval-config.ts`.
+
+**All three gates MUST pass for v3 acceptance** (Phase 12 enforces this).
+
+---
+
+## Run Provenance
+
+- corpus_version: `<FULL_VERSION>`
+- Niche thresholds for that corpus_version: see `src/lib/engine/corpus/thresholds.ts` (sealed in Plan F per D-13)
+- engine_version: `2.1.0` (`src/lib/engine/aggregator.ts:17`)
+- benchmark_results row id: `<fill from query>`
+- JSON output: `.planning/benchmarks/YYYY-MM-DD-v2.1-baseline.json` (gitignored)
+- Run timestamp (UTC): `<fill benchmark_results.run_at>`
+
+## Reproducibility
+
+- `bucketFromScore` Phase 1 simplification: 70/30 global cut for viral/under, all niches (RESEARCH §C.2). Phase 10 may recalibrate per-niche; that change produces a new baseline row tagged with the new engine_version.
+- D-13 thresholds are immutable per corpus_version. Re-running this baseline against the SAME `<FULL_VERSION>` produces identical macro_f1 (modulo seeded RNG noise in any randomized engine paths; current v2.1 has none).
+- `pairedBootstrapMacroF1` with seed=42 is deterministic. Same inputs → same p-value.
+
+## Open Items Carried to Later Phases
+
+- **Phase 4** Wave-0 niche classifier may revisit corpus niche labels (RESEARCH "Open Question A2")
+- **Phase 10** ML audit + Platt calibration revisits `bucketFromScore` per-niche calibration (Open Question A3) and may bump baseline macro_f1
+- **Phase 11/12** wires the 30-day corpus refresh cron (Plan C's stub); each refresh = new `full.YYYY-MM-DD` corpus_version
+- **Deferred milestone** in-product outcome scraper populates `completion_pct`; corpus does NOT get retroactively updated (per D-13 immutability — that data lands as a new corpus_version)
+```
+
+Replace ALL `<fill>` placeholders with actual numbers from the baseline row + JSON output. Use 4-decimal precision for macro_f1 / ECE / per-niche F1; 2-decimal for cost dollars; integer for latency ms. If any metric is null (e.g., ECE), document why explicitly with a hypothesis.
+
+Minimum doc length: 80 lines (frontmatter sections fully populated).
+  </action>
+  <verify>
+    <automated>test -f .planning/research/v2.1-baseline.md && grep -q "## Threshold Rule" .planning/research/v2.1-baseline.md && grep -q "## Known Gap" .planning/research/v2.1-baseline.md && grep -q "completion_pct" .planning/research/v2.1-baseline.md && grep -q "requiredImprovementFor" .planning/research/v2.1-baseline.md && ! grep -F "<fill>" .planning/research/v2.1-baseline.md && [ $(wc -l < .planning/research/v2.1-baseline.md) -ge 80 ]</automated>
+  </verify>
+  <done>Doc exists, has all sections, no `<fill>` placeholders, length >= 80 lines, references requiredImprovementFor + completion_pct gap explicitly.</done>
+</task>
+
+<task type="auto">
+  <name>Task 4: Cross-link eval-config.ts header to v2.1-baseline.md (D-19 closure)</name>
+  <files>src/lib/engine/corpus/eval-config.ts</files>
+  <action>
+Update the header comment block in `src/lib/engine/corpus/eval-config.ts` to name the baseline doc explicitly (D-19 requires bidirectional cross-link).
+
+The existing header (from Plan B) already references `.planning/research/v2.1-baseline.md`. Confirm the reference is present and the comment block makes the relationship explicit. If the comment is a generic placeholder, update it to read:
+
+```typescript
+// Threshold formula constants for the v3 acceptance benchmark (BENCH-01..06).
+//
+// D-19: This file is CO-AUTHORITATIVE with .planning/research/v2.1-baseline.md.
+// - The doc references the constants below by name (requiredImprovementFor,
+//   MAX_PER_NICHE_REGRESSION_PP, BOOTSTRAP_ITERATIONS, SIGNIFICANCE_ALPHA).
+// - When the baseline is re-measured (Phase 10 recalibration), this file does
+//   NOT change — the threshold FORMULA is fixed (D-18 sliding scale). Only the
+//   baseline doc updates with new measured macro_f1 values.
+//
+// IMPORTANT: NICHE_THRESHOLDS here are PILOT starting values (D-08). Recalibrated
+// values for the full corpus live in thresholds.ts THRESHOLD_SNAPSHOTS["full.YYYY-MM-DD"]
+// (sealed in Plan F per D-13). Do not modify NICHE_THRESHOLDS here without going
+// through a new pilot cycle.
+```
+
+Run tests to confirm nothing breaks:
+```bash
+npx vitest run src/lib/engine/corpus/__tests__/eval-config.test.ts
+```
+
+Do NOT modify any exported constants. Comment-only edit.
+  </action>
+  <verify>
+    <automated>grep -q "v2.1-baseline.md" src/lib/engine/corpus/eval-config.ts && grep -q "D-19" src/lib/engine/corpus/eval-config.ts && npx vitest run src/lib/engine/corpus/__tests__/eval-config.test.ts</automated>
+  </verify>
+  <done>eval-config.ts header references v2.1-baseline.md and D-19 explicitly. All existing tests pass. No exported constants changed.</done>
+</task>
+
+</tasks>
+
+<threat_model>
+## Trust Boundaries
+
+| Boundary | Description |
+|----------|-------------|
+| Operator → live Apify + live engine APIs | Full build + baseline eval are the most expensive operations in Phase 1; cost cap protects against runaway |
+| Baseline row → every future phase | This row is the canonical reference for Phase 12 acceptance — error here propagates to milestone gate |
+
+## STRIDE Threat Register
+
+| Threat ID | Category | Component | Disposition | Mitigation Plan |
+|-----------|----------|-----------|-------------|-----------------|
+| T-01-G-01 | DoS (self-inflicted) | Cost runaway during 500-video eval | mitigate | `--max-total-cost-cents 5000` ($50 hard cap) via Plan E's CostCapExceededError. Operator checkpoint (Task 2a) confirms before run. |
+| T-01-G-02 | Tampering | Wrong corpus_version on baseline row | mitigate | Plan E's measureV21Baseline hardcodes ENGINE_VERSION; corpus_version comes from CLI flag operator passes explicitly. Pre-run checkpoint (Task 2a) confirms the version string. |
+| T-01-G-03 | Repudiation | Baseline numbers without audit trail | mitigate | JSON dump persisted to `.planning/benchmarks/`. Doc cross-references benchmark_results row id. Git commit binds doc + .gitignore changes. |
+| T-01-G-04 | Information disclosure | JSON dump may include caption text from corpus | accept | Captions are scraped from public TikTok. `.planning/benchmarks/*.json` is .gitignored — local-only by default. Operator decides whether to share. |
+| T-01-G-05 | Tampering | Re-running baseline overwrites the "canonical" row | accept | Multiple baseline rows are legitimate (each is its own audit trail). Plan A deliberately omitted UNIQUE(corpus_version, engine_version). Phase 12 reads the most recent. |
+</threat_model>
+
+<verification>
+- training_corpus has >= 400 rows under a `full.YYYY-MM-DD` corpus_version spanning all 5 niches
+- benchmark_results has at least 1 row with engine_version='2.1.0' and a `full.YYYY-MM-DD` corpus_version
+- .planning/research/v2.1-baseline.md exists with all sections populated and no `<fill>` remaining
+- src/lib/engine/corpus/eval-config.ts header references v2.1-baseline.md and D-19
+- .planning/benchmarks/ exists with .gitkeep; .gitignore excludes JSON dumps
+- Tests pass: `npx vitest run src/lib/engine/corpus/__tests__/`
+- `npx tsc --noEmit` passes
+</verification>
+
+<success_criteria>
+This is the gate plan for Phase 1. After Plan G completes, the five ROADMAP §Phase 1 success criteria are satisfied:
+
+1. training_corpus has 500 videos stratified 100/200/200 across >=5 niches — Task 1 (acceptance allows >=400 with documented under-fill)
+2. Outcome metadata captured per video — Plan C+D normalize-scrape (with completion_pct gap documented)
+3. Eval harness runs any engine version, produces per-signal contribution / calibration drift / overall accuracy — Plan E + invocation in Task 2b (signal contribution opt-in via --leave-one-out)
+4. v2.1 baseline persisted in benchmark_results — Task 2b
+5. Target accuracy threshold for v3 acceptance documented + committed — Task 3 (doc) + Task 4 (code cross-link)
+</success_criteria>
+
+<requirement_coverage>
+| Requirement | Cross-link | Task |
+|---|---|---|
+| CORPUS-01 | REQUIREMENTS.md §Training Corpus | T1 (full 500-video build) |
+| CORPUS-03 | REQUIREMENTS.md §Training Corpus | T1 (5-niche coverage validated) |
+| CORPUS-04 | REQUIREMENTS.md §Training Corpus | T3 (completion_pct gap explicitly documented per user decision) |
+| EVAL-06 | REQUIREMENTS.md §Evaluation Framework | T2b (JSON + markdown summary + benchmark_results row) |
+| EVAL-07 | REQUIREMENTS.md §Evaluation Framework | T3 (threshold formula in doc + cross-link in code) |
+| EVAL-08 | REQUIREMENTS.md §Evaluation Framework | T2b (measureV21Baseline against full corpus) |
+</requirement_coverage>
+
+<out_of_scope>
+- Phase 3+ engine versioning refactor (D-21 keeps "2.1.0" literal for Phase 1)
+- Per-niche `bucketFromScore` calibration (Phase 10 — RESEARCH Open Question A3)
+- Running with `--leave-one-out` for per-signal contribution (Phase 12 acceptance run does this)
+- Updating .planning/STATE.md `progress.percent` and `completed_phases` — handled by gsd-transition outside the plan
+- Marking ROADMAP.md Phase 1 checkbox complete — handled by gsd-transition
+- 30-day corpus refresh cron implementation (Phase 11/12)
+- Drift-aware adaptive thresholds (deferred per CONTEXT)
+</out_of_scope>
+
+<output>
+After completion, create `.planning/phases/01-training-corpus-eval-foundation/01-G-SUMMARY.md` per `@$HOME/.claude/get-shit-done/templates/summary.md`.
+
+After this plan ships, the operator can run `/gsd-transition` to mark Phase 1 complete and unblock Phases 2-12 in the wave plan.
+</output>
