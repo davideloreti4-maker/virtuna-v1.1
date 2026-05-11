@@ -33,7 +33,7 @@ Wave 8 (final gate): P12 (accuracy benchmark + acceptance)
 
 ## Phases
 
-- [ ] **Phase 1: Training Corpus & Eval Foundation** — Build labeled 500-video corpus + eval harness. Measure v2.1 baseline accuracy. Set target threshold.
+- [x] **Phase 1: Training Corpus & Eval Foundation** — Build labeled 500-video corpus + eval harness. Measure v2.1 baseline accuracy. Set target threshold. **Completed 2026-05-11 (pending verifier)**
 - [ ] **Phase 2: Creator Profile & 9-Card Interview** — `creator_profiles` schema, modal flow, settings edit, profile-aware `CreatorContext`.
 - [ ] **Phase 3: Pipeline Infrastructure** — `onStageEvent` callback, SSE infra in /api/analyze, engine versioning + provenance, caching layer (content hash + persona prompt + niche taxonomy).
 - [ ] **Phase 4: Wave 0 — Content Type + Niche Detection** — V3 classifier + hierarchical niche detector before Wave 1; drives downstream signal weighting.
@@ -65,8 +65,8 @@ Plans:
 - [x] 01-03-PLAN.md — Wave 1: cron stub + apify-jobs + normalize-scrape
 - [x] 01-04-PLAN.md — Wave 2: orchestrator + build-corpus CLI
 - [x] 01-05-PLAN.md — Wave 2: eval-harness + baseline + eval CLI
-- [ ] 01-06-PLAN.md — Wave 3: pilot run + threshold recalibration
-- [ ] 01-07-PLAN.md — Wave 4: full corpus + v2.1 baseline + threshold doc
+- [x] 01-06-PLAN.md — Wave 3: pilot run + threshold recalibration (Completed 2026-05-11)
+- [x] 01-07-PLAN.md — Wave 4: full corpus + v2.1 baseline + threshold doc (Completed 2026-05-11)
 
 ### Phase 2: Creator Profile & 9-Card Interview
 **Goal:** Creators complete a 9-card interview before their first analysis; profile is loaded into every analysis as enriched `CreatorContext`.
@@ -213,7 +213,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Training Corpus & Eval Foundation | 0/7 | Not started | - |
+| 1. Training Corpus & Eval Foundation | 7/7 | Complete (pending verifier) | 2026-05-11 |
 | 2. Creator Profile & 9-Card Interview | 0/TBD | Not started | - |
 | 3. Pipeline Infrastructure | 0/TBD | Not started | - |
 | 4. Wave 0 — Content Type + Niche Detection | 0/TBD | Not started | - |
