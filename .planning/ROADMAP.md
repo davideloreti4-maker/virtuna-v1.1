@@ -60,9 +60,9 @@ Wave 8 (final gate): P12 (accuracy benchmark + acceptance)
   5. Target accuracy threshold for v3 acceptance is documented in `.planning/research/` and committed (e.g., "v3 must reduce MAE on engagement prediction by ≥20% vs v2.1")
 **Plans:** 7 plans across 4 waves
 Plans:
-- [ ] 01-01-PLAN.md — Wave 1: training_corpus + benchmark_results migrations
-- [ ] 01-02-PLAN.md — Wave 1: eval-config, thresholds, bucketing, pure metrics
-- [ ] 01-03-PLAN.md — Wave 1: cron stub + apify-jobs + normalize-scrape
+- [x] 01-01-PLAN.md — Wave 1: training_corpus + benchmark_results migrations
+- [x] 01-02-PLAN.md — Wave 1: eval-config, thresholds, bucketing, pure metrics
+- [x] 01-03-PLAN.md — Wave 1: cron stub + apify-jobs + normalize-scrape
 - [ ] 01-04-PLAN.md — Wave 2: orchestrator + build-corpus CLI
 - [ ] 01-05-PLAN.md — Wave 2: eval-harness + baseline + eval CLI
 - [ ] 01-06-PLAN.md — Wave 3: pilot run + threshold recalibration
