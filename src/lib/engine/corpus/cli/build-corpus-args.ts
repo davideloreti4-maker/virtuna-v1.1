@@ -134,14 +134,14 @@ export function parseBuildCorpusArgs(argv: string[]): BuildCorpusArgs {
   }
 
   // Map legacy flags to new modes
+  // (--scrape and --full both map to "scrape" via the else branch below)
   const effectiveSmoke = smokeFlag || pilotFlag;
-  const effectiveScrape = scrapeFlag || fullFlag;
 
   let mode: BuildMode;
   if (effectiveSmoke) mode = "smoke";
   else if (calibrateFlag) mode = "calibrate";
   else if (buildFlag) mode = "build";
-  else mode = "scrape";
+  else mode = "scrape"; // covers both --scrape and --full
 
   // ── Options ───────────────────────────────────────────────────────────────
   const dryRun = has("--dry-run");

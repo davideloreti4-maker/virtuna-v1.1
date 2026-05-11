@@ -85,8 +85,6 @@ describe("buildApifyJobs", () => {
     // Fitness niche-specific hashtags should include "fitness" URL
     const hasFitness = avgUrls.some((u) => u.endsWith("/fitness"));
     expect(hasFitness).toBe(true);
-    // Niche hashtag set should NOT match the trending FYP set
-    const hasFyp = avgUrls.some((u) => u.endsWith("/fyp") && avgUrls.length <= 2);
     // fitness niche has 4 hashtags so it's fine if fyp isn't in niche set at all
     // (comedy is the only niche with fyp in NICHE_HASHTAGS)
     expect(avgUrls.length).toBeGreaterThan(0);
