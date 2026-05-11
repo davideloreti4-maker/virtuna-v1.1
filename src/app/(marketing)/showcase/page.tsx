@@ -1,4 +1,5 @@
 import { Heading, Text } from "@/components/ui";
+import { MagicCard, BorderBeam, ShineBorder } from "@/components/magic-ui";
 
 import { CodeBlock } from "./_components/code-block";
 import { ComponentGrid } from "./_components/component-grid";
@@ -772,6 +773,79 @@ transition: all var(--duration-normal) var(--ease-out-cubic);
 <nav style={{ background: "var(--gradient-navbar)" }}>
   Navigation
 </nav>`}
+          />
+        </div>
+      </ShowcaseSection>
+
+      {/* --- Magic UI Primitives (Phase 1 deliverable) --- */}
+      <ShowcaseSection
+        id="magic-ui"
+        title="Magic UI Primitives"
+        description="Three vetted primitives tuned to the Raycast design language. These are the tuned versions — stock defaults have been overridden to use coral accent and Raycast motion timing."
+      >
+        {/* Magic Card demo — 2-column grid */}
+        <ComponentGrid columns={2}>
+          <div className="relative h-[200px] overflow-hidden rounded-lg">
+            <MagicCard>
+              <div className="flex h-full items-center justify-center">
+                <Text size="sm" muted>
+                  Magic Card — gradient mode
+                </Text>
+              </div>
+            </MagicCard>
+          </div>
+          <div className="relative h-[200px] overflow-hidden rounded-lg">
+            <MagicCard>
+              <div className="flex h-full items-center justify-center">
+                <Text size="sm" muted>
+                  Magic Card — hover tracking
+                </Text>
+              </div>
+            </MagicCard>
+          </div>
+        </ComponentGrid>
+
+        {/* Border Beam demo — single card */}
+        <div className="relative mt-6 h-[140px] overflow-hidden rounded-lg border border-border bg-surface">
+          <BorderBeam />
+          <div className="flex h-full items-center justify-center">
+            <Text size="sm" muted>
+              Border Beam — coral sweep
+            </Text>
+          </div>
+        </div>
+
+        {/* Shine Border demo — single card */}
+        <div className="relative mt-6 h-[140px] overflow-hidden rounded-lg bg-surface">
+          <ShineBorder />
+          <div className="flex h-full items-center justify-center">
+            <Text size="sm" muted>
+              Shine Border — featured card treatment
+            </Text>
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <CodeBlock
+            title="Tuned usage"
+            code={`import { MagicCard, BorderBeam, ShineBorder } from "@/components/magic-ui";
+
+// Magic Card — gradient mode (coral defaults already tuned)
+<MagicCard>
+  <div className="p-6">Content</div>
+</MagicCard>
+
+// Border Beam — drop into a relative + overflow-hidden parent
+<div className="relative overflow-hidden rounded-lg border border-border">
+  <BorderBeam />
+  <div className="p-6">Card content</div>
+</div>
+
+// Shine Border — featured/active card treatment
+<div className="relative overflow-hidden rounded-lg bg-surface">
+  <ShineBorder />
+  <div className="p-6">Featured tier</div>
+</div>`}
           />
         </div>
       </ShowcaseSection>
