@@ -675,7 +675,7 @@ export * from "./stage-latency";
 Run tests after writing them; fix any failures by adjusting the implementation (not the tests).
   </action>
   <verify>
-    <automated>npx vitest run src/lib/engine/corpus/__tests__/leave-one-out.test.ts src/lib/engine/corpus/__tests__/stage-latency.test.ts && grep -q 'export.*computeECE' src/lib/engine/corpus/metrics/index.ts && npx vitest run src/lib/engine/corpus/__tests__/ --coverage 2>&1 | tail -20</automated>
+    <automated>npx vitest run src/lib/engine/corpus/__tests__/leave-one-out.test.ts src/lib/engine/corpus/__tests__/stage-latency.test.ts &amp;&amp; grep -q 'export.*computeECE' src/lib/engine/corpus/metrics/index.ts &amp;&amp; npx vitest run --coverage --coverage.thresholds.lines=80 --coverage.thresholds.branches=80 --coverage.thresholds.functions=80 src/lib/engine/corpus/</automated>
   </verify>
   <done>Both test files pass. metrics/index.ts re-exports computeECE. Coverage report shows corpus module ≥80% (run after all 3 tasks complete).</done>
 </task>
@@ -700,7 +700,7 @@ Run tests after writing them; fix any failures by adjusting the implementation (
 
 <verification>
 - `npx vitest run src/lib/engine/corpus/__tests__/` passes (all 7 new test files)
-- `npx vitest run src/lib/engine/corpus/__tests__/ --coverage` reports ≥80% line/branch coverage on the corpus module
+- `npx vitest run --coverage --coverage.thresholds.lines=80 --coverage.thresholds.branches=80 --coverage.thresholds.functions=80 src/lib/engine/corpus/` exits 0 (Vitest fails non-zero if any threshold unmet — real gate, not informational)
 - `npx tsc --noEmit` passes with no new errors
 - No file imports from `apify-client` or `@/lib/supabase/*` (this plan is pure-function only)
 </verification>

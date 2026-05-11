@@ -88,8 +88,16 @@ From supabase/migrations/20260213000000_content_intelligence.sql:20-52:
 
 <task type="auto">
   <name>Task 1: Create training_corpus migration</name>
-  <files>supabase/migrations/20260512000000_training_corpus.sql</files>
+  <files>supabase/migrations/{YYYYMMDDHHMMSS}_training_corpus.sql</files>
   <action>
+**W2 — Choose the migration timestamp:** The filename `20260512000000_training_corpus.sql` shown throughout this plan is a PLACEHOLDER. Use the current date in `YYYYMMDDHHMMSS` format at execution time. Before writing the file, verify the chosen timestamp sorts AFTER all existing migrations:
+
+```bash
+ls supabase/migrations/ | tail -1
+```
+
+If the latest existing timestamp is >= today's `YYYYMMDDHHMMSS`, increment to the next available second (or use `date -u +%Y%m%d%H%M%S`). The companion `benchmark_results` migration in Task 2 should use the same date with a `+100`-second suffix to preserve insertion order. Substitute the chosen value into the filename AND any `<files>` / `<verify>` references below before creating the file.
+
 Create the migration with this exact structure (the pattern mapper override applies — use `content_intelligence.sql` `scraped_videos` macro pattern, NOT `competitor_tables.sql`).
 
 **File header (REQUIRED comment block):**
@@ -199,8 +207,10 @@ CRITICAL: Do NOT copy `competitor_tables.sql:113-127` RLS — those use `(SELECT
 
 <task type="auto">
   <name>Task 2: Create benchmark_results migration</name>
-  <files>supabase/migrations/20260512000100_benchmark_results.sql</files>
+  <files>supabase/migrations/{YYYYMMDDHHMMSS_+100s}_benchmark_results.sql</files>
   <action>
+**W2 — Choose the migration timestamp:** Use the same date as Task 1's chosen `{YYYYMMDDHHMMSS}` plus a `+100`-second offset (e.g., `20260512000000` -> `20260512000100`), so this migration sorts AFTER training_corpus when Supabase replays migrations alphabetically. Substitute the chosen value into the filename AND any `<files>` / `<verify>` references below.
+
 Create the migration storing eval harness output (D-20 + EVAL-06). Pattern mapper override: mirror `outcomes` + `analysis_results` shape from `content_intelligence.sql`, NOT competitor_tables.
 
 **File header:**
@@ -319,7 +329,7 @@ If type errors surface from existing files referencing OLD generated types in a 
 Do NOT hand-edit `database.types.ts` — it is generator output. If regen fails, document the failure in the SUMMARY and surface to the user before continuing to Plans D/E (they will fail typecheck without these types).
   </action>
   <verify>
-    <automated>grep -q "training_corpus" src/types/database.types.ts && grep -q "benchmark_results" src/types/database.types.ts && npx tsc --noEmit --project tsconfig.json 2>&1 | tee /tmp/typecheck.log | tail -5; ! grep -E "training_corpus|benchmark_results" /tmp/typecheck.log</automated>
+    <automated>grep -q "training_corpus" src/types/database.types.ts &amp;&amp; grep -q "benchmark_results" src/types/database.types.ts &amp;&amp; npx tsc --noEmit --project tsconfig.json &gt; /tmp/typecheck.log 2&gt;&amp;1 &amp;&amp; ! grep -E "training_corpus|benchmark_results" /tmp/typecheck.log</automated>
   </verify>
   <done>database.types.ts contains both new tables; tsc --noEmit passes (or only fails on pre-existing unrelated issues).</done>
 </task>

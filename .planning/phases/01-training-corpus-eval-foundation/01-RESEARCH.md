@@ -1686,32 +1686,40 @@ Implementation in later phases:
 
 **If this table is empty:** All claims in this research were verified or cited — no user confirmation needed. **It is not empty.** Items A1, A4, A8 are most likely to need user/planner confirmation.
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+Every question recorded during research has been resolved by user/planner decision. Each item below carries a `**Resolution:**` line. Items remain in the document for traceability — the resolutions are the action of record.
+
 
 1. **Niche taxonomy with apidojo's existing categories**
    - What we know: clockworks scraper has no built-in niche categorization; the niche is set by which hashtag query we use
    - What's unclear: should the orchestrator cross-validate the niche label using something like a content classifier on the caption text? Phase 4 introduces the V3 niche classifier — that could be backfilled against the corpus
    - Recommendation: defer to Phase 10 (ML audit). For Phase 1, trust the hashtag-based niche assignment.
+   - **Resolution:** Deferred to Phase 10. The V3 niche classifier ships in Phase 4; Phase 10 audits Phase 1 niche labels against the trained classifier as part of the ML audit. Phase 1 trusts hashtag-based niche assignment.
 
 2. **`completion_pct` source**
    - What we know: Apify TikTok scrapers don't expose it in their public output
    - What's unclear: TikTok itself doesn't publish view-through rate via any public API. The `scrapecore`/other actors may have heuristics, but no verified source
    - Recommendation: leave `completion_pct` nullable in `training_corpus`. Document that "actual completion %" is an inferred metric for now — the engine's `behavioral_predictions.completion_pct` is the engine's prediction, not ground truth. CORPUS-04 lists completion % as captured outcome — flag this gap with the user during planning. Possible fallback: estimate completion as a function of `(likes + comments + shares + saves) / views` ratio plus duration — but that's a derived signal, not ground truth.
+   - **Resolution:** Nullable `completion_pct NUMERIC(5,2)` column on `training_corpus`; documented as a known gap per user decision 2026-05-11. The fallback (derived from engagement-rate proxy) was rejected as not-ground-truth. Real data populated when the in-product outcome scraper milestone ships (deferred — Phase 1 does NOT block on it). The gap is surfaced in three places: the migration header (Plan A), the pilot retrospective (Plan F), and the v2.1 baseline doc (Plan G).
 
 3. **`bucketFromScore` calibration**
    - What we know: Phase 1 uses a simple 70/30 cut for all niches
    - What's unclear: this may bias the v2.1 baseline downward (since the engine wasn't calibrated to these buckets). Per-niche calibration in Phase 10 is the right fix
    - Recommendation: accept the simple cut for Phase 1; explicitly note in `eval-config.ts` that this is a Phase 1 simplification. Phase 10 ML audit revisits.
+   - **Resolution:** Deferred to Phase 10. Phase 1 uses the straight 70/30 raw-score cut for benchmark labels via `VIRAL_SCORE_CUT = 70` / `UNDER_SCORE_CUT = 30` in `eval-config.ts` (Plan B). The `bucketFromScore(score, _niche)` function keeps the `niche` argument in its signature for forward compatibility but ignores it. Phase 10 calibrates per-niche cuts during the ML audit + Platt recalibration pass.
 
 4. **Bootstrap iterations — 200 vs higher**
    - What we know: D-17 says ≥200. Real ML model comparisons often use 1000+
    - What's unclear: at our sample size (n=500), 200 may give wide CIs
    - Recommendation: default 200 in `eval-config.ts`; CLI flag `--bootstrap-iters` allows bumping to 1000 or 10000 for tight comparisons. Each iteration is O(n) so 10000 iters × 500 rows × 3-class macro-F1 is ~1.5s — completely fine.
+   - **Resolution:** Default 200 iterations (D-17 minimum) via `BOOTSTRAP_ITERATIONS = 200` in `eval-config.ts`. CLI flag `--bootstrap-iters` allows raising to 1000/10000 for tight comparisons. Paired-bootstrap test (not Wilcoxon — pairs are over the same corpus_version, so the paired form is correct). `mulberry32(seed=42)` provides deterministic reproducibility.
 
 5. **Corpus refresh cadence (CORPUS-02)**
    - What we know: 30-day rolling refresh is the locked spec; stub the cron in Phase 1; real implementation in Phase 11/12
    - What's unclear: does each refresh produce a NEW `corpus_version`, or augment the existing one? CONTEXT.md "Fixed-snapshot thresholds per `corpus_version`" (D-13) implies new version.
    - Recommendation: each 30-day refresh = new `full.YYYY-MM-DD` corpus_version. Old versions stay in the table for historical comparison; the eval harness defaults to the latest unless `--corpus-version` is explicit.
+   - **Resolution:** Per-version (each refresh = new `corpus_version` snapshot). In-place augmentation of existing corpus_versions is explicitly REJECTED per D-13 immutability. The Phase 1 cron stub at `src/app/api/cron/refresh-corpus/route.ts` (Plan C) encodes this contract for Phase 11/12 to fulfill. Old corpus_versions remain in `training_corpus` for historical regression testing.
 
 ## Environment Availability
 

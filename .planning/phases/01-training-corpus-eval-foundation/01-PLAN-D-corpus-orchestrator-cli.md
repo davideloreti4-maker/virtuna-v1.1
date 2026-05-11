@@ -1,7 +1,7 @@
 ---
 phase: 1
 plan: D
-title: Corpus orchestrator + build CLI (Apify → bucket → dedup → upsert)
+title: Corpus orchestrator + build CLI (Apify -> bucket -> dedup -> upsert)
 status: pending
 type: execute
 wave: 2
@@ -9,21 +9,25 @@ depends_on: [A, B, C]
 files_modified:
   - src/lib/engine/corpus/orchestrator.ts
   - src/lib/engine/corpus/corpus-version.ts
+  - src/lib/engine/corpus/cli/build-corpus-args.ts
   - scripts/build-corpus.ts
   - package.json
   - src/lib/engine/corpus/__tests__/orchestrator.test.ts
   - src/lib/engine/corpus/__tests__/corpus-version.test.ts
+  - src/lib/engine/corpus/__tests__/build-corpus-args.test.ts
 autonomous: true
 requirements: [CORPUS-01, CORPUS-03, CORPUS-08]
 must_haves:
   truths:
-    - "buildCorpus({corpusVersion, isPilot, dryRun}) orchestrates 5 niches × 3 configs sequentially with per-config isolated failures"
+    - "buildCorpus({corpusVersion, isPilot, dryRun}) orchestrates 5 niches x 3 configs sequentially with per-config isolated failures"
     - "Bucketing runs AFTER scrape but BEFORE max-3-per-creator dedup (Pitfall 3 order)"
     - "Dedup max-3-per-creator runs within each bucket (Pitfall 3)"
-    - "Quality validation (CORPUS-08) drops rows with views<1, all-zero engagement, or out-of-window posted_at"
+    - "Quality validation (CORPUS-08) drops rows with views below 1, all-zero engagement, or out-of-window posted_at"
     - "Upsert into training_corpus is idempotent on (corpus_version, platform_video_id)"
+    - "bucket_target column captures the SCRAPE INTENT (which ScrapeConfigKind the row came from), distinct from final `bucket` after empirical classification — drift between intent and outcome is observable"
     - "tsx scripts/build-corpus.ts --version <v> --pilot|--full [--dry-run] runs the orchestrator end-to-end"
     - "corpus-version.ts caches sealed snapshots (D-13 immutable per version)"
+    - "CLI argument parsing extracted to src/lib/engine/corpus/cli/build-corpus-args.ts with dedicated unit tests covering all flags and conflicting-flag rejection (catches false-positive smoke tests)"
   artifacts:
     - path: src/lib/engine/corpus/orchestrator.ts
       provides: "buildCorpus(opts) — Apify orchestration, bucketing, dedup, validation, upsert"
@@ -31,6 +35,9 @@ must_haves:
     - path: src/lib/engine/corpus/corpus-version.ts
       provides: "loadCorpusVersion / sealCorpusVersion — read/write the threshold snapshot for a given version"
       contains: "loadCorpusVersion"
+    - path: src/lib/engine/corpus/cli/build-corpus-args.ts
+      provides: "parseBuildCorpusArgs(argv) — pure-function CLI argument parser"
+      contains: "parseBuildCorpusArgs"
     - path: scripts/build-corpus.ts
       provides: "CLI: tsx scripts/build-corpus.ts --version <v> --pilot|--full [--dry-run] [--max-cost-cents N]"
       exports: ["main"]
@@ -40,11 +47,11 @@ must_haves:
   key_links:
     - from: src/lib/engine/corpus/orchestrator.ts
       to: src/lib/engine/corpus/apify-jobs.ts
-      via: "import { buildApifyJobs }"
+      via: "import { buildApifyJobs, type ScrapeConfigKind }"
       pattern: "buildApifyJobs"
     - from: src/lib/engine/corpus/orchestrator.ts
       to: src/lib/engine/corpus/normalize-scrape.ts
-      via: "import { normalizeScrapedItem }"
+      via: "import { normalizeScrapedItem } passing the ScrapeConfigKind so bucket_target propagates through the row"
       pattern: "normalizeScrapedItem"
     - from: src/lib/engine/corpus/orchestrator.ts
       to: src/lib/engine/corpus/bucketing.ts
@@ -55,18 +62,22 @@ must_haves:
       via: "createServiceClient() — service-role write to training_corpus"
       pattern: "createServiceClient"
     - from: scripts/build-corpus.ts
+      to: src/lib/engine/corpus/cli/build-corpus-args.ts
+      via: "Thin CLI shell delegates parsing to parseBuildCorpusArgs(process.argv.slice(2))"
+      pattern: "parseBuildCorpusArgs"
+    - from: scripts/build-corpus.ts
       to: src/lib/engine/corpus/orchestrator.ts
       via: "import { buildCorpus } via tsx + tsconfig-paths bootstrap"
       pattern: "buildCorpus"
 ---
 
 <objective>
-Wire Plans A (training_corpus table), B (bucketing + thresholds + config), and C (apify-jobs + normalize-scrape) into a single end-to-end orchestrator that builds the corpus. The orchestrator owns the scrape→normalize→bucket→dedup→validate→upsert pipeline. The CLI is a thin shell that calls the orchestrator with the right flags.
+Wire Plans A (training_corpus table), B (bucketing + thresholds + config), and C (apify-jobs + normalize-scrape) into a single end-to-end orchestrator that builds the corpus. The orchestrator owns the scrape -> normalize -> bucket -> dedup -> validate -> upsert pipeline. The CLI is a thin shell that calls the orchestrator with the right flags (parsing extracted to a testable module per BLOCKER-5).
 
 This plan does NOT actually scrape — Plan F (pilot) and Plan G (full) drive the CLI against Apify. Plan D establishes the machinery.
 
 Purpose: Provides the runnable artifact (`tsx scripts/build-corpus.ts`) that Plans F/G operate to produce the pilot and full corpus.
-Output: Orchestrator module + CLI + tests that mock Apify and assert end-to-end behavior.
+Output: Orchestrator module + corpus-version cache + CLI + CLI args module + tests that mock Apify and assert end-to-end behavior.
 </objective>
 
 <execution_context>
@@ -100,7 +111,7 @@ Output: Orchestrator module + CLI + tests that mock Apify and assert end-to-end 
 
 <!-- From Plan C (already written by Wave 1) -->
 - `import { buildApifyJobs, type ScrapeConfigKind } from "./apify-jobs"`
-- `import { normalizeScrapedItem, type NormalizedCorpusRow } from "./normalize-scrape"`
+- `import { normalizeScrapedItem, type NormalizedCorpusRow } from "./normalize-scrape"` — NOTE: Plan C must propagate `ScrapeConfigKind` into `NormalizedCorpusRow` (see W6 below)
 
 <!-- From existing codebase -->
 - `import { ApifyClient } from "apify-client"` (already installed v2.22.1)
@@ -123,7 +134,7 @@ Output: Orchestrator module + CLI + tests that mock Apify and assert end-to-end 
   <files>src/lib/engine/corpus/corpus-version.ts, src/lib/engine/corpus/__tests__/corpus-version.test.ts</files>
   <behavior>
 - `loadCorpusVersion("pilot.2026-05-12")` synchronously returns the snapshot (from THRESHOLD_SNAPSHOTS via getThresholds + row count from DB)
-- Repeated calls hit the cache (use createCache from @/lib/cache; D-13 says immutable → cache forever or until manual invalidation)
+- Repeated calls hit the cache (use createCache from @/lib/cache; D-13 says immutable -> cache forever or until manual invalidation)
 - `loadCorpusVersion("unknown.version")` returns null (NOT throws — mirror ml.ts:475 "model not yet trained" pattern per PATTERNS §6)
 - `sealCorpusVersion(version, opts)` is an in-memory function that returns the snapshot object for the orchestrator to attach to inserted rows; actual SQL row counts are queried lazily
 - Snapshot includes: `version`, `niche_thresholds`, `sealed_at` (ISO timestamp), `row_count` (current DB count for that version; 0 if not yet built)
@@ -146,7 +157,7 @@ export interface CorpusVersionSnapshot {
   row_count: number;                                 // current DB count for this version
 }
 
-// D-13 fixed-snapshot → cache forever. Manual invalidation only.
+// D-13 fixed-snapshot -> cache forever. Manual invalidation only.
 const cache = createCache<CorpusVersionSnapshot>(Number.MAX_SAFE_INTEGER);
 
 /**
@@ -238,10 +249,10 @@ Run tests after writing them.
 </task>
 
 <task type="auto" tdd="true">
-  <name>Task 2: orchestrator.ts — scrape, bucket, dedup, validate, upsert</name>
+  <name>Task 2: orchestrator.ts — scrape, bucket, dedup, validate, upsert (with scrape-intent propagation per W6)</name>
   <files>src/lib/engine/corpus/orchestrator.ts, src/lib/engine/corpus/__tests__/orchestrator.test.ts</files>
   <behavior>
-- `buildCorpus({ corpusVersion, isPilot: true, dryRun: true })` walks 5 niches × 3 configs, mocks return small fixtures, returns `{ inserted: 0, failed: [], summary }` (dryRun skips DB)
+- `buildCorpus({ corpusVersion, isPilot: true, dryRun: true })` walks 5 niches x 3 configs, mocks return small fixtures, returns `{ inserted: 0, failed: [], summary }` (dryRun skips DB)
 - Per-config failure is isolated: one mocked `actor.call()` rejection does NOT throw from `buildCorpus`; instead the niche/config pair appears in `failed[]`
 - Pitfall 3 order: bucketing happens BEFORE max-3-per-creator dedup
 - Dedup within bucket: at most 3 videos per `creator_handle` per bucket; viral sorted desc by views, average desc by views, under asc by views (RESEARCH §A.2)
@@ -250,10 +261,13 @@ Run tests after writing them.
   - All-zero engagement (`likes + comments + shares + saves === 0`) rejected
   - `posted_at` already filtered to 7-90d window in normalize-scrape; orchestrator double-checks 7d floor
 - Stratified sampling caps each bucket at the target (pilot 10/20/20, full 100/200/200)
-- All-5-niches assertion: when fixture produces ≥1 row per niche, summary reports all 5 niches with non-zero counts (CORPUS-03)
+- All-5-niches assertion: when fixture produces at least 1 row per niche, summary reports all 5 niches with non-zero counts (CORPUS-03)
 - Non-dryRun path: writes to `training_corpus` via supabase.upsert with onConflict on `(corpus_version, platform_video_id)`
+- **W6 — bucket_target propagation:** Each row carries `scrape_kind: ScrapeConfigKind` (from `NormalizedCorpusRow` — Plan C carries the scrape intent through normalization). The orchestrator maps `scrape_kind` -> `bucket_target` on the DB insert, distinct from `bucket` (which is the empirical classification result). This makes drift between scrape intent and actual classification observable: e.g., "trending" scrape that classified as "under" is a flag for review.
   </behavior>
   <action>
+**Plan C dependency note (W6 prerequisite):** Plan C's `NormalizedCorpusRow` must include a `scrape_kind: ScrapeConfigKind` field, set by `normalizeScrapedItem(item, niche, corpus_version, scrapeKind)`. The orchestrator passes the kind through. Without this, `bucket_target` collapses to `bucket` and the column is a no-op. Plan C must add the `scrape_kind` field to `NormalizedCorpusRow` and accept it as the 4th argument to `normalizeScrapedItem` — see Plan C task 3 W6 step.
+
 **src/lib/engine/corpus/orchestrator.ts** — per RESEARCH §A.2 + Pitfalls 1/3 + PATTERNS §10:
 
 ```typescript
@@ -313,7 +327,7 @@ export async function buildCorpus(
   const failed: BuildCorpusResult["failed"] = [];
   const rawRows: NormalizedCorpusRow[] = [];
 
-  // 5 niches × 3 configs sequential (per RESEARCH §A.2 reasoning: Apify concurrency caps + per-failure isolation)
+  // 5 niches x 3 configs sequential (per RESEARCH §A.2 reasoning: Apify concurrency caps + per-failure isolation)
   for (const niche of NICHES) {
     const jobs = buildApifyJobs(niche, isPilot);
     for (const config of CONFIGS) {
@@ -327,7 +341,8 @@ export async function buildCorpus(
         log.info("Scrape complete", { niche, config, rawItems: items.length });
 
         for (const item of items) {
-          const normalized = normalizeScrapedItem(item, niche, String(corpusVersion));
+          // W6: pass `config` (the ScrapeConfigKind) into normalize so bucket_target propagates
+          const normalized = normalizeScrapedItem(item, niche, String(corpusVersion), config);
           if (normalized) rawRows.push(normalized);
         }
       } catch (err) {
@@ -453,8 +468,8 @@ export async function buildCorpus(
     sound_name: r.sound_name,
     corpus_version: r.corpus_version,
     niche: r.niche,
-    bucket: r.bucket === "average" ? "average" : r.bucket,
-    bucket_target: bucketTargetFor(r),
+    bucket: r.bucket,
+    bucket_target: bucketTargetFor(r),       // W6: from scrape_kind, not from bucket
   }));
 
   const { error } = await supabase
@@ -474,11 +489,22 @@ export async function buildCorpus(
   };
 }
 
-/** Convert post-bucket label back to the original scrape intent for the bucket_target column. */
-function bucketTargetFor(r: NormalizedCorpusRow & { bucket: "viral" | "average" | "under" }): "viral" | "average" | "under" {
-  // Phase 1 simplification: bucket_target = final bucket. Plan F can wire actual
-  // scrape-config intent if pilot retrospective reveals label noise at edges.
-  return r.bucket;
+/**
+ * W6 fix: bucket_target encodes the SCRAPE INTENT (which ScrapeConfigKind
+ * produced the row), distinct from `bucket` which is the empirical classification.
+ * `ScrapeConfigKind = "trending" | "average" | "under"`. "trending" intent maps
+ * to "viral" target (the trending feed sources viral candidates per D-02);
+ * "average" and "under" map directly.
+ */
+function bucketTargetFor(
+  r: NormalizedCorpusRow & { bucket: "viral" | "average" | "under" },
+): "viral" | "average" | "under" {
+  switch (r.scrape_kind) {
+    case "trending": return "viral";
+    case "average":  return "average";
+    case "under":    return "under";
+    default:         return r.bucket;     // legacy fallback if scrape_kind missing
+  }
 }
 ```
 
@@ -513,7 +539,7 @@ describe("buildCorpus", () => {
     }) as never);
   });
 
-  it("orchestrates all 5 niches × 3 configs in dryRun mode", async () => {
+  it("orchestrates all 5 niches x 3 configs in dryRun mode", async () => {
     const result = await buildCorpus({
       corpusVersion: "pilot.2026-05-12",
       isPilot: true,
@@ -565,7 +591,7 @@ describe("buildCorpus", () => {
   });
 
   it("respects max-3-per-creator dedup AFTER bucketing", async () => {
-    // 5 viral videos from the same creator → after dedup, only top 3 by views remain
+    // 5 viral videos from the same creator -> after dedup, only top 3 by views remain
     __setApifyFactoryForTests(() => ({
       actor: () => ({ call: vi.fn().mockResolvedValue({ defaultDatasetId: "fake" }) }),
       dataset: () => ({
@@ -602,14 +628,171 @@ Run tests after writing them; iterate until green.
   <verify>
     <automated>npx vitest run src/lib/engine/corpus/__tests__/orchestrator.test.ts</automated>
   </verify>
-  <done>All 4 test cases pass. Bucketing happens before dedup. Per-config failures isolated. All 5 niches surface in summary when fixtures cover them.</done>
+  <done>All 4 test cases pass. Bucketing happens before dedup. Per-config failures isolated. All 5 niches surface in summary when fixtures cover them. bucket_target is computed from scrape_kind (W6), not from bucket.</done>
 </task>
 
-<task type="auto">
-  <name>Task 3: scripts/build-corpus.ts CLI + package.json script</name>
-  <files>scripts/build-corpus.ts, package.json</files>
+<task type="auto" tdd="true">
+  <name>Task 3: CLI args module + scripts/build-corpus.ts + package.json script + args tests (BLOCKER-5)</name>
+  <files>src/lib/engine/corpus/cli/build-corpus-args.ts, src/lib/engine/corpus/__tests__/build-corpus-args.test.ts, scripts/build-corpus.ts, package.json</files>
+  <behavior>
+BLOCKER-5 resolution: the CLI's argument parser is extracted into a testable module. The previous `grep -q "Usage"` smoke test was a false-positive gate.
+1. `parseBuildCorpusArgs(argv: string[])` is pure: returns a typed `BuildCorpusArgs` struct on success, or throws `BuildCorpusArgsError` on validation failure. It does NOT call `process.exit` directly — the CLI shell in scripts/build-corpus.ts handles exit-code translation.
+2. Every flag is tested:
+   - `--version <v>` is REQUIRED.
+   - Exactly one of `--pilot` or `--full` must be present (both/neither -> throw).
+   - `--dry-run` is a boolean flag.
+   - `--max-cost-cents <N>` parses as optional non-negative integer.
+   - Conflicting flags (e.g., `--version` without value) throw.
+3. The CLI smoke test in <verify> still runs but is no longer the sole gate.
+  </behavior>
   <action>
-**scripts/build-corpus.ts** — pattern matches `scripts/benchmark.ts:1-22` exactly:
+**src/lib/engine/corpus/cli/build-corpus-args.ts** — pure, testable argument parser:
+
+```typescript
+export interface BuildCorpusArgs {
+  version: string;
+  isPilot: boolean;
+  dryRun: boolean;
+  maxCostCents?: number;
+}
+
+export class BuildCorpusArgsError extends Error {
+  constructor(message: string, public readonly usage: string) {
+    super(message);
+    this.name = "BuildCorpusArgsError";
+  }
+}
+
+export const BUILD_CORPUS_USAGE = [
+  "Usage: tsx scripts/build-corpus.ts --version <pilot.YYYY-MM-DD|full.YYYY-MM-DD> --pilot|--full [options]",
+  "",
+  "Required:",
+  "  --version <v>                  Corpus version identifier (e.g., pilot.2026-05-12)",
+  "  --pilot OR --full              Pick exactly one — determines target distribution",
+  "",
+  "Options:",
+  "  --dry-run                      Run the full pipeline but skip the DB write",
+  "  --max-cost-cents <N>           Soft cost ceiling for monitoring (orchestrator does not enforce)",
+].join("\n");
+
+/**
+ * Parse CLI arguments for scripts/build-corpus.ts. Pure function — returns a typed
+ * BuildCorpusArgs struct on success or throws BuildCorpusArgsError on validation failure.
+ * Does NOT call process.exit; the CLI shell does that.
+ */
+export function parseBuildCorpusArgs(argv: string[]): BuildCorpusArgs {
+  const get = (flag: string): string | undefined => {
+    const i = argv.findIndex((a) => a === flag || a.startsWith(`${flag}=`));
+    if (i < 0) return undefined;
+    const a = argv[i]!;
+    if (a.includes("=")) return a.split("=", 2)[1];
+    const next = argv[i + 1];
+    // Conflicting-flag guard: a flag value must not itself start with `--`.
+    if (next === undefined || next.startsWith("--")) {
+      throw new BuildCorpusArgsError(`Flag ${flag} requires a value`, BUILD_CORPUS_USAGE);
+    }
+    return next;
+  };
+
+  const version = get("--version");
+  if (!version) {
+    throw new BuildCorpusArgsError("--version is required", BUILD_CORPUS_USAGE);
+  }
+
+  const isPilot = argv.includes("--pilot");
+  const isFull = argv.includes("--full");
+  if (isPilot && isFull) {
+    throw new BuildCorpusArgsError("Pass exactly one of --pilot or --full", BUILD_CORPUS_USAGE);
+  }
+  if (!isPilot && !isFull) {
+    throw new BuildCorpusArgsError("Pass --pilot or --full", BUILD_CORPUS_USAGE);
+  }
+
+  const dryRun = argv.includes("--dry-run");
+
+  const maxCostRaw = get("--max-cost-cents");
+  let maxCostCents: number | undefined;
+  if (maxCostRaw !== undefined) {
+    const n = Number(maxCostRaw);
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) {
+      throw new BuildCorpusArgsError(
+        `--max-cost-cents must be a non-negative integer (got ${maxCostRaw})`,
+        BUILD_CORPUS_USAGE,
+      );
+    }
+    maxCostCents = n;
+  }
+
+  return { version, isPilot, dryRun, maxCostCents };
+}
+```
+
+**src/lib/engine/corpus/__tests__/build-corpus-args.test.ts**:
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { parseBuildCorpusArgs, BuildCorpusArgsError, BUILD_CORPUS_USAGE } from "../cli/build-corpus-args";
+
+describe("parseBuildCorpusArgs", () => {
+  it("requires --version", () => {
+    expect(() => parseBuildCorpusArgs([])).toThrow(BuildCorpusArgsError);
+    expect(() => parseBuildCorpusArgs(["--pilot"])).toThrow(/--version is required/);
+  });
+
+  it("requires exactly one of --pilot or --full", () => {
+    expect(() => parseBuildCorpusArgs(["--version", "v1"])).toThrow(/--pilot or --full/);
+    expect(() => parseBuildCorpusArgs(["--version", "v1", "--pilot", "--full"])).toThrow(/exactly one/);
+  });
+
+  it("parses pilot mode", () => {
+    const args = parseBuildCorpusArgs(["--version", "pilot.2026-05-12", "--pilot"]);
+    expect(args.version).toBe("pilot.2026-05-12");
+    expect(args.isPilot).toBe(true);
+    expect(args.dryRun).toBe(false);
+    expect(args.maxCostCents).toBeUndefined();
+  });
+
+  it("parses full mode", () => {
+    const args = parseBuildCorpusArgs(["--version", "full.2026-05-12", "--full"]);
+    expect(args.version).toBe("full.2026-05-12");
+    expect(args.isPilot).toBe(false);
+  });
+
+  it("parses --dry-run", () => {
+    const args = parseBuildCorpusArgs(["--version", "v1", "--pilot", "--dry-run"]);
+    expect(args.dryRun).toBe(true);
+  });
+
+  it("parses --max-cost-cents", () => {
+    const args = parseBuildCorpusArgs(["--version", "v1", "--pilot", "--max-cost-cents", "1000"]);
+    expect(args.maxCostCents).toBe(1000);
+  });
+
+  it("rejects non-integer --max-cost-cents", () => {
+    expect(() => parseBuildCorpusArgs(["--version", "v1", "--pilot", "--max-cost-cents", "abc"])).toThrow(BuildCorpusArgsError);
+    expect(() => parseBuildCorpusArgs(["--version", "v1", "--pilot", "--max-cost-cents", "-5"])).toThrow(BuildCorpusArgsError);
+  });
+
+  it("rejects conflicting flags (value missing or another flag taken as value)", () => {
+    expect(() => parseBuildCorpusArgs(["--version", "--pilot"])).toThrow(/requires a value/);
+    expect(() => parseBuildCorpusArgs(["--version", "v1", "--pilot", "--max-cost-cents"])).toThrow(/requires a value/);
+  });
+
+  it("supports `--flag=value` syntax", () => {
+    const args = parseBuildCorpusArgs(["--version=pilot.2026-05-12", "--pilot", "--max-cost-cents=1500"]);
+    expect(args.version).toBe("pilot.2026-05-12");
+    expect(args.maxCostCents).toBe(1500);
+  });
+
+  it("BUILD_CORPUS_USAGE contains the required documentation strings", () => {
+    expect(BUILD_CORPUS_USAGE).toContain("--version");
+    expect(BUILD_CORPUS_USAGE).toContain("--pilot");
+    expect(BUILD_CORPUS_USAGE).toContain("--full");
+  });
+});
+```
+
+**scripts/build-corpus.ts** — thin shell delegating to `parseBuildCorpusArgs`. Pattern matches `scripts/benchmark.ts:1-22` exactly:
 
 ```typescript
 import { config } from "dotenv";
@@ -629,53 +812,24 @@ register({
 
 // After path registration — safe to use @/ aliases
 import { buildCorpus } from "../src/lib/engine/corpus/orchestrator";
+import { parseBuildCorpusArgs, BuildCorpusArgsError } from "../src/lib/engine/corpus/cli/build-corpus-args";
 
 const log = (msg: string) => console.log(`[build-corpus] ${msg}`);
 
-interface Args {
-  version: string;
-  isPilot: boolean;
-  dryRun: boolean;
-  maxCostCents?: number;
-}
-
-function parseArgs(): Args {
-  const args = process.argv.slice(2);
-  const get = (flag: string): string | undefined => {
-    const i = args.findIndex((a) => a === flag || a.startsWith(`${flag}=`));
-    if (i < 0) return undefined;
-    const a = args[i]!;
-    if (a.includes("=")) return a.split("=", 2)[1];
-    return args[i + 1];
-  };
-
-  const version = get("--version") ?? "";
-  if (!version) {
-    log("Usage: tsx scripts/build-corpus.ts --version <pilot.YYYY-MM-DD|full.YYYY-MM-DD> --pilot|--full [--dry-run]");
-    process.exit(1);
-  }
-  const isPilot = args.includes("--pilot");
-  const isFull = args.includes("--full");
-  if (isPilot && isFull) {
-    log("Pass exactly one of --pilot or --full");
-    process.exit(1);
-  }
-  if (!isPilot && !isFull) {
-    log("Pass --pilot or --full");
-    process.exit(1);
-  }
-
-  const dryRun = args.includes("--dry-run");
-  const maxCostCents = (() => {
-    const v = get("--max-cost-cents");
-    return v ? Number(v) : undefined;
-  })();
-
-  return { version, isPilot, dryRun, maxCostCents };
-}
-
 async function main() {
-  const args = parseArgs();
+  let args;
+  try {
+    args = parseBuildCorpusArgs(process.argv.slice(2));
+  } catch (err) {
+    if (err instanceof BuildCorpusArgsError) {
+      log(err.message);
+      log("");
+      log(err.usage);
+      process.exit(1);
+    }
+    throw err;
+  }
+
   log(`Starting corpus build: version=${args.version} pilot=${args.isPilot} dryRun=${args.dryRun}`);
   const result = await buildCorpus({
     corpusVersion: args.version,
@@ -701,28 +855,19 @@ main().catch((err) => {
 
 **package.json** — add the npm script alongside `benchmark`:
 
-Use Edit to add the new script in the existing `"scripts"` block. Inserted line:
+Use Edit/Write to add the new script in the existing `"scripts"` block. Inserted line:
 ```json
 "build-corpus": "npx tsx scripts/build-corpus.ts",
 ```
 
-Place after `"benchmark": "npx tsx scripts/benchmark.ts"`. Preserve all other scripts unchanged. Ensure trailing commas are correct.
+Place after `"benchmark": "npx tsx scripts/benchmark.ts"`. Preserve all other scripts unchanged.
 
-Smoke-check the CLI parser without making real Apify calls:
-```bash
-node -e "process.argv = ['node','x','--version','pilot.test','--pilot','--dry-run']; require('./scripts/build-corpus.ts')" 2>&1 | head -5
-```
-This will likely fail at the Apify call (no APIFY_TOKEN in test env) but should NOT fail at arg parsing. If arg parsing fails, fix the parser.
-
-Better smoke: just verify the script file parses and exits 1 with usage when called without args:
-```bash
-npx tsx scripts/build-corpus.ts 2>&1 | grep -q "Usage"
-```
+Verify (BLOCKER-5): args test file is the PRIMARY gate. CLI smoke is SECONDARY.
   </action>
   <verify>
-    <automated>test -f scripts/build-corpus.ts && grep -q "build-corpus" package.json && npx tsx scripts/build-corpus.ts 2>&1 | grep -q "Usage" ; [ $? -eq 0 ] || npx tsx scripts/build-corpus.ts --version test --pilot --dry-run 2>&1 | head -5</automated>
+    <automated>npx vitest run src/lib/engine/corpus/__tests__/build-corpus-args.test.ts && test -f scripts/build-corpus.ts && grep -q "build-corpus" package.json && npx tsx scripts/build-corpus.ts 2>&1 | grep -q "Usage"</automated>
   </verify>
-  <done>Script exists, package.json has build-corpus entry, CLI prints usage when invoked without args, exits 1 on missing flags. (Real Apify execution deferred to Plans F/G.)</done>
+  <done>parseBuildCorpusArgs unit tests pass. Script exists, package.json has build-corpus entry, CLI prints usage when invoked without args. The args module is the primary correctness gate; the CLI smoke is secondary. (Real Apify execution deferred to Plans F/G.)</done>
 </task>
 
 </tasks>
@@ -732,35 +877,37 @@ npx tsx scripts/build-corpus.ts 2>&1 | grep -q "Usage"
 
 | Boundary | Description |
 |----------|-------------|
-| CLI (operator-driven) → application | `tsx scripts/build-corpus.ts` runs locally with env-var auth; not exposed via HTTP |
-| Apify dataset items → orchestrator | Untrusted external data crosses normalize-scrape (Zod validated in Plan C) |
-| Orchestrator → training_corpus | Service-role writes only via createServiceClient |
+| CLI (operator-driven) -> application | `tsx scripts/build-corpus.ts` runs locally with env-var auth; not exposed via HTTP |
+| Apify dataset items -> orchestrator | Untrusted external data crosses normalize-scrape (Zod validated in Plan C) |
+| Orchestrator -> training_corpus | Service-role writes only via createServiceClient |
 
 ## STRIDE Threat Register
 
 | Threat ID | Category | Component | Disposition | Mitigation Plan |
 |-----------|----------|-----------|-------------|-----------------|
 | T-01-D-01 | Tampering | Untrusted Apify items reaching the DB | mitigate | normalize-scrape (Plan C) Zod safeParse + orchestrator CORPUS-08 quality double-check |
-| T-01-D-02 | Tampering | Borderline videos manipulating bucket boundaries | accept | D-10 hard cutoff makes this deterministic — same input → same bucket. Pitfall 3 ordering ensures bucket assignment can't be gamed by creator-dominated scrapes (dedup runs after). |
+| T-01-D-02 | Tampering | Borderline videos manipulating bucket boundaries | accept | D-10 hard cutoff makes this deterministic — same input -> same bucket. Pitfall 3 ordering ensures bucket assignment can't be gamed by creator-dominated scrapes (dedup runs after). |
 | T-01-D-03 | DoS | Apify run hangs indefinitely | mitigate | `waitSecs: 600` (10 min) timeout per call. Per-config failure isolated — one timeout doesn't block the other 14 jobs. |
-| T-01-D-04 | Spoofing | Stale APIFY_TOKEN in env | accept | Operator-driven CLI; token rotation is operator concern. Apify returns 401 on invalid token → caught by per-config try/catch → reported in `failed[]`. |
+| T-01-D-04 | Spoofing | Stale APIFY_TOKEN in env | accept | Operator-driven CLI; token rotation is operator concern. Apify returns 401 on invalid token -> caught by per-config try/catch -> reported in `failed[]`. |
 | T-01-D-05 | Repudiation | Failed upsert leaves no audit trail | mitigate | Sentry captures all per-config failures with tags (niche, config, corpusVersion). Structured logger emits per-job events. `failed[]` array surfaced in CLI output. |
 </threat_model>
 
 <verification>
-- `npx vitest run src/lib/engine/corpus/__tests__/corpus-version.test.ts src/lib/engine/corpus/__tests__/orchestrator.test.ts` passes
+- `npx vitest run src/lib/engine/corpus/__tests__/corpus-version.test.ts src/lib/engine/corpus/__tests__/orchestrator.test.ts src/lib/engine/corpus/__tests__/build-corpus-args.test.ts` passes
 - `scripts/build-corpus.ts` exists; `npx tsx scripts/build-corpus.ts` (no args) exits 1 with usage
 - `package.json` has `"build-corpus": "npx tsx scripts/build-corpus.ts"` in scripts
 - `npx tsc --noEmit` passes
 - Mocked end-to-end run produces all 5 niches in summary.perNicheCount
+- bucket_target column propagates from scrape_kind (not collapsed to bucket)
 </verification>
 
 <success_criteria>
 1. `buildCorpus({corpusVersion, isPilot, dryRun})` works end-to-end in tests with mocked Apify + Supabase
-2. Pitfall 3 ordering preserved (bucket → dedup, not reverse)
+2. Pitfall 3 ordering preserved (bucket -> dedup, not reverse)
 3. Per-config failures don't abort the batch (refresh-competitors:99 isolation pattern)
-4. CLI shells the orchestrator and prints structured summary
+4. CLI shells the orchestrator and prints structured summary; parsing is testable
 5. `package.json` exposes `build-corpus` npm script
+6. bucket_target column encodes scrape INTENT (W6 — propagated from Plan C's NormalizedCorpusRow.scrape_kind)
 </success_criteria>
 
 <requirement_coverage>

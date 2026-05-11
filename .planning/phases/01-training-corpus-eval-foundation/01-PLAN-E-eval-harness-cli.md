@@ -11,23 +11,30 @@ files_modified:
   - src/lib/engine/corpus/eval-harness.ts
   - src/lib/engine/corpus/baseline.ts
   - src/lib/engine/corpus/failure-cases.ts
+  - src/lib/engine/corpus/cli/eval-args.ts
   - scripts/eval.ts
   - package.json
   - src/lib/engine/corpus/__tests__/eval-runner.test.ts
   - src/lib/engine/corpus/__tests__/eval-harness.test.ts
   - src/lib/engine/corpus/__tests__/failure-cases.test.ts
+  - src/lib/engine/corpus/__tests__/eval-args.test.ts
 autonomous: true
 requirements: [EVAL-01, EVAL-02, EVAL-03, EVAL-04, EVAL-05, EVAL-06, EVAL-08]
 must_haves:
   truths:
     - "runEvalHarness({corpusVersion, engineVersion}) iterates training_corpus rows, calls runPredictionPipeline + aggregateScores, and returns a structured BenchmarkReport"
-    - "Cost cap: total cost > maxTotalCostCents aborts the run mid-batch (Pitfall 5; CLI flag --max-total-cost-cents 5000 default)"
+    - "Cost cap: total cost > maxTotalCostCents aborts the run mid-batch (Pitfall 5; CLI flag --max-total-cost-cents 5000 default). Cap fires AFTER the successful row's cost is added; one over-budget row is tolerated within the 33% safety buffer ($50 cap vs $37.50 ceiling)."
     - "measureV21Baseline(corpusVersion) hardcodes engine_version=ENGINE_VERSION ('2.1.0' per D-21) and persists ONE row to benchmark_results"
     - "Per-signal leave-one-out is opt-in via --leave-one-out flag (6× cost — RESEARCH §C.3)"
     - "Top-10 mispredictions captured as JSON in benchmark_results.failure_cases JSONB column (per Claude's discretion §C.5)"
     - "Aggregator's aggregateScores() is always AWAITED (fix bug at benchmark.ts:515)"
     - "Per-stage latency p50/p95/p99 collected from pipelineResult.timings"
     - "completion_pct=NULL handled without error (per user decision 2026-05-11)"
+    - "extractSignalScores reads the typed top-level fields on PredictionResult (rule_score, trend_score, gemini_score, behavioral_score, ml_score per types.ts:162-166) — no Record<string, unknown> casts"
+    - "Pipeline input uses the real AnalysisInput shape (types.ts:53-85) — no `as never` cast"
+    - "CLI argument parsing extracted to src/lib/engine/corpus/cli/eval-args.ts with dedicated unit tests covering all flags and conflicting-flag rejection (catches false-positive smoke tests)"
+    - "BenchmarkReport.signal_contribution.behavioral !== 0 on a non-uniform fixture (behavioral-test BLOCKER-6 — catches signal-score extraction regressions at test time)"
+    - "--delay-ms CLI flag (default 2000) controls runEvalOverCorpus.rateLimitDelayMs; lower = faster eval but higher rate-limit risk"
   artifacts:
     - path: src/lib/engine/corpus/eval-runner.ts
       provides: "runEvalOverCorpus(opts) — pure-ish loop over training_corpus, per-row try/catch, cost cap, returns raw per-row predictions"
@@ -41,18 +48,25 @@ must_haves:
     - path: src/lib/engine/corpus/failure-cases.ts
       provides: "top10Mispredictions(rows) — curate failure cases for JSONB column"
       contains: "top10Mispredictions"
+    - path: src/lib/engine/corpus/cli/eval-args.ts
+      provides: "parseEvalArgs(argv) — pure-function CLI argument parser. Exits process or returns typed Args struct."
+      contains: "parseEvalArgs"
     - path: scripts/eval.ts
-      provides: "CLI: tsx scripts/eval.ts --corpus-version <v> [--engine-version 2.1.0] [--baseline] [--leave-one-out] [--max-total-cost-cents 5000] [--output <path>]"
+      provides: "CLI: tsx scripts/eval.ts --corpus-version <v> [--engine-version 2.1.0] [--baseline] [--leave-one-out] [--max-total-cost-cents 5000] [--delay-ms 2000] [--output <path>]"
       exports: ["main"]
   key_links:
     - from: src/lib/engine/corpus/eval-runner.ts
       to: src/lib/engine/pipeline.ts
-      via: "runPredictionPipeline(input) — NEVER edit pipeline.ts (additive only)"
+      via: "runPredictionPipeline(input: AnalysisInput) — NEVER edit pipeline.ts (additive only)"
       pattern: "runPredictionPipeline"
     - from: src/lib/engine/corpus/eval-runner.ts
       to: src/lib/engine/aggregator.ts
       via: "await aggregateScores(pipelineResult), import ENGINE_VERSION"
       pattern: "aggregateScores|ENGINE_VERSION"
+    - from: src/lib/engine/corpus/eval-runner.ts
+      to: src/lib/engine/types.ts
+      via: "Reads typed top-level fields from PredictionResult: rule_score, trend_score, gemini_score, behavioral_score, ml_score (types.ts:162-166)"
+      pattern: "behavioral_score|gemini_score|ml_score|rule_score|trend_score"
     - from: src/lib/engine/corpus/eval-harness.ts
       to: src/lib/engine/corpus/metrics
       via: "computeMacroF1, computeECE, bucketFromScore, aggregateStageLatencies, scoreWithoutSignal, scoreBaseline"
@@ -61,6 +75,10 @@ must_haves:
       to: src/lib/engine/aggregator.ts
       via: "ENGINE_VERSION import (D-21: hardcoded '2.1.0' until Phase 3)"
       pattern: "import.*ENGINE_VERSION"
+    - from: scripts/eval.ts
+      to: src/lib/engine/corpus/cli/eval-args.ts
+      via: "Thin CLI shell delegates parsing to parseEvalArgs(process.argv.slice(2))"
+      pattern: "parseEvalArgs"
 ---
 
 <objective>
@@ -69,7 +87,7 @@ Build the eval harness end-to-end: a CLI + library functions that load a sealed 
 Parallel with Plan D — both depend only on A (schema) and B (metrics). No dependency on C/D — eval harness reads from the (eventually-populated) `training_corpus` table; it doesn't need the scrape orchestrator to be wired.
 
 Purpose: Provides the runnable artifact (`tsx scripts/eval.ts`) that Plan G uses to measure the v2.1 baseline.
-Output: 4 library files + CLI + 3 test files.
+Output: 5 library files (eval-runner, eval-harness, baseline, failure-cases, cli/eval-args) + CLI + 4 test files.
 </objective>
 
 <execution_context>
@@ -110,16 +128,33 @@ Output: 4 library files + CLI + 3 test files.
 - `import { scoreBaseline, scoreWithoutSignal, type Signal, SIGNALS } from "./metrics/leave-one-out"`
 - `import { NICHES, type Niche, type Bucket, MIN_VIEWS_FOR_MAE_ENGAGEMENT } from "./eval-config"`
 
-<!-- From existing engine (NEVER edit per additive-only rule) -->
-- `runPredictionPipeline(input: AnalysisInput) → Promise<PipelineResult>` (pipeline.ts)
-- `aggregateScores(pipelineResult: PipelineResult) → Promise<PredictionResult>` (aggregator.ts:263 — ASYNC, must be awaited)
+<!-- From existing engine (NEVER edit per additive-only rule) — verified against actual source -->
+- `runPredictionPipeline(input: AnalysisInput, opts?: { requestId?: string }) → Promise<PipelineResult>` (pipeline.ts:172-175)
+- `aggregateScores(pipelineResult: PipelineResult) → Promise<PredictionResult>` (aggregator.ts:263-265 — ASYNC, must be awaited)
 - `ENGINE_VERSION = "2.1.0"` (aggregator.ts:17)
-- `interface PipelineResult { timings: StageTiming[], deepseekResult, geminiResult, ruleScoreResult, trendEnrichment, featureVector, mlPrediction, warnings: string[] }`
-- `interface PredictionResult { overall_score, confidence, ..., cost_cents }`
+- `AnalysisInput` (types.ts:85, derived from `AnalysisInputSchema` at types.ts:53-83):
+  - `input_mode: "text" | "tiktok_url" | "video_upload"` — `"text"` IS a real, supported mode (types.ts:56)
+  - `content_text?: string` (max 10000) — required when `input_mode === "text"` (types.ts:59 + refine at 75-83)
+  - `content_type: "post" | "reel" | "story" | "video" | "thread"` — REQUIRED (types.ts:68)
+  - Optional: `society_id`, `niche`, `creator_handle`, `tiktok_url`, `video_storage_path` (types.ts:65-73)
+  - NOTE: `hashtags` is NOT an input field — it is extracted from `content_text` by `normalizeInput` (pipeline.ts:14, 203) and lives on `ContentPayload`
+- `interface PipelineResult` (pipeline.ts:34-49):
+  - `payload: ContentPayload`, `geminiResult`, `creatorContext`, `ruleResult`, `trendEnrichment`, `deepseekResult`, `audioResult`
+  - `timings: StageTiming[]`, `total_duration_ms: number`, `warnings: string[]`, `requestId: string`
+- `interface PredictionResult` (types.ts:141-183) — per-signal scores are EXPOSED as top-level fields:
+  - `rule_score: number` (types.ts:162)
+  - `trend_score: number` (types.ts:163)
+  - `gemini_score: number` (types.ts:164)
+  - `behavioral_score: number` (types.ts:165 — derived from DeepSeek's 7 component scores)
+  - `ml_score: number` (types.ts:166 — `0` when ML model unavailable)
+  - `score_weights: { behavioral, gemini, ml, rules, trends }` (types.ts:167-173)
+  - Plus: `overall_score`, `confidence`, `confidence_label`, `cost_cents`, `latency_ms`, `engine_version`, etc.
 
 <!-- Patterns to mirror -->
+- `scripts/benchmark.ts:30-35` — SampleInput type shows the exact text-mode shape the pipeline already accepts: `{ input_mode: "text", content_text, content_type: "post"|"reel"|"story"|"video"|"thread", niche? }`
 - `scripts/benchmark.ts:481-760` — main eval loop with per-sample try/catch, cost accumulation, structured summary
-- `scripts/benchmark.ts:514-515` — pipeline → aggregator pattern (BUG: missing `await` on aggregateScores; fix in new code)
+- `scripts/benchmark.ts:514-515` — pipeline → aggregator pattern (BUG: `aggregateScores` missing `await` — fix in new code)
+- `scripts/benchmark.ts:582` — 2000ms rate-limit delay between samples (anchor for `--delay-ms` default)
 - `scripts/extract-training-data.ts:249-268` — batched supabase fetch with `range(offset, offset + BATCH_SIZE - 1)`
 </interfaces>
 </context>
@@ -131,12 +166,17 @@ Output: 4 library files + CLI + 3 test files.
   <files>src/lib/engine/corpus/eval-runner.ts, src/lib/engine/corpus/failure-cases.ts, src/lib/engine/corpus/__tests__/eval-runner.test.ts, src/lib/engine/corpus/__tests__/failure-cases.test.ts</files>
   <behavior>
 **eval-runner:**
-- `runEvalOverCorpus({ corpusVersion, maxRows, maxTotalCostCents })` fetches rows from training_corpus in pages of 50, calls runPredictionPipeline + AWAITED aggregateScores per row, collects results
+- `runEvalOverCorpus({ corpusVersion, maxRows, maxTotalCostCents, rateLimitDelayMs })` fetches rows from training_corpus in pages of 50, calls runPredictionPipeline + AWAITED aggregateScores per row, collects results
 - Per-row error → log + push synthetic null-fields result; continue (mirror benchmark.ts:551-578)
-- Cost cap: when `totalCostCents > maxTotalCostCents`, abort with a `CostCapExceededError`
+- Cost cap: when `totalCostCents > maxTotalCostCents`, abort with a `CostCapExceededError`. Cap fires AFTER the row's cost is added (one over-budget row tolerated within the 33% safety buffer — $50 cap vs $37.50 ceiling)
 - Per-row max cost guard: if 3 consecutive rows exceed 2× the running avg, log warning (Pitfall 5)
 - Returns `RawEvalResult[]` with: corpus_row_id, niche, actual_bucket, predicted_overall_score, predicted_bucket, pipelineTimings, cost_cents, signalScores (for LOO), error
-- completion_pct=NULL on a row does NOT throw; field is passed through to AnalysisInput as undefined
+- `signalScores` is extracted from the typed PredictionResult top-level fields (rule_score, trend_score, gemini_score, behavioral_score, ml_score). NO Record<string, unknown> cast. NO `?? 50` fallback at the top level (those fields are non-optional on PredictionResult per types.ts:162-166).
+- Pipeline input is constructed as a real `AnalysisInput` (types.ts:85) with NO `as never` cast — text mode maps cleanly from corpus columns
+- completion_pct=NULL on a row does NOT throw; the pipeline does not consume `completion_pct` (it is captured for forward-compat per CONTEXT.md user decision 2026-05-11)
+
+**Input-shape decision (BLOCKER-2 resolution):**
+The corpus row has `caption` (text), `niche`, `platform_url`, but NOT raw video bytes. The pipeline's `input_mode: "video_upload"` requires a Supabase Storage path (pipeline.ts:236-254), and `input_mode: "tiktok_url"` would force a live re-fetch (slow, costly, fragile). Phase 1 baseline uses **text-only mode**: every row evaluated via `input_mode: "text"` with `content_text = row.caption`. This means Gemini analyzes the caption (not the video), DeepSeek reasons over caption + creator context, and ML predicts from the text-derived feature vector. Per-signal scores are still produced; video-only signals (visualProductionQuality, hookVisualImpact, etc.) are null on the FeatureVector (aggregator.ts:168-172) — which is the expected graceful-degradation path the engine already handles. Rationale: matches the v2.1 production behavior for the "describe your video idea" entry point. Phase 10/12 may add an `--input-mode tiktok_url` flag if video-resolution accuracy proves necessary.
 
 **failure-cases:**
 - `top10Mispredictions(results)` returns the top 10 by misprediction severity (viral→under and under→viral count more than viral→avg)
@@ -151,8 +191,9 @@ Output: 4 library files + CLI + 3 test files.
 import { createServiceClient } from "@/lib/supabase/service";
 import { createLogger } from "@/lib/logger";
 import * as Sentry from "@sentry/nextjs";
-import { runPredictionPipeline } from "@/lib/engine/pipeline";
+import { runPredictionPipeline, type PipelineResult } from "@/lib/engine/pipeline";
 import { aggregateScores, ENGINE_VERSION } from "@/lib/engine/aggregator";
+import type { AnalysisInput, PredictionResult } from "@/lib/engine/types";
 import type { Niche, Bucket } from "./eval-config";
 import { bucketFromScore } from "./metrics/score-to-bucket";
 
@@ -165,7 +206,7 @@ export interface RawEvalResult {
   // Engine outputs
   predicted_overall_score: number | null;
   predicted_bucket: Bucket | null;
-  // Per-signal scores (for LOO computation downstream — extracted from aggregator inputs)
+  // Per-signal scores (for LOO computation downstream — read directly from typed PredictionResult)
   signalScores: {
     behavioral: number;
     gemini: number;
@@ -217,7 +258,7 @@ export async function runEvalOverCorpus(
   while (true) {
     const { data, error } = await supabase
       .from("training_corpus")
-      .select("id, niche, bucket, caption, hashtags, views, likes, comments, shares, saves, follower_tier, completion_pct, sound_name")
+      .select("id, niche, bucket, caption, hashtags, views, likes, comments, shares, saves, follower_tier, completion_pct, sound_name, creator_handle")
       .eq("corpus_version", opts.corpusVersion)
       .range(offset, offset + FETCH_BATCH - 1);
     if (error) throw new Error(`Corpus fetch failed: ${error.message}`);
@@ -236,19 +277,28 @@ export async function runEvalOverCorpus(
     const actual_bucket = row.bucket as Bucket;
 
     try {
-      const pipelineResult = await runPredictionPipeline({
+      // BLOCKER-2 resolution: construct a real AnalysisInput (types.ts:53-85).
+      // Phase 1 uses text-mode evaluation — see the "Input-shape decision" in <behavior>.
+      // The corpus does not store raw video bytes, so video_upload mode is unavailable.
+      // Re-fetching via tiktok_url would multiply cost+latency; deferred to Phase 10/12.
+      // No `as never` cast — the shape below matches AnalysisInputSchema (types.ts:53-83).
+      const input: AnalysisInput = {
         input_mode: "text",
-        content_text: (row.caption as string) ?? "",
-        content_type: "video",
+        content_text: typeof row.caption === "string" ? row.caption : "",
+        content_type: "video",                              // corpus is TikTok video-only
         niche,
-        // Optional fields — completion_pct intentionally NOT passed (NULL handling per user decision)
-      } as never);
+        creator_handle: typeof row.creator_handle === "string" ? row.creator_handle : undefined,
+      };
+
+      const pipelineResult = await runPredictionPipeline(input);
       const prediction = await aggregateScores(pipelineResult);  // FIX: always await (benchmark.ts:515 bug)
 
       const cost = prediction.cost_cents ?? 0;
       totalCost += cost;
 
       // Cost cap (Pitfall 5)
+      // Cost cap check fires AFTER the successful row's cost is added.
+      // One over-budget row is tolerated within the 33% safety buffer ($50 cap vs $37.50 ceiling).
       if (totalCost > cap) {
         log.error("Cost cap exceeded", { totalCost, atRow: i });
         throw new CostCapExceededError(totalCost, i);
@@ -265,9 +315,12 @@ export async function runEvalOverCorpus(
         consecutiveHighCost = 0;
       }
 
-      // Extract per-signal scores for LOO. Pipeline result has the raw signal outputs
-      // we approximate the signal scores from pipelineResult; if missing, use 50 as midpoint.
-      const signalScores = extractSignalScores(pipelineResult, prediction);
+      // BLOCKER-1 resolution: read per-signal scores from typed PredictionResult fields.
+      // These are non-optional on PredictionResult (types.ts:162-166) — `ml_score` is
+      // documented to be `0` when ML model is unavailable (types.ts:166), `gemini_score`
+      // and `behavioral_score` already encode graceful degradation inside aggregator.ts
+      // (lines 311-321, 327-330). No casts needed.
+      const signalScores = extractSignalScores(prediction);
 
       results.push({
         corpus_row_id: String(row.id),
@@ -318,21 +371,25 @@ export async function runEvalOverCorpus(
   return results;
 }
 
+/**
+ * Read per-signal scores directly from the typed PredictionResult.
+ * All five fields are non-optional on PredictionResult (types.ts:162-166).
+ * Gemini/behavioral fields already encode graceful degradation inside the
+ * aggregator (HARD-03 fallback at aggregator.ts:281-302) — when a signal is
+ * unavailable, the aggregator emits 0 and updates `score_weights` accordingly.
+ * Re-reading them here for LOO is sufficient: scoreWithoutSignal in metrics/
+ * leave-one-out.ts redistributes weights using SCORE_WEIGHTS_BASE so a "0"
+ * input still produces a non-degenerate ablation delta.
+ */
 function extractSignalScores(
-  pipelineResult: import("@/lib/engine/pipeline").PipelineResult,
-  prediction: import("@/lib/engine/types").PredictionResult,
+  prediction: PredictionResult,
 ): RawEvalResult["signalScores"] {
-  // Best-effort extraction. The aggregator combines these into overall_score;
-  // we read what's exposed on PredictionResult / PipelineResult. When a signal
-  // is missing (graceful degradation), use 50 (neutral midpoint) so LOO can
-  // still compute a delta.
-  const p = prediction as Record<string, unknown>;
   return {
-    behavioral: typeof p.behavioral_score === "number" ? (p.behavioral_score as number) : 50,
-    gemini: typeof p.gemini_score === "number" ? (p.gemini_score as number) : 50,
-    ml: typeof p.ml_score === "number" ? (p.ml_score as number) : 50,
-    rules: typeof p.rule_score === "number" ? (p.rule_score as number) : 50,
-    trends: typeof p.trend_score === "number" ? (p.trend_score as number) : 50,
+    behavioral: prediction.behavioral_score,
+    gemini: prediction.gemini_score,
+    ml: prediction.ml_score,
+    rules: prediction.rule_score,
+    trends: prediction.trend_score,
   };
 }
 
@@ -427,9 +484,9 @@ describe("runEvalOverCorpus", () => {
               .fn()
               .mockResolvedValueOnce({
                 data: [
-                  { id: "r1", niche: "beauty", bucket: "viral", caption: "hi", views: 1000000, likes: 50000, comments: 5000, shares: 1000, saves: 500 },
-                  { id: "r2", niche: "comedy", bucket: "average", caption: "ho", views: 100000, likes: 5000, comments: 500, shares: 100, saves: 50 },
-                  { id: "r3", niche: "edu", bucket: "under", caption: "x", views: 500, likes: 5, comments: 1, shares: 0, saves: 0 },
+                  { id: "r1", niche: "beauty", bucket: "viral", caption: "hi", views: 1000000, likes: 50000, comments: 5000, shares: 1000, saves: 500, creator_handle: "a" },
+                  { id: "r2", niche: "comedy", bucket: "average", caption: "ho", views: 100000, likes: 5000, comments: 500, shares: 100, saves: 50, creator_handle: "b" },
+                  { id: "r3", niche: "edu", bucket: "under", caption: "x", views: 500, likes: 5, comments: 1, shares: 0, saves: 0, creator_handle: "c" },
                 ],
                 error: null,
               })
@@ -443,6 +500,7 @@ describe("runEvalOverCorpus", () => {
       timings: [{ stage: "gemini", duration_ms: 100 }],
       warnings: [],
     } as never);
+    // PredictionResult shape — per-signal scores are top-level (types.ts:162-166)
     vi.mocked(aggregateScores).mockResolvedValue({
       overall_score: 80,
       cost_cents: 5,
@@ -465,10 +523,34 @@ describe("runEvalOverCorpus", () => {
     expect(vi.mocked(aggregateScores)).toHaveBeenCalledTimes(3);
   });
 
+  it("calls runPredictionPipeline with a real AnalysisInput (no `as never` cast)", async () => {
+    await runEvalOverCorpus({ corpusVersion: "test.fixture", rateLimitDelayMs: 0 });
+    const firstCall = vi.mocked(runPredictionPipeline).mock.calls[0]![0];
+    // Assert the input shape matches AnalysisInputSchema (types.ts:53-83)
+    expect(firstCall.input_mode).toBe("text");
+    expect(firstCall.content_type).toBe("video");
+    expect(typeof firstCall.content_text).toBe("string");
+    expect(firstCall.niche).toBe("beauty");
+    // No fabricated fields
+    expect(firstCall).not.toHaveProperty("completion_pct");
+  });
+
+  it("extracts signalScores from typed PredictionResult fields", async () => {
+    const results = await runEvalOverCorpus({ corpusVersion: "test.fixture", rateLimitDelayMs: 0 });
+    expect(results[0]!.signalScores).toEqual({
+      behavioral: 75,
+      gemini: 80,
+      ml: 60,
+      rules: 70,
+      trends: 50,
+    });
+  });
+
   it("aborts with CostCapExceededError when cumulative cost exceeds cap", async () => {
     vi.mocked(aggregateScores).mockResolvedValue({
       overall_score: 50,
       cost_cents: 3000,   // each row costs $30
+      behavioral_score: 50, gemini_score: 50, ml_score: 50, rule_score: 50, trend_score: 50,
     } as never);
     await expect(
       runEvalOverCorpus({ corpusVersion: "test.fixture", maxTotalCostCents: 5000, rateLimitDelayMs: 0 }),
@@ -501,7 +583,7 @@ Run tests after writing them; iterate until green.
   <verify>
     <automated>npx vitest run src/lib/engine/corpus/__tests__/eval-runner.test.ts src/lib/engine/corpus/__tests__/failure-cases.test.ts</automated>
   </verify>
-  <done>Both test files pass. aggregateScores is always awaited. Cost cap aborts via typed exception. Per-row failures isolated. Failure-case curation honors severity rubric.</done>
+  <done>Both test files pass. aggregateScores is always awaited. Cost cap aborts via typed exception. Per-row failures isolated. Failure-case curation honors severity rubric. Pipeline input is constructed without `as never`. signalScores read from typed PredictionResult fields.</done>
 </task>
 
 <task type="auto" tdd="true">
@@ -522,6 +604,9 @@ Run tests after writing them; iterate until green.
 - `measureV21Baseline(corpusVersion)` calls runEvalHarness with `engineVersion: ENGINE_VERSION` (= "2.1.0" per D-21), persists ONE row to benchmark_results, returns the report
 - Persistence path: INSERT into benchmark_results with all the fields from BenchmarkReport
 - Idempotent re-runs: each call inserts a new row (UNIQUE constraint deliberately omitted in Plan A migration; multiple runs per version are intentional for regression testing)
+
+**BLOCKER-6 behavioral test (catches regressions in signal-score extraction):**
+- The eval-harness test MUST include an end-to-end LOO fixture where one signal (e.g., `behavioral`) dominates the input score (~80) and the other signals are near-neutral (~50). After running the harness with `leaveOneOut: true`, assert that `report.signal_contribution.behavioral` is non-zero (|value| > 0.001). This catches BLOCKER-1-style regressions where extractSignalScores silently reads wrong fields (every row would get behavioral=50, ablation = baseline, contribution = 0).
   </behavior>
   <action>
 **src/lib/engine/corpus/eval-harness.ts** — per PATTERNS §3 + RESEARCH §C.1-C.8:
@@ -572,7 +657,8 @@ export interface RunEvalHarnessOptions {
   engineVersion?: string;
   leaveOneOut?: boolean;
   maxTotalCostCents?: number;
-  persist?: boolean;                  // default true
+  rateLimitDelayMs?: number;        // W7: threaded through to runEvalOverCorpus
+  persist?: boolean;                // default true
 }
 
 export async function runEvalHarness(
@@ -584,6 +670,7 @@ export async function runEvalHarness(
   const raw = await runEvalOverCorpus({
     corpusVersion: opts.corpusVersion,
     maxTotalCostCents: opts.maxTotalCostCents,
+    rateLimitDelayMs: opts.rateLimitDelayMs,
   });
 
   const successful = raw.filter((r) => r.predicted_bucket !== null);
@@ -757,7 +844,7 @@ const log = createLogger({ module: "corpus/baseline" });
  */
 export async function measureV21Baseline(
   corpusVersion: string,
-  opts: { leaveOneOut?: boolean; maxTotalCostCents?: number } = {},
+  opts: { leaveOneOut?: boolean; maxTotalCostCents?: number; rateLimitDelayMs?: number } = {},
 ): Promise<BenchmarkReport> {
   log.info("v2.1 baseline measurement", { corpusVersion });
   const report = await runEvalHarness({
@@ -765,6 +852,7 @@ export async function measureV21Baseline(
     engineVersion: ENGINE_VERSION,   // = "2.1.0" (D-21)
     leaveOneOut: opts.leaveOneOut,
     maxTotalCostCents: opts.maxTotalCostCents,
+    rateLimitDelayMs: opts.rateLimitDelayMs,
     persist: true,
   });
   log.info("v2.1 baseline persisted", { macro_f1: report.macro_f1, ece: report.ece });
@@ -772,29 +860,345 @@ export async function measureV21Baseline(
 }
 ```
 
-**Tests `__tests__/eval-harness.test.ts`** (heavily mocked — assert metric assembly, not engine behavior):
+**Tests `__tests__/eval-harness.test.ts`** — mocks `runEvalOverCorpus` from `../eval-runner` so we can drive deterministic fixtures into `runEvalHarness` and assert metric assembly + behavioral LOO contribution.
 
-- Build fixture `RawEvalResult[]` with known buckets and scores; call internal helpers directly OR mock `runEvalOverCorpus` and verify `runEvalHarness` produces the right BenchmarkReport shape
-- macro_f1 + per_niche_f1 are numbers between 0 and 1
-- When `leaveOneOut: true`, `signal_contribution` is populated; when false, it's null
-- ECE is null when no rows had a predicted_overall_score
-- viral_recall and under_precision computed correctly from fixture
-- failure_cases is empty when all predictions match actual
-- failure_cases has at most 10 entries
+```typescript
+import { describe, it, expect, beforeEach, vi } from "vitest";
+
+// Mock runEvalOverCorpus so we can inject deterministic RawEvalResult fixtures.
+vi.mock("../eval-runner", async () => {
+  const actual = await vi.importActual<typeof import("../eval-runner")>("../eval-runner");
+  return {
+    ...actual,
+    runEvalOverCorpus: vi.fn(),
+  };
+});
+vi.mock("@/lib/supabase/service", () => ({
+  createServiceClient: vi.fn(() => ({
+    from: () => ({ insert: vi.fn().mockResolvedValue({ error: null }) }),
+  })),
+}));
+
+import { runEvalHarness } from "../eval-harness";
+import { runEvalOverCorpus, type RawEvalResult } from "../eval-runner";
+
+function makeRaw(
+  i: number,
+  niche: "beauty" | "comedy" | "edu" | "fitness" | "lifestyle",
+  actual: "viral" | "average" | "under",
+  predictedScore: number,
+  signals: { behavioral: number; gemini: number; ml: number; rules: number; trends: number },
+): RawEvalResult {
+  // bucketFromScore: ≥70 viral, ≤30 under, else average
+  const predictedBucket: "viral" | "average" | "under" =
+    predictedScore >= 70 ? "viral" : predictedScore <= 30 ? "under" : "average";
+  return {
+    corpus_row_id: `r${i}`,
+    niche,
+    actual_bucket: actual,
+    predicted_overall_score: predictedScore,
+    predicted_bucket: predictedBucket,
+    signalScores: signals,
+    pipelineTimings: [{ stage: "gemini", duration_ms: 100 }],
+    cost_cents: 5,
+    actual_views: 100_000,
+    actual_likes: 5000,
+    actual_comments: 500,
+    actual_shares: 100,
+    actual_saves: 50,
+    warnings: [],
+    error: null,
+  };
+}
+
+describe("runEvalHarness", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("produces a BenchmarkReport with correct shape (no LOO)", async () => {
+    const rows: RawEvalResult[] = [
+      makeRaw(1, "beauty", "viral", 80, { behavioral: 75, gemini: 80, ml: 60, rules: 70, trends: 50 }),
+      makeRaw(2, "beauty", "viral", 75, { behavioral: 70, gemini: 75, ml: 60, rules: 70, trends: 50 }),
+      makeRaw(3, "beauty", "viral", 72, { behavioral: 68, gemini: 72, ml: 60, rules: 70, trends: 50 }),
+      makeRaw(4, "comedy", "average", 50, { behavioral: 50, gemini: 50, ml: 50, rules: 50, trends: 50 }),
+      makeRaw(5, "comedy", "average", 45, { behavioral: 45, gemini: 50, ml: 50, rules: 50, trends: 50 }),
+      makeRaw(6, "comedy", "average", 55, { behavioral: 55, gemini: 50, ml: 50, rules: 50, trends: 50 }),
+      makeRaw(7, "edu", "under", 20, { behavioral: 20, gemini: 25, ml: 20, rules: 20, trends: 20 }),
+      makeRaw(8, "edu", "under", 25, { behavioral: 25, gemini: 25, ml: 20, rules: 20, trends: 20 }),
+      makeRaw(9, "edu", "under", 28, { behavioral: 28, gemini: 25, ml: 20, rules: 20, trends: 20 }),
+    ];
+    vi.mocked(runEvalOverCorpus).mockResolvedValue(rows);
+
+    const report = await runEvalHarness({
+      corpusVersion: "test.fixture",
+      persist: false,
+    });
+
+    expect(report.macro_f1).toBeGreaterThan(0);
+    expect(report.macro_f1).toBeLessThanOrEqual(1);
+    expect(report.per_niche_f1.beauty).toBeGreaterThan(0);
+    expect(report.signal_contribution).toBeNull();          // leaveOneOut not set
+    expect(report.viral_recall).toBe(1);
+    expect(report.under_precision).toBe(1);
+    expect(report.rows_processed).toBe(9);
+    expect(report.rows_failed).toBe(0);
+    expect(report.failure_cases).toEqual([]);               // all predictions correct
+  });
+
+  it("LOO produces non-zero contribution when signals are non-uniform (BLOCKER-6)", async () => {
+    // 10 rows where `behavioral` strictly dominates the signal-to-bucket mapping.
+    // High-behavioral rows → viral bucket; low-behavioral rows → under bucket.
+    // Other signals stay flat at 50 so removing `behavioral` collapses every row to 50 → "average".
+    const rows: RawEvalResult[] = [
+      makeRaw(1, "beauty", "viral", 80, { behavioral: 95, gemini: 50, ml: 50, rules: 50, trends: 50 }),
+      makeRaw(2, "beauty", "viral", 78, { behavioral: 92, gemini: 50, ml: 50, rules: 50, trends: 50 }),
+      makeRaw(3, "beauty", "viral", 75, { behavioral: 88, gemini: 50, ml: 50, rules: 50, trends: 50 }),
+      makeRaw(4, "comedy", "viral", 75, { behavioral: 88, gemini: 50, ml: 50, rules: 50, trends: 50 }),
+      makeRaw(5, "comedy", "average", 55, { behavioral: 60, gemini: 50, ml: 50, rules: 50, trends: 50 }),
+      makeRaw(6, "edu", "under", 20, { behavioral: 5, gemini: 50, ml: 50, rules: 50, trends: 50 }),
+      makeRaw(7, "edu", "under", 22, { behavioral: 8, gemini: 50, ml: 50, rules: 50, trends: 50 }),
+      makeRaw(8, "edu", "under", 25, { behavioral: 12, gemini: 50, ml: 50, rules: 50, trends: 50 }),
+      makeRaw(9, "fitness", "under", 28, { behavioral: 15, gemini: 50, ml: 50, rules: 50, trends: 50 }),
+      makeRaw(10, "lifestyle", "under", 18, { behavioral: 5, gemini: 50, ml: 50, rules: 50, trends: 50 }),
+    ];
+    vi.mocked(runEvalOverCorpus).mockResolvedValue(rows);
+
+    const report = await runEvalHarness({
+      corpusVersion: "test.fixture",
+      leaveOneOut: true,
+      persist: false,
+    });
+
+    expect(report.signal_contribution).not.toBeNull();
+    // Removing the dominating signal must change macro-F1 measurably.
+    expect(report.signal_contribution!.behavioral).not.toBe(0);
+    expect(Math.abs(report.signal_contribution!.behavioral)).toBeGreaterThan(0.001);
+    // Flat signals (rules, trends, gemini at 50 for every row) have zero or near-zero contribution.
+    // We don't assert their absolute values, only that behavioral dominates.
+    expect(Math.abs(report.signal_contribution!.behavioral)).toBeGreaterThan(
+      Math.abs(report.signal_contribution!.trends ?? 0),
+    );
+  });
+
+  it("ECE is null when no rows had predicted_overall_score", async () => {
+    const rows: RawEvalResult[] = [
+      { ...makeRaw(1, "beauty", "viral", 0, { behavioral: 0, gemini: 0, ml: 0, rules: 0, trends: 0 }), predicted_overall_score: null, predicted_bucket: "viral" },
+    ];
+    vi.mocked(runEvalOverCorpus).mockResolvedValue(rows);
+    const report = await runEvalHarness({ corpusVersion: "test.fixture", persist: false });
+    expect(report.ece).toBeNull();
+  });
+
+  it("failure_cases has at most 10 entries even with many mispredictions", async () => {
+    const rows: RawEvalResult[] = Array.from({ length: 30 }).map((_, i) =>
+      makeRaw(i, "beauty", "viral", 10, { behavioral: 10, gemini: 10, ml: 10, rules: 10, trends: 10 }),
+    );
+    vi.mocked(runEvalOverCorpus).mockResolvedValue(rows);
+    const report = await runEvalHarness({ corpusVersion: "test.fixture", persist: false });
+    expect(report.failure_cases.length).toBeLessThanOrEqual(10);
+  });
+});
+```
 
 Run tests after writing them; iterate until green.
   </action>
   <verify>
     <automated>npx vitest run src/lib/engine/corpus/__tests__/eval-harness.test.ts</automated>
   </verify>
-  <done>Test file passes. BenchmarkReport has correct shape. measureV21Baseline writes to benchmark_results via persist=true path.</done>
+  <done>Test file passes including the behavioral LOO assertion (BLOCKER-6). BenchmarkReport has correct shape. measureV21Baseline writes to benchmark_results via persist=true path.</done>
 </task>
 
-<task type="auto">
-  <name>Task 3: scripts/eval.ts CLI + package.json script</name>
-  <files>scripts/eval.ts, package.json</files>
+<task type="auto" tdd="true">
+  <name>Task 3: CLI args module + scripts/eval.ts + package.json script + args tests</name>
+  <files>src/lib/engine/corpus/cli/eval-args.ts, src/lib/engine/corpus/__tests__/eval-args.test.ts, scripts/eval.ts, package.json</files>
+  <behavior>
+BLOCKER-5 resolution: the CLI's argument parser is extracted into a testable module. The previous "grep -q Usage" smoke test was a false-positive gate. Replacement:
+1. `parseEvalArgs(argv: string[])` is pure: returns a typed `EvalArgs` struct on success, or throws `EvalArgsError` (a subclass of `Error`) on validation failure. It does NOT call `process.exit` directly — the CLI shell in scripts/eval.ts handles exit-code translation.
+2. All CLI flags get a unit test:
+   - `--corpus-version <v>` is REQUIRED. Missing → throws.
+   - `--baseline` is a boolean flag.
+   - `--leave-one-out` is a boolean flag.
+   - `--max-total-cost-cents <N>` parses as integer; defaults to 5000.
+   - `--delay-ms <N>` parses as integer; defaults to 2000 (matches benchmark.ts:582). LOWER = faster eval but higher rate-limit risk; higher = slower eval but safer. Document tradeoff in the help message.
+   - `--engine-version <v>` is optional override (defaults to ENGINE_VERSION in baseline.ts).
+   - `--output <path>` is optional JSON-dump path.
+   - Conflicting flags (e.g., `--corpus-version` without value) throw.
+3. The CLI smoke test in <verify> still runs but is no longer the sole gate.
+  </behavior>
   <action>
-**scripts/eval.ts** — pattern matches `scripts/benchmark.ts:1-22` exactly (RESEARCH §C.7 + PATTERNS §7):
+**src/lib/engine/corpus/cli/eval-args.ts** — pure, testable argument parser:
+
+```typescript
+export interface EvalArgs {
+  corpusVersion: string;
+  baseline: boolean;
+  leaveOneOut: boolean;
+  maxTotalCostCents: number;
+  delayMs: number;
+  output?: string;
+  engineVersion?: string;
+}
+
+export class EvalArgsError extends Error {
+  constructor(message: string, public readonly usage: string) {
+    super(message);
+    this.name = "EvalArgsError";
+  }
+}
+
+export const EVAL_USAGE = [
+  "Usage: tsx scripts/eval.ts --corpus-version <v> [options]",
+  "",
+  "Required:",
+  "  --corpus-version <v>           Corpus version identifier (e.g., full.2026-05-12)",
+  "",
+  "Options:",
+  "  --baseline                     Run measureV21Baseline (hardcodes ENGINE_VERSION)",
+  "  --engine-version <v>           Override engine version label (default: ENGINE_VERSION from aggregator.ts)",
+  "  --leave-one-out                Compute per-signal LOO contribution (6x cost; opt-in per RESEARCH §C.3)",
+  "  --max-total-cost-cents <N>     Hard cost cap; abort run when exceeded (default: 5000 = $50)",
+  "  --delay-ms <N>                 Rate-limit delay between rows in ms (default: 2000)",
+  "                                 LOWER = faster eval, higher rate-limit risk",
+  "                                 HIGHER = slower eval, safer against API throttling",
+  "  --output <path>                Write the full BenchmarkReport JSON to disk (optional)",
+].join("\n");
+
+/**
+ * Parse CLI arguments for scripts/eval.ts. Pure function — returns a typed
+ * EvalArgs struct on success or throws EvalArgsError on validation failure.
+ * Does NOT call process.exit; the CLI shell does that.
+ */
+export function parseEvalArgs(argv: string[]): EvalArgs {
+  const get = (flag: string): string | undefined => {
+    const i = argv.findIndex((a) => a === flag || a.startsWith(`${flag}=`));
+    if (i < 0) return undefined;
+    const a = argv[i]!;
+    if (a.includes("=")) return a.split("=", 2)[1];
+    const next = argv[i + 1];
+    // Conflicting-flag guard: a flag value must not itself start with `--`.
+    if (next === undefined || next.startsWith("--")) {
+      throw new EvalArgsError(`Flag ${flag} requires a value`, EVAL_USAGE);
+    }
+    return next;
+  };
+
+  const corpusVersion = get("--corpus-version");
+  if (!corpusVersion) {
+    throw new EvalArgsError("--corpus-version is required", EVAL_USAGE);
+  }
+
+  const baseline = argv.includes("--baseline");
+  const leaveOneOut = argv.includes("--leave-one-out");
+
+  const parseIntFlag = (flag: string, defaultValue: number): number => {
+    const raw = get(flag);
+    if (raw === undefined) return defaultValue;
+    const n = Number(raw);
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) {
+      throw new EvalArgsError(`${flag} must be a non-negative integer (got ${raw})`, EVAL_USAGE);
+    }
+    return n;
+  };
+
+  return {
+    corpusVersion,
+    baseline,
+    leaveOneOut,
+    maxTotalCostCents: parseIntFlag("--max-total-cost-cents", 5000),
+    delayMs: parseIntFlag("--delay-ms", 2000),
+    output: get("--output"),
+    engineVersion: get("--engine-version"),
+  };
+}
+```
+
+**src/lib/engine/corpus/__tests__/eval-args.test.ts** — exercises every flag path including conflicting-flag rejection:
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { parseEvalArgs, EvalArgsError, EVAL_USAGE } from "../cli/eval-args";
+
+describe("parseEvalArgs", () => {
+  it("requires --corpus-version", () => {
+    expect(() => parseEvalArgs([])).toThrow(EvalArgsError);
+    expect(() => parseEvalArgs(["--baseline"])).toThrow(/--corpus-version is required/);
+  });
+
+  it("parses the minimum-viable invocation", () => {
+    const args = parseEvalArgs(["--corpus-version", "full.2026-05-12"]);
+    expect(args.corpusVersion).toBe("full.2026-05-12");
+    expect(args.baseline).toBe(false);
+    expect(args.leaveOneOut).toBe(false);
+    expect(args.maxTotalCostCents).toBe(5000);
+    expect(args.delayMs).toBe(2000);
+    expect(args.output).toBeUndefined();
+    expect(args.engineVersion).toBeUndefined();
+  });
+
+  it("parses --baseline mode", () => {
+    const args = parseEvalArgs(["--corpus-version", "v1", "--baseline"]);
+    expect(args.baseline).toBe(true);
+  });
+
+  it("parses --leave-one-out", () => {
+    const args = parseEvalArgs(["--corpus-version", "v1", "--leave-one-out"]);
+    expect(args.leaveOneOut).toBe(true);
+  });
+
+  it("parses --max-total-cost-cents as integer", () => {
+    const args = parseEvalArgs(["--corpus-version", "v1", "--max-total-cost-cents", "3000"]);
+    expect(args.maxTotalCostCents).toBe(3000);
+  });
+
+  it("parses --delay-ms (W7) as integer with 2000 default", () => {
+    const defaultArgs = parseEvalArgs(["--corpus-version", "v1"]);
+    expect(defaultArgs.delayMs).toBe(2000);
+    const overridden = parseEvalArgs(["--corpus-version", "v1", "--delay-ms", "500"]);
+    expect(overridden.delayMs).toBe(500);
+  });
+
+  it("parses --output path", () => {
+    const args = parseEvalArgs(["--corpus-version", "v1", "--output", "/tmp/report.json"]);
+    expect(args.output).toBe("/tmp/report.json");
+  });
+
+  it("parses --engine-version override", () => {
+    const args = parseEvalArgs(["--corpus-version", "v1", "--engine-version", "2.1.1"]);
+    expect(args.engineVersion).toBe("2.1.1");
+  });
+
+  it("rejects non-integer --max-total-cost-cents", () => {
+    expect(() => parseEvalArgs(["--corpus-version", "v1", "--max-total-cost-cents", "abc"])).toThrow(EvalArgsError);
+    expect(() => parseEvalArgs(["--corpus-version", "v1", "--max-total-cost-cents", "-5"])).toThrow(EvalArgsError);
+  });
+
+  it("rejects non-integer --delay-ms", () => {
+    expect(() => parseEvalArgs(["--corpus-version", "v1", "--delay-ms", "abc"])).toThrow(EvalArgsError);
+  });
+
+  it("rejects conflicting flags (value missing or another flag taken as value)", () => {
+    // --corpus-version with no value and --baseline next
+    expect(() => parseEvalArgs(["--corpus-version", "--baseline"])).toThrow(/requires a value/);
+    // --output at end with no path
+    expect(() => parseEvalArgs(["--corpus-version", "v1", "--output"])).toThrow(/requires a value/);
+  });
+
+  it("supports `--flag=value` syntax", () => {
+    const args = parseEvalArgs(["--corpus-version=full.2026-05-12", "--max-total-cost-cents=2500"]);
+    expect(args.corpusVersion).toBe("full.2026-05-12");
+    expect(args.maxTotalCostCents).toBe(2500);
+  });
+
+  it("EVAL_USAGE contains the required documentation strings", () => {
+    expect(EVAL_USAGE).toContain("--corpus-version");
+    expect(EVAL_USAGE).toContain("--delay-ms");
+    expect(EVAL_USAGE).toContain("rate-limit");
+  });
+});
+```
+
+**scripts/eval.ts** — thin shell delegating to `parseEvalArgs`. Pattern matches `scripts/benchmark.ts:1-22` exactly (RESEARCH §C.7 + PATTERNS §7):
 
 ```typescript
 import { config } from "dotenv";
@@ -815,57 +1219,38 @@ register({
 
 import { runEvalHarness } from "../src/lib/engine/corpus/eval-harness";
 import { measureV21Baseline } from "../src/lib/engine/corpus/baseline";
+import { parseEvalArgs, EvalArgsError, EVAL_USAGE } from "../src/lib/engine/corpus/cli/eval-args";
 
 const log = (msg: string) => console.log(`[eval] ${msg}`);
 
-interface Args {
-  corpusVersion: string;
-  baseline: boolean;
-  leaveOneOut: boolean;
-  maxTotalCostCents: number;
-  output?: string;
-  engineVersion?: string;
-}
-
-function parseArgs(): Args {
-  const args = process.argv.slice(2);
-  const get = (flag: string): string | undefined => {
-    const i = args.findIndex((a) => a === flag || a.startsWith(`${flag}=`));
-    if (i < 0) return undefined;
-    const a = args[i]!;
-    if (a.includes("=")) return a.split("=", 2)[1];
-    return args[i + 1];
-  };
-
-  const corpusVersion = get("--corpus-version") ?? "";
-  if (!corpusVersion) {
-    log("Usage: tsx scripts/eval.ts --corpus-version <v> [--baseline] [--leave-one-out] [--max-total-cost-cents N] [--output <path>] [--engine-version <v>]");
-    process.exit(1);
-  }
-  return {
-    corpusVersion,
-    baseline: args.includes("--baseline"),
-    leaveOneOut: args.includes("--leave-one-out"),
-    maxTotalCostCents: Number(get("--max-total-cost-cents") ?? 5000),
-    output: get("--output"),
-    engineVersion: get("--engine-version"),
-  };
-}
-
 async function main() {
-  const args = parseArgs();
-  log(`corpus=${args.corpusVersion} baseline=${args.baseline} loo=${args.leaveOneOut} cap=${args.maxTotalCostCents}`);
+  let args;
+  try {
+    args = parseEvalArgs(process.argv.slice(2));
+  } catch (err) {
+    if (err instanceof EvalArgsError) {
+      log(err.message);
+      log("");
+      log(err.usage);
+      process.exit(1);
+    }
+    throw err;
+  }
+
+  log(`corpus=${args.corpusVersion} baseline=${args.baseline} loo=${args.leaveOneOut} cap=${args.maxTotalCostCents} delay=${args.delayMs}ms`);
 
   const report = args.baseline
     ? await measureV21Baseline(args.corpusVersion, {
         leaveOneOut: args.leaveOneOut,
         maxTotalCostCents: args.maxTotalCostCents,
+        rateLimitDelayMs: args.delayMs,
       })
     : await runEvalHarness({
         corpusVersion: args.corpusVersion,
         engineVersion: args.engineVersion,
         leaveOneOut: args.leaveOneOut,
         maxTotalCostCents: args.maxTotalCostCents,
+        rateLimitDelayMs: args.delayMs,
       });
 
   log(`macro_f1: ${report.macro_f1}`);
@@ -901,15 +1286,12 @@ main().catch((err) => {
 "eval": "npx tsx scripts/eval.ts",
 ```
 
-Verify CLI parses correctly without making real API calls:
-```bash
-npx tsx scripts/eval.ts 2>&1 | grep -q "Usage" && echo OK || echo FAIL
-```
+Verify (BLOCKER-5 resolution): the args test file is the PRIMARY gate. The CLI smoke check is a SECONDARY signal that exercises the assembled binary; it must pass AFTER the args tests pass.
   </action>
   <verify>
-    <automated>test -f scripts/eval.ts && grep -q '"eval":' package.json && npx tsx scripts/eval.ts 2>&1 | grep -q "Usage"</automated>
+    <automated>npx vitest run src/lib/engine/corpus/__tests__/eval-args.test.ts && test -f scripts/eval.ts && grep -q '"eval":' package.json && npx tsx scripts/eval.ts 2>&1 | grep -q "Usage"</automated>
   </verify>
-  <done>Script exists, package.json has eval entry, CLI prints usage when invoked without args.</done>
+  <done>parseEvalArgs unit tests pass. Script exists, package.json has eval entry, CLI prints usage when invoked without args. The args module is the primary correctness gate; the CLI smoke is secondary.</done>
 </task>
 
 </tasks>
@@ -932,14 +1314,17 @@ npx tsx scripts/eval.ts 2>&1 | grep -q "Usage" && echo OK || echo FAIL
 | T-01-E-03 | Information disclosure | Logs include caption text from corpus | accept | Captions are scraped from public TikTok. No PII. Structured logger never emits raw API keys. |
 | T-01-E-04 | Repudiation | Eval row inserted but not surfaced | mitigate | Sentry tags every insert failure; CLI logs total cost + macro-F1 to stdout; JSON output flag persists the full report to disk for audit. |
 | T-01-E-05 | Tampering | Stale ENGINE_VERSION used for baseline row | mitigate | baseline.ts imports ENGINE_VERSION from aggregator.ts (D-21). When Phase 3 changes the constant, this baseline row is still tagged "2.1.0" (already persisted to DB). |
+| T-01-E-06 | Tampering | Wrong signal extraction silently passes tests | mitigate | The eval-harness behavioral LOO test (BLOCKER-6) asserts that a dominating signal produces non-zero ablation delta. If extractSignalScores reads wrong fields → contribution collapses to 0 → test fails. |
 </threat_model>
 
 <verification>
-- `npx vitest run src/lib/engine/corpus/__tests__/eval-runner.test.ts src/lib/engine/corpus/__tests__/failure-cases.test.ts src/lib/engine/corpus/__tests__/eval-harness.test.ts` passes
+- `npx vitest run src/lib/engine/corpus/__tests__/eval-args.test.ts src/lib/engine/corpus/__tests__/eval-runner.test.ts src/lib/engine/corpus/__tests__/failure-cases.test.ts src/lib/engine/corpus/__tests__/eval-harness.test.ts` passes
 - `scripts/eval.ts` exists and shows usage when run without args
 - `package.json` has `"eval": "npx tsx scripts/eval.ts"`
 - `npx tsc --noEmit` passes
 - `aggregateScores` is awaited everywhere it's called (fix for benchmark.ts:515 bug)
+- `extractSignalScores` reads typed PredictionResult fields (no `Record<string, unknown>` casts)
+- runPredictionPipeline is invoked with a real AnalysisInput (no `as never` cast)
 </verification>
 
 <success_criteria>
@@ -949,6 +1334,8 @@ npx tsx scripts/eval.ts 2>&1 | grep -q "Usage" && echo OK || echo FAIL
 4. Per-row failures isolated (mirror benchmark.ts:551-578)
 5. Top-10 failure curation honors severity rubric
 6. `aggregateScores` is always awaited
+7. parseEvalArgs unit tests cover every flag including --delay-ms and conflicting-flag rejection
+8. BLOCKER-6 behavioral test catches signal-extraction regressions at test time
 </success_criteria>
 
 <requirement_coverage>
@@ -970,6 +1357,7 @@ npx tsx scripts/eval.ts 2>&1 | grep -q "Usage" && echo OK || echo FAIL
 - Drift metrics across versions (placeholder; populated when 2+ corpus_versions exist — Plan G or later)
 - Edits to pipeline.ts/aggregator.ts/types.ts (additive-only milestone constraint)
 - `bucketFromScore` per-niche calibration (Phase 10 per RESEARCH "Open Question A3")
+- Video-mode evaluation (--input-mode tiktok_url) — Phase 10/12 if needed; Phase 1 uses text-only (BLOCKER-2 resolution)
 </out_of_scope>
 
 <output>

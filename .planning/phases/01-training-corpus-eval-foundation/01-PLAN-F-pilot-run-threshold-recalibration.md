@@ -251,10 +251,10 @@ This checkpoint exists because D-01/D-09 explicitly designate the pilot as load-
    - P90 viralFloor numbers should be 3-10× the P30 underCeiling for the same niche (separation between buckets)
    - No niche should be empty
 3. Confirm the recalibrated thresholds in the "Recalibrated Thresholds (D-09)" table are what you want sealed into code
-4. If under-fill is severe or numbers look wrong, type "rerun pilot" — Plan F task 1 needs to be repeated, possibly with adjusted apify-jobs.ts hashtags
+4. If under-fill is severe or numbers look wrong, type "rerun pilot" to re-execute Task 1. **W5 semantics:** edit `src/lib/engine/corpus/apify-jobs.ts` (hashtags, `resultsPerPage`, etc.) and KEEP THE SAME `corpus_version` (e.g., `pilot.2026-05-12`). The orchestrator upserts on `(corpus_version, platform_video_id)` so re-runs are idempotent and ADDITIVE — already-captured rows are unchanged; only new rows fill the deficit. Use a NEW `corpus_version` (e.g., `pilot.2026-05-13`) ONLY if you intend to seal the current pilot and start a separate calibration pass — that would require a new entry in `thresholds.ts` THRESHOLD_SNAPSHOTS and is the correct path when you suspect the existing data is unsalvageable (e.g., wrong niche taxonomy applied).
 5. If thresholds look right, type "approved" to proceed to Task 3b (code commit)
   </how-to-verify>
-  <resume-signal>Type "approved" to commit the recalibrated thresholds, OR "rerun pilot" to re-execute Task 1, OR describe issues</resume-signal>
+  <resume-signal>Type "approved" to commit the recalibrated thresholds, OR "rerun pilot" to re-execute Task 1 (same corpus_version, idempotent upsert), OR "accept-underfill" to seal thresholds and accept the smaller corpus (Plan G's strict 500-row gate is then explicitly overridden — record the operator decision in the retrospective), OR describe issues</resume-signal>
 </task>
 
 <task type="auto">

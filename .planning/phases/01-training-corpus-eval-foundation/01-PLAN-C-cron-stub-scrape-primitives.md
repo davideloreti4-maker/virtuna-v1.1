@@ -22,7 +22,7 @@ must_haves:
     - "GET /api/cron/refresh-corpus exists, requires cron auth, returns 200 with stubbed status when authorized"
     - "vercel.json registers refresh-corpus at the monthly schedule (matches 30-day cadence intent)"
     - "buildApifyJobs(niche, isPilot) returns the three named scrape configs per niche (trending/average/under) for D-06"
-    - "normalizeScrapedItem handles both clockworks and apidojo TikTok output formats and produces a deterministic normalized row"
+    - "normalizeScrapedItem(item, niche, corpus_version, scrapeKind) handles both clockworks and apidojo TikTok output formats and produces a deterministic normalized row; scrape_kind (W6) is propagated onto NormalizedCorpusRow so the orchestrator can encode it as bucket_target"
     - "Age filter at scrape time uses newestPostDate = today - 7d (Pitfall 1)"
     - "getFollowerTier() classifies follower_count into nano/micro/mid/large/mega"
   artifacts:
@@ -36,7 +36,7 @@ must_haves:
       provides: "buildApifyJobs(niche, isPilot) → { trending, average, under } config tuple"
       contains: "buildApifyJobs"
     - path: src/lib/engine/corpus/normalize-scrape.ts
-      provides: "normalizeScrapedItem(item, niche, corpus_version) → typed normalized row OR null"
+      provides: "normalizeScrapedItem(item, niche, corpus_version, scrapeKind) → typed normalized row OR null (W6 — scrape_kind propagation)"
       contains: "normalizeScrapedItem"
     - path: src/lib/engine/corpus/follower-tier.ts
       provides: "getFollowerTier(count) → 'nano'|'micro'|'mid'|'large'|'mega'|null"
@@ -364,7 +364,7 @@ Run tests after writing them.
   <name>Task 3: Normalize Apify scrape items (both clockworks + apidojo formats)</name>
   <files>src/lib/engine/corpus/normalize-scrape.ts, src/lib/engine/corpus/__tests__/normalize-scrape.test.ts</files>
   <behavior>
-- `normalizeScrapedItem(clockworksItem, "beauty", "pilot.2026-05-12")` returns a row with: `platform_video_id`, `video_url`, `creator_handle`, `views`, `likes`, `comments`, `shares`, `saves`, `posted_at` (Date), `duration_seconds`, `follower_count`, `follower_tier`, `caption`, `hashtags` (string[]), `niche`, `corpus_version`
+- `normalizeScrapedItem(clockworksItem, "beauty", "pilot.2026-05-12", "trending")` returns a row with: `platform_video_id`, `video_url`, `creator_handle`, `views`, `likes`, `comments`, `shares`, `saves`, `posted_at` (Date), `duration_seconds`, `follower_count`, `follower_tier`, `caption`, `hashtags` (string[]), `niche`, `corpus_version`, `scrape_kind` (echoes the 4th argument — W6)
 - `normalizeScrapedItem(apidojoItem, ...)` produces the IDENTICAL output shape from the apidojo format
 - Items that fail Zod safeParse return `null` (skip-on-fail, never throw)
 - Items with `views < 1` return `null` (CORPUS-08 quality validation rule 2 — but only the views check; engagement-zero check happens in orchestrator)
@@ -381,6 +381,7 @@ import { normalizeHandle, apifyVideoSchema } from "@/lib/schemas/competitor";
 import { createLogger } from "@/lib/logger";
 import { getFollowerTier, type FollowerTier } from "./follower-tier";
 import type { Niche } from "./eval-config";
+import type { ScrapeConfigKind } from "./apify-jobs";    // W6
 
 const log = createLogger({ module: "corpus/normalize-scrape" });
 
@@ -391,6 +392,7 @@ export interface NormalizedCorpusRow {
   creator_handle: string | null;
   niche: Niche;
   corpus_version: string;
+  scrape_kind: ScrapeConfigKind;          // W6: which ScrapeConfigKind produced this row; powers bucket_target
 
   views: number;
   likes: number;
@@ -449,16 +451,17 @@ export function normalizeScrapedItem(
   item: unknown,
   niche: Niche,
   corpus_version: string,
+  scrapeKind: ScrapeConfigKind,                                  // W6
 ): NormalizedCorpusRow | null {
   // Try clockworks first (project's primary actor per apify-provider.ts:9-10)
   const clockworks = apifyVideoSchema.safeParse(item);
   if (clockworks.success) {
-    return normalizeClockworks(clockworks.data, niche, corpus_version);
+    return normalizeClockworks(clockworks.data, niche, corpus_version, scrapeKind);
   }
   // Fallback: apidojo format
   const apidojo = apidojoVideoSchema.safeParse(item);
   if (apidojo.success) {
-    return normalizeApidojo(apidojo.data, niche, corpus_version);
+    return normalizeApidojo(apidojo.data, niche, corpus_version, scrapeKind);
   }
   log.debug("Item did not match any known Apify schema; skipping", {
     parseError: clockworks.error?.message,
@@ -470,6 +473,7 @@ function normalizeClockworks(
   item: z.infer<typeof apifyVideoSchema>,
   niche: Niche,
   corpus_version: string,
+  scrape_kind: ScrapeConfigKind,
 ): NormalizedCorpusRow | null {
   // Map clockworks fields per RESEARCH §A.3 enrichment matrix
   const i = item as Record<string, unknown>;
@@ -497,6 +501,7 @@ function normalizeClockworks(
     creator_handle: normalizeOrNull((authorMeta as { name?: unknown }).name),
     niche,
     corpus_version,
+    scrape_kind,                          // W6
     views,
     likes: toNumber(i.diggCount),
     comments: toNumber(i.commentCount),
@@ -523,6 +528,7 @@ function normalizeApidojo(
   item: z.infer<typeof apidojoVideoSchema>,
   niche: Niche,
   corpus_version: string,
+  scrape_kind: ScrapeConfigKind,
 ): NormalizedCorpusRow | null {
   const id = item.id;
   if (!id) return null;
@@ -549,6 +555,7 @@ function normalizeApidojo(
     creator_handle: normalizeOrNull(item.channel?.username),
     niche,
     corpus_version,
+    scrape_kind,                          // W6
     views,
     likes: toNumber(item.likes),
     comments: toNumber(item.comments),
@@ -600,6 +607,7 @@ Build two fixture objects (one clockworks-shaped, one apidojo-shaped) with known
 - An item with `createTime` within last 7 days returns null
 - An item whose top-level shape matches neither schema returns null
 - A clockworks item with no `authorMeta.fans` returns row with `follower_count: null`, `follower_tier: null`
+- W6: passing `scrapeKind="trending"` puts `scrape_kind: "trending"` on the resulting row; passing `"under"` puts `"under"`. The same item normalized with two different `scrapeKind` values yields two rows whose `scrape_kind` differs but other fields are identical.
 
 Run tests after writing them. If `apifyVideoSchema` from competitor.ts is shaped differently than expected, use Read on `src/lib/schemas/competitor.ts:52-69` to confirm field names before writing the test.
   </action>

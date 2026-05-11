@@ -74,31 +74,48 @@ Output: 500-row corpus + 1 baseline row + 1 baseline doc + 1 directory placehold
 <tasks>
 
 <task type="auto">
-  <name>Task 1: Execute the full 500-video corpus build</name>
-  <files>(none new — produces rows in training_corpus table)</files>
+  <name>Task 1: Execute the full 500-video corpus build (with under-fill remediation loop)</name>
+  <files>(none new — produces rows in training_corpus table; may edit src/lib/engine/corpus/apify-jobs.ts during Step 2a remediation)</files>
   <action>
 **Preconditions:**
 - Plan F complete: `full.YYYY-MM-DD` snapshot exists in `thresholds.ts` with recalibrated values
-- Operator confirms Apify budget remains (~$15-40 expected for full build)
+- Operator confirms Apify budget remains (~$15-40 expected for full build, plus potentially more if remediation re-runs are needed)
 - `.env.local` has APIFY_TOKEN and SUPABASE_SERVICE_ROLE_KEY
 
 **Step 1 — Determine the actual full version identifier:**
 
-Read Plan F's `01-F-PILOT-RETROSPECTIVE.md` and `thresholds.ts` to find the actual `full.YYYY-MM-DD` identifier sealed in Plan F task 3b. Use that exact string in the next command. For convenience the rest of this plan refers to it as `<FULL_VERSION>`.
+Read Plan F's `01-F-PILOT-RETROSPECTIVE.md` and `thresholds.ts` to find the actual `full.YYYY-MM-DD` identifier sealed in Plan F task 3b. Use that exact string in the next command. For convenience the rest of this plan refers to it as `FULL_VERSION`.
 
 **Step 2 — Build the full corpus:**
 
 ```bash
-npx tsx scripts/build-corpus.ts --version <FULL_VERSION> --full 2>&1 | tee /tmp/full-build.log
+npx tsx scripts/build-corpus.ts --version FULL_VERSION --full 2>&1 | tee /tmp/full-build.log
 ```
 
-Expected behavior (5× the pilot per the size multiplier in `apify-jobs.ts`):
+Expected behavior (5x the pilot per the size multiplier in `apify-jobs.ts`):
 - 15 sequential Apify calls
 - Total wall time: ~30-90 min
 - Total Apify cost: ~$15-40
 - Output: ~500 rows in `training_corpus` (target 100 viral / 200 average / 200 under)
 
-The orchestrator stratifies down to target counts after dedup. If the under bucket fills <200 (Pitfall 2 noticeable at scale), document in the baseline doc and proceed — partial fill is acceptable as long as all 5 niches are represented.
+The orchestrator stratifies down to target counts after dedup.
+
+**ROADMAP SC1 requires exactly 500 rows.** If the under bucket fills under 200 after the first run (Pitfall 2: no server-side ascending-views sort is noticeable at scale), the correct remediation is to BUMP `resultsPerPage` in `src/lib/engine/corpus/apify-jobs.ts` for the under-fill niche+bucket combo and re-run. The orchestrator upsert is idempotent on `(corpus_version, platform_video_id)` so the re-run is additive: already-present rows are updated in place; new rows fill the deficit.
+
+**Step 2a (Under-fill remediation loop — required when corpus count is less than 500):**
+
+If Step 3 reports a row count below 500:
+
+1. Identify which niche/bucket combo under-filled (group by niche, bucket):
+   ```sql
+   SELECT niche, bucket, COUNT(*) FROM training_corpus
+   WHERE corpus_version = 'FULL_VERSION' GROUP BY niche, bucket ORDER BY niche, bucket;
+   ```
+2. Edit `src/lib/engine/corpus/apify-jobs.ts`: bump `resultsPerPage` for the under-filled `(niche, ScrapeConfigKind)` job. For example, raise the under-bucket scrape from `80 * sizeMultiplier` to `160 * sizeMultiplier` if "under" underfilled.
+3. Re-run `npx tsx scripts/build-corpus.ts --version FULL_VERSION --full`. Idempotent upsert means already-captured rows are unchanged, new rows fill the deficit.
+4. Re-verify Step 3. Repeat 1-3 until count = 500 OR operator explicitly accepts under-fill via Plan F Task 3a checkpoint (`accept-underfill` resume signal recorded in the retrospective).
+
+The automated `<verify>` block enforces `count = 500` strictly. Operator override (accepting fewer than 500 rows) is only possible by replaying the Plan F Task 3a checkpoint with the `accept-underfill` decision recorded in the retrospective.
 
 **Step 3 — Verify counts:**
 
@@ -109,32 +126,32 @@ SELECT
   COUNT(DISTINCT niche) AS distinct_niches,
   COUNT(DISTINCT creator_handle) AS distinct_creators
 FROM training_corpus
-WHERE corpus_version = '<FULL_VERSION>'
+WHERE corpus_version = 'FULL_VERSION'
 GROUP BY bucket
 ORDER BY bucket;
 ```
 
-Acceptance: total >= 400 rows, all 5 niches present, distinct_creators per bucket >= 30. If acceptance fails, surface to operator before proceeding to Task 2 (baseline eval).
+Acceptance: total row count is 500 (no less), all 5 niches present, distinct_creators per bucket is at least 30. If count is below 500, return to Step 2a. The strict 500-row gate matches ROADMAP §Phase 1 Success Criterion 1 verbatim.
 
 **Failure handling:** same as Plan F task 1 — per-config isolated failures, idempotent re-runs via upsert on `(corpus_version, platform_video_id)`.
   </action>
   <verify>
-    <automated>node -e "require('dotenv').config({path:'.env.local'});const{createClient}=require('@supabase/supabase-js');const c=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY);(async()=>{const{data,error,count}=await c.from('training_corpus').select('niche,bucket',{count:'exact'}).like('corpus_version','full.%');const niches=new Set((data||[]).map(x=>x.niche));console.log('count:',count,'niches:',[...niches]);process.exit(niches.size===5&&(count||0)>=400?0:1)})()"</automated>
+    <automated>node -e "require('dotenv').config({path:'.env.local'});const{createClient}=require('@supabase/supabase-js');const c=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY);(async()=&gt;{const{data,error,count}=await c.from('training_corpus').select('niche,bucket',{count:'exact'}).like('corpus_version','full.%');const niches=new Set((data||[]).map(x=&gt;x.niche));console.log('count:',count,'niches:',[...niches]);process.exit(niches.size===5&amp;&amp;(count||0)&gt;=500?0:1)})()"</automated>
   </verify>
-  <done>training_corpus contains at least 400 rows under a corpus_version starting with "full." spanning all 5 niches.</done>
+  <done>training_corpus contains exactly 500 rows under a corpus_version starting with "full." spanning all 5 niches. Under-fill remediation loop is documented and must be applied if first run produces fewer than 500 rows.</done>
 </task>
 
 <task type="checkpoint:human-verify" gate="blocking">
   <name>Task 2a: Operator green-light before baseline eval run</name>
   <what-built>
-The full corpus is built and verified (Task 1 acceptance gate passed). The next step is the v2.1 baseline eval — running the full pipeline (Gemini Pro + Flash, DeepSeek R1, etc.) against all ~500 rows. This is the most expensive operation in Phase 1.
+The full corpus is built and verified (Task 1 acceptance gate passed: exactly 500 rows across all 5 niches). The next step is the v2.1 baseline eval — running the full pipeline (Gemini Pro + Flash, DeepSeek R1, etc.) against all 500 rows. This is the most expensive operation in Phase 1.
 
-Cost estimate: 500 rows × ~$0.075/analysis = ~$37.50 worst case. Hard cap of $50 (Pitfall 5) enforced via CLI flag. Wall time: ~30-60 min (rate-limited 2s between calls per benchmark.ts:582 + actual API latency).
+Cost estimate: 500 rows x ~$0.075/analysis = ~$37.50 worst case. Hard cap of $50 (Pitfall 5) enforced via CLI flag. Wall time: ~30-60 min (rate-limited 2s between calls per benchmark.ts:582 plus actual API latency).
 
 This checkpoint protects against unintentional cost runaways. Cap can be relaxed via the CLI flag if the operator chooses.
   </what-built>
   <how-to-verify>
-1. Confirm the count and niche coverage from Task 1's verify output looks correct
+1. Confirm the count and niche coverage from Task 1's verify output looks correct (500 rows, 5 niches)
 2. Confirm `.env.local` has GEMINI_API_KEY + DEEPSEEK_API_KEY set (eval pipeline requires both)
 3. Confirm OK with the ~$37.50 cost estimate (or specify a lower `--max-total-cost-cents`)
 4. Type "approved" to proceed with the live eval, OR "skip-baseline" to defer baseline measurement (Phase 1 success criteria 4 will fail), OR "lower-cap N" to set a lower cap (in cents)
@@ -148,7 +165,7 @@ This checkpoint protects against unintentional cost runaways. Cap can be relaxed
   <action>
 **Step 1 — Run the eval CLI in baseline mode against the full corpus:**
 
-Substitute `<FULL_VERSION>` with the actual full corpus_version sealed in Plan F.
+Substitute `FULL_VERSION` with the actual full corpus_version sealed in Plan F.
 
 ```bash
 # Create the benchmarks output directory if missing
@@ -162,10 +179,10 @@ if [ ! -f .gitignore ] || ! grep -q '^\.planning/benchmarks/\*\.json' .gitignore
   echo '.planning/benchmarks/*.json' >> .gitignore
 fi
 
-# Run the baseline. --leave-one-out is OPT-IN (6x cost) — skip for the initial baseline.
+# Run the baseline. --leave-one-out is OPT-IN (6x cost) -- skip for the initial baseline.
 # Future phase runs can re-execute with --leave-one-out for per-signal contribution.
 npx tsx scripts/eval.ts \
-  --corpus-version <FULL_VERSION> \
+  --corpus-version FULL_VERSION \
   --baseline \
   --max-total-cost-cents 5000 \
   --output ".planning/benchmarks/$(date +%Y-%m-%d)-v2.1-baseline.json" 2>&1 | tee /tmp/baseline-eval.log
@@ -174,7 +191,7 @@ npx tsx scripts/eval.ts \
 **Expected output:**
 - CLI prints macro_f1, ece, cost_cents_avg/total, latency p50/p95/p99, per-niche f1, viral_recall, under_precision, rows_processed/failed, failure_cases count
 - JSON file written to `.planning/benchmarks/YYYY-MM-DD-v2.1-baseline.json` with the full BenchmarkReport
-- One row inserted into `benchmark_results` with `engine_version="2.1.0"` and `corpus_version=<FULL_VERSION>`
+- One row inserted into `benchmark_results` with `engine_version="2.1.0"` and `corpus_version=FULL_VERSION`
 
 **Step 2 — Capture the actual measured values:**
 
@@ -195,7 +212,7 @@ Save the output (or the JSON file from `--output`) — Task 3 uses these numbers
 These housekeeping artifacts ensure the `.planning/benchmarks/` directory is tracked but per-run JSON dumps stay local.
   </action>
   <verify>
-    <automated>node -e "require('dotenv').config({path:'.env.local'});const{createClient}=require('@supabase/supabase-js');const c=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY);c.from('benchmark_results').select('*',{count:'exact'}).eq('engine_version','2.1.0').then(r=>{console.log('baseline_rows:',r.count);process.exit(r.count>=1?0:1)})" && test -f .planning/benchmarks/.gitkeep && grep -q '.planning/benchmarks/\*\.json' .gitignore</automated>
+    <automated>node -e "require('dotenv').config({path:'.env.local'});const{createClient}=require('@supabase/supabase-js');const c=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY);c.from('benchmark_results').select('*',{count:'exact'}).eq('engine_version','2.1.0').then(r=&gt;{console.log('baseline_rows:',r.count);process.exit(r.count&gt;=1?0:1)})" && test -f .planning/benchmarks/.gitkeep && grep -q '.planning/benchmarks/\*\.json' .gitignore</automated>
   </verify>
   <done>At least 1 row exists in benchmark_results with engine_version='2.1.0'. .planning/benchmarks/.gitkeep exists. .gitignore excludes the JSON dumps. JSON output file produced under .planning/benchmarks/.</done>
 </task>
@@ -216,7 +233,7 @@ Author `.planning/research/v2.1-baseline.md` with this exact structure:
 # v2.1 Engine Baseline
 
 **Measured:** YYYY-MM-DD
-**Corpus:** `<FULL_VERSION>` (~500 videos, 100 viral / 200 average / 200 under, 5 niches)
+**Corpus:** `FULL_VERSION` (500 videos, 100 viral / 200 average / 200 under, 5 niches)
 **Engine version:** `2.1.0` (literal from `src/lib/engine/aggregator.ts:17`; D-21 — hardcoded until Phase 3 refactors versioning)
 **Eval harness:** `src/lib/engine/corpus/` + `tsx scripts/eval.ts --baseline`
 
@@ -229,7 +246,7 @@ Author `.planning/research/v2.1-baseline.md` with this exact structure:
 **CORPUS-04 satisfaction:** every outcome metric the requirement enumerates is captured EXCEPT `completion_pct`. The column exists; data populated when the in-product scraper lands. The eval harness handles NULL without error (verified — `runEvalOverCorpus` does not pass `completion_pct` to the pipeline).
 
 This gap is also documented in:
-- Migration header: `supabase/migrations/20260512000000_training_corpus.sql`
+- Migration header: `supabase/migrations/YYYYMMDDHHMMSS_training_corpus.sql`
 - Pilot retrospective: `.planning/phases/01-training-corpus-eval-foundation/01-F-PILOT-RETROSPECTIVE.md`
 
 ---
@@ -238,26 +255,26 @@ This gap is also documented in:
 
 | Metric | Value | Source |
 |---|---|---|
-| **Primary gate — macro_f1** | <fill from benchmark_results.macro_f1> | D-14 |
-| ECE | <fill from benchmark_results.ece> | D-16, EVAL-04 |
-| Cost per analysis (avg) | $<fill cost_cents_avg / 100> | BENCH-03 target <= $0.075 |
-| Cost total | $<fill cost_cents_total / 100> | within $50 hard cap |
-| Latency p50 / p95 / p99 | <fill ms> | per-row total pipeline duration |
-| Viral recall | <fill> | D-16 |
-| Under precision | <fill> | D-16 |
-| MAE engagement rate | <fill> | EVAL-02 (Pitfall 4 — restricted to views >= 1000) |
-| Rows processed | <fill> | |
-| Rows failed | <fill> | per-row isolated failures |
+| **Primary gate — macro_f1** | (fill from benchmark_results.macro_f1) | D-14 |
+| ECE | (fill from benchmark_results.ece) | D-16, EVAL-04 |
+| Cost per analysis (avg) | $(fill cost_cents_avg / 100) | BENCH-03 target ≤ $0.075 |
+| Cost total | $(fill cost_cents_total / 100) | within $50 hard cap |
+| Latency p50 / p95 / p99 | (fill ms) | per-row total pipeline duration |
+| Viral recall | (fill) | D-16 |
+| Under precision | (fill) | D-16 |
+| MAE engagement rate | (fill) | EVAL-02 (Pitfall 4 — restricted to views ≥ 1000) |
+| Rows processed | (fill) | |
+| Rows failed | (fill) | per-row isolated failures |
 
 ### Per-Niche macro_f1 (D-15)
 
 | Niche | macro_f1 |
 |---|---|
-| beauty | <fill> |
-| fitness | <fill> |
-| edu | <fill> |
-| comedy | <fill> |
-| lifestyle | <fill> |
+| beauty | (fill) |
+| fitness | (fill) |
+| edu | (fill) |
+| comedy | (fill) |
+| lifestyle | (fill) |
 
 ### Per-Class Precision / Recall
 
@@ -269,7 +286,7 @@ This gap is also documented in:
 
 ### Per-Signal Leave-One-Out (deferred)
 
-`--leave-one-out` was NOT enabled for the Phase 1 baseline run (6× cost — RESEARCH §C.3 makes this opt-in). Phase 12 acceptance benchmark runs with `--leave-one-out` to populate `signal_contribution`. Phase 1 captures only the aggregate baseline.
+`--leave-one-out` was NOT enabled for the Phase 1 baseline run (6x cost — RESEARCH §C.3 makes this opt-in). Phase 12 acceptance benchmark runs with `--leave-one-out` to populate `signal_contribution`. Phase 1 captures only the aggregate baseline.
 
 ---
 
@@ -279,15 +296,15 @@ The v3 engine must demonstrate measurable accuracy improvement vs this baseline 
 
 **1. Relative-improvement floor (D-18 sliding scale)**
 
-Based on measured baseline macro_f1 = `<fill>`:
+Based on measured baseline macro_f1 = `(fill)`:
 
 ```
-v2.1 macro_f1 <= 0.40 → require >= 15% relative improvement
-0.40 < v2.1 macro_f1 <= 0.55 → require >= 10% relative improvement
-v2.1 macro_f1 > 0.55 → require >= 7% relative improvement
+v2.1 macro_f1 ≤ 0.40 → require ≥ 15% relative improvement
+0.40 < v2.1 macro_f1 ≤ 0.55 → require ≥ 10% relative improvement
+v2.1 macro_f1 > 0.55 → require ≥ 7% relative improvement
 ```
 
-For this baseline (`<fill>`), v3 must achieve macro_f1 >= `<fill v2.1 * (1 + required_improvement)>` to clear the relative-improvement gate.
+For this baseline (`(fill)`), v3 must achieve macro_f1 ≥ `(fill v2.1 * (1 + required_improvement))` to clear the relative-improvement gate.
 
 The formula lives in code at `src/lib/engine/corpus/eval-config.ts` (`requiredImprovementFor()`). Phase 12 reads it at acceptance-time:
 ```typescript
@@ -297,7 +314,7 @@ const minImprovement = requiredImprovementFor(BASELINE_MACRO_F1);  // 0.15 | 0.1
 
 **2. Statistical significance (D-17)**
 
-Paired bootstrap test on the SAME corpus (`<FULL_VERSION>`), at least 200 iterations (configurable via CLI), p-value < 0.05:
+Paired bootstrap test on the SAME corpus (`FULL_VERSION`), at least 200 iterations (configurable via CLI), p-value < 0.05:
 
 ```typescript
 import { pairedBootstrapMacroF1 } from "@/lib/engine/corpus/metrics/bootstrap";
@@ -311,11 +328,11 @@ No individual niche's macro_f1 may regress by more than 5 percentage points vs t
 
 | Niche | v2.1 macro_f1 | v3 floor (max acceptable regression) |
 |---|---|---|
-| beauty | <fill> | <fill v2.1 - 0.05> |
-| fitness | <fill> | <fill v2.1 - 0.05> |
-| edu | <fill> | <fill v2.1 - 0.05> |
-| comedy | <fill> | <fill v2.1 - 0.05> |
-| lifestyle | <fill> | <fill v2.1 - 0.05> |
+| beauty | (fill) | (fill v2.1 - 0.05) |
+| fitness | (fill) | (fill v2.1 - 0.05) |
+| edu | (fill) | (fill v2.1 - 0.05) |
+| comedy | (fill) | (fill v2.1 - 0.05) |
+| lifestyle | (fill) | (fill v2.1 - 0.05) |
 
 Constant: `MAX_PER_NICHE_REGRESSION_PP = 0.05` in `eval-config.ts`.
 
@@ -325,17 +342,17 @@ Constant: `MAX_PER_NICHE_REGRESSION_PP = 0.05` in `eval-config.ts`.
 
 ## Run Provenance
 
-- corpus_version: `<FULL_VERSION>`
+- corpus_version: `FULL_VERSION`
 - Niche thresholds for that corpus_version: see `src/lib/engine/corpus/thresholds.ts` (sealed in Plan F per D-13)
 - engine_version: `2.1.0` (`src/lib/engine/aggregator.ts:17`)
-- benchmark_results row id: `<fill from query>`
+- benchmark_results row id: `(fill from query)`
 - JSON output: `.planning/benchmarks/YYYY-MM-DD-v2.1-baseline.json` (gitignored)
-- Run timestamp (UTC): `<fill benchmark_results.run_at>`
+- Run timestamp (UTC): `(fill benchmark_results.run_at)`
 
 ## Reproducibility
 
 - `bucketFromScore` Phase 1 simplification: 70/30 global cut for viral/under, all niches (RESEARCH §C.2). Phase 10 may recalibrate per-niche; that change produces a new baseline row tagged with the new engine_version.
-- D-13 thresholds are immutable per corpus_version. Re-running this baseline against the SAME `<FULL_VERSION>` produces identical macro_f1 (modulo seeded RNG noise in any randomized engine paths; current v2.1 has none).
+- D-13 thresholds are immutable per corpus_version. Re-running this baseline against the SAME `FULL_VERSION` produces identical macro_f1 (modulo seeded RNG noise in any randomized engine paths; current v2.1 has none).
 - `pairedBootstrapMacroF1` with seed=42 is deterministic. Same inputs → same p-value.
 
 ## Open Items Carried to Later Phases
@@ -346,14 +363,14 @@ Constant: `MAX_PER_NICHE_REGRESSION_PP = 0.05` in `eval-config.ts`.
 - **Deferred milestone** in-product outcome scraper populates `completion_pct`; corpus does NOT get retroactively updated (per D-13 immutability — that data lands as a new corpus_version)
 ```
 
-Replace ALL `<fill>` placeholders with actual numbers from the baseline row + JSON output. Use 4-decimal precision for macro_f1 / ECE / per-niche F1; 2-decimal for cost dollars; integer for latency ms. If any metric is null (e.g., ECE), document why explicitly with a hypothesis.
+Replace ALL `(fill)` placeholders with actual numbers from the baseline row + JSON output. Use 4-decimal precision for macro_f1 / ECE / per-niche F1; 2-decimal for cost dollars; integer for latency ms. If any metric is null (e.g., ECE), document why explicitly with a hypothesis.
 
 Minimum doc length: 80 lines (frontmatter sections fully populated).
   </action>
   <verify>
-    <automated>test -f .planning/research/v2.1-baseline.md && grep -q "## Threshold Rule" .planning/research/v2.1-baseline.md && grep -q "## Known Gap" .planning/research/v2.1-baseline.md && grep -q "completion_pct" .planning/research/v2.1-baseline.md && grep -q "requiredImprovementFor" .planning/research/v2.1-baseline.md && ! grep -F "<fill>" .planning/research/v2.1-baseline.md && [ $(wc -l < .planning/research/v2.1-baseline.md) -ge 80 ]</automated>
+    <automated>test -f .planning/research/v2.1-baseline.md && grep -q "## Threshold Rule" .planning/research/v2.1-baseline.md && grep -q "## Known Gap" .planning/research/v2.1-baseline.md && grep -q "completion_pct" .planning/research/v2.1-baseline.md && grep -q "requiredImprovementFor" .planning/research/v2.1-baseline.md && ! grep -F "(fill)" .planning/research/v2.1-baseline.md && [ $(wc -l &lt; .planning/research/v2.1-baseline.md) -ge 80 ]</automated>
   </verify>
-  <done>Doc exists, has all sections, no `<fill>` placeholders, length >= 80 lines, references requiredImprovementFor + completion_pct gap explicitly.</done>
+  <done>Doc exists, has all sections, no `(fill)` placeholders, length is at least 80 lines, references requiredImprovementFor + completion_pct gap explicitly.</done>
 </task>
 
 <task type="auto">
@@ -415,9 +432,9 @@ Do NOT modify any exported constants. Comment-only edit.
 </threat_model>
 
 <verification>
-- training_corpus has >= 400 rows under a `full.YYYY-MM-DD` corpus_version spanning all 5 niches
+- training_corpus has exactly 500 rows under a `full.YYYY-MM-DD` corpus_version spanning all 5 niches
 - benchmark_results has at least 1 row with engine_version='2.1.0' and a `full.YYYY-MM-DD` corpus_version
-- .planning/research/v2.1-baseline.md exists with all sections populated and no `<fill>` remaining
+- .planning/research/v2.1-baseline.md exists with all sections populated and no `(fill)` remaining
 - src/lib/engine/corpus/eval-config.ts header references v2.1-baseline.md and D-19
 - .planning/benchmarks/ exists with .gitkeep; .gitignore excludes JSON dumps
 - Tests pass: `npx vitest run src/lib/engine/corpus/__tests__/`
@@ -427,8 +444,8 @@ Do NOT modify any exported constants. Comment-only edit.
 <success_criteria>
 This is the gate plan for Phase 1. After Plan G completes, the five ROADMAP §Phase 1 success criteria are satisfied:
 
-1. training_corpus has 500 videos stratified 100/200/200 across >=5 niches — Task 1 (acceptance allows >=400 with documented under-fill)
-2. Outcome metadata captured per video — Plan C+D normalize-scrape (with completion_pct gap documented)
+1. training_corpus has exactly 500 videos stratified 100/200/200 across 5 niches — Task 1 (strict 500-row gate matches ROADMAP SC1 verbatim; under-fill triggers Step 2a remediation loop, never silently accepted)
+2. Outcome metadata captured per video — Plan C+D normalize-scrape (with completion_pct gap documented per user decision 2026-05-11)
 3. Eval harness runs any engine version, produces per-signal contribution / calibration drift / overall accuracy — Plan E + invocation in Task 2b (signal contribution opt-in via --leave-one-out)
 4. v2.1 baseline persisted in benchmark_results — Task 2b
 5. Target accuracy threshold for v3 acceptance documented + committed — Task 3 (doc) + Task 4 (code cross-link)
@@ -437,7 +454,7 @@ This is the gate plan for Phase 1. After Plan G completes, the five ROADMAP §Ph
 <requirement_coverage>
 | Requirement | Cross-link | Task |
 |---|---|---|
-| CORPUS-01 | REQUIREMENTS.md §Training Corpus | T1 (full 500-video build) |
+| CORPUS-01 | REQUIREMENTS.md §Training Corpus | T1 (full 500-video build, strict gate) |
 | CORPUS-03 | REQUIREMENTS.md §Training Corpus | T1 (5-niche coverage validated) |
 | CORPUS-04 | REQUIREMENTS.md §Training Corpus | T3 (completion_pct gap explicitly documented per user decision) |
 | EVAL-06 | REQUIREMENTS.md §Evaluation Framework | T2b (JSON + markdown summary + benchmark_results row) |
