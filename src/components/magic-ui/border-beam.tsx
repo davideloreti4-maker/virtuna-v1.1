@@ -1,6 +1,14 @@
 "use client"
 
-import { motion, MotionStyle, Transition } from "motion/react"
+/**
+ * Magic UI — BorderBeam
+ * Source: https://magicui.design/r/border-beam.json
+ * Installed: 2026-05-11 via npx shadcn@latest add @magicui/border-beam
+ * Tuned for Virtuna Raycast design language per 01-UI-SPEC.md
+ * 'use client' — requires motion/react animation primitives
+ */
+
+import { motion, MotionStyle, Transition, useReducedMotion } from "motion/react"
 
 import { cn } from "@/lib/utils"
 
@@ -53,17 +61,22 @@ interface BorderBeamProps {
 
 export const BorderBeam = ({
   className,
-  size = 50,
+  size = 40,
   delay = 0,
-  duration = 6,
-  colorFrom = "#ffaa40",
-  colorTo = "#9c40ff",
+  duration = 8,
+  colorFrom = "rgba(255,127,80,0.9)",
+  colorTo = "rgba(255,127,80,0)",
   transition,
   style,
   reverse = false,
   initialOffset = 0,
   borderWidth = 1,
 }: BorderBeamProps) => {
+  // Raycast reduced-motion guard (UI-SPEC §Border Beam): the beam uses
+  // repeat: Infinity. When user prefers reduced motion, suppress entirely.
+  const reducedMotion = useReducedMotion()
+  if (reducedMotion) return null
+
   return (
     <div
       className="pointer-events-none absolute inset-0 rounded-[inherit] border-(length:--border-beam-width) border-transparent mask-[linear-gradient(transparent,transparent),linear-gradient(#000,#000)] mask-intersect [mask-clip:padding-box,border-box]"
