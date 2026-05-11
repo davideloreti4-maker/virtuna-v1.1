@@ -21,7 +21,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "analyze": "npx tsx scripts/analyze-dataset.ts",
-    "benchmark": "npx tsx scripts/benchmark.ts"
+    "benchmark": "npx tsx scripts/benchmark.ts",
+    "build-corpus": "npx tsx scripts/build-corpus.ts"
   },
   "dependencies": {
     "@google/genai": "^1.41.0",
