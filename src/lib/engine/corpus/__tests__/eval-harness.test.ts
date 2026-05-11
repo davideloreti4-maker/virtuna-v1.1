@@ -92,20 +92,35 @@ describe("runEvalHarness", () => {
   });
 
   it("LOO produces non-zero contribution when signals are non-uniform (BLOCKER-6)", async () => {
-    // 10 rows where `behavioral` strictly dominates the signal-to-bucket mapping.
-    // High-behavioral rows -> viral bucket; low-behavioral rows -> under bucket.
-    // Other signals stay flat at 50 so removing `behavioral` collapses every row to 50 -> "average".
+    // Fixture design (Rule 1 auto-fix): uses mathematically self-consistent signal values.
+    // With 70/30 bucket thresholds and 5-signal aggregator weights (behavioral=0.35, others sum=0.65),
+    // the maximum reachable score from signals alone is ~67.5 (behavioral=100, others=50).
+    // To get a differential LOO: use rows where behavioral is HIGH and other signals are LOW so
+    // the row sits in "average" (score ~35-45), and removing behavioral pushes it to "under" (<30).
+    // Removing "trends" (low-weight, low-value) does NOT cross any threshold.
+    //
+    // Example row: behavioral=80, gemini=30, ml=20, rules=20, trends=10
+    //   Baseline:         0.35*80+0.25*30+0.15*20+0.15*20+0.10*10 = 42.5 -> "average"
+    //   Without behavioral: (0.25*30+0.15*20+0.15*20+0.10*10)/0.65 = 22.3 -> "under"
+    //   Without trends:     (0.35*80+0.25*30+0.15*20+0.15*20)/0.90 = 46.1 -> "average" (no change)
+    //
+    // predicted_bucket in makeRaw is derived from predictedScore (mocked engine output).
+    // The LOO comparison overwrites bucket using signalScores math, producing a measurable delta
+    // for behavioral but NOT for trends.
+
     const rows: RawEvalResult[] = [
-      makeRaw(1, "beauty", "viral", 80, { behavioral: 95, gemini: 50, ml: 50, rules: 50, trends: 50 }),
-      makeRaw(2, "beauty", "viral", 78, { behavioral: 92, gemini: 50, ml: 50, rules: 50, trends: 50 }),
-      makeRaw(3, "beauty", "viral", 75, { behavioral: 88, gemini: 50, ml: 50, rules: 50, trends: 50 }),
-      makeRaw(4, "comedy", "viral", 75, { behavioral: 88, gemini: 50, ml: 50, rules: 50, trends: 50 }),
-      makeRaw(5, "comedy", "average", 55, { behavioral: 60, gemini: 50, ml: 50, rules: 50, trends: 50 }),
-      makeRaw(6, "edu", "under", 20, { behavioral: 5, gemini: 50, ml: 50, rules: 50, trends: 50 }),
-      makeRaw(7, "edu", "under", 22, { behavioral: 8, gemini: 50, ml: 50, rules: 50, trends: 50 }),
-      makeRaw(8, "edu", "under", 25, { behavioral: 12, gemini: 50, ml: 50, rules: 50, trends: 50 }),
-      makeRaw(9, "fitness", "under", 28, { behavioral: 15, gemini: 50, ml: 50, rules: 50, trends: 50 }),
-      makeRaw(10, "lifestyle", "under", 18, { behavioral: 5, gemini: 50, ml: 50, rules: 50, trends: 50 }),
+      // Rows where behavioral dominates: removing behavioral -> under; removing trends -> average (no change)
+      makeRaw(1, "beauty",    "average", 42, { behavioral: 80, gemini: 30, ml: 20, rules: 20, trends: 10 }),
+      makeRaw(2, "beauty",    "average", 40, { behavioral: 75, gemini: 28, ml: 18, rules: 18, trends: 8  }),
+      makeRaw(3, "comedy",    "average", 43, { behavioral: 82, gemini: 32, ml: 22, rules: 22, trends: 12 }),
+      makeRaw(4, "comedy",    "average", 41, { behavioral: 78, gemini: 29, ml: 19, rules: 19, trends: 9  }),
+      makeRaw(5, "edu",       "average", 44, { behavioral: 84, gemini: 33, ml: 23, rules: 23, trends: 11 }),
+      // Rows that are already "under" regardless of LOO ablation (stable bucket)
+      makeRaw(6, "edu",       "under",   15, { behavioral: 10, gemini: 15, ml: 10, rules: 10, trends: 5  }),
+      makeRaw(7, "fitness",   "under",   12, { behavioral: 8,  gemini: 12, ml: 8,  rules: 8,  trends: 4  }),
+      makeRaw(8, "fitness",   "under",   18, { behavioral: 12, gemini: 18, ml: 12, rules: 12, trends: 6  }),
+      makeRaw(9, "lifestyle", "under",   10, { behavioral: 5,  gemini: 10, ml: 5,  rules: 5,  trends: 3  }),
+      makeRaw(10,"lifestyle", "under",   20, { behavioral: 15, gemini: 20, ml: 15, rules: 15, trends: 7  }),
     ];
     vi.mocked(runEvalOverCorpus).mockResolvedValue(rows);
 
@@ -116,11 +131,11 @@ describe("runEvalHarness", () => {
     });
 
     expect(report.signal_contribution).not.toBeNull();
-    // Removing the dominating signal must change macro-F1 measurably.
+    // Removing behavioral must change macro-F1 measurably (BLOCKER-6).
+    // It converts average-predicted rows to under via ablation score crossing 30.
     expect(report.signal_contribution!.behavioral).not.toBe(0);
     expect(Math.abs(report.signal_contribution!.behavioral)).toBeGreaterThan(0.001);
-    // Flat signals (rules, trends, gemini at 50 for every row) have zero or near-zero contribution.
-    // We don't assert their absolute values, only that behavioral dominates.
+    // Removing trends (low-weight, low-value) does NOT change any row's bucket -> zero contribution.
     expect(Math.abs(report.signal_contribution!.behavioral)).toBeGreaterThan(
       Math.abs(report.signal_contribution!.trends ?? 0),
     );
