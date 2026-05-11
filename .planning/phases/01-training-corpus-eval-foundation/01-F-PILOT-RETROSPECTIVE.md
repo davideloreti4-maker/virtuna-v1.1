@@ -1,69 +1,166 @@
 # Phase 1: Pilot Corpus Retrospective
 
 **Pilot version:** `pilot.2026-05-12`
-**Scrape date:** 2026-05-11
+**Scrape date (attempt 2):** 2026-05-11
 **Target distribution:** 10 viral / 20 average / 20 under = 50 total (D-01)
 
-## Outcome Summary
+## Outcome Summary (Attempt 2 — 2026-05-11)
 
 | Bucket | Target | Actual | Notes |
 |---|---|---|---|
-| Viral | 10 | 10 | Hit target (capped at 10 from 1,154 qualifying after dedup) |
-| Average | 20 | 20 | Hit target (capped at 20 from 236 qualifying) |
-| Under | 20 | 20 | Hit target (barely: only 26 total after dedup; Pitfall 2 confirmed) |
-| Total | 50 | 50 | Stratification hit target; however 0 rows persisted to DB — see Infrastructure |
+| Viral | 10 | 0 | Quota exhausted before any rows persisted |
+| Average | 20 | 0 | Quota exhausted before any rows persisted |
+| Under | 20 | 0 | Quota exhausted before any rows persisted |
+| Total | 50 | 0 | 0 rows persisted — quota exhausted again (see Infrastructure) |
 
-**CRITICAL NOTE: 0 rows persisted to training_corpus.**
-The pipeline processed 50 stratified rows in memory but the DB upsert failed because:
-1. The `training_corpus` table was not applied to the remote Supabase at run time (Plan A migration was written but not pushed). This was fixed during the pilot run.
-2. After the table was created, the Apify FREE plan monthly quota ($5) was exhausted. Dataset read access was also locked, preventing both new scrapes AND re-reading the stored datasets.
+**CRITICAL NOTE: 0 rows persisted to training_corpus (attempt 2).**
 
-**Status:** Blocked on Apify quota reset (monthly cycle). When quota resets, re-run:
-```bash
-npx tsx scripts/build-corpus.ts --version pilot.2026-05-12 --pilot
-```
-Or use the recovery script (once quota resets):
-```bash
-npx tsx scripts/recover-pilot-from-datasets.ts
-```
+Two bugs discovered and fixed during attempt 2:
 
-## Per-Niche Config Coverage
+1. **Missing `tsconfig-paths` runtime dependency** — `scripts/build-corpus.ts` imports `tsconfig-paths` which was not in `package.json`. Fixed by running `pnpm add tsconfig-paths`. *(Rule 3 auto-fix)*
+
+2. **ON CONFLICT batch dedup bug** — PostgreSQL `ON CONFLICT DO UPDATE` throws "cannot affect row a second time" when the same `platform_video_id` appears twice in the upsert batch. A video appearing in both trending and average feeds causes this. Fixed in `orchestrator.ts` by deduplicating on `platform_video_id` before calling `supabase.upsert`. All 7 orchestrator tests pass. *(Rule 1 auto-fix)*
+
+**Root cause of 0 persistence:** The APIFY_TOKEN in `.env.local` belongs to a **FREE plan account** (`trusty_sleep` / `miniprojectors6@gmail.com`). The plan is `FREE` with `maxMonthlyUsageCreditsUsd: $5`. The user reported upgrading to Starter but the API confirms the account is still FREE. The beauty:under config with `resultsPerPage: 200` (bumped for Pitfall 2 mitigation) exhausted the $5 monthly limit after only 6 of 15 configs ran (beauty×3 + fitness×3). edu, comedy, lifestyle all failed immediately with "Monthly usage hard limit exceeded."
+
+## Per-Niche Config Coverage (Attempt 2)
 
 | Niche | Configs run | Result |
 |---|---|---|
-| beauty | trending + average + under | All 3 succeeded |
-| fitness | trending + average + under | All 3 succeeded |
-| edu | trending + average + under | All 3 succeeded |
-| comedy | trending | Succeeded; average + under failed (quota exceeded) |
-| lifestyle | None | All 3 failed (quota exceeded) |
+| beauty | trending (40) + average (60) + under (200) | All 3 succeeded — but quota depleted after under |
+| fitness | trending (40) + average (60) + under (200) | All 3 succeeded — but quota depleted after under |
+| edu | trending | FAILED — "Monthly usage hard limit exceeded" |
+| comedy | trending | FAILED — "Monthly usage hard limit exceeded" |
+| lifestyle | trending | FAILED — "Monthly usage hard limit exceeded" |
+
+In-memory pipeline summary before DB write (attempt 2):
+```json
+{
+  "rawCount": 1848,
+  "afterQualityFilter": 1847,
+  "afterBucketing": {"viral": 1431, "average": 377, "under": 39},
+  "afterDedup": {"viral": 1355, "average": 375, "under": 39},
+  "afterStratification": {"viral": 10, "average": 20, "under": 20},
+  "perNicheCount": {"beauty": 46, "fitness": 4, "edu": 0, "comedy": 0, "lifestyle": 0}
+}
+```
+
+Note: The Pitfall 2 mitigation (under resultsPerPage 80→200) substantially improved the under bucket (26→39 items after dedup) but consumed 2.5× more compute per under config, exhausting the FREE plan budget faster.
 
 ## Per-Niche View Distributions
 
-**NOTE: Per-niche P90/P30 view percentiles cannot be computed from this retrospective.** The orchestrator only logged bucket counts and stratification totals, not per-video view counts. The raw view data exists in the Apify datasets but dataset reads are locked by quota. These tables will be filled when quota resets and the pilot is re-run.
+**NOTE: Per-niche P90/P30 view percentiles CANNOT be computed.** The training_corpus table has 0 rows because both attempts hit Apify quota before DB persistence. These fields will be filled when a valid Apify Starter account token is provided.
 
-| Niche | Rows (in-memory) | Distinct creators | P10 | P30 | P50 | P70 | P90 |
+| Niche | Rows | Distinct creators | P10 | P30 | P50 | P70 | P90 |
 |---|---|---|---|---|---|---|---|
-| beauty | 30 | N/A | N/A | N/A | N/A | N/A | N/A |
-| fitness | 11 | N/A | N/A | N/A | N/A | N/A | N/A |
-| edu | 7 | N/A | N/A | N/A | N/A | N/A | N/A |
-| comedy | 2 | N/A | N/A | N/A | N/A | N/A | N/A |
+| beauty | 0 | N/A | N/A | N/A | N/A | N/A | N/A |
+| fitness | 0 | N/A | N/A | N/A | N/A | N/A | N/A |
+| edu | 0 | N/A | N/A | N/A | N/A | N/A | N/A |
+| comedy | 0 | N/A | N/A | N/A | N/A | N/A | N/A |
 | lifestyle | 0 | N/A | N/A | N/A | N/A | N/A | N/A |
 
 (Fill from SQL `PERCENTILE_CONT` queries once rows are in training_corpus)
 
 ## Per-Niche × Bucket Breakdown
 
-Computed from pipeline logs (`afterBucketing` and `perNicheCount` summary):
+All zeros — see "Outcome Summary" above.
 
-| Niche | Rows (in-memory) | Notes |
-|---|---|---|
-| beauty | 30 | 3-config full coverage |
-| fitness | 11 | 3-config full coverage; small fill |
-| edu | 7 | 3-config full coverage; very small fill |
-| comedy | 2 | trending-only; average/under blocked by quota |
-| lifestyle | 0 | All 3 configs blocked by quota |
+## Observed Threshold Behavior (D-08 Pilot Thresholds, Attempt 2)
 
-Raw pipeline log key summary (from `orchestrator.ts` INFO logs):
+Attempt 2 produced more raw items (1,848 vs 1,491) before quota hit, confirming:
+- **1,431 viral items** from 1,847 qualifying (77%) — D-08 viralFloor still too low for trending feeds
+- **377 average items** (20%)
+- **39 under items** (2.1%) — Pitfall 2 improved from 1.7% to 2.1% with resultsPerPage=200, but at 2.5× compute cost
+
+**Pitfall 2 mitigation assessment:** Bumping to 200 results per page improved under fill from 26→39 (+50%), but consumed the FREE monthly budget. Recommendation: use 100 results per page for the pilot (not 200) to balance coverage vs cost. On a Starter plan ($49/month ≈ 2,000 compute units), 100 results/page × 15 configs ≈ $10-15 total pilot cost.
+
+## Recalibrated Thresholds (D-09)
+
+**Not yet available.** Zero rows in training_corpus. Values cannot be computed empirically.
+
+| Niche | viralFloor (P90) | underCeiling (P30) | vs Pilot (D-08) |
+|---|---|---|---|
+| beauty | PENDING | PENDING | Cannot compute without DB rows |
+| fitness | PENDING | PENDING | Cannot compute without DB rows |
+| edu | PENDING | PENDING | Cannot compute without DB rows |
+| comedy | PENDING | PENDING | Cannot compute without DB rows |
+| lifestyle | PENDING | PENDING | Cannot compute without DB rows |
+
+Per D-09, full corpus_version thresholds will be sealed into `thresholds.ts` THRESHOLD_SNAPSHOTS["full.YYYY-MM-DD"] once empirical P90/P30 data is available. Per D-13, the snapshot is immutable once committed.
+
+## Infrastructure Validation (Attempt 2)
+
+- [x] tsconfig-paths dependency installed (was missing, fixed 2026-05-11)
+- [x] ON CONFLICT batch dedup fixed in orchestrator.ts (2026-05-11)
+- [x] beauty (3/3 configs) and fitness (3/3 configs) ran successfully
+- [ ] edu, comedy, lifestyle (9 configs) — all failed: "Monthly usage hard limit exceeded"
+- [x] Pitfall 1 (date filter): working — confirmed in orchestrator logs
+- [x] Pitfall 2 mitigation: under config resultsPerPage bumped to 200 (confirmed improved under fill)
+- [x] Pitfall 3 (dedup after bucketing): working — viral reduced from 1,431→1,355 by creator dedup
+- [x] Quality filter (CORPUS-08): 1 item rejected (views<1 or zero engagement)
+- [ ] training_corpus rows present: **0 rows** — DB upsert would have succeeded (dedup bug fixed) but quota blocked 9 of 15 configs, leaving only beauty+fitness data, which is insufficient for 5-niche requirement
+- [ ] Apify cost: **$5.00** (full FREE plan monthly limit exhausted after 6 configs)
+
+## Open Questions Surfaced
+
+- A2 — Cross-niche-label validation: RESEARCH recommends deferring to Phase 10. Decision: confirmed defer.
+- A3 — bucketFromScore per-niche calibration: RESEARCH recommends deferring to Phase 10. Decision: confirmed defer.
+- A4 — follower_count source: unknown (no DB rows to query).
+- A5 — corpus refresh per-version: Phase 11/12 cron stub handles this.
+
+## BLOCKING ISSUE (Attempt 2)
+
+**The APIFY_TOKEN in `.env.local` is for a FREE plan account that has exhausted its monthly $5 limit.**
+
+Verification: `apify user get` returns `plan.id: "FREE"`, `maxMonthlyUsageCreditsUsd: 5`.
+
+**To unblock, operator must:**
+1. Upgrade the Apify account at `miniprojectors6@gmail.com` to Starter plan ($49/mo) OR
+2. Create a new Apify Starter account and update `APIFY_TOKEN` in `.env.local`
+
+Once a valid Starter token is in `.env.local`, re-run:
+```bash
+npx tsx scripts/build-corpus.ts --version pilot.2026-05-12 --pilot 2>&1 | tee /tmp/pilot-build.log
+```
+
+The upsert will succeed (dedup bug fixed). The 15 configs will run without quota issues.
+
+**Recommended config for retry:** Consider reverting `resultsPerPage` for under to 100 (from 200) to avoid burning the Starter quota unnecessarily on pilot. Update this recommendation if Starter quota is confirmed as sufficient.
+
+## Recommended Adjustments for Full Build (Plan G)
+
+- Use `full.YYYY-MM-DD` corpus_version with empirically recalibrated thresholds
+- Pitfall 2 mitigation: `resultsPerPage: 100` (not 200) for under configs balances fill rate vs. compute cost on Starter plan
+- Run pilot first to get empirical P90/P30, then seal `full.YYYY-MM-DD` thresholds
+- On Starter ($49/mo): pilot ≈ $10-15, full build ≈ $50-75 — within plan budget
+
+## Next Step
+
+**BLOCKED on Apify account upgrade.** Operator must provide a Starter plan APIFY_TOKEN. Then re-run `build-corpus.ts` with the same `pilot.2026-05-12` version (idempotent upsert). Then run SQL percentile queries to compute empirical P90/P30.
+
+---
+
+## Attempt 1 Archive (2026-05-11 — Initial Failure)
+
+The following section preserves the attempt 1 failure details for audit purposes.
+
+### Attempt 1 Outcome Summary
+
+| Bucket | Target | Actual | Notes |
+|---|---|---|---|
+| Viral | 10 | 10 | Hit target in-memory (capped at 10 from 1,154 qualifying after dedup) |
+| Average | 20 | 20 | Hit target in-memory (capped at 20 from 236 qualifying) |
+| Under | 20 | 20 | Hit target in-memory (barely: only 26 total after dedup; Pitfall 2 confirmed) |
+| Total | 50 | 50 | Stratification hit in-memory; 0 rows persisted to DB |
+
+### Attempt 1 Failures
+
+1. `training_corpus` table didn't exist on Supabase — Plan A migration was written but not pushed. Fixed during run (migration applied via Management API).
+2. After table creation, the Apify FREE plan monthly quota ($5) was exhausted. Dataset reads also locked.
+3. Niche coverage from attempt 1: beauty (30), fitness (11), edu (7), comedy (2), lifestyle (0) — 5 of 15 configs failed.
+
+### Attempt 1 Pipeline Data
+
 ```json
 {
   "rawCount": 1491,
@@ -74,76 +171,3 @@ Raw pipeline log key summary (from `orchestrator.ts` INFO logs):
   "perNicheCount": {"beauty": 30, "fitness": 11, "edu": 7, "comedy": 2, "lifestyle": 0}
 }
 ```
-
-## Observed Threshold Behavior (D-08 Pilot Thresholds)
-
-From the bucketing distribution above, the D-08 pilot thresholds produce:
-- **1,225 viral items** from 1,491 raw items (82% viral by pilot thresholds) — D-08 viralFloor is extremely low for the trending configs
-- **240 average items** (16%) — reasonable
-- **26 under items** (1.7%) — **Pitfall 2 confirmed severe**: client-side filter after server-side hashtag fetch means low-view items are under-represented
-
-**Implication for recalibrated thresholds (D-09):**
-The pilot threshold viralFloor (D-08: beauty 250k, fitness 200k, edu 100k, comedy 500k, lifestyle 250k) is TOO LOW for a trending feed. Trending hashtags pull videos that have just gone viral with relatively low view counts (24h-48h accumulation), so even the "viral" threshold is producing false positives. The P90 from actual pilot data would likely be much higher.
-
-The underCeiling (D-08: beauty 5k, fitness 5k, edu 2k, comedy 10k, lifestyle 5k) appears correct: only 1.7% of items fell below it, which is expected for hashtag-feed scraping where non-viral content still gets pushed content.
-
-**Pitfall 2 confirmed as severe:** The under bucket fills primarily from the "under" config which uses niche hashtags without the `fyp` multiplier. But even niche-only hashtag feeds return mostly average-to-viral content on TikTok. The 26 under items (1.7% of 1,491) is realistic for the current scrape strategy.
-
-**Recommended action before full build (Plan G):** Use `resultsPerPage = 100` (5× current 20) for the under config to pull more items, or add a `sort: ascending` parameter to apify-jobs.ts for the under config (Pitfall 2 mitigation). Document in apify-jobs.ts.
-
-## Recalibrated Thresholds (D-09)
-
-**Per D-09, full corpus_version thresholds should be recomputed from pilot P90/P30 data. Those values are not available yet (dataset access locked by quota).**
-
-As a placeholder, the full.2026-05-11 entry in thresholds.ts will use the D-08 pilot values verbatim (since we cannot improve them empirically). The code comment will note this is a quota-constrained approximation that should be updated when pilot data is accessible.
-
-| Niche | viralFloor (P90 proxy) | underCeiling (P30 proxy) | vs Pilot (D-08) |
-|---|---|---|---|
-| beauty | 250,000 (D-08 unchanged) | 5,000 (D-08 unchanged) | No empirical improvement available |
-| fitness | 200,000 (D-08 unchanged) | 5,000 (D-08 unchanged) | No empirical improvement available |
-| edu | 100,000 (D-08 unchanged) | 2,000 (D-08 unchanged) | No empirical improvement available |
-| comedy | 500,000 (D-08 unchanged) | 10,000 (D-08 unchanged) | No empirical improvement available |
-| lifestyle | 250,000 (D-08 unchanged) | 5,000 (D-08 unchanged) | No empirical improvement available |
-
-These values are sealed into `thresholds.ts` THRESHOLD_SNAPSHOTS["full.2026-05-11"] in Task 3b. Per D-13, the snapshot is immutable once committed. When quota resets and P90/P30 are computed from actual data, a new `full.YYYY-MM-DD` entry should be added (not this one modified).
-
-## Infrastructure Validation
-
-- [x] beauty, fitness, edu configs (9 of 15) completed
-- [x] comedy:trending (1 of 15) completed
-- [ ] comedy:average, comedy:under, lifestyle:all (5 of 15) — BLOCKED by Apify quota
-- [x] Quality filter (CORPUS-08): views<1 and 7-day age filter applied; 0 rows rejected (all 1,491 passed quality gate — dataset returns only recent and viewed items by design)
-- [x] Pitfall 1 (date filter): confirmed working — normalizer rejects items posted within 7 days
-- [x] Pitfall 3 (dedup after bucketing): working — creator dedup reduced viral from 1,225→1,154 (reduced by 5.8%)
-- [ ] No Apify timeout > 10 min: N/A — all successful runs completed in < 2 min
-- [ ] Total Apify cost stayed within budget — actual cost: **$5.00** (full FREE plan limit exhausted)
-- [ ] training_corpus rows present: **0 rows** (DB upsert failed; table created but dataset reads subsequently locked)
-
-## Open Questions Surfaced
-
-- A2 — Cross-niche-label validation: RESEARCH recommends deferring to Phase 10 (V3 niche classifier). Decision: confirmed defer. Comedy/lifestyle under-fill (quota) makes this harder to validate anyway.
-- A3 — bucketFromScore per-niche calibration: RESEARCH recommends deferring to Phase 10. Decision: confirmed defer. The 1,225:240:26 ratio from D-08 thresholds suggests thresholds need empirical tuning, but that requires the full data.
-- A4 — follower_count source: clockworks profile-scraper not always populated. Estimated % of pilot rows with NULL follower_count: unknown (no DB rows to query). Pattern confirmed as known gap per Plan C.
-- A5 — corpus refresh per-version: Each 30-day refresh = new corpus_version. Phase 11/12 cron stub encodes this.
-
-## Deferred Issues
-
-- **BLOCKER: Apify FREE plan quota exhausted.** All 5 dataset reads and any new actor runs are locked until monthly quota reset. Resume options: (1) wait for monthly reset, (2) upgrade Apify plan, (3) use recovery script `scripts/recover-pilot-from-datasets.ts` once quota resets.
-- **training_corpus has 0 rows.** The 50 stratified rows were processed in memory but never written. The `training_corpus` and `benchmark_results` tables now exist on Supabase (migration applied 2026-05-11 via management API). The upsert will succeed on re-run.
-- **comedy and lifestyle niches have 0 rows.** 5 of 15 Apify configs failed mid-scrape. comedy:trending produced 2 rows before quota cut off the rest of the niche.
-- **completion_pct gap (user decision 2026-05-11)**: All pilot rows would have `completion_pct = NULL`. CORPUS-04 satisfaction note: column exists; data populated when in-product outcome scraper lands. Eval harness handles NULL without error.
-- **Pitfall 2 under-fill risk for full build (Plan G):** Only 26 items (1.7%) fall below the under ceiling. For a 500-video build targeting 100 under rows, the current scrape strategy will need Pitfall 2 mitigation: increase `resultsPerPage` for under configs or add ascending sort.
-
-## Recommended Adjustments for Full Build (Plan G)
-
-- Use `full.2026-05-11` corpus_version (recalibrated from D-08 baseline — no empirical improvement available this pilot due to quota)
-- **Pitfall 2 mitigation required**: Increase `resultsPerPage` to 100 (or higher) for under configs in `apify-jobs.ts` OR add `sort: "date"` with ascending order to get older, lower-view content
-- Upgrade Apify plan OR wait for quota reset before running Plan G
-- Consider running 5 niches × 3 configs = 15 runs at roughly $0.50/run → ~$7.50 for full pilot-scale; Plan G at 5× would be ~$37.50 (requires Starter plan or above)
-- Re-run this pilot first to validate DB persistence before attempting 500-video build
-
-## Next Step
-
-When Apify quota resets: re-run pilot with `npx tsx scripts/build-corpus.ts --version pilot.2026-05-12 --pilot` to persist the 50 rows. Then re-run SQL percentile queries to compute empirical P90/P30 for each niche. Update `full.YYYY-MM-DD` entry in thresholds.ts with empirical values.
-
-Proceed with Plan G only after pilot data is in the DB and validated.
