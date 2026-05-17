@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   PlatformPicker,
@@ -114,8 +114,16 @@ export function ProfileSettingsForm(): React.JSX.Element {
   // Card 8
   const [painPoints, setPainPoints] = useState<string>("");
 
+  // CR-04: only sync server data into local state ONCE — the first time
+  // `profile` resolves. Subsequent refetches (post-save invalidation, cross-
+  // tab sync) would otherwise clobber in-flight edits the user has typed
+  // since the last save. `refetchOnWindowFocus: false` (in use-creator-
+  // profile.ts) is the primary defense; this ref guard is the belt that
+  // catches any other re-render of `profile`.
+  const syncedRef = useRef(false);
   useEffect(() => {
-    if (!profile) return;
+    if (!profile || syncedRef.current) return;
+    syncedRef.current = true;
     setPlatforms((profile.target_platforms as PlatformId[] | null) ?? []);
     setNichePrimary(profile.niche_primary);
     setNicheSub(profile.niche_sub);
