@@ -10,6 +10,8 @@ import {
   type DeepSeekReasoning,
   type RuleScoreResult,
   type TrendEnrichment,
+  type Wave0Result,
+  type PersonaSimulationResult,
 } from "./types";
 import { normalizeInput } from "./normalize";
 import { analyzeWithGemini, analyzeVideoWithGemini } from "./gemini";
@@ -21,6 +23,10 @@ import {
   formatCreatorContext,
   type CreatorContext,
 } from "./creator";
+import type { StageEventCallback, StageEventWave } from "./events";
+import { emitStageStart, emitStageEnd } from "./events";
+import { runWave0 } from "./wave0";
+import { runWave3 } from "./wave3";
 
 // =====================================================
 // Pipeline Types
@@ -41,11 +47,34 @@ export interface PipelineResult {
   deepseekResult: { reasoning: DeepSeekReasoning; cost_cents: number } | null;
   audioResult: null; // Audio analysis handled via fuzzy matching in trend enrichment -- no separate stage needed
 
+  // Phase 3 — Wave 0/3 stub outputs (Phase 4/7 fill with real logic)
+  wave0Result: Wave0Result;
+  wave3Result: PersonaSimulationResult[];
+
   // Pipeline metadata
   requestId: string;
   timings: StageTiming[];
   total_duration_ms: number;
   warnings: string[]; // Pipeline-level warnings from partial failures (INFRA-03)
+}
+
+/**
+ * Options bag for runPredictionPipeline.
+ * Per CONTEXT.md D-04: undefined opts must preserve byte-identical behavior to pre-Phase-3.
+ */
+export interface PipelineOptions {
+  /** Caller-provided requestId; pipeline generates one if absent. */
+  requestId?: string;
+  /**
+   * Optional callback for stage event emission (SSE consumption).
+   * Per CONTEXT D-04: undefined = byte-identical behavior to pre-Phase-3.
+   */
+  onStageEvent?: StageEventCallback;
+  /**
+   * Per CONTEXT D-15: when true, route handler skips cache read+write (eval harness uses this).
+   * Pipeline itself does NOT act on this flag — it's a passthrough for the consumer.
+   */
+  bypassCache?: boolean;
 }
 
 // =====================================================
@@ -55,19 +84,38 @@ export interface PipelineResult {
 /**
  * Wrap an async operation with timing capture.
  * Records stage name and duration to the provided timings array.
+ *
+ * Phase 3: optionally emits stage_start + stage_end events via opts.onEvent.
+ * When opts is undefined, behavior is byte-identical to pre-Phase-3 (CONTEXT D-04).
  */
 async function timed<T>(
   name: string,
   timings: StageTiming[],
-  fn: () => Promise<T>
+  fn: () => Promise<T>,
+  opts?: { wave?: StageEventWave; onEvent?: StageEventCallback; costCents?: number }
 ): Promise<T> {
-  const start = performance.now();
-  const result = await fn();
-  timings.push({
-    stage: name,
-    duration_ms: Math.round(performance.now() - start),
-  });
-  return result;
+  const wave = opts?.wave ?? 1;
+  const start = emitStageStart(opts?.onEvent, name, wave);
+  let ok = true;
+  let warningMsg: string | undefined;
+  try {
+    const result = await fn();
+    timings.push({
+      stage: name,
+      duration_ms: Math.round(performance.now() - start),
+    });
+    return result;
+  } catch (e) {
+    ok = false;
+    warningMsg = e instanceof Error ? e.message : String(e);
+    throw e;
+  } finally {
+    emitStageEnd(opts?.onEvent, name, wave, start, {
+      cost_cents: opts?.costCents ?? 0,
+      ok,
+      warning: warningMsg,
+    });
+  }
 }
 
 // =====================================================
@@ -171,9 +219,10 @@ const DEFAULT_GEMINI_RESULT: PipelineResult["geminiResult"] = {
  */
 export async function runPredictionPipeline(
   input: AnalysisInput,
-  opts?: { requestId?: string }
+  opts?: PipelineOptions
 ): Promise<PipelineResult> {
   const requestId = opts?.requestId ?? nanoid(12);
+  const onStageEvent = opts?.onStageEvent;
   const log = createLogger({ requestId, module: "pipeline" });
   log.info("Pipeline started", { input_mode: input.input_mode });
 
@@ -195,7 +244,7 @@ export async function runPredictionPipeline(
         `Analysis failed: input validation — ${error instanceof Error ? error.message : String(error)}`
       );
     }
-  });
+  }, { wave: 1, onEvent: onStageEvent });
 
   // -------------------------------------------------------
   // Stage 2: Normalize
@@ -211,6 +260,19 @@ export async function runPredictionPipeline(
         `Analysis failed: input normalization — ${error instanceof Error ? error.message : String(error)}`
       );
     }
+  }, { wave: 1, onEvent: onStageEvent });
+
+  // -------------------------------------------------------
+  // Wave 0: Content-type + niche detection (Phase 4 fills the stub)
+  // Runs BEFORE Wave 1 — events fire before any Wave 1 stage_start.
+  // -------------------------------------------------------
+  const wave0Result = await runWave0(payload, onStageEvent);
+
+  Sentry.addBreadcrumb({
+    category: "engine.pipeline",
+    message: "Wave 0 complete",
+    level: "info",
+    data: { requestId, stages: ["wave_0_content_type", "wave_0_niche_detector"] },
   });
 
   // Single service client for this pipeline run
@@ -251,12 +313,13 @@ export async function runPredictionPipeline(
           const mimeType = EXT_TO_MIME[ext] ?? "video/mp4";
 
           return analyzeVideoWithGemini(buffer, mimeType, validated.niche);
-        });
+        }, { wave: 1, onEvent: onStageEvent });
       }
 
       // Default: text analysis
       return await timed("gemini_analysis", timings, () =>
-        analyzeWithGemini(validated)
+        analyzeWithGemini(validated),
+        { wave: 1, onEvent: onStageEvent }
       );
     } catch (error) {
       Sentry.captureException(error, {
@@ -271,13 +334,17 @@ export async function runPredictionPipeline(
   })();
 
   // Stage 4: Audio Analysis (handled via fuzzy matching in trend enrichment -- no separate stage)
-  const audioPromise = timed("audio_analysis", timings, async () => null);
+  const audioPromise = timed("audio_analysis", timings, async () => null, {
+    wave: 1,
+    onEvent: onStageEvent,
+  });
 
   // Stage 5: Creator Context -- NON-CRITICAL (fallback with warning)
   const creatorPromise = (async (): Promise<CreatorContext> => {
     try {
       return await timed("creator_context", timings, () =>
-        fetchCreatorContext(supabase, payload.creator_handle, payload.niche)
+        fetchCreatorContext(supabase, payload.creator_handle, payload.niche),
+        { wave: 1, onEvent: onStageEvent }
       );
     } catch (error) {
       Sentry.captureException(error, {
@@ -297,7 +364,7 @@ export async function runPredictionPipeline(
       return await timed("rule_scoring", timings, async () => {
         const rules = await loadActiveRules(supabase, payload.content_type);
         return scoreContentAgainstRules(payload.content_text, rules);
-      });
+      }, { wave: 1, onEvent: onStageEvent });
     } catch (error) {
       Sentry.captureException(error, {
         tags: { stage: "rule_scoring", requestId },
@@ -314,7 +381,8 @@ export async function runPredictionPipeline(
   const [geminiResult, audioResult, creatorContext, ruleResult] = await timed(
     "wave_1",
     timings,
-    () => Promise.all([geminiPromise, audioPromise, creatorPromise, rulePromise])
+    () => Promise.all([geminiPromise, audioPromise, creatorPromise, rulePromise]),
+    { wave: 1, onEvent: onStageEvent }
   );
 
   Sentry.addBreadcrumb({
@@ -355,7 +423,7 @@ export async function runPredictionPipeline(
         });
 
         return result;
-      });
+      }, { wave: 2, onEvent: onStageEvent });
     } catch (error) {
       Sentry.captureException(error, {
         tags: { stage: "deepseek_reasoning", requestId },
@@ -372,7 +440,8 @@ export async function runPredictionPipeline(
   const trendPromise = (async (): Promise<TrendEnrichment> => {
     try {
       return await timed("trend_enrichment", timings, () =>
-        enrichWithTrends(supabase, validated)
+        enrichWithTrends(supabase, validated),
+        { wave: 2, onEvent: onStageEvent }
       );
     } catch (error) {
       Sentry.captureException(error, {
@@ -388,7 +457,8 @@ export async function runPredictionPipeline(
 
   // Run Wave 2 in parallel -- both stages gracefully degrade
   const [deepseekRaw, trendEnrichment] = await timed("wave_2", timings, () =>
-    Promise.all([deepseekPromise, trendPromise])
+    Promise.all([deepseekPromise, trendPromise]),
+    { wave: 2, onEvent: onStageEvent }
   );
 
   Sentry.addBreadcrumb({
@@ -396,6 +466,23 @@ export async function runPredictionPipeline(
     message: "Wave 2 complete",
     level: "info",
     data: { requestId, stages: ["deepseek", "trends"] },
+  });
+
+  // -------------------------------------------------------
+  // Wave 3: Multi-persona simulation (Phase 7 fills the stub)
+  // Runs AFTER Wave 2 completes — events fire after wave_2 stage_end.
+  // -------------------------------------------------------
+  const wave3Result = await runWave3(
+    payload,
+    deepseekRaw?.reasoning ?? null,
+    onStageEvent
+  );
+
+  Sentry.addBreadcrumb({
+    category: "engine.pipeline",
+    message: "Wave 3 complete",
+    level: "info",
+    data: { requestId, stages: ["wave_3_personas"] },
   });
 
   // -------------------------------------------------------
@@ -427,6 +514,8 @@ export async function runPredictionPipeline(
     trendEnrichment,
     deepseekResult: deepseekRaw,
     audioResult,
+    wave0Result,
+    wave3Result,
     requestId,
     timings,
     total_duration_ms,
