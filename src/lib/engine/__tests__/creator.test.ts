@@ -236,3 +236,24 @@ describe("formatCreatorContext", () => {
     expect(result).toContain("Platform average comment rate: 0.50%");
   });
 });
+
+// === Phase 2 Wave 0 scaffold (extended by Plan 02-05) ===
+describe("CreatorContext 9-card extension (Phase 2 Wave 0 scaffold)", () => {
+  it.skip("flat-merges 9-card columns from creator_profiles into CreatorContext", () => {
+    // TODO(02-05): seed tableResponses.creator_profiles.data with target_platforms,
+    // niche_primary, niche_sub, target_audience, creator_stage, content_style,
+    // cuts_per_second, reference_creators, past_wins, past_flops, posting_frequency,
+    // time_of_day_aware, pain_points — assert each appears on the returned ctx.
+    expect(true).toBe(true);
+  });
+
+  it.skip("preserves found:boolean semantics when profile fields are non-null but no scraped record exists", () => {
+    // TODO(02-05): D-20 — found mirrors scraped record presence; profile fields are independent.
+    expect(true).toBe(true);
+  });
+
+  it.skip("formatCreatorContext omits null profile fields (no literal 'null' strings in prompts)", () => {
+    // TODO(02-05): Pitfall #3 — null-guard each new lines.push() call.
+    expect(true).toBe(true);
+  });
+});
