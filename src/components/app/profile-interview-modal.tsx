@@ -139,6 +139,17 @@ export function ProfileInterviewModal({
     if (open) closedRef.current = false;
   }, [open]);
 
+  // WR-10: zustand fires its `set` subscribers synchronously inside
+  // `advanceCard`, so the modal re-renders with the NEW currentCard before
+  // the post-await `setIsAdvancing(false)` is dispatched. That causes a
+  // ~1-frame flash of the spinner on the next card's Continue button. By
+  // clearing `isAdvancing` whenever currentCard changes, the flash is gone
+  // — the post-await reset becomes redundant but stays as a fallback for
+  // any flow that doesn't change currentCard (e.g., persist error).
+  useEffect(() => {
+    setIsAdvancing(false);
+  }, [currentCard]);
+
   const card0Invalid = currentCard === 0 && draft.platforms.length === 0;
 
   // CR-02: surface persistence errors via `lastError`. `handleContinue` and
