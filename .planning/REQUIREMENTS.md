@@ -51,7 +51,7 @@
 - [ ] **PROFILE-13**: Individual cards skippable; full flow mandatory before first analysis
 - [ ] **PROFILE-14**: Modal-on-first-upload-click trigger (intercept upload action for users without profile)
 - [ ] **PROFILE-15**: Edit-from-settings flow allows profile updates anytime
-- [ ] **PROFILE-16**: Re-prompt micro-card every 10 analyses (single question, "Is your goal still X?")
+- [ ] **PROFILE-16**: Re-prompt micro-card every 10 analyses (single question, "Is your goal still X?") → Deferred to Phase 11 per Phase 02 D-14 (no counter column, no trigger code added in Phase 2)
 - [ ] **PROFILE-17**: Profile loaded into every analysis as enriched `CreatorContext` (extends existing `creator.ts`)
 
 ## Pipeline Infrastructure
@@ -252,4 +252,22 @@
 
 | REQ-ID | Phase | Plan(s) | Status |
 |--------|-------|---------|--------|
-| (filled during planning) | | | |
+| PROFILE-01 | 02 | 02-01, 02-06 | In progress |
+| PROFILE-02 | 02 | 02-04 | In progress |
+| PROFILE-03 | 02 | 02-03 | In progress |
+| PROFILE-04 | 02 | 02-02, 02-03 | In progress |
+| PROFILE-05 | 02 | 02-03 | In progress |
+| PROFILE-06 | 02 | 02-03 | In progress |
+| PROFILE-07 | 02 | 02-03 | In progress |
+| PROFILE-08 | 02 | 02-03, 02-06 | In progress |
+| PROFILE-09 | 02 | 02-03 | In progress |
+| PROFILE-10 | 02 | 02-03 | In progress |
+| PROFILE-11 | 02 | 02-03 | In progress |
+| PROFILE-12 | 02 | 02-04 | In progress |
+| PROFILE-13 | 02 | 02-01, 02-04 | In progress |
+| PROFILE-14 | 02 | 02-04 | In progress |
+| PROFILE-15 | 02 | 02-05 | In progress |
+| PROFILE-16 | 11 | (Phase 11 — Deferred per Phase 2 D-14) | Deferred |
+| PROFILE-17 | 02 | 02-06 | In progress |
+| INT-02 | 02 | 02-04 | In progress |
+| INT-04 | 02 | 02-05 | In progress |
