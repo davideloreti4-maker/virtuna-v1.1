@@ -20,36 +20,53 @@ export default function WelcomePage() {
     }
   }, [_isHydrated, _hydrate]);
 
-  // Ensure user is authenticated, then hydrate from Supabase
+  // CR-05: Ensure user is authenticated, hydrate from Supabase, and only
+  // insert the creator_profiles row if it is genuinely missing. An unmount
+  // guard prevents store writes against a now-unmounted consumer if the
+  // user navigates away mid-effect. We deliberately read first, then insert
+  // only on miss — the previous `upsert(..., { ignoreDuplicates: true })`
+  // was a no-op on every existing-row mount but still ate a network round
+  // trip on each visit.
+  //
+  // WR-02: log a warning when `dbStep` is neither "connect" nor "completed"
+  // so any stale value left behind by a legacy/in-flight writer is
+  // observable rather than silently coerced.
   useEffect(() => {
     if (!_isHydrated) return;
+    let unmounted = false;
 
     async function initOnboarding() {
       const supabase = createClient();
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      if (unmounted) return;
 
       if (!user) {
         router.replace("/");
         return;
       }
 
-      // Ensure creator_profiles row exists
-      await supabase.from("creator_profiles").upsert(
-        { user_id: user.id, onboarding_step: "connect" },
-        { onConflict: "user_id", ignoreDuplicates: true }
-      );
-
-      // Fetch existing onboarding state (welcome flow only needs handle + step)
+      // Read first — avoid the round-trip + write on every mount for users
+      // whose row already exists.
       const { data: profile } = await supabase
         .from("creator_profiles")
         .select("onboarding_step, onboarding_completed_at, tiktok_handle")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
+      if (unmounted) return;
 
       if (profile?.onboarding_completed_at) {
         router.replace("/dashboard");
+        return;
+      }
+
+      if (!profile) {
+        // First-time visitor — create the bootstrap row.
+        await supabase
+          .from("creator_profiles")
+          .insert({ user_id: user.id, onboarding_step: "connect" });
+        if (unmounted) return;
         return;
       }
 
@@ -57,22 +74,27 @@ export default function WelcomePage() {
       // outside the narrowed "connect" | "completed" union coerces back to
       // "connect" so the store cannot enter an unrepresentable state even if
       // a legacy row escaped the migration UPDATE in Plan 02-01.
-      if (profile) {
-        const dbStep = profile.onboarding_step as string | null;
-        if (dbStep && dbStep !== store.step) {
-          if (dbStep === "connect" || dbStep === "completed") {
-            store.setStep(dbStep);
-          } else {
-            store.setStep("connect");
-          }
+      const dbStep = profile.onboarding_step as string | null;
+      if (dbStep && dbStep !== store.step) {
+        if (dbStep === "connect" || dbStep === "completed") {
+          store.setStep(dbStep);
+        } else {
+          console.warn(
+            "[welcome] coercing unknown onboarding_step to 'connect':",
+            dbStep
+          );
+          store.setStep("connect");
         }
-        if (profile.tiktok_handle && !store.tiktokHandle) {
-          store.setTiktokHandle(profile.tiktok_handle);
-        }
+      }
+      if (profile.tiktok_handle && !store.tiktokHandle) {
+        store.setTiktokHandle(profile.tiktok_handle);
       }
     }
 
-    initOnboarding();
+    void initOnboarding();
+    return () => {
+      unmounted = true;
+    };
   }, [_isHydrated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Redirect to dashboard when onboarding completes
