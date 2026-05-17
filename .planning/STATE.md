@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: engine-foundation
 milestone_name: Engine Foundation
 status: ready_to_plan
-stopped_at: Phase 02 plan-set COMPLETE — 02-06 all 4 tasks committed; awaiting verifier sign-off
-last_updated: "2026-05-17T21:15:00Z"
-last_activity: 2026-05-17 -- Phase 02-06 Tasks 3+4 shipped (74ca923, d2c506f); Phase 02 closed
+stopped_at: Phase 03 execution + verification complete (PARTIAL — defer-smoke for SC#4/#5)
+last_updated: "2026-05-18T00:00:00Z"
+last_activity: 2026-05-18 -- Phase 03 verified PARTIAL; merged into milestone/engine-foundation
 progress:
   total_phases: 12
-  completed_phases: 2
-  total_plans: 13
-  completed_plans: 13
-  percent: 17
+  completed_phases: 3
+  total_plans: 17
+  completed_plans: 17
+  percent: 25
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
-**Current focus:** Phase 02 — creator-profile-9-card-interview
+**Current focus:** Phases 01, 02, 03 complete. Next: Phase 04 per ROADMAP.
 
 ## Current Position
 
-Phase: 3
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-17
+Phase: 03 (pipeline-infrastructure) — VERIFIED PARTIAL (defer-smoke for SC#4/#5)
+Plan: 4 of 4 complete (Plan 03-04 Task 5 deferred — needs live deploy)
+Status: Ready to plan next phase
+Last activity: 2026-05-18 -- Phase 03 merged into milestone/engine-foundation
 
 Progress: [██████████] Phase 01 100% + Phase 02 100% (6/6 plans)
 
@@ -128,11 +128,11 @@ Phase 01 decisions:
 
 ## Session Continuity
 
-Last session: 2026-05-17T21:15:00Z
-Stopped at: Phase 02 plan-set complete — 02-06 Tasks 3 + 4 shipped, SUMMARY written, STATE + ROADMAP updated.
-Next action: Spawn `gsd-verifier` for Phase 02 sign-off, then proceed to Phase 03 (Pipeline Infrastructure) per ROADMAP execution order `1 ∥ 2 → 3`.
+Last session: 2026-05-18T00:00:00Z
+Stopped at: Phase 03 complete + verified PARTIAL (defer-smoke); merged into milestone/engine-foundation.
+Next action: Proceed to Phase 04 per ROADMAP (or re-run smoke tests after next Vercel deploy to flip SC#4/#5 from DEFERRED to MET).
 
-Resume command: `cd ~/virtuna-engine-foundation && /gsd-verify-work 02` (verifier runs the 6 plans' acceptance criteria + e2e + tsc-in-scope gates)
+Resume command: `cd ~/virtuna-engine-foundation && /gsd-progress`
 
 ## Plan 02-06 Decisions (extracted from SUMMARY key-decisions)
 
@@ -142,3 +142,12 @@ Resume command: `cd ~/virtuna-engine-foundation && /gsd-verify-work 02` (verifie
 - Null-guarded formatter blocks live AFTER `platform_averages`, NOT inside `if (ctx.found)` — preserves D-20 (found tracks scraped record; profile fields are independent)
 - Past wins/flops surface as COUNTS only in prompt output (T-02-01 prompt-injection mitigation; URLs never reach LLM)
 - No per-test `seen_at` reset hook in e2e — sequential ordering accepted for M1; documented inline in spec
+
+## Phase 03 Decisions (extracted from SUMMARYs)
+
+- Migration applied via Supabase Studio SQL editor (CLI unlinked in worktree); database.types.ts hand-patched with signal_availability + content_hash
+- Plan 03-04 Task 5 (post-deploy smoke tests) DEFERRED — re-run after next Vercel deploy to flip SC#4 + SC#5 from DEFERRED to MET
+- Phase 3 SCs: #1, #2, #3, #6 MET in code (549/0 tests). #4, #5 DEFERRED-PENDING-LIVE-DEPLOY
+- ENGINE_VERSION moved to dedicated leaf module `src/lib/engine/version.ts` (`"3.0.0-dev"`); re-exported from aggregator.ts for backwards compat
+- Two-tier prediction cache (L1 in-memory + L2 Supabase analysis_results) keyed by `${contentHash}::${ENGINE_VERSION}::${userId}` — SHA-256, bypass option for eval harness
+- /api/analyze adds Accept-header content negotiation (SSE default, JSON on `application/json`) + Vercel route segment config (force-dynamic, maxDuration=300, X-Accel-Buffering: no)

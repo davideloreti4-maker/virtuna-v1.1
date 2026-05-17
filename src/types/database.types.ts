@@ -206,6 +206,7 @@ export type Database = {
         Row: {
           behavioral_predictions: Json | null
           confidence: number | null
+          content_hash: string | null
           content_text: string
           content_type: string
           conversation_themes: Json | null
@@ -229,6 +230,7 @@ export type Database = {
           reasoning: string | null
           rule_score: number | null
           score_weights: Json | null
+          signal_availability: Json | null
           society_id: string | null
           suggestions: Json | null
           trend_score: number | null
@@ -240,6 +242,7 @@ export type Database = {
         Insert: {
           behavioral_predictions?: Json | null
           confidence?: number | null
+          content_hash?: string | null
           content_text: string
           content_type: string
           conversation_themes?: Json | null
@@ -263,6 +266,7 @@ export type Database = {
           reasoning?: string | null
           rule_score?: number | null
           score_weights?: Json | null
+          signal_availability?: Json | null
           society_id?: string | null
           suggestions?: Json | null
           trend_score?: number | null
@@ -274,6 +278,7 @@ export type Database = {
         Update: {
           behavioral_predictions?: Json | null
           confidence?: number | null
+          content_hash?: string | null
           content_text?: string
           content_type?: string
           conversation_themes?: Json | null
@@ -297,6 +302,7 @@ export type Database = {
           reasoning?: string | null
           rule_score?: number | null
           score_weights?: Json | null
+          signal_availability?: Json | null
           society_id?: string | null
           suggestions?: Json | null
           trend_score?: number | null

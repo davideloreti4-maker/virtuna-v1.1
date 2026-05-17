@@ -375,3 +375,79 @@ describe("aggregateScores", () => {
     expect(lowResult.confidence_label).toBe("LOW");
   });
 });
+
+// =====================================================
+// Phase 3 — provenance + stub invocations
+// =====================================================
+
+describe("Phase 3 — provenance + stub invocations", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(predictWithML).mockResolvedValue(50);
+    vi.mocked(getPlattParameters).mockResolvedValue(null);
+    vi.mocked(applyPlattScaling).mockImplementation(
+      (score: number, _params: unknown) => score
+    );
+  });
+
+  it("returns signal_availability populated from internal computation (PIPE-07)", async () => {
+    const result = await aggregateScores(makePipelineResult());
+    expect(result.signal_availability).toBeDefined();
+    expect(typeof result.signal_availability.behavioral).toBe("boolean");
+    expect(typeof result.signal_availability.gemini).toBe("boolean");
+    expect(typeof result.signal_availability.ml).toBe("boolean");
+    expect(typeof result.signal_availability.rules).toBe("boolean");
+    expect(typeof result.signal_availability.trends).toBe("boolean");
+  });
+
+  it("re-exports ENGINE_VERSION from ./version (back-compat — PIPE-08)", async () => {
+    const { ENGINE_VERSION } = await import("../aggregator");
+    const { ENGINE_VERSION: viaVersion } = await import("../version");
+    expect(ENGINE_VERSION).toBe(viaVersion);
+    expect(ENGINE_VERSION).toBe("3.0.0-dev");
+  });
+
+  it("PredictionResult.engine_version reads from ./version module", async () => {
+    const result = await aggregateScores(makePipelineResult());
+    expect(result.engine_version).toBe("3.0.0-dev");
+  });
+
+  it("invokes Stage 10 + Stage 11 stubs with onStageEvent forwarding (PIPE-09)", async () => {
+    const events: string[] = [];
+    await aggregateScores(makePipelineResult(), (e) => {
+      if (e.type === "stage_start" || e.type === "stage_end") {
+        if ("stage" in e && e.stage) events.push(e.stage);
+      }
+    });
+    expect(events).toContain("stage_10_critique");
+    expect(events).toContain("stage_11_counterfactuals");
+  });
+
+  it("overall_score is unchanged for identical input (PIPE-06 math invariance)", async () => {
+    const a = await aggregateScores(makePipelineResult());
+    const b = await aggregateScores(makePipelineResult());
+    expect(a.overall_score).toBe(b.overall_score);
+    expect(a.confidence).toBe(b.confidence);
+    expect(a.gemini_score).toBe(b.gemini_score);
+    expect(a.behavioral_score).toBe(b.behavioral_score);
+  });
+
+  it("signal_availability.behavioral=true when deepseekResult present", async () => {
+    const result = await aggregateScores(makePipelineResult());
+    expect(result.signal_availability.behavioral).toBe(true);
+  });
+
+  it("signal_availability.behavioral=false when deepseekResult is null", async () => {
+    const result = await aggregateScores(
+      makePipelineResult({ deepseekResult: null })
+    );
+    expect(result.signal_availability.behavioral).toBe(false);
+  });
+
+  it("calling aggregateScores without onStageEvent works (backwards-compat)", async () => {
+    // Existing callers don't pass the second arg — must still work
+    const result = await aggregateScores(makePipelineResult());
+    expect(result).toBeDefined();
+    expect(result.overall_score).toBeGreaterThanOrEqual(0);
+  });
+});
