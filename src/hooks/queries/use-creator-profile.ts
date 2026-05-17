@@ -39,9 +39,16 @@ export interface CreatorProfileResponse {
 
 /**
  * QUERY: Fetch the current user's 9-card creator-profile row.
- * Used by the settings form (PROFILE-15) and the modal gate hook
- * (PROFILE-14, Plan 02-04). One query key — single cache namespace —
- * so a settings save instantly refreshes the gate.
+ *
+ * Used by the settings form (PROFILE-15), the modal gate hook
+ * (PROFILE-14, Plan 02-04, `usePendingProfileGate`), and any other consumer
+ * that needs to read the 9-card columns. One query key — single cache
+ * namespace — so a settings save instantly refreshes the gate (CR-01).
+ *
+ * `refetchOnWindowFocus: false` because this is settings data, not real-time
+ * — refetching on focus would clobber in-flight edits in the settings form
+ * (CR-04). `staleTime` of 5 minutes keeps the surface snappy without losing
+ * cross-tab freshness via explicit invalidations from the mutation hook.
  */
 export function useCreatorProfile(): UseQueryResult<
   CreatorProfileResponse,
@@ -54,6 +61,8 @@ export function useCreatorProfile(): UseQueryResult<
       if (!res.ok) throw new Error("Failed to fetch creator profile");
       return res.json() as Promise<CreatorProfileResponse>;
     },
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 

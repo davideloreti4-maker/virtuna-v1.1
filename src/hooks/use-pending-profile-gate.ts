@@ -1,28 +1,44 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useCallback, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+
+import {
+  useCreatorProfile,
+  type CreatorProfileResponse,
+} from "@/hooks/queries/use-creator-profile";
+import { queryKeys } from "@/lib/queries/query-keys";
 
 /**
  * Pending-profile gate — deferred-submit pattern that prevents an upload
  * action from completing until the 9-card creator profile has been seen.
  *
+ * Backed by the shared TanStack query (`useCreatorProfile`) — invalidating
+ * `queryKeys.profile.creatorProfile()` from anywhere (settings save, modal
+ * finalize) instantly refreshes this gate (CR-01 mitigation). One query key,
+ * single cache namespace.
+ *
  * Pattern (RESEARCH §Pattern 1):
- *   1. On mount, read `creator_profiles.profile_interview_seen_at` for the
- *      authenticated user. `profileSeen === null` while loading.
+ *   1. Read `creator_profiles.profile_interview_seen_at` via the shared query.
+ *      `isLoading` is true on the first hydration.
  *   2. `interceptOrProceed(callback)` is called from the form's submit
  *      handler. If the modal should be shown, stash the callback into a ref
  *      and return `{ intercepted: true }`. Otherwise invoke the callback
  *      immediately and return `{ intercepted: false }`.
  *   3. `resumeAfterModal()` is called by the modal's onClose handler. It
- *      fires the stashed callback (the deferred submit) and locally marks
- *      the profile as seen so a second submit in the same session does not
- *      re-trigger the modal.
+ *      fires the stashed callback (the deferred submit) and optimistically
+ *      flips `profile_interview_seen_at` in the cache so a second submit in
+ *      the same session does not re-trigger the modal (the DB write happens
+ *      inside the store's finalize/skipInterview).
  *
- * Pitfall #1 mitigation (RESEARCH lines 685-693): while `profileSeen` is
- * loading we DEFER to the safe side and intercept the submit. The consuming
- * component should also surface `isLoading` (we expose it) to disable the
- * submit button during the brief race window.
+ * Pitfall #1 mitigation (RESEARCH lines 685-693): while the query is
+ * `isLoading` we DEFER to the safe side and intercept the submit. The
+ * consuming component should also surface `isLoading` (we expose it) to
+ * disable the submit button during the brief race window.
+ *
+ * Fail-open posture: if the query errors (network failure, RLS denial), we
+ * treat the profile as seen so a transient backend failure does not block
+ * the upload flow.
  */
 export interface PendingProfileGate {
   shouldShowModal: boolean;
@@ -32,63 +48,15 @@ export interface PendingProfileGate {
 }
 
 export function usePendingProfileGate(): PendingProfileGate {
-  // null = loading; true = seen; false = unseen (must show modal)
-  const [profileSeen, setProfileSeen] = useState<boolean | null>(null);
+  const { data, isLoading, isError } = useCreatorProfile();
+  const queryClient = useQueryClient();
   const pendingSubmit = useRef<(() => void) | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadGate = async (): Promise<void> => {
-      try {
-        const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (cancelled) return;
-
-        if (!user) {
-          // Unauthenticated — never show modal; downstream auth gate handles
-          // the actual sign-in flow.
-          setProfileSeen(true);
-          return;
-        }
-
-        // Cast: `profile_interview_seen_at` was added to creator_profiles
-        // by the Plan 02-01 migration (20260517210000_creator_profile_9card_columns.sql)
-        // but src/types/database.types.ts has not been regenerated. The
-        // column exists at runtime; the typed schema is stale. Plan 02-06
-        // (DB-types regen) cleans this up.
-        const { data, error } = await supabase
-          .from("creator_profiles")
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .select("profile_interview_seen_at" as any)
-          .eq("user_id", user.id)
-          .maybeSingle();
-        if (cancelled) return;
-
-        if (error) {
-          // Fail-open: do not block the submit if we cannot read the gate
-          // state. The modal will be re-tried next session.
-          setProfileSeen(true);
-          return;
-        }
-
-        const row = data as { profile_interview_seen_at?: string | null } | null;
-        setProfileSeen(Boolean(row?.profile_interview_seen_at));
-      } catch {
-        if (!cancelled) setProfileSeen(true);
-      }
-    };
-
-    void loadGate();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const shouldShowModal = profileSeen === false;
-  const isLoading = profileSeen === null;
+  // Fail-open: on query error, treat as seen so we do not hard-block uploads.
+  const profileSeen = isError
+    ? true
+    : data?.profile_interview_seen_at != null;
+  const shouldShowModal = !isLoading && !isError && !profileSeen;
 
   const interceptOrProceed = useCallback(
     (proceed: () => void): { intercepted: boolean } => {
@@ -106,11 +74,22 @@ export function usePendingProfileGate(): PendingProfileGate {
   const resumeAfterModal = useCallback((): void => {
     const callback = pendingSubmit.current;
     pendingSubmit.current = null;
-    // Locally mark seen so a second submit in the same session does not
-    // re-trigger the modal (the DB write happens inside the store).
-    setProfileSeen(true);
+    // Optimistically flip `profile_interview_seen_at` in the cache so a
+    // second submit in the same session does not re-trigger the modal.
+    // The DB write is performed by the store's finalize/skipInterview.
+    queryClient.setQueryData<CreatorProfileResponse | undefined>(
+      queryKeys.profile.creatorProfile(),
+      (prev) => {
+        if (!prev) return prev;
+        if (prev.profile_interview_seen_at != null) return prev;
+        return {
+          ...prev,
+          profile_interview_seen_at: new Date().toISOString(),
+        };
+      }
+    );
     if (callback) callback();
-  }, []);
+  }, [queryClient]);
 
   return {
     shouldShowModal,
