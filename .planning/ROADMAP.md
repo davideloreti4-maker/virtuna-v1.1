@@ -83,9 +83,9 @@ Plans:
 - [x] 02-01-PLAN.md — Wave 1: schema migration + Wave 0 test scaffolds
 - [x] 02-02-PLAN.md — Wave 1: niche taxonomy module + tests
 - [x] 02-03-PLAN.md — Wave 2: 9 card-picker components (Cards 0-8)
-- [ ] 02-04-PLAN.md — Wave 3: ProfileInterviewModal + Zustand store + gate hook + content-form interception
-- [ ] 02-05-PLAN.md — Wave 3: Settings 6th tab + ProfileSettingsForm + TanStack hooks + new API route + welcome trim
-- [ ] 02-06-PLAN.md — Wave 4: engine CreatorContext extension + reference-creator side-effect + e2e + [BLOCKING] supabase db push + PROFILE-16 traceability
+- [x] 02-04-PLAN.md — Wave 3: ProfileInterviewModal + Zustand store + gate hook + content-form interception (Completed 2026-05-17)
+- [x] 02-05-PLAN.md — Wave 3: Settings 6th tab + ProfileSettingsForm + TanStack hooks + new API route + welcome trim (Completed 2026-05-17)
+- [ ] 02-06-PLAN.md — Wave 4: engine CreatorContext extension + reference-creator side-effect + e2e + [BLOCKING] supabase db push + PROFILE-16 traceability — IN FLIGHT (Task 1 of 4 done, HALTED at Task 2 checkpoint)
 **UI hint:** yes
 
 ### Phase 3: Pipeline Infrastructure
@@ -221,7 +221,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Training Corpus & Eval Foundation | 7/7 | Complete (pending verifier) | 2026-05-11 |
-| 2. Creator Profile & 9-Card Interview | 0/6 | Not started | - |
+| 2. Creator Profile & 9-Card Interview | 5/6 | In progress (Plan 02-06 Task 1 of 4 done, HALTED at Task 2 [BLOCKING] checkpoint) | - |
 | 3. Pipeline Infrastructure | 0/TBD | Not started | - |
 | 4. Wave 0 — Content Type + Niche Detection | 0/TBD | Not started | - |
 | 5. Video Segmentation + Hook Decomposition | 0/TBD | Not started | - |
