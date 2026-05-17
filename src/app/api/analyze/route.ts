@@ -7,7 +7,16 @@ import { runPredictionPipeline } from "@/lib/engine/pipeline";
 import { aggregateScores } from "@/lib/engine/aggregator";
 import { AnalysisInputSchema } from "@/lib/engine/types";
 
-export const maxDuration = 120; // API-10: Vercel Pro plan
+/**
+ * Phase 3 — Vercel Fluid Compute route config.
+ * Per RESEARCH Pitfalls 1+2 + State of the Art:
+ * - nodejs runtime required for long-lived SSE
+ * - force-dynamic prevents Vercel route caching of the stream
+ * - maxDuration=300 (Fluid Compute default); bump to 800 on Pro if needed
+ */
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 // INFRA-01: Rate limits by subscription tier (daily analysis count)
 const DAILY_LIMITS: Record<string, number> = {
@@ -149,8 +158,30 @@ export async function POST(request: Request) {
     }
 
     // -------------------------------------------------------
-    // SSE stream setup
+    // Phase 3 — Accept-header content negotiation (CONTEXT D-03)
     // -------------------------------------------------------
+    // Default to SSE for backwards compat (existing client doesn't send Accept; treat as SSE).
+    // Explicit `Accept: application/json` opts into the JSON one-shot response.
+    const acceptHeader = request.headers.get("accept") ?? "";
+    const wantsSSE =
+      acceptHeader.includes("text/event-stream") ||
+      acceptHeader === "" ||
+      acceptHeader.includes("*/*");
+    const wantsJSON =
+      acceptHeader.includes("application/json") &&
+      !acceptHeader.includes("text/event-stream");
+
+    // -------------------------------------------------------
+    // JSON branch (CONTEXT D-03) — placeholder; Task 2 wires pipeline + cache + INSERT.
+    // -------------------------------------------------------
+    if (wantsJSON) {
+      throw new Error("JSON branch not yet wired — Task 2 completes this");
+    }
+
+    // -------------------------------------------------------
+    // SSE stream setup (preserves all existing behavior — wantsSSE branch is default)
+    // -------------------------------------------------------
+    void wantsSSE; // referenced for traceability; default branch when not JSON
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
@@ -266,8 +297,10 @@ export async function POST(request: Request) {
     return new Response(stream, {
       headers: {
         "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
+        "Cache-Control": "no-cache, no-transform",
         Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
+        Vary: "Accept",
       },
     });
   } catch (error) {
