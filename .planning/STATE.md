@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: engine-foundation
 milestone_name: Engine Foundation
-status: phase-complete
-stopped_at: Phase 01 complete — v2.1 baseline persisted; awaiting verifier sign-off
-last_updated: "2026-05-11T14:16:00.000Z"
-last_activity: 2026-05-11 -- v2.1 baseline persisted (macro_f1=0.294); Phase 01 docs sealed; ready for verifier
+status: Phase 01 sealed; baseline row 3f6e8e28-38b1-41fb-b439-80fe9de76654 persisted; v3 target macro_f1 ≥ 0.338
+stopped_at: Phase 2 context gathered
+last_updated: "2026-05-17T18:36:09.889Z"
+last_activity: 2026-05-12 -- gsd-verifier re-verification PASS (no drift, no regressions; 5/5 ROADMAP SCs satisfied)
 progress:
   total_phases: 12
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 7
   completed_plans: 7
   percent: 100
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
-**Current focus:** Phase 01 — training-corpus-eval-foundation (COMPLETE, pending verifier)
+**Current focus:** Phase 01 — training-corpus-eval-foundation (VERIFIED 2026-05-12); next up Phase 02 (Creator Profile) or Phase 03 (Pipeline Infrastructure)
 
 ## Current Position
 
-Phase: 01 (training-corpus-eval-foundation) — COMPLETE (pending verifier sign-off)
+Phase: 01 (training-corpus-eval-foundation) — VERIFIED (verifier sign-off 2026-05-12: passed)
 Plan: 01-07 (DONE — v2.1 baseline persisted + documented)
-Status: All 7 plans complete; awaiting gsd-verifier
-Last activity: 2026-05-11 -- v2.1 baseline persisted (macro_f1=0.294, ece=0.372, viral_recall=0.106)
+Status: Phase 01 sealed; baseline row 3f6e8e28-38b1-41fb-b439-80fe9de76654 persisted; v3 target macro_f1 ≥ 0.338
+Last activity: 2026-05-12 -- gsd-verifier re-verification PASS (no drift, no regressions; 5/5 ROADMAP SCs satisfied)
 
 Progress: [██████████] 100% (Phase 01 plans)
 
@@ -79,6 +79,7 @@ Progress: [██████████] 100% (Phase 01 plans)
 Decisions are logged in PROJECT.md Key Decisions table and the milestone summary at top of PROJECT.md.
 
 Milestone-start decisions:
+
 - Two-milestone split: Engine Foundation (this) → Intelligence Surface (next). Enabled by training-corpus insight that lets us measure engine accuracy without waiting for users to post content.
 - Engine extension is **additive only** — no rewrite of existing `pipeline.ts` or `aggregator.ts`. New stages slot into existing wave pattern (Wave 0 added; Wave 3 added for personas; Stage 10 critique; Stage 11 counterfactuals).
 - Video segmentation via **native Gemini `videoMetadata`** (no ffmpeg). Single Files API upload, parallel scoped calls.
@@ -89,6 +90,7 @@ Milestone-start decisions:
 - Acceptance gate: engine v3 must demonstrate measurable accuracy improvement vs v2.1 baseline on corpus before milestone ships.
 
 Phase 01 decisions:
+
 - apidojo migration complete but running on clockworks FREE-tier (APIFY_ACTOR_LEGACY=clockworks) because apidojo requires Starter plan. Migration code is production-ready.
 - 180-day recency ceiling added to normalize-scrape.ts (permanent fix, both actor paths).
 - Comedy bucket compression (2.88× separation) accepted as genuine distribution.
@@ -113,6 +115,6 @@ Phase 01 decisions:
 
 ## Session Continuity
 
-Last session: 2026-05-11 (Phase 01 complete — all 7 plans done)
-Stopped at: Phase 01 docs sealed; awaiting gsd-verifier for phase sign-off
-Next action: `cd ~/virtuna-engine-foundation && /gsd-verifier 01`
+Last session: 2026-05-17T18:36:09.882Z
+Stopped at: Phase 2 context gathered
+Next action: `cd ~/virtuna-engine-foundation && /gsd-plan-phase 02`
