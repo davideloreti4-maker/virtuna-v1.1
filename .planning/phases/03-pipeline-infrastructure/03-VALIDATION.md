@@ -1,8 +1,8 @@
 ---
 phase: 3
 slug: pipeline-infrastructure
-status: draft
-nyquist_compliant: false
+status: approved
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-05-17
 ---
@@ -93,4 +93,4 @@ Existing infrastructure (`pipeline.test.ts`, `aggregator.test.ts`, `deepseek.tes
 - [ ] Feedback latency < 60s per wave
 - [ ] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-05-17 (plan-checker VERIFICATION PASSED)
