@@ -33,6 +33,7 @@ export const queryKeys = {
   profile: {
     all: ["profile"] as const,
     current: () => ["profile", "current"] as const,
+    creatorProfile: () => ["profile", "creator-profile"] as const,
   },
   affiliateLinks: {
     all: ["affiliateLinks"] as const,

@@ -1,16 +1,30 @@
 "use client";
 
 import * as Tabs from "@radix-ui/react-tabs";
-import { User, Settings, Bell, CreditCard, Users } from "lucide-react";
+import {
+  User,
+  Settings,
+  Bell,
+  CreditCard,
+  Users,
+  Sparkles,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProfileSection } from "./profile-section";
 import { AccountSection } from "./account-section";
 import { NotificationsSection } from "./notifications-section";
 import { BillingSection } from "./billing-section";
 import { TeamSection } from "./team-section";
+import { CreatorProfileSection } from "./creator-profile-section";
 
 interface SettingsPageProps {
-  defaultTab?: "profile" | "account" | "notifications" | "billing" | "team";
+  defaultTab?:
+    | "profile"
+    | "account"
+    | "notifications"
+    | "billing"
+    | "team"
+    | "creator-profile";
 }
 
 const TABS = [
@@ -19,6 +33,7 @@ const TABS = [
   { value: "notifications", label: "Notifications", icon: Bell },
   { value: "billing", label: "Billing", icon: CreditCard },
   { value: "team", label: "Team", icon: Users },
+  { value: "creator-profile", label: "Creator Profile", icon: Sparkles },
 ] as const;
 
 export function SettingsPage({ defaultTab = "profile" }: SettingsPageProps) {
@@ -64,6 +79,9 @@ export function SettingsPage({ defaultTab = "profile" }: SettingsPageProps) {
           </Tabs.Content>
           <Tabs.Content value="team" className="outline-none">
             <TeamSection />
+          </Tabs.Content>
+          <Tabs.Content value="creator-profile" className="outline-none">
+            <CreatorProfileSection />
           </Tabs.Content>
         </div>
       </Tabs.Root>

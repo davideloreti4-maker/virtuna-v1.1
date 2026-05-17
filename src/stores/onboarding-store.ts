@@ -1,24 +1,27 @@
 import { create } from "zustand";
 import { createClient } from "@/lib/supabase/client";
 
-export type OnboardingStep = "connect" | "goal" | "preview" | "completed";
-export type PrimaryGoal =
-  | "monetization"
-  | "viral_content"
-  | "affiliate_revenue";
+/**
+ * Welcome-flow state machine. D-03 / INT-04 trimmed the union to two members:
+ * the user lands on "connect", supplies their TikTok handle, and the store
+ * transitions to "completed" (the welcome page then redirects to /dashboard).
+ *
+ * The creator-goal capture is delegated exclusively to Card 3 of the
+ * post-upload interview modal (Plan 02-04) — duplicating it here would
+ * violate INT-04 (no duplication of capture surfaces).
+ */
+export type OnboardingStep = "connect" | "completed";
 
 const STORAGE_KEY = "virtuna-onboarding";
 
 interface OnboardingState {
   step: OnboardingStep;
   tiktokHandle: string;
-  primaryGoal: PrimaryGoal | null;
   _isHydrated: boolean;
 
   _hydrate: () => void;
   setStep: (step: OnboardingStep) => void;
   setTiktokHandle: (handle: string) => void;
-  setPrimaryGoal: (goal: PrimaryGoal) => void;
   completeOnboarding: () => Promise<void>;
   skipOnboarding: () => Promise<void>;
   reset: () => void;
@@ -35,7 +38,7 @@ function loadFromStorage(): Partial<OnboardingState> | null {
 }
 
 function saveToStorage(
-  state: Pick<OnboardingState, "step" | "tiktokHandle" | "primaryGoal">
+  state: Pick<OnboardingState, "step" | "tiktokHandle">
 ) {
   if (typeof window === "undefined") return;
   try {
@@ -61,7 +64,6 @@ async function persistToSupabase(updates: Record<string, unknown>) {
 export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   step: "connect",
   tiktokHandle: "",
-  primaryGoal: null,
   _isHydrated: false,
 
   _hydrate: () => {
@@ -70,7 +72,6 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
       set({
         step: (stored.step as OnboardingStep) || "connect",
         tiktokHandle: stored.tiktokHandle || "",
-        primaryGoal: (stored.primaryGoal as PrimaryGoal) || null,
         _isHydrated: true,
       });
     } else {
@@ -80,42 +81,34 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
 
   setStep: (step) => {
     const state = get();
-    saveToStorage({ step, tiktokHandle: state.tiktokHandle, primaryGoal: state.primaryGoal });
+    saveToStorage({ step, tiktokHandle: state.tiktokHandle });
     set({ step });
     persistToSupabase({ onboarding_step: step });
   },
 
   setTiktokHandle: (tiktokHandle) => {
     const state = get();
-    saveToStorage({ step: state.step, tiktokHandle, primaryGoal: state.primaryGoal });
+    saveToStorage({ step: state.step, tiktokHandle });
     set({ tiktokHandle });
     persistToSupabase({ tiktok_handle: tiktokHandle });
-  },
-
-  setPrimaryGoal: (primaryGoal) => {
-    const state = get();
-    saveToStorage({ step: state.step, tiktokHandle: state.tiktokHandle, primaryGoal });
-    set({ primaryGoal });
-    persistToSupabase({ primary_goal: primaryGoal });
   },
 
   completeOnboarding: async () => {
     const state = get();
     const step = "completed" as OnboardingStep;
-    saveToStorage({ step, tiktokHandle: state.tiktokHandle, primaryGoal: state.primaryGoal });
+    saveToStorage({ step, tiktokHandle: state.tiktokHandle });
     set({ step });
     await persistToSupabase({
       onboarding_step: "completed",
       onboarding_completed_at: new Date().toISOString(),
       tiktok_handle: state.tiktokHandle || null,
-      primary_goal: state.primaryGoal,
     });
   },
 
   skipOnboarding: async () => {
     const state = get();
     const step = "completed" as OnboardingStep;
-    saveToStorage({ step, tiktokHandle: state.tiktokHandle, primaryGoal: state.primaryGoal });
+    saveToStorage({ step, tiktokHandle: state.tiktokHandle });
     set({ step });
     await persistToSupabase({
       onboarding_step: "completed",
@@ -127,6 +120,6 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
     if (typeof window !== "undefined") {
       localStorage.removeItem(STORAGE_KEY);
     }
-    set({ step: "connect", tiktokHandle: "", primaryGoal: null });
+    set({ step: "connect", tiktokHandle: "" });
   },
 }));
