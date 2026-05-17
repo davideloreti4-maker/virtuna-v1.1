@@ -5,11 +5,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 import { ConnectStep } from "@/components/onboarding/connect-step";
-import { GoalStep } from "@/components/onboarding/goal-step";
-import { PreviewStep } from "@/components/onboarding/preview-step";
-import { cn } from "@/lib/utils";
 
-const STEPS = ["connect", "goal", "preview"] as const;
+const STEPS = ["connect"] as const;
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -44,10 +41,10 @@ export default function WelcomePage() {
         { onConflict: "user_id", ignoreDuplicates: true }
       );
 
-      // Fetch existing onboarding state
+      // Fetch existing onboarding state (welcome flow only needs handle + step)
       const { data: profile } = await supabase
         .from("creator_profiles")
-        .select("onboarding_step, onboarding_completed_at, tiktok_handle, primary_goal")
+        .select("onboarding_step, onboarding_completed_at, tiktok_handle")
         .eq("user_id", user.id)
         .single();
 
@@ -56,17 +53,21 @@ export default function WelcomePage() {
         return;
       }
 
-      // Restore state from DB if available
+      // Restore state from DB if available — defense-in-depth: any DB value
+      // outside the narrowed "connect" | "completed" union coerces back to
+      // "connect" so the store cannot enter an unrepresentable state even if
+      // a legacy row escaped the migration UPDATE in Plan 02-01.
       if (profile) {
-        const dbStep = profile.onboarding_step as typeof step;
+        const dbStep = profile.onboarding_step as string | null;
         if (dbStep && dbStep !== store.step) {
-          store.setStep(dbStep);
+          if (dbStep === "connect" || dbStep === "completed") {
+            store.setStep(dbStep);
+          } else {
+            store.setStep("connect");
+          }
         }
         if (profile.tiktok_handle && !store.tiktokHandle) {
           store.setTiktokHandle(profile.tiktok_handle);
-        }
-        if (profile.primary_goal && !store.primaryGoal) {
-          store.setPrimaryGoal(profile.primary_goal as "monetization" | "viral_content" | "affiliate_revenue");
         }
       }
     }
@@ -108,8 +109,6 @@ export default function WelcomePage() {
     );
   }
 
-  const currentStepIndex = STEPS.indexOf(step as (typeof STEPS)[number]);
-
   return (
     <div
       className="w-full max-w-[400px] rounded-[12px] border border-white/[0.06] px-8 py-10"
@@ -121,23 +120,18 @@ export default function WelcomePage() {
         boxShadow: "rgba(255,255,255,0.15) 0px 1px 1px 0px inset",
       }}
     >
-      {/* Step indicator */}
+      {/* Step indicator (single-step now, kept for visual symmetry with prior flow) */}
       <div className="mb-8 flex items-center justify-center gap-2">
-        {STEPS.map((s, i) => (
+        {STEPS.map((s) => (
           <div
             key={s}
-            className={cn(
-              "h-1.5 w-8 rounded-full transition-colors",
-              i <= currentStepIndex ? "bg-accent" : "bg-white/[0.1]"
-            )}
+            className="h-1.5 w-8 rounded-full bg-accent transition-colors"
           />
         ))}
       </div>
 
       <div className="min-h-[320px]">
         {step === "connect" && <ConnectStep />}
-        {step === "goal" && <GoalStep />}
-        {step === "preview" && <PreviewStep />}
       </div>
     </div>
   );
