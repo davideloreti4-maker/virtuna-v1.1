@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import { createClient } from "@/lib/supabase/client";
+import { addCompetitor } from "@/app/actions/competitors/add";
+import { normalizeHandle } from "@/lib/schemas/competitor";
 import type { PlatformId } from "@/components/app/cards/platform-picker";
 import type { TargetAudience } from "@/components/app/cards/audience-picker";
 import type {
@@ -186,6 +188,35 @@ function serializeAllCards(
   );
 }
 
+/**
+ * Card 5 side-effect — fire `addCompetitor` once per non-empty reference handle
+ * with `source='profile_reference'`. Fire-and-forget per D-07: a bad handle or
+ * scrape failure MUST NOT block the profile save flow. The 23505 unique-violation
+ * branch inside `addCompetitor` provides idempotency — re-firing for an already-
+ * tracked handle returns an error string the store silently swallows.
+ *
+ * Normalization mirrors the manual-add path so the junction's
+ * UNIQUE(user_id, competitor_id) constraint sees the same key in both flows.
+ */
+function fireReferenceCreatorAdds(
+  entries: Array<{ handle_or_url: string }>
+): void {
+  for (const entry of entries) {
+    const raw = entry.handle_or_url?.trim();
+    if (!raw) continue;
+    const normalized = normalizeHandle(raw);
+    if (!normalized || normalized.length < 2) continue;
+    // Fire-and-forget per D-07; mirror /api/profile/route.ts:132 pattern
+    void addCompetitor(normalized, "profile_reference").catch((err) => {
+      // Intentionally swallowed — bad handles must not block profile save
+      console.warn(
+        "[profile-interview] reference creator add failed:",
+        err
+      );
+    });
+  }
+}
+
 export const useProfileInterviewStore = create<ProfileInterviewState>(
   (set, get) => ({
     currentCard: 0,
@@ -198,9 +229,14 @@ export const useProfileInterviewStore = create<ProfileInterviewState>(
 
     advanceCard: async () => {
       const { currentCard, draft } = get();
-      // Card 5 side-effect (auto-add reference creators to competitors table)
-      // is NOT triggered here — Plan 02-06 wires that via a separate save flow.
       await persistCardData(serializeCard(currentCard, draft));
+      // Card 5 side-effect (D-06/D-07): auto-add each reference creator to
+      // `user_competitors` with source='profile_reference'. Fired AFTER the
+      // column persist so the DB-of-record exists even if the scrape kickoff
+      // fails. Fire-and-forget — does not block currentCard advance.
+      if (currentCard === 5) {
+        fireReferenceCreatorAdds(draft.references);
+      }
       set({ currentCard: currentCard + 1 });
     },
 
@@ -227,6 +263,11 @@ export const useProfileInterviewStore = create<ProfileInterviewState>(
         ...serializeAllCards(draft),
         profile_interview_seen_at: new Date().toISOString(),
       });
+      // Card 5 safety-net: covers the case where the user reached Card 8 via
+      // "Skip this question" on Card 5 and then back-edited Card 5 later, or
+      // any flow where advanceCard from Card 5 did not fire. The 23505
+      // idempotency on user_competitors makes the double-fire safe.
+      fireReferenceCreatorAdds(draft.references);
       set({ isClosing: true });
     },
 
