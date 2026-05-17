@@ -13,6 +13,7 @@ import {
 } from "@/lib/engine/cache/prediction-cache";
 import type { StageEvent } from "@/lib/engine/events";
 import type { PredictionResult } from "@/lib/engine/types";
+import type { Json } from "@/types/database.types";
 
 /**
  * Phase 3 — Vercel Fluid Compute route config.
@@ -277,10 +278,12 @@ export async function POST(request: Request) {
       is_calibrated: finalResult.is_calibrated,
       // RULE-03: Per-rule contribution tracking for accuracy computation
       rule_contributions: ruleContributions as unknown as null,
-      // Phase 3 — provenance columns (Plan 04 regenerates database.types.ts).
-      content_hash: contentHash as unknown as null,
-      signal_availability:
-        finalResult.signal_availability as unknown as null,
+      // Phase 3 — provenance columns (typed in database.types.ts after Plan 04 regen).
+      // content_hash is `string` → matches `string | null` directly (no cast).
+      // signal_availability cast to Json: the SignalAvailability interface is structurally
+      // a Json object (boolean keys), but TS doesn't infer recursive Json subtyping.
+      content_hash: contentHash,
+      signal_availability: finalResult.signal_availability as unknown as Json,
     });
 
     // -------------------------------------------------------
