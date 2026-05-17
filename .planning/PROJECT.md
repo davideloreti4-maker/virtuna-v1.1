@@ -282,6 +282,8 @@ Profile feeds the engine: persona allocation weighting, suggestion framing, benc
 **Shipped:** UI Dashboard (2026-03-18), Prediction Engine Integration (2026-02-27), Backend Reliability (2026-02-18), Prediction Engine v2 (2026-02-17), Competitors Tool (2026-02-17), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
 **Current milestone (this worktree):** Engine Foundation — engine accuracy + creator profile + training corpus (started 2026-05-11)
+  - Phase 01 (Training Corpus & Eval Foundation): VERIFIED 2026-05-12 — 7/7 plans, baseline macro_f1=0.294, v3 target ≥0.338
+  - Phase 02 (Creator Profile & 9-Card Interview): code-complete 2026-05-18 — 6/6 plans, migration live, 5/5 ROADMAP SCs verified in code, 8 HUMAN-UAT items pending browser confirmation
 
 **Parallel milestone (main worktree):** Brand Statement Landing — landing-page rebuild + brand-spine codification (Phase 2 complete on main)
 
