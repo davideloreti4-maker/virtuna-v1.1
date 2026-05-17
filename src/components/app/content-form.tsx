@@ -5,6 +5,8 @@ import { Type, Link, Video, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { VideoUpload } from "./video-upload";
 import { useSimulationStore } from "@/stores/simulation-store";
+import { usePendingProfileGate } from "@/hooks/use-pending-profile-gate";
+import { ProfileInterviewModal } from "@/components/app/profile-interview-modal";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -57,6 +59,12 @@ const PLACEHOLDERS: Record<InputMode, string> = {
 export function ContentForm({ onSubmit, uploadProgress, className }: ContentFormProps) {
   const [activeTab, setActiveTab] = useState<InputMode>("video_upload");
   const apolloTier = useSimulationStore((s) => s.apolloTier);
+  const {
+    isLoading: isProfileLoading,
+    interceptOrProceed,
+    resumeAfterModal,
+  } = usePendingProfileGate();
+  const [modalOpen, setModalOpen] = useState(false);
   const [formData, setFormData] = useState<ContentFormData>({
     input_mode: "video_upload",
     caption: "",
@@ -141,15 +149,18 @@ export function ContentForm({ onSubmit, uploadProgress, className }: ContentForm
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    onSubmit(formData);
+    const { intercepted } = interceptOrProceed(() => onSubmit(formData));
+    if (intercepted) setModalOpen(true);
   };
 
   const isSubmitDisabled =
+    isProfileLoading ||
     (activeTab === "text" && !formData.caption.trim()) ||
     (activeTab === "tiktok_url" && !formData.tiktok_url.trim()) ||
     (activeTab === "video_upload" && !formData.video_file);
 
   return (
+    <>
     <form
       onSubmit={handleSubmit}
       className={cn(
@@ -247,5 +258,15 @@ export function ContentForm({ onSubmit, uploadProgress, className }: ContentForm
         </div>
       </div>
     </form>
+    {modalOpen && (
+      <ProfileInterviewModal
+        open={modalOpen}
+        onClose={() => {
+          setModalOpen(false);
+          resumeAfterModal();
+        }}
+      />
+    )}
+    </>
   );
 }
