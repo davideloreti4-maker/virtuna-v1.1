@@ -7,12 +7,17 @@ import { cn } from "@/lib/utils";
  * CardProgressDots — 9-dot horizontal progress indicator for the 9-card
  * creator interview modal (UI-SPEC §Animation, §Color).
  *
- * - Active dot (index === currentIndex): coral 8×8, role="tab" aria-selected="true"
+ * - Active dot (index === currentIndex): coral 8×8
  * - Completed dot (index < currentIndex): white/30 6×6
  * - Upcoming dot (index > currentIndex): white/12 6×6
  *
  * Active dot is the ONLY legitimate coral surface on the wizard (UI-SPEC §Color).
  * 150ms ease transition matches the rest of the modal's micro-interactions.
+ *
+ * WR-09: uses `role="progressbar"` on the wrapper instead of `tablist`. The
+ * dots are decoration — there is no keyboard interaction, no `tabpanel` per
+ * dot, and per WAI-ARIA, a `tablist` with bare `tab`s and no `aria-controls`
+ * linkage is invalid. Each dot is a plain `<span>` with no role.
  */
 export interface CardProgressDotsProps {
   currentIndex: number;
@@ -25,8 +30,11 @@ export function CardProgressDots({
 }: CardProgressDotsProps): React.JSX.Element {
   return (
     <div
-      role="tablist"
-      aria-label={`Step ${currentIndex + 1} of ${totalCards}`}
+      role="progressbar"
+      aria-valuenow={currentIndex + 1}
+      aria-valuemin={1}
+      aria-valuemax={totalCards}
+      aria-valuetext={`Step ${currentIndex + 1} of ${totalCards}`}
       data-testid="card-progress-dots"
       className="flex items-center justify-center gap-2"
     >
@@ -36,13 +44,7 @@ export function CardProgressDots({
         return (
           <span
             key={idx}
-            role="tab"
-            aria-selected={isActive}
-            aria-label={
-              isActive
-                ? `Step ${currentIndex + 1} of ${totalCards}`
-                : undefined
-            }
+            aria-hidden="true"
             data-testid={`card-progress-dot-${idx}`}
             className={cn(
               "rounded-full transition-all duration-150 ease-in-out",
