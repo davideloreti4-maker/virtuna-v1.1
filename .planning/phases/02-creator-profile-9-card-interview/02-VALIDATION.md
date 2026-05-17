@@ -50,8 +50,8 @@ created: 2026-05-17
 
 - [ ] `src/lib/niches/__tests__/taxonomy.test.ts` — unit stubs for niche-tree shape
 - [ ] `src/lib/engine/__tests__/creator.test.ts` — unit stubs for `formatCreatorContext()` null-guarding
-- [ ] `src/lib/scraping/__tests__/handle-parser.test.ts` — unit stubs for handle extraction
-- [ ] `tests/e2e/profile-interview.spec.ts` — Playwright spec stubs (happy path + skip-all + settings edit)
+- [ ] `src/lib/__tests__/handle-parser.test.ts` — unit stubs for handle extraction (reuses `normalizeHandle` from `src/lib/schemas/competitor.ts`)
+- [ ] `e2e/profile-interview.spec.ts` — Playwright spec stubs (happy path + skip-all + settings edit). Note: `e2e/playwright.config.ts` declares `testDir: '.'` so spec files MUST live inside `e2e/`.
 
 *Wave 0 establishes empty test files so subsequent tasks land in green-first cycles.*
 
