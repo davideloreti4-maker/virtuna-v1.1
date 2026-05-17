@@ -72,6 +72,9 @@
   "devDependencies": {
     "@playwright/test": "^1.58.0",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/d3-hierarchy": "^3.1.7",
     "@types/d3-quadtree": "^3.0.6",
     "@types/node": "^20",
@@ -84,6 +87,7 @@
     "dotenv": "^17.3.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.5",
+    "happy-dom": "^20.9.0",
     "pixelmatch": "^6.0.0",
     "pngjs": "^7.0.0",
     "supabase": "^2.74.5",

@@ -8,8 +8,12 @@ export default defineConfig({
   },
   test: {
     globals: true,
+    // Default environment is `node` for fast pure-module tests. Component / hook
+    // test files opt in to `happy-dom` via the `/** @vitest-environment happy-dom *\/`
+    // pragma at the top of the file (see e.g. src/components/app/cards/__tests__/*).
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    setupFiles: ["./src/test/setup.ts"],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
