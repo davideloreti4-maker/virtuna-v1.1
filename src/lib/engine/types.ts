@@ -180,6 +180,54 @@ export interface PredictionResult {
   deepseek_model: string | null;
   input_mode: "text" | "tiktok_url" | "video_upload";
   has_video: boolean;
+
+  /** Phase 3 — provenance flags surfaced from aggregator availability. */
+  signal_availability: SignalAvailability;
+}
+
+// =====================================================
+// Phase 3 — Signal Provenance + Future-Wave Stub Types
+// =====================================================
+
+/**
+ * Provenance — which signals fired vs degraded for this prediction.
+ * Persisted to analysis_results.signal_availability JSONB column.
+ * Forward-compat: future phases (audio, retrieval, hook_decomp, etc.) add keys here.
+ */
+export interface SignalAvailability {
+  behavioral: boolean;
+  gemini: boolean;
+  ml: boolean;
+  rules: boolean;
+  trends: boolean;
+}
+
+/** Wave 0 no-op stub return — Phase 4 fills content_type + niche. */
+export interface Wave0Result {
+  content_type: string | null;
+  niche: { primary: string; sub: string; micro: string } | null;
+}
+
+/** Wave 3 persona simulation result — Phase 7 fills with real V3 reactions. */
+export interface PersonaSimulationResult {
+  persona_id: string;
+  scroll_past_second: number;
+  watch_through_pct: number;
+  comment_intent: number;
+  share_intent: number;
+  save_intent: number;
+}
+
+/** Stage 10 self-critique result — Phase 9 fills with V3 critique call. */
+export interface CritiqueResult {
+  consistency_score: number;
+  flags: string[];
+  confidence_adjustment: number;
+}
+
+/** Stage 11 counterfactuals result — Phase 9 fills with V3 counterfactual call. */
+export interface CounterfactualResult {
+  suggestions: Array<{ change: string; timestamp_ms: number; expected_impact: string }>;
 }
 
 // =====================================================
