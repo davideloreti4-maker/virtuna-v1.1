@@ -241,6 +241,19 @@ export async function fetchCreatorContext(
 }
 
 /**
+ * WR-B (iter-3): strip the literal `<<<USER_CONTENT>>>` and
+ * `<<<END_USER_CONTENT>>>` sentinels (case-insensitive) from a user-
+ * supplied string before it is embedded in the LLM prompt. This is a
+ * defense-in-depth duplicate of the sanitize-layer strip in
+ * `creator-profile.ts:sanitizeText` — it covers the case where a row
+ * landed in the DB via a path that bypassed the API sanitizer (legacy
+ * data, raw SQL update, future code path that skips zod, etc.).
+ */
+function stripUserContentSentinels(input: string): string {
+  return input.replace(/<<<(?:END_)?USER_CONTENT>>>/gi, "");
+}
+
+/**
  * Format creator context as a string for DeepSeek prompt injection.
  *
  * When found: includes follower count, engagement rate, niche
@@ -309,8 +322,13 @@ export function formatCreatorContext(ctx: CreatorContext): string {
   if (ctx.reference_creators && ctx.reference_creators.length > 0) {
     // WR-08: wrap user-supplied handles in delimiters so the LLM treats them
     // as opaque data rather than potential instructions.
+    // WR-B (iter-3): defense-in-depth strip of the literal delimiter
+    // sentinel from user-supplied data at the consumption site too — so
+    // even if a row landed in the DB by some path that bypassed the
+    // sanitizeText boundary (legacy data, raw SQL update, etc.) the
+    // wrap remains unforgeable from inside the data block.
     const handles = ctx.reference_creators
-      .map((r) => r.handle_or_url)
+      .map((r) => stripUserContentSentinels(r.handle_or_url))
       .filter(Boolean)
       .join(", ");
     lines.push(`Reference creators (user-supplied):`);
@@ -340,9 +358,15 @@ export function formatCreatorContext(ctx: CreatorContext): string {
     // sanitize layer at the API boundary strips control + zero-width chars
     // (WR-07), and the 500-char cap bounds the blast radius — this is the
     // last-mile prompt-level defense per threat-model T-02-01.
+    //
+    // WR-B (iter-3): defense-in-depth strip of the literal delimiter
+    // sentinel from the user-supplied value at the consumption site too,
+    // so the wrap remains unforgeable even if a row landed in the DB by
+    // a path that bypassed sanitizeText (legacy data, raw SQL update,
+    // etc.).
     lines.push(`Creator pain points (user-supplied):`);
     lines.push(`<<<USER_CONTENT>>>`);
-    lines.push(ctx.pain_points);
+    lines.push(stripUserContentSentinels(ctx.pain_points));
     lines.push(`<<<END_USER_CONTENT>>>`);
   }
 

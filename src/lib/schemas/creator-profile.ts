@@ -98,6 +98,15 @@ export type CreatorProfilePatch = z.infer<typeof creatorProfilePatchSchema>;
  * Escaped Unicode codepoints used to keep the source free of literal
  * invisible characters.
  *
+ * WR-B (iter-3): the third `.replace` strips the literal delimiter
+ * sentinels `<<<USER_CONTENT>>>` and `<<<END_USER_CONTENT>>>` that
+ * `formatCreatorContext` (creator.ts) uses to wrap user-supplied text in
+ * opaque blocks for the LLM. Without this strip a motivated user could
+ * paste a closing delimiter, then a fake opening delimiter, then prompt
+ * instructions — escaping the data fence and injecting outside it. The
+ * zod enums and 500-char cap bound blast radius; this strip closes the
+ * remaining defense-in-depth gap.
+ *
  * Passes through `null` unchanged so callers can still clear a field.
  */
 export function sanitizeText(input: string | null): string | null {
@@ -107,5 +116,11 @@ export function sanitizeText(input: string | null): string | null {
       // eslint-disable-next-line no-control-regex
       .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
       .replace(/[\u200B\u200C\u200D\u2060\uFEFF]/g, "")
+      // WR-B: strip the literal delimiter sentinels so user input cannot
+      // close the <<<USER_CONTENT>>> ... <<<END_USER_CONTENT>>> wrap that
+      // formatCreatorContext (creator.ts) puts around free-text fields.
+      // The `(?:END_)?` covers both open and close forms; `i` is
+      // conservative against a copy-paste that introduces a case variation.
+      .replace(/<<<(?:END_)?USER_CONTENT>>>/gi, "")
   );
 }
