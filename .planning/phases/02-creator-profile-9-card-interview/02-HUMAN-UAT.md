@@ -1,14 +1,16 @@
 ---
-status: partial
+status: deferred
 phase: 02-creator-profile-9-card-interview
 source: [02-VERIFICATION.md]
 started: 2026-05-18T00:30:00Z
-updated: 2026-05-18T00:30:00Z
+updated: 2026-05-18T01:30:00Z
+deferred_at: 2026-05-18T01:30:00Z
+deferred_reason: "Operator decision — interactive browser UAT deferred to a later session; phase is otherwise code-complete, secured, reviewed, and Nyquist-validated."
 ---
 
 ## Current Test
 
-[awaiting human testing]
+[deferred — resume by running the 8 tests below against a dev server with a fresh test user]
 
 ## Tests
 
