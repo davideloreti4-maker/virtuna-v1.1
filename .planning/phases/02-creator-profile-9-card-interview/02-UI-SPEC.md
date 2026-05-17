@@ -62,12 +62,14 @@ Exceptions:
 
 All values from existing `globals.css` typography tokens and `typography.tsx` component.
 
+**2 font weights in use for this phase:**
+
 | Role | Size | Weight | Line Height | Token |
 |------|------|--------|-------------|-------|
 | Body | 14px | 400 (regular) | 1.5 | `text-sm` / `--text-sm` |
 | Label | 14px | 500 (medium) | 1.5 | `text-sm font-medium` |
 | Card heading | 24px | 500 (medium) | 1.25 | `text-2xl font-medium leading-snug` (`Heading level={3}`) |
-| Modal title | 18px | 600 (semibold) | 1.0 | `text-lg font-semibold` (existing `DialogTitle`) |
+| Modal title | 18px | 500 (medium) | 1.0 | `text-lg font-medium` (overrides `DialogTitle` default to match 2-weight constraint; size alone differentiates modal title from card headings) |
 
 **Only 4 type sizes in use for this phase:** 12px (helper/skip text), 14px (body/labels/inputs), 18px (modal title), 24px (card headings).
 
@@ -208,7 +210,8 @@ Existing components to reuse directly (no new UI primitives needed):
 ### Card 5 — Reference Creators
 
 - Up to 3 URL inputs with an "+ Add creator" ghost button below
-- Each input row: URL InputField + remove (X) ghost icon button on the right
+- Each input row: URL InputField + remove button on the right
+- Remove button: ghost icon (X), `aria-label="Remove creator {index + 1}"` (e.g. "Remove creator 1", "Remove creator 2", "Remove creator 3")
 - Placeholder: "@handle or TikTok profile URL"
 - No validation on URL format — any string accepted
 - Skippable
@@ -218,6 +221,9 @@ Existing components to reuse directly (no new UI primitives needed):
 - Two column layout (Past wins / Past flops), each column with up to 2 URL inputs
 - Column heading: "Past wins" + "Past flops" in 14px medium weight
 - Same input pattern as Card 5
+- Each input row: URL InputField + remove button on the right
+- Remove button (wins column): ghost icon (X), `aria-label="Remove win {index + 1}"` (e.g. "Remove win 1", "Remove win 2")
+- Remove button (flops column): ghost icon (X), `aria-label="Remove flop {index + 1}"` (e.g. "Remove flop 1", "Remove flop 2")
 - Placeholder: "TikTok video URL"
 - TruthfulnessCallout renders above both columns on this card (second appearance of callout)
 - Skippable
@@ -336,8 +342,10 @@ Consistent with existing patterns in `dialog.tsx` and Tailwind `tw-animate-css`:
 - Escape key suppressed on this modal (mandatory flow — override Radix default via `onEscapeKeyDown={(e) => e.preventDefault()}`)
 - `DialogOverlay` click suppressed (`onPointerDownOutside={(e) => e.preventDefault()}`)
 - Progress dots: `aria-label="Step {n} of 9"` on the active dot, `role="tablist"` on container
-- Platform tiles: rendered as `<button>` with `aria-pressed={selected}` 
+- Platform tiles: rendered as `<button>` with `aria-pressed={selected}`
 - Multi-select tiles: `aria-pressed` pattern throughout
+- Card 5 remove buttons: `aria-label="Remove creator {index + 1}"` (see Card 5 interaction spec above)
+- Card 6 remove buttons: `aria-label="Remove win {index + 1}"` / `aria-label="Remove flop {index + 1}"` (see Card 6 interaction spec above)
 - Card heading is the `DialogTitle` (already handles aria labeling via Radix)
 - `role="alert"` on all validation error messages
 - WCAG AA minimum on all text: all color pairs from existing verified token set (5.4:1+ for muted, 7.2:1 AAA for primary)
