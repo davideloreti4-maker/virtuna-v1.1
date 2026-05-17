@@ -44,12 +44,6 @@ function newUrlId(): string {
     : `url-${Math.random().toString(36).slice(2)}-${Date.now()}`;
 }
 
-function ensureUrlIds(entries: UrlEntry[]): UrlEntry[] {
-  return entries.map((entry) =>
-    entry.id ? entry : { ...entry, id: newUrlId() }
-  );
-}
-
 interface ColumnProps {
   column: Column;
   heading: string;
@@ -71,10 +65,34 @@ function UrlColumn({
   addLabel,
   onChange,
 }: ColumnProps): React.JSX.Element {
-  const rows: UrlEntry[] =
-    entries.length === 0
-      ? [{ id: `card-6-${column}-empty-row`, url: "" }]
-      : ensureUrlIds(entries);
+  // CR-A (iter-3 of WR-11): see reference-creators-input.tsx for the full
+  // rationale. The same WeakMap-cache + stable-empty-id pattern keeps the
+  // React `key` stable across the first keystroke (when an entry transitions
+  // from an empty placeholder to a UUID-tagged row) AND across re-renders
+  // of DB-hydrated entries that arrive without an `id`.
+  const [emptyRowId] = React.useState(newUrlId);
+  const idCacheRef = React.useRef<Map<UrlEntry, string>>(new Map());
+
+  const materializeId = React.useCallback((entry: UrlEntry): string => {
+    if (entry.id) return entry.id;
+    const cached = idCacheRef.current.get(entry);
+    if (cached) return cached;
+    const fresh = newUrlId();
+    idCacheRef.current.set(entry, fresh);
+    return fresh;
+  }, []);
+
+  const rows: Array<{ id: string; url: string }> = React.useMemo(
+    () =>
+      entries.length === 0
+        ? [{ id: emptyRowId, url: "" }]
+        : entries.map((entry) => ({
+            id: materializeId(entry),
+            url: entry.url,
+          })),
+    [entries, emptyRowId, materializeId]
+  );
+
   const canAdd = entries.length < MAX_PER_COLUMN;
 
   const emit = (nextEntries: UrlEntry[]): void => {
@@ -86,26 +104,30 @@ function UrlColumn({
   };
 
   const handleRowChange = (rowIndex: number, nextValue: string): void => {
-    const source: UrlEntry[] =
-      entries.length === 0
-        ? [{ id: newUrlId(), url: "" }]
-        : ensureUrlIds(entries);
-    const next = source.map((entry, idx) =>
-      idx === rowIndex ? { ...entry, url: nextValue } : entry
+    // Use the SAME ids that render is using, so the React key is stable.
+    const next: UrlEntry[] = rows.map((row, idx) =>
+      idx === rowIndex
+        ? { id: row.id, url: nextValue }
+        : { id: row.id, url: row.url }
     );
     emit(next);
   };
 
   const handleRemove = (rowIndex: number): void => {
-    emit(entries.filter((_, idx) => idx !== rowIndex));
+    // Drop from the materialized rows (carrying stable ids) so the
+    // post-delete order keeps every surviving row's identity intact.
+    const next: UrlEntry[] = rows
+      .filter((_, idx) => idx !== rowIndex)
+      .map((row) => ({ id: row.id, url: row.url }));
+    emit(next);
   };
 
   const handleAdd = (): void => {
     if (entries.length >= MAX_PER_COLUMN) return;
-    const base: UrlEntry[] =
-      entries.length === 0
-        ? [{ id: newUrlId(), url: "" }]
-        : ensureUrlIds(entries);
+    const base: UrlEntry[] = rows.map((row) => ({
+      id: row.id,
+      url: row.url,
+    }));
     emit([...base, { id: newUrlId(), url: "" }]);
   };
 
@@ -115,7 +137,7 @@ function UrlColumn({
       <div className="space-y-2">
         {rows.map((entry, index) => (
           <div
-            key={entry.id ?? `idx-${index}`}
+            key={entry.id}
             className="flex items-center gap-2"
           >
             <div className="flex-1">

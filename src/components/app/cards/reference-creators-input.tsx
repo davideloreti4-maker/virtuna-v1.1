@@ -42,51 +42,79 @@ function newId(): string {
     : `ref-${Math.random().toString(36).slice(2)}-${Date.now()}`;
 }
 
-/**
- * Ensure every entry has a stable `id` for React keying. Materializes IDs
- * for entries hydrated from the DB (where `id` was stripped) so subsequent
- * deletes don't re-mount the inputs.
- */
-function ensureIds(
-  entries: ReferenceCreatorEntry[]
-): ReferenceCreatorEntry[] {
-  return entries.map((entry) =>
-    entry.id ? entry : { ...entry, id: newId() }
-  );
-}
-
 export function ReferenceCreatorsInput({
   value,
   onChange,
 }: ReferenceCreatorsInputProps): React.JSX.Element {
-  // Show at least one input row when value is empty so the user has a target.
-  const rows: ReferenceCreatorEntry[] =
-    value.length === 0
-      ? [{ id: "card-5-empty-row", handle_or_url: "" }]
-      : ensureIds(value);
+  // CR-A (iter-3 of WR-11): materialize stable IDs ONCE per entry reference.
+  // The previous implementation called `ensureIds(value)` in both the render
+  // path and the change handler, but `ensureIds` returns NEW objects with
+  // NEW UUIDs on every invocation, so render-time key and handler-time key
+  // diverged. On the first keystroke the React reconciler saw a different
+  // `key`, unmounted the input, and dropped the cursor.
+  //
+  // The fix has two layers:
+  //   1. A stable empty-row id (via useState initializer) used by both
+  //      render and handler when `value.length === 0`.
+  //   2. A WeakMap-style cache (useRef<Map<entry, id>>) so id-less entries
+  //      hydrated from the DB get a UUID assigned ONCE per reference. Entry
+  //      references are preserved across re-renders by the parent's state
+  //      (setReferenceCreators preserves array reference until the user
+  //      edits), and `handleRowChange` attaches the materialized id to the
+  //      replacement entry before emitting — so the key survives the edit.
+  const [emptyRowId] = React.useState(newId);
+  const idCacheRef = React.useRef<Map<ReferenceCreatorEntry, string>>(
+    new Map()
+  );
+
+  const materializeId = React.useCallback(
+    (entry: ReferenceCreatorEntry): string => {
+      if (entry.id) return entry.id;
+      const cached = idCacheRef.current.get(entry);
+      if (cached) return cached;
+      const fresh = newId();
+      idCacheRef.current.set(entry, fresh);
+      return fresh;
+    },
+    []
+  );
+
+  const rows: Array<{ id: string; handle_or_url: string }> = React.useMemo(
+    () =>
+      value.length === 0
+        ? [{ id: emptyRowId, handle_or_url: "" }]
+        : value.map((entry) => ({
+            id: materializeId(entry),
+            handle_or_url: entry.handle_or_url,
+          })),
+    [value, emptyRowId, materializeId]
+  );
 
   const handleRowChange = (rowIndex: number, nextValue: string): void => {
-    // If the prop value was empty and we synthesized a row, materialize it on first edit.
-    const source: ReferenceCreatorEntry[] =
-      value.length === 0
-        ? [{ id: newId(), handle_or_url: "" }]
-        : ensureIds(value);
-    const next = source.map((entry, idx) =>
-      idx === rowIndex ? { ...entry, handle_or_url: nextValue } : entry
+    // Use the SAME ids that render is using, so the React key is stable.
+    const next: ReferenceCreatorEntry[] = rows.map((row, idx) =>
+      idx === rowIndex
+        ? { id: row.id, handle_or_url: nextValue }
+        : { id: row.id, handle_or_url: row.handle_or_url }
     );
     onChange(next);
   };
 
   const handleRemove = (rowIndex: number): void => {
-    onChange(value.filter((_, idx) => idx !== rowIndex));
+    // Drop from the materialized rows (carrying stable ids) so the
+    // post-delete order keeps every surviving row's identity intact.
+    const next: ReferenceCreatorEntry[] = rows
+      .filter((_, idx) => idx !== rowIndex)
+      .map((row) => ({ id: row.id, handle_or_url: row.handle_or_url }));
+    onChange(next);
   };
 
   const handleAdd = (): void => {
     if (value.length >= MAX_ENTRIES) return;
-    const base: ReferenceCreatorEntry[] =
-      value.length === 0
-        ? [{ id: newId(), handle_or_url: "" }]
-        : ensureIds(value);
+    const base: ReferenceCreatorEntry[] = rows.map((row) => ({
+      id: row.id,
+      handle_or_url: row.handle_or_url,
+    }));
     onChange([...base, { id: newId(), handle_or_url: "" }]);
   };
 
@@ -97,7 +125,7 @@ export function ReferenceCreatorsInput({
       <div className="space-y-2">
         {rows.map((entry, index) => (
           <div
-            key={entry.id ?? `idx-${index}`}
+            key={entry.id}
             className="flex items-center gap-2"
           >
             <div className="flex-1">
