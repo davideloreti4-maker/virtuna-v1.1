@@ -80,8 +80,8 @@ Plans:
   5. Existing `creator.ts` `fetchCreatorContext()` returns enriched context including profile fields; downstream pipeline consumers (Gemini prompts, persona allocation, etc.) reference them
 **Plans:** 6 plans
 Plans:
-- [ ] 02-01-PLAN.md — Wave 1: schema migration + Wave 0 test scaffolds
-- [ ] 02-02-PLAN.md — Wave 1: niche taxonomy module + tests
+- [x] 02-01-PLAN.md — Wave 1: schema migration + Wave 0 test scaffolds
+- [x] 02-02-PLAN.md — Wave 1: niche taxonomy module + tests
 - [ ] 02-03-PLAN.md — Wave 2: 9 card-picker components (Cards 0-8)
 - [ ] 02-04-PLAN.md — Wave 3: ProfileInterviewModal + Zustand store + gate hook + content-form interception
 - [ ] 02-05-PLAN.md — Wave 3: Settings 6th tab + ProfileSettingsForm + TanStack hooks + new API route + welcome trim
