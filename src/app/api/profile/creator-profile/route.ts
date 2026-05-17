@@ -90,6 +90,39 @@ export async function GET(): Promise<Response> {
  */
 export async function PATCH(request: Request): Promise<Response> {
   try {
+    // WR-05: Explicit Content-Type guard so a malformed/missing header
+    // fails fast with 415 instead of triggering a 500 inside `request.json()`.
+    const contentType = request.headers
+      .get("content-type")
+      ?.split(";")[0]
+      ?.trim()
+      ?.toLowerCase();
+    if (contentType !== "application/json") {
+      return Response.json(
+        { error: "Unsupported Media Type" },
+        { status: 415 }
+      );
+    }
+
+    // WR-05: Cross-origin guard for any state-changing method. Relying on
+    // Supabase's `SameSite=Lax` cookie default alone is fragile — if any
+    // future deploy switches it to `SameSite=None` (e.g., for an embedded
+    // widget), every PATCH would be vulnerable to CSRF. The `same-origin`
+    // fetch mode used by the in-app TanStack mutation does not send an
+    // `Origin` header on same-origin GETs, but it DOES send one on POST/
+    // PATCH/PUT/DELETE, so we can reliably whitelist here.
+    const origin = request.headers.get("origin");
+    if (origin) {
+      const url = new URL(request.url);
+      const expectedOrigin = `${url.protocol}//${url.host}`;
+      if (origin !== expectedOrigin) {
+        return Response.json(
+          { error: "Cross-origin request denied" },
+          { status: 403 }
+        );
+      }
+    }
+
     const supabase = await createClient();
     const {
       data: { user },
@@ -111,24 +144,40 @@ export async function PATCH(request: Request): Promise<Response> {
     }
 
     // Sanitize free-text fields before persistence (T-02-01 mitigation).
+    //
+    // WR-06: spread each existing entry through so any future schema
+    // additions (e.g., an optional `id` on a reference entry) round-trip
+    // unchanged instead of being dropped by an over-narrow manual rebuild.
+    // `parsed.data` is already a whitelist-safe object thanks to zod's
+    // default `.strip()` behavior, so we just transform the free-text
+    // fields and pass everything else through.
     const sanitized: Record<string, unknown> = { ...parsed.data };
     if (typeof sanitized.pain_points === "string") {
       sanitized.pain_points = sanitizeText(sanitized.pain_points);
     }
     if (Array.isArray(sanitized.reference_creators)) {
       sanitized.reference_creators = (
-        sanitized.reference_creators as { handle_or_url: string }[]
-      ).map((r) => ({ handle_or_url: sanitizeText(r.handle_or_url) ?? "" }));
+        sanitized.reference_creators as Array<{ handle_or_url: string } & Record<string, unknown>>
+      ).map((entry) => ({
+        ...entry,
+        handle_or_url: sanitizeText(entry.handle_or_url) ?? "",
+      }));
     }
     if (Array.isArray(sanitized.past_wins)) {
-      sanitized.past_wins = (sanitized.past_wins as { url: string }[]).map(
-        (w) => ({ url: sanitizeText(w.url) ?? "" })
-      );
+      sanitized.past_wins = (
+        sanitized.past_wins as Array<{ url: string } & Record<string, unknown>>
+      ).map((entry) => ({
+        ...entry,
+        url: sanitizeText(entry.url) ?? "",
+      }));
     }
     if (Array.isArray(sanitized.past_flops)) {
-      sanitized.past_flops = (sanitized.past_flops as { url: string }[]).map(
-        (f) => ({ url: sanitizeText(f.url) ?? "" })
-      );
+      sanitized.past_flops = (
+        sanitized.past_flops as Array<{ url: string } & Record<string, unknown>>
+      ).map((entry) => ({
+        ...entry,
+        url: sanitizeText(entry.url) ?? "",
+      }));
     }
 
     // Upsert via authenticated client — RLS enforces user_id = auth.uid().
