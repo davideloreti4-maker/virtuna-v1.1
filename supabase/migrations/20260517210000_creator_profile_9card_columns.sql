@@ -33,3 +33,15 @@ ALTER TABLE user_competitors
 UPDATE creator_profiles
 SET onboarding_step = 'connect'
 WHERE onboarding_step IN ('goal', 'preview');
+
+-- WR-01: Backfill `profile_interview_seen_at` for established users who already
+-- completed v2.0 onboarding. Without this, every existing user is treated as a
+-- first-time creator and the 9-card modal will intercept their next upload — a
+-- regression for users who thought they were done with onboarding.
+--
+-- Stamping with `onboarding_completed_at` (rather than NOW()) preserves the
+-- original signal so analytics that bucket by completion date are not skewed.
+UPDATE creator_profiles
+SET profile_interview_seen_at = onboarding_completed_at
+WHERE onboarding_completed_at IS NOT NULL
+  AND profile_interview_seen_at IS NULL;
