@@ -15,7 +15,8 @@ import { z } from "zod";
  *   URL ≤ 512) — caps the prompt-injection blast radius.
  *
  * The route handler additionally runs each free-text field through
- * `sanitizeText` to strip ASCII control characters before persistence.
+ * `sanitizeText` to strip ASCII control characters and Unicode zero-width
+ * characters before persistence.
  */
 
 const platformEnum = z.enum(["tiktok", "instagram", "youtube"]);
@@ -83,16 +84,28 @@ export const creatorProfilePatchSchema = z.object({
 export type CreatorProfilePatch = z.infer<typeof creatorProfilePatchSchema>;
 
 /**
- * Strip ASCII control characters (except newline 0x0A and tab 0x09) from a
- * user-supplied string before it is persisted to `creator_profiles`. Used by
- * the API route on every free-text field — pain_points, reference creator
- * handles, win/flop URLs — to mitigate T-02-01 (prompt injection via control
- * characters in CreatorContext prompts).
+ * Strip ASCII control characters (except newline 0x0A and tab 0x09) and
+ * Unicode zero-width characters (incl. the BOM) from a user-supplied string
+ * before it is persisted to `creator_profiles`. Used by the API route on
+ * every free-text field — pain_points, reference creator handles, win/flop
+ * URLs — to mitigate T-02-01 (prompt injection via invisible characters in
+ * CreatorContext prompts).
+ *
+ * WR-07: the second `.replace` strips U+200B (ZERO WIDTH SPACE), U+200C
+ * (ZERO WIDTH NON-JOINER), U+200D (ZERO WIDTH JOINER), U+2060 (WORD JOINER),
+ * and U+FEFF (BOM / ZERO WIDTH NO-BREAK SPACE) — all common prompt-
+ * injection vectors that would otherwise hide tokens inside `pain_points`.
+ * Escaped Unicode codepoints used to keep the source free of literal
+ * invisible characters.
  *
  * Passes through `null` unchanged so callers can still clear a field.
  */
 export function sanitizeText(input: string | null): string | null {
   if (input === null) return null;
-  // eslint-disable-next-line no-control-regex
-  return input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
+  return (
+    input
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+      .replace(/[\u200B\u200C\u200D\u2060\uFEFF]/g, "")
+  );
 }
