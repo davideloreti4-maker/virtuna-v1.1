@@ -36,23 +36,23 @@
 
 <!-- 9-card modal on first upload click. Skippable individually, flow mandatory. -->
 
-- [ ] **PROFILE-01**: `creator_profiles` table schema in Supabase with RLS policies
-- [ ] **PROFILE-02**: 9-card interview modal flow with progressive disclosure
-- [ ] **PROFILE-03**: Card 0 — Target platform (multi-select: TikTok, IG Reels, YT Shorts)
-- [ ] **PROFILE-04**: Card 1 — Niche (hierarchical: primary → sub-niche → micro-niche)
-- [ ] **PROFILE-05**: Card 2 — Target audience (age range, gender skew, geo, language)
-- [ ] **PROFILE-06**: Card 3 — Goal (growth / engagement / brand deals / conversion) + stage (new / growing / established)
-- [ ] **PROFILE-07**: Card 4 — Content style (talking head / B-roll / edu / comedy / tutorial / vlog) + cuts/sec preference
-- [ ] **PROFILE-08**: Card 5 — Reference creators (1-3 aspirational, adds to scrape queue if not present)
-- [ ] **PROFILE-09**: Card 6 — Past wins (1-2 URLs) + past flops (1-2 URLs)
-- [ ] **PROFILE-10**: Card 7 — Posting cadence (frequency + time-of-day awareness)
-- [ ] **PROFILE-11**: Card 8 — Pain points (text input)
-- [ ] **PROFILE-12**: Truthfulness messaging surfaced — UI emphasizes honest answers improve prediction accuracy
-- [ ] **PROFILE-13**: Individual cards skippable; full flow mandatory before first analysis
-- [ ] **PROFILE-14**: Modal-on-first-upload-click trigger (intercept upload action for users without profile)
-- [ ] **PROFILE-15**: Edit-from-settings flow allows profile updates anytime
+- [x] **PROFILE-01**: `creator_profiles` table schema in Supabase with RLS policies
+- [x] **PROFILE-02**: 9-card interview modal flow with progressive disclosure
+- [x] **PROFILE-03**: Card 0 — Target platform (multi-select: TikTok, IG Reels, YT Shorts)
+- [x] **PROFILE-04**: Card 1 — Niche (hierarchical: primary → sub-niche → micro-niche)
+- [x] **PROFILE-05**: Card 2 — Target audience (age range, gender skew, geo, language)
+- [x] **PROFILE-06**: Card 3 — Goal (growth / engagement / brand deals / conversion) + stage (new / growing / established)
+- [x] **PROFILE-07**: Card 4 — Content style (talking head / B-roll / edu / comedy / tutorial / vlog) + cuts/sec preference
+- [x] **PROFILE-08**: Card 5 — Reference creators (1-3 aspirational, adds to scrape queue if not present)
+- [x] **PROFILE-09**: Card 6 — Past wins (1-2 URLs) + past flops (1-2 URLs)
+- [x] **PROFILE-10**: Card 7 — Posting cadence (frequency + time-of-day awareness)
+- [x] **PROFILE-11**: Card 8 — Pain points (text input)
+- [x] **PROFILE-12**: Truthfulness messaging surfaced — UI emphasizes honest answers improve prediction accuracy
+- [x] **PROFILE-13**: Individual cards skippable; full flow mandatory before first analysis
+- [x] **PROFILE-14**: Modal-on-first-upload-click trigger (intercept upload action for users without profile)
+- [x] **PROFILE-15**: Edit-from-settings flow allows profile updates anytime
 - [ ] **PROFILE-16**: Re-prompt micro-card every 10 analyses (single question, "Is your goal still X?") → Deferred to Phase 11 per Phase 02 D-14 (no counter column, no trigger code added in Phase 2)
-- [ ] **PROFILE-17**: Profile loaded into every analysis as enriched `CreatorContext` (extends existing `creator.ts`)
+- [x] **PROFILE-17**: Profile loaded into every analysis as enriched `CreatorContext` (extends existing `creator.ts`)
 
 ## Pipeline Infrastructure
 
@@ -199,9 +199,9 @@
 <!-- Wire to existing UI; honest video retention. -->
 
 - [ ] **INT-01**: Existing `/api/analyze` endpoint switched to new pipeline (Engine v3)
-- [ ] **INT-02**: Existing `src/components/app/video-upload.tsx` integrated with creator profile gate
+- [x] **INT-02**: Existing `src/components/app/video-upload.tsx` integrated with creator profile gate
 - [ ] **INT-03**: Existing dashboard renders updated `PredictionResult` (basic display; polished card ships in M2)
-- [ ] **INT-04**: Existing onboarding (TikTok handle + goal personalization + 4 tooltips) integrates with 9-card profile (no duplication)
+- [x] **INT-04**: Existing onboarding (TikTok handle + goal personalization + 4 tooltips) integrates with 9-card profile (no duplication)
 - [ ] **INT-05**: Storage retention policy — uploaded videos auto-deleted after 30 days unless user opts in to "save for re-analysis"
 - [ ] **INT-06**: Retention policy surfaced in upload UI before user uploads
 - [ ] **INT-07**: GDPR-compliant: user can request video deletion + profile data export
@@ -252,22 +252,22 @@
 
 | REQ-ID | Phase | Plan(s) | Status |
 |--------|-------|---------|--------|
-| PROFILE-01 | 02 | 02-01, 02-06 | In progress |
-| PROFILE-02 | 02 | 02-04 | In progress |
-| PROFILE-03 | 02 | 02-03 | In progress |
-| PROFILE-04 | 02 | 02-02, 02-03 | In progress |
-| PROFILE-05 | 02 | 02-03 | In progress |
-| PROFILE-06 | 02 | 02-03 | In progress |
-| PROFILE-07 | 02 | 02-03 | In progress |
-| PROFILE-08 | 02 | 02-03, 02-06 | In progress |
-| PROFILE-09 | 02 | 02-03 | In progress |
-| PROFILE-10 | 02 | 02-03 | In progress |
-| PROFILE-11 | 02 | 02-03 | In progress |
-| PROFILE-12 | 02 | 02-04 | In progress |
-| PROFILE-13 | 02 | 02-01, 02-04 | In progress |
-| PROFILE-14 | 02 | 02-04 | In progress |
-| PROFILE-15 | 02 | 02-05 | In progress |
+| PROFILE-01 | 02 | 02-01, 02-06 | Complete |
+| PROFILE-02 | 02 | 02-04 | Complete |
+| PROFILE-03 | 02 | 02-03 | Complete |
+| PROFILE-04 | 02 | 02-02, 02-03 | Complete |
+| PROFILE-05 | 02 | 02-03 | Complete |
+| PROFILE-06 | 02 | 02-03 | Complete |
+| PROFILE-07 | 02 | 02-03 | Complete |
+| PROFILE-08 | 02 | 02-03, 02-06 | Complete |
+| PROFILE-09 | 02 | 02-03 | Complete |
+| PROFILE-10 | 02 | 02-03 | Complete |
+| PROFILE-11 | 02 | 02-03 | Complete |
+| PROFILE-12 | 02 | 02-04 | Complete |
+| PROFILE-13 | 02 | 02-01, 02-04 | Complete |
+| PROFILE-14 | 02 | 02-04 | Complete |
+| PROFILE-15 | 02 | 02-05 | Complete |
 | PROFILE-16 | 11 | (Phase 11 — Deferred per Phase 2 D-14) | Deferred |
-| PROFILE-17 | 02 | 02-06 | In progress |
-| INT-02 | 02 | 02-04 | In progress |
-| INT-04 | 02 | 02-05 | In progress |
+| PROFILE-17 | 02 | 02-06 | Complete |
+| INT-02 | 02 | 02-04 | Complete |
+| INT-04 | 02 | 02-05 | Complete |

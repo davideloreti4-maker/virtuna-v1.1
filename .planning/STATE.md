@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: engine-foundation
 milestone_name: Engine Foundation
 status: executing
-stopped_at: Phase 02-06 Task 1 complete; HALTED at Task 2 checkpoint (supabase db push)
-last_updated: "2026-05-17T22:47:30Z"
-last_activity: 2026-05-17 -- Phase 02-06 Task 1 committed (642f4ba); awaiting human Supabase migration push
+stopped_at: Phase 02 plan-set COMPLETE — 02-06 all 4 tasks committed; awaiting verifier sign-off
+last_updated: "2026-05-17T21:15:00Z"
+last_activity: 2026-05-17 -- Phase 02-06 Tasks 3+4 shipped (74ca923, d2c506f); Phase 02 closed
 progress:
   total_phases: 12
   completed_phases: 1
   total_plans: 13
-  completed_plans: 12
-  percent: 92
+  completed_plans: 13
+  percent: 100
 ---
 
 # Project State
@@ -25,25 +25,25 @@ See: .planning/PROJECT.md (updated 2026-05-11)
 
 ## Current Position
 
-Phase: 02 (creator-profile-9-card-interview) — EXECUTING
-Plan: 6 of 6 (in flight — 1 of 4 tasks complete)
-Status: Phase 02-06 Task 1 committed (642f4ba); HALTED at Task 2 [BLOCKING] checkpoint awaiting human Supabase migration push + types regen
-Last activity: 2026-05-17 -- Plan 02-06 Task 1 wired Card 5 reference-creator side-effect via source-aware addCompetitor
+Phase: 02 (creator-profile-9-card-interview) — COMPLETE (awaiting verifier)
+Plan: 6 of 6 (all 4 tasks complete)
+Status: Phase 02 plan-set DONE — all 14 creator_profiles columns live + e2e active + 19-requirement traceability filled in REQUIREMENTS.md. Ready for `gsd-verifier`.
+Last activity: 2026-05-17 -- Plan 02-06 Tasks 3 + 4 shipped (74ca923 engine extension, d2c506f e2e + PROFILE-16 deferral annotation)
 
-Progress: [█████████░] Phase 01 100% + Phase 02 Plans 01-05 100% + Plan 06 Task 1/4
+Progress: [██████████] Phase 01 100% + Phase 02 100% (6/6 plans)
 
 ## Phase 02 Plan Status
 
-- ✓ 02-01 Schema migration + Wave 0 test scaffolds (migration FILE only; live DB push still pending — Plan 02-06 Task 2)
+- ✓ 02-01 Schema migration + Wave 0 test scaffolds (migration applied to live DB via Studio SQL editor in Plan 02-06 Task 2)
 - ✓ 02-02 Niche taxonomy module + tests
 - ✓ 02-03 Nine card-picker components (Cards 0-8)
 - ✓ 02-04 ProfileInterviewModal + Zustand store + gate hook + content-form interception
 - ✓ 02-05 Settings 6th tab + ProfileSettingsForm + TanStack hooks + new API route + welcome trim
-- ⚙ 02-06 Engine integration + reference-creator side-effect + e2e + [BLOCKING] supabase db push
+- ✓ 02-06 Engine integration + reference-creator side-effect + e2e + supabase migration applied
   - ✓ Task 1 (642f4ba) addCompetitor source-aware + Card 5 fire-and-forget wired in profile-interview-store
-  - ⏸ Task 2 [BLOCKING] — HALTED, awaiting human supabase db push + types regen
-  - □ Task 3 — engine CreatorContext extension + 4 active tests
-  - □ Task 4 — Playwright e2e activation + REQUIREMENTS.md PROFILE-16 annotation
+  - ✓ Task 2 (user-applied via Studio SQL editor + types regen 39cadb3) live DB has 14 new columns + user_competitors.source
+  - ✓ Task 3 (74ca923) engine CreatorContext extension + 4 active vitest assertions
+  - ✓ Task 4 (d2c506f) Playwright e2e activation + REQUIREMENTS.md PROFILE-16 annotation + 19-row Traceability table
 
 ## Completed (Phase 01)
 
@@ -128,8 +128,17 @@ Phase 01 decisions:
 
 ## Session Continuity
 
-Last session: 2026-05-17T22:47:30Z
-Stopped at: Plan 02-06 Task 2 — BLOCKING checkpoint awaiting human Supabase migration push + types regen
-Next action: User runs `npx supabase db push` + `npx supabase gen types typescript --linked > src/types/database.types.ts`, verifies introspection query returns 14 column rows + user_competitors.source row, commits the regenerated types, then replies "applied and verified" to resume Task 3.
+Last session: 2026-05-17T21:15:00Z
+Stopped at: Phase 02 plan-set complete — 02-06 Tasks 3 + 4 shipped, SUMMARY written, STATE + ROADMAP updated.
+Next action: Spawn `gsd-verifier` for Phase 02 sign-off, then proceed to Phase 03 (Pipeline Infrastructure) per ROADMAP execution order `1 ∥ 2 → 3`.
 
-Resume command (after human verification): `cd ~/virtuna-engine-foundation && /gsd-execute-phase 02` (orchestrator will spawn a continuation agent starting from Task 3)
+Resume command: `cd ~/virtuna-engine-foundation && /gsd-verify-work 02` (verifier runs the 6 plans' acceptance criteria + e2e + tsc-in-scope gates)
+
+## Plan 02-06 Decisions (extracted from SUMMARY key-decisions)
+
+- User applied migration via Supabase Studio SQL editor rather than `npx supabase db push` (operator workflow; equivalent outcome — plan's `<how-to-verify>` already lists Studio SQL editor as documented alternative)
+- JSONB columns type-cast at the read boundary in `fetchCreatorContext` rather than re-parsed with zod (write-path zod in `creator-profile.ts` is the only ingress; cast pattern matches existing aggregator.ts ENGINE_VERSION pattern)
+- `posting_frequency` reuses existing CreatorContext field name but source changes from "null derived" to "profile column"; null is the explicit fallback when Card 7 unfilled
+- Null-guarded formatter blocks live AFTER `platform_averages`, NOT inside `if (ctx.found)` — preserves D-20 (found tracks scraped record; profile fields are independent)
+- Past wins/flops surface as COUNTS only in prompt output (T-02-01 prompt-injection mitigation; URLs never reach LLM)
+- No per-test `seen_at` reset hook in e2e — sequential ordering accepted for M1; documented inline in spec
