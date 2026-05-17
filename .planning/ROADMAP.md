@@ -78,7 +78,14 @@ Plans:
   3. Truthfulness messaging surfaced in modal UI ("Honest answers improve your prediction accuracy by ~30%")
   4. Profile editable from `/settings/profile` route at any time
   5. Existing `creator.ts` `fetchCreatorContext()` returns enriched context including profile fields; downstream pipeline consumers (Gemini prompts, persona allocation, etc.) reference them
-**Plans:** TBD (~5 plans — schema, modal UI, 9 card components, settings flow, integration with existing onboarding)
+**Plans:** 6 plans
+Plans:
+- [ ] 02-01-PLAN.md — Wave 1: schema migration + Wave 0 test scaffolds
+- [ ] 02-02-PLAN.md — Wave 1: niche taxonomy module + tests
+- [ ] 02-03-PLAN.md — Wave 2: 9 card-picker components (Cards 0-8)
+- [ ] 02-04-PLAN.md — Wave 3: ProfileInterviewModal + Zustand store + gate hook + content-form interception
+- [ ] 02-05-PLAN.md — Wave 3: Settings 6th tab + ProfileSettingsForm + TanStack hooks + new API route + welcome trim
+- [ ] 02-06-PLAN.md — Wave 4: engine CreatorContext extension + reference-creator side-effect + e2e + [BLOCKING] supabase db push + PROFILE-16 traceability
 **UI hint:** yes
 
 ### Phase 3: Pipeline Infrastructure
@@ -214,7 +221,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Training Corpus & Eval Foundation | 7/7 | Complete (pending verifier) | 2026-05-11 |
-| 2. Creator Profile & 9-Card Interview | 0/TBD | Not started | - |
+| 2. Creator Profile & 9-Card Interview | 0/6 | Not started | - |
 | 3. Pipeline Infrastructure | 0/TBD | Not started | - |
 | 4. Wave 0 — Content Type + Niche Detection | 0/TBD | Not started | - |
 | 5. Video Segmentation + Hook Decomposition | 0/TBD | Not started | - |
