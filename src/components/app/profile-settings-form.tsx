@@ -114,12 +114,24 @@ export function ProfileSettingsForm(): React.JSX.Element {
   // Card 8
   const [painPoints, setPainPoints] = useState<string>("");
 
-  // CR-04: only sync server data into local state ONCE — the first time
-  // `profile` resolves. Subsequent refetches (post-save invalidation, cross-
-  // tab sync) would otherwise clobber in-flight edits the user has typed
-  // since the last save. `refetchOnWindowFocus: false` (in use-creator-
-  // profile.ts) is the primary defense; this ref guard is the belt that
-  // catches any other re-render of `profile`.
+  // CR-04 + WR-A: gate the `useEffect([profile])` sync via `syncedRef` so
+  // background refetches (e.g. cross-tab activity) do NOT clobber in-flight
+  // edits. `refetchOnWindowFocus: false` (in use-creator-profile.ts) is the
+  // primary defense; this ref guard is the belt.
+  //
+  // WR-A (iter-3): the original iter-1 fix latched `syncedRef = true` once
+  // and never re-opened the gate, which silently swallowed server-side
+  // sanitization (e.g. WR-07's zero-width strip). The user would type
+  // "abc<U+200B>" into pain points, save successfully, the server would
+  // sanitize to "abc", invalidate the cache, but the form would still
+  // display the pre-sanitized 4-char value until a full page reload.
+  //
+  // Fix: re-open the gate when handleSave succeeds (`syncedRef = false`)
+  // so the post-save invalidation's refetch is allowed to push canonical
+  // server truth back into local state EXACTLY ONCE. After that single
+  // re-sync, the gate latches `true` again so any later refetch (a
+  // hypothetical cross-tab event or manual `refetch()`) cannot clobber
+  // in-progress edits.
   const syncedRef = useRef(false);
   useEffect(() => {
     if (!profile || syncedRef.current) return;
@@ -172,6 +184,13 @@ export function ProfileSettingsForm(): React.JSX.Element {
         time_of_day_aware: todAware,
         pain_points: painPoints,
       });
+      // WR-A (iter-3): re-open the sync gate so the post-save refetch
+      // (kicked off by the mutation's onSuccess invalidateQueries) is
+      // allowed to push the sanitized server response back into local
+      // state. The effect will latch `syncedRef = true` again on the
+      // next run, so this is a one-shot re-sync, not a permanent
+      // re-enable.
+      syncedRef.current = false;
       toast({ variant: "success", title: "Profile updated" });
     } catch {
       toast({ variant: "error", title: "Failed to save — please try again" });
