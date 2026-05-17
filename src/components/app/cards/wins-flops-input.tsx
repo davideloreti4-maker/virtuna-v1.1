@@ -17,7 +17,14 @@ import { cn } from "@/lib/utils";
  * Pure controlled.
  */
 
+/**
+ * `id` is a client-side stable key for React's reconciler — added per WR-11
+ * so deleting the middle row does not re-key (and thus re-mount, losing focus
+ * and selection) the rows after it. The `id` is stripped at the API boundary
+ * by zod's default `.strip()` behavior, so it does not bloat the DB row.
+ */
 export interface UrlEntry {
+  id?: string;
   url: string;
 }
 
@@ -30,6 +37,18 @@ export interface WinsFlopsInputProps {
 const MAX_PER_COLUMN = 2;
 
 type Column = "win" | "flop";
+
+function newUrlId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `url-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+}
+
+function ensureUrlIds(entries: UrlEntry[]): UrlEntry[] {
+  return entries.map((entry) =>
+    entry.id ? entry : { ...entry, id: newUrlId() }
+  );
+}
 
 interface ColumnProps {
   column: Column;
@@ -52,7 +71,10 @@ function UrlColumn({
   addLabel,
   onChange,
 }: ColumnProps): React.JSX.Element {
-  const rows = entries.length === 0 ? [{ url: "" }] : entries;
+  const rows: UrlEntry[] =
+    entries.length === 0
+      ? [{ id: `card-6-${column}-empty-row`, url: "" }]
+      : ensureUrlIds(entries);
   const canAdd = entries.length < MAX_PER_COLUMN;
 
   const emit = (nextEntries: UrlEntry[]): void => {
@@ -64,9 +86,12 @@ function UrlColumn({
   };
 
   const handleRowChange = (rowIndex: number, nextValue: string): void => {
-    const source = entries.length === 0 ? [{ url: "" }] : entries;
+    const source: UrlEntry[] =
+      entries.length === 0
+        ? [{ id: newUrlId(), url: "" }]
+        : ensureUrlIds(entries);
     const next = source.map((entry, idx) =>
-      idx === rowIndex ? { url: nextValue } : entry
+      idx === rowIndex ? { ...entry, url: nextValue } : entry
     );
     emit(next);
   };
@@ -77,8 +102,11 @@ function UrlColumn({
 
   const handleAdd = (): void => {
     if (entries.length >= MAX_PER_COLUMN) return;
-    const base = entries.length === 0 ? [{ url: "" }] : entries;
-    emit([...base, { url: "" }]);
+    const base: UrlEntry[] =
+      entries.length === 0
+        ? [{ id: newUrlId(), url: "" }]
+        : ensureUrlIds(entries);
+    emit([...base, { id: newUrlId(), url: "" }]);
   };
 
   return (
@@ -86,7 +114,10 @@ function UrlColumn({
       <p className="text-sm font-medium text-foreground">{heading}</p>
       <div className="space-y-2">
         {rows.map((entry, index) => (
-          <div key={index} className="flex items-center gap-2">
+          <div
+            key={entry.id ?? `idx-${index}`}
+            className="flex items-center gap-2"
+          >
             <div className="flex-1">
               <Input
                 data-testid={`card-6-${column}-${index}`}

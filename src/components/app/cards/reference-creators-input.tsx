@@ -16,7 +16,14 @@ import { cn } from "@/lib/utils";
  * input target on the empty-state.
  */
 
+/**
+ * `id` is a client-side stable key for React's reconciler — added per WR-11
+ * so deleting the middle row does not re-key (and thus re-mount, losing focus
+ * and selection) the rows after it. The `id` is stripped at the API boundary
+ * by zod's default `.strip()` behavior, so it does not bloat the DB row.
+ */
 export interface ReferenceCreatorEntry {
+  id?: string;
   handle_or_url: string;
 }
 
@@ -27,18 +34,45 @@ export interface ReferenceCreatorsInputProps {
 
 const MAX_ENTRIES = 3;
 
+function newId(): string {
+  // crypto.randomUUID is available in modern browsers; fall back to a
+  // monotonic Math.random for jsdom environments that lack it.
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `ref-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+}
+
+/**
+ * Ensure every entry has a stable `id` for React keying. Materializes IDs
+ * for entries hydrated from the DB (where `id` was stripped) so subsequent
+ * deletes don't re-mount the inputs.
+ */
+function ensureIds(
+  entries: ReferenceCreatorEntry[]
+): ReferenceCreatorEntry[] {
+  return entries.map((entry) =>
+    entry.id ? entry : { ...entry, id: newId() }
+  );
+}
+
 export function ReferenceCreatorsInput({
   value,
   onChange,
 }: ReferenceCreatorsInputProps): React.JSX.Element {
   // Show at least one input row when value is empty so the user has a target.
-  const rows = value.length === 0 ? [{ handle_or_url: "" }] : value;
+  const rows: ReferenceCreatorEntry[] =
+    value.length === 0
+      ? [{ id: "card-5-empty-row", handle_or_url: "" }]
+      : ensureIds(value);
 
   const handleRowChange = (rowIndex: number, nextValue: string): void => {
     // If the prop value was empty and we synthesized a row, materialize it on first edit.
-    const source = value.length === 0 ? [{ handle_or_url: "" }] : value;
+    const source: ReferenceCreatorEntry[] =
+      value.length === 0
+        ? [{ id: newId(), handle_or_url: "" }]
+        : ensureIds(value);
     const next = source.map((entry, idx) =>
-      idx === rowIndex ? { handle_or_url: nextValue } : entry
+      idx === rowIndex ? { ...entry, handle_or_url: nextValue } : entry
     );
     onChange(next);
   };
@@ -49,8 +83,11 @@ export function ReferenceCreatorsInput({
 
   const handleAdd = (): void => {
     if (value.length >= MAX_ENTRIES) return;
-    const base = value.length === 0 ? [{ handle_or_url: "" }] : value;
-    onChange([...base, { handle_or_url: "" }]);
+    const base: ReferenceCreatorEntry[] =
+      value.length === 0
+        ? [{ id: newId(), handle_or_url: "" }]
+        : ensureIds(value);
+    onChange([...base, { id: newId(), handle_or_url: "" }]);
   };
 
   const canAdd = value.length < MAX_ENTRIES;
@@ -59,7 +96,10 @@ export function ReferenceCreatorsInput({
     <div className="space-y-3">
       <div className="space-y-2">
         {rows.map((entry, index) => (
-          <div key={index} className="flex items-center gap-2">
+          <div
+            key={entry.id ?? `idx-${index}`}
+            className="flex items-center gap-2"
+          >
             <div className="flex-1">
               <Input
                 data-testid={`card-5-input-${index}`}
