@@ -107,6 +107,7 @@ export function ProfileInterviewModal({
   const currentCard = useProfileInterviewStore((s) => s.currentCard);
   const draft = useProfileInterviewStore((s) => s.draft);
   const isClosing = useProfileInterviewStore((s) => s.isClosing);
+  const lastError = useProfileInterviewStore((s) => s.lastError);
   const setDraftField = useProfileInterviewStore((s) => s.setDraftField);
   const advanceCard = useProfileInterviewStore((s) => s.advanceCard);
   const skipCard = useProfileInterviewStore((s) => s.skipCard);
@@ -117,18 +118,32 @@ export function ProfileInterviewModal({
 
   const [isAdvancing, setIsAdvancing] = useState(false);
 
-  // When the store signals it's closing (after async persist resolves),
-  // notify the parent + reset state. Single effect so onClose fires exactly
-  // once per close action.
+  // CR-03: close-effect uses a ref guard so it fires at-most-once per close
+  // action, even when the parent re-renders (e.g., apolloTier change) while
+  // `isClosing` is still true. Without the ref, a fresh inline `onClose`
+  // reference from the parent would re-trigger `onClose() + reset()` — which
+  // would re-fire the deferred submit via `resumeAfterModal()` and upload the
+  // same video twice. The reset effect below clears the ref when the modal
+  // re-opens so the wizard is reusable in the same session.
+  const closedRef = React.useRef(false);
+
   useEffect(() => {
-    if (isClosing) {
+    if (isClosing && !closedRef.current) {
+      closedRef.current = true;
       onClose();
       reset();
     }
   }, [isClosing, onClose, reset]);
 
+  useEffect(() => {
+    if (open) closedRef.current = false;
+  }, [open]);
+
   const card0Invalid = currentCard === 0 && draft.platforms.length === 0;
 
+  // CR-02: surface persistence errors via `lastError`. `handleContinue` and
+  // `handleSkipAll` swallow the throw so the spinner clears, but the message
+  // remains in the store and is rendered inside the card body below.
   const handleContinue = async (): Promise<void> => {
     if (isAdvancing) return;
     setIsAdvancing(true);
@@ -138,6 +153,8 @@ export function ProfileInterviewModal({
       } else {
         await advanceCard();
       }
+    } catch {
+      // Error message is already on `lastError`; nothing to do here.
     } finally {
       setIsAdvancing(false);
     }
@@ -148,6 +165,8 @@ export function ProfileInterviewModal({
     setIsAdvancing(true);
     try {
       await skipInterview();
+    } catch {
+      // Error message is already on `lastError`; nothing to do here.
     } finally {
       setIsAdvancing(false);
     }
@@ -315,6 +334,15 @@ export function ProfileInterviewModal({
               }}
             >
               {renderCardBody()}
+              {lastError && (
+                <p
+                  className="text-sm text-error"
+                  role="alert"
+                  data-testid="profile-interview-error"
+                >
+                  {lastError}
+                </p>
+              )}
             </InterviewCard>
           </div>
         </div>

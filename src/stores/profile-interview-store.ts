@@ -42,6 +42,15 @@ export interface ProfileInterviewState {
   currentCard: number;
   draft: InterviewDraft;
   isClosing: boolean;
+  lastError: string | null;
+  /**
+   * WR-04: sentinel marking that `fireReferenceCreatorAdds(draft.references)`
+   * has already fired this session — either from `advanceCard` (Card 5
+   * continue) or from a prior `finalize`. Prevents the at-most-once side
+   * effect from re-firing when the user navigates Card 5 -> Continue and
+   * then back-edits before reaching Card 8.
+   */
+  referencesFired: boolean;
   setDraftField: <K extends keyof InterviewDraft>(
     key: K,
     value: InterviewDraft[K]
@@ -51,6 +60,7 @@ export interface ProfileInterviewState {
   goBack: () => void;
   skipInterview: () => Promise<void>;
   finalize: () => Promise<void>;
+  clearError: () => void;
   reset: () => void;
 }
 
@@ -95,7 +105,9 @@ async function persistCardData(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return;
+  if (!user) {
+    throw new Error("Unauthenticated");
+  }
 
   // Cast: the 9-card columns (target_platforms, niche_primary, creator_stage,
   // profile_interview_seen_at, etc.) were added to creator_profiles by the
@@ -103,11 +115,15 @@ async function persistCardData(
   // but src/types/database.types.ts has not been regenerated. The columns
   // exist at runtime; the typed schema is stale. Plan 02-06 (DB-types regen)
   // cleans this up.
-  await supabase
+  const { error } = await supabase
     .from("creator_profiles")
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .update(updates as any)
     .eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message || "Profile update failed");
+  }
 }
 
 /**
@@ -191,9 +207,13 @@ function serializeAllCards(
 /**
  * Card 5 side-effect — fire `addCompetitor` once per non-empty reference handle
  * with `source='profile_reference'`. Fire-and-forget per D-07: a bad handle or
- * scrape failure MUST NOT block the profile save flow. The 23505 unique-violation
- * branch inside `addCompetitor` provides idempotency — re-firing for an already-
- * tracked handle returns an error string the store silently swallows.
+ * scrape failure MUST NOT block the profile save flow.
+ *
+ * WR-03: `addCompetitor` returns `{ error?: string }` instead of throwing, so a
+ * `.catch()` only sees framework/network failures — not documented error
+ * returns ("TikTok handle not found", "Failed to track competitor", etc.). We
+ * inspect the resolved value and `console.warn` on anything that is not the
+ * benign "already tracking" branch so genuine scrape failures are observable.
  *
  * Normalization mirrors the manual-add path so the junction's
  * UNIQUE(user_id, competitor_id) constraint sees the same key in both flows.
@@ -206,14 +226,27 @@ function fireReferenceCreatorAdds(
     if (!raw) continue;
     const normalized = normalizeHandle(raw);
     if (!normalized || normalized.length < 2) continue;
-    // Fire-and-forget per D-07; mirror /api/profile/route.ts:132 pattern
-    void addCompetitor(normalized, "profile_reference").catch((err) => {
-      // Intentionally swallowed — bad handles must not block profile save
-      console.warn(
-        "[profile-interview] reference creator add failed:",
-        err
-      );
-    });
+    // Fire-and-forget per D-07; mirror /api/profile/route.ts:132 pattern.
+    void addCompetitor(normalized, "profile_reference")
+      .then((result) => {
+        if (
+          result.error &&
+          result.error !== "You are already tracking this competitor"
+        ) {
+          console.warn(
+            "[profile-interview] reference creator add failed:",
+            result.error
+          );
+        }
+      })
+      .catch((err) => {
+        // Network / framework-level failures only — documented error returns
+        // are handled in the `.then` above.
+        console.warn(
+          "[profile-interview] reference creator add threw:",
+          err
+        );
+      });
   }
 }
 
@@ -222,22 +255,32 @@ export const useProfileInterviewStore = create<ProfileInterviewState>(
     currentCard: 0,
     draft: INITIAL_DRAFT,
     isClosing: false,
+    lastError: null,
+    referencesFired: false,
 
     setDraftField: (key, value) => {
       set((state) => ({ draft: { ...state.draft, [key]: value } }));
     },
 
+    // CR-02: only advance currentCard AFTER the per-card persist succeeds.
+    // On failure, store the message on `lastError` so the modal can surface
+    // an inline alert, and re-throw so the caller's loading state clears.
+    // WR-04: Card 5 reference creators are fired here (post-persist) and
+    // marked `referencesFired = true` so `finalize` does not double-fire.
     advanceCard: async () => {
-      const { currentCard, draft } = get();
-      await persistCardData(serializeCard(currentCard, draft));
-      // Card 5 side-effect (D-06/D-07): auto-add each reference creator to
-      // `user_competitors` with source='profile_reference'. Fired AFTER the
-      // column persist so the DB-of-record exists even if the scrape kickoff
-      // fails. Fire-and-forget — does not block currentCard advance.
-      if (currentCard === 5) {
-        fireReferenceCreatorAdds(draft.references);
+      const { currentCard, draft, referencesFired } = get();
+      try {
+        await persistCardData(serializeCard(currentCard, draft));
+        if (currentCard === 5 && !referencesFired) {
+          fireReferenceCreatorAdds(draft.references);
+          set({ referencesFired: true });
+        }
+        set({ currentCard: currentCard + 1, lastError: null });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Save failed";
+        set({ lastError: message });
+        throw err;
       }
-      set({ currentCard: currentCard + 1 });
     },
 
     skipCard: () => {
@@ -251,24 +294,43 @@ export const useProfileInterviewStore = create<ProfileInterviewState>(
     },
 
     skipInterview: async () => {
-      await persistCardData({
-        profile_interview_seen_at: new Date().toISOString(),
-      });
-      set({ isClosing: true });
+      try {
+        await persistCardData({
+          profile_interview_seen_at: new Date().toISOString(),
+        });
+        set({ isClosing: true, lastError: null });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Save failed";
+        set({ lastError: message });
+        throw err;
+      }
     },
 
     finalize: async () => {
-      const { draft } = get();
-      await persistCardData({
-        ...serializeAllCards(draft),
-        profile_interview_seen_at: new Date().toISOString(),
-      });
-      // Card 5 safety-net: covers the case where the user reached Card 8 via
-      // "Skip this question" on Card 5 and then back-edited Card 5 later, or
-      // any flow where advanceCard from Card 5 did not fire. The 23505
-      // idempotency on user_competitors makes the double-fire safe.
-      fireReferenceCreatorAdds(draft.references);
-      set({ isClosing: true });
+      const { draft, referencesFired } = get();
+      try {
+        await persistCardData({
+          ...serializeAllCards(draft),
+          profile_interview_seen_at: new Date().toISOString(),
+        });
+        // WR-04 safety-net: only fire reference adds if `advanceCard` from
+        // Card 5 did NOT already fire them this session. The 23505
+        // idempotency on user_competitors still protects against a worst-
+        // case double-fire, but this sentinel avoids the redundant call.
+        if (!referencesFired) {
+          fireReferenceCreatorAdds(draft.references);
+          set({ referencesFired: true });
+        }
+        set({ isClosing: true, lastError: null });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Save failed";
+        set({ lastError: message });
+        throw err;
+      }
+    },
+
+    clearError: () => {
+      set({ lastError: null });
     },
 
     reset: () => {
@@ -276,6 +338,8 @@ export const useProfileInterviewStore = create<ProfileInterviewState>(
         currentCard: 0,
         draft: INITIAL_DRAFT,
         isClosing: false,
+        lastError: null,
+        referencesFired: false,
       });
     },
   })
