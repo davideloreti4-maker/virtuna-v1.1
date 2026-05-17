@@ -5,16 +5,22 @@ import type {
   PredictedEngagement,
   PredictionResult,
   RuleScoreResult,
+  SignalAvailability,
   Suggestion,
   TrendEnrichment,
 } from "./types";
 import type { PipelineResult } from "./pipeline";
+import type { StageEventCallback } from "./events";
 import { GEMINI_MODEL } from "./gemini";
 import { DEEPSEEK_MODEL } from "./deepseek";
 import { predictWithML, featureVectorToMLInput } from "./ml";
 import { getPlattParameters, applyPlattScaling, type PlattParameters } from "./calibration";
+import { ENGINE_VERSION } from "./version";
+import { runStage10Critique } from "./stage10-critique";
+import { runStage11Counterfactuals } from "./stage11-counterfactuals";
 
-export const ENGINE_VERSION = "2.1.0";
+/** Re-export ENGINE_VERSION for back-compat — existing consumers `import { ENGINE_VERSION } from "./aggregator"` keep working. */
+export { ENGINE_VERSION };
 
 // =====================================================
 // v2 Score Weights — config-driven for maintainability
@@ -31,14 +37,8 @@ const SCORE_WEIGHTS = {
 // =====================================================
 // Signal Availability & Dynamic Weight Selection (RULE-04)
 // =====================================================
-
-interface SignalAvailability {
-  behavioral: boolean; // DeepSeek produced component scores
-  gemini: boolean;     // Gemini produced real factor scores (false when using fallback — HARD-03)
-  ml: boolean;         // ML model loaded and prediction succeeded
-  rules: boolean;      // Rule scoring produced real matches (not default fallback)
-  trends: boolean;     // Trend enrichment found matches (not default fallback)
-}
+// SignalAvailability interface lives in ./types (Phase 3 — D-07).
+// Aggregator computes the values; route layer persists them via PredictionResult.
 
 /**
  * Select weights based on which signal sources are available.
@@ -261,7 +261,8 @@ function computePredictedEngagement(
  * and returns a complete PredictionResult.
  */
 export async function aggregateScores(
-  pipelineResult: PipelineResult
+  pipelineResult: PipelineResult,
+  onStageEvent?: StageEventCallback,
 ): Promise<PredictionResult> {
   const {
     payload,
@@ -463,7 +464,7 @@ export async function aggregateScores(
   // -------------------------------------------------
   // Assemble PredictionResult
   // -------------------------------------------------
-  return {
+  const result: PredictionResult = {
     overall_score,
     confidence: conf.confidence,
     confidence_label: conf.confidence_label,
@@ -488,5 +489,16 @@ export async function aggregateScores(
     deepseek_model: deepseekResult ? DEEPSEEK_MODEL : null,
     input_mode: pipelineResult.payload.input_mode,
     has_video: hasVideo,
+    signal_availability: availability, // Phase 3 — provenance surfaced for route to persist
   };
+
+  // -------------------------------------------------
+  // Stage 10 + Stage 11 — no-op stubs in Phase 3; Phase 9 fills with real logic.
+  // Both are awaited but their results are NOT yet attached to PredictionResult.
+  // Future phases will extend PredictionResult schema to carry CritiqueResult + CounterfactualResult.
+  // -------------------------------------------------
+  await runStage10Critique(result, onStageEvent);
+  await runStage11Counterfactuals(result, onStageEvent);
+
+  return result;
 }
