@@ -667,6 +667,8 @@ export type Database = {
           has_video: boolean | null
           is_calibrated: boolean | null
           gemini_score: number | null
+          signal_availability: Json | null
+          content_hash: string | null
           deleted_at: string | null
           created_at: string | null
           updated_at: string | null
@@ -702,6 +704,8 @@ export type Database = {
           has_video?: boolean | null
           is_calibrated?: boolean | null
           gemini_score?: number | null
+          signal_availability?: Json | null
+          content_hash?: string | null
           deleted_at?: string | null
           created_at?: string | null
           updated_at?: string | null
@@ -737,6 +741,8 @@ export type Database = {
           has_video?: boolean | null
           is_calibrated?: boolean | null
           gemini_score?: number | null
+          signal_availability?: Json | null
+          content_hash?: string | null
           deleted_at?: string | null
           created_at?: string | null
           updated_at?: string | null
