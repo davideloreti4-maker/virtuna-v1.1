@@ -94,7 +94,7 @@ Plans:
   6. Existing 465 tests pass without modification (research updated the stale "203" count to 465 across 35 files)
 **Plans:** 4 plans across 4 waves
 Plans:
-- [ ] 03-01-PLAN.md — Wave 1: leaf modules + test stubs (version.ts, events.ts, types extension, 4 no-op stubs, prediction-cache) + 4 new test files
+- [x] 03-01-PLAN.md — Wave 1: leaf modules + test stubs (version.ts, events.ts, types extension, 4 no-op stubs, prediction-cache) + 4 new test files
 - [ ] 03-02-PLAN.md — Wave 2: pipeline.ts options-bag + stub invocations; aggregator.ts version relocation + signal_availability surfacing + Stage 10/11 calls; deepseek.ts stable system prompt + cache telemetry
 - [ ] 03-03-PLAN.md — Wave 3: /api/analyze route — Vercel config (runtime/dynamic/maxDuration), Accept-header negotiation, cache short-circuit, onStageEvent forwarding, provenance INSERT, route.test.ts
 - [ ] 03-04-PLAN.md — Wave 4: Supabase migration (signal_availability + content_hash + cache index) + [BLOCKING] schema push + types regen + full-suite test gate + manual smoke
