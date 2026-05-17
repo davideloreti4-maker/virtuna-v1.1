@@ -253,6 +253,9 @@ export function makePipelineResult(
       cost_cents: 0.3,
     },
     audioResult: null,
+    // Phase 3 — Wave 0/3 stub outputs (Phase 4/7 fill with real logic)
+    wave0Result: { content_type: null, niche: null },
+    wave3Result: [],
     requestId: "test-req-123",
     timings: [
       { stage: "validate", duration_ms: 5 },

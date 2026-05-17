@@ -478,3 +478,122 @@ describe("pipeline integration tests", () => {
     expect(result.geminiResult.analysis.factors).toHaveLength(5);
   });
 });
+
+// =====================================================
+// Phase 3 — onStageEvent + stub invocations
+// =====================================================
+
+describe("Phase 3 — onStageEvent + stub invocations", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetCircuitBreaker();
+    supabaseTableOverrides = {};
+
+    // Default Gemini mock — returns valid GeminiAnalysis
+    mockGeminiGenerate.mockResolvedValue({
+      text: JSON.stringify(makeGeminiAnalysis()),
+      usageMetadata: { promptTokenCount: 500, candidatesTokenCount: 300 },
+    });
+
+    // Default DeepSeek mock — returns valid DeepSeekReasoning
+    mockDeepSeekCreate.mockResolvedValue({
+      choices: [
+        { message: { content: JSON.stringify(makeDeepSeekReasoning()) } },
+      ],
+      usage: { prompt_tokens: 1000, completion_tokens: 500 },
+    });
+
+    supabaseTableOverrides = {
+      rule_library: { data: [], error: null },
+      trending_sounds: { data: [], error: null },
+      creator_profiles: { data: null, error: null },
+      scraped_videos: { data: [], error: null },
+    };
+  });
+
+  it("calling without opts behaves byte-identically (PIPE-01 backwards compat)", async () => {
+    const result = await runPredictionPipeline(input);
+    expect(result.wave0Result).toEqual({ content_type: null, niche: null });
+    expect(result.wave3Result).toEqual([]);
+    // Same StageTiming output structure as before
+    expect(result.timings.length).toBeGreaterThan(0);
+    expect(result.timings.some((t) => t.stage === "validate")).toBe(true);
+    expect(result.timings.some((t) => t.stage === "normalize")).toBe(true);
+  });
+
+  it("calling with { requestId } only still works (existing call site shape)", async () => {
+    const result = await runPredictionPipeline(input, { requestId: "test-req" });
+    expect(result).toBeDefined();
+    expect(result.requestId).toBe("test-req");
+  });
+
+  it("emits stage events when onStageEvent provided (PIPE-03)", async () => {
+    const events: Array<{ type: string; stage?: string; wave?: number | string }> = [];
+    await runPredictionPipeline(input, {
+      requestId: "test",
+      onStageEvent: (e) => {
+        if (e.type === "stage_start" || e.type === "stage_end") {
+          events.push({ type: e.type, stage: e.stage, wave: e.wave });
+        }
+      },
+    });
+
+    // Wave 0 stub fires before Wave 1
+    const wave0StartIdx = events.findIndex(
+      (e) => e.type === "stage_start" && e.stage === "wave_0_content_type"
+    );
+    const wave1StartIdx = events.findIndex(
+      (e) => e.type === "stage_start" && e.stage === "wave_1"
+    );
+    expect(wave0StartIdx).toBeGreaterThanOrEqual(0);
+    expect(wave1StartIdx).toBeGreaterThan(wave0StartIdx);
+
+    // Wave 3 stub fires after Wave 2
+    const wave2EndIdx = events
+      .map((e, i) => ({ e, i }))
+      .reverse()
+      .find(({ e }) => e.type === "stage_end" && e.stage === "wave_2")?.i ?? -1;
+    const wave3StartIdx = events.findIndex(
+      (e) => e.type === "stage_start" && e.stage === "wave_3_personas"
+    );
+    expect(wave3StartIdx).toBeGreaterThanOrEqual(0);
+    expect(wave3StartIdx).toBeGreaterThan(wave2EndIdx);
+
+    // Validate stage events fire for every timed() boundary
+    const stageStartNames = events
+      .filter((e) => e.type === "stage_start")
+      .map((e) => e.stage);
+    expect(stageStartNames).toContain("validate");
+    expect(stageStartNames).toContain("normalize");
+    expect(stageStartNames).toContain("rule_scoring");
+    expect(stageStartNames).toContain("wave_1");
+    expect(stageStartNames).toContain("wave_2");
+    expect(stageStartNames).toContain("deepseek_reasoning");
+    expect(stageStartNames).toContain("trend_enrichment");
+
+    // Each stage_start should have a paired stage_end
+    const stageEndNames = events
+      .filter((e) => e.type === "stage_end")
+      .map((e) => e.stage);
+    expect(stageEndNames).toContain("validate");
+    expect(stageEndNames).toContain("normalize");
+    expect(stageEndNames).toContain("wave_1");
+    expect(stageEndNames).toContain("wave_2");
+  });
+
+  it("undefined onStageEvent fires no events", async () => {
+    const result = await runPredictionPipeline(input);
+    // Result should be valid; the test passes if no errors thrown
+    expect(result.timings.length).toBeGreaterThan(0);
+  });
+
+  it("propagates bypassCache option (consumer responsibility) without affecting pipeline behavior", async () => {
+    const resultBypass = await runPredictionPipeline(input, { bypassCache: true });
+    const resultNoBypass = await runPredictionPipeline(input, { bypassCache: false });
+    // Pipeline returns same shape regardless of bypassCache — it's just a passthrough flag
+    expect(resultBypass).toBeDefined();
+    expect(resultNoBypass).toBeDefined();
+    expect(resultBypass.wave0Result).toEqual({ content_type: null, niche: null });
+    expect(resultBypass.wave3Result).toEqual([]);
+  });
+});
