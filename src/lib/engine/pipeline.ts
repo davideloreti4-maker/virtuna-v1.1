@@ -148,6 +148,22 @@ const DEFAULT_CREATOR_CONTEXT: CreatorContext = {
     avg_share_rate: 0.008,
     avg_comment_rate: 0.005,
   },
+  // Phase 2 (D-19) — 9-card profile fields. Graceful-degradation default is
+  // null for every field; downstream consumers (Wave 0 niche detector,
+  // creator context formatter, Phase 8 retrieval-stage) handle null safely.
+  target_platforms: null,
+  niche_primary: null,
+  niche_sub: null,
+  target_audience: null,
+  primary_goal: null,
+  creator_stage: null,
+  content_style: null,
+  cuts_per_second: null,
+  reference_creators: null,
+  past_wins: null,
+  past_flops: null,
+  time_of_day_aware: null,
+  pain_points: null,
 };
 
 const DEFAULT_RULE_RESULT: RuleScoreResult = {
