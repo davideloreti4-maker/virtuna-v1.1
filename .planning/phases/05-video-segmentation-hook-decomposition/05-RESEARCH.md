@@ -1081,37 +1081,25 @@ The user's "always GA, never preview" rule is **literally unsatisfiable for the 
 
 **If this table contained zero rows:** all claims would have been verified. Several `[ASSUMED]` rows above are flagged for user confirmation during discuss-phase / plan-phase — especially A6 (Gemini 3.1 Pro Preview quality) and A9 (labeler availability) which are operational rather than technical.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should we ship with `gemini-3.1-pro-preview` (preview, but only Pro option) or fall back to `gemini-3.1-flash-lite` (GA, but Flash quality on the hardest segment)?**
-   - What we know: AI-SPEC D-01 chose Pro for reasoning quality; CONTEXT.md `<specifics>` requires "always GA, never preview"; verified the only Pro option is preview.
-   - What's unclear: user's tolerance for "preview" status when no GA alternative exists at the chosen tier.
-   - Recommendation: planner surfaces to user in discuss-phase or first planning iteration; default to preview Pro until user explicitly rejects.
+   - RESOLVED: User reviewed verified model availability evidence on 2026-05-18 and explicitly approved the preview override. The "always GA, never preview" rule from earlier CONTEXT.md `<specifics>` is suspended for Phase 5. Locked in CONTEXT.md D-01: hook=`gemini-3.1-pro-preview`, body+CTA=`gemini-3-flash-preview`. Migration to GA tracked in CONTEXT.md `<deferred>` "Gemini 3 Pro / Flash GA migration."
 
 2. **Should Phase 5 upgrade `@google/genai` to v2.4.0?**
-   - What we know: v2 breaking changes are confined to Interactions API; `generateContent` / `videoMetadata` are unchanged.
-   - What's unclear: whether any v2 features (e.g., context caching API, structured-output v2 schema dialect) would simplify Phase 5 enough to justify the upgrade.
-   - Recommendation: defer the upgrade to a separate phase (probably Phase 10 ML audit). Phase 5 ships on v1.41 for stability.
+   - RESOLVED: No. Stay on v1.41.0 for Phase 5. v2 breaking changes are confined to Interactions API; `generateContent` + `videoMetadata` semantics are unchanged. Upgrade deferred to a separate phase (likely Phase 10 ML audit) per researcher recommendation.
 
 3. **Should the body segment use `Promise.allSettled` per-call retry (Section 4b "1 retry on Flash") or hand off to mergeSegments on first failure?**
-   - What we know: AI-SPEC §4b says 1 corrective retry on Flash body/CTA, 0 retries on Pro hook.
-   - What's unclear: whether the retry happens *inside* the segment helper (re-prompting with the corrective preamble) or via an outer `Promise.allSettled` retry wrapper.
-   - Recommendation: in-helper retry — matches existing `analyzeWithGemini` retry loop pattern at `gemini.ts:329-392`. Cleaner, no `Promise.allSettled` re-entry semantics to reason about.
+   - RESOLVED: In-helper retry. Implemented in Plan 02 Task 1 (`runBodySegment` / `runCtaSegment`) following the existing `analyzeWithGemini` retry loop pattern at `gemini.ts:329-392`. Hook (Pro) has 0 retries; body + CTA (Flash) have 1 corrective retry per AI-SPEC §4b.
 
 4. **What is the body segment behavior when video duration is exactly 8s?**
-   - What we know: AI-SPEC and CONTEXT recommend skipping body for duration < 8s. Equal to 8s is ambiguous.
-   - What's unclear: 8s exact = empty body window (start=5s, end=duration-3s=5s — zero width).
-   - Recommendation: treat duration ≤ 8s as "skip body" (inclusive). One-line bound check; defensive. Document in `validateBodyWindow` helper.
+   - RESOLVED: `duration ≤ 8s` skips the body segment (inclusive). Implemented in Plan 02 Task 1 via `validateBodyWindow` helper. Zero-width body window (start=5s, end=duration-3s=5s) is treated as skip; `gemini_body=false` flag set; merge fills `video_signals` with null per graceful-degradation D-08.
 
 5. **Does the existing `pipeline.ts` Wave 1 `Promise.all` block need to become `Promise.allSettled` to handle the new `analyzeVideoSegmented` partial-result shape?**
-   - What we know: the current Wave 1 (Phase 4) uses Wave 0 results to feed Wave 1; partial-failure on the Gemini stage is one-of-many parallel Wave 1 calls.
-   - What's unclear: how today's pipeline.ts handles a null Gemini result vs a partial one.
-   - Recommendation: planner reads pipeline.ts Wave 1 block during plan creation; existing graceful-degradation Phase 1 D-rule (null + warning, never throw) probably already handles it, but verify.
+   - RESOLVED: No change required. `analyzeVideoSegmented` returns a partial `GeminiVideoAnalysis` shape (never throws; sets per-segment `gemini_*=false` on failure) — the existing Wave 1 `Promise.all` path remains compatible because Phase 1's graceful-degradation D-rule already handles null Gemini results. Plan 03 Task 1 verifies this assumption during the Wave 1 swap.
 
 6. **How does Files API behave on a 50MB.minus(1)-byte upload vs a 50MB upload?**
-   - What we know: existing 50MB cap at `gemini.ts:21`. Documentation says 2GB max for Files API uploads.
-   - What's unclear: whether 50MB is a Virtuna-imposed cap (for cost / latency / typical-content reasons) or a hard SDK limit.
-   - Recommendation: assume Virtuna-imposed; Phase 5 inherits the cap unchanged. Document in inline comment.
+   - RESOLVED: 50MB cap is Virtuna-imposed (cost / latency / typical-content reasons), not an SDK hard limit (SDK max is 2GB). Phase 5 inherits the cap unchanged from `gemini.ts:21`. Documented as inline comment in `segmented.ts` (Plan 02 Task 3).
 
 ## Environment Availability
 
