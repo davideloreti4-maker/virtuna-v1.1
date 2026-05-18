@@ -49,6 +49,15 @@ vi.mock("@google/genai", () => {
     GoogleGenAI: class MockGoogleGenAI {
       models = { generateContent: mockGeminiGenerateContent };
     },
+    // Phase 5: `Type` is imported at module load by ./gemini/schemas.ts (via types.ts).
+    // Tests that hoist this mock must expose the enum even when they don't use it.
+    Type: {
+      OBJECT: "OBJECT",
+      ARRAY: "ARRAY",
+      STRING: "STRING",
+      NUMBER: "NUMBER",
+      BOOLEAN: "BOOLEAN",
+    },
   };
 });
 

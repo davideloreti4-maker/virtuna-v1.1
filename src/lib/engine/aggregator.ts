@@ -346,6 +346,12 @@ export async function aggregateScores(
     // in selectWeights math (filtered out by SCORE_WEIGHT_KEYS).
     content_type: pipelineResult.wave0Result.content_type !== null,
     niche: pipelineResult.wave0Result.niche !== null,
+    // Phase 5 D-12 — per-segment provenance from analyzeVideoSegmented.
+    // PLACEHOLDERS — Plan 03 swaps to `pipelineResult.geminiResult.signalAvailability.gemini_<segment> ?? false`.
+    // Required-key bump for types.ts widening; SCORE_WEIGHT_KEYS still excludes these per Phase 4 Cross-File Constraint #3.
+    gemini_hook: false,
+    gemini_body: false,
+    gemini_cta: false,
   };
 
   const weights = selectWeights(availability);
