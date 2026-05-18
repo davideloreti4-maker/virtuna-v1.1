@@ -203,19 +203,20 @@ export interface SignalAvailability {
   trends: boolean;
   content_type: boolean;  // NEW Phase 4 (D-20) — set by aggregator from wave0Result.content_type !== null
   niche: boolean;          // NEW Phase 4 (D-20) — set by aggregator from wave0Result.niche !== null
+  /**
+   * Phase 7 (D-15) — true when persona_behavioral_aggregate !== null (≥7-of-10 personas succeeded).
+   * OPTIONAL in Plan 07-01 because aggregator.ts wiring lands in Plan 07-02 (per plan scope: "Zero changes to aggregator.ts").
+   * Plan 07-02 will (a) wire it on the aggregator's `availability` object, and (b) consider promoting this
+   * key to required once the aggregator path is exercised by tests.
+   */
+  personas?: boolean;
 }
 
 // Wave0Result now defined below as z.infer<typeof Wave0ResultSchema> — see Phase 4 block.
 
-/** Wave 3 persona simulation result — Phase 7 fills with real V3 reactions. */
-export interface PersonaSimulationResult {
-  persona_id: string;
-  scroll_past_second: number;
-  watch_through_pct: number;
-  comment_intent: number;
-  share_intent: number;
-  save_intent: number;
-}
+// PersonaSimulationResult moved BELOW BehavioralPredictionsSchema — Phase 7 (D-19)
+// widens it into a Zod-derived schema that aliases PersonaBehavioralAggregate to
+// BehavioralPredictions. See "Phase 7 — Persona Simulation Result Schemas" block.
 
 /** Stage 10 self-critique result — Phase 9 fills with V3 critique call. */
 export interface CritiqueResult {
@@ -328,6 +329,57 @@ export const BehavioralPredictionsSchema = z.object({
 });
 
 export type BehavioralPredictions = z.infer<typeof BehavioralPredictionsSchema>;
+
+// =====================================================
+// Phase 7 — Persona Simulation Result Schemas (D-19)
+// Per CONTEXT D-02 + D-03: 10 archetypes total — 6 FYP behavioral + 4 specialized.
+// Per CONTEXT D-19: widened shape adds archetype, slot_type, niche, reasoning.
+// =====================================================
+
+export const PersonaArchetypeSchema = z.enum([
+  "high_engager",
+  "saver",
+  "lurker",
+  "sharer",
+  "tough_crowd",
+  "purposeful_viewer",
+  "niche_deep_buyer",
+  "niche_deep_scout",
+  "loyalist",
+  "cross_niche_curiosity",
+] as const);
+export type PersonaArchetype = z.infer<typeof PersonaArchetypeSchema>;
+
+export const PersonaSlotTypeSchema = z.enum([
+  "fyp",
+  "niche_deep",
+  "loyalist",
+  "cross_niche",
+] as const);
+export type PersonaSlotType = z.infer<typeof PersonaSlotTypeSchema>;
+
+/** Wave 3 persona simulation result — Phase 7 fills with real V3 reactions (D-19). */
+export const PersonaSimulationResultSchema = z.object({
+  persona_id: z.string(),
+  archetype: PersonaArchetypeSchema,
+  slot_type: PersonaSlotTypeSchema,
+  niche: z.string(),
+  scroll_past_second: z.number().min(0),
+  watch_through_pct: z.number().min(0).max(100),
+  comment_intent: z.number().min(0).max(100),
+  share_intent: z.number().min(0).max(100),
+  save_intent: z.number().min(0).max(100),
+  /** Pitfall 5: required non-empty — LLMs occasionally omit reasoning under token-budget pressure. */
+  reasoning: z.string().min(1).max(500),
+});
+export type PersonaSimulationResult = z.infer<typeof PersonaSimulationResultSchema>;
+
+/**
+ * Phase 7 D-19 alias — distinguish at type level from raw BehavioralPredictions.
+ * Aggregator (Plan 07-02's wave3/aggregator.ts) returns this; PredictionResult will surface as
+ * `persona_behavioral_aggregate: PersonaBehavioralAggregate | null` (Plan 07-02 widens PredictionResult).
+ */
+export type PersonaBehavioralAggregate = BehavioralPredictions;
 
 export const ComponentScoresSchema = z.object({
   hook_effectiveness: z.number().min(0).max(10),
