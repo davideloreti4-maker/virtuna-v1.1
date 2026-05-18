@@ -169,10 +169,10 @@ Plans:
   3. Predict-time embedding of input video summary completes in <1s and queries top-K=5 with niche + platform + tier filter (hierarchical relaxation per D-04)
   4. Retrieval results stored on prediction (`retrieval_evidence` JSONB + `retrieval_score` NUMERIC) with similarity scores + outcomes
   5. Retrieval signal added to aggregator at LOW initial weight (0.05 per D-03b; Phase 10 owns calibration)
-**Plans:** 5 plans across 4 waves
+**Plans:** 2/5 plans executed
 Plans:
-- [ ] 08-01-PLAN.md — Wave 1: pgvector migration SQL + REQUIREMENTS-02 conflict resolution
-- [ ] 08-02-PLAN.md — Wave 1: types.ts extension — Zod schemas + interfaces (interface-first contracts)
+- [x] 08-01-PLAN.md — Wave 1: pgvector migration SQL + REQUIREMENTS-02 conflict resolution
+- [x] 08-02-PLAN.md — Wave 1: types.ts extension — Zod schemas + interfaces (interface-first contracts)
 - [ ] 08-03-PLAN.md — Wave 2: Retrieval modules — embedder + bucket-derivation + re-ranker + pgvector-client + unit tests
 - [ ] 08-04-PLAN.md — Wave 3: retrieval-stage orchestration + pipeline.ts Wave-1 wiring + aggregator extension
 - [ ] 08-05-PLAN.md — Wave 4 [BLOCKING]: DB push + types regen + auto-embed insert paths + backfill CLI + percentile snapshot
@@ -242,7 +242,7 @@ Plans:
 | 5. Video Segmentation + Hook Decomposition | 0/TBD | Not started | - |
 | 6. Audio Analysis + Fingerprint | 0/TBD | Not started | - |
 | 7. Multi-Persona Simulation | 0/TBD | Not started | - |
-| 8. Benchmark Retrieval | 0/5 | Planned | - |
+| 8. Benchmark Retrieval | 2/5 | In Progress|  |
 | 9. Platform Algo Fit + Self-Critique + Counterfactuals | 0/TBD | Not started | - |
 | 10. ML Audit + Calibration + Aggregator Extension | 0/TBD | Not started | - |
 | 11. Existing UI Integration + Privacy Policy | 0/TBD | Not started | - |
