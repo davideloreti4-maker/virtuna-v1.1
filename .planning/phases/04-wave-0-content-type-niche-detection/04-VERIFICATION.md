@@ -1,17 +1,40 @@
 ---
 phase: 04-wave-0-content-type-niche-detection
 verified: 2026-05-18T04:50:00Z
-status: human_needed
-score: 4/5 must-haves verified (1 verified only at unit-test level — production runtime broken)
+status: gaps_found
+score: 4/5 must-haves verified (SC#2 production runtime broken by CR-01 — gap closure required)
 overrides_applied: 0
 human_verification:
   - test: "End-to-end Wave 0 content-type detection for a real video_upload"
     expected: "detectContentType() returns Wave0ContentTypeResult with one of the 7 enum slugs and confidence ∈ [0,1] when a creator uploads a real video; analysis_results.signal_availability.content_type === true and feature_vector.pacingScore / visualProductionQuality reflect the content-type weight matrix application"
-    why_human: "CR-01 production bug — content-type-detector.ts:96 calls fetch(payload.video_url) directly, but normalize.ts:46 populates video_url with payload.video_storage_path (a Supabase Storage object key like 'user-abc/video.mp4'), not a fetchable URL. In production this will throw TypeError: Failed to parse URL, get caught by the D-16 graceful-degradation try/catch, return null, and silently disable Wave 0 content-type detection for every video upload. Unit tests mock fetch and hardcode a real URL string so they pass, but pipeline.test.ts only exercises input_mode='text' which short-circuits at the input_mode check. Human verification required by running a real video upload against the live pipeline + inspecting wave0Result.content_type and signal_availability.content_type"
+    why_human: "Post gap-closure verification — confirms CR-01 fix works end-to-end with a real Supabase Storage download + Gemini 3 Flash call"
   - test: "Niche detector cost-tracking shows non-zero input cost"
     expected: "When DeepSeek returns prompt_tokens without cache breakdown, costCents reflects the input-token cost (≈ promptTokens × CACHE_MISS_PRICE) — should be > 0.0001¢ for a 500-token system prompt"
-    why_human: "CR-02 (REVIEW.md) — niche-detector.ts:89-92 reads only prompt_cache_hit_tokens + prompt_cache_miss_tokens; when DeepSeek omits both (account/model without caching), input cost silently drops to 0. Unit tests mock with cache fields present so the bug never triggers. Requires running the niche detector against the real DeepSeek API and inspecting the logged cost_cents value on a cache-miss request"
-gaps: []
+    why_human: "Post gap-closure verification — confirms CR-02 fix logs non-zero cost on a cache-miss DeepSeek request"
+gaps:
+  - id: "GAP-04-01"
+    severity: blocker
+    source: "REVIEW.md CR-01"
+    success_criterion: 2
+    summary: "Content-type detector fetches Supabase Storage path as URL, breaking SC#2 end-to-end in production"
+    file: "src/lib/engine/wave0/content-type-detector.ts"
+    line: 96
+    detail: "fetch(payload.video_url) called directly, but normalize.ts:46 populates video_url with payload.video_storage_path (a storage object key like 'user-abc/video.mp4'), not a fetchable URL. In production: TypeError → caught by D-16 try/catch → null. Wave 0 content-type detection silently disabled for every video upload. Unit tests mask with hardcoded URLs; pipeline.test.ts only uses input_mode='text' which short-circuits."
+    fix_options:
+      - "Inject Supabase client into detectContentType() and download via storage.from('videos').download(payload.video_url)"
+      - "Have pipeline pre-download the video buffer once and pass it into detectContentType() alongside payload"
+    impact: "Production: every video analysis returns wave0Result.content_type=null → signal_availability.content_type=false → aggregator falls back to default weights → SC#2 + SC#5 unsatisfied end-to-end"
+  - id: "GAP-04-02"
+    severity: warning
+    source: "REVIEW.md CR-02"
+    success_criterion: null
+    summary: "Niche detector cost-tracking under-reports by ~80% when DeepSeek omits cache breakdown"
+    file: "src/lib/engine/wave0/niche-detector.ts"
+    line: 89
+    detail: "Cost calculation only reads prompt_cache_hit_tokens / prompt_cache_miss_tokens. When DeepSeek returns standard prompt_tokens (caching disabled, model variant doesn't report cache stats, etc.), input cost silently defaults to 0¢. Affects cost telemetry only, not classifier behavior."
+    fix_options:
+      - "Fall back to prompt_tokens × CACHE_MISS_PRICE when cache breakdown fields are absent"
+    impact: "Cost dashboards under-report DeepSeek spend by ~80%; budget enforcement against CONTENT-04 cost ceiling becomes unreliable"
 deferred: []
 ---
 
