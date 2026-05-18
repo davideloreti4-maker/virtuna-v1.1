@@ -2,6 +2,7 @@ import type {
   ConfidenceLevel,
   Factor,
   FeatureVector,
+  GeminiVideoSignals,
   PredictedEngagement,
   PredictionResult,
   RuleScoreResult,
@@ -18,6 +19,7 @@ import { getPlattParameters, applyPlattScaling, type PlattParameters } from "./c
 import { ENGINE_VERSION } from "./version";
 import { runStage10Critique } from "./stage10-critique";
 import { runStage11Counterfactuals } from "./stage11-counterfactuals";
+import { applyContentTypeWeights } from "./wave0/content-type-weights";
 
 /** Re-export ENGINE_VERSION for back-compat — existing consumers `import { ENGINE_VERSION } from "./aggregator"` keep working. */
 export { ENGINE_VERSION };
@@ -33,6 +35,13 @@ const SCORE_WEIGHTS = {
   rules: 0.15,
   trends: 0.10,
 } as const;
+
+// PATTERNS Critical Cross-File Constraint #3:
+// selectWeights() must iterate ONLY known SCORE_WEIGHTS keys. Phase 4 widened
+// SignalAvailability with content_type + niche provenance keys (D-20) — those
+// must NOT participate in weight redistribution math.
+const SCORE_WEIGHT_KEYS = ["behavioral", "gemini", "ml", "rules", "trends"] as const;
+type ScoreWeightKey = (typeof SCORE_WEIGHT_KEYS)[number];
 
 // =====================================================
 // Signal Availability & Dynamic Weight Selection (RULE-04)
@@ -50,26 +59,34 @@ const SCORE_WEIGHTS = {
 export function selectWeights(
   availability: SignalAvailability
 ): { behavioral: number; gemini: number; ml: number; rules: number; trends: number } {
-  const available = Object.entries(availability).filter(([, v]) => v);
-  const missing = Object.entries(availability).filter(([, v]) => !v);
+  // Filter Object.entries to ONLY known SCORE_WEIGHTS keys. Phase 4+ extensions
+  // that add provenance keys to SignalAvailability (content_type, niche, future
+  // audio/retrieval/hook_decomp) MUST NOT participate in the weight math.
+  // PATTERNS Critical Cross-File Constraint #3.
+  const filtered = (Object.entries(availability) as Array<[string, boolean]>)
+    .filter(([key]) => (SCORE_WEIGHT_KEYS as readonly string[]).includes(key)) as Array<
+    [ScoreWeightKey, boolean]
+  >;
+
+  const available = filtered.filter(([, v]) => v);
+  const missing = filtered.filter(([, v]) => !v);
 
   // All sources available — use base weights exactly
   if (missing.length === 0) return { ...SCORE_WEIGHTS };
 
   // Redistribute missing weight proportionally to available sources
   const missingWeight = missing.reduce(
-    (sum, [key]) => sum + SCORE_WEIGHTS[key as keyof typeof SCORE_WEIGHTS], 0
+    (sum, [key]) => sum + SCORE_WEIGHTS[key], 0
   );
   const availableWeight = available.reduce(
-    (sum, [key]) => sum + SCORE_WEIGHTS[key as keyof typeof SCORE_WEIGHTS], 0
+    (sum, [key]) => sum + SCORE_WEIGHTS[key], 0
   );
 
   // Each available source gets its base weight + proportional share of missing weight
   const result = { behavioral: 0, gemini: 0, ml: 0, rules: 0, trends: 0 };
-  for (const [key, isAvailable] of Object.entries(availability)) {
-    const k = key as keyof typeof SCORE_WEIGHTS;
+  for (const [key, isAvailable] of filtered) {
     if (isAvailable) {
-      result[k] = SCORE_WEIGHTS[k] + (SCORE_WEIGHTS[k] / availableWeight) * missingWeight;
+      result[key] = SCORE_WEIGHTS[key] + (SCORE_WEIGHTS[key] / availableWeight) * missingWeight;
     }
     // Missing sources get weight 0
   }
@@ -77,7 +94,7 @@ export function selectWeights(
   // Round to avoid floating point noise, ensure they sum to ~1
   const total = Object.values(result).reduce((a, b) => a + b, 0);
   if (total === 0) return result; // All sources unavailable — return all zeros
-  for (const key of Object.keys(result) as (keyof typeof result)[]) {
+  for (const key of Object.keys(result) as ScoreWeightKey[]) {
     result[key] = Math.round((result[key] / total) * 1000) / 1000;
   }
 
@@ -146,7 +163,10 @@ function calculateConfidence(
 // FeatureVector Assembly
 // =====================================================
 
-function assembleFeatureVector(pipelineResult: PipelineResult): FeatureVector {
+function assembleFeatureVector(
+  pipelineResult: PipelineResult,
+  adjustedVideoSignals?: GeminiVideoSignals | null,
+): FeatureVector {
   const { payload, geminiResult, deepseekResult, ruleResult, trendEnrichment } =
     pipelineResult;
   const gemini = geminiResult.analysis;
@@ -156,6 +176,10 @@ function assembleFeatureVector(pipelineResult: PipelineResult): FeatureVector {
   const findFactor = (name: string) =>
     gemini.factors.find((f) => f.name === name);
 
+  // Phase 4 D-12 + D-19: use content-type-adjusted video signals when provided;
+  // fall back to raw video_signals (Wave 0 failure or no video).
+  const videoSignals = adjustedVideoSignals ?? gemini.video_signals ?? null;
+
   return {
     // Gemini factors (0-10)
     hookScore: findFactor("Scroll-Stop Power")?.score ?? 0,
@@ -164,12 +188,12 @@ function assembleFeatureVector(pipelineResult: PipelineResult): FeatureVector {
     shareTrigger: findFactor("Share Trigger")?.score ?? 0,
     emotionalCharge: findFactor("Emotional Charge")?.score ?? 0,
 
-    // Video signals (null if no video)
-    visualProductionQuality:
-      gemini.video_signals?.visual_production_quality ?? null,
-    hookVisualImpact: gemini.video_signals?.hook_visual_impact ?? null,
-    pacingScore: gemini.video_signals?.pacing_score ?? null,
-    transitionQuality: gemini.video_signals?.transition_quality ?? null,
+    // Video signals (null if no video) — Phase 4: read from `videoSignals` so
+    // content-type weight matrix flows into FeatureVector → ML score.
+    visualProductionQuality: videoSignals?.visual_production_quality ?? null,
+    hookVisualImpact: videoSignals?.hook_visual_impact ?? null,
+    pacingScore: videoSignals?.pacing_score ?? null,
+    transitionQuality: videoSignals?.transition_quality ?? null,
 
     // DeepSeek component scores (0-10)
     hookEffectiveness: deepseek?.component_scores.hook_effectiveness ?? 0,
@@ -276,9 +300,26 @@ export async function aggregateScores(
   const deepseek = deepseekResult?.reasoning ?? null;
 
   // -------------------------------------------------
+  // Phase 4 D-12 + D-19 (RESEARCH Topic #5 locked interpretation):
+  // Apply content-type weight matrix to Gemini video_signals BEFORE
+  // assembleFeatureVector consumes them. The adjusted signals flow into
+  // FeatureVector → ML score (the locked matrix targets the feature_vector
+  // route, NOT the gemini_score math over gemini.factors[]).
+  // Null content_type uses the `other` matrix row (1.0× passthrough) —
+  // preserves Wave 0 failure / no-video behavior.
+  // -------------------------------------------------
+  const wave0 = pipelineResult.wave0Result;
+  const contentTypeSlug = wave0.content_type?.type ?? null;
+  const rawVideoSignals = geminiResult.analysis.video_signals ?? null;
+  const adjustedVideoSignals =
+    rawVideoSignals && contentTypeSlug !== null
+      ? applyContentTypeWeights(rawVideoSignals, contentTypeSlug)
+      : rawVideoSignals;
+
+  // -------------------------------------------------
   // ML prediction (async — loads model from Supabase Storage on cold start)
   // -------------------------------------------------
-  const feature_vector = assembleFeatureVector(pipelineResult);
+  const feature_vector = assembleFeatureVector(pipelineResult, adjustedVideoSignals);
   const mlFeatures = featureVectorToMLInput(feature_vector);
   const mlScore = await predictWithML(mlFeatures);
   const mlAvailable = mlScore !== null;
@@ -300,6 +341,11 @@ export async function aggregateScores(
       !pipelineResult.warnings.some((w) =>
         w.includes("Trend enrichment unavailable")
       ),
+    // Phase 4 D-20: provenance flags surfaced from Wave 0 detector outcomes.
+    // Persisted to analysis_results.signal_availability JSONB; do NOT participate
+    // in selectWeights math (filtered out by SCORE_WEIGHT_KEYS).
+    content_type: pipelineResult.wave0Result.content_type !== null,
+    niche: pipelineResult.wave0Result.niche !== null,
   };
 
   const weights = selectWeights(availability);
@@ -388,9 +434,15 @@ export async function aggregateScores(
   // -------------------------------------------------
   const warnings: string[] = [...(deepseek?.warnings ?? [])];
 
-  // RULE-04: Warn when weights are redistributed
-  if (Object.entries(availability).some(([, v]) => !v)) {
-    const missingSources = Object.entries(availability)
+  // RULE-04: Warn when weights are redistributed.
+  // Phase 4: filter to SCORE_WEIGHT_KEYS so that the new content_type/niche
+  // provenance keys (which do NOT participate in weight math) don't trigger
+  // spurious "weights redistributed" warnings.
+  const weightingEntries = (
+    Object.entries(availability) as Array<[string, boolean]>
+  ).filter(([key]) => (SCORE_WEIGHT_KEYS as readonly string[]).includes(key));
+  if (weightingEntries.some(([, v]) => !v)) {
+    const missingSources = weightingEntries
       .filter(([, v]) => !v)
       .map(([k]) => k);
     warnings.push(

@@ -77,6 +77,8 @@ describe("selectWeights", () => {
       ml: true,
       rules: true,
       trends: true,
+      content_type: false, // Phase 4 (D-20) — does NOT participate in weight math
+      niche: false,
     });
 
     expect(weights).toEqual({
@@ -95,6 +97,8 @@ describe("selectWeights", () => {
       ml: false,
       rules: true,
       trends: true,
+      content_type: false,
+      niche: false,
     });
 
     expect(weights.ml).toBe(0);
@@ -114,6 +118,8 @@ describe("selectWeights", () => {
       ml: true,
       rules: true,
       trends: true,
+      content_type: false,
+      niche: false,
     });
 
     expect(weights.behavioral).toBe(0);
@@ -129,6 +135,8 @@ describe("selectWeights", () => {
       ml: false,
       rules: true,
       trends: true,
+      content_type: false,
+      niche: false,
     });
 
     expect(weights.behavioral).toBe(0);
@@ -148,6 +156,8 @@ describe("selectWeights", () => {
       ml: false,
       rules: false,
       trends: false,
+      content_type: false,
+      niche: false,
     });
 
     expect(weights.gemini).toBeCloseTo(1, 2);
@@ -165,6 +175,8 @@ describe("selectWeights", () => {
         ml: false,
         rules: false,
         trends: false,
+        content_type: false,
+        niche: false,
       });
 
       // All weights should be 0 (no sources to redistribute to)
@@ -178,11 +190,11 @@ describe("selectWeights", () => {
 
   it("always sums to ~1.0 for any combination of available signals (except all-false)", () => {
     const combos = [
-      { behavioral: true, gemini: true, ml: false, rules: false, trends: true },
-      { behavioral: false, gemini: true, ml: true, rules: false, trends: false },
-      { behavioral: true, gemini: false, ml: true, rules: true, trends: false },
-      { behavioral: false, gemini: false, ml: true, rules: true, trends: true },
-      { behavioral: true, gemini: true, ml: true, rules: false, trends: false },
+      { behavioral: true, gemini: true, ml: false, rules: false, trends: true, content_type: false, niche: false },
+      { behavioral: false, gemini: true, ml: true, rules: false, trends: false, content_type: true, niche: true },
+      { behavioral: true, gemini: false, ml: true, rules: true, trends: false, content_type: false, niche: false },
+      { behavioral: false, gemini: false, ml: true, rules: true, trends: true, content_type: true, niche: false },
+      { behavioral: true, gemini: true, ml: true, rules: false, trends: false, content_type: false, niche: true },
     ];
 
     for (const combo of combos) {
@@ -519,8 +531,10 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
       content_type: true,
       niche: true,
     });
+    // 2-decimal precision matches existing "always sums to ~1.0" test convention
+    // (rounding step inside selectWeights can introduce ±0.001 floating drift).
     const sum = Object.values(weights).reduce((a, b) => a + b, 0);
-    expect(sum).toBeCloseTo(1.0, 3);
+    expect(sum).toBeCloseTo(1.0, 2);
     expect(weights.behavioral).toBe(0);
   });
 
