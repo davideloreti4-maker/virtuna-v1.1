@@ -173,7 +173,7 @@ Plans:
 Plans:
 - [x] 08-01-PLAN.md — Wave 1: pgvector migration SQL + REQUIREMENTS-02 conflict resolution
 - [x] 08-02-PLAN.md — Wave 1: types.ts extension — Zod schemas + interfaces (interface-first contracts)
-- [ ] 08-03-PLAN.md — Wave 2: Retrieval modules — embedder + bucket-derivation + re-ranker + pgvector-client + unit tests
+- [x] 08-03-PLAN.md — Wave 2: Retrieval modules — embedder + bucket-derivation + re-ranker + pgvector-client + unit tests
 - [ ] 08-04-PLAN.md — Wave 3: retrieval-stage orchestration + pipeline.ts Wave-1 wiring + aggregator extension
 - [ ] 08-05-PLAN.md — Wave 4 [BLOCKING]: DB push + types regen + auto-embed insert paths + backfill CLI + percentile snapshot
 

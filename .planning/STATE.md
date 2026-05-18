@@ -4,14 +4,14 @@ milestone: engine-foundation
 milestone_name: Engine Foundation
 status: executing
 stopped_at: Completed 08-02-PLAN.md (types.ts extension — Zod schemas + interface extensions)
-last_updated: "2026-05-18T19:17:26.661Z"
+last_updated: "2026-05-18T19:33:24.341Z"
 last_activity: 2026-05-18 -- Phase 08 planning complete
 progress:
   total_phases: 12
   completed_phases: 4
   total_plans: 27
-  completed_plans: 24
-  percent: 89
+  completed_plans: 25
+  percent: 93
 ---
 
 # Project State
@@ -30,7 +30,7 @@ Plan: Not started
 Status: Ready to execute
 Last activity: 2026-05-18 -- Phase 08 planning complete
 
-Progress: [█████████░] 89%
+Progress: [█████████░] 93%
 
 ## Phase 02 Plan Status
 
@@ -112,6 +112,9 @@ Phase 01 decisions:
 - v3 acceptance target: macro_f1 ≥ 0.338 (D-18 15% relative improvement).
 - [Phase 08]: Phase 8 Plan 02: Locked Zod contracts for RetrievalEvidenceItem (D-02 16-field shape) and BenchmarkRetrievalResult before any Plan 03-05 implementation — Interface-first task — every downstream plan imports these types; locking them in one place prevents drift on field names/types across the parallel implementation plans.
 - [Phase 08]: Phase 8 Plan 02: SignalAvailability + PredictionResult extended additively; 13 expected cross-plan TS errors are the intentional compile-time gate Plan 04 must close — Per plan <done> note — aggregator.ts + aggregator.test.ts literal SignalAvailability objects are missing the new retrieval key by design. This is the working-as-intended mechanism that prevents Plan 04 from silently omitting the new field.
+- [Phase ?]: [Phase 08]: Plan 03: Gemini embedding model upgraded to gemini-embedding-001 with outputDimensionality 768 (RESEARCH Finding 1, supersedes deprecated text-embedding-004)
+- [Phase ?]: [Phase 08]: Plan 03: NON_CORPUS_ENGAGEMENT_PERCENTILES shipped as 0/0 placeholders for all 5 non-calibrated niches (tech-gadgets, gaming, fashion-style, music-performance, food-cooking); Plan 05 backfill overwrites with real P80/P40; deriveBucket falls back to 'average' until then
+- [Phase ?]: [Phase 08]: Plan 03: Soft re-ranker hashtag-overlap bonus applies to rerank_score (sort key) only; original similarity field NEVER mutated — preserves D-02 persistence integrity so D-03 bucket-vote denominator uses original cosine score
 
 ### Pending Todos
 
@@ -130,7 +133,7 @@ Phase 01 decisions:
 
 ## Session Continuity
 
-Last session: 2026-05-18T19:17:26.658Z
+Last session: 2026-05-18T19:33:11.577Z
 Stopped at: Completed 08-02-PLAN.md (types.ts extension — Zod schemas + interface extensions)
 Next action: `/gsd-execute-phase 4` to execute Wave 0 — Content Type + Niche Detection. Phase 4 deliverables: 5 new files + 6 modified across 3 waves; key constraints honored (D-03 dual-env, no Supabase migration, selectWeights filter).
 
