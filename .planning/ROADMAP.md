@@ -157,7 +157,12 @@ Plans:
   4. Aggregate persona output replaces the single `behavioral_predictions` from single DeepSeek call in v2 aggregator
   5. Per-persona drop-off second persisted on prediction (data ready for M2 retention curve)
   6. Persona prompt cache (DeepSeek input cache) verified active — cost per analysis ≤$0.025 for 10-persona stage
-**Plans:** TBD (~4 plans)
+**Plans:** 4 plans across 4 waves
+Plans:
+- [ ] 07-01-PLAN.md — Wave 1: persona registry + prompts + types widening (PERSONA-02, 03, 05, 06, 08)
+- [ ] 07-02-PLAN.md — Wave 2: wave3 orchestrator + aggregator helper + PipelineResult/PredictionResult widening + isCircuitOpen export (PERSONA-01, 04, 09, 11, PIPE-08)
+- [ ] 07-03-PLAN.md — Wave 3: aggregator additive integration (signal_availability.personas + optional behavioralSource param) (PERSONA-07, 10)
+- [ ] 07-04-PLAN.md — Wave 4: A/B eval harness + cost budget test + operator review checkpoint (PERSONA-10, 11)
 
 ### Phase 8: Benchmark Retrieval
 **Goal:** pgvector-backed top-K retrieval returns 3-5 similar competitor videos as evidence on every prediction; filtered by niche, platform, and creator tier.
@@ -235,7 +240,7 @@ Plans:
 | 4. Wave 0 — Content Type + Niche Detection | 0/3 | Planned | - |
 | 5. Video Segmentation + Hook Decomposition | 0/TBD | Not started | - |
 | 6. Audio Analysis + Fingerprint | 0/TBD | Not started | - |
-| 7. Multi-Persona Simulation | 0/TBD | Not started | - |
+| 7. Multi-Persona Simulation | 0/4 | Planned | - |
 | 8. Benchmark Retrieval | 0/TBD | Not started | - |
 | 9. Platform Algo Fit + Self-Critique + Counterfactuals | 0/TBD | Not started | - |
 | 10. ML Audit + Calibration + Aggregator Extension | 0/TBD | Not started | - |
