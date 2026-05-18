@@ -31,7 +31,8 @@ const FALLBACK_OUTPUT_TOKENS = 800;
 let client: GoogleGenAI | null = null;
 
 // Calibration data cache
-interface CalibrationData {
+// Phase 5: exported so segment prompt builders in ./gemini/prompts.ts share the same shape.
+export interface CalibrationData {
   primary_kpis: {
     share_rate: { viral_threshold: number };
     weighted_engagement_score: { percentiles: { p90: number } };
