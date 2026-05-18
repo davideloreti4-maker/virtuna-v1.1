@@ -352,6 +352,56 @@ export const DeepSeekResponseSchema = z.object({
 export type DeepSeekReasoning = z.infer<typeof DeepSeekResponseSchema>;
 
 // =====================================================
+// Phase 8 — Benchmark Retrieval (pgvector) Schemas
+// Per CONTEXT D-02 (evidence item shape) + D-03 (result shape) + D-10/D-11
+// (SignalAvailability + PredictionResult extensions below).
+// =====================================================
+
+/**
+ * Phase 8 — Retrieval Evidence Item (D-02).
+ * One record per item returned by runBenchmarkRetrieval. Rich shape so M2's
+ * "similar videos" panel can render without further DB joins.
+ *
+ * Persisted to analysis_results.retrieval_evidence JSONB column (D-11).
+ */
+export const RetrievalEvidenceItemSchema = z.object({
+  source_pool: z.enum(["training_corpus", "scraped_videos"]),
+  source_id: z.string().uuid(),
+  similarity_score: z.number().min(0).max(1),
+  video_url: z.string().nullable(),
+  creator_handle: z.string().nullable(),
+  caption_snippet: z.string().nullable(),
+  views: z.number().int().nonnegative(),
+  likes: z.number().int().nonnegative(),
+  shares: z.number().int().nonnegative(),
+  comments: z.number().int().nonnegative(),
+  saves: z.number().int().nonnegative().nullable(),
+  hashtags: z.array(z.string()),
+  posted_at: z.string().nullable(),
+  bucket_label: z.enum(["viral", "average", "under"]),
+  bucket_source: z.enum(["corpus", "derived"]),
+  relaxed_to: z.enum(["strict", "niche+platform", "niche_only"]).nullable(),
+});
+export type RetrievalEvidenceItem = z.infer<typeof RetrievalEvidenceItemSchema>;
+
+/**
+ * Phase 8 — Benchmark Retrieval Result (return shape of runBenchmarkRetrieval).
+ *
+ * evidence: max 5 items, may be empty
+ * score: D-03 similarity-weighted bucket vote in [0,1]; null when zero matches
+ *        OR min_corpus_size gate fails (D-04b)
+ * availability: SignalAvailability.retrieval value (true when score is non-null)
+ * cost_cents: telemetry for stage_end event (D-15)
+ */
+export const BenchmarkRetrievalResultSchema = z.object({
+  evidence: z.array(RetrievalEvidenceItemSchema).max(5),
+  score: z.number().min(0).max(1).nullable(),
+  availability: z.boolean(),
+  cost_cents: z.number().nonnegative(),
+});
+export type BenchmarkRetrievalResult = z.infer<typeof BenchmarkRetrievalResultSchema>;
+
+// =====================================================
 // Internal Types
 // =====================================================
 
