@@ -12,6 +12,7 @@ import {
   type TrendEnrichment,
   type Wave0Result,
   type PersonaSimulationResult,
+  type BenchmarkRetrievalResult,
 } from "./types";
 import { normalizeInput } from "./normalize";
 import { analyzeWithGemini, analyzeVideoWithGemini } from "./gemini";
@@ -27,6 +28,7 @@ import type { StageEventCallback, StageEventWave } from "./events";
 import { emitStageStart, emitStageEnd } from "./events";
 import { runWave0 } from "./wave0";
 import { runWave3 } from "./wave3";
+import { runBenchmarkRetrieval } from "./retrieval/retrieval-stage";
 
 // =====================================================
 // Pipeline Types
@@ -50,6 +52,10 @@ export interface PipelineResult {
   // Phase 3 — Wave 0/3 stub outputs (Phase 4/7 fill with real logic)
   wave0Result: Wave0Result;
   wave3Result: PersonaSimulationResult[];
+
+  // Phase 8 — Wave 1 retrieval sibling (Plan 04). Graceful empty on any failure;
+  // aggregator folds retrievalResult.score into overall_score at weight 0.05.
+  retrievalResult: BenchmarkRetrievalResult;
 
   // Pipeline metadata
   requestId: string;
@@ -154,6 +160,17 @@ const DEFAULT_TREND_ENRICHMENT: TrendEnrichment = {
   matched_trends: [],
   trend_context: "Trend data unavailable.",
   hashtag_relevance: 0,
+};
+
+// Phase 8 — Wave-1 retrieval graceful-empty fallback (matches BenchmarkRetrievalResult shape).
+// Used when runBenchmarkRetrieval throws an unexpected error past its own outer catch
+// (defense in depth per T-08-16 — the stage itself returns this shape, but pipeline
+// wraps in try/catch to satisfy BENCH-05 even if the stage's catch fails).
+const DEFAULT_RETRIEVAL_RESULT: BenchmarkRetrievalResult = {
+  evidence: [],
+  score: null,
+  availability: false,
+  cost_cents: 0,
 };
 
 const DEFAULT_GEMINI_RESULT: PipelineResult["geminiResult"] = {
@@ -410,14 +427,43 @@ export async function runPredictionPipeline(
     }
   })();
 
+  // Stage 6.5: Benchmark Retrieval -- NON-CRITICAL (Phase 8 D-09 graceful degradation).
+  // retrieval-stage.ts SELF-EMITS stage_start/stage_end events; we do NOT wrap in
+  // timed() here (would double-emit per PATTERNS Critical Cross-File Constraint #3).
+  // Outer try/catch is defense-in-depth — the stage's own catch returns
+  // GRACEFUL_EMPTY, but if anything escapes (e.g. type-coercion bug at call site)
+  // we still surface as a warning rather than break the pipeline (BENCH-05).
+  const retrievalPromise = (async (): Promise<BenchmarkRetrievalResult> => {
+    try {
+      return await runBenchmarkRetrieval({
+        payload,
+        creatorContext,
+        wave0Result,
+        supabase,
+        onEvent: onStageEvent,
+        requestId,
+      });
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { stage: "retrieval", requestId },
+      });
+      warnings.push(
+        `Retrieval unavailable: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      timings.push({ stage: "retrieval", duration_ms: 0 });
+      return DEFAULT_RETRIEVAL_RESULT;
+    }
+  })();
+
   // Run Wave 1 in parallel -- all stages gracefully degrade (HARD-03).
   // Phase 4: the third slot (creatorPromise) returns the same value as the
   // outer-scope `creatorContext` (pre-fetched above), so we discard the array
   // slot to avoid redeclaration.
-  const [geminiResult, audioResult, , ruleResult] = await timed(
+  // Phase 8: 5th slot is retrievalPromise (D-09 — Wave 1 sibling).
+  const [geminiResult, audioResult, , ruleResult, retrievalResult] = await timed(
     "wave_1",
     timings,
-    () => Promise.all([geminiPromise, audioPromise, creatorPromise, rulePromise]),
+    () => Promise.all([geminiPromise, audioPromise, creatorPromise, rulePromise, retrievalPromise]),
     { wave: 1, onEvent: onStageEvent }
   );
 
@@ -425,7 +471,7 @@ export async function runPredictionPipeline(
     category: "engine.pipeline",
     message: "Wave 1 complete",
     level: "info",
-    data: { requestId, stages: ["gemini", "audio", "creator", "rules"] },
+    data: { requestId, stages: ["gemini", "audio", "creator", "rules", "retrieval"] },
   });
 
   // Format creator context for DeepSeek prompt injection
@@ -552,6 +598,7 @@ export async function runPredictionPipeline(
     audioResult,
     wave0Result,
     wave3Result,
+    retrievalResult, // NEW Phase 8 D-09 (Plan 04)
     requestId,
     timings,
     total_duration_ms,
