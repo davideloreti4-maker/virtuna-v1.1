@@ -184,6 +184,11 @@ export interface PredictionResult {
 
   /** Phase 3 — provenance flags surfaced from aggregator availability. */
   signal_availability: SignalAvailability;
+
+  /** Phase 7 (D-20) — null when Wave 3 below threshold (D-13). */
+  persona_behavioral_aggregate: PersonaBehavioralAggregate | null;
+  /** Phase 7 (D-09) — per-persona detail for M2 audience-viz. Empty array on fallback. */
+  persona_simulation_results: PersonaSimulationResult[];
 }
 
 // =====================================================

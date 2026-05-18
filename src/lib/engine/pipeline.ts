@@ -12,6 +12,7 @@ import {
   type TrendEnrichment,
   type Wave0Result,
   type PersonaSimulationResult,
+  type PersonaBehavioralAggregate,
 } from "./types";
 import { normalizeInput } from "./normalize";
 import { analyzeWithGemini, analyzeVideoWithGemini } from "./gemini";
@@ -50,6 +51,8 @@ export interface PipelineResult {
   // Phase 3 — Wave 0/3 stub outputs (Phase 4/7 fill with real logic)
   wave0Result: Wave0Result;
   wave3Result: PersonaSimulationResult[];
+  /** Phase 7 (Pitfall 9) — aggregator reads this to set signal_availability.personas in Plan 07-03. */
+  personaBehavioralAggregate: PersonaBehavioralAggregate | null;
 
   // Pipeline metadata
   requestId: string;
@@ -552,6 +555,9 @@ export async function runPredictionPipeline(
     audioResult,
     wave0Result,
     wave3Result,
+    // Phase 7 (Plan 07-02a) — placeholder null. Plan 07-02b orchestrator (runWave3 rewrite)
+    // computes the real aggregate from surviving personas and sets this field.
+    personaBehavioralAggregate: null,
     requestId,
     timings,
     total_duration_ms,

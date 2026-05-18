@@ -257,6 +257,9 @@ export function makePipelineResult(
     // Phase 3 — Wave 0/3 stub outputs (Phase 4/7 fill with real logic)
     wave0Result: { content_type: null, niche: null },
     wave3Result: [],
+    // NEW Phase 7 (Pitfall 9, A11) — default null preserves "no aggregate" semantics
+    // for all existing aggregator.test.ts and pipeline.test.ts callers.
+    personaBehavioralAggregate: null,
     requestId: "test-req-123",
     timings: [
       { stage: "validate", duration_ms: 5 },
