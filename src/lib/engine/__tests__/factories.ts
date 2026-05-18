@@ -246,6 +246,20 @@ export function makePipelineResult(
         avg_share_rate: 0.008,
         avg_comment_rate: 0.005,
       },
+      // Phase 2 (D-19) — 9-card profile fields (all null in the default factory)
+      target_platforms: null,
+      niche_primary: null,
+      niche_sub: null,
+      target_audience: null,
+      primary_goal: null,
+      creator_stage: null,
+      content_style: null,
+      cuts_per_second: null,
+      reference_creators: null,
+      past_wins: null,
+      past_flops: null,
+      time_of_day_aware: null,
+      pain_points: null,
     },
     ruleResult: makeRuleScoreResult(),
     trendEnrichment: makeTrendEnrichment(),
@@ -257,6 +271,13 @@ export function makePipelineResult(
     // Phase 3 — Wave 0/3 stub outputs (Phase 4/7 fill with real logic)
     wave0Result: { content_type: null, niche: null },
     wave3Result: [],
+    // Phase 8 — Wave 1 retrieval sibling default (graceful empty unless overridden)
+    retrievalResult: {
+      evidence: [],
+      score: null,
+      availability: false,
+      cost_cents: 0,
+    },
     requestId: "test-req-123",
     timings: [
       { stage: "validate", duration_ms: 5 },
