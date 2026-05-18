@@ -92,7 +92,8 @@ export interface ContentPayload {
   content_text: string; // Always present (extracted from video/URL or user input)
   content_type: string;
   input_mode: "text" | "tiktok_url" | "video_upload";
-  video_url: string | null; // Resolved video URL (from TikTok extraction or Storage)
+  video_url: string | null; // ONLY populated for tiktok_url mode (the actual TikTok URL). null for text + video_upload modes. NEVER aliased to a Supabase storage key (Phase 4 GAP-04-01 fix — Option A).
+  video_storage_path: string | null; // Phase 4 gap-closure: Supabase Storage object key for video_upload mode (e.g., "user-abc/video.mp4"). null for text + tiktok_url modes.
   hashtags: string[]; // Extracted from content_text
   duration_hint: number | null; // Seconds, from URL metadata or user input
   niche: string | null;

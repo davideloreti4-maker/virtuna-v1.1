@@ -159,6 +159,7 @@ export function makeContentPayload(
     content_type: "video",
     input_mode: "text",
     video_url: null,
+    video_storage_path: null,
     hashtags: ["#viral"],
     duration_hint: null,
     niche: null,

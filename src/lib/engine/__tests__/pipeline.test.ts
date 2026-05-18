@@ -54,9 +54,18 @@ vi.mock("openai", () => {
 
 // Gemini — must use `function` keyword for `new GoogleGenAI(...)` constructor calls
 const mockGeminiGenerate = vi.fn();
+const mockGeminiFileUpload = vi.fn().mockResolvedValue({ name: "files/pipeline-test", state: "ACTIVE", uri: "gs://pipeline-test" });
+const mockGeminiFileGet = vi.fn().mockResolvedValue({ name: "files/pipeline-test", state: "ACTIVE", uri: "gs://pipeline-test" });
+const mockGeminiFileDelete = vi.fn().mockResolvedValue({});
 vi.mock("@google/genai", () => {
   const MockGoogleGenAI = vi.fn(function (this: Record<string, unknown>) {
     this.models = { generateContent: mockGeminiGenerate };
+    // WR-05: expose files API so content-type-detector can call upload/get/delete
+    this.files = {
+      upload: mockGeminiFileUpload,
+      get: mockGeminiFileGet,
+      delete: mockGeminiFileDelete,
+    };
   });
   return {
     GoogleGenAI: MockGoogleGenAI,
@@ -65,6 +74,7 @@ vi.mock("@google/genai", () => {
       ARRAY: "ARRAY",
       STRING: "STRING",
       NUMBER: "NUMBER",
+      BOOLEAN: "BOOLEAN",  // WR-05 fix: required by content-type-detector RESPONSE_SCHEMA
     },
   };
 });
@@ -730,7 +740,8 @@ describe("Phase 4 — Wave 0 + pre_creator_context", () => {
         e.stage !== "wave_1",
     );
     expect(w0Idx).toBeGreaterThanOrEqual(0);
-    if (wave1Idx >= 0) expect(w0Idx).toBeLessThan(wave1Idx);
+    expect(wave1Idx).toBeGreaterThanOrEqual(0); // WR-04 fix: fail honestly if Wave 1 stops firing in this scenario
+    expect(w0Idx).toBeLessThan(wave1Idx);       // ordering invariant — Wave 0 must precede Wave 1
   });
 
   it("PipelineResult includes wave0Result with content_type + niche keys", async () => {
@@ -738,5 +749,51 @@ describe("Phase 4 — Wave 0 + pre_creator_context", () => {
     expect(result.wave0Result).toBeDefined();
     expect(result.wave0Result).toHaveProperty("content_type");
     expect(result.wave0Result).toHaveProperty("niche");
+  });
+
+  it("GAP-04-01 regression: video_upload mode produces non-null wave0Result.content_type end-to-end", async () => {
+    // Production-shaped input: input_mode='video_upload' with a real-looking storage key (NO scheme)
+    const videoInput = {
+      input_mode: "video_upload" as const,
+      video_storage_path: "user-abc/test-content.mp4",
+      content_text: "GRWM for date night #beauty",
+      content_type: "video" as const,
+    };
+
+    // Override the default storage download mock to succeed with a Blob
+    mockStorageDownload.mockResolvedValue({
+      data: new Blob([new Uint8Array(8)], { type: "video/mp4" }),
+      error: null,
+    });
+
+    // Re-mock files API (vi.clearAllMocks() in beforeEach wipes default return values)
+    mockGeminiFileUpload.mockResolvedValue({ name: "files/pipeline-ct-test", state: "ACTIVE", uri: "gs://pipeline-ct-test" });
+    mockGeminiFileGet.mockResolvedValue({ name: "files/pipeline-ct-test", state: "ACTIVE", uri: "gs://pipeline-ct-test" });
+    mockGeminiFileDelete.mockResolvedValue({});
+
+    // Override generateContent: content-type-detector uses gemini-3-flash-preview model;
+    // Wave 1 video analysis and main analysis use other models. Branch on model name.
+    mockGeminiGenerate.mockImplementation(async (req: { model?: string }) => {
+      if (req.model?.includes("gemini-3-flash")) {
+        // content-type-detector response
+        return {
+          text: JSON.stringify({ type: "talking_head", confidence: 0.85, mixed: false }),
+          usageMetadata: { promptTokenCount: 500, candidatesTokenCount: 80 },
+        };
+      }
+      // Default Wave 1 + main analysis response
+      return {
+        text: JSON.stringify(makeGeminiAnalysis()),
+        usageMetadata: { promptTokenCount: 500, candidatesTokenCount: 300 },
+      };
+    });
+
+    const result = await runPredictionPipeline(videoInput);
+
+    expect(result.wave0Result).toBeDefined();
+    expect(result.wave0Result.content_type).not.toBeNull();
+    expect(result.wave0Result.content_type?.type).toBe("talking_head");
+    // Confirm the storage path was used (NOT a fetch on the raw key)
+    expect(mockStorageDownload).toHaveBeenCalledWith("user-abc/test-content.mp4");
   });
 });

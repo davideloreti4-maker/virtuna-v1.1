@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/nextjs";
 import { GoogleGenAI, Type } from "@google/genai";
 import { createLogger } from "@/lib/logger";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ContentPayload, Wave0ContentTypeResult } from "../types";
 import { Wave0ContentTypeResultSchema } from "../types";
 import type { StageEventCallback } from "../events";
@@ -69,15 +70,20 @@ function getClient(): GoogleGenAI {
  * Detects content type from first 5 seconds of video via Gemini 3 Flash.
  * Per CONTEXT D-01: 5s window, native videoMetadata, returns Wave0ContentTypeResult.
  * Per CONTEXT D-16: NEVER throws — returns null on any failure + emits stage_end with ok:false.
+ *
+ * Phase 4 GAP-04-01 fix: accepts a SupabaseClient and downloads via storage.from("videos").download()
+ * instead of calling fetch(payload.video_url). Pre-fix, normalize.ts aliased the storage key into
+ * video_url, causing fetch() to throw TypeError in production (raw key != valid URL).
  */
 export async function detectContentType(
   payload: ContentPayload,
+  supabase: SupabaseClient,
   onEvent?: StageEventCallback,
 ): Promise<Wave0ContentTypeResult | null> {
   const startTs = emitStageStart(onEvent, "wave_0_content_type", 0);
 
   // No video to classify — emit start/end pair and return null gracefully (preserves stub contract).
-  if (payload.input_mode !== "video_upload" || !payload.video_url) {
+  if (payload.input_mode !== "video_upload" || !payload.video_storage_path) {
     emitStageEnd(onEvent, "wave_0_content_type", 0, startTs, {
       cost_cents: 0,
       ok: true,
@@ -92,11 +98,25 @@ export async function detectContentType(
   try {
     const ai = getClient();
 
-    // Fetch the video buffer. Pattern matches gemini.ts:425-462 — fetch from resolved Supabase URL.
-    const fetchResp = await fetch(payload.video_url);
-    if (!fetchResp.ok) throw new Error(`Video URL fetch failed: ${fetchResp.status}`);
-    const buffer = Buffer.from(await fetchResp.arrayBuffer());
-    const mimeType = payload.video_url.toLowerCase().endsWith(".mov") ? "video/quicktime" : "video/mp4";
+    // Phase 4 GAP-04-01 fix: download via Supabase Storage, NOT fetch().
+    // Pre-revision, normalize.ts aliased video_url to the storage key, which made
+    // fetch() throw TypeError in production. Post-revision (Option A), video_url is
+    // NEVER the storage key — the detector reads video_storage_path explicitly.
+    // Canonical pattern: pipeline.ts:336-352.
+    const { data: videoBlob, error: downloadError } = await supabase
+      .storage
+      .from("videos")
+      .download(payload.video_storage_path);
+
+    if (downloadError || !videoBlob) {
+      throw new Error(
+        `Wave 0 video download failed: ${downloadError?.message ?? "no data"}`,
+      );
+    }
+
+    const buffer = Buffer.from(await videoBlob.arrayBuffer());
+    const ext = payload.video_storage_path.split(".").pop()?.toLowerCase() ?? "mp4";
+    const mimeType = ext === "mov" ? "video/quicktime" : "video/mp4";
 
     const blob = new Blob([new Uint8Array(buffer)], { type: mimeType });
     const uploadResult = await ai.files.upload({ file: blob, config: { mimeType } });

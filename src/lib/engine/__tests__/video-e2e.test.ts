@@ -321,6 +321,7 @@ describe.skipIf(!hasGeminiKey || !hasDeepSeekKey)(
           content_type: baseInput.content_type,
           input_mode: baseInput.input_mode,
           video_url: null,
+          video_storage_path: null,
           hashtags: ["comedy", "funny", "skit", "viral"],
           duration_hint: null,
           niche: "comedy",
