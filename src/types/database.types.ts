@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       affiliate_clicks: {
@@ -228,6 +203,8 @@ export type Database = {
           overall_score: number | null
           personas: Json | null
           reasoning: string | null
+          retrieval_evidence: Json | null
+          retrieval_score: number | null
           rule_score: number | null
           score_weights: Json | null
           signal_availability: Json | null
@@ -264,6 +241,8 @@ export type Database = {
           overall_score?: number | null
           personas?: Json | null
           reasoning?: string | null
+          retrieval_evidence?: Json | null
+          retrieval_score?: number | null
           rule_score?: number | null
           score_weights?: Json | null
           signal_availability?: Json | null
@@ -300,6 +279,8 @@ export type Database = {
           overall_score?: number | null
           personas?: Json | null
           reasoning?: string | null
+          retrieval_evidence?: Json | null
+          retrieval_score?: number | null
           rule_score?: number | null
           score_weights?: Json | null
           signal_availability?: Json | null
@@ -1067,14 +1048,19 @@ export type Database = {
           category: string | null
           comments: number | null
           created_at: string | null
+          creator_handle: string | null
           description: string | null
           duration_seconds: number | null
+          embedding: string | null
+          follower_tier: string | null
           hashtags: string[] | null
           id: string
           likes: number | null
           metadata: Json | null
           platform: string
           platform_video_id: string
+          posted_at: string | null
+          primary_niche: string | null
           shares: number | null
           sound_name: string | null
           sound_url: string | null
@@ -1089,14 +1075,19 @@ export type Database = {
           category?: string | null
           comments?: number | null
           created_at?: string | null
+          creator_handle?: string | null
           description?: string | null
           duration_seconds?: number | null
+          embedding?: string | null
+          follower_tier?: string | null
           hashtags?: string[] | null
           id?: string
           likes?: number | null
           metadata?: Json | null
           platform?: string
           platform_video_id: string
+          posted_at?: string | null
+          primary_niche?: string | null
           shares?: number | null
           sound_name?: string | null
           sound_url?: string | null
@@ -1111,14 +1102,19 @@ export type Database = {
           category?: string | null
           comments?: number | null
           created_at?: string | null
+          creator_handle?: string | null
           description?: string | null
           duration_seconds?: number | null
+          embedding?: string | null
+          follower_tier?: string | null
           hashtags?: string[] | null
           id?: string
           likes?: number | null
           metadata?: Json | null
           platform?: string
           platform_video_id?: string
+          posted_at?: string | null
+          primary_niche?: string | null
           shares?: number | null
           sound_name?: string | null
           sound_url?: string | null
@@ -1163,6 +1159,7 @@ export type Database = {
           created_at: string | null
           creator_handle: string | null
           duration_seconds: number | null
+          embedding: string | null
           follower_count: number | null
           follower_tier: string | null
           hashtags: string[] | null
@@ -1191,6 +1188,7 @@ export type Database = {
           created_at?: string | null
           creator_handle?: string | null
           duration_seconds?: number | null
+          embedding?: string | null
           follower_count?: number | null
           follower_tier?: string | null
           hashtags?: string[] | null
@@ -1219,6 +1217,7 @@ export type Database = {
           created_at?: string | null
           creator_handle?: string | null
           duration_seconds?: number | null
+          embedding?: string | null
           follower_count?: number | null
           follower_tier?: string | null
           hashtags?: string[] | null
@@ -1465,7 +1464,60 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      match_corpus_videos: {
+        Args: {
+          filter_follower_tier: string
+          filter_niche: string
+          filter_platform: string
+          match_count: number
+          query_embedding: string
+        }
+        Returns: {
+          bucket_label: string
+          caption: string
+          comments: number
+          creator_handle: string
+          follower_count: number
+          hashtags: string[]
+          likes: number
+          niche: string
+          posted_at: string
+          saves: number
+          shares: number
+          similarity: number
+          source_id: string
+          source_pool: string
+          video_url: string
+          views: number
+        }[]
+      }
+      match_scraped_videos: {
+        Args: {
+          filter_follower_tier: string
+          filter_niche: string
+          filter_platform: string
+          match_count: number
+          query_embedding: string
+        }
+        Returns: {
+          bucket_label: string
+          caption: string
+          comments: number
+          creator_handle: string
+          follower_count: number
+          hashtags: string[]
+          likes: number
+          niche: string
+          posted_at: string
+          saves: number
+          shares: number
+          similarity: number
+          source_id: string
+          source_pool: string
+          video_url: string
+          views: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
@@ -1594,9 +1646,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },
