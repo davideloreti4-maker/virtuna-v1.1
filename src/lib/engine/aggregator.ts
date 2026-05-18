@@ -29,18 +29,21 @@ export { ENGINE_VERSION };
 // =====================================================
 
 const SCORE_WEIGHTS = {
-  behavioral: 0.35,
-  gemini: 0.25,
-  ml: 0.15,
-  rules: 0.15,
-  trends: 0.10,
+  behavioral: 0.33, // Phase 8 D-03b: was 0.35; redistributed × 0.95 to make room for retrieval
+  gemini:     0.24, // Phase 8 D-03b: was 0.25
+  ml:         0.14, // Phase 8 D-03b: was 0.15
+  rules:      0.14, // Phase 8 D-03b: was 0.15
+  trends:     0.10, // Phase 8 D-03b: was 0.10 (0.10 × 0.95 = 0.095 → rounds to 0.10 per locked matrix)
+  retrieval:  0.05, // NEW Phase 8 D-03b — Plan 10 calibration will tune
 } as const;
 
-// PATTERNS Critical Cross-File Constraint #3:
-// selectWeights() must iterate ONLY known SCORE_WEIGHTS keys. Phase 4 widened
-// SignalAvailability with content_type + niche provenance keys (D-20) — those
-// must NOT participate in weight redistribution math.
-const SCORE_WEIGHT_KEYS = ["behavioral", "gemini", "ml", "rules", "trends"] as const;
+// PATTERNS Critical Cross-File Constraint #1 (Phase 8) + #3 (Phase 4):
+// selectWeights() must iterate ONLY weight-bearing SCORE_WEIGHTS keys.
+// - Phase 4 widened SignalAvailability with content_type + niche provenance keys
+//   (D-20) — those do NOT participate in weight math (provenance only).
+// - Phase 8 added retrieval as a weight-bearing key — MUST be in this tuple
+//   (skipping it silently drops the new 0.05 slot in the filter at line 67).
+const SCORE_WEIGHT_KEYS = ["behavioral", "gemini", "ml", "rules", "trends", "retrieval"] as const;
 type ScoreWeightKey = (typeof SCORE_WEIGHT_KEYS)[number];
 
 // =====================================================
@@ -58,11 +61,11 @@ type ScoreWeightKey = (typeof SCORE_WEIGHT_KEYS)[number];
  */
 export function selectWeights(
   availability: SignalAvailability
-): { behavioral: number; gemini: number; ml: number; rules: number; trends: number } {
-  // Filter Object.entries to ONLY known SCORE_WEIGHTS keys. Phase 4+ extensions
-  // that add provenance keys to SignalAvailability (content_type, niche, future
-  // audio/retrieval/hook_decomp) MUST NOT participate in the weight math.
-  // PATTERNS Critical Cross-File Constraint #3.
+): { behavioral: number; gemini: number; ml: number; rules: number; trends: number; retrieval: number } {
+  // Filter Object.entries to ONLY weight-bearing SCORE_WEIGHTS keys.
+  // - Phase 4+ provenance keys (content_type, niche) do NOT participate in math.
+  // - Phase 8 added 'retrieval' to the tuple — it IS weight-bearing.
+  // PATTERNS Critical Cross-File Constraints #1 (Phase 8) + #3 (Phase 4).
   const filtered = (Object.entries(availability) as Array<[string, boolean]>)
     .filter(([key]) => (SCORE_WEIGHT_KEYS as readonly string[]).includes(key)) as Array<
     [ScoreWeightKey, boolean]
@@ -82,8 +85,9 @@ export function selectWeights(
     (sum, [key]) => sum + SCORE_WEIGHTS[key], 0
   );
 
-  // Each available source gets its base weight + proportional share of missing weight
-  const result = { behavioral: 0, gemini: 0, ml: 0, rules: 0, trends: 0 };
+  // Each available source gets its base weight + proportional share of missing weight.
+  // Phase 8 — retrieval slot added.
+  const result = { behavioral: 0, gemini: 0, ml: 0, rules: 0, trends: 0, retrieval: 0 };
   for (const [key, isAvailable] of filtered) {
     if (isAvailable) {
       result[key] = SCORE_WEIGHTS[key] + (SCORE_WEIGHTS[key] / availableWeight) * missingWeight;
@@ -346,6 +350,10 @@ export async function aggregateScores(
     // in selectWeights math (filtered out by SCORE_WEIGHT_KEYS).
     content_type: pipelineResult.wave0Result.content_type !== null,
     niche: pipelineResult.wave0Result.niche !== null,
+    // Phase 8 D-10: retrieval signal — IS weight-bearing (included in
+    // SCORE_WEIGHT_KEYS). True when ≥1 match survived hierarchical relaxation
+    // AND D-04b min_corpus_size gate passed (i.e., retrievalResult.score is non-null).
+    retrieval: pipelineResult.retrievalResult.availability,
   };
 
   const weights = selectWeights(availability);
@@ -388,7 +396,11 @@ export async function aggregateScores(
           gemini_score * weights.gemini +
           (mlScore ?? 0) * weights.ml +
           ruleResult.rule_score * weights.rules +
-          trendEnrichment.trend_score * weights.trends
+          trendEnrichment.trend_score * weights.trends +
+          // Phase 8 D-03: retrievalResult.score is in [0,1] — scale by 100 to match
+          // the [0,100] range of the other terms before applying the weight.
+          // ?? 0 makes the term null-safe when retrieval is unavailable.
+          ((pipelineResult.retrievalResult.score ?? 0) * 100) * weights.retrieval
       )
     )
   );
@@ -542,6 +554,12 @@ export async function aggregateScores(
     input_mode: pipelineResult.payload.input_mode,
     has_video: hasVideo,
     signal_availability: availability, // Phase 3 — provenance surfaced for route to persist
+    // Phase 8 D-11 — retrieval signal output. Persisted to
+    // analysis_results.retrieval_score (NUMERIC(5,4) nullable) and
+    // analysis_results.retrieval_evidence (JSONB). M2 renders evidence in
+    // the "similar videos" panel without further DB joins (D-02).
+    retrieval_score: pipelineResult.retrievalResult.score,
+    retrieval_evidence: pipelineResult.retrievalResult.evidence,
   };
 
   // -------------------------------------------------
