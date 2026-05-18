@@ -34,25 +34,28 @@ vi.mock("@sentry/nextjs", () => ({
   addBreadcrumb: vi.fn(),
 }));
 
-// Mock embedder — controllable per test
-const mockEmbedQuery = vi.fn();
-const mockBuildSubjectText = vi.fn(
-  (input: {
-    primary_slug: string | null;
-    creator_handle: string | null;
-    caption: string | null;
-    hashtags: string[] | null;
-  }) => `mock-subject:${input.primary_slug ?? ""}`,
-);
+// Mock embedder — vi.hoisted() pattern lets us reference these from inside vi.mock factories,
+// which are themselves hoisted to the top of the file.
+const { mockEmbedQuery, mockBuildSubjectText, mockMatchCorpus, mockMatchScraped } =
+  vi.hoisted(() => ({
+    mockEmbedQuery: vi.fn(),
+    mockBuildSubjectText: vi.fn(
+      (input: {
+        primary_slug: string | null;
+        creator_handle: string | null;
+        caption: string | null;
+        hashtags: string[] | null;
+      }) => `mock-subject:${input.primary_slug ?? ""}`,
+    ),
+    mockMatchCorpus: vi.fn(),
+    mockMatchScraped: vi.fn(),
+  }));
 
 vi.mock("@/lib/engine/retrieval/embedder", () => ({
   buildSubjectText: mockBuildSubjectText,
   embedQuery: mockEmbedQuery,
 }));
 
-// Mock pgvector-client — controllable per test
-const mockMatchCorpus = vi.fn();
-const mockMatchScraped = vi.fn();
 vi.mock("@/lib/engine/retrieval/pgvector-client", () => ({
   matchTrainingCorpus: mockMatchCorpus,
   matchScrapedVideos: mockMatchScraped,
