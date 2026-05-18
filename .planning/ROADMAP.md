@@ -120,7 +120,7 @@ Plans:
 Plans:
 - [x] 04-01-PLAN.md — Wave 1: foundations (types + Zod schemas, content-type weight matrix, taxonomy persona/benchmark extensions)
 - [x] 04-02-PLAN.md — Wave 2: detector implementations (Gemini 3 Flash content-type, DeepSeek V4 Flash niche with dual-env DEEPSEEK_NICHE_MODEL, STABLE/VOLATILE prompts)
-- [ ] 04-03-PLAN.md — Wave 3: orchestration + integration (wave0.ts Promise.allSettled, pipeline pre_creator_context, aggregator selectWeights filter + content-type weight matrix wiring)
+- [x] 04-03-PLAN.md — Wave 3: orchestration + integration (wave0.ts Promise.allSettled, pipeline pre_creator_context, aggregator selectWeights filter + content-type weight matrix wiring)
 
 ### Phase 5: Video Segmentation + Hook Decomposition
 **Goal:** Gemini analyzes the video in 3 parallel segments (Pro hook, Flash body, Flash CTA) via native `videoMetadata`. Hook is decomposed into 4 sub-modalities with cross-modal coherence + cognitive load scores.
