@@ -75,6 +75,13 @@ export interface PipelineOptions {
    * Pipeline itself does NOT act on this flag — it's a passthrough for the consumer.
    */
   bypassCache?: boolean;
+  /**
+   * Phase 4 D-18: pre-fetched creator context (route handler may already have it).
+   * When set: pipeline reuses it (skips the pre_creator_context DB read).
+   * When absent: pipeline fetches via the new pre_creator_context stage BEFORE Wave 0.
+   * Either way, Wave 0's niche detector receives the value via runWave0() argument.
+   */
+  creatorContext?: CreatorContext;
 }
 
 // =====================================================
@@ -263,10 +270,44 @@ export async function runPredictionPipeline(
   }, { wave: 1, onEvent: onStageEvent });
 
   // -------------------------------------------------------
-  // Wave 0: Content-type + niche detection (Phase 4 fills the stub)
+  // Single service client for this pipeline run
+  // (moved BEFORE Wave 0 because Phase 4 pre_creator_context needs DB access).
+  // -------------------------------------------------------
+  const supabase = createServiceClient();
+
+  // -------------------------------------------------------
+  // Phase 4 D-17/D-18: pre-fetch creator context BEFORE Wave 0.
+  // Wave 0's niche detector consumes Card 1/4/5/6 from creator profile (cheap
+  // DB read ~50ms). The Wave 1 creator_context stage below becomes a passthrough
+  // (reuses this pre-fetched value, preserves the event name for backwards-compat).
+  // When opts.creatorContext is provided, this DB read is skipped entirely.
+  // -------------------------------------------------------
+  const creatorContext: CreatorContext =
+    opts?.creatorContext ??
+    (await (async () => {
+      try {
+        return await timed(
+          "pre_creator_context",
+          timings,
+          () => fetchCreatorContext(supabase, payload.creator_handle, payload.niche),
+          { wave: 1, onEvent: onStageEvent },
+        );
+      } catch (error) {
+        Sentry.captureException(error, {
+          tags: { stage: "pre_creator_context", requestId },
+        });
+        warnings.push(
+          `Creator context pre-fetch unavailable: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        return DEFAULT_CREATOR_CONTEXT;
+      }
+    })());
+
+  // -------------------------------------------------------
+  // Wave 0: Content-type + niche detection (Phase 4 — orchestrates parallel detectors)
   // Runs BEFORE Wave 1 — events fire before any Wave 1 stage_start.
   // -------------------------------------------------------
-  const wave0Result = await runWave0(payload, onStageEvent);
+  const wave0Result = await runWave0(payload, creatorContext, onStageEvent);
 
   Sentry.addBreadcrumb({
     category: "engine.pipeline",
@@ -274,9 +315,6 @@ export async function runPredictionPipeline(
     level: "info",
     data: { requestId, stages: ["wave_0_content_type", "wave_0_niche_detector"] },
   });
-
-  // Single service client for this pipeline run
-  const supabase = createServiceClient();
 
   // -------------------------------------------------------
   // Wave 1: Gemini + Audio + Creator + Rules (all non-critical, HARD-03)
@@ -339,23 +377,18 @@ export async function runPredictionPipeline(
     onEvent: onStageEvent,
   });
 
-  // Stage 5: Creator Context -- NON-CRITICAL (fallback with warning)
+  // Stage 5: Creator Context -- Phase 4 PASSTHROUGH (reuses pre_creator_context).
+  // The actual fetch happened above in the pre_creator_context stage (D-17/D-18).
+  // We keep emitting the `creator_context` stage event for backwards-compat with
+  // existing consumers (pipeline.test.ts asserts the event name + count) but the
+  // "work" is a near-zero-duration passthrough — no second DB read.
   const creatorPromise = (async (): Promise<CreatorContext> => {
-    try {
-      return await timed("creator_context", timings, () =>
-        fetchCreatorContext(supabase, payload.creator_handle, payload.niche),
-        { wave: 1, onEvent: onStageEvent }
-      );
-    } catch (error) {
-      Sentry.captureException(error, {
-        tags: { stage: "creator_context", requestId },
-      });
-      warnings.push(
-        `Creator context unavailable: ${error instanceof Error ? error.message : String(error)}`
-      );
-      timings.push({ stage: "creator_context", duration_ms: 0 });
-      return DEFAULT_CREATOR_CONTEXT;
-    }
+    return await timed(
+      "creator_context",
+      timings,
+      async () => creatorContext,
+      { wave: 1, onEvent: onStageEvent },
+    );
   })();
 
   // Stage 6: Rule Loading + Scoring -- NON-CRITICAL (fallback with warning)
@@ -377,8 +410,11 @@ export async function runPredictionPipeline(
     }
   })();
 
-  // Run Wave 1 in parallel -- all stages gracefully degrade (HARD-03)
-  const [geminiResult, audioResult, creatorContext, ruleResult] = await timed(
+  // Run Wave 1 in parallel -- all stages gracefully degrade (HARD-03).
+  // Phase 4: the third slot (creatorPromise) returns the same value as the
+  // outer-scope `creatorContext` (pre-fetched above), so we discard the array
+  // slot to avoid redeclaration.
+  const [geminiResult, audioResult, , ruleResult] = await timed(
     "wave_1",
     timings,
     () => Promise.all([geminiPromise, audioPromise, creatorPromise, rulePromise]),

@@ -9,19 +9,28 @@ import { runStage10Critique } from "../stage10-critique";
 import { runStage11Counterfactuals } from "../stage11-counterfactuals";
 import type { StageEvent } from "../events";
 import type { ContentPayload, PredictionResult } from "../types";
+import type { CreatorContext } from "../creator";
 
 const fakePayload = {} as ContentPayload;
 const fakeAggregate = {} as PredictionResult;
+const fakeCreatorContext = {} as CreatorContext;
 
-describe("Wave 0 stub", () => {
-  it("returns { content_type: null, niche: null }", async () => {
-    const result = await runWave0(fakePayload);
+describe("Wave 0 backwards-compat (Phase 3 stub contract preserved by Phase 4 orchestrator)", () => {
+  // Phase 4 widened the signature to runWave0(payload, creatorContext, onEvent?).
+  // The detectors emit their own stage_start/stage_end pairs on the no-video path
+  // (no_video_input_skipping_content_type warning), so the net "2 starts + 2 ends"
+  // event count is preserved even though wave0.ts itself no longer emits events.
+  // Both detectors return null when given an empty payload + missing env vars
+  // (D-16 graceful degradation), so the result shape stays { content_type: null, niche: null }.
+
+  it("returns { content_type: null, niche: null } when both detectors return null", async () => {
+    const result = await runWave0(fakePayload, fakeCreatorContext);
     expect(result).toEqual({ content_type: null, niche: null });
   });
 
-  it("emits 2 stage_start + 2 stage_end events with wave=0 and cost_cents=0", async () => {
+  it("emits 2 stage_start + 2 stage_end events with wave=0 (event ownership moved DOWN to detectors)", async () => {
     const cb = vi.fn();
-    await runWave0(fakePayload, cb);
+    await runWave0(fakePayload, fakeCreatorContext, cb);
     const events = cb.mock.calls.map(c => c[0] as StageEvent);
     expect(events).toHaveLength(4);
     const starts = events.filter(e => e.type === "stage_start");
@@ -33,13 +42,12 @@ describe("Wave 0 stub", () => {
       if (e.type === "stage_end") {
         expect(e.wave).toBe(0);
         expect(e.cost_cents).toBe(0);
-        expect(e.ok).toBe(true);
       }
     }
   });
 
   it("accepts undefined callback without throwing", async () => {
-    await expect(runWave0(fakePayload, undefined)).resolves.toBeDefined();
+    await expect(runWave0(fakePayload, fakeCreatorContext, undefined)).resolves.toBeDefined();
   });
 });
 

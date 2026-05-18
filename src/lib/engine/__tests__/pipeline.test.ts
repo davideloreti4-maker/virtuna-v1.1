@@ -597,3 +597,146 @@ describe("Phase 3 — onStageEvent + stub invocations", () => {
     expect(resultBypass.wave3Result).toEqual([]);
   });
 });
+
+// =====================================================
+// Phase 4 — Wave 0 + pre_creator_context (Plan 04-03 Task 2)
+// =====================================================
+
+import type { StageEvent } from "../events";
+import type { CreatorContext } from "../creator";
+
+describe("Phase 4 — Wave 0 + pre_creator_context", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetCircuitBreaker();
+    supabaseTableOverrides = {};
+
+    // Default Gemini mock — returns valid GeminiAnalysis (text mode path)
+    mockGeminiGenerate.mockResolvedValue({
+      text: JSON.stringify(makeGeminiAnalysis()),
+      usageMetadata: { promptTokenCount: 500, candidatesTokenCount: 300 },
+    });
+
+    // Default DeepSeek mock — returns valid DeepSeekReasoning
+    mockDeepSeekCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(makeDeepSeekReasoning()) } }],
+      usage: { prompt_tokens: 1000, completion_tokens: 500 },
+    });
+
+    supabaseTableOverrides = {
+      rule_library: { data: [], error: null },
+      trending_sounds: { data: [], error: null },
+      creator_profiles: { data: null, error: null },
+      scraped_videos: { data: [], error: null },
+    };
+  });
+
+  it("pre_creator_context stage_start fires before wave_0_* stage_starts (D-17 ordering)", async () => {
+    const events: StageEvent[] = [];
+    await runPredictionPipeline(input, { onStageEvent: (e) => events.push(e) });
+    const preIdx = events.findIndex(
+      (e) => e.type === "stage_start" && e.stage === "pre_creator_context",
+    );
+    const w0CtIdx = events.findIndex(
+      (e) => e.type === "stage_start" && e.stage === "wave_0_content_type",
+    );
+    const w0NicheIdx = events.findIndex(
+      (e) => e.type === "stage_start" && e.stage === "wave_0_niche_detector",
+    );
+    expect(preIdx).toBeGreaterThanOrEqual(0);
+    expect(w0CtIdx).toBeGreaterThan(preIdx);
+    expect(w0NicheIdx).toBeGreaterThan(preIdx);
+  });
+
+  it("Wave 1 creator_context event still fires (backwards-compat passthrough)", async () => {
+    const events: StageEvent[] = [];
+    await runPredictionPipeline(input, { onStageEvent: (e) => events.push(e) });
+    const starts = events.filter(
+      (e) => e.type === "stage_start" && e.stage === "creator_context",
+    );
+    const ends = events.filter(
+      (e) => e.type === "stage_end" && e.stage === "creator_context",
+    );
+    expect(starts).toHaveLength(1);
+    expect(ends).toHaveLength(1);
+  });
+
+  it("opts.creatorContext bypasses fetchCreatorContext (D-18 reuse — no creator_profiles read)", async () => {
+    const fakeCtx: CreatorContext = {
+      found: true,
+      follower_count: 12345,
+      avg_views: null,
+      engagement_rate: 0.07,
+      niche: "beauty",
+      posting_frequency: "daily",
+      platform_averages: {
+        avg_views: 50000,
+        avg_engagement_rate: 0.06,
+        avg_share_rate: 0.008,
+        avg_comment_rate: 0.005,
+      },
+      target_platforms: ["tiktok"],
+      niche_primary: "beauty",
+      niche_sub: "skincare",
+      target_audience: null,
+      primary_goal: "growth",
+      creator_stage: "growing",
+      content_style: "talking_head",
+      cuts_per_second: "slow",
+      reference_creators: null,
+      past_wins: null,
+      past_flops: null,
+      time_of_day_aware: null,
+      pain_points: null,
+    };
+
+    // Clear mockFrom to count calls during this test only
+    mockFrom.mockClear();
+
+    const result = await runPredictionPipeline(input, { creatorContext: fakeCtx });
+    expect(result).toBeDefined();
+    expect(result.creatorContext).toEqual(fakeCtx);
+
+    // creator_profiles table should NOT be queried when caller provides creatorContext.
+    const creatorProfileCalls = mockFrom.mock.calls.filter(
+      ([table]) => table === "creator_profiles",
+    );
+    expect(creatorProfileCalls).toHaveLength(0);
+  });
+
+  it("opts absent triggers internal fetch (pre_creator_context stage fires)", async () => {
+    const events: StageEvent[] = [];
+    await runPredictionPipeline(input, { onStageEvent: (e) => events.push(e) });
+    const preStart = events.find(
+      (e) => e.type === "stage_start" && e.stage === "pre_creator_context",
+    );
+    expect(preStart).toBeDefined();
+  });
+
+  it("Wave 0 fires before Wave 1 (Wave 0 SC#1 ordering)", async () => {
+    const events: StageEvent[] = [];
+    await runPredictionPipeline(input, { onStageEvent: (e) => events.push(e) });
+    const w0Idx = events.findIndex(
+      (e) => e.type === "stage_start" && e.stage === "wave_0_content_type",
+    );
+    const wave1Idx = events.findIndex(
+      (e) =>
+        e.type === "stage_start" &&
+        e.wave === 1 &&
+        e.stage !== "pre_creator_context" &&
+        e.stage !== "creator_context" &&
+        e.stage !== "validate" &&
+        e.stage !== "normalize" &&
+        e.stage !== "wave_1",
+    );
+    expect(w0Idx).toBeGreaterThanOrEqual(0);
+    if (wave1Idx >= 0) expect(w0Idx).toBeLessThan(wave1Idx);
+  });
+
+  it("PipelineResult includes wave0Result with content_type + niche keys", async () => {
+    const result = await runPredictionPipeline(input);
+    expect(result.wave0Result).toBeDefined();
+    expect(result.wave0Result).toHaveProperty("content_type");
+    expect(result.wave0Result).toHaveProperty("niche");
+  });
+});
