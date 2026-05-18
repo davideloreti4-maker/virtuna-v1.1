@@ -307,7 +307,7 @@ export async function runPredictionPipeline(
   // Wave 0: Content-type + niche detection (Phase 4 — orchestrates parallel detectors)
   // Runs BEFORE Wave 1 — events fire before any Wave 1 stage_start.
   // -------------------------------------------------------
-  const wave0Result = await runWave0(payload, creatorContext, onStageEvent);
+  const wave0Result = await runWave0(payload, supabase, creatorContext, onStageEvent);
 
   Sentry.addBreadcrumb({
     category: "engine.pipeline",

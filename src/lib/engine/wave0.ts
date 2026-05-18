@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/nextjs";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ContentPayload, Wave0Result } from "./types";
 import type { CreatorContext } from "./creator";
 import type { StageEventCallback } from "./events";
@@ -18,23 +20,36 @@ const log = createLogger({ module: "wave0" });
  * no event emission, no caching (D-22).
  *
  * Per D-17/D-18: creatorContext is pre-fetched in pipeline.ts and passed in.
+ *
+ * Phase 4 GAP-04-01 fix: supabase client forwarded to detectContentType so it can
+ * download video via storage.from("videos").download() instead of fetch().
+ * WR-01: rejected detector outcomes are captured to Sentry for observability.
  */
 export async function runWave0(
   payload: ContentPayload,
+  supabase: SupabaseClient,
   creatorContext: CreatorContext,
   onEvent?: StageEventCallback,
 ): Promise<Wave0Result> {
   const [contentTypeOutcome, nicheOutcome] = await Promise.allSettled([
-    detectContentType(payload, onEvent),
+    detectContentType(payload, supabase, onEvent),
     detectNiche(payload, creatorContext, onEvent),
   ]);
 
   if (contentTypeOutcome.status === "rejected") {
+    // WR-01: capture rejected detector outcomes to Sentry for observability
+    Sentry.captureException(contentTypeOutcome.reason, {
+      tags: { stage: "wave_0_content_type", source: "orchestrator" },
+    });
     log.warn("Content-type detector rejected", {
       reason: String(contentTypeOutcome.reason),
     });
   }
   if (nicheOutcome.status === "rejected") {
+    // WR-01: capture rejected detector outcomes to Sentry for observability
+    Sentry.captureException(nicheOutcome.reason, {
+      tags: { stage: "wave_0_niche_detector", source: "orchestrator" },
+    });
     log.warn("Niche detector rejected", {
       reason: String(nicheOutcome.reason),
     });

@@ -21,6 +21,11 @@ vi.mock("@/lib/logger", () => ({
   })),
 }));
 
+vi.mock("@sentry/nextjs", () => ({
+  captureException: vi.fn(),
+  addBreadcrumb: vi.fn(),
+}));
+
 // Mock both detector modules so we can control resolution + verify forwarded args.
 const mockDetectContentType = vi.fn();
 const mockDetectNiche = vi.fn();
@@ -33,6 +38,18 @@ vi.mock("../wave0/niche-detector", () => ({
 }));
 
 import { runWave0 } from "../wave0";
+
+// Mock supabase client for all runWave0 calls (Phase 4 GAP-04-01 fix — new 2nd arg)
+const mockSupabaseClient = {
+  storage: {
+    from: vi.fn(() => ({
+      download: vi.fn().mockResolvedValue({
+        data: new Blob([new Uint8Array(8)]),
+        error: null,
+      }),
+    })),
+  },
+} as unknown as import("@supabase/supabase-js").SupabaseClient;
 
 const payload: ContentPayload = {
   input_mode: "video_upload",
@@ -58,7 +75,7 @@ describe("runWave0 — Phase 4 orchestration", () => {
   it("both detectors succeed → Wave0Result has both fields non-null", async () => {
     mockDetectContentType.mockResolvedValue(sampleContentType);
     mockDetectNiche.mockResolvedValue(sampleNiche);
-    const result = await runWave0(payload, creatorContext);
+    const result = await runWave0(payload, mockSupabaseClient, creatorContext);
     expect(result.content_type).toEqual(sampleContentType);
     expect(result.niche).toEqual(sampleNiche);
   });
@@ -66,7 +83,7 @@ describe("runWave0 — Phase 4 orchestration", () => {
   it("one detector fails, the other succeeds — Promise.allSettled isolation", async () => {
     mockDetectContentType.mockRejectedValue(new Error("upload failed"));
     mockDetectNiche.mockResolvedValue(sampleNiche);
-    const result = await runWave0(payload, creatorContext);
+    const result = await runWave0(payload, mockSupabaseClient, creatorContext);
     expect(result.content_type).toBeNull();
     expect(result.niche).toEqual(sampleNiche);
   });
@@ -74,7 +91,7 @@ describe("runWave0 — Phase 4 orchestration", () => {
   it("both detectors fail — Wave0Result has both null (stub contract preserved)", async () => {
     mockDetectContentType.mockRejectedValue(new Error("gemini down"));
     mockDetectNiche.mockRejectedValue(new Error("deepseek down"));
-    const result = await runWave0(payload, creatorContext);
+    const result = await runWave0(payload, mockSupabaseClient, creatorContext);
     expect(result.content_type).toBeNull();
     expect(result.niche).toBeNull();
   });
@@ -82,7 +99,7 @@ describe("runWave0 — Phase 4 orchestration", () => {
   it("both detectors return null (no-throw graceful) — Wave0Result has both null", async () => {
     mockDetectContentType.mockResolvedValue(null);
     mockDetectNiche.mockResolvedValue(null);
-    const result = await runWave0(payload, creatorContext);
+    const result = await runWave0(payload, mockSupabaseClient, creatorContext);
     expect(result.content_type).toBeNull();
     expect(result.niche).toBeNull();
   });
@@ -94,7 +111,8 @@ describe("runWave0 — Phase 4 orchestration", () => {
     } as CreatorContext;
     mockDetectContentType.mockResolvedValue(sampleContentType);
     mockDetectNiche.mockResolvedValue(sampleNiche);
-    await runWave0(payload, ctx);
+    await runWave0(payload, mockSupabaseClient, ctx);
+    expect(mockDetectContentType).toHaveBeenCalledWith(payload, mockSupabaseClient, undefined);
     expect(mockDetectNiche).toHaveBeenCalledWith(payload, ctx, undefined);
   });
 
@@ -118,7 +136,7 @@ describe("runWave0 — Phase 4 orchestration", () => {
       return sampleNiche;
     });
 
-    await runWave0(payload, creatorContext);
+    await runWave0(payload, mockSupabaseClient, creatorContext);
     expect(contentTypeStarted).toBe(true);
     expect(nicheStarted).toBe(true);
   });
@@ -127,8 +145,8 @@ describe("runWave0 — Phase 4 orchestration", () => {
     mockDetectContentType.mockResolvedValue(sampleContentType);
     mockDetectNiche.mockResolvedValue(sampleNiche);
     const cb = vi.fn();
-    await runWave0(payload, creatorContext, cb);
-    expect(mockDetectContentType).toHaveBeenCalledWith(payload, cb);
+    await runWave0(payload, mockSupabaseClient, creatorContext, cb);
+    expect(mockDetectContentType).toHaveBeenCalledWith(payload, mockSupabaseClient, cb);
     expect(mockDetectNiche).toHaveBeenCalledWith(payload, creatorContext, cb);
   });
 
@@ -147,8 +165,8 @@ describe("runWave0 — Phase 4 orchestration", () => {
     // had introduced any memoization, the second call would short-circuit and
     // the detectors would be invoked only once total. The contract: BOTH
     // detectors fire on EVERY invocation.
-    await runWave0(payload, creatorContext);
-    await runWave0(payload, creatorContext);
+    await runWave0(payload, mockSupabaseClient, creatorContext);
+    await runWave0(payload, mockSupabaseClient, creatorContext);
 
     expect(mockDetectContentType).toHaveBeenCalledTimes(2);
     expect(mockDetectNiche).toHaveBeenCalledTimes(2);

@@ -11,9 +11,19 @@ import type { StageEvent } from "../events";
 import type { ContentPayload, PredictionResult } from "../types";
 import type { CreatorContext } from "../creator";
 
+vi.mock("@sentry/nextjs", () => ({
+  captureException: vi.fn(),
+  addBreadcrumb: vi.fn(),
+}));
+
 const fakePayload = {} as ContentPayload;
 const fakeAggregate = {} as PredictionResult;
 const fakeCreatorContext = {} as CreatorContext;
+
+// Phase 4 GAP-04-01: runWave0 now takes supabase as 2nd arg; pass a minimal mock
+const fakeSupabaseClient = {
+  storage: { from: vi.fn() },
+} as unknown as import("@supabase/supabase-js").SupabaseClient;
 
 describe("Wave 0 backwards-compat (Phase 3 stub contract preserved by Phase 4 orchestrator)", () => {
   // Phase 4 widened the signature to runWave0(payload, creatorContext, onEvent?).
@@ -24,13 +34,13 @@ describe("Wave 0 backwards-compat (Phase 3 stub contract preserved by Phase 4 or
   // (D-16 graceful degradation), so the result shape stays { content_type: null, niche: null }.
 
   it("returns { content_type: null, niche: null } when both detectors return null", async () => {
-    const result = await runWave0(fakePayload, fakeCreatorContext);
+    const result = await runWave0(fakePayload, fakeSupabaseClient, fakeCreatorContext);
     expect(result).toEqual({ content_type: null, niche: null });
   });
 
   it("emits 2 stage_start + 2 stage_end events with wave=0 (event ownership moved DOWN to detectors)", async () => {
     const cb = vi.fn();
-    await runWave0(fakePayload, fakeCreatorContext, cb);
+    await runWave0(fakePayload, fakeSupabaseClient, fakeCreatorContext, cb);
     const events = cb.mock.calls.map(c => c[0] as StageEvent);
     expect(events).toHaveLength(4);
     const starts = events.filter(e => e.type === "stage_start");
@@ -47,7 +57,7 @@ describe("Wave 0 backwards-compat (Phase 3 stub contract preserved by Phase 4 or
   });
 
   it("accepts undefined callback without throwing", async () => {
-    await expect(runWave0(fakePayload, fakeCreatorContext, undefined)).resolves.toBeDefined();
+    await expect(runWave0(fakePayload, fakeSupabaseClient, fakeCreatorContext, undefined)).resolves.toBeDefined();
   });
 });
 
