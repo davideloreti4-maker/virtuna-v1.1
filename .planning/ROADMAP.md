@@ -135,7 +135,7 @@ Plans:
 **Plans:** 3 plans across 3 waves
 Plans:
 **Wave 1**
-- [ ] 05-01-PLAN.md — Wave 1: foundations (Zod schemas + Gemini responseSchema literals, per-model cost helper, prompt builders, types widening, env vars)
+- [x] 05-01-PLAN.md — Wave 1: foundations (Zod schemas + Gemini responseSchema literals, per-model cost helper, prompt builders, types widening, env vars)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 05-02-PLAN.md — Wave 2: segment helpers + orchestrator + merge (3 parallel videoMetadata-scoped Gemini calls via Promise.allSettled, null-safe partial-failure merge)
