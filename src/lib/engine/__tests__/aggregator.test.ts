@@ -61,7 +61,7 @@ vi.mock("../deepseek", () => ({
 // =====================================================
 
 import { selectWeights, aggregateScores } from "../aggregator";
-import { makePipelineResult } from "./factories";
+import { makePipelineResult, makeGeminiAnalysis } from "./factories";
 import { getPlattParameters, applyPlattScaling } from "../calibration";
 import { predictWithML } from "../ml";
 
@@ -449,5 +449,175 @@ describe("Phase 3 — provenance + stub invocations", () => {
     const result = await aggregateScores(makePipelineResult());
     expect(result).toBeDefined();
     expect(result.overall_score).toBeGreaterThanOrEqual(0);
+  });
+});
+
+// =====================================================
+// Phase 4 — Wave 0 aggregator integration (Plan 04-03 Task 3)
+// =====================================================
+
+describe("Phase 4 — Wave 0 aggregator integration", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(predictWithML).mockResolvedValue(50);
+    vi.mocked(getPlattParameters).mockResolvedValue(null);
+    vi.mocked(applyPlattScaling).mockImplementation(
+      (score: number, _params: unknown) => score
+    );
+  });
+
+  it("selectWeights regression: 5-key availability all-true → unchanged base weights", () => {
+    const weights = selectWeights({
+      behavioral: true,
+      gemini: true,
+      ml: true,
+      rules: true,
+      trends: true,
+      content_type: false, // new keys present but irrelevant
+      niche: false,
+    });
+    expect(weights).toEqual({
+      behavioral: 0.35,
+      gemini: 0.25,
+      ml: 0.15,
+      rules: 0.15,
+      trends: 0.1,
+    });
+  });
+
+  it("selectWeights ignores content_type + niche keys (Critical Cross-File Constraint #3)", () => {
+    const weightsWithNew = selectWeights({
+      behavioral: true,
+      gemini: true,
+      ml: true,
+      rules: true,
+      trends: true,
+      content_type: true,
+      niche: true,
+    });
+    const weightsWithoutNew = selectWeights({
+      behavioral: true,
+      gemini: true,
+      ml: true,
+      rules: true,
+      trends: true,
+      content_type: false,
+      niche: false,
+    });
+    expect(weightsWithNew).toEqual(weightsWithoutNew);
+    const sum = Object.values(weightsWithNew).reduce((a, b) => a + b, 0);
+    expect(sum).toBeCloseTo(1.0, 3);
+  });
+
+  it("selectWeights redistribution still works with new keys present (1 missing)", () => {
+    const weights = selectWeights({
+      behavioral: false,
+      gemini: true,
+      ml: true,
+      rules: true,
+      trends: true,
+      content_type: true,
+      niche: true,
+    });
+    const sum = Object.values(weights).reduce((a, b) => a + b, 0);
+    expect(sum).toBeCloseTo(1.0, 3);
+    expect(weights.behavioral).toBe(0);
+  });
+
+  it("signal_availability.content_type set to true when wave0Result.content_type is non-null", async () => {
+    const pipeline = makePipelineResult({
+      wave0Result: {
+        content_type: { type: "talking_head", confidence: 0.85 },
+        niche: null,
+      },
+    });
+    const result = await aggregateScores(pipeline);
+    expect(result.signal_availability.content_type).toBe(true);
+    expect(result.signal_availability.niche).toBe(false);
+  });
+
+  it("signal_availability.niche set to true when wave0Result.niche is non-null", async () => {
+    const pipeline = makePipelineResult({
+      wave0Result: {
+        content_type: null,
+        niche: {
+          primary: "beauty",
+          sub: "skincare",
+          micro: null,
+          confidence: 0.8,
+          source: "ai",
+        },
+      },
+    });
+    const result = await aggregateScores(pipeline);
+    expect(result.signal_availability.niche).toBe(true);
+    expect(result.signal_availability.content_type).toBe(false);
+  });
+
+  it("feature_vector uses content-type-adjusted video signals when content_type present (D-12 slideshow halves pacing)", async () => {
+    const pipeline = makePipelineResult({
+      wave0Result: {
+        content_type: { type: "slideshow", confidence: 0.9 },
+        niche: null,
+      },
+      geminiResult: {
+        analysis: makeGeminiAnalysis({
+          video_signals: {
+            visual_production_quality: 8,
+            hook_visual_impact: 8,
+            pacing_score: 8,
+            transition_quality: 8,
+          },
+        }),
+        cost_cents: 0.5,
+      },
+    });
+    const result = await aggregateScores(pipeline);
+    // slideshow matrix: pacing multiplier 0.5 → 8 × 0.5 = 4
+    expect(result.feature_vector.pacingScore).toBeCloseTo(4, 1);
+    // slideshow matrix: visual_production_quality multiplier 0.8 → 8 × 0.8 = 6.4
+    expect(result.feature_vector.visualProductionQuality).toBeCloseTo(6.4, 1);
+  });
+
+  it("feature_vector uses raw video signals when content_type is null (Wave 0 failure / no video)", async () => {
+    const pipeline = makePipelineResult({
+      wave0Result: { content_type: null, niche: null },
+      geminiResult: {
+        analysis: makeGeminiAnalysis({
+          video_signals: {
+            visual_production_quality: 7,
+            hook_visual_impact: 7,
+            pacing_score: 7,
+            transition_quality: 7,
+          },
+        }),
+        cost_cents: 0.5,
+      },
+    });
+    const result = await aggregateScores(pipeline);
+    expect(result.feature_vector.pacingScore).toBe(7);
+    expect(result.feature_vector.visualProductionQuality).toBe(7);
+  });
+
+  it("matrix application does not mutate the original geminiResult.video_signals (defensive)", async () => {
+    const originalSignals = {
+      visual_production_quality: 8,
+      hook_visual_impact: 8,
+      pacing_score: 8,
+      transition_quality: 8,
+    };
+    const pipeline = makePipelineResult({
+      wave0Result: {
+        content_type: { type: "action", confidence: 0.9 },
+        niche: null,
+      },
+      geminiResult: {
+        analysis: makeGeminiAnalysis({ video_signals: { ...originalSignals } }),
+        cost_cents: 0.5,
+      },
+    });
+    await aggregateScores(pipeline);
+    // Original geminiResult.video_signals must remain unmodified after aggregateScores.
+    expect(pipeline.geminiResult.analysis.video_signals).toEqual(originalSignals);
   });
 });
