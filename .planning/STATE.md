@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: engine-foundation
 milestone_name: Engine Foundation
 status: planning
-stopped_at: Phase 4 context gathered
+stopped_at: Phase 4 planned (3 plans, ready for execution)
 last_updated: "2026-05-18T00:35:49.213Z"
 last_activity: 2026-05-18 -- Phase 03 merged into milestone/engine-foundation
 progress:
@@ -129,8 +129,8 @@ Phase 01 decisions:
 ## Session Continuity
 
 Last session: 2026-05-18T00:35:49.206Z
-Stopped at: Phase 4 context gathered
-Next action: Proceed to Phase 04 per ROADMAP (or re-run smoke tests after next Vercel deploy to flip SC#4/#5 from DEFERRED to MET).
+Stopped at: Phase 4 planned (3 plans, plan-checker PASS)
+Next action: `/gsd-execute-phase 4` to execute Wave 0 — Content Type + Niche Detection. Phase 4 deliverables: 5 new files + 6 modified across 3 waves; key constraints honored (D-03 dual-env, no Supabase migration, selectWeights filter).
 
 Resume command: `cd ~/virtuna-engine-foundation && /gsd-progress`
 
