@@ -1,7 +1,9 @@
 ---
 phase: 02-creator-profile-9-card-interview
 verified: 2026-05-18T00:25:00Z
-status: human_needed
+status: deferred
+deferred_at: 2026-05-18T01:30:00Z
+deferred_reason: "Operator decision — interactive browser UAT deferred to a later session; auto-verified score 5/5 must-haves stands. See 02-HUMAN-UAT.md for the 8 deferred tests."
 score: 5/5 must-haves verified
 overrides_applied: 0
 human_verification:
