@@ -117,6 +117,7 @@ Phase 01 decisions:
 - Phase 02 (Creator Profile) can begin independently
 - Phase 03 (Pipeline Infrastructure) can begin after verifier sign-off
 - **[DEFERRED]** Stage 2 corpus-video persistence — migration `20260512010000_corpus_videos_storage.sql` + `scripts/upload-corpus-videos.ts` are written and committed but NOT pushed to remote Supabase. Blocked on free-tier limits (50 MB per-file cap, 1 GB project Storage cap; corpus is 1.68 GB with 2 files >50 MB). Run after upgrading tier OR when video-mode eval is actually needed (Phase 10/12 per 01-05 SUMMARY deferral). 222/225 mp4s already on disk at `.planning/videos-cache/` (1.68 GB, gitignored).
+- **[DEFERRED]** Phase 06 SC#1 live Gemini audio smoke test — script `scripts/smoke-test-gemini-audio.ts` + fixture README + REQUIREMENTS HOOK-02 migration all committed in Plan 06-01 (commits ccfcedf, f0c0527). Developer approved Wave 1 without running the live test in-band on 2026-05-18; must run `pnpm tsx scripts/smoke-test-gemini-audio.ts` against 3 fixtures (talking_head.mp4, slideshow.mp4, music_heavy.mp4) before Phase 6 ships. If validation gates fail, escalate to `/gsd-discuss-phase 6` to revisit D-A1.
 
 ### Blockers/Concerns
 

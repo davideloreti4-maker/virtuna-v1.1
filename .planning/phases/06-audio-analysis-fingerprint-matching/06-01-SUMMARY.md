@@ -228,3 +228,11 @@ pnpm tsx scripts/smoke-test-gemini-audio.ts
 Then review `tests/fixtures/audio-smoke/smoke-test-results.json` and respond to the checkpoint with one of:
 - **`approved`** — all 3 fixtures show valid audio_signals; Phase 6 proceeds to Plan 02
 - **`blocked: <summary>`** — Gemini reliability too low; return to `/gsd-discuss-phase 6` to revisit D-A1
+
+## Checkpoint Resolution — 2026-05-18
+
+**Decision:** Approved-with-deferred-live-test. Developer chose to mark Plan 06-01 complete and proceed to Wave 2 without running the live Gemini smoke test in-band. Smoke-test script, fixture README, and HOOK-02 traceability migration are all committed and ready to run on demand.
+
+**Risk acknowledged:** Phase 6 SC#1 (Gemini reliability empirically validated) is now DEFERRED-PENDING-LIVE-SMOKE-TEST — analogous to the Phase 03 SC#4/SC#5 deferral pattern. The developer commits to running `pnpm tsx scripts/smoke-test-gemini-audio.ts` against 3 fixtures before Phase 6 ships, and to escalating to `/gsd-discuss-phase 6` if results fall outside the validation gates documented above.
+
+**Status:** Task 3 (live developer smoke test) moves to STATE.md "Pending Todos" as a tracked deferral. Plan 06-01 is now COMPLETE for Phase 6 execution-flow purposes.
