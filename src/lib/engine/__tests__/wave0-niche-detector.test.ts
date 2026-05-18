@@ -216,3 +216,134 @@ describe("detectNiche — Phase 4 Wave 0", () => {
     expect((ends[0] as { cost_cents?: number }).cost_cents).toBeLessThan(0.5);
   });
 });
+
+describe("GAP-04-02 regression — cost-tracking fallback when DeepSeek omits cache breakdown", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("falls back to prompt_tokens × CACHE_MISS_PRICE when cache_hit_tokens AND cache_miss_tokens are absent", async () => {
+    // Mock DeepSeek response with ONLY prompt_tokens (no cache breakdown) — this is the
+    // exact production shape the bug surfaces on (caching disabled / model omits fields).
+    mockCreate.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              primary: VALID_PRIMARY,
+              sub: VALID_SUB,
+              micro: null,
+              confidence: 0.85,
+            }),
+          },
+        },
+      ],
+      usage: {
+        prompt_tokens: 500,
+        completion_tokens: 80,
+        // No prompt_cache_hit_tokens, no prompt_cache_miss_tokens
+      },
+    });
+
+    const cb = vi.fn();
+    const result = await detectNiche(payload, emptyContext, cb);
+    expect(result).not.toBeNull();
+
+    const ends = cb.mock.calls
+      .map((c) => c[0] as StageEvent)
+      .filter((e) => e.type === "stage_end");
+    expect(ends).toHaveLength(1);
+    const costCents = (ends[0] as { cost_cents?: number }).cost_cents;
+    expect(costCents).toBeDefined();
+
+    // Compute expected: (500 × CACHE_MISS_PRICE + 80 × OUTPUT_PRICE) × 100
+    // CACHE_MISS_PRICE = 0.14 / 1_000_000 = 1.4e-7
+    // OUTPUT_PRICE = 0.28 / 1_000_000 = 2.8e-7
+    const CACHE_MISS_PRICE = 0.14 / 1_000_000;
+    const OUTPUT_PRICE = 0.28 / 1_000_000;
+    const expected = (500 * CACHE_MISS_PRICE + 80 * OUTPUT_PRICE) * 100;
+    // Note: cost_cents is emitted via +costCents.toFixed(4) in the stage_end event,
+    // so we can only assert 4 decimal places of precision.
+    expect(costCents).toBeCloseTo(expected, 4);
+    expect(costCents).toBeGreaterThan(0);
+  });
+
+  it("falls back when cache fields are present but both zero (edge case)", async () => {
+    mockCreate.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              primary: VALID_PRIMARY,
+              sub: VALID_SUB,
+              micro: null,
+              confidence: 0.85,
+            }),
+          },
+        },
+      ],
+      usage: {
+        prompt_tokens: 500,
+        prompt_cache_hit_tokens: 0,
+        prompt_cache_miss_tokens: 0,
+        completion_tokens: 80,
+      },
+    });
+
+    const cb = vi.fn();
+    const result = await detectNiche(payload, emptyContext, cb);
+    expect(result).not.toBeNull();
+
+    const ends = cb.mock.calls
+      .map((c) => c[0] as StageEvent)
+      .filter((e) => e.type === "stage_end");
+    const costCents = (ends[0] as { cost_cents?: number }).cost_cents;
+    // Fallback triggers because hasCacheBreakdown is false → input cost from prompt_tokens
+    expect(costCents).toBeGreaterThan(0);
+  });
+
+  it("preserves existing cost math when cache breakdown is present (regression)", async () => {
+    mockCreate.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              primary: VALID_PRIMARY,
+              sub: VALID_SUB,
+              micro: null,
+              confidence: 0.85,
+            }),
+          },
+        },
+      ],
+      usage: {
+        prompt_tokens: 500,
+        prompt_cache_hit_tokens: 200,
+        prompt_cache_miss_tokens: 300,
+        completion_tokens: 80,
+      },
+    });
+
+    const cb = vi.fn();
+    const result = await detectNiche(payload, emptyContext, cb);
+    expect(result).not.toBeNull();
+
+    const ends = cb.mock.calls
+      .map((c) => c[0] as StageEvent)
+      .filter((e) => e.type === "stage_end");
+    const costCents = (ends[0] as { cost_cents?: number }).cost_cents;
+
+    // Expected: (200 × CACHE_HIT_PRICE + 300 × CACHE_MISS_PRICE + 80 × OUTPUT_PRICE) × 100
+    const CACHE_HIT_PRICE = 0.0028 / 1_000_000;
+    const CACHE_MISS_PRICE = 0.14 / 1_000_000;
+    const OUTPUT_PRICE = 0.28 / 1_000_000;
+    const expected =
+      (200 * CACHE_HIT_PRICE + 300 * CACHE_MISS_PRICE + 80 * OUTPUT_PRICE) * 100;
+    // Note: cost_cents is emitted via +costCents.toFixed(4) in the stage_end event,
+    // so we can only assert 4 decimal places of precision.
+    expect(costCents).toBeCloseTo(expected, 4);
+    // Sanity: cache-hit price is much lower than miss, so cost should be smaller than
+    // the fallback-equivalent of 500 × CACHE_MISS_PRICE × 100
+    expect(costCents).toBeLessThan(500 * CACHE_MISS_PRICE * 100 + 80 * OUTPUT_PRICE * 100);
+  });
+});
