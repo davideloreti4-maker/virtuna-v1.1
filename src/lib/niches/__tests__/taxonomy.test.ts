@@ -5,6 +5,7 @@ import {
   getPrimaryLabel,
   getSubLabel,
   type NicheTree,
+  type PersonaMix,
 } from "@/lib/niches/taxonomy";
 
 describe("NICHE_TREE shape", () => {
@@ -83,6 +84,55 @@ describe("getSubLabel", () => {
 
   it("returns null for an unknown primary even if sub slug is valid elsewhere", () => {
     expect(getSubLabel("nope", "yoga")).toBeNull();
+  });
+});
+
+describe("Phase 4 — personas + benchmark_filters per primary niche", () => {
+  it("every primary has a non-empty personas array", () => {
+    for (const primary of NICHE_TREE) {
+      expect(primary.personas).toBeDefined();
+      expect(Array.isArray(primary.personas)).toBe(true);
+      expect(primary.personas.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("personas weight sums to exactly 10 per primary (D-13: 10-persona allocation)", () => {
+    for (const primary of NICHE_TREE) {
+      const sum = primary.personas.reduce((acc: number, p: PersonaMix) => acc + p.weight, 0);
+      expect(sum).toBe(10);
+    }
+  });
+
+  it("every primary has a non-empty benchmark_filters.tag_filters array (≥3 entries)", () => {
+    for (const primary of NICHE_TREE) {
+      expect(primary.benchmark_filters).toBeDefined();
+      expect(Array.isArray(primary.benchmark_filters.tag_filters)).toBe(true);
+      expect(primary.benchmark_filters.tag_filters.length).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("every primary has a positive integer min_corpus_size (≥ 10)", () => {
+    for (const primary of NICHE_TREE) {
+      expect(primary.benchmark_filters.min_corpus_size).toBeGreaterThanOrEqual(10);
+      expect(Number.isInteger(primary.benchmark_filters.min_corpus_size)).toBe(true);
+    }
+  });
+
+  it("persona archetypes use documented vocabulary (fyp-/niche-/loyalist-/cross-niche-)", () => {
+    const validPrefixes = /^(fyp-|niche-|loyalist-|cross-niche-)/;
+    for (const primary of NICHE_TREE) {
+      for (const p of primary.personas) {
+        expect(p.archetype).toMatch(validPrefixes);
+      }
+    }
+  });
+
+  it("tag_filters contain only lowercase alphanumeric tokens (no # prefix, no spaces)", () => {
+    for (const primary of NICHE_TREE) {
+      for (const tag of primary.benchmark_filters.tag_filters) {
+        expect(tag).toMatch(/^[a-z0-9]+$/);
+      }
+    }
   });
 });
 

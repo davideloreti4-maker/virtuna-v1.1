@@ -200,13 +200,11 @@ export interface SignalAvailability {
   ml: boolean;
   rules: boolean;
   trends: boolean;
+  content_type: boolean;  // NEW Phase 4 (D-20) — set by aggregator from wave0Result.content_type !== null
+  niche: boolean;          // NEW Phase 4 (D-20) — set by aggregator from wave0Result.niche !== null
 }
 
-/** Wave 0 no-op stub return — Phase 4 fills content_type + niche. */
-export interface Wave0Result {
-  content_type: string | null;
-  niche: { primary: string; sub: string; micro: string } | null;
-}
+// Wave0Result now defined below as z.infer<typeof Wave0ResultSchema> — see Phase 4 block.
 
 /** Wave 3 persona simulation result — Phase 7 fills with real V3 reactions. */
 export interface PersonaSimulationResult {
@@ -264,6 +262,48 @@ export const GeminiVideoResponseSchema = GeminiResponseSchema.extend({
 export type GeminiVideoAnalysis = z.infer<typeof GeminiVideoResponseSchema>;
 
 export type GeminiVideoSignals = z.infer<typeof GeminiVideoSignalsSchema>;
+
+// =====================================================
+// Phase 4 — Wave 0 Result Shapes (widens Wave0Result, adds Zod validation)
+// Per CONTEXT D-08, D-11 + RESEARCH Topic #8.
+// =====================================================
+
+export const ContentTypeEnumSchema = z.enum([
+  "talking_head",
+  "b_roll",
+  "slideshow",
+  "action",
+  "tutorial",
+  "vlog",
+  "other",
+] as const);
+
+export type ContentTypeSlug = z.infer<typeof ContentTypeEnumSchema>;
+
+export const Wave0ContentTypeResultSchema = z.object({
+  type: ContentTypeEnumSchema,
+  confidence: z.number().min(0).max(1),
+  warning: z.enum(["mixed_content_detected", "low_confidence"]).optional(),
+});
+export type Wave0ContentTypeResult = z.infer<typeof Wave0ContentTypeResultSchema>;
+
+export const Wave0NicheResultSchema = z.object({
+  primary: z.string(),
+  sub: z.string(),
+  micro: z.string().nullable(),
+  confidence: z.number().min(0).max(1),
+  source: z.enum(["ai", "card1_fallback"]),
+  warning: z
+    .enum(["niche_drift_detected", "niche_low_confidence_no_fallback"])
+    .optional(),
+});
+export type Wave0NicheResult = z.infer<typeof Wave0NicheResultSchema>;
+
+export const Wave0ResultSchema = z.object({
+  content_type: Wave0ContentTypeResultSchema.nullable(),
+  niche: Wave0NicheResultSchema.nullable(),
+});
+export type Wave0Result = z.infer<typeof Wave0ResultSchema>;
 
 export const SuggestionSchema = z.object({
   text: z.string(),
