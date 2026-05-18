@@ -132,7 +132,7 @@ describe("normalizeInput — input modes", () => {
     expect(result.video_url).toBe("https://tiktok.com/@user/video/123");
   });
 
-  it("handles video_upload mode", () => {
+  it("handles video_upload mode (Option A — video_url is null; video_storage_path carries the key)", () => {
     const result = normalizeInput({
       input_mode: "video_upload",
       video_storage_path: "uploads/vid.mp4",
@@ -140,7 +140,38 @@ describe("normalizeInput — input modes", () => {
     } as AnalysisInput);
 
     expect(result.input_mode).toBe("video_upload");
-    expect(result.video_url).toBe("uploads/vid.mp4");
+    // GAP-04-01 regression-lock: video_url is NEVER aliased to a storage key. The detector
+    // reads video_storage_path explicitly; re-introducing the alias would make fetch() throw
+    // on the raw key in production (the original bug).
+    expect(result.video_url).toBeNull();
+    expect(result.video_storage_path).toBe("uploads/vid.mp4");
+  });
+
+  it("GAP-04-01 regression-lock: tiktok_url mode does NOT populate video_storage_path", () => {
+    const result = normalizeInput({
+      input_mode: "tiktok_url",
+      tiktok_url: "https://tiktok.com/@user/video/123",
+      content_type: "video",
+    } as AnalysisInput);
+
+    expect(result.video_url).toBe("https://tiktok.com/@user/video/123");
+    // Locks the inverse contract: tiktok_url mode never leaks into video_storage_path
+    expect(result.video_storage_path).toBeNull();
+  });
+
+  it("GAP-04-01 regression-lock: video_upload mode never aliases video_storage_path into video_url", () => {
+    // Production-shaped raw storage key (no scheme, no host)
+    const result = normalizeInput({
+      input_mode: "video_upload",
+      video_storage_path: "user-abc/private/video.mp4",
+      content_type: "video",
+    } as AnalysisInput);
+
+    // The original bug: video_url was set to "user-abc/private/video.mp4" (a non-URL),
+    // and fetch(payload.video_url) threw TypeError in production. This lock prevents the
+    // alias from coming back even if a future refactor "innocently" adds `?? input.video_storage_path`.
+    expect(result.video_url).toBeNull();
+    expect(result.video_storage_path).toBe("user-abc/private/video.mp4");
   });
 
   it("defaults optional fields to null", () => {
