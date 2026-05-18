@@ -80,8 +80,14 @@ export async function detectNiche(
       clearTimeout(timeout);
     }
 
-    // Cache telemetry — Phase 3 D-12 pattern
+    // Cache telemetry — Phase 3 D-12 pattern with GAP-04-02 fallback for missing cache breakdown.
+    // When DeepSeek omits prompt_cache_hit_tokens / prompt_cache_miss_tokens (caching disabled,
+    // model variant doesn't report cache stats, transient infra events), fall back to
+    // prompt_tokens × CACHE_MISS_PRICE so input cost is NEVER silently 0. Mirrors
+    // deepseek.ts:338-362 (calculateDeepSeekCost) — single source of truth for DeepSeek cost
+    // semantics in the codebase.
     const usage = response.usage as unknown as {
+      prompt_tokens?: number;
       prompt_cache_hit_tokens?: number;
       prompt_cache_miss_tokens?: number;
       completion_tokens?: number;
@@ -89,7 +95,11 @@ export async function detectNiche(
     const cacheHit = usage?.prompt_cache_hit_tokens ?? 0;
     const cacheMiss = usage?.prompt_cache_miss_tokens ?? 0;
     const completion = usage?.completion_tokens ?? 0;
-    costCents = (cacheHit * CACHE_HIT_PRICE + cacheMiss * CACHE_MISS_PRICE + completion * OUTPUT_PRICE) * 100;
+    const hasCacheBreakdown = cacheHit > 0 || cacheMiss > 0;
+    const inputCost = hasCacheBreakdown
+      ? cacheHit * CACHE_HIT_PRICE + cacheMiss * CACHE_MISS_PRICE
+      : (usage?.prompt_tokens ?? 0) * CACHE_MISS_PRICE;
+    costCents = (inputCost + completion * OUTPUT_PRICE) * 100;
 
     const text = response.choices[0]?.message?.content ?? "{}";
     const raw = JSON.parse(text);
