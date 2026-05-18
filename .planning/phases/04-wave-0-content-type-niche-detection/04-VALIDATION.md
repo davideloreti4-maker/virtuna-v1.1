@@ -58,7 +58,7 @@ created: 2026-05-18
 | D-17/D-18 | creatorContext pre-fetch + reuse | integration | `pnpm test src/lib/engine/__tests__/pipeline.test.ts -t "creator context reuse"` | ✅ existing — extend | ⬜ pending |
 | D-20 | `signal_availability.content_type` + `.niche` flags set | unit | `pnpm test src/lib/engine/__tests__/aggregator.test.ts -t "signal_availability"` | ✅ existing — extend | ⬜ pending |
 | Regression | All 549 existing tests still pass | smoke | `pnpm test` (full suite) | ✅ existing | ⬜ pending |
-| D-22 (eval bypass) | Wave 0 runs fresh under `bypassCache` | unit | `pnpm test src/lib/engine/__tests__/wave0-orchestration.test.ts -t "bypassCache"` | ❌ Wave 0 — new | ⬜ pending |
+| D-22 (eval bypass) | Wave 0 runs fresh under `bypassCache` | unit | `pnpm test src/lib/engine/__tests__/wave0-orchestration.test.ts -t "bypassCache"` | ❌ Wave 0 — new (planned in 04-03 Task 1, Test 8) | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
