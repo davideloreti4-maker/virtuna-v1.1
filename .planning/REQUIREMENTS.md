@@ -143,7 +143,7 @@
 <!-- Top-K similar competitor videos as evidence. -->
 
 - [ ] **RETRIEVAL-01**: `pgvector` extension installed in Supabase
-- [ ] **RETRIEVAL-02**: Competitor video embedding pipeline (embeddings computed at scrape time, stored in `competitor_videos.embedding` column)
+- [ ] **RETRIEVAL-02**: Two-pool video embedding pipeline — embeddings computed at scrape time (Apify webhook → `scraped_videos.embedding`) AND at corpus build time (`scripts/build-corpus.ts` → `training_corpus.embedding`). Reflects Phase 8 D-01 locked decision: `competitor_videos.embedding` rejected (per-user RLS pool too small + system-wide pattern-match is the actual use case).
 - [ ] **RETRIEVAL-03**: Predict-time embedding of input video summary (text-embedding-3-small or Gemini embedding)
 - [ ] **RETRIEVAL-04**: Top-K similarity search (K=5) filtered by niche, platform, creator tier
 - [ ] **RETRIEVAL-05**: Similar videos returned as `retrieval_evidence` field on prediction (top 5 with similarity scores + outcomes)
@@ -271,3 +271,9 @@
 | PROFILE-17 | 02 | 02-06 | Complete |
 | INT-02 | 02 | 02-04 | Complete |
 | INT-04 | 02 | 02-05 | Complete |
+| RETRIEVAL-01 | 08 | 08-01, 08-05 | Planned |
+| RETRIEVAL-02 | 08 | 08-01, 08-05 | Planned |
+| RETRIEVAL-03 | 08 | 08-03, 08-04 | Planned |
+| RETRIEVAL-04 | 08 | 08-04 | Planned |
+| RETRIEVAL-05 | 08 | 08-04 | Planned |
+| RETRIEVAL-06 | 08 | 08-05 | Planned |
