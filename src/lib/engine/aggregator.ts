@@ -542,6 +542,11 @@ export async function aggregateScores(
     input_mode: pipelineResult.payload.input_mode,
     has_video: hasVideo,
     signal_availability: availability, // Phase 3 — provenance surfaced for route to persist
+    // Phase 7 (Plan 07-02a) — placeholder field assignments so the widened PredictionResult
+    // compiles. Plan 07-03 owns the FULL integration: optional `behavioralSource` param,
+    // `signal_availability.personas` flag, real aggregator reads of personaBehavioralAggregate.
+    persona_behavioral_aggregate: pipelineResult.personaBehavioralAggregate ?? null,
+    persona_simulation_results: pipelineResult.wave3Result,
   };
 
   // -------------------------------------------------
