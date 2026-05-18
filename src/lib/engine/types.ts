@@ -171,6 +171,7 @@ export interface PredictionResult {
     ml: number; // 0.15
     rules: number; // 0.15
     trends: number; // 0.10
+    retrieval: number;  // NEW Phase 8 (D-03b) — 0.05 base; redistributed when SignalAvailability.retrieval = false
   };
 
   // Meta
@@ -184,6 +185,10 @@ export interface PredictionResult {
 
   /** Phase 3 — provenance flags surfaced from aggregator availability. */
   signal_availability: SignalAvailability;
+
+  // Phase 8 (D-11) — retrieval signal output
+  retrieval_score: number | null;            // D-03 similarity-weighted bucket vote in [0,1]; null when availability.retrieval = false
+  retrieval_evidence: RetrievalEvidenceItem[];  // D-02 shape, max 5 items
 }
 
 // =====================================================
@@ -203,6 +208,7 @@ export interface SignalAvailability {
   trends: boolean;
   content_type: boolean;  // NEW Phase 4 (D-20) — set by aggregator from wave0Result.content_type !== null
   niche: boolean;          // NEW Phase 4 (D-20) — set by aggregator from wave0Result.niche !== null
+  retrieval: boolean;      // NEW Phase 8 (D-10) — true when ≥1 match survives + min_corpus_size gate passes
 }
 
 // Wave0Result now defined below as z.infer<typeof Wave0ResultSchema> — see Phase 4 block.
