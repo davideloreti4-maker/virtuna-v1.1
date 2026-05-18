@@ -11,10 +11,22 @@ import {
   type GeminiAnalysis,
   type GeminiVideoAnalysis,
 } from "./types";
+// Phase 5: per-model cost helper moved to ./gemini/cost.ts (Pitfall #9 — Pro pricing).
+// Legacy gemini.ts callers pass GEMINI_MODEL explicitly via the shim to preserve current
+// Flash behavior at byte-identical cost numbers (D-11 invariant).
+import { calculateCost as calculateCostPerModel } from "./gemini/cost";
 
 const log = createLogger({ module: "gemini" });
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+// Phase 5 D-01: per-segment Gemini 3 preview models — env-overridable per D-02.
+// Defaults are preview-suffixed (Pitfall: bare `gemini-3-pro` / `gemini-3-flash` aliases
+// are invalid SDK strings as of 2026-05-18 per wave0/content-type-detector.ts:14).
+// Migration to GA is a config flip — change the env-var default when Google promotes
+// the models. No code change required.
+export const GEMINI_HOOK_MODEL = process.env.GEMINI_HOOK_MODEL ?? "gemini-3.1-pro-preview";
+export const GEMINI_BODY_MODEL = process.env.GEMINI_BODY_MODEL ?? "gemini-3-flash-preview";
+export const GEMINI_CTA_MODEL  = process.env.GEMINI_CTA_MODEL  ?? "gemini-3-flash-preview";
 const MAX_RETRIES = 2; // 3 total attempts
 const TEXT_TIMEOUT_MS = 15_000;
 const VIDEO_TIMEOUT_MS = 30_000;
@@ -22,11 +34,10 @@ const VIDEO_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
 const VIDEO_POLL_INTERVAL_MS = 500;
 const VIDEO_POLL_TIMEOUT_MS = 60_000;
 
-// Flash pricing (2025): input $0.15/1M tokens, output $0.60/1M tokens
-const INPUT_PRICE_PER_TOKEN = 0.15 / 1_000_000;
-const OUTPUT_PRICE_PER_TOKEN = 0.60 / 1_000_000;
-const FALLBACK_INPUT_TOKENS = 2000;
-const FALLBACK_OUTPUT_TOKENS = 800;
+// Flash pricing (2025): $0.15/M in, $0.60/M out.
+// Phase 5: per-model rates + fallback tokens moved to ./gemini/cost.ts; the legacy
+// `calculateCost` is now a shim that pins GEMINI_MODEL so existing text + video paths
+// continue to bill at byte-identical rates (D-11 invariant).
 
 let client: GoogleGenAI | null = null;
 
@@ -88,8 +99,9 @@ function getClient(): GoogleGenAI {
   return client;
 }
 
-/** Strip markdown code fences from LLM output */
-function stripFences(text: string): string {
+/** Strip markdown code fences from LLM output.
+ *  Phase 5: exported so segment helpers in ./gemini/* can reuse the same pattern. */
+export function stripFences(text: string): string {
   const fenced = text.match(/```(?:json)?\n?([\s\S]*?)\n?```/);
   return fenced ? fenced[1]!.trim() : text.trim();
 }
@@ -139,14 +151,26 @@ async function loadCalibrationData(): Promise<CalibrationData | null> {
   }
 }
 
-/** Calculate cost in cents from token usage metadata */
+/**
+ * Calculate cost in cents from token usage metadata.
+ *
+ * Phase 5 D-11 SHIM: delegates to the per-model helper at ./gemini/cost.ts so legacy
+ * text + video call sites (line ~357, line ~497) continue to invoke the original
+ * 2-arg signature without modification. The shim pins GEMINI_MODEL pricing so behavior
+ * stays byte-identical to the pre-Plan-01 single-model implementation.
+ *
+ * @deprecated Pass model name explicitly via `calculateCost(model, usageMetadata)` from
+ *             `./gemini/cost`. Phase 5 segment helpers (Plan 02) call the per-model
+ *             helper directly.
+ */
 function calculateCost(
   promptTokens: number | undefined,
-  candidateTokens: number | undefined
+  candidateTokens: number | undefined,
 ): number {
-  const input = promptTokens ?? FALLBACK_INPUT_TOKENS;
-  const output = candidateTokens ?? FALLBACK_OUTPUT_TOKENS;
-  return (input * INPUT_PRICE_PER_TOKEN + output * OUTPUT_PRICE_PER_TOKEN) * 100;
+  return calculateCostPerModel(GEMINI_MODEL, {
+    promptTokenCount: promptTokens,
+    candidatesTokenCount: candidateTokens,
+  });
 }
 
 /**
