@@ -19,10 +19,33 @@
 
 export type NicheSubItem = { slug: string; label: string };
 
+/**
+ * Phase 4 (D-13): persona allocation per primary niche.
+ * Consumed by Phase 7's 10-persona simulation. Weight is the count out of 10 personas.
+ * Sum of weights across the mix MUST equal 10 (enforced by taxonomy.test.ts).
+ */
+export type PersonaMix = {
+  archetype: string;
+  weight: number;
+};
+
+/**
+ * Phase 4 (D-14): benchmark retrieval filter per primary niche.
+ * Consumed by Phase 8's pgvector top-K query against scraped_videos.
+ * tag_filters: hashtag tokens commonly attached to videos in this niche (no `#` prefix).
+ * min_corpus_size: minimum number of corpus videos needed before retrieval signal is trusted.
+ */
+export type BenchmarkFilters = {
+  tag_filters: string[];
+  min_corpus_size: number;
+};
+
 export type NichePrimary = {
   slug: string;
   label: string;
   subs: NicheSubItem[];
+  personas: PersonaMix[];              // NEW Phase 4 (D-13)
+  benchmark_filters: BenchmarkFilters; // NEW Phase 4 (D-14)
 };
 
 export type NicheTree = NichePrimary[];
@@ -42,6 +65,18 @@ export const NICHE_TREE: NicheTree = [
       { slug: "tutorials", label: "Tutorials" },
       { slug: "hauls", label: "Hauls" },
     ],
+    personas: [
+      { archetype: "fyp-female-gen-z", weight: 3 },
+      { archetype: "fyp-female-millennial", weight: 2 },
+      { archetype: "fyp-balanced-gen-z", weight: 1 },
+      { archetype: "niche-beauty-enthusiast", weight: 2 },
+      { archetype: "loyalist-existing-follower", weight: 1 },
+      { archetype: "cross-niche-curious", weight: 1 },
+    ],
+    benchmark_filters: {
+      tag_filters: ["beauty", "makeup", "skincare", "skincareroutine", "grwm", "makeuptutorial", "haircare", "beautytips"],
+      min_corpus_size: 20,
+    },
   },
   {
     slug: "fitness",
@@ -58,6 +93,19 @@ export const NICHE_TREE: NicheTree = [
       { slug: "powerlifting", label: "Powerlifting" },
       { slug: "bodybuilding", label: "Bodybuilding" },
     ],
+    personas: [
+      { archetype: "fyp-male-gen-z", weight: 2 },
+      { archetype: "fyp-female-gen-z", weight: 2 },
+      { archetype: "fyp-male-millennial", weight: 1 },
+      { archetype: "fyp-female-millennial", weight: 1 },
+      { archetype: "niche-fitness-enthusiast", weight: 2 },
+      { archetype: "loyalist-existing-follower", weight: 1 },
+      { archetype: "cross-niche-curious", weight: 1 },
+    ],
+    benchmark_filters: {
+      tag_filters: ["fitness", "gym", "workout", "fittok", "fitnessmotivation", "gymtok", "yoga", "calisthenics", "homeworkout"],
+      min_corpus_size: 20,
+    },
   },
   {
     slug: "education",
@@ -72,6 +120,19 @@ export const NICHE_TREE: NicheTree = [
       { slug: "self-improvement", label: "Self-Improvement" },
       { slug: "study-tips", label: "Study Tips" },
     ],
+    personas: [
+      { archetype: "fyp-male-gen-z", weight: 2 },
+      { archetype: "fyp-male-millennial", weight: 2 },
+      { archetype: "fyp-balanced-gen-z", weight: 1 },
+      { archetype: "fyp-balanced-millennial", weight: 1 },
+      { archetype: "niche-education-enthusiast", weight: 2 },
+      { archetype: "loyalist-existing-follower", weight: 1 },
+      { archetype: "cross-niche-curious", weight: 1 },
+    ],
+    benchmark_filters: {
+      tag_filters: ["learnontiktok", "edutok", "studytok", "learn", "coding", "programming", "personalfinance", "studytips", "careertips"],
+      min_corpus_size: 15,
+    },
   },
   {
     slug: "comedy",
@@ -87,6 +148,18 @@ export const NICHE_TREE: NicheTree = [
       { slug: "character-persona", label: "Character / Persona" },
       { slug: "reactions", label: "Reactions" },
     ],
+    personas: [
+      { archetype: "fyp-balanced-gen-z", weight: 3 },
+      { archetype: "fyp-balanced-millennial", weight: 2 },
+      { archetype: "fyp-female-gen-z", weight: 1 },
+      { archetype: "niche-comedy-enthusiast", weight: 2 },
+      { archetype: "loyalist-existing-follower", weight: 1 },
+      { archetype: "cross-niche-curious", weight: 1 },
+    ],
+    benchmark_filters: {
+      tag_filters: ["comedy", "funny", "humor", "skit", "lol", "memes", "fyp", "comedyskit", "tiktokcomedy"],
+      min_corpus_size: 25,
+    },
   },
   {
     slug: "lifestyle",
@@ -101,6 +174,19 @@ export const NICHE_TREE: NicheTree = [
       { slug: "sustainable-living", label: "Sustainable Living" },
       { slug: "hauls", label: "Hauls" },
     ],
+    personas: [
+      { archetype: "fyp-female-gen-z", weight: 2 },
+      { archetype: "fyp-female-millennial", weight: 2 },
+      { archetype: "fyp-balanced-gen-z", weight: 1 },
+      { archetype: "fyp-balanced-millennial", weight: 1 },
+      { archetype: "niche-lifestyle-enthusiast", weight: 2 },
+      { archetype: "loyalist-existing-follower", weight: 1 },
+      { archetype: "cross-niche-curious", weight: 1 },
+    ],
+    benchmark_filters: {
+      tag_filters: ["lifestyle", "dayinmylife", "vlog", "routine", "morningroutine", "aesthetic", "thatgirl", "lifestyleblogger"],
+      min_corpus_size: 20,
+    },
   },
   {
     slug: "food-cooking",
@@ -115,6 +201,19 @@ export const NICHE_TREE: NicheTree = [
       { slug: "drink-cocktails", label: "Drink / Cocktails" },
       { slug: "food-hacks", label: "Food Hacks" },
     ],
+    personas: [
+      { archetype: "fyp-female-gen-z", weight: 2 },
+      { archetype: "fyp-female-millennial", weight: 2 },
+      { archetype: "fyp-male-millennial", weight: 1 },
+      { archetype: "fyp-balanced-gen-z", weight: 1 },
+      { archetype: "niche-food-enthusiast", weight: 2 },
+      { archetype: "loyalist-existing-follower", weight: 1 },
+      { archetype: "cross-niche-curious", weight: 1 },
+    ],
+    benchmark_filters: {
+      tag_filters: ["food", "foodtok", "recipe", "cooking", "baking", "easyrecipe", "foodie", "homemade", "mealprep"],
+      min_corpus_size: 20,
+    },
   },
   {
     slug: "tech-gadgets",
@@ -129,6 +228,19 @@ export const NICHE_TREE: NicheTree = [
       { slug: "smart-home", label: "Smart Home" },
       { slug: "unboxings", label: "Unboxings" },
     ],
+    personas: [
+      { archetype: "fyp-male-gen-z", weight: 2 },
+      { archetype: "fyp-male-millennial", weight: 2 },
+      { archetype: "fyp-balanced-millennial", weight: 1 },
+      { archetype: "fyp-balanced-gen-z", weight: 1 },
+      { archetype: "niche-tech-enthusiast", weight: 2 },
+      { archetype: "loyalist-existing-follower", weight: 1 },
+      { archetype: "cross-niche-curious", weight: 1 },
+    ],
+    benchmark_filters: {
+      tag_filters: ["tech", "techtok", "gadgets", "techreview", "iphone", "android", "smartphone", "ai", "aitools", "apps"],
+      min_corpus_size: 15,
+    },
   },
   {
     slug: "gaming",
@@ -143,6 +255,18 @@ export const NICHE_TREE: NicheTree = [
       { slug: "esports", label: "Esports" },
       { slug: "indie-games", label: "Indie Games" },
     ],
+    personas: [
+      { archetype: "fyp-male-gen-z", weight: 3 },
+      { archetype: "fyp-male-millennial", weight: 1 },
+      { archetype: "fyp-balanced-gen-z", weight: 2 },
+      { archetype: "niche-gaming-enthusiast", weight: 2 },
+      { archetype: "loyalist-existing-follower", weight: 1 },
+      { archetype: "cross-niche-curious", weight: 1 },
+    ],
+    benchmark_filters: {
+      tag_filters: ["gaming", "gamingtok", "gamer", "gameplay", "videogames", "minecraft", "fortnite", "valorant", "mobilegames"],
+      min_corpus_size: 20,
+    },
   },
   {
     slug: "fashion-style",
@@ -157,6 +281,18 @@ export const NICHE_TREE: NicheTree = [
       { slug: "style-tips", label: "Style Tips" },
       { slug: "outfit-inspiration", label: "Outfit Inspiration" },
     ],
+    personas: [
+      { archetype: "fyp-female-gen-z", weight: 3 },
+      { archetype: "fyp-female-millennial", weight: 2 },
+      { archetype: "fyp-balanced-gen-z", weight: 1 },
+      { archetype: "niche-fashion-enthusiast", weight: 2 },
+      { archetype: "loyalist-existing-follower", weight: 1 },
+      { archetype: "cross-niche-curious", weight: 1 },
+    ],
+    benchmark_filters: {
+      tag_filters: ["fashion", "fashiontiktok", "outfit", "ootd", "style", "thrifted", "streetwear", "fashioninspo", "stylingtips"],
+      min_corpus_size: 20,
+    },
   },
   {
     slug: "music-performance",
@@ -171,6 +307,19 @@ export const NICHE_TREE: NicheTree = [
       { slug: "live-performance", label: "Live Performance" },
       { slug: "music-tutorials", label: "Music Tutorials" },
     ],
+    personas: [
+      { archetype: "fyp-balanced-gen-z", weight: 3 },
+      { archetype: "fyp-balanced-millennial", weight: 1 },
+      { archetype: "fyp-female-gen-z", weight: 1 },
+      { archetype: "fyp-male-gen-z", weight: 1 },
+      { archetype: "niche-music-enthusiast", weight: 2 },
+      { archetype: "loyalist-existing-follower", weight: 1 },
+      { archetype: "cross-niche-curious", weight: 1 },
+    ],
+    benchmark_filters: {
+      tag_filters: ["music", "singing", "musician", "songwriter", "dance", "danceperformance", "instrument", "musicproducer"],
+      min_corpus_size: 20,
+    },
   },
 ];
 
