@@ -7,6 +7,7 @@ depends_on: ["07-01"]
 files_modified:
   - src/lib/engine/types.ts
   - src/lib/engine/pipeline.ts
+  - src/lib/engine/aggregator.ts
   - src/lib/engine/__tests__/factories.ts
   - src/lib/engine/wave3/aggregator.ts
   - src/lib/engine/__tests__/wave3-aggregator.test.ts
@@ -34,6 +35,8 @@ must_haves:
       contains: "personaBehavioralAggregate"
     - path: src/lib/engine/__tests__/factories.ts
       provides: "makePipelineResult factory default `personaBehavioralAggregate: null` — preserves existing test callers"
+    - path: src/lib/engine/aggregator.ts
+      provides: "Placeholder PredictionResult field assignments — persona_behavioral_aggregate + persona_simulation_results — full integration in Plan 07-03"
     - path: src/lib/engine/wave3/aggregator.ts
       provides: "aggregatePersonaResults(survivors, threshold) — per-metric different rule (mean for completion; top-3-weighted 60/40 for share/comment/save) + tie-break + ≥7 threshold check"
       exports: ["aggregatePersonaResults", "AggregationResult", "TOP_N", "TOP_WEIGHT_TOTAL", "REMAINING_WEIGHT_TOTAL"]
@@ -55,11 +58,11 @@ must_haves:
 ---
 
 <objective>
-Phase 7 foundation: widen the type system (PredictionResult + PipelineResult), update the test factory, and ship the pure-math aggregator helper (`wave3/aggregator.ts`). This plan is intentionally SCOPED narrow — no `wave3.ts` rewrite, no `aggregator.ts` integration, no orchestration tests. Those live in Plan 07-02b (Wave 3) and Plan 07-03 (Wave 4).
+Phase 7 foundation: widen the type system (PredictionResult + PipelineResult), update the test factory, ship the pure-math aggregator helper (`wave3/aggregator.ts`), and add placeholder PredictionResult field assignments to `aggregator.ts` so the widened type compiles. This plan is intentionally SCOPED narrow — no `wave3.ts` rewrite, no full `aggregator.ts` integration (signal_availability.personas + behavioralSource swap), no orchestration tests. Those live in Plan 07-02b (Wave 3) and Plan 07-03 (Wave 4).
 
 Purpose (B-4 split rationale): the original 07-02 plan touched 9-10 files and bundled the full `wave3.ts` rewrite (~280 LOC) with `wave3.test.ts` (~300 LOC). At >100K-token execution cost it risked context degradation mid-task. Splitting at the type/aggregator boundary gives the orchestrator (07-02b) a clean foundation: the types exist, the factories produce correct defaults, and the aggregator helper passes unit tests independently.
 
-Output: 5 files touched. Pure additive type widening + one new pure-function module + one new test file. Zero changes to `wave3.ts`, `wave0.ts`, `wave0/*`, `aggregator.ts`, `deepseek.ts`, `taxonomy.ts`, route handlers.
+Output: 6 files touched. Pure additive type widening + one new pure-function module + one new test file + additive placeholder field assignments to `aggregator.ts` (legacy `behavioral_predictions` consumer untouched; full integration with `signal_availability.personas` + optional `behavioralSource` param lands in Plan 07-03). Zero changes to `wave3.ts`, `wave0.ts`, `wave0/*`, `deepseek.ts`, `taxonomy.ts`, route handlers.
 </objective>
 
 <execution_context>
@@ -533,7 +536,7 @@ describe("aggregatePersonaResults (Phase 7 D-06 + D-13)", () => {
 - Both tasks complete with `<automated>` commands exiting 0
 - `pnpm vitest run src/lib/engine/__tests__/wave3-aggregator.test.ts src/lib/engine/__tests__/factories src/lib/engine/__tests__/aggregator` exits 0
 - `pnpm tsc --noEmit` shows no new errors
-- `git diff --name-only` shows ONLY the 5 files in `files_modified` frontmatter
+- `git diff --name-only` shows exactly these 6 files: `src/lib/engine/types.ts`, `src/lib/engine/pipeline.ts`, `src/lib/engine/aggregator.ts`, `src/lib/engine/__tests__/factories.ts`, `src/lib/engine/wave3/aggregator.ts`, `src/lib/engine/__tests__/wave3-aggregator.test.ts`
 </verification>
 
 <success_criteria>

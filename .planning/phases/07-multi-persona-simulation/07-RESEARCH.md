@@ -1334,7 +1334,7 @@ const predictionPersonas = await aggregateScores(pipelineResult, undefined, { be
 
 **If this table is empty:** This table is NOT empty. The planner and `gsd-discuss-phase` should pay particular attention to A1 (pricing) and A4 (Phase 4 persona field legacy status) — both are load-bearing but verified at research time; both should be re-confirmed at planning + execution time.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Phase 4 taxonomy.personas field — leave as legacy or migrate?**
    - What we know: Phase 4 D-13 added `personas: { archetype: string; weight: number }[]` to every `NichePrimary` with demographic-style slugs and weights summing to 10. A test (`src/lib/niches/__tests__/taxonomy.test.ts` — verified to exist) asserts these slugs.
