@@ -691,7 +691,7 @@ $$;
 - **A1** (Gemini reliability) — user should know that audio sub-scores may be lower-quality than visual sub-scores; we'll degrade gracefully but the signal may add less value than D-G1's 0.05-0.10 weight assumes. Phase 12 benchmark will measure.
 - **A2/A4** (rate limits and threshold) — purely technical; Claude's discretion per CONTEXT.
 
-## Open Questions
+## Open Questions (Q4 RESOLVED via Phase 6 Plans 02 + 06)
 
 1. **Should the audio_fingerprint stage's similarity threshold be ENV-overridable or hardcoded?**
    - What we know: D-G2 has fixed phase boost values; CONTEXT D-claude's discretion says threshold is Claude's call.
@@ -708,7 +708,7 @@ $$;
    - What's unclear: Without a live smoke test, A1 stays speculative until production traffic surfaces failures.
    - Recommendation: Add a Phase 6 plan task: "Run a manual end-to-end audio smoke test against a known-good talking_head video + slideshow video + tutorial video using the actual Gemini API. Document the response JSON in `.planning/phases/06-audio-analysis-fingerprint-matching/smoke-test-results.md`. Pass the test before marking Phase 6 SC#1 met." This is the kind of empirical verification that prevents A1 from being a foundation crack.
 
-4. **Should `audio_description` be persisted on `analysis_results` for debugging / future ML training?**
+4. **Should `audio_description` be persisted on `analysis_results` for debugging / future ML training? (RESOLVED — Phase 6 Plan 02 migration adds the column; Plan 06 aggregator writes the value)**
    - What we know: D-F1 doesn't address persistence of the predict-time description; only the trending_sounds-side description is persisted.
    - What's unclear: Without persistence, we can't audit "why did this video match sound X?" or retrain on description-quality features later.
    - Recommendation: YES, persist on analysis_results. Add `audio_description text` column (small text). Phase 10 ML audit may want to train on these later. Cheap.

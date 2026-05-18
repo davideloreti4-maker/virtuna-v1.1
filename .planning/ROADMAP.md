@@ -144,13 +144,14 @@ Plans:
   3. Audio signal feeds aggregator with appropriate weight
   4. Existing trend enrichment fuzzy string match still works as fallback when fingerprint match is unavailable
   5. Audio analysis adds <2s to total pipeline latency (folded into existing Gemini calls where possible)
-**Plans:** 5 plans across 4 waves
+**Plans:** 6 plans across 5 waves (Plan 05 split into 05 + 06 per checker WARNING 5; Plan 06 lifted to Wave 5 by explicit dependency on Plan 05)
 Plans:
-- [ ] 06-01-PLAN.md — Wave 1: Gemini Flash audio reliability smoke test (gates SC#1)
-- [ ] 06-02-PLAN.md — Wave 2: Types + migration (pgvector + HNSW + match RPC) + BLOCKING schema push
-- [ ] 06-03-PLAN.md — Wave 3: Gemini schema extension + audio-perceptual module (D-G3 coefficients)
-- [ ] 06-04-PLAN.md — Wave 3: audio-fingerprint stage + backfill script
-- [ ] 06-05-PLAN.md — Wave 4: pipeline + aggregator + trends + cron wiring (audio_fingerprint rename, D-G2 boost, D-F3 gating, D-F4 cron extension)
+- [ ] 06-01-PLAN.md — Wave 1: Gemini Flash audio reliability smoke test (gates SC#1) + HOOK-02 REQUIREMENTS.md migration (D-H1)
+- [ ] 06-02-PLAN.md — Wave 2: Types + migration (pgvector + HNSW + match RPC + analysis_results.audio_description) + BLOCKING schema push
+- [ ] 06-03-PLAN.md — Wave 3: Gemini schema extension (audio_signals optional for graceful degradation) + audio-perceptual module (D-G3 coefficients)
+- [ ] 06-04-PLAN.md — Wave 3: audio-fingerprint stage (explicit Sentry-vs-warn asymmetry) + backfill script (FULL D-F4 pipeline)
+- [ ] 06-05-PLAN.md — Wave 4: pipeline rename + trends D-F3 gating + types.ts PipelineResult widening
+- [ ] 06-06-PLAN.md — Wave 5: aggregator D-G1/G2/G3/G4 + analysis_results.audio_description persistence (Q4 RESOLVED) + cron full D-F4 pipeline
 
 ### Phase 7: Multi-Persona Simulation
 **Goal:** 10 personas allocated FYP-first (6/2/1/1) run in parallel as Wave 3 after Wave 2 (DeepSeek synthesis + trends). Each persona produces structured reactions used both as the new behavioral signal and the data source for M2's audience viz.
