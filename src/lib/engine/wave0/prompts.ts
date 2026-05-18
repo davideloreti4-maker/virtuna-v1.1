@@ -107,7 +107,7 @@ function extractHandleOrHost(s: string): string {
   }
 }
 
-function tryUrlHost(url: string): string {
+export function tryUrlHost(url: string): string {
   try {
     return new URL(url).host;
   } catch {
