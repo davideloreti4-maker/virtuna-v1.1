@@ -58,3 +58,7 @@ scripts/data/
 
 # Corpus video downloads — large binaries, regeneratable from training_corpus
 .planning/videos-cache/
+
+# Phase 6 audio smoke-test fixtures + results (developer-local, not versioned)
+tests/fixtures/audio-smoke/*.mp4
+tests/fixtures/audio-smoke/smoke-test-results.json
