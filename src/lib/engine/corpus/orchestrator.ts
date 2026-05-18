@@ -18,6 +18,8 @@ import { buildApifyJobs, type ScrapeConfigKind } from "./apify-jobs";
 import { normalizeScrapedItem, type NormalizedCorpusRow } from "./normalize-scrape";
 import { bucketByViews } from "./bucketing";
 import { getThresholds, type CorpusVersion } from "./thresholds";
+import { buildSubjectText, embedBatch } from "@/lib/engine/retrieval/embedder";
+import { CORPUS_NICHE_ALIASES } from "@/lib/engine/retrieval/bucket-derivation";
 
 const log = createLogger({ module: "corpus/orchestrator" });
 
@@ -339,12 +341,59 @@ export async function bucketAndPersist(
     niche: r.niche,
     bucket: r.bucket,
     bucket_target: bucketTargetFor(r),
+    // supabase-js / PostgREST handle vector(768) as a stringified pgvector literal
+    // ("[0.1,0.2,...]") on the wire. JSON.stringify(number[]) produces that exact format.
+    embedding: null as string | null,
   }));
+
+  // D-08 Path 1: auto-embed training_corpus rows before upsert.
+  //
+  // Subject text formula (D-06) requires NICHE_TREE form ('education'); training_corpus
+  // stores the corpus-form alias ('edu' — CHECK constraint) so we INVERT
+  // CORPUS_NICHE_ALIASES per row before calling buildSubjectText. This guarantees
+  // byte-identical subject text between backfill and predict-time (cosine similarity
+  // is only meaningful when both sides go through the same formula).
+  //
+  // BENCH-05 additive-only: embedder failure logs a warning and falls back to
+  // embedding=null. Training corpus build still succeeds; the embed-corpus.ts CLI
+  // catches up null embeddings later.
+  const BATCH = 50;
+  const REVERSE_CORPUS_ALIAS: Record<string, string> = Object.fromEntries(
+    Object.entries(CORPUS_NICHE_ALIASES).map(([nicheTree, corpus]) => [corpus, nicheTree]),
+  );
+  const dbRowsWithEmbeddings: typeof dbRows = [];
+  for (let i = 0; i < dbRows.length; i += BATCH) {
+    const slice = dbRows.slice(i, i + BATCH);
+    const texts = slice.map((r) => {
+      const slug = REVERSE_CORPUS_ALIAS[r.niche] ?? r.niche;
+      return buildSubjectText({
+        primary_slug: slug,
+        creator_handle: r.creator_handle,
+        caption: r.caption,
+        hashtags: r.hashtags,
+      });
+    });
+    try {
+      const { vectors } = await embedBatch(texts);
+      const merged = slice.map((row, j) => ({
+        ...row,
+        embedding: vectors[j] ? JSON.stringify(vectors[j]) : null,
+      }));
+      dbRowsWithEmbeddings.push(...merged);
+    } catch (err) {
+      log.warn("Embedding batch failed in bucketAndPersist; inserting with embedding=null", {
+        offset: i,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      const nulled = slice.map((row) => ({ ...row, embedding: null as string | null }));
+      dbRowsWithEmbeddings.push(...nulled);
+    }
+  }
 
   // Batch-dedup on platform_video_id before upsert (8261876 fix: ON CONFLICT
   // throws if the same row appears twice in a single batch)
   const seenVideoIds = new Set<string>();
-  const dedupedDbRows = dbRows.filter((r) => {
+  const dedupedDbRows = dbRowsWithEmbeddings.filter((r) => {
     if (seenVideoIds.has(r.platform_video_id)) return false;
     seenVideoIds.add(r.platform_video_id);
     return true;
