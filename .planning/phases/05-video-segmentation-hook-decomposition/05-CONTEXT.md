@@ -24,7 +24,7 @@ The three results merge into a widened `GeminiVideoAnalysis` shape that aggregat
 - Persona simulation consuming hook decomp — **Phase 7**.
 - Benchmark retrieval consuming hook decomp — **Phase 8**.
 - ML retrain / Platt calibration on the new hook sub-scores — **Phase 10** (Aggregator Extension + ML Audit).
-- Gemini 3.1 Pro upgrade — preview-only as of 2026-05-18; deferred until GA (see Deferred Ideas).
+- GA migration when GA Gemini 3 Pro / Flash ship (currently using preview per D-01 override; see Deferred Ideas for the migration task).
 - Migration of legacy `analyzeVideoWithGemini` single-call path — kept as a callable export for the eval harness corpus replay until Phase 12 cleanup.
 
 </domain>
@@ -34,7 +34,7 @@ The three results merge into a widened `GeminiVideoAnalysis` shape that aggregat
 
 ### Model Tier (3-segment cost ≈ 2.0¢/video, well under the ~6.5¢ milestone budget)
 
-- **D-01: Hook → Gemini 3 Pro; Body + CTA → Gemini 3 Flash. All GA, all env-overridable.** Hook gets Pro because the 6-dimension decomposition (4 sub-modality scores + weakest_modality + coherence + cognitive load) is reasoning-heavy and is the most user-differentiated output of this phase. Body and CTA are description/scoring tasks that Flash handles well at ~3-6× cheaper. All three models routed through new env vars: `GEMINI_HOOK_MODEL` (default `gemini-3-pro`), `GEMINI_BODY_MODEL` (default `gemini-3-flash`), `GEMINI_CTA_MODEL` (default `gemini-3-flash`). Single-flip upgrade path for Gemini 3.1 Pro when it leaves preview.
+- **D-01: Hook → `gemini-3.1-pro-preview`; Body + CTA → `gemini-3-flash-preview`. Env-overridable.** Hook gets Pro because the 6-dimension decomposition (4 sub-modality scores + weakest_modality + coherence + cognitive load) is reasoning-heavy and is the most user-differentiated output of this phase. Body and CTA are description/scoring tasks that Flash handles well at ~3-6× cheaper. **Preview override (2026-05-18, post-research):** the original "always GA, never preview" rule cannot be honored — no GA Pro tier exists in the Gemini 3 family (only `gemini-3.1-flash-lite` is GA), and the literal `gemini-3-pro` / `gemini-3-flash` IDs in earlier drafts of this doc are invalid SDK strings (verified against `ai.google.dev/gemini-api/docs/models`, 2026-05-18). Decision: accept preview for top-notch quality; mitigate via env-var indirection. All three models routed through env vars: `GEMINI_HOOK_MODEL` (default `gemini-3.1-pro-preview`), `GEMINI_BODY_MODEL` (default `gemini-3-flash-preview`), `GEMINI_CTA_MODEL` (default `gemini-3-flash-preview`). Single-flip upgrade path when GA equivalents ship. Migration follow-up tracked in Deferred Ideas.
 
   Cost breakdown (30s video, Gemini 3 pricing as of 2026-05-18):
   - Hook Pro on 5s window: ~1.3¢ ($2/M in × ~1290 video tokens + ~500 prompt + $12/M out × ~800 decomp tokens)
@@ -146,7 +146,7 @@ The three results merge into a widened `GeminiVideoAnalysis` shape that aggregat
 
 ### Existing Engine Code (to extend / instrument)
 - `src/lib/engine/gemini.ts` lines 17, 96, 332, 409–545 — current `analyzeVideoWithGemini` single-call implementation; Phase 5 keeps this export callable for eval-harness legacy path (D-11) and adds `analyzeVideoSegmented` alongside.
-- `src/lib/engine/gemini.ts` line 17 — `GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash"`. Phase 5 adds three new env defaults: `GEMINI_HOOK_MODEL` (`gemini-3-pro`), `GEMINI_BODY_MODEL` (`gemini-3-flash`), `GEMINI_CTA_MODEL` (`gemini-3-flash`).
+- `src/lib/engine/gemini.ts` line 17 — `GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash"`. Phase 5 adds three new env defaults: `GEMINI_HOOK_MODEL` (`gemini-3.1-pro-preview`), `GEMINI_BODY_MODEL` (`gemini-3-flash-preview`), `GEMINI_CTA_MODEL` (`gemini-3-flash-preview`).
 - `src/lib/engine/gemini.ts` line 96 — `calculateCost(promptTokens, candidateTokens)`. Phase 5 verifies this function supports per-model pricing OR extends it to take `(model, promptTokens, candidateTokens)`.
 - `src/lib/engine/gemini.ts` lines 200–250 — `buildVideoPrompt` builder. Phase 5 splits into 3 prompt builders (hook/body/CTA), each scoped + niche-aware.
 - `src/lib/engine/gemini.ts` lines 270–340 — `VIDEO_RESPONSE_SCHEMA` Zod schema. Phase 5 splits into 3 schemas matching per-segment output shapes.
@@ -215,7 +215,7 @@ The three results merge into a widened `GeminiVideoAnalysis` shape that aggregat
 <specifics>
 ## Specific Ideas
 
-- **User questioned model lineage up-front** ("but what about gemini 3.1 pro / flash?"). This surfaced the GA-vs-preview status check (Gemini 3.1 Pro is preview as of 2026-05-18, 3.1 Flash-Lite is GA but cheaper and unproven for body/CTA reasoning, 3.2 Flash leaked but not officially released). Honor this voice when researcher/planner review model defaults: always GA, never preview, env-overridable for fast swap once 3.1 Pro lands. Phase 4's instinct "modern + cheap unless evidence demands stepping up" gets refined here as "GA + modern + cheap unless evidence demands stepping up."
+- **User questioned model lineage up-front** ("but what about gemini 3.1 pro / flash?"). Researcher web-verified on 2026-05-18: no GA Pro tier exists in the Gemini 3 family (only `gemini-3.1-flash-lite` is GA); `gemini-3.1-pro-preview` and `gemini-3-flash-preview` are the top-quality options. User reviewed the verified evidence and **explicitly approved the preview override** for top-notch quality, accepting the trade-off (preview = no SLA, API may change before GA). Mitigation: env-var indirection (`GEMINI_HOOK_MODEL` / `_BODY_MODEL` / `_CTA_MODEL`) so GA migration is a config flip. Phase 4's instinct "modern + cheap unless evidence demands stepping up" stays, with the explicit clarification that "GA-only" is suspended for this phase pending Gemini 3 Pro/Flash GA release.
 
 - **User extended Phase 4 Wave 0 window from 2s → 5s for confidence** (carried forward). Applied here to choose 0-5s hook segment over 0-3s. Trade-off: ~$0.001 extra cost. Pattern: when costs are sub-cent and the signal is user-differentiated, prefer generous compute.
 
@@ -230,7 +230,7 @@ The three results merge into a widened `GeminiVideoAnalysis` shape that aggregat
 <deferred>
 ## Deferred Ideas
 
-- **Gemini 3.1 Pro upgrade for hook segment** — currently preview as of 2026-05-18. When 3.1 Pro hits GA (track via Google AI Studio release notes), flip `GEMINI_HOOK_MODEL` env default. No code change required, just constant update + benchmark validation. Track for Phase 10 / Phase 12 / next milestone.
+- **Gemini 3 Pro / Flash GA migration** — Phase 5 ships using preview models (`gemini-3.1-pro-preview` hook, `gemini-3-flash-preview` body/CTA) per the D-01 override. When Google promotes Gemini 3 Pro and/or Flash to GA (track via Google AI Studio release notes), flip the relevant `GEMINI_*_MODEL` env defaults to the GA IDs. No code change required, just env-var update + benchmark validation against the Phase 12 reference set. Watch for the June 17, 2026 `gemini-2.5-*` deprecation cliff — by then either GA 3.x must exist or we accept preview indefinitely. Track for Phase 10 / Phase 12 / next milestone.
 
 - **Gemini 3.2 Flash adoption** — appeared in apps 2026-05-05 but not officially announced. When announced + GA, evaluate for body/CTA replacement of Gemini 3 Flash. Cost/quality delta unknown until benchmarks land.
 
