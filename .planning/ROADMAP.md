@@ -137,14 +137,20 @@ Plans:
 ### Phase 6: Audio Analysis + Fingerprint Matching
 **Goal:** Audio stage produces real signals (voice clarity, audio hook, silence ratio, fingerprint match) replacing the current no-op.
 **Depends on:** Phase 3 (pipeline infrastructure)
-**Requirements:** AUDIO-01..06
+**Requirements:** AUDIO-01..06, HOOK-02 (migrated from Phase 5 per D-H1)
 **Success Criteria:**
   1. `Stage 4: Audio` returns a real result object (not `null`) with voice clarity, audio hook score, silence/voiceover/music ratio
   2. Audio fingerprint match against trending sounds DB returns matched sound + velocity (rising / peak / declining) when match found
   3. Audio signal feeds aggregator with appropriate weight
   4. Existing trend enrichment fuzzy string match still works as fallback when fingerprint match is unavailable
   5. Audio analysis adds <2s to total pipeline latency (folded into existing Gemini calls where possible)
-**Plans:** TBD (~2 plans)
+**Plans:** 5 plans across 4 waves
+Plans:
+- [ ] 06-01-PLAN.md — Wave 1: Gemini Flash audio reliability smoke test (gates SC#1)
+- [ ] 06-02-PLAN.md — Wave 2: Types + migration (pgvector + HNSW + match RPC) + BLOCKING schema push
+- [ ] 06-03-PLAN.md — Wave 3: Gemini schema extension + audio-perceptual module (D-G3 coefficients)
+- [ ] 06-04-PLAN.md — Wave 3: audio-fingerprint stage + backfill script
+- [ ] 06-05-PLAN.md — Wave 4: pipeline + aggregator + trends + cron wiring (audio_fingerprint rename, D-G2 boost, D-F3 gating, D-F4 cron extension)
 
 ### Phase 7: Multi-Persona Simulation
 **Goal:** 10 personas allocated FYP-first (6/2/1/1) run in parallel as Wave 3 after Wave 2 (DeepSeek synthesis + trends). Each persona produces structured reactions used both as the new behavioral signal and the data source for M2's audience viz.
@@ -234,7 +240,7 @@ Plans:
 | 3. Pipeline Infrastructure | 4/4 | Complete (PARTIAL — defer-smoke for SC#4/#5) | 2026-05-18 |
 | 4. Wave 0 — Content Type + Niche Detection | 0/3 | Planned | - |
 | 5. Video Segmentation + Hook Decomposition | 0/TBD | Not started | - |
-| 6. Audio Analysis + Fingerprint | 0/TBD | Not started | - |
+| 6. Audio Analysis + Fingerprint | 0/5 | Planned | - |
 | 7. Multi-Persona Simulation | 0/TBD | Not started | - |
 | 8. Benchmark Retrieval | 0/TBD | Not started | - |
 | 9. Platform Algo Fit + Self-Critique + Counterfactuals | 0/TBD | Not started | - |
