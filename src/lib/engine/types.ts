@@ -268,8 +268,37 @@ export const GeminiResponseSchema = z.object({
 
 export type GeminiAnalysis = z.infer<typeof GeminiResponseSchema>;
 
+// Phase 6 (D-A1..A3, D-F1) — Zod schema for the extended audio_signals block.
+// `.refine()` normalizes ratio sums within ±0.1 tolerance per Pitfall 1.
+// Chained `.optional()` on the parent video schema below wraps this refined schema
+// so the refinement only fires when the field is present (graceful degradation
+// per HARD-03 + Phase 3 D-04).
+export const GeminiAudioSignalsSchema = z
+  .object({
+    voice_clarity_0_10: z.number().min(0).max(10).nullable(),
+    audio_hook_first_2s_0_10: z.number().min(0).max(10).nullable(),
+    silence_ratio: z.number().min(0).max(1),
+    voiceover_ratio: z.number().min(0).max(1),
+    music_ratio: z.number().min(0).max(1),
+    audio_description: z.string().min(1).max(300),
+  })
+  .refine(
+    (v) =>
+      Math.abs(v.silence_ratio + v.voiceover_ratio + v.music_ratio - 1.0) < 0.1,
+    { message: "Audio ratios must sum to ~1.0 (±0.1 tolerance)" },
+  );
+
+// Phase 6 — audio_signals is OPTIONAL on the response schema for graceful degradation.
+// When Gemini omits the audio_signals block (model regression, prompt edge case, or any
+// failure mode where the LLM degrades to video-only output), the top-level response still
+// passes Zod validation. Downstream code reads audio_signals via optional chaining
+// (`geminiResult.analysis.audio_signals?.audio_description ?? null`), so the resulting
+// `T | undefined` type is the canonical contract. Per HARD-03 + Phase 3 D-04 graceful
+// degradation: aggregator sees audio_signals as undefined → signal_availability.audio = false
+// → audio weight redistributes to other available signals via existing selectWeights math.
 export const GeminiVideoResponseSchema = GeminiResponseSchema.extend({
   video_signals: GeminiVideoSignalsSchema,
+  audio_signals: GeminiAudioSignalsSchema.optional(), // Phase 6 — D-A1 + HARD-03 + BLOCKER 2 fix
 });
 
 export type GeminiVideoAnalysis = z.infer<typeof GeminiVideoResponseSchema>;
