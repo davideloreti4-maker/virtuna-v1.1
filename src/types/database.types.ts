@@ -1127,27 +1127,92 @@ export type Database = {
         }
         Relationships: []
       }
-      tiktok_accounts: {
+      team_members: {
         Row: {
-          created_at: string | null
-          handle: string
           id: string
-          is_active: boolean | null
-          user_id: string
+          team_id: string
+          user_id: string | null
+          role: string
+          invited_email: string | null
+          status: string
+          joined_at: string | null
+          created_at: string
         }
         Insert: {
-          created_at?: string | null
-          handle: string
           id?: string
-          is_active?: boolean | null
-          user_id: string
+          team_id: string
+          user_id?: string | null
+          role?: string
+          invited_email?: string | null
+          status?: string
+          joined_at?: string | null
+          created_at?: string
         }
         Update: {
-          created_at?: string | null
-          handle?: string
           id?: string
-          is_active?: boolean | null
+          team_id?: string
+          user_id?: string | null
+          role?: string
+          invited_email?: string | null
+          status?: string
+          joined_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          id: string
+          owner_id: string
+          name: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          name?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          name?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      tiktok_accounts: {
+        Row: {
+          id: string
+          user_id: string
+          handle: string
+          is_active: boolean
+          created_at: string
+          platform: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          handle: string
+          is_active?: boolean
+          created_at?: string
+          platform?: string
+        }
+        Update: {
+          id?: string
           user_id?: string
+          handle?: string
+          is_active?: boolean
+          created_at?: string
+          platform?: string
         }
         Relationships: []
       }
@@ -1374,6 +1439,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_settings: {
+        Row: {
+          user_id: string
+          display_name: string | null
+          company: string | null
+          role: string | null
+          avatar_url: string | null
+          notification_email_updates: boolean
+          notification_test_results: boolean
+          notification_weekly_digest: boolean
+          notification_marketing: boolean
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          display_name?: string | null
+          company?: string | null
+          role?: string | null
+          avatar_url?: string | null
+          notification_email_updates?: boolean
+          notification_test_results?: boolean
+          notification_weekly_digest?: boolean
+          notification_marketing?: boolean
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          display_name?: string | null
+          company?: string | null
+          role?: string | null
+          avatar_url?: string | null
+          notification_email_updates?: boolean
+          notification_test_results?: boolean
+          notification_weekly_digest?: boolean
+          notification_marketing?: boolean
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_subscriptions: {
         Row: {
