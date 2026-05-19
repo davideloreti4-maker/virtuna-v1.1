@@ -165,6 +165,12 @@ export interface PredictionResult {
   gemini_score: number; // Gemini's contribution
   behavioral_score: number; // DeepSeek behavioral contribution
   ml_score: number; // ML classifier score (0-100), 0 if model unavailable
+  /** Phase 6 (D-G3) — 0-100 audio perceptual score before fingerprint boost. 0 when audio absent.
+   *  Optional to preserve compile against existing consumers; plans 06-05/06-06 will start emitting it. */
+  audio_perceptual_score?: number;
+  /** Phase 6 (D-G1) — Full fingerprint match record or null if no match above threshold.
+   *  Optional to preserve compile against existing consumers; plans 06-05/06-06 will start emitting it. */
+  audio_fingerprint?: AudioFingerprintResult | null;
   score_weights: {
     behavioral: number; // 0.35
     gemini: number; // 0.25
@@ -203,6 +209,12 @@ export interface SignalAvailability {
   trends: boolean;
   content_type: boolean;  // NEW Phase 4 (D-20) — set by aggregator from wave0Result.content_type !== null
   niche: boolean;          // NEW Phase 4 (D-20) — set by aggregator from wave0Result.niche !== null
+  // Phase 6 (D-G1) — weight-bearing: gates audio_perceptual_score contribution to overall_score.
+  // Optional to preserve compile against existing aggregator; plans 06-05/06-06 emit it.
+  audio?: boolean;
+  // Phase 6 (D-G1) — provenance only: tracks whether pgvector returned a match; NOT in SCORE_WEIGHT_KEYS.
+  // Optional to preserve compile against existing aggregator; plans 06-05/06-06 emit it.
+  audio_fingerprint?: boolean;
 }
 
 // Wave0Result now defined below as z.infer<typeof Wave0ResultSchema> — see Phase 4 block.
@@ -375,4 +387,46 @@ export interface TrendEnrichment {
   }>;
   trend_context: string; // Summary for DeepSeek prompt
   hashtag_relevance: number; // 0-1 semantic hashtag relevance (SIG-03)
+}
+
+// =====================================================
+// Phase 6 — Audio Analysis result shapes
+// =====================================================
+
+/** Audio sub-scores extracted from the extended gemini_video_analysis response. D-A1, D-A3, D-F1. */
+export interface GeminiAudioSignals {
+  /** 0-10 voice clarity / SNR. null per D-A2 when content_type ∈ {slideshow, b_roll, action}. */
+  voice_clarity_0_10: number | null;
+  /** 0-10 audio hook score for first 2s (D-H2). null per D-A2 when content_type ∈ {slideshow, b_roll, action}. */
+  audio_hook_first_2s_0_10: number | null;
+  /** 0-1, sums to 1.0 with siblings per D-A3. */
+  silence_ratio: number;
+  /** 0-1, sums to 1.0 with siblings per D-A3. */
+  voiceover_ratio: number;
+  /** 0-1, sums to 1.0 with siblings per D-A3. */
+  music_ratio: number;
+  /** 50-150 char description for fingerprint matching per D-F1. */
+  audio_description: string;
+}
+
+/** audio_perceptual_score output (D-G3 — content-type-adaptive formula). */
+export interface AudioPerceptualResult {
+  /** 0-100, normalized BEFORE audio_fingerprint_boost is applied per D-G3. */
+  audio_perceptual_score: number;
+  /** Which formula branch the score came from per D-G3. */
+  formula_mode: "voice" | "ambient" | "balanced";
+  /** Sub-score field names that fed the formula (for debugging — e.g., ["voice_clarity", "audio_hook", "voiceover_ratio"]). */
+  sub_scores_used: string[];
+}
+
+/** pgvector fingerprint match result (D-F0, D-F1). null when no match above threshold. */
+export interface AudioFingerprintResult {
+  sound_name: string;
+  sound_url: string | null;
+  /** 0-1 cosine similarity. Threshold for inclusion is 0.80 (env-overridable AUDIO_FINGERPRINT_SIMILARITY_THRESHOLD). */
+  similarity: number;
+  /** From trending_sounds.trend_phase column. null if column is null. */
+  trend_phase: "emerging" | "rising" | "peak" | "declining" | null;
+  /** From trending_sounds.velocity_score column. */
+  velocity_score: number;
 }
