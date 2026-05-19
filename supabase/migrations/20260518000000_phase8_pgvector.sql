@@ -60,6 +60,20 @@ UPDATE scraped_videos SET creator_handle = author WHERE creator_handle IS NULL A
 -- (RESEARCH Finding 3 Strategy A). Unmapped categories stay NULL → excluded from retrieval pool.
 -- Each UPDATE is idempotent: WHERE primary_niche IS NULL guards against re-runs and prevents
 -- overwriting values set by future targeted backfills.
+--
+-- WR-02 — UPGRADE PROCEDURE (read before adding a new category→niche mapping):
+--   1. Add a new UPDATE statement below mirroring the pattern (one row per primary slug).
+--   2. If the new mapping should OVERRIDE existing primary_niche values (e.g.,
+--      reclassifying "wellness" rows from lifestyle → fitness), the IS NULL guard
+--      below will prevent the new UPDATE from taking effect on already-classified rows.
+--      In that case, run a one-time targeted reset BEFORE re-applying the migration:
+--        UPDATE scraped_videos SET primary_niche = NULL
+--          WHERE primary_niche = 'lifestyle' AND category IN ('wellness');
+--      Then re-run the migration so the new UPDATE clause picks up the now-NULL rows.
+--   3. Mirror the same mapping change in src/app/api/webhooks/apify/route.ts
+--      deriveNicheSlug() — these two paths are the SAME 10-slug whitelist and MUST
+--      stay in sync, otherwise webhook-inserted rows will disagree with backfilled
+--      rows. See REVIEW.md WR-02 for the full rationale.
 UPDATE scraped_videos SET primary_niche = 'beauty'
   WHERE primary_niche IS NULL AND category IN ('beauty','makeup','skincare');
 UPDATE scraped_videos SET primary_niche = 'fitness'
