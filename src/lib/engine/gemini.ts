@@ -1,7 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
 import { GoogleGenAI, Type } from "@google/genai";
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import { z } from "zod";
 import { createLogger } from "@/lib/logger";
 import {
@@ -15,6 +13,15 @@ import {
 // Legacy gemini.ts callers pass GEMINI_MODEL explicitly via the shim to preserve current
 // Flash behavior at byte-identical cost numbers (D-11 invariant).
 import { calculateCost as calculateCostPerModel } from "./gemini/cost";
+// Phase 5 IN-01 fix: inline calibration data as a build-time module import (instead
+// of runtime disk read via `import.meta.url` + fs). The pre-fix code was Node-only:
+// Next.js 15 App Router routes that ran on Edge runtime would have thrown
+// because `new URL(import.meta.url).pathname` resolves differently there.
+// JSON-as-module loading is bundled at build time, works in every runtime, and
+// removes the disk-cache singleton's race-condition surface area entirely.
+// Calibration JSON is ~26KB — well under the 50KB inline threshold from the
+// IN-02 fix guidance.
+import calibrationBaselineJson from "./calibration-baseline.json";
 
 const log = createLogger({ module: "gemini" });
 
@@ -130,24 +137,28 @@ function parseGeminiVideoResponse(raw: string): GeminiVideoAnalysis {
   return result.data;
 }
 
-/** Load calibration data from JSON file, cached after first read.
- *  Returns null on malformed/missing file — callers must handle null.
+/** Load calibration data from the bundled JSON module, cached after first parse.
+ *  Returns null on malformed data (the Zod parse step is the only failure path
+ *  post-IN-02 — the file read can no longer fail since the JSON is bundled into
+ *  the JS chunk at build time).
+ *
  *  Phase 5 Plan 03: exported so pipeline.ts (segmented video branch) can hydrate
- *  the prompt builders without re-implementing the disk-cache. */
+ *  the prompt builders without re-implementing the cache.
+ *
+ *  Phase 5 IN-02 fix: previously read from disk via `new URL(import.meta.url).pathname`,
+ *  which broke under Next.js 15 Edge runtime (the route at src/app/api/analyze/route.ts
+ *  IS pinned to nodejs runtime so this was not a live bug — but the disk-read pattern
+ *  was a near-future footgun if any future route serving pipeline.ts switched runtime).
+ *  Inlining the JSON also lets the dev server hot-reload on calibration updates without
+ *  bouncing the module-level cache. */
 export async function loadCalibrationData(): Promise<CalibrationData | null> {
   if (cachedCalibration) return cachedCalibration;
 
   try {
-    const calibrationPath = path.join(
-      path.dirname(new URL(import.meta.url).pathname),
-      "calibration-baseline.json"
-    );
-    const raw = await fs.readFile(calibrationPath, "utf-8");
-    const parsed = JSON.parse(raw);
-    cachedCalibration = CalibrationBaselineSchema.parse(parsed) as CalibrationData;
+    cachedCalibration = CalibrationBaselineSchema.parse(calibrationBaselineJson) as CalibrationData;
     return cachedCalibration;
   } catch (error) {
-    log.warn("Failed to load calibration data", {
+    log.warn("Failed to parse bundled calibration data", {
       error: error instanceof Error ? error.message : String(error),
     });
     cachedCalibration = null;
