@@ -157,6 +157,19 @@ export async function POST(request: Request) {
       // BENCH-05 additive-only: embedder failure logs a warning and falls back to
       // embedding=null. The webhook still upserts the row; the embed-corpus.ts CLI
       // catches up null embeddings later. NEVER block the scrape on embedder failure.
+      //
+      // KNOWN ISSUE (WR-05, deferred to Phase 10+ hardening):
+      // When the SAME platform_video_id is re-scraped (e.g., weekly hashtag re-runs),
+      // the upsert with `ignoreDuplicates: false` OVERWRITES all columns — including
+      // `embedding`. If embedBatch fails on the re-scrape (rate-limited), the previously
+      // populated embedding is regressed to NULL. The proper fix is a SQL trigger:
+      //   CREATE TRIGGER preserve_embedding BEFORE UPDATE ON scraped_videos
+      //   FOR EACH ROW WHEN (NEW.embedding IS NULL AND OLD.embedding IS NOT NULL)
+      //   EXECUTE FUNCTION ... SET NEW.embedding = OLD.embedding;
+      // Held until Phase 10+ because it changes upsert semantics across all writers
+      // and warrants its own migration + test coverage. Operator mitigation today:
+      // the embed-corpus.ts CLI in default `IS NULL` mode re-embeds regressed rows
+      // on the next scheduled run.
       let recordsWithEmbeddings = records;
       const BATCH_EMBED = 50;
       const withEmbeddings: typeof records = [];
