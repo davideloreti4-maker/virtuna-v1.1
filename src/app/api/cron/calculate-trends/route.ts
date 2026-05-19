@@ -251,22 +251,31 @@ async function processSoundEmbedding(
   gemini: GoogleGenAI,
   supabase: SupabaseClient,
   row: { sound_name: string; sound_url: string | null },
+  alreadyEmbedded?: Set<string>,
 ): Promise<void> {
   if (!row.sound_url) return;
 
   // Idempotency check — skip rows that already have an embedding (Test 7 contract).
-  // Cheap single-row read; no second Gemini call wasted on already-embedded rows.
-  try {
-    const { data: existing } = await supabase
-      .from("trending_sounds")
-      .select("audio_embedding")
-      .eq("sound_name", row.sound_name)
-      .maybeSingle();
-    if (existing?.audio_embedding != null) {
-      return;
+  //
+  // 06-REVIEW.md WR-04: prefer the bulk-prefetched Set (one SELECT for the whole
+  // batch) over the per-row maybeSingle() N+1. Per-row check kept as fallback for
+  // callers that haven't migrated to the prefetch pattern (tests + future ad-hoc
+  // callers). When the set is provided, no DB call here.
+  if (alreadyEmbedded) {
+    if (alreadyEmbedded.has(row.sound_name)) return;
+  } else {
+    try {
+      const { data: existing } = await supabase
+        .from("trending_sounds")
+        .select("audio_embedding")
+        .eq("sound_name", row.sound_name)
+        .maybeSingle();
+      if (existing?.audio_embedding != null) {
+        return;
+      }
+    } catch {
+      // Idempotency-check failure is non-fatal — fall through and attempt embedding.
     }
-  } catch {
-    // Idempotency-check failure is non-fatal — fall through and attempt embedding.
   }
 
   // Step (a): download (NON-FATAL on failure).
@@ -490,9 +499,31 @@ export async function GET(request: Request) {
       // defense-in-depth (an unexpected throw inside processSoundEmbedding must
       // never propagate to the route response — Pitfall 4 fire-and-forget contract).
       if (gemini) {
+        // 06-REVIEW.md WR-04: bulk-prefetch already-embedded sound_names for this
+        // batch so processSoundEmbedding can skip them without an N+1 SELECT per
+        // row. One query per BATCH_SIZE (50) rows instead of BATCH_SIZE separate
+        // maybeSingle()s. Failure is non-fatal — fall through to per-row check.
+        let alreadyEmbedded: Set<string> | undefined;
+        try {
+          const batchNames = batch.map((r) => r.sound_name);
+          const { data: embedded } = await supabase
+            .from("trending_sounds")
+            .select("sound_name")
+            .in("sound_name", batchNames)
+            .not("audio_embedding", "is", null);
+          if (embedded) {
+            alreadyEmbedded = new Set(embedded.map((r) => r.sound_name));
+          }
+        } catch (err) {
+          log.warn("Bulk idempotency prefetch failed — falling back to per-row check", {
+            offset: i,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+
         for (const row of batch) {
           try {
-            await processSoundEmbedding(gemini, supabase, row);
+            await processSoundEmbedding(gemini, supabase, row, alreadyEmbedded);
           } catch (err) {
             log.warn("Inline embedding fatal (unexpected) — continuing", {
               sound_name: row.sound_name,

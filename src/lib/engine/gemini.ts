@@ -511,28 +511,34 @@ export async function analyzeVideoWithGemini(
     // Build video prompt and analyze
     const videoPrompt = buildVideoPrompt(calibration, niche);
 
+    // Hoisted out of the inner try so finally{} can clear it on both success +
+    // error paths (06-REVIEW.md IN-01 video path: same harmless-but-wasteful
+    // pattern as the text-analysis retry loop, fixed there in 7d83bb1).
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), VIDEO_TIMEOUT_MS);
 
-    const response = await ai.models.generateContent({
-      model: GEMINI_MODEL,
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: videoPrompt },
-            { fileData: { fileUri, mimeType } },
-          ],
+    let response: Awaited<ReturnType<typeof ai.models.generateContent>>;
+    try {
+      response = await ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: videoPrompt },
+              { fileData: { fileUri, mimeType } },
+            ],
+          },
+        ],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: VIDEO_RESPONSE_SCHEMA,
+          abortSignal: controller.signal,
         },
-      ],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: VIDEO_RESPONSE_SCHEMA,
-        abortSignal: controller.signal,
-      },
-    });
-
-    clearTimeout(timeout);
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     const text = response.text ?? "";
     const analysis = parseGeminiVideoResponse(text);

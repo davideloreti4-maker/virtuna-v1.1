@@ -281,7 +281,13 @@ export const GeminiAudioSignalsSchema = z
     silence_ratio: z.number().min(0).max(1),
     voiceover_ratio: z.number().min(0).max(1),
     music_ratio: z.number().min(0).max(1),
-    audio_description: z.string().min(1).max(300),
+    // min(10): floor matches the smoke-test validation gate (10-300) and rules
+    //   out empty/degenerate responses. max(280): aligned with the backfill +
+    //   cron truncation cap (slice(0, 280)) — anything longer gets truncated
+    //   downstream anyway, so accepting >280 invites silent data loss. Prompt
+    //   asks for 50-150 chars; the band [10,280] is intentional slack for LLMs
+    //   that don't honor exact char counts (06-REVIEW.md WR-05 — was min(1).max(300)).
+    audio_description: z.string().min(10).max(280),
   })
   .refine(
     (v) =>
