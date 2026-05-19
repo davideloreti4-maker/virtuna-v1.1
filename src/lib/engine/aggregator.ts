@@ -1,5 +1,6 @@
 import type {
   ConfidenceLevel,
+  CtaSegmentResult,
   Factor,
   FeatureVector,
   GeminiVideoSignals,
@@ -42,6 +43,59 @@ const SCORE_WEIGHTS = {
 // must NOT participate in weight redistribution math.
 const SCORE_WEIGHT_KEYS = ["behavioral", "gemini", "ml", "rules", "trends"] as const;
 type ScoreWeightKey = (typeof SCORE_WEIGHT_KEYS)[number];
+
+// =====================================================
+// Phase 5 D-06: CTA Penalty Matrix
+// =====================================================
+// Content-type-aware CTA penalty applied to `gemini_score` (0-100 scale).
+// When the CTA segment reports `cta_present=false` AND the Wave 0 content_type is one
+// that conventionally requires a CTA (tutorial, b_roll), deduct points from the
+// gemini contribution to overall_score.
+//
+// Magnitude interpretation: CONTEXT D-06 reads "tutorial: -0.5 score units / b_roll:
+// -0.3 score units". The gemini_score in this aggregator is on 0-100. We interpret
+// "0.5 score units" as 5 points on the 0-100 scale (and 0.3 → 3 points). Rationale:
+// gemini_score = round(avg(factor scores 0-10) * 10) → 0-100; the D-06 deductions are
+// intended as sub-score nudges, not 0.5%-of-100 cosmetic adjustments. Phase 10 ML
+// audit revisits the magnitude.
+//
+// All other content types (talking_head, vlog, comedy, slideshow, action, other)
+// are neutral — CTA is optional or not expected for those formats.
+//
+// When `cta_present=true`: NO penalty applied. Claude's Discretion to "blend strength
+// into score" is deferred to a future plan — Plan 03 surfaces strength as a separate
+// sub-signal (via PredictionResult.factors / hook_decomposition) for the M2 UI to
+// consume, rather than mixing it into the raw_overall_score math.
+const CTA_PENALTY_POINTS: Record<string, number> = {
+  tutorial: 5,
+  b_roll: 3,
+  // talking_head, vlog, comedy, slideshow, action, other → absent from table → 0 penalty
+};
+
+/**
+ * D-06: Penalize gemini_score when CTA is expected (tutorial / b_roll) but absent.
+ * Pure function; clamps result to [0, 100].
+ *
+ * Authority:
+ *   - geminiResult.analysis.cta_segment (Phase 5 — populated by Plan 02 mergeSegments)
+ *   - pipelineResult.wave0Result.content_type.type (Phase 4 — populated by Wave 0 detector)
+ *
+ * No-op paths (return geminiScore unchanged):
+ *   - cta_present=true → strength blending deferred per Claude's Discretion
+ *   - contentTypeSlug=null → Wave 0 failure path (don't penalize unknown content types)
+ *   - cta_segment=null/undefined → provenance already redistributes via gemini_cta=false
+ */
+export function applyCtaPenalty(
+  geminiScore: number,
+  contentTypeSlug: string | null,
+  ctaSegment: CtaSegmentResult | null | undefined,
+): number {
+  if (!ctaSegment) return geminiScore;
+  if (ctaSegment.cta_present) return geminiScore;
+  if (contentTypeSlug === null) return geminiScore;
+  const penalty = CTA_PENALTY_POINTS[contentTypeSlug] ?? 0;
+  return Math.max(0, Math.min(100, geminiScore - penalty));
+}
 
 // =====================================================
 // Signal Availability & Dynamic Weight Selection (RULE-04)
@@ -329,7 +383,9 @@ export async function aggregateScores(
   // -------------------------------------------------
   const availability: SignalAvailability = {
     behavioral: deepseekResult !== null,
-    gemini: geminiResult.analysis.factors.some((f) => f.score > 0), // HARD-03: false when all factors are 0 (fallback)
+    // Placeholder — overwritten below after per-segment availability is resolved.
+    // HARD-03 fallback (factors.some(score > 0)) kicks in only when signalAvailability undefined.
+    gemini: false,
     ml: mlAvailable,
     rules:
       ruleResult.matched_rules.length > 0 &&
@@ -347,12 +403,21 @@ export async function aggregateScores(
     content_type: pipelineResult.wave0Result.content_type !== null,
     niche: pipelineResult.wave0Result.niche !== null,
     // Phase 5 D-12 — per-segment provenance from analyzeVideoSegmented.
-    // PLACEHOLDERS — Plan 03 swaps to `pipelineResult.geminiResult.signalAvailability.gemini_<segment> ?? false`.
-    // Required-key bump for types.ts widening; SCORE_WEIGHT_KEYS still excludes these per Phase 4 Cross-File Constraint #3.
-    gemini_hook: false,
-    gemini_body: false,
-    gemini_cta: false,
+    // `?? false` fallback handles legacy callers (text mode / eval harness) AND
+    // historical JSONB rows that pre-date the segment keys (RESEARCH line 475).
+    // SCORE_WEIGHT_KEYS still excludes these per Phase 4 Cross-File Constraint #3.
+    gemini_hook: pipelineResult.geminiResult.signalAvailability?.gemini_hook ?? false,
+    gemini_body: pipelineResult.geminiResult.signalAvailability?.gemini_body ?? false,
+    gemini_cta:  pipelineResult.geminiResult.signalAvailability?.gemini_cta  ?? false,
   };
+
+  // Phase 5 D-12: derived `gemini` key.
+  // - Segmented path (signalAvailability present): gemini = hook || body || cta.
+  // - Legacy text + tiktok_url paths (signalAvailability undefined): HARD-03 fallback —
+  //   the value is `true` when at least one Gemini factor scored > 0.
+  availability.gemini = pipelineResult.geminiResult.signalAvailability
+    ? availability.gemini_hook || availability.gemini_body || availability.gemini_cta
+    : geminiResult.analysis.factors.some((f) => f.score > 0);
 
   const weights = selectWeights(availability);
 
@@ -383,6 +448,25 @@ export async function aggregateScores(
   const gemini_score = Math.round(geminiAvg * 10); // Normalize to 0-100
 
   // -------------------------------------------------
+  // Phase 5 D-06: Apply CTA penalty to gemini_score.
+  // Reads wave0Result.content_type.type (Phase 4) × geminiResult.analysis.cta_segment
+  // (Phase 5 mergeSegments). Pure function — does NOT modify SCORE_WEIGHTS or
+  // selectWeights (those stay stable per Phase 4 Cross-File Constraint #3).
+  //
+  // Two separate values flow downstream:
+  //   - `gemini_score` (UNCHANGED here) → exposed on PredictionResult.gemini_score
+  //     so the M2 UI breakdown card shows the model's raw Gemini average.
+  //   - `ctaPenaltyApplied_gemini_score` → feeds raw_overall_score below so the
+  //     final number reflects the CTA-expectation penalty for tutorial/b_roll content.
+  // -------------------------------------------------
+  const widenedGemini = gemini as typeof gemini & { cta_segment?: CtaSegmentResult | null };
+  const ctaPenaltyApplied_gemini_score = applyCtaPenalty(
+    gemini_score,
+    contentTypeSlug,
+    widenedGemini.cta_segment ?? null,
+  );
+
+  // -------------------------------------------------
   // Overall score (dynamic weighted combination)
   // -------------------------------------------------
   const raw_overall_score = Math.min(
@@ -391,7 +475,7 @@ export async function aggregateScores(
       0,
       Math.round(
         behavioral_score * weights.behavioral +
-          gemini_score * weights.gemini +
+          ctaPenaltyApplied_gemini_score * weights.gemini + // Phase 5 D-06 — penalty flows here
           (mlScore ?? 0) * weights.ml +
           ruleResult.rule_score * weights.rules +
           trendEnrichment.trend_score * weights.trends
