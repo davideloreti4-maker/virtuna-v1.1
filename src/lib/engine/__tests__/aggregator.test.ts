@@ -71,7 +71,7 @@ import type { PersonaBehavioralAggregate, PersonaSimulationResult } from "../typ
 // =====================================================
 
 describe("selectWeights", () => {
-  it("returns base weights when all signals are available", () => {
+  it("returns base weights when all signals are available (post-Phase-5/6/7 merge normalized D-03b values)", () => {
     const weights = selectWeights({
       behavioral: true,
       gemini: true,
@@ -84,15 +84,20 @@ describe("selectWeights", () => {
       gemini_body: false,
       gemini_cta: false,
       personas: false,
+      retrieval: true, // Phase 8 (D-03b) — new weight-bearing key
     });
 
-    expect(weights).toEqual({
-      behavioral: 0.35,
-      gemini: 0.25,
-      ml: 0.15,
-      rules: 0.15,
-      trends: 0.1,
-    });
+    // Trunk-side base weights (Phase 5/6/7): behavioral=0.35, gemini=0.25, ml=0.15, rules=0.15, trends=0.10
+    // plus Phase 8 retrieval=0.05 → raw sum 1.05 → each weight normalized by /1.05.
+    // Phase 10 calibration will refit all weights against corpus accuracy.
+    expect(weights.behavioral).toBeCloseTo(0.333, 2);
+    expect(weights.gemini).toBeCloseTo(0.238, 2);
+    expect(weights.ml).toBeCloseTo(0.143, 2);
+    expect(weights.rules).toBeCloseTo(0.143, 2);
+    expect(weights.trends).toBeCloseTo(0.095, 2);
+    expect(weights.retrieval).toBeCloseTo(0.048, 2);
+    const sum = Object.values(weights).reduce((a, b) => a + b, 0);
+    expect(sum).toBeCloseTo(1, 2);
   });
 
   it("redistributes weight when ML is unavailable", () => {
@@ -108,12 +113,13 @@ describe("selectWeights", () => {
       gemini_body: false,
       gemini_cta: false,
       personas: false,
+      retrieval: true,
     });
 
     expect(weights.ml).toBe(0);
-    expect(weights.behavioral).toBeGreaterThan(0.35);
-    expect(weights.gemini).toBeGreaterThan(0.25);
-    expect(weights.rules).toBeGreaterThan(0.15);
+    expect(weights.behavioral).toBeGreaterThan(0.33);
+    expect(weights.gemini).toBeGreaterThan(0.24);
+    expect(weights.rules).toBeGreaterThan(0.14);
     expect(weights.trends).toBeGreaterThan(0.1);
 
     const sum = Object.values(weights).reduce((a, b) => a + b, 0);
@@ -133,6 +139,7 @@ describe("selectWeights", () => {
       gemini_body: false,
       gemini_cta: false,
       personas: false,
+      retrieval: true,
     });
 
     expect(weights.behavioral).toBe(0);
@@ -154,12 +161,13 @@ describe("selectWeights", () => {
       gemini_body: false,
       gemini_cta: false,
       personas: false,
+      retrieval: true,
     });
 
     expect(weights.behavioral).toBe(0);
     expect(weights.ml).toBe(0);
-    expect(weights.gemini).toBeGreaterThan(0.25);
-    expect(weights.rules).toBeGreaterThan(0.15);
+    expect(weights.gemini).toBeGreaterThan(0.24);
+    expect(weights.rules).toBeGreaterThan(0.14);
     expect(weights.trends).toBeGreaterThan(0.1);
 
     const sum = Object.values(weights).reduce((a, b) => a + b, 0);
@@ -179,6 +187,7 @@ describe("selectWeights", () => {
       gemini_body: false,
       gemini_cta: false,
       personas: false,
+      retrieval: false,
     });
 
     expect(weights.gemini).toBeCloseTo(1, 2);
@@ -186,6 +195,7 @@ describe("selectWeights", () => {
     expect(weights.ml).toBe(0);
     expect(weights.rules).toBe(0);
     expect(weights.trends).toBe(0);
+    expect(weights.retrieval).toBe(0);
   });
 
   it("returns all zeros when all sources are unavailable and does not throw", () => {
@@ -202,6 +212,7 @@ describe("selectWeights", () => {
         gemini_body: false,
         gemini_cta: false,
         personas: false,
+        retrieval: false,
       });
 
       // All weights should be 0 (no sources to redistribute to)
@@ -210,21 +221,22 @@ describe("selectWeights", () => {
       expect(weights.ml).toBe(0);
       expect(weights.rules).toBe(0);
       expect(weights.trends).toBe(0);
+      expect(weights.retrieval).toBe(0);
     }).not.toThrow();
   });
 
   it("always sums to ~1.0 for any combination of available signals (except all-false)", () => {
     const combos = [
-      { behavioral: true, gemini: true, ml: false, rules: false, trends: true, content_type: false, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false },
-      { behavioral: false, gemini: true, ml: true, rules: false, trends: false, content_type: true, niche: true, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false },
-      { behavioral: true, gemini: false, ml: true, rules: true, trends: false, content_type: false, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false },
-      { behavioral: false, gemini: false, ml: true, rules: true, trends: true, content_type: true, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false },
-      { behavioral: true, gemini: true, ml: true, rules: false, trends: false, content_type: false, niche: true, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false },
-      { behavioral: true, gemini: true, ml: false, rules: false, trends: true, content_type: false, niche: false, personas: false, gemini_hook: false, gemini_body: false, gemini_cta: false },
-      { behavioral: false, gemini: true, ml: true, rules: false, trends: false, content_type: true, niche: true, personas: true, gemini_hook: false, gemini_body: false, gemini_cta: false },
-      { behavioral: true, gemini: false, ml: true, rules: true, trends: false, content_type: false, niche: false, personas: false, gemini_hook: false, gemini_body: false, gemini_cta: false },
-      { behavioral: false, gemini: false, ml: true, rules: true, trends: true, content_type: true, niche: false, personas: true, gemini_hook: false, gemini_body: false, gemini_cta: false },
-      { behavioral: true, gemini: true, ml: true, rules: false, trends: false, content_type: false, niche: true, personas: false, gemini_hook: false, gemini_body: false, gemini_cta: false },
+      { behavioral: true, gemini: true, ml: false, rules: false, trends: true, content_type: false, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: true },
+      { behavioral: false, gemini: true, ml: true, rules: false, trends: false, content_type: true, niche: true, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: false },
+      { behavioral: true, gemini: false, ml: true, rules: true, trends: false, content_type: false, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: true },
+      { behavioral: false, gemini: false, ml: true, rules: true, trends: true, content_type: true, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: false },
+      { behavioral: true, gemini: true, ml: true, rules: false, trends: false, content_type: false, niche: true, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: true },
+      { behavioral: true, gemini: true, ml: false, rules: false, trends: true, content_type: false, niche: false, personas: false, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: true },
+      { behavioral: false, gemini: true, ml: true, rules: false, trends: false, content_type: true, niche: true, personas: true, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: false },
+      { behavioral: true, gemini: false, ml: true, rules: true, trends: false, content_type: false, niche: false, personas: false, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: true },
+      { behavioral: false, gemini: false, ml: true, rules: true, trends: true, content_type: true, niche: false, personas: true, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: false },
+      { behavioral: true, gemini: true, ml: true, rules: false, trends: false, content_type: false, niche: true, personas: false, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: true },
     ];
 
     for (const combo of combos) {
@@ -232,6 +244,52 @@ describe("selectWeights", () => {
       const sum = Object.values(weights).reduce((a, b) => a + b, 0);
       expect(sum).toBeCloseTo(1, 2);
     }
+  });
+});
+
+// =====================================================
+// Phase 8 — retrieval slot tests (Plan 04 Task 3)
+// =====================================================
+
+describe("selectWeights — Phase 8 retrieval slot", () => {
+  it("returns retrieval ~0.048 when all signals (including retrieval) available — post-merge normalized", () => {
+    // Phase 8 standalone D-03b intent: retrieval=0.05. Post-merge with trunk Phase 5/6/7 weights
+    // (sum 1.05 pre-normalization), retrieval normalizes to 0.05/1.05 ≈ 0.0476. Phase 10 will refit.
+    const w = selectWeights({
+      behavioral: true,
+      gemini: true,
+      ml: true,
+      rules: true,
+      trends: true,
+      content_type: true,
+      niche: true,
+      gemini_hook: false,
+      gemini_body: false,
+      gemini_cta: false,
+      personas: false,
+      retrieval: true,
+    });
+    expect(w.retrieval).toBeCloseTo(0.048, 2);
+  });
+
+  it("redistributes retrieval's 0.05 to the other 5 signals when retrieval=false", () => {
+    const w = selectWeights({
+      behavioral: true,
+      gemini: true,
+      ml: true,
+      rules: true,
+      trends: true,
+      content_type: true,
+      niche: true,
+      gemini_hook: false,
+      gemini_body: false,
+      gemini_cta: false,
+      personas: false,
+      retrieval: false,
+    });
+    expect(w.retrieval).toBe(0);
+    const total = w.behavioral + w.gemini + w.ml + w.rules + w.trends;
+    expect(total).toBeCloseTo(1.0, 2);
   });
 });
 
@@ -509,7 +567,7 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
     );
   });
 
-  it("selectWeights regression: 5-key availability all-true → unchanged base weights", () => {
+  it("selectWeights regression: 6-key availability all-true → post-merge normalized D-03b weights", () => {
     const weights = selectWeights({
       behavioral: true,
       gemini: true,
@@ -522,14 +580,15 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
       gemini_body: false,
       gemini_cta: false,
       personas: false,
+      retrieval: true, // Phase 8 — weight-bearing
     });
-    expect(weights).toEqual({
-      behavioral: 0.35,
-      gemini: 0.25,
-      ml: 0.15,
-      rules: 0.15,
-      trends: 0.1,
-    });
+    // Post-merge normalized (base sum 1.05 from trunk weights + retrieval=0.05). Phase 10 will refit.
+    expect(weights.behavioral).toBeCloseTo(0.333, 2);
+    expect(weights.gemini).toBeCloseTo(0.238, 2);
+    expect(weights.ml).toBeCloseTo(0.143, 2);
+    expect(weights.rules).toBeCloseTo(0.143, 2);
+    expect(weights.trends).toBeCloseTo(0.095, 2);
+    expect(weights.retrieval).toBeCloseTo(0.048, 2);
   });
 
   it("selectWeights ignores content_type + niche keys (Critical Cross-File Constraint #3)", () => {
@@ -545,6 +604,7 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
       gemini_body: false,
       gemini_cta: false,
       personas: false,
+      retrieval: true,
     });
     const weightsWithoutNew = selectWeights({
       behavioral: true,
@@ -558,6 +618,7 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
       gemini_body: false,
       gemini_cta: false,
       personas: false,
+      retrieval: true,
     });
     expect(weightsWithNew).toEqual(weightsWithoutNew);
     const sum = Object.values(weightsWithNew).reduce((a, b) => a + b, 0);
@@ -577,6 +638,7 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
       gemini_body: false,
       gemini_cta: false,
       personas: false,
+      retrieval: true,
     });
     // 2-decimal precision matches existing "always sums to ~1.0" test convention
     // (rounding step inside selectWeights can introduce ±0.001 floating drift).
@@ -808,5 +870,128 @@ describe("aggregateScores Phase 7 widening", () => {
     });
     const result = await aggregateScores(pipelineResult);
     expect(result.persona_behavioral_aggregate).toEqual(samplePersonaAggregate);
+  });
+});
+
+// =====================================================
+// Phase 8 — aggregator retrieval signal integration (Plan 04 Task 3)
+// =====================================================
+
+import type { RetrievalEvidenceItem } from "../types";
+
+describe("Phase 8 — aggregator retrieval integration", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(predictWithML).mockResolvedValue(50);
+    vi.mocked(getPlattParameters).mockResolvedValue(null);
+    vi.mocked(applyPlattScaling).mockImplementation(
+      (score: number, _params: unknown) => score,
+    );
+  });
+
+  it("populates retrieval_score on PredictionResult when retrieval is available", async () => {
+    const pipeline = makePipelineResult({
+      retrievalResult: {
+        evidence: [],
+        score: 0.8,
+        availability: true,
+        cost_cents: 0.001,
+      },
+    });
+    const result = await aggregateScores(pipeline);
+    expect(result.retrieval_score).toBe(0.8);
+    expect(result.signal_availability.retrieval).toBe(true);
+  });
+
+  it("treats retrieval_score=null as 0 contribution to overall_score (null-safe)", async () => {
+    const pipeline = makePipelineResult({
+      retrievalResult: {
+        evidence: [],
+        score: null,
+        availability: false,
+        cost_cents: 0,
+      },
+    });
+    const result = await aggregateScores(pipeline);
+    expect(result.retrieval_score).toBeNull();
+    expect(result.signal_availability.retrieval).toBe(false);
+    // overall_score must still be a valid number (no NaN from null arithmetic)
+    expect(result.overall_score).toBeGreaterThanOrEqual(0);
+    expect(result.overall_score).toBeLessThanOrEqual(100);
+  });
+
+  it("populates retrieval_evidence on PredictionResult", async () => {
+    const evidence: RetrievalEvidenceItem[] = [
+      {
+        source_pool: "training_corpus",
+        source_id: "abcdef00-0000-0000-0000-000000000001",
+        similarity_score: 0.9,
+        video_url: "https://tiktok.com/v/1",
+        creator_handle: "creator1",
+        caption_snippet: "Test caption",
+        views: 1_000_000,
+        likes: 100_000,
+        shares: 5_000,
+        comments: 2_000,
+        saves: 10_000,
+        hashtags: ["beauty", "grwm"],
+        posted_at: "2026-04-01T00:00:00Z",
+        bucket_label: "viral",
+        bucket_source: "corpus",
+        relaxed_to: "strict",
+      },
+    ];
+    const pipeline = makePipelineResult({
+      retrievalResult: {
+        evidence,
+        score: 0.9,
+        availability: true,
+        cost_cents: 0.001,
+      },
+    });
+    const result = await aggregateScores(pipeline);
+    expect(result.retrieval_evidence).toEqual(evidence);
+  });
+
+  it("score_weights.retrieval is included in PredictionResult", async () => {
+    const pipeline = makePipelineResult({
+      retrievalResult: {
+        evidence: [],
+        score: 0.5,
+        availability: true,
+        cost_cents: 0.001,
+      },
+    });
+    const result = await aggregateScores(pipeline);
+    expect(result.score_weights).toHaveProperty("retrieval");
+    // Post-merge normalized — Phase 8 standalone intent 0.05, merged with trunk Phase 5/6/7 → ~0.048.
+    // Phase 10 calibration owns the final retune.
+    expect(result.score_weights.retrieval).toBeCloseTo(0.048, 2);
+  });
+
+  it("signal_availability.retrieval mirrors pipelineResult.retrievalResult.availability", async () => {
+    const trueResult = await aggregateScores(
+      makePipelineResult({
+        retrievalResult: {
+          evidence: [],
+          score: 0.5,
+          availability: true,
+          cost_cents: 0.001,
+        },
+      }),
+    );
+    expect(trueResult.signal_availability.retrieval).toBe(true);
+
+    const falseResult = await aggregateScores(
+      makePipelineResult({
+        retrievalResult: {
+          evidence: [],
+          score: null,
+          availability: false,
+          cost_cents: 0,
+        },
+      }),
+    );
+    expect(falseResult.signal_availability.retrieval).toBe(false);
   });
 });

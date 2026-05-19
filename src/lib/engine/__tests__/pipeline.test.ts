@@ -203,6 +203,19 @@ vi.mock("@/lib/supabase/service", () => ({
   })),
 }));
 
+// Phase 8 — retrieval-stage mock (vi.hoisted so vi.mock factory can reference it).
+const { mockRunBenchmarkRetrieval } = vi.hoisted(() => ({
+  mockRunBenchmarkRetrieval: vi.fn(async () => ({
+    evidence: [],
+    score: 0.5,
+    availability: true,
+    cost_cents: 0.001,
+  })),
+}));
+vi.mock("@/lib/engine/retrieval/retrieval-stage", () => ({
+  runBenchmarkRetrieval: mockRunBenchmarkRetrieval,
+}));
+
 // Set env vars BEFORE importing the module under test
 process.env.GEMINI_API_KEY = "test-key";
 process.env.DEEPSEEK_API_KEY = "test-key";
@@ -855,5 +868,93 @@ describe("Phase 4 — Wave 0 + pre_creator_context", () => {
     expect(result.wave0Result.content_type?.type).toBe("talking_head");
     // Confirm the storage path was used (NOT a fetch on the raw key)
     expect(mockStorageDownload).toHaveBeenCalledWith("user-abc/test-content.mp4");
+  });
+});
+
+// =====================================================
+// Phase 8 — Wave 1 retrieval sibling (Plan 04 Task 2)
+// =====================================================
+
+// retrieval-stage is mocked at the top of the file via vi.hoisted (see top of file).
+// Note: this `vi.mock` call must execute before runPredictionPipeline is imported,
+// so we rely on Vitest's hoisting + the matching vi.hoisted block above.
+
+describe("Phase 8 — Wave 1 retrieval sibling", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetCircuitBreaker();
+    supabaseTableOverrides = {};
+
+    // Default Gemini mock — returns valid GeminiAnalysis
+    mockGeminiGenerate.mockResolvedValue({
+      text: JSON.stringify(makeGeminiAnalysis()),
+      usageMetadata: { promptTokenCount: 500, candidatesTokenCount: 300 },
+    });
+
+    // Default DeepSeek mock — returns valid DeepSeekReasoning
+    mockDeepSeekCreate.mockResolvedValue({
+      choices: [
+        { message: { content: JSON.stringify(makeDeepSeekReasoning()) } },
+      ],
+      usage: { prompt_tokens: 1000, completion_tokens: 500 },
+    });
+
+    supabaseTableOverrides = {
+      rule_library: { data: [], error: null },
+      trending_sounds: { data: [], error: null },
+      creator_profiles: { data: null, error: null },
+      scraped_videos: { data: [], error: null },
+    };
+
+    // Default retrieval mock — non-null result with one evidence item
+    mockRunBenchmarkRetrieval.mockResolvedValue({
+      evidence: [],
+      score: 0.5,
+      availability: true,
+      cost_cents: 0.001,
+    });
+  });
+
+  it("PipelineResult includes retrievalResult with full BenchmarkRetrievalResult shape", async () => {
+    const result = await runPredictionPipeline(input);
+
+    expect(result.retrievalResult).toBeDefined();
+    expect(result.retrievalResult).toHaveProperty("evidence");
+    expect(result.retrievalResult).toHaveProperty("score");
+    expect(result.retrievalResult).toHaveProperty("availability");
+    expect(result.retrievalResult).toHaveProperty("cost_cents");
+    expect(result.retrievalResult.score).toBe(0.5);
+    expect(result.retrievalResult.availability).toBe(true);
+  });
+
+  it("runBenchmarkRetrieval invoked once with payload + creatorContext + wave0Result + supabase + onEvent + requestId", async () => {
+    mockRunBenchmarkRetrieval.mockClear();
+
+    await runPredictionPipeline(input, { requestId: "ret-test-id" });
+
+    expect(mockRunBenchmarkRetrieval).toHaveBeenCalledTimes(1);
+    const args = mockRunBenchmarkRetrieval.mock.calls[0]?.[0];
+    expect(args).toBeDefined();
+    expect(args.payload).toBeDefined();
+    expect(args.creatorContext).toBeDefined();
+    expect(args.wave0Result).toBeDefined();
+    expect(args.supabase).toBeDefined();
+    expect(args.requestId).toBe("ret-test-id");
+  });
+
+  it("retrieval failure pushes warning + returns empty BenchmarkRetrievalResult (graceful degradation)", async () => {
+    mockRunBenchmarkRetrieval.mockRejectedValueOnce(
+      new Error("RPC unreachable"),
+    );
+
+    const result = await runPredictionPipeline(input);
+
+    expect(result.retrievalResult.evidence).toEqual([]);
+    expect(result.retrievalResult.score).toBeNull();
+    expect(result.retrievalResult.availability).toBe(false);
+    expect(result.retrievalResult.cost_cents).toBe(0);
+    expect(
+      result.warnings.some((w) => w.includes("Retrieval unavailable")),
+    ).toBe(true);
   });
 });

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: engine-foundation
 milestone_name: Engine Foundation
-status: planning
-stopped_at: Phase 06 complete + merged (6/6 plans, 3/3 HUMAN-UAT passed, code review 5W/4I closed inline)
-last_updated: "2026-05-19T11:50:00.000Z"
-last_activity: 2026-05-19
+status: executing
+stopped_at: Phase 08 merged into milestone (5/5 plans, live DB applied, 7614 rows embedded, HNSW self-match validated)
+last_updated: "2026-05-19T13:00:00.000Z"
+last_activity: 2026-05-19 -- Phase 08 merged into milestone
 progress:
   total_phases: 12
-  completed_phases: 7
-  total_plans: 36
-  completed_plans: 36
+  completed_phases: 8
+  total_plans: 41
+  completed_plans: 41
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
-**Current focus:** Phase 04 — wave-0-content-type-niche-detection (next planned phase after 06 merged; Phases 5/6/7 all complete)
+**Current focus:** Phase 04 — wave-0-content-type-niche-detection (next planned phase after 5/6/7/8 all merged into trunk)
 
 ## Current Position
 
 Phase: 4
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-19
+Status: Ready to plan (Phases 5, 6, 7, 8 all complete and merged)
+Last activity: 2026-05-19 -- Phase 08 merged into milestone
 
 Progress: [██████████] 100%
 
@@ -110,6 +110,11 @@ Phase 01 decisions:
 - v2.1 baseline result: macro_f1=0.294 — BELOW random chance (0.333). Score has zero Spearman correlation with actual views within any niche.
 - All 10 failure_cases are under→viral (severity=2): systematic rule-scoring over-credit.
 - v3 acceptance target: macro_f1 ≥ 0.338 (D-18 15% relative improvement).
+- [Phase 08]: Phase 8 Plan 02: Locked Zod contracts for RetrievalEvidenceItem (D-02 16-field shape) and BenchmarkRetrievalResult before any Plan 03-05 implementation — Interface-first task — every downstream plan imports these types; locking them in one place prevents drift on field names/types across the parallel implementation plans.
+- [Phase 08]: Phase 8 Plan 02: SignalAvailability + PredictionResult extended additively; 13 expected cross-plan TS errors are the intentional compile-time gate Plan 04 must close — Per plan <done> note — aggregator.ts + aggregator.test.ts literal SignalAvailability objects are missing the new retrieval key by design. This is the working-as-intended mechanism that prevents Plan 04 from silently omitting the new field.
+- [Phase ?]: [Phase 08]: Plan 03: Gemini embedding model upgraded to gemini-embedding-001 with outputDimensionality 768 (RESEARCH Finding 1, supersedes deprecated text-embedding-004)
+- [Phase ?]: [Phase 08]: Plan 03: NON_CORPUS_ENGAGEMENT_PERCENTILES shipped as 0/0 placeholders for all 5 non-calibrated niches (tech-gadgets, gaming, fashion-style, music-performance, food-cooking); Plan 05 backfill overwrites with real P80/P40; deriveBucket falls back to 'average' until then
+- [Phase ?]: [Phase 08]: Plan 03: Soft re-ranker hashtag-overlap bonus applies to rerank_score (sort key) only; original similarity field NEVER mutated — preserves D-02 persistence integrity so D-03 bucket-vote denominator uses original cosine score
 
 ### Pending Todos
 
@@ -134,9 +139,9 @@ Phase 01 decisions:
 
 ## Session Continuity
 
-Last session: 2026-05-19T11:50:00.000Z
-Stopped at: Phase 06 merged into milestone (6/6 plans, 3/3 HUMAN-UAT passed, code review 5W/4I closed inline, merged with conflict resolution against Phases 5+7)
-Next action: `/gsd-discuss-phase 4` or `/gsd-plan-phase 4` to start Wave 0 — Content Type + Niche Detection.
+Last session: 2026-05-19T13:00:00.000Z
+Stopped at: Phase 08 merged into milestone (5/5 plans complete; live DB applied; 7614 rows embedded; HNSW self-match validated at similarity=1.0; merged with conflict resolution against Phases 5/6/7 trunk-side updates)
+Next action: `/gsd-discuss-phase 4` or `/gsd-plan-phase 4` to start Wave 0 — Content Type + Niche Detection. All of Phases 5, 6, 7, 8 are now in trunk.
 
 Resume command: `cd ~/virtuna-engine-foundation && /gsd-progress`
 

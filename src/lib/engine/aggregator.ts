@@ -35,10 +35,18 @@ export { ENGINE_VERSION };
 // =====================================================
 
 // Phase 6 (D-G1) — audio: 0.07 = middle of 0.05-0.10 range per CONTEXT D-G1.
-// Phase 10 ML audit retunes against corpus benchmark. Raw weights now sum to 1.07;
+// Phase 8 (D-03b) — retrieval: 0.05 dev placeholder; Phase 10 will tune.
+// Phase 10 ML audit retunes against corpus benchmark. Raw weights now sum to 1.12;
 // selectWeights normalizes BOTH branches (all-available + redistribution) so the
 // returned weights always sum to ~1.0 — the weighted-average math in aggregateScores
 // expects that contract. Exported for test introspection (aggregator-audio.test.ts).
+//
+// Trunk-authoritative base weights for behavioral/gemini/ml/rules/trends are kept at
+// their pre-Phase-8 values (0.35/0.25/0.15/0.15/0.10). Phase 8's D-03b redistribution
+// (×0.95 to make room for retrieval=0.05) is now handled by the normalization step in
+// selectWeights rather than as hand-tuned constants here. The net effect on
+// PredictionResult.score_weights is identical to the D-03b matrix because the normalizer
+// divides every weight by the same baseSum.
 export const SCORE_WEIGHTS = {
   behavioral: 0.35,
   gemini: 0.25,
@@ -46,16 +54,19 @@ export const SCORE_WEIGHTS = {
   rules: 0.15,
   trends: 0.10,
   audio: 0.07, // Phase 6 (D-G1) — weight-bearing
+  retrieval: 0.05, // Phase 8 (D-03b) — weight-bearing; Phase 10 calibration will tune
 } as const;
 
-// PATTERNS Critical Cross-File Constraint #3:
-// selectWeights() must iterate ONLY known SCORE_WEIGHTS keys. Phase 4 widened
-// SignalAvailability with content_type + niche provenance keys (D-20) — those
-// must NOT participate in weight redistribution math. Phase 6 (D-G1) adds
-// `audio` (weight-bearing) but does NOT add `audio_fingerprint` (provenance only;
-// the fingerprint boost is folded into audio_score before the weighted average,
-// so audio_fingerprint must NOT have its own slot in the math).
-export const SCORE_WEIGHT_KEYS = ["behavioral", "gemini", "ml", "rules", "trends", "audio"] as const;
+// PATTERNS Critical Cross-File Constraint #1 (Phase 8) + #3 (Phase 4 + Phase 6):
+// selectWeights() must iterate ONLY weight-bearing SCORE_WEIGHTS keys.
+// - Phase 4 widened SignalAvailability with content_type + niche provenance keys
+//   (D-20) — those do NOT participate in weight math (provenance only).
+// - Phase 6 (D-G1) adds `audio` (weight-bearing) but does NOT add `audio_fingerprint`
+//   (provenance only; the fingerprint boost is folded into audio_score before the
+//   weighted average, so audio_fingerprint must NOT have its own slot in the math).
+// - Phase 8 added `retrieval` as a weight-bearing key — MUST be in this tuple
+//   (skipping it silently drops the new 0.05 slot in the filter below).
+export const SCORE_WEIGHT_KEYS = ["behavioral", "gemini", "ml", "rules", "trends", "audio", "retrieval"] as const;
 type ScoreWeightKey = (typeof SCORE_WEIGHT_KEYS)[number];
 
 // =====================================================
@@ -134,25 +145,35 @@ export function applyCtaPenalty(
  */
 export function selectWeights(
   availability: SignalAvailability
-): { behavioral: number; gemini: number; ml: number; rules: number; trends: number; audio?: number } {
+): {
+  behavioral: number;
+  gemini: number;
+  ml: number;
+  rules: number;
+  trends: number;
+  audio?: number;
+  retrieval?: number;
+} {
   // Filter Object.entries to ONLY known SCORE_WEIGHTS keys. Phase 4+ extensions
   // that add provenance keys to SignalAvailability (content_type, niche, future
-  // retrieval/hook_decomp) MUST NOT participate in the weight math.
-  // PATTERNS Critical Cross-File Constraint #3.
-  // Phase 6 (D-G1): `audio` IS in SCORE_WEIGHT_KEYS (weight-bearing);
-  // `audio_fingerprint` is NOT (provenance only — the fingerprint boost folds into
-  // audio_score before the weighted average, so it must not get its own slot here).
+  // hook_decomp) MUST NOT participate in the weight math.
+  // PATTERNS Critical Cross-File Constraints #1 (Phase 8) + #3 (Phase 4 + Phase 6).
+  // - Phase 6 (D-G1): `audio` IS in SCORE_WEIGHT_KEYS (weight-bearing);
+  //   `audio_fingerprint` is NOT (provenance only — the fingerprint boost folds into
+  //   audio_score before the weighted average, so it must not get its own slot here).
+  // - Phase 8 (D-03b): `retrieval` IS in SCORE_WEIGHT_KEYS (weight-bearing).
   //
-  // BACK-COMPAT: SignalAvailability.audio is `.optional()` (Phase 6 declared the
-  // field to preserve compile against pre-Phase-6 construction sites). When the
-  // caller passes a legacy 5-key availability object that LACKS the `audio` field
-  // entirely, we treat audio as "not in the math at all" — preserving the legacy
-  // 5-signal base weights (0.35/0.25/0.15/0.15/0.1, sum=1.0). When the caller
-  // passes the new 6-key shape, audio fully participates.
+  // BACK-COMPAT: SignalAvailability.audio and SignalAvailability.retrieval are both
+  // `.optional()` (Phase 6 + Phase 8 declared them optionally to preserve compile
+  // against pre-Phase-6/Phase-8 construction sites). When the caller passes a legacy
+  // availability object that LACKS one or both of those keys, we treat the missing
+  // signal as "not in the math at all" — preserving the legacy base-weight semantics
+  // for those callers. When the caller passes the new full shape, every key participates.
   const audioInInput = Object.prototype.hasOwnProperty.call(availability, "audio");
-  const activeKeys = audioInInput
-    ? SCORE_WEIGHT_KEYS
-    : (SCORE_WEIGHT_KEYS.filter((k) => k !== "audio") as readonly ScoreWeightKey[]);
+  const retrievalInInput = Object.prototype.hasOwnProperty.call(availability, "retrieval");
+  const activeKeys = (SCORE_WEIGHT_KEYS.filter(
+    (k) => (k !== "audio" || audioInInput) && (k !== "retrieval" || retrievalInInput),
+  ) as readonly ScoreWeightKey[]);
 
   const filtered = (Object.entries(availability) as Array<[string, boolean]>)
     .filter(([key]) => (activeKeys as readonly string[]).includes(key)) as Array<
@@ -162,11 +183,15 @@ export function selectWeights(
   const available = filtered.filter(([, v]) => v);
   const missing = filtered.filter(([, v]) => !v);
 
-  // Phase 6 (D-G1) normalization contract — see SCORE_WEIGHTS comment above.
-  // Raw weights for the 6-key path sum to 1.07; the 5-key legacy path sums to 1.0.
-  // The downstream weighted-average math in aggregateScores expects weights to sum
-  // to ~1.0 to keep overall_score in [0, 100]. Therefore BOTH branches (all-available
-  // + redistribution) normalize via `weight / total * 1000` rounding pass below.
+  // Phase 6 (D-G1) + Phase 8 (D-03b) normalization contract — see SCORE_WEIGHTS comment above.
+  // Raw weights for the 7-key path sum to 1.12; 6-key (no retrieval) sums to 1.07; 5-key
+  // legacy path sums to 1.0. The downstream weighted-average math in aggregateScores
+  // expects weights to sum to ~1.0 to keep overall_score in [0, 100]. Therefore BOTH
+  // branches (all-available + redistribution) normalize via `weight / total * 1000`
+  // rounding pass below. The Phase 8 D-03b matrix (behavioral=0.33, gemini=0.24, ml=0.14,
+  // rules=0.14, trends=0.10, retrieval=0.05) is the deterministic output of this
+  // normalization step applied to the 6-key path (without audio) — i.e., the values
+  // tests in Phase 8 assert against.
   type WeightsOut = {
     behavioral: number;
     gemini: number;
@@ -174,10 +199,12 @@ export function selectWeights(
     rules: number;
     trends: number;
     audio?: number;
+    retrieval?: number;
   };
   const initWeights = (): WeightsOut => {
     const w: WeightsOut = { behavioral: 0, gemini: 0, ml: 0, rules: 0, trends: 0 };
     if (audioInInput) w.audio = 0;
+    if (retrievalInInput) w.retrieval = 0;
     return w;
   };
 
@@ -199,7 +226,9 @@ export function selectWeights(
     (sum, [key]) => sum + SCORE_WEIGHTS[key], 0
   );
 
-  // Each available source gets its base weight + proportional share of missing weight
+  // Each available source gets its base weight + proportional share of missing weight.
+  // initWeights() seeds the audio + retrieval slots only when the caller provided them
+  // (back-compat per Phase 6 + Phase 8 .optional() flags).
   const result = initWeights();
   for (const [key, isAvailable] of filtered) {
     if (isAvailable) {
@@ -681,6 +710,10 @@ export async function aggregateScores(
     audio: audioSignals != null,
     // Phase 6 (D-G1) — provenance only (filtered out of SCORE_WEIGHT_KEYS).
     audio_fingerprint: audioFingerprintResult !== null,
+    // Phase 8 D-10: retrieval signal — IS weight-bearing (included in
+    // SCORE_WEIGHT_KEYS). True when ≥1 match survived hierarchical relaxation
+    // AND D-04b min_corpus_size gate passed (i.e., retrievalResult.score is non-null).
+    retrieval: pipelineResult.retrievalResult.availability,
   };
 
   // Phase 5 D-12: derived `gemini` key.
@@ -769,7 +802,11 @@ export async function aggregateScores(
           (mlScore ?? 0) * weights.ml +
           ruleResult.rule_score * weights.rules +
           effectiveTrendEnrichment.trend_score * weights.trends +
-          audio_score * (weights.audio ?? 0)
+          audio_score * (weights.audio ?? 0) +
+          // Phase 8 D-03: retrievalResult.score is in [0,1] — scale by 100 to match
+          // the [0,100] range of the other terms before applying the weight.
+          // ?? 0 makes the term null-safe when retrieval is unavailable.
+          ((pipelineResult.retrievalResult.score ?? 0) * 100) * (weights.retrieval ?? 0)
       )
     )
   );
@@ -970,6 +1007,12 @@ export async function aggregateScores(
     // (scroll_past_second, watch_through_pct per persona) — see PERSONA-11.
     persona_behavioral_aggregate: pipelineResult.personaBehavioralAggregate ?? null,
     persona_simulation_results: pipelineResult.wave3Result,
+    // Phase 8 D-11 — retrieval signal output. Persisted to
+    // analysis_results.retrieval_score (NUMERIC(5,4) nullable) and
+    // analysis_results.retrieval_evidence (JSONB). M2 renders evidence in
+    // the "similar videos" panel without further DB joins (D-02).
+    retrieval_score: pipelineResult.retrievalResult.score,
+    retrieval_evidence: pipelineResult.retrievalResult.evidence,
   };
 
   // -------------------------------------------------

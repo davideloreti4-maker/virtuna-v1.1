@@ -144,12 +144,12 @@
 
 <!-- Top-K similar competitor videos as evidence. -->
 
-- [ ] **RETRIEVAL-01**: `pgvector` extension installed in Supabase
-- [ ] **RETRIEVAL-02**: Competitor video embedding pipeline (embeddings computed at scrape time, stored in `competitor_videos.embedding` column)
-- [ ] **RETRIEVAL-03**: Predict-time embedding of input video summary (text-embedding-3-small or Gemini embedding)
-- [ ] **RETRIEVAL-04**: Top-K similarity search (K=5) filtered by niche, platform, creator tier
-- [ ] **RETRIEVAL-05**: Similar videos returned as `retrieval_evidence` field on prediction (top 5 with similarity scores + outcomes)
-- [ ] **RETRIEVAL-06**: Backfill embedding pipeline for existing competitor videos (one-time job)
+- [x] **RETRIEVAL-01**: `pgvector` extension installed in Supabase
+- [x] **RETRIEVAL-02**: Two-pool video embedding pipeline — embeddings computed at scrape time (Apify webhook → `scraped_videos.embedding`) AND at corpus build time (`scripts/build-corpus.ts` → `training_corpus.embedding`). Reflects Phase 8 D-01 locked decision: `competitor_videos.embedding` rejected (per-user RLS pool too small + system-wide pattern-match is the actual use case).
+- [x] **RETRIEVAL-03**: Predict-time embedding of input video summary (text-embedding-3-small or Gemini embedding)
+- [x] **RETRIEVAL-04**: Top-K similarity search (K=5) filtered by niche, platform, creator tier
+- [x] **RETRIEVAL-05**: Similar videos returned as `retrieval_evidence` field on prediction (top 5 with similarity scores + outcomes)
+- [x] **RETRIEVAL-06**: Backfill embedding pipeline for existing competitor videos (one-time job)
 
 ## Platform Algorithm Fit
 
@@ -273,4 +273,10 @@
 | PROFILE-17 | 02 | 02-06 | Complete |
 | INT-02 | 02 | 02-04 | Complete |
 | INT-04 | 02 | 02-05 | Complete |
+| RETRIEVAL-01 | 08 | 08-01, 08-05 | Complete |
+| RETRIEVAL-02 | 08 | 08-01, 08-05 | Complete |
+| RETRIEVAL-03 | 08 | 08-03, 08-04 | Complete |
+| RETRIEVAL-04 | 08 | 08-04 | Complete |
+| RETRIEVAL-05 | 08 | 08-04 | Complete |
+| RETRIEVAL-06 | 08 | 08-05 | Complete |
 | HOOK-02 | 06 | 06-01, 06-03 | Planned |

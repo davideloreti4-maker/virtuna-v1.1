@@ -246,10 +246,8 @@ export function makePipelineResult(
         avg_share_rate: 0.008,
         avg_comment_rate: 0.005,
       },
-      // WR-03: CreatorContext requires 14 nullable Phase 2 9-card fields. The factory was
-      // missing all of them — tsc --noEmit reports `Type '...' is missing the following
-      // properties from type 'CreatorContext': target_platforms, niche_primary, niche_sub,
-      // target_audience, and 9 more.` This blocks any future move to tsc-check tests in CI.
+      // Phase 2 (D-19) — 9-card profile fields (all null in the default factory).
+      // WR-03: required-but-nullable on CreatorContext — tsc --noEmit fails without them.
       target_platforms: null,
       niche_primary: null,
       niche_sub: null,
@@ -283,6 +281,13 @@ export function makePipelineResult(
     // exercise Wave 3. Tests asserting on Wave 3 cost should pass an override (e.g.,
     // { wave3CostCents: 1.25 }).
     wave3CostCents: 0,
+    // Phase 8 — Wave 1 retrieval sibling default (graceful empty unless overridden)
+    retrievalResult: {
+      evidence: [],
+      score: null,
+      availability: false,
+      cost_cents: 0,
+    },
     requestId: "test-req-123",
     timings: [
       { stage: "validate", duration_ms: 5 },

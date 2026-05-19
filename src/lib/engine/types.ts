@@ -189,13 +189,15 @@ export interface PredictionResult {
    *  geminiResult.analysis.audio_signals?.audio_description ?? null. */
   audio_description?: string | null;
   score_weights: {
-    behavioral: number; // 0.35
-    gemini: number; // 0.25
-    ml: number; // 0.15
-    rules: number; // 0.15
+    behavioral: number; // 0.35 (Phase 8 D-03b redistributed to 0.33)
+    gemini: number; // 0.25 (Phase 8 D-03b redistributed to 0.24)
+    ml: number; // 0.15 (Phase 8 D-03b redistributed to 0.14)
+    rules: number; // 0.15 (Phase 8 D-03b redistributed to 0.14)
     trends: number; // 0.10
     /** Phase 6 (D-G1) — audio weight 0.07; redistributes when signal_availability.audio=false. */
     audio?: number;
+    /** Phase 8 (D-03b) — 0.05 base; redistributed when SignalAvailability.retrieval = false. */
+    retrieval?: number;
   };
 
   // Meta
@@ -214,6 +216,10 @@ export interface PredictionResult {
   persona_behavioral_aggregate: PersonaBehavioralAggregate | null;
   /** Phase 7 (D-09) — per-persona detail for M2 audience-viz. Empty array on fallback. */
   persona_simulation_results: PersonaSimulationResult[];
+
+  // Phase 8 (D-11) — retrieval signal output
+  retrieval_score: number | null;            // D-03 similarity-weighted bucket vote in [0,1]; null when availability.retrieval = false
+  retrieval_evidence: RetrievalEvidenceItem[];  // D-02 shape, max 5 items
 }
 
 // =====================================================
@@ -255,6 +261,14 @@ export interface SignalAvailability {
   // Phase 6 (D-G1) — provenance only: tracks whether pgvector returned a match; NOT in SCORE_WEIGHT_KEYS.
   // Optional to preserve compile against existing aggregator; plans 06-05/06-06 emit it.
   audio_fingerprint?: boolean;
+  /**
+   * NEW Phase 8 (D-10) — true when ≥1 match survives hierarchical relaxation AND
+   * min_corpus_size gate passes (i.e., retrievalResult.score is non-null).
+   * Weight-bearing — IS in SCORE_WEIGHT_KEYS.
+   * Optional for back-compat with Phase 4/5/6/7 callsites that pre-date Phase 8;
+   * aggregator + route always set it on Phase 8+ PredictionResult.
+   */
+  retrieval?: boolean;
 }
 
 // Wave0Result now defined below as z.infer<typeof Wave0ResultSchema> — see Phase 4 block.
@@ -504,6 +518,56 @@ export const DeepSeekResponseSchema = z.object({
 });
 
 export type DeepSeekReasoning = z.infer<typeof DeepSeekResponseSchema>;
+
+// =====================================================
+// Phase 8 — Benchmark Retrieval (pgvector) Schemas
+// Per CONTEXT D-02 (evidence item shape) + D-03 (result shape) + D-10/D-11
+// (SignalAvailability + PredictionResult extensions below).
+// =====================================================
+
+/**
+ * Phase 8 — Retrieval Evidence Item (D-02).
+ * One record per item returned by runBenchmarkRetrieval. Rich shape so M2's
+ * "similar videos" panel can render without further DB joins.
+ *
+ * Persisted to analysis_results.retrieval_evidence JSONB column (D-11).
+ */
+export const RetrievalEvidenceItemSchema = z.object({
+  source_pool: z.enum(["training_corpus", "scraped_videos"]),
+  source_id: z.string().uuid(),
+  similarity_score: z.number().min(0).max(1),
+  video_url: z.string().nullable(),
+  creator_handle: z.string().nullable(),
+  caption_snippet: z.string().nullable(),
+  views: z.number().int().nonnegative(),
+  likes: z.number().int().nonnegative(),
+  shares: z.number().int().nonnegative(),
+  comments: z.number().int().nonnegative(),
+  saves: z.number().int().nonnegative().nullable(),
+  hashtags: z.array(z.string()),
+  posted_at: z.string().nullable(),
+  bucket_label: z.enum(["viral", "average", "under"]),
+  bucket_source: z.enum(["corpus", "derived"]),
+  relaxed_to: z.enum(["strict", "niche+platform", "niche_only"]).nullable(),
+});
+export type RetrievalEvidenceItem = z.infer<typeof RetrievalEvidenceItemSchema>;
+
+/**
+ * Phase 8 — Benchmark Retrieval Result (return shape of runBenchmarkRetrieval).
+ *
+ * evidence: max 5 items, may be empty
+ * score: D-03 similarity-weighted bucket vote in [0,1]; null when zero matches
+ *        OR min_corpus_size gate fails (D-04b)
+ * availability: SignalAvailability.retrieval value (true when score is non-null)
+ * cost_cents: telemetry for stage_end event (D-15)
+ */
+export const BenchmarkRetrievalResultSchema = z.object({
+  evidence: z.array(RetrievalEvidenceItemSchema).max(5),
+  score: z.number().min(0).max(1).nullable(),
+  availability: z.boolean(),
+  cost_cents: z.number().nonnegative(),
+});
+export type BenchmarkRetrievalResult = z.infer<typeof BenchmarkRetrievalResultSchema>;
 
 // =====================================================
 // Internal Types
