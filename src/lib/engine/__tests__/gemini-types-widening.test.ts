@@ -205,3 +205,98 @@ describe("Phase 5 Task 2 — type re-exports from types.ts", () => {
     expect(_body).toBeDefined();
   });
 });
+
+// =====================================================
+// IN-01 pin — cognitive_load polarity contract
+// =====================================================
+// cognitive_load uses INVERTED polarity (higher = WORSE retention) while every
+// other hook_decomposition field uses standard polarity (higher = better).
+// Mixing the inverted field into a composite average against the others produces
+// a meaningless gradient. This pin guards the aggregator + ML paths against
+// regression by static-grepping the engine source for the obvious failure mode
+// (averaging cognitive_load alongside other hook fields).
+//
+// Phase 10 ML retrain will need to either invert cognitive_load (`10 - x`) or
+// treat it as a standalone feature — this test does NOT enforce that policy
+// decision, it ONLY ensures no current code path accidentally averages it.
+
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+describe("IN-01: cognitive_load polarity is never averaged with other hook fields", () => {
+  const ENGINE_DIR = join(__dirname, "..");
+  const SOURCE_FILES = [
+    "aggregator.ts",
+    "pipeline.ts",
+    "ml.ts",
+    "gemini/merge.ts",
+    "gemini/segmented.ts",
+  ];
+
+  it("Test 9: no engine-source file averages cognitive_load with other hook decomposition fields", () => {
+    // Patterns that would indicate accidentally mixing cognitive_load into a
+    // composite mean. Each pattern is intentionally loose enough to catch the
+    // obvious failure modes but tight enough to avoid false positives on
+    // legitimate references (comments, type aliases, etc.).
+    //
+    // Anti-patterns (would flag):
+    //   - (a + b + cognitive_load) / N  → composite average including the field
+    //   - cognitive_load + visual_stop_power → arithmetic mix
+    //   - Object literal with cognitive_load: x, weighted_sum: ... → likely mix
+    //
+    // Legitimate usage (would NOT flag):
+    //   - `result.hook_decomposition.cognitive_load` standalone reads
+    //   - `10 - cognitive_load` inversion
+    //   - Comments + type annotations
+    const AVERAGING_PATTERNS = [
+      // Direct arithmetic combination — `cognitive_load +` or `+ cognitive_load`
+      // followed eventually by a `/ N` divide (composite-average shape).
+      /cognitive_load\s*\+\s*[a-z_]+\s*(?:[+\-*/]\s*[a-z_.()\s]+){0,5}\s*\)\s*\/\s*\d/i,
+      /[a-z_.()]+\s*\+\s*cognitive_load\s*[+\-*/]\s*[a-z_.()\s]+\s*\)\s*\/\s*\d/i,
+    ];
+
+    const violations: Array<{ file: string; line: number; text: string }> = [];
+    for (const relPath of SOURCE_FILES) {
+      const fullPath = join(ENGINE_DIR, relPath);
+      let source: string;
+      try {
+        source = readFileSync(fullPath, "utf-8");
+      } catch {
+        // File doesn't exist (e.g., ml.ts may not be present in all phases);
+        // skip rather than fail — the assertion is "no violation exists",
+        // not "all files exist".
+        continue;
+      }
+      const lines = source.split("\n");
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        // Skip comment lines — the IN-01 docstring intentionally MENTIONS the
+        // arithmetic shape it forbids; those mentions must not trigger the pin.
+        if (/^\s*(?:\/\/|\*|\/\*)/.test(line)) continue;
+        for (const pat of AVERAGING_PATTERNS) {
+          if (pat.test(line)) {
+            violations.push({ file: relPath, line: i + 1, text: line.trim() });
+          }
+        }
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it("Test 10: type assertion — cognitive_load is independently readable on HookDecomposition", () => {
+    // Type-only smoke — if cognitive_load is accidentally widened or removed
+    // from HookDecomposition, this typechecks-fail at build time.
+    const _hd: HookDecomposition = {
+      visual_stop_power: 5,
+      audio_hook_quality: 5,
+      text_overlay_score: 5,
+      first_words_speech_score: 5,
+      weakest_modality: "visual_stop_power",
+      visual_audio_coherence: 5,
+      cognitive_load: 5,
+    };
+    const _cl: number = _hd.cognitive_load;
+    expect(_cl).toBe(5);
+  });
+});

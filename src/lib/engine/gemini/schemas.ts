@@ -25,6 +25,27 @@ const ScoreSchema = z.number().min(0).max(10);
 // Hook segment
 // ====================
 
+/**
+ * HookDecomposition — 7-field hook diagnostic shape.
+ *
+ * POLARITY CONTRACT — DOWNSTREAM CONSUMERS READ CAREFULLY:
+ *   • visual_stop_power, audio_hook_quality, text_overlay_score,
+ *     first_words_speech_score, visual_audio_coherence:
+ *       — Standard polarity: higher score = BETTER (matches every other 0-10
+ *         signal in this engine).
+ *   • cognitive_load:
+ *       — INVERTED polarity: higher score = MORE cognitive load = WORSE
+ *         retention. NEVER average cognitive_load with the other hook fields
+ *         without first inverting it (e.g. `10 - cognitive_load`), or the
+ *         resulting composite is mathematically meaningless and Phase 10 ML
+ *         retrain / Phase 7 persona simulation will silently learn against
+ *         the wrong gradient.
+ *
+ * Aggregator paths that flow this type forward (Phase 5 Plan 03 → FeatureVector
+ * → ML) must keep cognitive_load isolated. The pin test in
+ * __tests__/gemini-types-widening.test.ts asserts no aggregator code path
+ * averages cognitive_load with other hook fields.
+ */
 export const HookDecompositionZodSchema = z.object({
   visual_stop_power: ScoreSchema,          // HOOK-01
   audio_hook_quality: ScoreSchema,         // HOOK-02 (D-04: derived from Gemini Pro multi-modal hook analysis)
@@ -37,7 +58,7 @@ export const HookDecompositionZodSchema = z.object({
     "first_words_speech_score",
   ]),
   visual_audio_coherence: ScoreSchema,     // HOOK-06
-  cognitive_load: ScoreSchema,             // HOOK-07 — POLARITY INVERTED: higher score = MORE load = WORSE retention.
+  cognitive_load: ScoreSchema,             // HOOK-07 — POLARITY INVERTED: higher score = MORE load = WORSE retention. See JSDoc above.
 });
 
 const HookFactorSchema = z.object({
@@ -102,6 +123,19 @@ export const CtaSegmentZodSchema = z
 export type HookSegmentResult = z.infer<typeof HookSegmentZodSchema>;
 export type BodySegmentResult = z.infer<typeof BodySegmentZodSchema>;
 export type CtaSegmentResult  = z.infer<typeof CtaSegmentZodSchema>;
+
+/**
+ * HookDecomposition (inferred from HookDecompositionZodSchema).
+ *
+ * IN-01 POLARITY REMINDER:
+ *   The `cognitive_load` field uses INVERTED polarity (higher = WORSE retention).
+ *   Every other score in this object uses the standard "higher = better" polarity.
+ *   Downstream consumers (FeatureVector, ML retrain, persona simulation) MUST
+ *   either (a) treat cognitive_load as a standalone signal or (b) invert it
+ *   (e.g. `10 - cognitive_load`) before mixing into composite averages.
+ *
+ * See HookDecompositionZodSchema docstring for the full polarity contract.
+ */
 export type HookDecomposition = z.infer<typeof HookDecompositionZodSchema>;
 
 // ====================
