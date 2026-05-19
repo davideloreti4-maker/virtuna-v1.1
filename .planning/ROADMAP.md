@@ -39,7 +39,7 @@ Wave 8 (final gate): P12 (accuracy benchmark + acceptance)
 - [ ] **Phase 4: Wave 0 — Content Type + Niche Detection** — V3 classifier + hierarchical niche detector before Wave 1; drives downstream signal weighting.
 - [ ] **Phase 5: Video Segmentation + Hook Decomposition** — Native Gemini `videoMetadata` parallel calls (Pro hook + Flash body/CTA), multi-modal hook decomp, visual-audio coherence, cognitive load.
 - [ ] **Phase 6: Audio Analysis + Fingerprint** — Real audio stage replacing no-op, audio fingerprint matching against trending sounds DB.
-- [ ] **Phase 7: Multi-Persona Simulation** — Wave 3 with 10 FYP-weighted personas on V3 (6 FYP + 2 niche + 1 loyalist + 1 cross-niche).
+- [x] **Phase 7: Multi-Persona Simulation** — Wave 3 with 10 FYP-weighted personas on V3 (6 FYP + 2 niche + 1 loyalist + 1 cross-niche). (completed 2026-05-19)
 - [ ] **Phase 8: Benchmark Retrieval** — pgvector setup, embedding pipeline, top-K similar competitor video retrieval.
 - [ ] **Phase 9: Platform Algo Fit + Self-Critique + Counterfactuals** — TikTok/IG/YT-specific signals, creator-tier awareness, watermark detection, critique pass, counterfactual generation.
 - [ ] **Phase 10: ML Audit + Calibration + Aggregator Extension** — Audit ML against corpus, decide retrain/down-weight, train Platt on corpus, extend SignalAvailability with new signals, bump to engine v3.0.
@@ -157,13 +157,13 @@ Plans:
   4. Aggregate persona output replaces the single `behavioral_predictions` from single DeepSeek call in v2 aggregator
   5. Per-persona drop-off second persisted on prediction (data ready for M2 retention curve)
   6. Persona prompt cache (DeepSeek input cache) verified active — cost per analysis ≤$0.025 for 10-persona stage
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 Plans:
 - [x] 07-01-PLAN.md — Wave 1: persona registry + prompts + types widening; reuse wave0/prompts.ts tryUrlHost via single-keyword export (PERSONA-02, 03, 05, 06, 08)
 - [x] 07-02a-PLAN.md — Wave 2: foundations — PipelineResult/PredictionResult widening + factories + wave3/aggregator.ts pure-math helper (PERSONA-08, 09, 11, PIPE-08)
 - [x] 07-02b-PLAN.md — Wave 3: wave3.ts orchestrator rewrite + pipeline.ts call-site widening + orchestration tests; uses existing isCircuitOpen export from deepseek.ts:736 (PERSONA-01, 02, 03, 04, 05, 06, 07, 10)
 - [x] 07-03-PLAN.md — Wave 4: aggregator additive integration (signal_availability.personas + optional behavioralSource param) (PERSONA-07, 10, 11)
-- [ ] 07-04-PLAN.md — Wave 5: A/B eval harness wiring via existing runEvalHarness + cost budget test + operator review checkpoint (PERSONA-10, 11)
+- [x] 07-04-PLAN.md — Wave 5: A/B eval harness wiring via existing runEvalHarness + cost budget test + operator review checkpoint (PERSONA-10, 11)
 
 ### Phase 8: Benchmark Retrieval
 **Goal:** pgvector-backed top-K retrieval returns 3-5 similar competitor videos as evidence on every prediction; filtered by niche, platform, and creator tier.
@@ -241,7 +241,7 @@ Plans:
 | 4. Wave 0 — Content Type + Niche Detection | 0/3 | Planned | - |
 | 5. Video Segmentation + Hook Decomposition | 0/TBD | Not started | - |
 | 6. Audio Analysis + Fingerprint | 0/TBD | Not started | - |
-| 7. Multi-Persona Simulation | 4/5 | In Progress|  |
+| 7. Multi-Persona Simulation | 5/5 | Complete   | 2026-05-19 |
 | 8. Benchmark Retrieval | 0/TBD | Not started | - |
 | 9. Platform Algo Fit + Self-Critique + Counterfactuals | 0/TBD | Not started | - |
 | 10. ML Audit + Calibration + Aggregator Extension | 0/TBD | Not started | - |
