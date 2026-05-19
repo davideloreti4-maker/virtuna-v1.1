@@ -242,24 +242,51 @@ async function backfillTable(
         // PostgREST receives the textual pgvector literal "[0.1,0.2,...]" rather
         // than a JSON array (which the type system would have caught but is
         // bypassed by the `supabase: any` annotation above).
-        const updates = await Promise.all(
+        //
+        // WR-06: use Promise.allSettled (not Promise.all) so a single rejection
+        // doesn't lose visibility into the other in-flight updates. Chain
+        // .select("id") so PostgREST returns the updated row count — a 0-rows
+        // affected update (e.g., row vanished mid-batch) is then loudly visible.
+        const updates = await Promise.allSettled(
           slice.map((r, j) =>
             withRetry(
               () =>
                 supabase
                   .from(table)
                   .update({ embedding: JSON.stringify(vectors[j]) })
-                  .eq("id", r.id),
+                  .eq("id", r.id)
+                  .select("id"),
               `Update ${table} id=${r.id}`,
             ),
           ),
         );
-        const updateError = updates.find((u: { error: unknown }) => u.error)?.error;
-        if (updateError) {
-          const msg = (updateError as Error).message ?? String(updateError);
-          warn(`Update batch had errors (${table}, offset ${offset + i}): ${msg}`);
+        let batchSucceeded = 0;
+        const batchErrors: string[] = [];
+        for (let k = 0; k < updates.length; k++) {
+          const u = updates[k];
+          const rowId = slice[k].id;
+          if (u.status === "rejected") {
+            batchErrors.push(`id=${rowId}: ${(u.reason as Error)?.message ?? String(u.reason)}`);
+            continue;
+          }
+          const result = u.value as { error: unknown; data: unknown };
+          if (result.error) {
+            batchErrors.push(`id=${rowId}: ${(result.error as Error).message ?? String(result.error)}`);
+            continue;
+          }
+          const rows = (result.data as Array<{ id: string }> | null) ?? [];
+          if (rows.length !== 1) {
+            batchErrors.push(`id=${rowId}: expected 1 affected row, got ${rows.length}`);
+            continue;
+          }
+          batchSucceeded += 1;
         }
-        totalEmbedded += slice.length;
+        if (batchErrors.length > 0) {
+          warn(
+            `Update batch had ${batchErrors.length}/${slice.length} failures (${table}, offset ${offset + i}): ${batchErrors.slice(0, 5).join(" | ")}${batchErrors.length > 5 ? ` (+${batchErrors.length - 5} more)` : ""}`,
+          );
+        }
+        totalEmbedded += batchSucceeded;
         // Brief throttle between batches to avoid hammering Supabase REST
         await new Promise((r) => setTimeout(r, 200));
       } catch (err: unknown) {
