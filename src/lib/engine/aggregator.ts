@@ -499,10 +499,16 @@ export async function aggregateScores(
 
   // -------------------------------------------------
   // Cost tracking
+  // CR-01: include Wave 3 (multi-persona) cost so eval-runner cost-cap math operates on
+  // the true total spend. The pipeline surfaces `wave3CostCents` from Wave 3's orchestrator;
+  // without folding it here, every prediction silently under-reports cost by ~0.5-2.5 cents
+  // and the eval-runner cap (`prediction.cost_cents > cap`) never sees Wave 3 spend.
   // -------------------------------------------------
   const cost_cents =
     Math.round(
-      (geminiResult.cost_cents + (deepseekResult?.cost_cents ?? 0)) * 10000
+      (geminiResult.cost_cents
+        + (deepseekResult?.cost_cents ?? 0)
+        + pipelineResult.wave3CostCents) * 10000
     ) / 10000;
 
   // -------------------------------------------------

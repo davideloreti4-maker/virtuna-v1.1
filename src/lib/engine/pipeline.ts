@@ -53,6 +53,13 @@ export interface PipelineResult {
   wave3Result: PersonaSimulationResult[];
   /** Phase 7 (Pitfall 9) — aggregator reads this to set signal_availability.personas in Plan 07-03. */
   personaBehavioralAggregate: PersonaBehavioralAggregate | null;
+  /**
+   * Phase 7 CR-01 — wave-level Wave 3 cost in cents, surfaced so the aggregator can fold
+   * it into PredictionResult.cost_cents. Without this, eval-runner cost-cap enforcement is
+   * silently bypassed for hidden Wave 3 spend (eval-runner reads `prediction.cost_cents`
+   * which previously only covered Gemini + DeepSeek).
+   */
+  wave3CostCents: number;
 
   // Pipeline metadata
   requestId: string;
@@ -523,6 +530,9 @@ export async function runPredictionPipeline(
   );
   const wave3Result: PersonaSimulationResult[] = wave3Outcome.results;
   const personaBehavioralAggregate: PersonaBehavioralAggregate | null = wave3Outcome.aggregate;
+  // CR-01: wave-level cost surfaced to PipelineResult so the aggregator can fold Wave 3
+  // spend into PredictionResult.cost_cents.
+  const wave3CostCents = wave3Outcome.cost_cents;
   warnings.push(...wave3Outcome.warnings);
 
   Sentry.addBreadcrumb({
@@ -545,7 +555,9 @@ export async function runPredictionPipeline(
   const total_duration_ms = Math.round(performance.now() - pipelineStart);
 
   const total_cost_cents =
-    (geminiResult.cost_cents ?? 0) + (deepseekRaw?.cost_cents ?? 0);
+    (geminiResult.cost_cents ?? 0)
+    + (deepseekRaw?.cost_cents ?? 0)
+    + wave3CostCents; // CR-01: include Wave 3 cost in pipeline-level log so true spend is observable.
   log.info("Pipeline complete", {
     stage: "pipeline",
     duration_ms: total_duration_ms,
@@ -567,6 +579,9 @@ export async function runPredictionPipeline(
     // succeed (D-13 threshold) OR when circuit-breaker fast-failed (W-3); the aggregator
     // surfaces null as signal_availability.personas = false via Plan 07-03.
     personaBehavioralAggregate,
+    // CR-01: surfaced so aggregator can fold Wave 3 spend into PredictionResult.cost_cents
+    // (eval-runner cost cap reads that rolled-up field).
+    wave3CostCents,
     requestId,
     timings,
     total_duration_ms,

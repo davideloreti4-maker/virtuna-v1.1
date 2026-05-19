@@ -57,11 +57,16 @@ function getClient(): OpenAI {
  * - `aggregate`: PersonaBehavioralAggregate when ≥7 personas succeed; null otherwise.
  * - `results`: every successful PersonaSimulationResult (≤10 entries).
  * - `warnings`: per-persona failure messages + wave-level threshold warnings.
+ * - `cost_cents`: wave-level cost roll-up across every persona call (success + failure paths
+ *   that incurred provider charges). Surfaced so the aggregator can fold Wave 3 spend into
+ *   `PredictionResult.cost_cents` (CR-01 fix) — otherwise the eval-runner cost cap is
+ *   silently bypassed for hidden Wave 3 spend.
  */
 export interface Wave3Outcome {
   aggregate: PersonaBehavioralAggregate | null;
   results: PersonaSimulationResult[];
   warnings: string[];
+  cost_cents: number;
 }
 
 /**
@@ -97,6 +102,7 @@ export async function runWave3(
       aggregate: null,
       results: [],
       warnings: ["wave_3_circuit_breaker_open"],
+      cost_cents: 0,
     };
   }
 
@@ -123,6 +129,7 @@ export async function runWave3(
       aggregate: null,
       results: [],
       warnings: [`wave_3_slot_allocation_failed: ${lastError.message}`],
+      cost_cents: 0,
     };
   }
 
@@ -144,11 +151,18 @@ export async function runWave3(
 
     let attempt = 0;
     let lastError: Error | null = null;
-    let callCostCents = 0;
+    // CR-02 / WR-04 fix: accumulate cost across ALL attempts. A successful first attempt
+    // that fails Zod validation still incurs provider charges; the retry attempt adds more
+    // charges on top. Without accumulation, the first-attempt charge is overwritten on
+    // retry and lost from both per-call telemetry and wave-level total — breaking the
+    // D-18 "per-call sum == wave-level total" invariant. We also credit terminal-failure
+    // costs (WR-04) so failure modes don't systematically under-report wave-level spend.
+    let callCostAccum = 0;
 
     while (attempt <= 1) {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), PER_CALL_TIMEOUT_MS);
+      let attemptCostCents = 0;
       try {
         const response = await ai.chat.completions.create(
           {
@@ -179,7 +193,8 @@ export async function runWave3(
         const inputCost = hasBreakdown
           ? cacheHit * CACHE_HIT_PRICE + cacheMiss * CACHE_MISS_PRICE
           : (usage?.prompt_tokens ?? 0) * CACHE_MISS_PRICE;
-        callCostCents = (inputCost + completion * OUTPUT_PRICE) * 100;
+        attemptCostCents = (inputCost + completion * OUTPUT_PRICE) * 100;
+        callCostAccum += attemptCostCents;
 
         const text = response.choices[0]?.message?.content ?? "{}";
         const parsed = JSON.parse(text);
@@ -197,11 +212,11 @@ export async function runWave3(
         };
 
         emitStageEnd(onEvent, stageName, 3, callStart, {
-          cost_cents: +callCostCents.toFixed(6),
+          cost_cents: +callCostAccum.toFixed(6),
           ok: true,
         });
-        // Add to wave-level total
-        totalCostCents += callCostCents;
+        // Add to wave-level total — accumulator includes any prior failed attempt's charge.
+        totalCostCents += callCostAccum;
         return result;
       } catch (err) {
         clearTimeout(timer);
@@ -219,16 +234,23 @@ export async function runWave3(
             },
           });
           emitStageEnd(onEvent, stageName, 3, callStart, {
-            cost_cents: +callCostCents.toFixed(6),
+            cost_cents: +callCostAccum.toFixed(6),
             ok: false,
             warning: lastError.message,
           });
+          // WR-04: credit any non-zero cost accumulated so far. If the API was actually
+          // called (line 182-ish set attemptCostCents to a non-zero value), the provider
+          // charged for it. AbortError typically aborts before usage is read, leaving the
+          // accumulator at 0 — that path stays at 0 spend from our point of view (provider
+          // reconciliation handled out of band).
+          if (callCostAccum > 0) totalCostCents += callCostAccum;
           throw lastError;
         }
         attempt++;
         log.info("Retrying persona call after schema failure", {
           archetype: slot.archetype,
           slot_type: slot.slot_type,
+          first_attempt_cost_cents: +attemptCostCents.toFixed(6),
         });
       }
     }
@@ -259,8 +281,9 @@ export async function runWave3(
   );
   warnings.push(...aggregatorWarnings);
 
+  const waveCostCents = +totalCostCents.toFixed(4);
   emitStageEnd(onEvent, "wave_3_personas", 3, stageStart, {
-    cost_cents: +totalCostCents.toFixed(4),
+    cost_cents: waveCostCents,
     ok: aggregate !== null,
     warning: aggregate === null ? "wave_3_below_threshold" : undefined,
   });
@@ -269,5 +292,7 @@ export async function runWave3(
     aggregate,
     results: survivors,
     warnings,
+    // CR-01: surface wave-level cost so the aggregator can fold it into PredictionResult.cost_cents.
+    cost_cents: waveCostCents,
   };
 }

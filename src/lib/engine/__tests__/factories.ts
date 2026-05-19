@@ -260,6 +260,10 @@ export function makePipelineResult(
     // NEW Phase 7 (Pitfall 9, A11) — default null preserves "no aggregate" semantics
     // for all existing aggregator.test.ts and pipeline.test.ts callers.
     personaBehavioralAggregate: null,
+    // Phase 7 CR-01 — default 0 preserves byte-identical cost behavior for tests that don't
+    // exercise Wave 3. Tests asserting on Wave 3 cost should pass an override (e.g.,
+    // { wave3CostCents: 1.25 }).
+    wave3CostCents: 0,
     requestId: "test-req-123",
     timings: [
       { stage: "validate", duration_ms: 5 },
