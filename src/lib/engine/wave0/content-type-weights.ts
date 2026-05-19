@@ -19,6 +19,11 @@ export const CONTENT_TYPE_WEIGHT_MATRIX: Record<ContentTypeSlug, SignalMultiplie
   action:       { visual_production_quality: 1.3, hook_visual_impact: 1.2, pacing_score: 1.2, transition_quality: 1.3 },
   tutorial:     { visual_production_quality: 1.0, hook_visual_impact: 1.2, pacing_score: 1.1, transition_quality: 1.0 },
   vlog:         { visual_production_quality: 0.9, hook_visual_impact: 0.8, pacing_score: 0.9, transition_quality: 0.9 },
+  // Phase 5 CR-04: comedy is neutral per CONTEXT D-06 (no CTA penalty; no signal up-weighting).
+  // The 1.0 passthrough mirrors `other` — comedy hooks rely on punchline timing more than
+  // visual production, so leaving signals untouched is the conservative locked baseline.
+  // Phase 10 ML audit may revise (mirror CONTENT_TYPE_WEIGHT_MATRIX docstring contract).
+  comedy:       { visual_production_quality: 1.0, hook_visual_impact: 1.0, pacing_score: 1.0, transition_quality: 1.0 },
   other:        { visual_production_quality: 1.0, hook_visual_impact: 1.0, pacing_score: 1.0, transition_quality: 1.0 },
 };
 

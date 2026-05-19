@@ -205,13 +205,14 @@ describe("applyCtaPenalty (D-06) — pure function", () => {
  *  - geminiResult.signalAvailability triple as caller specifies (or undefined for legacy)
  *
  * NOTE: The valid set of content types is constrained by Wave0ContentTypeResultSchema
- * (talking_head, b_roll, slideshow, action, tutorial, vlog, other — 7 entries).
- * Plan 03 D-06 also mentions "comedy" as neutral, but "comedy" is not yet in the
- * Phase 4 enum; the pure-function `applyCtaPenalty` tests above cover the neutral
- * comedy case at the string level (CTA_PENALTY_POINTS["comedy"] === undefined → 0).
+ * (talking_head, b_roll, slideshow, action, tutorial, vlog, comedy, other — 8 entries
+ * post Phase 5 CR-04 fix that added "comedy" to ContentTypeEnumSchema). All 8 slugs
+ * are exercised in the pure-function `applyCtaPenalty` tests above; comedy is neutral
+ * (no entry in CTA_PENALTY_POINTS) and the buildPipelineResult helper accepts it for
+ * the end-to-end Test E2 series below.
  */
 function buildPipelineResult(overrides: {
-  contentTypeSlug: "tutorial" | "b_roll" | "talking_head" | "vlog" | "slideshow" | "action" | "other" | null;
+  contentTypeSlug: "tutorial" | "b_roll" | "talking_head" | "vlog" | "slideshow" | "action" | "comedy" | "other" | null;
   ctaSegment: CtaSegmentResult | null;
   signalAvailability?: { gemini_hook: boolean; gemini_body: boolean; gemini_cta: boolean };
 }): PipelineResult {

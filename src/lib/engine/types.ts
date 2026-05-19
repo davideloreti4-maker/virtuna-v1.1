@@ -301,6 +301,7 @@ export const ContentTypeEnumSchema = z.enum([
   "action",
   "tutorial",
   "vlog",
+  "comedy",
   "other",
 ] as const);
 

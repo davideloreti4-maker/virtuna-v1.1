@@ -1,5 +1,6 @@
 import type {
   ConfidenceLevel,
+  ContentTypeSlug,
   CtaSegmentResult,
   Factor,
   FeatureVector,
@@ -66,7 +67,11 @@ type ScoreWeightKey = (typeof SCORE_WEIGHT_KEYS)[number];
 // into score" is deferred to a future plan — Plan 03 surfaces strength as a separate
 // sub-signal (via PredictionResult.factors / hook_decomposition) for the M2 UI to
 // consume, rather than mixing it into the raw_overall_score math.
-const CTA_PENALTY_POINTS: Record<string, number> = {
+//
+// Phase 5 CR-04: typed as Partial<Record<ContentTypeSlug, number>> so future
+// enum widening (add a new content type) is a COMPILE error if a penalty entry
+// is intended but the slug typo'd. Absent slugs return undefined → 0 penalty.
+const CTA_PENALTY_POINTS: Partial<Record<ContentTypeSlug, number>> = {
   tutorial: 5,
   b_roll: 3,
   // talking_head, vlog, comedy, slideshow, action, other → absent from table → 0 penalty
@@ -84,10 +89,14 @@ const CTA_PENALTY_POINTS: Record<string, number> = {
  *   - cta_present=true → strength blending deferred per Claude's Discretion
  *   - contentTypeSlug=null → Wave 0 failure path (don't penalize unknown content types)
  *   - cta_segment=null/undefined → provenance already redistributes via gemini_cta=false
+ *
+ * Phase 5 CR-04: parameter narrowed from `string | null` to `ContentTypeSlug | null`.
+ * Future Wave 0 enum widening that adds a new slug becomes a COMPILE error in callers
+ * (e.g., aggregator.ts:530-534) instead of silently bypassing the penalty matrix.
  */
 export function applyCtaPenalty(
   geminiScore: number,
-  contentTypeSlug: string | null,
+  contentTypeSlug: ContentTypeSlug | null,
   ctaSegment: CtaSegmentResult | null | undefined,
 ): number {
   if (!ctaSegment) return geminiScore;
