@@ -157,12 +157,12 @@ Plans:
   4. Aggregate persona output replaces the single `behavioral_predictions` from single DeepSeek call in v2 aggregator
   5. Per-persona drop-off second persisted on prediction (data ready for M2 retention curve)
   6. Persona prompt cache (DeepSeek input cache) verified active — cost per analysis ≤$0.025 for 10-persona stage
-**Plans:** 3/5 plans executed
+**Plans:** 4/5 plans executed
 Plans:
 - [x] 07-01-PLAN.md — Wave 1: persona registry + prompts + types widening; reuse wave0/prompts.ts tryUrlHost via single-keyword export (PERSONA-02, 03, 05, 06, 08)
 - [x] 07-02a-PLAN.md — Wave 2: foundations — PipelineResult/PredictionResult widening + factories + wave3/aggregator.ts pure-math helper (PERSONA-08, 09, 11, PIPE-08)
 - [x] 07-02b-PLAN.md — Wave 3: wave3.ts orchestrator rewrite + pipeline.ts call-site widening + orchestration tests; uses existing isCircuitOpen export from deepseek.ts:736 (PERSONA-01, 02, 03, 04, 05, 06, 07, 10)
-- [ ] 07-03-PLAN.md — Wave 4: aggregator additive integration (signal_availability.personas + optional behavioralSource param) (PERSONA-07, 10, 11)
+- [x] 07-03-PLAN.md — Wave 4: aggregator additive integration (signal_availability.personas + optional behavioralSource param) (PERSONA-07, 10, 11)
 - [ ] 07-04-PLAN.md — Wave 5: A/B eval harness wiring via existing runEvalHarness + cost budget test + operator review checkpoint (PERSONA-10, 11)
 
 ### Phase 8: Benchmark Retrieval
@@ -241,7 +241,7 @@ Plans:
 | 4. Wave 0 — Content Type + Niche Detection | 0/3 | Planned | - |
 | 5. Video Segmentation + Hook Decomposition | 0/TBD | Not started | - |
 | 6. Audio Analysis + Fingerprint | 0/TBD | Not started | - |
-| 7. Multi-Persona Simulation | 3/5 | In Progress|  |
+| 7. Multi-Persona Simulation | 4/5 | In Progress|  |
 | 8. Benchmark Retrieval | 0/TBD | Not started | - |
 | 9. Platform Algo Fit + Self-Critique + Counterfactuals | 0/TBD | Not started | - |
 | 10. ML Audit + Calibration + Aggregator Extension | 0/TBD | Not started | - |
