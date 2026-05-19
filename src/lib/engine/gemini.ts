@@ -370,10 +370,13 @@ export async function analyzeWithGemini(
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), TEXT_TIMEOUT_MS);
+    // Hoisted out of try{} so finally{} can clear it on both success + error paths
+    // (06-REVIEW.md IN-01: prior code only cleared on success, leaving an orphan
+    // setTimeout to fire after error/throw — harmless but wasteful).
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TEXT_TIMEOUT_MS);
 
+    try {
       const prompt =
         attempt === 0
           ? buildTextPrompt(input, calibration, niche)
@@ -388,8 +391,6 @@ export async function analyzeWithGemini(
           abortSignal: controller.signal,
         },
       });
-
-      clearTimeout(timeout);
 
       const text = response.text ?? "";
       const analysis = parseGeminiResponse(text);
@@ -431,6 +432,8 @@ export async function analyzeWithGemini(
       // Exponential backoff: 1s, 3s
       const delay = attempt === 0 ? 1000 : 3000;
       await new Promise((resolve) => setTimeout(resolve, delay));
+    } finally {
+      clearTimeout(timeout);
     }
   }
 

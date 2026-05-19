@@ -16,7 +16,7 @@ files_reviewed_list:
   - src/app/api/cron/calculate-trends/route.ts
   - scripts/backfill-trending-sound-embeddings.ts
   - scripts/smoke-test-gemini-audio.ts
-  - supabase/migrations/20260518000000_phase6_audio_fingerprint.sql
+  - supabase/migrations/20260519000000_phase6_audio_fingerprint.sql
 findings:
   critical: 0
   warning: 5

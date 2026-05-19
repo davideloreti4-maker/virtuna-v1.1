@@ -31,7 +31,7 @@ Plus two widening edits:
 
 **Deviation from plan:** the new SignalAvailability/PredictionResult fields are **optional**, not required, per the plan's Task 1 explicit guidance: existing consumers (aggregator.ts:330, route.ts:259, route.test.ts:187, pipeline.ts:148) construct these types without the new fields. Marking them optional preserves compile while still letting plans 06-05 / 06-06 emit them. Promotion to required is deferred to Phase 06-06.
 
-### 2. Supabase migration `supabase/migrations/20260518000000_phase6_audio_fingerprint.sql`
+### 2. Supabase migration `supabase/migrations/20260519000000_phase6_audio_fingerprint.sql`
 
 - `CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions` (idempotent — pgvector 0.8.0 was already installed by the parallel phase8_pgvector migration in the phase-8 worktree; the IF NOT EXISTS handles that)
 - `ALTER TABLE trending_sounds ADD COLUMN IF NOT EXISTS audio_embedding vector(768), ADD COLUMN IF NOT EXISTS audio_description text`
@@ -74,7 +74,7 @@ Plus two widening edits:
 2. **vector(768)** — locks dimension for gemini-embedding-001 truncated. CONTEXT D-F1 hinted at text-embedding-004 (deprecated 2026-01-14); the new model produces 768-dim by default with truncation support.
 3. **analysis_results.audio_description added** (RESEARCH Q4 RESOLVED, Note 7) — persists Gemini's predict-time description so the M2 UI can surface it later and Phase 10's ML audit can train on description-quality features. Free-text, nullable, inherits existing analysis_results RLS (row owner reads only).
 4. **Optional new fields on SignalAvailability + PredictionResult** — preserves compile against existing aggregator.ts, route.ts, route.test.ts, pipeline.ts (none of which know about audio yet). Plans 06-05 / 06-06 will emit them.
-5. **MCP-based migration apply** — used `mcp__supabase__apply_migration` instead of Studio SQL editor or `supabase db push` (worktree's CLI is unlinked, per Phase 03-04 precedent). The local file `supabase/migrations/20260518000000_phase6_audio_fingerprint.sql` remains the source of truth for git history; the live DB has the same content under a different MCP-assigned timestamp.
+5. **MCP-based migration apply** — used `mcp__supabase__apply_migration` instead of Studio SQL editor or `supabase db push` (worktree's CLI is unlinked, per Phase 03-04 precedent). The local file `supabase/migrations/20260519000000_phase6_audio_fingerprint.sql` remains the source of truth for git history; the live DB has the same content under a different MCP-assigned timestamp.
 6. **Search-path hardening on the new RPC** — applied a follow-up `CREATE OR REPLACE FUNCTION` with `SET search_path = public, extensions` after the advisor flagged `function_search_path_mutable`. Updated the source migration file so a fresh apply produces the advisor-clean state.
 
 ## For Downstream Plans

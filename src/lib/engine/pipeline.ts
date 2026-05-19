@@ -385,6 +385,13 @@ export async function runPredictionPipeline(
   // completes. The inner `await geminiPromise` is the known tradeoff (RESEARCH Pitfall 2) —
   // audio_fingerprint GENUINELY depends on Gemini's audio_description and cannot run earlier.
   //
+  // 06-REVIEW.md IN-04 — clarification for SSE consumers: the wall-clock duration between
+  // audio_fingerprint stage_start and stage_end will include the gemini call latency that
+  // this stage awaits internally. Consumers should NOT interpret total_duration as the
+  // fingerprint-specific cost — only the segment AFTER gemini completes (embed + RPC) is
+  // attributable to this stage. The internal `await geminiPromise` is sequentially ordered
+  // by design (Pitfall 2), even though the outer Promise.all looks parallel.
+  //
   // matchAudioFingerprint() never throws — it returns null on every soft-failure path
   // (no description, empty embedding, RPC error object, no row above threshold). The outer
   // try/catch here exists solely as a defense-in-depth net for unexpected hard failures

@@ -244,7 +244,7 @@ $$;
 
 **No RLS on the RPC** per RESEARCH A7 — `trending_sounds` is already public-read (`20260213000000_content_intelligence.sql:220-222`). The function inherits that and is invoked by service-role anyway.
 
-**Filename convention:** Existing files use `YYYYMMDDhhmmss_description.sql` (e.g., `20260517120000_phase3_pipeline_columns.sql`, `20260517210000_creator_profile_9card_columns.sql`). Use today's UTC timestamp (`20260518000000_phase6_audio_fingerprint.sql`) — must sort AFTER `20260517210000` so the migration order is deterministic.
+**Filename convention:** Existing files use `YYYYMMDDhhmmss_description.sql` (e.g., `20260517120000_phase3_pipeline_columns.sql`, `20260517210000_creator_profile_9card_columns.sql`). Use today's UTC timestamp (`20260519000000_phase6_audio_fingerprint.sql`) — must sort AFTER `20260517210000` so the migration order is deterministic.
 
 ---
 
@@ -828,7 +828,7 @@ For audio-perceptual tests: zero mocks (pure function) — direct unit tests of 
 **Source:** All existing migrations in `supabase/migrations/`
 **Apply to:** new Phase 6 migration.
 
-- Filename: `<UTC-timestamp>_<description>.sql`. New file: `20260518000000_phase6_audio_fingerprint.sql` (must sort after `20260517210000`).
+- Filename: `<UTC-timestamp>_<description>.sql`. New file: `20260519000000_phase6_audio_fingerprint.sql` (must sort after `20260517210000`).
 - Header: brief comment describing the migration's purpose and idempotency.
 - Idempotency: `CREATE EXTENSION IF NOT EXISTS vector`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`, `CREATE OR REPLACE FUNCTION`.
 - No `DROP` statements in this phase (additive-only constraint).
@@ -866,6 +866,6 @@ For audio-perceptual tests: zero mocks (pure function) — direct unit tests of 
 5. **Single source of truth for matched_trends (D-F3):** When fingerprint matches, aggregator synthesizes the `matched_trends` entry from `audioFingerprintResult`; trends.ts Jaro-Winkler loop is gated off via the new `opts.audioFingerprintMatched` parameter.
 6. **Ratio refinement, not validation (Pitfall 1):** Zod `.refine()` with ±0.1 tolerance — do NOT reject responses with sum=1.05; normalize internally and emit a warning.
 7. **Failure tolerance in cron (Pitfall 4):** Each embedContent failure logs + continues; sound rows still upsert; backfill script handles the eventual reconciliation.
-8. **Migration filename order:** `20260518000000_phase6_audio_fingerprint.sql` (must sort after `20260517210000_creator_profile_9card_columns.sql`).
+8. **Migration filename order:** `20260519000000_phase6_audio_fingerprint.sql` (must sort after `20260517210000_creator_profile_9card_columns.sql`).
 
 **Pattern extraction date:** 2026-05-18

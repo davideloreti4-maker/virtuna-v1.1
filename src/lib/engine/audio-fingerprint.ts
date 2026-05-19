@@ -40,7 +40,7 @@ const log = createLogger({ module: "audio_fingerprint" });
 const GEMINI_EMBEDDING_MODEL =
   process.env.GEMINI_EMBEDDING_MODEL ?? "gemini-embedding-001";
 
-// 768-dim matches supabase/migrations/20260518000000_phase6_audio_fingerprint.sql (vector(768)).
+// 768-dim matches supabase/migrations/20260519000000_phase6_audio_fingerprint.sql (vector(768)).
 const EMBEDDING_DIMENSIONALITY = 768;
 
 // Default 0.80 per CONTEXT D-F1; env-overridable for Phase 12 benchmark tuning.
