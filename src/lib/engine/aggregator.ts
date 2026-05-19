@@ -217,9 +217,19 @@ function calculateConfidence(
 // FeatureVector Assembly
 // =====================================================
 
+// CR-03: video_signals fields may be `null` per-field when a segment failed
+// (mergeSegments null-fills with structural 0, the aggregator degrades those
+// to null based on signalAvailability before this function runs).
+type VideoSignalsPartial = {
+  visual_production_quality: number | null;
+  hook_visual_impact: number | null;
+  pacing_score: number | null;
+  transition_quality: number | null;
+};
+
 function assembleFeatureVector(
   pipelineResult: PipelineResult,
-  adjustedVideoSignals?: GeminiVideoSignals | null,
+  adjustedVideoSignals?: GeminiVideoSignals | VideoSignalsPartial | null,
 ): FeatureVector {
   const { payload, geminiResult, deepseekResult, ruleResult, trendEnrichment } =
     pipelineResult;
@@ -361,13 +371,70 @@ export async function aggregateScores(
   // route, NOT the gemini_score math over gemini.factors[]).
   // Null content_type uses the `other` matrix row (1.0× passthrough) —
   // preserves Wave 0 failure / no-video behavior.
+  //
+  // CR-03: When a segment fails, mergeSegments null-fills the corresponding
+  // video_signals fields with structural `0` (preserves the existing
+  // GeminiVideoSignalsSchema's `number` (non-nullable) contract). The
+  // aggregator MUST NOT pass those structural zeros through the content-type
+  // weight matrix — `0 × multiplier` is still 0 and reads as a real "zero
+  // production quality" score downstream in the ML feature vector. We
+  // degrade the affected fields to `null` HERE, before any weight math,
+  // using the per-segment availability flags as ground truth (the structural
+  // zeros from mergeSegments are intentionally indistinguishable from real
+  // 0-scores at the schema level — signalAvailability is the truth).
   // -------------------------------------------------
   const wave0 = pipelineResult.wave0Result;
   const contentTypeSlug = wave0.content_type?.type ?? null;
-  const rawVideoSignals = geminiResult.analysis.video_signals ?? null;
+  const segAvailability = pipelineResult.geminiResult.signalAvailability;
+  const baseVideoSignals = geminiResult.analysis.video_signals ?? null;
+  // CR-03: Strip structural zeros from failed segments so they do NOT feed
+  // applyContentTypeWeights → FeatureVector. The cast targets the
+  // FeatureVector consumer (types.ts:27-30) which IS nullable; the
+  // applyContentTypeWeights branch below skips when fields are null.
+  const rawVideoSignals: (GeminiVideoSignals & {
+    visual_production_quality: number | null;
+    hook_visual_impact: number | null;
+    pacing_score: number | null;
+    transition_quality: number | null;
+  }) | null = (() => {
+    if (!baseVideoSignals) return null;
+    if (!segAvailability) return baseVideoSignals;
+    const out: {
+      visual_production_quality: number | null;
+      hook_visual_impact: number | null;
+      pacing_score: number | null;
+      transition_quality: number | null;
+    } = {
+      visual_production_quality: baseVideoSignals.visual_production_quality,
+      hook_visual_impact: baseVideoSignals.hook_visual_impact,
+      pacing_score: baseVideoSignals.pacing_score,
+      transition_quality: baseVideoSignals.transition_quality,
+    };
+    // Body segment owns visual_production_quality + pacing_score + transition_quality.
+    if (!segAvailability.gemini_body) {
+      out.visual_production_quality = null;
+      out.pacing_score = null;
+      out.transition_quality = null;
+    }
+    // Hook segment owns hook_visual_impact (= hook_decomposition.visual_stop_power passthrough).
+    if (!segAvailability.gemini_hook) {
+      out.hook_visual_impact = null;
+    }
+    return out as GeminiVideoSignals & typeof out;
+  })();
+  // Only call applyContentTypeWeights when ALL four fields are present numbers
+  // (the helper expects GeminiVideoSignals — all-number — by contract). If
+  // any are null, skip the weight matrix and pass through directly — the
+  // FeatureVector consumer (assembleFeatureVector below) is null-safe.
+  const allFieldsNumeric =
+    rawVideoSignals !== null &&
+    typeof rawVideoSignals.visual_production_quality === "number" &&
+    typeof rawVideoSignals.hook_visual_impact === "number" &&
+    typeof rawVideoSignals.pacing_score === "number" &&
+    typeof rawVideoSignals.transition_quality === "number";
   const adjustedVideoSignals =
-    rawVideoSignals && contentTypeSlug !== null
-      ? applyContentTypeWeights(rawVideoSignals, contentTypeSlug)
+    rawVideoSignals && allFieldsNumeric && contentTypeSlug !== null
+      ? applyContentTypeWeights(rawVideoSignals as GeminiVideoSignals, contentTypeSlug)
       : rawVideoSignals;
 
   // -------------------------------------------------
