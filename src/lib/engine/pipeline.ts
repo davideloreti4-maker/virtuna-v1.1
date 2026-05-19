@@ -17,11 +17,12 @@ import { normalizeInput } from "./normalize";
 import { analyzeWithGemini, loadCalibrationData } from "./gemini";
 import { analyzeVideoSegmented } from "./gemini/segmented"; // Phase 5 Plan 02/03 — segmented video path
 
-// Phase 5 D-11: re-export the legacy single-call video analyzer for eval-harness
-// corpus-replay compatibility. The production video branch (below) routes to
-// analyzeVideoSegmented; the legacy export stays callable for the Phase 12 acceptance
-// benchmark's A/B comparison run (segmented vs un-segmented).
-export { analyzeVideoWithGemini } from "./gemini";
+// Phase 5 IN-05 fix: removed re-export of `analyzeVideoWithGemini`. The legacy
+// single-call video analyzer is the original export from `./gemini` and consumers
+// (gemini-eval-alignment.test.ts for the Phase 12 A/B benchmark) import it directly
+// from there. Re-exporting through pipeline.ts created two import paths to the same
+// symbol — a maintenance smell and a search-and-replace hazard. Direct-import is
+// the canonical pattern.
 import { reasonWithDeepSeek } from "./deepseek";
 import { loadActiveRules, scoreContentAgainstRules } from "./rules";
 import { enrichWithTrends } from "./trends";
