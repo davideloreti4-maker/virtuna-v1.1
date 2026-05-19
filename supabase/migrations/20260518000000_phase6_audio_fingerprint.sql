@@ -31,6 +31,9 @@ CREATE INDEX IF NOT EXISTS trending_sounds_audio_embedding_idx
 -- [Source: supabase.com/docs/guides/ai/semantic-search]
 -- RLS note: trending_sounds is public-read (see 20260213000000_content_intelligence.sql);
 -- the function inherits that grant. No additional policies needed.
+-- SET search_path = public, extensions: lock search_path to silence the
+-- function_search_path_mutable advisor (Supabase 0011). Table refs are explicitly
+-- schema-qualified (public.trending_sounds) for defense-in-depth.
 CREATE OR REPLACE FUNCTION match_trending_sound_by_audio(
   query_embedding vector(768),
   match_threshold float,
@@ -45,6 +48,7 @@ RETURNS TABLE (
   similarity float
 )
 LANGUAGE sql STABLE
+SET search_path = public, extensions
 AS $$
   SELECT
     ts.id,
@@ -53,7 +57,7 @@ AS $$
     ts.trend_phase,
     ts.velocity_score,
     1 - (ts.audio_embedding <=> query_embedding) AS similarity
-  FROM trending_sounds ts
+  FROM public.trending_sounds ts
   WHERE ts.audio_embedding IS NOT NULL
     AND 1 - (ts.audio_embedding <=> query_embedding) >= match_threshold
   ORDER BY ts.audio_embedding <=> query_embedding ASC
