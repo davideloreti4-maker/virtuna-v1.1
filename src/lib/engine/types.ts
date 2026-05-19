@@ -305,8 +305,13 @@ export const GeminiResponseSchema = z.object({
   factors: z.array(FactorSchema).length(5),
   overall_impression: z.string(),
   content_summary: z.string(),
-  video_signals: GeminiVideoSignalsSchema.optional(),
-  audio_signals: GeminiAudioSignalsSchema.optional(),
+  video_signals: GeminiVideoSignalsSchema.nullable().optional(),
+  // .nullable().optional() — accept both omitted-key and explicit-null (06-REVIEW.md WR-02):
+  // if Gemini emits `audio_signals: null` instead of omitting the key, .optional()-only
+  // rejects it and the whole video analysis falls through to fallback factors (not just
+  // audio degradation). Both shapes degrade to the same `T | null | undefined` contract,
+  // which downstream optional-chaining (`?.audio_description ?? null`) handles uniformly.
+  audio_signals: GeminiAudioSignalsSchema.nullable().optional(),
 });
 
 export type GeminiAnalysis = z.infer<typeof GeminiResponseSchema>;
@@ -316,9 +321,9 @@ export type GeminiAnalysis = z.infer<typeof GeminiResponseSchema>;
 // for graceful degradation — the inherited base shape carries it through.
 export const GeminiVideoResponseSchema = GeminiResponseSchema.extend({
   video_signals: GeminiVideoSignalsSchema,
-  // audio_signals optional inherited from GeminiResponseSchema — explicit here
-  // for readability + to keep the Phase 6 BLOCKER 2 contract obvious to readers.
-  audio_signals: GeminiAudioSignalsSchema.optional(),
+  // audio_signals inherits .nullable().optional() from GeminiResponseSchema — explicit
+  // here for readability + to keep the Phase 6 BLOCKER 2 contract obvious to readers.
+  audio_signals: GeminiAudioSignalsSchema.nullable().optional(),
 });
 
 export type GeminiVideoAnalysis = z.infer<typeof GeminiVideoResponseSchema>;

@@ -5,6 +5,15 @@ import { verifyCronAuth } from "@/lib/cron-auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createLogger } from "@/lib/logger";
 
+// Vercel route segment config (06-REVIEW.md WR-03):
+// The inline D-F4 embedding pipeline runs ~5s per sound (download + upload + describe +
+// embed + update). At a 50-sound ceiling per tick that is a ~4-minute worst case — well
+// over Vercel's default 10s hobby / 60s pro ceiling. Lifting maxDuration to 300s gives
+// the cron headroom; per-row failure isolation in this route prevents one slow sound
+// from blocking the whole batch even within the budget.
+export const maxDuration = 300;
+export const dynamic = "force-dynamic";
+
 const log = createLogger({ module: "cron/calculate-trends" });
 
 // =====================================================

@@ -44,9 +44,14 @@ const GEMINI_EMBEDDING_MODEL =
 const EMBEDDING_DIMENSIONALITY = 768;
 
 // Default 0.80 per CONTEXT D-F1; env-overridable for Phase 12 benchmark tuning.
-const SIMILARITY_THRESHOLD = Number(
+// Non-numeric / invalid env values fall back to 0.80 (fail-open) rather than NaN
+// (which would silently disable all pgvector matching — see 06-REVIEW.md WR-01).
+const _PARSED_SIMILARITY_THRESHOLD = Number(
   process.env.AUDIO_FINGERPRINT_SIMILARITY_THRESHOLD ?? "0.80",
 );
+const SIMILARITY_THRESHOLD = Number.isFinite(_PARSED_SIMILARITY_THRESHOLD)
+  ? _PARSED_SIMILARITY_THRESHOLD
+  : 0.80;
 
 let client: GoogleGenAI | null = null;
 
