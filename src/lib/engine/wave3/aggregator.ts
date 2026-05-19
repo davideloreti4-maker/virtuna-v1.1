@@ -100,10 +100,20 @@ function topNWeighted(
   return TOP_WEIGHT_TOTAL * topMean + REMAINING_WEIGHT_TOTAL * remainingMean;
 }
 
+/**
+ * WR-05 fix: previously labeled buckets as "top 10%" / "top 25%" / etc., which read as
+ * "ranks in the top X% of a corpus baseline" — but these values are top-3-weighted
+ * INTENT SCORES (0-100), not corpus-percentile ranks. The label propagates to
+ * `PredictionResult.behavioral_predictions.share_percentile` (consumer-readable), so
+ * the misleading semantics persisted into production schemas.
+ *
+ * Rename to intent semantics. Phase 10 may replace this lightweight heuristic with
+ * corpus-driven percentile bands once calibration data is available.
+ */
 function percentileLabel(pct: number): string {
-  if (pct >= 90) return "top 10%";
-  if (pct >= 75) return "top 25%";
-  if (pct >= 50) return "top 50%";
-  if (pct >= 25) return "top 75%";
-  return "bottom 25%";
+  if (pct >= 90) return "very high intent";
+  if (pct >= 75) return "high intent";
+  if (pct >= 50) return "moderate intent";
+  if (pct >= 25) return "low intent";
+  return "very low intent";
 }
