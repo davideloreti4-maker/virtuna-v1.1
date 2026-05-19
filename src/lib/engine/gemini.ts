@@ -43,6 +43,8 @@ let client: GoogleGenAI | null = null;
 
 // Calibration data cache
 // Phase 5: exported so segment prompt builders in ./gemini/prompts.ts share the same shape.
+// Phase 5 Plan 02: getClient is also exported so segment helpers in ./gemini/* reuse the
+// singleton instead of re-implementing per-file env-var checks.
 export interface CalibrationData {
   primary_kpis: {
     share_rate: { viral_threshold: number };
@@ -90,7 +92,7 @@ const FALLBACK_CALIBRATION: CalibrationData = {
 
 let cachedCalibration: CalibrationData | null = null;
 
-function getClient(): GoogleGenAI {
+export function getClient(): GoogleGenAI {
   if (!client) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error("Missing GEMINI_API_KEY environment variable");
