@@ -43,7 +43,14 @@ const log = createLogger({ module: "engine.gemini.segmented" });
 const VIDEO_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50MB — matches gemini.ts:33 legacy cap
 const VIDEO_POLL_INTERVAL_MS = 500; // matches gemini.ts:34
 const VIDEO_POLL_TIMEOUT_MS = 60_000; // matches gemini.ts:35
-const SHORT_VIDEO_THRESHOLD_SEC = 8; // CONTEXT short-video Claude's Discretion option a
+// WR-05: Raised from 8s to 10s so a duration=11s video produces a body window
+// of `5s → 8s` (3-second minimum). Pre-fix, duration=9s gave a 1-second body
+// window and Gemini Flash would hallucinate pacing / transition scores against
+// a clip too short to score per the three-beat rubric.
+// At threshold=10: duration ≤ 10 skips body. duration=11 → body window
+// {5s, max(5, 8)} = {5s, 8s} = 3s (rubric-minimum). duration=12 → 4s body, etc.
+// CTA window at duration=10 (when body IS skipped) is {5s, max(5, 7)} = {5s, 10s} — covers the back half cleanly.
+const SHORT_VIDEO_THRESHOLD_SEC = 10; // CONTEXT short-video Claude's Discretion option a (WR-05 raised from 8)
 
 export interface SegmentedAnalysisOptions extends SegmentedPromptOptions {
   onStageEvent?: StageEventCallback;
@@ -51,7 +58,9 @@ export interface SegmentedAnalysisOptions extends SegmentedPromptOptions {
    * REQUIRED — drives body + CTA window math + short-video skip branch.
    * Body window = 5s → max(5, durationSeconds-3)s.
    * CTA window  = max(5, durationSeconds-3)s → durationSeconds.
-   * When durationSeconds ≤ 8s, the body segment is skipped entirely.
+   * When durationSeconds ≤ 10s, the body segment is skipped entirely (WR-05 —
+   * was 8s; raised to ensure body windows are ≥ 3s, the three-beat rubric
+   * minimum).
    */
   durationSeconds: number;
 }
