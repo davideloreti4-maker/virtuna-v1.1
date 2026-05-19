@@ -200,12 +200,18 @@ describe("applyCtaPenalty (D-06) — pure function", () => {
 /**
  * Build a PipelineResult with:
  *  - factors averaging score=7 → gemini_score=70 (pre-penalty)
- *  - wave0Result.content_type.type as caller specifies
+ *  - wave0Result.content_type.type as caller specifies (must be a valid ContentTypeSlug)
  *  - geminiResult.analysis widened with hook_decomposition + cta_segment
  *  - geminiResult.signalAvailability triple as caller specifies (or undefined for legacy)
+ *
+ * NOTE: The valid set of content types is constrained by Wave0ContentTypeResultSchema
+ * (talking_head, b_roll, slideshow, action, tutorial, vlog, other — 7 entries).
+ * Plan 03 D-06 also mentions "comedy" as neutral, but "comedy" is not yet in the
+ * Phase 4 enum; the pure-function `applyCtaPenalty` tests above cover the neutral
+ * comedy case at the string level (CTA_PENALTY_POINTS["comedy"] === undefined → 0).
  */
 function buildPipelineResult(overrides: {
-  contentTypeSlug: "tutorial" | "b_roll" | "talking_head" | "vlog" | "comedy" | "slideshow" | "action" | "other" | null;
+  contentTypeSlug: "tutorial" | "b_roll" | "talking_head" | "vlog" | "slideshow" | "action" | "other" | null;
   ctaSegment: CtaSegmentResult | null;
   signalAvailability?: { gemini_hook: boolean; gemini_body: boolean; gemini_cta: boolean };
 }): PipelineResult {
@@ -240,16 +246,7 @@ function buildPipelineResult(overrides: {
       content_type:
         overrides.contentTypeSlug === null
           ? null
-          : { type: overrides.contentTypeSlug as
-              | "tutorial"
-              | "b_roll"
-              | "talking_head"
-              | "vlog"
-              | "comedy"
-              | "slideshow"
-              | "action"
-              | "other"
-            , confidence: 0.9 },
+          : { type: overrides.contentTypeSlug, confidence: 0.9 },
       niche: null,
     },
   });
