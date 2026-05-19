@@ -620,9 +620,10 @@ export async function aggregateScores(
     input_mode: pipelineResult.payload.input_mode,
     has_video: hasVideo,
     signal_availability: availability, // Phase 3 — provenance surfaced for route to persist
-    // Phase 7 (Plan 07-02a) — placeholder field assignments so the widened PredictionResult
-    // compiles. Plan 07-03 owns the FULL integration: optional `behavioralSource` param,
-    // `signal_availability.personas` flag, real aggregator reads of personaBehavioralAggregate.
+    // Phase 7 — persona_behavioral_aggregate surfaced from pipelineResult so downstream
+    // consumers (route persistence, audience-viz in M2) get the canonical aggregate.
+    // persona_simulation_results carries per-persona detail used by M2's retention curve
+    // (scroll_past_second, watch_through_pct per persona) — see PERSONA-11.
     persona_behavioral_aggregate: pipelineResult.personaBehavioralAggregate ?? null,
     persona_simulation_results: pipelineResult.wave3Result,
   };
