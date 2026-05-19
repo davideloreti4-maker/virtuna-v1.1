@@ -15,7 +15,16 @@
  *
  * Usage:
  *   npx tsx scripts/run-persona-ab-eval.ts --corpus-version full.2026-05-11
- *   npx tsx scripts/run-persona-ab-eval.ts --corpus-version full.2026-05-11 --max-cost-cents 500  # smoke
+ *   npx tsx scripts/run-persona-ab-eval.ts --corpus-version full.2026-05-11 --max-rows 10            # 10-row smoke (~$0.02)
+ *   npx tsx scripts/run-persona-ab-eval.ts --corpus-version full.2026-05-11 --max-cost-cents 500    # cost-cap smoke
+ *
+ * Flags:
+ *   --corpus-version <tag>          (required) Corpus snapshot to evaluate (e.g. full.2026-05-11)
+ *   --max-rows <N>                  (optional) Cap rows evaluated per run; positive integer; default = full corpus
+ *   --max-cost-cents <N>            (optional) Cap total LLM spend per run in cents; positive integer; default = uncapped
+ *   --rate-limit-ms <N>             (optional) Per-row delay in ms; positive integer; default = 2000
+ *   --engine-version-prefix <tag>   (optional) engine_version row tag prefix; default = "3.0.0-dev"
+ *                                              Suffixed with "-personasA" (Run A baseline) and "-personasB" (Run B substituted).
  */
 
 import { config } from "dotenv";
@@ -192,20 +201,45 @@ async function main() {
   // regardless of caller cwd (WR-08). The 200+ LLM-cost-burning runs above must not be
   // wasted by a final `fs.writeFile` that targets the wrong directory.
   // __dirname is `<repo>/scripts`, so `..` resolves to the repo root.
+  //
+  // IN-03: never overwrite an existing report — a re-run on the same day would otherwise
+  // clobber an operator's hand-written "Recommendation for Phase 10" section. Fall back
+  // to a timestamped filename so both runs survive on disk.
   const REPO_ROOT = resolve(__dirname, "..");
-  const date = new Date().toISOString().slice(0, 10);
-  const reportPath = path.join(
+  const now = new Date();
+  const date = now.toISOString().slice(0, 10);
+  let reportPath = path.join(
     REPO_ROOT,
     ".planning",
     "research",
     `persona-aggregate-ab-${date}.md`,
   );
   await fs.mkdir(path.dirname(reportPath), { recursive: true });
-  await fs.writeFile(
-    reportPath,
-    formatComparisonReport(args, baseline, substituted),
-    "utf8",
-  );
+  try {
+    await fs.writeFile(
+      reportPath,
+      formatComparisonReport(args, baseline, substituted),
+      { encoding: "utf8", flag: "wx" }, // wx = fail if exists
+    );
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "EEXIST") {
+      const hhmm = now.toISOString().slice(11, 16).replace(":", "");
+      reportPath = path.join(
+        REPO_ROOT,
+        ".planning",
+        "research",
+        `persona-aggregate-ab-${date}-${hhmm}.md`,
+      );
+      await fs.writeFile(
+        reportPath,
+        formatComparisonReport(args, baseline, substituted),
+        { encoding: "utf8", flag: "wx" },
+      );
+      log.warn("Same-day report exists; wrote to timestamped path", { reportPath });
+    } else {
+      throw err;
+    }
+  }
   log.info("Comparison report written", { reportPath });
 
   console.log("\n=== Phase 7 D-14 A/B eval complete ===");
