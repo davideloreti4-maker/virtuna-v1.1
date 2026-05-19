@@ -110,6 +110,41 @@ function isRateLimit(err: unknown): boolean {
   return msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED");
 }
 
+function isTransientFetchError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  const cause = err instanceof Error && err.cause ? String((err.cause as Error).message ?? err.cause) : "";
+  return (
+    msg.includes("fetch failed") ||
+    msg.includes("ECONNRESET") ||
+    msg.includes("ETIMEDOUT") ||
+    msg.includes("EAI_AGAIN") ||
+    msg.includes("UND_ERR_") ||
+    cause.includes("ECONNRESET") ||
+    cause.includes("ETIMEDOUT") ||
+    cause.includes("UND_ERR_")
+  );
+}
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  label: string,
+  maxAttempts = 5,
+): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (!isTransientFetchError(err) || attempt === maxAttempts) throw err;
+      const backoffMs = Math.min(30_000, 500 * Math.pow(2, attempt - 1));
+      warn(`${label} transient error (attempt ${attempt}/${maxAttempts}): ${(err as Error).message ?? String(err)} — retrying in ${backoffMs}ms`);
+      await new Promise((r) => setTimeout(r, backoffMs));
+    }
+  }
+  throw lastErr;
+}
+
 async function backfillTable(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
@@ -130,7 +165,10 @@ async function backfillTable(
     if (!args.reEmbedAll) {
       q = q.is("embedding", null);
     }
-    const { data, error } = await q.order("id").range(offset, offset + PAGE - 1);
+    const { data, error } = await withRetry(
+      () => q.order("id").range(offset, offset + PAGE - 1),
+      `Select ${table} offset=${offset}`,
+    );
     if (error) {
       throw new Error(`Select from ${table} failed: ${error.message}`);
     }
@@ -172,12 +210,20 @@ async function backfillTable(
       }
 
       try {
-        const { vectors } = await embedBatch(texts);
+        const { vectors } = await withRetry(
+          () => embedBatch(texts),
+          `embedBatch ${table} offset=${offset + i}`,
+        );
         // Update each row's embedding column. .update() per row because we're
         // mutating existing rows; .upsert() requires PK + conflict.
+        // Each .update() is individually wrapped in withRetry so a single
+        // transient fetch failure doesn't lose the whole batch.
         const updates = await Promise.all(
           slice.map((r, j) =>
-            supabase.from(table).update({ embedding: vectors[j] }).eq("id", r.id),
+            withRetry(
+              () => supabase.from(table).update({ embedding: vectors[j] }).eq("id", r.id),
+              `Update ${table} id=${r.id}`,
+            ),
           ),
         );
         const updateError = updates.find((u: { error: unknown }) => u.error)?.error;
@@ -186,6 +232,8 @@ async function backfillTable(
           warn(`Update batch had errors (${table}, offset ${offset + i}): ${msg}`);
         }
         totalEmbedded += slice.length;
+        // Brief throttle between batches to avoid hammering Supabase REST
+        await new Promise((r) => setTimeout(r, 200));
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         warn(
