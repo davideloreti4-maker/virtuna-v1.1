@@ -1,5 +1,5 @@
 import {
-  BehavioralHero,
+  HeroSection,
   BackersSection,
   FeaturesSection,
   StatsSection,
@@ -13,7 +13,7 @@ export default function HomePage() {
   return (
     <>
       <main>
-        <BehavioralHero />
+        <HeroSection />
         <BackersSection />
         <FeaturesSection />
         <StatsSection />

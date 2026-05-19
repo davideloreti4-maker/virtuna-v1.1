@@ -4,7 +4,7 @@
 // No third-party deps -- Node >=20 standard library only.
 // See .planning/reference/BRAND-SPINE.md §4 for the vocab rules this enforces.
 
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join, extname } from "node:path";
 import { argv, exit } from "node:process";
 
@@ -50,54 +50,29 @@ function* walk(dir) {
   }
 }
 
-// Allowlist roots — only paths under these roots are scanned, even when
-// individual files are passed via argv. Prevents the hook from scanning
-// unrelated source while still letting it accept a list of staged files.
-const ALLOWED_ROOTS = ["src/app", "src/components/landing", "src/components/onboarding"];
-
-function isUnderAllowedRoot(path) {
-  return ALLOWED_ROOTS.some((root) => path === root || path.startsWith(root + "/"));
-}
-
-function* expandPaths(paths) {
-  for (const p of paths) {
-    if (!isUnderAllowedRoot(p)) continue;
-    let stat;
-    try {
-      stat = statSync(p);
-    } catch {
-      // Path doesn't exist (deleted, renamed, etc.) — skip silently
-      continue;
-    }
-    if (stat.isDirectory()) {
-      yield* walk(p);
-    } else if (SCANNABLE_EXTS.has(extname(p))) {
-      yield p;
-    }
-  }
-}
-
 function main() {
-  const inputs = argv.slice(2).length > 0 ? argv.slice(2) : DEFAULT_DIRS;
+  const dirs = argv.slice(2).length > 0 ? argv.slice(2) : DEFAULT_DIRS;
   let errors = 0;
   let warnings = 0;
-  for (const file of expandPaths(inputs)) {
-    const content = readFileSync(file, "utf8");
-    const lines = content.split("\n");
-    lines.forEach((line, i) => {
-      // Inline override -- skip if the previous line carries the disable marker
-      if (i > 0 && SUPPRESS_RX.test(lines[i - 1])) return;
-      for (const { rx, hint, severity } of BANNED) {
-        // Reset regex lastIndex for global flags between lines
-        rx.lastIndex = 0;
-        for (const match of line.matchAll(rx)) {
-          const tag = severity === "error" ? "ERROR" : "WARN ";
-          console.error(`${tag} ${file}:${i + 1}  "${match[0]}" -> ${hint}`);
-          if (severity === "error") errors++;
-          else warnings++;
+  for (const dir of dirs) {
+    for (const file of walk(dir)) {
+      const content = readFileSync(file, "utf8");
+      const lines = content.split("\n");
+      lines.forEach((line, i) => {
+        // Inline override -- skip if the previous line carries the disable marker
+        if (i > 0 && SUPPRESS_RX.test(lines[i - 1])) return;
+        for (const { rx, hint, severity } of BANNED) {
+          // Reset regex lastIndex for global flags between lines
+          rx.lastIndex = 0;
+          for (const match of line.matchAll(rx)) {
+            const tag = severity === "error" ? "ERROR" : "WARN ";
+            console.error(`${tag} ${file}:${i + 1}  "${match[0]}" -> ${hint}`);
+            if (severity === "error") errors++;
+            else warnings++;
+          }
         }
-      }
-    });
+      });
+    }
   }
   console.error(`\n[lint-vocab] ${errors} error(s), ${warnings} warning(s)`);
   exit(errors > 0 ? 1 : 0);

@@ -355,8 +355,6 @@ For per-component accessibility requirements, see [docs/accessibility.md](docs/a
 
 > Phase 1 of the Brand Statement Landing milestone locked the paired visual language of Virtuna. This section is the source of truth for both visuals; Phase 2 implementation honors these specs verbatim.
 
-> Phase 2 lock — see [external component policy](.planning/phases/02-foundation-hero/02-EXTERNAL-COMPONENT-POLICY.md) for the BUILD-02 REJECT/ACCEPT criteria covering Magic UI / Aceternity / Origin UI / Cult UI imports.
-
 ### 1. Hero -- Behavioral Simulation Visual
 
 **Concept (VIZ-01):** Animated audience particles reacting to a video stimulus, aggregating into a confidence score. The particles represent simulated audience reactions; their convergence into a single shape (a number, a coral pill, or a video frame -- Phase 2 picks) communicates the prediction. One-shot animation on viewport entry, NOT a loop.

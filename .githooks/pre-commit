@@ -1,15 +1,13 @@
 #!/bin/sh
-# Vocab guardrail: block commits that introduce banned brand-spine vocabulary.
-# See .planning/reference/BRAND-SPINE.md §4 for the rules.
-# Only lints files staged in this commit (under allowlisted roots — the script enforces this).
-# Bypass for emergency: git commit --no-verify (use sparingly).
-
-STAGED=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^(src/app|src/components/landing|src/components/onboarding)/.*\.(ts|tsx|md)$')
-
-if [ -z "$STAGED" ]; then
-  # No staged files under guardrail-protected roots — skip lint.
-  exit 0
-fi
-
-# shellcheck disable=SC2086
-node scripts/lint-vocab.mjs $STAGED || exit 1
+# Pre-commit hook -- no-op after v3.0 milestone abandonment.
+#
+# Previously ran scripts/lint-vocab.mjs (Phase 01 of v3.0 Brand Statement
+# Landing milestone), which has been archived to
+# .planning/milestones/v3.0-brand-statement-landing/scripts/lint-vocab.mjs
+# along with its companion vocab spec at
+# .planning/milestones/v3.0-brand-statement-landing/reference/BRAND-SPINE.md.
+#
+# The Landing Page Redesign milestone can decide whether to re-enable a
+# vocab guardrail (with its own rules) or replace this hook with a
+# different gate (eg. type-check / lint / test).
+exit 0
