@@ -30,6 +30,74 @@ const RETRY_BASE_DELAY_MS = 1000;
 const SYNC_BATCH_LIMIT = 100;
 const CAPTION_MAX_CHARS = 500;
 
+/**
+ * WR-03: classify Gemini API errors as transient vs permanent.
+ * Permanent (4xx / shape) errors throw immediately so the caller's graceful-empty
+ * path fires fast instead of burning MAX_RETRIES * RETRY_BASE_DELAY_MS of latency
+ * on errors that retrying cannot fix.
+ *
+ * Transient = network failures + rate-limit / quota (RESOURCE_EXHAUSTED, 429, 503)
+ *           + the response-shape errors thrown below (those are usually retried
+ *             successfully on the next attempt when the SDK delivered a partial
+ *             batch).
+ * Permanent = 4xx auth/permission errors (401, 403), 400 malformed-input errors,
+ *             and explicit invalid-argument errors that retrying will not fix.
+ */
+export function isTransientGeminiError(err: unknown): boolean {
+  const e = err instanceof Error ? err : null;
+  const msg = (e?.message ?? String(err)).toLowerCase();
+  const cause =
+    e?.cause && typeof e.cause === "object"
+      ? String((e.cause as Error).message ?? e.cause).toLowerCase()
+      : "";
+
+  // Permanent — bail out immediately.
+  if (
+    msg.includes("401") ||
+    msg.includes("403") ||
+    msg.includes("unauthorized") ||
+    msg.includes("permission_denied") ||
+    msg.includes("invalid argument") ||
+    msg.includes("invalid_argument") ||
+    msg.includes("400 ") ||
+    msg.includes("bad request")
+  ) {
+    return false;
+  }
+
+  // Transient — retry with backoff.
+  if (
+    msg.includes("429") ||
+    msg.includes("resource_exhausted") ||
+    msg.includes("quota") ||
+    msg.includes("rate limit") ||
+    msg.includes("503") ||
+    msg.includes("unavailable") ||
+    msg.includes("deadline_exceeded") ||
+    msg.includes("fetch failed") ||
+    msg.includes("econnreset") ||
+    msg.includes("etimedout") ||
+    msg.includes("eai_again") ||
+    msg.includes("und_err_") ||
+    cause.includes("econnreset") ||
+    cause.includes("etimedout") ||
+    cause.includes("und_err_")
+  ) {
+    return true;
+  }
+
+  // Embedding-batch shape mismatch — retry once in case the SDK delivered
+  // a partial batch (rare, but observed in early gemini-embedding-001 traffic).
+  if (msg.includes("embedding batch shape unexpected") || msg.includes("embedding batch dim unexpected")) {
+    return true;
+  }
+
+  // Unknown — be conservative and treat as transient so we don't lose retries
+  // on legitimate but unclassified network blips. Cost of one extra attempt
+  // is bounded; cost of dropping a valid retry is a backfill failure.
+  return true;
+}
+
 let client: GoogleGenAI | null = null;
 function getClient(): GoogleGenAI {
   if (!client) {
@@ -167,6 +235,10 @@ export async function embedBatch(
       return { vectors, cost_cents };
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
+      // WR-03: don't retry permanent errors (401/403/400/invalid_argument) —
+      // they will never succeed and just burn MAX_RETRIES * RETRY_BASE_DELAY_MS
+      // of latency before the caller's graceful-empty path fires.
+      if (!isTransientGeminiError(lastError)) break;
       if (attempt === MAX_RETRIES) break;
       const delay = RETRY_BASE_DELAY_MS * (attempt + 1);
       await new Promise((resolve) => setTimeout(resolve, delay));
