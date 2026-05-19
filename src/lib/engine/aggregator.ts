@@ -541,6 +541,21 @@ export async function aggregateScores(
     contentTypeSlug,
     widenedGemini.cta_segment ?? null,
   );
+  // Phase 5 IN-03: emit a pipeline_warning breadcrumb when the CTA penalty
+  // actually fired. Keeps applyCtaPenalty pure (no side-effects) by computing
+  // the delta and routing the event through the aggregator's onStageEvent
+  // channel. Phase 10 ML audit (CONTEXT D-06) needs the penalty firing rate
+  // for magnitude calibration — without this breadcrumb, the only evidence
+  // is reconstructing it from `gemini_score` vs `overall_score` deltas, which
+  // is fragile across rule/trend/ml interactions.
+  if (ctaPenaltyApplied_gemini_score < gemini_score) {
+    const penaltyDelta = gemini_score - ctaPenaltyApplied_gemini_score;
+    onStageEvent?.({
+      type: "pipeline_warning",
+      stage: "cta_penalty_applied",
+      message: `CTA penalty fired: ${penaltyDelta} points deducted from gemini_score (content_type=${contentTypeSlug}, cta_present=false). Pre-penalty=${gemini_score}, post-penalty=${ctaPenaltyApplied_gemini_score}.`,
+    });
+  }
 
   // -------------------------------------------------
   // Overall score (dynamic weighted combination)
