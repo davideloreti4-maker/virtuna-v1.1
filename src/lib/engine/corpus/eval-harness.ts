@@ -50,6 +50,11 @@ export interface RunEvalHarnessOptions {
    * runEvalOverCorpus. Defaults to "deepseek" (production aggregator default).
    */
   behavioralSource?: "deepseek" | "personas";
+  /**
+   * Phase 7 D-14 (Rule 3 deviation): optional row cap for smoke/dev runs.
+   * Threaded into runEvalOverCorpus. Production callers omit; full corpus runs use undefined.
+   */
+  maxRows?: number;
 }
 
 export async function runEvalHarness(
@@ -63,6 +68,7 @@ export async function runEvalHarness(
     maxTotalCostCents: opts.maxTotalCostCents,
     rateLimitDelayMs: opts.rateLimitDelayMs,
     behavioralSource: opts.behavioralSource,
+    maxRows: opts.maxRows,
   });
 
   const successful = raw.filter((r) => r.predicted_bucket !== null);
