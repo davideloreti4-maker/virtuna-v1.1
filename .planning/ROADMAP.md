@@ -241,7 +241,7 @@ Plans:
 | 4. Wave 0 — Content Type + Niche Detection | 0/3 | Planned | - |
 | 5. Video Segmentation + Hook Decomposition | 0/TBD | Not started | - |
 | 6. Audio Analysis + Fingerprint | 0/TBD | Not started | - |
-| 7. Multi-Persona Simulation | 5/5 | Complete   | 2026-05-19 |
+| 7. Multi-Persona Simulation | 5/5 | Complete    | 2026-05-19 |
 | 8. Benchmark Retrieval | 0/TBD | Not started | - |
 | 9. Platform Algo Fit + Self-Critique + Counterfactuals | 0/TBD | Not started | - |
 | 10. ML Audit + Calibration + Aggregator Extension | 0/TBD | Not started | - |
