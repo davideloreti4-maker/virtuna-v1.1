@@ -124,6 +124,16 @@ export async function analyzeVideoSegmented(
         "Video processing failed in Gemini Files API. The file may be corrupt or in an unsupported format.",
       );
     }
+    // CR-01: Guard against any state that is neither PROCESSING (handled in the loop)
+    // nor FAILED (handled above) nor ACTIVE. Examples include "PENDING", "UNKNOWN",
+    // null, undefined, or empty-string. Without this check, the three parallel
+    // generateContent calls fan out against a not-actually-ready file and produce
+    // cryptic 503/404 errors — a 3-of-3 cascade with no actionable upstream signal.
+    if (fileState !== "ACTIVE") {
+      throw new Error(
+        `Video processing returned unexpected state "${fileState ?? "<undefined>"}". Expected ACTIVE.`,
+      );
+    }
     if (!fileUri) {
       throw new Error(
         "Video upload succeeded but no file URI was returned.",

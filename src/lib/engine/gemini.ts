@@ -487,6 +487,15 @@ export async function analyzeVideoWithGemini(
       throw new Error("Video processing failed in Gemini Files API. The file may be corrupt or in an unsupported format.");
     }
 
+    // CR-01: Guard against any non-{PROCESSING,FAILED,ACTIVE} state (e.g. PENDING,
+    // UNKNOWN, null, undefined, "") — the legacy single-call path inherits the
+    // same bug as the segmented orchestrator and Phase 5 fixes both for parity.
+    if (fileState !== "ACTIVE") {
+      throw new Error(
+        `Video processing returned unexpected state "${fileState ?? "<undefined>"}". Expected ACTIVE.`
+      );
+    }
+
     if (!fileUri) {
       throw new Error("Video upload succeeded but no file URI was returned.");
     }
