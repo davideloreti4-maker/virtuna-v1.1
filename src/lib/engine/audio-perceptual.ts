@@ -48,35 +48,15 @@ type PerceptualFormula =
  *
  * Balanced (other): average of all non-null sub-scores (voice/audio_hook as 0-10; ratios * 10).
  */
+// prettier-ignore
 const PERCEPTUAL_FORMULA_BY_TYPE: Record<ContentTypeSlug, PerceptualFormula> = {
-  talking_head: {
-    mode: "voice",
-    coefficients: { voice_clarity: 0.45, audio_hook: 0.35, voiceover_ratio: 0.20 },
-  },
-  tutorial: {
-    mode: "voice",
-    coefficients: { voice_clarity: 0.40, audio_hook: 0.35, voiceover_ratio: 0.25 },
-  },
-  vlog: {
-    mode: "voice",
-    coefficients: { voice_clarity: 0.35, audio_hook: 0.30, voiceover_ratio: 0.35 },
-  },
-  slideshow: {
-    mode: "ambient",
-    coefficients: { music_ratio: 0.60, description_quality: 0.40 },
-  },
-  b_roll: {
-    mode: "ambient",
-    coefficients: { music_ratio: 0.55, description_quality: 0.45 },
-  },
-  action: {
-    mode: "ambient",
-    coefficients: { music_ratio: 0.55, description_quality: 0.45 },
-  },
-  other: {
-    mode: "balanced",
-    coefficients: {},
-  },
+  talking_head: { mode: "voice",    coefficients: { voice_clarity: 0.45, audio_hook: 0.35, voiceover_ratio: 0.20 } },
+  tutorial:     { mode: "voice",    coefficients: { voice_clarity: 0.40, audio_hook: 0.35, voiceover_ratio: 0.25 } },
+  vlog:         { mode: "voice",    coefficients: { voice_clarity: 0.35, audio_hook: 0.30, voiceover_ratio: 0.35 } },
+  slideshow:    { mode: "ambient",  coefficients: { music_ratio: 0.60, description_quality: 0.40 } },
+  b_roll:       { mode: "ambient",  coefficients: { music_ratio: 0.55, description_quality: 0.45 } },
+  action:       { mode: "ambient",  coefficients: { music_ratio: 0.55, description_quality: 0.45 } },
+  other:        { mode: "balanced", coefficients: {} },
 };
 
 function clamp(value: number, min: number, max: number): number {
