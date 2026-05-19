@@ -242,7 +242,7 @@ Plans:
 | 2. Creator Profile & 9-Card Interview | 6/6 | Complete (UAT deferred) | 2026-05-17 |
 | 3. Pipeline Infrastructure | 4/4 | Complete (PARTIAL — defer-smoke for SC#4/#5) | 2026-05-18 |
 | 4. Wave 0 — Content Type + Niche Detection | 0/3 | Planned | - |
-| 5. Video Segmentation + Hook Decomposition | 0/3 | Planned | - |
+| 5. Video Segmentation + Hook Decomposition | 3/3 | Complete (verifier passed; code review advisory 4C/9W/6I) | 2026-05-19 |
 | 6. Audio Analysis + Fingerprint | 0/TBD | Not started | - |
 | 7. Multi-Persona Simulation | 0/TBD | Not started | - |
 | 8. Benchmark Retrieval | 0/TBD | Not started | - |
