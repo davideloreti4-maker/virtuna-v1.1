@@ -20,25 +20,18 @@
 
 import { config } from "dotenv";
 import { resolve } from "path";
-
-// Load .env.local (Next.js convention — same pattern as scripts/benchmark.ts)
-config({ path: resolve(__dirname, "../.env.local") });
-
-// Register tsconfig-paths at runtime so engine module @/ imports resolve.
-import { register } from "tsconfig-paths";
-import { readFileSync, promises as fs } from "fs";
-
-const tsconfig = JSON.parse(
-  readFileSync(resolve(__dirname, "../tsconfig.json"), "utf-8"),
-);
-register({
-  baseUrl: resolve(__dirname, ".."),
-  paths: tsconfig.compilerOptions.paths,
-});
-
+import { promises as fs } from "fs";
 import path from "node:path";
 import { runEvalHarness, type BenchmarkReport } from "../src/lib/engine/corpus/eval-harness";
 import { createLogger } from "../src/lib/logger";
+
+// Load .env.local (Next.js convention — same pattern as scripts/benchmark.ts).
+// `config({ path: ... })` is a side-effecting call; ESM/TypeScript hoists ALL imports
+// before any non-import statements, so this runs AFTER the imports above. The previous
+// `register()` from `tsconfig-paths` (WR-09) was non-functional for the same hoisting
+// reason — `runEvalHarness` was imported before `register()` could run. `tsx` resolves
+// tsconfig `@/` paths natively, so the `tsconfig-paths` machinery was redundant; deleted.
+config({ path: resolve(__dirname, "../.env.local") });
 
 const log = createLogger({ module: "scripts.run-persona-ab-eval" });
 
