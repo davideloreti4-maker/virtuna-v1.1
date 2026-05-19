@@ -251,9 +251,18 @@ export function mergeSegments(
   // invalid" patterns. Emits pipeline_warning events that feed AI-SPEC §7 M9 (D15)
   // and M10 (D16) production telemetry. Does NOT block — the merged result is still
   // usable; the warnings are informational and inform F8 / F9 flywheel review.
+  //
+  // WR-07: D-15 dimension is "for every Zod-parsed segment" — the hook arm
+  // catches text/speech vs score contradictions; the CTA arm below catches
+  // the analog presence contradiction (rationale claims absence while
+  // cta_present=true). Body has no scalar-vs-prose pairing analogous to
+  // hook's text_overlay_score, so no body arm is added.
   // ============================================================================
   if (hookOk && hookValue) {
     validateRationaleConsistency(hookValue.analysis, onStageEvent);
+  }
+  if (ctaOk && ctaValue) {
+    validateCtaRationaleConsistency(ctaValue.analysis, onStageEvent);
   }
 
   return {
@@ -365,6 +374,46 @@ export function validateRationaleConsistency(
       message:
         "Hook segment rationale references events outside the 0-5s window (temporal grounding drift)",
       stage: "hook_temporal_drift",
+    });
+  }
+}
+
+// ============================================================================
+// WR-07 — CTA rationale-vs-presence consistency check
+// ============================================================================
+// CTA-presence contradiction: rationale claims the CTA is absent ("no
+// call-to-action", "missing", "did not invite") while `cta_present=true`.
+// This catches the analog of D-15's hook rationale-vs-score contradiction
+// in CTA's presence-aware shape (Pitfall #7 — the Zod .refine catches the
+// strength/type structural mismatch but not the rationale prose drift).
+const CTA_ABSENCE_PATTERNS: RegExp[] = [
+  /\bno call[- ]to[- ]action\b/i,
+  /\bno CTA\b/i,
+  /\bmissing (?:CTA|call[- ]to[- ]action)\b/i,
+  /\babsent (?:CTA|call[- ]to[- ]action)\b/i,
+  /\b(?:did not|doesn['’]t|does not) (?:invite|prompt|ask)\b/i,
+  /\bcreator (?:did not|doesn['’]t) (?:invite|prompt|ask)\b/i,
+];
+
+/**
+ * WR-07 — Run CTA rationale-vs-presence consistency check.
+ *
+ * Emits ONE `pipeline_warning` event when the parsed CTA segment claims
+ * `cta_present=true` but the rationale prose contains language asserting
+ * absence (e.g. "no call-to-action detected"). Both shapes are individually
+ * Zod-valid; the contradiction is semantic.
+ */
+export function validateCtaRationaleConsistency(
+  ctaAnalysis: { cta_present: boolean; rationale: string },
+  onStageEvent: StageEventCallback | undefined,
+): void {
+  if (!onStageEvent) return;
+  if (!ctaAnalysis.cta_present) return;
+  if (CTA_ABSENCE_PATTERNS.some((p) => p.test(ctaAnalysis.rationale))) {
+    onStageEvent({
+      type: "pipeline_warning",
+      message: `CTA rationale claims absence but cta_present=true: "${ctaAnalysis.rationale}"`,
+      stage: "rationale_inconsistency",
     });
   }
 }
