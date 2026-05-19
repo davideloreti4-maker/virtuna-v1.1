@@ -306,3 +306,115 @@ describe("enrichWithTrends", () => {
     expect(result.trend_score).toBeGreaterThanOrEqual(0);
   });
 });
+
+// =====================================================
+// Phase 6 D-F3 — audioFingerprintMatched gating
+// =====================================================
+//
+// Per Phase 6 D-F3: when the audio_fingerprint stage matches a trending sound via
+// pgvector, the Jaro-Winkler caption ↔ sound_name fallback in enrichWithTrends is
+// SKIPPED (single source of truth — the aggregator synthesizes a matched_trends entry
+// from the fingerprint result). When the fingerprint did not match, the Jaro-Winkler
+// loop runs as before. The hashtag scoring loop is ORTHOGONAL to audio fingerprint
+// and ALWAYS evaluates regardless of opts.audioFingerprintMatched.
+describe("Phase 6 D-F3 audioFingerprintMatched gating", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    tableResponses = {
+      trending_sounds: { data: [], error: null },
+      scraped_videos: { data: [], error: null },
+    };
+  });
+
+  it("Test A: audioFingerprintMatched=true skips Jaro-Winkler sound loop (no sound matches even when caption contains sound_name)", async () => {
+    // 5 candidate sounds, one of which would have matched the caption via Jaro-Winkler.
+    tableResponses.trending_sounds = {
+      data: [
+        { sound_name: "amazing content", velocity_score: 80, trend_phase: "rising" },
+        { sound_name: "obscure track", velocity_score: 30, trend_phase: "peak" },
+        { sound_name: "another sound", velocity_score: 50, trend_phase: "emerging" },
+        { sound_name: "loud beat", velocity_score: 40, trend_phase: "declining" },
+        { sound_name: "soft tune", velocity_score: 60, trend_phase: "rising" },
+      ],
+      error: null,
+    };
+
+    const supabase = createServiceClient();
+    const result = await enrichWithTrends(
+      supabase,
+      makeInput({ content_text: "Check out this amazing content #viral" }),
+      { audioFingerprintMatched: true },
+    );
+
+    // No fuzzy sound match should populate matched_trends — fingerprint wins per D-F3.
+    expect(result.matched_trends).toEqual([]);
+  });
+
+  it("Test B: audioFingerprintMatched=false runs Jaro-Winkler sound loop (caption→sound_name match populates matched_trends)", async () => {
+    tableResponses.trending_sounds = {
+      data: [
+        { sound_name: "amazing content", velocity_score: 80, trend_phase: "rising" },
+      ],
+      error: null,
+    };
+
+    const supabase = createServiceClient();
+    const result = await enrichWithTrends(
+      supabase,
+      makeInput({ content_text: "Check out this amazing content #viral" }),
+      { audioFingerprintMatched: false },
+    );
+
+    // Fuzzy match should fire — exactly the v2.1 baseline behavior.
+    expect(result.matched_trends.length).toBeGreaterThan(0);
+    expect(result.matched_trends[0]!.sound_name).toBe("amazing content");
+  });
+
+  it("Test C: opts omitted defaults to UNGATED (back-compat — sound loop runs as before)", async () => {
+    tableResponses.trending_sounds = {
+      data: [
+        { sound_name: "amazing content", velocity_score: 80, trend_phase: "rising" },
+      ],
+      error: null,
+    };
+
+    const supabase = createServiceClient();
+    // No opts argument — must behave identically to pre-Phase-6 callers.
+    const result = await enrichWithTrends(
+      supabase,
+      makeInput({ content_text: "Check out this amazing content #viral" }),
+    );
+
+    expect(result.matched_trends.length).toBeGreaterThan(0);
+    expect(result.matched_trends[0]!.sound_name).toBe("amazing content");
+  });
+
+  it("Test D: hashtag loop is NEVER gated by audioFingerprintMatched (hashtags are orthogonal to audio fingerprint)", async () => {
+    // No trending sounds — caption contains an unsaturated hashtag that scraped_videos
+    // shows as popular. hashtag_relevance MUST still compute > 0 even when
+    // audioFingerprintMatched=true (the gate is sound-loop-only, not hashtag-loop).
+    const videos = [
+      { hashtags: ["#fitness", "#workout"], views: 50000 },
+      { hashtags: ["#fitness", "#health"], views: 30000 },
+      { hashtags: ["#fitness", "#gym"], views: 40000 },
+      { hashtags: ["#cooking", "#food"], views: 20000 },
+      { hashtags: ["#tech", "#gadgets"], views: 15000 },
+      { hashtags: ["#travel", "#adventure"], views: 25000 },
+      { hashtags: ["#music", "#dance"], views: 35000 },
+      { hashtags: ["#art", "#creative"], views: 18000 },
+      { hashtags: ["#pets", "#cute"], views: 22000 },
+      { hashtags: ["#fashion", "#style"], views: 28000 },
+    ];
+    tableResponses.scraped_videos = { data: videos, error: null };
+
+    const supabase = createServiceClient();
+    const result = await enrichWithTrends(
+      supabase,
+      makeInput({ content_text: "My workout routine #fitness" }),
+      { audioFingerprintMatched: true },
+    );
+
+    // hashtag_relevance is orthogonal — must fire regardless of fingerprint gate.
+    expect(result.hashtag_relevance).toBeGreaterThan(0);
+  });
+});

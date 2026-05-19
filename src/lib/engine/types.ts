@@ -459,3 +459,29 @@ export interface AudioFingerprintResult {
   /** From trending_sounds.velocity_score column. */
   velocity_score: number;
 }
+
+/**
+ * Phase 6 D-A4 — feeder interface widening the pipeline result with the
+ * audio_fingerprint stage output. `PipelineResult` (declared in pipeline.ts)
+ * extends this interface so Plan 06-06's aggregator can read
+ * `pipelineResult.audioFingerprintResult` with full type safety.
+ *
+ * Lives in types.ts (next to the AudioFingerprintResult shape it references)
+ * to keep audio-related types in one place. pipeline.ts composes it into the
+ * full PipelineResult so the broader interface stays close to its consumer.
+ *
+ * Value contract:
+ * - `AudioFingerprintResult` when the pgvector RPC returned a row above the
+ *   similarity threshold (0.80 by default; env-overridable).
+ * - `null` when (a) Gemini omitted audio_signals, (b) audio_description was
+ *   absent / empty, (c) embedContent failed softly, (d) the RPC returned an
+ *   error object, (e) no row matched above threshold, or (f) any thrown
+ *   exception was caught by the pipeline's audio_fingerprint stage.
+ *
+ * Never `undefined` — pipeline.ts always assigns either the match record or null
+ * (the stage's graceful-degradation contract). Aggregator can therefore read
+ * `pipelineResult.audioFingerprintResult !== null` for the availability flag.
+ */
+export interface PipelineAudioFingerprintFields {
+  audioFingerprintResult: AudioFingerprintResult | null;
+}
