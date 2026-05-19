@@ -62,8 +62,15 @@ export async function runEvalOverCorpus(
   opts: EvalRunnerOptions,
 ): Promise<RawEvalResult[]> {
   const supabase = createServiceClient();
-  const cap = opts.maxTotalCostCents ?? 5000;
-  const delayMs = opts.rateLimitDelayMs ?? 2000;
+  // CR-03 defensive harden: `??` only catches null/undefined, so NaN would pass through
+  // and disable the cost cap (every `totalCost > NaN` is false). Normalize non-finite
+  // values to the default 5000. Same for maxRows below.
+  const cap = Number.isFinite(opts.maxTotalCostCents)
+    ? (opts.maxTotalCostCents as number)
+    : 5000;
+  const delayMs = Number.isFinite(opts.rateLimitDelayMs)
+    ? (opts.rateLimitDelayMs as number)
+    : 2000;
   const results: RawEvalResult[] = [];
   let totalCost = 0;
   let consecutiveHighCost = 0;
@@ -84,7 +91,12 @@ export async function runEvalOverCorpus(
     offset += FETCH_BATCH;
   }
 
-  const effective = opts.maxRows ? allRows.slice(0, opts.maxRows) : allRows;
+  // CR-03 defensive harden: treat non-finite (NaN) maxRows as "no cap" rather than
+  // silently truncating to 0 / Array.slice(0, NaN) = []. The CLI now hard-exits on
+  // bad input upstream, but keep the runner robust to other callers.
+  const effective = Number.isFinite(opts.maxRows) && (opts.maxRows as number) > 0
+    ? allRows.slice(0, opts.maxRows as number)
+    : allRows;
   log.info("Eval loop starting", { corpusVersion: opts.corpusVersion, rowCount: effective.length, cap });
 
   for (let i = 0; i < effective.length; i++) {

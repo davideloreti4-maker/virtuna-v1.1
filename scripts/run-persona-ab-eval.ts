@@ -50,6 +50,21 @@ interface CliArgs {
   engineVersionPrefix: string;
 }
 
+/**
+ * CR-03: validate `parseInt` output. parseInt("abc", 10) returns NaN; NaN is falsy on
+ * truthy checks (`!NaN === true`), so downstream `opts.maxRows ?? fallback` and
+ * `if (totalCost > NaN)` silently bypass row/cost caps. Hard-exit on bad input instead.
+ */
+function parseIntStrict(flag: string, raw: string | undefined): number | undefined {
+  if (raw === undefined) return undefined;
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n) || n <= 0) {
+    console.error(`Invalid ${flag} value: "${raw}" — must be a positive integer`);
+    process.exit(1);
+  }
+  return n;
+}
+
 function parseArgs(argv: string[]): CliArgs {
   const getArg = (flag: string): string | undefined => {
     const idx = argv.indexOf(flag);
@@ -60,14 +75,11 @@ function parseArgs(argv: string[]): CliArgs {
     console.error("Missing required --corpus-version <version>");
     process.exit(1);
   }
-  const maxCostRaw = getArg("--max-cost-cents");
-  const maxRowsRaw = getArg("--max-rows");
-  const rateLimitMsRaw = getArg("--rate-limit-ms");
   return {
     corpusVersion: corpusVersion as string,
-    maxTotalCostCents: maxCostRaw ? parseInt(maxCostRaw, 10) : undefined,
-    maxRows: maxRowsRaw ? parseInt(maxRowsRaw, 10) : undefined,
-    rateLimitMs: rateLimitMsRaw ? parseInt(rateLimitMsRaw, 10) : 2000,
+    maxTotalCostCents: parseIntStrict("--max-cost-cents", getArg("--max-cost-cents")),
+    maxRows: parseIntStrict("--max-rows", getArg("--max-rows")),
+    rateLimitMs: parseIntStrict("--rate-limit-ms", getArg("--rate-limit-ms")) ?? 2000,
     engineVersionPrefix: getArg("--engine-version-prefix") ?? "3.0.0-dev",
   };
 }
