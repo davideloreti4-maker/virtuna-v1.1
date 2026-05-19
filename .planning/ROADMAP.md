@@ -151,7 +151,7 @@ Plans:
 - [x] 06-03-PLAN.md — Wave 3: Gemini schema extension (audio_signals optional for graceful degradation) + audio-perceptual module (D-G3 coefficients)
 - [x] 06-04-PLAN.md — Wave 3: audio-fingerprint stage (explicit Sentry-vs-warn asymmetry) + backfill script (FULL D-F4 pipeline)
 - [x] 06-05-PLAN.md — Wave 4: pipeline rename + trends D-F3 gating + types.ts PipelineResult widening
-- [ ] 06-06-PLAN.md — Wave 5: aggregator D-G1/G2/G3/G4 + analysis_results.audio_description persistence (Q4 RESOLVED) + cron full D-F4 pipeline
+- [x] 06-06-PLAN.md — Wave 5: aggregator D-G1/G2/G3/G4 + analysis_results.audio_description persistence (Q4 RESOLVED) + cron full D-F4 pipeline
 
 ### Phase 7: Multi-Persona Simulation
 **Goal:** 10 personas allocated FYP-first (6/2/1/1) run in parallel as Wave 3 after Wave 2 (DeepSeek synthesis + trends). Each persona produces structured reactions used both as the new behavioral signal and the data source for M2's audience viz.
