@@ -63,6 +63,11 @@ const warn = (msg: string) => console.warn(`[embed-corpus] WARN: ${msg}`);
 const PAGE = 200;
 const PERCENTILE_MIN_POOL_SIZE = 30; // RESEARCH Finding 5
 const RATE_LIMIT_SLEEP_MS = 60_000;
+// Safety cap on the backfill loop. With PAGE=200 and a worst-case persistent
+// embed failure (every row stays NULL after the embedBatch try/catch warn),
+// the IS NULL re-query pattern would otherwise loop forever. 1000 iterations
+// at PAGE=200 covers 200k rows — well above any realistic corpus.
+const MAX_LOOPS = 1000;
 
 type Table = "training_corpus" | "scraped_videos";
 
@@ -153,10 +158,22 @@ async function backfillTable(
 ): Promise<void> {
   let totalEmbedded = 0;
   let totalSkipped = 0;
+  // In default mode (filter by `embedding IS NULL`), each successful UPDATE
+  // removes a row from the filter set, so we MUST NOT advance the offset
+  // between iterations — re-querying `range(0, PAGE-1)` drains the NULL set
+  // naturally. In --re-embed-all mode the filter predicate is constant, so
+  // a monotonically-advancing offset is correct.
   let offset = 0;
+  let loops = 0;
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
+    if (loops++ >= MAX_LOOPS) {
+      warn(
+        `${table}: hit MAX_LOOPS=${MAX_LOOPS} safety cap (loops=${loops}, totalEmbedded=${totalEmbedded}); aborting backfill to prevent infinite loop on persistent embed failure`,
+      );
+      break;
+    }
     const selectCols =
       table === "training_corpus"
         ? "id, niche, creator_handle, caption, hashtags"
@@ -256,7 +273,19 @@ async function backfillTable(
       }
     }
 
-    offset += PAGE;
+    // CR-02: only advance offset in --re-embed-all mode. In default IS NULL mode,
+    // the previous batch removed rows from the filter set so re-querying from
+    // offset=0 picks up the next undone rows. Advancing offset in IS NULL mode
+    // silently skips approximately N/2 rows per invocation.
+    if (args.reEmbedAll) {
+      offset += PAGE;
+    }
+    // In dry-run mode the underlying rows are NOT updated, so the IS NULL filter
+    // set doesn't shrink between iterations. Advance offset so dry-run actually
+    // iterates the whole table instead of pinning to the first PAGE rows.
+    else if (args.dryRun) {
+      offset += PAGE;
+    }
   }
 
   log(
