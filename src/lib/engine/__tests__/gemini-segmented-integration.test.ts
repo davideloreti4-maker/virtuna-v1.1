@@ -382,6 +382,24 @@ describe("Phase 5 Plan 03 — pipeline integration with analyzeVideoSegmented", 
     expect(stageStartNames).toContain("gemini_cta");
     // D-14: outer wrapper REMOVED.
     expect(stageStartNames).not.toContain("gemini_video_analysis");
+
+    // IN-04: per-segment call-count pin. The segmented orchestrator MUST
+    // invoke exactly one hook + one body + one cta generateContent call.
+    // Without this assertion, a regression that double-invokes a segment
+    // helper would route both calls to the same fixture and the test
+    // would silently pass.
+    const hookCalls = mockGeminiGenerate.mock.calls.filter(
+      (c) => detectCaller(c[0] as { model?: string; contents?: Array<{ parts?: Array<{ text?: string }> }> }) === "hook"
+    );
+    const bodyCalls = mockGeminiGenerate.mock.calls.filter(
+      (c) => detectCaller(c[0] as { model?: string; contents?: Array<{ parts?: Array<{ text?: string }> }> }) === "body"
+    );
+    const ctaCalls = mockGeminiGenerate.mock.calls.filter(
+      (c) => detectCaller(c[0] as { model?: string; contents?: Array<{ parts?: Array<{ text?: string }> }> }) === "cta"
+    );
+    expect(hookCalls).toHaveLength(1);
+    expect(bodyCalls).toHaveLength(1);
+    expect(ctaCalls).toHaveLength(1);
   });
 
   // -------------------------------------------------------
@@ -422,6 +440,22 @@ describe("Phase 5 Plan 03 — pipeline integration with analyzeVideoSegmented", 
       gemini_body: true,
       gemini_cta: true,
     });
+
+    // IN-04: per-segment call-count pin on the integration happy path.
+    // Pairs with the same pin in Test 1 to give coverage on both the
+    // event-emission path and the result-shape path.
+    const hookCalls = mockGeminiGenerate.mock.calls.filter(
+      (c) => detectCaller(c[0] as { model?: string; contents?: Array<{ parts?: Array<{ text?: string }> }> }) === "hook"
+    );
+    const bodyCalls = mockGeminiGenerate.mock.calls.filter(
+      (c) => detectCaller(c[0] as { model?: string; contents?: Array<{ parts?: Array<{ text?: string }> }> }) === "body"
+    );
+    const ctaCalls = mockGeminiGenerate.mock.calls.filter(
+      (c) => detectCaller(c[0] as { model?: string; contents?: Array<{ parts?: Array<{ text?: string }> }> }) === "cta"
+    );
+    expect(hookCalls).toHaveLength(1);
+    expect(bodyCalls).toHaveLength(1);
+    expect(ctaCalls).toHaveLength(1);
   });
 
   // -------------------------------------------------------
@@ -541,6 +575,13 @@ describe("Phase 5 Plan 03 — pipeline integration with analyzeVideoSegmented", 
       .map((e) => (e as { stage?: string }).stage);
     expect(warnings.filter((s) => s === "gemini_body")).toHaveLength(1);
     expect(warnings).not.toContain("gemini_video_unavailable");
+
+    // IN-06: body segment failure is handled via the SSE pipeline_warning event,
+    // NOT via the persisted result.warnings array. Per-segment failures emit
+    // events only; only the outermost pipeline catch (Files API upload throws,
+    // calibration unavailable, etc.) pushes onto result.warnings. This pin
+    // asserts that boundary contract so it cannot silently drift.
+    expect(result.warnings).toEqual([]);
   });
 
   // -------------------------------------------------------
@@ -575,6 +616,12 @@ describe("Phase 5 Plan 03 — pipeline integration with analyzeVideoSegmented", 
       .filter((e) => e.type === "pipeline_warning")
       .map((e) => (e as { stage?: string }).stage);
     expect(warnings).toContain("gemini_video_unavailable");
+
+    // IN-06: 3-of-3 failure is handled via the SSE gemini_video_unavailable event
+    // (asserted above) — the persisted result.warnings array stays empty.
+    // mergeSegments emits the event but does NOT push to the warnings array;
+    // only the outermost pipeline catch (Test 10) populates that array.
+    expect(result.warnings).toEqual([]);
   });
 
   // -------------------------------------------------------

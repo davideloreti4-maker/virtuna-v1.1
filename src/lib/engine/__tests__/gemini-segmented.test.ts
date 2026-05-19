@@ -280,6 +280,23 @@ describe("analyzeVideoSegmented — Phase 5 Plan 02 Task 3 orchestrator", () => 
     expect(callsBySegment.hook).toEqual({ startOffset: "0s", endOffset: "5s" });
     expect(callsBySegment.body).toEqual({ startOffset: "5s", endOffset: "27s" });
     expect(callsBySegment.cta).toEqual({ startOffset: "27s", endOffset: "30s" });
+
+    // IN-04: per-segment call-count pin. Catches a regression where the
+    // orchestrator accidentally invokes one segment helper twice (both calls
+    // would route to the same fixture via segmentOf and the broader
+    // `mockGenerate.toHaveBeenCalledTimes(3)` would silently pass).
+    const hookCalls = mockGenerate.mock.calls.filter(
+      (c) => segmentOf(c[0] as { contents?: Array<{ parts?: Array<{ text?: string }> }> }) === "hook"
+    );
+    const bodyCalls = mockGenerate.mock.calls.filter(
+      (c) => segmentOf(c[0] as { contents?: Array<{ parts?: Array<{ text?: string }> }> }) === "body"
+    );
+    const ctaCalls = mockGenerate.mock.calls.filter(
+      (c) => segmentOf(c[0] as { contents?: Array<{ parts?: Array<{ text?: string }> }> }) === "cta"
+    );
+    expect(hookCalls).toHaveLength(1);
+    expect(bodyCalls).toHaveLength(1);
+    expect(ctaCalls).toHaveLength(1);
   });
 
   it("Test 2: 22s video → body window `{5s, 19s}`, cta window `{19s, 22s}` (Pitfall #4 zero-padding)", async () => {
@@ -311,6 +328,21 @@ describe("analyzeVideoSegmented — Phase 5 Plan 02 Task 3 orchestrator", () => 
     await analyzeVideoSegmented(smallVideo(), "video/mp4", stubOpts(30));
     expect(mockFileUpload).toHaveBeenCalledTimes(1);
     expect(mockFileDelete).toHaveBeenCalledTimes(1);
+
+    // IN-04: per-segment call-count pin (same intent as Test 1 — guards
+    // against orchestrator double-invoking a segment helper).
+    const hookCalls = mockGenerate.mock.calls.filter(
+      (c) => segmentOf(c[0] as { contents?: Array<{ parts?: Array<{ text?: string }> }> }) === "hook"
+    );
+    const bodyCalls = mockGenerate.mock.calls.filter(
+      (c) => segmentOf(c[0] as { contents?: Array<{ parts?: Array<{ text?: string }> }> }) === "body"
+    );
+    const ctaCalls = mockGenerate.mock.calls.filter(
+      (c) => segmentOf(c[0] as { contents?: Array<{ parts?: Array<{ text?: string }> }> }) === "cta"
+    );
+    expect(hookCalls).toHaveLength(1);
+    expect(bodyCalls).toHaveLength(1);
+    expect(ctaCalls).toHaveLength(1);
   });
 
   it("Test 4: files.delete fires AFTER all 3 generateContent calls resolve", async () => {
