@@ -218,10 +218,20 @@ async function backfillTable(
         // mutating existing rows; .upsert() requires PK + conflict.
         // Each .update() is individually wrapped in withRetry so a single
         // transient fetch failure doesn't lose the whole batch.
+        // pgvector wire-format consistency: vector(768) columns are typed as
+        // `string | null` in the generated Database types — both orchestrator and
+        // apify webhook serialize via JSON.stringify(number[]). Match them here so
+        // PostgREST receives the textual pgvector literal "[0.1,0.2,...]" rather
+        // than a JSON array (which the type system would have caught but is
+        // bypassed by the `supabase: any` annotation above).
         const updates = await Promise.all(
           slice.map((r, j) =>
             withRetry(
-              () => supabase.from(table).update({ embedding: vectors[j] }).eq("id", r.id),
+              () =>
+                supabase
+                  .from(table)
+                  .update({ embedding: JSON.stringify(vectors[j]) })
+                  .eq("id", r.id),
               `Update ${table} id=${r.id}`,
             ),
           ),
