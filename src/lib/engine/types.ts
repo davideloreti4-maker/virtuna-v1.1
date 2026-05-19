@@ -259,20 +259,14 @@ export const GeminiVideoSignalsSchema = z.object({
   transition_quality: z.number().min(0).max(10),
 });
 
-export const GeminiResponseSchema = z.object({
-  factors: z.array(FactorSchema).length(5),
-  overall_impression: z.string(),
-  content_summary: z.string(),
-  video_signals: GeminiVideoSignalsSchema.optional(),
-});
-
-export type GeminiAnalysis = z.infer<typeof GeminiResponseSchema>;
-
 // Phase 6 (D-A1..A3, D-F1) — Zod schema for the extended audio_signals block.
 // `.refine()` normalizes ratio sums within ±0.1 tolerance per Pitfall 1.
-// Chained `.optional()` on the parent video schema below wraps this refined schema
-// so the refinement only fires when the field is present (graceful degradation
-// per HARD-03 + Phase 3 D-04).
+// Chained `.optional()` on parent schemas wraps this refined schema so the
+// refinement only fires when the field is present (graceful degradation per
+// HARD-03 + Phase 3 D-04).
+// NOTE: declared BEFORE GeminiResponseSchema so that the base schema can
+// reference it directly via `.optional()` (Phase 6 wiring + aggregator access
+// via `gemini.audio_signals?.audio_description ?? null`).
 export const GeminiAudioSignalsSchema = z
   .object({
     voice_clarity_0_10: z.number().min(0).max(10).nullable(),
@@ -288,17 +282,36 @@ export const GeminiAudioSignalsSchema = z
     { message: "Audio ratios must sum to ~1.0 (±0.1 tolerance)" },
   );
 
-// Phase 6 — audio_signals is OPTIONAL on the response schema for graceful degradation.
-// When Gemini omits the audio_signals block (model regression, prompt edge case, or any
-// failure mode where the LLM degrades to video-only output), the top-level response still
-// passes Zod validation. Downstream code reads audio_signals via optional chaining
-// (`geminiResult.analysis.audio_signals?.audio_description ?? null`), so the resulting
-// `T | undefined` type is the canonical contract. Per HARD-03 + Phase 3 D-04 graceful
-// degradation: aggregator sees audio_signals as undefined → signal_availability.audio = false
-// → audio weight redistributes to other available signals via existing selectWeights math.
+// Phase 6 — audio_signals is OPTIONAL on the BASE response schema (not just on
+// GeminiVideoResponseSchema). When Gemini omits the audio_signals block (model
+// regression, prompt edge case, or any failure mode where the LLM degrades to
+// video-only output), the top-level response still passes Zod validation.
+// Downstream code reads audio_signals via optional chaining
+// (`geminiResult.analysis.audio_signals?.audio_description ?? null`), so the
+// resulting `T | undefined` type is the canonical contract. The text-mode path
+// never populates audio_signals at runtime, so the type stays `undefined` on
+// text-only analyses — preserving graceful degradation per HARD-03 + Phase 3
+// D-04. Aggregator sees audio_signals as undefined → signal_availability.audio
+// = false → audio weight redistributes via the existing selectWeights math.
+// Mirrors the existing `video_signals.optional()` pattern below it.
+export const GeminiResponseSchema = z.object({
+  factors: z.array(FactorSchema).length(5),
+  overall_impression: z.string(),
+  content_summary: z.string(),
+  video_signals: GeminiVideoSignalsSchema.optional(),
+  audio_signals: GeminiAudioSignalsSchema.optional(),
+});
+
+export type GeminiAnalysis = z.infer<typeof GeminiResponseSchema>;
+
+// GeminiVideoResponseSchema is the strict superset for video-mode responses:
+// video_signals becomes REQUIRED (not optional). audio_signals remains optional
+// for graceful degradation — the inherited base shape carries it through.
 export const GeminiVideoResponseSchema = GeminiResponseSchema.extend({
   video_signals: GeminiVideoSignalsSchema,
-  audio_signals: GeminiAudioSignalsSchema.optional(), // Phase 6 — D-A1 + HARD-03 + BLOCKER 2 fix
+  // audio_signals optional inherited from GeminiResponseSchema — explicit here
+  // for readability + to keep the Phase 6 BLOCKER 2 contract obvious to readers.
+  audio_signals: GeminiAudioSignalsSchema.optional(),
 });
 
 export type GeminiVideoAnalysis = z.infer<typeof GeminiVideoResponseSchema>;

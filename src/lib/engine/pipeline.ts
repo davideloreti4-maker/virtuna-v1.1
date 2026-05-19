@@ -5,9 +5,11 @@ import { createServiceClient } from "@/lib/supabase/service";
 import {
   AnalysisInputSchema,
   type AnalysisInput,
+  type AudioFingerprintResult,
   type ContentPayload,
   type GeminiAnalysis,
   type DeepSeekReasoning,
+  type PipelineAudioFingerprintFields,
   type RuleScoreResult,
   type TrendEnrichment,
   type Wave0Result,
@@ -15,6 +17,7 @@ import {
 } from "./types";
 import { normalizeInput } from "./normalize";
 import { analyzeWithGemini, analyzeVideoWithGemini } from "./gemini";
+import { matchAudioFingerprint } from "./audio-fingerprint";
 import { reasonWithDeepSeek } from "./deepseek";
 import { loadActiveRules, scoreContentAgainstRules } from "./rules";
 import { enrichWithTrends } from "./trends";
@@ -37,7 +40,7 @@ export interface StageTiming {
   duration_ms: number;
 }
 
-export interface PipelineResult {
+export interface PipelineResult extends PipelineAudioFingerprintFields {
   // Stage outputs
   payload: ContentPayload;
   geminiResult: { analysis: GeminiAnalysis; cost_cents: number };
@@ -45,7 +48,11 @@ export interface PipelineResult {
   ruleResult: RuleScoreResult;
   trendEnrichment: TrendEnrichment;
   deepseekResult: { reasoning: DeepSeekReasoning; cost_cents: number } | null;
-  audioResult: null; // Audio analysis handled via fuzzy matching in trend enrichment -- no separate stage needed
+  // Phase 6 (D-A4) — audioFingerprintResult: AudioFingerprintResult | null
+  // is inherited from PipelineAudioFingerprintFields above. Replaces the
+  // pre-Phase-6 `audioResult: null` no-op slot. Aggregator (Plan 06-06) reads
+  // `pipelineResult.audioFingerprintResult` to compute the audio_fingerprint
+  // signal availability flag + the phase-aware boost in D-G2.
 
   // Phase 3 — Wave 0/3 stub outputs (Phase 4/7 fill with real logic)
   wave0Result: Wave0Result;
@@ -209,7 +216,7 @@ const DEFAULT_GEMINI_RESULT: PipelineResult["geminiResult"] = {
  * 2. Normalize    -- Convert AnalysisInput to ContentPayload
  * 3. Wave 1 (parallel):
  *    - Stage 3: Gemini Analysis (non-critical -- fallback with warning, HARD-03)
- *    - Stage 4: Audio Analysis (placeholder)
+ *    - Stage 4: Audio Fingerprint (non-critical -- pgvector match against trending_sounds; D-A4)
  *    - Stage 5: Creator Context (non-critical -- fallback with warning)
  *    - Stage 6: Rule Loading + Scoring (non-critical -- fallback with warning)
  * 4. Wave 2 (parallel):
@@ -371,11 +378,42 @@ export async function runPredictionPipeline(
     }
   })();
 
-  // Stage 4: Audio Analysis (handled via fuzzy matching in trend enrichment -- no separate stage)
-  const audioPromise = timed("audio_analysis", timings, async () => null, {
-    wave: 1,
-    onEvent: onStageEvent,
-  });
+  // Stage 4: Audio Fingerprint — NON-CRITICAL (graceful degradation via null return per D-A4).
+  // Sub-awaits geminiPromise's audio_description (RESEARCH Q3 Architectural Option A); this
+  // preserves Wave 1 parallelism visible to SSE consumers: stage_start fires immediately
+  // alongside gemini_video_analysis's stage_start, stage_end fires after the pgvector match
+  // completes. The inner `await geminiPromise` is the known tradeoff (RESEARCH Pitfall 2) —
+  // audio_fingerprint GENUINELY depends on Gemini's audio_description and cannot run earlier.
+  //
+  // matchAudioFingerprint() never throws — it returns null on every soft-failure path
+  // (no description, empty embedding, RPC error object, no row above threshold). The outer
+  // try/catch here exists solely as a defense-in-depth net for unexpected hard failures
+  // (e.g., geminiPromise itself throws before yielding a value). Per HARD-03 + Phase 3 D-04,
+  // audio is enhancement, never gating: a null result means signal_availability.audio_fingerprint
+  // = false and weight redistribution flows through the existing aggregator math.
+  const audioFingerprintPromise = (async (): Promise<AudioFingerprintResult | null> => {
+    try {
+      return await timed("audio_fingerprint", timings, async () => {
+        // Sub-await — audio_fingerprint genuinely depends on Gemini's audio_description.
+        const geminiInner = await geminiPromise;
+        // `audio_signals` is `.optional()` on the Zod schema (Plan 03 Test 9 + BLOCKER 2);
+        // optional chaining produces `string | undefined` — coerce to `string | null` for the
+        // matchAudioFingerprint contract.
+        const audioDescription =
+          geminiInner.analysis.audio_signals?.audio_description ?? null;
+        return matchAudioFingerprint(audioDescription, supabase);
+      }, { wave: 1, onEvent: onStageEvent });
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { stage: "audio_fingerprint", requestId },
+      });
+      warnings.push(
+        `Audio fingerprint unavailable: ${error instanceof Error ? error.message : String(error)}`
+      );
+      timings.push({ stage: "audio_fingerprint", duration_ms: 0 });
+      return null;
+    }
+  })();
 
   // Stage 5: Creator Context -- Phase 4 PASSTHROUGH (reuses pre_creator_context).
   // The actual fetch happened above in the pre_creator_context stage (D-17/D-18).
@@ -414,10 +452,18 @@ export async function runPredictionPipeline(
   // Phase 4: the third slot (creatorPromise) returns the same value as the
   // outer-scope `creatorContext` (pre-fetched above), so we discard the array
   // slot to avoid redeclaration.
-  const [geminiResult, audioResult, , ruleResult] = await timed(
+  // Phase 6: the second slot is the audio_fingerprint stage (renamed from
+  // audio_analysis per D-A4); it returns AudioFingerprintResult | null.
+  const [geminiResult, audioFingerprintResult, , ruleResult] = await timed(
     "wave_1",
     timings,
-    () => Promise.all([geminiPromise, audioPromise, creatorPromise, rulePromise]),
+    () =>
+      Promise.all([
+        geminiPromise,
+        audioFingerprintPromise,
+        creatorPromise,
+        rulePromise,
+      ]),
     { wave: 1, onEvent: onStageEvent }
   );
 
@@ -425,7 +471,7 @@ export async function runPredictionPipeline(
     category: "engine.pipeline",
     message: "Wave 1 complete",
     level: "info",
-    data: { requestId, stages: ["gemini", "audio", "creator", "rules"] },
+    data: { requestId, stages: ["gemini", "audio_fingerprint", "creator", "rules"] },
   });
 
   // Format creator context for DeepSeek prompt injection
@@ -472,11 +518,18 @@ export async function runPredictionPipeline(
     }
   })();
 
-  // Stage 8: Trend Enrichment -- NON-CRITICAL (fallback with warning)
+  // Stage 8: Trend Enrichment -- NON-CRITICAL (fallback with warning).
+  // Phase 6 D-F3: when the audio_fingerprint stage matched a sound (audioFingerprintResult
+  // !== null), the aggregator synthesizes a matched_trends entry from the fingerprint result
+  // (single source of truth). Pass that boolean down so enrichWithTrends skips its
+  // Jaro-Winkler caption ↔ sound_name fallback loop. Hashtag scoring loop in trends.ts is
+  // orthogonal and remains UNGATED.
   const trendPromise = (async (): Promise<TrendEnrichment> => {
     try {
       return await timed("trend_enrichment", timings, () =>
-        enrichWithTrends(supabase, validated),
+        enrichWithTrends(supabase, validated, {
+          audioFingerprintMatched: audioFingerprintResult !== null,
+        }),
         { wave: 2, onEvent: onStageEvent }
       );
     } catch (error) {
@@ -549,7 +602,9 @@ export async function runPredictionPipeline(
     ruleResult,
     trendEnrichment,
     deepseekResult: deepseekRaw,
-    audioResult,
+    // Phase 6 (D-A4): replaces the pre-Phase-6 audioResult: null slot. Plan 06-06's
+    // aggregator reads this directly via `pipelineResult.audioFingerprintResult`.
+    audioFingerprintResult,
     wave0Result,
     wave3Result,
     requestId,
