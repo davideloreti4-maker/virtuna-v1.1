@@ -188,13 +188,20 @@ export async function analyzeVideoSegmented(
     //    short-video branch is INTENDED, not a failure — suppress that one warning
     //    via a wrapping callback. All other events (hook, cta, aggregate cost cap)
     //    pass through to the original callback.
+    //
+    //    WR-04: Match the SPECIFIC "unavailable" message that mergeSegments emits
+    //    for a failed body segment, NOT every gemini_body-staged event. This
+    //    leaves the door open for future cost-cap or other body-attributed
+    //    warnings (e.g. mergeSegments could emit a body-related cost-cap event)
+    //    to flow through unsuppressed.
     // ==========================================================================
     const onStageEventForMerge: StageEventCallback | undefined = skipBody
       ? (event) => {
-          if (
+          const isSkipWarning =
             event.type === "pipeline_warning" &&
-            event.stage === "gemini_body"
-          ) {
+            event.stage === "gemini_body" &&
+            event.message.includes("unavailable");
+          if (isSkipWarning) {
             // Replace with an info log — skip is by design, not a degradation.
             log.info("Body segment skipped (short video ≤ 8s)", {
               durationSeconds: opts.durationSeconds,
