@@ -61,8 +61,6 @@ export async function runBodySegment(
 ): Promise<SegmentResult<BodySegmentResult>> {
   const startTs = emitStageStart(opts.onStageEvent, "gemini_body", 1);
   const model = GEMINI_BODY_MODEL;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), BODY_TIMEOUT_MS);
 
   // Compute window. Caller MUST ensure duration > 8s before invoking; defensive clamp here.
   const endOffsetSec = Math.max(5, opts.durationSeconds - 3);
@@ -71,6 +69,13 @@ export async function runBodySegment(
   let lastError: unknown = null;
   try {
     for (let attempt = 0; attempt <= BODY_MAX_RETRIES; attempt++) {
+      // CR-02: Per-attempt AbortController + setTimeout so each retry gets a
+      // fresh BODY_TIMEOUT_MS budget. Reusing a single outer controller would
+      // (a) burn timeout budget across attempts and (b) on the retry pass
+      // submit an already-aborted signal — guaranteeing AbortError before any
+      // wire activity.
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), BODY_TIMEOUT_MS);
       try {
         const prompt = attempt === 0
           ? buildBodyPrompt(opts)
@@ -144,7 +149,16 @@ export async function runBodySegment(
         return { ok: true, analysis: result.data, cost_cents, model };
       } catch (innerError) {
         lastError = innerError;
+        // WR-09: Do NOT retry on AbortError — the per-attempt timeout already
+        // fired, so retrying immediately would just hit the same wall (now with
+        // less of the overall fan-out budget). Other transport errors fall
+        // through to the retry below.
+        if (innerError instanceof Error && innerError.name === "AbortError") break;
         if (attempt >= BODY_MAX_RETRIES) break;
+      } finally {
+        // Clear THIS attempt's timer so a successful retry doesn't keep the
+        // previous attempt's timer ticking.
+        clearTimeout(timeout);
       }
     }
     throw lastError ?? new Error("Body segment failed after retries");
@@ -158,7 +172,5 @@ export async function runBodySegment(
       warning: message,
     });
     return { ok: false, error };
-  } finally {
-    clearTimeout(timeout);
   }
 }

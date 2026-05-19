@@ -61,8 +61,6 @@ export async function runCtaSegment(
 ): Promise<SegmentResult<CtaSegmentResult>> {
   const startTs = emitStageStart(opts.onStageEvent, "gemini_cta", 1);
   const model = GEMINI_CTA_MODEL;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), CTA_TIMEOUT_MS);
 
   // Window: last 3s, clamped to 5s minimum start.
   const startOffsetSec = Math.max(5, opts.durationSeconds - 3);
@@ -72,6 +70,10 @@ export async function runCtaSegment(
   let lastError: unknown = null;
   try {
     for (let attempt = 0; attempt <= CTA_MAX_RETRIES; attempt++) {
+      // CR-02: Per-attempt AbortController + setTimeout so each retry gets a
+      // fresh CTA_TIMEOUT_MS budget (same bug pattern as body-segment.ts).
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), CTA_TIMEOUT_MS);
       try {
         const prompt = attempt === 0
           ? buildCtaPrompt(opts)
@@ -145,7 +147,12 @@ export async function runCtaSegment(
         return { ok: true, analysis: result.data, cost_cents, model };
       } catch (innerError) {
         lastError = innerError;
+        // WR-09: Do NOT retry on AbortError — the per-attempt timeout already
+        // fired, so retrying immediately would just hit the same wall.
+        if (innerError instanceof Error && innerError.name === "AbortError") break;
         if (attempt >= CTA_MAX_RETRIES) break;
+      } finally {
+        clearTimeout(timeout);
       }
     }
     throw lastError ?? new Error("CTA segment failed after retries");
@@ -159,7 +166,5 @@ export async function runCtaSegment(
       warning: message,
     });
     return { ok: false, error };
-  } finally {
-    clearTimeout(timeout);
   }
 }
