@@ -40,7 +40,7 @@ Wave 8 (final gate): P12 (accuracy benchmark + acceptance)
 - [ ] **Phase 5: Video Segmentation + Hook Decomposition** — Native Gemini `videoMetadata` parallel calls (Pro hook + Flash body/CTA), multi-modal hook decomp, visual-audio coherence, cognitive load.
 - [ ] **Phase 6: Audio Analysis + Fingerprint** — Real audio stage replacing no-op, audio fingerprint matching against trending sounds DB.
 - [ ] **Phase 7: Multi-Persona Simulation** — Wave 3 with 10 FYP-weighted personas on V3 (6 FYP + 2 niche + 1 loyalist + 1 cross-niche).
-- [ ] **Phase 8: Benchmark Retrieval** — pgvector setup, embedding pipeline, top-K similar competitor video retrieval.
+- [x] **Phase 8: Benchmark Retrieval** — pgvector setup, embedding pipeline, top-K similar competitor video retrieval.
 - [ ] **Phase 9: Platform Algo Fit + Self-Critique + Counterfactuals** — TikTok/IG/YT-specific signals, creator-tier awareness, watermark detection, critique pass, counterfactual generation.
 - [ ] **Phase 10: ML Audit + Calibration + Aggregator Extension** — Audit ML against corpus, decide retrain/down-weight, train Platt on corpus, extend SignalAvailability with new signals, bump to engine v3.0.
 - [ ] **Phase 11: Existing UI Integration + Privacy Policy** — Wire /api/analyze + video-upload component to new engine, storage retention policy, onboarding integration with 9-card profile.
@@ -169,7 +169,7 @@ Plans:
   3. Predict-time embedding of input video summary completes in <1s and queries top-K=5 with niche + platform + tier filter (hierarchical relaxation per D-04)
   4. Retrieval results stored on prediction (`retrieval_evidence` JSONB + `retrieval_score` NUMERIC) with similarity scores + outcomes
   5. Retrieval signal added to aggregator at LOW initial weight (0.05 per D-03b; Phase 10 owns calibration)
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans executed — Phase Complete (2026-05-19)
 Plans:
 - [x] 08-01-PLAN.md — Wave 1: pgvector migration SQL + REQUIREMENTS-02 conflict resolution
 - [x] 08-02-PLAN.md — Wave 1: types.ts extension — Zod schemas + interfaces (interface-first contracts)
