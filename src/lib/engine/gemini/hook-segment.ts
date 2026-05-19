@@ -40,6 +40,11 @@ const HOOK_TIMEOUT_MS = 30_000;          // per-segment AbortController ceiling
 const HOOK_MAX_OUTPUT_TOKENS = 1500;     // hard ceiling — prevents runaway 6-score decomposition
 const HOOK_COST_SOFT_CAP_CENTS = 1.6;    // log.warn
 const HOOK_COST_HARD_CAP_CENTS = 2.0;    // pipeline_warning
+// WR-02: One corrective retry on Zod failure only. Pro tier is ~1.3¢ per call but
+// well inside the soft cap. Transport errors + AbortError do NOT retry (preserves
+// the no-exponential-backoff pattern from body/cta — a hook timeout means the model
+// is overloaded, not that the output was malformed).
+const HOOK_MAX_RETRIES = 1;
 
 export interface HookSegmentOptions extends SegmentedPromptOptions {
   onStageEvent?: StageEventCallback;
@@ -74,79 +79,114 @@ export async function runHookSegment(
 ): Promise<SegmentResult<HookSegmentResult>> {
   const startTs = emitStageStart(opts.onStageEvent, "gemini_hook", 1);
   const model = GEMINI_HOOK_MODEL;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), HOOK_TIMEOUT_MS);
 
+  let lastError: unknown = null;
   try {
-    const response = await ai.models.generateContent({
-      model,
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: buildHookPrompt(opts) },
+    for (let attempt = 0; attempt <= HOOK_MAX_RETRIES; attempt++) {
+      // CR-02-pattern: per-attempt AbortController so each retry gets a fresh
+      // HOOK_TIMEOUT_MS budget (mirrors the body/cta fix from CR-02).
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), HOOK_TIMEOUT_MS);
+      try {
+        const prompt = attempt === 0
+          ? buildHookPrompt(opts)
+          : `${buildHookPrompt(opts)}\n\nYour previous response was not valid JSON matching the schema. Return ONLY the JSON object matching HookSegmentZodSchema.`;
+
+        const response = await ai.models.generateContent({
+          model,
+          contents: [
             {
-              // CRITICAL Pitfall #3 + #4: videoMetadata is a SIBLING of fileData in the
-              // SAME Part. startOffset/endOffset are STRING durations with trailing "s"
-              // (NOT numbers, NOT ISO 8601).
-              fileData: { fileUri, mimeType },
-              videoMetadata: { startOffset: "0s", endOffset: "5s" },
+              role: "user",
+              parts: [
+                { text: prompt },
+                {
+                  // CRITICAL Pitfall #3 + #4: videoMetadata is a SIBLING of fileData in the
+                  // SAME Part. startOffset/endOffset are STRING durations with trailing "s"
+                  // (NOT numbers, NOT ISO 8601).
+                  fileData: { fileUri, mimeType },
+                  videoMetadata: { startOffset: "0s", endOffset: "5s" },
+                },
+              ],
             },
           ],
-        },
-      ],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: HOOK_SEGMENT_GEMINI_SCHEMA,
-        abortSignal: controller.signal,
-        maxOutputTokens: HOOK_MAX_OUTPUT_TOKENS,
-      },
-    });
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: HOOK_SEGMENT_GEMINI_SCHEMA,
+            abortSignal: controller.signal,
+            maxOutputTokens: HOOK_MAX_OUTPUT_TOKENS,
+          },
+        });
 
-    // Pitfall #8: response.text can be undefined even with responseSchema set.
-    const rawText = response.text ?? "";
-    const cleaned = stripFences(rawText);
-    const parsed = JSON.parse(cleaned);
-    const result = HookSegmentZodSchema.safeParse(parsed);
-    if (!result.success) {
-      throw new Error(`Hook segment Zod validation failed: ${result.error.message}`);
+        // Pitfall #8: response.text can be undefined even with responseSchema set.
+        const rawText = response.text ?? "";
+        const cleaned = stripFences(rawText);
+        const parsed = JSON.parse(cleaned);
+        const result = HookSegmentZodSchema.safeParse(parsed);
+        if (!result.success) {
+          // WR-02: One corrective retry on Zod failure (the most expensive and
+          // most schema-critical segment — 10 fields incl. decomposition). A
+          // transient malformed JSON output would otherwise produce a permanent
+          // FHH result with zero gemini factors.
+          lastError = new Error(`Hook segment Zod validation failed (attempt ${attempt + 1}): ${result.error.message}`);
+          if (attempt < HOOK_MAX_RETRIES) {
+            log.warn("Hook segment Zod retry", {
+              attempt: attempt + 1,
+              error: String(lastError),
+            });
+            continue;
+          }
+          throw lastError;
+        }
+
+        const cost_cents = calculateCost(model, response.usageMetadata);
+
+        // Soft / hard cap warnings — Section 4b cost budget. Do NOT fail; tokens are sunk.
+        if (cost_cents > HOOK_COST_HARD_CAP_CENTS) {
+          log.warn("Hook segment cost EXCEEDS HARD CAP", {
+            model,
+            cost_cents,
+            hard_cap: HOOK_COST_HARD_CAP_CENTS,
+          });
+          opts.onStageEvent?.({
+            type: "pipeline_warning",
+            message: `Gemini hook segment cost ${cost_cents.toFixed(4)}¢ exceeds hard cap ${HOOK_COST_HARD_CAP_CENTS}¢`,
+            stage: "gemini_hook",
+          });
+        } else if (cost_cents > HOOK_COST_SOFT_CAP_CENTS) {
+          log.warn("Hook segment cost exceeds soft cap", {
+            model,
+            cost_cents,
+            soft_cap: HOOK_COST_SOFT_CAP_CENTS,
+          });
+        }
+
+        log.info("Hook segment complete", {
+          stage: "gemini_hook",
+          model,
+          cost_cents: +cost_cents.toFixed(4),
+          attempt: attempt + 1,
+          weakest_modality: result.data.hook_decomposition.weakest_modality,
+        });
+
+        emitStageEnd(opts.onStageEvent, "gemini_hook", 1, startTs, {
+          cost_cents: +cost_cents.toFixed(4),
+          ok: true,
+        });
+
+        return { ok: true, analysis: result.data, cost_cents, model };
+      } catch (innerError) {
+        lastError = innerError;
+        // WR-02 + WR-09 pattern: do NOT retry on AbortError or transport errors.
+        // Zod failures are caught above via the `continue` branch — anything
+        // reaching this catch is either an AbortError (per-attempt timeout fired)
+        // or a transport error (5xx, network). Retrying immediately would just
+        // hit the same wall.
+        break;
+      } finally {
+        clearTimeout(timeout);
+      }
     }
-
-    const cost_cents = calculateCost(model, response.usageMetadata);
-
-    // Soft / hard cap warnings — Section 4b cost budget. Do NOT fail; tokens are sunk.
-    if (cost_cents > HOOK_COST_HARD_CAP_CENTS) {
-      log.warn("Hook segment cost EXCEEDS HARD CAP", {
-        model,
-        cost_cents,
-        hard_cap: HOOK_COST_HARD_CAP_CENTS,
-      });
-      opts.onStageEvent?.({
-        type: "pipeline_warning",
-        message: `Gemini hook segment cost ${cost_cents.toFixed(4)}¢ exceeds hard cap ${HOOK_COST_HARD_CAP_CENTS}¢`,
-        stage: "gemini_hook",
-      });
-    } else if (cost_cents > HOOK_COST_SOFT_CAP_CENTS) {
-      log.warn("Hook segment cost exceeds soft cap", {
-        model,
-        cost_cents,
-        soft_cap: HOOK_COST_SOFT_CAP_CENTS,
-      });
-    }
-
-    log.info("Hook segment complete", {
-      stage: "gemini_hook",
-      model,
-      cost_cents: +cost_cents.toFixed(4),
-      weakest_modality: result.data.hook_decomposition.weakest_modality,
-    });
-
-    emitStageEnd(opts.onStageEvent, "gemini_hook", 1, startTs, {
-      cost_cents: +cost_cents.toFixed(4),
-      ok: true,
-    });
-
-    return { ok: true, analysis: result.data, cost_cents, model };
+    throw lastError ?? new Error("Hook segment failed after retries");
   } catch (error) {
     Sentry.captureException(error, { tags: { stage: "gemini_hook", model } });
     const message = error instanceof Error ? error.message : String(error);
@@ -157,8 +197,5 @@ export async function runHookSegment(
       warning: message,
     });
     return { ok: false, error };
-  } finally {
-    // Per-segment AbortController cleanup (Pitfall #5).
-    clearTimeout(timeout);
   }
 }
