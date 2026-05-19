@@ -281,19 +281,30 @@ export function mergeSegments(
 //
 // Neither blocks the merged result; both feed the F8 / F9 flywheel review path.
 
+// WR-03: Narrow regexes to clauses that ONLY appear in failure-mode language.
+// Pre-fix regexes false-positively matched legitimate descriptive rationales
+// like "the silent video movement is huge in this niche" or "punchline at the
+// end of the hook" — polluting F8/F9 flywheel signal (AI-SPEC §7 M9/M10).
+// Phase 12's LLM-judge layer is the real fix; these are floor-pass tightenings.
 const ABSENT_TEXT_PATTERNS: RegExp[] = [
   /\bno (?:on-screen )?text(?: overlay)?\b/i,
   /\bno (?:visible |on-screen )?(?:overlay|caption)s?\b/i,
 ];
 const ABSENT_SPEECH_PATTERNS: RegExp[] = [
   /\bno (?:spoken|verbal) (?:words?|content|opening)\b/i,
-  /\bsilent (?:hook|opening|video)\b/i,
+  // Require strong precedent for "silent X" — narrow to the clause shapes that
+  // describe THIS hook, not the trend space (e.g. drop bare "\bsilent video\b"
+  // which matches "the silent video trend is huge" — a positive description).
+  /\b(?:hook|opening) is silent\b/i,
+  /\bsilent (?:hook|opening)\b/i,
   /\bno (?:speech|narration|voiceover|dialogue)\b/i,
 ];
 const TEMPORAL_DRIFT_PATTERNS: RegExp[] = [
   /\blater in the video\b/i,
   /\bafter the (?:hook|5 seconds?|5s)\b/i,
-  /\bat the end\b/i,
+  // Replace the bare "at the end" (false-positive on "punchline at the end of
+  // the hook" — well within 0-5s) with explicit "end of the video" variants.
+  /\bat the (?:very )?end of the video\b/i,
   // Bare seconds timestamp > 5s (e.g., "at 15s", "by 6s") — single-digit 6-9 OR multi-digit ≥10.
   /\b(?:[6-9]|[1-9]\d+)s\b/i,
 ];
