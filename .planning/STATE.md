@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: Linear Landing Clone
 milestone_name: Linear Landing Clone
 status: planning
-stopped_at: Phase 1 context gathered
-last_updated: "2026-05-19T08:23:49.349Z"
-last_activity: 2026-05-19 — Roadmap created; 8 phases, 64 requirements mapped
+stopped_at: Roadmap created — Phase 1 not yet started
+last_updated: "2026-05-19T10:25:00.000Z"
+last_activity: 2026-05-19 — Restarted milestone (config → opus-everywhere, Phase 1 WIP cleared)
 progress:
   total_phases: 8
   completed_phases: 0
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-05-19)
 Phase: 1 (Foundation + Cross-Cutting Gates) — not yet started
 Plan: —
 Status: Planning
-Last activity: 2026-05-19 — Roadmap created; 8 phases, 64 requirements mapped
+Last activity: 2026-05-19 — Restarted milestone (config → opus-everywhere, Phase 1 WIP cleared)
 
 **Progress:** [░░░░░░░░░░░░░░░░░░░░] 0% (0/8 phases)
 
@@ -82,6 +82,6 @@ Last activity: 2026-05-19 — Roadmap created; 8 phases, 64 requirements mapped
 
 ## Session Continuity
 
-Last session: 2026-05-19T08:23:49.346Z
-Stopped at: Phase 1 context gathered
-Resume: `/gsd-plan-phase 1` to begin Phase 1 planning.
+Last session: 2026-05-19T10:25:00.000Z
+Stopped at: Roadmap created — Phase 1 not yet started (config → opus-everywhere, Phase 1 WIP cleared)
+Resume: `/gsd-discuss-phase 1` to gather Phase 1 context, then `/gsd-plan-phase 1`.
