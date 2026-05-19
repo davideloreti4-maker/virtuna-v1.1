@@ -1,0 +1,87 @@
+# Phase 7 D-14 Persona Aggregate A/B Comparison
+
+**Date:** 2026-05-19
+**Corpus version:** full.2026-05-11
+**Rows evaluated:** 10 (baseline) / 10 (substituted)
+**Rows failed:** 0 (baseline) / 0 (substituted)
+
+## Configuration
+
+- **Run A (baseline):** `engine_version=3.0.0-dev-personasA`, `behavioralSource="deepseek"` (production read).
+- **Run B (substituted):** `engine_version=3.0.0-dev-personasB`, `behavioralSource="personas"` (Phase 7 Wave 3 aggregate substituted when non-null).
+
+## Metrics Comparison
+
+| Metric | Baseline (A) | Substituted (B) | Delta (B − A) |
+|--------|--------------|-----------------|---------------|
+| Rows failed | 0 | 0 | 0 |
+| Cost (cents total) | 1.17 | 1.12 | -0.05 |
+| Cost (cents avg / row) | 0.1174 | 0.1122 | -0.0052 |
+| macro_f1 | 0.1481 | 0.2444 | 0.0963 |
+| ECE | 0.3400 | 0.4040 | 0.0640 |
+| viral_recall | 0.1250 | 0.2500 | 0.1250 |
+| under_precision | 0.0000 | 0.0000 | 0.0000 |
+
+## Interpretation
+
+- **macro_f1 delta:** Baseline target ≥ 0.338 (per Phase 1 D-18; v2.1 measured 0.294). Phase 7 ships the persona aggregate as an ADDITIVE signal (D-08); the swap decision is Phase 10's call based on this evidence.
+- **ECE delta:** Smaller is better (calibration drift). If persona aggregate increases ECE, Phase 10 may down-weight before swapping.
+- **viral_recall delta:** Higher is better. Persona model's "tough crowd" archetype should improve under-prediction recall on viral content.
+- **under_precision delta:** Higher is better. Persona model should reduce false-positive viral predictions.
+
+## Recommendation for Phase 10
+
+> **Smoke-only read (10 rows, not statistically meaningful — full 225-row run pending).**
+> This is the executor agent's interpretation of the smoke deltas, NOT a final
+> verdict. Final swap decision belongs to Phase 10 with the full corpus run.
+
+**On the headline numbers from the 10-row smoke:**
+
+- **macro_f1: +0.0963** (0.148 → 0.244). At face value, the substituted persona aggregate
+  improves global classification on this slice. But: 10 rows × 3 buckets = ~3 rows/bucket;
+  classification swings of this magnitude are well within sampling noise. The improvement
+  could be entirely a luck-of-the-draw effect on which 10 rows the corpus paged in.
+- **viral_recall: +0.125** (0.125 → 0.250). This is "1 more viral row caught out of 8 actual
+  viral rows in the slice" — single-row resolution at this N.
+- **under_precision: 0.0** in both runs. Under was never predicted (or under-predictions
+  never matched actual under) on this slice. Phase 10 should evaluate this with a stratified
+  cut that has at least a handful of actual-under rows.
+- **ECE: +0.064** (0.340 → 0.404). Substituted run's calibration is materially WORSE on this
+  slice. This is the most concerning signal in the smoke read — even if macro_f1 directionally
+  improves, calibration drift means raw scores will overconfidently mispredict outcomes. Phase
+  10's Platt scaling needs to be re-fit if the persona aggregate is going to ship.
+- **Cost delta: −0.05 cents total / −0.005 cents per row.** Negligible. Both runs are well
+  under the D-16 $0.025 / analysis budget. **Note:** the absolute cost (~0.12 cents/row) is
+  consistent with Phase 1 baseline (~0.15 cents/row); this does NOT include the Wave 3
+  persona LLM calls — the `cost_cents` field on `PredictionResult` (which the eval-harness
+  reads) only sums Gemini + DeepSeek-reasoner cost. If Wave 3 cost is meant to show up in
+  the eval-harness cost totals, it would need to be plumbed through (out of scope for Plan 07-04 — this is observation, not a Rule 1 bug).
+
+**Smoke-only recommendation (NOT for Phase 10 to act on yet):**
+
+- ECE drift is the actionable smoke finding. Even with 10 rows, the calibration delta is
+  large enough that Phase 10 should plan to re-fit Platt parameters AFTER the full corpus
+  run, BEFORE deciding to swap.
+- macro_f1 + viral_recall directional improvements are noise-bound at N=10 and should NOT
+  be treated as supporting evidence for a swap. Full corpus run is the authoritative
+  signal source.
+- Phase 7's `signal_availability.personas = true` provenance flag is the right shape for
+  Phase 10 to use as a per-row gate (substitute only when the persona aggregate cleared the
+  D-13 ≥7-of-10 threshold).
+
+**Operator next step (per Plan 07-04 Task 3 spec):** Run the full 225-row eval manually
+with `npx tsx scripts/run-persona-ab-eval.ts --corpus-version full.2026-05-11`. Expected
+~30-45 min, ~$0.20 LLM cost. Open this report after the full run, replace the smoke section
+with the full-corpus numbers, and fill in the final Phase 10 recommendation based on N=225
+deltas + ECE / per-niche-F1 / cost telemetry.
+
+## benchmark_results rows persisted
+
+- `engine_version=3.0.0-dev-personasA` (Run A baseline)
+- `engine_version=3.0.0-dev-personasB` (Run B substituted)
+
+Query: `SELECT * FROM benchmark_results WHERE engine_version IN ('3.0.0-dev-personasA', '3.0.0-dev-personasB') ORDER BY created_at DESC;`
+
+---
+
+*Generated by scripts/run-persona-ab-eval.ts*
