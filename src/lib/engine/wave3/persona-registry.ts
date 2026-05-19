@@ -375,7 +375,13 @@ export const CROSS_NICHE_ADJACENCY: Record<string, string> = {
   "music-performance": "comedy",
 };
 
-/** Phase 7 D-10: LOCKED 7-row allocation table. Each row MUST sum to 10. */
+/**
+ * Phase 7 D-10: allocation table. Each row MUST sum to 10.
+ * Originally a LOCKED 7-row table; Phase 5 CR-04 widened ContentTypeSlug
+ * with `comedy`, which mirrors the `other` neutral baseline (6/2/1/1) —
+ * consistent with content-type-weights (1.0× passthrough) and CTA_PENALTY_POINTS
+ * (absent → 0 penalty). Phase 10 ML audit may revise per its rubric.
+ */
 export const ALLOCATION_TABLE: Record<ContentTypeSlug, Record<SlotType, number>> = {
   talking_head: { fyp: 5, niche_deep: 2, loyalist: 2, cross_niche: 1 },
   b_roll:       { fyp: 7, niche_deep: 2, loyalist: 0, cross_niche: 1 },
@@ -383,6 +389,7 @@ export const ALLOCATION_TABLE: Record<ContentTypeSlug, Record<SlotType, number>>
   action:       { fyp: 7, niche_deep: 2, loyalist: 0, cross_niche: 1 },
   tutorial:     { fyp: 4, niche_deep: 3, loyalist: 2, cross_niche: 1 },
   vlog:         { fyp: 4, niche_deep: 2, loyalist: 3, cross_niche: 1 },
+  comedy:       { fyp: 6, niche_deep: 2, loyalist: 1, cross_niche: 1 },
   other:        { fyp: 6, niche_deep: 2, loyalist: 1, cross_niche: 1 },
 };
 

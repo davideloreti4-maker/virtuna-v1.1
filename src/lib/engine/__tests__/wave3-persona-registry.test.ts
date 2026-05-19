@@ -53,17 +53,17 @@ describe("ARCHETYPES (Phase 7 D-02 + D-03)", () => {
   });
 });
 
-describe("ALLOCATION_TABLE (Phase 7 D-10 locked)", () => {
-  it("all 7 content_type rows sum to exactly 10", () => {
+describe("ALLOCATION_TABLE (Phase 7 D-10; Phase 5 CR-04 added comedy)", () => {
+  it("every content_type row sums to exactly 10", () => {
     for (const [contentType, row] of Object.entries(ALLOCATION_TABLE)) {
       const sum = row.fyp + row.niche_deep + row.loyalist + row.cross_niche;
       expect(sum, `${contentType} row sum`).toBe(10);
     }
   });
 
-  it("has exactly 7 content_type rows (talking_head, b_roll, slideshow, action, tutorial, vlog, other)", () => {
+  it("covers exactly the 8 ContentTypeSlug values (Phase 5 CR-04 added comedy as neutral)", () => {
     expect(Object.keys(ALLOCATION_TABLE).sort()).toEqual(
-      ["talking_head", "b_roll", "slideshow", "action", "tutorial", "vlog", "other"].sort(),
+      ["talking_head", "b_roll", "slideshow", "action", "tutorial", "vlog", "comedy", "other"].sort(),
     );
   });
 
@@ -79,6 +79,10 @@ describe("ALLOCATION_TABLE (Phase 7 D-10 locked)", () => {
       loyalist: 1,
       cross_niche: 1,
     });
+  });
+
+  it("comedy row mirrors other's 6/2/1/1 neutral baseline (Phase 5 CR-04)", () => {
+    expect(ALLOCATION_TABLE.comedy).toEqual(ALLOCATION_TABLE.other);
   });
 });
 
