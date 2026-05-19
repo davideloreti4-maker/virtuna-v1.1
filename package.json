@@ -92,6 +92,7 @@
     "pngjs": "^7.0.0",
     "supabase": "^2.74.5",
     "tailwindcss": "^4",
+    "tsx": "^4.22.2",
     "typescript": "^5",
     "vitest": "^4.0.18",
     "wcag-contrast": "^3.0.0"

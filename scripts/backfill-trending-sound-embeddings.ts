@@ -150,6 +150,42 @@ async function describeAudioWithGemini(
     throw new Error("Gemini Files API upload returned no URI");
   }
 
+  // Poll for ACTIVE state before generateContent (mirrors gemini.ts:444-455 +
+  // smoke-test-gemini-audio.ts:236-252). Without this, video/audio uploads that
+  // are still in PROCESSING state cause generateContent to return a 400
+  // "File ... is not in an ACTIVE state and usage is not allowed". Small audio
+  // files occasionally return ACTIVE synchronously, but anything ≥ a few MB
+  // typically needs ~2-15 s of processing.
+  //
+  // Only poll when upload explicitly returned state=PROCESSING. If state is
+  // undefined (mocked SDK in tests, or older SDK responses) or already ACTIVE,
+  // skip the poll — the smoke test and gemini.ts both treat undefined as
+  // "trust the upload" rather than forcing a poll.
+  let fileState: string | undefined = uploadResult.state;
+  if (fileState === "PROCESSING") {
+    if (!carrier.uploadedName) {
+      throw new Error("Gemini Files API upload returned no resource name");
+    }
+    const POLL_INTERVAL_MS = 1000;
+    const POLL_TIMEOUT_MS = 60_000;
+    const pollStart = Date.now();
+    while (fileState === "PROCESSING") {
+      if (Date.now() - pollStart > POLL_TIMEOUT_MS) {
+        throw new Error(
+          `Gemini Files API still in PROCESSING after ${POLL_TIMEOUT_MS}ms (name=${carrier.uploadedName})`,
+        );
+      }
+      await sleep(POLL_INTERVAL_MS);
+      const info = await ai.files.get({ name: carrier.uploadedName });
+      fileState = info.state ?? "PROCESSING";
+    }
+    if (fileState !== "ACTIVE") {
+      throw new Error(
+        `Gemini Files API processing failed (state=${fileState}, name=${carrier.uploadedName})`,
+      );
+    }
+  }
+
   const generation = await ai.models.generateContent({
     model: GEMINI_AUDIO_MODEL,
     contents: [

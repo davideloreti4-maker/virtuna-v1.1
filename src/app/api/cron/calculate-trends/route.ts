@@ -134,18 +134,52 @@ async function safeDownloadAudio(
  * AFTER the upload succeeded (Files API quota leak protection).
  */
 async function describeAudioWithGemini(
-  ai: GoogleGenAI,
+  gemini: GoogleGenAI,
   buffer: Buffer,
   mimeType: string,
   carrier: { uploadedName: string | null },
 ): Promise<{ description: string }> {
   const blob = new Blob([new Uint8Array(buffer)], { type: mimeType });
-  const uploadResult = await ai.files.upload({ file: blob, config: { mimeType } });
+  const uploadResult = await gemini.files.upload({ file: blob, config: { mimeType } });
   carrier.uploadedName = uploadResult.name ?? null;
   const fileUri = uploadResult.uri;
   if (!fileUri) throw new Error("Gemini Files API upload returned no URI");
 
-  const generation = await ai.models.generateContent({
+  // Poll for ACTIVE state before generateContent (mirrors gemini.ts:444-455 +
+  // backfill script). Audio/video uploads typically need 2-15s of processing
+  // before they're usable. Without this poll, generateContent returns a 400
+  // "File ... is not in an ACTIVE state and usage is not allowed" — observed
+  // during Phase 6 UAT against fresh-upload fixtures.
+  //
+  // Only poll when upload explicitly returned state=PROCESSING. If state is
+  // undefined (mocked SDK in tests, or older SDK responses) or already ACTIVE,
+  // skip the poll — trust the upload and let downstream call surface any error.
+  let fileState: string | undefined = uploadResult.state;
+  if (fileState === "PROCESSING") {
+    if (!carrier.uploadedName) {
+      throw new Error("Gemini Files API upload returned no resource name");
+    }
+    const POLL_INTERVAL_MS = 1000;
+    const POLL_TIMEOUT_MS = 60_000;
+    const pollStart = Date.now();
+    while (fileState === "PROCESSING") {
+      if (Date.now() - pollStart > POLL_TIMEOUT_MS) {
+        throw new Error(
+          `Gemini Files API still in PROCESSING after ${POLL_TIMEOUT_MS}ms (name=${carrier.uploadedName})`,
+        );
+      }
+      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+      const info = await gemini.files.get({ name: carrier.uploadedName });
+      fileState = info.state ?? "PROCESSING";
+    }
+    if (fileState !== "ACTIVE") {
+      throw new Error(
+        `Gemini Files API processing failed (state=${fileState}, name=${carrier.uploadedName})`,
+      );
+    }
+  }
+
+  const generation = await gemini.models.generateContent({
     model: GEMINI_AUDIO_MODEL,
     contents: [
       {
@@ -174,10 +208,10 @@ async function describeAudioWithGemini(
 }
 
 async function embedDescriptionWithGemini(
-  ai: GoogleGenAI,
+  gemini: GoogleGenAI,
   description: string,
 ): Promise<number[]> {
-  const result = await ai.models.embedContent({
+  const result = await gemini.models.embedContent({
     model: GEMINI_EMBEDDING_MODEL,
     contents: description,
     config: {
@@ -193,12 +227,12 @@ async function embedDescriptionWithGemini(
 }
 
 async function cleanupGeminiFile(
-  ai: GoogleGenAI,
+  gemini: GoogleGenAI,
   uploadedName: string | null,
 ): Promise<void> {
   if (!uploadedName) return;
   try {
-    await ai.files.delete({ name: uploadedName });
+    await gemini.files.delete({ name: uploadedName });
   } catch {
     // best-effort — Files API cleanup failures must never abort the cron.
   }
@@ -214,7 +248,7 @@ async function cleanupGeminiFile(
  * Each step is non-fatal. Any failure logs + returns; next cron tick retries.
  */
 async function processSoundEmbedding(
-  ai: GoogleGenAI,
+  gemini: GoogleGenAI,
   supabase: SupabaseClient,
   row: { sound_name: string; sound_url: string | null },
 ): Promise<void> {
@@ -244,7 +278,7 @@ async function processSoundEmbedding(
   const carrier: { uploadedName: string | null } = { uploadedName: null };
   try {
     const result = await describeAudioWithGemini(
-      ai,
+      gemini,
       downloaded.buffer,
       downloaded.mimeType,
       carrier,
@@ -258,14 +292,14 @@ async function processSoundEmbedding(
   }
 
   if (!description) {
-    await cleanupGeminiFile(ai, carrier.uploadedName);
+    await cleanupGeminiFile(gemini, carrier.uploadedName);
     return;
   }
 
   // Step (d): embed (NON-FATAL).
   let vector: number[] | null = null;
   try {
-    vector = await embedDescriptionWithGemini(ai, description);
+    vector = await embedDescriptionWithGemini(gemini, description);
   } catch (err) {
     log.warn("Inline embedding embed failed — continuing", {
       sound_name: row.sound_name,
@@ -274,7 +308,7 @@ async function processSoundEmbedding(
   }
 
   // Cleanup Files API resource regardless of embed outcome (carrier captured name in describe).
-  await cleanupGeminiFile(ai, carrier.uploadedName);
+  await cleanupGeminiFile(gemini, carrier.uploadedName);
 
   if (!vector) return;
 
@@ -434,7 +468,7 @@ export async function GET(request: Request) {
     // is FIRE-AND-FORGET per Pitfall 4 — any per-row failure logs + continues; the
     // route response shape is unchanged. Idempotent: rows where audio_embedding is
     // already populated skip the pipeline (processSoundEmbedding's IS NULL check).
-    const ai = getGeminiClient();
+    const gemini = getGeminiClient();
 
     for (let i = 0; i < trendRecords.length; i += BATCH_SIZE) {
       const batch = trendRecords.slice(i, i + BATCH_SIZE);
@@ -455,10 +489,10 @@ export async function GET(request: Request) {
       // + swallowed inside processSoundEmbedding; the outer try/catch here is
       // defense-in-depth (an unexpected throw inside processSoundEmbedding must
       // never propagate to the route response — Pitfall 4 fire-and-forget contract).
-      if (ai) {
+      if (gemini) {
         for (const row of batch) {
           try {
-            await processSoundEmbedding(ai, supabase, row);
+            await processSoundEmbedding(gemini, supabase, row);
           } catch (err) {
             log.warn("Inline embedding fatal (unexpected) — continuing", {
               sound_name: row.sound_name,
