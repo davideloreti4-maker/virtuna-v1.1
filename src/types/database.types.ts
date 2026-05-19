@@ -1129,34 +1129,34 @@ export type Database = {
       }
       team_members: {
         Row: {
+          created_at: string
           id: string
+          invited_email: string | null
+          joined_at: string | null
+          role: string
+          status: string
           team_id: string
           user_id: string | null
-          role: string
-          invited_email: string | null
-          status: string
-          joined_at: string | null
-          created_at: string
         }
         Insert: {
+          created_at?: string
           id?: string
+          invited_email?: string | null
+          joined_at?: string | null
+          role?: string
+          status?: string
           team_id: string
           user_id?: string | null
-          role?: string
-          invited_email?: string | null
-          status?: string
-          joined_at?: string | null
-          created_at?: string
         }
         Update: {
+          created_at?: string
           id?: string
+          invited_email?: string | null
+          joined_at?: string | null
+          role?: string
+          status?: string
           team_id?: string
           user_id?: string | null
-          role?: string
-          invited_email?: string | null
-          status?: string
-          joined_at?: string | null
-          created_at?: string
         }
         Relationships: [
           {
@@ -1170,49 +1170,49 @@ export type Database = {
       }
       teams: {
         Row: {
-          id: string
-          owner_id: string
-          name: string
           created_at: string
+          id: string
+          name: string
+          owner_id: string
         }
         Insert: {
-          id?: string
-          owner_id: string
-          name?: string
           created_at?: string
+          id?: string
+          name?: string
+          owner_id: string
         }
         Update: {
-          id?: string
-          owner_id?: string
-          name?: string
           created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
         }
         Relationships: []
       }
       tiktok_accounts: {
         Row: {
-          id: string
-          user_id: string
+          created_at: string | null
           handle: string
-          is_active: boolean
-          created_at: string
+          id: string
+          is_active: boolean | null
           platform: string
+          user_id: string
         }
         Insert: {
-          id?: string
-          user_id: string
+          created_at?: string | null
           handle: string
-          is_active?: boolean
-          created_at?: string
+          id?: string
+          is_active?: boolean | null
           platform?: string
+          user_id: string
         }
         Update: {
-          id?: string
-          user_id?: string
+          created_at?: string | null
           handle?: string
-          is_active?: boolean
-          created_at?: string
+          id?: string
+          is_active?: boolean | null
           platform?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1442,40 +1442,40 @@ export type Database = {
       }
       user_settings: {
         Row: {
-          user_id: string
-          display_name: string | null
-          company: string | null
-          role: string | null
           avatar_url: string | null
+          company: string | null
+          display_name: string | null
           notification_email_updates: boolean
+          notification_marketing: boolean
           notification_test_results: boolean
           notification_weekly_digest: boolean
-          notification_marketing: boolean
+          role: string | null
           updated_at: string
+          user_id: string
         }
         Insert: {
-          user_id: string
-          display_name?: string | null
-          company?: string | null
-          role?: string | null
           avatar_url?: string | null
+          company?: string | null
+          display_name?: string | null
           notification_email_updates?: boolean
+          notification_marketing?: boolean
           notification_test_results?: boolean
           notification_weekly_digest?: boolean
-          notification_marketing?: boolean
+          role?: string | null
           updated_at?: string
+          user_id: string
         }
         Update: {
-          user_id?: string
-          display_name?: string | null
-          company?: string | null
-          role?: string | null
           avatar_url?: string | null
+          company?: string | null
+          display_name?: string | null
           notification_email_updates?: boolean
+          notification_marketing?: boolean
           notification_test_results?: boolean
           notification_weekly_digest?: boolean
-          notification_marketing?: boolean
+          role?: string | null
           updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

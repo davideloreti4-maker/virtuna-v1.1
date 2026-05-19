@@ -25,8 +25,8 @@ function rowToSocialAccount(row: TiktokAccountRow): SocialAccount {
     id: row.id,
     handle: row.handle,
     platform: (row.platform as Platform) ?? "tiktok",
-    is_active: row.is_active,
-    created_at: row.created_at,
+    is_active: row.is_active ?? false,
+    created_at: row.created_at ?? new Date(0).toISOString(),
     user_id: row.user_id,
   };
 }
