@@ -45,6 +45,11 @@ export interface RunEvalHarnessOptions {
   maxTotalCostCents?: number;
   rateLimitDelayMs?: number;        // W7: threaded through to runEvalOverCorpus
   persist?: boolean;                // default true
+  /**
+   * Phase 7 D-14: optional aggregator behavioral source override. Threaded into
+   * runEvalOverCorpus. Defaults to "deepseek" (production aggregator default).
+   */
+  behavioralSource?: "deepseek" | "personas";
 }
 
 export async function runEvalHarness(
@@ -57,6 +62,7 @@ export async function runEvalHarness(
     corpusVersion: opts.corpusVersion,
     maxTotalCostCents: opts.maxTotalCostCents,
     rateLimitDelayMs: opts.rateLimitDelayMs,
+    behavioralSource: opts.behavioralSource,
   });
 
   const successful = raw.filter((r) => r.predicted_bucket !== null);

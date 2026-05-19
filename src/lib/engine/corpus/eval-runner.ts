@@ -48,6 +48,12 @@ export interface EvalRunnerOptions {
   maxRows?: number;
   maxTotalCostCents?: number;                       // Pitfall 5: default 5000 ($50)
   rateLimitDelayMs?: number;                         // default 2000 (matches benchmark.ts:582)
+  /**
+   * Phase 7 D-14: optional aggregator behavioral source override.
+   * Defaults to "deepseek" (production aggregator default). Pass "personas" to
+   * run the lightweight A/B substituted variant. Production callers should not pass this.
+   */
+  behavioralSource?: "deepseek" | "personas";
 }
 
 const FETCH_BATCH = 50;
@@ -101,7 +107,14 @@ export async function runEvalOverCorpus(
       };
 
       const pipelineResult = await runPredictionPipeline(input);
-      const prediction = await aggregateScores(pipelineResult);  // FIX: always await (benchmark.ts:515 bug)
+      // Phase 7 D-14: forward optional behavioralSource into aggregator.
+      // The conditional avoids passing `{ behavioralSource: undefined }` — preserves
+      // byte-identical production behavior when caller omits the option.
+      const prediction = await aggregateScores(
+        pipelineResult,
+        undefined,
+        opts.behavioralSource ? { behavioralSource: opts.behavioralSource } : undefined,
+      );
 
       const cost = prediction.cost_cents ?? 0;
       totalCost += cost;
