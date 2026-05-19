@@ -248,15 +248,30 @@ const WAVE0_USAGE = { promptTokenCount: 500, candidatesTokenCount: 80 };
 
 type Caller = "wave0_ct" | "hook" | "body" | "cta";
 
-function detectCaller(call: { model?: string; contents?: Array<{ parts?: Array<{ text?: string }> }> }): Caller {
-  const text = call.contents?.[0]?.parts?.[0]?.text ?? "";
-  // Wave 0 content-type-detector has a uniquely identifying prompt phrase.
-  // It uses gemini-3-flash-preview model but its prompt does NOT include segment phrases.
-  if (text.includes("Scroll-Stop Power")) return "hook";
-  if (text.includes("cta_present")) return "cta";
-  // Body prompt mentions video_signals AND lacks cta_present language.
-  if (text.includes("visual_production_quality") && !text.includes("cta_present")) return "body";
-  // Fallback: wave 0 content-type detector.
+// WR-06: Route generateContent calls using HYBRID signals. Use
+// videoMetadata.startOffset+endOffset to disambiguate hook (both wave 0 AND
+// hook share startOffset="0s"+endOffset="5s", so they're disambiguated by a
+// stable wave-0-only prompt anchor instead). Body and CTA are anchored on
+// physical-time section markers ("MIDDLE section" / "LAST 3 SECONDS") that
+// CANNOT drift without changing which window the prompt actually analyzes.
+function detectCaller(call: {
+  model?: string;
+  contents?: Array<{ parts?: Array<Record<string, unknown>> }>;
+}): Caller {
+  const parts = call.contents?.[0]?.parts;
+  const textPart = parts?.[0] as { text?: string } | undefined;
+  const videoPart = parts?.[1] as { videoMetadata?: { startOffset?: string } } | undefined;
+  const text = textPart?.text ?? "";
+  const startOffset = videoPart?.videoMetadata?.startOffset;
+  // Wave 0 detector has a uniquely identifying prompt anchor ("TikTok
+  // content-type classifier") — the wave 0 detector and hook both use
+  // startOffset="0s" so a structural-only check would mis-route hook to
+  // wave 0. The wave 0 system prompt is the most stable disambiguator.
+  if (text.includes("TikTok content-type classifier")) return "wave0_ct";
+  if (startOffset === "0s") return "hook";
+  if (text.includes("MIDDLE section")) return "body";
+  if (text.includes("LAST 3 SECONDS")) return "cta";
+  // Defensive fallback — anything we can't identify is presumed wave 0.
   return "wave0_ct";
 }
 

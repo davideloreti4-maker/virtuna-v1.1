@@ -163,19 +163,32 @@ function stubOpts(durationSeconds: number, events: StageEvent[] = []) {
   };
 }
 
-// Identify which segment called generateContent by inspecting the user prompt text.
-// Promise.allSettled fires helpers concurrently — the mock queue order is non-deterministic.
-// We route based on prompt content (each segment's system prompt has unique phrases).
+// WR-06: Route generateContent calls to segments using HYBRID structural +
+// prompt-anchor signals. videoMetadata.startOffset uniquely identifies the
+// hook (always "0s") — the most stable structural fact. For body vs cta,
+// we anchor on stable section-marker phrases that describe the actual
+// physical time window each prompt analyzes ("MIDDLE section" for body,
+// "LAST 3 SECONDS" for cta). These are the load-bearing claims of each
+// prompt — they cannot drift without changing which window the model
+// analyzes, which would be a deliberate breaking change (not silent drift).
+//
+// Pre-fix the test routed entirely on text content ("Scroll-Stop Power"
+// for hook), which would silently mis-route if a body or cta prompt edit
+// referenced a factor by name. The hook is now disambiguated structurally;
+// body/cta use the section-marker anchors.
 type Segment = "hook" | "body" | "cta";
 
-function segmentOf(call: { contents?: Array<{ parts?: Array<{ text?: string }> }> }): Segment {
-  const text = call.contents?.[0]?.parts?.[0]?.text ?? "";
-  // Hook prompt mentions the 5 TikTok factors by name (Scroll-Stop Power et al.).
-  if (text.includes("Scroll-Stop Power")) return "hook";
-  // CTA prompt is the only one with `cta_present` discriminator language.
-  if (text.includes("cta_present")) return "cta";
-  // Body prompt is the only one with `visual_production_quality` AND no `cta_present`.
-  return "body";
+function segmentOf(call: { contents?: Array<{ parts?: Array<Record<string, unknown>> }> }): Segment {
+  const parts = call.contents?.[0]?.parts;
+  const videoPart = parts?.[1] as { videoMetadata?: { startOffset?: string } } | undefined;
+  const textPart = parts?.[0] as { text?: string } | undefined;
+  const startOffset = videoPart?.videoMetadata?.startOffset;
+  const text = textPart?.text ?? "";
+  if (startOffset === "0s") return "hook";
+  // Body prompt anchor — "MIDDLE section" appears in buildBodySystemPrompt.
+  if (text.includes("MIDDLE section")) return "body";
+  // CTA prompt anchor — "LAST 3 SECONDS" appears in buildCtaSystemPrompt.
+  return "cta";
 }
 
 // Helper: route each generateContent call to the right fixture based on the caller's prompt.
