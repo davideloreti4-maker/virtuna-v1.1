@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: engine-foundation
 milestone_name: Engine Foundation
-status: executing
+status: ready_to_plan
 stopped_at: Phase 6 context gathered
 last_updated: "2026-05-18T20:44:43.371Z"
 last_activity: 2026-05-18 -- Phase 06 execution started
 progress:
   total_phases: 12
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 28
   completed_plans: 22
-  percent: 79
+  percent: 42
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-11)
 
 ## Current Position
 
-Phase: 06 (audio-analysis-fingerprint-matching) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 06
-Last activity: 2026-05-18 -- Phase 06 execution started
+Phase: 7
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-05-19
 
 Progress: [██████████] Phase 01 100% + Phase 02 100% (6/6 plans)
 
@@ -118,6 +118,9 @@ Phase 01 decisions:
 - Phase 03 (Pipeline Infrastructure) can begin after verifier sign-off
 - **[DEFERRED]** Stage 2 corpus-video persistence — migration `20260512010000_corpus_videos_storage.sql` + `scripts/upload-corpus-videos.ts` are written and committed but NOT pushed to remote Supabase. Blocked on free-tier limits (50 MB per-file cap, 1 GB project Storage cap; corpus is 1.68 GB with 2 files >50 MB). Run after upgrading tier OR when video-mode eval is actually needed (Phase 10/12 per 01-05 SUMMARY deferral). 222/225 mp4s already on disk at `.planning/videos-cache/` (1.68 GB, gitignored).
 - **[DEFERRED]** Phase 06 SC#1 live Gemini audio smoke test — script `scripts/smoke-test-gemini-audio.ts` + fixture README + REQUIREMENTS HOOK-02 migration all committed in Plan 06-01 (commits ccfcedf, f0c0527). Developer approved Wave 1 without running the live test in-band on 2026-05-18; must run `pnpm tsx scripts/smoke-test-gemini-audio.ts` against 3 fixtures (talking_head.mp4, slideshow.mp4, music_heavy.mp4) before Phase 6 ships. If validation gates fail, escalate to `/gsd-discuss-phase 6` to revisit D-A1.
+- **[PHASE 06 UAT]** 3 human verification items tracked in `.planning/phases/06-audio-analysis-fingerprint-matching/06-HUMAN-UAT.md`: (1) the deferred smoke test above, (2) one-time `pnpm tsx scripts/backfill-trending-sound-embeddings.ts` to populate `trending_sounds.audio_embedding` for existing rows, (3) E2E `/api/analyze` with a real talking_head video to confirm `analysis_results.audio_description` populates. Run before Phase 6 ships; surface in `/gsd-progress` and `/gsd-audit-uat`.
+- **[PHASE 06 FOLLOW-UP]** Code-review WR-04 from `06-REVIEW.md`: the cron route `src/app/api/cron/calculate-trends/route.ts` does an N+1 idempotency check (per-row `SELECT` inside the embedding loop). Refactor to a single bulk pre-fetch of already-embedded sound_names before the batch loop. Performance nicety at current scale (~50 sounds/day) but worth addressing before the cron frequency increases.
+- **[PHASE 06 FOLLOW-UP]** Pre-existing 966 TypeScript errors in `src/app/api/profile/*`, `src/app/api/settings/*`, `src/app/api/team/*` reference a `user_settings` table that does NOT exist on the live Supabase project (`qyxvxleheckijapurisj` / virtuna-v1.1). Surfaced when Plan 06-02 regenerated `src/types/database.types.ts` from the live schema — the local types had a hand-patched `user_settings` table that diverged. Either (a) write a migration to actually create the table, or (b) rip out the user_settings consumers in the API routes. Out of Phase 6 scope but blocks any future fresh `tsc --noEmit` clean run.
 
 ### Blockers/Concerns
 
