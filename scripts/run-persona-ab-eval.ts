@@ -195,9 +195,14 @@ async function main() {
     rows_processed: substituted.rows_processed,
   });
 
-  // Write comparison report
+  // Write comparison report — anchor to repo root so the report lands in the same place
+  // regardless of caller cwd (WR-08). The 200+ LLM-cost-burning runs above must not be
+  // wasted by a final `fs.writeFile` that targets the wrong directory.
+  // __dirname is `<repo>/scripts`, so `..` resolves to the repo root.
+  const REPO_ROOT = resolve(__dirname, "..");
   const date = new Date().toISOString().slice(0, 10);
   const reportPath = path.join(
+    REPO_ROOT,
     ".planning",
     "research",
     `persona-aggregate-ab-${date}.md`,
