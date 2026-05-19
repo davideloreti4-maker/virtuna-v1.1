@@ -236,3 +236,24 @@ Then review `tests/fixtures/audio-smoke/smoke-test-results.json` and respond to 
 **Risk acknowledged:** Phase 6 SC#1 (Gemini reliability empirically validated) is now DEFERRED-PENDING-LIVE-SMOKE-TEST — analogous to the Phase 03 SC#4/SC#5 deferral pattern. The developer commits to running `pnpm tsx scripts/smoke-test-gemini-audio.ts` against 3 fixtures before Phase 6 ships, and to escalating to `/gsd-discuss-phase 6` if results fall outside the validation gates documented above.
 
 **Status:** Task 3 (live developer smoke test) moves to STATE.md "Pending Todos" as a tracked deferral. Plan 06-01 is now COMPLETE for Phase 6 execution-flow purposes.
+
+## Smoke Test Resolution — 2026-05-19
+
+**Outcome:** PASS — 12/12 validation gates (3 fixtures × 4 gates).
+
+Fixtures repurposed from Phase 01's `~/virtuna-engine-foundation/.planning/videos-cache/`:
+- `talking_head.mp4` ← `7574291112869793038.mp4` (5.6 MB, 68 s, news/policy explainer)
+- `slideshow.mp4` ← `7574074184213531918.mp4` (2.5 MB, 18 s, TV-show fan edit with music)
+- `music_heavy.mp4` ← `7573004267724737800.mp4` (4.0 MB, 26 s, dance video)
+
+Per-fixture results (`tests/fixtures/audio-smoke/smoke-test-results.json`, gitignored):
+
+| Fixture | voice_clarity | audio_hook | silence | voiceover | music | desc (chars) | all_ok |
+|---------|--------------:|-----------:|--------:|----------:|------:|-------------:|:------:|
+| talking_head | 9.0 | 7.5 | 0.02 | 0.98 | 0.00 | 139 | ✓ |
+| slideshow | 9.0 | 8.0 | 0.01 | 0.14 | 0.85 | 148 | ✓ |
+| music_heavy | 8.0 | 7.5 | 0.00 | 0.60 | 0.40 | 153 | ✓ |
+
+All three ratio triplets sum to exactly 1.0; all descriptions fall in the 50-150 char target band. Gemini's categorical distinction matches intuition (talking_head ≈ voiceover-dominant, music_heavy ≈ music+vocals mix, slideshow ≈ music-dominant with brief speech intro).
+
+**Implication:** Phase 6 SC#1 (D-A1 reliability) is no longer deferred — empirically validated. Plan 06-01 is fully complete. STATE.md "Pending Todos" entry promoted from DEFERRED to RESOLVED.
