@@ -246,7 +246,8 @@ export function makePipelineResult(
         avg_share_rate: 0.008,
         avg_comment_rate: 0.005,
       },
-      // Phase 2 (D-19) — 9-card profile fields (all null in the default factory)
+      // Phase 2 (D-19) — 9-card profile fields (all null in the default factory).
+      // WR-03: required-but-nullable on CreatorContext — tsc --noEmit fails without them.
       target_platforms: null,
       niche_primary: null,
       niche_sub: null,
@@ -267,10 +268,19 @@ export function makePipelineResult(
       reasoning: makeDeepSeekReasoning(),
       cost_cents: 0.3,
     },
-    audioResult: null,
+    // Phase 6 (D-A4) — replaces the pre-Phase-6 audioResult: null slot.
+    // Default to null in fixtures (no fingerprint match); tests opt in by overriding.
+    audioFingerprintResult: null,
     // Phase 3 — Wave 0/3 stub outputs (Phase 4/7 fill with real logic)
     wave0Result: { content_type: null, niche: null },
     wave3Result: [],
+    // NEW Phase 7 (Pitfall 9, A11) — default null preserves "no aggregate" semantics
+    // for all existing aggregator.test.ts and pipeline.test.ts callers.
+    personaBehavioralAggregate: null,
+    // Phase 7 CR-01 — default 0 preserves byte-identical cost behavior for tests that don't
+    // exercise Wave 3. Tests asserting on Wave 3 cost should pass an override (e.g.,
+    // { wave3CostCents: 1.25 }).
+    wave3CostCents: 0,
     // Phase 8 — Wave 1 retrieval sibling default (graceful empty unless overridden)
     retrievalResult: {
       evidence: [],

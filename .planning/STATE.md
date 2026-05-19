@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
 milestone: engine-foundation
-milestone_name: milestone
-status: completed
-stopped_at: Completed 08-02-PLAN.md (types.ts extension — Zod schemas + interface extensions)
-last_updated: "2026-05-19T06:56:28.935Z"
-last_activity: 2026-05-19 -- Phase 08 marked complete
+milestone_name: Engine Foundation
+status: executing
+stopped_at: Phase 08 merged into milestone (5/5 plans, live DB applied, 7614 rows embedded, HNSW self-match validated)
+last_updated: "2026-05-19T13:00:00.000Z"
+last_activity: 2026-05-19 -- Phase 08 merged into milestone
 progress:
   total_phases: 12
-  completed_phases: 5
-  total_plans: 27
-  completed_plans: 27
-  percent: 42
+  completed_phases: 8
+  total_plans: 41
+  completed_plans: 41
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
-**Current focus:** Phase 08 — benchmark-retrieval
+**Current focus:** Phase 04 — wave-0-content-type-niche-detection (next planned phase after 5/6/7/8 all merged into trunk)
 
 ## Current Position
 
-Phase: 08 — COMPLETE
-Plan: 1 of 5
-Status: Phase 08 complete
-Last activity: 2026-05-19 -- Phase 08 marked complete
+Phase: 4
+Plan: Not started
+Status: Ready to plan (Phases 5, 6, 7, 8 all complete and merged)
+Last activity: 2026-05-19 -- Phase 08 merged into milestone
 
-Progress: [██████████] 96%
+Progress: [██████████] 100%
 
 ## Phase 02 Plan Status
 
@@ -122,6 +122,12 @@ Phase 01 decisions:
 - Phase 02 (Creator Profile) can begin independently
 - Phase 03 (Pipeline Infrastructure) can begin after verifier sign-off
 - **[DEFERRED]** Stage 2 corpus-video persistence — migration `20260512010000_corpus_videos_storage.sql` + `scripts/upload-corpus-videos.ts` are written and committed but NOT pushed to remote Supabase. Blocked on free-tier limits (50 MB per-file cap, 1 GB project Storage cap; corpus is 1.68 GB with 2 files >50 MB). Run after upgrading tier OR when video-mode eval is actually needed (Phase 10/12 per 01-05 SUMMARY deferral). 222/225 mp4s already on disk at `.planning/videos-cache/` (1.68 GB, gitignored).
+- **[RESOLVED 2026-05-19]** Phase 06 SC#1 live Gemini audio smoke test — script `scripts/smoke-test-gemini-audio.ts` ran against 3 fixtures repurposed from `.planning/videos-cache/` (Phase 01 corpus). 12/12 validation gates passed; Gemini cleanly distinguished talking_head (98% voiceover, 0% music) from music_heavy (60/40) and slideshow (14% voiceover, 85% music); ratios sum to 1.0 on each; descriptions 139-153 chars (within 50-150 target). D-A1 reliability assumption empirically validated. See 06-HUMAN-UAT.md Item 1 + `tests/fixtures/audio-smoke/smoke-test-results.json` (gitignored).
+- **[RESOLVED 2026-05-19]** Phase 06 HUMAN-UAT — all 3 items passed. (1) Smoke test 12/12 gates pass (see 06-01-SUMMARY.md Smoke Test Resolution). (2) Backfill ran clean against 3 seeded rows after polling defect was fixed (commit 5ab6bdf — `Gemini Files API not in ACTIVE state` → `PROCESSING→ACTIVE` poll added to both backfill script + cron route; mirrors smoke test + gemini.ts pattern). (3) E2E driver `scripts/e2e-uat-phase6.ts` exercised live runPredictionPipeline + aggregateScores; happy-path run showed audio_perceptual_score=86, audio_fingerprint matched at similarity=0.918, audio_description=118c semantically correct. Two retry runs hit Gemini API transience and validated D-G2 graceful degradation (signal_availability accurately reported audio=false, no crash). See `.planning/phases/06-audio-analysis-fingerprint-matching/06-HUMAN-UAT.md`.
+- **[PHASE 06 FOLLOW-UP]** Code-review WR-04 from `06-REVIEW.md`: the cron route `src/app/api/cron/calculate-trends/route.ts` does an N+1 idempotency check (per-row `SELECT` inside the embedding loop). Refactor to a single bulk pre-fetch of already-embedded sound_names before the batch loop. Performance nicety at current scale (~50 sounds/day) but worth addressing before the cron frequency increases.
+- **[PHASE 06 FOLLOW-UP]** Code-review WR-05 (audio_description bounds nesting), IN-02 (centralize `vector as unknown as string` cast into `src/lib/supabase/pgvector.ts`), IN-03 (sound_url SSRF allowlist — Phase 12 hardening per threat model T-06-13). All non-blocking; tracked here so they don't get lost.
+- **[PHASE 06 FOLLOW-UP]** IN-01 partial-fix landed in 5dec5a3 (text-analysis retry loop). The video-analysis path in `analyzeVideoWithGemini` (gemini.ts ~lines 515-535) has the same `clearTimeout` only-on-success pattern but it's a single try/catch rather than a retry loop — restructure into try/finally when convenient. Same harmless-but-wasteful semantics.
+- **[PHASE 06 FOLLOW-UP]** Pre-existing 966 TypeScript errors in `src/app/api/profile/*`, `src/app/api/settings/*`, `src/app/api/team/*` reference a `user_settings` table that does NOT exist on the live Supabase project (`qyxvxleheckijapurisj` / virtuna-v1.1). Surfaced when Plan 06-02 regenerated `src/types/database.types.ts` from the live schema — the local types had a hand-patched `user_settings` table that diverged. Either (a) write a migration to actually create the table, or (b) rip out the user_settings consumers in the API routes. Out of Phase 6 scope but blocks any future fresh `tsc --noEmit` clean run.
 
 ### Blockers/Concerns
 
@@ -133,9 +139,9 @@ Phase 01 decisions:
 
 ## Session Continuity
 
-Last session: 2026-05-18T19:52:22.765Z
-Stopped at: Completed 08-02-PLAN.md (types.ts extension — Zod schemas + interface extensions)
-Next action: `/gsd-execute-phase 4` to execute Wave 0 — Content Type + Niche Detection. Phase 4 deliverables: 5 new files + 6 modified across 3 waves; key constraints honored (D-03 dual-env, no Supabase migration, selectWeights filter).
+Last session: 2026-05-19T13:00:00.000Z
+Stopped at: Phase 08 merged into milestone (5/5 plans complete; live DB applied; 7614 rows embedded; HNSW self-match validated at similarity=1.0; merged with conflict resolution against Phases 5/6/7 trunk-side updates)
+Next action: `/gsd-discuss-phase 4` or `/gsd-plan-phase 4` to start Wave 0 — Content Type + Niche Detection. All of Phases 5, 6, 7, 8 are now in trunk.
 
 Resume command: `cd ~/virtuna-engine-foundation && /gsd-progress`
 

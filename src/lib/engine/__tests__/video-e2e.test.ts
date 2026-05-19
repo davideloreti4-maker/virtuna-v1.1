@@ -160,6 +160,16 @@ const VIDEO_PATH =
 
 const hasGeminiKey = !!process.env.GEMINI_API_KEY;
 const hasDeepSeekKey = !!process.env.DEEPSEEK_API_KEY;
+// Skip when the local fixture video is absent (e.g. running from a fresh
+// milestone worktree clone without the v1.1 sample MP4).
+const hasFixtureVideo = (() => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require("fs").existsSync(VIDEO_PATH);
+  } catch {
+    return false;
+  }
+})();
 
 function fmt(cents: number): string {
   return `${cents.toFixed(4)}¢ ($${(cents / 100).toFixed(6)})`;
@@ -190,7 +200,7 @@ const defaultTrends: TrendEnrichment = {
 // Test
 // =====================================================
 
-describe.skipIf(!hasGeminiKey || !hasDeepSeekKey)(
+describe.skipIf(!hasGeminiKey || !hasDeepSeekKey || !hasFixtureVideo)(
   "Video E2E — Gemini + DeepSeek + Aggregation",
   () => {
     vi.setConfig({ testTimeout: 180_000 });
@@ -340,7 +350,9 @@ describe.skipIf(!hasGeminiKey || !hasDeepSeekKey)(
         ruleResult: defaultRules,
         trendEnrichment: defaultTrends,
         deepseekResult,
-        audioResult: null,
+        // Phase 6 (D-A4) — replaces audioResult: null. E2E does not exercise the
+        // fingerprint stage directly; aggregator treats null as "no match".
+        audioFingerprintResult: null,
         requestId: "video-e2e-test",
         timings: [
           { stage: "gemini_video", duration_ms: Math.round(geminiLatency) },

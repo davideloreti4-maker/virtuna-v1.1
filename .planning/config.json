@@ -41,6 +41,7 @@
     "gsd-framework-selector": "opus",
     "gsd-intel-updater": "opus",
     "gsd-security-auditor": "opus",
+    "gsd-team-worker": "opus",
     "gsd-user-profiler": "opus"
   },
   "mode": "interactive",

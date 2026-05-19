@@ -179,6 +179,7 @@ export type Database = {
       }
       analysis_results: {
         Row: {
+          audio_description: string | null
           behavioral_predictions: Json | null
           confidence: number | null
           content_hash: string | null
@@ -217,6 +218,7 @@ export type Database = {
           warnings: string[] | null
         }
         Insert: {
+          audio_description?: string | null
           behavioral_predictions?: Json | null
           confidence?: number | null
           content_hash?: string | null
@@ -255,6 +257,7 @@ export type Database = {
           warnings?: string[] | null
         }
         Update: {
+          audio_description?: string | null
           behavioral_predictions?: Json | null
           confidence?: number | null
           content_hash?: string | null
@@ -1240,6 +1243,8 @@ export type Database = {
       }
       trending_sounds: {
         Row: {
+          audio_description: string | null
+          audio_embedding: string | null
           created_at: string | null
           first_seen: string | null
           growth_rate: number | null
@@ -1255,6 +1260,8 @@ export type Database = {
           video_count: number | null
         }
         Insert: {
+          audio_description?: string | null
+          audio_embedding?: string | null
           created_at?: string | null
           first_seen?: string | null
           growth_rate?: number | null
@@ -1270,6 +1277,8 @@ export type Database = {
           video_count?: number | null
         }
         Update: {
+          audio_description?: string | null
+          audio_embedding?: string | null
           created_at?: string | null
           first_seen?: string | null
           growth_rate?: number | null
@@ -1516,6 +1525,21 @@ export type Database = {
           source_pool: string
           video_url: string
           views: number
+        }[]
+      }
+      match_trending_sound_by_audio: {
+        Args: {
+          match_count: number
+          match_threshold: number
+          query_embedding: string
+        }
+        Returns: {
+          id: string
+          similarity: number
+          sound_name: string
+          sound_url: string
+          trend_phase: string
+          velocity_score: number
         }[]
       }
     }

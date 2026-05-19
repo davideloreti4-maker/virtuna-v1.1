@@ -44,6 +44,13 @@ import { reasonWithDeepSeek } from "../deepseek";
 import type { AnalysisInput, GeminiAnalysis, RuleScoreResult, TrendEnrichment } from "../types";
 
 const FIXTURES_DIR = path.join(__dirname, "fixtures");
+// Skip when local fixture videos aren't present (the suite needs test-30s.mp4 +
+// test-60s.mp4 in __tests__/fixtures/, which aren't committed to git).
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const fsSync = require("fs");
+const hasFixtures =
+  fsSync.existsSync(path.join(FIXTURES_DIR, "test-30s.mp4")) &&
+  fsSync.existsSync(path.join(FIXTURES_DIR, "test-60s.mp4"));
 
 const hasGeminiKey = !!process.env.GEMINI_API_KEY;
 const hasDeepSeekKey = !!process.env.DEEPSEEK_API_KEY;
@@ -89,7 +96,7 @@ interface BenchmarkResult {
 
 const results: BenchmarkResult[] = [];
 
-describe.skipIf(!hasGeminiKey || !hasDeepSeekKey)(
+describe.skipIf(!hasGeminiKey || !hasDeepSeekKey || !hasFixtures)(
   "Cost Benchmark — Real API Video Analysis",
   () => {
     // Increase timeout for real API calls

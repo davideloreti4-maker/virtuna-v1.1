@@ -28,14 +28,14 @@ const RESPONSE_SCHEMA = {
   properties: {
     type: {
       type: Type.STRING,
-      enum: ["talking_head", "b_roll", "slideshow", "action", "tutorial", "vlog", "other"],
+      enum: ["talking_head", "b_roll", "slideshow", "action", "tutorial", "vlog", "comedy", "other"],
     },
     confidence: { type: Type.NUMBER },
     mixed: { type: Type.BOOLEAN },
     dominant_seconds: { type: Type.NUMBER },
     secondary_type: {
       type: Type.STRING,
-      enum: ["talking_head", "b_roll", "slideshow", "action", "tutorial", "vlog", "other"],
+      enum: ["talking_head", "b_roll", "slideshow", "action", "tutorial", "vlog", "comedy", "other"],
     },
   },
   required: ["type", "confidence", "mixed"],
@@ -49,6 +49,7 @@ const SYSTEM_PROMPT = `You are a TikTok content-type classifier. Watch the provi
 - action: motion-heavy content (dance, sports, stunts, vehicles, choreography)
 - tutorial: step-by-step demonstration of how to do something (recipe, makeup how-to, coding screencast)
 - vlog: casual handheld self-recorded daily life, walk-and-talk, day-in-the-life
+- comedy: skit/punchline-driven humor, character bits, reaction/duet jokes, joke-format content
 - other: anything not clearly in the above (music, ASMR, gaming, animation, abstract, etc.)
 
 Return a confidence (0.0-1.0) reflecting how clearly the video fits the chosen category.

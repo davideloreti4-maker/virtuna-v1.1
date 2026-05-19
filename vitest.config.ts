@@ -13,7 +13,7 @@ export default defineConfig({
     // pragma at the top of the file (see e.g. src/components/app/cards/__tests__/*).
     environment: "node",
     setupFiles: ["./src/test/setup.ts"],
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "tests/**/*.test.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],

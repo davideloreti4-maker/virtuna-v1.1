@@ -65,7 +65,7 @@
 - [ ] **PIPE-05**: Engine version tagged on every prediction (`engine_version` field; v3.0.0 after this milestone)
 - [ ] **PIPE-06**: Prediction provenance — which signals fired, which degraded, signal availability flags persisted
 - [ ] **PIPE-07**: Wave 0 stage support (V3 calls before Wave 1)
-- [ ] **PIPE-08**: Wave 3 stage support (parallel persona simulation after Wave 2)
+- [x] **PIPE-08**: Wave 3 stage support (parallel persona simulation after Wave 2)
 - [ ] **PIPE-09**: Stage 10 (self-critique) and Stage 11 (counterfactuals) added post-aggregator
 
 ## Caching Layer
@@ -101,10 +101,11 @@
 
 ## Multi-Modal Hook Decomposition
 
-<!-- Decompose the 0-3s hook into 4 sub-signals + cross-modal scores. -->
+<!-- Decompose the 0-3s hook into 4 sub-signals + cross-modal scores.
+     (HOOK-02 audio hook moved to ## Audio Analysis section per Phase 6 D-H1.
+      Phase 5 CONSUMES HOOK-02 from Phase 6's output rather than producing it.) -->
 
 - [ ] **HOOK-01**: Visual stop power score (0-10, from Pro hook segment)
-- [ ] **HOOK-02**: Audio hook quality score (0-10, first 2s audio analysis)
 - [ ] **HOOK-03**: Text overlay readability + impact score (0-10)
 - [ ] **HOOK-04**: First-words / speech hook score (0-10, transcription-based)
 - [ ] **HOOK-05**: Weakest hook modality identified (one of visual/audio/text/speech)
@@ -121,6 +122,7 @@
 - [ ] **AUDIO-04**: Silence / voiceover / music ratio computed
 - [ ] **AUDIO-05**: Audio fingerprint matching against trending sounds DB (replaces fuzzy string match)
 - [ ] **AUDIO-06**: Trending sound detection: bool + velocity (rising / peak / declining)
+- [ ] **HOOK-02**: Audio hook quality score (0-10, first 2s audio analysis) — migrated from Multi-Modal Hook Decomposition per Phase 6 D-H1; produced by Phase 6, CONSUMED by Phase 5 HOOK-05
 
 ## Multi-Persona Simulation (Wave 3)
 
@@ -277,3 +279,4 @@
 | RETRIEVAL-04 | 08 | 08-04 | Complete |
 | RETRIEVAL-05 | 08 | 08-04 | Complete |
 | RETRIEVAL-06 | 08 | 08-05 | Complete |
+| HOOK-02 | 06 | 06-01, 06-03 | Planned |

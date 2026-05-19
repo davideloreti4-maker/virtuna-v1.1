@@ -64,13 +64,14 @@ import { selectWeights, aggregateScores } from "../aggregator";
 import { makePipelineResult, makeGeminiAnalysis } from "./factories";
 import { getPlattParameters, applyPlattScaling } from "../calibration";
 import { predictWithML } from "../ml";
+import type { PersonaBehavioralAggregate, PersonaSimulationResult } from "../types";
 
 // =====================================================
 // selectWeights tests
 // =====================================================
 
 describe("selectWeights", () => {
-  it("returns base weights when all signals are available (Phase 8 D-03b values)", () => {
+  it("returns base weights when all signals are available (post-Phase-5/6/7 merge normalized D-03b values)", () => {
     const weights = selectWeights({
       behavioral: true,
       gemini: true,
@@ -79,17 +80,24 @@ describe("selectWeights", () => {
       trends: true,
       content_type: false, // Phase 4 (D-20) — does NOT participate in weight math
       niche: false,
+      gemini_hook: false,
+      gemini_body: false,
+      gemini_cta: false,
+      personas: false,
       retrieval: true, // Phase 8 (D-03b) — new weight-bearing key
     });
 
-    expect(weights).toEqual({
-      behavioral: 0.33,
-      gemini: 0.24,
-      ml: 0.14,
-      rules: 0.14,
-      trends: 0.1,
-      retrieval: 0.05,
-    });
+    // Trunk-side base weights (Phase 5/6/7): behavioral=0.35, gemini=0.25, ml=0.15, rules=0.15, trends=0.10
+    // plus Phase 8 retrieval=0.05 → raw sum 1.05 → each weight normalized by /1.05.
+    // Phase 10 calibration will refit all weights against corpus accuracy.
+    expect(weights.behavioral).toBeCloseTo(0.333, 2);
+    expect(weights.gemini).toBeCloseTo(0.238, 2);
+    expect(weights.ml).toBeCloseTo(0.143, 2);
+    expect(weights.rules).toBeCloseTo(0.143, 2);
+    expect(weights.trends).toBeCloseTo(0.095, 2);
+    expect(weights.retrieval).toBeCloseTo(0.048, 2);
+    const sum = Object.values(weights).reduce((a, b) => a + b, 0);
+    expect(sum).toBeCloseTo(1, 2);
   });
 
   it("redistributes weight when ML is unavailable", () => {
@@ -101,6 +109,10 @@ describe("selectWeights", () => {
       trends: true,
       content_type: false,
       niche: false,
+      gemini_hook: false,
+      gemini_body: false,
+      gemini_cta: false,
+      personas: false,
       retrieval: true,
     });
 
@@ -123,6 +135,10 @@ describe("selectWeights", () => {
       trends: true,
       content_type: false,
       niche: false,
+      gemini_hook: false,
+      gemini_body: false,
+      gemini_cta: false,
+      personas: false,
       retrieval: true,
     });
 
@@ -141,6 +157,10 @@ describe("selectWeights", () => {
       trends: true,
       content_type: false,
       niche: false,
+      gemini_hook: false,
+      gemini_body: false,
+      gemini_cta: false,
+      personas: false,
       retrieval: true,
     });
 
@@ -163,6 +183,10 @@ describe("selectWeights", () => {
       trends: false,
       content_type: false,
       niche: false,
+      gemini_hook: false,
+      gemini_body: false,
+      gemini_cta: false,
+      personas: false,
       retrieval: false,
     });
 
@@ -184,6 +208,10 @@ describe("selectWeights", () => {
         trends: false,
         content_type: false,
         niche: false,
+        gemini_hook: false,
+        gemini_body: false,
+        gemini_cta: false,
+        personas: false,
         retrieval: false,
       });
 
@@ -199,11 +227,16 @@ describe("selectWeights", () => {
 
   it("always sums to ~1.0 for any combination of available signals (except all-false)", () => {
     const combos = [
-      { behavioral: true, gemini: true, ml: false, rules: false, trends: true, content_type: false, niche: false, retrieval: true },
-      { behavioral: false, gemini: true, ml: true, rules: false, trends: false, content_type: true, niche: true, retrieval: false },
-      { behavioral: true, gemini: false, ml: true, rules: true, trends: false, content_type: false, niche: false, retrieval: true },
-      { behavioral: false, gemini: false, ml: true, rules: true, trends: true, content_type: true, niche: false, retrieval: false },
-      { behavioral: true, gemini: true, ml: true, rules: false, trends: false, content_type: false, niche: true, retrieval: true },
+      { behavioral: true, gemini: true, ml: false, rules: false, trends: true, content_type: false, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: true },
+      { behavioral: false, gemini: true, ml: true, rules: false, trends: false, content_type: true, niche: true, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: false },
+      { behavioral: true, gemini: false, ml: true, rules: true, trends: false, content_type: false, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: true },
+      { behavioral: false, gemini: false, ml: true, rules: true, trends: true, content_type: true, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: false },
+      { behavioral: true, gemini: true, ml: true, rules: false, trends: false, content_type: false, niche: true, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: true },
+      { behavioral: true, gemini: true, ml: false, rules: false, trends: true, content_type: false, niche: false, personas: false, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: true },
+      { behavioral: false, gemini: true, ml: true, rules: false, trends: false, content_type: true, niche: true, personas: true, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: false },
+      { behavioral: true, gemini: false, ml: true, rules: true, trends: false, content_type: false, niche: false, personas: false, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: true },
+      { behavioral: false, gemini: false, ml: true, rules: true, trends: true, content_type: true, niche: false, personas: true, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: false },
+      { behavioral: true, gemini: true, ml: true, rules: false, trends: false, content_type: false, niche: true, personas: false, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: true },
     ];
 
     for (const combo of combos) {
@@ -219,7 +252,9 @@ describe("selectWeights", () => {
 // =====================================================
 
 describe("selectWeights — Phase 8 retrieval slot", () => {
-  it("returns retrieval: 0.05 when all signals (including retrieval) available", () => {
+  it("returns retrieval ~0.048 when all signals (including retrieval) available — post-merge normalized", () => {
+    // Phase 8 standalone D-03b intent: retrieval=0.05. Post-merge with trunk Phase 5/6/7 weights
+    // (sum 1.05 pre-normalization), retrieval normalizes to 0.05/1.05 ≈ 0.0476. Phase 10 will refit.
     const w = selectWeights({
       behavioral: true,
       gemini: true,
@@ -228,9 +263,13 @@ describe("selectWeights — Phase 8 retrieval slot", () => {
       trends: true,
       content_type: true,
       niche: true,
+      gemini_hook: false,
+      gemini_body: false,
+      gemini_cta: false,
+      personas: false,
       retrieval: true,
     });
-    expect(w.retrieval).toBeCloseTo(0.05, 3);
+    expect(w.retrieval).toBeCloseTo(0.048, 2);
   });
 
   it("redistributes retrieval's 0.05 to the other 5 signals when retrieval=false", () => {
@@ -242,6 +281,10 @@ describe("selectWeights — Phase 8 retrieval slot", () => {
       trends: true,
       content_type: true,
       niche: true,
+      gemini_hook: false,
+      gemini_body: false,
+      gemini_cta: false,
+      personas: false,
       retrieval: false,
     });
     expect(w.retrieval).toBe(0);
@@ -524,7 +567,7 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
     );
   });
 
-  it("selectWeights regression: 6-key availability all-true → D-03b base weights (Phase 8)", () => {
+  it("selectWeights regression: 6-key availability all-true → post-merge normalized D-03b weights", () => {
     const weights = selectWeights({
       behavioral: true,
       gemini: true,
@@ -533,16 +576,19 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
       trends: true,
       content_type: false, // new keys present but irrelevant
       niche: false,
+      gemini_hook: false,
+      gemini_body: false,
+      gemini_cta: false,
+      personas: false,
       retrieval: true, // Phase 8 — weight-bearing
     });
-    expect(weights).toEqual({
-      behavioral: 0.33,
-      gemini: 0.24,
-      ml: 0.14,
-      rules: 0.14,
-      trends: 0.1,
-      retrieval: 0.05,
-    });
+    // Post-merge normalized (base sum 1.05 from trunk weights + retrieval=0.05). Phase 10 will refit.
+    expect(weights.behavioral).toBeCloseTo(0.333, 2);
+    expect(weights.gemini).toBeCloseTo(0.238, 2);
+    expect(weights.ml).toBeCloseTo(0.143, 2);
+    expect(weights.rules).toBeCloseTo(0.143, 2);
+    expect(weights.trends).toBeCloseTo(0.095, 2);
+    expect(weights.retrieval).toBeCloseTo(0.048, 2);
   });
 
   it("selectWeights ignores content_type + niche keys (Critical Cross-File Constraint #3)", () => {
@@ -554,6 +600,10 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
       trends: true,
       content_type: true,
       niche: true,
+      gemini_hook: false,
+      gemini_body: false,
+      gemini_cta: false,
+      personas: false,
       retrieval: true,
     });
     const weightsWithoutNew = selectWeights({
@@ -564,6 +614,10 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
       trends: true,
       content_type: false,
       niche: false,
+      gemini_hook: false,
+      gemini_body: false,
+      gemini_cta: false,
+      personas: false,
       retrieval: true,
     });
     expect(weightsWithNew).toEqual(weightsWithoutNew);
@@ -580,6 +634,10 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
       trends: true,
       content_type: true,
       niche: true,
+      gemini_hook: false,
+      gemini_body: false,
+      gemini_cta: false,
+      personas: false,
       retrieval: true,
     });
     // 2-decimal precision matches existing "always sums to ~1.0" test convention
@@ -688,6 +746,134 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
 });
 
 // =====================================================
+// Phase 7 — aggregateScores widening (Plan 07-03)
+// Personas signal_availability flag + optional behavioralSource override.
+// =====================================================
+
+describe("aggregateScores Phase 7 widening", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(predictWithML).mockResolvedValue(50);
+    vi.mocked(getPlattParameters).mockResolvedValue(null);
+    vi.mocked(applyPlattScaling).mockImplementation(
+      (score: number, _params: unknown) => score
+    );
+  });
+
+  const samplePersonaAggregate: PersonaBehavioralAggregate = {
+    completion_pct: 99.5,
+    completion_percentile: "top 10%",
+    share_pct: 75,
+    share_percentile: "top 25%",
+    comment_pct: 60,
+    comment_percentile: "top 25%",
+    save_pct: 80,
+    save_percentile: "top 10%",
+  };
+
+  const samplePersonaResults: PersonaSimulationResult[] = [
+    {
+      persona_id: "fyp-saver-beauty",
+      archetype: "saver",
+      slot_type: "fyp",
+      niche: "beauty",
+      scroll_past_second: 5,
+      watch_through_pct: 80,
+      comment_intent: 20,
+      share_intent: 30,
+      save_intent: 70,
+      reasoning: "test saver reaction",
+    },
+    {
+      persona_id: "fyp-lurker-beauty",
+      archetype: "lurker",
+      slot_type: "fyp",
+      niche: "beauty",
+      scroll_past_second: 30,
+      watch_through_pct: 95,
+      comment_intent: 5,
+      share_intent: 10,
+      save_intent: 20,
+      reasoning: "test lurker reaction",
+    },
+  ];
+
+  it("Test 1 (D-08): default (no third arg) reads deepseek.behavioral_predictions", async () => {
+    const pipelineResult = makePipelineResult();
+    const result = await aggregateScores(pipelineResult);
+    // The makePipelineResult factory sets deepseekResult.reasoning.behavioral_predictions —
+    // assert the result's behavioral_predictions matches that source (not the persona aggregate).
+    expect(result.behavioral_predictions).toEqual(
+      pipelineResult.deepseekResult!.reasoning.behavioral_predictions,
+    );
+  });
+
+  it("Test 2 (D-15): signal_availability.personas is false when personaBehavioralAggregate is null", async () => {
+    const pipelineResult = makePipelineResult({ personaBehavioralAggregate: null });
+    const result = await aggregateScores(pipelineResult);
+    expect(result.signal_availability.personas).toBe(false);
+  });
+
+  it("Test 3 (D-15): signal_availability.personas is true when personaBehavioralAggregate is non-null", async () => {
+    const pipelineResult = makePipelineResult({
+      personaBehavioralAggregate: samplePersonaAggregate,
+    });
+    const result = await aggregateScores(pipelineResult);
+    expect(result.signal_availability.personas).toBe(true);
+  });
+
+  it("Test 4 (D-14): behavioralSource='personas' with non-null aggregate substitutes the source", async () => {
+    const pipelineResult = makePipelineResult({
+      personaBehavioralAggregate: samplePersonaAggregate,
+    });
+    const result = await aggregateScores(pipelineResult, undefined, {
+      behavioralSource: "personas",
+    });
+    expect(result.behavioral_predictions.completion_pct).toBe(99.5);
+    expect(result.behavioral_predictions).toEqual(samplePersonaAggregate);
+  });
+
+  it("Test 5 (D-14 fallback): behavioralSource='personas' with null aggregate falls back to deepseek", async () => {
+    const pipelineResult = makePipelineResult({ personaBehavioralAggregate: null });
+    const result = await aggregateScores(pipelineResult, undefined, {
+      behavioralSource: "personas",
+    });
+    expect(result.behavioral_predictions).toEqual(
+      pipelineResult.deepseekResult!.reasoning.behavioral_predictions,
+    );
+  });
+
+  it("Test 6 (Pitfall 10): explicit 'deepseek' source equals default behavior", async () => {
+    const pipelineResult = makePipelineResult({
+      personaBehavioralAggregate: samplePersonaAggregate,
+    });
+    const defaultResult = await aggregateScores(pipelineResult);
+    const explicitResult = await aggregateScores(pipelineResult, undefined, {
+      behavioralSource: "deepseek",
+    });
+    expect(explicitResult.behavioral_predictions).toEqual(defaultResult.behavioral_predictions);
+  });
+
+  it("Test 7 (PERSONA-11 + D-09): persona_simulation_results persisted from pipelineResult.wave3Result", async () => {
+    const pipelineResult = makePipelineResult({
+      wave3Result: samplePersonaResults,
+      personaBehavioralAggregate: samplePersonaAggregate,
+    });
+    const result = await aggregateScores(pipelineResult);
+    expect(result.persona_simulation_results).toEqual(samplePersonaResults);
+    expect(result.persona_simulation_results.length).toBe(2);
+  });
+
+  it("Test 8 (D-20): persona_behavioral_aggregate field exposed on PredictionResult", async () => {
+    const pipelineResult = makePipelineResult({
+      personaBehavioralAggregate: samplePersonaAggregate,
+    });
+    const result = await aggregateScores(pipelineResult);
+    expect(result.persona_behavioral_aggregate).toEqual(samplePersonaAggregate);
+  });
+});
+
+// =====================================================
 // Phase 8 — aggregator retrieval signal integration (Plan 04 Task 3)
 // =====================================================
 
@@ -778,7 +964,9 @@ describe("Phase 8 — aggregator retrieval integration", () => {
     });
     const result = await aggregateScores(pipeline);
     expect(result.score_weights).toHaveProperty("retrieval");
-    expect(result.score_weights.retrieval).toBeCloseTo(0.05, 3);
+    // Post-merge normalized — Phase 8 standalone intent 0.05, merged with trunk Phase 5/6/7 → ~0.048.
+    // Phase 10 calibration owns the final retune.
+    expect(result.score_weights.retrieval).toBeCloseTo(0.048, 2);
   });
 
   it("signal_availability.retrieval mirrors pipelineResult.retrievalResult.availability", async () => {

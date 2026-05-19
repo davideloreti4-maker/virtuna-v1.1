@@ -5,17 +5,25 @@ import { createServiceClient } from "@/lib/supabase/service";
 import {
   AnalysisInputSchema,
   type AnalysisInput,
+  type AudioFingerprintResult,
   type ContentPayload,
   type GeminiAnalysis,
   type DeepSeekReasoning,
+  type PipelineAudioFingerprintFields,
   type RuleScoreResult,
   type TrendEnrichment,
   type Wave0Result,
   type PersonaSimulationResult,
+  type PersonaBehavioralAggregate,
   type BenchmarkRetrievalResult,
 } from "./types";
 import { normalizeInput } from "./normalize";
-import { analyzeWithGemini, analyzeVideoWithGemini } from "./gemini";
+import { analyzeWithGemini, loadCalibrationData } from "./gemini";
+import { analyzeVideoSegmented } from "./gemini/segmented"; // Phase 5 Plan 02/03 — segmented video path
+import { matchAudioFingerprint } from "./audio-fingerprint"; // Phase 6 Plan 04 — pgvector fingerprint match
+
+// Phase 5 IN-05 fix: removed re-export of `analyzeVideoWithGemini`. Direct-import
+// is the canonical pattern from `./gemini` for legacy consumers (eval-harness).
 import { reasonWithDeepSeek } from "./deepseek";
 import { loadActiveRules, scoreContentAgainstRules } from "./rules";
 import { enrichWithTrends } from "./trends";
@@ -39,19 +47,56 @@ export interface StageTiming {
   duration_ms: number;
 }
 
-export interface PipelineResult {
+export interface PipelineResult extends PipelineAudioFingerprintFields {
   // Stage outputs
   payload: ContentPayload;
-  geminiResult: { analysis: GeminiAnalysis; cost_cents: number };
+  geminiResult: {
+    analysis: GeminiAnalysis;
+    cost_cents: number;
+    /**
+     * Phase 5 D-12: per-segment availability flags populated by `analyzeVideoSegmented`.
+     * Undefined for text mode + tiktok_url mode + legacy video path (D-11 eval-harness
+     * compatibility). The aggregator (Plan 03) reads this to populate
+     * SignalAvailability.gemini_hook/body/cta with a `?? false` fallback for legacy
+     * callers (RESEARCH line 475 — historical JSONB rows missing the new keys).
+     */
+    signalAvailability?: {
+      gemini_hook: boolean;
+      gemini_body: boolean;
+      gemini_cta: boolean;
+    };
+  };
   creatorContext: CreatorContext;
   ruleResult: RuleScoreResult;
   trendEnrichment: TrendEnrichment;
   deepseekResult: { reasoning: DeepSeekReasoning; cost_cents: number } | null;
-  audioResult: null; // Audio analysis handled via fuzzy matching in trend enrichment -- no separate stage needed
+  // Phase 6 (D-A4) — audioFingerprintResult: AudioFingerprintResult | null
+  // is inherited from PipelineAudioFingerprintFields above. Replaces the
+  // pre-Phase-6 `audioResult: null` no-op slot. Aggregator (Plan 06-06) reads
+  // `pipelineResult.audioFingerprintResult` to compute the audio_fingerprint
+  // signal availability flag + the phase-aware boost in D-G2.
 
   // Phase 3 — Wave 0/3 stub outputs (Phase 4/7 fill with real logic)
   wave0Result: Wave0Result;
+  /**
+   * Phase 7 — Wave 3 outputs surfaced as TWO derived fields rather than a single
+   * `Wave3Outcome`. They originate from the same `runWave3` call:
+   *   - `wave3Result` ← `Wave3Outcome.results` (per-persona detail for audience-viz)
+   *   - `personaBehavioralAggregate` ← `Wave3Outcome.aggregate` (top-3-weighted aggregate, or null)
+   *   - `Wave3Outcome.warnings` is folded into the pipeline-level `warnings` array.
+   * Reviewer note (IN-04): treat these as a logical group. Pipeline-level consumers
+   * that need both should read both — the orchestrator does not synthesize them
+   * from independent sources.
+   */
   wave3Result: PersonaSimulationResult[];
+  personaBehavioralAggregate: PersonaBehavioralAggregate | null;
+  /**
+   * Phase 7 CR-01 — wave-level Wave 3 cost in cents, surfaced so the aggregator can fold
+   * it into PredictionResult.cost_cents. Without this, eval-runner cost-cap enforcement is
+   * silently bypassed for hidden Wave 3 spend (eval-runner reads `prediction.cost_cents`
+   * which previously only covered Gemini + DeepSeek).
+   */
+  wave3CostCents: number;
 
   // Phase 8 — Wave 1 retrieval sibling (Plan 04). Graceful empty on any failure;
   // aggregator folds retrievalResult.score into overall_score at weight 0.05.
@@ -151,6 +196,8 @@ const DEFAULT_CREATOR_CONTEXT: CreatorContext = {
   // Phase 2 (D-19) — 9-card profile fields. Graceful-degradation default is
   // null for every field; downstream consumers (Wave 0 niche detector,
   // creator context formatter, Phase 8 retrieval-stage) handle null safely.
+  // WR-03: these fields are required-but-nullable on CreatorContext (creator.ts:26-46);
+  // tsc --noEmit fails if any are missing here.
   target_platforms: null,
   niche_primary: null,
   niche_sub: null,
@@ -242,7 +289,7 @@ const DEFAULT_GEMINI_RESULT: PipelineResult["geminiResult"] = {
  * 2. Normalize    -- Convert AnalysisInput to ContentPayload
  * 3. Wave 1 (parallel):
  *    - Stage 3: Gemini Analysis (non-critical -- fallback with warning, HARD-03)
- *    - Stage 4: Audio Analysis (placeholder)
+ *    - Stage 4: Audio Fingerprint (non-critical -- pgvector match against trending_sounds; D-A4)
  *    - Stage 5: Creator Context (non-critical -- fallback with warning)
  *    - Stage 6: Rule Loading + Scoring (non-critical -- fallback with warning)
  * 4. Wave 2 (parallel):
@@ -365,29 +412,101 @@ export async function runPredictionPipeline(
   // Stage 3: Gemini Analysis -- NON-CRITICAL (fallback with warning — HARD-03)
   const geminiPromise = (async (): Promise<PipelineResult["geminiResult"]> => {
     try {
-      // Route video uploads to video-specific Gemini analysis
+      // Route video uploads to segmented Gemini analysis (Phase 5 Plan 02/03).
+      // D-11: legacy `analyzeVideoWithGemini` import preserved above for eval-harness
+      // corpus-replay path; not invoked from production video branch.
+      // D-14: NO outer `timed("gemini_video_analysis", ...)` wrapper here — the three
+      // per-segment events emitted by helpers (gemini_hook / _body / _cta) REPLACE it.
       if (validated.input_mode === "video_upload" && validated.video_storage_path) {
-        return await timed("gemini_video_analysis", timings, async () => {
-          const { data: videoBlob, error: downloadError } = await supabase
-            .storage
-            .from("videos")
-            .download(validated.video_storage_path!);
+        const { data: videoBlob, error: downloadError } = await supabase
+          .storage
+          .from("videos")
+          .download(validated.video_storage_path);
 
-          if (downloadError || !videoBlob) {
-            throw new Error(
-              `Failed to download video from storage: ${downloadError?.message ?? "no data"}`
-            );
-          }
+        if (downloadError || !videoBlob) {
+          throw new Error(
+            `Failed to download video from storage: ${downloadError?.message ?? "no data"}`
+          );
+        }
 
-          const buffer = Buffer.from(await videoBlob.arrayBuffer());
-          const ext = validated.video_storage_path!.split(".").pop()?.toLowerCase() ?? "mp4";
-          const mimeType = EXT_TO_MIME[ext] ?? "video/mp4";
+        const buffer = Buffer.from(await videoBlob.arrayBuffer());
+        const ext = validated.video_storage_path.split(".").pop()?.toLowerCase() ?? "mp4";
+        const mimeType = EXT_TO_MIME[ext] ?? "video/mp4";
 
-          return analyzeVideoWithGemini(buffer, mimeType, validated.niche);
-        }, { wave: 1, onEvent: onStageEvent });
+        // Load calibration baseline so segment prompts can embed differentiators.
+        // Reuses the module-level cache singleton in gemini.ts — no extra disk reads on warm path.
+        // If calibration cannot load, legacy analyzeVideoWithGemini also fails; preserve that
+        // behavior by throwing here, which the outer catch routes to DEFAULT_GEMINI_RESULT.
+        const calibration = await loadCalibrationData();
+        if (!calibration) {
+          throw new Error(
+            "Calibration baseline unavailable — Gemini segmented analysis cannot proceed."
+          );
+        }
+
+        // Phase 4 D-15: content_type from Wave 0 flows into segment prompts.
+        // Phase 5 D-15-partial: niche threads through; creatorStyle (Card 4) deferred.
+        const contentTypeSlug = wave0Result.content_type?.type ?? null;
+
+        // WR-08: duration_hint=null is silently dangerous — defaulting to 30s
+        // against a real 6-second video puts body's window at 5s→27s and CTA's
+        // at 27s→30s, both well beyond the actual content. The model will
+        // hallucinate scores against frames that don't exist. Skip segmentation
+        // and surface a pipeline_warning + DEFAULT_GEMINI_RESULT so the
+        // aggregator's weight redistribution kicks in (gemini_hook/body/cta =
+        // false), rather than feeding fabricated scores forward. The legacy
+        // single-call path is NOT a safe fallback because it has the same
+        // inherited Files API state bug (fixed in CR-01 but not on the
+        // production hot path).
+        if (payload.duration_hint == null) {
+          const msg =
+            "Gemini segmented analysis skipped — video_upload missing duration_hint (would otherwise hallucinate scores against fabricated window math).";
+          warnings.push(msg);
+          onStageEvent?.({
+            type: "pipeline_warning",
+            message: msg,
+            stage: "gemini_video_unavailable",
+          });
+          timings.push({ stage: "gemini_analysis", duration_ms: 0 });
+          return {
+            ...DEFAULT_GEMINI_RESULT,
+            signalAvailability: {
+              gemini_hook: false,
+              gemini_body: false,
+              gemini_cta: false,
+            },
+          };
+        }
+
+        const merged = await analyzeVideoSegmented(buffer, mimeType, {
+          calibration,
+          niche: validated.niche ?? creatorContext.niche ?? null,
+          contentType: contentTypeSlug,
+          creatorStyle: null,
+          onStageEvent,
+          durationSeconds: payload.duration_hint,
+        });
+
+        // D-09: 3-of-3 failure path — `analyzeVideoSegmented` returns `analysis: null`.
+        // Preserve DEFAULT_GEMINI_RESULT shape (5 zero-score factors) for the existing
+        // factor-array consumers downstream, but surface the merged `signalAvailability`
+        // so the aggregator (Plan 03) can mark gemini_hook/body/cta as false and trigger
+        // weight redistribution.
+        if (merged.analysis === null) {
+          return {
+            ...DEFAULT_GEMINI_RESULT,
+            signalAvailability: merged.signalAvailability,
+          };
+        }
+
+        return {
+          analysis: merged.analysis,
+          cost_cents: merged.cost_cents,
+          signalAvailability: merged.signalAvailability,
+        };
       }
 
-      // Default: text analysis
+      // Default: text analysis (unchanged from Phase 4).
       return await timed("gemini_analysis", timings, () =>
         analyzeWithGemini(validated),
         { wave: 1, onEvent: onStageEvent }
@@ -404,11 +523,49 @@ export async function runPredictionPipeline(
     }
   })();
 
-  // Stage 4: Audio Analysis (handled via fuzzy matching in trend enrichment -- no separate stage)
-  const audioPromise = timed("audio_analysis", timings, async () => null, {
-    wave: 1,
-    onEvent: onStageEvent,
-  });
+  // Stage 4: Audio Fingerprint — NON-CRITICAL (graceful degradation via null return per D-A4).
+  // Sub-awaits geminiPromise's audio_description (RESEARCH Q3 Architectural Option A); this
+  // preserves Wave 1 parallelism visible to SSE consumers: stage_start fires immediately
+  // alongside gemini_video_analysis's stage_start, stage_end fires after the pgvector match
+  // completes. The inner `await geminiPromise` is the known tradeoff (RESEARCH Pitfall 2) —
+  // audio_fingerprint GENUINELY depends on Gemini's audio_description and cannot run earlier.
+  //
+  // 06-REVIEW.md IN-04 — clarification for SSE consumers: the wall-clock duration between
+  // audio_fingerprint stage_start and stage_end will include the gemini call latency that
+  // this stage awaits internally. Consumers should NOT interpret total_duration as the
+  // fingerprint-specific cost — only the segment AFTER gemini completes (embed + RPC) is
+  // attributable to this stage. The internal `await geminiPromise` is sequentially ordered
+  // by design (Pitfall 2), even though the outer Promise.all looks parallel.
+  //
+  // matchAudioFingerprint() never throws — it returns null on every soft-failure path
+  // (no description, empty embedding, RPC error object, no row above threshold). The outer
+  // try/catch here exists solely as a defense-in-depth net for unexpected hard failures
+  // (e.g., geminiPromise itself throws before yielding a value). Per HARD-03 + Phase 3 D-04,
+  // audio is enhancement, never gating: a null result means signal_availability.audio_fingerprint
+  // = false and weight redistribution flows through the existing aggregator math.
+  const audioFingerprintPromise = (async (): Promise<AudioFingerprintResult | null> => {
+    try {
+      return await timed("audio_fingerprint", timings, async () => {
+        // Sub-await — audio_fingerprint genuinely depends on Gemini's audio_description.
+        const geminiInner = await geminiPromise;
+        // `audio_signals` is `.optional()` on the Zod schema (Plan 03 Test 9 + BLOCKER 2);
+        // optional chaining produces `string | undefined` — coerce to `string | null` for the
+        // matchAudioFingerprint contract.
+        const audioDescription =
+          geminiInner.analysis.audio_signals?.audio_description ?? null;
+        return matchAudioFingerprint(audioDescription, supabase);
+      }, { wave: 1, onEvent: onStageEvent });
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { stage: "audio_fingerprint", requestId },
+      });
+      warnings.push(
+        `Audio fingerprint unavailable: ${error instanceof Error ? error.message : String(error)}`
+      );
+      timings.push({ stage: "audio_fingerprint", duration_ms: 0 });
+      return null;
+    }
+  })();
 
   // Stage 5: Creator Context -- Phase 4 PASSTHROUGH (reuses pre_creator_context).
   // The actual fetch happened above in the pre_creator_context stage (D-17/D-18).
@@ -475,11 +632,20 @@ export async function runPredictionPipeline(
   // Phase 4: the third slot (creatorPromise) returns the same value as the
   // outer-scope `creatorContext` (pre-fetched above), so we discard the array
   // slot to avoid redeclaration.
-  // Phase 8: 5th slot is retrievalPromise (D-09 — Wave 1 sibling).
-  const [geminiResult, audioResult, , ruleResult, retrievalResult] = await timed(
+  // Phase 6: 2nd slot is audioFingerprintPromise (renamed from audio_analysis per D-A4);
+  // returns AudioFingerprintResult | null. Phase 8: 5th slot is retrievalPromise
+  // (D-09 — Wave 1 sibling, graceful-degradation BenchmarkRetrievalResult).
+  const [geminiResult, audioFingerprintResult, , ruleResult, retrievalResult] = await timed(
     "wave_1",
     timings,
-    () => Promise.all([geminiPromise, audioPromise, creatorPromise, rulePromise, retrievalPromise]),
+    () =>
+      Promise.all([
+        geminiPromise,
+        audioFingerprintPromise,
+        creatorPromise,
+        rulePromise,
+        retrievalPromise,
+      ]),
     { wave: 1, onEvent: onStageEvent }
   );
 
@@ -487,7 +653,7 @@ export async function runPredictionPipeline(
     category: "engine.pipeline",
     message: "Wave 1 complete",
     level: "info",
-    data: { requestId, stages: ["gemini", "audio", "creator", "rules", "retrieval"] },
+    data: { requestId, stages: ["gemini", "audio_fingerprint", "creator", "rules", "retrieval"] },
   });
 
   // Format creator context for DeepSeek prompt injection
@@ -534,11 +700,18 @@ export async function runPredictionPipeline(
     }
   })();
 
-  // Stage 8: Trend Enrichment -- NON-CRITICAL (fallback with warning)
+  // Stage 8: Trend Enrichment -- NON-CRITICAL (fallback with warning).
+  // Phase 6 D-F3: when the audio_fingerprint stage matched a sound (audioFingerprintResult
+  // !== null), the aggregator synthesizes a matched_trends entry from the fingerprint result
+  // (single source of truth). Pass that boolean down so enrichWithTrends skips its
+  // Jaro-Winkler caption ↔ sound_name fallback loop. Hashtag scoring loop in trends.ts is
+  // orthogonal and remains UNGATED.
   const trendPromise = (async (): Promise<TrendEnrichment> => {
     try {
       return await timed("trend_enrichment", timings, () =>
-        enrichWithTrends(supabase, validated),
+        enrichWithTrends(supabase, validated, {
+          audioFingerprintMatched: audioFingerprintResult !== null,
+        }),
         { wave: 2, onEvent: onStageEvent }
       );
     } catch (error) {
@@ -569,12 +742,23 @@ export async function runPredictionPipeline(
   // -------------------------------------------------------
   // Wave 3: Multi-persona simulation (Phase 7 fills the stub)
   // Runs AFTER Wave 2 completes — events fire after wave_2 stage_end.
+  // Phase 7 Plan 07-02b: widened signature passes wave0Result (D-11 routing) +
+  // creatorContext (D-03 loyalist grounding); returns Wave3Outcome with
+  // aggregate + per-persona results + warnings.
   // -------------------------------------------------------
-  const wave3Result = await runWave3(
+  const wave3Outcome = await runWave3(
     payload,
     deepseekRaw?.reasoning ?? null,
-    onStageEvent
+    wave0Result,
+    creatorContext,
+    onStageEvent,
   );
+  const wave3Result: PersonaSimulationResult[] = wave3Outcome.results;
+  const personaBehavioralAggregate: PersonaBehavioralAggregate | null = wave3Outcome.aggregate;
+  // CR-01: wave-level cost surfaced to PipelineResult so the aggregator can fold Wave 3
+  // spend into PredictionResult.cost_cents.
+  const wave3CostCents = wave3Outcome.cost_cents;
+  warnings.push(...wave3Outcome.warnings);
 
   Sentry.addBreadcrumb({
     category: "engine.pipeline",
@@ -596,7 +780,9 @@ export async function runPredictionPipeline(
   const total_duration_ms = Math.round(performance.now() - pipelineStart);
 
   const total_cost_cents =
-    (geminiResult.cost_cents ?? 0) + (deepseekRaw?.cost_cents ?? 0);
+    (geminiResult.cost_cents ?? 0)
+    + (deepseekRaw?.cost_cents ?? 0)
+    + wave3CostCents; // CR-01: include Wave 3 cost in pipeline-level log so true spend is observable.
   log.info("Pipeline complete", {
     stage: "pipeline",
     duration_ms: total_duration_ms,
@@ -611,10 +797,19 @@ export async function runPredictionPipeline(
     ruleResult,
     trendEnrichment,
     deepseekResult: deepseekRaw,
-    audioResult,
+    // Phase 6 (D-A4): replaces the pre-Phase-6 audioResult: null slot. Plan 06-06's
+    // aggregator reads this directly via `pipelineResult.audioFingerprintResult`.
+    audioFingerprintResult,
     wave0Result,
     wave3Result,
-    retrievalResult, // NEW Phase 8 D-09 (Plan 04)
+    // Phase 7 (Plan 07-02b) — real aggregate from Wave 3 orchestrator. Null when <7 personas
+    // succeed (D-13 threshold) OR when circuit-breaker fast-failed (W-3); the aggregator
+    // surfaces null as signal_availability.personas = false via Plan 07-03.
+    personaBehavioralAggregate,
+    // CR-01: surfaced so aggregator can fold Wave 3 spend into PredictionResult.cost_cents
+    // (eval-runner cost cap reads that rolled-up field).
+    wave3CostCents,
+    retrievalResult, // NEW Phase 8 D-09 (Plan 04) — graceful-degradation BenchmarkRetrievalResult
     requestId,
     timings,
     total_duration_ms,

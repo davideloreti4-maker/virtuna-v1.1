@@ -39,8 +39,8 @@ Wave 8 (final gate): P12 (accuracy benchmark + acceptance)
 - [ ] **Phase 4: Wave 0 — Content Type + Niche Detection** — V3 classifier + hierarchical niche detector before Wave 1; drives downstream signal weighting.
 - [ ] **Phase 5: Video Segmentation + Hook Decomposition** — Native Gemini `videoMetadata` parallel calls (Pro hook + Flash body/CTA), multi-modal hook decomp, visual-audio coherence, cognitive load.
 - [ ] **Phase 6: Audio Analysis + Fingerprint** — Real audio stage replacing no-op, audio fingerprint matching against trending sounds DB.
-- [ ] **Phase 7: Multi-Persona Simulation** — Wave 3 with 10 FYP-weighted personas on V3 (6 FYP + 2 niche + 1 loyalist + 1 cross-niche).
-- [x] **Phase 8: Benchmark Retrieval** — pgvector setup, embedding pipeline, top-K similar competitor video retrieval.
+- [x] **Phase 7: Multi-Persona Simulation** — Wave 3 with 10 FYP-weighted personas on V3 (6 FYP + 2 niche + 1 loyalist + 1 cross-niche). (completed 2026-05-19)
+- [x] **Phase 8: Benchmark Retrieval** — pgvector setup, embedding pipeline, top-K similar competitor video retrieval. (completed 2026-05-19)
 - [ ] **Phase 9: Platform Algo Fit + Self-Critique + Counterfactuals** — TikTok/IG/YT-specific signals, creator-tier awareness, watermark detection, critique pass, counterfactual generation.
 - [ ] **Phase 10: ML Audit + Calibration + Aggregator Extension** — Audit ML against corpus, decide retrain/down-weight, train Platt on corpus, extend SignalAvailability with new signals, bump to engine v3.0.
 - [ ] **Phase 11: Existing UI Integration + Privacy Policy** — Wire /api/analyze + video-upload component to new engine, storage retention policy, onboarding integration with 9-card profile.
@@ -132,19 +132,35 @@ Plans:
   3. Hook decomposition returns 4 sub-scores: visual stop power, audio hook, text overlay, first words / speech — plus identified weakest modality
   4. Visual-audio coherence score and cognitive load score computed from cross-modal analysis (free Gemini prompt extension)
   5. Existing `analyzeVideoWithGemini` test surface still passes; new tests cover segmented analysis with mocked `videoMetadata` calls
-**Plans:** TBD (~3-4 plans, executable in parallel within phase)
+**Plans:** 3 plans across 3 waves
+Plans:
+**Wave 1**
+- [x] 05-01-PLAN.md — Wave 1: foundations (Zod schemas + Gemini responseSchema literals, per-model cost helper, prompt builders, types widening, env vars)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 05-02-PLAN.md — Wave 2: segment helpers + orchestrator + merge (3 parallel videoMetadata-scoped Gemini calls via Promise.allSettled, null-safe partial-failure merge)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [x] 05-03-PLAN.md — Wave 3: pipeline + aggregator integration (Wave 1 video-branch swap, per-segment SignalAvailability, D-06 CTA penalty, AI-SPEC eval D1-D17 alignment)
 
 ### Phase 6: Audio Analysis + Fingerprint Matching
 **Goal:** Audio stage produces real signals (voice clarity, audio hook, silence ratio, fingerprint match) replacing the current no-op.
 **Depends on:** Phase 3 (pipeline infrastructure)
-**Requirements:** AUDIO-01..06
+**Requirements:** AUDIO-01..06, HOOK-02 (migrated from Phase 5 per D-H1)
 **Success Criteria:**
   1. `Stage 4: Audio` returns a real result object (not `null`) with voice clarity, audio hook score, silence/voiceover/music ratio
   2. Audio fingerprint match against trending sounds DB returns matched sound + velocity (rising / peak / declining) when match found
   3. Audio signal feeds aggregator with appropriate weight
   4. Existing trend enrichment fuzzy string match still works as fallback when fingerprint match is unavailable
   5. Audio analysis adds <2s to total pipeline latency (folded into existing Gemini calls where possible)
-**Plans:** TBD (~2 plans)
+**Plans:** 6 plans across 5 waves (Plan 05 split into 05 + 06 per checker WARNING 5; Plan 06 lifted to Wave 5 by explicit dependency on Plan 05)
+Plans:
+- [x] 06-01-PLAN.md — Wave 1: Gemini Flash audio reliability smoke test (gates SC#1) + HOOK-02 REQUIREMENTS.md migration (D-H1)
+- [x] 06-02-PLAN.md — Wave 2: Types + migration (pgvector + HNSW + match RPC + analysis_results.audio_description) + BLOCKING schema push
+- [x] 06-03-PLAN.md — Wave 3: Gemini schema extension (audio_signals optional for graceful degradation) + audio-perceptual module (D-G3 coefficients)
+- [x] 06-04-PLAN.md — Wave 3: audio-fingerprint stage (explicit Sentry-vs-warn asymmetry) + backfill script (FULL D-F4 pipeline)
+- [x] 06-05-PLAN.md — Wave 4: pipeline rename + trends D-F3 gating + types.ts PipelineResult widening
+- [x] 06-06-PLAN.md — Wave 5: aggregator D-G1/G2/G3/G4 + analysis_results.audio_description persistence (Q4 RESOLVED) + cron full D-F4 pipeline
 
 ### Phase 7: Multi-Persona Simulation
 **Goal:** 10 personas allocated FYP-first (6/2/1/1) run in parallel as Wave 3 after Wave 2 (DeepSeek synthesis + trends). Each persona produces structured reactions used both as the new behavioral signal and the data source for M2's audience viz.
@@ -157,7 +173,13 @@ Plans:
   4. Aggregate persona output replaces the single `behavioral_predictions` from single DeepSeek call in v2 aggregator
   5. Per-persona drop-off second persisted on prediction (data ready for M2 retention curve)
   6. Persona prompt cache (DeepSeek input cache) verified active — cost per analysis ≤$0.025 for 10-persona stage
-**Plans:** TBD (~4 plans)
+**Plans:** 5/5 plans complete
+Plans:
+- [x] 07-01-PLAN.md — Wave 1: persona registry + prompts + types widening; reuse wave0/prompts.ts tryUrlHost via single-keyword export (PERSONA-02, 03, 05, 06, 08)
+- [x] 07-02a-PLAN.md — Wave 2: foundations — PipelineResult/PredictionResult widening + factories + wave3/aggregator.ts pure-math helper (PERSONA-08, 09, 11, PIPE-08)
+- [x] 07-02b-PLAN.md — Wave 3: wave3.ts orchestrator rewrite + pipeline.ts call-site widening + orchestration tests; uses existing isCircuitOpen export from deepseek.ts:736 (PERSONA-01, 02, 03, 04, 05, 06, 07, 10)
+- [x] 07-03-PLAN.md — Wave 4: aggregator additive integration (signal_availability.personas + optional behavioralSource param) (PERSONA-07, 10, 11)
+- [x] 07-04-PLAN.md — Wave 5: A/B eval harness wiring via existing runEvalHarness + cost budget test + operator review checkpoint (PERSONA-10, 11)
 
 ### Phase 8: Benchmark Retrieval
 **Goal:** pgvector-backed top-K retrieval returns 3-5 similar competitor videos as evidence on every prediction; filtered by niche, platform, and creator tier.
@@ -239,10 +261,10 @@ Plans:
 | 2. Creator Profile & 9-Card Interview | 6/6 | Complete (UAT deferred) | 2026-05-17 |
 | 3. Pipeline Infrastructure | 4/4 | Complete (PARTIAL — defer-smoke for SC#4/#5) | 2026-05-18 |
 | 4. Wave 0 — Content Type + Niche Detection | 0/3 | Planned | - |
-| 5. Video Segmentation + Hook Decomposition | 0/TBD | Not started | - |
-| 6. Audio Analysis + Fingerprint | 0/TBD | Not started | - |
-| 7. Multi-Persona Simulation | 0/TBD | Not started | - |
-| 8. Benchmark Retrieval | 2/5 | In Progress|  |
+| 5. Video Segmentation + Hook Decomposition | 3/3 | Complete (verifier passed; code review advisory 4C/9W/6I) | 2026-05-19 |
+| 6. Audio Analysis + Fingerprint | 6/6 | Complete (3/3 HUMAN-UAT passed; code review 5W/4I closed inline) | 2026-05-19 |
+| 7. Multi-Persona Simulation | 5/5 | Complete    | 2026-05-19 |
+| 8. Benchmark Retrieval | 5/5 | Complete (live DB applied; 7614 rows embedded; HNSW self-match validated) | 2026-05-19 |
 | 9. Platform Algo Fit + Self-Critique + Counterfactuals | 0/TBD | Not started | - |
 | 10. ML Audit + Calibration + Aggregator Extension | 0/TBD | Not started | - |
 | 11. Existing UI Integration + Privacy Policy | 0/TBD | Not started | - |

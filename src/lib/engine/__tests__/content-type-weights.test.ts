@@ -22,9 +22,9 @@ const baselineSignals: GeminiVideoSignals = {
 };
 
 describe("CONTENT_TYPE_WEIGHT_MATRIX (D-12 locked)", () => {
-  it("has exactly 7 rows (talking_head, b_roll, slideshow, action, tutorial, vlog, other)", () => {
+  it("has exactly 8 rows (talking_head, b_roll, slideshow, action, tutorial, vlog, comedy, other)", () => {
     expect(Object.keys(CONTENT_TYPE_WEIGHT_MATRIX).sort()).toEqual(
-      ["talking_head", "b_roll", "slideshow", "action", "tutorial", "vlog", "other"].sort()
+      ["talking_head", "b_roll", "slideshow", "action", "tutorial", "vlog", "comedy", "other"].sort()
     );
   });
 
@@ -101,9 +101,9 @@ describe("applyContentTypeWeights", () => {
     expect(result.pacing_score).toBe(4);
   });
 
-  it("all 7 enum values have valid multiplier rows", () => {
+  it("all 8 enum values have valid multiplier rows", () => {
     const types: Array<keyof typeof CONTENT_TYPE_WEIGHT_MATRIX> =
-      ["talking_head", "b_roll", "slideshow", "action", "tutorial", "vlog", "other"];
+      ["talking_head", "b_roll", "slideshow", "action", "tutorial", "vlog", "comedy", "other"];
     for (const t of types) {
       const result = applyContentTypeWeights(baselineSignals, t);
       expect(result.visual_production_quality).toBeGreaterThanOrEqual(0);
