@@ -31,7 +31,41 @@ findings:
   warning: 6
   info: 4
   total: 13
-status: issues_found
+status: resolved
+resolved_at: 2026-05-19T11:42:00Z
+fixes_applied:
+  - id: CR-01
+    commit: ecdf1c2
+    summary: stringify pgvector literal in CLI backfill update
+  - id: CR-02
+    commit: e579d92
+    summary: stop advancing offset when filtering by embedding IS NULL (default mode); MAX_LOOPS safety cap
+  - id: CR-03
+    commit: 124e8d2
+    summary: timing-safe webhook secret comparison via crypto.timingSafeEqual
+  - id: WR-01
+    commit: 9e95c3f
+    summary: mark match_corpus_videos / match_scraped_videos VOLATILE
+  - id: WR-02
+    commit: fca548c
+    summary: document category→primary_niche backfill upgrade procedure (comment-only)
+  - id: WR-03
+    commit: c7c957f
+    summary: classify Gemini errors as transient vs permanent in embedBatch retry loop
+  - id: WR-04
+    commit: 4c4fdca
+    summary: export REVERSE_CORPUS_NICHE_ALIASES from bucket-derivation as single source of truth
+  - id: WR-05
+    commit: aa31dfe
+    summary: SKIPPED full fix (deferred to Phase 10+); inline KNOWN ISSUE comment added
+  - id: WR-06
+    commit: a29ae4b
+    summary: Promise.allSettled + .select("id") for per-row success accounting in CLI updates
+info_skipped:
+  - IN-01
+  - IN-02
+  - IN-03
+  - IN-04
 ---
 
 # Phase 8: Code Review Report
@@ -413,3 +447,33 @@ This also gives the timing-safe-equal fix (CR-03) a guaranteed string to compare
 _Reviewed: 2026-05-19T00:00:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+
+---
+
+## Fixes Applied
+
+Resolved 2026-05-19T11:42:00Z on branch `phase-8-benchmark-retrieval`.
+Scope: Critical + Warning (default). Info findings deferred (no `--all` flag in this run).
+
+Baseline preserved: `pnpm test` reports 842 pass / 3 pre-existing failures (2 in
+`cost-benchmark.test.ts`, 1 in `video-e2e.test.ts` — all unchanged from pre-fix
+baseline). `pnpm tsc --noEmit` reports 1281 errors — identical count to pre-fix
+baseline; no new errors introduced.
+
+| ID | Commit | Files | What changed |
+|----|--------|-------|--------------|
+| CR-01 | `ecdf1c2` | `scripts/embed-corpus.ts` | Wrap `vectors[j]` in `JSON.stringify(...)` so the CLI emits the pgvector textual literal `"[0.1,0.2,...]"` matching orchestrator + apify webhook. `supabase: any` annotation left in place (removing cascades to non-trivial type wiring; noted in commit body). |
+| CR-02 | `e579d92` | `scripts/embed-corpus.ts` | Default `IS NULL` mode no longer advances `offset` between iterations — the filter set drains naturally as embeddings are written. `--re-embed-all` mode still advances (filter is constant). Dry-run also advances (no DB writes shrink the filter). Added `MAX_LOOPS=1000` safety cap. Verified with `npx tsx scripts/embed-corpus.ts --backfill --dry-run --re-embed-all --table=training_corpus --batch-size=25` — 225 rows iterated across offsets 0..200 as expected. |
+| CR-03 | `124e8d2` | `src/app/api/webhooks/apify/route.ts` | `payload.secret !== ...` replaced with `safeSecretEqual()` helper that uses `crypto.timingSafeEqual` on equal-length Buffers, with length-guard early-exit. Fails closed when either side is undefined / empty (closes `APIFY_WEBHOOK_SECRET=""` accept-empty-secret edge case). |
+| WR-01 | `9e95c3f` | `supabase/migrations/20260518000000_phase8_pgvector.sql` | `match_corpus_videos` + `match_scraped_videos` marked `VOLATILE` (was `STABLE`) — consistent with the `set_config` call inside. Misleading "doesn't leak to outer transactions" comment corrected. Deferred to Phase 10+: `ALTER ROLE service_role SET hnsw.iterative_scan = 'strict_order'` as the production-grade pattern. |
+| WR-02 | `fca548c` | `supabase/migrations/20260518000000_phase8_pgvector.sql` | Added SQL comment block documenting the upgrade procedure for `category→primary_niche` mapping (where to add new entries, how to reset existing rows for re-classification, the cross-file invariant with `apify/route.ts deriveNicheSlug`). Pure documentation. |
+| WR-03 | `c7c957f` | `src/lib/engine/retrieval/embedder.ts` | Added `isTransientGeminiError()` classifier (401/403/400/invalid_argument → permanent; 429/RESOURCE_EXHAUSTED/503/network blips → transient). `embedBatch` retry guard now bails out immediately on permanent errors instead of burning `MAX_RETRIES * RETRY_BASE_DELAY_MS` of latency. |
+| WR-04 | `4c4fdca` | `src/lib/engine/retrieval/bucket-derivation.ts`, `src/lib/engine/corpus/orchestrator.ts`, `scripts/embed-corpus.ts` | Exported `REVERSE_CORPUS_NICHE_ALIASES` from `bucket-derivation.ts`. Both `orchestrator.bucketAndPersist` and the CLI import the shared constant instead of re-deriving it locally. Single source of truth. |
+| WR-05 | `aa31dfe` | `src/app/api/webhooks/apify/route.ts` | **SKIPPED** — full fix deferred to Phase 10+ hardening. The proper solution is a SQL trigger preserving `OLD.embedding` when `NEW.embedding IS NULL`, which changes upsert semantics across all writers and warrants its own migration + test coverage. Added inline `KNOWN ISSUE` comment documenting the constraint and operator mitigation (the CLI's `IS NULL` re-sweep catches regressed embeddings on the next scheduled run). |
+| WR-06 | `a29ae4b` | `scripts/embed-corpus.ts` | Switched per-row updates from `Promise.all` → `Promise.allSettled` so individual rejections don't lose visibility into other in-flight updates. Chained `.select("id")` so a 0-rows-affected silently-skipped update fails loudly. `totalEmbedded` now counts only verified successes; per-row errors are aggregated and logged (up to 5 per batch, with `+N more` overflow). Kept concurrency (full sequencing would materially slow backfill); connection-pool concern bounded by existing 200ms inter-batch sleep + batch-size cap. |
+
+**Info findings (IN-01..IN-04)** were intentionally not addressed in this pass — default scope is Critical + Warning only. See REVIEW.md sections above for the recommended fixes; can be picked up later with `/gsd-code-review --fix --all` or a targeted follow-up.
+
+_Resolved: 2026-05-19T11:42:00Z_
+_Fixer: Claude (manual fix pass)_
+_Iteration: 1_
