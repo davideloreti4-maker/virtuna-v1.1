@@ -175,7 +175,7 @@ Plans:
 - [x] 08-02-PLAN.md — Wave 1: types.ts extension — Zod schemas + interfaces (interface-first contracts)
 - [x] 08-03-PLAN.md — Wave 2: Retrieval modules — embedder + bucket-derivation + re-ranker + pgvector-client + unit tests
 - [x] 08-04-PLAN.md — Wave 3: retrieval-stage orchestration + pipeline.ts Wave-1 wiring + aggregator extension
-- [ ] 08-05-PLAN.md — Wave 4 [BLOCKING]: DB push + types regen + auto-embed insert paths + backfill CLI + percentile snapshot
+- [x] 08-05-PLAN.md — Wave 4 [BLOCKING]: DB push + types regen + auto-embed insert paths + backfill CLI + percentile snapshot
 
 ### Phase 9: Platform Algo Fit + Self-Critique + Counterfactuals
 **Goal:** Platform-specific algorithm fit signals (TikTok/IG/YT), self-critique pass on aggregator output, counterfactual suggestions, watermark detection, anti-virality warnings.
