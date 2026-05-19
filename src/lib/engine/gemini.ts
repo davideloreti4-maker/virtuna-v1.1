@@ -131,8 +131,10 @@ function parseGeminiVideoResponse(raw: string): GeminiVideoAnalysis {
 }
 
 /** Load calibration data from JSON file, cached after first read.
- *  Returns null on malformed/missing file — callers must handle null. */
-async function loadCalibrationData(): Promise<CalibrationData | null> {
+ *  Returns null on malformed/missing file — callers must handle null.
+ *  Phase 5 Plan 03: exported so pipeline.ts (segmented video branch) can hydrate
+ *  the prompt builders without re-implementing the disk-cache. */
+export async function loadCalibrationData(): Promise<CalibrationData | null> {
   if (cachedCalibration) return cachedCalibration;
 
   try {

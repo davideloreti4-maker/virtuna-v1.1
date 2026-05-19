@@ -14,7 +14,14 @@ import {
   type PersonaSimulationResult,
 } from "./types";
 import { normalizeInput } from "./normalize";
-import { analyzeWithGemini, analyzeVideoWithGemini } from "./gemini";
+import { analyzeWithGemini, loadCalibrationData } from "./gemini";
+import { analyzeVideoSegmented } from "./gemini/segmented"; // Phase 5 Plan 02/03 — segmented video path
+
+// Phase 5 D-11: re-export the legacy single-call video analyzer for eval-harness
+// corpus-replay compatibility. The production video branch (below) routes to
+// analyzeVideoSegmented; the legacy export stays callable for the Phase 12 acceptance
+// benchmark's A/B comparison run (segmented vs un-segmented).
+export { analyzeVideoWithGemini } from "./gemini";
 import { reasonWithDeepSeek } from "./deepseek";
 import { loadActiveRules, scoreContentAgainstRules } from "./rules";
 import { enrichWithTrends } from "./trends";
@@ -40,7 +47,22 @@ export interface StageTiming {
 export interface PipelineResult {
   // Stage outputs
   payload: ContentPayload;
-  geminiResult: { analysis: GeminiAnalysis; cost_cents: number };
+  geminiResult: {
+    analysis: GeminiAnalysis;
+    cost_cents: number;
+    /**
+     * Phase 5 D-12: per-segment availability flags populated by `analyzeVideoSegmented`.
+     * Undefined for text mode + tiktok_url mode + legacy video path (D-11 eval-harness
+     * compatibility). The aggregator (Plan 03) reads this to populate
+     * SignalAvailability.gemini_hook/body/cta with a `?? false` fallback for legacy
+     * callers (RESEARCH line 475 — historical JSONB rows missing the new keys).
+     */
+    signalAvailability?: {
+      gemini_hook: boolean;
+      gemini_body: boolean;
+      gemini_cta: boolean;
+    };
+  };
   creatorContext: CreatorContext;
   ruleResult: RuleScoreResult;
   trendEnrichment: TrendEnrichment;
@@ -332,29 +354,72 @@ export async function runPredictionPipeline(
   // Stage 3: Gemini Analysis -- NON-CRITICAL (fallback with warning — HARD-03)
   const geminiPromise = (async (): Promise<PipelineResult["geminiResult"]> => {
     try {
-      // Route video uploads to video-specific Gemini analysis
+      // Route video uploads to segmented Gemini analysis (Phase 5 Plan 02/03).
+      // D-11: legacy `analyzeVideoWithGemini` import preserved above for eval-harness
+      // corpus-replay path; not invoked from production video branch.
+      // D-14: NO outer `timed("gemini_video_analysis", ...)` wrapper here — the three
+      // per-segment events emitted by helpers (gemini_hook / _body / _cta) REPLACE it.
       if (validated.input_mode === "video_upload" && validated.video_storage_path) {
-        return await timed("gemini_video_analysis", timings, async () => {
-          const { data: videoBlob, error: downloadError } = await supabase
-            .storage
-            .from("videos")
-            .download(validated.video_storage_path!);
+        const { data: videoBlob, error: downloadError } = await supabase
+          .storage
+          .from("videos")
+          .download(validated.video_storage_path);
 
-          if (downloadError || !videoBlob) {
-            throw new Error(
-              `Failed to download video from storage: ${downloadError?.message ?? "no data"}`
-            );
-          }
+        if (downloadError || !videoBlob) {
+          throw new Error(
+            `Failed to download video from storage: ${downloadError?.message ?? "no data"}`
+          );
+        }
 
-          const buffer = Buffer.from(await videoBlob.arrayBuffer());
-          const ext = validated.video_storage_path!.split(".").pop()?.toLowerCase() ?? "mp4";
-          const mimeType = EXT_TO_MIME[ext] ?? "video/mp4";
+        const buffer = Buffer.from(await videoBlob.arrayBuffer());
+        const ext = validated.video_storage_path.split(".").pop()?.toLowerCase() ?? "mp4";
+        const mimeType = EXT_TO_MIME[ext] ?? "video/mp4";
 
-          return analyzeVideoWithGemini(buffer, mimeType, validated.niche);
-        }, { wave: 1, onEvent: onStageEvent });
+        // Load calibration baseline so segment prompts can embed differentiators.
+        // Reuses the module-level cache singleton in gemini.ts — no extra disk reads on warm path.
+        // If calibration cannot load, legacy analyzeVideoWithGemini also fails; preserve that
+        // behavior by throwing here, which the outer catch routes to DEFAULT_GEMINI_RESULT.
+        const calibration = await loadCalibrationData();
+        if (!calibration) {
+          throw new Error(
+            "Calibration baseline unavailable — Gemini segmented analysis cannot proceed."
+          );
+        }
+
+        // Phase 4 D-15: content_type from Wave 0 flows into segment prompts.
+        // Phase 5 D-15-partial: niche threads through; creatorStyle (Card 4) deferred.
+        const contentTypeSlug = wave0Result.content_type?.type ?? null;
+        const merged = await analyzeVideoSegmented(buffer, mimeType, {
+          calibration,
+          niche: validated.niche ?? creatorContext.niche ?? null,
+          contentType: contentTypeSlug,
+          creatorStyle: null,
+          onStageEvent,
+          // payload.duration_hint is `number | null` per types.ts:109 — fallback to 30s
+          // (a typical TikTok length) when the upstream client did not report duration.
+          durationSeconds: payload.duration_hint ?? 30,
+        });
+
+        // D-09: 3-of-3 failure path — `analyzeVideoSegmented` returns `analysis: null`.
+        // Preserve DEFAULT_GEMINI_RESULT shape (5 zero-score factors) for the existing
+        // factor-array consumers downstream, but surface the merged `signalAvailability`
+        // so the aggregator (Plan 03) can mark gemini_hook/body/cta as false and trigger
+        // weight redistribution.
+        if (merged.analysis === null) {
+          return {
+            ...DEFAULT_GEMINI_RESULT,
+            signalAvailability: merged.signalAvailability,
+          };
+        }
+
+        return {
+          analysis: merged.analysis,
+          cost_cents: merged.cost_cents,
+          signalAvailability: merged.signalAvailability,
+        };
       }
 
-      // Default: text analysis
+      // Default: text analysis (unchanged from Phase 4).
       return await timed("gemini_analysis", timings, () =>
         analyzeWithGemini(validated),
         { wave: 1, onEvent: onStageEvent }
