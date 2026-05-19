@@ -40,12 +40,19 @@ Phase 1 does NOT build hero, bento, or any visible content sections — those ar
   7. **Reference anchors** (specific linear.app section + raycast.com section + DESIGN.md citations)
 
 ### Visual Verification Protocol (mandatory per-phase gate — extends FOUND-11)
-- **D-05:** Per-phase visual gate is **5-layer**, all must be green:
+- **D-05:** Per-phase **visual gate** is **5-layer**, all must be green. This is the CRAFT-and-anti-slop gate; it does NOT replace FOUND-13 (technical phase-gate checklist) — both are required to ship a phase:
   1. **Playwright snapshots** — automated @ 375/768/1280 per section per state (default/hover/focus)
   2. **Side-by-side audit doc** — `${phase_dir}/${padded_phase}-VISUAL-AUDIT.md` with Virtuna sections next to Linear/Raycast reference snapshots
   3. **AI ui-checker pass** — gsd-ui-checker agent scores against anti-slop blacklist + craft rubric, writes verdict to VISUAL-AUDIT.md
   4. **Craft rubric scoring** — 6 dimensions (typography precision, spacing rhythm, motion choreography, contrast, mobile bar, anti-slop discipline). **5/6 dimensions must PASS** to ship the phase.
   5. **Davide visual review** — final human sign-off looking at production build (`pnpm build && pnpm start`) at all 3 viewports.
+- **D-05a:** **Technical phase-gate checklist (FOUND-13) is also required**, complementing the visual gate. Each phase must additionally pass:
+  - Lighthouse mobile LCP < 2.5s + CLS < 0.1
+  - Production build verification (`next build && next start` — backdrop-filter rendering, no hydration warnings)
+  - Dashboard regression snapshot (Playwright capture of `/app/dashboard` proves zero token leakage from landing route)
+  - `git diff --name-only` scope guard (only landing-route + landing-component + landing-hook files changed — zero dashboard files in diff)
+  - `landing.css` scope check (D-19) — CI script verifies no imports outside `(marketing)/`
+  - **A phase ships only when BOTH the 5-layer visual gate (D-05) AND the technical phase-gate checklist (D-05a / FOUND-13) are green.**
 - **D-06:** Phase 1 captures **frozen reference snapshots** in `verification/reference/`:
   - `linear-desktop-1280.png`, `linear-tablet-768.png`, `linear-mobile-375.png` (above-fold)
   - `linear-bento.png`, `linear-pricing.png` (specific sections)
@@ -75,6 +82,15 @@ Phase 1 does NOT build hero, bento, or any visible content sections — those ar
 - **D-14:** **shadcn/ui** = allowed for new primitives (copy-paste, Radix-based, already in use). No runtime dep additions.
 - **D-15:** **Magic UI** (`magicui.design`, 150+ Motion-based animated components) = selective copy-paste ONLY. Each import requires section-brief justification. No bulk install. Good fit for stat counters (Phase 5/6), animated beams if hero needs one, marquees.
 - **D-16:** **Aceternity UI** = **discouraged by default**. Many signature components (3D cards, magnetic buttons, gradient orbs, particle backgrounds) ARE the recognizable AI-aesthetic cliché. Use only if a specific effect is uniquely Aceternity's AND the section brief explicitly justifies the cliché risk.
+- **D-16a:** **Other libraries Davide mentioned ("and other libraries")** — same policy as Magic UI (selective copy-paste with section-brief justification per import). Explicit by-name policy:
+  - **Motion Primitives** (`motion-primitives.com`, 50+ marketing sections) — reference only, do NOT import sections wholesale (they'll feel templated)
+  - **react-bits** (animated components) — selective copy-paste with justification, same as Magic UI
+  - **Origin UI** (`coss.com/origin`) — allowed primitive source alongside shadcn, copy-paste only
+  - **NextUI / Hero UI** — discouraged (runtime dep + opinionated styling conflicts with Virtuna's existing DS)
+  - **Tailwind UI** (paid) — reference only, do NOT copy markup wholesale (it's licensed)
+  - **awesome-design-md** files — reference / context injection ONLY, never lifted layout/copy
+  - **StyleSeed** (`bitjaru/styleseed` — 69 design rules + brand skins) — DO NOT install (conflicts with Virtuna's 36-component DS). Cherry-pick its 69 design judgment rules into CRAFT-RUBRIC.md if any aren't already covered by AS-01..AS-15.
+  - **Any other library** — must be added to this list with a CONTEXT.md amendment + section-brief justification before first import. No silent runtime-dep additions.
 
 ### Token Scope + Cascade Isolation (Claude's discretion — locked defaults)
 - **D-17:** `landing.css` declares `@layer landing { ... }` (CSS cascade layer) and is imported **ONLY** from `src/app/(marketing)/layout.tsx`. NEVER from root `src/app/layout.tsx`. Dashboard physically never sees the file.
