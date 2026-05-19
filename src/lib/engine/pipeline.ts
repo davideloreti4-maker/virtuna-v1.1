@@ -50,8 +50,17 @@ export interface PipelineResult {
 
   // Phase 3 — Wave 0/3 stub outputs (Phase 4/7 fill with real logic)
   wave0Result: Wave0Result;
+  /**
+   * Phase 7 — Wave 3 outputs surfaced as TWO derived fields rather than a single
+   * `Wave3Outcome`. They originate from the same `runWave3` call:
+   *   - `wave3Result` ← `Wave3Outcome.results` (per-persona detail for audience-viz)
+   *   - `personaBehavioralAggregate` ← `Wave3Outcome.aggregate` (top-3-weighted aggregate, or null)
+   *   - `Wave3Outcome.warnings` is folded into the pipeline-level `warnings` array.
+   * Reviewer note (IN-04): treat these as a logical group. Pipeline-level consumers
+   * that need both should read both — the orchestrator does not synthesize them
+   * from independent sources.
+   */
   wave3Result: PersonaSimulationResult[];
-  /** Phase 7 (Pitfall 9) — aggregator reads this to set signal_availability.personas in Plan 07-03. */
   personaBehavioralAggregate: PersonaBehavioralAggregate | null;
   /**
    * Phase 7 CR-01 — wave-level Wave 3 cost in cents, surfaced so the aggregator can fold
