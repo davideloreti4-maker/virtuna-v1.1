@@ -146,14 +146,21 @@ Plans:
 ### Phase 6: Audio Analysis + Fingerprint Matching
 **Goal:** Audio stage produces real signals (voice clarity, audio hook, silence ratio, fingerprint match) replacing the current no-op.
 **Depends on:** Phase 3 (pipeline infrastructure)
-**Requirements:** AUDIO-01..06
+**Requirements:** AUDIO-01..06, HOOK-02 (migrated from Phase 5 per D-H1)
 **Success Criteria:**
   1. `Stage 4: Audio` returns a real result object (not `null`) with voice clarity, audio hook score, silence/voiceover/music ratio
   2. Audio fingerprint match against trending sounds DB returns matched sound + velocity (rising / peak / declining) when match found
   3. Audio signal feeds aggregator with appropriate weight
   4. Existing trend enrichment fuzzy string match still works as fallback when fingerprint match is unavailable
   5. Audio analysis adds <2s to total pipeline latency (folded into existing Gemini calls where possible)
-**Plans:** TBD (~2 plans)
+**Plans:** 6 plans across 5 waves (Plan 05 split into 05 + 06 per checker WARNING 5; Plan 06 lifted to Wave 5 by explicit dependency on Plan 05)
+Plans:
+- [x] 06-01-PLAN.md — Wave 1: Gemini Flash audio reliability smoke test (gates SC#1) + HOOK-02 REQUIREMENTS.md migration (D-H1)
+- [x] 06-02-PLAN.md — Wave 2: Types + migration (pgvector + HNSW + match RPC + analysis_results.audio_description) + BLOCKING schema push
+- [x] 06-03-PLAN.md — Wave 3: Gemini schema extension (audio_signals optional for graceful degradation) + audio-perceptual module (D-G3 coefficients)
+- [x] 06-04-PLAN.md — Wave 3: audio-fingerprint stage (explicit Sentry-vs-warn asymmetry) + backfill script (FULL D-F4 pipeline)
+- [x] 06-05-PLAN.md — Wave 4: pipeline rename + trends D-F3 gating + types.ts PipelineResult widening
+- [x] 06-06-PLAN.md — Wave 5: aggregator D-G1/G2/G3/G4 + analysis_results.audio_description persistence (Q4 RESOLVED) + cron full D-F4 pipeline
 
 ### Phase 7: Multi-Persona Simulation
 **Goal:** 10 personas allocated FYP-first (6/2/1/1) run in parallel as Wave 3 after Wave 2 (DeepSeek synthesis + trends). Each persona produces structured reactions used both as the new behavioral signal and the data source for M2's audience viz.
@@ -249,7 +256,7 @@ Plans:
 | 3. Pipeline Infrastructure | 4/4 | Complete (PARTIAL — defer-smoke for SC#4/#5) | 2026-05-18 |
 | 4. Wave 0 — Content Type + Niche Detection | 0/3 | Planned | - |
 | 5. Video Segmentation + Hook Decomposition | 3/3 | Complete (verifier passed; code review advisory 4C/9W/6I) | 2026-05-19 |
-| 6. Audio Analysis + Fingerprint | 0/TBD | Not started | - |
+| 6. Audio Analysis + Fingerprint | 6/6 | Complete (3/3 HUMAN-UAT passed; code review 5W/4I closed inline) | 2026-05-19 |
 | 7. Multi-Persona Simulation | 5/5 | Complete    | 2026-05-19 |
 | 8. Benchmark Retrieval | 0/TBD | Not started | - |
 | 9. Platform Algo Fit + Self-Critique + Counterfactuals | 0/TBD | Not started | - |

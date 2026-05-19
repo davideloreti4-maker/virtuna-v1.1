@@ -350,7 +350,9 @@ describe.skipIf(!hasGeminiKey || !hasDeepSeekKey || !hasFixtureVideo)(
         ruleResult: defaultRules,
         trendEnrichment: defaultTrends,
         deepseekResult,
-        audioResult: null,
+        // Phase 6 (D-A4) — replaces audioResult: null. E2E does not exercise the
+        // fingerprint stage directly; aggregator treats null as "no match".
+        audioFingerprintResult: null,
         requestId: "video-e2e-test",
         timings: [
           { stage: "gemini_video", duration_ms: Math.round(geminiLatency) },

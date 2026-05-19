@@ -215,16 +215,16 @@ describe("selectWeights", () => {
 
   it("always sums to ~1.0 for any combination of available signals (except all-false)", () => {
     const combos = [
-      { behavioral: true, gemini: true, ml: false, rules: false, trends: true, content_type: false, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false },
-      { behavioral: false, gemini: true, ml: true, rules: false, trends: false, content_type: true, niche: true, gemini_hook: false, gemini_body: false, gemini_cta: false },
-      { behavioral: true, gemini: false, ml: true, rules: true, trends: false, content_type: false, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false },
-      { behavioral: false, gemini: false, ml: true, rules: true, trends: true, content_type: true, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false },
-      { behavioral: true, gemini: true, ml: true, rules: false, trends: false, content_type: false, niche: true, gemini_hook: false, gemini_body: false, gemini_cta: false },
-      { behavioral: true, gemini: true, ml: false, rules: false, trends: true, content_type: false, niche: false, personas: false },
-      { behavioral: false, gemini: true, ml: true, rules: false, trends: false, content_type: true, niche: true, personas: true },
-      { behavioral: true, gemini: false, ml: true, rules: true, trends: false, content_type: false, niche: false, personas: false },
-      { behavioral: false, gemini: false, ml: true, rules: true, trends: true, content_type: true, niche: false, personas: true },
-      { behavioral: true, gemini: true, ml: true, rules: false, trends: false, content_type: false, niche: true, personas: false },
+      { behavioral: true, gemini: true, ml: false, rules: false, trends: true, content_type: false, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false },
+      { behavioral: false, gemini: true, ml: true, rules: false, trends: false, content_type: true, niche: true, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false },
+      { behavioral: true, gemini: false, ml: true, rules: true, trends: false, content_type: false, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false },
+      { behavioral: false, gemini: false, ml: true, rules: true, trends: true, content_type: true, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false },
+      { behavioral: true, gemini: true, ml: true, rules: false, trends: false, content_type: false, niche: true, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false },
+      { behavioral: true, gemini: true, ml: false, rules: false, trends: true, content_type: false, niche: false, personas: false, gemini_hook: false, gemini_body: false, gemini_cta: false },
+      { behavioral: false, gemini: true, ml: true, rules: false, trends: false, content_type: true, niche: true, personas: true, gemini_hook: false, gemini_body: false, gemini_cta: false },
+      { behavioral: true, gemini: false, ml: true, rules: true, trends: false, content_type: false, niche: false, personas: false, gemini_hook: false, gemini_body: false, gemini_cta: false },
+      { behavioral: false, gemini: false, ml: true, rules: true, trends: true, content_type: true, niche: false, personas: true, gemini_hook: false, gemini_body: false, gemini_cta: false },
+      { behavioral: true, gemini: true, ml: true, rules: false, trends: false, content_type: false, niche: true, personas: false, gemini_hook: false, gemini_body: false, gemini_cta: false },
     ];
 
     for (const combo of combos) {

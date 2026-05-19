@@ -239,8 +239,12 @@ Return JSON matching the schema exactly. The factors array must contain exactly 
 
 /**
  * Build the video analysis prompt with calibration data embedded
+ *
+ * @internal — exported for tests only. Phase 6 (Plan 06-03) Test 8 imports this
+ * directly to assert the Audio Signals section header + the ratio-sum=1.0
+ * instruction are emitted verbatim. Do not call from production code.
  */
-function buildVideoPrompt(
+export function buildVideoPrompt(
   calibration: CalibrationData,
   niche?: string
 ): string {
@@ -264,6 +268,13 @@ function buildVideoPrompt(
 - **hook_visual_impact**: First 3 seconds visual hook effectiveness (0-10)
 - **pacing_score**: Cut frequency, rhythm, dead air avoidance (0-10)
 - **transition_quality**: Smooth cuts, creative transitions, visual flow (0-10)
+
+## Audio Signals (in addition to video — Gemini natively processes the audio track)
+
+- **voice_clarity_0_10**: Speech intelligibility, SNR, articulation quality (0-10). Return null if no human speech is present.
+- **audio_hook_first_2s_0_10**: Audio impact in first 2 seconds — would the user keep sound on? (0-10). Return null if no audio/silence in first 2s.
+- **silence_ratio**, **voiceover_ratio**, **music_ratio**: Three fractions where silence_ratio + voiceover_ratio + music_ratio MUST sum to exactly 1.0. Rebalance internally before emitting.
+- **audio_description**: 50-150 char natural language description of the audio (genre, mood, tempo, vocal/instrumental, lyrical hooks). Example: "upbeat hip-hop track, 90 BPM, sampled female vocal hook 'oh la la'"
 
 ## Scoring Rules
 
@@ -310,8 +321,17 @@ const TEXT_RESPONSE_SCHEMA = {
   required: ["factors", "overall_impression", "content_summary"],
 };
 
-/** Gemini structured output schema for video mode (includes video_signals) */
-const VIDEO_RESPONSE_SCHEMA = {
+/**
+ * Gemini structured output schema for video mode (includes video_signals + audio_signals).
+ *
+ * Phase 6 (D-A1, D-A2, D-A3, D-F1, D-H1, D-H2) — audio extracted from same video call.
+ * NOTE: audio_signals is NOT in the outer `required` array — Gemini may omit it under
+ * degraded conditions (model regression, prompt edge case). Downstream Zod validation
+ * accepts the omission via `.optional()`, and the aggregator falls back to
+ * signal_availability.audio = false (HARD-03 + Phase 3 D-04). Exported for Plan 06-03
+ * Test 7 (verifies the schema contains the 6 audio sub-properties).
+ */
+export const VIDEO_RESPONSE_SCHEMA = {
   type: Type.OBJECT,
   properties: {
     factors: {
@@ -344,7 +364,30 @@ const VIDEO_RESPONSE_SCHEMA = {
         "transition_quality",
       ],
     },
+    // Phase 6 (D-A1, D-A2, D-A3, D-F1, D-H1, D-H2) — audio extracted from same video call.
+    audio_signals: {
+      type: Type.OBJECT,
+      properties: {
+        // null per D-A2 when content_type ∈ {slideshow, b_roll, action}
+        voice_clarity_0_10: { type: Type.NUMBER, nullable: true },
+        // null per D-A2; 0-2s window per D-H2
+        audio_hook_first_2s_0_10: { type: Type.NUMBER, nullable: true },
+        // Three fractions summing to ~1.0 per D-A3
+        silence_ratio: { type: Type.NUMBER },
+        voiceover_ratio: { type: Type.NUMBER },
+        music_ratio: { type: Type.NUMBER },
+        // 50-150 char description for fingerprint per D-F1
+        audio_description: { type: Type.STRING },
+      },
+      required: [
+        "silence_ratio",
+        "voiceover_ratio",
+        "music_ratio",
+        "audio_description",
+      ],
+    },
   },
+  // audio_signals deliberately NOT in outer required[] — graceful degradation per BLOCKER 2 fix.
   required: [
     "factors",
     "overall_impression",
@@ -367,10 +410,13 @@ export async function analyzeWithGemini(
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), TEXT_TIMEOUT_MS);
+    // Hoisted out of try{} so finally{} can clear it on both success + error paths
+    // (06-REVIEW.md IN-01: prior code only cleared on success, leaving an orphan
+    // setTimeout to fire after error/throw — harmless but wasteful).
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TEXT_TIMEOUT_MS);
 
+    try {
       const prompt =
         attempt === 0
           ? buildTextPrompt(input, calibration, niche)
@@ -385,8 +431,6 @@ export async function analyzeWithGemini(
           abortSignal: controller.signal,
         },
       });
-
-      clearTimeout(timeout);
 
       const text = response.text ?? "";
       const analysis = parseGeminiResponse(text);
@@ -428,6 +472,8 @@ export async function analyzeWithGemini(
       // Exponential backoff: 1s, 3s
       const delay = attempt === 0 ? 1000 : 3000;
       await new Promise((resolve) => setTimeout(resolve, delay));
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
@@ -514,28 +560,34 @@ export async function analyzeVideoWithGemini(
     // Build video prompt and analyze
     const videoPrompt = buildVideoPrompt(calibration, niche);
 
+    // Hoisted out of the inner try so finally{} can clear it on both success +
+    // error paths (06-REVIEW.md IN-01 video path: same harmless-but-wasteful
+    // pattern as the text-analysis retry loop, fixed there in 7d83bb1).
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), VIDEO_TIMEOUT_MS);
 
-    const response = await ai.models.generateContent({
-      model: GEMINI_MODEL,
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: videoPrompt },
-            { fileData: { fileUri, mimeType } },
-          ],
+    let response: Awaited<ReturnType<typeof ai.models.generateContent>>;
+    try {
+      response = await ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: videoPrompt },
+              { fileData: { fileUri, mimeType } },
+            ],
+          },
+        ],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: VIDEO_RESPONSE_SCHEMA,
+          abortSignal: controller.signal,
         },
-      ],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: VIDEO_RESPONSE_SCHEMA,
-        abortSignal: controller.signal,
-      },
-    });
-
-    clearTimeout(timeout);
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     const text = response.text ?? "";
     const analysis = parseGeminiVideoResponse(text);

@@ -284,6 +284,11 @@ export async function POST(request: Request) {
       // a Json object (boolean keys), but TS doesn't infer recursive Json subtyping.
       content_hash: contentHash,
       signal_availability: finalResult.signal_availability as unknown as Json,
+      // Phase 6 (Note 7 / Q4 RESOLVED — Plan 06-06) — persist the verbatim Gemini
+      // audio_description for debugging + future ML training. Aggregator sources
+      // it from `geminiResult.analysis.audio_signals?.audio_description ?? null`;
+      // null when audio_signals absent. Column added by Plan 06-02 migration.
+      audio_description: finalResult.audio_description ?? null,
     });
 
     // -------------------------------------------------------

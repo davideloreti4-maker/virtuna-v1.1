@@ -177,12 +177,25 @@ export interface PredictionResult {
   gemini_score: number; // Gemini's contribution
   behavioral_score: number; // DeepSeek behavioral contribution
   ml_score: number; // ML classifier score (0-100), 0 if model unavailable
+  /** Phase 6 (D-G3) — 0-100 audio perceptual score before fingerprint boost. 0 when audio absent.
+   *  Optional to preserve compile against existing consumers; plans 06-05/06-06 will start emitting it. */
+  audio_perceptual_score?: number;
+  /** Phase 6 (D-G1) — Full fingerprint match record or null if no match above threshold.
+   *  Optional to preserve compile against existing consumers; plans 06-05/06-06 will start emitting it. */
+  audio_fingerprint?: AudioFingerprintResult | null;
+  /** Phase 6 (Note 7 / Q4 RESOLVED) — verbatim Gemini-emitted audio_description for
+   *  persistence into analysis_results.audio_description (Plan 06-02 migration).
+   *  Null when audio_signals absent. Sourced verbatim from
+   *  geminiResult.analysis.audio_signals?.audio_description ?? null. */
+  audio_description?: string | null;
   score_weights: {
     behavioral: number; // 0.35
     gemini: number; // 0.25
     ml: number; // 0.15
     rules: number; // 0.15
     trends: number; // 0.10
+    /** Phase 6 (D-G1) — audio weight 0.07; redistributes when signal_availability.audio=false. */
+    audio?: number;
   };
 
   // Meta
@@ -236,6 +249,12 @@ export interface SignalAvailability {
    * regression silently elide the flag.
    */
   personas: boolean;
+  // Phase 6 (D-G1) — weight-bearing: gates audio_perceptual_score contribution to overall_score.
+  // Optional to preserve compile against existing aggregator; plans 06-05/06-06 emit it.
+  audio?: boolean;
+  // Phase 6 (D-G1) — provenance only: tracks whether pgvector returned a match; NOT in SCORE_WEIGHT_KEYS.
+  // Optional to preserve compile against existing aggregator; plans 06-05/06-06 emit it.
+  audio_fingerprint?: boolean;
 }
 
 // Wave0Result now defined below as z.infer<typeof Wave0ResultSchema> — see Phase 4 block.
@@ -274,22 +293,70 @@ export const GeminiVideoSignalsSchema = z.object({
   transition_quality: z.number().min(0).max(10),
 });
 
+// Phase 6 (D-A1..A3, D-F1) — Zod schema for the extended audio_signals block.
+// `.refine()` normalizes ratio sums within ±0.1 tolerance per Pitfall 1.
+// Chained `.optional()` on parent schemas wraps this refined schema so the
+// refinement only fires when the field is present (graceful degradation per
+// HARD-03 + Phase 3 D-04).
+// NOTE: declared BEFORE GeminiResponseSchema so that the base schema can
+// reference it directly via `.optional()` (Phase 6 wiring + aggregator access
+// via `gemini.audio_signals?.audio_description ?? null`).
+export const GeminiAudioSignalsSchema = z
+  .object({
+    voice_clarity_0_10: z.number().min(0).max(10).nullable(),
+    audio_hook_first_2s_0_10: z.number().min(0).max(10).nullable(),
+    silence_ratio: z.number().min(0).max(1),
+    voiceover_ratio: z.number().min(0).max(1),
+    music_ratio: z.number().min(0).max(1),
+    // min(10): floor matches the smoke-test validation gate (10-300) and rules
+    //   out empty/degenerate responses. max(280): aligned with the backfill +
+    //   cron truncation cap (slice(0, 280)) — anything longer gets truncated
+    //   downstream anyway, so accepting >280 invites silent data loss. Prompt
+    //   asks for 50-150 chars; the band [10,280] is intentional slack for LLMs
+    //   that don't honor exact char counts (06-REVIEW.md WR-05 — was min(1).max(300)).
+    audio_description: z.string().min(10).max(280),
+  })
+  .refine(
+    (v) =>
+      Math.abs(v.silence_ratio + v.voiceover_ratio + v.music_ratio - 1.0) < 0.1,
+    { message: "Audio ratios must sum to ~1.0 (±0.1 tolerance)" },
+  );
+
+// Phase 6 — audio_signals is OPTIONAL on the BASE response schema (not just on
+// GeminiVideoResponseSchema). When Gemini omits the audio_signals block (model
+// regression, prompt edge case, or any failure mode where the LLM degrades to
+// video-only output), the top-level response still passes Zod validation.
+// Downstream code reads audio_signals via optional chaining
+// (`geminiResult.analysis.audio_signals?.audio_description ?? null`), so the
+// resulting `T | undefined` type is the canonical contract. The text-mode path
+// never populates audio_signals at runtime, so the type stays `undefined` on
+// text-only analyses — preserving graceful degradation per HARD-03 + Phase 3
+// D-04. Aggregator sees audio_signals as undefined → signal_availability.audio
+// = false → audio weight redistributes via the existing selectWeights math.
+// Mirrors the existing `video_signals.optional()` pattern below it.
 export const GeminiResponseSchema = z.object({
   factors: z.array(FactorSchema).length(5),
   overall_impression: z.string(),
   content_summary: z.string(),
-  video_signals: GeminiVideoSignalsSchema.optional(),
+  video_signals: GeminiVideoSignalsSchema.nullable().optional(),
+  // .nullable().optional() — accept both omitted-key and explicit-null (06-REVIEW.md WR-02):
+  // if Gemini emits `audio_signals: null` instead of omitting the key, .optional()-only
+  // rejects it and the whole video analysis falls through to fallback factors (not just
+  // audio degradation). Both shapes degrade to the same `T | null | undefined` contract,
+  // which downstream optional-chaining (`?.audio_description ?? null`) handles uniformly.
+  audio_signals: GeminiAudioSignalsSchema.nullable().optional(),
 });
 
 export type GeminiAnalysis = z.infer<typeof GeminiResponseSchema>;
 
-// Phase 5 D-13: GeminiVideoAnalysis widens with hook_decomposition + cta_segment.
-// Both are OPTIONAL + NULLABLE so the existing makeGeminiAnalysis() factory at
-// __tests__/factories.ts:22 continues to typecheck without modification (Pitfall #10).
-// The segmented path (Plan 02) always populates them; the legacy single-call path
-// leaves them undefined.
+// GeminiVideoResponseSchema is the strict superset for video-mode responses:
+// video_signals becomes REQUIRED (not optional). audio_signals remains optional
+// for graceful degradation. Phase 5 D-13 also widens with hook_decomposition +
+// cta_segment (both .optional().nullable() so makeGeminiAnalysis() factory at
+// __tests__/factories.ts:22 continues to typecheck without modification).
 export const GeminiVideoResponseSchema = GeminiResponseSchema.extend({
   video_signals: GeminiVideoSignalsSchema,
+  audio_signals: GeminiAudioSignalsSchema.nullable().optional(),
   hook_decomposition: HookDecompositionZodSchema.optional().nullable(),
   cta_segment: CtaSegmentZodSchema.optional().nullable(),
 });
@@ -462,4 +529,72 @@ export interface TrendEnrichment {
   }>;
   trend_context: string; // Summary for DeepSeek prompt
   hashtag_relevance: number; // 0-1 semantic hashtag relevance (SIG-03)
+}
+
+// =====================================================
+// Phase 6 — Audio Analysis result shapes
+// =====================================================
+
+/** Audio sub-scores extracted from the extended gemini_video_analysis response. D-A1, D-A3, D-F1. */
+export interface GeminiAudioSignals {
+  /** 0-10 voice clarity / SNR. null per D-A2 when content_type ∈ {slideshow, b_roll, action}. */
+  voice_clarity_0_10: number | null;
+  /** 0-10 audio hook score for first 2s (D-H2). null per D-A2 when content_type ∈ {slideshow, b_roll, action}. */
+  audio_hook_first_2s_0_10: number | null;
+  /** 0-1, sums to 1.0 with siblings per D-A3. */
+  silence_ratio: number;
+  /** 0-1, sums to 1.0 with siblings per D-A3. */
+  voiceover_ratio: number;
+  /** 0-1, sums to 1.0 with siblings per D-A3. */
+  music_ratio: number;
+  /** 50-150 char description for fingerprint matching per D-F1. */
+  audio_description: string;
+}
+
+/** audio_perceptual_score output (D-G3 — content-type-adaptive formula). */
+export interface AudioPerceptualResult {
+  /** 0-100, normalized BEFORE audio_fingerprint_boost is applied per D-G3. */
+  audio_perceptual_score: number;
+  /** Which formula branch the score came from per D-G3. */
+  formula_mode: "voice" | "ambient" | "balanced";
+  /** Sub-score field names that fed the formula (for debugging — e.g., ["voice_clarity", "audio_hook", "voiceover_ratio"]). */
+  sub_scores_used: string[];
+}
+
+/** pgvector fingerprint match result (D-F0, D-F1). null when no match above threshold. */
+export interface AudioFingerprintResult {
+  sound_name: string;
+  sound_url: string | null;
+  /** 0-1 cosine similarity. Threshold for inclusion is 0.80 (env-overridable AUDIO_FINGERPRINT_SIMILARITY_THRESHOLD). */
+  similarity: number;
+  /** From trending_sounds.trend_phase column. null if column is null. */
+  trend_phase: "emerging" | "rising" | "peak" | "declining" | null;
+  /** From trending_sounds.velocity_score column. */
+  velocity_score: number;
+}
+
+/**
+ * Phase 6 D-A4 — feeder interface widening the pipeline result with the
+ * audio_fingerprint stage output. `PipelineResult` (declared in pipeline.ts)
+ * extends this interface so Plan 06-06's aggregator can read
+ * `pipelineResult.audioFingerprintResult` with full type safety.
+ *
+ * Lives in types.ts (next to the AudioFingerprintResult shape it references)
+ * to keep audio-related types in one place. pipeline.ts composes it into the
+ * full PipelineResult so the broader interface stays close to its consumer.
+ *
+ * Value contract:
+ * - `AudioFingerprintResult` when the pgvector RPC returned a row above the
+ *   similarity threshold (0.80 by default; env-overridable).
+ * - `null` when (a) Gemini omitted audio_signals, (b) audio_description was
+ *   absent / empty, (c) embedContent failed softly, (d) the RPC returned an
+ *   error object, (e) no row matched above threshold, or (f) any thrown
+ *   exception was caught by the pipeline's audio_fingerprint stage.
+ *
+ * Never `undefined` — pipeline.ts always assigns either the match record or null
+ * (the stage's graceful-degradation contract). Aggregator can therefore read
+ * `pipelineResult.audioFingerprintResult !== null` for the availability flag.
+ */
+export interface PipelineAudioFingerprintFields {
+  audioFingerprintResult: AudioFingerprintResult | null;
 }
