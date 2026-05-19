@@ -163,21 +163,48 @@ function stubOpts(durationSeconds: number, events: StageEvent[] = []) {
   };
 }
 
-// Helper: queue three successful generateContent responses in fan-out order (hook, body, cta).
+// Identify which segment called generateContent by inspecting the user prompt text.
+// Promise.allSettled fires helpers concurrently — the mock queue order is non-deterministic.
+// We route based on prompt content (each segment's system prompt has unique phrases).
+type Segment = "hook" | "body" | "cta";
+
+function segmentOf(call: { contents?: Array<{ parts?: Array<{ text?: string }> }> }): Segment {
+  const text = call.contents?.[0]?.parts?.[0]?.text ?? "";
+  // Hook prompt mentions the 5 TikTok factors by name (Scroll-Stop Power et al.).
+  if (text.includes("Scroll-Stop Power")) return "hook";
+  // CTA prompt is the only one with `cta_present` discriminator language.
+  if (text.includes("cta_present")) return "cta";
+  // Body prompt is the only one with `visual_production_quality` AND no `cta_present`.
+  return "body";
+}
+
+// Helper: route each generateContent call to the right fixture based on the caller's prompt.
+// Optional `overrides` lets a test substitute a specific segment with a failure / different value.
+function routedMockGenerate(
+  overrides: Partial<Record<Segment, () => Promise<unknown>>> = {},
+) {
+  mockGenerate.mockImplementation(async (call: unknown) => {
+    const seg = segmentOf(call as { contents?: Array<{ parts?: Array<{ text?: string }> }> });
+    const override = overrides[seg];
+    if (override) return override();
+    if (seg === "hook") {
+      return { text: JSON.stringify(VALID_HOOK_FIXTURE), usageMetadata: HOOK_USAGE };
+    }
+    if (seg === "body") {
+      return { text: JSON.stringify(VALID_BODY_FIXTURE), usageMetadata: BODY_USAGE };
+    }
+    return { text: JSON.stringify(VALID_CTA_FIXTURE), usageMetadata: CTA_USAGE };
+  });
+}
+
+// Legacy alias kept for clarity in tests that use the all-success path.
 function queueHHH() {
-  mockGenerate
-    .mockResolvedValueOnce({
-      text: JSON.stringify(VALID_HOOK_FIXTURE),
-      usageMetadata: HOOK_USAGE,
-    })
-    .mockResolvedValueOnce({
-      text: JSON.stringify(VALID_BODY_FIXTURE),
-      usageMetadata: BODY_USAGE,
-    })
-    .mockResolvedValueOnce({
-      text: JSON.stringify(VALID_CTA_FIXTURE),
-      usageMetadata: CTA_USAGE,
-    });
+  routedMockGenerate();
+}
+
+// Build a sync rejection thunk for use as an override in `routedMockGenerate`.
+function rejectWith(message: string): () => Promise<unknown> {
+  return () => Promise.reject(new Error(message));
 }
 
 // Extract videoMetadata from each generateContent call.
@@ -230,13 +257,16 @@ describe("analyzeVideoSegmented — Phase 5 Plan 02 Task 3 orchestrator", () => 
     await analyzeVideoSegmented(smallVideo(), "video/mp4", stubOpts(30));
 
     expect(mockGenerate).toHaveBeenCalledTimes(3);
-    // Calls are issued in fan-out order: hook (index 0), body (1), cta (2).
-    const hookMeta = extractVideoMetadata(mockGenerate.mock.calls[0]![0]);
-    const bodyMeta = extractVideoMetadata(mockGenerate.mock.calls[1]![0]);
-    const ctaMeta = extractVideoMetadata(mockGenerate.mock.calls[2]![0]);
-    expect(hookMeta).toEqual({ startOffset: "0s", endOffset: "5s" });
-    expect(bodyMeta).toEqual({ startOffset: "5s", endOffset: "27s" });
-    expect(ctaMeta).toEqual({ startOffset: "27s", endOffset: "30s" });
+    // Route each call by its prompt content (concurrent Promise.allSettled fan-out
+    // means mock queue order is non-deterministic).
+    const callsBySegment: Partial<Record<Segment, { startOffset: string; endOffset: string } | undefined>> = {};
+    for (const call of mockGenerate.mock.calls) {
+      const seg = segmentOf(call[0] as { contents?: Array<{ parts?: Array<{ text?: string }> }> });
+      callsBySegment[seg] = extractVideoMetadata(call[0]);
+    }
+    expect(callsBySegment.hook).toEqual({ startOffset: "0s", endOffset: "5s" });
+    expect(callsBySegment.body).toEqual({ startOffset: "5s", endOffset: "27s" });
+    expect(callsBySegment.cta).toEqual({ startOffset: "27s", endOffset: "30s" });
   });
 
   it("Test 2: 22s video → body window `{5s, 19s}`, cta window `{19s, 22s}` (Pitfall #4 zero-padding)", async () => {
@@ -244,8 +274,13 @@ describe("analyzeVideoSegmented — Phase 5 Plan 02 Task 3 orchestrator", () => 
     await analyzeVideoSegmented(smallVideo(), "video/mp4", stubOpts(22));
 
     expect(mockGenerate).toHaveBeenCalledTimes(3);
-    const bodyMeta = extractVideoMetadata(mockGenerate.mock.calls[1]![0]);
-    const ctaMeta = extractVideoMetadata(mockGenerate.mock.calls[2]![0]);
+    const callsBySegment: Partial<Record<Segment, { startOffset: string; endOffset: string } | undefined>> = {};
+    for (const call of mockGenerate.mock.calls) {
+      const seg = segmentOf(call[0] as { contents?: Array<{ parts?: Array<{ text?: string }> }> });
+      callsBySegment[seg] = extractVideoMetadata(call[0]);
+    }
+    const bodyMeta = callsBySegment.body;
+    const ctaMeta = callsBySegment.cta;
     // STRING with "s" suffix — NOT "19.0s", NOT 19 (numeric).
     expect(bodyMeta).toEqual({ startOffset: "5s", endOffset: "19s" });
     expect(ctaMeta).toEqual({ startOffset: "19s", endOffset: "22s" });
@@ -267,19 +302,13 @@ describe("analyzeVideoSegmented — Phase 5 Plan 02 Task 3 orchestrator", () => 
 
   it("Test 4: files.delete fires AFTER all 3 generateContent calls resolve", async () => {
     const callOrder: string[] = [];
-    mockGenerate
-      .mockImplementationOnce(async () => {
-        callOrder.push("generate-hook");
-        return { text: JSON.stringify(VALID_HOOK_FIXTURE), usageMetadata: HOOK_USAGE };
-      })
-      .mockImplementationOnce(async () => {
-        callOrder.push("generate-body");
-        return { text: JSON.stringify(VALID_BODY_FIXTURE), usageMetadata: BODY_USAGE };
-      })
-      .mockImplementationOnce(async () => {
-        callOrder.push("generate-cta");
-        return { text: JSON.stringify(VALID_CTA_FIXTURE), usageMetadata: CTA_USAGE };
-      });
+    mockGenerate.mockImplementation(async (call: unknown) => {
+      const seg = segmentOf(call as { contents?: Array<{ parts?: Array<{ text?: string }> }> });
+      callOrder.push(`generate-${seg}`);
+      if (seg === "hook") return { text: JSON.stringify(VALID_HOOK_FIXTURE), usageMetadata: HOOK_USAGE };
+      if (seg === "body") return { text: JSON.stringify(VALID_BODY_FIXTURE), usageMetadata: BODY_USAGE };
+      return { text: JSON.stringify(VALID_CTA_FIXTURE), usageMetadata: CTA_USAGE };
+    });
     mockFileDelete.mockImplementation(async () => {
       callOrder.push("delete");
     });
@@ -321,10 +350,7 @@ describe("analyzeVideoSegmented — Phase 5 Plan 02 Task 3 orchestrator", () => 
   // -------------------------------------------------------------------------
 
   it("Test 6: HHF (CTA failed) — signalAvailability.gemini_cta=false + ONE warning", async () => {
-    mockGenerate
-      .mockResolvedValueOnce({ text: JSON.stringify(VALID_HOOK_FIXTURE), usageMetadata: HOOK_USAGE })
-      .mockResolvedValueOnce({ text: JSON.stringify(VALID_BODY_FIXTURE), usageMetadata: BODY_USAGE })
-      .mockRejectedValueOnce(new Error("cta failed"));
+    routedMockGenerate({ cta: rejectWith("cta failed") });
 
     const events: StageEvent[] = [];
     const result = await analyzeVideoSegmented(smallVideo(), "video/mp4", stubOpts(30, events));
@@ -342,10 +368,7 @@ describe("analyzeVideoSegmented — Phase 5 Plan 02 Task 3 orchestrator", () => 
   });
 
   it("Test 7: HFH (body failed) — gemini_body warning, hook+cta data preserved", async () => {
-    mockGenerate
-      .mockResolvedValueOnce({ text: JSON.stringify(VALID_HOOK_FIXTURE), usageMetadata: HOOK_USAGE })
-      .mockRejectedValue(new Error("body failed")) // body + body retry both fail
-      .mockResolvedValueOnce({ text: JSON.stringify(VALID_CTA_FIXTURE), usageMetadata: CTA_USAGE });
+    routedMockGenerate({ body: rejectWith("body failed") });
 
     const events: StageEvent[] = [];
     const result = await analyzeVideoSegmented(smallVideo(), "video/mp4", stubOpts(30, events));
@@ -359,9 +382,10 @@ describe("analyzeVideoSegmented — Phase 5 Plan 02 Task 3 orchestrator", () => 
   });
 
   it("Test 8: HFF (body + CTA failed) — two warnings, hook data intact", async () => {
-    mockGenerate
-      .mockResolvedValueOnce({ text: JSON.stringify(VALID_HOOK_FIXTURE), usageMetadata: HOOK_USAGE })
-      .mockRejectedValue(new Error("body + cta + retries all fail"));
+    routedMockGenerate({
+      body: rejectWith("body failed"),
+      cta: rejectWith("cta failed"),
+    });
 
     const events: StageEvent[] = [];
     const result = await analyzeVideoSegmented(smallVideo(), "video/mp4", stubOpts(30, events));
@@ -379,10 +403,7 @@ describe("analyzeVideoSegmented — Phase 5 Plan 02 Task 3 orchestrator", () => 
   });
 
   it("Test 9: FHH (hook failed) — gemini_hook warning, factors null-filled", async () => {
-    mockGenerate
-      .mockRejectedValueOnce(new Error("hook failed"))
-      .mockResolvedValueOnce({ text: JSON.stringify(VALID_BODY_FIXTURE), usageMetadata: BODY_USAGE })
-      .mockResolvedValueOnce({ text: JSON.stringify(VALID_CTA_FIXTURE), usageMetadata: CTA_USAGE });
+    routedMockGenerate({ hook: rejectWith("hook failed") });
 
     const events: StageEvent[] = [];
     const result = await analyzeVideoSegmented(smallVideo(), "video/mp4", stubOpts(30, events));
@@ -395,10 +416,10 @@ describe("analyzeVideoSegmented — Phase 5 Plan 02 Task 3 orchestrator", () => 
   });
 
   it("Test 10: FHF (hook + cta failed) — two warnings, body data preserved", async () => {
-    mockGenerate
-      .mockRejectedValueOnce(new Error("hook failed"))
-      .mockResolvedValueOnce({ text: JSON.stringify(VALID_BODY_FIXTURE), usageMetadata: BODY_USAGE })
-      .mockRejectedValue(new Error("cta + retry failed"));
+    routedMockGenerate({
+      hook: rejectWith("hook failed"),
+      cta: rejectWith("cta failed"),
+    });
 
     const events: StageEvent[] = [];
     const result = await analyzeVideoSegmented(smallVideo(), "video/mp4", stubOpts(30, events));
@@ -410,11 +431,10 @@ describe("analyzeVideoSegmented — Phase 5 Plan 02 Task 3 orchestrator", () => 
   });
 
   it("Test 11: FFH (hook + body failed) — two warnings, cta data preserved", async () => {
-    mockGenerate
-      .mockRejectedValueOnce(new Error("hook failed"))
-      .mockRejectedValueOnce(new Error("body attempt 1"))
-      .mockRejectedValueOnce(new Error("body attempt 2"))
-      .mockResolvedValueOnce({ text: JSON.stringify(VALID_CTA_FIXTURE), usageMetadata: CTA_USAGE });
+    routedMockGenerate({
+      hook: rejectWith("hook failed"),
+      body: rejectWith("body failed"),
+    });
 
     const events: StageEvent[] = [];
     const result = await analyzeVideoSegmented(smallVideo(), "video/mp4", stubOpts(30, events));
@@ -426,7 +446,11 @@ describe("analyzeVideoSegmented — Phase 5 Plan 02 Task 3 orchestrator", () => 
   });
 
   it("Test 12: FFF (all failed, D-09) — analysis: null, cost_cents: 0, ONE consolidated `gemini_video_unavailable` warning", async () => {
-    mockGenerate.mockRejectedValue(new Error("all failed"));
+    routedMockGenerate({
+      hook: rejectWith("hook failed"),
+      body: rejectWith("body failed"),
+      cta: rejectWith("cta failed"),
+    });
 
     const events: StageEvent[] = [];
     const result = await analyzeVideoSegmented(smallVideo(), "video/mp4", stubOpts(30, events));
@@ -452,9 +476,10 @@ describe("analyzeVideoSegmented — Phase 5 Plan 02 Task 3 orchestrator", () => 
   // -------------------------------------------------------------------------
 
   it("Test 13: HFF — files.delete still called exactly ONCE (Pitfall #1, outer finally)", async () => {
-    mockGenerate
-      .mockResolvedValueOnce({ text: JSON.stringify(VALID_HOOK_FIXTURE), usageMetadata: HOOK_USAGE })
-      .mockRejectedValue(new Error("body + cta failed"));
+    routedMockGenerate({
+      body: rejectWith("body failed"),
+      cta: rejectWith("cta failed"),
+    });
 
     await analyzeVideoSegmented(smallVideo(), "video/mp4", stubOpts(30));
     expect(mockFileUpload).toHaveBeenCalledTimes(1);
@@ -466,10 +491,9 @@ describe("analyzeVideoSegmented — Phase 5 Plan 02 Task 3 orchestrator", () => 
   // -------------------------------------------------------------------------
 
   it("Test 14: 7s video — body skipped (only 2 generateContent calls); gemini_body=false; CTA window {5s, 7s}; NO body pipeline_warning", async () => {
-    // Only hook + cta fire. Order: hook (Promise.allSettled index 0), cta (index 2).
-    mockGenerate
-      .mockResolvedValueOnce({ text: JSON.stringify(VALID_HOOK_FIXTURE), usageMetadata: HOOK_USAGE })
-      .mockResolvedValueOnce({ text: JSON.stringify(VALID_CTA_FIXTURE), usageMetadata: CTA_USAGE });
+    // Only hook + cta fire. The body helper is never invoked at the source — orchestrator
+    // synthesizes { ok: false } directly.
+    routedMockGenerate();
 
     const events: StageEvent[] = [];
     const result = await analyzeVideoSegmented(smallVideo(), "video/mp4", stubOpts(7, events));
@@ -479,14 +503,16 @@ describe("analyzeVideoSegmented — Phase 5 Plan 02 Task 3 orchestrator", () => 
     expect(result.signalAvailability.gemini_hook).toBe(true);
     expect(result.signalAvailability.gemini_cta).toBe(true);
 
-    // CTA window: max(5, 7-3)=5, end=7
-    // The hook call is index 0, but the CTA call may be index 0 or 1 depending on
-    // the orchestrator's fan-out fire order. Find it by scanning videoMetadata starts.
-    const allMetas = mockGenerate.mock.calls.map((c) =>
-      extractVideoMetadata(c[0]),
-    );
-    const ctaMeta = allMetas.find((m) => m?.endOffset === "7s" && m?.startOffset === "5s");
-    expect(ctaMeta).toBeTruthy();
+    // CTA window: max(5, 7-3)=5, end=7 — find by segment routing.
+    const ctaCall = mockGenerate.mock.calls.find((c) => {
+      const seg = segmentOf(c[0] as { contents?: Array<{ parts?: Array<{ text?: string }> }> });
+      return seg === "cta";
+    });
+    expect(ctaCall).toBeTruthy();
+    expect(extractVideoMetadata(ctaCall![0])).toEqual({
+      startOffset: "5s",
+      endOffset: "7s",
+    });
 
     // Body-skip is BY DESIGN — not a failure — no pipeline_warning should fire for body.
     const warnings = events
@@ -504,11 +530,16 @@ describe("analyzeVideoSegmented — Phase 5 Plan 02 Task 3 orchestrator", () => 
     await analyzeVideoSegmented(smallVideo(), "video/mp4", stubOpts(30));
 
     expect(mockGenerate).toHaveBeenCalledTimes(3);
-    for (let i = 0; i < 3; i++) {
-      const text = extractPromptText(mockGenerate.mock.calls[i]![0]);
+    // Verify all 3 distinct segments fired AND all carried the niche/contentType injection.
+    const seenSegments = new Set<Segment>();
+    for (const call of mockGenerate.mock.calls) {
+      const text = extractPromptText(call[0]);
+      const seg = segmentOf(call[0] as { contents?: Array<{ parts?: Array<{ text?: string }> }> });
+      seenSegments.add(seg);
       expect(text).toContain("beauty");
       expect(text).toContain("tutorial");
     }
+    expect(seenSegments).toEqual(new Set<Segment>(["hook", "body", "cta"]));
   });
 
   // -------------------------------------------------------------------------
@@ -551,39 +582,14 @@ describe("analyzeVideoSegmented — Phase 5 Plan 02 Task 3 orchestrator", () => 
   // Per-segment AbortController independence (Pitfall #5)
   // -------------------------------------------------------------------------
 
-  it("Test 18: one segment hangs/aborts — other two still complete normally; delete still called once", async () => {
-    // Body never resolves (Promise that never settles within the body 30s timeout window —
-    // but in the test we synthesize this by making body reject with AbortError after a
-    // microtask. The other two complete normally.).
+  it("Test 18: one segment aborts (per-segment AbortController, Pitfall #5) — other two still complete; delete still fires once", async () => {
+    // Body call aborts; hook + cta succeed independently via per-segment AbortControllers.
+    // This proves Pitfall #5: body's AbortController does NOT cascade-cancel hook or cta.
     const abortError = new Error("The operation was aborted.");
     abortError.name = "AbortError";
-    mockGenerate
-      .mockResolvedValueOnce({ text: JSON.stringify(VALID_HOOK_FIXTURE), usageMetadata: HOOK_USAGE })
-      // body retries — both fail with abort
-      .mockRejectedValue(abortError);
-
-    // CTA call still goes through after body's rejected attempts (helpers internally retry).
-    // To ensure cta gets a fresh slot, sequence with mockResolvedValueOnce at index 1 for cta
-    // path. But because Promise.allSettled fans concurrently, hook is index 0, body 1, cta 2
-    // in mockGenerate's queue. The cleanest mock: hook=success, then ALL subsequent calls
-    // alternate. We give cta success via mockResolvedValueOnce queued AFTER the rejections
-    // exhaust:
-    mockGenerate.mockReset();
-    mockGenerate
-      .mockImplementationOnce(async () => ({
-        text: JSON.stringify(VALID_HOOK_FIXTURE),
-        usageMetadata: HOOK_USAGE,
-      })) // hook fires
-      .mockImplementationOnce(async () => {
-        throw abortError;
-      }) // body attempt 1
-      .mockImplementationOnce(async () => ({
-        text: JSON.stringify(VALID_CTA_FIXTURE),
-        usageMetadata: CTA_USAGE,
-      })) // cta fires (no retry needed)
-      .mockImplementationOnce(async () => {
-        throw abortError;
-      }); // body retry — still aborts
+    routedMockGenerate({
+      body: () => Promise.reject(abortError),
+    });
 
     const result = await analyzeVideoSegmented(smallVideo(), "video/mp4", stubOpts(30));
     // Hook + CTA succeed, body fails — partial result.
