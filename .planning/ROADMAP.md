@@ -147,7 +147,7 @@ Plans:
 **Plans:** 6 plans across 5 waves (Plan 05 split into 05 + 06 per checker WARNING 5; Plan 06 lifted to Wave 5 by explicit dependency on Plan 05)
 Plans:
 - [x] 06-01-PLAN.md — Wave 1: Gemini Flash audio reliability smoke test (gates SC#1) + HOOK-02 REQUIREMENTS.md migration (D-H1)
-- [ ] 06-02-PLAN.md — Wave 2: Types + migration (pgvector + HNSW + match RPC + analysis_results.audio_description) + BLOCKING schema push
+- [x] 06-02-PLAN.md — Wave 2: Types + migration (pgvector + HNSW + match RPC + analysis_results.audio_description) + BLOCKING schema push
 - [ ] 06-03-PLAN.md — Wave 3: Gemini schema extension (audio_signals optional for graceful degradation) + audio-perceptual module (D-G3 coefficients)
 - [ ] 06-04-PLAN.md — Wave 3: audio-fingerprint stage (explicit Sentry-vs-warn asymmetry) + backfill script (FULL D-F4 pipeline)
 - [ ] 06-05-PLAN.md — Wave 4: pipeline rename + trends D-F3 gating + types.ts PipelineResult widening
