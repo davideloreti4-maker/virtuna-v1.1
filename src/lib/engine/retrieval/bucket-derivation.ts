@@ -44,24 +44,30 @@ export const CORPUS_NICHE_ALIASES: Record<string, string> = {
 };
 
 /**
- * D-03a percentile snapshot — placeholder values; Plan 05's
+ * D-03a percentile snapshot — captured 2026-05-19 via
  *   `pnpm tsx scripts/embed-corpus.ts --derive-percentiles`
- * computes real P80/P40 of engagement_rate per non-calibrated niche after backfill,
- * then commits the updated block here.
+ * after Phase 8 backfill embedded 225 training_corpus + 7389 scraped_videos rows.
  *
- * Until Plan 05 backfill runs and overwrites this constant block, all non-calibrated
- * niches fall through to bucket_label="average" (the safe default per RESEARCH §"Per-niche-corpus check").
- * NEVER edit existing values once Plan 05 backfills — D-13-style immutability.
+ * All 5 non-calibrated niches return n=0 (POOL TOO SMALL per RESEARCH Finding 5
+ * threshold ≥30): the 7389 scraped_videos rows all have primary_niche=NULL because
+ * their source `category` column is also NULL — the migration's category→niche
+ * backfill (Strategy A mapping) matched 0 rows. Bucket-derivation correctly falls
+ * back to "average" for these niches (safe default per RESEARCH §"Per-niche-corpus
+ * check"). Phase 10+ can revisit this once Apify scrapes populate primary_niche via
+ * the apify-webhook deriveNicheSlug() path (Plan 05 Task 4).
+ *
+ * NEVER edit existing values once non-zero — D-13-style immutability for any
+ * niche that later receives a real P80/P40 reading.
  */
 export const NON_CORPUS_ENGAGEMENT_PERCENTILES: Record<
   string,
   { p80: number; p40: number }
 > = {
-  "tech-gadgets": { p80: 0, p40: 0 },
-  "gaming": { p80: 0, p40: 0 },
-  "fashion-style": { p80: 0, p40: 0 },
-  "music-performance": { p80: 0, p40: 0 },
-  "food-cooking": { p80: 0, p40: 0 },
+  "tech-gadgets": { p80: 0, p40: 0 }, // POOL TOO SMALL (n=0; need >=30) — 2026-05-19
+  "gaming": { p80: 0, p40: 0 }, // POOL TOO SMALL (n=0; need >=30) — 2026-05-19
+  "fashion-style": { p80: 0, p40: 0 }, // POOL TOO SMALL (n=0; need >=30) — 2026-05-19
+  "music-performance": { p80: 0, p40: 0 }, // POOL TOO SMALL (n=0; need >=30) — 2026-05-19
+  "food-cooking": { p80: 0, p40: 0 }, // POOL TOO SMALL (n=0; need >=30) — 2026-05-19
 };
 
 export interface BucketDerivation {
