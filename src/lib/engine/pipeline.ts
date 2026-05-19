@@ -510,12 +510,20 @@ export async function runPredictionPipeline(
   // -------------------------------------------------------
   // Wave 3: Multi-persona simulation (Phase 7 fills the stub)
   // Runs AFTER Wave 2 completes — events fire after wave_2 stage_end.
+  // Phase 7 Plan 07-02b: widened signature passes wave0Result (D-11 routing) +
+  // creatorContext (D-03 loyalist grounding); returns Wave3Outcome with
+  // aggregate + per-persona results + warnings.
   // -------------------------------------------------------
-  const wave3Result = await runWave3(
+  const wave3Outcome = await runWave3(
     payload,
     deepseekRaw?.reasoning ?? null,
-    onStageEvent
+    wave0Result,
+    creatorContext,
+    onStageEvent,
   );
+  const wave3Result: PersonaSimulationResult[] = wave3Outcome.results;
+  const personaBehavioralAggregate: PersonaBehavioralAggregate | null = wave3Outcome.aggregate;
+  warnings.push(...wave3Outcome.warnings);
 
   Sentry.addBreadcrumb({
     category: "engine.pipeline",
@@ -555,9 +563,10 @@ export async function runPredictionPipeline(
     audioResult,
     wave0Result,
     wave3Result,
-    // Phase 7 (Plan 07-02a) — placeholder null. Plan 07-02b orchestrator (runWave3 rewrite)
-    // computes the real aggregate from surviving personas and sets this field.
-    personaBehavioralAggregate: null,
+    // Phase 7 (Plan 07-02b) — real aggregate from Wave 3 orchestrator. Null when <7 personas
+    // succeed (D-13 threshold) OR when circuit-breaker fast-failed (W-3); the aggregator
+    // surfaces null as signal_availability.personas = false via Plan 07-03.
+    personaBehavioralAggregate,
     requestId,
     timings,
     total_duration_ms,

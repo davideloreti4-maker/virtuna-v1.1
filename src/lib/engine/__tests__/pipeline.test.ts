@@ -245,14 +245,32 @@ describe("pipeline integration tests", () => {
       },
     });
 
-    // Default DeepSeek mock — returns valid DeepSeekReasoning
-    mockDeepSeekCreate.mockResolvedValue({
-      choices: [
-        {
-          message: { content: JSON.stringify(makeDeepSeekReasoning()) },
-        },
-      ],
-      usage: { prompt_tokens: 1000, completion_tokens: 500 },
+    // Default DeepSeek mock — Wave 2 reasoning OR Wave 3 persona response
+    // depending on which call. Phase 7 Plan 07-02b: Wave 3 fires 10 persona
+    // calls with the persona system prompt; we distinguish via "TikTok For You Page viewer"
+    // marker text in the system prompt (set by buildPersonaSystemPrompt).
+    mockDeepSeekCreate.mockImplementation((args: { messages: Array<{ role: string; content: string }> }) => {
+      const sys = args.messages?.find((m) => m.role === "system")?.content ?? "";
+      const isPersonaCall = sys.includes("TikTok For You Page viewer");
+      return Promise.resolve({
+        choices: [
+          {
+            message: {
+              content: isPersonaCall
+                ? JSON.stringify({
+                    scroll_past_second: 5,
+                    watch_through_pct: 70,
+                    comment_intent: 20,
+                    share_intent: 30,
+                    save_intent: 40,
+                    reasoning: "default persona test reaction",
+                  })
+                : JSON.stringify(makeDeepSeekReasoning()),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 1000, completion_tokens: 500 },
+      });
     });
 
     // Default Supabase overrides — empty results
@@ -505,12 +523,30 @@ describe("Phase 3 — onStageEvent + stub invocations", () => {
       usageMetadata: { promptTokenCount: 500, candidatesTokenCount: 300 },
     });
 
-    // Default DeepSeek mock — returns valid DeepSeekReasoning
-    mockDeepSeekCreate.mockResolvedValue({
-      choices: [
-        { message: { content: JSON.stringify(makeDeepSeekReasoning()) } },
-      ],
-      usage: { prompt_tokens: 1000, completion_tokens: 500 },
+    // Default DeepSeek mock — routes Wave 2 reasoning vs Wave 3 persona call
+    // by inspecting system prompt (Phase 7 Plan 07-02b orchestrator).
+    mockDeepSeekCreate.mockImplementation((args: { messages: Array<{ role: string; content: string }> }) => {
+      const sys = args.messages?.find((m) => m.role === "system")?.content ?? "";
+      const isPersonaCall = sys.includes("TikTok For You Page viewer");
+      return Promise.resolve({
+        choices: [
+          {
+            message: {
+              content: isPersonaCall
+                ? JSON.stringify({
+                    scroll_past_second: 5,
+                    watch_through_pct: 70,
+                    comment_intent: 20,
+                    share_intent: 30,
+                    save_intent: 40,
+                    reasoning: "default persona test reaction",
+                  })
+                : JSON.stringify(makeDeepSeekReasoning()),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 1000, completion_tokens: 500 },
+      });
     });
 
     supabaseTableOverrides = {
@@ -524,7 +560,9 @@ describe("Phase 3 — onStageEvent + stub invocations", () => {
   it("calling without opts behaves byte-identically (PIPE-01 backwards compat)", async () => {
     const result = await runPredictionPipeline(input);
     expect(result.wave0Result).toEqual({ content_type: null, niche: null });
-    expect(result.wave3Result).toEqual([]);
+    // Phase 7 Plan 07-02b: Wave 3 now actually fires 10 persona calls. Under the
+    // default mock all 10 succeed → 10 PersonaSimulationResult entries.
+    expect(result.wave3Result).toHaveLength(10);
     // Same StageTiming output structure as before
     expect(result.timings.length).toBeGreaterThan(0);
     expect(result.timings.some((t) => t.stage === "validate")).toBe(true);
@@ -604,7 +642,9 @@ describe("Phase 3 — onStageEvent + stub invocations", () => {
     expect(resultBypass).toBeDefined();
     expect(resultNoBypass).toBeDefined();
     expect(resultBypass.wave0Result).toEqual({ content_type: null, niche: null });
-    expect(resultBypass.wave3Result).toEqual([]);
+    // Phase 7 Plan 07-02b: Wave 3 fires 10 persona calls regardless of bypassCache —
+    // bypassCache is a passthrough flag, not a Wave 3 disable.
+    expect(resultBypass.wave3Result).toHaveLength(10);
   });
 });
 
@@ -627,10 +667,30 @@ describe("Phase 4 — Wave 0 + pre_creator_context", () => {
       usageMetadata: { promptTokenCount: 500, candidatesTokenCount: 300 },
     });
 
-    // Default DeepSeek mock — returns valid DeepSeekReasoning
-    mockDeepSeekCreate.mockResolvedValue({
-      choices: [{ message: { content: JSON.stringify(makeDeepSeekReasoning()) } }],
-      usage: { prompt_tokens: 1000, completion_tokens: 500 },
+    // Default DeepSeek mock — routes Wave 2 reasoning vs Wave 3 persona call
+    // by inspecting system prompt (Phase 7 Plan 07-02b orchestrator).
+    mockDeepSeekCreate.mockImplementation((args: { messages: Array<{ role: string; content: string }> }) => {
+      const sys = args.messages?.find((m) => m.role === "system")?.content ?? "";
+      const isPersonaCall = sys.includes("TikTok For You Page viewer");
+      return Promise.resolve({
+        choices: [
+          {
+            message: {
+              content: isPersonaCall
+                ? JSON.stringify({
+                    scroll_past_second: 5,
+                    watch_through_pct: 70,
+                    comment_intent: 20,
+                    share_intent: 30,
+                    save_intent: 40,
+                    reasoning: "default persona test reaction",
+                  })
+                : JSON.stringify(makeDeepSeekReasoning()),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 1000, completion_tokens: 500 },
+      });
     });
 
     supabaseTableOverrides = {
