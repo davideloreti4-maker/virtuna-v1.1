@@ -152,6 +152,22 @@ const DEFAULT_CREATOR_CONTEXT: CreatorContext = {
     avg_share_rate: 0.008,
     avg_comment_rate: 0.005,
   },
+  // WR-03: Phase 2 9-card profile fields are required-but-nullable on CreatorContext
+  // (creator.ts:26-46). Default fallback must include them or tsc --noEmit fails with
+  // `missing the following properties: target_platforms, niche_primary, ...`.
+  target_platforms: null,
+  niche_primary: null,
+  niche_sub: null,
+  target_audience: null,
+  primary_goal: null,
+  creator_stage: null,
+  content_style: null,
+  cuts_per_second: null,
+  reference_creators: null,
+  past_wins: null,
+  past_flops: null,
+  time_of_day_aware: null,
+  pain_points: null,
 };
 
 const DEFAULT_RULE_RESULT: RuleScoreResult = {

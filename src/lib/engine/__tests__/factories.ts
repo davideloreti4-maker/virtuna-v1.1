@@ -246,6 +246,23 @@ export function makePipelineResult(
         avg_share_rate: 0.008,
         avg_comment_rate: 0.005,
       },
+      // WR-03: CreatorContext requires 14 nullable Phase 2 9-card fields. The factory was
+      // missing all of them — tsc --noEmit reports `Type '...' is missing the following
+      // properties from type 'CreatorContext': target_platforms, niche_primary, niche_sub,
+      // target_audience, and 9 more.` This blocks any future move to tsc-check tests in CI.
+      target_platforms: null,
+      niche_primary: null,
+      niche_sub: null,
+      target_audience: null,
+      primary_goal: null,
+      creator_stage: null,
+      content_style: null,
+      cuts_per_second: null,
+      reference_creators: null,
+      past_wins: null,
+      past_flops: null,
+      time_of_day_aware: null,
+      pain_points: null,
     },
     ruleResult: makeRuleScoreResult(),
     trendEnrichment: makeTrendEnrichment(),
