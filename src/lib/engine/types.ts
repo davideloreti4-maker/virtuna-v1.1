@@ -171,12 +171,19 @@ export interface PredictionResult {
   /** Phase 6 (D-G1) — Full fingerprint match record or null if no match above threshold.
    *  Optional to preserve compile against existing consumers; plans 06-05/06-06 will start emitting it. */
   audio_fingerprint?: AudioFingerprintResult | null;
+  /** Phase 6 (Note 7 / Q4 RESOLVED) — verbatim Gemini-emitted audio_description for
+   *  persistence into analysis_results.audio_description (Plan 06-02 migration).
+   *  Null when audio_signals absent. Sourced verbatim from
+   *  geminiResult.analysis.audio_signals?.audio_description ?? null. */
+  audio_description?: string | null;
   score_weights: {
     behavioral: number; // 0.35
     gemini: number; // 0.25
     ml: number; // 0.15
     rules: number; // 0.15
     trends: number; // 0.10
+    /** Phase 6 (D-G1) — audio weight 0.07; redistributes when signal_availability.audio=false. */
+    audio?: number;
   };
 
   // Meta

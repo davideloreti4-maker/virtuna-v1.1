@@ -463,7 +463,7 @@ describe("D-F3 — matched_trends synthesized from fingerprint", () => {
 // =====================================================
 
 describe("D-G1 + selectWeights — weight redistribution", () => {
-  it("Test 19: when audio is absent, the audio weight redistributes; overall_score computed without audio's contribution", () => {
+  it("Test 19: when audio is absent, weights.audio = 0 and the audio share redistributes proportionally", () => {
     const allOnNoAudio = selectWeights({
       behavioral: true,
       gemini: true,
@@ -475,12 +475,38 @@ describe("D-G1 + selectWeights — weight redistribution", () => {
       audio: false,
     });
     expect(allOnNoAudio.audio).toBe(0);
-    // Other available signals receive the redistributed share — strictly greater than base.
-    expect(allOnNoAudio.behavioral).toBeGreaterThan(0.35);
-    expect(allOnNoAudio.gemini).toBeGreaterThan(0.25);
-    expect(allOnNoAudio.ml).toBeGreaterThan(0.15);
-    expect(allOnNoAudio.rules).toBeGreaterThan(0.15);
-    expect(allOnNoAudio.trends).toBeGreaterThan(0.1);
+    // Mathematical identity: when audio is the ONLY missing signal, redistributing
+    // the 0.07 share across 5 signals whose raw weights sum to 1.0 (then re-normalizing
+    // back to 1.0) yields weights identical to the pre-Phase-6 5-signal base.
+    // Each signal's share = raw_base + (raw_base/availableWeight)*missingWeight, then
+    // divided by (raw_base * (1 + missing/available)). The two factors cancel exactly,
+    // returning the original raw_base. This is the correct emergent behavior.
+    expect(allOnNoAudio.behavioral).toBeCloseTo(0.35, 2);
+    expect(allOnNoAudio.gemini).toBeCloseTo(0.25, 2);
+    expect(allOnNoAudio.ml).toBeCloseTo(0.15, 2);
+    expect(allOnNoAudio.rules).toBeCloseTo(0.15, 2);
+    expect(allOnNoAudio.trends).toBeCloseTo(0.1, 2);
+    // Total = 1.0 (normalization contract).
+    const sum = Object.values(allOnNoAudio).reduce((a, b) => a + b, 0);
+    expect(sum).toBeCloseTo(1.0, 2);
+
+    // Side-effect verification: when BOTH audio AND another signal are missing,
+    // the audio share genuinely lifts other available signals above their base
+    // (proves redistribution is active, not a no-op).
+    const audioAndMLOff = selectWeights({
+      behavioral: true,
+      gemini: true,
+      ml: false,
+      rules: true,
+      trends: true,
+      content_type: false,
+      niche: false,
+      audio: false,
+    });
+    expect(audioAndMLOff.audio).toBe(0);
+    expect(audioAndMLOff.ml).toBe(0);
+    expect(audioAndMLOff.behavioral).toBeGreaterThan(0.35);
+    expect(audioAndMLOff.gemini).toBeGreaterThan(0.25);
   });
 
   it("Test 20: weight redistribution preserves total = 1.0 (normalized across SCORE_WEIGHT_KEYS)", () => {
