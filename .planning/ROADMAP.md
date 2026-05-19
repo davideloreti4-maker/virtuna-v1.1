@@ -45,7 +45,22 @@ Every section requires a written Virtuna-product-narrative section brief before 
 4. `git diff --name-only` for this phase shows only `(marketing)/`, `src/components/landing/`, `src/hooks/`, `next.config.ts`, and `package.json` — zero dashboard route files in diff
 5. Playwright snapshots at 375 / 768 / 1280 px confirm no horizontal overflow, no missing content; Lighthouse mobile LCP < 2.5s + CLS < 0.1 on the baseline empty landing page
 
-**Plans:** TBD
+**Plans:** 13 plans across 5 waves
+
+Plans:
+- [ ] 01-00-PLAN.md — Wave 0: pnpm install, add lenis + @next/bundle-analyzer, rename existing analyze → analyze:dataset, capture pre-Phase-1 /app/dashboard baseline snapshot
+- [ ] 01-01-PLAN.md — Wave 1: create src/app/(marketing)/landing.css with `@layer landing` token block (display scale, motion easings, gradient tokens, hex-for-darks surfaces)
+- [ ] 01-02-PLAN.md — Wave 1: create LenisProvider client component (inline prefers-reduced-motion detection per RESEARCH §2)
+- [ ] 01-03-PLAN.md — Wave 1: create LandingMotionProvider + MotionWrapper (LazyMotion strict + canonical m.* leaf example)
+- [ ] 01-04-PLAN.md — Wave 1: create WebVitalsReporter + extend Inter font with axes:['opsz']
+- [ ] 01-05-PLAN.md — Wave 1: create scripts/check-landing-scope.ts CI guard + wire prebuild in package.json
+- [ ] 01-06-PLAN.md — Wave 1: rewrite next.config.ts (AVIF/WebP, /pricing→/#pricing redirect, withBundleAnalyzer composition) + add analyze*pn scripts
+- [ ] 01-07-PLAN.md — Wave 2: write .planning/CRAFT-RUBRIC.md (6 dimensions + AS-01..AS-15 + bundle budget + phase-gate checklist + locked landmines + Pitfall C)
+- [ ] 01-08-PLAN.md — Wave 2: write .planning/SECTION-BRIEF-TEMPLATE.md (7-subsection template per D-04)
+- [ ] 01-09-PLAN.md — Wave 2: extend visual-comparison.spec.ts with data-section selectors + reference baselines + dashboard regression entry; change playwright.config desktop viewport 1440 → 1280
+- [ ] 01-10-PLAN.md — Wave 2: create verification/scripts/capture-references.spec.ts + wire capture:refs script
+- [ ] 01-11-PLAN.md — Wave 3 ATOMIC: delete 14 legacy landing components + delete (marketing)/pricing/ + REWRITE (marketing)/layout.tsx (fix duplicate html/body, wire providers) + REPLACE (marketing)/page.tsx with 7-section scaffold — ONE COMMIT
+- [ ] 01-12-PLAN.md — Wave 4: fetch DESIGN.md files, run capture:refs, install Taste Skill, run baseline pnpm run analyze, insert bundle figure into CRAFT-RUBRIC.md, full validation suite, Davide visual sign-off checkpoint
 
 **Duration estimate:** 1-2 days
 
@@ -243,7 +258,7 @@ Phase 1 ────────────────────────
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation + Cross-Cutting Gates | 0/— | Not started | - |
+| 1. Foundation + Cross-Cutting Gates | 0/13 | Plans written | - |
 | 2. Nav + Hero | 0/— | Not started | - |
 | 3. Feature Bento (Three Surfaces) | 0/— | Not started | - |
 | 4. How It Works | 0/— | Not started | - |
