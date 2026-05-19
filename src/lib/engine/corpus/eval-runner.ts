@@ -134,6 +134,10 @@ export async function runEvalOverCorpus(
       // Cost cap (Pitfall 5)
       // Cost cap check fires AFTER the successful row's cost is added.
       // One over-budget row is tolerated within the 33% safety buffer ($50 cap vs $37.50 ceiling).
+      // WR-07 (post-CR-01): `prediction.cost_cents` now folds in Wave 3 multi-persona spend
+      // via `pipelineResult.wave3CostCents` (see aggregator.ts cost roll-up), so this cap
+      // operates on TRUE total spend. The 33% buffer math is therefore correct again; before
+      // CR-01 the cap silently under-counted by ~0.5-2.5 cents/row of hidden Wave 3 spend.
       if (totalCost > cap) {
         log.error("Cost cap exceeded", { totalCost, atRow: i });
         throw new CostCapExceededError(totalCost, i);
