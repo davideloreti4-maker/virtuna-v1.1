@@ -389,15 +389,44 @@ export async function runPredictionPipeline(
         // Phase 4 D-15: content_type from Wave 0 flows into segment prompts.
         // Phase 5 D-15-partial: niche threads through; creatorStyle (Card 4) deferred.
         const contentTypeSlug = wave0Result.content_type?.type ?? null;
+
+        // WR-08: duration_hint=null is silently dangerous — defaulting to 30s
+        // against a real 6-second video puts body's window at 5s→27s and CTA's
+        // at 27s→30s, both well beyond the actual content. The model will
+        // hallucinate scores against frames that don't exist. Skip segmentation
+        // and surface a pipeline_warning + DEFAULT_GEMINI_RESULT so the
+        // aggregator's weight redistribution kicks in (gemini_hook/body/cta =
+        // false), rather than feeding fabricated scores forward. The legacy
+        // single-call path is NOT a safe fallback because it has the same
+        // inherited Files API state bug (fixed in CR-01 but not on the
+        // production hot path).
+        if (payload.duration_hint == null) {
+          const msg =
+            "Gemini segmented analysis skipped — video_upload missing duration_hint (would otherwise hallucinate scores against fabricated window math).";
+          warnings.push(msg);
+          onStageEvent?.({
+            type: "pipeline_warning",
+            message: msg,
+            stage: "gemini_video_unavailable",
+          });
+          timings.push({ stage: "gemini_analysis", duration_ms: 0 });
+          return {
+            ...DEFAULT_GEMINI_RESULT,
+            signalAvailability: {
+              gemini_hook: false,
+              gemini_body: false,
+              gemini_cta: false,
+            },
+          };
+        }
+
         const merged = await analyzeVideoSegmented(buffer, mimeType, {
           calibration,
           niche: validated.niche ?? creatorContext.niche ?? null,
           contentType: contentTypeSlug,
           creatorStyle: null,
           onStageEvent,
-          // payload.duration_hint is `number | null` per types.ts:109 — fallback to 30s
-          // (a typical TikTok length) when the upstream client did not report duration.
-          durationSeconds: payload.duration_hint ?? 30,
+          durationSeconds: payload.duration_hint,
         });
 
         // D-09: 3-of-3 failure path — `analyzeVideoSegmented` returns `analysis: null`.

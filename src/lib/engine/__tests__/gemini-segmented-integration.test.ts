@@ -302,7 +302,11 @@ function rejectWith(message: string): () => Promise<unknown> {
 const videoInput = {
   input_mode: "video_upload" as const,
   video_storage_path: "user-1/clip.mp4",
-  content_text: "Beauty tutorial GRWM #skincare",
+  // WR-08: content_text includes "30s" so normalize.ts:extractDurationHint
+  // parses duration_hint=30. The pipeline now refuses to invoke
+  // analyzeVideoSegmented with duration_hint=null (would otherwise hallucinate
+  // scores against fabricated window math). Tests assume duration is known.
+  content_text: "Beauty tutorial GRWM 30s #skincare",
   content_type: "video" as const,
   niche: "beauty",
 };
