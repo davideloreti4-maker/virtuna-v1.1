@@ -12,6 +12,7 @@ import {
   type TrendEnrichment,
   type Wave0Result,
   type PersonaSimulationResult,
+  type PersonaBehavioralAggregate,
 } from "./types";
 import { normalizeInput } from "./normalize";
 import { analyzeWithGemini, loadCalibrationData } from "./gemini";
@@ -72,7 +73,25 @@ export interface PipelineResult {
 
   // Phase 3 — Wave 0/3 stub outputs (Phase 4/7 fill with real logic)
   wave0Result: Wave0Result;
+  /**
+   * Phase 7 — Wave 3 outputs surfaced as TWO derived fields rather than a single
+   * `Wave3Outcome`. They originate from the same `runWave3` call:
+   *   - `wave3Result` ← `Wave3Outcome.results` (per-persona detail for audience-viz)
+   *   - `personaBehavioralAggregate` ← `Wave3Outcome.aggregate` (top-3-weighted aggregate, or null)
+   *   - `Wave3Outcome.warnings` is folded into the pipeline-level `warnings` array.
+   * Reviewer note (IN-04): treat these as a logical group. Pipeline-level consumers
+   * that need both should read both — the orchestrator does not synthesize them
+   * from independent sources.
+   */
   wave3Result: PersonaSimulationResult[];
+  personaBehavioralAggregate: PersonaBehavioralAggregate | null;
+  /**
+   * Phase 7 CR-01 — wave-level Wave 3 cost in cents, surfaced so the aggregator can fold
+   * it into PredictionResult.cost_cents. Without this, eval-runner cost-cap enforcement is
+   * silently bypassed for hidden Wave 3 spend (eval-runner reads `prediction.cost_cents`
+   * which previously only covered Gemini + DeepSeek).
+   */
+  wave3CostCents: number;
 
   // Pipeline metadata
   requestId: string;
@@ -165,6 +184,22 @@ const DEFAULT_CREATOR_CONTEXT: CreatorContext = {
     avg_share_rate: 0.008,
     avg_comment_rate: 0.005,
   },
+  // WR-03: Phase 2 9-card profile fields are required-but-nullable on CreatorContext
+  // (creator.ts:26-46). Default fallback must include them or tsc --noEmit fails with
+  // `missing the following properties: target_platforms, niche_primary, ...`.
+  target_platforms: null,
+  niche_primary: null,
+  niche_sub: null,
+  target_audience: null,
+  primary_goal: null,
+  creator_stage: null,
+  content_style: null,
+  cuts_per_second: null,
+  reference_creators: null,
+  past_wins: null,
+  past_flops: null,
+  time_of_day_aware: null,
+  pain_points: null,
 };
 
 const DEFAULT_RULE_RESULT: RuleScoreResult = {
@@ -602,12 +637,23 @@ export async function runPredictionPipeline(
   // -------------------------------------------------------
   // Wave 3: Multi-persona simulation (Phase 7 fills the stub)
   // Runs AFTER Wave 2 completes — events fire after wave_2 stage_end.
+  // Phase 7 Plan 07-02b: widened signature passes wave0Result (D-11 routing) +
+  // creatorContext (D-03 loyalist grounding); returns Wave3Outcome with
+  // aggregate + per-persona results + warnings.
   // -------------------------------------------------------
-  const wave3Result = await runWave3(
+  const wave3Outcome = await runWave3(
     payload,
     deepseekRaw?.reasoning ?? null,
-    onStageEvent
+    wave0Result,
+    creatorContext,
+    onStageEvent,
   );
+  const wave3Result: PersonaSimulationResult[] = wave3Outcome.results;
+  const personaBehavioralAggregate: PersonaBehavioralAggregate | null = wave3Outcome.aggregate;
+  // CR-01: wave-level cost surfaced to PipelineResult so the aggregator can fold Wave 3
+  // spend into PredictionResult.cost_cents.
+  const wave3CostCents = wave3Outcome.cost_cents;
+  warnings.push(...wave3Outcome.warnings);
 
   Sentry.addBreadcrumb({
     category: "engine.pipeline",
@@ -629,7 +675,9 @@ export async function runPredictionPipeline(
   const total_duration_ms = Math.round(performance.now() - pipelineStart);
 
   const total_cost_cents =
-    (geminiResult.cost_cents ?? 0) + (deepseekRaw?.cost_cents ?? 0);
+    (geminiResult.cost_cents ?? 0)
+    + (deepseekRaw?.cost_cents ?? 0)
+    + wave3CostCents; // CR-01: include Wave 3 cost in pipeline-level log so true spend is observable.
   log.info("Pipeline complete", {
     stage: "pipeline",
     duration_ms: total_duration_ms,
@@ -647,6 +695,13 @@ export async function runPredictionPipeline(
     audioResult,
     wave0Result,
     wave3Result,
+    // Phase 7 (Plan 07-02b) — real aggregate from Wave 3 orchestrator. Null when <7 personas
+    // succeed (D-13 threshold) OR when circuit-breaker fast-failed (W-3); the aggregator
+    // surfaces null as signal_availability.personas = false via Plan 07-03.
+    personaBehavioralAggregate,
+    // CR-01: surfaced so aggregator can fold Wave 3 spend into PredictionResult.cost_cents
+    // (eval-runner cost cap reads that rolled-up field).
+    wave3CostCents,
     requestId,
     timings,
     total_duration_ms,

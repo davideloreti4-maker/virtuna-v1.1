@@ -2,7 +2,7 @@
  * Unit tests for Wave 0, Wave 3, Stage 10, Stage 11 no-op stubs.
  * Per CONTEXT.md D-16/17/18/19. Future phases (4, 7, 9) fill these with real V3 calls.
  */
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { runWave0 } from "../wave0";
 import { runWave3 } from "../wave3";
 import { runStage10Critique } from "../stage10-critique";
@@ -61,27 +61,86 @@ describe("Wave 0 backwards-compat (Phase 3 stub contract preserved by Phase 4 or
   });
 });
 
-describe("Wave 3 stub", () => {
-  it("returns []", async () => {
-    const result = await runWave3(fakePayload, null);
-    expect(result).toEqual([]);
+describe("Wave 3 backward-compat (Phase 7 widened signature; Plan 07-02b)", () => {
+  beforeEach(() => {
+    process.env.DEEPSEEK_API_KEY = "test-key";
+    vi.resetModules();
   });
 
-  it("emits 1 stage_start + 1 stage_end with stage='wave_3_personas' and wave=3", async () => {
+  it("Test 13: returns { aggregate: null, results: [], warnings: [...] } when all 10 calls reject", async () => {
+    vi.doMock("openai", () => {
+      const MockOpenAI = vi.fn(function (this: Record<string, unknown>) {
+        this.chat = {
+          completions: {
+            create: vi.fn(() => Promise.reject(new Error("test-down"))),
+          },
+        };
+      });
+      return { default: MockOpenAI };
+    });
+    // W-3 pattern: preserve other deepseek exports via importOriginal
+    vi.doMock("../deepseek", async (importOriginal) => {
+      const orig = await importOriginal<typeof import("../deepseek")>();
+      return { ...orig, isCircuitOpen: () => false };
+    });
+    const { runWave3: freshRunWave3 } = await import("../wave3");
+    const fakeWave0Result = { content_type: null, niche: null };
+    const fakeCreator = fakeCreatorContext;
+    const outcome = await freshRunWave3(
+      fakePayload,
+      null,
+      fakeWave0Result,
+      fakeCreator,
+    );
+    expect(outcome.aggregate).toBeNull();
+    expect(outcome.results).toEqual([]);
+    // 10 per-persona failure warnings + 1 below-threshold warning.
+    expect(outcome.warnings.length).toBeGreaterThanOrEqual(10);
+    vi.doUnmock("openai");
+    vi.doUnmock("../deepseek");
+  });
+
+  it("Test 14: emits stage_start + stage_end with stage='wave_3_personas' and wave=3", async () => {
+    vi.doMock("openai", () => {
+      const MockOpenAI = vi.fn(function (this: Record<string, unknown>) {
+        this.chat = {
+          completions: {
+            create: vi.fn(() => Promise.reject(new Error("test-down"))),
+          },
+        };
+      });
+      return { default: MockOpenAI };
+    });
+    vi.doMock("../deepseek", async (importOriginal) => {
+      const orig = await importOriginal<typeof import("../deepseek")>();
+      return { ...orig, isCircuitOpen: () => false };
+    });
+    const { runWave3: freshRunWave3 } = await import("../wave3");
     const cb = vi.fn();
-    await runWave3(fakePayload, null, cb);
-    const events = cb.mock.calls.map(c => c[0] as StageEvent);
-    expect(events).toHaveLength(2);
-    const start = events.find(e => e.type === "stage_start");
-    const end = events.find(e => e.type === "stage_end");
-    if (start && start.type === "stage_start") {
-      expect(start.stage).toBe("wave_3_personas");
-      expect(start.wave).toBe(3);
+    const fakeWave0Result = { content_type: null, niche: null };
+    const fakeCreator = fakeCreatorContext;
+    await freshRunWave3(fakePayload, null, fakeWave0Result, fakeCreator, cb);
+    const events = cb.mock.calls.map((c) => c[0] as StageEvent);
+    const waveStart = events.find(
+      (e) =>
+        e.type === "stage_start" &&
+        (e as { stage: string }).stage === "wave_3_personas",
+    );
+    const waveEnd = events.find(
+      (e) =>
+        e.type === "stage_end" &&
+        (e as { stage: string }).stage === "wave_3_personas",
+    );
+    expect(waveStart).toBeDefined();
+    expect(waveEnd).toBeDefined();
+    if (waveStart && waveStart.type === "stage_start") {
+      expect(waveStart.wave).toBe(3);
     }
-    if (end && end.type === "stage_end") {
-      expect(end.cost_cents).toBe(0);
-      expect(end.ok).toBe(true);
+    if (waveEnd && waveEnd.type === "stage_end") {
+      expect(waveEnd.wave).toBe(3);
     }
+    vi.doUnmock("openai");
+    vi.doUnmock("../deepseek");
   });
 });
 

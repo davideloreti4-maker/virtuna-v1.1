@@ -246,6 +246,23 @@ export function makePipelineResult(
         avg_share_rate: 0.008,
         avg_comment_rate: 0.005,
       },
+      // WR-03: CreatorContext requires 14 nullable Phase 2 9-card fields. The factory was
+      // missing all of them — tsc --noEmit reports `Type '...' is missing the following
+      // properties from type 'CreatorContext': target_platforms, niche_primary, niche_sub,
+      // target_audience, and 9 more.` This blocks any future move to tsc-check tests in CI.
+      target_platforms: null,
+      niche_primary: null,
+      niche_sub: null,
+      target_audience: null,
+      primary_goal: null,
+      creator_stage: null,
+      content_style: null,
+      cuts_per_second: null,
+      reference_creators: null,
+      past_wins: null,
+      past_flops: null,
+      time_of_day_aware: null,
+      pain_points: null,
     },
     ruleResult: makeRuleScoreResult(),
     trendEnrichment: makeTrendEnrichment(),
@@ -257,6 +274,13 @@ export function makePipelineResult(
     // Phase 3 — Wave 0/3 stub outputs (Phase 4/7 fill with real logic)
     wave0Result: { content_type: null, niche: null },
     wave3Result: [],
+    // NEW Phase 7 (Pitfall 9, A11) — default null preserves "no aggregate" semantics
+    // for all existing aggregator.test.ts and pipeline.test.ts callers.
+    personaBehavioralAggregate: null,
+    // Phase 7 CR-01 — default 0 preserves byte-identical cost behavior for tests that don't
+    // exercise Wave 3. Tests asserting on Wave 3 cost should pass an override (e.g.,
+    // { wave3CostCents: 1.25 }).
+    wave3CostCents: 0,
     requestId: "test-req-123",
     timings: [
       { stage: "validate", duration_ms: 5 },

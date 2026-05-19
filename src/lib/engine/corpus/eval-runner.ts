@@ -48,6 +48,12 @@ export interface EvalRunnerOptions {
   maxRows?: number;
   maxTotalCostCents?: number;                       // Pitfall 5: default 5000 ($50)
   rateLimitDelayMs?: number;                         // default 2000 (matches benchmark.ts:582)
+  /**
+   * Phase 7 D-14: optional aggregator behavioral source override.
+   * Defaults to "deepseek" (production aggregator default). Pass "personas" to
+   * run the lightweight A/B substituted variant. Production callers should not pass this.
+   */
+  behavioralSource?: "deepseek" | "personas";
 }
 
 const FETCH_BATCH = 50;
@@ -56,8 +62,15 @@ export async function runEvalOverCorpus(
   opts: EvalRunnerOptions,
 ): Promise<RawEvalResult[]> {
   const supabase = createServiceClient();
-  const cap = opts.maxTotalCostCents ?? 5000;
-  const delayMs = opts.rateLimitDelayMs ?? 2000;
+  // CR-03 defensive harden: `??` only catches null/undefined, so NaN would pass through
+  // and disable the cost cap (every `totalCost > NaN` is false). Normalize non-finite
+  // values to the default 5000. Same for maxRows below.
+  const cap = Number.isFinite(opts.maxTotalCostCents)
+    ? (opts.maxTotalCostCents as number)
+    : 5000;
+  const delayMs = Number.isFinite(opts.rateLimitDelayMs)
+    ? (opts.rateLimitDelayMs as number)
+    : 2000;
   const results: RawEvalResult[] = [];
   let totalCost = 0;
   let consecutiveHighCost = 0;
@@ -78,7 +91,12 @@ export async function runEvalOverCorpus(
     offset += FETCH_BATCH;
   }
 
-  const effective = opts.maxRows ? allRows.slice(0, opts.maxRows) : allRows;
+  // CR-03 defensive harden: treat non-finite (NaN) maxRows as "no cap" rather than
+  // silently truncating to 0 / Array.slice(0, NaN) = []. The CLI now hard-exits on
+  // bad input upstream, but keep the runner robust to other callers.
+  const effective = Number.isFinite(opts.maxRows) && (opts.maxRows as number) > 0
+    ? allRows.slice(0, opts.maxRows as number)
+    : allRows;
   log.info("Eval loop starting", { corpusVersion: opts.corpusVersion, rowCount: effective.length, cap });
 
   for (let i = 0; i < effective.length; i++) {
@@ -101,7 +119,14 @@ export async function runEvalOverCorpus(
       };
 
       const pipelineResult = await runPredictionPipeline(input);
-      const prediction = await aggregateScores(pipelineResult);  // FIX: always await (benchmark.ts:515 bug)
+      // Phase 7 D-14: forward optional behavioralSource into aggregator.
+      // The conditional avoids passing `{ behavioralSource: undefined }` — preserves
+      // byte-identical production behavior when caller omits the option.
+      const prediction = await aggregateScores(
+        pipelineResult,
+        undefined,
+        opts.behavioralSource ? { behavioralSource: opts.behavioralSource } : undefined,
+      );
 
       const cost = prediction.cost_cents ?? 0;
       totalCost += cost;
@@ -109,6 +134,10 @@ export async function runEvalOverCorpus(
       // Cost cap (Pitfall 5)
       // Cost cap check fires AFTER the successful row's cost is added.
       // One over-budget row is tolerated within the 33% safety buffer ($50 cap vs $37.50 ceiling).
+      // WR-07 (post-CR-01): `prediction.cost_cents` now folds in Wave 3 multi-persona spend
+      // via `pipelineResult.wave3CostCents` (see aggregator.ts cost roll-up), so this cap
+      // operates on TRUE total spend. The 33% buffer math is therefore correct again; before
+      // CR-01 the cap silently under-counted by ~0.5-2.5 cents/row of hidden Wave 3 spend.
       if (totalCost > cap) {
         log.error("Cost cap exceeded", { totalCost, atRow: i });
         throw new CostCapExceededError(totalCost, i);

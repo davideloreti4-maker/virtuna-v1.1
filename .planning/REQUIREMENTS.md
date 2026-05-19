@@ -65,7 +65,7 @@
 - [ ] **PIPE-05**: Engine version tagged on every prediction (`engine_version` field; v3.0.0 after this milestone)
 - [ ] **PIPE-06**: Prediction provenance — which signals fired, which degraded, signal availability flags persisted
 - [ ] **PIPE-07**: Wave 0 stage support (V3 calls before Wave 1)
-- [ ] **PIPE-08**: Wave 3 stage support (parallel persona simulation after Wave 2)
+- [x] **PIPE-08**: Wave 3 stage support (parallel persona simulation after Wave 2)
 - [ ] **PIPE-09**: Stage 10 (self-critique) and Stage 11 (counterfactuals) added post-aggregator
 
 ## Caching Layer

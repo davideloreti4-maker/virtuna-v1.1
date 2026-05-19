@@ -1,10 +1,12 @@
 import type {
+  BehavioralPredictions,
   ConfidenceLevel,
   ContentTypeSlug,
   CtaSegmentResult,
   Factor,
   FeatureVector,
   GeminiVideoSignals,
+  PersonaBehavioralAggregate,
   PredictedEngagement,
   PredictionResult,
   RuleScoreResult,
@@ -344,9 +346,47 @@ function computePredictedEngagement(
   return { likes, comments, shares, saves, views: baseViews };
 }
 
+/**
+ * WR-01 fix: convert PersonaBehavioralAggregate intent scores (0-100) into
+ * BehavioralPredictions percentage-of-views units (typical 0.2-5%) before feeding
+ * `computePredictedEngagement`. Without this conversion, persona share_pct=75 (intent
+ * "75 out of 100 intent strength") would be interpreted as "75% of views share" — a
+ * 15-20× inflation.
+ *
+ * Scaling factor 0.05 derived from DeepSeek's empirical output ranges (share/save 0.5-5%,
+ * comment 0.5-3%) anchored at intent=100 → view-rate=5%. Phase 10 may revise after
+ * corpus-calibrated mapping is available.
+ *
+ * `completion_pct` is in identical units (0-100 percent watched) on both sides, so it
+ * passes through unchanged.
+ */
+const PERSONA_INTENT_TO_VIEW_RATE = 0.05;
+function rescalePersonaIntentToViewRate(
+  aggregate: PersonaBehavioralAggregate,
+): BehavioralPredictions {
+  return {
+    completion_pct: aggregate.completion_pct,
+    completion_percentile: aggregate.completion_percentile,
+    share_pct: aggregate.share_pct * PERSONA_INTENT_TO_VIEW_RATE,
+    share_percentile: aggregate.share_percentile,
+    comment_pct: aggregate.comment_pct * PERSONA_INTENT_TO_VIEW_RATE,
+    comment_percentile: aggregate.comment_percentile,
+    save_pct: aggregate.save_pct * PERSONA_INTENT_TO_VIEW_RATE,
+    save_percentile: aggregate.save_percentile,
+  };
+}
+
 // =====================================================
 // Score Aggregation
 // =====================================================
+
+/**
+ * Phase 7 D-14 (lightweight A/B eval). Default "deepseek" → production read.
+ * Phase 10 owns the eventual production swap based on D-14 corpus evidence.
+ */
+export interface AggregateScoresOptions {
+  behavioralSource?: "deepseek" | "personas";
+}
 
 /**
  * Aggregate all pipeline stage outputs into a PredictionResult.
@@ -360,6 +400,7 @@ function computePredictedEngagement(
 export async function aggregateScores(
   pipelineResult: PipelineResult,
   onStageEvent?: StageEventCallback,
+  options?: AggregateScoresOptions,
 ): Promise<PredictionResult> {
   const {
     payload,
@@ -485,6 +526,11 @@ export async function aggregateScores(
     gemini_hook: pipelineResult.geminiResult.signalAvailability?.gemini_hook ?? false,
     gemini_body: pipelineResult.geminiResult.signalAvailability?.gemini_body ?? false,
     gemini_cta:  pipelineResult.geminiResult.signalAvailability?.gemini_cta  ?? false,
+    // Phase 7 D-15: personas provenance flag. Set true when ≥7-of-10 personas succeeded
+    // (i.e., pipelineResult.personaBehavioralAggregate !== null). Persisted to
+    // analysis_results.signal_availability JSONB; does NOT participate in selectWeights math
+    // (filtered out by SCORE_WEIGHT_KEYS per PATTERNS Critical Cross-File Constraint #3).
+    personas: pipelineResult.personaBehavioralAggregate !== null,
   };
 
   // Phase 5 D-12: derived `gemini` key.
@@ -666,16 +712,26 @@ export async function aggregateScores(
 
   // -------------------------------------------------
   // Cost tracking
+  // CR-01: include Wave 3 (multi-persona) cost so eval-runner cost-cap math operates on
+  // the true total spend. The pipeline surfaces `wave3CostCents` from Wave 3's orchestrator;
+  // without folding it here, every prediction silently under-reports cost by ~0.5-2.5 cents
+  // and the eval-runner cap (`prediction.cost_cents > cap`) never sees Wave 3 spend.
   // -------------------------------------------------
   const cost_cents =
     Math.round(
-      (geminiResult.cost_cents + (deepseekResult?.cost_cents ?? 0)) * 10000
+      (geminiResult.cost_cents
+        + (deepseekResult?.cost_cents ?? 0)
+        + pipelineResult.wave3CostCents) * 10000
     ) / 10000;
 
   // -------------------------------------------------
   // Behavioral predictions (single source of truth for result + engagement)
+  // Phase 7 D-08 + D-14: production read is unchanged (default behavioralSource "deepseek").
+  // The optional "personas" override is the eval-harness A/B substrate; production callers
+  // never pass this option, so default behavior matches pre-Phase-7 byte-for-byte.
   // -------------------------------------------------
-  const behavioral_predictions = deepseek?.behavioral_predictions ?? {
+  const behavioralSource = options?.behavioralSource ?? "deepseek";
+  const FALLBACK_BEHAVIORAL = {
     completion_pct: 0,
     completion_percentile: "N/A",
     share_pct: 0,
@@ -684,14 +740,36 @@ export async function aggregateScores(
     comment_percentile: "N/A",
     save_pct: 0,
     save_percentile: "N/A",
-  };
+  } as const;
+
+  const behavioral_predictions =
+    behavioralSource === "personas" && pipelineResult.personaBehavioralAggregate !== null
+      ? pipelineResult.personaBehavioralAggregate
+      : (deepseek?.behavioral_predictions ?? FALLBACK_BEHAVIORAL);
 
   // -------------------------------------------------
   // Predicted Engagement (RES-2)
+  // WR-01: PersonaBehavioralAggregate.share_pct / comment_pct / save_pct are top-3-weighted
+  // INTENT SCORES (0-100), whereas DeepSeek's share_pct / comment_pct / save_pct are
+  // PERCENTAGES OF VIEWS (typical 0.2-5%). Without conversion, `computePredictedEngagement`
+  // would treat persona share_pct=75 as "75/100 = 0.75 of views share" → 37-60% share rate,
+  // ~15-20× inflated. Convert intent scores into view-rate units before feeding the
+  // engagement math, but keep `behavioral_predictions` output unchanged (downstream
+  // consumers reading the persona aggregate get the documented intent scores).
+  // Conversion factor 0.05: intent 100 → 5% view rate, intent 50 → 2.5% view rate.
+  // This matches DeepSeek's typical upper-bound output range and is documented in
+  // WR-01 fix notes; Phase 10 may revise after corpus calibration.
+  // `completion_pct` is already in the same units on both sides (0-100 percent watched),
+  // so it is passed through unchanged.
   // -------------------------------------------------
+  const engagementBehavioral =
+    behavioralSource === "personas" && pipelineResult.personaBehavioralAggregate !== null
+      ? rescalePersonaIntentToViewRate(pipelineResult.personaBehavioralAggregate)
+      : behavioral_predictions;
+
   const predicted_engagement = computePredictedEngagement(
     overall_score,
-    behavioral_predictions,
+    engagementBehavioral,
   );
 
   // -------------------------------------------------
@@ -723,6 +801,12 @@ export async function aggregateScores(
     input_mode: pipelineResult.payload.input_mode,
     has_video: hasVideo,
     signal_availability: availability, // Phase 3 — provenance surfaced for route to persist
+    // Phase 7 — persona_behavioral_aggregate surfaced from pipelineResult so downstream
+    // consumers (route persistence, audience-viz in M2) get the canonical aggregate.
+    // persona_simulation_results carries per-persona detail used by M2's retention curve
+    // (scroll_past_second, watch_through_pct per persona) — see PERSONA-11.
+    persona_behavioral_aggregate: pipelineResult.personaBehavioralAggregate ?? null,
+    persona_simulation_results: pipelineResult.wave3Result,
   };
 
   // -------------------------------------------------
