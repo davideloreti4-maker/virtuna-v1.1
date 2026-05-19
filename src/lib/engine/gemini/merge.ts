@@ -245,6 +245,17 @@ export function mergeSegments(
     });
   }
 
+  // ============================================================================
+  // Phase 5 Plan 03 Task 3 — Rationale-vs-score consistency check (G7 + D15 + D16).
+  // Lightweight regex-based catch for the most common "schema-valid but semantically
+  // invalid" patterns. Emits pipeline_warning events that feed AI-SPEC §7 M9 (D15)
+  // and M10 (D16) production telemetry. Does NOT block — the merged result is still
+  // usable; the warnings are informational and inform F8 / F9 flywheel review.
+  // ============================================================================
+  if (hookOk && hookValue) {
+    validateRationaleConsistency(hookValue.analysis, onStageEvent);
+  }
+
   return {
     analysis,
     cost_cents,
@@ -254,4 +265,95 @@ export function mergeSegments(
       gemini_cta: ctaOk,
     },
   };
+}
+
+// ============================================================================
+// Phase 5 D15 — Rationale-vs-score consistency check (G7 + M9 in AI-SPEC §6/§7)
+// ============================================================================
+// Lightweight regex-based catch for the most common schema-valid-but-semantically-invalid
+// pattern: the model says "no on-screen text" / "no spoken words" / "silent" in
+// rationale text but emits a non-zero score for that modality. Phase 5 ships the
+// simple regex; the LLM-judge full version is Phase 12 territory.
+//
+// Emits up to 2 pipeline_warning events:
+//   - "rationale_inconsistency" (D15) — score vs absent-language contradiction.
+//   - "hook_temporal_drift" (D16) — hook rationale references events outside the 0-5s window.
+//
+// Neither blocks the merged result; both feed the F8 / F9 flywheel review path.
+
+const ABSENT_TEXT_PATTERNS: RegExp[] = [
+  /\bno (?:on-screen )?text(?: overlay)?\b/i,
+  /\bno (?:visible |on-screen )?(?:overlay|caption)s?\b/i,
+];
+const ABSENT_SPEECH_PATTERNS: RegExp[] = [
+  /\bno (?:spoken|verbal) (?:words?|content|opening)\b/i,
+  /\bsilent (?:hook|opening|video)\b/i,
+  /\bno (?:speech|narration|voiceover|dialogue)\b/i,
+];
+const TEMPORAL_DRIFT_PATTERNS: RegExp[] = [
+  /\blater in the video\b/i,
+  /\bafter the (?:hook|5 seconds?|5s)\b/i,
+  /\bat the end\b/i,
+  // Bare seconds timestamp > 5s (e.g., "at 15s", "by 6s") — single-digit 6-9 OR multi-digit ≥10.
+  /\b(?:[6-9]|[1-9]\d+)s\b/i,
+];
+
+/**
+ * Phase 5 Plan 03 Task 3 — Run rationale-vs-score consistency check on the parsed hook segment.
+ *
+ * Emits up to 2 pipeline_warning events via the optional callback:
+ *   - `rationale_inconsistency` (D15) — when rationale text claims a modality is
+ *     absent but the corresponding score is > 2.
+ *   - `hook_temporal_drift` (D16) — when hook rationale references content outside
+ *     the 0-5s window (later timestamps, "at the end", "later in the video").
+ *
+ * Pure-ish function: regex-only, no I/O, no API calls. Safe to call even when the
+ * callback is undefined (early-return).
+ */
+export function validateRationaleConsistency(
+  hookAnalysis: {
+    factors: Array<{ rationale: string; name?: string }>;
+    hook_decomposition: { text_overlay_score: number; first_words_speech_score: number };
+  },
+  onStageEvent: StageEventCallback | undefined,
+): void {
+  if (!onStageEvent) return;
+
+  // Collect ALL rationale text from the hook segment for pattern scanning.
+  const allRationales = hookAnalysis.factors.map((f) => f.rationale).join(" ");
+
+  // D15: text_overlay_score should be ≤ 2 when rationale claims no on-screen text.
+  if (
+    hookAnalysis.hook_decomposition.text_overlay_score > 2 &&
+    ABSENT_TEXT_PATTERNS.some((p) => p.test(allRationales))
+  ) {
+    onStageEvent({
+      type: "pipeline_warning",
+      message: `Hook rationale claims absent text but text_overlay_score=${hookAnalysis.hook_decomposition.text_overlay_score} (>2)`,
+      stage: "rationale_inconsistency",
+    });
+  }
+
+  // D15: first_words_speech_score should be ≤ 2 when rationale claims no speech.
+  if (
+    hookAnalysis.hook_decomposition.first_words_speech_score > 2 &&
+    ABSENT_SPEECH_PATTERNS.some((p) => p.test(allRationales))
+  ) {
+    onStageEvent({
+      type: "pipeline_warning",
+      message: `Hook rationale claims absent speech but first_words_speech_score=${hookAnalysis.hook_decomposition.first_words_speech_score} (>2)`,
+      stage: "rationale_inconsistency",
+    });
+  }
+
+  // D16: hook rationale should NOT reference events later than 5s (HAVEN-class
+  // temporal hallucination — arXiv 2503.19622, AI-SPEC §1b failure mode #9).
+  if (TEMPORAL_DRIFT_PATTERNS.some((p) => p.test(allRationales))) {
+    onStageEvent({
+      type: "pipeline_warning",
+      message:
+        "Hook segment rationale references events outside the 0-5s window (temporal grounding drift)",
+      stage: "hook_temporal_drift",
+    });
+  }
 }
