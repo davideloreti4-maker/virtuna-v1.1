@@ -141,7 +141,7 @@ Plans:
 - [x] 05-02-PLAN.md — Wave 2: segment helpers + orchestrator + merge (3 parallel videoMetadata-scoped Gemini calls via Promise.allSettled, null-safe partial-failure merge)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 05-03-PLAN.md — Wave 3: pipeline + aggregator integration (Wave 1 video-branch swap, per-segment SignalAvailability, D-06 CTA penalty, AI-SPEC eval D1-D17 alignment)
+- [x] 05-03-PLAN.md — Wave 3: pipeline + aggregator integration (Wave 1 video-branch swap, per-segment SignalAvailability, D-06 CTA penalty, AI-SPEC eval D1-D17 alignment)
 
 ### Phase 6: Audio Analysis + Fingerprint Matching
 **Goal:** Audio stage produces real signals (voice clarity, audio hook, silence ratio, fingerprint match) replacing the current no-op.
