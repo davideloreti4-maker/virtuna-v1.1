@@ -190,6 +190,9 @@ const fakeFinalResult = {
     ml: false,
     rules: true,
     trends: true,
+    content_type: false,
+    niche: false,
+    personas: false,
   },
 };
 

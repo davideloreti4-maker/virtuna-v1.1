@@ -210,11 +210,13 @@ export interface SignalAvailability {
   niche: boolean;          // NEW Phase 4 (D-20) — set by aggregator from wave0Result.niche !== null
   /**
    * Phase 7 (D-15) — true when persona_behavioral_aggregate !== null (≥7-of-10 personas succeeded).
-   * OPTIONAL in Plan 07-01 because aggregator.ts wiring lands in Plan 07-02 (per plan scope: "Zero changes to aggregator.ts").
-   * Plan 07-02 will (a) wire it on the aggregator's `availability` object, and (b) consider promoting this
-   * key to required once the aggregator path is exercised by tests.
+   * WR-02: promoted from optional to required. Aggregator (aggregator.ts:362) always sets this
+   * key from `pipelineResult.personaBehavioralAggregate !== null`, so it is never absent on a
+   * Phase 7+ PredictionResult. Downstream consumers and route persistence treat it as
+   * guaranteed; the optional declaration was stale documentation that could let a future
+   * regression silently elide the flag.
    */
-  personas?: boolean;
+  personas: boolean;
 }
 
 // Wave0Result now defined below as z.infer<typeof Wave0ResultSchema> — see Phase 4 block.
