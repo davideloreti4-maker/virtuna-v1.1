@@ -21,16 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
-**Current focus:** Phase 04 — wave-0-content-type-niche-detection (next planned phase after 5/6/7/8 all merged into trunk)
+**Current focus:** Phase 09 — Platform Algo Fit + Self-Critique + Counterfactuals (next phase to plan; Phases 1-8 all executed and merged)
 
 ## Current Position
 
-Phase: 4
+Phase: 9 (next to plan; Phases 1-8 complete)
 Plan: Not started
-Status: Ready to plan (Phases 5, 6, 7, 8 all complete and merged)
+Status: Ready to plan Phase 9 — depends on Phase 5/6/7/8 signals (all shipped)
 Last activity: 2026-05-19 -- Phase 08 merged into milestone
 
-Progress: [██████████] 100%
+Progress: [██████████████░░░░░░] 8 of 12 phases (67%) — 41 plans across executed phases
+
+## Verification Debt (carry into Phase 9 cleanup pass)
+
+- **Phase 2** — UAT deferred (never run)
+- **Phase 3** — SC#4 + SC#5 DEFERRED-PENDING-LIVE-DEPLOY (post-deploy smoke tests)
+- **Phase 4** — HUMAN-UAT partial: 2 live-API tests pending (end-to-end Wave 0 content-type via /api/analyze, niche-detector cost-cents > 0 with cache breakdown absent)
+- **Phase 6** — Code review follow-ups: WR-04 (cron N+1), WR-05 (audio_description bounds nesting), IN-01 (video-analysis retry restructure), IN-02 (pgvector cast helper), IN-03 (sound_url SSRF allowlist — Phase 12 threat model T-06-13)
+- **Pre-existing** — 966 TypeScript errors in src/app/api/{profile,settings,team}/* reference a `user_settings` table that doesn't exist in live Supabase (surfaced when Plan 06-02 regen'd types). Either write the migration or rip out the consumers. Out of any single phase scope but blocks any clean `tsc --noEmit` run.
 
 ## Phase 02 Plan Status
 

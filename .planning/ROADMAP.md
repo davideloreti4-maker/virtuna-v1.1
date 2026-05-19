@@ -35,10 +35,10 @@ Wave 8 (final gate): P12 (accuracy benchmark + acceptance)
 
 - [x] **Phase 1: Training Corpus & Eval Foundation** — Build labeled 500-video corpus + eval harness. Measure v2.1 baseline accuracy. Set target threshold. **Completed 2026-05-11 (pending verifier)**
 - [x] **Phase 2: Creator Profile & 9-Card Interview** — `creator_profiles` schema, modal flow, settings edit, profile-aware `CreatorContext`. **Completed 2026-05-17 (pending verifier)**
-- [ ] **Phase 3: Pipeline Infrastructure** — `onStageEvent` callback, SSE infra in /api/analyze, engine versioning + provenance, caching layer (content hash + persona prompt + niche taxonomy).
-- [ ] **Phase 4: Wave 0 — Content Type + Niche Detection** — V3 classifier + hierarchical niche detector before Wave 1; drives downstream signal weighting.
-- [ ] **Phase 5: Video Segmentation + Hook Decomposition** — Native Gemini `videoMetadata` parallel calls (Pro hook + Flash body/CTA), multi-modal hook decomp, visual-audio coherence, cognitive load.
-- [ ] **Phase 6: Audio Analysis + Fingerprint** — Real audio stage replacing no-op, audio fingerprint matching against trending sounds DB.
+- [x] **Phase 3: Pipeline Infrastructure** — `onStageEvent` callback, SSE infra in /api/analyze, engine versioning + provenance, caching layer (content hash + persona prompt + niche taxonomy). **Completed 2026-05-18 (PARTIAL — SC#4/#5 defer-smoke pending live deploy)**
+- [x] **Phase 4: Wave 0 — Content Type + Niche Detection** — V3 classifier + hierarchical niche detector before Wave 1; drives downstream signal weighting. **Completed 2026-05-18 (5 plans: 3 planned + 2 gap-closure; HUMAN-UAT partial — 2 live-API items pending)**
+- [x] **Phase 5: Video Segmentation + Hook Decomposition** — Native Gemini `videoMetadata` parallel calls (Pro hook + Flash body/CTA), multi-modal hook decomp, visual-audio coherence, cognitive load. **Completed 2026-05-19**
+- [x] **Phase 6: Audio Analysis + Fingerprint** — Real audio stage replacing no-op, audio fingerprint matching against trending sounds DB. **Completed 2026-05-19 (3/3 HUMAN-UAT passed; 5 code-review follow-ups deferred)**
 - [x] **Phase 7: Multi-Persona Simulation** — Wave 3 with 10 FYP-weighted personas on V3 (6 FYP + 2 niche + 1 loyalist + 1 cross-niche). (completed 2026-05-19)
 - [x] **Phase 8: Benchmark Retrieval** — pgvector setup, embedding pipeline, top-K similar competitor video retrieval. (completed 2026-05-19)
 - [ ] **Phase 9: Platform Algo Fit + Self-Critique + Counterfactuals** — TikTok/IG/YT-specific signals, creator-tier awareness, watermark detection, critique pass, counterfactual generation.
@@ -116,11 +116,14 @@ Plans:
   3. Niche detector returns hierarchical {primary, sub_niche, micro_niche} with confidence; falls back to creator profile Card 1 if confidence <0.6
   4. Niche taxonomy tree exists in code with mappings to persona archetypes + benchmark filters
   5. Aggregator weights content-type-aware (slideshows down-weight pacing signal; action videos up-weight visual_production_quality)
-**Plans:** 3 plans across 3 waves
+**Plans:** 5/5 plans complete (3 planned + 2 gap-closure from VERIFICATION)
 Plans:
 - [x] 04-01-PLAN.md — Wave 1: foundations (types + Zod schemas, content-type weight matrix, taxonomy persona/benchmark extensions)
 - [x] 04-02-PLAN.md — Wave 2: detector implementations (Gemini 3 Flash content-type, DeepSeek V4 Flash niche with dual-env DEEPSEEK_NICHE_MODEL, STABLE/VOLATILE prompts)
 - [x] 04-03-PLAN.md — Wave 3: orchestration + integration (wave0.ts Promise.allSettled, pipeline pre_creator_context, aggregator selectWeights filter + content-type weight matrix wiring)
+- [x] 04-04-PLAN.md — Gap closure GAP-04-01 (BLOCKER): replace `fetch(payload.video_url)` with `supabase.storage.from("videos").download(payload.video_storage_path)`; Option A normalize contract decouples `video_url` (tiktok_url mode only) from `video_storage_path` (video_upload mode only); 6 regression-lock tests
+- [x] 04-05-PLAN.md — Gap closure GAP-04-02 (WARNING): niche-detector cost fallback to `prompt_tokens × CACHE_MISS_PRICE` when DeepSeek omits cache breakdown; pattern mirrors `deepseek.ts:338-362`; 3 regression tests
+**Status:** Verifier passed 5/5 SCs at code+test level (2026-05-18). HUMAN-UAT status: partial — 2 live-API tests pending in 04-HUMAN-UAT.md.
 
 ### Phase 5: Video Segmentation + Hook Decomposition
 **Goal:** Gemini analyzes the video in 3 parallel segments (Pro hook, Flash body, Flash CTA) via native `videoMetadata`. Hook is decomposed into 4 sub-modalities with cross-modal coherence + cognitive load scores.
@@ -260,7 +263,7 @@ Plans:
 | 1. Training Corpus & Eval Foundation | 7/7 | Complete (pending verifier) | 2026-05-11 |
 | 2. Creator Profile & 9-Card Interview | 6/6 | Complete (UAT deferred) | 2026-05-17 |
 | 3. Pipeline Infrastructure | 4/4 | Complete (PARTIAL — defer-smoke for SC#4/#5) | 2026-05-18 |
-| 4. Wave 0 — Content Type + Niche Detection | 0/3 | Planned | - |
+| 4. Wave 0 — Content Type + Niche Detection | 5/5 | Complete (HUMAN-UAT partial — 2 live-API items pending; verifier 5/5 SCs) | 2026-05-18 |
 | 5. Video Segmentation + Hook Decomposition | 3/3 | Complete (verifier passed; code review advisory 4C/9W/6I) | 2026-05-19 |
 | 6. Audio Analysis + Fingerprint | 6/6 | Complete (3/3 HUMAN-UAT passed; code review 5W/4I closed inline) | 2026-05-19 |
 | 7. Multi-Persona Simulation | 5/5 | Complete    | 2026-05-19 |
