@@ -1,61 +1,57 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.0
-milestone_name: milestone
-status: ready_to_plan
-stopped_at: Phase 2 context gathered
-last_updated: "2026-05-10T21:40:46.494Z"
-last_activity: 2026-05-10 -- Phase 02 marked complete
+milestone: Linear Landing Clone
+milestone_name: Linear Landing Clone
+status: planning
+last_updated: "2026-05-19T07:04:25.329Z"
+last_activity: 2026-05-19 — Milestone Linear Landing Clone started
 progress:
-  total_phases: 6
-  completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
-  percent: 33
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-10)
+See: .planning/PROJECT.md (updated 2026-05-19)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
-**Current focus:** Phase 02 — foundation-hero
+
+**Current focus:** Linear Landing Clone milestone — defining requirements and roadmap.
 
 ## Current Position
 
-Phase: 3
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-10
-
-Progress: [░░░░░░░░░░] 0%
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-19 — Milestone Linear Landing Clone started
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 4
+- Total plans completed: 0
 - Average duration: —
 - Total execution time: 0 hours
 
 **By Phase:**
 
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 02 | 4 | - | - |
+_No phases yet._
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- Milestone start: Fresh page from scratch — `milestone/landing-page` branch officially abandoned
-- Phase 1: BRAND-06 requires copy sign-off by Davide before Phase 2 build starts
-- Phase 1: VIZ-04 requires implementation technology decision (canvas/SVG/WebGL/framer-motion) with < 50KB JS budget
+- Worktree: `~/virtuna-landing-linear-clone` on `milestone/landing-linear-clone`
+- Linear-inspired tokens scoped to landing route only (existing 36-component DS preserved)
+- Existing landing route on main: delete and replace
+- Coral `#FF7F50` brand identity preserved (no reference-palette adoption)
+- All copy and creative assets original to Virtuna; linear.app used as craft quality reference, not content source
+- Per-phase visual fidelity gate is non-negotiable (Playwright + side-by-side audits)
 
 ### Pending Todos
 
@@ -63,10 +59,10 @@ None yet.
 
 ### Blockers/Concerns
 
-None yet — roadmap complete, Phase 1 ready to plan.
+None yet — requirements and roadmap pending.
 
 ## Session Continuity
 
-Last session: 2026-05-10T20:13:27.625Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-foundation-hero/02-CONTEXT.md
+Last session: 2026-05-19T07:04:25.329Z
+Stopped at: Milestone started; requirements and roadmap pending.
+Resume file: none — continue with `/gsd-new-milestone` flow or run `/gsd-plan-phase 1 ${GSD_WS}` once roadmap exists.

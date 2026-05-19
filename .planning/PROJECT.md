@@ -8,38 +8,25 @@ A social media intelligence platform for TikTok creators. Helps creators predict
 
 AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
 
-## Current Milestone: Brand Statement Landing
+## Current Milestone: Linear Landing Clone
 
-**Goal:** Ship a from-scratch landing page that codifies Virtuna's brand spine ("Your audience, simulated"), positions the product as a $100M+ venture statement piece, and locks the visual metaphor for the prediction engine across all future surfaces.
+**Goal:** Ship a single-page landing site for Virtuna at top-tier production craft quality, replacing the existing landing route entirely.
 
-**Brand spine** (used everywhere — site, deck, social bios, manifesto):
-> **Your audience, simulated.**
+**Approach:** Built fresh in this worktree on the existing Next.js 15 + Tailwind v4 + shadcn + 36-component design system stack. Linear-inspired tokens (typography scale, spacing rhythm, motion patterns) are layered on top of the existing DS, scoped to the landing route only — the dashboard's Raycast-derived visual identity stays intact.
 
-**Hero treatment** (locked):
-- Pre-headline: `VIRTUNA · A NUMEN MACHINES PRODUCT`
-- H1: *"Predict how your audience will respond. Before you post."*
-- Sub-headline: *"Virtuna simulates your audience to forecast every video before it ships."*
-- Subline: *"Trained on decades of behavioral research. Self-improving with every outcome."*
-- CTAs: `[ Run a prediction → ]` `[ See the science ]`
+**Craft reference (not content source):** linear.app's landing page is the primary visual reference for execution quality — typography rhythm, spacing rigor, scroll/motion polish, mobile responsiveness. Stripe, Vercel, and Raycast serve as secondary craft references where their conventions are stronger.
 
-**Reference set** (primary): Anthropic + Linear + Raycast + Vercel.
+**Original content rule (non-negotiable):**
+- Every word of customer-facing copy is original to Virtuna
+- Every illustration, graphic, animation, and brand asset is original to Virtuna
+- Section composition is derived from Virtuna's product narrative (prediction · competitor intel · brand deals · behavioral science · pricing), not lifted from any reference site
+- Coral `#FF7F50` brand color stays; we do not adopt any reference site's palette
 
-**Narrative arc** (7 viewports, single-page):
-1. Above-fold — brand stance + behavioral-simulation hero
-2. Try it — live "paste TikTok URL → see prediction" demo (placeholder viz acceptable)
-3. How it works — engine-pipeline diagram (Linear/Vercel-style)
-4. Three Surfaces — bento (Prediction · Competitor Intelligence · Brand Deals)
-5. The Science — behavioral-research moat, citation chips, dataset stats
-6. Social proof / metrics — creator quotes + accuracy + platform stats
-7. Pricing + final CTA — two-tier (Starter/Pro), Numen Machines lockup in footer
-
-**Approach:** Built from scratch on shadcn + Tailwind v4 + existing 36-component design system. Selective imports from Magic UI / Aceternity / Origin UI / Cult UI vetted to feel native to Raycast aesthetic. No template lock-in.
+**Visual fidelity gate (per phase):** Playwright snapshots and side-by-side audits verify each section reaches production craft quality. No phase ships at "good enough" — the bar is sustained polish across typography, spacing, motion, and responsive behavior. "Half-baked" is explicitly not acceptable.
 
 **Audience strategy:** Single page serves three audiences — TikTok creators (primary conversion), broader short-form creators (Reels/Shorts), investors/press/partners (brand impression). Sectioned narrative serves all without splitting.
 
-**Out of scope this milestone:** in-app prediction-viz rebuild (visual metaphor locked here, implementation deferred); separate /about, /research, /manifesto pages (CTAs may stub them).
-
-**Vocab guardrails:** Avoid "viral" and "AI" in H1 / brand spine. Lead with audience + behavioral + simulated language.
+**Out of scope this milestone:** separate /about, /research, /manifesto pages (CTAs may stub them); in-app surface redesigns; reproducing linear.app's specific creative content, illustrations, or copy.
 
 ## Requirements
 
@@ -93,21 +80,18 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - 203+ Vitest tests, >80% coverage on all engine modules -- Backend Reliability
 - Hardened failure modes: calibration parsing, dual-LLM graceful degradation, circuit breaker mutex, creator profile trigger -- Backend Reliability
 
-### Active (Brand Statement Landing milestone)
+### Active (Linear Landing Clone milestone)
 
-- [ ] New landing page built from scratch with shadcn + Tailwind v4 + existing 36-component design system; selective Magic UI / Aceternity / Origin UI / Cult UI imports vetted for Raycast-native feel
-- [ ] Hero (above-fold) with brand-stance H1 + behavioral-simulation visual + dual CTA
-- [ ] Live "paste TikTok URL → see prediction" demo (viewport 2) — placeholder/abstract viz acceptable
-- [ ] "How it works" engine-pipeline diagram (viewport 3) — Linear/Vercel-style with subtle motion
-- [ ] Bento "Three Surfaces" section (Prediction · Competitor Intelligence · Brand Deals) — viewport 4
-- [ ] "The Science" section (lab-coded behavioral-research moat with citation chips and dataset stats) — viewport 5
-- [ ] Social proof / metrics section (creator quotes, accuracy stats if shippable, platform metrics) — viewport 6
-- [ ] Pricing + final CTA (two-tier Starter/Pro, Numen Machines lockup in footer) — viewport 7
-- [ ] Brand-spine system codified ("Your audience, simulated." propagated across deck cover, social bios, future surfaces) — voice & language doc
-- [ ] Visual metaphor locked for prediction (behavioral simulation + engine pipeline as paired concepts) — defines future in-app viz direction
-- [ ] Reference-set fidelity audit (Anthropic + Linear + Raycast + Vercel) — landing reads at $100M+ venture quality bar
-- [ ] Mobile responsive across all 7 viewports — single-column stack, hero hierarchy preserved
-- [ ] Replace plagiarized Artificial Societies copy across all surfaces — every customer-facing word original
+Active requirements are defined in `.planning/REQUIREMENTS.md` (this worktree). High-level scope:
+
+- [ ] Fresh single-page landing route at top-tier production craft quality
+- [ ] All original Virtuna copy, illustrations, graphics, and brand assets
+- [ ] Section composition derived from Virtuna's product narrative
+- [ ] Linear-inspired tokens layered on existing 36-component DS, scoped to landing route only
+- [ ] Coral `#FF7F50` brand identity preserved (no reference-palette adoption)
+- [ ] Mobile responsive at the production craft bar across every viewport
+- [ ] Visual fidelity verification gate enforced per phase (Playwright + side-by-side audits)
+- [ ] Existing landing route on main: delete and replace
 
 ### Backlog (deferred from prior milestones)
 
@@ -219,13 +203,13 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 **Shipped:** UI Dashboard (2026-03-18), Prediction Engine Integration (2026-02-27), Backend Reliability (2026-02-18), Prediction Engine v2 (2026-02-17), Competitors Tool (2026-02-17), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
-**Current milestone:** Brand Statement Landing — landing-page rebuild from scratch + brand-spine codification (started 2026-05-10)
+**Current milestone:** Linear Landing Clone — single-page landing site at top-tier production craft quality, original Virtuna content, linear.app as visual craft reference (started 2026-05-19)
 
-**Paused:** None (`milestone/landing-page` branch officially abandoned in favor of fresh start)
+**Paused:** None. `milestone/landing-page` and `milestone/landing-page-redesign` branches are both abandoned; this milestone is a fresh build in its own worktree.
 
 **Future milestones:**
-- In-app prediction viz rebuild (uses visual metaphor locked in Brand Statement Landing)
-- /about, /research, /manifesto supporting pages (extend brand spine)
+- /about, /research, /manifesto supporting pages
+- In-app surface refinements (post-landing)
 - External brand deals marketplace
 - Competitor search/discovery by name or niche
 
@@ -247,4 +231,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-10 — Started Brand Statement Landing milestone (landing-page rebuild + brand-spine codification)*
+*Last updated: 2026-05-19 — Started Linear Landing Clone milestone (production-quality landing rebuild, original Virtuna content, linear.app as visual craft reference)*
