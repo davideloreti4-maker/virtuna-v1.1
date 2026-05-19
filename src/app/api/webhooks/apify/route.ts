@@ -1,8 +1,31 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { ApifyClient } from "apify-client";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createLogger } from "@/lib/logger";
 import { buildSubjectText, embedBatch } from "@/lib/engine/retrieval/embedder";
+
+/**
+ * Constant-time string comparison for the webhook secret. JavaScript `!==`
+ * short-circuits on the first character mismatch, leaking the secret's prefix
+ * length via response-latency timing. timingSafeEqual operates on fixed-length
+ * Buffers — the length-guard early-exit is itself non-timing-safe but only
+ * reveals "your secret is the wrong length", not which character mismatched.
+ *
+ * Fails closed when EITHER side is undefined / empty so a misconfigured
+ * APIFY_WEBHOOK_SECRET env var (e.g., `""`) never accepts unauthenticated
+ * payloads of `{"secret": ""}`.
+ */
+function safeSecretEqual(
+  a: string | undefined | null,
+  b: string | undefined | null,
+): boolean {
+  if (!a || !b) return false;
+  const ab = Buffer.from(a, "utf8");
+  const bb = Buffer.from(b, "utf8");
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
 
 const log = createLogger({ module: "webhook/apify" });
 
@@ -57,8 +80,8 @@ export async function POST(request: Request) {
   try {
     const payload = await request.json();
 
-    // TREND-07: Verify webhook secret
-    if (payload.secret !== process.env.APIFY_WEBHOOK_SECRET) {
+    // TREND-07: Verify webhook secret (timing-safe — see safeSecretEqual).
+    if (!safeSecretEqual(payload.secret, process.env.APIFY_WEBHOOK_SECRET)) {
       log.warn("Invalid secret received");
       return NextResponse.json({ error: "Invalid secret" }, { status: 401 });
     }
