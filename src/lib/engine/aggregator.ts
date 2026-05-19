@@ -1,8 +1,10 @@
 import type {
+  BehavioralPredictions,
   ConfidenceLevel,
   Factor,
   FeatureVector,
   GeminiVideoSignals,
+  PersonaBehavioralAggregate,
   PredictedEngagement,
   PredictionResult,
   RuleScoreResult,
@@ -271,6 +273,36 @@ function computePredictedEngagement(
   return { likes, comments, shares, saves, views: baseViews };
 }
 
+/**
+ * WR-01 fix: convert PersonaBehavioralAggregate intent scores (0-100) into
+ * BehavioralPredictions percentage-of-views units (typical 0.2-5%) before feeding
+ * `computePredictedEngagement`. Without this conversion, persona share_pct=75 (intent
+ * "75 out of 100 intent strength") would be interpreted as "75% of views share" — a
+ * 15-20× inflation.
+ *
+ * Scaling factor 0.05 derived from DeepSeek's empirical output ranges (share/save 0.5-5%,
+ * comment 0.5-3%) anchored at intent=100 → view-rate=5%. Phase 10 may revise after
+ * corpus-calibrated mapping is available.
+ *
+ * `completion_pct` is in identical units (0-100 percent watched) on both sides, so it
+ * passes through unchanged.
+ */
+const PERSONA_INTENT_TO_VIEW_RATE = 0.05;
+function rescalePersonaIntentToViewRate(
+  aggregate: PersonaBehavioralAggregate,
+): BehavioralPredictions {
+  return {
+    completion_pct: aggregate.completion_pct,
+    completion_percentile: aggregate.completion_percentile,
+    share_pct: aggregate.share_pct * PERSONA_INTENT_TO_VIEW_RATE,
+    share_percentile: aggregate.share_percentile,
+    comment_pct: aggregate.comment_pct * PERSONA_INTENT_TO_VIEW_RATE,
+    comment_percentile: aggregate.comment_percentile,
+    save_pct: aggregate.save_pct * PERSONA_INTENT_TO_VIEW_RATE,
+    save_percentile: aggregate.save_percentile,
+  };
+}
+
 // =====================================================
 // Score Aggregation
 // =====================================================
@@ -536,10 +568,27 @@ export async function aggregateScores(
 
   // -------------------------------------------------
   // Predicted Engagement (RES-2)
+  // WR-01: PersonaBehavioralAggregate.share_pct / comment_pct / save_pct are top-3-weighted
+  // INTENT SCORES (0-100), whereas DeepSeek's share_pct / comment_pct / save_pct are
+  // PERCENTAGES OF VIEWS (typical 0.2-5%). Without conversion, `computePredictedEngagement`
+  // would treat persona share_pct=75 as "75/100 = 0.75 of views share" → 37-60% share rate,
+  // ~15-20× inflated. Convert intent scores into view-rate units before feeding the
+  // engagement math, but keep `behavioral_predictions` output unchanged (downstream
+  // consumers reading the persona aggregate get the documented intent scores).
+  // Conversion factor 0.05: intent 100 → 5% view rate, intent 50 → 2.5% view rate.
+  // This matches DeepSeek's typical upper-bound output range and is documented in
+  // WR-01 fix notes; Phase 10 may revise after corpus calibration.
+  // `completion_pct` is already in the same units on both sides (0-100 percent watched),
+  // so it is passed through unchanged.
   // -------------------------------------------------
+  const engagementBehavioral =
+    behavioralSource === "personas" && pipelineResult.personaBehavioralAggregate !== null
+      ? rescalePersonaIntentToViewRate(pipelineResult.personaBehavioralAggregate)
+      : behavioral_predictions;
+
   const predicted_engagement = computePredictedEngagement(
     overall_score,
-    behavioral_predictions,
+    engagementBehavioral,
   );
 
   // -------------------------------------------------
