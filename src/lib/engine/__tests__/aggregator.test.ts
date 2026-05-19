@@ -64,6 +64,7 @@ import { selectWeights, aggregateScores } from "../aggregator";
 import { makePipelineResult, makeGeminiAnalysis } from "./factories";
 import { getPlattParameters, applyPlattScaling } from "../calibration";
 import { predictWithML } from "../ml";
+import type { PersonaBehavioralAggregate, PersonaSimulationResult } from "../types";
 
 // =====================================================
 // selectWeights tests
@@ -634,5 +635,133 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
     await aggregateScores(pipeline);
     // Original geminiResult.video_signals must remain unmodified after aggregateScores.
     expect(pipeline.geminiResult.analysis.video_signals).toEqual(originalSignals);
+  });
+});
+
+// =====================================================
+// Phase 7 — aggregateScores widening (Plan 07-03)
+// Personas signal_availability flag + optional behavioralSource override.
+// =====================================================
+
+describe("aggregateScores Phase 7 widening", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(predictWithML).mockResolvedValue(50);
+    vi.mocked(getPlattParameters).mockResolvedValue(null);
+    vi.mocked(applyPlattScaling).mockImplementation(
+      (score: number, _params: unknown) => score
+    );
+  });
+
+  const samplePersonaAggregate: PersonaBehavioralAggregate = {
+    completion_pct: 99.5,
+    completion_percentile: "top 10%",
+    share_pct: 75,
+    share_percentile: "top 25%",
+    comment_pct: 60,
+    comment_percentile: "top 25%",
+    save_pct: 80,
+    save_percentile: "top 10%",
+  };
+
+  const samplePersonaResults: PersonaSimulationResult[] = [
+    {
+      persona_id: "fyp-saver-beauty",
+      archetype: "saver",
+      slot_type: "fyp",
+      niche: "beauty",
+      scroll_past_second: 5,
+      watch_through_pct: 80,
+      comment_intent: 20,
+      share_intent: 30,
+      save_intent: 70,
+      reasoning: "test saver reaction",
+    },
+    {
+      persona_id: "fyp-lurker-beauty",
+      archetype: "lurker",
+      slot_type: "fyp",
+      niche: "beauty",
+      scroll_past_second: 30,
+      watch_through_pct: 95,
+      comment_intent: 5,
+      share_intent: 10,
+      save_intent: 20,
+      reasoning: "test lurker reaction",
+    },
+  ];
+
+  it("Test 1 (D-08): default (no third arg) reads deepseek.behavioral_predictions", async () => {
+    const pipelineResult = makePipelineResult();
+    const result = await aggregateScores(pipelineResult);
+    // The makePipelineResult factory sets deepseekResult.reasoning.behavioral_predictions —
+    // assert the result's behavioral_predictions matches that source (not the persona aggregate).
+    expect(result.behavioral_predictions).toEqual(
+      pipelineResult.deepseekResult!.reasoning.behavioral_predictions,
+    );
+  });
+
+  it("Test 2 (D-15): signal_availability.personas is false when personaBehavioralAggregate is null", async () => {
+    const pipelineResult = makePipelineResult({ personaBehavioralAggregate: null });
+    const result = await aggregateScores(pipelineResult);
+    expect(result.signal_availability.personas).toBe(false);
+  });
+
+  it("Test 3 (D-15): signal_availability.personas is true when personaBehavioralAggregate is non-null", async () => {
+    const pipelineResult = makePipelineResult({
+      personaBehavioralAggregate: samplePersonaAggregate,
+    });
+    const result = await aggregateScores(pipelineResult);
+    expect(result.signal_availability.personas).toBe(true);
+  });
+
+  it("Test 4 (D-14): behavioralSource='personas' with non-null aggregate substitutes the source", async () => {
+    const pipelineResult = makePipelineResult({
+      personaBehavioralAggregate: samplePersonaAggregate,
+    });
+    const result = await aggregateScores(pipelineResult, undefined, {
+      behavioralSource: "personas",
+    });
+    expect(result.behavioral_predictions.completion_pct).toBe(99.5);
+    expect(result.behavioral_predictions).toEqual(samplePersonaAggregate);
+  });
+
+  it("Test 5 (D-14 fallback): behavioralSource='personas' with null aggregate falls back to deepseek", async () => {
+    const pipelineResult = makePipelineResult({ personaBehavioralAggregate: null });
+    const result = await aggregateScores(pipelineResult, undefined, {
+      behavioralSource: "personas",
+    });
+    expect(result.behavioral_predictions).toEqual(
+      pipelineResult.deepseekResult!.reasoning.behavioral_predictions,
+    );
+  });
+
+  it("Test 6 (Pitfall 10): explicit 'deepseek' source equals default behavior", async () => {
+    const pipelineResult = makePipelineResult({
+      personaBehavioralAggregate: samplePersonaAggregate,
+    });
+    const defaultResult = await aggregateScores(pipelineResult);
+    const explicitResult = await aggregateScores(pipelineResult, undefined, {
+      behavioralSource: "deepseek",
+    });
+    expect(explicitResult.behavioral_predictions).toEqual(defaultResult.behavioral_predictions);
+  });
+
+  it("Test 7 (PERSONA-11 + D-09): persona_simulation_results persisted from pipelineResult.wave3Result", async () => {
+    const pipelineResult = makePipelineResult({
+      wave3Result: samplePersonaResults,
+      personaBehavioralAggregate: samplePersonaAggregate,
+    });
+    const result = await aggregateScores(pipelineResult);
+    expect(result.persona_simulation_results).toEqual(samplePersonaResults);
+    expect(result.persona_simulation_results.length).toBe(2);
+  });
+
+  it("Test 8 (D-20): persona_behavioral_aggregate field exposed on PredictionResult", async () => {
+    const pipelineResult = makePipelineResult({
+      personaBehavioralAggregate: samplePersonaAggregate,
+    });
+    const result = await aggregateScores(pipelineResult);
+    expect(result.persona_behavioral_aggregate).toEqual(samplePersonaAggregate);
   });
 });

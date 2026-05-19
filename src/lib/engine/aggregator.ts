@@ -276,6 +276,14 @@ function computePredictedEngagement(
 // =====================================================
 
 /**
+ * Phase 7 D-14 (lightweight A/B eval). Default "deepseek" → production read.
+ * Phase 10 owns the eventual production swap based on D-14 corpus evidence.
+ */
+export interface AggregateScoresOptions {
+  behavioralSource?: "deepseek" | "personas";
+}
+
+/**
  * Aggregate all pipeline stage outputs into a PredictionResult.
  *
  * v2 formula: behavioral 35% + gemini 25% + ml 15% + rules 15% + trends 10%
@@ -287,6 +295,7 @@ function computePredictedEngagement(
 export async function aggregateScores(
   pipelineResult: PipelineResult,
   onStageEvent?: StageEventCallback,
+  options?: AggregateScoresOptions,
 ): Promise<PredictionResult> {
   const {
     payload,
@@ -346,6 +355,11 @@ export async function aggregateScores(
     // in selectWeights math (filtered out by SCORE_WEIGHT_KEYS).
     content_type: pipelineResult.wave0Result.content_type !== null,
     niche: pipelineResult.wave0Result.niche !== null,
+    // Phase 7 D-15: personas provenance flag. Set true when ≥7-of-10 personas succeeded
+    // (i.e., pipelineResult.personaBehavioralAggregate !== null). Persisted to
+    // analysis_results.signal_availability JSONB; does NOT participate in selectWeights math
+    // (filtered out by SCORE_WEIGHT_KEYS per PATTERNS Critical Cross-File Constraint #3).
+    personas: pipelineResult.personaBehavioralAggregate !== null,
   };
 
   const weights = selectWeights(availability);
@@ -493,8 +507,12 @@ export async function aggregateScores(
 
   // -------------------------------------------------
   // Behavioral predictions (single source of truth for result + engagement)
+  // Phase 7 D-08 + D-14: production read is unchanged (default behavioralSource "deepseek").
+  // The optional "personas" override is the eval-harness A/B substrate; production callers
+  // never pass this option, so default behavior matches pre-Phase-7 byte-for-byte.
   // -------------------------------------------------
-  const behavioral_predictions = deepseek?.behavioral_predictions ?? {
+  const behavioralSource = options?.behavioralSource ?? "deepseek";
+  const FALLBACK_BEHAVIORAL = {
     completion_pct: 0,
     completion_percentile: "N/A",
     share_pct: 0,
@@ -503,7 +521,12 @@ export async function aggregateScores(
     comment_percentile: "N/A",
     save_pct: 0,
     save_percentile: "N/A",
-  };
+  } as const;
+
+  const behavioral_predictions =
+    behavioralSource === "personas" && pipelineResult.personaBehavioralAggregate !== null
+      ? pipelineResult.personaBehavioralAggregate
+      : (deepseek?.behavioral_predictions ?? FALLBACK_BEHAVIORAL);
 
   // -------------------------------------------------
   // Predicted Engagement (RES-2)
