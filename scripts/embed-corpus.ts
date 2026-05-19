@@ -50,7 +50,9 @@ const { buildSubjectText, embedBatch } = require("../src/lib/engine/retrieval/em
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { createServiceClient } = require("../src/lib/supabase/service");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { CORPUS_NICHE_ALIASES } = require("../src/lib/engine/retrieval/bucket-derivation");
+const {
+  REVERSE_CORPUS_NICHE_ALIASES,
+} = require("../src/lib/engine/retrieval/bucket-derivation");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const {
   parseEmbedCorpusArgs,
@@ -71,12 +73,11 @@ const MAX_LOOPS = 1000;
 
 type Table = "training_corpus" | "scraped_videos";
 
-// Build the alias-reverse map once: from corpus-form ('edu') → NICHE_TREE form ('education').
-const REVERSE_CORPUS_ALIAS: Record<string, string> = Object.fromEntries(
-  Object.entries(CORPUS_NICHE_ALIASES as Record<string, string>).map(
-    ([nicheTree, corpus]) => [corpus, nicheTree],
-  ),
-);
+// WR-04: alias-reverse map (corpus-form 'edu' → NICHE_TREE form 'education')
+// imported from bucket-derivation.ts as a single source of truth shared with
+// orchestrator.bucketAndPersist. Both surfaces must agree byte-for-byte so the
+// subject-text formula produces identical embeddings at backfill vs predict time.
+const REVERSE_CORPUS_ALIAS = REVERSE_CORPUS_NICHE_ALIASES as Record<string, string>;
 
 interface ScrapedRow {
   id: string;

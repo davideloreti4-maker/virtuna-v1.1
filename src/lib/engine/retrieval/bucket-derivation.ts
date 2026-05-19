@@ -44,6 +44,17 @@ export const CORPUS_NICHE_ALIASES: Record<string, string> = {
 };
 
 /**
+ * WR-04: reverse mapping (corpus form → NICHE_TREE form). Single source of
+ * truth — both `scripts/embed-corpus.ts` and `src/lib/engine/corpus/orchestrator.ts`
+ * import this constant rather than re-deriving it locally. Adding a new key
+ * to CORPUS_NICHE_ALIASES requires also updating this object (intentionally
+ * eager-evaluated so the relationship is reviewable in a diff).
+ */
+export const REVERSE_CORPUS_NICHE_ALIASES: Record<string, string> = Object.fromEntries(
+  Object.entries(CORPUS_NICHE_ALIASES).map(([nicheTree, corpus]) => [corpus, nicheTree]),
+);
+
+/**
  * D-03a percentile snapshot — captured 2026-05-19 via
  *   `pnpm tsx scripts/embed-corpus.ts --derive-percentiles`
  * after Phase 8 backfill embedded 225 training_corpus + 7389 scraped_videos rows.

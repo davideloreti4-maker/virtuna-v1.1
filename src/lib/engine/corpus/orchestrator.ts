@@ -19,7 +19,7 @@ import { normalizeScrapedItem, type NormalizedCorpusRow } from "./normalize-scra
 import { bucketByViews } from "./bucketing";
 import { getThresholds, type CorpusVersion } from "./thresholds";
 import { buildSubjectText, embedBatch } from "@/lib/engine/retrieval/embedder";
-import { CORPUS_NICHE_ALIASES } from "@/lib/engine/retrieval/bucket-derivation";
+import { REVERSE_CORPUS_NICHE_ALIASES } from "@/lib/engine/retrieval/bucket-derivation";
 
 const log = createLogger({ module: "corpus/orchestrator" });
 
@@ -358,14 +358,11 @@ export async function bucketAndPersist(
   // embedding=null. Training corpus build still succeeds; the embed-corpus.ts CLI
   // catches up null embeddings later.
   const BATCH = 50;
-  const REVERSE_CORPUS_ALIAS: Record<string, string> = Object.fromEntries(
-    Object.entries(CORPUS_NICHE_ALIASES).map(([nicheTree, corpus]) => [corpus, nicheTree]),
-  );
   const dbRowsWithEmbeddings: typeof dbRows = [];
   for (let i = 0; i < dbRows.length; i += BATCH) {
     const slice = dbRows.slice(i, i + BATCH);
     const texts = slice.map((r) => {
-      const slug = REVERSE_CORPUS_ALIAS[r.niche] ?? r.niche;
+      const slug = REVERSE_CORPUS_NICHE_ALIASES[r.niche] ?? r.niche;
       return buildSubjectText({
         primary_slug: slug,
         creator_handle: r.creator_handle,
