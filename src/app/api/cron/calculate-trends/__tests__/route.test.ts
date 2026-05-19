@@ -239,7 +239,10 @@ beforeEach(() => {
   mockEmbedContent.mockResolvedValue({
     embeddings: [{ values: new Array(768).fill(0.1) }],
   });
-  mockFetch.mockResolvedValue(makeAudioResponse());
+  // Each fetch returns a FRESH Response — Response bodies are read-once, so
+  // mockResolvedValue(makeAudioResponse()) would fail on the 2nd call with
+  // 'Body is unusable: Body has already been read'.
+  mockFetch.mockImplementation(async () => makeAudioResponse());
 
   process.env.GEMINI_API_KEY = "gemini-test-key";
 
@@ -294,9 +297,12 @@ describe("calculate-trends cron — D-F4 inline embedding pipeline (Phase 6 Plan
   });
 
   it("Test 2: per-row download failure isolated — cron continues to next row; route returns 200", async () => {
-    mockFetch
-      .mockRejectedValueOnce(new TypeError("Network error"))
-      .mockResolvedValueOnce(makeAudioResponse());
+    let callCount = 0;
+    mockFetch.mockImplementation(async () => {
+      callCount += 1;
+      if (callCount === 1) throw new TypeError("Network error");
+      return makeAudioResponse();
+    });
 
     const { GET } = await import("../route");
     const res = await GET(makeRequest());
@@ -369,7 +375,9 @@ describe("calculate-trends cron — D-F4 inline embedding pipeline (Phase 6 Plan
   });
 
   it("Test 6: ALL rows fail audio extension → cron still returns 200 (fire-and-forget contract per Pitfall 4)", async () => {
-    mockFetch.mockRejectedValue(new TypeError("Network error"));
+    mockFetch.mockImplementation(async () => {
+      throw new TypeError("Network error");
+    });
 
     const { GET } = await import("../route");
     const res = await GET(makeRequest());
