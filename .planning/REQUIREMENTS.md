@@ -128,7 +128,72 @@
 
 ## Traceability
 
-_Will be populated by gsd-roadmapper — every REQ-ID mapped to a phase._
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| FOUND-01 | Phase 1 | Pending |
+| FOUND-02 | Phase 1 | Pending |
+| FOUND-03 | Phase 1 | Pending |
+| FOUND-04 | Phase 1 | Pending |
+| FOUND-05 | Phase 1 | Pending |
+| FOUND-06 | Phase 1 | Pending |
+| FOUND-07 | Phase 1 | Pending |
+| FOUND-08 | Phase 1 | Pending |
+| FOUND-09 | Phase 1 | Pending |
+| FOUND-10 | Phase 1 | Pending |
+| FOUND-11 | Phase 1 | Pending |
+| FOUND-12 | Phase 1 | Pending |
+| FOUND-13 | Phase 1 | Pending |
+| FOUND-14 | Phase 1 | Pending |
+| HERO-01 | Phase 2 | Pending |
+| HERO-02 | Phase 2 | Pending |
+| HERO-03 | Phase 2 | Pending |
+| HERO-04 | Phase 2 | Pending |
+| HERO-05 | Phase 2 | Pending |
+| HERO-06 | Phase 2 | Pending |
+| HERO-07 | Phase 2 | Pending |
+| HERO-08 | Phase 2 | Pending |
+| BENTO-01 | Phase 3 | Pending |
+| BENTO-02 | Phase 3 | Pending |
+| BENTO-03 | Phase 3 | Pending |
+| BENTO-04 | Phase 3 | Pending |
+| BENTO-05 | Phase 3 | Pending |
+| BENTO-06 | Phase 3 | Pending |
+| BENTO-07 | Phase 3 | Pending |
+| BENTO-08 | Phase 3 | Pending |
+| HOW-01 | Phase 4 | Pending |
+| HOW-02 | Phase 4 | Pending |
+| HOW-03 | Phase 4 | Pending |
+| HOW-04 | Phase 4 | Pending |
+| HOW-05 | Phase 4 | Pending |
+| HOW-06 | Phase 4 | Pending |
+| MOAT-01 | Phase 5 | Pending |
+| MOAT-02 | Phase 5 | Pending |
+| MOAT-03 | Phase 5 | Pending |
+| MOAT-04 | Phase 5 | Pending |
+| MOAT-05 | Phase 5 | Pending |
+| MOAT-06 | Phase 5 | Pending |
+| MOAT-07 | Phase 5 | Pending |
+| PROOF-01 | Phase 6 | Pending |
+| PROOF-02 | Phase 6 | Pending |
+| PROOF-03 | Phase 6 | Pending |
+| PROOF-04 | Phase 6 | Pending |
+| PROOF-05 | Phase 6 | Pending |
+| PRICE-01 | Phase 7 | Pending |
+| PRICE-02 | Phase 7 | Pending |
+| PRICE-03 | Phase 7 | Pending |
+| PRICE-04 | Phase 7 | Pending |
+| PRICE-05 | Phase 7 | Pending |
+| PRICE-06 | Phase 7 | Pending |
+| PRICE-07 | Phase 7 | Pending |
+| PRICE-08 | Phase 7 | Pending |
+| POLISH-01 | Phase 8 | Pending |
+| POLISH-02 | Phase 8 | Pending |
+| POLISH-03 | Phase 8 | Pending |
+| POLISH-04 | Phase 8 | Pending |
+| POLISH-05 | Phase 8 | Pending |
+| POLISH-06 | Phase 8 | Pending |
+| POLISH-07 | Phase 8 | Pending |
+| POLISH-08 | Phase 8 | Pending |
 
 ---
 *Generated: 2026-05-19 — Linear Landing Clone milestone requirements*
