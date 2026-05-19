@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ARCHETYPES } from "./wave3/persona-registry";
 
 // =====================================================
 // Feature Vector — Standardized signal backbone
@@ -343,18 +344,19 @@ export type BehavioralPredictions = z.infer<typeof BehavioralPredictionsSchema>;
 // Per CONTEXT D-19: widened shape adds archetype, slot_type, niche, reasoning.
 // =====================================================
 
-export const PersonaArchetypeSchema = z.enum([
-  "high_engager",
-  "saver",
-  "lurker",
-  "sharer",
-  "tough_crowd",
-  "purposeful_viewer",
-  "niche_deep_buyer",
-  "niche_deep_scout",
-  "loyalist",
-  "cross_niche_curiosity",
-] as const);
+/**
+ * WR-06: ARCHETYPES is the canonical source of truth (wave3/persona-registry.ts).
+ * The previous duplicated `z.enum([...10 names...])` listing risked silent drift —
+ * if someone added an 11th archetype to the registry but forgot to update the schema
+ * (or vice versa), the wave3/aggregator.ts tie-break (`ARCHETYPES.indexOf(...)`) would
+ * drift relative to the Zod schema. Test 8 (tie-break determinism) would still pass
+ * against the inconsistent state. Now derived from ARCHETYPES so both stay in lockstep.
+ *
+ * Import is hoisted because TypeScript module evaluation processes imports before any
+ * top-level code; persona-registry.ts only imports `type ContentTypeSlug` from this
+ * module (erased at runtime), so the cycle is safe.
+ */
+export const PersonaArchetypeSchema = z.enum(ARCHETYPES);
 export type PersonaArchetype = z.infer<typeof PersonaArchetypeSchema>;
 
 export const PersonaSlotTypeSchema = z.enum([
