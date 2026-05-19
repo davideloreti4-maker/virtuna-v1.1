@@ -1,5 +1,7 @@
 import type {
   ConfidenceLevel,
+  ContentTypeSlug,
+  CtaSegmentResult,
   Factor,
   FeatureVector,
   GeminiVideoSignals,
@@ -42,6 +44,67 @@ const SCORE_WEIGHTS = {
 // must NOT participate in weight redistribution math.
 const SCORE_WEIGHT_KEYS = ["behavioral", "gemini", "ml", "rules", "trends"] as const;
 type ScoreWeightKey = (typeof SCORE_WEIGHT_KEYS)[number];
+
+// =====================================================
+// Phase 5 D-06: CTA Penalty Matrix
+// =====================================================
+// Content-type-aware CTA penalty applied to `gemini_score` (0-100 scale).
+// When the CTA segment reports `cta_present=false` AND the Wave 0 content_type is one
+// that conventionally requires a CTA (tutorial, b_roll), deduct points from the
+// gemini contribution to overall_score.
+//
+// Magnitude interpretation: CONTEXT D-06 reads "tutorial: -0.5 score units / b_roll:
+// -0.3 score units". The gemini_score in this aggregator is on 0-100. We interpret
+// "0.5 score units" as 5 points on the 0-100 scale (and 0.3 → 3 points). Rationale:
+// gemini_score = round(avg(factor scores 0-10) * 10) → 0-100; the D-06 deductions are
+// intended as sub-score nudges, not 0.5%-of-100 cosmetic adjustments. Phase 10 ML
+// audit revisits the magnitude.
+//
+// All other content types (talking_head, vlog, comedy, slideshow, action, other)
+// are neutral — CTA is optional or not expected for those formats.
+//
+// When `cta_present=true`: NO penalty applied. Claude's Discretion to "blend strength
+// into score" is deferred to a future plan — Plan 03 surfaces strength as a separate
+// sub-signal (via PredictionResult.factors / hook_decomposition) for the M2 UI to
+// consume, rather than mixing it into the raw_overall_score math.
+//
+// Phase 5 CR-04: typed as Partial<Record<ContentTypeSlug, number>> so future
+// enum widening (add a new content type) is a COMPILE error if a penalty entry
+// is intended but the slug typo'd. Absent slugs return undefined → 0 penalty.
+const CTA_PENALTY_POINTS: Partial<Record<ContentTypeSlug, number>> = {
+  tutorial: 5,
+  b_roll: 3,
+  // talking_head, vlog, comedy, slideshow, action, other → absent from table → 0 penalty
+};
+
+/**
+ * D-06: Penalize gemini_score when CTA is expected (tutorial / b_roll) but absent.
+ * Pure function; clamps result to [0, 100].
+ *
+ * Authority:
+ *   - geminiResult.analysis.cta_segment (Phase 5 — populated by Plan 02 mergeSegments)
+ *   - pipelineResult.wave0Result.content_type.type (Phase 4 — populated by Wave 0 detector)
+ *
+ * No-op paths (return geminiScore unchanged):
+ *   - cta_present=true → strength blending deferred per Claude's Discretion
+ *   - contentTypeSlug=null → Wave 0 failure path (don't penalize unknown content types)
+ *   - cta_segment=null/undefined → provenance already redistributes via gemini_cta=false
+ *
+ * Phase 5 CR-04: parameter narrowed from `string | null` to `ContentTypeSlug | null`.
+ * Future Wave 0 enum widening that adds a new slug becomes a COMPILE error in callers
+ * (e.g., aggregator.ts:530-534) instead of silently bypassing the penalty matrix.
+ */
+export function applyCtaPenalty(
+  geminiScore: number,
+  contentTypeSlug: ContentTypeSlug | null,
+  ctaSegment: CtaSegmentResult | null | undefined,
+): number {
+  if (!ctaSegment) return geminiScore;
+  if (ctaSegment.cta_present) return geminiScore;
+  if (contentTypeSlug === null) return geminiScore;
+  const penalty = CTA_PENALTY_POINTS[contentTypeSlug] ?? 0;
+  return Math.max(0, Math.min(100, geminiScore - penalty));
+}
 
 // =====================================================
 // Signal Availability & Dynamic Weight Selection (RULE-04)
@@ -163,9 +226,19 @@ function calculateConfidence(
 // FeatureVector Assembly
 // =====================================================
 
+// CR-03: video_signals fields may be `null` per-field when a segment failed
+// (mergeSegments null-fills with structural 0, the aggregator degrades those
+// to null based on signalAvailability before this function runs).
+type VideoSignalsPartial = {
+  visual_production_quality: number | null;
+  hook_visual_impact: number | null;
+  pacing_score: number | null;
+  transition_quality: number | null;
+};
+
 function assembleFeatureVector(
   pipelineResult: PipelineResult,
-  adjustedVideoSignals?: GeminiVideoSignals | null,
+  adjustedVideoSignals?: GeminiVideoSignals | VideoSignalsPartial | null,
 ): FeatureVector {
   const { payload, geminiResult, deepseekResult, ruleResult, trendEnrichment } =
     pipelineResult;
@@ -307,13 +380,70 @@ export async function aggregateScores(
   // route, NOT the gemini_score math over gemini.factors[]).
   // Null content_type uses the `other` matrix row (1.0× passthrough) —
   // preserves Wave 0 failure / no-video behavior.
+  //
+  // CR-03: When a segment fails, mergeSegments null-fills the corresponding
+  // video_signals fields with structural `0` (preserves the existing
+  // GeminiVideoSignalsSchema's `number` (non-nullable) contract). The
+  // aggregator MUST NOT pass those structural zeros through the content-type
+  // weight matrix — `0 × multiplier` is still 0 and reads as a real "zero
+  // production quality" score downstream in the ML feature vector. We
+  // degrade the affected fields to `null` HERE, before any weight math,
+  // using the per-segment availability flags as ground truth (the structural
+  // zeros from mergeSegments are intentionally indistinguishable from real
+  // 0-scores at the schema level — signalAvailability is the truth).
   // -------------------------------------------------
   const wave0 = pipelineResult.wave0Result;
   const contentTypeSlug = wave0.content_type?.type ?? null;
-  const rawVideoSignals = geminiResult.analysis.video_signals ?? null;
+  const segAvailability = pipelineResult.geminiResult.signalAvailability;
+  const baseVideoSignals = geminiResult.analysis.video_signals ?? null;
+  // CR-03: Strip structural zeros from failed segments so they do NOT feed
+  // applyContentTypeWeights → FeatureVector. The cast targets the
+  // FeatureVector consumer (types.ts:27-30) which IS nullable; the
+  // applyContentTypeWeights branch below skips when fields are null.
+  const rawVideoSignals: (GeminiVideoSignals & {
+    visual_production_quality: number | null;
+    hook_visual_impact: number | null;
+    pacing_score: number | null;
+    transition_quality: number | null;
+  }) | null = (() => {
+    if (!baseVideoSignals) return null;
+    if (!segAvailability) return baseVideoSignals;
+    const out: {
+      visual_production_quality: number | null;
+      hook_visual_impact: number | null;
+      pacing_score: number | null;
+      transition_quality: number | null;
+    } = {
+      visual_production_quality: baseVideoSignals.visual_production_quality,
+      hook_visual_impact: baseVideoSignals.hook_visual_impact,
+      pacing_score: baseVideoSignals.pacing_score,
+      transition_quality: baseVideoSignals.transition_quality,
+    };
+    // Body segment owns visual_production_quality + pacing_score + transition_quality.
+    if (!segAvailability.gemini_body) {
+      out.visual_production_quality = null;
+      out.pacing_score = null;
+      out.transition_quality = null;
+    }
+    // Hook segment owns hook_visual_impact (= hook_decomposition.visual_stop_power passthrough).
+    if (!segAvailability.gemini_hook) {
+      out.hook_visual_impact = null;
+    }
+    return out as GeminiVideoSignals & typeof out;
+  })();
+  // Only call applyContentTypeWeights when ALL four fields are present numbers
+  // (the helper expects GeminiVideoSignals — all-number — by contract). If
+  // any are null, skip the weight matrix and pass through directly — the
+  // FeatureVector consumer (assembleFeatureVector below) is null-safe.
+  const allFieldsNumeric =
+    rawVideoSignals !== null &&
+    typeof rawVideoSignals.visual_production_quality === "number" &&
+    typeof rawVideoSignals.hook_visual_impact === "number" &&
+    typeof rawVideoSignals.pacing_score === "number" &&
+    typeof rawVideoSignals.transition_quality === "number";
   const adjustedVideoSignals =
-    rawVideoSignals && contentTypeSlug !== null
-      ? applyContentTypeWeights(rawVideoSignals, contentTypeSlug)
+    rawVideoSignals && allFieldsNumeric && contentTypeSlug !== null
+      ? applyContentTypeWeights(rawVideoSignals as GeminiVideoSignals, contentTypeSlug)
       : rawVideoSignals;
 
   // -------------------------------------------------
@@ -329,7 +459,9 @@ export async function aggregateScores(
   // -------------------------------------------------
   const availability: SignalAvailability = {
     behavioral: deepseekResult !== null,
-    gemini: geminiResult.analysis.factors.some((f) => f.score > 0), // HARD-03: false when all factors are 0 (fallback)
+    // Placeholder — overwritten below after per-segment availability is resolved.
+    // HARD-03 fallback (factors.some(score > 0)) kicks in only when signalAvailability undefined.
+    gemini: false,
     ml: mlAvailable,
     rules:
       ruleResult.matched_rules.length > 0 &&
@@ -346,7 +478,22 @@ export async function aggregateScores(
     // in selectWeights math (filtered out by SCORE_WEIGHT_KEYS).
     content_type: pipelineResult.wave0Result.content_type !== null,
     niche: pipelineResult.wave0Result.niche !== null,
+    // Phase 5 D-12 — per-segment provenance from analyzeVideoSegmented.
+    // `?? false` fallback handles legacy callers (text mode / eval harness) AND
+    // historical JSONB rows that pre-date the segment keys (RESEARCH line 475).
+    // SCORE_WEIGHT_KEYS still excludes these per Phase 4 Cross-File Constraint #3.
+    gemini_hook: pipelineResult.geminiResult.signalAvailability?.gemini_hook ?? false,
+    gemini_body: pipelineResult.geminiResult.signalAvailability?.gemini_body ?? false,
+    gemini_cta:  pipelineResult.geminiResult.signalAvailability?.gemini_cta  ?? false,
   };
+
+  // Phase 5 D-12: derived `gemini` key.
+  // - Segmented path (signalAvailability present): gemini = hook || body || cta.
+  // - Legacy text + tiktok_url paths (signalAvailability undefined): HARD-03 fallback —
+  //   the value is `true` when at least one Gemini factor scored > 0.
+  availability.gemini = pipelineResult.geminiResult.signalAvailability
+    ? availability.gemini_hook || availability.gemini_body || availability.gemini_cta
+    : geminiResult.analysis.factors.some((f) => f.score > 0);
 
   const weights = selectWeights(availability);
 
@@ -377,6 +524,40 @@ export async function aggregateScores(
   const gemini_score = Math.round(geminiAvg * 10); // Normalize to 0-100
 
   // -------------------------------------------------
+  // Phase 5 D-06: Apply CTA penalty to gemini_score.
+  // Reads wave0Result.content_type.type (Phase 4) × geminiResult.analysis.cta_segment
+  // (Phase 5 mergeSegments). Pure function — does NOT modify SCORE_WEIGHTS or
+  // selectWeights (those stay stable per Phase 4 Cross-File Constraint #3).
+  //
+  // Two separate values flow downstream:
+  //   - `gemini_score` (UNCHANGED here) → exposed on PredictionResult.gemini_score
+  //     so the M2 UI breakdown card shows the model's raw Gemini average.
+  //   - `ctaPenaltyApplied_gemini_score` → feeds raw_overall_score below so the
+  //     final number reflects the CTA-expectation penalty for tutorial/b_roll content.
+  // -------------------------------------------------
+  const widenedGemini = gemini as typeof gemini & { cta_segment?: CtaSegmentResult | null };
+  const ctaPenaltyApplied_gemini_score = applyCtaPenalty(
+    gemini_score,
+    contentTypeSlug,
+    widenedGemini.cta_segment ?? null,
+  );
+  // Phase 5 IN-03: emit a pipeline_warning breadcrumb when the CTA penalty
+  // actually fired. Keeps applyCtaPenalty pure (no side-effects) by computing
+  // the delta and routing the event through the aggregator's onStageEvent
+  // channel. Phase 10 ML audit (CONTEXT D-06) needs the penalty firing rate
+  // for magnitude calibration — without this breadcrumb, the only evidence
+  // is reconstructing it from `gemini_score` vs `overall_score` deltas, which
+  // is fragile across rule/trend/ml interactions.
+  if (ctaPenaltyApplied_gemini_score < gemini_score) {
+    const penaltyDelta = gemini_score - ctaPenaltyApplied_gemini_score;
+    onStageEvent?.({
+      type: "pipeline_warning",
+      stage: "cta_penalty_applied",
+      message: `CTA penalty fired: ${penaltyDelta} points deducted from gemini_score (content_type=${contentTypeSlug}, cta_present=false). Pre-penalty=${gemini_score}, post-penalty=${ctaPenaltyApplied_gemini_score}.`,
+    });
+  }
+
+  // -------------------------------------------------
   // Overall score (dynamic weighted combination)
   // -------------------------------------------------
   const raw_overall_score = Math.min(
@@ -385,7 +566,7 @@ export async function aggregateScores(
       0,
       Math.round(
         behavioral_score * weights.behavioral +
-          gemini_score * weights.gemini +
+          ctaPenaltyApplied_gemini_score * weights.gemini + // Phase 5 D-06 — penalty flows here
           (mlScore ?? 0) * weights.ml +
           ruleResult.rule_score * weights.rules +
           trendEnrichment.trend_score * weights.trends

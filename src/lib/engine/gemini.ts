@@ -1,7 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
 import { GoogleGenAI, Type } from "@google/genai";
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import { z } from "zod";
 import { createLogger } from "@/lib/logger";
 import {
@@ -11,10 +9,31 @@ import {
   type GeminiAnalysis,
   type GeminiVideoAnalysis,
 } from "./types";
+// Phase 5: per-model cost helper moved to ./gemini/cost.ts (Pitfall #9 — Pro pricing).
+// Legacy gemini.ts callers pass GEMINI_MODEL explicitly via the shim to preserve current
+// Flash behavior at byte-identical cost numbers (D-11 invariant).
+import { calculateCost as calculateCostPerModel } from "./gemini/cost";
+// Phase 5 IN-01 fix: inline calibration data as a build-time module import (instead
+// of runtime disk read via `import.meta.url` + fs). The pre-fix code was Node-only:
+// Next.js 15 App Router routes that ran on Edge runtime would have thrown
+// because `new URL(import.meta.url).pathname` resolves differently there.
+// JSON-as-module loading is bundled at build time, works in every runtime, and
+// removes the disk-cache singleton's race-condition surface area entirely.
+// Calibration JSON is ~26KB — well under the 50KB inline threshold from the
+// IN-02 fix guidance.
+import calibrationBaselineJson from "./calibration-baseline.json";
 
 const log = createLogger({ module: "gemini" });
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+// Phase 5 D-01: per-segment Gemini 3 preview models — env-overridable per D-02.
+// Defaults are preview-suffixed (Pitfall: bare `gemini-3-pro` / `gemini-3-flash` aliases
+// are invalid SDK strings as of 2026-05-18 per wave0/content-type-detector.ts:14).
+// Migration to GA is a config flip — change the env-var default when Google promotes
+// the models. No code change required.
+export const GEMINI_HOOK_MODEL = process.env.GEMINI_HOOK_MODEL ?? "gemini-3.1-pro-preview";
+export const GEMINI_BODY_MODEL = process.env.GEMINI_BODY_MODEL ?? "gemini-3-flash-preview";
+export const GEMINI_CTA_MODEL  = process.env.GEMINI_CTA_MODEL  ?? "gemini-3-flash-preview";
 const MAX_RETRIES = 2; // 3 total attempts
 const TEXT_TIMEOUT_MS = 15_000;
 const VIDEO_TIMEOUT_MS = 30_000;
@@ -22,16 +41,18 @@ const VIDEO_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
 const VIDEO_POLL_INTERVAL_MS = 500;
 const VIDEO_POLL_TIMEOUT_MS = 60_000;
 
-// Flash pricing (2025): input $0.15/1M tokens, output $0.60/1M tokens
-const INPUT_PRICE_PER_TOKEN = 0.15 / 1_000_000;
-const OUTPUT_PRICE_PER_TOKEN = 0.60 / 1_000_000;
-const FALLBACK_INPUT_TOKENS = 2000;
-const FALLBACK_OUTPUT_TOKENS = 800;
+// Flash pricing (2025): $0.15/M in, $0.60/M out.
+// Phase 5: per-model rates + fallback tokens moved to ./gemini/cost.ts; the legacy
+// `calculateCost` is now a shim that pins GEMINI_MODEL so existing text + video paths
+// continue to bill at byte-identical rates (D-11 invariant).
 
 let client: GoogleGenAI | null = null;
 
 // Calibration data cache
-interface CalibrationData {
+// Phase 5: exported so segment prompt builders in ./gemini/prompts.ts share the same shape.
+// Phase 5 Plan 02: getClient is also exported so segment helpers in ./gemini/* reuse the
+// singleton instead of re-implementing per-file env-var checks.
+export interface CalibrationData {
   primary_kpis: {
     share_rate: { viral_threshold: number };
     weighted_engagement_score: { percentiles: { p90: number } };
@@ -78,7 +99,7 @@ const FALLBACK_CALIBRATION: CalibrationData = {
 
 let cachedCalibration: CalibrationData | null = null;
 
-function getClient(): GoogleGenAI {
+export function getClient(): GoogleGenAI {
   if (!client) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error("Missing GEMINI_API_KEY environment variable");
@@ -87,8 +108,9 @@ function getClient(): GoogleGenAI {
   return client;
 }
 
-/** Strip markdown code fences from LLM output */
-function stripFences(text: string): string {
+/** Strip markdown code fences from LLM output.
+ *  Phase 5: exported so segment helpers in ./gemini/* can reuse the same pattern. */
+export function stripFences(text: string): string {
   const fenced = text.match(/```(?:json)?\n?([\s\S]*?)\n?```/);
   return fenced ? fenced[1]!.trim() : text.trim();
 }
@@ -115,22 +137,28 @@ function parseGeminiVideoResponse(raw: string): GeminiVideoAnalysis {
   return result.data;
 }
 
-/** Load calibration data from JSON file, cached after first read.
- *  Returns null on malformed/missing file — callers must handle null. */
-async function loadCalibrationData(): Promise<CalibrationData | null> {
+/** Load calibration data from the bundled JSON module, cached after first parse.
+ *  Returns null on malformed data (the Zod parse step is the only failure path
+ *  post-IN-02 — the file read can no longer fail since the JSON is bundled into
+ *  the JS chunk at build time).
+ *
+ *  Phase 5 Plan 03: exported so pipeline.ts (segmented video branch) can hydrate
+ *  the prompt builders without re-implementing the cache.
+ *
+ *  Phase 5 IN-02 fix: previously read from disk via `new URL(import.meta.url).pathname`,
+ *  which broke under Next.js 15 Edge runtime (the route at src/app/api/analyze/route.ts
+ *  IS pinned to nodejs runtime so this was not a live bug — but the disk-read pattern
+ *  was a near-future footgun if any future route serving pipeline.ts switched runtime).
+ *  Inlining the JSON also lets the dev server hot-reload on calibration updates without
+ *  bouncing the module-level cache. */
+export async function loadCalibrationData(): Promise<CalibrationData | null> {
   if (cachedCalibration) return cachedCalibration;
 
   try {
-    const calibrationPath = path.join(
-      path.dirname(new URL(import.meta.url).pathname),
-      "calibration-baseline.json"
-    );
-    const raw = await fs.readFile(calibrationPath, "utf-8");
-    const parsed = JSON.parse(raw);
-    cachedCalibration = CalibrationBaselineSchema.parse(parsed) as CalibrationData;
+    cachedCalibration = CalibrationBaselineSchema.parse(calibrationBaselineJson) as CalibrationData;
     return cachedCalibration;
   } catch (error) {
-    log.warn("Failed to load calibration data", {
+    log.warn("Failed to parse bundled calibration data", {
       error: error instanceof Error ? error.message : String(error),
     });
     cachedCalibration = null;
@@ -138,14 +166,26 @@ async function loadCalibrationData(): Promise<CalibrationData | null> {
   }
 }
 
-/** Calculate cost in cents from token usage metadata */
+/**
+ * Calculate cost in cents from token usage metadata.
+ *
+ * Phase 5 D-11 SHIM: delegates to the per-model helper at ./gemini/cost.ts so legacy
+ * text + video call sites (line ~357, line ~497) continue to invoke the original
+ * 2-arg signature without modification. The shim pins GEMINI_MODEL pricing so behavior
+ * stays byte-identical to the pre-Plan-01 single-model implementation.
+ *
+ * @deprecated Pass model name explicitly via `calculateCost(model, usageMetadata)` from
+ *             `./gemini/cost`. Phase 5 segment helpers (Plan 02) call the per-model
+ *             helper directly.
+ */
 function calculateCost(
   promptTokens: number | undefined,
-  candidateTokens: number | undefined
+  candidateTokens: number | undefined,
 ): number {
-  const input = promptTokens ?? FALLBACK_INPUT_TOKENS;
-  const output = candidateTokens ?? FALLBACK_OUTPUT_TOKENS;
-  return (input * INPUT_PRICE_PER_TOKEN + output * OUTPUT_PRICE_PER_TOKEN) * 100;
+  return calculateCostPerModel(GEMINI_MODEL, {
+    promptTokenCount: promptTokens,
+    candidatesTokenCount: candidateTokens,
+  });
 }
 
 /**
@@ -456,6 +496,15 @@ export async function analyzeVideoWithGemini(
 
     if (fileState === "FAILED") {
       throw new Error("Video processing failed in Gemini Files API. The file may be corrupt or in an unsupported format.");
+    }
+
+    // CR-01: Guard against any non-{PROCESSING,FAILED,ACTIVE} state (e.g. PENDING,
+    // UNKNOWN, null, undefined, "") — the legacy single-call path inherits the
+    // same bug as the segmented orchestrator and Phase 5 fixes both for parity.
+    if (fileState !== "ACTIVE") {
+      throw new Error(
+        `Video processing returned unexpected state "${fileState ?? "<undefined>"}". Expected ACTIVE.`
+      );
     }
 
     if (!fileUri) {

@@ -132,7 +132,16 @@ Plans:
   3. Hook decomposition returns 4 sub-scores: visual stop power, audio hook, text overlay, first words / speech — plus identified weakest modality
   4. Visual-audio coherence score and cognitive load score computed from cross-modal analysis (free Gemini prompt extension)
   5. Existing `analyzeVideoWithGemini` test surface still passes; new tests cover segmented analysis with mocked `videoMetadata` calls
-**Plans:** TBD (~3-4 plans, executable in parallel within phase)
+**Plans:** 3 plans across 3 waves
+Plans:
+**Wave 1**
+- [x] 05-01-PLAN.md — Wave 1: foundations (Zod schemas + Gemini responseSchema literals, per-model cost helper, prompt builders, types widening, env vars)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 05-02-PLAN.md — Wave 2: segment helpers + orchestrator + merge (3 parallel videoMetadata-scoped Gemini calls via Promise.allSettled, null-safe partial-failure merge)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [x] 05-03-PLAN.md — Wave 3: pipeline + aggregator integration (Wave 1 video-branch swap, per-segment SignalAvailability, D-06 CTA penalty, AI-SPEC eval D1-D17 alignment)
 
 ### Phase 6: Audio Analysis + Fingerprint Matching
 **Goal:** Audio stage produces real signals (voice clarity, audio hook, silence ratio, fingerprint match) replacing the current no-op.
@@ -233,7 +242,7 @@ Plans:
 | 2. Creator Profile & 9-Card Interview | 6/6 | Complete (UAT deferred) | 2026-05-17 |
 | 3. Pipeline Infrastructure | 4/4 | Complete (PARTIAL — defer-smoke for SC#4/#5) | 2026-05-18 |
 | 4. Wave 0 — Content Type + Niche Detection | 0/3 | Planned | - |
-| 5. Video Segmentation + Hook Decomposition | 0/TBD | Not started | - |
+| 5. Video Segmentation + Hook Decomposition | 3/3 | Complete (verifier passed; code review advisory 4C/9W/6I) | 2026-05-19 |
 | 6. Audio Analysis + Fingerprint | 0/TBD | Not started | - |
 | 7. Multi-Persona Simulation | 0/TBD | Not started | - |
 | 8. Benchmark Retrieval | 0/TBD | Not started | - |

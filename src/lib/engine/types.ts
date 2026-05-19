@@ -1,4 +1,15 @@
 import { z } from "zod";
+import {
+  HookDecompositionZodSchema,
+  CtaSegmentZodSchema,
+  type HookDecomposition,
+  type CtaSegmentResult,
+  type BodySegmentResult,
+} from "./gemini/schemas";
+
+// Phase 5 D-13 — re-export segment types so downstream consumers (aggregator, merge,
+// route handlers) have ONE import surface (`@/lib/engine/types`) instead of two.
+export type { HookDecomposition, CtaSegmentResult, BodySegmentResult };
 
 // =====================================================
 // Feature Vector — Standardized signal backbone
@@ -203,6 +214,13 @@ export interface SignalAvailability {
   trends: boolean;
   content_type: boolean;  // NEW Phase 4 (D-20) — set by aggregator from wave0Result.content_type !== null
   niche: boolean;          // NEW Phase 4 (D-20) — set by aggregator from wave0Result.niche !== null
+  // NEW Phase 5 (D-12) — per-segment availability from analyzeVideoSegmented.
+  // PROVENANCE KEYS — must NOT be added to SCORE_WEIGHT_KEYS (Phase 4 Cross-File Constraint #3).
+  // The existing `gemini` field becomes derived: gemini = gemini_hook || gemini_body || gemini_cta
+  // (computed in aggregator — Plan 03 wires this; Plan 01 ships placeholders only).
+  gemini_hook: boolean;
+  gemini_body: boolean;
+  gemini_cta: boolean;
 }
 
 // Wave0Result now defined below as z.infer<typeof Wave0ResultSchema> — see Phase 4 block.
@@ -256,8 +274,15 @@ export const GeminiResponseSchema = z.object({
 
 export type GeminiAnalysis = z.infer<typeof GeminiResponseSchema>;
 
+// Phase 5 D-13: GeminiVideoAnalysis widens with hook_decomposition + cta_segment.
+// Both are OPTIONAL + NULLABLE so the existing makeGeminiAnalysis() factory at
+// __tests__/factories.ts:22 continues to typecheck without modification (Pitfall #10).
+// The segmented path (Plan 02) always populates them; the legacy single-call path
+// leaves them undefined.
 export const GeminiVideoResponseSchema = GeminiResponseSchema.extend({
   video_signals: GeminiVideoSignalsSchema,
+  hook_decomposition: HookDecompositionZodSchema.optional().nullable(),
+  cta_segment: CtaSegmentZodSchema.optional().nullable(),
 });
 
 export type GeminiVideoAnalysis = z.infer<typeof GeminiVideoResponseSchema>;
@@ -276,6 +301,7 @@ export const ContentTypeEnumSchema = z.enum([
   "action",
   "tutorial",
   "vlog",
+  "comedy",
   "other",
 ] as const);
 
