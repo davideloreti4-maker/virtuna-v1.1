@@ -144,12 +144,26 @@ RETURNS TABLE (
   follower_count bigint
 )
 LANGUAGE plpgsql
-STABLE
+-- WR-01: marked VOLATILE (not STABLE) because set_config is itself VOLATILE.
+-- Marking the wrapper STABLE was technically allowed by Postgres but defeated
+-- the planner's caching contract and was inconsistent with the body. VOLATILE
+-- is the honest contract: the function reads-and-writes a session GUC.
+--
+-- Long-term: prefer ALTER ROLE service_role SET hnsw.iterative_scan='strict_order'
+-- so the GUC is set once per role rather than per RPC; that change is held until
+-- Phase 10+ infra hardening because it requires a separate Supabase migration
+-- against the live role.
+VOLATILE
 AS $$
 BEGIN
   -- Defensive setting: HNSW iterative scan for small selective filters (RESEARCH line 381).
   -- Required for pgvector 0.8.0+ to iterate further into the graph when filtered candidate
   -- counts are below match_count. Set as LOCAL so it doesn't leak to outer transactions.
+  -- Caveat: when this function is called from inside an outer explicit transaction,
+  -- LOCAL is the txn lifetime — the setting WILL persist for the rest of that outer
+  -- txn (Postgres SET LOCAL semantics). The earlier comment "doesn't leak to outer
+  -- transactions" was misleading. In practice the RPC is invoked as a single
+  -- statement from the application layer, so the outer-txn case does not arise.
   PERFORM set_config('hnsw.iterative_scan','strict_order', true);
 
   RETURN QUERY
@@ -214,7 +228,8 @@ RETURNS TABLE (
   follower_count bigint
 )
 LANGUAGE plpgsql
-STABLE
+-- WR-01: VOLATILE (see comment on match_corpus_videos above).
+VOLATILE
 AS $$
 BEGIN
   PERFORM set_config('hnsw.iterative_scan','strict_order', true);
