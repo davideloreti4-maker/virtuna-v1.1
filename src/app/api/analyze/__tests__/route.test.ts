@@ -411,4 +411,30 @@ describe("POST /api/analyze — provenance INSERT (PIPE-05, PIPE-06, CACHE-01)",
       expect.objectContaining({ bypass: true })
     );
   });
+
+  // Phase 6 Plan 06-06 (Note 7 / Q4 RESOLVED) — analysis_results.audio_description persistence
+  it("INSERTs audio_description column when finalResult.audio_description is populated", async () => {
+    (aggregateScores as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ...fakeFinalResult,
+      audio_description: "upbeat hip-hop, 90 BPM, sampled female vocal hook",
+    });
+    const req = makeRequest(validInput, { Accept: "application/json" });
+    await POST(req);
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        audio_description: "upbeat hip-hop, 90 BPM, sampled female vocal hook",
+      })
+    );
+  });
+
+  it("INSERTs audio_description = null when finalResult.audio_description is null/undefined", async () => {
+    // fakeFinalResult has no audio_description field → falsy ?? null path applies.
+    const req = makeRequest(validInput, { Accept: "application/json" });
+    await POST(req);
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        audio_description: null,
+      })
+    );
+  });
 });
