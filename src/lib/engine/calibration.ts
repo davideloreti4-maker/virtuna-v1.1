@@ -327,8 +327,21 @@ export async function getPlattParameters(): Promise<PlattParameters | null> {
   }
 
   const supabase = createServiceClient();
-  const pairs = await fetchOutcomePairs(supabase);
-  const params = fitPlattScaling(pairs);
+  const { data, error } = await supabase
+    .from("platt_parameters")
+    .select("a, b, fitted_at, sample_count")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error && error.code !== "PGRST116") {
+    // PGRST116 = "no rows found" — expected before first train-platt run
+    log.error("Failed to fetch platt_parameters", { error: error.message });
+  }
+
+  const params: PlattParameters | null = data
+    ? { a: data.a, b: data.b, fittedAt: data.fitted_at, sampleCount: data.sample_count }
+    : null;
 
   plattCache.set(PLATT_CACHE_KEY, { params });
   return params;

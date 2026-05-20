@@ -482,17 +482,13 @@ describe("D-G1 + selectWeights — weight redistribution", () => {
       personas: false,
     });
     expect(allOnNoAudio.audio).toBe(0);
-    // Mathematical identity: when audio is the ONLY missing signal, redistributing
-    // the 0.07 share across 5 signals whose raw weights sum to 1.0 (then re-normalizing
-    // back to 1.0) yields weights identical to the pre-Phase-6 5-signal base.
-    // Each signal's share = raw_base + (raw_base/availableWeight)*missingWeight, then
-    // divided by (raw_base * (1 + missing/available)). The two factors cancel exactly,
-    // returning the original raw_base. This is the correct emergent behavior.
-    expect(allOnNoAudio.behavioral).toBeCloseTo(0.35, 2);
-    expect(allOnNoAudio.gemini).toBeCloseTo(0.25, 2);
-    expect(allOnNoAudio.ml).toBeCloseTo(0.15, 2);
-    expect(allOnNoAudio.rules).toBeCloseTo(0.15, 2);
-    expect(allOnNoAudio.trends).toBeCloseTo(0.1, 2);
+    // Phase 10 D-05: ml=0 (disabled). The 5 available signals now sum to 0.85 raw,
+    // so normalization scales each by 1/0.85.
+    expect(allOnNoAudio.behavioral).toBeCloseTo(0.412, 2);
+    expect(allOnNoAudio.gemini).toBeCloseTo(0.294, 2);
+    expect(allOnNoAudio.ml).toBe(0);
+    expect(allOnNoAudio.rules).toBeCloseTo(0.176, 2);
+    expect(allOnNoAudio.trends).toBeCloseTo(0.118, 2);
     // Total = 1.0 (normalization contract).
     const sum = Object.values(allOnNoAudio).reduce((a, b) => a + b, 0);
     expect(sum).toBeCloseTo(1.0, 2);
@@ -521,7 +517,7 @@ describe("D-G1 + selectWeights — weight redistribution", () => {
   });
 
   it("Test 20: weight redistribution preserves total = 1.0 (normalized across SCORE_WEIGHT_KEYS)", () => {
-    // With audio present: 6 sources sum to 1.07 raw, normalized → 1.0.
+    // With audio present: 6 sources sum to 0.92 raw (ml=0 after Phase 10 D-05), normalized → 1.0.
     const allOn = selectWeights({
       behavioral: true,
       gemini: true,

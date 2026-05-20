@@ -53,12 +53,12 @@ export { ENGINE_VERSION };
 export const SCORE_WEIGHTS = {
   behavioral: 0.35,
   gemini: 0.25,
-  ml: 0.15,
+  ml: 0, // D-05: disabled after Phase 10 audit (was 0.15); set ml=false in availability below
   rules: 0.15,
   trends: 0.10,
   audio: 0.07, // Phase 6 (D-G1) — weight-bearing
-  retrieval: 0.05, // Phase 8 (D-03b) — weight-bearing; Phase 10 calibration will tune
-  platform_fit: 0.05, // Phase 9 (D-07) — weight-bearing; Phase 10 calibration will tune
+  retrieval: 0.05, // Phase 8 (D-03b) — weight-bearing; Phase 10 calibration kept at 0.05 (text-mode corpus; no video embeddings for meaningful LOO)
+  platform_fit: 0.05, // Phase 9 (D-07) — weight-bearing; Phase 10 calibration kept at 0.05 (text-mode corpus; platform signal thin without video analysis)
 } as const;
 
 // PATTERNS Critical Cross-File Constraint #1 (Phase 8) + #3 (Phase 4 + Phase 6):
@@ -686,7 +686,7 @@ export async function aggregateScores(
     // Placeholder — overwritten below after per-segment availability is resolved.
     // HARD-03 fallback (factors.some(score > 0)) kicks in only when signalAvailability undefined.
     gemini: false,
-    ml: mlAvailable,
+    ml: false, // D-05: disabled after Phase 10 audit — ml model uses engagement features not available at prediction time
     rules:
       ruleResult.matched_rules.length > 0 &&
       !pipelineResult.warnings.some((w) =>

@@ -38,12 +38,16 @@ const mockSupabaseChain = () => {
     "or",
     "order",
     "limit",
+    "single",
   ];
   for (const method of methods) {
     chain[method] = vi.fn(() => chain);
   }
-  chain.then = (resolve: (v: unknown) => void) =>
+  chain.then = (resolve: (v: unknown) => void) => {
+    // If single is in the call stack, resolve platt_parameters mock
+    // otherwise fall back to the outcomes mock
     resolve(mockOutcomesResult);
+  };
   return chain;
 };
 
@@ -53,11 +57,12 @@ vi.mock("@/lib/supabase/service", () => ({
   })),
 }));
 
+const mockCache = new Map<string, unknown>();
 vi.mock("@/lib/cache", () => ({
   createCache: () => ({
-    get: vi.fn(() => null),
-    set: vi.fn(),
-    invalidate: vi.fn(),
+    get: vi.fn((key: string) => mockCache.get(key) ?? null),
+    set: vi.fn((key: string, value: unknown) => { mockCache.set(key, value); }),
+    invalidate: vi.fn((key: string) => { mockCache.delete(key); }),
   }),
 }));
 
@@ -409,52 +414,60 @@ describe("generateCalibrationReport", () => {
 
 describe("getPlattParameters", () => {
   beforeEach(() => {
-    mockOutcomesResult = { data: [], error: null };
+    // Default: platt_parameters table is empty (PGRST116)
+    mockOutcomesResult = {
+      data: null,
+      error: { code: "PGRST116", message: "No rows found" },
+    };
+    mockCache.clear();
     invalidatePlattCache(); // Clear cache between tests
   });
 
-  it("returns null when insufficient data (<50 outcomes)", async () => {
-    const outcomes = Array.from({ length: 30 }, (_, i) => ({
-      predicted_score: i * 3,
-      actual_score: i * 3 + 5,
-    }));
-    mockOutcomesResult = { data: outcomes, error: null };
-
+  it("returns null when platt_parameters table is empty", async () => {
     const params = await getPlattParameters();
     expect(params).toBeNull();
   });
 
-  it("returns PlattParameters when >= 50 outcomes exist", async () => {
-    const outcomes = Array.from({ length: 60 }, (_, i) => ({
-      predicted_score: (i / 60) * 100,
-      actual_score: Math.min(100, (i / 60) * 100 + 5),
-    }));
-    mockOutcomesResult = { data: outcomes, error: null };
+  it("returns PlattParameters when a row exists in platt_parameters", async () => {
+    mockOutcomesResult = {
+      data: { a: -1.5, b: 0.2, fitted_at: "2026-05-20T00:00:00.000Z", sample_count: 100 },
+      error: null,
+    };
 
     const params = await getPlattParameters();
     expect(params).not.toBeNull();
-    expect(typeof params!.a).toBe("number");
-    expect(typeof params!.b).toBe("number");
-    expect(params!.sampleCount).toBe(60);
+    expect(params!.a).toBe(-1.5);
+    expect(params!.b).toBe(0.2);
+    expect(params!.sampleCount).toBe(100);
+    expect(params!.fittedAt).toBe("2026-05-20T00:00:00.000Z");
   });
 
   it("invalidatePlattCache clears cached parameters", async () => {
-    const outcomes = Array.from({ length: 60 }, (_, i) => ({
-      predicted_score: (i / 60) * 100,
-      actual_score: (i / 60) * 100,
-    }));
-    mockOutcomesResult = { data: outcomes, error: null };
+    mockOutcomesResult = {
+      data: { a: -1.5, b: 0.2, fitted_at: "2026-05-20T00:00:00.000Z", sample_count: 100 },
+      error: null,
+    };
 
     // First call — fetches and caches
     const params1 = await getPlattParameters();
     expect(params1).not.toBeNull();
+    expect(params1!.sampleCount).toBe(100);
 
-    // Invalidate
-    invalidatePlattCache();
+    // Modify mock data so second call (if it re-fetched) would return different values
+    mockOutcomesResult = {
+      data: { a: -2.0, b: 0.5, fitted_at: "2026-05-20T01:00:00.000Z", sample_count: 200 },
+      error: null,
+    };
 
-    // Change mock data to empty — should re-fetch
-    mockOutcomesResult = { data: [], error: null };
+    // Without invalidation, cache should still hold the original
     const params2 = await getPlattParameters();
-    expect(params2).toBeNull();
+    expect(params2!.sampleCount).toBe(100);
+
+    // After invalidation, should re-fetch (and pick up new mock data)
+    invalidatePlattCache();
+    const params3 = await getPlattParameters();
+    expect(params3).not.toBeNull();
+    expect(params3!.sampleCount).toBe(200);
+    expect(params3!.a).toBe(-2.0);
   });
 });

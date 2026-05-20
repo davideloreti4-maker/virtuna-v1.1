@@ -880,6 +880,33 @@ export type Database = {
           },
         ]
       }
+      platt_parameters: {
+        Row: {
+          a: number
+          b: number
+          created_at: string
+          fitted_at: string
+          id: number
+          sample_count: number
+        }
+        Insert: {
+          a: number
+          b: number
+          created_at?: string
+          fitted_at: string
+          id?: never
+          sample_count: number
+        }
+        Update: {
+          a?: number
+          b?: number
+          created_at?: string
+          fitted_at?: string
+          id?: never
+          sample_count?: number
+        }
+        Relationships: []
+      }
       referral_clicks: {
         Row: {
           clicked_at: string | null

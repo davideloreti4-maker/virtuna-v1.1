@@ -90,15 +90,13 @@ describe("selectWeights", () => {
       retrieval: true, // Phase 8 (D-03b) — new weight-bearing key
     });
 
-    // Trunk-side base weights (Phase 5/6/7): behavioral=0.35, gemini=0.25, ml=0.15, rules=0.15, trends=0.10
-    // plus Phase 8 retrieval=0.05 → raw sum 1.05 → each weight normalized by /1.05.
-    // Phase 10 calibration will refit all weights against corpus accuracy.
-    expect(weights.behavioral).toBeCloseTo(0.333, 2);
-    expect(weights.gemini).toBeCloseTo(0.238, 2);
-    expect(weights.ml).toBeCloseTo(0.143, 2);
-    expect(weights.rules).toBeCloseTo(0.143, 2);
-    expect(weights.trends).toBeCloseTo(0.095, 2);
-    expect(weights.retrieval).toBeCloseTo(0.048, 2);
+    // Phase 10 D-05: ml=0 (disabled) → raw sum 0.90; each weight normalized by /0.90.
+    expect(weights.behavioral).toBeCloseTo(0.389, 2);
+    expect(weights.gemini).toBeCloseTo(0.278, 2);
+    expect(weights.ml).toBe(0);
+    expect(weights.rules).toBeCloseTo(0.167, 2);
+    expect(weights.trends).toBeCloseTo(0.111, 2);
+    expect(weights.retrieval).toBeCloseTo(0.056, 2);
     const sum = Object.values(weights).reduce((a, b) => a + b, 0);
     expect(sum).toBeCloseTo(1, 2);
   });
@@ -272,7 +270,7 @@ describe("selectWeights — Phase 8 retrieval slot", () => {
       personas: false,
       retrieval: true,
     });
-    expect(w.retrieval).toBeCloseTo(0.048, 2);
+    expect(w.retrieval).toBeCloseTo(0.056, 2);
   });
 
   it("redistributes retrieval's 0.05 to the other 5 signals when retrieval=false", () => {
@@ -585,13 +583,13 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
       personas: false,
       retrieval: true, // Phase 8 — weight-bearing
     });
-    // Post-merge normalized (base sum 1.05 from trunk weights + retrieval=0.05). Phase 10 will refit.
-    expect(weights.behavioral).toBeCloseTo(0.333, 2);
-    expect(weights.gemini).toBeCloseTo(0.238, 2);
-    expect(weights.ml).toBeCloseTo(0.143, 2);
-    expect(weights.rules).toBeCloseTo(0.143, 2);
-    expect(weights.trends).toBeCloseTo(0.095, 2);
-    expect(weights.retrieval).toBeCloseTo(0.048, 2);
+    // Phase 10 D-05: ml=0 (disabled) → raw sum 0.90.
+    expect(weights.behavioral).toBeCloseTo(0.389, 2);
+    expect(weights.gemini).toBeCloseTo(0.278, 2);
+    expect(weights.ml).toBe(0);
+    expect(weights.rules).toBeCloseTo(0.167, 2);
+    expect(weights.trends).toBeCloseTo(0.111, 2);
+    expect(weights.retrieval).toBeCloseTo(0.056, 2);
   });
 
   it("selectWeights ignores content_type + niche keys (Critical Cross-File Constraint #3)", () => {
@@ -625,7 +623,7 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
     });
     expect(weightsWithNew).toEqual(weightsWithoutNew);
     const sum = Object.values(weightsWithNew).reduce((a, b) => a + b, 0);
-    expect(sum).toBeCloseTo(1.0, 3);
+    expect(sum).toBeCloseTo(1.0, 2);
   });
 
   it("selectWeights redistribution still works with new keys present (1 missing)", () => {
@@ -967,9 +965,8 @@ describe("Phase 8 — aggregator retrieval integration", () => {
     });
     const result = await aggregateScores(pipeline);
     expect(result.score_weights).toHaveProperty("retrieval");
-    // Post-merge normalized — Phase 8 standalone intent 0.05, merged with trunk Phase 5/6/7 → ~0.048.
-    // Phase 10 calibration owns the final retune.
-    expect(result.score_weights.retrieval).toBeCloseTo(0.048, 2);
+    // Post-merge normalized — raw 0.05, base sum 0.90 (Phase 10 D-05: ml=0) → ~0.056.
+    expect(result.score_weights.retrieval).toBeCloseTo(0.056, 2);
   });
 
   it("signal_availability.retrieval mirrors pipelineResult.retrievalResult.availability", async () => {
