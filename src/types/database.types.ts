@@ -215,6 +215,7 @@ export type Database = {
           updated_at: string | null
           user_id: string
           variants: Json | null
+          video_storage_path: string | null
           warnings: string[] | null
         }
         Insert: {
@@ -254,6 +255,7 @@ export type Database = {
           updated_at?: string | null
           user_id: string
           variants?: Json | null
+          video_storage_path?: string | null
           warnings?: string[] | null
         }
         Update: {
@@ -293,6 +295,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           variants?: Json | null
+          video_storage_path?: string | null
           warnings?: string[] | null
         }
         Relationships: []
@@ -584,6 +587,7 @@ export type Database = {
       }
       creator_profiles: {
         Row: {
+          analysis_count: number
           avatar_url: string | null
           bio: string | null
           content_style: string | null
@@ -607,6 +611,7 @@ export type Database = {
           primary_goal: string | null
           profile_interview_seen_at: string | null
           reference_creators: Json | null
+          storage_retention_opted_in: boolean
           target_audience: Json | null
           target_platforms: string[] | null
           tiktok_followers: number | null
@@ -620,6 +625,7 @@ export type Database = {
           youtube_subscribers: number | null
         }
         Insert: {
+          analysis_count?: number
           avatar_url?: string | null
           bio?: string | null
           content_style?: string | null
@@ -643,6 +649,7 @@ export type Database = {
           primary_goal?: string | null
           profile_interview_seen_at?: string | null
           reference_creators?: Json | null
+          storage_retention_opted_in?: boolean
           target_audience?: Json | null
           target_platforms?: string[] | null
           tiktok_followers?: number | null
@@ -656,6 +663,7 @@ export type Database = {
           youtube_subscribers?: number | null
         }
         Update: {
+          analysis_count?: number
           avatar_url?: string | null
           bio?: string | null
           content_style?: string | null
@@ -679,6 +687,7 @@ export type Database = {
           primary_goal?: string | null
           profile_interview_seen_at?: string | null
           reference_creators?: Json | null
+          storage_retention_opted_in?: boolean
           target_audience?: Json | null
           target_platforms?: string[] | null
           tiktok_followers?: number | null
@@ -1604,6 +1613,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      increment_creator_analysis_count: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       match_corpus_videos: {
         Args: {
           filter_follower_tier: string
@@ -1805,3 +1818,5 @@ export const Constants = {
     Enums: {},
   },
 } as const
+A new version of Supabase CLI is available: v2.100.1 (currently installed v2.76.9)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
