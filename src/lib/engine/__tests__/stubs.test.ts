@@ -26,6 +26,12 @@ const fakeSupabaseClient = {
 } as unknown as import("@supabase/supabase-js").SupabaseClient;
 
 describe("Wave 0 backwards-compat (Phase 3 stub contract preserved by Phase 4 orchestrator)", () => {
+  // Clear DEEPSEEK_API_KEY so niche detector gracefully degrades (real API key
+  // present in dev env would make real calls, breaking the "both null" contract).
+  beforeEach(() => {
+    delete process.env.DEEPSEEK_API_KEY;
+  });
+
   // Phase 4 widened the signature to runWave0(payload, creatorContext, onEvent?).
   // The detectors emit their own stage_start/stage_end pairs on the no-video path
   // (no_video_input_skipping_content_type warning), so the net "2 starts + 2 ends"
