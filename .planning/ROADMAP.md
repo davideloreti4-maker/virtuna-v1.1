@@ -288,7 +288,16 @@ Plans:
   4. Calibration loss reduced vs v2.1 baseline (Platt calibration measurably improves percentile mapping)
   5. All 203 existing tests + new tests pass; zero regressions in PredictionResult schema for downstream consumers
   6. Milestone-completion checklist signed off; ready to merge `milestone/engine-foundation` and start Intelligence Surface milestone
-**Plans:** TBD (~1-2 plans)
+**Plans:** 3 plans across 3 waves
+Plans:
+**Wave 1**
+- [ ] 12-01-PLAN.md — Wave 1: Platt training + test suite verification + Phase 11 readiness check
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 12-02-PLAN.md — Wave 2: --max-rows CLI flag + v2.1 rebaseline + v3 smoke (25-rows, LOO) + conditional full benchmark
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 12-03-PLAN.md — Wave 3: Gate evaluation + summary report + ENGINE_VERSION flip + user sign-off
 
 ## Progress
 
