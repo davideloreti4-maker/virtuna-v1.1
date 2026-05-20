@@ -394,7 +394,7 @@ No missing dependencies.
 
 ### Wave 0 Gaps
 - [ ] `src/lib/engine/corpus/cli/ml-audit.ts` — empty file to satisfy import (implementation is plan body)
-- [ ] `src/lib/engine/corpus/cli/train-platt.ts` — empty file scaffold
+- ~~`src/lib/engine/corpus/cli/train-platt.ts` — empty file scaffold~~ (removed: Plan 02 creates it fully; no test depends on it during Wave 0)
 - [ ] `src/lib/engine/__tests__/aggregator-phase10.test.ts` — AGG-02 + AGG-06 test file
 - [ ] `supabase/migrations/20260520XXXXXX_phase10_platt_parameters.sql` — migration for platt_parameters table
 
@@ -453,7 +453,7 @@ No missing dependencies.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **What `corpus_version` string should ml-audit and train-platt use?**
    - What we know: `full.2026-05-11` is the sealed canonical version (D-13 in STATE.md)

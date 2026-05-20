@@ -57,9 +57,10 @@ created: 2026-05-20
 ## Wave 0 Requirements
 
 - [ ] `src/lib/engine/corpus/cli/ml-audit.ts` — empty scaffold for ML audit CLI (implementation is plan body)
-- [ ] `src/lib/engine/corpus/cli/train-platt.ts` — empty scaffold for Platt training CLI
 - [ ] `src/lib/engine/__tests__/aggregator-phase10.test.ts` — AGG-02 + AGG-06 test file with stubs
 - [ ] `supabase/migrations/20260520XXXXXX_phase10_platt_parameters.sql` — migration for `platt_parameters` table
+
+*Note: `train-platt.ts` is NOT a Wave 0 scaffold — Plan 02 creates it fully and no test depends on it during Wave 0.*
 
 ---
 
