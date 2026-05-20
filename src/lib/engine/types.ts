@@ -198,6 +198,8 @@ export interface PredictionResult {
     audio?: number;
     /** Phase 8 (D-03b) — 0.05 base; redistributed when SignalAvailability.retrieval = false. */
     retrieval?: number;
+    /** Phase 9 — platform_fit weight; redistributed when SignalAvailability.platform_fit = false. */
+    platform_fit?: number;
   };
 
   // Meta
@@ -220,6 +222,11 @@ export interface PredictionResult {
   // Phase 8 (D-11) — retrieval signal output
   retrieval_score: number | null;            // D-03 similarity-weighted bucket vote in [0,1]; null when availability.retrieval = false
   retrieval_evidence: RetrievalEvidenceItem[];  // D-02 shape, max 5 items
+
+  // Phase 9 — platform fit score, self-critique, counterfactuals
+  platform_fit?: PlatformFitResult | null;
+  critique?: CritiqueResult | null;
+  counterfactuals?: CounterfactualResult | null;
 }
 
 // =====================================================
@@ -269,6 +276,8 @@ export interface SignalAvailability {
    * aggregator + route always set it on Phase 8+ PredictionResult.
    */
   retrieval?: boolean;
+  /** Phase 9 — platform_fit signal availability. True when V3 platform-fit run produced a non-null result. */
+  platform_fit?: boolean;
 }
 
 // Wave0Result now defined below as z.infer<typeof Wave0ResultSchema> — see Phase 4 block.
@@ -662,3 +671,19 @@ export interface AudioFingerprintResult {
 export interface PipelineAudioFingerprintFields {
   audioFingerprintResult: AudioFingerprintResult | null;
 }
+
+// =====================================================
+// Phase 9 — Platform Fit, Self-Critique, Counterfactuals
+// =====================================================
+
+/**
+ * Platform fit result — how well content matches a platform's algorithmic preferences.
+ * Produced by runPlatformFit() in wave4/platform-fit.ts (Plan 09-03).
+ */
+export const PlatformFitResultSchema = z.object({
+  platform: z.string(),
+  fit_score: z.number().min(0).max(100),
+  rationale: z.string(),
+  watermark_penalty: z.boolean().optional(),
+});
+export type PlatformFitResult = z.infer<typeof PlatformFitResultSchema>;
