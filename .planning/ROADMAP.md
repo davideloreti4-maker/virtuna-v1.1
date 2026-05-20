@@ -241,7 +241,11 @@ Plans:
   4. `is_calibrated: true` set on predictions where calibration applies
   5. Aggregator extended via SignalAvailability with personas, audio, retrieval, hook, algo-fit signals; dynamic redistribution updated
   6. `ENGINE_VERSION` bumped to `3.0.0`; all 203 existing tests still pass + new aggregator tests cover new signals
-**Plans:** TBD (~3 plans)
+**Plans:** 3 plans across 3 waves
+Plans:
+- [ ] 10-01-PLAN.md — Wave 1: ml-audit.ts CLI + platt_parameters migration SQL + aggregator-phase10.test.ts stubs
+- [ ] 10-02-PLAN.md — Wave 2: [BLOCKING] DB push + getPlattParameters() DB-read update + train-platt.ts CLI
+- [ ] 10-03-PLAN.md — Wave 3: ML decision applied to SCORE_WEIGHTS + signal ablation tuning + weight-calibration-report.md
 
 ### Phase 11: Existing UI Integration + Privacy Policy
 **Goal:** Existing video upload + analyze + dashboard flows work with engine v3. Storage retention policy enforced. New 9-card profile integrates cleanly with existing onboarding.
