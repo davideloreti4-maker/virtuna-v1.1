@@ -41,7 +41,7 @@ Wave 8 (final gate): P12 (accuracy benchmark + acceptance)
 - [x] **Phase 6: Audio Analysis + Fingerprint** — Real audio stage replacing no-op, audio fingerprint matching against trending sounds DB. **Completed 2026-05-19 (3/3 HUMAN-UAT passed; 5 code-review follow-ups deferred)**
 - [x] **Phase 7: Multi-Persona Simulation** — Wave 3 with 10 FYP-weighted personas on V3 (6 FYP + 2 niche + 1 loyalist + 1 cross-niche). (completed 2026-05-19)
 - [x] **Phase 8: Benchmark Retrieval** — pgvector setup, embedding pipeline, top-K similar competitor video retrieval. (completed 2026-05-19)
-- [ ] **Phase 9: Platform Algo Fit + Self-Critique + Counterfactuals** — TikTok/IG/YT-specific signals, creator-tier awareness, watermark detection, critique pass, counterfactual generation.
+- [x] **Phase 9: Platform Algo Fit + Self-Critique + Counterfactuals** — TikTok/IG/YT-specific signals, creator-tier awareness, watermark detection, critique pass, counterfactual generation. **Completed 2026-05-20 (7 plans, 84 test files green, pending verifier)**
 - [ ] **Phase 10: ML Audit + Calibration + Aggregator Extension** — Audit ML against corpus, decide retrain/down-weight, train Platt on corpus, extend SignalAvailability with new signals, bump to engine v3.0.
 - [ ] **Phase 11: Existing UI Integration + Privacy Policy** — Wire /api/analyze + video-upload component to new engine, storage retention policy, onboarding integration with 9-card profile.
 - [ ] **Phase 12: Accuracy Benchmark + Acceptance Gate** — Final benchmark run, target accuracy improvement met, cost in budget, no regressions, M1 ships.
