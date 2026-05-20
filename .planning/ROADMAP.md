@@ -243,8 +243,13 @@ Plans:
   6. `ENGINE_VERSION` bumped to `3.0.0`; all 203 existing tests still pass + new aggregator tests cover new signals
 **Plans:** 3 plans across 3 waves
 Plans:
+**Wave 1**
 - [ ] 10-01-PLAN.md — Wave 1: ml-audit.ts CLI + platt_parameters migration SQL + aggregator-phase10.test.ts stubs
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 10-02-PLAN.md — Wave 2: [BLOCKING] DB push + getPlattParameters() DB-read update + train-platt.ts CLI
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 10-03-PLAN.md — Wave 3: ML decision applied to SCORE_WEIGHTS + signal ablation tuning + weight-calibration-report.md
 
 ### Phase 11: Existing UI Integration + Privacy Policy
