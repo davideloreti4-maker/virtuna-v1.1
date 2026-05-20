@@ -64,6 +64,9 @@ vi.mock("@/lib/supabase/server", () => ({
           single: vi.fn(() =>
             Promise.resolve({ data: { virtuna_tier: "pro" }, error: null })
           ),
+          maybeSingle: vi.fn(() =>
+            Promise.resolve({ data: { storage_retention_opted_in: false }, error: null })
+          ),
         })),
       })),
     })),
@@ -105,6 +108,9 @@ vi.mock("@/lib/supabase/service", () => ({
     storage: {
       from: vi.fn(() => ({ remove: mockStorageRemove })),
     },
+    rpc: vi.fn(() => ({
+      catch: vi.fn(() => Promise.resolve()),
+    })),
   })),
 }));
 
