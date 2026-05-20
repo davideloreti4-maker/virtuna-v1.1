@@ -214,13 +214,21 @@ Plans:
   5. Anti-virality "this will likely flop" warning surfaced when prediction confidence is high but overall score <30
 **Plans:** 7 plans
 Plans:
+**Wave 1**
 - [ ] 09-01-PLAN.md — Wave 1: Interface-first types.ts extension + 5 Wave 0 test stub files
 - [ ] 09-02-PLAN.md — Wave 1: Gemini hook-segment watermark detection extension
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 09-03-PLAN.md — Wave 2: Platform-fit V3 module (wave4/platform-fit.ts + prompts)
 - [ ] 09-04-PLAN.md — Wave 2: Aggregator wiring (platform_fit: 0.05 signal)
 - [ ] 09-05-PLAN.md — Wave 2: Self-critique V3 module (stage10-critique.ts + prompts)
 - [ ] 09-06-PLAN.md — Wave 2: Counterfactuals V3 module + LIKELY_FLOP (stage11)
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 09-07-PLAN.md — Wave 3: Pipeline integration + API route wiring + BENCH-05 gate
+
+**Cross-cutting constraints:**
+- LIKELY_FLOP check uses POST-CRITIQUE confidence (Pitfall 7 ordering invariant)
 
 ### Phase 10: ML Audit + Calibration + Aggregator Extension
 **Goal:** ML classifier audited on corpus; decision made (retrain / down-weight / disable). Platt calibration trained on corpus and applied to all predictions. Aggregator extended with new signals and engine bumped to v3.0.
