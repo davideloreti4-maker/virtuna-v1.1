@@ -265,10 +265,15 @@ Plans:
   6. Existing MVP Launch onboarding (TikTok handle + goal personalization + 4 tooltips) integrates with new 9-card profile (no duplication of fields)
 **Plans:** 5 plans across 3 waves
 Plans:
+**Wave 1**
 - [ ] 11-01-PLAN.md — Wave 1: DB migration (analysis_count + storage_retention_opted_in + video_storage_path) + [BLOCKING] schema push + types regen
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 11-02-PLAN.md — Wave 2: /api/analyze modifications (analysis_count RPC + retention gate + video_storage_path) + retention cron + vercel.json
 - [ ] 11-03-PLAN.md — Wave 2: Dashboard UI — SignalAvailabilityChips + GoalRecheckBanner + ResultsPanel wiring + DashboardClient profile fetch
 - [ ] 11-04-PLAN.md — Wave 2: Upload/Settings UI — video-upload.tsx disclosure + profile-settings-form.tsx retention toggle + schema/hook/route updates
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 11-05-PLAN.md — Wave 3: Engine v3 dev-guard audit + smoke test + human-verify checkpoint
 **UI hint:** yes
 
