@@ -166,9 +166,9 @@
 
 <!-- Honest accuracy via second-pass reasoning. -->
 
-- [ ] **CRITIQUE-01**: Self-critique V3 call on aggregator output
-- [ ] **CRITIQUE-02**: Critique cross-references creator's past wins/flops (Card 6) — flags when prediction contradicts creator history
-- [ ] **CRITIQUE-03**: Critique adjusts `confidence` field downward when reasoning is internally inconsistent
+- [x] **CRITIQUE-01**: Self-critique V3 call on aggregator output (implemented in stage10-critique.ts, verified via CRITIQUE-01 test)
+- [x] **CRITIQUE-02**: Critique cross-references creator's past wins/flops (Card 6) — flags when prediction contradicts creator history (past_wins_count/past_flops_count in buildCritiqueUserMessage, Check #3 in system prompt, verified via CRITIQUE-02 test)
+- [x] **CRITIQUE-03**: Critique adjusts `confidence` field downward when reasoning is internally inconsistent (applyCritiqueAdjustment helper with [-0.20, 0] clamp, verified via CRITIQUE-03 test)
 - [ ] **COUNTER-01**: Counterfactual suggestions generated via V3 ("what if hook moved to 0:02")
 - [ ] **COUNTER-02**: Counterfactuals tied to timestamped suggestions + retention curve drop points
 - [ ] **COUNTER-03**: Counterfactuals returned in prediction result, available to all tiers (no premium gate)
