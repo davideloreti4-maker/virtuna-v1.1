@@ -263,7 +263,13 @@ Plans:
   4. Storage retention cron job auto-deletes uploaded videos after 30 days unless opted in
   5. Retention policy text shown in upload UI before user uploads
   6. Existing MVP Launch onboarding (TikTok handle + goal personalization + 4 tooltips) integrates with new 9-card profile (no duplication of fields)
-**Plans:** TBD (~3 plans)
+**Plans:** 5 plans across 3 waves
+Plans:
+- [ ] 11-01-PLAN.md — Wave 1: DB migration (analysis_count + storage_retention_opted_in + video_storage_path) + [BLOCKING] schema push + types regen
+- [ ] 11-02-PLAN.md — Wave 2: /api/analyze modifications (analysis_count RPC + retention gate + video_storage_path) + retention cron + vercel.json
+- [ ] 11-03-PLAN.md — Wave 2: Dashboard UI — SignalAvailabilityChips + GoalRecheckBanner + ResultsPanel wiring + DashboardClient profile fetch
+- [ ] 11-04-PLAN.md — Wave 2: Upload/Settings UI — video-upload.tsx disclosure + profile-settings-form.tsx retention toggle + schema/hook/route updates
+- [ ] 11-05-PLAN.md — Wave 3: Engine v3 dev-guard audit + smoke test + human-verify checkpoint
 **UI hint:** yes
 
 ### Phase 12: Accuracy Benchmark + Acceptance Gate
@@ -295,5 +301,5 @@ Plans:
 | 8. Benchmark Retrieval | 5/5 | Complete (live DB applied; 7614 rows embedded; HNSW self-match validated) | 2026-05-19 |
 | 9. Platform Algo Fit + Self-Critique + Counterfactuals | 0/TBD | Not started | - |
 | 10. ML Audit + Calibration + Aggregator Extension | 0/TBD | Not started | - |
-| 11. Existing UI Integration + Privacy Policy | 0/TBD | Not started | - |
+| 11. Existing UI Integration + Privacy Policy | 0/5 | Planned (2026-05-20) | - |
 | 12. Accuracy Benchmark + Acceptance Gate | 0/TBD | Not started | - |
