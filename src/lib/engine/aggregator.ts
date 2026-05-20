@@ -8,6 +8,7 @@ import type {
   FeatureVector,
   GeminiVideoSignals,
   PersonaBehavioralAggregate,
+  PlatformFitResult,
   PredictedEngagement,
   PredictionResult,
   RuleScoreResult,
@@ -36,10 +37,12 @@ export { ENGINE_VERSION };
 
 // Phase 6 (D-G1) — audio: 0.07 = middle of 0.05-0.10 range per CONTEXT D-G1.
 // Phase 8 (D-03b) — retrieval: 0.05 dev placeholder; Phase 10 will tune.
-// Phase 10 ML audit retunes against corpus benchmark. Raw weights now sum to 1.12;
-// selectWeights normalizes BOTH branches (all-available + redistribution) so the
-// returned weights always sum to ~1.0 — the weighted-average math in aggregateScores
-// expects that contract. Exported for test introspection (aggregator-audio.test.ts).
+// Phase 9 (D-07) — platform_fit: 0.05 dev placeholder; Phase 10 will tune.
+// Phase 10 ML audit retunes against corpus benchmark. Raw weights sum to 1.17
+// (8-key) or 1.12 (7-key no platform_fit); selectWeights normalizes BOTH branches
+// (all-available + redistribution) so the returned weights always sum to ~1.0 —
+// the weighted-average math in aggregateScores expects that contract.
+// Exported for test introspection (aggregator-audio.test.ts).
 //
 // Trunk-authoritative base weights for behavioral/gemini/ml/rules/trends are kept at
 // their pre-Phase-8 values (0.35/0.25/0.15/0.15/0.10). Phase 8's D-03b redistribution
@@ -55,6 +58,7 @@ export const SCORE_WEIGHTS = {
   trends: 0.10,
   audio: 0.07, // Phase 6 (D-G1) — weight-bearing
   retrieval: 0.05, // Phase 8 (D-03b) — weight-bearing; Phase 10 calibration will tune
+  platform_fit: 0.05, // Phase 9 (D-07) — weight-bearing; Phase 10 calibration will tune
 } as const;
 
 // PATTERNS Critical Cross-File Constraint #1 (Phase 8) + #3 (Phase 4 + Phase 6):
@@ -66,7 +70,7 @@ export const SCORE_WEIGHTS = {
 //   weighted average, so audio_fingerprint must NOT have its own slot in the math).
 // - Phase 8 added `retrieval` as a weight-bearing key — MUST be in this tuple
 //   (skipping it silently drops the new 0.05 slot in the filter below).
-export const SCORE_WEIGHT_KEYS = ["behavioral", "gemini", "ml", "rules", "trends", "audio", "retrieval"] as const;
+export const SCORE_WEIGHT_KEYS = ["behavioral", "gemini", "ml", "rules", "trends", "audio", "retrieval", "platform_fit"] as const;
 type ScoreWeightKey = (typeof SCORE_WEIGHT_KEYS)[number];
 
 // =====================================================
@@ -153,6 +157,7 @@ export function selectWeights(
   trends: number;
   audio?: number;
   retrieval?: number;
+  platform_fit?: number;
 } {
   // Filter Object.entries to ONLY known SCORE_WEIGHTS keys. Phase 4+ extensions
   // that add provenance keys to SignalAvailability (content_type, niche, future
@@ -171,8 +176,9 @@ export function selectWeights(
   // for those callers. When the caller passes the new full shape, every key participates.
   const audioInInput = Object.prototype.hasOwnProperty.call(availability, "audio");
   const retrievalInInput = Object.prototype.hasOwnProperty.call(availability, "retrieval");
+  const platformFitInInput = Object.prototype.hasOwnProperty.call(availability, "platform_fit");
   const activeKeys = (SCORE_WEIGHT_KEYS.filter(
-    (k) => (k !== "audio" || audioInInput) && (k !== "retrieval" || retrievalInInput),
+    (k) => (k !== "audio" || audioInInput) && (k !== "retrieval" || retrievalInInput) && (k !== "platform_fit" || platformFitInInput),
   ) as readonly ScoreWeightKey[]);
 
   const filtered = (Object.entries(availability) as Array<[string, boolean]>)
@@ -200,11 +206,13 @@ export function selectWeights(
     trends: number;
     audio?: number;
     retrieval?: number;
+    platform_fit?: number;
   };
   const initWeights = (): WeightsOut => {
     const w: WeightsOut = { behavioral: 0, gemini: 0, ml: 0, rules: 0, trends: 0 };
     if (audioInInput) w.audio = 0;
     if (retrievalInInput) w.retrieval = 0;
+    if (platformFitInInput) w.platform_fit = 0;
     return w;
   };
 
@@ -714,6 +722,10 @@ export async function aggregateScores(
     // SCORE_WEIGHT_KEYS). True when ≥1 match survived hierarchical relaxation
     // AND D-04b min_corpus_size gate passed (i.e., retrievalResult.score is non-null).
     retrieval: pipelineResult.retrievalResult.availability,
+    // Phase 9 D-07: platform_fit — IS weight-bearing (included in SCORE_WEIGHT_KEYS).
+    // True when Plan 09-07's pipeline platformFitResult is non-null and non-empty.
+    // Uses widened pipeline cast until PipelineResult inherits the feeder interface.
+    platform_fit: ((pipelineResult as PipelineResult & { platformFitResult: PlatformFitResult[] | null }).platformFitResult?.length ?? 0) > 0,
   };
 
   // Phase 5 D-12: derived `gemini` key.
@@ -787,6 +799,18 @@ export async function aggregateScores(
   }
 
   // -------------------------------------------------
+  // Phase 9 (D-03): mean platform fit score across all scored platforms.
+  // platformFitResult comes from Plan 09-07's pipeline extension (typed via
+  // widenedPipeline cast until PipelineResult inherits PipelinePlatformFitFields).
+  // Mean of 0 when null/empty → term drops out via weights.platform_fit ?? 0.
+  // -------------------------------------------------
+  const widenedPipeline = pipelineResult as PipelineResult & { platformFitResult: PlatformFitResult[] | null };
+  const platformFitScores = widenedPipeline.platformFitResult ?? null;
+  const platformFitMeanScore = platformFitScores && platformFitScores.length > 0
+    ? platformFitScores.reduce((sum, p) => sum + p.fit_score, 0) / platformFitScores.length
+    : 0;
+
+  // -------------------------------------------------
   // Overall score (dynamic weighted combination)
   // Phase 6 (D-G1): audio_score is folded in when signal_availability.audio = true.
   // When audio is absent, weights.audio = 0 (selectWeights redistributes the 0.07
@@ -806,7 +830,10 @@ export async function aggregateScores(
           // Phase 8 D-03: retrievalResult.score is in [0,1] — scale by 100 to match
           // the [0,100] range of the other terms before applying the weight.
           // ?? 0 makes the term null-safe when retrieval is unavailable.
-          ((pipelineResult.retrievalResult.score ?? 0) * 100) * (weights.retrieval ?? 0)
+          ((pipelineResult.retrievalResult.score ?? 0) * 100) * (weights.retrieval ?? 0) +
+          // Phase 9 (D-07): platformFitMeanScore is in [0,100] (from fit_score 0-100).
+          // ?? 0 makes the term null-safe when platform_fit is unavailable.
+          platformFitMeanScore * (weights.platform_fit ?? 0)
       )
     )
   );
@@ -1013,6 +1040,11 @@ export async function aggregateScores(
     // the "similar videos" panel without further DB joins (D-02).
     retrieval_score: pipelineResult.retrievalResult.score,
     retrieval_evidence: pipelineResult.retrievalResult.evidence,
+    // Phase 9 D-07 — platform_fit signal output. Pipeline passes per-platform
+    // results (Plan 09-07) — array widened via cast until PipelineResult inherits
+    // the feeder interface. The first result is the primary (highest-fit) platform.
+    // Plan 09-07 will align the PredictionResult type to match the pipeline shape.
+    platform_fit: widenedPipeline.platformFitResult?.[0] ?? null,
   };
 
   // -------------------------------------------------
