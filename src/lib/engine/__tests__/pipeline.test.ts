@@ -216,6 +216,17 @@ vi.mock("@/lib/engine/retrieval/retrieval-stage", () => ({
   runBenchmarkRetrieval: mockRunBenchmarkRetrieval,
 }));
 
+// Phase 9 — platform-fit mock (vi.hoisted so vi.mock factory can reference it).
+const { mockRunPlatformFit } = vi.hoisted(() => ({
+  mockRunPlatformFit: vi.fn(async () => [
+    { platform: "tiktok", fit_score: 78, rationale: "Strong hook aligns with TikTok trends" },
+    { platform: "instagram", fit_score: 62, rationale: "Moderate visual appeal for Reels" },
+  ]),
+}));
+vi.mock("@/lib/engine/wave4/platform-fit", () => ({
+  runPlatformFit: mockRunPlatformFit,
+}));
+
 // Set env vars BEFORE importing the module under test
 process.env.GEMINI_API_KEY = "test-key";
 process.env.DEEPSEEK_API_KEY = "test-key";
@@ -955,6 +966,119 @@ describe("Phase 8 — Wave 1 retrieval sibling", () => {
     expect(result.retrievalResult.cost_cents).toBe(0);
     expect(
       result.warnings.some((w) => w.includes("Retrieval unavailable")),
+    ).toBe(true);
+  });
+});
+
+// =====================================================
+// Phase 9 — Platform-fit V3 + Critique + Counterfactuals (Plan 09-07)
+// =====================================================
+
+// platform-fit is mocked at the top of the file via vi.hoisted (see top of file).
+
+describe("Phase 9 — Platform-fit V3 result in PipelineResult", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetCircuitBreaker();
+    supabaseTableOverrides = {};
+
+    // Default Gemini mock
+    mockGeminiGenerate.mockResolvedValue({
+      text: JSON.stringify(makeGeminiAnalysis()),
+      usageMetadata: { promptTokenCount: 500, candidatesTokenCount: 300 },
+    });
+
+    // Default DeepSeek mock — routes Wave 2 reasoning vs Wave 3 persona call
+    mockDeepSeekCreate.mockImplementation((args: { messages: Array<{ role: string; content: string }> }) => {
+      const sys = args.messages?.find((m) => m.role === "system")?.content ?? "";
+      const isPersonaCall = sys.includes("TikTok For You Page viewer");
+      return Promise.resolve({
+        choices: [
+          {
+            message: {
+              content: isPersonaCall
+                ? JSON.stringify({
+                    scroll_past_second: 5,
+                    watch_through_pct: 70,
+                    comment_intent: 20,
+                    share_intent: 30,
+                    save_intent: 40,
+                    reasoning: "default persona test reaction",
+                  })
+                : JSON.stringify(makeDeepSeekReasoning()),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 1000, completion_tokens: 500 },
+      });
+    });
+
+    supabaseTableOverrides = {
+      rule_library: { data: [], error: null },
+      trending_sounds: { data: [], error: null },
+      creator_profiles: { data: null, error: null },
+      scraped_videos: { data: [], error: null },
+    };
+  });
+
+  it("PipelineResult includes platformFitResult with per-platform scores", async () => {
+    mockRunPlatformFit.mockClear();
+    mockRunPlatformFit.mockResolvedValue([
+      { platform: "tiktok", fit_score: 85, rationale: "Strong hook" },
+    ]);
+
+    const result = await runPredictionPipeline(input);
+
+    expect(result.platformFitResult).toBeDefined();
+    expect(result.platformFitResult).toHaveLength(1);
+    expect(result.platformFitResult![0]!.platform).toBe("tiktok");
+    expect(result.platformFitResult![0]!.fit_score).toBe(85);
+  });
+
+  it("runPlatformFit invoked once after Wave 3 (ordering invariant)", async () => {
+    mockRunPlatformFit.mockClear();
+    mockRunPlatformFit.mockResolvedValue([
+      { platform: "tiktok", fit_score: 70, rationale: "Decent fit" },
+    ]);
+
+    const result = await runPredictionPipeline(input);
+
+    expect(mockRunPlatformFit).toHaveBeenCalledTimes(1);
+    // platformFitResult in the return confirms platform-fit ran after Wave 3
+    // (Wave 3 must finish before PipelineResult is assembled).
+    expect(result.platformFitResult).toBeDefined();
+    expect(result.wave3Result).toHaveLength(10);
+  });
+
+  it("platform-fit stage events fire (delegated to runPlatformFit self-emission)", async () => {
+    mockRunPlatformFit.mockImplementation(async (_payload: unknown, _ctx: unknown, _ds: unknown, _wm: unknown, onEvent?: (e: { type: string; stage: string; wave: number }) => void) => {
+      onEvent?.({ type: "stage_start" as const, stage: "platform_fit", wave: 4 });
+      await Promise.resolve();
+      onEvent?.({ type: "stage_end" as const, stage: "platform_fit", wave: 4 });
+      return [{ platform: "tiktok", fit_score: 70, rationale: "Decent fit" }];
+    });
+
+    const events: Array<{ type: string; stage: string }> = [];
+    await runPredictionPipeline(input, {
+      onStageEvent: (e) => {
+        if (e.type === "stage_start" || e.type === "stage_end") {
+          events.push({ type: e.type, stage: e.stage });
+        }
+      },
+    });
+
+    expect(events.filter((e) => e.stage === "platform_fit")).toHaveLength(2);
+  });
+
+  it("platform-fit null on failure produces null platformFitResult (graceful degradation)", async () => {
+    mockRunPlatformFit.mockClear();
+    mockRunPlatformFit.mockRejectedValue(new Error("V3 API timeout"));
+
+    const result = await runPredictionPipeline(input);
+
+    expect(result.platformFitResult).toBeNull();
+    expect(
+      result.warnings.some((w) => w.includes("Platform-fit unavailable")),
     ).toBe(true);
   });
 });

@@ -10,6 +10,7 @@ import {
   type GeminiAnalysis,
   type DeepSeekReasoning,
   type PipelineAudioFingerprintFields,
+  type PlatformFitResult,
   type RuleScoreResult,
   type TrendEnrichment,
   type Wave0Result,
@@ -37,6 +38,7 @@ import { emitStageStart, emitStageEnd } from "./events";
 import { runWave0 } from "./wave0";
 import { runWave3 } from "./wave3";
 import { runBenchmarkRetrieval } from "./retrieval/retrieval-stage";
+import { runPlatformFit } from "./wave4/platform-fit";
 
 // =====================================================
 // Pipeline Types
@@ -101,6 +103,11 @@ export interface PipelineResult extends PipelineAudioFingerprintFields {
   // Phase 8 — Wave 1 retrieval sibling (Plan 04). Graceful empty on any failure;
   // aggregator folds retrievalResult.score into overall_score at weight 0.05.
   retrievalResult: BenchmarkRetrievalResult;
+
+  // Phase 9 — Platform-fit V3 result (Plan 03). Null when V3 call fails or circuit
+  // breaker is open. Aggregator reads this (via widenedPipeline cast) to compute
+  // platform_fit signal availability + fold mean fit_score into overall_score.
+  platformFitResult: PlatformFitResult[] | null;
 
   // Pipeline metadata
   requestId: string;
@@ -768,6 +775,36 @@ export async function runPredictionPipeline(
   });
 
   // -------------------------------------------------------
+  // Phase 9 — Platform-fit: runs AFTER Wave 3, BEFORE aggregateScores.
+  // Uses deepseekResult's reasoning + Gemini's watermark detection for
+  // per-platform scoring. Non-critical — returns null on any failure.
+  // -------------------------------------------------------
+  const watermarkDetected =
+    geminiResult.analysis.hook_decomposition?.watermark_detected ?? null;
+  const platformFitResult = await runPlatformFit(
+    payload,
+    creatorContext,
+    deepseekRaw?.reasoning ?? null,
+    watermarkDetected,
+    onStageEvent,
+  ).catch((error) => {
+    Sentry.captureException(error, {
+      tags: { stage: "platform_fit", requestId },
+    });
+    warnings.push(
+      `Platform-fit unavailable: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return null;
+  });
+
+  Sentry.addBreadcrumb({
+    category: "engine.pipeline",
+    message: "Platform-fit complete",
+    level: "info",
+    data: { requestId, resultCount: platformFitResult?.length ?? 0 },
+  });
+
+  // -------------------------------------------------------
   // Stage 9: Aggregate (delegated -- caller uses PipelineResult)
   // -------------------------------------------------------
   // The pipeline returns raw stage outputs. The API route (Plan 02)
@@ -810,6 +847,7 @@ export async function runPredictionPipeline(
     // (eval-runner cost cap reads that rolled-up field).
     wave3CostCents,
     retrievalResult, // NEW Phase 8 D-09 (Plan 04) — graceful-degradation BenchmarkRetrievalResult
+    platformFitResult, // NEW Phase 9 (Plan 03) — platform-fit V3 result array or null
     requestId,
     timings,
     total_duration_ms,

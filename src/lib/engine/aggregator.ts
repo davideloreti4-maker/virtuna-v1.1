@@ -23,8 +23,8 @@ import { DEEPSEEK_MODEL } from "./deepseek";
 import { predictWithML, featureVectorToMLInput } from "./ml";
 import { getPlattParameters, applyPlattScaling, type PlattParameters } from "./calibration";
 import { ENGINE_VERSION } from "./version";
-import { runStage10Critique } from "./stage10-critique";
-import { runStage11Counterfactuals } from "./stage11-counterfactuals";
+import { runStage10Critique, applyCritiqueAdjustment } from "./stage10-critique";
+import { runStage11Counterfactuals, maybeAppendLikelyFlopWarning } from "./stage11-counterfactuals";
 import { applyContentTypeWeights } from "./wave0/content-type-weights";
 import { computeAudioPerceptualScore } from "./audio-perceptual";
 
@@ -1048,12 +1048,27 @@ export async function aggregateScores(
   };
 
   // -------------------------------------------------
-  // Stage 10 + Stage 11 — no-op stubs in Phase 3; Phase 9 fills with real logic.
-  // Both are awaited but their results are NOT yet attached to PredictionResult.
-  // Future phases will extend PredictionResult schema to carry CritiqueResult + CounterfactualResult.
+  // Phase 9 — Stage 10: Self-critique pass (grading aggregator output for consistency).
+  // Runs AFTER aggregateScores populates overall_score/confidence. The critique adjusts
+  // confidence downward (clamped to [-0.20, 0]) via applyCritiqueAdjustment.
+  // Stage 10 result is surfaced in PredictionResult.critique.
   // -------------------------------------------------
-  await runStage10Critique(result, onStageEvent);
-  await runStage11Counterfactuals(result, onStageEvent);
+  const critiqueResult = await runStage10Critique(result, onStageEvent);
+  if (critiqueResult) {
+    result.confidence = applyCritiqueAdjustment(result.confidence, critiqueResult);
+  }
+  result.critique = critiqueResult;
+
+  // -------------------------------------------------
+  // Phase 9 — Stage 11: Counterfactual suggestions tied to retention drop points.
+  // Runs AFTER critique so maybeAppendLikelyFlopWarning uses POST-CRITIQUE confidence
+  // (Pitfall 7 ordering invariant). Short-circuits when overall_score >= 70.
+  // -------------------------------------------------
+  const counterfactualResult = await runStage11Counterfactuals(result, onStageEvent);
+  result.counterfactuals = counterfactualResult;
+
+  // Pure-TS LIKELY_FLOP check — uses POST-CRITIQUE confidence per Pitfall 7.
+  maybeAppendLikelyFlopWarning(result);
 
   return result;
 }

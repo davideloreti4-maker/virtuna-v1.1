@@ -54,6 +54,9 @@ vi.mock("../gemini", () => ({
 
 vi.mock("../deepseek", () => ({
   DEEPSEEK_MODEL: "deepseek-test",
+  // isCircuitOpen=true → Stage 10/11 short-circuit at circuit breaker (no OpenAI client needed).
+  // These tests don't mock `openai`, so the real OpenAI constructor would hang/timeout.
+  isCircuitOpen: vi.fn(() => true),
 }));
 
 // =====================================================
