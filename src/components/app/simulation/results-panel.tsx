@@ -13,10 +13,16 @@ import { BehavioralPredictionsSection } from './behavioral-predictions';
 import { SuggestionsSection } from './insights-section';
 import { ShareButton } from './share-button';
 import { TikTokResultCard } from './tiktok-result-card';
+import { SignalAvailabilityChips } from './signal-availability-chips';
+import { GoalRecheckBanner } from './goal-recheck-banner';
 
 interface ResultsPanelProps {
   result: PredictionResult;
   onRunAnother: () => void;
+  /** Phase 11 (PROFILE-16): lifetime analysis count from creator_profiles. */
+  analysisCount?: number;
+  /** Phase 11 (PROFILE-16): creator's primary_goal from Card 3. */
+  primaryGoal?: string | null;
 }
 
 function GlassSection({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -130,12 +136,26 @@ function BottomBar({
   );
 }
 
-export function ResultsPanel({ result, onRunAnother }: ResultsPanelProps) {
+export function ResultsPanel({ result, onRunAnother, analysisCount, primaryGoal }: ResultsPanelProps) {
   const videoSrc = useSimulationStore((s) => s.videoSrc);
   const thumbnailSrc = useSimulationStore((s) => s.thumbnailSrc);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
 
   return (
     <div className="space-y-3 max-h-[70vh] overflow-y-auto">
+      {/* PROFILE-16 (D-07): Goal re-prompt banner every 10 analyses */}
+      {!bannerDismissed &&
+        analysisCount !== undefined &&
+        analysisCount > 0 &&
+        analysisCount % 10 === 0 &&
+        primaryGoal && (
+          <GoalRecheckBanner
+            goal={primaryGoal}
+            onDismiss={() => setBannerDismissed(true)}
+          />
+        )
+      }
+
       {/* TikTok Result Card — shows video + predicted engagement (RES-1) */}
       {result.predicted_engagement && (
         <TikTokResultCard
@@ -164,6 +184,13 @@ export function ResultsPanel({ result, onRunAnother }: ResultsPanelProps) {
           score_weights={result.score_weights}
         />
       </GlassSection>
+
+      {/* INT-03 (D-02): signal_availability chip row below score ring */}
+      {result.signal_availability && (
+        <div className="px-1">
+          <SignalAvailabilityChips signalAvailability={result.signal_availability} />
+        </div>
+      )}
 
       {/* Factor Breakdown */}
       <GlassSection>
