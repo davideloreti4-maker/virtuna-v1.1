@@ -140,6 +140,14 @@ export async function POST(request: Request) {
       .single();
     const tier = (subscription?.virtuna_tier as string) || "free";
 
+    // Phase 11 (INT-05/D-04): Read retention opt-in preference once — gates both branches.
+    const { data: creatorProfile } = await supabase
+      .from("creator_profiles")
+      .select("storage_retention_opted_in")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const retentionOptedIn = creatorProfile?.storage_retention_opted_in ?? false;
+
     // Query today's usage count
     const today = new Date().toISOString().split("T")[0]!;
     const { data: usage } = await service
@@ -289,6 +297,12 @@ export async function POST(request: Request) {
       // it from `geminiResult.analysis.audio_signals?.audio_description ?? null`;
       // null when audio_signals absent. Column added by Plan 06-02 migration.
       audio_description: finalResult.audio_description ?? null,
+      // Phase 11 (INT-05): Persist Supabase Storage path so retention cron can delete it.
+      // Only set for video_upload mode; null for tiktok_url/text modes.
+      video_storage_path:
+        validated.input_mode === "video_upload" && validated.video_storage_path
+          ? validated.video_storage_path
+          : null,
     });
 
     // -------------------------------------------------------
@@ -340,10 +354,12 @@ export async function POST(request: Request) {
         { onConflict: "user_id,period_start,period_type" }
       );
 
-      // Best-effort: delete uploaded video from storage after analysis
+      // Phase 11 (INT-05/D-04): Delete uploaded video only if user has NOT opted into retention.
+      // Opted-in users keep their video; retention cron handles 30-day expiry.
       if (
         validated.input_mode === "video_upload" &&
-        validated.video_storage_path
+        validated.video_storage_path &&
+        !retentionOptedIn
       ) {
         service.storage
           .from("videos")
@@ -352,6 +368,16 @@ export async function POST(request: Request) {
             // Best-effort cleanup — don't fail the response
           });
       }
+
+      // Phase 11 (PROFILE-16/D-08): Atomic lifetime analysis counter — triggers banner at count % 10.
+      // Uses DB function to avoid read-then-write race condition.
+      // Fire-and-forget: counter failure must NOT break the analysis response.
+      service.rpc("increment_creator_analysis_count", { p_user_id: user.id })
+        .catch((err) => {
+          log.error("analysis_count increment failed", {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        });
 
       return Response.json(finalResult);
     }
@@ -435,8 +461,12 @@ export async function POST(request: Request) {
 
           send("complete", finalResult);
 
-          // Best-effort: delete uploaded video from storage after analysis
-          if (validated.input_mode === "video_upload" && validated.video_storage_path) {
+          // Phase 11 (INT-05/D-04): Opt-in gate (mirrors JSON branch).
+          if (
+            validated.input_mode === "video_upload" &&
+            validated.video_storage_path &&
+            !retentionOptedIn
+          ) {
             service.storage
               .from("videos")
               .remove([validated.video_storage_path])
@@ -444,6 +474,14 @@ export async function POST(request: Request) {
                 // Best-effort cleanup — don't fail the response
               });
           }
+
+          // Phase 11 (PROFILE-16/D-08): Atomic lifetime analysis counter (mirrors JSON branch).
+          service.rpc("increment_creator_analysis_count", { p_user_id: user.id })
+            .catch((err) => {
+              log.error("analysis_count increment failed", {
+                error: err instanceof Error ? err.message : String(err),
+              });
+            });
         } catch (error) {
           const message =
             error instanceof Error ? error.message : "Pipeline failed";
