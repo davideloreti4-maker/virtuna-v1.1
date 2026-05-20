@@ -497,22 +497,19 @@ Note: `analysis_results` schema must be verified to confirm `video_storage_path`
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Where is chip list added — ViralScoreRing or HeroScore?**
-   - What we know: `ResultsPanel` uses `HeroScore` (not `ViralScoreRing`) for the score display in the live dashboard.
-   - What's unclear: D-02 says "beneath `ViralScoreRing`" but `ViralScoreRing` is only used in the marketing `/viral-score-test` page. The dashboard uses `HeroScore` in `impact-score.tsx`.
-   - Recommendation: Planner should read `src/components/app/simulation/impact-score.tsx` before assigning this task. Likely need to add chip list to `HeroScore` (which wraps the score display for the dashboard) and separately update `ViralScoreRing` for consistency. Or — simpler — add `signalAvailability` chips as a new sub-component in `ResultsPanel` directly below the `HeroScore` section.
+1. **Where is chip list added — ViralScoreRing or HeroScore?** (RESOLVED)
+   - Decision: Add `SignalAvailabilityChips` as a new sub-component rendered by `ResultsPanel` directly below the `HeroScore` GlassSection. `ViralScoreRing` is only used on the marketing `/viral-score-test` page — chips are not added there.
+   - Adopted in: Plan 11-03, Task 1 + Task 2.
 
-2. **Does `analysis_results` persist `video_storage_path`?**
-   - What we know: `buildInsertRow` in route.ts does not include `video_storage_path` in the INSERT.
-   - What's unclear: How does the retention cron know which Supabase Storage paths to delete 30 days later if paths are not persisted in the DB?
-   - Recommendation: Either (a) add `video_storage_path` column to `analysis_results` and persist it, or (b) the cron deletes all files in the `videos/` bucket older than 30 days using Storage's list+filter API. Option (b) is simpler and doesn't require a schema change. Planner must decide which approach.
+2. **Does `analysis_results` persist `video_storage_path`?** (RESOLVED)
+   - Decision: Option (a) — add `video_storage_path` TEXT NULL column to `analysis_results` via the Phase 11 migration (Plan 11-01). Persist the path in `/api/analyze` after upload. Retention cron (Plan 11-02) queries by this column. Option (b) (bucket-level list+filter) was rejected: it cannot distinguish per-user opt-in preferences.
+   - Adopted in: Plan 11-01 migration + Plan 11-02 cron query.
 
-3. **PROFILE-16 banner: where does it read `analysis_count` from?**
-   - What we know: D-08 says increment on success in `/api/analyze`. The route returns `PredictionResult` which does not include `analysis_count`.
-   - What's unclear: The frontend needs to know the count to trigger the banner. Either (a) return `analysis_count` in the prediction response (add to `PredictionResult` or as a side-channel SSE event), or (b) have `DashboardClient` fetch `creator_profiles` on mount and track locally.
-   - Recommendation: Option (b) — fetch `creator_profiles.analysis_count` in `DashboardClient` once on mount; after each successful analysis, increment the local count. When `localCount % 10 === 0`, show banner. No schema change to `PredictionResult`.
+3. **PROFILE-16 banner: where does it read `analysis_count` from?** (RESOLVED)
+   - Decision: Option (b) — `DashboardClient` fetches `creator_profiles.analysis_count` + `primary_goal` once on mount via Supabase client; increments local state after each successful analysis. When `localCount % 10 === 0`, `ResultsPanel` shows the banner. No change to `PredictionResult` type.
+   - Adopted in: Plan 11-03, Task 2 (DashboardClient insertions B1–B4).
 
 ---
 

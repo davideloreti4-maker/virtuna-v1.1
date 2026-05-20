@@ -273,6 +273,7 @@
 | PROFILE-17 | 02 | 02-06 | Complete |
 | INT-02 | 02 | 02-04 | Complete |
 | INT-04 | 02 | 02-05 | Complete |
+| INT-07 | — | Deferred to M2 per D-06 | Deferred (M2) |
 | RETRIEVAL-01 | 08 | 08-01, 08-05 | Complete |
 | RETRIEVAL-02 | 08 | 08-01, 08-05 | Complete |
 | RETRIEVAL-03 | 08 | 08-03, 08-04 | Complete |
