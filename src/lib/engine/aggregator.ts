@@ -676,7 +676,6 @@ export async function aggregateScores(
   );
   const mlFeatures = featureVectorToMLInput(feature_vector);
   const mlScore = await predictWithML(mlFeatures);
-  const mlAvailable = mlScore !== null;
 
   // -------------------------------------------------
   // RULE-04: Determine signal availability from pipeline result

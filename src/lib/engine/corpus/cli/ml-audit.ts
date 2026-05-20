@@ -34,12 +34,8 @@ register({
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { runEvalOverCorpus } = require("@/lib/engine/corpus/eval-runner");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { scoreWithoutSignal, SIGNALS } = require("@/lib/engine/corpus/metrics/leave-one-out");
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { bucketFromScore } = require("@/lib/engine/corpus/metrics/score-to-bucket");
-
+const { scoreWithoutSignal } = require("@/lib/engine/corpus/metrics/leave-one-out");
 const log = (msg: string) => console.log(msg);
-const warn = (msg: string) => console.warn(`[WARN] ${msg}`);
 const err = (msg: string) => console.error(`[ERROR] ${msg}`);
 
 // ─── Arg parsing ─────────────────────────────────────────────────────────────
@@ -109,8 +105,8 @@ async function main() {
     if (!row.signalScores) continue;
 
     validCount++;
-    const actualIdx = bucketIndex[row.actual_bucket];
-    const predictedIdx = bucketIndex[row.predicted_bucket];
+    const actualIdx = bucketIndex[row.actual_bucket] ?? 0;
+    const predictedIdx = bucketIndex[row.predicted_bucket] ?? 0;
     cm[actualIdx]![predictedIdx]!++;
 
     if (row.predicted_bucket === row.actual_bucket) {

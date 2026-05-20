@@ -372,12 +372,12 @@ export async function POST(request: Request) {
       // Phase 11 (PROFILE-16/D-08): Atomic lifetime analysis counter — triggers banner at count % 10.
       // Uses DB function to avoid read-then-write race condition.
       // Fire-and-forget: counter failure must NOT break the analysis response.
-      service.rpc("increment_creator_analysis_count", { p_user_id: user.id })
-        .catch((err) => {
-          log.error("analysis_count increment failed", {
-            error: err instanceof Error ? err.message : String(err),
-          });
-        });
+      void (async () => {
+        const { error } = await service.rpc("increment_creator_analysis_count", { p_user_id: user.id });
+        if (error) {
+          log.error("analysis_count increment failed", { error: error.message });
+        }
+      })();
 
       return Response.json(finalResult);
     }
@@ -476,12 +476,12 @@ export async function POST(request: Request) {
           }
 
           // Phase 11 (PROFILE-16/D-08): Atomic lifetime analysis counter (mirrors JSON branch).
-          service.rpc("increment_creator_analysis_count", { p_user_id: user.id })
-            .catch((err) => {
-              log.error("analysis_count increment failed", {
-                error: err instanceof Error ? err.message : String(err),
-              });
-            });
+          void (async () => {
+            const { error } = await service.rpc("increment_creator_analysis_count", { p_user_id: user.id });
+            if (error) {
+              log.error("analysis_count increment failed", { error: error.message });
+            }
+          })();
         } catch (error) {
           const message =
             error instanceof Error ? error.message : "Pipeline failed";
