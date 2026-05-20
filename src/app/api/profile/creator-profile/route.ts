@@ -29,6 +29,7 @@ const GET_COLUMNS = [
   "posting_frequency",
   "time_of_day_aware",
   "pain_points",
+  "storage_retention_opted_in",
 ] as const;
 
 const GET_SELECT = GET_COLUMNS.join(", ");

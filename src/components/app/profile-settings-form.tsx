@@ -37,6 +37,7 @@ import {
 } from "@/components/app/cards/cadence-picker";
 import { PainPointsInput } from "@/components/app/cards/pain-points-input";
 
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Heading, Text } from "@/components/ui/typography";
 import { useToast } from "@/components/ui/toast";
@@ -113,6 +114,7 @@ export function ProfileSettingsForm(): React.JSX.Element {
   const [todAware, setTodAware] = useState<boolean>(false);
   // Card 8
   const [painPoints, setPainPoints] = useState<string>("");
+  const [storageRetentionOptedIn, setStorageRetentionOptedIn] = useState<boolean>(false);
 
   // CR-04 + WR-A: gate the `useEffect([profile])` sync via `syncedRef` so
   // background refetches (e.g. cross-tab activity) do NOT clobber in-flight
@@ -164,6 +166,7 @@ export function ProfileSettingsForm(): React.JSX.Element {
     );
     setTodAware(profile.time_of_day_aware ?? false);
     setPainPoints(profile.pain_points ?? "");
+    setStorageRetentionOptedIn(profile.storage_retention_opted_in ?? false);
   }, [profile]);
 
   const handleSave = async (): Promise<void> => {
@@ -183,6 +186,7 @@ export function ProfileSettingsForm(): React.JSX.Element {
         posting_frequency: frequency,
         time_of_day_aware: todAware,
         pain_points: painPoints,
+        storage_retention_opted_in: storageRetentionOptedIn,
       });
       // WR-A (iter-3): re-open the sync gate so the post-save refetch
       // (kicked off by the mutation's onSuccess invalidateQueries) is
@@ -312,6 +316,42 @@ export function ProfileSettingsForm(): React.JSX.Element {
           Pain points
         </label>
         <PainPointsInput value={painPoints} onChange={setPainPoints} />
+      </section>
+
+      {/* INT-06: Data retention toggle */}
+      <section
+        data-testid="settings-retention"
+        className="flex items-center justify-between py-4 border-t border-white/[0.06]"
+      >
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium text-foreground">
+            Keep my uploaded videos for re-analysis
+          </span>
+          <span className="text-xs text-foreground-muted">
+            By default, uploaded videos are deleted after 30 days.
+          </span>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={storageRetentionOptedIn}
+          disabled={updateMutation.isPending}
+          onClick={() => setStorageRetentionOptedIn((prev) => !prev)}
+          className={cn(
+            "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20",
+            storageRetentionOptedIn
+              ? "bg-accent"
+              : "bg-white/[0.08]",
+            updateMutation.isPending && "opacity-50 cursor-not-allowed"
+          )}
+        >
+          <span
+            className={cn(
+              "pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform duration-200",
+              storageRetentionOptedIn ? "translate-x-5" : "translate-x-0"
+            )}
+          />
+        </button>
       </section>
 
       <div className="flex items-center gap-4 border-t border-white/[0.06] pt-6">

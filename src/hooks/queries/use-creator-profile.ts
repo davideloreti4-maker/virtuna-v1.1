@@ -35,6 +35,7 @@ export interface CreatorProfileResponse {
   posting_frequency: string | null;
   time_of_day_aware: boolean | null;
   pain_points: string | null;
+  storage_retention_opted_in?: boolean | null;
 }
 
 /**

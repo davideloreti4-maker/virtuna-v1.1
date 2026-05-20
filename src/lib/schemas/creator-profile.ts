@@ -79,6 +79,7 @@ export const creatorProfilePatchSchema = z.object({
   posting_frequency: postingFrequencyEnum.nullable().optional(),
   time_of_day_aware: z.boolean().nullable().optional(),
   pain_points: z.string().max(500).nullable().optional(),
+  storage_retention_opted_in: z.boolean().nullable().optional(),
 });
 
 export type CreatorProfilePatch = z.infer<typeof creatorProfilePatchSchema>;
