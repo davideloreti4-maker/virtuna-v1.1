@@ -59,6 +59,11 @@ export const HookDecompositionZodSchema = z.object({
   ]),
   visual_audio_coherence: ScoreSchema,     // HOOK-06
   cognitive_load: ScoreSchema,             // HOOK-07 — POLARITY INVERTED: higher score = MORE load = WORSE retention. See JSDoc above.
+  watermark_detected: z.object({           // ALGO-06 — optional, back-compat with pre-Phase-9 cache
+    tiktok: z.boolean().optional(),
+    ig: z.boolean().optional(),
+    yt: z.boolean().optional(),
+  }).optional(),
 });
 
 const HookFactorSchema = z.object({
@@ -188,6 +193,14 @@ export const HOOK_SEGMENT_GEMINI_SCHEMA = {
         },
         visual_audio_coherence: { type: Type.NUMBER },
         cognitive_load: { type: Type.NUMBER },
+        watermark_detected: {
+          type: Type.OBJECT,
+          properties: {
+            tiktok: { type: Type.BOOLEAN },
+            ig: { type: Type.BOOLEAN },
+            yt: { type: Type.BOOLEAN },
+          },
+        },
       },
       required: [
         "visual_stop_power",

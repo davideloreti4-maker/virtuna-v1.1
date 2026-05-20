@@ -50,6 +50,21 @@ Return the SUB-MODALITY name (one of: visual_stop_power / audio_hook_quality / t
 - **visual_audio_coherence** — do visual and audio say the same thing (mood match, beat-cut alignment, lip-sync)?
 - **cognitive_load** — information density per second. **POLARITY: HIGHER = WORSE.** A score of 9 means the hook is too much to process; a score of 2 means one clear idea per second.
 
+## Watermark Detection
+Flag visible platform watermarks in the hook frame (first 5s). Set watermarks booleans:
+- **tiktok**: TikTok logo/watermark visible in frame.
+- **ig**: Instagram or Reels watermark visible.
+- **yt**: YouTube Shorts watermark visible.
+
+**Negative examples — do NOT flag these as watermarks:**
+- Creator's own handle/username overlay (this is content, not a platform mark).
+- Brand logos, sponsored tags, or product placements.
+- Text overlays that are part of the creative (caption, subtitle, sticker).
+- Generic UI chrome (volume slider, progress bar, phone notch).
+- Reposted content from another platform that has been re-uploaded (only flag platform watermarks embedded by the hosting platform during upload).
+
+**If no platform watermark is visible, set all three to false or omit the field.** The field is optional — only populate when confident.
+
 ## Scoring Rules
 - Score 0.0-10.0 with one decimal precision.
 - Use ABSOLUTE scoring (universal quality standards), NOT niche-relative.
