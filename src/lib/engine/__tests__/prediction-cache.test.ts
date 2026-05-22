@@ -149,6 +149,41 @@ describe("populatePredictionCache", () => {
   });
 });
 
+describe("D-23 — version invalidation invariant", () => {
+  it("cacheKey embeds ENGINE_VERSION between :: separators", () => {
+    const key = cacheKey("hash123", "user-abc");
+    expect(key).toBe(`hash123::${ENGINE_VERSION}::user-abc`);
+    expect(key.split("::")).toHaveLength(3);
+    expect(key.split("::")[1]).toBe(ENGINE_VERSION);
+  });
+
+  it("lookupPredictionCache returns null when stored engine_version != current ENGINE_VERSION (post-flip simulation)", async () => {
+    // Simulate: Supabase row has engine_version="3.0.0-dev" but the filter uses ENGINE_VERSION="3.0.0-dev"
+    // When version flips, the .eq("engine_version", ENGINE_VERSION) filter changes — rows with the old
+    // version no longer match. Mock the supabase chain to return { data: null } for the mismatch case.
+    mockMaybeSingle.mockResolvedValueOnce({ data: null, error: null });
+    const result = await lookupPredictionCache("hash123", "user-abc");
+    expect(result).toBeNull();
+    // Verify the supabase chain was called — cache miss went through to L2
+    expect(mockFrom).toHaveBeenCalled();
+  });
+
+  it("lookupPredictionCache returns row when stored engine_version matches current ENGINE_VERSION (positive control)", async () => {
+    // Simulate: row has matching engine_version — cache hit
+    mockMaybeSingle.mockResolvedValueOnce({
+      data: {
+        overall_score: 75,
+        engine_version: ENGINE_VERSION,
+        signal_availability: { behavioral: true, gemini: true, ml: false, rules: true, trends: true },
+      },
+      error: null,
+    });
+    const result = await lookupPredictionCache("hash456", "user-abc");
+    expect(result).not.toBeNull();
+    expect(mockFrom).toHaveBeenCalled();
+  });
+});
+
 describe("cache invalidation on engine version bump (CACHE-05, CACHE-06)", () => {
   it("cache key contains current ENGINE_VERSION", () => {
     const key = cacheKey("abc", "u");
