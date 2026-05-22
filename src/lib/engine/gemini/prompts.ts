@@ -69,7 +69,7 @@ Flag visible platform watermarks in the hook frame (first 5s). Set watermarks bo
 - Score 0.0-10.0 with one decimal precision.
 - Use ABSOLUTE scoring (universal quality standards), NOT niche-relative.
 - Most content scores 4-7; above 8 is exceptional.
-- Each factor needs: score + rationale (1-2 sentences referencing observed content in 0-5s) + improvement_tip.
+- Each factor needs: score + rationale (1-2 sentences, max 20 words each) + improvement_tip (max 20 words). Keep all strings short.
 - **temporal grounding**: every rationale MUST reference only events visible/audible in the FIRST 5 SECONDS. Do NOT reference content from later in the video.
 
 ## Calibration Data (from 7,321 analyzed TikTok videos)

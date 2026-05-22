@@ -295,8 +295,7 @@ export async function POST(request: Request) {
       gemini_score: finalResult.gemini_score,
       ml_score: finalResult.ml_score,
       // CAL-02: is_calibrated column pending migration — omitted until schema updated
-      // RULE-03: Per-rule contribution tracking for accuracy computation
-      rule_contributions: ruleContributions as unknown as null,
+      // RULE-03: rule_contributions column pending migration — omitted until schema updated
       // Phase 3 — provenance columns (typed in database.types.ts after Plan 04 regen).
       // content_hash is `string` → matches `string | null` directly (no cast).
       // signal_availability cast to Json: the SignalAvailability interface is structurally
