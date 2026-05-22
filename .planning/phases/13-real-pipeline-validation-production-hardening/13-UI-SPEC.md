@@ -60,7 +60,7 @@ Exceptions:
 
 Font: Inter. Letter-spacing: 0.2px global. Antialiased.
 
-Weights in use: 400 (regular) + 600 (semibold). No other weights.
+Weights in use: 400 (regular) + 500 (medium, badge/chip only) + 600 (semibold). No other weights.
 
 ---
 
