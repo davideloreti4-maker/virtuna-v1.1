@@ -54,10 +54,32 @@ vi.mock("../gemini", () => ({
 
 vi.mock("../deepseek", () => ({
   DEEPSEEK_MODEL: "deepseek-test",
-  // isCircuitOpen=true → Stage 10/11 short-circuit at circuit breaker (no OpenAI client needed).
-  // These tests don't mock `openai`, so the real OpenAI constructor would hang/timeout.
+  // isCircuitOpen=true → Stage 10 short-circuit at circuit breaker (no OpenAI client needed).
+  // Stage 11 now uses Gemini (Phase 13 Plan 02 rebuild) — mocked separately below.
   isCircuitOpen: vi.fn(() => true),
 }));
+
+// Phase 13 Plan 02: Stage 11 rebuilt to use Gemini (not DeepSeek).
+// Mock to prevent real GoogleGenAI calls during aggregator unit tests.
+// Emits stage_start + stage_end events so PIPE-09 event emission test passes.
+vi.mock("../stage11-counterfactuals", async (importOriginal) => {
+  const orig = await importOriginal<typeof import("../stage11-counterfactuals")>();
+  return {
+    ...orig,
+    runStage11Counterfactuals: vi.fn().mockImplementation(
+      async (
+        _result: unknown,
+        _videoContext: unknown,
+        onEvent?: (e: { type: string; stage: string; wave: string; timestamp_ms?: number; duration_ms?: number; cost_cents?: number; ok?: boolean }) => void,
+      ) => {
+        const ts = performance.now();
+        onEvent?.({ type: "stage_start", stage: "stage_11_counterfactuals", wave: "post", timestamp_ms: ts });
+        onEvent?.({ type: "stage_end", stage: "stage_11_counterfactuals", wave: "post", duration_ms: 1, cost_cents: 0, ok: true });
+        return null;
+      },
+    ),
+  };
+});
 
 // =====================================================
 // Imports (after mocks)
@@ -74,7 +96,11 @@ import type { PersonaBehavioralAggregate, PersonaSimulationResult } from "../typ
 // =====================================================
 
 describe("selectWeights", () => {
-  it("returns base weights when all signals are available (post-Phase-5/6/7 merge normalized D-03b values)", () => {
+  it("returns base weights when all signals are available (D-16 Phase 13 normalized values)", () => {
+    // D-16 weights: behavioral=0.40, gemini=0.35, audio=0.05, trends=0.10, platform_fit=0.05, ml=0, retrieval=0, rules=0
+    // This test call does NOT include audio/platform_fit — activeKeys: behavioral, gemini, ml, rules, trends, retrieval
+    // Base sum for active keys: 0.40 + 0.35 + 0 + 0 + 0.10 + 0 = 0.85
+    // Normalized: behavioral=0.40/0.85≈0.471, gemini=0.35/0.85≈0.412, trends=0.10/0.85≈0.118, ml=0, rules=0, retrieval=0
     const weights = selectWeights({
       behavioral: true,
       gemini: true,
@@ -87,21 +113,24 @@ describe("selectWeights", () => {
       gemini_body: false,
       gemini_cta: false,
       personas: false,
-      retrieval: true, // Phase 8 (D-03b) — new weight-bearing key
+      retrieval: true, // D-15: retrieval weight=0 in D-16; contributes 0 to sum
     });
 
-    // Phase 10 D-05: ml=0 (disabled) → raw sum 0.90; each weight normalized by /0.90.
-    expect(weights.behavioral).toBeCloseTo(0.389, 2);
-    expect(weights.gemini).toBeCloseTo(0.278, 2);
+    // D-16 Phase 13: ml=0, rules=0, retrieval=0 → raw sum 0.85 (behavioral 0.40 + gemini 0.35 + trends 0.10)
+    expect(weights.behavioral).toBeCloseTo(0.471, 2);
+    expect(weights.gemini).toBeCloseTo(0.412, 2);
     expect(weights.ml).toBe(0);
-    expect(weights.rules).toBeCloseTo(0.167, 2);
-    expect(weights.trends).toBeCloseTo(0.111, 2);
-    expect(weights.retrieval).toBeCloseTo(0.056, 2);
+    expect(weights.rules).toBe(0);
+    expect(weights.trends).toBeCloseTo(0.118, 2);
+    expect(weights.retrieval).toBe(0);
     const sum = Object.values(weights).reduce((a, b) => a + b, 0);
     expect(sum).toBeCloseTo(1, 2);
   });
 
-  it("redistributes weight when ML is unavailable", () => {
+  it("redistributes weight when ML is unavailable (D-16: ml=0 already; no redistribution change)", () => {
+    // D-16: ml=0 in SCORE_WEIGHTS, rules=0 in SCORE_WEIGHTS — no behavioral weight for ml/rules.
+    // When ml=false in availability and ml=0 in weights, there is nothing to redistribute.
+    // behavioral and gemini receive the full normalized non-zero weight share.
     const weights = selectWeights({
       behavioral: true,
       gemini: true,
@@ -118,9 +147,11 @@ describe("selectWeights", () => {
     });
 
     expect(weights.ml).toBe(0);
+    // D-16: rules=0 in SCORE_WEIGHTS, so rules weight stays 0 even when rules=true in availability
+    expect(weights.rules).toBe(0);
+    // behavioral and gemini are the primary weight-bearing signals; they dominate
     expect(weights.behavioral).toBeGreaterThan(0.33);
     expect(weights.gemini).toBeGreaterThan(0.24);
-    expect(weights.rules).toBeGreaterThan(0.14);
     expect(weights.trends).toBeGreaterThan(0.1);
 
     const sum = Object.values(weights).reduce((a, b) => a + b, 0);
@@ -167,8 +198,9 @@ describe("selectWeights", () => {
 
     expect(weights.behavioral).toBe(0);
     expect(weights.ml).toBe(0);
+    // D-16: rules=0 in SCORE_WEIGHTS
+    expect(weights.rules).toBe(0);
     expect(weights.gemini).toBeGreaterThan(0.24);
-    expect(weights.rules).toBeGreaterThan(0.14);
     expect(weights.trends).toBeGreaterThan(0.1);
 
     const sum = Object.values(weights).reduce((a, b) => a + b, 0);
@@ -252,10 +284,10 @@ describe("selectWeights", () => {
 // Phase 8 — retrieval slot tests (Plan 04 Task 3)
 // =====================================================
 
-describe("selectWeights — Phase 8 retrieval slot", () => {
-  it("returns retrieval ~0.048 when all signals (including retrieval) available — post-merge normalized", () => {
-    // Phase 8 standalone D-03b intent: retrieval=0.05. Post-merge with trunk Phase 5/6/7 weights
-    // (sum 1.05 pre-normalization), retrieval normalizes to 0.05/1.05 ≈ 0.0476. Phase 10 will refit.
+describe("selectWeights — Phase 8 retrieval slot (D-15: retrieval disabled in D-16)", () => {
+  it("returns retrieval=0 when retrieval available — D-15 disabled this phase (weight=0 in D-16)", () => {
+    // D-15 (Phase 13): retrieval weight=0 in SCORE_WEIGHTS. Corpus embeddings are caption-derived;
+    // retrieval signal disabled for video-mode primary flow. Weight=0 means no contribution.
     const w = selectWeights({
       behavioral: true,
       gemini: true,
@@ -270,11 +302,28 @@ describe("selectWeights — Phase 8 retrieval slot", () => {
       personas: false,
       retrieval: true,
     });
-    expect(w.retrieval).toBeCloseTo(0.056, 2);
+    // D-15/D-16: retrieval=0 in SCORE_WEIGHTS → normalized weight is 0
+    expect(w.retrieval).toBe(0);
+    const sum = Object.values(w).reduce((a, b) => a + (b ?? 0), 0);
+    expect(sum).toBeCloseTo(1.0, 2);
   });
 
-  it("redistributes retrieval's 0.05 to the other 5 signals when retrieval=false", () => {
-    const w = selectWeights({
+  it("retrieval=false: same result as retrieval=true (both contribute 0 — D-15 disabled)", () => {
+    const wTrue = selectWeights({
+      behavioral: true,
+      gemini: true,
+      ml: true,
+      rules: true,
+      trends: true,
+      content_type: true,
+      niche: true,
+      gemini_hook: false,
+      gemini_body: false,
+      gemini_cta: false,
+      personas: false,
+      retrieval: true,
+    });
+    const wFalse = selectWeights({
       behavioral: true,
       gemini: true,
       ml: true,
@@ -288,9 +337,11 @@ describe("selectWeights — Phase 8 retrieval slot", () => {
       personas: false,
       retrieval: false,
     });
-    expect(w.retrieval).toBe(0);
-    const total = w.behavioral + w.gemini + w.ml + w.rules + w.trends;
-    expect(total).toBeCloseTo(1.0, 2);
+    // Both retrieval=true and retrieval=false should yield retrieval weight=0
+    expect(wTrue.retrieval ?? 0).toBe(0);
+    expect(wFalse.retrieval ?? 0).toBe(0);
+    const totalTrue = Object.values(wTrue).reduce((a, b) => a + (b ?? 0), 0);
+    expect(totalTrue).toBeCloseTo(1.0, 2);
   });
 });
 
@@ -568,7 +619,10 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
     );
   });
 
-  it("selectWeights regression: 6-key availability all-true → post-merge normalized D-03b weights", () => {
+  it("selectWeights regression: 6-key availability all-true → D-16 Phase 13 normalized weights", () => {
+    // D-16 weights without audio/platform_fit in this call:
+    // active base sum = behavioral(0.40) + gemini(0.35) + ml(0) + rules(0) + trends(0.10) + retrieval(0) = 0.85
+    // normalized: behavioral=0.40/0.85, gemini=0.35/0.85, trends=0.10/0.85
     const weights = selectWeights({
       behavioral: true,
       gemini: true,
@@ -581,15 +635,15 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
       gemini_body: false,
       gemini_cta: false,
       personas: false,
-      retrieval: true, // Phase 8 — weight-bearing
+      retrieval: true, // D-15: weight=0 in D-16
     });
-    // Phase 10 D-05: ml=0 (disabled) → raw sum 0.90.
-    expect(weights.behavioral).toBeCloseTo(0.389, 2);
-    expect(weights.gemini).toBeCloseTo(0.278, 2);
+    // D-16 Phase 13: rules=0, retrieval=0, ml=0 → sum of active non-zero: 0.40+0.35+0.10=0.85
+    expect(weights.behavioral).toBeCloseTo(0.471, 2);
+    expect(weights.gemini).toBeCloseTo(0.412, 2);
     expect(weights.ml).toBe(0);
-    expect(weights.rules).toBeCloseTo(0.167, 2);
-    expect(weights.trends).toBeCloseTo(0.111, 2);
-    expect(weights.retrieval).toBeCloseTo(0.056, 2);
+    expect(weights.rules).toBe(0);
+    expect(weights.trends).toBeCloseTo(0.118, 2);
+    expect(weights.retrieval).toBe(0);
   });
 
   it("selectWeights ignores content_type + niche keys (Critical Cross-File Constraint #3)", () => {
@@ -965,8 +1019,8 @@ describe("Phase 8 — aggregator retrieval integration", () => {
     });
     const result = await aggregateScores(pipeline);
     expect(result.score_weights).toHaveProperty("retrieval");
-    // Post-merge normalized — raw 0.05, base sum 0.90 (Phase 10 D-05: ml=0) → ~0.056.
-    expect(result.score_weights.retrieval).toBeCloseTo(0.056, 2);
+    // D-15/D-16 (Phase 13): retrieval weight=0 — corpus embeddings caption-derived.
+    expect(result.score_weights.retrieval).toBe(0);
   });
 
   it("signal_availability.retrieval mirrors pipelineResult.retrievalResult.availability", async () => {
