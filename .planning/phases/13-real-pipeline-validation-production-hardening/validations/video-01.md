@@ -16,25 +16,36 @@
 
 ---
 
-## Section 1 — Prediction
+## Section 1 — Prediction (Phase 13 engine — v3.0.0-dev, confirmed from DB)
 
-- **overall_score:** Not precisely captured from UI run (results card described as "decent" — indicative of mid band, estimated 45–65 range)
-- **confidence:** Moderate (UI card showed confidence indicator; exact numeric not captured)
-- **band:** mid (inferred from "decent" description — neither low flag nor high green)
-- **signal_availability:** All core signals available
-  - `gemini`: true (video upload → Wave 0 content-type ran with video bytes)
-  - `gemini_hook`: true (Wave 1 hook segment analysis ran)
-  - `gemini_body`: true (Wave 1 body segment ran)
-  - `gemini_cta`: true (Wave 1 CTA segment ran)
-  - `behavioral`: true (DeepSeek Wave 2 ran — no hang)
-  - `personas`: true (Wave 3 ran — ≥7 personas expected per threshold)
-  - `platform_fit`: true (Wave 4 TikTok platform fit computed)
-  - `audio`: true (Wave 1 audio signals extracted from uploaded video bytes)
-  - `niche`: true (niche fold from D-17 — single Wave 0 call returned niche_primary_slug)
-  - `content_type`: true
-  - Note: `audio_fingerprint` likely false (trending_sounds table is empty per Plan 01 D-32)
+- **overall_score:** **99.75** — ⚠ INFLATED (see calibration note below)
+- **cost_cents:** 0.4075 (within D-20 $0.40 budget — marginal)
+- **latency_ms:** 83,740 (~84s)
+- **content_type detected:** talking_head (Wave 0 D-17)
+- **niche detected:** lifestyle/comedy (alternating across runs — mixed_content_detected warning)
+- **band:** high (inferred from 99.75 score)
+- **signal_availability (actual from DB):**
+  - `gemini`: ✓ true
+  - `gemini_hook`: ✗ false — hook segment consistently fails (Pro model JSON truncation; retry exhausted)
+  - `gemini_body`: ✓ true (retry succeeded on second attempt)
+  - `gemini_cta`: ✓ true
+  - `behavioral`: ✓ true
+  - `personas`: ✓ true
+  - `platform_fit`: ✓ true
+  - `niche`: ✓ true
+  - `content_type`: ✓ true
+  - `audio`: ✗ false (audio_perceptual_score requires Gemini audio signals — hook missing blocked this)
+  - `audio_fingerprint`: ✗ false (trending_sounds table empty per D-32)
+  - `ml`, `rules`, `retrieval`, `trends`: all ✗ false (D-14/D-15/D-16 weights=0)
+- **score_weights (redistributed, from DB):** gemini=0.438, behavioral=0.50, platform_fit=0.063
 
-- **Stage 11 suggestions:** PRESENT — results card rendered with suggestion items. Band-adaptive shape per D-05 (CounterfactualResult with `band` + `suggestions[]`). Content type: comedy/entertainment content for @areyoukiddingtv. Suggestions included headline + signal_anchor fields per Phase 13 Plan 02 rebuilt shape.
+- **⚠ Score inflation note:** With hook=false, weights redistributed to 3 signals only. Behavioral + body/cta Gemini + platform_fit all scored near-max → 99.75. This is a calibration concern — redistribution amplifies remaining signals. Flag for Phase 14 calibration work.
+
+- **Stage 11 suggestions (from DB):**
+  1. "Ensure the first 2 seconds have a clear hook to grab attention." [hook, high]
+  2. "Keep video duration between 50-55 seconds for optimal completion rates." [format, medium]
+  3. "Add a compelling call-to-action to encourage comments and shares." [content, high]
+  4. "Use trending sounds or effects to increase discoverability." [audio, medium]
 
 ---
 
@@ -96,7 +107,7 @@ Binary tag is unchanged: `98a62124cd4c418fb26a50a54c61f826c513ff69`.
 
 ## Verdict
 
-**PASS** — 1 real TikTok video processed end-to-end via `video_upload` mode with no crashes, no DeepSeek hang, Stage 11 suggestions present, all signal waves active. Results card rendered in UI with a "decent" prediction result for the comedy/entertainment video. Engine binary tag unchanged; cadence count intact for Plans 06/07.
+**PASS with flags** — pipeline completed, DB saved, results card rendered. Bugs found and fixed during this run (duration_hint missing, DB schema mismatches, hook JSON truncation, rate limit). All fixes committed. Hook segment still failing consistently — gemini_hook=false on every run. Score 99.75 flagged as inflated due to weight redistribution with many signals absent.
 
 **Notes for future runs:**
 1. Plans 06/07 should capture exact numeric values from Section 2 (user pastes analytics panel data).
