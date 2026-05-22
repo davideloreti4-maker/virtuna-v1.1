@@ -650,12 +650,12 @@ describe("analyzeVideoSegmented — Phase 5 Plan 02 Task 3 orchestrator", () => 
   // 50MB size-cap rejection
   // -------------------------------------------------------------------------
 
-  it("Test 19: video > 50MB → throws size-cap error; NO upload/generate/delete fired", async () => {
-    // Synthesize 51MB buffer (51 * 1024 * 1024 bytes).
-    const oversized = Buffer.alloc(51 * 1024 * 1024);
+  it("Test 19: D-19 — video > 287MB → throws size-cap error; NO upload/generate/delete fired", async () => {
+    // D-19: cap raised from 50MB to 287MB. Use 288MB buffer to exceed new limit.
+    const oversized = Buffer.alloc(288 * 1024 * 1024);
     await expect(
       analyzeVideoSegmented(oversized, "video/mp4", stubOpts(30)),
-    ).rejects.toThrow(/50MB|exceeds maximum/);
+    ).rejects.toThrow(/287MB|exceeds maximum/);
 
     expect(mockFileUpload).not.toHaveBeenCalled();
     expect(mockGenerate).not.toHaveBeenCalled();

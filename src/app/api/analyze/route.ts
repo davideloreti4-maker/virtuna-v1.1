@@ -60,6 +60,18 @@ export async function POST(request: Request) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // D-19 (Phase 13 Plan 03): Fail fast before buffer load for oversized requests.
+    // Defense-in-depth: even if header is missing/spoofed, pipeline.ts:VIDEO_MAX_SIZE_BYTES
+    // check catches it after buffer load. T-13-14 mitigation.
+    const contentLengthHeader = request.headers.get("content-length");
+    const MAX_BODY_BYTES = 287 * 1024 * 1024; // 287MB — matches VIDEO_MAX_SIZE_BYTES
+    if (contentLengthHeader && parseInt(contentLengthHeader, 10) > MAX_BODY_BYTES) {
+      return new Response(JSON.stringify({ error: "Video exceeds 287MB limit" }), {
+        status: 413,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     const body = await request.json();
 
     // -------------------------------------------------------

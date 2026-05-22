@@ -156,15 +156,15 @@ function makeCreatorContext(
 }
 
 function makeWave0Result(niche: string | null = "beauty"): Wave0Result {
+  // D-17 (Phase 13 Plan 03): niche shape changed from { primary, sub, micro, confidence, source }
+  // to { primary_slug, micro_slug, confidence }
   return {
     content_type: null,
     niche: niche
       ? {
-          primary: niche,
-          sub: "skincare",
-          micro: null,
+          primary_slug: niche,
+          micro_slug: null,
           confidence: 0.9,
-          source: "ai",
         }
       : null,
   };

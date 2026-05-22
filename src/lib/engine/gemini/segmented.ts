@@ -10,7 +10,7 @@
  *   - CTA  (Gemini Flash) on max(5, duration-3)s → duration
  *
  * Architecture (CONTEXT D-10, D-11, D-14 + RESEARCH Pitfalls #1, #3, #4, #5):
- *  1. Size-cap check (50MB) — reject oversized buffers before any API call.
+ *  1. Size-cap check (287MB — D-19) — reject oversized buffers before any API call.
  *  2. ai.files.upload(blob) — ONE upload.
  *  3. Poll ai.files.get until state === ACTIVE (or throw on FAILED).
  *  4. Fan out three parallel scoped generateContent calls via Promise.allSettled.
@@ -28,7 +28,13 @@
  */
 import * as Sentry from "@sentry/nextjs";
 import { createLogger } from "@/lib/logger";
-import { getClient } from "../gemini";
+import {
+  getClient,
+  // D-19 (Phase 13 Plan 03): import shared constants to stay in sync with gemini.ts literal.
+  VIDEO_MAX_SIZE_BYTES,
+  VIDEO_POLL_INTERVAL_MS,
+  VIDEO_POLL_TIMEOUT_MS,
+} from "../gemini";
 import { runHookSegment } from "./hook-segment";
 import { runBodySegment } from "./body-segment";
 import { runCtaSegment } from "./cta-segment";
@@ -40,9 +46,7 @@ import type { BodySegmentResult } from "./schemas";
 
 const log = createLogger({ module: "engine.gemini.segmented" });
 
-const VIDEO_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50MB — matches gemini.ts:33 legacy cap
-const VIDEO_POLL_INTERVAL_MS = 500; // matches gemini.ts:34
-const VIDEO_POLL_TIMEOUT_MS = 60_000; // matches gemini.ts:35
+// D-19: VIDEO_MAX_SIZE_BYTES, VIDEO_POLL_INTERVAL_MS, VIDEO_POLL_TIMEOUT_MS imported from ../gemini.
 // WR-05: Raised from 8s to 10s so a duration=11s video produces a body window
 // of `5s → 8s` (3-second minimum). Pre-fix, duration=9s gave a 1-second body
 // window and Gemini Flash would hallucinate pacing / transition scores against
