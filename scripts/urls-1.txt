@@ -6,4 +6,4 @@
 # Used by: pnpm tsx scripts/smoke-tiktok-pipeline.ts urls-1.txt
 # D-26 note: for 1-video run, any niche/score-band is acceptable.
 
-https://www.tiktok.com/REPLACE_WITH_REAL_URL
+https://www.tiktok.com/@areyoukiddingtv/video/7372993291136142635?is_from_webapp=1&sender_device=pc
