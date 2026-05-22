@@ -1,32 +1,42 @@
+/**
+ * Phase 13 Plan 02 — Stage 11 Counterfactuals (rebuilt D-01..D-06).
+ *
+ * Rebuilt from DeepSeek V4 Flash → Gemini 3.1 Pro (D-02).
+ * Always-on: no overall_score >= 70 short-circuit (D-04).
+ * Optional videoContext arg for fileUri threading (D-01 — Plan 03 passes real values).
+ * Full signal context via buildSignalContextUserMessage (D-03 — no truncation).
+ * Discriminated-union output schema per band (D-05).
+ * Cost telemetry via calculateGeminiCost (D-10).
+ */
 import * as Sentry from "@sentry/nextjs";
-import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 import { createLogger } from "@/lib/logger";
 import type { PredictionResult, CounterfactualResult } from "./types";
 import type { StageEventCallback } from "./events";
 import { emitStageStart, emitStageEnd } from "./events";
-import { isCircuitOpen } from "./deepseek";
+import { calculateCost as calculateGeminiCost } from "./gemini/cost";
 import {
   STABLE_COUNTERFACTUALS_SYSTEM_PROMPT,
-  buildCounterfactualsUserMessage,
+  buildSignalContextUserMessage,
   CounterfactualsResponseSchema,
 } from "./stage11-counterfactuals-prompts";
 
 const log = createLogger({ module: "stage11-counterfactuals" });
 
-const COUNTERFACTUALS_MODEL = process.env.DEEPSEEK_COUNTERFACTUALS_MODEL ?? "deepseek-v4-flash";
+// D-09 deferred for stage11 — Plan 01 self-test shows -preview still required as of 2026-05-22;
+// revisit when Google flips gemini-3.1-pro to GA (bare form currently 404s).
+// See 13-01-SUMMARY.md: "GEMINI_STAGE11_MODEL: gemini-3.1-pro-preview (keep preview)"
+export const GEMINI_STAGE11_MODEL =
+  process.env.GEMINI_STAGE11_MODEL ?? "gemini-3.1-pro-preview";
 
-const CACHE_HIT_PRICE = 0.0028 / 1_000_000;
-const CACHE_MISS_PRICE = 0.14 / 1_000_000;
-const OUTPUT_PRICE = 0.28 / 1_000_000;
+const PER_CALL_TIMEOUT_MS = 30_000;
 
-const PER_CALL_TIMEOUT_MS = 15_000;
-
-let _client: OpenAI | null = null;
-function getClient(): OpenAI {
+let _client: GoogleGenAI | null = null;
+function getClient(): GoogleGenAI {
   if (!_client) {
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) throw new Error("Missing DEEPSEEK_API_KEY environment variable");
-    _client = new OpenAI({ apiKey, baseURL: "https://api.deepseek.com" });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error("Missing GEMINI_API_KEY environment variable");
+    _client = new GoogleGenAI({ apiKey });
   }
   return _client;
 }
@@ -51,37 +61,42 @@ export function maybeAppendLikelyFlopWarning(result: PredictionResult): void {
 }
 
 /**
- * Phase 9 contract: counterfactual suggestions tied to retention drop points.
- * Per CONTEXT.md D-17: generates exactly 3 hyper-specific, ranked suggestions.
- * Returns null when content scores high (≥70) — no actionable changes needed.
+ * Phase 13 D-01..D-06 contract: always-on counterfactual generation via Gemini 3.1 Pro.
+ *
+ * Key invariants:
+ * - NO overall_score >= 70 short-circuit (D-04)
+ * - videoContext optional: Plan 02 passes null; Plan 03 threads real fileUri (D-01/D-18)
+ * - Full signal context via buildSignalContextUserMessage, no truncation (D-03)
+ * - Discriminated-union Zod schema per band (D-05): low=3 fix, mid=2+1, high=1+2-3
+ * - Single retry on Zod failure; Sentry capture on second failure (PATTERN S7)
+ * - Cost telemetry via calculateGeminiCost (D-10)
  */
 export async function runStage11Counterfactuals(
   aggregateResult: PredictionResult,
+  videoContext: { fileUri: string; mimeType: string } | null,
   onEvent?: StageEventCallback,
 ): Promise<CounterfactualResult | null> {
   const start = emitStageStart(onEvent, "stage_11_counterfactuals", "post");
   let costCents = 0;
 
-  // Short-circuit for high-scoring content — no counterfactuals needed
-  if ((aggregateResult.overall_score ?? 0) >= 70) {
-    emitStageEnd(onEvent, "stage_11_counterfactuals", "post", start, {
-      cost_cents: 0,
-      ok: true,
-      warning: "high_score_no_actionable_changes",
-    });
-    return null;
-  }
-
-  if (isCircuitOpen()) {
-    emitStageEnd(onEvent, "stage_11_counterfactuals", "post", start, {
-      cost_cents: 0,
-      ok: false,
-      warning: "circuit_breaker_open",
-    });
-    return null;
-  }
-
   const ai = getClient();
+  const userMessage = buildSignalContextUserMessage(aggregateResult);
+
+  // D-01: conditionally include fileData part when videoContext is provided
+  const parts: Array<
+    | { text: string }
+    | { fileData: { fileUri: string; mimeType: string } }
+  > = [{ text: userMessage }];
+
+  if (videoContext !== null) {
+    parts.push({
+      fileData: {
+        fileUri: videoContext.fileUri,
+        mimeType: videoContext.mimeType,
+      },
+    });
+  }
+
   let attempt = 0;
   let lastError: Error | null = null;
 
@@ -89,41 +104,36 @@ export async function runStage11Counterfactuals(
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), PER_CALL_TIMEOUT_MS);
     try {
-      const userMessage = buildCounterfactualsUserMessage(aggregateResult);
-      const response = await ai.chat.completions.create(
-        {
-          model: COUNTERFACTUALS_MODEL,
-          messages: [
-            { role: "system", content: STABLE_COUNTERFACTUALS_SYSTEM_PROMPT },
-            { role: "user", content: userMessage },
-          ],
-          response_format: { type: "json_object" },
+      const response = await ai.models.generateContent({
+        model: GEMINI_STAGE11_MODEL,
+        contents: [{ role: "user", parts }],
+        config: {
+          systemInstruction: STABLE_COUNTERFACTUALS_SYSTEM_PROMPT,
+          responseMimeType: "application/json",
+          abortSignal: controller.signal,
         },
-        { signal: controller.signal },
-      );
+      });
       clearTimeout(timer);
 
-      const usage = response.usage as unknown as
-        | {
-            prompt_tokens?: number;
-            prompt_cache_hit_tokens?: number;
-            prompt_cache_miss_tokens?: number;
-            completion_tokens?: number;
-          }
-        | undefined;
-      const cacheHit = usage?.prompt_cache_hit_tokens ?? 0;
-      const cacheMiss = usage?.prompt_cache_miss_tokens ?? 0;
-      const completion = usage?.completion_tokens ?? 0;
-      const hasBreakdown = cacheHit > 0 || cacheMiss > 0;
-      const inputCost = hasBreakdown
-        ? cacheHit * CACHE_HIT_PRICE + cacheMiss * CACHE_MISS_PRICE
-        : (usage?.prompt_tokens ?? 0) * CACHE_MISS_PRICE;
-      costCents += (inputCost + completion * OUTPUT_PRICE) * 100;
+      // Cost telemetry via calculateGeminiCost (D-10 — no silent fallback to GEMINI_MODEL)
+      const usageMeta = response.usageMetadata;
+      costCents += calculateGeminiCost(GEMINI_STAGE11_MODEL, {
+        promptTokenCount: usageMeta?.promptTokenCount,
+        candidatesTokenCount: usageMeta?.candidatesTokenCount,
+      });
 
-      const text = response.choices[0]?.message?.content ?? "{}";
-      const parsed = CounterfactualsResponseSchema.safeParse(JSON.parse(text));
+      const text = response.text ?? "{}";
+      let parsed: ReturnType<typeof CounterfactualsResponseSchema.safeParse>;
+      try {
+        parsed = CounterfactualsResponseSchema.safeParse(JSON.parse(text));
+      } catch {
+        parsed = { success: false, error: new Error("JSON parse failed") } as never;
+      }
+
       if (!parsed.success) {
-        lastError = new Error(`validation failed: ${parsed.error.message}`);
+        lastError = new Error(
+          `validation failed: ${"error" in parsed ? String(parsed.error) : "unknown"}`,
+        );
         if (attempt === 0) {
           attempt++;
           continue;
@@ -136,8 +146,10 @@ export async function runStage11Counterfactuals(
         ok: true,
       });
 
+      const data = parsed.data;
       return {
-        suggestions: parsed.data.suggestions,
+        band: data.band,
+        suggestions: data.suggestions,
       };
     } catch (err) {
       clearTimeout(timer);

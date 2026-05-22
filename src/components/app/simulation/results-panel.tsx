@@ -202,10 +202,15 @@ export function ResultsPanel({ result, onRunAnother, analysisCount, primaryGoal 
         <BehavioralPredictionsSection predictions={result.behavioral_predictions} />
       </GlassSection>
 
-      {/* Suggestions */}
-      <GlassSection>
-        <SuggestionsSection suggestions={result.suggestions} />
-      </GlassSection>
+      {/* Suggestions — Phase 13 D-06: wired to result.counterfactuals (Stage 11 output) */}
+      {result.counterfactuals && (
+        <GlassSection>
+          <SuggestionsSection
+            suggestions={result.counterfactuals.suggestions}
+            band={result.counterfactuals.band}
+          />
+        </GlassSection>
+      )}
 
       {/* AI Reasoning */}
       {result.reasoning && (

@@ -227,6 +227,20 @@ export interface PredictionResult {
   platform_fit?: PlatformFitResult | null;
   critique?: CritiqueResult | null;
   counterfactuals?: CounterfactualResult | null;
+
+  // Phase 13 Plan 02 — Stage 11 full signal context (D-03).
+  // Optional fields populated by aggregator from Wave 1 segmented results.
+  // Stage 11 prompt builder reads these to construct the full signal context message.
+  /** Hook decomposition from Wave 1 hook-segment analysis (HookDecomposition shape). */
+  hook_decomposition?: HookDecomposition | null;
+  /** Audio signals from Wave 1 Gemini audio analysis (GeminiAudioSignals shape). */
+  audio_signals?: GeminiAudioSignals | null;
+  /** Matched trends from trend enrichment stage. */
+  matched_trends?: Array<{
+    sound_name: string;
+    velocity_score: number;
+    trend_phase: string | null;
+  }>;
 }
 
 // =====================================================
@@ -293,9 +307,31 @@ export interface CritiqueResult {
   confidence_adjustment: number;
 }
 
-/** Stage 11 counterfactuals result — Phase 9 fills with V3 counterfactual call. */
+/**
+ * Phase 13 D-05 — counterfactual suggestion item with band-adaptive type.
+ * - fix: concrete change needed (low + mid bands)
+ * - stretch: ambitious enhancement (high band)
+ * - reinforcement: what's already working well (mid + high bands)
+ */
+export interface CounterfactualSuggestionItem {
+  type: "fix" | "stretch" | "reinforcement";
+  headline: string;       // ≤ 80 chars
+  detail: string;         // 1-2 sentences with specific expected outcome
+  timestamp_ms: number;   // video timestamp in ms; 0 when unavailable
+  signal_anchor: string;  // which signal this addresses
+}
+
+/**
+ * Stage 11 counterfactuals result — Phase 13 Plan 02 rebuilt shape (D-05).
+ * band: score band for adaptive rendering in SuggestionsSection.
+ * suggestions: band-adaptive items (low=3 fix, mid=2+1, high=1+2-3).
+ *
+ * BREAKING CHANGE from Phase 9: old shape had `suggestions: Array<{change, timestamp_ms, expected_impact}>`.
+ * Updated in Phase 13 Plan 02. Downstream consumers (results-panel, insights-section) updated in Task 2.3.
+ */
 export interface CounterfactualResult {
-  suggestions: Array<{ change: string; timestamp_ms: number; expected_impact: string }>;
+  band: "low" | "mid" | "high";
+  suggestions: CounterfactualSuggestionItem[];
 }
 
 // =====================================================

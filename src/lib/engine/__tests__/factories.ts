@@ -12,6 +12,8 @@ import type {
   TrendEnrichment,
   ContentPayload,
   FeatureVector,
+  CounterfactualResult,
+  CounterfactualSuggestionItem,
 } from "../types";
 import type { PipelineResult } from "../pipeline";
 
@@ -297,6 +299,58 @@ export function makePipelineResult(
     ],
     total_duration_ms: 1500,
     warnings: [],
+    ...overrides,
+  };
+}
+
+// =====================================================
+// makeCounterfactualResult — Phase 13 Plan 02 (D-05)
+// =====================================================
+
+/**
+ * Factory for the Phase 13 discriminated-union CounterfactualResult.
+ * Defaults to "low" band with 3 fix suggestions.
+ * Pass band + suggestion overrides for mid/high tests.
+ */
+export function makeCounterfactualResult(
+  band: "low" | "mid" | "high" = "low",
+  overrides?: Partial<CounterfactualResult>,
+): CounterfactualResult {
+  const baseSuggestionItem = (
+    type: CounterfactualSuggestionItem["type"],
+    i: number,
+  ): CounterfactualSuggestionItem => ({
+    type,
+    headline: `${type === "fix" ? "Fix" : type === "stretch" ? "Stretch" : "Strength"} suggestion ${i + 1}`,
+    detail: `Detailed explanation of the ${type} suggestion ${i + 1} with specific expected impact.`,
+    timestamp_ms: i * 1000,
+    signal_anchor: `signal_${i + 1}`,
+  });
+
+  let suggestions: CounterfactualSuggestionItem[];
+  switch (band) {
+    case "low":
+      suggestions = [0, 1, 2].map((i) => baseSuggestionItem("fix", i));
+      break;
+    case "mid":
+      suggestions = [
+        baseSuggestionItem("fix", 0),
+        baseSuggestionItem("fix", 1),
+        baseSuggestionItem("reinforcement", 2),
+      ];
+      break;
+    case "high":
+      suggestions = [
+        baseSuggestionItem("stretch", 0),
+        baseSuggestionItem("reinforcement", 1),
+        baseSuggestionItem("reinforcement", 2),
+      ];
+      break;
+  }
+
+  return {
+    band,
+    suggestions,
     ...overrides,
   };
 }

@@ -18,11 +18,23 @@ const log = createLogger({ module: "engine.gemini.cost" });
 
 // Per-token rates ($/token), keyed by model name. Unknown models silently fall back to
 // Flash preview pricing (NOT throws) so cost calc never raises — see threat T-5-01-05.
+// D-09 (Phase 13 Plan 02) — bare IDs added alongside -preview entries for back-compat.
+// DO NOT delete -preview entries — Plan 01 self-test confirmed bare forms 404 for
+// hook/body/cta/stage11 as of 2026-05-22; -preview is required at runtime.
 const PRICING: Record<string, { input: number; output: number }> = {
+  // Gemini 3.1 Pro (preview required at runtime; bare ID added for cost lookup back-compat)
   "gemini-3.1-pro-preview":  { input: 2.00 / 1_000_000,  output: 12.00 / 1_000_000 },
+  "gemini-3.1-pro":          { input: 2.00 / 1_000_000,  output: 12.00 / 1_000_000 }, // D-09 bare alias
+  // Gemini 3 Pro (alias redirects to 3.1 pricing)
   "gemini-3-pro-preview":    { input: 2.00 / 1_000_000,  output: 12.00 / 1_000_000 }, // alias redirects to 3.1
+  "gemini-3-pro":            { input: 2.00 / 1_000_000,  output: 12.00 / 1_000_000 }, // D-09 bare alias
+  // Gemini 3 Flash
   "gemini-3-flash-preview":  { input: 0.50 / 1_000_000,  output:  3.00 / 1_000_000 },
-  "gemini-3.1-flash-lite":   { input: 0.25 / 1_000_000,  output:  1.50 / 1_000_000 },
+  "gemini-3-flash":          { input: 0.50 / 1_000_000,  output:  3.00 / 1_000_000 }, // D-09 bare alias
+  // Gemini 3.1 Flash Lite (GA — bare works for wave0)
+  "gemini-3.1-flash-lite":          { input: 0.25 / 1_000_000,  output:  1.50 / 1_000_000 },
+  "gemini-3.1-flash-lite-preview":  { input: 0.25 / 1_000_000,  output:  1.50 / 1_000_000 }, // preview alias (returns bare name in response)
+  // Legacy Gemini 2.5 Flash (text + video calls via GEMINI_MODEL env)
   "gemini-2.5-flash":        { input: 0.15 / 1_000_000,  output:  0.60 / 1_000_000 }, // legacy text + video calls
 };
 

@@ -35,30 +35,22 @@ export { ENGINE_VERSION };
 // v2 Score Weights — config-driven for maintainability
 // =====================================================
 
-// Phase 6 (D-G1) — audio: 0.07 = middle of 0.05-0.10 range per CONTEXT D-G1.
-// Phase 8 (D-03b) — retrieval: 0.05 dev placeholder; Phase 10 will tune.
-// Phase 9 (D-07) — platform_fit: 0.05 dev placeholder; Phase 10 will tune.
-// Phase 10 ML audit retunes against corpus benchmark. Raw weights sum to 1.17
-// (8-key) or 1.12 (7-key no platform_fit); selectWeights normalizes BOTH branches
-// (all-available + redistribution) so the returned weights always sum to ~1.0 —
-// the weighted-average math in aggregateScores expects that contract.
-// Exported for test introspection (aggregator-audio.test.ts).
-//
-// Trunk-authoritative base weights for behavioral/gemini/ml/rules/trends are kept at
-// their pre-Phase-8 values (0.35/0.25/0.15/0.15/0.10). Phase 8's D-03b redistribution
-// (×0.95 to make room for retrieval=0.05) is now handled by the normalization step in
-// selectWeights rather than as hand-tuned constants here. The net effect on
-// PredictionResult.score_weights is identical to the D-03b matrix because the normalizer
-// divides every weight by the same baseSum.
+// D-16 (Phase 13) — re-tuned for video-mode reality.
+// Sources: CONTEXT D-14 (rules=0), D-15 (retrieval=0), D-16 (redistribution).
+// Audio weight 0.05 per CONTEXT D-16 conditional on trending_sounds population (D-32).
+// See .planning/phases/13-.../13-01-SUMMARY.md for trending_sounds count + decision.
+// trending_sounds table: 0 rows (2026-05-22). User decision: audio=0.05 (conservative
+// weight; audio_perceptual_score from Gemini is real but fingerprint match contributes 0).
+// Exported for test introspection (aggregator-audio.test.ts, aggregator.test.ts).
 export const SCORE_WEIGHTS = {
-  behavioral: 0.35,
-  gemini: 0.25,
-  ml: 0, // D-05: disabled after Phase 10 audit (was 0.15); set ml=false in availability below
-  rules: 0.15,
-  trends: 0.10,
-  audio: 0.07, // Phase 6 (D-G1) — weight-bearing
-  retrieval: 0.05, // Phase 8 (D-03b) — weight-bearing; Phase 10 calibration kept at 0.05 (text-mode corpus; no video embeddings for meaningful LOO)
-  platform_fit: 0.05, // Phase 9 (D-07) — weight-bearing; Phase 10 calibration kept at 0.05 (text-mode corpus; platform signal thin without video analysis)
+  behavioral:   0.40,  // primary CoT, video-aware via Wave 2 input
+  gemini:       0.35,  // drives Stage 11 too; video understanding is core
+  audio:        0.05,  // D-32 — audio_perceptual_score real; fingerprint match 0 (trending_sounds empty); user decision 2026-05-22
+  trends:       0.10,  // audio-fingerprint based, video-derived
+  platform_fit: 0.05,  // video-derived from Wave 4
+  ml:           0,     // disabled — Phase 10
+  retrieval:    0,     // disabled this phase — D-15 (corpus caption-derived)
+  rules:        0,     // disabled this phase — D-14 (all regex rules operate on caption text)
 } as const;
 
 // PATTERNS Critical Cross-File Constraint #1 (Phase 8) + #3 (Phase 4 + Phase 6):
@@ -488,9 +480,15 @@ function rescalePersonaIntentToViewRate(
 /**
  * Phase 7 D-14 (lightweight A/B eval). Default "deepseek" → production read.
  * Phase 10 owns the eventual production swap based on D-14 corpus evidence.
+ * Phase 13 D-01 / D-18 — Plan 03 pipeline.ts uploads video once at entry,
+ * threads fileUri through here. Plan 02 leaves this optional; Plan 03 callsite
+ * supplies real values.
  */
 export interface AggregateScoresOptions {
   behavioralSource?: "deepseek" | "personas";
+  // D-01 / D-18 — Plan 03 pipeline.ts uploads video once at entry, threads fileUri through here.
+  // Plan 02 leaves this optional with null default; Plan 03 callsite supplies real values.
+  videoContext?: { fileUri: string; mimeType: string } | null;
 }
 
 /**
@@ -1059,12 +1057,20 @@ export async function aggregateScores(
   result.critique = critiqueResult;
 
   // -------------------------------------------------
-  // Phase 9 — Stage 11: Counterfactual suggestions tied to retention drop points.
+  // Phase 13 — Stage 11: Always-on counterfactual suggestions (D-04 — no score skip).
   // Runs AFTER critique so maybeAppendLikelyFlopWarning uses POST-CRITIQUE confidence
-  // (Pitfall 7 ordering invariant). Short-circuits when overall_score >= 70.
+  // (Pitfall 7 ordering invariant).
+  // D-01 / D-06 / D-18 — Stage 11 receives videoContext from options (Plan 03 threads
+  // real values; Plan 02 default = null).
   // -------------------------------------------------
-  const counterfactualResult = await runStage11Counterfactuals(result, onStageEvent);
-  result.counterfactuals = counterfactualResult;
+  const counterfactualResult = await runStage11Counterfactuals(
+    result,
+    options?.videoContext ?? null,
+    onStageEvent,
+  );
+  if (counterfactualResult) {
+    result.counterfactuals = counterfactualResult;
+  }
 
   // Pure-TS LIKELY_FLOP check — uses POST-CRITIQUE confidence per Pitfall 7.
   maybeAppendLikelyFlopWarning(result);

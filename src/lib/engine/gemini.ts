@@ -26,20 +26,34 @@ import calibrationBaselineJson from "./calibration-baseline.json";
 const log = createLogger({ module: "gemini" });
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+// D-09 (Phase 13 Plan 02 deferred): -preview drop NOT applied for hook/body/cta/stage11.
+// Plan 01 self-test confirmed bare forms 404 for all 4 slots (gemini-3.1-pro returns 404
+// without -preview suffix). Revisit when Google promotes these models to GA.
+// See .planning/phases/13-.../13-01-SUMMARY.md: "KEEP -preview suffix on hook/body/cta/stage11".
 // Phase 5 D-01: per-segment Gemini 3 preview models — env-overridable per D-02.
-// Defaults are preview-suffixed (Pitfall: bare `gemini-3-pro` / `gemini-3-flash` aliases
-// are invalid SDK strings as of 2026-05-18 per wave0/content-type-detector.ts:14).
-// Migration to GA is a config flip — change the env-var default when Google promotes
-// the models. No code change required.
+// Defaults are preview-suffixed (live requirement as of 2026-05-22 per Plan 01 self-test).
+// Migration to GA is a config flip — change the env-var default when Google promotes the models.
 export const GEMINI_HOOK_MODEL = process.env.GEMINI_HOOK_MODEL ?? "gemini-3.1-pro-preview";
 export const GEMINI_BODY_MODEL = process.env.GEMINI_BODY_MODEL ?? "gemini-3-flash-preview";
 export const GEMINI_CTA_MODEL  = process.env.GEMINI_CTA_MODEL  ?? "gemini-3-flash-preview";
 const MAX_RETRIES = 2; // 3 total attempts
 const TEXT_TIMEOUT_MS = 15_000;
 const VIDEO_TIMEOUT_MS = 30_000;
-const VIDEO_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
-const VIDEO_POLL_INTERVAL_MS = 500;
-const VIDEO_POLL_TIMEOUT_MS = 60_000;
+// Exported for src/lib/engine/pipeline.ts (Plan 03 D-18 — pipeline-entry upload block).
+// Plan 03 Task 3.3 bumps VIDEO_MAX_SIZE_BYTES from 50MB to 287MB — edit there, not here.
+export const VIDEO_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50MB — Plan 03 Task 3.3 bumps to 287MB
+// Exported for src/lib/engine/pipeline.ts (Plan 03 D-18 — video processing poll loop).
+export const VIDEO_POLL_INTERVAL_MS = 500;
+export const VIDEO_POLL_TIMEOUT_MS = 60_000;
+// Exported for src/lib/engine/pipeline.ts (Plan 03 D-18 — MIME type resolution from extension).
+export const EXT_TO_MIME: Record<string, string> = {
+  mp4:  "video/mp4",
+  mov:  "video/quicktime",
+  avi:  "video/x-msvideo",
+  webm: "video/webm",
+  mkv:  "video/x-matroska",
+  m4v:  "video/mp4",
+};
 
 // Flash pricing (2025): $0.15/M in, $0.60/M out.
 // Phase 5: per-model rates + fallback tokens moved to ./gemini/cost.ts; the legacy
@@ -169,20 +183,20 @@ export async function loadCalibrationData(): Promise<CalibrationData | null> {
 /**
  * Calculate cost in cents from token usage metadata.
  *
- * Phase 5 D-11 SHIM: delegates to the per-model helper at ./gemini/cost.ts so legacy
- * text + video call sites (line ~357, line ~497) continue to invoke the original
- * 2-arg signature without modification. The shim pins GEMINI_MODEL pricing so behavior
- * stays byte-identical to the pre-Plan-01 single-model implementation.
+ * D-10 (Phase 13 Plan 02) fix: shim now requires explicit model parameter to prevent
+ * silent telemetry masking. The old version pinned global GEMINI_MODEL ("gemini-2.5-flash")
+ * regardless of which model was actually called, causing cost under-counting when the
+ * actual call used Pro-tier pricing. Now each call site passes its own model.
  *
- * @deprecated Pass model name explicitly via `calculateCost(model, usageMetadata)` from
- *             `./gemini/cost`. Phase 5 segment helpers (Plan 02) call the per-model
- *             helper directly.
+ * @deprecated New callers should use `calculateCost(model, usageMetadata)` from
+ *             `./gemini/cost` directly. This shim is kept for structural parity only.
  */
 function calculateCost(
+  model: string,
   promptTokens: number | undefined,
   candidateTokens: number | undefined,
 ): number {
-  return calculateCostPerModel(GEMINI_MODEL, {
+  return calculateCostPerModel(model, {
     promptTokenCount: promptTokens,
     candidatesTokenCount: candidateTokens,
   });
@@ -435,10 +449,10 @@ export async function analyzeWithGemini(
       const text = response.text ?? "";
       const analysis = parseGeminiResponse(text);
 
-      // Token-based cost estimation
+      // Token-based cost estimation — D-10: pass GEMINI_MODEL explicitly (no silent pin)
       const promptTokens = response.usageMetadata?.promptTokenCount;
       const candidateTokens = response.usageMetadata?.candidatesTokenCount;
-      const cost_cents = calculateCost(promptTokens, candidateTokens);
+      const cost_cents = calculateCost(GEMINI_MODEL, promptTokens, candidateTokens);
 
       if (cost_cents > 0.5) {
         log.warn("Text analysis cost exceeds soft cap", {
@@ -593,9 +607,10 @@ export async function analyzeVideoWithGemini(
     const analysis = parseGeminiVideoResponse(text);
 
     // Token-based cost estimation (video tokens counted automatically by Gemini)
+    // D-10: pass GEMINI_MODEL explicitly (no silent pin to global constant)
     const promptTokens = response.usageMetadata?.promptTokenCount;
     const candidateTokens = response.usageMetadata?.candidatesTokenCount;
-    const cost_cents = calculateCost(promptTokens, candidateTokens);
+    const cost_cents = calculateCost(GEMINI_MODEL, promptTokens, candidateTokens);
 
     if (cost_cents > 2.0) {
       log.warn("Video analysis cost exceeds soft cap", {

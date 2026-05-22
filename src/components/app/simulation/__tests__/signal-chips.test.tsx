@@ -1,4 +1,12 @@
 /** @vitest-environment happy-dom */
+/**
+ * Phase 11 D-02 signal availability chip tests — updated Phase 13 Plan 02 (D-30).
+ *
+ * Changes from Phase 11:
+ * - Three-state: available=✓ (success), disabled=✕ (default, line-through), failed=⚠ (warning)
+ * - ml and retrieval are always DISABLED (DISABLED_THIS_PHASE set) regardless of availability value
+ * - false availability → ⚠ "failed" (not ✕ "disabled") for non-DISABLED_THIS_PHASE signals
+ */
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { SignalAvailabilityChips } from "../signal-availability-chips";
@@ -8,7 +16,7 @@ describe("SignalAvailabilityChips", () => {
   const allAvailable: SignalAvailability = {
     behavioral: true,
     gemini: true,
-    ml: true,
+    ml: true,        // D-14: DISABLED_THIS_PHASE — always shows ✕ regardless of value
     rules: true,
     trends: true,
     content_type: true,
@@ -18,7 +26,7 @@ describe("SignalAvailabilityChips", () => {
     gemini_cta: true,
     personas: true,
     audio: true,
-    retrieval: true,
+    retrieval: true, // D-15: DISABLED_THIS_PHASE — always shows ✕ regardless of value
   };
 
   it("renders 4 chip badges", () => {
@@ -29,48 +37,46 @@ describe("SignalAvailabilityChips", () => {
     expect(badges.length).toBe(4);
   });
 
-  it("renders available chips with ✓ and success variant", () => {
+  it("renders available chips with ✓ for non-disabled signals (audio, personas)", () => {
     render(<SignalAvailabilityChips signalAvailability={allAvailable} />);
     expect(screen.getByText("Audio ✓")).toBeInTheDocument();
     expect(screen.getByText("Personas ✓")).toBeInTheDocument();
-    expect(screen.getByText("Retrieval ✓")).toBeInTheDocument();
-    expect(screen.getByText("ML ✓")).toBeInTheDocument();
   });
 
-  it("renders unavailable chips with ✕ and line-through opacity-40", () => {
+  it("ml and retrieval always show ✕ (DISABLED_THIS_PHASE) even when availability=true", () => {
+    render(<SignalAvailabilityChips signalAvailability={allAvailable} />);
+    expect(screen.getByText("ML ✕")).toBeInTheDocument();
+    expect(screen.getByText("Retrieval ✕")).toBeInTheDocument();
+  });
+
+  it("false availability on non-disabled signals shows ⚠ (failed), not ✕", () => {
     const noneAvailable: SignalAvailability = {
       ...allAvailable,
       audio: false,
       personas: false,
-      retrieval: false,
-      ml: false,
     };
-    const { container } = render(
-      <SignalAvailabilityChips signalAvailability={noneAvailable} />
-    );
-    expect(screen.getByText("Audio ✕")).toBeInTheDocument();
-    expect(screen.getByText("Personas ✕")).toBeInTheDocument();
-    expect(screen.getByText("Retrieval ✕")).toBeInTheDocument();
+    render(<SignalAvailabilityChips signalAvailability={noneAvailable} />);
+    expect(screen.getByText("Audio ⚠")).toBeInTheDocument();
+    expect(screen.getByText("Personas ⚠")).toBeInTheDocument();
+    // ml and retrieval still ✕ (disabled)
     expect(screen.getByText("ML ✕")).toBeInTheDocument();
-
-    const chips = container.querySelectorAll('[data-testid="signal-availability-chips"] .inline-flex');
-    chips.forEach((chip) => {
-      expect(chip.className).toContain("line-through");
-      expect(chip.className).toContain("opacity-40");
-    });
+    expect(screen.getByText("Retrieval ✕")).toBeInTheDocument();
   });
 
-  it("treats undefined key as unavailable", () => {
+  it("treats undefined key as failed (⚠) for non-disabled signals", () => {
     const partialAvailability: SignalAvailability = {
       ...allAvailable,
       ml: true,
     };
-    delete (partialAvailability as any).audio;
-    delete (partialAvailability as any).retrieval;
+    delete (partialAvailability as Record<string, unknown>).audio;
+    delete (partialAvailability as Record<string, unknown>).retrieval;
 
     render(<SignalAvailabilityChips signalAvailability={partialAvailability} />);
-    expect(screen.getByText("Audio ✕")).toBeInTheDocument();
-    expect(screen.getByText("ML ✓")).toBeInTheDocument();
+    // Audio undefined → failed ⚠ (not in DISABLED_THIS_PHASE)
+    expect(screen.getByText("Audio ⚠")).toBeInTheDocument();
+    // ML true but in DISABLED_THIS_PHASE → ✕
+    expect(screen.getByText("ML ✕")).toBeInTheDocument();
+    // Retrieval undefined but in DISABLED_THIS_PHASE → ✕
     expect(screen.getByText("Retrieval ✕")).toBeInTheDocument();
   });
 
