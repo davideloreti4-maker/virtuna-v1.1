@@ -284,7 +284,7 @@ export const useProfileInterviewStore = create<ProfileInterviewState>(
     },
 
     skipCard: () => {
-      set((state) => ({ currentCard: state.currentCard + 1 }));
+      set((state) => ({ currentCard: Math.min(state.currentCard + 1, 8) }));
     },
 
     goBack: () => {

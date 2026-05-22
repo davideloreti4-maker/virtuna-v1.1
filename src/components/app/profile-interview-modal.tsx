@@ -339,7 +339,7 @@ export function ProfileInterviewModal({
               onContinue={() => {
                 void handleContinue();
               }}
-              onSkipCurrent={skipCard}
+              onSkipCurrent={currentCard === 8 ? () => { void handleContinue(); } : skipCard}
               onSkipAll={() => {
                 void handleSkipAll();
               }}
