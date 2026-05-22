@@ -394,7 +394,9 @@ export async function runPredictionPipeline(
   // Wave 0: Content-type + niche detection (Phase 4 — orchestrates parallel detectors)
   // Runs BEFORE Wave 1 — events fire before any Wave 1 stage_start.
   // -------------------------------------------------------
-  const wave0Result = await runWave0(payload, supabase, creatorContext, onStageEvent);
+  // D-18: videoContext passed in Task 3.2 when pipeline.ts owns the upload.
+  // For now (Task 3.1 only), pass null — Task 3.2 threads the real value.
+  const wave0Result = await runWave0(payload, supabase, creatorContext, null, onStageEvent);
 
   Sentry.addBreadcrumb({
     category: "engine.pipeline",

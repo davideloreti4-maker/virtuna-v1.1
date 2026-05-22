@@ -449,15 +449,14 @@ export const Wave0ContentTypeResultSchema = z.object({
 });
 export type Wave0ContentTypeResult = z.infer<typeof Wave0ContentTypeResultSchema>;
 
+// D-17 (Phase 13 Plan 03): niche folded into Gemini content-type call.
+// New shape: flat { primary_slug, micro_slug, confidence } — replaces old DeepSeek
+// { primary, sub, micro, confidence, source, warning } shape.
+// Consumers updated: wave3.ts:113, retrieval/retrieval-stage.ts:105.
 export const Wave0NicheResultSchema = z.object({
-  primary: z.string(),
-  sub: z.string(),
-  micro: z.string().nullable(),
+  primary_slug: z.string(),
+  micro_slug: z.string().nullable(),
   confidence: z.number().min(0).max(1),
-  source: z.enum(["ai", "card1_fallback"]),
-  warning: z
-    .enum(["niche_drift_detected", "niche_low_confidence_no_fallback"])
-    .optional(),
 });
 export type Wave0NicheResult = z.infer<typeof Wave0NicheResultSchema>;
 

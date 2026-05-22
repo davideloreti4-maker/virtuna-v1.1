@@ -6,6 +6,7 @@ import type { ContentPayload, Wave0ContentTypeResult } from "../types";
 import { Wave0ContentTypeResultSchema } from "../types";
 import type { StageEventCallback } from "../events";
 import { emitStageStart, emitStageEnd } from "../events";
+import { NICHE_TREE } from "@/lib/niches/taxonomy";
 
 const log = createLogger({ module: "wave0.content-type" });
 
@@ -23,6 +24,9 @@ const TIMEOUT_MS = 20_000;
 const POLL_INTERVAL_MS = 500;
 const POLL_TIMEOUT_MS = 60_000;
 
+// D-17: niche taxonomy slugs inlined for Gemini constrained output validation.
+const NICHE_PRIMARY_SLUGS = NICHE_TREE.map((p) => p.slug);
+
 const RESPONSE_SCHEMA = {
   type: Type.OBJECT,
   properties: {
@@ -37,11 +41,26 @@ const RESPONSE_SCHEMA = {
       type: Type.STRING,
       enum: ["talking_head", "b_roll", "slideshow", "action", "tutorial", "vlog", "comedy", "other"],
     },
+    // D-17: niche fields — returned alongside content_type in one Gemini call.
+    niche_primary_slug: { type: Type.STRING },
+    niche_micro_slug: { type: Type.STRING, nullable: true },
+    niche_confidence: { type: Type.NUMBER },
   },
-  required: ["type", "confidence", "mixed"],
+  required: ["type", "confidence", "mixed", "niche_primary_slug", "niche_confidence"],
 };
 
-const SYSTEM_PROMPT = `You are a TikTok content-type classifier. Watch the provided video segment (first 5 seconds of a TikTok-style short) and classify it into ONE of:
+// D-17: system prompt is constructed at module load (NICHE_TREE inlined once, byte-identical).
+function buildSystemPrompt(): string {
+  const primarySlugList = NICHE_PRIMARY_SLUGS.join(", ");
+  const nicheTree = NICHE_TREE
+    .map((p) => `- ${p.slug}: ${p.subs.map((s) => s.slug).join(", ")}`)
+    .join("\n");
+
+  return `You are a TikTok content-type and niche classifier. Watch the provided video segment (first 5 seconds of a TikTok-style short) and perform TWO tasks:
+
+## Task 1: Content-Type Classification
+
+Classify the video into ONE content type:
 
 - talking_head: a person speaking directly to camera (interview-style, vlog-style, monologue)
 - b_roll: aesthetic visuals with voiceover or text overlay, often product/lifestyle footage
@@ -53,9 +72,28 @@ const SYSTEM_PROMPT = `You are a TikTok content-type classifier. Watch the provi
 - other: anything not clearly in the above (music, ASMR, gaming, animation, abstract, etc.)
 
 Return a confidence (0.0-1.0) reflecting how clearly the video fits the chosen category.
-If the video shifts type mid-stream (e.g., 2s talking-head then 3s b-roll), set mixed=true, return the DOMINANT type (most seconds), set dominant_seconds to how many of the 5 the dominant type covered, and set secondary_type to the other type observed.
+If the video shifts type mid-stream, set mixed=true, return the DOMINANT type, set dominant_seconds, and set secondary_type.
 If clarity is below 0.6, prefer 'other' over a forced guess.
-Score visual + audio together; do not over-index on a single modality.`;
+
+## Task 2: Niche Classification (D-17)
+
+Classify the video niche from this canonical taxonomy. Return ONLY slugs from this list.
+
+Primary slugs: ${primarySlugList}
+
+Sub-slugs by primary:
+${nicheTree}
+
+Return:
+- niche_primary_slug: the primary niche slug that best describes this video content
+- niche_micro_slug: an optional micro-niche slug in lowercase-hyphen format (e.g. "skincare-routine-morning"), or null if uncertain
+- niche_confidence: confidence 0.0-1.0 that the niche classification is correct
+
+ONLY return slugs from the taxonomy above for niche_primary_slug.
+Score visual + audio together for both tasks; do not over-index on a single modality.`;
+}
+
+const SYSTEM_PROMPT = buildSystemPrompt();
 
 let client: GoogleGenAI | null = null;
 function getClient(): GoogleGenAI {
@@ -67,10 +105,22 @@ function getClient(): GoogleGenAI {
   return client;
 }
 
+// D-17: extended return type includes niche fields from the folded Gemini call.
+export interface Wave0ContentTypeExtendedResult extends Wave0ContentTypeResult {
+  niche_primary_slug: string;
+  niche_micro_slug: string | null;
+  niche_confidence: number;
+}
+
 /**
- * Detects content type from first 5 seconds of video via Gemini 3 Flash.
+ * Detects content type AND niche from first 5 seconds of video via Gemini 3 Flash.
  * Per CONTEXT D-01: 5s window, native videoMetadata, returns Wave0ContentTypeResult.
  * Per CONTEXT D-16: NEVER throws — returns null on any failure + emits stage_end with ok:false.
+ *
+ * D-17: niche fields (niche_primary_slug, niche_micro_slug, niche_confidence) folded into
+ * the same Gemini call — eliminates the separate DeepSeek niche-detector call site.
+ *
+ * D-18: accepts optional videoContext — when provided, skips upload (caller owns lifecycle).
  *
  * Phase 4 GAP-04-01 fix: accepts a SupabaseClient and downloads via storage.from("videos").download()
  * instead of calling fetch(payload.video_url). Pre-fix, normalize.ts aliased the storage key into
@@ -79,8 +129,9 @@ function getClient(): GoogleGenAI {
 export async function detectContentType(
   payload: ContentPayload,
   supabase: SupabaseClient,
+  videoContext?: { fileUri: string; mimeType: string } | null,
   onEvent?: StageEventCallback,
-): Promise<Wave0ContentTypeResult | null> {
+): Promise<Wave0ContentTypeExtendedResult | null> {
   const startTs = emitStageStart(onEvent, "wave_0_content_type", 0);
 
   // No video to classify — emit start/end pair and return null gracefully (preserves stub contract).
@@ -94,51 +145,63 @@ export async function detectContentType(
   }
 
   let costCents = 0;
+  // D-18: uploadedFileName is only set when WE upload (videoContext absent).
+  // When videoContext is provided, caller owns lifecycle — no cleanup here.
   let uploadedFileName: string | undefined;
 
   try {
     const ai = getClient();
 
-    // Phase 4 GAP-04-01 fix: download via Supabase Storage, NOT fetch().
-    // Pre-revision, normalize.ts aliased video_url to the storage key, which made
-    // fetch() throw TypeError in production. Post-revision (Option A), video_url is
-    // NEVER the storage key — the detector reads video_storage_path explicitly.
-    // Canonical pattern: pipeline.ts:336-352.
-    const { data: videoBlob, error: downloadError } = await supabase
-      .storage
-      .from("videos")
-      .download(payload.video_storage_path);
+    let fileUri: string;
+    let mimeType: string;
 
-    if (downloadError || !videoBlob) {
-      throw new Error(
-        `Wave 0 video download failed: ${downloadError?.message ?? "no data"}`,
-      );
-    }
+    if (videoContext) {
+      // D-18: caller pre-uploaded; skip download + upload. Reference fileUri directly.
+      fileUri = videoContext.fileUri;
+      mimeType = videoContext.mimeType;
+    } else {
+      // Legacy path: download from Supabase Storage + upload to Gemini Files API.
+      // Phase 4 GAP-04-01 fix: download via Supabase Storage, NOT fetch().
+      // Pre-revision, normalize.ts aliased video_url to the storage key, which made
+      // fetch() throw TypeError in production. Post-revision (Option A), video_url is
+      // NEVER the storage key — the detector reads video_storage_path explicitly.
+      // Canonical pattern: pipeline.ts:336-352.
+      const { data: videoBlob, error: downloadError } = await supabase
+        .storage
+        .from("videos")
+        .download(payload.video_storage_path!);
 
-    const buffer = Buffer.from(await videoBlob.arrayBuffer());
-    const ext = payload.video_storage_path.split(".").pop()?.toLowerCase() ?? "mp4";
-    const mimeType = ext === "mov" ? "video/quicktime" : "video/mp4";
-
-    const blob = new Blob([new Uint8Array(buffer)], { type: mimeType });
-    const uploadResult = await ai.files.upload({ file: blob, config: { mimeType } });
-    if (!uploadResult.name) throw new Error("Gemini Files API upload returned no name");
-    uploadedFileName = uploadResult.name;
-
-    // Poll for ACTIVE state (gemini.ts:454-475 pattern).
-    let fileState = uploadResult.state;
-    let fileUri = uploadResult.uri;
-    const pollStart = Date.now();
-    while (fileState === "PROCESSING") {
-      if (Date.now() - pollStart > POLL_TIMEOUT_MS) {
-        throw new Error(`Gemini Files API processing timed out after ${POLL_TIMEOUT_MS / 1000}s`);
+      if (downloadError || !videoBlob) {
+        throw new Error(
+          `Wave 0 video download failed: ${downloadError?.message ?? "no data"}`,
+        );
       }
-      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-      const info = await ai.files.get({ name: uploadedFileName });
-      fileState = info.state;
-      fileUri = info.uri;
-    }
-    if (fileState === "FAILED" || !fileUri) {
-      throw new Error(`Gemini Files API processing failed (state=${fileState})`);
+
+      const buffer = Buffer.from(await videoBlob.arrayBuffer());
+      const ext = payload.video_storage_path!.split(".").pop()?.toLowerCase() ?? "mp4";
+      mimeType = ext === "mov" ? "video/quicktime" : "video/mp4";
+
+      const blob = new Blob([new Uint8Array(buffer)], { type: mimeType });
+      const uploadResult = await ai.files.upload({ file: blob, config: { mimeType } });
+      if (!uploadResult.name) throw new Error("Gemini Files API upload returned no name");
+      uploadedFileName = uploadResult.name;
+
+      // Poll for ACTIVE state (gemini.ts:454-475 pattern).
+      let fileState = uploadResult.state;
+      fileUri = uploadResult.uri ?? "";
+      const pollStart = Date.now();
+      while (fileState === "PROCESSING") {
+        if (Date.now() - pollStart > POLL_TIMEOUT_MS) {
+          throw new Error(`Gemini Files API processing timed out after ${POLL_TIMEOUT_MS / 1000}s`);
+        }
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+        const info = await ai.files.get({ name: uploadedFileName });
+        fileState = info.state;
+        fileUri = info.uri ?? "";
+      }
+      if (fileState === "FAILED" || !fileUri) {
+        throw new Error(`Gemini Files API processing failed (state=${fileState})`);
+      }
     }
 
     const controller = new AbortController();
@@ -187,17 +250,30 @@ export async function detectContentType(
       throw new Error(`Content-type response validation failed: ${validated.error.message}`);
     }
 
-    let result: Wave0ContentTypeResult = validated.data;
+    // D-17: validate niche_primary_slug is in taxonomy
+    const nichePrimarySlug = typeof raw.niche_primary_slug === "string" && NICHE_PRIMARY_SLUGS.includes(raw.niche_primary_slug)
+      ? raw.niche_primary_slug
+      : NICHE_PRIMARY_SLUGS[0]; // fallback to first slug if Gemini returns unknown
+
+    let result: Wave0ContentTypeExtendedResult = {
+      ...validated.data,
+      niche_primary_slug: nichePrimarySlug,
+      niche_micro_slug: typeof raw.niche_micro_slug === "string" ? raw.niche_micro_slug : null,
+      niche_confidence: typeof raw.niche_confidence === "number" ? raw.niche_confidence : 0,
+    };
+
     if (raw.mixed === true) {
       result = { ...result, warning: "mixed_content_detected" };
     } else if (result.confidence < 0.6) {
       result = { ...result, warning: "low_confidence" };
     }
 
-    log.info("Content-type detection complete", {
+    log.info("Content-type + niche detection complete (D-17 folded)", {
       stage: "wave_0_content_type",
       type: result.type,
       confidence: result.confidence,
+      niche_primary_slug: result.niche_primary_slug,
+      niche_confidence: result.niche_confidence,
       cost_cents: +costCents.toFixed(4),
       warning: result.warning,
     });
@@ -219,6 +295,8 @@ export async function detectContentType(
     });
     return null;
   } finally {
+    // D-18: only delete if WE uploaded (uploadedFileName set). When videoContext
+    // provided, caller owns lifecycle — do NOT delete here.
     if (uploadedFileName) {
       try {
         const ai = getClient();

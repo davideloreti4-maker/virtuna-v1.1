@@ -1,11 +1,11 @@
 /**
  * Phase 4 — Wave 0 orchestration tests.
  * Verifies runWave0() in src/lib/engine/wave0.ts:
- *  - Parallel detector invocation via Promise.allSettled
- *  - Isolated failure (one fails, the other's result intact)
- *  - Both-fail / both-success / both-null variants
- *  - creatorContext passthrough to detectNiche
- *  - onEvent callback forwarded to both detectors
+ *  - Single detector invocation (D-17 fold: no separate detectNiche)
+ *  - Failure (null result from detectContentType) → both content_type and niche null
+ *  - both-success variant
+ *  - videoContext passthrough to detectContentType (D-18)
+ *  - onEvent callback forwarded to detectContentType
  *  - D-22 — Wave 0 introduces NO internal cache (bypassCache freshness contract).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -26,20 +26,16 @@ vi.mock("@sentry/nextjs", () => ({
   addBreadcrumb: vi.fn(),
 }));
 
-// Mock both detector modules so we can control resolution + verify forwarded args.
+// D-17: Only mock detectContentType — detectNiche no longer exists.
 const mockDetectContentType = vi.fn();
-const mockDetectNiche = vi.fn();
 
 vi.mock("../wave0/content-type-detector", () => ({
   detectContentType: (...args: unknown[]) => mockDetectContentType(...args),
 }));
-vi.mock("../wave0/niche-detector", () => ({
-  detectNiche: (...args: unknown[]) => mockDetectNiche(...args),
-}));
 
 import { runWave0 } from "../wave0";
 
-// Mock supabase client for all runWave0 calls (Phase 4 GAP-04-01 fix — new 2nd arg)
+// Mock supabase client
 const mockSupabaseClient = {
   storage: {
     from: vi.fn(() => ({
@@ -58,117 +54,114 @@ const payload: ContentPayload = {
 
 const creatorContext: CreatorContext = {} as CreatorContext;
 
-const sampleContentType = { type: "talking_head" as const, confidence: 0.85 };
-const sampleNiche = {
-  primary: "beauty",
-  sub: "skincare",
-  micro: null,
-  confidence: 0.8,
-  source: "ai" as const,
+// D-17: Extended content-type result includes niche fields
+const sampleContentTypeExtended = {
+  type: "talking_head" as const,
+  confidence: 0.85,
+  niche_primary_slug: "beauty",
+  niche_micro_slug: null,
+  niche_confidence: 0.9,
 };
 
-describe("runWave0 — Phase 4 orchestration", () => {
+describe("runWave0 — Phase 4 orchestration (D-17 niche fold)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("both detectors succeed → Wave0Result has both fields non-null", async () => {
-    mockDetectContentType.mockResolvedValue(sampleContentType);
-    mockDetectNiche.mockResolvedValue(sampleNiche);
+  it("D-17-T1: detectContentType returns extended result → Wave0Result has both content_type and niche non-null", async () => {
+    mockDetectContentType.mockResolvedValue(sampleContentTypeExtended);
     const result = await runWave0(payload, mockSupabaseClient, creatorContext);
-    expect(result.content_type).toEqual(sampleContentType);
-    expect(result.niche).toEqual(sampleNiche);
+    expect(result.content_type).toEqual({ type: "talking_head", confidence: 0.85 });
+    expect(result.niche).toEqual({
+      primary_slug: "beauty",
+      micro_slug: null,
+      confidence: 0.9,
+    });
   });
 
-  it("one detector fails, the other succeeds — Promise.allSettled isolation", async () => {
-    mockDetectContentType.mockRejectedValue(new Error("upload failed"));
-    mockDetectNiche.mockResolvedValue(sampleNiche);
+  it("D-17-T2: runWave0 returns both content_type and niche from single detectContentType call (no detectNiche)", async () => {
+    mockDetectContentType.mockResolvedValue(sampleContentTypeExtended);
     const result = await runWave0(payload, mockSupabaseClient, creatorContext);
-    expect(result.content_type).toBeNull();
-    expect(result.niche).toEqual(sampleNiche);
+    // Only one detector call should happen
+    expect(mockDetectContentType).toHaveBeenCalledTimes(1);
+    // Both fields populated from single call
+    expect(result.content_type).not.toBeNull();
+    expect(result.niche).not.toBeNull();
   });
 
-  it("both detectors fail — Wave0Result has both null (stub contract preserved)", async () => {
-    mockDetectContentType.mockRejectedValue(new Error("gemini down"));
-    mockDetectNiche.mockRejectedValue(new Error("deepseek down"));
+  it("D-17-T3: niche_primary_slug value from extended result maps to niche.primary_slug in Wave0Result", async () => {
+    mockDetectContentType.mockResolvedValue({
+      ...sampleContentTypeExtended,
+      niche_primary_slug: "fitness",
+      niche_confidence: 0.75,
+    });
     const result = await runWave0(payload, mockSupabaseClient, creatorContext);
-    expect(result.content_type).toBeNull();
-    expect(result.niche).toBeNull();
+    expect(result.niche?.primary_slug).toBe("fitness");
+    expect(result.niche?.confidence).toBe(0.75);
   });
 
-  it("both detectors return null (no-throw graceful) — Wave0Result has both null", async () => {
+  it("D-17-T4: when detectContentType returns null (Gemini failure) → both content_type and niche are null", async () => {
     mockDetectContentType.mockResolvedValue(null);
-    mockDetectNiche.mockResolvedValue(null);
     const result = await runWave0(payload, mockSupabaseClient, creatorContext);
     expect(result.content_type).toBeNull();
     expect(result.niche).toBeNull();
   });
 
-  it("creatorContext is passed through to detectNiche", async () => {
-    const ctx: CreatorContext = {
-      niche_primary: "fitness",
-      niche_sub: "strength-training",
-    } as CreatorContext;
-    mockDetectContentType.mockResolvedValue(sampleContentType);
-    mockDetectNiche.mockResolvedValue(sampleNiche);
-    await runWave0(payload, mockSupabaseClient, ctx);
-    expect(mockDetectContentType).toHaveBeenCalledWith(payload, mockSupabaseClient, undefined);
-    expect(mockDetectNiche).toHaveBeenCalledWith(payload, ctx, undefined);
+  it("D-17-T5: when detectContentType rejects (unexpected throw) → both content_type and niche null (captured to Sentry)", async () => {
+    mockDetectContentType.mockRejectedValue(new Error("gemini down"));
+    const result = await runWave0(payload, mockSupabaseClient, creatorContext);
+    expect(result.content_type).toBeNull();
+    expect(result.niche).toBeNull();
   });
 
-  it("detectors fire in parallel (both invoked before either resolves)", async () => {
-    let contentTypeStarted = false;
-    let nicheStarted = false;
-    let contentTypeResolved = false;
-
-    mockDetectContentType.mockImplementation(async () => {
-      contentTypeStarted = true;
-      // Yield to the niche detector before resolving.
-      await new Promise((r) => setTimeout(r, 10));
-      contentTypeResolved = true;
-      return sampleContentType;
-    });
-    mockDetectNiche.mockImplementation(async () => {
-      nicheStarted = true;
-      // Assert content_type also already started and not yet resolved — proves parallelism.
-      expect(contentTypeStarted).toBe(true);
-      expect(contentTypeResolved).toBe(false);
-      return sampleNiche;
-    });
-
+  it("D-17-T6: No detectNiche import — only detectContentType is invoked", async () => {
+    mockDetectContentType.mockResolvedValue(sampleContentTypeExtended);
     await runWave0(payload, mockSupabaseClient, creatorContext);
-    expect(contentTypeStarted).toBe(true);
-    expect(nicheStarted).toBe(true);
+    // Verify no second mock was called (detectNiche is deleted)
+    expect(mockDetectContentType).toHaveBeenCalledTimes(1);
   });
 
-  it("onEvent callback is forwarded to both detectors", async () => {
-    mockDetectContentType.mockResolvedValue(sampleContentType);
-    mockDetectNiche.mockResolvedValue(sampleNiche);
+  it("D-17-T7: niche is null when niche_primary_slug is missing from extended result", async () => {
+    mockDetectContentType.mockResolvedValue({
+      type: "talking_head",
+      confidence: 0.85,
+      // No niche_primary_slug — simulates missing niche from Gemini
+    });
+    const result = await runWave0(payload, mockSupabaseClient, creatorContext);
+    // content_type is populated
+    expect(result.content_type).toEqual({ type: "talking_head", confidence: 0.85, warning: undefined });
+    // niche is null because no niche_primary_slug
+    expect(result.niche).toBeNull();
+  });
+
+  it("D-18: videoContext passed through to detectContentType", async () => {
+    mockDetectContentType.mockResolvedValue(sampleContentTypeExtended);
+    const vc = { fileUri: "gs://pre-uploaded", mimeType: "video/mp4" };
+    await runWave0(payload, mockSupabaseClient, creatorContext, vc);
+    expect(mockDetectContentType).toHaveBeenCalledWith(payload, mockSupabaseClient, vc, undefined);
+  });
+
+  it("onEvent callback is forwarded to detectContentType", async () => {
+    mockDetectContentType.mockResolvedValue(sampleContentTypeExtended);
     const cb = vi.fn();
-    await runWave0(payload, mockSupabaseClient, creatorContext, cb);
-    expect(mockDetectContentType).toHaveBeenCalledWith(payload, mockSupabaseClient, cb);
-    expect(mockDetectNiche).toHaveBeenCalledWith(payload, creatorContext, cb);
+    await runWave0(payload, mockSupabaseClient, creatorContext, undefined, cb);
+    expect(mockDetectContentType).toHaveBeenCalledWith(payload, mockSupabaseClient, undefined, cb);
   });
 
-  // VALIDATION row line 61 — D-22 ("no internal cache to bypass").
-  // CONTEXT D-22: "Wave 0 itself does NOT introduce a stage-level cache (cost is
-  // too low to bother, and L1/L2 prediction cache already covers the full result)."
-  // Therefore runWave0() has NO bypassCache parameter; bypassCache lives at the
-  // route/pipeline level (Phase 3 D-15). The "no caching behavior was introduced"
-  // assertion proves the contract: detectors fire fresh on every invocation, no
-  // memoization short-circuit, regardless of upstream bypassCache state.
+  it("both detectContentType returns null (graceful) — Wave0Result has both null", async () => {
+    mockDetectContentType.mockResolvedValue(null);
+    const result = await runWave0(payload, mockSupabaseClient, creatorContext);
+    expect(result.content_type).toBeNull();
+    expect(result.niche).toBeNull();
+  });
+
   it("bypassCache: Wave 0 runs fresh under bypassCache (D-22 — no internal cache to bypass)", async () => {
-    mockDetectContentType.mockResolvedValue(sampleContentType);
-    mockDetectNiche.mockResolvedValue(sampleNiche);
+    mockDetectContentType.mockResolvedValue(sampleContentTypeExtended);
 
-    // Two sequential invocations — same payload + creatorContext. If runWave0
-    // had introduced any memoization, the second call would short-circuit and
-    // the detectors would be invoked only once total. The contract: BOTH
-    // detectors fire on EVERY invocation.
     await runWave0(payload, mockSupabaseClient, creatorContext);
     await runWave0(payload, mockSupabaseClient, creatorContext);
 
+    // Single detector fires on every invocation — no memoization
     expect(mockDetectContentType).toHaveBeenCalledTimes(2);
-    expect(mockDetectNiche).toHaveBeenCalledTimes(2);
   });
 });

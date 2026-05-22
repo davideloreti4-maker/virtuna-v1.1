@@ -102,7 +102,8 @@ export async function runBenchmarkRetrieval(
 
   try {
     // D-09 graceful guard — niche unknown means retrieval is not viable.
-    const primary = wave0Result.niche?.primary ?? null;
+    // D-17: niche shape changed from { primary, ... } to { primary_slug, ... }
+    const primary = wave0Result.niche?.primary_slug ?? null;
     if (!primary) {
       log.info("Retrieval skipped — no niche primary from Wave 0");
       emitStageEnd(onEvent, "retrieval", 1, startTs, {

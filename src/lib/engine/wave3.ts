@@ -110,7 +110,8 @@ export async function runWave3(
   // D-10: null content_type OR mixed_content_detected warning → "other" row fallback
   // (handled inside selectPersonaSlots).
   const contentTypeSlug = wave0Result.content_type?.type ?? null;
-  const nicheSlug = wave0Result.niche?.primary ?? null;
+  // D-17: niche shape changed from { primary, sub, micro, ... } to { primary_slug, micro_slug, confidence }
+  const nicheSlug = wave0Result.niche?.primary_slug ?? null;
 
   let slots: PersonaSlot[];
   try {
