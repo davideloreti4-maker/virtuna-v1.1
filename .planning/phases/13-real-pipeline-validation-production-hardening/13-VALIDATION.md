@@ -2,8 +2,8 @@
 phase: 13
 slug: real-pipeline-validation-production-hardening
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-05-22
 ---
 
@@ -42,18 +42,25 @@ created: 2026-05-22
 > Task IDs filled in by the planner once PLAN.md is written. The matrix below seeds the
 > coverage shape — each plan's tasks map onto one of these test types.
 
-| Plan | Type | Test Type | Automated Command | What It Validates |
-|------|------|-----------|-------------------|-------------------|
-| 01 — Gemini self-test + Phase-12 cleanup | live-API | `pnpm tsx scripts/engine-self-test.ts` | Every slot in `src/lib/engine/gemini.ts` (hook/body/CTA) returns 2xx + non-degenerate response. Probes both bare and `-preview` forms (Research A1). |
-| 01 — Phase-12 obsolete env cleanup | unit + grep | `grep -r DEEPSEEK_COUNTERFACTUALS_MODEL src/ \|\| true` (must return empty) | `DEEPSEEK_COUNTERFACTUALS_MODEL` and `DEEPSEEK_NICHE_MODEL` removed from `.env*`, `src/`, and config. |
-| 02 — Stage 11 rebuild | unit | `pnpm vitest run src/lib/engine/stages/stage11` | Stage 11 always runs (no skip on `overall_score ≥ 70`); accepts full signal context payload; returns ≥1 suggestion with signal references; merges with `result.suggestions[]` without double-counting. |
-| 02 — Stage 11 prompt schema | unit | `pnpm vitest run src/lib/engine/stages/stage11-prompt.test.ts` | Prompt receives Gemini factor scores, fired rules, trend matches, persona dissent, platform fit; output schema validated via Zod. |
-| 03 — DeepSeek hang mitigation | unit | `pnpm vitest run src/lib/engine/deepseek.test.ts` | `AbortSignal.timeout(N)` wrapper kills a mocked slow server within deadline; in-process `Promise.race` fallback documented (D-22). `gtimeout` path verified at `/opt/homebrew/bin/gtimeout`. |
-| 04 — Cross-phase code-logic review | review-doc | `test -f .planning/phases/13-*/13-CODE-REVIEW-09-12.md` | Wave wiring (Wave N inputs match N-1 outputs), signal fallback paths (no silent degradations), error swallowing patterns documented. Read-only — no inline edits. |
-| 05 — E2E smoke (1 URL) | E2E | `pnpm tsx scripts/smoke-tiktok-pipeline.ts urls-1.txt` | 1 real TikTok URL → `/api/analyze` returns 2xx; audio fingerprint non-null; Wave 3 ≥3 personas with verdicts; Wave 4 numeric platform_fit; Stage 11 ≥1 suggestion. |
-| 06 — E2E smoke (5 URLs) | E2E | `pnpm tsx scripts/smoke-tiktok-pipeline.ts urls-5.txt` | 5/5 pass with same non-degraded criteria as Plan 05. |
-| 07 — E2E smoke (10 URLs) | E2E | `pnpm tsx scripts/smoke-tiktok-pipeline.ts urls-10.txt` | 10/10 pass with same criteria. Snapshot per video → diff against Plan 06 baseline; no silent degradations. |
-| 08 — Version flip + milestone merge | unit + git | `grep -E "3\.0\.0[^-]" src/lib/engine/version.ts` (must succeed); `git log milestone/engine-foundation..main` (must be non-empty after merge) | `ENGINE_VERSION` reads `3.0.0` (no `-dev` suffix); `prediction-cache.ts` key auto-invalidates on flip (read-only verify per Research D-23); branch merged with `--no-ff`. |
+| Plan / Task | Test Type | Automated Command | What It Validates |
+|-------------|-----------|-------------------|-------------------|
+| 01 / Task 1.1 (Gemini self-test) | live-API | `pnpm tsx scripts/engine-self-test.ts` | Every Gemini slot (Wave 0, hook, body, CTA, Stage 11) returns `response.modelVersion?.startsWith(requested)`. Probes BOTH bare AND `-preview` forms (Research A1). |
+| 01 / Task 1.2 (Phase-12 obsolete env cleanup audit) | grep | `grep -r DEEPSEEK_COUNTERFACTUALS_MODEL src/ \|\| true` (will be empty after Plan 02) AND `grep -r DEEPSEEK_NICHE_MODEL src/ \|\| true` (empty after Plan 03). Audit doc captures inventory now. | Obsolete env vars catalogued; removal scheduled. |
+| 01 / Task 1.3 (D-23 cache invalidation regression test) | unit | `pnpm vitest run src/lib/engine/cache/__tests__/prediction-cache.test.ts` | Cache lookup returns null when stored `engine_version != current ENGINE_VERSION`. |
+| 02 / Task 2.1 (Stage 11 rebuild) | unit | `pnpm vitest run src/lib/engine/__tests__/stage11-counterfactuals.test.ts` | Stage 11 always runs (D-04); accepts full signal context; returns band-adaptive output (low: 3 fix, mid: 2 fix + 1 reinforce, high: 1 stretch + 2-3 reinforce); fileUri included when videoContext supplied. |
+| 02 / Task 2.2 (aggregator SCORE_WEIGHTS + Gemini cost fix) | unit | `pnpm vitest run src/lib/engine/__tests__/aggregator.test.ts src/lib/engine/gemini/__tests__/cost.test.ts` | D-16 weights (behavioral=0.40, gemini=0.35, audio=0.05, trends=0.10, platform_fit=0.05, others=0). PRICING table has both bare + -preview keys. |
+| 02 / Task 2.3 (UI rebuild + three-state chips) | unit (RTL) | `pnpm vitest run src/components/app/simulation/__tests__/insights-section.test.tsx src/components/app/simulation/__tests__/signal-availability-chips.test.tsx` | SuggestionsSection adaptive headers + type badges; chip ✓/✕/⚠ rendering. |
+| 03 / Task 3.1 (Wave 0 niche fold D-17) | unit | `pnpm vitest run src/lib/engine/wave0/__tests__/ src/lib/engine/__tests__/wave0.test.ts && test ! -f src/lib/engine/wave0/niche-detector.ts` | Single Gemini call returns content_type + niche; niche-detector.ts deleted. |
+| 03 / Task 3.2 (shared fileUri D-18) | unit | `pnpm vitest run src/lib/engine/__tests__/pipeline.test.ts` | Exactly one ai.files.upload call per video_upload pipeline run; videoContext threads through Wave 0, Wave 1, Stage 11. |
+| 03 / Task 3.3 (287MB cap + D-24 full sweep) | full suite | `pnpm vitest run && pnpm exec tsc --noEmit && pnpm build` | VIDEO_MAX_SIZE_BYTES=287MB in both files; full test suite green. |
+| 04 / Tasks 4.1-4.3 (cross-phase review) | review-doc | `test -f .planning/phases/13-*/13-CODE-REVIEW-PHASES-9-12.md && grep -c '## Phase 9\|## Phase 10\|## Phase 11\|## Phase 12' …` | Each phase has ≥4 findings; Bug Triage table populated; either "No BLOCKERS" or Task 4.5 follow-up plan present. |
+| 05 / Task 5.1 (smoke runner) + 5.2 (1-video E2E) | E2E + manual | `pnpm tsx scripts/smoke-tiktok-pipeline.ts scripts/urls-1.txt` + manual UI cadence per D-25 | 1 real TikTok URL → all signal-completeness gates pass; validations/video-01.md PASS verdict. |
+| 06 / Task 6.2 (5-video cadence) | E2E + manual | `pnpm tsx scripts/smoke-tiktok-pipeline.ts scripts/urls-5.txt` + manual cadence | Videos 2-5 pass; cumulative 5/5; stratification audit per D-26. |
+| 07 / Task 7.2 (10-video cadence) + 7.3 (final report) | E2E + manual | `pnpm tsx scripts/smoke-tiktok-pipeline.ts scripts/urls-10.txt` + manual | Videos 6-10 pass; 13-FINAL-VALIDATION-REPORT.md recommendation = PASS. |
+| 08 / Task 8.2 (ENGINE_VERSION flip) | unit + grep | `grep -E '^export const ENGINE_VERSION = "3\.0\.0"$' src/lib/engine/version.ts && pnpm vitest run` | version.ts reads "3.0.0" (no -dev); full suite green post-flip. |
+| 08 / Task 8.3 (Phase 12 cleanup) | grep | `test ! -f .planning/research/smoke-v3.json && grep -c 'Closing Note' .planning/phases/12-*/12-HANDOFF.md` | smoke-v3.json deleted; 12-HANDOFF.md closing note appended; ROADMAP shows SUPERSEDED. |
+| 08 / Task 8.4 (milestone merge) | git | `git log --oneline main -3 \| grep -c 'merge.*engine-foundation'` | --no-ff merge commit on main. |
+| 08 / Task 8.5 (state closure) | grep | `grep -c 'status: complete\|Phase 13 Closure' .planning/STATE.md && grep -c 'Engine Foundation — Complete' .planning/MILESTONES.md` | STATE.md complete; MILESTONES.md append-only entry. |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
