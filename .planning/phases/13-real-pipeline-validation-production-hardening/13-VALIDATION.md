@@ -22,7 +22,7 @@ created: 2026-05-22
 | **Config file** | `vitest.config.ts` (existing); `package.json` scripts |
 | **Quick run command** | `pnpm vitest run src/lib/engine/` |
 | **Full suite command** | `pnpm vitest run && pnpm exec tsc --noEmit && pnpm lint` |
-| **Live-API audit** | `pnpm tsx scripts/audit-gemini-models.ts` |
+| **Live-API audit** | `pnpm tsx scripts/engine-self-test.ts` |
 | **E2E smoke** | `pnpm tsx scripts/smoke-tiktok-pipeline.ts <urls.txt>` |
 | **Estimated runtime** | ~30s vitest · ~10s model audit · ~3–5min per E2E video |
 
@@ -44,7 +44,7 @@ created: 2026-05-22
 
 | Plan | Type | Test Type | Automated Command | What It Validates |
 |------|------|-----------|-------------------|-------------------|
-| 01 — Gemini self-test + Phase-12 cleanup | live-API | `pnpm tsx scripts/audit-gemini-models.ts` | Every slot in `src/lib/engine/gemini.ts` (hook/body/CTA) returns 2xx + non-degenerate response. Probes both bare and `-preview` forms (Research A1). |
+| 01 — Gemini self-test + Phase-12 cleanup | live-API | `pnpm tsx scripts/engine-self-test.ts` | Every slot in `src/lib/engine/gemini.ts` (hook/body/CTA) returns 2xx + non-degenerate response. Probes both bare and `-preview` forms (Research A1). |
 | 01 — Phase-12 obsolete env cleanup | unit + grep | `grep -r DEEPSEEK_COUNTERFACTUALS_MODEL src/ \|\| true` (must return empty) | `DEEPSEEK_COUNTERFACTUALS_MODEL` and `DEEPSEEK_NICHE_MODEL` removed from `.env*`, `src/`, and config. |
 | 02 — Stage 11 rebuild | unit | `pnpm vitest run src/lib/engine/stages/stage11` | Stage 11 always runs (no skip on `overall_score ≥ 70`); accepts full signal context payload; returns ≥1 suggestion with signal references; merges with `result.suggestions[]` without double-counting. |
 | 02 — Stage 11 prompt schema | unit | `pnpm vitest run src/lib/engine/stages/stage11-prompt.test.ts` | Prompt receives Gemini factor scores, fired rules, trend matches, persona dissent, platform fit; output schema validated via Zod. |
@@ -61,7 +61,7 @@ created: 2026-05-22
 
 ## Wave 0 Requirements
 
-- [ ] `scripts/audit-gemini-models.ts` — live-API audit harness (new)
+- [x] `scripts/engine-self-test.ts` — live-API audit harness (Plan 01 Task 1.1)
 - [ ] `scripts/smoke-tiktok-pipeline.ts` — E2E smoke runner (new)
 - [ ] `scripts/urls-1.txt`, `urls-5.txt`, `urls-10.txt` — curated TikTok test corpora (user-provided seed list)
 - [ ] `src/lib/engine/stages/stage11-prompt.test.ts` — Stage 11 prompt unit test (new)
