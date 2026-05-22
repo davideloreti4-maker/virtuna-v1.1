@@ -222,13 +222,26 @@ describe("detectContentType — Phase 4 Wave 0 (D-17 niche fold, D-18 videoConte
     expect((ends[0] as { warning?: string }).warning).toBeTruthy();
   });
 
-  it("returns null when file state goes FAILED", async () => {
+  it("falls back to inlineData when file state goes FAILED (small video)", async () => {
+    // FAILED state now triggers inlineData fallback for videos ≤ 15MB.
     mockFileUpload.mockResolvedValue({ name: "files/abc", state: "FAILED", uri: null });
     const cb = vi.fn();
     const result = await detectContentType(videoPayload, mockSupabaseClient, undefined, cb);
+    // inlineData path succeeds — result is non-null
+    expect(result).not.toBeNull();
+    expect(result?.type).toBe("talking_head");
+  });
+
+  it("returns null when file state goes FAILED and video exceeds inlineData limit", async () => {
+    mockFileUpload.mockResolvedValue({ name: "files/abc", state: "FAILED", uri: null });
+    // Override download to return a >15MB buffer
+    mockStorageDownload.mockResolvedValueOnce({
+      data: new Blob([new Uint8Array(16 * 1024 * 1024)], { type: "video/mp4" }),
+      error: null,
+    });
+    const cb = vi.fn();
+    const result = await detectContentType(videoPayload, mockSupabaseClient, undefined, cb);
     expect(result).toBeNull();
-    const ends = cb.mock.calls.map((c) => c[0] as StageEvent).filter((e) => e.type === "stage_end");
-    expect((ends[0] as { ok?: boolean }).ok).toBe(false);
   });
 
   it("returns null on Zod schema validation failure (invalid type enum)", async () => {

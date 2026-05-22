@@ -89,11 +89,12 @@ export async function runBodySegment(
               role: "user",
               parts: [
                 { text: prompt },
-                {
-                  // Pitfall #3 + #4: videoMetadata sibling of fileData; STRING with "s" suffix.
-                  fileData: { fileUri, mimeType },
-                  videoMetadata: { startOffset: "5s", endOffset },
-                },
+                opts.inlineVideoData
+                  ? { inlineData: { mimeType: opts.inlineVideoData.mimeType, data: opts.inlineVideoData.buffer.toString("base64") } }
+                  : {
+                      fileData: { fileUri, mimeType },
+                      videoMetadata: { startOffset: "5s", endOffset },
+                    },
               ],
             },
           ],

@@ -73,6 +73,8 @@ export interface SegmentedAnalysisOptions extends SegmentedPromptOptions {
    * the caller — do NOT delete in finally{} when this is provided.
    */
   videoContext?: { fileUri: string; mimeType: string };
+  /** Fallback: use inlineData when Files API is unavailable. Buffer sent as base64. */
+  inlineVideoData?: { buffer: Buffer; mimeType: string };
 }
 
 /**
@@ -156,9 +158,15 @@ export async function analyzeVideoSegmented(
         fileUri = info.uri ?? "";
       }
       if (fileState === "FAILED") {
-        throw new Error(
-          "Video processing failed in Gemini Files API. The file may be corrupt or in an unsupported format.",
-        );
+        // Files API outage: fall back to inlineData if buffer fits (~15MB raw).
+        if (videoBuffer.byteLength <= 15 * 1024 * 1024) {
+          opts.inlineVideoData = { buffer: videoBuffer, mimeType: resolvedMimeType };
+          fileUri = ""; // segments will use inlineData path
+        } else {
+          throw new Error(
+            "Video processing failed in Gemini Files API. The file may be corrupt or in an unsupported format.",
+          );
+        }
       }
       // CR-01: Guard against any state that is neither PROCESSING (handled in the loop)
       // nor FAILED (handled above) nor ACTIVE.

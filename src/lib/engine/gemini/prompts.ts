@@ -17,6 +17,8 @@ export interface SegmentedPromptOptions {
   niche?: string | null;
   contentType?: ContentTypeSlug | null;
   creatorStyle?: string | null;     // Card 4 — optional injection per D-15
+  /** Files API fallback: send video as base64 inlineData when fileUri is unavailable. */
+  inlineVideoData?: { buffer: Buffer; mimeType: string };
 }
 
 // =======================
@@ -92,7 +94,9 @@ export function buildHookPrompt(opts: SegmentedPromptOptions): string {
     contentType,
     creatorStyle,
     "",
-    "Analyze ONLY the 0-5s hook of this video. Score each of the 5 factors AND each of the 4 sub-modalities (visual_stop_power, audio_hook_quality, text_overlay_score, first_words_speech_score). Then name the WEAKEST of the four sub-modalities (presence-aware). Then score visual_audio_coherence and cognitive_load.",
+    opts.inlineVideoData
+      ? "IMPORTANT: The full video is attached. Analyze ONLY the first 5 seconds (the hook). Ignore everything after the 5-second mark. Score each of the 5 factors AND each of the 4 sub-modalities for those first 5 seconds only."
+      : "Analyze ONLY the 0-5s hook of this video. Score each of the 5 factors AND each of the 4 sub-modalities (visual_stop_power, audio_hook_quality, text_overlay_score, first_words_speech_score). Then name the WEAKEST of the four sub-modalities (presence-aware). Then score visual_audio_coherence and cognitive_load.",
   ].filter(Boolean).join("\n");
   return `${system}\n\n---\n\n${userMessage}`;
 }
@@ -126,7 +130,9 @@ export function buildBodyPrompt(opts: SegmentedPromptOptions): string {
     niche,
     contentType,
     "",
-    "Analyze ONLY the body section (5s through end-3s) of this video. Score the 3 video_signals and provide a 1-2 sentence body_summary.",
+    opts.inlineVideoData
+      ? "IMPORTANT: The full video is attached. Analyze ONLY the middle section — from approximately 5 seconds until 5 seconds before the end. Ignore the first 5 seconds and last 5 seconds. Score the 3 video_signals for that middle section only."
+      : "Analyze ONLY the body section (5s through end-3s) of this video. Score the 3 video_signals and provide a 1-2 sentence body_summary.",
   ].filter(Boolean).join("\n");
   return `${system}\n\n---\n\n${userMessage}`;
 }
@@ -171,7 +177,9 @@ export function buildCtaPrompt(opts: SegmentedPromptOptions): string {
     niche,
     contentType,
     "",
-    "Analyze ONLY the LAST 3 SECONDS of this video. Determine cta_present (boolean discriminator). If true, score strength + type. If false, leave both null.",
+    opts.inlineVideoData
+      ? "IMPORTANT: The full video is attached. Analyze ONLY the last 3-5 seconds. Ignore everything before the final 5 seconds. Determine cta_present for those final seconds only."
+      : "Analyze ONLY the LAST 3 SECONDS of this video. Determine cta_present (boolean discriminator). If true, score strength + type. If false, leave both null.",
   ].filter(Boolean).join("\n");
   return `${system}\n\n---\n\n${userMessage}`;
 }

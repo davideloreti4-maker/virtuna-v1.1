@@ -99,13 +99,12 @@ export async function runHookSegment(
               role: "user",
               parts: [
                 { text: prompt },
-                {
-                  // CRITICAL Pitfall #3 + #4: videoMetadata is a SIBLING of fileData in the
-                  // SAME Part. startOffset/endOffset are STRING durations with trailing "s"
-                  // (NOT numbers, NOT ISO 8601).
-                  fileData: { fileUri, mimeType },
-                  videoMetadata: { startOffset: "0s", endOffset: "5s" },
-                },
+                opts.inlineVideoData
+                  ? { inlineData: { mimeType: opts.inlineVideoData.mimeType, data: opts.inlineVideoData.buffer.toString("base64") } }
+                  : {
+                      fileData: { fileUri, mimeType },
+                      videoMetadata: { startOffset: "0s", endOffset: "5s" },
+                    },
               ],
             },
           ],

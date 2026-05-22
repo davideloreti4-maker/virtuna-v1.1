@@ -86,10 +86,12 @@ export async function runCtaSegment(
               role: "user",
               parts: [
                 { text: prompt },
-                {
-                  fileData: { fileUri, mimeType },
-                  videoMetadata: { startOffset, endOffset },
-                },
+                opts.inlineVideoData
+                  ? { inlineData: { mimeType: opts.inlineVideoData.mimeType, data: opts.inlineVideoData.buffer.toString("base64") } }
+                  : {
+                      fileData: { fileUri, mimeType },
+                      videoMetadata: { startOffset, endOffset },
+                    },
               ],
             },
           ],
