@@ -37,7 +37,7 @@ const log = createLogger({ module: "engine.gemini.hook" });
 
 // Phase 5 §4 cost / latency budget — hook (Pro) ceilings.
 const HOOK_TIMEOUT_MS = 30_000;          // per-segment AbortController ceiling
-const HOOK_MAX_OUTPUT_TOKENS = 1500;     // hard ceiling — prevents runaway 6-score decomposition
+const HOOK_MAX_OUTPUT_TOKENS = 2048;     // bumped from 1500 — 5 factors + decomposition needs headroom
 const HOOK_COST_SOFT_CAP_CENTS = 1.6;    // log.warn
 const HOOK_COST_HARD_CAP_CENTS = 2.0;    // pipeline_warning
 // WR-02: One corrective retry on Zod failure only. Pro tier is ~1.3¢ per call but
