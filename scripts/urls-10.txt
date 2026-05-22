@@ -1,0 +1,49 @@
+# Phase 13 Plan 07 — 10-URL full acceptance gate seed
+# Instructions: Replace each placeholder with a real TikTok video URL.
+# Format: https://www.tiktok.com/@handle/video/12345678901234567
+#
+# D-26 required distribution (loose targets):
+#   - 3-4 expected low-scorers (engine should flag issues clearly)
+#   - 3-4 expected high-scorers (engine should reinforce + give stretch tips)
+#   - 2-3 mid-tier (engine should show balanced signals)
+#   - Across at least 3 distinct niches
+#   - At least 1 tiktok_url mode video (D-31 runtime probe in Plan 05 Task 5.2)
+#
+# Used by: pnpm tsx scripts/smoke-tiktok-pipeline.ts urls-10.txt
+# Each video exercises Stage 11 adaptive bands per D-05.
+
+# === HIGH-SCORERS (expected strong performance) ===
+
+# 1. High-scorer — niche: _______________
+https://www.tiktok.com/REPLACE_HIGH_1
+
+# 2. High-scorer — niche: _______________
+https://www.tiktok.com/REPLACE_HIGH_2
+
+# 3. High-scorer — niche: _______________
+https://www.tiktok.com/REPLACE_HIGH_3
+
+# === MID-TIER (moderate engagement expected) ===
+
+# 4. Mid-tier — niche: _______________
+https://www.tiktok.com/REPLACE_MID_1
+
+# 5. Mid-tier — niche: _______________
+https://www.tiktok.com/REPLACE_MID_2
+
+# 6. Mid-tier — tiktok_url mode (D-31 runtime probe required for this one)
+https://www.tiktok.com/REPLACE_MID_3_TIKTOK_URL_MODE
+
+# === LOW-SCORERS (expected underperformance) ===
+
+# 7. Low-scorer — niche: _______________
+https://www.tiktok.com/REPLACE_LOW_1
+
+# 8. Low-scorer — niche: _______________
+https://www.tiktok.com/REPLACE_LOW_2
+
+# 9. Low-scorer — niche: _______________
+https://www.tiktok.com/REPLACE_LOW_3
+
+# 10. Low-scorer — niche: _______________
+https://www.tiktok.com/REPLACE_LOW_4

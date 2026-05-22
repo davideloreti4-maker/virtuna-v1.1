@@ -1,0 +1,9 @@
+# Phase 13 Plan 05 — 1-URL smoke test seed
+# Instructions: Paste 1 TikTok URL below (replace the placeholder line)
+# Format: https://www.tiktok.com/@handle/video/12345678901234567
+# Select a video you know well so you can evaluate prediction accuracy.
+#
+# Used by: pnpm tsx scripts/smoke-tiktok-pipeline.ts urls-1.txt
+# D-26 note: for 1-video run, any niche/score-band is acceptable.
+
+https://www.tiktok.com/REPLACE_WITH_REAL_URL
