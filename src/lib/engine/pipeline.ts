@@ -457,26 +457,29 @@ export async function runPredictionPipeline(
       fileUri = lastFileInfo.uri ?? "";
     }
     if (fileState !== "ACTIVE" || !fileUri) {
-      throw new Error(`Unexpected upload state: ${fileState}. Expected ACTIVE.`);
+      // Gemini file processing failed — fall back to metadata-only (no video context).
+      // This keeps the analysis alive with behavioral/DeepSeek/trends signals instead of aborting.
+      warnings.push(`Gemini file processing ${fileState} — running metadata-only analysis (video signals unavailable).`);
+      onStageEvent?.({ type: "pipeline_warning", message: `Gemini file upload ${fileState}`, stage: "gemini_video_unavailable" });
+    } else {
+      // Extract duration from Gemini file metadata and backfill payload.duration_hint
+      // so the segmented analysis isn't skipped on video_upload with no caption.
+      // Gemini returns videoDuration as a protobuf Duration string e.g. "30.500s".
+      const rawDuration = (lastFileInfo as { videoMetadata?: { videoDuration?: string } }).videoMetadata?.videoDuration;
+      if (rawDuration != null && payload.duration_hint == null) {
+        const m = rawDuration.match(/^(\d+(?:\.\d+)?)s?$/);
+        if (m) payload.duration_hint = Math.round(parseFloat(m[1]!));
+      }
+
+      videoContext = { fileUri, mimeType };
+
+      Sentry.addBreadcrumb({
+        category: "engine.pipeline",
+        message: "D-18: video uploaded at pipeline entry — fileUri shared across stages",
+        level: "info",
+        data: { requestId, geminiUploadedFileName, mimeType },
+      });
     }
-
-    // Extract duration from Gemini file metadata and backfill payload.duration_hint
-    // so the segmented analysis isn't skipped on video_upload with no caption.
-    // Gemini returns videoDuration as a protobuf Duration string e.g. "30.500s".
-    const rawDuration = (lastFileInfo as { videoMetadata?: { videoDuration?: string } }).videoMetadata?.videoDuration;
-    if (rawDuration != null && payload.duration_hint == null) {
-      const m = rawDuration.match(/^(\d+(?:\.\d+)?)s?$/);
-      if (m) payload.duration_hint = Math.round(parseFloat(m[1]!));
-    }
-
-    videoContext = { fileUri, mimeType };
-
-    Sentry.addBreadcrumb({
-      category: "engine.pipeline",
-      message: "D-18: video uploaded at pipeline entry — fileUri shared across stages",
-      level: "info",
-      data: { requestId, geminiUploadedFileName, mimeType },
-    });
   }
 
   // -------------------------------------------------------
