@@ -572,17 +572,16 @@ export async function runPredictionPipeline(
         // Phase 5 D-15-partial: niche threads through; creatorStyle (Card 4) deferred.
         const contentTypeSlug = wave0Result.content_type?.type ?? null;
 
-        // WR-08: duration_hint=null is silently dangerous — defaulting to 30s
-        // against a real 6-second video puts body's window at 5s→27s and CTA's
-        // at 27s→30s, both well beyond the actual content. The model will
-        // hallucinate scores against frames that don't exist. Skip segmentation
-        // and surface a pipeline_warning + DEFAULT_GEMINI_RESULT so the
-        // aggregator's weight redistribution kicks in (gemini_hook/body/cta =
-        // false), rather than feeding fabricated scores forward. The legacy
-        // single-call path is NOT a safe fallback because it has the same
-        // inherited Files API state bug (fixed in CR-01 but not on the
-        // production hot path).
-        if (payload.duration_hint == null) {
+        // Determine if we should use inlineData (Files API unavailable or small video).
+        // When videoContext is null AND buffer ≤ 15MB, pass inlineVideoData to bypass Files API.
+        const shouldUseInline = !videoContext && videoBuffer.byteLength <= 15 * 1024 * 1024;
+        const inlineVideoData = shouldUseInline
+          ? { buffer: videoBuffer, mimeType: EXT_TO_MIME[ext] ?? "video/mp4" }
+          : undefined;
+
+        // WR-08: duration_hint=null is skipped when using inlineData (no time windows needed).
+        // For the Files API path, skip if duration_hint is missing to avoid hallucination.
+        if (payload.duration_hint == null && !shouldUseInline) {
           const msg =
             "Gemini segmented analysis skipped — video_upload missing duration_hint (would otherwise hallucinate scores against fabricated window math).";
           warnings.push(msg);
@@ -603,19 +602,19 @@ export async function runPredictionPipeline(
         }
 
         // D-18: pass videoContext so segmented.ts skips its own upload (shared fileUri).
-        // When videoContext is null (e.g. timeout at entry), analyzeVideoSegmented falls
-        // back to legacy upload path — graceful degradation preserved.
+        // When videoContext is null but inlineVideoData is set, segments use base64 inline path.
         const merged = await analyzeVideoSegmented(
-          videoContext ? Buffer.alloc(0) : Buffer.alloc(0), // buffer unused when videoContext set
-          videoContext?.mimeType ?? "video/mp4",
+          Buffer.alloc(0), // buffer unused — either videoContext or inlineVideoData provides the video
+          videoContext?.mimeType ?? mimeType,
           {
             calibration,
             niche: validated.niche ?? creatorContext.niche ?? null,
             contentType: contentTypeSlug,
             creatorStyle: null,
             onStageEvent,
-            durationSeconds: payload.duration_hint,
+            durationSeconds: payload.duration_hint ?? 30, // default 30s when inlineData (no metadata)
             videoContext: videoContext ?? undefined,
+            inlineVideoData,
           },
         );
 
