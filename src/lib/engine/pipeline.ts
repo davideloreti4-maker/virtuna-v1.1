@@ -457,10 +457,51 @@ export async function runPredictionPipeline(
       fileUri = lastFileInfo.uri ?? "";
     }
     if (fileState !== "ACTIVE" || !fileUri) {
-      // Gemini file processing failed — fall back to metadata-only (no video context).
-      // This keeps the analysis alive with behavioral/DeepSeek/trends signals instead of aborting.
-      warnings.push(`Gemini file processing ${fileState} — running metadata-only analysis (video signals unavailable).`);
-      onStageEvent?.({ type: "pipeline_warning", message: `Gemini file upload ${fileState}`, stage: "gemini_video_unavailable" });
+      // Gemini returned FAILED — likely unsupported codec (e.g. HEVC/H.265).
+      // Attempt re-encode to H.264 via ffmpeg and retry upload once (dev only).
+      let retryOk = false;
+      try {
+        const { execSync } = await import("child_process");
+        const { writeFileSync, readFileSync, unlinkSync } = await import("fs");
+        const tmpIn = `/tmp/gsd-vin-${requestId}.mp4`;
+        const tmpOut = `/tmp/gsd-vout-${requestId}.mp4`;
+        writeFileSync(tmpIn, Buffer.from(await blob.arrayBuffer()));
+        execSync(`ffmpeg -y -i "${tmpIn}" -c:v libx264 -preset fast -crf 23 -c:a aac -movflags +faststart "${tmpOut}" 2>/dev/null`, { timeout: 60000 });
+        const reencoded = Buffer.from(readFileSync(tmpOut));
+        unlinkSync(tmpIn);
+        unlinkSync(tmpOut);
+        const reBlob = new Blob([new Uint8Array(reencoded)], { type: "video/mp4" });
+        const reUpload = await geminiAiClient.files.upload({ file: reBlob, config: { mimeType: "video/mp4" } });
+        if (reUpload.name) {
+          geminiUploadedFileName = reUpload.name;
+          let reState = reUpload.state;
+          let reUri = reUpload.uri ?? "";
+          let reInfo: typeof reUpload = reUpload;
+          const rePollStart = Date.now();
+          while (reState === "PROCESSING") {
+            if (Date.now() - rePollStart > VIDEO_POLL_TIMEOUT_MS) break;
+            await new Promise((r) => setTimeout(r, VIDEO_POLL_INTERVAL_MS));
+            reInfo = await geminiAiClient.files.get({ name: reUpload.name });
+            reState = reInfo.state;
+            reUri = reInfo.uri ?? "";
+          }
+          if (reState === "ACTIVE" && reUri) {
+            fileUri = reUri;
+            retryOk = true;
+            videoContext = { fileUri, mimeType: "video/mp4" };
+            const rawDur = (reInfo as { videoMetadata?: { videoDuration?: string } }).videoMetadata?.videoDuration;
+            if (rawDur && payload.duration_hint == null) {
+              const dm = rawDur.match(/^(\d+(?:\.\d+)?)s?$/);
+              if (dm) payload.duration_hint = Math.round(parseFloat(dm[1]!));
+            }
+          }
+        }
+      } catch (_) { /* ffmpeg not available or failed — proceed without video context */ }
+
+      if (!retryOk) {
+        warnings.push(`Gemini file processing ${fileState} — running metadata-only analysis (video signals unavailable).`);
+        onStageEvent?.({ type: "pipeline_warning", message: `Gemini file upload ${fileState}`, stage: "gemini_video_unavailable" });
+      }
     } else {
       // Extract duration from Gemini file metadata and backfill payload.duration_hint
       // so the segmented analysis isn't skipped on video_upload with no caption.
