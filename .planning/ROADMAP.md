@@ -45,6 +45,7 @@ Wave 8 (final gate): P12 (accuracy benchmark + acceptance)
 - [ ] **Phase 10: ML Audit + Calibration + Aggregator Extension** — Audit ML against corpus, decide retrain/down-weight, train Platt on corpus, extend SignalAvailability with new signals, bump to engine v3.0.
 - [ ] **Phase 11: Existing UI Integration + Privacy Policy** — Wire /api/analyze + video-upload component to new engine, storage retention policy, onboarding integration with 9-card profile.
 - [ ] **Phase 12: Accuracy Benchmark + Acceptance Gate** — Final benchmark run, target accuracy improvement met, cost in budget, no regressions, M1 ships.
+- [ ] **Phase 13: Real Pipeline Validation + Production Hardening** — Real-video end-to-end validation; Stage 11 rebuild; Gemini model audit; DeepSeek hang mitigation; code review phases 9-12. Replaces Phase 12 as the actual milestone gate. Only after 10 real videos pass cleanly does ENGINE_VERSION flip 3.0.0-dev → 3.0.0 and milestone merge.
 
 ## Phase Details
 
@@ -299,9 +300,25 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 12-03-PLAN.md — Wave 3: Gate evaluation + summary report + ENGINE_VERSION flip + user sign-off
 
+### Phase 13: Real Pipeline Validation + Production Hardening
+**Goal:** Engine v3 proven end-to-end on real TikTok uploads. Stage 11 (counterfactuals/suggestions) rebuilt to be hyper-specific, signal-grounded, and always-on. Gemini model IDs verified live. DeepSeek hang risk mitigated. Phases 9-12 code reviewed for logic correctness. Only after 10 real videos pass cleanly does `ENGINE_VERSION` flip `3.0.0-dev` → `3.0.0` and the milestone merge.
+**Depends on:** Phase 12 infrastructure (text-mode benchmark exists but is the wrong tool — superseded as the gate by this phase)
+**Requirements:** (to be derived during /gsd-plan-phase 13)
+**Success Criteria:**
+  1. Gemini model audit: every model slot in `src/lib/engine/gemini.ts` (hook, body, CTA) verified callable via a single live API call; standardized to confirmed GA models (no provisional/preview names)
+  2. Stage 11 rebuild: always runs (no skip on `overall_score ≥ 70`), prompt receives full signal context (Gemini factor scores, fired rules, trend matches, persona dissent, platform fit), uses a stronger model than `deepseek-v4-flash`, and surfaces "what's working" reinforcement for high-scoring content
+  3. Stage 11 UI wiring verified: `CounterfactualResult` renders on the prediction card; merge behavior with `result.suggestions[]` from earlier stages is intentional and visible to the user
+  4. E2E smoke: 1 real TikTok URL → 5 URLs → 10 URLs through `/api/analyze` without crashes; every wave produces non-degraded output (audio fingerprinting, Wave 3 personas, Wave 4 platform fit, Stage 11 all verified on real content)
+  5. Code-logic review of phases 9-12: wave wiring correct, signal fallback paths sound, no silent degradations
+  6. DeepSeek hang mitigation: deterministic kill path for stuck TCP connections at video-mode latencies (≥60s); tested under load
+  7. `ENGINE_VERSION` flipped `3.0.0-dev` → `3.0.0` in `src/lib/engine/version.ts` after all 10 real videos pass
+  8. `milestone/engine-foundation` merged to `main` after sign-off
+**Plans:** (to be created via /gsd-plan-phase 13)
+**UI hint:** verify only — no new UI features (M2 scope)
+
 ## Progress
 
-**Execution Order:** 1 ∥ 2 → 3 → 4 → 5 ∥ 6 ∥ 7 ∥ 8 → 9 → 10 → 11 → 12
+**Execution Order:** 1 ∥ 2 → 3 → 4 → 5 ∥ 6 ∥ 7 ∥ 8 → 9 → 10 → 11 → 12 → 13
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -317,3 +334,4 @@ Plans:
 | 10. ML Audit + Calibration + Aggregator Extension | 0/TBD | Not started | - |
 | 11. Existing UI Integration + Privacy Policy | 0/5 | Planned (2026-05-20) | - |
 | 12. Accuracy Benchmark + Acceptance Gate | 0/TBD | Not started | - |
+| 13. Real Pipeline Validation + Production Hardening | 0/TBD | Not started | - |
