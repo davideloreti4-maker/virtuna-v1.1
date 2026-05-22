@@ -154,6 +154,7 @@ export async function detectContentType(
 
     let fileUri: string;
     let mimeType: string;
+    let videoBuffer: Buffer | null = null; // hoisted for inlineData fallback
 
     if (videoContext) {
       // D-18: caller pre-uploaded; skip download + upload. Reference fileUri directly.
@@ -177,7 +178,8 @@ export async function detectContentType(
         );
       }
 
-      const buffer = Buffer.from(await videoBlob.arrayBuffer());
+      videoBuffer = Buffer.from(await videoBlob.arrayBuffer());
+      const buffer = videoBuffer;
       const ext = payload.video_storage_path!.split(".").pop()?.toLowerCase() ?? "mp4";
       mimeType = ext === "mov" ? "video/quicktime" : "video/mp4";
 
@@ -200,9 +202,24 @@ export async function detectContentType(
         fileUri = info.uri ?? "";
       }
       if (fileState === "FAILED" || !fileUri) {
-        throw new Error(`Gemini Files API processing failed (state=${fileState})`);
+        // Files API outage fallback: use inlineData for videos ≤ 15MB (no upload needed).
+        if (buffer && buffer.byteLength <= 15 * 1024 * 1024) {
+          fileUri = ""; // signal to use inlineData path below
+        } else {
+          throw new Error(`Gemini Files API processing failed (state=${fileState})`);
+        }
       }
     }
+
+    // Determine video part: fileUri (Files API) or inlineData (fallback for FAILED/small).
+    const videoPart = fileUri
+      ? {
+          fileData: { fileUri, mimeType },
+          videoMetadata: { startOffset: "0s", endOffset: "5s" },
+        }
+      : {
+          inlineData: { mimeType, data: videoBuffer!.toString("base64") },
+        };
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -216,11 +233,7 @@ export async function detectContentType(
             role: "user",
             parts: [
               { text: SYSTEM_PROMPT },
-              {
-                // CRITICAL: startOffset/endOffset are STRING durations per RESEARCH Anti-Pattern.
-                fileData: { fileUri, mimeType },
-                videoMetadata: { startOffset: "0s", endOffset: "5s" },
-              },
+              videoPart,
             ],
           },
         ],
