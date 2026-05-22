@@ -303,7 +303,7 @@ Plans:
 ### Phase 13: Real Pipeline Validation + Production Hardening
 **Goal:** Engine v3 proven end-to-end on real TikTok uploads. Stage 11 (counterfactuals/suggestions) rebuilt to be hyper-specific, signal-grounded, and always-on. Gemini model IDs verified live. DeepSeek hang risk mitigated. Phases 9-12 code reviewed for logic correctness. Only after 10 real videos pass cleanly does `ENGINE_VERSION` flip `3.0.0-dev` → `3.0.0` and the milestone merge.
 **Depends on:** Phase 12 infrastructure (text-mode benchmark exists but is the wrong tool — superseded as the gate by this phase)
-**Requirements:** (to be derived during /gsd-plan-phase 13)
+**Requirements:** SC#1, SC#2, SC#3, SC#4, SC#5, SC#6, SC#7, SC#8 (mapped from CONTEXT.md D-01..D-32; success criteria above are the requirement set for Phase 13)
 **Success Criteria:**
   1. Gemini model audit: every model slot in `src/lib/engine/gemini.ts` (hook, body, CTA) verified callable via a single live API call; standardized to confirmed GA models (no provisional/preview names)
   2. Stage 11 rebuild: always runs (no skip on `overall_score ≥ 70`), prompt receives full signal context (Gemini factor scores, fired rules, trend matches, persona dissent, platform fit), uses a stronger model than `deepseek-v4-flash`, and surfaces "what's working" reinforcement for high-scoring content
@@ -313,7 +313,29 @@ Plans:
   6. DeepSeek hang mitigation: deterministic kill path for stuck TCP connections at video-mode latencies (≥60s); tested under load
   7. `ENGINE_VERSION` flipped `3.0.0-dev` → `3.0.0` in `src/lib/engine/version.ts` after all 10 real videos pass
   8. `milestone/engine-foundation` merged to `main` after sign-off
-**Plans:** (to be created via /gsd-plan-phase 13)
+**Plans:** 8 plans across 6 waves
+Plans:
+**Wave 1**
+- [ ] 13-01-PLAN.md — Wave 1: Gemini self-test (D-21) + caption-less audit (D-13) + Phase 12 cleanup doc (D-29) + cache D-23 regression test
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 13-02-PLAN.md — Wave 2: Stage 11 rebuild (D-01..D-06) + SCORE_WEIGHTS retuning (D-14/15/16) + -preview drop (D-09) + D-10 silent-fallback fix + UI rebuild (UI-SPEC + D-30)
+- [ ] 13-04-PLAN.md — Wave 2: Cross-phase code-logic review of Phases 9-12 (SC#5) — read-only artifact
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 13-03-PLAN.md — Wave 2: Wave 0 niche fold (D-17) + shared fileUri threading (D-18) + 287MB upload cap (D-19) + final D-24 test sweep
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 13-05-PLAN.md — Wave 3: Build smoke-tiktok-pipeline.ts runner + 1-video E2E (SC#4 partial) + D-22 hang mitigation if manifests
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 13-06-PLAN.md — Wave 4: 5-video cadence (videos 2-5) with stratification audit + cumulative pass rate
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 13-07-PLAN.md — Wave 5: 10-video cadence (videos 6-10) + 13-FINAL-VALIDATION-REPORT.md + user sign-off (D-28)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+- [ ] 13-08-PLAN.md — Wave 6: ENGINE_VERSION flip (D-27) + Phase 12 cleanup execution (D-29) + milestone merge (SC#8) + STATE/MILESTONES closure
 **UI hint:** verify only — no new UI features (M2 scope)
 
 ## Progress
