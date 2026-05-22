@@ -62,8 +62,9 @@ export async function runBodySegment(
   const startTs = emitStageStart(opts.onStageEvent, "gemini_body", 1);
   const model = GEMINI_BODY_MODEL;
 
-  // Compute window. Caller MUST ensure duration > 8s before invoking; defensive clamp here.
-  const endOffsetSec = Math.max(5, opts.durationSeconds - 3);
+  // Compute window. Cap at 45s past start so Flash doesn't get an unbounded window on long videos.
+  const rawEnd = Math.max(5, opts.durationSeconds - 3);
+  const endOffsetSec = Math.min(rawEnd, 50); // body window: 5s → max 50s
   const endOffset = `${endOffsetSec}s`;
 
   let lastError: unknown = null;
@@ -106,7 +107,17 @@ export async function runBodySegment(
 
         const rawText = response.text ?? "";
         const cleaned = stripFences(rawText);
-        const parsed = JSON.parse(cleaned);
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(cleaned);
+        } catch (parseErr) {
+          lastError = parseErr instanceof Error ? parseErr : new Error(String(parseErr));
+          if (attempt < BODY_MAX_RETRIES) {
+            log.warn("Body segment JSON parse retry", { attempt: attempt + 1, error: String(lastError) });
+            continue;
+          }
+          throw lastError;
+        }
         const result = BodySegmentZodSchema.safeParse(parsed);
         if (!result.success) {
           lastError = new Error(

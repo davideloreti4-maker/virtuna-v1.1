@@ -120,13 +120,19 @@ export async function runHookSegment(
         // Pitfall #8: response.text can be undefined even with responseSchema set.
         const rawText = response.text ?? "";
         const cleaned = stripFences(rawText);
-        const parsed = JSON.parse(cleaned);
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(cleaned);
+        } catch (parseErr) {
+          lastError = parseErr instanceof Error ? parseErr : new Error(String(parseErr));
+          if (attempt < HOOK_MAX_RETRIES) {
+            log.warn("Hook segment JSON parse retry", { attempt: attempt + 1, error: String(lastError) });
+            continue;
+          }
+          throw lastError;
+        }
         const result = HookSegmentZodSchema.safeParse(parsed);
         if (!result.success) {
-          // WR-02: One corrective retry on Zod failure (the most expensive and
-          // most schema-critical segment — 10 fields incl. decomposition). A
-          // transient malformed JSON output would otherwise produce a permanent
-          // FHH result with zero gemini factors.
           lastError = new Error(`Hook segment Zod validation failed (attempt ${attempt + 1}): ${result.error.message}`);
           if (attempt < HOOK_MAX_RETRIES) {
             log.warn("Hook segment Zod retry", {
