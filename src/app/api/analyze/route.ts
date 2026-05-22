@@ -28,7 +28,7 @@ export const maxDuration = 300;
 
 // INFRA-01: Rate limits by subscription tier (daily analysis count)
 const DAILY_LIMITS: Record<string, number> = {
-  free: 5,
+  free: 50, // bumped for Phase 13 E2E testing
   starter: 50,
   pro: Infinity, // unlimited
 };
