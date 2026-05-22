@@ -40,8 +40,8 @@ const MAX_RETRIES = 2; // 3 total attempts
 const TEXT_TIMEOUT_MS = 15_000;
 const VIDEO_TIMEOUT_MS = 30_000;
 // Exported for src/lib/engine/pipeline.ts (Plan 03 D-18 — pipeline-entry upload block).
-// Plan 03 Task 3.3 bumps VIDEO_MAX_SIZE_BYTES from 50MB to 287MB — edit there, not here.
-export const VIDEO_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50MB — Plan 03 Task 3.3 bumps to 287MB
+// D-19 (Phase 13 Plan 03 Task 3.3): bumped from 50MB to 287MB.
+export const VIDEO_MAX_SIZE_BYTES = 287 * 1024 * 1024; // 287MB — D-19 (Phase 13 Plan 03 Task 3.3)
 // Exported for src/lib/engine/pipeline.ts (Plan 03 D-18 — video processing poll loop).
 export const VIDEO_POLL_INTERVAL_MS = 500;
 export const VIDEO_POLL_TIMEOUT_MS = 60_000;
@@ -515,10 +515,10 @@ export async function analyzeVideoWithGemini(
   const ai = getClient();
   const calibration = (await loadCalibrationData()) ?? FALLBACK_CALIBRATION;
 
-  // Size cap: reject videos over 50MB
+  // D-19: size cap updated to 287MB (Phase 13 Plan 03 Task 3.3).
   if (videoBuffer.byteLength > VIDEO_MAX_SIZE_BYTES) {
     throw new Error(
-      "Video exceeds maximum size (50MB / ~3 minutes). Trim the video before uploading."
+      "Video exceeds maximum size (287MB). Trim the video before uploading."
     );
   }
 

@@ -305,8 +305,9 @@ describe("analyzeVideoWithGemini", () => {
     expect(mockFileDelete).toHaveBeenCalledWith({ name: "files/test-video-123" });
   });
 
-  it("rejects videos over 50MB size limit", async () => {
-    const largeBuffer = Buffer.alloc(51 * 1024 * 1024); // 51MB
+  it("rejects videos over 287MB size limit (D-19 cap update)", async () => {
+    // D-19: cap raised to 287MB; test verifies the cap still fires above the new limit.
+    const largeBuffer = Buffer.alloc(288 * 1024 * 1024); // 288MB — over 287MB cap
 
     await expect(
       analyzeVideoWithGemini(largeBuffer, "video/mp4")

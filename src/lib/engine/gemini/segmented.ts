@@ -10,7 +10,7 @@
  *   - CTA  (Gemini Flash) on max(5, duration-3)s → duration
  *
  * Architecture (CONTEXT D-10, D-11, D-14 + RESEARCH Pitfalls #1, #3, #4, #5):
- *  1. Size-cap check (50MB) — reject oversized buffers before any API call.
+ *  1. Size-cap check (287MB — D-19) — reject oversized buffers before any API call.
  *  2. ai.files.upload(blob) — ONE upload.
  *  3. Poll ai.files.get until state === ACTIVE (or throw on FAILED).
  *  4. Fan out three parallel scoped generateContent calls via Promise.allSettled.
@@ -28,7 +28,13 @@
  */
 import * as Sentry from "@sentry/nextjs";
 import { createLogger } from "@/lib/logger";
-import { getClient } from "../gemini";
+import {
+  getClient,
+  // D-19 (Phase 13 Plan 03): import shared constants to stay in sync with gemini.ts literal.
+  VIDEO_MAX_SIZE_BYTES,
+  VIDEO_POLL_INTERVAL_MS,
+  VIDEO_POLL_TIMEOUT_MS,
+} from "../gemini";
 import { runHookSegment } from "./hook-segment";
 import { runBodySegment } from "./body-segment";
 import { runCtaSegment } from "./cta-segment";
@@ -40,9 +46,7 @@ import type { BodySegmentResult } from "./schemas";
 
 const log = createLogger({ module: "engine.gemini.segmented" });
 
-const VIDEO_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50MB — matches gemini.ts:33 legacy cap
-const VIDEO_POLL_INTERVAL_MS = 500; // matches gemini.ts:34
-const VIDEO_POLL_TIMEOUT_MS = 60_000; // matches gemini.ts:35
+// D-19: VIDEO_MAX_SIZE_BYTES, VIDEO_POLL_INTERVAL_MS, VIDEO_POLL_TIMEOUT_MS imported from ../gemini.
 // WR-05: Raised from 8s to 10s so a duration=11s video produces a body window
 // of `5s → 8s` (3-second minimum). Pre-fix, duration=9s gave a 1-second body
 // window and Gemini Flash would hallucinate pacing / transition scores against
@@ -63,15 +67,25 @@ export interface SegmentedAnalysisOptions extends SegmentedPromptOptions {
    * minimum).
    */
   durationSeconds: number;
+  /**
+   * D-18 (Phase 13 Plan 03): when present, skip upload + poll. fileUri references
+   * the file already uploaded by pipeline.ts entry block. Lifecycle is owned by
+   * the caller — do NOT delete in finally{} when this is provided.
+   */
+  videoContext?: { fileUri: string; mimeType: string };
 }
 
 /**
  * Analyze a TikTok-style vertical video as 3 parallel Gemini segments against
  * ONE Files API upload. See file-level docstring for the full architecture.
  *
- * @param videoBuffer  Raw video bytes (≤ 50MB enforced before upload).
+ * D-18 (Phase 13 Plan 03): when opts.videoContext is provided, skip upload + poll.
+ * fileUri comes from the caller (pipeline.ts entry block). Lifecycle is owned by caller.
+ *
+ * @param videoBuffer  Raw video bytes (≤ 287MB enforced before upload — D-19).
  * @param mimeType     Standard video MIME (e.g. "video/mp4", "video/webm").
  * @param opts         Prompt options + onStageEvent callback + durationSeconds.
+ *                     opts.videoContext: when provided, skip upload (D-18).
  * @returns Merged analysis + per-video cost + signalAvailability triple.
  * @throws Error on size-cap rejection, Files API upload failure, processing FAILED state.
  *         Per-segment failures do NOT throw — they become `{ ok: false }` results
@@ -82,80 +96,94 @@ export async function analyzeVideoSegmented(
   mimeType: string,
   opts: SegmentedAnalysisOptions,
 ): Promise<MergedSegmentedResult> {
-  // ============================================================================
-  // 1. Size-cap check — reject oversized buffers before any API call.
-  // ============================================================================
-  if (videoBuffer.byteLength > VIDEO_MAX_SIZE_BYTES) {
-    throw new Error(
-      "Video exceeds maximum size (50MB / ~3 minutes). Trim the video before uploading.",
-    );
-  }
-
   const ai = getClient();
+  // D-18: uploadedFileName is only set when WE upload (videoContext absent).
+  // Declare outside try/finally so finally block can always clean up.
   let uploadedFileName: string | undefined;
 
   try {
-    // ==========================================================================
-    // 2. Single Files API upload (reuses gemini.ts:455-464 pattern verbatim).
-    // ==========================================================================
-    const blob = new Blob([new Uint8Array(videoBuffer)], { type: mimeType });
-    const uploadResult = await ai.files.upload({
-      file: blob,
-      config: { mimeType },
-    });
+    let fileUri: string;
+    let resolvedMimeType: string;
 
-    if (!uploadResult.name) {
-      throw new Error(
-        "Video upload failed: no file name returned from Gemini Files API",
-      );
-    }
-    uploadedFileName = uploadResult.name;
-
-    // ==========================================================================
-    // 3. Poll for ACTIVE state (Pitfall #2 — fan-out MUST wait for state === ACTIVE).
-    // ==========================================================================
-    let fileState = uploadResult.state;
-    let fileUri = uploadResult.uri;
-    const pollStart = Date.now();
-    while (fileState === "PROCESSING") {
-      if (Date.now() - pollStart > VIDEO_POLL_TIMEOUT_MS) {
+    if (opts.videoContext) {
+      // D-18: caller pre-uploaded; skip size-cap + upload + poll. Use provided fileUri.
+      fileUri = opts.videoContext.fileUri;
+      resolvedMimeType = opts.videoContext.mimeType;
+    } else {
+      // Legacy path: size-cap + upload + poll.
+      // ============================================================================
+      // 1. Size-cap check — reject oversized buffers before any API call.
+      // ============================================================================
+      if (videoBuffer.byteLength > VIDEO_MAX_SIZE_BYTES) {
         throw new Error(
-          `Video processing timed out after ${VIDEO_POLL_TIMEOUT_MS / 1000}s. The file may be too large or complex.`,
+          "Video exceeds maximum size (287MB). Trim the video before uploading.",
         );
       }
-      await new Promise((r) => setTimeout(r, VIDEO_POLL_INTERVAL_MS));
-      const info = await ai.files.get({ name: uploadedFileName });
-      fileState = info.state;
-      fileUri = info.uri;
-    }
-    if (fileState === "FAILED") {
-      throw new Error(
-        "Video processing failed in Gemini Files API. The file may be corrupt or in an unsupported format.",
-      );
-    }
-    // CR-01: Guard against any state that is neither PROCESSING (handled in the loop)
-    // nor FAILED (handled above) nor ACTIVE. Examples include "PENDING", "UNKNOWN",
-    // null, undefined, or empty-string. Without this check, the three parallel
-    // generateContent calls fan out against a not-actually-ready file and produce
-    // cryptic 503/404 errors — a 3-of-3 cascade with no actionable upstream signal.
-    if (fileState !== "ACTIVE") {
-      throw new Error(
-        `Video processing returned unexpected state "${fileState ?? "<undefined>"}". Expected ACTIVE.`,
-      );
-    }
-    if (!fileUri) {
-      throw new Error(
-        "Video upload succeeded but no file URI was returned.",
-      );
+
+      resolvedMimeType = mimeType;
+
+      // ==========================================================================
+      // 2. Single Files API upload (reuses gemini.ts:455-464 pattern verbatim).
+      // ==========================================================================
+      const blob = new Blob([new Uint8Array(videoBuffer)], { type: resolvedMimeType });
+      const uploadResult = await ai.files.upload({
+        file: blob,
+        config: { mimeType: resolvedMimeType },
+      });
+
+      if (!uploadResult.name) {
+        throw new Error(
+          "Video upload failed: no file name returned from Gemini Files API",
+        );
+      }
+      uploadedFileName = uploadResult.name;
+
+      // ==========================================================================
+      // 3. Poll for ACTIVE state (Pitfall #2 — fan-out MUST wait for state === ACTIVE).
+      // ==========================================================================
+      let fileState = uploadResult.state;
+      fileUri = uploadResult.uri ?? "";
+      const pollStart = Date.now();
+      while (fileState === "PROCESSING") {
+        if (Date.now() - pollStart > VIDEO_POLL_TIMEOUT_MS) {
+          throw new Error(
+            `Video processing timed out after ${VIDEO_POLL_TIMEOUT_MS / 1000}s. The file may be too large or complex.`,
+          );
+        }
+        await new Promise((r) => setTimeout(r, VIDEO_POLL_INTERVAL_MS));
+        const info = await ai.files.get({ name: uploadedFileName });
+        fileState = info.state;
+        fileUri = info.uri ?? "";
+      }
+      if (fileState === "FAILED") {
+        throw new Error(
+          "Video processing failed in Gemini Files API. The file may be corrupt or in an unsupported format.",
+        );
+      }
+      // CR-01: Guard against any state that is neither PROCESSING (handled in the loop)
+      // nor FAILED (handled above) nor ACTIVE.
+      if (fileState !== "ACTIVE") {
+        throw new Error(
+          `Video processing returned unexpected state "${fileState ?? "<undefined>"}". Expected ACTIVE.`,
+        );
+      }
+      if (!fileUri) {
+        throw new Error(
+          "Video upload succeeded but no file URI was returned.",
+        );
+      }
     }
 
     Sentry.addBreadcrumb({
       category: "engine.gemini.segmented",
-      message: "Files API upload ACTIVE — fanning out 3 segments",
+      message: opts.videoContext
+        ? "D-18: using caller-provided fileUri — fanning out 3 segments"
+        : "Files API upload ACTIVE — fanning out 3 segments",
       level: "info",
       data: {
         uploadedFileName,
         durationSeconds: opts.durationSeconds,
+        sharedFileUri: !!opts.videoContext,
       },
     });
 
@@ -181,12 +209,12 @@ export async function analyzeVideoSegmented(
           ok: false as const,
           error: new Error("body skipped (short video ≤ 8s)"),
         })
-      : runBodySegment(ai, fileUri, mimeType, opts);
+      : runBodySegment(ai, fileUri, resolvedMimeType, opts);
 
     const [hookSettled, bodySettled, ctaSettled] = await Promise.allSettled([
-      runHookSegment(ai, fileUri, mimeType, opts),
+      runHookSegment(ai, fileUri, resolvedMimeType, opts),
       bodyPromise,
-      runCtaSegment(ai, fileUri, mimeType, opts),
+      runCtaSegment(ai, fileUri, resolvedMimeType, opts),
     ]);
 
     // ==========================================================================
@@ -236,6 +264,8 @@ export async function analyzeVideoSegmented(
   } finally {
     // ==========================================================================
     // 7. Best-effort delete AFTER all 3 segments settle (Pitfall #1 — never in helpers).
+    //    D-18: only delete if WE uploaded (uploadedFileName set). When videoContext
+    //    was provided, caller (pipeline.ts) owns the lifecycle — do NOT delete here.
     //    File server-side TTL provides eventual cleanup if delete throws.
     // ==========================================================================
     if (uploadedFileName) {

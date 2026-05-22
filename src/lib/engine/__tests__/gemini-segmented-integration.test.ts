@@ -233,7 +233,15 @@ const VALID_CTA_FIXTURE = {
   rationale: "Creator says 'follow for more' at 28s",
 };
 
-const WAVE0_CT_FIXTURE = { type: "tutorial", confidence: 0.9, mixed: false };
+// D-17: wave0 fixture now includes niche fields (folded into single Gemini call)
+const WAVE0_CT_FIXTURE = {
+  type: "tutorial",
+  confidence: 0.9,
+  mixed: false,
+  niche_primary_slug: "beauty",
+  niche_confidence: 0.85,
+  niche_micro_slug: null,
+};
 
 const HOOK_USAGE = { promptTokenCount: 1790, candidatesTokenCount: 800 };
 const BODY_USAGE = { promptTokenCount: 6075, candidatesTokenCount: 600 };
@@ -263,11 +271,12 @@ function detectCaller(call: {
   const videoPart = parts?.[1] as { videoMetadata?: { startOffset?: string } } | undefined;
   const text = textPart?.text ?? "";
   const startOffset = videoPart?.videoMetadata?.startOffset;
-  // Wave 0 detector has a uniquely identifying prompt anchor ("TikTok
-  // content-type classifier") — the wave 0 detector and hook both use
-  // startOffset="0s" so a structural-only check would mis-route hook to
-  // wave 0. The wave 0 system prompt is the most stable disambiguator.
-  if (text.includes("TikTok content-type classifier")) return "wave0_ct";
+  // Wave 0 detector has a uniquely identifying prompt anchor — the wave 0 detector
+  // and hook both use startOffset="0s" so a structural-only check would mis-route
+  // hook to wave 0. The wave 0 system prompt is the most stable disambiguator.
+  // D-17: prompt now says "TikTok content-type and niche classifier" (niche folded in).
+  if (text.includes("TikTok content-type") && text.includes("niche classifier")) return "wave0_ct";
+  if (text.includes("TikTok content-type classifier")) return "wave0_ct"; // pre-D-17 compat
   if (startOffset === "0s") return "hook";
   if (text.includes("MIDDLE section")) return "body";
   if (text.includes("LAST 3 SECONDS")) return "cta";
@@ -648,20 +657,15 @@ describe("Phase 5 Plan 03 — pipeline integration with analyzeVideoSegmented", 
   });
 
   // -------------------------------------------------------
-  // Test 10: Files API upload throws → pipeline catch falls back to DEFAULT_GEMINI_RESULT
+  // Test 10 (D-18 behavioral update): Files API upload at pipeline entry throws → pipeline throws.
+  // Pre-D-18: upload was inside analyzeVideoSegmented's non-critical wrapper → graceful degradation.
+  // Post-D-18: upload is at pipeline entry (critical path) → pipeline throws on failure.
+  // This is the correct behavior per Plan 03 D-18 architecture: video upload failure is fatal.
   // -------------------------------------------------------
-  it("Test 10: Files API upload failure → pipeline.warnings includes 'Gemini analysis unavailable'; falls back to DEFAULT_GEMINI_RESULT", async () => {
+  it("Test 10: D-18 pipeline-entry upload failure → pipeline throws (critical path — not a graceful warning)", async () => {
     mockGeminiFileUpload.mockRejectedValue(new Error("Upload throttled by Gemini Files API"));
 
-    const result = await runPredictionPipeline(videoInput);
-
-    expect(result.warnings.some((w) => w.includes("Gemini analysis unavailable"))).toBe(true);
-    expect(result.geminiResult.analysis.factors).toHaveLength(5);
-    expect(result.geminiResult.analysis.factors.every((f) => f.score === 0)).toBe(true);
-    // Files API upload threw BEFORE analyzeVideoSegmented could return any flags;
-    // pipeline catch routes to DEFAULT_GEMINI_RESULT which does NOT include
-    // signalAvailability — so it should be undefined (consistent with the
-    // "segmented path produced no provenance" interpretation).
-    expect(result.geminiResult.signalAvailability).toBeUndefined();
+    // D-18: upload at pipeline entry is critical; any upload failure throws the pipeline.
+    await expect(runPredictionPipeline(videoInput)).rejects.toThrow();
   });
 });
