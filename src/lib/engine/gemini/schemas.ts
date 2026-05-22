@@ -75,14 +75,14 @@ const HookFactorSchema = z.object({
     "Emotional Charge",
   ]),
   score: ScoreSchema,
-  rationale: z.string().min(1).max(500),
-  improvement_tip: z.string().min(1).max(500),
+  rationale: z.string().min(1).max(300),
+  improvement_tip: z.string().max(300).optional(),
 });
 
 export const HookSegmentZodSchema = z.object({
   factors: z.array(HookFactorSchema).length(5),
-  overall_impression: z.string().min(1).max(800),
-  content_summary: z.string().min(1).max(800),
+  overall_impression: z.string().min(1).max(300),
+  content_summary: z.string().min(1).max(300),
   hook_decomposition: HookDecompositionZodSchema,
 });
 
@@ -168,9 +168,8 @@ export const HOOK_SEGMENT_GEMINI_SCHEMA = {
           },
           score: { type: Type.NUMBER },
           rationale: { type: Type.STRING },
-          improvement_tip: { type: Type.STRING },
         },
-        required: ["name", "score", "rationale", "improvement_tip"],
+        required: ["name", "score", "rationale"],
       },
     },
     overall_impression: { type: Type.STRING },
