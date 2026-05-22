@@ -725,7 +725,7 @@ describe("Phase 4 — Wave 0 + pre_creator_context", () => {
     };
   });
 
-  it("pre_creator_context stage_start fires before wave_0_* stage_starts (D-17 ordering)", async () => {
+  it("pre_creator_context stage_start fires before wave_0_content_type stage_start (D-17 single-call ordering)", async () => {
     const events: StageEvent[] = [];
     await runPredictionPipeline(input, { onStageEvent: (e) => events.push(e) });
     const preIdx = events.findIndex(
@@ -734,12 +734,14 @@ describe("Phase 4 — Wave 0 + pre_creator_context", () => {
     const w0CtIdx = events.findIndex(
       (e) => e.type === "stage_start" && e.stage === "wave_0_content_type",
     );
+    // D-17: wave_0_niche_detector is deleted — no separate niche event fires.
     const w0NicheIdx = events.findIndex(
       (e) => e.type === "stage_start" && e.stage === "wave_0_niche_detector",
     );
     expect(preIdx).toBeGreaterThanOrEqual(0);
     expect(w0CtIdx).toBeGreaterThan(preIdx);
-    expect(w0NicheIdx).toBeGreaterThan(preIdx);
+    // D-17: niche stage is gone — index should be -1 (not present)
+    expect(w0NicheIdx).toBe(-1);
   });
 
   it("Wave 1 creator_context event still fires (backwards-compat passthrough)", async () => {
@@ -859,9 +861,9 @@ describe("Phase 4 — Wave 0 + pre_creator_context", () => {
     // Wave 1 video analysis and main analysis use other models. Branch on model name.
     mockGeminiGenerate.mockImplementation(async (req: { model?: string }) => {
       if (req.model?.includes("gemini-3-flash")) {
-        // content-type-detector response
+        // content-type-detector response — D-17: includes niche fields
         return {
-          text: JSON.stringify({ type: "talking_head", confidence: 0.85, mixed: false }),
+          text: JSON.stringify({ type: "talking_head", confidence: 0.85, mixed: false, niche_primary_slug: "beauty", niche_confidence: 0.9, niche_micro_slug: null }),
           usageMetadata: { promptTokenCount: 500, candidatesTokenCount: 80 },
         };
       }

@@ -314,7 +314,10 @@ export async function POST(request: Request) {
         requestId,
         bypassCache,
       });
-      const result = await aggregateScores(pipelineResult);
+      // D-18 (Phase 13 Plan 03): pass videoContext so aggregator threads it to Stage 11.
+      const result = await aggregateScores(pipelineResult, undefined, {
+        videoContext: pipelineResult.videoContext ?? null,
+      });
 
       const ruleContributions = pipelineResult.ruleResult.matched_rules.map(
         (r) => ({
@@ -415,9 +418,12 @@ export async function POST(request: Request) {
             phase: "scoring",
             message: "Calculating predictions and assembling results...",
           });
-          const result = await aggregateScores(pipelineResult, /* onStageEvent: */ (event: StageEvent) => {
-            send("stage", event);
-          });
+          // D-18 (Phase 13 Plan 03): pass videoContext so aggregator threads it to Stage 11.
+          const result = await aggregateScores(
+            pipelineResult,
+            /* onStageEvent: */ (event: StageEvent) => { send("stage", event); },
+            { videoContext: pipelineResult.videoContext ?? null },
+          );
 
           // Build rule_contributions JSONB for per-rule tracking (RULE-03)
           const ruleContributions = pipelineResult.ruleResult.matched_rules.map(r => ({
