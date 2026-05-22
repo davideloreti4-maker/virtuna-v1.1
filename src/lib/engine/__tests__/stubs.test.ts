@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { runWave0 } from "../wave0";
 import { runWave3 } from "../wave3";
 import { runStage10Critique } from "../stage10-critique";
-import { runStage11Counterfactuals } from "../stage11-counterfactuals";
+
 import type { StageEvent } from "../events";
 import type { ContentPayload, PredictionResult } from "../types";
 import type { CreatorContext } from "../creator";
@@ -168,20 +168,5 @@ describe("Stage 10 critique stub", () => {
   });
 });
 
-describe("Stage 11 counterfactuals stub", () => {
-  it("returns null", async () => {
-    const result = await runStage11Counterfactuals(fakeAggregate);
-    expect(result).toBeNull();
-  });
-
-  it("emits start + end with wave='post' and stage='stage_11_counterfactuals'", async () => {
-    const cb = vi.fn();
-    await runStage11Counterfactuals(fakeAggregate, cb);
-    const events = cb.mock.calls.map(c => c[0] as StageEvent);
-    expect(events).toHaveLength(2);
-    for (const e of events) {
-      if ("wave" in e) expect(e.wave).toBe("post");
-      if ("stage" in e && e.stage) expect(e.stage).toBe("stage_11_counterfactuals");
-    }
-  });
-});
+// Stage 11 stub tests removed in Phase 13 — Stage 11 rebuilt to Gemini in Plan 02.
+// Real Stage 11 tests live in stage11-counterfactuals.test.ts.

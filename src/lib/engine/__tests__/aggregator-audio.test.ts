@@ -69,9 +69,18 @@ vi.mock("../gemini", () => ({
 
 vi.mock("../deepseek", () => ({
   DEEPSEEK_MODEL: "deepseek-test",
-  // isCircuitOpen=true → Stage 10/11 short-circuit at circuit breaker (no OpenAI client needed).
-  // These tests don't mock `openai`, so the real OpenAI constructor would hang/timeout.
   isCircuitOpen: vi.fn(() => true),
+}));
+
+vi.mock("../stage11-counterfactuals", () => ({
+  GEMINI_STAGE11_MODEL: "gemini-3.1-pro-preview",
+  maybeAppendLikelyFlopWarning: vi.fn(),
+  runStage11Counterfactuals: vi.fn().mockResolvedValue({
+    suggestions: [],
+    reasoning: "mocked",
+    band: "mid",
+    counterfactuals: [],
+  }),
 }));
 
 // =====================================================
@@ -145,8 +154,8 @@ beforeEach(() => {
 // =====================================================
 
 describe("D-G1 — audio in SCORE_WEIGHTS + SCORE_WEIGHT_KEYS", () => {
-  it("Test 1: SCORE_WEIGHTS exposes audio = 0.07", () => {
-    expect(SCORE_WEIGHTS.audio).toBe(0.07);
+  it("Test 1: SCORE_WEIGHTS exposes audio = 0.05", () => {
+    expect(SCORE_WEIGHTS.audio).toBe(0.05);
   });
 
   it("Test 2: SCORE_WEIGHT_KEYS includes 'audio' but NOT 'audio_fingerprint'", () => {
@@ -482,12 +491,12 @@ describe("D-G1 + selectWeights — weight redistribution", () => {
       personas: false,
     });
     expect(allOnNoAudio.audio).toBe(0);
-    // Phase 10 D-05: ml=0 (disabled). The 5 available signals now sum to 0.85 raw,
-    // so normalization scales each by 1/0.85.
-    expect(allOnNoAudio.behavioral).toBeCloseTo(0.412, 2);
-    expect(allOnNoAudio.gemini).toBeCloseTo(0.294, 2);
+    // Phase 13 D-14/D-15/D-16: ml=0, rules=0, retrieval=0. Available: behavioral=0.40,
+    // gemini=0.35, trends=0.10 → sum=0.85, normalization scales each by 1/0.85.
+    expect(allOnNoAudio.behavioral).toBeCloseTo(0.471, 2);
+    expect(allOnNoAudio.gemini).toBeCloseTo(0.412, 2);
     expect(allOnNoAudio.ml).toBe(0);
-    expect(allOnNoAudio.rules).toBeCloseTo(0.176, 2);
+    expect(allOnNoAudio.rules).toBe(0);
     expect(allOnNoAudio.trends).toBeCloseTo(0.118, 2);
     // Total = 1.0 (normalization contract).
     const sum = Object.values(allOnNoAudio).reduce((a, b) => a + b, 0);

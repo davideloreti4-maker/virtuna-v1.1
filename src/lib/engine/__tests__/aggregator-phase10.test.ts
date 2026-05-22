@@ -38,10 +38,10 @@ describe("selectWeights — Phase 10 weight redistribution", () => {
     expect(weights.behavioral).toBeGreaterThan(0);
     expect(weights.gemini).toBeGreaterThan(0);
     expect(weights.ml).toBe(0); // D-05: disabled
-    expect(weights.rules).toBeGreaterThan(0);
+    expect(weights.rules).toBe(0); // D-14: rules weight=0
     expect(weights.trends).toBeGreaterThan(0);
     expect(weights.audio).toBeGreaterThan(0);
-    expect(weights.retrieval).toBeGreaterThan(0);
+    expect(weights.retrieval).toBe(0); // D-15: retrieval weight=0
     expect(weights.platform_fit).toBeGreaterThan(0);
 
     const sum = Object.values(weights).reduce((a, b) => a + b, 0);
@@ -62,10 +62,10 @@ describe("selectWeights — Phase 10 weight redistribution", () => {
     expect(weights.ml).toBe(0);
     expect(weights.behavioral).toBeGreaterThan(0);
     expect(weights.gemini).toBeGreaterThan(0);
-    expect(weights.rules).toBeGreaterThan(0);
+    expect(weights.rules).toBe(0); // D-14: rules weight=0
     expect(weights.trends).toBeGreaterThan(0);
     expect(weights.audio).toBeGreaterThan(0);
-    expect(weights.retrieval).toBeGreaterThan(0);
+    expect(weights.retrieval).toBe(0); // D-15: retrieval weight=0
     expect(weights.platform_fit).toBeGreaterThan(0);
 
     const sum = Object.values(weights).reduce((a, b) => a + b, 0);
@@ -87,7 +87,7 @@ describe("selectWeights — Phase 10 weight redistribution", () => {
     expect(weights.behavioral).toBeGreaterThan(0);
     expect(weights.gemini).toBeGreaterThan(0);
     expect(weights.ml).toBe(0); // D-05: disabled
-    expect(weights.rules).toBeGreaterThan(0);
+    expect(weights.rules).toBe(0); // D-14: rules weight=0
     expect(weights.trends).toBeGreaterThan(0);
     expect(weights.audio).toBeGreaterThan(0);
     expect(weights.platform_fit).toBeGreaterThan(0);
@@ -111,10 +111,10 @@ describe("selectWeights — Phase 10 weight redistribution", () => {
     expect(weights.behavioral).toBeGreaterThan(0);
     expect(weights.gemini).toBeGreaterThan(0);
     expect(weights.ml).toBe(0); // D-05: disabled
-    expect(weights.rules).toBeGreaterThan(0);
+    expect(weights.rules).toBe(0); // D-14: rules weight=0
     expect(weights.trends).toBeGreaterThan(0);
     expect(weights.audio).toBeGreaterThan(0);
-    expect(weights.retrieval).toBeGreaterThan(0);
+    expect(weights.retrieval).toBe(0); // D-15: retrieval weight=0
 
     const sum = Object.values(weights).reduce((a, b) => a + b, 0);
     expect(sum).toBeCloseTo(1, 2);
@@ -136,7 +136,7 @@ describe("selectWeights — Phase 10 weight redistribution", () => {
     expect(weights.retrieval).toBe(0);
     expect(weights.behavioral).toBeGreaterThan(0);
     expect(weights.gemini).toBeGreaterThan(0);
-    expect(weights.rules).toBeGreaterThan(0);
+    expect(weights.rules).toBe(0); // D-14: rules weight=0
     expect(weights.trends).toBeGreaterThan(0);
     expect(weights.audio).toBeGreaterThan(0);
     expect(weights.platform_fit).toBeGreaterThan(0);
