@@ -443,6 +443,8 @@ export async function runPredictionPipeline(
 
     let fileState = uploadResult.state;
     let fileUri = uploadResult.uri ?? "";
+    // Hoist lastFileInfo so duration metadata is accessible whether or not polling ran.
+    let lastFileInfo: Awaited<ReturnType<typeof geminiAiClient.files.get>> | typeof uploadResult = uploadResult;
     const pollStart = Date.now();
     while (fileState === "PROCESSING") {
       if (Date.now() - pollStart > VIDEO_POLL_TIMEOUT_MS) {
@@ -450,12 +452,21 @@ export async function runPredictionPipeline(
         throw new Error("Video upload timeout — file still processing in Gemini Files API.");
       }
       await new Promise((r) => setTimeout(r, VIDEO_POLL_INTERVAL_MS));
-      const info = await geminiAiClient.files.get({ name: geminiUploadedFileName });
-      fileState = info.state;
-      fileUri = info.uri ?? "";
+      lastFileInfo = await geminiAiClient.files.get({ name: geminiUploadedFileName });
+      fileState = lastFileInfo.state;
+      fileUri = lastFileInfo.uri ?? "";
     }
     if (fileState !== "ACTIVE" || !fileUri) {
       throw new Error(`Unexpected upload state: ${fileState}. Expected ACTIVE.`);
+    }
+
+    // Extract duration from Gemini file metadata and backfill payload.duration_hint
+    // so the segmented analysis isn't skipped on video_upload with no caption.
+    // Gemini returns videoDuration as a protobuf Duration string e.g. "30.500s".
+    const rawDuration = (lastFileInfo as { videoMetadata?: { videoDuration?: string } }).videoMetadata?.videoDuration;
+    if (rawDuration != null && payload.duration_hint == null) {
+      const m = rawDuration.match(/^(\d+(?:\.\d+)?)s?$/);
+      if (m) payload.duration_hint = Math.round(parseFloat(m[1]!));
     }
 
     videoContext = { fileUri, mimeType };
