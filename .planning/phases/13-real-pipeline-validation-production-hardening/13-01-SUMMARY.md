@@ -36,7 +36,7 @@ key_files:
     - .planning/phases/13-real-pipeline-validation-production-hardening/13-VALIDATION.md
 decisions:
   - "Gemini self-test verdict: KEEP -preview suffix — bare forms 404 for hook/body/cta/stage11; only gemini-3.1-flash-lite (wave0) works bare. Plan 02 must NOT drop -preview."
-  - "trending_sounds population probe: 0 rows (table empty). Audio weight 0.07→0.10 justified by perceptual score only; fingerprint match contributes 0 until backfill runs."
+  - "trending_sounds population probe: 0 rows (table empty). Audio weight revised to 0.05 (not 0.07 or 0.10 — user decision); backfill skipped, not a priority."
   - "tiktok_url video-bytes status (doc level): NO — content-type-detector.ts:87 explicitly skips non-video_upload mode. Runtime probe in Plan 05 Task 5.2."
   - "Test infrastructure fixed: installed @testing-library/jest-dom@6.9.1 + happy-dom@20.9.0 into main repo node_modules (pre-existing worktree issue)."
   - "D-23 tests added to existing src/lib/engine/__tests__/prediction-cache.test.ts (not cache/ subdirectory — existing test file location takes precedence)."
@@ -90,13 +90,13 @@ Live probe results from `pnpm tsx scripts/engine-self-test.ts`:
 
 **Probe result:** 0 rows with `audio_embedding IS NOT NULL` (table is empty)
 
-**Decision:** Proceed with audio weight 0.07→0.10 bump (D-16) justified by `audio_perceptual_score` reliability (Phase 06 smoke test: 12/12 gates, D-A1 validated). The trending-sound fingerprint match component contributes 0 until `scripts/backfill-trending-sound-embeddings.ts` runs. Run backfill before Plan 07 E2E (10-URL final gate).
+**Decision (approved 2026-05-22):** Audio weight → **0.05** (revised downward from D-16 plan target of 0.10). trending_sounds is empty; backfill not a priority. `audio_perceptual_score` (Gemini-derived) is real signal but conservative weight reflects zero fingerprint-match contribution. Plan 02 uses `audio: 0.05` in SCORE_WEIGHTS. No backfill before Plan 07 E2E.
 
 ---
 
 ## tiktok_url Video-Bytes Status (D-31 — doc level)
 
-**Answer: NO — tiktok_url mode does NOT get video bytes into Wave 1.**
+**Answer: NO — tiktok_url mode does NOT get video bytes into Wave 1 (confirmed + approved as permanent architecture for Phase 13).**
 
 Evidence: `src/lib/engine/wave0/content-type-detector.ts:87`
 ```typescript
@@ -106,7 +106,7 @@ if (payload.input_mode !== "video_upload" || !payload.video_storage_path) {
 }
 ```
 
-TikTok URL mode runs metadata-only analysis (niche from text + DeepSeek reasoning on Gemini text signals). Signal availability: `gemini=false`, `gemini_hook=false`. Runtime verification that the smoke runner logs confirm this behavior routes to Plan 05 Task 5.2 per WARNING-3.
+TikTok URL mode runs metadata-only analysis (niche from text + DeepSeek reasoning on Gemini text signals). Signal availability: `gemini=false`, `gemini_hook=false`. Full video-download for tiktok_url mode is **deferred to Milestone 2 (Intelligence Surface)** as a backlog item. Plan 05 Task 5.2 runtime verification confirms the metadata-only path behaves correctly end-to-end.
 
 ---
 
@@ -193,14 +193,16 @@ None — `engine-self-test.ts` logs only `modelVersion` field and top-level resp
 - [x] 19 prediction-cache tests passing (16 existing + 3 D-23 new)
 - [x] Checkpoint 1.4 returned with four decisions documented below
 
-## Checkpoint 1.4 Four Decisions
+## Checkpoint 1.4 Four Decisions — APPROVED 2026-05-22
 
-Returning to user for review. Four decisions to confirm:
+**(a) Preview-suffix verdict: KEEP `-preview` on hook/body/cta/stage11.**
+`gemini-3.1-flash-lite` stays bare for wave0. Plan 02 must keep `-preview` on the 4 remaining slots. D-09 bare-form drop is blocked for those slots.
 
-**(a) Preview-suffix verdict:** KEEP `-preview` for hook/body/cta/stage11. Only `gemini-3.1-flash-lite` (wave0) works bare. Plan 02 must keep preview suffix on 4/5 slots.
+**(b) Audio weight: 0.05** (not 0.07 or 0.10).
+D-16 revised downward from the 0.10 plan target. trending_sounds table is empty; audio_perceptual_score signal is real but user wants a more conservative weight given no fingerprint match data yet. Plan 02 must use `audio: 0.05` in the D-16 SCORE_WEIGHTS update.
 
-**(b) Audio weight 0.07 vs 0.10:** Proceed with 0.10 (D-16) — justified by audio_perceptual_score reliability (Phase 06 12/12 gates). Trending fingerprint match contributes 0 until backfill; that's acceptable for Plan 02 ship.
+**(c) trending_sounds remediation: SKIP for now.**
+Backfill is not a priority at this stage. Plan 07 E2E will proceed with 0 fingerprint match contribution. No remediation action before Plan 07.
 
-**(c) trending_sounds remediation:** Run `scripts/backfill-trending-sound-embeddings.ts` BEFORE Plan 07 E2E (10-video gate), not before Plan 02/03. Table is empty now; fingerprint match will contribute 0 in Plans 05/06 E2E runs. Acceptable at 1/5 video scale.
-
-**(d) tiktok_url video-bytes status:** NO (doc level) — content-type-detector.ts:87 explicitly skips non-video_upload mode. tiktok_url runs metadata-only. Plan 05 Task 5.2 enforces runtime verification.
+**(d) tiktok_url video-bytes: metadata-only confirmed at doc level. Video-download deferred to Milestone 2.**
+`content-type-detector.ts:87` skip is the current architecture. tiktok_url will remain metadata-only in Phase 13. Full video-download for tiktok_url mode is a backlog item for the Intelligence Surface milestone (M2). Plan 05 Task 5.2 runtime verification still runs to confirm the metadata-only path behaves correctly end-to-end.
