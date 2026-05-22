@@ -313,7 +313,7 @@ Plans:
   6. DeepSeek hang mitigation: deterministic kill path for stuck TCP connections at video-mode latencies (≥60s); tested under load
   7. `ENGINE_VERSION` flipped `3.0.0-dev` → `3.0.0` in `src/lib/engine/version.ts` after all 10 real videos pass
   8. `milestone/engine-foundation` merged to `main` after sign-off
-**Plans:** 4/8 plans executed
+**Plans:** 5/8 plans executed
 Plans:
 **Wave 1**
 - [x] 13-01-PLAN.md — Wave 1: Gemini self-test (D-21) + caption-less audit (D-13) + Phase 12 cleanup doc (D-29) + cache D-23 regression test
@@ -326,7 +326,7 @@ Plans:
 - [x] 13-03-PLAN.md — Wave 2: Wave 0 niche fold (D-17) + shared fileUri threading (D-18) + 287MB upload cap (D-19) + final D-24 test sweep
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 13-05-PLAN.md — Wave 3: Build smoke-tiktok-pipeline.ts runner + 1-video E2E (SC#4 partial) + D-22 hang mitigation if manifests
+- [x] 13-05-PLAN.md — Wave 3: Build smoke-tiktok-pipeline.ts runner + 1-video E2E (SC#4 partial) + D-22 hang mitigation if manifests
 
 **Wave 5** *(blocked on Wave 4 completion)*
 - [ ] 13-06-PLAN.md — Wave 4: 5-video cadence (videos 2-5) with stratification audit + cumulative pass rate
@@ -356,4 +356,4 @@ Plans:
 | 10. ML Audit + Calibration + Aggregator Extension | 0/TBD | Not started | - |
 | 11. Existing UI Integration + Privacy Policy | 0/5 | Planned (2026-05-20) | - |
 | 12. Accuracy Benchmark + Acceptance Gate | 0/TBD | Not started | - |
-| 13. Real Pipeline Validation + Production Hardening | 4/8 | In Progress|  |
+| 13. Real Pipeline Validation + Production Hardening | 5/8 | In Progress|  |
