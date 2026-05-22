@@ -501,6 +501,7 @@ export async function POST(request: Request) {
         } catch (error) {
           const message =
             error instanceof Error ? error.message : "Pipeline failed";
+          log.error("Pipeline error", { error: message });
           send("error", { error: message });
         } finally {
           controller.close();
