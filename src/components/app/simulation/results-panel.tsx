@@ -166,7 +166,7 @@ export function ResultsPanel({ result, onRunAnother, analysisCount, primaryGoal 
       )}
 
       {/* Warnings */}
-      {result.warnings.length > 0 && (
+      {(result.warnings?.length ?? 0) > 0 && (
         <GlassSection>
           <WarningsBanner warnings={result.warnings} />
         </GlassSection>
