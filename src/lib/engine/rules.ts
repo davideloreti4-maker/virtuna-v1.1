@@ -6,7 +6,7 @@
  *   payoff_delay, pattern_interrupt, info_density, short_duration,
  *   caption_hook, cta_clarity, authenticity
  *
- * SEMANTIC tier (DeepSeek evaluation, slower, ~$0.001 per batch):
+ * SEMANTIC tier (Qwen evaluation, slower, ~$0.001 per batch):
  *   loop_structure     — requires video analysis, regex always returns false
  *   emotional_arc      — requires full content analysis, regex always returns false
  *   text_overlay       — regex always returns true (meaningless)
@@ -30,19 +30,19 @@
  */
 
 import * as Sentry from "@sentry/nextjs";
-import OpenAI from "openai";
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createCache } from "@/lib/cache";
 import { createLogger } from "@/lib/logger";
 import type { RuleScoreResult } from "./types";
+import { getQwenClient, QWEN_FAST_MODEL } from "./qwen/client";
 
 const log = createLogger({ module: "rules" });
 
 // Cache rules for 1 hour — rule_library changes infrequently
 const rulesCache = createCache<Rule[]>(60 * 60 * 1000);
 
-// DeepSeek-chat pricing: $0.14/1M input, $0.28/1M output (cheaper than reasoner)
+// Qwen pricing — see src/lib/engine/qwen/cost.ts for authoritative rates.
 const SEMANTIC_INPUT_PRICE_PER_TOKEN = 0.14 / 1_000_000;
 const SEMANTIC_OUTPUT_PRICE_PER_TOKEN = 0.28 / 1_000_000;
 const SEMANTIC_TIMEOUT_MS = 15_000; // 15s — semantic eval is simpler than full reasoning
@@ -74,20 +74,7 @@ const SemanticEvaluationSchema = z.object({
 
 type SemanticEvaluation = z.infer<typeof SemanticEvaluationSchema>;
 
-// Lazy-initialized OpenAI client for semantic eval (NOT imported from deepseek.ts to avoid circular dep)
-let semanticClient: OpenAI | null = null;
-
-function getSemanticClient(): OpenAI {
-  if (!semanticClient) {
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) throw new Error("Missing DEEPSEEK_API_KEY for semantic rule evaluation");
-    semanticClient = new OpenAI({
-      apiKey,
-      baseURL: "https://api.deepseek.com",
-    });
-  }
-  return semanticClient;
-}
+// Qwen client for semantic eval — avoids circular dep with deepseek.ts
 
 /**
  * Load active rules from the rule_library table (ENGINE-04)
@@ -199,7 +186,7 @@ async function evaluateSemanticRules(
   if (evaluableRules.length === 0) return [];
 
   try {
-    const ai = getSemanticClient();
+    const ai = getQwenClient();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), SEMANTIC_TIMEOUT_MS);
 
@@ -218,7 +205,7 @@ Return JSON: { "evaluations": [{ "rule_name": string, "score": number, "rational
 
     const response = await ai.chat.completions.create(
       {
-        model: "deepseek-chat",
+        model: QWEN_FAST_MODEL,
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
       },
@@ -272,7 +259,7 @@ Return JSON: { "evaluations": [{ "rule_name": string, "score": number, "rational
  *
  * Hybrid evaluation:
  * - Regex tier: deterministic pattern matching (fast, no API cost)
- * - Semantic tier: batched DeepSeek evaluation (slower, ~$0.001 per batch)
+ * - Semantic tier: batched Qwen evaluation (slower, ~$0.001 per batch)
  *
  * If semantic evaluation fails, falls back to regex-only results.
  */

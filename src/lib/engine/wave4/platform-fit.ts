@@ -13,7 +13,6 @@
  * - Follows wave3.ts pattern exactly
  */
 import * as Sentry from "@sentry/nextjs";
-import OpenAI from "openai";
 import { createLogger } from "@/lib/logger";
 import type { ContentPayload, DeepSeekReasoning, PlatformFitResult } from "../types";
 import type { CreatorContext } from "../creator";
@@ -25,28 +24,18 @@ import {
   PlatformFitResponseSchema,
 } from "./platform-fit-prompts";
 import { isCircuitOpen } from "../deepseek";
+import { getQwenClient, QWEN_FAST_MODEL } from "../qwen/client";
 
 const log = createLogger({ module: "platform-fit" });
 
 /**
- * V4 Flash pricing (matches wave3.ts:38-40).
- * NOTE: re-verify against api-docs.deepseek.com/quick_start/pricing at deploy time.
+ * Qwen pricing — see src/lib/engine/qwen/cost.ts for authoritative rates.
  */
 const CACHE_HIT_PRICE = 0.0028 / 1_000_000;
 const CACHE_MISS_PRICE = 0.14 / 1_000_000;
 const OUTPUT_PRICE = 0.28 / 1_000_000;
 
 const PER_CALL_TIMEOUT_MS = 15_000;
-
-let client: OpenAI | null = null;
-function getClient(): OpenAI {
-  if (!client) {
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) throw new Error("Missing DEEPSEEK_API_KEY environment variable");
-    client = new OpenAI({ apiKey, baseURL: "https://api.deepseek.com" });
-  }
-  return client;
-}
 
 /**
  * Single V3 call scoring all targeted platforms together.
@@ -81,7 +70,7 @@ export async function runPlatformFit(
   // Determine target platforms — empty/non-target defaults to TikTok
   const targetPlatforms = creatorContext.target_platforms ?? ["tiktok"];
 
-  const ai = getClient();
+  const ai = getQwenClient();
   const systemPrompt = STABLE_PLATFORM_FIT_SYSTEM_PROMPT;
   const userMessage = buildPlatformFitUserMessage(
     payload,
@@ -97,7 +86,7 @@ export async function runPlatformFit(
   try {
     const response = await ai.chat.completions.create(
       {
-        model: process.env.DEEPSEEK_PERSONA_MODEL ?? "deepseek-v4-flash",
+        model: QWEN_FAST_MODEL,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage },

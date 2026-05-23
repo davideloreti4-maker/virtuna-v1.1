@@ -11,11 +11,7 @@
  * 768 preserves D-05's 768d intent and the migration's vector(768) columns.
  */
 
-import * as Sentry from "@sentry/nextjs";
-import { GoogleGenAI } from "@google/genai";
-import { createLogger } from "@/lib/logger";
 
-const log = createLogger({ module: "retrieval.embedder" });
 
 // RESEARCH Finding 1: D-05's text-embedding-004 was shut down 2026-01-14.
 // gemini-embedding-001 is the GA replacement; outputDimensionality: 768 preserves D-05's 768-d intent.
@@ -24,10 +20,6 @@ export const EMBEDDING_DIM = 768;
 
 // Cost: gemini-embedding-001 = $0.15/M input tokens, 0 output.
 // Conservative estimate: text.length / 4 chars per token.
-const INPUT_PRICE_PER_TOKEN = 0.15 / 1_000_000;
-const MAX_RETRIES = 2;
-const RETRY_BASE_DELAY_MS = 1000;
-const SYNC_BATCH_LIMIT = 100;
 const CAPTION_MAX_CHARS = 500;
 
 /**
@@ -98,14 +90,10 @@ export function isTransientGeminiError(err: unknown): boolean {
   return true;
 }
 
-let client: GoogleGenAI | null = null;
-function getClient(): GoogleGenAI {
-  if (!client) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("Missing GEMINI_API_KEY environment variable");
-    client = new GoogleGenAI({ apiKey });
-  }
-  return client;
+// DEFERRED to M2: embedding model migration required (gemini-embedding-001 → DashScope).
+// embedQuery and embedBatch throw to trigger caller's graceful degradation (retrieval weight=0 in Phase 13).
+function getClient(): never {
+  throw new Error("Embedding deferred to M2 — re-embedding job required for new model");
 }
 
 /**
@@ -137,115 +125,19 @@ export function buildSubjectText(input: {
   return `[niche:${slug}] @${handle}: ${caption}\n${tags}`;
 }
 
-function estimateCostCents(texts: string[]): number {
-  const totalTokens = texts.reduce(
-    (sum, t) => sum + Math.ceil(t.length / 4),
-    0,
-  );
-  return totalTokens * INPUT_PRICE_PER_TOKEN * 100;
-}
 
-/**
- * Predict-time path. Single embedding, RETRIEVAL_QUERY task type
- * (asymmetric retrieval — queries optimized differently from documents).
- *
- * Throws on shape mismatch (caller catches and degrades gracefully via the
- * retrieval-stage's outer try/catch per Phase 1 graceful-degradation D-rule).
- */
+// DEFERRED to M2: embedQuery and embedBatch always throw — retrieval weight=0 so callers
+// degrade gracefully. Re-enable after DashScope embedding model migration + DB re-embed.
+
 export async function embedQuery(
-  text: string,
+  _text: string,
 ): Promise<{ vector: number[]; cost_cents: number }> {
-  const ai = getClient();
-  const start = performance.now();
-  const response = await ai.models.embedContent({
-    model: EMBEDDING_MODEL,
-    contents: [text],
-    config: {
-      outputDimensionality: EMBEDDING_DIM,
-      taskType: "RETRIEVAL_QUERY",
-    },
-  });
-  const values = response.embeddings?.[0]?.values;
-  if (!values || values.length !== EMBEDDING_DIM) {
-    throw new Error(
-      `Embedding response shape unexpected: got ${values?.length ?? 0} dims, expected ${EMBEDDING_DIM}`,
-    );
-  }
-  const cost_cents = estimateCostCents([text]);
-  const duration_ms = Math.round(performance.now() - start);
-  log.info("Embedded query", {
-    duration_ms,
-    dims: values.length,
-    cost_cents: +cost_cents.toFixed(6),
-  });
-  Sentry.addBreadcrumb({
-    category: "engine.retrieval.embedder",
-    message: "Embedded query",
-    level: "info",
-    data: {
-      duration_ms,
-      cost_cents: +cost_cents.toFixed(6),
-    },
-  });
-  return { vector: values, cost_cents };
+  getClient(); // throws — unreachable below
 }
 
-/**
- * Backfill / batch path. Sync batch of ≤100 texts, RETRIEVAL_DOCUMENT task type.
- * Wraps a retry loop with linear backoff for transient errors. Caller (orchestrator,
- * apify webhook handler, embed-corpus.ts) is expected to wrap in try/catch — embed
- * failures should not block insert paths (additive-only milestone constraint).
- */
 export async function embedBatch(
   texts: string[],
 ): Promise<{ vectors: number[][]; cost_cents: number }> {
   if (texts.length === 0) return { vectors: [], cost_cents: 0 };
-  if (texts.length > SYNC_BATCH_LIMIT) {
-    throw new Error(
-      `embedBatch: sync batch limit is ${SYNC_BATCH_LIMIT}; got ${texts.length}. Split caller-side.`,
-    );
-  }
-
-  const ai = getClient();
-  let lastError: Error | null = null;
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const response = await ai.models.embedContent({
-        model: EMBEDDING_MODEL,
-        contents: texts,
-        config: {
-          outputDimensionality: EMBEDDING_DIM,
-          taskType: "RETRIEVAL_DOCUMENT",
-        },
-      });
-      const vectors = (response.embeddings ?? []).map((e) => e.values ?? []);
-      if (vectors.length !== texts.length) {
-        throw new Error(
-          `Embedding batch shape unexpected: ${vectors.length} embeddings for ${texts.length} texts`,
-        );
-      }
-      for (const v of vectors) {
-        if (v.length !== EMBEDDING_DIM) {
-          throw new Error(
-            `Embedding batch dim unexpected: got ${v.length}, expected ${EMBEDDING_DIM}`,
-          );
-        }
-      }
-      const cost_cents = estimateCostCents(texts);
-      return { vectors, cost_cents };
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      // WR-03: don't retry permanent errors (401/403/400/invalid_argument) —
-      // they will never succeed and just burn MAX_RETRIES * RETRY_BASE_DELAY_MS
-      // of latency before the caller's graceful-empty path fires.
-      if (!isTransientGeminiError(lastError)) break;
-      if (attempt === MAX_RETRIES) break;
-      const delay = RETRY_BASE_DELAY_MS * (attempt + 1);
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    }
-  }
-  Sentry.captureException(lastError, {
-    tags: { stage: "retrieval", source: "embedBatch" },
-  });
-  throw lastError ?? new Error("embedBatch failed");
+  getClient(); // throws — unreachable below
 }

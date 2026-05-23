@@ -1,0 +1,141 @@
+{
+  "corpus_version": "full.2026-05-11",
+  "engine_version": "3.0.0-dev",
+  "macro_f1": 0.25,
+  "per_niche_f1": {
+    "beauty": 0.2857,
+    "fitness": 0,
+    "edu": 0,
+    "comedy": 0,
+    "lifestyle": 0
+  },
+  "ece": 0.3988,
+  "per_class_metrics": {
+    "viral": {
+      "precision": 0.6,
+      "recall": 1,
+      "f1": 0.75,
+      "support": 3
+    },
+    "average": {
+      "precision": 0,
+      "recall": 0,
+      "f1": 0,
+      "support": 1
+    },
+    "under": {
+      "precision": 0,
+      "recall": 0,
+      "f1": 0,
+      "support": 1
+    }
+  },
+  "signal_contribution": null,
+  "spearman_within_niche": {
+    "beauty": 0,
+    "fitness": 0,
+    "edu": 0,
+    "comedy": 0,
+    "lifestyle": 0
+  },
+  "mae_engagement_rate": 0.075243,
+  "cost_cents_avg": 0.2261,
+  "cost_cents_total": 1.1307,
+  "latency_p50": 56693,
+  "latency_p95": 68029,
+  "latency_p99": 70121,
+  "stage_timings": {
+    "validate": {
+      "p50_ms": 0,
+      "p95_ms": 0.7999999999999998,
+      "p99_ms": 0.96,
+      "count": 5
+    },
+    "normalize": {
+      "p50_ms": 0,
+      "p95_ms": 0,
+      "p99_ms": 0,
+      "count": 5
+    },
+    "pre_creator_context": {
+      "p50_ms": 150,
+      "p95_ms": 643.8,
+      "p99_ms": 738.36,
+      "count": 5
+    },
+    "creator_context": {
+      "p50_ms": 0,
+      "p95_ms": 1.5999999999999996,
+      "p99_ms": 1.92,
+      "count": 5
+    },
+    "rule_scoring": {
+      "p50_ms": 1,
+      "p95_ms": 90.59999999999998,
+      "p99_ms": 108.52,
+      "count": 5
+    },
+    "gemini_analysis": {
+      "p50_ms": 9549,
+      "p95_ms": 12349,
+      "p99_ms": 12523.4,
+      "count": 5
+    },
+    "audio_fingerprint": {
+      "p50_ms": 9547,
+      "p95_ms": 12349,
+      "p99_ms": 12523.4,
+      "count": 5
+    },
+    "wave_1": {
+      "p50_ms": 9545,
+      "p95_ms": 12348,
+      "p99_ms": 12522.4,
+      "count": 5
+    },
+    "trend_enrichment": {
+      "p50_ms": 0,
+      "p95_ms": 212.19999999999996,
+      "p99_ms": 254.44,
+      "count": 5
+    },
+    "deepseek_reasoning": {
+      "p50_ms": 11930,
+      "p95_ms": 19183,
+      "p99_ms": 20435,
+      "count": 5
+    },
+    "wave_2": {
+      "p50_ms": 11930,
+      "p95_ms": 19182.199999999997,
+      "p99_ms": 20434.04,
+      "count": 5
+    }
+  },
+  "drift_metrics": {},
+  "failure_cases": [
+    {
+      "corpus_row_id": "a092b4cf-ea5a-42ff-8668-440c059d42ff",
+      "niche": "lifestyle",
+      "actual_bucket": "under",
+      "predicted_bucket": "viral",
+      "predicted_score": 99.95,
+      "severity": 2,
+      "top_warnings": []
+    },
+    {
+      "corpus_row_id": "84d37c9e-a8cf-44c2-819f-2558853592cb",
+      "niche": "beauty",
+      "actual_bucket": "average",
+      "predicted_bucket": "viral",
+      "predicted_score": 99.78,
+      "severity": 1,
+      "top_warnings": []
+    }
+  ],
+  "viral_recall": 1,
+  "under_precision": 0,
+  "rows_processed": 5,
+  "rows_failed": 0,
+  "run_at": "2026-05-21T11:45:13.822Z"
+}

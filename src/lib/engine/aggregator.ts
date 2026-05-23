@@ -18,8 +18,8 @@ import type {
 } from "./types";
 import type { PipelineResult } from "./pipeline";
 import type { StageEventCallback } from "./events";
-import { GEMINI_MODEL } from "./gemini";
-import { DEEPSEEK_MODEL } from "./deepseek";
+import { QWEN_OMNI_MODEL as GEMINI_MODEL } from "./qwen/client";
+import { QWEN_REASONING_MODEL as DEEPSEEK_MODEL } from "./qwen/client";
 import { predictWithML, featureVectorToMLInput } from "./ml";
 import { getPlattParameters, applyPlattScaling, type PlattParameters } from "./calibration";
 import { ENGINE_VERSION } from "./version";

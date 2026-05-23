@@ -1,10 +1,9 @@
 import * as Sentry from "@sentry/nextjs";
-import OpenAI from "openai";
-import { createLogger } from "@/lib/logger";
 import type { PredictionResult, CritiqueResult } from "./types";
 import type { StageEventCallback } from "./events";
 import { emitStageStart, emitStageEnd } from "./events";
 import { isCircuitOpen } from "./deepseek";
+import { getQwenClient, QWEN_FAST_MODEL } from "./qwen/client";
 import {
   STABLE_CRITIQUE_SYSTEM_PROMPT,
   buildCritiqueUserMessage,
@@ -12,25 +11,15 @@ import {
 } from "./stage10-critique-prompts";
 import type { CreatorContext } from "./creator";
 
-const log = createLogger({ module: "stage10-critique" });
 
-const CRITIQUE_MODEL = process.env.DEEPSEEK_CRITIQUE_MODEL ?? "deepseek-v4-flash";
-
+/**
+ * Qwen pricing — see src/lib/engine/qwen/cost.ts for authoritative rates.
+ */
 const CACHE_HIT_PRICE = 0.0028 / 1_000_000;
 const CACHE_MISS_PRICE = 0.14 / 1_000_000;
 const OUTPUT_PRICE = 0.28 / 1_000_000;
 
 const PER_CALL_TIMEOUT_MS = 15_000;
-
-let _client: OpenAI | null = null;
-function getClient(): OpenAI {
-  if (!_client) {
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) throw new Error("Missing DEEPSEEK_API_KEY environment variable");
-    _client = new OpenAI({ apiKey, baseURL: "https://api.deepseek.com" });
-  }
-  return _client;
-}
 
 /**
  * D-11: Clamp confidence_adjustment to [-0.20, 0] in TypeScript — never trust model range.
@@ -68,7 +57,7 @@ export async function runStage10Critique(
     return null;
   }
 
-  const ai = getClient();
+  const ai = getQwenClient();
   let attempt = 0;
   let lastError: Error | null = null;
 
@@ -79,7 +68,7 @@ export async function runStage10Critique(
       const userMessage = buildCritiqueUserMessage(aggregateResult, creatorContext ?? null);
       const response = await ai.chat.completions.create(
         {
-          model: CRITIQUE_MODEL,
+          model: QWEN_FAST_MODEL,
           messages: [
             { role: "system", content: STABLE_CRITIQUE_SYSTEM_PROMPT },
             { role: "user", content: userMessage },

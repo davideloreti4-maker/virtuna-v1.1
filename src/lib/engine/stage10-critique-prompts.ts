@@ -130,9 +130,8 @@ export function buildCritiqueUserMessage(
   // Platform fit scores if available
   if (result.platform_fit) {
     sections.push("Platform Fit Scores:");
-    for (const pf of result.platform_fit) {
-      sections.push(`  - ${pf.platform}: ${pf.fit_score}/100`);
-    }
+    const pf = result.platform_fit;
+    sections.push(`  - ${pf.platform}: ${pf.fit_score}/100`);
     sections.push("");
   }
 

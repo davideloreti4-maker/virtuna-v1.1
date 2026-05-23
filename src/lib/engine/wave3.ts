@@ -1,5 +1,4 @@
 import * as Sentry from "@sentry/nextjs";
-import OpenAI from "openai";
 import { createLogger } from "@/lib/logger";
 import type {
   ContentPayload,
@@ -19,21 +18,17 @@ import {
 } from "./wave3/persona-prompts";
 import { aggregatePersonaResults } from "./wave3/aggregator";
 import { isCircuitOpen } from "./deepseek";
+import { getQwenClient, QWEN_FAST_MODEL } from "./qwen/client";
 
 const log = createLogger({ module: "wave3" });
 
 /**
- * Phase 7 PERSONA-09: separate env from DEEPSEEK_MODEL (which routes to thinking-mode via
- * deepseek-reasoner alias per Phase 4 D-03). DEEPSEEK_PERSONA_MODEL defaults to bare V4 Flash
- * (non-thinking) — cheap, parallel-friendly.
+ * Phase 7 PERSONA-09: uses QWEN_FAST_MODEL (qwen3.6-flash) — cheap, parallel-friendly,
+ * thinking disabled via extra_body. Migrated from DeepSeek V4 Flash per DashScope International.
  */
-const DEEPSEEK_PERSONA_MODEL =
-  process.env.DEEPSEEK_PERSONA_MODEL ?? "deepseek-v4-flash";
 
 /**
- * V4 Flash pricing — mirrors wave0/niche-detector.ts:21-23. Re-verify against
- * api-docs.deepseek.com/quick_start/pricing at execution time (RESEARCH A1).
- * NOTE (W-4): OUTPUT_PRICE is 0.28/M — the V3.2-era 0.42/M would be incorrect.
+ * Qwen pricing — see src/lib/engine/qwen/cost.ts for authoritative rates.
  */
 const CACHE_HIT_PRICE = 0.0028 / 1_000_000;
 const CACHE_MISS_PRICE = 0.14 / 1_000_000;
@@ -41,16 +36,6 @@ const OUTPUT_PRICE = 0.28 / 1_000_000;
 
 const PER_CALL_TIMEOUT_MS = 15_000;
 const SUCCESS_THRESHOLD = 7; // D-13: ≥7-of-10 personas required for non-null aggregate
-
-let client: OpenAI | null = null;
-function getClient(): OpenAI {
-  if (!client) {
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) throw new Error("Missing DEEPSEEK_API_KEY environment variable");
-    client = new OpenAI({ apiKey, baseURL: "https://api.deepseek.com" });
-  }
-  return client;
-}
 
 /**
  * Phase 7 Wave 3 outcome — widens the Phase 3 D-17 stub return shape.
@@ -134,7 +119,7 @@ export async function runWave3(
     };
   }
 
-  const ai = getClient();
+  const ai = getQwenClient();
   let totalCostCents = 0;
 
   const callPersona = async (slot: PersonaSlot): Promise<PersonaSimulationResult> => {
@@ -167,7 +152,7 @@ export async function runWave3(
       try {
         const response = await ai.chat.completions.create(
           {
-            model: DEEPSEEK_PERSONA_MODEL,
+            model: QWEN_FAST_MODEL,
             messages: [
               { role: "system", content: systemPrompt }, // STABLE — cache prefix (D-17)
               { role: "user", content: userMessage }, // VOLATILE per-call

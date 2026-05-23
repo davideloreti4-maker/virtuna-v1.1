@@ -1,6 +1,4 @@
 import * as Sentry from "@sentry/nextjs";
-import OpenAI from "openai";
-import { GoogleGenAI } from "@google/genai";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
@@ -13,33 +11,16 @@ import {
   type RuleScoreResult,
   type TrendEnrichment,
 } from "./types";
+import { getQwenClient, QWEN_REASONING_MODEL } from "./qwen/client";
+import { calculateCost } from "./qwen/cost";
+import { stripModelOutput } from "./utils/strip";
 
 const log = createLogger({ module: "deepseek" });
 
-const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL ?? "deepseek-reasoner";
+const DEEPSEEK_MODEL = QWEN_REASONING_MODEL;
 const MAX_RETRIES = 2; // 3 total attempts
 const TIMEOUT_MS = 90_000; // 90s — reasoning model produces many CoT thinking tokens on complex prompts
 
-// V3.2-reasoning pricing — legacy (used as fallback when usage breakdown is missing)
-const INPUT_PRICE_PER_TOKEN = 0.28 / 1_000_000;
-const OUTPUT_PRICE_PER_TOKEN = 0.42 / 1_000_000;
-const FALLBACK_INPUT_TOKENS = 3000; // Richer prompt = more input tokens
-const FALLBACK_OUTPUT_TOKENS = 2000;
-
-/**
- * DeepSeek pricing — cache-aware (Phase 3, CACHE-03).
- * Per RESEARCH Pattern 4 + Assumptions A1 (MEDIUM confidence — verify against
- * api-docs.deepseek.com/quick_start/pricing at deploy time).
- *
- * deepseek-chat / deepseek-reasoner cache pricing:
- *   - cache-hit:  $0.0028 per 1M tokens (50x cheaper than miss)
- *   - cache-miss: $0.14 per 1M tokens (replaces legacy INPUT_PRICE for cache-aware mode)
- *
- * NOTE: legacy INPUT_PRICE_PER_TOKEN ($0.28/M) is kept for backwards-compat when
- * the response lacks usage.prompt_cache_hit_tokens / prompt_cache_miss_tokens fields.
- */
-const DEEPSEEK_CACHE_HIT_PRICE_PER_TOKEN = 0.0028 / 1_000_000;
-const DEEPSEEK_CACHE_MISS_PRICE_PER_TOKEN = 0.14 / 1_000_000;
 
 /**
  * STABLE system prompt — byte-identical across calls so DeepSeek's automatic
@@ -143,7 +124,6 @@ let breaker: CircuitBreakerState = {
 // HARD-04: Mutex to prevent concurrent half-open probes (thundering herd prevention)
 let probeInFlight = false;
 
-let client: OpenAI | null = null;
 
 // Calibration data cache
 interface DeepSeekCalibrationData {
@@ -240,18 +220,6 @@ const FALLBACK_DEEPSEEK_CALIBRATION: DeepSeekCalibrationData = {
 
 let cachedCalibration: DeepSeekCalibrationData | null = null;
 
-function getClient(): OpenAI {
-  if (!client) {
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) throw new Error("Missing DEEPSEEK_API_KEY environment variable");
-    client = new OpenAI({
-      apiKey,
-      baseURL: "https://api.deepseek.com",
-    });
-  }
-  return client;
-}
-
 /** Check if circuit breaker is open (INFRA-03: half-open probe support, HARD-04: probe mutex) */
 function isCircuitOpen(): boolean {
   if (breaker.status === "closed") return false;
@@ -335,31 +303,6 @@ function parseDeepSeekResponse(raw: string): DeepSeekReasoning {
  *
  * All token args are treated as "0 or undefined → use fallback in legacy branch."
  */
-function calculateDeepSeekCost(
-  cacheHitTokens: number,
-  cacheMissTokens: number,
-  completionTokens: number,
-  fallbackPromptTokens?: number
-): number {
-  const hasUsageBreakdown = cacheHitTokens > 0 || cacheMissTokens > 0;
-  if (!hasUsageBreakdown) {
-    // Legacy / backwards-compat path — preserves prior cost output when DeepSeek
-    // omits the cache breakdown fields. Treat 0/undefined inputs as "no data" → use
-    // FALLBACK constants (matches pre-Phase-3 calculateDeepSeekCost behavior).
-    const input = fallbackPromptTokens && fallbackPromptTokens > 0
-      ? fallbackPromptTokens
-      : FALLBACK_INPUT_TOKENS;
-    const output = completionTokens && completionTokens > 0
-      ? completionTokens
-      : FALLBACK_OUTPUT_TOKENS;
-    return (input * INPUT_PRICE_PER_TOKEN + output * OUTPUT_PRICE_PER_TOKEN) * 100;
-  }
-  return (
-    cacheHitTokens * DEEPSEEK_CACHE_HIT_PRICE_PER_TOKEN +
-    cacheMissTokens * DEEPSEEK_CACHE_MISS_PRICE_PER_TOKEN +
-    completionTokens * OUTPUT_PRICE_PER_TOKEN
-  ) * 100;
-}
 
 /** Load calibration data from JSON file, cached after first read.
  *  Returns null on malformed/missing file -- callers must handle null. */
@@ -515,7 +458,7 @@ export async function reasonWithDeepSeek(
   }
 
   const startTime = performance.now();
-  const ai = getClient();
+  const ai = getQwenClient();
   const calibration =
     (await loadCalibrationData()) ?? FALLBACK_DEEPSEEK_CALIBRATION;
   let lastError: Error | null = null;
@@ -538,8 +481,8 @@ export async function reasonWithDeepSeek(
         {
           model: DEEPSEEK_MODEL,
           messages: [
-            { role: "system", content: STABLE_SYSTEM_PROMPT }, // byte-identical across calls
-            { role: "user", content: userMessage },             // per-request volatile payload
+            { role: "system", content: STABLE_SYSTEM_PROMPT },
+            { role: "user",   content: userMessage },
           ],
           response_format: { type: "json_object" },
         },
@@ -548,46 +491,13 @@ export async function reasonWithDeepSeek(
 
       clearTimeout(timeout);
 
-      const text = response.choices[0]?.message?.content ?? "";
+      const raw  = response.choices[0]?.message?.content ?? "";
+      const text = stripModelOutput(raw);
       const reasoning = parseDeepSeekResponse(text);
 
       recordSuccess();
 
-      // Phase 3 (CACHE-03): read cache telemetry from usage when DeepSeek provides it.
-      // Use a wide cast because the OpenAI SDK's `usage` type does not yet expose
-      // DeepSeek's cache fields. Defaults to 0 when missing (provider compat).
-      const usage = response.usage as unknown as {
-        prompt_tokens?: number;
-        completion_tokens?: number;
-        prompt_cache_hit_tokens?: number;
-        prompt_cache_miss_tokens?: number;
-      } | undefined;
-      const cacheHitTokens = usage?.prompt_cache_hit_tokens ?? 0;
-      const cacheMissTokens = usage?.prompt_cache_miss_tokens ?? 0;
-      const totalPromptTokens = usage?.prompt_tokens ?? 0;
-      const completionTokens = usage?.completion_tokens ?? 0;
-
-      log.info("DeepSeek cache telemetry", {
-        stage: "deepseek_reasoning",
-        cache_hit_tokens: cacheHitTokens,
-        cache_miss_tokens: cacheMissTokens,
-        total_prompt_tokens: totalPromptTokens,
-        cache_hit_rate:
-          cacheHitTokens + cacheMissTokens > 0
-            ? +(
-                cacheHitTokens /
-                Math.max(1, cacheHitTokens + cacheMissTokens)
-              ).toFixed(4)
-            : 0,
-      });
-
-      // Cache-aware cost calculation (falls back to legacy pricing when breakdown missing).
-      const cost_cents = calculateDeepSeekCost(
-        cacheHitTokens,
-        cacheMissTokens,
-        completionTokens,
-        totalPromptTokens || undefined
-      );
+      const cost_cents = calculateCost(DEEPSEEK_MODEL, response.usage ?? undefined);
 
       if (cost_cents > 1.0) {
         log.warn("Reasoning cost exceeds soft cap", {
@@ -644,82 +554,9 @@ export async function reasonWithDeepSeek(
     tags: { stage: "deepseek_reasoning" },
   });
 
-  // Fallback: use Gemini to produce the same DeepSeekReasoning output
-  log.warn("Falling back to Gemini for reasoning");
-  return reasonWithGeminiFallback(context);
-}
-
-// Gemini Flash pricing for fallback cost tracking
-const GEMINI_INPUT_PRICE_PER_TOKEN = 0.15 / 1_000_000;
-const GEMINI_OUTPUT_PRICE_PER_TOKEN = 0.60 / 1_000_000;
-const GEMINI_FALLBACK_MODEL = "gemini-2.5-flash";
-
-let geminiClient: GoogleGenAI | null = null;
-
-function getGeminiClient(): GoogleGenAI {
-  if (!geminiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("Missing GEMINI_API_KEY environment variable");
-    geminiClient = new GoogleGenAI({ apiKey });
-  }
-  return geminiClient;
-}
-
-/**
- * Fallback: run the same 5-step CoT reasoning prompt through Gemini Flash
- * when DeepSeek is unavailable. Returns the same DeepSeekReasoning shape
- * so the pipeline can't tell the difference.
- */
-async function reasonWithGeminiFallback(
-  context: DeepSeekInput
-): Promise<{ reasoning: DeepSeekReasoning; cost_cents: number }> {
-  const fallbackStart = performance.now();
-  const ai = getGeminiClient();
-  const calibration =
-    (await loadCalibrationData()) ?? FALLBACK_DEEPSEEK_CALIBRATION;
-  // Gemini takes a single `contents` string; concatenate the stable system prefix
-  // with the volatile user message to preserve the full prompt content.
-  const userMessage = buildDeepSeekUserMessage(context, calibration);
-  const prompt = `${STABLE_SYSTEM_PROMPT}\n\n---\n\n${userMessage}`;
-
-  const response = await ai.models.generateContent({
-    model: GEMINI_FALLBACK_MODEL,
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-    },
-  });
-
-  const text = response.text ?? "";
-  const reasoning = parseDeepSeekResponse(text);
-
-  // Track cost using Gemini pricing
-  const promptTokens = response.usageMetadata?.promptTokenCount ?? FALLBACK_INPUT_TOKENS;
-  const candidateTokens = response.usageMetadata?.candidatesTokenCount ?? FALLBACK_OUTPUT_TOKENS;
-  const cost_cents =
-    (promptTokens * GEMINI_INPUT_PRICE_PER_TOKEN +
-      candidateTokens * GEMINI_OUTPUT_PRICE_PER_TOKEN) *
-    100;
-
-  const fallbackDuration = Math.round(performance.now() - fallbackStart);
-  log.info("DeepSeek->Gemini fallback complete", {
-    stage: "deepseek_gemini_fallback",
-    duration_ms: fallbackDuration,
-    cost_cents: +cost_cents.toFixed(4),
-  });
-
-  Sentry.addBreadcrumb({
-    category: "engine.deepseek",
-    message: "Gemini fallback reasoning complete",
-    level: "info",
-    data: {
-      duration_ms: fallbackDuration,
-      cost_cents: +cost_cents.toFixed(4),
-      model: GEMINI_FALLBACK_MODEL,
-    },
-  });
-
-  return { reasoning, cost_cents };
+  // No fallback — circuit breaker failure returns null; caller handles graceful degradation.
+  log.warn("Qwen reasoning failed after all retries — returning null");
+  return null;
 }
 
 /** @internal -- test use only. Resets circuit breaker to closed state. */

@@ -266,7 +266,7 @@ export async function POST(request: Request) {
     // Shared INSERT builder — produces the analysis_results row for either branch.
     const buildInsertRow = (
       finalResult: PredictionResult,
-      ruleContributions: Array<Record<string, unknown>>
+      _ruleContributions: Array<Record<string, unknown>>
     ) => ({
       user_id: user.id,
       content_text: validated.content_text ?? "",
@@ -324,10 +324,7 @@ export async function POST(request: Request) {
         requestId,
         bypassCache,
       });
-      // D-18 (Phase 13 Plan 03): pass videoContext so aggregator threads it to Stage 11.
-      const result = await aggregateScores(pipelineResult, undefined, {
-        videoContext: pipelineResult.videoContext ?? null,
-      });
+      const result = await aggregateScores(pipelineResult, undefined);
 
       const ruleContributions = pipelineResult.ruleResult.matched_rules.map(
         (r) => ({
@@ -428,11 +425,9 @@ export async function POST(request: Request) {
             phase: "scoring",
             message: "Calculating predictions and assembling results...",
           });
-          // D-18 (Phase 13 Plan 03): pass videoContext so aggregator threads it to Stage 11.
           const result = await aggregateScores(
             pipelineResult,
             /* onStageEvent: */ (event: StageEvent) => { send("stage", event); },
-            { videoContext: pipelineResult.videoContext ?? null },
           );
 
           // Build rule_contributions JSONB for per-rule tracking (RULE-03)

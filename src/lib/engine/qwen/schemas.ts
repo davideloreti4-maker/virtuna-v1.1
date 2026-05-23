@@ -1,0 +1,124 @@
+/**
+ * Qwen Omni analysis schemas — merged Wave 0 + Wave 1 output.
+ *
+ * Preserves all field names from the legacy Gemini segmented schemas so that
+ * the aggregator, pipeline, and downstream consumers are unchanged.
+ *
+ * POLARITY WARNING: cognitive_load uses INVERTED polarity (higher = WORSE retention).
+ * Never average with other hook fields without inverting first (10 - cognitive_load).
+ */
+
+import { z } from "zod";
+
+const ScoreSchema = z.number().min(0).max(10);
+
+export const HookDecompositionZodSchema = z.object({
+  visual_stop_power:        ScoreSchema,
+  audio_hook_quality:       ScoreSchema,
+  text_overlay_score:       ScoreSchema,
+  first_words_speech_score: ScoreSchema,
+  weakest_modality: z.enum([
+    "visual_stop_power",
+    "audio_hook_quality",
+    "text_overlay_score",
+    "first_words_speech_score",
+  ]),
+  visual_audio_coherence: ScoreSchema,
+  // POLARITY INVERTED: higher score = MORE cognitive load = WORSE retention.
+  cognitive_load: ScoreSchema,
+  watermark_detected: z.object({
+    tiktok: z.boolean().optional(),
+    ig:     z.boolean().optional(),
+    yt:     z.boolean().optional(),
+  }).optional(),
+});
+
+const HookFactorSchema = z.object({
+  name: z.enum([
+    "Scroll-Stop Power",
+    "Completion Pull",
+    "Rewatch Potential",
+    "Share Trigger",
+    "Emotional Charge",
+  ]),
+  score:           ScoreSchema,
+  rationale:       z.string().min(1).max(300),
+  improvement_tip: z.string().max(300).optional(),
+});
+
+export const CtaSegmentZodSchema = z
+  .object({
+    cta_present: z.boolean(),
+    strength:    ScoreSchema.nullable(),
+    type: z.enum([
+      "follow",
+      "comment",
+      "link_in_bio",
+      "watch_next",
+      "engage_question",
+      "other",
+    ]).nullable(),
+    rationale: z.string().min(1).max(400),
+  })
+  .refine(
+    (v) => (v.cta_present
+      ? v.strength !== null && v.type !== null
+      : v.strength === null && v.type === null),
+    { message: "When cta_present=true, strength and type must be non-null; when false, both must be null." },
+  );
+
+// Matches GeminiAudioSignalsSchema in types.ts exactly (nullable per D-A2 when content_type ∈ slideshow/b_roll).
+const GeminiAudioSignalsSchema = z.object({
+  voice_clarity_0_10:       ScoreSchema.nullable(),
+  audio_hook_first_2s_0_10: ScoreSchema.nullable(),
+  silence_ratio:            z.number().min(0).max(1),
+  voiceover_ratio:          z.number().min(0).max(1),
+  music_ratio:              z.number().min(0).max(1),
+  audio_description:        z.string().min(10).max(280),
+});
+
+// Wave 0 fields merged into the unified Omni response
+const Wave0FieldsSchema = z.object({
+  content_type:       z.string().min(1),
+  niche_primary_slug: z.string().min(1),
+  niche_micro_slug:   z.string().nullable().optional(),
+});
+
+/**
+ * OmniAnalysisZodSchema — full output of a single qwen3.5-omni-plus call.
+ * Maps to GeminiVideoAnalysis + Wave0ContentTypeExtendedResult so aggregator is unchanged.
+ */
+export const OmniAnalysisZodSchema = z.object({
+  // Wave 0
+  ...Wave0FieldsSchema.shape,
+
+  // Overall (from Gemini legacy shape)
+  factors:            z.array(HookFactorSchema).length(5),
+  overall_impression: z.string().min(1).max(500),
+  content_summary:    z.string().min(1).max(500),
+
+  // Hook segment
+  hook_decomposition: HookDecompositionZodSchema,
+  hook_visual_impact: ScoreSchema,
+
+  // Body segment (video_signals)
+  video_signals: z.object({
+    visual_production_quality: ScoreSchema,
+    pacing_score:              ScoreSchema,
+    transition_quality:        ScoreSchema,
+  }),
+
+  // CTA segment
+  cta_segment: CtaSegmentZodSchema,
+
+  // Audio signals (matches GeminiAudioSignalsSchema in types.ts — nullable fields preserved)
+  audio_signals: GeminiAudioSignalsSchema,
+
+  // Audio perceptual score (0-100) — derived from Omni's audio analysis.
+  // Separate from audio_signals so it maps cleanly to PipelineResult.audio_perceptual_score.
+  audio_perceptual_score: z.number().min(0).max(100),
+});
+
+export type OmniAnalysisResult = z.infer<typeof OmniAnalysisZodSchema>;
+export type HookDecomposition  = z.infer<typeof HookDecompositionZodSchema>;
+export type CtaSegmentResult   = z.infer<typeof CtaSegmentZodSchema>;

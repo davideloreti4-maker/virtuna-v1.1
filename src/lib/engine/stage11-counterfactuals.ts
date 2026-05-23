@@ -9,37 +9,24 @@
  * Cost telemetry via calculateGeminiCost (D-10).
  */
 import * as Sentry from "@sentry/nextjs";
-import { GoogleGenAI } from "@google/genai";
 import { createLogger } from "@/lib/logger";
 import type { PredictionResult, CounterfactualResult } from "./types";
 import type { StageEventCallback } from "./events";
 import { emitStageStart, emitStageEnd } from "./events";
-import { calculateCost as calculateGeminiCost } from "./gemini/cost";
+import { calculateCost } from "./qwen/cost";
+import { getQwenClient, QWEN_REASONING_MODEL } from "./qwen/client";
 import {
   STABLE_COUNTERFACTUALS_SYSTEM_PROMPT,
   buildSignalContextUserMessage,
   CounterfactualsResponseSchema,
 } from "./stage11-counterfactuals-prompts";
+import { stripModelOutput } from "./utils/strip";
 
 const log = createLogger({ module: "stage11-counterfactuals" });
 
-// D-09 deferred for stage11 — Plan 01 self-test shows -preview still required as of 2026-05-22;
-// revisit when Google flips gemini-3.1-pro to GA (bare form currently 404s).
-// See 13-01-SUMMARY.md: "GEMINI_STAGE11_MODEL: gemini-3.1-pro-preview (keep preview)"
-export const GEMINI_STAGE11_MODEL =
-  process.env.GEMINI_STAGE11_MODEL ?? "gemini-3.1-pro-preview";
+export const QWEN_STAGE11_MODEL = QWEN_REASONING_MODEL;
 
 const PER_CALL_TIMEOUT_MS = 30_000;
-
-let _client: GoogleGenAI | null = null;
-function getClient(): GoogleGenAI {
-  if (!_client) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("Missing GEMINI_API_KEY environment variable");
-    _client = new GoogleGenAI({ apiKey });
-  }
-  return _client;
-}
 
 /**
  * Pure-TS check (NOT model-generated). Appends a LIKELY_FLOP warning to
@@ -73,56 +60,45 @@ export function maybeAppendLikelyFlopWarning(result: PredictionResult): void {
  */
 export async function runStage11Counterfactuals(
   aggregateResult: PredictionResult,
-  videoContext: { fileUri: string; mimeType: string } | null,
+  _videoContext: { fileUri: string; mimeType: string } | null,
   onEvent?: StageEventCallback,
 ): Promise<CounterfactualResult | null> {
   const start = emitStageStart(onEvent, "stage_11_counterfactuals", "post");
   let costCents = 0;
 
-  const ai = getClient();
+  const ai          = getQwenClient();
+  const model       = QWEN_STAGE11_MODEL;
   const userMessage = buildSignalContextUserMessage(aggregateResult);
 
-  // D-01: conditionally include fileData part when videoContext is provided
-  const parts: Array<
-    | { text: string }
-    | { fileData: { fileUri: string; mimeType: string } }
-  > = [{ text: userMessage }];
-
-  if (videoContext !== null) {
-    parts.push({
-      fileData: {
-        fileUri: videoContext.fileUri,
-        mimeType: videoContext.mimeType,
-      },
-    });
-  }
-
-  let attempt = 0;
+  let attempt   = 0;
   let lastError: Error | null = null;
 
   while (attempt <= 1) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), PER_CALL_TIMEOUT_MS);
+    const timer      = setTimeout(() => controller.abort(), PER_CALL_TIMEOUT_MS);
     try {
-      const response = await ai.models.generateContent({
-        model: GEMINI_STAGE11_MODEL,
-        contents: [{ role: "user", parts }],
-        config: {
-          systemInstruction: STABLE_COUNTERFACTUALS_SYSTEM_PROMPT,
-          responseMimeType: "application/json",
-          abortSignal: controller.signal,
+      const extraInstruction = attempt > 0
+        ? "\nIMPORTANT: Return ONLY raw JSON — no explanation, no markdown fences."
+        : "";
+
+      const completion = await ai.chat.completions.create(
+        {
+          model,
+          messages: [
+            { role: "system", content: STABLE_COUNTERFACTUALS_SYSTEM_PROMPT + extraInstruction },
+            { role: "user",   content: userMessage },
+          ],
+          response_format: { type: "json_object" },
         },
-      });
+        { signal: controller.signal },
+      );
       clearTimeout(timer);
 
-      // Cost telemetry via calculateGeminiCost (D-10 — no silent fallback to GEMINI_MODEL)
-      const usageMeta = response.usageMetadata;
-      costCents += calculateGeminiCost(GEMINI_STAGE11_MODEL, {
-        promptTokenCount: usageMeta?.promptTokenCount,
-        candidatesTokenCount: usageMeta?.candidatesTokenCount,
-      });
+      costCents += calculateCost(model, completion.usage ?? undefined);
 
-      const text = response.text ?? "{}";
+      const raw  = completion.choices[0]?.message?.content ?? "{}";
+      const text = stripModelOutput(raw);
+
       let parsed: ReturnType<typeof CounterfactualsResponseSchema.safeParse>;
       try {
         parsed = CounterfactualsResponseSchema.safeParse(JSON.parse(text));
@@ -134,10 +110,7 @@ export async function runStage11Counterfactuals(
         lastError = new Error(
           `validation failed: ${"error" in parsed ? String(parsed.error) : "unknown"}`,
         );
-        if (attempt === 0) {
-          attempt++;
-          continue;
-        }
+        if (attempt === 0) { attempt++; continue; }
         throw lastError;
       }
 
@@ -147,10 +120,8 @@ export async function runStage11Counterfactuals(
       });
 
       const data = parsed.data;
-      return {
-        band: data.band,
-        suggestions: data.suggestions,
-      };
+      return { band: data.band, suggestions: data.suggestions };
+
     } catch (err) {
       clearTimeout(timer);
       lastError = err instanceof Error ? err : new Error(String(err));

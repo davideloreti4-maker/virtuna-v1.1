@@ -1,0 +1,268 @@
+[dotenv@17.3.1] injecting env (5) from .env.local -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+[eval] corpus=full.2026-05-11 baseline=false loo=true cap=5000 delay=2000ms
+[2026-05-21T12:16:00.451Z] INFO Eval harness starting {"module":"corpus/eval-harness","corpusVersion":"full.2026-05-11","engineVersion":"3.0.0-dev","leaveOneOut":true}
+[2026-05-21T12:16:01.021Z] INFO Eval loop starting {"module":"corpus/eval-runner","corpusVersion":"full.2026-05-11","rowCount":25,"cap":5000}
+[2026-05-21T12:16:01.024Z] INFO Pipeline started {"requestId":"0J-gHhkSOhiW","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:16:01.667Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:16:01.671Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:16:12.854Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":11187,"cost_cents":0.0494,"model":"gemini-2.5-flash"}
+[2026-05-21T12:16:12.855Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:16:12.973Z] DEBUG Trending sounds loaded {"module":"trends","count":0,"cached":true}
+[2026-05-21T12:16:13.104Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":5,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:16:17.733Z] ERROR DeepSeek failed after retries {"module":"deepseek","attempts":3,"error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:16:17.734Z] WARN Falling back to Gemini for reasoning {"module":"deepseek"}
+[2026-05-21T12:16:39.046Z] INFO DeepSeek->Gemini fallback complete {"module":"deepseek","stage":"deepseek_gemini_fallback","duration_ms":21312,"cost_cents":0.0663}
+[2026-05-21T12:16:39.635Z] ERROR Platform-fit V3 call failed {"module":"platform-fit","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:16:39.636Z] INFO Pipeline complete {"requestId":"0J-gHhkSOhiW","module":"pipeline","stage":"pipeline","duration_ms":38611,"cost_cents":0.1157,"warnings_count":11}
+[2026-05-21T12:16:40.553Z] INFO Row complete {"module":"corpus/eval-runner","i":0,"niche":"beauty","score":99.85,"actual":"average","cost":0.1157}
+[2026-05-21T12:16:42.554Z] INFO Pipeline started {"requestId":"CyC8djtUU92C","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:16:42.905Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:16:42.905Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:16:55.950Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":13045,"cost_cents":0.0475,"model":"gemini-2.5-flash"}
+[2026-05-21T12:16:55.950Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:16:55.951Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":5,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:17:01.011Z] ERROR DeepSeek failed after retries {"module":"deepseek","attempts":3,"error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:17:01.011Z] WARN Falling back to Gemini for reasoning {"module":"deepseek"}
+[2026-05-21T12:17:13.918Z] INFO DeepSeek->Gemini fallback complete {"module":"deepseek","stage":"deepseek_gemini_fallback","duration_ms":12906,"cost_cents":0.0606}
+[2026-05-21T12:17:14.647Z] ERROR Platform-fit V3 call failed {"module":"platform-fit","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:17:14.648Z] INFO Pipeline complete {"requestId":"CyC8djtUU92C","module":"pipeline","stage":"pipeline","duration_ms":32093,"cost_cents":0.108,"warnings_count":11}
+[2026-05-21T12:17:15.425Z] INFO Row complete {"module":"corpus/eval-runner","i":1,"niche":"beauty","score":99.96,"actual":"viral","cost":0.108}
+[2026-05-21T12:17:17.427Z] INFO Pipeline started {"requestId":"lrRdykH17o61","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:17:17.788Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:17:17.788Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:17:27.092Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":9304,"cost_cents":0.0405,"model":"gemini-2.5-flash"}
+[2026-05-21T12:17:27.092Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:17:27.093Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":5,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:17:32.206Z] WARN Circuit breaker OPEN {"module":"deepseek","next_retry_ms":1000,"backoff_level":1}
+[2026-05-21T12:17:32.207Z] ERROR DeepSeek failed after retries {"module":"deepseek","attempts":3,"error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:17:32.207Z] WARN Falling back to Gemini for reasoning {"module":"deepseek"}
+[2026-05-21T12:17:45.906Z] INFO DeepSeek->Gemini fallback complete {"module":"deepseek","stage":"deepseek_gemini_fallback","duration_ms":13699,"cost_cents":0.0619}
+[2026-05-21T12:17:46.458Z] WARN Circuit breaker open — skipping platform-fit {"module":"platform-fit"}
+[2026-05-21T12:17:46.459Z] INFO Pipeline complete {"requestId":"lrRdykH17o61","module":"pipeline","stage":"pipeline","duration_ms":29032,"cost_cents":0.1023,"warnings_count":11}
+[2026-05-21T12:17:46.695Z] INFO Row complete {"module":"corpus/eval-runner","i":2,"niche":"lifestyle","score":99.95,"actual":"under","cost":0.1023}
+[2026-05-21T12:17:48.696Z] INFO Pipeline started {"requestId":"IeKcjOUczH-F","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:17:49.067Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:17:49.067Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:18:03.145Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":14078,"cost_cents":0.0514,"model":"gemini-2.5-flash"}
+[2026-05-21T12:18:03.145Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:18:03.146Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":5,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:18:03.146Z] WARN Circuit breaker open — skipping Wave 3 {"module":"wave3"}
+[2026-05-21T12:18:03.146Z] WARN Circuit breaker open — skipping platform-fit {"module":"platform-fit"}
+[2026-05-21T12:18:03.146Z] INFO Pipeline complete {"requestId":"IeKcjOUczH-F","module":"pipeline","stage":"pipeline","duration_ms":14450,"cost_cents":0.0514,"warnings_count":1}
+[2026-05-21T12:18:03.413Z] INFO Row complete {"module":"corpus/eval-runner","i":3,"niche":"beauty","score":99.93,"actual":"viral","cost":0.0514}
+[2026-05-21T12:18:05.414Z] INFO Pipeline started {"requestId":"T01buGKpw7EZ","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:18:05.815Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:18:05.815Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:18:15.231Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":9416,"cost_cents":0.0455,"model":"gemini-2.5-flash"}
+[2026-05-21T12:18:15.232Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:18:15.232Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":5,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:18:15.232Z] WARN Circuit breaker open — skipping Wave 3 {"module":"wave3"}
+[2026-05-21T12:18:15.232Z] WARN Circuit breaker open — skipping platform-fit {"module":"platform-fit"}
+[2026-05-21T12:18:15.232Z] INFO Pipeline complete {"requestId":"T01buGKpw7EZ","module":"pipeline","stage":"pipeline","duration_ms":9818,"cost_cents":0.0455,"warnings_count":1}
+[2026-05-21T12:18:15.369Z] INFO Row complete {"module":"corpus/eval-runner","i":4,"niche":"beauty","score":99.38,"actual":"viral","cost":0.0455}
+[2026-05-21T12:18:17.371Z] INFO Pipeline started {"requestId":"8RqzXkVWCIwK","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:18:17.725Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:18:17.725Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:18:28.877Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":11152,"cost_cents":0.0539,"model":"gemini-2.5-flash"}
+[2026-05-21T12:18:28.877Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:18:28.878Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":5,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:18:28.878Z] WARN Circuit breaker open — skipping Wave 3 {"module":"wave3"}
+[2026-05-21T12:18:28.878Z] WARN Circuit breaker open — skipping platform-fit {"module":"platform-fit"}
+[2026-05-21T12:18:28.878Z] INFO Pipeline complete {"requestId":"8RqzXkVWCIwK","module":"pipeline","stage":"pipeline","duration_ms":11506,"cost_cents":0.0539,"warnings_count":1}
+[2026-05-21T12:18:29.116Z] INFO Row complete {"module":"corpus/eval-runner","i":5,"niche":"beauty","score":99.87,"actual":"viral","cost":0.0539}
+[2026-05-21T12:18:31.117Z] INFO Pipeline started {"requestId":"N3x2OveFCwkl","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:18:31.623Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:18:31.623Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:18:46.407Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":14784,"cost_cents":0.0472,"model":"gemini-2.5-flash"}
+[2026-05-21T12:18:46.407Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:18:46.409Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":3,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:18:46.409Z] WARN Circuit breaker open — skipping Wave 3 {"module":"wave3"}
+[2026-05-21T12:18:46.409Z] WARN Circuit breaker open — skipping platform-fit {"module":"platform-fit"}
+[2026-05-21T12:18:46.409Z] INFO Pipeline complete {"requestId":"N3x2OveFCwkl","module":"pipeline","stage":"pipeline","duration_ms":15291,"cost_cents":0.0472,"warnings_count":1}
+[2026-05-21T12:18:46.579Z] INFO Row complete {"module":"corpus/eval-runner","i":6,"niche":"beauty","score":99.95,"actual":"viral","cost":0.0472}
+[2026-05-21T12:18:48.580Z] INFO Pipeline started {"requestId":"AGzrRS8svs0m","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:18:48.932Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:18:48.933Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:18:57.781Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":8848,"cost_cents":0.0444,"model":"gemini-2.5-flash"}
+[2026-05-21T12:18:57.781Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:18:57.781Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":0,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:18:57.781Z] WARN Circuit breaker open — skipping Wave 3 {"module":"wave3"}
+[2026-05-21T12:18:57.781Z] WARN Circuit breaker open — skipping platform-fit {"module":"platform-fit"}
+[2026-05-21T12:18:57.781Z] INFO Pipeline complete {"requestId":"AGzrRS8svs0m","module":"pipeline","stage":"pipeline","duration_ms":9200,"cost_cents":0.0444,"warnings_count":1}
+[2026-05-21T12:18:58.079Z] INFO Row complete {"module":"corpus/eval-runner","i":7,"niche":"beauty","score":99.94,"actual":"viral","cost":0.0444}
+[2026-05-21T12:19:00.081Z] INFO Pipeline started {"requestId":"6LPewQZyZbac","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:19:00.622Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:19:00.622Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:19:11.882Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":11260,"cost_cents":0.0505,"model":"gemini-2.5-flash"}
+[2026-05-21T12:19:11.882Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:19:11.883Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":5,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:19:11.883Z] WARN Circuit breaker open — skipping Wave 3 {"module":"wave3"}
+[2026-05-21T12:19:11.883Z] WARN Circuit breaker open — skipping platform-fit {"module":"platform-fit"}
+[2026-05-21T12:19:11.883Z] INFO Pipeline complete {"requestId":"6LPewQZyZbac","module":"pipeline","stage":"pipeline","duration_ms":11802,"cost_cents":0.0505,"warnings_count":1}
+[2026-05-21T12:19:12.001Z] INFO Row complete {"module":"corpus/eval-runner","i":8,"niche":"beauty","score":99.94,"actual":"viral","cost":0.0505}
+[2026-05-21T12:19:14.002Z] INFO Pipeline started {"requestId":"F6saiTHjf5XF","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:19:14.465Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:19:14.465Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:19:23.294Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":8829,"cost_cents":0.0482,"model":"gemini-2.5-flash"}
+[2026-05-21T12:19:23.294Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:19:23.295Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":2,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:19:23.295Z] WARN Circuit breaker open — skipping Wave 3 {"module":"wave3"}
+[2026-05-21T12:19:23.295Z] WARN Circuit breaker open — skipping platform-fit {"module":"platform-fit"}
+[2026-05-21T12:19:23.295Z] INFO Pipeline complete {"requestId":"F6saiTHjf5XF","module":"pipeline","stage":"pipeline","duration_ms":9293,"cost_cents":0.0482,"warnings_count":1}
+[2026-05-21T12:19:23.480Z] INFO Row complete {"module":"corpus/eval-runner","i":9,"niche":"beauty","score":99.7,"actual":"viral","cost":0.0482}
+[2026-05-21T12:19:25.482Z] INFO Pipeline started {"requestId":"Txll51GxTdaR","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:19:25.824Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:19:25.824Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:19:36.915Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":11091,"cost_cents":0.0428,"model":"gemini-2.5-flash"}
+[2026-05-21T12:19:36.915Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:19:36.916Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":5,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:19:36.916Z] WARN Circuit breaker open — skipping Wave 3 {"module":"wave3"}
+[2026-05-21T12:19:36.916Z] WARN Circuit breaker open — skipping platform-fit {"module":"platform-fit"}
+[2026-05-21T12:19:36.916Z] INFO Pipeline complete {"requestId":"Txll51GxTdaR","module":"pipeline","stage":"pipeline","duration_ms":11434,"cost_cents":0.0428,"warnings_count":1}
+[2026-05-21T12:19:37.068Z] INFO Row complete {"module":"corpus/eval-runner","i":10,"niche":"beauty","score":99.95,"actual":"viral","cost":0.0428}
+[2026-05-21T12:19:39.069Z] INFO Pipeline started {"requestId":"LdML_HfzO9yO","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:19:39.437Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:19:39.438Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:19:50.078Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":10641,"cost_cents":0.0446,"model":"gemini-2.5-flash"}
+[2026-05-21T12:19:50.079Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:19:50.079Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":5,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:19:50.080Z] WARN Circuit breaker open — skipping Wave 3 {"module":"wave3"}
+[2026-05-21T12:19:50.080Z] WARN Circuit breaker open — skipping platform-fit {"module":"platform-fit"}
+[2026-05-21T12:19:50.080Z] INFO Pipeline complete {"requestId":"LdML_HfzO9yO","module":"pipeline","stage":"pipeline","duration_ms":11011,"cost_cents":0.0446,"warnings_count":1}
+[2026-05-21T12:19:50.261Z] INFO Row complete {"module":"corpus/eval-runner","i":11,"niche":"beauty","score":99.95,"actual":"viral","cost":0.0446}
+[2026-05-21T12:19:52.262Z] INFO Pipeline started {"requestId":"MydOke9JK_KH","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:19:52.599Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:19:52.599Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:20:01.981Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":9382,"cost_cents":0.0398,"model":"gemini-2.5-flash"}
+[2026-05-21T12:20:01.981Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:20:01.981Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":3,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:20:01.981Z] WARN Circuit breaker open — skipping Wave 3 {"module":"wave3"}
+[2026-05-21T12:20:01.981Z] WARN Circuit breaker open — skipping platform-fit {"module":"platform-fit"}
+[2026-05-21T12:20:01.981Z] INFO Pipeline complete {"requestId":"MydOke9JK_KH","module":"pipeline","stage":"pipeline","duration_ms":9719,"cost_cents":0.0398,"warnings_count":1}
+[2026-05-21T12:20:02.177Z] INFO Row complete {"module":"corpus/eval-runner","i":12,"niche":"beauty","score":99.93,"actual":"average","cost":0.0398}
+[2026-05-21T12:20:04.178Z] INFO Pipeline started {"requestId":"eQU1gZGpwFtu","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:20:04.560Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:20:04.560Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:20:17.262Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":12702,"cost_cents":0.0506,"model":"gemini-2.5-flash"}
+[2026-05-21T12:20:17.263Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:20:17.263Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":5,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:20:17.263Z] WARN Circuit breaker open — skipping Wave 3 {"module":"wave3"}
+[2026-05-21T12:20:17.264Z] WARN Circuit breaker open — skipping platform-fit {"module":"platform-fit"}
+[2026-05-21T12:20:17.264Z] INFO Pipeline complete {"requestId":"eQU1gZGpwFtu","module":"pipeline","stage":"pipeline","duration_ms":13085,"cost_cents":0.0506,"warnings_count":1}
+[2026-05-21T12:20:17.438Z] INFO Row complete {"module":"corpus/eval-runner","i":13,"niche":"fitness","score":99.95,"actual":"viral","cost":0.0506}
+[2026-05-21T12:20:19.439Z] INFO Pipeline started {"requestId":"F_fSJTkuun9b","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:20:19.805Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:20:19.805Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:20:33.994Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":14189,"cost_cents":0.0531,"model":"gemini-2.5-flash"}
+[2026-05-21T12:20:33.994Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:20:33.995Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":5,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:20:33.995Z] WARN Circuit breaker open — skipping Wave 3 {"module":"wave3"}
+[2026-05-21T12:20:33.995Z] WARN Circuit breaker open — skipping platform-fit {"module":"platform-fit"}
+[2026-05-21T12:20:33.995Z] INFO Pipeline complete {"requestId":"F_fSJTkuun9b","module":"pipeline","stage":"pipeline","duration_ms":14556,"cost_cents":0.0531,"warnings_count":1}
+[2026-05-21T12:20:34.288Z] INFO Row complete {"module":"corpus/eval-runner","i":14,"niche":"beauty","score":99.95,"actual":"average","cost":0.0531}
+[2026-05-21T12:20:36.289Z] INFO Pipeline started {"requestId":"EpeQgAOg646_","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:20:36.918Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:20:36.918Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:20:46.847Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":9929,"cost_cents":0.0507,"model":"gemini-2.5-flash"}
+[2026-05-21T12:20:46.847Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:20:46.847Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":1,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:20:46.847Z] WARN Circuit breaker open — skipping Wave 3 {"module":"wave3"}
+[2026-05-21T12:20:46.847Z] WARN Circuit breaker open — skipping platform-fit {"module":"platform-fit"}
+[2026-05-21T12:20:46.847Z] INFO Pipeline complete {"requestId":"EpeQgAOg646_","module":"pipeline","stage":"pipeline","duration_ms":10558,"cost_cents":0.0507,"warnings_count":1}
+[2026-05-21T12:20:47.025Z] INFO Row complete {"module":"corpus/eval-runner","i":15,"niche":"comedy","score":99.93,"actual":"under","cost":0.0507}
+[2026-05-21T12:20:49.026Z] INFO Pipeline started {"requestId":"eTf2A0UxIc4X","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:20:49.452Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:20:49.452Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:20:58.450Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":8998,"cost_cents":0.0475,"model":"gemini-2.5-flash"}
+[2026-05-21T12:20:58.451Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:20:58.451Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":5,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:20:58.451Z] WARN Circuit breaker open — skipping Wave 3 {"module":"wave3"}
+[2026-05-21T12:20:58.451Z] WARN Circuit breaker open — skipping platform-fit {"module":"platform-fit"}
+[2026-05-21T12:20:58.451Z] INFO Pipeline complete {"requestId":"eTf2A0UxIc4X","module":"pipeline","stage":"pipeline","duration_ms":9425,"cost_cents":0.0475,"warnings_count":1}
+[2026-05-21T12:20:58.668Z] INFO Row complete {"module":"corpus/eval-runner","i":16,"niche":"beauty","score":99.9,"actual":"average","cost":0.0475}
+[2026-05-21T12:21:00.671Z] INFO Pipeline started {"requestId":"BuwFmXHqx8Zm","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:21:01.181Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:21:01.181Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:21:14.144Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":12963,"cost_cents":0.0493,"model":"gemini-2.5-flash"}
+[2026-05-21T12:21:14.144Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:21:14.368Z] DEBUG Trending sounds loaded {"module":"trends","count":0,"cached":true}
+[2026-05-21T12:21:14.369Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":5,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:21:14.369Z] WARN Circuit breaker open — skipping Wave 3 {"module":"wave3"}
+[2026-05-21T12:21:14.369Z] WARN Circuit breaker open — skipping platform-fit {"module":"platform-fit"}
+[2026-05-21T12:21:14.369Z] INFO Pipeline complete {"requestId":"BuwFmXHqx8Zm","module":"pipeline","stage":"pipeline","duration_ms":13698,"cost_cents":0.0493,"warnings_count":1}
+[2026-05-21T12:21:14.518Z] INFO Row complete {"module":"corpus/eval-runner","i":17,"niche":"beauty","score":99.95,"actual":"average","cost":0.0493}
+[2026-05-21T12:21:16.519Z] INFO Pipeline started {"requestId":"hdLehDdtRlQD","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:21:17.321Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:21:17.322Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:21:26.745Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":9423,"cost_cents":0.0478,"model":"gemini-2.5-flash"}
+[2026-05-21T12:21:26.745Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:21:26.746Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":5,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:21:26.746Z] WARN Circuit breaker open — skipping Wave 3 {"module":"wave3"}
+[2026-05-21T12:21:26.746Z] WARN Circuit breaker open — skipping platform-fit {"module":"platform-fit"}
+[2026-05-21T12:21:26.746Z] INFO Pipeline complete {"requestId":"hdLehDdtRlQD","module":"pipeline","stage":"pipeline","duration_ms":10226,"cost_cents":0.0478,"warnings_count":1}
+[2026-05-21T12:21:26.877Z] INFO Row complete {"module":"corpus/eval-runner","i":18,"niche":"beauty","score":99.94,"actual":"average","cost":0.0478}
+[2026-05-21T12:21:28.879Z] INFO Pipeline started {"requestId":"QyGxmMMEU2FP","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:21:29.407Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:21:29.407Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:21:42.200Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":12793,"cost_cents":0.0509,"model":"gemini-2.5-flash"}
+[2026-05-21T12:21:42.201Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:21:42.201Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":4,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:21:42.201Z] WARN Circuit breaker open — skipping Wave 3 {"module":"wave3"}
+[2026-05-21T12:21:42.201Z] WARN Circuit breaker open — skipping platform-fit {"module":"platform-fit"}
+[2026-05-21T12:21:42.201Z] INFO Pipeline complete {"requestId":"QyGxmMMEU2FP","module":"pipeline","stage":"pipeline","duration_ms":13323,"cost_cents":0.0509,"warnings_count":1}
+[2026-05-21T12:21:42.427Z] INFO Row complete {"module":"corpus/eval-runner","i":19,"niche":"beauty","score":99.95,"actual":"average","cost":0.0509}
+[2026-05-21T12:21:44.428Z] INFO Pipeline started {"requestId":"tm65ATUueguO","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:21:44.835Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:21:44.835Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:21:56.094Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":11259,"cost_cents":0.0555,"model":"gemini-2.5-flash"}
+[2026-05-21T12:21:56.094Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:21:56.094Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":4,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:21:56.094Z] WARN Circuit breaker open — skipping Wave 3 {"module":"wave3"}
+[2026-05-21T12:21:56.095Z] WARN Circuit breaker open — skipping platform-fit {"module":"platform-fit"}
+[2026-05-21T12:21:56.095Z] INFO Pipeline complete {"requestId":"tm65ATUueguO","module":"pipeline","stage":"pipeline","duration_ms":11666,"cost_cents":0.0555,"warnings_count":1}
+[2026-05-21T12:21:56.237Z] INFO Row complete {"module":"corpus/eval-runner","i":20,"niche":"beauty","score":99.92,"actual":"average","cost":0.0555}
+[2026-05-21T12:21:58.239Z] INFO Pipeline started {"requestId":"DrE2MTk4dVu6","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:21:58.948Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:21:58.948Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:22:10.977Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":12029,"cost_cents":0.0505,"model":"gemini-2.5-flash"}
+[2026-05-21T12:22:10.978Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:22:10.978Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":4,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:22:10.978Z] WARN Circuit breaker open — skipping Wave 3 {"module":"wave3"}
+[2026-05-21T12:22:10.978Z] WARN Circuit breaker open — skipping platform-fit {"module":"platform-fit"}
+[2026-05-21T12:22:10.978Z] INFO Pipeline complete {"requestId":"DrE2MTk4dVu6","module":"pipeline","stage":"pipeline","duration_ms":12739,"cost_cents":0.0505,"warnings_count":1}
+[2026-05-21T12:22:11.171Z] INFO Row complete {"module":"corpus/eval-runner","i":21,"niche":"beauty","score":99.91,"actual":"average","cost":0.0505}
+[2026-05-21T12:22:13.172Z] INFO Pipeline started {"requestId":"XM7XEP_kDSHg","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:22:13.722Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:22:13.722Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:22:26.533Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":12811,"cost_cents":0.0429,"model":"gemini-2.5-flash"}
+[2026-05-21T12:22:26.533Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:22:26.534Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":3,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:22:26.534Z] WARN Circuit breaker open — skipping Wave 3 {"module":"wave3"}
+[2026-05-21T12:22:26.534Z] WARN Circuit breaker open — skipping platform-fit {"module":"platform-fit"}
+[2026-05-21T12:22:26.534Z] INFO Pipeline complete {"requestId":"XM7XEP_kDSHg","module":"pipeline","stage":"pipeline","duration_ms":13362,"cost_cents":0.0429,"warnings_count":1}
+[2026-05-21T12:22:26.751Z] INFO Row complete {"module":"corpus/eval-runner","i":22,"niche":"beauty","score":99.95,"actual":"average","cost":0.0429}
+[2026-05-21T12:22:28.751Z] INFO Pipeline started {"requestId":"DfbHSMXRUiBl","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:22:40.071Z] WARN Niche detection failed {"module":"wave0.niche","error":"401 Authentication Fails, Your api key: ****back is invalid"}
+[2026-05-21T12:22:40.072Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T12:22:52.884Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":12813,"cost_cents":0.0486,"model":"gemini-2.5-flash"}
+[2026-05-21T12:22:52.884Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T12:22:52.885Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":5,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T12:22:52.885Z] WARN Circuit breaker open — skipping Wave 3 {"module":"wave3"}
+[2026-05-21T12:22:52.885Z] WARN Circuit breaker open — skipping platform-fit {"module":"platform-fit"}
+[2026-05-21T12:22:52.885Z] INFO Pipeline complete {"requestId":"DfbHSMXRUiBl","module":"pipeline","stage":"pipeline","duration_ms":24133,"cost_cents":0.0486,"warnings_count":1}
+[2026-05-21T12:22:53.103Z] INFO Row complete {"module":"corpus/eval-runner","i":23,"niche":"beauty","score":99.97,"actual":"average","cost":0.0486}
+[2026-05-21T12:22:55.104Z] INFO Pipeline started {"requestId":"-rJy7FjJhkzj","module":"pipeline","input_mode":"text"}
+[2026-05-21T12:22:55.106Z] ERROR Row failed; continuing {"module":"corpus/eval-runner","i":24,"error":"Analysis failed: input validation — [\n  {\n    \"code\": \"custom\",\n    \"path\": [],\n    \"message\": \"Required field missing for selected input_mode\"\n  }\n]"}
+[2026-05-21T12:22:55.106Z] INFO Eval loop complete {"module":"corpus/eval-runner","processed":25,"totalCost":1.3417}
+[2026-05-21T12:22:55.263Z] INFO Eval harness complete {"module":"corpus/eval-harness","macro_f1":0.2095,"ece":0.5407,"totalCost":1.3417}
+[eval] macro_f1: 0.2095
+[eval] ece: 0.5407
+[eval] cost_cents_avg: 0.0537
+[eval] cost_cents_total: 1.3417
+[eval] latency p50/p95/p99 ms: 33882/73255/83865
+[eval] per-niche macro_f1: {"beauty":0.2151,"fitness":0,"edu":0,"comedy":0,"lifestyle":0}
+[eval] viral_recall: 1
+[eval] under_precision: 0
+[eval] rows_processed: 25 (1 failed)
+[eval] failure_cases: 10
+[eval] Wrote JSON report -> .planning/research/smoke-v3.json

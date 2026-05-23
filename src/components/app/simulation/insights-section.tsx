@@ -64,7 +64,7 @@ export function SuggestionsSection({ suggestions, band }: SuggestionsSectionProp
     <div className="py-1">
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <Text as="span" size="sm" muted>
+          <Text as="span" size="sm" className="opacity-60">
             {HEADER_BY_BAND[band]}
           </Text>
         </div>
@@ -83,12 +83,12 @@ export function SuggestionsSection({ suggestions, band }: SuggestionsSectionProp
                     {badge.label}
                   </Badge>
                   {item.signal_anchor && (
-                    <Caption className="uppercase tracking-wider" muted>
+                    <Caption className="uppercase tracking-wider opacity-60">
                       {item.signal_anchor}
                     </Caption>
                   )}
                   {item.timestamp_ms > 0 && (
-                    <Caption muted>
+                    <Caption className="opacity-60">
                       <Clock className="h-3 w-3 inline mr-0.5" />
                       {formatTimestamp(item.timestamp_ms)}
                     </Caption>

@@ -1,11 +1,10 @@
 /**
- * Gemini AI client for viral video explanation and hashtag gap analysis.
- *
- * Uses @google/genai with lazy-initialized singleton.
- * Model: gemini-2.5-flash-lite with JSON response mode.
+ * Qwen AI client for viral video explanation and hashtag gap analysis.
+ * Replaces the former Gemini client — same public API, same return types.
+ * Model: qwen3.6-plus via DashScope International (OpenAI-compatible).
  */
 
-import { GoogleGenAI } from "@google/genai";
+import OpenAI from "openai";
 import type { ZodType } from "zod";
 import {
   ViralExplanationSchema,
@@ -15,87 +14,71 @@ import {
   type ViralVideoInput,
 } from "./types";
 import { buildViralPrompt, buildHashtagGapPrompt } from "./prompts";
+import { stripModelOutput } from "../engine/utils/strip";
 
-// --- Singleton client ---
+const DASHSCOPE_ENDPOINT = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1";
+const MODEL = process.env.QWEN_REASONING_MODEL ?? "qwen3.6-plus";
 
-let client: GoogleGenAI | null = null;
+let client: OpenAI | null = null;
 
-function getClient(): GoogleGenAI {
+function getClient(): OpenAI {
   if (!client) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("Missing GEMINI_API_KEY environment variable");
-    client = new GoogleGenAI({ apiKey });
+    const apiKey = process.env.DASHSCOPE_API_KEY;
+    if (!apiKey) throw new Error("Missing DASHSCOPE_API_KEY environment variable");
+    client = new OpenAI({ apiKey, baseURL: DASHSCOPE_ENDPOINT });
   }
   return client;
 }
-
-// --- Helpers ---
 
 interface GeminiResult<T> {
   analysis: T;
   usage: { prompt_tokens: number; completion_tokens: number };
 }
 
-/**
- * Shared helper: call Gemini with a prompt and validate response with Zod.
- * Uses responseMimeType: "application/json" for structured output.
- */
-async function callGemini<T>(
+async function callQwen<T>(
   prompt: string,
-  schema: ZodType<T>
+  schema: ZodType<T>,
 ): Promise<GeminiResult<T>> {
   const ai = getClient();
 
-  const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash-lite",
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-    },
+  const completion = await ai.chat.completions.create({
+    model: MODEL,
+    messages: [{ role: "user", content: prompt }],
+    response_format: { type: "json_object" },
   });
 
-  const raw = response.text ?? "";
-  const parsed = JSON.parse(raw);
+  const raw     = completion.choices[0]?.message?.content ?? "";
+  const cleaned = stripModelOutput(raw);
+  const parsed  = JSON.parse(cleaned);
 
   const result = schema.safeParse(parsed);
   if (!result.success) {
-    console.error(
-      "Gemini response validation failed:",
-      result.error.issues.slice(0, 3)
-    );
-    throw new Error("Gemini response failed Zod validation");
+    console.error("Qwen response validation failed:", result.error.issues.slice(0, 3));
+    throw new Error("Qwen response failed Zod validation");
   }
 
   return {
     analysis: result.data,
     usage: {
-      prompt_tokens: response.usageMetadata?.promptTokenCount ?? 0,
-      completion_tokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+      prompt_tokens:      completion.usage?.prompt_tokens     ?? 0,
+      completion_tokens:  completion.usage?.completion_tokens ?? 0,
     },
   };
 }
 
-// --- Public API ---
-
 export async function explainViralVideos(
   handle: string,
   avgViews: number,
-  viralVideos: ViralVideoInput[]
+  viralVideos: ViralVideoInput[],
 ): Promise<GeminiResult<ViralExplanation>> {
-  return callGemini(
-    buildViralPrompt(handle, avgViews, viralVideos),
-    ViralExplanationSchema
-  );
+  return callQwen(buildViralPrompt(handle, avgViews, viralVideos), ViralExplanationSchema);
 }
 
 export async function analyzeHashtagGap(
   handle: string,
   competitorOnly: { tag: string; count: number }[],
   userOnly: { tag: string; count: number }[],
-  shared: { tag: string; competitorCount: number; userCount: number }[]
+  shared: { tag: string; competitorCount: number; userCount: number }[],
 ): Promise<GeminiResult<HashtagGap>> {
-  return callGemini(
-    buildHashtagGapPrompt(handle, competitorOnly, userOnly, shared),
-    HashtagGapSchema
-  );
+  return callQwen(buildHashtagGapPrompt(handle, competitorOnly, userOnly, shared), HashtagGapSchema);
 }

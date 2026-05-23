@@ -3,7 +3,7 @@
  * Per CONTEXT.md D-02 (locked shape). Consumed by /api/analyze SSE forwarder.
  */
 
-export type StageEventWave = 0 | 1 | 2 | 3 | "aggregator" | "post";
+export type StageEventWave = 0 | 1 | 2 | 3 | 4 | "aggregator" | "post";
 
 export type StageEvent =
   | { type: "stage_start"; stage: string; wave: StageEventWave; timestamp_ms: number }

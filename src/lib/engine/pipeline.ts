@@ -19,21 +19,11 @@ import {
   type BenchmarkRetrievalResult,
 } from "./types";
 import { normalizeInput } from "./normalize";
-import {
-  analyzeWithGemini,
-  loadCalibrationData,
-  // D-18 (Phase 13 Plan 03): pipeline-entry upload helpers — exported by Plan 02 Task 2.2 Step E
-  getClient as getGeminiClient,
-  VIDEO_POLL_TIMEOUT_MS,
-  VIDEO_POLL_INTERVAL_MS,
-  VIDEO_MAX_SIZE_BYTES,
-  EXT_TO_MIME,
-} from "./gemini";
-import { analyzeVideoSegmented } from "./gemini/segmented"; // Phase 5 Plan 02/03 — segmented video path
 import { matchAudioFingerprint } from "./audio-fingerprint"; // Phase 6 Plan 04 — pgvector fingerprint match
-
-// Phase 5 IN-05 fix: removed re-export of `analyzeVideoWithGemini`. Direct-import
-// is the canonical pattern from `./gemini` for legacy consumers (eval-harness).
+import { analyzeVideoWithOmni } from "./qwen/omni-analysis";
+import { getQwenClient, QWEN_REASONING_MODEL } from "./qwen/client";
+import { calculateCost } from "./qwen/cost";
+import { stripModelOutput } from "./utils/strip";
 import { reasonWithDeepSeek } from "./deepseek";
 import { loadActiveRules, scoreContentAgainstRules } from "./rules";
 import { enrichWithTrends } from "./trends";
@@ -44,7 +34,6 @@ import {
 } from "./creator";
 import type { StageEventCallback, StageEventWave } from "./events";
 import { emitStageStart, emitStageEnd } from "./events";
-import { runWave0 } from "./wave0";
 import { runWave3 } from "./wave3";
 import { runBenchmarkRetrieval } from "./retrieval/retrieval-stage";
 import { runPlatformFit } from "./wave4/platform-fit";
@@ -117,11 +106,6 @@ export interface PipelineResult extends PipelineAudioFingerprintFields {
   // breaker is open. Aggregator reads this (via widenedPipeline cast) to compute
   // platform_fit signal availability + fold mean fit_score into overall_score.
   platformFitResult: PlatformFitResult[] | null;
-
-  // D-18 (Phase 13 Plan 03): Gemini Files API videoContext from pipeline-entry upload.
-  // Surfaced here so the route handler can pass { videoContext } to aggregateScores,
-  // which threads it to Stage 11 (runStage11Counterfactuals). Null for text/tiktok_url modes.
-  videoContext: { fileUri: string; mimeType: string } | null;
 
   // Pipeline metadata
   requestId: string;
@@ -404,251 +388,104 @@ export async function runPredictionPipeline(
       }
     })());
 
-  // -------------------------------------------------------
-  // D-18 (Phase 13 Plan 03): Single Gemini Files API upload at pipeline entry.
-  // One upload per analysis run — Wave 0, Wave 1 segmented, and Stage 11 all share
-  // the same fileUri via the videoContext bag. Caller (pipeline.ts) owns cleanup.
-  //
-  // tiktok_url mode: NO upload — content-type-detector skips non-video_upload mode
-  // (confirmed in Plan 01 D-31 audit). videoContext remains null.
-  // -------------------------------------------------------
-  let videoContext: { fileUri: string; mimeType: string } | null = null;
-  let geminiUploadedFileName: string | undefined;
-  const geminiAiClient = getGeminiClient();
+  // Video signed URL for Omni-Plus — no upload, no polling, no cleanup.
+  // Supabase Storage already holds the video; we generate a 1-hour signed URL.
+  let signedVideoUrl: string | null = null;
 
   if (validated.input_mode === "video_upload" && validated.video_storage_path) {
-    const { data: videoBlob, error: videoDownloadError } = await supabase
+    const { data: signedData, error: signedError } = await supabase
       .storage
       .from("videos")
-      .download(validated.video_storage_path);
+      .createSignedUrl(validated.video_storage_path, 3600);
 
-    if (videoDownloadError || !videoBlob) {
+    if (signedError || !signedData?.signedUrl) {
       throw new Error(
-        `Video download failed at pipeline entry: ${videoDownloadError?.message ?? "no data"}`,
+        `Failed to generate video signed URL: ${signedError?.message ?? "no URL returned"}`,
       );
     }
-
-    const videoBuffer = Buffer.from(await videoBlob.arrayBuffer());
-    if (videoBuffer.byteLength > VIDEO_MAX_SIZE_BYTES) {
-      throw new Error("Video exceeds maximum size (287MB).");
-    }
-
-    const ext = validated.video_storage_path.split(".").pop()?.toLowerCase() ?? "mp4";
-    const mimeType = EXT_TO_MIME[ext] ?? "video/mp4";
-    const blob = new Blob([new Uint8Array(videoBuffer)], { type: mimeType });
-
-    const uploadResult = await geminiAiClient.files.upload({ file: blob, config: { mimeType } });
-    if (!uploadResult.name) throw new Error("Video upload failed: no file name returned");
-    geminiUploadedFileName = uploadResult.name;
-
-    let fileState = uploadResult.state;
-    let fileUri = uploadResult.uri ?? "";
-    // Hoist lastFileInfo so duration metadata is accessible whether or not polling ran.
-    let lastFileInfo: Awaited<ReturnType<typeof geminiAiClient.files.get>> | typeof uploadResult = uploadResult;
-    const pollStart = Date.now();
-    while (fileState === "PROCESSING") {
-      if (Date.now() - pollStart > VIDEO_POLL_TIMEOUT_MS) {
-        // Upload timeout: do NOT delete — file is in PROCESSING state, let TTL expire it.
-        throw new Error("Video upload timeout — file still processing in Gemini Files API.");
-      }
-      await new Promise((r) => setTimeout(r, VIDEO_POLL_INTERVAL_MS));
-      lastFileInfo = await geminiAiClient.files.get({ name: geminiUploadedFileName });
-      fileState = lastFileInfo.state;
-      fileUri = lastFileInfo.uri ?? "";
-    }
-    if (fileState !== "ACTIVE" || !fileUri) {
-      // Gemini returned FAILED — likely unsupported codec (e.g. HEVC/H.265).
-      // Attempt re-encode to H.264 via ffmpeg and retry upload once (dev only).
-      let retryOk = false;
-      try {
-        const { execSync } = await import("child_process");
-        const { writeFileSync, readFileSync, unlinkSync } = await import("fs");
-        const tmpIn = `/tmp/gsd-vin-${requestId}.mp4`;
-        const tmpOut = `/tmp/gsd-vout-${requestId}.mp4`;
-        writeFileSync(tmpIn, Buffer.from(await blob.arrayBuffer()));
-        execSync(`ffmpeg -y -i "${tmpIn}" -c:v libx264 -preset fast -crf 23 -c:a aac -movflags +faststart "${tmpOut}" 2>/dev/null`, { timeout: 60000 });
-        const reencoded = Buffer.from(readFileSync(tmpOut));
-        unlinkSync(tmpIn);
-        unlinkSync(tmpOut);
-        const reBlob = new Blob([new Uint8Array(reencoded)], { type: "video/mp4" });
-        const reUpload = await geminiAiClient.files.upload({ file: reBlob, config: { mimeType: "video/mp4" } });
-        if (reUpload.name) {
-          geminiUploadedFileName = reUpload.name;
-          let reState = reUpload.state;
-          let reUri = reUpload.uri ?? "";
-          let reInfo: typeof reUpload = reUpload;
-          const rePollStart = Date.now();
-          while (reState === "PROCESSING") {
-            if (Date.now() - rePollStart > VIDEO_POLL_TIMEOUT_MS) break;
-            await new Promise((r) => setTimeout(r, VIDEO_POLL_INTERVAL_MS));
-            reInfo = await geminiAiClient.files.get({ name: reUpload.name });
-            reState = reInfo.state;
-            reUri = reInfo.uri ?? "";
-          }
-          if (reState === "ACTIVE" && reUri) {
-            fileUri = reUri;
-            retryOk = true;
-            videoContext = { fileUri, mimeType: "video/mp4" };
-            const rawDur = (reInfo as { videoMetadata?: { videoDuration?: string } }).videoMetadata?.videoDuration;
-            if (rawDur && payload.duration_hint == null) {
-              const dm = rawDur.match(/^(\d+(?:\.\d+)?)s?$/);
-              if (dm) payload.duration_hint = Math.round(parseFloat(dm[1]!));
-            }
-          }
-        }
-      } catch (_) { /* ffmpeg not available or failed — proceed without video context */ }
-
-      if (!retryOk) {
-        warnings.push(`Gemini file processing ${fileState} — running metadata-only analysis (video signals unavailable).`);
-        onStageEvent?.({ type: "pipeline_warning", message: `Gemini file upload ${fileState}`, stage: "gemini_video_unavailable" });
-      }
-    } else {
-      // Extract duration from Gemini file metadata and backfill payload.duration_hint
-      // so the segmented analysis isn't skipped on video_upload with no caption.
-      // Gemini returns videoDuration as a protobuf Duration string e.g. "30.500s".
-      const rawDuration = (lastFileInfo as { videoMetadata?: { videoDuration?: string } }).videoMetadata?.videoDuration;
-      if (rawDuration != null && payload.duration_hint == null) {
-        const m = rawDuration.match(/^(\d+(?:\.\d+)?)s?$/);
-        if (m) payload.duration_hint = Math.round(parseFloat(m[1]!));
-      }
-
-      videoContext = { fileUri, mimeType };
-
-      Sentry.addBreadcrumb({
-        category: "engine.pipeline",
-        message: "D-18: video uploaded at pipeline entry — fileUri shared across stages",
-        level: "info",
-        data: { requestId, geminiUploadedFileName, mimeType },
-      });
-    }
+    signedVideoUrl = signedData.signedUrl;
   }
 
   // -------------------------------------------------------
-  // Wrap pipeline body in try/finally to ensure cleanup.
-  // D-18: cleanup (ai.files.delete) happens once at pipeline exit.
+  // Wave 0 + Wave 1 visual/audio: unified Omni-Plus call (replaces Wave 0 + Gemini segmented)
+  // For video_upload mode, a single qwen3.5-omni-plus call returns content-type, niche,
+  // hook/body/CTA analysis, and audio signals in one response.
   // -------------------------------------------------------
-  try {
+  let wave0Result: Wave0Result = { content_type: null, niche: null };
+  let precomputedGeminiResult: PipelineResult["geminiResult"] | null = null;
 
-  // -------------------------------------------------------
-  // Wave 0: Content-type + niche detection (Phase 4 — D-17 folded into single Gemini call)
-  // Runs BEFORE Wave 1 — events fire before any Wave 1 stage_start.
-  // D-18: videoContext threaded so Wave 0 skips its own upload.
-  // -------------------------------------------------------
-  const wave0Result = await runWave0(payload, supabase, creatorContext, videoContext, onStageEvent);
+  if (signedVideoUrl) {
+    try {
+      const omniOut = await analyzeVideoWithOmni(signedVideoUrl, {
+        niche: validated.niche ?? creatorContext.niche ?? undefined,
+        onEvent: onStageEvent,
+      });
+      wave0Result         = omniOut.wave0Result;
+      precomputedGeminiResult = omniOut.geminiResult
+        ? {
+            analysis: omniOut.geminiResult.analysis,
+            cost_cents: omniOut.geminiResult.cost_cents,
+            signalAvailability: omniOut.signalAvailability,
+          }
+        : {
+            ...DEFAULT_GEMINI_RESULT,
+            signalAvailability: omniOut.signalAvailability,
+          };
+    } catch (error) {
+      Sentry.captureException(error, { tags: { stage: "omni_analysis", requestId } });
+      warnings.push(`Omni analysis failed: ${error instanceof Error ? error.message : String(error)}`);
+      precomputedGeminiResult = DEFAULT_GEMINI_RESULT;
+    }
+  }
 
   Sentry.addBreadcrumb({
     category: "engine.pipeline",
-    message: "Wave 0 complete",
+    message: "Wave 0 + Omni analysis complete",
     level: "info",
-    data: { requestId, stages: ["wave_0_content_type"] },
+    data: { requestId, hasVideo: !!signedVideoUrl },
   });
 
-  // -------------------------------------------------------
-  // Wave 1: Gemini + Audio + Creator + Rules (all non-critical, HARD-03)
-  // -------------------------------------------------------
-
-  // Stage 3: Gemini Analysis -- NON-CRITICAL (fallback with warning — HARD-03)
-  const geminiPromise = (async (): Promise<PipelineResult["geminiResult"]> => {
+  // Wave 1: remaining parallel stages
+  // geminiPromise is pre-resolved from Omni (video mode) or runs text analysis (text/url mode).
+  const geminiPromise: Promise<PipelineResult["geminiResult"]> = (async (): Promise<PipelineResult["geminiResult"]> => {
+    if (precomputedGeminiResult !== null) {
+      return precomputedGeminiResult;
+    }
+    // Text / tiktok_url mode: text analysis via Qwen
     try {
-      // Route video uploads to segmented Gemini analysis (Phase 5 Plan 02/03).
-      // D-11: legacy `analyzeVideoWithGemini` import preserved above for eval-harness
-      // corpus-replay path; not invoked from production video branch.
-      // D-14: NO outer `timed("gemini_video_analysis", ...)` wrapper here — the three
-      // per-segment events emitted by helpers (gemini_hook / _body / _cta) REPLACE it.
-      // D-18: videoContext from pipeline entry — Wave 1 uses it instead of re-uploading.
-      if (validated.input_mode === "video_upload" && validated.video_storage_path) {
-        // Load calibration baseline so segment prompts can embed differentiators.
-        // Reuses the module-level cache singleton in gemini.ts — no extra disk reads on warm path.
-        // If calibration cannot load, legacy analyzeVideoWithGemini also fails; preserve that
-        // behavior by throwing here, which the outer catch routes to DEFAULT_GEMINI_RESULT.
-        const calibration = await loadCalibrationData();
-        if (!calibration) {
-          throw new Error(
-            "Calibration baseline unavailable — Gemini segmented analysis cannot proceed."
-          );
+      return await timed("gemini_analysis", timings, async () => {
+        const ai    = getQwenClient();
+        const model = QWEN_REASONING_MODEL;
+        const completion = await ai.chat.completions.create({
+          model,
+          messages: [
+            { role: "system", content: "You are a TikTok content analyst. Analyze the provided content and return a JSON object with fields: factors (array of 5 with name, score 0-10, rationale, improvement_tip), overall_impression (string), content_summary (string). Factor names must be exactly: Scroll-Stop Power, Completion Pull, Rewatch Potential, Share Trigger, Emotional Charge." },
+            { role: "user",   content: `Analyze this TikTok content:\n\n${validated.content_text ?? "(no text provided)"}` },
+          ],
+          response_format: { type: "json_object" },
+        });
+        const raw    = completion.choices[0]?.message?.content ?? "{}";
+        const text   = stripModelOutput(raw);
+        const parsed = JSON.parse(text);
+        const cost_cents = calculateCost(model, completion.usage ?? undefined);
+        // Validate minimal shape
+        if (!Array.isArray(parsed.factors) || parsed.factors.length !== 5) {
+          throw new Error("Text analysis returned invalid factors array");
         }
-
-        // Phase 4 D-15: content_type from Wave 0 flows into segment prompts.
-        // Phase 5 D-15-partial: niche threads through; creatorStyle (Card 4) deferred.
-        const contentTypeSlug = wave0Result.content_type?.type ?? null;
-
-        // Determine if we should use inlineData (Files API unavailable or small video).
-        // When videoContext is null AND buffer ≤ 15MB, pass inlineVideoData to bypass Files API.
-        const shouldUseInline = !videoContext && videoBuffer.byteLength <= 15 * 1024 * 1024;
-        const inlineVideoData = shouldUseInline
-          ? { buffer: videoBuffer, mimeType: EXT_TO_MIME[ext] ?? "video/mp4" }
-          : undefined;
-
-        // WR-08: duration_hint=null is skipped when using inlineData (no time windows needed).
-        // For the Files API path, skip if duration_hint is missing to avoid hallucination.
-        if (payload.duration_hint == null && !shouldUseInline) {
-          const msg =
-            "Gemini segmented analysis skipped — video_upload missing duration_hint (would otherwise hallucinate scores against fabricated window math).";
-          warnings.push(msg);
-          onStageEvent?.({
-            type: "pipeline_warning",
-            message: msg,
-            stage: "gemini_video_unavailable",
-          });
-          timings.push({ stage: "gemini_analysis", duration_ms: 0 });
-          return {
-            ...DEFAULT_GEMINI_RESULT,
-            signalAvailability: {
-              gemini_hook: false,
-              gemini_body: false,
-              gemini_cta: false,
-            },
-          };
-        }
-
-        // D-18: pass videoContext so segmented.ts skips its own upload (shared fileUri).
-        // When videoContext is null but inlineVideoData is set, segments use base64 inline path.
-        const merged = await analyzeVideoSegmented(
-          Buffer.alloc(0), // buffer unused — either videoContext or inlineVideoData provides the video
-          videoContext?.mimeType ?? mimeType,
-          {
-            calibration,
-            niche: validated.niche ?? creatorContext.niche ?? null,
-            contentType: contentTypeSlug,
-            creatorStyle: null,
-            onStageEvent,
-            durationSeconds: payload.duration_hint ?? 30, // default 30s when inlineData (no metadata)
-            videoContext: videoContext ?? undefined,
-            inlineVideoData,
-          },
-        );
-
-        // D-09: 3-of-3 failure path — `analyzeVideoSegmented` returns `analysis: null`.
-        // Preserve DEFAULT_GEMINI_RESULT shape (5 zero-score factors) for the existing
-        // factor-array consumers downstream, but surface the merged `signalAvailability`
-        // so the aggregator (Plan 03) can mark gemini_hook/body/cta as false and trigger
-        // weight redistribution.
-        if (merged.analysis === null) {
-          return {
-            ...DEFAULT_GEMINI_RESULT,
-            signalAvailability: merged.signalAvailability,
-          };
-        }
-
         return {
-          analysis: merged.analysis,
-          cost_cents: merged.cost_cents,
-          signalAvailability: merged.signalAvailability,
+          analysis: {
+            factors: parsed.factors,
+            overall_impression: parsed.overall_impression ?? "",
+            content_summary: parsed.content_summary ?? "",
+            video_signals: null,
+          } as GeminiAnalysis,
+          cost_cents,
+          signalAvailability: { gemini_hook: false, gemini_body: false, gemini_cta: false },
         };
-      }
-
-      // Default: text analysis (unchanged from Phase 4).
-      return await timed("gemini_analysis", timings, () =>
-        analyzeWithGemini(validated),
-        { wave: 1, onEvent: onStageEvent }
-      );
+      }, { wave: 1, onEvent: onStageEvent });
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: { stage: "gemini_analysis", requestId },
-      });
-      warnings.push(
-        `Gemini analysis unavailable: ${error instanceof Error ? error.message : String(error)}`
-      );
+      Sentry.captureException(error, { tags: { stage: "gemini_analysis", requestId } });
+      warnings.push(`Text analysis unavailable: ${error instanceof Error ? error.message : String(error)}`);
       timings.push({ stage: "gemini_analysis", duration_ms: 0 });
       return DEFAULT_GEMINI_RESULT;
     }
@@ -904,7 +741,7 @@ export async function runPredictionPipeline(
   // per-platform scoring. Non-critical — returns null on any failure.
   // -------------------------------------------------------
   const watermarkDetected =
-    geminiResult.analysis.hook_decomposition?.watermark_detected ?? null;
+    ((geminiResult.analysis as import("./types").GeminiVideoAnalysis).hook_decomposition)?.watermark_detected ?? null;
   const platformFitResult = await runPlatformFit(
     payload,
     creatorContext,
@@ -972,23 +809,10 @@ export async function runPredictionPipeline(
     wave3CostCents,
     retrievalResult, // NEW Phase 8 D-09 (Plan 04) — graceful-degradation BenchmarkRetrievalResult
     platformFitResult, // NEW Phase 9 (Plan 03) — platform-fit V3 result array or null
-    videoContext, // D-18 (Phase 13 Plan 03) — threaded to aggregateScores via route.ts
     requestId,
     timings,
     total_duration_ms,
     warnings,
   };
 
-  } finally {
-    // D-18: best-effort cleanup of the pipeline-entry uploaded file.
-    // Only runs when WE uploaded (geminiUploadedFileName set).
-    // T-13-15: failure here leaks only quota; Files API has 48h TTL.
-    if (geminiUploadedFileName) {
-      try {
-        await geminiAiClient.files.delete({ name: geminiUploadedFileName });
-      } catch {
-        // Best-effort — TTL provides eventual cleanup.
-      }
-    }
-  }
 }
