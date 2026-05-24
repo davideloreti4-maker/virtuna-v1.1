@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { DevClickToComponent } from "@/components/dev/click-to-component";
 import { DevLocator } from "@/components/dev/locator";
 import "./globals.css";
 
