@@ -64,12 +64,27 @@ export async function computeOptimalPostWindow(
 ): Promise<OptimalPostWindow | null> {
   if (!niche) return FALLBACK_POST_WINDOW;
 
+  // Internal row shape for the niche_post_windows aggregate. The Supabase
+  // generated `Database` type does NOT yet include this table (Plan 07 BLOCKING
+  // gate runs `supabase db push` + types regeneration). Use the same
+  // cast-through-unknown pattern as calibration.ts:fetchOutcomePairs to satisfy
+  // tsc on the un-typed table until then.
+  interface NichePostWindowRow {
+    day_of_week: string;
+    hour_start: number;
+    hour_end: number;
+    sample_size: number;
+  }
+
   try {
-    const { data, error } = await supabase
-      .from("niche_post_windows")
+    const { data, error } = (await supabase
+      .from("niche_post_windows" as never)
       .select("day_of_week, hour_start, hour_end, sample_size")
-      .eq("niche", niche)
-      .single();
+      .eq("niche" as never, niche)
+      .single()) as unknown as {
+      data: NichePostWindowRow | null;
+      error: { code?: string; message?: string } | null;
+    };
 
     if (error) {
       // PGRST116 (no rows for .single()) is the expected "unknown niche" path —
