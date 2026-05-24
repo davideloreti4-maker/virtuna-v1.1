@@ -946,13 +946,13 @@ describe("Phase 8 — Wave 1 retrieval sibling", () => {
     await runPredictionPipeline(input, { requestId: "ret-test-id" });
 
     expect(mockRunBenchmarkRetrieval).toHaveBeenCalledTimes(1);
-    const args = mockRunBenchmarkRetrieval.mock.calls[0]?.[0];
+    const args = (mockRunBenchmarkRetrieval.mock.calls[0] as unknown as [Record<string, unknown>])?.[0];
     expect(args).toBeDefined();
-    expect(args.payload).toBeDefined();
-    expect(args.creatorContext).toBeDefined();
-    expect(args.wave0Result).toBeDefined();
-    expect(args.supabase).toBeDefined();
-    expect(args.requestId).toBe("ret-test-id");
+    expect(args!.payload).toBeDefined();
+    expect(args!.creatorContext).toBeDefined();
+    expect(args!.wave0Result).toBeDefined();
+    expect(args!.supabase).toBeDefined();
+    expect(args!.requestId).toBe("ret-test-id");
   });
 
   it("retrieval failure pushes warning + returns empty BenchmarkRetrievalResult (graceful degradation)", async () => {
@@ -1053,12 +1053,12 @@ describe("Phase 9 — Platform-fit V3 result in PipelineResult", () => {
   });
 
   it("platform-fit stage events fire (delegated to runPlatformFit self-emission)", async () => {
-    mockRunPlatformFit.mockImplementation(async (_payload: unknown, _ctx: unknown, _ds: unknown, _wm: unknown, onEvent?: (e: { type: string; stage: string; wave: number }) => void) => {
+    mockRunPlatformFit.mockImplementation((async (_payload: unknown, _ctx: unknown, _ds: unknown, _wm: unknown, onEvent?: (e: { type: string; stage: string; wave: number }) => void) => {
       onEvent?.({ type: "stage_start" as const, stage: "platform_fit", wave: 4 });
       await Promise.resolve();
       onEvent?.({ type: "stage_end" as const, stage: "platform_fit", wave: 4 });
       return [{ platform: "tiktok", fit_score: 70, rationale: "Decent fit" }];
-    });
+    }) as unknown as () => Promise<{ platform: string; fit_score: number; rationale: string }[]>);
 
     const events: Array<{ type: string; stage: string }> = [];
     await runPredictionPipeline(input, {

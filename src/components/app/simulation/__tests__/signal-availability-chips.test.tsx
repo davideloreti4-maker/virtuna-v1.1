@@ -45,7 +45,7 @@ describe('SignalAvailabilityChips — available state', () => {
 // Test 8: disabled state → default variant ✕ line-through opacity-40
 describe('SignalAvailabilityChips — disabled state (D-14/D-15 — DISABLED_THIS_PHASE)', () => {
   it('Test 8: ml → renders "ML ✕" with line-through opacity-40 (always disabled in M1)', () => {
-    const { container } = render(
+    render(
       <SignalAvailabilityChips signalAvailability={{ ...BASE_AVAILABILITY, ml: true }} />,
     );
     // ML is in DISABLED_THIS_PHASE regardless of availability value
@@ -56,7 +56,7 @@ describe('SignalAvailabilityChips — disabled state (D-14/D-15 — DISABLED_THI
   });
 
   it('retrieval → renders "Retrieval ✕" with line-through opacity-40 (always disabled in M1)', () => {
-    const { container } = render(
+    render(
       <SignalAvailabilityChips signalAvailability={{ ...BASE_AVAILABILITY, retrieval: true }} />,
     );
     expect(screen.getByText('Retrieval ✕')).toBeInTheDocument();
@@ -114,9 +114,9 @@ describe('SignalAvailabilityChips — structure', () => {
     );
     const chips = container.querySelectorAll('[data-testid="signal-availability-chips"] .inline-flex');
     expect(chips.length).toBe(4);
-    expect(chips[0].textContent).toContain('Audio');
-    expect(chips[1].textContent).toContain('Personas');
-    expect(chips[2].textContent).toContain('Retrieval');
-    expect(chips[3].textContent).toContain('ML');
+    expect(chips[0]!.textContent).toContain('Audio');
+    expect(chips[1]!.textContent).toContain('Personas');
+    expect(chips[2]!.textContent).toContain('Retrieval');
+    expect(chips[3]!.textContent).toContain('ML');
   });
 });

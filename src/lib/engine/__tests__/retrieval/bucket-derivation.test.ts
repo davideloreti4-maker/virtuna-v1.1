@@ -181,7 +181,7 @@ describe("deriveBucket — scraped_videos non-calibrated niches", () => {
 
   it("returns viral when engagement_rate >= p80 (simulated post-Plan-05 percentiles)", () => {
     // Mutate the placeholder for this test only — restore after.
-    const original = { ...NON_CORPUS_ENGAGEMENT_PERCENTILES["tech-gadgets"] };
+    const original = { ...NON_CORPUS_ENGAGEMENT_PERCENTILES["tech-gadgets"]! };
     NON_CORPUS_ENGAGEMENT_PERCENTILES["tech-gadgets"] = { p80: 0.05, p40: 0.01 };
     try {
       const result = deriveBucket({
@@ -204,7 +204,7 @@ describe("deriveBucket — scraped_videos non-calibrated niches", () => {
   });
 
   it("returns under when engagement_rate <= p40 (simulated post-Plan-05 percentiles)", () => {
-    const original = { ...NON_CORPUS_ENGAGEMENT_PERCENTILES["gaming"] };
+    const original = { ...NON_CORPUS_ENGAGEMENT_PERCENTILES["gaming"]! };
     NON_CORPUS_ENGAGEMENT_PERCENTILES["gaming"] = { p80: 0.05, p40: 0.01 };
     try {
       const result = deriveBucket({
@@ -257,7 +257,7 @@ describe("deriveBucket — edge cases", () => {
   });
 
   it("does not divide by zero when views = 0 (non-calibrated niche)", () => {
-    const original = { ...NON_CORPUS_ENGAGEMENT_PERCENTILES["fashion-style"] };
+    const original = { ...NON_CORPUS_ENGAGEMENT_PERCENTILES["fashion-style"]! };
     NON_CORPUS_ENGAGEMENT_PERCENTILES["fashion-style"] = {
       p80: 0.05,
       p40: 0.01,

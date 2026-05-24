@@ -68,8 +68,8 @@ describe("SignalAvailabilityChips", () => {
       ...allAvailable,
       ml: true,
     };
-    delete (partialAvailability as Record<string, unknown>).audio;
-    delete (partialAvailability as Record<string, unknown>).retrieval;
+    delete (partialAvailability as unknown as Record<string, unknown>).audio;
+    delete (partialAvailability as unknown as Record<string, unknown>).retrieval;
 
     render(<SignalAvailabilityChips signalAvailability={partialAvailability} />);
     // Audio undefined → failed ⚠ (not in DISABLED_THIS_PHASE)
@@ -85,9 +85,9 @@ describe("SignalAvailabilityChips", () => {
       <SignalAvailabilityChips signalAvailability={allAvailable} />
     );
     const chipLabels = container.querySelectorAll('[data-testid="signal-availability-chips"] .inline-flex');
-    expect(chipLabels[0].textContent).toContain("Audio");
-    expect(chipLabels[1].textContent).toContain("Personas");
-    expect(chipLabels[2].textContent).toContain("Retrieval");
-    expect(chipLabels[3].textContent).toContain("ML");
+    expect(chipLabels[0]!.textContent).toContain("Audio");
+    expect(chipLabels[1]!.textContent).toContain("Personas");
+    expect(chipLabels[2]!.textContent).toContain("Retrieval");
+    expect(chipLabels[3]!.textContent).toContain("ML");
   });
 });

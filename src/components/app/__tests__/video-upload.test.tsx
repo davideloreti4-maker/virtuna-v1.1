@@ -60,7 +60,7 @@ describe("VideoUpload — data disclosure (INT-06)", () => {
     // call inputRef.current?.click(). We can't spy on inputRef directly
     // but we can verify the disclosure still toggles correctly even when
     // inside a clickable dropzone container.
-    const { container } = render(
+    render(
       <VideoUpload file={null} onFileSelect={onFileSelect} />
     );
     const btn = screen.getByText("About your data");

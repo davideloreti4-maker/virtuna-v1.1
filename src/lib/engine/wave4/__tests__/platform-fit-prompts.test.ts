@@ -27,7 +27,7 @@ describe("STABLE_PLATFORM_FIT_SYSTEM_PROMPT", () => {
 
   it("contains platform-specific heuristics for YouTube Shorts", () => {
     const lower = STABLE_PLATFORM_FIT_SYSTEM_PROMPT.toLowerCase();
-    expect(lower).toContain("youtube") || expect(lower).toContain("shorts");
+    expect(lower.includes("youtube") || lower.includes("shorts")).toBe(true);
   });
 
   it("includes watermark detection instructions", () => {

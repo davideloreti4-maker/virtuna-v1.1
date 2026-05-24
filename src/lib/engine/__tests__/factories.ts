@@ -290,6 +290,8 @@ export function makePipelineResult(
       availability: false,
       cost_cents: 0,
     },
+    // Phase 9 — Wave 4 platform-fit V3 sibling default (null = V3 not run / unavailable)
+    platformFitResult: null,
     requestId: "test-req-123",
     timings: [
       { stage: "validate", duration_ms: 5 },

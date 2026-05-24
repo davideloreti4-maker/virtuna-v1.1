@@ -184,6 +184,19 @@ describe("formatCreatorContext", () => {
         avg_share_rate: 0.008,
         avg_comment_rate: 0.005,
       },
+      target_platforms: null,
+      niche_primary: null,
+      niche_sub: null,
+      target_audience: null,
+      primary_goal: null,
+      creator_stage: null,
+      content_style: null,
+      cuts_per_second: null,
+      reference_creators: null,
+      past_wins: null,
+      past_flops: null,
+      time_of_day_aware: null,
+      pain_points: null,
     });
 
     expect(result).toContain("Creator profile: found");
@@ -209,6 +222,19 @@ describe("formatCreatorContext", () => {
         avg_share_rate: 0.008,
         avg_comment_rate: 0.005,
       },
+      target_platforms: null,
+      niche_primary: null,
+      niche_sub: null,
+      target_audience: null,
+      primary_goal: null,
+      creator_stage: null,
+      content_style: null,
+      cuts_per_second: null,
+      reference_creators: null,
+      past_wins: null,
+      past_flops: null,
+      time_of_day_aware: null,
+      pain_points: null,
     });
 
     expect(result).toContain("not found");
@@ -230,6 +256,19 @@ describe("formatCreatorContext", () => {
         avg_share_rate: 0.008,
         avg_comment_rate: 0.005,
       },
+      target_platforms: null,
+      niche_primary: null,
+      niche_sub: null,
+      target_audience: null,
+      primary_goal: null,
+      creator_stage: null,
+      content_style: null,
+      cuts_per_second: null,
+      reference_creators: null,
+      past_wins: null,
+      past_flops: null,
+      time_of_day_aware: null,
+      pain_points: null,
     });
 
     expect(result).toContain("Platform average share rate: 0.80%");
