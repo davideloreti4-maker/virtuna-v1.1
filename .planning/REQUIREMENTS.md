@@ -13,11 +13,13 @@ This document scopes ONLY the engine-side debt left open by M1 (Engine Foundatio
 
 ### Category: CALIB — Calibration & threshold re-fit on Qwen
 
-- [ ] **CALIB-01**: `platt_parameters` table has a fresh row with `engine_version = '3.0.0'`, `trained_at` post-2026-05-24, and `sample_count` matching the Qwen-scored corpus size. Old text-mode-trained row preserved as historical reference (not deleted).
-- [ ] **CALIB-02**: M1 Plans 06/07 stratified validation rerun under the Qwen pipeline. Output written to `.planning/research/qwen-stratified-validation.md` and includes per-video diff, score-band stratification (low / mid / high confidence buckets), and the video-06 snapshot. Macro_f1 ≥ 0.338 OR an explicit decision logged about whether to retune thresholds, refit the model, or accept a lower bar with rationale.
-- [ ] **CALIB-03**: Wave 3 persona threshold (`≥7/10 personas`) and Wave 4 numeric `platform_fit` threshold re-tuned for the Qwen score distribution. New threshold values committed to `src/lib/engine/aggregator.ts` (or wherever they live) with a comment citing the tuning report.
+**CALIB-01, CALIB-02, CALIB-03, CALIB-05 cancelled 2026-05-24.** Platt calibration removed from the engine entirely after the corpus-vs-production framing mismatch surfaced during Phase 15 execution. The `platt_parameters` table was dropped (`supabase/migrations/20260524130014_drop_platt_parameters.sql`), `calibration.ts` deleted, `is_calibrated` removed from `PredictionResult`. See `.planning/phases/15-calibration-refit-on-qwen-corpus/15-DISCUSSION-LOG.md` for the audit. Only CALIB-04 (DashScope billing in smoke runner) remains active — it is independent of the calibration apparatus and lives in Phase 17.
+
+- [~] ~~**CALIB-01**: `platt_parameters` table has a fresh row with `engine_version = '3.0.0'`...~~ **CANCELLED 2026-05-24** — table dropped; calibration removed.
+- [~] ~~**CALIB-02**: M1 Plans 06/07 stratified validation rerun under the Qwen pipeline...~~ **CANCELLED 2026-05-24** — was contingent on CALIB-01.
+- [~] ~~**CALIB-03**: Wave 3 persona threshold and Wave 4 numeric platform_fit threshold re-tuned...~~ **CANCELLED 2026-05-24** — thresholds remain at current values.
 - [ ] **CALIB-04**: Smoke runner output (`scripts/run-smoke.ts` or equivalent) records a `cost_cents_actual` field sourced from the DashScope International billing endpoint, persisted alongside the existing `cost_cents_estimated`. Reads at end of run only (not mid-pipeline).
-- [ ] **CALIB-05**: `is_calibrated = true` flows through aggregator output for new analyses post-deploy — verified by a single live `/api/analyze` E2E run with the calibrated row in place.
+- [~] ~~**CALIB-05**: `is_calibrated = true` flows through aggregator output...~~ **CANCELLED 2026-05-24** — `is_calibrated` field removed from PredictionResult.
 
 ### Category: AUDIO — Audio-fingerprint + embedder re-enable
 
@@ -66,11 +68,11 @@ This document scopes ONLY the engine-side debt left open by M1 (Engine Foundatio
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| CALIB-01 | 15 | pending |
-| CALIB-02 | 15 | pending |
-| CALIB-03 | 15 | pending |
+| CALIB-01 | ~~15~~ | **cancelled** 2026-05-24 |
+| CALIB-02 | ~~15~~ | **cancelled** 2026-05-24 |
+| CALIB-03 | ~~15~~ | **cancelled** 2026-05-24 |
 | CALIB-04 | 17 | pending |
-| CALIB-05 | 15 | pending |
+| CALIB-05 | ~~15~~ | **cancelled** 2026-05-24 |
 | AUDIO-01 | 16 | pending |
 | AUDIO-02 | 16 | pending |
 | AUDIO-03 | 16 | pending |

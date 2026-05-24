@@ -30,10 +30,10 @@ The two parallel milestones merge independently to `main`. M2-II and M2-III fork
 ## Scope (in)
 
 ### Calibration debt (M1 carry-forward)
-- Refit Platt parameters against a Qwen-scored corpus (M1's `platt_parameters` row is text-mode-trained, drifted post-migration)
-- Rerun Plans 06/07 stratified validation under Qwen with fresh baselines (per-video diffs, score-band stratification, video-06 snapshot)
-- Re-tune Wave 3 (≥7/10 personas) and Wave 4 (numeric platform_fit) thresholds for the Qwen distribution
-- Wire DashScope International billing into the smoke runner for live cost-budget tracking
+- ~~Refit Platt parameters against a Qwen-scored corpus~~ **REMOVED 2026-05-24** — Platt calibration dropped from the engine entirely (`platt_parameters` table dropped, `calibration.ts` deleted). Framing mismatch surfaced in Phase 15 execution: corpus-based eval ran text-mode on captions but production runs video-mode Omni-Plus; corpus carries post-publication engagement metrics that production never sees at inference. See `.planning/phases/15-calibration-refit-on-qwen-corpus/15-DISCUSSION-LOG.md` tail.
+- ~~Rerun Plans 06/07 stratified validation under Qwen with fresh baselines~~ **REMOVED 2026-05-24** — was contingent on the refit landing.
+- ~~Re-tune Wave 3 (≥7/10 personas) and Wave 4 (numeric platform_fit) thresholds for the Qwen distribution~~ **REMOVED 2026-05-24** — thresholds remain at their current values; no calibration-driven retune.
+- Wire DashScope International billing into the smoke runner for live cost-budget tracking (CALIB-04 — still active in Phase 17, independent of Platt)
 
 ### Audio + embedding pipeline (M1 stubs)
 - Re-enable `audio-fingerprint.ts` — currently returns `null`; needs re-embed via DashScope embedding model
@@ -63,7 +63,7 @@ The two parallel milestones merge independently to `main`. M2-II and M2-III fork
 ## Stack decisions (locked at milestone start)
 
 - **Embedding model:** DashScope `text-embedding-v3` (768-dim, matches M1 pgvector schema). No fallback to Gemini — the migration to DashScope-only is intentional and aligns with the Qwen-only engine post-`9794ffa`.
-- **Calibration storage:** Reuse the existing `platt_parameters` row schema. Add `engine_version` discriminator so M1's text-mode params survive as historical reference rather than being overwritten.
+- ~~**Calibration storage:** Reuse the existing `platt_parameters` row schema...~~ **REVERSED 2026-05-24.** `platt_parameters` table dropped. Calibration removed from engine.
 - **Smoke runner billing:** Read DashScope billing endpoint at the end of each smoke run, persist `cost_cents_actual` alongside `cost_cents_estimated`. No mid-run polling (avoid hot path).
 - **TS errors:** Default path is **write the migration** (option a). Only rip out consumers if the call-site audit shows the routes are dead. Decision locked in Phase 1.
 
@@ -87,8 +87,8 @@ This milestone ships when:
 
 1. `pnpm vitest run` passes with **zero `.skip`** in audio-fingerprint, embedder, and D-F4 cron paths
 2. `pnpm exec tsc --noEmit` returns **0 errors across the entire app** (not just engine paths)
-3. Platt calibration row in `platt_parameters` has `engine_version = '3.0.0'` AND `trained_at` post-2026-05-24, with `is_calibrated = true` flowing through aggregator output
-4. Stratified validation report (per-video diff, score-band stratification, video-06 snapshot) checked in to `.planning/research/` showing macro_f1 ≥ 0.338 on the Qwen-scored corpus (or, if not, an explicit decision logged about whether to retune thresholds or refit the model)
+3. ~~Platt calibration row in `platt_parameters`...~~ **REMOVED 2026-05-24** — Phase 15 cancelled; Platt calibration dropped from engine; success criterion no longer applicable.
+4. ~~Stratified validation report~~ **REMOVED 2026-05-24** — was contingent on the Platt refit.
 5. `audio_fingerprint` match returns non-null on at least one trending sound in a live `/api/analyze` E2E run (against a real video with a known matching audio)
 6. Smoke runner output includes a `cost_cents_actual` field sourced from DashScope billing
 7. All M1 verification-debt items (Phases 2/3/4/6) are either resolved or moved to an explicit "permanently deferred" list with rationale

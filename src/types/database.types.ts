@@ -824,6 +824,33 @@ export type Database = {
         }
         Relationships: []
       }
+      niche_post_windows: {
+        Row: {
+          computed_at: string
+          day_of_week: string
+          hour_end: number
+          hour_start: number
+          niche: string
+          sample_size: number
+        }
+        Insert: {
+          computed_at?: string
+          day_of_week: string
+          hour_end: number
+          hour_start: number
+          niche: string
+          sample_size: number
+        }
+        Update: {
+          computed_at?: string
+          day_of_week?: string
+          hour_end?: number
+          hour_start?: number
+          niche?: string
+          sample_size?: number
+        }
+        Relationships: []
+      }
       outcomes: {
         Row: {
           actual_engagement_rate: number | null
@@ -888,36 +915,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      platt_parameters: {
-        Row: {
-          a: number
-          b: number
-          created_at: string
-          engine_version: string
-          fitted_at: string
-          id: number
-          sample_count: number
-        }
-        Insert: {
-          a: number
-          b: number
-          created_at?: string
-          engine_version: string
-          fitted_at: string
-          id?: never
-          sample_count: number
-        }
-        Update: {
-          a?: number
-          b?: number
-          created_at?: string
-          engine_version?: string
-          fitted_at?: string
-          id?: never
-          sample_count?: number
-        }
-        Relationships: []
       }
       referral_clicks: {
         Row: {
@@ -1689,6 +1686,7 @@ export type Database = {
           velocity_score: number
         }[]
       }
+      refresh_niche_post_windows: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
@@ -1821,3 +1819,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+

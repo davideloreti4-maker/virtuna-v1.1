@@ -166,7 +166,6 @@ function makeFakePredictionResult(
     overall_score: 45,
     confidence: 0.65,
     confidence_label: "MEDIUM",
-    is_calibrated: false,
     behavioral_predictions: {
       completion_pct: 45,
       completion_percentile: "top 50%",

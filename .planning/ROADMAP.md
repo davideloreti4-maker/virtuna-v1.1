@@ -20,7 +20,7 @@ The Qwen-only migration is **locked**. The M1 pipeline is treated as locked; pha
    ▼        ▼        ▼         ▼
 Phase 14  Phase 15  Phase 16  Phase 17
 TYPES     CALIB     AUDIO     CALIB-04
-hygiene   refit     re-enable smoke billing
+hygiene  (DROPPED) re-enable smoke billing
             │
             └─────────┬─────────┴─────────┘
                       ▼
@@ -31,15 +31,15 @@ hygiene   refit     re-enable smoke billing
 ```
 
 - **Phase 14 (TYPES)** can fork immediately. Touches `src/app/api/{profile,settings,team}/*` + `database.types.ts` — no overlap with engine code.
-- **Phase 15 (CALIB refit)** can fork immediately. Touches `platt_parameters` row + `src/lib/engine/aggregator.ts` threshold constants only.
+- **Phase 15 (CALIB refit)** — **DROPPED 2026-05-24.** Premise unsound: corpus-based eval calibrated text-on-captions but production runs video-mode Omni-Plus; corpus carries post-publication engagement metrics that production never sees at inference. Calibration removed entirely; `applyPlattScaling` and `platt_parameters` table deleted. See `phases/15-.../15-DISCUSSION-LOG.md` tail. CALIB-01/02/03/05 cancelled; CALIB-04 stays in Phase 17.
 - **Phase 16 (AUDIO re-enable)** can fork immediately. Touches `src/lib/engine/embedder.ts` (new), `src/lib/engine/audio-fingerprint.ts`, `src/app/api/cron/calculate-trends/route.ts`, plus VERIF-04 IN-03 (SSRF allowlist on `sound_url` — naturally co-located with audio pipeline).
 - **Phase 17 (CALIB-04 smoke billing)** can fork immediately. Touches `scripts/run-smoke.ts` + DashScope billing fetch — fully independent.
-- **Phase 18 (VERIF closure)** runs **after** 14/15/16/17 merge to milestone branch. Contains live-deploy smoke tests, UAT runs, and code-review follow-ups (WR-04/WR-05/IN-01/IN-02) that touch files already modified by other phases — hence sequenced last to avoid merge churn.
+- **Phase 18 (VERIF closure)** runs **after** 14/16/17 merge to milestone branch (Phase 15 no longer in dependency set). Contains live-deploy smoke tests, UAT runs, and code-review follow-ups (WR-04/WR-05/IN-01/IN-02) that touch files already modified by other phases — hence sequenced last to avoid merge churn.
 
 ## Phases
 
 - [x] **Phase 14: Type Hygiene & user_settings Resolution** — Audit, decide migrate-vs-rip, land path, drive `tsc --noEmit` to 0 errors app-wide (completed 2026-05-24)
-- [ ] **Phase 15: Calibration Refit on Qwen Corpus** — Refit Platt params, rerun stratified validation, re-tune Wave 3/4 thresholds, verify is_calibrated flow
+- [~] **Phase 15: Calibration Refit on Qwen Corpus** — DROPPED 2026-05-24 (calibration framing mismatch; Platt removed entirely). 15-01 landed as standalone schema work then reverted (`platt_parameters` table dropped).
 - [ ] **Phase 16: Audio Fingerprint + Embedder Re-enable** — Build embedder, re-enable fingerprint + D-F4 cron, unskip 17 tests, land SSRF allowlist
 - [ ] **Phase 17: Smoke Runner Live Billing Wiring** — Wire DashScope International billing endpoint into smoke runner, persist cost_cents_actual
 - [ ] **Phase 18: M1 Verification Debt Closure** — Run UAT for Phase 2/3/4 deferrals, close code-review follow-ups WR-04/WR-05/IN-01/IN-02
@@ -60,20 +60,20 @@ hygiene   refit     re-enable smoke billing
   - [x] 14-01-PLAN.md — Produce user-settings-audit.md (TYPES-01, TYPES-02, baseline TYPES-05)
   - [x] 14-02-PLAN.md — Regenerate database.types.ts from live schema (TYPES-03, TYPES-04 vacuous, TYPES-05 gate)
 
-### Phase 15: Calibration Refit on Qwen Corpus
-**Goal**: Platt calibration row reflects the Qwen scorer (not the text-mode drifted row), stratified validation rerun under Qwen, Wave 3/4 thresholds re-tuned for the new distribution, and `is_calibrated = true` flows through aggregator output for new analyses.
-**Depends on**: Nothing (forks from main alongside 14/16/17). Internal dependency chain: CALIB-01 → CALIB-02 → CALIB-03 → CALIB-05.
-**Requirements**: CALIB-01, CALIB-02, CALIB-03, CALIB-05
-**Success Criteria** (what must be TRUE):
-  1. `platt_parameters` table has a fresh row with `engine_version = '3.0.0'`, `trained_at` post-2026-05-24, `sample_count` matching the Qwen corpus size; old text-mode row preserved as historical reference
-  2. `.planning/research/qwen-stratified-validation.md` checked in with per-video diff, score-band stratification (low/mid/high), video-06 snapshot, and macro_f1 number (≥0.338 OR explicit rationale logged)
-  3. Wave 3 persona threshold and Wave 4 numeric platform_fit threshold committed to `src/lib/engine/aggregator.ts` (or wherever they live) with a comment citing the tuning report
-  4. Single live `/api/analyze` E2E run shows `is_calibrated = true` in aggregator output with the new calibrated row in place
-**Plans**: 4 plans
-  - [x] 15-01-PLAN.md — Schema migration + types regen + getPlattParameters signature + train-platt CLI flag (CALIB-01)
-  - [ ] 15-02-PLAN.md — Live Qwen refit run on full.2026-05-11 corpus + sidecar capture (CALIB-01)
-  - [ ] 15-03-PLAN.md — Threshold+weight sweep + qwen-stratified-validation.md + benchmark_results row (CALIB-02, CALIB-03)
-  - [ ] 15-04-PLAN.md — Aggregator wiring flip + test inversion + live E2E (CALIB-05)
+### Phase 15: Calibration Refit on Qwen Corpus — **DROPPED 2026-05-24**
+
+**Status**: Cancelled mid-execution. Calibration removed from the engine entirely.
+
+**Why dropped** (see `phases/15-calibration-refit-on-qwen-corpus/15-DISCUSSION-LOG.md` tail for the full audit):
+1. **Path mismatch.** `eval-runner.ts` builds `input_mode: "text"` and sends only `row.caption` to Qwen reasoning. Production `/api/analyze` runs `input_mode: "video_upload"` through Qwen-Omni-Plus on video bytes. Calibrating one path then applying parameters to the other is a category error.
+2. **Shape mismatch.** `training_corpus` carries post-publication engagement metrics (views, likes, completion_pct) and a derived `bucket` label baked in at scrape time. Production inference sees a fresh upload with none of those features. Calibration input distribution ≠ inference input distribution.
+3. **Dead code path.** `aggregator.ts` had `is_calibrated = false` hardcoded since the Qwen migration; the entire Platt apparatus was unused in production.
+
+**What landed before drop**: 15-01 (engine_version discriminator on `platt_parameters` + types regen + CLI flag) — reverted via the same `DROP TABLE platt_parameters CASCADE` migration that removed the table.
+
+**Resolution**: `calibration.ts`, its test, and `corpus/cli/train-platt.ts` deleted; aggregator passes the raw weighted-sum score through unchanged; `is_calibrated` removed from `PredictionResult`. CALIB-01/02/03/05 cancelled (see REQUIREMENTS.md). CALIB-04 unaffected — it lives in Phase 17 (smoke billing) and doesn't depend on Platt.
+
+**If calibration is ever revisited**, it must be on production-aligned data: capture `/api/analyze` predictions in production, join with engagement outcomes after a 7-30d window, refit on those. This is a multi-week effort gated on production data infrastructure; out of scope for the Engine Hardening milestone.
 
 ### Phase 16: Audio Fingerprint + Embedder Re-enable
 **Goal**: Audio-fingerprint matching returns real results (not `null`), embedder is fully wired against DashScope `text-embedding-v3`, inline D-F4 cron embedding is back on, all 17 `.skip`'d tests pass, and `sound_url` fetches go through an SSRF allowlist.
@@ -99,7 +99,7 @@ hygiene   refit     re-enable smoke billing
 
 ### Phase 18: M1 Verification Debt Closure
 **Goal**: All M1 verification debt (Phases 2/3/4/6 deferrals) is either resolved with passing UAT/smoke or moved to an explicit "permanently deferred" list with rationale. Code-review follow-ups WR-04, WR-05, IN-01, IN-02 land.
-**Depends on**: Phases 14, 15, 16, 17 (sequenced last — code-review items touch files modified by earlier phases; live-deploy smoke needs the calibrated row + embedder live)
+**Depends on**: Phases 14, 16, 17 (sequenced last — code-review items touch files modified by earlier phases; live-deploy smoke needs the embedder live. Phase 15 dropped; no calibration dependency.)
 **Requirements**: VERIF-01, VERIF-02, VERIF-03, VERIF-04 (WR-04, WR-05, IN-01, IN-02 sub-items — IN-03 already in Phase 16)
 **Success Criteria** (what must be TRUE):
   1. `.planning/research/verif-phase2-uat.md` records Phase 2 creator-profile 9-card interview UAT pass/fail end-to-end against the deployed app
@@ -112,12 +112,12 @@ hygiene   refit     re-enable smoke billing
 ## Progress
 
 **Execution Order:**
-Phases 14, 15, 16, 17 may fork in parallel from the milestone branch base. Phase 18 sequences last after 14-17 land.
+Phases 14, 16, 17 may fork in parallel from the milestone branch base. Phase 15 dropped 2026-05-24. Phase 18 sequences last after 14/16/17 land.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 14. Type Hygiene & user_settings Resolution | 2/2 | Complete    | 2026-05-24 |
-| 15. Calibration Refit on Qwen Corpus | 1/4 | In Progress|  |
+| 15. Calibration Refit on Qwen Corpus | — | DROPPED | 2026-05-24 |
 | 16. Audio Fingerprint + Embedder Re-enable | 0/TBD | Not started | - |
 | 17. Smoke Runner Live Billing Wiring | 0/TBD | Not started | - |
 | 18. M1 Verification Debt Closure | 0/TBD | Not started | - |
@@ -128,11 +128,11 @@ All 19 REQ-IDs from REQUIREMENTS.md mapped to exactly one phase. VERIF-04 is a p
 
 | REQ-ID | Category | Phase | Notes |
 |--------|----------|-------|-------|
-| CALIB-01 | Calibration | 15 | Refit Platt against Qwen corpus |
-| CALIB-02 | Calibration | 15 | Stratified validation rerun |
-| CALIB-03 | Calibration | 15 | Wave 3/4 threshold re-tune |
-| CALIB-04 | Calibration | 17 | Smoke runner DashScope billing (independent of calibration chain) |
-| CALIB-05 | Calibration | 15 | Live E2E is_calibrated verification |
+| CALIB-01 | Calibration | ~~15~~ | **Cancelled 2026-05-24** — Platt calibration dropped from engine; framing mismatch (text-vs-video, corpus-vs-production). |
+| CALIB-02 | Calibration | ~~15~~ | **Cancelled 2026-05-24** — was contingent on CALIB-01 refit landing. |
+| CALIB-03 | Calibration | ~~15~~ | **Cancelled 2026-05-24** — Wave 3/4 thresholds remain at current values; no calibration-driven retune. |
+| CALIB-04 | Calibration | 17 | Smoke runner DashScope billing (independent of calibration chain — still active). |
+| CALIB-05 | Calibration | ~~15~~ | **Cancelled 2026-05-24** — `is_calibrated` field removed from PredictionResult; verification moot. |
 | AUDIO-01 | Audio | 16 | embedder.ts create |
 | AUDIO-02 | Audio | 16 | audio-fingerprint.ts real match |
 | AUDIO-03 | Audio | 16 | D-F4 cron re-enable |

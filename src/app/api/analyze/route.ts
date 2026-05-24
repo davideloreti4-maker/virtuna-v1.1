@@ -294,7 +294,6 @@ export async function POST(request: Request) {
       has_video: finalResult.has_video,
       gemini_score: finalResult.gemini_score,
       ml_score: finalResult.ml_score,
-      // CAL-02: is_calibrated column pending migration — omitted until schema updated
       // RULE-03: rule_contributions column pending migration — omitted until schema updated
       // Phase 3 — provenance columns (typed in database.types.ts after Plan 04 regen).
       // content_hash is `string` → matches `string | null` directly (no cast).

@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: engine-hardening
 milestone_name: Engine Hardening
-status: halted
-stopped_at: Phase 15 halted post-15-01 — calibration framing mismatch (text-vs-video + corpus-vs-production)
-last_updated: "2026-05-24T10:30:00.000Z"
-last_activity: 2026-05-24 -- Phase 15 halted; 15-01 landed; 15-02..15-04 need rescope
+status: idle
+stopped_at: Phase 15 DROPPED 2026-05-24 — Platt calibration removed from engine entirely
+last_updated: "2026-05-24T13:30:00.000Z"
+last_activity: 2026-05-24 -- Phase 15 dropped; calibration code, tests, table, types all removed; ready to start Phase 16
 progress:
   total_phases: 5
   completed_phases: 1
@@ -27,10 +27,10 @@ See: .planning/MILESTONE.md (immutable worktree identity)
 ## Current Position
 
 Milestone: Engine Hardening (M2-1b of Intelligence Surface drop)
-Phase: 15 (calibration-refit-on-qwen-corpus) — HALTED post-15-01
-Plan: 1 of 4 complete (15-01 merged); 15-02/03/04 blocked pending rescope
-Status: Halted — calibration framing mismatch surfaced
-Last activity: 2026-05-24 -- 15-01 merged; phase halted; see 15-DISCUSSION-LOG.md tail for two findings (text-vs-video, corpus-vs-production) and rescope options
+Phase: 15 (calibration-refit-on-qwen-corpus) — DROPPED 2026-05-24
+Plan: n/a — phase cancelled; Platt calibration removed from engine
+Status: Idle — ready to start Phase 16 (Audio Fingerprint + Embedder Re-enable)
+Last activity: 2026-05-24 -- Phase 15 dropped; calibration.ts deleted, platt_parameters table dropped, is_calibrated removed from PredictionResult, types regenerated, aggregator passthrough. CALIB-01/02/03/05 cancelled in REQUIREMENTS.md. See .planning/phases/15-calibration-refit-on-qwen-corpus/15-DISCUSSION-LOG.md tail.
 
 Progress: [░░░░░░░░░░] 0% (0/5 phases complete)
 

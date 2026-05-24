@@ -43,11 +43,6 @@ vi.mock("../ml", () => ({
   featureVectorToMLInput: vi.fn().mockReturnValue(Array(15).fill(0.5)),
 }));
 
-vi.mock("../calibration", () => ({
-  getPlattParameters: vi.fn().mockResolvedValue(null),
-  applyPlattScaling: vi.fn((score: number, _params: unknown) => score),
-}));
-
 vi.mock("../gemini", () => ({
   GEMINI_MODEL: "gemini-test",
 }));
@@ -87,7 +82,6 @@ vi.mock("../stage11-counterfactuals", async (importOriginal) => {
 
 import { selectWeights, aggregateScores } from "../aggregator";
 import { makePipelineResult, makeGeminiAnalysis } from "./factories";
-import { getPlattParameters, applyPlattScaling } from "../calibration";
 import { predictWithML } from "../ml";
 import type { PersonaBehavioralAggregate, PersonaSimulationResult } from "../types";
 
@@ -354,10 +348,6 @@ describe("aggregateScores", () => {
     vi.clearAllMocks();
     // Reset default mock behaviors
     vi.mocked(predictWithML).mockResolvedValue(50);
-    vi.mocked(getPlattParameters).mockResolvedValue(null);
-    vi.mocked(applyPlattScaling).mockImplementation(
-      (score: number, _params: unknown) => score
-    );
   });
 
   it("returns valid result with all signals (happy path)", async () => {
@@ -429,26 +419,6 @@ describe("aggregateScores", () => {
     });
     const lowResult = await aggregateScores(lowPipeline);
     expect(lowResult.overall_score).toBeGreaterThanOrEqual(0);
-  });
-
-  it("returns is_calibrated=false when no Platt params available", async () => {
-    vi.mocked(getPlattParameters).mockResolvedValue(null);
-    const result = await aggregateScores(makePipelineResult());
-    expect(result.is_calibrated).toBe(false);
-  });
-
-  it("is_calibrated is hard-coded false post-Qwen migration (calibration debt)", async () => {
-    // Phase 13 / FINAL-VALIDATION-REPORT calibration-debt carryover: Platt
-    // parameters were fit on the Gemini+DeepSeek engine. Applying them to
-    // Qwen-scored outputs mis-calibrates, so aggregator.ts:846 hard-codes
-    // is_calibrated=false until a refit lands in M2. Even when Platt params
-    // are available, is_calibrated must remain false.
-    const mockParams = { a: -1, b: 0, fittedAt: "2026-01-01", sampleCount: 100 };
-    vi.mocked(getPlattParameters).mockResolvedValue(mockParams);
-    vi.mocked(applyPlattScaling).mockReturnValue(55);
-
-    const result = await aggregateScores(makePipelineResult());
-    expect(result.is_calibrated).toBe(false);
   });
 
   it("assembles feature_vector with all expected keys", async () => {
@@ -542,10 +512,6 @@ describe("Phase 3 — provenance + stub invocations", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(predictWithML).mockResolvedValue(50);
-    vi.mocked(getPlattParameters).mockResolvedValue(null);
-    vi.mocked(applyPlattScaling).mockImplementation(
-      (score: number, _params: unknown) => score
-    );
   });
 
   it("returns signal_availability populated from internal computation (PIPE-07)", async () => {
@@ -619,10 +585,6 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(predictWithML).mockResolvedValue(50);
-    vi.mocked(getPlattParameters).mockResolvedValue(null);
-    vi.mocked(applyPlattScaling).mockImplementation(
-      (score: number, _params: unknown) => score
-    );
   });
 
   it("selectWeights regression: 6-key availability all-true → D-16 Phase 13 normalized weights", () => {
@@ -813,10 +775,6 @@ describe("aggregateScores Phase 7 widening", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(predictWithML).mockResolvedValue(50);
-    vi.mocked(getPlattParameters).mockResolvedValue(null);
-    vi.mocked(applyPlattScaling).mockImplementation(
-      (score: number, _params: unknown) => score
-    );
   });
 
   const samplePersonaAggregate: PersonaBehavioralAggregate = {
@@ -942,10 +900,6 @@ describe("Phase 8 — aggregator retrieval integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(predictWithML).mockResolvedValue(50);
-    vi.mocked(getPlattParameters).mockResolvedValue(null);
-    vi.mocked(applyPlattScaling).mockImplementation(
-      (score: number, _params: unknown) => score,
-    );
   });
 
   it("populates retrieval_score on PredictionResult when retrieval is available", async () => {
