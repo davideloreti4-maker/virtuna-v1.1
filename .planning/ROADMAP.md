@@ -46,7 +46,7 @@ Ship a high-end SaaS-style animated landing page (Linear/Raycast aesthetic + Opu
   - [x] 01-02-PLAN.md — Reusable shell components: SectionShell.tsx (placeholder wrapper) + GrainOverlay.tsx (SVG noise) + SkipToContent.tsx (WCAG skip-link)
   - [x] 01-03-PLAN.md — LandingHeader.tsx: fixed-top nav with 9 anchor links + Sign in link + coral Sign up CTA + backdrop-filter inline-style (Lightning CSS workaround)
   - [x] 01-04-PLAN.md — SEO baseline: sitemap.ts (3 entries) + robots.ts (allow / + disallow app routes + sitemap link)
-  - [ ] 01-05-PLAN.md — /v3/page.tsx assembly: 9 SectionShell instances under MotionConfig reducedMotion="user" + skip-link + GrainOverlay + LandingHeader + page metadata (locked title "Virtuna | Predict viral before you post") + FOUND-05 collision-check decision documented
+  - [x] 01-05-PLAN.md — /v3/page.tsx assembly: 9 SectionShell instances under MotionConfig reducedMotion="user" + skip-link + GrainOverlay + LandingHeader + page metadata (locked title "Virtuna | Predict viral before you post") + FOUND-05 collision-check decision documented
 **Content gates**: None
 **Research flag**: SKIP — patterns verified in research/STACK.md + ARCHITECTURE.md
 **UI hint**: yes
