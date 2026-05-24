@@ -29,7 +29,7 @@ async function testSlot(name: string, model: string): Promise<boolean> {
   try {
     const completion = await ai.chat.completions.create({
       model,
-      messages: [{ role: "user", content: 'Return {"ok": true} and nothing else.' }],
+      messages: [{ role: "user", content: 'Return valid JSON: {"ok": true} and nothing else.' }],
       response_format: { type: "json_object" },
       extra_body: { enable_thinking: false },
     });

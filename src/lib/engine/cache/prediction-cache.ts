@@ -30,15 +30,19 @@ export function cacheKey(contentHash: string, userId: string): string {
  */
 export function computeContentHash(input: AnalysisInput, videoBuffer?: Buffer): string {
   const h = createHash("sha256");
-  if (input.input_mode === "video_upload" && videoBuffer) {
-    h.update(videoBuffer);
+  if (input.input_mode === "video_upload") {
+    if (videoBuffer) {
+      h.update(videoBuffer);
+    } else if (input.video_storage_path) {
+      // No buffer in new signed-URL path — hash the storage path instead.
+      h.update(input.video_storage_path.trim());
+    }
     return h.digest("hex");
   }
   if (input.input_mode === "tiktok_url" && input.tiktok_url) {
     h.update(input.tiktok_url.trim());
     return h.digest("hex");
   }
-  // text mode fallback — also covers degenerate cases
   h.update((input.content_text ?? "").trim());
   return h.digest("hex");
 }

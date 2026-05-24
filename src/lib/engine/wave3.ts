@@ -34,7 +34,7 @@ const CACHE_HIT_PRICE = 0.0028 / 1_000_000;
 const CACHE_MISS_PRICE = 0.14 / 1_000_000;
 const OUTPUT_PRICE = 0.28 / 1_000_000;
 
-const PER_CALL_TIMEOUT_MS = 15_000;
+const PER_CALL_TIMEOUT_MS = 45_000;
 const SUCCESS_THRESHOLD = 7; // D-13: ≥7-of-10 personas required for non-null aggregate
 
 /**

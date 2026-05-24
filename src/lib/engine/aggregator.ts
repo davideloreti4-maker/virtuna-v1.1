@@ -21,7 +21,7 @@ import type { StageEventCallback } from "./events";
 import { QWEN_OMNI_MODEL as GEMINI_MODEL } from "./qwen/client";
 import { QWEN_REASONING_MODEL as DEEPSEEK_MODEL } from "./qwen/client";
 import { predictWithML, featureVectorToMLInput } from "./ml";
-import { getPlattParameters, applyPlattScaling, type PlattParameters } from "./calibration";
+import { applyPlattScaling, type PlattParameters } from "./calibration";
 import { ENGINE_VERSION } from "./version";
 import { runStage10Critique, applyCritiqueAdjustment } from "./stage10-critique";
 import { runStage11Counterfactuals, maybeAppendLikelyFlopWarning } from "./stage11-counterfactuals";
@@ -838,15 +838,12 @@ export async function aggregateScores(
   // -------------------------------------------------
   // Platt Calibration (CAL-01: conditional application)
   // -------------------------------------------------
-  let plattParams: PlattParameters | null = null;
-  try {
-    plattParams = await getPlattParameters();
-  } catch {
-    // Calibration lookup failed — proceed uncalibrated
-    plattParams = null;
-  }
+  // TODO(post-Qwen): Platt parameters were fit on the Gemini+DeepSeek engine.
+  // Applying them to Qwen-scored outputs mis-calibrates. Bypassed until refit on
+  // a Qwen-scored corpus. Tracked as calibration debt out of Milestone 1.
+  const plattParams: PlattParameters | null = null;
   const overall_score = applyPlattScaling(raw_overall_score, plattParams);
-  const is_calibrated = plattParams !== null;
+  const is_calibrated = false;
 
   // -------------------------------------------------
   // Confidence (with signal availability penalties)

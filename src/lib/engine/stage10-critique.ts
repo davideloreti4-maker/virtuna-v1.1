@@ -19,7 +19,7 @@ const CACHE_HIT_PRICE = 0.0028 / 1_000_000;
 const CACHE_MISS_PRICE = 0.14 / 1_000_000;
 const OUTPUT_PRICE = 0.28 / 1_000_000;
 
-const PER_CALL_TIMEOUT_MS = 15_000;
+const PER_CALL_TIMEOUT_MS = 45_000;
 
 /**
  * D-11: Clamp confidence_adjustment to [-0.20, 0] in TypeScript — never trust model range.
