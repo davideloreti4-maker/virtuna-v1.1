@@ -44,8 +44,8 @@ Wave 8 (final gate): P12 (accuracy benchmark + acceptance)
 - [x] **Phase 9: Platform Algo Fit + Self-Critique + Counterfactuals** — TikTok/IG/YT-specific signals, creator-tier awareness, watermark detection, critique pass, counterfactual generation. **Completed 2026-05-20 (7 plans, 84 test files green, pending verifier)**
 - [ ] **Phase 10: ML Audit + Calibration + Aggregator Extension** — Audit ML against corpus, decide retrain/down-weight, train Platt on corpus, extend SignalAvailability with new signals, bump to engine v3.0.
 - [ ] **Phase 11: Existing UI Integration + Privacy Policy** — Wire /api/analyze + video-upload component to new engine, storage retention policy, onboarding integration with 9-card profile.
-- [ ] **Phase 12: Accuracy Benchmark + Acceptance Gate** — Final benchmark run, target accuracy improvement met, cost in budget, no regressions, M1 ships.
-- [ ] **Phase 13: Real Pipeline Validation + Production Hardening** — Real-video end-to-end validation; Stage 11 rebuild; Gemini model audit; DeepSeek hang mitigation; code review phases 9-12. Replaces Phase 12 as the actual milestone gate. Only after 10 real videos pass cleanly does ENGINE_VERSION flip 3.0.0-dev → 3.0.0 and milestone merge.
+- [x] ~~**Phase 12: Accuracy Benchmark + Acceptance Gate**~~ — **SUPERSEDED by Phase 13** (see `phases/12-*/12-HANDOFF.md` closing note + `phases/13-*/13-CONTEXT.md` D-29). Text-mode benchmark proved unfit as the milestone gate after Qwen migration.
+- [x] **Phase 13: Real Pipeline Validation + Production Hardening** — Real-video end-to-end validation; Stage 11 rebuild; engine migrated to Qwen-only on DashScope International mid-phase; Phase 12 superseded as the milestone gate. ENGINE_VERSION flipped 3.0.0-dev → 3.0.0 per D-27 + D-28 user sign-off via `13-FINAL-VALIDATION-REPORT.md`. **Completed 2026-05-24**
 
 ## Phase Details
 
@@ -278,8 +278,10 @@ Plans:
 - [ ] 11-05-PLAN.md — Wave 3: Engine v3 dev-guard audit + smoke test + human-verify checkpoint
 **UI hint:** yes
 
-### Phase 12: Accuracy Benchmark + Acceptance Gate
-**Goal:** Full benchmark run of engine v3 against corpus shows measurable accuracy improvement vs v2.1 baseline. Cost within budget. No regressions.
+### Phase 12: Accuracy Benchmark + Acceptance Gate **(SUPERSEDED by Phase 13)**
+**Status:** Superseded — text-mode benchmark proved unfit as the milestone gate after the mid-phase Qwen migration. See `phases/12-accuracy-benchmark-acceptance-gate/12-HANDOFF.md` (closing note) and `phases/13-real-pipeline-validation-production-hardening/13-CONTEXT.md` D-29. The original goal (below) is preserved for historical record.
+
+**Original goal (archived):** Full benchmark run of engine v3 against corpus shows measurable accuracy improvement vs v2.1 baseline. Cost within budget. No regressions.
 **Depends on:** Phase 11 (full engine + UI wired)
 **Requirements:** BENCH-01..06
 **Success Criteria:**
@@ -355,5 +357,5 @@ Plans:
 | 9. Platform Algo Fit + Self-Critique + Counterfactuals | 0/TBD | Not started | - |
 | 10. ML Audit + Calibration + Aggregator Extension | 0/TBD | Not started | - |
 | 11. Existing UI Integration + Privacy Policy | 0/5 | Planned (2026-05-20) | - |
-| 12. Accuracy Benchmark + Acceptance Gate | 0/TBD | Not started | - |
-| 13. Real Pipeline Validation + Production Hardening | 5/8 | In Progress|  |
+| 12. Accuracy Benchmark + Acceptance Gate | 1/3 | Superseded — see 12-HANDOFF.md closing note (Phase 13 D-29) | 2026-05-24 |
+| 13. Real Pipeline Validation + Production Hardening | 8/8 | Complete — ENGINE_VERSION = 3.0.0; FINAL-VALIDATION-REPORT signed off | 2026-05-24 |

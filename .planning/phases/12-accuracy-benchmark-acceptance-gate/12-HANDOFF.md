@@ -148,3 +148,22 @@ User reviews benchmark report. If passes, merge milestone/engine-foundation.
 | `.planning/research/v2.1-baseline.md` | Original v2.1 baseline |
 | `src/lib/engine/deepseek.ts` | Modified: timeout, fetch, maxRetries |
 | `src/lib/engine/version.ts` | ENGINE_VERSION = "3.0.0-dev" |
+
+---
+
+## Closing Note — Superseded by Phase 13 (added 2026-05-24)
+
+Phase 12 (text-mode benchmark + accuracy gate) was superseded as the milestone acceptance gate by Phase 13: Real Pipeline Validation + Production Hardening.
+
+**Kept artifacts from Phase 12:**
+- `--max-rows` flag in `scripts/eval.ts` (utility — kept for future text-mode evals)
+- `platt_parameters` DB row (flagged "text-mode-trained, video-mode re-train pending" — M2 owns retraining)
+- All `12-*.md` planning artifacts (historical record)
+
+**Discarded:**
+- `.planning/research/smoke-v3.json` — invalid test fixture (force-disabled DeepSeek + text-mode; not representative of v3)
+
+**Forward reference:**
+- Phase 13's final acceptance: `.planning/phases/13-real-pipeline-validation-production-hardening/13-FINAL-VALIDATION-REPORT.md`
+- `ENGINE_VERSION` flipped to `"3.0.0"` per Phase 13 D-27 + D-28 (commit `791a577`)
+- Milestone `engine-foundation` to be merged to main per worktree merge protocol (`~/.claude/rules/gsd-worktree.md`)
