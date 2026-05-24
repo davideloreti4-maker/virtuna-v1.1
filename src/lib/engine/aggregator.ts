@@ -29,6 +29,12 @@ import { applyPlattScaling, type PlattParameters } from "./calibration";
 // (calculateConfidence + HARD-03 + Stage 10 critique adjustment) so the
 // boolean reflects the final confidence value the UI consumes.
 import { isAntiViralityGated } from "./anti-virality";
+// Phase 1 (R6.1, D-13, D-15, Pitfall #5) — optimal post window niche aggregate
+// lookup. computeOptimalPostWindow is called BEFORE Stage 10/11 so the field
+// is on the assembled PredictionResult when critique + counterfactuals run.
+// Non-fatal: null on Supabase error, FALLBACK_POST_WINDOW on unknown niche.
+import { computeOptimalPostWindow, type OptimalPostWindow } from "./optimal-post";
+import { createServiceClient } from "@/lib/supabase/service";
 import { ENGINE_VERSION } from "./version";
 import { runStage10Critique, applyCritiqueAdjustment } from "./stage10-critique";
 import { runStage11Counterfactuals, maybeAppendLikelyFlopWarning } from "./stage11-counterfactuals";
@@ -679,6 +685,27 @@ export async function aggregateScores(
     emotion_arc = null; // non-fatal
   }
 
+  // Phase 1 (R6.1, D-13, D-15, Pitfall #5) — optimal_post_window lookup. Inserted
+  // BEFORE result assembly so Stage 10/11 critique + counterfactuals see the
+  // field on the assembled PredictionResult. Non-fatal — null on Supabase error,
+  // FALLBACK_POST_WINDOW on unknown niche.
+  //
+  // Source niche: pipelineResult.payload.niche (ContentPayload.niche is string|null).
+  // `_creator` is unused in P1 per D-12 — passing null until M2-II promotes the
+  // creator-aware override path.
+  let optimal_post_window: OptimalPostWindow | null = null;
+  try {
+    const serviceClient = createServiceClient();
+    const nicheValue = pipelineResult.payload.niche ?? null;
+    optimal_post_window = await computeOptimalPostWindow(
+      serviceClient,
+      nicheValue,
+      null,
+    );
+  } catch {
+    optimal_post_window = null; // non-fatal per D-15
+  }
+
   // -------------------------------------------------
   // ML prediction (async — loads model from Supabase Storage on cold start)
   // -------------------------------------------------
@@ -1044,6 +1071,10 @@ export async function aggregateScores(
     // confidence (matches the gate `maybeAppendLikelyFlopWarning` reads —
     // Pitfall 7 ordering invariant).
     anti_virality_gated: isAntiViralityGated(conf.confidence),
+    // Phase 1 (R6.1, D-13) — optimal_post_window plucked from niche_post_windows
+    // above (BEFORE Stage 10/11 per Pitfall #5). null on Supabase error,
+    // FALLBACK on unknown niche, OptimalPostWindow with source='niche' on hit.
+    optimal_post_window,
     score_weights: weights, // Actual weights used (may differ from BASE if signals missing)
     latency_ms: pipelineResult.total_duration_ms,
     cost_cents,

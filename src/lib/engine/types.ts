@@ -7,6 +7,7 @@ import {
   type BodySegmentResult,
 } from "./gemini/schemas";
 import type { EmotionArcPoint } from "./qwen/schemas";
+import type { OptimalPostWindow } from "./optimal-post";
 import { ARCHETYPES } from "./wave3/persona-registry";
 
 // Phase 5 D-13 — re-export segment types so downstream consumers (aggregator, merge,
@@ -16,6 +17,10 @@ export type { HookDecomposition, CtaSegmentResult, BodySegmentResult };
 // Phase 1 (R1.7) — re-export EmotionArcPoint so consumers can import from
 // "@/lib/engine/types" instead of reaching into qwen/schemas directly.
 export type { EmotionArcPoint };
+
+// Phase 1 (R6.1, D-13) — re-export OptimalPostWindow so consumers can import
+// from "@/lib/engine/types" instead of reaching into optimal-post directly.
+export type { OptimalPostWindow };
 
 // =====================================================
 // Feature Vector — Standardized signal backbone
@@ -195,6 +200,16 @@ export interface PredictionResult {
    *  per checker B4. Gated on POST-CRITIQUE confidence (Pitfall 7 ordering invariant —
    *  matches the gate `maybeAppendLikelyFlopWarning` uses). */
   anti_virality_gated: boolean;
+  /** Phase 1 (R6.1, D-13) — niche-aware optimal posting window from
+   *  niche_post_windows (materialized aggregate refreshed daily by pg_cron).
+   *  - OptimalPostWindow with source='niche' when DB lookup hits.
+   *  - FALLBACK_POST_WINDOW (source='fallback') when niche unknown / not in
+   *    the materialized table yet.
+   *  - null on Supabase error (non-fatal per D-15) — P5 panel renders generic
+   *    copy when null.
+   *  Optional to preserve compile against existing consumers; aggregator
+   *  always populates the field on Phase 1+ runs. */
+  optimal_post_window?: OptimalPostWindow | null;
   /** Phase 6 (D-G1) — Full fingerprint match record or null if no match above threshold.
    *  Optional to preserve compile against existing consumers; plans 06-05/06-06 will start emitting it. */
   audio_fingerprint?: AudioFingerprintResult | null;
