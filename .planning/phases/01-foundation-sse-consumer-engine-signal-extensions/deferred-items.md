@@ -22,3 +22,10 @@ the plan that found it + the root cause + suggested fix.
   main worktree at `~/virtuna-v1.1/`. Out of scope for Phase 01 because no
   plan in this phase consumes the `Type` enum at runtime; the dev environment
   apparently dropped the package without a corresponding `package.json` patch.
+
+## D-01-DEF-02: `prefer-const` lint error in `src/lib/engine/utils/strip.ts`
+
+- **Discovered:** Plan 01-07 T3 ESLint gate run
+- **Root cause:** `strip.ts:4` uses `let out` but the variable is never reassigned — eslint `prefer-const` rule flags it as an error.
+- **Impact:** `eslint src/lib/engine` reports 1 error. Not caused by Phase 01 plans (present on base commit `1de9740`). Wave 2 plans' own modified files all lint clean.
+- **Suggested fix:** Change `let out` to `const out` in `src/lib/engine/utils/strip.ts`. One-line fix; out of scope for Phase 01 plans.
