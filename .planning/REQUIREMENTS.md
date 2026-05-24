@@ -29,11 +29,11 @@ This document scopes ONLY the engine-side debt left open by M1 (Engine Foundatio
 
 ### Category: TYPES — Type hygiene + user_settings resolution
 
-- [ ] **TYPES-01**: `user_settings` consumer audit complete. Audit identifies all live call sites in `src/app/api/{profile,settings,team}/*` (current count: 9 grep hits across profile, profile/avatar, settings/notifications, plus team paths). Audit output checked in to `.planning/research/user-settings-audit.md` and includes for each call site: is the route reachable from the deployed UI, what fields does it touch, and what breaks if the table never lands.
-- [ ] **TYPES-02**: Decision logged: write the `user_settings` migration (path a) OR rip out the consumers (path b). Default per MILESTONE.md is path a; choose path b only if the audit shows the routes are dead.
-- [ ] **TYPES-03**: If path a: `user_settings` table migration applied to live Supabase (`qyxvxleheckijapurisj`) with RLS policies. `database.types.ts` regenerated. Hand-patched types removed.
-- [ ] **TYPES-04**: If path b: dead API routes deleted, imports cleaned up, `database.types.ts` regenerated.
-- [ ] **TYPES-05**: `pnpm exec tsc --noEmit` returns 0 errors across the entire app — not just `src/lib/engine/`. (Current baseline: 966 errors in `src/app/api/{profile,settings,team}/*`.)
+- [x] **TYPES-01**: `user_settings` consumer audit complete. Audit identifies all live call sites in `src/app/api/{profile,settings,team}/*` (current count: 9 grep hits across profile, profile/avatar, settings/notifications, plus team paths). Audit output checked in to `.planning/research/user-settings-audit.md` and includes for each call site: is the route reachable from the deployed UI, what fields does it touch, and what breaks if the table never lands.
+- [x] **TYPES-02**: Decision logged: write the `user_settings` migration (path a) OR rip out the consumers (path b). Default per MILESTONE.md is path a; choose path b only if the audit shows the routes are dead.
+- [x] **TYPES-03**: If path a: `user_settings` table migration applied to live Supabase (`qyxvxleheckijapurisj`) with RLS policies. `database.types.ts` regenerated. Hand-patched types removed.
+- [x] **TYPES-04**: If path b: dead API routes deleted, imports cleaned up, `database.types.ts` regenerated.
+- [x] **TYPES-05**: `pnpm exec tsc --noEmit` returns 0 errors across the entire app — not just `src/lib/engine/`. (Current baseline: 966 errors in `src/app/api/{profile,settings,team}/*`.)
 
 ### Category: VERIF — M1 verification-debt closure
 
@@ -76,11 +76,11 @@ This document scopes ONLY the engine-side debt left open by M1 (Engine Foundatio
 | AUDIO-03 | 16 | pending |
 | AUDIO-04 | 16 | pending |
 | AUDIO-05 | 16 | pending |
-| TYPES-01 | 14 | pending |
-| TYPES-02 | 14 | pending |
-| TYPES-03 | 14 | pending |
-| TYPES-04 | 14 | pending |
-| TYPES-05 | 14 | pending |
+| TYPES-01 | 14 | Complete |
+| TYPES-02 | 14 | Complete |
+| TYPES-03 | 14 | Complete |
+| TYPES-04 | 14 | Complete |
+| TYPES-05 | 14 | Complete |
 | VERIF-01 | 18 | pending |
 | VERIF-02 | 18 | pending |
 | VERIF-03 | 18 | pending |

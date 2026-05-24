@@ -112,7 +112,7 @@ Phases 14, 15, 16, 17 may fork in parallel from the milestone branch base. Phase
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 14. Type Hygiene & user_settings Resolution | 2/2 | Complete   | 2026-05-24 |
+| 14. Type Hygiene & user_settings Resolution | 2/2 | Complete    | 2026-05-24 |
 | 15. Calibration Refit on Qwen Corpus | 0/TBD | Not started | - |
 | 16. Audio Fingerprint + Embedder Re-enable | 0/TBD | Not started | - |
 | 17. Smoke Runner Live Billing Wiring | 0/TBD | Not started | - |
