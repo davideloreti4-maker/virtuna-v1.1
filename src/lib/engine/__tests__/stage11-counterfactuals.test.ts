@@ -48,6 +48,7 @@ vi.mock("@google/genai", () => {
 });
 
 process.env.GEMINI_API_KEY = "test-key";
+process.env.DASHSCOPE_API_KEY = "test-key";
 
 // =====================================================
 // Per-band fixture factories (D-05 shapes)

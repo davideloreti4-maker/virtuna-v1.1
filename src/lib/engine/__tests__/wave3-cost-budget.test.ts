@@ -49,6 +49,7 @@ vi.mock("../deepseek", async (importOriginal) => {
 });
 
 process.env.DEEPSEEK_API_KEY = "test-key";
+process.env.DASHSCOPE_API_KEY = "test-key";
 
 import { runWave3 } from "../wave3";
 

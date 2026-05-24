@@ -230,6 +230,7 @@ vi.mock("@/lib/engine/wave4/platform-fit", () => ({
 // Set env vars BEFORE importing the module under test
 process.env.GEMINI_API_KEY = "test-key";
 process.env.DEEPSEEK_API_KEY = "test-key";
+process.env.DASHSCOPE_API_KEY = "test-key";
 
 // =====================================================
 // Imports

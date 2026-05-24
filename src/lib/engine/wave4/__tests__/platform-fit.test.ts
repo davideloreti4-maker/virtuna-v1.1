@@ -30,6 +30,7 @@ vi.mock("../../deepseek", async (importOriginal) => {
 });
 
 process.env.DEEPSEEK_API_KEY = "test-key";
+process.env.DASHSCOPE_API_KEY = "test-key";
 
 import { runPlatformFit } from "../platform-fit";
 import type { PlatformFitResult } from "../../types";

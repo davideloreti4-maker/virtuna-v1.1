@@ -111,6 +111,7 @@ vi.mock("node:path", () => ({
 
 // Set env vars BEFORE importing the module under test
 process.env.DEEPSEEK_API_KEY = "test-key";
+process.env.DASHSCOPE_API_KEY = "test-key";
 process.env.GEMINI_API_KEY = "test-key";
 
 import { isCircuitOpen, resetCircuitBreaker, reasonWithDeepSeek } from "../deepseek";
