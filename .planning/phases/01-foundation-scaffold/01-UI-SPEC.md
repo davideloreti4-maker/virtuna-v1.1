@@ -51,14 +51,16 @@ Exceptions:
 
 ## Typography
 
-Pre-populated from `globals.css`. Phase 1 uses 4 of the declared sizes. Only these 4 are used in scaffold output.
+Pre-populated from `globals.css`. Phase 1 uses 4 sizes and exactly 2 weights.
+
+**Weight constraint:** Phase 1 uses only `--font-regular` (400) and `--font-semibold` (600). Tokens `--font-medium` (500) and `--font-bold` (700) exist in `globals.css` but are NOT used in Phase 1 — reserved for Phase 2+ where section content may justify them. Matches Raycast weight restraint (soft over heavy).
 
 | Role | Size | Weight | Line Height | Letter Spacing | Usage |
 |------|------|--------|-------------|----------------|-------|
 | Body | 16px (`--text-base`) | 400 (`--font-regular`) | 1.5 (`--leading-normal`) | 0.2px | Section placeholder label text |
-| Label / Nav | 14px (`--text-sm`) | 500 (`--font-medium`) | 1.25 (`--leading-snug`) | 0.2px | Header nav links, section anchor labels |
+| Label / Nav | 14px (`--text-sm`) | 400 (`--font-regular`) | 1.25 (`--leading-snug`) | 0.2px | Header nav links, section anchor labels |
 | Section Heading | 30px (`--text-3xl`) | 600 (`--font-semibold`) | 1.1 (`--leading-tight`) | -0.02em (`--tracking-tight`) | Section placeholder H2 labels |
-| Display / Logo | 16px (`--text-base`) | 700 (`--font-bold`) | 1 | 0 | Virtuna wordmark in header |
+| Display / Logo | 16px (`--text-base`) | 600 (`--font-semibold`) | 1 | 0 | Virtuna wordmark in header |
 
 Phase 1 does NOT use `--text-hero` (52px) or `--text-display` (64px) — those belong to Phase 2 Hero shell.
 
@@ -105,17 +107,17 @@ Coral usage rule (from REQUIREMENTS.md MOTION-03): single-stop alpha gradient on
 
 Phase 1 only. Copy is minimal (placeholder labels, header links, skip link, SEO files).
 
-| Element | Copy |
-|---------|------|
-| Primary CTA (header) | "Sign up" |
-| Secondary link (header) | "Sign in" |
-| Skip-to-content link | "Skip to main content" |
-| Section placeholder labels (H2) | "Hero", "Demo", "How It Works", "Three Surfaces", "Comparison", "The Science", "Social Proof", "Pricing", "Final CTA" |
-| Section placeholder body | "[Section name] — content ships in Phase [N]" |
-| Page `<title>` | "Virtuna | Predict viral before you post" |
-| `<html lang>` | `en` |
-| `robots.txt` allow rule | `Allow: /` |
-| `sitemap.xml` canonical URL | `https://virtuna.ai/` |
+| Element | Copy | Note |
+|---------|------|------|
+| Primary CTA (header) | "Sign up" | Scaffold placeholder — no object noun by design. Final conversion CTA copy ("Start predicting" or equivalent verb + noun) ships in Phase 2 Hero shell. Executor must NOT treat this as final copy. |
+| Secondary link (header) | "Sign in" | Final |
+| Skip-to-content link | "Skip to main content" | Final |
+| Section placeholder labels (H2) | "Hero", "Demo", "How It Works", "Three Surfaces", "Comparison", "The Science", "Social Proof", "Pricing", "Final CTA" | Scaffold only — replaced each phase |
+| Section placeholder body | "[Section name] — content ships in Phase [N]" | Scaffold only |
+| Page `<title>` | "Virtuna \| Predict viral before you post" | Final for Phase 1 |
+| `<html lang>` | `en` | Final |
+| `robots.txt` allow rule | `Allow: /` | Final |
+| `sitemap.xml` canonical URL | `https://virtuna.ai/` | Final |
 
 Empty state: Not applicable — Phase 1 has no data-driven UI.
 
@@ -185,10 +187,10 @@ All other Magic UI + Aceternity components (ShimmerButton, BorderBeam, Spotlight
 | Border-bottom | `1px solid rgba(255, 255, 255, 0.06)` |
 | Z-index | `200` (`--z-sticky`) |
 | Max content width | `max-w-7xl mx-auto px-6` (1280px container, 24px horizontal padding) |
-| Logo | Virtuna wordmark, left-aligned, 16px bold, white |
-| Nav links | 9 anchor links: `#hero`, `#demo`, `#how-it-works`, `#surfaces`, `#comparison`, `#science`, `#social-proof`, `#pricing`, `#final-cta`. 14px medium, `--color-foreground-muted` at rest, `--color-foreground` on hover. `scroll-behavior: smooth` via CSS on `<html>`. |
-| "Sign in" link | Routes to `/login`. 14px medium. `--color-foreground-muted`. No button treatment. |
-| "Sign up" CTA | Button. `background: --color-coral-500`. `color: #1a0f0a` (accent-foreground). 14px semibold. `border-radius: 8px` (`--radius-md`). `padding: 8px 16px`. Hover: `background: --color-coral-400`. |
+| Logo | Virtuna wordmark, left-aligned, 16px semibold (600), white |
+| Nav links | 9 anchor links: `#hero`, `#demo`, `#how-it-works`, `#surfaces`, `#comparison`, `#science`, `#social-proof`, `#pricing`, `#final-cta`. 14px regular (400), `--color-foreground-muted` at rest, `--color-foreground` on hover. `scroll-behavior: smooth` via CSS on `<html>`. |
+| "Sign in" link | Routes to `/login`. 14px regular (400). `--color-foreground-muted`. No button treatment. |
+| "Sign up" CTA | Button. `background: --color-coral-500`. `color: #1a0f0a` (accent-foreground). 14px semibold (600). `border-radius: 8px` (`--radius-md`). `padding: 8px 16px`. Hover: `background: --color-coral-400`. Copy is scaffold placeholder — Phase 2 locks final label. |
 | Mobile (< 768px) | Nav links hidden. Logo + "Sign up" button remain visible. No hamburger in Phase 1 — nav collapse handled in later polish phase. |
 
 ---
@@ -206,7 +208,7 @@ All other Magic UI + Aceternity components (ShimmerButton, BorderBeam, Spotlight
 | Min-height | Hero shell: `100dvh`. All other 8 placeholders: `min-h-[400px]`. |
 | Padding | `py-12 px-6` (48px vertical, 24px horizontal) |
 | Inner max-width | `max-w-7xl mx-auto` |
-| Placeholder content | Centered H2 (section name, 30px semibold, `--color-foreground-muted`) + body text "[Section name] — content ships in Phase N" (16px regular, `--color-foreground-muted` at 60% opacity) |
+| Placeholder content | Centered H2 (section name, 30px semibold 600, `--color-foreground-muted`) + body text "[Section name] — content ships in Phase N" (16px regular 400, `--color-foreground-muted` at 60% opacity) |
 | Border between sections | None — background alternation provides visual separation |
 
 ---
@@ -279,7 +281,7 @@ Per PERF-11: visually hidden until keyboard focus.
 | Focus state | `position: absolute; top: 16px; left: 16px; z-index: 9999` |
 | Focus ring | `outline: 2px solid #FF7F50` (coral, `--color-accent`) |
 | Background | `--color-background-elevated` (`#1a1b1e`) |
-| Text | "Skip to main content" — 14px medium, `--color-foreground` |
+| Text | "Skip to main content" — 14px regular (400), `--color-foreground` |
 | Border-radius | `8px` (`--radius-md`) |
 | Padding | `12px 16px` |
 | Main content target | `<main id="main-content">` wraps the 9 section shells |
