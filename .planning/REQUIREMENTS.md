@@ -18,10 +18,10 @@
 
 - [ ] **FOUND-01**: Landing v1 builds at staging route `/v3` (file: `src/app/(marketing)/v3/page.tsx`) — live `(marketing)/page.tsx` untouched until cutover
 - [ ] **FOUND-02**: `(marketing)/layout.tsx` duplicate `<html>/<body>` bug fixed and "Artificial Societies" stale title replaced with Virtuna metadata
-- [ ] **FOUND-03**: `pnpm.overrides` aliases `framer-motion` to `motion@^12.29.2` — single animation runtime across whole bundle
-- [ ] **FOUND-04**: Magic UI + Aceternity UI core components installed via shadcn CLI per-component (no npm package adds for component layer)
+- [ ] **FOUND-03**: Single animation runtime — `motion` is the sole direct dependency, `framer-motion` only appears as motion's transitive dep (`pnpm why framer-motion` shows it under `motion`). Original spec called for `pnpm.overrides framer-motion → motion`, but motion v12.x re-exports from `framer-motion/dom` internally — the override created an unresolvable cycle. The transitive-only resolution satisfies the single-runtime intent without the cycle.
+- [ ] **FOUND-04**: Magic UI + Aceternity UI core components installed via shadcn CLI **per-component when first needed by a phase** (no npm package adds for component layer). Phase 1 ships zero such components by design (placeholder shells only, FOUND-05 collision check formally deferred Marquee + NumberTicker). Subsequent phases install via shadcn CLI when their plans require them.
 - [ ] **FOUND-05**: Pre-install collision check — verify `src/components/ui/marquee.tsx` and `src/hooks/useCountUp.ts` do not conflict with Magic UI Marquee + NumberTicker before install
-- [ ] **FOUND-06**: `_components/` (route-private section components) and `_data/` (demo samples, science citations) directories created under `(marketing)/v3/`
+- [ ] **FOUND-06**: Route-private `_components/`, `_data/`, `_hooks/` directories created under `(marketing)/` (route-group root, not `(marketing)/v3/`) — enables reuse across all marketing routes per Next.js App Router convention; original spec said `v3/` but plan-checker and all 5 plans assumed route-group root, and migration of legacy `/v2` routes will benefit from the shared location.
 - [ ] **FOUND-07**: `public/landing/placeholders/` directory established for non-final platform screenshots/videos
 - [ ] **FOUND-08**: `LandingHeader.tsx` with anchor links to all 9 sections (smooth-scroll), "Sign in" link to `/login` for returning users, and "Sign up" CTA — above-fold navigation discoverability
 - [ ] **FOUND-09**: Page-root `MotionConfig reducedMotion="user"` wraps all section components — single kill-switch for motion
