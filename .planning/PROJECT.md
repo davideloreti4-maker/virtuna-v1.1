@@ -8,13 +8,19 @@ A social media intelligence platform for TikTok creators. Helps creators predict
 
 AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
 
-## Status: Between Milestones
+## Status: Intelligence Surface drop — Milestone 1 of 3 active
 
 **Most recently shipped:** Engine Foundation (v3.0.0, merged 2026-05-24 — merge commit `8c50635`). 13-phase backend rebuild: Qwen-only architecture, video segmentation, audio fingerprint, multi-persona simulation, benchmark retrieval. ENGINE_VERSION flipped 3.0.0-dev → 3.0.0.
 
-**Next:** Intelligence Surface — scope TBD via `/gsd-new-milestone`. Working theme: surface the new engine to users (in-app prediction viz, results UX, History, profile-gated submit). Detail to be locked at milestone start.
+**Intelligence Surface drop** — 3 milestones, single public release. Wraps the validated engine in the UX that makes Virtuna a content intelligence cheatcode for creators. All 3 milestones merge to main behind feature flag (`FEATURE_INTELLIGENCE_SURFACE`); public drop event fires when all 3 ship.
 
-**Abandoned in this gap (see MILESTONES.md):** Brand Statement Landing (2026-05-11), Landing Page Redesign (2026-05-24), Linear Landing Clone (2026-05-24). Landing surface deferred until Intelligence Surface settles the product story.
+| Order | Milestone | Worktree | Status |
+|-------|-----------|----------|--------|
+| 1 | **Result Surface** — polished result card, live persona viz, mobile route, share/export, reshoot script, optimal post time, WOW onboarding | `~/virtuna-result-surface/` | **Active (started 2026-05-24)** |
+| 2 | **Iteration & Niche Intelligence** — concept mode, A/B variants, cross-platform repurposing, watermark detection, trending sounds for my niche, idea generator, steal-this-playbook | TBD | Forks after M2-I lands |
+| 3 | **Compounding Intelligence** — hook archetype library, trend velocity, outcome feedback loop, wins/flops trend | TBD | Forks after M2-I lands |
+
+**Abandoned in pre-drop gap (see MILESTONES.md):** Brand Statement Landing (2026-05-11), Landing Page Redesign (2026-05-24), Linear Landing Clone (2026-05-24). Landing surface deferred until Intelligence Surface drop completes.
 
 ## Requirements
 
@@ -68,9 +74,34 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - 203+ Vitest tests, >80% coverage on all engine modules -- Backend Reliability
 - Hardened failure modes: calibration parsing, dual-LLM graceful degradation, circuit breaker mutex, creator profile trigger -- Backend Reliability
 
-### Active
+### Active — Intelligence Surface drop (3-milestone bundle)
 
-<!-- No milestone in flight. Active items will be populated when Intelligence Surface scope is locked. -->
+#### M2-I: Result Surface — active in `~/virtuna-result-surface/`
+
+- [ ] Polished result card with 8 panels (retention, personas, hook decomp, similar videos, narrative, emotion arc, baseline, anti-virality)
+- [ ] Live audience simulation viz (SSE-driven, 60fps on iPhone 13+)
+- [ ] Mobile-first analysis route (Lighthouse ≥90)
+- [ ] Share & export (Satori-generated images + public permalinks)
+- [ ] Reshoot script generator (packages engine counterfactuals + A/B variants)
+- [ ] Optimal post-time recommendation (new engine signal)
+- [ ] First-analysis WOW onboarding (tutorial overlay + paced verdict reveal)
+
+#### M2-II: Iteration & Niche Intelligence — pending (forks after M2-I lands)
+
+- [ ] Concept mode (text-only "predict my hook idea")
+- [ ] A/B variant generation flow
+- [ ] Cross-platform repurposing (TikTok→Reels/Shorts)
+- [ ] Watermark detection (pre-flight on upload)
+- [ ] Trending sounds for my niche (surface audio fingerprint engine data)
+- [ ] Idea generator (niche + wins/flops + trends → 5 video ideas)
+- [ ] Steal-this-playbook (competitor video → personalized pattern)
+
+#### M2-III: Compounding Intelligence — pending (forks after M2-I lands)
+
+- [ ] Hook archetype library (taxonomy of viral hook patterns)
+- [ ] Trend velocity / lifecycle prediction
+- [ ] Outcome feedback loop (auto-scrape posted content after 48h — promoted from backlog)
+- [ ] Wins/flops trend dashboard ("am I getting better?")
 
 ### Deferred (from abandoned landing milestones)
 
@@ -189,16 +220,19 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 **Shipped:** Engine Foundation v3.0.0 (2026-05-24), UI Dashboard (2026-03-18), Prediction Engine Integration (2026-02-27), Backend Reliability (2026-02-18), Prediction Engine v2 (2026-02-17), Competitors Tool (2026-02-17), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
-**Current milestone:** None — between milestones. Next up: Intelligence Surface (scope TBD).
+**Current milestone:** Result Surface (M2-I of Intelligence Surface drop) — active in `~/virtuna-result-surface/` (branch `milestone/result-surface`). Started 2026-05-24.
 
 **Abandoned (2026-05):** Brand Statement Landing, Landing Page Redesign, Linear Landing Clone — all worktrees retained on disk for reference; see MILESTONES.md.
 
-**Future milestones:**
-- Intelligence Surface — surface new engine to users (in-app prediction viz, results UX, profile-gated submit)
-- Landing rebuild — deferred until Intelligence Surface settles product story
+**Future milestones (post-Intelligence Surface drop):**
+- iOS Capacitor wrapper — wrap Next.js webapp as Capacitor iOS app, App Store submission (~1 week, no native LLM)
+- Landing rebuild — deferred until Intelligence Surface drop completes
 - /about, /research, /manifesto supporting pages
+- Weekly intelligence report (email) — needs scale data
+- Brand-fit predictor (separate brand-deals milestone rewrite)
 - External brand deals marketplace
 - Competitor search/discovery by name or niche
+- Ultra tier (Gemini 3.1 Pro + DeepSeek V4 Pro, 30s latency cap)
 
 ## Evolution
 
@@ -218,4 +252,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-24 — Engine Foundation v3.0.0 merged to main; between milestones; next up Intelligence Surface (scope TBD)*
+*Last updated: 2026-05-24 — Intelligence Surface drop kicked off: M2-I Result Surface active in `~/virtuna-result-surface/`; M2-II + M2-III fork as parallel worktrees after M2-I lands. All 3 milestones merge behind feature flag; single public drop event when all ship.*
