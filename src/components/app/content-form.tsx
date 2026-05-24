@@ -1,12 +1,19 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Type, Link, Video, ArrowUp } from "lucide-react";
+import { Type, Link, Video, ArrowUp, ChevronDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { VideoUpload } from "./video-upload";
 import { useSimulationStore } from "@/stores/simulation-store";
 import { usePendingProfileGate } from "@/hooks/use-pending-profile-gate";
 import { ProfileInterviewModal } from "@/components/app/profile-interview-modal";
+import { APOLLO_TIERS } from "@/lib/models";
+import type { ApolloTier } from "@/lib/models";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -59,12 +66,14 @@ const PLACEHOLDERS: Record<InputMode, string> = {
 export function ContentForm({ onSubmit, uploadProgress, className }: ContentFormProps) {
   const [activeTab, setActiveTab] = useState<InputMode>("video_upload");
   const apolloTier = useSimulationStore((s) => s.apolloTier);
+  const setApolloTier = useSimulationStore((s) => s.setApolloTier);
   const {
     isLoading: isProfileLoading,
     interceptOrProceed,
     resumeAfterModal,
   } = usePendingProfileGate();
   const [modalOpen, setModalOpen] = useState(false);
+  const [tierOpen, setTierOpen] = useState(false);
   const [formData, setFormData] = useState<ContentFormData>({
     input_mode: "video_upload",
     caption: "",
@@ -237,9 +246,42 @@ export function ContentForm({ onSubmit, uploadProgress, className }: ContentForm
 
         {/* Right side: model tier label + submit */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-foreground-muted px-2 py-1.5">
-            Apollo {apolloTier}
-          </span>
+          <Popover open={tierOpen} onOpenChange={setTierOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-1 rounded-md px-2 py-1.5 text-xs text-foreground-muted hover:text-foreground hover:bg-white/[0.05] transition-colors"
+              >
+                Apollo {apolloTier}
+                <ChevronDown className="h-3 w-3 opacity-60" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              sideOffset={6}
+              className="w-52 p-1.5 border-white/[0.08] bg-[#111214]"
+            >
+              {APOLLO_TIERS.map((tier) => (
+                <button
+                  key={tier.id}
+                  type="button"
+                  onClick={() => {
+                    setApolloTier(tier.id as ApolloTier);
+                    setTierOpen(false);
+                  }}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-md px-3 py-2 text-xs transition-colors",
+                    apolloTier === tier.id
+                      ? "text-foreground bg-white/[0.06]"
+                      : "text-foreground-muted hover:text-foreground hover:bg-white/[0.04]"
+                  )}
+                >
+                  <span className="font-medium capitalize">{tier.name}</span>
+                  {apolloTier === tier.id && <Check className="h-3 w-3 text-accent" />}
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
 
           {/* Submit arrow */}
           <button

@@ -1,6 +1,5 @@
 "use client";
 
-import { Database } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,40 +37,33 @@ export function ApolloTierSelector({ className }: ApolloTierSelectorProps) {
               }
             }}
             className={cn(
-              "cursor-pointer text-left p-3",
+              "cursor-pointer text-left p-2.5",
               isSelected && "border-accent bg-white/[0.04]"
             )}
           >
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-foreground">
-                {tier.name}
-              </span>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-sm font-medium text-foreground">
+                  {tier.name}
+                </span>
+                {tier.recommended && (
+                  <Badge variant="accent" size="sm">
+                    Recommended
+                  </Badge>
+                )}
+              </div>
               <Badge
                 variant={isSelected ? "accent" : "default"}
                 size="sm"
+                className="shrink-0"
               >
                 {tier.nodeCount.toLocaleString()} nodes
               </Badge>
             </div>
 
-            <p className="text-xs text-foreground-secondary mt-1">
-              {tier.fullName}
-            </p>
-
-            <p className="text-xs text-foreground-muted mt-1">
+            <p className="text-xs text-foreground-muted mt-1 leading-snug">
               {tier.description}
             </p>
-
-            <p className="flex items-center gap-1 text-[11px] text-foreground-muted mt-2">
-              <Database className="h-3 w-3 shrink-0" />
-              {tier.databaseCopy}
-            </p>
-
-            {tier.recommended && (
-              <Badge variant="accent" size="sm" className="mt-2">
-                Recommended
-              </Badge>
-            )}
           </Card>
         );
       })}

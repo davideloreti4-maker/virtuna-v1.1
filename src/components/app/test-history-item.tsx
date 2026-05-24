@@ -40,11 +40,13 @@ export function TestHistoryItem({
   const showThumbnail = inputMode === 'video_upload' && thumbnailUrl;
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick()}
       className={cn(
-        'group relative flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left transition-colors',
+        'group relative flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 text-left transition-colors',
         isActive
           ? 'bg-active text-foreground'
           : 'text-foreground-secondary hover:bg-hover hover:text-foreground'
@@ -109,6 +111,6 @@ export function TestHistoryItem({
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
-    </button>
+    </div>
   );
 }
