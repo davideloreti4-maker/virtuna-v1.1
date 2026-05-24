@@ -16,15 +16,18 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 **Audience strategy:** Single page converts creators (Starter/Pro signup) AND impresses investors (vision/science/trust). Equal priority — above-fold trust + below-fold demo serves both.
 
-**Page structure (medium scroll, 7-8 sections):**
-1. Hero (above-fold) — bold H1, brand stance, dual CTA
-2. Interactive demo — user picks from 3-4 sample TikToks, scripted animated insight reveal (no real backend)
-3. How it works — engine pipeline / data-flow (Linear-style diagram)
+**Page structure (medium scroll, 9 sections + polish layer):**
+1. Hero (above-fold) — H1 with WordRotate audience-target reveal, dual CTA, above-fold logo bar + "backed by" credibility hook, Spline 3D scene (lazy-loaded)
+2. Interactive demo — user picks from 3-4 sample TikToks, scripted animated insight reveal (no real backend), cursor-following micro-signal effect
+3. How it works — engine pipeline / data-flow (Linear-style diagram, AnimatedBeam desktop / TracingBeam mobile)
 4. Three Surfaces bento — Prediction · Competitor Intelligence · Brand Deals
-5. The Science — behavioral research moat, citation chips, dataset stats
-6. Social proof stack — creator testimonials + product metrics (real or projected) + Numen Machines/partner logos
-7. Pricing — full Starter/Pro table on-page
-8. Final CTA + footer
+5. Comparison vs alternatives — positioning table or feature-chip grid (NOT logo-vs-logo attack)
+6. The Science — behavioral research moat, citation chips, dataset stats
+7. Social proof stack — projected-and-labeled metrics + Numen Machines/partner logos + "Coming soon" testimonials scaffold
+8. Pricing — full Starter/Pro table on-page with placeholder $ amounts (real prices locked at cutover)
+9. Vision beat + Final CTA + Footer — 1-2 sentence founder quote + Hero-mirror CTA + 4-col footer with sign-in link
+
+**Polish layer (cross-cutting):** SVG grain noise overlay, scroll progress indicator, custom coral cursor on landing only, section dividers/transitions, secondary accent color for non-coral accents.
 
 **Stack additions (animation):**
 - Magic UI (animated component library)
@@ -37,7 +40,9 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 **Content placeholders:** Platform screenshots/videos use placeholder assets during build; swap to real product captures in follow-up milestone. Copy treated as iterable — no upfront brand-spine lock phase.
 
-**Trust signals (all in scope):** science/research moat · product metrics · creator testimonials · Numen Machines lockup + partner/PR logos.
+**Trust signals (all in scope):** science/research moat · projected-and-labeled product metrics · Numen Machines lockup + partner/PR logos · above-fold credibility hook · founder vision beat · "Coming soon" testimonials scaffold (real testimonials slot in later milestone).
+
+**Measurement:** Vercel Analytics + Vercel Speed Insights from day one. Conversion events tracked (CTA clicks, demo runs, sign-up entries). SEO baseline: meta description, JSON-LD SoftwareApplication schema, OG/Twitter cards, canonical URL.
 
 **Out of scope this milestone:**
 - Real wired prediction demo (scripted only)
@@ -103,18 +108,24 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 <!-- REQ-IDs populated by REQUIREMENTS.md after this milestone's requirement-definition step. High-level scope below. -->
 
-- [ ] Hero (above-fold) — bold H1, brand stance, dual CTA, animated visual
-- [ ] Interactive demo (viewport 2) — user picks from 3-4 sample TikToks, scripted animated insight reveal
-- [ ] How it works (viewport 3) — engine pipeline diagram, Linear-style motion
+- [ ] Hero (viewport 1) — WordRotate H1, above-fold credibility hook, dual CTA, lazy-loaded Spline scene
+- [ ] Interactive demo (viewport 2) — sample-picker → scripted insight reveal + cursor-following effect
+- [ ] How it works (viewport 3) — AnimatedBeam pipeline (desktop) / TracingBeam (mobile)
 - [ ] Three Surfaces bento (viewport 4) — Prediction · Competitor Intelligence · Brand Deals
-- [ ] The Science (viewport 5) — behavioral-research moat, citation chips, dataset stats
-- [ ] Social proof (viewport 6) — creator testimonials + product metrics + Numen Machines/partner logos
-- [ ] Pricing (viewport 7) — full Starter/Pro table on-page
-- [ ] Final CTA + footer (viewport 8)
-- [ ] Stack additions installed and integrated (Magic UI + Framer Motion + Aceternity UI + shadcn core; GSAP/R3F/tsParticles/Cult UI on-demand)
-- [ ] Mobile responsive — single-column stack across all viewports
+- [ ] Comparison vs alternatives (viewport 5) — positioning grid, confident not adversarial
+- [ ] The Science (viewport 6) — behavioral-research moat, real citation chips, dataset stats
+- [ ] Social proof (viewport 7) — projected-and-labeled metrics + logos + testimonials scaffold
+- [ ] Pricing (viewport 8) — full Starter/Pro table with placeholder $ (real prices locked at cutover)
+- [ ] Vision beat + Final CTA + footer (viewport 9) — founder quote + Hero-mirror CTA + 4-col footer with sign-in link
+- [ ] Stack additions installed (Magic UI + Framer Motion + Aceternity UI + shadcn core; Spline for hero, GSAP/R3F/tsParticles on-demand)
+- [ ] Polish layer (grain noise, scroll progress, custom cursor, section dividers, secondary accent)
+- [ ] SEO baseline (meta description, JSON-LD SoftwareApplication, OG/Twitter, canonical, sitemap, robots)
+- [ ] Analytics (Vercel Analytics + Speed Insights + conversion event tracking)
+- [ ] Accessibility baseline (skip-to-content, heading hierarchy, reduced-motion, axe-core clean, Lighthouse a11y ≥ 95)
+- [ ] Performance (Lighthouse Perf ≥ 90 mobile, LCP < 2.5s, CLS < 0.1, INP < 200ms, motion JS ≤ 200KB gzip ex-Spline)
+- [ ] Mobile responsive — single-column stack across all 9 viewports
 - [ ] Reference-set fidelity bar met (Linear + Raycast aesthetic, OpusClip conversion patterns)
-- [ ] Launch: replace live landing page at root
+- [ ] Launch: replace live landing page at root (Davide approval gate)
 
 ### Backlog (deferred from prior milestones)
 
