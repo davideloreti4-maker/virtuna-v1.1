@@ -69,7 +69,11 @@ hygiene   refit     re-enable smoke billing
   2. `.planning/research/qwen-stratified-validation.md` checked in with per-video diff, score-band stratification (low/mid/high), video-06 snapshot, and macro_f1 number (≥0.338 OR explicit rationale logged)
   3. Wave 3 persona threshold and Wave 4 numeric platform_fit threshold committed to `src/lib/engine/aggregator.ts` (or wherever they live) with a comment citing the tuning report
   4. Single live `/api/analyze` E2E run shows `is_calibrated = true` in aggregator output with the new calibrated row in place
-**Plans**: TBD
+**Plans**: 4 plans
+  - [ ] 15-01-PLAN.md — Schema migration + types regen + getPlattParameters signature + train-platt CLI flag (CALIB-01)
+  - [ ] 15-02-PLAN.md — Live Qwen refit run on full.2026-05-11 corpus + sidecar capture (CALIB-01)
+  - [ ] 15-03-PLAN.md — Threshold+weight sweep + qwen-stratified-validation.md + benchmark_results row (CALIB-02, CALIB-03)
+  - [ ] 15-04-PLAN.md — Aggregator wiring flip + test inversion + live E2E (CALIB-05)
 
 ### Phase 16: Audio Fingerprint + Embedder Re-enable
 **Goal**: Audio-fingerprint matching returns real results (not `null`), embedder is fully wired against DashScope `text-embedding-v3`, inline D-F4 cron embedding is back on, all 17 `.skip`'d tests pass, and `sound_url` fetches go through an SSRF allowlist.
@@ -113,7 +117,7 @@ Phases 14, 15, 16, 17 may fork in parallel from the milestone branch base. Phase
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 14. Type Hygiene & user_settings Resolution | 2/2 | Complete    | 2026-05-24 |
-| 15. Calibration Refit on Qwen Corpus | 0/TBD | Not started | - |
+| 15. Calibration Refit on Qwen Corpus | 0/4 | Not started | - |
 | 16. Audio Fingerprint + Embedder Re-enable | 0/TBD | Not started | - |
 | 17. Smoke Runner Live Billing Wiring | 0/TBD | Not started | - |
 | 18. M1 Verification Debt Closure | 0/TBD | Not started | - |
