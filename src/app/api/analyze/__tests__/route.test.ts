@@ -185,7 +185,7 @@ const fakeFinalResult = {
   score_weights: { behavioral: 0.35, gemini: 0.25, ml: 0.15, rules: 0.15, trends: 0.10 },
   latency_ms: 1500,
   cost_cents: 0.5,
-  engine_version: "3.0.0-dev",
+  engine_version: "3.0.0",
   gemini_model: "gemini-2.5-flash",
   deepseek_model: "deepseek-chat",
   input_mode: "text",
@@ -390,7 +390,7 @@ describe("POST /api/analyze — provenance INSERT (PIPE-05, PIPE-06, CACHE-01)",
           behavioral: true,
           gemini: true,
         }),
-        engine_version: "3.0.0-dev",
+        engine_version: "3.0.0",
       })
     );
   });

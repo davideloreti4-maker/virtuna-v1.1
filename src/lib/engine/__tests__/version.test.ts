@@ -6,15 +6,16 @@ import { describe, it, expect } from "vitest";
 import { ENGINE_VERSION } from "../version";
 
 describe("version", () => {
-  it("exports ENGINE_VERSION = '3.0.0-dev'", () => {
-    expect(ENGINE_VERSION).toBe("3.0.0-dev");
+  it("exports ENGINE_VERSION = '3.0.0'", () => {
+    expect(ENGINE_VERSION).toBe("3.0.0");
   });
 
   it("ENGINE_VERSION is a literal string", () => {
     expect(typeof ENGINE_VERSION).toBe("string");
   });
 
-  it("ENGINE_VERSION ends with '-dev' suffix during milestone build", () => {
-    expect(ENGINE_VERSION).toMatch(/-dev$/);
+  it("ENGINE_VERSION is post-flip semver without -dev suffix (Phase 13 D-27)", () => {
+    expect(ENGINE_VERSION).not.toMatch(/-dev$/);
+    expect(ENGINE_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
   });
 });

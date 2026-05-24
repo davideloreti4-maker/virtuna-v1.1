@@ -562,12 +562,13 @@ describe("Phase 3 — provenance + stub invocations", () => {
     const { ENGINE_VERSION } = await import("../aggregator");
     const { ENGINE_VERSION: viaVersion } = await import("../version");
     expect(ENGINE_VERSION).toBe(viaVersion);
-    expect(ENGINE_VERSION).toBe("3.0.0-dev");
+    expect(ENGINE_VERSION).toBe("3.0.0");
   });
 
   it("PredictionResult.engine_version reads from ./version module", async () => {
+    const { ENGINE_VERSION } = await import("../version");
     const result = await aggregateScores(makePipelineResult());
-    expect(result.engine_version).toBe("3.0.0-dev");
+    expect(result.engine_version).toBe(ENGINE_VERSION);
   });
 
   it("invokes Stage 10 + Stage 11 stubs with onStageEvent forwarding (PIPE-09)", async () => {

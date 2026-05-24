@@ -158,7 +158,7 @@ describe("D-23 — version invalidation invariant", () => {
   });
 
   it("lookupPredictionCache returns null when stored engine_version != current ENGINE_VERSION (post-flip simulation)", async () => {
-    // Simulate: Supabase row has engine_version="3.0.0-dev" but the filter uses ENGINE_VERSION="3.0.0-dev"
+    // Simulate: Supabase row has stale engine_version (e.g. "3.0.0-dev") but the filter uses current ENGINE_VERSION="3.0.0"
     // When version flips, the .eq("engine_version", ENGINE_VERSION) filter changes — rows with the old
     // version no longer match. Mock the supabase chain to return { data: null } for the mismatch case.
     mockMaybeSingle.mockResolvedValueOnce({ data: null, error: null });
