@@ -1,6 +1,6 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'motion/react';
 
 import { GlassCard } from '@/components/ui/card';
 import { GlassSkeleton, SkeletonText } from '@/components/primitives';

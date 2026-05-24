@@ -87,5 +87,10 @@
     "typescript": "^5",
     "vitest": "^4.0.18",
     "wcag-contrast": "^3.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "framer-motion": "npm:motion@^12.29.2"
+    }
   }
 }
