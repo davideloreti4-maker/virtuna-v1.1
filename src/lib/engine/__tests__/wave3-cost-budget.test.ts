@@ -75,11 +75,9 @@ function makeWave0Result(): Wave0Result {
   return {
     content_type: { type: "slideshow", confidence: 0.85 },
     niche: {
-      primary: "beauty",
-      sub: "skincare",
-      micro: null,
+      primary_slug: "beauty",
+      micro_slug: null,
       confidence: 0.9,
-      source: "ai",
     },
   };
 }

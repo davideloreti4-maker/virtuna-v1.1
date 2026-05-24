@@ -719,11 +719,9 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
       wave0Result: {
         content_type: null,
         niche: {
-          primary: "beauty",
-          sub: "skincare",
-          micro: null,
+          primary_slug: "beauty",
+          micro_slug: null,
           confidence: 0.8,
-          source: "ai",
         },
       },
     });
