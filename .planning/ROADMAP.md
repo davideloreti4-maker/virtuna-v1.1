@@ -56,7 +56,9 @@ hygiene   refit     re-enable smoke billing
   3. `database.types.ts` regenerated from live schema; hand-patched types removed
   4. `pnpm exec tsc --noEmit` returns 0 errors across the entire app (baseline was 966 errors in `src/app/api/{profile,settings,team}/*`)
   5. `pnpm build` green
-**Plans**: TBD
+**Plans**: 2 plans
+  - [ ] 14-01-PLAN.md — Produce user-settings-audit.md (TYPES-01, TYPES-02, baseline TYPES-05)
+  - [ ] 14-02-PLAN.md — Regenerate database.types.ts from live schema (TYPES-03, TYPES-04 vacuous, TYPES-05 gate)
 
 ### Phase 15: Calibration Refit on Qwen Corpus
 **Goal**: Platt calibration row reflects the Qwen scorer (not the text-mode drifted row), stratified validation rerun under Qwen, Wave 3/4 thresholds re-tuned for the new distribution, and `is_calibrated = true` flows through aggregator output for new analyses.
@@ -110,7 +112,7 @@ Phases 14, 15, 16, 17 may fork in parallel from the milestone branch base. Phase
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 14. Type Hygiene & user_settings Resolution | 0/TBD | Not started | - |
+| 14. Type Hygiene & user_settings Resolution | 0/2 | Not started | - |
 | 15. Calibration Refit on Qwen Corpus | 0/TBD | Not started | - |
 | 16. Audio Fingerprint + Embedder Re-enable | 0/TBD | Not started | - |
 | 17. Smoke Runner Live Billing Wiring | 0/TBD | Not started | - |
