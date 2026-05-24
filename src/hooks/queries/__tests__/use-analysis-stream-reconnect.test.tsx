@@ -58,12 +58,11 @@ describe("useAnalysisStream reconnect", () => {
 
   it("reconnect() with analysisId opens EventSource pointing at /api/analyze/[id]/stream", async () => {
     const { result } = renderHook(
-      (opts: { initialData?: { id: string; overall_score: null } }) =>
-        useAnalysisStream(opts),
-      {
-        wrapper,
-        initialProps: { initialData: { id: "the-id", overall_score: null } },
-      },
+      () =>
+        useAnalysisStream({
+          initialData: { id: "the-id", overall_score: null },
+        }),
+      { wrapper },
     );
     await act(async () => {
       result.current.reconnect();
@@ -75,12 +74,11 @@ describe("useAnalysisStream reconnect", () => {
 
   it("EventSource event:complete sets result + phase=complete and closes stream", async () => {
     const { result } = renderHook(
-      (opts: { initialData?: { id: string; overall_score: null } }) =>
-        useAnalysisStream(opts),
-      {
-        wrapper,
-        initialProps: { initialData: { id: "the-id", overall_score: null } },
-      },
+      () =>
+        useAnalysisStream({
+          initialData: { id: "the-id", overall_score: null },
+        }),
+      { wrapper },
     );
     await act(async () => {
       result.current.reconnect();
@@ -95,12 +93,11 @@ describe("useAnalysisStream reconnect", () => {
 
   it("EventSource closed without complete switches phase to 'polling'", async () => {
     const { result } = renderHook(
-      (opts: { initialData?: { id: string; overall_score: null } }) =>
-        useAnalysisStream(opts),
-      {
-        wrapper,
-        initialProps: { initialData: { id: "the-id", overall_score: null } },
-      },
+      () =>
+        useAnalysisStream({
+          initialData: { id: "the-id", overall_score: null },
+        }),
+      { wrapper },
     );
     await act(async () => {
       result.current.reconnect();
@@ -121,12 +118,11 @@ describe("useAnalysisStream reconnect", () => {
       ),
     );
     const { result } = renderHook(
-      (opts: { initialData?: { id: string; overall_score: null } }) =>
-        useAnalysisStream(opts),
-      {
-        wrapper,
-        initialProps: { initialData: { id: "the-id", overall_score: null } },
-      },
+      () =>
+        useAnalysisStream({
+          initialData: { id: "the-id", overall_score: null },
+        }),
+      { wrapper },
     );
     await act(async () => {
       result.current.reconnect();
@@ -143,12 +139,11 @@ describe("useAnalysisStream reconnect", () => {
 
   it("visibilitychange='hidden' keeps phase=polling without crashing the poll loop", async () => {
     const { result } = renderHook(
-      (opts: { initialData?: { id: string; overall_score: null } }) =>
-        useAnalysisStream(opts),
-      {
-        wrapper,
-        initialProps: { initialData: { id: "the-id", overall_score: null } },
-      },
+      () =>
+        useAnalysisStream({
+          initialData: { id: "the-id", overall_score: null },
+        }),
+      { wrapper },
     );
     await act(async () => {
       result.current.reconnect();

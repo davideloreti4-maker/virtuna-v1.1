@@ -61,11 +61,24 @@ export interface AnalysisStreamInput {
   creator_handle?: string;
 }
 
+/**
+ * Permissive shape for the hook's initialData option. Real callers pass either a
+ * completed PredictionResult (Pitfall #3 short-circuit) or an in-flight row
+ * (`{ id, overall_score: null }`) when permalink-replaying. Kept as an
+ * intersection of optional pieces rather than `Partial<PredictionResult>` so that
+ * test callers can pass `{ id, overall_score: null }` without `Partial` widening
+ * `overall_score` to `number | undefined`.
+ */
+export type AnalysisStreamInitialData =
+  | (Partial<Omit<PredictionResult, "overall_score">> & {
+      id?: string;
+      overall_score?: number | null;
+    })
+  | null;
+
 export interface UseAnalysisStreamOptions {
   /** Pitfall #3 — if initialData has overall_score!=null, hook starts in 'complete' and never opens stream. */
-  initialData?:
-    | (Partial<PredictionResult> & { id?: string; overall_score?: number | null })
-    | null;
+  initialData?: AnalysisStreamInitialData;
 }
 
 export interface AnalysisStreamReturn {
