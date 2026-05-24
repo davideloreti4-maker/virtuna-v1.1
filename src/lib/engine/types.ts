@@ -6,11 +6,16 @@ import {
   type CtaSegmentResult,
   type BodySegmentResult,
 } from "./gemini/schemas";
+import type { EmotionArcPoint } from "./qwen/schemas";
 import { ARCHETYPES } from "./wave3/persona-registry";
 
 // Phase 5 D-13 — re-export segment types so downstream consumers (aggregator, merge,
 // route handlers) have ONE import surface (`@/lib/engine/types`) instead of two.
 export type { HookDecomposition, CtaSegmentResult, BodySegmentResult };
+
+// Phase 1 (R1.7) — re-export EmotionArcPoint so consumers can import from
+// "@/lib/engine/types" instead of reaching into qwen/schemas directly.
+export type { EmotionArcPoint };
 
 // =====================================================
 // Feature Vector — Standardized signal backbone
@@ -180,6 +185,9 @@ export interface PredictionResult {
   /** Phase 6 (D-G3) — 0-100 audio perceptual score before fingerprint boost. 0 when audio absent.
    *  Optional to preserve compile against existing consumers; plans 06-05/06-06 will start emitting it. */
   audio_perceptual_score?: number;
+  /** Phase 1 (R1.7) — Emotion arc timeline from Omni Plus. Null when video absent
+   *  or Qwen omitted the field. Optional to preserve compile against existing consumers. */
+  emotion_arc?: EmotionArcPoint[] | null;
   /** Phase 6 (D-G1) — Full fingerprint match record or null if no match above threshold.
    *  Optional to preserve compile against existing consumers; plans 06-05/06-06 will start emitting it. */
   audio_fingerprint?: AudioFingerprintResult | null;

@@ -16,6 +16,7 @@ import type {
   Suggestion,
   TrendEnrichment,
 } from "./types";
+import type { EmotionArcPoint } from "./qwen/schemas";
 import type { PipelineResult } from "./pipeline";
 import type { StageEventCallback } from "./events";
 import { QWEN_OMNI_MODEL as GEMINI_MODEL } from "./qwen/client";
@@ -657,6 +658,21 @@ export async function aggregateScores(
   // payload. Null when audio_signals absent.
   const audio_description = audioSignals?.audio_description ?? null;
 
+  // Phase 1 (R1.7) — emotion_arc pluck from Omni Plus output. Non-fatal per
+  // Pitfall #5 (inserted BEFORE result assembly so Stage 10/11 critique +
+  // counterfactuals see the populated field). Backward compat: when Omni omits
+  // the field (existing responses, slideshow/text mode) emotion_arc is null and
+  // the downstream P3 emotion-arc panel renders empty state.
+  let emotion_arc: EmotionArcPoint[] | null = null;
+  try {
+    const arcRaw = (geminiResult.analysis as unknown as {
+      emotion_arc?: EmotionArcPoint[];
+    })?.emotion_arc;
+    if (Array.isArray(arcRaw) && arcRaw.length > 0) emotion_arc = arcRaw;
+  } catch {
+    emotion_arc = null; // non-fatal
+  }
+
   // -------------------------------------------------
   // ML prediction (async — loads model from Supabase Storage on cold start)
   // -------------------------------------------------
@@ -1013,6 +1029,9 @@ export async function aggregateScores(
     // Phase 6 (Note 7 / Q4 RESOLVED) — verbatim audio_description for
     // persistence into analysis_results.audio_description (route.ts pluck).
     audio_description,
+    // Phase 1 (R1.7) — emotion arc timeline plucked from Omni Plus output above.
+    // Null when video absent or Qwen omitted the field; non-fatal per Pitfall #5.
+    emotion_arc,
     score_weights: weights, // Actual weights used (may differ from BASE if signals missing)
     latency_ms: pipelineResult.total_duration_ms,
     cost_cents,
