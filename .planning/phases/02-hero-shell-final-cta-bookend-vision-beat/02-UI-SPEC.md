@@ -261,7 +261,7 @@ Magic UI `WordRotate` — single rotating word slot fused inside the H1 sentence
 | Visual treatment | Ghost link: no background, no border. Arrow chevron icon (`ChevronRight` from lucide-react, 16px) appended inline after label text |
 | Text color | `--color-foreground-secondary` (`#9c9c9d`) at rest |
 | Text size | 14px (`--text-sm`), weight 400 |
-| Height | `44px` min (touch target — achieved via `py-3 flex items-center`) |
+| Height | `44px` min (touch target — achieved via `min-h-[44px] py-2 flex items-center`) |
 | Hover state | Text color shifts to `--color-foreground` (`#f9f9f9`); chevron nudges right `translateX(2px)` — `transition: color 150ms, transform 150ms` |
 | Focus-visible | `outline: 2px solid #FF7F50; outline-offset: 2px; border-radius: 4px` |
 | Reduced-motion | No chevron nudge on hover |
@@ -288,7 +288,7 @@ Pre-headline badge that appears above H1 in both Hero and Final CTA.
 | Size | 14px (`--text-sm`) — badge scale |
 | Weight | 400 (`--font-regular`) — shimmer effect carries visual emphasis |
 | Letter spacing | `0.08em` |
-| Container | Pill shape: `rounded-full border border-white/[0.08] px-4 py-1.5` |
+| Container | Pill shape: `rounded-full border border-white/[0.08] px-4 py-2` |
 | Background | `rgba(255,255,255,0.03)` — barely visible glass tint |
 | Shiny animation | Shimmer sweep across text — Magic UI default (gradient sweep on text) |
 | Reduced-motion | Static text, no shimmer. Pill container still renders |
