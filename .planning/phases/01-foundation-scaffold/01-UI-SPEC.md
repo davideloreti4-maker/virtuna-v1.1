@@ -1,10 +1,11 @@
 ---
 phase: 1
 slug: foundation-scaffold
-status: draft
+status: approved
 shadcn_initialized: true
 preset: new-york / slate / css-variables
 created: 2026-05-24
+reviewed_at: 2026-05-24
 ---
 
 # Phase 1 — UI Design Contract: Foundation + Scaffold
