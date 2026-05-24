@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: engine-hardening
 milestone_name: Engine Hardening
-status: executing
-stopped_at: Phase 15 context gathered
-last_updated: "2026-05-24T10:01:38.452Z"
-last_activity: 2026-05-24 -- Phase 15 execution started
+status: halted
+stopped_at: Phase 15 halted post-15-01 — calibration framing mismatch (text-vs-video + corpus-vs-production)
+last_updated: "2026-05-24T10:30:00.000Z"
+last_activity: 2026-05-24 -- Phase 15 halted; 15-01 landed; 15-02..15-04 need rescope
 progress:
   total_phases: 5
   completed_phases: 1
@@ -27,10 +27,10 @@ See: .planning/MILESTONE.md (immutable worktree identity)
 ## Current Position
 
 Milestone: Engine Hardening (M2-1b of Intelligence Surface drop)
-Phase: 15 (calibration-refit-on-qwen-corpus) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 15
-Last activity: 2026-05-24 -- Phase 15 execution started
+Phase: 15 (calibration-refit-on-qwen-corpus) — HALTED post-15-01
+Plan: 1 of 4 complete (15-01 merged); 15-02/03/04 blocked pending rescope
+Status: Halted — calibration framing mismatch surfaced
+Last activity: 2026-05-24 -- 15-01 merged; phase halted; see 15-DISCUSSION-LOG.md tail for two findings (text-vs-video, corpus-vs-production) and rescope options
 
 Progress: [░░░░░░░░░░] 0% (0/5 phases complete)
 
