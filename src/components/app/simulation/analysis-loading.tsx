@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import type { LucideIcon } from 'lucide-react';
 import { Database, Brain, BarChart3, Sparkles } from 'lucide-react';
 import { Text } from '@/components/ui/typography';

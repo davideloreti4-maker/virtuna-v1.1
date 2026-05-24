@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { motion, useSpring, useTransform } from "framer-motion";
+import { motion, useSpring, useTransform } from "motion/react";
 import { cn } from "@/lib/utils";
 import { type ViralTier, VIRAL_TIERS, getTierFromScore } from "@/types/viral-results";
 
