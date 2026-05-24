@@ -1,0 +1,23 @@
+# Phase 13 Plan 06 — 5-URL smoke test seed
+# Instructions: Replace each placeholder with a real TikTok video URL.
+# Format: https://www.tiktok.com/@handle/video/12345678901234567
+# D-26 strategy: aim for 2 expected high-scorers, 2 expected low-scorers, 1 mid-tier.
+# Across at least 2 different niches for diversity.
+#
+# Used by: pnpm tsx scripts/smoke-tiktok-pipeline.ts urls-5.txt
+# Each video is downloaded locally first, then uploaded via Virtuna UI.
+
+# 1. High-scorer (known viral/strong performance)
+https://www.tiktok.com/REPLACE_1
+
+# 2. High-scorer (different niche from #1)
+https://www.tiktok.com/REPLACE_2
+
+# 3. Mid-tier (moderate engagement expected)
+https://www.tiktok.com/REPLACE_3
+
+# 4. Low-scorer (known underperforming video)
+https://www.tiktok.com/REPLACE_4
+
+# 5. Low-scorer (different niche from #4)
+https://www.tiktok.com/REPLACE_5

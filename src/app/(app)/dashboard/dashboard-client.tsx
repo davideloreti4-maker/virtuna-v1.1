@@ -83,6 +83,10 @@ export function DashboardClient() {
   const setAnalysisResult = useSimulationStore((s) => s.setAnalysisResult);
   const resetAnalysis = useSimulationStore((s) => s.resetAnalysis);
 
+  // Phase 11 (PROFILE-16): lifetime analysis count + goal for re-prompt banner
+  const [analysisCount, setAnalysisCount] = useState<number>(0);
+  const [primaryGoal, setPrimaryGoal] = useState<string | null>(null);
+
   const analyzeMutation = useAnalyze();
   const videoUpload = useVideoUpload();
   const { toast } = useToast();
@@ -108,6 +112,25 @@ export function DashboardClient() {
       setStatus("filling-form");
     }
   }, [urlParam]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Phase 11 (PROFILE-16): fetch analysis_count + primary_goal once on mount
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase
+        .from("creator_profiles")
+        .select("analysis_count, primary_goal")
+        .eq("user_id", user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setAnalysisCount(data.analysis_count ?? 0);
+            setPrimaryGoal(data.primary_goal ?? null);
+          }
+        });
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handlers
   const handleCloseSelector = () => {
@@ -190,6 +213,7 @@ export function DashboardClient() {
               setAnalysisResult(result.predicted_engagement);
             }
             setStatus("viewing-results");
+            setAnalysisCount((prev) => prev + 1);
           }
         },
         onError: () => {
@@ -273,6 +297,8 @@ export function DashboardClient() {
                 <ResultsPanel
                   result={analyzeMutation.data}
                   onRunAnother={handleRunAnother}
+                  analysisCount={analysisCount}
+                  primaryGoal={primaryGoal}
                 />
               ) : null}
             </div>

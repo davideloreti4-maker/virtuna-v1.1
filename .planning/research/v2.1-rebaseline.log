@@ -1,0 +1,78 @@
+
+> virtuna-v1.1@0.1.0 eval
+> npx tsx scripts/eval.ts --baseline --corpus-version full.2026-05-11 --output .planning/research/v2.1-rebaseline.json
+
+[dotenv@17.3.1] injecting env (5) from .env.local -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+[eval] corpus=full.2026-05-11 baseline=true loo=false cap=5000 delay=2000ms
+[2026-05-21T11:46:51.335Z] INFO v2.1 baseline measurement {"module":"corpus/baseline","corpusVersion":"full.2026-05-11"}
+[2026-05-21T11:46:51.336Z] INFO Eval harness starting {"module":"corpus/eval-harness","corpusVersion":"full.2026-05-11","engineVersion":"3.0.0-dev","leaveOneOut":false}
+[2026-05-21T11:46:52.204Z] INFO Eval loop starting {"module":"corpus/eval-runner","corpusVersion":"full.2026-05-11","rowCount":225,"cap":5000}
+[2026-05-21T11:46:52.208Z] INFO Pipeline started {"requestId":"lVe68MPgU6Z1","module":"pipeline","input_mode":"text"}
+[2026-05-21T11:47:07.427Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T11:47:17.499Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":10076,"cost_cents":0.0494,"model":"gemini-2.5-flash"}
+[2026-05-21T11:47:17.500Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T11:47:17.624Z] DEBUG Trending sounds loaded {"module":"trends","count":0,"cached":true}
+[2026-05-21T11:47:17.717Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":5,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T11:47:25.891Z] INFO DeepSeek cache telemetry {"module":"deepseek","stage":"deepseek_reasoning","cache_hit_tokens":1024,"cache_miss_tokens":1004,"total_prompt_tokens":2028,"cache_hit_rate":0.5049}
+[2026-05-21T11:47:25.891Z] INFO Reasoning complete {"module":"deepseek","stage":"deepseek_reasoning","duration_ms":8374,"cost_cents":0.051,"model":"deepseek-reasoner"}
+[2026-05-21T11:47:34.499Z] INFO Pipeline complete {"requestId":"lVe68MPgU6Z1","module":"pipeline","stage":"pipeline","duration_ms":42291,"cost_cents":0.1844,"warnings_count":0}
+[2026-05-21T11:47:34.805Z] INFO Row complete {"module":"corpus/eval-runner","i":0,"niche":"beauty","score":99.8,"actual":"average","cost":0.1844}
+[2026-05-21T11:47:36.806Z] INFO Pipeline started {"requestId":"i8cAphGzpVZZ","module":"pipeline","input_mode":"text"}
+[2026-05-21T11:47:38.651Z] INFO Niche detection complete {"module":"wave0.niche","stage":"wave_0_niche_detector","primary":"beauty","sub":"skincare","confidence":0.95,"source":"ai","cache_hit_tokens":768,"cache_miss_tokens":9,"cost_cents":0.0044}
+[2026-05-21T11:47:38.996Z] INFO Embedded query {"module":"retrieval.embedder","duration_ms":344,"dims":768,"cost_cents":0.00072}
+[2026-05-21T11:47:39.081Z] INFO Retrieval complete {"module":"retrieval.stage","evidence_count":5,"score":null,"availability":false,"cost_cents":0.00072}
+[2026-05-21T11:47:48.996Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":10345,"cost_cents":0.0487,"model":"gemini-2.5-flash"}
+[2026-05-21T11:47:48.996Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T11:47:48.997Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":5,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T11:47:56.205Z] INFO DeepSeek cache telemetry {"module":"deepseek","stage":"deepseek_reasoning","cache_hit_tokens":896,"cache_miss_tokens":938,"total_prompt_tokens":1834,"cache_hit_rate":0.4885}
+[2026-05-21T11:47:56.206Z] INFO Reasoning complete {"module":"deepseek","stage":"deepseek_reasoning","duration_ms":7209,"cost_cents":0.0475,"model":"deepseek-reasoner"}
+[2026-05-21T11:48:06.789Z] INFO Pipeline complete {"requestId":"i8cAphGzpVZZ","module":"pipeline","stage":"pipeline","duration_ms":29982,"cost_cents":0.21,"warnings_count":0}
+[2026-05-21T11:48:06.922Z] INFO Row complete {"module":"corpus/eval-runner","i":1,"niche":"beauty","score":99.97,"actual":"viral","cost":0.21}
+[2026-05-21T11:48:08.922Z] INFO Pipeline started {"requestId":"7lBpbKrZJU8l","module":"pipeline","input_mode":"text"}
+[2026-05-21T11:48:11.898Z] INFO Niche detection complete {"module":"wave0.niche","stage":"wave_0_niche_detector","primary":"lifestyle","sub":"routines","confidence":0.95,"source":"ai","cache_hit_tokens":768,"cache_miss_tokens":51,"cost_cents":0.008}
+[2026-05-21T11:48:12.216Z] INFO Embedded query {"module":"retrieval.embedder","duration_ms":318,"dims":768,"cost_cents":0.00138}
+[2026-05-21T11:48:12.311Z] INFO Retrieval complete {"module":"retrieval.stage","evidence_count":5,"score":null,"availability":false,"cost_cents":0.00138}
+[2026-05-21T11:48:22.667Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":10769,"cost_cents":0.0477,"model":"gemini-2.5-flash"}
+[2026-05-21T11:48:22.667Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T11:48:22.668Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":5,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T11:48:42.277Z] INFO DeepSeek cache telemetry {"module":"deepseek","stage":"deepseek_reasoning","cache_hit_tokens":896,"cache_miss_tokens":949,"total_prompt_tokens":1845,"cache_hit_rate":0.4856}
+[2026-05-21T11:48:42.278Z] INFO Reasoning complete {"module":"deepseek","stage":"deepseek_reasoning","duration_ms":19610,"cost_cents":0.1068,"model":"deepseek-reasoner"}
+[2026-05-21T11:48:52.282Z] INFO Pipeline complete {"requestId":"7lBpbKrZJU8l","module":"pipeline","stage":"pipeline","duration_ms":43360,"cost_cents":0.235,"warnings_count":0}
+[2026-05-21T11:48:52.494Z] INFO Row complete {"module":"corpus/eval-runner","i":2,"niche":"lifestyle","score":99.9,"actual":"under","cost":0.235}
+[2026-05-21T11:48:54.496Z] INFO Pipeline started {"requestId":"jdQHu0HaflZz","module":"pipeline","input_mode":"text"}
+[2026-05-21T11:48:56.604Z] INFO Niche detection complete {"module":"wave0.niche","stage":"wave_0_niche_detector","primary":"beauty","sub":"skincare","confidence":0.95,"source":"ai","cache_hit_tokens":768,"cache_miss_tokens":81,"cost_cents":0.0053}
+[2026-05-21T11:48:56.913Z] INFO Embedded query {"module":"retrieval.embedder","duration_ms":309,"dims":768,"cost_cents":0.00168}
+[2026-05-21T11:48:57.035Z] INFO Retrieval complete {"module":"retrieval.stage","evidence_count":5,"score":null,"availability":false,"cost_cents":0.00168}
+[2026-05-21T11:49:07.241Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":10637,"cost_cents":0.0502,"model":"gemini-2.5-flash"}
+[2026-05-21T11:49:07.242Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T11:49:07.242Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":5,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T11:49:18.300Z] INFO DeepSeek cache telemetry {"module":"deepseek","stage":"deepseek_reasoning","cache_hit_tokens":896,"cache_miss_tokens":1017,"total_prompt_tokens":1913,"cache_hit_rate":0.4684}
+[2026-05-21T11:49:18.300Z] INFO Reasoning complete {"module":"deepseek","stage":"deepseek_reasoning","duration_ms":11058,"cost_cents":0.0624,"model":"deepseek-reasoner"}
+[2026-05-21T11:49:31.349Z] INFO Pipeline complete {"requestId":"jdQHu0HaflZz","module":"pipeline","stage":"pipeline","duration_ms":36853,"cost_cents":0.2165,"warnings_count":0}
+[2026-05-21T11:49:31.470Z] INFO Row complete {"module":"corpus/eval-runner","i":3,"niche":"beauty","score":99.95,"actual":"viral","cost":0.2165}
+[2026-05-21T11:49:33.471Z] INFO Pipeline started {"requestId":"DlrXZZkCkaci","module":"pipeline","input_mode":"text"}
+[2026-05-21T11:49:48.562Z] INFO Retrieval skipped — no niche primary from Wave 0 {"module":"retrieval.stage"}
+[2026-05-21T11:50:00.693Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":12131,"cost_cents":0.0467,"model":"gemini-2.5-flash"}
+[2026-05-21T11:50:00.694Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T11:50:00.694Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":5,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T11:50:10.440Z] INFO DeepSeek cache telemetry {"module":"deepseek","stage":"deepseek_reasoning","cache_hit_tokens":896,"cache_miss_tokens":901,"total_prompt_tokens":1797,"cache_hit_rate":0.4986}
+[2026-05-21T11:50:10.440Z] INFO Reasoning complete {"module":"deepseek","stage":"deepseek_reasoning","duration_ms":9747,"cost_cents":0.0562,"model":"deepseek-reasoner"}
+[2026-05-21T11:50:24.830Z] INFO Pipeline complete {"requestId":"DlrXZZkCkaci","module":"pipeline","stage":"pipeline","duration_ms":51359,"cost_cents":0.2064,"warnings_count":0}
+[2026-05-21T11:50:25.037Z] INFO Row complete {"module":"corpus/eval-runner","i":4,"niche":"beauty","score":99.94,"actual":"viral","cost":0.2064}
+[2026-05-21T11:50:27.039Z] INFO Pipeline started {"requestId":"M57i_MOJc1Oo","module":"pipeline","input_mode":"text"}
+[2026-05-21T11:50:30.261Z] INFO Niche detection complete {"module":"wave0.niche","stage":"wave_0_niche_detector","primary":"music-performance","sub":"reactions-to-music","confidence":0.75,"source":"ai","cache_hit_tokens":640,"cache_miss_tokens":169,"cost_cents":0.0099}
+[2026-05-21T11:50:30.603Z] INFO Embedded query {"module":"retrieval.embedder","duration_ms":342,"dims":768,"cost_cents":0.000945}
+[2026-05-21T11:50:31.117Z] INFO Retrieval complete {"module":"retrieval.stage","evidence_count":0,"score":null,"availability":false,"cost_cents":0.000945}
+[2026-05-21T11:50:45.262Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T11:50:45.263Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":5,"trend_score":0,"hashtag_relevance":0}
+[2026-05-21T11:50:51.977Z] INFO DeepSeek cache telemetry {"module":"deepseek","stage":"deepseek_reasoning","cache_hit_tokens":768,"cache_miss_tokens":706,"total_prompt_tokens":1474,"cache_hit_rate":0.521}
+[2026-05-21T11:50:51.977Z] INFO Reasoning complete {"module":"deepseek","stage":"deepseek_reasoning","duration_ms":6715,"cost_cents":0.0391,"model":"deepseek-reasoner"}
+[2026-05-21T11:51:00.398Z] INFO Pipeline complete {"requestId":"M57i_MOJc1Oo","module":"pipeline","stage":"pipeline","duration_ms":33359,"cost_cents":0.1458,"warnings_count":1}
+[2026-05-21T11:51:00.584Z] INFO Row complete {"module":"corpus/eval-runner","i":5,"niche":"beauty","score":99.87,"actual":"viral","cost":0.1458}
+[2026-05-21T11:51:02.586Z] INFO Pipeline started {"requestId":"WrSIdiXPBa3n","module":"pipeline","input_mode":"text"}
+[2026-05-21T11:51:08.613Z] INFO Niche detection complete {"module":"wave0.niche","stage":"wave_0_niche_detector","primary":"comedy","sub":"storytelling","confidence":0.85,"source":"ai","cache_hit_tokens":640,"cache_miss_tokens":123,"cost_cents":0.0167}
+[2026-05-21T11:51:09.022Z] INFO Embedded query {"module":"retrieval.embedder","duration_ms":409,"dims":768,"cost_cents":0.00063}
+[2026-05-21T11:51:09.329Z] INFO Retrieval complete {"module":"retrieval.stage","evidence_count":5,"score":null,"availability":false,"cost_cents":0.00063}
+[2026-05-21T11:51:18.586Z] INFO Text analysis complete {"module":"gemini","stage":"gemini_text_analysis","duration_ms":9973,"cost_cents":0.0469,"model":"gemini-2.5-flash"}
+[2026-05-21T11:51:18.586Z] DEBUG No audio_description provided — skipping fingerprint match {"module":"audio_fingerprint"}
+[2026-05-21T11:51:18.586Z] INFO Trend enrichment complete {"module":"trends","matched_sounds":0,"hashtag_count":3,"trend_score":0,"hashtag_relevance":0}

@@ -1,0 +1,132 @@
+{
+  "corpus_version": "full.2026-05-11",
+  "engine_version": "3.0.0-dev",
+  "macro_f1": 0,
+  "per_niche_f1": {
+    "beauty": 0,
+    "fitness": 0,
+    "edu": 0,
+    "comedy": 0,
+    "lifestyle": 0
+  },
+  "ece": 0.998,
+  "per_class_metrics": {
+    "viral": {
+      "precision": 0,
+      "recall": 0,
+      "f1": 0,
+      "support": 0
+    },
+    "average": {
+      "precision": 0,
+      "recall": 0,
+      "f1": 0,
+      "support": 1
+    },
+    "under": {
+      "precision": 0,
+      "recall": 0,
+      "f1": 0,
+      "support": 0
+    }
+  },
+  "signal_contribution": null,
+  "spearman_within_niche": {
+    "beauty": 0,
+    "fitness": 0,
+    "edu": 0,
+    "comedy": 0,
+    "lifestyle": 0
+  },
+  "mae_engagement_rate": 0.002564,
+  "cost_cents_avg": 0.174,
+  "cost_cents_total": 0.174,
+  "latency_p50": 40438,
+  "latency_p95": 40438,
+  "latency_p99": 40438,
+  "stage_timings": {
+    "validate": {
+      "p50_ms": 1,
+      "p95_ms": 1,
+      "p99_ms": 1,
+      "count": 1
+    },
+    "normalize": {
+      "p50_ms": 0,
+      "p95_ms": 0,
+      "p99_ms": 0,
+      "count": 1
+    },
+    "pre_creator_context": {
+      "p50_ms": 158,
+      "p95_ms": 158,
+      "p99_ms": 158,
+      "count": 1
+    },
+    "creator_context": {
+      "p50_ms": 3,
+      "p95_ms": 3,
+      "p99_ms": 3,
+      "count": 1
+    },
+    "rule_scoring": {
+      "p50_ms": 172,
+      "p95_ms": 172,
+      "p99_ms": 172,
+      "count": 1
+    },
+    "gemini_analysis": {
+      "p50_ms": 8856,
+      "p95_ms": 8856,
+      "p99_ms": 8856,
+      "count": 1
+    },
+    "audio_fingerprint": {
+      "p50_ms": 8853,
+      "p95_ms": 8853,
+      "p99_ms": 8853,
+      "count": 1
+    },
+    "wave_1": {
+      "p50_ms": 8851,
+      "p95_ms": 8851,
+      "p99_ms": 8851,
+      "count": 1
+    },
+    "trend_enrichment": {
+      "p50_ms": 212,
+      "p95_ms": 212,
+      "p99_ms": 212,
+      "count": 1
+    },
+    "deepseek_reasoning": {
+      "p50_ms": 6667,
+      "p95_ms": 6667,
+      "p99_ms": 6667,
+      "count": 1
+    },
+    "wave_2": {
+      "p50_ms": 6665,
+      "p95_ms": 6665,
+      "p99_ms": 6665,
+      "count": 1
+    }
+  },
+  "drift_metrics": {},
+  "failure_cases": [
+    {
+      "corpus_row_id": "84d37c9e-a8cf-44c2-819f-2558853592cb",
+      "niche": "beauty",
+      "actual_bucket": "average",
+      "predicted_bucket": "viral",
+      "predicted_score": 99.8,
+      "severity": 1,
+      "top_warnings": []
+    }
+  ],
+  "viral_recall": 0,
+  "under_precision": 0,
+  "rows_processed": 1,
+  "rows_failed": 0,
+  "run_at": "2026-05-21T11:54:40.675Z"
+}

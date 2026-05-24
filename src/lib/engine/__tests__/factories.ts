@@ -12,6 +12,8 @@ import type {
   TrendEnrichment,
   ContentPayload,
   FeatureVector,
+  CounterfactualResult,
+  CounterfactualSuggestionItem,
 } from "../types";
 import type { PipelineResult } from "../pipeline";
 
@@ -159,6 +161,7 @@ export function makeContentPayload(
     content_type: "video",
     input_mode: "text",
     video_url: null,
+    video_storage_path: null,
     hashtags: ["#viral"],
     duration_hint: null,
     niche: null,
@@ -245,6 +248,21 @@ export function makePipelineResult(
         avg_share_rate: 0.008,
         avg_comment_rate: 0.005,
       },
+      // Phase 2 (D-19) — 9-card profile fields (all null in the default factory).
+      // WR-03: required-but-nullable on CreatorContext — tsc --noEmit fails without them.
+      target_platforms: null,
+      niche_primary: null,
+      niche_sub: null,
+      target_audience: null,
+      primary_goal: null,
+      creator_stage: null,
+      content_style: null,
+      cuts_per_second: null,
+      reference_creators: null,
+      past_wins: null,
+      past_flops: null,
+      time_of_day_aware: null,
+      pain_points: null,
     },
     ruleResult: makeRuleScoreResult(),
     trendEnrichment: makeTrendEnrichment(),
@@ -252,7 +270,28 @@ export function makePipelineResult(
       reasoning: makeDeepSeekReasoning(),
       cost_cents: 0.3,
     },
-    audioResult: null,
+    // Phase 6 (D-A4) — replaces the pre-Phase-6 audioResult: null slot.
+    // Default to null in fixtures (no fingerprint match); tests opt in by overriding.
+    audioFingerprintResult: null,
+    // Phase 3 — Wave 0/3 stub outputs (Phase 4/7 fill with real logic)
+    wave0Result: { content_type: null, niche: null },
+    wave3Result: [],
+    // NEW Phase 7 (Pitfall 9, A11) — default null preserves "no aggregate" semantics
+    // for all existing aggregator.test.ts and pipeline.test.ts callers.
+    personaBehavioralAggregate: null,
+    // Phase 7 CR-01 — default 0 preserves byte-identical cost behavior for tests that don't
+    // exercise Wave 3. Tests asserting on Wave 3 cost should pass an override (e.g.,
+    // { wave3CostCents: 1.25 }).
+    wave3CostCents: 0,
+    // Phase 8 — Wave 1 retrieval sibling default (graceful empty unless overridden)
+    retrievalResult: {
+      evidence: [],
+      score: null,
+      availability: false,
+      cost_cents: 0,
+    },
+    // Phase 9 — Wave 4 platform-fit V3 sibling default (null = V3 not run / unavailable)
+    platformFitResult: null,
     requestId: "test-req-123",
     timings: [
       { stage: "validate", duration_ms: 5 },
@@ -262,6 +301,58 @@ export function makePipelineResult(
     ],
     total_duration_ms: 1500,
     warnings: [],
+    ...overrides,
+  };
+}
+
+// =====================================================
+// makeCounterfactualResult — Phase 13 Plan 02 (D-05)
+// =====================================================
+
+/**
+ * Factory for the Phase 13 discriminated-union CounterfactualResult.
+ * Defaults to "low" band with 3 fix suggestions.
+ * Pass band + suggestion overrides for mid/high tests.
+ */
+export function makeCounterfactualResult(
+  band: "low" | "mid" | "high" = "low",
+  overrides?: Partial<CounterfactualResult>,
+): CounterfactualResult {
+  const baseSuggestionItem = (
+    type: CounterfactualSuggestionItem["type"],
+    i: number,
+  ): CounterfactualSuggestionItem => ({
+    type,
+    headline: `${type === "fix" ? "Fix" : type === "stretch" ? "Stretch" : "Strength"} suggestion ${i + 1}`,
+    detail: `Detailed explanation of the ${type} suggestion ${i + 1} with specific expected impact.`,
+    timestamp_ms: i * 1000,
+    signal_anchor: `signal_${i + 1}`,
+  });
+
+  let suggestions: CounterfactualSuggestionItem[];
+  switch (band) {
+    case "low":
+      suggestions = [0, 1, 2].map((i) => baseSuggestionItem("fix", i));
+      break;
+    case "mid":
+      suggestions = [
+        baseSuggestionItem("fix", 0),
+        baseSuggestionItem("fix", 1),
+        baseSuggestionItem("reinforcement", 2),
+      ];
+      break;
+    case "high":
+      suggestions = [
+        baseSuggestionItem("stretch", 0),
+        baseSuggestionItem("reinforcement", 1),
+        baseSuggestionItem("reinforcement", 2),
+      ];
+      break;
+  }
+
+  return {
+    band,
+    suggestions,
     ...overrides,
   };
 }

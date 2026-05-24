@@ -5,11 +5,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 import { ConnectStep } from "@/components/onboarding/connect-step";
-import { GoalStep } from "@/components/onboarding/goal-step";
-import { PreviewStep } from "@/components/onboarding/preview-step";
-import { cn } from "@/lib/utils";
 
-const STEPS = ["connect", "goal", "preview"] as const;
+const STEPS = ["connect"] as const;
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -23,55 +20,81 @@ export default function WelcomePage() {
     }
   }, [_isHydrated, _hydrate]);
 
-  // Ensure user is authenticated, then hydrate from Supabase
+  // CR-05: Ensure user is authenticated, hydrate from Supabase, and only
+  // insert the creator_profiles row if it is genuinely missing. An unmount
+  // guard prevents store writes against a now-unmounted consumer if the
+  // user navigates away mid-effect. We deliberately read first, then insert
+  // only on miss — the previous `upsert(..., { ignoreDuplicates: true })`
+  // was a no-op on every existing-row mount but still ate a network round
+  // trip on each visit.
+  //
+  // WR-02: log a warning when `dbStep` is neither "connect" nor "completed"
+  // so any stale value left behind by a legacy/in-flight writer is
+  // observable rather than silently coerced.
   useEffect(() => {
     if (!_isHydrated) return;
+    let unmounted = false;
 
     async function initOnboarding() {
       const supabase = createClient();
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      if (unmounted) return;
 
       if (!user) {
         router.replace("/");
         return;
       }
 
-      // Ensure creator_profiles row exists
-      await supabase.from("creator_profiles").upsert(
-        { user_id: user.id, onboarding_step: "connect" },
-        { onConflict: "user_id", ignoreDuplicates: true }
-      );
-
-      // Fetch existing onboarding state
+      // Read first — avoid the round-trip + write on every mount for users
+      // whose row already exists.
       const { data: profile } = await supabase
         .from("creator_profiles")
-        .select("onboarding_step, onboarding_completed_at, tiktok_handle, primary_goal")
+        .select("onboarding_step, onboarding_completed_at, tiktok_handle")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
+      if (unmounted) return;
 
       if (profile?.onboarding_completed_at) {
         router.replace("/dashboard");
         return;
       }
 
-      // Restore state from DB if available
-      if (profile) {
-        const dbStep = profile.onboarding_step as typeof step;
-        if (dbStep && dbStep !== store.step) {
+      if (!profile) {
+        // First-time visitor — create the bootstrap row.
+        await supabase
+          .from("creator_profiles")
+          .insert({ user_id: user.id, onboarding_step: "connect" });
+        if (unmounted) return;
+        return;
+      }
+
+      // Restore state from DB if available — defense-in-depth: any DB value
+      // outside the narrowed "connect" | "completed" union coerces back to
+      // "connect" so the store cannot enter an unrepresentable state even if
+      // a legacy row escaped the migration UPDATE in Plan 02-01.
+      const dbStep = profile.onboarding_step as string | null;
+      if (dbStep && dbStep !== store.step) {
+        if (dbStep === "connect" || dbStep === "completed") {
           store.setStep(dbStep);
+        } else {
+          console.warn(
+            "[welcome] coercing unknown onboarding_step to 'connect':",
+            dbStep
+          );
+          store.setStep("connect");
         }
-        if (profile.tiktok_handle && !store.tiktokHandle) {
-          store.setTiktokHandle(profile.tiktok_handle);
-        }
-        if (profile.primary_goal && !store.primaryGoal) {
-          store.setPrimaryGoal(profile.primary_goal as "monetization" | "viral_content" | "affiliate_revenue");
-        }
+      }
+      if (profile.tiktok_handle && !store.tiktokHandle) {
+        store.setTiktokHandle(profile.tiktok_handle);
       }
     }
 
-    initOnboarding();
+    void initOnboarding();
+    return () => {
+      unmounted = true;
+    };
   }, [_isHydrated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Redirect to dashboard when onboarding completes
@@ -108,8 +131,6 @@ export default function WelcomePage() {
     );
   }
 
-  const currentStepIndex = STEPS.indexOf(step as (typeof STEPS)[number]);
-
   return (
     <div
       className="w-full max-w-[400px] rounded-[12px] border border-white/[0.06] px-8 py-10"
@@ -121,23 +142,18 @@ export default function WelcomePage() {
         boxShadow: "rgba(255,255,255,0.15) 0px 1px 1px 0px inset",
       }}
     >
-      {/* Step indicator */}
+      {/* Step indicator (single-step now, kept for visual symmetry with prior flow) */}
       <div className="mb-8 flex items-center justify-center gap-2">
-        {STEPS.map((s, i) => (
+        {STEPS.map((s) => (
           <div
             key={s}
-            className={cn(
-              "h-1.5 w-8 rounded-full transition-colors",
-              i <= currentStepIndex ? "bg-accent" : "bg-white/[0.1]"
-            )}
+            className="h-1.5 w-8 rounded-full bg-accent transition-colors"
           />
         ))}
       </div>
 
       <div className="min-h-[320px]">
         {step === "connect" && <ConnectStep />}
-        {step === "goal" && <GoalStep />}
-        {step === "preview" && <PreviewStep />}
       </div>
     </div>
   );

@@ -1,9 +1,55 @@
 import { NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { verifyCronAuth } from "@/lib/cron-auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createLogger } from "@/lib/logger";
 
+// Vercel route segment config (06-REVIEW.md WR-03):
+// The inline D-F4 embedding pipeline runs ~5s per sound (download + upload + describe +
+// embed + update). At a 50-sound ceiling per tick that is a ~4-minute worst case — well
+// over Vercel's default 10s hobby / 60s pro ceiling. Lifting maxDuration to 300s gives
+// the cron headroom; per-row failure isolation in this route prevents one slow sound
+// from blocking the whole batch even within the budget.
+export const maxDuration = 300;
+export const dynamic = "force-dynamic";
+
 const log = createLogger({ module: "cron/calculate-trends" });
+
+// =====================================================
+// Phase 6 (D-F4) — inline embedding pipeline constants
+// =====================================================
+//
+// Mirrors scripts/backfill-trending-sound-embeddings.ts (Plan 06-04). The cron path
+// processes newly-upserted rows where `audio_embedding IS NULL`; the backfill script
+// processes existing rows under the same predicate. Both paths share the FULL D-F4
+// pipeline semantics (download → upload → describe → embed → update + cleanup).
+//
+// Cost ceiling per CONTEXT D-F4: ~$0.0005/sound × ~50 sounds/day ≈ $0.025/day.
+// All steps are NON-FATAL (Pitfall 4): any per-row failure logs + continues; the
+// route response shape is unchanged.
+
+// DEFERRED to M2: entire audio embedding pipeline (download → describe → embed) disabled.
+// getGeminiClient returns null; processSoundEmbedding is a no-op.
+function getGeminiClient(): null { return null; }
+
+/**
+ * FULL D-F4 pipeline for one row (Inline embedding — FAILURE-TOLERANT per Pitfall 4).
+ *
+ * Idempotency: checks `trending_sounds.audio_embedding` for the row first. If non-null,
+ * skips the entire pipeline (the row was already embedded by a prior cron tick or by
+ * scripts/backfill-trending-sound-embeddings.ts).
+ *
+ * Each step is non-fatal. Any failure logs + returns; next cron tick retries.
+ */
+async function processSoundEmbedding(
+  _gemini: null,
+  supabase: SupabaseClient,
+  row: { sound_name: string; sound_url: string | null },
+  alreadyEmbedded?: Set<string>,
+): Promise<void> {
+  // DEFERRED to M2: audio embedding pipeline disabled. Supabase + row params kept for signature compat.
+  void supabase; void row; void alreadyEmbedded;
+}
 
 /**
  * GET /api/cron/calculate-trends
@@ -131,6 +177,14 @@ export async function GET(request: Request) {
     const BATCH_SIZE = 50;
     let upsertedCount = 0;
 
+    // Phase 6 (D-F4) — Gemini client resolved ONCE outside the loop. null when
+    // GEMINI_API_KEY is missing → embedding extension is skipped entirely (Test 5
+    // contract: response shape preserved). Failure-tolerant: the embedding extension
+    // is FIRE-AND-FORGET per Pitfall 4 — any per-row failure logs + continues; the
+    // route response shape is unchanged. Idempotent: rows where audio_embedding is
+    // already populated skip the pipeline (processSoundEmbedding's IS NULL check).
+    const gemini = getGeminiClient();
+
     for (let i = 0; i < trendRecords.length; i += BATCH_SIZE) {
       const batch = trendRecords.slice(i, i + BATCH_SIZE);
       const { error } = await supabase
@@ -139,8 +193,50 @@ export async function GET(request: Request) {
 
       if (error) {
         log.error("Upsert error", { offset: i, error: error.message });
-      } else {
-        upsertedCount += batch.length;
+        // Skip embedding for this batch — the rows weren't upserted.
+        continue;
+      }
+
+      upsertedCount += batch.length;
+
+      // Phase 6 (D-F4) — inline embedding pipeline per row. Skipped entirely if no
+      // Gemini client (missing GEMINI_API_KEY). All step-level failures are logged
+      // + swallowed inside processSoundEmbedding; the outer try/catch here is
+      // defense-in-depth (an unexpected throw inside processSoundEmbedding must
+      // never propagate to the route response — Pitfall 4 fire-and-forget contract).
+      if (gemini) {
+        // 06-REVIEW.md WR-04: bulk-prefetch already-embedded sound_names for this
+        // batch so processSoundEmbedding can skip them without an N+1 SELECT per
+        // row. One query per BATCH_SIZE (50) rows instead of BATCH_SIZE separate
+        // maybeSingle()s. Failure is non-fatal — fall through to per-row check.
+        let alreadyEmbedded: Set<string> | undefined;
+        try {
+          const batchNames = batch.map((r) => r.sound_name);
+          const { data: embedded } = await supabase
+            .from("trending_sounds")
+            .select("sound_name")
+            .in("sound_name", batchNames)
+            .not("audio_embedding", "is", null);
+          if (embedded) {
+            alreadyEmbedded = new Set(embedded.map((r) => r.sound_name));
+          }
+        } catch (err) {
+          log.warn("Bulk idempotency prefetch failed — falling back to per-row check", {
+            offset: i,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+
+        for (const row of batch) {
+          try {
+            await processSoundEmbedding(gemini, supabase, row, alreadyEmbedded);
+          } catch (err) {
+            log.warn("Inline embedding fatal (unexpected) — continuing", {
+              sound_name: row.sound_name,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
       }
     }
 

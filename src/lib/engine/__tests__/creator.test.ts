@@ -184,6 +184,19 @@ describe("formatCreatorContext", () => {
         avg_share_rate: 0.008,
         avg_comment_rate: 0.005,
       },
+      target_platforms: null,
+      niche_primary: null,
+      niche_sub: null,
+      target_audience: null,
+      primary_goal: null,
+      creator_stage: null,
+      content_style: null,
+      cuts_per_second: null,
+      reference_creators: null,
+      past_wins: null,
+      past_flops: null,
+      time_of_day_aware: null,
+      pain_points: null,
     });
 
     expect(result).toContain("Creator profile: found");
@@ -209,6 +222,19 @@ describe("formatCreatorContext", () => {
         avg_share_rate: 0.008,
         avg_comment_rate: 0.005,
       },
+      target_platforms: null,
+      niche_primary: null,
+      niche_sub: null,
+      target_audience: null,
+      primary_goal: null,
+      creator_stage: null,
+      content_style: null,
+      cuts_per_second: null,
+      reference_creators: null,
+      past_wins: null,
+      past_flops: null,
+      time_of_day_aware: null,
+      pain_points: null,
     });
 
     expect(result).toContain("not found");
@@ -230,9 +256,196 @@ describe("formatCreatorContext", () => {
         avg_share_rate: 0.008,
         avg_comment_rate: 0.005,
       },
+      target_platforms: null,
+      niche_primary: null,
+      niche_sub: null,
+      target_audience: null,
+      primary_goal: null,
+      creator_stage: null,
+      content_style: null,
+      cuts_per_second: null,
+      reference_creators: null,
+      past_wins: null,
+      past_flops: null,
+      time_of_day_aware: null,
+      pain_points: null,
     });
 
     expect(result).toContain("Platform average share rate: 0.80%");
     expect(result).toContain("Platform average comment rate: 0.50%");
+  });
+});
+
+// === Phase 2 — 9-card extension (D-19 flat-add, D-20 found:boolean preservation, Pitfall #3) ===
+describe("CreatorContext 9-card extension (Phase 2)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    tableResponses = {
+      scraped_videos: {
+        data: [
+          { views: 10000, likes: 500, comments: 50, shares: 20 },
+          { views: 20000, likes: 1000, comments: 100, shares: 40 },
+        ],
+        error: null,
+      },
+      creator_profiles: { data: null, error: null },
+    };
+  });
+
+  it("flat-merges 9-card columns from creator_profiles into CreatorContext", async () => {
+    tableResponses.creator_profiles = {
+      data: {
+        tiktok_followers: 50000,
+        engagement_rate: 0.08,
+        niches: ["fitness", "lifestyle"],
+        display_name: "Test Creator",
+        target_platforms: ["tiktok", "instagram"],
+        niche_primary: "fitness",
+        niche_sub: "yoga",
+        target_audience: {
+          age_range: "25-34",
+          gender_skew: "balanced",
+          geo: "United States",
+          language: "English",
+        },
+        primary_goal: "growth",
+        creator_stage: "growing",
+        content_style: "talking_head",
+        cuts_per_second: "medium",
+        reference_creators: [{ handle_or_url: "@charlidamelio" }],
+        past_wins: [{ url: "https://tiktok.com/abc" }],
+        past_flops: [],
+        posting_frequency: "daily",
+        time_of_day_aware: true,
+        pain_points: "Hook retention drops at second 2",
+      },
+      error: null,
+    };
+
+    const supabase = createServiceClient();
+    const result = await fetchCreatorContext(supabase, "test_creator", null);
+
+    expect(result.found).toBe(true);
+    expect(result.target_platforms).toEqual(["tiktok", "instagram"]);
+    expect(result.niche_primary).toBe("fitness");
+    expect(result.niche_sub).toBe("yoga");
+    expect(result.target_audience?.age_range).toBe("25-34");
+    expect(result.target_audience?.gender_skew).toBe("balanced");
+    expect(result.primary_goal).toBe("growth");
+    expect(result.creator_stage).toBe("growing");
+    expect(result.content_style).toBe("talking_head");
+    expect(result.cuts_per_second).toBe("medium");
+    expect(result.reference_creators).toEqual([
+      { handle_or_url: "@charlidamelio" },
+    ]);
+    expect(result.past_wins).toEqual([{ url: "https://tiktok.com/abc" }]);
+    expect(result.past_flops).toEqual([]);
+    expect(result.posting_frequency).toBe("daily");
+    expect(result.time_of_day_aware).toBe(true);
+    expect(result.pain_points).toBe("Hook retention drops at second 2");
+  });
+
+  it("returns null for every 9-card field when profile row is missing (cold-start)", async () => {
+    const supabase = createServiceClient();
+    const result = await fetchCreatorContext(supabase, null, null);
+
+    expect(result.found).toBe(false);
+    expect(result.target_platforms).toBeNull();
+    expect(result.niche_primary).toBeNull();
+    expect(result.niche_sub).toBeNull();
+    expect(result.target_audience).toBeNull();
+    expect(result.primary_goal).toBeNull();
+    expect(result.creator_stage).toBeNull();
+    expect(result.content_style).toBeNull();
+    expect(result.cuts_per_second).toBeNull();
+    expect(result.reference_creators).toBeNull();
+    expect(result.past_wins).toBeNull();
+    expect(result.past_flops).toBeNull();
+    expect(result.time_of_day_aware).toBeNull();
+    expect(result.pain_points).toBeNull();
+  });
+
+  it("formatCreatorContext omits null profile fields (no literal 'null' strings in prompts) — Pitfall #3", async () => {
+    tableResponses.creator_profiles = {
+      data: {
+        tiktok_followers: 50000,
+        engagement_rate: 0.08,
+        niches: ["fitness"],
+        display_name: "Test",
+        target_platforms: null,
+        niche_primary: null,
+        niche_sub: null,
+        target_audience: null,
+        primary_goal: null,
+        creator_stage: null,
+        content_style: null,
+        cuts_per_second: null,
+        reference_creators: null,
+        past_wins: null,
+        past_flops: null,
+        posting_frequency: null,
+        time_of_day_aware: null,
+        pain_points: null,
+      },
+      error: null,
+    };
+
+    const supabase = createServiceClient();
+    const result = await fetchCreatorContext(supabase, "test_creator", null);
+    const formatted = formatCreatorContext(result);
+
+    expect(formatted).not.toContain("null");
+    expect(formatted).not.toContain("undefined");
+    // No new field lines should appear
+    expect(formatted).not.toContain("Target platforms:");
+    expect(formatted).not.toContain("Primary goal:");
+    expect(formatted).not.toContain("Creator stage:");
+    expect(formatted).not.toContain("Content style:");
+    expect(formatted).not.toContain("Cuts per second");
+    expect(formatted).not.toContain("Reference creators:");
+    expect(formatted).not.toContain("Past wins");
+    expect(formatted).not.toContain("Past flops");
+    expect(formatted).not.toContain("Target audience:");
+    expect(formatted).not.toContain("Time-of-day awareness");
+    expect(formatted).not.toContain("Creator pain points:");
+  });
+
+  it("preserves D-20 found:boolean semantics — found tracks scraped record, not profile fields", async () => {
+    // Profile row exists with new 9-card fields populated, but the scraped follower count is
+    // null. The current implementation maps found = true when the creator_profiles row exists;
+    // the assertion here is that profile fields being non-null does NOT change scraped follower
+    // semantics — follower_count stays null when tiktok_followers is null.
+    tableResponses.creator_profiles = {
+      data: {
+        tiktok_followers: null,
+        engagement_rate: null,
+        niches: null,
+        display_name: null,
+        target_platforms: ["tiktok"],
+        niche_primary: "fitness",
+        niche_sub: null,
+        target_audience: null,
+        primary_goal: "growth",
+        creator_stage: null,
+        content_style: null,
+        cuts_per_second: null,
+        reference_creators: null,
+        past_wins: null,
+        past_flops: null,
+        posting_frequency: null,
+        time_of_day_aware: null,
+        pain_points: null,
+      },
+      error: null,
+    };
+
+    const supabase = createServiceClient();
+    const result = await fetchCreatorContext(supabase, "test_creator", null);
+
+    // The row exists so found=true is the current behavior; the new fields populate
+    expect(result.found).toBe(true);
+    expect(result.follower_count).toBeNull();
+    expect(result.target_platforms).toEqual(["tiktok"]);
+    expect(result.primary_goal).toBe("growth");
   });
 });

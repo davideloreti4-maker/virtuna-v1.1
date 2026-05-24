@@ -12,7 +12,10 @@ type ActionResult = {
   data?: { competitorId: string; handle: string };
 };
 
-export async function addCompetitor(handle: string): Promise<ActionResult> {
+export async function addCompetitor(
+  handle: string,
+  source: "manual_add" | "profile_reference" = "manual_add"
+): Promise<ActionResult> {
   // 1. Auth check
   const supabase = await createClient();
   const {
@@ -130,7 +133,7 @@ export async function addCompetitor(handle: string): Promise<ActionResult> {
   // 5. Insert junction row using authenticated client
   const { error: junctionError } = await supabase
     .from("user_competitors")
-    .insert({ user_id: user.id, competitor_id: profileId });
+    .insert({ user_id: user.id, competitor_id: profileId, source });
 
   if (junctionError) {
     // Postgres unique violation = already tracking

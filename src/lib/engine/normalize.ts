@@ -30,11 +30,14 @@ function extractDurationHint(text: string): number | null {
 /**
  * Normalize AnalysisInput into ContentPayload for pipeline consumption.
  *
- * For text mode: uses content_text directly.
+ * For text mode: uses content_text directly. Both video_url and video_storage_path are null.
  * For tiktok_url mode: content_text is caption/script (optional), video_url set to TikTok URL.
  *   Actual video extraction happens in pipeline via Apify (Phase 5).
- * For video_upload mode: content_text is caption (optional), video_url points to Supabase Storage.
- *   Actual storage URL resolution happens in pipeline (Phase 5).
+ * For video_upload mode: content_text is caption (optional), video_storage_path carries the
+ *   Supabase Storage object key. video_url is explicitly null (Phase 4 GAP-04-01 fix — Option A).
+ *   Pre-fix, video_url was aliased to the storage key, which made fetch(payload.video_url) throw
+ *   TypeError in production (the storage key is not a URL). The detector now reads
+ *   video_storage_path explicitly — re-introducing the alias here would revive the bug.
  */
 export function normalizeInput(input: AnalysisInput): ContentPayload {
   const contentText = input.content_text ?? "";
@@ -43,7 +46,17 @@ export function normalizeInput(input: AnalysisInput): ContentPayload {
     content_text: contentText,
     content_type: input.content_type,
     input_mode: input.input_mode,
-    video_url: input.tiktok_url ?? input.video_storage_path ?? null,
+    // Phase 4 GAP-04-01 fix (Option A — eliminate alias at source):
+    //   - tiktok_url mode: input.tiktok_url (proper URL — used by Apify scrape, etc.)
+    //   - video_upload mode: null (the detector reads video_storage_path explicitly; aliasing
+    //     the storage key into video_url is what caused fetch(payload.video_url) to throw
+    //     TypeError in production)
+    //   - text mode: null
+    video_url: input.tiktok_url ?? null,
+    // NEW Phase 4 gap-closure: explicit field for the storage key. The Wave 0
+    // content-type detector reads THIS field (not video_url) to call
+    // supabase.storage.from("videos").download(...) — fixes GAP-04-01.
+    video_storage_path: input.video_storage_path ?? null,
     hashtags: extractHashtags(contentText),
     duration_hint: extractDurationHint(contentText),
     niche: input.niche ?? null,

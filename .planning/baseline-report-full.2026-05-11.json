@@ -1,0 +1,207 @@
+{
+  "corpus_version": "full.2026-05-11",
+  "engine_version": "2.1.0",
+  "macro_f1": 0.294,
+  "per_niche_f1": {
+    "beauty": 0.3101,
+    "fitness": 0.2597,
+    "edu": 0.2463,
+    "comedy": 0.2973,
+    "lifestyle": 0.2996
+  },
+  "ece": 0.3715,
+  "per_class_metrics": {
+    "viral": {
+      "precision": 0.1163,
+      "recall": 0.1064,
+      "f1": 0.1111,
+      "support": 47
+    },
+    "average": {
+      "precision": 0.4113,
+      "recall": 0.6824,
+      "f1": 0.5133,
+      "support": 85
+    },
+    "under": {
+      "precision": 0.425,
+      "recall": 0.1848,
+      "f1": 0.2576,
+      "support": 92
+    }
+  },
+  "signal_contribution": null,
+  "spearman_within_niche": {
+    "beauty": 0,
+    "fitness": 0,
+    "edu": 0,
+    "comedy": 0,
+    "lifestyle": 0
+  },
+  "mae_engagement_rate": 0.095885,
+  "cost_cents_avg": 0.1466,
+  "cost_cents_total": 32.99240000000001,
+  "latency_p50": 57214,
+  "latency_p95": 91528,
+  "latency_p99": 138797,
+  "stage_timings": {
+    "validate": {
+      "p50_ms": 0,
+      "p95_ms": 0,
+      "p99_ms": 0,
+      "count": 224
+    },
+    "normalize": {
+      "p50_ms": 0,
+      "p95_ms": 0,
+      "p99_ms": 0,
+      "count": 224
+    },
+    "audio_analysis": {
+      "p50_ms": 0,
+      "p95_ms": 0,
+      "p99_ms": 0,
+      "count": 224
+    },
+    "rule_scoring": {
+      "p50_ms": 1,
+      "p95_ms": 1,
+      "p99_ms": 1,
+      "count": 224
+    },
+    "creator_context": {
+      "p50_ms": 107.5,
+      "p95_ms": 249.64999999999995,
+      "p99_ms": 468.6300000000002,
+      "count": 224
+    },
+    "gemini_analysis": {
+      "p50_ms": 10587,
+      "p95_ms": 13823.15,
+      "p99_ms": 14401.16,
+      "count": 224
+    },
+    "wave_1": {
+      "p50_ms": 10718.5,
+      "p95_ms": 13900.05,
+      "p99_ms": 14937.520000000002,
+      "count": 224
+    },
+    "trend_enrichment": {
+      "p50_ms": 1,
+      "p95_ms": 196,
+      "p99_ms": 340.9400000000002,
+      "count": 224
+    },
+    "deepseek_reasoning": {
+      "p50_ms": 17630,
+      "p95_ms": 35695.84999999999,
+      "p99_ms": 60180.62000000001,
+      "count": 224
+    },
+    "wave_2": {
+      "p50_ms": 17629.5,
+      "p95_ms": 35695.84999999999,
+      "p99_ms": 60180.39000000001,
+      "count": 224
+    }
+  },
+  "drift_metrics": {},
+  "failure_cases": [
+    {
+      "corpus_row_id": "34d5a542-ad2d-441b-888c-299f08d55a30",
+      "niche": "edu",
+      "actual_bucket": "under",
+      "predicted_bucket": "viral",
+      "predicted_score": 79,
+      "severity": 2,
+      "top_warnings": []
+    },
+    {
+      "corpus_row_id": "e15d99e9-56e2-402b-9915-2012a0ad8db9",
+      "niche": "edu",
+      "actual_bucket": "under",
+      "predicted_bucket": "viral",
+      "predicted_score": 78,
+      "severity": 2,
+      "top_warnings": []
+    },
+    {
+      "corpus_row_id": "0fa78a67-a11f-4f5a-99b1-693117dad475",
+      "niche": "edu",
+      "actual_bucket": "under",
+      "predicted_bucket": "viral",
+      "predicted_score": 78,
+      "severity": 2,
+      "top_warnings": []
+    },
+    {
+      "corpus_row_id": "f525925b-fd0c-430b-acbb-b6d2d9958d44",
+      "niche": "comedy",
+      "actual_bucket": "under",
+      "predicted_bucket": "viral",
+      "predicted_score": 77,
+      "severity": 2,
+      "top_warnings": []
+    },
+    {
+      "corpus_row_id": "fffc92e8-299b-4b64-b248-ee299a8a3041",
+      "niche": "comedy",
+      "actual_bucket": "under",
+      "predicted_bucket": "viral",
+      "predicted_score": 76,
+      "severity": 2,
+      "top_warnings": []
+    },
+    {
+      "corpus_row_id": "8b3f5821-931b-4449-af08-b8669dbef3f4",
+      "niche": "beauty",
+      "actual_bucket": "under",
+      "predicted_bucket": "viral",
+      "predicted_score": 75,
+      "severity": 2,
+      "top_warnings": []
+    },
+    {
+      "corpus_row_id": "0ba08482-5ced-4658-a086-09c2ae5c44c2",
+      "niche": "edu",
+      "actual_bucket": "under",
+      "predicted_bucket": "viral",
+      "predicted_score": 75,
+      "severity": 2,
+      "top_warnings": []
+    },
+    {
+      "corpus_row_id": "bc6f5007-bbc3-4260-bc63-58dbd8b5f082",
+      "niche": "comedy",
+      "actual_bucket": "under",
+      "predicted_bucket": "viral",
+      "predicted_score": 75,
+      "severity": 2,
+      "top_warnings": []
+    },
+    {
+      "corpus_row_id": "f1983585-e15f-4ed3-98aa-afba1cd5273f",
+      "niche": "beauty",
+      "actual_bucket": "under",
+      "predicted_bucket": "viral",
+      "predicted_score": 74,
+      "severity": 2,
+      "top_warnings": []
+    },
+    {
+      "corpus_row_id": "c9db848f-c5d5-483f-9b0a-ef436aa306f5",
+      "niche": "comedy",
+      "actual_bucket": "under",
+      "predicted_bucket": "viral",
+      "predicted_score": 74,
+      "severity": 2,
+      "top_warnings": []
+    }
+  ],
+  "viral_recall": 0.1064,
+  "under_precision": 0.425,
+  "rows_processed": 225,
+  "rows_failed": 1,
+  "run_at": "2026-05-11T12:09:47.220Z"
+}

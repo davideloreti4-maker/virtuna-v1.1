@@ -49,6 +49,15 @@ vi.mock("@google/genai", () => {
     GoogleGenAI: class MockGoogleGenAI {
       models = { generateContent: mockGeminiGenerateContent };
     },
+    // Phase 5: `Type` is imported at module load by ./gemini/schemas.ts (via types.ts).
+    // Tests that hoist this mock must expose the enum even when they don't use it.
+    Type: {
+      OBJECT: "OBJECT",
+      ARRAY: "ARRAY",
+      STRING: "STRING",
+      NUMBER: "NUMBER",
+      BOOLEAN: "BOOLEAN",
+    },
   };
 });
 
@@ -102,6 +111,7 @@ vi.mock("node:path", () => ({
 
 // Set env vars BEFORE importing the module under test
 process.env.DEEPSEEK_API_KEY = "test-key";
+process.env.DASHSCOPE_API_KEY = "test-key";
 process.env.GEMINI_API_KEY = "test-key";
 
 import { isCircuitOpen, resetCircuitBreaker, reasonWithDeepSeek } from "../deepseek";
@@ -234,7 +244,9 @@ describe("circuit breaker state transitions", () => {
     // Fail again in half-open -> should reopen with further increased backoff
     mockCreate.mockRejectedValue(makeAbortError());
     const result = await reasonWithDeepSeek(makeContext());
-    expect(result).not.toBeNull(); // Gemini fallback returns result
+    // Phase 13 Qwen migration: deepseek.ts:557-559 dropped the Gemini fallback.
+    // Failure now returns null and the caller handles graceful degradation.
+    expect(result).toBeNull();
 
     // Circuit re-opened — verify it's open
     expect(isCircuitOpen()).toBe(true);
@@ -326,5 +338,172 @@ describe("DeepSeek response validation", () => {
     expect(result!.reasoning.confidence).toBe("medium");
 
     vi.useRealTimers();
+  });
+});
+
+// =====================================================
+// Phase 3 — cache-prefix stability + telemetry (CACHE-03)
+// =====================================================
+
+describe("Phase 3 — cache-prefix stability + telemetry (CACHE-03)", () => {
+  beforeEach(() => {
+    resetCircuitBreaker();
+    mockCreate.mockReset();
+  });
+
+  it("messages array has [system, user] shape with stable system content", async () => {
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(makeDeepSeekReasoning()) } }],
+      usage: {
+        prompt_tokens: 1000,
+        completion_tokens: 200,
+        prompt_cache_hit_tokens: 800,
+        prompt_cache_miss_tokens: 200,
+      },
+    });
+
+    await reasonWithDeepSeek(makeContext());
+
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    const callArgs = mockCreate.mock.calls[0]![0] as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    expect(callArgs.messages).toHaveLength(2);
+    expect(callArgs.messages[0]!.role).toBe("system");
+    expect(callArgs.messages[1]!.role).toBe("user");
+    // System message must contain the 5-step rubric markers (stable content)
+    expect(callArgs.messages[0]!.content).toContain("5-Step Reasoning Framework");
+    expect(callArgs.messages[0]!.content).toContain("Step 1");
+    expect(callArgs.messages[0]!.content).toContain("Step 5");
+  });
+
+  it("STABLE system content is byte-identical across calls (cache prefix invariant)", async () => {
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(makeDeepSeekReasoning()) } }],
+      usage: { prompt_tokens: 1000, completion_tokens: 200 },
+    });
+
+    await reasonWithDeepSeek(makeContext());
+    await reasonWithDeepSeek({
+      ...makeContext(),
+      input: {
+        input_mode: "text",
+        content_text: "different content",
+        content_type: "post",
+      },
+    });
+
+    const sys1 = (mockCreate.mock.calls[0]![0] as { messages: Array<{ content: string }> })
+      .messages[0]!.content;
+    const sys2 = (mockCreate.mock.calls[1]![0] as { messages: Array<{ content: string }> })
+      .messages[0]!.content;
+    expect(sys1).toBe(sys2); // Identical bytes → DeepSeek cache will match prefix
+  });
+
+  it("dynamic content appears only in user message (calibration percentiles, content)", async () => {
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(makeDeepSeekReasoning()) } }],
+      usage: { prompt_tokens: 1000, completion_tokens: 200 },
+    });
+
+    await reasonWithDeepSeek(makeContext());
+
+    const callArgs = mockCreate.mock.calls[0]![0] as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    const sys = callArgs.messages[0]!.content;
+    const user = callArgs.messages[1]!.content;
+
+    // Calibration percentiles are dynamic — must NOT be in system
+    expect(sys).not.toMatch(/p50=\d/);
+    expect(sys).not.toMatch(/p75=\d/);
+    expect(sys).not.toMatch(/p90=\d/);
+    // User content reference must NOT be in system
+    expect(sys).not.toContain("test"); // makeContext() content_text is "test"
+    // Calibration percentiles MUST appear in user message
+    expect(user).toMatch(/p50=/);
+    expect(user).toMatch(/p75=/);
+    expect(user).toMatch(/p90=/);
+  });
+
+  it("NO Cache-Control header is added to the request (DeepSeek caching is automatic)", async () => {
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(makeDeepSeekReasoning()) } }],
+      usage: { prompt_tokens: 1000, completion_tokens: 200 },
+    });
+
+    await reasonWithDeepSeek(makeContext());
+
+    // The second arg to chat.completions.create is { signal }, no headers
+    const secondArg = mockCreate.mock.calls[0]![1];
+    expect(JSON.stringify(secondArg ?? {})).not.toContain("Cache-Control");
+  });
+
+  it("reads prompt_cache_hit_tokens from usage when present", async () => {
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(makeDeepSeekReasoning()) } }],
+      usage: {
+        prompt_tokens: 1000,
+        completion_tokens: 200,
+        prompt_cache_hit_tokens: 800,
+        prompt_cache_miss_tokens: 200,
+      },
+    });
+
+    const result = await reasonWithDeepSeek(makeContext());
+    expect(result).not.toBeNull();
+    expect(result!.cost_cents).toBeGreaterThan(0);
+  });
+
+  it("cache_hit_tokens are ignored under Qwen pricing (cost is equal for same prompt+completion totals)", async () => {
+    // Phase 13 Qwen migration: deepseek.ts now uses qwen/cost.ts which only
+    // bills on prompt_tokens + completion_tokens. Cache-hit/miss split is
+    // ignored — DashScope International does not publish per-cache-tier rates
+    // for the qwen3.6-* family at the time of migration. This test pins the
+    // current invariant so any future cache-aware pricing reintroduction is
+    // an explicit change.
+    mockCreate.mockResolvedValueOnce({
+      choices: [{ message: { content: JSON.stringify(makeDeepSeekReasoning()) } }],
+      usage: {
+        prompt_tokens: 1000,
+        completion_tokens: 200,
+        prompt_cache_hit_tokens: 900,
+        prompt_cache_miss_tokens: 100,
+      },
+    });
+    const cacheHeavyResult = await reasonWithDeepSeek(makeContext());
+
+    resetCircuitBreaker();
+    mockCreate.mockReset();
+
+    mockCreate.mockResolvedValueOnce({
+      choices: [{ message: { content: JSON.stringify(makeDeepSeekReasoning()) } }],
+      usage: {
+        prompt_tokens: 1000,
+        completion_tokens: 200,
+        prompt_cache_hit_tokens: 0,
+        prompt_cache_miss_tokens: 1000,
+      },
+    });
+    const cacheMissResult = await reasonWithDeepSeek(makeContext());
+
+    expect(cacheHeavyResult).not.toBeNull();
+    expect(cacheMissResult).not.toBeNull();
+    expect(cacheHeavyResult!.cost_cents).toBe(cacheMissResult!.cost_cents);
+  });
+
+  it("falls back to legacy pricing when cache fields missing (backwards compat)", async () => {
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(makeDeepSeekReasoning()) } }],
+      usage: {
+        prompt_tokens: 1000,
+        completion_tokens: 200,
+        // No prompt_cache_hit_tokens / prompt_cache_miss_tokens
+      },
+    });
+
+    const result = await reasonWithDeepSeek(makeContext());
+    expect(result).not.toBeNull();
+    expect(result!.cost_cents).toBeGreaterThan(0);
   });
 });

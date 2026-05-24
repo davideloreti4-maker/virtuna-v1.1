@@ -53,7 +53,7 @@ export function HeroScore({
   trend_score,
   score_weights,
 }: HeroScoreProps) {
-  const { variant, text } = confidenceBadgeConfig[confidence_label];
+  const { variant, text } = confidenceBadgeConfig[confidence_label] ?? confidenceBadgeConfig["MEDIUM"];
 
   const scoreMap = {
     behavioral: behavioral_score,

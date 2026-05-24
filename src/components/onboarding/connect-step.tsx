@@ -7,12 +7,12 @@ import { Heading, Text } from "@/components/ui/typography";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 
 export function ConnectStep() {
-  const { tiktokHandle, setTiktokHandle, setStep, skipOnboarding } =
+  const { tiktokHandle, setTiktokHandle, completeOnboarding, skipOnboarding } =
     useOnboardingStore();
   const [handle, setHandle] = useState(tiktokHandle);
   const [error, setError] = useState<string | null>(null);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     const trimmed = handle.trim().replace(/^@/, "");
     if (!trimmed) {
       setError("Please enter your TikTok handle");
@@ -23,7 +23,7 @@ export function ConnectStep() {
       return;
     }
     setTiktokHandle(trimmed);
-    setStep("goal");
+    await completeOnboarding();
   };
 
   const handleSkip = async () => {

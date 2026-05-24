@@ -1,6 +1,4 @@
 import * as Sentry from "@sentry/nextjs";
-import OpenAI from "openai";
-import { GoogleGenAI } from "@google/genai";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
@@ -13,18 +11,97 @@ import {
   type RuleScoreResult,
   type TrendEnrichment,
 } from "./types";
+import { getQwenClient, QWEN_REASONING_MODEL } from "./qwen/client";
+import { calculateCost } from "./qwen/cost";
+import { stripModelOutput } from "./utils/strip";
 
 const log = createLogger({ module: "deepseek" });
 
-const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL ?? "deepseek-reasoner";
+const DEEPSEEK_MODEL = QWEN_REASONING_MODEL;
 const MAX_RETRIES = 2; // 3 total attempts
 const TIMEOUT_MS = 90_000; // 90s — reasoning model produces many CoT thinking tokens on complex prompts
 
-// V3.2-reasoning pricing: $0.28/1M input tokens, $0.42/1M output tokens
-const INPUT_PRICE_PER_TOKEN = 0.28 / 1_000_000;
-const OUTPUT_PRICE_PER_TOKEN = 0.42 / 1_000_000;
-const FALLBACK_INPUT_TOKENS = 3000; // Richer prompt = more input tokens
-const FALLBACK_OUTPUT_TOKENS = 2000;
+
+/**
+ * STABLE system prompt — byte-identical across calls so DeepSeek's automatic
+ * input cache can match the prefix and apply the cache-hit discount.
+ *
+ * Per RESEARCH Pattern 4 + Pitfall 3: dynamic content (calibration percentiles,
+ * creator context, content text, gemini signals, matched rules) MUST live in the
+ * user message — never here. The split is intentional and load-bearing for caching.
+ *
+ * Per RESEARCH State of the Art: DeepSeek caching is automatic — no opt-in header required.
+ */
+const STABLE_SYSTEM_PROMPT = `You are an expert TikTok content strategist. Analyze the content provided in the user message using the 5-step framework below. Your reasoning is INTERNAL — the user only sees your final JSON output.
+
+## 5-Step Reasoning Framework
+
+### Step 1: Completion Analysis
+Evaluate: Would viewers watch this to the end?
+Consider: Hook strength, narrative tension, pacing, payoff anticipation, information drip.
+Output: hook_effectiveness (0-10), retention_strength (0-10), completion_pct prediction.
+
+### Step 2: Engagement Prediction
+Evaluate: Would viewers take action?
+Consider: Share triggers (relatability, identity signaling, "tag someone"), comment provocation (controversy, questions, relatable frustrations), save worthiness (reference value, tutorial quality, bookmark-worthy tips).
+Output: shareability (0-10), comment_provocation (0-10), save_worthiness (0-10), share_pct/comment_pct/save_pct predictions.
+
+### Step 3: Pattern Match
+Compare this content against known viral patterns from the dataset:
+- Loop structure (videos that naturally restart)
+- Duet/stitch bait (content that invites responses)
+- Trending sound alignment
+- Hook-first structure (value in first 3 seconds)
+- Emotional escalation pattern
+- "Wait for it" payoff structure
+Output: trend_alignment (0-10), originality (0-10).
+
+### Step 4: Fatal Flaw Check
+Identify any critical issues that would kill performance regardless of other factors:
+- No clear hook in first 2 seconds
+- Content too long for topic (>60s for simple content)
+- Misleading hook that doesn't pay off
+- Poor audio quality or no audio strategy
+- Caption too long (>100 chars for non-educational content)
+- Content that actively discourages sharing (controversial without being shareable)
+Output: Array of warning strings (empty if no fatal flaws).
+
+### Step 5: Final Scores & Predictions
+Using steps 1-4, produce your final behavioral predictions. The user message will provide percentile benchmarks from the reference dataset — use them to frame your share_percentile, comment_percentile, save_percentile, and completion_percentile responses as "top X%" labels (e.g., p90 = "top 10%", p75 = "top 25%").
+
+## Output Format
+
+Return a JSON object with exactly these fields:
+
+{
+  "behavioral_predictions": {
+    "completion_pct": <number 0-100>,
+    "completion_percentile": "<string, e.g. 'top 30%'>",
+    "share_pct": <number 0-100>,
+    "share_percentile": "<string>",
+    "comment_pct": <number 0-100>,
+    "comment_percentile": "<string>",
+    "save_pct": <number 0-100>,
+    "save_percentile": "<string>"
+  },
+  "component_scores": {
+    "hook_effectiveness": <number 0-10>,
+    "retention_strength": <number 0-10>,
+    "shareability": <number 0-10>,
+    "comment_provocation": <number 0-10>,
+    "save_worthiness": <number 0-10>,
+    "trend_alignment": <number 0-10>,
+    "originality": <number 0-10>
+  },
+  "suggestions": [
+    { "text": "<actionable advice>", "priority": "high"|"medium"|"low", "category": "<hook|content|format|timing|audio>" }
+  ],
+  "warnings": ["<fatal flaw string>"],
+  "confidence": "high"|"medium"|"low"
+}
+
+Provide 3-5 suggestions. Warnings array should be empty if no fatal flaws found.
+Set confidence based on signal availability: "high" if video + text + trends available, "medium" if text + some signals, "low" if limited context.`;
 
 // Circuit breaker state (INFRA-03: exponential backoff with half-open)
 interface CircuitBreakerState {
@@ -47,7 +124,6 @@ let breaker: CircuitBreakerState = {
 // HARD-04: Mutex to prevent concurrent half-open probes (thundering herd prevention)
 let probeInFlight = false;
 
-let client: OpenAI | null = null;
 
 // Calibration data cache
 interface DeepSeekCalibrationData {
@@ -144,18 +220,6 @@ const FALLBACK_DEEPSEEK_CALIBRATION: DeepSeekCalibrationData = {
 
 let cachedCalibration: DeepSeekCalibrationData | null = null;
 
-function getClient(): OpenAI {
-  if (!client) {
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) throw new Error("Missing DEEPSEEK_API_KEY environment variable");
-    client = new OpenAI({
-      apiKey,
-      baseURL: "https://api.deepseek.com",
-    });
-  }
-  return client;
-}
-
 /** Check if circuit breaker is open (INFRA-03: half-open probe support, HARD-04: probe mutex) */
 function isCircuitOpen(): boolean {
   if (breaker.status === "closed") return false;
@@ -229,15 +293,16 @@ function parseDeepSeekResponse(raw: string): DeepSeekReasoning {
   return result.data;
 }
 
-/** Calculate cost in cents from token usage metadata */
-function calculateDeepSeekCost(
-  promptTokens: number | undefined,
-  completionTokens: number | undefined
-): number {
-  const input = promptTokens ?? FALLBACK_INPUT_TOKENS;
-  const output = completionTokens ?? FALLBACK_OUTPUT_TOKENS;
-  return (input * INPUT_PRICE_PER_TOKEN + output * OUTPUT_PRICE_PER_TOKEN) * 100;
-}
+/**
+ * Calculate cost in cents from token usage metadata.
+ *
+ * Phase 3 (CACHE-03): cache-aware pricing when usage.prompt_cache_hit_tokens AND
+ * usage.prompt_cache_miss_tokens are both present (at least one > 0). Falls back
+ * to legacy uncached pricing when the breakdown is missing — backwards-compat with
+ * pre-Phase-3 callers and providers that don't expose the cache fields.
+ *
+ * All token args are treated as "0 or undefined → use fallback in legacy branch."
+ */
 
 /** Load calibration data from JSON file, cached after first read.
  *  Returns null on malformed/missing file -- callers must handle null. */
@@ -300,9 +365,17 @@ function formatGeminiSignals(analysis: GeminiAnalysis): string {
 }
 
 /**
- * Build the DeepSeek prompt with 5-step CoT framework and calibration data.
+ * Build the VOLATILE user message containing all per-request dynamic content.
+ *
+ * Phase 3 (CACHE-03): the system prompt (STABLE_SYSTEM_PROMPT) contains the static
+ * 5-step rubric and output schema. This function builds only the per-request
+ * dynamic portion — calibration percentiles, content text, gemini signals,
+ * matched rules, trend context, creator context, and viral differentiators.
+ *
+ * Per RESEARCH Pitfall 3: dynamic content here MUST NOT leak into STABLE_SYSTEM_PROMPT
+ * or DeepSeek's automatic input cache will invalidate the prefix.
  */
-function buildDeepSeekPrompt(
+function buildDeepSeekUserMessage(
   context: DeepSeekInput,
   calibration: DeepSeekCalibrationData
 ): string {
@@ -310,14 +383,14 @@ function buildDeepSeekPrompt(
   const commentP = calibration.primary_kpis.comment_rate.percentiles;
   const saveP = calibration.primary_kpis.save_rate.percentiles;
 
-  // Get top 5 viral differentiators
+  // Get top 5 viral differentiators (dataset-dependent — dynamic per calibration version)
   const topDifferentiators = [...calibration.viral_vs_average.differentiators]
     .sort((a, b) => Math.abs(b.difference_pct) - Math.abs(a.difference_pct))
     .slice(0, 5);
 
   const durationSweet = calibration.duration_analysis.sweet_spot_by_weighted_score.optimal_range_seconds;
 
-  // Gemini signals (no scores)
+  // Gemini signals (no scores — qualitative rationales only)
   const geminiSignals = formatGeminiSignals(context.gemini_analysis);
 
   // Rule context (names only, no scores)
@@ -325,59 +398,7 @@ function buildDeepSeekPrompt(
     .map((r) => r.rule_name)
     .join(", ") || "None";
 
-  const prompt = `## Your Task
-
-You are an expert TikTok content strategist. Analyze the content below using the 5-step framework. Your reasoning is INTERNAL — the user only sees your final JSON output.
-
-## 5-Step Reasoning Framework
-
-### Step 1: Completion Analysis
-Evaluate: Would viewers watch this to the end?
-Consider: Hook strength, narrative tension, pacing, payoff anticipation, information drip.
-Output: hook_effectiveness (0-10), retention_strength (0-10), completion_pct prediction.
-
-### Step 2: Engagement Prediction
-Evaluate: Would viewers take action?
-Consider: Share triggers (relatability, identity signaling, "tag someone"), comment provocation (controversy, questions, relatable frustrations), save worthiness (reference value, tutorial quality, bookmark-worthy tips).
-Output: shareability (0-10), comment_provocation (0-10), save_worthiness (0-10), share_pct/comment_pct/save_pct predictions.
-
-### Step 3: Pattern Match
-Compare this content against known viral patterns from the dataset:
-- Loop structure (videos that naturally restart)
-- Duet/stitch bait (content that invites responses)
-- Trending sound alignment
-- Hook-first structure (value in first 3 seconds)
-- Emotional escalation pattern
-- "Wait for it" payoff structure
-
-Top viral differentiators from 7,321 analyzed TikTok videos:
-${topDifferentiators.map((d) => `- ${d.factor}: ${d.description}`).join("\n")}
-
-Duration sweet spot: ${durationSweet[0]}-${durationSweet[1]} seconds
-
-Output: trend_alignment (0-10), originality (0-10).
-
-### Step 4: Fatal Flaw Check
-Identify any critical issues that would kill performance regardless of other factors:
-- No clear hook in first 2 seconds
-- Content too long for topic (>60s for simple content)
-- Misleading hook that doesn't pay off
-- Poor audio quality or no audio strategy
-- Caption too long (>100 chars for non-educational content)
-- Content that actively discourages sharing (controversial without being shareable)
-Output: Array of warning strings (empty if no fatal flaws).
-
-### Step 5: Final Scores & Predictions
-Using steps 1-4, produce your final behavioral predictions with percentile context.
-Reference these dataset benchmarks for percentile framing:
-- Share rate: p50=${(shareP.p50 * 100).toFixed(2)}%, p75=${(shareP.p75 * 100).toFixed(2)}%, p90=${(shareP.p90 * 100).toFixed(2)}%
-- Comment rate: p50=${(commentP.p50 * 100).toFixed(2)}%, p75=${(commentP.p75 * 100).toFixed(2)}%, p90=${(commentP.p90 * 100).toFixed(2)}%
-- Save rate: p50=${(saveP.p50 * 100).toFixed(2)}%, p75=${(saveP.p75 * 100).toFixed(2)}%, p90=${(saveP.p90 * 100).toFixed(2)}%
-Frame percentiles as "top X%" (e.g., p90 = "top 10%", p75 = "top 25%").
-
----
-
-## Content to Analyze
+  return `## Content to Analyze
 
 Content type: ${context.input.content_type}
 Content:
@@ -398,41 +419,19 @@ ${context.creator_context ? `\n${context.creator_context}` : ""}
 
 ---
 
-## Output Format
+## Reference Benchmarks (from current calibration dataset)
 
-Return a JSON object with exactly these fields:
+Top viral differentiators:
+${topDifferentiators.map((d) => `- ${d.factor}: ${d.description}`).join("\n")}
 
-{
-  "behavioral_predictions": {
-    "completion_pct": <number 0-100>,
-    "completion_percentile": "<string, e.g. 'top 30%'>",
-    "share_pct": <number 0-100>,
-    "share_percentile": "<string>",
-    "comment_pct": <number 0-100>,
-    "comment_percentile": "<string>",
-    "save_pct": <number 0-100>,
-    "save_percentile": "<string>"
-  },
-  "component_scores": {
-    "hook_effectiveness": <number 0-10>,
-    "retention_strength": <number 0-10>,
-    "shareability": <number 0-10>,
-    "comment_provocation": <number 0-10>,
-    "save_worthiness": <number 0-10>,
-    "trend_alignment": <number 0-10>,
-    "originality": <number 0-10>
-  },
-  "suggestions": [
-    { "text": "<actionable advice>", "priority": "high"|"medium"|"low", "category": "<hook|content|format|timing|audio>" }
-  ],
-  "warnings": ["<fatal flaw string>"],
-  "confidence": "high"|"medium"|"low"
-}
+Duration sweet spot: ${durationSweet[0]}-${durationSweet[1]} seconds
 
-Provide 3-5 suggestions. Warnings array should be empty if no fatal flaws found.
-Set confidence based on signal availability: "high" if video + text + trends available, "medium" if text + some signals, "low" if limited context.`;
+Percentile benchmarks for percentile framing:
+- Share rate: p50=${(shareP.p50 * 100).toFixed(2)}%, p75=${(shareP.p75 * 100).toFixed(2)}%, p90=${(shareP.p90 * 100).toFixed(2)}%
+- Comment rate: p50=${(commentP.p50 * 100).toFixed(2)}%, p75=${(commentP.p75 * 100).toFixed(2)}%, p90=${(commentP.p90 * 100).toFixed(2)}%
+- Save rate: p50=${(saveP.p50 * 100).toFixed(2)}%, p75=${(saveP.p75 * 100).toFixed(2)}%, p90=${(saveP.p90 * 100).toFixed(2)}%
 
-  return prompt;
+Apply the 5-step framework from the system instructions and return the JSON object specified there.`;
 }
 
 export interface DeepSeekInput {
@@ -459,7 +458,7 @@ export async function reasonWithDeepSeek(
   }
 
   const startTime = performance.now();
-  const ai = getClient();
+  const ai = getQwenClient();
   const calibration =
     (await loadCalibrationData()) ?? FALLBACK_DEEPSEEK_CALIBRATION;
   let lastError: Error | null = null;
@@ -469,15 +468,22 @@ export async function reasonWithDeepSeek(
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
+      const baseUserMessage = buildDeepSeekUserMessage(context, calibration);
       const userMessage =
         attempt === 0
-          ? buildDeepSeekPrompt(context, calibration)
-          : `Your previous response was not valid JSON. Return ONLY the JSON object with no extra text.\n\n${buildDeepSeekPrompt(context, calibration)}`;
+          ? baseUserMessage
+          : `Your previous response was not valid JSON. Return ONLY the JSON object with no extra text.\n\n${baseUserMessage}`;
 
+      // Phase 3 (CACHE-03): 2-message structure with stable system prefix.
+      // DeepSeek's automatic input cache matches on the system prefix bytes.
+      // Per RESEARCH State of the Art: caching is automatic — no opt-in header needed.
       const response = await ai.chat.completions.create(
         {
           model: DEEPSEEK_MODEL,
-          messages: [{ role: "user", content: userMessage }],
+          messages: [
+            { role: "system", content: STABLE_SYSTEM_PROMPT },
+            { role: "user",   content: userMessage },
+          ],
           response_format: { type: "json_object" },
         },
         { signal: controller.signal }
@@ -485,16 +491,13 @@ export async function reasonWithDeepSeek(
 
       clearTimeout(timeout);
 
-      const text = response.choices[0]?.message?.content ?? "";
+      const raw  = response.choices[0]?.message?.content ?? "";
+      const text = stripModelOutput(raw);
       const reasoning = parseDeepSeekResponse(text);
 
       recordSuccess();
 
-      // Token-based cost estimation
-      const cost_cents = calculateDeepSeekCost(
-        response.usage?.prompt_tokens,
-        response.usage?.completion_tokens
-      );
+      const cost_cents = calculateCost(DEEPSEEK_MODEL, response.usage ?? undefined);
 
       if (cost_cents > 1.0) {
         log.warn("Reasoning cost exceeds soft cap", {
@@ -551,79 +554,9 @@ export async function reasonWithDeepSeek(
     tags: { stage: "deepseek_reasoning" },
   });
 
-  // Fallback: use Gemini to produce the same DeepSeekReasoning output
-  log.warn("Falling back to Gemini for reasoning");
-  return reasonWithGeminiFallback(context);
-}
-
-// Gemini Flash pricing for fallback cost tracking
-const GEMINI_INPUT_PRICE_PER_TOKEN = 0.15 / 1_000_000;
-const GEMINI_OUTPUT_PRICE_PER_TOKEN = 0.60 / 1_000_000;
-const GEMINI_FALLBACK_MODEL = "gemini-2.5-flash";
-
-let geminiClient: GoogleGenAI | null = null;
-
-function getGeminiClient(): GoogleGenAI {
-  if (!geminiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("Missing GEMINI_API_KEY environment variable");
-    geminiClient = new GoogleGenAI({ apiKey });
-  }
-  return geminiClient;
-}
-
-/**
- * Fallback: run the same 5-step CoT reasoning prompt through Gemini Flash
- * when DeepSeek is unavailable. Returns the same DeepSeekReasoning shape
- * so the pipeline can't tell the difference.
- */
-async function reasonWithGeminiFallback(
-  context: DeepSeekInput
-): Promise<{ reasoning: DeepSeekReasoning; cost_cents: number }> {
-  const fallbackStart = performance.now();
-  const ai = getGeminiClient();
-  const calibration =
-    (await loadCalibrationData()) ?? FALLBACK_DEEPSEEK_CALIBRATION;
-  const prompt = buildDeepSeekPrompt(context, calibration);
-
-  const response = await ai.models.generateContent({
-    model: GEMINI_FALLBACK_MODEL,
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-    },
-  });
-
-  const text = response.text ?? "";
-  const reasoning = parseDeepSeekResponse(text);
-
-  // Track cost using Gemini pricing
-  const promptTokens = response.usageMetadata?.promptTokenCount ?? FALLBACK_INPUT_TOKENS;
-  const candidateTokens = response.usageMetadata?.candidatesTokenCount ?? FALLBACK_OUTPUT_TOKENS;
-  const cost_cents =
-    (promptTokens * GEMINI_INPUT_PRICE_PER_TOKEN +
-      candidateTokens * GEMINI_OUTPUT_PRICE_PER_TOKEN) *
-    100;
-
-  const fallbackDuration = Math.round(performance.now() - fallbackStart);
-  log.info("DeepSeek->Gemini fallback complete", {
-    stage: "deepseek_gemini_fallback",
-    duration_ms: fallbackDuration,
-    cost_cents: +cost_cents.toFixed(4),
-  });
-
-  Sentry.addBreadcrumb({
-    category: "engine.deepseek",
-    message: "Gemini fallback reasoning complete",
-    level: "info",
-    data: {
-      duration_ms: fallbackDuration,
-      cost_cents: +cost_cents.toFixed(4),
-      model: GEMINI_FALLBACK_MODEL,
-    },
-  });
-
-  return { reasoning, cost_cents };
+  // No fallback — circuit breaker failure returns null; caller handles graceful degradation.
+  log.warn("Qwen reasoning failed after all retries — returning null");
+  return null;
 }
 
 /** @internal -- test use only. Resets circuit breaker to closed state. */

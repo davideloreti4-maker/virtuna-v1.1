@@ -244,8 +244,8 @@ describe("scoreContentAgainstRules — scoring", () => {
         tier: "regex",
       })
     );
-    expect(result.matched_rules[0].score).toBeGreaterThan(0);
-    expect(result.matched_rules[0].max_score).toBe(10);
+    expect(result.matched_rules[0]!.score).toBeGreaterThan(0);
+    expect(result.matched_rules[0]!.max_score).toBe(10);
   });
 
   it("unmatched rules produce empty matched_rules", async () => {

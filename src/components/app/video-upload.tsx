@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Upload, X } from "lucide-react";
+import { ChevronDown, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
@@ -58,6 +58,7 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
     const [error, setError] = React.useState<string | null>(null);
     const [thumbnail, setThumbnail] = React.useState<string | null>(null);
     const [duration, setDuration] = React.useState<number | null>(null);
+    const [dataDisclosureOpen, setDataDisclosureOpen] = React.useState(false);
     const inputRef = React.useRef<HTMLInputElement>(null);
 
     // Extract thumbnail and duration from video file
@@ -228,6 +229,33 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
                   MP4, MOV, WebM up to 200MB
                 </p>
               </div>
+            </div>
+          )}
+
+          {/* INT-06: "About your data" expandable — empty state only */}
+          {!file && (
+            <div className="border-t border-white/[0.06]">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDataDisclosureOpen((prev) => !prev);
+                }}
+                className="flex items-center gap-2 w-full px-6 py-3 text-foreground-muted hover:text-foreground transition-colors"
+              >
+                <ChevronDown
+                  className={cn(
+                    "w-3.5 h-3.5 transition-transform duration-200",
+                    dataDisclosureOpen && "rotate-180"
+                  )}
+                />
+                <span className="text-xs">About your data</span>
+              </button>
+              {dataDisclosureOpen && (
+                <p className="px-6 pb-4 text-xs text-foreground-muted leading-relaxed">
+                  Videos are automatically deleted after 30 days. To keep for re-analysis, go to Settings.
+                </p>
+              )}
             </div>
           )}
 

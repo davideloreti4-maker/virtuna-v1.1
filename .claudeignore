@@ -1,0 +1,17 @@
+# Global .claudeignore — prevents accidental token bombs
+# Copy to each project root: cp ~/.claudeignore ./ 
+
+node_modules/
+dist/
+.next/
+.env*
+.git/
+.planning/
+*.pyc
+__pycache__/
+*.log
+coverage/
+.turbo/
+.vercel/
+build/
+out/

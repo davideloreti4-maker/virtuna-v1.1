@@ -1,4 +1,10 @@
 {
+  "functions": {
+    "src/app/api/analyze/route.ts": {
+      "maxDuration": 300,
+      "memory": 3008
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/calculate-trends",
@@ -27,6 +33,14 @@
     {
       "path": "/api/cron/calibration-audit",
       "schedule": "0 4 1 * *"
+    },
+    {
+      "path": "/api/cron/refresh-corpus",
+      "schedule": "0 6 1 * *"
+    },
+    {
+      "path": "/api/cron/delete-retained-videos",
+      "schedule": "0 3 * * *"
     }
   ]
 }

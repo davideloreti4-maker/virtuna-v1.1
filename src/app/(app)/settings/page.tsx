@@ -10,7 +10,7 @@ interface PageProps {
   searchParams: Promise<{ tab?: string }>;
 }
 
-const VALID_TABS = ["profile", "account", "notifications", "billing", "team"] as const;
+const VALID_TABS = ["profile", "account", "notifications", "billing", "team", "creator-profile"] as const;
 type ValidTab = (typeof VALID_TABS)[number];
 
 export default async function Settings({ searchParams }: PageProps) {

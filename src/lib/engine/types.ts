@@ -1,4 +1,16 @@
 import { z } from "zod";
+import {
+  HookDecompositionZodSchema,
+  CtaSegmentZodSchema,
+  type HookDecomposition,
+  type CtaSegmentResult,
+  type BodySegmentResult,
+} from "./gemini/schemas";
+import { ARCHETYPES } from "./wave3/persona-registry";
+
+// Phase 5 D-13 — re-export segment types so downstream consumers (aggregator, merge,
+// route handlers) have ONE import surface (`@/lib/engine/types`) instead of two.
+export type { HookDecomposition, CtaSegmentResult, BodySegmentResult };
 
 // =====================================================
 // Feature Vector — Standardized signal backbone
@@ -92,7 +104,8 @@ export interface ContentPayload {
   content_text: string; // Always present (extracted from video/URL or user input)
   content_type: string;
   input_mode: "text" | "tiktok_url" | "video_upload";
-  video_url: string | null; // Resolved video URL (from TikTok extraction or Storage)
+  video_url: string | null; // ONLY populated for tiktok_url mode (the actual TikTok URL). null for text + video_upload modes. NEVER aliased to a Supabase storage key (Phase 4 GAP-04-01 fix — Option A).
+  video_storage_path: string | null; // Phase 4 gap-closure: Supabase Storage object key for video_upload mode (e.g., "user-abc/video.mp4"). null for text + tiktok_url modes.
   hashtags: string[]; // Extracted from content_text
   duration_hint: number | null; // Seconds, from URL metadata or user input
   niche: string | null;
@@ -164,12 +177,29 @@ export interface PredictionResult {
   gemini_score: number; // Gemini's contribution
   behavioral_score: number; // DeepSeek behavioral contribution
   ml_score: number; // ML classifier score (0-100), 0 if model unavailable
+  /** Phase 6 (D-G3) — 0-100 audio perceptual score before fingerprint boost. 0 when audio absent.
+   *  Optional to preserve compile against existing consumers; plans 06-05/06-06 will start emitting it. */
+  audio_perceptual_score?: number;
+  /** Phase 6 (D-G1) — Full fingerprint match record or null if no match above threshold.
+   *  Optional to preserve compile against existing consumers; plans 06-05/06-06 will start emitting it. */
+  audio_fingerprint?: AudioFingerprintResult | null;
+  /** Phase 6 (Note 7 / Q4 RESOLVED) — verbatim Gemini-emitted audio_description for
+   *  persistence into analysis_results.audio_description (Plan 06-02 migration).
+   *  Null when audio_signals absent. Sourced verbatim from
+   *  geminiResult.analysis.audio_signals?.audio_description ?? null. */
+  audio_description?: string | null;
   score_weights: {
-    behavioral: number; // 0.35
-    gemini: number; // 0.25
-    ml: number; // 0.15
-    rules: number; // 0.15
+    behavioral: number; // 0.35 (Phase 8 D-03b redistributed to 0.33)
+    gemini: number; // 0.25 (Phase 8 D-03b redistributed to 0.24)
+    ml: number; // 0.15 (Phase 8 D-03b redistributed to 0.14)
+    rules: number; // 0.15 (Phase 8 D-03b redistributed to 0.14)
     trends: number; // 0.10
+    /** Phase 6 (D-G1) — audio weight 0.07; redistributes when signal_availability.audio=false. */
+    audio?: number;
+    /** Phase 8 (D-03b) — 0.05 base; redistributed when SignalAvailability.retrieval = false. */
+    retrieval?: number;
+    /** Phase 9 — platform_fit weight; redistributed when SignalAvailability.platform_fit = false. */
+    platform_fit?: number;
   };
 
   // Meta
@@ -180,6 +210,128 @@ export interface PredictionResult {
   deepseek_model: string | null;
   input_mode: "text" | "tiktok_url" | "video_upload";
   has_video: boolean;
+
+  /** Phase 3 — provenance flags surfaced from aggregator availability. */
+  signal_availability: SignalAvailability;
+
+  /** Phase 7 (D-20) — null when Wave 3 below threshold (D-13). */
+  persona_behavioral_aggregate: PersonaBehavioralAggregate | null;
+  /** Phase 7 (D-09) — per-persona detail for M2 audience-viz. Empty array on fallback. */
+  persona_simulation_results: PersonaSimulationResult[];
+
+  // Phase 8 (D-11) — retrieval signal output
+  retrieval_score: number | null;            // D-03 similarity-weighted bucket vote in [0,1]; null when availability.retrieval = false
+  retrieval_evidence: RetrievalEvidenceItem[];  // D-02 shape, max 5 items
+
+  // Phase 9 — platform fit score, self-critique, counterfactuals
+  platform_fit?: PlatformFitResult | null;
+  critique?: CritiqueResult | null;
+  counterfactuals?: CounterfactualResult | null;
+
+  // Phase 13 Plan 02 — Stage 11 full signal context (D-03).
+  // Optional fields populated by aggregator from Wave 1 segmented results.
+  // Stage 11 prompt builder reads these to construct the full signal context message.
+  /** Hook decomposition from Wave 1 hook-segment analysis (HookDecomposition shape). */
+  hook_decomposition?: HookDecomposition | null;
+  /** Audio signals from Wave 1 Gemini audio analysis (GeminiAudioSignals shape). */
+  audio_signals?: GeminiAudioSignals | null;
+  /** Matched trends from trend enrichment stage. */
+  matched_trends?: Array<{
+    sound_name: string;
+    velocity_score: number;
+    trend_phase: string | null;
+  }>;
+}
+
+// =====================================================
+// Phase 3 — Signal Provenance + Future-Wave Stub Types
+// =====================================================
+
+/**
+ * Provenance — which signals fired vs degraded for this prediction.
+ * Persisted to analysis_results.signal_availability JSONB column.
+ * Forward-compat: future phases (audio, retrieval, hook_decomp, etc.) add keys here.
+ */
+export interface SignalAvailability {
+  behavioral: boolean;
+  gemini: boolean;
+  ml: boolean;
+  rules: boolean;
+  trends: boolean;
+  content_type: boolean;  // NEW Phase 4 (D-20) — set by aggregator from wave0Result.content_type !== null
+  niche: boolean;          // NEW Phase 4 (D-20) — set by aggregator from wave0Result.niche !== null
+  // NEW Phase 5 (D-12) — per-segment availability from analyzeVideoSegmented.
+  // PROVENANCE KEYS — must NOT be added to SCORE_WEIGHT_KEYS (Phase 4 Cross-File Constraint #3).
+  // The existing `gemini` field becomes derived: gemini = gemini_hook || gemini_body || gemini_cta
+  // (computed in aggregator — Plan 03 wires this; Plan 01 ships placeholders only).
+  gemini_hook: boolean;
+  gemini_body: boolean;
+  gemini_cta: boolean;
+  /**
+   * Phase 7 (D-15) — true when persona_behavioral_aggregate !== null (≥7-of-10 personas succeeded).
+   * WR-02: promoted from optional to required. Aggregator always sets this key from
+   * `pipelineResult.personaBehavioralAggregate !== null`, so it is never absent on a
+   * Phase 7+ PredictionResult. Downstream consumers and route persistence treat it as
+   * guaranteed; the optional declaration was stale documentation that could let a future
+   * regression silently elide the flag.
+   */
+  personas: boolean;
+  // Phase 6 (D-G1) — weight-bearing: gates audio_perceptual_score contribution to overall_score.
+  // Optional to preserve compile against existing aggregator; plans 06-05/06-06 emit it.
+  audio?: boolean;
+  // Phase 6 (D-G1) — provenance only: tracks whether pgvector returned a match; NOT in SCORE_WEIGHT_KEYS.
+  // Optional to preserve compile against existing aggregator; plans 06-05/06-06 emit it.
+  audio_fingerprint?: boolean;
+  /**
+   * NEW Phase 8 (D-10) — true when ≥1 match survives hierarchical relaxation AND
+   * min_corpus_size gate passes (i.e., retrievalResult.score is non-null).
+   * Weight-bearing — IS in SCORE_WEIGHT_KEYS.
+   * Optional for back-compat with Phase 4/5/6/7 callsites that pre-date Phase 8;
+   * aggregator + route always set it on Phase 8+ PredictionResult.
+   */
+  retrieval?: boolean;
+  /** Phase 9 — platform_fit signal availability. True when V3 platform-fit run produced a non-null result. */
+  platform_fit?: boolean;
+}
+
+// Wave0Result now defined below as z.infer<typeof Wave0ResultSchema> — see Phase 4 block.
+
+// PersonaSimulationResult moved BELOW BehavioralPredictionsSchema — Phase 7 (D-19)
+// widens it into a Zod-derived schema that aliases PersonaBehavioralAggregate to
+// BehavioralPredictions. See "Phase 7 — Persona Simulation Result Schemas" block.
+
+/** Stage 10 self-critique result — Phase 9 fills with V3 critique call. */
+export interface CritiqueResult {
+  consistency_score: number;
+  flags: string[];
+  confidence_adjustment: number;
+}
+
+/**
+ * Phase 13 D-05 — counterfactual suggestion item with band-adaptive type.
+ * - fix: concrete change needed (low + mid bands)
+ * - stretch: ambitious enhancement (high band)
+ * - reinforcement: what's already working well (mid + high bands)
+ */
+export interface CounterfactualSuggestionItem {
+  type: "fix" | "stretch" | "reinforcement";
+  headline: string;       // ≤ 80 chars
+  detail: string;         // 1-2 sentences with specific expected outcome
+  timestamp_ms: number;   // video timestamp in ms; 0 when unavailable
+  signal_anchor: string;  // which signal this addresses
+}
+
+/**
+ * Stage 11 counterfactuals result — Phase 13 Plan 02 rebuilt shape (D-05).
+ * band: score band for adaptive rendering in SuggestionsSection.
+ * suggestions: band-adaptive items (low=3 fix, mid=2+1, high=1+2-3).
+ *
+ * BREAKING CHANGE from Phase 9: old shape had `suggestions: Array<{change, timestamp_ms, expected_impact}>`.
+ * Updated in Phase 13 Plan 02. Downstream consumers (results-panel, insights-section) updated in Task 2.3.
+ */
+export interface CounterfactualResult {
+  band: "low" | "mid" | "high";
+  suggestions: CounterfactualSuggestionItem[];
 }
 
 // =====================================================
@@ -200,22 +352,119 @@ export const GeminiVideoSignalsSchema = z.object({
   transition_quality: z.number().min(0).max(10),
 });
 
+// Phase 6 (D-A1..A3, D-F1) — Zod schema for the extended audio_signals block.
+// `.refine()` normalizes ratio sums within ±0.1 tolerance per Pitfall 1.
+// Chained `.optional()` on parent schemas wraps this refined schema so the
+// refinement only fires when the field is present (graceful degradation per
+// HARD-03 + Phase 3 D-04).
+// NOTE: declared BEFORE GeminiResponseSchema so that the base schema can
+// reference it directly via `.optional()` (Phase 6 wiring + aggregator access
+// via `gemini.audio_signals?.audio_description ?? null`).
+export const GeminiAudioSignalsSchema = z
+  .object({
+    voice_clarity_0_10: z.number().min(0).max(10).nullable(),
+    audio_hook_first_2s_0_10: z.number().min(0).max(10).nullable(),
+    silence_ratio: z.number().min(0).max(1),
+    voiceover_ratio: z.number().min(0).max(1),
+    music_ratio: z.number().min(0).max(1),
+    // min(10): floor matches the smoke-test validation gate (10-300) and rules
+    //   out empty/degenerate responses. max(280): aligned with the backfill +
+    //   cron truncation cap (slice(0, 280)) — anything longer gets truncated
+    //   downstream anyway, so accepting >280 invites silent data loss. Prompt
+    //   asks for 50-150 chars; the band [10,280] is intentional slack for LLMs
+    //   that don't honor exact char counts (06-REVIEW.md WR-05 — was min(1).max(300)).
+    audio_description: z.string().min(10).max(280),
+  })
+  .refine(
+    (v) =>
+      Math.abs(v.silence_ratio + v.voiceover_ratio + v.music_ratio - 1.0) < 0.1,
+    { message: "Audio ratios must sum to ~1.0 (±0.1 tolerance)" },
+  );
+
+// Phase 6 — audio_signals is OPTIONAL on the BASE response schema (not just on
+// GeminiVideoResponseSchema). When Gemini omits the audio_signals block (model
+// regression, prompt edge case, or any failure mode where the LLM degrades to
+// video-only output), the top-level response still passes Zod validation.
+// Downstream code reads audio_signals via optional chaining
+// (`geminiResult.analysis.audio_signals?.audio_description ?? null`), so the
+// resulting `T | undefined` type is the canonical contract. The text-mode path
+// never populates audio_signals at runtime, so the type stays `undefined` on
+// text-only analyses — preserving graceful degradation per HARD-03 + Phase 3
+// D-04. Aggregator sees audio_signals as undefined → signal_availability.audio
+// = false → audio weight redistributes via the existing selectWeights math.
+// Mirrors the existing `video_signals.optional()` pattern below it.
 export const GeminiResponseSchema = z.object({
   factors: z.array(FactorSchema).length(5),
   overall_impression: z.string(),
   content_summary: z.string(),
-  video_signals: GeminiVideoSignalsSchema.optional(),
+  video_signals: GeminiVideoSignalsSchema.nullable().optional(),
+  // .nullable().optional() — accept both omitted-key and explicit-null (06-REVIEW.md WR-02):
+  // if Gemini emits `audio_signals: null` instead of omitting the key, .optional()-only
+  // rejects it and the whole video analysis falls through to fallback factors (not just
+  // audio degradation). Both shapes degrade to the same `T | null | undefined` contract,
+  // which downstream optional-chaining (`?.audio_description ?? null`) handles uniformly.
+  audio_signals: GeminiAudioSignalsSchema.nullable().optional(),
 });
 
 export type GeminiAnalysis = z.infer<typeof GeminiResponseSchema>;
 
+// GeminiVideoResponseSchema is the strict superset for video-mode responses:
+// video_signals becomes REQUIRED (not optional). audio_signals remains optional
+// for graceful degradation. Phase 5 D-13 also widens with hook_decomposition +
+// cta_segment (both .optional().nullable() so makeGeminiAnalysis() factory at
+// __tests__/factories.ts:22 continues to typecheck without modification).
 export const GeminiVideoResponseSchema = GeminiResponseSchema.extend({
   video_signals: GeminiVideoSignalsSchema,
+  audio_signals: GeminiAudioSignalsSchema.nullable().optional(),
+  hook_decomposition: HookDecompositionZodSchema.optional().nullable(),
+  cta_segment: CtaSegmentZodSchema.optional().nullable(),
 });
 
 export type GeminiVideoAnalysis = z.infer<typeof GeminiVideoResponseSchema>;
 
 export type GeminiVideoSignals = z.infer<typeof GeminiVideoSignalsSchema>;
+
+// =====================================================
+// Phase 4 — Wave 0 Result Shapes (widens Wave0Result, adds Zod validation)
+// Per CONTEXT D-08, D-11 + RESEARCH Topic #8.
+// =====================================================
+
+export const ContentTypeEnumSchema = z.enum([
+  "talking_head",
+  "b_roll",
+  "slideshow",
+  "action",
+  "tutorial",
+  "vlog",
+  "comedy",
+  "other",
+] as const);
+
+export type ContentTypeSlug = z.infer<typeof ContentTypeEnumSchema>;
+
+export const Wave0ContentTypeResultSchema = z.object({
+  type: ContentTypeEnumSchema,
+  confidence: z.number().min(0).max(1),
+  warning: z.enum(["mixed_content_detected", "low_confidence"]).optional(),
+});
+export type Wave0ContentTypeResult = z.infer<typeof Wave0ContentTypeResultSchema>;
+
+// D-17 (Phase 13 Plan 03): niche folded into Gemini content-type call.
+// New shape: flat { primary_slug, micro_slug, confidence } — replaces old DeepSeek
+// { primary, sub, micro, confidence, source, warning } shape.
+// Consumers updated: wave3.ts:113, retrieval/retrieval-stage.ts:105.
+export const Wave0NicheResultSchema = z.object({
+  primary_slug: z.string(),
+  micro_slug: z.string().nullable(),
+  confidence: z.number().min(0).max(1),
+});
+export type Wave0NicheResult = z.infer<typeof Wave0NicheResultSchema>;
+
+export const Wave0ResultSchema = z.object({
+  content_type: Wave0ContentTypeResultSchema.nullable(),
+  niche: Wave0NicheResultSchema.nullable(),
+});
+export type Wave0Result = z.infer<typeof Wave0ResultSchema>;
 
 export const SuggestionSchema = z.object({
   text: z.string(),
@@ -240,6 +489,58 @@ export const BehavioralPredictionsSchema = z.object({
 
 export type BehavioralPredictions = z.infer<typeof BehavioralPredictionsSchema>;
 
+// =====================================================
+// Phase 7 — Persona Simulation Result Schemas (D-19)
+// Per CONTEXT D-02 + D-03: 10 archetypes total — 6 FYP behavioral + 4 specialized.
+// Per CONTEXT D-19: widened shape adds archetype, slot_type, niche, reasoning.
+// =====================================================
+
+/**
+ * WR-06: ARCHETYPES is the canonical source of truth (wave3/persona-registry.ts).
+ * The previous duplicated `z.enum([...10 names...])` listing risked silent drift —
+ * if someone added an 11th archetype to the registry but forgot to update the schema
+ * (or vice versa), the wave3/aggregator.ts tie-break (`ARCHETYPES.indexOf(...)`) would
+ * drift relative to the Zod schema. Test 8 (tie-break determinism) would still pass
+ * against the inconsistent state. Now derived from ARCHETYPES so both stay in lockstep.
+ *
+ * Import is hoisted because TypeScript module evaluation processes imports before any
+ * top-level code; persona-registry.ts only imports `type ContentTypeSlug` from this
+ * module (erased at runtime), so the cycle is safe.
+ */
+export const PersonaArchetypeSchema = z.enum(ARCHETYPES);
+export type PersonaArchetype = z.infer<typeof PersonaArchetypeSchema>;
+
+export const PersonaSlotTypeSchema = z.enum([
+  "fyp",
+  "niche_deep",
+  "loyalist",
+  "cross_niche",
+] as const);
+export type PersonaSlotType = z.infer<typeof PersonaSlotTypeSchema>;
+
+/** Wave 3 persona simulation result — Phase 7 fills with real V3 reactions (D-19). */
+export const PersonaSimulationResultSchema = z.object({
+  persona_id: z.string(),
+  archetype: PersonaArchetypeSchema,
+  slot_type: PersonaSlotTypeSchema,
+  niche: z.string(),
+  scroll_past_second: z.number().min(0),
+  watch_through_pct: z.number().min(0).max(100),
+  comment_intent: z.number().min(0).max(100),
+  share_intent: z.number().min(0).max(100),
+  save_intent: z.number().min(0).max(100),
+  /** Pitfall 5: required non-empty — LLMs occasionally omit reasoning under token-budget pressure. */
+  reasoning: z.string().min(1).max(500),
+});
+export type PersonaSimulationResult = z.infer<typeof PersonaSimulationResultSchema>;
+
+/**
+ * Phase 7 D-19 alias — distinguish at type level from raw BehavioralPredictions.
+ * Aggregator (Plan 07-02's wave3/aggregator.ts) returns this; PredictionResult will surface as
+ * `persona_behavioral_aggregate: PersonaBehavioralAggregate | null` (Plan 07-02 widens PredictionResult).
+ */
+export type PersonaBehavioralAggregate = BehavioralPredictions;
+
 export const ComponentScoresSchema = z.object({
   hook_effectiveness: z.number().min(0).max(10),
   retention_strength: z.number().min(0).max(10),
@@ -261,6 +562,56 @@ export const DeepSeekResponseSchema = z.object({
 });
 
 export type DeepSeekReasoning = z.infer<typeof DeepSeekResponseSchema>;
+
+// =====================================================
+// Phase 8 — Benchmark Retrieval (pgvector) Schemas
+// Per CONTEXT D-02 (evidence item shape) + D-03 (result shape) + D-10/D-11
+// (SignalAvailability + PredictionResult extensions below).
+// =====================================================
+
+/**
+ * Phase 8 — Retrieval Evidence Item (D-02).
+ * One record per item returned by runBenchmarkRetrieval. Rich shape so M2's
+ * "similar videos" panel can render without further DB joins.
+ *
+ * Persisted to analysis_results.retrieval_evidence JSONB column (D-11).
+ */
+export const RetrievalEvidenceItemSchema = z.object({
+  source_pool: z.enum(["training_corpus", "scraped_videos"]),
+  source_id: z.string().uuid(),
+  similarity_score: z.number().min(0).max(1),
+  video_url: z.string().nullable(),
+  creator_handle: z.string().nullable(),
+  caption_snippet: z.string().nullable(),
+  views: z.number().int().nonnegative(),
+  likes: z.number().int().nonnegative(),
+  shares: z.number().int().nonnegative(),
+  comments: z.number().int().nonnegative(),
+  saves: z.number().int().nonnegative().nullable(),
+  hashtags: z.array(z.string()),
+  posted_at: z.string().nullable(),
+  bucket_label: z.enum(["viral", "average", "under"]),
+  bucket_source: z.enum(["corpus", "derived"]),
+  relaxed_to: z.enum(["strict", "niche+platform", "niche_only"]).nullable(),
+});
+export type RetrievalEvidenceItem = z.infer<typeof RetrievalEvidenceItemSchema>;
+
+/**
+ * Phase 8 — Benchmark Retrieval Result (return shape of runBenchmarkRetrieval).
+ *
+ * evidence: max 5 items, may be empty
+ * score: D-03 similarity-weighted bucket vote in [0,1]; null when zero matches
+ *        OR min_corpus_size gate fails (D-04b)
+ * availability: SignalAvailability.retrieval value (true when score is non-null)
+ * cost_cents: telemetry for stage_end event (D-15)
+ */
+export const BenchmarkRetrievalResultSchema = z.object({
+  evidence: z.array(RetrievalEvidenceItemSchema).max(5),
+  score: z.number().min(0).max(1).nullable(),
+  availability: z.boolean(),
+  cost_cents: z.number().nonnegative(),
+});
+export type BenchmarkRetrievalResult = z.infer<typeof BenchmarkRetrievalResultSchema>;
 
 // =====================================================
 // Internal Types
@@ -287,3 +638,87 @@ export interface TrendEnrichment {
   trend_context: string; // Summary for DeepSeek prompt
   hashtag_relevance: number; // 0-1 semantic hashtag relevance (SIG-03)
 }
+
+// =====================================================
+// Phase 6 — Audio Analysis result shapes
+// =====================================================
+
+/** Audio sub-scores extracted from the extended gemini_video_analysis response. D-A1, D-A3, D-F1. */
+export interface GeminiAudioSignals {
+  /** 0-10 voice clarity / SNR. null per D-A2 when content_type ∈ {slideshow, b_roll, action}. */
+  voice_clarity_0_10: number | null;
+  /** 0-10 audio hook score for first 2s (D-H2). null per D-A2 when content_type ∈ {slideshow, b_roll, action}. */
+  audio_hook_first_2s_0_10: number | null;
+  /** 0-1, sums to 1.0 with siblings per D-A3. */
+  silence_ratio: number;
+  /** 0-1, sums to 1.0 with siblings per D-A3. */
+  voiceover_ratio: number;
+  /** 0-1, sums to 1.0 with siblings per D-A3. */
+  music_ratio: number;
+  /** 50-150 char description for fingerprint matching per D-F1. */
+  audio_description: string;
+}
+
+/** audio_perceptual_score output (D-G3 — content-type-adaptive formula). */
+export interface AudioPerceptualResult {
+  /** 0-100, normalized BEFORE audio_fingerprint_boost is applied per D-G3. */
+  audio_perceptual_score: number;
+  /** Which formula branch the score came from per D-G3. */
+  formula_mode: "voice" | "ambient" | "balanced";
+  /** Sub-score field names that fed the formula (for debugging — e.g., ["voice_clarity", "audio_hook", "voiceover_ratio"]). */
+  sub_scores_used: string[];
+}
+
+/** pgvector fingerprint match result (D-F0, D-F1). null when no match above threshold. */
+export interface AudioFingerprintResult {
+  sound_name: string;
+  sound_url: string | null;
+  /** 0-1 cosine similarity. Threshold for inclusion is 0.80 (env-overridable AUDIO_FINGERPRINT_SIMILARITY_THRESHOLD). */
+  similarity: number;
+  /** From trending_sounds.trend_phase column. null if column is null. */
+  trend_phase: "emerging" | "rising" | "peak" | "declining" | null;
+  /** From trending_sounds.velocity_score column. */
+  velocity_score: number;
+}
+
+/**
+ * Phase 6 D-A4 — feeder interface widening the pipeline result with the
+ * audio_fingerprint stage output. `PipelineResult` (declared in pipeline.ts)
+ * extends this interface so Plan 06-06's aggregator can read
+ * `pipelineResult.audioFingerprintResult` with full type safety.
+ *
+ * Lives in types.ts (next to the AudioFingerprintResult shape it references)
+ * to keep audio-related types in one place. pipeline.ts composes it into the
+ * full PipelineResult so the broader interface stays close to its consumer.
+ *
+ * Value contract:
+ * - `AudioFingerprintResult` when the pgvector RPC returned a row above the
+ *   similarity threshold (0.80 by default; env-overridable).
+ * - `null` when (a) Gemini omitted audio_signals, (b) audio_description was
+ *   absent / empty, (c) embedContent failed softly, (d) the RPC returned an
+ *   error object, (e) no row matched above threshold, or (f) any thrown
+ *   exception was caught by the pipeline's audio_fingerprint stage.
+ *
+ * Never `undefined` — pipeline.ts always assigns either the match record or null
+ * (the stage's graceful-degradation contract). Aggregator can therefore read
+ * `pipelineResult.audioFingerprintResult !== null` for the availability flag.
+ */
+export interface PipelineAudioFingerprintFields {
+  audioFingerprintResult: AudioFingerprintResult | null;
+}
+
+// =====================================================
+// Phase 9 — Platform Fit, Self-Critique, Counterfactuals
+// =====================================================
+
+/**
+ * Platform fit result — how well content matches a platform's algorithmic preferences.
+ * Produced by runPlatformFit() in wave4/platform-fit.ts (Plan 09-03).
+ */
+export const PlatformFitResultSchema = z.object({
+  platform: z.string(),
+  fit_score: z.number().min(0).max(100),
+  rationale: z.string(),
+  watermark_penalty: z.boolean().optional(),
+});
+export type PlatformFitResult = z.infer<typeof PlatformFitResultSchema>;

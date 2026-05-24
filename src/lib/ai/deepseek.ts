@@ -1,8 +1,7 @@
 /**
- * DeepSeek AI client for strategy analysis and content recommendations.
- *
- * Uses the OpenAI-compatible API with lazy-initialized singleton.
- * Model: deepseek-chat with JSON mode.
+ * Qwen AI client for strategy analysis and content recommendations.
+ * Replaces the former DeepSeek client — same public API, same return types.
+ * Model: qwen3.6-plus via DashScope International (OpenAI-compatible).
  */
 
 import OpenAI from "openai";
@@ -15,109 +14,79 @@ import {
   type CompetitorContext,
 } from "./types";
 import { buildStrategyPrompt, buildRecommendationsPrompt } from "./prompts";
+import { stripModelOutput } from "../engine/utils/strip";
 
-// --- Singleton client ---
+const DASHSCOPE_ENDPOINT = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1";
+const MODEL = process.env.QWEN_REASONING_MODEL ?? "qwen3.6-plus";
 
 let client: OpenAI | null = null;
 
 function getClient(): OpenAI {
   if (!client) {
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) throw new Error("Missing DEEPSEEK_API_KEY environment variable");
-    client = new OpenAI({ apiKey, baseURL: "https://api.deepseek.com" });
+    const apiKey = process.env.DASHSCOPE_API_KEY;
+    if (!apiKey) throw new Error("Missing DASHSCOPE_API_KEY environment variable");
+    client = new OpenAI({ apiKey, baseURL: DASHSCOPE_ENDPOINT });
   }
   return client;
 }
 
-// --- Helpers ---
-
-/**
- * Strip markdown fences and DeepSeek think tags from response text.
- * DeepSeek sometimes wraps JSON in ```json ... ``` or <think>...</think>.
- */
-export function stripFences(text: string): string {
-  let cleaned = text.trim();
-
-  // Remove <think>...</think> blocks (deepseek-reasoner sometimes adds these)
-  cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
-
-  // Remove ```json ... ``` or ``` ... ``` wrappers
-  const fenceMatch = cleaned.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?\s*```$/);
-  if (fenceMatch) {
-    cleaned = fenceMatch[1]!.trim();
-  }
-
-  return cleaned;
-}
+// Kept for any callers that imported stripFences from here.
+export { stripModelOutput as stripFences };
 
 interface DeepSeekResult<T> {
   analysis: T;
   usage: { prompt_tokens: number; completion_tokens: number };
 }
 
-/**
- * Shared helper: call DeepSeek with a prompt and validate response with Zod.
- * Includes 1 retry on parse failure with a stricter instruction.
- */
-async function callDeepSeek<T>(
+async function callQwen<T>(
   prompt: string,
-  schema: ZodType<T>
+  schema: ZodType<T>,
 ): Promise<DeepSeekResult<T>> {
   const ai = getClient();
 
   for (let attempt = 0; attempt < 2; attempt++) {
-    const finalPrompt =
-      attempt === 0
-        ? prompt
-        : `${prompt}\n\nIMPORTANT: Your previous response was not valid JSON. Please respond with ONLY valid JSON, no markdown fences, no explanation text.`;
+    const finalPrompt = attempt === 0
+      ? prompt
+      : `${prompt}\n\nIMPORTANT: Your previous response was not valid JSON. Respond with ONLY valid JSON, no markdown fences, no explanation.`;
 
-    const response = await ai.chat.completions.create({
-      model: "deepseek-chat",
+    const completion = await ai.chat.completions.create({
+      model: MODEL,
       messages: [{ role: "user", content: finalPrompt }],
       response_format: { type: "json_object" },
     });
 
-    const raw = response.choices[0]?.message?.content ?? "";
-    const cleaned = stripFences(raw);
+    const raw     = completion.choices[0]?.message?.content ?? "";
+    const cleaned = stripModelOutput(raw);
+    const result  = schema.safeParse(JSON.parse(cleaned));
 
-    const result = schema.safeParse(JSON.parse(cleaned));
     if (result.success) {
       return {
         analysis: result.data,
         usage: {
-          prompt_tokens: response.usage?.prompt_tokens ?? 0,
-          completion_tokens: response.usage?.completion_tokens ?? 0,
+          prompt_tokens:     completion.usage?.prompt_tokens     ?? 0,
+          completion_tokens: completion.usage?.completion_tokens ?? 0,
         },
       };
     }
 
-    // Log validation error on first attempt, retry
     if (attempt === 0) {
-      console.warn(
-        "DeepSeek response validation failed, retrying:",
-        result.error.issues.slice(0, 3)
-      );
+      console.warn("Qwen response validation failed, retrying:", result.error.issues.slice(0, 3));
     }
   }
 
-  throw new Error("DeepSeek response failed Zod validation after 2 attempts");
+  throw new Error("Qwen response failed Zod validation after 2 attempts");
 }
 
-// --- Public API ---
-
 export async function analyzeStrategy(
-  ctx: CompetitorContext
+  ctx: CompetitorContext,
 ): Promise<DeepSeekResult<StrategyAnalysis>> {
-  return callDeepSeek(buildStrategyPrompt(ctx), StrategyAnalysisSchema);
+  return callQwen(buildStrategyPrompt(ctx), StrategyAnalysisSchema);
 }
 
 export async function generateRecommendations(
   ctx: CompetitorContext,
   strategyHighlights?: string,
-  viralPatterns?: string
+  viralPatterns?: string,
 ): Promise<DeepSeekResult<Recommendations>> {
-  return callDeepSeek(
-    buildRecommendationsPrompt(ctx, strategyHighlights, viralPatterns),
-    RecommendationsSchema
-  );
+  return callQwen(buildRecommendationsPrompt(ctx, strategyHighlights, viralPatterns), RecommendationsSchema);
 }

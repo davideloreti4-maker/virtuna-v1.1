@@ -26,11 +26,21 @@ const videosCache = createCache<ScrapedVideo[]>(15 * 60 * 1000);
 
 /**
  * Enrich content analysis with trending data (ENGINE-05)
- * Cross-references content against trending_sounds and scraped_videos
+ * Cross-references content against trending_sounds and scraped_videos.
+ *
+ * Phase 6 D-F3: when `opts.audioFingerprintMatched` is true, the pgvector
+ * fingerprint match already populated `matched_trends` upstream (aggregator
+ * synthesizes the entry — single source of truth). In that case the
+ * Jaro-Winkler caption ↔ sound_name fallback loop is SKIPPED. Hashtag
+ * matching is orthogonal to audio fingerprint and ALWAYS evaluates.
+ *
+ * `opts` is optional; omitting it (or passing `audioFingerprintMatched=false`)
+ * preserves the v2.1 baseline behavior for all existing callers.
  */
 export async function enrichWithTrends(
   supabase: ReturnType<typeof createServiceClient>,
-  input: AnalysisInput
+  input: AnalysisInput,
+  opts?: { audioFingerprintMatched?: boolean },
 ): Promise<TrendEnrichment> {
   const contentLower = (input.content_text ?? "").toLowerCase();
 
@@ -51,7 +61,12 @@ export async function enrichWithTrends(
   let trendScore = 0;
   let bestMatchScore: number | null = null; // Track best fuzzy match score for FeatureVector
 
-  if (trendingSounds) {
+  // Phase 6 D-F3: Jaro-Winkler sound loop is fallback only — runs when the upstream
+  // audio_fingerprint stage failed to match. When fingerprint succeeded, the aggregator
+  // synthesizes a matched_trends entry from the fingerprint result (single source of
+  // truth contract; Plan 06-06 owns the synthesis). Hashtag loop below is UNGATED —
+  // hashtags are orthogonal to audio fingerprint.
+  if (trendingSounds && !opts?.audioFingerprintMatched) {
     for (const sound of trendingSounds) {
       if (!sound.sound_name) continue;
 
