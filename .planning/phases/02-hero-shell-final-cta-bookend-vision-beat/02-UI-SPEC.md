@@ -115,14 +115,14 @@ This section is the executor's primary reference for "does everything fit at bot
 │     Score, refine, ship — in 30 seconds."  │
 │  Phase 3 placeholder gap    ~64px          │
 │  Spacing                     ~8px           │
-│  CTA pair                   ~52px          │
+│  CTA pair                   ~56px          │
 │    [ShimmerButton] [See pricing →]          │
 │                                             │
-│  Remaining: ~350px → Spotlight fills        │
+│  Remaining: ~346px → Spotlight fills        │
 └─────────────────────────────────────────────┘  ← bottom of viewport (900px)
 ```
 
-Total above-fold committed height: ≈ 450px — well within 836px content area (900px - 64px header). Spotlight + optional decorative particles fill remaining space. No scroll required at 1440×900.
+Total above-fold committed height: ≈ 454px — well within 836px content area (900px - 64px header). Spotlight + optional decorative particles fill remaining space. No scroll required at 1440×900.
 
 ### Mobile: 375px wide, viewport height 667px (iPhone SE — most constrained)
 
@@ -237,8 +237,8 @@ Magic UI `WordRotate` — single rotating word slot fused inside the H1 sentence
 | Component | Magic UI `ShimmerButton` (install: `npx shadcn@latest add @magicui/shimmer-button`) |
 | Label | `Score your first TikTok` — D-05 locked |
 | Destination | `href="#demo"` (smooth-scroll) — D-06 locked |
-| Height | `44px` min (WCAG touch target) |
-| Padding | `12px 24px` |
+| Height | `56px` (16px top + 24px text + 16px bottom padding at `--text-base` 16px / line-height 1.5; exceeds 44px WCAG touch target) |
+| Padding | `16px 24px` |
 | Border-radius | `8px` (`--radius-md`) — Raycast button radius |
 | Background | Shimmer sweep over dark surface: base `rgba(255,127,80,0.08)` with animated shimmer at `rgba(255,127,80,0.25)` sweeping left-to-right |
 | Shimmer animation | `shimmer` keyframe already in `globals.css` (`--animate-shimmer: shimmer 2s ease-in-out infinite`) — use existing token |
@@ -328,7 +328,7 @@ Section between `#pricing` placeholder and `#final-cta`. Founder quote as invest
 | Section element | `<section id="vision-beat" aria-label="Founder vision">` |
 | Section height | `auto` — intrinsic height, no min-height constraint |
 | Background | `--color-background` (#07080a) — same as Hero; Vision Beat is NOT an alternating-bg section |
-| Padding | `py-20 px-6` (80px vertical, 24px horizontal) |
+| Padding | `py-16 px-6` (64px vertical, 24px horizontal) |
 | Max width | `max-w-2xl mx-auto` (672px) — pull-quote width; narrower than full 7xl to create centered focus |
 | Container component | `GlassPanel` from `@/components/primitives` (already installed, D-11 locked) |
 | GlassPanel padding | `p-8` (32px) |
@@ -337,8 +337,8 @@ Section between `#pricing` placeholder and `#final-cta`. Founder quote as invest
 | Quotation mark style | No decorative large `"` glyph. No CSS `::before` quote marks. Quote text stands alone inside GlassPanel — the glass card IS the visual framing device |
 | Attribution line | `— Davide Loreti, Founder, Virtuna` |
 | Attribution typography | 14px (`--text-sm`), weight 400, NOT italic, `--color-foreground-muted` (#848586), `margin-top: 16px` |
-| Vertical spacing above | `80px` between end of Pricing SectionShell and start of Vision Beat — achieved via Vision Beat `pt-20` |
-| Vertical spacing below | `80px` between end of Vision Beat and Final CTA section — achieved via Vision Beat `pb-20` |
+| Vertical spacing above | `64px` between end of Pricing SectionShell and start of Vision Beat — achieved via Vision Beat `pt-16` |
+| Vertical spacing below | `64px` between end of Vision Beat and Final CTA section — achieved via Vision Beat `pb-16` |
 | GlassPanel border | `1px solid rgba(255,255,255,0.06)` — inherits from GlassPanel component |
 | Rendered as | Server component (static content, no interactivity) |
 | Reduced-motion | No motion applied to Vision Beat — it's fully static |
@@ -412,7 +412,7 @@ Two real placeholder pages created in Phase 2.
 | `src/app/(marketing)/privacy/page.tsx` | `/privacy` | `<h1>Privacy Policy</h1>` + `<p>Coming soon. Last updated: 2026.</p>` + canonical `<link rel="canonical" href="https://virtuna.ai/privacy">`. Server component. |
 | `src/app/(marketing)/terms/page.tsx` | `/terms` | `<h1>Terms of Service</h1>` + `<p>Coming soon. Last updated: 2026.</p>` + canonical `<link rel="canonical" href="https://virtuna.ai/terms">`. Server component. |
 
-Typography: `--text-3xl` / 700 for H1; `--text-base` / 400 for body. Background `--color-background`. Min-height `100dvh`. No header/footer needed (standalone pages — can add in Phase 11 polish).
+Typography: out of scope for Phase 2 UI-SPEC — stub pages render plain prose using inherited globals.css base styles only. No additional type tokens introduced.
 
 Sitemap update: Add `/privacy` and `/terms` entries to `src/app/sitemap.ts` (priority 0.3, `changeFrequency: "yearly"`).
 
@@ -616,3 +616,4 @@ All installs MUST use `shadcn@latest add` with the `--style new-york` preset fla
 | REQUIREMENTS.md | 19 REQ-IDs (HERO-01..11 minus 05+10, CTA-01..06, VISION-01, MOTION-01..03) — all addressed |
 | User input | 0 — all design contract fields answered by upstream artifacts |
 | Checker revision (2026-05-24) | Issues 1-3 fixed: type scale collapsed to 4 sizes + 2 weights; CTA mobile gap 12→8px; registry safety gates executed and timestamped |
+| Checker revision 2 (2026-05-24) | Issue 1: stub page `--text-3xl` removed — typography out of scope for stub pages. Issue 2a: ShimmerButton padding 12→16px vertical, height updated to 56px. Issue 2b: Vision Beat py-20→py-16 (80px→64px), pixel references updated. Desktop CTA pair height 52→56px. |
