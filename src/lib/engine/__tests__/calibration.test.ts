@@ -470,4 +470,73 @@ describe("getPlattParameters", () => {
     expect(params3!.sampleCount).toBe(200);
     expect(params3!.a).toBe(-2.0);
   });
+
+  it("filters by engineVersion argument", async () => {
+    mockOutcomesResult = {
+      data: { a: -1.5, b: 0.2, fitted_at: "2026-05-20T00:00:00.000Z", sample_count: 100 },
+      error: null,
+    };
+
+    // Capture the chain created by createServiceClient().from()
+    let capturedChain: Record<string, unknown> | null = null;
+    vi.mocked(createServiceClient).mockImplementationOnce(
+      () =>
+        ({
+          from: vi.fn(() => {
+            capturedChain = mockSupabaseChain();
+            return capturedChain;
+          }),
+        }) as unknown as ReturnType<typeof createServiceClient>,
+    );
+
+    await getPlattParameters("3.0.0");
+
+    expect(capturedChain).not.toBeNull();
+    expect((capturedChain!.eq as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith(
+      "engine_version",
+      "3.0.0",
+    );
+  });
+
+  it("defaults to ENGINE_VERSION when arg omitted", async () => {
+    mockOutcomesResult = {
+      data: { a: -1.5, b: 0.2, fitted_at: "2026-05-20T00:00:00.000Z", sample_count: 100 },
+      error: null,
+    };
+
+    // Capture the chain to inspect the .eq call
+    let capturedChain: Record<string, unknown> | null = null;
+    vi.mocked(createServiceClient).mockImplementationOnce(
+      () =>
+        ({
+          from: vi.fn(() => {
+            capturedChain = mockSupabaseChain();
+            return capturedChain;
+          }),
+        }) as unknown as ReturnType<typeof createServiceClient>,
+    );
+
+    await getPlattParameters(); // no arg — should default to ENGINE_VERSION "3.0.0"
+
+    expect(capturedChain).not.toBeNull();
+    expect((capturedChain!.eq as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith(
+      "engine_version",
+      "3.0.0",
+    );
+  });
+
+  it("namespaces cache key per engineVersion", async () => {
+    mockOutcomesResult = {
+      data: { a: -1.0, b: 0.1, fitted_at: "2026-05-20T00:00:00.000Z", sample_count: 50 },
+      error: null,
+    };
+
+    mockCache.clear();
+    await getPlattParameters("3.0.0");
+    await getPlattParameters("2.1.0");
+
+    expect(mockCache.has("platt-params:3.0.0")).toBe(true);
+    expect(mockCache.has("platt-params:2.1.0")).toBe(true);
+    expect(mockCache.has("platt-params")).toBe(false); // old un-namespaced key gone
+  });
 });
