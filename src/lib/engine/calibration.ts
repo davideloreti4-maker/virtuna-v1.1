@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/nextjs";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createCache } from "@/lib/cache";
 import { createLogger } from "@/lib/logger";
+import { ENGINE_VERSION } from "./version";
 
 const log = createLogger({ module: "calibration" });
 
@@ -309,19 +310,29 @@ interface PlattCacheEntry {
 /** 24-hour TTL cache for fitted Platt parameters */
 const plattCache = createCache<PlattCacheEntry>(24 * 60 * 60 * 1000);
 
-const PLATT_CACHE_KEY = "platt-params";
+const PLATT_CACHE_KEY_PREFIX = "platt-params";
+
+function plattCacheKey(engineVersion: string): string {
+  return `${PLATT_CACHE_KEY_PREFIX}:${engineVersion}`;
+}
 
 /**
- * Get cached Platt scaling parameters.
+ * Get cached Platt scaling parameters for a given engine version.
  *
- * On cache miss: fetches outcome pairs from Supabase, fits Platt scaling,
- * caches result (24hr TTL), and returns parameters.
+ * On cache miss: fetches the latest row for `engineVersion` from Supabase,
+ * caches result (24hr TTL, keyed per engineVersion), and returns parameters.
  *
- * Returns null if insufficient data (<50 outcomes) — callers should
- * use raw scores unchanged.
+ * Returns null if no row exists for the given engineVersion — callers should
+ * use raw scores unchanged (no fallback to other versions per D-19).
+ *
+ * Cache key namespacing (D-04): `platt-params:${engineVersion}`. Prevents
+ * stale cross-version reads when multiple engine versions coexist on the table.
  */
-export async function getPlattParameters(): Promise<PlattParameters | null> {
-  const cached = plattCache.get(PLATT_CACHE_KEY);
+export async function getPlattParameters(
+  engineVersion: string = ENGINE_VERSION,
+): Promise<PlattParameters | null> {
+  const cacheKey = plattCacheKey(engineVersion);
+  const cached = plattCache.get(cacheKey);
   if (cached !== null) {
     return cached.params;
   }
@@ -329,31 +340,36 @@ export async function getPlattParameters(): Promise<PlattParameters | null> {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("platt_parameters")
-    .select("a, b, fitted_at, sample_count")
+    .select("a, b, fitted_at, sample_count, engine_version")
+    .eq("engine_version", engineVersion)
     .order("created_at", { ascending: false })
     .limit(1)
     .single();
 
   if (error && error.code !== "PGRST116") {
-    // PGRST116 = "no rows found" — expected before first train-platt run
-    log.error("Failed to fetch platt_parameters", { error: error.message });
+    // PGRST116 = "no rows found" — expected before first train-platt run for this engine version
+    log.error("Failed to fetch platt_parameters", { error: error.message, engineVersion });
   }
 
   const params: PlattParameters | null = data
     ? { a: data.a, b: data.b, fittedAt: data.fitted_at, sampleCount: data.sample_count }
     : null;
 
-  plattCache.set(PLATT_CACHE_KEY, { params });
+  plattCache.set(cacheKey, { params });
   return params;
 }
 
 /**
- * Invalidate the cached Platt parameters so the next call to
- * getPlattParameters() re-fetches and re-fits from the database.
- *
- * Called by the monthly calibration-audit cron after re-fitting
- * to ensure the next prediction request uses fresh parameters.
+ * Invalidate cached Platt parameters for a specific engine version (or all
+ * versions if no arg). Called by the monthly calibration-audit cron after
+ * re-fitting to ensure the next prediction request uses fresh parameters.
  */
-export function invalidatePlattCache(): void {
-  plattCache.invalidate(PLATT_CACHE_KEY);
+export function invalidatePlattCache(engineVersion?: string): void {
+  if (engineVersion) {
+    plattCache.invalidate(plattCacheKey(engineVersion));
+    return;
+  }
+  // Invalidate known engine versions. Add to this list when new ones are introduced.
+  plattCache.invalidate(plattCacheKey("3.0.0"));
+  plattCache.invalidate(plattCacheKey("2.1.0"));
 }
