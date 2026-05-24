@@ -16,9 +16,10 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 | Order | Milestone | Worktree | Status |
 |-------|-----------|----------|--------|
-| 1 | **Result Surface** — polished result card, live persona viz, mobile route, share/export, reshoot script, optimal post time, WOW onboarding | `~/virtuna-result-surface/` | **Active (started 2026-05-24)** |
-| 2 | **Iteration & Niche Intelligence** — concept mode, A/B variants, cross-platform repurposing, watermark detection, trending sounds for my niche, idea generator, steal-this-playbook | TBD | Forks after M2-I lands |
-| 3 | **Compounding Intelligence** — hook archetype library, trend velocity, outcome feedback loop, wins/flops trend | TBD | Forks after M2-I lands |
+| 1a | **Result Surface** — polished result card, live persona viz, mobile route, share/export, reshoot script, optimal post time, WOW onboarding | `~/virtuna-result-surface/` | **Active (started 2026-05-24)** |
+| 1b | **Engine Hardening** — Platt refit on Qwen corpus, Wave 3/4 threshold re-tune, audio-fingerprint + embedder re-enable (DashScope), 966 TS errors in api/{profile,settings,team}, M1 verification debt closure (Phases 2/3/4/6) | `~/virtuna-engine-hardening/` | **Active (started 2026-05-24, parallel to 1a)** |
+| 2 | **Iteration & Niche Intelligence** — concept mode, A/B variants, cross-platform repurposing, watermark detection, trending sounds for my niche, idea generator, steal-this-playbook | TBD | Forks after 1a + 1b land |
+| 3 | **Compounding Intelligence** — hook archetype library, trend velocity, outcome feedback loop, wins/flops trend | TBD | Forks after 1a + 1b land |
 
 **Abandoned in pre-drop gap (see MILESTONES.md):** Brand Statement Landing (2026-05-11), Landing Page Redesign (2026-05-24), Linear Landing Clone (2026-05-24). Landing surface deferred until Intelligence Surface drop completes.
 

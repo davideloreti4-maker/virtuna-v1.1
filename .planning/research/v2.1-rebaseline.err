@@ -1,7 +1,0 @@
-[2026-05-21T11:47:07.423Z] WARN Niche detection failed {"module":"wave0.niche","error":"This operation was aborted"}
-[2026-05-21T11:47:39.081Z] WARN retrieval_pool_too_small {"module":"retrieval.stage","niche":"beauty","pool_size":10,"min_corpus_size":20}
-[2026-05-21T11:48:12.311Z] WARN retrieval_pool_too_small {"module":"retrieval.stage","niche":"lifestyle","pool_size":10,"min_corpus_size":20}
-[2026-05-21T11:48:57.035Z] WARN retrieval_pool_too_small {"module":"retrieval.stage","niche":"beauty","pool_size":10,"min_corpus_size":20}
-[2026-05-21T11:49:48.561Z] WARN Niche detection failed {"module":"wave0.niche","error":"This operation was aborted"}
-[2026-05-21T11:50:31.116Z] WARN retrieval_pool_too_small {"module":"retrieval.stage","niche":"music-performance","pool_size":0,"min_corpus_size":20}
-[2026-05-21T11:51:09.329Z] WARN retrieval_pool_too_small {"module":"retrieval.stage","niche":"comedy","pool_size":10,"min_corpus_size":25}
