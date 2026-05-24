@@ -35,16 +35,17 @@ vi.mock("@sentry/nextjs", () => ({
   addBreadcrumb: vi.fn(),
 }));
 
-// @google/genai mock — replaces the DeepSeek/OpenAI mock from the original file
+// Qwen-on-OpenAI client mock (Phase 13 migration — stage11-counterfactuals.ts now
+// calls ai.chat.completions.create via getQwenClient()).
 const { mockGenerateContent } = vi.hoisted(() => ({
   mockGenerateContent: vi.fn(),
 }));
 
-vi.mock("@google/genai", () => {
-  const MockGoogleGenAI = vi.fn(function (this: Record<string, unknown>) {
-    this.models = { generateContent: mockGenerateContent };
+vi.mock("openai", () => {
+  const MockOpenAI = vi.fn(function (this: Record<string, unknown>) {
+    this.chat = { completions: { create: mockGenerateContent } };
   });
-  return { GoogleGenAI: MockGoogleGenAI };
+  return { default: MockOpenAI };
 });
 
 process.env.GEMINI_API_KEY = "test-key";
@@ -142,11 +143,14 @@ function makeHighBandResponse(): string {
 }
 
 function mockGeminiSuccess(body: string): void {
+  // Qwen on OpenAI-compatible client returns choices[].message.content
   mockGenerateContent.mockResolvedValueOnce({
-    text: body,
-    usageMetadata: {
-      promptTokenCount: 1200,
-      candidatesTokenCount: 300,
+    choices: [{ message: { content: body } }],
+    usage: {
+      prompt_tokens: 1200,
+      completion_tokens: 300,
+      prompt_cache_hit_tokens: 0,
+      prompt_cache_miss_tokens: 1200,
     },
   });
 }
@@ -338,32 +342,20 @@ describe("runStage11Counterfactuals — Phase 13 Plan 02 rebuild (D-01..D-06)", 
     expect(reinforcements.length).toBeGreaterThanOrEqual(2);
   });
 
-  // Test 5 — D-01: videoContext with fileUri → fileData part in generateContent call
-  it("Test 5: videoContext with fileUri → generateContent receives fileData part", async () => {
-    mockGeminiSuccess(makeLowBandResponse());
-    await runStage11Counterfactuals(
-      makeFakePredictionResult({ overall_score: 30 }),
-      { fileUri: "files/abc123", mimeType: "video/mp4" },
-    );
-    const callArgs = mockGenerateContent.mock.calls[0]![0];
-    const parts = callArgs.contents[0].parts as Array<Record<string, unknown>>;
-    const fileDataPart = parts.find((p) => "fileData" in p);
-    expect(fileDataPart).toBeDefined();
-    expect((fileDataPart as { fileData: { fileUri: string } }).fileData.fileUri).toBe("files/abc123");
-  });
+  // Tests 5 & 6 (D-01 videoContext fileData inspection) removed: the Qwen
+  // OpenAI-compatible chat.completions API does not accept a parts/fileData
+  // shape, and production stage11-counterfactuals.ts now ignores the
+  // videoContext arg (renamed to `_videoContext`). videoContext=null path is
+  // still covered transitively by Tests 1-4.
 
-  // Test 6 — D-01: videoContext=null → no fileData part, no crash
-  it("Test 6: videoContext=null → no fileData part, runs text-only without crash", async () => {
+  it("Test 6: videoContext=null → runs text-only without crash", async () => {
     mockGeminiSuccess(makeLowBandResponse());
     const result = await runStage11Counterfactuals(
       makeFakePredictionResult({ overall_score: 30 }),
       null,
     );
     expect(result).not.toBeNull();
-    const callArgs = mockGenerateContent.mock.calls[0]![0];
-    const parts = callArgs.contents[0].parts as Array<Record<string, unknown>>;
-    const fileDataPart = parts.find((p) => "fileData" in p);
-    expect(fileDataPart).toBeUndefined();
+    expect(mockGenerateContent).toHaveBeenCalledTimes(1);
   });
 
   // Test 7 — D-05: Zod rejects mid band with wrong type mix (3 fix + 0 reinforcement)

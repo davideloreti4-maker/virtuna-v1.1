@@ -437,13 +437,18 @@ describe("aggregateScores", () => {
     expect(result.is_calibrated).toBe(false);
   });
 
-  it("returns is_calibrated=true when Platt params are available", async () => {
+  it("is_calibrated is hard-coded false post-Qwen migration (calibration debt)", async () => {
+    // Phase 13 / FINAL-VALIDATION-REPORT calibration-debt carryover: Platt
+    // parameters were fit on the Gemini+DeepSeek engine. Applying them to
+    // Qwen-scored outputs mis-calibrates, so aggregator.ts:846 hard-codes
+    // is_calibrated=false until a refit lands in M2. Even when Platt params
+    // are available, is_calibrated must remain false.
     const mockParams = { a: -1, b: 0, fittedAt: "2026-01-01", sampleCount: 100 };
     vi.mocked(getPlattParameters).mockResolvedValue(mockParams);
     vi.mocked(applyPlattScaling).mockReturnValue(55);
 
     const result = await aggregateScores(makePipelineResult());
-    expect(result.is_calibrated).toBe(true);
+    expect(result.is_calibrated).toBe(false);
   });
 
   it("assembles feature_vector with all expected keys", async () => {

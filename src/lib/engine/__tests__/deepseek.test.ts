@@ -244,7 +244,9 @@ describe("circuit breaker state transitions", () => {
     // Fail again in half-open -> should reopen with further increased backoff
     mockCreate.mockRejectedValue(makeAbortError());
     const result = await reasonWithDeepSeek(makeContext());
-    expect(result).not.toBeNull(); // Gemini fallback returns result
+    // Phase 13 Qwen migration: deepseek.ts:557-559 dropped the Gemini fallback.
+    // Failure now returns null and the caller handles graceful degradation.
+    expect(result).toBeNull();
 
     // Circuit re-opened — verify it's open
     expect(isCircuitOpen()).toBe(true);
@@ -453,8 +455,13 @@ describe("Phase 3 — cache-prefix stability + telemetry (CACHE-03)", () => {
     expect(result!.cost_cents).toBeGreaterThan(0);
   });
 
-  it("cost is LOWER when cache_hit_tokens > 0 (vs all cache miss)", async () => {
-    // High cache hit scenario
+  it("cache_hit_tokens are ignored under Qwen pricing (cost is equal for same prompt+completion totals)", async () => {
+    // Phase 13 Qwen migration: deepseek.ts now uses qwen/cost.ts which only
+    // bills on prompt_tokens + completion_tokens. Cache-hit/miss split is
+    // ignored — DashScope International does not publish per-cache-tier rates
+    // for the qwen3.6-* family at the time of migration. This test pins the
+    // current invariant so any future cache-aware pricing reintroduction is
+    // an explicit change.
     mockCreate.mockResolvedValueOnce({
       choices: [{ message: { content: JSON.stringify(makeDeepSeekReasoning()) } }],
       usage: {
@@ -469,7 +476,6 @@ describe("Phase 3 — cache-prefix stability + telemetry (CACHE-03)", () => {
     resetCircuitBreaker();
     mockCreate.mockReset();
 
-    // All cache miss scenario (same total prompt tokens)
     mockCreate.mockResolvedValueOnce({
       choices: [{ message: { content: JSON.stringify(makeDeepSeekReasoning()) } }],
       usage: {
@@ -483,8 +489,7 @@ describe("Phase 3 — cache-prefix stability + telemetry (CACHE-03)", () => {
 
     expect(cacheHeavyResult).not.toBeNull();
     expect(cacheMissResult).not.toBeNull();
-    // Cache-hit pricing ($0.0028/M) is 50x cheaper than miss ($0.14/M)
-    expect(cacheHeavyResult!.cost_cents).toBeLessThan(cacheMissResult!.cost_cents);
+    expect(cacheHeavyResult!.cost_cents).toBe(cacheMissResult!.cost_cents);
   });
 
   it("falls back to legacy pricing when cache fields missing (backwards compat)", async () => {

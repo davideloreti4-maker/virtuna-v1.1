@@ -254,7 +254,11 @@ afterEach(() => {
   vi.stubGlobal("fetch", mockFetch);
 });
 
-describe("calculate-trends cron — D-F4 inline embedding pipeline (Phase 6 Plan 06-06)", () => {
+// DEFERRED to M2 (per FINAL-VALIDATION-REPORT 13): inline D-F4 audio embedding
+// pipeline is disabled at route level (getGeminiClient stub returns null,
+// processSoundEmbedding is a no-op). These tests assert against the pre-defer
+// behavior; they will be re-enabled when the DashScope re-embed migration lands.
+describe.skip("calculate-trends cron — D-F4 inline embedding pipeline (Phase 6 Plan 06-06)", () => {
   it("Test 1: full D-F4 pipeline runs per newly-upserted sound (fetch → upload → describe → embed → update + cleanup)", async () => {
     const { GET } = await import("../route");
     const res = await GET(makeRequest());

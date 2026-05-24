@@ -198,6 +198,12 @@ vi.mock("@/lib/supabase/service", () => ({
       from: vi.fn(() => ({
         download: mockStorageDownload,
         upload: vi.fn().mockResolvedValue({ error: null }),
+        // Phase 13 (Qwen migration): video_upload pipeline now resolves a 1h signed URL
+        // instead of uploading the bytes to Gemini Files API.
+        createSignedUrl: vi.fn().mockResolvedValue({
+          data: { signedUrl: "https://supabase.test/signed/video.mp4" },
+          error: null,
+        }),
       })),
     },
   })),
@@ -277,23 +283,27 @@ describe("pipeline integration tests", () => {
     mockDeepSeekCreate.mockImplementation((args: { messages: Array<{ role: string; content: string }> }) => {
       const sys = args.messages?.find((m) => m.role === "system")?.content ?? "";
       const isPersonaCall = sys.includes("TikTok For You Page viewer");
+      // Qwen text-mode analysis (Phase 13 — replaces Gemini text analysis).
+      // System prompt set in pipeline.ts at the text-mode geminiPromise branch
+      // begins with "You are a TikTok content analyst.".
+      const isQwenTextAnalysis = sys.includes("TikTok content analyst");
+      let body: string;
+      if (isPersonaCall) {
+        body = JSON.stringify({
+          scroll_past_second: 5,
+          watch_through_pct: 70,
+          comment_intent: 20,
+          share_intent: 30,
+          save_intent: 40,
+          reasoning: "default persona test reaction",
+        });
+      } else if (isQwenTextAnalysis) {
+        body = JSON.stringify(makeGeminiAnalysis());
+      } else {
+        body = JSON.stringify(makeDeepSeekReasoning());
+      }
       return Promise.resolve({
-        choices: [
-          {
-            message: {
-              content: isPersonaCall
-                ? JSON.stringify({
-                    scroll_past_second: 5,
-                    watch_through_pct: 70,
-                    comment_intent: 20,
-                    share_intent: 30,
-                    save_intent: 40,
-                    reasoning: "default persona test reaction",
-                  })
-                : JSON.stringify(makeDeepSeekReasoning()),
-            },
-          },
-        ],
+        choices: [{ message: { content: body } }],
         usage: { prompt_tokens: 1000, completion_tokens: 500 },
       });
     });
@@ -338,81 +348,11 @@ describe("pipeline integration tests", () => {
   // -------------------------------------------------------
   // Scenario 2: DeepSeek failure with Gemini fallback
   // -------------------------------------------------------
-  it("DeepSeek failure triggers Gemini fallback — deepseekResult is still populated", async () => {
-    // Make DeepSeek fail on all attempts (MAX_RETRIES + 1 = 3)
-    mockDeepSeekCreate.mockRejectedValue(
-      new Error("503 Service Unavailable")
-    );
-
-    // The Gemini fallback inside deepseek.ts uses the same mockGeminiGenerate.
-    // It needs to return valid DeepSeekReasoning JSON (not GeminiAnalysis).
-    // The first call to mockGeminiGenerate is for analyzeWithGemini (returns GeminiAnalysis).
-    // The second call is for the Gemini fallback in deepseek.ts (returns DeepSeekReasoning).
-    const geminiAnalysis = makeGeminiAnalysis();
-    const deepSeekFallback = makeDeepSeekReasoning();
-
-    mockGeminiGenerate
-      .mockResolvedValueOnce({
-        text: JSON.stringify(geminiAnalysis),
-        usageMetadata: {
-          promptTokenCount: 500,
-          candidatesTokenCount: 300,
-        },
-      })
-      .mockResolvedValueOnce({
-        text: JSON.stringify(deepSeekFallback),
-        usageMetadata: {
-          promptTokenCount: 800,
-          candidatesTokenCount: 400,
-        },
-      });
-
-    const result = await runPredictionPipeline(input);
-
-    // DeepSeek result should be populated via Gemini fallback
-    expect(result.deepseekResult).not.toBeNull();
-    expect(
-      result.deepseekResult!.reasoning.behavioral_predictions
-    ).toBeDefined();
-    expect(
-      result.deepseekResult!.reasoning.component_scores
-    ).toBeDefined();
-  });
-
-  // -------------------------------------------------------
-  // Scenario 3: Gemini failure degrades gracefully (HARD-03)
-  // -------------------------------------------------------
-  it("Gemini failure produces fallback result with zero scores and warning", async () => {
-    // Gemini fails on all retry attempts
-    mockGeminiGenerate.mockRejectedValue(
-      new Error("Gemini API unavailable")
-    );
-
-    const result = await runPredictionPipeline(input);
-
-    // Pipeline should complete with fallback Gemini result
-    expect(result.geminiResult.analysis.factors).toHaveLength(5);
-    expect(
-      result.geminiResult.analysis.factors.every((f) => f.score === 0)
-    ).toBe(true);
-    expect(result.geminiResult.cost_cents).toBe(0);
-    expect(result.geminiResult.analysis.overall_impression).toContain(
-      "unavailable"
-    );
-
-    // Warning should indicate Gemini failure
-    expect(
-      result.warnings.some((w) => w.includes("Gemini analysis unavailable"))
-    ).toBe(true);
-
-    // DeepSeek still succeeds — it calls OpenAI directly, not Gemini
-    // It receives the fallback zero-score analysis but can still reason
-    expect(result.deepseekResult).not.toBeNull();
-
-    // Pipeline metadata still present
-    expect(result.requestId).toBe("test-req-id");
-    expect(result.total_duration_ms).toBeGreaterThanOrEqual(0);
-  });
+  // Scenarios 2 and 3 (DeepSeek-failure→Gemini-fallback + Gemini-failure→zero-score
+  // fallback) removed: both tested an architecture that no longer exists. Phase 13
+  // Qwen migration collapsed Gemini analysis + DeepSeek reasoning into a single
+  // engine (qwen3.5-omni-plus for video, qwen3.6-plus for text/persona/reasoning).
+  // DeepSeek's fallback path was deleted with the Gemini segmented analysis.
 
   // -------------------------------------------------------
   // Scenario 4: Non-critical stage failures degrade gracefully
@@ -553,23 +493,27 @@ describe("Phase 3 — onStageEvent + stub invocations", () => {
     mockDeepSeekCreate.mockImplementation((args: { messages: Array<{ role: string; content: string }> }) => {
       const sys = args.messages?.find((m) => m.role === "system")?.content ?? "";
       const isPersonaCall = sys.includes("TikTok For You Page viewer");
+      // Qwen text-mode analysis (Phase 13 — replaces Gemini text analysis).
+      // System prompt set in pipeline.ts at the text-mode geminiPromise branch
+      // begins with "You are a TikTok content analyst.".
+      const isQwenTextAnalysis = sys.includes("TikTok content analyst");
+      let body: string;
+      if (isPersonaCall) {
+        body = JSON.stringify({
+          scroll_past_second: 5,
+          watch_through_pct: 70,
+          comment_intent: 20,
+          share_intent: 30,
+          save_intent: 40,
+          reasoning: "default persona test reaction",
+        });
+      } else if (isQwenTextAnalysis) {
+        body = JSON.stringify(makeGeminiAnalysis());
+      } else {
+        body = JSON.stringify(makeDeepSeekReasoning());
+      }
       return Promise.resolve({
-        choices: [
-          {
-            message: {
-              content: isPersonaCall
-                ? JSON.stringify({
-                    scroll_past_second: 5,
-                    watch_through_pct: 70,
-                    comment_intent: 20,
-                    share_intent: 30,
-                    save_intent: 40,
-                    reasoning: "default persona test reaction",
-                  })
-                : JSON.stringify(makeDeepSeekReasoning()),
-            },
-          },
-        ],
+        choices: [{ message: { content: body } }],
         usage: { prompt_tokens: 1000, completion_tokens: 500 },
       });
     });
@@ -611,15 +555,14 @@ describe("Phase 3 — onStageEvent + stub invocations", () => {
       },
     });
 
-    // Wave 0 stub fires before Wave 1
-    const wave0StartIdx = events.findIndex(
-      (e) => e.type === "stage_start" && e.stage === "wave_0_content_type"
-    );
+    // Phase 13 (Qwen migration): wave_0_content_type is no longer a discrete stage
+    // in text mode — it was folded into the single qwen Omni call for video_upload mode
+    // only. Text-mode flow runs validate → normalize → pre_creator_context → wave_1
+    // (envelope around gemini/audio/creator/rule/retrieval) → wave_2 → wave_3_personas.
     const wave1StartIdx = events.findIndex(
       (e) => e.type === "stage_start" && e.stage === "wave_1"
     );
-    expect(wave0StartIdx).toBeGreaterThanOrEqual(0);
-    expect(wave1StartIdx).toBeGreaterThan(wave0StartIdx);
+    expect(wave1StartIdx).toBeGreaterThanOrEqual(0);
 
     // Wave 3 stub fires after Wave 2
     const wave2EndIdx = events
@@ -697,23 +640,27 @@ describe("Phase 4 — Wave 0 + pre_creator_context", () => {
     mockDeepSeekCreate.mockImplementation((args: { messages: Array<{ role: string; content: string }> }) => {
       const sys = args.messages?.find((m) => m.role === "system")?.content ?? "";
       const isPersonaCall = sys.includes("TikTok For You Page viewer");
+      // Qwen text-mode analysis (Phase 13 — replaces Gemini text analysis).
+      // System prompt set in pipeline.ts at the text-mode geminiPromise branch
+      // begins with "You are a TikTok content analyst.".
+      const isQwenTextAnalysis = sys.includes("TikTok content analyst");
+      let body: string;
+      if (isPersonaCall) {
+        body = JSON.stringify({
+          scroll_past_second: 5,
+          watch_through_pct: 70,
+          comment_intent: 20,
+          share_intent: 30,
+          save_intent: 40,
+          reasoning: "default persona test reaction",
+        });
+      } else if (isQwenTextAnalysis) {
+        body = JSON.stringify(makeGeminiAnalysis());
+      } else {
+        body = JSON.stringify(makeDeepSeekReasoning());
+      }
       return Promise.resolve({
-        choices: [
-          {
-            message: {
-              content: isPersonaCall
-                ? JSON.stringify({
-                    scroll_past_second: 5,
-                    watch_through_pct: 70,
-                    comment_intent: 20,
-                    share_intent: 30,
-                    save_intent: 40,
-                    reasoning: "default persona test reaction",
-                  })
-                : JSON.stringify(makeDeepSeekReasoning()),
-            },
-          },
-        ],
+        choices: [{ message: { content: body } }],
         usage: { prompt_tokens: 1000, completion_tokens: 500 },
       });
     });
@@ -726,22 +673,26 @@ describe("Phase 4 — Wave 0 + pre_creator_context", () => {
     };
   });
 
-  it("pre_creator_context stage_start fires before wave_0_content_type stage_start (D-17 single-call ordering)", async () => {
+  it("pre_creator_context stage_start fires before wave_1 (D-17 single-call ordering)", async () => {
     const events: StageEvent[] = [];
     await runPredictionPipeline(input, { onStageEvent: (e) => events.push(e) });
     const preIdx = events.findIndex(
       (e) => e.type === "stage_start" && e.stage === "pre_creator_context",
     );
+    // Phase 13: wave_0_content_type collapsed into the Qwen Omni call (video_upload mode only).
+    // Text mode never emits wave_0_content_type/wave_0_niche_detector — assert via wave_1 instead.
+    const wave1Idx = events.findIndex(
+      (e) => e.type === "stage_start" && e.stage === "wave_1",
+    );
     const w0CtIdx = events.findIndex(
       (e) => e.type === "stage_start" && e.stage === "wave_0_content_type",
     );
-    // D-17: wave_0_niche_detector is deleted — no separate niche event fires.
     const w0NicheIdx = events.findIndex(
       (e) => e.type === "stage_start" && e.stage === "wave_0_niche_detector",
     );
     expect(preIdx).toBeGreaterThanOrEqual(0);
-    expect(w0CtIdx).toBeGreaterThan(preIdx);
-    // D-17: niche stage is gone — index should be -1 (not present)
+    expect(wave1Idx).toBeGreaterThan(preIdx);
+    expect(w0CtIdx).toBe(-1);
     expect(w0NicheIdx).toBe(-1);
   });
 
@@ -810,25 +761,22 @@ describe("Phase 4 — Wave 0 + pre_creator_context", () => {
     expect(preStart).toBeDefined();
   });
 
-  it("Wave 0 fires before Wave 1 (Wave 0 SC#1 ordering)", async () => {
+  it("Wave 0 stages are not emitted in text mode (collapsed into Qwen Omni call which only fires for video_upload)", async () => {
     const events: StageEvent[] = [];
     await runPredictionPipeline(input, { onStageEvent: (e) => events.push(e) });
-    const w0Idx = events.findIndex(
+    const w0CtIdx = events.findIndex(
       (e) => e.type === "stage_start" && e.stage === "wave_0_content_type",
     );
-    const wave1Idx = events.findIndex(
-      (e) =>
-        e.type === "stage_start" &&
-        e.wave === 1 &&
-        e.stage !== "pre_creator_context" &&
-        e.stage !== "creator_context" &&
-        e.stage !== "validate" &&
-        e.stage !== "normalize" &&
-        e.stage !== "wave_1",
+    const w0NicheIdx = events.findIndex(
+      (e) => e.type === "stage_start" && e.stage === "wave_0_niche_detector",
     );
-    expect(w0Idx).toBeGreaterThanOrEqual(0);
-    expect(wave1Idx).toBeGreaterThanOrEqual(0); // WR-04 fix: fail honestly if Wave 1 stops firing in this scenario
-    expect(w0Idx).toBeLessThan(wave1Idx);       // ordering invariant — Wave 0 must precede Wave 1
+    expect(w0CtIdx).toBe(-1);
+    expect(w0NicheIdx).toBe(-1);
+    // wave_1 envelope still fires
+    const wave1Idx = events.findIndex(
+      (e) => e.type === "stage_start" && e.stage === "wave_1",
+    );
+    expect(wave1Idx).toBeGreaterThanOrEqual(0);
   });
 
   it("PipelineResult includes wave0Result with content_type + niche keys", async () => {
@@ -839,7 +787,9 @@ describe("Phase 4 — Wave 0 + pre_creator_context", () => {
   });
 
   it("GAP-04-01 regression: video_upload mode produces non-null wave0Result.content_type end-to-end", async () => {
-    // Production-shaped input: input_mode='video_upload' with a real-looking storage key (NO scheme)
+    // Phase 13 (Qwen migration): video_upload mode no longer uploads to Gemini Files
+    // API. It generates a 1h Supabase signed URL and passes it to qwen3.5-omni-plus
+    // (single call returns wave0 + segmented analysis + audio signals).
     const videoInput = {
       input_mode: "video_upload" as const,
       video_storage_path: "user-abc/test-content.mp4",
@@ -847,32 +797,78 @@ describe("Phase 4 — Wave 0 + pre_creator_context", () => {
       content_type: "video" as const,
     };
 
-    // Override the default storage download mock to succeed with a Blob
-    mockStorageDownload.mockResolvedValue({
-      data: new Blob([new Uint8Array(8)], { type: "video/mp4" }),
-      error: null,
-    });
-
-    // Re-mock files API (vi.clearAllMocks() in beforeEach wipes default return values)
-    mockGeminiFileUpload.mockResolvedValue({ name: "files/pipeline-ct-test", state: "ACTIVE", uri: "gs://pipeline-ct-test" });
-    mockGeminiFileGet.mockResolvedValue({ name: "files/pipeline-ct-test", state: "ACTIVE", uri: "gs://pipeline-ct-test" });
-    mockGeminiFileDelete.mockResolvedValue({});
-
-    // Override generateContent: content-type-detector uses gemini-3-flash-preview model;
-    // Wave 1 video analysis and main analysis use other models. Branch on model name.
-    mockGeminiGenerate.mockImplementation(async (req: { model?: string }) => {
-      if (req.model?.includes("gemini-3-flash")) {
-        // content-type-detector response — D-17: includes niche fields
-        return {
-          text: JSON.stringify({ type: "talking_head", confidence: 0.85, mixed: false, niche_primary_slug: "beauty", niche_confidence: 0.9, niche_micro_slug: null }),
-          usageMetadata: { promptTokenCount: 500, candidatesTokenCount: 80 },
-        };
+    // Omni call returns the full unified response. mockDeepSeekCreate IS the
+    // openai mock (qwen uses the OpenAI-compatible client); we branch on
+    // model name + system marker text to differentiate from text-analysis /
+    // persona / deepseek calls (set in the beforeEach default).
+    mockDeepSeekCreate.mockImplementation((args: { model?: string; messages: Array<{ role: string; content: unknown }> }) => {
+      const sys = args.messages.find((m) => m.role === "system");
+      const sysText = typeof sys?.content === "string" ? sys.content : "";
+      const isOmni = sysText.includes("expert TikTok content analyst");
+      const isPersonaCall = sysText.includes("TikTok For You Page viewer");
+      let body: string;
+      if (isOmni) {
+        body = JSON.stringify({
+          content_type:        "talking_head",
+          niche_primary_slug:  "beauty",
+          niche_micro_slug:    null,
+          factors: [
+            { name: "Scroll-Stop Power", score: 7, rationale: "x", improvement_tip: "y" },
+            { name: "Completion Pull",   score: 7, rationale: "x", improvement_tip: "y" },
+            { name: "Rewatch Potential", score: 6, rationale: "x", improvement_tip: "y" },
+            { name: "Share Trigger",     score: 6, rationale: "x", improvement_tip: "y" },
+            { name: "Emotional Charge",  score: 7, rationale: "x", improvement_tip: "y" },
+          ],
+          overall_impression: "Solid GRWM",
+          content_summary:    "Beauty GRWM clip",
+          hook_visual_impact: 7,
+          hook_decomposition: {
+            visual_stop_power:        7,
+            audio_hook_quality:       6,
+            text_overlay_score:       5,
+            first_words_speech_score: 6,
+            weakest_modality:         "text_overlay_score",
+            visual_audio_coherence:   7,
+            cognitive_load:           4,
+            watermark_detected:       { tiktok: false, ig: false, yt: false },
+          },
+          video_signals: {
+            visual_production_quality: 7,
+            pacing_score:              7,
+            transition_quality:        6,
+          },
+          cta_segment: {
+            cta_present: false,
+            strength:    null,
+            type:        null,
+            rationale:   "no CTA",
+          },
+          audio_signals: {
+            voice_clarity_0_10:       7,
+            audio_hook_first_2s_0_10: 6,
+            silence_ratio:            0.1,
+            voiceover_ratio:          0.7,
+            music_ratio:              0.2,
+            audio_description:        "Voiceover with light bg music",
+          },
+          audio_perceptual_score: 70,
+        });
+      } else if (isPersonaCall) {
+        body = JSON.stringify({
+          scroll_past_second: 5,
+          watch_through_pct:  70,
+          comment_intent:     20,
+          share_intent:       30,
+          save_intent:        40,
+          reasoning:          "test",
+        });
+      } else {
+        body = JSON.stringify(makeDeepSeekReasoning());
       }
-      // Default Wave 1 + main analysis response
-      return {
-        text: JSON.stringify(makeGeminiAnalysis()),
-        usageMetadata: { promptTokenCount: 500, candidatesTokenCount: 300 },
-      };
+      return Promise.resolve({
+        choices: [{ message: { content: body } }],
+        usage:   { prompt_tokens: 1000, completion_tokens: 500 },
+      });
     });
 
     const result = await runPredictionPipeline(videoInput);
@@ -880,8 +876,6 @@ describe("Phase 4 — Wave 0 + pre_creator_context", () => {
     expect(result.wave0Result).toBeDefined();
     expect(result.wave0Result.content_type).not.toBeNull();
     expect(result.wave0Result.content_type?.type).toBe("talking_head");
-    // Confirm the storage path was used (NOT a fetch on the raw key)
-    expect(mockStorageDownload).toHaveBeenCalledWith("user-abc/test-content.mp4");
   });
 });
 
@@ -995,23 +989,27 @@ describe("Phase 9 — Platform-fit V3 result in PipelineResult", () => {
     mockDeepSeekCreate.mockImplementation((args: { messages: Array<{ role: string; content: string }> }) => {
       const sys = args.messages?.find((m) => m.role === "system")?.content ?? "";
       const isPersonaCall = sys.includes("TikTok For You Page viewer");
+      // Qwen text-mode analysis (Phase 13 — replaces Gemini text analysis).
+      // System prompt set in pipeline.ts at the text-mode geminiPromise branch
+      // begins with "You are a TikTok content analyst.".
+      const isQwenTextAnalysis = sys.includes("TikTok content analyst");
+      let body: string;
+      if (isPersonaCall) {
+        body = JSON.stringify({
+          scroll_past_second: 5,
+          watch_through_pct: 70,
+          comment_intent: 20,
+          share_intent: 30,
+          save_intent: 40,
+          reasoning: "default persona test reaction",
+        });
+      } else if (isQwenTextAnalysis) {
+        body = JSON.stringify(makeGeminiAnalysis());
+      } else {
+        body = JSON.stringify(makeDeepSeekReasoning());
+      }
       return Promise.resolve({
-        choices: [
-          {
-            message: {
-              content: isPersonaCall
-                ? JSON.stringify({
-                    scroll_past_second: 5,
-                    watch_through_pct: 70,
-                    comment_intent: 20,
-                    share_intent: 30,
-                    save_intent: 40,
-                    reasoning: "default persona test reaction",
-                  })
-                : JSON.stringify(makeDeepSeekReasoning()),
-            },
-          },
-        ],
+        choices: [{ message: { content: body } }],
         usage: { prompt_tokens: 1000, completion_tokens: 500 },
       });
     });

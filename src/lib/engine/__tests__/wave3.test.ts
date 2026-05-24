@@ -291,9 +291,12 @@ describe("runWave3 — Phase 7 orchestration (Plan 07-02b)", () => {
     expect(perPersonaStarts.length).toBe(10);
   });
 
-  it("Test 8 (PERSONA-09): DEEPSEEK_PERSONA_MODEL env override routes to OpenAI client", async () => {
-    const prev = process.env.DEEPSEEK_PERSONA_MODEL;
-    process.env.DEEPSEEK_PERSONA_MODEL = "custom-model";
+  it("Test 8 (PERSONA-09): QWEN_FAST_MODEL env override routes to OpenAI-compatible client", async () => {
+    // Phase 13 Qwen migration: persona-model env var renamed
+    // DEEPSEEK_PERSONA_MODEL → QWEN_FAST_MODEL (qwen/client.ts:19). wave3.ts
+    // reads from the QWEN_FAST_MODEL constant which captures env at import.
+    const prev = process.env.QWEN_FAST_MODEL;
+    process.env.QWEN_FAST_MODEL = "custom-model";
     vi.resetModules();
     // Re-establish the deepseek mock for the freshly imported module graph.
     vi.doMock("../deepseek", async (importOriginal) => {
@@ -317,8 +320,8 @@ describe("runWave3 — Phase 7 orchestration (Plan 07-02b)", () => {
     for (const call of mockCreate.mock.calls) {
       expect((call[0] as { model: string }).model).toBe("custom-model");
     }
-    if (prev === undefined) delete process.env.DEEPSEEK_PERSONA_MODEL;
-    else process.env.DEEPSEEK_PERSONA_MODEL = prev;
+    if (prev === undefined) delete process.env.QWEN_FAST_MODEL;
+    else process.env.QWEN_FAST_MODEL = prev;
     vi.doUnmock("../deepseek");
     vi.doUnmock("openai");
   });

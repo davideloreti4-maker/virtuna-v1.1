@@ -107,7 +107,11 @@ describe("buildSubjectText (D-06)", () => {
   });
 });
 
-describe("embedQuery", () => {
+// DEFERRED to M2 (per FINAL-VALIDATION-REPORT 13): embedder calls intentionally
+// throw "Embedding deferred to M2" until a DashScope re-embedding job lands.
+// Retrieval weight is 0 in M1 so callers degrade gracefully; these unit tests
+// document contract that the production module no longer implements.
+describe.skip("embedQuery (deferred to M2)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.GEMINI_API_KEY = "test-key";
@@ -161,7 +165,7 @@ describe("embedQuery", () => {
   });
 });
 
-describe("embedBatch", () => {
+describe.skip("embedBatch (deferred to M2)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.GEMINI_API_KEY = "test-key";
