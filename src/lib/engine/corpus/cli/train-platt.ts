@@ -8,11 +8,12 @@
  * Usage:
  *   npx tsx src/lib/engine/corpus/cli/train-platt.ts \
  *     --version full.2026-05-11 \
+ *     [--engine-version 3.0.0] \
  *     [--dry-run] \
  *     [--max-rows N]
  *
  * Output:
- *   - Inserts a row into platt_parameters (a, b, fitted_at, sample_count)
+ *   - Inserts a row into platt_parameters (a, b, fitted_at, sample_count, engine_version)
  *   - --dry-run prints fitted parameters to stdout without DB write
  */
 
@@ -37,6 +38,8 @@ const { runEvalOverCorpus } = require("@/lib/engine/corpus/eval-runner");
 const { fitPlattScaling } = require("@/lib/engine/calibration");
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { createServiceClient } = require("@/lib/supabase/service");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { ENGINE_VERSION } = require("@/lib/engine/version");
 
 const log = (msg: string) => console.log(msg);
 const warn = (msg: string) => console.warn(`[WARN] ${msg}`);
@@ -87,6 +90,19 @@ async function main() {
     process.exit(1);
   }
 
+  const engineVersionArg = getArg(argv, "--engine-version");
+  const engineVersion = engineVersionArg ?? ENGINE_VERSION;
+
+  const engineVersionRegex = /^\d+\.\d+\.\d+(-[\w.]+)?$/;
+  if (!engineVersionRegex.test(engineVersion)) {
+    err(
+      `Invalid engine version format: "${engineVersion}". Expected pattern: N.N.N or N.N.N-suffix`,
+    );
+    process.exit(1);
+  }
+
+  log(`Engine version: ${engineVersion}`);
+
   const dryRun = hasFlag(argv, "--dry-run");
   const maxRowsRaw = getArg(argv, "--max-rows");
   const maxRows = maxRowsRaw !== undefined ? Number(maxRowsRaw) : undefined;
@@ -105,6 +121,15 @@ async function main() {
 
   const total = results.length;
   log(`Processed ${total} rows from corpus`);
+
+  const totalCostCents = results.reduce(
+    (sum: number, row: { cost_cents?: number | null }) => sum + (row.cost_cents ?? 0),
+    0,
+  );
+  log(`cost_cents_total: ${totalCostCents.toFixed(2)}`);
+  if (totalCostCents > 3000) {
+    warn(`Cost exceeded $30 (actual: $${(totalCostCents / 100).toFixed(2)}) — flag as deviation per D-08`);
+  }
 
   // Build OutcomePair array: normalize predicted_score (0-100 → 0-1), map actual bucket
   const pairs: Array<{ predicted: number; actual: number }> = [];
@@ -143,6 +168,7 @@ async function main() {
   log(`  b: ${params.b.toFixed(4)}`);
   log(`  sample_count: ${params.sampleCount}`);
   log(`  fitted_at: ${params.fittedAt}`);
+  log(`  engine_version: ${engineVersion}`);
   log("");
 
   if (dryRun) {
@@ -159,6 +185,7 @@ async function main() {
       b: params.b,
       fitted_at: params.fittedAt,
       sample_count: params.sampleCount,
+      engine_version: engineVersion,
     });
 
   if (insertError) {
