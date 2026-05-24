@@ -16,14 +16,14 @@
 **Plans:** 8 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Wave 0 test scaffolding + canonical fixtures (it.todo stubs unblock all downstream plans)
-- [ ] 01-02-PLAN.md — Wave 1 SSE consumer hook + panel-mapping module + POST event:started fix (D-01 through D-08, Pitfall #6)
+- [ ] 01-01-PLAN.md — Wave 1 test scaffolding + canonical fixtures (it.todo stubs unblock all downstream plans)
+- [ ] 01-02-PLAN.md — Wave 2 SSE consumer hook + panel-mapping module + POST event:started fix (D-01 through D-08, Pitfall #6)
 - [ ] 01-03-PLAN.md — Wave 2 GET /api/analyze/[id]/stream EventSource endpoint (D-04, IDOR mitigation)
 - [ ] 01-04-PLAN.md — Wave 2 Omni Plus emotion_arc engine extension (R1.7, Pitfall #7)
-- [ ] 01-05-PLAN.md — Wave 2 optimal_post_window aggregator + niche_post_windows migration (R6.1, D-12 through D-15, Pitfall #4)
-- [ ] 01-06-PLAN.md — Wave 2 anti-virality threshold calibration (R1.9, sweep against outcomes corpus or insufficient-data fallback)
-- [ ] 01-07-PLAN.md — Wave 3 [BLOCKING] supabase db push + types regen + full Wave 2 test gate
-- [ ] 01-08-PLAN.md — Wave 4 /analyze + /analyze/[id] route scaffold + ResultCard skeleton + E2E (D-09, D-10, D-11)
+- [ ] 01-05-PLAN.md — Wave 3 optimal_post_window aggregator + niche_post_windows migration (R6.1, D-12 through D-15, Pitfall #4)
+- [ ] 01-06-PLAN.md — Wave 2 anti-virality threshold calibration + aggregator wiring (R1.9, sweep against outcomes corpus or insufficient-data fallback; B4 wires anti_virality_gated into PredictionResult)
+- [ ] 01-07-PLAN.md — Wave 4 [BLOCKING] supabase db push + types regen + full Wave 2 test gate
+- [ ] 01-08-PLAN.md — Wave 5 /analyze + /analyze/[id] route scaffold + ResultCard skeleton + E2E (D-09, D-10, D-11)
 
 **Success criteria:**
 - Result page subscribes to SSE, all stage events update local state
