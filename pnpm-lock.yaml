@@ -80,9 +80,6 @@ importers:
       d3-quadtree:
         specifier: ^3.0.1
         version: 3.0.1
-      framer-motion:
-        specifier: ^12.29.3
-        version: 12.40.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       lucide-react:
         specifier: ^0.563.0
         version: 0.563.0(react@19.2.3)
