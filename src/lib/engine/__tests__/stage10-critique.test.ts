@@ -107,10 +107,25 @@ function makeFakePredictionResult(
       rewatchPotential: 5,
       shareTrigger: 5,
       emotionalCharge: 5,
-      originalitySignal: 5,
-      formatAdherence: 5,
-      pacingQuality: 5,
-      trendSignal: 5,
+      visualProductionQuality: null,
+      hookVisualImpact: null,
+      pacingScore: null,
+      transitionQuality: null,
+      hookEffectiveness: 6,
+      retentionStrength: 5,
+      shareability: 5,
+      commentProvocation: 5,
+      saveWorthiness: 5,
+      trendAlignment: 5,
+      originality: 5,
+      ruleScore: 55,
+      trendScore: 30,
+      audioTrendingMatch: null,
+      captionScore: 5,
+      hashtagRelevance: 0.5,
+      hashtagCount: 3,
+      durationSeconds: null,
+      hasVideo: false,
     },
     reasoning: "test reasoning",
     warnings: [],
@@ -119,15 +134,16 @@ function makeFakePredictionResult(
       likes: 500,
       shares: 100,
       comments: 50,
+      saves: 25,
     },
     factors: [
-      { name: "Hook Power", score: 8, rationale: "Strong opening", improvement_tip: "Add visual surprise" },
-      { name: "Retention Pull", score: 6, rationale: "Decent narrative", improvement_tip: "Tease earlier" },
-      { name: "Share Trigger", score: 3, rationale: "Low shareability", improvement_tip: "Add CTA" },
-      { name: "Emotional Charge", score: 5, rationale: "Moderate", improvement_tip: "Amplify" },
+      { id: "hook-power", name: "Hook Power", score: 8, max_score: 10, rationale: "Strong opening", improvement_tip: "Add visual surprise" },
+      { id: "retention-pull", name: "Retention Pull", score: 6, max_score: 10, rationale: "Decent narrative", improvement_tip: "Tease earlier" },
+      { id: "share-trigger", name: "Share Trigger", score: 3, max_score: 10, rationale: "Low shareability", improvement_tip: "Add CTA" },
+      { id: "emotional-charge", name: "Emotional Charge", score: 5, max_score: 10, rationale: "Moderate", improvement_tip: "Amplify" },
     ],
     suggestions: [
-      { text: "Add pattern interrupt at 3s", priority: "high", category: "hook" },
+      { id: "sug-1", text: "Add pattern interrupt at 3s", priority: "high", category: "hook" },
     ],
     rule_score: 55,
     trend_score: 30,
@@ -343,7 +359,10 @@ describe("runStage10Critique — graceful degradation", () => {
     const result = await runStage10Critique(makeFakePredictionResult(), cb);
     expect(result).toBeNull();
 
-    const ends = events.filter((e) => e.type === "stage_end" && e.stage === "stage_10_critique");
+    const ends = events.filter(
+      (e): e is Extract<StageEvent, { type: "stage_end" }> =>
+        e.type === "stage_end" && e.stage === "stage_10_critique",
+    );
     expect(ends.length).toBe(1);
     expect(ends[0]!.ok).toBe(false);
   });

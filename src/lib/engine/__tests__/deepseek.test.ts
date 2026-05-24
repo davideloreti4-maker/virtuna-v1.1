@@ -362,16 +362,16 @@ describe("Phase 3 — cache-prefix stability + telemetry (CACHE-03)", () => {
     await reasonWithDeepSeek(makeContext());
 
     expect(mockCreate).toHaveBeenCalledTimes(1);
-    const callArgs = mockCreate.mock.calls[0][0] as {
+    const callArgs = mockCreate.mock.calls[0]![0] as {
       messages: Array<{ role: string; content: string }>;
     };
     expect(callArgs.messages).toHaveLength(2);
-    expect(callArgs.messages[0].role).toBe("system");
-    expect(callArgs.messages[1].role).toBe("user");
+    expect(callArgs.messages[0]!.role).toBe("system");
+    expect(callArgs.messages[1]!.role).toBe("user");
     // System message must contain the 5-step rubric markers (stable content)
-    expect(callArgs.messages[0].content).toContain("5-Step Reasoning Framework");
-    expect(callArgs.messages[0].content).toContain("Step 1");
-    expect(callArgs.messages[0].content).toContain("Step 5");
+    expect(callArgs.messages[0]!.content).toContain("5-Step Reasoning Framework");
+    expect(callArgs.messages[0]!.content).toContain("Step 1");
+    expect(callArgs.messages[0]!.content).toContain("Step 5");
   });
 
   it("STABLE system content is byte-identical across calls (cache prefix invariant)", async () => {
@@ -390,10 +390,10 @@ describe("Phase 3 — cache-prefix stability + telemetry (CACHE-03)", () => {
       },
     });
 
-    const sys1 = (mockCreate.mock.calls[0][0] as { messages: Array<{ content: string }> })
-      .messages[0].content;
-    const sys2 = (mockCreate.mock.calls[1][0] as { messages: Array<{ content: string }> })
-      .messages[0].content;
+    const sys1 = (mockCreate.mock.calls[0]![0] as { messages: Array<{ content: string }> })
+      .messages[0]!.content;
+    const sys2 = (mockCreate.mock.calls[1]![0] as { messages: Array<{ content: string }> })
+      .messages[0]!.content;
     expect(sys1).toBe(sys2); // Identical bytes → DeepSeek cache will match prefix
   });
 
@@ -405,11 +405,11 @@ describe("Phase 3 — cache-prefix stability + telemetry (CACHE-03)", () => {
 
     await reasonWithDeepSeek(makeContext());
 
-    const callArgs = mockCreate.mock.calls[0][0] as {
+    const callArgs = mockCreate.mock.calls[0]![0] as {
       messages: Array<{ role: string; content: string }>;
     };
-    const sys = callArgs.messages[0].content;
-    const user = callArgs.messages[1].content;
+    const sys = callArgs.messages[0]!.content;
+    const user = callArgs.messages[1]!.content;
 
     // Calibration percentiles are dynamic — must NOT be in system
     expect(sys).not.toMatch(/p50=\d/);
@@ -432,7 +432,7 @@ describe("Phase 3 — cache-prefix stability + telemetry (CACHE-03)", () => {
     await reasonWithDeepSeek(makeContext());
 
     // The second arg to chat.completions.create is { signal }, no headers
-    const secondArg = mockCreate.mock.calls[0][1];
+    const secondArg = mockCreate.mock.calls[0]![1];
     expect(JSON.stringify(secondArg ?? {})).not.toContain("Cache-Control");
   });
 

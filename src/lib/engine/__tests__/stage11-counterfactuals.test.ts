@@ -344,7 +344,7 @@ describe("runStage11Counterfactuals — Phase 13 Plan 02 rebuild (D-01..D-06)", 
       makeFakePredictionResult({ overall_score: 30 }),
       { fileUri: "files/abc123", mimeType: "video/mp4" },
     );
-    const callArgs = mockGenerateContent.mock.calls[0][0];
+    const callArgs = mockGenerateContent.mock.calls[0]![0];
     const parts = callArgs.contents[0].parts as Array<Record<string, unknown>>;
     const fileDataPart = parts.find((p) => "fileData" in p);
     expect(fileDataPart).toBeDefined();
@@ -359,7 +359,7 @@ describe("runStage11Counterfactuals — Phase 13 Plan 02 rebuild (D-01..D-06)", 
       null,
     );
     expect(result).not.toBeNull();
-    const callArgs = mockGenerateContent.mock.calls[0][0];
+    const callArgs = mockGenerateContent.mock.calls[0]![0];
     const parts = callArgs.contents[0].parts as Array<Record<string, unknown>>;
     const fileDataPart = parts.find((p) => "fileData" in p);
     expect(fileDataPart).toBeUndefined();
