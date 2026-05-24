@@ -7,7 +7,7 @@
 
 ---
 
-## Phase 1 — Foundation: SSE consumer + engine signal extensions
+## Phase 1: Foundation — SSE consumer + engine signal extensions
 
 **Requirements covered:** R2.1, R6.1, R1.7 (verify), R1.9 (calibrate threshold)
 
@@ -34,7 +34,7 @@
 
 ---
 
-## Phase 2 — Live audience simulation viz
+## Phase 2: Live audience simulation viz
 
 **Requirements covered:** R2.2, R2.3, R2.4, NF1 (60fps)
 
@@ -61,7 +61,7 @@
 
 ---
 
-## Phase 3 — Result card panels (Set A: visual)
+## Phase 3: Result card panels — Set A (visual)
 
 **Requirements covered:** R1.1, R1.2, R1.4, R1.7, R1.8
 
@@ -86,7 +86,7 @@
 
 ---
 
-## Phase 4 — Result card panels (Set B: text-heavy)
+## Phase 4: Result card panels — Set B (text-heavy)
 
 **Requirements covered:** R1.3, R1.5, R1.6, R1.9
 
@@ -110,7 +110,7 @@
 
 ---
 
-## Phase 5 — Reshoot script + optimal post time
+## Phase 5: Reshoot script + optimal post time
 
 **Requirements covered:** R5 (all), R6.2
 
@@ -136,7 +136,7 @@
 
 ---
 
-## Phase 6 — Share & export
+## Phase 6: Share & export
 
 **Requirements covered:** R4 (all)
 
@@ -163,7 +163,7 @@
 
 ---
 
-## Phase 7 — Mobile + onboarding + integration + regression audit
+## Phase 7: Mobile + onboarding + integration + regression audit
 
 **Requirements covered:** R3 (all), R7 (all), NF1-NF6
 
