@@ -1,15 +1,46 @@
 /**
- * Stub test file for the anti-virality confidence threshold constant + helper
- * (R1.9 — Plan 01-06).
+ * Phase 1 (R1.9) — Anti-virality confidence threshold tests.
  *
- * Plan 01-01 ships placeholders; Plan 01-06 fills assertions when the constant
- * + isAntiViralityGated helper ship.
+ * Plan 01-01 shipped placeholders; Plan 01-06 T2 fills assertions with the
+ * locked ANTI_VIRALITY_THRESHOLD constant + isAntiViralityGated helper.
  */
-import { describe, it } from "vitest";
+import { describe, it, expect } from "vitest";
+import {
+  ANTI_VIRALITY_THRESHOLD,
+  isAntiViralityGated,
+} from "@/lib/engine/anti-virality";
 
 describe("anti-virality threshold", () => {
-  it.todo("ANTI_VIRALITY_THRESHOLD constant exists and is a number in [0, 1]");
-  it.todo("ANTI_VIRALITY_THRESHOLD has inline comment documenting ECE/sweep rationale OR insufficient-data fallback");
-  it.todo("isAntiViralityGated(confidence) returns true when confidence < threshold");
-  it.todo("isAntiViralityGated(confidence) returns false when confidence >= threshold");
+  it("ANTI_VIRALITY_THRESHOLD is a number in (0, 1)", () => {
+    expect(typeof ANTI_VIRALITY_THRESHOLD).toBe("number");
+    expect(ANTI_VIRALITY_THRESHOLD).toBeGreaterThan(0);
+    expect(ANTI_VIRALITY_THRESHOLD).toBeLessThan(1);
+  });
+
+  it("isAntiViralityGated returns true when confidence < threshold", () => {
+    expect(isAntiViralityGated(ANTI_VIRALITY_THRESHOLD - 0.01)).toBe(true);
+    expect(isAntiViralityGated(0)).toBe(true);
+  });
+
+  it("isAntiViralityGated returns false when confidence >= threshold", () => {
+    // Equal-to-threshold is NOT gated (strictly less-than gating per contract).
+    expect(isAntiViralityGated(ANTI_VIRALITY_THRESHOLD)).toBe(false);
+    expect(isAntiViralityGated(ANTI_VIRALITY_THRESHOLD + 0.01)).toBe(false);
+    expect(isAntiViralityGated(1)).toBe(false);
+  });
+
+  it("isAntiViralityGated handles edge cases (NaN, negative, >1)", () => {
+    expect(isAntiViralityGated(NaN)).toBe(false); // NaN comparisons always false
+    expect(isAntiViralityGated(-0.5)).toBe(true);
+    expect(isAntiViralityGated(2)).toBe(false);
+  });
+
+  it("anti-virality.ts source contains provenance JSDoc with PROVENANCE marker", async () => {
+    // Verify the rationale block is preserved — humans must be able to find why this number exists.
+    const fs = await import("fs");
+    const src = fs.readFileSync("src/lib/engine/anti-virality.ts", "utf-8");
+    expect(src).toMatch(/PROVENANCE/);
+    expect(src).toMatch(/calibrate-anti-virality\.ts/);
+    expect(src).toMatch(/Last calibrated/);
+  });
 });
