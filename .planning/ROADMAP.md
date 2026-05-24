@@ -41,7 +41,12 @@ Ship a high-end SaaS-style animated landing page (Linear/Raycast aesthetic + Opu
   3. `/sitemap.xml` and `/robots.txt` resolve in production and reference the canonical landing URL
   4. Skip-to-content link appears on first Tab keypress before any other focusable element; `<html lang="en">` set
   5. Page-root `MotionConfig reducedMotion="user"` wraps all section shells, and `pnpm.overrides` aliases `framer-motion` to `motion@^12.29.2` (single animation runtime verified via `pnpm why framer-motion`)
-**Plans**: TBD
+**Plans**: 5 plans across 3 waves
+  - [ ] 01-01-PLAN.md — Foundation install: pnpm.overrides alias + (marketing)/layout.tsx duplicate-html fix + stale "Artificial Societies" title removal + motionTokens.ts + _components/_data/_hooks/v3/placeholders directory scaffolds
+  - [ ] 01-02-PLAN.md — Reusable shell components: SectionShell.tsx (placeholder wrapper) + GrainOverlay.tsx (SVG noise) + SkipToContent.tsx (WCAG skip-link)
+  - [ ] 01-03-PLAN.md — LandingHeader.tsx: fixed-top nav with 9 anchor links + Sign in link + coral Sign up CTA + backdrop-filter inline-style (Lightning CSS workaround)
+  - [ ] 01-04-PLAN.md — SEO baseline: sitemap.ts (3 entries) + robots.ts (allow / + disallow app routes + sitemap link)
+  - [ ] 01-05-PLAN.md — /v3/page.tsx assembly: 9 SectionShell instances under MotionConfig reducedMotion="user" + skip-link + GrainOverlay + LandingHeader + page metadata (locked title "Virtuna | Predict viral before you post") + FOUND-05 collision-check decision documented
 **Content gates**: None
 **Research flag**: SKIP — patterns verified in research/STACK.md + ARCHITECTURE.md
 **UI hint**: yes
@@ -201,7 +206,7 @@ Phases 4-9 are parallelizable after Phase 2 ships shared Hero primitives (Spotli
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation + Scaffold | 0/TBD | Not started | - |
+| 1. Foundation + Scaffold | 0/5 | Planned | - |
 | 2. Hero Shell + Final CTA Bookend + Vision | 0/TBD | Not started | - |
 | 3. Hero Spline Scene + Above-Fold Credibility Hook | 0/TBD | Not started | - |
 | 4. Interactive Demo | 0/TBD | Not started | - |
