@@ -51,7 +51,8 @@
 - [ ] **DEMO-06**: Reduced-motion variant skips MultiStepLoader animation, shows result immediately
 - [ ] **DEMO-07**: Demo state lives in local `useReducer` (no Zustand, no URL params); demo chunk pre-fetches on hero CTA hover
 - [ ] **DEMO-08**: All sample TikTok references use fictional `@samplecreator` handles (no real creator content) — brand/legal safety
-- [ ] **DEMO-09**: Subtle cursor-following micro-signal effect during result reveal — particle/dot trail illustrates "audience as simulation" metaphor literally. Reduced-motion variant disables effect. Disabled on touch devices
+- [ ] **DEMO-09**: Subtle cursor-following micro-signal effect during result reveal via Aceternity `FollowingPointer` — particle/dot trail illustrates "audience as simulation" metaphor literally. Reduced-motion variant disables effect. Disabled on touch devices
+- [ ] **DEMO-10**: Sample TikTok preview rendered inside Magic UI `Iphone15Pro` mockup frame during result reveal — frames mocked content in a real phone for premium SaaS aesthetic
 
 ### How It Works (HOW)
 
@@ -60,6 +61,8 @@
 - [ ] **HOW-03**: Mobile (`<lg`): Aceternity `TracingBeam` vertical fallback replaces horizontal pipeline
 - [ ] **HOW-04**: Reduced-motion variant: static pipeline diagram (no beam animation), all stages visible immediately
 - [ ] **HOW-05**: Stage labels narratively bridge to Demo section above and Three Surfaces section below — copy reinforces narrative arc
+- [ ] **HOW-06**: Magic UI `OrbitingCircles` render at each pipeline stage node — visualizes "signals orbiting" the engine; reduced-motion variant renders static positions
+- [ ] **HOW-07**: GSAP ScrollTrigger pins the How It Works section as user scrolls — beam progress scrubs stage-by-stage tied to scroll position (desktop only). Reduced-motion and mobile fall back to one-shot animation per HOW-02 / HOW-03
 
 ### Three Surfaces Bento (BENTO)
 
@@ -69,6 +72,7 @@
 - [ ] **BENTO-04**: Each card links to relevant in-app surface (gated behind auth — non-blocking for landing)
 - [ ] **BENTO-05**: Mobile: single-column stack, each card retains animated background
 - [ ] **BENTO-06**: Cards use ARIA roles (`role="article"` or appropriate) for screen-reader semantics
+- [ ] **BENTO-07**: Aceternity `MacbookScroll` dashboard reveal section follows the Bento — user scrolls and the laptop frame scales/rotates in revealing a Virtuna dashboard screenshot (placeholder OK for v1). Reduced-motion variant shows static laptop frame with dashboard image; mobile (`<lg`) collapses to a static dashboard screenshot card
 
 ### Comparison vs Alternatives (CMP)
 
@@ -78,6 +82,7 @@
 - [ ] **CMP-04**: Mobile (`<lg`): comparison stacks single-column with clear feature labels; no horizontal scroll
 - [ ] **CMP-05**: Tone is confident and positioning-led — copy focuses on capability difference, never disparaging competitors
 - [ ] **CMP-06**: Section reduced-motion variant: no animation on row reveals; all rows visible immediately
+- [ ] **CMP-07**: Aceternity `Sparkles` subtle particle accent behind the Virtuna column / on checkmarks — distinguishes Virtuna positively without aggressive treatment
 
 ### The Science (SCI)
 
@@ -88,6 +93,8 @@
 - [ ] **SCI-05**: Marquee citation band shows author + paper-year chips at bottom of section
 - [ ] **SCI-06**: "Read more" CTA links to either a real Virtuna white paper (if exists) or a deferred-link state — no broken-link gestures
 - [ ] **SCI-07**: Section reduced-motion variant: static citation chips, no marquee scroll
+- [ ] **SCI-08**: Research narrative steps use Aceternity `TextGenerateEffect` (or Magic UI `TextRevealByWord`) — word-by-word reveal on scroll-in for research-paper-elegant pacing; reduced-motion variant shows complete text immediately
+- [ ] **SCI-09**: Aceternity `Sparkles` backdrop behind citation chip cluster — subtle, low-density, dark-mode-safe
 
 ### Social Proof (PROOF)
 
@@ -97,6 +104,8 @@
 - [ ] **PROOF-04**: Shared Aceternity `Spotlight` backdrop spans logos + testimonials + metric bar — fuses three sub-sections into one visual stack
 - [ ] **PROOF-05**: All logos have alt text (logo name + Virtuna partner relation) for screen readers
 - [ ] **PROOF-06**: When real testimonials become available (later milestone), `AnimatedTestimonials` populates without component refactor
+- [ ] **PROOF-07**: Magic UI `AvatarCircles` cluster shows "X+ creators / partners" visual signal — clustered creator avatars with overflow indicator; uses placeholder avatars OK for v1
+- [ ] **PROOF-08**: Magic UI `Globe` (cobe-powered) component visualizes "creators worldwide" — coral dots scattered on dark globe, slow rotation. Reduced-motion variant: static globe with dots, no rotation. Mobile: smaller globe or skip if performance budget tight
 
 ### Pricing (PRICE)
 
@@ -107,6 +116,8 @@
 - [ ] **PRICE-05**: Pricing $ amounts use clearly-marked placeholder (`$XX/mo`) — real prices locked during Phase 11 cutover (business decision gate)
 - [ ] **PRICE-06**: FAQ accordion (shadcn Accordion) directly below pricing — 4-6 conversion-anchored Q&A; copy iterable
 - [ ] **PRICE-07**: Primary CTA on each tier links to existing Whop checkout flow (no new payment infra)
+- [ ] **PRICE-08**: Pro tier CTA uses Magic UI `AnimatedGradientText` for label — gradient sweep distinguishes the recommended tier without changing button shape
+- [ ] **PRICE-09**: Magic UI `Confetti` animation triggers on Pro tier CTA click — coral-tinted, subtle, single burst (no looping). Reduced-motion variant skips the effect entirely
 
 ### Vision Beat (VISION)
 
@@ -151,6 +162,8 @@
 - [ ] **POLISH-03**: Custom cursor styling on landing page — subtle coral-tinted cursor (e.g. coral outline ring on hover-interactive elements). Reverts to default cursor in `(app)/` routes. Disabled on touch devices (`pointer: coarse`)
 - [ ] **POLISH-04**: Section dividers/transitions designed intentionally — alternating background tone shifts (e.g. `bg-background` vs `bg-background-elevated`) and/or subtle gradient/dot-pattern dividers between sections. Avoids "stacked boxes" feel
 - [ ] **POLISH-05**: Secondary accent color defined and applied — neutral-warm complement to coral (e.g. warm gray or muted gold) used sparingly for non-coral accents (e.g. checkmarks in pricing, citation chip borders) — prevents over-coral monotony
+- [ ] **POLISH-06**: Section H2s use Magic UI `TextAnimate` (or `HyperText`) for letter/word stagger reveal on scroll-in — consistent across all sections, reduced-motion variant renders static
+- [ ] **POLISH-07**: Per-section motion choreography documented — stagger timing, scroll-trigger thresholds, exit animations — written as a shared `motionTokens.ts` constants file (`durations`, `easings`, `staggerDelays`, `viewportThresholds`) for cross-section consistency
 
 ### Performance, Accessibility, Mobile (PERF)
 
@@ -211,19 +224,151 @@
 
 ## Content Gates (block-before-merge)
 
-These are not engineering work but block specific phases:
+These are not engineering work but block specific phases. Phase numbers below reference the ROADMAP.md phase structure (11 phases total).
 
 | Gate | Phase blocked | Owner | Resolution |
 |---|---|---|---|
-| Real paper citations sourced (3-5 papers, author + year + DOI/URL) | Phase 7 (Science) ship | Davide | Curate before phase plan |
-| Spline scene file (`.splinecode` URL or self-hosted) created and optimized | Phase 3 (Hero Spline) ship | Davide / designer | Build in Spline editor + optimize per Spline docs |
-| Pricing economics decision ($ for Starter, $ for Pro, yearly discount %) | Phase 11 cutover merge | Davide | Business decision, lock before cutover |
-| Numen Machines logo lockup asset (SVG, multiple weights) | Phase 8 (Social Proof) ship | Davide / designer | Provide asset file |
-| Partner/PR logo permissions | Phase 8 ship (optional — Numen Machines alone is acceptable minimum) | Davide | Outreach |
-| Real white paper for SCI-06 link target | Phase 7 ship (decision: link or skip) | Davide | If absent, SCI-06 ships without CTA |
+| Spline scene file (`.splinecode` URL or self-hosted) created and optimized (≤ 500 KB) | Phase 3 (Hero Spline + Above-Fold Credibility) ship | Davide / designer | Build in Spline editor + optimize per Spline docs |
+| Real paper citations sourced (3-5 papers, author + year + DOI/URL) | Phase 8 (The Science) ship | Davide | Curate before phase plan |
+| Real white paper for SCI-06 link target | Phase 8 (The Science) ship (decision: link or skip) | Davide | If absent, SCI-06 ships without CTA |
+| Numen Machines logo lockup asset (SVG, multiple weights) | Phase 9 (Social Proof) ship | Davide / designer | Provide asset file |
+| Partner/PR logo permissions | Phase 9 (Social Proof) ship (optional — Numen Machines alone is acceptable minimum) | Davide | Outreach |
+| Pricing economics decision ($ for Starter, $ for Pro, yearly discount %) | Phase 11 cutover merge (LAUNCH-07) | Davide | Business decision, lock before cutover |
+| Davide approval on Vercel preview of `/v3` (LAUNCH-01) | Phase 11 cutover merge | Davide | Manual review, hard gate |
 
 ---
 
 ## Traceability
 
-(Filled by gsd-roadmapper when ROADMAP.md is created.)
+Every v1 REQ-ID maps to exactly one phase. Total: 126 REQ-IDs across 17 categories. See ROADMAP.md for full phase definitions and success criteria.
+
+| REQ-ID | Phase | Phase Name |
+|--------|-------|------------|
+| FOUND-01 | 1 | Foundation + Scaffold |
+| FOUND-02 | 1 | Foundation + Scaffold |
+| FOUND-03 | 1 | Foundation + Scaffold |
+| FOUND-04 | 1 | Foundation + Scaffold |
+| FOUND-05 | 1 | Foundation + Scaffold |
+| FOUND-06 | 1 | Foundation + Scaffold |
+| FOUND-07 | 1 | Foundation + Scaffold |
+| FOUND-08 | 1 | Foundation + Scaffold |
+| FOUND-09 | 1 | Foundation + Scaffold |
+| FOUND-10 | 1 | Foundation + Scaffold |
+| HERO-01 | 2 | Hero Shell + Final CTA Bookend + Vision |
+| HERO-02 | 2 | Hero Shell + Final CTA Bookend + Vision |
+| HERO-03 | 2 | Hero Shell + Final CTA Bookend + Vision |
+| HERO-04 | 2 | Hero Shell + Final CTA Bookend + Vision |
+| HERO-05 | 3 | Hero Spline Scene + Above-Fold Credibility Hook |
+| HERO-06 | 2 | Hero Shell + Final CTA Bookend + Vision |
+| HERO-07 | 2 | Hero Shell + Final CTA Bookend + Vision |
+| HERO-08 | 2 | Hero Shell + Final CTA Bookend + Vision |
+| HERO-09 | 2 | Hero Shell + Final CTA Bookend + Vision |
+| HERO-10 | 3 | Hero Spline Scene + Above-Fold Credibility Hook |
+| HERO-11 | 2 | Hero Shell + Final CTA Bookend + Vision |
+| DEMO-01 | 4 | Interactive Demo |
+| DEMO-02 | 4 | Interactive Demo |
+| DEMO-03 | 4 | Interactive Demo |
+| DEMO-04 | 4 | Interactive Demo |
+| DEMO-05 | 4 | Interactive Demo |
+| DEMO-06 | 4 | Interactive Demo |
+| DEMO-07 | 4 | Interactive Demo |
+| DEMO-08 | 4 | Interactive Demo |
+| DEMO-09 | 4 | Interactive Demo |
+| DEMO-10 | 4 | Interactive Demo |
+| HOW-01 | 5 | How It Works Pipeline |
+| HOW-02 | 5 | How It Works Pipeline |
+| HOW-03 | 5 | How It Works Pipeline |
+| HOW-04 | 5 | How It Works Pipeline |
+| HOW-05 | 5 | How It Works Pipeline |
+| HOW-06 | 5 | How It Works Pipeline |
+| HOW-07 | 5 | How It Works Pipeline |
+| BENTO-01 | 6 | Three Surfaces Bento + Dashboard Reveal |
+| BENTO-02 | 6 | Three Surfaces Bento + Dashboard Reveal |
+| BENTO-03 | 6 | Three Surfaces Bento + Dashboard Reveal |
+| BENTO-04 | 6 | Three Surfaces Bento + Dashboard Reveal |
+| BENTO-05 | 6 | Three Surfaces Bento + Dashboard Reveal |
+| BENTO-06 | 6 | Three Surfaces Bento + Dashboard Reveal |
+| BENTO-07 | 6 | Three Surfaces Bento + Dashboard Reveal |
+| CMP-01 | 7 | Comparison vs Alternatives |
+| CMP-02 | 7 | Comparison vs Alternatives |
+| CMP-03 | 7 | Comparison vs Alternatives |
+| CMP-04 | 7 | Comparison vs Alternatives |
+| CMP-05 | 7 | Comparison vs Alternatives |
+| CMP-06 | 7 | Comparison vs Alternatives |
+| CMP-07 | 7 | Comparison vs Alternatives |
+| SCI-01 | 8 | The Science |
+| SCI-02 | 8 | The Science |
+| SCI-03 | 8 | The Science |
+| SCI-04 | 8 | The Science |
+| SCI-05 | 8 | The Science |
+| SCI-06 | 8 | The Science |
+| SCI-07 | 8 | The Science |
+| SCI-08 | 8 | The Science |
+| SCI-09 | 8 | The Science |
+| PROOF-01 | 9 | Social Proof |
+| PROOF-02 | 9 | Social Proof |
+| PROOF-03 | 9 | Social Proof |
+| PROOF-04 | 9 | Social Proof |
+| PROOF-05 | 9 | Social Proof |
+| PROOF-06 | 9 | Social Proof |
+| PROOF-07 | 9 | Social Proof |
+| PROOF-08 | 9 | Social Proof |
+| PRICE-01 | 10 | Pricing + FAQ |
+| PRICE-02 | 10 | Pricing + FAQ |
+| PRICE-03 | 10 | Pricing + FAQ |
+| PRICE-04 | 10 | Pricing + FAQ |
+| PRICE-05 | 10 | Pricing + FAQ |
+| PRICE-06 | 10 | Pricing + FAQ |
+| PRICE-07 | 10 | Pricing + FAQ |
+| PRICE-08 | 10 | Pricing + FAQ |
+| PRICE-09 | 10 | Pricing + FAQ |
+| VISION-01 | 2 | Hero Shell + Final CTA Bookend + Vision |
+| CTA-01 | 2 | Hero Shell + Final CTA Bookend + Vision |
+| CTA-02 | 2 | Hero Shell + Final CTA Bookend + Vision |
+| CTA-03 | 2 | Hero Shell + Final CTA Bookend + Vision |
+| CTA-04 | 2 | Hero Shell + Final CTA Bookend + Vision |
+| CTA-05 | 2 | Hero Shell + Final CTA Bookend + Vision |
+| CTA-06 | 2 | Hero Shell + Final CTA Bookend + Vision |
+| MOTION-01 | 2 | Hero Shell + Final CTA Bookend + Vision |
+| MOTION-02 | 2 | Hero Shell + Final CTA Bookend + Vision |
+| MOTION-03 | 2 | Hero Shell + Final CTA Bookend + Vision |
+| MOTION-04 | 1 | Foundation + Scaffold |
+| MOTION-05 | 1 | Foundation + Scaffold |
+| META-01 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| META-02 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| META-03 | 1 | Foundation + Scaffold |
+| META-04 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| META-05 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| ANALYTICS-01 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| ANALYTICS-02 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| ANALYTICS-03 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| ANALYTICS-04 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| POLISH-01 | 1 | Foundation + Scaffold |
+| POLISH-02 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| POLISH-03 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| POLISH-04 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| POLISH-05 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| POLISH-06 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| POLISH-07 | 1 | Foundation + Scaffold |
+| PERF-01 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| PERF-02 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| PERF-03 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| PERF-04 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| PERF-05 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| PERF-06 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| PERF-07 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| PERF-08 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| PERF-09 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| PERF-10 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| PERF-11 | 1 | Foundation + Scaffold |
+| PERF-12 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| PERF-13 | 1 | Foundation + Scaffold |
+| LAUNCH-01 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| LAUNCH-02 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| LAUNCH-03 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| LAUNCH-04 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| LAUNCH-05 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| LAUNCH-06 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+| LAUNCH-07 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
+
+**Coverage:** 126/126 REQ-IDs mapped ✓ — no orphans, no duplicates.

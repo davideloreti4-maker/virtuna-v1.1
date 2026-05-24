@@ -16,25 +16,30 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 **Audience strategy:** Single page converts creators (Starter/Pro signup) AND impresses investors (vision/science/trust). Equal priority — above-fold trust + below-fold demo serves both.
 
-**Page structure (medium scroll, 9 sections + polish layer):**
+**Page structure (medium scroll, 10 sections + polish layer):**
 1. Hero (above-fold) — H1 with WordRotate audience-target reveal, dual CTA, above-fold logo bar + "backed by" credibility hook, Spline 3D scene (lazy-loaded)
-2. Interactive demo — user picks from 3-4 sample TikToks, scripted animated insight reveal (no real backend), cursor-following micro-signal effect
-3. How it works — engine pipeline / data-flow (Linear-style diagram, AnimatedBeam desktop / TracingBeam mobile)
-4. Three Surfaces bento — Prediction · Competitor Intelligence · Brand Deals
-5. Comparison vs alternatives — positioning table or feature-chip grid (NOT logo-vs-logo attack)
-6. The Science — behavioral research moat, citation chips, dataset stats
-7. Social proof stack — projected-and-labeled metrics + Numen Machines/partner logos + "Coming soon" testimonials scaffold
-8. Pricing — full Starter/Pro table on-page with placeholder $ amounts (real prices locked at cutover)
-9. Vision beat + Final CTA + Footer — 1-2 sentence founder quote + Hero-mirror CTA + 4-col footer with sign-in link
+2. Interactive demo — sample picker → MultiStepLoader → animated insight reveal in `Iphone15Pro` mockup frame, cursor-following micro-signal effect (Aceternity FollowingPointer)
+3. How it works — engine pipeline (AnimatedBeam desktop / TracingBeam mobile) with `OrbitingCircles` at each stage, GSAP ScrollTrigger pinning the section so beam scrubs with scroll
+4. Three Surfaces bento — Prediction · Competitor Intelligence · Brand Deals (asymmetric BentoGrid, animated backgrounds)
+5. Dashboard reveal — MacbookScroll laptop frame scales/rotates revealing Virtuna dashboard screenshot as user scrolls
+6. Comparison vs alternatives — positioning table with `Sparkles` accent on Virtuna column (no logo-vs-logo attack)
+7. The Science — behavioral research moat with `TextGenerateEffect` word-by-word reveal, citation chips with `Sparkles` backdrop, dataset stats
+8. Social proof stack — projected metrics + `AvatarCircles` cluster + `Globe` (cobe) creators-worldwide visualization + Numen Machines/partner logos + "Coming soon" testimonials scaffold
+9. Pricing — full Starter/Pro table with `AnimatedGradientText` Pro CTA + `Confetti` on click + 6-cat checklist + FAQ accordion
+10. Vision beat + Final CTA + Footer — 1-2 sentence founder quote + Hero-mirror CTA + 4-col footer with sign-in link
 
-**Polish layer (cross-cutting):** SVG grain noise overlay, scroll progress indicator, custom coral cursor on landing only, section dividers/transitions, secondary accent color for non-coral accents.
+**Polish layer (cross-cutting):** SVG grain noise overlay, scroll progress indicator, custom coral cursor on landing only, section dividers/transitions, secondary accent color for non-coral accents, `TextAnimate` stagger reveal on all section H2s, shared `motionTokens.ts` constants file for cross-section consistency.
+
+**Note on phase mapping:** Sections 4 (Bento) and 5 (MacbookScroll dashboard reveal) are built together in Phase 6 (Three Surfaces Bento + Dashboard Reveal) to honor the 11-phase cap from v3.0 abandonment lesson.
 
 **Stack additions (animation):**
-- Magic UI (animated component library)
-- Framer Motion / motion.dev (custom motion choreography)
-- Aceternity UI (Linear/Raycast-aesthetic animated components)
-- shadcn (already installed)
-- Palette (pull in only if a section justifies it): GSAP ScrollTrigger, R3F/Three.js, tsParticles, Cult UI
+- Magic UI (animated component library — WordRotate, ShimmerButton, BorderBeam, AnimatedBeam, OrbitingCircles, BentoGrid, Marquee, NumberTicker, AnimatedList, BoxReveal, Iphone15Pro, AvatarCircles, Globe, Confetti, AnimatedGradientText, TextAnimate, ScrollProgress)
+- Framer Motion / motion.dev (custom motion choreography + MotionConfig root)
+- Aceternity UI (Spotlight, MultiStepLoader, CardStack, TracingBeam, StickyScroll, AnimatedTestimonials, FollowingPointer, MacbookScroll, Sparkles, TextGenerateEffect)
+- shadcn (Card, Tabs, Accordion, Tooltip, Badge — already installed)
+- GSAP ScrollTrigger (scroll-pinned How It Works pipeline, ~37KB)
+- Spline (@splinetool/react-spline — lazy-loaded hero scene)
+- Cult UI — RULED OUT (off-brief, texture/shader aesthetic clashes with Raycast minimal)
 
 **Demo strategy:** Scripted animated "insight reveal" — user picks from 3-4 sample TikToks, sees canned analysis play out (engine "thinking" → behavioral signals firing → confidence score emerging). No backend wiring.
 
