@@ -45,7 +45,7 @@ const CONTENT_TYPE_VALUES = [
   "tutorial", "vlog", "comedy", "other",
 ] as const;
 
-function buildSystemPrompt(opts: OmniAnalysisOptions): string {
+export function buildSystemPrompt(opts: OmniAnalysisOptions): string {
   const nicheHint = opts.niche        ? `\nCreator niche hint: ${opts.niche}` : "";
   const ctypeHint = opts.content_type ? `\nContent-type hint: ${opts.content_type}` : "";
 
@@ -103,14 +103,23 @@ Return ONLY valid JSON matching this exact structure:
     "music_ratio":     0-1,
     "audio_description": "<50-150 char audio description>"
   },
-  "audio_perceptual_score": 0-100
+  "audio_perceptual_score": 0-100,
+
+  "emotion_arc": [
+    { "timestamp_ms": 0,    "intensity_0_1": 0.3, "label": "low" },
+    { "timestamp_ms": 5000, "intensity_0_1": 0.8, "label": "high" }
+  ]
 }
 
 Rules:
 - cta_present=true requires strength and type non-null; cta_present=false requires both null.
 - silence_ratio + voiceover_ratio + music_ratio must sum to ~1.0 (±0.1).
 - voice_clarity and audio_hook are null only for slideshow or silent content.
-- watermark_detected fields are optional (omit if none detected).`;
+- watermark_detected fields are optional (omit if none detected).
+- emotion_arc is OPTIONAL: include 3-8 points across the video timeline at emotional
+  inflection points (or evenly spaced) when video is present. Use intensity_0_1 in [0,1].
+  label is an optional categorical helper ("low"|"mid"|"high"). Omit the emotion_arc
+  field entirely for non-video / silent / slideshow content.`;
 }
 
 export async function analyzeVideoWithOmni(
