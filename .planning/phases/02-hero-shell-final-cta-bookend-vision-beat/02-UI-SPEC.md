@@ -49,7 +49,6 @@ Inherited from `globals.css` `@theme` block (no new tokens added in Phase 2).
 |---------|-------|--------|
 | Hero section height | `min-h-[100dvh]` | iOS Safari address-bar fix (HERO-08). `SectionShell isHero` already implements this. |
 | Phase 3 credibility-hook placeholder gap | `min-h-[64px]` between sub-headline and CTA pair | Reserves space so Phase 3 logo bar drops in without re-flow |
-| CTA pair mobile stack gap | `gap-3` (12px) | CTAs stack vertically on `<sm`; 12px is tighter than `md` to keep both above fold at 375px |
 | Footer "A Numen Machines product" strip | `py-4` top/bottom (16px) | Matches Raycast sub-footer rhythm |
 | Button hit target | min 44px height | WCAG 2.5.5 AA touch target minimum |
 | Vision Beat card padding | `p-8` (32px) | GlassPanel interior — gives quote breathing room without over-expanding |
@@ -60,22 +59,34 @@ Inherited from `globals.css` `@theme` block (no new tokens added in Phase 2).
 
 Inherits all tokens from `globals.css`. Phase 2 introduces the Hero H1 display scale for the first time.
 
+**Scale constraint: exactly 4 sizes, exactly 2 weights.**
+
 ### Scale in use (Phase 2)
 
 | Role | Token | Size | Weight | Line Height | Letter Spacing | Usage |
 |------|-------|------|--------|-------------|----------------|-------|
-| Hero H1 | `--text-display` | 64px | 700 (`--font-bold`) | 1.05 | `-0.04em` | H1 sentence containing WordRotate slot |
-| Hero H1 (mobile ≤ 768px) | — | 40px (fluid clamp) | 700 | 1.1 | `-0.02em` | H1 at 375px — sized to fit above fold with sub + CTA pair |
+| Hero H1 | `--text-display` | 64px (fluid clamp) | 700 (`--font-bold`) | 1.05 | `-0.04em` | H1 sentence containing WordRotate slot |
+| Hero H1 (mobile ≤ 768px) | — | 40px (fluid clamp floor) | 700 | 1.1 | `-0.02em` | H1 at 375px — sized to fit above fold with sub + CTA pair |
 | Sub-headline | `--text-xl` | 20px | 400 (`--font-regular`) | 1.5 | `0.2px` | "Stop guessing..." — below H1 |
 | Body / Footer links | `--text-base` | 16px | 400 (`--font-regular`) | 1.5 | `0.2px` | Footer column links, Vision Beat body copy |
-| Footer labels / Legal | `--text-sm` | 14px | 400 (`--font-regular`) | 1.25 | `0.2px` | Column headers (muted), copyright |
+| Footer labels / Legal / Badge / Attribution | `--text-sm` | 14px | 400 (`--font-regular`) | 1.25 | `0.2px` | Column headers (muted + uppercase), copyright, AnimatedShinyText badge, Vision Beat attribution |
 | Vision Beat quote | `--text-xl` | 20px | 400 (`--font-regular`) | 1.6 | `0.1px` | Italic quote text inside GlassPanel |
-| Vision Beat attribution | `--text-sm` | 14px | 400 (`--font-regular`) | 1.25 | `0.2px` | "— Davide Loreti, Founder, Virtuna" (muted) |
-| AnimatedShinyText (above H1) | `--text-sm` | 14px | 500 (`--font-medium`) | 1 | `0.3px` | Pre-headline badge — uppercase, slight tracking |
-| CTA primary label | `--text-base` | 16px | 600 (`--font-semibold`) | 1 | `0.2px` | "Score your first TikTok" inside ShimmerButton |
+| CTA primary label | `--text-base` | 16px | 700 (`--font-bold`) | 1 | `0.2px` | "Score your first TikTok" inside ShimmerButton |
 | CTA secondary label | `--text-sm` | 14px | 400 (`--font-regular`) | 1 | `0.2px` | "See pricing" — ghost/link treatment |
 
-**Weight constraint:** Phase 2 introduces `--font-bold` (700) for H1 only. All other copy stays at 400 or 600. `--font-medium` (500) used for AnimatedShinyText badge only.
+**Final size set (4 total):** `--text-display` (64px) · `--text-xl` (20px) · `--text-base` (16px) · `--text-sm` (14px). `--text-xs` (12px) is NOT used in Phase 2.
+
+**Final weight set (2 total):** 400 (`--font-regular`) · 700 (`--font-bold`). `--font-medium` (500) and `--font-semibold` (600) are NOT used in Phase 2.
+
+**Weight assignments:**
+- H1: 700
+- ShimmerButton primary CTA label: 700 (single coral pill, bold reads strong)
+- Header "Sign up" pill (Phase 1, not modified): remains as-is per D-09
+- AnimatedShinyText badge: 400 (shimmer effect carries visual emphasis)
+- Numen Machines lockup strip: 400
+- All other copy: 400
+
+**Footer column headers:** 14px (`--text-sm`), weight 400, `--color-foreground-muted`, `text-transform: uppercase`, `letter-spacing: 0.08em`, `margin-bottom: 16px`. Uppercase + tracking differentiates them visually from link rows without a dedicated 12px size.
 
 **H1 fluid sizing:** Use CSS `clamp(40px, 5.5vw, 64px)` for H1 font-size so it scales gracefully between 375px and 1440px without hard breakpoints. Apply as inline style or Tailwind arbitrary value.
 
@@ -93,7 +104,7 @@ This section is the executor's primary reference for "does everything fit at bot
 ├─────────────────────────────────────────────┤
 │  Padding-top: 64px (clears fixed header)    │
 │                                             │
-│  AnimatedShinyText badge     ~20px          │
+│  AnimatedShinyText badge     ~18px          │
 │  Spacing                     ~16px          │
 │  H1 (64px line × 2 lines)   ~140px         │
 │    "Predict viral for        (wordrotate)   │
@@ -107,11 +118,11 @@ This section is the executor's primary reference for "does everything fit at bot
 │  CTA pair                   ~52px          │
 │    [ShimmerButton] [See pricing →]          │
 │                                             │
-│  Remaining: ~348px → Spotlight fills        │
+│  Remaining: ~350px → Spotlight fills        │
 └─────────────────────────────────────────────┘  ← bottom of viewport (900px)
 ```
 
-Total above-fold committed height: ≈ 452px — well within 836px content area (900px - 64px header). Spotlight + optional decorative particles fill remaining space. No scroll required at 1440×900.
+Total above-fold committed height: ≈ 450px — well within 836px content area (900px - 64px header). Spotlight + optional decorative particles fill remaining space. No scroll required at 1440×900.
 
 ### Mobile: 375px wide, viewport height 667px (iPhone SE — most constrained)
 
@@ -120,7 +131,7 @@ Total above-fold committed height: ≈ 452px — well within 836px content area 
 │ LandingHeader (56px) │  ← reduced header height on mobile
 ├──────────────────────┤
 │ Padding-top: 56px    │
-│ AnimatedShinyText    │  ~18px
+│ AnimatedShinyText    │  ~16px
 │ gap                  │  ~12px
 │ H1 (40px × 3 lines) │  ~132px
 │   "Predict viral for │
@@ -129,14 +140,16 @@ Total above-fold committed height: ≈ 452px — well within 836px content area 
 │ gap                  │  ~16px
 │ Sub (16px × 2 lines) │  ~48px (use --text-base on mobile, not xl)
 │ Phase3 placeholder   │  ~0px (collapse to 0 on mobile — Phase3 re-opens)
-│ gap                  │  ~12px
-│ CTA stack (2 items)  │  ~108px (44px each + 12px gap between)
+│ gap                  │  ~8px
+│ CTA stack (2 items)  │  ~96px (44px each + 8px gap between)
 │                      │
-│ Remaining: ~275px    │  Spotlight fills
+│ Remaining: ~295px    │  Spotlight fills
 └──────────────────────┘  ← bottom of viewport (667px)
 ```
 
-Total committed: ≈ 392px — fits in 611px content area (667px - 56px). Both CTAs visible above fold on iPhone SE with no scroll.
+Total committed: ≈ 372px — fits in 611px content area (667px - 56px). Both CTAs visible above fold on iPhone SE with no scroll.
+
+**CTA pair mobile stack gap:** `gap-2` (8px). At 375×667 both buttons remain above fold with 295px of remaining space. Do NOT use `gap-3` (12px) — outside standard spacing set.
 
 **Mobile sub-headline adjustment:** Use `--text-base` (16px) on mobile instead of `--text-xl` (20px) to recover 8px per line. Apply via `text-base md:text-xl`.
 
@@ -230,7 +243,7 @@ Magic UI `WordRotate` — single rotating word slot fused inside the H1 sentence
 | Background | Shimmer sweep over dark surface: base `rgba(255,127,80,0.08)` with animated shimmer at `rgba(255,127,80,0.25)` sweeping left-to-right |
 | Shimmer animation | `shimmer` keyframe already in `globals.css` (`--animate-shimmer: shimmer 2s ease-in-out infinite`) — use existing token |
 | Text color | `#f9f9f9` (`--color-foreground`) — NOT `--color-accent-foreground` (that's for solid coral fill; shimmer bg is dark) |
-| Text weight | 600 (`--font-semibold`) |
+| Text weight | 700 (`--font-bold`) |
 | Border | `1px solid rgba(255, 127, 80, 0.25)` — single-stop coral alpha border |
 | Hover state | Border brightens to `rgba(255, 127, 80, 0.4)`; shimmer speed increases to `1.5s`; no transform/translate |
 | Active/press | `rgba(255, 127, 80, 0.12)` base bg |
@@ -257,7 +270,7 @@ Magic UI `WordRotate` — single rotating word slot fused inside the H1 sentence
 
 | Property | Desktop | Mobile |
 |----------|---------|--------|
-| Arrangement | Side-by-side, `flex-row items-center gap-6` | Stacked, `flex-col gap-3` — ShimmerButton full-width, secondary link centered below |
+| Arrangement | Side-by-side, `flex-row items-center gap-6` | Stacked, `flex-col gap-2` — ShimmerButton full-width, secondary link centered below |
 | ShimmerButton width | `auto` (content-based, min 200px) | `w-full` |
 | Secondary link | `auto` | `w-full text-center` |
 | Breakpoint | `flex-row` at `sm:` (640px+) | `flex-col` default |
@@ -272,8 +285,8 @@ Pre-headline badge that appears above H1 in both Hero and Final CTA.
 |----------|-------|
 | Component | Magic UI `AnimatedShinyText` (install: `npx shadcn@latest add @magicui/animated-shiny-text`) |
 | Copy | `✦ Behavioral prediction engine` — concise, no "AI", investor-readable |
-| Size | 12px (`--text-xs`) — badge scale |
-| Weight | 500 (`--font-medium`) |
+| Size | 14px (`--text-sm`) — badge scale |
+| Weight | 400 (`--font-regular`) — shimmer effect carries visual emphasis |
 | Letter spacing | `0.08em` |
 | Container | Pill shape: `rounded-full border border-white/[0.08] px-4 py-1.5` |
 | Background | `rgba(255,255,255,0.03)` — barely visible glass tint |
@@ -323,7 +336,7 @@ Section between `#pricing` placeholder and `#final-cta`. Founder quote as invest
 | Quote typography | 20px (`--text-xl`), weight 400, italic (`font-style: italic`), line-height 1.6, `--color-foreground` (#f9f9f9) |
 | Quotation mark style | No decorative large `"` glyph. No CSS `::before` quote marks. Quote text stands alone inside GlassPanel — the glass card IS the visual framing device |
 | Attribution line | `— Davide Loreti, Founder, Virtuna` |
-| Attribution typography | 14px (`--text-sm`), weight 400, NOT italic, `--color-foreground-muted` (#848586), `margin-top: 20px` |
+| Attribution typography | 14px (`--text-sm`), weight 400, NOT italic, `--color-foreground-muted` (#848586), `margin-top: 16px` |
 | Vertical spacing above | `80px` between end of Pricing SectionShell and start of Vision Beat — achieved via Vision Beat `pt-20` |
 | Vertical spacing below | `80px` between end of Vision Beat and Final CTA section — achieved via Vision Beat `pb-20` |
 | GlassPanel border | `1px solid rgba(255,255,255,0.06)` — inherits from GlassPanel component |
@@ -356,7 +369,7 @@ Section between `#pricing` placeholder and `#final-cta`. Founder quote as invest
 Desktop layout: `grid grid-cols-4 gap-16` (64px column gap).
 Mobile layout: `grid grid-cols-2 gap-8` at `sm:` (640px+); `grid grid-cols-1 gap-8` below 640px.
 
-**Column header typography:** 12px (`--text-xs`), weight 600, `--color-foreground-muted`, `text-transform: uppercase`, `letter-spacing: 0.08em`, `margin-bottom: 16px`.
+**Column header typography:** 14px (`--text-sm`), weight 400, `--color-foreground-muted`, `text-transform: uppercase`, `letter-spacing: 0.08em`, `margin-bottom: 16px`. Uppercase + tracking provides visual differentiation from link rows without an additional size token.
 
 **Column link typography:** 14px (`--text-sm`), weight 400, `--color-foreground-secondary` at rest, `--color-foreground` on hover. `line-height: 1.75` (loose for touch). `transition: color 150ms`.
 
@@ -375,9 +388,9 @@ Hover: `--color-foreground`.
 
 Position: Below the 4-column grid, full-width. `margin-top: 48px`. `border-top: 1px solid rgba(255,255,255,0.04)`. `padding-top: 24px`.
 Layout: `flex flex-col items-center gap-2` (stacked: lockup text + copyright).
-Copy line 1: `A Numen Machines product` — 12px, weight 500, `--color-foreground-muted`. Links to `https://numenmachines.com` (`target="_blank" rel="noopener noreferrer"`).
-Copy line 2: `© 2026 Numen Machines. All rights reserved.` — 12px, weight 400, `--color-foreground-muted` at 60% opacity.
-SVG lockup: If `numen-machines-lockup.svg` asset is available at plan time, use it (16px height, `--color-foreground-muted` fill). Otherwise text-only ("**Numen Machines**" in semibold) is acceptable for Phase 2.
+Copy line 1: `A Numen Machines product` — 14px (`--text-sm`), weight 400, `--color-foreground-muted`. Links to `https://numenmachines.com` (`target="_blank" rel="noopener noreferrer"`).
+Copy line 2: `© 2026 Numen Machines. All rights reserved.` — 14px (`--text-sm`), weight 400, `--color-foreground-muted` at 60% opacity.
+SVG lockup: If `numen-machines-lockup.svg` asset is available at plan time, use it (16px height, `--color-foreground-muted` fill). Otherwise text-only is acceptable for Phase 2.
 
 ### WCAG AA Verification
 
@@ -514,11 +527,12 @@ All installs MUST use `shadcn@latest add` with the `--style new-york` preset fla
 | Registry | Components Used | Safety Gate | Date |
 |----------|-----------------|-------------|------|
 | shadcn official | Phase 1 component set (unchanged) | Not required | — |
-| Magic UI (`@magicui/`) | `word-rotate`, `shimmer-button`, `animated-shiny-text`, `border-beam` | `npx shadcn view {block} --registry https://registry.magicui.design` before install — scan for `fetch(`, `eval(`, `process.env`. Gate executes at plan time before any install. | Pending plan |
-| Aceternity UI | `spotlight` | `npx shadcn view spotlight --registry https://ui.aceternity.com/registry` before install — same scan criteria. | Pending plan |
+| Magic UI — `word-rotate` | `word-rotate` | view passed — no flags (no `fetch(`, `eval(`, `process.env`, `dangerouslySetInnerHTML`; uses `motion/react` AnimatePresence + setInterval only) | 2026-05-24 |
+| Magic UI — `shimmer-button` | `shimmer-button` | view passed — no flags (pure React/CSS; conic-gradient CSS custom properties; no network or env access) | 2026-05-24 |
+| Magic UI — `animated-shiny-text` | `animated-shiny-text` | view passed — no flags (CSS background shimmer animation; no network or env access) | 2026-05-24 |
+| Magic UI — `border-beam` | `border-beam` | view passed — no flags (uses `motion/react` offsetPath animation; no network or env access) | 2026-05-24 |
+| Aceternity UI | `spotlight` | view passed — no flags (SVG element with feGaussianBlur filter; no network or env access) | 2026-05-24 |
 | Third-party (other) | None | Not applicable | — |
-
-**Safety gate posture:** Planner runs `npx shadcn view` for each component before adding to install list. If flags found, planner halts and escalates. No component enters a PLAN.md without a passed gate logged in the plan.
 
 ---
 
@@ -601,3 +615,4 @@ All installs MUST use `shadcn@latest add` with the `--style new-york` preset fla
 | `CLAUDE.md` (project) | Raycast rules: 6% borders, `backdropFilter` inline style only, Inter font, 8px button radius |
 | REQUIREMENTS.md | 19 REQ-IDs (HERO-01..11 minus 05+10, CTA-01..06, VISION-01, MOTION-01..03) — all addressed |
 | User input | 0 — all design contract fields answered by upstream artifacts |
+| Checker revision (2026-05-24) | Issues 1-3 fixed: type scale collapsed to 4 sizes + 2 weights; CTA mobile gap 12→8px; registry safety gates executed and timestamped |
