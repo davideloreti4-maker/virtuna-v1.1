@@ -4,8 +4,8 @@ milestone: engine-hardening
 milestone_name: Engine Hardening
 status: executing
 stopped_at: Phase 15 context gathered
-last_updated: "2026-05-24T09:59:42.449Z"
-last_activity: 2026-05-24 -- Phase 15 planning complete
+last_updated: "2026-05-24T10:01:38.452Z"
+last_activity: 2026-05-24 -- Phase 15 execution started
 progress:
   total_phases: 5
   completed_phases: 1
@@ -22,15 +22,15 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 See: .planning/MILESTONE.md (immutable worktree identity)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate.
-**Current focus:** Phase 14 — type-hygiene-user-settings-resolution
+**Current focus:** Phase 15 — calibration-refit-on-qwen-corpus
 
 ## Current Position
 
 Milestone: Engine Hardening (M2-1b of Intelligence Surface drop)
-Phase: 15
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-05-24 -- Phase 15 planning complete
+Phase: 15 (calibration-refit-on-qwen-corpus) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 15
+Last activity: 2026-05-24 -- Phase 15 execution started
 
 Progress: [░░░░░░░░░░] 0% (0/5 phases complete)
 
