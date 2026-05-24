@@ -38,7 +38,7 @@ hygiene   refit     re-enable smoke billing
 
 ## Phases
 
-- [ ] **Phase 14: Type Hygiene & user_settings Resolution** — Audit, decide migrate-vs-rip, land path, drive `tsc --noEmit` to 0 errors app-wide
+- [x] **Phase 14: Type Hygiene & user_settings Resolution** — Audit, decide migrate-vs-rip, land path, drive `tsc --noEmit` to 0 errors app-wide (completed 2026-05-24)
 - [ ] **Phase 15: Calibration Refit on Qwen Corpus** — Refit Platt params, rerun stratified validation, re-tune Wave 3/4 thresholds, verify is_calibrated flow
 - [ ] **Phase 16: Audio Fingerprint + Embedder Re-enable** — Build embedder, re-enable fingerprint + D-F4 cron, unskip 17 tests, land SSRF allowlist
 - [ ] **Phase 17: Smoke Runner Live Billing Wiring** — Wire DashScope International billing endpoint into smoke runner, persist cost_cents_actual
@@ -58,7 +58,7 @@ hygiene   refit     re-enable smoke billing
   5. `pnpm build` green
 **Plans**: 2 plans
   - [x] 14-01-PLAN.md — Produce user-settings-audit.md (TYPES-01, TYPES-02, baseline TYPES-05)
-  - [ ] 14-02-PLAN.md — Regenerate database.types.ts from live schema (TYPES-03, TYPES-04 vacuous, TYPES-05 gate)
+  - [x] 14-02-PLAN.md — Regenerate database.types.ts from live schema (TYPES-03, TYPES-04 vacuous, TYPES-05 gate)
 
 ### Phase 15: Calibration Refit on Qwen Corpus
 **Goal**: Platt calibration row reflects the Qwen scorer (not the text-mode drifted row), stratified validation rerun under Qwen, Wave 3/4 thresholds re-tuned for the new distribution, and `is_calibrated = true` flows through aggregator output for new analyses.
@@ -112,7 +112,7 @@ Phases 14, 15, 16, 17 may fork in parallel from the milestone branch base. Phase
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 14. Type Hygiene & user_settings Resolution | 1/2 | In Progress|  |
+| 14. Type Hygiene & user_settings Resolution | 2/2 | Complete   | 2026-05-24 |
 | 15. Calibration Refit on Qwen Corpus | 0/TBD | Not started | - |
 | 16. Audio Fingerprint + Embedder Re-enable | 0/TBD | Not started | - |
 | 17. Smoke Runner Live Billing Wiring | 0/TBD | Not started | - |
