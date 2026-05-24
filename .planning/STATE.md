@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: engine-hardening
 milestone_name: Engine Hardening
-status: ready_to_plan
-stopped_at: Phase 14 context gathered
-last_updated: "2026-05-24T03:46:32.268Z"
-last_activity: 2026-05-24 -- Phase 14 execution started
+status: planning
+stopped_at: Phase 15 context gathered
+last_updated: "2026-05-24T09:17:19.248Z"
+last_activity: 2026-05-24
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 2
-  completed_plans: 0
-  percent: 20
+  completed_plans: 2
+  percent: 100
 ---
 
 # Project State
@@ -104,6 +104,6 @@ Items carried forward from M1 Engine Foundation close (now the active scope of t
 
 ## Session Continuity
 
-Last session: 2026-05-24T03:26:59.919Z
-Stopped at: Phase 14 context gathered
-Resume file: .planning/phases/14-type-hygiene-user-settings-resolution/14-CONTEXT.md
+Last session: 2026-05-24T09:17:19.241Z
+Stopped at: Phase 15 context gathered
+Resume file: .planning/phases/15-calibration-refit-on-qwen-corpus/15-CONTEXT.md
