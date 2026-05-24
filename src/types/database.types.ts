@@ -824,6 +824,33 @@ export type Database = {
         }
         Relationships: []
       }
+      niche_post_windows: {
+        Row: {
+          computed_at: string
+          day_of_week: string
+          hour_end: number
+          hour_start: number
+          niche: string
+          sample_size: number
+        }
+        Insert: {
+          computed_at?: string
+          day_of_week: string
+          hour_end: number
+          hour_start: number
+          niche: string
+          sample_size: number
+        }
+        Update: {
+          computed_at?: string
+          day_of_week?: string
+          hour_end?: number
+          hour_start?: number
+          niche?: string
+          sample_size?: number
+        }
+        Relationships: []
+      }
       outcomes: {
         Row: {
           actual_engagement_rate: number | null
@@ -894,6 +921,7 @@ export type Database = {
           a: number
           b: number
           created_at: string
+          engine_version: string
           fitted_at: string
           id: number
           sample_count: number
@@ -902,6 +930,7 @@ export type Database = {
           a: number
           b: number
           created_at?: string
+          engine_version: string
           fitted_at: string
           id?: never
           sample_count: number
@@ -910,6 +939,7 @@ export type Database = {
           a?: number
           b?: number
           created_at?: string
+          engine_version?: string
           fitted_at?: string
           id?: never
           sample_count?: number
@@ -1686,6 +1716,7 @@ export type Database = {
           velocity_score: number
         }[]
       }
+      refresh_niche_post_windows: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
