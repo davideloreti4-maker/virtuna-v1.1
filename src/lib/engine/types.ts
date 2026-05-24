@@ -188,6 +188,13 @@ export interface PredictionResult {
   /** Phase 1 (R1.7) — Emotion arc timeline from Omni Plus. Null when video absent
    *  or Qwen omitted the field. Optional to preserve compile against existing consumers. */
   emotion_arc?: EmotionArcPoint[] | null;
+  /** Phase 1 (R1.9, Plan 06 T3 B4) — true when confidence < ANTI_VIRALITY_THRESHOLD.
+   *  UI renders "Don't post yet" orange verdict state when true. REQUIRED field
+   *  (not optional) — aggregator assigns on every PredictionResult; defaults to
+   *  false when calibrated confidence >= threshold. Eliminates dead-code threshold
+   *  per checker B4. Gated on POST-CRITIQUE confidence (Pitfall 7 ordering invariant —
+   *  matches the gate `maybeAppendLikelyFlopWarning` uses). */
+  anti_virality_gated: boolean;
   /** Phase 6 (D-G1) — Full fingerprint match record or null if no match above threshold.
    *  Optional to preserve compile against existing consumers; plans 06-05/06-06 will start emitting it. */
   audio_fingerprint?: AudioFingerprintResult | null;

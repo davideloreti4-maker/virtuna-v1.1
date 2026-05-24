@@ -23,6 +23,12 @@ import { QWEN_OMNI_MODEL as GEMINI_MODEL } from "./qwen/client";
 import { QWEN_REASONING_MODEL as DEEPSEEK_MODEL } from "./qwen/client";
 import { predictWithML, featureVectorToMLInput } from "./ml";
 import { applyPlattScaling, type PlattParameters } from "./calibration";
+// Phase 1 (R1.9, Plan 06 T3 B4) — anti-virality gating helper. Wires
+// ANTI_VIRALITY_THRESHOLD into a real consumer; eliminates the dead-code
+// threshold per checker B4. Gating is computed AFTER confidence calibration
+// (calculateConfidence + HARD-03 + Stage 10 critique adjustment) so the
+// boolean reflects the final confidence value the UI consumes.
+import { isAntiViralityGated } from "./anti-virality";
 import { ENGINE_VERSION } from "./version";
 import { runStage10Critique, applyCritiqueAdjustment } from "./stage10-critique";
 import { runStage11Counterfactuals, maybeAppendLikelyFlopWarning } from "./stage11-counterfactuals";
@@ -1032,6 +1038,12 @@ export async function aggregateScores(
     // Phase 1 (R1.7) — emotion arc timeline plucked from Omni Plus output above.
     // Null when video absent or Qwen omitted the field; non-fatal per Pitfall #5.
     emotion_arc,
+    // Phase 1 (R1.9, B4) — anti-virality gate. Initial value computed from the
+    // PRE-Stage-10 confidence (post-Platt + post-HARD-03). Re-evaluated below
+    // after Stage 10 critique adjustment so the field reflects POST-CRITIQUE
+    // confidence (matches the gate `maybeAppendLikelyFlopWarning` reads —
+    // Pitfall 7 ordering invariant).
+    anti_virality_gated: isAntiViralityGated(conf.confidence),
     score_weights: weights, // Actual weights used (may differ from BASE if signals missing)
     latency_ms: pipelineResult.total_duration_ms,
     cost_cents,
@@ -1069,6 +1081,11 @@ export async function aggregateScores(
   const critiqueResult = await runStage10Critique(result, onStageEvent);
   if (critiqueResult) {
     result.confidence = applyCritiqueAdjustment(result.confidence, critiqueResult);
+    // Phase 1 (R1.9, B4) — re-evaluate anti-virality gate AFTER critique
+    // adjustment so the UI flag matches the final (POST-CRITIQUE) confidence
+    // value displayed to the user. Aligns with `maybeAppendLikelyFlopWarning`
+    // which also reads POST-CRITIQUE confidence (Pitfall 7 ordering invariant).
+    result.anti_virality_gated = isAntiViralityGated(result.confidence);
   }
   result.critique = critiqueResult;
 

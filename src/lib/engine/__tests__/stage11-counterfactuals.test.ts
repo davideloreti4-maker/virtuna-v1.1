@@ -272,6 +272,8 @@ function makeFakePredictionResult(
     persona_simulation_results: [],
     retrieval_score: null,
     retrieval_evidence: [],
+    // Phase 1 (R1.9, B4) — REQUIRED boolean. Default false (confidence=0.65 >= threshold=0.4).
+    anti_virality_gated: false,
     ...overrides,
   };
 }
