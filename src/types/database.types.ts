@@ -894,6 +894,7 @@ export type Database = {
           a: number
           b: number
           created_at: string
+          engine_version: string
           fitted_at: string
           id: number
           sample_count: number
@@ -902,6 +903,7 @@ export type Database = {
           a: number
           b: number
           created_at?: string
+          engine_version: string
           fitted_at: string
           id?: never
           sample_count: number
@@ -910,6 +912,7 @@ export type Database = {
           a?: number
           b?: number
           created_at?: string
+          engine_version?: string
           fitted_at?: string
           id?: never
           sample_count?: number
