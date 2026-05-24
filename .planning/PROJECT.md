@@ -246,6 +246,8 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 **Current milestone:** Landing v1 — high-end animated SaaS landing page from scratch (started 2026-05-24)
 
+- Phase 01 (foundation-scaffold) — complete 2026-05-24. `/v3` staging route renders 9 placeholder section shells under `MotionConfig reducedMotion="user"`; `LandingHeader` + `SkipToContent` + `GrainOverlay` server components wired; `sitemap.ts` + `robots.ts` SEO baseline live; OG image at `(marketing)/v3/opengraph-image.tsx`; single animation runtime via `motion` (framer-motion as transitive only). 2 manual UAT items deferred (Tab-order, bundle dedup).
+
 **Abandoned:** Brand Statement Landing v3.0 (2026-05-10, 2 of 6 phases done) — archived at `.planning/milestones/v3.0-brand-statement-landing/`. Brand-spine philosophy retired.
 
 **Paused:** None
@@ -275,4 +277,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-24 — Started Landing v1 milestone (high-end animated SaaS landing, Linear/Raycast aesthetic + OpusClip conversion patterns)*
+*Last updated: 2026-05-24 — Phase 01 (foundation-scaffold) complete; /v3 placeholder route live*
