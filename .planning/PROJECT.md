@@ -8,38 +8,13 @@ A social media intelligence platform for TikTok creators. Helps creators predict
 
 AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
 
-## Current Milestone: Brand Statement Landing
+## Status: Between Milestones
 
-**Goal:** Ship a from-scratch landing page that codifies Virtuna's brand spine ("Your audience, simulated"), positions the product as a $100M+ venture statement piece, and locks the visual metaphor for the prediction engine across all future surfaces.
+**Most recently shipped:** Engine Foundation (v3.0.0, merged 2026-05-24 — merge commit `8c50635`). 13-phase backend rebuild: Qwen-only architecture, video segmentation, audio fingerprint, multi-persona simulation, benchmark retrieval. ENGINE_VERSION flipped 3.0.0-dev → 3.0.0.
 
-**Brand spine** (used everywhere — site, deck, social bios, manifesto):
-> **Your audience, simulated.**
+**Next:** Intelligence Surface — scope TBD via `/gsd-new-milestone`. Working theme: surface the new engine to users (in-app prediction viz, results UX, History, profile-gated submit). Detail to be locked at milestone start.
 
-**Hero treatment** (locked):
-- Pre-headline: `VIRTUNA · A NUMEN MACHINES PRODUCT`
-- H1: *"Predict how your audience will respond. Before you post."*
-- Sub-headline: *"Virtuna simulates your audience to forecast every video before it ships."*
-- Subline: *"Trained on decades of behavioral research. Self-improving with every outcome."*
-- CTAs: `[ Run a prediction → ]` `[ See the science ]`
-
-**Reference set** (primary): Anthropic + Linear + Raycast + Vercel.
-
-**Narrative arc** (7 viewports, single-page):
-1. Above-fold — brand stance + behavioral-simulation hero
-2. Try it — live "paste TikTok URL → see prediction" demo (placeholder viz acceptable)
-3. How it works — engine-pipeline diagram (Linear/Vercel-style)
-4. Three Surfaces — bento (Prediction · Competitor Intelligence · Brand Deals)
-5. The Science — behavioral-research moat, citation chips, dataset stats
-6. Social proof / metrics — creator quotes + accuracy + platform stats
-7. Pricing + final CTA — two-tier (Starter/Pro), Numen Machines lockup in footer
-
-**Approach:** Built from scratch on shadcn + Tailwind v4 + existing 36-component design system. Selective imports from Magic UI / Aceternity / Origin UI / Cult UI vetted to feel native to Raycast aesthetic. No template lock-in.
-
-**Audience strategy:** Single page serves three audiences — TikTok creators (primary conversion), broader short-form creators (Reels/Shorts), investors/press/partners (brand impression). Sectioned narrative serves all without splitting.
-
-**Out of scope this milestone:** in-app prediction-viz rebuild (visual metaphor locked here, implementation deferred); separate /about, /research, /manifesto pages (CTAs may stub them).
-
-**Vocab guardrails:** Avoid "viral" and "AI" in H1 / brand spine. Lead with audience + behavioral + simulated language.
+**Abandoned in this gap (see MILESTONES.md):** Brand Statement Landing (2026-05-11), Landing Page Redesign (2026-05-24), Linear Landing Clone (2026-05-24). Landing surface deferred until Intelligence Surface settles the product story.
 
 ## Requirements
 
@@ -93,21 +68,16 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - 203+ Vitest tests, >80% coverage on all engine modules -- Backend Reliability
 - Hardened failure modes: calibration parsing, dual-LLM graceful degradation, circuit breaker mutex, creator profile trigger -- Backend Reliability
 
-### Active (Brand Statement Landing milestone)
+### Active
 
-- [ ] New landing page built from scratch with shadcn + Tailwind v4 + existing 36-component design system; selective Magic UI / Aceternity / Origin UI / Cult UI imports vetted for Raycast-native feel
-- [ ] Hero (above-fold) with brand-stance H1 + behavioral-simulation visual + dual CTA
-- [ ] Live "paste TikTok URL → see prediction" demo (viewport 2) — placeholder/abstract viz acceptable
-- [ ] "How it works" engine-pipeline diagram (viewport 3) — Linear/Vercel-style with subtle motion
-- [ ] Bento "Three Surfaces" section (Prediction · Competitor Intelligence · Brand Deals) — viewport 4
-- [ ] "The Science" section (lab-coded behavioral-research moat with citation chips and dataset stats) — viewport 5
-- [ ] Social proof / metrics section (creator quotes, accuracy stats if shippable, platform metrics) — viewport 6
-- [ ] Pricing + final CTA (two-tier Starter/Pro, Numen Machines lockup in footer) — viewport 7
-- [ ] Brand-spine system codified ("Your audience, simulated." propagated across deck cover, social bios, future surfaces) — voice & language doc
-- [ ] Visual metaphor locked for prediction (behavioral simulation + engine pipeline as paired concepts) — defines future in-app viz direction
-- [ ] Reference-set fidelity audit (Anthropic + Linear + Raycast + Vercel) — landing reads at $100M+ venture quality bar
-- [ ] Mobile responsive across all 7 viewports — single-column stack, hero hierarchy preserved
-- [ ] Replace plagiarized Artificial Societies copy across all surfaces — every customer-facing word original
+<!-- No milestone in flight. Active items will be populated when Intelligence Surface scope is locked. -->
+
+### Deferred (from abandoned landing milestones)
+
+- [ ] Landing page rebuild — brand spine + 7-viewport narrative arc (carried from Brand Statement Landing). Deferred until product story settles via Intelligence Surface.
+- [ ] Brand-spine codification ("Your audience, simulated.") across deck, social bios, future surfaces
+- [ ] Visual metaphor lock for prediction (behavioral simulation + engine pipeline)
+- [ ] Replace plagiarized Artificial Societies copy across all customer-facing surfaces
 
 ### Backlog (deferred from prior milestones)
 
@@ -217,15 +187,16 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 ## Current State
 
-**Shipped:** UI Dashboard (2026-03-18), Prediction Engine Integration (2026-02-27), Backend Reliability (2026-02-18), Prediction Engine v2 (2026-02-17), Competitors Tool (2026-02-17), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
+**Shipped:** Engine Foundation v3.0.0 (2026-05-24), UI Dashboard (2026-03-18), Prediction Engine Integration (2026-02-27), Backend Reliability (2026-02-18), Prediction Engine v2 (2026-02-17), Competitors Tool (2026-02-17), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
-**Current milestone:** Brand Statement Landing — landing-page rebuild from scratch + brand-spine codification (started 2026-05-10)
+**Current milestone:** None — between milestones. Next up: Intelligence Surface (scope TBD).
 
-**Paused:** None (`milestone/landing-page` branch officially abandoned in favor of fresh start)
+**Abandoned (2026-05):** Brand Statement Landing, Landing Page Redesign, Linear Landing Clone — all worktrees retained on disk for reference; see MILESTONES.md.
 
 **Future milestones:**
-- In-app prediction viz rebuild (uses visual metaphor locked in Brand Statement Landing)
-- /about, /research, /manifesto supporting pages (extend brand spine)
+- Intelligence Surface — surface new engine to users (in-app prediction viz, results UX, profile-gated submit)
+- Landing rebuild — deferred until Intelligence Surface settles product story
+- /about, /research, /manifesto supporting pages
 - External brand deals marketplace
 - Competitor search/discovery by name or niche
 
@@ -247,4 +218,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-10 — Started Brand Statement Landing milestone (landing-page rebuild + brand-spine codification)*
+*Last updated: 2026-05-24 — Engine Foundation v3.0.0 merged to main; between milestones; next up Intelligence Surface (scope TBD)*

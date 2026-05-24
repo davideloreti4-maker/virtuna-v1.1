@@ -1,72 +1,33 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.0
-milestone_name: milestone
-status: ready_to_plan
-stopped_at: Phase 2 context gathered
-last_updated: "2026-05-10T21:40:46.494Z"
-last_activity: 2026-05-10 -- Phase 02 marked complete
+milestone: null
+milestone_name: null
+status: between_milestones
+stopped_at: Engine Foundation v3.0.0 shipped 2026-05-24
+last_updated: "2026-05-24T00:00:00.000Z"
+last_activity: 2026-05-24 -- Engine Foundation merged to main (merge commit 8c50635), ENGINE_VERSION 3.0.0
 progress:
-  total_phases: 6
-  completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
-  percent: 33
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-10)
-
-**Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
-**Current focus:** Phase 02 — foundation-hero
+See: .planning/PROJECT.md
 
 ## Current Position
 
-Phase: 3
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-10
+No active milestone on main. Engine Foundation (v3.0.0) was merged to main on 2026-05-24 via merge commit `8c50635`.
 
-Progress: [░░░░░░░░░░] 0%
+Recent abandonments (2026-05): Brand Statement Landing, Landing Page Redesign, Linear Landing Clone — see MILESTONES.md.
 
-## Performance Metrics
-
-**Velocity:**
-
-- Total plans completed: 4
-- Average duration: —
-- Total execution time: 0 hours
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 02 | 4 | - | - |
-
-## Accumulated Context
-
-### Decisions
-
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- Milestone start: Fresh page from scratch — `milestone/landing-page` branch officially abandoned
-- Phase 1: BRAND-06 requires copy sign-off by Davide before Phase 2 build starts
-- Phase 1: VIZ-04 requires implementation technology decision (canvas/SVG/WebGL/framer-motion) with < 50KB JS budget
-
-### Pending Todos
-
-None yet.
-
-### Blockers/Concerns
-
-None yet — roadmap complete, Phase 1 ready to plan.
+Next: Intelligence Surface — surface the new engine to users. Scope to be locked via `/gsd-new-milestone "Intelligence Surface"` in a fresh worktree.
 
 ## Session Continuity
 
-Last session: 2026-05-10T20:13:27.625Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-foundation-hero/02-CONTEXT.md
+Resume file: none — start the new milestone with `/gsd-new-milestone "Intelligence Surface"` in a new worktree.
