@@ -8,38 +8,44 @@ A social media intelligence platform for TikTok creators. Helps creators predict
 
 AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
 
-## Current Milestone: Brand Statement Landing
+## Current Milestone: Landing v1
 
-**Goal:** Ship a from-scratch landing page that codifies Virtuna's brand spine ("Your audience, simulated"), positions the product as a $100M+ venture statement piece, and locks the visual metaphor for the prediction engine across all future surfaces.
+**Goal:** Ship a high-end SaaS-style animated landing page that converts TikTok creators AND impresses investors. Linear/Raycast-anchored aesthetic with OpusClip-grade conversion copy patterns. Replaces live landing page at root when shipped.
 
-**Brand spine** (used everywhere — site, deck, social bios, manifesto):
-> **Your audience, simulated.**
+**Reference set:** Linear + Raycast (visual/structural anchor) · OpusClip (copy + conversion patterns, no aesthetic adoption).
 
-**Hero treatment** (locked):
-- Pre-headline: `VIRTUNA · A NUMEN MACHINES PRODUCT`
-- H1: *"Predict how your audience will respond. Before you post."*
-- Sub-headline: *"Virtuna simulates your audience to forecast every video before it ships."*
-- Subline: *"Trained on decades of behavioral research. Self-improving with every outcome."*
-- CTAs: `[ Run a prediction → ]` `[ See the science ]`
+**Audience strategy:** Single page converts creators (Starter/Pro signup) AND impresses investors (vision/science/trust). Equal priority — above-fold trust + below-fold demo serves both.
 
-**Reference set** (primary): Anthropic + Linear + Raycast + Vercel.
+**Page structure (medium scroll, 7-8 sections):**
+1. Hero (above-fold) — bold H1, brand stance, dual CTA
+2. Interactive demo — user picks from 3-4 sample TikToks, scripted animated insight reveal (no real backend)
+3. How it works — engine pipeline / data-flow (Linear-style diagram)
+4. Three Surfaces bento — Prediction · Competitor Intelligence · Brand Deals
+5. The Science — behavioral research moat, citation chips, dataset stats
+6. Social proof stack — creator testimonials + product metrics (real or projected) + Numen Machines/partner logos
+7. Pricing — full Starter/Pro table on-page
+8. Final CTA + footer
 
-**Narrative arc** (7 viewports, single-page):
-1. Above-fold — brand stance + behavioral-simulation hero
-2. Try it — live "paste TikTok URL → see prediction" demo (placeholder viz acceptable)
-3. How it works — engine-pipeline diagram (Linear/Vercel-style)
-4. Three Surfaces — bento (Prediction · Competitor Intelligence · Brand Deals)
-5. The Science — behavioral-research moat, citation chips, dataset stats
-6. Social proof / metrics — creator quotes + accuracy + platform stats
-7. Pricing + final CTA — two-tier (Starter/Pro), Numen Machines lockup in footer
+**Stack additions (animation):**
+- Magic UI (animated component library)
+- Framer Motion / motion.dev (custom motion choreography)
+- Aceternity UI (Linear/Raycast-aesthetic animated components)
+- shadcn (already installed)
+- Palette (pull in only if a section justifies it): GSAP ScrollTrigger, R3F/Three.js, tsParticles, Cult UI
 
-**Approach:** Built from scratch on shadcn + Tailwind v4 + existing 36-component design system. Selective imports from Magic UI / Aceternity / Origin UI / Cult UI vetted to feel native to Raycast aesthetic. No template lock-in.
+**Demo strategy:** Scripted animated "insight reveal" — user picks from 3-4 sample TikToks, sees canned analysis play out (engine "thinking" → behavioral signals firing → confidence score emerging). No backend wiring.
 
-**Audience strategy:** Single page serves three audiences — TikTok creators (primary conversion), broader short-form creators (Reels/Shorts), investors/press/partners (brand impression). Sectioned narrative serves all without splitting.
+**Content placeholders:** Platform screenshots/videos use placeholder assets during build; swap to real product captures in follow-up milestone. Copy treated as iterable — no upfront brand-spine lock phase.
 
-**Out of scope this milestone:** in-app prediction-viz rebuild (visual metaphor locked here, implementation deferred); separate /about, /research, /manifesto pages (CTAs may stub them).
+**Trust signals (all in scope):** science/research moat · product metrics · creator testimonials · Numen Machines lockup + partner/PR logos.
 
-**Vocab guardrails:** Avoid "viral" and "AI" in H1 / brand spine. Lead with audience + behavioral + simulated language.
+**Out of scope this milestone:**
+- Real wired prediction demo (scripted only)
+- /about, /research, /manifesto supporting pages (CTAs may stub them)
+- Lottie/Rive animations (no animator pipeline)
+- Light mode
+
+**Note on prior attempt:** v3.0 Brand Statement Landing (started 2026-05-10) was abandoned 2 of 6 phases in. Brand spine "Your audience, simulated." is no longer load-bearing — copy is fully open for iteration during build. Archive at `.planning/milestones/v3.0-brand-statement-landing/`.
 
 ## Requirements
 
@@ -93,21 +99,22 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - 203+ Vitest tests, >80% coverage on all engine modules -- Backend Reliability
 - Hardened failure modes: calibration parsing, dual-LLM graceful degradation, circuit breaker mutex, creator profile trigger -- Backend Reliability
 
-### Active (Brand Statement Landing milestone)
+### Active (Landing v1 milestone)
 
-- [ ] New landing page built from scratch with shadcn + Tailwind v4 + existing 36-component design system; selective Magic UI / Aceternity / Origin UI / Cult UI imports vetted for Raycast-native feel
-- [ ] Hero (above-fold) with brand-stance H1 + behavioral-simulation visual + dual CTA
-- [ ] Live "paste TikTok URL → see prediction" demo (viewport 2) — placeholder/abstract viz acceptable
-- [ ] "How it works" engine-pipeline diagram (viewport 3) — Linear/Vercel-style with subtle motion
-- [ ] Bento "Three Surfaces" section (Prediction · Competitor Intelligence · Brand Deals) — viewport 4
-- [ ] "The Science" section (lab-coded behavioral-research moat with citation chips and dataset stats) — viewport 5
-- [ ] Social proof / metrics section (creator quotes, accuracy stats if shippable, platform metrics) — viewport 6
-- [ ] Pricing + final CTA (two-tier Starter/Pro, Numen Machines lockup in footer) — viewport 7
-- [ ] Brand-spine system codified ("Your audience, simulated." propagated across deck cover, social bios, future surfaces) — voice & language doc
-- [ ] Visual metaphor locked for prediction (behavioral simulation + engine pipeline as paired concepts) — defines future in-app viz direction
-- [ ] Reference-set fidelity audit (Anthropic + Linear + Raycast + Vercel) — landing reads at $100M+ venture quality bar
-- [ ] Mobile responsive across all 7 viewports — single-column stack, hero hierarchy preserved
-- [ ] Replace plagiarized Artificial Societies copy across all surfaces — every customer-facing word original
+<!-- REQ-IDs populated by REQUIREMENTS.md after this milestone's requirement-definition step. High-level scope below. -->
+
+- [ ] Hero (above-fold) — bold H1, brand stance, dual CTA, animated visual
+- [ ] Interactive demo (viewport 2) — user picks from 3-4 sample TikToks, scripted animated insight reveal
+- [ ] How it works (viewport 3) — engine pipeline diagram, Linear-style motion
+- [ ] Three Surfaces bento (viewport 4) — Prediction · Competitor Intelligence · Brand Deals
+- [ ] The Science (viewport 5) — behavioral-research moat, citation chips, dataset stats
+- [ ] Social proof (viewport 6) — creator testimonials + product metrics + Numen Machines/partner logos
+- [ ] Pricing (viewport 7) — full Starter/Pro table on-page
+- [ ] Final CTA + footer (viewport 8)
+- [ ] Stack additions installed and integrated (Magic UI + Framer Motion + Aceternity UI + shadcn core; GSAP/R3F/tsParticles/Cult UI on-demand)
+- [ ] Mobile responsive — single-column stack across all viewports
+- [ ] Reference-set fidelity bar met (Linear + Raycast aesthetic, OpusClip conversion patterns)
+- [ ] Launch: replace live landing page at root
 
 ### Backlog (deferred from prior milestones)
 
@@ -138,9 +145,11 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - Mobile native app -- web-first
 - TikTok OAuth -- manual @handle input sufficient for MVP
 - Sound design -- future polish
-- Reviving paused `milestone/landing-page` branch -- starting fresh per Brand Statement Landing milestone; old branch abandoned
-- "Viral" and "AI" in landing H1 / brand spine -- overused; weakens $100M+ venture positioning
-- Maximalist motion-template aesthetic (animated beams everywhere, neon glow) -- conflicts with Anthropic/Linear/Raycast vibe
+- Real wired prediction demo on landing -- scripted animated reveal only for Landing v1
+- /about, /research, /manifesto supporting pages -- CTAs may stub them, full pages deferred
+- Lottie/Rive animations -- no animator pipeline in place
+- Brand-spine "Your audience, simulated." as locked anchor -- v3.0 attempt abandoned, copy fully iterable in Landing v1
+- Reviving paused `milestone/landing-page` branch or `milestone/landing-page-redesign` -- starting fresh on `milestone/landing` worktree
 
 ## Context
 
@@ -219,15 +228,18 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 **Shipped:** UI Dashboard (2026-03-18), Prediction Engine Integration (2026-02-27), Backend Reliability (2026-02-18), Prediction Engine v2 (2026-02-17), Competitors Tool (2026-02-17), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
-**Current milestone:** Brand Statement Landing — landing-page rebuild from scratch + brand-spine codification (started 2026-05-10)
+**Current milestone:** Landing v1 — high-end animated SaaS landing page from scratch (started 2026-05-24)
 
-**Paused:** None (`milestone/landing-page` branch officially abandoned in favor of fresh start)
+**Abandoned:** Brand Statement Landing v3.0 (2026-05-10, 2 of 6 phases done) — archived at `.planning/milestones/v3.0-brand-statement-landing/`. Brand-spine philosophy retired.
+
+**Paused:** None
 
 **Future milestones:**
-- In-app prediction viz rebuild (uses visual metaphor locked in Brand Statement Landing)
-- /about, /research, /manifesto supporting pages (extend brand spine)
+- In-app prediction viz rebuild
+- /about, /research, /manifesto supporting pages
 - External brand deals marketplace
 - Competitor search/discovery by name or niche
+- Real wired prediction demo on landing (replace scripted reveal)
 
 ## Evolution
 
@@ -247,4 +259,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-10 — Started Brand Statement Landing milestone (landing-page rebuild + brand-spine codification)*
+*Last updated: 2026-05-24 — Started Landing v1 milestone (high-end animated SaaS landing, Linear/Raycast aesthetic + OpusClip conversion patterns)*
