@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motionTokens } from "@/app/(marketing)/motionTokens";
-import { WordRotate } from "@/components/ui/word-rotate";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
 import { AnimatedShinyText } from "@/components/ui/animated-shiny-text";
 import { CredibilityHook } from "@/app/(marketing)/_components/CredibilityHook";
@@ -60,6 +59,8 @@ export interface HeroBookendProps {
  *
  * WordRotate renders `motion.span` internally — no nested heading elements.
  */
+const ROTATING_WORDS = ["creators", "brands", "founders"] as const;
+
 export function HeroBookend({
   reducedHeight = false,
   headingAs = "h1",
@@ -68,7 +69,8 @@ export function HeroBookend({
 }: HeroBookendProps) {
   const prefersReduced = useReducedMotion() ?? false;
   const ref = useRef<HTMLDivElement>(null);
-  const [inView, setInView] = useState(false);
+  const [inView, setInView] = useState(true);
+  const [wordIdx, setWordIdx] = useState(0);
 
   useEffect(() => {
     const obs = new IntersectionObserver(
@@ -81,6 +83,15 @@ export function HeroBookend({
     if (ref.current) obs.observe(ref.current);
     return () => obs.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (!inView || prefersReduced) return;
+    const t = setInterval(
+      () => setWordIdx((i) => (i + 1) % ROTATING_WORDS.length),
+      2500
+    );
+    return () => clearInterval(t);
+  }, [inView, prefersReduced]);
 
   const HeadingTag = headingAs === "p" ? "p" : "h1";
   const headingProps =
@@ -144,25 +155,19 @@ export function HeroBookend({
           aria-label="Predict viral for creators, brands, and founders — before you post."
         >
           Predict viral for{" "}
-          <span
-            className="text-[#FF7F50]"
-            aria-live="off"
-            aria-atomic="true"
-          >
-            {inView && !prefersReduced ? (
-              <WordRotate
-                words={["creators", "brands", "founders"]}
-                duration={2500}
-                motionProps={{
-                  initial: { opacity: 0, y: -50 },
-                  animate: { opacity: 1, y: 0 },
-                  exit: { opacity: 0, y: 50 },
-                  transition: {
-                    duration: 0.4,
-                    ease: motionTokens.easings.outQuart,
-                  },
-                }}
-              />
+          <span className="text-[#FF7F50] inline-block" aria-live="off" aria-atomic="true">
+            {!prefersReduced ? (
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={wordIdx}
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  transition={{ duration: 0.3, ease: motionTokens.easings.outQuart }}
+                >
+                  {ROTATING_WORDS[wordIdx]}
+                </motion.span>
+              </AnimatePresence>
             ) : (
               <span>creators</span>
             )}
