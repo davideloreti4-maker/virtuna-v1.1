@@ -9,7 +9,6 @@ import { WordRotate } from "@/components/ui/word-rotate";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
 import { AnimatedShinyText } from "@/components/ui/animated-shiny-text";
 import { BorderBeam } from "@/components/ui/border-beam";
-import { Spotlight } from "@/components/ui/spotlight";
 
 export interface HeroBookendProps {
   /** Plan 03 sets `true` on the Final CTA instance to use min-h-[60vh] vs 100dvh (D-08 height difference) */
@@ -88,23 +87,16 @@ export function HeroBookend({
         className
       )}
     >
-      {/* Spotlight — absolutely positioned behind content (HERO-04, MOTION-03) */}
-      {/* Solid coral fill — SVG ellipse has fillOpacity="0.21" which controls the glow intensity */}
-      <div
-        aria-hidden="true"
-        className={cn(
-          "pointer-events-none absolute inset-0 overflow-hidden",
-          prefersReduced ? "motion-reduce:animate-none" : ""
-        )}
-      >
-        <Spotlight
-          fill="#FF7F50"
-          className={cn(
-            "absolute -top-40 right-0 md:-top-20 md:-right-10",
-            prefersReduced ? "opacity-100 animate-none" : ""
-          )}
+      {/* Ambient coral glow — centered radial gradient from top edge (HERO-04) */}
+      {!prefersReduced && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background: "radial-gradient(ellipse 75% 50% at 50% -5%, rgba(255,127,80,0.22) 0%, transparent 65%)",
+          }}
         />
-      </div>
+      )}
 
       {/* Inner content stack: badge → H1 (HeadingTag) → sub → gap → CTA pair */}
       <div className="relative z-10 max-w-7xl mx-auto flex flex-col items-center text-center gap-4">
@@ -143,7 +135,7 @@ export function HeroBookend({
         >
           Predict viral for{" "}
           <span
-            className="inline-flex justify-center min-w-[180px] md:min-w-[290px]"
+            className="text-[#FF7F50]"
             aria-live="off"
             aria-atomic="true"
           >
@@ -200,15 +192,6 @@ export function HeroBookend({
             borderRadius="8px"
           >
             <span className="relative z-10">Score your first TikTok</span>
-            {!prefersReduced && (
-              <BorderBeam
-                size={60}
-                duration={6}
-                borderWidth={1}
-                colorFrom="rgba(255, 127, 80, 0.8)"
-                colorTo="rgba(255, 127, 80, 0)"
-              />
-            )}
           </ShimmerButton>
 
           {/* Secondary CTA — ghost link */}
