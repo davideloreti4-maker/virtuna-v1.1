@@ -47,6 +47,35 @@ async function processSoundEmbedding(
   row: { sound_name: string; sound_url: string | null },
   alreadyEmbedded?: Set<string>,
 ): Promise<void> {
+  // IN-03 (VERIF-04 / T-06-13): SSRF guard before any fetch(sound_url).
+  // Permissive by design — any public HTTPS hostname is allowed (users test
+  // against TikTok CDN, IG, camera-roll exports, custom URLs). The guard
+  // only rejects non-HTTPS schemes and private / loopback / link-local IPs.
+  // On violation: log.warn + bare return (non-fatal — cron continues).
+  if (row.sound_url) {
+    let hostname: string;
+    try {
+      hostname = new URL(row.sound_url).hostname;
+    } catch {
+      log.warn("sound_url SSRF guard rejected — invalid URL", { sound_url: row.sound_url });
+      return;
+    }
+    const isPrivate =
+      /^localhost$/i.test(hostname) ||
+      /^127\.\d+\.\d+\.\d+$/.test(hostname) ||
+      /^10\.\d+\.\d+\.\d+$/.test(hostname) ||
+      /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/.test(hostname) ||
+      /^192\.168\.\d+\.\d+$/.test(hostname) ||
+      /^169\.254\.\d+\.\d+$/.test(hostname) ||
+      /^::1$/.test(hostname) ||
+      /^f[cd][0-9a-f]{2}:/i.test(hostname);
+    const isHttps = row.sound_url.startsWith("https://");
+    if (!isHttps || isPrivate) {
+      log.warn("sound_url SSRF guard rejected", { sound_url: row.sound_url });
+      return;
+    }
+  }
+
   // DEFERRED to M2: audio embedding pipeline disabled. Supabase + row params kept for signature compat.
   void supabase; void row; void alreadyEmbedded;
 }
