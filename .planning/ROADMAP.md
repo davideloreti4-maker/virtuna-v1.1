@@ -19,7 +19,7 @@ Ship a high-end SaaS-style animated landing page (Linear/Raycast aesthetic + Opu
 
 - [ ] **Phase 1: Foundation + Scaffold** — `/v3` route renders placeholder sections, framer-motion alias locked, MotionConfig root, layout bug fixed, sitemap/robots added
 - [x] **Phase 2: Hero Shell + Final CTA Bookend + Vision** — H1 + WordRotate + dual CTA + Spotlight + ShimmerButton render above-fold, Final CTA mirrors Hero, Vision beat shipped (completed 2026-05-25)
-- [ ] **Phase 3: Above-Fold Credibility Hook** — Thin logo bar (Numen Machines + placeholder partner slots) + "Backed by..." microcopy visible below CTAs without scroll; hero background deferred to future milestone
+- [x] **Phase 3: Above-Fold Credibility Hook** — Thin logo bar (Numen Machines + placeholder partner slots) + "Backed by..." microcopy visible below CTAs without scroll; hero background deferred to future milestone (completed 2026-05-25)
 - [ ] **Phase 4: Interactive Demo** — User picks sample TikTok, sees scripted 4-stage loader and animated insight reveal, cursor-following effect during result
 - [ ] **Phase 5: How It Works Pipeline** — AnimatedBeam horizontal pipeline (desktop) / TracingBeam vertical (mobile) one-shot animation on viewport entry
 - [ ] **Phase 6: Three Surfaces Bento + Dashboard Reveal** — Asymmetric BentoGrid renders Prediction + Competitor Intelligence + Brand Deals with live animated backgrounds; MacbookScroll dashboard reveal follows
@@ -78,7 +78,7 @@ Ship a high-end SaaS-style animated landing page (Linear/Raycast aesthetic + Opu
   2. Screen reader announces credibility hook in reading order (H1 → microcopy → CTAs → credibility hook)
   3. Hero section background remains as-is from Phase 2 (dark solid); no hero visual element added in this phase — deferred to future milestone
 **Plans**: 1 plan
-  - [ ] 03-01-PLAN.md — CredibilityHook server component + HeroBookend wiring (HERO-10)
+  - [x] 03-01-PLAN.md — CredibilityHook server component + HeroBookend wiring (HERO-10)
 **Content gates**: None (partner logos may be placeholder)
 **Research flag**: SKIP
 **UI hint**: yes
@@ -211,7 +211,7 @@ Phases 4-9 are parallelizable after Phase 2 ships shared Hero primitives (Spotli
 |-------|----------------|--------|-----------|
 | 1. Foundation + Scaffold | 0/5 | Planned | - |
 | 2. Hero Shell + Final CTA Bookend + Vision | 3/3 | Complete   | 2026-05-25 |
-| 3. Above-Fold Credibility Hook | 0/1 | Planned | - |
+| 3. Above-Fold Credibility Hook | 1/1 | Complete   | 2026-05-25 |
 | 4. Interactive Demo | 0/TBD | Not started | - |
 | 5. How It Works Pipeline | 0/TBD | Not started | - |
 | 6. Three Surfaces Bento + Dashboard Reveal | 0/TBD | Not started | - |

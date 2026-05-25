@@ -38,7 +38,7 @@
 - [x] **HERO-07**: Hero respects `prefers-reduced-motion`: button shimmer disabled, no autoplay animations outside viewport
 - [x] **HERO-08**: Hero uses `100dvh` (not `100vh`) for full-viewport height — iOS Safari address bar fix
 - [x] **HERO-09**: H1 features a typography reveal — Magic UI `WordRotate` or `FlipWords` cycles a single word position through audience targets (e.g. "creators / brands / agencies") demonstrating multi-audience positioning. Reduced-motion variant uses static text
-- [ ] **HERO-10**: Above-fold credibility hook below CTAs — thin logo bar (Numen Machines lockup + 4-5 partner/early-backer slots, placeholder allowed) + "Backed by [behavioral research / Numen Machines]" microcopy. Visible without scroll on 1440px desktop and 375px mobile
+- [x] **HERO-10**: Above-fold credibility hook below CTAs — thin logo bar (Numen Machines lockup + 4-5 partner/early-backer slots, placeholder allowed) + "Backed by [behavioral research / Numen Machines]" microcopy. Visible without scroll on 1440px desktop and 375px mobile
 - [x] **HERO-11**: Reading order verified — H1 → microcopy → CTAs → credibility hook. Screen reader announces content in visual order
 
 ### Interactive Demo (DEMO)
