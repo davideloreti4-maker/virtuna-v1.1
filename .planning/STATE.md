@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: engine-hardening
 milestone_name: Engine Hardening
-status: executing
-stopped_at: Phase 18 complete — all 4 plans done
-last_updated: "2026-05-25T11:15:00.000Z"
-last_activity: 2026-05-25 -- Phase 18 complete (VERIF-04 all 5 sub-items closed; VERIF-01/02/03 deferred permanently — no prod deploy)
+status: Awaiting next milestone
+stopped_at: Phase 18 context gathered
+last_updated: "2026-05-25T09:20:23.483Z"
+last_activity: 2026-05-25 — Milestone v3.1 completed and archived
 progress:
   total_phases: 5
   completed_phases: 2
@@ -26,17 +26,10 @@ See: .planning/MILESTONE.md (immutable worktree identity)
 
 ## Current Position
 
-Milestone: Engine Hardening (M2-1b of Intelligence Surface drop)
-Phase: 17 (smoke-runner-live-billing-wiring) — **COMPLETE 2026-05-25**
-Plan: closed inline (no separate plan needed — single 10-line rename)
-Status: Ready to execute
-Last activity: 2026-05-25 -- Phase 18 planning complete
-
-Progress: [██████░░░░] 60%
-
-**Phase range this milestone:** 14-18 (continues from M1 Engine Foundation's Phase 13)
-
-**Parallelization shape:** Phases 14, 15, 16, 17 fork in parallel from the milestone branch base. Phase 18 sequences last (depends on 14-17 landing + live-deploy state).
+Phase: Milestone v3.1 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-05-25 — Milestone v3.1 completed and archived
 
 ## Performance Metrics
 
@@ -110,3 +103,7 @@ Items carried forward from M1 Engine Foundation close (now the active scope of t
 Last session: 2026-05-25T08:50:59.853Z
 Stopped at: Phase 18 context gathered
 Resume file: None
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone
