@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: engine-hardening
 milestone_name: Engine Hardening
-status: completed
+status: executing
 stopped_at: Phase 18 context gathered
-last_updated: "2026-05-25T08:23:44.158Z"
-last_activity: "2026-05-25 -- Phase 17 closed: renamed `cost_cents` → `cost_cents_estimated` in smoke runner output schema. CALIB-04 closed. Phase 18 (VERIF debt closure) is next."
+last_updated: "2026-05-25T08:38:51.752Z"
+last_activity: 2026-05-25 -- Phase 18 planning complete
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 6
+  total_plans: 10
   completed_plans: 3
-  percent: 50
+  percent: 30
 ---
 
 # Project State
@@ -29,8 +29,8 @@ See: .planning/MILESTONE.md (immutable worktree identity)
 Milestone: Engine Hardening (M2-1b of Intelligence Surface drop)
 Phase: 17 (smoke-runner-live-billing-wiring) — **COMPLETE 2026-05-25**
 Plan: closed inline (no separate plan needed — single 10-line rename)
-Status: Idle — Phase 17 done; ready to start Phase 18
-Last activity: 2026-05-25 -- Phase 17 closed: renamed `cost_cents` → `cost_cents_estimated` in smoke runner output schema. CALIB-04 closed. Phase 18 (VERIF debt closure) is next.
+Status: Ready to execute
+Last activity: 2026-05-25 -- Phase 18 planning complete
 
 Progress: [██░░░░░░░░] 40% (2/5 phases complete)
 
