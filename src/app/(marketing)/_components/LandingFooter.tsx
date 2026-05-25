@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Twitter, Linkedin, Music, Instagram } from "lucide-react";
+import { Twitter, Linkedin, Instagram } from "lucide-react";
 import type { JSX } from "react";
 
 /**
@@ -193,7 +193,9 @@ export function LandingFooter(): JSX.Element {
                   className="flex h-11 w-11 items-center justify-center text-foreground-muted hover:text-foreground transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                   style={{ outlineColor: "#FF7F50" }}
                 >
-                  <Music className="w-[18px] h-[18px]" aria-hidden="true" />
+                  <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="currentColor" aria-hidden="true">
+                    <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V9.19a8.16 8.16 0 004.77 1.52V7.27a4.85 4.85 0 01-1-.58z"/>
+                  </svg>
                 </a>
                 <a
                   href="https://instagram.com/virtuna"
