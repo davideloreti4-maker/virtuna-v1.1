@@ -18,7 +18,7 @@ Ship a high-end SaaS-style animated landing page (Linear/Raycast aesthetic + Opu
 - Decimal phases (e.g., 2.1): reserved for urgent insertions via `/gsd-insert-phase`
 
 - [ ] **Phase 1: Foundation + Scaffold** — `/v3` route renders placeholder sections, framer-motion alias locked, MotionConfig root, layout bug fixed, sitemap/robots added
-- [ ] **Phase 2: Hero Shell + Final CTA Bookend + Vision** — H1 + WordRotate + dual CTA + Spotlight + ShimmerButton render above-fold, Final CTA mirrors Hero, Vision beat shipped
+- [x] **Phase 2: Hero Shell + Final CTA Bookend + Vision** — H1 + WordRotate + dual CTA + Spotlight + ShimmerButton render above-fold, Final CTA mirrors Hero, Vision beat shipped (completed 2026-05-25)
 - [ ] **Phase 3: Hero Spline Scene + Above-Fold Credibility Hook** — Spline 3D scene lazy-loads with poster fallback, thin logo bar + "backed by" microcopy visible without scroll
 - [ ] **Phase 4: Interactive Demo** — User picks sample TikTok, sees scripted 4-stage loader and animated insight reveal, cursor-following effect during result
 - [ ] **Phase 5: How It Works Pipeline** — AnimatedBeam horizontal pipeline (desktop) / TracingBeam vertical (mobile) one-shot animation on viewport entry
@@ -64,7 +64,7 @@ Ship a high-end SaaS-style animated landing page (Linear/Raycast aesthetic + Opu
 **Plans**: 3 plans across 2 waves
   - [x] 02-01-PLAN.md — Install Magic UI primitives (WordRotate, ShimmerButton, AnimatedShinyText, BorderBeam) + Aceternity Spotlight; build shared HeroBookend client component with reduced-motion + IntersectionObserver gates
   - [x] 02-02-PLAN.md — VisionBeat server component (founder quote in GlassPanel) + LandingFooter (4-column + Sign-in + Numen Machines strip) + /privacy + /terms stub routes + sitemap.ts extension
-  - [ ] 02-03-PLAN.md — HeroSection + FinalCtaSection wrappers; rewire v3/page.tsx (replace Hero + Final CTA SectionShells, insert VisionBeat)
+  - [x] 02-03-PLAN.md — HeroSection + FinalCtaSection wrappers; rewire v3/page.tsx (replace Hero + Final CTA SectionShells, insert VisionBeat)
 **Content gates**: None (copy iterable in-phase; coral-tinted Spotlight uses single-stop alpha gradient — no multi-hue)
 **Research flag**: SKIP
 **UI hint**: yes
@@ -210,7 +210,7 @@ Phases 4-9 are parallelizable after Phase 2 ships shared Hero primitives (Spotli
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation + Scaffold | 0/5 | Planned | - |
-| 2. Hero Shell + Final CTA Bookend + Vision | 2/3 | In Progress|  |
+| 2. Hero Shell + Final CTA Bookend + Vision | 3/3 | Complete   | 2026-05-25 |
 | 3. Hero Spline Scene + Above-Fold Credibility Hook | 0/TBD | Not started | - |
 | 4. Interactive Demo | 0/TBD | Not started | - |
 | 5. How It Works Pipeline | 0/TBD | Not started | - |
