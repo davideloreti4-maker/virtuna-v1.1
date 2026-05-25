@@ -8,7 +8,7 @@ import { motionTokens } from "@/app/(marketing)/motionTokens";
 import { WordRotate } from "@/components/ui/word-rotate";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
 import { AnimatedShinyText } from "@/components/ui/animated-shiny-text";
-import { BorderBeam } from "@/components/ui/border-beam";
+import { CredibilityHook } from "@/app/(marketing)/_components/CredibilityHook";
 
 export interface HeroBookendProps {
   /** Plan 03 sets `true` on the Final CTA instance to use min-h-[60vh] vs 100dvh (D-08 height difference) */
@@ -32,7 +32,7 @@ export interface HeroBookendProps {
  * HeroBookend — shared inner layout used verbatim by both HeroSection and FinalCtaSection (D-08).
  *
  * Contains: Spotlight + AnimatedShinyText badge + H1 with fused WordRotate + sub-headline +
- * Phase 3 placeholder gap + dual CTA pair (ShimmerButton + ghost link).
+ * CredibilityHook (HERO-10) + dual CTA pair (ShimmerButton + ghost link).
  *
  * Motion gating (MOTION-01, MOTION-02, MOTION-03):
  * - useReducedMotion() gates: WordRotate → static "creators", BorderBeam → null,
@@ -168,9 +168,9 @@ export function HeroBookend({
           Stop guessing what&apos;ll hit. Score, refine, ship — in 30 seconds.
         </p>
 
-        {/* Phase 3 placeholder gap — reserves 64px desktop space for logo bar (Phase 3, HERO-10) */}
-        {/* Collapses to 0 on mobile per UI-SPEC § Above-Fold Geometry Contract */}
-        <div className="hidden md:block min-h-[64px]" aria-hidden="true" />
+        {/* HERO-10: Above-fold credibility hook — replaces placeholder gap (Phase 3) */}
+        {/* Server component inserted inside client HeroBookend — valid in Next.js App Router */}
+        <CredibilityHook />
 
         {/* Dual CTA pair (HERO-03, HERO-06, HERO-07, MOTION-01) */}
         <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-6 w-full sm:w-auto">
