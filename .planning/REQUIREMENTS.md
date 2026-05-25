@@ -30,16 +30,16 @@
 ### Hero (HERO)
 
 - [ ] **HERO-01**: User sees H1 + sub-headline + dual CTA above-fold on desktop (1440px) and mobile (375px), no scroll required for headline
-- [ ] **HERO-02**: H1 follows OpusClip-style outcome-pattern ("AI that…" or equivalent verb-first promise) — final copy iterable, position locked
-- [ ] **HERO-03**: Primary CTA links to demo section anchor (`#demo`) or sign-up flow (configurable); secondary CTA links to pricing anchor (`#pricing`)
-- [ ] **HERO-04**: Aceternity `Spotlight` ambient backdrop renders with coral-tinted single-stop alpha gradient (no multi-hue) — coral brand color preserved
+- [x] **HERO-02**: H1 follows OpusClip-style outcome-pattern ("AI that…" or equivalent verb-first promise) — final copy iterable, position locked
+- [x] **HERO-03**: Primary CTA links to demo section anchor (`#demo`) or sign-up flow (configurable); secondary CTA links to pricing anchor (`#pricing`)
+- [x] **HERO-04**: Aceternity `Spotlight` ambient backdrop renders with coral-tinted single-stop alpha gradient (no multi-hue) — coral brand color preserved
 - [ ] **HERO-05**: Spline 3D hero scene loaded lazily via `dynamic({ ssr: false })` + IntersectionObserver gate; static fallback poster image rendered for LCP and reduced-motion
-- [ ] **HERO-06**: Magic UI `ShimmerButton` + `AnimatedShinyText` + `BorderBeam` shared with Final CTA — bookend pattern locked
-- [ ] **HERO-07**: Hero respects `prefers-reduced-motion`: Spline scene skipped, static poster shown, button shimmer disabled
+- [x] **HERO-06**: Magic UI `ShimmerButton` + `AnimatedShinyText` + `BorderBeam` shared with Final CTA — bookend pattern locked
+- [x] **HERO-07**: Hero respects `prefers-reduced-motion`: Spline scene skipped, static poster shown, button shimmer disabled
 - [ ] **HERO-08**: Hero uses `100dvh` (not `100vh`) for full-viewport height — iOS Safari address bar fix
-- [ ] **HERO-09**: H1 features a typography reveal — Magic UI `WordRotate` or `FlipWords` cycles a single word position through audience targets (e.g. "creators / brands / agencies") demonstrating multi-audience positioning. Reduced-motion variant uses static text
+- [x] **HERO-09**: H1 features a typography reveal — Magic UI `WordRotate` or `FlipWords` cycles a single word position through audience targets (e.g. "creators / brands / agencies") demonstrating multi-audience positioning. Reduced-motion variant uses static text
 - [ ] **HERO-10**: Above-fold credibility hook between H1 and Spline scene — thin logo bar (Numen Machines lockup + 4-5 partner/early-backer slots, placeholder allowed) + "Backed by [behavioral research / Numen Machines]" microcopy. Visible without scroll on 1440px desktop and 375px mobile
-- [ ] **HERO-11**: Reading order verified — H1 → microcopy → CTAs → Spline scene. Screen reader announces credibility hook before visual loads
+- [x] **HERO-11**: Reading order verified — H1 → microcopy → CTAs → Spline scene. Screen reader announces credibility hook before visual loads
 
 ### Interactive Demo (DEMO)
 
@@ -134,9 +134,9 @@
 
 ### Cross-Cutting Motion Policy (MOTION)
 
-- [ ] **MOTION-01**: All sections honor `prefers-reduced-motion` via `MotionConfig reducedMotion="user"` root + per-section verification of Aceternity components (which do not honor it natively)
-- [ ] **MOTION-02**: No animation autoplays without user reaching viewport (IntersectionObserver gate or `whileInView`)
-- [ ] **MOTION-03**: Coral (#FF7F50) used in motion only as single-stop alpha gradient — never multi-hue
+- [x] **MOTION-01**: All sections honor `prefers-reduced-motion` via `MotionConfig reducedMotion="user"` root + per-section verification of Aceternity components (which do not honor it natively)
+- [x] **MOTION-02**: No animation autoplays without user reaching viewport (IntersectionObserver gate or `whileInView`)
+- [x] **MOTION-03**: Coral (#FF7F50) used in motion only as single-stop alpha gradient — never multi-hue
 - [ ] **MOTION-04**: All `backdrop-filter` and `mask-image` usages applied via inline `style={}` to bypass Lightning CSS stripping — verified on Vercel preview
 - [ ] **MOTION-05**: All `oklch()` colors with L < 0.15 replaced with hex equivalents in `@theme inline` block — Tailwind v4 compilation accuracy
 
