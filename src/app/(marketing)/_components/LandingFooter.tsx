@@ -20,7 +20,7 @@ export function LandingFooter(): JSX.Element {
   const columnHeaderStyle = { letterSpacing: "0.08em" };
 
   const activeLinkClass =
-    "text-sm text-foreground-secondary hover:text-foreground transition-colors focus-visible:outline focus-visible:outline-2";
+    "text-sm text-foreground-secondary hover:text-foreground transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
   const activeLinkStyle = {
     lineHeight: 1.75,
     outlineColor: "#FF7F50",
@@ -170,7 +170,7 @@ export function LandingFooter(): JSX.Element {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Follow Virtuna on X"
-                  className="flex h-11 w-11 items-center justify-center text-foreground-muted hover:text-foreground transition-colors focus-visible:outline focus-visible:outline-2"
+                  className="flex h-11 w-11 items-center justify-center text-foreground-muted hover:text-foreground transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                   style={{ outlineColor: "#FF7F50" }}
                 >
                   <Twitter className="w-[18px] h-[18px]" aria-hidden="true" />
@@ -180,7 +180,7 @@ export function LandingFooter(): JSX.Element {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Follow Virtuna on LinkedIn"
-                  className="flex h-11 w-11 items-center justify-center text-foreground-muted hover:text-foreground transition-colors focus-visible:outline focus-visible:outline-2"
+                  className="flex h-11 w-11 items-center justify-center text-foreground-muted hover:text-foreground transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                   style={{ outlineColor: "#FF7F50" }}
                 >
                   <Linkedin className="w-[18px] h-[18px]" aria-hidden="true" />
@@ -190,7 +190,7 @@ export function LandingFooter(): JSX.Element {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Follow Virtuna on TikTok"
-                  className="flex h-11 w-11 items-center justify-center text-foreground-muted hover:text-foreground transition-colors focus-visible:outline focus-visible:outline-2"
+                  className="flex h-11 w-11 items-center justify-center text-foreground-muted hover:text-foreground transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                   style={{ outlineColor: "#FF7F50" }}
                 >
                   <Music className="w-[18px] h-[18px]" aria-hidden="true" />
@@ -200,7 +200,7 @@ export function LandingFooter(): JSX.Element {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Follow Virtuna on Instagram"
-                  className="flex h-11 w-11 items-center justify-center text-foreground-muted hover:text-foreground transition-colors focus-visible:outline focus-visible:outline-2"
+                  className="flex h-11 w-11 items-center justify-center text-foreground-muted hover:text-foreground transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                   style={{ outlineColor: "#FF7F50" }}
                 >
                   <Instagram
