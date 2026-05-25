@@ -1,7 +1,7 @@
 {
   "model_profile": "balanced",
   "model_overrides": {
-    "gsd-executor": "opus"
+    "gsd-executor": "sonnet"
   },
   "mode": "interactive",
   "parallelization": true,
