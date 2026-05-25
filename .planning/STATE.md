@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: engine-hardening
 milestone_name: Engine Hardening
 status: idle
-stopped_at: Phase 15 DROPPED 2026-05-24 — Platt calibration removed from engine entirely
-last_updated: "2026-05-24T13:30:00.000Z"
-last_activity: 2026-05-24 -- Phase 15 dropped; calibration code, tests, table, types all removed; ready to start Phase 16
+stopped_at: Phase 17 CLOSED 2026-05-25 — cost_cents renamed to cost_cents_estimated in smoke runner; ready for Phase 18
+last_updated: "2026-05-25T00:00:00.000Z"
+last_activity: 2026-05-25 -- Phase 17 closed inline: renamed cost_cents → cost_cents_estimated in scripts/smoke-tiktok-pipeline.ts (SmokeResult type + 11 touch points). CALIB-04 closed as estimate-from-tokens (billing API deferred while omni is free). tsc clean. Ready for Phase 18.
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
-  completed_plans: 2
-  percent: 33
+  completed_plans: 3
+  percent: 40
 ---
 
 # Project State
@@ -22,17 +22,17 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 See: .planning/MILESTONE.md (immutable worktree identity)
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate.
-**Current focus:** Phase 15 — calibration-refit-on-qwen-corpus
+**Current focus:** Phase 18 — M1 Verification Debt Closure (next up)
 
 ## Current Position
 
 Milestone: Engine Hardening (M2-1b of Intelligence Surface drop)
-Phase: 15 (calibration-refit-on-qwen-corpus) — DROPPED 2026-05-24
-Plan: n/a — phase cancelled; Platt calibration removed from engine
-Status: Idle — ready to start Phase 16 (Audio Fingerprint + Embedder Re-enable)
-Last activity: 2026-05-24 -- Phase 15 dropped; calibration.ts deleted, platt_parameters table dropped, is_calibrated removed from PredictionResult, types regenerated, aggregator passthrough. CALIB-01/02/03/05 cancelled in REQUIREMENTS.md. See .planning/phases/15-calibration-refit-on-qwen-corpus/15-DISCUSSION-LOG.md tail.
+Phase: 17 (smoke-runner-live-billing-wiring) — **COMPLETE 2026-05-25**
+Plan: closed inline (no separate plan needed — single 10-line rename)
+Status: Idle — Phase 17 done; ready to start Phase 18
+Last activity: 2026-05-25 -- Phase 17 closed: renamed `cost_cents` → `cost_cents_estimated` in smoke runner output schema. CALIB-04 closed. Phase 18 (VERIF debt closure) is next.
 
-Progress: [░░░░░░░░░░] 0% (0/5 phases complete)
+Progress: [██░░░░░░░░] 40% (2/5 phases complete)
 
 **Phase range this milestone:** 14-18 (continues from M1 Engine Foundation's Phase 13)
 
@@ -67,7 +67,7 @@ Recent decisions affecting current work:
 
 - MILESTONE.md: Embedding model locked to DashScope `text-embedding-v3` (768-dim); no Gemini fallback
 - MILESTONE.md: Calibration storage reuses `platt_parameters` schema + adds `engine_version` discriminator (preserves M1 text-mode row as historical reference)
-- MILESTONE.md: Smoke runner billing reads DashScope endpoint at end of run only (no mid-pipeline polling)
+- Phase 17: `cost_cents` renamed → `cost_cents_estimated` in smoke runner output schema (CALIB-04 closed 2026-05-25; billing API deferred while omni is free)
 - MILESTONE.md: TS errors default path is **write the migration** (option a); rip out (option b) only if call-site audit shows the routes are dead
 - MILESTONE.md: Qwen-only engine migration locked at M1 closure — do not revisit provider choice
 - MILESTONE.md: M1 pipeline treated as locked — additive-only rule applies (calibration/threshold work touches calibration.ts + aggregator.ts but does not rewrite the pipeline)
@@ -94,16 +94,16 @@ Items carried forward from M1 Engine Foundation close (now the active scope of t
 | Calibration | Platt refit on Qwen corpus | Active (Phase 15) | M1 close 2026-05-24 |
 | Calibration | Stratified validation rerun | Active (Phase 15) | M1 close 2026-05-24 |
 | Calibration | Wave 3/4 threshold re-tune | Active (Phase 15) | M1 close 2026-05-24 |
-| Calibration | Smoke runner DashScope billing | Active (Phase 17) | M1 close 2026-05-24 |
-| Audio | embedder.ts implementation | Active (Phase 16) | M1 close 2026-05-24 |
-| Audio | audio-fingerprint.ts re-enable | Active (Phase 16) | M1 close 2026-05-24 |
-| Audio | D-F4 cron re-enable | Active (Phase 16) | M1 close 2026-05-24 |
-| Audio | 17 `.skip` tests | Active (Phase 16) | M1 close 2026-05-24 |
+| Calibration | Smoke runner DashScope billing | ~~Active~~ **CLOSED 2026-05-25** — renamed cost_cents→cost_cents_estimated | M1 close 2026-05-24 |
+| Audio | embedder.ts implementation | Deferred (Phase 16 → future milestone) | 2026-05-25 |
+| Audio | audio-fingerprint.ts re-enable | Deferred (Phase 16 → future milestone) | 2026-05-25 |
+| Audio | D-F4 cron re-enable | Deferred (Phase 16 → future milestone) | 2026-05-25 |
+| Audio | 17 `.skip` tests | Deferred (Phase 16 → future milestone) | 2026-05-25 |
 | Types | 966 TS errors in api/{profile,settings,team}/* | Active (Phase 14) | Pre-existing blocker |
 | Verification | M1 Phases 2/3/4/6 deferrals | Active (Phase 18) | M1 close 2026-05-24 |
 
 ## Session Continuity
 
-Last session: 2026-05-24T09:17:19.241Z
-Stopped at: Phase 15 context gathered
-Resume file: .planning/phases/15-calibration-refit-on-qwen-corpus/15-CONTEXT.md
+Last session: 2026-05-25T00:00:00.000Z
+Stopped at: Phase 17 closed inline
+Resume file: .planning/phases/17-smoke-runner-live-billing-wiring/17-CONTEXT.md

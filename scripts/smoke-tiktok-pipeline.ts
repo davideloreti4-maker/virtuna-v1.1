@@ -106,7 +106,7 @@ interface SmokeVideoResult {
   overall_score: number;
   confidence: number;
   band: string;
-  cost_cents: number;
+  cost_cents_estimated: number;
   latency_ms: number;
   /** Non-null when audio passed (signal_availability.audio === true) */
   audio: { embedding: string | true | null } | null;
@@ -160,9 +160,9 @@ function checkSignalGate(result: SmokeVideoResult): string[] {
   }
 
   // Cost budget (D-20: $0.40 = 40 cents)
-  if (result.cost_cents > 40) {
+  if (result.cost_cents_estimated > 40) {
     failures.push(
-      `cost_cents ${result.cost_cents} exceeds $0.40 budget (D-20 overage)`
+      `cost_cents_estimated ${result.cost_cents_estimated} exceeds $0.40 budget (D-20 overage)`
     );
   }
 
@@ -257,7 +257,7 @@ async function runUIMode(
     overall_score: overallScore,
     confidence: (row.confidence as number) ?? 0,
     band,
-    cost_cents: (row.cost_cents as number) ?? 0,
+    cost_cents_estimated: (row.cost_cents as number) ?? 0,
     latency_ms: (row.latency_ms as number) ?? 0,
     audio: { embedding: audioEmbedding },
     personas,
@@ -273,7 +273,7 @@ async function runUIMode(
   result.gate_pass = result.gate_failures.length === 0;
 
   console.log(
-    `[video-${videoIndex}/${total}] overall_score=${result.overall_score} band=${result.band} cost_cents=${result.cost_cents} input_mode=${result.input_mode}`
+    `[video-${videoIndex}/${total}] overall_score=${result.overall_score} band=${result.band} cost_cents_estimated=${result.cost_cents_estimated} input_mode=${result.input_mode}`
   );
   console.log(
     `[video-${videoIndex}/${total}] personas=${result.personas.length} platform_fit=${result.platform_fit} counterfactuals=${result.counterfactuals ? "present" : "null"}`
@@ -446,7 +446,7 @@ async function runDirectMode(
     overall_score: overallScore,
     confidence: (finalResult.confidence as number) ?? 0,
     band,
-    cost_cents: (finalResult.cost_cents as number) ?? 0,
+    cost_cents_estimated: (finalResult.cost_cents as number) ?? 0,
     latency_ms: (finalResult.latency_ms as number) ?? 0,
     audio: { embedding: audioEmbedding },
     personas: personasRaw,
@@ -462,7 +462,7 @@ async function runDirectMode(
   result.gate_pass = result.gate_failures.length === 0;
 
   console.log(
-    `[video-${videoIndex}/${total}] overall_score=${result.overall_score} band=${result.band} cost_cents=${result.cost_cents} latency_ms=${result.latency_ms}`
+    `[video-${videoIndex}/${total}] overall_score=${result.overall_score} band=${result.band} cost_cents_estimated=${result.cost_cents_estimated} latency_ms=${result.latency_ms}`
   );
   console.log(
     `[video-${videoIndex}/${total}] personas=${result.personas.length} platform_fit=${result.platform_fit} counterfactuals=${result.counterfactuals ? "present" : "null"}`
@@ -534,7 +534,7 @@ async function main(): Promise<void> {
   for (const r of results) {
     const tag = r.gate_pass ? "PASS" : "FAIL";
     console.log(
-      `  [${tag}] ${r.url.slice(0, 60)}... score=${r.overall_score} band=${r.band} cost=${r.cost_cents}¢`
+      `  [${tag}] ${r.url.slice(0, 60)}... score=${r.overall_score} band=${r.band} cost=${r.cost_cents_estimated}¢`
     );
     if (!r.gate_pass) {
       for (const f of r.gate_failures) {
@@ -545,7 +545,7 @@ async function main(): Promise<void> {
 
   // =====================================================
   // --json-out aggregate contract (Nyquist sampling / verify probes)
-  // AT MINIMUM: audio.embedding, personas, platform_fit, counterfactuals, cost_cents
+  // AT MINIMUM: audio.embedding, personas, platform_fit, counterfactuals, cost_cents_estimated
   // =====================================================
   if (jsonOutPath && results.length > 0) {
     // For single-video runs (Plan 05), export the first video's result.
@@ -563,7 +563,7 @@ async function main(): Promise<void> {
       personas: first.personas,
       platform_fit: first.platform_fit,
       counterfactuals: first.counterfactuals,
-      cost_cents: first.cost_cents,
+      cost_cents_estimated: first.cost_cents_estimated,
       latency_ms: first.latency_ms,
       signal_availability: first.signal_availability,
       gate_pass: first.gate_pass,
@@ -573,7 +573,7 @@ async function main(): Promise<void> {
         overall_score: r.overall_score,
         band: r.band,
         gate_pass: r.gate_pass,
-        cost_cents: r.cost_cents,
+        cost_cents_estimated: r.cost_cents_estimated,
       })),
     };
 

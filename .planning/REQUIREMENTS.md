@@ -13,21 +13,25 @@ This document scopes ONLY the engine-side debt left open by M1 (Engine Foundatio
 
 ### Category: CALIB — Calibration & threshold re-fit on Qwen
 
-**CALIB-01, CALIB-02, CALIB-03, CALIB-05 cancelled 2026-05-24.** Platt calibration removed from the engine entirely after the corpus-vs-production framing mismatch surfaced during Phase 15 execution. The `platt_parameters` table was dropped (`supabase/migrations/20260524130014_drop_platt_parameters.sql`), `calibration.ts` deleted, `is_calibrated` removed from `PredictionResult`. See `.planning/phases/15-calibration-refit-on-qwen-corpus/15-DISCUSSION-LOG.md` for the audit. Only CALIB-04 (DashScope billing in smoke runner) remains active — it is independent of the calibration apparatus and lives in Phase 17.
+**CALIB-01, CALIB-02, CALIB-03, CALIB-05 cancelled 2026-05-24.** Platt calibration removed from the engine entirely after the corpus-vs-production framing mismatch surfaced during Phase 15 execution. The `platt_parameters` table was dropped (`supabase/migrations/20260524130014_drop_platt_parameters.sql`), `calibration.ts` deleted, `is_calibrated` removed from `PredictionResult`. See `.planning/phases/15-calibration-refit-on-qwen-corpus/15-DISCUSSION-LOG.md` for the audit.
+
+**CALIB-04 closed 2026-05-25** — scoped down during Phase 17 discussion: `qwen3.5-omni-plus` is free during preview, making billing-API ground truth $0 for the heaviest wave. Existing `cost_cents` field is already token-usage-based (`calculateCost(model, response.usage)`). Resolution: renamed `cost_cents` → `cost_cents_estimated` in `scripts/smoke-tiktok-pipeline.ts` output schema. Billing API deferred until omni exits free preview.
 
 - [~] ~~**CALIB-01**: `platt_parameters` table has a fresh row with `engine_version = '3.0.0'`...~~ **CANCELLED 2026-05-24** — table dropped; calibration removed.
 - [~] ~~**CALIB-02**: M1 Plans 06/07 stratified validation rerun under the Qwen pipeline...~~ **CANCELLED 2026-05-24** — was contingent on CALIB-01.
 - [~] ~~**CALIB-03**: Wave 3 persona threshold and Wave 4 numeric platform_fit threshold re-tuned...~~ **CANCELLED 2026-05-24** — thresholds remain at current values.
-- [ ] **CALIB-04**: Smoke runner output (`scripts/run-smoke.ts` or equivalent) records a `cost_cents_actual` field sourced from the DashScope International billing endpoint, persisted alongside the existing `cost_cents_estimated`. Reads at end of run only (not mid-pipeline).
+- [x] ~~**CALIB-04**: Smoke runner output records a `cost_cents_actual` field sourced from DashScope billing...~~ **CLOSED 2026-05-25** — renamed `cost_cents` → `cost_cents_estimated` in smoke runner; billing API deferred (see Phase 17 CONTEXT.md).
 - [~] ~~**CALIB-05**: `is_calibrated = true` flows through aggregator output...~~ **CANCELLED 2026-05-24** — `is_calibrated` field removed from PredictionResult.
 
-### Category: AUDIO — Audio-fingerprint + embedder re-enable
+### Category: AUDIO — Audio-fingerprint + embedder re-enable — **DEFERRED 2026-05-25**
 
-- [ ] **AUDIO-01**: `src/lib/engine/embedder.ts` is created (currently does not exist). Exports `embedQuery(text: string): Promise<number[]>` and `embedBatch(texts: string[]): Promise<number[][]>` against DashScope `text-embedding-v3` (768-dim, matches existing pgvector schema). No fallback to Gemini.
-- [ ] **AUDIO-02**: `src/lib/engine/audio-fingerprint.ts` returns a real match result (not `null`). Uses the existing `match_trending_sound_by_audio` RPC + the new embedder. Live E2E `/api/analyze` run against a known video produces non-null `audio_fingerprint.match_id` and `similarity > 0`.
-- [ ] **AUDIO-03**: Inline D-F4 cron embedding pipeline at `src/app/api/cron/calculate-trends/route.ts` re-enabled. Removes the "DEFERRED to M2" branch; trending sounds with `audio_embedding IS NULL` get embedded inline up to the per-tick cost ceiling (~$0.025/day). Idempotent against the existing `audio_embedding IS NOT NULL` predicate.
-- [ ] **AUDIO-04**: Three `.skip` blocks unskipped: `embedder.test.ts` (`embedQuery deferred to M2`, `embedBatch deferred to M2`) and `calculate-trends/__tests__/route.test.ts` (`D-F4 inline embedding pipeline (Phase 6 Plan 06-06)`). All tests in those blocks pass.
-- [ ] **AUDIO-05**: DashScope embedding API quota verified to handle the ongoing trending-sounds ingest rate (~50 sounds/day × 768-dim batch). Cost-budget alert raised in the smoke runner if a single tick exceeds the per-day ceiling.
+Audio fingerprint matching is not a primary viral signal for the current use case. All AUDIO REQs deferred to a future milestone. The 17 `.skip`'d tests remain deferred alongside. IN-03 (SSRF allowlist, originally co-located here) moved to VERIF-04 in Phase 18.
+
+- [~] ~~**AUDIO-01**~~: embedder.ts create — **Deferred**
+- [~] ~~**AUDIO-02**~~: audio-fingerprint.ts real match — **Deferred**
+- [~] ~~**AUDIO-03**~~: D-F4 cron re-enable — **Deferred**
+- [~] ~~**AUDIO-04**~~: Unskip 17 tests — **Deferred**
+- [~] ~~**AUDIO-05**~~: Quota + per-tick ceiling alert — **Deferred**
 
 ### Category: TYPES — Type hygiene + user_settings resolution
 
@@ -73,11 +77,11 @@ This document scopes ONLY the engine-side debt left open by M1 (Engine Foundatio
 | CALIB-03 | ~~15~~ | **cancelled** 2026-05-24 |
 | CALIB-04 | 17 | pending |
 | CALIB-05 | ~~15~~ | **cancelled** 2026-05-24 |
-| AUDIO-01 | 16 | pending |
-| AUDIO-02 | 16 | pending |
-| AUDIO-03 | 16 | pending |
-| AUDIO-04 | 16 | pending |
-| AUDIO-05 | 16 | pending |
+| AUDIO-01 | ~~16~~ | **deferred** 2026-05-25 |
+| AUDIO-02 | ~~16~~ | **deferred** 2026-05-25 |
+| AUDIO-03 | ~~16~~ | **deferred** 2026-05-25 |
+| AUDIO-04 | ~~16~~ | **deferred** 2026-05-25 |
+| AUDIO-05 | ~~16~~ | **deferred** 2026-05-25 |
 | TYPES-01 | 14 | Complete |
 | TYPES-02 | 14 | Complete |
 | TYPES-03 | 14 | Complete |
@@ -86,10 +90,10 @@ This document scopes ONLY the engine-side debt left open by M1 (Engine Foundatio
 | VERIF-01 | 18 | pending |
 | VERIF-02 | 18 | pending |
 | VERIF-03 | 18 | pending |
-| VERIF-04 | 16, 18 | pending |
+| VERIF-04 | 18 | pending (all sub-items including IN-03 now in Phase 18) |
 
-**Note on VERIF-04:** Parent item splits across two phases by sub-item:
-- Phase 16: IN-03 (sound_url SSRF allowlist — co-located with audio pipeline)
-- Phase 18: WR-04, WR-05, IN-01, IN-02 (code-review follow-ups; sequenced last)
+**Note on VERIF-04:** All sub-items land in Phase 18:
+- IN-03 (sound_url SSRF allowlist) — moved from deferred Phase 16; T-06-13 security item lands before milestone merge
+- WR-04, WR-05, IN-01, IN-02 (code-review follow-ups; sequenced last)
 
 Roadmapper filled the Phase + Status columns when the milestone roadmap was drafted (2026-05-24).

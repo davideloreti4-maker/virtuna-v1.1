@@ -16,32 +16,35 @@ The Qwen-only migration is **locked**. The M1 pipeline is treated as locked; pha
 ```
        main (post-M1 merge)
             │
-   ┌────────┼────────┬─────────┐
-   ▼        ▼        ▼         ▼
-Phase 14  Phase 15  Phase 16  Phase 17
-TYPES     CALIB     AUDIO     CALIB-04
-hygiene  (DROPPED) re-enable smoke billing
+   ┌────────┴────────┐
+   ▼                 ▼
+Phase 14           Phase 17
+TYPES              CALIB-04
+hygiene            smoke billing
             │
-            └─────────┬─────────┴─────────┘
-                      ▼
-                  Phase 18
-                  VERIF debt
-                  (sequenced last;
-                   live-deploy + code review)
+            └────────┐
+                     ▼
+                 Phase 18
+                 VERIF debt + IN-03 SSRF
+                 (sequenced last;
+                  live-deploy + code review)
+
+Phase 15: DROPPED 2026-05-24
+Phase 16: DEFERRED 2026-05-25 (audio feature; not critical path)
 ```
 
 - **Phase 14 (TYPES)** can fork immediately. Touches `src/app/api/{profile,settings,team}/*` + `database.types.ts` — no overlap with engine code.
 - **Phase 15 (CALIB refit)** — **DROPPED 2026-05-24.** Premise unsound: corpus-based eval calibrated text-on-captions but production runs video-mode Omni-Plus; corpus carries post-publication engagement metrics that production never sees at inference. Calibration removed entirely; `applyPlattScaling` and `platt_parameters` table deleted. See `phases/15-.../15-DISCUSSION-LOG.md` tail. CALIB-01/02/03/05 cancelled; CALIB-04 stays in Phase 17.
-- **Phase 16 (AUDIO re-enable)** can fork immediately. Touches `src/lib/engine/embedder.ts` (new), `src/lib/engine/audio-fingerprint.ts`, `src/app/api/cron/calculate-trends/route.ts`, plus VERIF-04 IN-03 (SSRF allowlist on `sound_url` — naturally co-located with audio pipeline).
+- **Phase 16 (AUDIO re-enable)** — **DEFERRED 2026-05-25.** Audio fingerprint matching is not a primary viral signal for the current use case (sound-driven trend-riding is secondary to caption/visual signals). AUDIO-01–05 deferred to a future milestone. IN-03 (SSRF allowlist on `sound_url`) extracted and moved to Phase 18 alongside its VERIF-04 siblings.
 - **Phase 17 (CALIB-04 smoke billing)** can fork immediately. Touches `scripts/run-smoke.ts` + DashScope billing fetch — fully independent.
-- **Phase 18 (VERIF closure)** runs **after** 14/16/17 merge to milestone branch (Phase 15 no longer in dependency set). Contains live-deploy smoke tests, UAT runs, and code-review follow-ups (WR-04/WR-05/IN-01/IN-02) that touch files already modified by other phases — hence sequenced last to avoid merge churn.
+- **Phase 18 (VERIF closure)** runs **after** 14/17 merge to milestone branch. Contains live-deploy smoke tests, UAT runs, code-review follow-ups (WR-04/WR-05/IN-01/IN-02), and IN-03 SSRF allowlist (moved from deferred Phase 16) — sequenced last to avoid merge churn.
 
 ## Phases
 
 - [x] **Phase 14: Type Hygiene & user_settings Resolution** — Audit, decide migrate-vs-rip, land path, drive `tsc --noEmit` to 0 errors app-wide (completed 2026-05-24)
 - [~] **Phase 15: Calibration Refit on Qwen Corpus** — DROPPED 2026-05-24 (calibration framing mismatch; Platt removed entirely). 15-01 landed as standalone schema work then reverted (`platt_parameters` table dropped).
-- [ ] **Phase 16: Audio Fingerprint + Embedder Re-enable** — Build embedder, re-enable fingerprint + D-F4 cron, unskip 17 tests, land SSRF allowlist
-- [ ] **Phase 17: Smoke Runner Live Billing Wiring** — Wire DashScope International billing endpoint into smoke runner, persist cost_cents_actual
+- [~] **Phase 16: Audio Fingerprint + Embedder Re-enable** — DEFERRED 2026-05-25 (audio not critical path; IN-03 SSRF moved to Phase 18)
+- [x] **Phase 17: Smoke Runner Live Billing Wiring** — CLOSED 2026-05-25: renamed cost_cents → cost_cents_estimated in smoke runner output schema; billing API deferred while omni-plus is free (CALIB-04 closed)
 - [ ] **Phase 18: M1 Verification Debt Closure** — Run UAT for Phase 2/3/4 deferrals, close code-review follow-ups WR-04/WR-05/IN-01/IN-02
 
 ## Phase Details
@@ -75,21 +78,19 @@ hygiene  (DROPPED) re-enable smoke billing
 
 **If calibration is ever revisited**, it must be on production-aligned data: capture `/api/analyze` predictions in production, join with engagement outcomes after a 7-30d window, refit on those. This is a multi-week effort gated on production data infrastructure; out of scope for the Engine Hardening milestone.
 
-### Phase 16: Audio Fingerprint + Embedder Re-enable
-**Goal**: Audio-fingerprint matching returns real results (not `null`), embedder is fully wired against DashScope `text-embedding-v3`, inline D-F4 cron embedding is back on, all 17 `.skip`'d tests pass, and `sound_url` fetches go through an SSRF allowlist.
-**Depends on**: Nothing (forks from main alongside 14/15/17). Internal dependency chain: AUDIO-01 → AUDIO-02 → AUDIO-03 → AUDIO-04; AUDIO-05 and VERIF-04 IN-03 land alongside.
-**Requirements**: AUDIO-01, AUDIO-02, AUDIO-03, AUDIO-04, AUDIO-05, VERIF-04 (IN-03 sub-item only)
-**Success Criteria** (what must be TRUE):
-  1. `src/lib/engine/embedder.ts` exists and exports `embedQuery` + `embedBatch` against DashScope `text-embedding-v3` (768-dim); no Gemini fallback
-  2. Live `/api/analyze` E2E run against a known video produces non-null `audio_fingerprint.match_id` with `similarity > 0`
-  3. Inline D-F4 cron at `src/app/api/cron/calculate-trends/route.ts` embeds trending sounds with `audio_embedding IS NULL` up to the per-tick cost ceiling (~$0.025/day), idempotent
-  4. `pnpm vitest run` shows zero `.skip` in `embedder.test.ts`, `audio-fingerprint.test.ts`, and `calculate-trends/__tests__/route.test.ts` — all previously skipped tests pass
-  5. `sound_url` fetches reject non-allowlisted hosts (Phase 12 threat model T-06-13); smoke runner raises a cost-budget alert if a single tick exceeds the per-day ceiling
-**Plans**: TBD
+### Phase 16: Audio Fingerprint + Embedder Re-enable — **DEFERRED 2026-05-25**
+
+**Status**: Deferred to a future milestone. Audio fingerprint matching is not a primary viral signal for the current use case.
+
+**Why deferred**: Sound-driven trend-riding is secondary to caption/visual signals for the target creator profile. AUDIO-01–05 are not blocking milestone closure. The 17 `.skip`'d tests remain deferred alongside.
+
+**IN-03 extracted**: `sound_url` SSRF allowlist (VERIF-04 sub-item IN-03) moved to Phase 18, alongside WR-04/WR-05/IN-01/IN-02, so it lands before milestone merge without requiring the full audio pipeline.
+
+**If audio is ever re-enabled**, resume from this phase: build `embedder.ts` → wire `audio-fingerprint.ts` → re-enable D-F4 cron → unskip 17 tests.
 
 ### Phase 17: Smoke Runner Live Billing Wiring
 **Goal**: Smoke runner output records actual DashScope International cost (not just estimated) by reading the billing endpoint at end of run.
-**Depends on**: Nothing (forks from main alongside 14/15/16). Smallest phase — single REQ, ~one plan.
+**Depends on**: Nothing (forks from main alongside 14). Smallest phase — single REQ, ~one plan.
 **Requirements**: CALIB-04
 **Success Criteria** (what must be TRUE):
   1. Smoke runner output JSON includes a `cost_cents_actual` field alongside the existing `cost_cents_estimated`
@@ -98,14 +99,14 @@ hygiene  (DROPPED) re-enable smoke billing
 **Plans**: TBD
 
 ### Phase 18: M1 Verification Debt Closure
-**Goal**: All M1 verification debt (Phases 2/3/4/6 deferrals) is either resolved with passing UAT/smoke or moved to an explicit "permanently deferred" list with rationale. Code-review follow-ups WR-04, WR-05, IN-01, IN-02 land.
-**Depends on**: Phases 14, 16, 17 (sequenced last — code-review items touch files modified by earlier phases; live-deploy smoke needs the embedder live. Phase 15 dropped; no calibration dependency.)
-**Requirements**: VERIF-01, VERIF-02, VERIF-03, VERIF-04 (WR-04, WR-05, IN-01, IN-02 sub-items — IN-03 already in Phase 16)
+**Goal**: All M1 verification debt (Phases 2/3/4/6 deferrals) is either resolved with passing UAT/smoke or moved to an explicit "permanently deferred" list with rationale. Code-review follow-ups WR-04, WR-05, IN-01, IN-02, and IN-03 SSRF allowlist land.
+**Depends on**: Phases 14, 17 (sequenced last — code-review items touch files modified by earlier phases. Phase 15 dropped; Phase 16 deferred; no embedder/audio dependency.)
+**Requirements**: VERIF-01, VERIF-02, VERIF-03, VERIF-04 (WR-04, WR-05, IN-01, IN-02, IN-03 sub-items — IN-03 moved here from deferred Phase 16)
 **Success Criteria** (what must be TRUE):
   1. `.planning/research/verif-phase2-uat.md` records Phase 2 creator-profile 9-card interview UAT pass/fail end-to-end against the deployed app
   2. Phase 3 SC#4 + SC#5 (post-deploy `/api/analyze` SSE + cache hit smoke) flipped from DEFERRED-PENDING-LIVE-DEPLOY to MET (or explicit defer-permanently decision logged)
   3. Phase 4 HUMAN-UAT pending live-API tests (Wave 0 content-type via `/api/analyze`; niche-detector `cost_cents > 0` with cache breakdown absent) executed and recorded
-  4. Phase 6 follow-ups land: cron N+1 refactored to bulk pre-fetch (WR-04), `audio_description` bounds nesting flattened (WR-05), `analyzeVideoWithGemini` video-analysis path uses try/finally for `clearTimeout` (IN-01), `vector as unknown as string` cast centralized into `src/lib/supabase/pgvector.ts` (IN-02)
+  4. Phase 6 follow-ups land: cron N+1 refactored to bulk pre-fetch (WR-04), `audio_description` bounds nesting flattened (WR-05), `analyzeVideoWithGemini` video-analysis path uses try/finally for `clearTimeout` (IN-01), `vector as unknown as string` cast centralized into `src/lib/supabase/pgvector.ts` (IN-02), `sound_url` SSRF allowlist landed (IN-03, T-06-13)
   5. `pnpm vitest run` and `pnpm exec tsc --noEmit` still green after all changes; no new regressions introduced
 **Plans**: TBD
 
@@ -118,13 +119,13 @@ Phases 14, 16, 17 may fork in parallel from the milestone branch base. Phase 15 
 |-------|----------------|--------|-----------|
 | 14. Type Hygiene & user_settings Resolution | 2/2 | Complete    | 2026-05-24 |
 | 15. Calibration Refit on Qwen Corpus | — | DROPPED | 2026-05-24 |
-| 16. Audio Fingerprint + Embedder Re-enable | 0/TBD | Not started | - |
+| 16. Audio Fingerprint + Embedder Re-enable | — | DEFERRED | 2026-05-25 |
 | 17. Smoke Runner Live Billing Wiring | 0/TBD | Not started | - |
 | 18. M1 Verification Debt Closure | 0/TBD | Not started | - |
 
 ## Coverage
 
-All 19 REQ-IDs from REQUIREMENTS.md mapped to exactly one phase. VERIF-04 is a parent item whose sub-items split across Phase 16 (IN-03 only — co-located with audio pipeline) and Phase 18 (WR-04, WR-05, IN-01, IN-02 — code review follow-ups).
+All 19 REQ-IDs from REQUIREMENTS.md mapped to exactly one phase. VERIF-04 sub-items all land in Phase 18: IN-03 moved here from deferred Phase 16; WR-04, WR-05, IN-01, IN-02 were always Phase 18.
 
 | REQ-ID | Category | Phase | Notes |
 |--------|----------|-------|-------|
@@ -133,11 +134,11 @@ All 19 REQ-IDs from REQUIREMENTS.md mapped to exactly one phase. VERIF-04 is a p
 | CALIB-03 | Calibration | ~~15~~ | **Cancelled 2026-05-24** — Wave 3/4 thresholds remain at current values; no calibration-driven retune. |
 | CALIB-04 | Calibration | 17 | Smoke runner DashScope billing (independent of calibration chain — still active). |
 | CALIB-05 | Calibration | ~~15~~ | **Cancelled 2026-05-24** — `is_calibrated` field removed from PredictionResult; verification moot. |
-| AUDIO-01 | Audio | 16 | embedder.ts create |
-| AUDIO-02 | Audio | 16 | audio-fingerprint.ts real match |
-| AUDIO-03 | Audio | 16 | D-F4 cron re-enable |
-| AUDIO-04 | Audio | 16 | Unskip 17 tests |
-| AUDIO-05 | Audio | 16 | Quota + per-tick ceiling alert |
+| AUDIO-01 | Audio | ~~16~~ | **Deferred 2026-05-25** |
+| AUDIO-02 | Audio | ~~16~~ | **Deferred 2026-05-25** |
+| AUDIO-03 | Audio | ~~16~~ | **Deferred 2026-05-25** |
+| AUDIO-04 | Audio | ~~16~~ | **Deferred 2026-05-25** |
+| AUDIO-05 | Audio | ~~16~~ | **Deferred 2026-05-25** |
 | TYPES-01 | Types | 14 | user_settings consumer audit |
 | TYPES-02 | Types | 14 | Migrate-vs-rip decision |
 | TYPES-03 | Types | 14 | Path a: migration + RLS (if chosen) |
@@ -146,6 +147,6 @@ All 19 REQ-IDs from REQUIREMENTS.md mapped to exactly one phase. VERIF-04 is a p
 | VERIF-01 | Verification | 18 | Phase 2 UAT |
 | VERIF-02 | Verification | 18 | Phase 3 SC#4 + SC#5 live-deploy smoke |
 | VERIF-03 | Verification | 18 | Phase 4 HUMAN-UAT live-API tests |
-| VERIF-04 | Verification | 16, 18 | IN-03 → 16 (audio SSRF); WR-04/05 + IN-01/02 → 18 |
+| VERIF-04 | Verification | 18 | All sub-items → 18: IN-03 (moved from deferred Phase 16) + WR-04/05 + IN-01/02 |
 
-**Coverage:** 19/19 REQ-IDs mapped. No orphans. No duplicates (VERIF-04 split is sub-item attribution, not REQ-ID duplication).
+**Coverage:** 19/19 REQ-IDs mapped. No orphans. No duplicates.
