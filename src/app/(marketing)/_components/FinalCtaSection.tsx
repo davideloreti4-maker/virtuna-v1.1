@@ -29,7 +29,9 @@ export function FinalCtaSection() {
         className="relative bg-background"
         style={{ borderTop: "1px solid rgba(255, 255, 255, 0.04)" }}
       >
-        <HeroBookend reducedHeight headingAs="p" />
+        {/* showCredibilityHook is false here: HERO-10 credibility bar is Hero-only per UI-SPEC § Component Anatomy. */}
+        {/* Without this gate, HeroBookend would render CredibilityHook twice (Hero + Final CTA) — 03-VERIFICATION Gap 2. */}
+        <HeroBookend reducedHeight headingAs="p" showCredibilityHook={false} />
       </section>
       <LandingFooter />
     </>
