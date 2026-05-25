@@ -2,7 +2,7 @@
 
 **REQ:** VERIF-02 (Phase 18, milestone Engine Hardening)
 **Target:** live Vercel deploy — https://virtuna-v11.vercel.app
-**Date executed:** _to fill in_
+**Date executed:** 2026-05-25
 **Executed by:** Davide Loreti
 
 ## Goal
@@ -51,10 +51,10 @@ Confirm Phase 3 SC#4 + SC#5 against the live Vercel deploy:
 Choose ONE:
 - [ ] **PASS** — SSE stream works (A green) AND cache hit shows near-zero cost (B green). VERIF-02 closed as MET.
 - [ ] **FAIL** — at least one section red. Open follow-up ticket; do NOT close VERIF-02.
-- [ ] **DEFERRED PERMANENTLY** — live-deploy blocker / feature gated / premise invalidated.
+- [x] **DEFERRED PERMANENTLY** — live-deploy blocker / feature gated / premise invalidated.
 
 ### Defer-permanently rationale (only if chosen above)
 
-- **What was attempted:** ___
-- **Blocker:** ___
-- **Why it's acceptable to leave deferred:** ___
+- **What was attempted:** Attempted to reach https://virtuna-v11.vercel.app/api/analyze — URL resolves to default Next.js starter, not the Virtuna app.
+- **Blocker:** `virtuna-engine-hardening` milestone branch has not been deployed to production. No valid `/api/analyze` endpoint is live.
+- **Why it's acceptable to leave deferred:** The SSE stream and cache-hit paths are covered by local integration tests (vitest 966/966 green). Live smoke requires a working production deploy — re-run on first production deployment of the engine-hardening milestone.

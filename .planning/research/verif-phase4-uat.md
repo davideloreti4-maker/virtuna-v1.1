@@ -2,7 +2,7 @@
 
 **REQ:** VERIF-03 (Phase 18, milestone Engine Hardening)
 **Target:** live Vercel deploy — https://virtuna-v11.vercel.app
-**Date executed:** _to fill in_
+**Date executed:** 2026-05-25
 **Executed by:** Davide Loreti
 
 ## Goal
@@ -53,10 +53,10 @@ Confirm the two pending Phase 4 live-API tests:
 Choose ONE:
 - [ ] **PASS** — Wave 0 content_type labels match for both videos (A green) AND `cost_cents > 0` with cache breakdown absent on fresh request (B green). VERIF-03 closed as MET.
 - [ ] **FAIL** — at least one section red. Open follow-up ticket; do NOT close VERIF-03.
-- [ ] **DEFERRED PERMANENTLY** — live-deploy blocker / feature gated / premise invalidated.
+- [x] **DEFERRED PERMANENTLY** — live-deploy blocker / feature gated / premise invalidated.
 
 ### Defer-permanently rationale (only if chosen above)
 
-- **What was attempted:** ___
-- **Blocker:** ___
-- **Why it's acceptable to leave deferred:** ___
+- **What was attempted:** Attempted to reach https://virtuna-v11.vercel.app — URL resolves to default Next.js starter, not the Virtuna app.
+- **Blocker:** `virtuna-engine-hardening` milestone branch has not been deployed to production. No `/api/analyze` endpoint is live to test Wave 0 content-type or niche-detector cost.
+- **Why it's acceptable to leave deferred:** Wave 0 classification and niche-detector cost paths are exercised by vitest suite (966/966 green). Live API test requires a working production deploy — re-run on first production deployment of the engine-hardening milestone.

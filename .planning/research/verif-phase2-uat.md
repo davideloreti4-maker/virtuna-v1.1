@@ -2,7 +2,7 @@
 
 **REQ:** VERIF-01 (Phase 18, milestone Engine Hardening)
 **Target:** live Vercel deploy — https://virtuna-v11.vercel.app
-**Date executed:** _to fill in_
+**Date executed:** 2026-05-25
 **Executed by:** Davide Loreti
 
 ## Goal
@@ -51,10 +51,10 @@ Confirm the M1 Phase 2 creator-profile flow works end-to-end against the deploye
 Choose ONE:
 - [ ] **PASS** — all three sections (A, B, C) green. VERIF-01 closed as MET.
 - [ ] **FAIL** — at least one section red. Open follow-up ticket; do NOT close VERIF-01.
-- [ ] **DEFERRED PERMANENTLY** — live-deploy blocker / feature gated / premise invalidated.
+- [x] **DEFERRED PERMANENTLY** — live-deploy blocker / feature gated / premise invalidated.
 
 ### Defer-permanently rationale (only if chosen above)
 
-- **What was attempted:** ___
-- **Blocker:** ___
-- **Why it's acceptable to leave deferred:** ___
+- **What was attempted:** Attempted to open https://virtuna-v11.vercel.app — URL resolved to the default Next.js starter page, not the Virtuna app.
+- **Blocker:** `virtuna-engine-hardening` milestone branch has not been deployed to production. `virtuna-v11.vercel.app` maps to the old `virtuna-v1.1` project. No production URL is configured for this milestone.
+- **Why it's acceptable to leave deferred:** All Phase 2 code changes (creator_profiles schema, interview modal, reference-creator side effect) are covered by unit and integration tests that pass in CI. Live UAT requires a working production deploy — re-run on first production deployment of the engine-hardening milestone.
