@@ -3,6 +3,9 @@ import { LandingHeader } from '@/app/(marketing)/_components/LandingHeader';
 import { GrainOverlay } from '@/app/(marketing)/_components/GrainOverlay';
 import { SkipToContent } from '@/app/(marketing)/_components/SkipToContent';
 import { SectionShell } from '@/app/(marketing)/_components/SectionShell';
+import { HeroSection } from '@/app/(marketing)/_components/HeroSection';
+import { VisionBeat } from '@/app/(marketing)/_components/VisionBeat';
+import { FinalCtaSection } from '@/app/(marketing)/_components/FinalCtaSection';
 import { MotionRoot } from './MotionRoot';
 
 /**
@@ -17,6 +20,9 @@ import { MotionRoot } from './MotionRoot';
  * Page title locks "Virtuna | Predict viral before you post" (META-03 / FOUND-02
  * stale-title fix complement — once /v3 cuts over to root in Phase 11, this title
  * replaces any stale brand title residue site-wide).
+ *
+ * Phase 2: HeroSection + VisionBeat + FinalCtaSection now wire above-fold Hero, founder quote,
+ * and bookend Final CTA + Footer (HERO-01, HERO-08, VISION-01, CTA-01, CTA-02, CTA-03..06).
  *
  * FOUND-05 collision-check decision:
  *   - src/components/ui/marquee.tsx EXISTS — Magic UI Marquee NOT installed in Phase 1.
@@ -74,7 +80,7 @@ export default function LandingV3Page() {
          */}
         <MotionRoot>
           {/* Narrative order matches LandingHeader anchor hrefs and ROADMAP phase mapping */}
-          <SectionShell id="hero" label="Hero" shipsInPhase={2} variant="odd" isHero />
+          <HeroSection />
           <SectionShell id="demo" label="Demo" shipsInPhase={4} variant="even" />
           <SectionShell id="how-it-works" label="How It Works" shipsInPhase={5} variant="odd" />
           <SectionShell id="surfaces" label="Three Surfaces" shipsInPhase={6} variant="even" />
@@ -82,7 +88,8 @@ export default function LandingV3Page() {
           <SectionShell id="science" label="The Science" shipsInPhase={8} variant="even" />
           <SectionShell id="social-proof" label="Social Proof" shipsInPhase={9} variant="odd" />
           <SectionShell id="pricing" label="Pricing" shipsInPhase={10} variant="even" />
-          <SectionShell id="final-cta" label="Final CTA" shipsInPhase={2} variant="odd" />
+          <VisionBeat />
+          <FinalCtaSection />
         </MotionRoot>
       </main>
     </>
