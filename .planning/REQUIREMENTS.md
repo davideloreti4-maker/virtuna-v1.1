@@ -7,7 +7,7 @@
 **Reference set:** Linear + Raycast (visual anchor) · OpusClip (copy/conversion patterns, NOT aesthetic).
 
 **Stack core:** Magic UI + Framer Motion (motion.dev) + Aceternity UI + shadcn.
-**Palette (on-demand):** GSAP ScrollTrigger, R3F, Spline (hero — locked in), tsParticles.
+**Palette (on-demand):** GSAP ScrollTrigger, R3F, tsParticles.
 **Out:** Cult UI (off-brief), Lottie, Rive.
 
 ---
@@ -33,13 +33,13 @@
 - [x] **HERO-02**: H1 follows OpusClip-style outcome-pattern ("AI that…" or equivalent verb-first promise) — final copy iterable, position locked
 - [x] **HERO-03**: Primary CTA links to demo section anchor (`#demo`) or sign-up flow (configurable); secondary CTA links to pricing anchor (`#pricing`)
 - [x] **HERO-04**: Aceternity `Spotlight` ambient backdrop renders with coral-tinted single-stop alpha gradient (no multi-hue) — coral brand color preserved
-- [ ] **HERO-05**: Spline 3D hero scene loaded lazily via `dynamic({ ssr: false })` + IntersectionObserver gate; static fallback poster image rendered for LCP and reduced-motion
+- [ ] ~~**HERO-05**~~: *Deferred to future milestone — hero 3D/visual background element to be designed and added by Davide; Spline removed from Landing v1 scope*
 - [x] **HERO-06**: Magic UI `ShimmerButton` + `AnimatedShinyText` + `BorderBeam` shared with Final CTA — bookend pattern locked
-- [x] **HERO-07**: Hero respects `prefers-reduced-motion`: Spline scene skipped, static poster shown, button shimmer disabled
+- [x] **HERO-07**: Hero respects `prefers-reduced-motion`: button shimmer disabled, no autoplay animations outside viewport
 - [x] **HERO-08**: Hero uses `100dvh` (not `100vh`) for full-viewport height — iOS Safari address bar fix
 - [x] **HERO-09**: H1 features a typography reveal — Magic UI `WordRotate` or `FlipWords` cycles a single word position through audience targets (e.g. "creators / brands / agencies") demonstrating multi-audience positioning. Reduced-motion variant uses static text
-- [ ] **HERO-10**: Above-fold credibility hook between H1 and Spline scene — thin logo bar (Numen Machines lockup + 4-5 partner/early-backer slots, placeholder allowed) + "Backed by [behavioral research / Numen Machines]" microcopy. Visible without scroll on 1440px desktop and 375px mobile
-- [x] **HERO-11**: Reading order verified — H1 → microcopy → CTAs → Spline scene. Screen reader announces credibility hook before visual loads
+- [ ] **HERO-10**: Above-fold credibility hook below CTAs — thin logo bar (Numen Machines lockup + 4-5 partner/early-backer slots, placeholder allowed) + "Backed by [behavioral research / Numen Machines]" microcopy. Visible without scroll on 1440px desktop and 375px mobile
+- [x] **HERO-11**: Reading order verified — H1 → microcopy → CTAs → credibility hook. Screen reader announces content in visual order
 
 ### Interactive Demo (DEMO)
 
@@ -168,15 +168,15 @@
 ### Performance, Accessibility, Mobile (PERF)
 
 - [ ] **PERF-01**: Lighthouse Performance ≥ 90 on mobile (375px throttled 4G), measured against Vercel preview build
-- [ ] **PERF-02**: LCP < 2.5s mobile (Spline scene must not block LCP — static poster covers fold)
+- [ ] **PERF-02**: LCP < 2.5s mobile
 - [ ] **PERF-03**: CLS < 0.1 across all 8 sections
 - [ ] **PERF-04**: INP < 200ms on interactive elements (pricing toggle, demo picker, FAQ accordion)
 - [ ] **PERF-05**: Mobile-responsive single-column stack across all 8 sections (375px verified)
 - [ ] **PERF-06**: axe-core and pa11y CI checks clean — no critical or serious accessibility issues
 - [ ] **PERF-07**: Lighthouse Accessibility ≥ 95 on the production landing page
 - [ ] **PERF-08**: All animations skip on `prefers-reduced-motion: reduce` — verified manually via macOS / Chrome devtools
-- [ ] **PERF-09**: Total landing-page motion JS ≤ 200 KB gzip (excluding lazy-loaded Spline chunk)
-- [ ] **PERF-10**: Spline scene chunk is viewport-gated and does NOT count against initial bundle — bundle-analyzer verifies
+- [ ] **PERF-09**: Total landing-page motion JS ≤ 200 KB gzip
+- [ ] ~~**PERF-10**~~: *Deferred to future milestone — Spline viewport-gate removed along with HERO-05*
 - [ ] **PERF-11**: Skip-to-content link present at top of page (visually hidden until keyboard focus) — basic accessibility baseline
 - [ ] **PERF-12**: Heading hierarchy verified — single H1, H2/H3 in nesting order, no level skips. axe-core gate enforces
 - [ ] **PERF-13**: Document `<html lang="en">` set; page language declared
@@ -199,7 +199,8 @@
 - Real partner logos beyond Numen Machines (≥ 6 credible logos) → PROOF refinement
 - Real wired prediction demo (replace scripted reveal) → next milestone
 - /about, /research, /manifesto supporting pages
-- Lottie/Rive hero animation alternative (if Spline performance proves too costly)
+- Hero 3D/visual background element — Spline removed from Landing v1; custom element to be designed and built by Davide in a future milestone
+- Lottie/Rive hero animation alternative (if needed)
 - Cookie banner (EU/UK GDPR) — defer until traffic warrants
 - Light mode variant
 - White paper (Science section "Read more" target) — content production, separate workstream
@@ -218,7 +219,8 @@
 - Cult UI components — off-brief (texture/shader aesthetic clashes with Raycast minimal)
 - Standalone brand-spine codification phase — v3.0 failure pattern, copy is iterable
 - Vocab guardrails forbidding "viral"/"AI" — OpusClip patterns use them effectively
-- Reviving v3.0 BehavioralSimulationHero Canvas — Spline scene selected instead
+- Reviving v3.0 BehavioralSimulationHero Canvas — removed
+- Spline 3D hero scene — removed from Landing v1; custom hero visual element planned for future milestone (Davide)
 
 ---
 
@@ -228,7 +230,6 @@ These are not engineering work but block specific phases. Phase numbers below re
 
 | Gate | Phase blocked | Owner | Resolution |
 |---|---|---|---|
-| Spline scene file (`.splinecode` URL or self-hosted) created and optimized (≤ 500 KB) | Phase 3 (Hero Spline + Above-Fold Credibility) ship | Davide / designer | Build in Spline editor + optimize per Spline docs |
 | Real paper citations sourced (3-5 papers, author + year + DOI/URL) | Phase 8 (The Science) ship | Davide | Curate before phase plan |
 | Real white paper for SCI-06 link target | Phase 8 (The Science) ship (decision: link or skip) | Davide | If absent, SCI-06 ships without CTA |
 | Numen Machines logo lockup asset (SVG, multiple weights) | Phase 9 (Social Proof) ship | Davide / designer | Provide asset file |
@@ -258,12 +259,11 @@ Every v1 REQ-ID maps to exactly one phase. Total: 126 REQ-IDs across 17 categori
 | HERO-02 | 2 | Hero Shell + Final CTA Bookend + Vision |
 | HERO-03 | 2 | Hero Shell + Final CTA Bookend + Vision |
 | HERO-04 | 2 | Hero Shell + Final CTA Bookend + Vision |
-| HERO-05 | 3 | Hero Spline Scene + Above-Fold Credibility Hook |
 | HERO-06 | 2 | Hero Shell + Final CTA Bookend + Vision |
 | HERO-07 | 2 | Hero Shell + Final CTA Bookend + Vision |
 | HERO-08 | 2 | Hero Shell + Final CTA Bookend + Vision |
 | HERO-09 | 2 | Hero Shell + Final CTA Bookend + Vision |
-| HERO-10 | 3 | Hero Spline Scene + Above-Fold Credibility Hook |
+| HERO-10 | 3 | Above-Fold Credibility Hook |
 | HERO-11 | 2 | Hero Shell + Final CTA Bookend + Vision |
 | DEMO-01 | 4 | Interactive Demo |
 | DEMO-02 | 4 | Interactive Demo |
@@ -359,7 +359,6 @@ Every v1 REQ-ID maps to exactly one phase. Total: 126 REQ-IDs across 17 categori
 | PERF-07 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
 | PERF-08 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
 | PERF-09 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
-| PERF-10 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
 | PERF-11 | 1 | Foundation + Scaffold |
 | PERF-12 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
 | PERF-13 | 1 | Foundation + Scaffold |
@@ -371,4 +370,4 @@ Every v1 REQ-ID maps to exactly one phase. Total: 126 REQ-IDs across 17 categori
 | LAUNCH-06 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
 | LAUNCH-07 | 11 | Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover |
 
-**Coverage:** 126/126 REQ-IDs mapped ✓ — no orphans, no duplicates.
+**Coverage:** 124/124 REQ-IDs mapped ✓ — no orphans, no duplicates. (HERO-05 + PERF-10 deferred to future milestone — hero visual element removed from Landing v1)

@@ -4,7 +4,7 @@
 **Created:** 2026-05-24
 **Granularity:** fine
 **Phase cap:** 11 (enforced per v3.0 abandonment lesson)
-**Coverage:** 126/126 REQ-IDs mapped to exactly one phase
+**Coverage:** 124/124 REQ-IDs mapped to exactly one phase (HERO-05 + PERF-10 deferred — hero visual element removed from Landing v1)
 
 ## Overview
 
@@ -19,7 +19,7 @@ Ship a high-end SaaS-style animated landing page (Linear/Raycast aesthetic + Opu
 
 - [ ] **Phase 1: Foundation + Scaffold** — `/v3` route renders placeholder sections, framer-motion alias locked, MotionConfig root, layout bug fixed, sitemap/robots added
 - [x] **Phase 2: Hero Shell + Final CTA Bookend + Vision** — H1 + WordRotate + dual CTA + Spotlight + ShimmerButton render above-fold, Final CTA mirrors Hero, Vision beat shipped (completed 2026-05-25)
-- [ ] **Phase 3: Hero Spline Scene + Above-Fold Credibility Hook** — Spline 3D scene lazy-loads with poster fallback, thin logo bar + "backed by" microcopy visible without scroll
+- [ ] **Phase 3: Above-Fold Credibility Hook** — Thin logo bar (Numen Machines + placeholder partner slots) + "Backed by..." microcopy visible below CTAs without scroll; hero background deferred to future milestone
 - [ ] **Phase 4: Interactive Demo** — User picks sample TikTok, sees scripted 4-stage loader and animated insight reveal, cursor-following effect during result
 - [ ] **Phase 5: How It Works Pipeline** — AnimatedBeam horizontal pipeline (desktop) / TracingBeam vertical (mobile) one-shot animation on viewport entry
 - [ ] **Phase 6: Three Surfaces Bento + Dashboard Reveal** — Asymmetric BentoGrid renders Prediction + Competitor Intelligence + Brand Deals with live animated backgrounds; MacbookScroll dashboard reveal follows
@@ -69,18 +69,17 @@ Ship a high-end SaaS-style animated landing page (Linear/Raycast aesthetic + Opu
 **Research flag**: SKIP
 **UI hint**: yes
 
-### Phase 3: Hero Spline Scene + Above-Fold Credibility Hook
-**Goal**: User sees Spline 3D scene render behind Hero shell (with reduced-motion / slow-network static poster fallback) and a thin logo bar + "Backed by..." microcopy between H1 and Spline scene above-fold
+### Phase 3: Above-Fold Credibility Hook
+**Goal**: User sees a thin logo bar (Numen Machines lockup + 4-5 placeholder partner/early-backer slots) and "Backed by behavioral research / Numen Machines" microcopy visible below CTAs without scrolling at 1440px desktop and 375px mobile
 **Depends on**: Phase 2
-**Requirements**: HERO-05, HERO-10
+**Requirements**: HERO-10
 **Success Criteria** (what must be TRUE):
-  1. User on desktop (1440px) with default motion preferences sees Spline 3D scene render behind Hero shell within 2 seconds of viewport entry; Spline chunk is lazy-loaded via `dynamic({ ssr: false })` and IntersectionObserver-gated (does NOT count against initial bundle, verified via bundle analyzer)
-  2. User with `prefers-reduced-motion: reduce` OR on slow connection (`Save-Data` header) sees the static poster image instead of the Spline scene; the poster covers LCP so LCP < 2.5s mobile
-  3. Above-fold credibility hook (Numen Machines lockup + 4-5 partner/early-backer logo slots in a thin bar, plus "Backed by behavioral research / Numen Machines" microcopy) is visible between H1 microcopy and Spline scene at both 1440px desktop and 375px mobile without scrolling
-  4. Screen reader announces credibility hook in reading order (H1 → microcopy → CTAs → credibility hook → Spline scene `aria-hidden`)
+  1. Above-fold credibility hook (Numen Machines lockup + 4-5 partner/early-backer logo slots in a thin bar, plus "Backed by behavioral research / Numen Machines" microcopy) is visible below CTAs at both 1440px desktop and 375px mobile without scrolling; placeholder logos acceptable for v1
+  2. Screen reader announces credibility hook in reading order (H1 → microcopy → CTAs → credibility hook)
+  3. Hero section background remains as-is from Phase 2 (dark solid); no hero visual element added in this phase — deferred to future milestone
 **Plans**: TBD
-**Content gates**: **BLOCKED ON CONTENT — Spline `.splinecode` scene file (≤ 500 KB optimized) must be supplied by Davide / designer before this phase can ship per REQUIREMENTS.md Content Gates table. Partner logos may be placeholder.**
-**Research flag**: NEEDS RESEARCH at plan time — Spline scene optimization parameters + IntersectionObserver mount threshold need per-plan spec
+**Content gates**: None (partner logos may be placeholder)
+**Research flag**: SKIP
 **UI hint**: yes
 
 ### Phase 4: Interactive Demo
@@ -188,10 +187,10 @@ Ship a high-end SaaS-style animated landing page (Linear/Raycast aesthetic + Opu
 ### Phase 11: Polish, SEO, Analytics, Perf, A11y, Mobile + Cutover
 **Goal**: Polish layer + SEO + Analytics + Performance + Accessibility + Mobile gates all pass on Vercel preview at `/v3`; Davide approves; `/v3` overwrites root landing page in one-way cutover
 **Depends on**: Phases 1-10 (all section content must exist before Lighthouse baseline is meaningful)
-**Requirements**: POLISH-02, POLISH-03, POLISH-04, POLISH-05, POLISH-06, META-01, META-02, META-04, META-05, ANALYTICS-01, ANALYTICS-02, ANALYTICS-03, ANALYTICS-04, PERF-01, PERF-02, PERF-03, PERF-04, PERF-05, PERF-06, PERF-07, PERF-08, PERF-09, PERF-10, PERF-12, LAUNCH-01, LAUNCH-02, LAUNCH-03, LAUNCH-04, LAUNCH-05, LAUNCH-06, LAUNCH-07
+**Requirements**: POLISH-02, POLISH-03, POLISH-04, POLISH-05, POLISH-06, META-01, META-02, META-04, META-05, ANALYTICS-01, ANALYTICS-02, ANALYTICS-03, ANALYTICS-04, PERF-01, PERF-02, PERF-03, PERF-04, PERF-05, PERF-06, PERF-07, PERF-08, PERF-09, PERF-12, LAUNCH-01, LAUNCH-02, LAUNCH-03, LAUNCH-04, LAUNCH-05, LAUNCH-06, LAUNCH-07
 **Success Criteria** (what must be TRUE):
   1. Polish layer ships: scroll progress indicator (thin coral 2-3px line at viewport top), custom coral-tinted cursor on landing only (default cursor in `(app)/` routes, disabled on touch), section dividers via alternating `bg-background` / `bg-background-elevated` tones, secondary accent color (warm gray / muted gold) applied sparingly for non-coral accents (pricing checkmarks, citation chip borders)
-  2. Lighthouse on Vercel preview build (mobile, 375px throttled 4G) passes ALL gates: Performance ≥ 90, Accessibility ≥ 95, LCP < 2.5s, CLS < 0.1, INP < 200ms, motion JS ≤ 200 KB gzip (excluding lazy-loaded Spline chunk verified via bundle analyzer); axe-core + pa11y CI clean (no critical/serious issues); all animations skip on `prefers-reduced-motion: reduce` (manual macOS audit clean); heading hierarchy verified (single H1, no level skips)
+  2. Lighthouse on Vercel preview build (mobile, 375px throttled 4G) passes ALL gates: Performance ≥ 90, Accessibility ≥ 95, LCP < 2.5s, CLS < 0.1, INP < 200ms, motion JS ≤ 200 KB gzip; axe-core + pa11y CI clean (no critical/serious issues); all animations skip on `prefers-reduced-motion: reduce` (manual macOS audit clean); heading hierarchy verified (single H1, no level skips)
   3. SEO + Analytics baseline live: meta description ≤ 160 chars, JSON-LD `SoftwareApplication` schema injected, Open Graph image (`opengraph-image.tsx`) regenerated to reflect new H1 identity, Twitter `summary_large_image` card configured, canonical link tag set to production URL; `@vercel/analytics` + `@vercel/speed-insights` installed and mounted; conversion events tracked (hero primary CTA, hero secondary CTA, demo sample selection, demo result reveal, pricing tier CTA, final CTA, sign-in link); DNT/consent respected, no PII captured
   4. Davide reviews Vercel preview of `/v3` and approves cutover (LAUNCH-01 manual gate); reference-fidelity audit passes side-by-side screenshot comparison against Linear, Raycast, OpusClip (feels native to reference set, no template-slop tropes)
   5. Cutover executes: `/v3/page.tsx` content overwrites `(marketing)/page.tsx`, root layout metadata title/OG image/robots/sitemap updated (no "Artificial Societies" residue), standalone `/pricing` route deleted or 301-redirected to `/#pricing`, legacy `src/components/landing/` imports audited and removed, bundle-size regression check passes, real Whop checkout pricing applied to PRICE-05 placeholders
@@ -211,7 +210,7 @@ Phases 4-9 are parallelizable after Phase 2 ships shared Hero primitives (Spotli
 |-------|----------------|--------|-----------|
 | 1. Foundation + Scaffold | 0/5 | Planned | - |
 | 2. Hero Shell + Final CTA Bookend + Vision | 3/3 | Complete   | 2026-05-25 |
-| 3. Hero Spline Scene + Above-Fold Credibility Hook | 0/TBD | Not started | - |
+| 3. Above-Fold Credibility Hook | 0/TBD | Not started | - |
 | 4. Interactive Demo | 0/TBD | Not started | - |
 | 5. How It Works Pipeline | 0/TBD | Not started | - |
 | 6. Three Surfaces Bento + Dashboard Reveal | 0/TBD | Not started | - |
@@ -225,7 +224,6 @@ Phases 4-9 are parallelizable after Phase 2 ships shared Hero primitives (Spotli
 
 | Phase | Gate | Owner | Blocking |
 |-------|------|-------|----------|
-| 3 | Spline `.splinecode` scene file (≤ 500 KB optimized) | Davide / designer | Phase 3 ship |
 | 8 | Real paper citations (3-5 papers, author + year + DOI/URL) | Davide | Phase 8 ship |
 | 8 | White paper existence decision (drives SCI-06 link/skip) | Davide | Phase 8 ship |
 | 9 | Numen Machines logo lockup SVG | Davide / designer | Phase 9 ship |
@@ -243,7 +241,7 @@ Every v1 REQ-ID maps to exactly one phase. Total: 126 REQ-IDs across 17 categori
 |-------|---------|-------|
 | 1 | FOUND-01, FOUND-02, FOUND-03, FOUND-04, FOUND-05, FOUND-06, FOUND-07, FOUND-08, FOUND-09, FOUND-10, MOTION-04, MOTION-05, META-03, PERF-11, PERF-13, POLISH-01, POLISH-07 | 17 |
 | 2 | HERO-01, HERO-02, HERO-03, HERO-04, HERO-06, HERO-07, HERO-08, HERO-09, HERO-11, CTA-01, CTA-02, CTA-03, CTA-04, CTA-05, CTA-06, VISION-01, MOTION-01, MOTION-02, MOTION-03 | 19 |
-| 3 | HERO-05, HERO-10 | 2 |
+| 3 | HERO-10 | 1 |
 | 4 | DEMO-01, DEMO-02, DEMO-03, DEMO-04, DEMO-05, DEMO-06, DEMO-07, DEMO-08, DEMO-09, DEMO-10 | 10 |
 | 5 | HOW-01, HOW-02, HOW-03, HOW-04, HOW-05, HOW-06, HOW-07 | 7 |
 | 6 | BENTO-01, BENTO-02, BENTO-03, BENTO-04, BENTO-05, BENTO-06, BENTO-07 | 7 |
@@ -251,8 +249,8 @@ Every v1 REQ-ID maps to exactly one phase. Total: 126 REQ-IDs across 17 categori
 | 8 | SCI-01, SCI-02, SCI-03, SCI-04, SCI-05, SCI-06, SCI-07, SCI-08, SCI-09 | 9 |
 | 9 | PROOF-01, PROOF-02, PROOF-03, PROOF-04, PROOF-05, PROOF-06, PROOF-07, PROOF-08 | 8 |
 | 10 | PRICE-01, PRICE-02, PRICE-03, PRICE-04, PRICE-05, PRICE-06, PRICE-07, PRICE-08, PRICE-09 | 9 |
-| 11 | POLISH-02, POLISH-03, POLISH-04, POLISH-05, POLISH-06, META-01, META-02, META-04, META-05, ANALYTICS-01, ANALYTICS-02, ANALYTICS-03, ANALYTICS-04, PERF-01, PERF-02, PERF-03, PERF-04, PERF-05, PERF-06, PERF-07, PERF-08, PERF-09, PERF-10, PERF-12, LAUNCH-01, LAUNCH-02, LAUNCH-03, LAUNCH-04, LAUNCH-05, LAUNCH-06, LAUNCH-07 | 31 |
-| **Total** | | **126** |
+| 11 | POLISH-02, POLISH-03, POLISH-04, POLISH-05, POLISH-06, META-01, META-02, META-04, META-05, ANALYTICS-01, ANALYTICS-02, ANALYTICS-03, ANALYTICS-04, PERF-01, PERF-02, PERF-03, PERF-04, PERF-05, PERF-06, PERF-07, PERF-08, PERF-09, PERF-12, LAUNCH-01, LAUNCH-02, LAUNCH-03, LAUNCH-04, LAUNCH-05, LAUNCH-06, LAUNCH-07 | 30 |
+| **Total** | | **124** |
 
 ### Per-REQ Mapping (alphabetical by category)
 
@@ -306,7 +304,6 @@ Every v1 REQ-ID maps to exactly one phase. Total: 126 REQ-IDs across 17 categori
 | HERO-02 | 2 |
 | HERO-03 | 2 |
 | HERO-04 | 2 |
-| HERO-05 | 3 |
 | HERO-06 | 2 |
 | HERO-07 | 2 |
 | HERO-08 | 2 |
@@ -346,7 +343,6 @@ Every v1 REQ-ID maps to exactly one phase. Total: 126 REQ-IDs across 17 categori
 | PERF-07 | 11 |
 | PERF-08 | 11 |
 | PERF-09 | 11 |
-| PERF-10 | 11 |
 | PERF-11 | 1 |
 | PERF-12 | 11 |
 | PERF-13 | 1 |
@@ -385,7 +381,7 @@ Every v1 REQ-ID maps to exactly one phase. Total: 126 REQ-IDs across 17 categori
 | SCI-09 | 8 |
 | VISION-01 | 2 |
 
-**Coverage:** 126/126 REQ-IDs mapped ✓ — no orphans, no duplicates.
+**Coverage:** 124/124 REQ-IDs mapped ✓ — no orphans, no duplicates. (HERO-05 + PERF-10 deferred to future milestone)
 
 ---
 
