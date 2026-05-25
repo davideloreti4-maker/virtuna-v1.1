@@ -77,7 +77,8 @@ Ship a high-end SaaS-style animated landing page (Linear/Raycast aesthetic + Opu
   1. Above-fold credibility hook (Numen Machines lockup + 4-5 partner/early-backer logo slots in a thin bar, plus "Backed by behavioral research / Numen Machines" microcopy) is visible below CTAs at both 1440px desktop and 375px mobile without scrolling; placeholder logos acceptable for v1
   2. Screen reader announces credibility hook in reading order (H1 → microcopy → CTAs → credibility hook)
   3. Hero section background remains as-is from Phase 2 (dark solid); no hero visual element added in this phase — deferred to future milestone
-**Plans**: TBD
+**Plans**: 1 plan
+  - [ ] 03-01-PLAN.md — CredibilityHook server component + HeroBookend wiring (HERO-10)
 **Content gates**: None (partner logos may be placeholder)
 **Research flag**: SKIP
 **UI hint**: yes
@@ -210,7 +211,7 @@ Phases 4-9 are parallelizable after Phase 2 ships shared Hero primitives (Spotli
 |-------|----------------|--------|-----------|
 | 1. Foundation + Scaffold | 0/5 | Planned | - |
 | 2. Hero Shell + Final CTA Bookend + Vision | 3/3 | Complete   | 2026-05-25 |
-| 3. Above-Fold Credibility Hook | 0/TBD | Not started | - |
+| 3. Above-Fold Credibility Hook | 0/1 | Planned | - |
 | 4. Interactive Demo | 0/TBD | Not started | - |
 | 5. How It Works Pipeline | 0/TBD | Not started | - |
 | 6. Three Surfaces Bento + Dashboard Reveal | 0/TBD | Not started | - |
