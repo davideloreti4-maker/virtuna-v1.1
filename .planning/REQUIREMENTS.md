@@ -46,7 +46,7 @@ Audio fingerprint matching is not a primary viral signal for the current use cas
 - [ ] **VERIF-01**: Phase 2 (Creator Profile) UAT executed end-to-end against the deployed app. The 9-card interview modal completes on first upload, fields persist to `creator_profiles`, reference-creator side effect fires. Pass/fail recorded in `.planning/research/verif-phase2-uat.md`.
 - [ ] **VERIF-02**: Phase 3 SC#4 + SC#5 (post-deploy smoke tests on `/api/analyze` SSE + cache hit) executed against the live Vercel deploy. Both flip from DEFERRED-PENDING-LIVE-DEPLOY to MET (or an explicit defer-permanently decision is logged with rationale).
 - [ ] **VERIF-03**: Phase 4 HUMAN-UAT — the 2 pending live-API tests run: (1) end-to-end Wave 0 content-type via `/api/analyze`, (2) niche-detector `cost_cents > 0` with `cache breakdown absent`. Results recorded.
-- [ ] **VERIF-04**: Phase 6 code-review follow-ups closed:
+- [x] **VERIF-04**: Phase 6 code-review follow-ups closed:
   - **WR-04** — cron `route.ts` N+1 idempotency check refactored to a single bulk pre-fetch of already-embedded `sound_names`.
   - **WR-05** — `audio_description` bounds nesting flattened.
   - **IN-01** — `analyzeVideoWithGemini` video-analysis path (gemini.ts ~lines 515-535) restructured to try/finally so `clearTimeout` fires on both success and failure paths (matches the text-analysis fix in commit `5dec5a3`).
