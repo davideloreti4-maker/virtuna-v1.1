@@ -50,9 +50,7 @@ export interface HeroBookendProps {
  *   UI-SPEC clause is DEGRADED to "re-mount on re-enter" (remount-on-reenter fallback).
  *   TODO: Upgrade when Magic UI WordRotate adds a controlled index or paused prop.
  *
- * WordRotate renders `motion.h1` internally — this produces invalid nested h1 when
- * headingAs="h1". The outer aria-label covers screen reader semantics. Tracked as known
- * limitation of the installed primitive until upstream fix or fork.
+ * WordRotate renders `motion.span` internally — no nested heading elements.
  */
 export function HeroBookend({
   reducedHeight = false,
@@ -185,32 +183,33 @@ export function HeroBookend({
         {/* Dual CTA pair (HERO-03, HERO-06, HERO-07, MOTION-01) */}
         <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-6 w-full sm:w-auto">
 
-          {/* Primary CTA — ShimmerButton wrapping anchor */}
+          {/* Primary CTA — ShimmerButton with onClick scroll (no <a> wrapper — avoids button-in-anchor invalid nesting) */}
           {/* coral single-stop alpha border + shimmer (MOTION-03) */}
-          <a href="#demo" className="w-full sm:w-auto">
-            <ShimmerButton
-              className="relative w-full sm:w-auto h-14 px-6 text-base font-bold overflow-hidden"
-              style={{
-                border: "1px solid rgba(255, 127, 80, 0.25)",
-                color: "#f9f9f9",
-                borderRadius: "8px",
-              }}
-              shimmerColor="rgba(255, 127, 80, 0.25)"
-              background="rgba(255, 127, 80, 0.08)"
-              borderRadius="8px"
-            >
-              <span className="relative z-10">Score your first TikTok</span>
-              {!prefersReduced && (
-                <BorderBeam
-                  size={60}
-                  duration={6}
-                  borderWidth={1}
-                  colorFrom="rgba(255, 127, 80, 0.8)"
-                  colorTo="rgba(255, 127, 80, 0)"
-                />
-              )}
-            </ShimmerButton>
-          </a>
+          <ShimmerButton
+            onClick={() => {
+              document.getElementById("demo")?.scrollIntoView({ behavior: "smooth" });
+            }}
+            className="relative w-full sm:w-auto h-14 px-6 text-base font-bold overflow-hidden"
+            style={{
+              border: "1px solid rgba(255, 127, 80, 0.25)",
+              color: "#f9f9f9",
+              borderRadius: "8px",
+            }}
+            shimmerColor="rgba(255, 127, 80, 0.25)"
+            background="rgba(255, 127, 80, 0.08)"
+            borderRadius="8px"
+          >
+            <span className="relative z-10">Score your first TikTok</span>
+            {!prefersReduced && (
+              <BorderBeam
+                size={60}
+                duration={6}
+                borderWidth={1}
+                colorFrom="rgba(255, 127, 80, 0.8)"
+                colorTo="rgba(255, 127, 80, 0)"
+              />
+            )}
+          </ShimmerButton>
 
           {/* Secondary CTA — ghost link */}
           <a
