@@ -4,14 +4,14 @@ milestone: engine-hardening
 milestone_name: Engine Hardening
 status: executing
 stopped_at: Phase 18 context gathered
-last_updated: "2026-05-25T08:46:26.276Z"
+last_updated: "2026-05-25T08:46:48.993Z"
 last_activity: 2026-05-25 -- Phase 18 planning complete
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 10
-  completed_plans: 4
-  percent: 40
+  completed_plans: 5
+  percent: 50
 ---
 
 # Project State
@@ -32,7 +32,7 @@ Plan: closed inline (no separate plan needed — single 10-line rename)
 Status: Ready to execute
 Last activity: 2026-05-25 -- Phase 18 planning complete
 
-Progress: [████░░░░░░] 40%
+Progress: [█████░░░░░] 50%
 
 **Phase range this milestone:** 14-18 (continues from M1 Engine Foundation's Phase 13)
 
@@ -57,6 +57,7 @@ Progress: [████░░░░░░] 40%
 - No plans complete yet
 
 *Updated after each plan completion*
+| Phase 18-m1-verification-debt-closure P02 | 138 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,7 @@ Recent decisions affecting current work:
 - MILESTONE.md: TS errors default path is **write the migration** (option a); rip out (option b) only if call-site audit shows the routes are dead
 - MILESTONE.md: Qwen-only engine migration locked at M1 closure — do not revisit provider choice
 - MILESTONE.md: M1 pipeline treated as locked — additive-only rule applies (calibration/threshold work touches calibration.ts + aggregator.ts but does not rewrite the pipeline)
+- [Phase ?]: rules.ts timer fix
 
 ### Pending Todos
 
@@ -104,6 +106,6 @@ Items carried forward from M1 Engine Foundation close (now the active scope of t
 
 ## Session Continuity
 
-Last session: 2026-05-25T08:46:26.272Z
+Last session: 2026-05-25T08:46:42.050Z
 Stopped at: Phase 18 context gathered
 Resume file: None
