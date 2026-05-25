@@ -111,7 +111,7 @@ Phase 16: DEFERRED 2026-05-25 (audio feature; not critical path)
 **Plans**: 4 plans
   - [x] 18-01-PLAN.md — Verify WR-04 + WR-05 (read-only) and centralize IN-02 (create src/lib/supabase/pgvector.ts, replace 2 call sites)
   - [x] 18-02-PLAN.md — IN-01 timer-leak fix in src/lib/engine/deepseek.ts + src/lib/engine/rules.ts (add clearTimeout to catch blocks)
-  - [ ] 18-03-PLAN.md — IN-03 SSRF guard in processSoundEmbedding (closes Phase 12 T-06-13) + phase-final tsc/vitest gate
+  - [x] 18-03-PLAN.md — IN-03 SSRF guard in processSoundEmbedding (closes Phase 12 T-06-13) + phase-final tsc/vitest gate
   - [ ] 18-04-PLAN.md — VERIF-01/02/03 manual UAT/smoke checklists + human checkpoint to record outcomes
 
 ## Progress
@@ -125,7 +125,7 @@ Phases 14, 16, 17 may fork in parallel from the milestone branch base. Phase 15 
 | 15. Calibration Refit on Qwen Corpus | — | DROPPED | 2026-05-24 |
 | 16. Audio Fingerprint + Embedder Re-enable | — | DEFERRED | 2026-05-25 |
 | 17. Smoke Runner Live Billing Wiring | 0/TBD | Not started | - |
-| 18. M1 Verification Debt Closure | 2/4 | In Progress|  |
+| 18. M1 Verification Debt Closure | 3/4 | In Progress|  |
 
 ## Coverage
 

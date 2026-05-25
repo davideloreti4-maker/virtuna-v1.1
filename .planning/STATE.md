@@ -4,14 +4,14 @@ milestone: engine-hardening
 milestone_name: Engine Hardening
 status: executing
 stopped_at: Phase 18 context gathered
-last_updated: "2026-05-25T08:46:48.993Z"
+last_updated: "2026-05-25T08:50:59.856Z"
 last_activity: 2026-05-25 -- Phase 18 planning complete
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 10
-  completed_plans: 5
-  percent: 50
+  completed_plans: 6
+  percent: 60
 ---
 
 # Project State
@@ -32,7 +32,7 @@ Plan: closed inline (no separate plan needed — single 10-line rename)
 Status: Ready to execute
 Last activity: 2026-05-25 -- Phase 18 planning complete
 
-Progress: [█████░░░░░] 50%
+Progress: [██████░░░░] 60%
 
 **Phase range this milestone:** 14-18 (continues from M1 Engine Foundation's Phase 13)
 
@@ -72,7 +72,8 @@ Recent decisions affecting current work:
 - MILESTONE.md: TS errors default path is **write the migration** (option a); rip out (option b) only if call-site audit shows the routes are dead
 - MILESTONE.md: Qwen-only engine migration locked at M1 closure — do not revisit provider choice
 - MILESTONE.md: M1 pipeline treated as locked — additive-only rule applies (calibration/threshold work touches calibration.ts + aggregator.ts but does not rewrite the pipeline)
-- [Phase ?]: rules.ts timer fix
+- [Phase 18-02]: rules.ts + deepseek.ts timer fix — clearTimeout added to catch blocks (IN-01 closed)
+- [Phase 18-03]: IN-03 SSRF guard permissive-by-design (no hostname allowlist) — blocks RFC1918+loopback+link-local+IPv6-ULA only; closes T-06-13. All 5 VERIF-04 sub-items confirmed MET.
 
 ### Pending Todos
 
@@ -106,6 +107,6 @@ Items carried forward from M1 Engine Foundation close (now the active scope of t
 
 ## Session Continuity
 
-Last session: 2026-05-25T08:46:42.050Z
+Last session: 2026-05-25T08:50:59.853Z
 Stopped at: Phase 18 context gathered
 Resume file: None
