@@ -25,6 +25,15 @@ export interface HeroBookendProps {
    * and Spotlight are untouched.
    */
   headingAs?: "h1" | "p";
+  /**
+   * Gates the above-fold CredibilityHook (HERO-10) render.
+   *  - true (default): used by HeroSection — credibility bar appears after CTA pair.
+   *  - false:          used by FinalCtaSection — Final CTA must NOT duplicate the
+   *                    credibility bar that already shipped in the Hero (03-VERIFICATION
+   *                    Gap 2 regression fix). UI-SPEC § Component Anatomy explicitly
+   *                    notes the hook lives in the Hero only.
+   */
+  showCredibilityHook?: boolean;
   className?: string;
 }
 
@@ -54,6 +63,7 @@ export interface HeroBookendProps {
 export function HeroBookend({
   reducedHeight = false,
   headingAs = "h1",
+  showCredibilityHook = true,
   className,
 }: HeroBookendProps) {
   const prefersReduced = useReducedMotion() ?? false;
@@ -168,10 +178,6 @@ export function HeroBookend({
           Stop guessing what&apos;ll hit. Score, refine, ship — in 30 seconds.
         </p>
 
-        {/* HERO-10: Above-fold credibility hook — replaces placeholder gap (Phase 3) */}
-        {/* Server component inserted inside client HeroBookend — valid in Next.js App Router */}
-        <CredibilityHook />
-
         {/* Dual CTA pair (HERO-03, HERO-06, HERO-07, MOTION-01) */}
         <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-6 w-full sm:w-auto">
 
@@ -209,6 +215,10 @@ export function HeroBookend({
             />
           </a>
         </div>
+
+        {/* HERO-10: Above-fold credibility hook — renders AFTER CTA pair per HERO-11 / UI-SPEC § Screen Reader Order. */}
+        {/* Gated on showCredibilityHook (default true) so FinalCtaSection can suppress to avoid duplication. */}
+        {showCredibilityHook && <CredibilityHook />}
       </div>
     </div>
   );
