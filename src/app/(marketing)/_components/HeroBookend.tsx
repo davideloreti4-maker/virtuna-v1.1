@@ -89,7 +89,7 @@ export function HeroBookend({
       )}
     >
       {/* Spotlight — absolutely positioned behind content (HERO-04, MOTION-03) */}
-      {/* Single-stop coral alpha: rgba(255,127,80,0.12) — keeps WCAG AA ≥ 4.5:1 on white text */}
+      {/* Solid coral fill — SVG ellipse has fillOpacity="0.21" which controls the glow intensity */}
       <div
         aria-hidden="true"
         className={cn(
@@ -98,7 +98,7 @@ export function HeroBookend({
         )}
       >
         <Spotlight
-          fill="rgba(255, 127, 80, 0.12)"
+          fill="#FF7F50"
           className={cn(
             "absolute -top-40 right-0 md:-top-20 md:-right-10",
             prefersReduced ? "opacity-100 animate-none" : ""
