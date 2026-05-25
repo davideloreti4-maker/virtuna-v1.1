@@ -211,7 +211,7 @@ Phases 4-9 are parallelizable after Phase 2 ships shared Hero primitives (Spotli
 |-------|----------------|--------|-----------|
 | 1. Foundation + Scaffold | 0/5 | Planned | - |
 | 2. Hero Shell + Final CTA Bookend + Vision | 3/3 | Complete   | 2026-05-25 |
-| 3. Above-Fold Credibility Hook | 1/1 | Complete   | 2026-05-25 |
+| 3. Above-Fold Credibility Hook | 2/2 | Complete   | 2026-05-25 |
 | 4. Interactive Demo | 0/TBD | Not started | - |
 | 5. How It Works Pipeline | 0/TBD | Not started | - |
 | 6. Three Surfaces Bento + Dashboard Reveal | 0/TBD | Not started | - |
