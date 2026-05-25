@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: engine-hardening
 milestone_name: Engine Hardening
-status: idle
-stopped_at: Phase 17 CLOSED 2026-05-25 — cost_cents renamed to cost_cents_estimated in smoke runner; ready for Phase 18
-last_updated: "2026-05-25T00:00:00.000Z"
-last_activity: 2026-05-25 -- Phase 17 closed inline: renamed cost_cents → cost_cents_estimated in scripts/smoke-tiktok-pipeline.ts (SmokeResult type + 11 touch points). CALIB-04 closed as estimate-from-tokens (billing API deferred while omni is free). tsc clean. Ready for Phase 18.
+status: completed
+stopped_at: Phase 18 context gathered
+last_updated: "2026-05-25T08:23:44.158Z"
+last_activity: "2026-05-25 -- Phase 17 closed: renamed `cost_cents` → `cost_cents_estimated` in smoke runner output schema. CALIB-04 closed. Phase 18 (VERIF debt closure) is next."
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 1
   total_plans: 6
   completed_plans: 3
-  percent: 40
+  percent: 50
 ---
 
 # Project State
@@ -104,6 +104,6 @@ Items carried forward from M1 Engine Foundation close (now the active scope of t
 
 ## Session Continuity
 
-Last session: 2026-05-25T00:00:00.000Z
-Stopped at: Phase 17 closed inline
-Resume file: .planning/phases/17-smoke-runner-live-billing-wiring/17-CONTEXT.md
+Last session: 2026-05-25T08:23:44.155Z
+Stopped at: Phase 18 context gathered
+Resume file: .planning/phases/18-m1-verification-debt-closure/18-CONTEXT.md
