@@ -6,9 +6,15 @@
 **Status:** Active
 **Part of:** Intelligence Surface drop (3 milestones: Result Surface → Iteration & Niche Intelligence → Compounding Intelligence)
 
+> **⚠ Amendment (2026-05-25) — Board model pivot**
+>
+> The original "result card + live persona hive" architecture described below has been **replaced by a node-based board model**. `/analyze` is now a persistent Konva canvas with 5 group container frames (Input, Engine, Audience, Verdict, Actions, Content Analysis). The Audience node combines TikTok-Studio retention curve + per-persona dropoff markers + piano-roll heatmap underlay + filmstrip + headline metrics. The original goals (magic moment, mobile-first, share-ready, anti-virality, onboarding) all carry forward; the **delivery surface and information architecture changed**.
+>
+> **Authoritative current direction:** `.planning/ROADMAP.md` (8-phase structure) + `.planning/REQUIREMENTS.md` (refactored R1 + R2) + `.planning/phases/02-board-substrate-navigation/02-CONTEXT.md` (decisions for Phase 2). The "Scope (in)" section below preserves the original intent for historical context — implementation details follow the new artifacts.
+
 ## Purpose
 
-Build the polished analysis experience that wraps the validated Engine Foundation (v3.0.0) — the surface every user touches when they analyze a video. This is the **magic moment** layer: result card, live persona simulation, mobile route, and the onboarding sequence that converts free users.
+Build the polished analysis experience that wraps the validated Engine Foundation (v3.0.0) — the surface every user touches when they analyze a video. This is the **magic moment** layer: result board, live audience prediction, mobile route, and the onboarding sequence that converts free users.
 
 Without this milestone, the engine is invisible. With it, Virtuna becomes a product creators can feel.
 
