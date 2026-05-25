@@ -1,5 +1,3 @@
-"use client";
-
 import { HeroBookend } from "@/app/(marketing)/_components/HeroBookend";
 import { LandingFooter } from "@/app/(marketing)/_components/LandingFooter";
 
