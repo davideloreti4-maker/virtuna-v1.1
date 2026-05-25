@@ -63,7 +63,7 @@ Ship a high-end SaaS-style animated landing page (Linear/Raycast aesthetic + Opu
   5. With `prefers-reduced-motion: reduce` enabled, WordRotate shows static single word, ShimmerButton shimmer is disabled, and no autoplay animation fires outside viewport (verified via macOS Reduce Motion + IntersectionObserver gate)
 **Plans**: 3 plans across 2 waves
   - [x] 02-01-PLAN.md — Install Magic UI primitives (WordRotate, ShimmerButton, AnimatedShinyText, BorderBeam) + Aceternity Spotlight; build shared HeroBookend client component with reduced-motion + IntersectionObserver gates
-  - [ ] 02-02-PLAN.md — VisionBeat server component (founder quote in GlassPanel) + LandingFooter (4-column + Sign-in + Numen Machines strip) + /privacy + /terms stub routes + sitemap.ts extension
+  - [x] 02-02-PLAN.md — VisionBeat server component (founder quote in GlassPanel) + LandingFooter (4-column + Sign-in + Numen Machines strip) + /privacy + /terms stub routes + sitemap.ts extension
   - [ ] 02-03-PLAN.md — HeroSection + FinalCtaSection wrappers; rewire v3/page.tsx (replace Hero + Final CTA SectionShells, insert VisionBeat)
 **Content gates**: None (copy iterable in-phase; coral-tinted Spotlight uses single-stop alpha gradient — no multi-hue)
 **Research flag**: SKIP
@@ -210,7 +210,7 @@ Phases 4-9 are parallelizable after Phase 2 ships shared Hero primitives (Spotli
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation + Scaffold | 0/5 | Planned | - |
-| 2. Hero Shell + Final CTA Bookend + Vision | 1/3 | In Progress|  |
+| 2. Hero Shell + Final CTA Bookend + Vision | 2/3 | In Progress|  |
 | 3. Hero Spline Scene + Above-Fold Credibility Hook | 0/TBD | Not started | - |
 | 4. Interactive Demo | 0/TBD | Not started | - |
 | 5. How It Works Pipeline | 0/TBD | Not started | - |

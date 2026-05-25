@@ -121,16 +121,16 @@
 
 ### Vision Beat (VISION)
 
-- [ ] **VISION-01**: Brief founder vision beat appears between Pricing and Final CTA — 1-2 sentence quote attributed to founder name + role (e.g. "Davide Loreti, Founder, Virtuna"). Investor-targeted signal. Lightweight visual treatment, no photo required for v1
+- [x] **VISION-01**: Brief founder vision beat appears between Pricing and Final CTA — 1-2 sentence quote attributed to founder name + role (e.g. "Davide Loreti, Founder, Virtuna"). Investor-targeted signal. Lightweight visual treatment, no photo required for v1
 
 ### Final CTA + Footer (CTA)
 
 - [ ] **CTA-01**: Final CTA section mirrors Hero visually (same Spotlight + ShimmerButton + AnimatedShinyText) — bookend close pattern
 - [ ] **CTA-02**: Final CTA copy mirrors Hero verbatim or paraphrases the same promise — does NOT introduce new positioning
-- [ ] **CTA-03**: 4-column footer: product links, company, legal, social — server-rendered, no client JS
-- [ ] **CTA-04**: Footer includes Numen Machines product lockup ("A Numen Machines product") with link
-- [ ] **CTA-05**: Footer respects existing accessibility/contrast standards (WCAG AA, ≥ 4.5:1 on body text)
-- [ ] **CTA-06**: Footer "Sign in" link present for returning users (mirrors header link)
+- [x] **CTA-03**: 4-column footer: product links, company, legal, social — server-rendered, no client JS
+- [x] **CTA-04**: Footer includes Numen Machines product lockup ("A Numen Machines product") with link
+- [x] **CTA-05**: Footer respects existing accessibility/contrast standards (WCAG AA, ≥ 4.5:1 on body text)
+- [x] **CTA-06**: Footer "Sign in" link present for returning users (mirrors header link)
 
 ### Cross-Cutting Motion Policy (MOTION)
 
