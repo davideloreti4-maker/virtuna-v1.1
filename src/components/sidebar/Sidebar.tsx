@@ -23,7 +23,6 @@ import {
   House,
   TrendUp,
   SlidersHorizontal,
-  CircleNotch,
   Star,
   ClockCountdown,
   Folder,
@@ -237,7 +236,7 @@ export function Sidebar() {
             aria-keyshortcuts="Meta+\\"
             className="hidden md:flex text-foreground-muted hover:text-foreground p-1"
           >
-            <Icon icon={SidebarSimple} size={18} />
+            <Icon icon={SidebarSimple} size={20} />
           </Button>
           {/* Mobile close button */}
           <Button
@@ -247,7 +246,7 @@ export function Sidebar() {
             aria-label="Close sidebar"
             className="flex md:hidden text-foreground-muted hover:text-foreground p-1"
           >
-            <Icon icon={SidebarSimple} size={18} />
+            <Icon icon={SidebarSimple} size={20} />
           </Button>
         </div>
 
