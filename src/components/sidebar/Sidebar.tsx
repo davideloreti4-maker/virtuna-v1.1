@@ -43,6 +43,7 @@ import { cn } from "@/lib/utils";
 import { useAnalysisHistory } from "@/hooks/queries";
 import { useProfile } from "@/hooks/queries/use-profile";
 import { useSidebarStore } from "@/stores/sidebar-store";
+import { createClient } from "@/lib/supabase/client";
 
 // ─── sub-components ──────────────────────────────────────────────
 
@@ -135,6 +136,7 @@ function NavItem({
 export function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
+  const supabase = createClient();
   const { isOpen, close, isCollapsed, toggleCollapsed } = useSidebarStore();
 
   // Recent boards
@@ -467,7 +469,7 @@ export function Sidebar() {
                   <div className="mx-3 border-t border-white/[0.06]" />
                   <button
                     type="button"
-                    onClick={() => { router.push("/login"); setAccountOpen(false); }}
+                    onClick={async () => { await supabase.auth.signOut(); router.push("/login"); setAccountOpen(false); }}
                     className="w-full flex items-center gap-2 px-3 min-h-[40px] text-sm text-foreground-secondary hover:bg-white/[0.05] hover:text-foreground transition-colors"
                   >
                     <SignOut className="h-4 w-4" />
