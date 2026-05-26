@@ -53,6 +53,31 @@ ALTER TABLE public.analysis_results
 CREATE INDEX IF NOT EXISTS idx_analysis_results_project
   ON public.analysis_results (project_id);
 
+-- CR-03: prevent cross-user project assignment.
+-- The FK only validates that projects.id exists, not that it belongs to the
+-- same user. This trigger closes the write path before any UPDATE RLS policy
+-- is added to analysis_results — a user cannot point their analysis_results
+-- row at a project owned by a different user.
+CREATE OR REPLACE FUNCTION public.check_project_ownership()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.project_id IS NOT NULL THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.projects
+      WHERE id = NEW.project_id AND user_id = NEW.user_id
+    ) THEN
+      RAISE EXCEPTION 'project_id must belong to the same user as the analysis';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS enforce_project_ownership ON public.analysis_results;
+CREATE TRIGGER enforce_project_ownership
+  BEFORE INSERT OR UPDATE OF project_id ON public.analysis_results
+  FOR EACH ROW EXECUTE FUNCTION public.check_project_ownership();
+
 -- Seed: every user with at least one analysis gets a "My Boards" project.
 -- ON CONFLICT: the partial unique index above no-ops when name='My Boards'
 -- already exists for the user.
