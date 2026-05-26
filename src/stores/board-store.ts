@@ -61,6 +61,20 @@ export interface BoardState {
 
   /** True while a streaming cancellation confirmation dialog is shown (D-17) */
   cancelConfirmOpen: boolean;
+
+  /**
+   * Epoch ms of the last user-initiated camera interaction (pan / zoom).
+   * Used by auto-pan callers (e.g. EngineGroup plan 2.13) to suppress glides within 3s of
+   * user touch (RESEARCH Pitfall 3, auto-pan contract in Board.tsx JSDoc).
+   */
+  lastUserInteractionAt: number;
+
+  /**
+   * Human-readable label of the currently active pipeline stage, or null when idle/complete.
+   * Set by EngineGroup via `transition({ type: 'STAGE_UPDATE', stage })` so command bar
+   * placeholder (plan 2.6) reflects the current stage (UI-SPEC §Streaming Placeholder).
+   */
+  currentStageLabel: string | null;
 }
 
 export interface BoardActions {
@@ -109,6 +123,15 @@ export interface BoardActions {
 
   openCancelConfirm: () => void;
   closeCancelConfirm: () => void;
+
+  // ── Stage label ──────────────────────────────────────────────────────────
+
+  /**
+   * Dispatches a board transition event.
+   * Currently supports: `{ type: 'STAGE_UPDATE'; stage: string }` — sets `currentStageLabel`
+   * for command bar placeholder (plan 2.6) and future consumers.
+   */
+  transition: (event: { type: 'STAGE_UPDATE'; stage: string }) => void;
 }
 
 // ── Default state ───────────────────────────────────────────────────────────
@@ -124,6 +147,8 @@ const DEFAULT_STATE: BoardState = {
   inputDrawerOpen: false,
   selectedNodeId: null,
   cancelConfirmOpen: false,
+  lastUserInteractionAt: 0,
+  currentStageLabel: null,
 };
 
 // ── Store ────────────────────────────────────────────────────────────────────
@@ -189,7 +214,7 @@ export const useBoardStore = create<BoardState & BoardActions>((set) => ({
 
   setActivePreset: (activePreset) => set({ activePreset }),
 
-  userOverrideCameraFollow: () => set({ cameraAutoFollow: false }),
+  userOverrideCameraFollow: () => set({ cameraAutoFollow: false, lastUserInteractionAt: Date.now() }),
 
   enableCameraAutoFollow: () => set({ cameraAutoFollow: true }),
 
@@ -202,6 +227,14 @@ export const useBoardStore = create<BoardState & BoardActions>((set) => ({
   openCancelConfirm: () => set({ cancelConfirmOpen: true }),
 
   closeCancelConfirm: () => set({ cancelConfirmOpen: false }),
+
+  // ── Stage label ──────────────────────────────────────────────────────────
+
+  transition: (event) => {
+    if (event.type === 'STAGE_UPDATE') {
+      set({ currentStageLabel: event.stage });
+    }
+  },
 }));
 
 // ── Derived selectors ────────────────────────────────────────────────────────
