@@ -168,6 +168,21 @@ export function Sidebar() {
 
   const [accountOpen, setAccountOpen] = useState(false);
 
+  // CR-04: close account popover on outside-click or Escape.
+  useEffect(() => {
+    if (!accountOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setAccountOpen(false); };
+    const onClick = (e: MouseEvent) => {
+      if (!(e.target as Element).closest('[data-account-menu]')) setAccountOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onClick);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onClick);
+    };
+  }, [accountOpen]);
+
   return (
     <>
       {/* Mobile overlay backdrop */}
@@ -422,7 +437,7 @@ export function Sidebar() {
         {/* ── 👤 Account (bottom-anchored) ── */}
         <div className="border-t border-white/[0.06] px-2 py-2">
           {!isCollapsed ? (
-            <div className="relative">
+            <div className="relative" data-account-menu>
               <button
                 type="button"
                 onClick={() => setAccountOpen((prev) => !prev)}
@@ -432,6 +447,7 @@ export function Sidebar() {
                   "hover:bg-white/[0.05] hover:text-foreground transition-colors",
                 )}
                 aria-label="Account menu"
+                aria-haspopup="menu"
                 aria-expanded={accountOpen}
               >
                 <Avatar
@@ -448,9 +464,10 @@ export function Sidebar() {
                 <UserCircle className="h-4 w-4 shrink-0 text-foreground-muted" />
               </button>
 
-              {/* Account popover */}
+              {/* Account popover — CR-04: role=menu, outside-click/Escape handled via useEffect */}
               {accountOpen && (
                 <div
+                  role="menu"
                   className="absolute bottom-full left-0 right-0 mb-1 rounded-lg border border-white/[0.06] overflow-hidden"
                   style={{
                     backgroundColor: "rgba(22, 23, 25, 0.98)",
@@ -460,6 +477,7 @@ export function Sidebar() {
                 >
                   <button
                     type="button"
+                    role="menuitem"
                     onClick={() => { router.push("/settings"); setAccountOpen(false); }}
                     className="w-full flex items-center gap-2 px-3 min-h-[40px] text-sm text-foreground-secondary hover:bg-white/[0.05] hover:text-foreground transition-colors"
                   >
@@ -469,6 +487,7 @@ export function Sidebar() {
                   <div className="mx-3 border-t border-white/[0.06]" />
                   <button
                     type="button"
+                    role="menuitem"
                     onClick={async () => { await supabase.auth.signOut(); router.push("/login"); setAccountOpen(false); }}
                     className="w-full flex items-center gap-2 px-3 min-h-[40px] text-sm text-foreground-secondary hover:bg-white/[0.05] hover:text-foreground transition-colors"
                   >
