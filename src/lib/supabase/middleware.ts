@@ -10,7 +10,7 @@ import {
  * Covers all (app) route group pages.
  */
 const PROTECTED_PREFIXES = [
-  "/dashboard",
+  "/analyze",        // D-25 — /dashboard sunset
   "/brand-deals",
   "/settings",
   "/welcome",
@@ -47,6 +47,18 @@ function isProtectedPath(pathname: string): boolean {
 }
 
 export async function updateSession(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // Phase 2 D-25 — /dashboard is sunset. Redirect to /analyze.
+  // Must run BEFORE Supabase client creation so the redirect fires regardless of auth state.
+  // Subpaths drop (no /dashboard/* surfaces survive; Workspace milestone hasn't shipped).
+  // Use same-origin clone to prevent open redirect (V5 input validation — RESEARCH §Security).
+  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/analyze";
+    return NextResponse.redirect(url, 307);
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -96,8 +108,6 @@ export async function updateSession(request: NextRequest) {
     });
   }
 
-  const pathname = request.nextUrl.pathname;
-
   // Skip auth checks for public paths
   if (isPublicPath(pathname)) {
     return supabaseResponse;
@@ -112,9 +122,9 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Redirect authenticated users away from auth pages to /dashboard
+  // Redirect authenticated users away from auth pages to /analyze
   if (user && (pathname === "/login" || pathname === "/signup")) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/analyze", request.url));
   }
 
   // Redirect authenticated users without onboarding to /welcome
