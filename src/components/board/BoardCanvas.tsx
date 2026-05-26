@@ -7,17 +7,20 @@ import { computeZoomAtPointer } from './use-camera';
 interface Props {
   camera: Camera;
   setCamera: (c: Camera) => void;
+  /** Called on any user-initiated pan or zoom — signals board-store to disable auto-follow (D-09). */
+  onUserInteract?: () => void;
   width: number;
   height: number;
   children?: React.ReactNode; // Layer contents from sibling plans
 }
 
-export function BoardCanvas({ camera, setCamera, width, height, children }: Props) {
+export function BoardCanvas({ camera, setCamera, onUserInteract, width, height, children }: Props) {
   const handleWheel = (e: KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
     const stage = e.target.getStage();
     const pointer = stage?.getPointerPosition();
     if (!pointer) return;
+    onUserInteract?.();
     setCamera(computeZoomAtPointer(camera, pointer, e.evt.deltaY));
   };
 
@@ -31,7 +34,10 @@ export function BoardCanvas({ camera, setCamera, width, height, children }: Prop
       scaleY={camera.scale}
       onWheel={handleWheel}
       draggable
-      onDragEnd={(e) => setCamera({ ...camera, x: e.target.x(), y: e.target.y() })}
+      onDragEnd={(e) => {
+        onUserInteract?.();
+        setCamera({ ...camera, x: e.target.x(), y: e.target.y() });
+      }}
       // a11y handled by ARIA on the wrapper div in Board.tsx (Konva Stage renders to <canvas>)
     >
       <Layer perfectDrawEnabled={false} listening={false}>
