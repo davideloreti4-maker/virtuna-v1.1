@@ -38,7 +38,10 @@ export function BoardCanvas({ camera, setCamera, onUserInteract, width, height, 
     // Skip the no-op write if Konva fired a move event with the same coords
     // (defensive — avoids triggering downstream re-renders on idle moves).
     if (x === camera.x && y === camera.y) return;
-    setCamera({ ...camera, x, y });
+    // WR-04: read scale from stage rather than the closed-over camera prop to
+    // avoid overwriting a concurrent handleWheel scale update with a stale value
+    // during simultaneous touch-zoom + drag (multi-touch on mobile).
+    setCamera({ x, y, scale: stage.scaleX() });
   };
 
   const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
