@@ -33,6 +33,9 @@ export const BOARD_BOUNDS: Rect = (() => {
 
 export const CAMERA_PRESET_TARGETS: Record<string, Rect> = {
   overview: BOARD_BOUNDS,
+  // D-09: Wave 0/1 auto-pan target = Input + Engine column (Engine + Hook decomp area).
+  // Internal-only preset — not user-facing in CameraOverlay.
+  engine: { x: 0, y: 0, width: 240, height: 512 },
   // hero pair = Audience + Verdict union (D-07)
   verdict: { x: 272, y: 0, width: 952, height: 280 },
   audience: GROUP_FRAMES.find((f) => f.id === 'audience')!.bounds,

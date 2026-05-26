@@ -27,7 +27,7 @@ const VIEWPORT_MARGIN = 48; // px of breathing room around fit-to-content
 const ZOOM_STEP_IN = 1.05;
 const ZOOM_STEP_OUT = 0.95;
 const VALID_PRESET_KEYS: readonly CameraPresetKey[] = [
-  'overview', 'verdict', 'audience', 'content-analysis',
+  'overview', 'engine', 'verdict', 'audience', 'content-analysis',
 ];
 
 export function clampScale(s: number): number {

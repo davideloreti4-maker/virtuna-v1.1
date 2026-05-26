@@ -22,6 +22,7 @@ export type GroupId =
 
 export type CameraPresetKey =
   | 'overview'
+  | 'engine'           // D-09 alignment for plan 2.13 auto-pan (internal-only, not user-facing)
   | 'verdict'
   | 'audience'
   | 'content-analysis';
