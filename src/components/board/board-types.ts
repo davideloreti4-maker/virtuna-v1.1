@@ -41,5 +41,5 @@ export interface NodeSpec {
   groupId: GroupId;          // which group container this node lives inside
   bounds: Rect;              // world-space rectangle (absolute, NOT relative to group)
   ariaLabel: string;         // screen-reader label
-  tabIndex?: number;         // explicit tab order; defaults to spatial ordering
+  tabIndex?: 0 | -1;         // explicit tab order; positive values disrupt natural tab order (WR-06)
 }
