@@ -10,7 +10,7 @@ vi.mock('@/hooks/usePrefersReducedMotion', () => ({
 import { useBoardStore } from '@/stores/board-store';
 import { CommandBar } from '../CommandBar';
 
-beforeEach(() => useBoardStore.setState({ state: { kind: 'idle' } } as any));
+beforeEach(() => useBoardStore.setState({ boardState: 'idle' } as any));
 
 describe('CommandBar a11y', () => {
   it('idle: no violations', async () => {
