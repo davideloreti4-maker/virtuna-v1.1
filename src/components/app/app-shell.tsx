@@ -21,8 +21,8 @@ interface AppShellProps {
  * --sidebar-offset CSS var is set on main so children can reference it.
  *
  * Phase 2.5: Sidebar width varies by collapsed state:
- *  expanded: 220px + 12px left margin = 232px offset
- *  collapsed: 52px + 12px left margin = 64px offset
+ *  expanded: 220px sidebar + 16px gap = 236px offset
+ *  collapsed: 52px sidebar + 16px gap = 68px offset
  *
  * State managed via useSidebarStore (Zustand persist).
  */
