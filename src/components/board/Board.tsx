@@ -3,11 +3,10 @@ import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { useBoardStore } from '@/stores/board-store';
 import { useCamera } from './use-camera';
 import { useBoardKeyboard } from './use-board-keyboard';
 import { CameraOverlay } from './CameraOverlay';
-import type { Camera, CameraPresetKey } from './board-types';
-import { CAMERA_DEFAULT_SCALE } from './board-constants';
 
 // CRITICAL: dynamic import with ssr:false (RESEARCH Pattern 1). Without ssr:false,
 // react-konva touches `window` at module load and SSR throws.
@@ -18,10 +17,13 @@ const BoardCanvas = dynamic(
 
 export function Board() {
   const reducedMotion = usePrefersReducedMotion();
-  // Local camera state until plan 2.4 lands board-store. Once board-store
-  // exists, swap these for `useBoardStore` selectors.
-  const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, scale: CAMERA_DEFAULT_SCALE });
-  const [activePreset, setActivePreset] = useState<CameraPresetKey | null>(null);
+
+  // Camera state from board-store (Plan 2.4). Replaces prior local useState.
+  const camera = useBoardStore((s) => s.camera);
+  const setCamera = useBoardStore((s) => s.setCamera);
+  const activePreset = useBoardStore((s) => s.activePreset);
+  const setActivePreset = useBoardStore((s) => s.setActivePreset);
+  const userOverrideCameraFollow = useBoardStore((s) => s.userOverrideCameraFollow);
 
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [viewport, setViewport] = useState({ width: 800, height: 600 });
@@ -50,7 +52,13 @@ export function Board() {
       role="application"
       aria-label="Analysis board"
     >
-      <BoardCanvas camera={camera} setCamera={setCamera} width={viewport.width} height={viewport.height}>
+      <BoardCanvas
+        camera={camera}
+        setCamera={setCamera}
+        onUserInteract={userOverrideCameraFollow}
+        width={viewport.width}
+        height={viewport.height}
+      >
         {/* Group frames mount here from plan 2.2 */}
       </BoardCanvas>
       {/* DOM overlay slots (filled by plans 2.2 frame overlays, 2.6 command bar, 2.7 input node, etc.) */}
