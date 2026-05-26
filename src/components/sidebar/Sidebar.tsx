@@ -177,7 +177,7 @@ export function Sidebar() {
         />
       )}
 
-      <aside
+      <nav
         className={cn(
           // Base
           "fixed top-3 left-3 bottom-3 z-[var(--z-sidebar)]",
@@ -198,7 +198,6 @@ export function Sidebar() {
           WebkitBackdropFilter: "blur(5px)",
           boxShadow: "rgba(255,255,255,0.15) 0px 1px 1px 0px inset",
         }}
-        role="navigation"
         aria-label="App navigation"
       >
         {/* ── Header: Logo + collapse/close ── */}
@@ -493,7 +492,7 @@ export function Sidebar() {
             </Tooltip>
           )}
         </div>
-      </aside>
+      </nav>
     </>
   );
 }

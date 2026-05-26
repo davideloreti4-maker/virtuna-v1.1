@@ -71,8 +71,10 @@ export const GroupFrameOverlay = forwardRef<HTMLDivElement, Props>(function Grou
         height: screenH,
       }}
     >
-      {/* Title bar (UI-SPEC §Group Container Frames) */}
-      <header
+      {/* Title bar (UI-SPEC §Group Container Frames).
+          Using <div> (not <header>) because <header> has implicit role="banner" which axe
+          requires to be top-level; inside a role="region" it triggers landmark-banner-is-top-level. */}
+      <div
         className={cn(
           'flex items-center justify-between px-2',
           'border-b border-white/[0.06]',
@@ -94,7 +96,7 @@ export const GroupFrameOverlay = forwardRef<HTMLDivElement, Props>(function Grou
             <Icon icon={expanded ? CaretUp : CaretDown} size={16} />
           </button>
         </div>
-      </header>
+      </div>
 
       {/* Body */}
       {expanded && (
