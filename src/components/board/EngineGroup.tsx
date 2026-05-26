@@ -52,7 +52,11 @@ export function EngineGroup() {
 
   const [collapsed, setCollapsed] = useState(false);
   useEffect(() => {
-    if (stream.phase === 'complete') setCollapsed(true);
+    if (stream.phase === 'complete') {
+      setCollapsed(true);
+    } else if (stream.phase === 'analyzing' || stream.phase === 'reconnecting') {
+      setCollapsed(false);
+    }
   }, [stream.phase]);
 
   // Determine active stage's plain-English label for the aria-live region.
