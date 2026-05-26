@@ -213,6 +213,7 @@ export type Database = {
           suggestions: Json | null
           trend_score: number | null
           updated_at: string | null
+          project_id: string | null
           user_id: string
           variants: Json | null
           video_storage_path: string | null
@@ -243,6 +244,7 @@ export type Database = {
           ml_score?: number | null
           overall_score?: number | null
           personas?: Json | null
+          project_id?: string | null
           reasoning?: string | null
           retrieval_evidence?: Json | null
           retrieval_score?: number | null
@@ -283,6 +285,7 @@ export type Database = {
           ml_score?: number | null
           overall_score?: number | null
           personas?: Json | null
+          project_id?: string | null
           reasoning?: string | null
           retrieval_evidence?: Json | null
           retrieval_score?: number | null
@@ -298,7 +301,15 @@ export type Database = {
           video_storage_path?: string | null
           warnings?: string[] | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "analysis_results_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       benchmark_results: {
         Row: {
@@ -945,6 +956,41 @@ export type Database = {
           sample_count?: number
         }
         Relationships: []
+      }
+      projects: {
+        Row: {
+          archived: boolean
+          color: string
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          archived?: boolean
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          archived?: boolean
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       referral_clicks: {
         Row: {
