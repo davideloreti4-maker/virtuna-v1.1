@@ -22,6 +22,8 @@ import { GROUP_FRAMES } from './board-constants';
 import { GroupFrame } from './GroupFrame';
 import { GroupFrameOverlay } from './GroupFrameOverlay';
 import { EngineGroup } from './EngineGroup';
+import { InputNodeShape, InputNodeOverlay } from './InputNode';
+import { InputDrawer } from './InputDrawer';
 import type { GroupId } from './board-types';
 import type { FrameVisualState } from './GroupFrame';
 import { detectInitialTier, startFpsSampler, usePerfStore, nextLowerTier } from '@/lib/perf-tier';
@@ -216,6 +218,8 @@ export function Board() {
             visual={deriveFrameVisual(boardMachineState, layout.id)}
           />
         ))}
+        {/* Plan 2.7: Input node Konva hit-test shape; selection wiring deferred to Phase 4 */}
+        <InputNodeShape selected={false} />
       </BoardCanvas>
 
       {/* DOM overlay layer: title bars, ARIA, empty-state copy. pointer-events-none
@@ -234,7 +238,12 @@ export function Board() {
             {layout.id === 'engine' && <EngineGroup />}
           </GroupFrameOverlay>
         ))}
+        {/* Plan 2.7: Input node DOM overlay — thumbnailUrl/snippet wired in future plan */}
+        <InputNodeOverlay camera={camera} thumbnailUrl={null} snippet={null} />
       </div>
+
+      {/* Plan 2.7: Input drawer — Radix Sheet, renders in portal above board */}
+      <InputDrawer />
 
       {/* DOM overlay slots (filled by plans 2.6 command bar, 2.7 input node, etc.) */}
       <CameraOverlay activePreset={activePreset} onSelect={goToPreset} />
