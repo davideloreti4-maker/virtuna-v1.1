@@ -31,6 +31,14 @@ export const BOARD_BOUNDS: Rect = (() => {
   return { x: 0, y: 0, width: right, height: bottom };
 })();
 
+/** UI-SPEC §Input Node: 200x100 desktop canvas units, sits inside the Input frame body. */
+export const INPUT_NODE_BOUNDS = {
+  x: 16,                          // FRAME_PADDING from group frame x=0
+  y: 16 + TITLE_BAR_HEIGHT,       // below title bar, +FRAME_PADDING
+  width: 200,
+  height: 100,
+} as const;
+
 export const CAMERA_PRESET_TARGETS: Record<string, Rect> = {
   overview: BOARD_BOUNDS,
   // D-09: Wave 0/1 auto-pan target = Input + Engine column (Engine + Hook decomp area).
