@@ -3,6 +3,16 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   transpilePackages: ['three'],
+  webpack: (config) => {
+    const externals = Array.isArray(config.externals)
+      ? config.externals
+      : config.externals
+        ? [config.externals]
+        : [];
+    externals.push({ canvas: 'canvas' });
+    config.externals = externals;
+    return config;
+  },
   images: {
     remotePatterns: [
       {
