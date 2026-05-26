@@ -1,7 +1,7 @@
 import type { GroupFrameLayout, Rect } from './board-types';
 
 export const FRAME_PADDING = 16;
-export const GUTTER = 32;
+export const GUTTER = 96;
 export const TITLE_BAR_HEIGHT = 36;
 export const FRAME_CORNER_RADIUS = 12;
 export const CAMERA_MIN_SCALE = 0.2;
@@ -15,14 +15,20 @@ export const CAMERA_DEFAULT_SCALE = 1;
  *   Audience (large central centerpiece)
  *   Verdict (large hero, right column) + Actions (below Verdict)
  *   Content Analysis (supporting row, beneath Audience+Verdict)
+ *
+ * World-space gaps: minimum 96px between every adjacent frame edge.
+ * UAT gap 1 (2026-05-26): user reported the prior 32px GUTTER read as a
+ * packed CSS grid, not an infinite canvas. Increasing horizontal gaps to
+ * 96px and vertical gaps to 96px between rows restores the spatial-canvas
+ * affordance while preserving D-06 reading order.
  */
 export const GROUP_FRAMES: GroupFrameLayout[] = [
-  { id: 'input',            label: 'Input',            bounds: { x:   0, y:    0, width: 240, height: 160 } },
-  { id: 'engine',           label: 'Engine',           bounds: { x:   0, y:  192, width: 240, height: 320 } },
-  { id: 'audience',         label: 'Audience',         bounds: { x: 272, y:    0, width: 560, height: 512 } },
-  { id: 'verdict',          label: 'Verdict',          bounds: { x: 864, y:    0, width: 360, height: 280 } },
-  { id: 'actions',          label: 'Actions',          bounds: { x: 864, y:  312, width: 360, height: 200 } },
-  { id: 'content-analysis', label: 'Content Analysis', bounds: { x:   0, y:  544, width: 1224, height: 200 } },
+  { id: 'input',            label: 'Input',            bounds: { x:    0, y:    0, width:  240, height: 160 } },
+  { id: 'engine',           label: 'Engine',           bounds: { x:    0, y:  256, width:  240, height: 320 } },
+  { id: 'audience',         label: 'Audience',         bounds: { x:  336, y:    0, width:  560, height: 576 } },
+  { id: 'verdict',          label: 'Verdict',          bounds: { x:  992, y:    0, width:  360, height: 280 } },
+  { id: 'actions',          label: 'Actions',          bounds: { x:  992, y:  376, width:  360, height: 200 } },
+  { id: 'content-analysis', label: 'Content Analysis', bounds: { x:    0, y:  672, width: 1352, height: 200 } },
 ];
 
 export const BOARD_BOUNDS: Rect = (() => {
@@ -43,9 +49,9 @@ export const CAMERA_PRESET_TARGETS: Record<string, Rect> = {
   overview: BOARD_BOUNDS,
   // D-09: Wave 0/1 auto-pan target = Input + Engine column (Engine + Hook decomp area).
   // Internal-only preset — not user-facing in CameraOverlay.
-  engine: { x: 0, y: 0, width: 240, height: 512 },
+  engine: { x: 0, y: 0, width: 240, height: 576 },
   // hero pair = Audience + Verdict union (D-07)
-  verdict: { x: 272, y: 0, width: 952, height: 280 },
+  verdict: { x: 336, y: 0, width: 1016, height: 576 },
   audience: GROUP_FRAMES.find((f) => f.id === 'audience')!.bounds,
   'content-analysis': GROUP_FRAMES.find((f) => f.id === 'content-analysis')!.bounds,
 };
