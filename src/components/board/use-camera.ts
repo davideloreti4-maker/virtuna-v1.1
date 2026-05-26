@@ -165,20 +165,8 @@ export function useCamera(args: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Write camera to URL via replaceState, debounced (RESEARCH Pattern 4, Pitfall 4)
-  // Note: camera.x and camera.y are intentionally not URL-synced.
-  // Only zoom level and preset survive a page refresh — pan position resets on reload.
-  const debounceRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (debounceRef.current) window.clearTimeout(debounceRef.current);
-    debounceRef.current = window.setTimeout(() => {
-      const qs = serializeCamera({ preset: activePreset, zoom: camera.scale });
-      window.history.replaceState(null, '', `?${qs}`);
-    }, 200);
-    return () => {
-      if (debounceRef.current) window.clearTimeout(debounceRef.current);
-    };
-  }, [camera.scale, activePreset]);
+  // NOTE: URL sync (replaceState) was moved to Board.tsx as a unified atomic
+  // effect (CR-02). useCamera no longer owns URL writes.
 
   return { goToPreset };
 }

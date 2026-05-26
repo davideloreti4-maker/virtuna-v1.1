@@ -16,7 +16,7 @@ import { useBoardStore } from '@/stores/board-store';
 import type { BoardMachineState } from '@/stores/board-store';
 import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
 import { CommandBar } from '@/components/command-bar/CommandBar';
-import { useCamera } from './use-camera';
+import { useCamera, serializeCamera } from './use-camera';
 import { useBoardKeyboard } from './use-board-keyboard';
 import { CameraOverlay } from './CameraOverlay';
 import { OrientationHint } from './OrientationHint';
@@ -125,15 +125,17 @@ export function Board() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream.phase, stream.result]);
 
-  // URL pushState on analysisId assignment (D-01: pushState for id transitions).
+  // CR-02: unified atomic URL update — merges the former pushState (analysisId)
+  // and the debounced replaceState (camera/preset) into one effect so they can
+  // never race and produce a URL missing the pathname or the query string.
   useEffect(() => {
-    if (stream.analysisId && typeof window !== 'undefined') {
-      const targetPath = `/analyze/${stream.analysisId}`;
-      if (window.location.pathname !== targetPath) {
-        window.history.pushState(null, '', targetPath);
-      }
+    if (!stream.analysisId || typeof window === 'undefined') return;
+    const qs = serializeCamera({ preset: activePreset, zoom: camera.scale });
+    const target = `/analyze/${stream.analysisId}?${qs}`;
+    if (window.location.pathname + window.location.search !== target) {
+      window.history.replaceState(null, '', target);
     }
-  }, [stream.analysisId]);
+  }, [stream.analysisId, activePreset, camera.scale]);
 
   // Extract the latest human-readable stage slug from the stream stages array.
   // Plan 2.13 will replace slugs with a label mapping; for Phase 2 the slug is
