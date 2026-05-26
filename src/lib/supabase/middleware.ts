@@ -56,7 +56,7 @@ export async function updateSession(request: NextRequest) {
   if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
     const url = request.nextUrl.clone();
     url.pathname = "/analyze";
-    return NextResponse.redirect(url, 307);
+    return NextResponse.redirect(url, 308); // Permanent redirect — /dashboard is sunset
   }
 
   let supabaseResponse = NextResponse.next({
