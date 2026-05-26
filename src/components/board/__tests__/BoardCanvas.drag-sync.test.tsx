@@ -42,6 +42,7 @@ function makeStageEventTarget(x: number, y: number) {
       getStage: () => ({
         x: () => x,
         y: () => y,
+        scaleX: () => 1,
         getPointerPosition: () => ({ x: 0, y: 0 }),
       }),
     },
