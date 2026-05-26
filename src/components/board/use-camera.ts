@@ -8,6 +8,21 @@ import {
 } from './board-constants';
 import type { Camera, CameraPresetKey, Rect } from './board-types';
 
+/** Cubic-out interpolation (≈ --ease-out-quart but close enough). */
+export function easeOutQuart(t: number): number {
+  const u = 1 - Math.max(0, Math.min(1, t));
+  return 1 - u * u * u * u;
+}
+
+export function easeCameraTowards(from: Camera, to: Camera, t: number): Camera {
+  const k = easeOutQuart(t);
+  return {
+    x: from.x + (to.x - from.x) * k,
+    y: from.y + (to.y - from.y) * k,
+    scale: from.scale + (to.scale - from.scale) * k,
+  };
+}
+
 const VIEWPORT_MARGIN = 48; // px of breathing room around fit-to-content
 const ZOOM_STEP_IN = 1.05;
 const ZOOM_STEP_OUT = 0.95;
@@ -92,12 +107,37 @@ export function useCamera(args: {
 }) {
   const { camera, setCamera, viewport, activePreset, setActivePreset } = args;
 
+  const rafRef = useRef<number | null>(null);
+  const cancelGlide = useCallback(() => {
+    if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+  }, []);
+
   const goToPreset = useCallback((key: CameraPresetKey) => {
     const target = CAMERA_PRESET_TARGETS[key];
     if (!target) return;
-    setCamera(computeFitCamera(target, viewport));
+    const final = computeFitCamera(target, viewport);
     setActivePreset(key);
-  }, [setCamera, setActivePreset, viewport]);
+
+    if (args.reducedMotion) {
+      // D-23: instant set; no easing, no RAF
+      cancelGlide();
+      setCamera(final);
+      return;
+    }
+
+    cancelGlide();
+    const start = camera;
+    const startedAt = performance.now();
+    const DURATION = 300; // UI-SPEC §Animation Contract "Camera glide"
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - startedAt) / DURATION);
+      setCamera(easeCameraTowards(start, final, t));
+      if (t < 1) rafRef.current = requestAnimationFrame(tick);
+      else rafRef.current = null;
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  }, [setCamera, setActivePreset, viewport, args.reducedMotion, camera, cancelGlide]);
 
   // Read initial camera from URL on mount (one-shot)
   const appliedInitialRef = useRef(false);
