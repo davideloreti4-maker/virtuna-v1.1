@@ -49,6 +49,7 @@ export function EngineGroup() {
   const boardState = useBoardStore((s) => s.boardState);
   const currentStageLabel = useBoardStore((s) => s.currentStageLabel);
   const setActivePreset = useBoardStore((s) => s.setActivePreset);
+  const currentPreset = useBoardStore((s) => s.activePreset);
 
   const [collapsed, setCollapsed] = useState(false);
   useEffect(() => {
@@ -90,8 +91,11 @@ export function EngineGroup() {
       activeIdx <= 1 ? 'engine' :
       activeIdx <= 3 ? 'audience' :
       'verdict';
-    setActivePreset(presetKey as Parameters<typeof setActivePreset>[0]);
-  }, [activeIdx, boardState, effectiveReducedMotion, setActivePreset]);
+    // WR-03: skip if preset hasn't changed to avoid cancelling in-progress glides
+    if (presetKey !== currentPreset) {
+      setActivePreset(presetKey as Parameters<typeof setActivePreset>[0]);
+    }
+  }, [activeIdx, boardState, effectiveReducedMotion, setActivePreset, currentPreset]);
 
   if (collapsed) {
     return (
