@@ -13,12 +13,17 @@ interface Stage {
   waveMatch: (e: StageEvent) => boolean;
 }
 
+/** Guard: true only for stage_start / stage_end events (which carry .wave). */
+function hasWave(e: StageEvent): e is Extract<StageEvent, { wave: unknown }> {
+  return e.type === 'stage_start' || e.type === 'stage_end';
+}
+
 const STAGES: Stage[] = [
-  { label: 'Qwen-VL segmentation', plainEnglish: 'Reading the hook…',     waveMatch: (e) => e.wave === 0 },
-  { label: 'Hook decomp',          plainEnglish: 'Reading the audience…', waveMatch: (e) => e.wave === 1 },
-  { label: 'Retention model',      plainEnglish: 'Reading the audience…', waveMatch: (e) => e.wave === 2 },
-  { label: 'Persona simulator',    plainEnglish: 'Reading the audience…', waveMatch: (e) => e.wave === 3 },
-  { label: 'Aggregator',           plainEnglish: 'Synthesizing…',         waveMatch: (e) => e.wave === 'aggregator' },
+  { label: 'Qwen-VL segmentation', plainEnglish: 'Reading the hook…',     waveMatch: (e) => hasWave(e) && e.wave === 0 },
+  { label: 'Hook decomp',          plainEnglish: 'Reading the audience…', waveMatch: (e) => hasWave(e) && e.wave === 1 },
+  { label: 'Retention model',      plainEnglish: 'Reading the audience…', waveMatch: (e) => hasWave(e) && e.wave === 2 },
+  { label: 'Persona simulator',    plainEnglish: 'Reading the audience…', waveMatch: (e) => hasWave(e) && e.wave === 3 },
+  { label: 'Aggregator',           plainEnglish: 'Synthesizing…',         waveMatch: (e) => hasWave(e) && e.wave === 'aggregator' },
 ];
 
 /** Pure: derive a stage's status from the events array. */

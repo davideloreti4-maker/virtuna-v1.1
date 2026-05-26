@@ -10,6 +10,7 @@ interface CameraOverlayProps {
 
 const PRESET_LABELS: Record<CameraPresetKey, string> = {
   overview: 'Overview',
+  engine: '', // internal-only auto-pan preset — not user-facing
   verdict: 'Verdict',
   audience: 'Audience',
   'content-analysis': 'Content Analysis',
@@ -17,6 +18,7 @@ const PRESET_LABELS: Record<CameraPresetKey, string> = {
 
 const PRESET_KEYS: Record<CameraPresetKey, string> = {
   overview: '0',
+  engine: '',  // no keyboard shortcut — internal-only
   verdict: '1',
   audience: '2',
   'content-analysis': '3',

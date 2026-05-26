@@ -24,6 +24,22 @@ vi.mock('next/dynamic', () => ({
 
 vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams('') }));
 
+// EngineGroup (mounted inside Board for the engine frame) calls useAnalysisStream
+// which needs a QueryClientProvider. Mock the hook to avoid provider setup.
+vi.mock('@/hooks/queries/use-analysis-stream', () => ({
+  useAnalysisStream: () => ({
+    stages: [],
+    phase: 'idle',
+    partial: { personas: [] },
+    result: null,
+    panelReady: {},
+    error: null,
+    analysisId: null,
+    start: () => Promise.resolve(),
+    reconnect: () => {},
+  }),
+}));
+
 import { useBoardStore } from '@/stores/board-store';
 import { Board } from '../Board';
 import { ToastProvider } from '@/components/ui/toast';

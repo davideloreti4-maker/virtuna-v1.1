@@ -21,6 +21,7 @@ import { OrientationHint } from './OrientationHint';
 import { GROUP_FRAMES } from './board-constants';
 import { GroupFrame } from './GroupFrame';
 import { GroupFrameOverlay } from './GroupFrameOverlay';
+import { EngineGroup } from './EngineGroup';
 import type { GroupId } from './board-types';
 import type { FrameVisualState } from './GroupFrame';
 import { detectInitialTier, startFpsSampler, usePerfStore, nextLowerTier } from '@/lib/perf-tier';
@@ -185,6 +186,13 @@ export function Board() {
     camera, setCamera, viewport, activePreset, setActivePreset, reducedMotion: effectiveReducedMotion,
   });
 
+  // Plan 2.13: EngineGroup sets activePreset on wave boundaries; Board subscribes here
+  // and calls goToPreset to execute the actual camera glide (goToPreset lives in Board,
+  // not accessible to EngineGroup directly).
+  useEffect(() => {
+    if (activePreset) goToPreset(activePreset);
+  }, [activePreset, goToPreset]);
+
   useBoardKeyboard({ goToPreset });
 
   return (
@@ -222,7 +230,9 @@ export function Board() {
             expanded={expanded[layout.id]}
             onToggleExpanded={() => setExpanded((s) => ({ ...s, [layout.id]: !s[layout.id] }))}
             reducedMotion={effectiveReducedMotion}
-          />
+          >
+            {layout.id === 'engine' && <EngineGroup />}
+          </GroupFrameOverlay>
         ))}
       </div>
 
