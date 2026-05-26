@@ -121,7 +121,6 @@ export function CommandBar({ currentStage, onSubmit, onStop }: Props) {
           type="text"
           role="combobox"
           aria-label="Analysis command bar"
-          aria-controls="cmd-bar-suggestions"
           aria-expanded={false}
           autoComplete="off"
           disabled={!inputEnabled}
