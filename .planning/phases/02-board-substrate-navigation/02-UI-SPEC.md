@@ -1,7 +1,8 @@
 ---
 phase: 2
 slug: board-substrate-navigation
-status: draft
+status: approved
+reviewed_at: 2026-05-26
 shadcn_initialized: false
 preset: none
 created: 2026-05-26
@@ -59,9 +60,9 @@ Declared subset for this phase. Full scale in BRAND-BIBLE.md. Using existing tok
 | Board label / node title | 12px | `--text-xs` | semibold | 600 | 1.2 | Group frame title bar, Engine stage glyphs, sidebar item labels (icon-only mode), camera preset button labels |
 | Body / sidebar text | 14px | `--text-sm` | regular | 400 | 1.5 | Sidebar section items (Recent, Pinned), command bar placeholder text, Input node snippet, drawer form labels, tooltip copy |
 | Node heading / sidebar section header | 16px | `--text-base` | semibold | 600 | 1.2 | Sidebar section headers ("New analysis", "Running", "Recent"), node card headings, command bar chip labels |
-| Stage label / streaming text | 14px | `--text-sm` | medium | 500 | 1.5 | Live stage text above Engine group during streaming ("Reading the hook…"), drawer "Recent inputs" section header |
+| Stage label / streaming text | 14px | `--text-sm` | semibold | 600 | 1.5 | Live stage text above Engine group during streaming ("Reading the hook…"), drawer "Recent inputs" section header |
 
-**Weight discipline:** Use only `regular (400)` and `semibold (600)` for all Phase 2 UI text. `medium (500)` reserved exclusively for the streaming stage label (transient, animated text where medium reduces visual jitter vs semibold). No other weights.
+**Weight discipline:** Use only `regular (400)` and `semibold (600)` for all Phase 2 UI text. No other weights.
 
 **Letter spacing:** `0.2px` globally applied (globals.css body). No per-component overrides.
 
@@ -228,7 +229,7 @@ State-specific behavior (no new tokens, pure copy + interaction changes):
 | Board State | Placeholder | Chips | Input |
 |-------------|-------------|-------|-------|
 | `idle` (empty board) | "Paste URL, drop file, or describe…" | none | enabled |
-| `streaming` | Live stage text (e.g. "Reading the hook…") | "Cancel" chip only | disabled |
+| `streaming` | Live stage text (e.g. "Reading the hook…") | "Stop analysis" chip only | disabled |
 | `complete` | "Ask about your audience or generate variant…" | "Rewrite hook", "Compare to last 3", "Generate variant", "Re-weight audience" | enabled |
 | `edit-input` (drawer open) | bar hidden or replaced by drawer form | — | — |
 
@@ -292,7 +293,7 @@ Reduced-motion (`prefers-reduced-motion: reduce`): pan/zoom instant (no easing a
 | Complete command bar placeholder | "Ask about your audience or generate variant…" | CONTEXT.md D-13 |
 | First-board orientation hint | "Drop a video below or type in command bar to begin" | R7.4 |
 | Orientation hint dismiss | Auto-dismisses on first command bar interaction; tap × to dismiss immediately | R7.4 |
-| Streaming cancel chip | "Cancel" | CONTEXT.md D-13 |
+| Streaming cancel chip | "Stop analysis" | CONTEXT.md D-13 |
 | Engine group streaming stage 0 | "Reading the hook…" | R2.7 |
 | Engine group streaming stage 1 | "Reading the audience…" | R2.7 |
 | Engine group streaming stage 2 | "Synthesizing…" | R2.7 |
