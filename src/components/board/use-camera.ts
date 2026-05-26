@@ -159,6 +159,8 @@ export function useCamera(args: {
   }, []);
 
   // Write camera to URL via replaceState, debounced (RESEARCH Pattern 4, Pitfall 4)
+  // Note: camera.x and camera.y are intentionally not URL-synced.
+  // Only zoom level and preset survive a page refresh — pan position resets on reload.
   const debounceRef = useRef<number | null>(null);
   useEffect(() => {
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
