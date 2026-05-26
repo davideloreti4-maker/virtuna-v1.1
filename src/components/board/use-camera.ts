@@ -1,0 +1,135 @@
+'use client';
+import { useCallback, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
+import {
+  CAMERA_MIN_SCALE,
+  CAMERA_MAX_SCALE,
+  CAMERA_PRESET_TARGETS,
+} from './board-constants';
+import type { Camera, CameraPresetKey, Rect } from './board-types';
+
+const VIEWPORT_MARGIN = 48; // px of breathing room around fit-to-content
+const ZOOM_STEP_IN = 1.05;
+const ZOOM_STEP_OUT = 0.95;
+const VALID_PRESET_KEYS: readonly CameraPresetKey[] = [
+  'overview', 'verdict', 'audience', 'content-analysis',
+];
+
+export function clampScale(s: number): number {
+  return Math.max(CAMERA_MIN_SCALE, Math.min(CAMERA_MAX_SCALE, s));
+}
+
+/** Compute a camera transform that fits `target` rect inside `viewport`. */
+export function computeFitCamera(
+  target: Rect,
+  viewport: { width: number; height: number },
+): Camera {
+  const availableW = Math.max(1, viewport.width - VIEWPORT_MARGIN * 2);
+  const availableH = Math.max(1, viewport.height - VIEWPORT_MARGIN * 2);
+  const scale = clampScale(
+    Math.min(availableW / target.width, availableH / target.height),
+  );
+  const x = viewport.width / 2 - (target.x + target.width / 2) * scale;
+  const y = viewport.height / 2 - (target.y + target.height / 2) * scale;
+  return { x, y, scale };
+}
+
+/** Zoom around the pointer position (RESEARCH Pattern 2). */
+export function computeZoomAtPointer(
+  camera: Camera,
+  pointerScreen: { x: number; y: number },
+  deltaY: number,
+): Camera {
+  const oldScale = camera.scale;
+  const mousePointTo = {
+    x: (pointerScreen.x - camera.x) / oldScale,
+    y: (pointerScreen.y - camera.y) / oldScale,
+  };
+  const step = deltaY > 0 ? ZOOM_STEP_OUT : ZOOM_STEP_IN;
+  const newScale = clampScale(oldScale * step);
+  return {
+    scale: newScale,
+    x: pointerScreen.x - mousePointTo.x * newScale,
+    y: pointerScreen.y - mousePointTo.y * newScale,
+  };
+}
+
+export function parseCameraSearchParams(
+  query: string,
+): { preset: CameraPresetKey | null; zoom: number | null } {
+  const params = new URLSearchParams(query.startsWith('?') ? query.slice(1) : query);
+  const rawFocus = params.get('focus');
+  const rawZoom = params.get('zoom');
+  const preset = (VALID_PRESET_KEYS as readonly string[]).includes(rawFocus ?? '')
+    ? (rawFocus as CameraPresetKey)
+    : null;
+  const parsedZoom = rawZoom != null ? parseFloat(rawZoom) : NaN;
+  const zoom = Number.isFinite(parsedZoom) ? clampScale(parsedZoom) : null;
+  return { preset, zoom };
+}
+
+export function serializeCamera(
+  state: { preset: CameraPresetKey | null; zoom: number },
+): string {
+  const params = new URLSearchParams();
+  if (state.preset) params.set('focus', state.preset);
+  params.set('zoom', state.zoom.toFixed(2));
+  return params.toString();
+}
+
+/**
+ * useCamera — wraps Camera state, syncs to URL via replaceState (debounced 200ms).
+ * Caller passes camera + setCamera (sourced from board-store in plan 4, or
+ * useState locally until plan 4 lands).
+ */
+export function useCamera(args: {
+  camera: Camera;
+  setCamera: (c: Camera) => void;
+  viewport: { width: number; height: number };
+  activePreset: CameraPresetKey | null;
+  setActivePreset: (k: CameraPresetKey | null) => void;
+  reducedMotion: boolean;
+}) {
+  const { camera, setCamera, viewport, activePreset, setActivePreset } = args;
+
+  const goToPreset = useCallback((key: CameraPresetKey) => {
+    const target = CAMERA_PRESET_TARGETS[key];
+    if (!target) return;
+    setCamera(computeFitCamera(target, viewport));
+    setActivePreset(key);
+  }, [setCamera, setActivePreset, viewport]);
+
+  // Read initial camera from URL on mount (one-shot)
+  const appliedInitialRef = useRef(false);
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (appliedInitialRef.current) return;
+    appliedInitialRef.current = true;
+    const { preset, zoom } = parseCameraSearchParams(searchParams.toString());
+    if (preset) {
+      const target = CAMERA_PRESET_TARGETS[preset];
+      if (target) {
+        const fit = computeFitCamera(target, viewport);
+        setCamera(zoom != null ? { ...fit, scale: zoom } : fit);
+        setActivePreset(preset);
+      }
+    }
+    // intentionally one-shot: do not depend on searchParams
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Write camera to URL via replaceState, debounced (RESEARCH Pattern 4, Pitfall 4)
+  const debounceRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      const qs = serializeCamera({ preset: activePreset, zoom: camera.scale });
+      window.history.replaceState(null, '', `?${qs}`);
+    }, 200);
+    return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    };
+  }, [camera.scale, activePreset]);
+
+  return { goToPreset };
+}
