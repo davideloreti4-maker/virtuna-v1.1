@@ -99,6 +99,11 @@ export function Board() {
   const triggerAntiVirality = useBoardStore((s) => s.triggerAntiVirality);
   const resetToIdle = useBoardStore((s) => s.resetToIdle);
 
+  // WR-01: track which analysisId we started streaming for, so that if the
+  // user resets and a new stream starts we don't fire anti-virality against
+  // a stale result from the previous run.
+  const streamingAnalysisIdRef = useRef<string | null>(null);
+
   // Map useAnalysisStream phase → board state machine transitions.
   useEffect(() => {
     switch (stream.phase) {
@@ -106,24 +111,35 @@ export function Board() {
       case 'reconnecting':
       case 'polling': {
         const current = useBoardStore.getState().boardState;
-        if (current !== 'streaming') startStreaming();
+        if (current !== 'streaming') {
+          startStreaming();
+          streamingAnalysisIdRef.current = stream.analysisId ?? null;
+        }
         break;
       }
       case 'complete': {
         finishStreaming();
-        if (stream.result) {
+        // WR-01: only trigger anti-virality when result correlates with the
+        // analysis we started streaming for (guards against stale result on
+        // reconnect or after resetToIdle + immediate re-analyze).
+        if (
+          stream.result &&
+          stream.analysisId != null &&
+          stream.analysisId === streamingAnalysisIdRef.current
+        ) {
           const antiVir = Boolean((stream.result as { antiVirality?: unknown }).antiVirality);
           if (antiVir) triggerAntiVirality();
         }
         break;
       }
       case 'error':
+        streamingAnalysisIdRef.current = null;
         resetToIdle();
         break;
       // 'idle' — no transition needed
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stream.phase, stream.result]);
+  }, [stream.phase, stream.result, stream.analysisId]);
 
   // CR-02: unified atomic URL update — merges the former pushState (analysisId)
   // and the debounced replaceState (camera/preset) into one effect so they can
