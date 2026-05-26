@@ -7,7 +7,13 @@ import { useSidebarRecent } from '@/components/sidebar/use-sidebar-queries';
 import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
 
 function useIsDesktop(): boolean {
-  const [desktop, setDesktop] = useState(false);
+  // WR-02: initialize with real value on client to avoid mobile→desktop
+  // animation flash caused by false→true state transition after first paint.
+  const [desktop, setDesktop] = useState<boolean>(() =>
+    typeof window !== 'undefined'
+      ? window.matchMedia('(min-width: 768px)').matches
+      : false,
+  );
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 768px)');
     setDesktop(mq.matches);
