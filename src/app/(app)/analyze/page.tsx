@@ -1,25 +1,15 @@
-import type { Metadata } from "next";
-import { Suspense } from "react";
-import { AnalyzeClient } from "./analyze-client";
+import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: "Analyze | Virtuna",
+  title: 'Analyze | Virtuna',
   description: "Analyze your TikTok content with Virtuna's prediction engine.",
 };
 
 /**
- * /analyze — form page where users submit content for analysis.
- *
- * Server component shell for metadata. Auth gating inherited from
- * (app)/layout.tsx middleware — no per-page check needed.
- *
- * Suspense boundary required by Next.js 15 for hooks that call
- * useSearchParams inside client subtree.
+ * /analyze — empty board landing. <Board> is mounted by analyze/layout.tsx
+ * so it survives the transition to /analyze/[id]. This page intentionally
+ * returns null; all UI is rendered by <Board>'s DOM overlays.
  */
 export default function AnalyzePage() {
-  return (
-    <Suspense fallback={null}>
-      <AnalyzeClient />
-    </Suspense>
-  );
+  return null;
 }
