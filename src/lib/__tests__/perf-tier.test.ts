@@ -5,18 +5,31 @@ vi.mock('@pmndrs/detect-gpu', () => ({
   getGPUTier: vi.fn(),
 }));
 
+// Stub localStorage (happy-dom 20.x requires --localstorage-file path; stub instead)
+const mockStorage: Record<string, string> = {};
+vi.stubGlobal('localStorage', {
+  getItem: (key: string) => mockStorage[key] ?? null,
+  setItem: (key: string, value: string) => { mockStorage[key] = value; },
+  removeItem: (key: string) => { delete mockStorage[key]; },
+  clear: () => { Object.keys(mockStorage).forEach((k) => delete mockStorage[k]); },
+  get length() { return Object.keys(mockStorage).length; },
+  key: (index: number) => Object.keys(mockStorage)[index] ?? null,
+});
+
 import { getGPUTier } from '@pmndrs/detect-gpu';
 import { detectInitialTier, startFpsSampler, usePerfStore, nextLowerTier } from '../perf-tier';
 
 describe('detectInitialTier', () => {
   beforeEach(() => {
-    localStorage.clear();
+    mockStorage['virtuna-perf-tier'] && delete mockStorage['virtuna-perf-tier'];
+    mockStorage['virtuna-perf-tier-at'] && delete mockStorage['virtuna-perf-tier-at'];
+    Object.keys(mockStorage).forEach((k) => delete mockStorage[k]);
     (getGPUTier as ReturnType<typeof vi.fn>).mockReset();
   });
 
   it('returns cached value within TTL', async () => {
-    localStorage.setItem('virtuna-perf-tier', 'medium');
-    localStorage.setItem('virtuna-perf-tier-at', String(Date.now()));
+    mockStorage['virtuna-perf-tier'] = 'medium';
+    mockStorage['virtuna-perf-tier-at'] = String(Date.now());
     const tier = await detectInitialTier();
     expect(tier).toBe('medium');
     expect(getGPUTier).not.toHaveBeenCalled();
@@ -37,13 +50,13 @@ describe('detectInitialTier', () => {
     (getGPUTier as ReturnType<typeof vi.fn>).mockResolvedValue({ tier: 1, type: 'BENCHMARK' });
     expect(await detectInitialTier()).toBe('low');
     (getGPUTier as ReturnType<typeof vi.fn>).mockResolvedValue({ tier: 0, type: 'FALLBACK' });
-    localStorage.clear();
+    Object.keys(mockStorage).forEach((k) => delete mockStorage[k]);
     expect(await detectInitialTier()).toBe('low');
   });
 
   it('refreshes cache when older than 7 days', async () => {
-    localStorage.setItem('virtuna-perf-tier', 'low');
-    localStorage.setItem('virtuna-perf-tier-at', String(Date.now() - 8 * 24 * 60 * 60 * 1000));
+    mockStorage['virtuna-perf-tier'] = 'low';
+    mockStorage['virtuna-perf-tier-at'] = String(Date.now() - 8 * 24 * 60 * 60 * 1000);
     (getGPUTier as ReturnType<typeof vi.fn>).mockResolvedValue({ tier: 3, type: 'BENCHMARK' });
     const tier = await detectInitialTier();
     expect(tier).toBe('high');
@@ -53,8 +66,8 @@ describe('detectInitialTier', () => {
   it('writes tier to localStorage after detection', async () => {
     (getGPUTier as ReturnType<typeof vi.fn>).mockResolvedValue({ tier: 3, type: 'BENCHMARK' });
     await detectInitialTier();
-    expect(localStorage.getItem('virtuna-perf-tier')).toBe('high');
-    expect(localStorage.getItem('virtuna-perf-tier-at')).toBeTruthy();
+    expect(mockStorage['virtuna-perf-tier']).toBe('high');
+    expect(mockStorage['virtuna-perf-tier-at']).toBeTruthy();
   });
 });
 
@@ -75,11 +88,11 @@ describe('startFpsSampler', () => {
   it('fires onDrop after 3 consecutive low-fps seconds', () => {
     const onDrop = vi.fn();
     startFpsSampler(onDrop);
-    // Simulate 3 windows of 30fps (well below 40)
+    // Simulate 3 windows of ~30fps (well below 40). Each window needs
+    // enough frames to cross the 1000ms threshold. 34ms * 30 = 1020ms > 1000ms.
     for (let s = 0; s < 3; s++) {
-      // 30 frames in 1000ms
       for (let f = 0; f < 30; f++) {
-        now += 33;
+        now += 34;
         rafCb?.(now);
       }
     }
@@ -92,7 +105,7 @@ describe('startFpsSampler', () => {
     cancel();
     // After cancel, driving more frames should not fire onDrop
     for (let f = 0; f < 90; f++) {
-      now += 33;
+      now += 34;
       rafCb?.(now);
     }
     expect(onDrop).not.toHaveBeenCalled();
