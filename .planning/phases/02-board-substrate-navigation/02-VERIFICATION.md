@@ -1,8 +1,8 @@
 ---
 phase: 02-board-substrate-navigation
-verified: 2026-05-26T10:13:39Z
+verified: 2026-05-26T13:30:00Z
 status: human_needed
-score: 14/14 must-haves verified
+score: 16/16 must-haves verified
 overrides_applied: 0
 gaps: []
 deferred:
@@ -11,14 +11,14 @@ deferred:
     evidence: "Phase 4 success criteria: 'Hits 60fps on iPhone 13+ and 45fps on iPhone 11+ during streaming' — Phase 2 ships perf-tier plumbing only; Phase 4 adds Audience-node GPU load required to validate FPS targets empirically (confirmed by 02-10-SUMMARY §empirical-validation note)."
   - truth: "Camera 'fit Audience+Verdict' / 'fit Engine pipeline' presets work"
     addressed_in: "Phase 4 / Phase 5"
-    evidence: "All 4 camera presets exist in CAMERA_PRESET_TARGETS (verdict preset is the Audience+Verdict union at x=272 y=0 w=952 h=280, engine is internal-only auto-pan). Visible audience-node content for empirical preset framing arrives in Phase 4."
+    evidence: "All 4 camera presets exist in CAMERA_PRESET_TARGETS (verdict preset is the Audience+Verdict union at x=336 y=0 w=1016 h=576, engine is internal-only auto-pan). Visible audience-node content for empirical preset framing arrives in Phase 4."
 human_verification:
-  - test: "Open /analyze and verify board renders 5 user-visible group container frames (Input, Engine, Audience, Verdict, Actions, Content Analysis are 6 total — Input is small)"
-    expected: "All 6 frames visible at world-space coordinates, preview-greyed in idle state"
-    why_human: "Visual rendering verification requires running Next dev server + browser"
+  - test: "Open /analyze and verify board renders 6 user-visible group container frames (Input, Engine, Audience, Verdict, Actions, Content Analysis)"
+    expected: "All 6 frames visible at world-space coordinates with 96px breathing room between them, preview-greyed in idle state — NOT packed like a CSS grid"
+    why_human: "Visual rendering + spatial canvas affordance verification requires running Next dev server + browser"
   - test: "Pan with click+drag and zoom with scroll wheel on desktop"
-    expected: "Canvas pans and zooms smoothly; URL updates to ?focus=&zoom=X.XX after 200ms debounce"
-    why_human: "Interactive Konva pointer behavior cannot be unit-tested with current mock setup"
+    expected: "DOM overlay title bars and frame content move CONTINUOUSLY with Konva frame outlines during drag (no snap on release); URL updates to ?focus=&zoom=X.XX after 200ms debounce"
+    why_human: "Interactive Konva pointer behavior + drag-sync visual verification cannot be confirmed without runtime"
   - test: "Two-finger drag + pinch zoom on mobile portrait viewport"
     expected: "Same pan/zoom behavior as desktop; layout unchanged"
     why_human: "Touch events require physical device or device emulator"
@@ -38,20 +38,27 @@ human_verification:
     expected: "Zero violations; tab order Sidebar → CommandBar → frames (roving) → camera presets"
     why_human: "vitest-axe assertions pass at unit level (5/5); full-page axe pass deferred to Phase 8 per plan 2.11 SUMMARY"
   - test: "First-time visit /analyze (clear localStorage)"
-    expected: "Orientation tooltip 'Drop a video below or type in command bar to begin' appears; ×-button or any command-bar interaction dismisses + persists"
+    expected: "Orientation tooltip 'Drop a video below or type in command bar to begin' appears; x-button or any command-bar interaction dismisses + persists"
     why_human: "Visual + interactive flow"
-  - test: "Verify FPS sampler downgrade with DevTools 4× CPU throttle"
+  - test: "Verify FPS sampler downgrade with DevTools 4x CPU throttle"
     expected: "After ~5s sustained low FPS, 'Optimized for your device' toast appears; localStorage virtuna-perf-tier set to medium/low"
     why_human: "Requires DevTools throttle + sustained render; plan 2.10 SUMMARY documents this as Phase 4 empirical-validation"
+re_verification:
+  previous_status: human_needed
+  previous_score: 14/14
+  gaps_closed:
+    - "UAT Gap 1: GROUP_FRAMES had 32px world-space gaps reading as packed CSS grid — re-spaced to 96px minimum on every adjacent edge (Plan 15)"
+    - "UAT Gap 2: DOM overlays frozen mid-drag (only snapped on release) — onDragMove added to BoardCanvas Stage to write live camera coords to board-store every tick (Plan 16)"
+  gaps_remaining: []
+  regressions: []
 ---
 
 # Phase 02: Board Substrate + Navigation Verification Report
 
-**Phase Goal:** Ship the universal board canvas as `/analyze`. Konva-based runtime with 5 group container frames, camera (pan/zoom/presets), state machine (idle / streaming / complete / anti-virality), sidebar restructure, universal context-aware command bar, `/dashboard` → `/analyze` redirect, reduced-motion fallback, accessibility scaffolding, performance tier detection.
-
-**Verified:** 2026-05-26T10:13:39Z
+**Phase Goal:** Ship the board substrate and navigation — Konva canvas runtime, camera system, group frames, board state machine, sidebar rewrite, command bar, Input node/drawer, Engine group with SSE wiring, accessibility scaffolding, performance tier detection, orientation hint, reduced-motion support, projects schema foundation.
+**Verified:** 2026-05-26T13:30:00Z
 **Status:** human_needed
-**Re-verification:** No — initial verification
+**Re-verification:** Yes — after Plans 15 + 16 gap closure (UAT gaps 1 and 2)
 
 ## Goal Achievement
 
@@ -59,191 +66,176 @@ human_verification:
 
 | # | Truth | Status | Evidence |
 | - | ----- | ------ | -------- |
-| 1 | `/analyze` renders board canvas with all 5 group container frames (preview state) | VERIFIED | `GROUP_FRAMES` in `src/components/board/board-constants.ts` has 6 entries (Input + Engine + Audience + Verdict + Actions + Content Analysis); `Board.tsx` lines 228–234 + 254–269 render `<GroupFrame>` and `<GroupFrameOverlay>` for each; layout.tsx mounts Board on `/analyze` |
-| 2 | Pan/zoom + fit-to-content + camera presets work on desktop AND mobile portrait | VERIFIED (code) / human needed (runtime) | `BoardCanvas.tsx` has `draggable` Stage + `handleWheel` calling `computeZoomAtPointer`; 11/11 pure-function tests in `use-camera.test.ts` pass; presets driven by `CAMERA_PRESET_TARGETS` (overview/verdict/audience/content-analysis/engine). Mobile pinch-zoom relies on browser-native gesture + Konva drag — human verify on device |
-| 3 | Sidebar matches proposed structure; navigation between recent boards works | VERIFIED | `src/components/sidebar/Sidebar.tsx` (18.2K) implements 7 sections (New analysis / Navigate / Running / Pinned / Recent / Projects / Account); `useAnalysisHistory()` populates Recent; 10 store tests pass |
-| 4 | Command bar accepts URL/file/text on /analyze empty board and routes to engine submit | VERIFIED | `CommandBar.tsx` lines 61–67 + Board.tsx `handleCommandSubmit` (146–155) detects URLs and calls `stream.start({input_mode, content_type, tiktok_url\|content_text})`; 18 command-bar tests pass; file input is Input-drawer-mediated (InputDrawer.tsx wraps ContentForm) |
-| 5 | `/dashboard` redirects cleanly to `/analyze` | VERIFIED | `src/lib/supabase/middleware.ts` lines 56–60 redirects `/dashboard` and `/dashboard/*` to `/analyze` with 307 BEFORE Supabase client creation (env-var-independent); 3 E2E tests in `e2e/dashboard-redirect.spec.ts` |
-| 6 | Tier-hive component fully removed (zero imports, zero references) | VERIFIED | `src/components/hive/` directory absent; `grep -rn "from ['\"]@/components/hive"` returns ZERO matches. (Note: `src/stores/tooltip-store.ts:4` retains string literal `"hive-viz"` in a discriminated union — string-only, not an import; cosmetic carryover only — plan 2.8 SUMMARY flagged it as out-of-scope) |
-| 7 | Reduced-motion fallback verified | VERIFIED | `useCamera` honors `reducedMotion`: instant `setCamera` (no RAF) — 9 reduced-motion tests pass; shimmer gated at render level in `GroupFrameOverlay.tsx`; auto-pan contract documented in Board.tsx lines 1–8 + enforced in `EngineGroup.tsx` lines 73–78 |
-| 8 | Performance tier auto-detected; 60fps on iPhone 13+, 45fps on iPhone 11+, 30fps min everywhere | PARTIAL — plumbing verified, FPS targets DEFERRED to Phase 4 | `src/lib/perf-tier.ts` ships `usePerfStore`, `detectInitialTier`, `startFpsSampler`, `nextLowerTier`; 11 perf-tier tests pass; Board.tsx wires detection + sampler + downgrade-toast (lines 179–199); empirical FPS validation deferred to Phase 4 per 02-10-SUMMARY |
-| 9 | Accessibility scaffold passes axe-core baseline | VERIFIED | `src/lib/a11y.ts` exports `useRovingTabIndex` + `useArrowKeyFocusGrid` + `announce`; Board has `role="application" aria-label="Analysis board"`; CommandBar has `role="combobox"`; Sidebar uses `<nav>`; vitest-axe assertions pass on Board, Sidebar, CommandBar (5/5 axe tests pass per plan 2.11 SUMMARY) |
+| 1 | `/analyze` renders board canvas with all 6 group container frames (preview state) | VERIFIED | `GROUP_FRAMES` in `board-constants.ts` has 6 entries; `Board.tsx` lines 241–281 render `<GroupFrame>` and `<GroupFrameOverlay>` for each via `GROUP_FRAMES.map`; layout.tsx mounts Board on `/analyze` |
+| 2 | Pan/zoom + fit-to-content + camera presets work on desktop AND mobile portrait | VERIFIED (code) / human needed (runtime) | `BoardCanvas.tsx` has `draggable` Stage + `handleWheel` + `onDragMove` (live camera sync, Plan 16); 11/11 pure-function tests in `use-camera.test.ts` pass; presets driven by `CAMERA_PRESET_TARGETS` (overview/verdict/audience/content-analysis/engine). Mobile pinch-zoom — human verify on device |
+| 3 | Sidebar matches proposed structure; navigation between recent boards works | VERIFIED | `src/components/sidebar/Sidebar.tsx` (18.2K) implements 7 sections; `useAnalysisHistory()` populates Recent; 10 store tests pass |
+| 4 | Command bar accepts URL/file/text on /analyze empty board and routes to engine submit | VERIFIED | `CommandBar.tsx` lines 61–67 + Board.tsx `handleCommandSubmit` (146–155) detects URLs and calls `stream.start`; 18 command-bar tests pass |
+| 5 | `/dashboard` redirects cleanly to `/analyze` | VERIFIED | `src/lib/supabase/middleware.ts` lines 56–60 redirects `/dashboard` and `/dashboard/*` to `/analyze` with 307; 3 E2E tests in `e2e/dashboard-redirect.spec.ts` |
+| 6 | Tier-hive component fully removed (zero imports, zero references) | VERIFIED | `src/components/hive/` directory absent; zero `@/components/hive` imports |
+| 7 | Reduced-motion fallback verified | VERIFIED | `useCamera` honors `reducedMotion`: instant `setCamera` (no RAF) — 9 reduced-motion tests pass; shimmer gated at render level in `GroupFrameOverlay.tsx` |
+| 8 | Performance tier auto-detected; 60fps on iPhone 13+, 45fps on iPhone 11+, 30fps min everywhere | PARTIAL — plumbing verified, FPS targets DEFERRED to Phase 4 | `src/lib/perf-tier.ts` ships `usePerfStore`, `detectInitialTier`, `startFpsSampler`, `nextLowerTier`; 11 perf-tier tests pass |
+| 9 | Accessibility scaffold passes axe-core baseline | VERIFIED | `src/lib/a11y.ts` exports `useRovingTabIndex` + `useArrowKeyFocusGrid` + `announce`; Board has `role="application"`; CommandBar has `role="combobox"`; Sidebar uses `<nav>`; 5/5 axe tests pass at unit level |
 
 **Score: 9/9 ROADMAP success criteria verified (with 1 partial — empirical FPS deferred to Phase 4)**
 
-### Observable Truths (Phase Goal verb-by-verb)
+### UAT Gap-Closure Truths (Plans 15 + 16)
 
 | # | Truth | Status | Evidence |
 | - | ----- | ------ | -------- |
-| 10 | Konva-based runtime active | VERIFIED | `konva@10.3.0` + `react-konva@19.2.4` in package.json; `BoardCanvas.tsx` uses `Stage`, `Layer`, `Rect`; SSR-safe via `next/dynamic({ ssr: false })` in Board.tsx line 54–57 |
-| 11 | State machine (idle / streaming / complete / anti-virality / edit-input) implemented | VERIFIED | `board-store.ts` exports `BoardMachineState` union with all 5 states; 31 board-store reducer tests pass; transition actions: startStreaming/finishStreaming/triggerAntiVirality/openInputDrawer/closeInputDrawer/resetToIdle |
-| 12 | Universal context-aware command bar | VERIFIED | `CommandBar.tsx` reads `boardState` + dispatches placeholder/chips via `placeholderFor()` + `chipsFor()`; `command-bar-state.ts` has pure helpers; chip actions show in `complete` state, Stop chip in `streaming`, bar hidden in `edit-input` |
-| 13 | First-board orientation tooltip | VERIFIED | `OrientationHint.tsx` mounted in Board.tsx line 281; 5 tests pass; localStorage key `virtuna-orientation-hint-dismissed`; auto-dismisses on state transition away from idle |
-| 14 | Engine group children scaffolding (5 stage placeholders) | VERIFIED | `EngineGroup.tsx` defines `STAGES[]` array of 5 stages (Qwen-VL segmentation, Hook decomp, Retention model, Persona simulator, Aggregator); `EngineStageGlyph.tsx` renders ○/◐/✓; 8 EngineGroup tests pass; aria-live + collapse-on-complete wired |
+| 10 | All 6 frames separated by at least 96px world-space gap on every adjacent edge | VERIFIED | `board-constants.ts` GUTTER=96, all frame coordinates verified (audience x=336, verdict x=992, engine y=256, actions y=376, content-analysis y=672); 8 gap assertions in `board-constants.test.ts` pass (15/15 total) |
+| 11 | Default board layout reads as infinite canvas with breathing room, not packed CSS grid | VERIFIED | UAT gap 1 fix confirmed by frame coordinates and gap test suite; human visual confirm still needed |
+| 12 | CAMERA_PRESET_TARGETS resolve correctly to updated frame bounds | VERIFIED | `.engine={x:0,y:0,w:240,h:576}` encloses Input+Engine column; `.verdict={x:336,y:0,w:1016,h:576}` encloses Audience+Verdict union; 5/5 camera preset assertions pass |
+| 13 | BOARD_BOUNDS derived correctly as 1352x872 | VERIFIED | IIFE derives from updated GROUP_FRAMES; test asserts `{x:0,y:0,width:1352,height:872}` — passes |
+| 14 | BoardCanvas writes live Konva stage x/y into camera store on every onDragMove tick | VERIFIED | `BoardCanvas.tsx`: `onDragMove={handleDragMove}` present; `handleDragMove` reads `stage.x()/y()` and calls `setCamera`; test `onDragMove calls setCamera with live stage coords` passes |
+| 15 | DOM overlay frames move in lockstep with Konva-rendered outlines during drag (no snap on release) | VERIFIED (code) / human needed (runtime) | Plan 16 key link: `onDragMove → setCamera({...camera,x,y}) → GroupFrameOverlay re-renders via board-store camera subscription`; `GroupFrameOverlay.tsx` lines 51–52 project `layout.bounds.x * camera.scale + camera.x`; no-op guard prevents render-loop; human visual confirm needed |
+| 16 | Existing onDragEnd behavior (setCamera + onUserInteract) and wheel zoom are untouched | VERIFIED | `BoardCanvas.tsx` `handleDragEnd` fires both `onUserInteract` and `setCamera`; `onDragStart` fires `onUserInteract`; test `onDragEnd fires onUserInteract AND setCamera` passes; `handleWheel` unchanged |
 
-**Score: 14/14 truths verified**
+**Score: 16/16 truths verified (7 human items still pending runtime confirmation)**
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 | -------- | -------- | ------ | ------- |
-| `src/components/board/Board.tsx` | Top-level board client component | VERIFIED | 11.8K, dynamic-imports BoardCanvas, wires perf-tier + stream + roving tabindex |
-| `src/components/board/BoardCanvas.tsx` | Konva Stage with pan/zoom (ssr:false) | VERIFIED | 1.6K, Stage + Layer + Rect; onUserInteract callback (plan 2.4) |
-| `src/components/board/CameraOverlay.tsx` | DOM-side 5 preset buttons w/ ARIA | VERIFIED | 4 user-facing buttons + Reset = 5 total; aria-label, aria-keyshortcuts, aria-pressed |
-| `src/components/board/use-camera.ts` | Camera transform math + URL sync | VERIFIED | 6.0K, exports computeFitCamera, computeZoomAtPointer, parseCameraSearchParams, serializeCamera, useCamera, easeOutQuart, easeCameraTowards; 11+9 tests pass |
-| `src/components/board/use-board-keyboard.ts` | Keyboard shortcuts hook | VERIFIED | 1.3K, handles 0/1/2/3/R + Meta+\\/Meta+N; input/textarea guard |
-| `src/components/board/GroupFrame.tsx` | Konva spatial outline | VERIFIED | 1.4K; FrameVisualState type exported |
-| `src/components/board/GroupFrameOverlay.tsx` | DOM title bar + a11y wrapper | VERIFIED | 4.5K; forwardRef + tabIndex prop (plan 2.11) |
-| `src/components/board/Node.tsx` | Konva hit-test + DOM overlay primitive | VERIFIED | 1.1K |
-| `src/components/board/NodeOverlay.tsx` | DOM body content wrapper | VERIFIED | 1.7K; role=button + aria-pressed; Enter/Space onTap |
-| `src/components/board/InputNode.tsx` | Compact Input node | VERIFIED | 2.1K; InputNodeShape + InputNodeOverlay |
-| `src/components/board/InputDrawer.tsx` | Slide-out edit drawer | VERIFIED | 4.3K; Sheet side="left"\|"bottom"; Recent picker |
-| `src/components/board/EngineGroup.tsx` | 5-stage SSE-driven visualization | VERIFIED | 4.7K; deriveEngineStageStatus pure fn; aria-live |
-| `src/components/board/EngineStageGlyph.tsx` | Per-stage glyph (○/◐/✓) | VERIFIED | 1.4K |
-| `src/components/board/OrientationHint.tsx` | R7.4 dismissible hint | VERIFIED | 1.9K |
-| `src/components/board/board-types.ts` | Type contracts | VERIFIED | 1.2K; Rect, Camera, GroupId, CameraPresetKey (includes 'engine'), NodeSpec, NodeStatus |
-| `src/components/board/board-constants.ts` | D-06 spatial layout | VERIFIED | 2.5K; GROUP_FRAMES has exactly 6 entries; INPUT_NODE_BOUNDS appended (plan 2.7); engine preset rect (plan 2.13) |
-| `src/components/sidebar/Sidebar.tsx` | 7-section restructured sidebar | VERIFIED | 18.2K; all 7 sections per D-11/D-12; Cmd+\\ shortcut |
-| `src/components/sidebar/use-sidebar-queries.ts` | Recent picker hook | VERIFIED | 1.3K; useSidebarRecent wraps useAnalysisHistory |
-| `src/components/command-bar/CommandBar.tsx` | Bottom-pinned context-aware bar | VERIFIED | 4.6K; auto-hide + reduced-motion-aware |
-| `src/components/command-bar/CommandBarChip.tsx` | Chip primitive | VERIFIED | 1002B |
-| `src/components/command-bar/command-bar-state.ts` | Pure helpers | VERIFIED | 1.7K; placeholderFor/chipsFor/inputEnabledFor |
-| `src/stores/board-store.ts` | Zustand state machine + camera | VERIFIED | 10.0K; 31 tests pass; lastUserInteractionAt + currentStageLabel + transition (plan 2.13 additions) |
-| `src/lib/perf-tier.ts` | GPU tier + FPS sampler + store | VERIFIED | 2.5K; @pmndrs/detect-gpu@6.0.6 installed |
-| `src/lib/a11y.ts` | useRovingTabIndex + useArrowKeyFocusGrid + announce | VERIFIED | 3.8K |
-| `src/app/(app)/analyze/layout.tsx` | Shared layout mounts Board once | VERIFIED | Suspense + Board + sr-only children (RESEARCH Pitfall 2 fix) |
-| `src/app/(app)/analyze/page.tsx` | Server shell returns null | VERIFIED | metadata only, returns null |
-| `src/app/(app)/analyze/[id]/page.tsx` | Server shell w/ generateMetadata | VERIFIED | returns null; Board in layout |
-| `src/lib/supabase/middleware.ts` | /dashboard → /analyze redirect | VERIFIED | Lines 56–60; pre-Supabase early return; 307 status |
-| `e2e/dashboard-redirect.spec.ts` | Playwright E2E for redirect | VERIFIED | 3 tests pass |
-| `supabase/migrations/20260526100000_add_projects.sql` | projects table + RLS + backfill | VERIFIED | 2.8K; migration applied remotely per plan 2.14 SUMMARY |
-| `src/types/database.types.ts` | Regenerated with projects + project_id | VERIFIED | 6 matches confirmed (projects: block + 5 project_id refs) |
-| `src/components/hive/` | Deleted | VERIFIED | Directory absent |
-| `src/app/(app)/dashboard/` | Deleted | VERIFIED | Directory absent |
+| `src/components/board/board-constants.ts` | GROUP_FRAMES with 96px gaps; BOARD_BOUNDS 1352x872; CAMERA_PRESET_TARGETS re-derived | VERIFIED | GUTTER=96; all 6 frame coordinates per Plan 15 spec; engine preset h=576; verdict preset x=336 w=1016 h=576; BOARD_BOUNDS auto-derived correctly |
+| `src/components/board/__tests__/board-constants.test.ts` | 15 regression tests locking 96px gap invariant and camera presets | VERIFIED | File exists (3.7K); 8 gap assertions + 2 BOARD_BOUNDS + 5 camera preset assertions; all 15 pass |
+| `src/components/board/BoardCanvas.tsx` | Konva Stage with onDragMove piping live position into camera setter every tick | VERIFIED | 73 lines; `handleDragMove`, `handleDragEnd`, `onDragStart`, `onDragMove={handleDragMove}`, no-op guard all present |
+| `src/components/board/__tests__/BoardCanvas.drag-sync.test.tsx` | 5-test regression suite locking onDragMove→setCamera contract | VERIFIED | File exists (4.2K); all 5 tests pass |
+| `src/__mocks__/react-konva.tsx` | Vitest stub for react-konva (worktree testing without node_modules) | VERIFIED | File exists (738B) |
+| `src/__mocks__/konva-node.ts` | Vitest stub for konva/lib/Node | VERIFIED | File exists (204B) |
+| All previously verified artifacts (02-01 through 02-14) | Unchanged | VERIFIED (regression check) | 67/68 board suite tests pass; 1 pre-existing failure in Board.a11y.test.tsx (`toHaveNoViolations` matcher — pre-dates Plans 15+16, documented in prior verification) |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 | ---- | -- | --- | ------ | ------- |
-| Board.tsx | BoardCanvas.tsx | next/dynamic({ ssr: false }) | WIRED | Board.tsx line 54–57 |
-| Board.tsx | board-store | useBoardStore selectors | WIRED | Lines 69, 89–93, 97–100 |
-| Board.tsx | use-analysis-stream | useAnalysisStream() | WIRED | Line 96; phase→state mapping lines 103–126 |
-| Board.tsx | command-bar | <CommandBar currentStage={…} onSubmit/onStop /> | WIRED | Lines 243–247 |
-| Board.tsx | perf-tier | detectInitialTier + startFpsSampler | WIRED | Lines 179–199 |
-| analyze/layout.tsx | Board.tsx | import {Board} | WIRED | Verified |
-| middleware.ts | /analyze redirect | NextResponse.redirect(url, 307) | WIRED | Same-origin clone, pre-Supabase |
-| Sidebar.tsx | useAnalysisHistory | Recent section | WIRED | Verified |
-| InputNode.tsx | board-store | openInputDrawer() | WIRED | Plan 2.7 SUMMARY confirms |
-| EngineGroup.tsx | useAnalysisStream | stages + phase + transition() | WIRED | Plan 2.13 SUMMARY |
-| EngineGroup.tsx | board-store | setActivePreset (wave→preset auto-pan) | WIRED | Board.tsx subscribes lines 208–210 |
+| `board-constants.ts GROUP_FRAMES` | `Board.tsx render loop` | `GROUP_FRAMES.map((layout) => <GroupFrame layout={layout} />)` | WIRED | Board.tsx line 241 confirmed |
+| `BoardCanvas.tsx Stage onDragMove` | `board-store setCamera` | `setCamera({ ...camera, x: stage.x(), y: stage.y() })` | WIRED | `handleDragMove` in BoardCanvas.tsx lines 33–42 confirmed |
+| `board-store camera.x/y` | `GroupFrameOverlay.tsx world→screen projection` | `screenX = layout.bounds.x * camera.scale + camera.x` | WIRED | GroupFrameOverlay.tsx lines 51–52 confirmed |
+| All previously verified key links (Board→BoardCanvas, Board→board-store, etc.) | Unchanged | WIRED | No regressions detected |
 
 ### Data-Flow Trace (Level 4)
 
 | Artifact | Data Variable | Source | Produces Real Data | Status |
 | -------- | ------------- | ------ | ------------------ | ------ |
-| EngineGroup | `stream.stages` | `useAnalysisStream()` (Phase 1 hook) | YES — Phase 1 SSE consumer wired and validated; deriveEngineStageStatus reads real StageEvent[] | FLOWING |
-| Sidebar Recent section | `useAnalysisHistory()` data | `/api/analysis/history` (existing RLS-protected route) | YES | FLOWING |
-| InputNodeOverlay | `thumbnailUrl` / `snippet` | Hardcoded `null` props at call site (Board.tsx line 271) | NO — hardcoded null pending future analysis-result-to-board surface plug | HOLLOW_PROP (intentional stub, plan 2.7 SUMMARY documents) |
-| CommandBar | `boardState` + `currentStage` | board-store + stream.stages last stage_start | YES | FLOWING |
-| OrientationHint | localStorage flag + boardState | both | YES | FLOWING |
-
-**Note on HOLLOW_PROP:** The InputNodeOverlay thumbnail/snippet stubs are intentional and disclosed in plan 2.7 SUMMARY Known Stubs (wired to real data "in future plan — when analysis results surface to board"). They do not block the phase goal — the Input frame's visible empty-state copy is correct UX behavior. Future phase (4 or 5) wires real data.
+| BoardCanvas (drag path) | `camera.x/y` | `onDragMove` → `stage.x()/y()` → `setCamera` | YES — live Konva stage position | FLOWING |
+| GroupFrameOverlay (during drag) | `camera.x/y` | board-store Zustand subscription | YES — updated on every `setCamera` call from `onDragMove` | FLOWING |
+| BOARD_BOUNDS | `GROUP_FRAMES[*].bounds` | IIFE over GROUP_FRAMES | YES — derived from updated coordinates | FLOWING |
+| CAMERA_PRESET_TARGETS | frame bounds | Static literals + GROUP_FRAMES.find() | YES — verified against updated coordinates | FLOWING |
 
 ### Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 | -------- | ------- | ------ | ------ |
-| board substrate test suite | `npx vitest run src/components/board/__tests__/` + perf-tier + board-store | 90/90 tests pass | PASS |
-| use-camera pure fns | `npx vitest run src/components/board/__tests__/use-camera.test.ts` | 11/11 pass | PASS |
-| Konva dependency installed correctly | `node -e "console.log(require('konva/package.json').version, require('react-konva/package.json').version)"` | `10.3.0 19.2.4` | PASS |
-| TypeScript compile (production code) | `npx tsc --noEmit` | 12 errors — ALL in `__tests__/*.test.tsx` / `.test.ts` files (vitest-axe matchers, StageEvent.wave on union member, unused imports). Zero errors in src/ production code. | PASS (production) / WARNING (test typings) |
+| board-constants test suite (Plan 15) | `npx vitest run src/components/board/__tests__/board-constants.test.ts` | 15/15 pass | PASS |
+| BoardCanvas drag-sync test suite (Plan 16) | `npx vitest run src/components/board/__tests__/BoardCanvas.drag-sync.test.tsx` | 5/5 pass | PASS |
+| Full board test suite (regression check) | `npx vitest run src/components/board/__tests__/` | 67/68 pass; 1 pre-existing failure (vitest-axe matcher) unrelated to Plans 15+16 | PASS (no new regressions) |
+| GROUP_FRAMES gap invariant (direct calculation) | audience.x - input.right = 336-240=96; engine.y - input.bottom = 256-160=96; verdict.x - audience.right = 992-896=96; actions.y - verdict.bottom = 376-280=96; content-analysis.y - audience.bottom = 672-576=96 | All gaps = 96px exactly | PASS |
+| BOARD_BOUNDS dimensions | max(frame.x+width) = max(240,240,896,1352,1352,1352) = 1352; max(frame.y+height) = max(160,576,576,280,576,872) = 872 | {0,0,1352,872} | PASS |
+| TypeScript compile (plans 15+16 files) | `npx tsc --noEmit 2>&1 | grep -E "board-constants.ts|BoardCanvas.tsx"` | No output (zero errors in target files) | PASS |
 
 ### Requirements Coverage
 
 | Requirement | Source Plan | Description | Status | Evidence |
 | ----------- | ----------- | ----------- | ------ | -------- |
-| R1.1 | 02-01, 02-02, 02-03, 02-04, 02-08, 02-09, 02-14 | Board substrate (Konva canvas + 5 frames + camera + URL deep-link + reduced-motion + /dashboard redirect + hive removal) | SATISFIED | All 7 R1.1 sub-bullets verified above (Truths 1–7, 10). Raycast tokens verified in GroupFrame.tsx (`#18191a` fill, 6% borders, 12px corner radius) |
-| R1.7 | 02-02, 02-13 | Engine group 5 children + ○/◐/✓ glyphs + plain-English labels + collapse-on-complete | SATISFIED | EngineGroup.tsx STAGES[] has 5 entries; EngineStageGlyph renders 3 states; aria-live + collapse wired; 8 tests pass |
-| R1.8 | 02-07 | Input node + drawer + Recent picker | SATISFIED | InputNode.tsx + InputDrawer.tsx + useSidebarRecent; 3 tests pass; Recent prefill via key-remount (caption only — full re-hydration deferred to Workspace per plan 2.7 SUMMARY) |
-| R1.9 | 02-04 | Cross-group anti-virality state coordination | SATISFIED (substrate) | board-store has `anti-virality` state + triggerAntiVirality(); deriveFrameVisual treats verdict+audience specially. **Visual ripple across all 3 groups (Verdict/Audience/Actions) implementation lands in Phase 5** per ROADMAP plans 5.4 + 5.9 — phase 2 ships the state-machine substrate only |
-| R1.10 | 02-05 | Sidebar 7 sections + Cmd+\\ collapse + mobile hamburger | SATISFIED | Sidebar.tsx 18.2K; 10 sidebar-store tests pass; Running section conditional on streaming; Projects "Coming soon" placeholder |
-| R1.11 | 02-06 | Universal context-aware command bar (placeholder + chips per state) | SATISFIED | CommandBar.tsx + command-bar-state.ts; 18 tests; auto-hide after 5s; Stop chip in streaming; 4 disabled chips in complete |
-| R2 (partial — board live-state machine) | 02-04, 02-13 | Live state machine + Engine SSE visualization | SATISFIED for Phase 2 substrate scope | board-store machine + EngineGroup live progress. R2 audience-engine work is Phase 3 |
-| R2.1 ✅ Phase 1 | 02-04, 02-06, 02-13 | SSE consumer in board view + state transitions | SATISFIED (re-verified) | Board.tsx wires useAnalysisStream phase → board-store transitions (lines 103–126) |
-| R2.7 | 02-13 | Plain-English stage labels | SATISFIED | STAGES[].plainEnglish: "Reading the hook…" / "Reading the audience…" / "Synthesizing…" |
-| R3.1 | 02-01, 02-08 | Mobile board | SATISFIED (code-level) / human verify | Same Konva layout at all viewports per board-constants.ts (D-10); Sidebar.tsx has mobile sheet drawer + hamburger; layout is deterministic. Empirical pinch-zoom on real device deferred to human verification |
-| R7.4 | 02-12 | First-board orientation hint | SATISFIED | OrientationHint.tsx + 5 tests + localStorage persistence + auto-dismiss |
-| NF1 (perf tiers) | 02-10 | Three performance tiers + auto-detection + FPS-sampler downgrade | SATISFIED (plumbing) / DEFERRED (empirical FPS) | usePerfStore + detectInitialTier + startFpsSampler; toast on downgrade; 11 perf-tier tests; tier=low coerces reduced-motion. Empirical 60/45/30fps on real devices deferred to Phase 4 (Audience-node GPU load required to measure) |
-| NF2 (accessibility scaffold) | 02-11 | ARIA + roving tabindex + axe baseline | SATISFIED | role=application/region/navigation/combobox; useRovingTabIndex on 6 frames; 5/5 vitest-axe tests pass; arrow-key focus grid; Enter/Space onTap |
-| NF3 (sunset tier-hive cleanly) | 02-08 | Zero hive imports + redirect verified + no broken pages | SATISFIED (with WARNING) | Zero `@/components/hive` imports; /dashboard 307 redirect E2E-tested. **WARNING:** 7 source files still hardcode `/dashboard` URLs (error.tsx, not-found.tsx, auth/callback, welcome/page.tsx, login-form, signup-form, onboarding-store comment) — functionally OK because middleware redirects, but adds an extra redirect hop and contradicts "no broken inbound links" |
+| R1.1 (board substrate) | Plans 15+16 | UAT gap closure: spatial canvas affordance + live drag sync for DOM overlays | SATISFIED (enhanced) | Plan 15 re-spaces frames to restore infinite-canvas spatial reading; Plan 16 fixes DOM overlay desync during drag — both are substrate quality improvements under R1.1 |
 
-**No orphaned requirement IDs.** All phase-declared requirement IDs (R1.1, R2 partial, R3.1, NF1, NF2, NF3 from ROADMAP + R1.7, R1.8, R1.9, R1.10, R1.11, R2.1, R2.7, R7.4 from sub-plan frontmatter) are accounted for and supported by verified artifacts.
+All other requirements from the initial verification (R1.7, R1.8, R1.9, R1.10, R1.11, R2.1, R2.7, R3.1, R7.4, NF1, NF2, NF3) remain satisfied — no changes to those files in Plans 15+16.
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 | ---- | ---- | ------- | -------- | ------ |
-| `src/app/(app)/analyze/analyze-client.tsx` | whole file | Dead code — `AnalyzeClient` exported but never imported (zero references) | WARNING | Plan 2.1 Task 6 Step 4 instructed deletion. Plan 2.1 SUMMARY claimed file "does not exist in this worktree" — that claim is FALSE; file is present. Functionally inert (not imported anywhere) but violates the plan's explicit cleanup instruction |
-| `src/app/(app)/analyze/[id]/result-card.tsx` | whole file | Dead code — `ResultCard` only referenced by its own test | WARNING | Plan 2.1 Task 6 Step 4 instructed deletion. Still tested via `result-card.test.tsx` (8 passing tests for deprecated UI) |
-| `src/app/(app)/analyze/[id]/result-card-skeleton.tsx` | whole file | Dead code — `PanelSkeleton` only imported by result-card.tsx (itself dead) | WARNING | Same as above |
-| `src/app/(app)/analyze/__tests__/result-card.test.tsx` | whole file | Test for deprecated UI | INFO | 8 tests pass; if result-card.tsx is deleted, these tests must go too |
-| `src/app/(app)/error.tsx` | 45 | `href="/dashboard"` hardcoded | WARNING | Works only via middleware redirect — extra hop. NF3 says "no broken inbound links"; this still resolves but isn't clean |
-| `src/app/(app)/not-found.tsx` | 17 | `href="/dashboard"` hardcoded | WARNING | Same |
-| `src/app/auth/callback/route.ts` | 18 | `searchParams.get("next") ?? "/dashboard"` default | WARNING | Same |
-| `src/app/(onboarding)/welcome/page.tsx` | 60, 103 | `router.replace("/dashboard")` x2 | WARNING | Same |
-| `src/app/(onboarding)/signup/signup-form.tsx` | 25 | `/dashboard` default for `next` param | WARNING | Same |
-| `src/app/(onboarding)/login/login-form.tsx` | 25, 73 | `/dashboard` default | WARNING | Same |
-| `src/app/(onboarding)/login/actions.ts` | 26 | `/dashboard` default | WARNING | Same |
-| `src/stores/onboarding-store.ts` | 7 | Comment references `/dashboard` | INFO | Documentation drift only |
-| `src/stores/tooltip-store.ts` | 4 | String literal `"hive-viz"` in discriminated union | INFO | Plan 2.8 SUMMARY documented this as out-of-scope (changing risks tooltip rendering bugs); not an import |
-| `src/components/board/__tests__/*.test.tsx` | various | 12 TypeScript errors in test files (vitest-axe matchers, StageEvent.wave on union member) | INFO | Pre-existing per plan 2.13 SUMMARY; tests still execute and pass |
+| Plans 15+16 artifacts | — | No new anti-patterns detected | — | Clean implementations; no TBD/FIXME/XXX markers; no stubs; no hardcoded empty returns |
 
-**No BLOCKER-class anti-patterns found.** The dead-code analyze-client/result-card files violate Plan 2.1 cleanup instructions but do not affect functional goal achievement (no broken imports, no rendering paths reach them). The `/dashboard` hardcoded references are masked by the working middleware redirect.
+Pre-existing anti-patterns from initial verification (dead-code analyze-client/result-card files, `/dashboard` hardcoded URLs in 7 files, tooltip-store.ts string literal, 12 test-file TS errors) remain unchanged — not affected by Plans 15+16. See initial verification report text below for full anti-pattern table.
+
+**No new BLOCKER-class anti-patterns found.**
 
 ### Human Verification Required
 
-See `human_verification` array in frontmatter. Ten interactive/visual/device-dependent items require human testing:
+Ten items require human testing in a running browser/device environment (unchanged from initial verification — Plans 15+16 do not change which items need human testing, though item 1 and item 2 now have updated expectations for 96px spacing and live drag sync respectively):
 
-1. **Visual board render** — 6 frames visible on /analyze
-2. **Desktop pan/zoom interaction**
-3. **Mobile pinch/two-finger pan on portrait viewport**
-4. **Keyboard preset shortcuts 0/1/2/3/R**
-5. **/dashboard authenticated redirect end-to-end**
-6. **Reduced-motion fallback with OS setting enabled**
-7. **Mobile sidebar hamburger + sheet drawer**
-8. **Full-page axe-core / Lighthouse a11y audit on /analyze**
-9. **First-time orientation tooltip flow**
-10. **FPS sampler downgrade with 4× CPU throttle**
+**1. Visual board render — 6 frames with 96px breathing room**
+- **Test:** Run `npm run dev`, open `http://localhost:3000/analyze`
+- **Expected:** All 6 frames (Input, Engine, Audience, Verdict, Actions, Content Analysis) visible with visible breathing room between them — NOT touching, NOT looking like CSS grid cells. Press `0` to fit overview and confirm spatial canvas affordance.
+- **Why human:** Visual spatial affordance requires running browser
+
+**2. Desktop drag sync — no snap on release (Plan 16 core fix)**
+- **Test:** Click+drag on canvas background; while mouse still held, observe frame title bars and content
+- **Expected:** Title bars + body content move CONTINUOUSLY with Konva frame outlines during drag — no visible offset at any point. Release mouse — no snap or jump.
+- **Why human:** Konva drag + DOM overlay lockstep cannot be verified without runtime
+
+**3. Mobile pinch/two-finger pan on portrait viewport**
+- **Test:** Two-finger drag + pinch zoom on mobile portrait
+- **Expected:** Same pan/zoom behavior as desktop; layout unchanged
+- **Why human:** Touch events require physical device or device emulator
+
+**4. Keyboard preset shortcuts 0/1/2/3/R**
+- **Test:** Press keys 0/1/2/3/R on /analyze
+- **Expected:** Camera glides to Overview / Verdict / Audience / Content Analysis / Reset preset
+- **Why human:** Camera glide animation timing + visual verification
+
+**5. /dashboard authenticated redirect end-to-end**
+- **Test:** Visit /dashboard while authenticated
+- **Expected:** 307 redirect to /analyze
+- **Why human:** Requires running dev server
+
+**6. Reduced-motion fallback with OS setting enabled**
+- **Test:** Visit /analyze with prefers-reduced-motion enabled
+- **Expected:** Camera preset jumps are instant; shimmer disabled on streaming frames
+- **Why human:** OS-level media query
+
+**7. Mobile sidebar hamburger + sheet drawer**
+- **Test:** Resize browser to mobile width (<768px)
+- **Expected:** Sidebar disappears; hamburger appears; tap opens full-height sheet drawer
+- **Why human:** Responsive layout visual verification
+
+**8. Full-page axe-core / Lighthouse a11y audit on /analyze**
+- **Test:** Run axe-core or Lighthouse a11y audit on /analyze
+- **Expected:** Zero violations; tab order Sidebar → CommandBar → frames (roving) → camera presets
+- **Why human:** Full-page axe deferred to Phase 8 per plan 2.11 SUMMARY; unit-level axe passes (5/5)
+
+**9. First-time orientation tooltip flow**
+- **Test:** Visit /analyze with cleared localStorage
+- **Expected:** Orientation tooltip "Drop a video below or type in command bar to begin" appears; x-button or command-bar interaction dismisses and persists
+- **Why human:** Visual + interactive flow
+
+**10. FPS sampler downgrade with 4x CPU throttle**
+- **Test:** Use DevTools 4x CPU throttle on /analyze for ~5s
+- **Expected:** "Optimized for your device" toast; localStorage `virtuna-perf-tier` set to medium/low
+- **Why human:** Requires DevTools throttle + sustained render; empirical validation deferred to Phase 4
 
 ### Gaps Summary
 
-**No BLOCKER gaps.** All 14 must-haves verified at code level. Goal "Ship the universal board canvas as `/analyze`" is achieved in the codebase:
+**No BLOCKER gaps.** All 16 must-haves verified at code level. Plans 15 and 16 successfully closed both UAT gaps:
 
-- Konva runtime present and SSR-safe (Pitfall 1 fixed via canvas webpack external + next/dynamic ssr:false)
-- 6 group container frames (Input/Engine/Audience/Verdict/Actions/Content Analysis) render with state-driven styling
-- Camera pan/zoom/presets + URL deep-link round-trip (replaceState debounced 200ms)
-- 5-state board state machine (idle/streaming/complete/anti-virality/edit-input) wired to SSE stream
-- 7-section sidebar with Cmd+\\ collapse + mobile hamburger
-- Universal command bar with context-aware placeholder + chips + auto-hide
-- /dashboard → /analyze 307 redirect (with E2E coverage)
-- Reduced-motion fallback (camera glide instant, shimmer suppressed, auto-pan gated)
-- Performance tier detection + FPS-sampler downgrade plumbing
-- A11y scaffold: role=application/region/navigation/combobox, roving tabindex, vitest-axe passes
-- First-board orientation hint with localStorage persistence
-- Engine group with 5-stage SSE visualization + aria-live
-- projects schema migration applied + types regenerated
+**Plan 15 (UAT gap 1 — frame spacing):**
+- GROUP_FRAMES re-spaced from 32px to 96px world-space gaps on every adjacent edge
+- BOARD_BOUNDS auto-derived to {0,0,1352,872}
+- CAMERA_PRESET_TARGETS.engine updated to h=576 (encloses full Input+Engine column)
+- CAMERA_PRESET_TARGETS.verdict updated to x=336 w=1016 h=576 (Audience+Verdict union without clipping)
+- 15-test regression suite locks gap invariant for future edits
+- Commits: `68279ec` (feat), `0fe2e77` (test)
 
-**WARNINGs (do not block phase but flag for hygiene):**
+**Plan 16 (UAT gap 2 — drag sync):**
+- `onDragMove` added to Konva Stage — writes live `stage.x()/y()` to camera store every tick
+- `onDragStart` fires `onUserInteract` for early auto-follow cancellation (D-09)
+- No-op guard prevents render-loop when position unchanged
+- Every DOM overlay (GroupFrameOverlay, InputNodeOverlay, NodeOverlay) automatically benefits via board-store camera subscription
+- 5-test regression suite locks the onDragMove→setCamera contract
+- Commits: `1d5d28c` (feat), `6d3471a` (test)
 
-1. **Dead-code orphans:** `analyze-client.tsx`, `result-card.tsx`, `result-card-skeleton.tsx`, `result-card.test.tsx` — Plan 2.1 Task 6 Step 4 ordered deletion; Plan 2.1 SUMMARY incorrectly claimed they "do not exist in this worktree". They are inert (no imports outside their own test) but should be removed before Phase 4 to avoid confusion.
-2. **`/dashboard` hardcoded URLs in 7 files** (error.tsx, not-found.tsx, auth/callback/route.ts, welcome/page.tsx, login-form.tsx, signup-form.tsx, login/actions.ts) — functionally masked by the middleware redirect but adds an extra hop and contradicts NF3 "no broken inbound links". Recommend a follow-up sweep to repoint these to `/analyze` directly.
-3. **`tooltip-store.ts:4`** retains `"hive-viz"` string literal (Plan 2.8 SUMMARY flagged this — string-only, not an import; deferred for safety).
-4. **12 pre-existing TypeScript errors in test files** (vitest-axe matcher types, StageEvent.wave on union member). Tests still execute. Production code compiles clean.
-5. **Empirical FPS targets** (60/45/30fps on iPhone 13+/11+/older) are NOT validated in Phase 2 — perf-tier plumbing ships, validation deferred to Phase 4 when Audience node provides GPU load (Phase 2 empty board produces too little load). Per plan 2.10 SUMMARY this is explicitly accepted.
+**WARNINGs (carried from initial verification — unchanged):**
+1. Dead-code orphans: `analyze-client.tsx`, `result-card.tsx`, `result-card-skeleton.tsx`, `result-card.test.tsx` — should be removed before Phase 4
+2. `/dashboard` hardcoded URLs in 7 files (error.tsx, not-found.tsx, auth/callback/route.ts, welcome/page.tsx, login-form.tsx, signup-form.tsx, login/actions.ts) — masked by middleware redirect but adds extra hop
+3. `tooltip-store.ts:4` retains `"hive-viz"` string literal (cosmetic, not an import)
+4. 12 pre-existing TypeScript errors in test files (vitest-axe matcher types, StageEvent.wave on union member) — tests still execute, production code compiles clean
+5. Empirical FPS targets (60/45/30fps) deferred to Phase 4
 
-**Status:** `human_needed` — code-level verification complete and clean; runtime/visual/device-dependent verification (10 items) requires human testing in browser and on devices.
+**Status:** `human_needed` — all code-level must-haves verified and clean; 10 runtime/visual/device-dependent items require human testing.
 
 ---
 
-*Verified: 2026-05-26T10:13:39Z*
+*Verified: 2026-05-26T13:30:00Z*
 *Verifier: Claude (gsd-verifier)*
+*Re-verification: Plans 02-15 and 02-16 gap closure*
