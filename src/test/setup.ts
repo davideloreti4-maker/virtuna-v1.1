@@ -9,8 +9,8 @@
 
 import "@testing-library/jest-dom/vitest";
 import { expect } from 'vitest';
-import { toHaveNoViolations } from 'vitest-axe/matchers';
-expect.extend({ toHaveNoViolations });
+import * as axeMatchers from 'vitest-axe/matchers';
+expect.extend(axeMatchers);
 
 // Radix UI's Popover / Select / Dialog primitives use ResizeObserver and
 // matchMedia. happy-dom does not implement either. Stub both with no-op

@@ -40,12 +40,26 @@ vi.mock('@/hooks/queries/use-analysis-stream', () => ({
   }),
 }));
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useBoardStore } from '@/stores/board-store';
 import { Board } from '../Board';
 import { ToastProvider } from '@/components/ui/toast';
 
+vi.mock('@/hooks/queries/use-analysis-history', () => ({
+  useAnalysisHistory: () => ({ data: [], isLoading: false }),
+}));
+
+vi.mock('@/hooks/queries/use-profile', () => ({
+  useProfile: () => ({ data: null }),
+}));
+
 function renderBoard() {
-  return render(<ToastProvider><Board /></ToastProvider>);
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={qc}>
+      <ToastProvider><Board /></ToastProvider>
+    </QueryClientProvider>
+  );
 }
 
 describe('GroupFrame integration', () => {
