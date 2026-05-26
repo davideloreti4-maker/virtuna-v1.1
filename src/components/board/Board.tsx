@@ -15,6 +15,7 @@ import type { BoardMachineState } from '@/stores/board-store';
 import { useCamera } from './use-camera';
 import { useBoardKeyboard } from './use-board-keyboard';
 import { CameraOverlay } from './CameraOverlay';
+import { OrientationHint } from './OrientationHint';
 import { GROUP_FRAMES } from './board-constants';
 import { GroupFrame } from './GroupFrame';
 import { GroupFrameOverlay } from './GroupFrameOverlay';
@@ -156,6 +157,9 @@ export function Board() {
 
       {/* DOM overlay slots (filled by plans 2.6 command bar, 2.7 input node, etc.) */}
       <CameraOverlay activePreset={activePreset} onSelect={goToPreset} />
+
+      {/* R7.4 first-board orientation hint — z=150, above board content, below command bar (z=200) */}
+      <OrientationHint />
     </div>
   );
 }
