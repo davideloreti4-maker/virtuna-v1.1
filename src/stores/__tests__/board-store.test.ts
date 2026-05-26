@@ -32,6 +32,8 @@ beforeEach(async () => {
     inputDrawerOpen: false,
     selectedNodeId: null,
     cancelConfirmOpen: false,
+    lastUserInteractionAt: 0,
+    currentStageLabel: null,
   });
 });
 
