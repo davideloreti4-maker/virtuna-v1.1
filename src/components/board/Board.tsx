@@ -7,7 +7,9 @@
  * RESEARCH Pitfall 3 + Open Question 2.
  */
 import dynamic from 'next/dynamic';
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, createRef } from 'react';
+import type { RefObject } from 'react';
+import { useRovingTabIndex } from '@/lib/a11y';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useBoardStore } from '@/stores/board-store';
@@ -70,6 +72,18 @@ export function Board() {
   const [expanded, setExpanded] = useState<Record<GroupId, boolean>>(() =>
     Object.fromEntries(GROUP_FRAMES.map((f) => [f.id, true])) as Record<GroupId, boolean>,
   );
+
+  // Roving tabindex across group frames (plan 2.11 NF2 — arrow-key navigation).
+  // Exactly one frame has tabIndex=0 at a time; all others -1.
+  // Arrow keys (← → ↑ ↓) + Home/End move focus within the group.
+  const frameRefs = useRef<Array<RefObject<HTMLDivElement | null>>>(
+    GROUP_FRAMES.map(() => createRef<HTMLDivElement>()),
+  );
+  // Ensure refs array stays in sync if GROUP_FRAMES ever changes length.
+  if (frameRefs.current.length !== GROUP_FRAMES.length) {
+    frameRefs.current = GROUP_FRAMES.map(() => createRef<HTMLDivElement>());
+  }
+  const { getTabIndex, setActive } = useRovingTabIndex(frameRefs.current);
 
   // Camera state from board-store (Plan 2.4). Replaces prior local useState.
   const camera = useBoardStore((s) => s.camera);
@@ -222,12 +236,27 @@ export function Board() {
         <InputNodeShape selected={false} />
       </BoardCanvas>
 
+      {/* Plan 2.6: context-aware command bar — z=200, fixed bottom-center.
+          IMPORTANT: Rendered BEFORE the frame overlay loop so its <input> is the
+          first tab stop inside the canvas region (DOM order = tab order for z=0 elements).
+          Tab order: Sidebar → CommandBar → Group frames (roving) → CameraOverlay presets */}
+      <CommandBar
+        currentStage={currentStage}
+        onSubmit={handleCommandSubmit}
+        onStop={handleCommandStop}
+      />
+
       {/* DOM overlay layer: title bars, ARIA, empty-state copy. pointer-events-none
-          keeps Konva pan/zoom hit-test alive; individual overlays restore pointer-events-auto. */}
+          keeps Konva pan/zoom hit-test alive; individual overlays restore pointer-events-auto.
+          Group frames use roving tabindex (plan 2.11): one frame has tabIndex=0, rest -1.
+          Arrow keys (←→↑↓) move focus within the group. */}
       <div className="pointer-events-none absolute inset-0">
-        {GROUP_FRAMES.map((layout) => (
+        {GROUP_FRAMES.map((layout, i) => (
           <GroupFrameOverlay
             key={layout.id}
+            ref={(el) => { frameRefs.current[i]!.current = el; }}
+            tabIndex={getTabIndex(i) as 0 | -1}
+            onFocus={() => setActive(i)}
             layout={layout}
             camera={camera}
             visual={deriveFrameVisual(boardMachineState, layout.id)}
@@ -250,13 +279,6 @@ export function Board() {
 
       {/* R7.4 first-board orientation hint — z=150, above board content, below command bar (z=200) */}
       <OrientationHint />
-
-      {/* Plan 2.6: context-aware command bar — z=200, fixed bottom-center */}
-      <CommandBar
-        currentStage={currentStage}
-        onSubmit={handleCommandSubmit}
-        onStop={handleCommandStop}
-      />
     </div>
   );
 }

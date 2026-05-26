@@ -1,4 +1,6 @@
 'use client';
+import { forwardRef } from 'react';
+import type { ReactNode } from 'react';
 import { CaretDown, CaretUp } from '@phosphor-icons/react';
 import { Icon } from '@/components/ui/icon';
 import { Badge } from '@/components/ui/badge';
@@ -33,13 +35,18 @@ interface Props {
   expanded: boolean;
   onToggleExpanded: () => void;
   childCount?: number;
-  children?: React.ReactNode; // body content slot (plan 2.7 Input node, plan 2.13 engine stages)
+  children?: ReactNode; // body content slot (plan 2.7 Input node, plan 2.13 engine stages)
   reducedMotion: boolean;
+  /** Roving tabindex — exactly one frame has 0, all others -1. NEVER positive values. */
+  tabIndex: 0 | -1;
+  /** Called when this frame receives focus (click or keyboard). Updates roving active index. */
+  onFocus?: () => void;
 }
 
-export function GroupFrameOverlay({
-  layout, camera, visual, expanded, onToggleExpanded, childCount = 0, children, reducedMotion,
-}: Props) {
+export const GroupFrameOverlay = forwardRef<HTMLDivElement, Props>(function GroupFrameOverlay(
+  { layout, camera, visual, expanded, onToggleExpanded, childCount = 0, children, reducedMotion, tabIndex, onFocus },
+  ref,
+) {
   // World → screen
   const screenX = layout.bounds.x * camera.scale + camera.x;
   const screenY = layout.bounds.y * camera.scale + camera.y;
@@ -51,9 +58,12 @@ export function GroupFrameOverlay({
 
   return (
     <div
+      ref={ref}
       role="region"
       aria-label={ARIA_LABEL[layout.id] ?? layout.label}
-      className="pointer-events-auto absolute"
+      tabIndex={tabIndex}
+      onFocus={onFocus}
+      className="pointer-events-auto absolute focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
       style={{
         left: screenX,
         top: screenY,
@@ -113,4 +123,4 @@ export function GroupFrameOverlay({
       )}
     </div>
   );
-}
+});
