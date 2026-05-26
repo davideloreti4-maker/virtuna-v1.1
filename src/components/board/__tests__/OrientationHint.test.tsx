@@ -1,11 +1,22 @@
 /** @vitest-environment happy-dom */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { useBoardStore } from '@/stores/board-store';
 import { OrientationHint } from '../OrientationHint';
 
+// Stub localStorage — happy-dom 20.x requires --localstorage-file path; stub instead
+const mockStorage: Record<string, string> = {};
+vi.stubGlobal('localStorage', {
+  getItem: (key: string) => mockStorage[key] ?? null,
+  setItem: (key: string, value: string) => { mockStorage[key] = value; },
+  removeItem: (key: string) => { delete mockStorage[key]; },
+  clear: () => { Object.keys(mockStorage).forEach((k) => delete mockStorage[k]); },
+  get length() { return Object.keys(mockStorage).length; },
+  key: (index: number) => Object.keys(mockStorage)[index] ?? null,
+});
+
 beforeEach(() => {
-  localStorage.clear();
+  mockStorage['virtuna-orientation-hint-dismissed'] && delete mockStorage['virtuna-orientation-hint-dismissed'];
   useBoardStore.setState({ boardState: 'idle' });
 });
 
@@ -18,7 +29,7 @@ describe('OrientationHint', () => {
   });
 
   it('does NOT render when localStorage flag is set', () => {
-    localStorage.setItem('virtuna-orientation-hint-dismissed', '1');
+    mockStorage['virtuna-orientation-hint-dismissed'] = '1';
     const { container } = render(<OrientationHint />);
     expect(container.firstChild).toBeNull();
   });
