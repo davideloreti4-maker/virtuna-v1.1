@@ -7,11 +7,13 @@
  * RESEARCH Pitfall 3 + Open Question 2.
  */
 import dynamic from 'next/dynamic';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useBoardStore } from '@/stores/board-store';
 import type { BoardMachineState } from '@/stores/board-store';
+import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
+import { CommandBar } from '@/components/command-bar/CommandBar';
 import { useCamera } from './use-camera';
 import { useBoardKeyboard } from './use-board-keyboard';
 import { CameraOverlay } from './CameraOverlay';
@@ -72,6 +74,75 @@ export function Board() {
   const activePreset = useBoardStore((s) => s.activePreset);
   const setActivePreset = useBoardStore((s) => s.setActivePreset);
   const userOverrideCameraFollow = useBoardStore((s) => s.userOverrideCameraFollow);
+
+  // ── Plan 2.6: stream→board wiring ──────────────────────────────────────────
+  const stream = useAnalysisStream();
+  const startStreaming = useBoardStore((s) => s.startStreaming);
+  const finishStreaming = useBoardStore((s) => s.finishStreaming);
+  const triggerAntiVirality = useBoardStore((s) => s.triggerAntiVirality);
+  const resetToIdle = useBoardStore((s) => s.resetToIdle);
+
+  // Map useAnalysisStream phase → board state machine transitions.
+  useEffect(() => {
+    switch (stream.phase) {
+      case 'analyzing':
+      case 'reconnecting':
+      case 'polling': {
+        const current = useBoardStore.getState().boardState;
+        if (current !== 'streaming') startStreaming();
+        break;
+      }
+      case 'complete': {
+        finishStreaming();
+        if (stream.result) {
+          const antiVir = Boolean((stream.result as { antiVirality?: unknown }).antiVirality);
+          if (antiVir) triggerAntiVirality();
+        }
+        break;
+      }
+      case 'error':
+        resetToIdle();
+        break;
+      // 'idle' — no transition needed
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stream.phase, stream.result]);
+
+  // URL pushState on analysisId assignment (D-01: pushState for id transitions).
+  useEffect(() => {
+    if (stream.analysisId && typeof window !== 'undefined') {
+      const targetPath = `/analyze/${stream.analysisId}`;
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState(null, '', targetPath);
+      }
+    }
+  }, [stream.analysisId]);
+
+  // Extract the latest human-readable stage slug from the stream stages array.
+  // Plan 2.13 will replace slugs with a label mapping; for Phase 2 the slug is
+  // passed through and falls back to "Analyzing…" when null.
+  const currentStage = useMemo(() => {
+    const last = [...stream.stages].reverse().find((s) => s.type === 'stage_start');
+    return last ? last.stage : null;
+  }, [stream.stages]);
+
+  const handleCommandSubmit = (text: string) => {
+    const isUrl = /^https?:\/\//i.test(text);
+    stream.start({
+      input_mode: isUrl ? 'tiktok_url' : 'text',
+      content_type: isUrl ? 'tiktok_url' : 'text',
+      ...(isUrl ? { tiktok_url: text } : { content_text: text }),
+    }).catch(() => {
+      // Error handled by stream.phase → 'error' transition above.
+    });
+  };
+
+  const handleCommandStop = () => {
+    // Phase 2: no dedicated abort() in the hook (Phase 1 D-02 lock).
+    // resetToIdle() provides immediate UI feedback. See SUMMARY known limitations.
+    resetToIdle();
+  };
+  // ── End plan 2.6 ───────────────────────────────────────────────────────────
 
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [viewport, setViewport] = useState({ width: 800, height: 600 });
@@ -160,6 +231,13 @@ export function Board() {
 
       {/* R7.4 first-board orientation hint — z=150, above board content, below command bar (z=200) */}
       <OrientationHint />
+
+      {/* Plan 2.6: context-aware command bar — z=200, fixed bottom-center */}
+      <CommandBar
+        currentStage={currentStage}
+        onSubmit={handleCommandSubmit}
+        onStop={handleCommandStop}
+      />
     </div>
   );
 }

@@ -20,7 +20,6 @@ vi.mock('@/stores/board-store', () => ({
 
 // Mock useAnalysisStream
 let _phase = 'idle';
-let _stage: string | null = null;
 let _analysisId: string | null = null;
 
 vi.mock('@/hooks/queries/use-analysis-stream', () => ({
@@ -44,10 +43,9 @@ vi.mock('@/hooks/usePrefersReducedMotion', () => ({
 
 import { CommandBar } from '../CommandBar';
 
-function setup(boardState = 'idle', phase = 'idle', stage: string | null = null) {
+function setup(boardState = 'idle', phase = 'idle') {
   _boardState = boardState;
   _phase = phase;
-  _stage = stage;
   _resetCalled = false;
 }
 
@@ -66,7 +64,7 @@ describe('CommandBar', () => {
   });
 
   it('Test 2: streaming — input disabled, Stop chip visible', () => {
-    setup('streaming', 'analyzing', 'Reading the hook…');
+    setup('streaming', 'analyzing');
     render(<CommandBar currentStage="Reading the hook…" />);
     const input = screen.getByRole('combobox');
     expect(input).toBeDisabled();
