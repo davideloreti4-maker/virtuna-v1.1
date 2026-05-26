@@ -30,21 +30,26 @@ vi.mock('next/navigation', () => ({
 }));
 
 import { Board } from '../Board';
+import { ToastProvider } from '@/components/ui/toast';
+
+function renderBoard() {
+  return render(<ToastProvider><Board /></ToastProvider>);
+}
 
 describe('Board', () => {
   it('Test 1: renders without crashing', () => {
-    const { container } = render(<Board />);
+    const { container } = renderBoard();
     expect(container.firstChild).toBeTruthy();
   });
 
   it('Test 2 + 4: has role=application with aria-label "Analysis board"', () => {
-    render(<Board />);
+    renderBoard();
     const el = screen.getByRole('application');
     expect(el).toHaveAttribute('aria-label', 'Analysis board');
   });
 
   it('Test 3: renders 5 camera preset buttons with correct aria-labels', () => {
-    render(<Board />);
+    renderBoard();
     ['Overview view', 'Verdict view', 'Audience view', 'Content Analysis view', 'Reset view']
       .forEach((label) => expect(screen.getByRole('button', { name: label })).toBeInTheDocument());
   });

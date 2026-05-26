@@ -26,6 +26,11 @@ vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams('
 
 import { useBoardStore } from '@/stores/board-store';
 import { Board } from '../Board';
+import { ToastProvider } from '@/components/ui/toast';
+
+function renderBoard() {
+  return render(<ToastProvider><Board /></ToastProvider>);
+}
 
 describe('GroupFrame integration', () => {
   beforeEach(() => {
@@ -33,7 +38,7 @@ describe('GroupFrame integration', () => {
   });
 
   it('renders 6 frames with role=region in idle state', async () => {
-    const { container } = render(<Board />);
+    const { container } = renderBoard();
     // Dynamic import resolves async — wait for re-render
     await act(async () => {
       await new Promise((r) => setTimeout(r, 50));
@@ -44,7 +49,7 @@ describe('GroupFrame integration', () => {
   });
 
   it('shows empty-state copy on non-Input/Engine frames in idle', async () => {
-    render(<Board />);
+    renderBoard();
     await act(async () => {
       await new Promise((r) => setTimeout(r, 50));
     });
@@ -56,7 +61,7 @@ describe('GroupFrame integration', () => {
 
   it('renders anti-virality stroke on Verdict + Audience rects when boardState=anti-virality', async () => {
     useBoardStore.setState({ boardState: 'anti-virality' });
-    const { container } = render(<Board />);
+    const { container } = renderBoard();
     await act(async () => {
       await new Promise((r) => setTimeout(r, 50));
     });
@@ -69,7 +74,7 @@ describe('GroupFrame integration', () => {
   });
 
   it('toggles aria-expanded on chevron click', async () => {
-    render(<Board />);
+    renderBoard();
     await act(async () => {
       await new Promise((r) => setTimeout(r, 50));
     });

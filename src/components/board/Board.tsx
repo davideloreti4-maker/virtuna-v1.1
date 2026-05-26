@@ -20,6 +20,8 @@ import { GroupFrame } from './GroupFrame';
 import { GroupFrameOverlay } from './GroupFrameOverlay';
 import type { GroupId } from './board-types';
 import type { FrameVisualState } from './GroupFrame';
+import { detectInitialTier, startFpsSampler, usePerfStore, nextLowerTier } from '@/lib/perf-tier';
+import { useToast } from '@/components/ui/toast';
 
 /**
  * Derives per-frame visual state from the board machine state.
@@ -48,6 +50,12 @@ const BoardCanvas = dynamic(
 
 export function Board() {
   const reducedMotion = usePrefersReducedMotion();
+
+  // Performance tier (plan 2.10) — tier=low coerces reduced-motion gates
+  const tier = usePerfStore((s) => s.tier);
+  const setTier = usePerfStore((s) => s.setTier);
+  const effectiveReducedMotion = reducedMotion || tier === 'low';
+  const { toast } = useToast();
 
   // Board machine state for frame visual derivation (plan 2.2)
   const boardMachineState = useBoardStore((s) => s.boardState);
@@ -78,8 +86,31 @@ export function Board() {
     return () => ro.disconnect();
   }, []);
 
+  // Detect initial GPU tier post-mount (Pitfall 5: never block first paint)
+  useEffect(() => {
+    let cancelled = false;
+    detectInitialTier().then((detectedTier) => {
+      if (!cancelled) setTier(detectedTier);
+    });
+    return () => { cancelled = true; };
+  }, [setTier]);
+
+  // Runtime FPS sampler — auto-downgrades tier once on sustained low fps
+  useEffect(() => {
+    const cancel = startFpsSampler(() => {
+      const dropped = nextLowerTier(usePerfStore.getState().tier);
+      usePerfStore.getState().setTier(dropped);
+      try {
+        localStorage.setItem('virtuna-perf-tier', dropped);
+        localStorage.setItem('virtuna-perf-tier-at', String(Date.now()));
+      } catch { /* ignore */ }
+      toast({ title: 'Optimized for your device', variant: 'default' });
+    });
+    return cancel;
+  }, [toast]);
+
   const { goToPreset } = useCamera({
-    camera, setCamera, viewport, activePreset, setActivePreset, reducedMotion,
+    camera, setCamera, viewport, activePreset, setActivePreset, reducedMotion: effectiveReducedMotion,
   });
 
   useBoardKeyboard({ goToPreset });
@@ -118,7 +149,7 @@ export function Board() {
             visual={deriveFrameVisual(boardMachineState, layout.id)}
             expanded={expanded[layout.id]}
             onToggleExpanded={() => setExpanded((s) => ({ ...s, [layout.id]: !s[layout.id] }))}
-            reducedMotion={reducedMotion}
+            reducedMotion={effectiveReducedMotion}
           />
         ))}
       </div>
