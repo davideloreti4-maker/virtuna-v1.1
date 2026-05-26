@@ -101,11 +101,13 @@ export function useCamera(args: {
   camera: Camera;
   setCamera: (c: Camera) => void;
   viewport: { width: number; height: number };
+  /** WR-05: true once ResizeObserver has written a real viewport (not 800×600 default). */
+  viewportReady: boolean;
   activePreset: CameraPresetKey | null;
   setActivePreset: (k: CameraPresetKey | null) => void;
   reducedMotion: boolean;
 }) {
-  const { camera, setCamera, viewport, activePreset, setActivePreset } = args;
+  const { camera, setCamera, viewport, viewportReady, activePreset, setActivePreset } = args;
 
   // CR-01: keep a ref to the latest camera so goToPreset always reads
   // a fresh snapshot at call time, avoiding the one-frame stale-closure
@@ -146,10 +148,12 @@ export function useCamera(args: {
     // camera removed from deps — read via cameraRef instead (CR-01)
   }, [setCamera, setActivePreset, viewport, args.reducedMotion, cancelGlide]);
 
-  // Read initial camera from URL on mount (one-shot)
+  // Read initial camera from URL — deferred until viewport is real (WR-05).
+  // Firing at 800×600 default would compute a wrong fit; guard on viewportReady.
   const appliedInitialRef = useRef(false);
   const searchParams = useSearchParams();
   useEffect(() => {
+    if (!viewportReady) return; // WR-05: wait for real viewport measurement
     if (appliedInitialRef.current) return;
     appliedInitialRef.current = true;
     const { preset, zoom } = parseCameraSearchParams(searchParams.toString());
@@ -161,9 +165,9 @@ export function useCamera(args: {
         setActivePreset(preset);
       }
     }
-    // intentionally one-shot: do not depend on searchParams
+    // intentionally one-shot after viewportReady: do not depend on searchParams
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [viewportReady]);
 
   // NOTE: URL sync (replaceState) was moved to Board.tsx as a unified atomic
   // effect (CR-02). useCamera no longer owns URL writes.

@@ -216,8 +216,11 @@ export function Board() {
     return cancel;
   }, [toast]);
 
+  // WR-05: viewport is real once ResizeObserver has fired (not the 800×600 default).
+  const viewportReady = !(viewport.width === 800 && viewport.height === 600);
+
   const { goToPreset } = useCamera({
-    camera, setCamera, viewport, activePreset, setActivePreset, reducedMotion: effectiveReducedMotion,
+    camera, setCamera, viewport, viewportReady, activePreset, setActivePreset, reducedMotion: effectiveReducedMotion,
   });
 
   // Plan 2.13: EngineGroup sets activePreset on wave boundaries; Board subscribes here
