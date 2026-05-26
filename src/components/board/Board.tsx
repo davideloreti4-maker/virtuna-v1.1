@@ -20,7 +20,7 @@ import { useCamera } from './use-camera';
 import { useBoardKeyboard } from './use-board-keyboard';
 import { CameraOverlay } from './CameraOverlay';
 import { OrientationHint } from './OrientationHint';
-import { GROUP_FRAMES } from './board-constants';
+import { GROUP_FRAMES, CAMERA_DEFAULT_SCALE } from './board-constants';
 import { GroupFrame } from './GroupFrame';
 import { GroupFrameOverlay } from './GroupFrameOverlay';
 import { EngineGroup } from './EngineGroup';
@@ -208,6 +208,19 @@ export function Board() {
   useEffect(() => {
     if (activePreset) goToPreset(activePreset);
   }, [activePreset, goToPreset]);
+
+  // Auto-fit to overview on first real viewport measurement when no URL preset was applied.
+  // Prevents the 1352×872 board rendering at scale=1 (overflowing viewport) on first load.
+  const initialFitApplied = useRef(false);
+  useEffect(() => {
+    if (initialFitApplied.current) return;
+    if (viewport.width === 800 && viewport.height === 600) return; // default, not yet real
+    initialFitApplied.current = true;
+    const cam = useBoardStore.getState().camera;
+    if (cam.x === 0 && cam.y === 0 && cam.scale === CAMERA_DEFAULT_SCALE) {
+      goToPreset('overview');
+    }
+  }, [viewport, goToPreset]);
 
   useBoardKeyboard({ goToPreset });
 
