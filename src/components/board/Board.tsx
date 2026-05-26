@@ -1,4 +1,11 @@
 'use client';
+/**
+ * Auto-pan contract for downstream plans (2.13 Engine, future Audience):
+ * - If `usePrefersReducedMotion()` is true → DO NOT call `goToPreset`.
+ * - If `Date.now() - useBoardStore.getState().lastUserInteractionAt < 3000` → DO NOT call `goToPreset`.
+ * - Throttle: at most one glide per wave boundary (Wave 0→1, 1→2, 2→3, complete).
+ * RESEARCH Pitfall 3 + Open Question 2.
+ */
 import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
