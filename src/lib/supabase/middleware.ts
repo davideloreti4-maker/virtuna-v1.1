@@ -129,11 +129,16 @@ export async function updateSession(request: NextRequest) {
 
   // Redirect authenticated users without onboarding to /welcome
   if (user && pathname !== "/welcome" && isProtectedPath(pathname)) {
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("creator_profiles")
       .select("onboarding_completed_at")
       .eq("user_id", user.id)
       .maybeSingle();
+
+    // Fail open on DB error — don't lock users out of the app during outages
+    if (profileError) {
+      return supabaseResponse;
+    }
 
     if (!profile || !profile.onboarding_completed_at) {
       return NextResponse.redirect(new URL("/welcome", request.url));
