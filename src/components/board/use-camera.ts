@@ -107,6 +107,12 @@ export function useCamera(args: {
 }) {
   const { camera, setCamera, viewport, activePreset, setActivePreset } = args;
 
+  // CR-01: keep a ref to the latest camera so goToPreset always reads
+  // a fresh snapshot at call time, avoiding the one-frame stale-closure
+  // glitch when a pan fires mid-glide.
+  const cameraRef = useRef(camera);
+  useEffect(() => { cameraRef.current = camera; }, [camera]);
+
   const rafRef = useRef<number | null>(null);
   const cancelGlide = useCallback(() => {
     if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
@@ -127,7 +133,7 @@ export function useCamera(args: {
     }
 
     cancelGlide();
-    const start = camera;
+    const start = { ...cameraRef.current }; // always fresh at call time (CR-01)
     const startedAt = performance.now();
     const DURATION = 300; // UI-SPEC §Animation Contract "Camera glide"
     const tick = (now: number) => {
@@ -137,7 +143,8 @@ export function useCamera(args: {
       else rafRef.current = null;
     };
     rafRef.current = requestAnimationFrame(tick);
-  }, [setCamera, setActivePreset, viewport, args.reducedMotion, camera, cancelGlide]);
+    // camera removed from deps — read via cameraRef instead (CR-01)
+  }, [setCamera, setActivePreset, viewport, args.reducedMotion, cancelGlide]);
 
   // Read initial camera from URL on mount (one-shot)
   const appliedInitialRef = useRef(false);
