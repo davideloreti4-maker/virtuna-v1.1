@@ -104,16 +104,7 @@ export const GroupFrameOverlay = forwardRef<HTMLDivElement, Props>(function Grou
           className="relative overflow-hidden p-4"
           style={{ height: screenH - TITLE_BAR_HEIGHT }}
         >
-          {/* aria-live placeholder; plan 2.13 populates with stage label text */}
-          {isLive && (
-            <span
-              data-testid={`live-${layout.id}`}
-              aria-live="polite"
-              className="sr-only"
-            >
-              {/* text injected by plan 2.13 via useBoardStore stage */}
-            </span>
-          )}
+          {/* aria-live announcements handled by EngineGroup to avoid double announcements */}
           {showShimmer && (
             <Skeleton className="absolute inset-2 opacity-40" />
           )}
