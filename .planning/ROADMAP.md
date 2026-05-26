@@ -45,6 +45,9 @@ This is the shell every subsequent phase plugs into.
 - 2.11 — Accessibility scaffolding (ARIA, focus management, keyboard nav, alt text, contrast)
 - 2.12 — First-board orientation tooltip (subtle hint for first-time visitors)
 - 2.13 — Engine group children scaffolding (5 stage placeholders with state machine)
+- 2.14 — Workspace schema (projects table + project_id FK + default seed)
+- 2.15 — Gap closure: re-space group frames with 96px world-space gaps (UAT gap 1)
+- 2.16 — Gap closure: sync DOM overlay with Konva drag transform via onDragMove (UAT gap 2)
 
 **Success criteria:**
 - `/analyze` renders board canvas with all 5 group container frames visible (preview state)
