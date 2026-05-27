@@ -1,10 +1,12 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { nanoid } from 'nanoid';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ContentForm, type ContentFormData } from '@/components/app/content-form';
 import { useBoardStore } from '@/stores/board-store';
 import { useSidebarRecent } from '@/components/sidebar/use-sidebar-queries';
 import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
+import { createClient } from '@/lib/supabase/client';
 
 function useIsDesktop(): boolean {
   // WR-02: initialize with real value on client to avoid mobile→desktop
@@ -40,16 +42,42 @@ export function InputDrawer() {
   const [prefillCaption, setPrefillCaption] = useState<string>('');
   const [prefillKey, setPrefillKey] = useState(0);
 
-  const handleSubmit = (data: ContentFormData) => {
+  const handleSubmit = async (data: ContentFormData) => {
     // Close drawer immediately; board state transitions via stream.phase → board-state
     // wiring in Board.tsx (plan 2.6).
     closeInputDrawer();
+
+    let videoStoragePath: string | null = null;
+    if (data.input_mode === 'video_upload' && data.video_file) {
+      // Upload to private `videos` bucket under user-scoped prefix.
+      // Pipeline + filmstrip extractor read this path via storage admin client.
+      const supabase = createClient();
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData.user?.id;
+      if (!userId) return;
+      const ext = (data.video_file.name.split('.').pop() ?? 'mp4').toLowerCase();
+      const path = `${userId}/${nanoid()}.${ext}`;
+      const { error } = await supabase.storage
+        .from('videos')
+        .upload(path, data.video_file, {
+          contentType: data.video_file.type || 'video/mp4',
+          upsert: false,
+        });
+      if (error) {
+        return;
+      }
+      videoStoragePath = path;
+    }
+
     stream.start({
       input_mode: data.input_mode,
-      content_type: data.input_mode === 'tiktok_url' ? 'tiktok_url' : 'text',
+      content_type: data.input_mode === 'text' ? 'post' : 'video',
       ...(data.input_mode === 'text' && { content_text: data.caption }),
       ...(data.input_mode === 'tiktok_url' && { tiktok_url: data.tiktok_url }),
-      ...(data.input_mode === 'video_upload' && { content_text: data.video_caption }),
+      ...(data.input_mode === 'video_upload' && {
+        content_text: data.video_caption,
+        ...(videoStoragePath && { video_storage_path: videoStoragePath }),
+      }),
       ...(data.niche && { niche: data.niche }),
     }).catch(() => { /* error surfaced via stream.phase → board-state error transition */ });
   };

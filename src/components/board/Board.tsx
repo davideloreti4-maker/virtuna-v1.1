@@ -165,7 +165,7 @@ export function Board() {
     const isUrl = /^https?:\/\//i.test(text);
     stream.start({
       input_mode: isUrl ? 'tiktok_url' : 'text',
-      content_type: isUrl ? 'tiktok_url' : 'text',
+      content_type: isUrl ? 'video' : 'post',
       ...(isUrl ? { tiktok_url: text } : { content_text: text }),
     }).catch(() => {
       // Error handled by stream.phase → 'error' transition above.
