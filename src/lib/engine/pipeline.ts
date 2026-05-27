@@ -17,6 +17,7 @@ import {
   type PersonaSimulationResult,
   type PersonaBehavioralAggregate,
   type BenchmarkRetrievalResult,
+  type SegmentGrid,
 } from "./types";
 import { normalizeInput } from "./normalize";
 import { matchAudioFingerprint } from "./audio-fingerprint"; // Phase 6 Plan 04 — pgvector fingerprint match
@@ -37,6 +38,10 @@ import { emitStageStart, emitStageEnd } from "./events";
 import { runWave3 } from "./wave3";
 import { runBenchmarkRetrieval } from "./retrieval/retrieval-stage";
 import { runPlatformFit } from "./wave4/platform-fit";
+// Phase 3 (Plan 08) — Pass 2 orchestrator + filmstrip trigger
+import { runWave3Pass2, type Wave3Pass2Outcome } from "./wave3/pass2";
+import type { DemographicContext } from "./wave3/persona-prompts-pass2";
+import { triggerFilmstripGeneration } from "./filmstrip/queue";
 
 // =====================================================
 // Pipeline Types
@@ -107,6 +112,16 @@ export interface PipelineResult extends PipelineAudioFingerprintFields {
   // platform_fit signal availability + fold mean fit_score into overall_score.
   platformFitResult: PlatformFitResult[] | null;
 
+  // Phase 3 (Plan 08) — Pass 2 outcome from runWave3Pass2.
+  // Null when no segments (text mode / tiktok_url mode) or when Pass 2 itself is skipped.
+  // Aggregator reads this to populate weighted_* + heatmap + isAntiViralityGatedFull.
+  pass2Outcome: Wave3Pass2Outcome | null;
+
+  // Phase 3 (Plan 08) — Omni segments from Wave 0 (SegmentGrid[]).
+  // Required by aggregator.assembleHeatmapPayload + buildWeightedCurve.
+  // Undefined/empty when text mode or tiktok_url mode (no video segments).
+  segments?: SegmentGrid[];
+
   // Pipeline metadata
   requestId: string;
   timings: StageTiming[];
@@ -138,6 +153,13 @@ export interface PipelineOptions {
    * Either way, Wave 0's niche detector receives the value via runWave0() argument.
    */
   creatorContext?: CreatorContext;
+  /**
+   * Phase 3 (Plan 08) D-11: analysis row ID. Required for:
+   *   1. triggerFilmstripGeneration (filmstrip API needs analysisId to write keyframe_uri).
+   *   2. readKeyframeUris (reads analysis_results.heatmap.segments[].keyframe_uri for Pass 2).
+   * When absent: filmstrip trigger is skipped; Pass 2 receives all-null keyframeUris.
+   */
+  analysisId?: string;
 }
 
 // =====================================================
@@ -283,6 +305,96 @@ const DEFAULT_GEMINI_RESULT: PipelineResult["geminiResult"] = {
 };
 
 // =====================================================
+// Phase 3 (Plan 08) — Helpers for Pass 2 orchestration
+// =====================================================
+
+/**
+ * Read current keyframe URIs from analyses.analysis_results JSONB.
+ * Returns all-null array when DB read fails (graceful degradation per D-03).
+ */
+async function readKeyframeUris(
+  supabase: ReturnType<typeof createServiceClient>,
+  analysisId: string,
+  segmentCount: number,
+): Promise<(string | null)[]> {
+  try {
+    // Use type cast to bypass Supabase generated types — "analyses" is a real table
+    // but the generated types don't include it in all environments.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any)
+      .from("analyses")
+      .select("analysis_results")
+      .eq("id", analysisId)
+      .single() as { data: { analysis_results: unknown } | null; error: unknown };
+    if (error || !data) {
+      return new Array<string | null>(segmentCount).fill(null);
+    }
+    // analysis_results is a JSONB column; heatmap.segments[].keyframe_uri are set by
+    // /api/filmstrip/extract after filmstrip generation completes (Plan 07).
+    const ar = data.analysis_results as { heatmap?: { segments?: Array<{ keyframe_uri?: string | null }> } } | null;
+    const segments = ar?.heatmap?.segments;
+    if (!Array.isArray(segments)) {
+      return new Array<string | null>(segmentCount).fill(null);
+    }
+    return segments.map((s) => (s as { keyframe_uri?: string | null }).keyframe_uri ?? null);
+  } catch {
+    return new Array<string | null>(segmentCount).fill(null);
+  }
+}
+
+/**
+ * Build DemographicContext from creator profile + server clock heuristics (D-04).
+ * time_of_day derived from UTC hour; scrolling_state inferred from time_of_day.
+ * All fields optional — unknown/missing values fall back to undefined (omitted).
+ */
+function buildDemographicContext(
+  creatorCtx: import("./creator").CreatorContext,
+  now: Date,
+): DemographicContext {
+  const utcHour = now.getUTCHours();
+  // Map UTC hour ranges to time_of_day buckets (interfaces section heuristic).
+  type KnownTimeOfDay = "morning" | "midday" | "afternoon" | "evening" | "late_night";
+  let time_of_day: KnownTimeOfDay | undefined;
+  if (utcHour >= 23 || utcHour < 6)       time_of_day = "late_night";
+  else if (utcHour >= 6 && utcHour < 11)  time_of_day = "morning";
+  else if (utcHour >= 11 && utcHour < 14) time_of_day = "midday";
+  else if (utcHour >= 14 && utcHour < 18) time_of_day = "afternoon";
+  else if (utcHour >= 18 && utcHour < 23) time_of_day = "evening";
+  // else: undefined (unknown hour) → omit field
+
+  // scrolling_state derived from time_of_day (simple heuristic per interfaces section).
+  type ScrollingState = "commute" | "work_break" | "leisure" | "pre_sleep";
+  const scrollingStateMap: Record<KnownTimeOfDay, ScrollingState> = {
+    morning:    "commute",
+    midday:     "work_break",
+    afternoon:  "leisure",
+    evening:    "leisure",
+    late_night: "pre_sleep",
+  };
+  const scrolling_state = time_of_day ? scrollingStateMap[time_of_day] : undefined;
+
+  // follower_tier mapped from follower_count to DemographicContext union:
+  // "new" | "growing" | "established" | "creator"
+  const fc = creatorCtx.follower_count;
+  type FollowerTier = DemographicContext["follower_tier"];
+  const follower_tier: FollowerTier = (() => {
+    if (!fc) return undefined;
+    if (fc < 10_000) return "new";
+    if (fc < 100_000) return "growing";
+    if (fc < 1_000_000) return "established";
+    return "creator";
+  })();
+
+  return {
+    // geo comes from target_audience.geo (Card 2 JSONB nested field)
+    geo: creatorCtx.target_audience?.geo ?? undefined,
+    follower_tier,
+    time_of_day,
+    scrolling_state,
+  };
+}
+
+// =====================================================
 // 10-Stage Prediction Pipeline with Wave Parallelism
 // =====================================================
 
@@ -413,6 +525,8 @@ export async function runPredictionPipeline(
   // -------------------------------------------------------
   let wave0Result: Wave0Result = { content_type: null, niche: null };
   let precomputedGeminiResult: PipelineResult["geminiResult"] | null = null;
+  // Phase 3 (Plan 08) — segments from Omni call; used for filmstrip trigger + Pass 2.
+  let omniSegments: SegmentGrid[] | undefined;
 
   if (signedVideoUrl) {
     try {
@@ -421,6 +535,8 @@ export async function runPredictionPipeline(
         onEvent: onStageEvent,
       });
       wave0Result         = omniOut.wave0Result;
+      // Capture segments for Phase 3 Pass 2 wiring
+      omniSegments = omniOut.segments;
       precomputedGeminiResult = omniOut.geminiResult
         ? {
             analysis: omniOut.geminiResult.analysis,
@@ -431,6 +547,15 @@ export async function runPredictionPipeline(
             ...DEFAULT_GEMINI_RESULT,
             signalAvailability: omniOut.signalAvailability,
           };
+      // Phase 3 (Plan 08) D-11: fire-and-forget filmstrip generation at wave_0_complete.
+      // Pipeline does NOT await — filmstrip latency must never count against engine SLA.
+      // analysisId is threaded via opts.analysisId (API route sets this before calling pipeline).
+      if (omniOut.segments && omniOut.segments.length > 0 && signedVideoUrl) {
+        const analysisId = opts?.analysisId;
+        if (analysisId) {
+          triggerFilmstripGeneration(analysisId, omniOut.segments, signedVideoUrl);
+        }
+      }
     } catch (error) {
       Sentry.captureException(error, { tags: { stage: "omni_analysis", requestId } });
       warnings.push(`Omni analysis failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -736,6 +861,45 @@ export async function runPredictionPipeline(
   });
 
   // -------------------------------------------------------
+  // Phase 3 (Plan 08) — Wave 3 Pass 2: runs AFTER Pass 1 (wave3Outcome),
+  // BEFORE aggregateScores. Fire-and-forget filmstrip happened earlier at
+  // wave_0_complete (D-11). Pass 2 receives whatever keyframeUris exist now
+  // (some may be null — D-03 fallback to omni text descriptions is in pass2.ts).
+  //
+  // Only invoked when segments exist (video_upload mode with Omni success).
+  // Skipped in text mode + tiktok_url mode (no segments).
+  // -------------------------------------------------------
+  let pass2Outcome: Wave3Pass2Outcome | null = null;
+  if (omniSegments && omniSegments.length > 0 && wave3Result.length > 0) {
+    try {
+      const analysisId = opts?.analysisId;
+      const keyframeUris = analysisId
+        ? await readKeyframeUris(supabase, analysisId, omniSegments.length)
+        : new Array<string | null>(omniSegments.length).fill(null);
+      const demoContext = buildDemographicContext(creatorContext, new Date());
+      pass2Outcome = await runWave3Pass2(
+        omniSegments,
+        keyframeUris,
+        wave3Result,
+        demoContext,
+        onStageEvent,
+      );
+      warnings.push(...pass2Outcome.warnings);
+    } catch (error) {
+      Sentry.captureException(error, { tags: { stage: "wave_3_pass2", requestId } });
+      warnings.push(`Pass 2 unavailable: ${error instanceof Error ? error.message : String(error)}`);
+      // pass2Outcome remains null — aggregator uses Pass 1 fallback
+    }
+  }
+
+  Sentry.addBreadcrumb({
+    category: "engine.pipeline",
+    message: "Wave 3 Pass 2 complete",
+    level: "info",
+    data: { requestId, pass2_aggregate_built: pass2Outcome?.pass2_aggregate_built ?? false },
+  });
+
+  // -------------------------------------------------------
   // Phase 9 — Platform-fit: runs AFTER Wave 3, BEFORE aggregateScores.
   // Uses deepseekResult's reasoning + Gemini's watermark detection for
   // per-platform scoring. Non-critical — returns null on any failure.
@@ -809,6 +973,8 @@ export async function runPredictionPipeline(
     wave3CostCents,
     retrievalResult, // NEW Phase 8 D-09 (Plan 04) — graceful-degradation BenchmarkRetrievalResult
     platformFitResult, // NEW Phase 9 (Plan 03) — platform-fit V3 result array or null
+    pass2Outcome,      // Phase 3 (Plan 08) — Pass 2 outcome; null when no segments or skipped
+    segments: omniSegments, // Phase 3 (Plan 08) — SegmentGrid[] for aggregator.assembleHeatmapPayload
     requestId,
     timings,
     total_duration_ms,

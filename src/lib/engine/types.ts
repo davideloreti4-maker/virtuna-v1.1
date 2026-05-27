@@ -245,6 +245,12 @@ export interface PredictionResult {
    *  per checker B4. Gated on POST-CRITIQUE confidence (Pitfall 7 ordering invariant —
    *  matches the gate `maybeAppendLikelyFlopWarning` uses). */
   anti_virality_gated: boolean;
+  /** Phase 3 (Plan 08, D-17) — reason discriminator from isAntiViralityGatedFull.
+   *  "confidence" | "timeline_pattern" | "both" | null. null when not gated. */
+  anti_virality_reason?: "confidence" | "timeline_pattern" | "both" | null;
+  /** Phase 3 (Plan 08, D-17) — top-N worst weighted_curve segment indices.
+   *  Non-empty only when timeline_pattern triggered (from topDropoffSegmentIndices). */
+  dropoff_segment_indices?: number[];
   /** Phase 1 (R6.1, D-13) — niche-aware optimal posting window from
    *  niche_post_windows (materialized aggregate refreshed daily by pg_cron).
    *  - OptimalPostWindow with source='niche' when DB lookup hits.
