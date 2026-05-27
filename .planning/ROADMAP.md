@@ -82,7 +82,7 @@ Plans:
 - [x] 03-05-PLAN.md — Anti-virality dual-trigger (D-17) + Stage10 swap to qwen3.6-plus thinking-mode (D-21)
 - [x] 03-06-PLAN.md — Pass 2 orchestrator: persona-prompts-pass2 (D-04 enrichment) + pass2.ts runWave3Pass2 (D-01..D-06, D-23, D-24)
 - [x] 03-07-PLAN.md — Filmstrip pipeline: ffmpeg extract + Supabase Storage signed-URL upload + fire-and-forget queue + /api/filmstrip/extract route (D-09, D-11)
-- [ ] 03-08-PLAN.md — Integration: pipeline.ts wiring (filmstrip + Pass 2) + aggregator.ts (weighted_* + heatmap + dual-trigger) + SSE stream route extensions
+- [x] 03-08-PLAN.md — Integration: pipeline.ts wiring (filmstrip + Pass 2) + aggregator.ts (weighted_* + heatmap + dual-trigger) + SSE stream route extensions
 
 **Success criteria:**
 - Persona Pass 2 returns valid per-segment attention scores for 10 personas in <8s p95
