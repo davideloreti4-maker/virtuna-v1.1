@@ -179,7 +179,14 @@ export async function GET(
                 break;
               }
             }
-            await new Promise((r) => setTimeout(r, SHORT_POLL_INTERVAL_MS));
+            // WR-01: check aborted before AND after the sleep so we exit
+            // within milliseconds of a client disconnect rather than waiting
+            // a full 2s interval before the while-condition is re-evaluated.
+            await new Promise<void>((r) => {
+              const t = setTimeout(r, SHORT_POLL_INTERVAL_MS);
+              if (aborted.value) { clearTimeout(t); r(); }
+            });
+            if (aborted.value) break;
             attempts++;
           }
           if (attempts >= SHORT_POLL_MAX_ATTEMPTS && !aborted.value) {
