@@ -17,7 +17,6 @@ import { TITLE_BAR_HEIGHT } from '../board-constants';
 import { useBoardStore } from '@/stores/board-store';
 import type { Camera, GroupFrameLayout } from '../board-types';
 import type { TapPopoverPayload } from './audience-types';
-import { NodeOverlay } from '../NodeOverlay';
 import { DEFAULT_PERSONA_WEIGHT_CONFIG } from '@/lib/engine/persona-weights';
 
 // Suppress unused var — both AUDIENCE_FRAME_TITLE_BAR_H and TITLE_BAR_HEIGHT are the same value (36).
@@ -40,7 +39,7 @@ export interface AudienceNodeProps {
  *
  * Mounted inside the Audience GroupFrameOverlay via Board.tsx children prop.
  */
-export function AudienceNode({ camera, layout }: AudienceNodeProps) {
+export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
   // ── Data layer ──────────────────────────────────────────────────────────────
   const stream = useAnalysisStream();
   const { result, partial: _partial, phase, filmstrips, analysisId } = stream;
@@ -246,15 +245,15 @@ export function AudienceNode({ camera, layout }: AudienceNodeProps) {
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
+  // NodeOverlay positions absolutely via layout.bounds.x. AudienceNode is mounted
+  // INSIDE GroupFrameOverlay (Board.tsx:303), which already provides the absolute
+  // positioning for the Audience frame. Rendering NodeOverlay here would double-apply
+  // the bounds offset (visible as content shifted to the right of the frame).
+  // Use the synthetic spec only for child positioning math (popover anchors, etc.).
+  void audienceSpec;
   return (
     <>
-      <NodeOverlay
-        spec={audienceSpec}
-        camera={camera}
-        status={isStreaming ? 'streaming' : result ? 'complete' : 'idle'}
-        selected={false}
-      >
-        <section
+      <section
           aria-label="Audience analysis"
           aria-live="polite"
           aria-busy={isStreaming}
@@ -320,9 +319,8 @@ export function AudienceNode({ camera, layout }: AudienceNodeProps) {
             fixTextBySegment={fixTextBySegment}
           />
         </section>
-      </NodeOverlay>
 
-      {/* Portals — rendered outside NodeOverlay, above board */}
+      {/* Portals — rendered outside the audience section, above board */}
       <TapPopover
         open={popoverOpen}
         onOpenChange={setPopoverOpen}
