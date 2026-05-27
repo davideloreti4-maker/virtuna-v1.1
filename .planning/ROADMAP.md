@@ -79,9 +79,9 @@ Plans:
 - [x] 03-02-PLAN.md — Schema foundations: Wave 0 omni segments[], PredictionResult weighted_* + heatmap, partial.personas D-15 extensions, new SSE events, next.config.ts ffmpeg-static externalization
 - [x] 03-03-PLAN.md — [BLOCKING] Migration: outcomes table (D-18) + filmstrips storage bucket (D-10) + pg_cron cleanup + `supabase db push --linked`
 - [x] 03-04-PLAN.md — Pure-math modules: persona-weights precedence resolver (D-20) + weighted-aggregator buildWeightedCurve/assembleHeatmapPayload (D-12, D-13)
-- [ ] 03-05-PLAN.md — Anti-virality dual-trigger (D-17) + Stage10 swap to qwen3.6-plus thinking-mode (D-21)
-- [ ] 03-06-PLAN.md — Pass 2 orchestrator: persona-prompts-pass2 (D-04 enrichment) + pass2.ts runWave3Pass2 (D-01..D-06, D-23, D-24)
-- [ ] 03-07-PLAN.md — Filmstrip pipeline: ffmpeg extract + Supabase Storage signed-URL upload + fire-and-forget queue + /api/filmstrip/extract route (D-09, D-11)
+- [x] 03-05-PLAN.md — Anti-virality dual-trigger (D-17) + Stage10 swap to qwen3.6-plus thinking-mode (D-21)
+- [x] 03-06-PLAN.md — Pass 2 orchestrator: persona-prompts-pass2 (D-04 enrichment) + pass2.ts runWave3Pass2 (D-01..D-06, D-23, D-24)
+- [x] 03-07-PLAN.md — Filmstrip pipeline: ffmpeg extract + Supabase Storage signed-URL upload + fire-and-forget queue + /api/filmstrip/extract route (D-09, D-11)
 - [ ] 03-08-PLAN.md — Integration: pipeline.ts wiring (filmstrip + Pass 2) + aggregator.ts (weighted_* + heatmap + dual-trigger) + SSE stream route extensions
 
 **Success criteria:**
