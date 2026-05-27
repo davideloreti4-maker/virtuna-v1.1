@@ -54,12 +54,17 @@ const BodySchema = z.object({
 const SSRF_DENY_PATTERNS = [
   /^localhost$/i,
   /^127\.0\.0\.1$/,
-  /^::1$/,
+  /^::1$/,                                // IPv6 loopback
+  /^::ffff:/i,                            // CR-03: IPv4-mapped IPv6 (e.g. ::ffff:127.0.0.1)
+  /^fc00:/i,                              // CR-03: IPv6 unique-local fc00::/7
+  /^fd[0-9a-f]{2}:/i,                    // CR-03: IPv6 unique-local fd00::/8
+  /^fe80:/i,                              // CR-03: IPv6 link-local fe80::/10
   /^10\.\d+\.\d+\.\d+$/,                // 10.0.0.0/8
   /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/, // 172.16.0.0/12
   /^192\.168\.\d+\.\d+$/,               // 192.168.0.0/16
-  /^169\.254\.\d+\.\d+$/,               // 169.254.0.0/16 (link-local)
+  /^169\.254\.\d+\.\d+$/,               // 169.254.0.0/16 (link-local / AWS IMDS)
   /^0\.0\.0\.0$/,
+  /^metadata\.google\.internal$/i,       // CR-03: GCP metadata hostname
 ];
 
 function isPrivateHostname(hostname: string): boolean {
