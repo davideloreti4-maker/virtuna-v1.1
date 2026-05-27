@@ -116,7 +116,7 @@ Plans:
 - [x] 04-07-PLAN.md — PersonaRow (L→R cell wave) + HeatmapDrawer (desktop inline / mobile bottom-sheet + color-blind mode)
 - [x] 04-08-PLAN.md — TapPopover (5 variants + scroll-dismiss) + PersonaInspector (absorbs plan 4.9 per D-14) + AntiViralityOverlay (dual-trigger visual variants)
 - [x] 04-09-PLAN.md — Weight override: useClientWeights (RAF-debounced recompute) + WeightOverrideDrawer + POST /api/analyze/[id]/override with Zod
-- [ ] 04-10-PLAN.md — AudienceNode shell composition + Board.tsx integration
+- [x] 04-10-PLAN.md — AudienceNode shell composition + Board.tsx integration
 - [ ] 04-11-PLAN.md — [BLOCKING] supabase db push --linked + full test sweep + manual mobile/perf verification
 
 **Success criteria:**
