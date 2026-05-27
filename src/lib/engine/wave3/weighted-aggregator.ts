@@ -69,9 +69,15 @@ function normalizeOverSurvivors(
   return normalizeWeights(filtered);
 }
 
-/** Per-persona weight lookup based on slot_type. */
+/** Per-persona weight lookup based on slot_type.
+ * WR-05: "niche_deep" from PersonaSlot maps to the "niche" weight bucket.
+ * Without this mapping, w["niche_deep"] is undefined → NaN in weighted sums.
+ */
 function getPersonaWeight(r: Pass2PersonaResult, w: PersonaWeights): number {
-  return w[r.slot_type];
+  // PersonaSlot.slot_type includes "niche_deep" but PersonaWeights only has "niche".
+  // The cast in pass2.ts allows "niche_deep" through — map it to "niche" here.
+  const key = (r.slot_type as string) === "niche_deep" ? "niche" : r.slot_type;
+  return w[key as keyof PersonaWeights] ?? 0;
 }
 
 /**
