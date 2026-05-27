@@ -75,10 +75,10 @@ This is the shell every subsequent phase plugs into.
 **Plans:** 8 plans (4 waves)
 
 Plans:
-- [ ] 03-01-PLAN.md — Wave 0 test scaffolding: Vitest stubs for pass2, weighted-aggregator, filmstrip, persona-weights; extend anti-virality.test.ts
-- [ ] 03-02-PLAN.md — Schema foundations: Wave 0 omni segments[], PredictionResult weighted_* + heatmap, partial.personas D-15 extensions, new SSE events, next.config.ts ffmpeg-static externalization
-- [ ] 03-03-PLAN.md — [BLOCKING] Migration: outcomes table (D-18) + filmstrips storage bucket (D-10) + pg_cron cleanup + `supabase db push --linked`
-- [ ] 03-04-PLAN.md — Pure-math modules: persona-weights precedence resolver (D-20) + weighted-aggregator buildWeightedCurve/assembleHeatmapPayload (D-12, D-13)
+- [x] 03-01-PLAN.md — Wave 0 test scaffolding: Vitest stubs for pass2, weighted-aggregator, filmstrip, persona-weights; extend anti-virality.test.ts
+- [x] 03-02-PLAN.md — Schema foundations: Wave 0 omni segments[], PredictionResult weighted_* + heatmap, partial.personas D-15 extensions, new SSE events, next.config.ts ffmpeg-static externalization
+- [x] 03-03-PLAN.md — [BLOCKING] Migration: outcomes table (D-18) + filmstrips storage bucket (D-10) + pg_cron cleanup + `supabase db push --linked`
+- [x] 03-04-PLAN.md — Pure-math modules: persona-weights precedence resolver (D-20) + weighted-aggregator buildWeightedCurve/assembleHeatmapPayload (D-12, D-13)
 - [ ] 03-05-PLAN.md — Anti-virality dual-trigger (D-17) + Stage10 swap to qwen3.6-plus thinking-mode (D-21)
 - [ ] 03-06-PLAN.md — Pass 2 orchestrator: persona-prompts-pass2 (D-04 enrichment) + pass2.ts runWave3Pass2 (D-01..D-06, D-23, D-24)
 - [ ] 03-07-PLAN.md — Filmstrip pipeline: ffmpeg extract + Supabase Storage signed-URL upload + fire-and-forget queue + /api/filmstrip/extract route (D-09, D-11)
@@ -268,13 +268,15 @@ Plans:
 Once `milestone/result-surface` merges to main:
 
 1. Fork `~/virtuna-iteration-intelligence/` for M2-II (Iteration & Niche Intelligence)
-2. Fork `~/virtuna-compounding-intelligence/` for M2-III (Compounding Intelligence)
-3. Both run in parallel from main + this milestone's board substrate
-4. Public drop triggered only after all 3 milestones merge to main
+2. Public M2 drop triggered only after both M2-I + M2-II merge to main
 
-The **Workspace milestone** (projects management UI, canvas view of dashboard, templates, custom personas, team / sharing) lands after the Intelligence Surface drop — it builds on top of the board substrate shipped here.
+**M3 (Engine Quality + Compounding Intelligence)** starts after M2 ships. Scope:
+- Deferred engine debt from Engine Hardening (audio fingerprint, embedder.ts, D-F4 cron, 17 skipped tests)
+- Compounding intelligence (outcome feedback loop, wins/flops trend, hook archetype library, trend velocity, weekly intelligence report)
+- Tribe v2 frozen-encoder grounding (V-JEPA2 + W2vec-BERT + Llama 3.2), threshold tuning on real outcome data
+- Original M3 backlog (Ultra tier, in-app viz rebuild, /about//research//manifesto, brand deals marketplace, competitor discovery, trending page relaunch, history view, analytics dashboard)
 
-The **M3 "Tribe Engine" milestone** (V-JEPA2 + W2vec-BERT + Llama 3.2 encoder stack, retrained subject block on outcome data, ensemble with LLM persona heatmap) is roadmapped post-Intelligence-Surface drop. Phase 3 here ships the L2+ Qwen-thinking-mode persona Pass 2 timeline call — Tribe v2 frozen-encoder grounding and trained subject block are deferred.
+The **Workspace milestone** (projects management UI, canvas view of dashboard, templates, custom personas, team / sharing) lands after the M2 drop — it builds on top of the board substrate shipped here.
 
 No public release event happens during this milestone. New surfaces ship behind feature flag (`FEATURE_INTELLIGENCE_SURFACE`) until the drop event.
 
