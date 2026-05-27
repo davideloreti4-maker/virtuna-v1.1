@@ -5,7 +5,6 @@ import { buildHeatmapFixture } from './fixtures/heatmap-fixture';
 import { CELL_FILL_STAGGER_MS } from '../audience-constants';
 import type { PersonaRowProps } from '../audience-types';
 
-// @ts-expect-error -- PersonaRow created in Plan 04-07
 import { PersonaRow } from '../PersonaRow';
 
 // Build a minimal segments array from fixture

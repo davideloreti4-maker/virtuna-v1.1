@@ -39,7 +39,9 @@ function segIdxContainingT(
  * stripe overlay is defined in `globals.css`, not inline.
  */
 export function PersonaRow({
-  personaId,
+  // personaId is part of the prop contract for external consumers (e.g. AudienceNode)
+  // but PersonaRow itself doesn't need to render it — the parent routes events by id.
+  personaId: _personaId,
   slotType,
   archetypeLabel,
   segments,
@@ -47,12 +49,17 @@ export function PersonaRow({
   swipePredictedAt,
   rowState,
   colorBlindMode,
+  rowIndex,
   onCellTap,
   onRowLabelTap,
 }: PersonaRowProps) {
   if (rowState === 'skeleton' || !segments) {
     return (
-      <div role="row" className="flex h-[32px] w-full items-stretch">
+      <div
+        role="row"
+        aria-rowindex={rowIndex}
+        className="flex h-[32px] w-full items-stretch"
+      >
         <Skeleton className="h-full w-full" />
       </div>
     );
@@ -66,25 +73,28 @@ export function PersonaRow({
   return (
     <div
       role="row"
+      aria-rowindex={rowIndex}
       className={cn(
         'relative flex h-[32px] w-full items-stretch',
         colorBlindMode && 'heatmap-pattern-cb',
       )}
       data-row-state={rowState}
     >
-      {/* Row label */}
-      <button
-        type="button"
-        onClick={onRowLabelTap}
-        className="flex w-[88px] flex-shrink-0 items-center px-2 text-xs"
-        style={{
-          opacity: rowState === 'streaming' ? 0.6 : 1,
-          color: ringColor,
-        }}
-        aria-label={`Persona ${archetypeLabel}: full reasoning`}
-      >
-        {archetypeLabel}
-      </button>
+      {/* Row label — rowheader cell wraps the interactive button */}
+      <div role="rowheader" className="flex w-[88px] flex-shrink-0">
+        <button
+          type="button"
+          onClick={onRowLabelTap}
+          className="flex h-full w-full items-center px-2 text-xs"
+          style={{
+            opacity: rowState === 'streaming' ? 0.6 : 1,
+            color: ringColor,
+          }}
+          aria-label={`Persona ${archetypeLabel}: full reasoning`}
+        >
+          {archetypeLabel}
+        </button>
+      </div>
 
       {/* Cells */}
       {segments.map((seg, i) => {
