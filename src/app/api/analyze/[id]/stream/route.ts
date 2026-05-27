@@ -2,6 +2,40 @@ import { nanoid } from "nanoid";
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
 
+// Phase 3 (Plan 08) — helpers for filmstrip polling and partial persona state tracking.
+// Reads heatmap.segments[].keyframe_uri from the JSONB analysis_results column.
+// Emits filmstrip_segment_ready SSE events when new keyframe_uri entries appear.
+interface HeatmapSegmentRow {
+  idx: number;
+  keyframe_uri: string | null;
+}
+
+function extractHeatmapSegments(row: Record<string, unknown>): HeatmapSegmentRow[] {
+  try {
+    const ar = row.analysis_results as { heatmap?: { segments?: unknown[] } } | null;
+    const segs = ar?.heatmap?.segments;
+    if (!Array.isArray(segs)) return [];
+    return segs.map((s, i) => ({
+      idx: (s as { idx?: number }).idx ?? i,
+      keyframe_uri: (s as { keyframe_uri?: string | null }).keyframe_uri ?? null,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// Extract partial personas array from the DB row's JSONB column.
+// Returns null when not yet written (pre-Pass-1 state).
+function extractPartialPersonas(row: Record<string, unknown>): unknown[] | null {
+  try {
+    const ar = row.analysis_results as { partial?: { personas?: unknown[] } } | null;
+    const personas = ar?.partial?.personas;
+    return Array.isArray(personas) ? personas : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Phase 1 (D-04) — GET /api/analyze/[id]/stream.
  *
@@ -92,6 +126,13 @@ export async function GET(
           send("complete", row, "complete");
         } else {
           let attempts = 0;
+          // Phase 3 (Plan 08) — filmstrip polling state.
+          // Track which segment indices already have keyframe_uri so we only
+          // emit filmstrip_segment_ready ONCE per segment (delta-only emission).
+          const knownKeyframeIndices = new Set<number>();
+          // Track last personas array reference for change detection.
+          let lastPersonasJson = "";
+
           while (attempts < SHORT_POLL_MAX_ATTEMPTS) {
             if (aborted.value) break;
             const { data: fresh, error: pollErr } = await supabase
@@ -106,9 +147,37 @@ export async function GET(
               send("error", { error: "Poll failed" });
               break;
             }
-            if (fresh && fresh.overall_score !== null) {
-              send("complete", fresh, "complete");
-              break;
+            if (fresh) {
+              const freshRow = fresh as Record<string, unknown>;
+
+              // Phase 3 (Plan 08) — partial persona state emission (D-15).
+              // Emit a `partial` event when personas array changes (new pass2 state added).
+              const personas = extractPartialPersonas(freshRow);
+              if (personas) {
+                const personasJson = JSON.stringify(personas);
+                if (personasJson !== lastPersonasJson) {
+                  lastPersonasJson = personasJson;
+                  send("partial", { personas });
+                }
+              }
+
+              // Phase 3 (Plan 08) — filmstrip segment ready polling.
+              // Emit filmstrip_segment_ready for each newly populated keyframe_uri.
+              const heatmapSegs = extractHeatmapSegments(freshRow);
+              for (const seg of heatmapSegs) {
+                if (seg.keyframe_uri && !knownKeyframeIndices.has(seg.idx)) {
+                  knownKeyframeIndices.add(seg.idx);
+                  send("filmstrip_segment_ready", {
+                    segment_idx: seg.idx,
+                    keyframe_uri: seg.keyframe_uri,
+                  });
+                }
+              }
+
+              if (fresh.overall_score !== null) {
+                send("complete", fresh, "complete");
+                break;
+              }
             }
             await new Promise((r) => setTimeout(r, SHORT_POLL_INTERVAL_MS));
             attempts++;

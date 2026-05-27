@@ -164,7 +164,11 @@ export async function runWave3Pass2(
           pass2_cost_cents: costCents,
         });
 
-        // Emit pass2_persona_end event (success path)
+        // Emit pass2_persona_end event (success path).
+        // Phase 3 (Plan 08): include attentions + swipe_predicted_at for D-15 streaming partials.
+        // Stream route picks these up to merge into partial.personas[i] as Pass 2 returns.
+        const attentions = result.segment_reactions.map((sr) => sr.attention);
+        const swipeReaction = result.segment_reactions.find((sr) => sr.swipe_predicted);
         onEvent?.({
           type: "pass2_persona_end",
           persona_id: slot.persona_id,
@@ -172,6 +176,8 @@ export async function runWave3Pass2(
           latency_ms: latencyMs,
           cost_cents: costCents,
           ok: true,
+          attentions,
+          swipe_predicted_at: swipeReaction?.t_start ?? null,
         });
 
         emitStageEnd(onEvent, stageName, 3, callStart, {
