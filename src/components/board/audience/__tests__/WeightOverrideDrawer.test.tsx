@@ -1,6 +1,6 @@
 /** @vitest-environment happy-dom */
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { WeightOverrideDrawer, type WeightOverrideDrawerProps } from '../WeightOverrideDrawer';
 import { WEIGHT_PRESETS } from '../audience-constants';
 import { DEFAULT_PERSONA_WEIGHT_CONFIG } from '@/lib/engine/persona-weights';
@@ -131,8 +131,7 @@ describe('WeightOverrideDrawer', () => {
 
   it('sum display has aria-live=polite and shows 100', () => {
     renderDrawer();
-    const sumDisplay = screen.getByText(/100/);
-    const liveRegion = sumDisplay.closest('[aria-live]') ?? sumDisplay;
+    screen.getByText(/100/);
     // The sum element itself or a parent should have aria-live=polite
     const allLiveRegions = document.querySelectorAll('[aria-live="polite"]');
     expect(allLiveRegions.length).toBeGreaterThan(0);

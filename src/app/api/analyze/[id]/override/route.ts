@@ -62,7 +62,8 @@ export async function POST(
   const { weights, save_as_default } = parsed.data;
 
   // Write per-analysis override (RLS on analysis_results enforces owner-only UPDATE)
-  const { error: e1 } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: e1 } = await (supabase as any)
     .from('analysis_results')
     .update({
       analysis_override: {
@@ -78,8 +79,11 @@ export async function POST(
   }
 
   // Optionally upsert creator default weights (cpw_upsert_own RLS enforces user_id = auth.uid())
+  // creator_persona_weights table added in migration 20260527000000_audience_overrides.sql
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (save_as_default === true) {
-    const { error: e2 } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: e2 } = await (supabase as any)
       .from('creator_persona_weights')
       .upsert(
         {

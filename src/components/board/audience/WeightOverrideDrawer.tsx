@@ -12,7 +12,6 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import { WEIGHT_PRESETS, WEIGHT_PRESET_EPSILON } from './audience-constants';
 import { rebalance, weightsEqual } from './use-client-weights';
 import {
-  normalizeWeights,
   DEFAULT_PERSONA_WEIGHT_CONFIG,
   type PersonaWeights,
 } from '@/lib/engine/persona-weights';

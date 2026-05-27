@@ -5,23 +5,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ---- Mock Supabase server client BEFORE importing route ----
-const mockGetUser = vi.fn();
-const mockUpdate = vi.fn();
-const mockUpsert = vi.fn();
-
-// Chainable builder for supabase.from('...').update(...).eq(...)
-function makeQueryBuilder(terminal: () => Promise<{ error: unknown }>) {
-  const builder = {
-    update: vi.fn().mockReturnThis(),
-    upsert: vi.fn().mockImplementation(() => terminal()),
-    eq: vi.fn().mockImplementation(() => terminal()),
-  };
-  // update returns builder with eq
-  builder.update.mockImplementation(() => ({
-    eq: vi.fn().mockImplementation(() => terminal()),
-  }));
-  return builder;
-}
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
