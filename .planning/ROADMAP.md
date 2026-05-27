@@ -104,19 +104,20 @@ Plans:
 
 **Goal:** Build the Audience node — the visual hinge of the whole product. Combined visualization: keyframe filmstrip top axis, retention curve overlay, per-persona dropoff markers, headline metrics chip row, piano-roll heatmap underlay (collapsed by default), per-persona inline expand. Live-stream choreography materializes rows as Pass 2 personas complete. Anti-virality state highlights critical drops with rework guidance.
 
-**Plans (planning will refine):**
-- 4.1 — Audience node shell (inside Audience group frame, Konva + DOM overlay)
-- 4.2 — Headline metrics chip row (Avg watch %, Loop %, Top dropoff, Hook score, vs Niche)
-- 4.3 — Filmstrip component (renders keyframes from Phase 3.6 output, scrollable on long videos)
-- 4.4 — Retention curve component (Canvas-rendered, smooth bezier, weighted aggregate from Phase 3.2)
-- 4.5 — Dropoff markers component (avatar/dot chips on curve, group on overlap)
-- 4.6 — Heatmap component (persona × segment grid, coral-intensity-on-dark, collapsible)
-- 4.7 — Streaming choreography (rows materialize as Pass 2 completes per persona, ~3-5s total reveal)
-- 4.8 — Tap interactions (cell → reason popover, row label → persona detail, marker → persona at that moment, curve point → aggregate scrub)
-- 4.9 — Per-persona inline expand (row spans full width with detail when tapped)
-- 4.10 — Anti-virality visual treatment (critical drop highlights, rework guidance anchored to segments)
-- 4.11 — Audience weighting transparency badge + weight override UI (chip-action)
-- 4.12 — Mobile portrait optimization (compact curve + heatmap pinch-zoom + tap-row-expand)
+**Plans:** 11 plans (6 waves)
+
+Plans:
+- [ ] 04-01-PLAN.md — Wave 0 test scaffolding (18 test stubs + 2 fixtures + migration scaffold)
+- [ ] 04-02-PLAN.md — Engine type extensions: HeatmapPayload.personas[].slot_type + weighted-aggregator-client.ts + audience-types/constants
+- [ ] 04-03-PLAN.md — Extend useAnalysisStream to dispatch filmstrip_segment_ready into a filmstrips: Record<number, string> return key
+- [ ] 04-04-PLAN.md — use-audience-choreography hook: skeleton rows + row state machine + curve state machine + anti-virality flag
+- [ ] 04-05-PLAN.md — HeadlineChips (5 chips + weights badge) + Filmstrip (placeholder→keyframe swap)
+- [ ] 04-06-PLAN.md — DropoffMarkers pure-fn + use-retention-curve-canvas DPR/RAF hook + RetentionCurve component (hand-rolled Catmull-Rom α=0.5)
+- [ ] 04-07-PLAN.md — PersonaRow (L→R cell wave) + HeatmapDrawer (desktop inline / mobile bottom-sheet + color-blind mode)
+- [ ] 04-08-PLAN.md — TapPopover (5 variants + scroll-dismiss) + PersonaInspector (absorbs plan 4.9 per D-14) + AntiViralityOverlay (dual-trigger visual variants)
+- [ ] 04-09-PLAN.md — Weight override: useClientWeights (RAF-debounced recompute) + WeightOverrideDrawer + POST /api/analyze/[id]/override with Zod
+- [ ] 04-10-PLAN.md — AudienceNode shell composition + Board.tsx integration
+- [ ] 04-11-PLAN.md — [BLOCKING] supabase db push --linked + full test sweep + manual mobile/perf verification
 
 **Success criteria:**
 - Audience node renders all layers correctly against test fixtures
