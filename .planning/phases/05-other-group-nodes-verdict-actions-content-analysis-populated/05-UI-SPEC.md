@@ -34,8 +34,8 @@ Declared values (multiples of 4):
 
 | Token | Value | Usage in Phase 5 |
 |-------|-------|------------------|
-| xs | 4px | Icon-to-label gap, GlassPill internal padding |
-| sm | 8px | Frame internal padding, card gap, bar row gap (6px from `gap-1.5`) |
+| xs | 4px | Icon-to-label gap, GlassPill internal padding, hook decomp bar row gap (`gap-1`) |
+| sm | 8px | Frame internal padding, card gap |
 | md | 16px | Frame body padding (8px each side = 16px total), section gap |
 | lg | 24px | Collapsible body padding, inspector content spacing |
 | xl | 32px | Headline strip + bar stack + chip row stacking budget |
@@ -62,12 +62,8 @@ Declared values (multiples of 4):
 |------|------|--------|-------------|-------|
 | Display | 48px (`text-5xl`) | 600 semibold | 1.0 | Verdict percentile big number |
 | Heading | 14px (`text-sm`) | 600 semibold | 1.3 | Collapsible summary labels, inspector section headers |
-| Body | 12px (`text-xs`) | 400 normal | 1.5 | Reasoning markdown body, collapsible sub-section content, popover body, TapPopover copy |
-| Label | 10px (`text-[10px]`) | 400 normal | 1.2 | Hook decomp bar labels, chip micro-labels, placeholder card sub-label, "Coming in Phase N", timestamp pills |
-
-**Additional size in use (Phase 4 precedent):**
-
-- 11px (`text-[11px]`): Hook decomp bar score values (tabular-nums), GlassPill content, anti-virality fix timestamp pills — bridges label (10px) and body (12px) for dense layout
+| Body | 12px (`text-xs`) | 400 normal | 1.5 | Reasoning markdown body, collapsible sub-section content, popover body, TapPopover copy, node headline strips, empty state captions, "Post anyway →" link text, inline `[seg N]` citations |
+| Label | 10px (`text-[10px]`) | 400 normal | 1.2 | Hook decomp bar labels, bar score values (tabular-nums), chip micro-labels, placeholder card sub-label, "Coming in Phase N", timestamp pills, anti-virality fix timestamp pills |
 
 **Display weight context:** Percentile number uses `font-semibold` (600). Band label below it (`"Strong / Mid / Low"`) uses `font-normal` (400) at `text-xs` (12px). Only two weights used: 400 + 600.
 
@@ -118,9 +114,9 @@ All Phase 5 components use the DOM overlay pattern (no Konva rendering inside no
 |-----------|----------------|-------------|
 | `VerdictNode.tsx` | Top-level composition in `GroupFrameOverlay` children. `overflow-y: auto` inside 360×280 frame bounds (content scrolls inside, frame border stays static per Pitfall 6). | Subscribes to `useBoardStore` + `useAnalysisStream` |
 | `PercentileChip.tsx` | Big number `text-5xl font-semibold` + suffix "th percentile" at `text-xs`. Coral when `overall_score >= 70`, `white/95` otherwise. Band label below at `text-xs font-normal white/60`. Confidence `GlassPill` to the right. Layout: `flex items-end justify-between gap-2`. Height ~72px. | Confidence pill tap → `TapPopover` "What does confidence mean?" (1-2 sentences) |
-| `AntiViralityHeader.tsx` | Full-bleed 40px band at top of `VerdictNode`. Background: `linear-gradient(90deg, var(--color-accent), var(--color-warning))`. Text: `text-xs font-semibold text-white/90`. Left: `⚠ Don't post yet — fixable in {N} steps`. Right (small): `Post anyway →` in coral, `text-[11px]`. Conditionally rendered ONLY when `result.anti_virality_gated === true`. | "Post anyway →" tap: fires `verdict_anti_virality_override` event, dismisses header, persists in `localStorage` key `virtuna:verdict-av-override:{analysisId}`. No engine change. |
-| `WhyVerdictCollapsible.tsx` | Native `<details>` + `<summary>`. Collapsed: 24px header row with "Why this verdict?" + `CaretDown` (12px, `group-open:rotate-180`). Open: `~280px`, `p-3` body. 4 sub-sections with chip-header labels at `text-[10px] uppercase tracking-wide white/50`. Body: `react-markdown` + `rehype-sanitize` for `result.reasoning` intro. 4 buckets from O-2 assembly. Inline `[seg N]` citations: `text-[11px] text-accent underline` (static, no live-jump). | Enter/Space toggle (native `<details>`). Tap header → fires `verdict_reasoning_expanded` event. Default closed. When `anti_virality_gated`, summary tap pre-opens to "Counterfactual considered" sub-section. |
-| `TopFixesList.tsx` | Renders inside "Counterfactual considered" sub-section ONLY when `anti_virality_gated`. Each fix: `rounded-[8px] border border-white/[0.06] bg-white/[0.02] p-2`. Timestamp pill: `text-[11px] rounded-[4px] border border-accent/30 px-1.5 py-0.5 text-accent`. Headline: `text-xs font-medium`. Detail: `text-[11px] text-foreground-muted`. Max 3 items. | Timestamp pill tap → `use-camera.ts` `setActivePreset('audience')` to pan + flash filmstrip frame |
+| `AntiViralityHeader.tsx` | Full-bleed 40px band at top of `VerdictNode`. Background: `linear-gradient(90deg, var(--color-accent), var(--color-warning))`. Text: `text-xs font-semibold text-white/90`. Left: `⚠ Don't post yet — fixable in {N} steps`. Right (small): `Post anyway →` in coral, `text-xs`. Conditionally rendered ONLY when `result.anti_virality_gated === true`. | "Post anyway →" tap: fires `verdict_anti_virality_override` event, dismisses header, persists in `localStorage` key `virtuna:verdict-av-override:{analysisId}`. No engine change. |
+| `WhyVerdictCollapsible.tsx` | Native `<details>` + `<summary>`. Collapsed: 24px header row with "Why this verdict?" + `CaretDown` (12px, `group-open:rotate-180`). Open: `~280px`, `p-3` body. 4 sub-sections with chip-header labels at `text-[10px] uppercase tracking-wide white/50`. Body: `react-markdown` + `rehype-sanitize` for `result.reasoning` intro. 4 buckets from O-2 assembly. Inline `[seg N]` citations: `text-xs text-accent underline` (static, no live-jump). | Enter/Space toggle (native `<details>`). Tap header → fires `verdict_reasoning_expanded` event. Default closed. When `anti_virality_gated`, summary tap pre-opens to "Counterfactual considered" sub-section. |
+| `TopFixesList.tsx` | Renders inside "Counterfactual considered" sub-section ONLY when `anti_virality_gated`. Each fix: `rounded-[8px] border border-white/[0.06] bg-white/[0.02] p-2`. Timestamp pill: `text-[10px] rounded-[4px] border border-accent/30 px-1.5 py-0.5 text-accent`. Headline: `text-xs font-medium`. Detail: `text-xs text-foreground-muted`. Max 3 items. | Timestamp pill tap → `use-camera.ts` `setActivePreset('audience')` to pan + flash filmstrip frame |
 | `VsHistoryCollapsible.tsx` | Native `<details>`. Collapsed: 24px row. Open: ~200px. Two Recharts `BarChart layout="vertical"` stacked vertically (each 88px height). No `CartesianGrid`. Top chart: "vs your last 10" — 11 bars. Bottom chart: "vs niche cohort" — 3 bars. `YAxis` tick `fontSize={10}` `stroke="var(--color-foreground-muted)"`. `Tooltip` uses `ChartTooltip` from `src/components/competitors/charts/chart-tooltip.tsx`. Empty state: `text-xs text-foreground-muted italic` inline "Need 3+ prior analyses to show comparison. {N}/3 complete." | Enter/Space toggle. Fires `verdict_history_expanded`. Default closed. |
 
 **Verdict skeleton (while `boardState !== 'complete'`):**
@@ -164,16 +160,16 @@ All Phase 5 components use the DOM overlay pattern (no Konva rendering inside no
 | Component | Visual Contract | Interaction |
 |-----------|----------------|-------------|
 | `ContentAnalysisFrame.tsx` | `flex flex-row gap-4 p-2 h-full`. Wraps two nodes side-by-side. No animation (static layout). | — |
-| `HookDecompNode.tsx` | Total height fits in ~184px. Stack: headline strip (28px) + 4-bar stack (4 × 22px = 88px + 6px gaps = ~110px) + chip row (32px) = 170px. Fits. Tap any bar or chip → opens `HookDecompInspector` sheet. | `hook_decomp_expanded` event on tap |
-| `HookDecompNode` headline strip | `flex items-center justify-between`. Left: `text-[11px] font-medium "Hook decomposition"`. Right: `GlassPill size="sm"` hook zone timestamp e.g. `"0–3s"`. | — |
-| `HookDecompNode` bar row | Each bar: `flex items-center gap-2`. Label `w-[120px] text-[11px] text-foreground-muted truncate`. `GlassProgress value={v*10} color="coral" size="md" className="flex-1"`. Score `w-[32px] text-[11px] tabular-nums text-right`. Weakest modality row: `bg-accent/8 -mx-1 px-1 rounded-[6px]` background band. | Tab-focusable. Enter → inspector |
-| `HookDecompNode` chip row | `flex gap-1.5`. Two `GlassPill size="sm"`: `"Coherence: {N}/10"` + `"Cognitive load: Low/Med/High"` (INVERTED polarity: raw 0-3=Low, 4-6=Med, 7-10=High — NEVER surface raw number). | — |
-| `HookDecompNode` empty state | 4 bars at 0%, no weakest highlight. Caption: `text-[11px] text-foreground-muted italic "Hook analysis unavailable for this video"`. Node structure preserved. | None |
+| `HookDecompNode.tsx` | Total height fits in ~184px. Stack: headline strip (28px) + 4-bar stack (4 × 22px = 88px + 4px gaps = ~110px) + chip row (32px) = 170px. Fits. Tap any bar or chip → opens `HookDecompInspector` sheet. | `hook_decomp_expanded` event on tap |
+| `HookDecompNode` headline strip | `flex items-center justify-between`. Left: `text-xs font-medium "Hook decomposition"`. Right: `GlassPill size="sm"` hook zone timestamp e.g. `"0–3s"`. | — |
+| `HookDecompNode` bar row | Each bar: `flex items-center gap-1`. Label `w-[120px] text-[10px] text-foreground-muted truncate`. `GlassProgress value={v*10} color="coral" size="md" className="flex-1"`. Score `w-[32px] text-[10px] tabular-nums text-right`. Weakest modality row: `bg-accent/8 -mx-1 px-1 rounded-[6px]` background band. | Tab-focusable. Enter → inspector |
+| `HookDecompNode` chip row | `flex gap-1`. Two `GlassPill size="sm"`: `"Coherence: {N}/10"` + `"Cognitive load: Low/Med/High"` (INVERTED polarity: raw 0-3=Low, 4-6=Med, 7-10=High — NEVER surface raw number). | — |
+| `HookDecompNode` empty state | 4 bars at 0%, no weakest highlight. Caption: `text-xs text-foreground-muted italic "Hook analysis unavailable for this video"`. Node structure preserved. | None |
 | `HookDecompInspector.tsx` | Radix `Sheet` with `side={isMobile ? 'bottom' : 'right'}`. `bg-[#18191a]` (solid opaque — modals never glass per CLAUDE.md). `inset-shadow: rgba(255,255,255,0.1) 0 1px 0 0 inset`. Body: full reasoning per factor + fix suggestion from `counterfactuals.suggestions` where `signal_anchor === 'hook'`. | Scroll within sheet body. Dismiss on drag-down (mobile) / Escape (desktop). |
 | `EmotionArcNode.tsx` | Stack: headline strip (28px) + Recharts `AreaChart` body (140px exact height) + small margin = 168px. Fits in ~184px. `ResponsiveContainer width="100%" height={140}` (explicit numeric — avoids Pitfall 1). | Dot tap → `TapPopover` at tap point. `emotion_arc_peak_tapped` event. |
-| `EmotionArcNode` headline strip | `flex items-center justify-between`. Left: `text-[11px] font-medium "Emotion arc"`. Right: `GlassPill size="sm"` peak timestamp e.g. `"Peak at 0:12"`. | — |
+| `EmotionArcNode` headline strip | `flex items-center justify-between`. Left: `text-xs font-medium "Emotion arc"`. Right: `GlassPill size="sm"` peak timestamp e.g. `"Peak at 0:12"`. | — |
 | `EmotionArcNode` chart | `<AreaChart>` with inline `<defs><linearGradient id="emotionGradient" x1="0" y1="0" x2="0" y2="1">`. Gradient stops: top `stopColor="var(--color-accent)" stopOpacity={0.6}`, mid (60%) `var(--color-accent) stopOpacity={0.3}`, bottom `rgba(132,133,134,0.1) stopOpacity={1}`. Stroke: `var(--color-accent)` `strokeWidth={2}`. `<XAxis hide />` `<YAxis domain={[0,1]} hide />`. `Tooltip` → `ChartTooltip`. `<Area isAnimationActive={!prefersReducedMotion}>`. Peak `<ReferenceDot r={6} fill="var(--color-accent)" stroke="none">`. Valley `<ReferenceDot r={4} fill="rgba(132,133,134,0.6)" stroke="none">`. | `ReferenceDot` dots are tap targets → `TapPopover` with `timestamp` (`mm:ss`) + intensity (`{N}%`) + brief context |
-| `EmotionArcNode` empty state | Flat gray baseline: `<Area` with static data `[{x:0,y:0.5},{x:1,y:0.5}]` rendered in `rgba(132,133,134,0.3)`. Caption: `text-[11px] text-foreground-muted italic "Emotion arc unavailable"` overlaid or below. | None |
+| `EmotionArcNode` empty state | Flat gray baseline: `<Area` with static data `[{x:0,y:0.5},{x:1,y:0.5}]` rendered in `rgba(132,133,134,0.3)`. Caption: `text-xs text-foreground-muted italic "Emotion arc unavailable"` overlaid or below. | None |
 | `EmotionArcInspector.tsx` | Radix `Sheet` side="bottom" (mobile) or side="right" (desktop). Solid opaque bg. Larger chart rerender + per-peak table (timestamp, intensity, label). | Dismiss on drag-down / Escape |
 
 **Content Analysis `aria-live`:**
@@ -314,6 +310,7 @@ No third-party registries. No third-party blocks. Registry vetting gate: not app
 - **No `overall_score` labeled as "percentile" when `is_calibrated === false`** — show `(score uncalibrated)` sub-text
 - **No `backdrop-filter` via CSS class** — use `style={{ backdropFilter: 'blur(5px)' }}` (Lightning CSS strips it)
 - **No `ResponsiveContainer height="100%"` on Emotion arc** — use explicit `height={140}` to avoid Pitfall 1
+- **No `gap-1.5` (6px) in hook decomp bar stack** — use `gap-1` (4px); 6px is not on the 4-point scale
 
 ---
 
