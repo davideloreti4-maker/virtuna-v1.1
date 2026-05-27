@@ -1,10 +1,11 @@
 ---
 phase: 4
 slug: live-audience-node-the-killer-feature
-status: draft
+status: approved
 shadcn_initialized: true
 preset: new-york / slate / css-variables
 created: 2026-05-27
+reviewed_at: 2026-05-27
 ---
 
 # Phase 4 — UI Design Contract: Live Audience Node
