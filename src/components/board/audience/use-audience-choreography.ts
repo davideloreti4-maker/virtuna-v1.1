@@ -203,32 +203,47 @@ export function useAudienceChoreography(stream?: StreamReturn): ChoreographyStat
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.stages, reducedMotion]);
 
-  // ---- Effect 4: Curve state — idle → baseline ----
+  // ---- Effects 4+5: Curve state machine (merged to avoid multi-render race) ----
+  // Merging into one effect prevents the "idle → baseline" and "baseline → morphing"
+  // transitions from requiring two separate render cycles when both conditions are
+  // satisfied simultaneously (e.g. when result already has both persona_behavioral_aggregate
+  // AND heatmap at mount time).
   useEffect(() => {
-    if (s.phase !== 'complete') return;
-    if (!s.result?.persona_behavioral_aggregate) return;
-    if (curveState !== 'idle') return;
+    const hasAggregate = !!s.result?.persona_behavioral_aggregate;
+    const hasHeatmap = s.result?.heatmap != null;
+    const isComplete = s.phase === 'complete';
 
-    if (reducedMotion) {
-      // If heatmap also present, jump straight to final
-      if (s.result.heatmap != null) {
-        setCurveState('final');
+    if (curveState === 'idle') {
+      if (!isComplete || !hasAggregate) return;
+
+      if (reducedMotion) {
+        // Skip baseline + morphing, jump to final if heatmap present
+        setCurveState(hasHeatmap ? 'final' : 'baseline');
+        return;
+      }
+
+      if (hasHeatmap) {
+        // Both conditions met in one render — go directly to morphing
+        setCurveState('morphing');
+        if (morphTimerRef.current) clearTimeout(morphTimerRef.current);
+        morphTimerRef.current = setTimeout(() => {
+          setCurveState('final');
+          morphTimerRef.current = null;
+        }, CURVE_MORPH_MS);
       } else {
         setCurveState('baseline');
       }
-    } else {
-      setCurveState('baseline');
+      return;
     }
-  }, [s.phase, s.result?.persona_behavioral_aggregate, s.result?.heatmap, curveState, reducedMotion]);
 
-  // ---- Effect 5: Curve state — baseline → morphing → final ----
-  useEffect(() => {
-    if (s.result?.heatmap == null) return;
-    if (curveState !== 'baseline') return;
+    if (curveState === 'baseline') {
+      if (!hasHeatmap) return;
 
-    if (reducedMotion) {
-      setCurveState('final');
-    } else {
+      if (reducedMotion) {
+        setCurveState('final');
+        return;
+      }
+
       setCurveState('morphing');
       if (morphTimerRef.current) clearTimeout(morphTimerRef.current);
       morphTimerRef.current = setTimeout(() => {
@@ -237,7 +252,7 @@ export function useAudienceChoreography(stream?: StreamReturn): ChoreographyStat
       }, CURVE_MORPH_MS);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.result?.heatmap, curveState, reducedMotion]);
+  }, [s.phase, s.result?.persona_behavioral_aggregate, s.result?.heatmap, curveState, reducedMotion]);
 
   // ---- Effect 6: aria-live — streaming start ----
   useEffect(() => {
