@@ -209,7 +209,7 @@ export const Pass2ResponseSchema = z.object({
       t_start: z.number().min(0),
       t_end: z.number().min(0),
       attention: z.number().min(0).max(1),
-      reason: z.string().max(400).optional(),
+      reason: z.string().max(200).optional(), // WR-04: align with system prompt constraint (200 chars)
       swipe_predicted: z.boolean(),
     }),
   ),
