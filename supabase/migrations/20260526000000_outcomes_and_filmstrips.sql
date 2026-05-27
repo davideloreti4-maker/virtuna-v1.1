@@ -21,7 +21,7 @@
 -- M2-III feedback loop will write rows. Empty table here; index cost is zero.
 CREATE TABLE IF NOT EXISTS outcomes (
   id               UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-  analysis_id      UUID         NOT NULL REFERENCES analyses(id) ON DELETE CASCADE,
+  analysis_id      UUID         NOT NULL REFERENCES analysis_results(id) ON DELETE CASCADE,
   posted_at        TIMESTAMPTZ,
   real_views       INTEGER,
   real_completion_pct NUMERIC(5,2),
@@ -48,9 +48,9 @@ CREATE POLICY outcomes_select_own ON outcomes
   TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM analyses
-      WHERE analyses.id = outcomes.analysis_id
-        AND analyses.creator_id = auth.uid()
+      SELECT 1 FROM analysis_results
+      WHERE analysis_results.id = outcomes.analysis_id
+        AND analysis_results.user_id = auth.uid()
     )
   );
 
