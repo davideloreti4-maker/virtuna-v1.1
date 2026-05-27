@@ -44,3 +44,58 @@ describe("anti-virality threshold", () => {
     expect(src).toMatch(/Last calibrated/);
   });
 });
+
+// =====================================================
+// Wave 0 stubs — Phase 3 dual-trigger extension (R1.9)
+// =====================================================
+
+describe.todo("isTimelinePatternTriggered (D-17 dual-trigger, Wave 0 stub)", () => {
+  it.skip("returns false for null heatmap (graceful degradation)", () => {
+    // Plan 05: isTimelinePatternTriggered(null) === false — no heatmap means
+    // timeline trigger cannot fire; falls back to confidence-only gate.
+  });
+
+  it.skip("returns true when attention loss >= 0.40 in first 5s AND >= 70% persona consensus", () => {
+    // Plan 05: inject heatmap with first-5s segments showing >= 0.40 mean attention drop
+    // and >= 7/10 personas agreeing → returns true.
+  });
+
+  it.skip("returns false when attention loss >= 0.40 but persona consensus < 70%", () => {
+    // Plan 05: attention loss threshold met but only 6/10 personas agree → false.
+  });
+
+  it.skip("returns false when persona consensus >= 70% but attention loss < 0.40", () => {
+    // Plan 05: 8/10 personas agree but attention drop is only 0.30 → false.
+  });
+
+  it.skip("returns false when first-5s window has <2 segments (insufficient data)", () => {
+    // Plan 05: heatmap has only 1 segment in [0, 5] window → insufficient data → false.
+  });
+});
+
+describe.todo("isAntiViralityGatedFull — dual-trigger OR logic", () => {
+  it.skip("returns gated=true with reason='confidence' when confidence < 0.4 and heatmap null", () => {
+    // Plan 05: isAntiViralityGatedFull(0.3, null) → { gated: true, reason: 'confidence' }
+    // Backward-compatible with single-arg confidence gate.
+  });
+
+  it.skip("returns gated=true with reason='timeline_pattern' when timeline triggers and confidence >= 0.4", () => {
+    // Plan 05: confidence above threshold but timeline pattern fires →
+    // { gated: true, reason: 'timeline_pattern' }.
+  });
+
+  it.skip("returns gated=true with reason='both' when both fire", () => {
+    // Plan 05: confidence < 0.4 AND timeline pattern triggers →
+    // { gated: true, reason: 'both' }.
+  });
+
+  it.skip("returns gated=false with reason=null when neither fires", () => {
+    // Plan 05: confidence >= 0.4 and timeline pattern does not trigger →
+    // { gated: false, reason: null }.
+  });
+
+  it.skip("backward compat: existing isAntiViralityGated(confidence) signature unchanged (single-arg)", () => {
+    // Plan 05: isAntiViralityGated(confidence) still callable with one arg and
+    // returns boolean as before — no breaking change to call sites.
+  });
+});
