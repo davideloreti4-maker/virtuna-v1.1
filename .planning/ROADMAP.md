@@ -110,12 +110,12 @@ Plans:
 - [x] 04-01-PLAN.md — Wave 0 test scaffolding (18 test stubs + 2 fixtures + migration scaffold)
 - [x] 04-02-PLAN.md — Engine type extensions: HeatmapPayload.personas[].slot_type + weighted-aggregator-client.ts + audience-types/constants
 - [x] 04-03-PLAN.md — Extend useAnalysisStream to dispatch filmstrip_segment_ready into a filmstrips: Record<number, string> return key
-- [ ] 04-04-PLAN.md — use-audience-choreography hook: skeleton rows + row state machine + curve state machine + anti-virality flag
-- [ ] 04-05-PLAN.md — HeadlineChips (5 chips + weights badge) + Filmstrip (placeholder→keyframe swap)
-- [ ] 04-06-PLAN.md — DropoffMarkers pure-fn + use-retention-curve-canvas DPR/RAF hook + RetentionCurve component (hand-rolled Catmull-Rom α=0.5)
-- [ ] 04-07-PLAN.md — PersonaRow (L→R cell wave) + HeatmapDrawer (desktop inline / mobile bottom-sheet + color-blind mode)
+- [x] 04-04-PLAN.md — use-audience-choreography hook: skeleton rows + row state machine + curve state machine + anti-virality flag
+- [x] 04-05-PLAN.md — HeadlineChips (5 chips + weights badge) + Filmstrip (placeholder→keyframe swap)
+- [x] 04-06-PLAN.md — DropoffMarkers pure-fn + use-retention-curve-canvas DPR/RAF hook + RetentionCurve component (hand-rolled Catmull-Rom α=0.5)
+- [x] 04-07-PLAN.md — PersonaRow (L→R cell wave) + HeatmapDrawer (desktop inline / mobile bottom-sheet + color-blind mode)
 - [ ] 04-08-PLAN.md — TapPopover (5 variants + scroll-dismiss) + PersonaInspector (absorbs plan 4.9 per D-14) + AntiViralityOverlay (dual-trigger visual variants)
-- [ ] 04-09-PLAN.md — Weight override: useClientWeights (RAF-debounced recompute) + WeightOverrideDrawer + POST /api/analyze/[id]/override with Zod
+- [x] 04-09-PLAN.md — Weight override: useClientWeights (RAF-debounced recompute) + WeightOverrideDrawer + POST /api/analyze/[id]/override with Zod
 - [ ] 04-10-PLAN.md — AudienceNode shell composition + Board.tsx integration
 - [ ] 04-11-PLAN.md — [BLOCKING] supabase db push --linked + full test sweep + manual mobile/perf verification
 
