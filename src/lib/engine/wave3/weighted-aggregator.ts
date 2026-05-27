@@ -91,6 +91,9 @@ export function buildWeightedCurve(
   weighted_completion_pct: number;
   weighted_top_dropoff_t: number;
   weighted_hook_score: number;
+  // WR-02: expose normalizedWeights so callers (assembleHeatmapPayload, aggregator)
+  // can reuse it without a redundant normalizeOverSurvivors call.
+  normalizedWeights: PersonaWeights;
 } {
   if (pass2Results.length === 0 || segments.length === 0) {
     log.warn("buildWeightedCurve: no survivors or no segments — returning zeros");
@@ -99,6 +102,7 @@ export function buildWeightedCurve(
       weighted_completion_pct: 0,
       weighted_top_dropoff_t: 0,
       weighted_hook_score: 0,
+      normalizedWeights: weights,
     };
   }
 
@@ -155,6 +159,7 @@ export function buildWeightedCurve(
     weighted_completion_pct,
     weighted_top_dropoff_t: maxDropT,
     weighted_hook_score,
+    normalizedWeights: normalizedW, // WR-02: expose for reuse
   };
 }
 
@@ -171,8 +176,9 @@ export function assembleHeatmapPayload(
   weights: PersonaWeights,
   weightsSource: WeightsSource,
 ): HeatmapPayload {
-  const { weighted_curve } = buildWeightedCurve(pass2Results, segments, weights);
-  const effectiveWeights = normalizeOverSurvivors(pass2Results, weights);
+  // WR-02: reuse normalizedWeights from buildWeightedCurve instead of re-calling
+  // normalizeOverSurvivors separately (which was a redundant pure-function call).
+  const { weighted_curve, normalizedWeights: effectiveWeights } = buildWeightedCurve(pass2Results, segments, weights);
 
   return {
     segments: segments.map((s, idx) => ({
