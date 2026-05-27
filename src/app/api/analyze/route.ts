@@ -287,6 +287,10 @@ export async function POST(request: Request) {
       // v2 columns (from Phase 4 migration)
       behavioral_predictions:
         finalResult.behavioral_predictions as unknown as null,
+      // Wave 3 per-persona detail — surfaced in UI Audience node. Empty array when
+      // Wave 3 below threshold (D-13) or fallback path taken.
+      personas:
+        (finalResult.persona_simulation_results ?? []) as unknown as Json,
       feature_vector: finalResult.feature_vector as unknown as null,
       reasoning: finalResult.reasoning,
       warnings: finalResult.warnings,

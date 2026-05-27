@@ -160,6 +160,51 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
       if (ev.type === "stage_start" && ev.stage === "wave_3_personas") {
         // D-08 — seed empty personas array on Wave 3 start; per-persona events fill it.
         setPartial((p) => (p.personas.length ? p : { personas: [] }));
+      } else if (ev.type === "pass2_persona_start") {
+        setPartial((prev) => {
+          const idx = prev.personas.findIndex((p) => p.id === ev.persona_id);
+          if (idx === -1) {
+            return {
+              personas: [
+                ...prev.personas,
+                { id: ev.persona_id, status: "pending", pass2_status: "streaming" },
+              ],
+            };
+          }
+          const next = [...prev.personas];
+          next[idx] = { ...next[idx]!, pass2_status: "streaming" };
+          return { personas: next };
+        });
+      } else if (ev.type === "pass2_persona_end") {
+        setPartial((prev) => {
+          const idx = prev.personas.findIndex((p) => p.id === ev.persona_id);
+          const updated = {
+            id: ev.persona_id,
+            status: (prev.personas[idx]?.status ?? "complete") as
+              | "pending"
+              | "streaming"
+              | "complete",
+            verdict: prev.personas[idx]?.verdict,
+            reasoning: prev.personas[idx]?.reasoning,
+            pass2_status: (ev.ok ? "complete" : "pending") as
+              | "pending"
+              | "streaming"
+              | "complete",
+            attentions: ev.attentions,
+            swipe_predicted_at: ev.swipe_predicted_at ?? undefined,
+          };
+          if (idx === -1) return { personas: [...prev.personas, updated] };
+          const next = [...prev.personas];
+          next[idx] = updated;
+          return { personas: next };
+        });
+      }
+    } else if (eventType === "partial") {
+      // Reconnect / fallback path — /api/analyze/[id]/stream emits accumulated
+      // partial.personas state on poll deltas. Replace local state authoritatively.
+      const personas = (data as { personas?: PerPersonaPartial[] }).personas;
+      if (Array.isArray(personas)) {
+        setPartial({ personas });
       }
     } else if (eventType === "phase") {
       const ph = (data as { phase?: string }).phase;

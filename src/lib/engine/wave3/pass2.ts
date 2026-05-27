@@ -33,7 +33,7 @@ import type { Pass2PersonaResult } from "./weighted-aggregator";
 
 const log = createLogger({ module: "wave3.pass2" });
 
-const PER_CALL_TIMEOUT_MS = 60_000; // thinking-mode is slower than flash (was 45_000)
+const PER_CALL_TIMEOUT_MS = 90_000; // thinking-mode tail latency: live runs show successes at 46–56s, raised from 60s for threshold headroom
 const SUCCESS_THRESHOLD = 7; // D-06: ≥7/10 Pass 2 successes for non-null heatmap
 const COST_ALERT_THRESHOLD_CENTS = 50; // D-24: 0.50 dollars
 
