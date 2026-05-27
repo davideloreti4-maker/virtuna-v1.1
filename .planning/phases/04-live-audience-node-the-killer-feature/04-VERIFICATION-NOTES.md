@@ -151,6 +151,11 @@ Live visual re-trigger deferred (would require another full pipeline run; unit t
 
 Status: **GREEN** — Phase 4 ships.
 
-Bugs fixed during UAT: 1 (`AudienceNode` double-positioning via NodeOverlay).
+Bugs fixed during UAT:
+1. `AudienceNode` double-positioning via NodeOverlay (324px right shift)
+2. `Filmstrip` figure height collapsed to 28px (overflow-x:auto forced overflow-y:auto); per-cell labels overflowed into adjacent cells producing "SeamenSeamen…" visual artifact
+3. `HeadlineChips` wrapped to 2 rows at 395px container width; weights badge orphaned via `ml-auto`
+4. Section double-padding (parent GroupFrameOverlay's p-4 + section's own p-4 = 32px gutter)
+
 Issues deferred (not phase-4 scope): mobile sidebar dominance, camera preset truncation on narrow viewports, engine pipeline stage indicator behavior for text-mode analyses.
 
