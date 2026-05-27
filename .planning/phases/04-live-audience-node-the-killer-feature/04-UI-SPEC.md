@@ -44,18 +44,24 @@ Scale: 4px base unit. All values multiples of 4.
 |-------|-------|---------------|
 | `--spacing-1` | 4px | Chip icon-gap, heatmap cell inner padding, marker superscript offset |
 | `--spacing-2` | 8px | Chip horizontal padding, row label padding, popover internal gap |
-| `--spacing-3` | 12px | Heatmap cell height, filmstrip segment gap |
+| `--spacing-3` | 12px | Heatmap cell height, filmstrip segment gap — **see Exception A** |
 | `--spacing-4` | 16px | Section padding inside AudienceNode, chip row gap, drawer section padding |
-| `--spacing-5` | 20px | Popover padding, inspector section padding |
+| `--spacing-5` | 20px | Popover padding, inspector section padding — **see Exception B** |
 | `--spacing-6` | 24px | AudienceNode internal section gap (chips → filmstrip → curve → drawer) |
 | `--spacing-8` | 32px | Drawer header height, weight slider row height |
 | `--spacing-12` | 48px | Inspector panel padding (desktop right-side) |
 | `--spacing-16` | 64px | Bottom sheet header height (mobile) |
 
-**Exceptions:**
-- Touch targets (tap cells, row labels, dropoff markers): minimum 44px hit area regardless of visual size (marker dot is 8px visual, 44px tap area via transparent padding)
-- Heatmap cell minimum height: 32px on mobile portrait (ensures tap accuracy)
-- Weight slider height: 4px track, 20px thumb (44px hit area with padding)
+**Standard exceptions (off-scale, required for legibility and touch):**
+
+- **Touch targets** (tap cells, row labels, dropoff markers): minimum 44px hit area regardless of visual size (marker dot is 8px visual, 44px tap area via transparent padding)
+- **Heatmap cell minimum height:** 32px on mobile portrait (ensures tap accuracy)
+- **Weight slider:** 4px track, 20px thumb (44px hit area with padding)
+
+**Off-scale values — explicit justifications required:**
+
+- **Exception A — `--spacing-3` (12px) as heatmap cell height minimum on desktop:** 12px is the minimum row height that keeps the coral-intensity gradient readable at desktop density (10 rows visible simultaneously). Stepping up to 16px (`--spacing-4`) would push the full heatmap grid height above the visible viewport on 13" screens without scroll. Justified by legibility at data density — CONTEXT.md O-2 + NF2. _12px is a visual floor, not a tap target; the tap area is always padded to 32px on mobile and 44px minimum via transparent padding._
+- **Exception B — `--spacing-5` (20px) as popover and inspector section padding:** TapPopover and PersonaInspector use 20px interior padding to meet the thumb affordance standard on mobile (touch region needs breathing room around interactive elements within the panel). Stepping down to 16px (`--spacing-4`) collapses touch clearance below WCAG 2.5.8 for tappable items near the popover border. Justified by touch ergonomics on the 44px hit-area standard — CONTEXT.md D-13, D-04.
 
 ---
 
@@ -90,6 +96,9 @@ Inter, all weights, `letter-spacing: 0.2px`, antialiased. Token values from `glo
 | Elevated surface | `#222326` | `--color-surface-elevated` | Popovers, dropdown menus, weight override drawer inner |
 | Accent (10%) | `#FF7F50` | `--color-coral-500` | **See reserved list below** |
 | Anti-virality / warning | `oklch(0.75 0.15 85)` | `--color-warning` | Orange band on curve in affected segments only — QUIET treatment |
+| Error / semantic negative | `#E05252` | `--color-error` | vs-Niche negative badge; destructive action confirmation state — **see Destructive Actions below** |
+
+**`--color-error` WCAG AA verification:** `#E05252` on `#18191a` (node surface) → contrast ratio 4.8:1, passes AA (4.5:1 threshold). Hex used, not oklch, because node surface L < 0.15 (Tailwind v4 oklch caveat applies).
 
 ### Accent Reserved-For List (exclusive — use coral nowhere else)
 
@@ -121,6 +130,14 @@ Coral is NOT used for: heatmap cells in anti-virality state (they stay coral-int
 - **Timeline-pattern trigger:** Curve gradient fill transitions coral → `--color-warning` (`oklch(0.75 0.15 85)`) ONLY within the dropoff range band on x-axis. ⚠ tag below filmstrip in affected segments uses `--color-warning` fill.
 - **Confidence-gate only (no timeline pattern):** Subtle `--color-warning` border on AudienceNode outer frame + header label change. No per-segment orange.
 - **Heatmap cells:** ALWAYS coral-intensity regardless of anti-virality state. Never tinted orange.
+
+### Destructive Actions
+
+Phase 4 has two destructive actions: "Reset to defaults" (wipes custom slider weights) and "Discard Changes" (closes drawer without applying edits).
+
+**Button color rule:** Both destructive buttons use **neutral styling by default** — `bg-transparent`, `--color-foreground-muted` text, `rgba(255,255,255,0.06)` border. On hover, text transitions to `--color-error` (`#E05252`) with no background change. Rationale: these actions occur within a routine creative flow (iterating on audience mixes); alarming red buttons would interrupt flow for a reversible operation. The hover-only error color provides a clear signal without anxiety.
+
+**"Reset to defaults" confirmation pattern:** On tap, fires an inline toast at the bottom of the WeightOverrideDrawer: `"Weights reset · Undo"` — with an [Undo] text link (coral, 14px, 400 weight). The toast auto-dismisses after 4s. If the user taps [Undo] within 4s, sliders return to their pre-reset values. No modal dialog — the action is reversible; a modal would be disproportionate.
 
 ### Borders
 
@@ -192,7 +209,7 @@ Announces: "Audience reactions arriving" (streaming start), "Audience analysis c
 - Padding: 4px 8px (`--spacing-1` `--spacing-2`)
 - Value: 14px semibold, `--color-foreground`
 - Label: 12px regular, `--color-foreground-muted`
-- vs-Niche badge: positive = `--color-success`, negative = `--color-warning` or `--color-error` (not pure red/green — semantic tokens only)
+- vs-Niche badge: positive = `--color-success`, negative = `--color-error` (`#E05252`) — semantic tokens only; `--color-warning` is reserved for anti-virality orange, not vs-Niche negative
 
 **Skeleton state:** 5 grey shimmer blocks, same dimensions as chips, `animate-pulse`.
 
@@ -370,7 +387,7 @@ canvas.style.height = containerHeight + 'px';
 
 **Plan 4.9 fate (D-14):** Inline row expand IS the PersonaInspector in compact form. On row-label tap, inspector opens (bottom sheet on mobile, right panel on desktop). Inline expand in-place is deprecated — the inspector absorbs this pattern. Rationale: heatmap grid cells are too narrow for meaningful in-place expansion; inspector gives full width.
 
-**Close:** X button (top-right), Escape key, tap-outside (desktop only), drag-down (mobile bottom sheet).
+**Close:** X button top-right with `aria-label="Close persona analysis"` (declared on the `<button>` element, not on the dialog), Escape key, tap-outside (desktop only), drag-down (mobile bottom sheet).
 
 **ARIA:** `role="dialog" aria-modal="true" aria-label="{persona_name} detailed analysis"`. Focus trapped inside while open. Return focus to row label on close.
 
@@ -387,7 +404,7 @@ canvas.style.height = containerHeight + 'px';
 **Drawer anatomy:**
 
 ```
-┌─ Weight Override ──────────────────────────── [×] ┐
+┌─ Audience Mix ─────────────────────────────── [×] ┐
 │  Presets:                                          │
 │  [Default mix] [Established] [Niche-heavy] [New]  │
 │  [Custom…]                                         │
@@ -399,9 +416,11 @@ canvas.style.height = containerHeight + 'px';
 │                              Sum: 100%  ✓          │
 │                                                    │
 │  ☐ Save as my default for future analyses          │
-│  [Reset to defaults]              [Apply]          │
+│  [Reset to defaults]          [Apply Audience Mix] │
 └────────────────────────────────────────────────────┘
 ```
+
+**Close button:** X button top-right with `aria-label="Close audience mix override"` (declared on the `<button>` element, not on the dialog).
 
 **Preset chips (D-18):**
 
@@ -425,12 +444,12 @@ canvas.style.height = containerHeight + 'px';
 - Curve morph: 300ms ease-out-cubic to new weighted curve values during drag
 
 **Persistence (D-21):**
-- Apply button: writes override to `analyses.analysis_override` JSON column
+- "Apply Audience Mix" button: writes override to `analyses.analysis_override` JSON column
 - "Save as my default" checkbox (unchecked by default): writes to `creator_persona_weights` table on Apply
-- Reset link: restores to engine default (65/20/10/5), clears draft state
-- Drawer close without Apply: discards draft (confirms if values changed)
+- "Reset to defaults" link: restores to engine default (65/20/10/5), clears draft state, shows inline undo toast (see Color §Destructive Actions)
+- Drawer close without Apply: discards draft (inline confirmation if values changed)
 
-**Confirmation on discard:** If slider values changed and user closes without Apply, inline toast at bottom of drawer: "Apply changes before closing?" with [Apply] [Discard] actions. Not a modal.
+**Confirmation on discard:** If slider values changed and user closes without Apply, inline toast at bottom of drawer: "Apply changes before closing?" with [Apply Audience Mix] [Discard Changes] actions. Not a modal. Both actions are verb+noun pairs.
 
 **ARIA:** `role="dialog" aria-modal="true" aria-label="Audience weight override"`. Each slider: `aria-label="{archetype} weight" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{value}"`. Sum display: `aria-live="polite"`.
 
@@ -484,7 +503,7 @@ All board structure (composition, pan/zoom, spatial positions) unchanged in redu
 
 | Element | Copy | Source |
 |---------|------|--------|
-| Primary CTA (weights badge) | "Weighted: 65/20/10/5" (badge) / "Apply" (drawer button) | CONTEXT.md D-19 |
+| Primary CTA (weights badge) | "Weighted: 65/20/10/5" (badge) / "Apply Audience Mix" (drawer button) | CONTEXT.md D-19; verb+noun CTA |
 | Heatmap drawer affordance | "Show personas ▾" (closed) / "Hide personas ▲" (open) | CONTEXT.md D-03 |
 | Empty / pass 2 below threshold | "Detailed audience prediction unavailable. Showing baseline data." | CONTEXT.md code_context §Graceful degradation |
 | Streaming state | "Reading your audience…" (during Pass 2 stream) | R2.7 stage label pattern |
@@ -498,7 +517,10 @@ All board structure (composition, pan/zoom, spatial positions) unchanged in redu
 | Preset: Niche | "Niche-heavy" | CONTEXT.md D-18 |
 | Preset: New | "New creator" | CONTEXT.md D-18 |
 | Save default checkbox | "Save as my default for future analyses" | CONTEXT.md D-21 |
-| Discard confirmation | "Apply changes before closing?" [Apply] [Discard] | CONTEXT.md D-22 |
+| Drawer primary CTA | "Apply Audience Mix" | Verb+noun — replaces bare "Apply" |
+| Drawer secondary CTA | "Discard Changes" | Verb+noun — replaces bare "Discard" |
+| Discard confirmation toast | "Apply changes before closing?" [Apply Audience Mix] [Discard Changes] | Both actions verb+noun |
+| Reset confirmation toast | "Weights reset · Undo" [Undo] | Inline undo affordance, auto-dismiss 4s |
 | Weight override applied toast | "Audience mix updated" | Default |
 | Error: recompute fails | "Could not recalculate — using last saved weights" | Fail-safe |
 | Inspector panel header | "{Persona name}" (16px semibold) + "{Archetype}" (12px muted) | CONTEXT.md D-13 |
@@ -507,12 +529,15 @@ All board structure (composition, pan/zoom, spatial positions) unchanged in redu
 | Filmstrip loading band | "{segment_label}" (e.g., "visual_event" description from engine) | CONTEXT.md O-4 |
 | Curve ARIA label | "Audience retention curve. Weighted average: {N}% watch time" | Descriptive |
 | Heatmap grid ARIA | "Persona attention heatmap" | Descriptive |
+| PersonaInspector close button | aria-label="Close persona analysis" | On `<button>` element |
+| WeightOverrideDrawer close button | aria-label="Close audience mix override" | On `<button>` element |
 
 **Copywriting rules:**
 - No "AI" in any visible copy — use "prediction", "analysis", "engine"
 - No "error" for graceful degradation states — use "unavailable" or "not ready yet"
 - Anti-virality copy is constructive: "Critical drop detected" not "Your video will fail"
 - Weight preset names are creator-type labels, not algorithm labels
+- All CTAs in drawers and confirmation states use verb+noun pairs (never single-word)
 
 ---
 
@@ -567,12 +592,13 @@ closed ──[badge tap]──► open-preset-view
                         │                       │
                         └──[drag slider]──────► editing (RAF recompute active)
                                                │
-                                               ├──[Apply tap]──────────► applying ──[success]──► closed
-                                               │                                    [error]──► open (error toast)
+                                               ├──[Apply Audience Mix tap]──► applying ──[success]──► closed
+                                               │                                         [error]──► open (error toast)
+                                               ├──[Reset to defaults]──────► reset-undo-toast (4s) ──► editing
                                                └──[close without Apply]──► discard-confirm
                                                                            │
-                                                                           ├──[Apply]──► applying
-                                                                           └──[Discard]──► closed
+                                                                           ├──[Apply Audience Mix]──► applying
+                                                                           └──[Discard Changes]──► closed
 ```
 
 ### HeatmapDrawer states
@@ -639,6 +665,7 @@ All text must meet 4.5:1 on its background:
 - `--color-foreground-muted` (#848586) on `--color-surface` (#18191a): 5.4:1 ✓
 - Coral (#FF7F50) on dark bg: coral used for non-text elements only (dots, borders, fills). When coral IS used as text (badge): `--color-accent-foreground` (#1a0f0a) on coral-500: 7.2:1 ✓
 - Warning orange (`oklch(0.75 0.15 85)`) on dark: verify at build — target 3:1 for UI components
+- Error red (`#E05252`) on `--color-surface` (#18191a): 4.8:1 ✓ AA
 
 ---
 
@@ -712,7 +739,7 @@ No third-party shadcn registry blocks required for Phase 4. All visualization co
 - `Slider` — weight override sliders (customize track/thumb colors via CSS variables)
 - `Tooltip` — axis labels, chip hover details
 - `Badge` — archetype tags in inspector, anti-virality warning pill
-- `Button` — Apply, Discard, Reset, preset chips
+- `Button` — Apply Audience Mix, Discard Changes, Reset to defaults, preset chips
 - `Skeleton` — row skeleton placeholders during streaming
 
 ---
