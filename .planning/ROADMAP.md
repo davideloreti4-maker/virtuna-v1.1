@@ -108,8 +108,8 @@ Plans:
 
 Plans:
 - [x] 04-01-PLAN.md — Wave 0 test scaffolding (18 test stubs + 2 fixtures + migration scaffold)
-- [ ] 04-02-PLAN.md — Engine type extensions: HeatmapPayload.personas[].slot_type + weighted-aggregator-client.ts + audience-types/constants
-- [ ] 04-03-PLAN.md — Extend useAnalysisStream to dispatch filmstrip_segment_ready into a filmstrips: Record<number, string> return key
+- [x] 04-02-PLAN.md — Engine type extensions: HeatmapPayload.personas[].slot_type + weighted-aggregator-client.ts + audience-types/constants
+- [x] 04-03-PLAN.md — Extend useAnalysisStream to dispatch filmstrip_segment_ready into a filmstrips: Record<number, string> return key
 - [ ] 04-04-PLAN.md — use-audience-choreography hook: skeleton rows + row state machine + curve state machine + anti-virality flag
 - [ ] 04-05-PLAN.md — HeadlineChips (5 chips + weights badge) + Filmstrip (placeholder→keyframe swap)
 - [ ] 04-06-PLAN.md — DropoffMarkers pure-fn + use-retention-curve-canvas DPR/RAF hook + RetentionCurve component (hand-rolled Catmull-Rom α=0.5)
