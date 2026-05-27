@@ -247,21 +247,29 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
 
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i]!;
-          if (line.startsWith("event: ")) {
-            const eventType = line.slice(7).trim();
-            const dataLine = lines[i + 1];
-            if (dataLine?.startsWith("data: ")) {
-              try {
-                const data = JSON.parse(dataLine.slice(6));
-                dispatch(eventType, data);
-              } catch {
-                // Malformed JSON — silently drop frame.
-              }
+        // WR-03: proper SSE frame accumulator — split on double-newline (SSE frame boundary),
+        // then extract event:, id:, and data: fields from each frame. The prior line-pair
+        // assumption (event: immediately followed by data:) silently dropped frames
+        // containing id: prefixes (e.g. the id:complete event from the server).
+        const frames = buffer.split("\n\n");
+        buffer = frames.pop() ?? "";
+
+        for (const frame of frames) {
+          const frameLines = frame.split("\n");
+          let eventType = "message";
+          let dataLine = "";
+          for (const fLine of frameLines) {
+            if (fLine.startsWith("event: ")) eventType = fLine.slice(7).trim();
+            else if (fLine.startsWith("data: ")) dataLine = fLine.slice(6);
+            // id: lines are intentionally skipped — browser EventSource manages Last-Event-ID
+          }
+          if (dataLine) {
+            try {
+              const data = JSON.parse(dataLine);
+              dispatch(eventType, data);
+            } catch {
+              // Malformed JSON — silently drop frame.
             }
           }
         }
