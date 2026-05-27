@@ -109,17 +109,23 @@ export function HeatmapDrawer(props: HeatmapDrawerProps) {
   const [colorBlindMode, setColorBlindMode] = useState(false);
 
   const affordanceLabel = props.isOpen ? 'Hide personas' : 'Show personas';
+  const personaCount = props.rowStates.length || 10;
 
   const AffordanceButton = (
     <button
       type="button"
       onClick={() => props.onOpenChange(!props.isOpen)}
-      className="flex items-center gap-2 px-2 py-1 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF7F50]"
+      className="flex w-full items-center justify-between gap-2 rounded-[8px] border border-white/[0.06] px-2.5 py-1.5 text-xs transition-colors hover:bg-white/[0.05] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF7F50]"
+      style={{ background: 'rgba(255,255,255,0.03)' }}
       aria-expanded={props.isOpen}
       aria-controls="audience-heatmap-grid"
     >
-      {props.isOpen ? <CaretUp size={14} aria-hidden="true" /> : <CaretDown size={14} aria-hidden="true" />}
-      {affordanceLabel}
+      <span className="flex items-center gap-2">
+        <span className="font-medium">{affordanceLabel}</span>
+        <span className="opacity-50">·</span>
+        <span className="opacity-60 tabular-nums">{personaCount}</span>
+      </span>
+      {props.isOpen ? <CaretUp size={12} aria-hidden="true" className="opacity-70" /> : <CaretDown size={12} aria-hidden="true" className="opacity-70" />}
     </button>
   );
 

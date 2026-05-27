@@ -1,5 +1,4 @@
 'use client';
-import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import type { CameraPresetKey } from './board-types';
 
@@ -29,37 +28,36 @@ const PRESET_ORDER: CameraPresetKey[] = ['overview', 'verdict', 'audience', 'con
 export function CameraOverlay({ activePreset, onSelect }: CameraOverlayProps) {
   return (
     <div
-      className="fixed bottom-20 right-4 z-[100] flex flex-col gap-1"
+      className="fixed top-4 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-0.5 rounded-[10px] border border-white/[0.06] px-1.5 py-1 shadow-[rgba(0,0,0,0.4)_0_4px_16px_0]"
+      style={{
+        background: 'linear-gradient(137deg, rgba(17,18,20,0.85) 4.87%, rgba(12,13,15,0.95) 75.88%)',
+        backdropFilter: 'blur(8px)',
+      }}
       aria-label="Camera presets"
     >
       {PRESET_ORDER.map((key) => (
-        <Button
+        <button
           key={key}
-          variant="ghost"
-          size="sm"
           aria-label={`${PRESET_LABELS[key]} view`}
           aria-keyshortcuts={PRESET_KEYS[key]}
           aria-pressed={activePreset === key}
           onClick={() => onSelect(key)}
-          className={activePreset === key ? 'bg-white/[0.08]' : ''}
+          className={`flex items-center gap-1 rounded-[6px] px-2 py-1 text-xs transition-colors hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF7F50] ${activePreset === key ? 'bg-white/[0.08] text-foreground' : 'text-foreground/70'}`}
         >
-          <span className="hidden md:inline">{PRESET_LABELS[key]}</span>
-          <span className="md:hidden">{PRESET_LABELS[key].slice(0, 3)}</span>
-          <Kbd size="sm" className="ml-1 hidden md:inline-flex">{PRESET_KEYS[key]}</Kbd>
-        </Button>
+          <span>{PRESET_LABELS[key]}</span>
+          <Kbd size="sm" className="opacity-50">{PRESET_KEYS[key]}</Kbd>
+        </button>
       ))}
-      {/* Reset button — same target as overview, different label */}
-      <Button
-        variant="ghost"
-        size="sm"
+      <div className="mx-1 h-4 w-px bg-white/[0.06]" aria-hidden="true" />
+      <button
         aria-label="Reset view"
         aria-keyshortcuts="R"
         onClick={() => onSelect('overview')}
+        className="flex items-center gap-1 rounded-[6px] px-2 py-1 text-xs text-foreground/70 transition-colors hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF7F50]"
       >
-        <span className="hidden md:inline">Reset</span>
-        <span className="md:hidden">Rst</span>
-        <Kbd size="sm" className="ml-1 hidden md:inline-flex">R</Kbd>
-      </Button>
+        <span>Reset</span>
+        <Kbd size="sm" className="opacity-50">R</Kbd>
+      </button>
     </div>
   );
 }

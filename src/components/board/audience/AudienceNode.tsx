@@ -253,8 +253,7 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
   void audienceSpec;
   return (
     <>
-      <section
-          aria-label="Audience analysis"
+      <div
           aria-live="polite"
           aria-busy={isStreaming}
           className="relative flex h-full w-full flex-col gap-3 overflow-y-auto"
@@ -281,13 +280,23 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
             onWeightsBadgeClick={handleWeightsBadgeClick}
           />
 
-          {/* D-01: Filmstrip — directly below chips, acts as x-axis */}
-          <Filmstrip
-            segments={result?.heatmap?.segments ?? null}
-            filmstrips={filmstrips}
-            totalDurationSec={totalDurationSec}
-            antiViralitySegmentIndices={antiViralityState.dropoff_segment_indices}
-          />
+          {/* D-01: Filmstrip + shared time axis — directly below chips, acts as x-axis */}
+          <div className="flex flex-col gap-1">
+            <Filmstrip
+              segments={result?.heatmap?.segments ?? null}
+              filmstrips={filmstrips}
+              totalDurationSec={totalDurationSec}
+              antiViralitySegmentIndices={antiViralityState.dropoff_segment_indices}
+            />
+            <div
+              className="flex justify-between text-[9px] uppercase tracking-[0.06em] tabular-nums opacity-40"
+              aria-hidden="true"
+            >
+              <span>0s</span>
+              <span>{Math.round(totalDurationSec / 2)}s</span>
+              <span>{Math.round(totalDurationSec)}s</span>
+            </div>
+          </div>
 
           {/* D-01: RetentionCurve — segment-aligned below filmstrip */}
           <RetentionCurve
@@ -318,7 +327,7 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
             onFixChipTap={handleFixChipTap}
             fixTextBySegment={fixTextBySegment}
           />
-        </section>
+        </div>
 
       {/* Portals — rendered outside the audience section, above board */}
       <TapPopover

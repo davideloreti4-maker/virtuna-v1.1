@@ -60,7 +60,9 @@ export function PersonaRow({
         aria-rowindex={rowIndex}
         className="flex h-[32px] w-full items-stretch"
       >
-        <Skeleton className="h-full w-full" />
+        <div role="gridcell" aria-label="loading persona row" className="h-full w-full">
+          <Skeleton className="h-full w-full" />
+        </div>
       </div>
     );
   }

@@ -1,5 +1,5 @@
 'use client';
-import { forwardRef } from 'react';
+import { Children, forwardRef } from 'react';
 import type { ReactNode } from 'react';
 import { CaretDown, CaretUp } from '@phosphor-icons/react';
 import { Icon } from '@/components/ui/icon';
@@ -10,14 +10,34 @@ import type { Camera, GroupFrameLayout } from './board-types';
 import { TITLE_BAR_HEIGHT } from './board-constants';
 import type { FrameVisualState } from './GroupFrame';
 
-const EMPTY_STATE_COPY: Record<string, string> = {
-  audience: 'Audience data will appear here',
-  verdict: 'Verdict will appear here',
-  actions: 'Actions will appear here',
-  'content-analysis': 'Content analysis will appear here',
-  input: '', // Input node renders its own card (plan 2.7)
-  engine: '', // Engine renders 5 stage glyphs (plan 2.13)
+const EMPTY_STATE_COPY: Record<string, { title: string; sub: string }> = {
+  audience: {
+    title: 'Predicted retention across 10 personas',
+    sub: 'Submit a video to see the live curve, dropoffs, and per-persona reactions.',
+  },
+  verdict: {
+    title: 'Final virality call',
+    sub: 'Score, headline insight, and predicted reach surface here after analysis.',
+  },
+  actions: {
+    title: 'Recommended next moves',
+    sub: 'Specific rework or reshoot suggestions appear once the engine completes.',
+  },
+  'content-analysis': {
+    title: 'Hook breakdown · tags · drivers',
+    sub: 'Tone, format, niche fit, and detected hooks fill in here after Wave 0.',
+  },
+  input: { title: '', sub: '' },
+  engine: { title: '', sub: '' },
 };
+
+function hasRealChildren(children: ReactNode): boolean {
+  let real = 0;
+  Children.forEach(children, (c) => {
+    if (c !== null && c !== undefined && c !== false && c !== '') real++;
+  });
+  return real > 0;
+}
 
 const ARIA_LABEL: Record<string, string> = {
   audience: 'Audience analysis',
@@ -108,9 +128,16 @@ export const GroupFrameOverlay = forwardRef<HTMLDivElement, Props>(function Grou
             <Skeleton className="absolute inset-2 opacity-40" />
           )}
           {children}
-          {!children && EMPTY_STATE_COPY[layout.id] && (
-            <p className="text-sm text-foreground-muted">{EMPTY_STATE_COPY[layout.id]}</p>
-          )}
+          {(() => {
+            const empty = EMPTY_STATE_COPY[layout.id];
+            if (hasRealChildren(children) || !empty?.title) return null;
+            return (
+              <div className="flex h-full w-full flex-col items-start justify-center gap-1 opacity-60">
+                <p className="text-sm font-medium leading-tight">{empty.title}</p>
+                <p className="max-w-[28ch] text-xs leading-snug text-foreground-muted">{empty.sub}</p>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>

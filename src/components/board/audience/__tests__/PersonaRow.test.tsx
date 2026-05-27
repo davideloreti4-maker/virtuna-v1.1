@@ -35,10 +35,10 @@ describe('PersonaRow', () => {
 
   it('renders Skeleton when rowState=skeleton', () => {
     const { container } = render(<PersonaRow {...makeProps({ rowState: 'skeleton' })} />);
-    // Skeleton renders — no individual gridcells
+    // axe-required: role="row" must contain at least one gridcell child even when
+    // the row is still a loading skeleton. Single placeholder gridcell wraps the Skeleton.
     const cells = container.querySelectorAll('[role="gridcell"]');
-    expect(cells).toHaveLength(0);
-    // The skeleton div should be present
+    expect(cells).toHaveLength(1);
     const row = container.querySelector('[role="row"]');
     expect(row).toBeTruthy();
   });

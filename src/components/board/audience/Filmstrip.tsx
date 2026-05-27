@@ -11,7 +11,7 @@ export interface FilmstripProps {
 
 export function Filmstrip({
   segments,
-  filmstrips,
+  filmstrips = {},
   totalDurationSec,
   antiViralitySegmentIndices = [],
 }: FilmstripProps) {

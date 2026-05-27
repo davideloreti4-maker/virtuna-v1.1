@@ -83,10 +83,11 @@ describe('GroupFrame integration', () => {
     await act(async () => {
       await new Promise((r) => setTimeout(r, 50));
     });
-    expect(screen.getByText('Audience data will appear here')).toBeInTheDocument();
-    expect(screen.getByText('Verdict will appear here')).toBeInTheDocument();
-    expect(screen.getByText('Actions will appear here')).toBeInTheDocument();
-    expect(screen.getByText('Content analysis will appear here')).toBeInTheDocument();
+    // Empty-state copy refreshed in the visual polish pass — now titled + with subtitle.
+    // Audience renders AudienceNode (not empty); the other three render empty-state copy.
+    expect(screen.getByText('Final virality call')).toBeInTheDocument();
+    expect(screen.getByText('Recommended next moves')).toBeInTheDocument();
+    expect(screen.getByText('Hook breakdown · tags · drivers')).toBeInTheDocument();
   });
 
   it('renders anti-virality stroke on Verdict + Audience rects when boardState=anti-virality', async () => {
