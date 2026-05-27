@@ -209,6 +209,7 @@ export function assembleHeatmapPayload(
       });
       return {
         id: r.persona_id,
+        slot_type: (r.slot_type as string) === 'niche_deep' ? 'niche' as const : r.slot_type,
         attentions: r.segment_reactions.map((sr) => sr.attention),
         swipe_predicted_at: swipeReaction?.t_start ?? null,
         segment_reasons,
