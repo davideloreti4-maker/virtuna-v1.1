@@ -4,7 +4,6 @@ import {
   computeZoomAtPointer,
   parseCameraSearchParams,
   serializeCamera,
-  clampScale,
 } from '../use-camera';
 import { CAMERA_MIN_SCALE, CAMERA_MAX_SCALE } from '../board-constants';
 

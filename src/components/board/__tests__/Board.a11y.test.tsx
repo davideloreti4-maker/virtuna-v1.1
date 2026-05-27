@@ -16,7 +16,7 @@ vi.mock('react-konva', () => ({
 vi.mock('next/dynamic', () => ({
   default: (loader: any) => {
     const C = (props: any) => {
-      const [M, setM] = require('react').useState<any>(null);
+      const [M, setM] = (require('react').useState as <T>(s:T)=>[T,(v:T)=>void])<any>(null);
       require('react').useEffect(() => { loader().then((m: any) => setM(() => (m.default ?? m))); }, []);
       return M ? <M {...props} /> : null;
     };
@@ -62,6 +62,7 @@ describe('Board a11y', () => {
     // Wait for dynamic Stage mock to mount
     await new Promise((r) => setTimeout(r, 0));
     const results = await axe(container);
+    // @ts-expect-error -- vitest-axe matcher type augmentation not picked up
     expect(results).toHaveNoViolations();
   });
 });

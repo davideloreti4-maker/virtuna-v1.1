@@ -16,18 +16,21 @@ describe('CommandBar a11y', () => {
   it('idle: no violations', async () => {
     useBoardStore.setState({ boardState: 'idle' } as any);
     const { container } = render(<CommandBar />);
+    // @ts-expect-error -- vitest-axe matcher type augmentation not picked up
     expect(await axe(container)).toHaveNoViolations();
   });
 
   it('streaming: no violations', async () => {
     useBoardStore.setState({ boardState: 'streaming' } as any);
     const { container } = render(<CommandBar currentStage="Reading the hook…" />);
+    // @ts-expect-error -- vitest-axe matcher type augmentation not picked up
     expect(await axe(container)).toHaveNoViolations();
   });
 
   it('complete: no violations', async () => {
     useBoardStore.setState({ boardState: 'complete' } as any);
     const { container } = render(<CommandBar />);
+    // @ts-expect-error -- vitest-axe matcher type augmentation not picked up
     expect(await axe(container)).toHaveNoViolations();
   });
 });

@@ -16,7 +16,7 @@ vi.mock('react-konva', () => ({
 vi.mock('next/dynamic', () => ({
   default: (loader: any) => {
     const Comp = (props: any) => {
-      const [Mod, setMod] = require('react').useState<any>(null);
+      const [Mod, setMod] = (require('react').useState as <T>(s:T)=>[T,(v:T)=>void])<any>(null);
       require('react').useEffect(() => { loader().then((m: any) => setMod(() => (m.default ?? m))); }, []);
       return Mod ? <Mod {...props} /> : null;
     };

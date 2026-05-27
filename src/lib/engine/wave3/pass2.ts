@@ -25,7 +25,7 @@ import {
 } from "./persona-prompts-pass2";
 import { getQwenClient, QWEN_REASONING_MODEL } from "../qwen/client";
 import { calculateCost } from "../qwen/cost";
-import type { PersonaSimulationResult, SegmentGrid } from "../types";
+import type { ContentTypeSlug, PersonaSimulationResult, SegmentGrid } from "../types";
 
 // Re-export Pass2PersonaResult — single source of truth lives in weighted-aggregator.ts (Plan 04).
 export type { Pass2PersonaResult } from "./weighted-aggregator";
@@ -76,7 +76,10 @@ export async function runWave3Pass2(
   // CR-02: use same slot routing as Pass 1 by forwarding content_type + niche slugs.
   // selectPersonaSlots(null, null) used to route everything to "other" fallback,
   // causing slot_type mismatch between Pass 1 and Pass 2 persona indices.
-  const slots = selectPersonaSlots(contentTypeSlug ?? null, nicheSlug ?? null);
+  const slots = selectPersonaSlots(
+    (contentTypeSlug ?? null) as ContentTypeSlug | null,
+    nicheSlug ?? null,
+  );
 
   const ai = getQwenClient();
   let totalCostCents = 0;

@@ -107,7 +107,7 @@ export function useCamera(args: {
   setActivePreset: (k: CameraPresetKey | null) => void;
   reducedMotion: boolean;
 }) {
-  const { camera, setCamera, viewport, viewportReady, activePreset, setActivePreset } = args;
+  const { camera, setCamera, viewport, viewportReady, setActivePreset } = args;
 
   // CR-01: keep a ref to the latest camera so goToPreset always reads
   // a fresh snapshot at call time, avoiding the one-frame stale-closure

@@ -54,7 +54,6 @@ export const GroupFrameOverlay = forwardRef<HTMLDivElement, Props>(function Grou
   const screenH = layout.bounds.height * camera.scale;
 
   const showShimmer = visual === 'streaming' && !reducedMotion;
-  const isLive = layout.id === 'engine' && visual === 'streaming';
 
   return (
     <div

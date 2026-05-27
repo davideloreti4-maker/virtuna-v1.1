@@ -52,7 +52,7 @@ export function panelReadyFromStages(
 ): Record<PanelId, PanelReadyState> {
   const ready = initialPanelReady();
   for (const ev of stages) {
-    if (ev.type === "pipeline_warning") continue;
+    if (ev.type !== "stage_start" && ev.type !== "stage_end") continue;
     const panels = STAGE_TO_PANEL[ev.stage];
     if (!panels) continue;
     if (ev.type === "stage_start") {

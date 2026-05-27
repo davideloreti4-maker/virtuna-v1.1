@@ -22,6 +22,7 @@ describe('Sidebar a11y', () => {
   it('no violations expanded', async () => {
     const { container } = render(<Sidebar />);
     const results = await axe(container);
+    // @ts-expect-error -- vitest-axe matcher type augmentation not picked up
     expect(results).toHaveNoViolations();
   });
 });
