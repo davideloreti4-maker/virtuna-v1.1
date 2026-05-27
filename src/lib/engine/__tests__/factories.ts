@@ -294,6 +294,8 @@ export function makePipelineResult(
     platformFitResult: null,
     // Phase 3 (Plan 08) — Pass 2 outcome default (null = text mode / no segments)
     pass2Outcome: null,
+    // Phase 3 (Plan 08) — Omni segments default (undefined = text mode, no video segments)
+    segments: undefined,
     requestId: "test-req-123",
     timings: [
       { stage: "validate", duration_ms: 5 },

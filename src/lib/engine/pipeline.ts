@@ -117,6 +117,11 @@ export interface PipelineResult extends PipelineAudioFingerprintFields {
   // Aggregator reads this to populate weighted_* + heatmap + isAntiViralityGatedFull.
   pass2Outcome: Wave3Pass2Outcome | null;
 
+  // Phase 3 (Plan 08) — Omni segments from Wave 0 (SegmentGrid[]).
+  // Required by aggregator.assembleHeatmapPayload + buildWeightedCurve.
+  // Undefined/empty when text mode or tiktok_url mode (no video segments).
+  segments?: SegmentGrid[];
+
   // Pipeline metadata
   requestId: string;
   timings: StageTiming[];
@@ -969,6 +974,7 @@ export async function runPredictionPipeline(
     retrievalResult, // NEW Phase 8 D-09 (Plan 04) — graceful-degradation BenchmarkRetrievalResult
     platformFitResult, // NEW Phase 9 (Plan 03) — platform-fit V3 result array or null
     pass2Outcome,      // Phase 3 (Plan 08) — Pass 2 outcome; null when no segments or skipped
+    segments: omniSegments, // Phase 3 (Plan 08) — SegmentGrid[] for aggregator.assembleHeatmapPayload
     requestId,
     timings,
     total_duration_ms,

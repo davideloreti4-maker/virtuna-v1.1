@@ -81,6 +81,64 @@ vi.mock("../stage11-counterfactuals", async (importOriginal) => {
   };
 });
 
+// Phase 3 (Plan 08) — hoisted mock factories for weighted-aggregator + persona-weights + anti-virality.
+// These must be declared BEFORE vi.mock() calls so closures capture them correctly.
+const {
+  mockBuildWeightedCurve,
+  mockAssembleHeatmapPayload,
+  mockIsAntiViralityGatedFull,
+  mockResolveWeights,
+} = vi.hoisted(() => {
+  const sampleHeatmap = {
+    segments: [
+      { idx: 0, t_start: 0, t_end: 3, label: "hook", is_hook_zone: true, keyframe_uri: null },
+      { idx: 1, t_start: 3, t_end: 6, label: "body", is_hook_zone: false, keyframe_uri: null },
+    ],
+    personas: [],
+    weighted_curve: [0.9, 0.7],
+    weights: { fyp: 0.65, niche: 0.20, loyalist: 0.10, cross_niche: 0.05 },
+    weights_source: "default" as const,
+  };
+  return {
+    mockBuildWeightedCurve: vi.fn(() => ({
+      weighted_curve: [0.9, 0.7],
+      weighted_completion_pct: 0.8,
+      weighted_top_dropoff_t: 3,
+      weighted_hook_score: 0.9,
+    })),
+    mockAssembleHeatmapPayload: vi.fn(() => sampleHeatmap),
+    mockIsAntiViralityGatedFull: vi.fn((_confidence: number, _heatmap: unknown) => ({
+      gated: false,
+      reason: null as null,
+      dropoff_segment_indices: [] as number[],
+    })),
+    mockResolveWeights: vi.fn(() => ({
+      weights: { fyp: 0.65, niche: 0.20, loyalist: 0.10, cross_niche: 0.05 },
+      source: "default" as const,
+    })),
+  };
+});
+
+vi.mock("../wave3/weighted-aggregator", () => ({
+  buildWeightedCurve: mockBuildWeightedCurve,
+  assembleHeatmapPayload: mockAssembleHeatmapPayload,
+  DEFAULT_WEIGHTS: { fyp: 0.65, niche: 0.20, loyalist: 0.10, cross_niche: 0.05 },
+}));
+
+vi.mock("../persona-weights", () => ({
+  resolveWeights: mockResolveWeights,
+  DEFAULT_PERSONA_WEIGHT_CONFIG: {},
+  normalizeWeights: vi.fn((w: unknown) => w),
+}));
+
+vi.mock("../anti-virality", async (importOriginal) => {
+  const orig = await importOriginal<typeof import("../anti-virality")>();
+  return {
+    ...orig,
+    isAntiViralityGatedFull: mockIsAntiViralityGatedFull,
+  };
+});
+
 // =====================================================
 // Imports (after mocks)
 // =====================================================
@@ -89,7 +147,7 @@ import { selectWeights, aggregateScores } from "../aggregator";
 import { makePipelineResult, makeGeminiAnalysis } from "./factories";
 import { getPlattParameters, applyPlattScaling } from "../calibration";
 import { predictWithML } from "../ml";
-import type { PersonaBehavioralAggregate, PersonaSimulationResult } from "../types";
+import type { PersonaBehavioralAggregate, PersonaSimulationResult, SegmentGrid } from "../types";
 
 // =====================================================
 // selectWeights tests
@@ -1051,5 +1109,181 @@ describe("Phase 8 — aggregator retrieval integration", () => {
       }),
     );
     expect(falseResult.signal_availability.retrieval).toBe(false);
+  });
+});
+
+// =====================================================
+// Phase 3 (Plan 08) — aggregator.ts Pass 2 wiring
+// Tests: weighted_* fields + heatmap + isAntiViralityGatedFull + signal_availability.pass2_timeline
+// =====================================================
+
+describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
+  // Shared fixtures
+  const sampleSegments: SegmentGrid[] = [
+    { t_start: 0, t_end: 3, visual_event: "hook reveal", audio_event: "beat drop", is_hook_zone: true },
+    { t_start: 3, t_end: 6, visual_event: "body content", audio_event: "ambient", is_hook_zone: false },
+  ];
+
+  const samplePass2Results = [
+    {
+      persona_id: "fyp-saver-beauty",
+      archetype: "saver" as const,
+      slot_type: "fyp" as const,
+      segment_reactions: [
+        { t_start: 0, t_end: 3, attention: 0.9, swipe_predicted: false },
+        { t_start: 3, t_end: 6, attention: 0.7, swipe_predicted: false },
+      ],
+      pass2_latency_ms: 500,
+      pass2_cost_cents: 0.05,
+    },
+    {
+      persona_id: "fyp-lurker-beauty",
+      archetype: "lurker" as const,
+      slot_type: "fyp" as const,
+      segment_reactions: [
+        { t_start: 0, t_end: 3, attention: 0.8, swipe_predicted: false },
+        { t_start: 3, t_end: 6, attention: 0.6, swipe_predicted: true },
+      ],
+      pass2_latency_ms: 450,
+      pass2_cost_cents: 0.05,
+    },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Reset mocks to their default implementations
+    mockBuildWeightedCurve.mockReturnValue({
+      weighted_curve: [0.9, 0.7],
+      weighted_completion_pct: 0.8,
+      weighted_top_dropoff_t: 3,
+      weighted_hook_score: 0.9,
+    });
+    mockAssembleHeatmapPayload.mockReturnValue({
+      segments: [
+        { idx: 0, t_start: 0, t_end: 3, label: "hook reveal", is_hook_zone: true, keyframe_uri: null },
+        { idx: 1, t_start: 3, t_end: 6, label: "body content", is_hook_zone: false, keyframe_uri: null },
+      ],
+      personas: [],
+      weighted_curve: [0.9, 0.7],
+      weights: { fyp: 0.65, niche: 0.20, loyalist: 0.10, cross_niche: 0.05 },
+      weights_source: "default" as const,
+    });
+    mockIsAntiViralityGatedFull.mockReturnValue({ gated: false, reason: null, dropoff_segment_indices: [] });
+    mockResolveWeights.mockReturnValue({
+      weights: { fyp: 0.65, niche: 0.20, loyalist: 0.10, cross_niche: 0.05 },
+      source: "default" as const,
+    });
+    vi.mocked(predictWithML).mockResolvedValue(50);
+    vi.mocked(applyPlattScaling).mockImplementation((score: number) => score);
+  });
+
+  it("Phase 3: heatmap populated via assembleHeatmapPayload when pass2_aggregate_built === true", async () => {
+    const pipeline = makePipelineResult({
+      pass2Outcome: {
+        pass2Results: samplePass2Results,
+        warnings: [] as string[],
+        cost_cents: 0.1,
+        pass2_success_count: 2,
+        pass2_aggregate_built: true,
+      },
+      segments: sampleSegments,
+    });
+    const result = await aggregateScores(pipeline);
+    expect(mockAssembleHeatmapPayload).toHaveBeenCalledOnce();
+    expect(result.heatmap).not.toBeNull();
+    expect(result.heatmap).toBeDefined();
+  });
+
+  it("Phase 3: weighted_completion_pct / weighted_top_dropoff_t / weighted_hook_score populated from buildWeightedCurve", async () => {
+    const pipeline = makePipelineResult({
+      pass2Outcome: {
+        pass2Results: samplePass2Results,
+        warnings: [] as string[],
+        cost_cents: 0.1,
+        pass2_success_count: 2,
+        pass2_aggregate_built: true,
+      },
+      segments: sampleSegments,
+    });
+    const result = await aggregateScores(pipeline);
+    expect(result.weighted_completion_pct).toBe(0.8);
+    expect(result.weighted_top_dropoff_t).toBe(3);
+    expect(result.weighted_hook_score).toBe(0.9);
+  });
+
+  it("Phase 3: signal_availability.pass2_timeline === true when pass2_aggregate_built", async () => {
+    const pipeline = makePipelineResult({
+      pass2Outcome: {
+        pass2Results: samplePass2Results,
+        warnings: [] as string[],
+        cost_cents: 0.1,
+        pass2_success_count: 2,
+        pass2_aggregate_built: true,
+      },
+      segments: sampleSegments,
+    });
+    const result = await aggregateScores(pipeline);
+    expect(result.signal_availability.pass2_timeline).toBe(true);
+  });
+
+  it("Phase 3: signal_availability.pass2_timeline === false when pass2Outcome is null", async () => {
+    const pipeline = makePipelineResult({ pass2Outcome: null });
+    const result = await aggregateScores(pipeline);
+    expect(result.signal_availability.pass2_timeline).toBe(false);
+  });
+
+  it("Phase 3: when pass2_aggregate_built === false, heatmap=null and weighted_* fields=null (Pass 1 fallback)", async () => {
+    const pipeline = makePipelineResult({
+      pass2Outcome: {
+        pass2Results: [] as typeof samplePass2Results,
+        warnings: ["Too few personas succeeded"] as string[],
+        cost_cents: 0.05,
+        pass2_success_count: 3,
+        pass2_aggregate_built: false,
+      },
+      segments: sampleSegments,
+    });
+    const result = await aggregateScores(pipeline);
+    expect(result.heatmap).toBeNull();
+    expect(result.weighted_completion_pct).toBeNull();
+    expect(result.weighted_top_dropoff_t).toBeNull();
+    expect(result.weighted_hook_score).toBeNull();
+  });
+
+  it("Phase 3: isAntiViralityGatedFull called instead of isAntiViralityGated when heatmap present", async () => {
+    const pipeline = makePipelineResult({
+      pass2Outcome: {
+        pass2Results: samplePass2Results,
+        warnings: [] as string[],
+        cost_cents: 0.1,
+        pass2_success_count: 2,
+        pass2_aggregate_built: true,
+      },
+      segments: sampleSegments,
+    });
+    await aggregateScores(pipeline);
+    expect(mockIsAntiViralityGatedFull).toHaveBeenCalled();
+  });
+
+  it("Phase 3: when heatmap triggers timeline pattern with confidence above 0.4, anti_virality_gated=true with reason='timeline_pattern'", async () => {
+    // Mock isAntiViralityGatedFull to return timeline_pattern gating
+    mockIsAntiViralityGatedFull.mockReturnValueOnce({
+      gated: true,
+      reason: "timeline_pattern" as const,
+      dropoff_segment_indices: [1],
+    });
+    const pipeline = makePipelineResult({
+      pass2Outcome: {
+        pass2Results: samplePass2Results,
+        warnings: [] as string[],
+        cost_cents: 0.1,
+        pass2_success_count: 2,
+        pass2_aggregate_built: true,
+      },
+      segments: sampleSegments,
+    });
+    const result = await aggregateScores(pipeline);
+    expect(result.anti_virality_gated).toBe(true);
+    expect((result as typeof result & { anti_virality_reason?: string }).anti_virality_reason).toBe("timeline_pattern");
   });
 });
