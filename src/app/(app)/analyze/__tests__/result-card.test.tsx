@@ -129,6 +129,7 @@ describe("ResultCard", () => {
       error: "Analysis failed — test error",
       reconnect: reconnectSpy,
       analysisId: null,
+      filmstrips: {},
     });
 
     renderResultCard("test-id-005", null);

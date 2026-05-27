@@ -97,6 +97,8 @@ export interface AnalysisStreamReturn {
   // 9th key — D-02 iter-1 lock; surfaced from `event: started` frame (pitfall #6)
   // for /analyze/[id] nav + polling key + P6 permalink replay
   analysisId: string | null;
+  /** Live map of segment_idx → signed keyframe URL. Populated by filmstrip_segment_ready SSE events (Phase 4). */
+  filmstrips: Record<number, string>;
 }
 
 function initialPanelReady(): Record<PanelId, PanelReadyState> {
@@ -121,6 +123,7 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
   const [partial, setPartial] = useState<PartialStreamState>({ personas: [] });
   const [result, setResult] = useState<PredictionResult | null>(completedFromInitial);
   const [error, setError] = useState<string | null>(null);
+  const [filmstrips, setFilmstrips] = useState<Record<number, string>>({});
   const [analysisId, setAnalysisId] = useState<string | null>(
     (opts?.initialData && (opts.initialData as { id?: string }).id) ?? null,
   );
@@ -198,6 +201,11 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
           next[idx] = updated;
           return { personas: next };
         });
+      } else if (ev.type === "filmstrip_segment_ready") {
+        setFilmstrips((prev) => ({
+          ...prev,
+          [ev.segment_idx]: ev.keyframe_uri,
+        }));
       }
     } else if (eventType === "partial") {
       // Reconnect / fallback path — /api/analyze/[id]/stream emits accumulated
@@ -225,6 +233,7 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
   }, []);
 
   // ---- Reconnect: EventSource path on /api/analyze/[id]/stream ----
+  // preserve filmstrips across reconnect — segments delivered before drop must persist
   const reconnect = useCallback(() => {
     const id = analysisIdRef.current;
     if (!id) return;
@@ -267,6 +276,7 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
       setPhase("analyzing");
       setStages([]);
       setError(null);
+      setFilmstrips({});
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -396,5 +406,5 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
     [mutation],
   );
 
-  return { start, result, stages, partial, panelReady, phase, error, reconnect, analysisId };
+  return { start, result, stages, partial, panelReady, phase, error, reconnect, analysisId, filmstrips };
 }
