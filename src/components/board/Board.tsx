@@ -24,6 +24,7 @@ import { GROUP_FRAMES, CAMERA_DEFAULT_SCALE } from './board-constants';
 import { GroupFrame } from './GroupFrame';
 import { GroupFrameOverlay } from './GroupFrameOverlay';
 import { EngineGroup } from './EngineGroup';
+import { AudienceNode } from './audience/AudienceNode';
 import { InputNodeShape, InputNodeOverlay } from './InputNode';
 import { InputDrawer } from './InputDrawer';
 import type { GroupId } from './board-types';
@@ -299,6 +300,7 @@ export function Board() {
             reducedMotion={effectiveReducedMotion}
           >
             {layout.id === 'engine' && <EngineGroup />}
+            {layout.id === 'audience' && <AudienceNode camera={camera} layout={layout} />}
           </GroupFrameOverlay>
         ))}
         {/* Plan 2.7: Input node DOM overlay — thumbnailUrl/snippet wired in future plan */}
