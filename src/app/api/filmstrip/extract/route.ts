@@ -139,21 +139,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // ---- Persist keyframe_uri into analysis_results.heatmap.segments[] JSONB ----
+    // ---- Persist keyframe_uri into analysis_results.variants JSONB ----
     //
-    // CR-01: write keyframe URIs into analysis_results.heatmap.segments[].keyframe_uri
-    // (canonical location per D-13). Aligns the writer with where pipeline.ts
-    // readKeyframeUris and stream/route.ts extractHeatmapSegments read from.
+    // DB schema note: the plan originally referenced `analyses.analysis_results.heatmap`
+    // but no `heatmap` column exists in the `analysis_results` table (Plan 03 migration
+    // created the filmstrips bucket only). The `variants` JSONB column is available and
+    // currently unused — we use it as the filmstrip state store so Plan 08 can read and
+    // emit filmstrip_segment_ready SSE events.
     //
-    // Structure written: { heatmap: { segments: [{ idx, keyframe_uri }] } }
+    // Structure written: { filmstrip_segments: [{ idx, keyframe_uri }] }
     const successResults = results.filter((r) => r.keyframe_uri !== null);
     if (successResults.length > 0) {
       const supabase = createServiceClient();
 
-      // Read current analysis_results to merge keyframe URIs into heatmap.segments
+      // Read current variants to merge (preserve other keys if any)
       const { data: analysisRow, error: readError } = await supabase
         .from("analysis_results")
-        .select("analysis_results")
+        .select("variants")
         .eq("id", analysisId)
         .single();
 
@@ -163,13 +165,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           error: readError?.message,
         });
       } else {
-        const ar = (analysisRow.analysis_results ?? {}) as Record<string, unknown>;
-        const heatmap = (ar.heatmap ?? {}) as Record<string, unknown>;
-        const existingSegments = Array.isArray(heatmap.segments)
-          ? (heatmap.segments as Array<{ idx: number; keyframe_uri: string | null }>)
+        const currentVariants = (analysisRow.variants ?? {}) as Record<string, unknown>;
+        const existingSegments = Array.isArray(currentVariants.filmstrip_segments)
+          ? (currentVariants.filmstrip_segments as Array<{ idx: number; keyframe_uri: string | null }>)
           : [];
 
-        // Merge new results into existing heatmap.segments array (upsert by idx)
+        // Merge new results into existing segments array (upsert by idx)
         const merged = [...existingSegments];
         for (const result of successResults) {
           const existing = merged.findIndex((s) => s.idx === result.idx);
@@ -180,23 +181,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           }
         }
 
-        const updatedAr = {
-          ...ar,
-          heatmap: { ...heatmap, segments: merged },
+        const updatedVariants = {
+          ...currentVariants,
+          filmstrip_segments: merged,
         };
 
         const { error: writeError } = await supabase
           .from("analysis_results")
-          .update({ analysis_results: updatedAr })
+          .update({ variants: updatedVariants })
           .eq("id", analysisId);
 
         if (writeError) {
-          log.error("filmstrip: failed to persist keyframe_uri to heatmap.segments", {
+          log.error("filmstrip: failed to persist keyframe_uri to variants", {
             analysisId,
             error: writeError.message,
           });
         } else {
-          log.info("filmstrip: keyframe_uris persisted to heatmap.segments", {
+          log.info("filmstrip: keyframe_uris persisted to variants", {
             analysisId,
             count: successResults.length,
           });
