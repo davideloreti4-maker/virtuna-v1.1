@@ -883,6 +883,10 @@ export async function runPredictionPipeline(
         wave3Result,
         demoContext,
         onStageEvent,
+        // CR-02: forward wave0 content_type + niche slugs so Pass 2 uses the same
+        // slot routing as Pass 1 — prevents slot_type mismatch between passes.
+        wave0Result.content_type?.type ?? null,
+        wave0Result.niche?.primary_slug ?? null,
       );
       warnings.push(...pass2Outcome.warnings);
     } catch (error) {

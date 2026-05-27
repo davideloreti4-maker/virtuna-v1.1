@@ -66,14 +66,17 @@ export async function runWave3Pass2(
   pass1Results: PersonaSimulationResult[],
   demo?: DemographicContext,
   onEvent?: StageEventCallback,
+  // CR-02: pass content_type + niche slugs so slot selection matches Pass 1.
+  // Without these, Pass 2 always falls to "other" (mismatched slot_type vs Pass 1).
+  contentTypeSlug?: string | null,
+  nicheSlug?: string | null,
 ): Promise<Wave3Pass2Outcome> {
   const stageStart = emitStageStart(onEvent, "wave_3_pass2", 3);
 
-  // D-11: routing — use "other" fallback since we don't re-run slot selection here.
-  // Slots are pre-determined by the upstream pipeline using wave0 content_type + niche.
-  // For Pass 2 we use the same 10 slots as Pass 1 — selectPersonaSlots with null args gives
-  // the "other" row (6 fyp / 2 niche_deep / 1 loyalist / 1 cross_niche = 10 slots).
-  const slots = selectPersonaSlots(null, null);
+  // CR-02: use same slot routing as Pass 1 by forwarding content_type + niche slugs.
+  // selectPersonaSlots(null, null) used to route everything to "other" fallback,
+  // causing slot_type mismatch between Pass 1 and Pass 2 persona indices.
+  const slots = selectPersonaSlots(contentTypeSlug ?? null, nicheSlug ?? null);
 
   const ai = getQwenClient();
   let totalCostCents = 0;
