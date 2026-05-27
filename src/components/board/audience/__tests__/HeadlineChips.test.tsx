@@ -28,10 +28,13 @@ describe('HeadlineChips', () => {
 
     render(<HeadlineChips {...baseProps()} />);
 
-    expect(screen.getByText('Avg watch %')).toBeDefined();
-    expect(screen.getByText('Loop %')).toBeDefined();
-    expect(screen.getByText('Top dropoff')).toBeDefined();
-    expect(screen.getByText('Hook score')).toBeDefined();
+    // Labels were shortened in the visual polish pass so all 5 chips fit one row
+    // at the Audience frame width (~395px inner). Full meaning still conveyed via
+    // value units (% / s) and the "vs Niche" green/red colour cue.
+    expect(screen.getByText('Watch')).toBeDefined();
+    expect(screen.getByText('Loop')).toBeDefined();
+    expect(screen.getByText('Drop')).toBeDefined();
+    expect(screen.getByText('Hook')).toBeDefined();
     expect(screen.getByText('vs Niche')).toBeDefined();
   });
 

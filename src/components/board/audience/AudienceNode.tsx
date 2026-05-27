@@ -257,7 +257,7 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
           aria-label="Audience analysis"
           aria-live="polite"
           aria-busy={isStreaming}
-          className="relative flex h-full w-full flex-col gap-6 overflow-y-auto p-4"
+          className="relative flex h-full w-full flex-col gap-3 overflow-y-auto"
         >
           {/* D-01: HeadlineChips — top of stack */}
           <HeadlineChips

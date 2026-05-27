@@ -30,9 +30,8 @@ export function Filmstrip({
 
   return (
     <figure
-      className="relative flex w-full overflow-x-auto overflow-y-visible"
+      className="relative flex h-14 w-full gap-px overflow-hidden rounded-[6px]"
       aria-label="Video keyframe filmstrip"
-      style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
     >
       {cells.map((seg) => {
         const duration = seg.t_end - seg.t_start;
@@ -48,20 +47,18 @@ export function Filmstrip({
             key={seg.idx}
             role="img"
             aria-label={`Segment ${seg.idx}: ${seg.label ?? 'pending'}, ${seg.t_start.toFixed(1)}s to ${seg.t_end.toFixed(1)}s`}
-            className="relative flex-shrink-0"
-            style={{ width: `${widthPct}%`, minWidth: 48, height: 64 }}
+            className="relative h-full"
+            style={{ width: `${widthPct}%` }}
           >
-            {/* Coral-band placeholder (per O-4) */}
+            {/* Coral-band placeholder (per O-4) — subtle band, no per-cell text label */}
             <div
-              className="absolute inset-0 flex items-center justify-center text-xs"
+              className="absolute inset-0"
               style={{
-                background: 'rgba(255,127,80,0.20)',
+                background: 'rgba(255,127,80,0.08)',
                 opacity: keyframe ? 0 : 1,
                 transition: `opacity ${FILMSTRIP_KEYFRAME_FADE_MS}ms linear`,
               }}
-            >
-              {seg.label ?? `Segment ${seg.idx}`}
-            </div>
+            />
 
             {/* Keyframe image — swaps in with cross-fade */}
             {keyframe && (

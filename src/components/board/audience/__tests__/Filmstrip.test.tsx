@@ -97,12 +97,15 @@ describe('Filmstrip', () => {
     expect(cells.length).toBe(10);
   });
 
-  it('horizontal scroll container has overflow-x-auto', () => {
+  it('renders as a fixed-height keyframe strip filling its container', () => {
     const { container } = render(
       <Filmstrip segments={null} filmstrips={{}} totalDurationSec={30} />,
     );
 
     const figure = container.querySelector('figure');
-    expect(figure?.className).toContain('overflow-x-auto');
+    // No horizontal overflow — cells flex to fill the container at any width.
+    expect(figure?.className).toContain('w-full');
+    expect(figure?.className).toContain('h-14');
+    expect(figure?.className).not.toContain('overflow-x-auto');
   });
 });
