@@ -335,7 +335,7 @@ describe("runWave3Pass2 — Phase 3 Pass 2 orchestrator (Plan 06)", () => {
       warn: vi.fn(),
       error: vi.fn(),
     };
-    vi.mocked(createLogger).mockReturnValue(mockLogger as ReturnType<typeof createLogger>);
+    vi.mocked(createLogger).mockReturnValue(mockLogger as unknown as ReturnType<typeof createLogger>);
 
     // Re-import with fresh module to capture mocked logger
     vi.resetModules();
