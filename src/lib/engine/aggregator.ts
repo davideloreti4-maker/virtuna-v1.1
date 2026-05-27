@@ -1069,8 +1069,9 @@ export async function aggregateScores(
     weighted_completion_pct = curveResult.weighted_completion_pct;
     weighted_top_dropoff_t  = curveResult.weighted_top_dropoff_t;
     weighted_hook_score     = curveResult.weighted_hook_score;
-    // Assemble full HeatmapPayload (D-13)
-    heatmap = assembleHeatmapPayload(pass2Outcome.pass2Results, omniSegments, personaWeights, weightsSource);
+    // Assemble full HeatmapPayload (D-13) — WR-07: pass curveResult to avoid
+    // a second buildWeightedCurve call inside assembleHeatmapPayload.
+    heatmap = assembleHeatmapPayload(pass2Outcome.pass2Results, omniSegments, personaWeights, weightsSource, curveResult);
   }
 
   // -------------------------------------------------

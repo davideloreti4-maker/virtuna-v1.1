@@ -175,16 +175,21 @@ export function buildWeightedCurve(
  * keyframe_uri starts null for every segment; the filmstrip background job
  * (Plan 07) fills entries via SSE `filmstrip_segment_ready` events.
  * Phase 4 must render without keyframes initially (Pitfall 3).
+ *
+ * WR-07: accepts optional preComputedCurve so callers that already have a
+ * curveResult (e.g. aggregator.ts) can pass it in and avoid a second
+ * buildWeightedCurve call. When absent, buildWeightedCurve is called once here.
  */
 export function assembleHeatmapPayload(
   pass2Results: Pass2PersonaResult[],
   segments: SegmentGrid[],
   weights: PersonaWeights,
   weightsSource: WeightsSource,
+  preComputedCurve?: ReturnType<typeof buildWeightedCurve>,
 ): HeatmapPayload {
-  // WR-02: reuse normalizedWeights from buildWeightedCurve instead of re-calling
-  // normalizeOverSurvivors separately (which was a redundant pure-function call).
-  const { weighted_curve, normalizedWeights: effectiveWeights } = buildWeightedCurve(pass2Results, segments, weights);
+  // WR-02 + WR-07: reuse pre-computed curve when available; otherwise compute once.
+  const { weighted_curve, normalizedWeights: effectiveWeights } =
+    preComputedCurve ?? buildWeightedCurve(pass2Results, segments, weights);
 
   return {
     segments: segments.map((s, idx) => ({
