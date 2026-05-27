@@ -107,10 +107,14 @@ const {
       weighted_hook_score: 0.9,
     })),
     mockAssembleHeatmapPayload: vi.fn(() => sampleHeatmap),
-    mockIsAntiViralityGatedFull: vi.fn((_confidence: number, _heatmap: unknown) => ({
+    mockIsAntiViralityGatedFull: vi.fn((_confidence: number, _heatmap: unknown): {
+      gated: boolean;
+      reason: "confidence" | "timeline_pattern" | "both" | null;
+      dropoff_segment_indices: number[];
+    } => ({
       gated: false,
-      reason: null as null,
-      dropoff_segment_indices: [] as number[],
+      reason: null,
+      dropoff_segment_indices: [],
     })),
     mockResolveWeights: vi.fn(() => ({
       weights: { fyp: 0.65, niche: 0.20, loyalist: 0.10, cross_niche: 0.05 },
@@ -1168,7 +1172,7 @@ describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
       weights: { fyp: 0.65, niche: 0.20, loyalist: 0.10, cross_niche: 0.05 },
       weights_source: "default" as const,
     });
-    mockIsAntiViralityGatedFull.mockReturnValue({ gated: false, reason: null, dropoff_segment_indices: [] });
+    mockIsAntiViralityGatedFull.mockReturnValue({ gated: false as boolean, reason: null as "confidence" | "timeline_pattern" | "both" | null, dropoff_segment_indices: [] as number[] });
     mockResolveWeights.mockReturnValue({
       weights: { fyp: 0.65, niche: 0.20, loyalist: 0.10, cross_niche: 0.05 },
       source: "default" as const,
@@ -1284,6 +1288,6 @@ describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
     });
     const result = await aggregateScores(pipeline);
     expect(result.anti_virality_gated).toBe(true);
-    expect((result as typeof result & { anti_virality_reason?: string }).anti_virality_reason).toBe("timeline_pattern");
+    expect(result.anti_virality_reason).toBe("timeline_pattern");
   });
 });

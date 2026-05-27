@@ -28,7 +28,15 @@ import { applyPlattScaling, type PlattParameters } from "./calibration";
 // threshold per checker B4. Gating is computed AFTER confidence calibration
 // (calculateConfidence + HARD-03 + Stage 10 critique adjustment) so the
 // boolean reflects the final confidence value the UI consumes.
-import { isAntiViralityGated } from "./anti-virality";
+// isAntiViralityGated kept for pre-Phase-3 callers (still used in maybeAppendLikelyFlopWarning indirectly)
+// isAntiViralityGatedFull: Phase 3 dual-trigger replacement used in aggregateScores.
+import { isAntiViralityGatedFull } from "./anti-virality";
+// Phase 3 (Plan 08) — Pass 2 timeline weighted aggregator + persona weights.
+// buildWeightedCurve + assembleHeatmapPayload consume pass2Results + segments.
+// resolveWeights provides the persona weight config (default mix when no override).
+import { buildWeightedCurve, assembleHeatmapPayload } from "./wave3/weighted-aggregator";
+import { resolveWeights, DEFAULT_PERSONA_WEIGHT_CONFIG } from "./persona-weights";
+import type { HeatmapPayload } from "./types";
 // Phase 1 (R6.1, D-13, D-15, Pitfall #5) — optimal post window niche aggregate
 // lookup. computeOptimalPostWindow is called BEFORE Stage 10/11 so the field
 // is on the assembled PredictionResult when critique + counterfactuals run.
@@ -772,6 +780,10 @@ export async function aggregateScores(
     // True when Plan 09-07's pipeline platformFitResult is non-null and non-empty.
     // Uses widened pipeline cast until PipelineResult inherits the feeder interface.
     platform_fit: ((pipelineResult as PipelineResult & { platformFitResult: PlatformFitResult[] | null }).platformFitResult?.length ?? 0) > 0,
+    // Phase 3 (Plan 08) D-15: pass2_timeline — provenance flag, NOT weight-bearing.
+    // True when Wave 3 Pass 2 ≥7-of-10 personas succeeded (pass2_aggregate_built=true).
+    // Filtered out of SCORE_WEIGHT_KEYS; persisted to signal_availability JSONB.
+    pass2_timeline: pipelineResult.pass2Outcome?.pass2_aggregate_built ?? false,
   };
 
   // Phase 5 D-12: derived `gemini` key.
@@ -1034,6 +1046,40 @@ export async function aggregateScores(
   );
 
   // -------------------------------------------------
+  // Phase 3 (Plan 08) — Pass 2 timeline → heatmap + weighted_* fields.
+  // Only runs when pass2_aggregate_built=true AND segments are present.
+  // Pass 1 fallback: heatmap=null, weighted_*=null.
+  // -------------------------------------------------
+  const pass2Outcome = pipelineResult.pass2Outcome;
+  const omniSegments = pipelineResult.segments;
+  let heatmap: HeatmapPayload | null = null;
+  let weighted_completion_pct: number | null = null;
+  let weighted_top_dropoff_t: number | null = null;
+  let weighted_hook_score: number | null = null;
+
+  if (pass2Outcome?.pass2_aggregate_built && omniSegments && omniSegments.length > 0) {
+    // Resolve persona weights (default mix unless niche override exists).
+    // Phase 3 Plan 08: niche primary_slug from wave0Result (may be null → default mix).
+    const { weights: personaWeights, source: weightsSource } = resolveWeights(
+      DEFAULT_PERSONA_WEIGHT_CONFIG,
+      { niche: pipelineResult.wave0Result.niche?.primary_slug ?? undefined },
+    );
+    // Build retention curve scalars (D-12)
+    const curveResult = buildWeightedCurve(pass2Outcome.pass2Results, omniSegments, personaWeights);
+    weighted_completion_pct = curveResult.weighted_completion_pct;
+    weighted_top_dropoff_t  = curveResult.weighted_top_dropoff_t;
+    weighted_hook_score     = curveResult.weighted_hook_score;
+    // Assemble full HeatmapPayload (D-13)
+    heatmap = assembleHeatmapPayload(pass2Outcome.pass2Results, omniSegments, personaWeights, weightsSource);
+  }
+
+  // -------------------------------------------------
+  // Phase 3 (Plan 08) — isAntiViralityGatedFull: dual-trigger OR logic.
+  // Replaces isAntiViralityGated(confidence) initial value; re-applied POST-critique below.
+  // -------------------------------------------------
+  const avGateFull = isAntiViralityGatedFull(conf.confidence, heatmap);
+
+  // -------------------------------------------------
   // Assemble PredictionResult
   // -------------------------------------------------
   const result: PredictionResult = {
@@ -1065,12 +1111,21 @@ export async function aggregateScores(
     // Phase 1 (R1.7) — emotion arc timeline plucked from Omni Plus output above.
     // Null when video absent or Qwen omitted the field; non-fatal per Pitfall #5.
     emotion_arc,
-    // Phase 1 (R1.9, B4) — anti-virality gate. Initial value computed from the
-    // PRE-Stage-10 confidence (post-Platt + post-HARD-03). Re-evaluated below
-    // after Stage 10 critique adjustment so the field reflects POST-CRITIQUE
-    // confidence (matches the gate `maybeAppendLikelyFlopWarning` reads —
-    // Pitfall 7 ordering invariant).
-    anti_virality_gated: isAntiViralityGated(conf.confidence),
+    // Phase 1 (R1.9, B4) + Phase 3 (Plan 08) — anti-virality gate.
+    // Initial value computed from PRE-Stage-10 confidence (post-Platt + post-HARD-03).
+    // Phase 3: uses dual-trigger isAntiViralityGatedFull (avGateFull computed above).
+    // Re-evaluated POST-critique below (Pitfall 7 ordering invariant).
+    anti_virality_gated: avGateFull.gated,
+    // Phase 3 (Plan 08) — reason + dropoff indices from dual-trigger gate.
+    // null when not gated or when heatmap absent (confidence-only path).
+    anti_virality_reason: avGateFull.reason,
+    dropoff_segment_indices: avGateFull.dropoff_segment_indices,
+    // Phase 3 (Plan 08) — heatmap + weighted retention metrics. Null when Pass 2
+    // below SUCCESS_THRESHOLD or text/tiktok_url mode (no segments).
+    heatmap,
+    weighted_completion_pct,
+    weighted_top_dropoff_t,
+    weighted_hook_score,
     // Phase 1 (R6.1, D-13) — optimal_post_window plucked from niche_post_windows
     // above (BEFORE Stage 10/11 per Pitfall #5). null on Supabase error,
     // FALLBACK on unknown niche, OptimalPostWindow with source='niche' on hit.
@@ -1112,11 +1167,15 @@ export async function aggregateScores(
   const critiqueResult = await runStage10Critique(result, onStageEvent);
   if (critiqueResult) {
     result.confidence = applyCritiqueAdjustment(result.confidence, critiqueResult);
-    // Phase 1 (R1.9, B4) — re-evaluate anti-virality gate AFTER critique
+    // Phase 1 (R1.9, B4) + Phase 3 (Plan 08) — re-evaluate anti-virality gate AFTER critique
     // adjustment so the UI flag matches the final (POST-CRITIQUE) confidence
     // value displayed to the user. Aligns with `maybeAppendLikelyFlopWarning`
     // which also reads POST-CRITIQUE confidence (Pitfall 7 ordering invariant).
-    result.anti_virality_gated = isAntiViralityGated(result.confidence);
+    // Phase 3: uses isAntiViralityGatedFull to preserve heatmap dual-trigger.
+    const postCritiqueAvGate = isAntiViralityGatedFull(result.confidence, result.heatmap ?? null);
+    result.anti_virality_gated = postCritiqueAvGate.gated;
+    result.anti_virality_reason = postCritiqueAvGate.reason;
+    result.dropoff_segment_indices = postCritiqueAvGate.dropoff_segment_indices;
   }
   result.critique = critiqueResult;
 
