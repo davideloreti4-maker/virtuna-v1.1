@@ -16,6 +16,8 @@ import type { StageEventCallback } from "../events";
 import { getQwenClient, QWEN_OMNI_MODEL } from "./client";
 import { calculateCost } from "./cost";
 import { OmniAnalysisZodSchema } from "./schemas";
+import type { SegmentGrid } from "./schemas";
+import { normalizeSegments } from "./normalize-segments";
 import { stripModelOutput } from "../utils/strip";
 
 const log = createLogger({ module: "engine.qwen.omni" });
@@ -38,6 +40,10 @@ export interface OmniAnalysisOutput {
     gemini_body: boolean;
     gemini_cta:  boolean;
   };
+  /** Phase 3 (D-07) — Normalized segment grid from Wave 0. Undefined when omni skips
+   *  segments or normalizer falls back gracefully (normalizer always returns non-empty
+   *  after normalization; undefined only when the full omni call failed). */
+  segments?: SegmentGrid[];
 }
 
 const CONTENT_TYPE_VALUES = [
@@ -108,6 +114,16 @@ Return ONLY valid JSON matching this exact structure:
   "emotion_arc": [
     { "timestamp_ms": 0,    "intensity_0_1": 0.3, "label": "low" },
     { "timestamp_ms": 5000, "intensity_0_1": 0.8, "label": "high" }
+  ],
+
+  "segments": [
+    {
+      "t_start": 0.0,
+      "t_end": 2.8,
+      "visual_event": "<brief description of dominant visual change>",
+      "audio_event": "<brief description of dominant audio/speech change>",
+      "scene_boundary_reason": "<why this is a scene boundary, optional>"
+    }
   ]
 }
 
@@ -119,7 +135,14 @@ Rules:
 - emotion_arc is OPTIONAL: include 3-8 points across the video timeline at emotional
   inflection points (or evenly spaced) when video is present. Use intensity_0_1 in [0,1].
   label is an optional categorical helper ("low"|"mid"|"high"). Omit the emotion_arc
-  field entirely for non-video / silent / slideshow content.`;
+  field entirely for non-video / silent / slideshow content.
+
+Rules for segments:
+- Detect natural scene boundaries (cut, transition, topic shift, pacing change).
+- Hook zone 0-3s MUST be its own segment even if no boundary detected.
+- Minimum segment duration: 1s (merge shorter cuts into adjacent segment).
+- If fewer than 4 boundaries detected: return 2s fixed buckets (1s for <8s videos).
+- Sort by t_start ascending. No overlap. t_end of segment[i] = t_start of segment[i+1].`;
 }
 
 export async function analyzeVideoWithOmni(
@@ -188,6 +211,12 @@ export async function analyzeVideoWithOmni(
       const data       = result.data;
       const cost_cents = calculateCost(model, completion.usage ?? undefined);
 
+      // D-07 + D-08: normalize segments after Zod parse, before returning to consumers.
+      // Derive video duration from highest t_end as defensive fallback when not passed in opts.
+      const rawDuration = data.segments?.reduce((max, s) => Math.max(max, s.t_end), 0) ?? 0;
+      const videoDurationSeconds = rawDuration > 0 ? rawDuration : 30; // 30s fallback if no segments
+      const normalizedSegments: SegmentGrid[] = normalizeSegments(data.segments as SegmentGrid[] | undefined, videoDurationSeconds);
+
       const ctypeSlug = CONTENT_TYPE_VALUES.includes(data.content_type as never)
         ? (data.content_type as (typeof CONTENT_TYPE_VALUES)[number])
         : "other";
@@ -223,6 +252,7 @@ export async function analyzeVideoWithOmni(
         wave0Result,
         audio_perceptual_score: data.audio_perceptual_score,
         signalAvailability: { gemini_hook: true, gemini_body: true, gemini_cta: true },
+        segments: normalizedSegments,
       };
 
     } catch (err: unknown) {
