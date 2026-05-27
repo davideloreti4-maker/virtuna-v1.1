@@ -41,3 +41,29 @@ export type TapPopoverPayload =
   | { kind: 'fix-chip'; segmentIdx: number; fixText: string };
 
 export type { HeatmapPayload, PersonaStreamingPartial, PersonaWeights };
+
+// ─── Component prop interfaces ─────────────────────────────────────────────
+
+export interface PersonaRowProps {
+  personaId: string | null;             // null when skeleton slot has no real persona yet
+  slotType: PersonaSlotType;
+  archetypeLabel: string;
+  segments: HeatmapPayload['segments'] | null;
+  attentions: number[] | null;          // null while waiting for pass2_persona_end
+  swipePredictedAt: number | null;
+  totalDurationSec: number;
+  rowState: RowState;
+  colorBlindMode: boolean;
+  onCellTap: (segmentIdx: number) => void;
+  onRowLabelTap: () => void;
+}
+
+export interface HeatmapDrawerProps {
+  heatmap: HeatmapPayload | null;
+  rowStates: Record<string, RowState>;  // from useAudienceChoreography
+  totalDurationSec: number;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCellTap: (personaId: string, segmentIdx: number) => void;
+  onRowLabelTap: (personaId: string) => void;
+}
