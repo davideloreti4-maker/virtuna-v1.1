@@ -117,7 +117,7 @@ Plans:
 - [x] 04-08-PLAN.md — TapPopover (5 variants + scroll-dismiss) + PersonaInspector (absorbs plan 4.9 per D-14) + AntiViralityOverlay (dual-trigger visual variants)
 - [x] 04-09-PLAN.md — Weight override: useClientWeights (RAF-debounced recompute) + WeightOverrideDrawer + POST /api/analyze/[id]/override with Zod
 - [x] 04-10-PLAN.md — AudienceNode shell composition + Board.tsx integration
-- [ ] 04-11-PLAN.md — [BLOCKING] supabase db push --linked + full test sweep + manual mobile/perf verification
+- [x] 04-11-PLAN.md — [BLOCKING] supabase db push --linked + full test sweep + manual mobile/perf verification
 
 **Success criteria:**
 - Audience node renders all layers correctly against test fixtures
