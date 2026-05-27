@@ -2,7 +2,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent, cleanup } from '@testing-library/react';
 import { axe } from 'vitest-axe';
-import { toHaveNoViolations } from 'vitest-axe/matchers';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { toHaveNoViolations } = require('vitest-axe/matchers') as {
+  toHaveNoViolations: (received: unknown) => { pass: boolean; message: () => string };
+};
 import { TapPopover } from '../TapPopover';
 import type { TapPopoverPayload } from '../audience-types';
 
