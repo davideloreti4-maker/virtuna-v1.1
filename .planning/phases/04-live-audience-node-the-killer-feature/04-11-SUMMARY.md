@@ -19,11 +19,11 @@ decisions:
   - "Pre-existing lint errors (67, non-Phase-4 files) treated as out-of-scope per deviation scope boundary rule"
   - "Ran `pnpm install --frozen-lockfile` in worktree to populate missing node_modules before tsc/vitest runs"
 metrics:
-  duration: "~25 minutes"
-  completed: "2026-05-27T15:10:00Z"
-  tasks_completed: 2
+  duration: "~25 minutes (tasks 1+2) + ~12 minutes (task 3 UAT via Playwright)"
+  completed: "2026-05-27T15:19:00Z"
+  tasks_completed: 3
   tasks_total: 3
-  files_changed: 1
+  files_changed: 2
 ---
 
 # Phase 04 Plan 11: Final Integration & Ship Gate Summary
@@ -37,9 +37,17 @@ metrics:
 | 1 | [BLOCKING] supabase db push — audience_overrides migration | 87009ee | `04-VERIFICATION-NOTES.md` (created) |
 | 2 | Full Phase 4 test sweep + Next build + lint | 25469f3 | `04-VERIFICATION-NOTES.md` (appended) |
 
-## Task 3 — Pending (Checkpoint)
+## Task 3 — Completed via Playwright UAT (2026-05-27T15:19:00Z)
 
-Manual mobile portrait + performance verification. Human must complete checks A/B/C/D per `04-11-PLAN.md §Task 3` and append results to `04-VERIFICATION-NOTES.md`.
+Orchestrator agent ran A/B/C/D directly via Playwright instead of handing off to human, per user request. Results appended to `04-VERIFICATION-NOTES.md §Manual Verification (Task 3)`.
+
+**Bug found and fixed:** `AudienceNode` rendered content 324px right of the Audience frame due to a redundant `<NodeOverlay>` wrapper double-applying `layout.bounds.x`. Board.tsx already mounts AudienceNode inside `GroupFrameOverlay` which positions absolutely; the inner NodeOverlay was compounding. Fix in commit `fix(04-10): drop redundant NodeOverlay wrapper`.
+
+**Coverage:**
+- A. Desktop functional (1440×900): PASS post-fix — full stack order, all 5 chips, weights badge, filmstrip 10 segments, retention curve, persona drawer inline expand, WeightOverrideDrawer with 5 presets + 4 sliders + sum validation
+- B. Mobile portrait (390×844): PASS — bottom-sheet pattern confirmed for heatmap drawer
+- C. Performance: N/A — Playwright headless can't reliably measure 60fps. Programmatic coverage via single-RAF-loop test + perf-tier auto-degrade unit tests.
+- D. Reduced-motion: PASS — 2 unit tests in `RetentionCurve.reduced-motion.test.tsx` green (synchronous draw when reduced-motion=true)
 
 ## Results
 
@@ -84,7 +92,14 @@ Applied `supabase/migrations/20260527000000_audience_overrides.sql` to project `
 
 ## Known Stubs
 
-None — Task 3 is a manual verification checkpoint, not a stub.
+None.
+
+## Deferred (Not Phase 4 Scope)
+
+- Mobile sidebar dominance (no auto-collapse) — pre-existing across all routes
+- Camera preset button label truncation on narrow viewports — pre-existing UI nit
+- Engine pipeline stage indicator behavior for text-mode analyses (no Wave 0 segmentation/Wave 1 hook decomp events fire) — phase 3 stream contract gap
+- Phase 3 CR-01 filmstrip writer was reverted during build-gate cleanup (commit `c703497 Revert "fix(03-CR-01)"`). Filmstrip persistence now back to `variants.filmstrip_segments` — readers (`pipeline.ts:readKeyframeUris`, `stream/route.ts:extractHeatmapSegments`) read from `analysis_results.heatmap.segments` (nonexistent column). Filmstrip live events likely silently fail. Requires either a migration adding the JSONB column OR aligning readers to `variants.filmstrip_segments`. Captured for phase 5 / next milestone.
 
 ## Threat Flags
 
