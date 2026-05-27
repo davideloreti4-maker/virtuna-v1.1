@@ -4,11 +4,12 @@ export default defineConfig({
   resolve: {
     alias: {
       "@/": new URL("./src/", import.meta.url).pathname,
-      // react-konva and konva are not installed in the worktree (no node_modules).
-      // These aliases redirect to stub files so vite's import-analysis transform
-      // does not error. Individual test files override with vi.mock() as needed.
+      // react-konva, konva, and @pmndrs/detect-gpu are not installed in the worktree
+      // (no node_modules). These aliases redirect to stub files so vite's import-analysis
+      // transform does not error. Individual test files override with vi.mock() as needed.
       "react-konva": new URL("./src/__mocks__/react-konva.tsx", import.meta.url).pathname,
       "konva/lib/Node": new URL("./src/__mocks__/konva-node.ts", import.meta.url).pathname,
+      "@pmndrs/detect-gpu": new URL("./src/__mocks__/detect-gpu.ts", import.meta.url).pathname,
     },
   },
   test: {
