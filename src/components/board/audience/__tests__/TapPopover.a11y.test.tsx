@@ -28,7 +28,7 @@ beforeEach(() => {
 
 describe('TapPopover (a11y)', () => {
   it('axe-core no violations on cell variant', async () => {
-    const { container } = render(
+    render(
       <TapPopover
         open={true}
         onOpenChange={mockOnOpenChange}
