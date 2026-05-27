@@ -21,7 +21,7 @@ export type { EmotionArcPoint };
 // Phase 3 (D-07) — re-export SegmentGrid so engine consumers don't reach into qwen/.
 export type { SegmentGrid } from "./qwen/schemas";
 
-// D-13 (Phase 3) — Pass 2 timeline + weighted aggregator output.
+// D-13 (Phase 3) + Phase 4 slot_type (OQ-1 / Plan 04-02): per-persona attention timeline + archetype slot.
 // Backwards-compatible additive payload on PredictionResult. Phase 4 (Audience node)
 // consumes this; null when Pass 2 < SUCCESS_THRESHOLD per D-06.
 export interface HeatmapPayload {
@@ -35,6 +35,7 @@ export interface HeatmapPayload {
   }>;
   personas: Array<{
     id: string;                              // matches existing persona.id
+    slot_type: 'fyp' | 'niche' | 'loyalist' | 'cross_niche'; // Phase 4 OQ-1: client recompute key
     attentions: number[];                    // length === segments.length
     swipe_predicted_at: number | null;       // t value
     segment_reasons: Record<number, string>; // sparse, inflection points only
