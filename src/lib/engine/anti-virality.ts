@@ -47,8 +47,11 @@ export function isAntiViralityGated(confidence: number): boolean {
  */
 export function isTimelinePatternTriggered(heatmap: HeatmapPayload | null): boolean {
   if (!heatmap) return false;
+  // CR-05: use t_start < 5 to include all segments that BEGIN within the first 5s.
+  // Prior filter (t_end <= 5) excluded cross-boundary segments like [4, 7] that
+  // start inside the hook window but end past the 5s mark.
   const firstFiveSecondIndices = heatmap.segments
-    .map((s, i) => (s.t_end <= 5 ? i : -1))
+    .map((s, i) => (s.t_start < 5 ? i : -1))
     .filter((i): i is number => i >= 0);
   if (firstFiveSecondIndices.length < 2) return false;
 
