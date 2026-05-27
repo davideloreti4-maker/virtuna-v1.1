@@ -9,7 +9,7 @@ import type { HeatmapPayload } from '@/lib/engine/types';
 /** Per-persona weight lookup. Niche_deep maps to niche (mirrors server line 79). */
 export function getPersonaWeight(slotType: string, w: PersonaWeights): number {
   const key = slotType === 'niche_deep' ? 'niche' : slotType;
-  return (w as Record<string, number>)[key] ?? 0;
+  return (w as unknown as Record<string, number>)[key] ?? 0;
 }
 
 /**
@@ -21,7 +21,7 @@ export function normalizeOverSurvivors(
   weights: PersonaWeights,
 ): PersonaWeights {
   const presentTypes = new Set(
-    personas.map((p) => (p.slot_type === 'niche_deep' ? 'niche' : p.slot_type)),
+    personas.map((p) => ((p.slot_type as string) === 'niche_deep' ? 'niche' : p.slot_type)),
   );
   const filtered: PersonaWeights = {
     fyp:         presentTypes.has('fyp')         ? weights.fyp         : 0,

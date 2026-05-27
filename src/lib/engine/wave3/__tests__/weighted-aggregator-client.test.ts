@@ -47,7 +47,7 @@ describe('weighted-aggregator-client', () => {
     const segmentGrids = segments.map((s) => ({
       t_start: s.t_start,
       t_end: s.t_end,
-      visual_event: s.label,
+      visual_event: s.label ?? '',
       audio_event: '',
       is_hook_zone: s.is_hook_zone,
       idx: s.idx,
