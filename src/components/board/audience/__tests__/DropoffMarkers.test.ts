@@ -33,7 +33,7 @@ describe('clusterMarkers', () => {
     const markers = [makeMarker(10), makeMarker(15), makeMarker(20)];
     const result = clusterMarkers(markers);
     expect(result).toHaveLength(1);
-    const cluster = result[0];
+    const cluster = result[0]!;
     expect('kind' in cluster && cluster.kind).toBe('cluster');
     if ('kind' in cluster && cluster.kind === 'cluster') {
       expect(cluster.count).toBe(3);
@@ -45,7 +45,7 @@ describe('clusterMarkers', () => {
     const markers = [makeMarker(10), makeMarker(14)];
     const result = clusterMarkers(markers);
     expect(result).toHaveLength(1);
-    const cluster = result[0];
+    const cluster = result[0]!;
     expect('kind' in cluster && cluster.kind).toBe('cluster');
     if ('kind' in cluster && cluster.kind === 'cluster') {
       expect(cluster.count).toBe(2);
