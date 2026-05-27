@@ -44,6 +44,10 @@ export interface PerPersonaPartial {
   status: "pending" | "streaming" | "complete";
   verdict?: string;
   reasoning?: string;
+  // D-15 Phase 3 — streaming partials for Pass 2 timeline reveal
+  pass2_status?: "pending" | "streaming" | "complete";
+  attentions?: number[];
+  swipe_predicted_at?: number;
 }
 
 export interface PartialStreamState {
