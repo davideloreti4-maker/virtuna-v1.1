@@ -74,13 +74,15 @@ export function VerdictNode({ camera: _camera, layout: _layout }: VerdictNodePro
 
       <AntiViralityHeader result={result} analysisId={analysisId} />
 
-      <PercentileChip
-        score={result?.overall_score ?? null}
-        confidenceLabel={result?.confidence_label ?? null}
-        isCalibrated={result?.is_calibrated ?? true}
-      />
+      <div className="pb-2" data-testid="verdict-percentile-container">
+        <PercentileChip
+          score={result?.overall_score ?? null}
+          confidenceLabel={result?.confidence_label ?? null}
+          isCalibrated={result?.is_calibrated ?? true}
+        />
+      </div>
 
-      <div data-testid="verdict-collapsibles-slot" className="flex flex-col gap-2 px-1">
+      <div data-testid="verdict-collapsibles-slot" className="flex flex-col gap-2 px-1 mt-2">
         {result && <WhyVerdictCollapsible result={result} />}
         {result && analysisId && (
           <VsHistoryCollapsible analysisId={analysisId} currentScore={result.overall_score} />
