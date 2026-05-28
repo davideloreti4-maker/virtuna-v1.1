@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   House,
-  TrendUp,
   UsersThree,
   Briefcase,
   Plus,
@@ -31,7 +30,6 @@ import { TiktokAccountSelector } from "./tiktok-account-selector";
 
 const navItems = [
   { label: "Dashboard", icon: House, id: "dashboard", href: "/dashboard" },
-  { label: "Trending", icon: TrendUp, id: "trending", href: "/trending" },
   { label: "Competitors", icon: UsersThree, id: "competitors", href: "/competitors" },
   { label: "Partnerships", icon: Briefcase, id: "brand-deals", href: "/brand-deals" },
 ] as const;
@@ -167,9 +165,7 @@ export function Sidebar() {
                   ? pathname === "/dashboard"
                   : item.id === "competitors"
                     ? pathname.startsWith("/competitors")
-                    : item.id === "brand-deals"
-                      ? pathname.startsWith("/brand-deals")
-                      : pathname === item.href
+                    : pathname.startsWith("/brand-deals")
               }
               onClick={() => router.push(item.href)}
             />

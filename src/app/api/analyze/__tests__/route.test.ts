@@ -455,6 +455,149 @@ describe("POST /api/analyze — provenance INSERT (PIPE-05, PIPE-06, CACHE-01)",
 });
 
 // =====================================================
+// Phase 3 (260528-nsb) — Storage cleanup on early-return branches (Mode A fix)
+// =====================================================
+
+describe("POST /api/analyze — storage cleanup on cache-hit (Mode A fix)", () => {
+  const videoInput = {
+    input_mode: "video_upload",
+    video_storage_path: "user-x/abc.mp4",
+    content_text: "This is a test piece of content for analysis.",
+    content_type: "video",
+  };
+
+  it("cache-hit cleans up uploaded storage for opted-out user", async () => {
+    (lookupPredictionCache as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      fakeFinalResult
+    );
+    // opted-out by default (storage_retention_opted_in = false per mock)
+    const req = makeRequest(videoInput, { Accept: "application/json" });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    expect(mockStorageRemove).toHaveBeenCalledWith(["user-x/abc.mp4"]);
+  });
+
+  it("cache-hit skips storage cleanup for opted-in user (retention active)", async () => {
+    (lookupPredictionCache as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      fakeFinalResult
+    );
+    // Override the creator_profiles mock to return opted-in
+    const { createClient } = await import("@/lib/supabase/server");
+    (createClient as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "user-1" } }, error: null }),
+      },
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            single: vi.fn(() =>
+              Promise.resolve({ data: { virtuna_tier: "pro" }, error: null })
+            ),
+            maybeSingle: vi.fn(() =>
+              // opted-in = true
+              Promise.resolve({ data: { storage_retention_opted_in: true }, error: null })
+            ),
+          })),
+        })),
+      })),
+    });
+
+    const req = makeRequest(videoInput, { Accept: "application/json" });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    expect(mockStorageRemove).not.toHaveBeenCalled();
+  });
+
+  it("rate-limit (429) cleans up uploaded storage for opted-out user", async () => {
+    // Simulate rate limit: user subscription is "free" (50/day limit), usage already at 50.
+    // Override the auth client to return free tier + maxed usage count.
+    const { createClient } = await import("@/lib/supabase/server");
+    (createClient as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: "user-1" } }, error: null }),
+      },
+      from: vi.fn((table: string) => {
+        if (table === "user_subscriptions") {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                single: vi.fn(() =>
+                  Promise.resolve({ data: { virtuna_tier: "free" }, error: null })
+                ),
+              })),
+            })),
+          };
+        }
+        if (table === "creator_profiles") {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                maybeSingle: vi.fn(() =>
+                  Promise.resolve({ data: { storage_retention_opted_in: false }, error: null })
+                ),
+              })),
+            })),
+          };
+        }
+        return {};
+      }),
+    });
+    // Override service client to return usage count >= free limit (50).
+    const { createServiceClient } = await import("@/lib/supabase/service");
+    (createServiceClient as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+      from: vi.fn((table: string) => {
+        if (table === "usage_tracking") {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                eq: vi.fn(() => ({
+                  eq: vi.fn(() => ({
+                    single: vi.fn(() =>
+                      Promise.resolve({ data: { analysis_count: 50 }, error: null })
+                    ),
+                  })),
+                })),
+              })),
+            })),
+            upsert: vi.fn(() => Promise.resolve({ error: null })),
+          };
+        }
+        if (table === "analysis_results") {
+          return { insert: mockInsert, upsert: mockUpsert, update: mockUpdate };
+        }
+        return {};
+      }),
+      storage: {
+        from: vi.fn(() => ({ remove: mockStorageRemove })),
+      },
+      rpc: vi.fn(() => Promise.resolve({ error: null })),
+    });
+
+    const req = makeRequest(videoInput, { Accept: "application/json" });
+    const res = await POST(req);
+    expect(res.status).toBe(429);
+    expect(mockStorageRemove).toHaveBeenCalledWith(["user-x/abc.mp4"]);
+  });
+
+  it("pipeline-throw (JSON branch) cleans up uploaded storage for opted-out user", async () => {
+    (runPredictionPipeline as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error("Gemini unavailable")
+    );
+
+    const req = makeRequest(videoInput, { Accept: "application/json" });
+    // The outer catch (not JSON branch) handles this — validated IS available
+    // because Zod parse succeeds. cleanupUploadedStorage runs in the SSE inner catch.
+    // For JSON branch: pipeline throws → outer catch handles → validated IS set.
+    // Note: this test exercises the outer catch path (after validated is set).
+    const res = await POST(req);
+    expect(res.status).toBe(500);
+    expect(mockStorageRemove).toHaveBeenCalledWith(["user-x/abc.mp4"]);
+  });
+});
+
+// =====================================================
 // Fix 1 (05-ux) — persist pipeline result via UPDATE before event:complete
 // =====================================================
 

@@ -161,10 +161,10 @@ export async function GET(request: Request) {
     const hasMore = (outcomes?.length ?? 0) > limit;
     const items = (outcomes ?? []).slice(0, limit);
 
-    const lastItem = items[items.length - 1];
+    const lastItem = items[items.length - 1] as Record<string, unknown> | undefined;
     const nextCursor =
       hasMore && lastItem
-        ? encodeCursor(lastItem.created_at!, lastItem.id)
+        ? encodeCursor((lastItem['created_at'] as string | null ?? lastItem['captured_at'] as string | null) ?? '', lastItem['id'] as string)
         : null;
 
     return Response.json({

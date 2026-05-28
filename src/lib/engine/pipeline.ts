@@ -36,7 +36,7 @@ import {
 import type { StageEventCallback, StageEventWave } from "./events";
 import { emitStageStart, emitStageEnd } from "./events";
 import { runWave3 } from "./wave3";
-import { runBenchmarkRetrieval } from "./retrieval/retrieval-stage";
+import { createEmptyRetrievalResult } from "./retrieval-empty";
 import { runPlatformFit } from "./wave4/platform-fit";
 // Phase 3 (Plan 08) — Pass 2 orchestrator + filmstrip trigger
 import { runWave3Pass2, type Wave3Pass2Outcome } from "./wave3/pass2";
@@ -250,17 +250,6 @@ const DEFAULT_TREND_ENRICHMENT: TrendEnrichment = {
   matched_trends: [],
   trend_context: "Trend data unavailable.",
   hashtag_relevance: 0,
-};
-
-// Phase 8 — Wave-1 retrieval graceful-empty fallback (matches BenchmarkRetrievalResult shape).
-// Used when runBenchmarkRetrieval throws an unexpected error past its own outer catch
-// (defense in depth per T-08-16 — the stage itself returns this shape, but pipeline
-// wraps in try/catch to satisfy BENCH-05 even if the stage's catch fails).
-const DEFAULT_RETRIEVAL_RESULT: BenchmarkRetrievalResult = {
-  evidence: [],
-  score: null,
-  availability: false,
-  cost_cents: 0,
 };
 
 const DEFAULT_GEMINI_RESULT: PipelineResult["geminiResult"] = {
@@ -693,42 +682,15 @@ export async function runPredictionPipeline(
     }
   })();
 
-  // Stage 6.5: Benchmark Retrieval -- NON-CRITICAL (Phase 8 D-09 graceful degradation).
-  // retrieval-stage.ts SELF-EMITS stage_start/stage_end events; we do NOT wrap in
-  // timed() here (would double-emit per PATTERNS Critical Cross-File Constraint #3).
-  // Outer try/catch is defense-in-depth — the stage's own catch returns
-  // GRACEFUL_EMPTY, but if anything escapes (e.g. type-coercion bug at call site)
-  // we still surface as a warning rather than break the pipeline (BENCH-05).
-  const retrievalPromise = (async (): Promise<BenchmarkRetrievalResult> => {
-    try {
-      return await runBenchmarkRetrieval({
-        payload,
-        creatorContext,
-        wave0Result,
-        supabase,
-        onEvent: onStageEvent,
-        requestId,
-      });
-    } catch (error) {
-      Sentry.captureException(error, {
-        tags: { stage: "retrieval", requestId },
-      });
-      warnings.push(
-        `Retrieval unavailable: ${error instanceof Error ? error.message : String(error)}`,
-      );
-      timings.push({ stage: "retrieval", duration_ms: 0 });
-      return DEFAULT_RETRIEVAL_RESULT;
-    }
-  })();
-
   // Run Wave 1 in parallel -- all stages gracefully degrade (HARD-03).
   // Phase 4: the third slot (creatorPromise) returns the same value as the
   // outer-scope `creatorContext` (pre-fetched above), so we discard the array
   // slot to avoid redeclaration.
   // Phase 6: 2nd slot is audioFingerprintPromise (renamed from audio_analysis per D-A4);
-  // returns AudioFingerprintResult | null. Phase 8: 5th slot is retrievalPromise
-  // (D-09 — Wave 1 sibling, graceful-degradation BenchmarkRetrievalResult).
-  const [geminiResult, audioFingerprintResult, , ruleResult, retrievalResult] = await timed(
+  // returns AudioFingerprintResult | null.
+  // Phase 1 (MVP Cut D-09/D-10): retrieval removed from Wave 1; synthesized empty result
+  // assigned from createEmptyRetrievalResult() helper — single swap point for M2 restore.
+  const [geminiResult, audioFingerprintResult, , ruleResult] = await timed(
     "wave_1",
     timings,
     () =>
@@ -737,16 +699,16 @@ export async function runPredictionPipeline(
         audioFingerprintPromise,
         creatorPromise,
         rulePromise,
-        retrievalPromise,
       ]),
     { wave: 1, onEvent: onStageEvent }
   );
+  const retrievalResult = createEmptyRetrievalResult();
 
   Sentry.addBreadcrumb({
     category: "engine.pipeline",
     message: "Wave 1 complete",
     level: "info",
-    data: { requestId, stages: ["gemini", "audio_fingerprint", "creator", "rules", "retrieval"] },
+    data: { requestId, stages: ["gemini", "audio_fingerprint", "creator", "rules"] },
   });
 
   // Format creator context for DeepSeek prompt injection

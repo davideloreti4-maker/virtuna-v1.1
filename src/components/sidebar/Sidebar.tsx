@@ -21,7 +21,6 @@ import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 import {
   Plus,
   House,
-  TrendUp,
   SlidersHorizontal,
   Star,
   ClockCountdown,
@@ -179,7 +178,6 @@ export function Sidebar() {
   }, [toggleCollapsed]);
 
   const isOnBoard = pathname.startsWith("/analyze");
-  const isOnTrending = pathname.startsWith("/trending");
   const isOnSettings = pathname.startsWith("/settings");
 
   const [accountOpen, setAccountOpen] = useState(false);
@@ -314,13 +312,6 @@ export function Sidebar() {
                 isActive={isOnBoard}
                 isCollapsed={isCollapsed}
                 onClick={() => router.push("/analyze")}
-              />
-              <NavItem
-                icon={TrendUp}
-                label="Trending"
-                isActive={isOnTrending}
-                isCollapsed={isCollapsed}
-                onClick={() => router.push("/trending")}
               />
               <NavItem
                 icon={SlidersHorizontal}

@@ -179,14 +179,18 @@ export type Database = {
       }
       analysis_results: {
         Row: {
+          analysis_override: Json | null
+          anti_virality_gated: boolean | null
           audio_description: string | null
           behavioral_predictions: Json | null
           confidence: number | null
+          confidence_label: string | null
           content_hash: string | null
           content_text: string
           content_type: string
           conversation_themes: Json | null
           cost_cents: number | null
+          counterfactuals: Json | null
           created_at: string | null
           deepseek_model: string | null
           deleted_at: string | null
@@ -197,40 +201,45 @@ export type Database = {
           gemini_score: number | null
           has_video: boolean | null
           heatmap: Json | null
+          hook_decomposition: Json | null
           id: string
           input_mode: string | null
           insights: string | null
           latency_ms: number | null
           ml_score: number | null
+          optimal_post_override: Json | null
           overall_score: number | null
           personas: Json | null
+          project_id: string | null
           reasoning: string | null
           retrieval_evidence: Json | null
           retrieval_score: number | null
           rule_score: number | null
           score_weights: Json | null
+          script_result: Json | null
           signal_availability: Json | null
           society_id: string | null
           suggestions: Json | null
           trend_score: number | null
           updated_at: string | null
-          project_id: string | null
           user_id: string
-          script_result: Json | null
-          optimal_post_override: Json | null
           variants: Json | null
           video_storage_path: string | null
           warnings: string[] | null
         }
         Insert: {
+          analysis_override?: Json | null
+          anti_virality_gated?: boolean | null
           audio_description?: string | null
           behavioral_predictions?: Json | null
           confidence?: number | null
+          confidence_label?: string | null
           content_hash?: string | null
           content_text: string
           content_type: string
           conversation_themes?: Json | null
           cost_cents?: number | null
+          counterfactuals?: Json | null
           created_at?: string | null
           deepseek_model?: string | null
           deleted_at?: string | null
@@ -241,11 +250,13 @@ export type Database = {
           gemini_score?: number | null
           has_video?: boolean | null
           heatmap?: Json | null
-          id?: string
+          hook_decomposition?: Json | null
+          id: string
           input_mode?: string | null
           insights?: string | null
           latency_ms?: number | null
           ml_score?: number | null
+          optimal_post_override?: Json | null
           overall_score?: number | null
           personas?: Json | null
           project_id?: string | null
@@ -254,27 +265,30 @@ export type Database = {
           retrieval_score?: number | null
           rule_score?: number | null
           score_weights?: Json | null
+          script_result?: Json | null
           signal_availability?: Json | null
           society_id?: string | null
           suggestions?: Json | null
           trend_score?: number | null
           updated_at?: string | null
           user_id: string
-          script_result?: Json | null
-          optimal_post_override?: Json | null
           variants?: Json | null
           video_storage_path?: string | null
           warnings?: string[] | null
         }
         Update: {
+          analysis_override?: Json | null
+          anti_virality_gated?: boolean | null
           audio_description?: string | null
           behavioral_predictions?: Json | null
           confidence?: number | null
+          confidence_label?: string | null
           content_hash?: string | null
           content_text?: string
           content_type?: string
           conversation_themes?: Json | null
           cost_cents?: number | null
+          counterfactuals?: Json | null
           created_at?: string | null
           deepseek_model?: string | null
           deleted_at?: string | null
@@ -285,11 +299,13 @@ export type Database = {
           gemini_score?: number | null
           has_video?: boolean | null
           heatmap?: Json | null
+          hook_decomposition?: Json | null
           id?: string
           input_mode?: string | null
           insights?: string | null
           latency_ms?: number | null
           ml_score?: number | null
+          optimal_post_override?: Json | null
           overall_score?: number | null
           personas?: Json | null
           project_id?: string | null
@@ -298,14 +314,13 @@ export type Database = {
           retrieval_score?: number | null
           rule_score?: number | null
           score_weights?: Json | null
+          script_result?: Json | null
           signal_availability?: Json | null
           society_id?: string | null
           suggestions?: Json | null
           trend_score?: number | null
           updated_at?: string | null
           user_id?: string
-          script_result?: Json | null
-          optimal_post_override?: Json | null
           variants?: Json | null
           video_storage_path?: string | null
           warnings?: string[] | null
@@ -605,6 +620,33 @@ export type Database = {
           },
         ]
       }
+      creator_persona_weights: {
+        Row: {
+          cross_niche: number
+          fyp: number
+          loyalist: number
+          niche: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          cross_niche?: number
+          fyp?: number
+          loyalist?: number
+          niche?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          cross_niche?: number
+          fyp?: number
+          loyalist?: number
+          niche?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       creator_profiles: {
         Row: {
           analysis_count: number
@@ -873,64 +915,52 @@ export type Database = {
       }
       outcomes: {
         Row: {
-          actual_engagement_rate: number | null
-          actual_likes: number | null
-          actual_score: number | null
-          actual_shares: number | null
-          actual_views: number | null
           analysis_id: string
-          created_at: string | null
-          deleted_at: string | null
-          delta: number | null
+          captured_at: string | null
+          creator_note: string | null
+          creator_rating: number | null
           id: string
-          platform: string | null
-          platform_post_url: string | null
-          predicted_score: number | null
-          reported_at: string | null
-          updated_at: string | null
-          user_id: string
+          posted_at: string | null
+          real_comment_pct: number | null
+          real_completion_pct: number | null
+          real_save_pct: number | null
+          real_share_pct: number | null
+          real_views: number | null
+          source: string
         }
         Insert: {
-          actual_engagement_rate?: number | null
-          actual_likes?: number | null
-          actual_score?: number | null
-          actual_shares?: number | null
-          actual_views?: number | null
           analysis_id: string
-          created_at?: string | null
-          deleted_at?: string | null
-          delta?: number | null
+          captured_at?: string | null
+          creator_note?: string | null
+          creator_rating?: number | null
           id?: string
-          platform?: string | null
-          platform_post_url?: string | null
-          predicted_score?: number | null
-          reported_at?: string | null
-          updated_at?: string | null
-          user_id: string
+          posted_at?: string | null
+          real_comment_pct?: number | null
+          real_completion_pct?: number | null
+          real_save_pct?: number | null
+          real_share_pct?: number | null
+          real_views?: number | null
+          source?: string
         }
         Update: {
-          actual_engagement_rate?: number | null
-          actual_likes?: number | null
-          actual_score?: number | null
-          actual_shares?: number | null
-          actual_views?: number | null
           analysis_id?: string
-          created_at?: string | null
-          deleted_at?: string | null
-          delta?: number | null
+          captured_at?: string | null
+          creator_note?: string | null
+          creator_rating?: number | null
           id?: string
-          platform?: string | null
-          platform_post_url?: string | null
-          predicted_score?: number | null
-          reported_at?: string | null
-          updated_at?: string | null
-          user_id?: string
+          posted_at?: string | null
+          real_comment_pct?: number | null
+          real_completion_pct?: number | null
+          real_save_pct?: number | null
+          real_share_pct?: number | null
+          real_views?: number | null
+          source?: string
         }
         Relationships: [
           {
             foreignKeyName: "outcomes_analysis_id_fkey"
             columns: ["analysis_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "analysis_results"
             referencedColumns: ["id"]
           },
@@ -961,15 +991,7 @@ export type Database = {
           name?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "projects_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       referral_clicks: {
         Row: {
@@ -1668,6 +1690,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_filmstrips: { Args: never; Returns: undefined }
       increment_creator_analysis_count: {
         Args: { p_user_id: string }
         Returns: undefined
@@ -1874,4 +1897,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

@@ -209,19 +209,6 @@ vi.mock("@/lib/supabase/service", () => ({
   })),
 }));
 
-// Phase 8 — retrieval-stage mock (vi.hoisted so vi.mock factory can reference it).
-const { mockRunBenchmarkRetrieval } = vi.hoisted(() => ({
-  mockRunBenchmarkRetrieval: vi.fn(async () => ({
-    evidence: [],
-    score: 0.5,
-    availability: true,
-    cost_cents: 0.001,
-  })),
-}));
-vi.mock("@/lib/engine/retrieval/retrieval-stage", () => ({
-  runBenchmarkRetrieval: mockRunBenchmarkRetrieval,
-}));
-
 // Phase 9 — platform-fit mock (vi.hoisted so vi.mock factory can reference it).
 const { mockRunPlatformFit } = vi.hoisted(() => ({
   mockRunPlatformFit: vi.fn(async () => [
@@ -880,14 +867,10 @@ describe("Phase 4 — Wave 0 + pre_creator_context", () => {
 });
 
 // =====================================================
-// Phase 8 — Wave 1 retrieval sibling (Plan 04 Task 2)
+// Phase 1 (MVP Cut) — retrievalResult synthesized from helper (D-09/D-10)
 // =====================================================
 
-// retrieval-stage is mocked at the top of the file via vi.hoisted (see top of file).
-// Note: this `vi.mock` call must execute before runPredictionPipeline is imported,
-// so we rely on Vitest's hoisting + the matching vi.hoisted block above.
-
-describe("Phase 8 — Wave 1 retrieval sibling", () => {
+describe("Phase 1 — retrievalResult from createEmptyRetrievalResult helper", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetCircuitBreaker();
@@ -913,17 +896,9 @@ describe("Phase 8 — Wave 1 retrieval sibling", () => {
       creator_profiles: { data: null, error: null },
       scraped_videos: { data: [], error: null },
     };
-
-    // Default retrieval mock — non-null result with one evidence item
-    mockRunBenchmarkRetrieval.mockResolvedValue({
-      evidence: [],
-      score: 0.5,
-      availability: true,
-      cost_cents: 0.001,
-    });
   });
 
-  it("PipelineResult includes retrievalResult with full BenchmarkRetrievalResult shape", async () => {
+  it("PipelineResult includes retrievalResult matching empty helper shape (post-strip D-10)", async () => {
     const result = await runPredictionPipeline(input);
 
     expect(result.retrievalResult).toBeDefined();
@@ -931,39 +906,11 @@ describe("Phase 8 — Wave 1 retrieval sibling", () => {
     expect(result.retrievalResult).toHaveProperty("score");
     expect(result.retrievalResult).toHaveProperty("availability");
     expect(result.retrievalResult).toHaveProperty("cost_cents");
-    expect(result.retrievalResult.score).toBe(0.5);
-    expect(result.retrievalResult.availability).toBe(true);
-  });
-
-  it("runBenchmarkRetrieval invoked once with payload + creatorContext + wave0Result + supabase + onEvent + requestId", async () => {
-    mockRunBenchmarkRetrieval.mockClear();
-
-    await runPredictionPipeline(input, { requestId: "ret-test-id" });
-
-    expect(mockRunBenchmarkRetrieval).toHaveBeenCalledTimes(1);
-    const args = (mockRunBenchmarkRetrieval.mock.calls[0] as unknown as [Record<string, unknown>])?.[0];
-    expect(args).toBeDefined();
-    expect(args!.payload).toBeDefined();
-    expect(args!.creatorContext).toBeDefined();
-    expect(args!.wave0Result).toBeDefined();
-    expect(args!.supabase).toBeDefined();
-    expect(args!.requestId).toBe("ret-test-id");
-  });
-
-  it("retrieval failure pushes warning + returns empty BenchmarkRetrievalResult (graceful degradation)", async () => {
-    mockRunBenchmarkRetrieval.mockRejectedValueOnce(
-      new Error("RPC unreachable"),
-    );
-
-    const result = await runPredictionPipeline(input);
-
+    // Post-strip: helper always returns empty shape
     expect(result.retrievalResult.evidence).toEqual([]);
     expect(result.retrievalResult.score).toBeNull();
     expect(result.retrievalResult.availability).toBe(false);
     expect(result.retrievalResult.cost_cents).toBe(0);
-    expect(
-      result.warnings.some((w) => w.includes("Retrieval unavailable")),
-    ).toBe(true);
   });
 });
 
