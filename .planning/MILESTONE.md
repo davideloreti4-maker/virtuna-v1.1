@@ -19,13 +19,17 @@ Engine Foundation (M1) ── merged 2026-05-24 ── main
                                                 │
                   ┌─────────────────────────────┼────────────────────────┐
                   ▼                             ▼                        │
-        Result Surface (M2-I)        Engine Hardening (this)     (later) Iteration & Niche → Compounding
+        Result Surface (M2-I)        Engine Hardening (this)     (after both) M2-II: Iteration & Niche
         ~/virtuna-result-surface     ~/virtuna-engine-hardening
         UX magic moment              Engine debt + verification
-        (parallel session)           (this session)
+        ACTIVE                       ARCHIVED (2026-05-25, 70%)
 ```
 
-The two parallel milestones merge independently to `main`. M2-II and M2-III fork only after both are landed.
+The two parallel milestones merge independently to `main`. M2-II forks after both are landed. M2-III (Compounding Intelligence) has been **restructured into M3** — see M2/M3 note below.
+
+> **⚠ Amendment (2026-05-27) — M2/M3 restructure**
+>
+> M2-III no longer exists. M2 = M2-I + M2-II only. All compounding intelligence work + remaining engine debt (audio fingerprint, embedder, D-F4 cron deferred from this milestone) moves to **M3 (Engine Quality + Compounding Intelligence)**. Engine Hardening's deferred audio/embed items are M3 scope.
 
 ## Scope (in)
 
