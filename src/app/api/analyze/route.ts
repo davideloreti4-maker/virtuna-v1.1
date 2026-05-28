@@ -398,10 +398,20 @@ export async function POST(request: Request) {
     // No onStageEvent — JSON callers don't get stage events.
     // -------------------------------------------------------
     if (wantsJSON) {
-      const pipelineResult = await runPredictionPipeline(validated, {
-        requestId,
-        bypassCache,
-      });
+      let pipelineResult;
+      try {
+        pipelineResult = await runPredictionPipeline(validated, {
+          requestId,
+          bypassCache,
+        });
+      } catch (pipelineError) {
+        // Phase 3 (260528-nsb): cleanup orphan on JSON-branch pipeline throw.
+        cleanupUploadedStorage(service, validated, retentionOptedIn, log);
+        const message =
+          pipelineError instanceof Error ? pipelineError.message : "Pipeline failed";
+        log.error("Pipeline error (json)", { error: message });
+        return Response.json({ error: message }, { status: 500 });
+      }
       const result = await aggregateScores(pipelineResult, undefined);
 
       const ruleContributions = pipelineResult.ruleResult.matched_rules.map(
