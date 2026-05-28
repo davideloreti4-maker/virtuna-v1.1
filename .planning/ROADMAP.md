@@ -175,7 +175,7 @@ Plans:
 **Plans:** 6 plans (4 waves)
 
 Plans:
-- [ ] 06-01-PLAN.md — Wave 1: [BLOCKING] migrations + Supabase schema push + shared utils (script-utils, optimal-post-time) + types/constants + TELEMETRY extension
+- [x] 06-01-PLAN.md — Wave 1: [BLOCKING] migrations + Supabase schema push + shared utils (script-utils, optimal-post-time) + types/constants + TELEMETRY extension
 - [ ] 06-02-PLAN.md — Wave 2: GET /api/analyze/[id]/script endpoint (transformation + cache write) + 10-case test matrix
 - [ ] 06-03-PLAN.md — Wave 2: POST /api/analyze/[id]/optimal-post-override endpoint (Zod-validated, RLS+defense-in-depth) + 6-case test matrix
 - [ ] 06-04-PLAN.md — Wave 3: Script UI components (CopyButton, ScriptBody, ScriptInspectorTrigger, ScriptEmptyState) + use-script TanStack hook
