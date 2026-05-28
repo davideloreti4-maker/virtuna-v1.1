@@ -140,17 +140,17 @@ Plans:
 
 **Goal:** Populate the remaining group nodes with their content.
 
-**Plans:** 10 plans (5 waves)
+**Plans:** 4/10 plans executed
 
 Plans:
-- [ ] 05-01-PLAN.md — Wave 0 foundation: install react-markdown + rehype-sanitize, refactor Board.tsx AV check into cross-group-state.ts selector, create 13 Wave 0 test stubs + PredictionResult fixtures
+- [x] 05-01-PLAN.md — Wave 0 foundation: install react-markdown + rehype-sanitize, refactor Board.tsx AV check into cross-group-state.ts selector, create 13 Wave 0 test stubs + PredictionResult fixtures
 - [ ] 05-02-PLAN.md — Verdict shell: VerdictNode + PercentileChip + AntiViralityHeader (orange band + Post-anyway localStorage override) + types/constants
 - [ ] 05-03-PLAN.md — WhyVerdictCollapsible: 4-bucket O-2 assembly + react-markdown (XSS-safe via rehype-sanitize) + TopFixesList for AV (camera-pan timestamp pills)
 - [ ] 05-04-PLAN.md — VsHistoryCollapsible: 2 horizontal Recharts BarCharts + empty state + /api/analyze/[id]/comparisons RLS-gated route + useComparisons TanStack hook
-- [ ] 05-05-PLAN.md — Actions shell: ActionsNode 2x2 grid with AV grow-to-hero + PlaceholderCard (dashed border) + Reshoot/OptimalPost/Share slot wrappers
+- [x] 05-05-PLAN.md — Actions shell: ActionsNode 2x2 grid with AV grow-to-hero + PlaceholderCard (dashed border) + Reshoot/OptimalPost/Share slot wrappers
 - [ ] 05-06-PLAN.md — SimilarVideosCard + SimilarVideoCardCompact (5 compact rows) + TikTok embed via Radix Dialog portal + empty state
-- [ ] 05-07-PLAN.md — Hook decomp node: 4-bar GlassProgress + weakest highlight + INVERTED-polarity cognitive load chip + HookDecompInspector Sheet
-- [ ] 05-08-PLAN.md — Emotion arc node: Recharts AreaChart with coral linearGradient + ReferenceDot peaks/valleys + perf-tier degradation + EmotionArcInspector
+- [x] 05-07-PLAN.md — Hook decomp node: 4-bar GlassProgress + weakest highlight + INVERTED-polarity cognitive load chip + HookDecompInspector Sheet
+- [x] 05-08-PLAN.md — Emotion arc node: Recharts AreaChart with coral linearGradient + ReferenceDot peaks/valleys + perf-tier degradation + EmotionArcInspector
 - [ ] 05-09-PLAN.md — Integration: ContentAnalysisFrame horizontal split (480px Hook + 872px Emotion) + Board.tsx render switch wires VerdictNode/ActionsNode/ContentAnalysisFrame
 - [ ] 05-10-PLAN.md — Manual-verify checkpoint: 12-step visual + functional gate (Verdict / Actions / Content Analysis + AV ripple + reduced-motion)
 
@@ -172,13 +172,15 @@ Plans:
 
 **Goal:** Turn engine output into actionable creator surface (script + post time UI). Refines Actions group with these two nodes.
 
-**Plans (planning will refine):**
-- 6.1 — `/api/analyze/<id>/script` endpoint (pure transformation of counterfactuals + A/B variants)
-- 6.2 — Script result caching (alongside analysis result row)
-- 6.3 — Reshoot script node inside Actions group (4 sections + per-section + copy-all)
-- 6.4 — Script empty state (high-confidence case)
-- 6.5 — Optimal post time node inside Actions group (day/time/reasoning, timezone-aware)
-- 6.6 — Niche-level reasoning surface
+**Plans:** 6 plans (4 waves)
+
+Plans:
+- [ ] 06-01-PLAN.md — Wave 1: [BLOCKING] migrations + Supabase schema push + shared utils (script-utils, optimal-post-time) + types/constants + TELEMETRY extension
+- [ ] 06-02-PLAN.md — Wave 2: GET /api/analyze/[id]/script endpoint (transformation + cache write) + 10-case test matrix
+- [ ] 06-03-PLAN.md — Wave 2: POST /api/analyze/[id]/optimal-post-override endpoint (Zod-validated, RLS+defense-in-depth) + 6-case test matrix
+- [ ] 06-04-PLAN.md — Wave 3: Script UI components (CopyButton, ScriptBody, ScriptInspectorTrigger, ScriptEmptyState) + use-script TanStack hook
+- [ ] 06-05-PLAN.md — Wave 3: Optimal-post UI components (OptimalPostCard, OptimalPostEditSheet, OptimalPostSourcePill) + use-optimal-post-override mutation
+- [ ] 06-06-PLAN.md — Wave 4: Wire ActionsReshootHeroSlot + ActionsOptimalPostSlot inside ActionsNode + update ActionsNode.test.tsx testids + patch database.types.ts
 
 **Success criteria:**
 - Script endpoint returns structured script in <200ms p95
