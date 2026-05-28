@@ -5,6 +5,11 @@ import { fixtures } from '../../verdict/__tests__/fixtures/prediction-result';
 
 vi.mock('@/lib/logger', () => ({ logger: { info: vi.fn(), event: vi.fn() } }));
 vi.mock('@/hooks/usePrefersReducedMotion', () => ({ usePrefersReducedMotion: () => false }));
+// ActionsNode hydrates from permalink REST cache via usePermalinkAnalysis.
+// Stub it so tests don't need a QueryClientProvider + Next router param.
+vi.mock('@/hooks/queries/use-permalink-analysis', () => ({
+  usePermalinkAnalysis: () => ({ id: null, data: null, isLoading: false }),
+}));
 // Stub TikTokEmbed + Dialog so SimilarVideosCard (wired in Plan 5.6) renders without side-effects.
 vi.mock('@/components/trending/tiktok-embed', () => ({
   TikTokEmbed: () => <div data-testid="tiktok-embed-stub" />,

@@ -16,6 +16,22 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 
+// Sidebar instantiates a Supabase browser client at module load; without env
+// vars the real createClient throws. Stub it out — the a11y check doesn't
+// exercise any auth flows.
+vi.mock('@/lib/supabase/client', () => ({
+  createClient: () => ({
+    auth: {
+      getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      signOut: () => Promise.resolve({ error: null }),
+    },
+    from: () => ({
+      select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
+    }),
+  }),
+}));
+
 import { Sidebar } from '../Sidebar';
 
 describe('Sidebar a11y', () => {
