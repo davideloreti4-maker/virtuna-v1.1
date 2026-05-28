@@ -310,7 +310,20 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
             weightedCompletionPct={recomputedMetrics.weighted_completion_pct || (result?.weighted_completion_pct ?? 0)}
           />
 
-          {/* D-01: HeatmapDrawer — collapsed by default (D-03) */}
+          {/* Empty-state: shown when no persona data available (heatmap absent or no personas) */}
+          {!isStreaming && (!result?.heatmap?.personas?.length) && (
+            <div
+              className="flex items-center justify-center py-3"
+              data-testid="audience-empty-state"
+              aria-live="polite"
+            >
+              <p className="text-center text-xs italic text-foreground-muted">
+                Persona data isn&apos;t available for this analysis
+              </p>
+            </div>
+          )}
+
+          {/* D-01: HeatmapDrawer — collapsed by default (D-03) — hidden when no personas */}
           <HeatmapDrawer
             heatmap={result?.heatmap ?? null}
             rowStates={rowStates}
