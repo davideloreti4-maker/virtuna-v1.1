@@ -1,6 +1,7 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { nanoid } from 'nanoid';
+import { useRouter } from 'next/navigation';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ContentForm, type ContentFormData } from '@/components/app/content-form';
 import { useBoardStore } from '@/stores/board-store';
@@ -33,6 +34,22 @@ export function InputDrawer() {
   const isDesktop = useIsDesktop();
   const recent = useSidebarRecent();
   const stream = useAnalysisStream();
+  const router = useRouter();
+
+  // Fix 2 (05-ux): Navigate to /analyze/[id] when analysisId transitions null → string.
+  // This stops the multi-instance state mismatch: Board's permalinkQuery loads the new
+  // row, all downstream hooks hydrate from TanStack cache, and URL change gives visual
+  // "something happened" feedback.
+  // Initialize the ref from the INITIAL stream value (not null) so we don't nav on
+  // permalink-replay mounts where analysisId is already set from opts.initialData.
+  const prevAnalysisIdRef = useRef<string | null>(stream.analysisId);
+  useEffect(() => {
+    const id = stream.analysisId;
+    if (id && prevAnalysisIdRef.current === null) {
+      router.push(`/analyze/${id}`);
+    }
+    prevAnalysisIdRef.current = id;
+  }, [stream.analysisId, router]);
 
   const open = boardState === 'edit-input';
   const recentItems = (recent.data?.pages?.[0] ?? []).slice(0, 3);

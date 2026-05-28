@@ -1,6 +1,6 @@
 /** @vitest-environment happy-dom */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useBoardStore } from '@/stores/board-store';
 import { InputDrawer } from '../InputDrawer';
@@ -17,12 +17,28 @@ vi.mock('@/lib/supabase/client', () => ({
         }),
       }),
     }),
+    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } }) },
+    storage: { from: () => ({ upload: vi.fn().mockResolvedValue({ error: null }) }) },
   }),
 }));
 
-// Mock analysis stream hook
+// Mutable stream state — allows per-test analysisId override
+const mockStreamState = {
+  start: vi.fn().mockResolvedValue(undefined),
+  phase: 'idle' as string,
+  analysisId: null as string | null,
+};
+
 vi.mock('@/hooks/queries/use-analysis-stream', () => ({
-  useAnalysisStream: () => ({ start: vi.fn().mockResolvedValue(undefined), phase: 'idle' }),
+  useAnalysisStream: () => mockStreamState,
+}));
+
+// Fix 2 — mock useRouter to capture push calls
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockPush }),
+  useParams: () => ({}),
+  useSearchParams: () => new URLSearchParams(''),
 }));
 
 // Mock history to return empty list for most tests
@@ -42,6 +58,9 @@ describe('InputDrawer', () => {
       preDrawerState: null,
       inputDrawerOpen: false,
     });
+    mockStreamState.analysisId = null;
+    mockStreamState.phase = 'idle';
+    mockPush.mockClear();
   });
 
   it('hidden when board state is not edit-input', () => {
@@ -68,5 +87,35 @@ describe('InputDrawer', () => {
     });
     render(withProvider(<InputDrawer />));
     expect(screen.getByText('No recent inputs yet')).toBeInTheDocument();
+  });
+
+  // Fix 2 (05-ux): router.push called when analysisId transitions null → string
+  it('Fix 2: calls router.push(/analyze/[id]) when analysisId transitions null to a string', async () => {
+    const { rerender } = render(withProvider(<InputDrawer />));
+
+    // Initially no push — analysisId is null
+    expect(mockPush).not.toHaveBeenCalled();
+
+    // Simulate stream emitting analysisId (POST resolves, event:started received)
+    await act(async () => {
+      mockStreamState.analysisId = 'abc123';
+      rerender(withProvider(<InputDrawer />));
+    });
+
+    expect(mockPush).toHaveBeenCalledWith('/analyze/abc123');
+    expect(mockPush).toHaveBeenCalledTimes(1);
+  });
+
+  it('Fix 2: does NOT call router.push again if analysisId stays the same', async () => {
+    mockStreamState.analysisId = 'abc123';
+    const { rerender } = render(withProvider(<InputDrawer />));
+
+    // analysisId was already set before first render — ref starts as 'abc123', not null
+    // No null→string transition occurred
+    await act(async () => {
+      rerender(withProvider(<InputDrawer />));
+    });
+
+    expect(mockPush).not.toHaveBeenCalled();
   });
 });
