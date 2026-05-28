@@ -174,13 +174,25 @@ export const useBoardStore = create<BoardState & BoardActions>((set) => ({
     }),
 
   finishStreaming: () =>
+    // Idle → complete permitted for permalink replay (user lands on
+    // /analyze/[id] directly; no streaming phase happened). Keeps streaming
+    // → complete identical to before.
     set((s) => ({
-      boardState: s.boardState === 'streaming' ? 'complete' : s.boardState,
+      boardState:
+        s.boardState === 'streaming' || s.boardState === 'idle'
+          ? 'complete'
+          : s.boardState,
     })),
 
   triggerAntiVirality: () =>
+    // Same permalink-replay relaxation: allow idle → anti-virality so the
+    // cross-group ripple lights up Audience + Actions even when no streaming
+    // phase preceded.
     set((s) => ({
-      boardState: s.boardState === 'complete' ? 'anti-virality' : s.boardState,
+      boardState:
+        s.boardState === 'complete' || s.boardState === 'idle'
+          ? 'anti-virality'
+          : s.boardState,
     })),
 
   openInputDrawer: () =>

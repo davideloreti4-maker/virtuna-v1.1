@@ -22,7 +22,10 @@ vi.mock('next/dynamic', () => ({
   },
 }));
 
-vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams('') }));
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(''),
+  useParams: () => ({}),
+}));
 
 // EngineGroup (mounted inside Board for the engine frame) calls useAnalysisStream
 // which needs a QueryClientProvider. Mock the hook to avoid provider setup.

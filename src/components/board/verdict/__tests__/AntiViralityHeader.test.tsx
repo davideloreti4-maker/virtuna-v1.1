@@ -1,6 +1,7 @@
 /** @vitest-environment happy-dom */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import type { PredictionResult } from '@/lib/engine/types';
 import { AntiViralityHeader } from '../AntiViralityHeader';
 import { fixtures } from './fixtures/prediction-result';
 
@@ -43,8 +44,8 @@ describe('AntiViralityHeader — conditional render', () => {
     expect(header.className).toContain('h-10');
   });
 
-  it('shows "fixable in 1 steps" when 1 fix suggestion exists', () => {
-    const oneFix = {
+  it('shows "fixable in 1 step" (singular) when 1 fix suggestion exists', () => {
+    const oneFix: PredictionResult = {
       ...fixtures.antiVirality,
       counterfactuals: {
         ...fixtures.antiVirality.counterfactuals!,
@@ -54,7 +55,18 @@ describe('AntiViralityHeader — conditional render', () => {
       },
     };
     render(<AntiViralityHeader result={oneFix} analysisId="test-d" />);
-    expect(screen.getByTestId('av-header-text')).toHaveTextContent('fixable in 1 steps');
+    expect(screen.getByTestId('av-header-text')).toHaveTextContent('fixable in 1 step');
+  });
+
+  it('shows generic low-confidence copy when there are zero fix suggestions', () => {
+    const zeroFix: PredictionResult = {
+      ...fixtures.antiVirality,
+      counterfactuals: undefined as unknown as PredictionResult['counterfactuals'],
+    };
+    render(<AntiViralityHeader result={zeroFix} analysisId="test-d-0" />);
+    expect(screen.getByTestId('av-header-text')).toHaveTextContent(
+      'Low confidence — review before posting',
+    );
   });
 
   it('caps fix count at 3 when 5+ fix suggestions exist', () => {

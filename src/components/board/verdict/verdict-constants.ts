@@ -10,7 +10,10 @@ export const AV_OVERRIDE_LOCALSTORAGE_PREFIX = 'virtuna:verdict-av-override:' as
 
 // Verbatim copy from 05-UI-SPEC.md §Copywriting Contract. DO NOT paraphrase.
 export const COPY = {
-  AV_HEADER: (n: number) => `⚠ Don't post yet — fixable in ${n} steps`,
+  AV_HEADER: (n: number) =>
+    n > 0
+      ? `⚠ Don't post yet — fixable in ${n} ${n === 1 ? 'step' : 'steps'}`
+      : `⚠ Low confidence — review before posting`,
   AV_OVERRIDE_LINK: 'Post anyway →',
   CONFIDENCE_PILL: (label: string) => `Confidence: ${label}`,
   CONFIDENCE_POPOVER:

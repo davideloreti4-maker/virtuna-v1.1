@@ -26,6 +26,7 @@ vi.mock('next/dynamic', () => ({
 
 vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(''),
+  useParams: () => ({}),
   usePathname: () => '/analyze',
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));

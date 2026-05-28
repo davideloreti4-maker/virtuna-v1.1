@@ -18,8 +18,15 @@ import { createClient } from '@/lib/supabase/server';
  * - Supabase JS parameterized queries prevent SQL injection (T-05-15)
  */
 
+// Analysis IDs are either legacy UUIDs (`5958d1c6-…`) or modern nanoid
+// (`fThrLL4fGQyx`). Validate the safe-character set rather than a single shape
+// — defends against injection while accepting both.
 const ParamsSchema = z.object({
-  id: z.string().uuid('id must be a UUID'),
+  id: z
+    .string()
+    .min(8)
+    .max(64)
+    .regex(/^[A-Za-z0-9_-]+$/u, 'id must be url-safe id'),
 });
 
 export async function GET(

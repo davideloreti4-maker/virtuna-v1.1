@@ -24,9 +24,10 @@ vi.mock('next/dynamic', () => ({
   },
 }));
 
-// Mock useSearchParams
+// Mock useSearchParams + useParams (Board permalink replay reads route id).
 vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(''),
+  useParams: () => ({}),
 }));
 
 // EngineGroup (mounted inside Board) calls useAnalysisStream which needs QueryClientProvider.

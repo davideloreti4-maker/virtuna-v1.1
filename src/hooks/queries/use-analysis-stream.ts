@@ -20,6 +20,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useParams } from "next/navigation";
 import { queryKeys } from "@/lib/queries/query-keys";
 import type { PredictionResult } from "@/lib/engine/types";
 import type { StageEvent } from "@/lib/engine/events";
@@ -401,6 +402,66 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
       abortRef.current?.abort();
     };
   }, []);
+
+  // Pitfall #3 extension — permalink replay hydration.
+  //
+  // /analyze/[id] direct-nav: every <useAnalysisStream/> caller (Board,
+  // VerdictNode, ActionsNode, ContentAnalysisFrame, EngineGroup, AudienceNode)
+  // mounts independently with no shared context. Without this effect, only the
+  // caller that received `initialData` would hydrate — the rest stay idle and
+  // sit on "Calculating…" forever.
+  //
+  // Strategy: regardless of opts, also subscribe to the
+  // `queryKeys.analysis.detail(urlAnalysisId)` cache. The first caller (Board)
+  // populates that cache via TanStack useQuery; every other caller piggybacks
+  // off the same cache entry. When a row with overall_score!=null is present
+  // and phase==='idle', short-circuit to phase='complete'.
+  const routeParams = useParams();
+  const urlAnalysisId =
+    routeParams && typeof (routeParams as { id?: unknown }).id === "string"
+      ? ((routeParams as { id: string }).id)
+      : null;
+  const permalinkQuery = useQuery({
+    queryKey: queryKeys.analysis.detail(urlAnalysisId ?? ""),
+    queryFn: async () => {
+      const r = await fetch(`/api/analysis/${urlAnalysisId}`);
+      if (!r.ok) throw new Error(`Failed to load analysis ${urlAnalysisId}`);
+      return r.json() as Promise<PredictionResult & { overall_score: number | null }>;
+    },
+    enabled: !!urlAnalysisId,
+    staleTime: Infinity,
+    gcTime: 5 * 60_000,
+  });
+
+  const initialFromOpts = opts?.initialData;
+  const initialOptsScore = initialFromOpts?.overall_score;
+  const initialOptsId =
+    initialFromOpts && (initialFromOpts as { id?: string }).id;
+
+  const permalinkRow = permalinkQuery.data ?? null;
+  const permalinkScore = permalinkRow?.overall_score ?? null;
+
+  useEffect(() => {
+    if (phaseRef.current !== "idle") return;
+    if (initialFromOpts && initialOptsScore != null) {
+      setResult(initialFromOpts as PredictionResult);
+      if (initialOptsId) setAnalysisId(initialOptsId);
+      setPhase("complete");
+      return;
+    }
+    if (permalinkRow && permalinkScore != null) {
+      setResult(permalinkRow as PredictionResult);
+      if (urlAnalysisId) setAnalysisId(urlAnalysisId);
+      setPhase("complete");
+    }
+  }, [
+    initialFromOpts,
+    initialOptsId,
+    initialOptsScore,
+    permalinkRow,
+    permalinkScore,
+    urlAnalysisId,
+  ]);
 
   const start = useCallback(
     async (input: AnalysisStreamInput) => {

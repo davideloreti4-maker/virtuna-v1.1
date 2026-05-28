@@ -36,7 +36,35 @@ export async function GET(
       );
     }
 
-    return Response.json(data);
+    // Derive Phase 5 fields the engine emits at runtime but the DB schema
+    // doesn't (yet) persist. Phase-5 UI components key off these — without the
+    // shim, completed analyses load with a permanent skeleton state.
+    const confidence = typeof data.confidence === "string"
+      ? Number.parseFloat(data.confidence)
+      : data.confidence;
+    const overall = typeof data.overall_score === "string"
+      ? Number.parseFloat(data.overall_score)
+      : data.overall_score;
+    const enriched = {
+      ...data,
+      overall_score: overall,
+      confidence,
+      confidence_label:
+        data.confidence_label ??
+        (confidence == null
+          ? null
+          : confidence >= 0.7
+          ? "HIGH"
+          : confidence >= 0.4
+          ? "MEDIUM"
+          : "LOW"),
+      is_calibrated: data.is_calibrated ?? true,
+      anti_virality_gated:
+        data.anti_virality_gated ??
+        (confidence == null ? false : confidence < 0.4),
+    };
+
+    return Response.json(enriched);
   } catch (error) {
     console.error("[analysis/id] GET error:", error);
     return Response.json({ error: "Internal server error" }, { status: 500 });

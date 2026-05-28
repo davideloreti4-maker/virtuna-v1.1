@@ -92,10 +92,19 @@ describe('finishStreaming', () => {
     expect(useBoardStore.getState().boardState).toBe('complete');
   });
 
-  it('is a no-op when not in streaming state', () => {
-    // idle → finishStreaming should not change state
+  it('transitions idle → complete for permalink replay', () => {
+    // /analyze/[id] direct nav lands user on idle, then result hydrates and
+    // the board jumps straight to complete (no streaming phase to finish).
     useBoardStore.getState().finishStreaming();
-    expect(useBoardStore.getState().boardState).toBe('idle');
+    expect(useBoardStore.getState().boardState).toBe('complete');
+  });
+
+  it('is a no-op when in a terminal non-idle/streaming state', () => {
+    useBoardStore.getState().startStreaming();
+    useBoardStore.getState().finishStreaming();
+    useBoardStore.getState().triggerAntiVirality(); // anti-virality
+    useBoardStore.getState().finishStreaming();
+    expect(useBoardStore.getState().boardState).toBe('anti-virality');
   });
 });
 
@@ -107,10 +116,17 @@ describe('triggerAntiVirality', () => {
     expect(useBoardStore.getState().boardState).toBe('anti-virality');
   });
 
-  it('is a no-op when not in complete state', () => {
-    // idle → triggerAntiVirality should not change state
+  it('transitions idle → anti-virality for permalink replay', () => {
+    // Permalink replay of an anti-virality-gated analysis: board hydrates
+    // directly into anti-virality without passing through streaming.
     useBoardStore.getState().triggerAntiVirality();
-    expect(useBoardStore.getState().boardState).toBe('idle');
+    expect(useBoardStore.getState().boardState).toBe('anti-virality');
+  });
+
+  it('is a no-op during streaming (anti-virality only fires after completion)', () => {
+    useBoardStore.getState().startStreaming();
+    useBoardStore.getState().triggerAntiVirality();
+    expect(useBoardStore.getState().boardState).toBe('streaming');
   });
 });
 

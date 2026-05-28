@@ -9,6 +9,9 @@
 import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState, useMemo, createRef } from 'react';
 import type { RefObject } from 'react';
+import { useParams } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queries/query-keys';
 import { useRovingTabIndex } from '@/lib/a11y';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
@@ -91,8 +94,31 @@ export function Board() {
   const setActivePreset = useBoardStore((s) => s.setActivePreset);
   const userOverrideCameraFollow = useBoardStore((s) => s.userOverrideCameraFollow);
 
+  // ── Permalink replay: /analyze/[id] direct nav hydrates result from API.
+  // useAnalysisStream(opts.initialData) short-circuits to phase='complete' once
+  // the row arrives (Pitfall #3). Without this, completed analyses sit on
+  // "Calculating…" because SSE never opened.
+  const params = useParams();
+  const urlAnalysisId =
+    params && typeof (params as { id?: unknown }).id === 'string'
+      ? ((params as { id: string }).id)
+      : null;
+  const permalinkQuery = useQuery({
+    queryKey: queryKeys.analysis.detail(urlAnalysisId ?? ''),
+    queryFn: async () => {
+      const r = await fetch(`/api/analysis/${urlAnalysisId}`);
+      if (!r.ok) throw new Error(`Failed to load analysis ${urlAnalysisId}`);
+      return r.json();
+    },
+    enabled: !!urlAnalysisId,
+    staleTime: Infinity,
+    gcTime: 5 * 60_000,
+  });
+
   // ── Plan 2.6: stream→board wiring ──────────────────────────────────────────
-  const stream = useAnalysisStream();
+  const stream = useAnalysisStream({
+    initialData: permalinkQuery.data ?? null,
+  });
   const startStreaming = useBoardStore((s) => s.startStreaming);
   const finishStreaming = useBoardStore((s) => s.finishStreaming);
   const triggerAntiVirality = useBoardStore((s) => s.triggerAntiVirality);
@@ -118,15 +144,19 @@ export function Board() {
       }
       case 'complete': {
         finishStreaming();
-        // WR-01: only trigger anti-virality when result correlates with the
-        // analysis we started streaming for (guards against stale result on
-        // reconnect or after resetToIdle + immediate re-analyze).
-        if (
-          stream.result &&
-          stream.analysisId != null &&
-          stream.analysisId === streamingAnalysisIdRef.current
-        ) {
-          const antiVir = Boolean((stream.result as { antiVirality?: unknown }).antiVirality);
+        // Fire anti-virality ripple on completion. WR-01 originally guarded
+        // this with `analysisId === streamingAnalysisIdRef.current` so the
+        // ripple only fires when the CURRENT session started the stream. That
+        // misses permalink replay (no POST → ref stays null) — the AV header
+        // appears on Verdict but Audience/Actions never get the cross-group
+        // signal. Treat permalink replay as a valid AV trigger too, then
+        // re-arm guard for fresh starts.
+        if (stream.result && stream.analysisId != null) {
+          const r = stream.result as {
+            antiVirality?: unknown;
+            anti_virality_gated?: unknown;
+          };
+          const antiVir = Boolean(r.antiVirality ?? r.anti_virality_gated);
           if (antiVir) triggerAntiVirality();
         }
         break;
