@@ -1,5 +1,5 @@
 'use client';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -22,14 +22,37 @@ interface VsHistoryCollapsibleProps {
   currentScore: number;
 }
 
+const STORAGE_KEY = 'virtuna:vs-history-open';
+
+function readPersistedOpen(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 export function VsHistoryCollapsible({ analysisId, currentScore }: VsHistoryCollapsibleProps) {
   const { data, isLoading, isError } = useComparisons(analysisId);
   const prefersReducedMotion = usePrefersReducedMotion();
   const openInputDrawer = useBoardStore((s) => s.openInputDrawer);
+  // ROADMAP SC: expand state survives navigation.
+  const [isOpen, setIsOpen] = useState(false);
+  useEffect(() => {
+    setIsOpen(readPersistedOpen());
+  }, []);
 
   const handleToggle = useCallback(
     (event: React.SyntheticEvent<HTMLDetailsElement>) => {
-      if (event.currentTarget.open) {
+      const open = event.currentTarget.open;
+      setIsOpen(open);
+      try {
+        window.localStorage.setItem(STORAGE_KEY, open ? '1' : '0');
+      } catch {
+        /* localStorage unavailable — keep in-memory state */
+      }
+      if (open) {
         logger.info?.(TELEMETRY.VERDICT_HISTORY_EXPANDED, { score: currentScore });
       }
     },
@@ -38,6 +61,7 @@ export function VsHistoryCollapsible({ analysisId, currentScore }: VsHistoryColl
 
   return (
     <details
+      open={isOpen}
       onToggle={handleToggle}
       className="group rounded-[8px] border border-white/[0.06] bg-white/[0.02] open:bg-white/[0.04]"
       data-testid="vs-history-collapsible"

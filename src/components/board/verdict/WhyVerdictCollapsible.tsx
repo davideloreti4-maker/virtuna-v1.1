@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import { CaretDown } from '@phosphor-icons/react';
@@ -13,9 +13,31 @@ interface WhyVerdictCollapsibleProps {
   result: PredictionResult;
 }
 
+const STORAGE_KEY = 'virtuna:why-verdict-open';
+
+function readPersistedOpen(): boolean | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const v = window.localStorage.getItem(STORAGE_KEY);
+    return v === '1' ? true : v === '0' ? false : null;
+  } catch {
+    return null;
+  }
+}
+
 export function WhyVerdictCollapsible({ result }: WhyVerdictCollapsibleProps) {
   const buckets = assembleReasoningBuckets(result);
-  const defaultOpen = result.anti_virality_gated === true;
+  // ROADMAP SC: expand state survives navigation. localStorage > AV default >
+  // closed. Read once via lazy init so SSR/CSR diverge cleanly without
+  // hydration mismatch (details element accepts `open` post-hydration).
+  const [isOpen, setIsOpen] = useState<boolean>(
+    () => result.anti_virality_gated === true,
+  );
+  const detailsRef = useRef<HTMLDetailsElement | null>(null);
+  useEffect(() => {
+    const persisted = readPersistedOpen();
+    if (persisted !== null) setIsOpen(persisted);
+  }, []);
 
   // W3 fix: derive the top-3 fixes that TopFixesList will render so we can
   // exclude them from the plain counterfactual list (no duplicate rendering in AV state).
@@ -43,7 +65,15 @@ export function WhyVerdictCollapsible({ result }: WhyVerdictCollapsibleProps) {
 
   const handleToggle = useCallback(
     (event: React.SyntheticEvent<HTMLDetailsElement>) => {
-      if (event.currentTarget.open) {
+      const open = event.currentTarget.open;
+      setIsOpen(open);
+      try {
+        window.localStorage.setItem(STORAGE_KEY, open ? '1' : '0');
+      } catch {
+        // localStorage unavailable (private mode) — degrade silently, keep
+        // in-memory state.
+      }
+      if (open) {
         // logger has no .event method — use logger.info per Plan 5.2 precedent
         logger.info(TELEMETRY.VERDICT_REASONING_EXPANDED, {
           score: result.overall_score,
@@ -59,7 +89,8 @@ export function WhyVerdictCollapsible({ result }: WhyVerdictCollapsibleProps) {
 
   return (
     <details
-      open={defaultOpen || undefined}
+      ref={detailsRef}
+      open={isOpen}
       onToggle={handleToggle}
       className="group rounded-[8px] border border-white/[0.06] bg-white/[0.02] open:bg-white/[0.04]"
       data-testid="why-verdict-collapsible"
