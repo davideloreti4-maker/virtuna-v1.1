@@ -22,6 +22,68 @@ import type { Json } from "@/types/database.types";
  * - force-dynamic prevents Vercel route caching of the stream
  * - maxDuration=300 (Fluid Compute default); bump to 800 on Pro if needed
  */
+
+// -------------------------------------------------------
+// Phase 3 (quick task 260528-nsb) — Orphan storage cleanup helpers
+//
+// cleanupUploadedStorage: Use after Zod validation succeeds (validated is available).
+// cleanupRawUpload: Use on early-return branches before Zod parse (only body available).
+//
+// NOT covered here (deferred — requires client-side try/finally):
+//   - Auth fail (line ~59): `body` not yet read; cleanup would need AbortController hook in Board.tsx
+//   - 413 content-length reject (line ~68): same — storage object may exist before POST reaches server
+// -------------------------------------------------------
+
+type ServiceClient = ReturnType<typeof createServiceClient>;
+type Logger = ReturnType<typeof createLogger>;
+
+function cleanupUploadedStorage(
+  service: ServiceClient,
+  validated: { input_mode: string; video_storage_path?: string | null },
+  retentionOptedIn: boolean,
+  log: Logger
+): void {
+  if (
+    validated.input_mode === "video_upload" &&
+    validated.video_storage_path &&
+    !retentionOptedIn
+  ) {
+    service.storage
+      .from("videos")
+      .remove([validated.video_storage_path])
+      .catch((err: unknown) => {
+        log.warn("storage_cleanup_failed", {
+          err: err instanceof Error ? err.message : String(err),
+          path: validated.video_storage_path,
+        });
+      });
+  }
+}
+
+function cleanupRawUpload(
+  service: ServiceClient,
+  body: Record<string, unknown>,
+  retentionOptedIn: boolean,
+  log: Logger
+): void {
+  if (
+    body.input_mode === "video_upload" &&
+    typeof body.video_storage_path === "string" &&
+    body.video_storage_path &&
+    !retentionOptedIn
+  ) {
+    service.storage
+      .from("videos")
+      .remove([body.video_storage_path])
+      .catch((err: unknown) => {
+        log.warn("storage_cleanup_failed", {
+          err: err instanceof Error ? err.message : String(err),
+          path: body.video_storage_path,
+        });
+      });
+  }
+}
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -174,6 +236,8 @@ export async function POST(request: Request) {
     // Check against limit
     const limit = DAILY_LIMITS[tier] ?? DAILY_LIMITS.free!;
     if (currentCount >= limit) {
+      // Phase 3 (260528-nsb): cleanup orphan before 429 return — body + retentionOptedIn available here.
+      cleanupRawUpload(service, body as Record<string, unknown>, retentionOptedIn, log);
       return Response.json(
         {
           error: "Daily analysis limit reached",
@@ -208,6 +272,8 @@ export async function POST(request: Request) {
     try {
       validated = AnalysisInputSchema.parse(body);
     } catch (error) {
+      // Phase 3 (260528-nsb): cleanup orphan on Zod validation failure — body + retentionOptedIn available.
+      cleanupRawUpload(service, body as Record<string, unknown>, retentionOptedIn, log);
       return Response.json(
         { error: error instanceof Error ? error.message : "Invalid input" },
         { status: 400 }
@@ -235,6 +301,11 @@ export async function POST(request: Request) {
         userId: user.id,
         engineVersion: cached.engine_version,
       });
+
+      // Phase 3 (260528-nsb) Mode A fix: cache hit returns without persisting video_storage_path
+      // for the NEW upload, so the uploaded object becomes an orphan. Clean it up now.
+      // Single call covers both wantsJSON and SSE sub-branches below.
+      cleanupUploadedStorage(service, validated, retentionOptedIn, log);
 
       if (wantsJSON) {
         return Response.json(cached);
@@ -373,18 +444,8 @@ export async function POST(request: Request) {
 
       // Phase 11 (INT-05/D-04): Delete uploaded video only if user has NOT opted into retention.
       // Opted-in users keep their video; retention cron handles 30-day expiry.
-      if (
-        validated.input_mode === "video_upload" &&
-        validated.video_storage_path &&
-        !retentionOptedIn
-      ) {
-        service.storage
-          .from("videos")
-          .remove([validated.video_storage_path])
-          .catch(() => {
-            // Best-effort cleanup — don't fail the response
-          });
-      }
+      // Phase 3 (260528-nsb): use cleanupUploadedStorage helper (logs on failure, no silent swallow).
+      cleanupUploadedStorage(service, validated, retentionOptedIn, log);
 
       // Phase 11 (PROFILE-16/D-08): Atomic lifetime analysis counter — triggers banner at count % 10.
       // Uses DB function to avoid read-then-write race condition.
@@ -564,18 +625,8 @@ export async function POST(request: Request) {
           send("complete", finalResult);
 
           // Phase 11 (INT-05/D-04): Opt-in gate (mirrors JSON branch).
-          if (
-            validated.input_mode === "video_upload" &&
-            validated.video_storage_path &&
-            !retentionOptedIn
-          ) {
-            service.storage
-              .from("videos")
-              .remove([validated.video_storage_path])
-              .catch(() => {
-                // Best-effort cleanup — don't fail the response
-              });
-          }
+          // Phase 3 (260528-nsb): use cleanupUploadedStorage helper (logs on failure, no silent swallow).
+          cleanupUploadedStorage(service, validated, retentionOptedIn, log);
 
           // Phase 11 (PROFILE-16/D-08): Atomic lifetime analysis counter (mirrors JSON branch).
           void (async () => {
@@ -588,6 +639,8 @@ export async function POST(request: Request) {
           const message =
             error instanceof Error ? error.message : "Pipeline failed";
           log.error("Pipeline error", { error: message });
+          // Phase 3 (260528-nsb): cleanup orphan on SSE pipeline throw.
+          cleanupUploadedStorage(service, validated, retentionOptedIn, log);
           send("error", { error: message });
         } finally {
           controller.close();
