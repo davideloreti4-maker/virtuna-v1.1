@@ -45,7 +45,7 @@ describe('SimilarVideosCard — empty state', () => {
     ];
     render(<SimilarVideosCard items={fakeItems} signalAvailable={false} />);
     expect(screen.getByTestId('similar-videos-empty')).toHaveTextContent(
-      "Similar videos isn't available for this analysis",
+      'Not available for this analysis',
     );
   });
 

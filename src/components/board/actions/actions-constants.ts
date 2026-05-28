@@ -11,7 +11,8 @@ export const COPY = {
   // CTA-style: used when truly zero items (no prior analyses yet)
   SIMILAR_VIDEOS_EMPTY: 'No similar videos yet — try a new analysis',
   // Unavailable: used when signal exists but retrieval data is absent for this analysis
-  SIMILAR_VIDEOS_UNAVAILABLE: "Similar videos isn't available for this analysis",
+  // Short copy avoids overflow-clip in the narrow Actions card slot.
+  SIMILAR_VIDEOS_UNAVAILABLE: 'Not available for this analysis',
 } as const;
 
 // Telemetry event names (per 05-CONTEXT.md D-31 + Phase 6 D-30).
