@@ -1,6 +1,146 @@
 /** @vitest-environment happy-dom */
-import { describe, it } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { HookDecompNode } from '../HookDecompNode';
+import { fixtures } from '../../verdict/__tests__/fixtures/prediction-result';
 
-describe('HookDecompNode 4-bar + weakest highlight + cognitive load inversion + empty state — Wave 0 stub', () => {
-  it.todo('will assert behavior per 05-VALIDATION.md once component lands');
+vi.mock('@/lib/logger', () => ({ logger: { event: vi.fn() } }));
+vi.mock('@/hooks/useIsMobile', () => ({ useIsMobile: () => false }));
+// Stub Sheet to render inline (avoid portal complexity)
+vi.mock('@/components/ui/sheet', () => ({
+  Sheet: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
+    open ? <div data-testid="sheet-open">{children}</div> : null,
+  SheetContent: ({ children, ...rest }: { children: React.ReactNode; [k: string]: unknown }) => (
+    <div {...rest}>{children}</div>
+  ),
+  SheetHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  SheetTitle: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+}));
+
+import { logger } from '@/lib/logger';
+
+describe('HookDecompNode', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('renders headline "Hook decomposition"', () => {
+    render(
+      <HookDecompNode
+        decomp={fixtures.complete.hook_decomposition!}
+        segments={null}
+        counterfactuals={fixtures.complete.counterfactuals?.suggestions}
+      />,
+    );
+    expect(screen.getByTestId('hook-decomp-title')).toHaveTextContent('Hook decomposition');
+  });
+
+  it('renders 4 bars in HOOK_BAR_ORDER', () => {
+    render(
+      <HookDecompNode
+        decomp={fixtures.complete.hook_decomposition!}
+        segments={null}
+        counterfactuals={[]}
+      />,
+    );
+    expect(screen.getByTestId('hook-decomp-bar-visual_stop_power')).toBeInTheDocument();
+    expect(screen.getByTestId('hook-decomp-bar-audio_hook_quality')).toBeInTheDocument();
+    expect(screen.getByTestId('hook-decomp-bar-text_overlay_score')).toBeInTheDocument();
+    expect(screen.getByTestId('hook-decomp-bar-first_words_speech_score')).toBeInTheDocument();
+  });
+
+  it('renders one-decimal scores from hook_decomposition', () => {
+    render(
+      <HookDecompNode
+        decomp={fixtures.complete.hook_decomposition!}
+        segments={null}
+        counterfactuals={[]}
+      />,
+    );
+    // fixtures.complete.hook_decomposition.visual_stop_power = 8.2
+    expect(screen.getByTestId('hook-decomp-score-visual_stop_power')).toHaveTextContent('8.2');
+  });
+
+  it('weakest_modality bar has data-weakest=true', () => {
+    // fixtures.complete.hook_decomposition.weakest_modality === 'text_overlay_score'
+    render(
+      <HookDecompNode
+        decomp={fixtures.complete.hook_decomposition!}
+        segments={null}
+        counterfactuals={[]}
+      />,
+    );
+    const weakest = screen.getByTestId('hook-decomp-bar-text_overlay_score');
+    expect(weakest.getAttribute('data-weakest')).toBe('true');
+    const notWeakest = screen.getByTestId('hook-decomp-bar-visual_stop_power');
+    expect(notWeakest.getAttribute('data-weakest')).toBe('false');
+  });
+
+  it('weakest_modality bar has bg-accent/8 class', () => {
+    render(
+      <HookDecompNode
+        decomp={fixtures.complete.hook_decomposition!}
+        segments={null}
+        counterfactuals={[]}
+      />,
+    );
+    const weakest = screen.getByTestId('hook-decomp-bar-text_overlay_score');
+    expect(weakest.className).toContain('bg-accent/8');
+  });
+
+  it('shows "Coherence: 7.4/10" chip (one decimal)', () => {
+    render(
+      <HookDecompNode
+        decomp={fixtures.complete.hook_decomposition!}
+        segments={null}
+        counterfactuals={[]}
+      />,
+    );
+    // fixtures.complete.hook_decomposition.visual_audio_coherence = 7.4
+    expect(screen.getByTestId('hook-decomp-coherence-chip')).toHaveTextContent('Coherence: 7.4/10');
+  });
+
+  it.each([
+    [2, 'Low'],
+    [4, 'Med'],
+    [8, 'High'],
+  ] as const)('shows "Cognitive load: %s" for raw value %d (inverted polarity)', (raw, label) => {
+    const decomp = { ...fixtures.complete.hook_decomposition!, cognitive_load: raw };
+    render(<HookDecompNode decomp={decomp} segments={null} counterfactuals={[]} />);
+    expect(screen.getByTestId('hook-decomp-cognitive-chip')).toHaveTextContent(`Cognitive load: ${label}`);
+  });
+
+  it('SECURITY: NEVER displays raw cognitive_load number in chip', () => {
+    const decomp = { ...fixtures.complete.hook_decomposition!, cognitive_load: 7 };
+    render(<HookDecompNode decomp={decomp} segments={null} counterfactuals={[]} />);
+    const chip = screen.getByTestId('hook-decomp-cognitive-chip');
+    expect(chip.textContent).not.toMatch(/Cognitive load: 7/);
+    expect(chip.textContent).toContain('High'); // bucket only
+  });
+
+  it('renders empty state when hook_decomposition is null', () => {
+    render(<HookDecompNode decomp={null} segments={null} counterfactuals={[]} />);
+    expect(screen.getByTestId('hook-decomp-empty')).toBeInTheDocument();
+    expect(screen.getByTestId('hook-decomp-empty-caption')).toHaveTextContent(
+      'Hook analysis unavailable for this video',
+    );
+    // No chip row in empty state
+    expect(screen.queryByTestId('hook-decomp-chips')).toBeNull();
+  });
+
+  it('clicking a bar opens the inspector + fires hook_decomp_expanded telemetry', () => {
+    render(
+      <HookDecompNode
+        decomp={fixtures.complete.hook_decomposition!}
+        segments={null}
+        counterfactuals={[]}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('hook-decomp-bar-visual_stop_power'));
+    expect(screen.getByTestId('sheet-open')).toBeInTheDocument();
+    expect((logger as unknown as { event: ReturnType<typeof vi.fn> }).event).toHaveBeenCalledWith(
+      'hook_decomp_expanded',
+      expect.objectContaining({ weakest_modality: 'text_overlay_score' }),
+    );
+  });
 });
