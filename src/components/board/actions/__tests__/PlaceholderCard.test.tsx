@@ -49,10 +49,10 @@ describe('PlaceholderCard', () => {
     expect(card.className).toContain('bg-white/[0.02]');
   });
 
-  it('applies text-white/40 class', () => {
+  it('applies text-white/55 class (WCAG AA contrast bump from /40)', () => {
     render(<PlaceholderCard label="x" phase="6" icon={StubIcon} />);
     const card = screen.getByTestId('placeholder-card');
-    expect(card.className).toContain('text-white/40');
+    expect(card.className).toContain('text-white/55');
   });
 
   it('renders the icon component', () => {

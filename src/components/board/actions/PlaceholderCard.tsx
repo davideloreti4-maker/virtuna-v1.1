@@ -10,7 +10,7 @@ export function PlaceholderCard({
 }: PlaceholderCardProps) {
   return (
     <div
-      className="flex flex-col items-center justify-center gap-1 rounded-[12px] p-3 bg-white/[0.02] text-white/40"
+      className="flex flex-col items-center justify-center gap-1 rounded-[12px] p-3 bg-white/[0.02] text-white/55"
       style={{
         border: '1px dashed rgba(255,255,255,0.06)',
       }}
