@@ -6,8 +6,8 @@ tags: [migrations, supabase, typescript, vitest, tdd, script, optimal-post]
 dependency_graph:
   requires: []
   provides:
-    - analysis_results.script_result JSONB column (migration, pending DB push)
-    - analysis_results.optimal_post_override JSONB column (migration, pending DB push)
+    - analysis_results.script_result JSONB column (migration applied to live DB)
+    - analysis_results.optimal_post_override JSONB column (migration applied to live DB)
     - formatTime(ms) pure function
     - stripMarkdown(text) pure function
     - convertUTCWindow(day, hourRange, userTz) TZ converter
@@ -44,12 +44,12 @@ key_files:
 decisions:
   - AM/PM boundary test: changed test input from UTC 11-13 to UTC 16-18 for America/New_York. UTC 11-13 EST = 6-8 AM (both AM, no crossing). UTC 16-18 EST = 11 AM - 1 PM (crosses noon). Fix was to test expectation per plan guidance.
   - Europe/London DST: reference date 2024-01-01 falls in winter (GMT = UTC+0), so UTC 18-21 = GMT 18-21 (same day, no crossing). Test asserts day=Tue and crossedMidnight=false only (dropped hour-range regex per plan DST note).
-  - Supabase DB push: BLOCKED - see Blocking Items section below.
+  - Supabase DB push: COMPLETE via mcp__supabase__apply_migration on project qyxvxleheckijapurisj (CLI auth blocked; orchestrator pushed via MCP after checkpoint).
 metrics:
   duration: "7m 16s"
   completed: "2026-05-28"
-  tasks_completed: 3
-  tasks_blocked: 1
+  tasks_completed: 4
+  tasks_blocked: 0
   files_created: 9
   files_modified: 1
 ---
@@ -63,26 +63,21 @@ Schema + pure utilities + type contracts that Plans 02–06 build against. Two a
 | Task | Status | Commit |
 |------|--------|--------|
 | Task 1: Two Supabase migrations | DONE | 2b48ae5 |
-| Task 2: Push migrations to live DB | BLOCKED (checkpoint) | — |
+| Task 2: Push migrations to live DB | DONE (MCP push by orchestrator) | — |
 | Task 3: Utility modules (RED) | DONE | 0be26f0 |
 | Task 3: Utility modules (GREEN) | DONE | c0edbce |
 | Task 4: Types + constants + TELEMETRY | DONE | 1086fe4 |
 
-## Blocking Items
+## Task 2: DB Push Resolution
 
-### Task 2: Supabase DB Push Required
+CLI push failed (SUPABASE_DB_PASSWORD not set in worktree shell environment). Orchestrator applied both migrations via `mcp__supabase__apply_migration` on project `qyxvxleheckijapurisj` after the checkpoint.
 
-The two migration files are committed to the repo. The live Supabase DB does NOT yet have the new columns. This is a human-action gate.
+**Verification confirmed:**
+```json
+[{"column_name":"optimal_post_override","data_type":"jsonb"},{"column_name":"script_result","data_type":"jsonb"}]
+```
 
-**What to do:**
-1. Set `SUPABASE_DB_PASSWORD` environment variable (or run `supabase login` for token-based auth)
-2. Run: `supabase db push` from the repo root
-3. Confirm both migrations applied: `20260530000000_script_result` and `20260530000001_optimal_post_override`
-4. Verify: `select column_name, data_type from information_schema.columns where table_name = 'analysis_results' and column_name in ('script_result', 'optimal_post_override');` returns 2 rows
-
-**Why blocked:** `SUPABASE_DB_PASSWORD` not set in environment. `supabase link` succeeded but `supabase db push --linked` requires the DB password to create a login role.
-
-**Impact on downstream plans:** Plans 02–06 can still build and type-check (types come from TypeScript, not the live DB). But runtime functionality requires the columns to exist. Plans that write to `script_result` or `optimal_post_override` will fail at runtime until the push is done.
+Both columns live. No RLS changes. Plans 02–06 can proceed.
 
 ## Deviations from Plan
 
@@ -121,8 +116,8 @@ TypeScript: zero errors in Phase 6 files (pre-existing errors in react-konva/det
 
 | Migration | File | DB Applied |
 |-----------|------|------------|
-| `20260530000000_script_result` | committed | PENDING (needs `supabase db push`) |
-| `20260530000001_optimal_post_override` | committed | PENDING (needs `supabase db push`) |
+| `20260530000000_script_result` | committed | APPLIED (via MCP, 2026-05-28) |
+| `20260530000001_optimal_post_override` | committed | APPLIED (via MCP, 2026-05-28) |
 
 No RLS policy changes in either migration. Both inherit existing `"Users can update their own analysis results"` policy.
 
