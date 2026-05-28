@@ -109,20 +109,28 @@ export function EngineGroup() {
     );
   }
 
+  // Frame body is ~88px tall (240×120 frame minus 32 title minus padding) — a
+  // vertical stack of 5 EngineStageGlyph rows overflows. Render a horizontal
+  // dot row + the active stage's plain-English label instead.
   return (
-    <div>
+    <div className="flex flex-col gap-2">
       <span aria-live="polite" className="sr-only">{liveLabel}</span>
-      <ol className="flex flex-col gap-1.5">
+      <ol className="flex items-center justify-between" aria-label="Engine pipeline stages">
         {STAGES.map((s, i) => (
           <EngineStageGlyph
             key={s.label}
             label={s.label}
-            plainEnglish={s.plainEnglish}
             status={statuses[i]!}
             reducedMotion={effectiveReducedMotion}
           />
         ))}
       </ol>
+      <p
+        className="truncate text-[11px] text-foreground-muted"
+        aria-hidden
+      >
+        {liveLabel || (statuses.every((st) => st === 'complete') ? 'Pipeline complete' : 'Waiting…')}
+      </p>
     </div>
   );
 }

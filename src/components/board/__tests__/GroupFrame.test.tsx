@@ -25,6 +25,7 @@ vi.mock('next/dynamic', () => ({
 vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(''),
   useParams: () => ({}),
+  useRouter: () => ({ push: () => {}, replace: () => {}, prefetch: () => {} }),
 }));
 
 // EngineGroup (mounted inside Board for the engine frame) calls useAnalysisStream

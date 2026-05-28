@@ -1,12 +1,74 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Type, Link, Video, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { VideoUpload } from "./video-upload";
 import { useSimulationStore } from "@/stores/simulation-store";
 import { usePendingProfileGate } from "@/hooks/use-pending-profile-gate";
 import { ProfileInterviewModal } from "@/components/app/profile-interview-modal";
+import { useBoardStore } from "@/stores/board-store";
+
+const FRAME_COUNT = 10;
+const FRAME_WIDTH = 120;
+
+async function extractVideoFrames(file: File): Promise<{
+  thumbnail: string;
+  duration: number;
+  frames: Record<number, string>;
+}> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.muted = true;
+    video.playsInline = true;
+
+    const frames: Record<number, string> = {};
+    let duration = 0;
+    let idx = 0;
+
+    function capture() {
+      const canvas = document.createElement("canvas");
+      canvas.width = FRAME_WIDTH;
+      canvas.height = Math.round(FRAME_WIDTH * ((video.videoHeight / video.videoWidth) || (16 / 9)));
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        frames[idx] = canvas.toDataURL("image/jpeg", 0.6);
+      }
+    }
+
+    function seekNext() {
+      if (idx >= FRAME_COUNT) {
+        URL.revokeObjectURL(url);
+        video.removeAttribute("src");
+        video.load();
+        resolve({ frames, duration, thumbnail: frames[0] ?? "" });
+        return;
+      }
+      video.currentTime = (idx + 0.5) * (duration / FRAME_COUNT);
+    }
+
+    video.onloadeddata = () => {
+      duration = video.duration;
+      seekNext();
+    };
+
+    video.onseeked = () => {
+      capture();
+      idx++;
+      seekNext();
+    };
+
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("video extraction failed"));
+    };
+
+    video.src = url;
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -78,6 +140,32 @@ export function ContentForm({ onSubmit, uploadProgress, className }: ContentForm
     video_hashtags: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const setPendingVideo = useBoardStore((s) => s.setPendingVideo);
+  const clearPendingVideo = useBoardStore((s) => s.clearPendingVideo);
+  const extractingRef = useRef(false);
+
+  useEffect(() => {
+    const file = formData.video_file;
+    if (!file) {
+      clearPendingVideo();
+      return;
+    }
+
+    let cancelled = false;
+    extractingRef.current = true;
+
+    extractVideoFrames(file).then(({ thumbnail, duration, frames }) => {
+      if (!cancelled) {
+        setPendingVideo({ thumbnail, duration, frames });
+        extractingRef.current = false;
+      }
+    }).catch(() => {
+      extractingRef.current = false;
+    });
+
+    return () => { cancelled = true; };
+  }, [formData.video_file, setPendingVideo, clearPendingVideo]);
 
   const updateField = useCallback(
     <K extends keyof ContentFormData>(field: K, value: ContentFormData[K]) => {

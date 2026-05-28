@@ -182,61 +182,49 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
         <div
           className={cn(
             "relative rounded-xl border transition-colors duration-150",
-            // Base surface
             "bg-white/[0.03] border-white/[0.06]",
-            // Drag hover
             isDragging && "bg-white/[0.05]",
-            // Clickable in empty state
-            !file && "cursor-pointer"
           )}
-          onClick={!file ? () => inputRef.current?.click() : undefined}
           onDragOver={!file ? handleDragOver : undefined}
           onDragLeave={!file ? handleDragLeave : undefined}
           onDrop={!file ? handleDrop : undefined}
-          role={!file ? "button" : undefined}
-          tabIndex={!file ? 0 : undefined}
-          onKeyDown={
-            !file
-              ? (e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    inputRef.current?.click();
-                  }
-                }
-              : undefined
-          }
         >
           {/* Hidden file input */}
           <input
             ref={inputRef}
             type="file"
             accept="video/*"
+            aria-label="Upload video file"
             className="hidden"
             onChange={handleInputChange}
           />
 
-          {/* Empty state — compact single-row layout */}
+          {/* Empty state — compact single-row layout. The browse trigger and
+              the disclosure button are siblings (no nested-interactive). */}
           {!file && (
-            <div className="flex items-center gap-3 px-3 py-2.5">
-              <div className="flex items-center justify-center w-7 h-7 rounded-md bg-white/[0.05] shrink-0">
-                <Upload className="w-3.5 h-3.5 text-foreground-muted" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-foreground leading-tight">
-                  Drop video or click to browse
-                </p>
-                <p className="text-[11px] text-foreground-muted leading-tight mt-0.5">
-                  MP4, MOV, WebM · up to 200MB
-                </p>
-              </div>
+            <div className="flex items-center gap-1 px-3 py-2.5">
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDataDisclosureOpen((prev) => !prev);
-                }}
+                onClick={() => inputRef.current?.click()}
+                className="flex flex-1 items-center gap-3 rounded-md text-left"
+              >
+                <span className="flex items-center justify-center w-7 h-7 rounded-md bg-white/[0.05] shrink-0">
+                  <Upload className="w-3.5 h-3.5 text-foreground-muted" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm text-foreground leading-tight">
+                    Drop video or click to browse
+                  </span>
+                  <span className="block text-[11px] text-foreground-muted leading-tight mt-0.5">
+                    MP4, MOV, WebM · up to 200MB
+                  </span>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDataDisclosureOpen((prev) => !prev)}
                 aria-label="About your data"
-                className="text-foreground-muted hover:text-foreground shrink-0"
+                className="text-foreground-muted hover:text-foreground shrink-0 px-1"
               >
                 <ChevronDown
                   className={cn(

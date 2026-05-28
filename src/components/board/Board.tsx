@@ -127,6 +127,7 @@ export function Board() {
   const finishStreaming = useBoardStore((s) => s.finishStreaming);
   const triggerAntiVirality = useBoardStore((s) => s.triggerAntiVirality);
   const resetToIdle = useBoardStore((s) => s.resetToIdle);
+  const pendingVideoThumbnail = useBoardStore((s) => s.pendingVideo?.thumbnail ?? null);
 
   // WR-01: track which analysisId we started streaming for, so that if the
   // user resets and a new stream starts we don't fire anti-virality against
@@ -403,7 +404,7 @@ export function Board() {
               camera={camera}
               videoStoragePath={r?.video_storage_path ?? null}
               videoUrl={null}
-              thumbnailUrl={stream.filmstrips[0] ?? null}
+              thumbnailUrl={stream.filmstrips?.[0] ?? pendingVideoThumbnail ?? null}
               behavioral={r?.behavioral_predictions ?? null}
               isStreaming={boardMachineState === 'streaming'}
             />

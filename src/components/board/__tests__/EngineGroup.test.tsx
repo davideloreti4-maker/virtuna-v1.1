@@ -39,8 +39,10 @@ describe('EngineGroup', () => {
 
   it('renders 5 children all waiting', () => {
     render(<EngineGroup />);
+    // Compact layout renders icon-only glyphs; the stage label is exposed via
+    // aria-label on each <li>, queried by role+name.
     ['Qwen-VL segmentation', 'Hook decomp', 'Retention model', 'Persona simulator', 'Aggregator'].forEach((l) =>
-      expect(screen.getByText(l)).toBeInTheDocument(),
+      expect(screen.getByRole('listitem', { name: `${l}: waiting` })).toBeInTheDocument(),
     );
   });
 
@@ -62,7 +64,7 @@ describe('EngineGroup', () => {
     render(<EngineGroup />);
     const badge = screen.getByRole('button', { name: /View pipeline/ });
     fireEvent.click(badge);
-    expect(screen.getByText('Qwen-VL segmentation')).toBeInTheDocument();
+    expect(screen.getByRole('listitem', { name: /Qwen-VL segmentation: / })).toBeInTheDocument();
   });
 
   it('child 0 active when stage_start wave 0 received', () => {

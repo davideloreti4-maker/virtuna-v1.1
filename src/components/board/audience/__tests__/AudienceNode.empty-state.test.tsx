@@ -35,6 +35,12 @@ vi.mock('@/lib/engine/persona-weights', () => ({
   DEFAULT_PERSONA_WEIGHT_CONFIG: { default: {} },
 }));
 
+// usePermalinkAnalysis wraps TanStack useQuery + useParams — stub it out so
+// the test doesn't need a QueryClientProvider or a Next router mock.
+vi.mock('@/hooks/queries/use-permalink-analysis', () => ({
+  usePermalinkAnalysis: () => ({ id: null, data: null, isLoading: false }),
+}));
+
 function mockStream(result: unknown, phase = 'complete') {
   vi.doMock('@/hooks/queries/use-analysis-stream', () => ({
     useAnalysisStream: () => ({ result, phase, partial: null, filmstrips: null, analysisId: 'test' }),

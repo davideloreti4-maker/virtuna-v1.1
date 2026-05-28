@@ -317,6 +317,10 @@ export async function POST(request: Request) {
         validated.input_mode === "video_upload" && validated.video_storage_path
           ? validated.video_storage_path
           : null,
+      // Persist the assembled HeatmapPayload so /api/analysis/[id] can return
+      // the real segments/personas/weighted_curve on permalink replay instead
+      // of falling back to the server-side synth.
+      heatmap: (finalResult.heatmap ?? null) as unknown as Json,
     });
 
     // -------------------------------------------------------

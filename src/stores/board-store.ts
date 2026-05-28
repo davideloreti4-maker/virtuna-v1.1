@@ -29,6 +29,12 @@ export type BoardMachineState =
 
 // ── Store slice types ───────────────────────────────────────────────────────
 
+export interface PendingVideo {
+  thumbnail: string;
+  duration: number;
+  frames: Record<number, string>;
+}
+
 export interface BoardState {
   /** Current board machine state (D-18) */
   boardState: BoardMachineState;
@@ -71,6 +77,9 @@ export interface BoardState {
    * watches this and focuses its textarea on change.
    */
   inputBarFocusPulse: number;
+
+  /** Thumbnail + frames extracted from the locally selected video file before analysis. */
+  pendingVideo: PendingVideo | null;
 }
 
 export interface BoardActions {
@@ -130,6 +139,10 @@ export interface BoardActions {
    * for command bar placeholder (plan 2.6) and future consumers.
    */
   transition: (event: { type: 'STAGE_UPDATE'; stage: string }) => void;
+
+  // ── Pending video ────────────────────────────────────────────────────────────
+  setPendingVideo: (v: PendingVideo | null) => void;
+  clearPendingVideo: () => void;
 }
 
 // ── Default state ───────────────────────────────────────────────────────────
@@ -146,6 +159,7 @@ const DEFAULT_STATE: BoardState = {
   lastUserInteractionAt: 0,
   currentStageLabel: null,
   inputBarFocusPulse: 0,
+  pendingVideo: null,
 };
 
 // ── Store ────────────────────────────────────────────────────────────────────
@@ -233,6 +247,10 @@ export const useBoardStore = create<BoardState & BoardActions>((set) => ({
       set({ currentStageLabel: event.stage });
     }
   },
+
+  // ── Pending video ────────────────────────────────────────────────────────────
+  setPendingVideo: (pendingVideo) => set({ pendingVideo }),
+  clearPendingVideo: () => set({ pendingVideo: null }),
 }));
 
 // ── Derived selectors ────────────────────────────────────────────────────────

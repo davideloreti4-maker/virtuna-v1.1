@@ -58,8 +58,9 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
   const { weights, setWeights, recomputedCurve, recomputedMetrics, antiViralityState } =
     useClientWeights(result?.heatmap ?? null, initialWeights, result?.confidence ?? 1);
 
-  // ── Board store (for camera pan on jumpToSegment) ──────────────────────────
+  // ── Board store (for camera pan on jumpToSegment + pending video preview) ───
   const setActivePreset = useBoardStore((s) => s.setActivePreset);
+  const pendingVideo = useBoardStore((s) => s.pendingVideo);
 
   // ── Local UI state ─────────────────────────────────────────────────────────
   const [heatmapOpen, setHeatmapOpen] = useState(false);
@@ -79,9 +80,9 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
   // ── Derived values ─────────────────────────────────────────────────────────
   const totalDurationSec = useMemo(() => {
     const segs = result?.heatmap?.segments;
-    if (!segs || segs.length === 0) return 30;
+    if (!segs || segs.length === 0) return pendingVideo?.duration ?? 30;
     return segs[segs.length - 1]!.t_end;
-  }, [result?.heatmap?.segments]);
+  }, [result?.heatmap?.segments, pendingVideo?.duration]);
 
   // fixTextBySegment: maps dropoff_segment_indices → fix text from counterfactuals.
   // TODO(OQ-2): resolve exact counterfactual field name once Phase 5 Verdict node ships.
@@ -289,7 +290,7 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
           <div className="flex flex-col gap-1">
             <Filmstrip
               segments={result?.heatmap?.segments ?? null}
-              filmstrips={filmstrips}
+              filmstrips={Object.keys(filmstrips).length > 0 ? filmstrips : (pendingVideo?.frames ?? {})}
               totalDurationSec={totalDurationSec}
               antiViralitySegmentIndices={antiViralityState.dropoff_segment_indices}
             />

@@ -196,6 +196,7 @@ export type Database = {
           gemini_model: string | null
           gemini_score: number | null
           has_video: boolean | null
+          heatmap: Json | null
           id: string
           input_mode: string | null
           insights: string | null
@@ -237,6 +238,7 @@ export type Database = {
           gemini_model?: string | null
           gemini_score?: number | null
           has_video?: boolean | null
+          heatmap?: Json | null
           id?: string
           input_mode?: string | null
           insights?: string | null
@@ -278,6 +280,7 @@ export type Database = {
           gemini_model?: string | null
           gemini_score?: number | null
           has_video?: boolean | null
+          heatmap?: Json | null
           id?: string
           input_mode?: string | null
           insights?: string | null
