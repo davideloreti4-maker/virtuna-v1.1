@@ -162,32 +162,31 @@ describe('GET /api/analyze/[id]/script', () => {
   });
 
   it('3. high-confidence empty state returns is_empty_state: true', async () => {
+    // Note: confidence_label + counterfactuals are not persisted columns
+    // (schema drift — TODO in route.ts). confidence_label is derived inline
+    // from `confidence` (>=0.7 → HIGH). Opening variants are sourced from
+    // hook/opening factors (since counterfactuals.suggestions is always null).
     vi.mocked(createClient).mockResolvedValue(
       createMockClient({
         row: {
           ...baseRow,
           confidence: 0.85,
-          confidence_label: 'HIGH',
-          anti_virality_gated: false,
-          counterfactuals: {
-            band: 'high',
-            suggestions: [
-              {
-                type: 'stretch',
-                headline: 'Try opener A',
-                detail: 'A',
-                timestamp_ms: 0,
-                signal_anchor: 'hook_decomposition.visual_stop_power',
-              },
-              {
-                type: 'stretch',
-                headline: 'Try opener B',
-                detail: 'B',
-                timestamp_ms: 0,
-                signal_anchor: 'hook_decomposition.audio_hook_quality',
-              },
-            ],
-          },
+          factors: [
+            {
+              name: 'Hook strength',
+              score: 4,
+              max_score: 5,
+              rationale: 'Strong',
+              improvement_tip: 'Try opener A',
+            },
+            {
+              name: 'Opening pacing',
+              score: 4,
+              max_score: 5,
+              rationale: 'Solid',
+              improvement_tip: 'Try opener B',
+            },
+          ],
         },
       }) as unknown as Awaited<ReturnType<typeof createClient>>,
     );
@@ -199,15 +198,14 @@ describe('GET /api/analyze/[id]/script', () => {
     expect(body.opening_variants.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('4. anti_virality_gated=true returns full script (NOT empty state)', async () => {
+  it('4. low-confidence gating returns full script (NOT empty state)', async () => {
+    // anti_virality_gated is derived inline (confidence < 0.4). Low-confidence
+    // gating mutually excludes the empty-state branch (which requires HIGH).
     vi.mocked(createClient).mockResolvedValue(
       createMockClient({
         row: {
           ...baseRow,
-          confidence: 0.9,
-          confidence_label: 'HIGH',
-          anti_virality_gated: true,
-          counterfactuals: { band: 'high', suggestions: [] },
+          confidence: 0.3,
         },
       }) as unknown as Awaited<ReturnType<typeof createClient>>,
     );
