@@ -31,7 +31,7 @@ export function PercentileChip({ score, confidenceLabel, isCalibrated }: Percent
           <span
             className={cn(
               'text-5xl font-semibold leading-none tabular-nums',
-              isStreaming && 'text-white/20',
+              isStreaming && 'text-white/35 animate-skeleton-breathe',
               !isStreaming && isCoral && 'text-accent',
               !isStreaming && !isCoral && 'text-white/95',
             )}
