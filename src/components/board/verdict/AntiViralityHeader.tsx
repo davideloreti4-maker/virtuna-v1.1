@@ -40,12 +40,19 @@ export function AntiViralityHeader({ result, analysisId }: AntiViralityHeaderPro
 
   const n = fixCount(result.counterfactuals?.suggestions);
 
+  // Two-line layout when fixCount=0 (copy is long and collides with "Post anyway →" in h-10).
+  const twoLine = n === 0;
+
   return (
     <div
       role="status"
       aria-live="polite"
       data-testid="av-header"
-      className="flex h-10 items-center justify-between px-2 text-xs"
+      className={
+        twoLine
+          ? 'flex min-h-[40px] flex-col items-start gap-1 px-2 py-1.5 text-xs'
+          : 'flex h-10 items-center justify-between px-2 text-xs'
+      }
       style={{
         background: 'linear-gradient(90deg, var(--color-accent), var(--color-warning))',
         color: 'rgba(255,255,255,0.9)',

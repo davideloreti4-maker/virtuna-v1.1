@@ -36,12 +36,34 @@ describe('AntiViralityHeader — conditional render', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('renders 40px band when anti_virality_gated is true', () => {
-    render(<AntiViralityHeader result={fixtures.antiVirality} analysisId="test-c" />);
+  it('renders 40px band when anti_virality_gated is true (with fix suggestions)', () => {
+    const withFix: PredictionResult = {
+      ...fixtures.antiVirality,
+      counterfactuals: {
+        ...fixtures.antiVirality.counterfactuals!,
+        suggestions: [
+          { type: 'fix', headline: 'a', detail: 'b', timestamp_ms: 0, signal_anchor: 'hook' },
+        ],
+      },
+    };
+    render(<AntiViralityHeader result={withFix} analysisId="test-c" />);
     const header = screen.getByTestId('av-header');
     expect(header).toBeInTheDocument();
-    // h-10 = 2.5rem = 40px; verify class
+    // Single-line layout: h-10 class present
     expect(header.className).toContain('h-10');
+  });
+
+  it('two-line layout: uses min-h + flex-col when fixCount=0', () => {
+    const zeroFix: PredictionResult = {
+      ...fixtures.antiVirality,
+      counterfactuals: undefined as unknown as PredictionResult['counterfactuals'],
+    };
+    render(<AntiViralityHeader result={zeroFix} analysisId="test-c-2line" />);
+    const header = screen.getByTestId('av-header');
+    expect(header).toBeInTheDocument();
+    // Two-line layout: flex-col + min-h classes
+    expect(header.className).toContain('flex-col');
+    expect(header.className).toContain('min-h-');
   });
 
   it('shows "fixable in 1 step" (singular) when 1 fix suggestion exists', () => {
