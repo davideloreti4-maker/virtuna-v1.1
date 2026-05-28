@@ -77,11 +77,15 @@ const mockInsert = vi.fn(() => Promise.resolve({ error: null }));
 const mockUpsert = vi.fn(() => Promise.resolve({ error: null }));
 const mockStorageRemove = vi.fn(() => Promise.resolve({ error: null }));
 
+// Fix 1 — spy on analysis_results UPDATE call (SSE path persists score before event:complete)
+const mockUpdateEq = vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ error: null })) }));
+const mockUpdate = vi.fn(() => ({ eq: mockUpdateEq }));
+
 vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: vi.fn(() => ({
     from: vi.fn((table: string) => {
       if (table === "analysis_results") {
-        return { insert: mockInsert };
+        return { insert: mockInsert, upsert: mockUpsert, update: mockUpdate };
       }
       if (table === "usage_tracking") {
         // Route uses .select().eq().eq().eq().single() then .upsert() on this table
@@ -226,6 +230,9 @@ beforeEach(() => {
   });
   mockInsert.mockResolvedValue({ error: null });
   mockUpsert.mockResolvedValue({ error: null });
+  // Fix 1 — reset update chain mock
+  mockUpdateEq.mockReturnValue({ eq: vi.fn(() => Promise.resolve({ error: null })) });
+  mockUpdate.mockReturnValue({ eq: mockUpdateEq });
   mockStorageRemove.mockResolvedValue({ error: null });
 
   // Default: cache miss
@@ -444,5 +451,51 @@ describe("POST /api/analyze — provenance INSERT (PIPE-05, PIPE-06, CACHE-01)",
         audio_description: null,
       })
     );
+  });
+});
+
+// =====================================================
+// Fix 1 (05-ux) — persist pipeline result via UPDATE before event:complete
+// =====================================================
+
+describe("POST /api/analyze — Fix 1: persist overall_score via UPDATE (SSE path)", () => {
+  it("calls analysis_results.update with overall_score on the SSE path before event:complete", async () => {
+    const req = makeRequest(validInput, { Accept: "text/event-stream" });
+    const res = await POST(req);
+    const payload = await readSSEPayload(res);
+
+    // Verify the SSE stream completed
+    expect(payload).toContain("event: complete");
+
+    // Verify update was called with overall_score populated
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        overall_score: 80,
+        confidence: 0.85,
+        reasoning: "fake reasoning",
+      })
+    );
+  });
+
+  it("UPDATE is NOT called on the JSON path (JSON path uses UPSERT via buildInsertRow)", async () => {
+    const req = makeRequest(validInput, { Accept: "application/json" });
+    await POST(req);
+    // JSON path goes through buildInsertRow INSERT — no explicit UPDATE needed
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it("logs error when UPDATE fails but still emits event:complete (non-fatal)", async () => {
+    // Simulate UPDATE failure — cast required because vi.fn infers from first call
+    (mockUpdateEq as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+      eq: vi.fn(() => Promise.resolve({ error: { message: "update failed" } })),
+    });
+    (mockUpdate as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce({ eq: mockUpdateEq });
+
+    const req = makeRequest(validInput, { Accept: "text/event-stream" });
+    const res = await POST(req);
+    const payload = await readSSEPayload(res);
+
+    // SSE stream must still complete even when UPDATE fails
+    expect(payload).toContain("event: complete");
   });
 });

@@ -6,11 +6,67 @@ import {
   type CtaSegmentResult,
   type BodySegmentResult,
 } from "./gemini/schemas";
+import type { EmotionArcPoint } from "./qwen/schemas";
+import type { OptimalPostWindow } from "./optimal-post";
 import { ARCHETYPES } from "./wave3/persona-registry";
 
 // Phase 5 D-13 — re-export segment types so downstream consumers (aggregator, merge,
 // route handlers) have ONE import surface (`@/lib/engine/types`) instead of two.
 export type { HookDecomposition, CtaSegmentResult, BodySegmentResult };
+
+// Phase 1 (R1.7) — re-export EmotionArcPoint so consumers can import from
+// "@/lib/engine/types" instead of reaching into qwen/schemas directly.
+export type { EmotionArcPoint };
+
+// Phase 3 (D-07) — re-export SegmentGrid so engine consumers don't reach into qwen/.
+export type { SegmentGrid } from "./qwen/schemas";
+
+// D-13 (Phase 3) + Phase 4 slot_type (OQ-1 / Plan 04-02): per-persona attention timeline + archetype slot.
+// Backwards-compatible additive payload on PredictionResult. Phase 4 (Audience node)
+// consumes this; null when Pass 2 < SUCCESS_THRESHOLD per D-06.
+export interface HeatmapPayload {
+  segments: Array<{
+    idx: number;
+    t_start: number;
+    t_end: number;
+    label?: string;                          // omni-supplied visual_event short label
+    is_hook_zone: boolean;
+    keyframe_uri: string | null;             // signed URL; null until filmstrip ready
+  }>;
+  personas: Array<{
+    id: string;                              // matches existing persona.id
+    slot_type: 'fyp' | 'niche' | 'loyalist' | 'cross_niche'; // Phase 4 OQ-1: client recompute key
+    attentions: number[];                    // length === segments.length
+    swipe_predicted_at: number | null;       // t value
+    segment_reasons: Record<number, string>; // sparse, inflection points only
+  }>;
+  weighted_curve: number[];                  // weighted aggregate attention per segment
+  weights: {                                 // transparency surface, default mix
+    fyp: number;        // 0.65
+    niche: number;      // 0.20
+    loyalist: number;   // 0.10
+    cross_niche: number;// 0.05
+  };
+  weights_source: 'default' | 'niche_override' | 'creator_override' | 'analysis_override';
+}
+
+// D-15 (Phase 3) — Streaming partial extension for persona rows.
+// Phase 4 board subscribes to attentions for row-by-row reveal choreography.
+// Additive: Pass 1 fields (id, status, verdict, reasoning) preserved unchanged.
+export interface PersonaStreamingPartial {
+  id: string;
+  status: "pending" | "streaming" | "complete";
+  verdict?: string;
+  reasoning?: string;
+  // Pass 2 streaming fields
+  pass2_status?: "pending" | "streaming" | "complete";
+  attentions?: number[];
+  swipe_predicted_at?: number;
+}
+
+// Phase 1 (R6.1, D-13) — re-export OptimalPostWindow so consumers can import
+// from "@/lib/engine/types" instead of reaching into optimal-post directly.
+export type { OptimalPostWindow };
 
 // =====================================================
 // Feature Vector — Standardized signal backbone
@@ -179,6 +235,32 @@ export interface PredictionResult {
   /** Phase 6 (D-G3) — 0-100 audio perceptual score before fingerprint boost. 0 when audio absent.
    *  Optional to preserve compile against existing consumers; plans 06-05/06-06 will start emitting it. */
   audio_perceptual_score?: number;
+  /** Phase 1 (R1.7) — Emotion arc timeline from Omni Plus. Null when video absent
+   *  or Qwen omitted the field. Optional to preserve compile against existing consumers. */
+  emotion_arc?: EmotionArcPoint[] | null;
+  /** Phase 1 (R1.9, Plan 06 T3 B4) — true when confidence < ANTI_VIRALITY_THRESHOLD.
+   *  UI renders "Don't post yet" orange verdict state when true. REQUIRED field
+   *  (not optional) — aggregator assigns on every PredictionResult; defaults to
+   *  false when calibrated confidence >= threshold. Eliminates dead-code threshold
+   *  per checker B4. Gated on POST-CRITIQUE confidence (Pitfall 7 ordering invariant —
+   *  matches the gate `maybeAppendLikelyFlopWarning` uses). */
+  anti_virality_gated: boolean;
+  /** Phase 3 (Plan 08, D-17) — reason discriminator from isAntiViralityGatedFull.
+   *  "confidence" | "timeline_pattern" | "both" | null. null when not gated. */
+  anti_virality_reason?: "confidence" | "timeline_pattern" | "both" | null;
+  /** Phase 3 (Plan 08, D-17) — top-N worst weighted_curve segment indices.
+   *  Non-empty only when timeline_pattern triggered (from topDropoffSegmentIndices). */
+  dropoff_segment_indices?: number[];
+  /** Phase 1 (R6.1, D-13) — niche-aware optimal posting window from
+   *  niche_post_windows (materialized aggregate refreshed daily by pg_cron).
+   *  - OptimalPostWindow with source='niche' when DB lookup hits.
+   *  - FALLBACK_POST_WINDOW (source='fallback') when niche unknown / not in
+   *    the materialized table yet.
+   *  - null on Supabase error (non-fatal per D-15) — P5 panel renders generic
+   *    copy when null.
+   *  Optional to preserve compile against existing consumers; aggregator
+   *  always populates the field on Phase 1+ runs. */
+  optimal_post_window?: OptimalPostWindow | null;
   /** Phase 6 (D-G1) — Full fingerprint match record or null if no match above threshold.
    *  Optional to preserve compile against existing consumers; plans 06-05/06-06 will start emitting it. */
   audio_fingerprint?: AudioFingerprintResult | null;
@@ -240,6 +322,13 @@ export interface PredictionResult {
     velocity_score: number;
     trend_phase: string | null;
   }>;
+
+  // Phase 3 (D-12) — additive, backwards-compatible. Pass 1 fields untouched.
+  // null when Pass 2 < SUCCESS_THRESHOLD; consumers fall back to persona_behavioral_aggregate.
+  weighted_completion_pct?: number | null;
+  weighted_top_dropoff_t?: number | null;
+  weighted_hook_score?: number | null;
+  heatmap?: HeatmapPayload | null;
 }
 
 // =====================================================
@@ -291,6 +380,8 @@ export interface SignalAvailability {
   retrieval?: boolean;
   /** Phase 9 — platform_fit signal availability. True when V3 platform-fit run produced a non-null result. */
   platform_fit?: boolean;
+  /** Phase 3 — true when pass2_aggregate_built (≥7/10 Pass 2 succeeded per D-06). */
+  pass2_timeline?: boolean;
 }
 
 // Wave0Result now defined below as z.infer<typeof Wave0ResultSchema> — see Phase 4 block.

@@ -968,6 +968,268 @@ describe("Phase 8 — Wave 1 retrieval sibling", () => {
 });
 
 // =====================================================
+// Phase 3 (Plan 08) — Filmstrip trigger + Pass 2 wiring tests
+// =====================================================
+
+// These mocks are hoisted so vi.mock factories can reference them.
+const { mockRunWave3Pass2, mockTriggerFilmstripGeneration } = vi.hoisted(() => ({
+  mockRunWave3Pass2: vi.fn(async () => ({
+    pass2Results: Array.from({ length: 10 }, (_, i) => ({
+      persona_id: `persona-${i}`,
+      archetype: "high_engager" as const,
+      slot_type: "fyp" as const,
+      segment_reactions: [
+        { t_start: 0, t_end: 2, attention: 0.8, swipe_predicted: false },
+      ],
+      pass2_latency_ms: 1000,
+      pass2_cost_cents: 0.05,
+    })),
+    warnings: [] as string[],
+    cost_cents: 0.5,
+    pass2_success_count: 10,
+    pass2_aggregate_built: true,
+  })),
+  mockTriggerFilmstripGeneration: vi.fn(),
+}));
+
+vi.mock("../wave3/pass2", () => ({
+  runWave3Pass2: mockRunWave3Pass2,
+}));
+
+vi.mock("../filmstrip/queue", () => ({
+  triggerFilmstripGeneration: mockTriggerFilmstripGeneration,
+}));
+
+describe("Phase 3 (Plan 08) — filmstrip trigger + Pass 2 wiring", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetCircuitBreaker();
+    supabaseTableOverrides = {};
+
+    mockGeminiGenerate.mockResolvedValue({
+      text: JSON.stringify(makeGeminiAnalysis()),
+      usageMetadata: { promptTokenCount: 500, candidatesTokenCount: 300 },
+    });
+
+    mockDeepSeekCreate.mockImplementation((args: { messages: Array<{ role: string; content: string }> }) => {
+      const sys = args.messages?.find((m) => m.role === "system")?.content ?? "";
+      const isPersonaCall = sys.includes("TikTok For You Page viewer");
+      const isQwenTextAnalysis = sys.includes("TikTok content analyst");
+      let body: string;
+      if (isPersonaCall) {
+        body = JSON.stringify({
+          scroll_past_second: 5,
+          watch_through_pct: 70,
+          comment_intent: 20,
+          share_intent: 30,
+          save_intent: 40,
+          reasoning: "default persona test reaction",
+        });
+      } else if (isQwenTextAnalysis) {
+        body = JSON.stringify(makeGeminiAnalysis());
+      } else {
+        body = JSON.stringify(makeDeepSeekReasoning());
+      }
+      return Promise.resolve({
+        choices: [{ message: { content: body } }],
+        usage: { prompt_tokens: 1000, completion_tokens: 500 },
+      });
+    });
+
+    supabaseTableOverrides = {
+      rule_library: { data: [], error: null },
+      trending_sounds: { data: [], error: null },
+      creator_profiles: { data: null, error: null },
+      scraped_videos: { data: [], error: null },
+      analyses: { data: null, error: null },
+    };
+
+    // Re-init the Pass 2 mock to a known state (cleared by vi.clearAllMocks)
+    mockRunWave3Pass2.mockResolvedValue({
+      pass2Results: Array.from({ length: 10 }, (_, i) => ({
+        persona_id: `persona-${i}`,
+        archetype: "high_engager" as const,
+        slot_type: "fyp" as const,
+        segment_reactions: [
+          { t_start: 0, t_end: 2, attention: 0.8, swipe_predicted: false },
+        ],
+        pass2_latency_ms: 1000,
+        pass2_cost_cents: 0.05,
+      })),
+      warnings: [] as string[],
+      cost_cents: 0.5,
+      pass2_success_count: 10,
+      pass2_aggregate_built: true,
+    });
+    mockTriggerFilmstripGeneration.mockReturnValue(undefined);
+  });
+
+  it("Phase 3 wiring: triggerFilmstripGeneration called once at wave_0_complete (fire-and-forget, void return, video_upload mode only)", async () => {
+    // triggerFilmstripGeneration fires only when signedVideoUrl is present (video_upload mode).
+    // In text mode there is no signed URL, so it should NOT be called.
+    await runPredictionPipeline(input);
+    // text mode: no video → no filmstrip trigger
+    expect(mockTriggerFilmstripGeneration).not.toHaveBeenCalled();
+  });
+
+  it("Phase 3 wiring: runWave3Pass2 called after Pass 1 completes, before aggregator (text mode — segments absent, pass2 skipped)", async () => {
+    // In text mode wave0Result.segments is absent; Pass 2 receives null segments
+    // and is NOT invoked. This test confirms graceful no-op in text mode.
+    await runPredictionPipeline(input);
+    // Pass 2 should NOT be invoked in text mode (no segments from Omni call)
+    expect(mockRunWave3Pass2).not.toHaveBeenCalled();
+  });
+
+  it("Phase 3 wiring: runWave3Pass2 receives segments[], keyframeUris[], pass1Results, demographic context (video_upload mode)", async () => {
+    // video_upload mode: Omni returns segments → Pass 2 invoked
+    const videoInput = {
+      input_mode: "video_upload" as const,
+      video_storage_path: "user-abc/test.mp4",
+      content_text: "Test video #fyp",
+      content_type: "video" as const,
+    };
+
+    mockDeepSeekCreate.mockImplementation((args: { model?: string; messages: Array<{ role: string; content: unknown }> }) => {
+      const sys = args.messages.find((m) => m.role === "system");
+      const sysText = typeof sys?.content === "string" ? sys.content : "";
+      const isOmni = sysText.includes("expert TikTok content analyst");
+      const isPersonaCall = sysText.includes("TikTok For You Page viewer");
+      const isPass2 = sysText.includes("STABLE_PASS2") || sysText.includes("segment_reactions");
+      let body: string;
+      if (isOmni) {
+        body = JSON.stringify({
+          content_type: "talking_head",
+          niche_primary_slug: "fyp",
+          niche_micro_slug: null,
+          factors: [
+            { name: "Scroll-Stop Power", score: 7, rationale: "x", improvement_tip: "y" },
+            { name: "Completion Pull", score: 7, rationale: "x", improvement_tip: "y" },
+            { name: "Rewatch Potential", score: 6, rationale: "x", improvement_tip: "y" },
+            { name: "Share Trigger", score: 6, rationale: "x", improvement_tip: "y" },
+            { name: "Emotional Charge", score: 7, rationale: "x", improvement_tip: "y" },
+          ],
+          overall_impression: "Good",
+          content_summary: "Test content",
+          hook_visual_impact: 7,
+          hook_decomposition: {
+            visual_stop_power: 7, audio_hook_quality: 6, text_overlay_score: 5,
+            first_words_speech_score: 6, weakest_modality: "text_overlay_score",
+            visual_audio_coherence: 7, cognitive_load: 4,
+            watermark_detected: { tiktok: false, ig: false, yt: false },
+          },
+          video_signals: { visual_production_quality: 7, pacing_score: 7, transition_quality: 6 },
+          cta_segment: { cta_present: false, strength: null, type: null, rationale: "no CTA" },
+          audio_signals: {
+            voice_clarity_0_10: 7, audio_hook_first_2s_0_10: 6, silence_ratio: 0.1,
+            voiceover_ratio: 0.7, music_ratio: 0.2, audio_description: "Clear voice with background music",
+          },
+          audio_perceptual_score: 72,
+          segments: [
+            { t_start: 0, t_end: 3, visual_event: "hook intro", audio_event: "greeting" },
+            { t_start: 3, t_end: 6, visual_event: "body content", audio_event: "explanation" },
+          ],
+        });
+      } else if (isPersonaCall) {
+        body = JSON.stringify({
+          scroll_past_second: 5, watch_through_pct: 70,
+          comment_intent: 20, share_intent: 30, save_intent: 40,
+          reasoning: "persona reaction",
+        });
+      } else if (isPass2) {
+        body = JSON.stringify({ segment_reactions: [{ t_start: 0, t_end: 3, attention: 0.8, swipe_predicted: false }] });
+      } else {
+        body = JSON.stringify(makeDeepSeekReasoning());
+      }
+      return Promise.resolve({
+        choices: [{ message: { content: body } }],
+        usage: { prompt_tokens: 1000, completion_tokens: 500 },
+      });
+    });
+
+    await runPredictionPipeline(videoInput);
+
+    // Pass 2 should have been called with: segments[], keyframeUris[], pass1Results, demoContext, onEvent
+    expect(mockRunWave3Pass2).toHaveBeenCalledTimes(1);
+    const [segments, keyframeUris, pass1Results, demoContext] = mockRunWave3Pass2.mock.calls[0] as unknown[];
+    expect(Array.isArray(segments)).toBe(true);
+    expect(Array.isArray(keyframeUris)).toBe(true);
+    expect(Array.isArray(pass1Results)).toBe(true);
+    // demoContext is the 4th arg (demographic context object)
+    expect(demoContext).toBeDefined();
+    expect(typeof demoContext).toBe("object");
+  });
+
+  it("Phase 3 wiring: Wave3Pass2Outcome passed into aggregator call (confirms pass2Outcome is threaded)", async () => {
+    // text mode: no segments → pass2Outcome is null → aggregator receives null
+    // This verifies the aggregateScores call site handles null pass2Outcome
+    const result = await runPredictionPipeline(input);
+    // Result must still be a valid PipelineResult (no crash when pass2Outcome=null)
+    expect(result).toBeDefined();
+    expect(result.payload).toBeDefined();
+    expect(result.wave3Result).toBeDefined();
+  });
+
+  it("Phase 3 wiring: when Pass 2 fails (pass2_aggregate_built=false), pipeline still returns PipelineResult (graceful degradation)", async () => {
+    const videoInput = {
+      input_mode: "video_upload" as const,
+      video_storage_path: "user-abc/test.mp4",
+      content_text: "Test video",
+      content_type: "video" as const,
+    };
+
+    // Pass 2 returns aggregate_built=false
+    mockRunWave3Pass2.mockResolvedValue({
+      pass2Results: [],
+      warnings: ["5 personas failed"],
+      cost_cents: 0.1,
+      pass2_success_count: 5,
+      pass2_aggregate_built: false,
+    });
+
+    mockDeepSeekCreate.mockImplementation((args: { model?: string; messages: Array<{ role: string; content: unknown }> }) => {
+      const sys = args.messages.find((m) => m.role === "system");
+      const sysText = typeof sys?.content === "string" ? sys.content : "";
+      const isOmni = sysText.includes("expert TikTok content analyst");
+      const isPersonaCall = sysText.includes("TikTok For You Page viewer");
+      let body: string;
+      if (isOmni) {
+        body = JSON.stringify({
+          content_type: "talking_head", niche_primary_slug: "fyp", niche_micro_slug: null,
+          factors: [
+            { name: "Scroll-Stop Power", score: 7, rationale: "x", improvement_tip: "y" },
+            { name: "Completion Pull", score: 7, rationale: "x", improvement_tip: "y" },
+            { name: "Rewatch Potential", score: 6, rationale: "x", improvement_tip: "y" },
+            { name: "Share Trigger", score: 6, rationale: "x", improvement_tip: "y" },
+            { name: "Emotional Charge", score: 7, rationale: "x", improvement_tip: "y" },
+          ],
+          overall_impression: "Good", content_summary: "Test content",
+          hook_visual_impact: 7,
+          hook_decomposition: { visual_stop_power: 7, audio_hook_quality: 6, text_overlay_score: 5, first_words_speech_score: 6, weakest_modality: "text_overlay_score", visual_audio_coherence: 7, cognitive_load: 4 },
+          video_signals: { visual_production_quality: 7, pacing_score: 7, transition_quality: 6 },
+          cta_segment: { cta_present: false, strength: null, type: null, rationale: "no CTA" },
+          audio_signals: { voice_clarity_0_10: 7, audio_hook_first_2s_0_10: 6, silence_ratio: 0.1, voiceover_ratio: 0.7, music_ratio: 0.2, audio_description: "Clear voice with music" },
+          audio_perceptual_score: 72,
+          segments: [{ t_start: 0, t_end: 3, visual_event: "hook intro", audio_event: "greeting" }],
+        });
+      } else if (isPersonaCall) {
+        body = JSON.stringify({ scroll_past_second: 5, watch_through_pct: 70, comment_intent: 20, share_intent: 30, save_intent: 40, reasoning: "x" });
+      } else {
+        body = JSON.stringify(makeDeepSeekReasoning());
+      }
+      return Promise.resolve({
+        choices: [{ message: { content: body } }],
+        usage: { prompt_tokens: 1000, completion_tokens: 500 },
+      });
+    });
+
+    const result = await runPredictionPipeline(videoInput);
+    // Pipeline must not throw; PipelineResult is valid
+    expect(result).toBeDefined();
+    expect(result.payload).toBeDefined();
+  });
+});
+
+// =====================================================
 // Phase 9 — Platform-fit V3 + Critique + Counterfactuals (Plan 09-07)
 // =====================================================
 

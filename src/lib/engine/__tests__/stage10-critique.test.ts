@@ -15,6 +15,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { runStage10Critique, applyCritiqueAdjustment } from "../stage10-critique";
 import { buildCritiqueUserMessage, CritiqueResponseSchema } from "../stage10-critique-prompts";
+import { QWEN_REASONING_MODEL } from "../qwen/client";
+import { calculateCost } from "../qwen/cost";
 import type { PredictionResult, CritiqueResult } from "../types";
 import type { StageEvent } from "../events";
 import type { CreatorContext } from "../creator";
@@ -192,6 +194,8 @@ function makeFakePredictionResult(
     persona_simulation_results: [],
     retrieval_score: null,
     retrieval_evidence: [],
+    // Phase 1 (R1.9, B4) — REQUIRED boolean. Default false (confidence=0.75 >= threshold=0.4).
+    anti_virality_gated: false,
     ...overrides,
   };
 }
@@ -381,6 +385,66 @@ describe("runStage10Critique — graceful degradation", () => {
     });
     const result = await runStage10Critique(makeFakePredictionResult());
     expect(result).toBeNull();
+  });
+});
+
+describe("Stage10 D-21 thinking-mode upgrade", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockIsCircuitOpen.mockReturnValue(false);
+  });
+
+  it("Test 1: uses QWEN_REASONING_MODEL (qwen3.6-plus), not QWEN_FAST_MODEL", async () => {
+    mockV3Success(makeValidCritiqueResponse());
+    await runStage10Critique(makeFakePredictionResult());
+    expect(mockCreate).toHaveBeenCalledOnce();
+    const callArgs = mockCreate.mock.calls[0]![0] as Record<string, unknown>;
+    expect(callArgs.model).toBe(QWEN_REASONING_MODEL);
+    expect(callArgs.model).toMatch(/qwen3\.6-plus/);
+  });
+
+  it("Test 2: call includes enable_thinking: true", async () => {
+    mockV3Success(makeValidCritiqueResponse());
+    await runStage10Critique(makeFakePredictionResult());
+    expect(mockCreate).toHaveBeenCalledOnce();
+    const callArgs = mockCreate.mock.calls[0]![0] as Record<string, unknown>;
+    expect(callArgs.enable_thinking).toBe(true);
+  });
+
+  it("Test 3: call includes thinking_budget: 4000", async () => {
+    mockV3Success(makeValidCritiqueResponse());
+    await runStage10Critique(makeFakePredictionResult());
+    expect(mockCreate).toHaveBeenCalledOnce();
+    const callArgs = mockCreate.mock.calls[0]![0] as Record<string, unknown>;
+    expect(callArgs.thinking_budget).toBe(4000);
+  });
+
+  it("Test 4: cost telemetry uses qwen3.6-plus pricing via calculateCost helper", async () => {
+    // Provide usage with known token counts
+    const usage = {
+      prompt_tokens: 500,
+      prompt_cache_hit_tokens: 0,
+      prompt_cache_miss_tokens: 500,
+      completion_tokens: 100,
+    };
+    mockCreate.mockResolvedValueOnce({
+      choices: [{ message: { content: makeValidCritiqueResponse() } }],
+      usage,
+    });
+    const events: StageEvent[] = [];
+    await runStage10Critique(makeFakePredictionResult(), (e) => events.push(e));
+
+    const endEvent = events.find(
+      (e): e is Extract<StageEvent, { type: "stage_end" }> =>
+        e.type === "stage_end" && e.stage === "stage_10_critique",
+    )!;
+    expect(endEvent).toBeDefined();
+    expect(endEvent.ok).toBe(true);
+
+    // qwen3.6-plus input rate: $0.40/1M, output: $2.40/1M
+    // cost = (500 * 0.40/1M + 100 * 2.40/1M) * 100 cents = (0.0002 + 0.00024) * 100 = 0.044 cents
+    const expectedCost = calculateCost(QWEN_REASONING_MODEL, { prompt_tokens: 500, completion_tokens: 100 });
+    expect(endEvent.cost_cents).toBeCloseTo(expectedCost, 2);
   });
 });
 

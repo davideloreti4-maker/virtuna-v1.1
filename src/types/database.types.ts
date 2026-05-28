@@ -196,6 +196,7 @@ export type Database = {
           gemini_model: string | null
           gemini_score: number | null
           has_video: boolean | null
+          heatmap: Json | null
           id: string
           input_mode: string | null
           insights: string | null
@@ -213,7 +214,10 @@ export type Database = {
           suggestions: Json | null
           trend_score: number | null
           updated_at: string | null
+          project_id: string | null
           user_id: string
+          script_result: Json | null
+          optimal_post_override: Json | null
           variants: Json | null
           video_storage_path: string | null
           warnings: string[] | null
@@ -236,6 +240,7 @@ export type Database = {
           gemini_model?: string | null
           gemini_score?: number | null
           has_video?: boolean | null
+          heatmap?: Json | null
           id?: string
           input_mode?: string | null
           insights?: string | null
@@ -243,6 +248,7 @@ export type Database = {
           ml_score?: number | null
           overall_score?: number | null
           personas?: Json | null
+          project_id?: string | null
           reasoning?: string | null
           retrieval_evidence?: Json | null
           retrieval_score?: number | null
@@ -254,6 +260,8 @@ export type Database = {
           trend_score?: number | null
           updated_at?: string | null
           user_id: string
+          script_result?: Json | null
+          optimal_post_override?: Json | null
           variants?: Json | null
           video_storage_path?: string | null
           warnings?: string[] | null
@@ -276,6 +284,7 @@ export type Database = {
           gemini_model?: string | null
           gemini_score?: number | null
           has_video?: boolean | null
+          heatmap?: Json | null
           id?: string
           input_mode?: string | null
           insights?: string | null
@@ -283,6 +292,7 @@ export type Database = {
           ml_score?: number | null
           overall_score?: number | null
           personas?: Json | null
+          project_id?: string | null
           reasoning?: string | null
           retrieval_evidence?: Json | null
           retrieval_score?: number | null
@@ -294,11 +304,21 @@ export type Database = {
           trend_score?: number | null
           updated_at?: string | null
           user_id?: string
+          script_result?: Json | null
+          optimal_post_override?: Json | null
           variants?: Json | null
           video_storage_path?: string | null
           warnings?: string[] | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "analysis_results_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       benchmark_results: {
         Row: {
@@ -912,6 +932,41 @@ export type Database = {
             columns: ["analysis_id"]
             isOneToOne: true
             referencedRelation: "analysis_results"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          archived: boolean
+          color: string
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          archived?: boolean
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          archived?: boolean
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]

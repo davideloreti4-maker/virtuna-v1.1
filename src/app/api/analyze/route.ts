@@ -287,6 +287,10 @@ export async function POST(request: Request) {
       // v2 columns (from Phase 4 migration)
       behavioral_predictions:
         finalResult.behavioral_predictions as unknown as null,
+      // Wave 3 per-persona detail — surfaced in UI Audience node. Empty array when
+      // Wave 3 below threshold (D-13) or fallback path taken.
+      personas:
+        (finalResult.persona_simulation_results ?? []) as unknown as Json,
       feature_vector: finalResult.feature_vector as unknown as null,
       reasoning: finalResult.reasoning,
       warnings: finalResult.warnings,
@@ -312,6 +316,10 @@ export async function POST(request: Request) {
         validated.input_mode === "video_upload" && validated.video_storage_path
           ? validated.video_storage_path
           : null,
+      // Persist the assembled HeatmapPayload so /api/analysis/[id] can return
+      // the real segments/personas/weighted_curve on permalink replay instead
+      // of falling back to the server-side synth.
+      heatmap: (finalResult.heatmap ?? null) as unknown as Json,
     });
 
     // -------------------------------------------------------
@@ -392,6 +400,42 @@ export async function POST(request: Request) {
     }
 
     // -------------------------------------------------------
+    // Pitfall #6 (Plan 01-02 Option A) — insert placeholder analysis_results row
+    // BEFORE streaming begins. GET /api/analyze/[id]/stream (Plan 01-03) reads this
+    // row; the aggregator's final write is now an UPSERT by id so the row is
+    // populated in place (no orphan, no duplicate).
+    // Column-coverage note: per src/types/database.types.ts only user_id,
+    // content_text, content_type are NOT NULL in the Insert type. Everything else
+    // is nullable / has a DB default — sentinel placeholder values below mark the
+    // row as in-flight until the aggregator UPSERT overwrites them.
+    // -------------------------------------------------------
+    const analysisId = nanoid(12);
+    const { error: placeholderError } = await service
+      .from("analysis_results")
+      .insert({
+        id: analysisId,
+        user_id: user.id,
+        content_text: validated.content_text ?? "",
+        content_type: validated.content_type,
+        society_id: validated.society_id ?? null,
+        overall_score: null,                                 // sentinel: marks row in-flight
+        confidence: null,
+        engine_version: "pending",                           // sentinel: upsert overwrites
+        input_mode: validated.input_mode,
+        has_video: validated.input_mode === "video_upload",
+        content_hash: contentHash,
+        gemini_model: null,
+        latency_ms: null,
+        cost_cents: null,
+        score_weights: null,
+      });
+
+    if (placeholderError) {
+      log.error("placeholder insert failed", { error: placeholderError.message });
+      // Don't fail the analysis — proceed without GET-stream support for this call.
+    }
+
+    // -------------------------------------------------------
     // SSE stream setup (default branch — preserves existing client contract)
     // -------------------------------------------------------
     const encoder = new TextEncoder();
@@ -404,6 +448,10 @@ export async function POST(request: Request) {
         };
 
         try {
+          // Pitfall #6 (Plan 01-02) — emit started FIRST so consumer captures
+          // analysisId before any stage / phase / complete frame.
+          send("started", { id: analysisId });
+
           // Phase 1: Run full pipeline (handles Wave 1 + Wave 2 internally).
           // Phase 3 — forward fine-grained stage events to SSE client as `event: stage`.
           send("phase", {
@@ -444,10 +492,16 @@ export async function POST(request: Request) {
             warnings: [...pipelineResult.warnings, ...result.warnings],
           };
 
-          // Persist to DB with v2 + Phase 3 columns
+          // Persist to DB — UPSERT by id replaces the placeholder row from Pitfall #6
+          // Option A. The placeholder INSERT above guarantees the row exists; the
+          // UPSERT here populates it with final values (engine_version, latency_ms,
+          // overall_score, etc.) without creating a duplicate.
           const { error: insertError } = await service
             .from("analysis_results")
-            .insert(buildInsertRow(finalResult, ruleContributions));
+            .upsert(
+              { ...buildInsertRow(finalResult, ruleContributions), id: analysisId },
+              { onConflict: "id" }
+            );
 
           if (insertError) {
             log.error("DB insert failed", { error: insertError.message });
@@ -468,6 +522,44 @@ export async function POST(request: Request) {
             },
             { onConflict: "user_id,period_start,period_type" }
           );
+
+          // Fix 1 (05-ux): Explicit UPDATE before emitting event:complete.
+          // The UPSERT above writes the full row, but if it silently conflicts or
+          // falls back to INSERT (unlikely with onConflict:id), overall_score stays
+          // null. This targeted UPDATE guarantees the score columns are written even
+          // if the UPSERT path had a conflict-resolution anomaly.
+          {
+            const fr = finalResult as unknown as Record<string, unknown>;
+            const { error: updateErr } = await service
+              .from("analysis_results")
+              .update({
+                overall_score: finalResult.overall_score,
+                confidence: finalResult.confidence,
+                factors: (finalResult.factors ?? []) as unknown as null,
+                suggestions: (finalResult.suggestions ?? []) as unknown as null,
+                reasoning: finalResult.reasoning ?? null,
+                warnings: (finalResult.warnings ?? []) as unknown as string[],
+                retrieval_evidence: (fr.retrieval_evidence ?? null) as unknown as null,
+                retrieval_score: (fr.retrieval_score ?? null) as number | null,
+                behavioral_predictions: finalResult.behavioral_predictions as unknown as null,
+                feature_vector: finalResult.feature_vector as unknown as null,
+                gemini_score: finalResult.gemini_score ?? null,
+                rule_score: finalResult.rule_score ?? null,
+                trend_score: finalResult.trend_score ?? null,
+                ml_score: finalResult.ml_score ?? null,
+                score_weights: finalResult.score_weights as unknown as null,
+                signal_availability: finalResult.signal_availability as unknown as null,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", analysisId)
+              .eq("user_id", user.id);
+            if (updateErr) {
+              log.error("Failed to persist analysis result", {
+                analysisId,
+                error: updateErr,
+              });
+            }
+          }
 
           send("complete", finalResult);
 

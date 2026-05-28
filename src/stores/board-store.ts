@@ -1,0 +1,267 @@
+/**
+ * Board State Machine store — Phase 2 Plan 04 (D-18, D-19, CONTEXT.md).
+ *
+ * State machine has 4 states:
+ *   idle          — no analysis active; empty board visible
+ *   streaming     — SSE stream active; Engine frames animate, camera auto-follows
+ *   complete      — analysis finished; camera glides to Audience+Verdict hero pair
+ *   anti-virality — complete + threshold triggered; orange treatment on Verdict+Audience
+ *
+ * Camera state lives here so Board.tsx can swap useState for store selectors
+ * (see Board.tsx comment). Non-camera ephemeral UI (selected node, cancel
+ * confirmation, input-bar focus pulse) also lives here.
+ *
+ * Anti-virality is a cross-group coordinated state (D-19).
+ * User touch override cancels camera auto-follow during streaming (D-09).
+ */
+
+import { create } from 'zustand';
+import { CAMERA_DEFAULT_SCALE } from '@/components/board/board-constants';
+import type { Camera, CameraPresetKey } from '@/components/board/board-types';
+
+// ── Board machine states ────────────────────────────────────────────────────
+
+export type BoardMachineState =
+  | 'idle'
+  | 'streaming'
+  | 'complete'
+  | 'anti-virality';
+
+// ── Store slice types ───────────────────────────────────────────────────────
+
+export interface PendingVideo {
+  thumbnail: string;
+  duration: number;
+  frames: Record<number, string>;
+}
+
+export interface BoardState {
+  /** Current board machine state (D-18) */
+  boardState: BoardMachineState;
+
+  /** Camera position and zoom in world-space (D-08, D-10) */
+  camera: Camera;
+
+  /** Active camera preset key, or null if user has overridden */
+  activePreset: CameraPresetKey | null;
+
+  /**
+   * True while camera is auto-following SSE stages (D-09).
+   * Resets to false on any user-initiated pan/zoom.
+   */
+  cameraAutoFollow: boolean;
+
+  /** ID of the focused/selected node, or null */
+  selectedNodeId: string | null;
+
+  /** True while a streaming cancellation confirmation dialog is shown (D-17) */
+  cancelConfirmOpen: boolean;
+
+  /**
+   * Epoch ms of the last user-initiated camera interaction (pan / zoom).
+   * Used by auto-pan callers (e.g. EngineGroup plan 2.13) to suppress glides within 3s of
+   * user touch (RESEARCH Pitfall 3, auto-pan contract in Board.tsx JSDoc).
+   */
+  lastUserInteractionAt: number;
+
+  /**
+   * Human-readable label of the currently active pipeline stage, or null when idle/complete.
+   * Set by EngineGroup via `transition({ type: 'STAGE_UPDATE', stage })` so command bar
+   * placeholder (plan 2.6) reflects the current stage (UI-SPEC §Streaming Placeholder).
+   */
+  currentStageLabel: string | null;
+
+  /**
+   * Monotonic counter that increments when something requests the input bar
+   * receive focus (Input node tap, "Run another analysis", etc). The CommandBar
+   * watches this and focuses its textarea on change.
+   */
+  inputBarFocusPulse: number;
+
+  /** Thumbnail + frames extracted from the locally selected video file before analysis. */
+  pendingVideo: PendingVideo | null;
+}
+
+export interface BoardActions {
+  // ── Machine transitions ─────────────────────────────────────────────────
+
+  /** Transition idle → streaming. Called when user submits an analysis. */
+  startStreaming: () => void;
+
+  /** Transition streaming → complete. Called on SSE `complete` event. */
+  finishStreaming: () => void;
+
+  /**
+   * Transition complete → anti-virality. Called when overall_score crosses
+   * the anti-virality threshold (checked by the consumer after `finishStreaming`).
+   */
+  triggerAntiVirality: () => void;
+
+  /**
+   * Request that the bottom command bar receive focus. Pulses
+   * `inputBarFocusPulse`; coerces `boardState` to `idle` from complete/AV (no-op
+   * while streaming). Name kept for call-site stability after the input drawer
+   * was removed in favour of an always-visible CommandBar form.
+   */
+  openInputDrawer: () => void;
+
+  /** Hard reset to idle (e.g. "New analysis" CTA). */
+  resetToIdle: () => void;
+
+  // ── Camera ──────────────────────────────────────────────────────────────
+
+  setCamera: (camera: Camera) => void;
+  setActivePreset: (preset: CameraPresetKey | null) => void;
+
+  /**
+   * Called on any user-initiated pan/zoom touch. Disables auto-follow (D-09).
+   * Does NOT change boardState.
+   */
+  userOverrideCameraFollow: () => void;
+
+  /** Re-enable auto-follow (used when a new streaming session starts). */
+  enableCameraAutoFollow: () => void;
+
+  // ── Node selection ──────────────────────────────────────────────────────
+
+  selectNode: (id: string | null) => void;
+
+  // ── Cancel confirmation dialog ──────────────────────────────────────────
+
+  openCancelConfirm: () => void;
+  closeCancelConfirm: () => void;
+
+  // ── Stage label ──────────────────────────────────────────────────────────
+
+  /**
+   * Dispatches a board transition event.
+   * Currently supports: `{ type: 'STAGE_UPDATE'; stage: string }` — sets `currentStageLabel`
+   * for command bar placeholder (plan 2.6) and future consumers.
+   */
+  transition: (event: { type: 'STAGE_UPDATE'; stage: string }) => void;
+
+  // ── Pending video ────────────────────────────────────────────────────────────
+  setPendingVideo: (v: PendingVideo | null) => void;
+  clearPendingVideo: () => void;
+}
+
+// ── Default state ───────────────────────────────────────────────────────────
+
+const DEFAULT_CAMERA: Camera = { x: 0, y: 0, scale: CAMERA_DEFAULT_SCALE };
+
+const DEFAULT_STATE: BoardState = {
+  boardState: 'idle',
+  camera: DEFAULT_CAMERA,
+  activePreset: null,
+  cameraAutoFollow: false,
+  selectedNodeId: null,
+  cancelConfirmOpen: false,
+  lastUserInteractionAt: 0,
+  currentStageLabel: null,
+  inputBarFocusPulse: 0,
+  pendingVideo: null,
+};
+
+// ── Store ────────────────────────────────────────────────────────────────────
+
+/**
+ * Board state machine store. Import `useBoardStore` in client components.
+ *
+ * @example
+ *   const boardState = useBoardStore(s => s.boardState);
+ *   const startStreaming = useBoardStore(s => s.startStreaming);
+ */
+export const useBoardStore = create<BoardState & BoardActions>((set) => ({
+  ...DEFAULT_STATE,
+
+  // ── Machine transitions ─────────────────────────────────────────────────
+
+  startStreaming: () =>
+    set({
+      boardState: 'streaming',
+      cameraAutoFollow: true,
+      cancelConfirmOpen: false,
+    }),
+
+  finishStreaming: () =>
+    // Idle → complete permitted for permalink replay (user lands on
+    // /analyze/[id] directly; no streaming phase happened). Keeps streaming
+    // → complete identical to before.
+    set((s) => ({
+      boardState:
+        s.boardState === 'streaming' || s.boardState === 'idle'
+          ? 'complete'
+          : s.boardState,
+    })),
+
+  triggerAntiVirality: () =>
+    // Same permalink-replay relaxation: allow idle → anti-virality so the
+    // cross-group ripple lights up Audience + Actions even when no streaming
+    // phase preceded.
+    set((s) => ({
+      boardState:
+        s.boardState === 'complete' || s.boardState === 'idle'
+          ? 'anti-virality'
+          : s.boardState,
+    })),
+
+  openInputDrawer: () =>
+    // Legacy name retained for call-site stability. With the drawer removed, this
+    // now (a) coerces complete/AV back to idle so the bar's form is editable,
+    // and (b) pulses the focus counter so the CommandBar focuses its textarea.
+    // Streaming is left alone.
+    set((s) => {
+      if (s.boardState === 'streaming') return {};
+      return {
+        boardState: 'idle',
+        inputBarFocusPulse: s.inputBarFocusPulse + 1,
+      };
+    }),
+
+  resetToIdle: () => set({ ...DEFAULT_STATE }),
+
+  // ── Camera ──────────────────────────────────────────────────────────────
+
+  setCamera: (camera) => set({ camera }),
+
+  setActivePreset: (activePreset) => set({ activePreset }),
+
+  userOverrideCameraFollow: () => set({ cameraAutoFollow: false, lastUserInteractionAt: Date.now() }),
+
+  enableCameraAutoFollow: () => set({ cameraAutoFollow: true }),
+
+  // ── Node selection ──────────────────────────────────────────────────────
+
+  selectNode: (selectedNodeId) => set({ selectedNodeId }),
+
+  // ── Cancel confirmation dialog ──────────────────────────────────────────
+
+  openCancelConfirm: () => set({ cancelConfirmOpen: true }),
+
+  closeCancelConfirm: () => set({ cancelConfirmOpen: false }),
+
+  // ── Stage label ──────────────────────────────────────────────────────────
+
+  transition: (event) => {
+    if (event.type === 'STAGE_UPDATE') {
+      set({ currentStageLabel: event.stage });
+    }
+  },
+
+  // ── Pending video ────────────────────────────────────────────────────────────
+  setPendingVideo: (pendingVideo) => set({ pendingVideo }),
+  clearPendingVideo: () => set({ pendingVideo: null }),
+}));
+
+// ── Derived selectors ────────────────────────────────────────────────────────
+
+/** True when any analysis is active (streaming or polling-complete). */
+export const selectIsStreaming = (s: BoardState) => s.boardState === 'streaming';
+
+/** True when the board has a completed result to display. */
+export const selectIsComplete = (s: BoardState) =>
+  s.boardState === 'complete' || s.boardState === 'anti-virality';
+
+/** True when anti-virality orange treatment should be applied. */
+export const selectIsAntiVirality = (s: BoardState) =>
+  s.boardState === 'anti-virality';

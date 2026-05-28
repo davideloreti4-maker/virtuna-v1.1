@@ -273,12 +273,25 @@
   }
 }
 
+@keyframes skeleton-breathe {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
 /* ============================================
  * UTILITY CLASSES
  * ============================================ */
 
 .animate-shimmer {
   animation: shimmer 2s ease-in-out infinite;
+}
+
+.animate-skeleton-breathe {
+  animation: skeleton-breathe 1.2s ease-in-out infinite;
 }
 
 /* ============================================
