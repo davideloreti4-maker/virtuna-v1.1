@@ -51,6 +51,22 @@ describe('PercentileChip', () => {
     expect(screen.getByTestId('confidence-pill-trigger')).toHaveTextContent('Calculating…');
   });
 
+  it.each([
+    ['HIGH', 'bg-success'],
+    ['MEDIUM', 'bg-warning'],
+    ['LOW', 'bg-accent'],
+  ] as const)('confidence dot has correct color class for %s', (label, colorClass) => {
+    render(<PercentileChip score={70} confidenceLabel={label} isCalibrated={true} />);
+    const dot = screen.getByTestId('confidence-dot');
+    expect(dot.className).toContain(colorClass);
+    expect(dot.getAttribute('data-confidence')).toBe(label);
+  });
+
+  it('does not render confidence dot in skeleton/streaming state', () => {
+    render(<PercentileChip score={null} confidenceLabel={null} isCalibrated={true} />);
+    expect(screen.queryByTestId('confidence-dot')).toBeNull();
+  });
+
   it('confidence pill click opens popover with explanation', () => {
     render(<PercentileChip score={70} confidenceLabel="HIGH" isCalibrated={true} />);
     fireEvent.click(screen.getByTestId('confidence-pill-trigger'));

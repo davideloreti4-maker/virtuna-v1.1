@@ -10,6 +10,12 @@ interface PercentileChipProps {
   isCalibrated: boolean;
 }
 
+const CONFIDENCE_DOT_CLASS: Record<'HIGH' | 'MEDIUM' | 'LOW', string> = {
+  HIGH: 'bg-success',
+  MEDIUM: 'bg-warning',
+  LOW: 'bg-accent',
+};
+
 export function PercentileChip({ score, confidenceLabel, isCalibrated }: PercentileChipProps) {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -59,7 +65,15 @@ export function PercentileChip({ score, confidenceLabel, isCalibrated }: Percent
           data-testid="confidence-pill-trigger"
         >
           <GlassPill size="sm">
-            <span className="text-white/60">
+            <span className="flex items-center gap-1 text-white/60">
+              {!isStreaming && confidenceLabel && (
+                <span
+                  className={cn('inline-block h-1 w-1 shrink-0 rounded-full', CONFIDENCE_DOT_CLASS[confidenceLabel])}
+                  data-testid="confidence-dot"
+                  data-confidence={confidenceLabel}
+                  aria-hidden={true}
+                />
+              )}
               {isStreaming ? COPY.SKELETON_CONFIDENCE : COPY.CONFIDENCE_PILL(confidenceLabel!)}
             </span>
           </GlassPill>
