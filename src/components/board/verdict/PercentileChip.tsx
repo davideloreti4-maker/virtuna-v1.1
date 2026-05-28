@@ -26,6 +26,7 @@ export function PercentileChip({ score, confidenceLabel, isCalibrated }: Percent
 
   return (
     <div className="flex items-end justify-between gap-2 px-1">
+      {/* Left column: percentile number + band label — bottom edge aligns with confidence pill */}
       <div className="flex flex-col">
         <div className="flex items-baseline gap-1">
           <span
@@ -54,7 +55,8 @@ export function PercentileChip({ score, confidenceLabel, isCalibrated }: Percent
           </span>
         )}
       </div>
-      <div className="relative">
+      {/* Right column: confidence pill — self-end ensures dot baseline matches band label */}
+      <div className="relative self-end">
         <button
           ref={triggerRef}
           type="button"
