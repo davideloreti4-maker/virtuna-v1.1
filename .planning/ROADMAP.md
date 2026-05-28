@@ -176,8 +176,8 @@ Plans:
 
 Plans:
 - [x] 06-01-PLAN.md — Wave 1: [BLOCKING] migrations + Supabase schema push + shared utils (script-utils, optimal-post-time) + types/constants + TELEMETRY extension
-- [ ] 06-02-PLAN.md — Wave 2: GET /api/analyze/[id]/script endpoint (transformation + cache write) + 10-case test matrix
-- [ ] 06-03-PLAN.md — Wave 2: POST /api/analyze/[id]/optimal-post-override endpoint (Zod-validated, RLS+defense-in-depth) + 6-case test matrix
+- [x] 06-02-PLAN.md — Wave 2: GET /api/analyze/[id]/script endpoint (transformation + cache write) + 10-case test matrix
+- [x] 06-03-PLAN.md — Wave 2: POST /api/analyze/[id]/optimal-post-override endpoint (Zod-validated, RLS+defense-in-depth) + 6-case test matrix
 - [ ] 06-04-PLAN.md — Wave 3: Script UI components (CopyButton, ScriptBody, ScriptInspectorTrigger, ScriptEmptyState) + use-script TanStack hook
 - [ ] 06-05-PLAN.md — Wave 3: Optimal-post UI components (OptimalPostCard, OptimalPostEditSheet, OptimalPostSourcePill) + use-optimal-post-override mutation
 - [ ] 06-06-PLAN.md — Wave 4: Wire ActionsReshootHeroSlot + ActionsOptimalPostSlot inside ActionsNode + update ActionsNode.test.tsx testids + patch database.types.ts
