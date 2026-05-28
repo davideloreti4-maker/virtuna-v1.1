@@ -7,18 +7,11 @@ export const COPY = {
   SHARE_LABEL: 'Share & export',
   SHARE_PHASE: '7' as const,
   COMING_PREFIX: 'Coming in Phase',
-  SIMILAR_VIDEOS_TITLE: 'Similar videos',
-  // CTA-style: used when truly zero items (no prior analyses yet)
-  SIMILAR_VIDEOS_EMPTY: 'No similar videos yet — try a new analysis',
-  // Unavailable: used when signal exists but retrieval data is absent for this analysis
-  // Short copy avoids overflow-clip in the narrow Actions card slot.
-  SIMILAR_VIDEOS_UNAVAILABLE: 'Not available for this analysis',
 } as const;
 
 // Telemetry event names (per 05-CONTEXT.md D-31 + Phase 6 D-30).
 export const TELEMETRY = {
   ACTIONS_RESHOOT_PLACEHOLDER_VISIBLE: 'actions_reshoot_placeholder_visible',
-  SIMILAR_VIDEO_TAPPED: 'similar_video_tapped',
   SCRIPT_SECTION_COPIED: 'script_section_copied',
   SCRIPT_COPY_ALL: 'script_copy_all',
   SCRIPT_INSPECTOR_OPENED: 'script_inspector_opened',
@@ -32,5 +25,6 @@ export const TELEMETRY = {
 // Frame-grow constants (per D-10).
 export const ACTIONS_FRAME_DEFAULT_HEIGHT = 200;
 export const ACTIONS_FRAME_AV_HEIGHT = 360;
+// 3-card layout: top row + bottom row (AV: hero row + 2-card row)
 export const ACTIONS_GRID_DEFAULT_ROWS = '88px 88px';
 export const ACTIONS_GRID_AV_ROWS = '160px 1fr';

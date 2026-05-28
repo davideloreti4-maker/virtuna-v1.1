@@ -8,7 +8,6 @@ import { getFrameAntiViralityState } from '../cross-group-state';
 import { ActionsReshootHeroSlot } from './ActionsReshootHeroSlot';
 import { ActionsOptimalPostSlot } from './ActionsOptimalPostSlot';
 import { ActionsShareSlot } from './ActionsShareSlot';
-import { SimilarVideosCard } from './SimilarVideosCard';
 import { TELEMETRY, ACTIONS_GRID_DEFAULT_ROWS, ACTIONS_GRID_AV_ROWS } from './actions-constants';
 import type { ActionsNodeProps } from './actions-types';
 import type { OptimalPostOverride } from './optimal-post/OptimalPostCard';
@@ -71,10 +70,9 @@ export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodePro
               phase={phase}
               isAV={isAV}
             />
-            {/* BOTTOM (B2 fix): three cells = Optimal + Similar slot + Share.
-                Wrapped in a single col-span-2 container that lays the three cells out as a 3-col grid. */}
+            {/* BOTTOM: two cells = Optimal + Share. */}
             <div
-              className="col-span-2 grid grid-cols-3 gap-2"
+              className="col-span-2 grid grid-cols-2 gap-2"
               data-testid="actions-av-bottom-row"
             >
               <div className="min-h-[88px]"><ActionsOptimalPostSlot
@@ -83,20 +81,12 @@ export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodePro
                 window={postWindow}
                 override={postOverride}
               /></div>
-              {/* SimilarVideosCard (Plan 5.6) — AV state bottom row slot.
-                  Sits between OptimalPostSlot and ShareSlot per B2 / D-10. Share placeholder remains untouched. */}
-              <div className="min-h-[88px]">
-                <SimilarVideosCard
-                  items={result?.retrieval_evidence}
-                  signalAvailable={result?.signal_availability?.retrieval ?? false}
-                />
-              </div>
               <div className="min-h-[88px]"><ActionsShareSlot /></div>
             </div>
           </>
         ) : (
           <>
-            {/* DEFAULT 2x2: Reshoot | OptimalPost | SimilarVideos | Share — all min-h-[88px] */}
+            {/* DEFAULT: Reshoot | OptimalPost | Share — 3 cards */}
             <div className="min-h-[88px]"><ActionsReshootHeroSlot
               analysisId={analysisId}
               phase={phase}
@@ -108,14 +98,7 @@ export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodePro
               window={postWindow}
               override={postOverride}
             /></div>
-            {/* SimilarVideosCard (Plan 5.6) — default 2x2 slot */}
-            <div className="min-h-[88px]">
-              <SimilarVideosCard
-                items={result?.retrieval_evidence}
-                signalAvailable={result?.signal_availability?.retrieval ?? false}
-              />
-            </div>
-            <div className="min-h-[88px]"><ActionsShareSlot /></div>
+            <div className="col-span-2 min-h-[88px]"><ActionsShareSlot /></div>
           </>
         )}
       </div>

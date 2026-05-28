@@ -10,17 +10,6 @@ vi.mock('@/hooks/usePrefersReducedMotion', () => ({ usePrefersReducedMotion: () 
 vi.mock('@/hooks/queries/use-permalink-analysis', () => ({
   usePermalinkAnalysis: () => ({ id: null, data: null, isLoading: false }),
 }));
-// Stub TikTokEmbed + Dialog so SimilarVideosCard (wired in Plan 5.6) renders without side-effects.
-vi.mock('@/components/trending/tiktok-embed', () => ({
-  TikTokEmbed: () => <div data-testid="tiktok-embed-stub" />,
-}));
-vi.mock('@/components/ui/dialog', () => ({
-  Dialog: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
-    open ? <div data-testid="dialog-root">{children}</div> : null,
-  DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogTitle: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
-  DialogClose: ({ children }: { children?: React.ReactNode }) => <button>{children}</button>,
-}));
 // @phosphor-icons/react is ESM-only; vi.resetModules() makes named exports undefined in happy-dom.
 // Provide stub SVG components for all icons used by slot wrappers.
 vi.mock('@phosphor-icons/react', () => ({
@@ -169,17 +158,15 @@ describe('ActionsNode', () => {
     expect(screen.getByTestId('actions-share-placeholder')).toBeInTheDocument();
   });
 
-  it('B2: AV state renders Optimal + Similar slot + Share in bottom row (Share MUST be present)', async () => {
+  it('B2: AV state renders Optimal + Share in bottom row', async () => {
     mockStream({ phase: 'complete', result: { ...fixtures.antiVirality, id: 'analysis-id-stub', optimal_post_window: { day_of_week: 'Tue', hour_range: [18, 21], timezone: 'UTC', reasoning: 'Niche peaks Tue (n=12 videos)', source: 'niche' }, optimal_post_override: null } });
     mockBoardState('anti-virality');
     const { ActionsNode: Fresh } = await import('../ActionsNode');
     render(<Fresh camera={{} as never} layout={{} as never} />);
     // AV bottom row container
     expect(screen.getByTestId('actions-av-bottom-row')).toBeInTheDocument();
-    // All three slots in AV bottom row must be present per D-10
+    // Both slots in AV bottom row must be present
     expect(screen.getByTestId('actions-optimal-post-card')).toBeInTheDocument();
-    // Plan 5.6: real SimilarVideosCard replaces the actions-similar-videos-slot-av placeholder div
-    expect(screen.getByTestId('similar-videos-card')).toBeInTheDocument();
     expect(screen.getByTestId('actions-share-placeholder')).toBeInTheDocument();
   });
 
@@ -190,22 +177,6 @@ describe('ActionsNode', () => {
     render(<Fresh camera={{} as never} layout={{} as never} />);
     const hero = screen.getByTestId('actions-reshoot-hero-slot');
     expect(hero.className).toContain('col-span-2');
-  });
-
-  it('renders SimilarVideosCard in default state (Plan 5.6 — replaced placeholder)', async () => {
-    mockStream({ phase: 'complete', result: fixtures.complete });
-    mockBoardState('complete');
-    const { ActionsNode: Fresh } = await import('../ActionsNode');
-    render(<Fresh camera={{} as never} layout={{} as never} />);
-    expect(screen.getByTestId('similar-videos-card')).toBeInTheDocument();
-  });
-
-  it('renders SimilarVideosCard in AV state (Plan 5.6 — replaced AV placeholder)', async () => {
-    mockStream({ phase: 'complete', result: { ...fixtures.antiVirality, id: 'analysis-id-stub', optimal_post_window: { day_of_week: 'Tue', hour_range: [18, 21], timezone: 'UTC', reasoning: 'Niche peaks Tue (n=12 videos)', source: 'niche' }, optimal_post_override: null } });
-    mockBoardState('anti-virality');
-    const { ActionsNode: Fresh } = await import('../ActionsNode');
-    render(<Fresh camera={{} as never} layout={{} as never} />);
-    expect(screen.getByTestId('similar-videos-card')).toBeInTheDocument();
   });
 
   it('applies transition style on grid (non-RM)', async () => {
