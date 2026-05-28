@@ -19,8 +19,9 @@ describe('convertUTCWindow', () => {
     expect(r.day).toBe('Tue');
     expect(r.crossedMidnight).toBe(false);
   });
-  it('handles AM/PM boundary span (UTC 11-13 in US/Eastern)', () => {
-    const r = convertUTCWindow('Tue', [11, 13], 'America/New_York');
+  it('handles AM/PM boundary span (UTC 16-18 in US/Eastern = 11AM-1PM EST)', () => {
+    // UTC 16-18 → EST (UTC-5) = 11 AM – 1 PM (spans noon, crosses AM→PM)
+    const r = convertUTCWindow('Tue', [16, 18], 'America/New_York');
     expect(r.hourRangeFormatted).toMatch(/AM.*PM/i);
   });
   it('handles end-of-day hour_range[1]=24 without throwing', () => {
