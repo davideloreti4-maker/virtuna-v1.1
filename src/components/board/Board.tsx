@@ -22,6 +22,7 @@ import { CameraOverlay } from './CameraOverlay';
 import { OrientationHint } from './OrientationHint';
 import { GROUP_FRAMES, CAMERA_DEFAULT_SCALE } from './board-constants';
 import { GroupFrame } from './GroupFrame';
+import { getFrameAntiViralityState } from './cross-group-state';
 import { GroupFrameOverlay } from './GroupFrameOverlay';
 import { EngineGroup } from './EngineGroup';
 import { AudienceNode } from './audience/AudienceNode';
@@ -41,13 +42,7 @@ function deriveFrameVisual(
   boardMachineState: BoardMachineState,
   frameId: GroupId,
 ): FrameVisualState {
-  if (boardMachineState === 'idle' || boardMachineState === 'edit-input') return 'idle';
-  if (boardMachineState === 'streaming') return 'streaming';
-  // complete or anti-virality
-  if (boardMachineState === 'anti-virality' && (frameId === 'verdict' || frameId === 'audience')) {
-    return 'anti-virality';
-  }
-  return 'complete';
+  return getFrameAntiViralityState(frameId, boardMachineState);
 }
 
 // CRITICAL: dynamic import with ssr:false (RESEARCH Pattern 1). Without ssr:false,
