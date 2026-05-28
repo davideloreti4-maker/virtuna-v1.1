@@ -7,11 +7,14 @@ export const COPY = {
   SHARE_LABEL: 'Share & export',
   SHARE_PHASE: '7' as const,
   COMING_PREFIX: 'Coming in Phase',
+  SIMILAR_VIDEOS_TITLE: 'Similar videos',
+  SIMILAR_VIDEOS_EMPTY: 'No similar videos yet — try a new analysis',
 } as const;
 
 // Telemetry event names (per 05-CONTEXT.md D-31).
 export const TELEMETRY = {
   ACTIONS_RESHOOT_PLACEHOLDER_VISIBLE: 'actions_reshoot_placeholder_visible',
+  SIMILAR_VIDEO_TAPPED: 'similar_video_tapped',
 } as const;
 
 // Frame-grow constants (per D-10).
