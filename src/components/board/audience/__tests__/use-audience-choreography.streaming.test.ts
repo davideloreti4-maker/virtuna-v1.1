@@ -53,6 +53,7 @@ function makeMockStream(overrides: Partial<AnalysisStreamReturn> = {}): Analysis
     error: null,
     reconnect: vi.fn(),
     abort: vi.fn(),
+    reset: vi.fn(),
     analysisId: null,
     filmstrips: {},
     ...overrides,

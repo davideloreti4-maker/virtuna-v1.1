@@ -209,17 +209,29 @@ export function Board() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream.phase, stream.result, stream.analysisId]);
 
+  // Reset stream + board when navigating to /analyze base (New analysis).
+  const prevUrlAnalysisIdRef = useRef(urlAnalysisId);
+  useEffect(() => {
+    if (prevUrlAnalysisIdRef.current !== null && urlAnalysisId === null) {
+      stream.reset();
+      resetToIdle();
+    }
+    prevUrlAnalysisIdRef.current = urlAnalysisId;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlAnalysisId]);
+
   // CR-02: unified atomic URL update — merges the former pushState (analysisId)
   // and the debounced replaceState (camera/preset) into one effect so they can
   // never race and produce a URL missing the pathname or the query string.
+  // Guard: skip when no urlAnalysisId so we don't bounce back to the old route.
   useEffect(() => {
-    if (!stream.analysisId || typeof window === 'undefined') return;
+    if (!stream.analysisId || !urlAnalysisId || typeof window === 'undefined') return;
     const qs = serializeCamera({ preset: activePreset, zoom: camera.scale });
     const target = `/analyze/${stream.analysisId}?${qs}`;
     if (window.location.pathname + window.location.search !== target) {
       window.history.replaceState(null, '', target);
     }
-  }, [stream.analysisId, activePreset, camera.scale]);
+  }, [stream.analysisId, urlAnalysisId, activePreset, camera.scale]);
 
   // ContentForm submit — full multi-mode payload (video upload, text, URL).
   // Inlined from the now-removed InputDrawer so the command bar can host the

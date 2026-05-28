@@ -106,6 +106,8 @@ export interface AnalysisStreamReturn {
   /** Fix 3 (05-ux): Cancel an in-flight analysis. Aborts the POST body-reader,
    *  closes any open EventSource, and transitions phase → 'idle'. */
   abort: () => void;
+  /** Full state wipe for "New analysis" nav — calls abort() then clears analysisId, result, stages, partial, filmstrips. */
+  reset: () => void;
 }
 
 function initialPanelReady(): Record<PanelId, PanelReadyState> {
@@ -483,5 +485,16 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
     setError(null);
   }, []);
 
-  return { start, result, stages, partial, panelReady, phase, error, reconnect, analysisId, filmstrips, abort };
+  // reset() — full state wipe for "New analysis" nav. Calls abort() then clears
+  // all accumulated stream state so the board renders a blank slate.
+  const reset = useCallback(() => {
+    abort();
+    setAnalysisId(null);
+    setResult(null);
+    setStages([]);
+    setPartial({ personas: [] });
+    setFilmstrips({});
+  }, [abort]);
+
+  return { start, result, stages, partial, panelReady, phase, error, reconnect, analysisId, filmstrips, abort, reset };
 }

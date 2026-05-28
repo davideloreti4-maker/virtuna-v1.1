@@ -131,6 +131,7 @@ describe("ResultCard", () => {
       analysisId: null,
       filmstrips: {},
       abort: vi.fn(),
+      reset: vi.fn(),
     });
 
     renderResultCard("test-id-005", null);
