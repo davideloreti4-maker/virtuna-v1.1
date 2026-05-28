@@ -41,6 +41,7 @@ export function CameraOverlay({ activePreset, onSelect }: CameraOverlayProps) {
           aria-label={`${PRESET_LABELS[key]} view`}
           aria-keyshortcuts={PRESET_KEYS[key]}
           aria-pressed={activePreset === key}
+          title={`Press ${PRESET_KEYS[key]} to switch view`}
           onClick={() => onSelect(key)}
           className={`flex items-center gap-1 rounded-[6px] px-2 py-1 text-xs transition-colors hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF7F50] ${activePreset === key ? 'bg-white/[0.08] text-foreground' : 'text-foreground/70'}`}
         >
@@ -52,6 +53,7 @@ export function CameraOverlay({ activePreset, onSelect }: CameraOverlayProps) {
       <button
         aria-label="Reset view"
         aria-keyshortcuts="R"
+        title="Press R to switch view"
         onClick={() => onSelect('overview')}
         className="flex items-center gap-1 rounded-[6px] px-2 py-1 text-xs text-foreground/70 transition-colors hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF7F50]"
       >

@@ -24,7 +24,8 @@ vi.mock('@/stores/sidebar-store', () => ({
   }),
 }));
 
-import { Sidebar } from '../Sidebar';
+// Sidebar imported dynamically per test to pick up vi.doMock overrides
+void 0; // placeholder — see dynamic imports below
 
 function mockHistory(boards: Array<{ id: string; content_text?: string | null; overall_score?: number | null; created_at?: string }>) {
   vi.doMock('@/hooks/queries', () => ({
