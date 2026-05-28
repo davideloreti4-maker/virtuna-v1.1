@@ -14,10 +14,18 @@ export const COPY = {
   SIMILAR_VIDEOS_UNAVAILABLE: "Similar videos isn't available for this analysis",
 } as const;
 
-// Telemetry event names (per 05-CONTEXT.md D-31).
+// Telemetry event names (per 05-CONTEXT.md D-31 + Phase 6 D-30).
 export const TELEMETRY = {
   ACTIONS_RESHOOT_PLACEHOLDER_VISIBLE: 'actions_reshoot_placeholder_visible',
   SIMILAR_VIDEO_TAPPED: 'similar_video_tapped',
+  SCRIPT_SECTION_COPIED: 'script_section_copied',
+  SCRIPT_COPY_ALL: 'script_copy_all',
+  SCRIPT_INSPECTOR_OPENED: 'script_inspector_opened',
+  SCRIPT_EMPTY_STATE_SHOWN: 'script_empty_state_shown',
+  OPTIMAL_POST_TZ_CONVERTED: 'optimal_post_tz_converted',
+  OPTIMAL_POST_EDITED: 'optimal_post_edited',
+  OPTIMAL_POST_SOURCE_EXPLAINED: 'optimal_post_source_explained',
+  OPTIMAL_POST_RESET: 'optimal_post_reset_to_recommendation',
 } as const;
 
 // Frame-grow constants (per D-10).
