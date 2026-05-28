@@ -44,7 +44,7 @@ export function PercentileChip({ score, confidenceLabel, isCalibrated }: Percent
           )}
         </div>
         {!isStreaming && (
-          <span className="text-xs font-normal text-white/60" data-testid="band-label">
+          <span className="text-[13px] font-medium text-white/80 mt-0.5" data-testid="band-label">
             {band}
           </span>
         )}
