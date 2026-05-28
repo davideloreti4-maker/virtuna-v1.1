@@ -1,6 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "videos.sign" });
 
 /**
  * GET /api/videos/sign?path=<storage_path>
@@ -34,7 +37,21 @@ export async function GET(request: NextRequest) {
     .createSignedUrl(path, 60 * 60); // 1 hour
 
   if (error || !data?.signedUrl) {
-    return NextResponse.json({ error: error?.message ?? "sign failed" }, { status: 500 });
+    const message = error?.message ?? "sign failed";
+    // Storage returns "Object not found" (status 400 from the API) when the
+    // path was deleted by retention or never uploaded. Surface that as 404
+    // so the client can render a "video no longer available" state instead
+    // of a generic player error.
+    const isMissing = /not.found|object.*not.*exist/i.test(message);
+    log[isMissing ? "info" : "warn"]("createSignedUrl_failed", {
+      path,
+      user_id: user.id,
+      error: message,
+    });
+    return NextResponse.json(
+      { error: isMissing ? "video_missing" : message },
+      { status: isMissing ? 404 : 500 },
+    );
   }
 
   return NextResponse.json({ url: data.signedUrl });
