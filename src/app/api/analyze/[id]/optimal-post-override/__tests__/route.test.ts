@@ -84,7 +84,7 @@ describe('POST /api/analyze/[id]/optimal-post-override', () => {
     // Verify SET payload shape (JSONB, not null)
     const captured = (mockClient as unknown as { _capturedUpdates: Array<{ optimal_post_override: unknown }> })._capturedUpdates;
     expect(captured.length).toBe(1);
-    const payload = captured[0].optimal_post_override as { day_of_week: string; hour_range: number[]; saved_at: string };
+    const payload = captured[0]!.optimal_post_override as { day_of_week: string; hour_range: number[]; saved_at: string };
     expect(payload).not.toBeNull();
     expect(payload.day_of_week).toBe('Thu');
     expect(payload.hour_range).toEqual([20, 23]);
@@ -128,7 +128,7 @@ describe('POST /api/analyze/[id]/optimal-post-override', () => {
     // Verify CLEAR payload writes null (NOT a JSONB object that happens to match the recommendation)
     const captured = (mockClient as unknown as { _capturedUpdates: Array<{ optimal_post_override: unknown }> })._capturedUpdates;
     expect(captured.length).toBe(1);
-    expect(captured[0].optimal_post_override).toBeNull();
+    expect(captured[0]!.optimal_post_override).toBeNull();
   });
 
   it('8. CLEAR variant rejection: { clear: false } returns 400 invalid_override', async () => {
