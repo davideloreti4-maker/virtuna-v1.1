@@ -216,6 +216,8 @@ export type Database = {
           updated_at: string | null
           project_id: string | null
           user_id: string
+          script_result: Json | null
+          optimal_post_override: Json | null
           variants: Json | null
           video_storage_path: string | null
           warnings: string[] | null
@@ -258,6 +260,8 @@ export type Database = {
           trend_score?: number | null
           updated_at?: string | null
           user_id: string
+          script_result?: Json | null
+          optimal_post_override?: Json | null
           variants?: Json | null
           video_storage_path?: string | null
           warnings?: string[] | null
@@ -300,6 +304,8 @@ export type Database = {
           trend_score?: number | null
           updated_at?: string | null
           user_id?: string
+          script_result?: Json | null
+          optimal_post_override?: Json | null
           variants?: Json | null
           video_storage_path?: string | null
           warnings?: string[] | null
