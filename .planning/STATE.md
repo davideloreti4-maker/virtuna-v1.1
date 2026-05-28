@@ -3,13 +3,12 @@ gsd_state_version: 1.0
 milestone: mvp-cut
 milestone_name: MVP Cut
 status: ready_to_plan
-last_updated: "2026-05-28T00:00:00.000Z"
+last_updated: "2026-05-28T14:21:43.575Z"
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
-  percent: 0
 ---
 
 # Project State
@@ -28,4 +27,4 @@ Six phases planned (1 through 6, plus a Phase 0 scope-statement living inline in
 
 ## Session Continuity
 
-Resume file: `cd ~/virtuna-mvp-cut && /gsd-discuss-phase 1` to start.
+Resume file: .planning/phases/01-strip-retrieval-similar-videos-trending-dashboard/01-CONTEXT.md
