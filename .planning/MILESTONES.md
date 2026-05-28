@@ -1,72 +1,47 @@
 # Milestones — Virtuna
 
-## Engine Hardening v3.1 (Shipped: 2026-05-25)
+## Result Surface (Shipped: 2026-05-28)
 
-**Branch:** `milestone/engine-hardening` → merged to `main`
-**Worktree:** `~/virtuna-engine-hardening/` (retained)
-**Phases:** 14-18 (continues from Engine Foundation Phase 13)
+**Phases completed:** 6 phases — Foundation SSE + Engine Signal Extensions; Board Substrate Navigation; Engine Rework Pass 2 (timeline-weighted aggregator + heatmap + filmstrip + Phase 3 SSE); Live Audience Node; Other Group Nodes (Verdict/Actions/Content Analysis populated); Reshoot Script + Optimal Post Time.
 
-**Delivered:**
-- **Phase 14 (Type Hygiene):** `user_settings` dead routes audited and ripped out, `database.types.ts` regenerated from live Supabase schema — `pnpm exec tsc --noEmit` 0 errors (was 966 errors in `src/app/api/{profile,settings,team}/*`)
-- **Phase 15 (Calibration Refit) — DROPPED:** Platt calibration removed entirely. Premise was unsound — corpus calibrated `input_mode: "text"` (captions-only) but production runs `input_mode: "video_upload"` through Qwen-Omni-Plus. Applying parameters across paths is a category error. `applyPlattScaling` + `platt_parameters` table deleted. CALIB-01/02/03/05 cancelled.
-- **Phase 16 (Audio Fingerprint Re-enable) — DEFERRED to M3:** Sound-driven trend-riding is secondary signal for current creator use case. `embedder.ts`, `audio-fingerprint.ts`, D-F4 cron (`/api/cron/calculate-trends`), and 17 deferred test files remain skipped. SSRF fix (IN-03) extracted to Phase 18.
-- **Phase 17 (Smoke Billing):** DashScope International billing wired into `scripts/run-smoke.ts` for cost-budget tracking.
-- **Phase 18 (M1 Verification Debt Closure):** WR-04 cron N+1 refactored to bulk pre-fetch, WR-05 `audio_description` bounds nesting flattened, IN-01 `analyzeVideoWithGemini` uses try/finally for `clearTimeout`, IN-02 `vector as unknown as string` cast centralized into `src/lib/supabase/pgvector.ts`, IN-03 `sound_url` SSRF allowlist landed (T-06-13). All M1 UAT/smoke debts closed.
+**Branch / worktree:** `milestone/result-surface` at `~/virtuna-result-surface/`. Merged to main via PR #3 at `94b4663`.
 
-**Carry-forward → M3:**
-- Audio fingerprint pipeline re-enable (Phase 16 deferred scope: `embedder.ts` build → wire `audio-fingerprint.ts` → re-enable D-F4 cron → unskip 17 tests)
-- Plans 06/07 stratified validation rerun under Qwen
-- Wave 3/4 threshold re-tuning under Qwen
-- Rebuild rule scoring from video transcript signal
+**Key accomplishments:**
+- Board-substrate result surface replacing legacy /dashboard (atomic /dashboard sunset with 307 redirect to /analyze)
+- Pass 2 timeline-weighted aggregator + persona weights + `assembleHeatmapPayload`
+- Phase 3 dual-trigger anti-virality gating via `isAntiViralityGatedFull` (confidence + timeline_pattern reason discriminator + dropoff segment indices)
+- Live Audience heatmap node with mobile Radix Sheet drawer
+- Reshoot script API + niche-aware optimal post window from `niche_post_windows` materialized aggregate (daily pg_cron)
+- Verdict / Actions / Content Analysis group nodes populated end-to-end
+- ContentForm video frame extraction → board thumbnail pipeline
+- Apollo tier picker (popover) replacing legacy span label
 
----
+**Test posture at merge:** 1619/1620 unit tests green (one flaky `Sidebar.recent.test.tsx` — passes in isolation). `tsc --noEmit` clean.
 
-## Landing v1 (Active: started 2026-05-24)
+**Archive:** `.planning/milestones/result-surface/`
 
-**Branch:** `milestone/landing`
-**Worktree:** `~/virtuna-landing/`
-**Goal:** High-end animated landing page (Linear/Raycast aesthetic + OpusClip conversion patterns). Built at `/v3` route; cutover to root only in Phase 11 gated on Davide approval.
-
-**Progress:** 2/11 phases done
-- [x] Phase 1: Foundation + Scaffold — `/v3` route, MotionConfig, LandingHeader, sitemap/robots, framer-motion alias
-- [x] Phase 2: Hero + Final CTA + Vision Beat — WordRotate, ShimmerButton, Spotlight, VisionBeat, LandingFooter (2026-05-25)
-- [ ] Phase 3: Above-Fold Credibility Hook (next)
-- [ ] Phases 4-11: Demo, Pipeline, Bento, Comparison, Science, Social Proof, Pricing, Cutover
+**Known carryover handed to MVP-cut milestone:**
+- Schema drift: `counterfactuals`, `hook_decomposition`, `confidence_label`, `anti_virality_gated` columns not yet persisted; `/api/script` route had to drop nonexistent columns inline and derive label
+- Orphaned video storage observed on analysis `-I4GtlGVCQKO` — retention cron timing or upload→insert race
+- Hook decomposition + emotion arc only half-wired (aggregator.ts:686-693 path with null fallback)
+- Similar videos card + retrieval/embedder paths still depend on M2 corpus (ripped from runtime; ingestion intact)
+- Audience headline chips 0-1 → 0-100 scaling fix landed today; `is_calibrated` field dropped from `PredictionResult` (Platt removal in engine-hardening); `videos/sign` returns 404 (not 500) for missing storage objects + logs
 
 ---
 
-## Engine Foundation v3.0.0 (Shipped: 2026-05-24)
+## v3.1 Engine Hardening (Shipped: 2026-05-25)
 
-**Branch:** `milestone/engine-foundation` → merged to `main` as `8c50635` via `--no-ff`
-**Worktree:** `~/virtuna-engine-foundation/` (retained)
-**Phases:** 13 (1-13) | **Plans:** 67 | **ENGINE_VERSION:** 3.0.0
+**Phases completed:** 4 phases, 10 plans, 4 tasks
 
-**Key deliverables:**
-- Training corpus (~225 labeled rows) + eval harness (v2.1 baseline, macro_f1=0.294, target ≥0.338)
-- 9-card Creator Profile interview + Zustand store + Settings tab + engine `CreatorContext` extension
-- SSE pipeline via `onStageEvent` + ENGINE_VERSION single source of truth + two-tier prediction cache (L1 in-memory + L2 Supabase `analysis_results`) keyed by `${contentHash}::${ENGINE_VERSION}::${userId}`
-- Qwen-only migration (DashScope International) replacing Gemini+DeepSeek — Wave 0 content-type+niche, video segmentation, hook decomp, multi-modal analysis all via Qwen-Omni
-- 10-persona FYP-weighted simulation (Wave 3): 6 FYP non-followers + 2 niche + 1 loyalist + 1 cross-niche
-- pgvector benchmark retrieval (Wave 8) — disabled for video-mode pending M3 re-embed
-- Platform algo fit + self-critique (Stage 10) + counterfactuals (Stage 11)
-- ML audit + aggregator extension (Phase 10); Platt calibration wired (later dropped in Engine Hardening v3.1)
-- `/api/analyze` wired to engine, creator profile integration, privacy policy
-- Final gate: 996/996 vitest pass (17 skipped — M3 deferred), 0 tsc errors, build green
+**Key accomplishments:**
 
-**Mid-phase migration:** Gemini+DeepSeek → Qwen-only (commit `9794ffa`). Triggered by Files API outages + HEVC handling + DeepSeek hang risk.
-
-**Carry-forward → resolved in Engine Hardening v3.1:**
-- ✅ 966 TS errors (`user_settings`) — ripped out
-- ✅ DashScope billing wiring into smoke runner
-- ✅ M1 verification debt (WR-04/05, IN-01/02/03)
-- ✗ Platt parameters refit — dropped entirely (path mismatch, not salvageable)
-
-**Carry-forward → M3:**
-- Plans 06/07 stratified validation rerun under Qwen (original cadence superseded by mid-phase migration)
-- Wave 3/4 threshold re-tuning under Qwen baselines
-- Audio fingerprint re-enable (embedder.ts + D-F4 cron + 17 skipped tests)
-- Rebuild rule scoring from video transcript signal (not text-mode captions)
-- pgvector benchmark retrieval re-enable for video-mode
+- One-liner:
+- One-liner:
+- One-liner:
+- Requirement:
+- Commit:
+- SSRF guard added to `processSoundEmbedding` blocking non-HTTPS + RFC1918/loopback/link-local/IPv6-ULA URLs via 7 hostname regexes; all 5 VERIF-04 sub-items grep-verified; tsc + vitest green at phase close.
+- Blocker:
 
 ---
 
@@ -99,6 +74,7 @@
 **Status:** 2/6 phases complete then abandoned. Direction reset to a Magic UI + shadcn-based redesign before viewports 2-7 were built.
 
 **Delivered before abandonment:**
+
 - Phase 01 — Brand Spine & Visual Metaphor: BRAND-BIBLE visual metaphor lock, BRAND-SPINE.md (voice/vocab guardrails, preferred verbs), locked hero copy (HERO-01..05 in archived REQUIREMENTS.md), implementation tech decision (Canvas 2D for hero motion)
 - Phase 02 — Foundation & Hero: BehavioralHero RSC composition, BehavioralCanvas client island (drift+attract particle animation, 250/120 desktop/mobile, reduced-motion fallback), behavioral-hero-constants, external component vetting policy, latent Radix Slot bug fix in `src/components/ui/button.tsx`
 
@@ -263,6 +239,7 @@
 **Phases completed:** 11-12
 
 **Key outcomes:**
+
 - 207 screenshots captured from app.societies.io
 - 45 discrepancies documented (8 critical, 18 major, 19 minor)
 - Complete extraction catalog and comparison reports
@@ -276,6 +253,7 @@
 **Phases completed:** 1-10
 
 **Key outcomes:**
+
 - Full app UI clone (landing + 10+ app screens)
 - Zustand state management with localStorage persistence
 - Responsive design (desktop + mobile)
@@ -290,6 +268,7 @@
 **Phases completed:** 8 phases, 18 plans
 
 **Key accomplishments:**
+
 - Real Supabase auth with middleware enforcement, Google OAuth PKCE, login/signup server actions, and deep link preservation
 - Landing page with Raycast design alignment (6% borders, CTA routing), lazy-loading hive demo via IntersectionObserver
 - Progressive onboarding flow: TikTok @handle connect, goal personalization, 4-tooltip contextual system with Supabase-backed state
@@ -299,6 +278,7 @@
 - Polish: OG metadata via file convention, mobile responsiveness audit, 23 dead files removed, 3 orphaned API routes deleted
 
 **Stats:**
+
 - 87 commits, 751 files changed (+17,078 / -121,787 lines)
 - 23,170 LOC TypeScript
 - 39 requirements, all shipped
@@ -307,12 +287,12 @@
 **Git range:** `abc4ac5..78ac3c6`
 
 **Blockers carried forward:**
+
 - Whop plan IDs need creation in Whop dashboard before going live
 - Referral bonus amount is a business decision (not yet decided)
 - Whop sandbox never tested end-to-end
 
 ---
-
 
 ## Competitors Tool (Shipped: 2026-02-17)
 
@@ -339,12 +319,12 @@
 **Git range:** `milestone/competitors-tool` branch
 
 **Blockers carried forward:**
+
 - Backend-foundation merge timing (apify-client installed manually)
 - Apify actor schemas need runtime verification (Clockworks actors may change)
 - Vercel Pro plan confirmation for sub-daily cron
 
 ---
-
 
 ## Backend Reliability (Shipped: 2026-02-18)
 
@@ -353,6 +333,7 @@
 **Phases completed:** 7 phases, 26 plans
 
 **Key accomplishments:**
+
 - Scheduled all 7 crons in vercel.json and repaired the end-to-end scrape→webhook→aggregate data pipeline
 - Rehabilitated ML classifier with class weighting, real feature bridge, stratified training, and wired as 15% signal into 5-signal aggregator
 - Wired Platt calibration conditionally into aggregator with `is_calibrated` metadata on every prediction
@@ -361,6 +342,7 @@
 - Hardened all failure modes: Zod-validated calibration parsing, dual-LLM graceful degradation, circuit breaker probe mutex, creator profile trigger
 
 **Stats:**
+
 - 94 commits, 133 files changed (+20,269 / -679 lines)
 - 35 requirements, all shipped
 - 7 phases, 26 plans
@@ -369,9 +351,9 @@
 **Git range:** `milestone/backend-reliability` branch
 
 **Blockers carried forward:**
+
 - Calibration has no outcome data yet — wired conditionally, degrades gracefully
 - Circuit breaker is per-serverless-instance (module-level state), not distributed
 - 68 console.* calls remain in non-engine files (API routes, client components) — tech debt for future
 
 ---
-

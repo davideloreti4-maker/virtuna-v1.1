@@ -8,25 +8,22 @@ A social media intelligence platform for TikTok creators. Helps creators predict
 
 AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
 
-## Status: M2 (Intelligence Surface) + Landing v1 active in parallel
+## Status: Intelligence Surface drop — Milestone 1b shipped
 
-**Most recently shipped:**
-- **Engine Hardening v3.1** (2026-05-25) — TS hygiene (966 → 0 errors, `user_settings` ripped out), DashScope billing smoke runner wired, M1 verification debt closed (WR-04/05 cron N+1 + audio_description bounds, IN-01/02 try-finally + pgvector cast, IN-03 SSRF `sound_url` allowlist). Platt calibration dropped entirely (text-vs-video path mismatch — not salvageable). Audio fingerprint deferred to M3.
-- **Engine Foundation v3.0.0** (2026-05-24) — 13-phase Qwen-only backend: video segmentation, multi-persona simulation, benchmark retrieval, creator profile, SSE pipeline, two-tier cache.
+**Most recently shipped:** Engine Hardening (v3.1, 2026-05-25). Type hygiene (tsc 0 errors), smoke runner cost field rename, SSRF guard on sound_url, timer leak fixes, pgvector centralization, all VERIF-04 code-review follow-ups closed. VERIF-01/02/03 deferred permanently (no prod deploy).
 
-**Active milestones:**
+**Also shipped:** Engine Foundation (v3.0.0, 2026-05-24). 13-phase backend rebuild: Qwen-only architecture, video segmentation, audio fingerprint, multi-persona simulation, benchmark retrieval.
 
-| Milestone | Worktree | Status |
-|-----------|----------|--------|
-| **Landing v1** — 11-phase animated landing page (Linear/Raycast + OpusClip conversion patterns), built at `/v3`, cutover to root in Phase 11 | `~/virtuna-landing/` | **Active — Phase 3 next** (Phases 1-2 done 2026-05-25) |
-| **M2-I: Result Surface** — polished result card, live persona viz, mobile route, share/export, reshoot script, optimal post time, WOW onboarding | `~/virtuna-result-surface/` | **Active — Phase 1 next** (started 2026-05-24) |
-| **M2-II: Iteration & Niche Intelligence** — concept mode, A/B variants, cross-platform repurposing, watermark detection, trending sounds, idea generator, steal-this-playbook | TBD | Forks after M2-I lands |
+**Intelligence Surface drop** — 3 milestones, single public release. Wraps the validated engine in the UX that makes Virtuna a content intelligence cheatcode for creators. All 3 milestones merge to main behind feature flag (`FEATURE_INTELLIGENCE_SURFACE`); public drop event fires when all 3 ship.
 
-**M3 starts in parallel with M2 UX phases** — engine quality pass + compounding intelligence + new surfaces. See M3 section in requirements below.
+| Order | Milestone | Worktree | Status |
+|-------|-----------|----------|--------|
+| 1a | **Result Surface** — polished result card, live persona viz, mobile route, share/export, reshoot script, optimal post time, WOW onboarding | `~/virtuna-result-surface/` | **Active (started 2026-05-24)** |
+| 1b | **Engine Hardening** — type hygiene, SSRF guard, timer leaks, pgvector centralization, VERIF-04 code-review follow-ups | `~/virtuna-engine-hardening/` | **✅ Shipped v3.1 (2026-05-25)** |
+| 2 | **Iteration & Niche Intelligence** — concept mode, A/B variants, cross-platform repurposing, watermark detection, trending sounds for my niche, idea generator, steal-this-playbook | TBD | Forks after 1a + 1b land |
+| 3 | **Compounding Intelligence** — hook archetype library, trend velocity, outcome feedback loop, wins/flops trend | TBD | Forks after 1a + 1b land |
 
-**Milestone structure decision (2026-05-25):** M2-III (Compounding Intelligence) moved to M3. Outcome feedback loop and wins/flops trend are data-gated by real M2-I usage — shipping them before creators have used Result Surface produces an empty compounding loop. M2 engine debt (stratified validation, threshold re-tuning, audio fingerprint, rules rebuild) also moved to M3 — none of it gates M2 UX.
-
-**Abandoned landing predecessors (see MILESTONES.md):** Brand Statement Landing (2026-05-11), Landing Page Redesign (2026-05-24), Linear Landing Clone (2026-05-24) — all superseded by Landing v1.
+**Abandoned in pre-drop gap (see MILESTONES.md):** Brand Statement Landing (2026-05-11), Landing Page Redesign (2026-05-24), Linear Landing Clone (2026-05-24). Landing surface deferred until Intelligence Surface drop completes.
 
 ## Requirements
 
@@ -79,27 +76,14 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - Sentry + structured JSON logger (requestId, stage, duration_ms, cost_cents) across all engine modules -- Backend Reliability
 - 203+ Vitest tests, >80% coverage on all engine modules -- Backend Reliability
 - Hardened failure modes: calibration parsing, dual-LLM graceful degradation, circuit breaker mutex, creator profile trigger -- Backend Reliability
-- TS hygiene: 966 → 0 errors, `user_settings` dead routes ripped out, `database.types.ts` regenerated from live schema -- Engine Hardening v3.1
-- DashScope International billing wired into smoke runner -- Engine Hardening v3.1
-- M1 verification debt closed: WR-04 cron N+1 bulk pre-fetch, WR-05 audio_description bounds flattened, IN-01 try/finally clearTimeout, IN-02 pgvector cast helper, IN-03 `sound_url` SSRF allowlist -- Engine Hardening v3.1
+- `pnpm exec tsc --noEmit` returns 0 errors app-wide; `user_settings` migration confirmed live — v3.1
+- Smoke runner cost field renamed `cost_cents_estimated`; billing API deferred while omni-plus is free — v3.1
+- VERIF-04 all 5 sub-items closed: WR-04/WR-05 verified, IN-01 timer leaks fixed, IN-02 pgvector.ts centralized, IN-03 SSRF guard on processSoundEmbedding (T-06-13 closed) — v3.1
+- Platt calibration removed entirely (corpus ≠ production distribution); engine passes raw weighted-sum score — v3.1
 
-### Active
+### Active — Intelligence Surface drop (3-milestone bundle)
 
-#### Landing v1 — `~/virtuna-landing/` (branch `milestone/landing`)
-
-- [x] Phase 1: Foundation + Scaffold — `/v3` route, MotionConfig, LandingHeader, sitemap/robots
-- [x] Phase 2: Hero + Final CTA + Vision Beat — WordRotate, ShimmerButton, Spotlight, VisionBeat, LandingFooter
-- [ ] Phase 3: Above-Fold Credibility Hook — thin logo bar + "Backed by" microcopy below CTAs
-- [ ] Phase 4: Interactive Demo — sample picker, 4-stage loader, animated insight reveal
-- [ ] Phase 5: How It Works Pipeline — AnimatedBeam horizontal (desktop) / TracingBeam vertical (mobile)
-- [ ] Phase 6: Bento + Dashboard Reveal — asymmetric BentoGrid 3 cells + MacbookScroll
-- [ ] Phase 7: Comparison vs Alternatives — positioning grid
-- [ ] Phase 8: The Science — StickyScroll + citation chips + dataset stats
-- [ ] Phase 9: Social Proof — Logo Marquee + AnimatedTestimonials
-- [ ] Phase 10: Pricing + FAQ — 2-col Starter/Pro + FAQ accordion
-- [ ] Phase 11: Polish + SEO + A11y + Perf + Cutover — Lighthouse ≥90, `/v3` overwrites root (Davide approval gate)
-
-#### M2-I: Result Surface — `~/virtuna-result-surface/` (branch `milestone/result-surface`)
+#### M2-I: Result Surface — active in `~/virtuna-result-surface/`
 
 - [ ] Polished result card with 8 panels (retention, personas, hook decomp, similar videos, narrative, emotion arc, baseline, anti-virality)
 - [ ] Live audience simulation viz (SSE-driven, 60fps on iPhone 13+)
@@ -114,46 +98,46 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - [ ] Concept mode (text-only "predict my hook idea")
 - [ ] A/B variant generation flow
 - [ ] Cross-platform repurposing (TikTok→Reels/Shorts)
-- [ ] Watermark detection (pre-flight on upload, TF.js)
+- [ ] Watermark detection (pre-flight on upload)
 - [ ] Trending sounds for my niche (surface audio fingerprint engine data)
 - [ ] Idea generator (niche + wins/flops + trends → 5 video ideas)
 - [ ] Steal-this-playbook (competitor video → personalized pattern)
 
-#### M3: Engine Quality + Compounding Intelligence + New Surfaces — active in parallel with M2 UX
+#### M2-III: Compounding Intelligence — pending (forks after M2-I lands)
 
-**Engine quality debt (carried from M1/v3.1, none gate M2 UX):**
-- [ ] Plans 06/07 stratified validation rerun under Qwen with fresh per-video diffs + score-band stratification
-- [ ] Wave 3 persona simulation threshold re-tuning (≥7/10 trigger) under Qwen
-- [ ] Wave 4 `platform_fit` numeric threshold re-tuning under Qwen
-- [ ] Rebuild rule scoring from video transcript signal (not text-mode captions)
-- [ ] Audio fingerprint re-enable: `embedder.ts` + `audio-fingerprint.ts` + D-F4 cron at `/api/cron/calculate-trends` + unskip 17 deferred tests (Phase 16 deferred from Engine Hardening)
+- [ ] Hook archetype library (taxonomy of viral hook patterns)
+- [ ] Trend velocity / lifecycle prediction
+- [ ] Outcome feedback loop (auto-scrape posted content after 48h — promoted from backlog)
+- [ ] Wins/flops trend dashboard ("am I getting better?")
 
-**Compounding intelligence (data-gated by M2-I real usage):**
-- [ ] Outcome feedback loop — auto-scrape posted videos 48h after analysis, capture real engagement, feed back into corpus
-- [ ] Wins/flops trend dashboard — creator accuracy trend over time ("am I getting better?")
-- [ ] Hook archetype library — taxonomy of viral hook patterns by niche
-- [ ] Trend velocity / lifecycle prediction — is this trend rising, peak, or dying?
+### Deferred (from abandoned landing milestones)
 
-**New surfaces:**
-- [ ] History view connected to real prediction results (currently no-op)
-- [ ] Trending page re-launch with real backend data (currently mock)
-- [ ] Analytics dashboard (confidence distributions, cost trends, model drift)
-- [ ] In-app prediction viz rebuild (visual metaphor locked in Landing v1 / Brand Statement Landing)
-- [ ] `/about`, `/research`, `/manifesto` supporting pages (Numen Machines lab credibility)
-- [ ] External brand deals marketplace (real partnerships, not mock data)
-- [ ] Competitor search/discovery by name or niche (currently manual add only)
-- [ ] Weekly intelligence report (email, needs scale data)
+- [ ] Landing page rebuild — brand spine + 7-viewport narrative arc (carried from Brand Statement Landing). Deferred until product story settles via Intelligence Surface.
+- [ ] Brand-spine codification ("Your audience, simulated.") across deck, social bios, future surfaces
+- [ ] Visual metaphor lock for prediction (behavioral simulation + engine pipeline)
+- [ ] Replace plagiarized Artificial Societies copy across all customer-facing surfaces
 
-### Backlog (undated, reactivate selectively)
+### Backlog (deferred from prior milestones)
 
-- [ ] Video upload pipeline via Supabase Storage (currently direct-to-Qwen)
-- [ ] TikTok URL extraction (Apify scrape → video → Qwen)
+<!-- Items deferred during prior milestone churn; reactivate selectively in future milestones. -->
+
+- [ ] History view connected to real prediction results
+- [ ] Video upload pipeline (Supabase Storage → Gemini video analysis)
+- [ ] TikTok URL extraction (Apify scrape → video content → Gemini)
+- [ ] In-app prediction viz rebuild (replaces current hive — visual metaphor locked in Brand Statement Landing milestone, implementation deferred)
+- [ ] DeepSeek reasoning exposed in results UI
 - [ ] Niche/hashtag fields functional in prediction flow
-- [ ] iOS Capacitor wrapper (App Store submission, ~1 week, no native LLM)
-- [ ] Ultra tier (future model upgrade path)
-- [ ] Brand-fit predictor (separate brand-deals milestone rewrite)
-- [ ] Series planner / content calendar
-- [ ] Coaching feed / niche leaderboard
+- [ ] Data integrity (is_calibrated migration, reasoning field storage)
+- [ ] Outcomes feedback loop (auto-scrape posted content after 48h)
+- [ ] Analytics dashboard (confidence distributions, cost trends, model drift)
+- [ ] Trending page re-launch with real backend data
+
+### Parallel (other worktrees)
+
+- [ ] Competitor search/discovery by name or niche — future
+- [ ] Backend intelligence integration (connect prediction engine to frontend) — future
+- [ ] External brand deals marketplace — future
+- [ ] Trending page re-launch (when backend ready) — future
 
 ### Out of Scope
 
@@ -168,21 +152,25 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 ## Context
 
-**Current state (2026-05-25):** Engine Foundation v3.0.0 + Engine Hardening v3.1 shipped to main. Two active worktrees: Landing v1 (P3 next) + Result Surface (P1 next). M3 engine quality work starts in parallel.
-- Tech stack: Next.js 15 (App Router), TypeScript strict, Tailwind v4, Supabase, Qwen-Omni (DashScope International), Recharts, d3-hierarchy, d3-quadtree, @sentry/nextjs, Vitest, Magic UI + Aceternity (landing only)
-- Engine v3.0.0: Qwen-only pipeline, SSE `onStageEvent`, two-tier prediction cache, 9-card creator profile, 10-persona Wave 3 simulation, pgvector benchmark retrieval (video-mode disabled pending M3 re-embed)
-- 36 design system components, 100+ tokens (Raycast-accurate)
-- Real Supabase auth (Google OAuth PKCE), two-tier Whop payments (Starter/Pro), referral program
-- Canvas hive viz: 1300+ nodes, 60fps
+**Current state:** Prediction Engine Integration milestone in progress (started 2026-02-20). Backend Reliability shipped (2026-02-18). Prediction engine fully wired, tested, and hardened on the backend.
+- ~43,000 LOC TypeScript (+20k lines from backend reliability work)
+- Tech stack: Next.js 15 (App Router), TypeScript strict, Tailwind CSS v4, Supabase Auth, Whop payments, Recharts, d3-hierarchy, d3-quadtree, @sentry/nextjs, Vitest
+- 36 design system components, 100+ tokens (all Raycast-accurate)
+- Real auth with middleware enforcement, Google OAuth PKCE
+- Progressive onboarding with goal personalization
+- Two-tier payments (Starter/Pro) with 7-day trial via Whop
+- Referral program with cookie persistence
+- Canvas-based hive visualization: 1300+ nodes, 60fps
+- Trending page at /trending with TikTok-style video feed
 - Deployed to Vercel
 
-**Known blockers before public go-live:**
+**Known issues / blockers before go-live:**
 - Whop plan IDs need creation in Whop dashboard
 - Referral bonus amount undecided (business decision)
 - Whop sandbox never tested end-to-end
-- Result Surface (M2-I) not yet shipped — analysis flow not polished
-- Landing v1 not yet shipped — live landing still the old page
-- 68 console.* calls remain in non-engine files (API routes, client components) — tech debt
+- Analyze button routes to /viral-predictor which doesn't exist yet
+- Calibration has no outcome data yet (wired conditionally, degrades gracefully)
+- 68 console.* calls remain in non-engine files (API routes, client components)
 
 ## Key Decisions
 
@@ -210,13 +198,7 @@ AI-powered content intelligence that tells TikTok creators whether their content
 | Junction table deduplication for shared competitor profiles | Good -- scrape once, serve all trackers |
 | BIGINT for all metric counters | Good -- viral creators exceed MAX_INT |
 | Apify Clockworks behind ScrapingProvider abstraction | Good -- swappable scraping backend |
-| DeepSeek for strategy/recommendations, Gemini for viral/hashtag | Good -- cost-effective dual-model (pre-v3.0; now Qwen-only) |
-| Qwen-only migration (DashScope International) | Good -- eliminated Gemini Files API outages + HEVC issues + DeepSeek hang risk; single model, simpler pipeline |
-| Platt calibration dropped entirely (Engine Hardening v3.1) | Good -- text-vs-video path mismatch made calibration a category error; removed `applyPlattScaling` + `platt_parameters` table |
-| user_settings dead routes ripped out (Engine Hardening v3.1) | Good -- 966 TS errors cleared; table never existed in live Supabase |
-| Audio fingerprint deferred to M3 (Engine Hardening v3.1) | Good -- sound-driven trend-riding is secondary signal; not blocking M2 UX |
-| M2-III (Compounding Intelligence) moved to M3 | Good -- outcome feedback loop + wins/flops trend are data-gated by M2-I real usage; shipping earlier produces empty pipelines |
-| M2 engine debt moved to M3 | Good -- none of it gates M2 UX; Wave 3/4 threshold re-tuning benefits from real usage data anyway |
+| DeepSeek for strategy/recommendations, Gemini for viral/hashtag | Good -- cost-effective dual-model |
 | 7-day TTL + scrape-date staleness for AI cache | Good -- auto-invalidates stale insights |
 | Server-side analytics pre-computation | Good -- minimal client bundle |
 | CSS grid heatmap (not Recharts) | Good -- lighter than chart library for grid layout |
@@ -243,21 +225,21 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 ## Current State
 
-**Shipped:** Engine Hardening v3.1 (2026-05-25), Engine Foundation v3.0.0 (2026-05-24), UI Dashboard (2026-03-18), Prediction Engine Integration (2026-02-27), Backend Reliability (2026-02-18), Prediction Engine v2 (2026-02-17), Competitors Tool (2026-02-17), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
+**Shipped:** Engine Foundation v3.0.0 (2026-05-24), UI Dashboard (2026-03-18), Prediction Engine Integration (2026-02-27), Backend Reliability (2026-02-18), Prediction Engine v2 (2026-02-17), Competitors Tool (2026-02-17), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
-**Active:**
-- Landing v1 — `~/virtuna-landing/` (branch `milestone/landing`). Phase 3 next. 11 phases total.
-- M2-I: Result Surface — `~/virtuna-result-surface/` (branch `milestone/result-surface`). Phase 1 next. 7 phases total.
-- M3 engine quality work — starts in parallel, no dedicated worktree yet.
+**Current milestone:** Result Surface (M2-I of Intelligence Surface drop) — active in `~/virtuna-result-surface/` (branch `milestone/result-surface`). Started 2026-05-24.
 
-**Abandoned (2026-05):** Brand Statement Landing, Landing Page Redesign, Linear Landing Clone — worktrees deleted 2026-05-25, branches retained in git history; see MILESTONES.md.
+**Abandoned (2026-05):** Brand Statement Landing, Landing Page Redesign, Linear Landing Clone — all worktrees retained on disk for reference; see MILESTONES.md.
 
-**Worktrees (as of 2026-05-25):**
-- `~/virtuna-v1.1/` — main
-- `~/virtuna-engine-foundation/` — milestone/engine-foundation (merged, retained)
-- `~/virtuna-engine-hardening/` — milestone/engine-hardening (shipped, retained)
-- `~/virtuna-landing/` — milestone/landing (active)
-- `~/virtuna-result-surface/` — milestone/result-surface (active)
+**Future milestones (post-Intelligence Surface drop):**
+- iOS Capacitor wrapper — wrap Next.js webapp as Capacitor iOS app, App Store submission (~1 week, no native LLM)
+- Landing rebuild — deferred until Intelligence Surface drop completes
+- /about, /research, /manifesto supporting pages
+- Weekly intelligence report (email) — needs scale data
+- Brand-fit predictor (separate brand-deals milestone rewrite)
+- External brand deals marketplace
+- Competitor search/discovery by name or niche
+- Ultra tier (Gemini 3.1 Pro + DeepSeek V4 Pro, 30s latency cap)
 
 ## Evolution
 
@@ -277,4 +259,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-25 — Engine Hardening v3.1 shipped. Milestone restructure: M2 = M2-I (Result Surface) + M2-II (Iteration & Niche Intelligence) only. M2-III (Compounding Intelligence) moved to M3 (data-gated by real M2-I usage). All M2 engine debt moved to M3 (none gates M2 UX). Landing v1 active in parallel. 7 stale worktrees removed.*
+*Last updated: 2026-05-25 after v3.1 Engine Hardening milestone. Engine Hardening shipped: tsc 0 errors, SSRF guard, timer leaks fixed, pgvector centralized, Platt calibration removed. Result Surface (M2-I) active in `~/virtuna-result-surface/`. VERIF-01/02/03 deferred permanently — re-run on first prod deploy.*
