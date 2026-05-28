@@ -17,6 +17,7 @@ import type {
   TrendEnrichment,
 } from "./types";
 import type { EmotionArcPoint } from "./qwen/schemas";
+import type { HookDecomposition } from "./types";
 import type { PipelineResult } from "./pipeline";
 import type { StageEventCallback } from "./events";
 import { QWEN_OMNI_MODEL as GEMINI_MODEL } from "./qwen/client";
@@ -692,6 +693,22 @@ export async function aggregateScores(
     emotion_arc = null; // non-fatal
   }
 
+  // Phase 2 (Quick 260528-nqx) — hook_decomposition pluck from Gemini analysis.
+  // Wave 1 hook-segment analysis emits this on geminiResult.analysis per the
+  // GeminiVideoAnalysisSchema (gemini/schemas.ts:85). pipeline.ts:874 already
+  // reads .watermark_detected off the same field; we now surface the full
+  // decomposition into PredictionResult so HookDecompNode renders real data
+  // instead of falling back to COPY.HOOK_DECOMP_UNAVAILABLE. Non-fatal:
+  // matches the emotion_arc Pitfall #5 ordering — populated BEFORE Stage 10/11
+  // so critique + counterfactuals see the field.
+  let hook_decomposition: HookDecomposition | null = null;
+  try {
+    const raw = (geminiResult.analysis as { hook_decomposition?: HookDecomposition | null }).hook_decomposition;
+    if (raw && typeof raw === "object") hook_decomposition = raw;
+  } catch {
+    hook_decomposition = null; // non-fatal
+  }
+
   // Phase 1 (R6.1, D-13, D-15, Pitfall #5) — optimal_post_window lookup. Inserted
   // BEFORE result assembly so Stage 10/11 critique + counterfactuals see the
   // field on the assembled PredictionResult. Non-fatal — null on Supabase error,
@@ -1105,6 +1122,8 @@ export async function aggregateScores(
     // Phase 1 (R1.7) — emotion arc timeline plucked from Omni Plus output above.
     // Null when video absent or Qwen omitted the field; non-fatal per Pitfall #5.
     emotion_arc,
+    // Phase 2 (Quick 260528-nqx) — hook_decomposition surfaced from Gemini analysis.
+    hook_decomposition,
     // Phase 1 (R1.9, B4) + Phase 3 (Plan 08) — anti-virality gate.
     // Initial value computed from PRE-Stage-10 confidence (post-Platt + post-HARD-03).
     // Phase 3: uses dual-trigger isAntiViralityGatedFull (avGateFull computed above).
