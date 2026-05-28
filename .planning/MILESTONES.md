@@ -1,5 +1,34 @@
 # Milestones — Virtuna
 
+## Result Surface (Shipped: 2026-05-28)
+
+**Phases completed:** 6 phases — Foundation SSE + Engine Signal Extensions; Board Substrate Navigation; Engine Rework Pass 2 (timeline-weighted aggregator + heatmap + filmstrip + Phase 3 SSE); Live Audience Node; Other Group Nodes (Verdict/Actions/Content Analysis populated); Reshoot Script + Optimal Post Time.
+
+**Branch / worktree:** `milestone/result-surface` at `~/virtuna-result-surface/`. Merged to main via PR #3 at `94b4663`.
+
+**Key accomplishments:**
+- Board-substrate result surface replacing legacy /dashboard (atomic /dashboard sunset with 307 redirect to /analyze)
+- Pass 2 timeline-weighted aggregator + persona weights + `assembleHeatmapPayload`
+- Phase 3 dual-trigger anti-virality gating via `isAntiViralityGatedFull` (confidence + timeline_pattern reason discriminator + dropoff segment indices)
+- Live Audience heatmap node with mobile Radix Sheet drawer
+- Reshoot script API + niche-aware optimal post window from `niche_post_windows` materialized aggregate (daily pg_cron)
+- Verdict / Actions / Content Analysis group nodes populated end-to-end
+- ContentForm video frame extraction → board thumbnail pipeline
+- Apollo tier picker (popover) replacing legacy span label
+
+**Test posture at merge:** 1619/1620 unit tests green (one flaky `Sidebar.recent.test.tsx` — passes in isolation). `tsc --noEmit` clean.
+
+**Archive:** `.planning/milestones/result-surface/`
+
+**Known carryover handed to MVP-cut milestone:**
+- Schema drift: `counterfactuals`, `hook_decomposition`, `confidence_label`, `anti_virality_gated` columns not yet persisted; `/api/script` route had to drop nonexistent columns inline and derive label
+- Orphaned video storage observed on analysis `-I4GtlGVCQKO` — retention cron timing or upload→insert race
+- Hook decomposition + emotion arc only half-wired (aggregator.ts:686-693 path with null fallback)
+- Similar videos card + retrieval/embedder paths still depend on M2 corpus (ripped from runtime; ingestion intact)
+- Audience headline chips 0-1 → 0-100 scaling fix landed today; `is_calibrated` field dropped from `PredictionResult` (Platt removal in engine-hardening); `videos/sign` returns 404 (not 500) for missing storage objects + logs
+
+---
+
 ## v3.1 Engine Hardening (Shipped: 2026-05-25)
 
 **Phases completed:** 4 phases, 10 plans, 4 tasks
