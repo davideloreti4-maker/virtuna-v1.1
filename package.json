@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
+    "@pmndrs/detect-gpu": "6.0.6",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-avatar": "^1.1.11",
@@ -48,7 +49,9 @@
     "cmdk": "^1.1.1",
     "d3-hierarchy": "^3.1.2",
     "d3-quadtree": "^3.0.1",
+    "ffmpeg-static": "^5.3.0",
     "framer-motion": "^12.29.3",
+    "konva": "10.3.0",
     "lucide-react": "^0.563.0",
     "motion": "^12.29.2",
     "nanoid": "^5.1.6",
@@ -59,8 +62,11 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-intersection-observer": "^10.0.2",
+    "react-konva": "19.2.4",
+    "react-markdown": "^10.1.0",
     "react-scan": "^0.5.6",
     "recharts": "^3.7.0",
+    "rehype-sanitize": "^6.0.0",
     "sugar-high": "^0.9.5",
     "tailwind-merge": "^3.4.0",
     "three": "^0.182.0",
@@ -95,6 +101,7 @@
     "tsx": "^4.22.2",
     "typescript": "^5",
     "vitest": "^4.0.18",
+    "vitest-axe": "^0.1.0",
     "wcag-contrast": "^3.0.0"
   }
 }

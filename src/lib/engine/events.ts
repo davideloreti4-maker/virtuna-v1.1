@@ -8,7 +8,11 @@ export type StageEventWave = 0 | 1 | 2 | 3 | 4 | "aggregator" | "post";
 export type StageEvent =
   | { type: "stage_start"; stage: string; wave: StageEventWave; timestamp_ms: number }
   | { type: "stage_end"; stage: string; wave: StageEventWave; duration_ms: number; cost_cents: number; ok: boolean; warning?: string }
-  | { type: "pipeline_warning"; message: string; stage?: string };
+  | { type: "pipeline_warning"; message: string; stage?: string }
+  // Phase 3 additive — Pass 2 + filmstrip events
+  | { type: "pass2_persona_start"; persona_id: string; archetype: string }
+  | { type: "pass2_persona_end"; persona_id: string; archetype: string; latency_ms: number; cost_cents: number; ok: boolean; attentions?: number[]; swipe_predicted_at?: number | null }
+  | { type: "filmstrip_segment_ready"; segment_idx: number; keyframe_uri: string };
 
 export type StageEventCallback = (event: StageEvent) => void;
 

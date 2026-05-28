@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app";
 import { ToastProvider } from "@/components/ui/toast";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
@@ -23,11 +24,13 @@ export default async function AppLayout({
 
   return (
     <Providers>
-      <ToastProvider>
-        <AppShell>
-          {children}
-        </AppShell>
-      </ToastProvider>
+      <TooltipProvider>
+        <ToastProvider>
+          <AppShell>
+            {children}
+          </AppShell>
+        </ToastProvider>
+      </TooltipProvider>
     </Providers>
   );
 }

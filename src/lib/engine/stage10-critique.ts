@@ -3,7 +3,8 @@ import type { PredictionResult, CritiqueResult } from "./types";
 import type { StageEventCallback } from "./events";
 import { emitStageStart, emitStageEnd } from "./events";
 import { isCircuitOpen } from "./deepseek";
-import { getQwenClient, QWEN_FAST_MODEL } from "./qwen/client";
+import { getQwenClient, QWEN_REASONING_MODEL } from "./qwen/client";
+import { calculateCost } from "./qwen/cost";
 import {
   STABLE_CRITIQUE_SYSTEM_PROMPT,
   buildCritiqueUserMessage,
@@ -11,15 +12,10 @@ import {
 } from "./stage10-critique-prompts";
 import type { CreatorContext } from "./creator";
 
+// D-21 (Phase 3): upgraded to QWEN_REASONING_MODEL (qwen3.6-plus) with thinking-mode
+// (enable_thinking=true, thinking_budget=4000). Tighter confidence calibration reduces false-positives.
 
-/**
- * Qwen pricing — see src/lib/engine/qwen/cost.ts for authoritative rates.
- */
-const CACHE_HIT_PRICE = 0.0028 / 1_000_000;
-const CACHE_MISS_PRICE = 0.14 / 1_000_000;
-const OUTPUT_PRICE = 0.28 / 1_000_000;
-
-const PER_CALL_TIMEOUT_MS = 45_000;
+const PER_CALL_TIMEOUT_MS = 60_000; // bumped from 45s — thinking-mode is slower
 
 /**
  * D-11: Clamp confidence_adjustment to [-0.20, 0] in TypeScript — never trust model range.
@@ -68,33 +64,24 @@ export async function runStage10Critique(
       const userMessage = buildCritiqueUserMessage(aggregateResult, creatorContext ?? null);
       const response = await ai.chat.completions.create(
         {
-          model: QWEN_FAST_MODEL,
+          model: QWEN_REASONING_MODEL,  // D-21: thinking-mode upgrade (qwen3.6-plus)
           messages: [
             { role: "system", content: STABLE_CRITIQUE_SYSTEM_PROMPT },
             { role: "user", content: userMessage },
           ],
           response_format: { type: "json_object" },
+          // @ts-expect-error — DashScope extensions not in OpenAI SDK types (enable_thinking + thinking_budget)
+          enable_thinking: true,
+          thinking_budget: 4000, // D-21: caps thinking at 4000 tokens (shorter than Pass 2's 8000)
         },
         { signal: controller.signal },
       );
       clearTimeout(timer);
 
-      const usage = response.usage as unknown as
-        | {
-            prompt_tokens?: number;
-            prompt_cache_hit_tokens?: number;
-            prompt_cache_miss_tokens?: number;
-            completion_tokens?: number;
-          }
+      const usage = response.usage as
+        | { prompt_tokens?: number; completion_tokens?: number }
         | undefined;
-      const cacheHit = usage?.prompt_cache_hit_tokens ?? 0;
-      const cacheMiss = usage?.prompt_cache_miss_tokens ?? 0;
-      const completion = usage?.completion_tokens ?? 0;
-      const hasBreakdown = cacheHit > 0 || cacheMiss > 0;
-      const inputCost = hasBreakdown
-        ? cacheHit * CACHE_HIT_PRICE + cacheMiss * CACHE_MISS_PRICE
-        : (usage?.prompt_tokens ?? 0) * CACHE_MISS_PRICE;
-      costCents += (inputCost + completion * OUTPUT_PRICE) * 100;
+      costCents += calculateCost(QWEN_REASONING_MODEL, usage ?? undefined);
 
       const text = response.choices[0]?.message?.content ?? "{}";
       const parsed = CritiqueResponseSchema.safeParse(JSON.parse(text));

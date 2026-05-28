@@ -1,283 +1,335 @@
-# Requirements — Engine Foundation Milestone
+# Requirements — Result Surface
 
-**Milestone goal:** Build, train, and validate the content intelligence engine. Ship measurable accuracy improvements before UX investment.
+**Milestone:** Result Surface (M2-I of Intelligence Surface drop)
+**Started:** 2026-05-24
+**Refactored:** 2026-05-25 (board model direction shift — see ROADMAP.md)
 
-**Acceptance gate:** Engine v3 demonstrates measurable accuracy improvement vs v2.1 baseline on training corpus. Target threshold set in Phase 1 after baseline measurement.
+Requirements are testable. Each must have a clear pass condition. Items grouped by surface area.
 
----
-
-## Training Corpus
-
-<!-- The unlock — labeled training data scraped from competitor videos with known outcomes. -->
-
-- [ ] **CORPUS-01**: 500-video training corpus built, stratified across 100 viral / 200 average / 200 underperforming
-- [ ] **CORPUS-02**: 30-day rolling refresh mechanism (Apify scrape scheduled)
-- [ ] **CORPUS-03**: Multi-niche coverage — minimum 5 niches represented (beauty, fitness, edu, comedy, lifestyle)
-- [ ] **CORPUS-04**: Outcome metadata captured per video — views, completion %, shares, comments, saves, creator follower tier
-- [ ] **CORPUS-05**: Outcome bucketing logic (viral / average / underperforming thresholds per niche percentile)
-- [ ] **CORPUS-06**: Corpus storage schema in Supabase (`training_corpus` table with video metadata + outcomes)
-- [ ] **CORPUS-07**: Apify scrape job for corpus refresh (separate from competitor scraping)
-- [ ] **CORPUS-08**: Corpus quality validation (no duplicates, valid outcomes, recent within window)
-
-## Evaluation Framework
-
-<!-- Objective measurement of engine accuracy before/after each change. -->
-
-- [ ] **EVAL-01**: Engine evaluation harness runs predictions across full corpus, batched
-- [ ] **EVAL-02**: Accuracy metrics computed — prediction error vs actual (MAE for engagement, classification accuracy for viral bucket)
-- [ ] **EVAL-03**: Per-signal contribution analysis — which signals add accuracy, which subtract
-- [ ] **EVAL-04**: Calibration drift measurement — how well predicted percentiles map to actual percentiles
-- [ ] **EVAL-05**: Regression detection — compare engine versions, flag accuracy decrease
-- [ ] **EVAL-06**: Benchmark report generation (markdown summary + JSON metrics, persisted)
-- [ ] **EVAL-07**: Pass/fail gate against accuracy target (defined in Phase 1)
-- [ ] **EVAL-08**: Baseline measurement of current engine (v2.1) on corpus before any changes ship
-
-## Creator Profile + Interview
-
-<!-- 9-card modal on first upload click. Skippable individually, flow mandatory. -->
-
-- [x] **PROFILE-01**: `creator_profiles` table schema in Supabase with RLS policies
-- [x] **PROFILE-02**: 9-card interview modal flow with progressive disclosure
-- [x] **PROFILE-03**: Card 0 — Target platform (multi-select: TikTok, IG Reels, YT Shorts)
-- [x] **PROFILE-04**: Card 1 — Niche (hierarchical: primary → sub-niche → micro-niche)
-- [x] **PROFILE-05**: Card 2 — Target audience (age range, gender skew, geo, language)
-- [x] **PROFILE-06**: Card 3 — Goal (growth / engagement / brand deals / conversion) + stage (new / growing / established)
-- [x] **PROFILE-07**: Card 4 — Content style (talking head / B-roll / edu / comedy / tutorial / vlog) + cuts/sec preference
-- [x] **PROFILE-08**: Card 5 — Reference creators (1-3 aspirational, adds to scrape queue if not present)
-- [x] **PROFILE-09**: Card 6 — Past wins (1-2 URLs) + past flops (1-2 URLs)
-- [x] **PROFILE-10**: Card 7 — Posting cadence (frequency + time-of-day awareness)
-- [x] **PROFILE-11**: Card 8 — Pain points (text input)
-- [x] **PROFILE-12**: Truthfulness messaging surfaced — UI emphasizes honest answers improve prediction accuracy
-- [x] **PROFILE-13**: Individual cards skippable; full flow mandatory before first analysis
-- [x] **PROFILE-14**: Modal-on-first-upload-click trigger (intercept upload action for users without profile)
-- [x] **PROFILE-15**: Edit-from-settings flow allows profile updates anytime
-- [ ] **PROFILE-16**: Re-prompt micro-card every 10 analyses (single question, "Is your goal still X?") → Deferred to Phase 11 per Phase 02 D-14 (no counter column, no trigger code added in Phase 2)
-- [x] **PROFILE-17**: Profile loaded into every analysis as enriched `CreatorContext` (extends existing `creator.ts`)
-
-## Pipeline Infrastructure
-
-<!-- Event callback, versioning, provenance — sets up SSE infra for M2 viz. -->
-
-- [ ] **PIPE-01**: `onStageEvent` callback parameter added to `runPredictionPipeline()` (optional, backward-compatible)
-- [ ] **PIPE-02**: Pipeline event schema defined (stage start/end, per-signal results, persona reactions, costs)
-- [ ] **PIPE-03**: Stage events emitted at each `timed()` boundary
-- [ ] **PIPE-04**: SSE infrastructure in `/api/analyze` route (Vercel-compatible streaming)
-- [ ] **PIPE-05**: Engine version tagged on every prediction (`engine_version` field; v3.0.0 after this milestone)
-- [ ] **PIPE-06**: Prediction provenance — which signals fired, which degraded, signal availability flags persisted
-- [ ] **PIPE-07**: Wave 0 stage support (V3 calls before Wave 1)
-- [x] **PIPE-08**: Wave 3 stage support (parallel persona simulation after Wave 2)
-- [ ] **PIPE-09**: Stage 10 (self-critique) and Stage 11 (counterfactuals) added post-aggregator
-
-## Caching Layer
-
-<!-- 30-40% cost reduction on heavy users, sub-5s latency on re-uploads. -->
-
-- [ ] **CACHE-01**: Content hash computed on video upload (SHA-256 of buffer)
-- [ ] **CACHE-02**: Cache lookup by content hash before pipeline runs; return cached result if hit
-- [ ] **CACHE-03**: Persona prompt caching via DeepSeek input cache (80% input discount)
-- [ ] **CACHE-04**: Niche taxonomy cached in-memory (no DB roundtrip per analysis)
-- [ ] **CACHE-05**: Cache TTL policy (24h for full predictions, 7d for niche taxonomy, persistent for persona prompts)
-- [ ] **CACHE-06**: Cache invalidation triggers on engine version bump
-
-## Content Type + Niche Detection (Wave 0)
-
-<!-- Pre-Wave 1 classification drives downstream signal weighting. -->
-
-- [ ] **CONTENT-01**: Content type classifier (V3, ~$0.001/call) — talking head / B-roll / slideshow / action / tutorial / vlog
-- [ ] **CONTENT-02**: Hierarchical niche detector (V3, ~$0.001/call) — primary / sub-niche / micro-niche from content + creator profile
-- [ ] **CONTENT-03**: Niche taxonomy stored as tree structure with mappings to persona archetypes and benchmark filters
-- [ ] **CONTENT-04**: Content-type-aware signal weighting passed to aggregator (e.g., slideshows down-weight pacing signal)
-
-## Video Segmentation
-
-<!-- Native Gemini videoMetadata — single upload, parallel scoped calls. -->
-
-- [ ] **SEGMENT-01**: Gemini 2.5 Pro analysis of hook segment (0-3s) via `videoMetadata: { startOffset, endOffset }`
-- [ ] **SEGMENT-02**: Gemini 2.5 Flash analysis of body segment (3s → end-3s) via `videoMetadata`
-- [ ] **SEGMENT-03**: Gemini 2.5 Flash analysis of CTA segment (last 3s) via `videoMetadata`
-- [ ] **SEGMENT-04**: Parallel execution of 3 segments (single Gemini Files upload reused)
-- [ ] **SEGMENT-05**: Segment results merged into single Gemini analysis output (timestamps preserved)
-- [ ] **SEGMENT-06**: Model selection per segment configurable via env
-
-## Multi-Modal Hook Decomposition
-
-<!-- Decompose the 0-3s hook into 4 sub-signals + cross-modal scores.
-     (HOOK-02 audio hook moved to ## Audio Analysis section per Phase 6 D-H1.
-      Phase 5 CONSUMES HOOK-02 from Phase 6's output rather than producing it.) -->
-
-- [ ] **HOOK-01**: Visual stop power score (0-10, from Pro hook segment)
-- [ ] **HOOK-03**: Text overlay readability + impact score (0-10)
-- [ ] **HOOK-04**: First-words / speech hook score (0-10, transcription-based)
-- [ ] **HOOK-05**: Weakest hook modality identified (one of visual/audio/text/speech)
-- [ ] **HOOK-06**: Visual-audio coherence score — mood match across modalities (0-10)
-- [ ] **HOOK-07**: Cognitive load score — information density per second (0-10, higher = more load = lower retention)
-
-## Audio Analysis
-
-<!-- Fill the no-op stage with real audio signals. -->
-
-- [ ] **AUDIO-01**: Audio analysis stage replaces existing no-op (`audioResult: null` → real result)
-- [ ] **AUDIO-02**: Voice clarity / SNR score (0-10)
-- [ ] **AUDIO-03**: Audio hook score for first 2s (0-10)
-- [ ] **AUDIO-04**: Silence / voiceover / music ratio computed
-- [ ] **AUDIO-05**: Audio fingerprint matching against trending sounds DB (replaces fuzzy string match)
-- [ ] **AUDIO-06**: Trending sound detection: bool + velocity (rising / peak / declining)
-- [ ] **HOOK-02**: Audio hook quality score (0-10, first 2s audio analysis) — migrated from Multi-Modal Hook Decomposition per Phase 6 D-H1; produced by Phase 6, CONSUMED by Phase 5 HOOK-05
-
-## Multi-Persona Simulation (Wave 3)
-
-<!-- 10 personas allocated FYP-first. The defining engine improvement. -->
-
-- [ ] **PERSONA-01**: 10-persona simulation running in Wave 3 of pipeline (parallel V3 calls)
-- [ ] **PERSONA-02**: 6 FYP non-follower personas (demographically diverse — Gen Z, Millennial, female/male skew, geo variants)
-- [ ] **PERSONA-03**: 2 niche-aligned discovery personas (already-interested in topic but new to creator)
-- [ ] **PERSONA-04**: 1 returning follower / loyalist persona
-- [ ] **PERSONA-05**: 1 cross-niche curiosity persona
-- [ ] **PERSONA-06**: Per-persona output schema: scroll-past second, watch-through %, comment intent, share intent, save intent
-- [ ] **PERSONA-07**: Persona allocation tunable per content type (FYP-heavy for short discovery content, follower-heavier for serial/community content)
-- [ ] **PERSONA-08**: Persona definitions cached for cost efficiency (DeepSeek input cache + niche-specific variants)
-- [ ] **PERSONA-09**: `deepseek-chat` (V3) model used for all persona calls; configurable via env
-- [ ] **PERSONA-10**: Aggregate persona outputs into behavioral signal (replaces single DeepSeek behavioral_predictions)
-- [ ] **PERSONA-11**: Per-persona drop-off second stored on prediction (feeds retention curve in M2)
-
-## Benchmark Retrieval (pgvector)
-
-<!-- Top-K similar competitor videos as evidence. -->
-
-- [x] **RETRIEVAL-01**: `pgvector` extension installed in Supabase
-- [x] **RETRIEVAL-02**: Two-pool video embedding pipeline — embeddings computed at scrape time (Apify webhook → `scraped_videos.embedding`) AND at corpus build time (`scripts/build-corpus.ts` → `training_corpus.embedding`). Reflects Phase 8 D-01 locked decision: `competitor_videos.embedding` rejected (per-user RLS pool too small + system-wide pattern-match is the actual use case).
-- [x] **RETRIEVAL-03**: Predict-time embedding of input video summary (text-embedding-3-small or Gemini embedding)
-- [x] **RETRIEVAL-04**: Top-K similarity search (K=5) filtered by niche, platform, creator tier
-- [x] **RETRIEVAL-05**: Similar videos returned as `retrieval_evidence` field on prediction (top 5 with similarity scores + outcomes)
-- [x] **RETRIEVAL-06**: Backfill embedding pipeline for existing competitor videos (one-time job)
-
-## Platform Algorithm Fit
-
-<!-- Per-platform signal weighting + creator-tier awareness. -->
-
-- [x] **ALGO-01**: TikTok algorithm fit signal — completion >> shares > saves > comments > likes
-- [x] **ALGO-02**: Instagram Reels algorithm fit signal — sends-to-DM > comments > shares > saves + original audio bonus + watermark penalty
-- [x] **ALGO-03**: YouTube Shorts algorithm fit signal — watch time + subscribes > replays > likes
-- [x] **ALGO-04**: Per-platform fit score computed and returned on prediction (one score per platform user targets in Card 0)
-- [x] **ALGO-05**: Creator-tier-aware adjustment (nano-creator algo favor on TikTok, established-creator penalty for low engagement, etc.)
-- [x] **ALGO-06**: Watermark detection on uploaded video (Gemini prompt extension, ~free) — flags for IG penalty
-
-## Self-Critique + Counterfactuals
-
-<!-- Honest accuracy via second-pass reasoning. -->
-
-- [x] **CRITIQUE-01**: Self-critique V3 call on aggregator output (implemented in stage10-critique.ts, verified via CRITIQUE-01 test)
-- [x] **CRITIQUE-02**: Critique cross-references creator's past wins/flops (Card 6) — flags when prediction contradicts creator history (past_wins_count/past_flops_count in buildCritiqueUserMessage, Check #3 in system prompt, verified via CRITIQUE-02 test)
-- [x] **CRITIQUE-03**: Critique adjusts `confidence` field downward when reasoning is internally inconsistent (applyCritiqueAdjustment helper with [-0.20, 0] clamp, verified via CRITIQUE-03 test)
-- [x] **COUNTER-01**: Counterfactual suggestions generated via V3 ("what if hook moved to 0:02")
-- [x] **COUNTER-02**: Counterfactuals tied to timestamped suggestions + retention curve drop points
-- [x] **COUNTER-03**: Counterfactuals returned in prediction result, available to all tiers (no premium gate)
-- [x] **COUNTER-04**: Anti-virality "this will likely flop" warning when prediction confidence is high but score is low
-
-## ML Classifier Audit + Calibration
-
-<!-- The corpus enables this work. -->
-
-- [ ] **ML-01**: Run existing ML classifier against corpus benchmark — measure current accuracy
-- [ ] **ML-02**: Accuracy report with current weight (0.15) impact analysis — does ML signal help or hurt?
-- [ ] **ML-03**: Decision: retrain on corpus, down-weight, or disable signal
-- [ ] **ML-04**: Platt calibration training on corpus predictions vs actual outcomes
-- [ ] **ML-05**: `is_calibrated` flag flips to `true` for predictions where calibration applies
-- [ ] **ML-06**: ML weights file regenerated if retrained (commit to repo)
-
-## Aggregator Extension
-
-<!-- SignalAvailability pattern extends naturally. -->
-
-- [ ] **AGG-01**: SignalAvailability extended with new signals — personas, audio, retrieval, hook, algo-fit
-- [ ] **AGG-02**: Dynamic weight redistribution rules updated for new signals
-- [ ] **AGG-03**: Engine version bumped to v3.0.0 in `ENGINE_VERSION` constant
-- [ ] **AGG-04**: PredictionResult schema extended with new fields (per-persona reactions, hook decomp, retrieval evidence, algo-fit per platform, counterfactuals, critique notes)
-- [ ] **AGG-05**: Existing 203 tests pass without modification (additive change discipline)
-- [ ] **AGG-06**: New aggregator tests cover dynamic redistribution with new signals
-
-## Integration + Privacy
-
-<!-- Wire to existing UI; honest video retention. -->
-
-- [ ] **INT-01**: Existing `/api/analyze` endpoint switched to new pipeline (Engine v3)
-- [x] **INT-02**: Existing `src/components/app/video-upload.tsx` integrated with creator profile gate
-- [ ] **INT-03**: Existing dashboard renders updated `PredictionResult` (basic display; polished card ships in M2)
-- [x] **INT-04**: Existing onboarding (TikTok handle + goal personalization + 4 tooltips) integrates with 9-card profile (no duplication)
-- [ ] **INT-05**: Storage retention policy — uploaded videos auto-deleted after 30 days unless user opts in to "save for re-analysis"
-- [ ] **INT-06**: Retention policy surfaced in upload UI before user uploads
-- [ ] **INT-07**: GDPR-compliant: user can request video deletion + profile data export
-
-## Acceptance Benchmark
-
-<!-- Ship gate: engine must measurably improve. -->
-
-- [ ] **BENCH-01**: Full benchmark run on corpus before milestone completion
-- [ ] **BENCH-02**: Target accuracy improvement vs v2.1 baseline met (target set in Phase 1)
-- [ ] **BENCH-03**: Cost per analysis within budget — ≤$0.075 average (~$0.065 target with off-peak)
-- [ ] **BENCH-04**: Calibration loss reduced vs v2.1 baseline
-- [ ] **BENCH-05**: No regressions in existing 203 tests
-- [ ] **BENCH-06**: Per-signal contribution analysis shows new signals contribute positively (none subtract)
+**Architecture note:** R1 (previously "Polished Result Card") and R2 (previously "Live Audience Simulation Viz") have been refactored to reflect the **node-based board model**. `/analyze` is a persistent Konva canvas with 5 group container frames. R1 now describes the board substrate and node groups. R2 now describes the audience engine (Pass 2 timeline call + weighted aggregator + heatmap data).
 
 ---
 
-## Out of Scope (Intelligence Surface Milestone)
+## R1 — Result Board (node-based architecture)
 
-- Live audience simulation viz (SSE-driven hive extension)
-- Polished result card UI (retention curve, persona panels, hook decomp UI, similar videos panel, reasoning narrative card, confidence/calibration banner UI)
-- Mobile-first analysis route (camera roll picker, paste-from-clipboard, simplified card, push notif)
-- Concept mode (text-only "predict this idea" before filming)
-- A/B variant generation (alternate hook scripts, side-by-side predictions)
-- Hook archetype library (pre-curated successful hook patterns)
-- Trend velocity / lifecycle prediction
-- Cross-platform repurposing analysis ("same content scored per platform")
-- Comparative baseline display ("X% vs your average")
-- Emotion arc visualization
-- Anti-virality / don't-post-yet UI surfaces (logic ships M1, surfacing waits for M2)
-- Watermark detection UI surface (detection ships M1, UI waits for M2)
+### R1.1 — Board substrate
+- [ ] `/analyze` renders a Konva-based canvas board with 5 group container frames (Input, Engine, Audience, Verdict, Actions, Content Analysis) — preview-greyed in idle state, active during streaming, populated on complete
+- [ ] Pan / pinch-zoom / fit-to-content / camera presets (`fit Audience+Verdict`, `fit overview`, `fit Engine pipeline`) work on desktop AND mobile portrait
+- [ ] No manual node positioning — layout is auto-arranged, deterministic across devices for spatial consistency (shared mental map between phone/desktop)
+- [ ] Deep-link camera state via URL parameters (`?focus=audience&zoom=2.4`) — shareable
+- [ ] Reduced-motion fallback: same composition + same pan/zoom navigation, animations disabled
+- [ ] `/dashboard` redirects to `/analyze`; existing `src/components/hive/*` tier-hive component fully removed (zero imports)
+- [ ] Raycast design language: GlassPanel containers, 12px radius, 6% borders, coral #FF7F50 brand accent
 
-## Deferred (Future Milestones)
+### R1.2 — Audience node (centerpiece)
+- [ ] Combined visualization (top-to-bottom): headline metrics chip row + keyframe filmstrip + retention curve overlay + persona dropoff markers + heatmap underlay (collapsible) + per-persona inline expand
+- [ ] Headline metrics: Avg watch %, Loop %, Replayable-hook score (0-3s window), Top dropoff timestamp, vs Niche baseline (diff badge)
+- [ ] Retention curve: smooth Canvas-rendered line, weighted aggregate (per R2.3), TikTok-Studio-familiar style — primary signal, immediately readable
+- [ ] Dropoff markers: small avatar/dot chips positioned on the curve at swipe timestamps, group on overlap
+- [ ] Heatmap (collapsed by default, expand for power view): persona × segment grid, 10 rows (6 FYP + 2 niche + 1 loyalist + 1 cross-niche), coral-intensity-on-dark (no red/green), swipe markers as white ticks, 0-3s hook zone highlighted with warm band
+- [ ] Filmstrip: keyframe thumbnails along curve top axis at scene boundaries
+- [ ] Live streaming choreography: rows materialize as Pass 2 personas complete (~3-5s total reveal post-Wave-3-complete)
+- [ ] Tap interactions:
+  - Tap cell → reason popover (persona + timestamp + attention + reason at inflection points)
+  - Tap row label → persona's full reasoning detail (bottom sheet on mobile, inspector on desktop)
+  - Tap dropoff marker → that persona's reasoning at that swipe moment
+  - Tap curve point → aggregate metric overlay + filmstrip frame highlight
+  - Pinch on heatmap → zoom into time range
+- [ ] Audience weighting transparency: small badge showing weights used (`Weighted: 65% FYP / 20% niche / 10% loyal / 5% cross`); tap reveals explanation
+- [ ] Anti-virality state: critical drop zones highlighted in orange/coral treatment with rework guidance anchored to specific segments
+- [ ] Mobile portrait: same composition fits portrait without rotation; pinch-zoom for detail; tap-row-expand for per-persona full-width
 
-- Outcome auto-scraper (post-analysis automatic outcome ingestion from creator's posted content)
-- Creator-fingerprint embedding from past 20 videos (interview cards seed it manually for now)
-- TikTok Insights / IG OAuth integration (creator analytics)
-- Multi-language / region-specific predictions
-- Brand-deal alignment scoring (lives in Brand Deals tool)
-- TikTok Shop / commerce scoring
-- Collaboration / guest analysis
-- Audience drift detection (30-day longitudinal)
-- Shadow-ban detection
+### R1.3 — Verdict node
+- [ ] Always visible: percentile chip (big) + confidence chip + anti-virality state header
+- [ ] Anti-virality state (when triggered): orange "Don't post yet" header + top 3 fixes anchored to specific segments (visual treatment constructive, not punitive)
+- [ ] Collapsible "Why this verdict?" section: structured reasoning (4 sub-sections — Why this works / Why this might not / What the engine flagged / Counterfactual considered), markdown with inline citations to other nodes
+- [ ] Collapsible "vs my history" section: two horizontal bar charts (vs creator's last 10 + vs niche cohort); empty state when <3 prior analyses
+- [ ] User can override anti-virality "Don't post yet" verdict (no hard block — tracked as event)
 
-## Traceability
+### R1.4 — Actions node
+- [ ] Contains: Reshoot script panel (R5 details), Optimal post time panel (R6 details), Similar videos card (R1.5 below), Share/export panel (R4 details)
+- [ ] Reshoot script promoted to hero of Actions when anti-virality state triggered
+- [ ] All children render against test fixtures + production engine output snapshots
 
-<!-- Filled by /gsd-plan-phase as phases plan against requirements. -->
+### R1.5 — Similar videos panel (inside Actions group)
+- [ ] Top-K (5 default) pgvector matches from competitor corpus render as VideoCard mini-tiles (reuse `/trending` VideoCard pattern)
+- [ ] Each tile: thumbnail, creator @handle, view count, similarity score
+- [ ] Tap opens existing TikTok embed modal
+- [ ] Empty state if retrieval signal unavailable
 
-| REQ-ID | Phase | Plan(s) | Status |
-|--------|-------|---------|--------|
-| PROFILE-01 | 02 | 02-01, 02-06 | Complete |
-| PROFILE-02 | 02 | 02-04 | Complete |
-| PROFILE-03 | 02 | 02-03 | Complete |
-| PROFILE-04 | 02 | 02-02, 02-03 | Complete |
-| PROFILE-05 | 02 | 02-03 | Complete |
-| PROFILE-06 | 02 | 02-03 | Complete |
-| PROFILE-07 | 02 | 02-03 | Complete |
-| PROFILE-08 | 02 | 02-03, 02-06 | Complete |
-| PROFILE-09 | 02 | 02-03 | Complete |
-| PROFILE-10 | 02 | 02-03 | Complete |
-| PROFILE-11 | 02 | 02-03 | Complete |
-| PROFILE-12 | 02 | 02-04 | Complete |
-| PROFILE-13 | 02 | 02-01, 02-04 | Complete |
-| PROFILE-14 | 02 | 02-04 | Complete |
-| PROFILE-15 | 02 | 02-05 | Complete |
-| PROFILE-16 | 11 | (Phase 11 — Deferred per Phase 2 D-14) | Deferred |
-| PROFILE-17 | 02 | 02-06 | Complete |
-| INT-02 | 02 | 02-04 | Complete |
-| INT-04 | 02 | 02-05 | Complete |
-| INT-07 | — | Deferred to M2 per D-06 | Deferred (M2) |
-| RETRIEVAL-01 | 08 | 08-01, 08-05 | Complete |
-| RETRIEVAL-02 | 08 | 08-01, 08-05 | Complete |
-| RETRIEVAL-03 | 08 | 08-03, 08-04 | Complete |
-| RETRIEVAL-04 | 08 | 08-04 | Complete |
-| RETRIEVAL-05 | 08 | 08-04 | Complete |
-| RETRIEVAL-06 | 08 | 08-05 | Complete |
-| HOOK-02 | 06 | 06-01, 06-03 | Planned |
+### R1.6 — Content Analysis nodes (Hook decomp + Emotion arc)
+- [ ] Hook decomp node: 4-bar GlassProgress group (visual / audio / text / speech sub-scores) + coherence + cognitive load chips; each expandable for engine reasoning; hook timestamp range (0-3s default, dynamic from engine) labeled
+- [ ] Emotion arc node: Recharts area chart of emotional intensity across video timeline; color-coded gray → coral-200 → coral-500; marks peak/valley moments
+
+### R1.7 — Engine group
+- [ ] Contains 5 stage children (Qwen-VL segmentation, Hook decomp, Retention model, Persona simulator, Aggregator)
+- [ ] Live state during streaming: each child shows `○ waiting` / `◐ active` / `✓ complete` glyphs
+- [ ] Stage labels in plain English: "Reading the hook…" / "Reading the audience…" / "Synthesizing…" (not engine wave numbers)
+- [ ] Collapses to compact "View pipeline →" status badge post-complete; tap re-expands for power users / process transparency
+
+### R1.8 — Input node + drawer
+- [ ] Compact Input node shows video thumbnail + brief snippet after submit
+- [ ] Tap node → drawer slides out from left (desktop) or bottom sheet (mobile) with full editable form
+- [ ] Drawer includes "Recent inputs" picker (top-3 most-recent briefs/videos for one-tap reuse)
+- [ ] Edit brief or swap video → Re-run → drawer closes → board updates in place (URL stays at `/analyze/[id]`, prior verdict optionally archived as ghost node beside Input)
+
+### R1.9 — Cross-group state coordination
+- [ ] Anti-virality state ripples across Verdict + Audience + Actions simultaneously (not isolated to one node)
+- [ ] Pattern: same engine signal triggers coordinated visual changes across related groups
+- [ ] Future signals (high-confidence loop, exceptional hook score, etc.) follow same ripple pattern
+
+### R1.10 — Sidebar
+- [ ] Sections: ⊕ New analysis (CTA + ⌘N shortcut) / Navigate (Boards / Trending / Settings) / ● Running (only when streaming) / ⭐ Pinned / 🕐 Recent (paginated) / 📁 Projects (collapsed placeholder in this milestone) / 👤 Account
+- [ ] Collapsible to icon-only mode on desktop (⌘\ shortcut)
+- [ ] Mobile: hidden behind hamburger top-left, slides as full-height drawer
+
+### R1.11 — Universal context-aware command bar
+- [ ] Pinned to bottom of viewport on `/analyze`; same surface used as primary input + co-pilot
+- [ ] Behavior adapts to board state:
+  - **Empty board:** placeholder "Paste URL, drop file, or describe…"; submit materializes Input node, pipeline starts
+  - **Streaming:** disabled, shows live stage text + cancel
+  - **Complete:** placeholder "Ask about your audience or generate variant…"; suggested chip actions (rewrite hook, compare to last 3, generate variant, re-weight audience)
+- [ ] Phase 2 ships **command bar + chip actions** only (free-form conversational agent deferred to M2-II/III)
+- [ ] Auto-hide on idle option (slides down, chevron to re-open) for clean board view
+
+---
+
+## R2 — Audience Engine (time-resolved per-persona prediction)
+
+### R2.1 — SSE consumer in board view ✅ (Phase 1)
+- [ ] Board page subscribes to `/api/analyze/[id]/stream` (GET) on submit
+- [ ] Stage events trigger board state machine transitions
+- [ ] Connection-drop handling: reconnect once with last event ID, then fall back to polling
+- [ ] All stage events logged client-side for debugging (gated behind dev flag)
+
+### R2.2 — Pass 2 dedicated per-persona timeline call
+- [ ] After Pass 1 verdict per persona, fire dedicated Pass 2 call with Qwen-thinking-mode reasoning effort
+- [ ] Pass 2 walks through video segment-by-segment with the persona's archetype lens
+- [ ] Structured output: `{ persona_id, segment_reactions: [{ t_start, t_end, attention: 0-1, reason?: string }] }` — `reason` populated only at inflection points (start, end, swipe moment, biggest delta)
+- [ ] Latency target: <8s p95 for all 10 personas in parallel
+- [ ] Output validation + sanity checks (attention 0-1, monotonic-ish near swipe events, reasoning grounded in segmentation context)
+
+### R2.3 — Weighted aggregator
+- [ ] Engine config: `persona_weights` defines audience-share weights per persona type (defaults: FYP non-followers 0.65 / niche-aligned 0.20 / loyalist 0.10 / cross-niche 0.05, sum = 1.0)
+- [ ] Aggregate retention curve = weighted mean of Pass 2 per-persona attention scores per segment
+- [ ] All headline metrics (Avg watch %, Loop %, Replayable-hook score, Top dropoff, vs Niche) computed against weighted aggregate
+- [ ] Schema future-proofed for per-niche / per-creator / per-analysis weight overrides (out of scope for this milestone, schema only)
+
+### R2.4 — Anti-virality threshold recalibration
+- [ ] Recalibrate threshold against weighted aggregate distribution (Phase 1's threshold was unweighted)
+- [ ] Use existing outcomes corpus + sweep procedure (or ROC-style cutoff, or Platt calibration reuse — researcher decides best method)
+- [ ] Document new threshold value + rationale; lock as engine config
+- [ ] When triggered, surfaces top 3 specific fixes from counterfactuals, anchored to specific video segments
+
+### R2.5 — Heatmap schema in `PredictionResult`
+```ts
+heatmap: {
+  segments: Array<{
+    t_start: number;
+    t_end: number;
+    label?: string;            // optional Qwen-VL / Gemini scene description
+    is_hook_zone: boolean;     // first 0-3s
+  }>;
+  personas: Array<{
+    id: string;                // matches existing persona.id
+    attentions: number[];      // same length as segments
+    swipe_predicted_at?: number; // t value, optional
+    segment_reasons: Record<number, string>; // index → reason, sparse at inflection points
+  }>;
+  weights: {                   // transparency surface
+    fyp: number;
+    niche: number;
+    loyalist: number;
+    cross_niche: number;
+  };
+}
+```
+- [ ] Streaming partials extension: `partial.personas[].attentions[]` fills in as Pass 2 returns
+- [ ] Backwards-compatible additive change (Phase 1 schema unaffected)
+
+### R2.6 — Filmstrip generation pipeline
+- [ ] Keyframe extraction at Gemini-segmented scene boundaries (or Qwen-VL equivalent)
+- [ ] Minimum 1s cell width — merge sub-1s scene cuts at display time
+- [ ] Storage in Supabase Storage (signed URLs, 30-day retention)
+- [ ] Served alongside `heatmap` schema for Audience node top axis
+- [ ] Generated during Wave 0 in parallel with other engine work (no SLA hit)
+
+### R2.7 — Stage labels (plain-English)
+- [ ] Subtle stage label above Engine group during streaming: "Reading the hook…" → "Reading the audience…" → "Synthesizing…"
+- [ ] Plain-English labels, not engine wave numbers
+- [ ] Disappears on `complete`; Engine group collapses to "View pipeline →" status badge
+
+---
+
+## R3 — Mobile-First Analysis Route (refactored: mobile board)
+
+### R3.1 — Mobile board
+- [ ] `/analyze` renders the same Konva board canvas at all viewport sizes — same spatial layout, same coordinates, same node positions (spatial consistency across devices)
+- [ ] Pinch-zoom + two-finger pan + tap-to-focus all work natively
+- [ ] Default mobile camera on `complete`: fits Audience + Verdict as hero pair in viewport
+- [ ] No orientation lock, no fullscreen escape hatch — portrait does everything (per Audience R1.2 + R4.12)
+- [ ] Camera assists (auto-pan-to-active-stage during streaming, "Reset view" button, fit-to-content) work on mobile
+
+### R3.2 — Mobile upload flow
+- [ ] Native file picker (camera roll on iOS, gallery on Android)
+- [ ] Client-side file size check before upload (max 100MB, configurable)
+- [ ] Watermark scan placeholder hook (full implementation deferred to M2-II)
+- [ ] Upload progress bar with cancel
+- [ ] Auth-gated: redirects to login if not signed in
+
+### R3.3 — Mobile node interactions
+- [ ] All node tap interactions open as bottom sheet (not modal)
+- [ ] Bottom sheet has fixed top handle + scroll body + dismiss-on-drag-down
+- [ ] Sidebar hidden by default; hamburger top-left toggles full-height drawer
+
+### R3.4 — Mobile Lighthouse score ≥ 90
+- [ ] Performance ≥ 90, Accessibility = 100, Best Practices ≥ 90, SEO ≥ 90
+- [ ] Measured on iPhone 13 simulator, throttled to 4G
+- [ ] CLS < 0.1, LCP < 2.5s, FID < 100ms
+
+---
+
+## R4 — Share & Export
+
+### R4.1 — Share-image generation
+- [ ] Satori + @vercel/og generates branded PNG of board (verdict + audience heatmap = the share asset)
+- [ ] Image includes: verdict, hook decomp summary, audience heatmap thumbnail, Virtuna logo + permalink URL
+- [ ] Image dimensions: 1080×1920 (story format) + 1200×630 (OG format) — two variants
+- [ ] Generation completes server-side in ≤ 2s p95
+
+### R4.2 — Public permalink
+- [ ] Each analysis gets a public-readable URL `/r/<slug>` (short slug, not UUID)
+- [ ] Public page shows board in read-only mode (no edit, no re-analyze)
+- [ ] Creator can toggle public/private per analysis (default private)
+- [ ] Permalink URL appears on share button
+- [ ] Public page is server-rendered for OG embed compatibility
+
+### R4.3 — Native share sheet (mobile)
+- [ ] Share button on mobile triggers `navigator.share()` with: title, url, image file
+- [ ] Falls back to copy-link if Web Share API unavailable
+- [ ] Tracked as event: `result_share` with platform
+
+### R4.4 — Copy-link (desktop)
+- [ ] Share button on desktop opens dropdown: Copy Link, Download PNG (story), Download PNG (OG)
+- [ ] Copy-link writes permalink to clipboard with toast confirmation
+- [ ] Download buttons trigger PNG download
+
+---
+
+## R5 — Re-shoot Script Generator
+
+### R5.1 — Script extraction from engine output
+- [ ] Server endpoint `/api/analyze/<id>/script` returns structured script from counterfactuals + A/B variants
+- [ ] Schema: `{ opening_line: string, scene_order: string[], voiceover: string, captions: string[] }`
+- [ ] Endpoint is fast (<200ms) — pure transformation, no new LLM calls
+- [ ] Cache the script result alongside the analysis result
+
+### R5.2 — Script UI inside Actions node
+- [ ] Reshoot script renders as a section inside the Actions group node
+- [ ] 4 sections: New Opening, Scene Order, Voiceover, Captions
+- [ ] Each section has dedicated copy button
+- [ ] Whole script has a "Copy all" button that includes section headers
+- [ ] "Open in Notion" link generates a Notion import URL (deferred — flag for M2-II)
+
+### R5.3 — Script empty state
+- [ ] When engine confidence ≥ 0.7 (no major rework needed), script section shows: "Your video is solid. Optional tweaks below."
+- [ ] Reduced script: just optional A/B variants on the opening, no full reshoot
+
+---
+
+## R6 — Optimal Post Time
+
+### R6.1 — Engine signal ✅ (Phase 1)
+- [ ] Aggregator output extended with `optimal_post_window: { day_of_week: string, hour_range: [number, number], timezone: string }`
+- [ ] Signal derived from niche + creator profile + corpus posting-time data
+- [ ] Fallback: generic niche-level recommendation if creator-specific data insufficient
+
+### R6.2 — UI inside Actions node
+- [ ] "When to post" section inside Actions group node
+- [ ] Shows day + time window in creator's timezone (auto-detected, editable)
+- [ ] Brief one-liner reasoning: "Your niche peaks on Tue evenings — 3.2x normal reach"
+- [ ] No calendar integration in this milestone (deferred)
+
+---
+
+## R7 — First-Analysis WOW Onboarding
+
+### R7.1 — Tutorial overlay
+- [ ] On first-ever analysis submit (detected via `creator_profiles.first_analysis_at IS NULL`), tutorial overlay appears
+- [ ] Overlay is dismissable and skippable from any step
+- [ ] 3 steps: (1) "Watch your audience react" pointing at live Audience node streaming, (2) "See exactly what works" pointing at Hook decomp + Audience heatmap, (3) "Get a script to reshoot" pointing at Actions group
+
+### R7.2 — Paced reveal
+- [ ] On first analysis, Verdict reveal is gated behind a "Reveal verdict" tap (after Audience node fully settles)
+- [ ] Subsequent analyses auto-reveal (no gating)
+- [ ] Tracked: time from upload → reveal tap, time on board
+
+### R7.3 — Next-action prompt
+- [ ] After first analysis result viewed, surface bottom prompt: "Try the reshoot script →" deep-linking to Actions group
+- [ ] After reshoot script viewed (any analysis), surface: "Want to test the new version? Edit input above →"
+- [ ] Prompts dismissable; track dismiss vs engage
+
+### R7.4 — First-board orientation (separate from R7.1 first-analysis tutorial)
+- [ ] First-time board visitor sees subtle hint: "Drop a video below or type in command bar to begin"
+- [ ] Hint dismissable; auto-dismisses on first command bar interaction
+- [ ] Distinct from R7.1 — orients the spatial mental model, not the analysis flow
+
+### R7.5 — Success metric instrumentation
+- [ ] Track: first-analysis completion rate, time-to-second-analysis, share rate from first analysis
+- [ ] Bake events into existing Sentry + structured logger pipeline
+- [ ] Dashboard view deferred (post-drop), data must be captured now
+
+---
+
+## Cross-cutting / Non-functional
+
+### NF1 — Performance (tiered)
+- [ ] p95 end-to-end (upload → verdict reveal) ≤ 60s on 4G (engine SLA already 60s, UI must not add latency)
+- [ ] Pass 2 timeline call adds ≤5s to wall-clock post-Wave-3 (parallel-fired)
+- [ ] Board initial render ≤ 1s after `complete` SSE event
+- [ ] Share image generation ≤ 2s p95
+- [ ] **Three performance tiers, auto-detected:**
+  - **High** (iPhone 13+, modern Android, desktop): 60fps
+  - **Medium** (iPhone 11-12, mid-range Android): 45-60fps with reduced parallax + simpler curve interpolation
+  - **Low** (older devices / thermal-throttled): 30fps minimum, auto-engage reduced-motion subset
+- [ ] Runtime FPS sampling drops tier if sustained <40fps (with small "Optimized for your device" toast)
+- [ ] Manual override available in settings
+
+### NF2 — Accessibility (designed in, not retrofit)
+- [ ] All board nodes keyboard-navigable
+- [ ] Screen reader: Engine group announces stage transitions; Audience node announces verdict + key dropoffs
+- [ ] Reduced-motion respects `prefers-reduced-motion`: animations off, board structure + pan/zoom intact (same composition, no rotation)
+- [ ] WCAG AA contrast maintained across all new components
+- [ ] Heatmap accessibility: numeric attention scores on tap, symbolic swipe markers (not color-only), pattern variants for color-blind mode (togglable), persona row labels always visible, alt text on filmstrip frames from Gemini scene descriptions
+
+### NF3 — Regression safety
+- [ ] Zero regressions on existing pages (`/trending`, `/competitors`, `/brand-deals`, `/`, `/login`, etc.)
+- [ ] `/dashboard` redirect verified to `/analyze` with no broken inbound links
+- [ ] Full regression audit at end of milestone (10+ pages, design system components)
+- [ ] No new design tokens introduced (reuse Raycast scale)
+
+### NF4 — Telemetry & cost
+- [ ] All new endpoints instrumented with structured logger (requestId, duration_ms, cost_cents)
+- [ ] Pass 2 per-persona call telemetry: latency p50/p95/p99, output token count, validation pass rate, hallucination guard triggers
+- [ ] Share image generation cost ≤ $0.0001/image (Satori is local — should be free, log to confirm)
+
+### NF5 — Tier gating
+- [ ] Free tier: limited to 5 analyses/month, full board access, share enabled, permalink public-by-default
+- [ ] Pro tier: unlimited, permalink private-by-default, full export options, future agency features
+- [ ] TierGate component reuses existing pattern (no new gating logic)
+
+### NF6 — Privacy
+- [ ] Public permalinks do not expose creator profile data (just board output, no PII)
+- [ ] Share images do not include @handle unless creator opts in
+- [ ] Existing 30-day storage retention applies to uploaded videos + filmstrip keyframes (unchanged)
+
+---
+
+## Open Questions (resolve in /discuss-phase before planning)
+
+1. **Persona prompt v2 implementation specifics** — Qwen-thinking-mode reasoning effort level (high vs max), structured output format (JSON Schema vs grammar), per-segment reason inclusion strategy → researcher decides
+2. **Permalink ID format** — short slug (`/r/abc123`) recommended for aesthetics; UUID fallback if collisions
+3. **Anti-virality threshold recalibration method** — sweep vs ROC vs Platt calibration → researcher picks defensible approach
+4. **Script generator tier gating** — free or Pro? Engine cost is zero so free seems right for cheatcode positioning
+5. **Onboarding skip rate target** — what % skipping is acceptable before we re-tune?
+6. **Filmstrip cell width policy on very long videos** — fixed-width with horizontal scroll, or dynamic clamp? → planner picks

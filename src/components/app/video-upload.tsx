@@ -182,66 +182,49 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
         <div
           className={cn(
             "relative rounded-xl border transition-colors duration-150",
-            // Base surface
             "bg-white/[0.03] border-white/[0.06]",
-            // Drag hover
             isDragging && "bg-white/[0.05]",
-            // Clickable in empty state
-            !file && "cursor-pointer"
           )}
-          onClick={!file ? () => inputRef.current?.click() : undefined}
           onDragOver={!file ? handleDragOver : undefined}
           onDragLeave={!file ? handleDragLeave : undefined}
           onDrop={!file ? handleDrop : undefined}
-          role={!file ? "button" : undefined}
-          tabIndex={!file ? 0 : undefined}
-          onKeyDown={
-            !file
-              ? (e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    inputRef.current?.click();
-                  }
-                }
-              : undefined
-          }
         >
           {/* Hidden file input */}
           <input
             ref={inputRef}
             type="file"
             accept="video/*"
+            aria-label="Upload video file"
             className="hidden"
             onChange={handleInputChange}
           />
 
-          {/* Empty state */}
+          {/* Empty state — compact single-row layout. The browse trigger and
+              the disclosure button are siblings (no nested-interactive). */}
           {!file && (
-            <div className="flex flex-col items-center justify-center gap-3 py-10 px-6">
-              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-white/[0.05]">
-                <Upload className="w-5 h-5 text-foreground-muted" />
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-foreground">
-                  Drop your video here or click to browse
-                </p>
-                <p className="text-xs text-foreground-muted mt-1">
-                  MP4, MOV, WebM up to 200MB
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* INT-06: "About your data" expandable — empty state only */}
-          {!file && (
-            <div className="border-t border-white/[0.06]">
+            <div className="flex items-center gap-1 px-3 py-2.5">
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDataDisclosureOpen((prev) => !prev);
-                }}
-                className="flex items-center gap-2 w-full px-6 py-3 text-foreground-muted hover:text-foreground transition-colors"
+                onClick={() => inputRef.current?.click()}
+                className="flex flex-1 items-center gap-3 rounded-md text-left"
+              >
+                <span className="flex items-center justify-center w-7 h-7 rounded-md bg-white/[0.05] shrink-0">
+                  <Upload className="w-3.5 h-3.5 text-foreground-muted" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm text-foreground leading-tight">
+                    Drop video or click to browse
+                  </span>
+                  <span className="block text-[11px] text-foreground-muted leading-tight mt-0.5">
+                    MP4, MOV, WebM · up to 200MB
+                  </span>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDataDisclosureOpen((prev) => !prev)}
+                aria-label="About your data"
+                className="text-foreground-muted hover:text-foreground shrink-0 px-1"
               >
                 <ChevronDown
                   className={cn(
@@ -249,14 +232,13 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
                     dataDisclosureOpen && "rotate-180"
                   )}
                 />
-                <span className="text-xs">About your data</span>
               </button>
-              {dataDisclosureOpen && (
-                <p className="px-6 pb-4 text-xs text-foreground-muted leading-relaxed">
-                  Videos are automatically deleted after 30 days. To keep for re-analysis, go to Settings.
-                </p>
-              )}
             </div>
+          )}
+          {!file && dataDisclosureOpen && (
+            <p className="border-t border-white/[0.06] px-3 py-2 text-[11px] text-foreground-muted leading-relaxed">
+              Videos auto-delete after 30 days. Keep them for re-analysis in Settings.
+            </p>
           )}
 
           {/* Upload progress state */}

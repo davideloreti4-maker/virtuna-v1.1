@@ -46,6 +46,35 @@ const HookFactorSchema = z.object({
   improvement_tip: z.string().max(300).optional(),
 });
 
+// =====================================================
+// Phase 1 (R1.7) — Emotion arc timeline point
+// =====================================================
+// Per-segment emotion intensity emitted by Omni Plus. Adds the curve that
+// downstream P3 emotion-arc panel renders. Existing factors[].name="Emotional
+// Charge" single-score remains unchanged (multiple downstream consumers).
+// Backward compat: emotion_arc is .optional() on OmniAnalysisZodSchema (see A3).
+export const EmotionArcPointSchema = z.object({
+  timestamp_ms:  z.number().min(0),
+  intensity_0_1: z.number().min(0).max(1),
+  label:         z.enum(["low", "mid", "high"]).optional(),
+});
+
+/** Phase 1 (R1.7) — Inferred TS type used by aggregator + types.ts. */
+export type EmotionArcPoint = z.infer<typeof EmotionArcPointSchema>;
+
+// D-07: Wave 0 hybrid segment grid (scene-boundary primary, fixed-bucket fallback).
+// Server-side normalizer (Plan 06) sets is_hook_zone after validation per D-07.
+export const SegmentSchema = z.object({
+  t_start: z.number().min(0),
+  t_end:   z.number().min(0),
+  visual_event: z.string().max(200),
+  audio_event:  z.string().max(200),
+  scene_boundary_reason: z.string().max(300).optional(),
+  is_hook_zone: z.boolean().optional(),
+  idx: z.number().int().min(0).optional(),
+});
+export type SegmentGrid = z.infer<typeof SegmentSchema>;
+
 export const CtaSegmentZodSchema = z
   .object({
     cta_present: z.boolean(),
@@ -117,6 +146,21 @@ export const OmniAnalysisZodSchema = z.object({
   // Audio perceptual score (0-100) — derived from Omni's audio analysis.
   // Separate from audio_signals so it maps cleanly to PipelineResult.audio_perceptual_score.
   audio_perceptual_score: z.number().min(0).max(100),
+
+  /** Phase 1 (R1.7) — Optional emotion arc timeline. Backward compat: existing
+   *  Omni responses without this field continue to validate (Assumption A3). */
+  emotion_arc: z.array(EmotionArcPointSchema).optional(),
+
+  /** Phase 3 (D-07) — Optional segment grid from Wave 0 omni. Backward compat:
+   *  existing responses without this field continue to validate. Server-side normalizer
+   *  sets is_hook_zone and idx after validation. */
+  segments: z.array(z.object({
+    t_start: z.number().min(0),
+    t_end:   z.number().min(0),
+    visual_event: z.string().max(200),
+    audio_event:  z.string().max(200),
+    scene_boundary_reason: z.string().max(300).optional(),
+  })).optional(),
 });
 
 export type OmniAnalysisResult = z.infer<typeof OmniAnalysisZodSchema>;
