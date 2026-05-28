@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useParams } from "next/navigation";
 import { Type, Link, Video, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { VideoUpload } from "./video-upload";
@@ -27,24 +28,31 @@ async function extractVideoFrames(file: File): Promise<{
     const frames: Record<number, string> = {};
     let duration = 0;
     let idx = 0;
+    let thumbnail = "";
+    // Two-phase: first seek captures the thumbnail at the same offset
+    // VideoUpload uses (Math.min(0.5, duration/4)), then 10 segment frames.
+    let phase: "thumbnail" | "frames" = "thumbnail";
 
-    function capture() {
+    function capture(): string {
       const canvas = document.createElement("canvas");
       canvas.width = FRAME_WIDTH;
       canvas.height = Math.round(FRAME_WIDTH * ((video.videoHeight / video.videoWidth) || (16 / 9)));
       const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        frames[idx] = canvas.toDataURL("image/jpeg", 0.6);
-      }
+      if (!ctx) return "";
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/jpeg", 0.6);
     }
 
     function seekNext() {
+      if (phase === "thumbnail") {
+        video.currentTime = Math.min(0.5, duration / 4);
+        return;
+      }
       if (idx >= FRAME_COUNT) {
         URL.revokeObjectURL(url);
         video.removeAttribute("src");
         video.load();
-        resolve({ frames, duration, thumbnail: frames[0] ?? "" });
+        resolve({ frames, duration, thumbnail });
         return;
       }
       video.currentTime = (idx + 0.5) * (duration / FRAME_COUNT);
@@ -56,8 +64,15 @@ async function extractVideoFrames(file: File): Promise<{
     };
 
     video.onseeked = () => {
-      capture();
-      idx++;
+      if (phase === "thumbnail") {
+        thumbnail = capture();
+        phase = "frames";
+        idx = 0;
+      } else {
+        const dataUrl = capture();
+        if (dataUrl) frames[idx] = dataUrl;
+        idx++;
+      }
       seekNext();
     };
 
@@ -119,7 +134,15 @@ const PLACEHOLDERS: Record<InputMode, string> = {
 // ---------------------------------------------------------------------------
 
 export function ContentForm({ onSubmit, uploadProgress, className }: ContentFormProps) {
-  const [activeTab, setActiveTab] = useState<InputMode>("video_upload");
+  // On /analyze/[id] (result route) default to text input so the large
+  // VideoUpload drop zone doesn't dominate the result page. User can still
+  // tab to Video to upload another.
+  const params = useParams();
+  const isOnResultRoute =
+    !!params && typeof (params as { id?: unknown }).id === "string";
+  const [activeTab, setActiveTab] = useState<InputMode>(
+    isOnResultRoute ? "text" : "video_upload",
+  );
   const apolloTier = useSimulationStore((s) => s.apolloTier);
   const {
     isLoading: isProfileLoading,
@@ -128,7 +151,7 @@ export function ContentForm({ onSubmit, uploadProgress, className }: ContentForm
   } = usePendingProfileGate();
   const [modalOpen, setModalOpen] = useState(false);
   const [formData, setFormData] = useState<ContentFormData>({
-    input_mode: "video_upload",
+    input_mode: isOnResultRoute ? "text" : "video_upload",
     caption: "",
     niche: "",
     hashtags: "",
