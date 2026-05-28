@@ -10,12 +10,23 @@ import { ActionsShareSlot } from './ActionsShareSlot';
 import { SimilarVideosCard } from './SimilarVideosCard';
 import { TELEMETRY, ACTIONS_GRID_DEFAULT_ROWS, ACTIONS_GRID_AV_ROWS } from './actions-constants';
 import type { ActionsNodeProps } from './actions-types';
+import type { OptimalPostOverride } from './optimal-post/OptimalPostCard';
+import type { OptimalPostWindow } from '@/lib/engine/optimal-post';
 import { logger } from '@/lib/logger';
 
 export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodeProps) {
   const stream = useAnalysisStream();
   const phase = stream.phase;
   const result = stream.result ?? null;
+  const analysisId = (result as { id?: string } | null)?.id ?? null;
+  const postWindow =
+    (result as { optimal_post_window?: unknown } | null)?.optimal_post_window
+      ? (result as { optimal_post_window: OptimalPostWindow }).optimal_post_window
+      : null;
+  const postOverride =
+    (result as { optimal_post_override?: unknown } | null)?.optimal_post_override
+      ? ((result as unknown as { optimal_post_override: OptimalPostOverride }).optimal_post_override)
+      : null;
   const isStreaming = phase === 'analyzing' || phase === 'reconnecting' || phase === 'polling';
 
   const boardMachineState = useBoardStore((s) => s.boardState);
@@ -52,14 +63,24 @@ export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodePro
         {isAV ? (
           <>
             {/* TOP: Reshoot hero spans both columns per D-10. */}
-            <ActionsReshootHeroSlot className="col-span-2 min-h-[88px]" />
+            <ActionsReshootHeroSlot
+              className="col-span-2 min-h-[88px]"
+              analysisId={analysisId}
+              phase={phase}
+              isAV={isAV}
+            />
             {/* BOTTOM (B2 fix): three cells = Optimal + Similar slot + Share.
                 Wrapped in a single col-span-2 container that lays the three cells out as a 3-col grid. */}
             <div
               className="col-span-2 grid grid-cols-3 gap-2"
               data-testid="actions-av-bottom-row"
             >
-              <div className="min-h-[88px]"><ActionsOptimalPostSlot /></div>
+              <div className="min-h-[88px]"><ActionsOptimalPostSlot
+                analysisId={analysisId}
+                phase={phase}
+                window={postWindow}
+                override={postOverride}
+              /></div>
               {/* SimilarVideosCard (Plan 5.6) — AV state bottom row slot.
                   Sits between OptimalPostSlot and ShareSlot per B2 / D-10. Share placeholder remains untouched. */}
               <div className="min-h-[88px]">
@@ -74,8 +95,17 @@ export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodePro
         ) : (
           <>
             {/* DEFAULT 2x2: Reshoot | OptimalPost | SimilarVideos | Share — all min-h-[88px] */}
-            <div className="min-h-[88px]"><ActionsReshootHeroSlot /></div>
-            <div className="min-h-[88px]"><ActionsOptimalPostSlot /></div>
+            <div className="min-h-[88px]"><ActionsReshootHeroSlot
+              analysisId={analysisId}
+              phase={phase}
+              isAV={isAV}
+            /></div>
+            <div className="min-h-[88px]"><ActionsOptimalPostSlot
+              analysisId={analysisId}
+              phase={phase}
+              window={postWindow}
+              override={postOverride}
+            /></div>
             {/* SimilarVideosCard (Plan 5.6) — default 2x2 slot */}
             <div className="min-h-[88px]">
               <SimilarVideosCard
