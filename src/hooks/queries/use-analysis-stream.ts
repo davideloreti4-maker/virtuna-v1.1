@@ -85,6 +85,9 @@ export interface UseAnalysisStreamOptions {
   initialData?: AnalysisStreamInitialData;
 }
 
+/** @public Type alias for the return type of useAnalysisStream. Consumed by VerdictNode (Plan 5.2, W5 typed import). */
+export type AnalysisStream = AnalysisStreamReturn;
+
 export interface AnalysisStreamReturn {
   start: (input: AnalysisStreamInput) => Promise<void>;
   result: PredictionResult | null;
