@@ -87,15 +87,10 @@ export async function GET(
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  // TODO(schema-drift): `counterfactuals` and `hook_decomposition` are produced
-  // by the engine but not persisted (no columns exist). When the dedicated
-  // schema-drift phase lands, add the columns + the writer side and re-include
-  // them in this SELECT. Until then, script computation falls through to the
-  // deterministic fallbacks in computeScript().
   const { data, error } = await supabase
     .from('analysis_results')
     .select(
-      'id, factors, reasoning, confidence, engine_version, script_result',
+      'id, counterfactuals, factors, reasoning, confidence, confidence_label, anti_virality_gated, hook_decomposition, engine_version, script_result',
     )
     .eq('id', id)
     .eq('user_id', user.id)
@@ -109,30 +104,7 @@ export async function GET(
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
-  // Derive confidence_label / anti_virality_gated inline (same convention as
-  // /api/analysis/[id]/route.ts). These fields are not persisted as columns.
-  const confidenceVal = (data as { confidence: number | null }).confidence;
-  const derivedLabel: 'HIGH' | 'MID' | 'LOW' =
-    confidenceVal == null
-      ? 'LOW'
-      : confidenceVal >= 0.7
-        ? 'HIGH'
-        : confidenceVal >= 0.4
-          ? 'MID'
-          : 'LOW';
-  const derivedGated =
-    confidenceVal != null && confidenceVal < 0.4;
-
-  const row: AnalysisRow = {
-    ...(data as unknown as Omit<
-      AnalysisRow,
-      'counterfactuals' | 'confidence_label' | 'anti_virality_gated' | 'hook_decomposition'
-    >),
-    counterfactuals: null,
-    confidence_label: derivedLabel,
-    anti_virality_gated: derivedGated,
-    hook_decomposition: null,
-  };
+  const row = data as unknown as AnalysisRow;
 
   // D-08 cache hit path with engine-version-skew guard
   if (

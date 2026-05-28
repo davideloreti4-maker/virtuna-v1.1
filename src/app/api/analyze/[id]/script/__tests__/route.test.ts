@@ -162,15 +162,14 @@ describe('GET /api/analyze/[id]/script', () => {
   });
 
   it('3. high-confidence empty state returns is_empty_state: true', async () => {
-    // Note: confidence_label + counterfactuals are not persisted columns
-    // (schema drift — TODO in route.ts). confidence_label is derived inline
-    // from `confidence` (>=0.7 → HIGH). Opening variants are sourced from
-    // hook/opening factors (since counterfactuals.suggestions is always null).
+    // counterfactuals null → opening_variants sourced from hook/opening factors (computeScript fallback path).
     vi.mocked(createClient).mockResolvedValue(
       createMockClient({
         row: {
           ...baseRow,
           confidence: 0.85,
+          confidence_label: 'HIGH',
+          anti_virality_gated: false,
           factors: [
             {
               name: 'Hook strength',
@@ -199,8 +198,7 @@ describe('GET /api/analyze/[id]/script', () => {
   });
 
   it('4. low-confidence gating returns full script (NOT empty state)', async () => {
-    // anti_virality_gated is derived inline (confidence < 0.4). Low-confidence
-    // gating mutually excludes the empty-state branch (which requires HIGH).
+    // low-confidence row: confidence_label 'LOW' inherently excludes the empty-state branch.
     vi.mocked(createClient).mockResolvedValue(
       createMockClient({
         row: {

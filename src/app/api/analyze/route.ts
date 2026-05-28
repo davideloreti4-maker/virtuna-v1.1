@@ -320,6 +320,19 @@ export async function POST(request: Request) {
       // the real segments/personas/weighted_curve on permalink replay instead
       // of falling back to the server-side synth.
       heatmap: (finalResult.heatmap ?? null) as unknown as Json,
+      // Phase 4 (MVP Cut) — Schema Drift Fix: persist the four engine-emitted fields
+      // the DB previously dropped on the floor. Reverts the inline workaround in
+      // /api/analyze/[id]/script/route.ts (commit 3bf3eb7).
+      // counterfactuals + hook_decomposition: structural Json — cast required because
+      // the engine types (CounterfactualResult, HookDecomposition) are typed narrowly
+      // while the DB column is Json. Pattern matches the existing
+      // `behavioral_predictions as unknown as null` casts above.
+      counterfactuals: (finalResult.counterfactuals ?? null) as unknown as Json,
+      hook_decomposition: (finalResult.hook_decomposition ?? null) as unknown as Json,
+      // confidence_label + anti_virality_gated are REQUIRED on PredictionResult
+      // (always populated by aggregator). No null coalesce needed.
+      confidence_label: finalResult.confidence_label,
+      anti_virality_gated: finalResult.anti_virality_gated,
     });
 
     // -------------------------------------------------------
@@ -350,7 +363,7 @@ export async function POST(request: Request) {
 
       const { error: insertError } = await service
         .from("analysis_results")
-        .insert(buildInsertRow(finalResult, ruleContributions));
+        .insert({ ...buildInsertRow(finalResult, ruleContributions), id: nanoid(12) });
 
       if (insertError) {
         log.error("DB insert failed (json)", { error: insertError.message });
