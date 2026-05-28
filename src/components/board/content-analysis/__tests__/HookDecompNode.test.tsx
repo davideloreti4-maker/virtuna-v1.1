@@ -128,6 +128,23 @@ describe('HookDecompNode', () => {
     expect(screen.queryByTestId('hook-decomp-chips')).toBeNull();
   });
 
+  it('reduced-motion: GlassProgress fill bar uses motion-safe: transition class', () => {
+    render(
+      <HookDecompNode
+        decomp={fixtures.complete.hook_decomposition!}
+        segments={null}
+        counterfactuals={[]}
+      />,
+    );
+    // Each bar contains a GlassProgress; check the inner fill div class
+    const bars = screen.getAllByTestId(/hook-decomp-bar-/);
+    // GlassProgress renders: outer div + inner fill div with motion-safe:transition-all
+    bars.forEach((bar) => {
+      const fillEl = bar.querySelector('.motion-safe\\:transition-all');
+      expect(fillEl).not.toBeNull();
+    });
+  });
+
   it('clicking a bar opens the inspector + fires hook_decomp_expanded telemetry', () => {
     render(
       <HookDecompNode

@@ -43,7 +43,7 @@ export function GlassProgress({
     >
       <div
         className={cn(
-          "h-full rounded-full transition-all duration-300",
+          "h-full rounded-full motion-safe:transition-all motion-safe:duration-300",
           colorMap[color]
         )}
         style={{ width: `${clamped}%` }}

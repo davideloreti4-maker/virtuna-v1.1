@@ -68,7 +68,7 @@ export function WhyVerdictCollapsible({ result }: WhyVerdictCollapsibleProps) {
         className="flex cursor-pointer items-center justify-between p-2 text-sm font-medium list-none min-h-10"
       >
         <span>{COPY.WHY_VERDICT_SUMMARY}</span>
-        <CaretDown size={12} className="opacity-60 transition-transform group-open:rotate-180" />
+        <CaretDown size={12} className="opacity-60 motion-safe:transition-transform group-open:rotate-180" />
       </summary>
 
       <div className="p-3 pt-0 text-xs">
