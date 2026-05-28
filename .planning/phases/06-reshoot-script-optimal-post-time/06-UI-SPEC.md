@@ -39,19 +39,38 @@ Existing primitives in use (no new system additions):
 
 ## Spacing Scale
 
+**Standard scale (8-point grid, canonical set only):**
+
 | Token | Value | Usage |
 |-------|-------|-------|
 | xs | 4px | Icon-to-label gaps, inline icon padding |
 | sm | 8px | Inter-section divider clearance, chip internal padding |
-| md | 12px | Card internal padding (inside 170×88 compact card) |
-| lg | 16px | Card internal padding (inside 360×160 AV hero) |
+| lg | 16px | Card internal padding horizontal (inside AV hero), section-header internal pad |
 | xl | 24px | Section-header-to-body clearance inside ScriptBody |
 | 2xl | 32px | Sheet content padding (edit Sheet body) |
 
-Exceptions:
-- Touch targets for copy buttons: minimum 44×44px (accessible tap area), visual size may be smaller.
-- Day-picker pill group: gap-2 (8px) between pills, pills are `h-8 min-w-[40px]`.
+**Spacing Exceptions (non-standard values — each justified per surface):**
+
+| Value | Location | Justification |
+|-------|----------|---------------|
+| 12px (`py-3`) | Compact card (170×88) vertical padding | Compact card density at 170×88 requires tighter vertical rhythm than standard 16px; 8px is too tight, 16px overflows. Scoped to compact card only. |
+| 12px (`py-3`) | AV hero (360×160) vertical padding | Mirrors compact card padding for visual consistency across both script surfaces; hero horizontal pad remains `px-4` (16px). |
+
+Touch target exception (accessibility, not layout spacing):
+- Copy buttons: minimum 44×44px tap area (WCAG touch target). Visual icon size smaller; padding expands tap zone only.
+- Day-picker pill group: `gap-2` (8px) between pills, pills are `h-8 min-w-[40px]`.
 - Inter-section dashed dividers in ScriptBody: `my-2` (8px vertical margin each side = 16px total clearance).
+
+**Radius scale (from CLAUDE.md — not spacing):**
+
+| Element | Radius |
+|---------|--------|
+| Cards (compact + AV hero) | 12px |
+| Buttons (Copy-all pill, per-section copy) | 8px |
+| Inputs (hour selects in edit Sheet) | 8px |
+| Sheet modal (edit Sheet) | 12px |
+| Day-picker pills | 8px |
+| GlassPill (day/time chip, source pill) | inherits GlassPill component default |
 
 ---
 
@@ -60,15 +79,18 @@ Exceptions:
 | Role | Size | Weight | Line Height | Class |
 |------|------|--------|-------------|-------|
 | Section label | 10px | 500 (medium) | 1.2 | `text-[10px] font-medium uppercase tracking-wide` |
-| Body / copy | 12px | 400 (regular) | 1.5 | `text-xs` |
-| Card label | 11px | 500 (medium) | 1.4 | `text-[11px] font-medium` |
-| Reasoning / meta | 11px | 400 (regular) | 1.4 | `text-[11px]` |
+| Body / copy / card labels / reasoning | 12px | 400 (regular) | 1.5 | `text-xs` |
+| Body / card label (medium) | 12px | 500 (medium) | 1.4 | `text-xs font-medium` |
+| GlassPill chip (day/time) | 14px | 500 (medium) | 1.4 | `text-sm font-medium` |
 
 Notes:
-- Section labels (New Opening, Scene Order, Voiceover, Captions): `text-[10px] uppercase tracking-wide`
+- 11px is eliminated. All prior 11px usages (card labels, reasoning row) consolidate to 12px (`text-xs`).
+- Section labels (New Opening, Scene Order, Voiceover, Captions): `text-[10px] uppercase tracking-wide text-white/55`.
 - All copy weights are exactly 400 (regular) and 500 (medium). No 600/semibold in Phase 6 surfaces.
 - AV hero headline "Try this instead": `text-xs font-medium` (small, NOT a heading — quieter than Verdict's orange band).
 - Optimal post day+time chip: `text-sm font-medium` (GlassPill default `md` size handles this).
+- Card icon labels (e.g. "Reshoot script", "When to post"): `text-xs font-medium text-white/85` (was `text-[11px]`).
+- Reasoning row in OptimalPostCard: `text-xs text-white/65` (was `text-[11px]`).
 
 ---
 
@@ -109,17 +131,6 @@ box-shadow: rgba(255,255,255,0.15) 0 1px 1px 0 inset
 border-radius: 12px
 ```
 
-**Radius scale (all from CLAUDE.md):**
-
-| Element | Radius |
-|---------|--------|
-| Cards (compact + AV hero) | 12px |
-| Buttons (Copy-all pill, per-section copy) | 8px |
-| Inputs (hour selects in edit Sheet) | 8px |
-| Sheet modal (edit Sheet) | 12px |
-| Day-picker pills | 8px |
-| GlassPill (day/time chip, source pill) | inherits GlassPill component default |
-
 **Contrast verification:**
 - `text-white/55` on `#07080a` background: white at 55% opacity = rgba(255,255,255,0.55) → effective color ~`#8c8c8c` → contrast ratio ≈ 4.6:1 against `#07080a`. Passes WCAG AA (4.5:1 minimum for normal text ≥14px). At 10px section labels (small text, WCAG AA requires 4.5:1 for large text ≥18px bold or 3:1 for normal large), borderline — acceptable given label size is visually supplementary (icon + context available).
 - `text-white/85` on `#07080a`: ≈ 16.2:1. Passes WCAG AAA.
@@ -130,6 +141,8 @@ border-radius: 12px
 ## Surface Layout Contract
 
 ### Surface 1 — AV Grown Hero (ScriptBody in ActionsReshootHeroSlot, AV state)
+
+**Focal point:** Copy-all GlassPill top-right + section labels. Eye enters at AV chrome headline, scans down through 4 sections.
 
 **Dimensions:** `360 × 160` min, `col-span-2` in ACTIONS_GRID_AV_ROWS = `'160px 1fr'`
 **Overflow:** internal scroll on `.script-body-scroll` div — card does NOT grow past 160px in AV row
@@ -154,26 +167,31 @@ border-radius: 12px
 ```
 
 - AV hero headline: **NOT inside ScriptBody**. Rendered by `ActionsReshootHeroSlot` chrome: `"Try this instead"` (`text-xs font-medium text-white/85`) + `"4-section rewrite based on what dropped"` (`text-[10px] text-white/55`) — above ScriptBody.
-- Internal padding: `px-4 py-3` (16px horizontal, 12px vertical).
+- Internal padding: `px-4 py-3` (16px horizontal, 12px vertical — see Spacing Exceptions).
 - Section header row: flex, justify-between, align-center. Label left, CopyButton right.
+- Per-section CopyButton: `title="Copy {SectionName} section"` HTML attribute + Radix Tooltip from shadcn registry. Tooltip text matches `aria-label`.
 
 ### Surface 2 — Compact Teaser (ScriptInspectorTrigger, default slot)
+
+**Focal point:** Truncated opening_line preview. Eye enters at chip label, drops to preview, lands on "Open script →" affordance.
 
 **Dimensions:** `170 × 88` (standard Actions grid slot)
 
 ```
 ┌─────────────────────────────┐  170px wide
-│ [≡] Reshoot script          │  FilmScript icon + text-[11px] font-medium text-white/85
+│ [≡] Reshoot script          │  FilmScript icon + text-xs font-medium text-white/85
 │   Lead with motion frame…   │  text-xs text-white/55, truncate to ~50 chars
 │              Open script → │  text-[10px] text-white/55, hover text-white/80
 └─────────────────────────────┘
 ```
 
-- Top label chip: `GlassPill size="sm"` wrapping "Reshoot script" label (or `text-[11px] font-medium` without pill — prefer no pill here to avoid competing with source pill).
+- Top label chip: `GlassPill size="sm"` wrapping "Reshoot script" label (or `text-xs font-medium` without pill — prefer no pill here to avoid competing with source pill).
 - "Open script →" affordance: no underline default, hover `text-white/80`. Entire card is tappable (not just the text link).
 - Card hover: `bg-white/[0.02]` only. No translate-y, no border change (Raycast rule).
 
 ### Surface 3 — Script Empty State (high-confidence, ScriptEmptyState)
+
+**Focal point:** Green check + "Your video is solid" headline. Variant chips are secondary.
 
 **Dimensions:** `170 × 88` default; stretches to AV grown space if boardState === 'anti-virality' (defensive, should not occur per D-20)
 
@@ -188,18 +206,20 @@ border-radius: 12px
 ```
 
 - Check icon: Phosphor `CheckCircle` weight="regular" size={14}, `text-emerald-300/70`.
-- A/B opening variants: flat bullet list, each line has a CopyButton.
+- A/B opening variants: flat bullet list, each line has a CopyButton with `title="Copy opening variant {N}"` HTML attribute.
 - No Inspector route — nothing more to show for empty state.
 
 ### Surface 4 — Optimal Post Card (OptimalPostCard)
+
+**Focal point:** Day/time GlassPill chip. Reasoning row is supporting, source pill is tertiary.
 
 **Dimensions:** `170 × 88` (both AV and default states)
 
 ```
 ┌─────────────────────────────┐
-│ ⏰ When to post              │  Clock icon + text-[11px] font-medium text-white/85
+│ ⏰ When to post              │  Clock icon + text-xs font-medium text-white/85
 │   [Tue · 6–9 PM]  [Edit]    │  GlassPill (tappable→Sheet) + Edit link text-[10px]/55
-│   Your niche peaks Tue evgs │  text-[11px] text-white/65, truncate ~70 chars
+│   Your niche peaks Tue evgs │  text-xs text-white/65, truncate ~70 chars
 │   [from your niche]  [ⓘ]    │  GlassPill size="sm" source pill + Info icon tooltip trigger
 └─────────────────────────────┘
 ```
@@ -207,11 +227,13 @@ border-radius: 12px
 - Clock icon: Phosphor `Clock` weight="regular" size={12}.
 - Day+time chip: `<GlassPill onClick={openEditSheet}>{day} · {hourRangeFormatted}</GlassPill>` — `size="sm"` for compact fit.
 - Edit link: `text-[10px] text-white/55 hover:text-white/80` — NOT a button, a text affordance.
-- Reasoning row: `text-[11px] text-white/65`, truncate with CSS `line-clamp-1`. Full text in tooltip on hover (desktop only, `title` attribute as fallback).
+- Reasoning row: `text-xs text-white/65`, truncate with CSS `line-clamp-1`. Full text in Radix Tooltip on hover (desktop), `title` attribute as fallback.
 - Source pill: `<GlassPill size="sm">` with text per source state (see Copywriting Contract).
-- Info icon on source pill row: Phosphor `Info` weight="regular" size={10}, triggers tooltip on focus/hover.
+- Info icon on source pill row: Phosphor `Info` weight="regular" size={10}, triggers Radix Tooltip on focus/hover. Has `title="View data source"` HTML attribute.
 
 ### Surface 5 — Optimal Post Edit Sheet (OptimalPostEditSheet)
+
+**Focal point:** Day picker radiogroup. Time selects are secondary. Save button is action terminus.
 
 **Sheet props:** `side="right"` desktop, `side="bottom"` mobile (via `isMobile` detection same as PersonaInspector).
 **Sheet width:** 320px desktop (right), full-width bottom mobile.
@@ -242,7 +264,7 @@ border-radius: 12px
 ### Surface 6 — Source Pill Tooltip (OptimalPostSourcePill)
 
 **Trigger:** focus or hover on `Info` icon adjacent to source pill.
-**Tooltip approach:** Radix `Tooltip` (already in shadcn stack), or `title` attribute as minimal fallback.
+**Tooltip approach:** Radix `Tooltip` (already in shadcn stack), `title` attribute as minimal fallback.
 
 Content per source:
 - `niche` → tooltip: "Based on {N} videos in your niche." (N extracted via `/\(n=(\d+)/` from reasoning string; if extraction fails → "Based on videos in your niche.")
@@ -301,10 +323,10 @@ All user-visible strings verbatim. No paraphrasing by executors.
 
 ### Copy Button Labels
 
-| Element | Default label | Post-copy label (1.5s) | aria-label |
-|---------|--------------|------------------------|-----------|
-| Per-section copy button | `Copy` icon only (no text) | `Copied!` (icon + text) | `"Copy {section} section"` where {section} = "New Opening" / "Scene Order" / "Voiceover" / "Captions" |
-| Copy-all pill | `Copy all` (icon + text) | `Copied!` (icon + text) | `"Copy full reshoot script"` |
+| Element | Default label | Post-copy label (1.5s) | aria-label | title attribute |
+|---------|--------------|------------------------|-----------|-----------------|
+| Per-section copy button | `Copy` icon only (no text) | `Copied!` (icon + text) | `"Copy {section} section"` where {section} = "New Opening" / "Scene Order" / "Voiceover" / "Captions" | `"Copy {section} section"` (matches aria-label) |
+| Copy-all pill | `Copy all` (icon + text) | `Copied!` (icon + text) | `"Copy full reshoot script"` | `"Copy full reshoot script"` |
 
 ### Copy-all Output Format (verbatim)
 
@@ -342,6 +364,7 @@ REWRITE SCRIPT (analysis {id})
 | Body | `Optional tweaks below` |
 | A/B section label | `A/B opening` |
 | Copy button aria | `"Copy opening variant {N}"` |
+| Copy button title | `"Copy opening variant {N}"` (matches aria-label) |
 
 ### Script Error State
 
@@ -457,6 +480,7 @@ REWRITE SCRIPT (analysis {id})
 ### Per-Section Copy Buttons
 - Element: `<button type="button">`
 - `aria-label="Copy {SectionName} section"` (e.g., `"Copy New Opening section"`)
+- `title="Copy {SectionName} section"` — native HTML tooltip, same text as aria-label.
 - Keyboard: Tab-reachable in DOM order. Enter fires copy + announces via aria-live.
 - Focus indicator: `outline-2 outline-offset-2 outline-white/40`
 - Touch target: min 44×44px padding even if visual icon is smaller.
@@ -464,6 +488,7 @@ REWRITE SCRIPT (analysis {id})
 ### Copy-all Pill
 - Element: `<button type="button">` inside GlassPill
 - `aria-label="Copy full reshoot script"`
+- `title="Copy full reshoot script"` — native HTML tooltip.
 - Same keyboard behavior as per-section buttons.
 
 ### Day Picker (OptimalPostEditSheet)
@@ -480,6 +505,7 @@ REWRITE SCRIPT (analysis {id})
 
 ### Source Pill Tooltip
 - Trigger: `Info` icon (`Phosphor Info`) with `tabIndex={0}` and `role="button"` or Radix `Tooltip` trigger.
+- `title="View data source"` on Info icon for native tooltip fallback.
 - Focus → Enter/Space opens tooltip (or Radix handles this).
 - Esc: dismisses tooltip.
 - Screen reader: tooltip text is `aria-describedby` target.
@@ -591,6 +617,8 @@ States:
 Hook: useCopyToClipboard(1500) — explicitly 1500ms (overrides default 2000ms)
 ```
 
+title attribute: rendered as `title={ariaLabel}` — passes through from prop. Executor does NOT hardcode title separately.
+
 ### 2. Day Picker (inline in `OptimalPostEditSheet.tsx`)
 
 Not a standalone component. 7 GlassPill pills in a `role="radiogroup"` div. Day labels: `['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']`. Arrow-key navigation via `onKeyDown` on wrapper.
@@ -635,7 +663,7 @@ Not a standalone component. 7 GlassPill pills in a `role="radiogroup"` div. Day 
 
 ```
 ┌───────────────────────────┐
-│  [≡] Reshoot script       │  FilmScript icon + text-[11px]/85
+│  [≡] Reshoot script       │  FilmScript icon + text-xs font-medium/85
 │   Lead with your strongest│  text-xs/55, truncated
 │   visual moment…          │
 │              Open script →│  text-[10px]/55
@@ -660,9 +688,9 @@ Not a standalone component. 7 GlassPill pills in a `role="radiogroup"` div. Day 
 
 ```
 ┌───────────────────────────┐
-│  ⏰ When to post           │  Clock icon + text-[11px]/85
+│  ⏰ When to post           │  Clock icon + text-xs font-medium/85
 │  [Tue · 6–9 PM]  Edit     │  GlassPill + text-[10px]/55 link
-│  Your niche peaks Tue evs │  text-[11px]/65, line-clamp-1
+│  Your niche peaks Tue evs │  text-xs/65, line-clamp-1
 │  [from your niche] ⓘ     │  GlassPill sm + Info icon
 └───────────────────────────┘
          ← 170px × 88px →
@@ -740,7 +768,7 @@ Not a standalone component. 7 GlassPill pills in a `role="radiogroup"` div. Day 
 
 | Registry | Blocks Used | Safety Gate |
 |----------|-------------|-------------|
-| shadcn official | `sheet` (existing), `tooltip` (for source pill) | Not required — official registry |
+| shadcn official | `sheet` (existing), `tooltip` (for source pill + per-section copy button tooltips) | Not required — official registry |
 | Third-party | None | Not applicable |
 
 No third-party shadcn registry blocks declared for Phase 6.
@@ -771,3 +799,5 @@ No third-party shadcn registry blocks declared for Phase 6.
 - [ ] Dimension 6 Registry Safety: PASS
 
 **Approval:** pending
+
+## UI-SPEC COMPLETE
