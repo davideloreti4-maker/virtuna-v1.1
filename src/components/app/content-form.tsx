@@ -178,14 +178,14 @@ export function ContentForm({ onSubmit, uploadProgress, className }: ContentForm
     >
       {/* Video upload zone (only when video mode active) */}
       {activeTab === "video_upload" && (
-        <div className="px-4 pt-4">
+        <div className="px-2 pt-2">
           <VideoUpload
             file={formData.video_file}
             onFileSelect={(file) => updateField("video_file", file)}
             uploadProgress={uploadProgress}
           />
           {errors.video_file && (
-            <p className="text-sm text-error mt-1">{errors.video_file}</p>
+            <p className="text-xs text-error mt-1">{errors.video_file}</p>
           )}
         </div>
       )}
@@ -195,9 +195,9 @@ export function ContentForm({ onSubmit, uploadProgress, className }: ContentForm
         value={currentValue}
         onChange={(e) => updateField(currentField, e.target.value)}
         placeholder={PLACEHOLDERS[activeTab]}
-        rows={3}
+        rows={1}
         className={cn(
-          "w-full resize-none bg-transparent px-5 pt-5 pb-2",
+          "w-full resize-none bg-transparent px-3 pt-2.5 pb-1",
           "text-sm text-foreground placeholder:text-foreground-muted/50",
           "focus:outline-none",
         )}
@@ -210,11 +210,11 @@ export function ContentForm({ onSubmit, uploadProgress, className }: ContentForm
 
       {/* Error message */}
       {errors[errorKey] && (
-        <p className="px-5 text-xs text-error">{errors[errorKey]}</p>
+        <p className="px-3 text-xs text-error">{errors[errorKey]}</p>
       )}
 
       {/* Bottom bar: mode switcher + model tier + submit */}
-      <div className="flex items-center justify-between px-3 pb-3 pt-1">
+      <div className="flex items-center justify-between px-2 pb-2 pt-0.5">
         {/* Mode switcher pills */}
         <div className="flex items-center gap-0.5">
           {MODE_CONFIG.map(({ value, icon: ModeIcon, label }) => (
@@ -223,13 +223,13 @@ export function ContentForm({ onSubmit, uploadProgress, className }: ContentForm
               type="button"
               onClick={() => handleTabChange(value)}
               className={cn(
-                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                "flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
                 activeTab === value
                   ? "bg-white/[0.08] text-foreground"
                   : "text-foreground-muted hover:text-foreground hover:bg-white/[0.03]"
               )}
             >
-              <ModeIcon className="h-3.5 w-3.5" />
+              <ModeIcon className="h-3 w-3" />
               {label}
             </button>
           ))}
@@ -237,7 +237,7 @@ export function ContentForm({ onSubmit, uploadProgress, className }: ContentForm
 
         {/* Right side: model tier label + submit */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-foreground-muted px-2 py-1.5">
+          <span className="text-[11px] text-foreground-muted px-1.5">
             Apollo {apolloTier}
           </span>
 
@@ -246,14 +246,14 @@ export function ContentForm({ onSubmit, uploadProgress, className }: ContentForm
             type="submit"
             disabled={isSubmitDisabled}
             className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors",
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors",
               isSubmitDisabled
                 ? "bg-white/5 text-foreground-muted cursor-not-allowed"
                 : "bg-accent text-accent-foreground hover:bg-accent/90 cursor-pointer"
             )}
             aria-label="Submit test"
           >
-            <ArrowUp className="h-4.5 w-4.5" />
+            <ArrowUp className="h-4 w-4" />
           </button>
         </div>
       </div>

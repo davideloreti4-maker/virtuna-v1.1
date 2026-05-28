@@ -89,7 +89,7 @@ export const GroupFrameOverlay = forwardRef<HTMLDivElement, Props>(function Grou
       aria-label={ARIA_LABEL[layout.id] ?? layout.label}
       tabIndex={tabIndex}
       onFocus={onFocus}
-      className="pointer-events-auto absolute focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+      className="pointer-events-auto absolute overflow-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
       style={{
         left: screenX,
         top: screenY,
@@ -97,56 +97,71 @@ export const GroupFrameOverlay = forwardRef<HTMLDivElement, Props>(function Grou
         height: screenH,
       }}
     >
-      {/* Title bar (UI-SPEC §Group Container Frames).
-          Using <div> (not <header>) because <header> has implicit role="banner" which axe
-          requires to be top-level; inside a role="region" it triggers landmark-banner-is-top-level. */}
+      {/* World-space interior. Everything inside lives in the frame's world
+          coordinate system (layout.bounds.width × worldH). We scale the whole
+          interior by camera.scale so frame size and content scale together —
+          previously the outer rect resized with zoom but children kept fixed
+          pixel sizes, producing empty space when zoomed in and clipped text
+          when zoomed out. */}
       <div
-        className={cn(
-          'flex items-center justify-between px-2',
-          'border-b border-white/[0.06]',
-        )}
-        style={{ height: TITLE_BAR_HEIGHT }}
+        style={{
+          transform: `scale(${camera.scale})`,
+          transformOrigin: 'top left',
+          width: layout.bounds.width,
+          height: worldH,
+        }}
       >
-        <span className="text-xs font-semibold text-foreground">{layout.label}</span>
-        <div className="flex items-center gap-2">
-          {childCount > 0 && (
-            <Badge variant="secondary" size="sm">{childCount}</Badge>
-          )}
-          <button
-            type="button"
-            onClick={onToggleExpanded}
-            aria-label={expanded ? `Collapse ${layout.label}` : `Expand ${layout.label}`}
-            aria-expanded={expanded}
-            className="text-foreground-muted hover:text-foreground"
-          >
-            <Icon icon={expanded ? CaretUp : CaretDown} size={16} />
-          </button>
-        </div>
-      </div>
-
-      {/* Body */}
-      {expanded && (
+        {/* Title bar (UI-SPEC §Group Container Frames).
+            Using <div> (not <header>) because <header> has implicit role="banner" which axe
+            requires to be top-level; inside a role="region" it triggers landmark-banner-is-top-level. */}
         <div
-          className="relative overflow-hidden p-4"
-          style={{ height: screenH - TITLE_BAR_HEIGHT }}
-        >
-          {/* aria-live announcements handled by EngineGroup to avoid double announcements */}
-          {showShimmer && (
-            <Skeleton className="absolute inset-2 opacity-40" />
+          className={cn(
+            'flex items-center justify-between px-2',
+            'border-b border-white/[0.06]',
           )}
-          {children}
-          {(() => {
-            const empty = EMPTY_STATE_COPY[layout.id];
-            if (hasRealChildren(children) || !empty?.title) return null;
-            return (
-              <div className="flex h-full w-full flex-col items-start justify-center gap-1 opacity-60">
-                <p className="text-sm font-medium leading-tight">{empty.title}</p>
-                <p className="max-w-[28ch] text-xs leading-snug text-foreground-muted">{empty.sub}</p>
-              </div>
-            );
-          })()}
+          style={{ height: TITLE_BAR_HEIGHT }}
+        >
+          <span className="text-xs font-semibold text-foreground">{layout.label}</span>
+          <div className="flex items-center gap-2">
+            {childCount > 0 && (
+              <Badge variant="secondary" size="sm">{childCount}</Badge>
+            )}
+            <button
+              type="button"
+              onClick={onToggleExpanded}
+              aria-label={expanded ? `Collapse ${layout.label}` : `Expand ${layout.label}`}
+              aria-expanded={expanded}
+              className="text-foreground-muted hover:text-foreground"
+            >
+              <Icon icon={expanded ? CaretUp : CaretDown} size={16} />
+            </button>
+          </div>
         </div>
-      )}
+
+        {/* Body */}
+        {expanded && (
+          <div
+            className="relative overflow-hidden p-4"
+            style={{ height: worldH - TITLE_BAR_HEIGHT }}
+          >
+            {/* aria-live announcements handled by EngineGroup to avoid double announcements */}
+            {showShimmer && (
+              <Skeleton className="absolute inset-2 opacity-40" />
+            )}
+            {children}
+            {(() => {
+              const empty = EMPTY_STATE_COPY[layout.id];
+              if (hasRealChildren(children) || !empty?.title) return null;
+              return (
+                <div className="flex h-full w-full flex-col items-start justify-center gap-1 opacity-60">
+                  <p className="text-sm font-medium leading-tight">{empty.title}</p>
+                  <p className="max-w-[28ch] text-xs leading-snug text-foreground-muted">{empty.sub}</p>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+      </div>
     </div>
   );
 });

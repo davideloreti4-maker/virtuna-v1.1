@@ -7,7 +7,7 @@
  * RESEARCH Pitfall 3 + Open Question 2.
  */
 import dynamic from 'next/dynamic';
-import { useEffect, useRef, useState, useMemo, createRef } from 'react';
+import { useEffect, useRef, useState, createRef } from 'react';
 import type { RefObject } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
@@ -34,7 +34,10 @@ import { VerdictNode } from './verdict/VerdictNode';
 import { ActionsNode } from './actions/ActionsNode';
 import { ContentAnalysisFrame } from './content-analysis/ContentAnalysisFrame';
 import { InputNodeShape, InputNodeOverlay } from './InputNode';
-import { InputDrawer } from './InputDrawer';
+import { nanoid } from 'nanoid';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import type { ContentFormData } from '@/components/app/content-form';
 import type { GroupId } from './board-types';
 import type { FrameVisualState } from './GroupFrame';
 import { detectInitialTier, startFpsSampler, usePerfStore, nextLowerTier } from '@/lib/perf-tier';
@@ -217,30 +220,52 @@ export function Board() {
     }
   }, [stream.analysisId, activePreset, camera.scale]);
 
-  // Extract the latest human-readable stage slug from the stream stages array.
-  // Plan 2.13 will replace slugs with a label mapping; for Phase 2 the slug is
-  // passed through and falls back to "Analyzing…" when null.
-  const currentStage = useMemo(() => {
-    const last = [...stream.stages].reverse().find((s) => s.type === 'stage_start');
-    return last ? last.stage : null;
-  }, [stream.stages]);
+  // ContentForm submit — full multi-mode payload (video upload, text, URL).
+  // Inlined from the now-removed InputDrawer so the command bar can host the
+  // form directly. Navigation to /analyze/[id] is fired by the analysisId
+  // null → string transition below.
+  const router = useRouter();
+  const prevAnalysisIdRef = useRef<string | null>(stream.analysisId);
+  useEffect(() => {
+    const id = stream.analysisId;
+    if (id && prevAnalysisIdRef.current === null) {
+      router.push(`/analyze/${id}`);
+    }
+    prevAnalysisIdRef.current = id;
+  }, [stream.analysisId, router]);
 
-  const handleCommandSubmit = (text: string) => {
-    const isUrl = /^https?:\/\//i.test(text);
+  const handleContentSubmit = async (data: ContentFormData) => {
+    let videoStoragePath: string | null = null;
+    if (data.input_mode === 'video_upload' && data.video_file) {
+      const supabase = createClient();
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData.user?.id;
+      if (!userId) return;
+      const ext = (data.video_file.name.split('.').pop() ?? 'mp4').toLowerCase();
+      const path = `${userId}/${nanoid()}.${ext}`;
+      const { error } = await supabase.storage
+        .from('videos')
+        .upload(path, data.video_file, {
+          contentType: data.video_file.type || 'video/mp4',
+          upsert: false,
+        });
+      if (error) return;
+      videoStoragePath = path;
+    }
+
     stream.start({
-      input_mode: isUrl ? 'tiktok_url' : 'text',
-      content_type: isUrl ? 'video' : 'post',
-      ...(isUrl ? { tiktok_url: text } : { content_text: text }),
-    }).catch(() => {
-      // Error handled by stream.phase → 'error' transition above.
-    });
+      input_mode: data.input_mode,
+      content_type: data.input_mode === 'text' ? 'post' : 'video',
+      ...(data.input_mode === 'text' && { content_text: data.caption }),
+      ...(data.input_mode === 'tiktok_url' && { tiktok_url: data.tiktok_url }),
+      ...(data.input_mode === 'video_upload' && {
+        content_text: data.video_caption,
+        ...(videoStoragePath && { video_storage_path: videoStoragePath }),
+      }),
+      ...(data.niche && { niche: data.niche }),
+    }).catch(() => { /* stream.phase → error transition handles UI */ });
   };
 
-  const handleCommandStop = () => {
-    // Phase 2: no dedicated abort() in the hook (Phase 1 D-02 lock).
-    // resetToIdle() provides immediate UI feedback. See SUMMARY known limitations.
-    resetToIdle();
-  };
   // ── End plan 2.6 ───────────────────────────────────────────────────────────
 
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -338,11 +363,7 @@ export function Board() {
           IMPORTANT: Rendered BEFORE the frame overlay loop so its <input> is the
           first tab stop inside the canvas region (DOM order = tab order for z=0 elements).
           Tab order: Sidebar → CommandBar → Group frames (roving) → CameraOverlay presets */}
-      <CommandBar
-        currentStage={currentStage}
-        onSubmit={handleCommandSubmit}
-        onStop={handleCommandStop}
-      />
+      <CommandBar onContentSubmit={handleContentSubmit} />
 
       {/* DOM overlay layer: title bars, ARIA, empty-state copy. pointer-events-none
           keeps Konva pan/zoom hit-test alive; individual overlays restore pointer-events-auto.
@@ -369,12 +390,26 @@ export function Board() {
             {layout.id === 'content-analysis' && <ContentAnalysisFrame camera={camera} layout={layout} />}
           </GroupFrameOverlay>
         ))}
-        {/* Plan 2.7: Input node DOM overlay — thumbnailUrl/snippet wired in future plan */}
-        <InputNodeOverlay camera={camera} thumbnailUrl={null} snippet={null} />
+        {/* Input node — TikTok-style vertical card showing the uploaded video
+            + predicted engagement metrics overlay (derived from overall_score
+            + behavioral_predictions). */}
+        {(() => {
+          const r = stream.result as {
+            video_storage_path?: string | null;
+            behavioral_predictions?: import('@/lib/engine/types').BehavioralPredictions | null;
+          } | null;
+          return (
+            <InputNodeOverlay
+              camera={camera}
+              videoStoragePath={r?.video_storage_path ?? null}
+              videoUrl={null}
+              thumbnailUrl={stream.filmstrips[0] ?? null}
+              behavioral={r?.behavioral_predictions ?? null}
+              isStreaming={boardMachineState === 'streaming'}
+            />
+          );
+        })()}
       </div>
-
-      {/* Plan 2.7: Input drawer — Radix Sheet, renders in portal above board */}
-      <InputDrawer />
 
       {/* DOM overlay slots (filled by plans 2.6 command bar, 2.7 input node, etc.) */}
       <CameraOverlay activePreset={activePreset} onSelect={goToPreset} />

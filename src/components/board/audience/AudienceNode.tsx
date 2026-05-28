@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
+import { usePermalinkAnalysis } from '@/hooks/queries/use-permalink-analysis';
 import { useAudienceChoreography } from './use-audience-choreography';
 import { useClientWeights } from './use-client-weights';
 import { HeadlineChips } from './HeadlineChips';
@@ -41,7 +42,11 @@ export interface AudienceNodeProps {
  */
 export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
   // ── Data layer ──────────────────────────────────────────────────────────────
-  const stream = useAnalysisStream();
+  // Hydrate from the /analyze/[id] permalink cache so the audience renders the
+  // persisted result on direct nav. Without initialData useAnalysisStream
+  // would start in 'idle' with result=null and the frame would stay blank.
+  const { data: permalinkData } = usePermalinkAnalysis();
+  const stream = useAnalysisStream({ initialData: permalinkData ?? null });
   const { result, partial: _partial, phase, filmstrips, analysisId } = stream;
 
   // Choreography hook — drives row + curve state machine
@@ -256,7 +261,7 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
       <div
           aria-live="polite"
           aria-busy={isStreaming}
-          className="relative flex h-full w-full flex-col gap-3 overflow-y-auto"
+          className="relative flex h-full w-full flex-col gap-3"
         >
           {/* D-01: HeadlineChips — top of stack */}
           <HeadlineChips

@@ -23,8 +23,8 @@ export const CAMERA_DEFAULT_SCALE = 1;
  * affordance while preserving D-06 reading order.
  */
 export const GROUP_FRAMES: GroupFrameLayout[] = [
-  { id: 'input',            label: 'Input',            bounds: { x:    0, y:    0, width:  240, height: 160 } },
-  { id: 'engine',           label: 'Engine',           bounds: { x:    0, y:  256, width:  240, height: 320 } },
+  { id: 'input',            label: 'Input',            bounds: { x:    0, y:    0, width:  240, height: 440 } },
+  { id: 'engine',           label: 'Engine',           bounds: { x:    0, y:  456, width:  240, height: 120 } },
   { id: 'audience',         label: 'Audience',         bounds: { x:  336, y:    0, width:  560, height: 576 } },
   { id: 'verdict',          label: 'Verdict',          bounds: { x:  992, y:    0, width:  360, height: 280 } },
   { id: 'actions',          label: 'Actions',          bounds: { x:  992, y:  376, width:  360, height: 200 } },
@@ -37,12 +37,15 @@ export const BOARD_BOUNDS: Rect = (() => {
   return { x: 0, y: 0, width: right, height: bottom };
 })();
 
-/** UI-SPEC §Input Node: 200x100 desktop canvas units, sits inside the Input frame body. */
+/** Input node sits inside the Input frame body and holds the vertical
+ *  TikTok-style result card (video + predicted engagement metrics overlaid).
+ *  Frame is 240×440; node fills body minus 16px padding on each side.
+ *  Result: 208×376 — close to a 9:16 aspect (208 × 16/9 ≈ 370). */
 export const INPUT_NODE_BOUNDS = {
   x: 16,                          // FRAME_PADDING from group frame x=0
   y: 16 + TITLE_BAR_HEIGHT,       // below title bar, +FRAME_PADDING
-  width: 200,
-  height: 100,
+  width: 208,                     // 240 - 2*16
+  height: 376,                    // 440 - 32 (title) - 2*16
 } as const;
 
 export const CAMERA_PRESET_TARGETS: Record<string, Rect> = {

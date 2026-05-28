@@ -164,10 +164,18 @@ export function useRetentionCurveCanvas(
         current.push(reducedMotionRef.current ? tar : lerp(b, tar, morphProgress));
       }
 
+      // Inset the plot area so the "100" and "0" Y-axis labels render fully
+      // inside the canvas — without this, textBaseline='middle' placed half
+      // of each terminal label outside the bitmap and the parent's
+      // overflow:hidden clipped them.
+      const PAD_Y = 8;
+      const plotH = Math.max(0, h - PAD_Y * 2);
+      const yAt = (pct: number) => PAD_Y + plotH * (1 - pct);
+
       // ── 1. Hook zone warm band (0–3s x range) ──────────────────────────────
       const hookEndX = Math.min(3 / totalDuration, 1) * w;
       ctx.fillStyle = 'rgba(255,127,80,0.08)';
-      ctx.fillRect(0, 0, hookEndX, h);
+      ctx.fillRect(0, PAD_Y, hookEndX, plotH);
 
       // ── 2. Anti-virality orange band (if triggered) ─────────────────────────
       const avRange = antiViralityXRangeRef.current;
@@ -175,14 +183,14 @@ export function useRetentionCurveCanvas(
         const x0 = (avRange[0] / totalDuration) * w;
         const x1 = (avRange[1] / totalDuration) * w;
         ctx.fillStyle = 'rgba(234,179,8,0.12)'; // warning band
-        ctx.fillRect(x0, 0, x1 - x0, h);
+        ctx.fillRect(x0, PAD_Y, x1 - x0, plotH);
       }
 
       // ── 3. Y gridlines ─────────────────────────────────────────────────────
       ctx.strokeStyle = 'rgba(255,255,255,0.04)';
       ctx.lineWidth = 1;
       for (const pct of [0.25, 0.5, 0.75, 1.0]) {
-        const y = h * (1 - pct);
+        const y = yAt(pct);
         ctx.beginPath();
         ctx.moveTo(0, y);
         ctx.lineTo(w, y);
@@ -195,25 +203,25 @@ export function useRetentionCurveCanvas(
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
       for (const [pct, label] of [[0, '0'], [0.25, '25'], [0.5, '50'], [0.75, '75'], [1.0, '100']] as const) {
-        const y = h * (1 - pct);
-        ctx.fillText(label, 4, y);
+        ctx.fillText(label, 4, yAt(pct));
       }
 
       // ── 5. Gradient fill + curve stroke ────────────────────────────────────
       if (n >= 2) {
         const pts = current.map((att, i) => ({
           x: (i / (n - 1)) * w,
-          y: h * (1 - att),
+          y: yAt(att),
         }));
 
-        // Gradient fill under curve
-        const grad = ctx.createLinearGradient(0, 0, 0, h);
+        // Gradient fill under curve — anchored to the padded plot area so
+        // the fill bottoms out at the "0" gridline, not the canvas edge.
+        const grad = ctx.createLinearGradient(0, PAD_Y, 0, PAD_Y + plotH);
         grad.addColorStop(0, 'rgba(255,127,80,0.15)');
         grad.addColorStop(1, 'rgba(255,127,80,0)');
         ctx.beginPath();
         drawCatmullRomCurve(ctx, pts);
-        ctx.lineTo(w, h);
-        ctx.lineTo(0, h);
+        ctx.lineTo(w, PAD_Y + plotH);
+        ctx.lineTo(0, PAD_Y + plotH);
         ctx.closePath();
         ctx.fillStyle = grad;
         ctx.fill();

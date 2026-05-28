@@ -1,15 +1,15 @@
 /**
  * Board State Machine store — Phase 2 Plan 04 (D-18, D-19, CONTEXT.md).
  *
- * State machine has 5 states:
- *   idle        — no analysis active; empty board visible
- *   streaming   — SSE stream active; Engine frames animate, camera auto-follows
- *   complete    — analysis finished; camera glides to Audience+Verdict hero pair
+ * State machine has 4 states:
+ *   idle          — no analysis active; empty board visible
+ *   streaming     — SSE stream active; Engine frames animate, camera auto-follows
+ *   complete      — analysis finished; camera glides to Audience+Verdict hero pair
  *   anti-virality — complete + threshold triggered; orange treatment on Verdict+Audience
- *   edit-input  — Input drawer open; board still visible, input being edited
  *
- * Camera state lives here so Board.tsx can swap useState for store selectors (see Board.tsx comment).
- * Non-camera ephemeral UI (drawer open, selected node) also lives here.
+ * Camera state lives here so Board.tsx can swap useState for store selectors
+ * (see Board.tsx comment). Non-camera ephemeral UI (selected node, cancel
+ * confirmation, input-bar focus pulse) also lives here.
  *
  * Anti-virality is a cross-group coordinated state (D-19).
  * User touch override cancels camera auto-follow during streaming (D-09).
@@ -25,21 +25,13 @@ export type BoardMachineState =
   | 'idle'
   | 'streaming'
   | 'complete'
-  | 'anti-virality'
-  | 'edit-input';
+  | 'anti-virality';
 
 // ── Store slice types ───────────────────────────────────────────────────────
 
 export interface BoardState {
   /** Current board machine state (D-18) */
   boardState: BoardMachineState;
-
-  /**
-   * State to restore when the Input drawer closes without re-running.
-   * Set to the state before `edit-input` was entered (idle, complete, or anti-virality).
-   * Null when boardState !== 'edit-input'.
-   */
-  preDrawerState: BoardMachineState | null;
 
   /** Camera position and zoom in world-space (D-08, D-10) */
   camera: Camera;
@@ -52,9 +44,6 @@ export interface BoardState {
    * Resets to false on any user-initiated pan/zoom.
    */
   cameraAutoFollow: boolean;
-
-  /** True if the Input node drawer is open (D-16) */
-  inputDrawerOpen: boolean;
 
   /** ID of the focused/selected node, or null */
   selectedNodeId: string | null;
@@ -75,6 +64,13 @@ export interface BoardState {
    * placeholder (plan 2.6) reflects the current stage (UI-SPEC §Streaming Placeholder).
    */
   currentStageLabel: string | null;
+
+  /**
+   * Monotonic counter that increments when something requests the input bar
+   * receive focus (Input node tap, "Run another analysis", etc). The CommandBar
+   * watches this and focuses its textarea on change.
+   */
+  inputBarFocusPulse: number;
 }
 
 export interface BoardActions {
@@ -92,11 +88,13 @@ export interface BoardActions {
    */
   triggerAntiVirality: () => void;
 
-  /** Open the Input drawer: any non-streaming state → edit-input. */
+  /**
+   * Request that the bottom command bar receive focus. Pulses
+   * `inputBarFocusPulse`; coerces `boardState` to `idle` from complete/AV (no-op
+   * while streaming). Name kept for call-site stability after the input drawer
+   * was removed in favour of an always-visible CommandBar form.
+   */
   openInputDrawer: () => void;
-
-  /** Close the Input drawer: edit-input → prior state (idle/complete). */
-  closeInputDrawer: () => void;
 
   /** Hard reset to idle (e.g. "New analysis" CTA). */
   resetToIdle: () => void;
@@ -140,15 +138,14 @@ const DEFAULT_CAMERA: Camera = { x: 0, y: 0, scale: CAMERA_DEFAULT_SCALE };
 
 const DEFAULT_STATE: BoardState = {
   boardState: 'idle',
-  preDrawerState: null,
   camera: DEFAULT_CAMERA,
   activePreset: null,
   cameraAutoFollow: false,
-  inputDrawerOpen: false,
   selectedNodeId: null,
   cancelConfirmOpen: false,
   lastUserInteractionAt: 0,
   currentStageLabel: null,
+  inputBarFocusPulse: 0,
 };
 
 // ── Store ────────────────────────────────────────────────────────────────────
@@ -169,7 +166,6 @@ export const useBoardStore = create<BoardState & BoardActions>((set) => ({
     set({
       boardState: 'streaming',
       cameraAutoFollow: true,
-      inputDrawerOpen: false,
       cancelConfirmOpen: false,
     }),
 
@@ -196,25 +192,15 @@ export const useBoardStore = create<BoardState & BoardActions>((set) => ({
     })),
 
   openInputDrawer: () =>
+    // Legacy name retained for call-site stability. With the drawer removed, this
+    // now (a) coerces complete/AV back to idle so the bar's form is editable,
+    // and (b) pulses the focus counter so the CommandBar focuses its textarea.
+    // Streaming is left alone.
     set((s) => {
-      // Only allowed when not actively streaming
       if (s.boardState === 'streaming') return {};
       return {
-        boardState: 'edit-input',
-        preDrawerState: s.boardState,
-        inputDrawerOpen: true,
-      };
-    }),
-
-  closeInputDrawer: () =>
-    set((s) => {
-      if (s.boardState !== 'edit-input') return {};
-      // Restore the state we were in before the drawer opened.
-      // If preDrawerState is null (shouldn't happen), default to idle.
-      return {
-        boardState: s.preDrawerState ?? 'idle',
-        preDrawerState: null,
-        inputDrawerOpen: false,
+        boardState: 'idle',
+        inputBarFocusPulse: s.inputBarFocusPulse + 1,
       };
     }),
 
@@ -261,6 +247,3 @@ export const selectIsComplete = (s: BoardState) =>
 /** True when anti-virality orange treatment should be applied. */
 export const selectIsAntiVirality = (s: BoardState) =>
   s.boardState === 'anti-virality';
-
-/** True when the Input drawer is open. */
-export const selectDrawerOpen = (s: BoardState) => s.inputDrawerOpen;

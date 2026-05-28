@@ -48,7 +48,6 @@ describe('cross-group-state', () => {
   describe('getFrameAntiViralityState', () => {
     it.each([
       ['verdict', 'idle', 'idle'],
-      ['audience', 'edit-input', 'idle'],
       ['actions', 'streaming', 'streaming'],
       ['verdict', 'anti-virality', 'anti-virality'],
       ['audience', 'anti-virality', 'anti-virality'],

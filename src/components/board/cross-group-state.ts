@@ -20,7 +20,7 @@ export function getFrameAntiViralityState(
   frameId: GroupId,
   boardState: BoardMachineState,
 ): FrameVisualState {
-  if (boardState === 'idle' || boardState === 'edit-input') return 'idle';
+  if (boardState === 'idle') return 'idle';
   if (boardState === 'streaming') return 'streaming';
   if (boardState === 'anti-virality' && AFFECTED_FRAMES['anti-virality'].has(frameId)) {
     return 'anti-virality';

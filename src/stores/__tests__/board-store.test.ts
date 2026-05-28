@@ -1,39 +1,34 @@
 /** @vitest-environment happy-dom */
 /**
- * Board state machine store — Phase 2 Plan 04 tests.
+ * Board state machine store tests.
  *
- * Tests cover the 5-state machine transitions (idle/streaming/complete/
- * anti-virality/edit-input), camera accessors, and derived selectors.
+ * Covers the 4-state machine (idle / streaming / complete / anti-virality),
+ * camera accessors, input-bar focus pulse (the openInputDrawer surface), and
+ * derived selectors.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 
-// Reset store between tests by re-importing a fresh instance
 let useBoardStore: typeof import('@/stores/board-store').useBoardStore;
 let selectIsStreaming: typeof import('@/stores/board-store').selectIsStreaming;
 let selectIsComplete: typeof import('@/stores/board-store').selectIsComplete;
 let selectIsAntiVirality: typeof import('@/stores/board-store').selectIsAntiVirality;
-let selectDrawerOpen: typeof import('@/stores/board-store').selectDrawerOpen;
 
 beforeEach(async () => {
-  // Re-import fresh Zustand store instance each test (reset module cache)
   const mod = await import('@/stores/board-store');
   useBoardStore = mod.useBoardStore;
   selectIsStreaming = mod.selectIsStreaming;
   selectIsComplete = mod.selectIsComplete;
   selectIsAntiVirality = mod.selectIsAntiVirality;
-  selectDrawerOpen = mod.selectDrawerOpen;
-  // Reset to default state
   useBoardStore.setState({
     boardState: 'idle',
-    preDrawerState: null,
     camera: { x: 0, y: 0, scale: 1 },
     activePreset: null,
     cameraAutoFollow: false,
-    inputDrawerOpen: false,
     selectedNodeId: null,
     cancelConfirmOpen: false,
     lastUserInteractionAt: 0,
     currentStageLabel: null,
+    inputBarFocusPulse: 0,
   });
 });
 
@@ -49,12 +44,12 @@ describe('initial state', () => {
     expect(camera).toEqual({ x: 0, y: 0, scale: 1 });
   });
 
-  it('starts with no auto-follow, no drawer, no selection', () => {
+  it('starts with no auto-follow, no selection, no focus pulse', () => {
     const s = useBoardStore.getState();
     expect(s.cameraAutoFollow).toBe(false);
-    expect(s.inputDrawerOpen).toBe(false);
     expect(s.selectedNodeId).toBeNull();
     expect(s.cancelConfirmOpen).toBe(false);
+    expect(s.inputBarFocusPulse).toBe(0);
   });
 });
 
@@ -69,13 +64,6 @@ describe('startStreaming', () => {
   it('enables cameraAutoFollow', () => {
     useBoardStore.getState().startStreaming();
     expect(useBoardStore.getState().cameraAutoFollow).toBe(true);
-  });
-
-  it('closes any open drawer', () => {
-    // Set up drawer-open state first
-    useBoardStore.setState({ inputDrawerOpen: true });
-    useBoardStore.getState().startStreaming();
-    expect(useBoardStore.getState().inputDrawerOpen).toBe(false);
   });
 
   it('closes any open cancel confirm', () => {
@@ -93,8 +81,6 @@ describe('finishStreaming', () => {
   });
 
   it('transitions idle → complete for permalink replay', () => {
-    // /analyze/[id] direct nav lands user on idle, then result hydrates and
-    // the board jumps straight to complete (no streaming phase to finish).
     useBoardStore.getState().finishStreaming();
     expect(useBoardStore.getState().boardState).toBe('complete');
   });
@@ -102,7 +88,7 @@ describe('finishStreaming', () => {
   it('is a no-op when in a terminal non-idle/streaming state', () => {
     useBoardStore.getState().startStreaming();
     useBoardStore.getState().finishStreaming();
-    useBoardStore.getState().triggerAntiVirality(); // anti-virality
+    useBoardStore.getState().triggerAntiVirality();
     useBoardStore.getState().finishStreaming();
     expect(useBoardStore.getState().boardState).toBe('anti-virality');
   });
@@ -117,67 +103,48 @@ describe('triggerAntiVirality', () => {
   });
 
   it('transitions idle → anti-virality for permalink replay', () => {
-    // Permalink replay of an anti-virality-gated analysis: board hydrates
-    // directly into anti-virality without passing through streaming.
     useBoardStore.getState().triggerAntiVirality();
     expect(useBoardStore.getState().boardState).toBe('anti-virality');
   });
 
-  it('is a no-op during streaming (anti-virality only fires after completion)', () => {
+  it('is a no-op during streaming', () => {
     useBoardStore.getState().startStreaming();
     useBoardStore.getState().triggerAntiVirality();
     expect(useBoardStore.getState().boardState).toBe('streaming');
   });
 });
 
-describe('openInputDrawer / closeInputDrawer', () => {
-  it('opens drawer in edit-input state from idle', () => {
+describe('openInputDrawer (input-bar focus pulse)', () => {
+  it('pulses focus counter and stays idle when called from idle', () => {
     useBoardStore.getState().openInputDrawer();
-    const s = useBoardStore.getState();
-    expect(s.boardState).toBe('edit-input');
-    expect(s.inputDrawerOpen).toBe(true);
-  });
-
-  it('stores preDrawerState when opening from idle', () => {
-    useBoardStore.getState().openInputDrawer();
-    expect(useBoardStore.getState().preDrawerState).toBe('idle');
-  });
-
-  it('stores preDrawerState when opening from complete', () => {
-    useBoardStore.getState().startStreaming();
-    useBoardStore.getState().finishStreaming();
-    useBoardStore.getState().openInputDrawer();
-    expect(useBoardStore.getState().preDrawerState).toBe('complete');
-  });
-
-  it('restores preDrawerState on close — idle → edit-input → idle', () => {
-    useBoardStore.getState().openInputDrawer();
-    useBoardStore.getState().closeInputDrawer();
     const s = useBoardStore.getState();
     expect(s.boardState).toBe('idle');
-    expect(s.inputDrawerOpen).toBe(false);
-    expect(s.preDrawerState).toBeNull();
+    expect(s.inputBarFocusPulse).toBe(1);
   });
 
-  it('restores preDrawerState on close — complete → edit-input → complete', () => {
+  it('coerces complete → idle and pulses focus', () => {
     useBoardStore.getState().startStreaming();
     useBoardStore.getState().finishStreaming();
     useBoardStore.getState().openInputDrawer();
-    useBoardStore.getState().closeInputDrawer();
-    expect(useBoardStore.getState().boardState).toBe('complete');
+    const s = useBoardStore.getState();
+    expect(s.boardState).toBe('idle');
+    expect(s.inputBarFocusPulse).toBe(1);
   });
 
-  it('openInputDrawer is a no-op during streaming', () => {
+  it('is a no-op during streaming', () => {
     useBoardStore.getState().startStreaming();
+    const before = useBoardStore.getState().inputBarFocusPulse;
     useBoardStore.getState().openInputDrawer();
     const s = useBoardStore.getState();
     expect(s.boardState).toBe('streaming');
-    expect(s.inputDrawerOpen).toBe(false);
+    expect(s.inputBarFocusPulse).toBe(before);
   });
 
-  it('closeInputDrawer is a no-op when not in edit-input', () => {
-    useBoardStore.getState().closeInputDrawer();
-    expect(useBoardStore.getState().boardState).toBe('idle');
+  it('pulse counter increments monotonically across repeated calls', () => {
+    useBoardStore.getState().openInputDrawer();
+    useBoardStore.getState().openInputDrawer();
+    useBoardStore.getState().openInputDrawer();
+    expect(useBoardStore.getState().inputBarFocusPulse).toBe(3);
   });
 });
 
@@ -196,9 +163,9 @@ describe('resetToIdle', () => {
     const s = useBoardStore.getState();
     expect(s.boardState).toBe('idle');
     expect(s.cameraAutoFollow).toBe(false);
-    expect(s.inputDrawerOpen).toBe(false);
     expect(s.selectedNodeId).toBeNull();
     expect(s.cancelConfirmOpen).toBe(false);
+    expect(s.inputBarFocusPulse).toBe(0);
   });
 });
 
@@ -216,7 +183,7 @@ describe('camera actions', () => {
   });
 
   it('userOverrideCameraFollow sets cameraAutoFollow to false', () => {
-    useBoardStore.getState().startStreaming(); // sets autoFollow true
+    useBoardStore.getState().startStreaming();
     expect(useBoardStore.getState().cameraAutoFollow).toBe(true);
     useBoardStore.getState().userOverrideCameraFollow();
     expect(useBoardStore.getState().cameraAutoFollow).toBe(false);
@@ -280,11 +247,5 @@ describe('derived selectors', () => {
     expect(selectIsAntiVirality(useBoardStore.getState())).toBe(false);
     useBoardStore.getState().triggerAntiVirality();
     expect(selectIsAntiVirality(useBoardStore.getState())).toBe(true);
-  });
-
-  it('selectDrawerOpen matches inputDrawerOpen', () => {
-    expect(selectDrawerOpen(useBoardStore.getState())).toBe(false);
-    useBoardStore.getState().openInputDrawer();
-    expect(selectDrawerOpen(useBoardStore.getState())).toBe(true);
   });
 });

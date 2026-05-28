@@ -48,12 +48,25 @@ export function NodeOverlay({ spec, camera, status, selected, onTap, children, c
         top: screenY,
         width: screenW,
         height: screenH,
+        overflow: 'hidden',
       }}
     >
-      {/* GlassPanel-styled container per UI-SPEC §Input Node + brand bible. */}
-      <GlassPanel className="flex h-full w-full flex-col overflow-hidden rounded-[8px]">
-        {children}
-      </GlassPanel>
+      {/* World-space interior scaled to camera. Keeps content layout in sync
+          with the node's screen-pixel rect at any zoom level (matches the
+          GroupFrameOverlay treatment). */}
+      <div
+        style={{
+          transform: `scale(${camera.scale})`,
+          transformOrigin: 'top left',
+          width: spec.bounds.width,
+          height: spec.bounds.height,
+        }}
+      >
+        {/* GlassPanel-styled container per UI-SPEC §Input Node + brand bible. */}
+        <GlassPanel className="flex h-full w-full flex-col overflow-hidden rounded-[8px]">
+          {children}
+        </GlassPanel>
+      </div>
     </div>
   );
 }

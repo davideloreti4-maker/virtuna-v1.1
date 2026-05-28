@@ -215,33 +215,28 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
             onChange={handleInputChange}
           />
 
-          {/* Empty state */}
+          {/* Empty state — compact single-row layout */}
           {!file && (
-            <div className="flex flex-col items-center justify-center gap-3 py-10 px-6">
-              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-white/[0.05]">
-                <Upload className="w-5 h-5 text-foreground-muted" />
+            <div className="flex items-center gap-3 px-3 py-2.5">
+              <div className="flex items-center justify-center w-7 h-7 rounded-md bg-white/[0.05] shrink-0">
+                <Upload className="w-3.5 h-3.5 text-foreground-muted" />
               </div>
-              <div className="text-center">
-                <p className="text-sm text-foreground">
-                  Drop your video here or click to browse
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-foreground leading-tight">
+                  Drop video or click to browse
                 </p>
-                <p className="text-xs text-foreground-muted mt-1">
-                  MP4, MOV, WebM up to 200MB
+                <p className="text-[11px] text-foreground-muted leading-tight mt-0.5">
+                  MP4, MOV, WebM · up to 200MB
                 </p>
               </div>
-            </div>
-          )}
-
-          {/* INT-06: "About your data" expandable — empty state only */}
-          {!file && (
-            <div className="border-t border-white/[0.06]">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   setDataDisclosureOpen((prev) => !prev);
                 }}
-                className="flex items-center gap-2 w-full px-6 py-3 text-foreground-muted hover:text-foreground transition-colors"
+                aria-label="About your data"
+                className="text-foreground-muted hover:text-foreground shrink-0"
               >
                 <ChevronDown
                   className={cn(
@@ -249,14 +244,13 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
                     dataDisclosureOpen && "rotate-180"
                   )}
                 />
-                <span className="text-xs">About your data</span>
               </button>
-              {dataDisclosureOpen && (
-                <p className="px-6 pb-4 text-xs text-foreground-muted leading-relaxed">
-                  Videos are automatically deleted after 30 days. To keep for re-analysis, go to Settings.
-                </p>
-              )}
             </div>
+          )}
+          {!file && dataDisclosureOpen && (
+            <p className="border-t border-white/[0.06] px-3 py-2 text-[11px] text-foreground-muted leading-relaxed">
+              Videos auto-delete after 30 days. Keep them for re-analysis in Settings.
+            </p>
           )}
 
           {/* Upload progress state */}
