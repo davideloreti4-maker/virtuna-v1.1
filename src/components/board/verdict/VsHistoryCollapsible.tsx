@@ -14,6 +14,7 @@ import { ChartTooltip } from '@/components/competitors/charts/chart-tooltip';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useComparisons } from './use-comparisons';
 import { COPY, TELEMETRY } from './verdict-constants';
+import { useBoardStore } from '@/stores/board-store';
 import { logger } from '@/lib/logger';
 
 interface VsHistoryCollapsibleProps {
@@ -24,6 +25,7 @@ interface VsHistoryCollapsibleProps {
 export function VsHistoryCollapsible({ analysisId, currentScore }: VsHistoryCollapsibleProps) {
   const { data, isLoading, isError } = useComparisons(analysisId);
   const prefersReducedMotion = usePrefersReducedMotion();
+  const openInputDrawer = useBoardStore((s) => s.openInputDrawer);
 
   const handleToggle = useCallback(
     (event: React.SyntheticEvent<HTMLDetailsElement>) => {
@@ -57,9 +59,19 @@ export function VsHistoryCollapsible({ analysisId, currentScore }: VsHistoryColl
           </p>
         )}
         {data && data.history.length < 3 && (
-          <p className="text-xs italic text-foreground-muted" data-testid="vs-history-empty">
-            {COPY.HISTORY_EMPTY_STATE(data.history.length)}
-          </p>
+          <div data-testid="vs-history-empty">
+            <p className="text-xs italic text-foreground-muted">
+              {COPY.HISTORY_EMPTY_STATE(data.history.length)}
+            </p>
+            <button
+              type="button"
+              onClick={openInputDrawer}
+              className="mt-1 text-xs text-accent hover:text-accent-hover"
+              data-testid="vs-history-run-another"
+            >
+              → Run another analysis
+            </button>
+          </div>
         )}
         {data && data.history.length >= 3 && (
           <div className="flex flex-col gap-3">

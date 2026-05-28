@@ -9,6 +9,12 @@ import { comparisonsFixtures } from './fixtures/prediction-result';
 vi.mock('@/lib/logger', () => ({ logger: { event: vi.fn(), info: vi.fn() } }));
 vi.mock('@/hooks/usePrefersReducedMotion', () => ({ usePrefersReducedMotion: () => false }));
 
+const mockOpenInputDrawer = vi.fn();
+vi.mock('@/stores/board-store', () => ({
+  useBoardStore: (selector: (s: { openInputDrawer: ReturnType<typeof vi.fn> }) => unknown) =>
+    selector({ openInputDrawer: mockOpenInputDrawer }),
+}));
+
 import { logger } from '@/lib/logger';
 
 function wrap(ui: React.ReactNode) {
@@ -19,6 +25,7 @@ function wrap(ui: React.ReactNode) {
 describe('VsHistoryCollapsible', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockOpenInputDrawer.mockReset();
   });
 
   it('renders summary text "vs my history"', () => {
@@ -37,6 +44,25 @@ describe('VsHistoryCollapsible', () => {
     await waitFor(() => expect(screen.queryByTestId('vs-history-empty')).toBeInTheDocument());
     expect(screen.getByTestId('vs-history-empty')).toHaveTextContent('Need 3+ prior analyses');
     expect(screen.getByTestId('vs-history-empty')).toHaveTextContent('2/3 complete');
+  });
+
+  it('renders "Run another analysis" CTA link when history.length < 3', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(comparisonsFixtures.partial), { status: 200 }),
+    );
+    wrap(<VsHistoryCollapsible analysisId="a-cta" currentScore={78} />);
+    await waitFor(() => expect(screen.queryByTestId('vs-history-run-another')).toBeInTheDocument());
+    expect(screen.getByTestId('vs-history-run-another')).toHaveTextContent('Run another analysis');
+  });
+
+  it('"Run another analysis" click calls openInputDrawer', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(comparisonsFixtures.partial), { status: 200 }),
+    );
+    wrap(<VsHistoryCollapsible analysisId="a-cta2" currentScore={78} />);
+    await waitFor(() => expect(screen.queryByTestId('vs-history-run-another')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('vs-history-run-another'));
+    expect(mockOpenInputDrawer).toHaveBeenCalledTimes(1);
   });
 
   it('renders last-10 BarChart when history.length >= 3', async () => {
