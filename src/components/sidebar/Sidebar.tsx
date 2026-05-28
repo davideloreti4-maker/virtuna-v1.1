@@ -42,6 +42,21 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import { useAnalysisHistory } from "@/hooks/queries";
 import { useProfile } from "@/hooks/queries/use-profile";
+
+// ─── relative-time helper ─────────────────────────────────────────
+const rtf = typeof Intl !== 'undefined'
+  ? new Intl.RelativeTimeFormat('en', { numeric: 'auto', style: 'narrow' })
+  : null;
+
+function relativeTime(iso: string | undefined): string {
+  if (!iso || !rtf) return '';
+  const diffSec = (Date.parse(iso) - Date.now()) / 1000;
+  const abs = Math.abs(diffSec);
+  if (abs < 60) return rtf.format(Math.round(diffSec), 'second');
+  if (abs < 3600) return rtf.format(Math.round(diffSec / 60), 'minute');
+  if (abs < 86400) return rtf.format(Math.round(diffSec / 3600), 'hour');
+  return rtf.format(Math.round(diffSec / 86400), 'day');
+}
 import { useSidebarStore } from "@/stores/sidebar-store";
 import { createClient } from "@/lib/supabase/client";
 
@@ -143,7 +158,8 @@ export function Sidebar() {
   const { data: historyData, isLoading: historyLoading } = useAnalysisHistory();
   const recentBoards = (historyData ?? []).slice(0, 8) as Array<{
     id: string;
-    content_text?: string;
+    content_text?: string | null;
+    overall_score?: number | null;
     created_at?: string;
   }>;
 
@@ -375,16 +391,23 @@ export function Sidebar() {
                     onClick={() => router.push(`/analyze/${board.id}`)}
                     className={cn(
                       "w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left",
-                      "text-xs text-foreground-secondary truncate",
+                      "text-xs text-foreground-secondary",
                       "hover:bg-white/[0.05] hover:text-foreground transition-colors",
                       pathname === `/analyze/${board.id}` && "bg-white/[0.08] text-foreground",
                     )}
                     aria-current={pathname === `/analyze/${board.id}` ? "page" : undefined}
                   >
-                    <span className="truncate flex-1">
+                    <span className="truncate flex-1" data-testid="sidebar-board-label">
                       {board.content_text
-                        ? board.content_text.substring(0, 40).trim() || "Untitled board"
-                        : "Untitled board"}
+                        ? board.content_text.slice(0, 38).trim() || `Analysis · ${relativeTime(board.created_at)}`
+                        : `Analysis · ${relativeTime(board.created_at)}`}
+                    </span>
+                    <span
+                      className="shrink-0 rounded px-1 py-0.5 text-[10px] font-medium tabular-nums"
+                      style={{ background: 'rgba(255,127,80,0.15)', color: 'var(--color-accent)' }}
+                      data-testid="sidebar-score-chip"
+                    >
+                      {board.overall_score != null ? Math.round(board.overall_score) : '—'}
                     </span>
                   </button>
                 ))}
