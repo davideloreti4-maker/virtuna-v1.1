@@ -3,7 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { ApifyClient } from "apify-client";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createLogger } from "@/lib/logger";
-import { buildSubjectText, embedBatch } from "@/lib/engine/retrieval/embedder";
+import { buildSubjectText, embedBatch } from "@/lib/engine/corpus/embedder";
 import { serializeVector } from "@/lib/supabase/pgvector";
 
 /**
