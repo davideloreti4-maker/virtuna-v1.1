@@ -257,6 +257,25 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
   // the bounds offset (visible as content shifted to the right of the frame).
   // Use the synthetic spec only for child positioning math (popover anchors, etc.).
   void audienceSpec;
+  // Unit contract: weighted-aggregator emits *_pct as 0-1 floats; the Pass-1
+  // fallback (persona_behavioral_aggregate.completion_pct) is already 0-100.
+  // Scale weighted values to 0-100 here so HeadlineChips treats every numeric
+  // prop uniformly. Use ?? (not ||) so a real 0 isn't coerced to undefined.
+  const rawCompletion =
+    recomputedMetrics.weighted_completion_pct ??
+    result?.weighted_completion_pct ??
+    null;
+  const rawHook =
+    recomputedMetrics.weighted_hook_score ??
+    result?.weighted_hook_score ??
+    null;
+  const scaledCompletion = rawCompletion == null ? null : rawCompletion * 100;
+  const scaledHook = rawHook == null ? null : rawHook * 100;
+  const scaledDropoff =
+    recomputedMetrics.weighted_top_dropoff_t ??
+    result?.weighted_top_dropoff_t ??
+    null;
+
   return (
     <>
       <div
@@ -266,9 +285,9 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
         >
           {/* D-01: HeadlineChips — top of stack */}
           <HeadlineChips
-            weighted_completion_pct={recomputedMetrics.weighted_completion_pct || result?.weighted_completion_pct}
-            weighted_top_dropoff_t={recomputedMetrics.weighted_top_dropoff_t || result?.weighted_top_dropoff_t}
-            weighted_hook_score={recomputedMetrics.weighted_hook_score || result?.weighted_hook_score}
+            weighted_completion_pct={scaledCompletion}
+            weighted_top_dropoff_t={scaledDropoff}
+            weighted_hook_score={scaledHook}
             fallback={
               agg
                 ? {
