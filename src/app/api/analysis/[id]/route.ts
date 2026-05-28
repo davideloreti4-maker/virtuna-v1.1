@@ -109,14 +109,24 @@ export async function GET(
       };
     }
 
-    const heatmap = (data as { heatmap?: unknown }).heatmap ?? synthHeatmap();
+    // These three fields are derived at runtime by the engine but never
+    // persisted to a column — read defensively (cast through unknown) so the
+    // shim still picks them up if a future migration adds them, without
+    // tripping `analysis_results.Row` (which doesn't declare them today).
+    const extras = data as unknown as {
+      confidence_label?: string | null;
+      is_calibrated?: boolean | null;
+      anti_virality_gated?: boolean | null;
+      heatmap?: unknown;
+    };
+    const heatmap = extras.heatmap ?? synthHeatmap();
 
     const enriched = {
       ...data,
       overall_score: overall,
       confidence,
       confidence_label:
-        data.confidence_label ??
+        extras.confidence_label ??
         (confidence == null
           ? null
           : confidence >= 0.7
@@ -124,9 +134,9 @@ export async function GET(
           : confidence >= 0.4
           ? "MEDIUM"
           : "LOW"),
-      is_calibrated: data.is_calibrated ?? true,
+      is_calibrated: extras.is_calibrated ?? true,
       anti_virality_gated:
-        data.anti_virality_gated ??
+        extras.anti_virality_gated ??
         (confidence == null ? false : confidence < 0.4),
       heatmap,
     };
