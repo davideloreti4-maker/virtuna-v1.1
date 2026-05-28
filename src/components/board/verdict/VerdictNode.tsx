@@ -80,7 +80,7 @@ export function VerdictNode({ camera: _camera, layout: _layout }: VerdictNodePro
         <PercentileChip
           score={result?.overall_score ?? null}
           confidenceLabel={result?.confidence_label ?? null}
-          isCalibrated={result?.is_calibrated ?? true}
+          isCalibrated={true}
         />
       </div>
 

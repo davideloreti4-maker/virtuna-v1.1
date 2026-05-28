@@ -6,7 +6,6 @@ const base: PredictionResult = {
   overall_score: 78,
   confidence: 0.82,
   confidence_label: 'HIGH',
-  is_calibrated: true,
 
   // Behavioral predictions
   behavioral_predictions: {
@@ -275,7 +274,6 @@ export const fixtures = {
     ...base,
     confidence: 0.3,
     confidence_label: 'LOW' as const,
-    is_calibrated: false,
   } satisfies PredictionResult,
   emptyHookDecomp: {
     ...base,

@@ -31,10 +31,6 @@
       "schedule": "0 3 * * 1"
     },
     {
-      "path": "/api/cron/calibration-audit",
-      "schedule": "0 4 1 * *"
-    },
-    {
       "path": "/api/cron/refresh-corpus",
       "schedule": "0 6 1 * *"
     },

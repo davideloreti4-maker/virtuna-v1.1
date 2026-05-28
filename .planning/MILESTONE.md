@@ -1,144 +1,106 @@
-# Milestone: Result Surface
+# Milestone: Engine Hardening
 
-**Branch:** `milestone/result-surface`
-**Worktree:** `~/virtuna-result-surface/`
+**Branch:** `milestone/engine-hardening`
+**Worktree:** `~/virtuna-engine-hardening/`
 **Started:** 2026-05-24
 **Status:** Active
-**Part of:** Intelligence Surface drop (3 milestones: Result Surface → Iteration & Niche Intelligence → Compounding Intelligence)
-
-> **⚠ Amendment (2026-05-25) — Board model pivot**
->
-> The original "result card + live persona hive" architecture described below has been **replaced by a node-based board model**. `/analyze` is now a persistent Konva canvas with 5 group container frames (Input, Engine, Audience, Verdict, Actions, Content Analysis). The Audience node combines TikTok-Studio retention curve + per-persona dropoff markers + piano-roll heatmap underlay + filmstrip + headline metrics. The original goals (magic moment, mobile-first, share-ready, anti-virality, onboarding) all carry forward; the **delivery surface and information architecture changed**.
->
-> **Authoritative current direction:** `.planning/ROADMAP.md` (8-phase structure) + `.planning/REQUIREMENTS.md` (refactored R1 + R2) + `.planning/phases/02-board-substrate-navigation/02-CONTEXT.md` (decisions for Phase 2). The "Scope (in)" section below preserves the original intent for historical context — implementation details follow the new artifacts.
+**Part of:** Intelligence Surface drop (parallel sibling to Result Surface, predecessor to Iteration & Niche Intelligence and Compounding Intelligence)
 
 ## Purpose
 
-Build the polished analysis experience that wraps the validated Engine Foundation (v3.0.0) — the surface every user touches when they analyze a video. This is the **magic moment** layer: result board, live audience prediction, mobile route, and the onboarding sequence that converts free users.
+Close the engine debt left open by M1 (Engine Foundation) so the v3.0.0 pipeline can stand behind a polished UX without quiet bypasses. M1 shipped the engine; this milestone makes it **production-honest** — calibrated, fingerprint-active, type-clean, and verified.
 
-Without this milestone, the engine is invisible. With it, Virtuna becomes a product creators can feel.
+This is a parallel-track milestone to Result Surface. UX work in `~/virtuna-result-surface/` does not depend on this branch and vice versa — both rebase on top of `main`. They merge in any order.
 
-## Position in the drop
+## Position in the Intelligence Surface drop
 
-The Intelligence Surface drop is **3 parallel milestones**, all shipping together (no incremental public release):
+```
+Engine Foundation (M1) ── merged 2026-05-24 ── main
+                                                │
+                  ┌─────────────────────────────┼────────────────────────┐
+                  ▼                             ▼                        │
+        Result Surface (M2-I)        Engine Hardening (this)     (after both) M2-II: Iteration & Niche
+        ~/virtuna-result-surface     ~/virtuna-engine-hardening
+        UX magic moment              Engine debt + verification
+        ACTIVE                       ARCHIVED (2026-05-25, 70%)
+```
 
-1. **Result Surface** (this) — magic moment + core analysis UX
-2. **Iteration & Niche Intelligence** — modes that turn results into action + niche-specific intelligence
-3. **Compounding Intelligence** — outcome feedback loop + learning surfaces
+The two parallel milestones merge independently to `main`. M2-II forks after both are landed. M2-III (Compounding Intelligence) has been **restructured into M3** — see M2/M3 note below.
 
-This milestone ships **first** (sequential), then II and III fork as parallel worktrees once design patterns here are locked.
+> **⚠ Amendment (2026-05-27) — M2/M3 restructure**
+>
+> M2-III no longer exists. M2 = M2-I + M2-II only. All compounding intelligence work + remaining engine debt (audio fingerprint, embedder, D-F4 cron deferred from this milestone) moves to **M3 (Engine Quality + Compounding Intelligence)**. Engine Hardening's deferred audio/embed items are M3 scope.
 
 ## Scope (in)
 
-### Polished result card
-A single unified card that contains the full analysis output. All panels animate in as the engine streams stages via SSE.
+### Calibration debt (M1 carry-forward)
+- ~~Refit Platt parameters against a Qwen-scored corpus~~ **REMOVED 2026-05-24** — Platt calibration dropped from the engine entirely (`platt_parameters` table dropped, `calibration.ts` deleted). Framing mismatch surfaced in Phase 15 execution: corpus-based eval ran text-mode on captions but production runs video-mode Omni-Plus; corpus carries post-publication engagement metrics that production never sees at inference. See `.planning/phases/15-calibration-refit-on-qwen-corpus/15-DISCUSSION-LOG.md` tail.
+- ~~Rerun Plans 06/07 stratified validation under Qwen with fresh baselines~~ **REMOVED 2026-05-24** — was contingent on the refit landing.
+- ~~Re-tune Wave 3 (≥7/10 personas) and Wave 4 (numeric platform_fit) thresholds for the Qwen distribution~~ **REMOVED 2026-05-24** — thresholds remain at their current values; no calibration-driven retune.
+- Wire DashScope International billing into the smoke runner for live cost-budget tracking (CALIB-04 — still active in Phase 17, independent of Platt)
 
-- **Retention curve** — viewer drop-off prediction across video length
-- **Persona breakdown panels** — 10 personas (6 FYP + 2 niche + 1 loyalist + 1 cross-niche) with individual verdicts, expandable reasoning
-- **Hook decomposition UI** — visual + audio + text + speech sub-scores, coherence, cognitive load
-- **Similar videos panel** — top-K pgvector matches from competitor corpus
-- **Reasoning narrative** — DeepSeek synthesis + self-critique, structured (not wall of text)
-- **Emotion arc visualization** — pacing/intensity curve across video
-- **Comparative baseline** — where this video ranks vs creator's own past content and niche cohort
-- **Anti-virality verdict state** — "don't post yet" UI when the engine says rework before publishing
+### Audio + embedding pipeline (M1 stubs)
+- Re-enable `audio-fingerprint.ts` — currently returns `null`; needs re-embed via DashScope embedding model
+- Implement `embedder.ts` `embedQuery` + `embedBatch` (both currently `throw "deferred to M2"`)
+- Re-enable inline cron embedding pipeline at `/api/cron/calculate-trends` (D-F4 was disabled at the route level)
+- Unskip the 17 `.skip`'d tests covering audio-fingerprint, embedder, and D-F4 cron paths
 
-### Live audience simulation viz
-SSE-driven hive extension. The user watches personas "react" in real-time as the pipeline runs. Wave 3 (persona simulation) drives the animation. This is THE wow moment — the difference between "uploaded, got result" and "watched the AI think."
+### Type hygiene (pre-existing blocker)
+- 966 TypeScript errors in `src/app/api/{profile,settings,team}/*` reference a `user_settings` table that does not exist on the live Supabase project (`qyxvxleheckijapurisj`).
+- **Decision required** (Phase 1 of this milestone): either (a) write the migration to actually create `user_settings` + RLS, or (b) rip out the consumers. Path picked once we audit which call sites are still live.
+- Goal: clean `pnpm exec tsc --noEmit` across the entire app, not just `src/lib/engine/`.
 
-- Hive extends with persona nodes (color-coded by persona type)
-- Reactions stream in as DeepSeek persona calls complete (parallel)
-- Final aggregation animates into the verdict
-- Reduced-motion fallback (static breakdown)
+### Verification debt (M1 deferrals)
+- **Phase 2** — UAT deferred (creator-profile 9-card interview end-to-end)
+- **Phase 3** — SC#4 + SC#5 DEFERRED-PENDING-LIVE-DEPLOY (post-deploy smoke tests on `/api/analyze` SSE + cache hit)
+- **Phase 4** — HUMAN-UAT partial: 2 live-API tests pending (end-to-end Wave 0 content-type via `/api/analyze`, niche-detector cost-cents > 0 with cache breakdown absent)
+- **Phase 6** — Code-review follow-ups: WR-04 (cron N+1), WR-05 (audio_description bounds nesting), IN-01 (video-analysis retry restructure), IN-02 (pgvector cast helper), IN-03 (sound_url SSRF allowlist — Phase 12 threat model T-06-13)
 
-### Mobile-first analysis route
-Entire upload → analyze → result flow on mobile. Creators are mobile-native. The current desktop dashboard does not work on mobile.
+## Scope (out — belongs elsewhere)
 
-- Mobile upload (camera roll picker, file size check, watermark scan pre-upload)
-- Mobile-optimized live viz (vertical hive, swipeable persona cards)
-- Mobile result card (collapsible panels, swipe navigation)
-- Mobile share/export
-
-### Share & export
-Essential for product virality — creators screenshot results and post them. Make that frictionless.
-
-- Generate shareable PNG of result card (themed, branded, no scoped data)
-- Public permalink (read-only, gated by tier)
-- Native share sheet on mobile, copy-link on desktop
-- Watermark with `virtuna.app/r/<id>` on shareable images
-
-### Re-shoot script generator *(new — packages existing engine output)*
-The engine produces counterfactuals + A/B variants. Currently those are insights. This turns them into a **ready-to-act-on script** the creator copies and uses.
-
-- New opening line (from counterfactual)
-- Scene order / pacing recommendation
-- Voiceover script
-- Caption variants
-- Click-to-copy each section
-- Optional: export as plain text / markdown / Notion-importable
-
-### Optimal post-time recommendation *(new — needs small engine signal)*
-Engine generates a per-niche optimal post-time recommendation. Surfaces in the result card.
-
-- Engine signal: `optimal_post_window` (day-of-week + hour range, niche-driven)
-- Card panel: "Post this between Tue 6-8pm EST for max reach"
-- Calendar integration deferred (post-drop)
-
-### First-analysis WOW onboarding *(new)*
-Orchestrated demo flow for the first time a user analyzes. Times the live viz, the verdict reveal, and the next-action prompt to maximize "holy shit" feeling.
-
-- Tutorial overlay (skippable) on first upload
-- Pacing: persona viz holds, verdict reveals on tap, next-action panel surfaces last
-- Track first-analysis completion rate as success metric
-
-## Scope (out — handled in II/III)
-
-- Concept mode, A/B variant flow, cross-platform repurposing, watermark detection → **M2-II**
-- Trending sounds discovery, idea generator, steal-this-playbook → **M2-II**
-- Hook archetype library, trend velocity, outcome feedback loop, wins/flops trend → **M2-III**
-- Weekly intelligence report (post-drop fast-follow)
-- Brand-fit predictor (separate brand-deals milestone)
-- Series planner, content calendar, coaching feed, niche leaderboard (deferred)
-
-## Dependencies
-
-### Hard (must exist before M2-I implementation)
-- Engine v3.0.0 shipped to main ✅ (Engine Foundation milestone closed 2026-05-23)
-- Pipeline `onStageEvent` callback + SSE in `/api/analyze` ✅
-- Creator profile (9-card) live in `creator_profiles` table ✅
-- Aggregator outputs: persona array, hook decomp, similar videos, reasoning narrative, calibrated confidence ✅
-- DeepSeek counterfactuals + A/B variants generated server-side ✅
-
-### Soft (new engine signals — small additions in this milestone)
-- `optimal_post_window` signal in aggregator output
-- Emotion arc data emitted from segmentation (likely already there — verify in P1)
-
-## Success criteria
-
-A creator who:
-1. Lands cold on `/analyze` on a phone, uploads a 30s video, sees the live persona viz, gets a verdict in <60s
-2. Sees a result card with all 8 panels populated and animated in
-3. Reads the re-shoot script, copies the new opening line, and the optimal post-time
-4. Shares the result card to their network via native share sheet
-5. Returns the next day for a second analysis (first-analysis WOW worked)
-
-Quantitative gates (set during planning):
-- Mobile lighthouse score ≥ 90 on `/analyze`
-- Live viz holds 60fps on iPhone 13+ (graceful fallback below)
-- p95 end-to-end (upload → verdict) ≤ 60s (engine cap)
-- Share-image generation ≤ 2s
-- Zero design regressions in retained desktop UX (regression audit included)
+- Any UX/UI surface work → **Result Surface (M2-I)** in `~/virtuna-result-surface/`
+- Concept mode, A/B variant flow, hook archetype library → **Iteration & Niche Intelligence (M2-II)** (not yet drafted)
+- Outcome feedback loop, weekly intelligence report → **Compounding Intelligence (M2-III)** (not yet drafted)
+- New engine signals (`optimal_post_window`, emotion arc) → Result Surface soft deps (handled there)
+- Engine architecture changes — the M1 pipeline is treated as locked; this milestone fixes only what M1 left explicitly open
 
 ## Stack decisions (locked at milestone start)
 
-- **SSE** for live viz (already in pipeline, just consume)
-- **Canvas 2D** for live persona viz (consistent with existing hive)
-- **Recharts** for retention curve + emotion arc (existing dep)
-- **Satori + @vercel/og** for share-image generation (no new heavy dep — already used for OG metadata)
-- **Mobile route as same `/analyze`** with responsive layout (not separate route) — Tailwind v4 breakpoints
-- **Re-shoot script as Markdown** under the hood, rendered with existing GlassCard components
+- **Embedding model:** DashScope `text-embedding-v3` (768-dim, matches M1 pgvector schema). No fallback to Gemini — the migration to DashScope-only is intentional and aligns with the Qwen-only engine post-`9794ffa`.
+- ~~**Calibration storage:** Reuse the existing `platt_parameters` row schema...~~ **REVERSED 2026-05-24.** `platt_parameters` table dropped. Calibration removed from engine.
+- **Smoke runner billing:** Read DashScope billing endpoint at the end of each smoke run, persist `cost_cents_actual` alongside `cost_cents_estimated`. No mid-run polling (avoid hot path).
+- **TS errors:** Default path is **write the migration** (option a). Only rip out consumers if the call-site audit shows the routes are dead. Decision locked in Phase 1.
+
+## Dependencies
+
+### Hard (must exist before this milestone implementation)
+- ✅ Engine Foundation milestone closed (commit `8c50635` on `main`, ENGINE_VERSION 3.0.0 at `791a577`)
+- ✅ Qwen migration landed (`9794ffa` + follow-ups in `10eb111`)
+- ✅ pgvector + `trending_sounds.audio_embedding vector(768)` + HNSW index live on Supabase (M1 Phase 6 deliverable)
+- ✅ `analysis_results` cache with content-hash + engine-version + user-id keying (M1 Phase 3 deliverable)
+- ✅ Pre-flight green state: `pnpm vitest run` 996/996 (17 skipped), `pnpm exec tsc --noEmit` 0 errors *in engine paths*, `pnpm build` green
+- ✅ Live DashScope International account with billing enabled (already used in production)
+
+### Soft (will be confirmed in Phase 1)
+- DashScope embedding API quota fits the corpus size (225 rows + ongoing trending-sounds ingest)
+- `user_settings` consumer audit confirms whether the migration path or rip-out path is correct
+
+## Success criteria
+
+This milestone ships when:
+
+1. `pnpm vitest run` passes with **zero `.skip`** in audio-fingerprint, embedder, and D-F4 cron paths
+2. `pnpm exec tsc --noEmit` returns **0 errors across the entire app** (not just engine paths)
+3. ~~Platt calibration row in `platt_parameters`...~~ **REMOVED 2026-05-24** — Phase 15 cancelled; Platt calibration dropped from engine; success criterion no longer applicable.
+4. ~~Stratified validation report~~ **REMOVED 2026-05-24** — was contingent on the Platt refit.
+5. `audio_fingerprint` match returns non-null on at least one trending sound in a live `/api/analyze` E2E run (against a real video with a known matching audio)
+6. Smoke runner output includes a `cost_cents_actual` field sourced from DashScope billing
+7. All M1 verification-debt items (Phases 2/3/4/6) are either resolved or moved to an explicit "permanently deferred" list with rationale
 
 ## Identity
 
-This file is immutable. Signals to all sessions opened in this worktree that they are scoped to the Result Surface milestone.
+This file is immutable. Signals to all sessions opened in this worktree that they are scoped to the Engine Hardening milestone, regardless of which branch is checked out.
 
-**Next:** After M2-I lands (merged to main), fork `milestone/iteration-intelligence` and `milestone/compounding-intelligence` as parallel worktrees from main.
+**Sibling milestone:** Result Surface (`~/virtuna-result-surface/`, branch `milestone/result-surface`) — magic-moment UX layer.
+
+**Next after merge:** Once both Engine Hardening and Result Surface are on `main`, fork `milestone/iteration-intelligence` and `milestone/compounding-intelligence` as parallel worktrees from `main`.

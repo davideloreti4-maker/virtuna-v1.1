@@ -4,6 +4,7 @@ import { ApifyClient } from "apify-client";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createLogger } from "@/lib/logger";
 import { buildSubjectText, embedBatch } from "@/lib/engine/retrieval/embedder";
+import { serializeVector } from "@/lib/supabase/pgvector";
 
 /**
  * Constant-time string comparison for the webhook secret. JavaScript `!==`
@@ -187,7 +188,7 @@ export async function POST(request: Request) {
           const { vectors } = await embedBatch(texts);
           const merged = slice.map((row, j) => ({
             ...row,
-            embedding: vectors[j] ? JSON.stringify(vectors[j]) : null,
+            embedding: serializeVector(vectors[j]),
           }));
           withEmbeddings.push(...merged);
         } catch (err) {

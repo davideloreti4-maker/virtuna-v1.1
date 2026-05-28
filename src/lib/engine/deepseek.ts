@@ -464,9 +464,9 @@ export async function reasonWithDeepSeek(
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
       const baseUserMessage = buildDeepSeekUserMessage(context, calibration);
       const userMessage =
@@ -523,6 +523,7 @@ export async function reasonWithDeepSeek(
 
       return { reasoning, cost_cents };
     } catch (error) {
+      clearTimeout(timeout);
       lastError = error instanceof Error ? error : new Error(String(error));
       if (lastError.name === "AbortError") {
         recordFailure();

@@ -8,17 +8,20 @@ A social media intelligence platform for TikTok creators. Helps creators predict
 
 AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
 
-## Status: Intelligence Surface drop — Milestone 1 of 3 active
+## Status: Intelligence Surface drop — Milestone 1b shipped
 
-**Most recently shipped:** Engine Foundation (v3.0.0, merged 2026-05-24 — merge commit `8c50635`). 13-phase backend rebuild: Qwen-only architecture, video segmentation, audio fingerprint, multi-persona simulation, benchmark retrieval. ENGINE_VERSION flipped 3.0.0-dev → 3.0.0.
+**Most recently shipped:** Engine Hardening (v3.1, 2026-05-25). Type hygiene (tsc 0 errors), smoke runner cost field rename, SSRF guard on sound_url, timer leak fixes, pgvector centralization, all VERIF-04 code-review follow-ups closed. VERIF-01/02/03 deferred permanently (no prod deploy).
+
+**Also shipped:** Engine Foundation (v3.0.0, 2026-05-24). 13-phase backend rebuild: Qwen-only architecture, video segmentation, audio fingerprint, multi-persona simulation, benchmark retrieval.
 
 **Intelligence Surface drop** — 3 milestones, single public release. Wraps the validated engine in the UX that makes Virtuna a content intelligence cheatcode for creators. All 3 milestones merge to main behind feature flag (`FEATURE_INTELLIGENCE_SURFACE`); public drop event fires when all 3 ship.
 
 | Order | Milestone | Worktree | Status |
 |-------|-----------|----------|--------|
-| 1 | **Result Surface** — polished result card, live persona viz, mobile route, share/export, reshoot script, optimal post time, WOW onboarding | `~/virtuna-result-surface/` | **Active (started 2026-05-24)** |
-| 2 | **Iteration & Niche Intelligence** — concept mode, A/B variants, cross-platform repurposing, watermark detection, trending sounds for my niche, idea generator, steal-this-playbook | TBD | Forks after M2-I lands |
-| 3 | **Compounding Intelligence** — hook archetype library, trend velocity, outcome feedback loop, wins/flops trend | TBD | Forks after M2-I lands |
+| 1a | **Result Surface** — polished result card, live persona viz, mobile route, share/export, reshoot script, optimal post time, WOW onboarding | `~/virtuna-result-surface/` | **Active (started 2026-05-24)** |
+| 1b | **Engine Hardening** — type hygiene, SSRF guard, timer leaks, pgvector centralization, VERIF-04 code-review follow-ups | `~/virtuna-engine-hardening/` | **✅ Shipped v3.1 (2026-05-25)** |
+| 2 | **Iteration & Niche Intelligence** — concept mode, A/B variants, cross-platform repurposing, watermark detection, trending sounds for my niche, idea generator, steal-this-playbook | TBD | Forks after 1a + 1b land |
+| 3 | **Compounding Intelligence** — hook archetype library, trend velocity, outcome feedback loop, wins/flops trend | TBD | Forks after 1a + 1b land |
 
 **Abandoned in pre-drop gap (see MILESTONES.md):** Brand Statement Landing (2026-05-11), Landing Page Redesign (2026-05-24), Linear Landing Clone (2026-05-24). Landing surface deferred until Intelligence Surface drop completes.
 
@@ -73,6 +76,10 @@ AI-powered content intelligence that tells TikTok creators whether their content
 - Sentry + structured JSON logger (requestId, stage, duration_ms, cost_cents) across all engine modules -- Backend Reliability
 - 203+ Vitest tests, >80% coverage on all engine modules -- Backend Reliability
 - Hardened failure modes: calibration parsing, dual-LLM graceful degradation, circuit breaker mutex, creator profile trigger -- Backend Reliability
+- `pnpm exec tsc --noEmit` returns 0 errors app-wide; `user_settings` migration confirmed live — v3.1
+- Smoke runner cost field renamed `cost_cents_estimated`; billing API deferred while omni-plus is free — v3.1
+- VERIF-04 all 5 sub-items closed: WR-04/WR-05 verified, IN-01 timer leaks fixed, IN-02 pgvector.ts centralized, IN-03 SSRF guard on processSoundEmbedding (T-06-13 closed) — v3.1
+- Platt calibration removed entirely (corpus ≠ production distribution); engine passes raw weighted-sum score — v3.1
 
 ### Active — Intelligence Surface drop (3-milestone bundle)
 
@@ -252,4 +259,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-24 — Intelligence Surface drop kicked off: M2-I Result Surface active in `~/virtuna-result-surface/`; M2-II + M2-III fork as parallel worktrees after M2-I lands. All 3 milestones merge behind feature flag; single public drop event when all ship.*
+*Last updated: 2026-05-25 after v3.1 Engine Hardening milestone. Engine Hardening shipped: tsc 0 errors, SSRF guard, timer leaks fixed, pgvector centralized, Platt calibration removed. Result Surface (M2-I) active in `~/virtuna-result-surface/`. VERIF-01/02/03 deferred permanently — re-run on first prod deploy.*

@@ -93,7 +93,6 @@ function makeFakePredictionResult(
     overall_score: 72,
     confidence: 0.75,
     confidence_label: "HIGH",
-    is_calibrated: false,
     behavioral_predictions: {
       completion_pct: 45,
       completion_percentile: "top 50%",

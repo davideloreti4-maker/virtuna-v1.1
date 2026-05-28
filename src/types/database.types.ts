@@ -936,36 +936,6 @@ export type Database = {
           },
         ]
       }
-      platt_parameters: {
-        Row: {
-          a: number
-          b: number
-          created_at: string
-          engine_version: string
-          fitted_at: string
-          id: number
-          sample_count: number
-        }
-        Insert: {
-          a: number
-          b: number
-          created_at?: string
-          engine_version: string
-          fitted_at: string
-          id?: never
-          sample_count: number
-        }
-        Update: {
-          a?: number
-          b?: number
-          created_at?: string
-          engine_version?: string
-          fitted_at?: string
-          id?: never
-          sample_count?: number
-        }
-        Relationships: []
-      }
       projects: {
         Row: {
           archived: boolean
@@ -1904,3 +1874,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+

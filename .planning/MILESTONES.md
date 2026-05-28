@@ -1,5 +1,21 @@
 # Milestones — Virtuna
 
+## v3.1 Engine Hardening (Shipped: 2026-05-25)
+
+**Phases completed:** 4 phases, 10 plans, 4 tasks
+
+**Key accomplishments:**
+
+- One-liner:
+- One-liner:
+- One-liner:
+- Requirement:
+- Commit:
+- SSRF guard added to `processSoundEmbedding` blocking non-HTTPS + RFC1918/loopback/link-local/IPv6-ULA URLs via 7 hostname regexes; all 5 VERIF-04 sub-items grep-verified; tsc + vitest green at phase close.
+- Blocker:
+
+---
+
 ## Linear Landing Clone (Abandoned: 2026-05-24)
 
 **Status:** 0/8 phases complete. Phase 01 (Foundation + Cross-Cutting Gates) partially executed — 5 plans landed (LenisProvider, MotionWrapper, WebVitalsReporter, Inter opsz axis, CI scope guard). Zero user-visible sections shipped.
@@ -29,6 +45,7 @@
 **Status:** 2/6 phases complete then abandoned. Direction reset to a Magic UI + shadcn-based redesign before viewports 2-7 were built.
 
 **Delivered before abandonment:**
+
 - Phase 01 — Brand Spine & Visual Metaphor: BRAND-BIBLE visual metaphor lock, BRAND-SPINE.md (voice/vocab guardrails, preferred verbs), locked hero copy (HERO-01..05 in archived REQUIREMENTS.md), implementation tech decision (Canvas 2D for hero motion)
 - Phase 02 — Foundation & Hero: BehavioralHero RSC composition, BehavioralCanvas client island (drift+attract particle animation, 250/120 desktop/mobile, reduced-motion fallback), behavioral-hero-constants, external component vetting policy, latent Radix Slot bug fix in `src/components/ui/button.tsx`
 
@@ -193,6 +210,7 @@
 **Phases completed:** 11-12
 
 **Key outcomes:**
+
 - 207 screenshots captured from app.societies.io
 - 45 discrepancies documented (8 critical, 18 major, 19 minor)
 - Complete extraction catalog and comparison reports
@@ -206,6 +224,7 @@
 **Phases completed:** 1-10
 
 **Key outcomes:**
+
 - Full app UI clone (landing + 10+ app screens)
 - Zustand state management with localStorage persistence
 - Responsive design (desktop + mobile)
@@ -220,6 +239,7 @@
 **Phases completed:** 8 phases, 18 plans
 
 **Key accomplishments:**
+
 - Real Supabase auth with middleware enforcement, Google OAuth PKCE, login/signup server actions, and deep link preservation
 - Landing page with Raycast design alignment (6% borders, CTA routing), lazy-loading hive demo via IntersectionObserver
 - Progressive onboarding flow: TikTok @handle connect, goal personalization, 4-tooltip contextual system with Supabase-backed state
@@ -229,6 +249,7 @@
 - Polish: OG metadata via file convention, mobile responsiveness audit, 23 dead files removed, 3 orphaned API routes deleted
 
 **Stats:**
+
 - 87 commits, 751 files changed (+17,078 / -121,787 lines)
 - 23,170 LOC TypeScript
 - 39 requirements, all shipped
@@ -237,12 +258,12 @@
 **Git range:** `abc4ac5..78ac3c6`
 
 **Blockers carried forward:**
+
 - Whop plan IDs need creation in Whop dashboard before going live
 - Referral bonus amount is a business decision (not yet decided)
 - Whop sandbox never tested end-to-end
 
 ---
-
 
 ## Competitors Tool (Shipped: 2026-02-17)
 
@@ -269,12 +290,12 @@
 **Git range:** `milestone/competitors-tool` branch
 
 **Blockers carried forward:**
+
 - Backend-foundation merge timing (apify-client installed manually)
 - Apify actor schemas need runtime verification (Clockworks actors may change)
 - Vercel Pro plan confirmation for sub-daily cron
 
 ---
-
 
 ## Backend Reliability (Shipped: 2026-02-18)
 
@@ -283,6 +304,7 @@
 **Phases completed:** 7 phases, 26 plans
 
 **Key accomplishments:**
+
 - Scheduled all 7 crons in vercel.json and repaired the end-to-end scrape→webhook→aggregate data pipeline
 - Rehabilitated ML classifier with class weighting, real feature bridge, stratified training, and wired as 15% signal into 5-signal aggregator
 - Wired Platt calibration conditionally into aggregator with `is_calibrated` metadata on every prediction
@@ -291,6 +313,7 @@
 - Hardened all failure modes: Zod-validated calibration parsing, dual-LLM graceful degradation, circuit breaker probe mutex, creator profile trigger
 
 **Stats:**
+
 - 94 commits, 133 files changed (+20,269 / -679 lines)
 - 35 requirements, all shipped
 - 7 phases, 26 plans
@@ -299,9 +322,9 @@
 **Git range:** `milestone/backend-reliability` branch
 
 **Blockers carried forward:**
+
 - Calibration has no outcome data yet — wired conditionally, degrades gracefully
 - Circuit breaker is per-serverless-instance (module-level state), not distributed
 - 68 console.* calls remain in non-engine files (API routes, client components) — tech debt for future
 
 ---
-

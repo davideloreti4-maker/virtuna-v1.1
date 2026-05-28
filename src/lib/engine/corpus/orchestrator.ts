@@ -6,6 +6,7 @@ import { createReadStream, createWriteStream, mkdirSync, existsSync } from "fs";
 import { createInterface } from "readline";
 import { dirname, join } from "path";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { serializeVector } from "@/lib/supabase/pgvector";
 
 import {
   NICHES,
@@ -374,7 +375,7 @@ export async function bucketAndPersist(
       const { vectors } = await embedBatch(texts);
       const merged = slice.map((row, j) => ({
         ...row,
-        embedding: vectors[j] ? JSON.stringify(vectors[j]) : null,
+        embedding: serializeVector(vectors[j]),
       }));
       dbRowsWithEmbeddings.push(...merged);
     } catch (err) {

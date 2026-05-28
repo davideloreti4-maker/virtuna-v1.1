@@ -173,7 +173,6 @@ const fakeFinalResult = {
   overall_score: 80,
   confidence: 0.85,
   confidence_label: "HIGH",
-  is_calibrated: true,
   behavioral_predictions: {},
   feature_vector: {},
   reasoning: "fake reasoning",

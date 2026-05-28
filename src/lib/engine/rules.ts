@@ -185,10 +185,11 @@ async function evaluateSemanticRules(
 
   if (evaluableRules.length === 0) return [];
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), SEMANTIC_TIMEOUT_MS);
+
   try {
     const ai = getQwenClient();
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), SEMANTIC_TIMEOUT_MS);
 
     const ruleList = evaluableRules
       .map((r, i) => `${i + 1}. ${r.name}: ${r.evaluation_prompt}`)
@@ -244,6 +245,7 @@ Return JSON: { "evaluations": [{ "rule_name": string, "score": number, "rational
 
     return result.data.evaluations;
   } catch (error) {
+    clearTimeout(timeout);
     log.warn("Semantic evaluation failed, falling back to regex-only", {
       error: error instanceof Error ? error.message : String(error),
     });

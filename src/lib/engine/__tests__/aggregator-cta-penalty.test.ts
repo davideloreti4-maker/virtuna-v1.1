@@ -51,11 +51,6 @@ vi.mock("../ml", () => ({
   featureVectorToMLInput: vi.fn().mockReturnValue(Array(15).fill(0.5)),
 }));
 
-vi.mock("../calibration", () => ({
-  getPlattParameters: vi.fn().mockResolvedValue(null),
-  applyPlattScaling: vi.fn((score: number, _params: unknown) => score),
-}));
-
 vi.mock("../gemini", () => ({
   GEMINI_MODEL: "gemini-test",
 }));
