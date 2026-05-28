@@ -1,12 +1,12 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { type ReactNode, type CSSProperties } from "react";
+import { type ReactNode, type CSSProperties, type HTMLAttributes } from "react";
 
 /** Available gradient colors for pills */
 type PillColor = "purple" | "blue" | "pink" | "cyan" | "green" | "orange";
 
-export interface GlassPillProps {
+export interface GlassPillProps extends Omit<HTMLAttributes<HTMLElement>, 'color'> {
   children: ReactNode;
   /** Color theme for the pill */
   color?: PillColor | "neutral";
@@ -100,6 +100,7 @@ export function GlassPill({
   style,
   onClick,
   disabled = false,
+  ...rest
 }: GlassPillProps) {
   const isInteractive = Boolean(onClick) && !disabled;
   const colorConfig = colorValues[color];
@@ -108,6 +109,7 @@ export function GlassPill({
 
   return (
     <Component
+      {...(rest as Record<string, unknown>)}
       type={onClick ? "button" : undefined}
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
