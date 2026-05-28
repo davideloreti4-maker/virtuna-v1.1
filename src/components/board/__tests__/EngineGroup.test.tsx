@@ -15,6 +15,11 @@ let mockStream: { stages: StageEvent[]; phase: string; partial: { personas: unkn
 vi.mock('@/hooks/queries/use-analysis-stream', () => ({
   useAnalysisStream: () => mockStream,
 }));
+// EngineGroup hydrates from permalink REST cache via usePermalinkAnalysis;
+// stub so tests don't need QueryClientProvider + Next router params.
+vi.mock('@/hooks/queries/use-permalink-analysis', () => ({
+  usePermalinkAnalysis: () => ({ id: null, data: null, isLoading: false }),
+}));
 
 function ev(type: 'stage_start' | 'stage_end', wave: StageEventWave): StageEvent {
   if (type === 'stage_start') return { type, stage: '', wave, timestamp_ms: 0 } as StageEvent;
