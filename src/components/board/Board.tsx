@@ -26,6 +26,9 @@ import { getFrameAntiViralityState } from './cross-group-state';
 import { GroupFrameOverlay } from './GroupFrameOverlay';
 import { EngineGroup } from './EngineGroup';
 import { AudienceNode } from './audience/AudienceNode';
+import { VerdictNode } from './verdict/VerdictNode';
+import { ActionsNode } from './actions/ActionsNode';
+import { ContentAnalysisFrame } from './content-analysis/ContentAnalysisFrame';
 import { InputNodeShape, InputNodeOverlay } from './InputNode';
 import { InputDrawer } from './InputDrawer';
 import type { GroupId } from './board-types';
@@ -296,6 +299,9 @@ export function Board() {
           >
             {layout.id === 'engine' && <EngineGroup />}
             {layout.id === 'audience' && <AudienceNode camera={camera} layout={layout} />}
+            {layout.id === 'verdict' && <VerdictNode camera={camera} layout={layout} />}
+            {layout.id === 'actions' && <ActionsNode camera={camera} layout={layout} />}
+            {layout.id === 'content-analysis' && <ContentAnalysisFrame camera={camera} layout={layout} />}
           </GroupFrameOverlay>
         ))}
         {/* Plan 2.7: Input node DOM overlay — thumbnailUrl/snippet wired in future plan */}

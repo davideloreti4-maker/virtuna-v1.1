@@ -121,8 +121,9 @@ export function EmotionArcNode({ points, className }: Props) {
         {ariaText}
       </span>
 
-      {/* Headline strip */}
-      <header className="flex items-center justify-between">
+      {/* Headline strip — role="none" prevents banner landmark violation (axe landmark-banner-is-top-level)
+          since this header is nested inside role=region (GroupFrameOverlay). */}
+      <header role="none" className="flex items-center justify-between">
         <span className="text-xs font-medium" data-testid="emotion-arc-title">
           {COPY.EMOTION_ARC_TITLE}
         </span>

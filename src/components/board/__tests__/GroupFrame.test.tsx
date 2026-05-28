@@ -78,16 +78,17 @@ describe('GroupFrame integration', () => {
     expect(regions.length).toBe(6);
   });
 
-  it('shows empty-state copy on non-Input/Engine frames in idle', async () => {
+  it('renders real node bodies for verdict, actions, content-analysis frames in idle (plan 05-09 wiring)', async () => {
     renderBoard();
     await act(async () => {
       await new Promise((r) => setTimeout(r, 50));
     });
-    // Empty-state copy refreshed in the visual polish pass — now titled + with subtitle.
-    // Audience renders AudienceNode (not empty); the other three render empty-state copy.
-    expect(screen.getByText('Final virality call')).toBeInTheDocument();
-    expect(screen.getByText('Recommended next moves')).toBeInTheDocument();
-    expect(screen.getByText('Hook breakdown · tags · drivers')).toBeInTheDocument();
+    // Plan 05-09 wired VerdictNode, ActionsNode, ContentAnalysisFrame into Board.
+    // These replace empty-state copy for their frames; hasRealChildren → true → empty state suppressed.
+    // Verify each node body renders its root testid.
+    expect(screen.getByTestId('verdict-node')).toBeInTheDocument();
+    expect(screen.getByTestId('actions-node')).toBeInTheDocument();
+    expect(screen.getByTestId('content-analysis-frame')).toBeInTheDocument();
   });
 
   it('renders anti-virality stroke on Verdict + Audience rects when boardState=anti-virality', async () => {
@@ -100,8 +101,9 @@ describe('GroupFrame integration', () => {
     const orangeStrokes = Array.from(rects).filter((r) =>
       (r.getAttribute('data-stroke') ?? '').includes('255,148'),
     );
-    // Verdict + Audience = 2 rects with anti-virality stroke
-    expect(orangeStrokes.length).toBe(2);
+    // Verdict + Audience + Actions = 3 rects with anti-virality stroke
+    // (Actions wired in plan 05-09; AFFECTED_FRAMES includes verdict, audience, actions)
+    expect(orangeStrokes.length).toBe(3);
   });
 
   it('toggles aria-expanded on chevron click', async () => {
