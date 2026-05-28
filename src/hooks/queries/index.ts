@@ -1,4 +1,3 @@
-export { useTrendingVideos, useTrendingStats } from "./use-trending";
 export { useDeals, useDealEnrollments, useApplyToDeal } from "./use-deals";
 export { useAnalyze, useAnalysisHistory, useAnalysisDetail, useDeleteAnalysis } from "./use-analyze";
 export * from "./use-analysis-stream";

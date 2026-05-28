@@ -20,12 +20,14 @@ export default defineConfig({
     environment: "node",
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.ts", "src/**/*.test.tsx", "tests/**/*.test.ts"],
+    exclude: ["**/_dormant/**", "**/node_modules/**", "**/dist/**", ".idea", ".git", ".cache"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
       reportsDirectory: "./coverage",
       include: ["src/lib/engine/**/*.ts"],
       exclude: [
+        "**/_dormant/**",
         "src/lib/engine/__tests__/**",
         "src/lib/engine/types.ts",
         "src/lib/engine/calibration-baseline.json",
