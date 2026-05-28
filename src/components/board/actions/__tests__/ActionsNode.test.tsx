@@ -5,6 +5,16 @@ import { fixtures } from '../../verdict/__tests__/fixtures/prediction-result';
 
 vi.mock('@/lib/logger', () => ({ logger: { info: vi.fn(), event: vi.fn() } }));
 vi.mock('@/hooks/usePrefersReducedMotion', () => ({ usePrefersReducedMotion: () => false }));
+// Stub TikTokEmbed + Dialog so SimilarVideosCard (wired in Plan 5.6) renders without side-effects.
+vi.mock('@/components/trending/tiktok-embed', () => ({
+  TikTokEmbed: () => <div data-testid="tiktok-embed-stub" />,
+}));
+vi.mock('@/components/ui/dialog', () => ({
+  Dialog: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
+    open ? <div data-testid="dialog-root">{children}</div> : null,
+  DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DialogTitle: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+}));
 // @phosphor-icons/react is ESM-only; vi.resetModules() makes named exports undefined in happy-dom.
 // Provide stub SVG components for all icons used by slot wrappers.
 vi.mock('@phosphor-icons/react', () => ({
@@ -93,7 +103,8 @@ describe('ActionsNode', () => {
     expect(screen.getByTestId('actions-av-bottom-row')).toBeInTheDocument();
     // All three slots in AV bottom row must be present per D-10
     expect(screen.getByTestId('actions-optimal-post-placeholder')).toBeInTheDocument();
-    expect(screen.getByTestId('actions-similar-videos-slot-av')).toBeInTheDocument();
+    // Plan 5.6: real SimilarVideosCard replaces the actions-similar-videos-slot-av placeholder div
+    expect(screen.getByTestId('similar-videos-card')).toBeInTheDocument();
     expect(screen.getByTestId('actions-share-placeholder')).toBeInTheDocument();
   });
 
@@ -106,20 +117,20 @@ describe('ActionsNode', () => {
     expect(hero.className).toContain('col-span-2');
   });
 
-  it('reserves slot for SimilarVideosCard (default state — Plan 5.6 fills)', async () => {
+  it('renders SimilarVideosCard in default state (Plan 5.6 — replaced placeholder)', async () => {
     mockStream({ phase: 'complete', result: fixtures.complete });
     mockBoardState('complete');
     const { ActionsNode: Fresh } = await import('../ActionsNode');
     render(<Fresh camera={{} as never} layout={{} as never} />);
-    expect(screen.getByTestId('actions-similar-videos-slot')).toBeInTheDocument();
+    expect(screen.getByTestId('similar-videos-card')).toBeInTheDocument();
   });
 
-  it('reserves slot for SimilarVideosCard (AV state variant — Plan 5.6 also fills this)', async () => {
+  it('renders SimilarVideosCard in AV state (Plan 5.6 — replaced AV placeholder)', async () => {
     mockStream({ phase: 'complete', result: fixtures.antiVirality });
     mockBoardState('anti-virality');
     const { ActionsNode: Fresh } = await import('../ActionsNode');
     render(<Fresh camera={{} as never} layout={{} as never} />);
-    expect(screen.getByTestId('actions-similar-videos-slot-av')).toBeInTheDocument();
+    expect(screen.getByTestId('similar-videos-card')).toBeInTheDocument();
   });
 
   it('applies transition style on grid (non-RM)', async () => {

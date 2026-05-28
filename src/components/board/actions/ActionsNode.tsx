@@ -7,6 +7,7 @@ import { getFrameAntiViralityState } from '../cross-group-state';
 import { ActionsReshootHeroSlot } from './ActionsReshootHeroSlot';
 import { ActionsOptimalPostSlot } from './ActionsOptimalPostSlot';
 import { ActionsShareSlot } from './ActionsShareSlot';
+import { SimilarVideosCard } from './SimilarVideosCard';
 import { TELEMETRY, ACTIONS_GRID_DEFAULT_ROWS, ACTIONS_GRID_AV_ROWS } from './actions-constants';
 import type { ActionsNodeProps } from './actions-types';
 import { logger } from '@/lib/logger';
@@ -59,9 +60,12 @@ export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodePro
               data-testid="actions-av-bottom-row"
             >
               <ActionsOptimalPostSlot />
-              {/* SimilarVideosCard slot for AV — Plan 5.6 wires the real card here.
-                  Different testid so Plan 5.6 can target the AV variant without disturbing default. */}
-              <div data-testid="actions-similar-videos-slot-av" />
+              {/* SimilarVideosCard (Plan 5.6) — AV state bottom row slot.
+                  Sits between OptimalPostSlot and ShareSlot per B2 / D-10. Share placeholder remains untouched. */}
+              <SimilarVideosCard
+                items={result?.retrieval_evidence}
+                signalAvailable={result?.signal_availability?.retrieval ?? false}
+              />
               <ActionsShareSlot />
             </div>
           </>
@@ -70,8 +74,11 @@ export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodePro
             {/* DEFAULT 2x2: Reshoot | OptimalPost | SimilarVideos | Share */}
             <ActionsReshootHeroSlot />
             <ActionsOptimalPostSlot />
-            {/* SimilarVideosCard slot — filled by Plan 5.6 */}
-            <div data-testid="actions-similar-videos-slot" />
+            {/* SimilarVideosCard (Plan 5.6) — default 2x2 slot */}
+            <SimilarVideosCard
+              items={result?.retrieval_evidence}
+              signalAvailable={result?.signal_availability?.retrieval ?? false}
+            />
             <ActionsShareSlot />
           </>
         )}
