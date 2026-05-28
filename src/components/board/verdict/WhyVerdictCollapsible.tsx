@@ -72,9 +72,13 @@ export function WhyVerdictCollapsible({ result }: WhyVerdictCollapsibleProps) {
       </summary>
 
       <div className="p-3 pt-0 text-xs">
-        {/* Intro paragraph — markdown w/ XSS sanitization */}
+        {/* Intro paragraph — markdown w/ XSS sanitization.
+            prose-xs is unavailable in Tailwind v4; explicit utility classes applied instead. */}
         {buckets.intro && (
-          <div className="mb-3 prose prose-invert prose-xs max-w-none" data-testid="why-verdict-intro">
+          <div
+            className="mb-3 max-w-none leading-[1.45] [&_p]:mb-2 [&_p]:leading-[1.45]"
+            data-testid="why-verdict-intro"
+          >
             <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{buckets.intro}</ReactMarkdown>
           </div>
         )}
@@ -82,12 +86,12 @@ export function WhyVerdictCollapsible({ result }: WhyVerdictCollapsibleProps) {
         {/* Sub-section: Why this works */}
         {buckets.works.length > 0 && (
           <section className="mb-2" data-testid="sub-works">
-            <h4 className="text-[10px] font-normal uppercase tracking-[0.04em] text-white/50 mb-1">
+            <h4 className="text-[10px] uppercase tracking-[0.04em] text-white/50 mb-1 font-normal">
               {COPY.SUB_WORKS}
             </h4>
-            <ul className="flex flex-col gap-1">
+            <ul className="flex flex-col space-y-1.5">
               {buckets.works.map((f) => (
-                <li key={f.name} className="text-xs">
+                <li key={f.name} className="text-xs leading-[1.45]">
                   <span className="font-medium">{f.name}: </span>
                   <span className="text-foreground-muted">{f.rationale}</span>
                 </li>
@@ -99,12 +103,12 @@ export function WhyVerdictCollapsible({ result }: WhyVerdictCollapsibleProps) {
         {/* Sub-section: Why this might not */}
         {buckets.mightNot.length > 0 && (
           <section className="mb-2" data-testid="sub-might-not">
-            <h4 className="text-[10px] font-normal uppercase tracking-[0.04em] text-white/50 mb-1">
+            <h4 className="text-[10px] uppercase tracking-[0.04em] text-white/50 mb-1 font-normal">
               {COPY.SUB_MIGHT_NOT}
             </h4>
-            <ul className="flex flex-col gap-1">
+            <ul className="flex flex-col space-y-1.5">
               {buckets.mightNot.map((f) => (
-                <li key={f.name} className="text-xs">
+                <li key={f.name} className="text-xs leading-[1.45]">
                   <span className="font-medium">{f.name}: </span>
                   <span className="text-foreground-muted">{f.improvement_tip}</span>
                 </li>
@@ -116,12 +120,12 @@ export function WhyVerdictCollapsible({ result }: WhyVerdictCollapsibleProps) {
         {/* Sub-section: What the engine flagged */}
         {buckets.flagged.length > 0 && (
           <section className="mb-2" data-testid="sub-flagged">
-            <h4 className="text-[10px] font-normal uppercase tracking-[0.04em] text-white/50 mb-1">
+            <h4 className="text-[10px] uppercase tracking-[0.04em] text-white/50 mb-1 font-normal">
               {COPY.SUB_FLAGGED}
             </h4>
-            <ul className="flex flex-col gap-1">
+            <ul className="flex flex-col space-y-1.5">
               {buckets.flagged.map((w, i) => (
-                <li key={i} className="text-xs text-foreground-muted">
+                <li key={i} className="text-xs leading-[1.45] text-foreground-muted">
                   {w}
                 </li>
               ))}

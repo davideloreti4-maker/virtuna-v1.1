@@ -143,6 +143,19 @@ describe('WhyVerdictCollapsible', () => {
     expect(plainList!.textContent).toContain('Add CTA card'); // the 'stretch'
   });
 
+  it('typography: sub-section lists use space-y-1.5 spacing class', () => {
+    render(<WhyVerdictCollapsible result={fixtures.complete} />);
+    const subWorks = screen.getByTestId('sub-works');
+    const ul = subWorks.querySelector('ul');
+    expect(ul?.className).toContain('space-y-1.5');
+  });
+
+  it('typography: intro uses leading-[1.45] line height', () => {
+    render(<WhyVerdictCollapsible result={fixtures.complete} />);
+    const intro = screen.getByTestId('why-verdict-intro');
+    expect(intro.className).toContain('leading-[1.45]');
+  });
+
   it('fires verdict_reasoning_expanded telemetry (logger.info) on toggle open', () => {
     render(<WhyVerdictCollapsible result={fixtures.complete} />);
     const details = screen.getByTestId('why-verdict-collapsible') as HTMLDetailsElement;
