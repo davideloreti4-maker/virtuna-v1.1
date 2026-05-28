@@ -1265,7 +1265,7 @@ describe("hook_decomposition + emotion_arc pluck (Quick 260528-nqx)", () => {
       visual_audio_coherence: 7.4,
       cognitive_load: 5,
       weakest_modality: "text_overlay_score",
-      watermark_detected: false,
+      // watermark_detected is optional per ALGO-06 back-compat; omit in this test
     };
     const arc: EmotionArcPoint[] = [
       { timestamp_ms: 0, intensity_0_1: 0.3 },
