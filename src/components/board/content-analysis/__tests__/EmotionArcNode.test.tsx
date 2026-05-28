@@ -65,7 +65,7 @@ describe('EmotionArcNode', () => {
   it('renders empty caption when emotion_arc is null', () => {
     render(<EmotionArcNode points={null} />);
     expect(screen.getByTestId('emotion-arc-empty-caption')).toHaveTextContent(
-      'Emotion arc unavailable',
+      "Emotion arc isn't available for this analysis",
     );
   });
 

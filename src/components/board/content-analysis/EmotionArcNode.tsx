@@ -238,7 +238,7 @@ export function EmotionArcNode({ points, className }: Props) {
             className="absolute inset-0 flex items-center justify-center text-xs italic text-foreground-muted"
             data-testid="emotion-arc-empty-caption"
           >
-            {COPY.EMOTION_ARC_EMPTY}
+            {COPY.EMOTION_ARC_UNAVAILABLE}
           </p>
         )}
       </div>

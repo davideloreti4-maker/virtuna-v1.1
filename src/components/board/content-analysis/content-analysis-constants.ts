@@ -17,12 +17,15 @@ export const HOOK_BAR_ORDER: HookModality[] = [
 
 export const COPY = {
   HOOK_DECOMP_TITLE: 'Hook decomposition',
+  // Standardised unavailable template: "<Feature> isn't available for this analysis"
   HOOK_DECOMP_EMPTY: 'Hook analysis unavailable for this video',
+  HOOK_DECOMP_UNAVAILABLE: "Hook decomposition isn't available for this analysis",
   HOOK_ZONE_FALLBACK: '0–3s',
   COHERENCE_PREFIX: 'Coherence',
   COGNITIVE_LOAD_PREFIX: 'Cognitive load',
   EMOTION_ARC_TITLE: 'Emotion arc',
   EMOTION_ARC_EMPTY: 'Emotion arc unavailable',
+  EMOTION_ARC_UNAVAILABLE: "Emotion arc isn't available for this analysis",
   EMOTION_ARC_PEAK_PREFIX: 'Peak at',
 } as const;
 

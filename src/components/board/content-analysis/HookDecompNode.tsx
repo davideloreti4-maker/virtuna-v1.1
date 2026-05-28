@@ -133,7 +133,7 @@ export function HookDecompNode({ decomp, segments, counterfactuals, className }:
             className="text-xs italic text-foreground-muted"
             data-testid="hook-decomp-empty-caption"
           >
-            {COPY.HOOK_DECOMP_EMPTY}
+            {COPY.HOOK_DECOMP_UNAVAILABLE}
           </p>
         </div>
       )}

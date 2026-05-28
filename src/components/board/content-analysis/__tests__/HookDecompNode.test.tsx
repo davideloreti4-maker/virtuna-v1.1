@@ -122,7 +122,7 @@ describe('HookDecompNode', () => {
     render(<HookDecompNode decomp={null} segments={null} counterfactuals={[]} />);
     expect(screen.getByTestId('hook-decomp-empty')).toBeInTheDocument();
     expect(screen.getByTestId('hook-decomp-empty-caption')).toHaveTextContent(
-      'Hook analysis unavailable for this video',
+      "Hook decomposition isn't available for this analysis",
     );
     // No chip row in empty state
     expect(screen.queryByTestId('hook-decomp-chips')).toBeNull();

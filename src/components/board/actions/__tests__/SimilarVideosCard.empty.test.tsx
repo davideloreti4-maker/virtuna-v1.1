@@ -14,14 +14,14 @@ vi.mock('@/components/ui/dialog', () => ({
 }));
 
 describe('SimilarVideosCard — empty state', () => {
-  it('shows empty state caption when retrieval_evidence is empty array', () => {
+  it('shows CTA copy when retrieval_evidence is empty array (zero items)', () => {
     render(<SimilarVideosCard items={[]} signalAvailable={true} />);
     expect(screen.getByTestId('similar-videos-empty')).toHaveTextContent(
       'No similar videos yet — try a new analysis',
     );
   });
 
-  it('shows empty state caption when signal_availability.retrieval is false', () => {
+  it('shows unavailable copy when signalAvailable is false', () => {
     const fakeItems = [
       {
         source_pool: 'scraped_videos' as const,
@@ -43,12 +43,16 @@ describe('SimilarVideosCard — empty state', () => {
       },
     ];
     render(<SimilarVideosCard items={fakeItems} signalAvailable={false} />);
-    expect(screen.getByTestId('similar-videos-empty')).toBeInTheDocument();
+    expect(screen.getByTestId('similar-videos-empty')).toHaveTextContent(
+      "Similar videos isn't available for this analysis",
+    );
   });
 
-  it('shows empty state caption when retrieval_evidence is undefined', () => {
+  it('shows CTA copy when retrieval_evidence is undefined (no data yet)', () => {
     render(<SimilarVideosCard items={undefined} signalAvailable={true} />);
-    expect(screen.getByTestId('similar-videos-empty')).toBeInTheDocument();
+    expect(screen.getByTestId('similar-videos-empty')).toHaveTextContent(
+      'No similar videos yet — try a new analysis',
+    );
   });
 
   it('does NOT render the list element in empty state', () => {

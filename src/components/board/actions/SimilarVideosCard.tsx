@@ -31,7 +31,11 @@ export function SimilarVideosCard({ items, signalAvailable }: Props) {
     setOpenItem(item);
   }, []);
 
-  const isEmpty = !signalAvailable || !items || items.length === 0;
+  const isUnavailable = !signalAvailable;
+  const isEmpty = isUnavailable || !items || items.length === 0;
+  const emptyMessage = isUnavailable
+    ? COPY.SIMILAR_VIDEOS_UNAVAILABLE
+    : COPY.SIMILAR_VIDEOS_EMPTY;
   const visible = (items ?? []).slice(0, 5);
 
   return (
@@ -51,7 +55,7 @@ export function SimilarVideosCard({ items, signalAvailable }: Props) {
             className="text-xs italic text-foreground-muted"
             data-testid="similar-videos-empty"
           >
-            {COPY.SIMILAR_VIDEOS_EMPTY}
+            {emptyMessage}
           </p>
         ) : (
           <ul
