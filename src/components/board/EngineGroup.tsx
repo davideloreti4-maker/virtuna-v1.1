@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useBoardStore } from '@/stores/board-store';
 import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
+import { usePermalinkAnalysis } from '@/hooks/queries/use-permalink-analysis';
 import { usePerfStore } from '@/lib/perf-tier';
 import { EngineStageGlyph, type EngineStageStatus } from './EngineStageGlyph';
 import type { StageEvent } from '@/lib/engine/events';
@@ -41,7 +42,8 @@ export function deriveEngineStageStatus(stages: StageEvent[], stage: Stage): Eng
 }
 
 export function EngineGroup() {
-  const stream = useAnalysisStream();
+  const { data: permalinkData } = usePermalinkAnalysis();
+  const stream = useAnalysisStream({ initialData: permalinkData ?? null });
   const reducedMotion = usePrefersReducedMotion();
   const tier = usePerfStore((s) => s.tier);
   const effectiveReducedMotion = reducedMotion || tier === 'low';

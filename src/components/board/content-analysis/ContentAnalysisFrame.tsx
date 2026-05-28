@@ -1,11 +1,13 @@
 'use client';
 import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
+import { usePermalinkAnalysis } from '@/hooks/queries/use-permalink-analysis';
 import { HookDecompNode } from './HookDecompNode';
 import { EmotionArcNode } from './EmotionArcNode';
 import type { ContentAnalysisFrameProps } from './content-analysis-types';
 
 export function ContentAnalysisFrame({ camera: _camera, layout: _layout }: ContentAnalysisFrameProps) {
-  const stream = useAnalysisStream();
+  const { data: permalinkData } = usePermalinkAnalysis();
+  const stream = useAnalysisStream({ initialData: permalinkData ?? null });
   const phase = stream.phase;
   const result = stream.result ?? null;
   const isStreaming = phase === 'analyzing' || phase === 'reconnecting' || phase === 'polling';

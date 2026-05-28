@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef } from 'react';
 import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
+import { usePermalinkAnalysis } from '@/hooks/queries/use-permalink-analysis';
 import { useBoardStore } from '@/stores/board-store';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { getFrameAntiViralityState } from '../cross-group-state';
@@ -15,7 +16,8 @@ import type { OptimalPostWindow } from '@/lib/engine/optimal-post';
 import { logger } from '@/lib/logger';
 
 export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodeProps) {
-  const stream = useAnalysisStream();
+  const { data: permalinkData } = usePermalinkAnalysis();
+  const stream = useAnalysisStream({ initialData: permalinkData ?? null });
   const phase = stream.phase;
   const result = stream.result ?? null;
   const analysisId = (result as { id?: string } | null)?.id ?? null;

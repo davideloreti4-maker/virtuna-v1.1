@@ -290,7 +290,7 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
           <div className="flex flex-col gap-1">
             <Filmstrip
               segments={result?.heatmap?.segments ?? null}
-              filmstrips={Object.keys(filmstrips).length > 0 ? filmstrips : (pendingVideo?.frames ?? {})}
+              filmstrips={filmstrips && Object.keys(filmstrips).length > 0 ? filmstrips : (pendingVideo?.frames ?? {})}
               totalDurationSec={totalDurationSec}
               antiViralitySegmentIndices={antiViralityState.dropoff_segment_indices}
             />

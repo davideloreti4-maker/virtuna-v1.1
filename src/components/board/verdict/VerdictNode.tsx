@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 // W5: typed import — AnalysisStream alias added to use-analysis-stream in this plan.
 // analysisId field is string | null (confirmed from AnalysisStreamReturn interface).
 import { useAnalysisStream, type AnalysisStream } from '@/hooks/queries/use-analysis-stream';
+import { usePermalinkAnalysis } from '@/hooks/queries/use-permalink-analysis';
 import { useBoardStore } from '@/stores/board-store';
 import { getFrameAntiViralityState } from '../cross-group-state';
 import { PercentileChip } from './PercentileChip';
@@ -14,7 +15,8 @@ import type { VerdictNodeProps } from './verdict-types';
 import { logger } from '@/lib/logger';
 
 export function VerdictNode({ camera: _camera, layout: _layout }: VerdictNodeProps) {
-  const stream: AnalysisStream = useAnalysisStream();
+  const { data: permalinkData } = usePermalinkAnalysis();
+  const stream: AnalysisStream = useAnalysisStream({ initialData: permalinkData ?? null });
   // Direct typed read from AnalysisStream — no cast needed (W5 fix).
   // analysisId is string | null per AnalysisStreamReturn interface.
   const analysisId = stream.analysisId ?? '';
