@@ -66,7 +66,7 @@ export function Board() {
   const tier = usePerfStore((s) => s.tier);
   const setTier = usePerfStore((s) => s.setTier);
   const effectiveReducedMotion = reducedMotion || tier === 'low';
-  const { toast } = useToast();
+  const { toast, dismiss } = useToast();
 
   // Board machine state for frame visual derivation (plan 2.2)
   const boardMachineState = useBoardStore((s) => s.boardState);
@@ -130,6 +130,9 @@ export function Board() {
   // a stale result from the previous run.
   const streamingAnalysisIdRef = useRef<string | null>(null);
 
+  // Fix 3 (05-ux): Track the streaming toast ID so we can dismiss it on complete/error.
+  const streamingToastIdRef = useRef<string | null>(null);
+
   // Map useAnalysisStream phase → board state machine transitions.
   useEffect(() => {
     switch (stream.phase) {
@@ -140,11 +143,37 @@ export function Board() {
         if (current !== 'streaming') {
           startStreaming();
           streamingAnalysisIdRef.current = stream.analysisId ?? null;
+
+          // Fix 3 (05-ux): Show a persistent progress toast so user knows something is happening.
+          // duration=0 → never auto-dismisses; we dismiss manually on complete/error.
+          if (!streamingToastIdRef.current) {
+            streamingToastIdRef.current = toast({
+              variant: 'info',
+              title: 'Analyzing your video',
+              description: 'This usually takes about 90 seconds — you can keep using the app.',
+              duration: 0,
+              action: {
+                label: 'Cancel',
+                onClick: () => {
+                  stream.abort();
+                  if (streamingToastIdRef.current) {
+                    dismiss(streamingToastIdRef.current);
+                    streamingToastIdRef.current = null;
+                  }
+                },
+              },
+            });
+          }
         }
         break;
       }
       case 'complete': {
         finishStreaming();
+        // Dismiss streaming toast on success
+        if (streamingToastIdRef.current) {
+          dismiss(streamingToastIdRef.current);
+          streamingToastIdRef.current = null;
+        }
         // Fire anti-virality ripple on completion. WR-01 originally guarded
         // this with `analysisId === streamingAnalysisIdRef.current` so the
         // ripple only fires when the CURRENT session started the stream. That
@@ -164,6 +193,11 @@ export function Board() {
       }
       case 'error':
         streamingAnalysisIdRef.current = null;
+        // Dismiss streaming toast on error
+        if (streamingToastIdRef.current) {
+          dismiss(streamingToastIdRef.current);
+          streamingToastIdRef.current = null;
+        }
         resetToIdle();
         break;
       // 'idle' — no transition needed

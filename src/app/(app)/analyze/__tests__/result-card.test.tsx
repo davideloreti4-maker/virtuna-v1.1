@@ -130,6 +130,7 @@ describe("ResultCard", () => {
       reconnect: reconnectSpy,
       analysisId: null,
       filmstrips: {},
+      abort: vi.fn(),
     });
 
     renderResultCard("test-id-005", null);

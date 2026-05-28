@@ -103,6 +103,9 @@ export interface AnalysisStreamReturn {
   analysisId: string | null;
   /** Live map of segment_idx → signed keyframe URL. Populated by filmstrip_segment_ready SSE events (Phase 4). */
   filmstrips: Record<number, string>;
+  /** Fix 3 (05-ux): Cancel an in-flight analysis. Aborts the POST body-reader,
+   *  closes any open EventSource, and transitions phase → 'idle'. */
+  abort: () => void;
 }
 
 function initialPanelReady(): Record<PanelId, PanelReadyState> {
@@ -470,5 +473,15 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
     [mutation],
   );
 
-  return { start, result, stages, partial, panelReady, phase, error, reconnect, analysisId, filmstrips };
+  // Fix 3 (05-ux): abort() — cancels the in-flight POST body-reader and/or EventSource,
+  // then resets phase to 'idle'. Safe to call when phase is already 'idle' or 'complete'.
+  const abort = useCallback(() => {
+    abortRef.current?.abort();
+    eventSourceRef.current?.close();
+    eventSourceRef.current = null;
+    setPhase("idle");
+    setError(null);
+  }, []);
+
+  return { start, result, stages, partial, panelReady, phase, error, reconnect, analysisId, filmstrips, abort };
 }

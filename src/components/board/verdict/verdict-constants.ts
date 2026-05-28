@@ -51,6 +51,11 @@ export const TELEMETRY = {
   VERDICT_HISTORY_EXPANDED: 'verdict_history_expanded',
 } as const;
 
+/** Fix 3 (05-ux): Live stage label shown in the Verdict "Calculating…" placeholder.
+ *  Falls back to "Analyzing…" when stage slug is null (before first stage event). */
+export const COPY_CALCULATING_STAGE = (stage: string | null): string =>
+  stage ? stage.replace(/_/g, ' ') : 'Analyzing…';
+
 export function bandFromScore(score: number): 'Strong' | 'Mid' | 'Low' {
   if (score >= BAND_THRESHOLDS.STRONG) return 'Strong';
   if (score >= BAND_THRESHOLDS.MID) return 'Mid';
