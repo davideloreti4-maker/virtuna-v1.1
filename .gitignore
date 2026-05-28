@@ -62,3 +62,9 @@ scripts/data/
 # Phase 6 audio smoke-test fixtures + results (developer-local, not versioned)
 tests/fixtures/audio-smoke/*.mp4
 tests/fixtures/audio-smoke/smoke-test-results.json
+
+# Claude Code local state (worktrees, settings.local.json)
+.claude/
+
+# Playwright MCP debug captures (console logs, snapshots, screenshots)
+.playwright-mcp/

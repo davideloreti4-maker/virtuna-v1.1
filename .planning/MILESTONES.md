@@ -1,5 +1,49 @@
 # Milestones — Virtuna
 
+## Linear Landing Clone (Abandoned: 2026-05-24)
+
+**Status:** 0/8 phases complete. Phase 01 (Foundation + Cross-Cutting Gates) partially executed — 5 plans landed (LenisProvider, MotionWrapper, WebVitalsReporter, Inter opsz axis, CI scope guard). Zero user-visible sections shipped.
+
+**Branch / worktree:** `milestone/landing-linear-clone` at `~/virtuna-landing-linear-clone/` (retained on disk for reference).
+
+**Reason for abandonment:** Time-to-shipped too long for the ASAP need. The milestone front-loaded cross-cutting gates and original-content discipline before any section work — admirable craft floor but wrong shape for the immediate "ship a landing now" goal. The `landing/` components in `src/components/landing/` are still the inherited (plagiarized AS) v3.0 stubs at abandonment time; nothing new merged. Successor milestone (`Landing`) starts fresh with no carryover.
+
+**Successor:** `Landing` milestone (`milestone/landing` branch + worktree at `~/virtuna-landing/`).
+
+---
+
+## Landing Page Redesign (Abandoned: 2026-05-24)
+
+**Status:** 2/8 phases complete + Phase 03 stopped at human-verify checkpoint. Shipped (on branch only, never merged to main): `<Hero />`, `<TrustBand />`, `<Bento />` server components and the Phase 03 closing gate (130/130 component tests green, build succeeds).
+
+**Branch / worktree:** `milestone/landing-page-redesign` at `~/virtuna-landing-page-redesign/` (retained on disk for reference).
+
+**Reason for abandonment:** Direction reset to a fresh-start milestone with no carryover. Magic UI + shadcn integration pattern, the discovered-during-build brand spine policy, and the 3 shipped sections are not being salvaged — successor milestone starts completely from scratch per user direction.
+
+**Successor:** `Landing` milestone (`milestone/landing` branch + worktree at `~/virtuna-landing/`).
+
+---
+
+## Brand Statement Landing (Abandoned: 2026-05-11)
+
+**Status:** 2/6 phases complete then abandoned. Direction reset to a Magic UI + shadcn-based redesign before viewports 2-7 were built.
+
+**Delivered before abandonment:**
+- Phase 01 — Brand Spine & Visual Metaphor: BRAND-BIBLE visual metaphor lock, BRAND-SPINE.md (voice/vocab guardrails, preferred verbs), locked hero copy (HERO-01..05 in archived REQUIREMENTS.md), implementation tech decision (Canvas 2D for hero motion)
+- Phase 02 — Foundation & Hero: BehavioralHero RSC composition, BehavioralCanvas client island (drift+attract particle animation, 250/120 desktop/mobile, reduced-motion fallback), behavioral-hero-constants, external component vetting policy, latent Radix Slot bug fix in `src/components/ui/button.tsx`
+
+**Reverted on main:** All src/ changes from Phase 02 except `src/components/ui/button.tsx` Slot fix (kept as a real bug fix, useful regardless of direction). Phase 01 was docs-only — its artifacts live in the archive directory only; `BRAND-BIBLE.md` at repo root retains Phase 01's visual metaphor lock content.
+
+**Reason for abandonment:** After Phase 02 shipped, the live page still felt 90% like the prior plagiarized Artificial Societies template (only viewport 1 had been replaced; viewports 2-7 + chrome + footer remained). User opted for a full reset with a different design direction (Magic UI + shadcn) rather than continuing through Phases 3-6.
+
+**Successor:** `Landing Page Redesign` milestone (`milestone/landing-page-redesign` branch + worktree at `~/virtuna-landing-page-redesign/`).
+
+**Archived artifacts:** `.planning/milestones/v3.0-brand-statement-landing/`
+
+**Git range (on main):** `27385d5 docs: map existing codebase` → `<abandonment commit>` (see this commit's parent for the last v3.0 work, including all Phase 01+02 commits which remain in main's history)
+
+---
+
 ## UI Dashboard (Shipped: 2026-03-18)
 
 **Delivered:** 5-phase dashboard refresh — Apollo Lite/Pro/Ultra model selector with Oracle placeholder, top-bar account chip with Instagram support, 2.5D hive visualization (depth layers, parallax, bezier connections), TikTok-style result card with predicted engagement metrics, and full state sync via simulation-store.

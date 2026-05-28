@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { DevClickToComponent } from "@/components/dev/click-to-component";
+import { DevLocator } from "@/components/dev/locator";
 import "./globals.css";
 
 const inter = Inter({
@@ -43,7 +43,7 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable}`}>
       <body className="min-h-screen bg-background font-sans antialiased">
         {children}
-        <DevClickToComponent />
+        <DevLocator />
       </body>
     </html>
   );

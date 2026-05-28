@@ -141,5 +141,3 @@ export type CtaSegmentResult  = z.infer<typeof CtaSegmentZodSchema>;
  * See HookDecompositionZodSchema docstring for the full polarity contract.
  */
 export type HookDecomposition = z.infer<typeof HookDecompositionZodSchema>;
-
-// Gemini schema literals removed — Qwen-only post-engine-foundation milestone.
