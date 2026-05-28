@@ -145,7 +145,8 @@ vi.mock("../anti-virality", async (importOriginal) => {
 import { selectWeights, aggregateScores } from "../aggregator";
 import { makePipelineResult, makeGeminiAnalysis } from "./factories";
 import { predictWithML } from "../ml";
-import type { PersonaBehavioralAggregate, PersonaSimulationResult, SegmentGrid } from "../types";
+import type { PersonaBehavioralAggregate, PersonaSimulationResult, SegmentGrid, HookDecomposition } from "../types";
+import type { EmotionArcPoint } from "../qwen/schemas";
 
 // =====================================================
 // selectWeights tests
@@ -1242,5 +1243,81 @@ describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
     const result = await aggregateScores(pipeline);
     expect(result.anti_virality_gated).toBe(true);
     expect(result.anti_virality_reason).toBe("timeline_pattern");
+  });
+});
+
+// =====================================================
+// Phase 2 (Quick 260528-nqx) — hook_decomposition + emotion_arc pluck
+// =====================================================
+
+describe("hook_decomposition + emotion_arc pluck (Quick 260528-nqx)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(predictWithML).mockResolvedValue(50);
+  });
+
+  it("populates hook_decomposition on result when geminiResult.analysis.hook_decomposition is present", async () => {
+    const hookDecomp: HookDecomposition = {
+      visual_stop_power: 8.2,
+      audio_hook_quality: 6.5,
+      first_words_speech_score: 7.0,
+      text_overlay_score: 4.1,
+      visual_audio_coherence: 7.4,
+      cognitive_load: 5,
+      weakest_modality: "text_overlay_score",
+      watermark_detected: false,
+    };
+    const arc: EmotionArcPoint[] = [
+      { timestamp_ms: 0, intensity_0_1: 0.3 },
+      { timestamp_ms: 1500, intensity_0_1: 0.8 },
+    ];
+    const pipeline = makePipelineResult({
+      geminiResult: {
+        // Cast to inject fields not in the base GeminiAnalysis Zod shape
+        // (hook_decomposition lives on GeminiVideoAnalysis, the video superset).
+        // At runtime the Gemini video path always returns GeminiVideoAnalysis;
+        // only the aggregator's static typing sees the narrower base type.
+        analysis: {
+          ...makeGeminiAnalysis(),
+          hook_decomposition: hookDecomp,
+          emotion_arc: arc,
+        } as unknown as ReturnType<typeof makeGeminiAnalysis>,
+        cost_cents: 0.5,
+      },
+    });
+    const result = await aggregateScores(pipeline);
+    expect(result.hook_decomposition).toEqual(hookDecomp);
+    expect(result.emotion_arc).toEqual(arc);
+  });
+
+  it("falls back to null when geminiResult.analysis omits both fields", async () => {
+    const pipeline = makePipelineResult({
+      geminiResult: {
+        analysis: {
+          ...makeGeminiAnalysis(),
+          hook_decomposition: undefined,
+          emotion_arc: undefined,
+        } as unknown as ReturnType<typeof makeGeminiAnalysis>,
+        cost_cents: 0.5,
+      },
+    });
+    const result = await aggregateScores(pipeline);
+    expect(result.hook_decomposition).toBeNull();
+    expect(result.emotion_arc).toBeNull();
+  });
+
+  it("falls back to null when emotion_arc is an empty array (preserves Pitfall #5 backward compat)", async () => {
+    const pipeline = makePipelineResult({
+      geminiResult: {
+        analysis: {
+          ...makeGeminiAnalysis(),
+          hook_decomposition: undefined,
+          emotion_arc: [],
+        } as unknown as ReturnType<typeof makeGeminiAnalysis>,
+        cost_cents: 0.5,
+      },
+    });
+    const result = await aggregateScores(pipeline);
+    expect(result.emotion_arc).toBeNull();
   });
 });
