@@ -22,12 +22,30 @@ export const COPY = {
   ARIA_VERDICT_READY: (score: number, label: string) =>
     `Verdict ready: ${score}th percentile, confidence ${label}`,
   ARIA_ANTI_VIRALITY: "Don't post yet — see suggested fixes",
+  // Plan 5.3: WhyVerdictCollapsible sub-section labels
+  WHY_VERDICT_SUMMARY: 'Why this verdict?',
+  SUB_WORKS: 'Why this works',
+  SUB_MIGHT_NOT: 'Why this might not',
+  SUB_FLAGGED: 'What the engine flagged',
+  SUB_COUNTERFACTUAL: 'Counterfactual considered',
+  // Plan 5.4: VsHistoryCollapsible copy
+  HISTORY_SUMMARY: 'vs my history',
+  HISTORY_EMPTY_STATE: (n: number) => `Need 3+ prior analyses to show comparison. ${n}/3 complete.`,
+  HISTORY_LAST_10_TITLE: 'vs your last 10 analyses',
+  NICHE_TITLE: 'vs niche cohort',
+  NICHE_COMING_SOON: 'Niche comparison coming soon',
+  HISTORY_LOADING: 'Loading…',
+  HISTORY_LABEL_NOW: 'Now',
 } as const;
 
 // Telemetry event names (per 05-CONTEXT.md D-31).
 export const TELEMETRY = {
   VERDICT_NODE_RENDERED: 'verdict_node_rendered',
   VERDICT_ANTI_VIRALITY_OVERRIDE: 'verdict_anti_virality_override',
+  // Plan 5.3: WhyVerdictCollapsible
+  VERDICT_REASONING_EXPANDED: 'verdict_reasoning_expanded',
+  // Plan 5.4: VsHistoryCollapsible
+  VERDICT_HISTORY_EXPANDED: 'verdict_history_expanded',
 } as const;
 
 export function bandFromScore(score: number): 'Strong' | 'Mid' | 'Low' {

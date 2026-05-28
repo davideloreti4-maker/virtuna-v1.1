@@ -7,6 +7,8 @@ import { useBoardStore } from '@/stores/board-store';
 import { getFrameAntiViralityState } from '../cross-group-state';
 import { PercentileChip } from './PercentileChip';
 import { AntiViralityHeader } from './AntiViralityHeader';
+import { WhyVerdictCollapsible } from './WhyVerdictCollapsible';
+import { VsHistoryCollapsible } from './VsHistoryCollapsible';
 import { COPY, TELEMETRY } from './verdict-constants';
 import type { VerdictNodeProps } from './verdict-types';
 import { logger } from '@/lib/logger';
@@ -78,8 +80,12 @@ export function VerdictNode({ camera: _camera, layout: _layout }: VerdictNodePro
         isCalibrated={result?.is_calibrated ?? true}
       />
 
-      {/* Collapsibles slot — populated in plans 5.3 (WhyVerdictCollapsible) and 5.4 (VsHistoryCollapsible). */}
-      <div data-testid="verdict-collapsibles-slot" />
+      <div data-testid="verdict-collapsibles-slot" className="flex flex-col gap-2 px-1">
+        {result && <WhyVerdictCollapsible result={result} />}
+        {result && analysisId && (
+          <VsHistoryCollapsible analysisId={analysisId} currentScore={result.overall_score} />
+        )}
+      </div>
     </div>
   );
 }
