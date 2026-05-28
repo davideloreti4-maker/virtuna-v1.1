@@ -48,13 +48,16 @@ export async function GET(request: Request): Promise<NextResponse> {
       return NextResponse.json({ error: "Query failed" }, { status: 500 });
     }
 
+    const ids = (expiredRows ?? [])
+      .map((r) => r.id as string)
+      .filter(Boolean);
     const paths = (expiredRows ?? [])
       .map((r) => r.video_storage_path as string)
       .filter(Boolean);
 
     if (paths.length === 0) {
       log.info("No expired videos to delete", { thirtyDaysAgo });
-      return NextResponse.json({ status: "completed", deleted: 0 });
+      return NextResponse.json({ status: "completed", deleted: 0, nulled: 0 });
     }
 
     // Batch delete from Supabase Storage "videos" bucket.
@@ -70,8 +73,32 @@ export async function GET(request: Request): Promise<NextResponse> {
       );
     }
 
-    log.info("Retention cron completed", { deleted: paths.length });
-    return NextResponse.json({ status: "completed", deleted: paths.length });
+    // Phase 3 (260528-nsb) Mode B fix: null out video_storage_path after successful delete.
+    // Prevents dangling DB references that cause /api/videos/sign to return 404 indefinitely.
+    // If this UPDATE fails, log at ERROR but still return 200 — storage delete succeeded.
+    // Next cron run will re-null (idempotent: rows still have non-null video_storage_path).
+    const { error: nullError } = await supabase
+      .from("analysis_results")
+      .update({ video_storage_path: null })
+      .in("id", ids);
+
+    if (nullError) {
+      log.error("retention_null_failed", {
+        error: nullError.message,
+        ids_count: ids.length,
+      });
+      // Don't return 500 — storage delete succeeded. Next cron run will re-null.
+    }
+
+    log.info("Retention cron completed", {
+      deleted: paths.length,
+      nulled: nullError ? 0 : ids.length,
+    });
+    return NextResponse.json({
+      status: "completed",
+      deleted: paths.length,
+      nulled: nullError ? 0 : ids.length,
+    });
   } catch (error) {
     log.error("Retention cron failed", {
       error: error instanceof Error ? error.message : String(error),
