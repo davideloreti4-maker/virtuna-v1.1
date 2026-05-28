@@ -15,6 +15,8 @@ vi.mock('@/components/ui/dialog', () => ({
     open ? <div data-testid="dialog-root">{children}</div> : null,
   DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+  DialogClose: ({ children, ...rest }: { children?: React.ReactNode; [k: string]: unknown }) =>
+    <button data-testid="similar-video-modal-close" {...rest}>{children}</button>,
 }));
 
 import { logger } from '@/lib/logger';

@@ -5,7 +5,7 @@ import type { RetrievalEvidenceItem } from '@/lib/engine/types';
 
 interface Props {
   item: RetrievalEvidenceItem;
-  onTap: (item: RetrievalEvidenceItem) => void;
+  onTap: (item: RetrievalEvidenceItem, el?: HTMLElement | null) => void;
 }
 
 export function formatCompactNumber(n: number): string {
@@ -24,11 +24,11 @@ export function SimilarVideoCardCompact({ item, onTap }: Props) {
 
   return (
     <Card
-      onClick={() => onTap(item)}
+      onClick={(e) => onTap(item, e.currentTarget as HTMLElement)}
       onKeyDown={(e: React.KeyboardEvent) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          onTap(item);
+          onTap(item, e.currentTarget as HTMLElement);
         }
       }}
       className="flex items-center gap-2 p-2 cursor-pointer hover:bg-white/[0.02]"

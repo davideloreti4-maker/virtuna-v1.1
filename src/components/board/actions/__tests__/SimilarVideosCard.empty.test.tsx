@@ -11,6 +11,7 @@ vi.mock('@/components/ui/dialog', () => ({
   Dialog: () => null,
   DialogContent: () => null,
   DialogTitle: () => null,
+  DialogClose: () => null,
 }));
 
 describe('SimilarVideosCard — empty state', () => {

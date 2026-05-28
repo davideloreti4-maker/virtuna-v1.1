@@ -14,6 +14,7 @@ vi.mock('@/components/ui/dialog', () => ({
     open ? <div data-testid="dialog-root">{children}</div> : null,
   DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+  DialogClose: ({ children }: { children?: React.ReactNode }) => <button>{children}</button>,
 }));
 // @phosphor-icons/react is ESM-only; vi.resetModules() makes named exports undefined in happy-dom.
 // Provide stub SVG components for all icons used by slot wrappers.
