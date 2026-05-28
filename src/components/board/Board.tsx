@@ -16,6 +16,7 @@ import { useRovingTabIndex } from '@/lib/a11y';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useBoardStore } from '@/stores/board-store';
+import { MobileBoardBanner } from './MobileBoardBanner';
 import type { BoardMachineState } from '@/stores/board-store';
 import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
 import { CommandBar } from '@/components/command-bar/CommandBar';
@@ -343,6 +344,9 @@ export function Board() {
 
       {/* DOM overlay slots (filled by plans 2.6 command bar, 2.7 input node, etc.) */}
       <CameraOverlay activePreset={activePreset} onSelect={goToPreset} />
+
+      {/* Mobile/narrow viewport banner — z=160, above OrientationHint (z=150), below command bar (z=200) */}
+      <MobileBoardBanner />
 
       {/* R7.4 first-board orientation hint — z=150, above board content, below command bar (z=200) */}
       <OrientationHint />
