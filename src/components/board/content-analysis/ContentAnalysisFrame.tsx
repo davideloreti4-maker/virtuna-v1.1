@@ -15,7 +15,11 @@ export function ContentAnalysisFrame({ camera: _camera, layout: _layout }: Conte
   return (
     <div
       aria-busy={isStreaming}
-      className="flex flex-row gap-4 p-2 h-full"
+      // items-start + overflow-y-auto: the columns size to their natural height
+      // and the frame scrolls if content exceeds it, instead of the fixed-height
+      // GroupFrameOverlay silently clipping the coherence / cognitive-load chips
+      // below the hook bars.
+      className="flex flex-row items-start gap-4 p-2 h-full overflow-y-auto"
       data-testid="content-analysis-frame"
     >
       <HookDecompNode

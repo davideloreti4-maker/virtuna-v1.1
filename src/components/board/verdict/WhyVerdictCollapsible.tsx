@@ -27,12 +27,13 @@ function readPersistedOpen(): boolean | null {
 
 export function WhyVerdictCollapsible({ result }: WhyVerdictCollapsibleProps) {
   const buckets = assembleReasoningBuckets(result);
-  // ROADMAP SC: expand state survives navigation. localStorage > AV default >
-  // closed. Read once via lazy init so SSR/CSR diverge cleanly without
-  // hydration mismatch (details element accepts `open` post-hydration).
-  const [isOpen, setIsOpen] = useState<boolean>(
-    () => result.anti_virality_gated === true,
-  );
+  // Default expanded so the verdict surfaces its reasoning (why-it-works factors,
+  // risks, engine flags) inline instead of hiding everything behind a closed
+  // accordion — collapsed, the panel reads as empty. localStorage still wins
+  // (readPersistedOpen below), so a user who collapses it keeps that choice
+  // across navigation. Lazy init keeps SSR/CSR clean (details accepts `open`
+  // post-hydration).
+  const [isOpen, setIsOpen] = useState<boolean>(true);
   const detailsRef = useRef<HTMLDetailsElement | null>(null);
   useEffect(() => {
     const persisted = readPersistedOpen();

@@ -22,10 +22,10 @@ describe('WhyVerdictCollapsible', () => {
     expect(screen.getByText('Why this verdict?')).toBeInTheDocument();
   });
 
-  it('defaults to closed (open attribute absent) for non-AV result', () => {
+  it('defaults to open so reasoning is surfaced inline (non-AV result)', () => {
     render(<WhyVerdictCollapsible result={fixtures.complete} />);
     const details = screen.getByTestId('why-verdict-collapsible') as HTMLDetailsElement;
-    expect(details.open).toBe(false);
+    expect(details.open).toBe(true);
   });
 
   it('defaults to open when result.anti_virality_gated is true', () => {
