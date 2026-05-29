@@ -14,15 +14,6 @@ vi.mock('@/lib/perf-tier', () => ({
     selector({ tier: tierState.current }),
 }));
 
-vi.mock('@/hooks/useIsMobile', () => ({ useIsMobile: () => false }));
-vi.mock('@/components/ui/sheet', () => ({
-  Sheet: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
-    open ? <div data-testid="emotion-arc-inspector-open">{children}</div> : null,
-  SheetContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SheetHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SheetTitle: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
-}));
-
 import { logger } from '@/lib/logger';
 
 describe('EmotionArcNode', () => {
@@ -115,11 +106,23 @@ describe('EmotionArcNode', () => {
     );
   });
 
-  it('W4: tap on a peak button opens EmotionArcInspector', () => {
+  it('W4: tap on a peak button expands the inline detail (no Sheet)', () => {
     render(<EmotionArcNode points={fixtures.complete.emotion_arc!} />);
+    // Detail collapsed by default.
+    expect(screen.queryByTestId('emotion-arc-detail')).toBeNull();
     const peakButtons = screen.getAllByTestId('emotion-arc-peak');
     fireEvent.click(peakButtons[0]!);
-    expect(screen.getByTestId('emotion-arc-inspector-open')).toBeInTheDocument();
+    expect(screen.getByTestId('emotion-arc-detail')).toBeInTheDocument();
+    // Lists every peak + valley (2 high + 2 low in the fixture).
+    expect(screen.getByText('Peaks & valleys')).toBeInTheDocument();
+  });
+
+  it('inline detail closes via its close button', () => {
+    render(<EmotionArcNode points={fixtures.complete.emotion_arc!} />);
+    fireEvent.click(screen.getAllByTestId('emotion-arc-peak')[0]!);
+    expect(screen.getByTestId('emotion-arc-detail')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Close emotion arc detail'));
+    expect(screen.queryByTestId('emotion-arc-detail')).toBeNull();
   });
 
   it('reduced-motion: usePrefersReducedMotion=true → emotion-arc-area isAnimationActive disabled', () => {

@@ -5,17 +5,6 @@ import { HookDecompNode } from '../HookDecompNode';
 import { fixtures } from '../../verdict/__tests__/fixtures/prediction-result';
 
 vi.mock('@/lib/logger', () => ({ logger: { event: vi.fn() } }));
-vi.mock('@/hooks/useIsMobile', () => ({ useIsMobile: () => false }));
-// Stub Sheet to render inline (avoid portal complexity)
-vi.mock('@/components/ui/sheet', () => ({
-  Sheet: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
-    open ? <div data-testid="sheet-open">{children}</div> : null,
-  SheetContent: ({ children, ...rest }: { children: React.ReactNode; [k: string]: unknown }) => (
-    <div {...rest}>{children}</div>
-  ),
-  SheetHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SheetTitle: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
-}));
 
 import { logger } from '@/lib/logger';
 
@@ -145,7 +134,7 @@ describe('HookDecompNode', () => {
     });
   });
 
-  it('clicking a bar opens the inspector + fires hook_decomp_expanded telemetry', () => {
+  it('clicking a bar expands the inline detail + fires hook_decomp_expanded telemetry', () => {
     render(
       <HookDecompNode
         decomp={fixtures.complete.hook_decomposition!}
@@ -153,11 +142,41 @@ describe('HookDecompNode', () => {
         counterfactuals={[]}
       />,
     );
+    // Detail is collapsed by default (no Sheet/popup).
+    expect(screen.queryByTestId('hook-decomp-detail')).toBeNull();
     fireEvent.click(screen.getByTestId('hook-decomp-bar-visual_stop_power'));
-    expect(screen.getByTestId('sheet-open')).toBeInTheDocument();
+    expect(screen.getByTestId('hook-decomp-detail')).toBeInTheDocument();
     expect((logger as unknown as { event: ReturnType<typeof vi.fn> }).event).toHaveBeenCalledWith(
       'hook_decomp_expanded',
       expect.objectContaining({ weakest_modality: 'text_overlay_score' }),
     );
+  });
+
+  it('clicking the bar again collapses the inline detail', () => {
+    render(
+      <HookDecompNode
+        decomp={fixtures.complete.hook_decomposition!}
+        segments={null}
+        counterfactuals={[]}
+      />,
+    );
+    const bar = screen.getByTestId('hook-decomp-bar-visual_stop_power');
+    fireEvent.click(bar);
+    expect(screen.getByTestId('hook-decomp-detail')).toBeInTheDocument();
+    fireEvent.click(bar);
+    expect(screen.queryByTestId('hook-decomp-detail')).toBeNull();
+  });
+
+  it('inline detail lists hook-anchored fixes under "How to fix"', () => {
+    render(
+      <HookDecompNode
+        decomp={fixtures.complete.hook_decomposition!}
+        segments={null}
+        counterfactuals={fixtures.complete.counterfactuals?.suggestions}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('hook-decomp-coherence-chip'));
+    const detail = screen.getByTestId('hook-decomp-detail');
+    expect(detail).toHaveTextContent('How to fix');
   });
 });

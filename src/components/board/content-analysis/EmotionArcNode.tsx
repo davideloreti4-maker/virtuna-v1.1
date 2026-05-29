@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, useRef, useCallback, useMemo, useLayoutEffect } from 'react';
+import { X } from 'lucide-react';
 import {
   AreaChart,
   Area,
@@ -14,7 +15,6 @@ import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { usePerfStore } from '@/lib/perf-tier';
 import { cn } from '@/lib/utils';
 import { COPY, TELEMETRY } from './content-analysis-constants';
-import { EmotionArcInspector } from './EmotionArcInspector';
 import { logger } from '@/lib/logger';
 
 interface EmotionArcPoint {
@@ -43,7 +43,9 @@ const EMPTY_BASELINE: EmotionArcPoint[] = [
 ];
 
 export function EmotionArcNode({ points, className }: Props) {
-  const [inspectorOpen, setInspectorOpen] = useState(false);
+  // Inline expander (no Sheet/popup) — the chart is always-on; tapping a peak/valley
+  // dot expands the peaks & valleys list directly in-frame.
+  const [detailOpen, setDetailOpen] = useState(false);
   const [ariaText, setAriaText] = useState('');
   const announcedRef = useRef(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -107,13 +109,25 @@ export function EmotionArcNode({ points, className }: Props) {
       if (!dotsInteractive) return; // Low tier: dots are static
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (logger as any).event?.(TELEMETRY.EMOTION_ARC_PEAK_TAPPED, { timestamp_ms: point.timestamp_ms });
-      setInspectorOpen(true);
+      setDetailOpen(true);
     },
     [dotsInteractive],
   );
 
   const peaks = isEmpty ? [] : chartData.filter((p) => p.label === 'high');
   const valleys = isEmpty ? [] : chartData.filter((p) => p.label === 'low');
+
+  // Peaks & valleys merged + chronologically ordered for the inline detail list.
+  const peaksAndValleys = useMemo(
+    () =>
+      isEmpty
+        ? []
+        : chartData
+            .filter((p) => p.label === 'high' || p.label === 'low')
+            .slice()
+            .sort((a, b) => a.timestamp_ms - b.timestamp_ms),
+    [chartData, isEmpty],
+  );
 
   return (
     <div className={cn('flex flex-col gap-2 p-2', className)} data-testid="emotion-arc-node">
@@ -243,11 +257,61 @@ export function EmotionArcNode({ points, className }: Props) {
         )}
       </div>
 
-      <EmotionArcInspector
-        open={inspectorOpen}
-        onOpenChange={setInspectorOpen}
-        points={points}
-      />
+      {/* Inline detail — replaces the former EmotionArcInspector Sheet.
+          Lists each peak/valley with timestamp + intensity directly in-frame. */}
+      {detailOpen && peaksAndValleys.length > 0 && (
+        <div
+          id="emotion-arc-detail"
+          data-testid="emotion-arc-detail"
+          className="flex flex-col gap-2 rounded-[8px] border border-white/[0.06] bg-white/[0.02] p-3"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-[10px] font-normal uppercase tracking-[0.04em] text-white/45">
+              Peaks &amp; valleys
+            </h4>
+            <button
+              type="button"
+              onClick={() => setDetailOpen(false)}
+              aria-label="Close emotion arc detail"
+              className="rounded-md p-1 text-white/40 transition-colors hover:bg-white/[0.05] hover:text-white/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF7F50]"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <ul className="flex flex-col gap-1">
+            {peaksAndValleys.map((p, i) => (
+              <li
+                key={`${p.timestamp_ms}-${i}`}
+                className="flex items-center justify-between gap-2 text-xs"
+              >
+                <span className="flex items-center gap-1.5">
+                  <span
+                    className="inline-block rounded-full"
+                    style={{
+                      width: p.label === 'high' ? 8 : 6,
+                      height: p.label === 'high' ? 8 : 6,
+                      background:
+                        p.label === 'high' ? 'var(--color-accent)' : 'rgba(132,133,134,0.6)',
+                    }}
+                  />
+                  <span
+                    className={cn(
+                      'capitalize',
+                      p.label === 'high' ? 'text-accent' : 'text-foreground-muted',
+                    )}
+                  >
+                    {p.label === 'high' ? 'Peak' : 'Valley'}
+                  </span>
+                  <span className="tabular-nums text-white/55">{formatTime(p.timestamp_ms)}</span>
+                </span>
+                <span className="tabular-nums text-white/90">
+                  {Math.round(p.intensity_0_1 * 100)}%
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

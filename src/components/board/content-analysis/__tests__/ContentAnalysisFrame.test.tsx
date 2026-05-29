@@ -19,14 +19,6 @@ vi.mock('@/hooks/queries/use-analysis-stream', () => ({
 // =====================================================
 
 vi.mock('@/lib/logger', () => ({ logger: { event: vi.fn() } }));
-vi.mock('@/hooks/useIsMobile', () => ({ useIsMobile: () => false }));
-vi.mock('@/components/ui/sheet', () => ({
-  Sheet: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
-    open ? <div data-testid="sheet-open">{children}</div> : null,
-  SheetContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SheetHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SheetTitle: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
-}));
 
 // =====================================================
 // Mocks — EmotionArcNode sub-dependencies
