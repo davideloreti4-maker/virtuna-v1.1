@@ -333,6 +333,17 @@ export function Sidebar() {
   const { isOpen, close, isCollapsed, toggleCollapsed } = useSidebarStore();
   const triggerNewAnalysis = useBoardStore((s) => s.triggerNewAnalysis);
 
+  // On mobile the sidebar is always full-width (never icon-only)
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  const effectiveCollapsed = isCollapsed && !isMobile;
+
   // Recent boards
   const { data: historyData, isLoading: historyLoading } = useAnalysisHistory();
   const recentBoards = (historyData ?? []).slice(0, 8) as Array<{
@@ -396,7 +407,7 @@ export function Sidebar() {
           "border border-white/[0.06]",
           // Width transition — collapsed: 40px, expanded: 220px
           "transition-[transform,width] duration-150 ease-[var(--ease-out-cubic)]",
-          isCollapsed ? "w-[52px]" : "w-[220px]",
+          effectiveCollapsed ? "w-[52px]" : "w-[220px]",
           // Mobile: off-canvas when closed
           isOpen ? "translate-x-0" : "-translate-x-[calc(100%+12px)]",
           // Desktop: always visible (transform overridden below)
@@ -415,10 +426,10 @@ export function Sidebar() {
         <div
           className={cn(
             "flex items-center px-3 pt-4 pb-2",
-            isCollapsed ? "justify-center" : "justify-between",
+            effectiveCollapsed ? "justify-center" : "justify-between",
           )}
         >
-          {!isCollapsed && (
+          {!effectiveCollapsed && (
             <Link href="/" className="flex items-center" aria-label="Virtuna home">
               <svg
                 width="22"
@@ -442,7 +453,7 @@ export function Sidebar() {
             variant="ghost"
             size="sm"
             onClick={toggleCollapsed}
-            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={effectiveCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-keyshortcuts="Meta+\\"
             className="hidden md:flex text-foreground-muted hover:text-foreground p-1"
           >
@@ -468,11 +479,11 @@ export function Sidebar() {
             <NavItem
               icon={Plus}
               label="New analysis"
-              isCollapsed={isCollapsed}
+              isCollapsed={effectiveCollapsed}
               accent
               onClick={() => { triggerNewAnalysis(); router.push("/analyze"); }}
               badge={
-                !isCollapsed && (
+                !effectiveCollapsed && (
                   <span className="ml-auto text-[11px] text-foreground-muted font-normal">⌘N</span>
                 )
               }
@@ -484,23 +495,23 @@ export function Sidebar() {
 
           {/* ── Navigate ── */}
           <div className="py-1">
-            {!isCollapsed && <SectionLabel>Navigate</SectionLabel>}
+            {!effectiveCollapsed && <SectionLabel>Navigate</SectionLabel>}
             <div className="flex flex-col gap-0.5">
               <NavItem
                 icon={House}
                 label="Boards"
                 isActive={isOnBoard}
-                isCollapsed={isCollapsed}
+                isCollapsed={effectiveCollapsed}
                 onClick={() => router.push("/analyze")}
               />
               <NavItem
                 icon={SlidersHorizontal}
                 label="Settings"
                 isActive={isOnSettings}
-                isCollapsed={isCollapsed}
+                isCollapsed={effectiveCollapsed}
                 onClick={() => router.push("/settings")}
               />
-              <SidebarAccountSelector isCollapsed={isCollapsed} />
+              <SidebarAccountSelector isCollapsed={effectiveCollapsed} />
             </div>
           </div>
 
@@ -517,13 +528,13 @@ export function Sidebar() {
 
           {/* ── ⭐ Pinned ── */}
           <div className="py-1">
-            {!isCollapsed && <SectionLabel>Pinned</SectionLabel>}
-            {!isCollapsed && (
+            {!effectiveCollapsed && <SectionLabel>Pinned</SectionLabel>}
+            {!effectiveCollapsed && (
               <p className="px-2 py-1 text-xs text-foreground-muted">
                 No pinned boards yet.
               </p>
             )}
-            {isCollapsed && (
+            {effectiveCollapsed && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -541,20 +552,20 @@ export function Sidebar() {
 
           {/* ── 🕐 Recent ── */}
           <div className="py-1 flex-1">
-            {!isCollapsed && <SectionLabel>Recent</SectionLabel>}
-            {historyLoading && !isCollapsed && (
+            {!effectiveCollapsed && <SectionLabel>Recent</SectionLabel>}
+            {historyLoading && !effectiveCollapsed && (
               <div className="flex flex-col gap-1 px-2">
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-3/4" />
                 <Skeleton className="h-4 w-5/6" />
               </div>
             )}
-            {!historyLoading && recentBoards.length === 0 && !isCollapsed && (
+            {!historyLoading && recentBoards.length === 0 && !effectiveCollapsed && (
               <p className="px-2 py-1 text-xs text-foreground-muted">
                 No analyses yet.
               </p>
             )}
-            {!historyLoading && !isCollapsed && (
+            {!historyLoading && !effectiveCollapsed && (
               <div className="flex flex-col gap-0.5">
                 {recentBoards.map((board) => (
                   <button
@@ -585,7 +596,7 @@ export function Sidebar() {
                 ))}
               </div>
             )}
-            {isCollapsed && (
+            {effectiveCollapsed && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -604,7 +615,7 @@ export function Sidebar() {
 
           {/* ── 📁 Projects (Coming soon placeholder) ── */}
           <div className="py-1">
-            {!isCollapsed && (
+            {!effectiveCollapsed && (
               <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg">
                 <Folder className="h-4 w-4 shrink-0 text-foreground-muted" />
                 <span className="text-xs text-foreground-muted">Projects</span>
@@ -613,7 +624,7 @@ export function Sidebar() {
                 </span>
               </div>
             )}
-            {isCollapsed && (
+            {effectiveCollapsed && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div
@@ -631,7 +642,7 @@ export function Sidebar() {
 
         {/* ── 👤 Account (bottom-anchored) ── */}
         <div className="border-t border-white/[0.06] px-2 py-2">
-          {!isCollapsed ? (
+          {!effectiveCollapsed ? (
             <div className="relative" data-account-menu>
               <button
                 type="button"

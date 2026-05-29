@@ -5,28 +5,61 @@ import type { ViewMode } from './use-view-mode';
 
 interface Props {
   mode: ViewMode;
-  onToggle: () => void;
+  onSelect: (mode: ViewMode) => void;
 }
 
+const OPTIONS: { value: ViewMode; label: string; icon: typeof Cards }[] = [
+  { value: 'board', label: 'Board', icon: SquaresFour },
+  { value: 'cards', label: 'Cards', icon: Cards },
+];
+
 /**
- * Floating board⇄cards switch. Rendered only when the current mode isn't the
- * plain desktop default (i.e. on phones, or when the user has pinned a mode),
- * so wide screens stay clean. The label names the mode you'll switch *to*.
+ * Board⇄cards segmented switch. Pinned top-center under the camera-preset
+ * toolbar (board mode) or in the reserved top strip (cards mode). Styling mirrors
+ * CameraOverlay so the two read as one control group. Selecting an option pins
+ * the mode as an explicit override regardless of viewport — usable on both
+ * desktop and mobile.
  */
-export function ViewModeToggle({ mode, onToggle }: Props) {
-  const toCards = mode === 'board';
-  const label = toCards ? 'Card view' : 'Board view';
+export function ViewModeToggle({ mode, onSelect }: Props) {
+  // Board mode shows the camera toolbar at top-4; sit beneath it. Cards mode has
+  // no toolbar but reserves a 56px top strip (BoardMobile) — sit inside that band.
+  const topClass = mode === 'board' ? 'top-16' : 'top-4';
 
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-label={`Switch to ${label.toLowerCase()}`}
+    <div
+      role="group"
+      aria-label="Board view mode"
       data-testid="view-mode-toggle"
-      className="fixed bottom-4 right-4 z-[150] flex items-center gap-2 rounded-[8px] border border-white/[0.06] bg-surface px-3 py-2 text-xs font-medium text-foreground shadow-button hover:bg-white/[0.1]"
+      className={`fixed left-1/2 z-[150] flex -translate-x-1/2 items-center gap-0.5 rounded-xl border border-white/[0.06] p-1 ${topClass}`}
+      style={{
+        background: 'linear-gradient(137deg, rgba(17,18,20,0.85) 4.87%, rgba(12,13,15,0.95) 75.88%)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        boxShadow:
+          'rgba(0,0,0,0.4) 0 8px 24px -6px, rgba(255,255,255,0.08) 0 1px 0 0 inset',
+      }}
     >
-      <Icon icon={toCards ? Cards : SquaresFour} size={16} />
-      <span>{label}</span>
-    </button>
+      {OPTIONS.map(({ value, label, icon }) => {
+        const isActive = mode === value;
+        return (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={isActive}
+            aria-label={`${label} view`}
+            data-testid={`view-mode-${value}`}
+            onClick={() => onSelect(value)}
+            className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF7F50] ${
+              isActive
+                ? 'bg-white/[0.1] text-foreground'
+                : 'text-foreground/55 hover:bg-white/[0.04] hover:text-foreground/90'
+            }`}
+          >
+            <Icon icon={icon} size={16} />
+            <span>{label}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }

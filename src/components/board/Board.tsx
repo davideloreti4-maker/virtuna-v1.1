@@ -73,10 +73,10 @@ export function Board() {
   const effectiveReducedMotion = reducedMotion || tier === 'low';
   const { toast, dismiss } = useToast();
 
-  // View mode (mobile): phones render the vertical card stack instead of the
-  // pannable canvas; tablets/desktop keep the canvas. A persisted override lets
-  // any user pin a mode via the floating board⇄cards toggle.
-  const { mode, isMobile, override, toggle } = useViewMode();
+  // View mode: phones default to the vertical card stack, tablets/desktop to the
+  // pannable canvas. The top-center board⇄cards toggle pins either mode (persisted
+  // override) on any viewport.
+  const { mode, setOverride } = useViewMode();
 
   // Board machine state for frame visual derivation (plan 2.2)
   const boardMachineState = useBoardStore((s) => s.boardState);
@@ -465,11 +465,9 @@ export function Board() {
       </>
       )}
 
-      {/* Manual board⇄cards switch — shown on phones, or once a user has pinned
-          a mode, so wide screens stay clean by default. */}
-      {(isMobile || override !== null) && (
-        <ViewModeToggle mode={mode} onToggle={toggle} />
-      )}
+      {/* Manual board⇄cards switch — always available (desktop + mobile), pinned
+          top-center under the camera-preset toolbar. */}
+      <ViewModeToggle mode={mode} onSelect={setOverride} />
     </div>
   );
 }
