@@ -12,7 +12,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
-import { easeOutCubic, drawMarkers, findMarkerAtPoint } from './DropoffMarkers';
+import { easeOutCubic, drawMarkers, findMarkerAtPoint, computeMarkerPositions, clusterMarkers } from './DropoffMarkers';
 import {
   CURVE_MORPH_MS,
   MARKER_RING_COLOR,
@@ -32,7 +32,10 @@ export interface UseRetentionCurveCanvasOptions {
   weightedCurve: number[] | null;
   baselineCurve: number[] | null;
   segments: HeatmapPayload['segments'] | null;
-  markers: MarkerOrCluster[];
+  /** Personas drive the drop-markers. Marker positions are computed from the
+   *  live canvas size inside drawFrame (NOT memoized in the component) so they
+   *  never go stale when the canvas measures/resizes. */
+  personas: HeatmapPayload['personas'] | null;
   morphRequested: boolean;
   reducedMotion: boolean;
   antiViralityXRange?: [number, number] | null;
@@ -95,7 +98,7 @@ export function useRetentionCurveCanvas(
     weightedCurve,
     baselineCurve,
     segments,
-    markers,
+    personas,
     morphRequested,
     reducedMotion,
     antiViralityXRange,
@@ -110,7 +113,9 @@ export function useRetentionCurveCanvas(
   const weightedCurveRef = useRef<number[] | null>(weightedCurve);
   const baselineCurveRef = useRef<number[] | null>(baselineCurve);
   const segmentsRef = useRef<HeatmapPayload['segments'] | null>(segments);
-  const markersRef = useRef<MarkerOrCluster[]>(markers);
+  const personasRef = useRef<HeatmapPayload['personas'] | null>(personas);
+  // Clustered markers computed each draw from the live canvas size — used by onTap.
+  const computedMarkersRef = useRef<MarkerOrCluster[]>([]);
   const reducedMotionRef = useRef<boolean>(reducedMotion);
   const antiViralityXRangeRef = useRef<[number, number] | null | undefined>(antiViralityXRange);
 
@@ -118,7 +123,7 @@ export function useRetentionCurveCanvas(
   weightedCurveRef.current = weightedCurve;
   baselineCurveRef.current = baselineCurve;
   segmentsRef.current = segments;
-  markersRef.current = markers;
+  personasRef.current = personas;
   reducedMotionRef.current = reducedMotion;
   antiViralityXRangeRef.current = antiViralityXRange;
 
@@ -225,7 +230,21 @@ export function useRetentionCurveCanvas(
       }
 
       // ── 6. Dropoff markers ─────────────────────────────────────────────────
-      drawMarkers(ctx, markersRef.current, morphProgress, reducedMotionRef.current);
+      // Compute marker positions from the LIVE canvas size on every frame. The
+      // old approach memoized markers in the component with deps that excluded
+      // the canvas ref, so on first render (ref null → []) they computed empty
+      // and never recomputed — markers silently vanished on history/permalink
+      // views. Computing here also lets us reuse the curve's exact PAD_Y/plotH
+      // y-mapping so each dot sits ON the curve (was ~8px off before).
+      const personasNow = personasRef.current;
+      if (personasNow && segs && personasNow.length > 0) {
+        const raw = computeMarkerPositions(personasNow, segs, w, plotH, totalDuration);
+        for (const m of raw) m.y += PAD_Y;
+        computedMarkersRef.current = clusterMarkers(raw);
+      } else {
+        computedMarkersRef.current = [];
+      }
+      drawMarkers(ctx, computedMarkersRef.current, morphProgress, reducedMotionRef.current);
 
       void timestamp; // suppress unused warning
     },
@@ -327,7 +346,7 @@ export function useRetentionCurveCanvas(
       const y = (e.clientY - rect.top) * sy;
 
       // Check markers first
-      const markerHit = findMarkerAtPoint(markersRef.current, x, y);
+      const markerHit = findMarkerAtPoint(computedMarkersRef.current, x, y);
       if (markerHit) {
         if ('kind' in markerHit && markerHit.kind === 'cluster') {
           return { kind: 'cluster', markers: markerHit.markers };

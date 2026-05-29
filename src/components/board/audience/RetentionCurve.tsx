@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRetentionCurveCanvas } from './use-retention-curve-canvas';
-import { computeMarkerPositions, clusterMarkers } from './DropoffMarkers';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { usePerfStore } from '@/lib/perf-tier';
 import type { HeatmapPayload } from '@/lib/engine/types';
-import type { MarkerOrCluster, TapPopoverPayload } from './audience-types';
+import type { TapPopoverPayload } from './audience-types';
 
 export interface RetentionCurveProps {
   weightedCurve: number[] | null;
@@ -25,24 +24,14 @@ export function RetentionCurve(props: RetentionCurveProps) {
   const tier = usePerfStore((s) => s.tier);
   const reducedMotion = prefersReduced || tier === 'low';
 
-  const markers = useMemo((): MarkerOrCluster[] => {
-    if (!props.heatmap || !canvasRef.current) return [];
-    const raw = computeMarkerPositions(
-      props.heatmap.personas,
-      props.heatmap.segments,
-      canvasRef.current.offsetWidth,
-      canvasRef.current.offsetHeight,
-      props.totalDurationSec,
-    );
-    return clusterMarkers(raw);
-  }, [props.heatmap, props.totalDurationSec]);
-
   const { onTap } = useRetentionCurveCanvas({
     canvasRef,
     weightedCurve: props.weightedCurve,
     baselineCurve: props.baselineCurve,
     segments: props.heatmap?.segments ?? null,
-    markers,
+    // Markers are computed inside the hook from the live canvas size (see hook
+    // comment) — pass personas, not pre-computed markers, so they never stale.
+    personas: props.heatmap?.personas ?? null,
     morphRequested: props.morphRequested,
     reducedMotion,
     antiViralityXRange: props.antiViralityXRange ?? null,
@@ -64,7 +53,7 @@ export function RetentionCurve(props: RetentionCurveProps) {
       ref={canvasRef}
       role="img"
       aria-label={`Audience retention curve. Weighted average: ${props.weightedCompletionPct ?? 0}% watch time`}
-      className="block h-[180px] w-full"
+      className="block h-[150px] w-full"
     />
   );
 }

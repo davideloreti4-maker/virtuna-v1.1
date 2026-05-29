@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
 import { usePermalinkAnalysis } from '@/hooks/queries/use-permalink-analysis';
 import { usePermalinkFilmstrips } from '@/hooks/queries/use-permalink-filmstrips';
@@ -11,7 +11,7 @@ import { Filmstrip } from './Filmstrip';
 import { RetentionCurve } from './RetentionCurve';
 import { HeatmapDrawer } from './HeatmapDrawer';
 import { TapPopover } from './TapPopover';
-import { PersonaInspector } from './PersonaInspector';
+import { PersonaDetailInline } from './PersonaDetailInline';
 import { WeightOverrideDrawer } from './WeightOverrideDrawer';
 import { AntiViralityOverlay } from './AntiViralityOverlay';
 import { AUDIENCE_FRAME_TITLE_BAR_H } from './audience-constants';
@@ -66,19 +66,18 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
   const pendingVideo = useBoardStore((s) => s.pendingVideo);
 
   // ── Local UI state ─────────────────────────────────────────────────────────
-  const [heatmapOpen, setHeatmapOpen] = useState(false);
+  // Heatmap personas visible by default — the persona grid is core value, not an
+  // opt-in drawer (board UX overhaul). The toggle is kept for power users.
+  const [heatmapOpen, setHeatmapOpen] = useState(true);
 
-  const [inspectorOpen, setInspectorOpen] = useState(false);
-  const [inspectorPersonaId, setInspectorPersonaId] = useState<string | null>(null);
+  // Selected persona for the INLINE detail panel (replaces the old Sheet popup).
+  const [selectedPersonaId, setSelectedPersonaId] = useState<string | null>(null);
 
   const [overrideDrawerOpen, setOverrideDrawerOpen] = useState(false);
 
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [popoverPayload, setPopoverPayload] = useState<TapPopoverPayload | null>(null);
   const [popoverAnchorPos, setPopoverAnchorPos] = useState<{ x: number; y: number } | null>(null);
-
-  // Inspector trigger ref for focus restoration on close
-  const inspectorTriggerRef = useRef<HTMLElement | null>(null);
 
   // ── Derived values ─────────────────────────────────────────────────────────
   const totalDurationSec = useMemo(() => {
@@ -151,8 +150,8 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
   );
 
   const handleRowLabelTap = useCallback((personaId: string) => {
-    setInspectorPersonaId(personaId);
-    setInspectorOpen(true);
+    // Toggle the inline detail panel — click the same row again to collapse.
+    setSelectedPersonaId((prev) => (prev === personaId ? null : personaId));
   }, []);
 
   const handleCurveTap = useCallback((payload: TapPopoverPayload) => {
@@ -171,12 +170,8 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
   const handleSeeFullFromPopover = useCallback(() => {
     setPopoverOpen(false);
     if (popoverPayload?.kind === 'cell' || popoverPayload?.kind === 'marker') {
-      const pid =
-        popoverPayload.kind === 'cell'
-          ? popoverPayload.personaId
-          : popoverPayload.personaId;
-      setInspectorPersonaId(pid);
-      setInspectorOpen(true);
+      // Open the INLINE persona detail (no Sheet) for the tapped persona.
+      setSelectedPersonaId(popoverPayload.personaId);
     }
     // fix-chip → navigate to verdict panel (future: setActivePreset('verdict'))
   }, [popoverPayload]);
@@ -405,6 +400,19 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
             onRowLabelTap={handleRowLabelTap}
           />
 
+          {/* Inline persona detail — replaces the former PersonaInspector Sheet.
+              Shown in-frame directly below the heatmap when a persona is selected
+              (click a row label, or "See full" in a tap popover). */}
+          {selectedPersonaId && (
+            <PersonaDetailInline
+              personaId={selectedPersonaId}
+              heatmap={result?.heatmap ?? null}
+              pass1Confidence={result?.confidence}
+              onJumpToSegment={handleJumpToSegment}
+              onClose={() => setSelectedPersonaId(null)}
+            />
+          )}
+
           {/* D-15: AntiViralityOverlay — conditional, quiet treatment */}
           <AntiViralityOverlay
             result={result ? { confidence: result.confidence, heatmap: result.heatmap ?? null } : null}
@@ -420,17 +428,6 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
         payload={popoverPayload}
         anchorPos={popoverAnchorPos}
         onSeeFull={handleSeeFullFromPopover}
-      />
-
-      <PersonaInspector
-        open={inspectorOpen}
-        onOpenChange={setInspectorOpen}
-        personaId={inspectorPersonaId}
-        heatmap={result?.heatmap ?? null}
-        pass1Verdict={undefined}
-        pass1Confidence={result?.confidence}
-        onJumpToSegment={handleJumpToSegment}
-        triggerRef={inspectorTriggerRef}
       />
 
       <WeightOverrideDrawer

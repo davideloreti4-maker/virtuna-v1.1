@@ -21,7 +21,7 @@ export const CAMERA_DEFAULT_SCALE = 1;
 export const GROUP_FRAMES: GroupFrameLayout[] = [
   { id: 'input',            label: 'Input',            bounds: { x:    0, y:    0, width:  240, height: 440 } },
   { id: 'engine',           label: 'Engine',           bounds: { x:    0, y:  456, width:  240, height: 120 } },
-  { id: 'audience',         label: 'Audience',         bounds: { x:  272, y:    0, width:  560, height: 576 } },
+  { id: 'audience',         label: 'Audience',         bounds: { x:  272, y:    0, width:  560, height: 800 } },
   { id: 'verdict',          label: 'Verdict',          bounds: { x:  864, y:    0, width:  360, height: 280 } },
   // Actions is now a tall hero column (560) holding the inline reshoot script,
   // the "What to fix" list, and "When to post" — all inline, no drawers. The
@@ -53,8 +53,9 @@ export const CAMERA_PRESET_TARGETS: Record<string, Rect> = {
   // D-09: Wave 0/1 auto-pan target = Input + Engine column (Engine + Hook decomp area).
   // Internal-only preset — not user-facing in CameraOverlay.
   engine: { x: 0, y: 0, width: 240, height: 576 },
-  // hero pair = Audience + Verdict union (D-07)
-  verdict: { x: 272, y: 0, width: 952, height: 576 },
+  // hero pair = Audience + Verdict union (D-07). Height tracks the taller
+  // Audience frame so the preset still frames both.
+  verdict: { x: 272, y: 0, width: 952, height: 800 },
   audience: GROUP_FRAMES.find((f) => f.id === 'audience')!.bounds,
   'content-analysis': GROUP_FRAMES.find((f) => f.id === 'content-analysis')!.bounds,
 };

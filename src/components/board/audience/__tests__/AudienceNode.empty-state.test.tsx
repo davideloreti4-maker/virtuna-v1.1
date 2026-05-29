@@ -13,7 +13,7 @@ vi.mock('../RetentionCurve', () => ({ RetentionCurve: () => <div data-testid="re
 vi.mock('../HeatmapDrawer', () => ({ HeatmapDrawer: () => <div data-testid="heatmap-drawer-stub" /> }));
 vi.mock('../AntiViralityOverlay', () => ({ AntiViralityOverlay: () => null }));
 vi.mock('../TapPopover', () => ({ TapPopover: () => null }));
-vi.mock('../PersonaInspector', () => ({ PersonaInspector: () => null }));
+vi.mock('../PersonaDetailInline', () => ({ PersonaDetailInline: () => null }));
 vi.mock('../WeightOverrideDrawer', () => ({ WeightOverrideDrawer: () => null }));
 vi.mock('../use-audience-choreography', () => ({
   useAudienceChoreography: () => ({ rowStates: {}, curveState: 'idle' }),
