@@ -104,8 +104,8 @@ function GridBody(props: HeatmapDrawerProps) {
 export function HeatmapDrawer(props: HeatmapDrawerProps) {
   const isMobile = useIsMobile();
 
-  const affordanceLabel = props.isOpen ? 'Hide personas' : 'Show personas';
-  const personaCount = props.rowStates.length || 10;
+  const affordanceLabel = props.isOpen ? 'Test Audience' : 'Show personas';
+  const personaCount = props.rowStates.length || 200;
 
   const AffordanceButton = (
     <button
