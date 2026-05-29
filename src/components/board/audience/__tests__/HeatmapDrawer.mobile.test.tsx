@@ -4,7 +4,8 @@ import { render } from '@testing-library/react';
 import { buildHeatmapFixture } from './fixtures/heatmap-fixture';
 import type { HeatmapDrawerProps } from '../audience-types';
 
-// Mock useIsMobile to return true (mobile viewport)
+// Mobile viewport — the heatmap must still expand INLINE (no Sheet/drawer).
+// The board keeps all content inside its frames on every viewport.
 vi.mock('@/hooks/useIsMobile', () => ({
   useIsMobile: vi.fn(() => true),
 }));
@@ -29,20 +30,16 @@ describe('HeatmapDrawer (mobile)', () => {
     vi.clearAllMocks();
   });
 
-  it('renders Radix Sheet with side=bottom on mobile when open', () => {
+  it('does NOT render a Sheet/drawer overlay on mobile when open', () => {
     render(<HeatmapDrawer {...makeProps({ isOpen: true })} />);
-    // Radix Dialog (Sheet) renders into a Portal at document.body — not inside container
-    const sheetContent = document.body.querySelector('[data-slot="sheet-content"]');
-    expect(sheetContent).toBeTruthy();
-    // The sheet-content div should have the bottom slide-in/out class
-    expect(sheetContent?.className).toMatch(/slide-in-from-bottom|slide-out-to-bottom/);
+    // No Radix Sheet portal should exist — content stays in-frame.
+    expect(document.body.querySelector('[data-slot="sheet-content"]')).toBeNull();
   });
 
-  it('SheetContent has max-h-[70dvh] class', () => {
-    render(<HeatmapDrawer {...makeProps({ isOpen: true })} />);
-    // Sheet renders via Portal into document.body
-    const sheetContent = document.body.querySelector('[data-slot="sheet-content"]');
-    expect(sheetContent).toBeTruthy();
-    expect(sheetContent?.className).toContain('max-h-[70dvh]');
+  it('expands the heatmap grid inline (in-frame) when open', () => {
+    const { container } = render(<HeatmapDrawer {...makeProps({ isOpen: true })} />);
+    // The grid renders within the component container (not a portal).
+    const grid = container.querySelector('#audience-heatmap-grid [role="grid"]');
+    expect(grid).toBeTruthy();
   });
 });

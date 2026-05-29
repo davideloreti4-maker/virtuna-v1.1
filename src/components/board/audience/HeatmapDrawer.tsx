@@ -1,10 +1,8 @@
 'use client';
 import { useMemo } from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { CaretDown, CaretUp } from '@phosphor-icons/react';
 import { PersonaRow } from './PersonaRow';
 import { PERSONA_SLOT_ORDER, ARCHETYPE_DISPLAY_NAME } from './audience-constants';
-import { useIsMobile } from '@/hooks/useIsMobile';
 import type { RowState, PersonaSlotType, HeatmapDrawerProps } from './audience-types';
 
 const ARCHETYPE_LABEL: Record<PersonaSlotType, string> = {
@@ -96,60 +94,33 @@ function GridBody(props: HeatmapDrawerProps) {
 }
 
 /**
- * HeatmapDrawer — 10×N CSS Grid heatmap with drawer mechanism.
+ * HeatmapDrawer — 10×N CSS Grid heatmap that expands inline within the frame.
  *
- * Desktop: inline grid-template-rows 0fr→1fr transition (250ms).
- * Mobile (<768px): Radix Sheet with side="bottom", max-height 70dvh.
+ * Always inline (grid-template-rows 0fr→1fr, 250ms) on every viewport — no
+ * Sheet/drawer overlay. The board keeps all content inside its frames, so the
+ * mobile card stack and the desktop canvas share the same in-frame expansion.
  */
 export function HeatmapDrawer(props: HeatmapDrawerProps) {
-  const isMobile = useIsMobile();
-
   const affordanceLabel = props.isOpen ? 'Test Audience' : 'Show personas';
   const personaCount = props.rowStates.length || 200;
 
-  const AffordanceButton = (
-    <button
-      type="button"
-      onClick={() => props.onOpenChange(!props.isOpen)}
-      className="flex w-full items-center justify-between gap-2 rounded-[8px] border border-white/[0.06] px-2.5 py-1.5 text-xs transition-colors hover:bg-white/[0.05] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF7F50]"
-      style={{ background: 'rgba(255,255,255,0.03)' }}
-      aria-expanded={props.isOpen}
-      aria-controls="audience-heatmap-grid"
-    >
-      <span className="flex items-center gap-2">
-        <span className="font-medium">{affordanceLabel}</span>
-        <span className="opacity-50">·</span>
-        <span className="opacity-60 tabular-nums">{personaCount}</span>
-      </span>
-      {props.isOpen ? <CaretUp size={12} aria-hidden="true" className="opacity-70" /> : <CaretDown size={12} aria-hidden="true" className="opacity-70" />}
-    </button>
-  );
-
-  if (isMobile) {
-    return (
-      <>
-        {AffordanceButton}
-        <Sheet open={props.isOpen} onOpenChange={props.onOpenChange}>
-          <SheetContent
-            side="bottom"
-            className="max-h-[70dvh] overflow-auto bg-[#18191a]"
-          >
-            <SheetHeader>
-              <SheetTitle>Audience personas</SheetTitle>
-            </SheetHeader>
-            <div id="audience-heatmap-grid">
-              <GridBody {...props} />
-            </div>
-          </SheetContent>
-        </Sheet>
-      </>
-    );
-  }
-
-  // Desktop: inline grid-template-rows transition
   return (
     <div>
-      {AffordanceButton}
+      <button
+        type="button"
+        onClick={() => props.onOpenChange(!props.isOpen)}
+        className="flex w-full items-center justify-between gap-2 rounded-[8px] border border-white/[0.06] px-2.5 py-1.5 text-xs transition-colors hover:bg-white/[0.05] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF7F50]"
+        style={{ background: 'rgba(255,255,255,0.03)' }}
+        aria-expanded={props.isOpen}
+        aria-controls="audience-heatmap-grid"
+      >
+        <span className="flex items-center gap-2">
+          <span className="font-medium">{affordanceLabel}</span>
+          <span className="opacity-50">·</span>
+          <span className="opacity-60 tabular-nums">{personaCount}</span>
+        </span>
+        {props.isOpen ? <CaretUp size={12} aria-hidden="true" className="opacity-70" /> : <CaretDown size={12} aria-hidden="true" className="opacity-70" />}
+      </button>
       <div
         className="grid overflow-hidden"
         style={{

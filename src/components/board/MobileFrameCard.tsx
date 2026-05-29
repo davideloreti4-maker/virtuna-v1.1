@@ -32,7 +32,9 @@ export function MobileFrameCard({
     <section
       aria-label={label}
       className={cn(
-        'rounded-[12px] border bg-transparent',
+        // bg matches the board canvas frames (GroupFrame fill #18191a) so card
+        // view and board view frames read identically.
+        'rounded-[12px] border bg-[#18191a]',
         accent ? 'border-accent/30' : 'border-white/[0.06]',
       )}
       style={{ boxShadow: 'rgba(255,255,255,0.05) 0 1px 0 0 inset' }}
