@@ -24,6 +24,17 @@ The prediction pipeline produces rich output but the board rendered ~30% of it, 
 - **Actions render** (was 100% "Coming in Phase 6"): "What to fix" (4 prioritized fixes + SCORE BREAKDOWN), "When to post → Tue 7–10 PM".
 - **Verdict** reasoning open by default; **Content Analysis** chips no longer clipped; **persona heatmap** cell alpha now varies per segment.
 
+## SESSION UPDATE 2026-05-29 (continuation — commit `66edb29`)
+Landed all concrete, no-run-needed items. What changed:
+- **#3 Video 404 — FIXED (code).** `buildInsertRow` now persists `video_storage_path = null` when retention is NOT opted in (the video is deleted right after analysis), so `/api/videos/sign` no longer 404s on reload. `route.ts`. (Filmstrip-blank-on-reload is still the separate env-var issue — unchanged.)
+- **#4 Persona scroll — FIXED (code).** `AudienceNode` root flex-col now `min-h-0 overflow-y-auto` — all 10 rows reachable when the drawer expands.
+- **#1 Latency — INSTRUMENTED (awaiting a run).** Per-stage `performance.now()` logs added: aggregator emits `stage_timing` for `optimal_post_window`, `predict_with_ml`, `stage10_critique`, `stage11_counterfactuals` (each individual) + `stage10_11_wall`; route emits `aggregate_scores_total` + `db_writes_total`. **Next run: grep logs for `stage_timing`.** If `stage10 + stage11 ≈ wall` → the two LLM calls are serialized at DashScope despite `Promise.all`; if `wall ≈ max(...)` → truly concurrent.
+- **#2 Counterfactuals null — INSTRUMENTED (awaiting a run).** On schema-validation failure, `stage11-counterfactuals.ts` now logs `counterfactuals_validation_failed` with `expected_band`, `overall_score`, the zod `error`, and `raw_output` (first 2000 chars). **Next run: grep that line, compare raw shape to the per-band union, then loosen schema or strengthen prompt.**
+- **Known-failing tests — FIXED.** `board-constants.test.ts` (BOARD_BOUNDS → {0,0,1224,1104}, gutter 96→32) and `RetentionCurve.test.tsx` DPR (canvas now sized from `offsetWidth`, stubbed in `beforeEach`). All green.
+- **CORRECTION:** `engine/gemini/` is **NOT** dead code — `src/lib/engine/types.ts:8` imports `./gemini/schemas`. Do NOT delete. (`engine/gemini/cost.ts` may be unused but lives beside the imported schema; leave the dir.)
+
+Still needs Davide to run an analysis: read #1 + #2 timing/raw logs; filmstrip env vars (#3 second half); deferred #5 (emotion_arc prompt, trends seeding).
+
 ## REMAINING WORK (prioritized) — open the GSD task notes too
 
 ### 1. Latency still ~5.6 min (regressed; task #6)
