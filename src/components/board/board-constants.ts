@@ -13,8 +13,13 @@ export const CAMERA_DEFAULT_SCALE = 1;
  * Layout reads left→right, top→bottom:
  *   Input (top-left, compact) + Engine (under Input, compact)
  *   Audience (large central centerpiece)
- *   Verdict (large hero, right column) + Actions (below Verdict)
- *   Content Analysis (supporting row, beneath Audience+Verdict)
+ *   Verdict (large hero, right column) + Actions (tall, fills right column)
+ *   Content Analysis (lower-left+center block, under Input/Engine+Audience)
+ *
+ * Phase 3 re-space: Content Analysis moved UP from a full-width footer (y904)
+ * into the lower-left+center void (x0..832, under the short Input/Engine column
+ * and Audience), and Actions grown so the right column reaches the same bottom
+ * (1072) — killing the ~328px lower-left dead space without a far-bottom strip.
  *
  * World-space gaps: 32px between every adjacent frame edge.
  */
@@ -23,12 +28,14 @@ export const GROUP_FRAMES: GroupFrameLayout[] = [
   { id: 'engine',           label: 'Engine',           bounds: { x:    0, y:  456, width:  240, height: 120 } },
   { id: 'audience',         label: 'Audience',         bounds: { x:  272, y:    0, width:  560, height: 800 } },
   { id: 'verdict',          label: 'Verdict',          bounds: { x:  864, y:    0, width:  360, height: 280 } },
-  // Actions is now a tall hero column (560) holding the inline reshoot script,
-  // the "What to fix" list, and "When to post" — all inline, no drawers. The
-  // former AV-only 200→360 grow is gone; one height serves every state.
-  { id: 'actions',          label: 'Actions',          bounds: { x:  864, y:  312, width:  360, height: 560 } },
-  // Pushed below the taller Actions bottom (872) + 32px gutter.
-  { id: 'content-analysis', label: 'Content Analysis', bounds: { x:    0, y:  904, width: 1224, height: 200 } },
+  // Actions: tall hero column holding the inline reshoot script, "What to fix",
+  // and "When to post" (all inline, no drawers). Grown to bottom 1072 so the
+  // right column matches the Content Analysis block on the left (Phase 3).
+  { id: 'actions',          label: 'Actions',          bounds: { x:  864, y:  312, width:  360, height: 760 } },
+  // Lower-left+center block: top clears Audience (800) by the 32px gutter; right
+  // edge (832) aligns with Audience; left edge fills under the short Input/Engine
+  // column. Right edge clears the Actions column (x864) by 32px.
+  { id: 'content-analysis', label: 'Content Analysis', bounds: { x:    0, y:  832, width:  832, height: 240 } },
 ];
 
 export const BOARD_BOUNDS: Rect = (() => {

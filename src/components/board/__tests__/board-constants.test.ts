@@ -67,10 +67,17 @@ describe('GROUP_FRAMES world-space gaps (UAT gap 1 regression — 2026-05-26)', 
     expect(b.y - bottom(a)).toBeGreaterThanOrEqual(MIN_GAP);
   });
 
-  it('actions → content-analysis vertical gap is ≥ 32px', () => {
-    const a = rectFor('actions');
-    const b = rectFor('content-analysis');
-    expect(b.y - bottom(a)).toBeGreaterThanOrEqual(MIN_GAP);
+  // Phase 3: content-analysis moved up-left into the lower-left+center void, so
+  // it now sits BESIDE the (grown) Actions column rather than stacked beneath it.
+  // The vertical gutter became a horizontal one.
+  it('content-analysis → actions horizontal gap is ≥ 32px', () => {
+    const a = rectFor('content-analysis');
+    const b = rectFor('actions');
+    expect(b.x - right(a)).toBeGreaterThanOrEqual(MIN_GAP);
+  });
+
+  it('content-analysis and actions share the board bottom (right column matches left block)', () => {
+    expect(bottom(rectFor('content-analysis'))).toBe(bottom(rectFor('actions')));
   });
 
   it('engine → content-analysis vertical gap is ≥ 32px', () => {
@@ -87,8 +94,8 @@ describe('BOARD_BOUNDS derived from re-spaced GROUP_FRAMES', () => {
     }
   });
 
-  it('matches expected dimensions {0,0,1224,1104}', () => {
-    expect(BOARD_BOUNDS).toEqual({ x: 0, y: 0, width: 1224, height: 1104 });
+  it('matches expected dimensions {0,0,1224,1072}', () => {
+    expect(BOARD_BOUNDS).toEqual({ x: 0, y: 0, width: 1224, height: 1072 });
   });
 });
 
