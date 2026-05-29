@@ -58,6 +58,8 @@ React AS THIS PERSONA to each segment in sequence. For each segment, output how 
 - reason MUST be at most 200 characters
 - swipe_predicted becomes true at the moment you would swipe and stays true for all subsequent segments
 - swipe_predicted must be monotonically true once set (cannot go false after going true)
+- Set swipe_predicted=true at the FIRST segment where you would actually scroll away — typically when attention falls below ~0.35, when the payoff/topic stops matching your archetype's interest, or when pacing stalls
+- Be realistic and decisive: most viewers do NOT finish a video. Your swipe timeline MUST be consistent with your Pass 1 watch-through — if your Pass 1 watch-through is below ~90%, swipe_predicted MUST turn true at the segment matching that drop-off. Only personas who genuinely watch to the end keep swipe_predicted=false for every segment
 
 ## Hard Constraints (D-06)
 
@@ -81,6 +83,13 @@ Return a JSON object with EXACTLY this shape:
       "attention": 0.85,
       "reason": "hook landed — unusual opener",
       "swipe_predicted": false
+    },
+    {
+      "t_start": 2,
+      "t_end": 4,
+      "attention": 0.30,
+      "reason": "payoff stalled — losing interest, scrolling",
+      "swipe_predicted": true
     }
   ],
   "pass2_latency_ms": 0,
