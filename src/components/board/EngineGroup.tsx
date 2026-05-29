@@ -100,14 +100,27 @@ export function EngineGroup() {
   }, [activeIdx, boardState, effectiveReducedMotion, setActivePreset, currentPreset]);
 
   if (collapsed) {
+    // Collapsed only fires after phase === 'complete' (effect above), so this is
+    // the history / done state. The frame is ~84px of body — a tiny lone link left
+    // it looking empty, so show a compact "complete" summary that fills the frame
+    // and confirms what ran. The "View pipeline →" affordance is preserved.
     return (
-      <button
-        type="button"
-        onClick={() => setCollapsed(false)}
-        className="rounded-md px-2 py-1 text-xs text-foreground-muted hover:bg-white/[0.02]"
-      >
-        View pipeline →
-      </button>
+      <div className="flex h-full flex-col justify-center gap-1.5">
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-success" aria-hidden />
+          <span className="text-xs font-medium text-white/85">Pipeline complete</span>
+        </div>
+        <span className="text-[10px] tabular-nums text-foreground-muted">
+          Qwen · {STAGES.length} stages
+        </span>
+        <button
+          type="button"
+          onClick={() => setCollapsed(false)}
+          className="self-start rounded-md text-xs text-foreground-muted transition-colors hover:text-white/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF7F50]"
+        >
+          View pipeline →
+        </button>
+      </div>
     );
   }
 
