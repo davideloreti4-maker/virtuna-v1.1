@@ -41,6 +41,9 @@ import type { GroupId } from './board-types';
 import type { FrameVisualState } from './GroupFrame';
 import { detectInitialTier, startFpsSampler, usePerfStore, nextLowerTier } from '@/lib/perf-tier';
 import { useToast } from '@/components/ui/toast';
+import { useViewMode } from './use-view-mode';
+import { BoardMobile } from './BoardMobile';
+import { ViewModeToggle } from './ViewModeToggle';
 
 /**
  * Derives per-frame visual state from the board machine state.
@@ -69,6 +72,11 @@ export function Board() {
   const setTier = usePerfStore((s) => s.setTier);
   const effectiveReducedMotion = reducedMotion || tier === 'low';
   const { toast, dismiss } = useToast();
+
+  // View mode (mobile): phones render the vertical card stack instead of the
+  // pannable canvas; tablets/desktop keep the canvas. A persisted override lets
+  // any user pin a mode via the floating board⇄cards toggle.
+  const { mode, isMobile, override, toggle } = useViewMode();
 
   // Board machine state for frame visual derivation (plan 2.2)
   const boardMachineState = useBoardStore((s) => s.boardState);
@@ -359,6 +367,20 @@ export function Board() {
 
   useBoardKeyboard({ goToPreset });
 
+  // Input card data — shared by the canvas overlay (InputNodeOverlay) and the
+  // mobile card stack (BoardMobile). Lifted so both views stay in sync.
+  const streamResult = stream.result as {
+    video_storage_path?: string | null;
+    behavioral_predictions?: import('@/lib/engine/types').BehavioralPredictions | null;
+  } | null;
+  const inputCard = {
+    videoStoragePath: streamResult?.video_storage_path ?? null,
+    thumbnailUrl:
+      stream.filmstrips?.[0] ?? permalinkFilmstrips?.[0] ?? pendingVideoThumbnail ?? null,
+    behavioral: streamResult?.behavioral_predictions ?? null,
+    isStreaming: boardMachineState === 'streaming',
+  };
+
   return (
     <div
       ref={wrapperRef}
@@ -366,6 +388,16 @@ export function Board() {
       role="application"
       aria-label="Analysis board"
     >
+      {mode === 'cards' ? (
+        <BoardMobile
+          boardMachineState={boardMachineState}
+          input={inputCard}
+          // A permalink route or any non-idle state means there's something to show;
+          // bare /analyze with no analysis falls through to the desktop-only hint.
+          hasAnalysis={!!urlAnalysisId || boardMachineState !== 'idle' || !!stream.result}
+        />
+      ) : (
+      <>
       <BoardCanvas
         camera={camera}
         setCamera={setCamera}
@@ -418,27 +450,26 @@ export function Board() {
         {/* Input node — TikTok-style vertical card showing the uploaded video
             + predicted engagement metrics overlay (derived from overall_score
             + behavioral_predictions). */}
-        {(() => {
-          const r = stream.result as {
-            video_storage_path?: string | null;
-            behavioral_predictions?: import('@/lib/engine/types').BehavioralPredictions | null;
-          } | null;
-          return (
-            <InputNodeOverlay
-              camera={camera}
-              videoStoragePath={r?.video_storage_path ?? null}
-              videoUrl={null}
-              thumbnailUrl={stream.filmstrips?.[0] ?? permalinkFilmstrips?.[0] ?? pendingVideoThumbnail ?? null}
-              behavioral={r?.behavioral_predictions ?? null}
-              isStreaming={boardMachineState === 'streaming'}
-            />
-          );
-        })()}
+        <InputNodeOverlay
+          camera={camera}
+          videoStoragePath={inputCard.videoStoragePath}
+          videoUrl={null}
+          thumbnailUrl={inputCard.thumbnailUrl}
+          behavioral={inputCard.behavioral}
+          isStreaming={inputCard.isStreaming}
+        />
       </div>
 
       {/* DOM overlay slots (filled by plans 2.6 command bar, 2.7 input node, etc.) */}
       <CameraOverlay activePreset={activePreset} onSelect={goToPreset} />
+      </>
+      )}
 
+      {/* Manual board⇄cards switch — shown on phones, or once a user has pinned
+          a mode, so wide screens stay clean by default. */}
+      {(isMobile || override !== null) && (
+        <ViewModeToggle mode={mode} onToggle={toggle} />
+      )}
     </div>
   );
 }

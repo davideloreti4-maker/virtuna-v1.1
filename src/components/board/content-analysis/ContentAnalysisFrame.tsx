@@ -19,14 +19,17 @@ export function ContentAnalysisFrame({ camera: _camera, layout: _layout }: Conte
       // and the frame scrolls if content exceeds it, instead of the fixed-height
       // GroupFrameOverlay silently clipping the coherence / cognitive-load chips
       // below the hook bars.
-      className="flex flex-row items-start gap-4 p-2 h-full overflow-y-auto"
+      // flex-col on phones (card view) → the two columns stack and fill width
+      // instead of the 480px hook column overflowing; flex-row from sm: up keeps
+      // the desktop canvas layout unchanged (that frame is always ≥640px wide).
+      className="flex flex-col sm:flex-row items-start gap-4 p-2 h-full overflow-y-auto"
       data-testid="content-analysis-frame"
     >
       <HookDecompNode
         decomp={result?.hook_decomposition ?? null}
         segments={result?.heatmap?.segments ?? null}
         counterfactuals={result?.counterfactuals?.suggestions}
-        className="w-[480px] shrink-0"
+        className="w-full sm:w-[480px] sm:shrink-0"
       />
       <EmotionArcNode
         points={result?.emotion_arc ?? null}
