@@ -59,13 +59,25 @@ beforeEach(() => {
     configurable: true,
   });
 
-  // getBoundingClientRect default
+  // getBoundingClientRect default — used by the pointer→world mapping path.
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
     width: 400,
     height: 180,
     x: 0, y: 0, top: 0, left: 0, right: 400, bottom: 180,
     toJSON: () => ({}),
   } as DOMRect);
+
+  // offsetWidth/offsetHeight — the canvas hook sizes its buffer from
+  // offsetWidth × dpr (CSS layout size, not getBoundingClientRect). happy-dom
+  // does no layout, so without these stubs the canvas measures 0.
+  Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+    configurable: true,
+    get: () => 400,
+  });
+  Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+    configurable: true,
+    get: () => 180,
+  });
 
   // Reset ctx mocks between tests
   for (const key of Object.keys(mockCtx)) {
@@ -110,14 +122,8 @@ describe('RetentionCurve', () => {
     expect(canvas?.getAttribute('aria-label')).toMatch(/retention curve/i);
   });
 
-  it('DPR-aware: canvas physical width = rect.width × devicePixelRatio', () => {
+  it('DPR-aware: canvas physical width = offsetWidth × devicePixelRatio', () => {
     Object.defineProperty(window, 'devicePixelRatio', { value: 2, configurable: true });
-    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
-      width: 400,
-      height: 180,
-      x: 0, y: 0, top: 0, left: 0, right: 400, bottom: 180,
-      toJSON: () => ({}),
-    } as DOMRect);
 
     const { container } = render(<RetentionCurve {...defaultProps} />);
 
@@ -128,7 +134,7 @@ describe('RetentionCurve', () => {
     });
 
     const canvas = container.querySelector('canvas') as HTMLCanvasElement;
-    // canvas.width set by hook to Math.round(400 * 2) = 800
+    // canvas.width set by hook to Math.round(offsetWidth(400) * dpr(2)) = 800
     expect(canvas.width).toBe(800);
   });
 

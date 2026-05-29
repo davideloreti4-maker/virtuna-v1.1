@@ -383,8 +383,14 @@ export async function POST(request: Request) {
       audio_description: finalResult.audio_description ?? null,
       // Phase 11 (INT-05): Persist Supabase Storage path so retention cron can delete it.
       // Only set for video_upload mode; null for tiktok_url/text modes.
+      // Board-fix: when retention is NOT opted in, the video is deleted right after
+      // analysis (cleanupUploadedStorage below), so persisting its path would leave a
+      // stale key that 404s in /api/videos/sign on permalink reload. Null it here so
+      // the board degrades cleanly instead of requesting a dead object.
       video_storage_path:
-        validated.input_mode === "video_upload" && validated.video_storage_path
+        validated.input_mode === "video_upload" &&
+        validated.video_storage_path &&
+        retentionOptedIn
           ? validated.video_storage_path
           : null,
       // Persist the assembled HeatmapPayload so /api/analysis/[id] can return
@@ -564,10 +570,18 @@ export async function POST(request: Request) {
             phase: "scoring",
             message: "Calculating predictions and assembling results...",
           });
+          // board-fix #1: time aggregateScores — the dominant post-pipeline tail
+          // (Stage 10/11 LLM calls + ML + post-window). Per-stage breakdown is
+          // logged inside the aggregator under module "aggregator".
+          const tAgg = performance.now();
           const result = await aggregateScores(
             pipelineResult,
             /* onStageEvent: */ (event: StageEvent) => { send("stage", event); },
           );
+          log.info("stage_timing", {
+            stage: "aggregate_scores_total",
+            ms: Math.round(performance.now() - tAgg),
+          });
 
           // Build rule_contributions JSONB for per-rule tracking (RULE-03)
           const ruleContributions = pipelineResult.ruleResult.matched_rules.map(r => ({
@@ -584,6 +598,10 @@ export async function POST(request: Request) {
             warnings: [...pipelineResult.warnings, ...result.warnings],
           };
 
+          // board-fix #1: time the 3 serial DB writes (upsert + usage + safety-net
+          // UPDATE) as one block — they run before send("complete"), so they extend
+          // the user-visible tail. Logged at the close just before send("complete").
+          const tDb = performance.now();
           // Persist to DB — UPSERT by id replaces the placeholder row from Pitfall #6
           // Option A. The placeholder INSERT above guarantees the row exists; the
           // UPSERT here populates it with final values (engine_version, latency_ms,
@@ -659,6 +677,11 @@ export async function POST(request: Request) {
               });
             }
           }
+
+          log.info("stage_timing", {
+            stage: "db_writes_total",
+            ms: Math.round(performance.now() - tDb),
+          });
 
           send("complete", finalResult);
 

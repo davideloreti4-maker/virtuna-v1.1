@@ -116,6 +116,21 @@ export async function runStage11Counterfactuals(
         lastError = new Error(
           `validation failed: ${"error" in parsed ? String(parsed.error) : "unknown"}`,
         );
+        // Diagnostic (board-fix #2): counterfactuals persisted null despite the
+        // 30→60s timeout raise — the failure is schema validation, not timeout.
+        // Log the raw model output + expected band so a re-run reveals exactly how
+        // the model's shape diverges from the per-band discriminated union
+        // (low=3 fix / mid=2 fix+1 reinforcement / high=1 stretch+2-3 reinforcement).
+        const expectedScore = aggregateResult.overall_score ?? 0;
+        const expectedBand =
+          expectedScore >= 75 ? "high" : expectedScore >= 50 ? "mid" : "low";
+        log.warn("counterfactuals_validation_failed", {
+          attempt,
+          expected_band: expectedBand,
+          overall_score: expectedScore,
+          error: "error" in parsed ? String(parsed.error) : "unknown",
+          raw_output: text.slice(0, 2000),
+        });
         if (attempt === 0) { attempt++; continue; }
         throw lastError;
       }

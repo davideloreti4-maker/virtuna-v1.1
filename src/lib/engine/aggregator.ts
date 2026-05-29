@@ -48,6 +48,9 @@ import { runStage10Critique, applyCritiqueAdjustment } from "./stage10-critique"
 import { runStage11Counterfactuals, maybeAppendLikelyFlopWarning } from "./stage11-counterfactuals";
 import { applyContentTypeWeights } from "./wave0/content-type-weights";
 import { computeAudioPerceptualScore } from "./audio-perceptual";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "aggregator" });
 
 /** Re-export ENGINE_VERSION for back-compat — existing consumers `import { ENGINE_VERSION } from "./aggregator"` keep working. */
 export { ENGINE_VERSION };
@@ -718,16 +721,24 @@ export async function aggregateScores(
   // `_creator` is unused in P1 per D-12 — passing null until M2-II promotes the
   // creator-aware override path.
   let optimal_post_window: OptimalPostWindow | null = null;
-  try {
-    const serviceClient = createServiceClient();
-    const nicheValue = pipelineResult.payload.niche ?? null;
-    optimal_post_window = await computeOptimalPostWindow(
-      serviceClient,
-      nicheValue,
-      null,
-    );
-  } catch {
-    optimal_post_window = null; // non-fatal per D-15
+  {
+    // board-fix #1: per-stage timing to locate the ~121s post-pipeline tail.
+    const t = performance.now();
+    try {
+      const serviceClient = createServiceClient();
+      const nicheValue = pipelineResult.payload.niche ?? null;
+      optimal_post_window = await computeOptimalPostWindow(
+        serviceClient,
+        nicheValue,
+        null,
+      );
+    } catch {
+      optimal_post_window = null; // non-fatal per D-15
+    }
+    log.info("stage_timing", {
+      stage: "optimal_post_window",
+      ms: Math.round(performance.now() - t),
+    });
   }
 
   // -------------------------------------------------
@@ -746,7 +757,13 @@ export async function aggregateScores(
     adjustedVideoSignals,
   );
   const mlFeatures = featureVectorToMLInput(feature_vector);
+  // board-fix #1: time ML predict — suspected cold-start cost in the tail.
+  const tMl = performance.now();
   const mlScore = await predictWithML(mlFeatures);
+  log.info("stage_timing", {
+    stage: "predict_with_ml",
+    ms: Math.round(performance.now() - tMl),
+  });
 
   // -------------------------------------------------
   // RULE-04: Determine signal availability from pipeline result
@@ -1185,12 +1202,28 @@ export async function aggregateScores(
   // LIKELY_FLOP check below still runs on POST-critique confidence, and the
   // anti-virality gate is still recomputed from post-critique confidence —
   // Pitfall 7 ordering invariant preserved.
+  // board-fix #1: time each LLM call individually + the Promise.all wall time.
+  // If (stage10 + stage11) ≈ wall, the two calls are serialized at the DashScope
+  // network layer despite Promise.all; if wall ≈ max(stage10, stage11), they are
+  // truly concurrent. This answers the open latency question in the handoff.
+  const tStages = performance.now();
   const [critiqueResult, counterfactualResult] = await Promise.all([
-    runStage10Critique(result, onStageEvent),
+    (async () => {
+      const t = performance.now();
+      const r = await runStage10Critique(result, onStageEvent);
+      log.info("stage_timing", { stage: "stage10_critique", ms: Math.round(performance.now() - t) });
+      return r;
+    })(),
     // D-01 / D-06 / D-18 — Stage 11 receives videoContext from options (Plan 03
     // threads real values; Plan 02 default = null).
-    runStage11Counterfactuals(result, options?.videoContext ?? null, onStageEvent),
+    (async () => {
+      const t = performance.now();
+      const r = await runStage11Counterfactuals(result, options?.videoContext ?? null, onStageEvent);
+      log.info("stage_timing", { stage: "stage11_counterfactuals", ms: Math.round(performance.now() - t) });
+      return r;
+    })(),
   ]);
+  log.info("stage_timing", { stage: "stage10_11_wall", ms: Math.round(performance.now() - tStages) });
 
   if (critiqueResult) {
     result.confidence = applyCritiqueAdjustment(result.confidence, critiqueResult);

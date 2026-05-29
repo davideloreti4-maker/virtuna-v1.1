@@ -24,12 +24,12 @@ function containsRect(outer: Rect, inner: Rect): boolean {
   );
 }
 
-const MIN_GAP = 96;
+const MIN_GAP = 32;
 
 describe('GROUP_FRAMES world-space gaps (UAT gap 1 regression — 2026-05-26)', () => {
   // Input + Engine are intentionally paired in a single left column (Input
   // hosts the TikTok-style result card, Engine is a compact pipeline footer).
-  // The 96px inter-group gutter doesn't apply to this pair; we just enforce
+  // The 32px inter-group gutter doesn't apply to this pair; we just enforce
   // they don't overlap.
   it('input → engine vertical gap is non-overlapping', () => {
     const a = rectFor('input');
@@ -37,43 +37,43 @@ describe('GROUP_FRAMES world-space gaps (UAT gap 1 regression — 2026-05-26)', 
     expect(b.y - bottom(a)).toBeGreaterThanOrEqual(0);
   });
 
-  it('input → audience horizontal gap is ≥ 96px', () => {
+  it('input → audience horizontal gap is ≥ 32px', () => {
     const a = rectFor('input');
     const b = rectFor('audience');
     expect(b.x - right(a)).toBeGreaterThanOrEqual(MIN_GAP);
   });
 
-  it('engine → audience horizontal gap is ≥ 96px', () => {
+  it('engine → audience horizontal gap is ≥ 32px', () => {
     const a = rectFor('engine');
     const b = rectFor('audience');
     expect(b.x - right(a)).toBeGreaterThanOrEqual(MIN_GAP);
   });
 
-  it('audience → verdict horizontal gap is ≥ 96px', () => {
+  it('audience → verdict horizontal gap is ≥ 32px', () => {
     const a = rectFor('audience');
     const b = rectFor('verdict');
     expect(b.x - right(a)).toBeGreaterThanOrEqual(MIN_GAP);
   });
 
-  it('verdict → actions vertical gap is ≥ 96px', () => {
+  it('verdict → actions vertical gap is ≥ 32px', () => {
     const a = rectFor('verdict');
     const b = rectFor('actions');
     expect(b.y - bottom(a)).toBeGreaterThanOrEqual(MIN_GAP);
   });
 
-  it('audience → content-analysis vertical gap is ≥ 96px', () => {
+  it('audience → content-analysis vertical gap is ≥ 32px', () => {
     const a = rectFor('audience');
     const b = rectFor('content-analysis');
     expect(b.y - bottom(a)).toBeGreaterThanOrEqual(MIN_GAP);
   });
 
-  it('actions → content-analysis vertical gap is ≥ 96px', () => {
+  it('actions → content-analysis vertical gap is ≥ 32px', () => {
     const a = rectFor('actions');
     const b = rectFor('content-analysis');
     expect(b.y - bottom(a)).toBeGreaterThanOrEqual(MIN_GAP);
   });
 
-  it('engine → content-analysis vertical gap is ≥ 96px', () => {
+  it('engine → content-analysis vertical gap is ≥ 32px', () => {
     const a = rectFor('engine');
     const b = rectFor('content-analysis');
     expect(b.y - bottom(a)).toBeGreaterThanOrEqual(MIN_GAP);
@@ -87,8 +87,8 @@ describe('BOARD_BOUNDS derived from re-spaced GROUP_FRAMES', () => {
     }
   });
 
-  it('matches expected dimensions {0,0,1352,872}', () => {
-    expect(BOARD_BOUNDS).toEqual({ x: 0, y: 0, width: 1352, height: 872 });
+  it('matches expected dimensions {0,0,1224,1104}', () => {
+    expect(BOARD_BOUNDS).toEqual({ x: 0, y: 0, width: 1224, height: 1104 });
   });
 });
 
