@@ -97,7 +97,10 @@ function mockStream(overrides: { phase?: string; result?: unknown } = {}) {
   vi.doMock('@/hooks/queries/use-analysis-stream', () => ({
     useAnalysisStream: () => ({
       phase: overrides.phase ?? 'complete',
-      result: overrides.result ?? {
+      // Honor an explicit `result: null` (streaming) — `?? default` would coerce
+      // null back to the fixture. The slots now gate on data presence, so a null
+      // result must stay null to exercise the placeholder path.
+      result: 'result' in overrides ? overrides.result : {
         ...fixtures.complete,
         id: 'analysis-id-stub',
         optimal_post_window: {

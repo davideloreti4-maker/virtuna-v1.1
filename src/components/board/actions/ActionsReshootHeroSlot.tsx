@@ -14,12 +14,16 @@ interface Props {
   style?: React.CSSProperties;
   analysisId: string | null;
   phase: string;
+  /** True once the analysis row is available (data-presence gate, not stream phase). */
+  ready: boolean;
   isAV: boolean;
 }
 
-export function ActionsReshootHeroSlot({ className, style, analysisId, phase, isAV }: Props) {
-  // Pre-complete phase: keep Phase 5 placeholder (per D-18 — engine emits counterfactuals only at terminal).
-  if (phase !== 'complete' || !analysisId) {
+export function ActionsReshootHeroSlot({ className, style, analysisId, phase, ready, isAV }: Props) {
+  // Show the placeholder until the row is loaded AND we have an id to fetch the
+  // script with. Gating on `ready` (data presence) instead of stream phase fixes
+  // the case where a sibling node holds the result but its phase lags at 'idle'.
+  if (!ready || !analysisId) {
     return (
       <div className={className} style={style} data-testid="actions-reshoot-hero-slot">
         <PlaceholderCard

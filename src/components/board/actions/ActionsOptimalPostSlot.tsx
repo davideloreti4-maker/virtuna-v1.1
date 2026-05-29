@@ -8,14 +8,16 @@ import { OPTIMAL_POST_COPY } from './optimal-post/optimal-post-constants';
 
 interface Props {
   analysisId: string | null;
-  phase: string;
+  /** True once the analysis row is available (data-presence gate, not stream phase). */
+  ready: boolean;
   window: OptimalPostWindow | null;
   override: OptimalPostOverride | null;
 }
 
-export function ActionsOptimalPostSlot({ analysisId, phase, window: postWindow, override }: Props) {
-  // Pre-complete phase: keep Phase 5 placeholder for streaming-test continuity.
-  if (phase !== 'complete' || !analysisId) {
+export function ActionsOptimalPostSlot({ analysisId, ready, window: postWindow, override }: Props) {
+  // OptimalPostCard needs an id (telemetry + override persistence); gate on both
+  // data-readiness and a resolved analysisId rather than the lagging stream phase.
+  if (!ready || !analysisId) {
     return (
       <PlaceholderCard
         label={OPTIMAL_POST_COPY.CARD_LABEL}

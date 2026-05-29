@@ -11,7 +11,7 @@ import { TELEMETRY } from './actions-constants';
 import type { ActionsNodeProps } from './actions-types';
 import type { OptimalPostOverride } from './optimal-post/OptimalPostCard';
 import type { OptimalPostWindow } from '@/lib/engine/optimal-post';
-import type { CounterfactualResult, Factor } from '@/lib/engine/types';
+import type { CounterfactualResult, Factor, Suggestion } from '@/lib/engine/types';
 import { logger } from '@/lib/logger';
 
 export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodeProps) {
@@ -19,7 +19,17 @@ export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodePro
   const stream = useAnalysisStream({ initialData: permalinkData ?? null });
   const phase = stream.phase;
   const result = stream.result ?? null;
-  const analysisId = (result as { id?: string } | null)?.id ?? null;
+  // Derive the id from the row first, then fall back to the stream's own id
+  // (set from the `started`/permalink frame). A freshly *streamed* complete
+  // result may not carry `id`, so relying on result.id alone left analysisId
+  // null on fresh runs and tripped the slot placeholders.
+  const analysisId = (result as { id?: string } | null)?.id ?? stream.analysisId ?? null;
+  // Gate on data presence, not phase. Sibling node instances (Actions/Verdict/…)
+  // hydrate `result` via the shared permalink cache but their `phase` can lag at
+  // 'idle' — the old `phase !== 'complete'` gate left every Action card stuck on
+  // the "Coming in Phase 6" placeholder even though the row was fully loaded
+  // (Audience/Content render off `result` and showed data in the same state).
+  const ready = phase === 'complete' || result != null;
   const postWindow =
     (result as { optimal_post_window?: unknown } | null)?.optimal_post_window
       ? (result as { optimal_post_window: OptimalPostWindow }).optimal_post_window
@@ -33,6 +43,10 @@ export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodePro
   const counterfactuals =
     (result as { counterfactuals?: CounterfactualResult | null } | null)?.counterfactuals ?? null;
   const factors = (result as { factors?: Factor[] } | null)?.factors ?? undefined;
+  // Top-level engine suggestions (prioritised advice). Surfaced alongside the
+  // timestamped counterfactual fixes so What-to-fix is useful even when
+  // counterfactuals is null (e.g. Stage 11 degraded).
+  const advice = (result as { suggestions?: Suggestion[] } | null)?.suggestions ?? undefined;
   const isStreaming = phase === 'analyzing' || phase === 'reconnecting' || phase === 'polling';
 
   const boardMachineState = useBoardStore((s) => s.boardState);
@@ -70,18 +84,20 @@ export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodePro
             className="h-full overflow-hidden"
             analysisId={analysisId}
             phase={phase}
+            ready={ready}
             isAV={isAV}
           />
         </div>
         <ActionsFixesSlot
           analysisId={analysisId}
-          phase={phase}
+          ready={ready}
           suggestions={counterfactuals?.suggestions}
+          advice={advice}
           factors={factors}
         />
         <ActionsOptimalPostSlot
           analysisId={analysisId}
-          phase={phase}
+          ready={ready}
           window={postWindow}
           override={postOverride}
         />

@@ -5,18 +5,29 @@ import { PlaceholderCard } from './PlaceholderCard';
 import { FIXES_COPY, TELEMETRY } from './actions-constants';
 import { logger } from '@/lib/logger';
 import { formatTime } from '@/lib/script-utils';
-import type { CounterfactualSuggestionItem, Factor } from '@/lib/engine/types';
+import type { CounterfactualSuggestionItem, Factor, Suggestion } from '@/lib/engine/types';
 
 interface Props {
   className?: string;
   style?: React.CSSProperties;
   analysisId: string | null;
-  phase: string;
+  /** True once the analysis row is available (data-presence gate, not stream phase). */
+  ready: boolean;
+  /** Timestamped counterfactual fixes (Stage 11) — may be empty when degraded. */
   suggestions?: CounterfactualSuggestionItem[];
+  /** Top-level prioritised engine advice — companion/fallback to counterfactual fixes. */
+  advice?: Suggestion[];
   factors?: Factor[];
 }
 
 const MAX_FIXES = 3;
+const MAX_ADVICE = 4;
+
+const PRIORITY_CHIP: Record<Suggestion['priority'], { cls: string; style: React.CSSProperties }> = {
+  high: { cls: 'text-[#FF7F50]', style: { backgroundColor: 'rgba(255,127,80,0.12)', border: '1px solid rgba(255,127,80,0.25)' } },
+  medium: { cls: 'text-white/70', style: { backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' } },
+  low: { cls: 'text-white/50', style: { backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' } },
+};
 
 const CHIP: Record<CounterfactualSuggestionItem['type'], { label: string; cls: string; style?: React.CSSProperties }> = {
   fix: {
@@ -36,9 +47,10 @@ const CHIP: Record<CounterfactualSuggestionItem['type'], { label: string; cls: s
   },
 };
 
-export function ActionsFixesSlot({ className, style, analysisId, phase, suggestions, factors }: Props) {
-  // Pre-complete: reserve the slot with a placeholder (mirrors the other slots).
-  if (phase !== 'complete' || !analysisId) {
+export function ActionsFixesSlot({ className, style, analysisId, ready, suggestions, advice, factors }: Props) {
+  // Reserve the slot with a placeholder until the row is loaded. Gate on data
+  // readiness, not stream phase (sibling instances hold result with phase lagging).
+  if (!ready) {
     return (
       <div className={className} style={style} data-testid="actions-fixes-slot">
         <PlaceholderCard
@@ -52,10 +64,11 @@ export function ActionsFixesSlot({ className, style, analysisId, phase, suggesti
   }
 
   const fixes = (suggestions ?? []).slice(0, MAX_FIXES);
+  const adviceItems = (advice ?? []).slice(0, MAX_ADVICE);
   const hasFactors = (factors?.length ?? 0) > 0;
 
-  // Nothing to surface (fallback runs with neither signal) → render nothing.
-  if (fixes.length === 0 && !hasFactors) return null;
+  // Nothing to surface from any signal → render nothing.
+  if (fixes.length === 0 && adviceItems.length === 0 && !hasFactors) return null;
 
   return (
     <div
@@ -75,6 +88,12 @@ export function ActionsFixesSlot({ className, style, analysisId, phase, suggesti
               <FixRow key={`fix-${i}`} item={s} />
             ))}
           </ul>
+        ) : adviceItems.length > 0 ? (
+          <ul className="flex flex-col gap-2" data-testid="actions-advice-list">
+            {adviceItems.map((s) => (
+              <AdviceRow key={s.id} item={s} />
+            ))}
+          </ul>
         ) : (
           <p className="text-[10px] text-white/40">{FIXES_COPY.EMPTY}</p>
         )}
@@ -82,6 +101,26 @@ export function ActionsFixesSlot({ className, style, analysisId, phase, suggesti
         {hasFactors && <Scorecard factors={factors!} analysisId={analysisId} />}
       </div>
     </div>
+  );
+}
+
+function AdviceRow({ item }: { item: Suggestion }) {
+  const chip = PRIORITY_CHIP[item.priority] ?? PRIORITY_CHIP.medium;
+  return (
+    <li className="flex flex-col gap-0.5">
+      <div className="flex items-center gap-2">
+        <span
+          className={`rounded-[4px] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${chip.cls}`}
+          style={chip.style}
+        >
+          {item.priority}
+        </span>
+        {item.category && (
+          <span className="text-[9px] uppercase tracking-wide text-white/40">{item.category}</span>
+        )}
+      </div>
+      <p className="text-[11px] leading-snug text-white/80">{item.text}</p>
+    </li>
   );
 }
 
@@ -110,7 +149,7 @@ function FixRow({ item }: { item: CounterfactualSuggestionItem }) {
   );
 }
 
-function Scorecard({ factors, analysisId }: { factors: Factor[]; analysisId: string }) {
+function Scorecard({ factors, analysisId }: { factors: Factor[]; analysisId: string | null }) {
   const [open, setOpen] = useState(false);
 
   function toggle() {
