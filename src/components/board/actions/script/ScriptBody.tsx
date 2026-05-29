@@ -69,7 +69,7 @@ export function ScriptBody({ script, analysisId }: Props) {
   return (
     <div
       data-testid="actions-reshoot-body"
-      className="relative flex flex-col gap-0 overflow-y-auto px-4 py-3 h-full"
+      className="relative flex flex-col gap-0 px-4 py-3"
     >
       {/* Sticky Copy-all pill. CRITICAL: NO onClick on GlassPill — when GlassPill
           receives onClick it renders a <button>. Wrapping the inner <CopyButton>

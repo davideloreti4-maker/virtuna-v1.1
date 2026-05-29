@@ -1,4 +1,4 @@
-import type { GroupFrameLayout, Rect } from './board-types';
+import type { GroupFrameLayout, GroupId, Rect } from './board-types';
 
 export const FRAME_PADDING = 16;
 export const GUTTER = 32;
@@ -70,3 +70,109 @@ export const CAMERA_PRESET_TARGETS: Record<string, Rect> = {
   audience: GROUP_FRAMES.find((f) => f.id === 'audience')!.bounds,
   'content-analysis': GROUP_FRAMES.find((f) => f.id === 'content-analysis')!.bounds,
 };
+
+// ── Dynamic auto-height layout ───────────────────────────────────────────────
+// Frames whose height tracks their measured content instead of a fixed constant.
+// Input (fixed 9:16 video card) and Engine (fixed pipeline stepper) stay constant;
+// the data-heavy frames grow to fit so nothing scrolls inside a frame.
+export const AUTO_HEIGHT_FRAMES: ReadonlySet<GroupId> = new Set<GroupId>([
+  'audience',
+  'verdict',
+  'actions',
+  'content-analysis',
+]);
+
+/**
+ * Resolve the live board layout from measured content heights (world units).
+ *
+ * x positions and widths stay fixed (the column composition); heights become the
+ * measured natural content height for AUTO_HEIGHT_FRAMES, falling back to the
+ * GROUP_FRAMES constant for fixed frames (input, engine) and before first measure.
+ * Frames reflow vertically per column so a growing frame pushes its neighbours
+ * down instead of clipping/scrolling. When every measured height equals its
+ * constant this reproduces GROUP_FRAMES exactly.
+ *
+ * Columns:
+ *   Left   (x=0):   input (fixed) → engine
+ *   Center (x=272): audience
+ *   Right  (x=864): verdict → actions
+ *   Bottom (x=0):   content-analysis, under the taller of (left col, center col)
+ */
+export function resolveBoardLayout(
+  measured: Partial<Record<GroupId, number>>,
+): GroupFrameLayout[] {
+  const base = Object.fromEntries(
+    GROUP_FRAMES.map((f) => [f.id, f]),
+  ) as Record<GroupId, GroupFrameLayout>;
+
+  const h = (id: GroupId): number => {
+    const m = measured[id];
+    return AUTO_HEIGHT_FRAMES.has(id) && m != null && m > 0
+      ? m
+      : base[id].bounds.height;
+  };
+  const x = (id: GroupId) => base[id].bounds.x;
+  const w = (id: GroupId) => base[id].bounds.width;
+
+  // Left column
+  const inputH = h('input');
+  const engineY = inputH + GUTTER;
+  const engineH = h('engine');
+  // Center column
+  const audienceH = h('audience');
+  // Right column
+  const verdictH = h('verdict');
+  const actionsY = verdictH + GUTTER;
+  const actionsH = h('actions');
+  // Bottom block clears the taller of the left + center columns.
+  const leftBottom = engineY + engineH;
+  const centerBottom = audienceH; // audience y = 0
+  const caY = Math.max(leftBottom, centerBottom) + GUTTER;
+  const caH = h('content-analysis');
+
+  return [
+    { id: 'input',            label: 'Input',            bounds: { x: x('input'),            y: 0,        width: w('input'),            height: inputH } },
+    { id: 'engine',           label: 'Engine',           bounds: { x: x('engine'),           y: engineY,  width: w('engine'),           height: engineH } },
+    { id: 'audience',         label: 'Audience',         bounds: { x: x('audience'),         y: 0,        width: w('audience'),         height: audienceH } },
+    { id: 'verdict',          label: 'Score',            bounds: { x: x('verdict'),          y: 0,        width: w('verdict'),          height: verdictH } },
+    { id: 'actions',          label: 'Actions',          bounds: { x: x('actions'),          y: actionsY, width: w('actions'),          height: actionsH } },
+    { id: 'content-analysis', label: 'Content Analysis', bounds: { x: x('content-analysis'), y: caY,      width: w('content-analysis'), height: caH } },
+  ];
+}
+
+/** Bounding box of a resolved layout (overview camera target + board extent). */
+export function computeBoardBounds(frames: GroupFrameLayout[]): Rect {
+  const right = Math.max(...frames.map((f) => f.bounds.x + f.bounds.width));
+  const bottom = Math.max(...frames.map((f) => f.bounds.y + f.bounds.height));
+  return { x: 0, y: 0, width: right, height: bottom };
+}
+
+/** Camera preset targets recomputed from a (possibly grown) resolved layout. */
+export function computePresetTargets(
+  frames: GroupFrameLayout[],
+): Record<string, Rect> {
+  const byId = Object.fromEntries(
+    frames.map((f) => [f.id, f.bounds]),
+  ) as Record<GroupId, Rect>;
+  const inp = byId.input;
+  const eng = byId.engine;
+  const aud = byId.audience;
+  const ver = byId.verdict;
+
+  // engine preset = left column union (Input + Engine)
+  const leftTop = Math.min(inp.y, eng.y);
+  const leftBottom = Math.max(inp.y + inp.height, eng.y + eng.height);
+  // verdict preset = Audience + Verdict union (D-07 hero pair)
+  const heroLeft = aud.x;
+  const heroRight = Math.max(aud.x + aud.width, ver.x + ver.width);
+  const heroTop = Math.min(aud.y, ver.y);
+  const heroBottom = Math.max(aud.y + aud.height, ver.y + ver.height);
+
+  return {
+    overview: computeBoardBounds(frames),
+    engine: { x: inp.x, y: leftTop, width: Math.max(inp.width, eng.width), height: leftBottom - leftTop },
+    verdict: { x: heroLeft, y: heroTop, width: heroRight - heroLeft, height: heroBottom - heroTop },
+    audience: aud,
+    'content-analysis': byId['content-analysis'],
+  };
+}

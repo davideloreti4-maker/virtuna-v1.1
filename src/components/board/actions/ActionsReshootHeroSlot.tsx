@@ -111,16 +111,14 @@ function InlineScriptCard({
 
   return (
     <div
-      className="flex h-full w-full flex-col overflow-hidden rounded-[8px] border border-white/[0.06]"
+      className="flex w-full flex-col overflow-hidden rounded-[8px] border border-white/[0.06]"
       data-testid="actions-reshoot-script-card"
     >
       <div className="px-4 pt-2 pb-1">
         <div className="text-xs font-medium text-white/85">{headline}</div>
         <div className="text-[10px] text-white/55">{subhead}</div>
       </div>
-      <div className="flex-1 min-h-0">
-        <ScriptBody script={script} analysisId={analysisId} />
-      </div>
+      <ScriptBody script={script} analysisId={analysisId} />
     </div>
   );
 }

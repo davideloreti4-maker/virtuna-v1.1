@@ -4,7 +4,6 @@ import { useSearchParams } from 'next/navigation';
 import {
   CAMERA_MIN_SCALE,
   CAMERA_MAX_SCALE,
-  CAMERA_PRESET_TARGETS,
 } from './board-constants';
 import type { Camera, CameraPresetKey, Rect } from './board-types';
 
@@ -106,6 +105,8 @@ export function useCamera(args: {
   activePreset: CameraPresetKey | null;
   setActivePreset: (k: CameraPresetKey | null) => void;
   reducedMotion: boolean;
+  /** Live preset targets recomputed from the dynamic (auto-height) layout. */
+  presetTargets: Record<string, Rect>;
 }) {
   const { camera, setCamera, viewport, viewportReady, setActivePreset } = args;
 
@@ -115,6 +116,13 @@ export function useCamera(args: {
   const cameraRef = useRef(camera);
   useEffect(() => { cameraRef.current = camera; }, [camera]);
 
+  // Preset targets read via a ref so goToPreset keeps a STABLE identity as the
+  // layout grows. If presetTargets were a goToPreset dependency, the Board effect
+  // `useEffect(() => goToPreset(activePreset), [activePreset, goToPreset])` would
+  // re-fire on every content-driven reflow and snap the camera mid-stream.
+  const presetTargetsRef = useRef(args.presetTargets);
+  useEffect(() => { presetTargetsRef.current = args.presetTargets; }, [args.presetTargets]);
+
   const rafRef = useRef<number | null>(null);
   const cancelGlide = useCallback(() => {
     if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
@@ -122,7 +130,7 @@ export function useCamera(args: {
   }, []);
 
   const goToPreset = useCallback((key: CameraPresetKey) => {
-    const target = CAMERA_PRESET_TARGETS[key];
+    const target = presetTargetsRef.current[key];
     if (!target) return;
     const final = computeFitCamera(target, viewport);
     setActivePreset(key);
@@ -158,7 +166,7 @@ export function useCamera(args: {
     appliedInitialRef.current = true;
     const { preset, zoom } = parseCameraSearchParams(searchParams.toString());
     if (preset) {
-      const target = CAMERA_PRESET_TARGETS[preset];
+      const target = presetTargetsRef.current[preset];
       if (target) {
         const fit = computeFitCamera(target, viewport);
         setCamera(zoom != null ? { ...fit, scale: zoom } : fit);

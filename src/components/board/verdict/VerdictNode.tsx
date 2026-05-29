@@ -75,7 +75,7 @@ export function VerdictNode({ camera: _camera, layout: _layout }: VerdictNodePro
     <div
       aria-live="polite"
       aria-busy={isStreaming}
-      className="relative flex h-full w-full flex-col gap-3 overflow-y-auto"
+      className="relative flex w-full flex-col gap-3"
       data-testid="verdict-node"
     >
       {/* Sr-only announcement region — content is read on update */}

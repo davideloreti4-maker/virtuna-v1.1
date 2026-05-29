@@ -3,8 +3,12 @@ import {
   GROUP_FRAMES,
   BOARD_BOUNDS,
   CAMERA_PRESET_TARGETS,
+  AUTO_HEIGHT_FRAMES,
+  resolveBoardLayout,
+  computeBoardBounds,
+  computePresetTargets,
 } from '../board-constants';
-import type { GroupId, Rect } from '../board-types';
+import type { GroupFrameLayout, GroupId, Rect } from '../board-types';
 
 function rectFor(id: GroupId): Rect {
   const f = GROUP_FRAMES.find((g) => g.id === id);
@@ -128,5 +132,72 @@ describe('CAMERA_PRESET_TARGETS still resolve correctly', () => {
 
   it('content-analysis preset = content-analysis frame bounds', () => {
     expect(CAMERA_PRESET_TARGETS['content-analysis']).toEqual(rectFor('content-analysis'));
+  });
+});
+
+describe('resolveBoardLayout (auto-height reflow)', () => {
+  function boundsOf(frames: GroupFrameLayout[], id: GroupId): Rect {
+    const f = frames.find((g) => g.id === id);
+    if (!f) throw new Error(`frame ${id} not found`);
+    return f.bounds;
+  }
+
+  it('with no measurements, reproduces GROUP_FRAMES exactly', () => {
+    const resolved = resolveBoardLayout({});
+    expect(resolved).toEqual(GROUP_FRAMES);
+  });
+
+  it('growing Audience pushes Content Analysis down by the same delta (gutter preserved)', () => {
+    const grown = rectFor('audience').height + 200;
+    const resolved = resolveBoardLayout({ audience: grown });
+    const ca = boundsOf(resolved, 'content-analysis');
+    // CA clears the (now taller) audience by exactly the 32px gutter.
+    expect(ca.y - bottom(boundsOf(resolved, 'audience'))).toBe(MIN_GAP);
+    expect(boundsOf(resolved, 'audience').height).toBe(grown);
+  });
+
+  it('growing Verdict pushes Actions down (right column reflows)', () => {
+    const grown = rectFor('verdict').height + 120;
+    const resolved = resolveBoardLayout({ verdict: grown });
+    const actions = boundsOf(resolved, 'actions');
+    expect(actions.y - bottom(boundsOf(resolved, 'verdict'))).toBe(MIN_GAP);
+  });
+
+  it('ignores measured heights for fixed frames (input, engine)', () => {
+    const resolved = resolveBoardLayout({ input: 9999, engine: 9999 });
+    expect(boundsOf(resolved, 'input').height).toBe(rectFor('input').height);
+    expect(boundsOf(resolved, 'engine').height).toBe(rectFor('engine').height);
+    expect(AUTO_HEIGHT_FRAMES.has('input')).toBe(false);
+    expect(AUTO_HEIGHT_FRAMES.has('engine')).toBe(false);
+  });
+
+  it('a shorter measured height than the constant is honoured (frame shrinks)', () => {
+    const shorter = rectFor('actions').height - 200;
+    const resolved = resolveBoardLayout({ actions: shorter });
+    expect(boundsOf(resolved, 'actions').height).toBe(shorter);
+  });
+});
+
+describe('computeBoardBounds + computePresetTargets track growth', () => {
+  it('board bounds grow when the tallest column grows', () => {
+    const grown = rectFor('actions').height + 300;
+    const resolved = resolveBoardLayout({ actions: grown });
+    const bounds = computeBoardBounds(resolved);
+    expect(bounds.height).toBeGreaterThan(BOARD_BOUNDS.height);
+  });
+
+  it('overview preset equals the resolved board bounds', () => {
+    const resolved = resolveBoardLayout({ audience: 1000 });
+    const targets = computePresetTargets(resolved);
+    expect(targets.overview).toEqual(computeBoardBounds(resolved));
+  });
+
+  it('verdict preset still encloses the grown audience + verdict', () => {
+    const resolved = resolveBoardLayout({ audience: 1100, verdict: 360 });
+    const targets = computePresetTargets(resolved);
+    const aud = resolved.find((f) => f.id === 'audience')!.bounds;
+    const ver = resolved.find((f) => f.id === 'verdict')!.bounds;
+    expect(containsRect(targets.verdict!, aud)).toBe(true);
+    expect(containsRect(targets.verdict!, ver)).toBe(true);
   });
 });

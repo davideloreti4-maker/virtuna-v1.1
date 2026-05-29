@@ -183,22 +183,23 @@ describe('ActionsNode', () => {
     expect(screen.queryByTestId('actions-share-placeholder')).toBeNull();
   });
 
-  it('Reshoot hero slot fills its region (h-full) in AV state', async () => {
+  it('Reshoot hero slot renders inline in AV state', async () => {
     mockStream({ phase: 'complete', result: { ...fixtures.antiVirality, id: 'analysis-id-stub', optimal_post_window: { day_of_week: 'Tue', hour_range: [18, 21], timezone: 'UTC', reasoning: 'Niche peaks Tue (n=12 videos)', source: 'niche' }, optimal_post_override: null } });
     mockBoardState('anti-virality');
     const { ActionsNode: Fresh } = await import('../ActionsNode');
     render(<Fresh camera={{} as never} layout={{} as never} />);
-    const hero = screen.getByTestId('actions-reshoot-hero-slot');
-    expect(hero.className).toContain('h-full');
+    expect(screen.getByTestId('actions-reshoot-hero-slot')).toBeInTheDocument();
   });
 
-  it('grid is a scrolling stack (frame is fixed-height, content scrolls in-frame)', async () => {
+  it('grid is a natural-height stack (auto-height frame grows to fit — no in-frame scroll)', async () => {
     mockStream({ phase: 'complete', result: fixtures.complete });
     mockBoardState('complete');
     const { ActionsNode: Fresh } = await import('../ActionsNode');
     render(<Fresh camera={{} as never} layout={{} as never} />);
     const grid = screen.getByTestId('actions-grid') as HTMLElement;
-    expect(grid.className).toContain('overflow-y-auto');
+    // No internal scroll: the auto-height frame sizes to the stack instead of clipping.
+    expect(grid.className).not.toContain('overflow-y-auto');
+    expect(grid.className).not.toContain('h-full');
     expect(grid.className).toContain('flex-col');
   });
 

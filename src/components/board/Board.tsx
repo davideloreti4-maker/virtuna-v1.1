@@ -7,7 +7,7 @@
  * RESEARCH Pitfall 3 + Open Question 2.
  */
 import dynamic from 'next/dynamic';
-import { useEffect, useRef, useState, createRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, createRef } from 'react';
 import type { RefObject } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
@@ -23,7 +23,13 @@ import { CommandBar } from '@/components/command-bar/CommandBar';
 import { useCamera, serializeCamera } from './use-camera';
 import { useBoardKeyboard } from './use-board-keyboard';
 import { CameraOverlay } from './CameraOverlay';
-import { GROUP_FRAMES, CAMERA_DEFAULT_SCALE } from './board-constants';
+import {
+  GROUP_FRAMES,
+  CAMERA_DEFAULT_SCALE,
+  AUTO_HEIGHT_FRAMES,
+  resolveBoardLayout,
+  computePresetTargets,
+} from './board-constants';
 import { GroupFrame } from './GroupFrame';
 import { getFrameAntiViralityState } from './cross-group-state';
 import { GroupFrameOverlay } from './GroupFrameOverlay';
@@ -85,6 +91,16 @@ export function Board() {
   const [expanded, setExpanded] = useState<Record<GroupId, boolean>>(() =>
     Object.fromEntries(GROUP_FRAMES.map((f) => [f.id, true])) as Record<GroupId, boolean>,
   );
+
+  // Auto-height layout: each auto frame measures its natural content height and
+  // reports it here; the layout reflows so frames grow to fit (no in-frame
+  // scroll) and neighbours shift down. Empty = constants until first measure.
+  const [measuredH, setMeasuredH] = useState<Partial<Record<GroupId, number>>>({});
+  const resolvedFrames = useMemo(() => resolveBoardLayout(measuredH), [measuredH]);
+  const presetTargets = useMemo(() => computePresetTargets(resolvedFrames), [resolvedFrames]);
+  const handleMeasureFrame = useCallback((id: GroupId, worldH: number) => {
+    setMeasuredH((prev) => (prev[id] === worldH ? prev : { ...prev, [id]: worldH }));
+  }, []);
 
   // Roving tabindex across group frames (plan 2.11 NF2 — arrow-key navigation).
   // Exactly one frame has tabIndex=0 at a time; all others -1.
@@ -343,6 +359,7 @@ export function Board() {
 
   const { goToPreset } = useCamera({
     camera, setCamera, viewport, viewportReady, activePreset, setActivePreset, reducedMotion: effectiveReducedMotion,
+    presetTargets,
   });
 
   // Plan 2.13: EngineGroup sets activePreset on wave boundaries; Board subscribes here
@@ -364,6 +381,18 @@ export function Board() {
       goToPreset('overview');
     }
   }, [viewport, goToPreset]);
+
+  // Auto-height reflow grows the board past its initial bounds (e.g. a tall
+  // Actions column). Re-fit the overview so the whole board stays framed — but
+  // ONLY while the user is on the overview preset and hasn't interacted (the
+  // 3000ms guard mirrors the auto-pan contract at the top of this file). Skips
+  // during streaming because EngineGroup parks activePreset on a frame preset.
+  useEffect(() => {
+    if (!initialFitApplied.current) return;
+    if (activePreset !== 'overview') return;
+    if (Date.now() - useBoardStore.getState().lastUserInteractionAt < 3000) return;
+    goToPreset('overview');
+  }, [resolvedFrames, activePreset, goToPreset]);
 
   useBoardKeyboard({ goToPreset });
 
@@ -405,7 +434,7 @@ export function Board() {
         width={viewport.width}
         height={viewport.height}
       >
-        {GROUP_FRAMES.map((layout) => (
+        {resolvedFrames.map((layout) => (
           <GroupFrame
             key={layout.id}
             layout={layout}
@@ -427,7 +456,7 @@ export function Board() {
           Group frames use roving tabindex (plan 2.11): one frame has tabIndex=0, rest -1.
           Arrow keys (←→↑↓) move focus within the group. */}
       <div className="pointer-events-none absolute inset-0">
-        {GROUP_FRAMES.map((layout, i) => (
+        {resolvedFrames.map((layout, i) => (
           <GroupFrameOverlay
             key={layout.id}
             ref={(el) => { frameRefs.current[i]!.current = el; }}
@@ -439,6 +468,8 @@ export function Board() {
             expanded={expanded[layout.id]}
             onToggleExpanded={() => setExpanded((s) => ({ ...s, [layout.id]: !s[layout.id] }))}
             reducedMotion={effectiveReducedMotion}
+            autoHeight={AUTO_HEIGHT_FRAMES.has(layout.id)}
+            onMeasure={(worldH) => handleMeasureFrame(layout.id, worldH)}
           >
             {layout.id === 'engine' && <EngineGroup />}
             {layout.id === 'audience' && <AudienceNode camera={camera} layout={layout} />}

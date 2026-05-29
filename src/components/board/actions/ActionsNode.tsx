@@ -66,22 +66,21 @@ export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodePro
     <div
       aria-live="polite"
       aria-busy={isStreaming}
-      className="relative h-full w-full"
+      className="relative w-full"
       data-testid="actions-node"
     >
       {/* Inline section stack — everything lives in-frame, no drawers. Highest
           value first: the reshoot script, then "What to fix" (counterfactual
-          fixes + factor scorecard), then "When to post". The frame is tall
-          enough to show all three; the stack owns the scroll when content
-          exceeds the frame (the overlay body is overflow-hidden). */}
+          fixes + factor scorecard), then "When to post". The frame auto-grows to
+          fit the whole stack — no internal scroll. */}
       <div
-        className="flex h-full w-full flex-col gap-2 overflow-y-auto p-2"
+        className="flex w-full flex-col gap-2 p-2"
         data-testid="actions-grid"
         data-av={isAV ? 'true' : 'false'}
       >
         <div className="overflow-hidden rounded-[8px]">
           <ActionsReshootHeroSlot
-            className="h-full overflow-hidden"
+            className="overflow-hidden"
             analysisId={analysisId}
             phase={phase}
             ready={ready}
