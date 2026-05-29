@@ -74,6 +74,7 @@ function makeHeatmap(opts: {
     personas: opts.personaAttentions.map((atts, i) => ({
       id: `p${i}`,
       slot_type: (['fyp', 'fyp', 'fyp', 'fyp', 'fyp', 'fyp', 'niche', 'niche', 'loyalist', 'cross_niche'] as const)[i % 10] as 'fyp' | 'niche' | 'loyalist' | 'cross_niche',
+      archetype: 'high_engager',
       attentions: atts,
       swipe_predicted_at: null,
       segment_reasons: {},

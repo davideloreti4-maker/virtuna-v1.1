@@ -79,14 +79,19 @@ export function PersonaRow({
         <button
           type="button"
           onClick={onRowLabelTap}
-          className="flex h-full w-full items-center px-2 text-xs"
+          className="flex h-full w-full flex-col justify-center px-2"
           style={{
             opacity: rowState === 'streaming' ? 0.6 : 1,
             color: ringColor,
           }}
           aria-label={`Persona ${archetypeLabel}: full reasoning`}
         >
-          {archetypeLabel}
+          <span className="text-[11px] font-medium leading-tight truncate">{archetypeLabel}</span>
+          {swipePredictedAt != null && (
+            <span className="text-[9px] leading-tight tabular-nums" style={{ opacity: 0.4 }}>
+              drops {swipePredictedAt.toFixed(0)}s
+            </span>
+          )}
         </button>
       </div>
 

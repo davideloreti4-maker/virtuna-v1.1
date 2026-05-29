@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { CaretDown, CaretUp } from '@phosphor-icons/react';
 import { PersonaRow } from './PersonaRow';
-import { PERSONA_SLOT_ORDER } from './audience-constants';
+import { PERSONA_SLOT_ORDER, ARCHETYPE_DISPLAY_NAME } from './audience-constants';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import type { RowState, PersonaSlotType, HeatmapDrawerProps } from './audience-types';
 
@@ -70,7 +70,12 @@ function GridBody(props: HeatmapDrawerProps) {
           <PersonaRow
             personaId={persona?.id ?? null}
             slotType={slot}
-            archetypeLabel={ARCHETYPE_LABEL[slot]}
+            archetypeLabel={
+              (persona?.archetype
+                ? ARCHETYPE_DISPLAY_NAME[persona.archetype]
+                : undefined
+              ) ?? ARCHETYPE_LABEL[slot]
+            }
             segments={segments}
             attentions={persona?.attentions ?? null}
             swipePredictedAt={persona?.swipe_predicted_at ?? null}

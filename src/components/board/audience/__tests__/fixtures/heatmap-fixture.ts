@@ -58,6 +58,7 @@ export function buildHeatmapFixture(overrides?: Partial<HeatmapPayload>): Heatma
   const personas = Array.from({ length: NUM_PERSONAS }, (_, i) => ({
     id: `persona_${i}`,
     slot_type: PERSONA_SLOT_ORDER[i] as 'fyp' | 'niche' | 'loyalist' | 'cross_niche',
+    archetype: ARCHETYPE_BY_SLOT[i] as string,
     attentions: Array.from({ length: NUM_SEGMENTS }, (_, j) => (i + j) * 0.07 % 1),
     swipe_predicted_at: null as number | null,
     segment_reasons: {} as Record<number, string>,

@@ -74,6 +74,7 @@ describe('PersonaInspector', () => {
         {
           id: 'persona_0',
           slot_type: 'fyp',
+          archetype: 'high_engager',
           attentions: Array.from({ length: 10 }, () => 0.7),
           swipe_predicted_at: null,
           segment_reasons: { 3: 'low engagement at visual cut' },
@@ -82,6 +83,7 @@ describe('PersonaInspector', () => {
         ...Array.from({ length: 9 }, (_, i) => ({
           id: `persona_${i + 1}`,
           slot_type: 'fyp' as const,
+          archetype: 'high_engager',
           attentions: Array.from({ length: 10 }, () => 0.5),
           swipe_predicted_at: null,
           segment_reasons: {} as Record<number, string>,
@@ -100,6 +102,7 @@ describe('PersonaInspector', () => {
         {
           id: 'persona_0',
           slot_type: 'fyp',
+          archetype: 'high_engager',
           attentions: Array.from({ length: 10 }, () => 0.7),
           swipe_predicted_at: null,
           segment_reasons: { 3: 'low engagement' },
@@ -107,6 +110,7 @@ describe('PersonaInspector', () => {
         ...Array.from({ length: 9 }, (_, i) => ({
           id: `persona_${i + 1}`,
           slot_type: 'fyp' as const,
+          archetype: 'high_engager',
           attentions: Array.from({ length: 10 }, () => 0.5),
           swipe_predicted_at: null,
           segment_reasons: {} as Record<number, string>,

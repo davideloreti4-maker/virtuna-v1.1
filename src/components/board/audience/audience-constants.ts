@@ -42,6 +42,23 @@ export const WEIGHT_PRESETS: Record<'default' | 'established' | 'niche_heavy' | 
   new_creator: { fyp: 0.75, niche: 0.15, loyalist: 0.05, cross_niche: 0.05 },
 } as const;
 
+/** Display names for individual archetypes (from engine persona-registry). */
+export const ARCHETYPE_DISPLAY_NAME: Record<string, string> = {
+  high_engager:          'High Engager',
+  saver:                 'Saver',
+  lurker:                'Lurker',
+  sharer:                'Sharer',
+  tough_crowd:           'Tough Crowd',
+  purposeful_viewer:     'Purposeful',
+  niche_deep_buyer:      'Niche Buyer',
+  niche_deep_scout:      'Niche Scout',
+  loyalist:              'Loyalist',
+  cross_niche_curiosity: 'Cross-Niche',
+  // legacy aliases from older Pass2PersonaResult shape
+  viewer:                'Viewer',
+  niche_deep:            'Niche Deep',
+};
+
 /** D-11 marker ring colors by archetype slot. */
 export const MARKER_RING_COLOR: Record<PersonaSlotType, string> = {
   fyp:         '#FF7F50',                  // coral-500
