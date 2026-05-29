@@ -11,8 +11,8 @@ interface Props {
 }
 
 const STYLE: Record<FrameVisualState, { stroke: string; fillOpacity: number; strokeWidth: number }> = {
-  'idle':          { stroke: 'rgba(255,255,255,0.06)', fillOpacity: 0.40, strokeWidth: 1 },
-  'streaming':     { stroke: 'rgba(255,255,255,0.10)', fillOpacity: 0.70, strokeWidth: 1 },
+  'idle':          { stroke: 'rgba(255,255,255,0.06)', fillOpacity: 1.00, strokeWidth: 1 },
+  'streaming':     { stroke: 'rgba(255,255,255,0.10)', fillOpacity: 1.00, strokeWidth: 1 },
   'complete':      { stroke: 'rgba(255,255,255,0.06)', fillOpacity: 1.00, strokeWidth: 1 },
   'anti-virality': { stroke: 'rgba(255,148,0,0.30)',   fillOpacity: 1.00, strokeWidth: 1.5 },
 };

@@ -46,6 +46,8 @@ export function aggregatePersonaResults(
   const share_pct = topNWeighted(survivors, "share_intent");
   const comment_pct = topNWeighted(survivors, "comment_intent");
   const save_pct = topNWeighted(survivors, "save_intent");
+  // Replay/loop rate — same top-3-enthusiast weighting as the other intents.
+  const loop_pct = topNWeighted(survivors, "rewatch_intent");
 
   // Percentile labels: lightweight decile heuristic for Phase 7 ship.
   // Plan 07-04's runEvalHarness consumer doesn't read percentile labels — only the numeric metrics.
@@ -59,6 +61,8 @@ export function aggregatePersonaResults(
     comment_percentile: percentileLabel(comment_pct),
     save_pct,
     save_percentile: percentileLabel(save_pct),
+    loop_pct,
+    loop_percentile: percentileLabel(loop_pct),
   };
 
   return { aggregate, warnings: [] };
@@ -71,7 +75,7 @@ function mean(xs: number[]): number {
 
 function topNWeighted(
   survivors: PersonaSimulationResult[],
-  metric: "share_intent" | "comment_intent" | "save_intent",
+  metric: "share_intent" | "comment_intent" | "save_intent" | "rewatch_intent",
 ): number {
   const n = survivors.length;
   if (n === 0) return 0;

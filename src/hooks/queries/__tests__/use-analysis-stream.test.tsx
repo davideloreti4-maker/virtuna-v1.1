@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
+import { queryKeys } from "@/lib/queries/query-keys";
 import { STAGE_EVENT_SEQUENCE, encodeSSE } from "@/test/fixtures/stage-events";
 import { COMPLETED_PREDICTION } from "@/test/fixtures/completed-prediction";
 import { PANEL_IDS } from "@/lib/engine/panel-mapping";
@@ -133,6 +134,37 @@ describe("useAnalysisStream", () => {
     });
     await waitFor(() => expect(result.current.phase).toBe("complete"));
     expect(result.current.error).toBeNull();
+  });
+
+  it("event:complete writes the finalized result into the shared detail cache (sibling-node hydration)", async () => {
+    // Regression: board nodes that never opened the stream hydrate off
+    // queryKeys.analysis.detail(id). Before this fix they sat on the null-score
+    // placeholder cached at /analyze/[id] nav time and never updated.
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const localWrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(QueryClientProvider, { client: qc }, children);
+
+    global.fetch = vi.fn().mockResolvedValue(
+      mockSSEResponse([
+        encodeSSE("started", { id: "cache-me" }),
+        encodeSSE("complete", COMPLETED_PREDICTION),
+      ]),
+    );
+    const { result } = renderHook(() => useAnalysisStream(), { wrapper: localWrapper });
+    await act(async () => {
+      await result.current.start({
+        input_mode: "text",
+        content_type: "tiktok",
+        content_text: "hi",
+      });
+    });
+    await waitFor(() => expect(result.current.phase).toBe("complete"));
+
+    const cached = qc.getQueryData(queryKeys.analysis.detail("cache-me")) as
+      | { overall_score?: number }
+      | undefined;
+    expect(cached).toBeDefined();
+    expect(cached?.overall_score).toBe(0.72);
   });
 
   it("initialData with overall_score!=null skips stream open (Pitfall #3)", () => {

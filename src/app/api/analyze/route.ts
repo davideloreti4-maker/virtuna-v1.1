@@ -404,6 +404,14 @@ export async function POST(request: Request) {
       // (always populated by aggregator). No null coalesce needed.
       confidence_label: finalResult.confidence_label,
       anti_virality_gated: finalResult.anti_virality_gated,
+      // Persist three more engine-emitted fields the DB previously dropped, so
+      // they survive permalink reload (migration 20260531000000). Structural
+      // Json — cast through unknown like the behavioral_predictions casts above.
+      emotion_arc: (finalResult.emotion_arc ?? null) as unknown as Json,
+      persona_behavioral_aggregate:
+        (finalResult.persona_behavioral_aggregate ?? null) as unknown as Json,
+      optimal_post_window:
+        (finalResult.optimal_post_window ?? null) as unknown as Json,
     });
 
     // -------------------------------------------------------
@@ -633,6 +641,13 @@ export async function POST(request: Request) {
                 ml_score: finalResult.ml_score ?? null,
                 score_weights: finalResult.score_weights as unknown as null,
                 signal_availability: finalResult.signal_availability as unknown as null,
+                // Parity with buildInsertRow — keep the three newly-persisted
+                // engine columns in sync on the safety-net UPDATE path too.
+                emotion_arc: (finalResult.emotion_arc ?? null) as unknown as null,
+                persona_behavioral_aggregate:
+                  (finalResult.persona_behavioral_aggregate ?? null) as unknown as null,
+                optimal_post_window:
+                  (finalResult.optimal_post_window ?? null) as unknown as null,
                 updated_at: new Date().toISOString(),
               })
               .eq("id", analysisId)

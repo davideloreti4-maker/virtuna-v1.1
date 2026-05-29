@@ -53,7 +53,6 @@ export interface PersonaRowProps {
   swipePredictedAt: number | null;
   totalDurationSec: number;
   rowState: RowState;
-  colorBlindMode: boolean;
   rowIndex?: number;                    // aria-rowindex for grid context (1-based)
   onCellTap: (segmentIdx: number) => void;
   onRowLabelTap: () => void;

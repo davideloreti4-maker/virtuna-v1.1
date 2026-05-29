@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown, Upload, X } from "lucide-react";
+import { Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
@@ -58,7 +58,6 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
     const [error, setError] = React.useState<string | null>(null);
     const [thumbnail, setThumbnail] = React.useState<string | null>(null);
     const [duration, setDuration] = React.useState<number | null>(null);
-    const [dataDisclosureOpen, setDataDisclosureOpen] = React.useState(false);
     const inputRef = React.useRef<HTMLInputElement>(null);
 
     // Extract thumbnail and duration from video file
@@ -181,9 +180,9 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
       <div ref={ref} className={cn("w-full", className)}>
         <div
           className={cn(
-            "relative rounded-xl border transition-colors duration-150",
-            "bg-white/[0.03] border-white/[0.06]",
-            isDragging && "bg-white/[0.05]",
+            "relative rounded-lg border transition-colors duration-150",
+            "bg-white/[0.03]",
+            isDragging ? "border-white/[0.12] bg-white/[0.05]" : "border-white/[0.06]",
           )}
           onDragOver={!file ? handleDragOver : undefined}
           onDragLeave={!file ? handleDragLeave : undefined}
@@ -199,46 +198,30 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
             onChange={handleInputChange}
           />
 
-          {/* Empty state — compact single-row layout. The browse trigger and
-              the disclosure button are siblings (no nested-interactive). */}
+          {/* Empty state — compact horizontal drop zone */}
           {!file && (
-            <div className="flex items-center gap-1 px-3 py-2.5">
-              <button
-                type="button"
-                onClick={() => inputRef.current?.click()}
-                className="flex flex-1 items-center gap-3 rounded-md text-left"
-              >
-                <span className="flex items-center justify-center w-7 h-7 rounded-md bg-white/[0.05] shrink-0">
-                  <Upload className="w-3.5 h-3.5 text-foreground-muted" />
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              className={cn(
+                "flex w-full items-center gap-3",
+                "h-[52px] px-3 rounded-lg text-left",
+                "hover:bg-white/[0.03] transition-colors",
+                isDragging && "bg-white/[0.05]",
+              )}
+            >
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/[0.05]">
+                <Upload className="w-3.5 h-3.5 text-foreground-muted" />
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm text-foreground-muted leading-tight">
+                  Drop video or click to upload
                 </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm text-foreground leading-tight">
-                    Drop video or click to browse
-                  </span>
-                  <span className="block text-[11px] text-foreground-muted leading-tight mt-0.5">
-                    MP4, MOV, WebM · up to 200MB
-                  </span>
+                <span className="text-[10px] text-foreground-muted/40 leading-tight">
+                  MP4, MOV, WebM · Max 200MB
                 </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setDataDisclosureOpen((prev) => !prev)}
-                aria-label="About your data"
-                className="text-foreground-muted hover:text-foreground shrink-0 px-1"
-              >
-                <ChevronDown
-                  className={cn(
-                    "w-3.5 h-3.5 transition-transform duration-200",
-                    dataDisclosureOpen && "rotate-180"
-                  )}
-                />
-              </button>
-            </div>
-          )}
-          {!file && dataDisclosureOpen && (
-            <p className="border-t border-white/[0.06] px-3 py-2 text-[11px] text-foreground-muted leading-relaxed">
-              Videos auto-delete after 30 days. Keep them for re-analysis in Settings.
-            </p>
+              </div>
+            </button>
           )}
 
           {/* Upload progress state */}

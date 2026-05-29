@@ -281,7 +281,7 @@ describe("pipeline integration tests", () => {
           watch_through_pct: 70,
           comment_intent: 20,
           share_intent: 30,
-          save_intent: 40,
+          save_intent: 40, rewatch_intent: 25,
           reasoning: "default persona test reaction",
         });
       } else if (isQwenTextAnalysis) {
@@ -491,7 +491,7 @@ describe("Phase 3 — onStageEvent + stub invocations", () => {
           watch_through_pct: 70,
           comment_intent: 20,
           share_intent: 30,
-          save_intent: 40,
+          save_intent: 40, rewatch_intent: 25,
           reasoning: "default persona test reaction",
         });
       } else if (isQwenTextAnalysis) {
@@ -638,7 +638,7 @@ describe("Phase 4 — Wave 0 + pre_creator_context", () => {
           watch_through_pct: 70,
           comment_intent: 20,
           share_intent: 30,
-          save_intent: 40,
+          save_intent: 40, rewatch_intent: 25,
           reasoning: "default persona test reaction",
         });
       } else if (isQwenTextAnalysis) {
@@ -846,7 +846,7 @@ describe("Phase 4 — Wave 0 + pre_creator_context", () => {
           watch_through_pct:  70,
           comment_intent:     20,
           share_intent:       30,
-          save_intent:        40,
+          save_intent:        40, rewatch_intent: 25,
           reasoning:          "test",
         });
       } else {
@@ -969,7 +969,7 @@ describe("Phase 3 (Plan 08) — filmstrip trigger + Pass 2 wiring", () => {
           watch_through_pct: 70,
           comment_intent: 20,
           share_intent: 30,
-          save_intent: 40,
+          save_intent: 40, rewatch_intent: 25,
           reasoning: "default persona test reaction",
         });
       } else if (isQwenTextAnalysis) {
@@ -1079,7 +1079,7 @@ describe("Phase 3 (Plan 08) — filmstrip trigger + Pass 2 wiring", () => {
       } else if (isPersonaCall) {
         body = JSON.stringify({
           scroll_past_second: 5, watch_through_pct: 70,
-          comment_intent: 20, share_intent: 30, save_intent: 40,
+          comment_intent: 20, share_intent: 30, save_intent: 40, rewatch_intent: 25,
           reasoning: "persona reaction",
         });
       } else if (isPass2) {
@@ -1159,7 +1159,7 @@ describe("Phase 3 (Plan 08) — filmstrip trigger + Pass 2 wiring", () => {
           segments: [{ t_start: 0, t_end: 3, visual_event: "hook intro", audio_event: "greeting" }],
         });
       } else if (isPersonaCall) {
-        body = JSON.stringify({ scroll_past_second: 5, watch_through_pct: 70, comment_intent: 20, share_intent: 30, save_intent: 40, reasoning: "x" });
+        body = JSON.stringify({ scroll_past_second: 5, watch_through_pct: 70, comment_intent: 20, share_intent: 30, save_intent: 40, rewatch_intent: 25, reasoning: "x" });
       } else {
         body = JSON.stringify(makeDeepSeekReasoning());
       }
@@ -1209,7 +1209,7 @@ describe("Phase 9 — Platform-fit V3 result in PipelineResult", () => {
           watch_through_pct: 70,
           comment_intent: 20,
           share_intent: 30,
-          save_intent: 40,
+          save_intent: 40, rewatch_intent: 25,
           reasoning: "default persona test reaction",
         });
       } else if (isQwenTextAnalysis) {

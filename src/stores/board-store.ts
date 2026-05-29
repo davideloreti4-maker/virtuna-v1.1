@@ -80,6 +80,12 @@ export interface BoardState {
 
   /** Thumbnail + frames extracted from the locally selected video file before analysis. */
   pendingVideo: PendingVideo | null;
+
+  /**
+   * Monotonic counter incremented each time the user clicks "New analysis".
+   * Board.tsx watches this to reset stream + state even when already on /analyze.
+   */
+  newAnalysisSignal: number;
 }
 
 export interface BoardActions {
@@ -107,6 +113,9 @@ export interface BoardActions {
 
   /** Hard reset to idle (e.g. "New analysis" CTA). */
   resetToIdle: () => void;
+
+  /** Increment newAnalysisSignal so Board resets even when already on /analyze. */
+  triggerNewAnalysis: () => void;
 
   // ── Camera ──────────────────────────────────────────────────────────────
 
@@ -160,6 +169,7 @@ const DEFAULT_STATE: BoardState = {
   currentStageLabel: null,
   inputBarFocusPulse: 0,
   pendingVideo: null,
+  newAnalysisSignal: 0,
 };
 
 // ── Store ────────────────────────────────────────────────────────────────────
@@ -219,6 +229,8 @@ export const useBoardStore = create<BoardState & BoardActions>((set) => ({
     }),
 
   resetToIdle: () => set({ ...DEFAULT_STATE }),
+
+  triggerNewAnalysis: () => set((s) => ({ ...DEFAULT_STATE, newAnalysisSignal: s.newAnalysisSignal + 1 })),
 
   // ── Camera ──────────────────────────────────────────────────────────────
 

@@ -128,6 +128,7 @@ function mockPersonaResponse(
     comment_intent: number;
     share_intent: number;
     save_intent: number;
+    rewatch_intent: number;
     reasoning: string;
   }> = {},
 ) {
@@ -141,6 +142,7 @@ function mockPersonaResponse(
             comment_intent: 20,
             share_intent: 30,
             save_intent: 70,
+            rewatch_intent: 40,
             reasoning: "default test reasoning",
             ...overrides,
           }),

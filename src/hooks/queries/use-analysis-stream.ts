@@ -165,7 +165,14 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
   const dispatch = useCallback((eventType: string, data: unknown) => {
     if (eventType === "started") {
       const id = (data as { id?: string }).id;
-      if (id) setAnalysisId(id);
+      if (id) {
+        // Sync the ref immediately: `started` and `complete` can arrive in the
+        // same body-reader loop iteration, before the effect that mirrors
+        // analysisId → analysisIdRef runs. The `complete` handler below reads
+        // the ref to key the shared-cache write.
+        analysisIdRef.current = id;
+        setAnalysisId(id);
+      }
     } else if (eventType === "stage") {
       setStages((prev) => [...prev, data as StageEvent]);
       const ev = data as StageEvent;
@@ -233,13 +240,22 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
     } else if (eventType === "complete") {
       setResult(data as PredictionResult);
       setPhase("complete");
+      // Push the finalized result into the shared detail cache so every OTHER
+      // useAnalysisStream instance (Audience/Verdict/Engine/Content/Actions —
+      // none of which opened this stream) hydrates instantly. Without this they
+      // sit on the null-score placeholder cached at /analyze/[id] nav time
+      // (staleTime:Infinity → never refetched) and show "Calculating…"/empty.
+      const completeId = analysisIdRef.current;
+      if (completeId) {
+        queryClient.setQueryData(queryKeys.analysis.detail(completeId), data);
+      }
     } else if (eventType === "error") {
       const msg = (data as { error?: string }).error ?? "Unknown error";
       setError(msg);
       setPhase("error");
     }
     // Unknown event types silently ignored (matches useAnalyze backward compat).
-  }, []);
+  }, [queryClient]);
 
   // ---- Reconnect: EventSource path on /api/analyze/[id]/stream ----
   // preserve filmstrips across reconnect — segments delivered before drop must persist
@@ -341,6 +357,14 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.analysis.history() });
+      // Reconcile the shared detail cache to the canonical server row. Covers
+      // the case where the POST body-reader finished without a `complete` frame
+      // (the dispatch setQueryData above never ran). invalidateQueries refetches
+      // even with staleTime:Infinity, replacing the null-score placeholder.
+      const id = analysisIdRef.current;
+      if (id) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.analysis.detail(id) });
+      }
     },
     onError: (err: Error) => {
       // If we have an analysisId, try GET-stream reconnect (D-03 single retry).
@@ -375,8 +399,12 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
     if (pollQuery.data?.overall_score != null) {
       setResult(pollQuery.data as PredictionResult);
       setPhase("complete");
+      // Sibling instances hydrate off the shared detail cache on the polling path too.
+      if (analysisId) {
+        queryClient.setQueryData(queryKeys.analysis.detail(analysisId), pollQuery.data);
+      }
     }
-  }, [pollQuery.data]);
+  }, [pollQuery.data, analysisId, queryClient]);
 
   // 90s ceiling on polling
   useEffect(() => {

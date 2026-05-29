@@ -16,14 +16,13 @@ import { useRovingTabIndex } from '@/lib/a11y';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useBoardStore } from '@/stores/board-store';
-import { MobileBoardBanner } from './MobileBoardBanner';
 import type { BoardMachineState } from '@/stores/board-store';
 import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
+import { usePermalinkFilmstrips } from '@/hooks/queries/use-permalink-filmstrips';
 import { CommandBar } from '@/components/command-bar/CommandBar';
 import { useCamera, serializeCamera } from './use-camera';
 import { useBoardKeyboard } from './use-board-keyboard';
 import { CameraOverlay } from './CameraOverlay';
-import { OrientationHint } from './OrientationHint';
 import { GROUP_FRAMES, CAMERA_DEFAULT_SCALE } from './board-constants';
 import { GroupFrame } from './GroupFrame';
 import { getFrameAntiViralityState } from './cross-group-state';
@@ -127,7 +126,10 @@ export function Board() {
   const finishStreaming = useBoardStore((s) => s.finishStreaming);
   const triggerAntiVirality = useBoardStore((s) => s.triggerAntiVirality);
   const resetToIdle = useBoardStore((s) => s.resetToIdle);
+  const newAnalysisSignal = useBoardStore((s) => s.newAnalysisSignal);
   const pendingVideoThumbnail = useBoardStore((s) => s.pendingVideo?.thumbnail ?? null);
+  // Persisted keyframe[0] for the Input thumbnail on permalink replay.
+  const permalinkFilmstrips = usePermalinkFilmstrips();
 
   // WR-01: track which analysisId we started streaming for, so that if the
   // user resets and a new stream starts we don't fire anti-virality against
@@ -219,6 +221,16 @@ export function Board() {
     prevUrlAnalysisIdRef.current = urlAnalysisId;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlAnalysisId]);
+
+  // Reset when "New analysis" is clicked while already on /analyze (signal fires even if URL unchanged).
+  const prevNewAnalysisSignalRef = useRef(newAnalysisSignal);
+  useEffect(() => {
+    if (prevNewAnalysisSignalRef.current !== newAnalysisSignal) {
+      stream.reset();
+    }
+    prevNewAnalysisSignalRef.current = newAnalysisSignal;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newAnalysisSignal]);
 
   // CR-02: unified atomic URL update — merges the former pushState (analysisId)
   // and the debounced replaceState (camera/preset) into one effect so they can
@@ -416,7 +428,7 @@ export function Board() {
               camera={camera}
               videoStoragePath={r?.video_storage_path ?? null}
               videoUrl={null}
-              thumbnailUrl={stream.filmstrips?.[0] ?? pendingVideoThumbnail ?? null}
+              thumbnailUrl={stream.filmstrips?.[0] ?? permalinkFilmstrips?.[0] ?? pendingVideoThumbnail ?? null}
               behavioral={r?.behavioral_predictions ?? null}
               isStreaming={boardMachineState === 'streaming'}
             />
@@ -427,11 +439,6 @@ export function Board() {
       {/* DOM overlay slots (filled by plans 2.6 command bar, 2.7 input node, etc.) */}
       <CameraOverlay activePreset={activePreset} onSelect={goToPreset} />
 
-      {/* Mobile/narrow viewport banner — z=160, above OrientationHint (z=150), below command bar (z=200) */}
-      <MobileBoardBanner />
-
-      {/* R7.4 first-board orientation hint — z=150, above board content, below command bar (z=200) */}
-      <OrientationHint />
     </div>
   );
 }

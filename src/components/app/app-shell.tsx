@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 import { useSidebarStore } from "@/stores/sidebar-store";
 
 import { AuthGuard } from "./auth-guard";
-import { TopBarAccountChip } from "./top-bar-account-chip";
 import { Sidebar, SidebarHamburger } from "@/components/sidebar/Sidebar";
 
 interface AppShellProps {
@@ -44,7 +43,6 @@ export function AppShell({ children }: AppShellProps) {
       <div className="h-screen bg-background">
         <SidebarHamburger />
         <Sidebar />
-        <TopBarAccountChip />
         <main
           className={cn(
             "h-full overflow-auto",

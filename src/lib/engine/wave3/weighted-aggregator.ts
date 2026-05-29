@@ -188,8 +188,29 @@ export function assembleHeatmapPayload(
   preComputedCurve?: ReturnType<typeof buildWeightedCurve>,
 ): HeatmapPayload {
   // WR-02 + WR-07: reuse pre-computed curve when available; otherwise compute once.
-  const { weighted_curve, normalizedWeights: effectiveWeights } =
-    preComputedCurve ?? buildWeightedCurve(pass2Results, segments, weights);
+  const curve = preComputedCurve ?? buildWeightedCurve(pass2Results, segments, weights);
+  const { weighted_curve, normalizedWeights: effectiveWeights } = curve;
+
+  // "vs Niche" — niche-only weighted completion vs the overall weighted completion.
+  // Niche-slot personas are slot_type "niche" or (pre-map) "niche_deep". Run the
+  // same curve math over just those personas with all weight on the niche bucket.
+  const nicheSurvivors = pass2Results.filter(
+    (r) => r.slot_type === "niche" || (r.slot_type as string) === "niche_deep",
+  );
+  let niche_completion_pct: number | null = null;
+  let vs_niche_diff_pct: number | null = null;
+  if (nicheSurvivors.length > 0) {
+    const nicheCurve = buildWeightedCurve(nicheSurvivors, segments, {
+      fyp: 0,
+      niche: 1,
+      loyalist: 0,
+      cross_niche: 0,
+    });
+    niche_completion_pct = nicheCurve.weighted_completion_pct;
+    vs_niche_diff_pct = curve.weighted_completion_pct - niche_completion_pct;
+  } else {
+    log.warn("assembleHeatmapPayload: no niche-slot personas — vs_niche_diff_pct null");
+  }
 
   return {
     segments: segments.map((s, idx) => ({
@@ -218,5 +239,7 @@ export function assembleHeatmapPayload(
     weighted_curve,
     weights: effectiveWeights,
     weights_source: weightsSource,
+    niche_completion_pct,
+    vs_niche_diff_pct,
   };
 }

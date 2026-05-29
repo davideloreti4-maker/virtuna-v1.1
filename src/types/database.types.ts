@@ -194,6 +194,7 @@ export type Database = {
           created_at: string | null
           deepseek_model: string | null
           deleted_at: string | null
+          emotion_arc: Json | null
           engine_version: string | null
           factors: Json | null
           feature_vector: Json | null
@@ -208,7 +209,9 @@ export type Database = {
           latency_ms: number | null
           ml_score: number | null
           optimal_post_override: Json | null
+          optimal_post_window: Json | null
           overall_score: number | null
+          persona_behavioral_aggregate: Json | null
           personas: Json | null
           project_id: string | null
           reasoning: string | null
@@ -243,6 +246,7 @@ export type Database = {
           created_at?: string | null
           deepseek_model?: string | null
           deleted_at?: string | null
+          emotion_arc?: Json | null
           engine_version?: string | null
           factors?: Json | null
           feature_vector?: Json | null
@@ -257,7 +261,9 @@ export type Database = {
           latency_ms?: number | null
           ml_score?: number | null
           optimal_post_override?: Json | null
+          optimal_post_window?: Json | null
           overall_score?: number | null
+          persona_behavioral_aggregate?: Json | null
           personas?: Json | null
           project_id?: string | null
           reasoning?: string | null
@@ -292,6 +298,7 @@ export type Database = {
           created_at?: string | null
           deepseek_model?: string | null
           deleted_at?: string | null
+          emotion_arc?: Json | null
           engine_version?: string | null
           factors?: Json | null
           feature_vector?: Json | null
@@ -306,7 +313,9 @@ export type Database = {
           latency_ms?: number | null
           ml_score?: number | null
           optimal_post_override?: Json | null
+          optimal_post_window?: Json | null
           overall_score?: number | null
+          persona_behavioral_aggregate?: Json | null
           personas?: Json | null
           project_id?: string | null
           reasoning?: string | null
@@ -1691,6 +1700,18 @@ export type Database = {
     }
     Functions: {
       cleanup_expired_filmstrips: { Args: never; Returns: undefined }
+      compute_niche_percentiles: {
+        Args: {
+          p_society_id: string
+          p_exclude_user_id?: string | null
+          p_min_cohort_size?: number
+        }
+        Returns: {
+          median: number
+          p75: number
+          count: number
+        }[]
+      }
       increment_creator_analysis_count: {
         Args: { p_user_id: string }
         Returns: undefined

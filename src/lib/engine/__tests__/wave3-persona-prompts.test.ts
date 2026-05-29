@@ -258,6 +258,7 @@ describe("PersonaResponseSchema (Phase 7 D-19 + Pitfall 5)", () => {
     comment_intent: 20,
     share_intent: 30,
     save_intent: 70,
+    rewatch_intent: 40,
     reasoning: "I'd save this for later — it has the kind of step-by-step structure I bookmark.",
   };
 

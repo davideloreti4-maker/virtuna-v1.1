@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 
 /**
  * GET /api/analyze/[id]/comparisons
  *
  * Returns up to 10 most-recent prior overall_score values for the authenticated user,
- * excluding the current analysis. Niche aggregate deferred to a future phase
- * (RESEARCH Open Question 1).
+ * excluding the current analysis, plus a cross-user niche cohort aggregate
+ * (median / p75 / count) when the analysis has a society_id and the cohort meets
+ * the minimum size. Niche stats come from the compute_niche_percentiles RPC
+ * (aggregate-only, called via the service-role client since RLS otherwise hides
+ * other users' rows). Returns niche=null when no society_id or cohort < min size.
  *
  * Security (STRIDE T-05-15 to T-05-19):
  * - Zod UUID validates `id` URL param before any DB query (T-05-19)
@@ -51,13 +55,22 @@ export async function GET(
   // RLS on `analysis_results` also enforces `user_id = auth.uid()` — defense in depth.
   // Note: the DB table is `analysis_results` (not `analyses`) per the Phase 1 schema.
   // Column `overall_score` confirmed in migration 20260213000000_content_intelligence.sql:90.
-  const { data, error } = await supabase
-    .from('analysis_results')
-    .select('overall_score')
-    .eq('user_id', user.id)
-    .neq('id', id)
-    .order('created_at', { ascending: false })
-    .limit(10);
+  // Also read this analysis's society_id (RLS-scoped) to drive the niche cohort.
+  const [{ data, error }, currentRow] = await Promise.all([
+    supabase
+      .from('analysis_results')
+      .select('overall_score')
+      .eq('user_id', user.id)
+      .neq('id', id)
+      .order('created_at', { ascending: false })
+      .limit(10),
+    supabase
+      .from('analysis_results')
+      .select('society_id')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .maybeSingle(),
+  ]);
 
   if (error) {
     return NextResponse.json({ error: 'comparisons_fetch_failed' }, { status: 500 });
@@ -66,6 +79,26 @@ export async function GET(
   const history: number[] =
     data?.map((r) => Number(r.overall_score)).filter((n) => Number.isFinite(n)) ?? [];
 
-  // Niche aggregate deferred to a future phase (RESEARCH Open Question 1).
-  return NextResponse.json({ history, niche: null });
+  // Niche cohort: cross-user aggregate via SECURITY DEFINER RPC. Aggregate-only
+  // (median/p75/count); excludes the requesting user; min cohort enforced in SQL.
+  let niche: { median: number; p75: number; count: number } | null = null;
+  const societyId = currentRow.data?.society_id ?? null;
+  if (societyId) {
+    const service = createServiceClient();
+    const { data: rows } = await service.rpc('compute_niche_percentiles', {
+      p_society_id: societyId,
+      p_exclude_user_id: user.id,
+      p_min_cohort_size: 5,
+    });
+    const row = rows?.[0];
+    if (row && Number.isFinite(Number(row.median))) {
+      niche = {
+        median: Number(row.median),
+        p75: Number(row.p75),
+        count: Number(row.count),
+      };
+    }
+  }
+
+  return NextResponse.json({ history, niche });
 }

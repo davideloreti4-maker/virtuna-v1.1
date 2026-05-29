@@ -21,7 +21,6 @@ function makeProps(overrides?: Partial<PersonaRowProps>): PersonaRowProps {
     swipePredictedAt: null,
     totalDurationSec: 30,
     rowState: 'complete',
-    colorBlindMode: false,
     onCellTap: vi.fn(),
     onRowLabelTap: vi.fn(),
     ...overrides,
@@ -103,12 +102,6 @@ describe('PersonaRow', () => {
     const { container } = render(<PersonaRow {...makeProps({ rowState: 'streaming' })} />);
     const labelBtn = container.querySelector('button[aria-label*="full reasoning"]') as HTMLElement;
     expect(labelBtn.style.opacity).toBe('0.6');
-  });
-
-  it('colorBlindMode=true adds heatmap-pattern-cb class to row', () => {
-    const { container } = render(<PersonaRow {...makeProps({ colorBlindMode: true })} />);
-    const row = container.querySelector('[role="row"]');
-    expect(row?.className).toContain('heatmap-pattern-cb');
   });
 
   it('cells have aria-label with attention percentage and timing', () => {

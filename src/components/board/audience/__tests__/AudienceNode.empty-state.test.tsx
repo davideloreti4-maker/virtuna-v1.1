@@ -41,6 +41,12 @@ vi.mock('@/hooks/queries/use-permalink-analysis', () => ({
   usePermalinkAnalysis: () => ({ id: null, data: null, isLoading: false }),
 }));
 
+// usePermalinkFilmstrips also wraps useQuery + useParams — stub to {} so the
+// test needs no QueryClientProvider.
+vi.mock('@/hooks/queries/use-permalink-filmstrips', () => ({
+  usePermalinkFilmstrips: () => ({}),
+}));
+
 function mockStream(result: unknown, phase = 'complete') {
   vi.doMock('@/hooks/queries/use-analysis-stream', () => ({
     useAnalysisStream: () => ({ result, phase, partial: null, filmstrips: null, analysisId: 'test' }),

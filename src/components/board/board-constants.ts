@@ -1,7 +1,7 @@
 import type { GroupFrameLayout, Rect } from './board-types';
 
 export const FRAME_PADDING = 16;
-export const GUTTER = 96;
+export const GUTTER = 32;
 export const TITLE_BAR_HEIGHT = 36;
 export const FRAME_CORNER_RADIUS = 12;
 export const CAMERA_MIN_SCALE = 0.2;
@@ -16,19 +16,15 @@ export const CAMERA_DEFAULT_SCALE = 1;
  *   Verdict (large hero, right column) + Actions (below Verdict)
  *   Content Analysis (supporting row, beneath Audience+Verdict)
  *
- * World-space gaps: minimum 96px between every adjacent frame edge.
- * UAT gap 1 (2026-05-26): user reported the prior 32px GUTTER read as a
- * packed CSS grid, not an infinite canvas. Increasing horizontal gaps to
- * 96px and vertical gaps to 96px between rows restores the spatial-canvas
- * affordance while preserving D-06 reading order.
+ * World-space gaps: 32px between every adjacent frame edge.
  */
 export const GROUP_FRAMES: GroupFrameLayout[] = [
   { id: 'input',            label: 'Input',            bounds: { x:    0, y:    0, width:  240, height: 440 } },
   { id: 'engine',           label: 'Engine',           bounds: { x:    0, y:  456, width:  240, height: 120 } },
-  { id: 'audience',         label: 'Audience',         bounds: { x:  336, y:    0, width:  560, height: 576 } },
-  { id: 'verdict',          label: 'Verdict',          bounds: { x:  992, y:    0, width:  360, height: 280 } },
-  { id: 'actions',          label: 'Actions',          bounds: { x:  992, y:  376, width:  360, height: 200 } },
-  { id: 'content-analysis', label: 'Content Analysis', bounds: { x:    0, y:  672, width: 1352, height: 200 } },
+  { id: 'audience',         label: 'Audience',         bounds: { x:  272, y:    0, width:  560, height: 576 } },
+  { id: 'verdict',          label: 'Verdict',          bounds: { x:  864, y:    0, width:  360, height: 280 } },
+  { id: 'actions',          label: 'Actions',          bounds: { x:  864, y:  312, width:  360, height: 200 } },
+  { id: 'content-analysis', label: 'Content Analysis', bounds: { x:    0, y:  608, width: 1224, height: 200 } },
 ];
 
 export const BOARD_BOUNDS: Rect = (() => {
@@ -54,7 +50,7 @@ export const CAMERA_PRESET_TARGETS: Record<string, Rect> = {
   // Internal-only preset — not user-facing in CameraOverlay.
   engine: { x: 0, y: 0, width: 240, height: 576 },
   // hero pair = Audience + Verdict union (D-07)
-  verdict: { x: 336, y: 0, width: 1016, height: 576 },
+  verdict: { x: 272, y: 0, width: 952, height: 576 },
   audience: GROUP_FRAMES.find((f) => f.id === 'audience')!.bounds,
   'content-analysis': GROUP_FRAMES.find((f) => f.id === 'content-analysis')!.bounds,
 };

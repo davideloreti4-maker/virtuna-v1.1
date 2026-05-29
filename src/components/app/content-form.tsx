@@ -2,9 +2,8 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
-import { Type, Link, Video, ArrowUp, ChevronDown, Check } from "lucide-react";
+import { Type, Link, Video, ArrowUp, ChevronDown, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { VideoUpload } from "./video-upload";
 import { useSimulationStore } from "@/stores/simulation-store";
 import { usePendingProfileGate } from "@/hooks/use-pending-profile-gate";
 import { ProfileInterviewModal } from "@/components/app/profile-interview-modal";
@@ -16,6 +15,13 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
+import { VideoUpload } from "@/components/app/video-upload";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
 
 const FRAME_COUNT = 10;
 const FRAME_WIDTH = 120;
@@ -118,7 +124,6 @@ export interface ContentFormData {
 
 interface ContentFormProps {
   onSubmit: (data: ContentFormData) => void;
-  uploadProgress?: number;
   className?: string;
 }
 
@@ -140,7 +145,7 @@ const PLACEHOLDERS: Record<InputMode, string> = {
 // Component
 // ---------------------------------------------------------------------------
 
-export function ContentForm({ onSubmit, uploadProgress, className }: ContentFormProps) {
+export function ContentForm({ onSubmit, className }: ContentFormProps) {
   // On /analyze/[id] (result route) default to text input so the large
   // VideoUpload drop zone doesn't dominate the result page. User can still
   // tab to Video to upload another.
@@ -296,64 +301,120 @@ export function ContentForm({ onSubmit, uploadProgress, className }: ContentForm
           "rgba(255,255,255,0.15) 0px 1px 1px 0px inset, 0 8px 32px rgba(0,0,0,0.3)",
       }}
     >
-      {/* Video upload zone (only when video mode active) */}
-      {activeTab === "video_upload" && (
-        <div className="px-2 pt-2">
-          <VideoUpload
-            file={formData.video_file}
-            onFileSelect={(file) => updateField("video_file", file)}
-            uploadProgress={uploadProgress}
-          />
-          {errors.video_file && (
-            <p className="text-xs text-error mt-1">{errors.video_file}</p>
+      {/* Video upload mode */}
+      {activeTab === "video_upload" ? (
+        <>
+          {formData.video_file ? (
+            <div className="flex items-center gap-2 px-3 pt-2.5 pb-0.5">
+              <Video className="w-3.5 h-3.5 text-foreground-muted shrink-0" />
+              <span className="text-sm text-foreground truncate flex-1">
+                {formData.video_file.name}
+              </span>
+              <button
+                type="button"
+                onClick={() => updateField("video_file", null)}
+                className="text-foreground-muted hover:text-foreground shrink-0 transition-colors"
+                aria-label="Remove video"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <div className="px-2.5 pt-2.5 pb-0">
+              <VideoUpload
+                file={null}
+                onFileSelect={(f) => {
+                  if (!f) return;
+                  if (f.size > 200 * 1024 * 1024) {
+                    setErrors({ video_file: "File too large. Maximum 200MB." });
+                    return;
+                  }
+                  setErrors((prev) => { const n = { ...prev }; delete n.video_file; return n; });
+                  updateField("video_file", f);
+                }}
+              />
+            </div>
           )}
-        </div>
+          {formData.video_file && (
+            <textarea
+              value={formData.video_caption}
+              onChange={(e) => updateField("video_caption", e.target.value)}
+              placeholder={PLACEHOLDERS.video_upload}
+              rows={2}
+              className={cn(
+                "w-full resize-none bg-transparent px-3 pt-2 pb-1",
+                "text-sm text-foreground placeholder:text-foreground-muted/50",
+                "focus:outline-none min-h-[60px]",
+              )}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSubmit(e);
+              }}
+            />
+          )}
+        </>
+      ) : (
+        /* Text / URL modes */
+        <textarea
+          value={currentValue}
+          onChange={(e) => updateField(currentField, e.target.value)}
+          placeholder={PLACEHOLDERS[activeTab]}
+          rows={2}
+          className={cn(
+            "w-full resize-none bg-transparent px-3 pt-2.5 pb-1",
+            "text-sm text-foreground placeholder:text-foreground-muted/50",
+            "focus:outline-none min-h-[80px]",
+          )}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              handleSubmit(e);
+            }
+          }}
+        />
       )}
 
-      {/* Text input area */}
-      <textarea
-        value={currentValue}
-        onChange={(e) => updateField(currentField, e.target.value)}
-        placeholder={PLACEHOLDERS[activeTab]}
-        rows={1}
-        className={cn(
-          "w-full resize-none bg-transparent px-3 pt-2.5 pb-1",
-          "text-sm text-foreground placeholder:text-foreground-muted/50",
-          "focus:outline-none",
-        )}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-            handleSubmit(e);
-          }
-        }}
-      />
-
-      {/* Error message */}
+      {/* Error — all modes */}
       {errors[errorKey] && (
-        <p className="px-3 text-xs text-error">{errors[errorKey]}</p>
+        <p className="px-3 text-xs text-error pb-1">{errors[errorKey]}</p>
       )}
 
       {/* Bottom bar: mode switcher + model tier + submit */}
-      <div className="flex items-center justify-between px-2 pb-2 pt-0.5">
-        {/* Mode switcher pills */}
-        <div className="flex items-center gap-0.5">
-          {MODE_CONFIG.map(({ value, icon: ModeIcon, label }) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => handleTabChange(value)}
-              className={cn(
-                "flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
-                activeTab === value
-                  ? "bg-white/[0.08] text-foreground"
-                  : "text-foreground-muted hover:text-foreground hover:bg-white/[0.03]"
-              )}
-            >
-              <ModeIcon className="h-3 w-3" />
-              {label}
-            </button>
-          ))}
-        </div>
+      <div className="flex items-center justify-between px-2 pb-2 pt-2">
+        {/* Mode switcher */}
+        <TooltipProvider delayDuration={400}>
+          <div className="flex items-center gap-0.5">
+            {MODE_CONFIG.map(({ value, icon: ModeIcon, label }) => {
+              const isActive = activeTab === value;
+              return (
+                <Tooltip key={value}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => handleTabChange(value)}
+                      aria-pressed={isActive}
+                      aria-label={label}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-md py-1 transition-colors",
+                        isActive
+                          ? "bg-white/[0.08] text-foreground px-2"
+                          : "text-foreground-muted hover:text-foreground hover:bg-white/[0.03] px-1.5",
+                      )}
+                    >
+                      <ModeIcon className="h-3.5 w-3.5 shrink-0" />
+                      {isActive && (
+                        <span className="text-[11px] font-medium">{label}</span>
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  {!isActive && (
+                    <TooltipContent side="top" sideOffset={6}>
+                      {label}
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              );
+            })}
+          </div>
+        </TooltipProvider>
 
         {/* Right side: model tier label + submit */}
         <div className="flex items-center gap-2">

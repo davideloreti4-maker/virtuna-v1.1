@@ -62,11 +62,4 @@ describe('HeatmapDrawer (a11y)', () => {
     expect(indices).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   });
 
-  it('color-blind toggle has aria-pressed', () => {
-    const { container } = render(<HeatmapDrawer {...makeOpenProps()} />);
-    const cbBtn = container.querySelector('[aria-pressed]');
-    expect(cbBtn).toBeTruthy();
-    // Initially not pressed (false)
-    expect(cbBtn?.getAttribute('aria-pressed')).toBe('false');
-  });
 });

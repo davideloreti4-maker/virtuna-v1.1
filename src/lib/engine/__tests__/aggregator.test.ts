@@ -862,6 +862,7 @@ describe("aggregateScores Phase 7 widening", () => {
       comment_intent: 20,
       share_intent: 30,
       save_intent: 70,
+      rewatch_intent: 40,
       reasoning: "test saver reaction",
     },
     {
@@ -874,6 +875,7 @@ describe("aggregateScores Phase 7 widening", () => {
       comment_intent: 5,
       share_intent: 10,
       save_intent: 20,
+      rewatch_intent: 15,
       reasoning: "test lurker reaction",
     },
   ];

@@ -60,7 +60,9 @@ You will be shown one video's summary, caption, hashtags, and context. React AS 
 ## Output Format
 
 Return a JSON object with this exact shape (NO markdown, NO extra text):
-{ "scroll_past_second": <integer or float 0..video_duration_seconds>, "watch_through_pct": <number 0..100>, "comment_intent": <0..100>, "share_intent": <0..100>, "save_intent": <0..100>, "reasoning": "<1-2 sentence reaction in your persona's voice>" }
+{ "scroll_past_second": <integer or float 0..video_duration_seconds>, "watch_through_pct": <number 0..100>, "comment_intent": <0..100>, "share_intent": <0..100>, "save_intent": <0..100>, "rewatch_intent": <0..100>, "reasoning": "<1-2 sentence reaction in your persona's voice>" }
+
+rewatch_intent = how likely YOU are to replay or re-watch this video (loop it) rather than scroll on after it ends — 0 = never replay, 100 = would loop it repeatedly.
 
 Stay in character. Your reasoning should feel authentic to ${slot.archetype} — not analytical.`;
 }
@@ -151,6 +153,8 @@ export const PersonaResponseSchema = z.object({
   comment_intent: z.number().min(0).max(100),
   share_intent: z.number().min(0).max(100),
   save_intent: z.number().min(0).max(100),
+  /** Replay/loop intent (0-100) — feeds the Audience LOOP headline chip via loop_pct. */
+  rewatch_intent: z.number().min(0).max(100),
   /** Pitfall 5: required non-empty + length bound. */
   reasoning: z.string().min(1).max(500),
 });

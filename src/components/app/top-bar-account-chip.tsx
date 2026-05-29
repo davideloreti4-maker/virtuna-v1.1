@@ -99,7 +99,7 @@ export function TopBarAccountChip() {
   if (isLoading) return null;
 
   return (
-    <div ref={containerRef} className="fixed top-4 right-4 z-[var(--z-sticky)]">
+    <div ref={containerRef} className="hidden md:block fixed top-4 right-4 z-[var(--z-sticky)]">
       {/* Trigger chip */}
       <button
         type="button"
@@ -125,7 +125,10 @@ export function TopBarAccountChip() {
             <span className="text-sm">@{activeAccount.handle}</span>
           </>
         ) : (
-          <span className="text-sm">Connect Account</span>
+          <>
+            <span className="hidden sm:inline text-sm">Connect Account</span>
+            <Plus weight="bold" className="h-4 w-4 sm:hidden" />
+          </>
         )}
         <CaretDown
           weight="bold"

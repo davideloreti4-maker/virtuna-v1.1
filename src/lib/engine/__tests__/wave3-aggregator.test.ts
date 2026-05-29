@@ -20,6 +20,7 @@ function makePersona(
     comment_intent: 50,
     share_intent: 50,
     save_intent: 50,
+    rewatch_intent: 50,
     reasoning: "default test reasoning",
     ...overrides,
   };

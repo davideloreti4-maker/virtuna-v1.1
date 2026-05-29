@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
 import { usePermalinkAnalysis } from '@/hooks/queries/use-permalink-analysis';
+import { usePermalinkFilmstrips } from '@/hooks/queries/use-permalink-filmstrips';
 import { useAudienceChoreography } from './use-audience-choreography';
 import { useClientWeights } from './use-client-weights';
 import { HeadlineChips } from './HeadlineChips';
@@ -48,6 +49,8 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
   const { data: permalinkData } = usePermalinkAnalysis();
   const stream = useAnalysisStream({ initialData: permalinkData ?? null });
   const { result, partial: _partial, phase, filmstrips, analysisId } = stream;
+  // Persisted keyframes for permalink replay (live runs use stream.filmstrips).
+  const permalinkFilmstrips = usePermalinkFilmstrips();
 
   // Choreography hook — drives row + curve state machine
   // Pass injected stream so it doesn't double-subscribe
@@ -234,11 +237,34 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
 
   const isStreaming = phase === 'analyzing' || phase === 'reconnecting' || phase === 'polling';
 
-  // Weighted curve: prefer live recomputed curve, fall back to result heatmap curve
+  // Retention (survival) curve — % of the weighted audience still watching at each
+  // segment, derived from each persona's swipe_predicted_at. Monotonically decays
+  // from ~100% → completion, so it reads like a real watch-time curve instead of
+  // the near-flat mean-attention line. Weighted by the current slot weights.
+  const survivalCurve = useMemo<number[] | null>(() => {
+    const hm = result?.heatmap;
+    if (!hm?.segments?.length || !hm.personas?.length) return null;
+    const wf = weights as unknown as Record<string, number>;
+    return hm.segments.map((seg) => {
+      let num = 0;
+      let den = 0;
+      for (const p of hm.personas) {
+        const w = wf[p.slot_type] ?? 0;
+        den += w;
+        const stillWatching =
+          p.swipe_predicted_at == null || p.swipe_predicted_at >= seg.t_end;
+        if (stillWatching) num += w;
+      }
+      return den > 0 ? num / den : 0;
+    });
+  }, [result?.heatmap, weights]);
+
+  // Curve shown: survival (preferred) → recomputed attention → persisted curve.
   const weightedCurve =
-    recomputedCurve.length > 0
+    survivalCurve ??
+    (recomputedCurve.length > 0
       ? recomputedCurve
-      : result?.heatmap?.weighted_curve ?? null;
+      : result?.heatmap?.weighted_curve ?? null);
 
   // Baseline curve derived from persona_behavioral_aggregate.completion_pct (Pass 1)
   // Flat line at completion_pct across all segments (D-07: Pass 1 flat baseline)
@@ -275,6 +301,14 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
     recomputedMetrics.weighted_top_dropoff_t ??
     result?.weighted_top_dropoff_t ??
     null;
+  // LOOP — replay/loop rate. Lives on the (now-persisted) Pass-1 aggregate as a
+  // 0-100 intent, so it's passed straight through (no *100 scaling). Independent
+  // of the weight slider, so no recompute fallback.
+  const loopPct = agg?.loop_pct ?? null;
+  // VS NICHE — niche-only vs overall weighted completion (0-1 diff on heatmap),
+  // scaled to a 0-100 percentage-point delta. HeadlineChips colors by sign.
+  const rawVsNiche = result?.heatmap?.vs_niche_diff_pct ?? null;
+  const scaledVsNiche = rawVsNiche == null ? null : rawVsNiche * 100;
 
   return (
     <>
@@ -298,8 +332,8 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
                   }
                 : undefined
             }
-            loop_pct={null}
-            vs_niche_diff_pct={null}
+            loop_pct={loopPct}
+            vs_niche_diff_pct={scaledVsNiche}
             weights={weights}
             isStreaming={isStreaming}
             onWeightsBadgeClick={handleWeightsBadgeClick}
@@ -309,7 +343,13 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
           <div className="flex flex-col gap-1">
             <Filmstrip
               segments={result?.heatmap?.segments ?? null}
-              filmstrips={filmstrips && Object.keys(filmstrips).length > 0 ? filmstrips : (pendingVideo?.frames ?? {})}
+              filmstrips={
+                filmstrips && Object.keys(filmstrips).length > 0
+                  ? filmstrips
+                  : Object.keys(permalinkFilmstrips).length > 0
+                    ? permalinkFilmstrips
+                    : (pendingVideo?.frames ?? {})
+              }
               totalDurationSec={totalDurationSec}
               antiViralitySegmentIndices={antiViralityState.dropoff_segment_indices}
             />
@@ -323,17 +363,19 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
             </div>
           </div>
 
-          {/* D-01: RetentionCurve — segment-aligned below filmstrip */}
-          <RetentionCurve
-            weightedCurve={weightedCurve}
-            baselineCurve={baselineCurve}
-            heatmap={result?.heatmap ?? null}
-            totalDurationSec={totalDurationSec}
-            morphRequested={curveState === 'morphing'}
-            antiViralityXRange={antiViralityXRange}
-            onTap={handleCurveTap}
-            weightedCompletionPct={recomputedMetrics.weighted_completion_pct || (result?.weighted_completion_pct ?? 0)}
-          />
+          {/* D-01: RetentionCurve — hidden when idle/reset (no data, not streaming) */}
+          {(isStreaming || weightedCurve !== null || baselineCurve !== null) && (
+            <RetentionCurve
+              weightedCurve={weightedCurve}
+              baselineCurve={baselineCurve}
+              heatmap={result?.heatmap ?? null}
+              totalDurationSec={totalDurationSec}
+              morphRequested={curveState === 'morphing'}
+              antiViralityXRange={antiViralityXRange}
+              onTap={handleCurveTap}
+              weightedCompletionPct={recomputedMetrics.weighted_completion_pct || (result?.weighted_completion_pct ?? 0)}
+            />
+          )}
 
           {/* Empty-state: shown when no persona data available (heatmap absent or no personas) */}
           {!isStreaming && (!result?.heatmap?.personas?.length) && (

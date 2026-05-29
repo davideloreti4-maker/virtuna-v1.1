@@ -96,20 +96,6 @@ describe('HeatmapDrawer (desktop)', () => {
     expect(onOpenChange).toHaveBeenCalledWith(true);
   });
 
-  it('color-blind mode toggle button is present when drawer is open', () => {
-    const heatmap = buildHeatmapFixture();
-    const rowStates: Record<string, 'complete'> = {};
-    heatmap.personas.forEach((p) => { rowStates[p.id] = 'complete'; });
-    render(
-      <HeatmapDrawer
-        {...makeProps({ heatmap, rowStates, isOpen: true })}
-      />,
-    );
-    // Look for the color-blind toggle button (aria-pressed attribute marks it)
-    const cbBtn = screen.getByRole('button', { name: /color-blind/i });
-    expect(cbBtn).toBeTruthy();
-  });
-
   it('desktop: grid-template-rows transitions from 0fr to 1fr when open', () => {
     const heatmap = buildHeatmapFixture();
     const rowStates: Record<string, 'complete'> = {};

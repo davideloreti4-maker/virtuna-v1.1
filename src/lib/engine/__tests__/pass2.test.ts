@@ -104,6 +104,7 @@ function makePass1Result(idx: number): PersonaSimulationResult {
     comment_intent: 20,
     share_intent: 30,
     save_intent: 70,
+    rewatch_intent: 40,
     reasoning: `test reasoning ${idx}`,
   };
 }
@@ -398,6 +399,7 @@ describe("persona-prompts-pass2 behavioral coverage (W5)", () => {
     comment_intent: 5,
     share_intent: 10,
     save_intent: 20,
+    rewatch_intent: 15,
     reasoning: "hook didn't land fast enough",
   };
 

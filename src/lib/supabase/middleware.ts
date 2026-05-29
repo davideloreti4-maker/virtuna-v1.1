@@ -58,6 +58,11 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url, 308); // Permanent redirect — /dashboard is sunset
   }
 
+  // Skip Supabase entirely for paths that need no auth logic.
+  if (isPublicPath(pathname) && !request.nextUrl.searchParams.has("ref")) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });

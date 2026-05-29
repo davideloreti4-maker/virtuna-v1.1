@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { CaretDown, CaretUp } from '@phosphor-icons/react';
 import { PersonaRow } from './PersonaRow';
@@ -14,12 +14,8 @@ const ARCHETYPE_LABEL: Record<PersonaSlotType, string> = {
   cross_niche: 'Cross-niche',
 };
 
-interface GridBodyProps extends HeatmapDrawerProps {
-  colorBlindMode: boolean;
-}
-
-function GridBody(props: GridBodyProps) {
-  const { heatmap, rowStates, totalDurationSec, colorBlindMode } = props;
+function GridBody(props: HeatmapDrawerProps) {
+  const { heatmap, rowStates, totalDurationSec } = props;
   const segments = heatmap?.segments ?? null;
 
   const colTemplate = useMemo(() => {
@@ -80,7 +76,6 @@ function GridBody(props: GridBodyProps) {
             swipePredictedAt={persona?.swipe_predicted_at ?? null}
             totalDurationSec={props.totalDurationSec}
             rowState={state}
-            colorBlindMode={colorBlindMode}
             rowIndex={slotIdx + 1}
             onCellTap={(segIdx) => {
               if (persona) props.onCellTap(persona.id, segIdx);
@@ -100,13 +95,9 @@ function GridBody(props: GridBodyProps) {
  *
  * Desktop: inline grid-template-rows 0fr→1fr transition (250ms).
  * Mobile (<768px): Radix Sheet with side="bottom", max-height 70dvh.
- *
- * Color-blind mode: CSS class toggle on GridBody root.
- * The `.heatmap-pattern-cb .heatmap-cell` diagonal-stripe rule lives in globals.css.
  */
 export function HeatmapDrawer(props: HeatmapDrawerProps) {
   const isMobile = useIsMobile();
-  const [colorBlindMode, setColorBlindMode] = useState(false);
 
   const affordanceLabel = props.isOpen ? 'Hide personas' : 'Show personas';
   const personaCount = props.rowStates.length || 10;
@@ -140,16 +131,9 @@ export function HeatmapDrawer(props: HeatmapDrawerProps) {
           >
             <SheetHeader>
               <SheetTitle>Audience personas</SheetTitle>
-              <button
-                type="button"
-                onClick={() => setColorBlindMode((m) => !m)}
-                className="text-xs underline"
-              >
-                {colorBlindMode ? 'Standard' : 'Color-blind'} mode
-              </button>
             </SheetHeader>
             <div id="audience-heatmap-grid">
-              <GridBody {...props} colorBlindMode={colorBlindMode} />
+              <GridBody {...props} />
             </div>
           </SheetContent>
         </Sheet>
@@ -169,16 +153,8 @@ export function HeatmapDrawer(props: HeatmapDrawerProps) {
         }}
       >
         <div className="min-h-0">
-          <button
-            type="button"
-            onClick={() => setColorBlindMode((m) => !m)}
-            className="mb-2 text-xs underline"
-            aria-pressed={colorBlindMode}
-          >
-            {colorBlindMode ? 'Standard' : 'Color-blind'} mode
-          </button>
           <div id="audience-heatmap-grid">
-            <GridBody {...props} colorBlindMode={colorBlindMode} />
+            <GridBody {...props} />
           </div>
         </div>
       </div>

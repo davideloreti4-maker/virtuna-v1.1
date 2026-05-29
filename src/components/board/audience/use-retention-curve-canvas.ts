@@ -172,9 +172,9 @@ export function useRetentionCurveCanvas(
       const plotH = Math.max(0, h - PAD_Y * 2);
       const yAt = (pct: number) => PAD_Y + plotH * (1 - pct);
 
-      // ── 1. Hook zone warm band (0–3s x range) ──────────────────────────────
+      // ── 1. Hook zone warm band (0–3s x range) — subtle ─────────────────────
       const hookEndX = Math.min(3 / totalDuration, 1) * w;
-      ctx.fillStyle = 'rgba(255,127,80,0.08)';
+      ctx.fillStyle = 'rgba(255,127,80,0.04)';
       ctx.fillRect(0, PAD_Y, hookEndX, plotH);
 
       // ── 2. Anti-virality orange band (if triggered) ─────────────────────────
@@ -197,13 +197,13 @@ export function useRetentionCurveCanvas(
         ctx.stroke();
       }
 
-      // ── 4. Y-axis labels (10px monospace) ──────────────────────────────────
-      ctx.font = '10px monospace';
-      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      // ── 4. Y-axis labels — minimal: just 0 / 50 / 100, small + faint ────────
+      ctx.font = '8px ui-sans-serif, system-ui, sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.22)';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      for (const [pct, label] of [[0, '0'], [0.25, '25'], [0.5, '50'], [0.75, '75'], [1.0, '100']] as const) {
-        ctx.fillText(label, 4, yAt(pct));
+      for (const [pct, label] of [[0, '0'], [0.5, '50'], [1.0, '100']] as const) {
+        ctx.fillText(label, 3, yAt(pct));
       }
 
       // ── 5. Gradient fill + curve stroke ────────────────────────────────────
@@ -216,7 +216,7 @@ export function useRetentionCurveCanvas(
         // Gradient fill under curve — anchored to the padded plot area so
         // the fill bottoms out at the "0" gridline, not the canvas edge.
         const grad = ctx.createLinearGradient(0, PAD_Y, 0, PAD_Y + plotH);
-        grad.addColorStop(0, 'rgba(255,127,80,0.15)');
+        grad.addColorStop(0, 'rgba(255,127,80,0.06)');
         grad.addColorStop(1, 'rgba(255,127,80,0)');
         ctx.beginPath();
         drawCatmullRomCurve(ctx, pts);
@@ -226,11 +226,12 @@ export function useRetentionCurveCanvas(
         ctx.fillStyle = grad;
         ctx.fill();
 
-        // Curve stroke (2px coral)
+        // Curve stroke — thin coral line
         ctx.beginPath();
         drawCatmullRomCurve(ctx, pts);
-        ctx.strokeStyle = '#FF7F50';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(255,127,80,0.85)';
+        ctx.lineWidth = 1.5;
+        ctx.lineJoin = 'round';
         ctx.stroke();
       }
 

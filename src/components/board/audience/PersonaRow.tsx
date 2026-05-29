@@ -1,6 +1,5 @@
 'use client';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
 import { CELL_FILL_WAVE_MS, CELL_FILL_STAGGER_MS, MARKER_RING_COLOR } from './audience-constants';
 import type { PersonaRowProps } from './audience-types';
 
@@ -34,9 +33,6 @@ function segIdxContainingT(
  * - streaming state: row label fades in (opacity 0.6), cells at base coral
  * - filling state: cells animate L→R via CSS transition-delay stagger
  * - complete state: cells at full saturation
- *
- * Color-blind mode: adds `heatmap-pattern-cb` class to root; the diagonal
- * stripe overlay is defined in `globals.css`, not inline.
  */
 export function PersonaRow({
   // personaId is part of the prop contract for external consumers (e.g. AudienceNode)
@@ -48,7 +44,6 @@ export function PersonaRow({
   attentions,
   swipePredictedAt,
   rowState,
-  colorBlindMode,
   rowIndex,
   onCellTap,
   onRowLabelTap,
@@ -76,10 +71,7 @@ export function PersonaRow({
     <div
       role="row"
       aria-rowindex={rowIndex}
-      className={cn(
-        'relative flex h-[32px] w-full items-stretch',
-        colorBlindMode && 'heatmap-pattern-cb',
-      )}
+      className="relative flex h-[32px] w-full items-stretch"
       data-row-state={rowState}
     >
       {/* Row label — rowheader cell wraps the interactive button */}
@@ -101,7 +93,9 @@ export function PersonaRow({
       {/* Cells */}
       {segments.map((seg, i) => {
         const att = attentions?.[i] ?? 0;
-        const alpha = animateNow ? clamp(att, 0.05, 0.80) : 0.05;
+        // Lower max alpha so the heatmap reads as a calm gradient, not a solid
+        // orange block (user feedback: reduce the heavy orange).
+        const alpha = animateNow ? clamp(att, 0.04, 0.42) : 0.04;
 
         return (
           <button

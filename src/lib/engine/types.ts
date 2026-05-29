@@ -48,6 +48,12 @@ export interface HeatmapPayload {
     cross_niche: number;// 0.05
   };
   weights_source: 'default' | 'niche_override' | 'creator_override' | 'analysis_override';
+  /** Niche-only weighted completion (0-1) — mean attention across niche-slot personas only.
+   *  null when no niche-slot personas survived. Feeds the Audience "vs Niche" chip. */
+  niche_completion_pct?: number | null;
+  /** Overall weighted_completion_pct − niche_completion_pct (0-1, can be negative).
+   *  Positive ⇒ this video plays broader than its niche baseline. null when no niche personas. */
+  vs_niche_diff_pct?: number | null;
 }
 
 // D-15 (Phase 3) — Streaming partial extension for persona rows.
@@ -575,6 +581,11 @@ export const BehavioralPredictionsSchema = z.object({
   comment_percentile: z.string(),
   save_pct: z.number().min(0).max(100),
   save_percentile: z.string(),
+  // Optional: present on the Wave-3 PersonaBehavioralAggregate (drives the Audience
+  // LOOP chip), absent on raw DeepSeek behavioral_predictions. Optional so the
+  // DeepSeek v2 response still validates without emitting it.
+  loop_pct: z.number().min(0).max(100).optional(),
+  loop_percentile: z.string().optional(),
 });
 
 export type BehavioralPredictions = z.infer<typeof BehavioralPredictionsSchema>;
@@ -619,6 +630,8 @@ export const PersonaSimulationResultSchema = z.object({
   comment_intent: z.number().min(0).max(100),
   share_intent: z.number().min(0).max(100),
   save_intent: z.number().min(0).max(100),
+  /** Replay/loop intent (0-100) — aggregated into PersonaBehavioralAggregate.loop_pct. */
+  rewatch_intent: z.number().min(0).max(100),
   /** Pitfall 5: required non-empty — LLMs occasionally omit reasoning under token-budget pressure. */
   reasoning: z.string().min(1).max(500),
 });

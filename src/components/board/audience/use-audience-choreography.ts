@@ -203,6 +203,30 @@ export function useAudienceChoreography(stream?: StreamReturn): ChoreographyStat
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.stages, reducedMotion]);
 
+  // ---- Effect 3b: Permalink/completed hydration ----
+  // On a completed analysis loaded from cache (permalink replay), `s.stages` is
+  // empty — Effects 1-3 never seed/transition rows, so every PersonaRow stays
+  // 'skeleton' and the heatmap renders blank despite heatmap.personas existing.
+  // Mark each real persona 'complete' so the grid renders. Gated on empty stages
+  // so it never clobbers the live stage-driven reveal.
+  useEffect(() => {
+    if (s.phase !== 'complete') return;
+    if (s.stages.length > 0) return;
+    const personas = s.result?.heatmap?.personas;
+    if (!personas || personas.length === 0) return;
+    setRowStates((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const p of personas) {
+        if (next[p.id] !== 'complete') {
+          next[p.id] = 'complete';
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [s.phase, s.stages.length, s.result?.heatmap]);
+
   // ---- Effects 4+5: Curve state machine (merged to avoid multi-render race) ----
   // Merging into one effect prevents the "idle → baseline" and "baseline → morphing"
   // transitions from requiring two separate render cycles when both conditions are
