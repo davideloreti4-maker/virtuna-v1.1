@@ -12,6 +12,12 @@ import { COMPLETED_PREDICTION } from "@/test/fixtures/completed-prediction";
 import { PANEL_IDS } from "@/lib/engine/panel-mapping";
 import React from "react";
 
+// Controllable route params so we can simulate /analyze/[id] → /analyze nav.
+let mockParams: Record<string, string> = {};
+vi.mock("next/navigation", () => ({
+  useParams: () => mockParams,
+}));
+
 function wrapper({ children }: { children: React.ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return React.createElement(QueryClientProvider, { client: qc }, children);
@@ -33,6 +39,7 @@ function mockSSEResponse(frames: string[]): Response {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  mockParams = {};
 });
 
 describe("useAnalysisStream", () => {
@@ -165,6 +172,33 @@ describe("useAnalysisStream", () => {
       | undefined;
     expect(cached).toBeDefined();
     expect(cached?.overall_score).toBe(0.72);
+  });
+
+  it("New analysis nav (permalink → /analyze base) wipes completed state to empty", async () => {
+    // Regression: each board node mounts its own useAnalysisStream instance.
+    // Clicking "New analysis" must reset EVERY instance to the empty board, not
+    // just Board's. Simulated here by a route param transition id → none.
+    mockParams = { id: "abc" };
+    const { result, rerender } = renderHook(
+      () =>
+        useAnalysisStream({
+          initialData: COMPLETED_PREDICTION as unknown as { overall_score: number },
+        }),
+      { wrapper },
+    );
+
+    // Permalink-complete starting point.
+    expect(result.current.phase).toBe("complete");
+    expect(result.current.result?.overall_score).toBe(0.72);
+
+    // Navigate to /analyze base — no id.
+    mockParams = {};
+    rerender();
+
+    await waitFor(() => expect(result.current.phase).toBe("idle"));
+    expect(result.current.result).toBeNull();
+    expect(result.current.analysisId).toBeNull();
+    expect(result.current.stages).toHaveLength(0);
   });
 
   it("initialData with overall_score!=null skips stream open (Pitfall #3)", () => {

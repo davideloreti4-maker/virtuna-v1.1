@@ -496,6 +496,38 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
     urlAnalysisId,
   ]);
 
+  // "New analysis" reset — applies to EVERY hook instance, not just Board.
+  //
+  // The board mounts independent useAnalysisStream callers (Board, AudienceNode,
+  // VerdictNode, ActionsNode, ContentAnalysisFrame, EngineGroup). Board's
+  // explicit stream.reset() only clears Board's instance; the node instances
+  // each hold their own completed `result` and would keep rendering the old
+  // analysis. When the route leaves a permalink (/analyze/[id] → /analyze base),
+  // every instance wipes its local state so the board returns to the empty
+  // slate. Guard on phase: never wipe an in-flight run (a fresh POST sits on
+  // urlAnalysisId=null with phase 'analyzing' until the started frame updates
+  // the URL).
+  const prevUrlAnalysisIdRef = useRef(urlAnalysisId);
+  useEffect(() => {
+    const prev = prevUrlAnalysisIdRef.current;
+    prevUrlAnalysisIdRef.current = urlAnalysisId;
+    if (prev !== null && urlAnalysisId === null) {
+      const ph = phaseRef.current;
+      if (ph === "complete" || ph === "error" || ph === "idle") {
+        abortRef.current?.abort();
+        eventSourceRef.current?.close();
+        eventSourceRef.current = null;
+        setAnalysisId(null);
+        setResult(null);
+        setStages([]);
+        setPartial({ personas: [] });
+        setFilmstrips({});
+        setError(null);
+        setPhase("idle");
+      }
+    }
+  }, [urlAnalysisId]);
+
   const start = useCallback(
     async (input: AnalysisStreamInput) => {
       await mutation.mutateAsync(input);
