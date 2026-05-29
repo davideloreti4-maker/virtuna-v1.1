@@ -330,19 +330,11 @@ export function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
-  const { isOpen, close, isCollapsed, toggleCollapsed } = useSidebarStore();
+  const { isOpen, close } = useSidebarStore();
   const triggerNewAnalysis = useBoardStore((s) => s.triggerNewAnalysis);
 
-  // On mobile the sidebar is always full-width (never icon-only)
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767px)");
-    setIsMobile(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
-  const effectiveCollapsed = isCollapsed && !isMobile;
+  // Sidebar is always a full-width overlay (no persistent/collapsed desktop mode)
+  const effectiveCollapsed = false;
 
   // Recent boards
   const { data: historyData, isLoading: historyLoading } = useAnalysisHistory();
@@ -356,19 +348,7 @@ export function Sidebar() {
   // User profile for Account section
   const { data: profile } = useProfile();
 
-  // ⌘\ toggles collapsed mode (desktop only)
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "\\") {
-        e.preventDefault();
-        toggleCollapsed();
-      }
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [toggleCollapsed]);
-
-  const isOnBoard = pathname.startsWith("/analyze");
+const isOnBoard = pathname.startsWith("/analyze");
   const isOnSettings = pathname.startsWith("/settings");
 
   const [accountOpen, setAccountOpen] = useState(false);
@@ -393,7 +373,7 @@ export function Sidebar() {
       {/* Mobile overlay backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-[calc(var(--z-sidebar)-1)] bg-black/50 md:hidden"
+          className="fixed inset-0 z-[calc(var(--z-sidebar)-1)] bg-black/50"
           onClick={close}
           aria-hidden="true"
         />
@@ -405,13 +385,9 @@ export function Sidebar() {
           "fixed top-3 left-3 bottom-3 z-[var(--z-sidebar)]",
           "flex flex-col overflow-hidden rounded-xl",
           "border border-white/[0.06]",
-          // Width transition — collapsed: 40px, expanded: 220px
-          "transition-[transform,width] duration-150 ease-[var(--ease-out-cubic)]",
-          effectiveCollapsed ? "w-[52px]" : "w-[220px]",
-          // Mobile: off-canvas when closed
+          "w-[220px]",
+          "transition-transform duration-150 ease-[var(--ease-out-cubic)]",
           isOpen ? "translate-x-0" : "-translate-x-[calc(100%+12px)]",
-          // Desktop: always visible (transform overridden below)
-          "md:translate-x-0",
         )}
         style={{
           backgroundImage:
@@ -448,24 +424,12 @@ export function Sidebar() {
               </svg>
             </Link>
           )}
-          {/* Desktop collapse toggle (⌘\) */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleCollapsed}
-            aria-label={effectiveCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-keyshortcuts="Meta+\\"
-            className="hidden md:flex text-foreground-muted hover:text-foreground p-1"
-          >
-            <Icon icon={SidebarSimple} size={20} />
-          </Button>
-          {/* Mobile close button */}
           <Button
             variant="ghost"
             size="sm"
             onClick={close}
             aria-label="Close sidebar"
-            className="flex md:hidden text-foreground-muted hover:text-foreground p-1"
+            className="flex text-foreground-muted hover:text-foreground p-1"
           >
             <Icon icon={SidebarSimple} size={20} />
           </Button>
@@ -738,8 +702,7 @@ export function SidebarHamburger() {
         "h-[34px] w-[34px] flex items-center justify-center rounded-[10px]",
         "border border-white/[0.06]",
         "shadow-[rgba(0,0,0,0.4)_0_4px_16px_0]",
-        "flex md:hidden",
-        !isOpen && "md:flex",
+        isOpen ? "hidden" : "flex",
       )}
       style={{
         background: "linear-gradient(137deg, rgba(17,18,20,0.85) 4.87%, rgba(12,13,15,0.95) 75.88%)",
