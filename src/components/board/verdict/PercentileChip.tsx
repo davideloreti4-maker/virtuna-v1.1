@@ -28,7 +28,7 @@ export function PercentileChip({ score, confidenceLabel, isCalibrated }: Percent
     <div className="flex items-end justify-between gap-2 px-1">
       {/* Left column: percentile number + band label — bottom edge aligns with confidence pill */}
       <div className="flex flex-col">
-        <div className="flex items-baseline gap-1">
+        <div className="flex items-baseline gap-1.5">
           <span
             className={cn(
               'text-5xl font-semibold leading-none tabular-nums',
@@ -39,9 +39,13 @@ export function PercentileChip({ score, confidenceLabel, isCalibrated }: Percent
             data-testid="percentile-number"
           >
             {isStreaming ? COPY.SKELETON_PERCENTILE : score}
+            {/* ordinal hugs the number ("77th") — was a detached "th" via gap-1 */}
+            {!isStreaming && (
+              <span className="align-top text-xl font-semibold text-white/40">th</span>
+            )}
           </span>
           {!isStreaming && (
-            <span className="text-xs text-white/60">{COPY.PERCENTILE_SUFFIX}</span>
+            <span className="text-xs text-white/55">percentile</span>
           )}
         </div>
         {!isStreaming && (

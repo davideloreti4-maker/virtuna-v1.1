@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Heart, MessageCircle, Share2, Bookmark, Play } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, VideoOff } from 'lucide-react';
 import type { BehavioralPredictions } from '@/lib/engine/types';
 import { cn } from '@/lib/utils';
 
@@ -94,8 +94,17 @@ export function InputResultCard({
           className="absolute inset-0 h-full w-full object-cover"
         />
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/[0.03]">
-          <Play className="h-8 w-8 text-white/15" />
+        /* No media — the source video is deleted after analysis (retention).
+           A designed empty state reads as intentional, not as a broken/loading
+           player. The predicted-metrics sidebar still overlays (real data). */
+        <div
+          className="absolute inset-0 flex flex-col items-center justify-center gap-2"
+          style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)' }}
+        >
+          <VideoOff className="h-7 w-7 text-white/20" strokeWidth={1.5} />
+          <span className="text-[10px] font-medium uppercase tracking-wider text-white/30">
+            Video unavailable
+          </span>
         </div>
       )}
 

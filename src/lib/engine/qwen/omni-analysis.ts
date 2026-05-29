@@ -132,10 +132,11 @@ Rules:
 - silence_ratio + voiceover_ratio + music_ratio must sum to ~1.0 (±0.1).
 - voice_clarity and audio_hook are null only for slideshow or silent content.
 - watermark_detected fields are optional (omit if none detected).
-- emotion_arc is OPTIONAL: include 3-8 points across the video timeline at emotional
-  inflection points (or evenly spaced) when video is present. Use intensity_0_1 in [0,1].
-  label is an optional categorical helper ("low"|"mid"|"high"). Omit the emotion_arc
-  field entirely for non-video / silent / slideshow content.
+- emotion_arc is REQUIRED whenever video is present: you MUST emit 3-8 points across
+  the timeline at emotional inflection points (or evenly spaced if the affect is flat —
+  never return an empty array for video). Use intensity_0_1 in [0,1]; label is a
+  categorical helper ("low"|"mid"|"high"). ONLY omit the emotion_arc field entirely for
+  non-video / silent / slideshow content where no temporal affect signal exists.
 
 Rules for segments:
 - Detect natural scene boundaries (cut, transition, topic shift, pacing change).
