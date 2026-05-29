@@ -31,6 +31,15 @@ vi.mock('@phosphor-icons/react', () => ({
   Info: ({ size, ...rest }: { size?: number }) => (
     <svg width={size} height={size} data-testid="icon-info" {...rest} />
   ),
+  Wrench: ({ size, ...rest }: { size?: number }) => (
+    <svg width={size} height={size} data-testid="icon-wrench" {...rest} />
+  ),
+  CaretDown: ({ size, ...rest }: { size?: number }) => (
+    <svg width={size} height={size} data-testid="icon-caret-down" {...rest} />
+  ),
+  CaretUp: ({ size, ...rest }: { size?: number }) => (
+    <svg width={size} height={size} data-testid="icon-caret-up" {...rest} />
+  ),
 }));
 
 // Phase 6: stub script + optimal-post hooks so slot wrappers don't fetch
@@ -141,12 +150,14 @@ describe('ActionsNode', () => {
     expect(screen.getByTestId('actions-grid').getAttribute('data-av')).toBe('true');
   });
 
-  it('renders Reshoot teaser in default state when script loads', async () => {
+  it('renders Reshoot script INLINE in default state (no drawer/teaser)', async () => {
     mockStream({ phase: 'complete', result: { ...fixtures.complete, id: 'analysis-id-stub', optimal_post_window: { day_of_week: 'Tue', hour_range: [18, 21], timezone: 'UTC', reasoning: 'Niche peaks Tue (n=12 videos)', source: 'niche' }, optimal_post_override: null } });
     mockBoardState('complete');
     const { ActionsNode: Fresh } = await import('../ActionsNode');
     render(<Fresh camera={{} as never} layout={{} as never} />);
-    expect(screen.getByTestId('actions-reshoot-teaser')).toBeInTheDocument();
+    // Script body renders inline directly — the old teaser button is gone.
+    expect(screen.getByTestId('actions-reshoot-body')).toBeInTheDocument();
+    expect(screen.queryByTestId('actions-reshoot-teaser')).toBeNull();
   });
 
   it('renders OptimalPost card in default state (Share & Export removed)', async () => {
@@ -178,14 +189,27 @@ describe('ActionsNode', () => {
     expect(hero.className).toContain('h-full');
   });
 
-  it('applies transition style on grid (non-RM)', async () => {
+  it('grid is a scrolling stack (frame is fixed-height, content scrolls in-frame)', async () => {
     mockStream({ phase: 'complete', result: fixtures.complete });
     mockBoardState('complete');
     const { ActionsNode: Fresh } = await import('../ActionsNode');
     render(<Fresh camera={{} as never} layout={{} as never} />);
     const grid = screen.getByTestId('actions-grid') as HTMLElement;
-    expect(grid.style.transition).toContain('flex');
-    expect(grid.style.transition).toContain('200ms');
+    expect(grid.className).toContain('overflow-y-auto');
+    expect(grid.className).toContain('flex-col');
+  });
+
+  it('surfaces the "What to fix" section with counterfactual fixes inline', async () => {
+    mockStream({ phase: 'complete', result: { ...fixtures.complete, id: 'analysis-id-stub', optimal_post_window: { day_of_week: 'Tue', hour_range: [18, 21], timezone: 'UTC', reasoning: 'Niche peaks Tue (n=12 videos)', source: 'niche' }, optimal_post_override: null } });
+    mockBoardState('complete');
+    const { ActionsNode: Fresh } = await import('../ActionsNode');
+    render(<Fresh camera={{} as never} layout={{} as never} />);
+    expect(screen.getByTestId('actions-fixes-slot')).toBeInTheDocument();
+    expect(screen.getByText('What to fix')).toBeInTheDocument();
+    // First counterfactual headline from the fixture renders as a fix row.
+    expect(screen.getByText('Tighten text overlay')).toBeInTheDocument();
+    // Factor scorecard toggle present (collapsed by default).
+    expect(screen.getByTestId('actions-scorecard')).toBeInTheDocument();
   });
 
   it('Phase 6: pre-complete phase keeps placeholders visible (streaming continuity)', async () => {

@@ -21,12 +21,7 @@ export function GroupFrame({ layout, visual }: Props) {
   const s = STYLE[visual];
   // surface = #18191a (Raycast design language per CLAUDE.md) — Konva needs rgba with opacity
   const fill = `rgba(24, 25, 26, ${s.fillOpacity})`;
-  // D-10: Actions frame grows to 360px in AV state. Keep Konva outline in
-  // sync with the DOM overlay (see GroupFrameOverlay.tsx).
-  const height =
-    layout.id === 'actions' && visual === 'anti-virality'
-      ? 360
-      : layout.bounds.height;
+  const height = layout.bounds.height;
   return (
     <Group x={layout.bounds.x} y={layout.bounds.y}>
       <Rect

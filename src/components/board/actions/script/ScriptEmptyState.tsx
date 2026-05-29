@@ -34,14 +34,14 @@ export function ScriptEmptyState({
   if (variant === 'error') {
     return (
       <div
-        className="flex flex-col gap-2 p-2"
+        className="flex h-full w-full flex-col gap-2 rounded-[8px] border border-white/[0.06] p-3"
         data-testid="script-error-state"
       >
         <p className="text-xs text-white/85">{SCRIPT_COPY.ERROR_MESSAGE}</p>
         <button
           type="button"
           onClick={onRetry}
-          className="bg-transparent border border-white/[0.06] hover:bg-white/[0.1] rounded-lg h-[42px] text-xs text-white/85 transition-colors duration-150"
+          className="h-[42px] rounded-lg border border-white/[0.06] bg-transparent text-xs text-white/85 transition-colors duration-150 hover:bg-white/[0.1]"
         >
           {SCRIPT_COPY.ERROR_RETRY}
         </button>
@@ -54,33 +54,54 @@ export function ScriptEmptyState({
 
   return (
     <div
-      className="flex flex-col gap-1 p-2"
+      className="flex h-full w-full flex-col gap-2 rounded-[8px] border border-white/[0.06] p-3"
       data-testid="script-empty-state"
       role="region"
       aria-label={`${SCRIPT_COPY.EMPTY_HEADLINE}. ${variantCount} optional opening ${variantWord} available.`}
     >
-      <div className="flex items-center gap-1">
-        <CheckCircle size={14} weight="regular" className="text-emerald-300/70" aria-hidden />
-        <span className="text-xs text-white/85">{SCRIPT_COPY.EMPTY_HEADLINE}</span>
+      <div className="flex items-center gap-1.5">
+        <CheckCircle size={14} weight="fill" className="text-emerald-300/80" aria-hidden />
+        <span className="text-xs font-medium text-white/85">{SCRIPT_COPY.EMPTY_HEADLINE}</span>
       </div>
-      <p className="text-[10px] text-white/55">{SCRIPT_COPY.EMPTY_SUBHEAD}</p>
-      <div className="text-[10px] text-white/40 my-1">— {SCRIPT_COPY.EMPTY_AB_LABEL} —</div>
-      {openingVariants.map((v, i) => (
-        <div key={`variant-${i}`} className="flex items-center justify-between gap-2">
-          <span className="text-xs text-white/85 truncate flex-1">{v}</span>
-          <CopyButton
-            text={v}
-            ariaLabel={`Copy opening variant ${i + 1}`}
-            onCopy={() =>
-              logger.info(TELEMETRY.SCRIPT_SECTION_COPIED, {
-                analysis_id: analysisId,
-                section: 'opening',
-                char_count: v.length,
-              })
-            }
-          />
-        </div>
-      ))}
+      <p className="-mt-1 text-[10px] text-white/55">{SCRIPT_COPY.EMPTY_SUBHEAD}</p>
+
+      {openingVariants.length > 0 && (
+        <>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="text-[10px] font-medium uppercase tracking-wide text-white/40">
+              {SCRIPT_COPY.EMPTY_AB_LABEL}
+            </span>
+            <div className="h-px flex-1 bg-white/[0.06]" />
+          </div>
+          <ul className="flex flex-col gap-1.5">
+            {openingVariants.map((v, i) => (
+              <li
+                key={`variant-${i}`}
+                className="flex items-start gap-2.5 rounded-[6px] border border-white/[0.06] bg-white/[0.02] px-2.5 py-2 transition-colors duration-150 hover:bg-white/[0.04]"
+              >
+                <span
+                  className="mt-px flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] bg-white/[0.06] text-[9px] font-semibold text-white/60"
+                  aria-hidden
+                >
+                  {String.fromCharCode(65 + i)}
+                </span>
+                <span className="min-w-0 flex-1 text-xs leading-snug text-white/85 line-clamp-2" title={v}>{v}</span>
+                <CopyButton
+                  text={v}
+                  ariaLabel={`Copy opening variant ${String.fromCharCode(65 + i)}`}
+                  onCopy={() =>
+                    logger.info(TELEMETRY.SCRIPT_SECTION_COPIED, {
+                      analysis_id: analysisId,
+                      section: 'opening',
+                      char_count: v.length,
+                    })
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </div>
   );
 }

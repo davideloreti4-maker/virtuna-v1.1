@@ -23,8 +23,12 @@ export const GROUP_FRAMES: GroupFrameLayout[] = [
   { id: 'engine',           label: 'Engine',           bounds: { x:    0, y:  456, width:  240, height: 120 } },
   { id: 'audience',         label: 'Audience',         bounds: { x:  272, y:    0, width:  560, height: 576 } },
   { id: 'verdict',          label: 'Verdict',          bounds: { x:  864, y:    0, width:  360, height: 280 } },
-  { id: 'actions',          label: 'Actions',          bounds: { x:  864, y:  312, width:  360, height: 200 } },
-  { id: 'content-analysis', label: 'Content Analysis', bounds: { x:    0, y:  608, width: 1224, height: 200 } },
+  // Actions is now a tall hero column (560) holding the inline reshoot script,
+  // the "What to fix" list, and "When to post" — all inline, no drawers. The
+  // former AV-only 200→360 grow is gone; one height serves every state.
+  { id: 'actions',          label: 'Actions',          bounds: { x:  864, y:  312, width:  360, height: 560 } },
+  // Pushed below the taller Actions bottom (872) + 32px gutter.
+  { id: 'content-analysis', label: 'Content Analysis', bounds: { x:    0, y:  904, width: 1224, height: 200 } },
 ];
 
 export const BOARD_BOUNDS: Rect = (() => {

@@ -5,6 +5,7 @@ export type DayOfWeek = typeof DAY_LABELS[number];
 export const OPTIMAL_POST_COPY = {
   CARD_LABEL: 'When to post',
   EDIT_LINK: 'Edit',
+  DONE_LINK: 'Done',
   SHEET_TITLE: 'Edit post time',
   DAY_SECTION_LABEL: 'Day',
   START_HOUR_LABEL: 'Start hour',

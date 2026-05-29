@@ -68,13 +68,7 @@ export const GroupFrameOverlay = forwardRef<HTMLDivElement, Props>(function Grou
   ref,
 ) {
   // World → screen.
-  // D-10: Actions frame grows from 200px to 360px in anti-virality state so
-  // the Reshoot hero slot has room to span the top and the 3-cell bottom row
-  // doesn't get cropped. Other frames keep their bounds.height verbatim.
-  const worldH =
-    layout.id === 'actions' && visual === 'anti-virality'
-      ? 360
-      : layout.bounds.height;
+  const worldH = layout.bounds.height;
   const screenX = layout.bounds.x * camera.scale + camera.x;
   const screenY = layout.bounds.y * camera.scale + camera.y;
   const screenW = layout.bounds.width * camera.scale;

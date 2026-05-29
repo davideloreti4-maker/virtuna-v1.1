@@ -1,11 +1,13 @@
 'use client';
+import { useEffect, useRef } from 'react';
 import { FilmScript } from '@phosphor-icons/react';
 import { PlaceholderCard } from './PlaceholderCard';
 import { useScript } from './script/use-script';
 import { ScriptBody } from './script/ScriptBody';
-import { ScriptInspectorTrigger } from './script/ScriptInspectorTrigger';
 import { ScriptEmptyState } from './script/ScriptEmptyState';
 import { SCRIPT_COPY } from './script/script-constants';
+import { TELEMETRY } from './actions-constants';
+import { logger } from '@/lib/logger';
 
 interface Props {
   className?: string;
@@ -66,19 +68,55 @@ function ReshootBody({ analysisId, phase, isAV }: { analysisId: string; phase: s
     );
   }
 
-  if (isAV) {
-    return (
-      <div className="flex h-full w-full flex-col" data-testid="actions-reshoot-av-chrome">
-        <div className="px-4 pt-2 pb-1">
-          <div className="text-xs font-medium text-white/85">{SCRIPT_COPY.AV_HEADLINE}</div>
-          <div className="text-[10px] text-white/55">{SCRIPT_COPY.AV_SUBHEAD}</div>
-        </div>
-        <div className="flex-1 min-h-0">
-          <ScriptBody script={data} analysisId={analysisId} />
-        </div>
-      </div>
-    );
-  }
+  // Full reshoot script — rendered INLINE in every state (no drawer). AV uses the
+  // "Try this instead / what dropped" framing; the normal complete state uses a
+  // neutral "Reshoot script" header. Both share the same inline ScriptBody.
+  return (
+    <InlineScriptCard
+      script={data}
+      analysisId={analysisId}
+      headline={isAV ? SCRIPT_COPY.AV_HEADLINE : SCRIPT_COPY.TEASER_LABEL}
+      subhead={isAV ? SCRIPT_COPY.AV_SUBHEAD : SCRIPT_COPY.INLINE_SUBHEAD}
+      isAV={isAV}
+    />
+  );
+}
 
-  return <ScriptInspectorTrigger script={data} analysisId={analysisId} />;
+function InlineScriptCard({
+  script,
+  analysisId,
+  headline,
+  subhead,
+  isAV,
+}: {
+  script: Extract<ReturnType<typeof useScript>['data'], { is_empty_state: false }>;
+  analysisId: string;
+  headline: string;
+  subhead: string;
+  isAV: boolean;
+}) {
+  // Telemetry: fire once when the script first becomes visible inline (replaces
+  // the old drawer-open event — there is no open action anymore).
+  const firedRef = useRef(false);
+  useEffect(() => {
+    if (!firedRef.current) {
+      firedRef.current = true;
+      logger.info(TELEMETRY.SCRIPT_INLINE_VISIBLE, { analysis_id: analysisId, is_av: isAV });
+    }
+  }, [analysisId, isAV]);
+
+  return (
+    <div
+      className="flex h-full w-full flex-col overflow-hidden rounded-[8px] border border-white/[0.06]"
+      data-testid="actions-reshoot-script-card"
+    >
+      <div className="px-4 pt-2 pb-1">
+        <div className="text-xs font-medium text-white/85">{headline}</div>
+        <div className="text-[10px] text-white/55">{subhead}</div>
+      </div>
+      <div className="flex-1 min-h-0">
+        <ScriptBody script={script} analysisId={analysisId} />
+      </div>
+    </div>
+  );
 }

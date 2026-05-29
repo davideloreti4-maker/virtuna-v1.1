@@ -3,14 +3,15 @@ import { useEffect, useRef } from 'react';
 import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
 import { usePermalinkAnalysis } from '@/hooks/queries/use-permalink-analysis';
 import { useBoardStore } from '@/stores/board-store';
-import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { getFrameAntiViralityState } from '../cross-group-state';
 import { ActionsReshootHeroSlot } from './ActionsReshootHeroSlot';
+import { ActionsFixesSlot } from './ActionsFixesSlot';
 import { ActionsOptimalPostSlot } from './ActionsOptimalPostSlot';
 import { TELEMETRY } from './actions-constants';
 import type { ActionsNodeProps } from './actions-types';
 import type { OptimalPostOverride } from './optimal-post/OptimalPostCard';
 import type { OptimalPostWindow } from '@/lib/engine/optimal-post';
+import type { CounterfactualResult, Factor } from '@/lib/engine/types';
 import { logger } from '@/lib/logger';
 
 export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodeProps) {
@@ -27,13 +28,16 @@ export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodePro
     (result as { optimal_post_override?: unknown } | null)?.optimal_post_override
       ? ((result as unknown as { optimal_post_override: OptimalPostOverride }).optimal_post_override)
       : null;
+  // Counterfactual fixes + factor scorecard ride along on the streamed result —
+  // no extra fetch (the reshoot script still uses its own cached endpoint).
+  const counterfactuals =
+    (result as { counterfactuals?: CounterfactualResult | null } | null)?.counterfactuals ?? null;
+  const factors = (result as { factors?: Factor[] } | null)?.factors ?? undefined;
   const isStreaming = phase === 'analyzing' || phase === 'reconnecting' || phase === 'polling';
 
   const boardMachineState = useBoardStore((s) => s.boardState);
   const avState = getFrameAntiViralityState('actions', boardMachineState);
   const isAV = avState === 'anti-virality';
-
-  const prefersReducedMotion = usePrefersReducedMotion();
 
   // Telemetry: fire once per analysis on first complete render.
   const renderedRef = useRef(false);
@@ -51,17 +55,17 @@ export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodePro
       className="relative h-full w-full"
       data-testid="actions-node"
     >
-      {/* Two-card stack: Reshoot script (primary user value) on top, When-to-post
-          below. Share & Export removed per product call. Reshoot gets the larger
-          share so the script / tweaks have room; both flex to fill the frame and
-          never overflow (min-h-0). */}
+      {/* Inline section stack — everything lives in-frame, no drawers. Highest
+          value first: the reshoot script, then "What to fix" (counterfactual
+          fixes + factor scorecard), then "When to post". The frame is tall
+          enough to show all three; the stack owns the scroll when content
+          exceeds the frame (the overlay body is overflow-hidden). */}
       <div
-        className="flex h-full w-full flex-col gap-2 p-2"
-        style={{ transition: prefersReducedMotion ? 'none' : 'flex 200ms ease-out' }}
+        className="flex h-full w-full flex-col gap-2 overflow-y-auto p-2"
         data-testid="actions-grid"
         data-av={isAV ? 'true' : 'false'}
       >
-        <div className="min-h-0 flex-[3] overflow-hidden rounded-[8px]">
+        <div className="overflow-hidden rounded-[8px]">
           <ActionsReshootHeroSlot
             className="h-full overflow-hidden"
             analysisId={analysisId}
@@ -69,14 +73,18 @@ export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodePro
             isAV={isAV}
           />
         </div>
-        <div className="min-h-0 flex-[2] overflow-hidden rounded-[8px]">
-          <ActionsOptimalPostSlot
-            analysisId={analysisId}
-            phase={phase}
-            window={postWindow}
-            override={postOverride}
-          />
-        </div>
+        <ActionsFixesSlot
+          analysisId={analysisId}
+          phase={phase}
+          suggestions={counterfactuals?.suggestions}
+          factors={factors}
+        />
+        <ActionsOptimalPostSlot
+          analysisId={analysisId}
+          phase={phase}
+          window={postWindow}
+          override={postOverride}
+        />
       </div>
     </div>
   );
