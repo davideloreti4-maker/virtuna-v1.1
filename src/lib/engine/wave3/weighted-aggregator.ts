@@ -59,7 +59,14 @@ function normalizeOverSurvivors(
   survivors: Pass2PersonaResult[],
   weights: PersonaWeights,
 ): PersonaWeights {
-  const presentTypes = new Set(survivors.map((s) => s.slot_type));
+  // WR-05: "niche_deep" (PersonaSlot) maps to the "niche" weight bucket — same
+  // mapping getPersonaWeight (:79) and assembleHeatmapPayload (:233) apply. Without
+  // it, has("niche") is false for niche_deep survivors, zeroing the niche weight
+  // (drops niche personas from WATCH/HOOK) and emptying the niche-only vs-niche
+  // sub-curve to all-zero (the "normalizeWeights: all-zero input" warning).
+  const presentTypes = new Set(
+    survivors.map((s) => ((s.slot_type as string) === "niche_deep" ? "niche" : s.slot_type)),
+  );
   const filtered: PersonaWeights = {
     fyp: presentTypes.has("fyp") ? weights.fyp : 0,
     niche: presentTypes.has("niche") ? weights.niche : 0,
