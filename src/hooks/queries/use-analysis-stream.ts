@@ -21,6 +21,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
+import { useBoardStore } from "@/stores/board-store";
 import { queryKeys } from "@/lib/queries/query-keys";
 import type { PredictionResult } from "@/lib/engine/types";
 import type { StageEvent } from "@/lib/engine/events";
@@ -499,14 +500,41 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
   // "New analysis" reset — applies to EVERY hook instance, not just Board.
   //
   // The board mounts independent useAnalysisStream callers (Board, AudienceNode,
-  // VerdictNode, ActionsNode, ContentAnalysisFrame, EngineGroup). Board's
-  // explicit stream.reset() only clears Board's instance; the node instances
-  // each hold their own completed `result` and would keep rendering the old
-  // analysis. When the route leaves a permalink (/analyze/[id] → /analyze base),
-  // every instance wipes its local state so the board returns to the empty
-  // slate. Guard on phase: never wipe an in-flight run (a fresh POST sits on
-  // urlAnalysisId=null with phase 'analyzing' until the started frame updates
-  // the URL).
+  // VerdictNode, ActionsNode, ContentAnalysisFrame, EngineGroup) inside a
+  // persistent analyze/layout.tsx — none of them remount on /analyze ↔
+  // /analyze/[id] nav. Board's explicit stream.reset() only clears Board's
+  // instance; the node instances each hold their own completed `result` and
+  // would keep rendering the old analysis. This wipe runs in every instance.
+  const wipeToIdle = useCallback(() => {
+    abortRef.current?.abort();
+    eventSourceRef.current?.close();
+    eventSourceRef.current = null;
+    setAnalysisId(null);
+    setResult(null);
+    setStages([]);
+    setPartial({ personas: [] });
+    setFilmstrips({});
+    setError(null);
+    setPhase("idle");
+  }, []);
+
+  // Primary trigger: the board store's newAnalysisSignal, bumped by
+  // triggerNewAnalysis() on every "New analysis" click. This is URL-independent
+  // — a freshly-completed analysis sets the URL via history.replaceState (which
+  // bypasses Next's router, so useParams never reports the id), so the route
+  // transition below can't be relied on for the run→complete→New-analysis flow.
+  const newAnalysisSignal = useBoardStore((s) => s.newAnalysisSignal);
+  const prevSignalRef = useRef(newAnalysisSignal);
+  useEffect(() => {
+    if (prevSignalRef.current !== newAnalysisSignal) {
+      prevSignalRef.current = newAnalysisSignal;
+      wipeToIdle();
+    }
+  }, [newAnalysisSignal, wipeToIdle]);
+
+  // Secondary trigger: route leaves a permalink (/analyze/[id] → /analyze base),
+  // e.g. browser back button without clicking the CTA. Guard on phase so an
+  // in-flight run (urlAnalysisId=null, phase 'analyzing') is never wiped.
   const prevUrlAnalysisIdRef = useRef(urlAnalysisId);
   useEffect(() => {
     const prev = prevUrlAnalysisIdRef.current;
@@ -514,19 +542,10 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
     if (prev !== null && urlAnalysisId === null) {
       const ph = phaseRef.current;
       if (ph === "complete" || ph === "error" || ph === "idle") {
-        abortRef.current?.abort();
-        eventSourceRef.current?.close();
-        eventSourceRef.current = null;
-        setAnalysisId(null);
-        setResult(null);
-        setStages([]);
-        setPartial({ personas: [] });
-        setFilmstrips({});
-        setError(null);
-        setPhase("idle");
+        wipeToIdle();
       }
     }
-  }, [urlAnalysisId]);
+  }, [urlAnalysisId, wipeToIdle]);
 
   const start = useCallback(
     async (input: AnalysisStreamInput) => {

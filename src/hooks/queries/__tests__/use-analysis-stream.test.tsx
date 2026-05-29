@@ -10,6 +10,7 @@ import { queryKeys } from "@/lib/queries/query-keys";
 import { STAGE_EVENT_SEQUENCE, encodeSSE } from "@/test/fixtures/stage-events";
 import { COMPLETED_PREDICTION } from "@/test/fixtures/completed-prediction";
 import { PANEL_IDS } from "@/lib/engine/panel-mapping";
+import { useBoardStore } from "@/stores/board-store";
 import React from "react";
 
 // Controllable route params so we can simulate /analyze/[id] → /analyze nav.
@@ -199,6 +200,39 @@ describe("useAnalysisStream", () => {
     expect(result.current.result).toBeNull();
     expect(result.current.analysisId).toBeNull();
     expect(result.current.stages).toHaveLength(0);
+  });
+
+  it("triggerNewAnalysis() wipes a completed run even when the URL never changed", async () => {
+    // The run→complete→New-analysis flow: a fresh analysis sets its URL via
+    // history.replaceState (bypasses Next's router), so useParams never reports
+    // the id. The reset must therefore key off the board store's
+    // newAnalysisSignal, not the route. mockParams stays empty throughout.
+    mockParams = {};
+    global.fetch = vi.fn().mockResolvedValue(
+      mockSSEResponse([
+        encodeSSE("started", { id: "run-1" }),
+        encodeSSE("complete", COMPLETED_PREDICTION),
+      ]),
+    );
+    const { result } = renderHook(() => useAnalysisStream(), { wrapper });
+    await act(async () => {
+      await result.current.start({
+        input_mode: "text",
+        content_type: "tiktok",
+        content_text: "hi",
+      });
+    });
+    await waitFor(() => expect(result.current.phase).toBe("complete"));
+    expect(result.current.analysisId).toBe("run-1");
+
+    // Click "New analysis" — bumps the store signal; URL stays /analyze.
+    act(() => {
+      useBoardStore.getState().triggerNewAnalysis();
+    });
+
+    await waitFor(() => expect(result.current.phase).toBe("idle"));
+    expect(result.current.result).toBeNull();
+    expect(result.current.analysisId).toBeNull();
   });
 
   it("initialData with overall_score!=null skips stream open (Pitfall #3)", () => {
