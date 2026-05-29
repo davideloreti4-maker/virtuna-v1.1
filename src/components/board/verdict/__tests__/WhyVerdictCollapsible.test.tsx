@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { WhyVerdictCollapsible } from '../WhyVerdictCollapsible';
+import { COPY } from '../verdict-constants';
 import { fixtures } from './fixtures/prediction-result';
 
 vi.mock('@/lib/logger', () => ({ logger: { info: vi.fn() } }));
@@ -17,9 +18,9 @@ describe('WhyVerdictCollapsible', () => {
     vi.clearAllMocks();
   });
 
-  it('renders the summary text "Why this verdict?"', () => {
+  it('renders the summary text from COPY', () => {
     render(<WhyVerdictCollapsible result={fixtures.complete} />);
-    expect(screen.getByText('Why this verdict?')).toBeInTheDocument();
+    expect(screen.getByText(COPY.WHY_VERDICT_SUMMARY)).toBeInTheDocument();
   });
 
   it('defaults to open so reasoning is surfaced inline (non-AV result)', () => {

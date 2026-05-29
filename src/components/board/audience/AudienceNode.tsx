@@ -272,13 +272,15 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
       : result?.heatmap?.weighted_curve ?? null);
 
   // Baseline curve derived from persona_behavioral_aggregate.completion_pct (Pass 1)
-  // Flat line at completion_pct across all segments (D-07: Pass 1 flat baseline)
-  const baselineCurve = useMemo<number[] | null>(() => {
+  // Flat line at completion_pct across all segments (D-07: Pass 1 flat baseline).
+  // Plain computed value — React Compiler memoizes it; a manual useMemo here had
+  // deps the compiler couldn't preserve (preserve-manual-memoization).
+  const baselineCurve: number[] | null = (() => {
     const pct = agg?.completion_pct;
     if (pct == null || !result?.heatmap?.segments) return null;
     const normalized = pct / 100;
     return result.heatmap.segments.map(() => normalized);
-  }, [agg?.completion_pct, result?.heatmap?.segments]);
+  })();
 
   // ── Render ─────────────────────────────────────────────────────────────────
 

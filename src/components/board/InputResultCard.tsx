@@ -61,12 +61,66 @@ export function InputResultCard({
   // Heart maps to completion (TikTok "liked it" reads as "watched through").
   const metricRows = behavioral
     ? [
-        { key: 'completion', Icon: Heart, tint: 'text-red-400', fill: true,  label: behavioral.completion_percentile },
-        { key: 'comment',    Icon: MessageCircle, tint: 'text-white', fill: false, label: behavioral.comment_percentile },
-        { key: 'share',      Icon: Share2, tint: 'text-white', fill: false, label: behavioral.share_percentile },
-        { key: 'save',       Icon: Bookmark, tint: 'text-white', fill: false, label: behavioral.save_percentile },
+        { key: 'completion', Icon: Heart, tint: 'text-red-400', fill: true,  name: 'Completion', label: behavioral.completion_percentile },
+        { key: 'comment',    Icon: MessageCircle, tint: 'text-white', fill: false, name: 'Comments', label: behavioral.comment_percentile },
+        { key: 'share',      Icon: Share2, tint: 'text-white', fill: false, name: 'Shares', label: behavioral.share_percentile },
+        { key: 'save',       Icon: Bookmark, tint: 'text-white', fill: false, name: 'Saves', label: behavioral.save_percentile },
       ]
     : [];
+
+  // No media — the source video is deleted after analysis (retention), so this
+  // is the common state on history/permalink views. The TikTok overlay only
+  // makes sense over actual video; with none, the predicted percentiles ARE the
+  // value, so render them as a readable labeled list (no floating circles, no
+  // gradient anchoring nothing). Branch with media keeps the overlay treatment.
+  if (!hasMedia) {
+    return (
+      <div
+        className="relative flex h-full w-full flex-col overflow-hidden rounded-[8px]"
+        style={{
+          background: '#000',
+          boxShadow: 'rgba(255,255,255,0.05) 0px 1px 0px 0px inset, 0 8px 32px rgba(0,0,0,0.4)',
+        }}
+        data-testid="input-card-nomedia"
+      >
+        {/* Header chip — states the missing-video fact without reading as broken */}
+        <div className="flex items-center gap-1.5 px-3 pt-3 text-white/30">
+          <VideoOff className="h-3.5 w-3.5" strokeWidth={1.5} />
+          <span className="text-[10px] font-medium uppercase tracking-wider">
+            {isStreaming ? 'Analyzing…' : 'Video unavailable'}
+          </span>
+        </div>
+
+        {showMetrics ? (
+          <div className="flex flex-1 flex-col justify-center gap-1.5 px-3 pb-3">
+            <span className="mb-1 text-[9px] font-medium uppercase tracking-wider text-white/40">
+              Predicted engagement
+            </span>
+            {metricRows.map(({ key, Icon, tint, fill, name, label }) => (
+              <div
+                key={key}
+                className="flex items-center gap-2.5 rounded-[6px] border border-white/[0.06] bg-white/[0.02] px-2.5 py-2"
+              >
+                <Icon className={cn('h-4 w-4 shrink-0', tint)} fill={fill ? 'currentColor' : 'none'} />
+                <span className="text-[11px] font-medium text-white/60">{name}</span>
+                <span className="ml-auto whitespace-nowrap text-[11px] font-semibold text-white">
+                  {label}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* Streaming / no metrics yet — calm centered glyph, not a broken player */
+          <div className="flex flex-1 items-center justify-center">
+            <VideoOff
+              className={cn('h-7 w-7 text-white/15', isStreaming && 'animate-pulse')}
+              strokeWidth={1.5}
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -86,26 +140,13 @@ export function InputResultCard({
           playsInline
           className="absolute inset-0 h-full w-full object-cover"
         />
-      ) : thumbnailUrl ? (
+      ) : (
         /* eslint-disable-next-line @next/next/no-img-element */
         <img
-          src={thumbnailUrl}
+          src={thumbnailUrl ?? undefined}
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
         />
-      ) : (
-        /* No media — the source video is deleted after analysis (retention).
-           A designed empty state reads as intentional, not as a broken/loading
-           player. The predicted-metrics sidebar still overlays (real data). */
-        <div
-          className="absolute inset-0 flex flex-col items-center justify-center gap-2"
-          style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)' }}
-        >
-          <VideoOff className="h-7 w-7 text-white/20" strokeWidth={1.5} />
-          <span className="text-[10px] font-medium uppercase tracking-wider text-white/30">
-            Video unavailable
-          </span>
-        </div>
       )}
 
       {/* Bottom gradient — anchors readability when metrics overlay */}

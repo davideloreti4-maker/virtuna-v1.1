@@ -50,11 +50,13 @@ export function VerdictNode({ camera: _camera, layout: _layout }: VerdictNodePro
     return () => window.clearTimeout(handle);
   }, [isComplete, result]);
 
-  // AV-specific announcement
+  // AV-specific announcement. Deferred via timeout (mirrors the debounced
+  // announce effect above) so the setState isn't synchronous in the effect
+  // body — avoids the cascading-render path React Compiler flags.
   useEffect(() => {
-    if (boardMachineState === 'anti-virality') {
-      setAriaText(COPY.ARIA_ANTI_VIRALITY);
-    }
+    if (boardMachineState !== 'anti-virality') return;
+    const handle = window.setTimeout(() => setAriaText(COPY.ARIA_ANTI_VIRALITY), 0);
+    return () => window.clearTimeout(handle);
   }, [boardMachineState]);
 
   // verdict_node_rendered telemetry (one-shot on first complete).
