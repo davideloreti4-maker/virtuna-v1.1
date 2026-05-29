@@ -26,7 +26,12 @@ const log = createLogger({ module: "stage11-counterfactuals" });
 
 export const QWEN_STAGE11_MODEL = QWEN_REASONING_MODEL;
 
-const PER_CALL_TIMEOUT_MS = 30_000;
+// 60s to match the other qwen3.6-plus reasoning callers (stage10 critique 60s,
+// deepseek 90s, pass2 90s). The previous 30s aborted nearly every run — the same
+// model takes ~45-61s in the deepseek/pass2 stages — so counterfactuals always
+// returned null. aggregateScores runs this concurrently with Stage 10, so the
+// higher ceiling does not extend the post-pipeline tail.
+const PER_CALL_TIMEOUT_MS = 60_000;
 
 /**
  * Pure-TS check (NOT model-generated). Appends a LIKELY_FLOP warning to

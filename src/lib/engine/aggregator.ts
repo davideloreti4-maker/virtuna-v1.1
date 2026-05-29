@@ -1177,7 +1177,21 @@ export async function aggregateScores(
   // confidence downward (clamped to [-0.20, 0]) via applyCritiqueAdjustment.
   // Stage 10 result is surfaced in PredictionResult.critique.
   // -------------------------------------------------
-  const critiqueResult = await runStage10Critique(result, onStageEvent);
+  // Stage 10 (critique) and Stage 11 (counterfactuals) are independent LLM calls
+  // — run them CONCURRENTLY to halve the post-pipeline tail (previously ~serial
+  // 45-60s + 30s). Stage 11 reads pre-critique confidence purely as prompt
+  // context; its suggestion band is score-based (overall_score, unchanged by
+  // critique), so the small critique delta does not change the output. The
+  // LIKELY_FLOP check below still runs on POST-critique confidence, and the
+  // anti-virality gate is still recomputed from post-critique confidence —
+  // Pitfall 7 ordering invariant preserved.
+  const [critiqueResult, counterfactualResult] = await Promise.all([
+    runStage10Critique(result, onStageEvent),
+    // D-01 / D-06 / D-18 — Stage 11 receives videoContext from options (Plan 03
+    // threads real values; Plan 02 default = null).
+    runStage11Counterfactuals(result, options?.videoContext ?? null, onStageEvent),
+  ]);
+
   if (critiqueResult) {
     result.confidence = applyCritiqueAdjustment(result.confidence, critiqueResult);
     // Phase 1 (R1.9, B4) + Phase 3 (Plan 08) — re-evaluate anti-virality gate AFTER critique
@@ -1192,18 +1206,6 @@ export async function aggregateScores(
   }
   result.critique = critiqueResult;
 
-  // -------------------------------------------------
-  // Phase 13 — Stage 11: Always-on counterfactual suggestions (D-04 — no score skip).
-  // Runs AFTER critique so maybeAppendLikelyFlopWarning uses POST-CRITIQUE confidence
-  // (Pitfall 7 ordering invariant).
-  // D-01 / D-06 / D-18 — Stage 11 receives videoContext from options (Plan 03 threads
-  // real values; Plan 02 default = null).
-  // -------------------------------------------------
-  const counterfactualResult = await runStage11Counterfactuals(
-    result,
-    options?.videoContext ?? null,
-    onStageEvent,
-  );
   if (counterfactualResult) {
     result.counterfactuals = counterfactualResult;
   }
