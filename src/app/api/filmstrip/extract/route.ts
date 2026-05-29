@@ -18,6 +18,13 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { createWriteStream } from "fs";
+import { mkdtemp, rm } from "fs/promises";
+import { tmpdir } from "os";
+import { join } from "path";
+import { Readable } from "stream";
+import { pipeline } from "stream/promises";
+import type { ReadableStream as WebReadableStream } from "stream/web";
 import { extractFrameAtTimestamp } from "@/lib/engine/filmstrip/extract";
 import { uploadFrameAndGetSignedUrl } from "@/lib/engine/filmstrip/storage";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -72,6 +79,57 @@ function isPrivateHostname(hostname: string): boolean {
 }
 
 // =====================================================
+// Source download (race fix)
+// The pipeline fire-and-forgets this route at wave_0_complete, but the main
+// /api/analyze route deletes the source video from the `videos` bucket at
+// `complete` (retention opt-out default). extractFrameAtTimestamp seeks the
+// remote URL once *per frame*, so a slow extraction can outlive the signed URL
+// and 404 mid-loop. Download the video to a temp file once up front and extract
+// every frame locally — extraction then no longer depends on the source object
+// surviving deletion (and local seeking is faster than N remote range sessions).
+// =====================================================
+
+const MAX_VIDEO_BYTES = 500 * 1024 * 1024; // /tmp + memory guard
+
+/**
+ * Stream `url` to a temp file. Returns `{ path, dir }` on success (caller must
+ * `rm(dir, { recursive })`), or null on any failure so the caller can fall back
+ * to per-frame remote seeking. Never throws.
+ */
+async function downloadToTempFile(
+  url: string,
+  analysisId: string,
+): Promise<{ path: string; dir: string } | null> {
+  let dir: string | null = null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok || !res.body) {
+      log.error("filmstrip: source download failed", { analysisId, status: res.status });
+      return null;
+    }
+    const declared = Number(res.headers.get("content-length") ?? "0");
+    if (declared && declared > MAX_VIDEO_BYTES) {
+      log.error("filmstrip: source too large to buffer", { analysisId, declared });
+      return null;
+    }
+    dir = await mkdtemp(join(tmpdir(), "filmstrip-"));
+    const path = join(dir, "source");
+    await pipeline(
+      Readable.fromWeb(res.body as unknown as WebReadableStream<Uint8Array>),
+      createWriteStream(path),
+    );
+    return { path, dir };
+  } catch (err) {
+    log.error("filmstrip: source download error", {
+      analysisId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    if (dir) await rm(dir, { recursive: true, force: true }).catch(() => {});
+    return null;
+  }
+}
+
+// =====================================================
 // POST handler
 // =====================================================
 
@@ -120,10 +178,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // maxDuration=300 gives us up to 5 minutes for all segments.
   const results: Array<{ idx: number; keyframe_uri: string | null }> = [];
 
+  // Download once; fall back to per-frame remote seeking if the download fails.
+  let temp: { path: string; dir: string } | null = null;
+
   try {
+    temp = await downloadToTempFile(videoUrl, analysisId);
+    const frameSource = temp?.path ?? videoUrl;
+
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i]!;
-      const buffer = await extractFrameAtTimestamp(videoUrl, segment.t_start);
+      const buffer = await extractFrameAtTimestamp(frameSource, segment.t_start);
 
       if (!buffer) {
         log.warn("filmstrip frame extraction failed", { analysisId, segmentIdx: i, t_start: segment.t_start });
@@ -216,5 +280,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       error: err instanceof Error ? err.message : String(err),
     });
     return NextResponse.json({ error: "internal" }, { status: 500 });
+  } finally {
+    if (temp) await rm(temp.dir, { recursive: true, force: true }).catch(() => {});
   }
 }
