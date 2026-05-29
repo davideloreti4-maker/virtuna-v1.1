@@ -28,7 +28,7 @@ export const COPY = {
     `Verdict ready: ${score}th percentile, confidence ${label}`,
   ARIA_ANTI_VIRALITY: "Don't post yet — see suggested fixes",
   // Plan 5.3: WhyVerdictCollapsible sub-section labels
-  WHY_VERDICT_SUMMARY: 'Why this verdict?',
+  WHY_VERDICT_SUMMARY: 'Why this score?',
   SUB_WORKS: 'Why this works',
   SUB_MIGHT_NOT: 'Why this might not',
   SUB_FLAGGED: 'What the engine flagged',

@@ -30,7 +30,7 @@ export const GROUP_FRAMES: GroupFrameLayout[] = [
   // Engine pipeline stepper now fills the rest — killing the lower-left void.
   { id: 'engine',           label: 'Engine',           bounds: { x:    0, y:  472, width:  240, height: 328 } },
   { id: 'audience',         label: 'Audience',         bounds: { x:  272, y:    0, width:  560, height: 800 } },
-  { id: 'verdict',          label: 'Verdict',          bounds: { x:  864, y:    0, width:  360, height: 280 } },
+  { id: 'verdict',          label: 'Score',            bounds: { x:  864, y:    0, width:  360, height: 280 } },
   // Actions: tall hero column holding the inline reshoot script, "What to fix",
   // and "When to post" (all inline, no drawers). Grown to bottom 1072 so the
   // right column matches the Content Analysis block on the left (Phase 3).
