@@ -74,6 +74,22 @@ describe('HeadlineChips', () => {
     expect(skeletonDivs.length).toBeGreaterThanOrEqual(5);
   });
 
+  it('shows dash (not perpetual skeleton) when loop/vs niche null and not streaming', () => {
+    const { container } = render(
+      <HeadlineChips {...baseProps({ loop_pct: null, vs_niche_diff_pct: null })} />,
+    );
+
+    // No skeleton shimmer should render once the analysis is settled —
+    // missing loop/vs-niche values must degrade to an em dash, not loop forever.
+    const skeletonDivs = Array.from(container.querySelectorAll('div')).filter(
+      (el) => el.style.backgroundImage?.includes('gradient'),
+    );
+    expect(skeletonDivs.length).toBe(0);
+
+    // Both chips fall back to the em-dash sentinel from fmt().
+    expect(screen.getAllByText('—').length).toBe(2);
+  });
+
   it('weights badge text matches Weighted: 65/20/10/5 default', () => {
     render(<HeadlineChips {...baseProps()} />);
 

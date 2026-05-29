@@ -110,7 +110,7 @@ export function HeadlineChips(props: HeadlineChipsProps) {
         <Chip
           label="Loop"
           value={loop.display}
-          isSkeleton={props.isStreaming || loop.isSkeleton}
+          isSkeleton={props.isStreaming}
           isFallback={false}
         />
         <Chip
@@ -128,7 +128,7 @@ export function HeadlineChips(props: HeadlineChipsProps) {
         <Chip
           label="vs Niche"
           value={vs.display}
-          isSkeleton={props.isStreaming || vs.isSkeleton}
+          isSkeleton={props.isStreaming}
           isFallback={false}
           valueClassName={vsClass}
         />

@@ -70,8 +70,8 @@ describe('weighted-aggregator-client', () => {
 
   it('normalizeOverSurvivors zeros missing slot_types and renormalizes to sum 1.0', () => {
     const personas = [
-      { id: 'p0', slot_type: 'fyp' as const, attentions: [0.8], swipe_predicted_at: null, segment_reasons: {} },
-      { id: 'p1', slot_type: 'niche' as const, attentions: [0.6], swipe_predicted_at: null, segment_reasons: {} },
+      { id: 'p0', slot_type: 'fyp' as const, archetype: 'high_engager', attentions: [0.8], swipe_predicted_at: null, segment_reasons: {} },
+      { id: 'p1', slot_type: 'niche' as const, archetype: 'niche_deep', attentions: [0.6], swipe_predicted_at: null, segment_reasons: {} },
       // loyalist and cross_niche are absent
     ];
     const result = normalizeOverSurvivors(personas, DEFAULT_WEIGHTS);
@@ -107,8 +107,8 @@ describe('weighted-aggregator-client', () => {
 
   it('all-zero attentions returns all-zero curve', () => {
     const personas = [
-      { id: 'p0', slot_type: 'fyp' as const, attentions: [0, 0, 0, 0], swipe_predicted_at: null, segment_reasons: {} },
-      { id: 'p1', slot_type: 'niche' as const, attentions: [0, 0, 0, 0], swipe_predicted_at: null, segment_reasons: {} },
+      { id: 'p0', slot_type: 'fyp' as const, archetype: 'high_engager', attentions: [0, 0, 0, 0], swipe_predicted_at: null, segment_reasons: {} },
+      { id: 'p1', slot_type: 'niche' as const, archetype: 'niche_deep', attentions: [0, 0, 0, 0], swipe_predicted_at: null, segment_reasons: {} },
     ];
     const segments = [
       { idx: 0, t_start: 0, t_end: 3, is_hook_zone: true, keyframe_uri: null },

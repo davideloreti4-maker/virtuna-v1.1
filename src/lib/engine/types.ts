@@ -36,6 +36,7 @@ export interface HeatmapPayload {
   personas: Array<{
     id: string;                              // matches existing persona.id
     slot_type: 'fyp' | 'niche' | 'loyalist' | 'cross_niche'; // Phase 4 OQ-1: client recompute key
+    archetype?: string;                      // e.g. "high_engager", "lurker"; absent on old rows
     attentions: number[];                    // length === segments.length
     swipe_predicted_at: number | null;       // t value
     segment_reasons: Record<number, string>; // sparse, inflection points only
