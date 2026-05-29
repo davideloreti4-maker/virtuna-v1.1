@@ -213,19 +213,6 @@ export function useRetentionCurveCanvas(
           y: yAt(att),
         }));
 
-        // Gradient fill under curve — anchored to the padded plot area so
-        // the fill bottoms out at the "0" gridline, not the canvas edge.
-        const grad = ctx.createLinearGradient(0, PAD_Y, 0, PAD_Y + plotH);
-        grad.addColorStop(0, 'rgba(255,127,80,0.06)');
-        grad.addColorStop(1, 'rgba(255,127,80,0)');
-        ctx.beginPath();
-        drawCatmullRomCurve(ctx, pts);
-        ctx.lineTo(w, PAD_Y + plotH);
-        ctx.lineTo(0, PAD_Y + plotH);
-        ctx.closePath();
-        ctx.fillStyle = grad;
-        ctx.fill();
-
         // Curve stroke — thin coral line
         ctx.beginPath();
         drawCatmullRomCurve(ctx, pts);
