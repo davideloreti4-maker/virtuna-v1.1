@@ -149,34 +149,33 @@ describe('ActionsNode', () => {
     expect(screen.getByTestId('actions-reshoot-teaser')).toBeInTheDocument();
   });
 
-  it('renders OptimalPost card + ShareSlot placeholder in default state', async () => {
+  it('renders OptimalPost card in default state (Share & Export removed)', async () => {
     mockStream({ phase: 'complete', result: { ...fixtures.complete, id: 'analysis-id-stub', optimal_post_window: { day_of_week: 'Tue', hour_range: [18, 21], timezone: 'UTC', reasoning: 'Niche peaks Tue (n=12 videos)', source: 'niche' }, optimal_post_override: null } });
     mockBoardState('complete');
     const { ActionsNode: Fresh } = await import('../ActionsNode');
     render(<Fresh camera={{} as never} layout={{} as never} />);
     expect(screen.getByTestId('actions-optimal-post-card')).toBeInTheDocument();
-    expect(screen.getByTestId('actions-share-placeholder')).toBeInTheDocument();
+    // Share & Export removed from the frame.
+    expect(screen.queryByTestId('actions-share-placeholder')).toBeNull();
   });
 
-  it('B2: AV state renders Optimal + Share in bottom row', async () => {
+  it('AV state renders Reshoot hero + Optimal card, no Share', async () => {
     mockStream({ phase: 'complete', result: { ...fixtures.antiVirality, id: 'analysis-id-stub', optimal_post_window: { day_of_week: 'Tue', hour_range: [18, 21], timezone: 'UTC', reasoning: 'Niche peaks Tue (n=12 videos)', source: 'niche' }, optimal_post_override: null } });
     mockBoardState('anti-virality');
     const { ActionsNode: Fresh } = await import('../ActionsNode');
     render(<Fresh camera={{} as never} layout={{} as never} />);
-    // AV bottom row container
-    expect(screen.getByTestId('actions-av-bottom-row')).toBeInTheDocument();
-    // Both slots in AV bottom row must be present
+    expect(screen.getByTestId('actions-reshoot-hero-slot')).toBeInTheDocument();
     expect(screen.getByTestId('actions-optimal-post-card')).toBeInTheDocument();
-    expect(screen.getByTestId('actions-share-placeholder')).toBeInTheDocument();
+    expect(screen.queryByTestId('actions-share-placeholder')).toBeNull();
   });
 
-  it('B2: ReshootHero spans col-span-2 in AV state', async () => {
+  it('Reshoot hero slot fills its region (h-full) in AV state', async () => {
     mockStream({ phase: 'complete', result: { ...fixtures.antiVirality, id: 'analysis-id-stub', optimal_post_window: { day_of_week: 'Tue', hour_range: [18, 21], timezone: 'UTC', reasoning: 'Niche peaks Tue (n=12 videos)', source: 'niche' }, optimal_post_override: null } });
     mockBoardState('anti-virality');
     const { ActionsNode: Fresh } = await import('../ActionsNode');
     render(<Fresh camera={{} as never} layout={{} as never} />);
     const hero = screen.getByTestId('actions-reshoot-hero-slot');
-    expect(hero.className).toContain('col-span-2');
+    expect(hero.className).toContain('h-full');
   });
 
   it('applies transition style on grid (non-RM)', async () => {
@@ -185,7 +184,7 @@ describe('ActionsNode', () => {
     const { ActionsNode: Fresh } = await import('../ActionsNode');
     render(<Fresh camera={{} as never} layout={{} as never} />);
     const grid = screen.getByTestId('actions-grid') as HTMLElement;
-    expect(grid.style.transition).toContain('grid-template-rows');
+    expect(grid.style.transition).toContain('flex');
     expect(grid.style.transition).toContain('200ms');
   });
 

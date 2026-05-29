@@ -7,8 +7,7 @@ import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { getFrameAntiViralityState } from '../cross-group-state';
 import { ActionsReshootHeroSlot } from './ActionsReshootHeroSlot';
 import { ActionsOptimalPostSlot } from './ActionsOptimalPostSlot';
-import { ActionsShareSlot } from './ActionsShareSlot';
-import { TELEMETRY, ACTIONS_GRID_DEFAULT_ROWS, ACTIONS_GRID_AV_ROWS } from './actions-constants';
+import { TELEMETRY } from './actions-constants';
 import type { ActionsNodeProps } from './actions-types';
 import type { OptimalPostOverride } from './optimal-post/OptimalPostCard';
 import type { OptimalPostWindow } from '@/lib/engine/optimal-post';
@@ -52,55 +51,32 @@ export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodePro
       className="relative h-full w-full"
       data-testid="actions-node"
     >
+      {/* Two-card stack: Reshoot script (primary user value) on top, When-to-post
+          below. Share & Export removed per product call. Reshoot gets the larger
+          share so the script / tweaks have room; both flex to fill the frame and
+          never overflow (min-h-0). */}
       <div
-        className="grid grid-cols-2 grid-rows-2 auto-rows-fr gap-2 p-2 h-full"
-        style={{
-          gridTemplateRows: isAV ? ACTIONS_GRID_AV_ROWS : ACTIONS_GRID_DEFAULT_ROWS,
-          transition: prefersReducedMotion ? 'none' : 'grid-template-rows 200ms ease-out',
-        }}
+        className="flex h-full w-full flex-col gap-2 p-2"
+        style={{ transition: prefersReducedMotion ? 'none' : 'flex 200ms ease-out' }}
         data-testid="actions-grid"
         data-av={isAV ? 'true' : 'false'}
       >
-        {isAV ? (
-          <>
-            {/* TOP: Reshoot hero spans both columns per D-10. */}
-            <ActionsReshootHeroSlot
-              className="col-span-2 min-h-[88px]"
-              analysisId={analysisId}
-              phase={phase}
-              isAV={isAV}
-            />
-            {/* BOTTOM: two cells = Optimal + Share. */}
-            <div
-              className="col-span-2 grid grid-cols-2 gap-2"
-              data-testid="actions-av-bottom-row"
-            >
-              <div className="min-h-[88px]"><ActionsOptimalPostSlot
-                analysisId={analysisId}
-                phase={phase}
-                window={postWindow}
-                override={postOverride}
-              /></div>
-              <div className="min-h-[88px]"><ActionsShareSlot /></div>
-            </div>
-          </>
-        ) : (
-          <>
-            {/* DEFAULT: Reshoot | OptimalPost | Share — 3 cards */}
-            <div className="min-h-[88px]"><ActionsReshootHeroSlot
-              analysisId={analysisId}
-              phase={phase}
-              isAV={isAV}
-            /></div>
-            <div className="min-h-[88px]"><ActionsOptimalPostSlot
-              analysisId={analysisId}
-              phase={phase}
-              window={postWindow}
-              override={postOverride}
-            /></div>
-            <div className="col-span-2 min-h-[88px]"><ActionsShareSlot /></div>
-          </>
-        )}
+        <div className="min-h-0 flex-[3] overflow-hidden rounded-[8px]">
+          <ActionsReshootHeroSlot
+            className="h-full overflow-hidden"
+            analysisId={analysisId}
+            phase={phase}
+            isAV={isAV}
+          />
+        </div>
+        <div className="min-h-0 flex-[2] overflow-hidden rounded-[8px]">
+          <ActionsOptimalPostSlot
+            analysisId={analysisId}
+            phase={phase}
+            window={postWindow}
+            override={postOverride}
+          />
+        </div>
       </div>
     </div>
   );
