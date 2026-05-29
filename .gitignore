@@ -69,3 +69,6 @@ tests/fixtures/audio-smoke/smoke-test-results.json
 
 # Playwright MCP debug captures (console logs, snapshots, screenshots)
 .playwright-mcp/
+# Stray board verification screenshots saved to repo root
+/board-*.png
+/board-*.jpeg
