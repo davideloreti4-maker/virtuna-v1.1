@@ -348,6 +348,17 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
             onWeightsBadgeClick={handleWeightsBadgeClick}
           />
 
+          {/* Inline audience-mix override — expands in-frame under the chips when
+              the "Weighted: …" badge is tapped (replaces the former right Sheet). */}
+          <WeightOverrideDrawer
+            open={overrideDrawerOpen}
+            onOpenChange={setOverrideDrawerOpen}
+            analysisId={analysisId ?? ''}
+            currentWeights={weights}
+            onWeightsChange={setWeights}
+            onApply={handleOverrideApply}
+          />
+
           {/* D-01: Filmstrip + shared time axis — directly below chips, acts as x-axis */}
           <div className="flex flex-col gap-1">
             <Filmstrip
@@ -448,15 +459,6 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
         payload={popoverPayload}
         anchorPos={popoverAnchorPos}
         onSeeFull={handleSeeFullFromPopover}
-      />
-
-      <WeightOverrideDrawer
-        open={overrideDrawerOpen}
-        onOpenChange={setOverrideDrawerOpen}
-        analysisId={analysisId ?? ''}
-        currentWeights={weights}
-        onWeightsChange={setWeights}
-        onApply={handleOverrideApply}
       />
     </>
   );

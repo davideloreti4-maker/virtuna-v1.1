@@ -150,7 +150,10 @@ function FixRow({ item }: { item: CounterfactualSuggestionItem }) {
 }
 
 function Scorecard({ factors, analysisId }: { factors: Factor[]; analysisId: string | null }) {
-  const [open, setOpen] = useState(false);
+  // Default-open: the Actions frame is now a tall column (Phase 3) and the factor
+  // scorecard is real value that fills the lower half instead of leaving it empty.
+  // The toggle stays for users who want to collapse it.
+  const [open, setOpen] = useState(true);
 
   function toggle() {
     const next = !open;

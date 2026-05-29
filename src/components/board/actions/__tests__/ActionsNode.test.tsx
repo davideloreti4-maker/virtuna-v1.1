@@ -211,8 +211,9 @@ describe('ActionsNode', () => {
     expect(screen.getByText('What to fix')).toBeInTheDocument();
     // First counterfactual headline from the fixture renders as a fix row.
     expect(screen.getByText('Tighten text overlay')).toBeInTheDocument();
-    // Factor scorecard toggle present (collapsed by default).
+    // Factor scorecard present (expanded by default — fills the tall Actions frame).
     expect(screen.getByTestId('actions-scorecard')).toBeInTheDocument();
+    expect(screen.getByTestId('actions-scorecard-list')).toBeInTheDocument();
   });
 
   it('Phase 6: pre-complete phase keeps placeholders visible (streaming continuity)', async () => {
