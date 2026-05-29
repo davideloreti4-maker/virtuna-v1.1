@@ -182,6 +182,24 @@ export function HookDecompNode({ decomp, segments, counterfactuals, className }:
         </div>
       )}
 
+      {/* Always-on insight headline — surfaces the weakest modality + the #1 fix
+          without a click (the full composition + all fixes stay in the expander). */}
+      {decomp && (
+        <p
+          className="text-[11px] leading-snug text-white/65"
+          data-testid="hook-decomp-insight"
+        >
+          Weakest:{' '}
+          <span className="font-medium text-white/85">
+            {HOOK_BAR_LABELS[decomp.weakest_modality]}
+          </span>{' '}
+          <span className="tabular-nums text-white/55">
+            ({decomp[decomp.weakest_modality].toFixed(1)})
+          </span>
+          {hookFixes[0] && <> — {hookFixes[0].headline}</>}
+        </p>
+      )}
+
       {/* Inline detail — replaces the former HookDecompInspector Sheet.
           Surfaces the weakest-modality callout, composition reasoning, and the
           hook-anchored fix list directly in-frame (no overlay). */}

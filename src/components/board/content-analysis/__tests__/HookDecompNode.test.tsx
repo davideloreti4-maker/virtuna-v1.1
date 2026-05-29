@@ -134,6 +134,22 @@ describe('HookDecompNode', () => {
     });
   });
 
+  it('shows an always-on weakest-modality insight line with the top fix', () => {
+    render(
+      <HookDecompNode
+        decomp={fixtures.complete.hook_decomposition!}
+        segments={null}
+        counterfactuals={fixtures.complete.counterfactuals?.suggestions}
+      />,
+    );
+    const insight = screen.getByTestId('hook-decomp-insight');
+    // fixtures weakest_modality = 'text_overlay_score' → label "Text overlay";
+    // first hook-anchored fix headline = "Tighten text overlay".
+    expect(insight).toHaveTextContent('Weakest:');
+    expect(insight).toHaveTextContent('Text overlay');
+    expect(insight).toHaveTextContent('Tighten text overlay');
+  });
+
   it('clicking a bar expands the inline detail + fires hook_decomp_expanded telemetry', () => {
     render(
       <HookDecompNode

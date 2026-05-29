@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 // W5: typed import — AnalysisStream alias added to use-analysis-stream in this plan.
 // analysisId field is string | null (confirmed from AnalysisStreamReturn interface).
 import { useAnalysisStream, type AnalysisStream } from '@/hooks/queries/use-analysis-stream';
@@ -10,7 +10,7 @@ import { PercentileChip } from './PercentileChip';
 import { AntiViralityHeader } from './AntiViralityHeader';
 import { WhyVerdictCollapsible } from './WhyVerdictCollapsible';
 import { VsHistoryCollapsible } from './VsHistoryCollapsible';
-import { COPY, TELEMETRY } from './verdict-constants';
+import { COPY, TELEMETRY, deriveVerdictSummary } from './verdict-constants';
 import type { VerdictNodeProps } from './verdict-types';
 import { logger } from '@/lib/logger';
 
@@ -30,6 +30,13 @@ export function VerdictNode({ camera: _camera, layout: _layout }: VerdictNodePro
 
   const isStreaming = phase === 'analyzing' || phase === 'reconnecting' || phase === 'polling';
   const isComplete = boardMachineState === 'complete' || boardMachineState === 'anti-virality';
+
+  // Always-on driver/risk summary — surfaces the verdict's "why" even when the
+  // reasoning accordion is collapsed (the full factor breakdown stays inside it).
+  const summary = useMemo(
+    () => (result ? deriveVerdictSummary(result.factors) : null),
+    [result],
+  );
 
   // Debounced aria-live announcement (500ms after complete).
   const [ariaText, setAriaText] = useState<string>('');
@@ -83,6 +90,33 @@ export function VerdictNode({ camera: _camera, layout: _layout }: VerdictNodePro
           isCalibrated={true}
         />
       </div>
+
+      {summary && (summary.driver || summary.risk) && (
+        <div data-testid="verdict-summary" className="flex flex-col gap-2 px-1">
+          {summary.driver && (
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[10px] font-normal uppercase tracking-[0.04em] text-[var(--color-success)]/80">
+                Driving it
+              </span>
+              <p className="text-xs leading-[1.45] text-white/75">
+                <span className="font-medium text-white/90">{summary.driver.name}</span>
+                {summary.driver.rationale ? ` — ${summary.driver.rationale}` : ''}
+              </p>
+            </div>
+          )}
+          {summary.risk && (
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[10px] font-normal uppercase tracking-[0.04em] text-accent/80">
+                Watch out
+              </span>
+              <p className="text-xs leading-[1.45] text-white/75">
+                <span className="font-medium text-white/90">{summary.risk.name}</span>
+                {summary.risk.tip ? ` — ${summary.risk.tip}` : ''}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       <div data-testid="verdict-collapsibles-slot" className="flex flex-col gap-2 px-1 mt-2">
         {result && <WhyVerdictCollapsible result={result} />}

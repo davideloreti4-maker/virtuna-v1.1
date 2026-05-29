@@ -17,6 +17,29 @@ vi.mock('@/hooks/usePrefersReducedMotion', () => ({ usePrefersReducedMotion: () 
 import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
 import { logger } from '@/lib/logger';
 import { VerdictNode } from '../VerdictNode';
+import { deriveVerdictSummary } from '../verdict-constants';
+
+describe('deriveVerdictSummary', () => {
+  it('picks the highest factor as driver and the lowest (<6) as risk', () => {
+    const s = deriveVerdictSummary(fixtures.complete.factors);
+    // fixtures: visual-hook 8 (top), cta 3 (bottom)
+    expect(s.driver).toEqual({ name: 'Visual hook', rationale: 'Strong cold open' });
+    expect(s.risk).toEqual({ name: 'CTA', tip: 'Add explicit follow request' });
+  });
+
+  it('returns null risk when every factor scores ≥6', () => {
+    const s = deriveVerdictSummary([
+      { id: 'a', name: 'A', score: 9, max_score: 10, rationale: 'r', improvement_tip: 't' },
+      { id: 'b', name: 'B', score: 7, max_score: 10, rationale: 'r', improvement_tip: 't' },
+    ]);
+    expect(s.driver?.name).toBe('A');
+    expect(s.risk).toBeNull();
+  });
+
+  it('returns both null when no factors', () => {
+    expect(deriveVerdictSummary([])).toEqual({ driver: null, risk: null });
+  });
+});
 
 // Wrap with QueryClientProvider since VerdictNode now renders VsHistoryCollapsible
 // which calls useComparisons (TanStack Query hook). (Rule 1 auto-fix - Plan 5.4)
@@ -53,6 +76,15 @@ describe('VerdictNode - shell', () => {
   it('reserves verdict-collapsibles-slot for Plan 5.3 / 5.4', () => {
     renderWithQuery(<VerdictNode camera={{} as never} layout={{} as never} />);
     expect(screen.getByTestId('verdict-collapsibles-slot')).toBeInTheDocument();
+  });
+
+  it('renders an always-on driver/risk summary (visible even when reasoning is collapsed)', () => {
+    renderWithQuery(<VerdictNode camera={{} as never} layout={{} as never} />);
+    const summary = screen.getByTestId('verdict-summary');
+    expect(summary).toHaveTextContent('Driving it');
+    expect(summary).toHaveTextContent('Visual hook');
+    expect(summary).toHaveTextContent('Watch out');
+    expect(summary).toHaveTextContent('CTA');
   });
 
   it('announces "Verdict ready: {N}th percentile, confidence HIGH" after 500ms with fixtures.complete', async () => {

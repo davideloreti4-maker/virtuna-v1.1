@@ -14,7 +14,7 @@ import { TapPopover } from './TapPopover';
 import { PersonaDetailInline } from './PersonaDetailInline';
 import { WeightOverrideDrawer } from './WeightOverrideDrawer';
 import { AntiViralityOverlay } from './AntiViralityOverlay';
-import { AUDIENCE_FRAME_TITLE_BAR_H } from './audience-constants';
+import { AUDIENCE_FRAME_TITLE_BAR_H, derivePersonaInsight } from './audience-constants';
 import { TITLE_BAR_HEIGHT } from '../board-constants';
 import { useBoardStore } from '@/stores/board-store';
 import type { Camera, GroupFrameLayout } from '../board-types';
@@ -232,6 +232,16 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
 
   const isStreaming = phase === 'analyzing' || phase === 'reconnecting' || phase === 'polling';
 
+  // Always-on persona insight — the key audience takeaway (drop spread + earliest
+  // outlier) surfaced above the heatmap, no row click required.
+  const personaInsight = useMemo(
+    () => {
+      const personas = result?.heatmap?.personas;
+      return personas?.length ? derivePersonaInsight(personas) : null;
+    },
+    [result?.heatmap?.personas],
+  );
+
   // Retention (survival) curve — % of the weighted audience still watching at each
   // segment, derived from each persona's swipe_predicted_at. Monotonically decays
   // from ~100% → completion, so it reads like a real watch-time curve instead of
@@ -387,6 +397,16 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
                 Persona data isn&apos;t available for this analysis
               </p>
             </div>
+          )}
+
+          {/* Always-on persona insight headline — the audience takeaway in words. */}
+          {!isStreaming && personaInsight && (
+            <p
+              className="px-1 text-[11px] leading-snug text-white/65"
+              data-testid="persona-insight"
+            >
+              {personaInsight}
+            </p>
           )}
 
           {/* D-01: HeatmapDrawer — collapsed by default (D-03) — hidden when no personas */}
