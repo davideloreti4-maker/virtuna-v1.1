@@ -98,9 +98,13 @@ export function PersonaRow({
       {/* Cells */}
       {segments.map((seg, i) => {
         const att = attentions?.[i] ?? 0;
-        // Lower max alpha so the heatmap reads as a calm gradient, not a solid
-        // orange block (user feedback: reduce the heavy orange).
-        const alpha = animateNow ? clamp(att, 0.04, 0.42) : 0.04;
+        // Map attention 0–1 linearly into a calm alpha band. The previous
+        // clamp(att, 0.04, 0.42) floored EVERY attention ≥0.42 to the same
+        // ceiling, so real-world values (mostly 0.4–1.0) rendered as a uniform
+        // orange block with zero per-segment variation — personas looked
+        // identical. Linear keeps the calm ceiling (~0.44) while restoring the
+        // gradient that reads as distinct persona behaviour.
+        const alpha = animateNow ? 0.04 + clamp(att, 0, 1) * 0.4 : 0.04;
 
         return (
           <button
