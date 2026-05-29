@@ -104,8 +104,9 @@ describe('Filmstrip', () => {
 
     const figure = container.querySelector('figure');
     // No horizontal overflow — cells flex to fill the container at any width.
+    // h-28 gives portrait-like height for TikTok 9:16 frames.
     expect(figure?.className).toContain('w-full');
-    expect(figure?.className).toContain('h-14');
+    expect(figure?.className).toContain('h-28');
     expect(figure?.className).not.toContain('overflow-x-auto');
   });
 });

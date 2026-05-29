@@ -30,7 +30,7 @@ export function Filmstrip({
 
   return (
     <figure
-      className="relative flex h-14 w-full gap-px overflow-hidden rounded-[6px]"
+      className="relative flex h-28 w-full gap-px overflow-hidden rounded-[6px]"
       aria-label="Video keyframe filmstrip"
     >
       {cells.map((seg) => {

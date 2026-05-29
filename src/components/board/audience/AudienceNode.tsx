@@ -287,18 +287,22 @@ export function AudienceNode({ camera: _camera, layout }: AudienceNodeProps) {
   // fallback (persona_behavioral_aggregate.completion_pct) is already 0-100.
   // Scale weighted values to 0-100 here so HeadlineChips treats every numeric
   // prop uniformly. Use ?? (not ||) so a real 0 isn't coerced to undefined.
+  // Guard recomputedMetrics with heatmap presence: the RAF in useClientWeights
+  // exits early when heatmap=null, leaving stale numbers from the previous
+  // analysis. Without this guard, Watch/Hook/Drop show old values after reset.
+  const hasHeatmap = result?.heatmap != null;
   const rawCompletion =
-    recomputedMetrics.weighted_completion_pct ??
+    (hasHeatmap ? recomputedMetrics.weighted_completion_pct : null) ??
     result?.weighted_completion_pct ??
     null;
   const rawHook =
-    recomputedMetrics.weighted_hook_score ??
+    (hasHeatmap ? recomputedMetrics.weighted_hook_score : null) ??
     result?.weighted_hook_score ??
     null;
   const scaledCompletion = rawCompletion == null ? null : rawCompletion * 100;
   const scaledHook = rawHook == null ? null : rawHook * 100;
   const scaledDropoff =
-    recomputedMetrics.weighted_top_dropoff_t ??
+    (hasHeatmap ? recomputedMetrics.weighted_top_dropoff_t : null) ??
     result?.weighted_top_dropoff_t ??
     null;
   // LOOP — replay/loop rate. Lives on the (now-persisted) Pass-1 aggregate as a

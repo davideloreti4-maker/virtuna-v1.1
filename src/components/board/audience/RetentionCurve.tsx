@@ -27,12 +27,11 @@ export function RetentionCurve(props: RetentionCurveProps) {
 
   const markers = useMemo((): MarkerOrCluster[] => {
     if (!props.heatmap || !canvasRef.current) return [];
-    const rect = canvasRef.current.getBoundingClientRect();
     const raw = computeMarkerPositions(
       props.heatmap.personas,
       props.heatmap.segments,
-      rect.width,
-      rect.height,
+      canvasRef.current.offsetWidth,
+      canvasRef.current.offsetHeight,
       props.totalDurationSec,
     );
     return clusterMarkers(raw);

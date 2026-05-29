@@ -133,11 +133,13 @@ export function useRetentionCurveCanvas(
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // DPR-aware setup (verbatim from hive-demo-canvas.tsx lines 52–62)
+      // Use offsetWidth/offsetHeight (CSS layout size, not visual size) so the
+      // buffer is sized to world coordinates. getBoundingClientRect() includes
+      // the parent's CSS transform: scale(camera.scale), which under-sizes the
+      // buffer when zoomed out and causes blurriness.
       const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const w = rect.width;
-      const h = rect.height;
+      const w = canvas.offsetWidth;
+      const h = canvas.offsetHeight;
 
       if (
         canvas.width !== Math.round(w * dpr) ||
@@ -318,8 +320,11 @@ export function useRetentionCurveCanvas(
       if (!canvas) return null;
 
       const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      // Convert viewport → world coords (drawing uses offsetWidth/offsetHeight)
+      const sx = rect.width ? canvas.offsetWidth / rect.width : 1;
+      const sy = rect.height ? canvas.offsetHeight / rect.height : 1;
+      const x = (e.clientX - rect.left) * sx;
+      const y = (e.clientY - rect.top) * sy;
 
       // Check markers first
       const markerHit = findMarkerAtPoint(markersRef.current, x, y);
@@ -331,7 +336,7 @@ export function useRetentionCurveCanvas(
         return {
           kind: 'marker',
           personaId: m.personaId,
-          t: x / rect.width * (segmentsRef.current?.[segmentsRef.current.length - 1]?.t_end ?? 30),
+          t: x / canvas.offsetWidth * (segmentsRef.current?.[segmentsRef.current.length - 1]?.t_end ?? 30),
           attention: m.opacity,
         };
       }
@@ -339,7 +344,7 @@ export function useRetentionCurveCanvas(
       // Curve-point hit
       const segs = segmentsRef.current;
       const totalDuration = segs ? segs[segs.length - 1]?.t_end ?? 30 : 30;
-      const t = (x / rect.width) * totalDuration;
+      const t = (x / canvas.offsetWidth) * totalDuration;
       const weighted = weightedCurveRef.current;
 
       if (!weighted || weighted.length === 0) return null;
@@ -356,7 +361,7 @@ export function useRetentionCurveCanvas(
         }
       } else {
         segIdx = Math.min(
-          Math.floor((x / rect.width) * weighted.length),
+          Math.floor((x / canvas.offsetWidth) * weighted.length),
           weighted.length - 1,
         );
       }
