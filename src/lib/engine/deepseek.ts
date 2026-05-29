@@ -15,8 +15,13 @@ import { getQwenClient, QWEN_REASONING_MODEL } from "./qwen/client";
 import { calculateCost } from "./qwen/cost";
 import { stripModelOutput } from "./utils/strip";
 
+// NOTE: "deepseek" is a LEGACY module/stage name — this stage actually runs Qwen
+// (QWEN_REASONING_MODEL = qwen3.6-plus) via DashScope, not DeepSeek. The pipeline
+// is Qwen-only. The string is kept because log dashboards + tests key off the
+// "deepseek" / "deepseek_reasoning" stage names.
 const log = createLogger({ module: "deepseek" });
 
+// Legacy constant name — resolves to QWEN_REASONING_MODEL (qwen3.6-plus).
 const DEEPSEEK_MODEL = QWEN_REASONING_MODEL;
 const MAX_RETRIES = 2; // 3 total attempts
 const TIMEOUT_MS = 90_000; // 90s — reasoning model produces many CoT thinking tokens on complex prompts

@@ -279,7 +279,7 @@ export function selectWeights(
 /**
  * Calculate numeric confidence (0-1) based on:
  * 1. Signal availability (0-0.6) — how much data we have
- * 2. Model agreement (0-0.4) — do Gemini and DeepSeek agree on direction
+ * 2. Model agreement (0-0.4) — do the Qwen omni (vision) and reasoning signals agree on direction
  *
  * RULE-04: Penalizes confidence when rules/trends signals are missing.
  */

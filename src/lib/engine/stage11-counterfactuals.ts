@@ -1,12 +1,13 @@
 /**
  * Phase 13 Plan 02 — Stage 11 Counterfactuals (rebuilt D-01..D-06).
  *
- * Rebuilt from DeepSeek V4 Flash → Gemini 3.1 Pro (D-02).
+ * Model: Qwen reasoning (QWEN_REASONING_MODEL = qwen3.6-plus) via DashScope —
+ * the pipeline is Qwen-only. (History: DeepSeek V4 Flash → Gemini 3.1 Pro → Qwen.)
  * Always-on: no overall_score >= 70 short-circuit (D-04).
  * Optional videoContext arg for fileUri threading (D-01 — Plan 03 passes real values).
  * Full signal context via buildSignalContextUserMessage (D-03 — no truncation).
  * Discriminated-union output schema per band (D-05).
- * Cost telemetry via calculateGeminiCost (D-10).
+ * Cost telemetry via calculateCost (Qwen pricing, D-10).
  */
 import * as Sentry from "@sentry/nextjs";
 import { createLogger } from "@/lib/logger";
@@ -53,7 +54,7 @@ export function maybeAppendLikelyFlopWarning(result: PredictionResult): void {
 }
 
 /**
- * Phase 13 D-01..D-06 contract: always-on counterfactual generation via Gemini 3.1 Pro.
+ * Phase 13 D-01..D-06 contract: always-on counterfactual generation via Qwen reasoning (qwen3.6-plus).
  *
  * Key invariants:
  * - NO overall_score >= 70 short-circuit (D-04)
@@ -61,7 +62,7 @@ export function maybeAppendLikelyFlopWarning(result: PredictionResult): void {
  * - Full signal context via buildSignalContextUserMessage, no truncation (D-03)
  * - Discriminated-union Zod schema per band (D-05): low=3 fix, mid=2+1, high=1+2-3
  * - Single retry on Zod failure; Sentry capture on second failure (PATTERN S7)
- * - Cost telemetry via calculateGeminiCost (D-10)
+ * - Cost telemetry via calculateCost (Qwen pricing, D-10)
  */
 export async function runStage11Counterfactuals(
   aggregateResult: PredictionResult,
