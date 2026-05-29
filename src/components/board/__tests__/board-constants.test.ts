@@ -85,6 +85,12 @@ describe('GROUP_FRAMES world-space gaps (UAT gap 1 regression — 2026-05-26)', 
     const b = rectFor('content-analysis');
     expect(b.y - bottom(a)).toBeGreaterThanOrEqual(MIN_GAP);
   });
+
+  // Phase 4: Engine grown so the left column reaches the same bottom as the
+  // Audience centerpiece (800) — no lower-left void above Content Analysis.
+  it('engine fills the left column to the audience bottom line', () => {
+    expect(bottom(rectFor('engine'))).toBe(bottom(rectFor('audience')));
+  });
 });
 
 describe('BOARD_BOUNDS derived from re-spaced GROUP_FRAMES', () => {

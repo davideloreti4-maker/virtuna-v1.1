@@ -1,6 +1,6 @@
 /** @vitest-environment happy-dom */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { useBoardStore } from '@/stores/board-store';
 import { deriveEngineStageStatus, EngineGroup } from '../EngineGroup';
 import type { StageEvent, StageEventWave } from '@/lib/engine/events';
@@ -51,10 +51,25 @@ describe('EngineGroup', () => {
     );
   });
 
-  it('collapses to View pipeline → on complete', () => {
+  it('renders all 5 stages complete on history (complete phase, empty events)', () => {
     mockStream = { stages: [], phase: 'complete', partial: { personas: [] }, result: {} };
     render(<EngineGroup />);
-    expect(screen.getByRole('button', { name: /View pipeline/ })).toBeInTheDocument();
+    ['Qwen-VL segmentation', 'Hook decomp', 'Retention model', 'Persona simulator', 'Aggregator'].forEach((l) =>
+      expect(screen.getByRole('listitem', { name: `${l}: complete` })).toBeInTheDocument(),
+    );
+  });
+
+  it('shows "Pipeline complete" + total latency from result on history', () => {
+    mockStream = { stages: [], phase: 'complete', partial: { personas: [] }, result: { latency_ms: 12400 } };
+    render(<EngineGroup />);
+    expect(screen.getByText('Pipeline complete')).toBeInTheDocument();
+    expect(screen.getByText(/Qwen · 5 stages · 12\.4s/)).toBeInTheDocument();
+  });
+
+  it('shows past-tense subtitle for completed stages', () => {
+    mockStream = { stages: [], phase: 'complete', partial: { personas: [] }, result: {} };
+    render(<EngineGroup />);
+    expect(screen.getByText('Simulated 10 viewer personas')).toBeInTheDocument();
   });
 
   it('aria-live label updates with active stage', () => {
@@ -62,14 +77,6 @@ describe('EngineGroup', () => {
     const { container } = render(<EngineGroup />);
     const live = container.querySelector('[aria-live="polite"]');
     expect(live?.textContent).toBe('Reading the hook…');
-  });
-
-  it('re-expands when View pipeline badge is clicked', () => {
-    mockStream = { stages: [], phase: 'complete', partial: { personas: [] }, result: {} };
-    render(<EngineGroup />);
-    const badge = screen.getByRole('button', { name: /View pipeline/ });
-    fireEvent.click(badge);
-    expect(screen.getByRole('listitem', { name: /Qwen-VL segmentation: / })).toBeInTheDocument();
   });
 
   it('child 0 active when stage_start wave 0 received', () => {

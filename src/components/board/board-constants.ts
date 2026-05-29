@@ -25,7 +25,10 @@ export const CAMERA_DEFAULT_SCALE = 1;
  */
 export const GROUP_FRAMES: GroupFrameLayout[] = [
   { id: 'input',            label: 'Input',            bounds: { x:    0, y:    0, width:  240, height: 440 } },
-  { id: 'engine',           label: 'Engine',           bounds: { x:    0, y:  456, width:  240, height: 120 } },
+  // Engine grown to fill the left column down to the Audience/CA bottom line
+  // (472 + 328 = 800): the 9:16 Input card caps the column's top half, so the
+  // Engine pipeline stepper now fills the rest — killing the lower-left void.
+  { id: 'engine',           label: 'Engine',           bounds: { x:    0, y:  472, width:  240, height: 328 } },
   { id: 'audience',         label: 'Audience',         bounds: { x:  272, y:    0, width:  560, height: 800 } },
   { id: 'verdict',          label: 'Verdict',          bounds: { x:  864, y:    0, width:  360, height: 280 } },
   // Actions: tall hero column holding the inline reshoot script, "What to fix",
@@ -58,8 +61,9 @@ export const INPUT_NODE_BOUNDS = {
 export const CAMERA_PRESET_TARGETS: Record<string, Rect> = {
   overview: BOARD_BOUNDS,
   // D-09: Wave 0/1 auto-pan target = Input + Engine column (Engine + Hook decomp area).
-  // Internal-only preset — not user-facing in CameraOverlay.
-  engine: { x: 0, y: 0, width: 240, height: 576 },
+  // Internal-only preset — not user-facing in CameraOverlay. Height tracks the
+  // grown Engine frame (bottom 800) so the preset still frames the full column.
+  engine: { x: 0, y: 0, width: 240, height: 800 },
   // hero pair = Audience + Verdict union (D-07). Height tracks the taller
   // Audience frame so the preset still frames both.
   verdict: { x: 272, y: 0, width: 952, height: 800 },
