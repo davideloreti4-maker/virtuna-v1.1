@@ -6,6 +6,7 @@ import type {
   CtaSegmentResult,
   Factor,
   FeatureVector,
+  GeminiAudioSignals,
   GeminiVideoSignals,
   PersonaBehavioralAggregate,
   PlatformFitResult,
@@ -712,6 +713,26 @@ export async function aggregateScores(
     hook_decomposition = null; // non-fatal
   }
 
+  // Content-craft signals (board "Content craft" frame). The Omni Wave-1 analysis
+  // emits these on geminiResult.analysis but the aggregator historically consumed
+  // them only for scoring (video_signals → audio_perceptual; cta_segment → factors)
+  // and dropped them from PredictionResult. Surface them verbatim so the analyze
+  // route can stash them into variants.craft. Non-fatal, read defensively — these
+  // are absent on text/tiktok_url fallback paths. Populated BEFORE Stage 10/11
+  // (matches hook_decomposition / emotion_arc ordering).
+  const craftGemini = geminiResult.analysis as typeof geminiResult.analysis & {
+    video_signals?: GeminiVideoSignals | null;
+    audio_signals?: GeminiAudioSignals | null;
+    cta_segment?: CtaSegmentResult | null;
+    overall_impression?: string;
+    content_summary?: string;
+  };
+  const craft_video_signals = craftGemini.video_signals ?? null;
+  const craft_cta_segment = craftGemini.cta_segment ?? null;
+  const craft_audio_signals = craftGemini.audio_signals ?? null;
+  const craft_overall_impression = craftGemini.overall_impression ?? undefined;
+  const craft_content_summary = craftGemini.content_summary ?? undefined;
+
   // Phase 1 (R6.1, D-13, D-15, Pitfall #5) — optimal_post_window lookup. Inserted
   // BEFORE result assembly so Stage 10/11 critique + counterfactuals see the
   // field on the assembled PredictionResult. Non-fatal — null on Supabase error,
@@ -1141,6 +1162,13 @@ export async function aggregateScores(
     emotion_arc,
     // Phase 2 (Quick 260528-nqx) — hook_decomposition surfaced from Gemini analysis.
     hook_decomposition,
+    // Content-craft signals for the board "Content craft" frame. Surfaced here so
+    // the analyze route persists them into variants.craft (no DB column / migration).
+    video_signals: craft_video_signals,
+    cta_segment: craft_cta_segment,
+    audio_signals: craft_audio_signals,
+    overall_impression: craft_overall_impression,
+    content_summary: craft_content_summary,
     // Phase 1 (R1.9, B4) + Phase 3 (Plan 08) — anti-virality gate.
     // Initial value computed from PRE-Stage-10 confidence (post-Platt + post-HARD-03).
     // Phase 3: uses dual-trigger isAntiViralityGatedFull (avGateFull computed above).

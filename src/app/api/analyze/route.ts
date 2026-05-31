@@ -84,6 +84,66 @@ function cleanupRawUpload(
   }
 }
 
+/**
+ * Stash the board "Content craft" frame's signals into analysis_results.variants.craft.
+ *
+ * These four signals (video_signals, cta_segment, audio_signals, audio_perceptual_score)
+ * plus the editorial copy (overall_impression, content_summary) are emitted by the Omni
+ * Wave-1 analysis but have no dedicated DB column. Rather than a migration, we persist
+ * them into the existing `variants` JSONB — the same extensibility bag the filmstrip
+ * background task uses for `filmstrip_segments`.
+ *
+ * Read-merge-write (NOT a wholesale variants overwrite): the filmstrip extract route also
+ * merges into `variants`, and the two writers race (filmstrip extraction is fire-and-forget
+ * and may land before OR after this call). Spreading the current variants preserves
+ * `filmstrip_segments` regardless of order. Non-fatal: a failure here only blanks the Craft
+ * pillars, never the analysis itself.
+ */
+async function persistCraftToVariants(
+  service: ServiceClient,
+  id: string,
+  finalResult: PredictionResult,
+  log: Logger,
+): Promise<void> {
+  const craft = {
+    video_signals: finalResult.video_signals ?? null,
+    cta_segment: finalResult.cta_segment ?? null,
+    audio_signals: finalResult.audio_signals ?? null,
+    audio_perceptual_score: finalResult.audio_perceptual_score ?? null,
+    overall_impression: finalResult.overall_impression ?? null,
+    content_summary: finalResult.content_summary ?? null,
+  };
+  // Skip the round-trip entirely when there is nothing craft-worthy to persist
+  // (text / tiktok_url modes never produce video_signals or a cta_segment).
+  if (craft.video_signals === null && craft.cta_segment === null && craft.audio_signals === null) {
+    return;
+  }
+  try {
+    const { data: row, error: readErr } = await service
+      .from("analysis_results")
+      .select("variants")
+      .eq("id", id)
+      .single();
+    if (readErr || !row) {
+      log.warn("craft_variants_read_failed", { id, error: readErr?.message });
+      return;
+    }
+    const current = (row.variants ?? {}) as Record<string, unknown>;
+    const { error: writeErr } = await service
+      .from("analysis_results")
+      .update({ variants: { ...current, craft } as unknown as Json })
+      .eq("id", id);
+    if (writeErr) {
+      log.warn("craft_variants_write_failed", { id, error: writeErr.message });
+    }
+  } catch (err) {
+    log.warn("craft_variants_persist_threw", {
+      id,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -456,9 +516,10 @@ export async function POST(request: Request) {
         warnings: [...pipelineResult.warnings, ...result.warnings],
       };
 
+      const jsonInsertId = nanoid(12);
       const { error: insertError } = await service
         .from("analysis_results")
-        .insert({ ...buildInsertRow(finalResult, ruleContributions), id: nanoid(12) });
+        .insert({ ...buildInsertRow(finalResult, ruleContributions), id: jsonInsertId });
 
       if (insertError) {
         log.error("DB insert failed (json)", { error: insertError.message });
@@ -466,6 +527,9 @@ export async function POST(request: Request) {
         populatePredictionCache(contentHash, user.id, finalResult, {
           bypass: bypassCache,
         });
+        // Persist Content-craft signals into variants.craft (no migration). The
+        // row id was generated inline for the JSON insert above.
+        await persistCraftToVariants(service, jsonInsertId, finalResult, log);
       }
 
       // Track usage
@@ -620,6 +684,9 @@ export async function POST(request: Request) {
             populatePredictionCache(contentHash, user.id, finalResult, {
               bypass: bypassCache,
             });
+            // Persist Content-craft signals into variants.craft (no migration).
+            // analysisId is the upserted row id (Pitfall #6 placeholder → upsert).
+            await persistCraftToVariants(service, analysisId, finalResult, log);
           }
 
           // Track usage (increments AFTER successful analysis)
