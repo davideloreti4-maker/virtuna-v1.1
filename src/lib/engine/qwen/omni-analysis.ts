@@ -246,9 +246,21 @@ export async function analyzeVideoWithOmni(
         audio_signals:      data.audio_signals,
         hook_decomposition: data.hook_decomposition,
         cta_segment:        data.cta_segment,
+        // emotion_arc MUST be threaded here. The aggregator plucks it off
+        // geminiResult.analysis.emotion_arc (aggregator.ts ~692). Omitting it
+        // — the original bug — silently dropped a Zod-parsed field on EVERY run,
+        // so emotion_arc was null on 100% of persisted rows despite the prompt
+        // marking it REQUIRED (26/26 rows null, confirmed in prod). GeminiVideoAnalysis
+        // doesn't declare the field (Omni-only extension), so it rides through the
+        // `as` cast and the aggregator's matching `as unknown as { emotion_arc? }` read.
+        // Do NOT "clean up" by removing it — that re-introduces the drop.
+        emotion_arc:        data.emotion_arc,
       } as GeminiVideoAnalysis;
 
-      log.info("omni analysis complete", { model, cost_cents, attempt });
+      // emotion_arc_points surfaces whether the MODEL actually emitted the field
+      // (vs the assembly dropping it). After this fix, a run logging 0 points means
+      // the model genuinely returned none — a prompt problem, not a plumbing one.
+      log.info("omni analysis complete", { model, cost_cents, attempt, emotion_arc_points: data.emotion_arc?.length ?? 0 });
 
       return {
         geminiResult: { analysis, cost_cents },
