@@ -499,7 +499,9 @@ export async function POST(request: Request) {
         log.error("Pipeline error (json)", { error: message });
         return Response.json({ error: message }, { status: 500 });
       }
+      const tAgg = performance.now();
       const result = await aggregateScores(pipelineResult, undefined);
+      const aggregateMs = Math.round(performance.now() - tAgg);
 
       const ruleContributions = pipelineResult.ruleResult.matched_rules.map(
         (r) => ({
@@ -511,9 +513,11 @@ export async function POST(request: Request) {
         })
       );
 
+      // board-fix #2: persist TRUE E2E latency = pipeline + aggregate (see SSE branch).
       const finalResult: PredictionResult = {
         ...result,
         warnings: [...pipelineResult.warnings, ...result.warnings],
+        latency_ms: (result.latency_ms ?? 0) + aggregateMs,
       };
 
       const jsonInsertId = nanoid(12);
@@ -642,9 +646,10 @@ export async function POST(request: Request) {
             pipelineResult,
             /* onStageEvent: */ (event: StageEvent) => { send("stage", event); },
           );
+          const aggregateMs = Math.round(performance.now() - tAgg);
           log.info("stage_timing", {
             stage: "aggregate_scores_total",
-            ms: Math.round(performance.now() - tAgg),
+            ms: aggregateMs,
           });
 
           // Build rule_contributions JSONB for per-rule tracking (RULE-03)
@@ -656,10 +661,15 @@ export async function POST(request: Request) {
             tier: r.tier,
           }));
 
-          // Prepend pipeline warnings (partial failures) before DeepSeek warnings
+          // Prepend pipeline warnings (partial failures) before DeepSeek warnings.
+          // board-fix #2: persist TRUE E2E latency = pipeline + aggregate. result.latency_ms
+          // is pipeline-only (set in the aggregator BEFORE Stage 10/11 run), so it undercut
+          // the user-visible wall by the ~Stage-11 tail (~46s). The latency budget tracks
+          // this number — it must include the aggregate.
           const finalResult: PredictionResult = {
             ...result,
             warnings: [...pipelineResult.warnings, ...result.warnings],
+            latency_ms: (result.latency_ms ?? 0) + aggregateMs,
           };
 
           // board-fix #1: time the 3 serial DB writes (upsert + usage + safety-net
