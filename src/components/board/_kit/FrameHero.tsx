@@ -28,6 +28,13 @@ export interface FrameHeroProps {
   status?: { word: string; tone?: HeroTone };
   insight?: ReactNode;
   align?: 'center' | 'left';
+  /**
+   * Value typography. `'display'` (default) = the big 44px tabular number for
+   * numeric heroes (Score, rank). `'prose'` = a smaller 26px weight for verb /
+   * phrase heroes (Actions: "Fix before posting") so they don't wrap to two
+   * cramped 44px lines in a narrow frame.
+   */
+  size?: 'display' | 'prose';
   /** Hero visual slot — replaces the value block when provided. */
   children?: ReactNode;
   className?: string;
@@ -42,6 +49,7 @@ export function FrameHero({
   status,
   insight,
   align = 'left',
+  size = 'display',
   children,
   className,
 }: FrameHeroProps) {
@@ -60,7 +68,14 @@ export function FrameHero({
 
       {children ?? (
         <div className="flex items-end gap-2">
-          <span className="flex items-baseline text-[44px] font-semibold leading-none tracking-[-0.02em] tabular-nums text-white">
+          <span
+            className={cn(
+              'flex items-baseline font-semibold text-white',
+              size === 'prose'
+                ? 'text-[26px] leading-[1.18] tracking-[-0.01em]'
+                : 'text-[44px] leading-none tracking-[-0.02em] tabular-nums',
+            )}
+          >
             {prefix && (
               <span className="mr-2 text-[20px] font-medium tracking-normal text-white/55">
                 {prefix}

@@ -59,6 +59,17 @@ describe('FrameHero', () => {
     );
     expect(screen.getByTestId('hero-visual')).toBeTruthy();
   });
+
+  it('renders numeric heroes at display size and phrase heroes at prose size', () => {
+    const { rerender } = render(<FrameHero label="Virality score" value={78} unit="/100" />);
+    // Default: the big 44px tabular number.
+    expect(screen.getByTestId('frame-hero').innerHTML).toContain('text-[44px]');
+    // Prose: a verb phrase that would wrap to two cramped lines at 44px.
+    rerender(<FrameHero label="Next move" value="Fix before posting" size="prose" />);
+    const html = screen.getByTestId('frame-hero').innerHTML;
+    expect(html).toContain('text-[26px]');
+    expect(html).not.toContain('text-[44px]');
+  });
 });
 
 describe('StatTile / StatTileRow', () => {

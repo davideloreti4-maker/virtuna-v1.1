@@ -82,6 +82,7 @@ export function ActionsContent({
         <FrameHero
           label={hero.label}
           value={hero.verb}
+          size="prose"
           status={hero.status ? { word: hero.status, tone: hero.tone } : undefined}
           insight={hero.insight || undefined}
         />
