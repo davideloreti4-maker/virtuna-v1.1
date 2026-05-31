@@ -1,60 +1,52 @@
-# Milestone: MVP Cut
+# Milestone: v3.2 Viral Remix
 
-**Branch:** `milestone/mvp-cut`
-**Worktree:** `~/virtuna-mvp-cut/`
-**Started:** 2026-05-28
-**Status:** Active
-**Forks from:** `main` post-merge of PR #3 (result-surface @ 94b4663) + PR #4 (engine-hardening @ d772777)
+**Branch:** `milestone/viral-remix`
+**Worktree:** `~/virtuna-viral-remix/`
+**Started:** 2026-05-31
+**Status:** Planning
+**Forks from:** `feat/actions-frame-inline-redesign` @ `9626c92` (NOT `main`)
+
+## Why this base (not main)
+
+`main` is 76 commits behind and lacks the board-redesign + engine work this milestone reuses. Viral Remix reconfigures the existing board (swaps Verdict+Actions → Decode+Adapt) and rides the existing `/api/analyze` SSE pipeline — both of which only exist on the feat branch. The seed SPEC also lives on the feat branch, not main. Branching off the feat branch is the only base that has every dependency.
+
+**Reconciliation note:** PROJECT.md/MILESTONES.md edits made here live on this branch until the feat-branch work merges to main. Per the worktree convention these are normally main-only edits; the unusual base means they ride along on `milestone/viral-remix` and get reconciled at merge time.
 
 ## Purpose
 
-Cut Virtuna down to the minimum surface a signed-up user needs to get their first useful prediction and act on it. Everything that depends on the M2 retrieval corpus, the /trending dashboard, or unshipped persistence machinery comes out of the runtime. The carryover bugs the Result Surface milestone left visible (schema drift, orphaned video storage, half-wired hook decomposition + emotion arc) get fixed under one banner so MVP ship can stand on green tests, persisted columns, and a clean E2E happy path.
+Close the *front half* of the creator loop. Today Virtuna is reactive (bring your content → get graded). Remix adds proactive discovery → creation: paste a third-party viral TikTok in an explicit **Remix mode** → **Decode** (why it worked, repeatable structure vs luck) → **Adapt** (~3 niche-adapted concepts, format-not-content) → per-concept **Develop & predict** runs one concept through the existing pipeline → parent/child lineage ("remixed from" chip).
 
-This is a scope cut, not a redesign — Result Surface board substrate stays, engine pipeline stays, all model routing stays.
+Product spine (settled, do not re-litigate): **Decoder → Translator → Predict.**
 
-## Locked Decisions
+## Seed
 
-- **User scope:** signed-up users only. Teams are not MVP-critical.
-- **Dropped from MVP runtime:**
-  - Similar videos card + retrieval reads
-  - /trending dashboard page + `/api/trending/*` routes
-  - Old Phase 7 "Share & Export" entirely
-- **Kept (do not regress):**
-  - `scraped_videos` + `trending_sounds` tables + scraper cron
-  - Trend enrichment inside `/api/analyze` pipeline
-  - Audio fingerprint (re-enabled after embedder unblock, currently dormant)
-- **M2 corpus dependency:** rip retrieval / embedder / SimilarVideosCard from runtime; ingestion side stays intact so the M2 corpus milestone can pick it up later.
+`.planning/milestones/viral-remix-SPEC.md` — 8 locked requirements, ambiguity 0.21, full interview log + acceptance criteria. This milestone is seeded from that SPEC; requirements are derived from it rather than re-interviewed.
 
-## Out of Scope (Deferred from old Phase 8)
+## Locked Decisions (from seed SPEC)
 
-- Orientation tooltip polish
-- Paced verdict reveal
-- Full telemetry instrumentation
-- Lighthouse 90+ target
-- Full WCAG AA audit
+- **Explicit Remix toggle** at the input front door — no auto-detect / handle-matching.
+- **One board, two configs** — keep Input/Engine/Audience/Content Craft; swap Verdict+Actions → Decode+Adapt. No separate app surface.
+- **Per-concept Develop** — no bulk auto-scoring (engine E2E ~90–312s makes it prohibitive).
+- **`parent_id` lineage** + "remixed from" chip; child analyses appear in Recent.
+- **Format-adaptation framing, never content copy** (legal + craft).
+- **Niche from creator-profile** with inline fallback prompt.
+- **Qwen-only** for any new model calls (decode/adapt generation).
+- **TikTok-only** for this milestone.
 
-## Success Criteria
+## Reasoned-default assumptions (overridable)
 
-A signed-up user can:
+3 concepts; per-concept develop (not bulk); niche from creator-profile w/ inline fallback; Audience frame retained in remix mode (persona retention of the *viral* video serves Decode); TikTok-only.
 
-1. Sign in, land on /analyze, upload a video (mobile or desktop)
-2. Watch the engine pipeline complete with live audience heatmap, verdict, reshoot script, optimal post time — all populated from persisted columns, not derived workarounds
-3. Read hook decomposition + emotion arc with real values (not null-fallback paths)
-4. Not encounter orphaned video storage objects from their analysis
-5. Complete one end-to-end happy-path Playwright run in CI without flakiness
-6. Pass cross-browser smoke (Chromium + WebKit) on a regression audit before ship
+## First gate — ingestion-depth SPIKE (req #8)
 
-## Carryover Acknowledgments (Inputs to this Milestone)
+Constraint Clarity scored 0.62 (below the 0.65 gate) for one reason: it is **unconfirmed** whether `/api/analyze` ingests frames/transcript vs just preview metadata for a **non-owned** TikTok URL. Decode requires real structural signal. **The roadmap makes this spike the first phase — Decode cannot be planned until it resolves.**
 
-From Result Surface (handed forward, not blocking this milestone's start):
+## Out of Scope
 
-- Schema drift: `counterfactuals`, `hook_decomposition`, `confidence_label`, `anti_virality_gated` columns absent from `analysis_results`. Script route currently derives `confidence_label` inline.
-- Orphaned video storage: analysis `-I4GtlGVCQKO` confirmed orphan; root cause is retention cron timing OR upload→insert race.
-- Hook decomposition + emotion arc only half-wired (`aggregator.ts:686-693` path with null fallback).
-- Audience headline chips fixed today (0-1 → 0-100 scaling).
-- `videos/sign` returns 404 (not 500) for missing storage objects + logs.
-
-## Test Posture Entry
-
-`pnpm test`: 1619/1620 unit tests green on `main` at fork time (one flaky `Sidebar.recent.test.tsx`).
-`tsc --noEmit`: clean.
+- Radar / trend feed (daily "winning in your niche") — future milestone; sidebar nav hook only, no build.
+- Pattern Playbook (accumulated niche formulas) — future milestone.
+- Auto-detect mine-vs-theirs — rejected in favor of the toggle.
+- Separate Studio/Discover app surface — rejected; reconfigure the existing board.
+- Bulk auto-scoring of all concepts — cost/latency prohibitive.
+- Storing/redistributing source video — derive structural analysis only.
+- Non-TikTok platforms (Reels, Shorts).
