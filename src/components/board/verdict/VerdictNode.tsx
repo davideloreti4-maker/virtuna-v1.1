@@ -3,8 +3,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAnalysisStream, type AnalysisStream } from '@/hooks/queries/use-analysis-stream';
 import { usePermalinkAnalysis } from '@/hooks/queries/use-permalink-analysis';
 import { useBoardStore } from '@/stores/board-store';
+import { FrameHero, StatTileRow, FrameTabs, FrameTabPanel } from '../_kit';
 import { AntiViralityHeader } from './AntiViralityHeader';
-import { TopFixesList } from './TopFixesList';
 import { ScoreDistribution, type NicheCohort } from './ScoreDistribution';
 import { FactorBars } from './FactorBars';
 import { SignalTiles } from './SignalTiles';
@@ -13,42 +13,20 @@ import { useComparisons } from './use-comparisons';
 import { COPY, TELEMETRY } from './verdict-constants';
 import {
   bandLabel,
-  comparativeLine,
+  bandTone,
   confidenceRange,
-  deriveOneMove,
+  deriveBehavioralTiles,
+  deriveGatedHero,
   deriveSignalTiles,
-  formatTimestamp,
+  nicheDelta,
 } from './verdict-derive';
 import type { VerdictNodeProps } from './verdict-types';
 import type { PredictionResult } from '@/lib/engine/types';
 import { logger } from '@/lib/logger';
 
-const CONFIDENCE_DOT: Record<'HIGH' | 'MEDIUM' | 'LOW', string> = {
-  HIGH: 'var(--color-success)',
-  MEDIUM: 'var(--color-warning)',
-  LOW: 'var(--color-error)', // was bg-accent (coral) — coral is reserved for "you"/the fix
-};
-
-function Bolt() {
+function SectionHead({ children }: { children: React.ReactNode }) {
   return (
-    <svg width="13" height="15" viewBox="0 0 13 15" fill="none" aria-hidden className="shrink-0">
-      <path d="M7 0L0 8.5h4.5L5 15 13 6H8L7 0z" fill="var(--color-accent)" />
-    </svg>
-  );
-}
-
-function ZoneTitle({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
-  return (
-    <div className="mb-[14px] flex items-baseline justify-between">
-      <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">
-        {children}
-      </span>
-      {right && (
-        <span className="text-[10px] font-medium uppercase tracking-[0.06em] text-white/40">
-          {right}
-        </span>
-      )}
-    </div>
+    <div className="mb-3 text-[11px] uppercase tracking-[0.08em] text-white/45">{children}</div>
   );
 }
 
@@ -65,6 +43,7 @@ export function VerdictNode({ camera: _camera, layout: _layout }: VerdictNodePro
 
   const { data: comparisons } = useComparisons(analysisId || null);
   const niche: NicheCohort | null = comparisons?.niche ?? null;
+  const hasHistory = (comparisons?.history?.length ?? 0) > 0;
 
   // Debounced aria-live announcement (single polite region — root no longer
   // carries aria-live, killing the 3-overlapping-region announcement storm).
@@ -96,155 +75,188 @@ export function VerdictNode({ camera: _camera, layout: _layout }: VerdictNodePro
     });
   }, [isComplete, result]);
 
-  const oneMove = useMemo(() => (result ? deriveOneMove(result) : null), [result]);
-  const tiles = useMemo(() => (result ? deriveSignalTiles(result) : []), [result]);
+  const signalTiles = useMemo(() => (result ? deriveSignalTiles(result) : []), [result]);
+  const behavioralTiles = useMemo(
+    () => (result ? deriveBehavioralTiles(result) : []),
+    [result],
+  );
 
   return (
     <div
       aria-busy={isStreaming}
-      className="relative flex w-full flex-col"
+      className="relative flex w-full flex-col gap-4"
       data-testid="verdict-node"
     >
       <span aria-live="polite" className="sr-only" data-testid="verdict-aria-live">
         {ariaText}
       </span>
 
+      {/* Gated override band — folded lead lives in the hero; this thin band
+          keeps the "Post anyway →" escape hatch + the role="status" announcement. */}
       <AntiViralityHeader result={result} analysisId={analysisId} />
 
-      {/* AV-gated: surface the specific fixes (replaces the one-move banner) */}
-      {result && result.anti_virality_gated && (
-        <div className="mb-[18px]" data-testid="verdict-av-fixes">
-          <TopFixesList
-            suggestions={result.counterfactuals?.suggestions ?? []}
-            hasVideo={result.has_video}
-          />
-        </div>
-      )}
+      {/* ── Hero: the single dominant number ── */}
+      {!result ? <VerdictSkeleton /> : <VerdictHero result={result} niche={niche} />}
 
-      {/* ⚡ one move — only in the healthy state (AV header owns the gated state) */}
-      {result && !result.anti_virality_gated && oneMove && (
-        <div
-          className="mb-[18px] flex items-center gap-[10px] rounded-[10px] px-[13px] py-[10px]"
-          style={{
-            background: 'linear-gradient(90deg, rgba(255,127,80,0.085), rgba(255,127,80,0) 70%)',
-          }}
-          data-testid="one-move-banner"
+      {/* ── Tiles: behavioral percentiles (new row, not the engine signals) ── */}
+      {result && behavioralTiles.length > 0 && <StatTileRow tiles={behavioralTiles} />}
+
+      {/* ── Tabs: progressive depth ── */}
+      {result && (
+        <FrameTabs
+          tabs={[
+            { value: 'breakdown', label: 'Breakdown' },
+            { value: 'distribution', label: 'Distribution' },
+            ...(analysisId && hasHistory
+              ? [{ value: 'history', label: 'History' }]
+              : []),
+          ]}
+          defaultValue="breakdown"
         >
-          <Bolt />
-          <span className="text-[12.5px] leading-[1.4] text-white/70">
-            One move — <b className="font-semibold text-white">{oneMove.headline}</b>
-            {oneMove.timestampMs != null && (
-              <span className="text-white/50"> · at {formatTimestamp(oneMove.timestampMs)}</span>
+          <FrameTabPanel value="breakdown" className="flex flex-col gap-5">
+            {result.factors.length > 0 && (
+              <div>
+                <SectionHead>What drives it</SectionHead>
+                <FactorBars factors={result.factors} />
+              </div>
             )}
-          </span>
-        </div>
-      )}
+            {signalTiles.length > 0 && (
+              <div>
+                <SectionHead>Engine signals</SectionHead>
+                <SignalTiles tiles={signalTiles} />
+              </div>
+            )}
+          </FrameTabPanel>
 
-      {/* ── Zone ①: the verdict ── */}
-      {!result ? (
-        <VerdictSkeleton />
-      ) : (
-        <VerdictHero result={result} niche={niche} />
-      )}
+          <FrameTabPanel value="distribution">
+            <VerdictDistribution result={result} niche={niche} />
+          </FrameTabPanel>
 
-      {/* ── Zone ②: what drives it ── */}
-      {result && result.factors.length > 0 && (
-        <div className="mt-[26px]">
-          <ZoneTitle>What drives it</ZoneTitle>
-          <FactorBars factors={result.factors} />
-        </div>
-      )}
-
-      {/* ── Zone ③: signals ── */}
-      {result && (tiles.length > 0 || analysisId) && (
-        <div className="mt-[26px] flex flex-col gap-[15px]">
-          {tiles.length > 0 && (
-            <div>
-              <ZoneTitle>Signals</ZoneTitle>
-              <SignalTiles tiles={tiles} />
-            </div>
+          {analysisId && hasHistory && (
+            <FrameTabPanel value="history">
+              <VsHistoryCollapsible
+                analysisId={analysisId}
+                currentScore={result.overall_score}
+              />
+            </FrameTabPanel>
           )}
-          {analysisId && (
-            <VsHistoryCollapsible analysisId={analysisId} currentScore={result.overall_score} />
-          )}
-        </div>
+        </FrameTabs>
       )}
     </div>
   );
 }
 
+/** Hero — folds healthy + gated states into one dominant block. */
 function VerdictHero({ result, niche }: { result: PredictionResult; niche: NicheCohort | null }) {
+  const score = Math.round(result.overall_score);
+  const gated = result.anti_virality_gated;
+  const delta = nicheDelta(score, niche);
+  const gatedHero = gated ? deriveGatedHero(result) : null;
+
+  return (
+    <FrameHero
+      label="VIRALITY SCORE"
+      status={
+        gated
+          ? { word: gatedHero!.word, tone: 'crit' }
+          : { word: bandLabel(score), tone: bandTone(score) }
+      }
+      insight={
+        gated ? (
+          gatedHero!.insight ? (
+            <span>
+              Top fix — <b className="font-semibold text-white/85">{gatedHero!.insight}</b>
+            </span>
+          ) : (
+            'Review the breakdown before posting.'
+          )
+        ) : undefined
+      }
+    >
+      {/* Custom hero number row: the kit value block + a niche-median delta whose
+          suffix the generic <Delta> can't carry. Single verdict-score testid. */}
+      <div className="flex items-end gap-2">
+        <span className="text-[44px] font-semibold leading-none tracking-[-0.02em] tabular-nums text-white">
+          <span data-testid="verdict-score">{score}</span>
+          <span className="ml-1 text-[16px] font-medium text-white/40">/100</span>
+        </span>
+        {delta != null && delta !== 0 && (
+          <span
+            className={`mb-[6px] inline-flex items-center gap-[3px] text-[11px] font-medium tabular-nums ${
+              delta > 0 ? 'text-success' : 'text-error'
+            }`}
+          >
+            <span aria-hidden className="text-[7px] leading-none">
+              {delta > 0 ? '▲' : '▼'}
+            </span>
+            {Math.abs(delta)} vs median
+          </span>
+        )}
+      </div>
+    </FrameHero>
+  );
+}
+
+/** Distribution tab — the existing histogram/lane, plus the band label + the
+ *  honest confidence caption that used to live beside the hero number. */
+function VerdictDistribution({
+  result,
+  niche,
+}: {
+  result: PredictionResult;
+  niche: NicheCohort | null;
+}) {
   const score = Math.round(result.overall_score);
   const label = result.confidence_label;
   const range = confidenceRange(score, result.confidence);
   const showRangeText = label !== 'HIGH';
 
   return (
-    <div>
-      <ZoneTitle right="vs your niche">The verdict</ZoneTitle>
-      <div className="flex items-baseline gap-4">
-        <div
-          className="text-[62px] font-semibold leading-[0.78] tracking-[-0.04em] tabular-nums text-white/95"
-          data-testid="verdict-score"
-        >
-          {score}
-          <span className="align-super text-[0.3em] font-semibold text-white/40">/100</span>
-        </div>
-        <div className="flex-1 pb-0.5">
-          <div className="text-[17px] font-semibold tracking-[-0.015em]" data-testid="band-label">
-            {bandLabel(score)}
-          </div>
-          <div className="mt-[7px] text-[11.5px] leading-[1.5] text-white/55">
-            <span className="font-semibold text-white/75">{comparativeLine(score, niche)}</span>
-            <br />
-            {label && (
-              <span
-                className="mr-[5px] inline-block h-[5px] w-[5px] rounded-full align-middle"
-                style={{
-                  background: CONFIDENCE_DOT[label],
-                  boxShadow: `0 0 6px ${CONFIDENCE_DOT[label]}`,
-                }}
-                data-testid="confidence-dot"
-                data-confidence={label}
-                aria-hidden
-              />
-            )}
+    <div className="flex flex-col gap-3">
+      <div className="flex items-baseline justify-between">
+        <span className="text-[14px] font-semibold tracking-[-0.01em]" data-testid="band-label">
+          {bandLabel(score)}
+        </span>
+        {label && (
+          <span className="text-[11px] text-white/55">
+            <span
+              className="mr-[5px] inline-block h-[5px] w-[5px] rounded-full align-middle"
+              style={{
+                background: CONFIDENCE_DOT[label],
+                boxShadow: `0 0 6px ${CONFIDENCE_DOT[label]}`,
+              }}
+              data-testid="confidence-dot"
+              data-confidence={label}
+              aria-hidden
+            />
             Confidence <span className="font-semibold text-white/75">{label}</span>
             {showRangeText && ` · likely ${Math.round(range.lo)}–${Math.round(range.hi)}`}
-          </div>
-        </div>
+          </span>
+        )}
       </div>
-
-      <ScoreDistribution
-        score={score}
-        niche={niche}
-        range={range}
-        showRangeText={showRangeText}
-      />
+      <ScoreDistribution score={score} niche={niche} range={range} showRangeText={showRangeText} />
     </div>
   );
 }
 
+const CONFIDENCE_DOT: Record<'HIGH' | 'MEDIUM' | 'LOW', string> = {
+  HIGH: 'var(--color-success)',
+  MEDIUM: 'var(--color-warning)',
+  LOW: 'var(--color-error)', // coral is reserved for "you"/the fix
+};
+
 function VerdictSkeleton() {
   return (
-    <div data-testid="verdict-skeleton">
-      <ZoneTitle right="vs your niche">The verdict</ZoneTitle>
-      <div className="flex items-baseline gap-4">
-        <div className="text-[62px] font-semibold leading-[0.78] tabular-nums text-white/25 motion-safe:animate-skeleton-breathe">
+    <div data-testid="verdict-skeleton" className="flex flex-col gap-2">
+      <span className="text-[10px] uppercase tracking-[0.1em] text-white/45">VIRALITY SCORE</span>
+      <div className="flex items-end gap-2">
+        <span className="text-[44px] font-semibold leading-none tabular-nums text-white/25 motion-safe:animate-skeleton-breathe">
           --
-        </div>
-        <div className="flex-1 pb-0.5">
-          <div className="text-[17px] font-semibold text-white/30 motion-safe:animate-skeleton-breathe">
-            {COPY.SKELETON_CONFIDENCE}
-          </div>
-        </div>
+        </span>
       </div>
-      <div
-        className="mt-[18px] h-[114px] rounded-[12px] border border-white/[0.06] motion-safe:animate-skeleton-breathe"
-        style={{
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.022), rgba(255,255,255,0) 72%)',
-        }}
-      />
+      <span className="text-[13px] font-semibold text-white/30 motion-safe:animate-skeleton-breathe">
+        {COPY.SKELETON_CONFIDENCE}
+      </span>
     </div>
   );
 }

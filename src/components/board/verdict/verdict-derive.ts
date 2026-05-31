@@ -1,6 +1,8 @@
 import type { PredictionResult } from '@/lib/engine/types';
 import type { NicheCohort, ConfidenceRange } from './ScoreDistribution';
 import type { SignalTile } from './SignalTiles';
+import type { StatTileData } from '../_kit';
+import { fixCount } from './verdict-constants';
 
 // Pure derivations for the redesigned Score frame. No fabricated numbers — every
 // value traces to a real engine field; tiles/banner omit what isn't present.
@@ -112,4 +114,87 @@ export function deriveSignalTiles(result: PredictionResult): SignalTile[] {
   }
 
   return tiles.slice(0, 4);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Redesign-v2 selectors — map the same engine fields onto the shared kit's
+ * Hero + StatTileRow + tab semantics. No new numbers fabricated.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+export type ScoreTone = 'good' | 'warn' | 'crit' | 'neutral';
+
+/** Band → hero status tone. ≥70 good, 40–69 warn, <40 crit. */
+export function bandTone(score: number): ScoreTone {
+  if (score >= 70) return 'good';
+  if (score >= 40) return 'warn';
+  return 'crit';
+}
+
+/** Hero delta vs the niche median, in absolute score points — only when a real
+ *  cohort exists (otherwise no honest comparison to draw). Rounded; 0 is dropped
+ *  by <Delta> unless showZero. */
+export function nicheDelta(score: number, niche: NicheCohort | null): number | null {
+  if (!niche || !Number.isFinite(niche.median)) return null;
+  return Math.round(score - niche.median);
+}
+
+/** Parses an engine percentile string ("74th", "9th", "100th") to its integer.
+ *  Returns null for the malformed / empty case so the tile can degrade. */
+export function parsePercentile(raw: string | null | undefined): number | null {
+  if (!raw) return null;
+  const m = /\d+/.exec(raw);
+  if (!m) return null;
+  const n = Number(m[0]);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** The 4 behavioral-percentile tiles for the hero's StatTileRow (Share ·
+ *  Completion · Comment · Save). Each value is the raw engine percentile; the
+ *  sub-caption carries the predicted absolute %. Tiles whose percentile is
+ *  absent are omitted (never fabricated). Niche-cohort deltas are not derivable
+ *  — the comparisons endpoint exposes only an aggregate score histogram, no
+ *  per-metric cohort percentiles — so no `delta` is attached. */
+export function deriveBehavioralTiles(result: PredictionResult): StatTileData[] {
+  const bp = result.behavioral_predictions;
+  if (!bp) return [];
+
+  const rows: Array<{ k: string; pctl: string | undefined; abs: number | undefined }> = [
+    { k: 'Share', pctl: bp.share_percentile, abs: bp.share_pct },
+    { k: 'Completion', pctl: bp.completion_percentile, abs: bp.completion_pct },
+    { k: 'Comment', pctl: bp.comment_percentile, abs: bp.comment_pct },
+    { k: 'Save', pctl: bp.save_percentile, abs: bp.save_pct },
+  ];
+
+  const tiles: StatTileData[] = [];
+  for (const r of rows) {
+    const p = parsePercentile(r.pctl);
+    if (p == null) continue;
+    tiles.push({
+      k: r.k,
+      v: String(p),
+      u: 'th',
+      s: typeof r.abs === 'number' && Number.isFinite(r.abs) ? `${Math.round(r.abs)}% predicted` : undefined,
+    });
+  }
+  return tiles;
+}
+
+export interface GatedHero {
+  /** Gate label shown as the hero status word. */
+  word: string;
+  /** One-line top-fix headline folded into the hero insight (was the lead of
+   *  AntiViralityHeader + the first TopFixesList item). Null when no fix exists. */
+  insight: string | null;
+}
+
+/** Folds the AV-gated state into the single hero: the gate label as status word
+ *  and the first fix headline as the one-line insight. */
+export function deriveGatedHero(result: PredictionResult): GatedHero {
+  const n = fixCount(result.counterfactuals?.suggestions);
+  const word =
+    n > 0 ? `Don't post yet · fixable in ${n} ${n === 1 ? 'step' : 'steps'}` : 'Low confidence';
+  const firstFix = result.counterfactuals?.suggestions.find(
+    (s) => s.type === 'fix' && s.headline,
+  );
+  return { word, insight: firstFix?.headline ?? null };
 }

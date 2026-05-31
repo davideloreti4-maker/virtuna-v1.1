@@ -1,6 +1,7 @@
 /** @vitest-environment happy-dom */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { fixtures } from './fixtures/prediction-result';
@@ -76,18 +77,35 @@ describe('VerdictNode - shell', () => {
     expect(screen.getByTestId('verdict-aria-live').getAttribute('aria-live')).toBe('polite');
   });
 
-  it('renders the verdict score + distribution hero', () => {
+  it('renders the verdict score hero, and the distribution histogram under its tab', async () => {
+    const user = userEvent.setup();
     renderWithQuery(<VerdictNode camera={{} as never} layout={{} as never} />);
+    // Hero number is always visible.
     expect(screen.getByTestId('verdict-score')).toHaveTextContent('78');
+    // Distribution histogram now lives behind the Distribution tab (progressive
+    // disclosure — redesign v2). Activate the tab to mount it.
+    await user.click(screen.getByRole('tab', { name: 'Distribution' }));
     expect(screen.getByTestId('score-distribution')).toBeInTheDocument();
+    expect(screen.getByTestId('band-label')).toBeInTheDocument();
   });
 
-  it('renders committed factor bars (replaces the prose driver/risk summary)', () => {
+  it('renders committed factor bars in the default Breakdown tab', () => {
     renderWithQuery(<VerdictNode camera={{} as never} layout={{} as never} />);
     const bars = screen.getByTestId('factor-bars');
     // strongest + weakest factors from fixtures.complete both render as bars
     expect(bars).toHaveTextContent('Visual hook');
     expect(bars).toHaveTextContent('CTA');
+  });
+
+  it('renders the 4 behavioral-percentile stat tiles in the hero row', () => {
+    renderWithQuery(<VerdictNode camera={{} as never} layout={{} as never} />);
+    const row = screen.getByTestId('stat-tile-row');
+    expect(row).toHaveTextContent('Share');
+    expect(row).toHaveTextContent('Completion');
+    expect(row).toHaveTextContent('Comment');
+    expect(row).toHaveTextContent('Save');
+    // Share percentile from fixtures.complete = "80th"
+    expect(row).toHaveTextContent('80');
   });
 
   it('announces "Verdict ready: {N}th percentile, confidence HIGH" after 500ms with fixtures.complete', async () => {
