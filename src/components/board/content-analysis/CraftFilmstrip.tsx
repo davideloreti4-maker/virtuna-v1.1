@@ -5,7 +5,12 @@ import type { GeminiAudioSignals } from '@/lib/engine/types';
 import type { EmotionArcPoint } from '@/lib/engine/qwen/schemas';
 import type { CraftCell } from './content-analysis-types';
 import { COPY } from './content-analysis-constants';
-import { energyGradeFilter, fallbackCellGradient, buildWaveBars, formatTimeSec } from './content-analysis-derive';
+import { energyGradeFilter, buildWaveBars, formatTimeSec } from './content-analysis-derive';
+
+// Flat neutral cell surface shown when a keyframe is missing/failed. Deliberately
+// NOT the old warm `fallbackCellGradient` — a neutral placeholder keeps the strip's
+// shape without impersonating footage that didn't load.
+const EMPTY_CELL_BG = 'rgba(255,255,255,0.016)';
 
 // Film grain — a single fractal-noise tile, blended over the whole strip so the
 // cut keyframes read as one graded video rather than flat color swatches.
@@ -30,7 +35,7 @@ function Cell({ cell }: { cell: CraftCell }) {
   return (
     <div
       className="relative h-full overflow-hidden"
-      style={{ flex: `1 1 ${cell.widthPct}%`, background: fallbackCellGradient(cell.intensity) }}
+      style={{ flex: `1 1 ${cell.widthPct}%`, background: EMPTY_CELL_BG }}
       data-testid="craft-cell"
       data-hook={cell.isHook ? 'true' : 'false'}
     >
@@ -70,6 +75,10 @@ function Cell({ cell }: { cell: CraftCell }) {
 export function CraftFilmstrip({ cells, durationSec, arc, audio, audioCaption, ctaPresent, isLoading }: Props) {
   const waveBars = useMemo(() => buildWaveBars(arc, durationSec), [arc, durationSec]);
   const hasArc = arc.length > 0;
+  // Only apply the footage-grading passes (warm soft-light grade + film grain)
+  // when at least one cell resolved a real keyframe. Over neutral placeholders
+  // they'd re-introduce the "this is filmed video" impression we just removed.
+  const hasFrames = cells.some((c) => c.url != null);
 
   if (isLoading) {
     return (
@@ -116,20 +125,24 @@ export function CraftFilmstrip({ cells, durationSec, arc, audio, audioCaption, c
           <Cell key={cell.idx} cell={cell} />
         ))}
 
-        {/* one grade pass unifies the cuts into a single graded video */}
-        <div
-          className="pointer-events-none absolute inset-0 z-[3]"
-          style={{
-            background:
-              'linear-gradient(160deg, rgba(255,150,90,.10), rgba(20,24,40,.18) 70%)',
-            mixBlendMode: 'soft-light',
-          }}
-        />
-        {/* film grain across the whole strip */}
-        <div
-          className="pointer-events-none absolute inset-0 z-[4] opacity-[0.45]"
-          style={{ backgroundImage: GRAIN_URI, mixBlendMode: 'overlay' }}
-        />
+        {hasFrames && (
+          <>
+            {/* one grade pass unifies the cuts into a single graded video */}
+            <div
+              className="pointer-events-none absolute inset-0 z-[3]"
+              style={{
+                background:
+                  'linear-gradient(160deg, rgba(255,150,90,.10), rgba(20,24,40,.18) 70%)',
+                mixBlendMode: 'soft-light',
+              }}
+            />
+            {/* film grain across the whole strip */}
+            <div
+              className="pointer-events-none absolute inset-0 z-[4] opacity-[0.45]"
+              style={{ backgroundImage: GRAIN_URI, mixBlendMode: 'overlay' }}
+            />
+          </>
+        )}
         {/* coral end-cap: the abrupt close. one scalpel of color, only when no CTA. */}
         {!ctaPresent && (
           <div
