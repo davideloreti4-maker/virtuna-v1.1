@@ -50,10 +50,15 @@ export function CommandBar({ onContentSubmit }: Props) {
         type="button"
         onClick={() => setCollapsed((c) => !c)}
         className={cn(
-          'flex h-5 w-9 items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.04] text-foreground-muted backdrop-blur-sm transition-all duration-200 motion-reduce:transition-none hover:bg-white/[0.08] hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none',
+          // relative + coarse-only ::before expands the tap area to ~44px without
+          // bloating the slim grabber visual (Apple HIG hit-target on touch).
+          'relative flex h-5 w-9 items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.04] text-foreground-muted backdrop-blur-sm transition-all duration-200 motion-reduce:transition-none hover:bg-white/[0.08] hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none',
+          "pointer-coarse:before:absolute pointer-coarse:before:-inset-3 pointer-coarse:before:content-['']",
           collapsed
             ? 'opacity-100'
-            : 'opacity-0 group-hover:opacity-100',
+            // Hidden at rest on fine pointers (revealed on hover); always shown on
+            // touch, where there is no hover to reveal it.
+            : 'opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100',
         )}
         aria-label={collapsed ? 'Expand input' : 'Collapse input'}
       >

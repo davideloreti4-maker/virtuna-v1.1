@@ -258,7 +258,7 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
                     setDataDisclosureOpen((prev) => !prev);
                   }}
                   className={cn(
-                    "mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors",
+                    "mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors motion-reduce:transition-none pointer-coarse:h-11 pointer-coarse:w-11",
                     dataDisclosureOpen
                       ? "bg-white/[0.06] text-foreground/80"
                       : "text-foreground-muted/40 hover:bg-white/[0.05] hover:text-foreground/80",
