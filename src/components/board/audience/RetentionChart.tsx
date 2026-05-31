@@ -209,8 +209,11 @@ export function RetentionChart({
         )}
       </div>
 
-      {/* filmstrip — darkened keyframes, time-aligned; drop cell gets coral outline */}
-      {cells.length > 0 && (
+      {/* filmstrip — darkened keyframes, time-aligned; drop cell gets coral outline.
+          Only render when at least one cell resolved a real keyframe; otherwise the
+          row degraded to empty grey boxes (heatmap segments exist even with no
+          footage). Mirrors AudienceNode's hasVideo gate for the drop strip. */}
+      {cells.some((c) => c.url != null) && (
         <div className="mt-[9px] flex gap-[5px]" aria-label="Video keyframe filmstrip">
           {cells.map((cell) => (
             <div
@@ -222,7 +225,7 @@ export function RetentionChart({
                 width: `${cell.widthPct}%`,
                 aspectRatio: '16 / 9',
                 backgroundImage: cell.url ? `url('${cell.url}')` : undefined,
-                backgroundColor: cell.url ? undefined : 'rgba(255,255,255,0.04)',
+                backgroundColor: cell.url ? undefined : 'rgba(255,255,255,0.016)',
                 borderColor: cell.isDrop ? 'rgba(255,127,80,0.55)' : 'rgba(255,255,255,0.06)',
                 filter: cell.isDrop
                   ? 'brightness(.78) saturate(.8) contrast(1.04)'
