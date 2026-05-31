@@ -59,9 +59,12 @@ export function deriveSignalTiles(result: PredictionResult): SignalTile[] {
   // Top-level fields exist on the LIVE SSE result but are NOT persisted (no DB
   // column) — fall back to the mirror persisted inside heatmap so these tiles
   // survive permalink reload. (Same live-vs-persisted split as the craft frame.)
+  // Provenance sub-labels disambiguate these from the same-named numbers elsewhere:
+  // these are the WEIGHTED persona-simulation aggregates (the panel's hold/retention),
+  // NOT the Content-craft hook-quality score nor the Audience predicted watch-through.
   const hook = result.weighted_hook_score ?? result.heatmap?.weighted_hook_score;
   if (typeof hook === 'number' && Number.isFinite(hook)) {
-    tiles.push({ k: 'Hook', v: hookTo10(hook), u: '/10', s: 'open' });
+    tiles.push({ k: 'Hook', v: hookTo10(hook), u: '/10', s: 'weighted hold' });
   }
 
   const completion = result.weighted_completion_pct ?? result.heatmap?.weighted_completion_pct;
@@ -70,7 +73,7 @@ export function deriveSignalTiles(result: PredictionResult): SignalTile[] {
       k: 'Completion',
       v: String(Math.round(completion * 100)),
       u: '%',
-      s: 'watch-through',
+      s: 'weighted curve',
     });
   }
 

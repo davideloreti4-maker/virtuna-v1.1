@@ -206,9 +206,12 @@ export function AudienceNode(props: AudienceNodeProps) {
     const { finishing, total } = personasFinishing(personaNodes);
     const nichePct = nicheCompletion != null ? Math.round(nicheCompletion * 100) : null;
     const out: StatTileData[] = [];
-    out.push({ k: 'Avg watch-through', v: avg != null ? String(avg) : '—', u: avg != null ? '%' : undefined });
-    out.push({ k: 'Niche completion', v: nichePct != null ? String(nichePct) : '—', u: nichePct != null ? '%' : undefined });
-    out.push({ k: 'Finishing', v: total > 0 ? String(finishing) : '—', u: total > 0 ? `/${total}` : undefined });
+    // Provenance sub-labels: these are different lenses on completion, not the hero
+    // number disagreeing with itself. Hero = predicted watch-through (canonical);
+    // these are the persona-panel mean and the niche-slot cohort.
+    out.push({ k: 'Avg watch-through', v: avg != null ? String(avg) : '—', u: avg != null ? '%' : undefined, s: 'persona avg' });
+    out.push({ k: 'Niche completion', v: nichePct != null ? String(nichePct) : '—', u: nichePct != null ? '%' : undefined, s: 'niche slots' });
+    out.push({ k: 'Finishing', v: total > 0 ? String(finishing) : '—', u: total > 0 ? `/${total}` : undefined, s: 'reach 90%+' });
     return out;
   }, [personaNodes, nicheCompletion]);
 

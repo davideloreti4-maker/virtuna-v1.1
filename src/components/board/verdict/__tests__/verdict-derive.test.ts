@@ -68,8 +68,8 @@ describe('comparativeLine — honest cohort position (never a fabricated percent
 });
 
 describe('deriveSignalTiles — only present fields, defensive scales', () => {
-  it('normalizes hook to /10 regardless of 0-1 | 0-10 | 0-100 scale', () => {
-    expect(deriveSignalTiles(result({ weighted_hook_score: 0.72 }))[0]).toMatchObject({ k: 'Hook', v: '7.2' });
+  it('normalizes hook to /10 and tags it as the weighted-panel hold (not the craft hook)', () => {
+    expect(deriveSignalTiles(result({ weighted_hook_score: 0.72 }))[0]).toMatchObject({ k: 'Hook', v: '7.2', s: 'weighted hold' });
     expect(deriveSignalTiles(result({ weighted_hook_score: 7.2 }))[0]).toMatchObject({ v: '7.2' });
     expect(deriveSignalTiles(result({ weighted_hook_score: 72 }))[0]).toMatchObject({ v: '7.2' });
   });
@@ -81,7 +81,8 @@ describe('deriveSignalTiles — only present fields, defensive scales', () => {
         platform_fit: { fit_score: 72 } as unknown as PredictionResult['platform_fit'],
       }),
     );
-    expect(tiles.find((t) => t.k === 'Completion')).toMatchObject({ v: '68', u: '%' });
+    // Provenance tag distinguishes this from the Audience predicted watch-through.
+    expect(tiles.find((t) => t.k === 'Completion')).toMatchObject({ v: '68', u: '%', s: 'weighted curve' });
     expect(tiles.find((t) => t.k === 'Sound')).toMatchObject({ v: 'Rising', em: 'vel 87' });
     expect(tiles.find((t) => t.k === 'TikTok fit')).toMatchObject({ v: '72', u: '/100' });
   });
