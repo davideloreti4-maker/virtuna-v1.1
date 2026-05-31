@@ -284,21 +284,25 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
     (activeTab === "tiktok_url" && !formData.tiktok_url.trim()) ||
     (activeTab === "video_upload" && !formData.video_file);
 
+  // Proper-cased tier label ("Pro", not "pro") for the model selector.
+  const tierLabel =
+    APOLLO_TIERS.find((t) => t.id === apolloTier)?.name ?? apolloTier;
+
   return (
     <>
     <form
       onSubmit={handleSubmit}
       className={cn(
-        "flex flex-col rounded-lg border border-white/[0.06] overflow-hidden",
+        "flex flex-col rounded-xl border border-white/[0.06] overflow-hidden",
         className
       )}
       style={{
         background:
-          "linear-gradient(137deg, rgba(17,18,20,0.75) 4.87%, rgba(12,13,15,0.9) 75.88%)",
-        backdropFilter: "blur(5px)",
-        WebkitBackdropFilter: "blur(5px)",
+          "linear-gradient(137deg, rgba(17,18,20,0.8) 4.87%, rgba(12,13,15,0.92) 75.88%)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
         boxShadow:
-          "rgba(255,255,255,0.15) 0px 1px 1px 0px inset, 0 8px 32px rgba(0,0,0,0.3)",
+          "rgba(255,255,255,0.12) 0px 1px 0px 0px inset, 0 1px 2px rgba(0,0,0,0.4), 0 12px 40px -8px rgba(0,0,0,0.5)",
       }}
     >
       {/* Video upload mode */}
@@ -320,8 +324,9 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
               </button>
             </div>
           ) : (
-            <div className="px-2.5 pt-2.5 pb-0">
+            <div className="px-3 pt-2 pb-0">
               <VideoUpload
+                bare
                 file={null}
                 onFileSelect={(f) => {
                   if (!f) return;
@@ -378,7 +383,7 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
       )}
 
       {/* Bottom bar: mode switcher + model tier + submit */}
-      <div className="flex items-center justify-between px-2 pb-2 pt-2">
+      <div className="mt-1 flex items-center justify-between border-t border-white/[0.05] px-2.5 pb-2 pt-2">
         {/* Mode switcher */}
         <TooltipProvider delayDuration={400}>
           <div className="flex items-center gap-0.5">
@@ -393,15 +398,15 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
                       aria-pressed={isActive}
                       aria-label={label}
                       className={cn(
-                        "flex items-center gap-1.5 rounded-md py-1 transition-colors",
+                        "flex items-center gap-1.5 rounded-md py-1.5 transition-colors",
                         isActive
-                          ? "bg-white/[0.08] text-foreground px-2"
-                          : "text-foreground-muted hover:text-foreground hover:bg-white/[0.03] px-1.5",
+                          ? "bg-white/[0.08] text-foreground px-2.5"
+                          : "text-foreground-muted hover:text-foreground hover:bg-white/[0.04] px-1.5",
                       )}
                     >
-                      <ModeIcon className="h-3.5 w-3.5 shrink-0" />
+                      <ModeIcon className="h-4 w-4 shrink-0" />
                       {isActive && (
-                        <span className="text-[11px] font-medium">{label}</span>
+                        <span className="text-xs font-medium">{label}</span>
                       )}
                     </button>
                   </TooltipTrigger>
@@ -422,10 +427,11 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="flex items-center gap-1 rounded-md px-2 py-1.5 text-xs text-foreground-muted hover:text-foreground hover:bg-white/[0.05] transition-colors"
+                aria-label={`Model: Apollo ${tierLabel}`}
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-foreground-muted hover:text-foreground hover:bg-white/[0.05] transition-colors"
               >
-                Apollo {apolloTier}
-                <ChevronDown className="h-3 w-3 opacity-60" />
+                Apollo {tierLabel}
+                <ChevronDown className="h-3 w-3 opacity-50" />
               </button>
             </PopoverTrigger>
             <PopoverContent
@@ -460,14 +466,14 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
             type="submit"
             disabled={isSubmitDisabled}
             className={cn(
-              "flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors",
+              "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-150",
               isSubmitDisabled
-                ? "bg-white/5 text-foreground-muted cursor-not-allowed"
-                : "bg-accent text-accent-foreground hover:bg-accent/90 cursor-pointer"
+                ? "bg-white/[0.05] text-foreground-muted/50 cursor-not-allowed"
+                : "bg-accent text-accent-foreground shadow-[0_1px_2px_rgba(0,0,0,0.3)] hover:bg-accent-hover active:scale-95 cursor-pointer"
             )}
             aria-label="Submit test"
           >
-            <ArrowUp className="h-4 w-4" />
+            <ArrowUp className="h-[18px] w-[18px]" strokeWidth={2.25} />
           </button>
         </div>
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Upload, X } from "lucide-react";
+import { Info, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
@@ -26,6 +26,12 @@ export interface VideoUploadProps {
   uploadProgress?: number;
   /** Additional className */
   className?: string;
+  /**
+   * Seamless variant — drops the bordered card chrome so the drop zone reads as
+   * native content of its host surface (e.g. the composer panel) instead of a
+   * nested box-in-a-box. Drag feedback becomes a coral wash.
+   */
+  bare?: boolean;
 }
 
 /** Format bytes into human-readable string (e.g. "14.2 MB") */
@@ -53,11 +59,12 @@ function formatDuration(seconds: number): string {
  * - Preview: File selected, no progress, shows thumbnail + metadata
  */
 const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
-  ({ file, onFileSelect, uploadProgress, className }, ref) => {
+  ({ file, onFileSelect, uploadProgress, className, bare = false }, ref) => {
     const [isDragging, setIsDragging] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
     const [thumbnail, setThumbnail] = React.useState<string | null>(null);
     const [duration, setDuration] = React.useState<number | null>(null);
+    const [dataDisclosureOpen, setDataDisclosureOpen] = React.useState(false);
     const inputRef = React.useRef<HTMLInputElement>(null);
 
     // Extract thumbnail and duration from video file
@@ -180,9 +187,17 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
       <div ref={ref} className={cn("w-full", className)}>
         <div
           className={cn(
-            "relative rounded-lg border transition-colors duration-150",
-            "bg-white/[0.03]",
-            isDragging ? "border-white/[0.12] bg-white/[0.05]" : "border-white/[0.06]",
+            "relative rounded-xl transition-colors duration-150",
+            bare
+              ? isDragging
+                ? "bg-[#FF7F50]/[0.07] ring-1 ring-inset ring-[#FF7F50]/30"
+                : ""
+              : cn(
+                  "border bg-white/[0.03]",
+                  isDragging
+                    ? "border-white/[0.12] bg-white/[0.05]"
+                    : "border-white/[0.06]",
+                ),
           )}
           onDragOver={!file ? handleDragOver : undefined}
           onDragLeave={!file ? handleDragLeave : undefined}
@@ -198,30 +213,72 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
             onChange={handleInputChange}
           />
 
-          {/* Empty state — compact horizontal drop zone */}
+          {/* Empty state — compact horizontal drop zone + data disclosure (INT-06) */}
           {!file && (
-            <button
-              type="button"
-              onClick={() => inputRef.current?.click()}
-              className={cn(
-                "flex w-full items-center gap-3",
-                "h-[52px] px-3 rounded-lg text-left",
-                "hover:bg-white/[0.03] transition-colors",
-                isDragging && "bg-white/[0.05]",
+            <div className="flex flex-col">
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => inputRef.current?.click()}
+                  className={cn(
+                    "group/drop flex flex-1 items-center gap-3 text-left transition-colors",
+                    bare
+                      ? "h-[54px] rounded-xl px-1 hover:bg-white/[0.02]"
+                      : "h-[52px] rounded-lg px-3 hover:bg-white/[0.03]",
+                    !bare && isDragging && "bg-white/[0.05]",
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
+                      isDragging
+                        ? "bg-[#FF7F50]/15 text-[#FF7F50]"
+                        : "bg-white/[0.05] text-foreground-muted group-hover/drop:bg-white/[0.08]",
+                    )}
+                  >
+                    <Upload className="w-4 h-4" />
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-medium text-foreground/90 leading-tight">
+                      Drop video or click to upload
+                    </span>
+                    <span className="text-[11px] text-foreground-muted/60 leading-tight tabular-nums">
+                      MP4, MOV, WebM · Max 200MB
+                    </span>
+                  </div>
+                </button>
+
+                {/* Privacy disclosure — sibling so it never triggers the picker */}
+                <button
+                  type="button"
+                  aria-label="About your data"
+                  aria-expanded={dataDisclosureOpen}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDataDisclosureOpen((prev) => !prev);
+                  }}
+                  className={cn(
+                    "mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors",
+                    dataDisclosureOpen
+                      ? "bg-white/[0.06] text-foreground/80"
+                      : "text-foreground-muted/40 hover:bg-white/[0.05] hover:text-foreground/80",
+                  )}
+                >
+                  <Info className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              {dataDisclosureOpen && (
+                <p
+                  className={cn(
+                    "pb-1.5 pt-0.5 text-[11px] leading-relaxed text-foreground-muted/70",
+                    bare ? "px-1" : "px-3",
+                  )}
+                >
+                  Videos auto-delete after 30 days. Keep them for re-analysis in Settings.
+                </p>
               )}
-            >
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/[0.05]">
-                <Upload className="w-3.5 h-3.5 text-foreground-muted" />
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-sm text-foreground-muted leading-tight">
-                  Drop video or click to upload
-                </span>
-                <span className="text-[10px] text-foreground-muted/40 leading-tight">
-                  MP4, MOV, WebM · Max 200MB
-                </span>
-              </div>
-            </button>
+            </div>
           )}
 
           {/* Upload progress state */}

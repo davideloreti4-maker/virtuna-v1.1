@@ -40,19 +40,26 @@ export function CommandBar({ onContentSubmit }: Props) {
   return (
     <div
       ref={containerRef}
-      className="fixed bottom-4 left-1/2 z-[200] -translate-x-1/2 flex flex-col items-center gap-1.5"
+      className="group fixed bottom-4 left-1/2 z-[200] -translate-x-1/2 flex flex-col items-center gap-1.5"
       style={{ width: 'min(720px, calc(100vw - 32px))' }}
     >
-      {/* Collapse toggle */}
+      {/* Collapse handle — hidden at rest, fades in on hover; stays put while
+          collapsed so the bar is recoverable. Reads as a drawer grabber, not an
+          orphaned circle. */}
       <button
         type="button"
         onClick={() => setCollapsed((c) => !c)}
-        className="flex items-center justify-center w-5 h-5 rounded-full bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] transition-colors"
+        className={cn(
+          'flex h-5 w-9 items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.04] text-foreground-muted backdrop-blur-sm transition-all duration-200 hover:bg-white/[0.08] hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none',
+          collapsed
+            ? 'opacity-100'
+            : 'opacity-0 group-hover:opacity-100',
+        )}
         aria-label={collapsed ? 'Expand input' : 'Collapse input'}
       >
         <ChevronDown
           className={cn(
-            'h-2.5 w-2.5 text-foreground-muted transition-transform duration-200',
+            'h-3 w-3 transition-transform duration-200',
             collapsed && 'rotate-180',
           )}
         />

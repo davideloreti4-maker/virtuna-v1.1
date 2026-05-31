@@ -11,7 +11,7 @@ const PRESET_LABELS: Record<CameraPresetKey, string> = {
   engine: '', // internal-only auto-pan preset — not user-facing
   verdict: 'Verdict',
   audience: 'Audience',
-  'content-analysis': 'Content Analysis',
+  'content-analysis': 'Content craft',
 };
 
 const PRESET_KEYS: Record<CameraPresetKey, string> = {
@@ -24,15 +24,19 @@ const PRESET_KEYS: Record<CameraPresetKey, string> = {
 
 const PRESET_ORDER: CameraPresetKey[] = ['overview', 'verdict', 'audience', 'content-analysis'];
 
-/** Flat square keycap hint — crisp mono glyph, coral tint when active. */
+/**
+ * Keyboard-shortcut hint. Hidden (zero-width) at rest so a bare "0/1/2/3" never
+ * reads as a count badge; slides in as a mono keycap on hover of its tab. The
+ * shortcut also lives in the button's title/aria for persistent discoverability.
+ */
 function KeyBadge({ glyph, active = false }: { glyph: string; active?: boolean }) {
   return (
     <span
       aria-hidden="true"
-      className={`hidden h-5 w-5 items-center justify-center rounded-[5px] border font-mono text-[11px] leading-none tabular-nums transition-colors sm:inline-flex ${
+      className={`ml-0 hidden h-5 max-w-0 items-center justify-center overflow-hidden rounded-[5px] border font-mono text-[11px] leading-none tabular-nums opacity-0 transition-all duration-200 group-hover:ml-1.5 group-hover:max-w-[28px] group-hover:opacity-100 group-focus-visible:ml-1.5 group-focus-visible:max-w-[28px] group-focus-visible:opacity-100 sm:inline-flex ${
         active
-          ? 'border-[#FF7F50]/30 bg-[#FF7F50]/10 text-[#FF7F50]'
-          : 'border-white/[0.08] bg-white/[0.02] text-foreground/35 group-hover:border-white/[0.12] group-hover:text-foreground/70'
+          ? 'border-[#FF7F50]/30 bg-[#FF7F50]/10 px-1.5 text-[#FF7F50]'
+          : 'border-white/[0.1] bg-white/[0.02] px-1.5 text-foreground/60'
       }`}
     >
       {glyph}
@@ -62,15 +66,15 @@ export function CameraOverlay({ activePreset, onSelect }: CameraOverlayProps) {
             aria-pressed={isActive}
             title={`Press ${PRESET_KEYS[key]} to switch view`}
             onClick={() => onSelect(key)}
-            className={`group flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF7F50] ${
+            className={`group flex items-center whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF7F50] ${
               isActive
-                ? 'bg-white/[0.1] text-foreground'
+                ? 'bg-white/[0.08] text-foreground'
                 : 'text-foreground/55 hover:bg-white/[0.04] hover:text-foreground/90'
             }`}
           >
             <span>
               {key === 'content-analysis'
-                ? <><span className="sm:hidden">Analysis</span><span className="hidden sm:inline">Content Analysis</span></>
+                ? <><span className="sm:hidden">Craft</span><span className="hidden sm:inline">Content craft</span></>
                 : PRESET_LABELS[key]}
             </span>
             <KeyBadge glyph={PRESET_KEYS[key]} active={isActive} />
@@ -83,7 +87,7 @@ export function CameraOverlay({ activePreset, onSelect }: CameraOverlayProps) {
         aria-keyshortcuts="R"
         title="Press R to switch view"
         onClick={() => onSelect('overview')}
-        className="group hidden items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[13px] font-medium text-foreground/55 transition-colors duration-150 hover:bg-white/[0.04] hover:text-foreground/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF7F50] sm:flex"
+        className="group hidden items-center whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[13px] font-medium text-foreground/55 transition-colors duration-150 hover:bg-white/[0.04] hover:text-foreground/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF7F50] sm:flex"
       >
         <span>Reset</span>
         <KeyBadge glyph="R" />

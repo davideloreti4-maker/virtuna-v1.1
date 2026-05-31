@@ -30,13 +30,13 @@ export function ViewModeToggle({ mode, onSelect }: Props) {
       role="group"
       aria-label="Board view mode"
       data-testid="view-mode-toggle"
-      className={`fixed left-1/2 z-[150] flex -translate-x-1/2 items-center gap-0.5 rounded-xl border border-white/[0.06] p-1 ${topClass}`}
+      className={`fixed left-1/2 z-[150] flex -translate-x-1/2 items-center gap-0.5 rounded-lg border border-white/[0.06] p-0.5 ${topClass}`}
       style={{
-        background: 'linear-gradient(137deg, rgba(17,18,20,0.85) 4.87%, rgba(12,13,15,0.95) 75.88%)',
+        background: 'linear-gradient(137deg, rgba(17,18,20,0.7) 4.87%, rgba(12,13,15,0.85) 75.88%)',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
         boxShadow:
-          'rgba(0,0,0,0.4) 0 8px 24px -6px, rgba(255,255,255,0.08) 0 1px 0 0 inset',
+          'rgba(0,0,0,0.3) 0 4px 12px -4px, rgba(255,255,255,0.06) 0 1px 0 0 inset',
       }}
     >
       {OPTIONS.map(({ value, label, icon }) => {
@@ -49,10 +49,10 @@ export function ViewModeToggle({ mode, onSelect }: Props) {
             aria-label={`${label} view`}
             data-testid={`view-mode-${value}`}
             onClick={() => onSelect(value)}
-            className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF7F50] ${
+            className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 text-xs font-medium transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF7F50] ${
               isActive
-                ? 'bg-white/[0.1] text-foreground'
-                : 'text-foreground/55 hover:bg-white/[0.04] hover:text-foreground/90'
+                ? 'bg-white/[0.08] text-foreground'
+                : 'text-foreground/50 hover:bg-white/[0.04] hover:text-foreground/90'
             }`}
           >
             <Icon icon={icon} size={16} />
