@@ -149,6 +149,46 @@ describe("length_fit bands (Hoyos #5/#6, Ava #37)", () => {
   it("null duration → unknown", () => expect(lenStatus(null)).toBe("unknown"));
 });
 
+describe("durationOverride + narrow RulebookInput", () => {
+  it("durationOverride wins over an absent/unreliable feature_vector duration", () => {
+    // feature_vector says null (the board's distrusted path); override supplies 34s.
+    const rb = deriveCreatorRulebook(
+      full({ feature_vector: { durationSeconds: null } as PredictionResult["feature_vector"] }),
+      { durationOverride: 34 },
+    );
+    const c = byId(rb, "length_fit");
+    expect(c.status).toBe("pass");
+    expect(c.actual).toBe("34s");
+  });
+
+  it("durationOverride takes precedence even when feature_vector has a value", () => {
+    const rb = deriveCreatorRulebook(
+      full({ feature_vector: { durationSeconds: 120 } as PredictionResult["feature_vector"] }),
+      { durationOverride: 34 },
+    );
+    expect(byId(rb, "length_fit").status).toBe("pass");
+  });
+
+  it("accepts a plain RulebookInput (board adapter shape) with no PredictionResult cast", () => {
+    // Exactly the object the board's dual-read adapter builds: feature_vector duration is
+    // null (board distrusts it) and the real duration arrives via durationOverride.
+    const rb = deriveCreatorRulebook(
+      {
+        hook_decomposition: hook(),
+        video_signals: { visual_production_quality: 8, hook_visual_impact: 8, pacing_score: 8, transition_quality: 7 },
+        cta_segment: cta(true),
+        audio_signals: audio(7),
+        factors: factors(),
+        feature_vector: { durationSeconds: null },
+      },
+      { durationOverride: 31 },
+    );
+    expect(rb.knownCount).toBe(11);
+    expect(byId(rb, "three_hook_stack").status).toBe("pass");
+    expect(byId(rb, "length_fit").status).toBe("pass");
+  });
+});
+
 describe("watermark anti-pattern", () => {
   it("any platform watermarked → fail with list", () => {
     const rb = deriveCreatorRulebook(

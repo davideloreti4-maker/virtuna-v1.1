@@ -29,8 +29,31 @@ import type {
   GeminiAudioSignals,
   GeminiVideoSignals,
   HookDecomposition,
-  PredictionResult,
 } from "./types";
+
+/**
+ * Narrow input the Rulebook actually reads — a structural subset of PredictionResult,
+ * so a full `PredictionResult` is assignable with no cast. The board passes an adapted
+ * object (lifting `variants.craft.*` to top level on the permalink path) that satisfies
+ * this shape directly. Every field optional — absent → "unknown" checks.
+ */
+export interface RulebookInput {
+  hook_decomposition?: HookDecomposition | null;
+  video_signals?: GeminiVideoSignals | null;
+  cta_segment?: CtaSegmentResult | null;
+  audio_signals?: GeminiAudioSignals | null;
+  factors?: Factor[];
+  feature_vector?: { durationSeconds: number | null } | null;
+}
+
+export interface RulebookOptions {
+  /**
+   * Authoritative duration (seconds) when `feature_vector.durationSeconds` is absent or
+   * unreliable — the board derives duration from the segment grid, not the feature vector.
+   * Takes precedence over `feature_vector.durationSeconds`.
+   */
+  durationOverride?: number | null;
+}
 
 export type RuleStatus = "pass" | "warn" | "fail" | "unknown";
 export type Creator = "Hoyos" | "Ava" | "Hormozi";
@@ -158,15 +181,20 @@ function deriveWatermark(
 }
 
 /**
- * Derive the deterministic Creator Rulebook from an engine PredictionResult.
- * Pure — no I/O, no model calls. Absent signals → "unknown" (not a fabricated verdict).
+ * Derive the deterministic Creator Rulebook from a RulebookInput (PredictionResult is
+ * assignable). Pure — no I/O, no model calls. Absent signals → "unknown" (not a
+ * fabricated verdict). Pass `opts.durationOverride` when the caller has a more reliable
+ * duration than `feature_vector.durationSeconds` (e.g. the board's segment-derived value).
  */
-export function deriveCreatorRulebook(result: PredictionResult): CreatorRulebook {
-  const hook: HookDecomposition | null | undefined = result.hook_decomposition;
-  const vs: GeminiVideoSignals | null | undefined = result.video_signals;
-  const cta: CtaSegmentResult | null | undefined = result.cta_segment;
-  const audio: GeminiAudioSignals | null | undefined = result.audio_signals;
-  const dur = result.feature_vector?.durationSeconds ?? null;
+export function deriveCreatorRulebook(
+  input: RulebookInput,
+  opts?: RulebookOptions,
+): CreatorRulebook {
+  const hook: HookDecomposition | null | undefined = input.hook_decomposition;
+  const vs: GeminiVideoSignals | null | undefined = input.video_signals;
+  const cta: CtaSegmentResult | null | undefined = input.cta_segment;
+  const audio: GeminiAudioSignals | null | undefined = input.audio_signals;
+  const dur = opts?.durationOverride ?? input.feature_vector?.durationSeconds ?? null;
 
   const length = deriveLengthFit(dur);
   const stack = deriveThreeHookStack(hook);
@@ -269,8 +297,8 @@ export function deriveCreatorRulebook(result: PredictionResult): CreatorRulebook
       id: "share_trigger",
       rule: "Shareability trigger",
       creator: "Hoyos",
-      status: band(factorScore(result.factors, "Share Trigger"), FACTOR_OK, FACTOR_WEAK),
-      actual: score10(factorScore(result.factors, "Share Trigger")),
+      status: band(factorScore(input.factors, "Share Trigger"), FACTOR_OK, FACTOR_WEAK),
+      actual: score10(factorScore(input.factors, "Share Trigger")),
       target: "≥7/10",
       numericRule: 35,
       note: "Shareability (not just retention) drives true viral growth.",
@@ -279,8 +307,8 @@ export function deriveCreatorRulebook(result: PredictionResult): CreatorRulebook
       id: "emotional_charge",
       rule: "Emotional charge",
       creator: "Hoyos",
-      status: band(factorScore(result.factors, "Emotional Charge"), FACTOR_OK, FACTOR_WEAK),
-      actual: score10(factorScore(result.factors, "Emotional Charge")),
+      status: band(factorScore(input.factors, "Emotional Charge"), FACTOR_OK, FACTOR_WEAK),
+      actual: score10(factorScore(input.factors, "Emotional Charge")),
       target: "≥7/10",
       note: "A clear emotional payoff is what gets a video shared and rewatched.",
     },

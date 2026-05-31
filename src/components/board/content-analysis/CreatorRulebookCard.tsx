@@ -7,9 +7,9 @@ import {
   deriveCreatorRulebook,
   type CreatorRulebook,
   type RulebookCheck,
+  type RulebookInput,
   type RuleStatus,
 } from '@/lib/engine/creator-rulebook';
-import type { PredictionResult } from '@/lib/engine/types';
 
 /**
  * Creator Rulebook scorecard — renders deriveCreatorRulebook() as an attributed,
@@ -22,8 +22,10 @@ import type { PredictionResult } from '@/lib/engine/types';
  * rework settles.
  */
 export interface CreatorRulebookCardProps {
-  /** Engine result — the Rulebook is derived from it. */
-  result?: PredictionResult | null;
+  /** Engine signals the Rulebook is derived from. A full PredictionResult is assignable. */
+  result?: RulebookInput | null;
+  /** Authoritative duration (board derives from segments — see creator-rulebook RulebookOptions). */
+  durationOverride?: number | null;
   /** Pre-derived Rulebook override (tests / storybook). Wins over `result`. */
   rulebook?: CreatorRulebook;
   isLoading?: boolean;
@@ -121,10 +123,16 @@ function Shell({ children, className }: { children: ReactNode; className?: strin
   );
 }
 
-export function CreatorRulebookCard({ result, rulebook, isLoading, className }: CreatorRulebookCardProps) {
+export function CreatorRulebookCard({
+  result,
+  durationOverride,
+  rulebook,
+  isLoading,
+  className,
+}: CreatorRulebookCardProps) {
   const rb = useMemo<CreatorRulebook | null>(
-    () => rulebook ?? (result ? deriveCreatorRulebook(result) : null),
-    [rulebook, result],
+    () => rulebook ?? (result ? deriveCreatorRulebook(result, { durationOverride }) : null),
+    [rulebook, result, durationOverride],
   );
 
   if (isLoading || !rb) {
