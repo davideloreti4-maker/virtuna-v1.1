@@ -446,7 +446,7 @@ export default function BoardPreviewPage() {
           </div>
           <div className="mt-4">
             <div className="mb-2 text-[11px] uppercase tracking-[0.08em] text-white/45">
-              Fixes · tap a frame to jump
+              Fixes
             </div>
             <div>
               {FIXES.map((f) => (
