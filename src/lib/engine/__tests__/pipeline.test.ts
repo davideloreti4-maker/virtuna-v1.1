@@ -551,7 +551,14 @@ describe("Phase 3 — onStageEvent + stub invocations", () => {
     );
     expect(wave1StartIdx).toBeGreaterThanOrEqual(0);
 
-    // Wave 3 stub fires after Wave 2
+    // OVERLAP (latency optimization): Wave 3 now runs CONCURRENTLY with Wave 2.
+    // Pass 1 starts with null deepseek grounding so it does NOT block on deepseek's
+    // ~60s reasoning call (which finishes just before Pass 2). So wave_3_personas
+    // stage_start now fires AFTER wave_2 is kicked off but BEFORE wave_2 ends —
+    // previously it was strictly after wave_2 ended (the old serial invariant).
+    const wave2StartIdx = events.findIndex(
+      (e) => e.type === "stage_start" && e.stage === "wave_2"
+    );
     const wave2EndIdx = events
       .map((e, i) => ({ e, i }))
       .reverse()
@@ -559,8 +566,10 @@ describe("Phase 3 — onStageEvent + stub invocations", () => {
     const wave3StartIdx = events.findIndex(
       (e) => e.type === "stage_start" && e.stage === "wave_3_personas"
     );
+    expect(wave2StartIdx).toBeGreaterThanOrEqual(0);
     expect(wave3StartIdx).toBeGreaterThanOrEqual(0);
-    expect(wave3StartIdx).toBeGreaterThan(wave2EndIdx);
+    expect(wave3StartIdx).toBeGreaterThan(wave2StartIdx); // Wave 3 starts after Wave 2 is kicked off
+    expect(wave3StartIdx).toBeLessThan(wave2EndIdx); // OVERLAP: Wave 3 starts before deepseek finishes
 
     // Validate stage events fire for every timed() boundary
     const stageStartNames = events

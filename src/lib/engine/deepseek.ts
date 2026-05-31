@@ -11,7 +11,7 @@ import {
   type RuleScoreResult,
   type TrendEnrichment,
 } from "./types";
-import { getQwenClient, QWEN_REASONING_MODEL } from "./qwen/client";
+import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "./qwen/client";
 import { calculateCost } from "./qwen/cost";
 import { stripModelOutput } from "./utils/strip";
 
@@ -490,6 +490,8 @@ export async function reasonWithDeepSeek(
             { role: "user",   content: userMessage },
           ],
           response_format: { type: "json_object" },
+          temperature: 0, // reproducible behavioral component scores (40% of the blend)
+          seed: QWEN_SEED,
         },
         { signal: controller.signal }
       );

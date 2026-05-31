@@ -15,7 +15,7 @@ import type { PredictionResult, CounterfactualResult } from "./types";
 import type { StageEventCallback } from "./events";
 import { emitStageStart, emitStageEnd } from "./events";
 import { calculateCost } from "./qwen/cost";
-import { getQwenClient, QWEN_REASONING_MODEL } from "./qwen/client";
+import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "./qwen/client";
 import {
   STABLE_COUNTERFACTUALS_SYSTEM_PROMPT,
   buildSignalContextUserMessage,
@@ -103,6 +103,8 @@ export async function runStage11Counterfactuals(
           ],
           response_format: { type: "json_object" },
           max_tokens: 1800,
+          temperature: 0, // reproducible counterfactual suggestion formatting
+          seed: QWEN_SEED,
           // @ts-expect-error — DashScope extensions not in OpenAI SDK types (enable_thinking + thinking_budget)
           enable_thinking: true,
           thinking_budget: 2000,

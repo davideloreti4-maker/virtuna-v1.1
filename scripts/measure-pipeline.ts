@@ -122,6 +122,11 @@ async function main() {
   console.log(`TOTAL              : ${(totalMs / 1000).toFixed(1)}s`);
   console.log(`engine latency_ms  : ${(result.latency_ms ?? 0) / 1000}s   cost_cents=${result.cost_cents}`);
   console.log(`overall_score=${result.overall_score} confidence=${result.confidence} label=${result.confidence_label}`);
+  // Behavioral driver (40% weight) — the field most exposed to the deepseek-overlap
+  // (Pass 1 grounding) change. Watch this across the A/B.
+  const pba = result.persona_behavioral_aggregate as Record<string, unknown> | null;
+  console.log(`behavioral_score   : ${(result as Record<string, unknown>).behavioral_score ?? "—"} | gemini_score=${(result as Record<string, unknown>).gemini_score ?? "—"}`);
+  if (pba) console.log(`persona_aggregate  : watch=${pba.avg_watch_through_pct ?? pba.watch_through_pct ?? "?"} scroll=${pba.avg_scroll_past_second ?? "?"} share=${pba.avg_share_intent ?? "?"}`);
   console.log(`counterfactuals    : ${result.counterfactuals ? "PRESENT band=" + result.counterfactuals.band : "NULL (schema fail / timeout)"}`);
   if (result.counterfactuals) {
     for (const sug of result.counterfactuals.suggestions)

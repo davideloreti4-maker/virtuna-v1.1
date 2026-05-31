@@ -13,7 +13,7 @@ import * as Sentry from "@sentry/nextjs";
 import { createLogger } from "@/lib/logger";
 import type { GeminiVideoAnalysis, Wave0Result } from "../types";
 import type { StageEventCallback } from "../events";
-import { getQwenClient, QWEN_OMNI_MODEL } from "./client";
+import { getQwenClient, QWEN_OMNI_MODEL, QWEN_SEED } from "./client";
 import { calculateCost } from "./cost";
 import { OmniAnalysisZodSchema } from "./schemas";
 import type { SegmentGrid } from "./schemas";
@@ -192,6 +192,8 @@ export async function analyzeVideoWithOmni(
             },
           ],
           response_format: { type: "json_object" },
+          temperature: 0, // reproducible factors/hook/segments — same video → same score
+          seed: QWEN_SEED,
         },
         { signal: controller.signal },
       );

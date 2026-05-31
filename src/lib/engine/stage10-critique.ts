@@ -3,7 +3,7 @@ import type { PredictionResult, CritiqueResult } from "./types";
 import type { StageEventCallback } from "./events";
 import { emitStageStart, emitStageEnd } from "./events";
 import { isCircuitOpen } from "./deepseek";
-import { getQwenClient, QWEN_REASONING_MODEL } from "./qwen/client";
+import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "./qwen/client";
 import { calculateCost } from "./qwen/cost";
 import {
   STABLE_CRITIQUE_SYSTEM_PROMPT,
@@ -70,6 +70,8 @@ export async function runStage10Critique(
             { role: "user", content: userMessage },
           ],
           response_format: { type: "json_object" },
+          temperature: 0, // reproducible consistency_score / confidence_adjustment
+          seed: QWEN_SEED,
           // @ts-expect-error — DashScope extensions not in OpenAI SDK types (enable_thinking + thinking_budget)
           enable_thinking: true,
           thinking_budget: 4000, // D-21: caps thinking at 4000 tokens (shorter than Pass 2's 8000)
