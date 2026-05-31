@@ -93,7 +93,7 @@ function SectionLabel({ children, className }: { children: React.ReactNode; clas
   return (
     <span
       className={cn(
-        "block px-2.5 mb-1.5 text-[10px] font-semibold text-foreground-muted/80 uppercase tracking-[0.08em]",
+        "block px-2.5 mb-1.5 text-[10px] font-semibold text-foreground-muted uppercase tracking-[0.08em]",
         "transition-opacity duration-150",
         className,
       )}
@@ -513,7 +513,7 @@ const isOnBoard = pathname.startsWith("/analyze");
           <div className="pt-4">
             {!effectiveCollapsed && <SectionLabel>Pinned</SectionLabel>}
             {!effectiveCollapsed && (
-              <p className="px-2.5 py-1 text-xs text-foreground-muted/80">
+              <p className="px-2.5 py-1 text-xs text-foreground-muted">
                 No pinned boards yet.
               </p>
             )}
@@ -544,7 +544,7 @@ const isOnBoard = pathname.startsWith("/analyze");
               </div>
             )}
             {!historyLoading && recentBoards.length === 0 && !effectiveCollapsed && (
-              <p className="px-2.5 py-1 text-xs text-foreground-muted/80">
+              <p className="px-2.5 py-1 text-xs text-foreground-muted">
                 No analyses yet.
               </p>
             )}
@@ -613,8 +613,8 @@ const isOnBoard = pathname.startsWith("/analyze");
           <div className="pt-2">
             {!effectiveCollapsed && (
               <div className="flex items-center gap-2.5 px-2.5 min-h-[34px] rounded-lg">
-                <Folder className="h-5 w-5 shrink-0 text-foreground-muted/70" />
-                <span className="text-sm font-medium text-foreground-muted/70">Projects</span>
+                <Folder className="h-5 w-5 shrink-0 text-foreground-muted" />
+                <span className="text-sm font-medium text-foreground-muted">Projects</span>
                 <span className="ml-auto text-[10px] font-medium uppercase tracking-wide text-foreground-muted bg-white/[0.05] rounded-md px-1.5 py-0.5">
                   Soon
                 </span>
