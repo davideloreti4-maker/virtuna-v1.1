@@ -27,11 +27,11 @@ const log = createLogger({ module: "stage11-counterfactuals" });
 
 export const QWEN_STAGE11_MODEL = QWEN_REASONING_MODEL;
 
-// 60s to match the other qwen3.6-plus reasoning callers (stage10 critique 60s,
-// deepseek 90s, pass2 90s). The previous 30s aborted nearly every run — the same
-// model takes ~45-61s in the deepseek/pass2 stages — so counterfactuals always
-// returned null. aggregateScores runs this concurrently with Stage 10, so the
-// higher ceiling does not extend the post-pipeline tail.
+// 60s fail-fast. With the bounded thinking budget (2000) + max_tokens cap added to
+// the call, stage11 lands ~30-35s single attempt — well under this ceiling, so the
+// retry (which previously DOUBLED latency to ~113-158s when the unbounded-thinking
+// call exceeded the timeout) effectively never fires on the happy path. The cap
+// here is now a genuine fail-fast for a stuck call, not a near-finish guillotine.
 const PER_CALL_TIMEOUT_MS = 60_000;
 
 /**
@@ -87,6 +87,13 @@ export async function runStage11Counterfactuals(
         ? "\nIMPORTANT: Return ONLY raw JSON — no explanation, no markdown fences."
         : "";
 
+      // Measured E2E: stage11 set NO thinking config, so qwen3.6-plus defaulted to
+      // thinking-mode ON + UNBOUNDED chain-of-thought → 90s+ single-attempt latency
+      // (vs stage10's 41.6s WITH a 4000-token budget). Counterfactuals is signal-
+      // grounded suggestion formatting, not novel reasoning, so a small budget is
+      // ample. In-pattern with stage10 (4000) / pass2 (8000); 2000 here keeps the
+      // creator-framework matching while bounding latency to ~30-35s. max_tokens
+      // caps the final output (3-4 short suggestions, never long-form).
       const completion = await ai.chat.completions.create(
         {
           model,
@@ -95,6 +102,10 @@ export async function runStage11Counterfactuals(
             { role: "user",   content: userMessage },
           ],
           response_format: { type: "json_object" },
+          max_tokens: 1800,
+          // @ts-expect-error — DashScope extensions not in OpenAI SDK types (enable_thinking + thinking_budget)
+          enable_thinking: true,
+          thinking_budget: 2000,
         },
         { signal: controller.signal },
       );

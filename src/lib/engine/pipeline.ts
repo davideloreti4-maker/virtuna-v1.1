@@ -795,6 +795,31 @@ export async function runPredictionPipeline(
   });
 
   // -------------------------------------------------------
+  // Platform-fit — re-parallelized. It depends ONLY on Wave 2 (deepseek
+  // reasoning) + Omni watermark detection, NOT on Wave 3. Kick it off here so
+  // it runs concurrently with Wave 3 (Pass 1 + Pass 2) instead of serially
+  // after Pass 2. It's ~17s vs Wave 3's ~88s, so it finishes inside Wave 3's
+  // window at ~0 marginal wall cost (was costing a full serial 17s before).
+  // -------------------------------------------------------
+  const watermarkDetected =
+    ((geminiResult.analysis as import("./types").GeminiVideoAnalysis).hook_decomposition)?.watermark_detected ?? null;
+  const platformFitPromise = runPlatformFit(
+    payload,
+    creatorContext,
+    deepseekRaw?.reasoning ?? null,
+    watermarkDetected,
+    onStageEvent,
+  ).catch((error) => {
+    Sentry.captureException(error, {
+      tags: { stage: "platform_fit", requestId },
+    });
+    warnings.push(
+      `Platform-fit unavailable: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return null;
+  });
+
+  // -------------------------------------------------------
   // Wave 3: Multi-persona simulation (Phase 7 fills the stub)
   // Runs AFTER Wave 2 completes — events fire after wave_2 stage_end.
   // Phase 7 Plan 07-02b: widened signature passes wave0Result (D-11 routing) +
@@ -866,27 +891,11 @@ export async function runPredictionPipeline(
   });
 
   // -------------------------------------------------------
-  // Phase 9 — Platform-fit: runs AFTER Wave 3, BEFORE aggregateScores.
-  // Uses deepseekResult's reasoning + Gemini's watermark detection for
-  // per-platform scoring. Non-critical — returns null on any failure.
+  // Phase 9 — Platform-fit: kicked off right after Wave 2 (see platformFitPromise
+  // above) so it runs concurrently with Wave 3 rather than serially after Pass 2.
+  // Awaited here, where its result is needed for PipelineResult assembly.
   // -------------------------------------------------------
-  const watermarkDetected =
-    ((geminiResult.analysis as import("./types").GeminiVideoAnalysis).hook_decomposition)?.watermark_detected ?? null;
-  const platformFitResult = await runPlatformFit(
-    payload,
-    creatorContext,
-    deepseekRaw?.reasoning ?? null,
-    watermarkDetected,
-    onStageEvent,
-  ).catch((error) => {
-    Sentry.captureException(error, {
-      tags: { stage: "platform_fit", requestId },
-    });
-    warnings.push(
-      `Platform-fit unavailable: ${error instanceof Error ? error.message : String(error)}`,
-    );
-    return null;
-  });
+  const platformFitResult = await platformFitPromise;
 
   Sentry.addBreadcrumb({
     category: "engine.pipeline",
