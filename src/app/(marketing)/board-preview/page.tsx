@@ -141,8 +141,8 @@ function Frame({
 }) {
   return (
     <section
-      className="overflow-hidden rounded-[12px] border border-white/[0.06] bg-transparent"
-      style={{ width }}
+      className="w-full overflow-hidden rounded-[12px] border border-white/[0.06] bg-transparent"
+      style={{ width, maxWidth: '100%' }}
     >
       <div className="flex h-9 items-center justify-between border-b border-white/[0.06] px-3">
         <span className="text-xs font-semibold text-white">{label}</span>
@@ -209,7 +209,7 @@ function EngineStepper() {
 
 export default function BoardPreviewPage() {
   return (
-    <main className="min-h-screen bg-[#07080a] px-8 py-10">
+    <main className="min-h-screen bg-[#07080a] px-4 py-10 sm:px-8">
       <header className="mx-auto mb-8 max-w-[1240px]">
         <h1 className="text-[15px] font-semibold text-white">Board · design-language preview</h1>
         <p className="mt-1 text-[12px] text-white/45">

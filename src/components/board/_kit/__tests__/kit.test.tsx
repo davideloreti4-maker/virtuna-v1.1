@@ -150,6 +150,28 @@ describe('PersonaGraph', () => {
     expect(graph.querySelectorAll('circle').length).toBeGreaterThanOrEqual(73);
     expect(within(graph).getByText(/Skeptic: 41% watch-through/)).toBeTruthy();
   });
+
+  it('exposes an accessible labelled image role for the cloud', () => {
+    render(<PersonaGraph personas={personas} reducedMotion />);
+    const graph = screen.getByTestId('persona-graph');
+    const svg = graph.querySelector('svg[role="img"]');
+    expect(svg).toBeTruthy();
+    expect(svg!.getAttribute('aria-label')).toMatch(/3 .*personas/);
+  });
+
+  it('gates the node pulse on reduced motion', () => {
+    // Default: the <animate> pulse is present (one per persona node).
+    const { unmount } = render(<PersonaGraph personas={personas} />);
+    expect(
+      screen.getByTestId('persona-graph').querySelectorAll('animate').length,
+    ).toBe(personas.length);
+    unmount();
+    // reducedMotion: every <animate> is stripped (no pulse).
+    render(<PersonaGraph personas={personas} reducedMotion />);
+    expect(
+      screen.getByTestId('persona-graph').querySelectorAll('animate').length,
+    ).toBe(0);
+  });
 });
 
 describe('TrendChart', () => {
