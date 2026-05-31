@@ -7,8 +7,9 @@ import {
   CREATOR_RULES_CONFLICTS,
 } from "../creator-rules";
 import { STABLE_COUNTERFACTUALS_SYSTEM_PROMPT } from "../stage11-counterfactuals-prompts";
-import { STABLE_CRITIQUE_SYSTEM_PROMPT } from "../stage10-critique-prompts";
 import { STABLE_PLATFORM_FIT_SYSTEM_PROMPT } from "../wave4/platform-fit-prompts";
+// NOTE: stage 10 critique is now deterministic TS (no LLM prompt) — its creator-rule
+// injection moved into per-check flag templates in stage10-critique.ts. No prompt to assert.
 
 // Locks the single-source-of-truth Creator Intelligence rules and their
 // injection into the three cache-stable V3 system prompts. If creator-rules.ts
@@ -56,12 +57,6 @@ describe("creator-rules injection into V3 system prompts", () => {
     expect(STABLE_COUNTERFACTUALS_SYSTEM_PROMPT).toContain("Hoyos");
   });
 
-  it("stage 10 critique carries consensus + numeric + attribution requirement", () => {
-    expect(STABLE_CRITIQUE_SYSTEM_PROMPT).toContain(CREATOR_RULES_CONSENSUS);
-    expect(STABLE_CRITIQUE_SYSTEM_PROMPT).toContain(CREATOR_RULES_NUMERIC);
-    expect(STABLE_CRITIQUE_SYSTEM_PROMPT.toLowerCase()).toContain("cite the creator");
-  });
-
   it("platform-fit carries weighted rubrics + never-average guardrail", () => {
     expect(STABLE_PLATFORM_FIT_SYSTEM_PROMPT).toContain("[weight 25]");
     expect(STABLE_PLATFORM_FIT_SYSTEM_PROMPT).toContain("NEVER average platforms");
@@ -74,7 +69,6 @@ describe("creator-rules injection into V3 system prompts", () => {
     // example text to the model.)
     for (const p of [
       STABLE_COUNTERFACTUALS_SYSTEM_PROMPT,
-      STABLE_CRITIQUE_SYSTEM_PROMPT,
       STABLE_PLATFORM_FIT_SYSTEM_PROMPT,
     ]) {
       expect(p).not.toContain("undefined");

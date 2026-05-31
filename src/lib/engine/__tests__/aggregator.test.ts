@@ -49,8 +49,8 @@ vi.mock("../gemini", () => ({
 
 vi.mock("../deepseek", () => ({
   DEEPSEEK_MODEL: "deepseek-test",
-  // isCircuitOpen=true → Stage 10 short-circuit at circuit breaker (no OpenAI client needed).
-  // Stage 11 now uses Gemini (Phase 13 Plan 02 rebuild) — mocked separately below.
+  // isCircuitOpen=true short-circuits Stage 11 (which makes the network call). Stage 10
+  // is now deterministic TS (no LLM, ignores the breaker) and always runs.
   isCircuitOpen: vi.fn(() => true),
 }));
 
@@ -1226,8 +1226,10 @@ describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
   });
 
   it("Phase 3: when heatmap triggers timeline pattern with confidence above 0.4, anti_virality_gated=true with reason='timeline_pattern'", async () => {
-    // Mock isAntiViralityGatedFull to return timeline_pattern gating
-    mockIsAntiViralityGatedFull.mockReturnValueOnce({
+    // Mock isAntiViralityGatedFull to return timeline_pattern gating. Persistent (not Once):
+    // deterministic Stage 10 now always runs, so the POST-critique re-eval calls this a 2nd
+    // time — the real fn is heatmap-deterministic and returns timeline_pattern on both calls.
+    mockIsAntiViralityGatedFull.mockReturnValue({
       gated: true,
       reason: "timeline_pattern" as const,
       dropoff_segment_indices: [1],
