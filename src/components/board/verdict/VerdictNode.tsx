@@ -7,7 +7,6 @@ import { FrameHero, StatTileRow, FrameTabs, FrameTabPanel } from '../_kit';
 import { AntiViralityHeader } from './AntiViralityHeader';
 import { ScoreDistribution, type NicheCohort } from './ScoreDistribution';
 import { FactorBars } from './FactorBars';
-import { SignalTiles } from './SignalTiles';
 import { VsHistoryCollapsible } from './VsHistoryCollapsible';
 import { useComparisons } from './use-comparisons';
 import { COPY, TELEMETRY } from './verdict-constants';
@@ -123,7 +122,7 @@ export function VerdictNode({ camera: _camera, layout: _layout }: VerdictNodePro
             {signalTiles.length > 0 && (
               <div>
                 <SectionHead>Engine signals</SectionHead>
-                <SignalTiles tiles={signalTiles} />
+                <StatTileRow tiles={signalTiles} />
               </div>
             )}
           </FrameTabPanel>

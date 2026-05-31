@@ -1,6 +1,5 @@
 import type { PredictionResult } from '@/lib/engine/types';
 import type { NicheCohort, ConfidenceRange } from './ScoreDistribution';
-import type { SignalTile } from './SignalTiles';
 import type { StatTileData } from '../_kit';
 import { fixCount } from './verdict-constants';
 
@@ -53,8 +52,8 @@ function hookTo10(v: number): string {
 
 /** Surfaces engine signals unused by the old Score frame. Each tile is included
  *  only when its source field is present + finite. */
-export function deriveSignalTiles(result: PredictionResult): SignalTile[] {
-  const tiles: SignalTile[] = [];
+export function deriveSignalTiles(result: PredictionResult): StatTileData[] {
+  const tiles: StatTileData[] = [];
 
   // Top-level fields exist on the LIVE SSE result but are NOT persisted (no DB
   // column) — fall back to the mirror persisted inside heatmap so these tiles
