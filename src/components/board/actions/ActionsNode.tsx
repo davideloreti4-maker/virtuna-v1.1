@@ -41,6 +41,9 @@ export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodePro
   const postOverride =
     (result as { optimal_post_override?: OptimalPostOverride } | null)?.optimal_post_override ??
     null;
+  // overall_score (0-100) — fallback band when Stage-11 counterfactuals are absent,
+  // so a strong video gets the ship-led "Post it" hero, not a wall of generic advice.
+  const score = (result as { overall_score?: number } | null)?.overall_score ?? null;
 
   const boardMachineState = useBoardStore((s) => s.boardState);
   const isAV = getFrameAntiViralityState('actions', boardMachineState) === 'anti-virality';
@@ -51,7 +54,7 @@ export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodePro
   const openingLine =
     script.data && !script.data.is_empty_state ? script.data.script.opening_line : null;
 
-  const view = deriveActionsView({ ready, counterfactuals, advice, weakest, isAV });
+  const view = deriveActionsView({ ready, counterfactuals, advice, weakest, isAV, score });
 
   // Telemetry: fire once per analysis on first complete render.
   const renderedRef = useRef(false);

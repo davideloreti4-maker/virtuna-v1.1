@@ -115,14 +115,9 @@ export function AudienceNode(props: AudienceNodeProps) {
     [survivalCurve],
   );
 
-  const dropTimeSec = useMemo<number | null>(() => {
-    if (!drop) return null;
-    return heatmap?.segments?.[drop.index]?.t_start ?? null;
-  }, [drop, heatmap?.segments]);
-
   const segmentGroups = useMemo(
-    () => buildSegmentGroups(heatmap, result?.persona_simulation_results, dropTimeSec),
-    [heatmap, result?.persona_simulation_results, dropTimeSec],
+    () => buildSegmentGroups(heatmap, result?.persona_simulation_results),
+    [heatmap, result?.persona_simulation_results],
   );
 
   const badKey = useMemo(() => worstBadGroupKey(segmentGroups), [segmentGroups]);

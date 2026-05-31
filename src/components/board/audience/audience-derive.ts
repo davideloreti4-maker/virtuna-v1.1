@@ -125,8 +125,7 @@ export function buildInsight(
   }
   const seg = segments[drop.index];
   const dropTime = seg?.t_start ?? 0;
-  const label = seg?.label?.trim();
-  const reason = label && label.length > 0 ? label : 'the pacing dips';
+  const reason = clampReason(seg?.label);
 
   const niche = groups.find((g) => g.key === 'niche');
   const fyp = groups.find((g) => g.key === 'fyp');
@@ -140,9 +139,24 @@ export function buildInsight(
   return {
     lead: 'Most viewers leave at ',
     time: formatTime(dropTime),
-    tail: `, where ${reason}.`,
+    // reason already carries its own terminal punctuation (. or …); when empty we
+    // close the sentence after the time. Prevents the ".." the raw label produced.
+    tail: reason ? `, where ${reason}` : '.',
     addendum: nicheStays ? " Your niche stays — new viewers don't." : '',
   };
+}
+
+/**
+ * Tidy a raw segment label into a glanceable insight clause.
+ * Real labels are full descriptive sentences (often ending in a period) — we strip
+ * trailing punctuation, cap to ≤7 words (ellipsis if cut), and re-add a single
+ * period. Empty labels fall back to a neutral phrase.
+ */
+function clampReason(label: string | undefined): string {
+  const raw = (label ?? '').replace(/\s+/g, ' ').trim().replace(/[.,;:…]+$/, '');
+  if (raw.length === 0) return 'the pacing dips.';
+  const words = raw.split(' ');
+  return words.length > 7 ? `${words.slice(0, 7).join(' ')}…` : `${raw}.`;
 }
 
 export interface SegmentGroup {
@@ -165,16 +179,13 @@ export interface SegmentGroup {
  *  - Fall back to the mean attention of the heatmap personas in that slot
  *    (0-1 → ×100).
  *
- * Descriptors (templated, ≤3 words):
- *  - fyp:         "fade at {dropTime}"
- *  - niche:       "hold through"
- *  - loyalist:    "watch, then loop"
- *  - cross_niche: "bounce at {earliest big drop of that group}"
+ * Descriptor is derived from each group's OWN watch-through % (retentionDesc) so
+ * it can never contradict the number beside it — the previous static labels claimed
+ * "Your niche · hold through" even when niche retention was the lowest row.
  */
 export function buildSegmentGroups(
   heatmap: HeatmapPayload | null,
   simResults: PersonaSimulationResult[] | undefined,
-  dropTimeSec: number | null,
 ): SegmentGroup[] {
   const personas = heatmap?.personas ?? [];
 
@@ -195,8 +206,6 @@ export function buildSegmentGroups(
     arr.push(r);
     simBySlot.set(key, arr);
   }
-
-  const dropLabel = dropTimeSec != null ? formatTime(dropTimeSec) : null;
 
   return SLOT_GROUPS.map(({ key, label }) => {
     const hmPersonas = bySlot.get(key) ?? [];
@@ -219,34 +228,18 @@ export function buildSegmentGroups(
       pct = 0;
     }
 
-    let desc: string;
-    switch (key) {
-      case 'fyp':
-        desc = dropLabel ? `fade at ${dropLabel}` : 'fade early';
-        break;
-      case 'niche':
-        desc = 'hold through';
-        break;
-      case 'loyalist':
-        desc = 'watch, then loop';
-        break;
-      case 'cross_niche': {
-        // Earliest big drop for cross-niche personas: smallest swipe_predicted_at,
-        // else the group-level swipe time, else a static descriptor.
-        const swipeTimes = hmPersonas
-          .map((p) => p.swipe_predicted_at)
-          .filter((t): t is number => t != null);
-        if (swipeTimes.length > 0) {
-          desc = `bounce at ${formatTime(Math.min(...swipeTimes))}`;
-        } else {
-          desc = 'bounce early';
-        }
-        break;
-      }
-    }
-
-    return { key, label, pct, desc, count };
+    return { key, label, pct, desc: retentionDesc(pct), count };
   });
+}
+
+/** ≤3-word retention characterization from a 0-100 watch-through %. Always honest
+ *  relative to the number it sits beside (no "holds through" on a 49% row). */
+function retentionDesc(pct: number): string {
+  if (pct >= 85) return 'watches, loops';
+  if (pct >= 70) return 'holds through';
+  if (pct >= 55) return 'fades late';
+  if (pct >= 40) return 'drops midway';
+  return 'leaves early';
 }
 
 /**

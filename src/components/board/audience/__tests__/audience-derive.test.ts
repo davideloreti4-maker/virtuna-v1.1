@@ -102,7 +102,7 @@ describe('mixLabel', () => {
 describe('buildSegmentGroups', () => {
   it('folds heatmap personas into 4 slot groups with counts', () => {
     const hm = buildHeatmapFixture();
-    const groups = buildSegmentGroups(hm, undefined, 21);
+    const groups = buildSegmentGroups(hm, undefined);
     expect(groups.map((g) => g.key)).toEqual(['fyp', 'niche', 'loyalist', 'cross_niche']);
     const byKey = Object.fromEntries(groups.map((g) => [g.key, g]));
     expect(byKey.fyp!.count).toBe(6);
@@ -113,7 +113,7 @@ describe('buildSegmentGroups', () => {
 
   it('niche group is NOT empty despite the niche_deep slot drift', () => {
     const hm = buildHeatmapFixture();
-    const groups = buildSegmentGroups(hm, undefined, 21);
+    const groups = buildSegmentGroups(hm, undefined);
     const niche = groups.find((g) => g.key === 'niche')!;
     expect(niche.count).toBeGreaterThan(0);
   });
@@ -148,39 +148,70 @@ describe('buildSegmentGroups', () => {
         reasoning: 'r',
       },
     ];
-    const groups = buildSegmentGroups(hm, sims, 21);
+    const groups = buildSegmentGroups(hm, sims);
     const byKey = Object.fromEntries(groups.map((g) => [g.key, g]));
     expect(byKey.fyp!.pct).toBeCloseTo(61, 5);
     expect(byKey.niche!.pct).toBeCloseTo(92, 5); // niche_deep sim joined into niche
   });
 
-  it('templates descriptors', () => {
+  it('derives descriptors from each group pct (never contradicts the %)', () => {
     const hm = buildHeatmapFixture();
-    const groups = buildSegmentGroups(hm, undefined, 21);
-    const byKey = Object.fromEntries(groups.map((g) => [g.key, g]));
-    expect(byKey.fyp!.desc).toBe('fade at 0:21');
-    expect(byKey.niche!.desc).toBe('hold through');
-    expect(byKey.loyalist!.desc).toBe('watch, then loop');
+    const groups = buildSegmentGroups(hm, undefined);
+    const expected = (pct: number) =>
+      pct >= 85
+        ? 'watches, loops'
+        : pct >= 70
+          ? 'holds through'
+          : pct >= 55
+            ? 'fades late'
+            : pct >= 40
+              ? 'drops midway'
+              : 'leaves early';
+    for (const g of groups) {
+      expect(g.desc).toBe(expected(g.pct));
+    }
+  });
+
+  it('a low-% group never claims it "holds through" (screenshot regression)', () => {
+    const hm = buildHeatmapFixture();
+    const sims: PersonaSimulationResult[] = [
+      {
+        persona_id: 'q',
+        archetype: 'niche_deep_buyer',
+        slot_type: 'niche_deep',
+        niche: 'x',
+        scroll_past_second: 1,
+        watch_through_pct: 49, // niche at 49% must NOT read "hold through"
+        comment_intent: 0,
+        share_intent: 0,
+        save_intent: 0,
+        rewatch_intent: 0,
+        reasoning: 'r',
+      },
+    ];
+    const niche = buildSegmentGroups(hm, sims).find((g) => g.key === 'niche')!;
+    expect(niche.pct).toBeCloseTo(49, 5);
+    expect(niche.desc).toBe('drops midway');
   });
 });
 
 describe('worstBadGroupKey', () => {
   it('returns null when all groups hold above ~40%', () => {
-    const groups = buildSegmentGroups(buildHeatmapFixture(), undefined, 21).map((g) => ({
+    const groups = buildSegmentGroups(buildHeatmapFixture(), undefined).map((g) => ({
       ...g,
       pct: 70,
     }));
     expect(worstBadGroupKey(groups)).toBeNull();
   });
   it('returns the single worst group below 40%', () => {
-    const groups = buildSegmentGroups(buildHeatmapFixture(), undefined, 21).map((g) => ({
+    const groups = buildSegmentGroups(buildHeatmapFixture(), undefined).map((g) => ({
       ...g,
       pct: g.key === 'cross_niche' ? 12 : 80,
     }));
     expect(worstBadGroupKey(groups)).toBe('cross_niche');
   });
   it('ignores groups with zero personas', () => {
-    const groups = buildSegmentGroups(buildHeatmapFixture(), undefined, 21).map((g) => ({
+    const groups = buildSegmentGroups(buildHeatmapFixture(), undefined).map((g) => ({
       ...g,
       pct: 5,
       count: g.key === 'fyp' ? 6 : 0,
@@ -193,7 +224,7 @@ describe('buildInsight', () => {
   it('produces a leave-at sentence with coral time', () => {
     const hm = buildHeatmapFixture();
     const drop = findBiggestDrop(normalizeCurve(hm.weighted_curve));
-    const groups = buildSegmentGroups(hm, undefined, hm.segments[drop!.index]!.t_start);
+    const groups = buildSegmentGroups(hm, undefined);
     const insight = buildInsight(hm.segments, drop, groups);
     expect(insight.lead).toBe('Most viewers leave at ');
     expect(insight.time).toMatch(/^\d:\d\d$/);
@@ -203,6 +234,33 @@ describe('buildInsight', () => {
     const insight = buildInsight([], null, []);
     expect(insight.time).toBeNull();
     expect(insight.lead).toContain('watch through');
+  });
+  it('clamps a long segment label and never emits a double period', () => {
+    const segments = [
+      {
+        idx: 0,
+        t_start: 0,
+        t_end: 10,
+        label: 'intro',
+        is_hook_zone: true,
+        keyframe_uri: null as string | null,
+      },
+      {
+        idx: 1,
+        t_start: 21,
+        t_end: 29,
+        // a real, verbose label that already ends in a period (the ".." source)
+        label: "Actor as the 'guy' character delivers the final punchline about his friend.",
+        is_hook_zone: false,
+        keyframe_uri: null as string | null,
+      },
+    ];
+    const drop = { index: 1, delta: 0.31, fromIndex: 0 };
+    const insight = buildInsight(segments, drop, []);
+    expect(insight.tail).not.toContain('..');
+    // clamped to ≤7 words + ellipsis, no stray trailing period before it
+    expect(insight.tail).toMatch(/^, where .+…$/);
+    expect(insight.tail.split(' ').length).toBeLessThanOrEqual(9); // ", where" + ≤7 words
   });
   it('appends the niche-stays addendum when niche >> fyp retention', () => {
     const segments = buildHeatmapFixture().segments;

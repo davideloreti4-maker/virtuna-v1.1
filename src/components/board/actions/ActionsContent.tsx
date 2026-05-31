@@ -6,7 +6,7 @@ import { logger } from '@/lib/logger';
 import { formatTime } from '@/lib/script-utils';
 import { ACTIONS_COPY, TELEMETRY } from './actions-constants';
 import { ActionsBestTime } from './ActionsBestTime';
-import type { ActionsView, FixItem } from './actions-derive';
+import type { ActionsView, AdviceRow, FixItem } from './actions-derive';
 import type { OptimalPostOverride } from './optimal-post/OptimalPostCard';
 import type { OptimalPostWindow } from '@/lib/engine/optimal-post';
 
@@ -37,8 +37,8 @@ export function ActionsContent({ view, openingLine, analysisId, bestTime }: Prop
               <Rule />
               <Kicker label={ACTIONS_COPY.KICKER_POLISH} tone="good" />
               <Rows>
-                {view.polish.map((f, i) => (
-                  <FixRow key={`polish-${i}`} fix={f} analysisId={analysisId} />
+                {view.polish.map((row, i) => (
+                  <AdviceRowItem key={`polish-${i}`} row={row} />
                 ))}
               </Rows>
             </>
@@ -50,15 +50,8 @@ export function ActionsContent({ view, openingLine, analysisId, bestTime }: Prop
         <div data-testid="actions-degraded">
           <Kicker label={view.kicker} tone="neutral" />
           <Rows>
-            {view.rows.map((s) => (
-              <div
-                key={s.id}
-                className="flex items-start gap-3 border-t border-white/[0.06] py-[11px] first:border-t-0"
-              >
-                <span className="text-[13.5px] leading-[1.45] tracking-[-0.008em] text-white/95">
-                  {s.text}
-                </span>
-              </div>
+            {view.rows.map((row, i) => (
+              <AdviceRowItem key={`advice-${i}`} row={row} />
             ))}
           </Rows>
           <Rule />
@@ -219,6 +212,42 @@ function FixRow({ fix, analysisId }: { fix: FixItem; analysisId: string | null }
       </button>
       {open && fix.detail && (
         <p className="pb-3 text-[12.5px] leading-[1.5] text-white/55">{fix.detail}</p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Optional-polish / degraded advice row. Shows a tight clamped headline; the full
+ * suggestion text expands inline on tap (same rhythm as FixRow, no timestamp).
+ * Replaces the old wall-of-text that printed Suggestion.text verbatim.
+ */
+function AdviceRowItem({ row }: { row: AdviceRow }) {
+  const [open, setOpen] = useState(false);
+  const hasDetail = row.detail.trim().length > 0 && row.detail.trim() !== row.headline.trim();
+  return (
+    <div className="border-t border-white/[0.06] first:border-t-0" data-testid="actions-advice-row">
+      <button
+        type="button"
+        onClick={() => hasDetail && setOpen((v) => !v)}
+        aria-expanded={hasDetail ? open : undefined}
+        disabled={!hasDetail}
+        className="flex w-full items-center gap-3 py-[11px] text-left focus:outline-2 focus:outline-offset-2 focus:outline-white/40 disabled:cursor-default"
+      >
+        <span className="text-[13.5px] font-normal leading-[1.4] tracking-[-0.008em] text-white/95">
+          {row.headline}
+        </span>
+        {hasDetail && (
+          <CaretRight
+            size={13}
+            weight="regular"
+            aria-hidden
+            className={`ml-auto shrink-0 text-white/25 transition-transform ${open ? 'rotate-90' : ''}`}
+          />
+        )}
+      </button>
+      {open && hasDetail && (
+        <p className="pb-3 text-[12.5px] leading-[1.5] text-white/55">{row.detail}</p>
       )}
     </div>
   );

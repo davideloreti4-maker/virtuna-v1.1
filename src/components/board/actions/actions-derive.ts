@@ -15,6 +15,15 @@ import { ACTIONS_COPY } from './actions-constants';
 
 export type FixItem = CounterfactualSuggestionItem;
 
+/** A normalized advice/polish row — a clamped headline + the full detail behind it.
+ *  Unifies counterfactual stretch/reinforcement items and top-level Suggestions so
+ *  the degraded + optional-polish lists render as tight expandable rows, never the
+ *  multi-line prose paragraphs the raw Suggestion.text produced. */
+export interface AdviceRow {
+  headline: string;
+  detail: string;
+}
+
 export type ActionsView =
   | { kind: 'loading' }
   | {
@@ -25,8 +34,8 @@ export type ActionsView =
       hero: FixItem;
       secondary: FixItem[];
     }
-  | { kind: 'strong'; polish: FixItem[] }
-  | { kind: 'degraded'; kicker: string; rows: Suggestion[] }
+  | { kind: 'strong'; polish: AdviceRow[] }
+  | { kind: 'degraded'; kicker: string; rows: AdviceRow[] }
   | { kind: 'all-set' };
 
 export interface DeriveInput {
@@ -36,11 +45,35 @@ export interface DeriveInput {
   /** hook_decomposition.weakest_modality — accepts both the long enum and short forms. */
   weakest?: string | null;
   isAV: boolean;
+  /** overall_score (0-100). Fallback band source when Stage-11 counterfactuals are absent. */
+  score?: number | null;
 }
 
 const MAX_SECONDARY = 3;
 const MAX_POLISH = 3;
 const MAX_ADVICE = 3;
+// Mirrors verdict BAND_THRESHOLDS.STRONG (≥70 = "High potential"). A strong video
+// with no counterfactuals should still get the confident ship-led treatment.
+const STRONG_SCORE_MIN = 70;
+
+/** Tighten a full suggestion sentence into a glanceable headline (first sentence,
+ *  ≤8 words, no trailing punctuation). Full text stays available as the row detail. */
+function clampHeadline(text: string): string {
+  const raw = text.replace(/\s+/g, ' ').trim();
+  const firstSentence = raw.match(/^(.{0,90}?[.!?])\s/)?.[1] ?? raw;
+  let base = firstSentence.replace(/[.!?]+$/, '');
+  const words = base.split(' ');
+  if (words.length > 8) base = `${words.slice(0, 8).join(' ')}…`;
+  return base;
+}
+
+function suggestionToRow(s: Suggestion): AdviceRow {
+  return { headline: clampHeadline(s.text), detail: s.text };
+}
+
+function fixToRow(f: FixItem): AdviceRow {
+  return { headline: f.headline, detail: f.detail ?? '' };
+}
 
 // weakest_modality → the signal_anchor fragment its fix targets. Wires the
 // previously-dead weakest_modality signal: it picks WHICH fix leads (mirrors the
@@ -85,17 +118,24 @@ export function pickHeroFix(
 }
 
 export function deriveActionsView(input: DeriveInput): ActionsView {
-  const { ready, counterfactuals, advice, weakest, isAV } = input;
+  const { ready, counterfactuals, advice, weakest, isAV, score } = input;
   if (!ready) return { kind: 'loading' };
 
   const band = counterfactuals?.band ?? null;
   const fixes = counterfactuals?.suggestions ?? [];
 
-  // High band (and not flagged anti-viral) → ship-led. A strong video shouldn't
-  // be handed a worklist; surface when-to-post and let any stretch/reinforcement
-  // items recede to optional polish.
-  if (band === 'high' && !isAV) {
-    const polish = fixes.filter((f) => f.type !== 'fix').slice(0, MAX_POLISH);
+  // High band → ship-led. When Stage-11 counterfactuals are absent (band null) fall
+  // back to the overall_score band so a strong video is handed confidence + a post
+  // time, not a worklist or a wall of generic advice. Any stretch/reinforcement
+  // items (else top-level advice) recede to quiet optional-polish rows.
+  const effectiveHigh =
+    band === 'high' || (band === null && (score ?? 0) >= STRONG_SCORE_MIN);
+  if (effectiveHigh && !isAV) {
+    const fromFixes = fixes.filter((f) => f.type !== 'fix').map(fixToRow);
+    const polish = (fromFixes.length > 0 ? fromFixes : (advice ?? []).map(suggestionToRow)).slice(
+      0,
+      MAX_POLISH,
+    );
     return { kind: 'strong', polish };
   }
 
@@ -114,8 +154,9 @@ export function deriveActionsView(input: DeriveInput): ActionsView {
     return { kind: 'needs-work', tone, kicker, count, hero: picked.hero, secondary };
   }
 
-  // No counterfactual fixes (Stage 11 degraded) → fall back to top-level advice.
-  const rows = (advice ?? []).slice(0, MAX_ADVICE);
+  // No counterfactual fixes (Stage 11 degraded) → fall back to top-level advice,
+  // clamped to tight expandable rows (headline + detail), never raw prose.
+  const rows = (advice ?? []).slice(0, MAX_ADVICE).map(suggestionToRow);
   if (rows.length > 0) {
     return { kind: 'degraded', kicker: ACTIONS_COPY.KICKER_DEGRADED, rows };
   }

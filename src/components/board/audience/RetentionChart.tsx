@@ -109,12 +109,17 @@ export function RetentionChart({
   const cells = useMemo(() => {
     if (segments.length === 0) return [];
     const dropTime = dropGeo?.dropTime ?? null;
-    return segments.map((seg) => {
-      const url = filmstrips[seg.idx] ?? seg.keyframe_uri ?? null;
+    return segments.map((seg, i) => {
+      // Key the filmstrip map by POSITION (seg.idx is often absent on permalink
+      // heatmaps; the streamed/permalink filmstrips are keyed 0,1,2…). Mirrors
+      // ContentAnalysisFrame so both strips resolve the same frames. Without this
+      // the cells fell through to a null keyframe_uri and rendered blank.
+      const segIdx = seg.idx ?? i;
+      const url = filmstrips[segIdx] ?? seg.keyframe_uri ?? null;
       const isDrop =
         dropTime != null && dropTime >= seg.t_start && dropTime < seg.t_end;
       const widthPct = total > 0 ? ((seg.t_end - seg.t_start) / total) * 100 : 100 / segments.length;
-      return { idx: seg.idx, url, isDrop, widthPct };
+      return { idx: segIdx, url, isDrop, widthPct };
     });
   }, [segments, filmstrips, dropGeo, total]);
 

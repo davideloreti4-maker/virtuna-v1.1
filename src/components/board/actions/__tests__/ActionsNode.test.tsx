@@ -153,6 +153,31 @@ describe('ActionsNode (action-led)', () => {
     expect(screen.queryByTestId('actions-hero-fix')).toBeNull();
   });
 
+  it('high score + no counterfactuals → ship-led, not a wall of advice (screenshot regression)', async () => {
+    // The live board case: overall_score 78 but Stage-11 counterfactuals null.
+    // Must fall back to the score band → "Post it" hero, advice demoted to polish.
+    const noCfHigh = withWindow({ ...fixtures.complete, counterfactuals: null });
+    mockStream({ phase: 'complete', result: noCfHigh });
+    mockBoardState('complete');
+    const { ActionsNode: Fresh } = await import('../ActionsNode');
+    render(<Fresh camera={{} as never} layout={{} as never} />);
+    expect(screen.getByTestId('actions-grid').getAttribute('data-view')).toBe('strong');
+    expect(screen.getByTestId('actions-best-time').getAttribute('data-variant')).toBe('hero');
+    expect(screen.queryByTestId('actions-hero-fix')).toBeNull();
+  });
+
+  it('mid/low score + no counterfactuals → degraded advice as tight expandable rows (not prose paragraphs)', async () => {
+    const degraded = withWindow({ ...fixtures.complete, counterfactuals: null, overall_score: 55 });
+    mockStream({ phase: 'complete', result: degraded });
+    mockBoardState('complete');
+    const { ActionsNode: Fresh } = await import('../ActionsNode');
+    render(<Fresh camera={{} as never} layout={{} as never} />);
+    expect(screen.getByTestId('actions-grid').getAttribute('data-view')).toBe('degraded');
+    expect(screen.getByText('Where to focus')).toBeInTheDocument();
+    // Each suggestion renders as a clamped expandable row, never raw multi-line text.
+    expect(screen.getAllByTestId('actions-advice-row').length).toBeGreaterThan(0);
+  });
+
   it('anti-virality (low band) → critical "Fix before posting" framing', async () => {
     mockStream({ phase: 'complete', result: withWindow(fixtures.antiVirality) });
     mockBoardState('anti-virality');
