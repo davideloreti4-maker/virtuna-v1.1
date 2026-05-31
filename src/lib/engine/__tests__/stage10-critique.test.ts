@@ -124,7 +124,6 @@ describe("deriveCritique — clean result", () => {
     const c = deriveCritique(cleanResult());
     expect(c.flags).toHaveLength(0);
     expect(c.confidence_adjustment).toBe(0);
-    expect(c.consistency_score).toBe(10);
   });
 });
 
@@ -233,7 +232,6 @@ describe("deriveCritique — aggregation & clamping", () => {
     );
     expect(c.flags.length).toBeGreaterThanOrEqual(3);
     expect(c.confidence_adjustment).toBe(-0.2); // 0.06+0.07+0.08 = 0.21 → clamped
-    expect(c.consistency_score).toBe(Math.max(0, 10 - c.flags.length * 2));
   });
 
   it("is deterministic — same input twice yields identical critique", () => {
@@ -244,11 +242,11 @@ describe("deriveCritique — aggregation & clamping", () => {
 
 describe("applyCritiqueAdjustment — confidence clamp", () => {
   it("clamps -0.30 → -0.20 (upper bound)", () => {
-    const critique: CritiqueResult = { consistency_score: 5, flags: [], confidence_adjustment: -0.3 };
+    const critique: CritiqueResult = { flags: [], confidence_adjustment: -0.3 };
     expect(applyCritiqueAdjustment(0.75, critique)).toBeCloseTo(0.55, 10);
   });
   it("clamps +0.10 → 0 (only reductions allowed)", () => {
-    const critique: CritiqueResult = { consistency_score: 5, flags: [], confidence_adjustment: 0.1 };
+    const critique: CritiqueResult = { flags: [], confidence_adjustment: 0.1 };
     expect(applyCritiqueAdjustment(0.75, critique)).toBeCloseTo(0.75, 10);
   });
 });

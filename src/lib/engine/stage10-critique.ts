@@ -2,11 +2,12 @@
  * Stage 10 — Self-critique (deterministic).
  *
  * History: this was a qwen3.6-plus thinking call (D-21). The stage-10/11 analysis
- * (2026-05-31) found the call re-derived a deterministic formula and discarded ~95% of
- * its output — `flags` and `consistency_score` are never persisted (no `critique` DB
- * column) nor rendered, and the only consumed effect, `confidence_adjustment`, is fully
- * determined by values already on the assembled PredictionResult. The four D-13 checks
- * are pure arithmetic, so the LLM only ever approximated them stochastically.
+ * (2026-05-31) found the call re-derived a deterministic formula and discarded most of
+ * its output — `flags` are never persisted (no `critique` DB column) nor rendered, the
+ * old `consistency_score` had zero consumers (since removed), and the only consumed
+ * effect, `confidence_adjustment`, is fully determined by values already on the assembled
+ * PredictionResult. The four D-13 checks are pure arithmetic, so the LLM only ever
+ * approximated them stochastically.
  *
  * Now computed in TypeScript: instant, free, and fully reproducible — removing a ~42s
  * reasoning call from the post-pipeline tail and the non-determinism it introduced on the
@@ -119,7 +120,6 @@ export function deriveCritique(
   }
 
   return {
-    consistency_score: Math.max(0, 10 - flags.length * 2), // 10 = consistent; −2 per fired check
     flags,
     confidence_adjustment: penalty === 0 ? 0 : Math.max(-0.2, -penalty),
   };
