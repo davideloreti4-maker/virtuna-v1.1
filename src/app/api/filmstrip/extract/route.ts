@@ -48,7 +48,13 @@ const SegmentSchema = z.object({
 });
 
 const BodySchema = z.object({
-  analysisId: z.string().uuid(),
+  // Analysis IDs are either legacy UUIDs (`5958d1c6-…`) or modern 12-char nanoids
+  // (`WPk976kozfWs`, route.ts `nanoid(12)`). A bare `.uuid()` here rejected every
+  // nanoid id with a 400 before extraction ran, so the `filmstrips` bucket never
+  // filled and keyframes never persisted (live or permalink replay). Mirror the
+  // GET /api/analyze/[id]/filmstrips ParamsSchema: url-safe charset only, since
+  // this value is interpolated into the storage path `<analysisId>/<idx>.jpg`.
+  analysisId: z.string().min(8).max(64).regex(/^[A-Za-z0-9_-]+$/u, 'analysisId must be url-safe id'),
   videoUrl: z.string().url(),
   segments: z.array(SegmentSchema).min(1).max(50), // T-03-07-05: cap pathological inputs
 });
