@@ -4,7 +4,7 @@
 **Researched:** 2026-05-31
 **Confidence:** HIGH on in-repo grounding (SPEC + creator-intelligence SSOT); MEDIUM on outside domain norms (how comparable decode/adapt tools behave). Where a claim is outside domain knowledge it is tagged `[domain]`; where it traces to repo artifacts it cites the SPEC requirement number or `creator-intelligence.md`.
 
-> **Template note:** `templates/research-project/FEATURES.md` was not present on disk; this file uses the fallback section set specified by the spawn brief: Summary → Decode → Adapt → Develop & lineage → Table stakes / Differentiators / Anti-features → Dependencies.
+> **Structure note:** Follows `templates/research-project/FEATURES.md` (Table Stakes / Differentiators / Anti-Features / Dependencies / MVP) extended with the brief-mandated Decode/Adapt schema sections: Summary → Decode → Adapt → Develop & lineage → Table stakes / Differentiators / Anti-features → Dependencies → MVP.
 
 ---
 
