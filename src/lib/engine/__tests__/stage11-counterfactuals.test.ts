@@ -17,6 +17,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { runStage11Counterfactuals, maybeAppendLikelyFlopWarning } from "../stage11-counterfactuals";
 import { buildSignalContextUserMessage, CounterfactualsResponseSchema } from "../stage11-counterfactuals-prompts";
 import type { PredictionResult } from "../types";
+import type { StageEvent } from "../events";
 
 // =====================================================
 // Module mocks
@@ -37,8 +38,9 @@ vi.mock("@sentry/nextjs", () => ({
 
 // Qwen-on-OpenAI client mock (Phase 13 migration — stage11-counterfactuals.ts now
 // calls ai.chat.completions.create via getQwenClient()).
-const { mockGenerateContent } = vi.hoisted(() => ({
+const { mockGenerateContent, mockIsCircuitOpen } = vi.hoisted(() => ({
   mockGenerateContent: vi.fn(),
+  mockIsCircuitOpen: vi.fn(() => false),
 }));
 
 vi.mock("openai", () => {
@@ -46,6 +48,11 @@ vi.mock("openai", () => {
     this.chat = { completions: { create: mockGenerateContent } };
   });
   return { default: MockOpenAI };
+});
+
+vi.mock("../deepseek", async (importOriginal) => {
+  const orig = await importOriginal<typeof import("../deepseek")>();
+  return { ...orig, isCircuitOpen: mockIsCircuitOpen };
 });
 
 process.env.GEMINI_API_KEY = "test-key";
@@ -494,5 +501,29 @@ describe("maybeAppendLikelyFlopWarning — 4 boundary fixtures (COUNTER LIKELY_F
     });
     maybeAppendLikelyFlopWarning(result);
     expect(result.warnings.length).toBe(0);
+  });
+});
+
+describe("runStage11Counterfactuals — circuit-breaker guard", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("circuit open → returns null, fires 0 LLM calls, emits stage_end ok=false", async () => {
+    mockIsCircuitOpen.mockReturnValueOnce(true);
+    const events: StageEvent[] = [];
+    const result = await runStage11Counterfactuals(
+      makeFakePredictionResult(),
+      null,
+      (e) => events.push(e),
+    );
+    expect(result).toBeNull();
+    expect(mockGenerateContent).not.toHaveBeenCalled();
+    const end = events.find(
+      (e): e is Extract<StageEvent, { type: "stage_end" }> =>
+        e.type === "stage_end" && e.stage === "stage_11_counterfactuals",
+    )!;
+    expect(end.ok).toBe(false);
+    expect(end.warning).toBe("circuit_breaker_open");
   });
 });

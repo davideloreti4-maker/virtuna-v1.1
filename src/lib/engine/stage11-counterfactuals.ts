@@ -15,6 +15,7 @@ import type { PredictionResult, CounterfactualResult } from "./types";
 import type { StageEventCallback } from "./events";
 import { emitStageStart, emitStageEnd } from "./events";
 import { calculateCost } from "./qwen/cost";
+import { isCircuitOpen } from "./deepseek";
 import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "./qwen/client";
 import {
   STABLE_COUNTERFACTUALS_SYSTEM_PROMPT,
@@ -72,6 +73,17 @@ export async function runStage11Counterfactuals(
   const start = emitStageStart(onEvent, "stage_11_counterfactuals", "post");
   let costCents = 0;
 
+  // Circuit-breaker guard (parity with Stage 10's old gate): when the DashScope breaker is
+  // open after repeated failures, don't fire a doomed 60s call into a known-down backend.
+  if (isCircuitOpen()) {
+    emitStageEnd(onEvent, "stage_11_counterfactuals", "post", start, {
+      cost_cents: 0,
+      ok: false,
+      warning: "circuit_breaker_open",
+    });
+    return null;
+  }
+
   const ai          = getQwenClient();
   const model       = QWEN_STAGE11_MODEL;
   const userMessage = buildSignalContextUserMessage(aggregateResult);
@@ -83,8 +95,10 @@ export async function runStage11Counterfactuals(
     const controller = new AbortController();
     const timer      = setTimeout(() => controller.abort(), PER_CALL_TIMEOUT_MS);
     try {
+      // Retry nudge goes on the USER message, not the system prompt — keeps the cache-stable
+      // system prefix byte-identical across attempts (Qwen automatic prefix-cache hit).
       const extraInstruction = attempt > 0
-        ? "\nIMPORTANT: Return ONLY raw JSON — no explanation, no markdown fences."
+        ? "\n\nIMPORTANT: Return ONLY raw JSON — no explanation, no markdown fences."
         : "";
 
       // Measured E2E: stage11 set NO thinking config, so qwen3.6-plus defaulted to
@@ -98,8 +112,8 @@ export async function runStage11Counterfactuals(
         {
           model,
           messages: [
-            { role: "system", content: STABLE_COUNTERFACTUALS_SYSTEM_PROMPT + extraInstruction },
-            { role: "user",   content: userMessage },
+            { role: "system", content: STABLE_COUNTERFACTUALS_SYSTEM_PROMPT },
+            { role: "user",   content: userMessage + extraInstruction },
           ],
           response_format: { type: "json_object" },
           max_tokens: 1800,
