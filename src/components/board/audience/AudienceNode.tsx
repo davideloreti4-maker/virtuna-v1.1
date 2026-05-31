@@ -4,9 +4,12 @@ import { useMemo, useState, useCallback } from 'react';
 import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
 import { usePermalinkAnalysis } from '@/hooks/queries/use-permalink-analysis';
 import { usePermalinkFilmstrips } from '@/hooks/queries/use-permalink-filmstrips';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { usePerfStore } from '@/lib/perf-tier';
 import { useAudienceChoreography } from './use-audience-choreography';
 import { useClientWeights } from './use-client-weights';
 import { AudienceHero } from './AudienceHero';
+import { DropStrip } from './DropStrip';
 import { RetentionChart } from './RetentionChart';
 import { SegmentTable } from './SegmentTable';
 import { MixFooter } from './MixFooter';
@@ -14,15 +17,24 @@ import { WeightOverrideDrawer } from './WeightOverrideDrawer';
 import { useBoardStore } from '@/stores/board-store';
 import { DEFAULT_PERSONA_WEIGHT_CONFIG } from '@/lib/engine/persona-weights';
 import type { Camera, GroupFrameLayout } from '../board-types';
+import { FrameTabs, FrameTabPanel, StatTileRow, type StatTileData } from '../_kit';
 import {
+  averageWatchThrough,
+  buildDropMoments,
   buildInsight,
+  buildPersonaNodes,
   buildSegmentGroups,
+  cohortDropFrame,
   findBiggestDrop,
+  heroVerdict,
   mixLabel,
   normalizeCurve,
-  statusWord,
+  personasFinishing,
+  SLOT_GROUPS,
   totalDuration,
   worstBadGroupKey,
+  type CohortDropFrame,
+  type SlotKey,
 } from './audience-derive';
 
 export interface AudienceNodeProps {
@@ -56,6 +68,12 @@ export function AudienceNode(props: AudienceNodeProps) {
   // still run. Its row/curve states aren't consumed by the new visual zones, but
   // the hook must always be called (Rules of Hooks) and drives a11y side effects.
   useAudienceChoreography(stream);
+
+  // Reduced-motion source mirrors the choreography hook (OS preference OR a
+  // low perf tier) so the persona-graph float matches the rest of the frame.
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const perfTier = usePerfStore((st) => st.tier);
+  const reducedMotion = prefersReducedMotion || perfTier === 'low';
 
   // Client-side weight recompute.
   const heatmap = result?.heatmap ?? null;
@@ -97,13 +115,6 @@ export function AudienceNode(props: AudienceNodeProps) {
     return null;
   })();
 
-  const status = watchThroughPct != null ? statusWord(watchThroughPct) : '';
-
-  const sub = useMemo(() => {
-    const percentile = behavioral?.completion_percentile;
-    return percentile ? `watch-through · ${percentile} of niche` : 'watch-through';
-  }, [behavioral?.completion_percentile]);
-
   // Survival curve: recomputed (when available) else persisted weighted_curve.
   const survivalCurve = useMemo<number[] | null>(() => {
     if (recomputedCurve.length > 0) return recomputedCurve;
@@ -122,9 +133,33 @@ export function AudienceNode(props: AudienceNodeProps) {
 
   const badKey = useMemo(() => worstBadGroupKey(segmentGroups), [segmentGroups]);
 
-  const insight = useMemo(
+  const insightParts = useMemo(
     () => buildInsight(heatmap?.segments, drop, segmentGroups),
     [heatmap?.segments, drop, segmentGroups],
+  );
+
+  // Hero insight as JSX — keep the coral time mark (the only accent in the line).
+  const heroInsight = (
+    <>
+      {insightParts.lead}
+      {insightParts.time != null && (
+        <span className="font-semibold text-accent">{insightParts.time}</span>
+      )}
+      {insightParts.tail}
+      {insightParts.addendum}
+    </>
+  );
+
+  // Persona node-graph (hero visual): 10 personas → PersonaNode[]. The worst
+  // slot group (badKey) is painted coral, matching the "Who leaves" tab.
+  const personaNodes = useMemo(
+    () => buildPersonaNodes(heatmap, result?.persona_simulation_results, badKey),
+    [heatmap, result?.persona_simulation_results, badKey],
+  );
+
+  const verdict = useMemo(
+    () => (watchThroughPct != null ? heroVerdict(watchThroughPct) : null),
+    [watchThroughPct],
   );
 
   const mergedFilmstrips = useMemo<Record<number, string>>(() => {
@@ -133,6 +168,30 @@ export function AudienceNode(props: AudienceNodeProps) {
     return (pendingVideo?.frames as Record<number, string> | undefined) ?? {};
   }, [filmstrips, permalinkFilmstrips, pendingVideo?.frames]);
 
+  // Real-video gate: only surface keyframes when a real timeline exists. In
+  // text/url/no-video modes this is false, so the "where they drop" strip and the
+  // "who leaves" cohort thumbs never render (no empty state, no layout shift).
+  const hasVideo = Object.keys(mergedFilmstrips).length > 0;
+
+  // "Where they drop" — the biggest drop + next-worst moments, each resolved to a
+  // real keyframe. Empty (so the strip is omitted) unless real frames exist.
+  const dropMoments = useMemo(
+    () => (hasVideo ? buildDropMoments(survivalCurve, heatmap?.segments, mergedFilmstrips, 3) : []),
+    [hasVideo, survivalCurve, heatmap?.segments, mergedFilmstrips],
+  );
+
+  // "Who leaves" cohort thumbs — each slot's drop frame + timecode, keyed by slot.
+  // Empty object when there's no real video (rows render exactly as before).
+  const cohortFrames = useMemo<Partial<Record<SlotKey, CohortDropFrame>>>(() => {
+    if (!hasVideo) return {};
+    const out: Partial<Record<SlotKey, CohortDropFrame>> = {};
+    for (const { key } of SLOT_GROUPS) {
+      const frame = cohortDropFrame(heatmap, key, mergedFilmstrips);
+      if (frame) out[key] = frame;
+    }
+    return out;
+  }, [hasVideo, heatmap, mergedFilmstrips]);
+
   const nicheCompletion = useMemo<number | null>(() => {
     const raw = heatmap?.niche_completion_pct;
     if (raw == null) return null;
@@ -140,6 +199,18 @@ export function AudienceNode(props: AudienceNodeProps) {
   }, [heatmap?.niche_completion_pct]);
 
   const mixFooterLabel = useMemo(() => mixLabel(weights), [weights]);
+
+  // ── Stat tiles (3): Avg watch-through · Niche completion % · Finishing n/10 ──
+  const tiles = useMemo<StatTileData[]>(() => {
+    const avg = averageWatchThrough(personaNodes);
+    const { finishing, total } = personasFinishing(personaNodes);
+    const nichePct = nicheCompletion != null ? Math.round(nicheCompletion * 100) : null;
+    const out: StatTileData[] = [];
+    out.push({ k: 'Avg watch-through', v: avg != null ? String(avg) : '—', u: avg != null ? '%' : undefined });
+    out.push({ k: 'Niche completion', v: nichePct != null ? String(nichePct) : '—', u: nichePct != null ? '%' : undefined });
+    out.push({ k: 'Finishing', v: total > 0 ? String(finishing) : '—', u: total > 0 ? `/${total}` : undefined });
+    return out;
+  }, [personaNodes, nicheCompletion]);
 
   // ── Override drawer apply (persist per-analysis weights) ─────────────────────
   const handleOverrideApply = useCallback(
@@ -161,12 +232,13 @@ export function AudienceNode(props: AudienceNodeProps) {
   const showEmptyState = !isStreaming && !hasPersonas;
 
   return (
-    <div aria-live="polite" aria-busy={isStreaming} className="flex w-full flex-col">
+    <div aria-live="polite" aria-busy={isStreaming} className="flex w-full flex-col gap-4 p-4">
       <AudienceHero
+        nodes={personaNodes}
         watchThroughPct={watchThroughPct}
-        status={status}
-        sub={sub}
-        insight={insight}
+        verdict={verdict ?? { word: 'Reading…', tone: 'neutral' }}
+        insight={heroInsight}
+        reducedMotion={reducedMotion}
         isLoading={isLoading}
       />
 
@@ -182,27 +254,46 @@ export function AudienceNode(props: AudienceNodeProps) {
         </div>
       ) : (
         <>
-          <RetentionChart
-            curve={survivalCurve}
-            heatmap={heatmap}
-            drop={drop}
-            totalDurationSec={totalDurationSec}
-            filmstrips={mergedFilmstrips}
-            nicheCompletionPct={nicheCompletion}
-            isLoading={isLoading}
-          />
+          {dropMoments.length > 0 && <DropStrip moments={dropMoments} />}
 
-          <SegmentTable groups={segmentGroups} badKey={badKey} isLoading={isLoading} />
+          <StatTileRow tiles={tiles} />
 
-          {!isLoading && (
-            <>
-              <MixFooter
-                label={mixFooterLabel}
-                open={overrideDrawerOpen}
-                onToggle={() => setOverrideDrawerOpen((v) => !v)}
+          <FrameTabs
+            tabs={[
+              { value: 'retention', label: 'Retention' },
+              { value: 'who-leaves', label: 'Who leaves' },
+              { value: 'mix', label: 'Mix' },
+            ]}
+          >
+            <FrameTabPanel value="retention">
+              <RetentionChart
+                curve={survivalCurve}
+                heatmap={heatmap}
+                drop={drop}
+                totalDurationSec={totalDurationSec}
+                filmstrips={mergedFilmstrips}
+                nicheCompletionPct={nicheCompletion}
+                isLoading={isLoading}
               />
-              {overrideDrawerOpen && (
-                <div className="mt-3">
+            </FrameTabPanel>
+
+            <FrameTabPanel value="who-leaves">
+              <SegmentTable
+                groups={segmentGroups}
+                badKey={badKey}
+                cohortFrames={cohortFrames}
+                isLoading={isLoading}
+              />
+            </FrameTabPanel>
+
+            <FrameTabPanel value="mix">
+              <div className="flex flex-col gap-3">
+                <MixFooter
+                  label={mixFooterLabel}
+                  open={overrideDrawerOpen}
+                  onToggle={() => setOverrideDrawerOpen((v) => !v)}
+                />
+                {overrideDrawerOpen && (
                   <WeightOverrideDrawer
                     open={overrideDrawerOpen}
                     onOpenChange={setOverrideDrawerOpen}
@@ -211,10 +302,10 @@ export function AudienceNode(props: AudienceNodeProps) {
                     onWeightsChange={setWeights}
                     onApply={handleOverrideApply}
                   />
-                </div>
-              )}
-            </>
-          )}
+                )}
+              </div>
+            </FrameTabPanel>
+          </FrameTabs>
         </>
       )}
     </div>

@@ -1,13 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import {
+  averageWatchThrough,
+  buildDropMoments,
   buildInsight,
+  buildPersonaNodes,
+  buildRetentionTrend,
   buildSegmentGroups,
+  cohortDropFrame,
   findBiggestDrop,
   formatTime,
+  heroVerdict,
   mixLabel,
   nicheGhostCurve,
   normalizeCurve,
   normalizeSlot,
+  personasFinishing,
   smoothPath,
   statusWord,
   totalDuration,
@@ -307,5 +314,220 @@ describe('smoothPath', () => {
     ]);
     expect(d.startsWith('M0,0')).toBe(true);
     expect(d).toContain('C');
+  });
+});
+
+describe('buildPersonaNodes', () => {
+  it('returns [] when no heatmap / no personas', () => {
+    expect(buildPersonaNodes(null, undefined, null)).toEqual([]);
+    expect(buildPersonaNodes({ ...buildHeatmapFixture(), personas: [] }, undefined, null)).toEqual([]);
+  });
+
+  it('maps every persona to a node with id, label, weight 0-1, watchThrough 0-1', () => {
+    const hm = buildHeatmapFixture();
+    const nodes = buildPersonaNodes(hm, undefined, null);
+    expect(nodes).toHaveLength(hm.personas.length);
+    for (const n of nodes) {
+      expect(typeof n.id).toBe('string');
+      expect(typeof n.label).toBe('string');
+      expect(n.weight).toBeGreaterThanOrEqual(0);
+      expect(n.weight).toBeLessThanOrEqual(1);
+      expect(n.watchThrough).toBeGreaterThanOrEqual(0);
+      expect(n.watchThrough).toBeLessThanOrEqual(1);
+    }
+    // largest-attention persona is max-normalized to weight 1.
+    expect(Math.max(...nodes.map((n) => n.weight))).toBeCloseTo(1, 5);
+  });
+
+  it('prefers sim watch_through_pct (0-100 → 0-1) joined by persona_id', () => {
+    const hm = buildHeatmapFixture();
+    const sims: PersonaSimulationResult[] = [
+      {
+        persona_id: hm.personas[0]!.id,
+        archetype: 'high_engager',
+        slot_type: 'fyp',
+        niche: 'x',
+        scroll_past_second: 1,
+        watch_through_pct: 80,
+        comment_intent: 0,
+        share_intent: 0,
+        save_intent: 0,
+        rewatch_intent: 0,
+        reasoning: 'r',
+      },
+    ];
+    const nodes = buildPersonaNodes(hm, sims, null);
+    const target = nodes.find((n) => n.id === hm.personas[0]!.id)!;
+    expect(target.watchThrough).toBeCloseTo(0.8, 5);
+  });
+
+  it("paints only the badKey slot's nodes coral (tone=accent)", () => {
+    const hm = buildHeatmapFixture();
+    const nodes = buildPersonaNodes(hm, undefined, 'cross_niche');
+    const accented = nodes.filter((n) => n.tone === 'accent');
+    expect(accented.length).toBe(1); // one cross_niche persona in the fixture
+    expect(accented.every((n) => n.segment === 'Cross-niche')).toBe(true);
+    // no badKey ⇒ no accent.
+    expect(buildPersonaNodes(hm, undefined, null).every((n) => n.tone === 'default')).toBe(true);
+  });
+
+  it('sets dropAt only when swipe_predicted_at is present', () => {
+    const hm = buildHeatmapFixture();
+    hm.personas[0]!.swipe_predicted_at = 21;
+    const nodes = buildPersonaNodes(hm, undefined, null);
+    expect(nodes[0]!.dropAt).toBe('0:21');
+    expect(nodes[1]!.dropAt).toBeUndefined();
+  });
+});
+
+describe('averageWatchThrough', () => {
+  it('returns null for no nodes', () => {
+    expect(averageWatchThrough([])).toBeNull();
+  });
+  it('returns the mean as a 0-100 int', () => {
+    const nodes = [
+      { id: 'a', label: 'A', weight: 1, watchThrough: 0.5 },
+      { id: 'b', label: 'B', weight: 1, watchThrough: 1 },
+    ];
+    expect(averageWatchThrough(nodes)).toBe(75);
+  });
+});
+
+describe('personasFinishing', () => {
+  it('counts nodes at/above the threshold', () => {
+    const nodes = [
+      { id: 'a', label: 'A', weight: 1, watchThrough: 0.95 },
+      { id: 'b', label: 'B', weight: 1, watchThrough: 0.9 },
+      { id: 'c', label: 'C', weight: 1, watchThrough: 0.4 },
+    ];
+    expect(personasFinishing(nodes)).toEqual({ finishing: 2, total: 3 });
+  });
+});
+
+describe('heroVerdict', () => {
+  it('maps bands to a single word + tone', () => {
+    expect(heroVerdict(85)).toEqual({ word: 'Strong', tone: 'good' });
+    expect(heroVerdict(65)).toEqual({ word: 'Solid', tone: 'good' });
+    expect(heroVerdict(45)).toEqual({ word: 'Leaky', tone: 'warn' });
+    expect(heroVerdict(20)).toEqual({ word: 'Drops', tone: 'crit' });
+  });
+});
+
+describe('buildRetentionTrend', () => {
+  it('returns [] when no curve', () => {
+    expect(buildRetentionTrend(null, buildHeatmapFixture(), 30, null)).toEqual([]);
+  });
+  it('maps the weighted curve to current (0-100) keyed by segment t_start', () => {
+    const hm = buildHeatmapFixture();
+    const trend = buildRetentionTrend(hm.weighted_curve, hm, totalDuration(hm.segments, 30), null);
+    expect(trend).toHaveLength(hm.weighted_curve.length);
+    expect(trend[0]!.x).toBe(hm.segments[0]!.t_start);
+    expect(trend[0]!.current).toBe(100); // weighted_curve[0] = 1
+    for (const p of trend) {
+      expect(p.current).toBeGreaterThanOrEqual(0);
+      expect(p.current).toBeLessThanOrEqual(100);
+    }
+  });
+  it('adds the niche ghost as previous when niche personas exist', () => {
+    const hm = buildHeatmapFixture();
+    const trend = buildRetentionTrend(hm.weighted_curve, hm, totalDuration(hm.segments, 30), null);
+    expect(trend.some((p) => p.previous != null)).toBe(true);
+  });
+  it('falls back to a flat niche-completion line as previous when no niche curve', () => {
+    const hm = { ...buildHeatmapFixture(), personas: buildHeatmapFixture().personas.filter((p) => p.slot_type !== 'niche') };
+    const trend = buildRetentionTrend(hm.weighted_curve, hm, totalDuration(hm.segments, 30), 0.6);
+    expect(trend.every((p) => p.previous === 60)).toBe(true);
+  });
+});
+
+describe('buildDropMoments', () => {
+  it('returns [] when no curve / too-short curve / no segments', () => {
+    const hm = buildHeatmapFixture();
+    expect(buildDropMoments(null, hm.segments, {})).toEqual([]);
+    expect(buildDropMoments([1], hm.segments, {})).toEqual([]);
+    expect(buildDropMoments(hm.weighted_curve, [], {})).toEqual([]);
+  });
+
+  it('returns [] when the curve only ever rises (no downward steps)', () => {
+    const hm = buildHeatmapFixture();
+    const rising = hm.weighted_curve.map((_, i) => i * 0.05); // strictly increasing
+    expect(buildDropMoments(rising, hm.segments, {})).toEqual([]);
+  });
+
+  it('picks the biggest drop + next-worst, time-ordered, with one worst', () => {
+    const hm = buildHeatmapFixture();
+    // Engineer distinct drops: big at idx3, medium at idx6, small at idx1.
+    const curve = [1, 0.97, 0.97, 0.5, 0.5, 0.5, 0.2, 0.2, 0.2, 0.2];
+    const moments = buildDropMoments(curve, hm.segments, {}, 3);
+    expect(moments).toHaveLength(3);
+    // returned in time order (ascending index)
+    const idxs = moments.map((m) => m.index);
+    expect([...idxs].sort((a, b) => a - b)).toEqual(idxs);
+    // exactly one worst, and it's the biggest drop (idx 3: 0.97 → 0.5 = 0.47)
+    const worst = moments.filter((m) => m.worst);
+    expect(worst).toHaveLength(1);
+    expect(worst[0]!.index).toBe(3);
+    // each carries an mm:ss timecode + a non-negative delta%
+    for (const m of moments) {
+      expect(m.timecode).toMatch(/^\d:\d\d$/);
+      expect(m.deltaPct).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it('caps at `max` moments', () => {
+    const hm = buildHeatmapFixture();
+    const curve = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]; // 9 drops
+    expect(buildDropMoments(curve, hm.segments, {}, 3)).toHaveLength(3);
+    expect(buildDropMoments(curve, hm.segments, {}, 5)).toHaveLength(5);
+  });
+
+  it('resolves a real keyframe URL from the filmstrip map by segment position', () => {
+    const hm = buildHeatmapFixture();
+    const curve = [1, 0.97, 0.97, 0.5, 0.5, 0.5, 0.2, 0.2, 0.2, 0.2];
+    const filmstrips = { 3: 'https://signed/frame-3.jpg', 6: 'https://signed/frame-6.jpg' };
+    const moments = buildDropMoments(curve, hm.segments, filmstrips, 3);
+    const m3 = moments.find((m) => m.index === 3)!;
+    expect(m3.url).toBe('https://signed/frame-3.jpg');
+    const m6 = moments.find((m) => m.index === 6)!;
+    expect(m6.url).toBe('https://signed/frame-6.jpg');
+  });
+
+  it('yields a null url (caller draws fallback) when no frame exists for that moment', () => {
+    const hm = buildHeatmapFixture();
+    const curve = [1, 0.97, 0.97, 0.5, 0.5, 0.5, 0.2, 0.2, 0.2, 0.2];
+    const moments = buildDropMoments(curve, hm.segments, {}, 1);
+    expect(moments[0]!.url).toBeNull();
+  });
+});
+
+describe('cohortDropFrame', () => {
+  it('returns null with no heatmap / no segments / no personas in slot', () => {
+    expect(cohortDropFrame(null, 'fyp', {})).toBeNull();
+    const hm = buildHeatmapFixture();
+    expect(cohortDropFrame({ ...hm, segments: [] }, 'fyp', {})).toBeNull();
+    // remove all niche personas → niche cohort has no frame
+    const noNiche = { ...hm, personas: hm.personas.filter((p) => normalizeSlot(p.slot_type) !== 'niche') };
+    expect(cohortDropFrame(noNiche, 'niche', {})).toBeNull();
+  });
+
+  it('uses the cohort mean swipe time and resolves that frame + timecode', () => {
+    const hm = buildHeatmapFixture();
+    // fyp personas are indices 0-5; give them a mean swipe at 21s → segment idx 7 (t 21-24).
+    for (const p of hm.personas) {
+      if (normalizeSlot(p.slot_type) === 'fyp') p.swipe_predicted_at = 21;
+    }
+    const frame = cohortDropFrame(hm, 'fyp', { 7: 'https://signed/frame-7.jpg' });
+    expect(frame).not.toBeNull();
+    expect(frame!.timecode).toBe('0:21');
+    expect(frame!.url).toBe('https://signed/frame-7.jpg');
+  });
+
+  it('falls back to the cohort lowest-attention segment when no swipe time', () => {
+    const hm = buildHeatmapFixture();
+    // loyalist persona is index 8 — no swipe times set in fixture.
+    const frame = cohortDropFrame(hm, 'loyalist', {});
+    expect(frame).not.toBeNull();
+    expect(frame!.timecode).toMatch(/^\d:\d\d$/);
+    expect(frame!.url).toBeNull(); // empty filmstrips → fallback gradient at the view
   });
 });

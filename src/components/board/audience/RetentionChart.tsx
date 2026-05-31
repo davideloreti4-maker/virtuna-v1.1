@@ -125,7 +125,7 @@ export function RetentionChart({
 
   if (isLoading) {
     return (
-      <div className="mt-6 flex flex-col gap-[9px]">
+      <div className="flex flex-col gap-[9px]" data-testid="retention-chart">
         <Skeleton className="h-[138px] w-full rounded-[8px]" />
         <Skeleton className="h-[44px] w-full rounded-[6px]" />
       </div>
@@ -133,7 +133,7 @@ export function RetentionChart({
   }
 
   return (
-    <div className="mt-6">
+    <div data-testid="retention-chart">
       {/* chart */}
       <div className="relative" style={{ height: VB_H }}>
         <svg

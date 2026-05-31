@@ -1,95 +1,92 @@
 'use client';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { SegmentGroup, SlotKey } from './audience-derive';
+import { DataTable, KeyframeImage, type DataColumn } from '../_kit';
+import type { CohortDropFrame, SegmentGroup, SlotKey } from './audience-derive';
 
 export interface SegmentTableProps {
   groups: SegmentGroup[];
   /** Key of the single group rendered with coral "bad" treatment (or null). */
   badKey: SlotKey | null;
+  /**
+   * Per-cohort drop frame (real keyframe + timecode), keyed by slot. Only present
+   * when a real video exists — empty/absent in text/url modes, where the rows
+   * render exactly as before (no thumb column, no layout shift).
+   */
+  cohortFrames?: Partial<Record<SlotKey, CohortDropFrame>>;
   isLoading: boolean;
 }
 
 /**
- * BLOCK C — "Who leaves / Watch-through" shaped rows.
+ * "Who leaves" — the audience cohort drill-down, rendered through the shared
+ * kit DataTable. Four slot groups (rows with 0 personas hidden); each row shows
+ * the cohort, its watch-through %, and a plain-language drop characterization.
+ * At most ONE row reads coral (the worst group below ~40%, via `badKey`).
  *
- * 4 slot groups (rows with 0 personas are hidden). Inline bar width = group %.
- * At most ONE row is coral (the worst group below ~40%). Matches
- * audience-sketch-v7 `.seg` / `.seg-head` / `.row`.
- *
- * Grid: [label] [bar] [value]. On very narrow widths the desc line wraps under
- * the label naturally (label column is the first grid cell, not fixed-width on
- * mobile — see the responsive grid template below).
+ * When real video frames are available (`cohortFrames`), each row gets a small
+ * square keyframe thumb of where that cohort drops, with its drop timecode.
  */
-export function SegmentTable({ groups, badKey, isLoading }: SegmentTableProps) {
+export function SegmentTable({ groups, badKey, cohortFrames, isLoading }: SegmentTableProps) {
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-3" data-testid="segment-table">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-[20px] w-full rounded-[4px]" />
+        ))}
+      </div>
+    );
+  }
+
   const visible = groups.filter((g) => g.count > 0);
 
-  return (
-    <div className="mt-[26px]">
-      {/* header */}
-      <div
-        className="flex justify-between border-b border-white/[0.06] pb-[10px]"
-        style={{ fontSize: 11, letterSpacing: '0.04em', color: 'rgba(255,255,255,0.34)', fontWeight: 500 }}
-      >
-        <span>Who leaves</span>
-        <span>Watch-through</span>
-      </div>
-
-      {isLoading
-        ? Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="grid items-center gap-[14px] border-b border-white/[0.06] py-[13px] last:border-b-0"
-              style={{ gridTemplateColumns: 'minmax(96px,128px) 1fr 44px' }}
-            >
-              <Skeleton className="h-[13px] w-[80px] rounded-[4px]" />
-              <Skeleton className="h-[3px] w-full rounded-[2px]" />
-              <Skeleton className="h-[13px] w-[32px] justify-self-end rounded-[4px]" />
-            </div>
-          ))
-        : visible.map((g) => {
-            const bad = g.key === badKey;
-            const pct = Math.round(g.pct);
-            return (
-              <div
-                key={g.key}
-                className="grid items-center gap-[14px] border-b border-white/[0.06] py-[13px] last:border-b-0"
-                style={{ gridTemplateColumns: 'minmax(96px,128px) 1fr 44px' }}
-              >
-                <div className="min-w-0">
-                  <div
-                    className="truncate"
-                    style={{ fontSize: 13, color: 'rgba(255,255,255,0.94)', fontWeight: 500 }}
-                  >
-                    {g.label}
-                  </div>
-                  <div
-                    className="truncate"
-                    style={{ fontSize: 11, color: 'rgba(255,255,255,0.34)', marginTop: 2, fontWeight: 400 }}
-                  >
-                    {g.desc}
-                  </div>
-                </div>
-                <div
-                  className="overflow-hidden rounded-[2px]"
-                  style={{ height: 3, background: 'rgba(255,255,255,0.07)' }}
-                >
-                  <i
-                    className="block h-full rounded-[2px]"
-                    style={{
-                      width: `${Math.min(100, Math.max(0, pct))}%`,
-                      background: bad ? '#FF7F50' : 'rgba(255,255,255,0.45)',
-                    }}
-                  />
-                </div>
-                <div
-                  className="text-right tabular-nums"
-                  style={{ fontSize: 13, color: bad ? '#FF7F50' : 'rgba(255,255,255,0.55)', fontWeight: 500 }}
-                >
-                  {pct}%
-                </div>
+  const columns: DataColumn<SegmentGroup>[] = [
+    {
+      key: 'label',
+      label: 'Who leaves',
+      align: 'left',
+      render: (g) => {
+        const bad = g.key === badKey;
+        const frame = cohortFrames?.[g.key];
+        return (
+          <div className="flex min-w-0 items-center gap-2.5">
+            {frame && (
+              <KeyframeImage
+                src={frame.url}
+                ratio="square"
+                alt={`${g.label} drop at ${frame.timecode}`}
+                timecode={frame.timecode}
+                marked={bad}
+                energy={bad ? 0.8 : 0.5}
+                className="w-9 shrink-0"
+              />
+            )}
+            <div className="min-w-0">
+              <div className={bad ? 'truncate text-accent' : 'truncate text-white/90'}>
+                {g.label}
               </div>
-            );
-          })}
+              <div className="truncate text-[11px] text-white/40">{g.desc}</div>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'pct',
+      label: 'Watch-through',
+      align: 'right',
+      render: (g) => {
+        const bad = g.key === badKey;
+        return (
+          <span className={bad ? 'tabular-nums text-accent' : 'tabular-nums text-white/90'}>
+            {Math.round(g.pct)}%
+          </span>
+        );
+      },
+    },
+  ];
+
+  return (
+    <div data-testid="segment-table">
+      <DataTable columns={columns} rows={visible} rowKey={(g) => g.key} />
     </div>
   );
 }

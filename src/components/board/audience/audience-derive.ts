@@ -14,6 +14,9 @@
  */
 import type { HeatmapPayload, PersonaSimulationResult } from '@/lib/engine/types';
 import type { PersonaWeights } from '@/lib/engine/persona-weights';
+import type { PersonaNode } from '../_kit';
+import { resolveKeyframeUrl, type KeyframeSegmentLike } from '../_kit';
+import { ARCHETYPE_DISPLAY_NAME } from './audience-constants';
 
 export type SlotKey = 'fyp' | 'niche' | 'loyalist' | 'cross_niche';
 
@@ -24,6 +27,14 @@ export const SLOT_GROUPS: ReadonlyArray<{ key: SlotKey; label: string }> = [
   { key: 'loyalist', label: 'Loyal fans' },
   { key: 'cross_niche', label: 'Cross-niche' },
 ] as const;
+
+/** Short slot label for the persona-graph hover card segment line. */
+const SLOT_LABEL: Record<SlotKey, string> = {
+  fyp: 'New viewers',
+  niche: 'Your niche',
+  loyalist: 'Loyal fans',
+  cross_niche: 'Cross-niche',
+};
 
 /** Normalize a slot_type — PersonaSimulationResult uses `niche_deep`, heatmap uses `niche`. */
 export function normalizeSlot(slot: string): SlotKey {
@@ -328,4 +339,329 @@ export function smoothPath(points: Array<{ x: number; y: number }>): string {
 
 function round(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Hero persona-graph + stat-tile selectors (board-redesign-v2)
+//
+// Pure, unit-testable mappings from the engine heatmap/sim payloads into the
+// shared `_kit` PersonaGraph / StatTileRow shapes. No React, no presentation —
+// the same numbers that already feed the legacy rows, just reshaped.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Mean of a persona's per-segment attentions on a 0-1 scale. */
+function personaAttentionMean(attentions: number[]): number {
+  if (attentions.length === 0) return 0;
+  const sum = attentions.reduce((a, b) => a + b, 0);
+  return sum / attentions.length;
+}
+
+/**
+ * Per-persona watch-through 0-1.
+ *  - Prefer the persona's PersonaSimulationResult.watch_through_pct (0-100 → 0-1),
+ *    joined by persona_id (falling back to slot mean when ids don't line up).
+ *  - Else the mean of the heatmap persona's own attentions (already 0-1).
+ */
+function personaWatchThrough(
+  p: HeatmapPayload['personas'][number],
+  simById: Map<string, PersonaSimulationResult>,
+  simSlotMean: Map<SlotKey, number>,
+): number {
+  const direct = simById.get(p.id);
+  if (direct) return Math.min(1, Math.max(0, direct.watch_through_pct / 100));
+  const slotMean = simSlotMean.get(normalizeSlot(p.slot_type));
+  if (slotMean != null) return Math.min(1, Math.max(0, slotMean / 100));
+  return Math.min(1, Math.max(0, personaAttentionMean(p.attentions)));
+}
+
+/**
+ * Map the (up to 10) heatmap personas into `PersonaNode[]` for the hero graph.
+ *
+ * - id/label: persona id + archetype display name (slot label when unknown).
+ * - weight 0-1: relative attention-mean within the cohort (max-normalized so
+ *   the most-watched persona reads largest); falls back to a flat 0.5 when every
+ *   persona shares the same mean. Drives node radius — NOT engagement weighting.
+ * - watchThrough 0-1: per-persona watch-through (sim-preferred, see above).
+ * - segment: human slot label ("Your niche", "New viewers"…).
+ * - dropAt: mm:ss of swipe_predicted_at when present.
+ * - tone: 'accent' for personas in the single worst-retention slot group
+ *   (mirrors the table's `worstBadGroupKey`), so the hero and the "Who leaves"
+ *   tab highlight the same cluster.
+ */
+export function buildPersonaNodes(
+  heatmap: HeatmapPayload | null,
+  simResults: PersonaSimulationResult[] | undefined,
+  badKey: SlotKey | null,
+): PersonaNode[] {
+  const personas = heatmap?.personas ?? [];
+  if (personas.length === 0) return [];
+
+  const simById = new Map<string, PersonaSimulationResult>();
+  const simSlotAcc = new Map<SlotKey, { sum: number; n: number }>();
+  for (const r of simResults ?? []) {
+    simById.set(r.persona_id, r);
+    const k = normalizeSlot(r.slot_type);
+    const acc = simSlotAcc.get(k) ?? { sum: 0, n: 0 };
+    acc.sum += r.watch_through_pct;
+    acc.n += 1;
+    simSlotAcc.set(k, acc);
+  }
+  const simSlotMean = new Map<SlotKey, number>();
+  for (const [k, { sum, n }] of simSlotAcc) simSlotMean.set(k, n > 0 ? sum / n : 0);
+
+  const means = personas.map((p) => personaAttentionMean(p.attentions));
+  const maxMean = Math.max(...means, 0);
+
+  return personas.map((p, i) => {
+    const slot = normalizeSlot(p.slot_type);
+    const label =
+      ARCHETYPE_DISPLAY_NAME[p.archetype ?? ''] ?? SLOT_LABEL[slot];
+    const weight = maxMean > 0 ? (means[i] ?? 0) / maxMean : 0.5;
+    return {
+      id: p.id,
+      label,
+      weight,
+      watchThrough: personaWatchThrough(p, simById, simSlotMean),
+      segment: SLOT_LABEL[slot],
+      dropAt: p.swipe_predicted_at != null ? formatTime(p.swipe_predicted_at) : undefined,
+      tone: badKey != null && slot === badKey ? ('accent' as const) : ('default' as const),
+    };
+  });
+}
+
+/** Mean watch-through across all persona nodes, as a 0-100 int (null when none). */
+export function averageWatchThrough(nodes: PersonaNode[]): number | null {
+  if (nodes.length === 0) return null;
+  const mean = nodes.reduce((a, n) => a + n.watchThrough, 0) / nodes.length;
+  return Math.round(mean * 100);
+}
+
+/** How many of the cohort finish (watch-through ≥ 90%). Returns n / total. */
+export function personasFinishing(
+  nodes: PersonaNode[],
+  threshold = 0.9,
+): { finishing: number; total: number } {
+  return {
+    finishing: nodes.filter((n) => n.watchThrough >= threshold).length,
+    total: nodes.length,
+  };
+}
+
+/**
+ * One-word hero verdict from a 0-100 watch-through band + a HeroTone for color.
+ * Mirrors `statusWord`'s bands but condensed to a single word + tone so the
+ * FrameHero status reads as a glanceable badge.
+ */
+export function heroVerdict(
+  pct: number,
+): { word: string; tone: 'good' | 'warn' | 'crit' | 'neutral' } {
+  if (pct >= 80) return { word: 'Strong', tone: 'good' };
+  if (pct >= 60) return { word: 'Solid', tone: 'good' };
+  if (pct >= 40) return { word: 'Leaky', tone: 'warn' };
+  return { word: 'Drops', tone: 'crit' };
+}
+
+export interface RetentionTrendPoint {
+  /** Seconds (x). */
+  x: number;
+  /** Weighted survival 0-100 (the current series). */
+  current: number;
+  /** Niche-baseline survival 0-100, when available (the dotted comparison). */
+  previous?: number;
+}
+
+/**
+ * Build TrendChart data for the Retention tab: weighted survival (current) vs
+ * the niche ghost (previous/comparison), both on a 0-100 scale, x = seconds.
+ * Pure — the same curves the legacy SVG RetentionChart drew, reshaped for the
+ * kit TrendChart. Returns [] when there's no curve.
+ */
+export function buildRetentionTrend(
+  curve: number[] | null,
+  heatmap: HeatmapPayload | null,
+  totalDurationSec: number,
+  nicheCompletionPct: number | null,
+): RetentionTrendPoint[] {
+  if (!curve || curve.length === 0) return [];
+  const normalized = normalizeCurve(curve);
+  const segments = heatmap?.segments ?? [];
+  const total = totalDurationSec > 0 ? totalDurationSec : 1;
+  const ghost = nicheGhostCurve(heatmap);
+
+  return normalized.map((v, i) => {
+    const seg = segments[i];
+    const x = seg ? seg.t_start : (i / Math.max(1, normalized.length - 1)) * total;
+    const point: RetentionTrendPoint = { x: Math.round(x), current: Math.round(v * 100) };
+    if (ghost && ghost[i] != null) {
+      point.previous = Math.round((ghost[i] ?? 0) * 100);
+    } else if (nicheCompletionPct != null) {
+      point.previous = Math.round(Math.min(1, Math.max(0, nicheCompletionPct)) * 100);
+    }
+    return point;
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Real-keyframe selectors (board-redesign-v2.1)
+//
+// "Where they drop" strip + "Who leaves" cohort thumbs. Both resolve a real
+// signed keyframe per moment from the filmstrip map (segment_idx → URL), keyed
+// by POSITION (seg.idx ?? i) to match RetentionChart / ContentAnalysisFrame.
+// Pure — the view gates on `Object.keys(filmstrips).length > 0` before rendering.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** A single moment in "where they drop": a frame at a key retention drop. */
+export interface DropMoment {
+  /** Position index into the curve / segments. */
+  index: number;
+  /** Signed keyframe URL for this moment (null ⇒ KeyframeImage draws a fallback). */
+  url: string | null;
+  /** mm:ss timecode of the drop (segment t_start). */
+  timecode: string;
+  /** Drop magnitude as a 0-100 int (for the worst-cell badge). */
+  deltaPct: number;
+  /** True for the single biggest drop (gets the coral `marked` outline). */
+  worst: boolean;
+}
+
+/** Bridge a heatmap's segments to the `KeyframeSegmentLike` shape `resolveKeyframeUrl` wants. */
+function asKeyframeSegments(
+  segments: HeatmapPayload['segments'] | undefined,
+): KeyframeSegmentLike[] {
+  return (segments ?? []).map((s, i) => ({
+    idx: s.idx ?? i,
+    t_start: s.t_start,
+    t_end: s.t_end,
+    keyframe_uri: s.keyframe_uri,
+  }));
+}
+
+/**
+ * Resolve a real keyframe for a curve/segment position. Prefers the filmstrip
+ * map keyed by POSITION (matches RetentionChart's `seg.idx ?? i`), then the
+ * segment's own keyframe_uri, then a ms-target `resolveKeyframeUrl` fallback.
+ */
+function frameForSegmentIndex(
+  filmstrips: Record<number, string>,
+  segments: HeatmapPayload['segments'] | undefined,
+  index: number,
+): string | null {
+  const segs = segments ?? [];
+  const seg = segs[index];
+  const segIdx = seg?.idx ?? index;
+  if (filmstrips[segIdx]) return filmstrips[segIdx] ?? null;
+  if (filmstrips[index]) return filmstrips[index] ?? null;
+  if (seg?.keyframe_uri) return seg.keyframe_uri;
+  // Last resort: ms-target resolve (handles permalink heatmaps with sparse idxs).
+  if (seg) return resolveKeyframeUrl(filmstrips, asKeyframeSegments(segs), seg.t_start * 1000);
+  return null;
+}
+
+/**
+ * Pick the key drop moments for the "Where they drop" strip: the biggest drop
+ * (reusing `findBiggestDrop`) plus the next-largest distinct drops, up to `max`,
+ * ordered by time. The biggest drop is flagged `worst` (coral mark). Each moment
+ * resolves a real frame from the filmstrip map. Returns [] when there's no curve
+ * or no segments (the caller also gates on a non-empty filmstrip map).
+ */
+export function buildDropMoments(
+  curve: number[] | null,
+  segments: HeatmapPayload['segments'] | undefined,
+  filmstrips: Record<number, string>,
+  max = 3,
+): DropMoment[] {
+  const segs = segments ?? [];
+  if (!curve || curve.length < 2 || segs.length === 0) return [];
+  const normalized = normalizeCurve(curve);
+
+  // All downward steps, largest first.
+  const steps: Array<{ index: number; delta: number }> = [];
+  for (let i = 1; i < normalized.length; i++) {
+    const delta = (normalized[i - 1] ?? 0) - (normalized[i] ?? 0);
+    if (delta > 0) steps.push({ index: i, delta });
+  }
+  if (steps.length === 0) return [];
+  steps.sort((a, b) => b.delta - a.delta);
+
+  const worstIndex = steps[0]!.index;
+  const picked = steps.slice(0, Math.max(1, max));
+  // Present in time order (left → right) so the strip reads as a timeline.
+  picked.sort((a, b) => a.index - b.index);
+
+  return picked.map(({ index, delta }) => {
+    const seg = segs[index];
+    return {
+      index,
+      url: frameForSegmentIndex(filmstrips, segs, index),
+      timecode: formatTime(seg?.t_start ?? 0),
+      deltaPct: Math.round(delta * 100),
+      worst: index === worstIndex,
+    };
+  });
+}
+
+/**
+ * Cohort drop frame for a "Who leaves" row. Picks the time the cohort leaves
+ * (mean `swipe_predicted_at` of that slot's personas, else the slot's lowest-
+ * attention segment), resolves the real frame at that time, and returns the
+ * mm:ss timecode. Returns null when there's no usable time/segment, so the row
+ * simply omits the thumb. Keyed off the heatmap personas (the same source the
+ * groups fold from), so the join is by normalized slot.
+ */
+export interface CohortDropFrame {
+  url: string | null;
+  timecode: string;
+}
+
+export function cohortDropFrame(
+  heatmap: HeatmapPayload | null,
+  slot: SlotKey,
+  filmstrips: Record<number, string>,
+): CohortDropFrame | null {
+  const segments = heatmap?.segments ?? [];
+  if (segments.length === 0) return null;
+  const personas = (heatmap?.personas ?? []).filter(
+    (p) => normalizeSlot(p.slot_type) === slot,
+  );
+  if (personas.length === 0) return null;
+
+  // Preferred: mean predicted swipe time across the cohort.
+  const swipes = personas
+    .map((p) => p.swipe_predicted_at)
+    .filter((t): t is number => t != null);
+  let dropSec: number | null =
+    swipes.length > 0 ? swipes.reduce((a, b) => a + b, 0) / swipes.length : null;
+  let index: number;
+
+  if (dropSec != null) {
+    // Map the time to its containing segment (else nearest by midpoint).
+    const ds = dropSec;
+    const found = segments.findIndex((s) => ds >= s.t_start && ds < s.t_end);
+    index =
+      found >= 0
+        ? found
+        : segments
+            .map((s, i) => ({ i, d: Math.abs((s.t_start + s.t_end) / 2 - ds) }))
+            .sort((a, b) => a.d - b.d)[0]!.i;
+  } else {
+    // Fallback: the segment where this cohort's mean attention is lowest.
+    let lowIdx = 0;
+    let lowVal = Infinity;
+    for (let j = 0; j < segments.length; j++) {
+      let sum = 0;
+      for (const p of personas) sum += p.attentions[j] ?? 0;
+      const mean = sum / personas.length;
+      if (mean < lowVal) {
+        lowVal = mean;
+        lowIdx = j;
+      }
+    }
+    index = lowIdx;
+    dropSec = segments[lowIdx]?.t_start ?? 0;
+  }
+
+  return {
+    url: frameForSegmentIndex(filmstrips, segments, index),
+    timecode: formatTime(dropSec),
+  };
 }

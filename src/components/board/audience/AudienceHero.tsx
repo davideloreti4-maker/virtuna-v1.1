@@ -1,93 +1,66 @@
 'use client';
+import type { ReactNode } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { InsightParts } from './audience-derive';
+import { FrameHero, PersonaGraph, type HeroTone, type PersonaNode } from '../_kit';
 
 export interface AudienceHeroProps {
-  /** Watch-through % (0-100, already rounded to int). Null while loading. */
+  /** The 10 personas mapped into the graph node shape. */
+  nodes: PersonaNode[];
+  /** Weighted watch-through % (0-100, already rounded). Null while loading. */
   watchThroughPct: number | null;
-  /** Status word — "Holds strong" / "Holds well" / "Leaky" / "Drops fast". */
-  status: string;
-  /** Sub line, e.g. "watch-through · top 15% of your niche". */
-  sub: string;
-  /** Insight sentence parts (lead / coral time / tail / addendum). */
-  insight: InsightParts;
-  /** When true, render shimmer placeholders instead of values. */
+  /** One-word verdict + tone, by band. */
+  verdict: { word: string; tone: HeroTone };
+  /** One-line takeaway (who leaves / where). May carry an inline coral time mark. */
+  insight: ReactNode;
+  /** Pass-through for prefers-reduced-motion (kills the float animation). */
+  reducedMotion: boolean;
+  /** When true, render a shimmer placeholder instead of the graph. */
   isLoading: boolean;
 }
 
 /**
- * BLOCK A — hero number + status word + sub + insight sentence.
- *
- * 3 text levels only (0.94 / 0.55 / 0.34). Coral appears on at most the insight
- * time mark. Matches audience-sketch-v7 `.hero` / `.sub` / `.insight`.
+ * Audience hero — an Artificial-Societies-style persona node-graph as the hero
+ * visual (via FrameHero's `children` slot), with the weighted watch-through %
+ * overlaid top-left as the dominant number, plus a one-word verdict and a
+ * one-line insight. The retention curve now lives in the Retention tab.
  */
-export function AudienceHero({ watchThroughPct, status, sub, insight, isLoading }: AudienceHeroProps) {
+export function AudienceHero({
+  nodes,
+  watchThroughPct,
+  verdict,
+  insight,
+  reducedMotion,
+  isLoading,
+}: AudienceHeroProps) {
+  if (isLoading || watchThroughPct == null) {
+    return (
+      <FrameHero label="Audience watch-through">
+        <Skeleton className="h-[220px] w-full rounded-[12px]" />
+      </FrameHero>
+    );
+  }
+
   return (
-    <div className="flex flex-col">
-      {/* hero: number + status, baseline-aligned */}
-      <div className="flex items-baseline justify-between">
-        {isLoading || watchThroughPct == null ? (
-          <Skeleton className="h-[40px] w-[88px] rounded-[8px]" />
-        ) : (
-          <div
-            className="leading-none tabular-nums"
-            style={{
-              fontSize: 40,
-              fontWeight: 680,
-              letterSpacing: '-1.8px',
-              color: 'rgba(255,255,255,0.94)',
-            }}
-          >
+    <FrameHero
+      label="Audience watch-through"
+      status={{ word: verdict.word, tone: verdict.tone }}
+      insight={insight}
+    >
+      <div className="relative w-full">
+        {/* weighted watch-through % overlaid top-left, clean over the cloud */}
+        <div className="pointer-events-none absolute left-0 top-0 z-10">
+          <div className="text-[44px] font-semibold leading-none tracking-[-0.02em] tabular-nums text-white">
             {watchThroughPct}
-            <span
-              style={{
-                fontSize: 16,
-                fontWeight: 600,
-                color: 'rgba(255,255,255,0.55)',
-                marginLeft: 1,
-                letterSpacing: '-0.2px',
-              }}
-            >
-              %
-            </span>
+            <span className="ml-1 text-[16px] font-medium text-white/40">%</span>
           </div>
-        )}
-        {!isLoading && (
-          <div style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.55)' }}>
-            {status}
-          </div>
+        </div>
+
+        {nodes.length > 0 ? (
+          <PersonaGraph personas={nodes} reducedMotion={reducedMotion} />
+        ) : (
+          <div style={{ height: 220 }} />
         )}
       </div>
-
-      {/* sub line */}
-      {isLoading ? (
-        <Skeleton className="mt-[9px] h-[13px] w-[180px] rounded-[4px]" />
-      ) : (
-        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.34)', marginTop: 9 }}>{sub}</div>
-      )}
-
-      {/* insight sentence */}
-      {isLoading ? (
-        <Skeleton className="mt-[14px] h-[15px] w-[90%] rounded-[4px]" />
-      ) : (
-        <p
-          style={{
-            fontSize: 15,
-            color: 'rgba(255,255,255,0.94)',
-            lineHeight: 1.46,
-            marginTop: 14,
-            fontWeight: 450,
-            maxWidth: '90%',
-          }}
-        >
-          {insight.lead}
-          {insight.time != null && (
-            <b style={{ color: '#FF7F50', fontWeight: 600 }}>{insight.time}</b>
-          )}
-          {insight.tail}
-          {insight.addendum}
-        </p>
-      )}
-    </div>
+    </FrameHero>
   );
 }

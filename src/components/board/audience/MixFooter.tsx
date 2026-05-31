@@ -17,7 +17,8 @@ export interface MixFooterProps {
 export function MixFooter({ label, open, onToggle }: MixFooterProps) {
   return (
     <div
-      className="mt-[18px] flex items-center gap-2 border-t border-white/[0.06] pt-[16px]"
+      data-testid="mix-footer"
+      className="flex items-center gap-2"
       style={{ fontSize: 12, color: 'rgba(255,255,255,0.34)' }}
     >
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="shrink-0" aria-hidden="true">
