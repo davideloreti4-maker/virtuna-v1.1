@@ -22,6 +22,8 @@ export type FixItem = CounterfactualSuggestionItem;
 export interface AdviceRow {
   headline: string;
   detail: string;
+  /** Optional timestamp (ms) for fix rows — rendered as a right-aligned time chip. */
+  timestampMs?: number;
 }
 
 export type ActionsView =
@@ -72,7 +74,11 @@ function suggestionToRow(s: Suggestion): AdviceRow {
 }
 
 function fixToRow(f: FixItem): AdviceRow {
-  return { headline: f.headline, detail: f.detail ?? '' };
+  return {
+    headline: f.headline,
+    detail: f.detail ?? '',
+    timestampMs: f.timestamp_ms > 0 ? f.timestamp_ms : undefined,
+  };
 }
 
 // weakest_modality → the signal_anchor fragment its fix targets. Wires the
@@ -162,4 +168,87 @@ export function deriveActionsView(input: DeriveInput): ActionsView {
   }
 
   return { kind: 'all-set' };
+}
+
+/** FrameHero tone — maps a view-kind onto the shared kit's HeroTone palette. */
+export type ActionsHeroTone = 'good' | 'warn' | 'crit' | 'neutral';
+
+/** Pure hero spec for the shared FrameHero. Every view-kind resolves to the SAME
+ *  Hero shape (label + verb headline + status word + one-line insight) so the
+ *  frame stops looking like five different screens. No view-routing semantics
+ *  change here — this only LABELS the view the router already chose. */
+export interface ActionsHeroSpec {
+  /** Caps label above the verb. */
+  label: string;
+  /** The ONE move, as a verb headline. */
+  verb: string;
+  tone: ActionsHeroTone;
+  /** Short status word (tone-colored by FrameHero). */
+  status: string;
+  /** The why — one line. May be empty (e.g. needs-work uses the fix detail). */
+  insight: string;
+}
+
+export function deriveActionsHero(view: ActionsView): ActionsHeroSpec | null {
+  switch (view.kind) {
+    case 'loading':
+      return null;
+    case 'strong':
+      return {
+        label: ACTIONS_COPY.HERO_LABEL,
+        verb: ACTIONS_COPY.HERO_VERB_STRONG,
+        tone: 'good',
+        status: ACTIONS_COPY.HERO_STATUS_GOOD,
+        insight: ACTIONS_COPY.HERO_INSIGHT_STRONG,
+      };
+    case 'all-set':
+      return {
+        label: ACTIONS_COPY.HERO_LABEL,
+        verb: ACTIONS_COPY.HERO_VERB_ALL_SET,
+        tone: 'good',
+        status: ACTIONS_COPY.HERO_STATUS_GOOD,
+        insight: ACTIONS_COPY.HERO_INSIGHT_ALL_SET,
+      };
+    case 'degraded':
+      return {
+        label: ACTIONS_COPY.HERO_LABEL,
+        verb: ACTIONS_COPY.HERO_VERB_DEGRADED,
+        tone: 'neutral',
+        status: '',
+        insight: ACTIONS_COPY.HERO_INSIGHT_DEGRADED,
+      };
+    case 'needs-work': {
+      const isAV = view.kicker === ACTIONS_COPY.KICKER_AV;
+      const crit = view.tone === 'crit';
+      return {
+        label: ACTIONS_COPY.HERO_LABEL,
+        verb: isAV
+          ? ACTIONS_COPY.HERO_VERB_AV
+          : crit
+            ? ACTIONS_COPY.HERO_VERB_REWORK
+            : ACTIONS_COPY.HERO_VERB_POLISH,
+        tone: crit ? 'crit' : 'warn',
+        status: crit ? ACTIONS_COPY.HERO_STATUS_CRIT : ACTIONS_COPY.HERO_STATUS_WARN,
+        // The why = the hero fix itself (the specific move to make). The fuller
+        // detail + the copyable rewrite live in the rewrite block below the hero.
+        insight: view.hero.headline,
+      };
+    }
+  }
+}
+
+/** Unified list rows for the kit DataTable. needs-work surfaces secondary fixes;
+ *  strong surfaces optional polish; degraded surfaces advice. The hero fix itself
+ *  is NOT in this list (it lives in the hero rewrite block). */
+export function deriveActionsRows(view: ActionsView): AdviceRow[] {
+  switch (view.kind) {
+    case 'needs-work':
+      return view.secondary.map(fixToRow);
+    case 'strong':
+      return view.polish;
+    case 'degraded':
+      return view.rows;
+    default:
+      return [];
+  }
 }

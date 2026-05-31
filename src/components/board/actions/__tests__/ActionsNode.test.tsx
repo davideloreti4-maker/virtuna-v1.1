@@ -9,6 +9,12 @@ vi.mock('@/hooks/usePrefersReducedMotion', () => ({ usePrefersReducedMotion: () 
 vi.mock('@/hooks/queries/use-permalink-analysis', () => ({
   usePermalinkAnalysis: () => ({ id: null, data: null, isLoading: false }),
 }));
+// Per-fix keyframe thumbs source permalink-replay filmstrips. Default empty (text
+// mode) — the per-test `mockStream` supplies live SSE filmstrips when a timeline
+// is needed. Re-mockable via vi.doMock for the "filmstrips present" case.
+vi.mock('@/hooks/queries/use-permalink-filmstrips', () => ({
+  usePermalinkFilmstrips: () => ({}),
+}));
 // @phosphor-icons/react is ESM-only; provide stub SVG components for every icon
 // the action-led frame + reused edit panel touch.
 vi.mock('@phosphor-icons/react', () => {
@@ -72,11 +78,14 @@ function withWindow(result: object) {
   return { ...result, id: 'analysis-id-stub', optimal_post_window: WINDOW, optimal_post_override: null };
 }
 
-function mockStream(overrides: { phase?: string; result?: unknown } = {}) {
+function mockStream(
+  overrides: { phase?: string; result?: unknown; filmstrips?: Record<number, string> } = {},
+) {
   vi.doMock('@/hooks/queries/use-analysis-stream', () => ({
     useAnalysisStream: () => ({
       phase: overrides.phase ?? 'complete',
       result: 'result' in overrides ? overrides.result : withWindow(fixtures.complete),
+      filmstrips: overrides.filmstrips ?? {},
     }),
   }));
 }
@@ -173,7 +182,8 @@ describe('ActionsNode (action-led)', () => {
     const { ActionsNode: Fresh } = await import('../ActionsNode');
     render(<Fresh camera={{} as never} layout={{} as never} />);
     expect(screen.getByTestId('actions-grid').getAttribute('data-view')).toBe('degraded');
-    expect(screen.getByText('Where to focus')).toBeInTheDocument();
+    // Degraded shares the unified Hero — the verb tells the creator where to focus.
+    expect(screen.getByText('Sharpen these')).toBeInTheDocument();
     // Each suggestion renders as a clamped expandable row, never raw multi-line text.
     expect(screen.getAllByTestId('actions-advice-row').length).toBeGreaterThan(0);
   });
@@ -204,5 +214,51 @@ describe('ActionsNode (action-led)', () => {
     render(<Fresh camera={{} as never} layout={{} as never} />);
     expect(screen.queryByTestId('actions-scorecard')).toBeNull();
     expect(screen.queryByText('Score breakdown')).toBeNull();
+  });
+
+  // --- Per-fix keyframe thumbs (real video timeline only) ---------------------
+
+  // A heatmap with real time ranges (seconds) the fix timestamps (ms) map onto.
+  const HEATMAP = {
+    segments: [
+      { idx: 0, t_start: 0, t_end: 5, is_hook_zone: true, keyframe_uri: null },
+      { idx: 1, t_start: 5, t_end: 10, is_hook_zone: false, keyframe_uri: null },
+      { idx: 2, t_start: 10, t_end: 15, is_hook_zone: false, keyframe_uri: null },
+    ],
+  };
+
+  it('filmstrips present → fix rows render a keyframe thumb (resolved from the timestamp)', async () => {
+    // antiVirality has three timestamped fix items → the secondary list is non-empty.
+    const withTimeline = withWindow({ ...fixtures.antiVirality, heatmap: HEATMAP });
+    mockStream({
+      phase: 'complete',
+      result: withTimeline,
+      filmstrips: { 0: 'seg0.jpg', 1: 'seg1.jpg', 2: 'seg2.jpg' },
+    });
+    mockBoardState('anti-virality');
+    const { ActionsNode: Fresh } = await import('../ActionsNode');
+    render(<Fresh camera={{} as never} layout={{} as never} />);
+
+    // Secondary fix rows are present …
+    const rows = screen.getAllByTestId('actions-advice-row');
+    expect(rows.length).toBeGreaterThan(0);
+    // … and each renders a keyframe in its row (the thumb at the fix's moment).
+    const frames = screen.getAllByTestId('keyframe');
+    expect(frames.length).toBe(rows.length);
+    // Thumb carries the timecode (the right-aligned time chip is dropped) — e.g. 0:01.
+    expect(screen.getByText('0:01')).toBeInTheDocument();
+  });
+
+  it('no filmstrips (text mode) → fix rows render with NO keyframe element (unchanged)', async () => {
+    // Same fixture, but no live SSE filmstrips and no permalink replay (default mock
+    // returns {}). The rows must render exactly as before — no thumb, no layout shift.
+    const noTimeline = withWindow({ ...fixtures.antiVirality, heatmap: HEATMAP });
+    mockStream({ phase: 'complete', result: noTimeline, filmstrips: {} });
+    mockBoardState('anti-virality');
+    const { ActionsNode: Fresh } = await import('../ActionsNode');
+    render(<Fresh camera={{} as never} layout={{} as never} />);
+
+    expect(screen.getAllByTestId('actions-advice-row').length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('keyframe')).toBeNull();
   });
 });

@@ -4,9 +4,22 @@ import { ArrowUpRight, CaretRight, Check } from '@phosphor-icons/react';
 import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import { logger } from '@/lib/logger';
 import { formatTime } from '@/lib/script-utils';
+import {
+  FrameHero,
+  DataTable,
+  type DataColumn,
+  KeyframeImage,
+  resolveKeyframeUrl,
+  type KeyframeSegmentLike,
+} from '@/components/board/_kit';
 import { ACTIONS_COPY, TELEMETRY } from './actions-constants';
 import { ActionsBestTime } from './ActionsBestTime';
-import type { ActionsView, AdviceRow, FixItem } from './actions-derive';
+import {
+  deriveActionsHero,
+  deriveActionsRows,
+  type ActionsView,
+  type AdviceRow,
+} from './actions-derive';
 import type { OptimalPostOverride } from './optimal-post/OptimalPostCard';
 import type { OptimalPostWindow } from '@/lib/engine/optimal-post';
 
@@ -22,234 +35,247 @@ interface Props {
   openingLine: string | null;
   analysisId: string | null;
   bestTime: BestTime;
+  /** Merged keyframe URLs (live SSE + permalink replay), segment idx → signed URL.
+   *  Empty in text / tiktok_url modes with no real timeline. */
+  filmstrips: Record<number, string>;
+  /** Heatmap segments carrying time ranges (seconds) — used to map a fix's
+   *  timestamp to its keyframe. */
+  segments: ReadonlyArray<KeyframeSegmentLike>;
+  /** True only when there's a real video timeline (filmstrips non-empty, or the
+   *  engine flagged has_video). Gates the per-row keyframe thumb. */
+  hasVideo: boolean;
 }
 
-export function ActionsContent({ view, openingLine, analysisId, bestTime }: Props) {
-  switch (view.kind) {
-    case 'loading':
-      return <Skeleton />;
-    case 'strong':
-      return (
-        <div data-testid="actions-strong">
-          <ActionsBestTime variant="hero" {...bestTime} />
-          {view.polish.length > 0 && (
-            <>
-              <Rule />
-              <Kicker label={ACTIONS_COPY.KICKER_POLISH} tone="good" />
-              <Rows>
-                {view.polish.map((row, i) => (
-                  <AdviceRowItem key={`polish-${i}`} row={row} />
-                ))}
-              </Rows>
-            </>
-          )}
-        </div>
-      );
-    case 'degraded':
-      return (
-        <div data-testid="actions-degraded">
-          <Kicker label={view.kicker} tone="neutral" />
-          <Rows>
-            {view.rows.map((row, i) => (
-              <AdviceRowItem key={`advice-${i}`} row={row} />
-            ))}
-          </Rows>
-          <Rule />
-          <ActionsBestTime variant="foot" {...bestTime} />
-        </div>
-      );
-    case 'all-set':
-      return (
-        <div data-testid="actions-all-set">
-          <div className="text-[16px] font-semibold leading-[1.3] tracking-[-0.015em] text-white/95">
-            {ACTIONS_COPY.ALL_SET}
-          </div>
-          <p className="mt-[7px] text-[13px] leading-[1.55] text-white/55">
-            {ACTIONS_COPY.ALL_SET_SUB}
-          </p>
-          <Rule />
-          <ActionsBestTime variant="foot" {...bestTime} />
-        </div>
-      );
-    case 'needs-work': {
-      const rewrite = openingLine ?? `${view.hero.headline}. ${view.hero.detail}`;
-      return (
-        <div data-testid="actions-needs-work">
-          <Kicker
-            label={view.kicker}
-            count={view.tone === 'crit' ? view.count : undefined}
-            tone={view.tone === 'crit' ? 'crit' : 'neutral'}
-          />
-          <HeroFix fix={view.hero} rewrite={rewrite} analysisId={analysisId} />
-          {view.secondary.length > 0 && (
-            <>
-              <Rule />
-              <Rows>
-                {view.secondary.map((f, i) => (
-                  <FixRow key={`fix-${i}`} fix={f} analysisId={analysisId} />
-                ))}
-              </Rows>
-            </>
-          )}
-          <Rule />
-          <ActionsBestTime variant="foot" {...bestTime} />
-        </div>
-      );
-    }
-  }
-}
+/**
+ * Unified Actions frame: Hero (the ONE move) + body (best-time, plus a rewrite
+ * block when needs-work) + a clean list of fixes/polish. Every view-kind shares
+ * the SAME layout — the kind only changes the hero verb/tone and which rows fill
+ * the list — so the frame reads as one screen, not five.
+ */
+export function ActionsContent({
+  view,
+  openingLine,
+  analysisId,
+  bestTime,
+  filmstrips,
+  segments,
+  hasVideo,
+}: Props) {
+  if (view.kind === 'loading') return <Skeleton />;
 
-function Rule() {
-  return <div className="my-[18px] h-px bg-white/[0.06]" />;
-}
+  const hero = deriveActionsHero(view);
+  const rows = deriveActionsRows(view);
 
-function Rows({ children }: { children: React.ReactNode }) {
-  return <div className="flex flex-col">{children}</div>;
-}
+  // needs-work leads with a concrete rewrite (engine opening line, or the hero
+  // fix headline/detail as a fallback) the creator can copy and act on.
+  const rewrite =
+    view.kind === 'needs-work'
+      ? openingLine ?? `${view.hero.headline}. ${view.hero.detail ?? ''}`.trim()
+      : null;
 
-function Kicker({
-  label,
-  count,
-  tone,
-}: {
-  label: string;
-  count?: number;
-  tone: 'crit' | 'good' | 'neutral';
-}) {
-  const dot =
-    tone === 'crit' ? 'bg-[#ef6360]' : tone === 'good' ? 'bg-[#62cda1]' : 'bg-white/20';
+  const rowsLabel =
+    view.kind === 'strong' ? ACTIONS_COPY.SECTION_POLISH : ACTIONS_COPY.SECTION_FIXES;
+
   return (
-    <div className="mb-[13px] flex items-center gap-2 text-[11px] font-medium tracking-[0.01em] text-white/30">
-      <span className={`h-[5px] w-[5px] rounded-full ${dot}`} aria-hidden />
-      <span>
-        {label}
-        {count ? ` · ${count} ${ACTIONS_COPY.COUNT_SUFFIX}` : ''}
-      </span>
+    <div className="flex flex-col gap-4" data-testid={`actions-${view.kind}`}>
+      {hero && (
+        <FrameHero
+          label={hero.label}
+          value={hero.verb}
+          status={hero.status ? { word: hero.status, tone: hero.tone } : undefined}
+          insight={hero.insight || undefined}
+        />
+      )}
+
+      {view.kind === 'needs-work' && rewrite && (
+        <HeroRewrite rewrite={rewrite} analysisId={analysisId} />
+      )}
+
+      {rows.length > 0 && (
+        <Section label={rowsLabel}>
+          <RowList
+            rows={rows}
+            analysisId={analysisId}
+            filmstrips={filmstrips}
+            segments={segments}
+            hasVideo={hasVideo}
+          />
+        </Section>
+      )}
+
+      <Section label={ACTIONS_COPY.SECTION_WHEN}>
+        <ActionsBestTime
+          variant={view.kind === 'strong' || view.kind === 'all-set' ? 'hero' : 'foot'}
+          {...bestTime}
+        />
+      </Section>
     </div>
   );
 }
 
-function HeroFix({
-  fix,
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-[11px] uppercase tracking-[0.08em] text-white/45">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+/** Concrete rewrite the creator can copy — the action that follows the verb hero. */
+function HeroRewrite({
   rewrite,
   analysisId,
 }: {
-  fix: FixItem;
   rewrite: string;
   analysisId: string | null;
 }) {
   const { copied, copy } = useCopyToClipboard();
   async function onCopy() {
     const ok = await copy(rewrite);
-    if (ok) {
-      logger.info(TELEMETRY.ACTIONS_REWRITE_COPIED, { analysis_id: analysisId });
-    }
+    if (ok) logger.info(TELEMETRY.ACTIONS_REWRITE_COPIED, { analysis_id: analysisId });
   }
+  if (rewrite.trim().length === 0) return null;
   return (
-    <div data-testid="actions-hero-fix">
-      <div className="text-[16px] font-semibold leading-[1.3] tracking-[-0.015em] text-white/95">
-        {fix.headline}
-      </div>
-      {fix.detail && (
-        <p className="mt-[7px] max-w-[300px] text-[13px] leading-[1.55] text-white/55">
-          {fix.detail}
-        </p>
-      )}
-      {rewrite.trim().length > 0 && (
-        <button
-          type="button"
-          onClick={onCopy}
-          className="mt-3.5 inline-flex items-center gap-1.5 text-[12.5px] font-semibold tracking-[-0.005em] text-[#FF7F50] hover:opacity-80 focus:outline-2 focus:outline-offset-2 focus:outline-white/40"
-        >
-          {copied ? (
-            <>
-              <Check size={13} weight="bold" aria-hidden />
-              {ACTIONS_COPY.COPIED}
-            </>
-          ) : (
-            <>
-              {ACTIONS_COPY.COPY_REWRITE}
-              <ArrowUpRight size={13} weight="bold" aria-hidden />
-            </>
-          )}
-        </button>
-      )}
-    </div>
-  );
-}
-
-function FixRow({ fix, analysisId }: { fix: FixItem; analysisId: string | null }) {
-  const [open, setOpen] = useState(false);
-  function toggle() {
-    const next = !open;
-    setOpen(next);
-    if (next) logger.info(TELEMETRY.ACTIONS_FIX_EXPANDED, { analysis_id: analysisId });
-  }
-  return (
-    <div className="border-t border-white/[0.06] first:border-t-0" data-testid="actions-fix-row">
+    <div
+      className="rounded-[11px] border border-white/[0.06] bg-white/[0.016] px-3 py-[11px]"
+      data-testid="actions-hero-fix"
+    >
+      <p className="text-[13px] leading-[1.5] text-white/80">{rewrite}</p>
       <button
         type="button"
-        onClick={toggle}
-        aria-expanded={open}
-        className="flex w-full items-center gap-3 py-[11px] text-left focus:outline-2 focus:outline-offset-2 focus:outline-white/40"
+        onClick={onCopy}
+        className="mt-2.5 inline-flex items-center gap-1.5 text-[12.5px] font-semibold tracking-[-0.005em] text-accent hover:opacity-80 focus:outline-2 focus:outline-offset-2 focus:outline-white/40"
       >
-        <span className="text-[13.5px] font-normal tracking-[-0.008em] text-white/95">
-          {fix.headline}
-        </span>
-        <span className="ml-auto flex items-center gap-2">
-          {fix.timestamp_ms > 0 && (
-            <span className="font-mono text-[10.5px] tabular-nums text-white/25">
-              {formatTime(fix.timestamp_ms)}
-            </span>
-          )}
-          <CaretRight
-            size={13}
-            weight="regular"
-            aria-hidden
-            className={`text-white/25 transition-transform ${open ? 'rotate-90' : ''}`}
-          />
-        </span>
+        {copied ? (
+          <>
+            <Check size={13} weight="bold" aria-hidden />
+            {ACTIONS_COPY.COPIED}
+          </>
+        ) : (
+          <>
+            {ACTIONS_COPY.COPY_REWRITE}
+            <ArrowUpRight size={13} weight="bold" aria-hidden />
+          </>
+        )}
       </button>
-      {open && fix.detail && (
-        <p className="pb-3 text-[12.5px] leading-[1.5] text-white/55">{fix.detail}</p>
-      )}
     </div>
   );
 }
 
 /**
- * Optional-polish / degraded advice row. Shows a tight clamped headline; the full
- * suggestion text expands inline on tap (same rhythm as FixRow, no timestamp).
- * Replaces the old wall-of-text that printed Suggestion.text verbatim.
+ * Linear-style task rows via the kit DataTable. Each row's full detail expands
+ * inline on tap (kept from the prior design).
+ *
+ * When there's a real video timeline (`hasVideo`), each fix leads with a small
+ * square keyframe resolved from its `timestampMs` — the thumb's timecode carries
+ * the moment, so the separate right-aligned time chip is dropped. In text /
+ * tiktok_url modes (no timeline) rows render exactly as before: headline + the
+ * right-aligned time chip, no thumb, no layout shift.
  */
-function AdviceRowItem({ row }: { row: AdviceRow }) {
-  const [open, setOpen] = useState(false);
-  const hasDetail = row.detail.trim().length > 0 && row.detail.trim() !== row.headline.trim();
-  return (
-    <div className="border-t border-white/[0.06] first:border-t-0" data-testid="actions-advice-row">
-      <button
-        type="button"
-        onClick={() => hasDetail && setOpen((v) => !v)}
-        aria-expanded={hasDetail ? open : undefined}
-        disabled={!hasDetail}
-        className="flex w-full items-center gap-3 py-[11px] text-left focus:outline-2 focus:outline-offset-2 focus:outline-white/40 disabled:cursor-default"
-      >
-        <span className="text-[13.5px] font-normal leading-[1.4] tracking-[-0.008em] text-white/95">
-          {row.headline}
+function RowList({
+  rows,
+  analysisId,
+  filmstrips,
+  segments,
+  hasVideo,
+}: {
+  rows: AdviceRow[];
+  analysisId: string | null;
+  filmstrips: Record<number, string>;
+  segments: ReadonlyArray<KeyframeSegmentLike>;
+  hasVideo: boolean;
+}) {
+  const [open, setOpen] = useState<number | null>(null);
+
+  function toggle(i: number, hasDetail: boolean) {
+    if (!hasDetail) return;
+    const next = open === i ? null : i;
+    setOpen(next);
+    if (next !== null) logger.info(TELEMETRY.ACTIONS_FIX_EXPANDED, { analysis_id: analysisId });
+  }
+
+  const headlineColumn: DataColumn<{ row: AdviceRow; i: number }> = {
+    key: 'headline',
+    align: 'left',
+    render: ({ row, i }) => {
+      const hasDetail =
+        row.detail.trim().length > 0 && row.detail.trim() !== row.headline.trim();
+      const isOpen = open === i;
+      return (
+        <button
+          type="button"
+          onClick={() => toggle(i, hasDetail)}
+          aria-expanded={hasDetail ? isOpen : undefined}
+          disabled={!hasDetail}
+          className="flex w-full flex-col gap-1 text-left focus:outline-2 focus:outline-offset-2 focus:outline-white/40 disabled:cursor-default"
+          data-testid="actions-advice-row"
+        >
+          <span className="flex items-center gap-2">
+            <span className="text-[13px] leading-[1.4] text-white/90">{row.headline}</span>
+            {hasDetail && (
+              <CaretRight
+                size={12}
+                weight="regular"
+                aria-hidden
+                className={`shrink-0 text-white/25 transition-transform ${isOpen ? 'rotate-90' : ''}`}
+              />
+            )}
+          </span>
+          {isOpen && hasDetail && (
+            <span className="text-[12.5px] leading-[1.5] text-white/55">{row.detail}</span>
+          )}
+        </button>
+      );
+    },
+  };
+
+  // Real timeline → lead with the keyframe at the fix's moment; the thumb's
+  // timecode replaces the separate right-aligned time chip. A fix with no
+  // timestamp gets no thumb (an empty, fixed-width cell keeps the rows aligned).
+  if (hasVideo) {
+    const thumbColumn: DataColumn<{ row: AdviceRow; i: number }> = {
+      key: 'keyframe',
+      align: 'left',
+      className: 'shrink-0 grow-0 basis-auto',
+      render: ({ row }) => {
+        const ts = row.timestampMs && row.timestampMs > 0 ? row.timestampMs : null;
+        if (ts === null) return <div className="w-10" aria-hidden />;
+        const src = resolveKeyframeUrl(filmstrips, segments, ts);
+        return (
+          <div className="w-10">
+            <KeyframeImage ratio="square" src={src} timecode={formatTime(ts)} energy={0.6} />
+          </div>
+        );
+      },
+    };
+    return (
+      <DataTable
+        columns={[thumbColumn, headlineColumn]}
+        rows={rows.map((row, i) => ({ row, i }))}
+        rowKey={({ i }) => `row-${i}`}
+      />
+    );
+  }
+
+  // No timeline (text / tiktok_url) → unchanged: headline + right-aligned time chip.
+  const timeColumn: DataColumn<{ row: AdviceRow; i: number }> = {
+    key: 'time',
+    align: 'right',
+    render: ({ row }) =>
+      row.timestampMs && row.timestampMs > 0 ? (
+        <span className="font-mono text-[10.5px] tabular-nums text-white/30">
+          {formatTime(row.timestampMs)}
         </span>
-        {hasDetail && (
-          <CaretRight
-            size={13}
-            weight="regular"
-            aria-hidden
-            className={`ml-auto shrink-0 text-white/25 transition-transform ${open ? 'rotate-90' : ''}`}
-          />
-        )}
-      </button>
-      {open && hasDetail && (
-        <p className="pb-3 text-[12.5px] leading-[1.5] text-white/55">{row.detail}</p>
-      )}
-    </div>
+      ) : null,
+  };
+
+  return (
+    <DataTable
+      columns={[headlineColumn, timeColumn]}
+      rows={rows.map((row, i) => ({ row, i }))}
+      rowKey={({ i }) => `row-${i}`}
+    />
   );
 }
 

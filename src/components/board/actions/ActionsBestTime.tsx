@@ -10,21 +10,27 @@ import { convertUTCWindow } from '@/lib/optimal-post-time';
 import type { OptimalPostWindow } from '@/lib/engine/optimal-post';
 
 interface Props {
-  /** 'foot' = quiet label/value row (needs-work, degraded). 'hero' = the focal
-   *  ship moment for a strong video. */
-  variant: 'foot' | 'hero';
+  /** Emphasis hint, kept for telemetry/QA parity across view-kinds. 'hero' = the
+   *  ship moment (strong / all-set), 'foot' = supporting card (needs-work etc.).
+   *  Both render the same calm token card; the section header owns the label. */
+  variant?: 'foot' | 'hero';
   window: OptimalPostWindow | null;
   override: OptimalPostOverride | null;
   analysisId: string | null;
 }
 
 /**
- * When-to-post, rendered in the action-led Actions frame. Reuses the existing
- * UTC→local conversion + inline edit panel + override persistence, but drops the
- * old card chrome (bordered box, GlassPill, source pill) for plain type so it
- * reads editorial, not widget.
+ * When-to-post, rendered as ONE calm token card inside the unified Actions frame.
+ * Keeps the UTC→local conversion + inline edit panel + override persistence; the
+ * "WHEN TO POST" section header (in ActionsContent) owns the label so the card
+ * itself is just the value + edit affordance.
  */
-export function ActionsBestTime({ variant, window: postWindow, override, analysisId }: Props) {
+export function ActionsBestTime({
+  variant = 'foot',
+  window: postWindow,
+  override,
+  analysisId,
+}: Props) {
   const [editOpen, setEditOpen] = useState(false);
   const tzFired = useRef(false);
 
@@ -60,68 +66,42 @@ export function ActionsBestTime({ variant, window: postWindow, override, analysi
   const value = `${converted.day}, ${converted.hourRangeFormatted}`;
   const isGuess = source === 'fallback';
 
-  const panel = editOpen && (
-    <div className="mt-3">
-      <OptimalPostEditPanel
-        currentWindow={{ day_of_week: effectiveDay, hour_range: effectiveHours }}
-        originalWindow={postWindow}
-        analysisId={analysisId}
-        onDone={() => setEditOpen(false)}
-      />
-    </div>
-  );
-
-  if (variant === 'hero') {
-    return (
-      <div data-testid="actions-best-time" data-variant="hero">
-        <div className="mb-[9px] text-[11px] font-medium tracking-[0.01em] text-white/30">
-          {ACTIONS_COPY.KICKER_STRONG}
-        </div>
-        <div className="text-[21px] font-semibold leading-[1.1] tracking-[-0.02em] text-white/95 tabular-nums">
-          {value}
-        </div>
-        {/* Curated warm line, not raw engine reasoning — keeps the ship moment
-            premium and free of clinical "(n=12 …)" debris. The "why" lives in the
-            Score frame. */}
-        <p className="mt-2 max-w-[290px] text-[13px] leading-[1.55] text-white/55">
-          {ACTIONS_COPY.STRONG_SUB}
-        </p>
-        <button
-          type="button"
-          onClick={() => setEditOpen((v) => !v)}
-          aria-expanded={editOpen}
-          aria-label="Edit post time"
-          className="mt-3.5 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-white/30 hover:text-white/55 focus:outline-2 focus:outline-offset-2 focus:outline-white/40"
-        >
-          <PencilSimple size={13} weight="regular" aria-hidden />
-          {ACTIONS_COPY.EDIT_TIME}
-        </button>
-        {panel}
-      </div>
-    );
-  }
-
   return (
-    <div data-testid="actions-best-time" data-variant="foot">
+    <div
+      className="rounded-[11px] border border-white/[0.06] bg-white/[0.016] px-3 py-[11px]"
+      data-testid="actions-best-time"
+      data-variant={variant}
+    >
       <div className="flex items-center justify-between gap-3">
-        <span className="text-[13px] text-white/55">{ACTIONS_COPY.BEST_TIME}</span>
-        <span className="flex items-center gap-2 text-[13px] font-medium tracking-[-0.005em] text-white/95">
+        <span className="text-[15px] font-semibold leading-none tracking-[-0.015em] text-white/95 tabular-nums">
           {value}
+        </span>
+        <span className="flex items-center gap-2">
           {isGuess && (
-            <span className="font-normal text-white/30">· {ACTIONS_COPY.BEST_GUESS}</span>
+            <span className="text-[11px] font-normal text-white/30">{ACTIONS_COPY.BEST_GUESS}</span>
           )}
           <button
             type="button"
             onClick={() => setEditOpen((v) => !v)}
             aria-expanded={editOpen}
             aria-label="Edit post time"
-            className="text-white/25 hover:text-white/55 focus:outline-2 focus:outline-offset-2 focus:outline-white/40"
+            className="inline-flex items-center gap-1 text-[12px] font-medium text-white/35 hover:text-white/65 focus:outline-2 focus:outline-offset-2 focus:outline-white/40"
           >
             <PencilSimple size={12} weight="regular" aria-hidden />
+            {ACTIONS_COPY.EDIT_TIME}
           </button>
         </span>
       </div>
-      {panel}
+      {editOpen && (
+        <div className="mt-3">
+          <OptimalPostEditPanel
+            currentWindow={{ day_of_week: effectiveDay, hour_range: effectiveHours }}
+            originalWindow={postWindow}
+            analysisId={analysisId}
+            onDone={() => setEditOpen(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }

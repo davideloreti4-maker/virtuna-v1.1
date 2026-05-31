@@ -36,6 +36,28 @@ export const TELEMETRY = {
 // The Actions frame owns "what to do" only — the score/verdict/breakdown live in
 // the Score frame directly above it, so nothing here repeats a number or verdict.
 export const ACTIONS_COPY = {
+  // FrameHero label (caps) — one constant verb anchor across every view-kind.
+  HERO_LABEL: 'NEXT MOVE',
+  // Hero verb headlines (the ONE move), tone-keyed.
+  HERO_VERB_STRONG: 'Post it',
+  HERO_VERB_POLISH: 'Polish the hook',
+  HERO_VERB_REWORK: 'Rework it',
+  HERO_VERB_AV: 'Fix before posting',
+  HERO_VERB_DEGRADED: 'Sharpen these',
+  HERO_VERB_ALL_SET: 'You’re all set',
+  // Hero status words (tone color, set by FrameHero).
+  HERO_STATUS_GOOD: 'Ready',
+  HERO_STATUS_WARN: 'One quick pass',
+  HERO_STATUS_CRIT: 'Hold',
+  // Hero insight (the why), one line.
+  HERO_INSIGHT_STRONG: 'Nothing’s holding the video back — your audience peaks at the time below.',
+  HERO_INSIGHT_ALL_SET: 'Nothing to fix — just pick your moment.',
+  HERO_INSIGHT_DEGRADED: 'A few tweaks below will sharpen the edit before you post.',
+  // Section heads (DataTable / best-time). Stored in readable case; the section
+  // header applies `uppercase` via CSS (so getByText matchers stay legible).
+  SECTION_FIXES: 'Fixes',
+  SECTION_POLISH: 'Optional polish',
+  SECTION_WHEN: 'When to post',
   KICKER_LOW: 'Fix first',
   KICKER_MID: 'Worth a quick pass',
   KICKER_AV: 'Fix before posting',

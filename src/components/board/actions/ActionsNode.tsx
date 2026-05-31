@@ -1,7 +1,9 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
 import { usePermalinkAnalysis } from '@/hooks/queries/use-permalink-analysis';
+import { usePermalinkFilmstrips } from '@/hooks/queries/use-permalink-filmstrips';
+import type { KeyframeSegmentLike } from '@/components/board/_kit';
 import { useBoardStore } from '@/stores/board-store';
 import { getFrameAntiViralityState } from '../cross-group-state';
 import { useScript } from './script/use-script';
@@ -17,6 +19,7 @@ import { logger } from '@/lib/logger';
 export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodeProps) {
   const { data: permalinkData } = usePermalinkAnalysis();
   const stream = useAnalysisStream({ initialData: permalinkData ?? null });
+  const permalinkFilmstrips = usePermalinkFilmstrips();
   const phase = stream.phase;
   const result = stream.result ?? null;
   // Derive the id from the row first, then the stream's own id (a freshly streamed
@@ -44,6 +47,39 @@ export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodePro
   // overall_score (0-100) — fallback band when Stage-11 counterfactuals are absent,
   // so a strong video gets the ship-led "Post it" hero, not a wall of generic advice.
   const score = (result as { overall_score?: number } | null)?.overall_score ?? null;
+
+  // Real video keyframes for the per-fix thumbs (ContentAnalysisFrame pattern).
+  // Merged URLs — live SSE stream wins, else permalink replay. Guard against an
+  // undefined `filmstrips` (test mocks of useAnalysisStream may omit it).
+  const streamFilmstrips = (stream as { filmstrips?: Record<number, string> }).filmstrips;
+  const mergedFilmstrips = useMemo<Record<number, string>>(() => {
+    if (streamFilmstrips && Object.keys(streamFilmstrips).length > 0) return streamFilmstrips;
+    if (permalinkFilmstrips && Object.keys(permalinkFilmstrips).length > 0) return permalinkFilmstrips;
+    return {};
+  }, [streamFilmstrips, permalinkFilmstrips]);
+
+  // Heatmap segments carry the time ranges (seconds) a fix's timestamp maps onto.
+  const heatmapSegments =
+    (result as { heatmap?: { segments?: KeyframeSegmentLike[] | null } | null } | null)?.heatmap
+      ?.segments ?? null;
+  const segments = useMemo<ReadonlyArray<KeyframeSegmentLike>>(
+    () =>
+      (heatmapSegments ?? []).map((s, i) => ({
+        idx: s.idx ?? i,
+        t_start: s.t_start ?? 0,
+        t_end: s.t_end ?? 0,
+        keyframe_uri: s.keyframe_uri ?? null,
+      })),
+    [heatmapSegments],
+  );
+
+  // Gate the per-row thumb on a REAL timeline — i.e. resolvable keyframe URLs are
+  // present (mergedFilmstrips non-empty). Mirrors TopFixesList's "only anchor when
+  // there's a real video timeline": in text / tiktok_url modes with no filmstrip
+  // the rows render exactly as before (no thumb, no empty-gradient fallback, no
+  // layout shift). has_video alone (no keyframes) would render broken fallbacks,
+  // so it is NOT a sufficient gate here.
+  const hasVideo = Object.keys(mergedFilmstrips).length > 0;
 
   const boardMachineState = useBoardStore((s) => s.boardState);
   const isAV = getFrameAntiViralityState('actions', boardMachineState) === 'anti-virality';
@@ -89,6 +125,9 @@ export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodePro
           openingLine={openingLine}
           analysisId={analysisId}
           bestTime={{ window: postWindow, override: postOverride, analysisId }}
+          filmstrips={mergedFilmstrips}
+          segments={segments}
+          hasVideo={hasVideo}
         />
       </div>
     </div>
