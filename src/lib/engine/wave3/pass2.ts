@@ -34,6 +34,14 @@ import type { Pass2PersonaResult } from "./weighted-aggregator";
 const log = createLogger({ module: "wave3.pass2" });
 
 const PER_CALL_TIMEOUT_MS = 90_000; // thinking-mode tail latency: live runs show successes at 46–56s, raised from 60s for threshold headroom
+// Pass 2 thinking budget — env-overridable for latency tuning. Default 2000:
+// measured A/B (8000 vs 2000 on the same video) showed 2000 cut the Pass 2 wave
+// from 70.5s → 44.0s (−26.5s) with NO loss of retention-curve quality (avg curve
+// range 0.45 → 0.46; personas with a real swipe point 9/10 → 10/10). Pass 2 is
+// the single largest pipeline wave (10× qwen3.6-plus thinking calls); this budget
+// shapes the user-visible heatmap, so re-validate curve quality (not just latency)
+// before changing it. See scripts/measure-pipeline.ts "PASS-2 CURVE QUALITY".
+const PASS2_THINKING_BUDGET = Number(process.env.PASS2_THINKING_BUDGET) || 2000;
 const SUCCESS_THRESHOLD = 7; // D-06: ≥7/10 Pass 2 successes for non-null heatmap
 const COST_ALERT_THRESHOLD_CENTS = 50; // D-24: 0.50 dollars
 
@@ -162,7 +170,7 @@ export async function runWave3Pass2(
         // @ts-expect-error — DashScope extension: enable_thinking not in OpenAI types
         callParams.enable_thinking = true;
         // @ts-expect-error — DashScope extension: thinking_budget not in OpenAI types (T-03-06-04)
-        callParams.thinking_budget = 8000;
+        callParams.thinking_budget = PASS2_THINKING_BUDGET;
         const response = await ai.chat.completions.create(
           callParams as never,
           { signal: controller.signal },

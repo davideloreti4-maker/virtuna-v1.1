@@ -134,6 +134,24 @@ async function main() {
   console.log(`\nPASS-2 CONCURRENCY : ${p2Verdict}`);
   console.log(`STAGE10/11         : ${critVerdict}`);
 
+  // ---- Pass-2 CURVE QUALITY (heatmap A/B: does a lower thinking budget flatten it?) ----
+  console.log(`\nPASS-2 CURVE QUALITY (thinking_budget=${process.env.PASS2_THINKING_BUDGET ?? "8000 default"}):`);
+  let nSwipe = 0;
+  const ranges: number[] = [];
+  for (const r of p2Ends) {
+    const att = r.e.attentions ?? [];
+    if (!att.length) continue;
+    const min = Math.min(...att), max = Math.max(...att);
+    const range = +(max - min).toFixed(2);
+    ranges.push(range);
+    const swipe = r.e.swipe_predicted_at;
+    if (swipe != null) nSwipe++;
+    const curve = att.map((a) => a.toFixed(2)).join(" ");
+    console.log(`  ${r.e.archetype.padEnd(22)} range=${range.toFixed(2)} swipe@${swipe ?? "—"}  [${curve}]`);
+  }
+  const avgRange = ranges.length ? +(ranges.reduce((a, b) => a + b, 0) / ranges.length).toFixed(2) : 0;
+  console.log(`  AGGREGATE: avg curve range=${avgRange} (higher=more varied, ~0=flat) | personas w/ real swipe=${nSwipe}/${p2Ends.length}`);
+
   // Top stages by duration
   const ends = recs
     .filter((r) => r.e.type === "stage_end")
