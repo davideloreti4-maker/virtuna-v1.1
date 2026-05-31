@@ -17,6 +17,7 @@ import {
   buildPersonaSystemPrompt,
   buildPersonaUserMessage,
   PersonaResponseSchema,
+  type OmniHookGrounding,
 } from "../wave3/persona-prompts";
 import type { PersonaSlot } from "../wave3/persona-registry";
 import type { ContentPayload, DeepSeekReasoning, Wave0Result } from "../types";
@@ -248,6 +249,58 @@ describe("buildPersonaUserMessage (Phase 7 PROFILE-16 + D-03 + D-11)", () => {
     );
     expect(msg).not.toContain("Hook effectiveness");
     expect(msg).toContain("React as your persona");
+  });
+
+  it("hookGrounding provided: message contains Video Craft Signals, visual stop power, and a factor name", () => {
+    const slot = makeSlot();
+    const hookGrounding: OmniHookGrounding = {
+      hook: {
+        visual_stop_power: 8,
+        audio_hook_quality: 7,
+        text_overlay_score: 6,
+        first_words_speech_score: 9,
+        weakest_modality: "text_overlay_score",
+        visual_audio_coherence: 7,
+        cognitive_load: 3,
+        watermark_detected: undefined,
+      },
+      factors: [
+        { name: "Scroll-Stop Power", score: 8 },
+        { name: "Completion Pull", score: 7 },
+      ],
+    };
+    const msg = buildPersonaUserMessage(
+      makePayload(),
+      null,
+      makeCreatorContext(),
+      makeWave0Result(),
+      slot,
+      hookGrounding,
+    );
+    expect(msg).toContain("Video Craft Signals");
+    expect(msg).toContain("Visual stop power: 8/10");
+    expect(msg).toContain("Scroll-Stop Power");
+  });
+
+  it("hookGrounding null/omitted: message does NOT contain Video Craft Signals", () => {
+    const slot = makeSlot();
+    const msgNull = buildPersonaUserMessage(
+      makePayload(),
+      null,
+      makeCreatorContext(),
+      makeWave0Result(),
+      slot,
+      null,
+    );
+    const msgOmitted = buildPersonaUserMessage(
+      makePayload(),
+      null,
+      makeCreatorContext(),
+      makeWave0Result(),
+      slot,
+    );
+    expect(msgNull).not.toContain("Video Craft Signals");
+    expect(msgOmitted).not.toContain("Video Craft Signals");
   });
 });
 

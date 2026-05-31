@@ -3,14 +3,14 @@
  *
  * Mirrors src/lib/engine/wave3.ts end-to-end with these deltas:
  * - model = QWEN_REASONING_MODEL ("qwen3.6-plus")
- * - enable_thinking: true + thinking_budget: 8000
+ * - enable_thinking: true + thinking_budget: 2000
  * - PER_CALL_TIMEOUT_MS = 60_000 (thinking-mode slower than flash)
  * - Input: segments[], keyframeUris[], pass1Results[], demo?
  * - Output: Wave3Pass2Outcome (pass2Results, warnings, cost_cents, pass2_success_count, pass2_aggregate_built)
  *
  * D-23: logs pass2_latency_ms + pass2_cost_cents per persona.
  * D-24: flags cost ceiling at 50 cents/analysis.
- * T-03-06-04: thinking_budget: 8000 caps per-call tokens.
+ * T-03-06-04: thinking_budget: 2000 caps per-call tokens.
  */
 import * as Sentry from "@sentry/nextjs";
 import { createLogger } from "@/lib/logger";
@@ -23,7 +23,7 @@ import {
   Pass2ResponseSchema,
   type DemographicContext,
 } from "./persona-prompts-pass2";
-import { getQwenClient, QWEN_REASONING_MODEL } from "../qwen/client";
+import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "../qwen/client";
 import { calculateCost } from "../qwen/cost";
 import type { ContentTypeSlug, PersonaSimulationResult, SegmentGrid } from "../types";
 
@@ -171,6 +171,10 @@ export async function runWave3Pass2(
         callParams.enable_thinking = true;
         // @ts-expect-error — DashScope extension: thinking_budget not in OpenAI types (T-03-06-04)
         callParams.thinking_budget = PASS2_THINKING_BUDGET;
+        // @ts-expect-error — temperature pairs with thinking mode; not in base OpenAI types here
+        callParams.temperature = 0; // temp:0 — reproducible segment attention scores (de-noises retention curves)
+        // @ts-expect-error — seed not in base OpenAI types via this DashScope param path
+        callParams.seed = QWEN_SEED; // pin residual nondeterminism for reproducible curves
         const response = await ai.chat.completions.create(
           callParams as never,
           { signal: controller.signal },

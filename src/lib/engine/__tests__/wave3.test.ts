@@ -395,4 +395,14 @@ describe("runWave3 — Phase 7 orchestration (Plan 07-02b)", () => {
     expect(outcome.results).toEqual([]);
     expect(outcome.warnings).toContain("wave_3_circuit_breaker_open");
   });
+
+  it("Test 13 (temperature pin): every Pass 1 call has temperature === 0", async () => {
+    mockCreate.mockImplementation(() => Promise.resolve(mockPersonaResponse()));
+    await runWave3(makePayload(), null, makeWave0Result(), makeCreatorContext());
+    expect(mockCreate.mock.calls.length).toBe(10);
+    for (const call of mockCreate.mock.calls) {
+      const args = call[0] as Record<string, unknown>;
+      expect(args.temperature).toBe(0);
+    }
+  });
 });

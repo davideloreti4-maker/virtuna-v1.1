@@ -317,13 +317,23 @@ describe("runWave3Pass2 — Phase 3 Pass 2 orchestrator (Plan 06)", () => {
     expect(mockCreate.mock.calls.length).toBe(10);
   });
 
-  it("Test 11: thinking_budget: 8000 present in every API call argument", async () => {
+  it("Test 11: thinking_budget: 2000 present in every API call argument", async () => {
     mockCreate.mockImplementation(() => Promise.resolve(mockPass2Response(5)));
     await runWave3Pass2(makeSegments(5), makeKeyframeUris(5), makePass1Results());
     expect(mockCreate.mock.calls.length).toBe(10);
     for (const call of mockCreate.mock.calls) {
       const args = call[0] as Record<string, unknown>;
-      expect(args.thinking_budget).toBe(8000);
+      expect(args.thinking_budget).toBe(2000);
+    }
+  });
+
+  it("Test 11b (temperature pin): temperature === 0 in every Pass 2 call argument", async () => {
+    mockCreate.mockImplementation(() => Promise.resolve(mockPass2Response(5)));
+    await runWave3Pass2(makeSegments(5), makeKeyframeUris(5), makePass1Results());
+    expect(mockCreate.mock.calls.length).toBe(10);
+    for (const call of mockCreate.mock.calls) {
+      const args = call[0] as Record<string, unknown>;
+      expect(args.temperature).toBe(0);
     }
   });
 

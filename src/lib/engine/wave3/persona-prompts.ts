@@ -15,9 +15,17 @@
  */
 import { z } from "zod";
 import type { ContentPayload, DeepSeekReasoning, Wave0Result } from "../types";
+import type { HookDecomposition } from "../qwen/schemas";
 import type { CreatorContext } from "../creator";
 import type { PersonaSlot } from "./persona-registry";
 import { tryUrlHost } from "../wave0/prompts";
+
+/** Omni vision grounding for Pass 1 — replaces deepseek's 2 numbers with the
+ *  richer hook decomposition + factor scores, available at ~31s with no Wave 2 wait. */
+export interface OmniHookGrounding {
+  hook: HookDecomposition;
+  factors: Array<{ name: string; score: number }>;
+}
 
 // =====================================================
 // Cache-stable system prompt (D-17 + Pitfall 1).
@@ -78,6 +86,7 @@ export function buildPersonaUserMessage(
   creatorContext: CreatorContext,
   wave0Result: Wave0Result,
   slot: PersonaSlot,
+  hookGrounding?: OmniHookGrounding | null,
 ): string {
   const sections: string[] = ["## Video to React To"];
 
@@ -107,6 +116,23 @@ export function buildPersonaUserMessage(
     sections.push(`- Retention strength: ${deepseekResult.component_scores.retention_strength}/10`);
     if (deepseekResult.warnings.length > 0) {
       sections.push(`- Warnings flagged: ${deepseekResult.warnings.join("; ")}`);
+    }
+  }
+
+  if (hookGrounding) {
+    const h = hookGrounding.hook;
+    sections.push("");
+    sections.push("## Video Craft Signals (from vision analysis)");
+    sections.push(`- Visual stop power: ${h.visual_stop_power}/10`);
+    sections.push(`- Audio hook: ${h.audio_hook_quality}/10`);
+    sections.push(`- Text overlay: ${h.text_overlay_score}/10`);
+    sections.push(`- First words: ${h.first_words_speech_score}/10`);
+    sections.push(`- Weakest hook modality: ${h.weakest_modality}`);
+    sections.push(`- Visual/audio coherence: ${h.visual_audio_coherence}/10`);
+    if (hookGrounding.factors.length > 0) {
+      sections.push(
+        `- Factor scores: ${hookGrounding.factors.map((f) => `${f.name} ${f.score}/10`).join(", ")}`,
+      );
     }
   }
 
