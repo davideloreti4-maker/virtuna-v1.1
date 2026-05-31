@@ -1,9 +1,29 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { BehavioralPredictions, ConfidenceLevel } from '@/lib/engine/types';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { usePermalinkAnalysis } from '@/hooks/queries/use-permalink-analysis';
+import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
+import { usePermalinkFilmstrips } from '@/hooks/queries/use-permalink-filmstrips';
+import { useBoardStore } from '@/stores/board-store';
 import { cn } from '@/lib/utils';
+import {
+  FrameHero,
+  StatTileRow,
+  KeyframeImage,
+  resolveKeyframeUrl,
+  type StatTileData,
+  type KeyframeSegmentLike,
+} from './_kit';
+import {
+  CONF_WORD,
+  posterDurationLabel,
+  rankStatusWord,
+  titleCasePct,
+  toMetrics,
+  useCountIn,
+} from './input/input-derive';
 
 interface Props {
   /** Behavioral predictions — the four engagement percentiles. Null until complete. */
@@ -19,64 +39,13 @@ interface Props {
   isStreaming?: boolean;
 }
 
-/** "top 5%" → 5. Lower = stronger rank. null when unparseable. */
-function parsePercentile(s: string | undefined | null): number | null {
-  if (!s) return null;
-  const m = s.match(/(\d+(?:\.\d+)?)/);
-  return m ? parseFloat(m[1]!) : null;
-}
-
-/** "top 20%" → "Top 20%". */
-function titleCasePct(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-const CONF_WORD: Record<ConfidenceLevel, string> = {
-  HIGH: 'High confidence',
-  MEDIUM: 'Medium confidence',
-  LOW: 'Low confidence',
-};
-
 /**
- * Counts the hero percentile in from a worse rank down to its real value
- * (e.g. 34 → 5) on mount — reads as "homing in on your rank". Returns the
- * target immediately under reduced motion. null target → null (no number).
- */
-function useCountIn(target: number | null, enabled: boolean): number | null {
-  const [val, setVal] = useState<number | null>(() =>
-    enabled && target != null ? Math.min(60, Math.round(target + 28)) : target,
-  );
-  useEffect(() => {
-    // setState only ever fires inside a rAF callback (never synchronously in the
-    // effect body) so the first frame paints the start value before animating.
-    if (target == null || !enabled) {
-      const id = requestAnimationFrame(() => setVal(target));
-      return () => cancelAnimationFrame(id);
-    }
-    const from = Math.min(60, Math.round(target + 28));
-    const dur = 620;
-    let startTs = 0;
-    let raf = requestAnimationFrame(function tick(now: number) {
-      if (!startTs) startTs = now;
-      const t = Math.min(1, (now - startTs) / dur);
-      const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
-      setVal(Math.round(from + (target - from) * eased));
-      if (t < 1) raf = requestAnimationFrame(tick);
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [target, enabled]);
-  return val;
-}
-
-/**
- * InputResultCard — the Input frame's engagement scorecard.
- *
- * A-led hero + C data rows (design: `.playwright-mcp/input-engine-final.html`):
- * the strongest of the four percentiles owns the surface as a monumental
- * number; the rest fall to quiet rows; the model's own confidence anchors the
- * footer. When the aggregator gated the result the card flips to the "Hold"
- * state — a coral verdict word, directional-only dimmed metrics. No video, no
- * prose, no chrome: the numbers are the value.
+ * InputResultCard — the Input frame's engagement scorecard, in the shared board
+ * language: a single dominant hero (the strongest "Top X%" percentile, label
+ * "PREDICTED RANK", status word by band) over a calm 4-up tile row of the
+ * engagement percentiles. The gated path flips the hero to a coral "Hold"
+ * verdict and dims the tiles to directional-only. The model's own confidence
+ * anchors the footer. The hero number still counts in (`useCountIn`).
  */
 export function InputResultCard({
   behavioral,
@@ -86,6 +55,64 @@ export function InputResultCard({
   isStreaming = false,
 }: Props) {
   const reducedMotion = usePrefersReducedMotion();
+
+  // ── Video poster data layer ────────────────────────────────────────────────
+  // The card receives its scorecard via props (lifted in Board.tsx), but the
+  // keyframe poster is sourced here the least-invasive way: a cached permalink
+  // read for replay, merged with the live SSE filmstrips + any pending upload
+  // frames (the AudienceNode pattern). The poster renders ONLY when a real
+  // keyframe URL resolves — text / url / no-video modes show no poster.
+  const { data: permalinkData } = usePermalinkAnalysis();
+  const posterStream = useAnalysisStream({ initialData: permalinkData ?? null });
+  const streamFilmstrips = posterStream.filmstrips;
+  const permalinkFilmstrips = usePermalinkFilmstrips();
+  const pendingVideo = useBoardStore((s) => s.pendingVideo);
+
+  const mergedFilmstrips = useMemo<Record<number, string>>(() => {
+    if (streamFilmstrips && Object.keys(streamFilmstrips).length > 0) return streamFilmstrips;
+    if (permalinkFilmstrips && Object.keys(permalinkFilmstrips).length > 0) return permalinkFilmstrips;
+    return (pendingVideo?.frames as Record<number, string> | undefined) ?? {};
+  }, [streamFilmstrips, permalinkFilmstrips, pendingVideo?.frames]);
+
+  // Heatmap segments carry per-frame keyframe_uri fallbacks; for a 'first' poster
+  // the merged filmstrips alone suffice, but pass segments when present.
+  const posterSegments = useMemo<KeyframeSegmentLike[]>(() => {
+    const row = posterStream.result as { heatmap?: { segments?: Array<Partial<KeyframeSegmentLike>> | null } | null } | null;
+    const raw = (row?.heatmap?.segments ?? []).filter(Boolean) as Array<Partial<KeyframeSegmentLike>>;
+    return raw.map((s, i) => ({
+      idx: s.idx ?? i,
+      t_start: s.t_start ?? 0,
+      t_end: s.t_end ?? 0,
+      keyframe_uri: s.keyframe_uri ?? null,
+    }));
+  }, [posterStream.result]);
+
+  const posterUrl = useMemo(
+    () => resolveKeyframeUrl(mergedFilmstrips, posterSegments, 'first'),
+    [mergedFilmstrips, posterSegments],
+  );
+
+  // Duration badge: last segment's t_end, else the pending upload's known length.
+  // null → badge omitted (a poster can render without a known duration).
+  const durationSec = useMemo(() => {
+    const lastEnd = posterSegments.length > 0 ? posterSegments[posterSegments.length - 1]!.t_end : 0;
+    if (lastEnd && lastEnd > 0) return lastEnd;
+    return pendingVideo?.duration ?? null;
+  }, [posterSegments, pendingVideo?.duration]);
+  const durationStr = posterDurationLabel(durationSec);
+
+  // Gate: a poster only exists when a real keyframe URL resolved (real video).
+  const poster = posterUrl ? (
+    <KeyframeImage
+      ratio="vertical"
+      src={posterUrl}
+      play
+      badge={durationStr ?? undefined}
+      alt="Video poster"
+      className="w-[60px] shrink-0"
+    />
+  ) : null;
+
   const showResult = !isStreaming && !!behavioral;
 
   // One-shot mount fade-in-up (skipped under reduced motion). rAF defers the
@@ -96,22 +123,12 @@ export function InputResultCard({
     return () => cancelAnimationFrame(id);
   }, []);
 
-  // Four metrics in a stable order; the strongest (lowest "top X%") leads.
-  const metrics = behavioral
-    ? [
-        { key: 'share', name: 'Shares', pct: behavioral.share_percentile },
-        { key: 'completion', name: 'Completion', pct: behavioral.completion_percentile },
-        { key: 'comment', name: 'Comments', pct: behavioral.comment_percentile },
-        { key: 'save', name: 'Saves', pct: behavioral.save_percentile },
-      ]
-    : [];
-  const ranked = [...metrics].sort(
-    (a, b) => (parsePercentile(a.pct) ?? 999) - (parsePercentile(b.pct) ?? 999),
-  );
+  // Four metrics in a stable order; the strongest (lowest "top X%") leads the hero.
+  const metrics = toMetrics(behavioral);
+  const ranked = [...metrics].sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999));
   const lead = ranked[0];
-  const rest = gated ? metrics : ranked.slice(1);
   const heroNum = useCountIn(
-    showResult && !gated ? parsePercentile(lead?.pct) : null,
+    showResult && !gated ? (lead?.rank ?? null) : null,
     !reducedMotion,
   );
 
@@ -130,10 +147,19 @@ export function InputResultCard({
   // ── Idle / streaming — calm holding states (no broken-player vocabulary) ──
   if (!showResult) {
     return (
-      <div className="flex h-full w-full items-center" data-testid="input-scorecard" data-state={isStreaming ? 'streaming' : 'idle'}>
+      <div
+        className="flex h-full w-full items-center"
+        data-testid="input-scorecard"
+        data-state={isStreaming ? 'streaming' : 'idle'}
+      >
         {isStreaming ? (
           <span className="flex items-center gap-2 text-[13px] text-white/[0.56]">
-            <span className={cn('inline-block h-1.5 w-1.5 rounded-full bg-accent', !reducedMotion && 'animate-pulse')} />
+            <span
+              className={cn(
+                'inline-block h-1.5 w-1.5 rounded-full bg-accent',
+                !reducedMotion && 'animate-pulse',
+              )}
+            />
             Analyzing
           </span>
         ) : (
@@ -143,9 +169,54 @@ export function InputResultCard({
     );
   }
 
+  // Hero value: count-in number (confident) or the "Hold" verdict word (gated).
+  const leadRank = heroNum ?? lead?.rank ?? null;
+  const heroValue = gated ? (
+    'Hold'
+  ) : (
+    <>
+      <span className="text-[16px] font-medium text-white/55">Top </span>
+      {leadRank ?? lead?.pct}
+    </>
+  );
+
+  // Tiles: the four percentiles. The lead (strongest rank) is accented; gated
+  // dims them all to directional-only. tabular-nums via StatTile.
+  const tiles: StatTileData[] = metrics.map((m) => ({
+    k: m.name,
+    v: titleCasePct(m.pct),
+    tone: !gated && m.key === lead?.key ? 'accent' : 'default',
+  }));
+
+  // The hero, factored so it renders identically standalone (no poster) or as the
+  // flex-1 lead of the hero+poster row (real video).
+  const hero = (className?: string) => (
+    <FrameHero
+      className={className}
+      label="PREDICTED RANK"
+      value={heroValue}
+      unit={gated ? undefined : '%'}
+      status={
+        gated
+          ? { word: 'Hold', tone: 'crit' }
+          : { word: rankStatusWord(lead?.rank ?? null), tone: 'neutral' }
+      }
+      insight={
+        gated ? (
+          'Directional only — confidence too low to rank.'
+        ) : (
+          <>
+            predicted rank in{' '}
+            <span className="font-medium text-white/75">{lead?.name}</span>
+          </>
+        )
+      }
+    />
+  );
+
   return (
     <div
-      className="relative flex h-full w-full flex-col"
+      className="relative flex h-full w-full flex-col gap-4"
       data-testid="input-scorecard"
       data-state={gated ? 'gated' : 'confident'}
       style={
@@ -167,40 +238,20 @@ export function InputResultCard({
         />
       )}
 
-      {/* Hero — monumental number (confident) or verdict word (gated). */}
-      {gated ? (
-        <>
-          <div className="leading-none">
-            <span className="text-[52px] font-semibold tracking-[-0.03em] text-accent">Hold</span>
-          </div>
-          <p className="mt-3 text-[13px] tracking-[0.05px] text-white/[0.38]">directional only</p>
-        </>
+      {/* Hero + (real-video) poster row. No poster → the hero renders standalone
+          exactly as before (no extra wrapper, no layout shift) for text / url /
+          no-video modes. With a poster the hero takes remaining width, poster right. */}
+      {poster ? (
+        <div className="flex items-start justify-between gap-4">
+          {hero('min-w-0 flex-1')}
+          {poster}
+        </div>
       ) : (
-        <>
-          <div className="flex items-baseline gap-2.5 leading-none">
-            <span className="text-[21px] font-semibold tracking-tight text-white/[0.56]">Top</span>
-            <span className="text-[56px] font-semibold tabular-nums tracking-[-0.035em] text-white/[0.95]">
-              {heroNum ?? parsePercentile(lead?.pct) ?? lead?.pct}
-              <span className="ml-px text-[0.55em] font-semibold">%</span>
-            </span>
-          </div>
-          <p className="mt-3 text-[13px] tracking-[0.05px] text-white/[0.38]">
-            predicted rank in <span className="font-medium text-white/[0.56]">{lead?.name}</span>
-          </p>
-        </>
+        hero()
       )}
 
-      {/* Data rows — the supporting percentiles (dimmed when gated). */}
-      <div className={cn('mt-7 flex flex-col', gated && 'opacity-[0.32]')}>
-        {rest.map((m) => (
-          <div
-            key={m.key}
-            className="flex items-baseline justify-between gap-3 border-t border-white/[0.04] py-2.5 first:border-t-0"
-          >
-            <span className="text-[13px] tracking-[0.05px] text-white/[0.56]">{m.name}</span>
-            <span className="text-[13.5px] font-semibold tabular-nums text-white/[0.95]">{titleCasePct(m.pct)}</span>
-          </div>
-        ))}
+      <div className={cn(gated && 'pointer-events-none opacity-[0.4]')}>
+        <StatTileRow tiles={tiles} />
       </div>
 
       {footer}

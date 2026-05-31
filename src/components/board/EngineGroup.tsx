@@ -2,12 +2,12 @@
 import { useEffect, useState } from 'react';
 import { CaretDown, CaretUp } from '@phosphor-icons/react';
 import { Icon } from '@/components/ui/icon';
+import { EngineStepper } from './input/EngineStepper';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useBoardStore } from '@/stores/board-store';
 import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
 import { usePermalinkAnalysis } from '@/hooks/queries/use-permalink-analysis';
 import { usePerfStore } from '@/lib/perf-tier';
-import { cn } from '@/lib/utils';
 import type { StageEvent } from '@/lib/engine/events';
 
 interface Stage {
@@ -208,69 +208,65 @@ export function EngineView({
   defaultFindingsOpen = false,
 }: EngineViewProps) {
   const [findingsOpen, setFindingsOpen] = useState(defaultFindingsOpen);
+  const stepNum = activeIdx >= 0 ? activeIdx + 1 : Math.max(1, doneCount);
   return (
     <div className="flex h-full flex-col" data-testid="engine-group" data-state={state}>
       <span aria-live="polite" className="sr-only">{liveLabel}</span>
 
-      {/* ── RUNNING — active stage + segmented progress (no green-check wall) ── */}
+      {/* ── RUNNING — one calm label over a thin Linear-style stepper ── */}
       {state === 'running' && (
-        <div className="flex flex-col gap-3.5">
+        <div className="flex flex-col gap-3">
           <div className="flex items-baseline justify-between gap-3">
-            <span className="text-[15.5px] font-semibold tracking-[-0.01em] text-white/[0.95]">
+            <span className="truncate text-[13px] font-medium tracking-[0.05px] text-white/[0.56]">
               {(liveLabel || 'Starting').replace(/…$/, '')}
             </span>
-            <span className="shrink-0 text-[12px] tabular-nums text-white/[0.38]">
-              {(activeIdx >= 0 ? activeIdx + 1 : Math.max(1, doneCount))} / {total}
+            <span className="shrink-0 text-[11px] tabular-nums text-white/[0.38]">
+              {stepNum} / {total}
             </span>
           </div>
-          <div className="flex gap-1" aria-hidden>
-            {statuses.map((s, i) => (
-              <span
-                key={i}
-                className={cn(
-                  'h-[3px] flex-1 rounded-full',
-                  s === 'complete' && 'bg-accent/40',
-                  s === 'active' && 'bg-accent',
-                  s === 'waiting' && 'bg-white/[0.07]',
-                )}
-                style={s === 'active' ? { boxShadow: '0 0 10px -1px rgba(255,127,80,0.6)' } : undefined}
-              />
-            ))}
-          </div>
+          <EngineStepper statuses={statuses} />
         </div>
       )}
 
-      {/* ── COMPLETE — one-line summary, expands to a findings list ── */}
+      {/* ── COMPLETE — full stepper + one-line signal summary; findings on demand ── */}
       {state === 'complete' && (
-        <div className="flex flex-col">
+        <div className="flex flex-col gap-3">
+          <EngineStepper statuses={statuses} />
           <button
             type="button"
             onClick={() => setFindingsOpen((v) => !v)}
             aria-expanded={findingsOpen}
             className="group flex items-center justify-between gap-3 py-0.5 text-left"
           >
-            <span className="text-[13px] text-white/[0.56]">
+            <span className="text-[12px] text-white/[0.56]">
               {coverage ? (
-                <><span className="tabular-nums text-white/[0.95]">{coverage.on} of {coverage.total}</span> signals</>
+                <>
+                  <span className="tabular-nums text-white/[0.95]">
+                    {coverage.on} of {coverage.total}
+                  </span>{' '}
+                  signals
+                </>
               ) : (
                 'Analysis complete'
               )}
             </span>
-            <span className="flex items-center gap-1 text-[11.5px] text-white/[0.38] group-hover:text-white/[0.56]">
+            <span className="flex items-center gap-1 text-[11px] text-white/[0.38] group-hover:text-white/[0.56]">
               findings
               <Icon icon={findingsOpen ? CaretUp : CaretDown} size={16} />
             </span>
           </button>
 
           {findingsOpen && findings.length > 0 && (
-            <div className="mt-3 flex flex-col">
+            <div className="flex flex-col">
               {findings.map((f) => (
                 <div
                   key={f.k}
-                  className="flex items-baseline justify-between gap-3 border-t border-white/[0.04] py-2.5 first:border-t-0"
+                  className="flex items-baseline justify-between gap-3 border-t border-white/[0.04] py-2 first:border-t-0"
                 >
-                  <span className="text-[13px] tracking-[0.05px] text-white/[0.56]">{f.k}</span>
-                  <span className="text-[13.5px] font-semibold tabular-nums text-white/[0.95]">
+                  <span className="text-[9.5px] uppercase tracking-[0.08em] text-white/55">
+                    {f.k}
+                  </span>
+                  <span className="text-[12.5px] font-semibold tabular-nums text-white/[0.95]">
                     {f.v}
                     {f.q && <span className="ml-1 font-normal text-white/[0.38]">{f.q}</span>}
                   </span>

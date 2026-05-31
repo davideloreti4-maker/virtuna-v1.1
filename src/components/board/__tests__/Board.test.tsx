@@ -97,7 +97,7 @@ describe('Board', () => {
 
   it('Test 3: renders 5 camera preset buttons with correct aria-labels', () => {
     renderBoard();
-    ['Overview view', 'Verdict view', 'Audience view', 'Content Analysis view', 'Reset view']
+    ['Overview view', 'Verdict view', 'Audience view', 'Content craft view', 'Reset view']
       .forEach((label) => expect(screen.getByRole('button', { name: label })).toBeInTheDocument());
   });
 
