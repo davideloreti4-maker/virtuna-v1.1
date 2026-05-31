@@ -66,25 +66,28 @@ describe('VerdictNode - shell', () => {
     });
   });
 
-  it('renders verdict-node container with aria-live="polite"', () => {
+  it('renders the verdict-node shell with a single sr-only polite live region', () => {
     renderWithQuery(<VerdictNode camera={{} as never} layout={{} as never} />);
     const node = screen.getByTestId('verdict-node');
     expect(node).toBeInTheDocument();
-    expect(node.getAttribute('aria-live')).toBe('polite');
+    // Root no longer carries aria-live (killed the 3-overlapping-region storm);
+    // the sole polite announcer is the dedicated sr-only span.
+    expect(node.getAttribute('aria-live')).toBeNull();
+    expect(screen.getByTestId('verdict-aria-live').getAttribute('aria-live')).toBe('polite');
   });
 
-  it('reserves verdict-collapsibles-slot for Plan 5.3 / 5.4', () => {
+  it('renders the verdict score + distribution hero', () => {
     renderWithQuery(<VerdictNode camera={{} as never} layout={{} as never} />);
-    expect(screen.getByTestId('verdict-collapsibles-slot')).toBeInTheDocument();
+    expect(screen.getByTestId('verdict-score')).toHaveTextContent('78');
+    expect(screen.getByTestId('score-distribution')).toBeInTheDocument();
   });
 
-  it('renders an always-on driver/risk summary (visible even when reasoning is collapsed)', () => {
+  it('renders committed factor bars (replaces the prose driver/risk summary)', () => {
     renderWithQuery(<VerdictNode camera={{} as never} layout={{} as never} />);
-    const summary = screen.getByTestId('verdict-summary');
-    expect(summary).toHaveTextContent('Driving it');
-    expect(summary).toHaveTextContent('Visual hook');
-    expect(summary).toHaveTextContent('Watch out');
-    expect(summary).toHaveTextContent('CTA');
+    const bars = screen.getByTestId('factor-bars');
+    // strongest + weakest factors from fixtures.complete both render as bars
+    expect(bars).toHaveTextContent('Visual hook');
+    expect(bars).toHaveTextContent('CTA');
   });
 
   it('announces "Verdict ready: {N}th percentile, confidence HIGH" after 500ms with fixtures.complete', async () => {

@@ -12,7 +12,7 @@ import { InputResultCard } from './InputResultCard';
 import { getFrameAntiViralityState } from './cross-group-state';
 import type { Camera, GroupId, GroupFrameLayout } from './board-types';
 import type { BoardMachineState } from '@/stores/board-store';
-import type { BehavioralPredictions } from '@/lib/engine/types';
+import type { BehavioralPredictions, ConfidenceLevel } from '@/lib/engine/types';
 
 /** Card view never zooms — content renders at its natural 1:1 size. */
 const CARD_CAMERA: Camera = { x: 0, y: 0, scale: 1 };
@@ -31,9 +31,10 @@ const MOBILE_ORDER: GroupId[] = [
 ];
 
 export interface BoardMobileInput {
-  videoStoragePath: string | null;
-  thumbnailUrl: string | null;
   behavioral: BehavioralPredictions | null;
+  confidence: number | null;
+  confidenceLabel: ConfidenceLevel | null;
+  gated: boolean;
   isStreaming: boolean;
 }
 
@@ -83,9 +84,10 @@ export function BoardMobile({ boardMachineState, input, hasAnalysis }: Props) {
       case 'input':
         return (
           <InputResultCard
-            videoStoragePath={input.videoStoragePath}
-            thumbnailUrl={input.thumbnailUrl}
             behavioral={input.behavioral}
+            confidence={input.confidence}
+            confidenceLabel={input.confidenceLabel}
+            gated={input.gated}
             isStreaming={input.isStreaming}
           />
         );
@@ -121,9 +123,6 @@ export function BoardMobile({ boardMachineState, input, hasAnalysis }: Props) {
             key={id}
             label={LAYOUT_BY_ID.get(id)!.label}
             accent={getFrameAntiViralityState(id, boardMachineState) === 'anti-virality'}
-            // Content-analysis lays out fixed-width columns side-by-side; let it
-            // scroll horizontally on a phone rather than clip.
-            bodyClassName={id === 'content-analysis' ? 'overflow-x-auto' : undefined}
           >
             {renderBody(id)}
           </MobileFrameCard>

@@ -1,6 +1,6 @@
 /** @vitest-environment happy-dom */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { useBoardStore } from '@/stores/board-store';
 import { deriveEngineStageStatus, EngineGroup } from '../EngineGroup';
 import type { StageEvent, StageEventWave } from '@/lib/engine/events';
@@ -33,57 +33,77 @@ describe('deriveEngineStageStatus', () => {
   it('complete after stage_end', () => expect(deriveEngineStageStatus([ev('stage_start', 0), ev('stage_end', 0)], STAGE)).toBe('complete'));
 });
 
-describe('EngineGroup', () => {
+describe('EngineGroup — running state', () => {
   beforeEach(() => {
-    useBoardStore.setState({
-      boardState: 'streaming',
-      currentStageLabel: null,
-    });
-    mockStream = { stages: [], phase: 'analyzing', partial: { personas: [] }, result: null };
-  });
-
-  it('renders 5 children all waiting', () => {
-    render(<EngineGroup />);
-    // Compact layout renders icon-only glyphs; the stage label is exposed via
-    // aria-label on each <li>, queried by role+name.
-    ['Qwen-VL segmentation', 'Hook decomp', 'Retention model', 'Persona simulator', 'Aggregator'].forEach((l) =>
-      expect(screen.getByRole('listitem', { name: `${l}: waiting` })).toBeInTheDocument(),
-    );
-  });
-
-  it('renders all 5 stages complete on history (complete phase, empty events)', () => {
-    mockStream = { stages: [], phase: 'complete', partial: { personas: [] }, result: {} };
-    render(<EngineGroup />);
-    ['Qwen-VL segmentation', 'Hook decomp', 'Retention model', 'Persona simulator', 'Aggregator'].forEach((l) =>
-      expect(screen.getByRole('listitem', { name: `${l}: complete` })).toBeInTheDocument(),
-    );
-  });
-
-  it('shows "Pipeline complete" + total latency from result on history', () => {
-    mockStream = { stages: [], phase: 'complete', partial: { personas: [] }, result: { latency_ms: 12400 } };
-    render(<EngineGroup />);
-    expect(screen.getByText('Pipeline complete')).toBeInTheDocument();
-    expect(screen.getByText(/Qwen · 5 stages · 12\.4s/)).toBeInTheDocument();
-  });
-
-  it('shows past-tense subtitle for completed stages', () => {
-    mockStream = { stages: [], phase: 'complete', partial: { personas: [] }, result: {} };
-    render(<EngineGroup />);
-    expect(screen.getByText('Simulated 10 viewer personas')).toBeInTheDocument();
-  });
-
-  it('aria-live label updates with active stage', () => {
+    useBoardStore.setState({ boardState: 'streaming', currentStageLabel: null });
     mockStream = { stages: [ev('stage_start', 0)], phase: 'analyzing', partial: { personas: [] }, result: null };
+  });
+
+  it('shows the active stage in plain English (no green-check stepper, no dev vocab)', () => {
+    render(<EngineGroup />);
+    // Visible label is the present-tense plain-English stage, ellipsis stripped.
+    expect(screen.getByText('Reading the hook')).toBeInTheDocument();
+    // None of the killed slop: no canonical "Qwen-VL segmentation" stepper rows.
+    expect(screen.queryByText('Qwen-VL segmentation')).toBeNull();
+    expect(screen.queryByRole('listitem')).toBeNull();
+  });
+
+  it('shows the N / total step counter', () => {
+    render(<EngineGroup />);
+    expect(screen.getByTestId('engine-group').textContent).toContain('1 / 5');
+  });
+
+  it('aria-live announces the active stage label (with ellipsis)', () => {
     const { container } = render(<EngineGroup />);
-    const live = container.querySelector('[aria-live="polite"]');
-    expect(live?.textContent).toBe('Reading the hook…');
+    expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe('Reading the hook…');
   });
 
-  it('child 0 active when stage_start wave 0 received', () => {
-    mockStream = { stages: [ev('stage_start', 0)], phase: 'analyzing', partial: { personas: [] }, result: null };
+  it('does NOT render a latency headline or "Pipeline complete"', () => {
     render(<EngineGroup />);
-    // aria-live should show the active stage label
-    const live = document.querySelector('[aria-live="polite"]');
-    expect(live?.textContent).toBe('Reading the hook…');
+    expect(screen.queryByText('Pipeline complete')).toBeNull();
+    expect(screen.queryByText(/Qwen · 5 stages/)).toBeNull();
+  });
+});
+
+describe('EngineGroup — complete state', () => {
+  beforeEach(() => {
+    useBoardStore.setState({ boardState: 'complete', currentStageLabel: null });
+  });
+
+  it('collapses to a one-line signal-coverage summary (no latency, no checks)', () => {
+    mockStream = {
+      stages: [],
+      phase: 'complete',
+      partial: { personas: [] },
+      result: { signal_availability: { behavioral: true, gemini: true, ml: false } },
+    };
+    render(<EngineGroup />);
+    const root = screen.getByTestId('engine-group');
+    expect(root.textContent).toContain('2 of 3');
+    expect(root.textContent).toContain('signals');
+    expect(screen.queryByText('Pipeline complete')).toBeNull();
+    expect(screen.queryByText(/12\.4s/)).toBeNull();
+  });
+
+  it('expands a findings list on demand', () => {
+    mockStream = {
+      stages: [],
+      phase: 'complete',
+      partial: { personas: [] },
+      result: {
+        signal_availability: { behavioral: true, gemini: true, ml: false },
+        niche: 'fitness',
+        content_type: 'video',
+        hook_decomposition: { weakest_modality: 'text' },
+        heatmap: { segments: [{}, {}] },
+      },
+    };
+    render(<EngineGroup />);
+    // Findings are hidden until the user opens them.
+    expect(screen.queryByText('Niche')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /findings/i }));
+    expect(screen.getByText('Niche')).toBeInTheDocument();
+    expect(screen.getByText('Fitness')).toBeInTheDocument();
+    expect(screen.getByText('Format')).toBeInTheDocument();
   });
 });

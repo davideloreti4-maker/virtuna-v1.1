@@ -1710,6 +1710,7 @@ export type Database = {
           median: number
           p75: number
           count: number
+          histogram: number[]
         }[]
       }
       increment_creator_analysis_count: {

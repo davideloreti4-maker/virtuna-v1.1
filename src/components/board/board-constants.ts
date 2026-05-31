@@ -24,11 +24,14 @@ export const CAMERA_DEFAULT_SCALE = 1;
  * World-space gaps: 32px between every adjacent frame edge.
  */
 export const GROUP_FRAMES: GroupFrameLayout[] = [
-  { id: 'input',            label: 'Input',            bounds: { x:    0, y:    0, width:  240, height: 440 } },
-  // Engine grown to fill the left column down to the Audience/CA bottom line
-  // (472 + 328 = 800): the 9:16 Input card caps the column's top half, so the
-  // Engine pipeline stepper now fills the rest — killing the lower-left void.
-  { id: 'engine',           label: 'Engine',           bounds: { x:    0, y:  472, width:  240, height: 328 } },
+  // Input + Engine are auto-height (redesign 2026-05-30): the Input engagement
+  // scorecard and the Engine state line size to their content. These constants
+  // are the default-state floors (input = confident scorecard, engine = the
+  // running/collapsed line); the frames grow past them on demand (Engine
+  // findings expand). engine.y MUST equal input.height + GUTTER so
+  // resolveBoardLayout({}) reproduces this array exactly.
+  { id: 'input',            label: 'Input',            bounds: { x:    0, y:    0, width:  240, height: 312 } },
+  { id: 'engine',           label: 'Engine',           bounds: { x:    0, y:  344, width:  240, height: 128 } },
   { id: 'audience',         label: 'Audience',         bounds: { x:  272, y:    0, width:  560, height: 800 } },
   { id: 'verdict',          label: 'Score',            bounds: { x:  864, y:    0, width:  360, height: 280 } },
   // Actions: tall hero column holding the inline reshoot script, "What to fix",
@@ -38,7 +41,7 @@ export const GROUP_FRAMES: GroupFrameLayout[] = [
   // Lower-left+center block: top clears Audience (800) by the 32px gutter; right
   // edge (832) aligns with Audience; left edge fills under the short Input/Engine
   // column. Right edge clears the Actions column (x864) by 32px.
-  { id: 'content-analysis', label: 'Content Analysis', bounds: { x:    0, y:  832, width:  832, height: 240 } },
+  { id: 'content-analysis', label: 'Content craft', bounds: { x:    0, y:  832, width:  832, height: 240 } },
 ];
 
 export const BOARD_BOUNDS: Rect = (() => {
@@ -73,9 +76,12 @@ export const CAMERA_PRESET_TARGETS: Record<string, Rect> = {
 
 // ── Dynamic auto-height layout ───────────────────────────────────────────────
 // Frames whose height tracks their measured content instead of a fixed constant.
-// Input (fixed 9:16 video card) and Engine (fixed pipeline stepper) stay constant;
-// the data-heavy frames grow to fit so nothing scrolls inside a frame.
+// Every frame is now content-sized: Input (engagement scorecard) and Engine
+// (state line → findings) join the data-heavy frames so nothing scrolls inside
+// a frame and the Engine can collapse to one line / expand for findings.
 export const AUTO_HEIGHT_FRAMES: ReadonlySet<GroupId> = new Set<GroupId>([
+  'input',
+  'engine',
   'audience',
   'verdict',
   'actions',
@@ -87,13 +93,13 @@ export const AUTO_HEIGHT_FRAMES: ReadonlySet<GroupId> = new Set<GroupId>([
  *
  * x positions and widths stay fixed (the column composition); heights become the
  * measured natural content height for AUTO_HEIGHT_FRAMES, falling back to the
- * GROUP_FRAMES constant for fixed frames (input, engine) and before first measure.
- * Frames reflow vertically per column so a growing frame pushes its neighbours
- * down instead of clipping/scrolling. When every measured height equals its
- * constant this reproduces GROUP_FRAMES exactly.
+ * GROUP_FRAMES constant before first measure. Frames reflow vertically per
+ * column so a growing frame pushes its neighbours down instead of
+ * clipping/scrolling. When every measured height equals its constant this
+ * reproduces GROUP_FRAMES exactly.
  *
  * Columns:
- *   Left   (x=0):   input (fixed) → engine
+ *   Left   (x=0):   input → engine
  *   Center (x=272): audience
  *   Right  (x=864): verdict → actions
  *   Bottom (x=0):   content-analysis, under the taller of (left col, center col)
@@ -136,7 +142,7 @@ export function resolveBoardLayout(
     { id: 'audience',         label: 'Audience',         bounds: { x: x('audience'),         y: 0,        width: w('audience'),         height: audienceH } },
     { id: 'verdict',          label: 'Score',            bounds: { x: x('verdict'),          y: 0,        width: w('verdict'),          height: verdictH } },
     { id: 'actions',          label: 'Actions',          bounds: { x: x('actions'),          y: actionsY, width: w('actions'),          height: actionsH } },
-    { id: 'content-analysis', label: 'Content Analysis', bounds: { x: x('content-analysis'), y: caY,      width: w('content-analysis'), height: caH } },
+    { id: 'content-analysis', label: 'Content craft', bounds: { x: x('content-analysis'), y: caY,      width: w('content-analysis'), height: caH } },
   ];
 }
 

@@ -34,7 +34,7 @@ export const COPY = {
   SUB_FLAGGED: 'What the engine flagged',
   SUB_COUNTERFACTUAL: 'Counterfactual considered',
   // Plan 5.4: VsHistoryCollapsible copy
-  HISTORY_SUMMARY: 'vs my history',
+  HISTORY_SUMMARY: 'vs your last 10',
   HISTORY_EMPTY_STATE: (n: number) => `Need 3+ prior analyses to show comparison. ${n}/3 complete.`,
   HISTORY_LAST_10_TITLE: 'vs your last 10 analyses',
   NICHE_TITLE: 'vs niche cohort',

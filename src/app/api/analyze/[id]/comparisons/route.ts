@@ -80,8 +80,8 @@ export async function GET(
     data?.map((r) => Number(r.overall_score)).filter((n) => Number.isFinite(n)) ?? [];
 
   // Niche cohort: cross-user aggregate via SECURITY DEFINER RPC. Aggregate-only
-  // (median/p75/count); excludes the requesting user; min cohort enforced in SQL.
-  let niche: { median: number; p75: number; count: number } | null = null;
+  // (median/p75/count/histogram); excludes the requesting user; min cohort enforced in SQL.
+  let niche: { median: number; p75: number; count: number; histogram: number[] } | null = null;
   const societyId = currentRow.data?.society_id ?? null;
   if (societyId) {
     const service = createServiceClient();
@@ -92,10 +92,16 @@ export async function GET(
     });
     const row = rows?.[0];
     if (row && Number.isFinite(Number(row.median))) {
+      const raw: unknown[] = Array.isArray(row.histogram) ? (row.histogram as unknown[]) : [];
+      const histogram: number[] = Array.from({ length: 10 }, (_, i) => {
+        const v = Number(raw[i]);
+        return Number.isFinite(v) ? v : 0;
+      });
       niche = {
         median: Number(row.median),
         p75: Number(row.p75),
         count: Number(row.count),
+        histogram,
       };
     }
   }

@@ -15,7 +15,7 @@ vi.mock('../InputResultCard', () => ({ InputResultCard: () => <div data-testid="
 
 import { BoardMobile } from '../BoardMobile';
 
-const INPUT = { videoStoragePath: null, thumbnailUrl: null, behavioral: null, isStreaming: false };
+const INPUT = { behavioral: null, confidence: null, confidenceLabel: null, gated: false, isStreaming: false };
 
 describe('BoardMobile', () => {
   it('renders all six frames as cards in the mobile reading order', () => {
@@ -31,7 +31,7 @@ describe('BoardMobile', () => {
       'Score',
       'Audience',
       'Actions',
-      'Content Analysis',
+      'Content craft',
       'Engine',
     ]);
   });
@@ -63,10 +63,12 @@ describe('BoardMobile', () => {
     expect(accented('Engine')).toBe(false);
   });
 
-  it('lets the wide Content Analysis columns scroll horizontally', () => {
+  it('renders the Content craft card as a responsive frame (no forced horizontal scroll)', () => {
     render(<BoardMobile boardMachineState="complete" input={INPUT} hasAnalysis />);
-    const card = screen.getByRole('region', { name: 'Content Analysis' });
+    const card = screen.getByRole('region', { name: 'Content craft' });
     const body = within(card).getByTestId('body-content-analysis').parentElement!;
-    expect(body.className).toContain('overflow-x-auto');
+    // The redesigned filmstrip instrument fits the card width — the old wide
+    // 2-column overflow-x-auto workaround is gone.
+    expect(body.className).not.toContain('overflow-x-auto');
   });
 });

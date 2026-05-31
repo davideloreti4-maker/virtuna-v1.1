@@ -6,30 +6,34 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
-// ── Mock all heavy sub-components so we can test AudienceNode in isolation ──
-vi.mock('../HeadlineChips', () => ({ HeadlineChips: () => <div data-testid="headline-chips-stub" /> }));
-vi.mock('../Filmstrip', () => ({ Filmstrip: () => <div data-testid="filmstrip-stub" /> }));
-vi.mock('../RetentionCurve', () => ({ RetentionCurve: () => <div data-testid="retention-curve-stub" /> }));
-vi.mock('../HeatmapDrawer', () => ({ HeatmapDrawer: () => <div data-testid="heatmap-drawer-stub" /> }));
-vi.mock('../AntiViralityOverlay', () => ({ AntiViralityOverlay: () => null }));
-vi.mock('../TapPopover', () => ({ TapPopover: () => null }));
-vi.mock('../PersonaDetailInline', () => ({ PersonaDetailInline: () => null }));
+// ── Mock the presentational zones so we can test AudienceNode wiring in isolation ──
+vi.mock('../AudienceHero', () => ({ AudienceHero: () => <div data-testid="audience-hero-stub" /> }));
+vi.mock('../RetentionChart', () => ({ RetentionChart: () => <div data-testid="retention-chart-stub" /> }));
+vi.mock('../SegmentTable', () => ({ SegmentTable: () => <div data-testid="segment-table-stub" /> }));
+vi.mock('../MixFooter', () => ({ MixFooter: () => <div data-testid="mix-footer-stub" /> }));
 vi.mock('../WeightOverrideDrawer', () => ({ WeightOverrideDrawer: () => null }));
 vi.mock('../use-audience-choreography', () => ({
   useAudienceChoreography: () => ({ rowStates: {}, curveState: 'idle' }),
 }));
 vi.mock('../use-client-weights', () => ({
   useClientWeights: () => ({
-    weights: {},
+    weights: { fyp: 0.65, niche: 0.2, loyalist: 0.1, cross_niche: 0.05 },
     setWeights: vi.fn(),
     recomputedCurve: [],
-    recomputedMetrics: {},
+    recomputedMetrics: {
+      weighted_completion_pct: 0,
+      weighted_top_dropoff_t: 0,
+      weighted_hook_score: 0,
+    },
     antiViralityState: { dropoff_segment_indices: [] },
+    isDirty: false,
+    reset: vi.fn(),
   }),
 }));
 vi.mock('@/stores/board-store', () => ({
-  useBoardStore: (selector: (s: { boardState: string; setActivePreset: () => void }) => unknown) =>
-    selector({ boardState: 'complete', setActivePreset: vi.fn() }),
+  useBoardStore: (
+    selector: (s: { boardState: string; setActivePreset: () => void; pendingVideo: null }) => unknown,
+  ) => selector({ boardState: 'complete', setActivePreset: vi.fn(), pendingVideo: null }),
 }));
 vi.mock('@/lib/engine/persona-weights', () => ({
   DEFAULT_PERSONA_WEIGHT_CONFIG: { default: {} },

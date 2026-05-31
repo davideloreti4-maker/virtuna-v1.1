@@ -18,7 +18,6 @@ import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useBoardStore } from '@/stores/board-store';
 import type { BoardMachineState } from '@/stores/board-store';
 import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
-import { usePermalinkFilmstrips } from '@/hooks/queries/use-permalink-filmstrips';
 import { CommandBar } from '@/components/command-bar/CommandBar';
 import { useCamera, serializeCamera } from './use-camera';
 import { useBoardKeyboard } from './use-board-keyboard';
@@ -38,7 +37,7 @@ import { AudienceNode } from './audience/AudienceNode';
 import { VerdictNode } from './verdict/VerdictNode';
 import { ActionsNode } from './actions/ActionsNode';
 import { ContentAnalysisFrame } from './content-analysis/ContentAnalysisFrame';
-import { InputNodeShape, InputNodeOverlay } from './InputNode';
+import { InputResultCard } from './InputResultCard';
 import { nanoid } from 'nanoid';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -151,9 +150,6 @@ export function Board() {
   const triggerAntiVirality = useBoardStore((s) => s.triggerAntiVirality);
   const resetToIdle = useBoardStore((s) => s.resetToIdle);
   const newAnalysisSignal = useBoardStore((s) => s.newAnalysisSignal);
-  const pendingVideoThumbnail = useBoardStore((s) => s.pendingVideo?.thumbnail ?? null);
-  // Persisted keyframe[0] for the Input thumbnail on permalink replay.
-  const permalinkFilmstrips = usePermalinkFilmstrips();
 
   // WR-01: track which analysisId we started streaming for, so that if the
   // user resets and a new stream starts we don't fire anti-virality against
@@ -396,17 +392,19 @@ export function Board() {
 
   useBoardKeyboard({ goToPreset });
 
-  // Input card data — shared by the canvas overlay (InputNodeOverlay) and the
+  // Input scorecard data — shared by the canvas frame (InputResultCard) and the
   // mobile card stack (BoardMobile). Lifted so both views stay in sync.
   const streamResult = stream.result as {
-    video_storage_path?: string | null;
     behavioral_predictions?: import('@/lib/engine/types').BehavioralPredictions | null;
+    confidence?: number | null;
+    confidence_label?: import('@/lib/engine/types').ConfidenceLevel | null;
+    anti_virality_gated?: boolean | null;
   } | null;
   const inputCard = {
-    videoStoragePath: streamResult?.video_storage_path ?? null,
-    thumbnailUrl:
-      stream.filmstrips?.[0] ?? permalinkFilmstrips?.[0] ?? pendingVideoThumbnail ?? null,
     behavioral: streamResult?.behavioral_predictions ?? null,
+    confidence: streamResult?.confidence ?? null,
+    confidenceLabel: streamResult?.confidence_label ?? null,
+    gated: Boolean(streamResult?.anti_virality_gated),
     isStreaming: boardMachineState === 'streaming',
   };
 
@@ -441,8 +439,6 @@ export function Board() {
             visual={deriveFrameVisual(boardMachineState, layout.id)}
           />
         ))}
-        {/* Plan 2.7: Input node Konva hit-test shape; selection wiring deferred to Phase 4 */}
-        <InputNodeShape selected={false} />
       </BoardCanvas>
 
       {/* Plan 2.6: context-aware command bar — z=200, fixed bottom-center.
@@ -471,6 +467,15 @@ export function Board() {
             autoHeight={AUTO_HEIGHT_FRAMES.has(layout.id)}
             onMeasure={(worldH) => handleMeasureFrame(layout.id, worldH)}
           >
+            {layout.id === 'input' && (
+              <InputResultCard
+                behavioral={inputCard.behavioral}
+                confidence={inputCard.confidence}
+                confidenceLabel={inputCard.confidenceLabel}
+                gated={inputCard.gated}
+                isStreaming={inputCard.isStreaming}
+              />
+            )}
             {layout.id === 'engine' && <EngineGroup />}
             {layout.id === 'audience' && <AudienceNode camera={camera} layout={layout} />}
             {layout.id === 'verdict' && <VerdictNode camera={camera} layout={layout} />}
@@ -478,17 +483,6 @@ export function Board() {
             {layout.id === 'content-analysis' && <ContentAnalysisFrame camera={camera} layout={layout} />}
           </GroupFrameOverlay>
         ))}
-        {/* Input node — TikTok-style vertical card showing the uploaded video
-            + predicted engagement metrics overlay (derived from overall_score
-            + behavioral_predictions). */}
-        <InputNodeOverlay
-          camera={camera}
-          videoStoragePath={inputCard.videoStoragePath}
-          videoUrl={null}
-          thumbnailUrl={inputCard.thumbnailUrl}
-          behavioral={inputCard.behavioral}
-          isStreaming={inputCard.isStreaming}
-        />
       </div>
 
       {/* DOM overlay slots (filled by plans 2.6 command bar, 2.7 input node, etc.) */}

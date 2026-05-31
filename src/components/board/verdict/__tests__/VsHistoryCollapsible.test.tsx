@@ -28,12 +28,12 @@ describe('VsHistoryCollapsible', () => {
     mockOpenInputDrawer.mockReset();
   });
 
-  it('renders summary text "vs my history"', () => {
+  it('renders summary text "vs your last 10"', () => {
     vi.spyOn(global, 'fetch').mockResolvedValue(
       new Response(JSON.stringify(comparisonsFixtures.full), { status: 200 }),
     );
     wrap(<VsHistoryCollapsible analysisId="a-1" currentScore={78} />);
-    expect(screen.getByText('vs my history')).toBeInTheDocument();
+    expect(screen.getByText('vs your last 10')).toBeInTheDocument();
   });
 
   it('renders empty state when history.length < 3', async () => {
@@ -73,24 +73,16 @@ describe('VsHistoryCollapsible', () => {
     await waitFor(() => expect(screen.queryByTestId('vs-history-last-10')).toBeInTheDocument());
   });
 
-  it('renders niche-coming-soon caption when niche is null', async () => {
+  // Niche comparison moved to the verdict hero (ScoreDistribution). This
+  // collapsible is now the personal-history view only — the in-accordion niche
+  // chart + "coming soon" caption were removed in the Score-frame redesign.
+  it('does not render an in-accordion niche section', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue(
       new Response(JSON.stringify(comparisonsFixtures.full), { status: 200 }),
     );
     wrap(<VsHistoryCollapsible analysisId="a-4" currentScore={78} />);
-    await waitFor(() => expect(screen.queryByTestId('vs-history-niche-coming-soon')).toBeInTheDocument());
-    expect(screen.getByTestId('vs-history-niche-coming-soon')).toHaveTextContent('Niche comparison coming soon');
-  });
-
-  it('renders niche chart when niche is non-null', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify(comparisonsFixtures.fullWithNiche), { status: 200 }),
-    );
-    wrap(<VsHistoryCollapsible analysisId="a-5" currentScore={78} />);
-    await waitFor(() => {
-      const niche = screen.queryByTestId('vs-history-niche');
-      expect(niche).toBeInTheDocument();
-    });
+    await waitFor(() => expect(screen.queryByTestId('vs-history-last-10')).toBeInTheDocument());
+    expect(screen.queryByTestId('vs-history-niche')).toBeNull();
     expect(screen.queryByTestId('vs-history-niche-coming-soon')).toBeNull();
   });
 

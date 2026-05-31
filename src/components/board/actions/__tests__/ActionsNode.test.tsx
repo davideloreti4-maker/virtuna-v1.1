@@ -6,43 +6,29 @@ import { fixtures } from '../../verdict/__tests__/fixtures/prediction-result';
 vi.mock('@/lib/logger', () => ({ logger: { info: vi.fn(), event: vi.fn() } }));
 vi.mock('@/hooks/usePrefersReducedMotion', () => ({ usePrefersReducedMotion: () => false }));
 // ActionsNode hydrates from permalink REST cache via usePermalinkAnalysis.
-// Stub it so tests don't need a QueryClientProvider + Next router param.
 vi.mock('@/hooks/queries/use-permalink-analysis', () => ({
   usePermalinkAnalysis: () => ({ id: null, data: null, isLoading: false }),
 }));
-// @phosphor-icons/react is ESM-only; vi.resetModules() makes named exports undefined in happy-dom.
-// Provide stub SVG components for all icons used by slot wrappers.
-vi.mock('@phosphor-icons/react', () => ({
-  FilmScript: ({ size, ...rest }: { size?: number; 'aria-hidden'?: boolean }) => (
-    <svg width={size} height={size} data-testid="icon-film-script" {...rest} />
-  ),
-  Clock: ({ size, ...rest }: { size?: number; 'aria-hidden'?: boolean }) => (
-    <svg width={size} height={size} data-testid="icon-clock" {...rest} />
-  ),
-  ShareNetwork: ({ size, ...rest }: { size?: number; 'aria-hidden'?: boolean }) => (
-    <svg width={size} height={size} data-testid="icon-share-network" {...rest} />
-  ),
-  Copy: ({ size, ...rest }: { size?: number }) => (
-    <svg width={size} height={size} data-testid="icon-copy" {...rest} />
-  ),
-  CheckCircle: ({ size, ...rest }: { size?: number }) => (
-    <svg width={size} height={size} data-testid="icon-check-circle" {...rest} />
-  ),
-  Info: ({ size, ...rest }: { size?: number }) => (
-    <svg width={size} height={size} data-testid="icon-info" {...rest} />
-  ),
-  Wrench: ({ size, ...rest }: { size?: number }) => (
-    <svg width={size} height={size} data-testid="icon-wrench" {...rest} />
-  ),
-  CaretDown: ({ size, ...rest }: { size?: number }) => (
-    <svg width={size} height={size} data-testid="icon-caret-down" {...rest} />
-  ),
-  CaretUp: ({ size, ...rest }: { size?: number }) => (
-    <svg width={size} height={size} data-testid="icon-caret-up" {...rest} />
-  ),
-}));
+// @phosphor-icons/react is ESM-only; provide stub SVG components for every icon
+// the action-led frame + reused edit panel touch.
+vi.mock('@phosphor-icons/react', () => {
+  const stub = (name: string) =>
+    function Stub({ size, ...rest }: { size?: number }) {
+      return <svg width={size} height={size} data-testid={`icon-${name}`} {...rest} />;
+    };
+  return {
+    ArrowUpRight: stub('arrow-up-right'),
+    CaretRight: stub('caret-right'),
+    CaretDown: stub('caret-down'),
+    CaretUp: stub('caret-up'),
+    Check: stub('check'),
+    PencilSimple: stub('pencil-simple'),
+    Clock: stub('clock'),
+    Info: stub('info'),
+  };
+});
 
-// Phase 6: stub script + optimal-post hooks so slot wrappers don't fetch
+// script hook — supplies the hero "Copy rewrite" opening line.
 vi.mock('@/components/board/actions/script/use-script', () => ({
   useScript: () => ({
     data: {
@@ -70,48 +56,27 @@ vi.mock('@/components/board/actions/optimal-post/use-optimal-post-override', () 
   }),
 }));
 
-// Stub Sheet primitive — Radix portal doesn't render in happy-dom in some Vitest setups
-vi.mock('@/components/ui/sheet', () => ({
-  Sheet: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  SheetContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SheetHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SheetTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
-}));
-
-// useIsMobile defaults to desktop
-vi.mock('@/hooks/useIsMobile', () => ({
-  useIsMobile: () => false,
-}));
-
-// useCopyToClipboard returns simple stub
 vi.mock('@/hooks/useCopyToClipboard', () => ({
-  useCopyToClipboard: () => ({
-    copied: false,
-    copy: async () => true,
-  }),
+  useCopyToClipboard: () => ({ copied: false, copy: async () => true }),
 }));
 
-// Mock useAnalysisStream + useBoardStore based on actual hook shape.
-// Replace `phase` + `result` + `boardState` values per test.
+const WINDOW = {
+  day_of_week: 'Tue',
+  hour_range: [18, 21],
+  timezone: 'UTC',
+  reasoning: 'Niche peaks Tue (n=12 videos)',
+  source: 'niche',
+};
+
+function withWindow(result: object) {
+  return { ...result, id: 'analysis-id-stub', optimal_post_window: WINDOW, optimal_post_override: null };
+}
+
 function mockStream(overrides: { phase?: string; result?: unknown } = {}) {
   vi.doMock('@/hooks/queries/use-analysis-stream', () => ({
     useAnalysisStream: () => ({
       phase: overrides.phase ?? 'complete',
-      // Honor an explicit `result: null` (streaming) — `?? default` would coerce
-      // null back to the fixture. The slots now gate on data presence, so a null
-      // result must stay null to exercise the placeholder path.
-      result: 'result' in overrides ? overrides.result : {
-        ...fixtures.complete,
-        id: 'analysis-id-stub',
-        optimal_post_window: {
-          day_of_week: 'Tue',
-          hour_range: [18, 21],
-          timezone: 'UTC',
-          reasoning: 'Niche peaks Tue (n=12 videos)',
-          source: 'niche',
-        },
-        optimal_post_override: null,
-      },
+      result: 'result' in overrides ? overrides.result : withWindow(fixtures.complete),
     }),
   }));
 }
@@ -123,152 +88,96 @@ function mockBoardState(state: string) {
   }));
 }
 
-describe('ActionsNode', () => {
+describe('ActionsNode (action-led)', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
   });
 
-  it('renders actions-grid container', async () => {
-    mockStream({ phase: 'complete', result: fixtures.complete });
+  it('renders the actions-grid container', async () => {
+    mockStream({ phase: 'complete', result: withWindow(fixtures.complete) });
     mockBoardState('complete');
     const { ActionsNode: Fresh } = await import('../ActionsNode');
     render(<Fresh camera={{} as never} layout={{} as never} />);
     expect(screen.getByTestId('actions-grid')).toBeInTheDocument();
   });
 
-  it('default state: data-av=false on grid', async () => {
-    mockStream({ phase: 'complete', result: fixtures.complete });
+  it('grid is a natural-height flex-col stack (no in-frame scroll)', async () => {
+    mockStream({ phase: 'complete', result: withWindow(fixtures.complete) });
+    mockBoardState('complete');
+    const { ActionsNode: Fresh } = await import('../ActionsNode');
+    render(<Fresh camera={{} as never} layout={{} as never} />);
+    const grid = screen.getByTestId('actions-grid') as HTMLElement;
+    expect(grid.className).toContain('flex-col');
+    expect(grid.className).not.toContain('overflow-y-auto');
+    expect(grid.className).not.toContain('h-full');
+  });
+
+  it('default state: data-av=false', async () => {
+    mockStream({ phase: 'complete', result: withWindow(fixtures.complete) });
     mockBoardState('complete');
     const { ActionsNode: Fresh } = await import('../ActionsNode');
     render(<Fresh camera={{} as never} layout={{} as never} />);
     expect(screen.getByTestId('actions-grid').getAttribute('data-av')).toBe('false');
   });
 
-  it('AV state: data-av=true on grid', async () => {
-    mockStream({ phase: 'complete', result: fixtures.antiVirality });
+  it('mid band → needs-work hero (the top fix), Copy rewrite, and best time — no score number', async () => {
+    mockStream({ phase: 'complete', result: withWindow(fixtures.complete) });
+    mockBoardState('complete');
+    const { ActionsNode: Fresh } = await import('../ActionsNode');
+    render(<Fresh camera={{} as never} layout={{} as never} />);
+    expect(screen.getByTestId('actions-grid').getAttribute('data-view')).toBe('needs-work');
+    // Hero is the top counterfactual fix headline.
+    expect(screen.getByTestId('actions-hero-fix')).toBeInTheDocument();
+    expect(screen.getByText('Tighten text overlay')).toBeInTheDocument();
+    // The action is a quiet text-link, not a score.
+    expect(screen.getByText('Copy rewrite')).toBeInTheDocument();
+    // When-to-post present as a footer.
+    expect(screen.getByTestId('actions-best-time')).toBeInTheDocument();
+    expect(screen.getByTestId('actions-best-time').getAttribute('data-variant')).toBe('foot');
+  });
+
+  it('high band → ship-led: best-time is the hero, fixes become optional polish', async () => {
+    const highBand = withWindow({
+      ...fixtures.complete,
+      counterfactuals: { ...fixtures.complete.counterfactuals, band: 'high' },
+    });
+    mockStream({ phase: 'complete', result: highBand });
+    mockBoardState('complete');
+    const { ActionsNode: Fresh } = await import('../ActionsNode');
+    render(<Fresh camera={{} as never} layout={{} as never} />);
+    expect(screen.getByTestId('actions-grid').getAttribute('data-view')).toBe('strong');
+    expect(screen.getByTestId('actions-best-time').getAttribute('data-variant')).toBe('hero');
+    expect(screen.getByText('Optional polish')).toBeInTheDocument();
+    // No hero fix and no "Fix first" framing on a strong video.
+    expect(screen.queryByTestId('actions-hero-fix')).toBeNull();
+  });
+
+  it('anti-virality (low band) → critical "Fix before posting" framing', async () => {
+    mockStream({ phase: 'complete', result: withWindow(fixtures.antiVirality) });
     mockBoardState('anti-virality');
     const { ActionsNode: Fresh } = await import('../ActionsNode');
     render(<Fresh camera={{} as never} layout={{} as never} />);
     expect(screen.getByTestId('actions-grid').getAttribute('data-av')).toBe('true');
+    expect(screen.getByTestId('actions-grid').getAttribute('data-view')).toBe('needs-work');
+    expect(screen.getByText(/Fix before posting/)).toBeInTheDocument();
   });
 
-  it('renders Reshoot script INLINE in default state (no drawer/teaser)', async () => {
-    mockStream({ phase: 'complete', result: { ...fixtures.complete, id: 'analysis-id-stub', optimal_post_window: { day_of_week: 'Tue', hour_range: [18, 21], timezone: 'UTC', reasoning: 'Niche peaks Tue (n=12 videos)', source: 'niche' }, optimal_post_override: null } });
-    mockBoardState('complete');
-    const { ActionsNode: Fresh } = await import('../ActionsNode');
-    render(<Fresh camera={{} as never} layout={{} as never} />);
-    // Script body renders inline directly — the old teaser button is gone.
-    expect(screen.getByTestId('actions-reshoot-body')).toBeInTheDocument();
-    expect(screen.queryByTestId('actions-reshoot-teaser')).toBeNull();
-  });
-
-  it('renders OptimalPost card in default state (Share & Export removed)', async () => {
-    mockStream({ phase: 'complete', result: { ...fixtures.complete, id: 'analysis-id-stub', optimal_post_window: { day_of_week: 'Tue', hour_range: [18, 21], timezone: 'UTC', reasoning: 'Niche peaks Tue (n=12 videos)', source: 'niche' }, optimal_post_override: null } });
-    mockBoardState('complete');
-    const { ActionsNode: Fresh } = await import('../ActionsNode');
-    render(<Fresh camera={{} as never} layout={{} as never} />);
-    expect(screen.getByTestId('actions-optimal-post-card')).toBeInTheDocument();
-    // Share & Export removed from the frame.
-    expect(screen.queryByTestId('actions-share-placeholder')).toBeNull();
-  });
-
-  it('AV state renders Reshoot hero + Optimal card, no Share', async () => {
-    mockStream({ phase: 'complete', result: { ...fixtures.antiVirality, id: 'analysis-id-stub', optimal_post_window: { day_of_week: 'Tue', hour_range: [18, 21], timezone: 'UTC', reasoning: 'Niche peaks Tue (n=12 videos)', source: 'niche' }, optimal_post_override: null } });
-    mockBoardState('anti-virality');
-    const { ActionsNode: Fresh } = await import('../ActionsNode');
-    render(<Fresh camera={{} as never} layout={{} as never} />);
-    expect(screen.getByTestId('actions-reshoot-hero-slot')).toBeInTheDocument();
-    expect(screen.getByTestId('actions-optimal-post-card')).toBeInTheDocument();
-    expect(screen.queryByTestId('actions-share-placeholder')).toBeNull();
-  });
-
-  it('Reshoot hero slot renders inline in AV state', async () => {
-    mockStream({ phase: 'complete', result: { ...fixtures.antiVirality, id: 'analysis-id-stub', optimal_post_window: { day_of_week: 'Tue', hour_range: [18, 21], timezone: 'UTC', reasoning: 'Niche peaks Tue (n=12 videos)', source: 'niche' }, optimal_post_override: null } });
-    mockBoardState('anti-virality');
-    const { ActionsNode: Fresh } = await import('../ActionsNode');
-    render(<Fresh camera={{} as never} layout={{} as never} />);
-    expect(screen.getByTestId('actions-reshoot-hero-slot')).toBeInTheDocument();
-  });
-
-  it('grid is a natural-height stack (auto-height frame grows to fit — no in-frame scroll)', async () => {
-    mockStream({ phase: 'complete', result: fixtures.complete });
-    mockBoardState('complete');
-    const { ActionsNode: Fresh } = await import('../ActionsNode');
-    render(<Fresh camera={{} as never} layout={{} as never} />);
-    const grid = screen.getByTestId('actions-grid') as HTMLElement;
-    // No internal scroll: the auto-height frame sizes to the stack instead of clipping.
-    expect(grid.className).not.toContain('overflow-y-auto');
-    expect(grid.className).not.toContain('h-full');
-    expect(grid.className).toContain('flex-col');
-  });
-
-  it('surfaces the "What to fix" section with counterfactual fixes inline', async () => {
-    mockStream({ phase: 'complete', result: { ...fixtures.complete, id: 'analysis-id-stub', optimal_post_window: { day_of_week: 'Tue', hour_range: [18, 21], timezone: 'UTC', reasoning: 'Niche peaks Tue (n=12 videos)', source: 'niche' }, optimal_post_override: null } });
-    mockBoardState('complete');
-    const { ActionsNode: Fresh } = await import('../ActionsNode');
-    render(<Fresh camera={{} as never} layout={{} as never} />);
-    expect(screen.getByTestId('actions-fixes-slot')).toBeInTheDocument();
-    expect(screen.getByText('What to fix')).toBeInTheDocument();
-    // First counterfactual headline from the fixture renders as a fix row.
-    expect(screen.getByText('Tighten text overlay')).toBeInTheDocument();
-    // Factor scorecard present (expanded by default — fills the tall Actions frame).
-    expect(screen.getByTestId('actions-scorecard')).toBeInTheDocument();
-    expect(screen.getByTestId('actions-scorecard-list')).toBeInTheDocument();
-  });
-
-  it('Phase 6: pre-complete phase keeps placeholders visible (streaming continuity)', async () => {
+  it('streaming (not ready) → calm skeleton, no boxes', async () => {
     mockStream({ phase: 'analyzing', result: null });
     mockBoardState('streaming');
     const { ActionsNode: Fresh } = await import('../ActionsNode');
     render(<Fresh camera={{} as never} layout={{} as never} />);
-    expect(screen.getByTestId('actions-reshoot-placeholder')).toBeInTheDocument();
-    expect(screen.getByTestId('actions-optimal-post-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId('actions-skeleton')).toBeInTheDocument();
+    expect(screen.queryByTestId('actions-hero-fix')).toBeNull();
   });
 
-  it('Phase 6: AV state renders Reshoot AV chrome (Try this instead headline)', async () => {
-    mockStream({
-      phase: 'complete',
-      result: {
-        ...fixtures.antiVirality,
-        id: 'aid-1',
-        optimal_post_window: {
-          day_of_week: 'Tue',
-          hour_range: [18, 21],
-          timezone: 'UTC',
-          reasoning: 'Niche peaks (n=12 videos)',
-          source: 'niche',
-        },
-        optimal_post_override: null,
-      },
-    });
-    mockBoardState('anti-virality');
-    const { ActionsNode: Fresh } = await import('../ActionsNode');
-    render(<Fresh camera={{} as never} layout={{} as never} />);
-    expect(screen.getByText('Try this instead')).toBeInTheDocument();
-    expect(screen.getByTestId('actions-reshoot-body')).toBeInTheDocument();
-  });
-
-  it('Phase 6: empty-state ScriptResult renders ScriptEmptyState even in default slot', async () => {
-    // Re-mock useScript to return empty-state shape
-    vi.doMock('@/components/board/actions/script/use-script', () => ({
-      useScript: () => ({
-        data: {
-          is_empty_state: true,
-          opening_variants: ['Lead with X', 'Lead with Y'],
-          engine_version: 'v3.0.0',
-          generated_at: '2026-05-28T00:00:00Z',
-        },
-        isLoading: false,
-        isError: false,
-        refetch: () => {},
-      }),
-    }));
-    mockStream({ phase: 'complete', result: { ...fixtures.complete, id: 'analysis-id-stub', optimal_post_window: { day_of_week: 'Tue', hour_range: [18, 21], timezone: 'UTC', reasoning: 'Niche peaks Tue (n=12 videos)', source: 'niche' }, optimal_post_override: null } });
+  it('does NOT render the retired score breakdown / scorecard', async () => {
+    mockStream({ phase: 'complete', result: withWindow(fixtures.complete) });
     mockBoardState('complete');
     const { ActionsNode: Fresh } = await import('../ActionsNode');
     render(<Fresh camera={{} as never} layout={{} as never} />);
-    expect(screen.getByText('Your video is solid')).toBeInTheDocument();
-    expect(screen.getByTestId('script-empty-state')).toBeInTheDocument();
+    expect(screen.queryByTestId('actions-scorecard')).toBeNull();
+    expect(screen.queryByText('Score breakdown')).toBeNull();
   });
 });

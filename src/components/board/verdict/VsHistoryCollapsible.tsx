@@ -143,47 +143,8 @@ export function VsHistoryCollapsible({ analysisId, currentScore }: VsHistoryColl
                 </BarChart>
               </ResponsiveContainer>
             </section>
-
-            {/* Chart 2: vs niche cohort (Phase 5 lock — niche always null per Open Question 1) */}
-            <section data-testid="vs-history-niche">
-              <h4 className="text-[10px] font-normal uppercase tracking-[0.04em] text-white/50 mb-1">
-                {COPY.NICHE_TITLE}
-              </h4>
-              {data.niche === null ? (
-                <p className="text-xs italic text-foreground-muted" data-testid="vs-history-niche-coming-soon">
-                  {COPY.NICHE_COMING_SOON}
-                </p>
-              ) : (
-                <ResponsiveContainer width="100%" height={88}>
-                  <BarChart
-                    layout="vertical"
-                    data={[
-                      { label: 'Now', value: currentScore, isCurrent: true, tier: 'current' },
-                      { label: 'Median', value: data.niche.median, isCurrent: false, tier: 'median' },
-                      { label: 'p75', value: data.niche.p75, isCurrent: false, tier: 'p75' },
-                    ]}
-                    margin={{ top: 4, right: 12, left: 24, bottom: 0 }}
-                  >
-                    <XAxis type="number" domain={[0, 100]} hide />
-                    <YAxis
-                      dataKey="label"
-                      type="category"
-                      tickLine={false}
-                      axisLine={false}
-                      fontSize={10}
-                      stroke="var(--color-foreground-muted)"
-                      width={48}
-                    />
-                    <Tooltip content={<ChartTooltip formatter={(v: unknown) => `${Number(v).toFixed(0)}`} />} />
-                    <Bar dataKey="value" isAnimationActive={!prefersReducedMotion} radius={[0, 4, 4, 0]}>
-                      <Cell fill="var(--color-accent)" />
-                      <Cell fill="rgba(255,255,255,0.30)" />
-                      <Cell fill="rgba(255,255,255,0.15)" />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </section>
+            {/* Niche comparison now lives in the verdict hero (ScoreDistribution) —
+                this collapsible is the personal-history view only. */}
           </div>
         )}
       </div>

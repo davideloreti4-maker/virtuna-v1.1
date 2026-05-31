@@ -1,122 +1,143 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Heart, MessageCircle, Share2, Bookmark, VideoOff } from 'lucide-react';
-import type { BehavioralPredictions } from '@/lib/engine/types';
+import type { BehavioralPredictions, ConfidenceLevel } from '@/lib/engine/types';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { cn } from '@/lib/utils';
 
 interface Props {
-  /** Storage path for the uploaded video (e.g. `userId/abc.mp4`). */
-  videoStoragePath: string | null;
-  /** Direct video URL — used while streaming (blob: URL from local file). */
-  videoUrl?: string | null;
-  /** First filmstrip keyframe URL, used as poster while video loads. */
-  thumbnailUrl: string | null;
-  /** Behavioral predictions from the analysis result — only used once
-   *  `isStreaming` is false (i.e. the analysis is complete). */
+  /** Behavioral predictions — the four engagement percentiles. Null until complete. */
   behavioral: BehavioralPredictions | null;
-  /** True while the analysis is in flight — hides metrics, shows a pulse. */
+  /** Model self-certainty (0-1). */
+  confidence?: number | null;
+  /** Categorical confidence for the footer verdict word. */
+  confidenceLabel?: ConfidenceLevel | null;
+  /** True when the aggregator gated the result (low confidence / timeline pattern) —
+   *  flips the card to the "Hold" state: dimmed, directional-only metrics. */
+  gated?: boolean;
+  /** True while the analysis is in flight. */
   isStreaming?: boolean;
 }
 
+/** "top 5%" → 5. Lower = stronger rank. null when unparseable. */
+function parsePercentile(s: string | undefined | null): number | null {
+  if (!s) return null;
+  const m = s.match(/(\d+(?:\.\d+)?)/);
+  return m ? parseFloat(m[1]!) : null;
+}
+
+/** "top 20%" → "Top 20%". */
+function titleCasePct(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+const CONF_WORD: Record<ConfidenceLevel, string> = {
+  HIGH: 'High confidence',
+  MEDIUM: 'Medium confidence',
+  LOW: 'Low confidence',
+};
+
 /**
- * InputResultCard — full vertical TikTok-style preview rendered inside the
- * Input frame. The video fills the frame; once the analysis is complete, the
- * model's predicted percentile ranks overlay as a right-side sidebar (TikTok
- * convention).
+ * Counts the hero percentile in from a worse rank down to its real value
+ * (e.g. 34 → 5) on mount — reads as "homing in on your rank". Returns the
+ * target immediately under reduced motion. null target → null (no number).
+ */
+function useCountIn(target: number | null, enabled: boolean): number | null {
+  const [val, setVal] = useState<number | null>(() =>
+    enabled && target != null ? Math.min(60, Math.round(target + 28)) : target,
+  );
+  useEffect(() => {
+    // setState only ever fires inside a rAF callback (never synchronously in the
+    // effect body) so the first frame paints the start value before animating.
+    if (target == null || !enabled) {
+      const id = requestAnimationFrame(() => setVal(target));
+      return () => cancelAnimationFrame(id);
+    }
+    const from = Math.min(60, Math.round(target + 28));
+    const dur = 620;
+    let startTs = 0;
+    let raf = requestAnimationFrame(function tick(now: number) {
+      if (!startTs) startTs = now;
+      const t = Math.min(1, (now - startTs) / dur);
+      const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+      setVal(Math.round(from + (target - from) * eased));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [target, enabled]);
+  return val;
+}
+
+/**
+ * InputResultCard — the Input frame's engagement scorecard.
  *
- * The percentile strings (e.g. "top 5%") come directly from the engine's
- * behavioral_predictions — no client-side fabrication.
+ * A-led hero + C data rows (design: `.playwright-mcp/input-engine-final.html`):
+ * the strongest of the four percentiles owns the surface as a monumental
+ * number; the rest fall to quiet rows; the model's own confidence anchors the
+ * footer. When the aggregator gated the result the card flips to the "Hold"
+ * state — a coral verdict word, directional-only dimmed metrics. No video, no
+ * prose, no chrome: the numbers are the value.
  */
 export function InputResultCard({
-  videoStoragePath,
-  videoUrl: directVideoUrl,
-  thumbnailUrl,
   behavioral,
+  confidence,
+  confidenceLabel,
+  gated = false,
   isStreaming = false,
 }: Props) {
-  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const reducedMotion = usePrefersReducedMotion();
+  const showResult = !isStreaming && !!behavioral;
 
+  // One-shot mount fade-in-up (skipped under reduced motion). rAF defers the
+  // flip so the opacity:0 start frame paints before the transition runs.
+  const [mounted, setMounted] = useState(false);
   useEffect(() => {
-    if (directVideoUrl || !videoStoragePath) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(`/api/videos/sign?path=${encodeURIComponent(videoStoragePath)}`);
-        if (!res.ok) return;
-        const body = (await res.json()) as { url?: string };
-        if (!cancelled && body.url) setSignedUrl(body.url);
-      } catch {
-        // ignore — card falls back to thumbnail or empty state
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [videoStoragePath, directVideoUrl]);
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
-  const videoSrc = directVideoUrl ?? signedUrl;
-  const hasMedia = !!videoSrc || !!thumbnailUrl;
-  const showMetrics = !isStreaming && !!behavioral;
-
-  // TikTok sidebar — driven by real percentile fields from behavioral_predictions.
-  // Heart maps to completion (TikTok "liked it" reads as "watched through").
-  const metricRows = behavioral
+  // Four metrics in a stable order; the strongest (lowest "top X%") leads.
+  const metrics = behavioral
     ? [
-        { key: 'completion', Icon: Heart, tint: 'text-red-400', fill: true,  name: 'Completion', label: behavioral.completion_percentile },
-        { key: 'comment',    Icon: MessageCircle, tint: 'text-white', fill: false, name: 'Comments', label: behavioral.comment_percentile },
-        { key: 'share',      Icon: Share2, tint: 'text-white', fill: false, name: 'Shares', label: behavioral.share_percentile },
-        { key: 'save',       Icon: Bookmark, tint: 'text-white', fill: false, name: 'Saves', label: behavioral.save_percentile },
+        { key: 'share', name: 'Shares', pct: behavioral.share_percentile },
+        { key: 'completion', name: 'Completion', pct: behavioral.completion_percentile },
+        { key: 'comment', name: 'Comments', pct: behavioral.comment_percentile },
+        { key: 'save', name: 'Saves', pct: behavioral.save_percentile },
       ]
     : [];
+  const ranked = [...metrics].sort(
+    (a, b) => (parsePercentile(a.pct) ?? 999) - (parsePercentile(b.pct) ?? 999),
+  );
+  const lead = ranked[0];
+  const rest = gated ? metrics : ranked.slice(1);
+  const heroNum = useCountIn(
+    showResult && !gated ? parsePercentile(lead?.pct) : null,
+    !reducedMotion,
+  );
 
-  // No media — the source video is deleted after analysis (retention), so this
-  // is the common state on history/permalink views. The TikTok overlay only
-  // makes sense over actual video; with none, the predicted percentiles ARE the
-  // value, so render them as a readable labeled list (no floating circles, no
-  // gradient anchoring nothing). Branch with media keeps the overlay treatment.
-  if (!hasMedia) {
+  const hasConf = confidence != null && !!confidenceLabel;
+  const footer = hasConf ? (
+    <div
+      className="mt-auto border-t border-white/[0.055] pt-3.5 text-[11.5px] tracking-[0.05px] text-white/[0.38]"
+      data-testid="input-confidence"
+    >
+      <span className="text-white/[0.56]">{CONF_WORD[confidenceLabel!]}</span>
+      {' · '}
+      <span className="tabular-nums">{confidence!.toFixed(2)}</span>
+    </div>
+  ) : null;
+
+  // ── Idle / streaming — calm holding states (no broken-player vocabulary) ──
+  if (!showResult) {
     return (
-      <div
-        className="relative flex h-full w-full flex-col overflow-hidden rounded-[8px]"
-        style={{
-          background: '#000',
-          boxShadow: 'rgba(255,255,255,0.05) 0px 1px 0px 0px inset, 0 8px 32px rgba(0,0,0,0.4)',
-        }}
-        data-testid="input-card-nomedia"
-      >
-        {/* Header chip — states the missing-video fact without reading as broken */}
-        <div className="flex items-center gap-1.5 px-3 pt-3 text-white/30">
-          <VideoOff className="h-3.5 w-3.5" strokeWidth={1.5} />
-          <span className="text-[10px] font-medium uppercase tracking-wider">
-            {isStreaming ? 'Analyzing…' : 'Video unavailable'}
+      <div className="flex h-full w-full items-center" data-testid="input-scorecard" data-state={isStreaming ? 'streaming' : 'idle'}>
+        {isStreaming ? (
+          <span className="flex items-center gap-2 text-[13px] text-white/[0.56]">
+            <span className={cn('inline-block h-1.5 w-1.5 rounded-full bg-accent', !reducedMotion && 'animate-pulse')} />
+            Analyzing
           </span>
-        </div>
-
-        {showMetrics ? (
-          <div className="flex flex-1 flex-col justify-center gap-1.5 px-3 pb-3">
-            <span className="mb-1 text-[9px] font-medium uppercase tracking-wider text-white/40">
-              Predicted engagement
-            </span>
-            {metricRows.map(({ key, Icon, tint, fill, name, label }) => (
-              <div
-                key={key}
-                className="flex items-center gap-2.5 rounded-[6px] border border-white/[0.06] bg-white/[0.02] px-2.5 py-2"
-              >
-                <Icon className={cn('h-4 w-4 shrink-0', tint)} fill={fill ? 'currentColor' : 'none'} />
-                <span className="text-[11px] font-medium text-white/60">{name}</span>
-                <span className="ml-auto whitespace-nowrap text-[11px] font-semibold text-white">
-                  {label}
-                </span>
-              </div>
-            ))}
-          </div>
         ) : (
-          /* Streaming / no metrics yet — calm centered glyph, not a broken player */
-          <div className="flex flex-1 items-center justify-center">
-            <VideoOff
-              className={cn('h-7 w-7 text-white/15', isStreaming && 'animate-pulse')}
-              strokeWidth={1.5}
-            />
-          </div>
+          <span className="text-[13px] text-white/[0.38]">Awaiting analysis</span>
         )}
       </div>
     );
@@ -124,90 +145,65 @@ export function InputResultCard({
 
   return (
     <div
-      className="relative h-full w-full overflow-hidden rounded-[8px]"
-      style={{
-        background: '#000',
-        boxShadow: 'rgba(255,255,255,0.05) 0px 1px 0px 0px inset, 0 8px 32px rgba(0,0,0,0.4)',
-      }}
+      className="relative flex h-full w-full flex-col"
+      data-testid="input-scorecard"
+      data-state={gated ? 'gated' : 'confident'}
+      style={
+        reducedMotion
+          ? undefined
+          : {
+              opacity: mounted ? 1 : 0,
+              transform: mounted ? 'translateY(0)' : 'translateY(4px)',
+              transition: 'opacity 240ms ease, transform 240ms ease',
+            }
+      }
     >
-      {videoSrc ? (
-        <video
-          src={videoSrc}
-          poster={thumbnailUrl ?? undefined}
-          muted
-          loop
-          autoPlay
-          playsInline
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-      ) : (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
-          src={thumbnailUrl ?? undefined}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-      )}
-
-      {/* Bottom gradient — anchors readability when metrics overlay */}
-      {showMetrics && (
-        <div
+      {/* Coral edge-flag — gated only (coral = needs attention now). */}
+      {gated && (
+        <span
           aria-hidden
-          className="absolute inset-x-0 bottom-0 h-24 pointer-events-none"
-          style={{
-            background:
-              'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0) 100%)',
-          }}
+          className="absolute -left-2 bottom-0 top-0 w-[3px] rounded-full bg-accent"
+          style={{ boxShadow: '0 0 16px -2px rgba(255,127,80,0.5)' }}
         />
       )}
 
-      {/* Streaming badge — top-left, only while analyzing */}
-      {hasMedia && isStreaming && (
-        <div className="absolute left-2 top-2 z-20">
-          <div
-            className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium text-white/90"
-            style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}
-          >
-            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
-            Analyzing
+      {/* Hero — monumental number (confident) or verdict word (gated). */}
+      {gated ? (
+        <>
+          <div className="leading-none">
+            <span className="text-[52px] font-semibold tracking-[-0.03em] text-accent">Hold</span>
           </div>
-        </div>
+          <p className="mt-3 text-[13px] tracking-[0.05px] text-white/[0.38]">directional only</p>
+        </>
+      ) : (
+        <>
+          <div className="flex items-baseline gap-2.5 leading-none">
+            <span className="text-[21px] font-semibold tracking-tight text-white/[0.56]">Top</span>
+            <span className="text-[56px] font-semibold tabular-nums tracking-[-0.035em] text-white/[0.95]">
+              {heroNum ?? parsePercentile(lead?.pct) ?? lead?.pct}
+              <span className="ml-px text-[0.55em] font-semibold">%</span>
+            </span>
+          </div>
+          <p className="mt-3 text-[13px] tracking-[0.05px] text-white/[0.38]">
+            predicted rank in <span className="font-medium text-white/[0.56]">{lead?.name}</span>
+          </p>
+        </>
       )}
 
-      {/* TikTok right sidebar — percentile labels from real model output */}
-      {showMetrics && (
-        <div className="absolute bottom-3 right-2 z-20 flex flex-col items-center gap-3">
-          {metricRows.map(({ key, Icon, tint, fill, label }) => (
-            <div key={key} className="flex flex-col items-center gap-0.5">
-              <div
-                className="flex h-8 w-8 items-center justify-center rounded-full"
-                style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
-              >
-                <Icon
-                  className={cn('h-4 w-4', tint)}
-                  fill={fill ? 'currentColor' : 'none'}
-                />
-              </div>
-              <span
-                className="whitespace-nowrap text-[9px] font-medium text-white"
-                style={{ textShadow: '0 1px 2px rgba(0,0,0,0.7)' }}
-              >
-                {label}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Data rows — the supporting percentiles (dimmed when gated). */}
+      <div className={cn('mt-7 flex flex-col', gated && 'opacity-[0.32]')}>
+        {rest.map((m) => (
+          <div
+            key={m.key}
+            className="flex items-baseline justify-between gap-3 border-t border-white/[0.04] py-2.5 first:border-t-0"
+          >
+            <span className="text-[13px] tracking-[0.05px] text-white/[0.56]">{m.name}</span>
+            <span className="text-[13.5px] font-semibold tabular-nums text-white/[0.95]">{titleCasePct(m.pct)}</span>
+          </div>
+        ))}
+      </div>
 
-      {/* Predicted label — bottom-left */}
-      {showMetrics && (
-        <div
-          className="absolute bottom-3 left-2 z-20 text-[9px] font-medium uppercase tracking-wider text-white/60"
-          style={{ textShadow: '0 1px 2px rgba(0,0,0,0.7)' }}
-        >
-          Predicted
-        </div>
-      )}
+      {footer}
     </div>
   );
 }

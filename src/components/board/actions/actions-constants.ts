@@ -24,6 +24,33 @@ export const TELEMETRY = {
   OPTIMAL_POST_RESET: 'optimal_post_reset_to_recommendation',
   // Fired when the user expands the collapsible factor scorecard.
   ACTIONS_SCORECARD_EXPANDED: 'actions_scorecard_expanded',
+  // Action-led redesign: which view shape rendered (needs-work/strong/degraded/all-set).
+  ACTIONS_VIEW_RENDERED: 'actions_view_rendered',
+  // User copied the hero rewrite text-link.
+  ACTIONS_REWRITE_COPIED: 'actions_rewrite_copied',
+  // User expanded a secondary fix row.
+  ACTIONS_FIX_EXPANDED: 'actions_fix_expanded',
+} as const;
+
+// Action-led redesign copy. Templated + band-keyed (instant, no LLM quality risk).
+// The Actions frame owns "what to do" only — the score/verdict/breakdown live in
+// the Score frame directly above it, so nothing here repeats a number or verdict.
+export const ACTIONS_COPY = {
+  KICKER_LOW: 'Fix first',
+  KICKER_MID: 'Worth a quick pass',
+  KICKER_AV: 'Fix before posting',
+  KICKER_DEGRADED: 'Where to focus',
+  KICKER_STRONG: 'Post it',
+  KICKER_POLISH: 'Optional polish',
+  COUNT_SUFFIX: 'to go',
+  COPY_REWRITE: 'Copy rewrite',
+  COPIED: 'Copied',
+  BEST_TIME: 'Best time',
+  BEST_GUESS: 'best guess',
+  EDIT_TIME: 'Edit time',
+  STRONG_SUB: 'Your audience peaks then, and nothing’s holding the video back.',
+  ALL_SET: 'You’re all set',
+  ALL_SET_SUB: 'Nothing to fix — just pick your moment.',
 } as const;
 
 // Copy for the "What to fix" section (top counterfactual fixes + factor scorecard).

@@ -31,14 +31,13 @@ function containsRect(outer: Rect, inner: Rect): boolean {
 const MIN_GAP = 32;
 
 describe('GROUP_FRAMES world-space gaps (UAT gap 1 regression — 2026-05-26)', () => {
-  // Input + Engine are intentionally paired in a single left column (Input
-  // hosts the TikTok-style result card, Engine is a compact pipeline footer).
-  // The 32px inter-group gutter doesn't apply to this pair; we just enforce
-  // they don't overlap.
-  it('input → engine vertical gap is non-overlapping', () => {
+  // Input + Engine share the left column (Input = engagement scorecard, Engine
+  // = state line → findings). Both are auto-height (redesign 2026-05-30); the
+  // static constants keep the standard 32px gutter between them.
+  it('input → engine vertical gap is the 32px gutter', () => {
     const a = rectFor('input');
     const b = rectFor('engine');
-    expect(b.y - bottom(a)).toBeGreaterThanOrEqual(0);
+    expect(b.y - bottom(a)).toBe(MIN_GAP);
   });
 
   it('input → audience horizontal gap is ≥ 32px', () => {
@@ -90,10 +89,12 @@ describe('GROUP_FRAMES world-space gaps (UAT gap 1 regression — 2026-05-26)', 
     expect(b.y - bottom(a)).toBeGreaterThanOrEqual(MIN_GAP);
   });
 
-  // Phase 4: Engine grown so the left column reaches the same bottom as the
-  // Audience centerpiece (800) — no lower-left void above Content Analysis.
-  it('engine fills the left column to the audience bottom line', () => {
-    expect(bottom(rectFor('engine'))).toBe(bottom(rectFor('audience')));
+  // Redesign 2026-05-30: Engine no longer stretches to fill the left column —
+  // it is content-sized (collapsed line / expandable findings). The left column
+  // is therefore shorter than the Audience centerpiece, which now governs where
+  // Content Analysis clears (audience bottom, not the left column).
+  it('left column (input + engine) is shorter than the audience centerpiece', () => {
+    expect(bottom(rectFor('engine'))).toBeLessThan(bottom(rectFor('audience')));
   });
 });
 
@@ -163,12 +164,14 @@ describe('resolveBoardLayout (auto-height reflow)', () => {
     expect(actions.y - bottom(boundsOf(resolved, 'verdict'))).toBe(MIN_GAP);
   });
 
-  it('ignores measured heights for fixed frames (input, engine)', () => {
-    const resolved = resolveBoardLayout({ input: 9999, engine: 9999 });
-    expect(boundsOf(resolved, 'input').height).toBe(rectFor('input').height);
-    expect(boundsOf(resolved, 'engine').height).toBe(rectFor('engine').height);
-    expect(AUTO_HEIGHT_FRAMES.has('input')).toBe(false);
-    expect(AUTO_HEIGHT_FRAMES.has('engine')).toBe(false);
+  it('honours measured heights for input and engine (now auto-height)', () => {
+    const resolved = resolveBoardLayout({ input: 360, engine: 300 });
+    expect(boundsOf(resolved, 'input').height).toBe(360);
+    expect(boundsOf(resolved, 'engine').height).toBe(300);
+    // Engine reflows below the (grown) Input, gutter preserved.
+    expect(boundsOf(resolved, 'engine').y - bottom(boundsOf(resolved, 'input'))).toBe(MIN_GAP);
+    expect(AUTO_HEIGHT_FRAMES.has('input')).toBe(true);
+    expect(AUTO_HEIGHT_FRAMES.has('engine')).toBe(true);
   });
 
   it('a shorter measured height than the constant is honoured (frame shrinks)', () => {
