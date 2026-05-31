@@ -152,6 +152,17 @@ describe('ContentAnalysisFrame — Content craft', () => {
     mockStream({ result: { overall_score: 60, hook_decomposition: null, emotion_arc: null, heatmap: null, variants: null } });
     render(<ContentAnalysisFrame camera={camera} layout={layout} />);
     expect(screen.getByTestId('content-analysis-empty')).toHaveTextContent(COPY.EMPTY);
+    // The Rulebook scorecard lives inside the craft branch — gone in the empty state.
+    expect(screen.queryByTestId('creator-rulebook')).not.toBeInTheDocument();
+  });
+
+  it('renders the Creator Rulebook scorecard derived from the craft signals', () => {
+    mockStream({ result: craftRow() });
+    render(<ContentAnalysisFrame camera={camera} layout={layout} />);
+    const card = screen.getByTestId('creator-rulebook');
+    expect(card).toBeInTheDocument();
+    // Populated (not the "Needs video" placeholder) → shows the coverage unit.
+    expect(card).toHaveTextContent(/on-pattern/i);
   });
 
   it('renders skeletons while streaming with no data yet', () => {

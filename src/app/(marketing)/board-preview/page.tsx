@@ -20,7 +20,29 @@ import {
   type PersonaNode,
   type TrendPoint,
 } from '@/components/board/_kit';
+import { CreatorRulebookCard } from '@/components/board/content-analysis/CreatorRulebookCard';
+import type { CreatorRulebook } from '@/lib/engine/creator-rulebook';
 import { cn } from '@/lib/utils';
+
+/* Pre-derived Creator Rulebook (preview only — the live frame derives this from the
+   analysis via deriveCreatorRulebook). Realistic mix: strong hook, missing close. */
+const RULEBOOK_PREVIEW: CreatorRulebook = {
+  checks: [
+    { id: 'cta_architecture', rule: 'CTA / Conversion Architecture Built In', creator: 'Hormozi', status: 'fail', actual: 'absent', target: 'present', note: 'The ending emotion / ask decides the viewer verdict — build it in.' },
+    { id: 'audio_off_text', rule: 'Burned-in text for audio-off viewers', creator: 'Hormozi', status: 'warn', actual: '5/10', target: 'readable on mute', numericRule: 19, note: '~50% watch muted — on-screen text is mandatory, not optional.' },
+    { id: 'share_trigger', rule: 'Shareability trigger', creator: 'Hoyos', status: 'warn', actual: '6/10', target: '≥7/10', numericRule: 35, note: 'Shareability (not just retention) drives true viral growth.' },
+    { id: 'hook_strength', rule: 'The Hook Decides Everything', creator: 'Hoyos', status: 'pass', actual: '8.2/10', target: '≥7/10', numericRule: 16, note: 'First 2–3s decides ~80% of performance — keep critique weight here.' },
+    { id: 'three_hook_stack', rule: 'Three-Hook Stack (see + read + hear)', creator: 'Ava', status: 'pass', actual: '3/3', target: '3/3', numericRule: 2, note: 'Stack a visual, a text, and an audio hook inside the first 3 seconds.' },
+    { id: 'length_fit', rule: 'Optimal Short length', creator: 'Hoyos', status: 'pass', actual: '34s', target: '~34s · ≤60s', numericRule: 5, note: 'In the ~34s sweet spot.' },
+    { id: 'pacing', rule: 'Clean cuts / pace breaks', creator: 'Hormozi', status: 'pass', actual: '7/10', target: '≥7/10', numericRule: 20, note: 'Clean cut every 3–4s; cut filler before the hook lands.' },
+    { id: 'cognitive_load', rule: 'Low cognitive load (reading-level proxy)', creator: 'Ava', status: 'unknown', actual: null, target: '≤4/10 load', note: 'Needs richer video signal.' },
+  ],
+  passCount: 4,
+  warnCount: 2,
+  failCount: 1,
+  knownCount: 7,
+  coveragePct: 88,
+};
 
 /* ── faux video stills (preview only — the live frames render real keyframe
  *    <img>s graded by energy; this just communicates the treatment) ── */
@@ -412,7 +434,8 @@ export default function BoardPreviewPage() {
         <Frame label="Actions">
           <FrameHero
             label="Next move"
-            value="Polish the hook"
+            value="Fix before posting"
+            size="prose"
             status={{ word: 'One quick pass', tone: 'warn' }}
             insight="Text overlay is your weakest modality — tighten it and you clear the bar."
           />
@@ -474,6 +497,8 @@ export default function BoardPreviewPage() {
               ]}
             />
           </div>
+          {/* Creator Rulebook — the real card (deterministic, attributed scorecard). */}
+          <CreatorRulebookCard className="mt-4" rulebook={RULEBOOK_PREVIEW} />
         </Frame>
       </div>
     </main>

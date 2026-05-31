@@ -5,8 +5,16 @@ import { usePermalinkAnalysis } from '@/hooks/queries/use-permalink-analysis';
 import { usePermalinkFilmstrips } from '@/hooks/queries/use-permalink-filmstrips';
 import type { HookDecomposition } from '@/lib/engine/qwen/schemas';
 import type { EmotionArcPoint } from '@/lib/engine/qwen/schemas';
+import type {
+  GeminiVideoSignals,
+  GeminiAudioSignals,
+  CtaSegmentResult,
+  Factor,
+} from '@/lib/engine/types';
+import type { RulebookInput } from '@/lib/engine/creator-rulebook';
 import { CraftFilmstrip } from './CraftFilmstrip';
 import { CraftRail } from './CraftRail';
+import { CreatorRulebookCard } from './CreatorRulebookCard';
 import { COPY, PILLAR_LABELS } from './content-analysis-constants';
 import {
   durationFromSegments,
@@ -31,6 +39,14 @@ interface CraftRow {
   emotion_arc?: EmotionArcPoint[] | null;
   heatmap?: { segments?: Array<Partial<CraftSegment>> | null } | null;
   variants?: { craft?: Partial<CraftSignals> | null } | null;
+  // Craft signals the Rulebook reads. On the LIVE SSE PredictionResult they sit at the
+  // top level; the permalink row nests them under variants.craft — so read both (below).
+  // factors + feature_vector are dedicated columns / top-level on both shapes.
+  video_signals?: GeminiVideoSignals | null;
+  cta_segment?: CtaSegmentResult | null;
+  audio_signals?: GeminiAudioSignals | null;
+  factors?: Factor[] | null;
+  feature_vector?: { durationSeconds: number | null } | null;
 }
 
 const EMPTY_CRAFT: CraftSignals = {
@@ -100,6 +116,29 @@ export function ContentAnalysisFrame({ camera: _camera, layout: _layout }: Conte
     [segments, mergedFilmstrips, arc, durationSec],
   );
   const audioCaption = pillars.find((p) => p.key === 'audio')?.caption ?? '';
+
+  // Creator Rulebook adapter — dual-read the craft signals (live SSE top-level, else the
+  // permalink's variants.craft, surfaced via `craft`). durationOverride wins so the
+  // length_fit check uses the trusted segment-derived duration, not feature_vector.
+  const rulebookInput = useMemo<RulebookInput>(
+    () => ({
+      hook_decomposition: decomp,
+      video_signals: row?.video_signals ?? craft.video_signals,
+      cta_segment: row?.cta_segment ?? craft.cta_segment,
+      audio_signals: row?.audio_signals ?? craft.audio_signals,
+      factors: row?.factors ?? undefined,
+      feature_vector: row?.feature_vector ?? null,
+    }),
+    [
+      decomp,
+      craft,
+      row?.video_signals,
+      row?.cta_segment,
+      row?.audio_signals,
+      row?.factors,
+      row?.feature_vector,
+    ],
+  );
 
   // Has any craft signal to render? Otherwise (text / tiktok_url) → empty state.
   const hasAnyCraft =
@@ -202,6 +241,13 @@ export function ContentAnalysisFrame({ camera: _camera, layout: _layout }: Conte
           />
 
           <CraftRail pillars={pillars} weakKey={weakKey} isLoading={railLoading} />
+
+          <CreatorRulebookCard
+            className="mt-4"
+            result={rulebookInput}
+            durationOverride={durationSec}
+            isLoading={railLoading}
+          />
         </>
       )}
     </div>
