@@ -895,6 +895,108 @@ export type Database = {
         }
         Relationships: []
       }
+      engine_training_videos: {
+        Row: {
+          bucket_match: boolean | null
+          created_at: string
+          creator_handle: string | null
+          duration_seconds: number | null
+          engine_evaluated_at: string | null
+          engine_feature_vector: Json | null
+          engine_overall_score: number | null
+          engine_predicted_bucket: string | null
+          engine_prediction: Json | null
+          engine_version: string | null
+          follower_count: number | null
+          id: string
+          niche: string | null
+          platform: string
+          platform_video_id: string
+          posted_at: string | null
+          prediction_error: number | null
+          real_bucket: string | null
+          real_comments: number | null
+          real_completion_pct: number | null
+          real_likes: number | null
+          real_percentile: number | null
+          real_saves: number | null
+          real_shares: number | null
+          real_views: number | null
+          scraped_at: string
+          society_id: string | null
+          status: string
+          updated_at: string
+          video_storage_path: string | null
+          video_url: string | null
+        }
+        Insert: {
+          bucket_match?: boolean | null
+          created_at?: string
+          creator_handle?: string | null
+          duration_seconds?: number | null
+          engine_evaluated_at?: string | null
+          engine_feature_vector?: Json | null
+          engine_overall_score?: number | null
+          engine_predicted_bucket?: string | null
+          engine_prediction?: Json | null
+          engine_version?: string | null
+          follower_count?: number | null
+          id?: string
+          niche?: string | null
+          platform?: string
+          platform_video_id: string
+          posted_at?: string | null
+          prediction_error?: number | null
+          real_bucket?: string | null
+          real_comments?: number | null
+          real_completion_pct?: number | null
+          real_likes?: number | null
+          real_percentile?: number | null
+          real_saves?: number | null
+          real_shares?: number | null
+          real_views?: number | null
+          scraped_at?: string
+          society_id?: string | null
+          status?: string
+          updated_at?: string
+          video_storage_path?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          bucket_match?: boolean | null
+          created_at?: string
+          creator_handle?: string | null
+          duration_seconds?: number | null
+          engine_evaluated_at?: string | null
+          engine_feature_vector?: Json | null
+          engine_overall_score?: number | null
+          engine_predicted_bucket?: string | null
+          engine_prediction?: Json | null
+          engine_version?: string | null
+          follower_count?: number | null
+          id?: string
+          niche?: string | null
+          platform?: string
+          platform_video_id?: string
+          posted_at?: string | null
+          prediction_error?: number | null
+          real_bucket?: string | null
+          real_comments?: number | null
+          real_completion_pct?: number | null
+          real_likes?: number | null
+          real_percentile?: number | null
+          real_saves?: number | null
+          real_shares?: number | null
+          real_views?: number | null
+          scraped_at?: string
+          society_id?: string | null
+          status?: string
+          updated_at?: string
+          video_storage_path?: string | null
+          video_url?: string | null
+        }
+        Relationships: []
+      }
       niche_post_windows: {
         Row: {
           computed_at: string
