@@ -46,6 +46,7 @@ import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { NumenMark } from "@/components/brand/numen-logo";
 import { useAnalysisHistory } from "@/hooks/queries";
 import { useProfile } from "@/hooks/queries/use-profile";
 import { useBoardStore } from "@/stores/board-store";
@@ -425,25 +426,8 @@ const isOnBoard = pathname.startsWith("/analyze");
           )}
         >
           {!effectiveCollapsed && (
-            <Link href="/" className="flex items-center gap-2 group" aria-label="Virtuna home">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 32 32"
-                fill="none"
-                className="text-foreground"
-                aria-hidden="true"
-              >
-                <path
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                  d="M16 6H13L8 27H11L16 6ZM16 6L21 27H24L19 6H16Z"
-                  fill="currentColor"
-                />
-              </svg>
-              <span className="text-[15px] font-semibold tracking-tight text-foreground">
-                Virtuna
-              </span>
+            <Link href="/" className="group text-foreground pl-2" aria-label="Numen home">
+              <NumenMark size={26} />
             </Link>
           )}
           <Button
