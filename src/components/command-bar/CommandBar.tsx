@@ -50,7 +50,7 @@ export function CommandBar({ onContentSubmit }: Props) {
         type="button"
         onClick={() => setCollapsed((c) => !c)}
         className={cn(
-          'flex h-5 w-9 items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.04] text-foreground-muted backdrop-blur-sm transition-all duration-200 hover:bg-white/[0.08] hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none',
+          'flex h-5 w-9 items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.04] text-foreground-muted backdrop-blur-sm transition-all duration-200 motion-reduce:transition-none hover:bg-white/[0.08] hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none',
           collapsed
             ? 'opacity-100'
             : 'opacity-0 group-hover:opacity-100',

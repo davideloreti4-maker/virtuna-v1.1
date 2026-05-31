@@ -466,10 +466,10 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
             type="submit"
             disabled={isSubmitDisabled}
             className={cn(
-              "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-150",
+              "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-150 motion-reduce:transition-none",
               isSubmitDisabled
                 ? "bg-white/[0.05] text-foreground-muted/50 cursor-not-allowed"
-                : "bg-accent text-accent-foreground shadow-[0_1px_2px_rgba(0,0,0,0.3)] hover:bg-accent-hover active:scale-95 cursor-pointer"
+                : "bg-accent text-accent-foreground shadow-[0_1px_2px_rgba(0,0,0,0.3)] hover:bg-accent-hover active:scale-95 motion-reduce:active:scale-100 cursor-pointer"
             )}
             aria-label="Submit test"
           >
