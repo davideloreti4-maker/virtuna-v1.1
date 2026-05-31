@@ -611,6 +611,32 @@ describe("Phase 3 — provenance + stub invocations", () => {
     expect(events).toContain("stage_11_counterfactuals");
   });
 
+  it("deferCounterfactuals=true skips Stage 11 but still runs Stage 10 (latency: after() path)", async () => {
+    const events: string[] = [];
+    const result = await aggregateScores(
+      makePipelineResult(),
+      (e) => {
+        if ((e.type === "stage_start" || e.type === "stage_end") && "stage" in e && e.stage) {
+          events.push(e.stage);
+        }
+      },
+      { deferCounterfactuals: true },
+    );
+    // Stage 10 (deterministic critique) MUST still run — it owns the final
+    // confidence + anti-virality gate that paint synchronously.
+    expect(events).toContain("stage_10_critique");
+    expect(result.critique).not.toBeNull();
+    // Stage 11 is skipped entirely — no LLM call, no event, counterfactuals left
+    // null for the route's after() to populate via a later DB UPDATE.
+    expect(events).not.toContain("stage_11_counterfactuals");
+    expect(result.counterfactuals ?? null).toBeNull();
+    // The painted number is untouched by deferral — score/gate are Stage-10 owned.
+    const inline = await aggregateScores(makePipelineResult());
+    expect(result.overall_score).toBe(inline.overall_score);
+    expect(result.confidence).toBe(inline.confidence);
+    expect(result.anti_virality_gated).toBe(inline.anti_virality_gated);
+  });
+
   it("overall_score is unchanged for identical input (PIPE-06 math invariance)", async () => {
     const a = await aggregateScores(makePipelineResult());
     const b = await aggregateScores(makePipelineResult());

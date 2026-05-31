@@ -514,6 +514,17 @@ export interface AggregateScoresOptions {
   // D-01 / D-18 — Plan 03 pipeline.ts uploads video once at entry, threads fileUri through here.
   // Plan 02 leaves this optional with null default; Plan 03 callsite supplies real values.
   videoContext?: { fileUri: string; mimeType: string } | null;
+  /**
+   * Latency: defer Stage 11 (counterfactuals) off the synchronous path. When true,
+   * aggregateScores runs Stage 10 (deterministic critique — owns the final score,
+   * confidence + anti-virality gate) but SKIPS the Stage 11 LLM call, leaving
+   * `counterfactuals` null. The caller (analyze route) re-runs `runStage11Counterfactuals`
+   * in a Vercel `after()` and UPDATEs the row, so the user-visible wall drops by the
+   * Stage 11 tail (~30-113s) with no change to the score/gate/confidence. Stage 11 is
+   * purely additive (writes result.counterfactuals only — see the post-pipeline block
+   * below), so deferring it never alters the painted number. Default false = inline.
+   */
+  deferCounterfactuals?: boolean;
 }
 
 /**
@@ -1234,6 +1245,11 @@ export async function aggregateScores(
   // If (stage10 + stage11) ≈ wall, the two calls are serialized at the DashScope
   // network layer despite Promise.all; if wall ≈ max(stage10, stage11), they are
   // truly concurrent. This answers the open latency question in the handoff.
+  // Latency: when deferCounterfactuals is set (analyze route), Stage 11 is pulled
+  // off the sync path and re-run in a Vercel after() — so skip it here. Stage 10
+  // stays inline because it is deterministic TS (no LLM, sub-ms) and OWNS the final
+  // score/confidence/gate; only Stage 11's additive `counterfactuals` arrives late.
+  const deferCounterfactuals = options?.deferCounterfactuals ?? false;
   const tStages = performance.now();
   const [critiqueResult, counterfactualResult] = await Promise.all([
     (async () => {
@@ -1243,8 +1259,8 @@ export async function aggregateScores(
       return r;
     })(),
     // D-01 / D-06 / D-18 — Stage 11 receives videoContext from options (Plan 03
-    // threads real values; Plan 02 default = null).
-    (async () => {
+    // threads real values; Plan 02 default = null). Skipped entirely when deferred.
+    deferCounterfactuals ? Promise.resolve(null) : (async () => {
       const t = performance.now();
       const r = await runStage11Counterfactuals(result, options?.videoContext ?? null, onStageEvent);
       log.info("stage_timing", { stage: "stage11_counterfactuals", ms: Math.round(performance.now() - t) });
