@@ -55,6 +55,13 @@ export interface HeatmapPayload {
   /** Overall weighted_completion_pct − niche_completion_pct (0-1, can be negative).
    *  Positive ⇒ this video plays broader than its niche baseline. null when no niche personas. */
   vs_niche_diff_pct?: number | null;
+  /** Mirror of the top-level PredictionResult.weighted_completion_pct (0-1). Persisted
+   *  here so the Score-frame engine signal survives permalink reload — the top-level
+   *  field is computed at aggregate time but NOT a DB column. Absent on pre-fix rows. */
+  weighted_completion_pct?: number | null;
+  /** Mirror of the top-level PredictionResult.weighted_hook_score. Persisted here for
+   *  the same reload-survival reason as weighted_completion_pct above. */
+  weighted_hook_score?: number | null;
 }
 
 // D-15 (Phase 3) — Streaming partial extension for persona rows.

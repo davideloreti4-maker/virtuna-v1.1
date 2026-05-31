@@ -56,12 +56,15 @@ function hookTo10(v: number): string {
 export function deriveSignalTiles(result: PredictionResult): SignalTile[] {
   const tiles: SignalTile[] = [];
 
-  const hook = result.weighted_hook_score;
+  // Top-level fields exist on the LIVE SSE result but are NOT persisted (no DB
+  // column) — fall back to the mirror persisted inside heatmap so these tiles
+  // survive permalink reload. (Same live-vs-persisted split as the craft frame.)
+  const hook = result.weighted_hook_score ?? result.heatmap?.weighted_hook_score;
   if (typeof hook === 'number' && Number.isFinite(hook)) {
     tiles.push({ k: 'Hook', v: hookTo10(hook), u: '/10', s: 'open' });
   }
 
-  const completion = result.weighted_completion_pct;
+  const completion = result.weighted_completion_pct ?? result.heatmap?.weighted_completion_pct;
   if (typeof completion === 'number' && Number.isFinite(completion)) {
     tiles.push({
       k: 'Completion',
@@ -127,6 +130,15 @@ export function parsePercentile(raw: string | null | undefined): number | null {
  *  absent are omitted (never fabricated). Niche-cohort deltas are not derivable
  *  — the comparisons endpoint exposes only an aggregate score histogram, no
  *  per-metric cohort percentiles — so no `delta` is attached. */
+/** "X% predicted" — but a nonzero rate that rounds to 0 (e.g. 0.28% share) reads
+ *  as broken "0% predicted". Show "<1%" so a tiny-but-real prediction stays honest
+ *  (a true zero still reads "0%"). */
+function predictedPctLabel(abs: number): string {
+  if (abs <= 0) return '0% predicted';
+  const rounded = Math.round(abs);
+  return rounded === 0 ? '<1% predicted' : `${rounded}% predicted`;
+}
+
 export function deriveBehavioralTiles(result: PredictionResult): StatTileData[] {
   const bp = result.behavioral_predictions;
   if (!bp) return [];
@@ -146,7 +158,7 @@ export function deriveBehavioralTiles(result: PredictionResult): StatTileData[] 
       k: r.k,
       v: String(p),
       u: 'th',
-      s: typeof r.abs === 'number' && Number.isFinite(r.abs) ? `${Math.round(r.abs)}% predicted` : undefined,
+      s: typeof r.abs === 'number' && Number.isFinite(r.abs) ? predictedPctLabel(r.abs) : undefined,
     });
   }
   return tiles;

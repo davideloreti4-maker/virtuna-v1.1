@@ -79,6 +79,36 @@ function craftRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
+/**
+ * The LIVE SSE `complete` result is the raw PredictionResult — craft signals sit
+ * at the TOP LEVEL (route.ts nests them under variants.craft only at DB-persist
+ * time). Mirrors the real WPk976kozfWs run that rendered "No speech track" /
+ * "CTA None" while the engine had captured clear voiceover + a "Stay tuned" CTA.
+ */
+function liveSseRow(overrides: Record<string, unknown> = {}) {
+  return {
+    overall_score: 34,
+    hook_decomposition: {
+      visual_stop_power: 2,
+      audio_hook_quality: 4,
+      text_overlay_score: 0,
+      first_words_speech_score: 3,
+      weakest_modality: 'text_overlay_score',
+      visual_audio_coherence: 8,
+      cognitive_load: 2,
+    },
+    emotion_arc: ARC,
+    heatmap: { segments: SEGMENTS },
+    // top-level craft — NO variants.craft (exactly what the SSE complete event carries)
+    video_signals: { visual_production_quality: 6, hook_visual_impact: 3, pacing_score: 4, transition_quality: 5 },
+    audio_signals: { voice_clarity_0_10: 9, audio_hook_first_2s_0_10: 4, silence_ratio: 0, voiceover_ratio: 1, music_ratio: 0, audio_description: 'Clear spoken voice.' },
+    audio_perceptual_score: 79,
+    cta_segment: { cta_present: true, type: 'watch_next', strength: 6, rationale: "'Stay tuned' soft CTA" },
+    variants: null,
+    ...overrides,
+  };
+}
+
 function mockStream(value: Record<string, unknown>) {
   (useAnalysisStream as ReturnType<typeof vi.fn>).mockReturnValue({
     phase: 'complete',
@@ -170,6 +200,27 @@ describe('ContentAnalysisFrame — Content craft', () => {
     render(<ContentAnalysisFrame camera={camera} layout={layout} />);
     expect(screen.getByTestId('craft-filmstrip-loading')).toBeInTheDocument();
     expect(screen.getByTestId('craft-rail-loading')).toBeInTheDocument();
+  });
+
+  it('populates Audio/Pacing/CTA from TOP-LEVEL craft on the live SSE result (regression: WPk976kozfWs "No speech track")', () => {
+    mockStream({ result: liveSseRow() });
+    render(<ContentAnalysisFrame camera={camera} layout={layout} />);
+
+    const tiles = screen.getAllByTestId('stat-tile');
+    // Hook reads top-level hook_decomposition → always worked. (2+4+0+3)/4 = 2.25 → 2.3
+    expect(tiles[0]).toHaveTextContent('Hook');
+    expect(tiles[0]).toHaveTextContent('2.3');
+    // Pacing reads video_signals.pacing_score — must dual-read top-level on live SSE.
+    expect(tiles[1]).toHaveTextContent('Pacing');
+    expect(tiles[1]).toHaveTextContent('4.0');
+    // Audio: real voiceover (perceptual 79 → 7.9) — NOT the "No speech track" placeholder.
+    expect(tiles[2]).toHaveTextContent('Audio');
+    expect(tiles[2]).toHaveTextContent('7.9');
+    // CTA: "Stay tuned" present (strength 6) — NOT "None".
+    expect(tiles[3]).toHaveTextContent('CTA');
+    expect(tiles[3]).toHaveTextContent('6.0');
+    // The smoking-gun string must be gone everywhere (rail tile + filmstrip caption).
+    expect(screen.queryByText(/No speech track/i)).not.toBeInTheDocument();
   });
 
   it('uses permalink filmstrips when the stream has none', () => {

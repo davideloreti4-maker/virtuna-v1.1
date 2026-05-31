@@ -249,5 +249,10 @@ export function assembleHeatmapPayload(
     weights_source: weightsSource,
     niche_completion_pct,
     vs_niche_diff_pct,
+    // Mirror the curve scalars into the persisted payload so the Score-frame engine
+    // signals (Hook / Completion) survive permalink reload — the top-level
+    // PredictionResult fields are not DB columns. (verdict-derive reads heatmap as fallback.)
+    weighted_completion_pct: curve.weighted_completion_pct,
+    weighted_hook_score: curve.weighted_hook_score,
   };
 }

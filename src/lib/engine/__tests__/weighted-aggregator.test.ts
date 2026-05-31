@@ -210,6 +210,11 @@ describe("buildWeightedCurve + assembleHeatmapPayload (Wave 0 stub)", () => {
     expect(payload.weighted_curve).toHaveLength(3);
     expect(typeof payload.weights.fyp).toBe("number");
     expect(payload.weights_source).toBe("default");
+
+    // Curve scalars mirrored into the payload so the Score-frame engine signals
+    // (Hook / Completion) survive permalink reload (top-level fields aren't persisted).
+    expect(typeof payload.weighted_completion_pct).toBe("number");
+    expect(typeof payload.weighted_hook_score).toBe("number");
   });
 
   it("assembleHeatmapPayload: keyframe_uri starts null for every segment (Pitfall 3)", () => {

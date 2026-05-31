@@ -45,6 +45,9 @@ interface CraftRow {
   video_signals?: GeminiVideoSignals | null;
   cta_segment?: CtaSegmentResult | null;
   audio_signals?: GeminiAudioSignals | null;
+  audio_perceptual_score?: number | null;
+  overall_impression?: string | null;
+  content_summary?: string | null;
   factors?: Factor[] | null;
   feature_vector?: { durationSeconds: number | null } | null;
 }
@@ -69,7 +72,31 @@ export function ContentAnalysisFrame({ camera: _camera, layout: _layout }: Conte
   const row = result as unknown as CraftRow | null;
   const decomp = row?.hook_decomposition ?? null;
   const arc = useMemo<EmotionArcPoint[]>(() => row?.emotion_arc ?? [], [row?.emotion_arc]);
-  const craft = useMemo<CraftSignals>(() => ({ ...EMPTY_CRAFT, ...(row?.variants?.craft ?? {}) }), [row?.variants?.craft]);
+  // Dual-read like rulebookInput (below): on the LIVE SSE PredictionResult the craft
+  // signals sit at the TOP LEVEL; only the persisted permalink row nests them under
+  // variants.craft. Reading variants.craft alone left Audio/Pacing/CTA blank on the
+  // freshly-completed board ("No speech track" / "None") — regression WPk976kozfWs.
+  const craft = useMemo<CraftSignals>(() => {
+    const v = row?.variants?.craft ?? {};
+    return {
+      ...EMPTY_CRAFT,
+      ...v,
+      video_signals: v.video_signals ?? row?.video_signals ?? null,
+      cta_segment: v.cta_segment ?? row?.cta_segment ?? null,
+      audio_signals: v.audio_signals ?? row?.audio_signals ?? null,
+      audio_perceptual_score: v.audio_perceptual_score ?? row?.audio_perceptual_score ?? null,
+      overall_impression: v.overall_impression ?? row?.overall_impression ?? null,
+      content_summary: v.content_summary ?? row?.content_summary ?? null,
+    };
+  }, [
+    row?.variants?.craft,
+    row?.video_signals,
+    row?.cta_segment,
+    row?.audio_signals,
+    row?.audio_perceptual_score,
+    row?.overall_impression,
+    row?.content_summary,
+  ]);
 
   // Merged keyframe URLs — stream wins, else permalink replay (AudienceNode pattern).
   // Guard against undefined (test mocks of useAnalysisStream may omit `filmstrips`).

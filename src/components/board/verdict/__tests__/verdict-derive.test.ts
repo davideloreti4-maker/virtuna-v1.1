@@ -88,6 +88,27 @@ describe('deriveSignalTiles — only present fields, defensive scales', () => {
   it('omits tiles whose source data is absent', () => {
     expect(deriveSignalTiles(result())).toEqual([]);
   });
+  it('falls back to heatmap mirror when top-level weighted_* absent (permalink reload)', () => {
+    // Live SSE carries weighted_* top-level; the persisted DB row drops them and
+    // only the heatmap mirror survives. Both Hook + Completion must still render.
+    const reloaded = result({
+      weighted_hook_score: undefined,
+      weighted_completion_pct: undefined,
+      heatmap: { weighted_hook_score: 4.8, weighted_completion_pct: 0.15 } as unknown as PredictionResult['heatmap'],
+    });
+    const tiles = deriveSignalTiles(reloaded);
+    expect(tiles.find((t) => t.k === 'Hook')).toMatchObject({ v: '4.8', u: '/10' });
+    expect(tiles.find((t) => t.k === 'Completion')).toMatchObject({ v: '15', u: '%' });
+  });
+  it('prefers the top-level value over the heatmap mirror when both present', () => {
+    const tiles = deriveSignalTiles(
+      result({
+        weighted_hook_score: 7.2,
+        heatmap: { weighted_hook_score: 1.0 } as unknown as PredictionResult['heatmap'],
+      }),
+    );
+    expect(tiles.find((t) => t.k === 'Hook')).toMatchObject({ v: '7.2' });
+  });
 });
 
 /* ── redesign-v2 selectors ── */
@@ -151,6 +172,15 @@ describe('deriveBehavioralTiles — Share/Completion/Comment/Save percentiles', 
   it('omits a tile whose percentile is malformed', () => {
     const tiles = deriveBehavioralTiles(bp({ comment_percentile: '' }));
     expect(tiles.map((t) => t.k)).toEqual(['Share', 'Completion', 'Save']);
+  });
+
+  it('shows "<1% predicted" for a nonzero rate that rounds to 0, and "0%" for a true zero', () => {
+    // Real WPk976kozfWs: share 0.28%, comment 0.09% → must NOT read "0% predicted".
+    const tiles = deriveBehavioralTiles(bp({ share_pct: 0.28, comment_pct: 0.09, save_pct: 0.65, completion_pct: 0 }));
+    expect(tiles.find((t) => t.k === 'Share')!.s).toBe('<1% predicted');
+    expect(tiles.find((t) => t.k === 'Comment')!.s).toBe('<1% predicted');
+    expect(tiles.find((t) => t.k === 'Save')!.s).toBe('1% predicted'); // 0.65 → rounds to 1
+    expect(tiles.find((t) => t.k === 'Completion')!.s).toBe('0% predicted'); // true zero stays 0%
   });
 
   it('returns [] when behavioral_predictions is absent', () => {
