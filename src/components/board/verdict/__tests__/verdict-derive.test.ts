@@ -7,7 +7,6 @@ import {
   confidenceRange,
   deriveBehavioralTiles,
   deriveGatedHero,
-  deriveOneMove,
   deriveSignalTiles,
   nicheDelta,
   parsePercentile,
@@ -65,42 +64,6 @@ describe('comparativeLine — honest cohort position (never a fabricated percent
   });
   it('prompts for handle when no niche', () => {
     expect(comparativeLine(77, null)).toBe('add your handle to rank vs your niche');
-  });
-});
-
-describe('deriveOneMove', () => {
-  const cf = (over = {}) => ({
-    band: 'mid' as const,
-    suggestions: [
-      { type: 'fix' as const, headline: 'Add a replay beat', detail: 'd', timestamp_ms: 6000, signal_anchor: 'a' },
-      ...[],
-    ],
-    ...over,
-  });
-
-  it('prefers the first counterfactual fix and shows its timestamp for video', () => {
-    expect(deriveOneMove(result({ counterfactuals: cf() }))).toEqual({
-      headline: 'Add a replay beat',
-      timestampMs: 6000,
-    });
-  });
-  it('suppresses the timestamp for non-video modes (no filmstrip to jump to)', () => {
-    expect(deriveOneMove(result({ counterfactuals: cf(), has_video: false }))).toEqual({
-      headline: 'Add a replay beat',
-      timestampMs: null,
-    });
-  });
-  it('falls back to the weakest factor tip when no counterfactuals', () => {
-    const r = result({
-      factors: [
-        { id: 'a', name: 'Strong', score: 8, max_score: 10, rationale: '', improvement_tip: 'keep' },
-        { id: 'b', name: 'Weak', score: 4, max_score: 10, rationale: '', improvement_tip: 'lift the weak one' },
-      ],
-    });
-    expect(deriveOneMove(r)).toEqual({ headline: 'lift the weak one', timestampMs: null });
-  });
-  it('returns null with no data', () => {
-    expect(deriveOneMove(result())).toBeNull();
   });
 });
 

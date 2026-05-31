@@ -44,33 +44,6 @@ export function comparativeLine(score: number, niche: NicheCohort | null): strin
   return `${lead} · ${suffix}`;
 }
 
-export interface OneMove {
-  headline: string;
-  /** ms, only when a real video timestamp exists; null otherwise (suppressed for
-   *  text/url modes where the audience filmstrip is empty). */
-  timestampMs: number | null;
-}
-
-export function deriveOneMove(result: PredictionResult): OneMove | null {
-  const fix = result.counterfactuals?.suggestions.find((s) => s.type === 'fix' && s.headline);
-  if (fix) {
-    const showTs = result.has_video && fix.timestamp_ms > 0;
-    return { headline: fix.headline, timestampMs: showTs ? fix.timestamp_ms : null };
-  }
-  // Fallback: the weakest factor's improvement tip.
-  const factors = result.factors ?? [];
-  if (factors.length) {
-    const weak = [...factors].sort((a, b) => a.score - b.score)[0]!;
-    if (weak.improvement_tip) return { headline: weak.improvement_tip, timestampMs: null };
-  }
-  return null;
-}
-
-export function formatTimestamp(ms: number): string {
-  const total = Math.floor(ms / 1000);
-  return `${Math.floor(total / 60)}:${(total % 60).toString().padStart(2, '0')}`;
-}
-
 /** Hook score arrives on an uncertain scale (0-1 | 0-10 | 0-100 across engine
  *  versions). Normalize to a 0-10 display defensively rather than assume. */
 function hookTo10(v: number): string {
