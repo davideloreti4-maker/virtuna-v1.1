@@ -234,8 +234,11 @@ export function AudienceNode(props: AudienceNodeProps) {
   // ── Empty state: post-analysis with no persona data ──────────────────────────
   const showEmptyState = !isStreaming && !hasPersonas;
 
+  // Root carries aria-busy only — deliberate announcements go through the
+  // choreography hook's announce() global live region. A root aria-live here
+  // re-announced every dynamic child (the storm VerdictNode already removed).
   return (
-    <div aria-live="polite" aria-busy={isStreaming} className="flex w-full flex-col gap-4 p-4">
+    <div aria-busy={isStreaming} className="flex w-full flex-col gap-4 p-4">
       <AudienceHero
         nodes={personaNodes}
         watchThroughPct={watchThroughPct}

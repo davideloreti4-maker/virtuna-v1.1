@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
 import { usePermalinkAnalysis } from '@/hooks/queries/use-permalink-analysis';
 import { usePermalinkFilmstrips } from '@/hooks/queries/use-permalink-filmstrips';
@@ -8,7 +8,7 @@ import { useBoardStore } from '@/stores/board-store';
 import { getFrameAntiViralityState } from '../cross-group-state';
 import { useScript } from './script/use-script';
 import { ActionsContent } from './ActionsContent';
-import { deriveActionsView } from './actions-derive';
+import { deriveActionsView, deriveActionsHero } from './actions-derive';
 import { TELEMETRY } from './actions-constants';
 import type { ActionsNodeProps } from './actions-types';
 import type { OptimalPostOverride } from './optimal-post/OptimalPostCard';
@@ -92,6 +92,22 @@ export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodePro
 
   const view = deriveActionsView({ ready, counterfactuals, advice, weakest, isAV, score });
 
+  // Debounced single aria-live announcement of the recommended move. Root carries
+  // aria-busy only — a root aria-live re-announced every dynamic child (the storm
+  // VerdictNode already removed; mirror its dedicated-span pattern here).
+  const hero = useMemo(() => deriveActionsHero(view), [view]);
+  const [ariaText, setAriaText] = useState('');
+  const announcedRef = useRef(false);
+  useEffect(() => {
+    if (!ready || !hero || announcedRef.current) return;
+    announcedRef.current = true;
+    const handle = window.setTimeout(
+      () => setAriaText([hero.verb, hero.status, hero.insight].filter(Boolean).join('. ')),
+      500,
+    );
+    return () => window.clearTimeout(handle);
+  }, [ready, hero]);
+
   // Telemetry: fire once per analysis on first complete render.
   const renderedRef = useRef(false);
   useEffect(() => {
@@ -109,11 +125,13 @@ export function ActionsNode({ camera: _camera, layout: _layout }: ActionsNodePro
 
   return (
     <div
-      aria-live="polite"
       aria-busy={isStreaming}
       className="relative w-full"
       data-testid="actions-node"
     >
+      <span aria-live="polite" className="sr-only" data-testid="actions-aria-live">
+        {ariaText}
+      </span>
       <div
         className="flex w-full flex-col"
         data-testid="actions-grid"
