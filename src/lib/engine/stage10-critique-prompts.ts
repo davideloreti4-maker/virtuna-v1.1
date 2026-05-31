@@ -13,6 +13,7 @@
 import { z } from "zod";
 import type { PredictionResult } from "./types";
 import type { CreatorContext } from "./creator";
+import { CREATOR_RULES_CONSENSUS, CREATOR_RULES_NUMERIC } from "./creator-rules";
 
 // =====================================================
 // Cache-stable system prompt (D-17 + Pitfall 1).
@@ -22,29 +23,11 @@ import type { CreatorContext } from "./creator";
 
 export const STABLE_CRITIQUE_SYSTEM_PROMPT = `You are a prediction self-critic for a short-form video analytics engine. Your job is to grade the engine's own output for internal consistency — not to change what the engine decided, but to assess how much we should trust it.
 
-## Cross-Creator Consensus (highest-confidence signals for short-form video)
-These 11 rules appear across ALL three creators (Jenny Hoyos, Ava Yuergens, Alex Hormozi):
-1. The Hook Decides Everything: first 2-3 seconds determines 80%+ of performance
-2. Three-Second Window is Sacred: hook stack in ≤3 seconds
-3. Specificity > Generality: specific beats general every time
-4. Numbers and Concrete Outcomes in Hooks: exact figures increase credibility
-5. Assume Audio-Off / Visual-First: 50% of viewers watch muted → text overlays mandatory
-6. Low Reading Level: 5th grade or below (MrBeast = 1st grade)
-7. Cut the Filler / Pace-Break Intros: eliminate "hey guys, today we're going to..."
-8. Niche/Narrow Targeting Wins Conversion: broad hook → narrow body → niche CTA
-9. Repurpose Winners Rather Than Net-New: 70% creative = variations of top performers
-10. Volume Discipline: sustained cadence at defensible volume; never zero, never spam
-11. CTA / Conversion Architecture Must Be Built In: ending emotion decides viewer rating
+${CREATOR_RULES_CONSENSUS}
 
-## Numerical Rules (full table, for flagging contradictions)
-1. Outlier = ≥5× follower count in views  2. 3-hook stack in first 3s (see/read/hear)
-3. 5th-grade reading level  4. MrBeast = 1st-grade  5. Optimal Short = 34s
-6. Shorts <30s need ~100% retention  7. Retention ≥90% for virality  8. Scroll-through ≥70%
-9. Hook ≤3s (ideally ≤2s)  10. Hook+foreshadow ≤3s total  11. First 5s = multiple scene changes
-12. Max 3 objects in frame  13. Power words: banned/free/one-dollar/secret/cheap
-16. Hooks = ~80% of ad performance  17. 5× more read headline vs body  18. Attention = first 3s
-19. 50% watch audio-off  20. Clean cuts every 3-4s  21. 30s short target  22. No such thing as too long, only too boring
-23. Value:Ask 98:2 (short), 3:1 (long)  35. Shareability: 20% shares-to-view + 92% growth
+${CREATOR_RULES_NUMERIC}
+
+When a flag invokes any rule above, cite the creator and the specific number (e.g. "Per Hoyos, retention ≥90% for virality; behavioral completion is 41%"). No anonymous "best practice" claims.
 
 ## Four Locked Consistency Checks (D-13)
 Run ALL FOUR checks. For each violation found, add a human-readable string to flags[] explaining the contradiction with specific scores cited.
