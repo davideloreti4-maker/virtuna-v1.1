@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Actions — H · Action-led</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;550;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<style>
+  :root{
+    --bg:#08090b;
+    --card:#0d0e11;
+    --line:rgba(255,255,255,0.065);
+    --line2:rgba(255,255,255,0.10);
+    --t1:rgba(255,255,255,0.96);
+    --t2:rgba(255,255,255,0.55);
+    --t3:rgba(255,255,255,0.32);
+    --t4:rgba(255,255,255,0.22);
+    --coral:#FF7F50;
+    --green:#62cda1; --red:#ef6360; --amber:#eaa94a;
+    --mono:'Geist Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:radial-gradient(900px 480px at 50% -6%, rgba(255,255,255,0.02), transparent 60%), var(--bg);
+    font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    color:var(--t1);padding:60px 28px 100px;letter-spacing:0.1px;
+  }
+  .lead{max-width:1180px;margin:0 auto 40px}
+  .lead h1{font-size:15px;font-weight:600;letter-spacing:-.01em}
+  .lead p{font-size:12.5px;color:var(--t3);line-height:1.7;margin-top:7px;max-width:640px}
+  .row{display:flex;gap:40px;justify-content:center;align-items:flex-start;flex-wrap:wrap}
+  .col{display:flex;flex-direction:column;gap:12px;width:360px}
+  .ctx{font-size:12px;color:var(--t3);padding-left:3px;letter-spacing:-.005em}
+
+  /* the frame (board renders this chrome; inner content is what we build) */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;
+    box-shadow:0 1px 1px rgba(0,0,0,0.3), 0 14px 36px -24px rgba(0,0,0,0.8)}
+  .hd{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 0}
+  .hd .t{font-size:13px;font-weight:600;letter-spacing:-.01em;color:var(--t2)}
+  .hd i{color:var(--t4);font-size:13px}
+  .pad{padding:18px 20px 20px}
+
+  .kicker{font-size:11px;font-weight:550;letter-spacing:.02em;text-transform:none;margin-bottom:13px;
+    color:var(--t3);display:flex;align-items:center;gap:8px}
+  .kicker .dot{width:5px;height:5px;border-radius:50%;background:var(--t4)}
+  .kicker.crit .dot{background:var(--red)}
+  .kicker.good .dot{background:var(--green)}
+
+  /* hero fix — the focal object, pre-expanded */
+  .hero .h{font-size:16px;font-weight:600;letter-spacing:-.015em;color:var(--t1);line-height:1.3}
+  .hero .d{font-size:13px;color:var(--t2);line-height:1.55;margin-top:7px;max-width:300px}
+  .hero .d em{font-style:normal;color:var(--t1);font-weight:500}
+  .go{display:inline-flex;align-items:center;gap:6px;margin-top:14px;
+    color:var(--coral);font-size:12.5px;font-weight:600;letter-spacing:-.005em;cursor:default}
+  .go i{font-size:13px}
+
+  /* strong-state hero: when-to-post is the action */
+  .when .lbl{font-size:11px;font-weight:550;color:var(--t3);margin-bottom:9px;letter-spacing:.01em}
+  .when .big{font-size:21px;font-weight:600;letter-spacing:-.02em;color:var(--t1);line-height:1.1}
+  .when .sub{font-size:13px;color:var(--t2);line-height:1.55;margin-top:8px;max-width:290px}
+
+  .rule{height:1px;background:var(--line);margin:18px -20px}
+
+  /* secondary fixes — quiet collapsed rows */
+  .rows{display:flex;flex-direction:column}
+  .frow{display:flex;align-items:center;gap:12px;padding:11px 0;cursor:default}
+  .frow+.frow{border-top:1px solid var(--line)}
+  .frow .fh{font-size:13.5px;font-weight:450;color:var(--t1);letter-spacing:-.008em}
+  .frow .tm{font-family:var(--mono);font-size:10.5px;color:var(--t4);margin-left:auto;letter-spacing:0}
+  .frow .ar{color:var(--t4);font-size:13px;margin-left:8px}
+  .frow.has-tm .ar{margin-left:0}
+  .more{font-size:12px;color:var(--t3);margin-top:13px;cursor:default;letter-spacing:-.005em}
+
+  /* footer: best time, pure text */
+  .foot{display:flex;align-items:center;justify-content:space-between;padding:12px 0 0}
+  .foot .l{font-size:13px;color:var(--t2)}
+  .foot .v{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t1);font-weight:550;letter-spacing:-.005em}
+  .foot .v .mut{color:var(--t3);font-weight:400}
+  .foot .edit{color:var(--t3);font-size:12px;font-weight:500;cursor:default}
+
+  /* degraded empty-ish */
+  .calm{font-size:13px;color:var(--t2);line-height:1.55;margin-top:2px}
+</style>
+</head>
+<body>
+  <div class="lead">
+    <h1>H · Action-led</h1>
+    <p>No score, no verdict, no factor breakdown — those live in the Score frame directly above. This frame owns one thing: what to do. The band drives the hero. Needs-work → the top fix leads. Strong → when-to-post leads and fixes become optional polish. Each fix is one object that carries its own rewrite.</p>
+  </div>
+
+  <div class="row">
+
+    <!-- NEEDS WORK (low band) -->
+    <div class="col">
+      <div class="ctx">Needs work · low band</div>
+      <div class="card">
+        <div class="hd"><span class="t">Actions</span><i class="ph ph-caret-up"></i></div>
+        <div class="pad">
+
+          <div class="kicker crit"><span class="dot"></span>Fix first · 3 to go</div>
+
+          <div class="hero">
+            <div class="h">Open with a real hook</div>
+            <div class="d">The first two seconds have no <em>visual</em> cue — viewers leave before the payoff.</div>
+            <div class="go">Copy rewrite<i class="ph ph-arrow-up-right"></i></div>
+          </div>
+
+          <div class="rule"></div>
+
+          <div class="rows">
+            <div class="frow has-tm">
+              <span class="fh">Tighten the slow middle</span>
+              <span class="tm">0:08</span>
+              <i class="ph ph-caret-right ar"></i>
+            </div>
+            <div class="frow">
+              <span class="fh">Add a call-to-action</span>
+              <i class="ph ph-caret-right ar"></i>
+            </div>
+          </div>
+
+          <div class="rule"></div>
+
+          <div class="foot">
+            <span class="l">Best time</span>
+            <span class="v">Tue, 7–10 PM</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- STRONG (high band) -->
+    <div class="col">
+      <div class="ctx">Strong · high band</div>
+      <div class="card">
+        <div class="hd"><span class="t">Actions</span><i class="ph ph-caret-up"></i></div>
+        <div class="pad">
+
+          <div class="when">
+            <div class="lbl">Post it</div>
+            <div class="big">Tuesday, 7–10 PM</div>
+            <div class="sub">Your audience peaks then, and nothing’s holding the video back.</div>
+            <div class="go" style="margin-top:13px;color:var(--t3)"><i class="ph ph-pencil-simple"></i>Edit time</div>
+          </div>
+
+          <div class="rule"></div>
+
+          <div class="kicker good"><span class="dot"></span>Optional polish</div>
+          <div class="rows">
+            <div class="frow">
+              <span class="fh">Sharpen the hook</span>
+              <i class="ph ph-caret-right ar"></i>
+            </div>
+            <div class="frow">
+              <span class="fh">Add a viewer prompt</span>
+              <i class="ph ph-caret-right ar"></i>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- DEGRADED (counterfactuals null) -->
+    <div class="col">
+      <div class="ctx">Degraded · suggestions only</div>
+      <div class="card">
+        <div class="hd"><span class="t">Actions</span><i class="ph ph-caret-up"></i></div>
+        <div class="pad">
+
+          <div class="kicker"><span class="dot"></span>Where to focus</div>
+          <div class="rows">
+            <div class="frow">
+              <span class="fh">Strengthen the opening beat</span>
+              <i class="ph ph-caret-right ar"></i>
+            </div>
+            <div class="frow">
+              <span class="fh">Trim the build-up</span>
+              <i class="ph ph-caret-right ar"></i>
+            </div>
+            <div class="frow">
+              <span class="fh">End on a clear takeaway</span>
+              <i class="ph ph-caret-right ar"></i>
+            </div>
+          </div>
+
+          <div class="rule"></div>
+
+          <div class="foot">
+            <span class="l">Best time</span>
+            <span class="v">Tue, 7–10 PM <span class="mut">· best guess</span></span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
