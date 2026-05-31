@@ -249,4 +249,44 @@ describe("useAnalysisStream", () => {
     expect(result.current.result?.overall_score).toBe(0.72);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+
+  // Regression: starting a NEW analysis from a board hydrated with a completed
+  // permalink must still POST. The mutation previously short-circuited on
+  // `completedFromInitial`, silently swallowing every command-bar submit made
+  // while viewing a finished /analyze/[id]. start() is user-only, so it must
+  // always supersede the hydrated-complete state.
+  it("start() POSTs a new analysis even when hydrated from completed initialData", async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(
+      mockSSEResponse([
+        encodeSSE("started", { id: "fresh-id" }),
+        encodeSSE("complete", COMPLETED_PREDICTION),
+      ]),
+    );
+    global.fetch = fetchSpy;
+    const { result } = renderHook(
+      () =>
+        useAnalysisStream({
+          initialData: {
+            id: "old-id",
+            ...COMPLETED_PREDICTION,
+          } as unknown as { id: string; overall_score: number },
+        }),
+      { wrapper },
+    );
+    // Mounts short-circuited to 'complete' (Pitfall #3 — no auto-open).
+    expect(result.current.phase).toBe("complete");
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.start({
+        input_mode: "text",
+        content_type: "tiktok",
+        content_text: "a brand new caption",
+      });
+    });
+
+    // The explicit submit fired a real POST and adopted the fresh analysisId.
+    expect(fetchSpy).toHaveBeenCalledWith("/api/analyze", expect.objectContaining({ method: "POST" }));
+    await waitFor(() => expect(result.current.analysisId).toBe("fresh-id"));
+  });
 });

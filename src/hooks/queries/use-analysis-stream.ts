@@ -298,7 +298,17 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
   // ---- POST + body-reader path (verbatim SSE parse loop from useAnalyze 67-99) ----
   const mutation = useMutation({
     mutationFn: async (input: AnalysisStreamInput) => {
-      if (completedFromInitial) return; // Pitfall #3 — never re-open
+      // start() is user-initiated ONLY (the command-bar submit at Board.tsx) —
+      // it is never auto-called. So a fresh start always supersedes a permalink
+      // hydrated from completed initialData: clear the stale result + id so the
+      // new run's `started` event repopulates analysisId. That null→string
+      // transition is what fires Board's /analyze/[id] push, which re-keys every
+      // read-only node instance to the new analysis. Pitfall #3 ("never auto-open
+      // on mount") stays enforced by the initial phase state + start() being
+      // user-only — NOT by short-circuiting the POST here, which was silently
+      // swallowing every "new analysis" submitted from a completed board.
+      setResult(null);
+      setAnalysisId(null);
       setPhase("analyzing");
       setStages([]);
       setError(null);
