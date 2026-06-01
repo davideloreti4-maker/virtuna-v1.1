@@ -1,8 +1,8 @@
 ---
 phase: 1
 slug: ingestion-build-hard-gate
-status: draft
-nyquist_compliant: false
+status: approved
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-06-01
 ---
@@ -17,7 +17,7 @@ created: 2026-06-01
 
 | Property | Value |
 |----------|-------|
-| **Framework** | Vitest (repo uses `*.test.ts(x)`; existing engine + scraping tests, e.g. `src/lib/corpus/__tests__/apify-jobs.test.ts`, `src/lib/engine/learning/__tests__/ingest.test.ts`) |
+| **Framework** | Vitest (repo uses `*.test.ts(x)`; existing engine + scraping tests, e.g. `src/lib/engine/corpus/__tests__/apify-jobs.test.ts`, `src/lib/engine/learning/__tests__/ingest.test.ts`) |
 | **Config file** | `vitest.config.*` (confirm path during planning — present in repo per existing test dirs) |
 | **Quick run command** | `npx vitest run src/lib/scraping src/lib/engine/__tests__` |
 | **Full suite command** | `npm test` |
@@ -67,11 +67,11 @@ created: 2026-06-01
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency acceptable (quick subset)
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags (uses `npx vitest run`)
+- [x] Feedback latency acceptable (quick subset)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-06-01 (gsd-plan-checker verified Dimension 8 substance)
