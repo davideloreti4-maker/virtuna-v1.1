@@ -781,32 +781,71 @@ export async function runPredictionPipeline(
     }
   })();
 
-  // Run Wave 2 in parallel -- both stages gracefully degrade
-  const [deepseekRaw, trendEnrichment] = await timed("wave_2", timings, () =>
+  // Wave 2 (deepseek + trends) — OVERLAPPED with Wave 3. Both gracefully degrade
+  // (deepseekPromise→null, trendPromise→DEFAULT on failure; neither REJECTS), so we
+  // start them and let Wave 3 run concurrently instead of blocking on them.
+  //
+  // Measured E2E: deepseek's ~60s reasoning previously ran SERIALLY before the ~67s
+  // persona path (Pass 1→Pass 2). deepseek finishes (~91s) just before Pass 2 ends
+  // (~98s), so overlapping hides it almost entirely (~−50s wall). Pass 1 loses
+  // deepseek's hook/retention grounding — the `?? null` path in persona-prompts is
+  // already graceful — which the curve/behavioral A/B validates.
+  const wave2Promise = timed("wave_2", timings, () =>
     Promise.all([deepseekPromise, trendPromise]),
     { wave: 2, onEvent: onStageEvent }
   );
 
-  Sentry.addBreadcrumb({
-    category: "engine.pipeline",
-    message: "Wave 2 complete",
-    level: "info",
-    data: { requestId, stages: ["deepseek", "trends"] },
-  });
+  // -------------------------------------------------------
+  // Platform-fit — needs deepseek reasoning + Omni watermark, NOT Wave 3. Chain it
+  // off Wave 2 so it auto-starts the instant deepseek resolves (concurrent with the
+  // tail of Wave 3), keeping its deepseek grounding intact (no quality loss on the
+  // 5%-weight platform signal).
+  // -------------------------------------------------------
+  const watermarkDetected =
+    ((geminiResult.analysis as import("./types").GeminiVideoAnalysis).hook_decomposition)?.watermark_detected ?? null;
+  const platformFitPromise = wave2Promise
+    .then(([ds]) =>
+      runPlatformFit(payload, creatorContext, ds?.reasoning ?? null, watermarkDetected, onStageEvent),
+    )
+    .catch((error) => {
+      Sentry.captureException(error, {
+        tags: { stage: "platform_fit", requestId },
+      });
+      warnings.push(
+        `Platform-fit unavailable: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return null;
+    });
 
   // -------------------------------------------------------
-  // Wave 3: Multi-persona simulation (Phase 7 fills the stub)
-  // Runs AFTER Wave 2 completes — events fire after wave_2 stage_end.
-  // Phase 7 Plan 07-02b: widened signature passes wave0Result (D-11 routing) +
-  // creatorContext (D-03 loyalist grounding); returns Wave3Outcome with
-  // aggregate + per-persona results + warnings.
+  // Wave 3: Multi-persona simulation (Phase 7 fills the stub).
+  // OVERLAP: starts immediately with NULL deepseek grounding so Pass 1 does not
+  // wait for Wave 2 (deepseek runs concurrently above). Soft dependency — the
+  // persona prompt injects deepseek component_scores only when present.
+  // Phase 7 Plan 07-02b: wave0Result (D-11 routing) + creatorContext (D-03 loyalist).
+  // Omni-grounded: Pass 1 uses hook_decomposition + factor scores from Gemini (available
+  // now, no Wave 2 wait) instead of deepseek's 2 numbers — restores pre-overlap
+  // retention-curve quality with richer signals.
   // -------------------------------------------------------
+
+  // Re-ground Pass 1 on Omni's hook decomposition + factor scores (available now,
+  // no Wave 2 wait) so the overlap keeps grounding without deepseek — restores the
+  // pre-overlap retention curves. Richer than deepseek's 2 numbers.
+  const omniAnalysis = geminiResult.analysis as import("./types").GeminiVideoAnalysis;
+  const hookGrounding = omniAnalysis.hook_decomposition
+    ? {
+        hook: omniAnalysis.hook_decomposition,
+        factors: (omniAnalysis.factors ?? []).map((f) => ({ name: f.name, score: f.score })),
+      }
+    : null;
+
   const wave3Outcome = await runWave3(
     payload,
-    deepseekRaw?.reasoning ?? null,
+    null, // OVERLAP: deepseek grounding omitted so Pass 1 doesn't block on Wave 2
     wave0Result,
     creatorContext,
     onStageEvent,
+    hookGrounding, // Omni hook decomposition + factors ground Pass 1 without Wave 2 wait
   );
   const wave3Result: PersonaSimulationResult[] = wave3Outcome.results;
   const personaBehavioralAggregate: PersonaBehavioralAggregate | null = wave3Outcome.aggregate;
@@ -865,28 +904,17 @@ export async function runPredictionPipeline(
     data: { requestId, pass2_aggregate_built: pass2Outcome?.pass2_aggregate_built ?? false },
   });
 
+  // deepseek + trends ran CONCURRENTLY with Wave 3 (overlap above). They finished
+  // during the persona path, so this await resolves effectively instantly and gives
+  // us the full-quality deepseek reasoning for behavioral_score/suggestions assembly.
+  const [deepseekRaw, trendEnrichment] = await wave2Promise;
+
   // -------------------------------------------------------
-  // Phase 9 — Platform-fit: runs AFTER Wave 3, BEFORE aggregateScores.
-  // Uses deepseekResult's reasoning + Gemini's watermark detection for
-  // per-platform scoring. Non-critical — returns null on any failure.
+  // Phase 9 — Platform-fit: chained off Wave 2 (see platformFitPromise above) so it
+  // runs concurrently with Wave 3 rather than serially after Pass 2. Awaited here,
+  // where its result is needed for PipelineResult assembly.
   // -------------------------------------------------------
-  const watermarkDetected =
-    ((geminiResult.analysis as import("./types").GeminiVideoAnalysis).hook_decomposition)?.watermark_detected ?? null;
-  const platformFitResult = await runPlatformFit(
-    payload,
-    creatorContext,
-    deepseekRaw?.reasoning ?? null,
-    watermarkDetected,
-    onStageEvent,
-  ).catch((error) => {
-    Sentry.captureException(error, {
-      tags: { stage: "platform_fit", requestId },
-    });
-    warnings.push(
-      `Platform-fit unavailable: ${error instanceof Error ? error.message : String(error)}`,
-    );
-    return null;
-  });
+  const platformFitResult = await platformFitPromise;
 
   Sentry.addBreadcrumb({
     category: "engine.pipeline",

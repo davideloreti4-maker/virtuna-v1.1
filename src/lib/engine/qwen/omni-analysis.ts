@@ -13,7 +13,7 @@ import * as Sentry from "@sentry/nextjs";
 import { createLogger } from "@/lib/logger";
 import type { GeminiVideoAnalysis, Wave0Result } from "../types";
 import type { StageEventCallback } from "../events";
-import { getQwenClient, QWEN_OMNI_MODEL } from "./client";
+import { getQwenClient, QWEN_OMNI_MODEL, QWEN_SEED } from "./client";
 import { calculateCost } from "./cost";
 import { OmniAnalysisZodSchema } from "./schemas";
 import type { SegmentGrid } from "./schemas";
@@ -132,10 +132,11 @@ Rules:
 - silence_ratio + voiceover_ratio + music_ratio must sum to ~1.0 (±0.1).
 - voice_clarity and audio_hook are null only for slideshow or silent content.
 - watermark_detected fields are optional (omit if none detected).
-- emotion_arc is OPTIONAL: include 3-8 points across the video timeline at emotional
-  inflection points (or evenly spaced) when video is present. Use intensity_0_1 in [0,1].
-  label is an optional categorical helper ("low"|"mid"|"high"). Omit the emotion_arc
-  field entirely for non-video / silent / slideshow content.
+- emotion_arc is REQUIRED whenever video is present: you MUST emit 3-8 points across
+  the timeline at emotional inflection points (or evenly spaced if the affect is flat —
+  never return an empty array for video). Use intensity_0_1 in [0,1]; label is a
+  categorical helper ("low"|"mid"|"high"). ONLY omit the emotion_arc field entirely for
+  non-video / silent / slideshow content where no temporal affect signal exists.
 
 Rules for segments:
 - Detect natural scene boundaries (cut, transition, topic shift, pacing change).
@@ -191,6 +192,8 @@ export async function analyzeVideoWithOmni(
             },
           ],
           response_format: { type: "json_object" },
+          temperature: 0, // reproducible factors/hook/segments — same video → same score
+          seed: QWEN_SEED,
         },
         { signal: controller.signal },
       );
@@ -243,9 +246,21 @@ export async function analyzeVideoWithOmni(
         audio_signals:      data.audio_signals,
         hook_decomposition: data.hook_decomposition,
         cta_segment:        data.cta_segment,
+        // emotion_arc MUST be threaded here. The aggregator plucks it off
+        // geminiResult.analysis.emotion_arc (aggregator.ts ~692). Omitting it
+        // — the original bug — silently dropped a Zod-parsed field on EVERY run,
+        // so emotion_arc was null on 100% of persisted rows despite the prompt
+        // marking it REQUIRED (26/26 rows null, confirmed in prod). GeminiVideoAnalysis
+        // doesn't declare the field (Omni-only extension), so it rides through the
+        // `as` cast and the aggregator's matching `as unknown as { emotion_arc? }` read.
+        // Do NOT "clean up" by removing it — that re-introduces the drop.
+        emotion_arc:        data.emotion_arc,
       } as GeminiVideoAnalysis;
 
-      log.info("omni analysis complete", { model, cost_cents, attempt });
+      // emotion_arc_points surfaces whether the MODEL actually emitted the field
+      // (vs the assembly dropping it). After this fix, a run logging 0 points means
+      // the model genuinely returned none — a prompt problem, not a plumbing one.
+      log.info("omni analysis complete", { model, cost_cents, attempt, emotion_arc_points: data.emotion_arc?.length ?? 0 });
 
       return {
         geminiResult: { analysis, cost_cents },

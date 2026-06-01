@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Actions — G · Editorial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;550;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<style>
+  :root{
+    --bg:#08090b;
+    --card:#0d0e11;
+    --line:rgba(255,255,255,0.065);
+    --t1:rgba(255,255,255,0.96);
+    --t2:rgba(255,255,255,0.52);
+    --t3:rgba(255,255,255,0.30);
+    --coral:#FF7F50;
+    --green:#62cda1; --red:#ef6360;
+    --mono:'Geist Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:radial-gradient(900px 480px at 50% -6%, rgba(255,255,255,0.02), transparent 60%), var(--bg);
+    font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    color:var(--t1);padding:64px 28px 100px;
+  }
+  .lead{max-width:780px;margin:0 auto 42px}
+  .lead h1{font-size:15px;font-weight:600;letter-spacing:-.01em}
+  .lead p{font-size:12.5px;color:var(--t3);line-height:1.7;margin-top:7px;max-width:600px}
+  .row{display:flex;gap:48px;justify-content:center;align-items:flex-start;flex-wrap:wrap}
+  .col{display:flex;flex-direction:column;gap:13px;width:384px}
+  .ctx{font-size:12px;color:var(--t3);padding-left:3px}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;
+    box-shadow:0 1px 1px rgba(0,0,0,0.3), 0 14px 36px -24px rgba(0,0,0,0.8)}
+  .hd{display:flex;align-items:center;justify-content:space-between;padding:18px 24px 0}
+  .hd .t{font-size:13px;font-weight:600;letter-spacing:-.01em}
+  .hd i{color:var(--t3);font-size:14px}
+  .pad{padding:22px 24px 24px}
+
+  /* hero — big number is the moment, no gauge */
+  .num{display:flex;align-items:baseline;gap:8px;letter-spacing:-.04em}
+  .num b{font-size:54px;font-weight:600;line-height:.92;font-variant-numeric:tabular-nums}
+  .num .of{font-size:17px;font-weight:500;color:var(--t3);letter-spacing:-.01em}
+  .verdict{font-size:14.5px;line-height:1.5;margin-top:14px;color:var(--t2);max-width:300px}
+  .verdict b{font-weight:600;letter-spacing:-.01em}
+
+  .rule{height:1px;background:var(--line);margin:24px -24px}
+  .rule.tight{margin:20px -24px}
+
+  .kicker{font-size:11.5px;color:var(--t3);font-weight:500;margin-bottom:14px}
+
+  .act .h{font-size:15.5px;font-weight:600;letter-spacing:-.013em;color:var(--t1)}
+  .act .d{font-size:13.5px;color:var(--t2);line-height:1.5;margin-top:6px}
+  /* primary as a quiet text-action, not a box */
+  .go{display:inline-flex;align-items:center;gap:7px;margin-top:14px;
+    color:var(--coral);font-size:13px;font-weight:600;letter-spacing:-.01em;cursor:default}
+  .go i{font-size:14px}
+
+  .next{display:flex;align-items:center;gap:12px;margin-top:22px;cursor:default}
+  .next .h{font-size:14.5px;font-weight:500;letter-spacing:-.01em;color:var(--t1)}
+  .next .tm{font-family:var(--mono);font-size:11px;color:var(--t3);margin-left:auto}
+  .next i{color:var(--t3);font-size:15px}
+  .more{font-size:12.5px;color:var(--t3);margin-top:16px;cursor:default}
+
+  /* footer — pure text, no icons, no widgets */
+  .foot{display:flex;align-items:center;justify-content:space-between;padding:13px 0;cursor:default}
+  .foot+.foot{border-top:1px solid var(--line)}
+  .foot .l{font-size:13.5px;color:var(--t2)}
+  .foot .v{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--t1);font-weight:550}
+  .foot .v .mut{color:var(--t3);font-weight:400}
+  .foot .v i{font-size:13px;color:var(--t3)}
+</style>
+</head>
+<body>
+  <div class="lead">
+    <h1>G · Editorial</h1>
+    <p>No gauge, no segmented bars, no icon-prefixed rows — the dashboard-widget vocabulary is gone. The score is a large confident number, the verdict a headline, the action a quiet text-link. Type and space do the work.</p>
+  </div>
+
+  <div class="row">
+
+    <!-- STRONG -->
+    <div class="col">
+      <div class="ctx">Strong video</div>
+      <div class="card">
+        <div class="hd"><span class="t">Actions</span><i class="ph ph-caret-up"></i></div>
+        <div class="pad">
+
+          <div class="num"><b style="color:var(--green)">8.2</b><span class="of">/ 10</span></div>
+          <div class="verdict"><b style="color:var(--t1)">Strong.</b> Two quick lifts and it’s ready to post.</div>
+
+          <div class="rule"></div>
+
+          <div class="kicker">Do this</div>
+          <div class="act">
+            <div class="h">Sharpen the hook</div>
+            <div class="d">Lead with a visual beat in the first second.</div>
+            <div class="go">Copy rewrite<i class="ph ph-arrow-up-right"></i></div>
+          </div>
+
+          <div class="next">
+            <span class="h">Add a viewer prompt</span>
+            <i class="ph ph-caret-right"></i>
+          </div>
+          <div class="more">+2 polish notes</div>
+
+          <div class="rule tight"></div>
+
+          <div class="foot">
+            <span class="l">Breakdown</span>
+            <span class="v"><span class="mut">all five</span><i class="ph ph-caret-right"></i></span>
+          </div>
+          <div class="foot">
+            <span class="l">Best time</span>
+            <span class="v">Tue, 7–10 PM</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- WEAK -->
+    <div class="col">
+      <div class="ctx">Needs work</div>
+      <div class="card">
+        <div class="hd"><span class="t">Actions</span><i class="ph ph-caret-up"></i></div>
+        <div class="pad">
+
+          <div class="num"><b style="color:var(--red)">4.1</b><span class="of">/ 10</span></div>
+          <div class="verdict"><b style="color:var(--t1)">Hold off.</b> Three fixes before it’s worth posting.</div>
+
+          <div class="rule"></div>
+
+          <div class="kicker">Fix first</div>
+          <div class="act">
+            <div class="h">Open with a real hook</div>
+            <div class="d">The first two seconds have no visual cue.</div>
+            <div class="go">Copy rewrite<i class="ph ph-arrow-up-right"></i></div>
+          </div>
+
+          <div class="next">
+            <span class="h">Tighten the slow middle</span>
+            <span class="tm">0:08</span>
+            <i class="ph ph-caret-right"></i>
+          </div>
+          <div class="next" style="margin-top:16px">
+            <span class="h">Add a call-to-action</span>
+            <i class="ph ph-caret-right"></i>
+          </div>
+
+          <div class="rule tight"></div>
+
+          <div class="foot">
+            <span class="l">Breakdown</span>
+            <span class="v"><span class="mut">two weak</span><i class="ph ph-caret-right"></i></span>
+          </div>
+          <div class="foot">
+            <span class="l">Best time</span>
+            <span class="v">Tue, 7–10 PM <span class="mut">· best guess</span></span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

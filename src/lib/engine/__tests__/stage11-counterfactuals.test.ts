@@ -17,6 +17,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { runStage11Counterfactuals, maybeAppendLikelyFlopWarning } from "../stage11-counterfactuals";
 import { buildSignalContextUserMessage, CounterfactualsResponseSchema } from "../stage11-counterfactuals-prompts";
 import type { PredictionResult } from "../types";
+import type { StageEvent } from "../events";
 
 // =====================================================
 // Module mocks
@@ -37,8 +38,9 @@ vi.mock("@sentry/nextjs", () => ({
 
 // Qwen-on-OpenAI client mock (Phase 13 migration — stage11-counterfactuals.ts now
 // calls ai.chat.completions.create via getQwenClient()).
-const { mockGenerateContent } = vi.hoisted(() => ({
+const { mockGenerateContent, mockIsCircuitOpen } = vi.hoisted(() => ({
   mockGenerateContent: vi.fn(),
+  mockIsCircuitOpen: vi.fn(() => false),
 }));
 
 vi.mock("openai", () => {
@@ -46,6 +48,11 @@ vi.mock("openai", () => {
     this.chat = { completions: { create: mockGenerateContent } };
   });
   return { default: MockOpenAI };
+});
+
+vi.mock("../deepseek", async (importOriginal) => {
+  const orig = await importOriginal<typeof import("../deepseek")>();
+  return { ...orig, isCircuitOpen: mockIsCircuitOpen };
 });
 
 process.env.GEMINI_API_KEY = "test-key";
@@ -359,9 +366,14 @@ describe("runStage11Counterfactuals — Phase 13 Plan 02 rebuild (D-01..D-06)", 
     expect(mockGenerateContent).toHaveBeenCalledTimes(1);
   });
 
-  // Test 7 — D-05: Zod rejects mid band with wrong type mix (3 fix + 0 reinforcement)
-  it("Test 7: Zod rejects mid band with 3 fix + 0 reinforcement (D-05 schema enforcement)", () => {
-    const invalid = {
+  // Test 7 — Latency/reliability fix: per-band EXACT counts are now REQUESTED via
+  // the prompt, not hard-enforced by Zod. The strict discriminated union (exact
+  // count + type-mix .refine()s) made the schema reject well-formed model output
+  // that merely missed the ideal mix, returning null and forcing a retry that
+  // doubled Stage 11 latency to ~113s. Downstream consumers filter by `type`,
+  // never by exact count, so a non-ideal mix is acceptable — it must NOT null.
+  it("Test 7: accepts a band response with a non-ideal count/type mix (counts are prompt-guided, not schema-enforced)", () => {
+    const nonIdealMix = {
       band: "mid",
       suggestions: [
         { type: "fix", headline: "Fix 1", detail: "detail", timestamp_ms: 0, signal_anchor: "x" },
@@ -369,8 +381,26 @@ describe("runStage11Counterfactuals — Phase 13 Plan 02 rebuild (D-01..D-06)", 
         { type: "fix", headline: "Fix 3", detail: "detail", timestamp_ms: 0, signal_anchor: "x" },
       ],
     };
-    const parsed = CounterfactualsResponseSchema.safeParse(invalid);
-    expect(parsed.success).toBe(false);
+    expect(CounterfactualsResponseSchema.safeParse(nonIdealMix).success).toBe(true);
+  });
+
+  // Test 7b — the relaxed schema still rejects GENUINELY malformed output, so we
+  // never surface garbage suggestions to the board.
+  it("Test 7b: still rejects malformed output (invalid type, empty array, missing fields)", () => {
+    const badType = {
+      band: "mid",
+      suggestions: [{ type: "rewrite", headline: "x", detail: "d", timestamp_ms: 0, signal_anchor: "x" }],
+    };
+    expect(CounterfactualsResponseSchema.safeParse(badType).success).toBe(false);
+
+    const emptyArray = { band: "low", suggestions: [] };
+    expect(CounterfactualsResponseSchema.safeParse(emptyArray).success).toBe(false);
+
+    const missingField = {
+      band: "high",
+      suggestions: [{ type: "stretch", headline: "x", timestamp_ms: 0, signal_anchor: "x" }],
+    };
+    expect(CounterfactualsResponseSchema.safeParse(missingField).success).toBe(false);
   });
 
   // Test 10 — D-10: cost_cents is numeric in emitStageEnd
@@ -471,5 +501,29 @@ describe("maybeAppendLikelyFlopWarning — 4 boundary fixtures (COUNTER LIKELY_F
     });
     maybeAppendLikelyFlopWarning(result);
     expect(result.warnings.length).toBe(0);
+  });
+});
+
+describe("runStage11Counterfactuals — circuit-breaker guard", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("circuit open → returns null, fires 0 LLM calls, emits stage_end ok=false", async () => {
+    mockIsCircuitOpen.mockReturnValueOnce(true);
+    const events: StageEvent[] = [];
+    const result = await runStage11Counterfactuals(
+      makeFakePredictionResult(),
+      null,
+      (e) => events.push(e),
+    );
+    expect(result).toBeNull();
+    expect(mockGenerateContent).not.toHaveBeenCalled();
+    const end = events.find(
+      (e): e is Extract<StageEvent, { type: "stage_end" }> =>
+        e.type === "stage_end" && e.stage === "stage_11_counterfactuals",
+    )!;
+    expect(end.ok).toBe(false);
+    expect(end.warning).toBe("circuit_breaker_open");
   });
 });

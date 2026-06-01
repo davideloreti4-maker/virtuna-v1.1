@@ -6,11 +6,6 @@ import { WEIGHT_PRESETS } from '../audience-constants';
 import { DEFAULT_PERSONA_WEIGHT_CONFIG } from '@/lib/engine/persona-weights';
 import type { PersonaWeights } from '@/lib/engine/persona-weights';
 
-// Mock useIsMobile - default to desktop
-vi.mock('@/hooks/useIsMobile', () => ({
-  useIsMobile: vi.fn(() => false),
-}));
-
 const DEFAULT_WEIGHTS: PersonaWeights = { fyp: 0.65, niche: 0.20, loyalist: 0.10, cross_niche: 0.05 };
 const CUSTOM_WEIGHTS: PersonaWeights = { fyp: 0.50, niche: 0.30, loyalist: 0.10, cross_niche: 0.10 };
 
@@ -34,10 +29,23 @@ function renderDrawer(overrides: Partial<WeightOverrideDrawerProps> = {}) {
 }
 
 describe('WeightOverrideDrawer', () => {
+  it('renders nothing when closed', () => {
+    const { container } = renderDrawer({ open: false });
+    expect(container.firstChild).toBeNull();
+    expect(screen.queryByTestId('weight-override-panel')).toBeNull();
+  });
+
+  it('renders inline (no Sheet portal) when open', () => {
+    renderDrawer();
+    expect(screen.getByTestId('weight-override-panel')).toBeInTheDocument();
+    // No Radix Sheet portal in the inline conversion.
+    expect(document.querySelector('[data-slot="sheet-content"]')).toBeNull();
+  });
+
   it('renders 4 preset chips + Custom', () => {
     renderDrawer();
     expect(screen.getByText('Default mix')).toBeInTheDocument();
-    expect(screen.getByText('Established creator')).toBeInTheDocument();
+    expect(screen.getByText('Established')).toBeInTheDocument();
     expect(screen.getByText('Niche-heavy')).toBeInTheDocument();
     expect(screen.getByText('New creator')).toBeInTheDocument();
     expect(screen.getByText('Custom')).toBeInTheDocument();
@@ -75,10 +83,10 @@ describe('WeightOverrideDrawer', () => {
     expect(defaultChip).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('Custom chip is active when weights do not match any preset', () => {
+  it('Custom indicator is active when weights do not match any preset', () => {
     renderDrawer({ currentWeights: CUSTOM_WEIGHTS });
-    const customChip = screen.getByText('Custom').closest('button');
-    expect(customChip).toHaveAttribute('aria-pressed', 'true');
+    // Custom is a non-interactive state indicator (not a selectable preset).
+    expect(screen.getByText('Custom')).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('Apply button is disabled when weights equal initial (isDirty=false)', () => {
@@ -106,27 +114,6 @@ describe('WeightOverrideDrawer', () => {
     const resetBtn = screen.getByRole('button', { name: /reset/i });
     fireEvent.click(resetBtn);
     expect(onWeightsChange).toHaveBeenCalledWith(DEFAULT_PERSONA_WEIGHT_CONFIG.default);
-  });
-
-  it('useIsMobile=true: Sheet side=bottom class applied', async () => {
-    const { useIsMobile } = await import('@/hooks/useIsMobile');
-    vi.mocked(useIsMobile).mockReturnValue(true);
-
-    renderDrawer();
-    // Radix renders into portal — query from document
-    const sheetContent = document.querySelector('[data-slot="sheet-content"]');
-    expect(sheetContent).not.toBeNull();
-    expect(sheetContent?.className ?? '').toContain('bottom');
-
-    vi.mocked(useIsMobile).mockReturnValue(false);
-  });
-
-  it('useIsMobile=false: Sheet side=right class applied', () => {
-    renderDrawer();
-    // Radix renders into portal — query from document
-    const sheetContent = document.querySelector('[data-slot="sheet-content"]');
-    expect(sheetContent).not.toBeNull();
-    expect(sheetContent?.className ?? '').toContain('right');
   });
 
   it('sum display has aria-live=polite and shows 100', () => {

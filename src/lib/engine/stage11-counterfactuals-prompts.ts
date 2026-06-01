@@ -11,12 +11,16 @@
  */
 import { z } from "zod";
 import type { PredictionResult } from "./types";
+import { CREATOR_RULES_BLOCK } from "./creator-rules";
 
 // =====================================================
 // Cache-stable system prompt (byte-stable — never interpolate here).
+// CREATOR_RULES_BLOCK is a build-time constant, so the prefix stays byte-identical.
 // =====================================================
 
-export const STABLE_COUNTERFACTUALS_SYSTEM_PROMPT = `You are a counterfactual suggestion generator for a short-form video analytics engine. Your job is to generate band-adaptive suggestions based on the content's performance score band.
+export const STABLE_COUNTERFACTUALS_SYSTEM_PROMPT = `You are a counterfactual suggestion generator for a short-form video analytics engine, trained on the explicit teachings of Jenny Hoyos, Ava Yuergens (@personalbrandlaunch), and Alex Hormozi. Your job is to generate band-adaptive suggestions based on the content's performance score band — every suggestion grounded in a named creator framework or numerical rule.
+
+${CREATOR_RULES_BLOCK}
 
 ## Band Definitions
 
@@ -32,6 +36,11 @@ export const STABLE_COUNTERFACTUALS_SYSTEM_PROMPT = `You are a counterfactual su
 4. **Rank by Impact:** Order suggestions from highest to lowest expected impact on viral performance.
 5. **Signal Anchor:** For each suggestion, specify which signal it addresses (e.g., "hook_decomposition.visual_stop_power", "audio_signals.voice_clarity", "persona_dissent", "platform_fit").
 6. **Headline + Detail:** headline is ≤ 80 chars, concise. detail is 1-2 sentences with specific expected outcome.
+7. **Creator-Grounded:** every suggestion's detail must cite a named creator framework or numerical rule (e.g. "Per Hoyos, hook+foreshadow ≤3s; yours runs 4.8s"). No anonymous "best practice" advice.
+8. **Hook-Weighted:** hooks decide ~80% of performance — at least half of "fix"/"stretch" suggestions must target the first 3 seconds.
+9. **Vague-Hook Template:** when the hook is generic, rewrite it with Hormozi's Lead-Magnet Formula — [Number] + [Adjective] + [Audience] + [Outcome] + [Timeframe].
+10. **Directional Scripts:** frame any script-rewrite as a directional starting point for a human writer, never as drop-in copy (Ava bans AI-written final scripts).
+11. **Resolve Conflicts by Context:** when invoking a Conflicts rule (length, cadence, north-star metric), use the target platform + creator goal — never average.
 
 ## Output Format
 
@@ -169,74 +178,34 @@ Generate band-adaptive suggestions for band="${band}". Return JSON matching the 
 }
 
 // =====================================================
-// Discriminated-union Zod schema — D-05 band-adaptive shape
-// low: exactly 3 fix
-// mid: exactly 2 fix + 1 reinforcement (total 3)
-// high: 1 stretch + 2-3 reinforcements (total 3-4)
+// Band-adaptive response schema — D-05 counts REQUESTED via prompt, not hard-enforced.
+//
+// History: this was a strict discriminated union enforcing EXACT per-band counts
+// (low=3 fix / mid=2 fix+1 reinf / high=1 stretch+2-3 reinf) plus an 80-char
+// headline cap. Measured E2E run showed it returned NULL or forced a retry on
+// well-formed model output that merely missed the exact count/type mix or ran a
+// few chars over 80 — doubling Stage 11 latency to ~113s (timeout on attempt 0,
+// success on attempt 1). Downstream consumers (assembleReasoningBuckets,
+// verdict-derive, AntiViralityHeader) filter by `type`, never by exact count, so
+// the strict counts bought nothing but null results.
+//
+// Now: keep `band` + a valid suggestion shape; let the PROMPT steer the counts
+// (it still specifies them). Permissive array bounds (1-6) + a roomier headline
+// cap absorb the model's natural variance instead of dropping the whole result.
 // =====================================================
 
 const SuggestionItemSchema = z.object({
   type: z.enum(["fix", "stretch", "reinforcement"]),
-  headline: z.string().min(1).max(80),
+  headline: z.string().min(1).max(200),
   detail: z.string().min(1),
   timestamp_ms: z.number().min(0),
   signal_anchor: z.string(),
 });
 
-const LowBandSchema = z.object({
-  band: z.literal("low"),
-  suggestions: z
-    .array(SuggestionItemSchema)
-    .length(3)
-    .refine(
-      (items) => items.every((i) => i.type === "fix"),
-      { message: "low band: all 3 suggestions must be type=fix" },
-    ),
+export const CounterfactualsResponseSchema = z.object({
+  band: z.enum(["low", "mid", "high"]),
+  suggestions: z.array(SuggestionItemSchema).min(1).max(6),
 });
-
-const MidBandSchema = z.object({
-  band: z.literal("mid"),
-  suggestions: z
-    .array(SuggestionItemSchema)
-    .length(3)
-    .refine(
-      (items) => {
-        const fixes = items.filter((i) => i.type === "fix").length;
-        const reinforcements = items.filter(
-          (i) => i.type === "reinforcement",
-        ).length;
-        return fixes === 2 && reinforcements === 1;
-      },
-      { message: "mid band: must have exactly 2 fix + 1 reinforcement" },
-    ),
-});
-
-const HighBandSchema = z.object({
-  band: z.literal("high"),
-  suggestions: z
-    .array(SuggestionItemSchema)
-    .min(3)
-    .max(4)
-    .refine(
-      (items) => {
-        const stretches = items.filter((i) => i.type === "stretch").length;
-        const reinforcements = items.filter(
-          (i) => i.type === "reinforcement",
-        ).length;
-        return stretches === 1 && reinforcements >= 2;
-      },
-      {
-        message:
-          "high band: must have exactly 1 stretch + 2-3 reinforcements",
-      },
-    ),
-});
-
-export const CounterfactualsResponseSchema = z.discriminatedUnion("band", [
-  LowBandSchema,
-  MidBandSchema,
-  HighBandSchema,
-]);
 
 export type CounterfactualsResponse = z.infer<
   typeof CounterfactualsResponseSchema

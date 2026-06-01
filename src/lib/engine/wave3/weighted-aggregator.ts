@@ -59,7 +59,14 @@ function normalizeOverSurvivors(
   survivors: Pass2PersonaResult[],
   weights: PersonaWeights,
 ): PersonaWeights {
-  const presentTypes = new Set(survivors.map((s) => s.slot_type));
+  // WR-05: "niche_deep" (PersonaSlot) maps to the "niche" weight bucket — same
+  // mapping getPersonaWeight (:79) and assembleHeatmapPayload (:233) apply. Without
+  // it, has("niche") is false for niche_deep survivors, zeroing the niche weight
+  // (drops niche personas from WATCH/HOOK) and emptying the niche-only vs-niche
+  // sub-curve to all-zero (the "normalizeWeights: all-zero input" warning).
+  const presentTypes = new Set(
+    survivors.map((s) => ((s.slot_type as string) === "niche_deep" ? "niche" : s.slot_type)),
+  );
   const filtered: PersonaWeights = {
     fyp: presentTypes.has("fyp") ? weights.fyp : 0,
     niche: presentTypes.has("niche") ? weights.niche : 0,
@@ -242,5 +249,10 @@ export function assembleHeatmapPayload(
     weights_source: weightsSource,
     niche_completion_pct,
     vs_niche_diff_pct,
+    // Mirror the curve scalars into the persisted payload so the Score-frame engine
+    // signals (Hook / Completion) survive permalink reload — the top-level
+    // PredictionResult fields are not DB columns. (verdict-derive reads heatmap as fallback.)
+    weighted_completion_pct: curve.weighted_completion_pct,
+    weighted_hook_score: curve.weighted_hook_score,
   };
 }

@@ -1,5 +1,5 @@
 'use client';
-import { Children, forwardRef } from 'react';
+import { Children, forwardRef, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { CaretDown, CaretUp } from '@phosphor-icons/react';
 import { Icon } from '@/components/ui/icon';
@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import type { Camera, GroupFrameLayout } from './board-types';
-import { TITLE_BAR_HEIGHT } from './board-constants';
+import { GROUP_FRAMES, TITLE_BAR_HEIGHT } from './board-constants';
 import type { FrameVisualState } from './GroupFrame';
 
 const EMPTY_STATE_COPY: Record<string, { title: string; sub: string }> = {
@@ -61,26 +61,50 @@ interface Props {
   tabIndex: 0 | -1;
   /** Called when this frame receives focus (click or keyboard). Updates roving active index. */
   onFocus?: () => void;
+  /** When true the frame height tracks its measured content (no internal scroll);
+   *  when false it keeps a fixed body height (Input video card, Engine stepper). */
+  autoHeight?: boolean;
+  /** Reports the measured world-space frame height (title bar + content) so Board
+   *  can reflow the layout. Only fires for auto-height frames. */
+  onMeasure?: (worldH: number) => void;
 }
 
 export const GroupFrameOverlay = forwardRef<HTMLDivElement, Props>(function GroupFrameOverlay(
-  { layout, camera, visual, expanded, onToggleExpanded, childCount = 0, children, reducedMotion, tabIndex, onFocus },
+  { layout, camera, visual, expanded, onToggleExpanded, childCount = 0, children, reducedMotion, tabIndex, onFocus, autoHeight = false, onMeasure },
   ref,
 ) {
   // World → screen.
-  // D-10: Actions frame grows from 200px to 360px in anti-virality state so
-  // the Reshoot hero slot has room to span the top and the 3-cell bottom row
-  // doesn't get cropped. Other frames keep their bounds.height verbatim.
-  const worldH =
-    layout.id === 'actions' && visual === 'anti-virality'
-      ? 360
-      : layout.bounds.height;
+  const worldH = layout.bounds.height;
   const screenX = layout.bounds.x * camera.scale + camera.x;
   const screenY = layout.bounds.y * camera.scale + camera.y;
   const screenW = layout.bounds.width * camera.scale;
   const screenH = worldH * camera.scale;
 
   const showShimmer = visual === 'streaming' && !reducedMotion;
+
+  // Designed floor for auto frames: the original constant body height. Pinned as
+  // a min-height so light/idle states keep the hand-tuned spatial composition and
+  // only overflow content grows the frame. MUST read the constant (not the live
+  // worldH) — using worldH would ratchet the height up and never let it shrink.
+  const baseHeight =
+    GROUP_FRAMES.find((f) => f.id === layout.id)?.bounds.height ?? worldH;
+  const minBodyHeight = baseHeight - TITLE_BAR_HEIGHT;
+
+  // Auto-height: measure the unscaled world interior (offsetHeight ignores the
+  // CSS scale transform) and report it up so Board can reflow the columns. The
+  // interior sizes to its content naturally, so this never feeds back into the
+  // measured height — no ResizeObserver loop. Re-measures on expand/collapse.
+  const interiorRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!autoHeight || !onMeasure) return;
+    const el = interiorRef.current;
+    if (!el) return;
+    const report = () => onMeasure(el.offsetHeight);
+    report();
+    const ro = new ResizeObserver(report);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [autoHeight, onMeasure, expanded]);
 
   return (
     <div
@@ -89,7 +113,13 @@ export const GroupFrameOverlay = forwardRef<HTMLDivElement, Props>(function Grou
       aria-label={ARIA_LABEL[layout.id] ?? layout.label}
       tabIndex={tabIndex}
       onFocus={onFocus}
-      className="pointer-events-auto absolute overflow-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+      className={cn(
+        'pointer-events-auto absolute focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2',
+        // Auto-height frames render their full content (no clip); fixed frames
+        // clip their bounded body. overflow-visible also avoids a one-frame clip
+        // flash before the measured height propagates back from Board.
+        !autoHeight && 'overflow-hidden',
+      )}
       style={{
         left: screenX,
         top: screenY,
@@ -104,11 +134,14 @@ export const GroupFrameOverlay = forwardRef<HTMLDivElement, Props>(function Grou
           pixel sizes, producing empty space when zoomed in and clipped text
           when zoomed out. */}
       <div
+        ref={interiorRef}
         style={{
           transform: `scale(${camera.scale})`,
           transformOrigin: 'top left',
           width: layout.bounds.width,
-          height: worldH,
+          // Auto frames size to their content (measured back into worldH); fixed
+          // frames pin the world height so their bounded body can clip/fill.
+          height: autoHeight ? undefined : worldH,
         }}
       >
         {/* Title bar (UI-SPEC §Group Container Frames).
@@ -138,11 +171,16 @@ export const GroupFrameOverlay = forwardRef<HTMLDivElement, Props>(function Grou
           </div>
         </div>
 
-        {/* Body */}
+        {/* Body. Auto frames flow at natural height (no fixed height, no scroll);
+            fixed frames pin the body to the remaining world height. */}
         {expanded && (
           <div
-            className="relative overflow-hidden p-4"
-            style={{ height: worldH - TITLE_BAR_HEIGHT }}
+            className={cn('relative p-4', !autoHeight && 'overflow-hidden')}
+            style={
+              autoHeight
+                ? { minHeight: minBodyHeight }
+                : { height: worldH - TITLE_BAR_HEIGHT }
+            }
           >
             {/* aria-live announcements handled by EngineGroup to avoid double announcements */}
             {showShimmer && (

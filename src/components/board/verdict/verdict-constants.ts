@@ -1,3 +1,5 @@
+import type { Factor } from '@/lib/engine/types';
+
 // Band thresholds derived from overall_score (0-100). Per 05-UI-SPEC.md §Copywriting Contract.
 export const BAND_THRESHOLDS = {
   STRONG: 70, // >=70 -> 'Strong' + coral percentile
@@ -26,13 +28,13 @@ export const COPY = {
     `Verdict ready: ${score}th percentile, confidence ${label}`,
   ARIA_ANTI_VIRALITY: "Don't post yet — see suggested fixes",
   // Plan 5.3: WhyVerdictCollapsible sub-section labels
-  WHY_VERDICT_SUMMARY: 'Why this verdict?',
+  WHY_VERDICT_SUMMARY: 'Why this score?',
   SUB_WORKS: 'Why this works',
   SUB_MIGHT_NOT: 'Why this might not',
   SUB_FLAGGED: 'What the engine flagged',
   SUB_COUNTERFACTUAL: 'Counterfactual considered',
   // Plan 5.4: VsHistoryCollapsible copy
-  HISTORY_SUMMARY: 'vs my history',
+  HISTORY_SUMMARY: 'vs your last 10',
   HISTORY_EMPTY_STATE: (n: number) => `Need 3+ prior analyses to show comparison. ${n}/3 complete.`,
   HISTORY_LAST_10_TITLE: 'vs your last 10 analyses',
   NICHE_TITLE: 'vs niche cohort',
@@ -65,4 +67,26 @@ export function bandFromScore(score: number): 'Strong' | 'Mid' | 'Low' {
 export function fixCount(suggestions: ReadonlyArray<{ type: string }> | undefined): number {
   if (!suggestions) return 0;
   return Math.min(3, suggestions.filter((s) => s.type === 'fix').length);
+}
+
+/** Always-on verdict summary: the single biggest driver + the single biggest
+ *  risk, so the verdict's "why" is visible even with the reasoning accordion
+ *  collapsed. factors[].score is 0-10. Driver = highest-scoring factor (≥6);
+ *  risk = lowest-scoring factor (<6) when distinct from the driver. */
+export interface VerdictSummary {
+  driver: { name: string; rationale: string } | null;
+  risk: { name: string; tip: string } | null;
+}
+
+export function deriveVerdictSummary(factors: ReadonlyArray<Factor>): VerdictSummary {
+  if (!factors.length) return { driver: null, risk: null };
+  const sorted = [...factors].sort((a, b) => b.score - a.score);
+  const top = sorted[0]!;
+  const bottom = sorted[sorted.length - 1]!;
+  const driver = top.score >= 6 ? { name: top.name, rationale: top.rationale } : null;
+  const risk =
+    bottom.score < 6 && bottom.name !== top.name
+      ? { name: bottom.name, tip: bottom.improvement_tip }
+      : null;
+  return { driver, risk };
 }

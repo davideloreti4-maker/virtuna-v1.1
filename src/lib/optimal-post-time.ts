@@ -50,7 +50,10 @@ export function convertUTCWindow(
   const crossedMidnight = userDayIndex !== utcDayIndex;
 
   // Format hour range using Intl.DateTimeFormat.formatRange (per RESEARCH item 20).
-  const rangeFormatter = new Intl.DateTimeFormat(undefined, {
+  // Locale pinned to 'en-US' (matching dayFormatter above) — `undefined` here fell
+  // back to the host locale and leaked non-English strings into the UI (e.g. the
+  // German "7–10 Uhr PM"). The app is English-only, so the time must be too.
+  const rangeFormatter = new Intl.DateTimeFormat('en-US', {
     hour: 'numeric',
     hour12: true,
     timeZone: userTz,

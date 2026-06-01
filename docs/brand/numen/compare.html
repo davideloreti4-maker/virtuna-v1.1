@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#07080a;color:#fff;font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;letter-spacing:.2px;padding:48px}
+  .grid{display:flex;flex-direction:column;gap:14px;max-width:300px}
+  .panel{
+    border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:18px 14px;
+    background:linear-gradient(137deg,rgba(17,18,20,.75) 4.87%,rgba(12,13,15,.9) 75.88%);
+    box-shadow:rgba(255,255,255,.15) 0 1px 1px 0 inset;
+  }
+  .tag{font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:#848586;margin-bottom:14px;display:block}
+  .lockup{display:flex;align-items:center}
+  .word{display:flex;flex-direction:column;justify-content:center;line-height:1}
+  .numen{font-size:15px;font-weight:600;text-transform:uppercase;letter-spacing:.16em}
+  svg{display:block;flex:0 0 auto}
+  .note{color:#848586;font-size:11px;margin:32px 0 10px;letter-spacing:.04em}
+</style></head>
+<body>
+<div class="grid">
+
+  <div class="note" style="margin-top:0">A · CURRENT — constellation, floating in 120 box</div>
+  <div class="panel"><span class="tag">size 20 · gap 10</span>
+    <div class="lockup" style="gap:10px">
+      <svg width="20" height="20" viewBox="0 0 120 120" fill="none">
+        <path d="M28 92 V28 L92 92 V28" stroke="#fff" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+        <circle cx="28" cy="92" r="7" fill="#fff"/><circle cx="28" cy="28" r="7" fill="#fff"/><circle cx="92" cy="92" r="7" fill="#fff"/><circle cx="92" cy="28" r="7" fill="#fff"/>
+      </svg>
+      <div class="word"><span class="numen">Numen</span></div>
+    </div>
+  </div>
+
+  <div class="note">B · constellation, tightened viewBox + gap</div>
+  <div class="panel"><span class="tag">size 20 · gap 12 · tight box</span>
+    <div class="lockup" style="gap:12px">
+      <svg width="20" height="20" viewBox="14 14 92 92" fill="none">
+        <path d="M28 92 V28 L92 92 V28" stroke="#fff" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+        <circle cx="28" cy="92" r="7" fill="#fff"/><circle cx="28" cy="28" r="7" fill="#fff"/><circle cx="92" cy="92" r="7" fill="#fff"/><circle cx="92" cy="28" r="7" fill="#fff"/>
+      </svg>
+      <div class="word"><span class="numen">Numen</span></div>
+    </div>
+  </div>
+
+  <div class="note">C · LETTER N — monoline, tight box (new default)</div>
+  <div class="panel"><span class="tag">size 20 · gap 12</span>
+    <div class="lockup" style="gap:12px">
+      <svg width="16.9" height="20" viewBox="0 0 54 64" fill="none">
+        <path d="M7 58 V6 L47 58 V6" stroke="#fff" stroke-width="8" fill="none" stroke-linejoin="miter" stroke-linecap="square"/>
+      </svg>
+      <div class="word"><span class="numen">Numen</span></div>
+    </div>
+  </div>
+
+  <div class="note">D · LETTER N — a touch larger</div>
+  <div class="panel"><span class="tag">size 23 · gap 13</span>
+    <div class="lockup" style="gap:13px">
+      <svg width="19.4" height="23" viewBox="0 0 54 64" fill="none">
+        <path d="M7 58 V6 L47 58 V6" stroke="#fff" stroke-width="8" fill="none" stroke-linejoin="miter" stroke-linecap="square"/>
+      </svg>
+      <div class="word"><span class="numen">Numen</span></div>
+    </div>
+  </div>
+
+  <div class="note">E · LETTER N — thinner stroke (matches wordmark weight)</div>
+  <div class="panel"><span class="tag">size 22 · stroke 6.5</span>
+    <div class="lockup" style="gap:12px">
+      <svg width="18.6" height="22" viewBox="0 0 54 64" fill="none">
+        <path d="M7 58 V6 L47 58 V6" stroke="#fff" stroke-width="6.5" fill="none" stroke-linejoin="miter" stroke-linecap="square"/>
+      </svg>
+      <div class="word"><span class="numen">Numen</span></div>
+    </div>
+  </div>
+
+</div>
+</body></html>

@@ -10,6 +10,8 @@ export const SCRIPT_COPY = {
   AV_HEADLINE: 'Try this instead',
   AV_SUBHEAD: '4-section rewrite based on what dropped',
   TEASER_LABEL: 'Reshoot script',
+  // Neutral subhead for the inline (non-AV) reshoot script header.
+  INLINE_SUBHEAD: '4-section rewrite to tighten it',
   TEASER_AFFORDANCE: 'Open script →',
   EMPTY_HEADLINE: 'Your video is solid',
   EMPTY_SUBHEAD: 'Optional tweaks below',

@@ -6,7 +6,7 @@ import { logger } from '@/lib/logger';
 import { TELEMETRY } from '../actions-constants';
 import { OPTIMAL_POST_COPY, type DayOfWeek } from './optimal-post-constants';
 import { OptimalPostSourcePill } from './OptimalPostSourcePill';
-import { OptimalPostEditSheet } from './OptimalPostEditSheet';
+import { OptimalPostEditPanel } from './OptimalPostEditPanel';
 import { convertUTCWindow } from '@/lib/optimal-post-time';
 import type { OptimalPostWindow } from '@/lib/engine/optimal-post';
 
@@ -52,15 +52,18 @@ export function OptimalPostCard({ window: postWindow, override, analysisId }: Pr
     }
   }, [postWindow, converted, analysisId]);
 
-  // Skeleton when no window data yet
+  // The server (GET /api/analysis/[id]) backfills optimal_post_window via the
+  // pipeline's computeOptimalPostWindow, and the live stream gets it from the
+  // aggregator — so postWindow is effectively always present here. Skeleton is
+  // a transient guard for the rare null (e.g. backfill DB error).
   if (!postWindow) {
     return (
-      <div className="flex h-full w-full flex-col gap-1 p-2" data-testid="actions-optimal-post-card">
-        <div className="flex items-center gap-1">
-          <Clock size={12} weight="regular" aria-hidden />
+      <div className="flex h-full w-full flex-col gap-2 rounded-[8px] border border-white/[0.06] p-3" data-testid="actions-optimal-post-card">
+        <div className="flex items-center gap-1.5">
+          <Clock size={12} weight="regular" className="text-white/55" aria-hidden />
           <span className="text-xs font-medium text-white/85">{OPTIMAL_POST_COPY.CARD_LABEL}</span>
         </div>
-        <div className="h-4 w-20 bg-white/[0.06] rounded animate-pulse" />
+        <div className="h-4 w-24 animate-pulse rounded bg-white/[0.06]" />
       </div>
     );
   }
@@ -70,33 +73,35 @@ export function OptimalPostCard({ window: postWindow, override, analysisId }: Pr
   return (
     <>
       <div
-        className="flex h-full w-full flex-col gap-1 p-2"
+        className="flex h-full w-full flex-col gap-2 rounded-[8px] border border-white/[0.06] p-3"
         data-testid="actions-optimal-post-card"
       >
-        <div className="flex items-center gap-1">
-          <Clock size={12} weight="regular" aria-hidden />
+        <div className="flex items-center gap-1.5">
+          <Clock size={12} weight="regular" className="text-white/55" aria-hidden />
           <span className="text-xs font-medium text-white/85">{OPTIMAL_POST_COPY.CARD_LABEL}</span>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             ref={triggerRef}
-            onClick={() => setEditOpen(true)}
+            onClick={() => setEditOpen((v) => !v)}
             className="bg-transparent border-0 p-0 focus:outline-2 focus:outline-offset-2 focus:outline-white/40"
             aria-label="Edit post time"
+            aria-expanded={editOpen}
           >
             <GlassPill size="sm">{converted.day} · {converted.hourRangeFormatted}</GlassPill>
           </button>
           <button
             type="button"
-            onClick={() => setEditOpen(true)}
+            onClick={() => setEditOpen((v) => !v)}
+            aria-expanded={editOpen}
             className="text-[10px] text-white/55 hover:text-white/80 focus:outline-2 focus:outline-offset-2 focus:outline-white/40"
           >
-            {OPTIMAL_POST_COPY.EDIT_LINK}
+            {editOpen ? OPTIMAL_POST_COPY.DONE_LINK : OPTIMAL_POST_COPY.EDIT_LINK}
           </button>
         </div>
         <p
-          className="text-xs text-white/65 line-clamp-1"
+          className="text-xs text-white/65 line-clamp-2"
           title={postWindow.reasoning}
         >
           {postWindow.reasoning}
@@ -106,16 +111,21 @@ export function OptimalPostCard({ window: postWindow, override, analysisId }: Pr
           reasoningString={postWindow.reasoning}
           analysisId={analysisId}
         />
-      </div>
 
-      <OptimalPostEditSheet
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        currentWindow={{ day_of_week: effectiveDay, hour_range: effectiveHours }}
-        originalWindow={postWindow}
-        analysisId={analysisId}
-        triggerRef={triggerRef}
-      />
+        {/* Inline editor — replaces the former Sheet drawer so everything stays
+            inside the Actions frame. */}
+        {editOpen && (
+          <OptimalPostEditPanel
+            currentWindow={{ day_of_week: effectiveDay, hour_range: effectiveHours }}
+            originalWindow={postWindow}
+            analysisId={analysisId}
+            onDone={() => {
+              setEditOpen(false);
+              triggerRef.current?.focus();
+            }}
+          />
+        )}
+      </div>
     </>
   );
 }

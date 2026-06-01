@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" role="img" aria-label="Numen monogram">
+  <rect x="30" y="28" width="16" height="64" rx="2" fill="#ffffff"/>
+  <rect x="74" y="28" width="16" height="64" rx="2" fill="#ffffff"/>
+  <path d="M30 28 H46 L90 92 H74 Z" fill="#ffffff"/>
+</svg>

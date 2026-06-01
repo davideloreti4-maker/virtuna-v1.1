@@ -1,37 +1,51 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
-// W5: typed import — AnalysisStream alias added to use-analysis-stream in this plan.
-// analysisId field is string | null (confirmed from AnalysisStreamReturn interface).
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAnalysisStream, type AnalysisStream } from '@/hooks/queries/use-analysis-stream';
 import { usePermalinkAnalysis } from '@/hooks/queries/use-permalink-analysis';
 import { useBoardStore } from '@/stores/board-store';
-import { getFrameAntiViralityState } from '../cross-group-state';
-import { PercentileChip } from './PercentileChip';
+import { FrameHero, StatTileRow, FrameTabs, FrameTabPanel } from '../_kit';
 import { AntiViralityHeader } from './AntiViralityHeader';
-import { WhyVerdictCollapsible } from './WhyVerdictCollapsible';
+import { ScoreDistribution, type NicheCohort } from './ScoreDistribution';
+import { FactorBars } from './FactorBars';
 import { VsHistoryCollapsible } from './VsHistoryCollapsible';
+import { useComparisons } from './use-comparisons';
 import { COPY, TELEMETRY } from './verdict-constants';
+import {
+  bandLabel,
+  bandTone,
+  confidenceRange,
+  deriveBehavioralTiles,
+  deriveGatedHero,
+  deriveSignalTiles,
+  nicheDelta,
+} from './verdict-derive';
 import type { VerdictNodeProps } from './verdict-types';
+import type { PredictionResult } from '@/lib/engine/types';
 import { logger } from '@/lib/logger';
+
+function SectionHead({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mb-3 text-[11px] uppercase tracking-[0.08em] text-white/45">{children}</div>
+  );
+}
 
 export function VerdictNode({ camera: _camera, layout: _layout }: VerdictNodeProps) {
   const { data: permalinkData } = usePermalinkAnalysis();
   const stream: AnalysisStream = useAnalysisStream({ initialData: permalinkData ?? null });
-  // Direct typed read from AnalysisStream — no cast needed (W5 fix).
-  // analysisId is string | null per AnalysisStreamReturn interface.
   const analysisId = stream.analysisId ?? '';
   const result = stream.result ?? null;
   const phase = stream.phase;
 
   const boardMachineState = useBoardStore((s) => s.boardState);
-  // avState consumed by future plans 5.3/5.4 collapsibles (pre-target counterfactual sub-section).
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  void getFrameAntiViralityState('verdict', boardMachineState);
-
   const isStreaming = phase === 'analyzing' || phase === 'reconnecting' || phase === 'polling';
   const isComplete = boardMachineState === 'complete' || boardMachineState === 'anti-virality';
 
-  // Debounced aria-live announcement (500ms after complete).
+  const { data: comparisons } = useComparisons(analysisId || null);
+  const niche: NicheCohort | null = comparisons?.niche ?? null;
+  const hasHistory = (comparisons?.history?.length ?? 0) > 0;
+
+  // Debounced aria-live announcement (single polite region — root no longer
+  // carries aria-live, killing the 3-overlapping-region announcement storm).
   const [ariaText, setAriaText] = useState<string>('');
   const announcedRef = useRef(false);
   useEffect(() => {
@@ -43,14 +57,12 @@ export function VerdictNode({ camera: _camera, layout: _layout }: VerdictNodePro
     return () => window.clearTimeout(handle);
   }, [isComplete, result]);
 
-  // AV-specific announcement
   useEffect(() => {
-    if (boardMachineState === 'anti-virality') {
-      setAriaText(COPY.ARIA_ANTI_VIRALITY);
-    }
+    if (boardMachineState !== 'anti-virality') return;
+    const handle = window.setTimeout(() => setAriaText(COPY.ARIA_ANTI_VIRALITY), 0);
+    return () => window.clearTimeout(handle);
   }, [boardMachineState]);
 
-  // verdict_node_rendered telemetry (one-shot on first complete).
   const renderedRef = useRef(false);
   useEffect(() => {
     if (!isComplete || !result || renderedRef.current) return;
@@ -62,34 +74,188 @@ export function VerdictNode({ camera: _camera, layout: _layout }: VerdictNodePro
     });
   }, [isComplete, result]);
 
+  const signalTiles = useMemo(() => (result ? deriveSignalTiles(result) : []), [result]);
+  const behavioralTiles = useMemo(
+    () => (result ? deriveBehavioralTiles(result) : []),
+    [result],
+  );
+
   return (
     <div
-      aria-live="polite"
       aria-busy={isStreaming}
-      className="relative flex h-full w-full flex-col gap-3 overflow-y-auto"
+      className="relative flex w-full flex-col gap-4"
       data-testid="verdict-node"
     >
-      {/* Sr-only announcement region — content is read on update */}
-      <span className="sr-only" data-testid="verdict-aria-live">
+      <span aria-live="polite" className="sr-only" data-testid="verdict-aria-live">
         {ariaText}
       </span>
 
+      {/* Gated override band — folded lead lives in the hero; this thin band
+          keeps the "Post anyway →" escape hatch + the role="status" announcement. */}
       <AntiViralityHeader result={result} analysisId={analysisId} />
 
-      <div className="pb-2" data-testid="verdict-percentile-container">
-        <PercentileChip
-          score={result?.overall_score ?? null}
-          confidenceLabel={result?.confidence_label ?? null}
-          isCalibrated={true}
-        />
-      </div>
+      {/* ── Hero: the single dominant number ── */}
+      {!result ? <VerdictSkeleton /> : <VerdictHero result={result} niche={niche} />}
 
-      <div data-testid="verdict-collapsibles-slot" className="flex flex-col gap-2 px-1 mt-2">
-        {result && <WhyVerdictCollapsible result={result} />}
-        {result && analysisId && (
-          <VsHistoryCollapsible analysisId={analysisId} currentScore={result.overall_score} />
+      {/* ── Tiles: behavioral percentiles (new row, not the engine signals) ── */}
+      {result && behavioralTiles.length > 0 && <StatTileRow tiles={behavioralTiles} />}
+
+      {/* ── Tabs: progressive depth ── */}
+      {result && (
+        <FrameTabs
+          tabs={[
+            { value: 'breakdown', label: 'Breakdown' },
+            { value: 'distribution', label: 'Distribution' },
+            ...(analysisId && hasHistory
+              ? [{ value: 'history', label: 'History' }]
+              : []),
+          ]}
+          defaultValue="breakdown"
+        >
+          <FrameTabPanel value="breakdown" className="flex flex-col gap-5">
+            {result.factors.length > 0 && (
+              <div>
+                <SectionHead>What drives it</SectionHead>
+                <FactorBars factors={result.factors} />
+              </div>
+            )}
+            {signalTiles.length > 0 && (
+              <div>
+                <SectionHead>Engine signals</SectionHead>
+                <StatTileRow tiles={signalTiles} />
+              </div>
+            )}
+          </FrameTabPanel>
+
+          <FrameTabPanel value="distribution">
+            <VerdictDistribution result={result} niche={niche} />
+          </FrameTabPanel>
+
+          {analysisId && hasHistory && (
+            <FrameTabPanel value="history">
+              <VsHistoryCollapsible
+                analysisId={analysisId}
+                currentScore={result.overall_score}
+              />
+            </FrameTabPanel>
+          )}
+        </FrameTabs>
+      )}
+    </div>
+  );
+}
+
+/** Hero — folds healthy + gated states into one dominant block. */
+function VerdictHero({ result, niche }: { result: PredictionResult; niche: NicheCohort | null }) {
+  const score = Math.round(result.overall_score);
+  const gated = result.anti_virality_gated;
+  const delta = nicheDelta(score, niche);
+  const gatedHero = gated ? deriveGatedHero(result) : null;
+
+  return (
+    <FrameHero
+      label="VIRALITY SCORE"
+      status={
+        gated
+          ? { word: gatedHero!.word, tone: 'crit' }
+          : { word: bandLabel(score), tone: bandTone(score) }
+      }
+      insight={
+        gated ? (
+          gatedHero!.insight ? (
+            <span>
+              Top fix — <b className="font-semibold text-white/85">{gatedHero!.insight}</b>
+            </span>
+          ) : (
+            'Review the breakdown before posting.'
+          )
+        ) : undefined
+      }
+    >
+      {/* Custom hero number row: the kit value block + a niche-median delta whose
+          suffix the generic <Delta> can't carry. Single verdict-score testid. */}
+      <div className="flex items-end gap-2">
+        <span className="text-[44px] font-semibold leading-none tracking-[-0.02em] tabular-nums text-white">
+          <span data-testid="verdict-score">{score}</span>
+          <span className="ml-1 text-[16px] font-medium text-white/40">/100</span>
+        </span>
+        {delta != null && delta !== 0 && (
+          <span
+            className={`mb-[6px] inline-flex items-center gap-[3px] text-[11px] font-medium tabular-nums ${
+              delta > 0 ? 'text-success' : 'text-error'
+            }`}
+          >
+            <span aria-hidden className="text-[7px] leading-none">
+              {delta > 0 ? '▲' : '▼'}
+            </span>
+            {Math.abs(delta)} vs median
+          </span>
         )}
       </div>
+    </FrameHero>
+  );
+}
+
+/** Distribution tab — the existing histogram/lane, plus the band label + the
+ *  honest confidence caption that used to live beside the hero number. */
+function VerdictDistribution({
+  result,
+  niche,
+}: {
+  result: PredictionResult;
+  niche: NicheCohort | null;
+}) {
+  const score = Math.round(result.overall_score);
+  const label = result.confidence_label;
+  const range = confidenceRange(score, result.confidence);
+  const showRangeText = label !== 'HIGH';
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-baseline justify-between">
+        <span className="text-[14px] font-semibold tracking-[-0.01em]" data-testid="band-label">
+          {bandLabel(score)}
+        </span>
+        {label && (
+          <span className="text-[11px] text-white/55">
+            <span
+              className="mr-[5px] inline-block h-[5px] w-[5px] rounded-full align-middle"
+              style={{
+                background: CONFIDENCE_DOT[label],
+                boxShadow: `0 0 6px ${CONFIDENCE_DOT[label]}`,
+              }}
+              data-testid="confidence-dot"
+              data-confidence={label}
+              aria-hidden
+            />
+            Confidence <span className="font-semibold text-white/75">{label}</span>
+            {showRangeText && ` · likely ${Math.round(range.lo)}–${Math.round(range.hi)}`}
+          </span>
+        )}
+      </div>
+      <ScoreDistribution score={score} niche={niche} range={range} showRangeText={showRangeText} />
+    </div>
+  );
+}
+
+const CONFIDENCE_DOT: Record<'HIGH' | 'MEDIUM' | 'LOW', string> = {
+  HIGH: 'var(--color-success)',
+  MEDIUM: 'var(--color-warning)',
+  LOW: 'var(--color-error)', // coral is reserved for "you"/the fix
+};
+
+function VerdictSkeleton() {
+  return (
+    <div data-testid="verdict-skeleton" className="flex flex-col gap-2">
+      <span className="text-[10px] uppercase tracking-[0.1em] text-white/45">VIRALITY SCORE</span>
+      <div className="flex items-end gap-2">
+        <span className="text-[44px] font-semibold leading-none tabular-nums text-white/25 motion-safe:animate-skeleton-breathe">
+          --
+        </span>
+      </div>
+      <span className="text-[13px] font-semibold text-white/30 motion-safe:animate-skeleton-breathe">
+        {COPY.SKELETON_CONFIDENCE}
+      </span>
     </div>
   );
 }

@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Actions frame — D · Synthesis (v2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --t1: rgba(255,255,255,0.92);
+    --t2: rgba(255,255,255,0.60);
+    --t3: rgba(255,255,255,0.40);
+    --t4: rgba(255,255,255,0.28);
+    --hair: rgba(255,255,255,0.06);
+    --hair2: rgba(255,255,255,0.10);
+    --frame:#0c0d0f; --raise: rgba(255,255,255,0.02);
+    --green:#5fd6a4; --amber:#f5b14a; --red:#ff6b6b; --coral:#FF7F50;
+    --mono:'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#070809;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    letter-spacing:.2px;-webkit-font-smoothing:antialiased;color:var(--t1);padding:40px 28px 60px}
+  .head{max-width:740px;margin:0 auto 26px;}
+  .head h1{font-size:15px;font-weight:600;display:flex;align-items:center;gap:9px}
+  .head .tag{font-size:10px;color:var(--t3);border:1px solid var(--hair);border-radius:5px;padding:2px 7px;font-weight:400}
+  .head p{font-size:12px;color:var(--t3);line-height:1.5;margin-top:7px}
+  .row{display:flex;gap:48px;align-items:flex-start;justify-content:center;flex-wrap:wrap}
+  .col{width:332px}
+  .cap{font-size:11px;color:var(--t3);margin:0 0 12px 2px;display:flex;align-items:center;gap:8px}
+  .cap b{color:var(--t1);font-weight:600;font-size:12.5px}
+  .cap .st{font-size:9px;text-transform:uppercase;letter-spacing:.5px;padding:2px 7px;border-radius:5px}
+  .st.ok{color:var(--green);background:rgba(95,214,164,.10);border:1px solid rgba(95,214,164,.22)}
+  .st.bad{color:var(--red);background:rgba(255,107,107,.10);border:1px solid rgba(255,107,107,.22)}
+
+  .frame{background:var(--frame);border:1px solid var(--hair);border-radius:14px;overflow:hidden}
+  .fhead{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;border-bottom:1px solid var(--hair)}
+  .fhead .ttl{font-size:13px;font-weight:600}
+  .chev{color:var(--t3);font-size:12px}
+  .body{padding:13px 14px;display:flex;flex-direction:column;gap:13px}
+  .lbl{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.6px;color:var(--t3)}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .hair{height:1px;background:var(--hair);margin:1px -14px}
+
+  /* verdict — band-driven dot + plain one-liner */
+  .verdict{display:flex;align-items:center;gap:9px;font-size:12.5px;line-height:1.35}
+  .verdict .dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+  .dot.g{background:var(--green)} .dot.a{background:var(--amber)} .dot.r{background:var(--red)}
+  .verdict b{font-weight:600;color:var(--t1)} .verdict span.m{color:var(--t2)}
+
+  /* fix card — severity by RANK + quiet label (no coral). time(mono) vs anchor(chip) separated */
+  .fixes{display:flex;flex-direction:column;gap:0}
+  .fix{padding:12px 0;border-top:1px solid var(--hair)}
+  .fix:first-child{border-top:0;padding-top:2px}
+  .fmeta{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+  .pri{font-size:9px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--t2);
+       background:rgba(255,255,255,.05);border:1px solid var(--hair2);border-radius:4px;padding:2px 6px}
+  .time{font-size:10px;color:var(--t3)}                                  /* real timestamp, mono */
+  .anchor{font-size:9px;color:var(--t3);border:1px solid var(--hair);border-radius:4px;padding:1px 5px}  /* location, not time */
+  .fmeta .sp{margin-left:auto}
+  .opener{color:var(--t3);font-size:12px;cursor:default}
+  .hl{font-size:12.5px;color:var(--t1);line-height:1.4}
+  .leverage{display:flex;align-items:center;gap:7px;font-size:10px;color:var(--t3);margin-top:5px}
+  .leverage .mv{color:var(--t2)}
+  .leverage .wk{color:var(--t3)}                                         /* weakest tag now neutral (amber freed) */
+  .leverage .wk b{color:var(--t2);font-weight:500}
+  /* expanded remedy */
+  .remedy{border-left:1px solid var(--hair2);padding:7px 0 2px 11px;margin:8px 0 0;display:flex;flex-direction:column;gap:4px}
+  .remedy .rl{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)}
+  .remedy .rt{font-size:12px;color:var(--t2);line-height:1.4}
+  .actbar{display:flex;align-items:center;gap:8px;margin-top:9px}
+  .primary{font-size:11px;font-weight:500;color:#1a0f0a;background:var(--coral);border-radius:7px;
+           padding:5px 11px;display:inline-flex;align-items:center;gap:6px;cursor:default}
+  .ghost{font-size:11px;color:var(--t2);border:1px solid var(--hair2);border-radius:7px;padding:5px 10px;cursor:default}
+
+  /* grouped lower-priority row */
+  .group{display:flex;align-items:center;gap:9px;font-size:11.5px;color:var(--t2);padding:11px 0;border-top:1px solid var(--hair);cursor:default}
+  .group .pri{color:var(--t3)}
+  .group .c{margin-left:auto;color:var(--t3)}
+
+  /* disclosure rows */
+  .disc{display:flex;align-items:center;justify-content:space-between;cursor:default}
+  .disc .l{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--t2)}
+  .disc .sws{display:flex;gap:3px;align-items:center}
+  .sw{width:14px;height:5px;border-radius:2px}
+  .sw.g{background:var(--green)} .sw.a{background:var(--amber)} .sw.r{background:var(--red)}
+  .disc .n{font-size:10px;color:var(--t4)}
+
+  /* expanded scorecard — thicker colored bars (6px), weakest first */
+  .sc{display:flex;flex-direction:column;gap:9px;margin-top:2px}
+  .scline{display:flex;align-items:center;gap:11px}
+  .scline .nm{font-size:12px;color:var(--t1);flex:0 0 116px}
+  .track{flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,.10);overflow:hidden}
+  .fill{height:100%;border-radius:3px}
+  .scline .sc-n{font-size:11px;width:16px;text-align:right;font-family:var(--mono)}
+
+  /* footer */
+  .foot{display:flex;align-items:center;gap:9px;font-size:11.5px;color:var(--t2)}
+  .foot .k{color:var(--t3)} .foot .v{color:var(--t1)} .foot .src{font-size:10px;color:var(--t3);margin-left:auto}
+</style>
+</head>
+<body>
+  <div class="head">
+    <h1>D · Synthesis <span class="tag">verdict → cards → colored scorecard → footer</span></h1>
+    <p>Hybrid of A (action cards) + B (semantic scorecard, as the collapsed breakdown) + C (one-line plain verdict). All v1 must-fixes applied. Shown in two states to prove the layout survives a bad video: <b>high-band</b> (left) and <b>low-band / degraded</b> (right). Coral appears exactly once per frame — the primary <i>Copy&nbsp;rewrite</i>. Severity is carried by rank + a quiet label, never color; red/amber/green is reserved for scores.</p>
+  </div>
+
+  <div class="row">
+
+    <!-- ============ HIGH BAND ============ -->
+    <div class="col">
+      <p class="cap"><b>High band</b><span class="st ok">strong</span><span style="color:var(--t4)">band = high · niche data present</span></p>
+      <div class="frame">
+        <div class="fhead"><span class="ttl">Actions</span><span class="chev">⌃</span></div>
+        <div class="body">
+
+          <div class="verdict"><span class="dot g"></span><span><b>Strong video.</b> <span class="m">Two lifts to push it further.</span></span></div>
+
+          <div class="hair"></div>
+          <span class="lbl">What to do · 2</span>
+
+          <div class="fixes">
+            <!-- card 1 — expanded, holds the single coral -->
+            <div class="fix">
+              <div class="fmeta"><span class="pri">High</span><span class="time mono">0:01</span></div>
+              <div class="hl">Sharpen the hook — add a visual or audio cue in the first 1.5s, not just the text overlay.</div>
+              <div class="leverage"><span class="mv">↑ moves Scroll-Stop</span><span>·</span><span class="wk">weakest modality <b>audio</b></span></div>
+              <div class="remedy">
+                <span class="rl">New opening</span>
+                <span class="rt">“Lead with the strongest visual beat in second one.”</span>
+              </div>
+              <div class="actbar"><span class="primary">⧉ Copy rewrite</span><span class="ghost">Collapse</span></div>
+            </div>
+            <!-- card 2 — collapsed; anchor chip (not a timestamp) -->
+            <div class="fix">
+              <div class="fmeta"><span class="pri">High</span><span class="anchor">caption</span><span class="sp"></span><span class="opener">⌄</span></div>
+              <div class="hl">Add an on-screen prompt — “Which side are you?” — to convert lurkers into commenters.</div>
+              <div class="leverage"><span class="mv">↑ moves Share</span></div>
+            </div>
+          </div>
+
+          <div class="group"><span class="pri">Med</span><span>2 optional polish items — audio &amp; format</span><span class="c">⌄</span></div>
+
+          <div class="hair"></div>
+
+          <div class="disc">
+            <span class="l">▸ Score breakdown</span>
+            <span class="sws"><span class="sw a"></span><span class="sw g"></span><span class="sw g"></span><span class="sw g"></span><span class="sw g"></span></span>
+          </div>
+          <div class="disc"><span class="l">▸ Full 4-part rewrite</span><span class="n">copy all</span></div>
+
+          <div class="hair"></div>
+
+          <div class="foot"><span class="k">Best time</span><span class="v">Tue 7–10 PM</span><span class="src">niche peak ·ⓘ</span></div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ LOW BAND / DEGRADED ============ -->
+    <div class="col">
+      <p class="cap"><b>Low band</b><span class="st bad">needs work</span><span style="color:var(--t4)">band = low · post-window fallback</span></p>
+      <div class="frame">
+        <div class="fhead"><span class="ttl">Actions</span><span class="chev">⌃</span></div>
+        <div class="body">
+
+          <div class="verdict"><span class="dot r"></span><span><b>Don’t post yet.</b> <span class="m">Three fixes first.</span></span></div>
+
+          <div class="hair"></div>
+          <span class="lbl">What to do · 3</span>
+
+          <div class="fixes">
+            <!-- card 1 — expanded, single coral -->
+            <div class="fix">
+              <div class="fmeta"><span class="pri">High</span><span class="time mono">0:00</span></div>
+              <div class="hl">Open on a real hook — the first 2s has no visual or audio cue, viewers bounce.</div>
+              <div class="leverage"><span class="mv">↑ moves Scroll-Stop</span><span>·</span><span class="wk">weakest modality <b>visual</b></span></div>
+              <div class="remedy">
+                <span class="rl">New opening</span>
+                <span class="rt">“Cold-open on the payoff frame, then cut to setup.”</span>
+              </div>
+              <div class="actbar"><span class="primary">⧉ Copy rewrite</span><span class="ghost">Collapse</span></div>
+            </div>
+            <div class="fix">
+              <div class="fmeta"><span class="pri">High</span><span class="time mono">0:08</span><span class="sp"></span><span class="opener">⌄</span></div>
+              <div class="hl">Cut the slow middle — pacing flatlines at 0:08 and completion drops off.</div>
+              <div class="leverage"><span class="mv">↑ moves Completion</span></div>
+            </div>
+            <!-- card 3 — surfaces cta_segment (dead data in current UI) -->
+            <div class="fix">
+              <div class="fmeta"><span class="pri">Med</span><span class="anchor">caption</span><span class="sp"></span><span class="opener">⌄</span></div>
+              <div class="hl">Add a clear CTA — none detected. Tell viewers what to do next.</div>
+              <div class="leverage"><span class="mv">↑ moves Share</span></div>
+            </div>
+          </div>
+
+          <div class="hair"></div>
+
+          <!-- scorecard EXPANDED — thick semantic bars, weakest first -->
+          <span class="lbl">Score breakdown · weakest first</span>
+          <div class="sc">
+            <div class="scline"><span class="nm">Scroll-Stop Power</span><span class="track"><span class="fill" style="width:30%;background:var(--red)"></span></span><span class="sc-n" style="color:var(--red)">3</span></div>
+            <div class="scline"><span class="nm">Completion Pull</span><span class="track"><span class="fill" style="width:40%;background:var(--red)"></span></span><span class="sc-n" style="color:var(--red)">4</span></div>
+            <div class="scline"><span class="nm">Rewatch Potential</span><span class="track"><span class="fill" style="width:50%;background:var(--amber)"></span></span><span class="sc-n" style="color:var(--amber)">5</span></div>
+            <div class="scline"><span class="nm">Emotional Charge</span><span class="track"><span class="fill" style="width:60%;background:var(--amber)"></span></span><span class="sc-n" style="color:var(--amber)">6</span></div>
+            <div class="scline"><span class="nm">Share Trigger</span><span class="track"><span class="fill" style="width:70%;background:var(--amber)"></span></span><span class="sc-n" style="color:var(--amber)">7</span></div>
+          </div>
+
+          <div class="hair"></div>
+          <div class="disc"><span class="l">▸ Full 4-part rewrite</span><span class="n">copy all</span></div>
+
+          <div class="hair"></div>
+
+          <div class="foot"><span class="k">Best guess</span><span class="v">Tue 7–10 PM</span><span class="src">refine w/ niche ·ⓘ</span></div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

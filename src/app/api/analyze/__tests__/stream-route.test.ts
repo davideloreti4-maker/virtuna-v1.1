@@ -130,4 +130,36 @@ describe("GET /api/analyze/[id]/stream", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (global as any).setTimeout = origST;
   });
+
+  it("emits filmstrip_segment_ready from variants.filmstrip_segments (not heatmap.segments)", async () => {
+    // Regression guard: the extract route persists keyframes to
+    // analysis_results.variants.filmstrip_segments. If the SSE poll reads the wrong
+    // field (the old heatmap.segments) no event is emitted and keyframes stay blank
+    // on live runs until a reload. This row only carries the variants field.
+    const inFlight = { id: "abc", user_id: "user-a", overall_score: null, confidence: null, deleted_at: null };
+    const withFilmstrip = {
+      ...inFlight,
+      variants: { filmstrip_segments: [{ idx: 0, keyframe_uri: "https://cdn/0.jpg" }] },
+    };
+    const settled = { id: "abc", user_id: "user-a", overall_score: 0.55, confidence: 0.6, deleted_at: null };
+    singleMock
+      .mockResolvedValueOnce({ data: inFlight, error: null })       // initial lookup → in-flight
+      .mockResolvedValueOnce({ data: withFilmstrip, error: null })  // poll 1 → keyframe ready
+      .mockResolvedValueOnce({ data: settled, error: null });       // poll 2 → settled
+
+    const origST = global.setTimeout;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global as any).setTimeout = (cb: () => void) => origST(cb, 0);
+
+    const { GET } = await import("@/app/api/analyze/[id]/stream/route");
+    const res = await GET(buildReq("abc"), { params: Promise.resolve({ id: "abc" }) });
+    const body = await readAll(res);
+
+    expect(body).toContain("event: filmstrip_segment_ready");
+    expect(body).toContain('"segment_idx":0');
+    expect(body).toContain('"keyframe_uri":"https://cdn/0.jpg"');
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global as any).setTimeout = origST;
+  });
 });

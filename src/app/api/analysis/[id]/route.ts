@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
+import { computeOptimalPostWindow } from "@/lib/engine/optimal-post";
 
 /**
  * GET /api/analysis/:id
@@ -121,6 +123,33 @@ export async function GET(
     };
     const heatmap = extras.heatmap ?? synthHeatmap();
 
+    // Optimal posting window — like the heatmap/confidence shims above, older
+    // rows (and any run where the niche lookup degraded) persist null, leaving
+    // the Actions "When to post" card stuck on a skeleton. Recompute it from the
+    // creator's niche using the SAME pipeline function (computeOptimalPostWindow),
+    // so the UI always shows real niche-derived data (or the pipeline's own
+    // documented fallback) rather than an endless skeleton.
+    let optimal_post_window =
+      (data as { optimal_post_window?: unknown }).optimal_post_window ?? null;
+    if (!optimal_post_window) {
+      try {
+        const service = createServiceClient();
+        const { data: profile } = await service
+          .from("creator_profiles")
+          .select("niche_primary")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        optimal_post_window = await computeOptimalPostWindow(
+          service,
+          profile?.niche_primary ?? null,
+          null,
+        );
+      } catch (err) {
+        console.error("[analysis/id] optimal_post_window backfill failed:", err);
+        optimal_post_window = null; // non-fatal — card falls back to skeleton
+      }
+    }
+
     const enriched = {
       ...data,
       overall_score: overall,
@@ -139,6 +168,7 @@ export async function GET(
         extras.anti_virality_gated ??
         (confidence == null ? false : confidence < 0.4),
       heatmap,
+      optimal_post_window,
     };
 
     return Response.json(enriched);

@@ -65,6 +65,11 @@ tests/fixtures/audio-smoke/smoke-test-results.json
 
 # Claude Code local state (worktrees, settings.local.json)
 .claude/
+.claire/
 
 # Playwright MCP debug captures (console logs, snapshots, screenshots)
 .playwright-mcp/
+# Local design-iteration + verification screenshots dropped at repo root
+# (root-scoped — public/ and .planning/sketches/ images are still tracked)
+/*.png
+/*.jpeg

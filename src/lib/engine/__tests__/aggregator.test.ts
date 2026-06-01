@@ -49,8 +49,8 @@ vi.mock("../gemini", () => ({
 
 vi.mock("../deepseek", () => ({
   DEEPSEEK_MODEL: "deepseek-test",
-  // isCircuitOpen=true → Stage 10 short-circuit at circuit breaker (no OpenAI client needed).
-  // Stage 11 now uses Gemini (Phase 13 Plan 02 rebuild) — mocked separately below.
+  // isCircuitOpen=true short-circuits Stage 11 (which makes the network call). Stage 10
+  // is now deterministic TS (no LLM, ignores the breaker) and always runs.
   isCircuitOpen: vi.fn(() => true),
 }));
 
@@ -609,6 +609,32 @@ describe("Phase 3 — provenance + stub invocations", () => {
     });
     expect(events).toContain("stage_10_critique");
     expect(events).toContain("stage_11_counterfactuals");
+  });
+
+  it("deferCounterfactuals=true skips Stage 11 but still runs Stage 10 (latency: after() path)", async () => {
+    const events: string[] = [];
+    const result = await aggregateScores(
+      makePipelineResult(),
+      (e) => {
+        if ((e.type === "stage_start" || e.type === "stage_end") && "stage" in e && e.stage) {
+          events.push(e.stage);
+        }
+      },
+      { deferCounterfactuals: true },
+    );
+    // Stage 10 (deterministic critique) MUST still run — it owns the final
+    // confidence + anti-virality gate that paint synchronously.
+    expect(events).toContain("stage_10_critique");
+    expect(result.critique).not.toBeNull();
+    // Stage 11 is skipped entirely — no LLM call, no event, counterfactuals left
+    // null for the route's after() to populate via a later DB UPDATE.
+    expect(events).not.toContain("stage_11_counterfactuals");
+    expect(result.counterfactuals ?? null).toBeNull();
+    // The painted number is untouched by deferral — score/gate are Stage-10 owned.
+    const inline = await aggregateScores(makePipelineResult());
+    expect(result.overall_score).toBe(inline.overall_score);
+    expect(result.confidence).toBe(inline.confidence);
+    expect(result.anti_virality_gated).toBe(inline.anti_virality_gated);
   });
 
   it("overall_score is unchanged for identical input (PIPE-06 math invariance)", async () => {
@@ -1226,8 +1252,10 @@ describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
   });
 
   it("Phase 3: when heatmap triggers timeline pattern with confidence above 0.4, anti_virality_gated=true with reason='timeline_pattern'", async () => {
-    // Mock isAntiViralityGatedFull to return timeline_pattern gating
-    mockIsAntiViralityGatedFull.mockReturnValueOnce({
+    // Mock isAntiViralityGatedFull to return timeline_pattern gating. Persistent (not Once):
+    // deterministic Stage 10 now always runs, so the POST-critique re-eval calls this a 2nd
+    // time — the real fn is heatmap-deterministic and returns timeline_pattern on both calls.
+    mockIsAntiViralityGatedFull.mockReturnValue({
       gated: true,
       reason: "timeline_pattern" as const,
       dropoff_segment_indices: [1],

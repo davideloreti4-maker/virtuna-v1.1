@@ -3,17 +3,20 @@ import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
 
 // Phase 3 (Plan 08) — helpers for filmstrip polling and partial persona state tracking.
-// Reads heatmap.segments[].keyframe_uri from the JSONB analysis_results column.
-// Emits filmstrip_segment_ready SSE events when new keyframe_uri entries appear.
-interface HeatmapSegmentRow {
+// Reads variants.filmstrip_segments[].keyframe_uri from the JSONB analysis_results column.
+// The filmstrip extract route (/api/filmstrip/extract) persists keyframes to
+// `variants.filmstrip_segments` (NOT `heatmap.segments` — no such column exists), so this
+// must read the same field or live runs never emit filmstrip_segment_ready (keyframes stay
+// blank until a reload hits the bucket-backed /filmstrips endpoint).
+interface FilmstripSegmentRow {
   idx: number;
   keyframe_uri: string | null;
 }
 
-function extractHeatmapSegments(row: Record<string, unknown>): HeatmapSegmentRow[] {
+function extractFilmstripSegments(row: Record<string, unknown>): FilmstripSegmentRow[] {
   try {
-    const ar = row.analysis_results as { heatmap?: { segments?: unknown[] } } | null;
-    const segs = ar?.heatmap?.segments;
+    const variants = row.variants as { filmstrip_segments?: unknown[] } | null;
+    const segs = variants?.filmstrip_segments;
     if (!Array.isArray(segs)) return [];
     return segs.map((s, i) => ({
       idx: (s as { idx?: number }).idx ?? i,
@@ -163,8 +166,8 @@ export async function GET(
 
               // Phase 3 (Plan 08) — filmstrip segment ready polling.
               // Emit filmstrip_segment_ready for each newly populated keyframe_uri.
-              const heatmapSegs = extractHeatmapSegments(freshRow);
-              for (const seg of heatmapSegs) {
+              const filmstripSegs = extractFilmstripSegments(freshRow);
+              for (const seg of filmstripSegs) {
                 if (seg.keyframe_uri && !knownKeyframeIndices.has(seg.idx)) {
                   knownKeyframeIndices.add(seg.idx);
                   send("filmstrip_segment_ready", {

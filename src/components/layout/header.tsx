@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { NumenLogo } from "@/components/brand/numen-logo";
 import { List, X } from "@phosphor-icons/react";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -66,23 +67,8 @@ export function Header({ className }: HeaderProps) {
         >
           <nav className="flex h-[76px] items-center justify-between px-8">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-2">
-              <svg
-                width="32"
-                height="32"
-                viewBox="0 0 32 32"
-                fill="none"
-                className="text-white"
-                aria-hidden="true"
-              >
-                <path
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                  d="M16 6H13L8 27H11L16 6ZM16 6L21 27H24L19 6H16Z"
-                  fill="currentColor"
-                />
-              </svg>
-              <span className="font-sans text-white">Artificial Societies</span>
+            <Link href="/" className="text-white" aria-label="Numen home">
+              <NumenLogo size={26} />
             </Link>
 
             {/* Desktop Navigation */}

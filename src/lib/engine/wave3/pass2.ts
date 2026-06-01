@@ -3,14 +3,14 @@
  *
  * Mirrors src/lib/engine/wave3.ts end-to-end with these deltas:
  * - model = QWEN_REASONING_MODEL ("qwen3.6-plus")
- * - enable_thinking: true + thinking_budget: 8000
+ * - enable_thinking: true + thinking_budget: 2000
  * - PER_CALL_TIMEOUT_MS = 60_000 (thinking-mode slower than flash)
  * - Input: segments[], keyframeUris[], pass1Results[], demo?
  * - Output: Wave3Pass2Outcome (pass2Results, warnings, cost_cents, pass2_success_count, pass2_aggregate_built)
  *
  * D-23: logs pass2_latency_ms + pass2_cost_cents per persona.
  * D-24: flags cost ceiling at 50 cents/analysis.
- * T-03-06-04: thinking_budget: 8000 caps per-call tokens.
+ * T-03-06-04: thinking_budget: 2000 caps per-call tokens.
  */
 import * as Sentry from "@sentry/nextjs";
 import { createLogger } from "@/lib/logger";
@@ -23,7 +23,7 @@ import {
   Pass2ResponseSchema,
   type DemographicContext,
 } from "./persona-prompts-pass2";
-import { getQwenClient, QWEN_REASONING_MODEL } from "../qwen/client";
+import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "../qwen/client";
 import { calculateCost } from "../qwen/cost";
 import type { ContentTypeSlug, PersonaSimulationResult, SegmentGrid } from "../types";
 
@@ -34,8 +34,54 @@ import type { Pass2PersonaResult } from "./weighted-aggregator";
 const log = createLogger({ module: "wave3.pass2" });
 
 const PER_CALL_TIMEOUT_MS = 90_000; // thinking-mode tail latency: live runs show successes at 46–56s, raised from 60s for threshold headroom
+// Pass 2 thinking budget — env-overridable for latency tuning. Default 2000:
+// measured A/B (8000 vs 2000 on the same video) showed 2000 cut the Pass 2 wave
+// from 70.5s → 44.0s (−26.5s) with NO loss of retention-curve quality (avg curve
+// range 0.45 → 0.46; personas with a real swipe point 9/10 → 10/10). Pass 2 is
+// the single largest pipeline wave (10× qwen3.6-plus thinking calls); this budget
+// shapes the user-visible heatmap, so re-validate curve quality (not just latency)
+// before changing it. See scripts/measure-pipeline.ts "PASS-2 CURVE QUALITY".
+const PASS2_THINKING_BUDGET = Number(process.env.PASS2_THINKING_BUDGET) || 2000;
 const SUCCESS_THRESHOLD = 7; // D-06: ≥7/10 Pass 2 successes for non-null heatmap
 const COST_ALERT_THRESHOLD_CENTS = 50; // D-24: 0.50 dollars
+
+type Pass2SegmentReaction = Pass2PersonaResult["segment_reactions"][number];
+
+/**
+ * Derive a realistic drop point when the model leaves swipe_predicted all-false.
+ *
+ * Pass 1 already predicts where each persona scrolls away (scroll_past_second,
+ * with watch_through_pct as the secondary signal). The Pass 2 model is
+ * conservative and frequently returns swipe_predicted=false for every segment —
+ * which leaves swipe_predicted_at null everywhere and pins the watch-time /
+ * retention curve at 100%. When that happens, fall back to the Pass 1 drop
+ * signal and flip swipe_predicted=true from the drop segment onward (preserving
+ * the monotonic contract). Personas that genuinely watch through (no Pass 1 drop
+ * signal, or watch-through ~100%) are left untouched so the curve still ends
+ * above the floor for strong content.
+ */
+export function applyPass1DropFallback(
+  reactions: Pass2SegmentReaction[],
+  pass1: PersonaSimulationResult,
+  segments: SegmentGrid[],
+): Pass2SegmentReaction[] {
+  if (reactions.some((r) => r.swipe_predicted)) return reactions; // model emitted a drop — trust it
+  const totalDuration = segments[segments.length - 1]?.t_end ?? 0;
+  if (totalDuration <= 0) return reactions;
+
+  // Prefer Pass 1's direct scroll-away second; fall back to its watch-through %.
+  const dropT =
+    pass1.scroll_past_second > 0
+      ? pass1.scroll_past_second
+      : (pass1.watch_through_pct / 100) * totalDuration;
+
+  // Genuine full-watch (or no usable signal) → leave the timeline as completed.
+  if (dropT <= 0 || dropT >= totalDuration * 0.98) return reactions;
+
+  const idx = reactions.findIndex((r) => dropT >= r.t_start && dropT < r.t_end);
+  const dropIdx = idx === -1 ? reactions.length - 1 : idx;
+  return reactions.map((r, i) => (i >= dropIdx ? { ...r, swipe_predicted: true } : r));
+}
 
 /**
  * Phase 3 D-06 Pass 2 wave outcome.
@@ -124,7 +170,11 @@ export async function runWave3Pass2(
         // @ts-expect-error — DashScope extension: enable_thinking not in OpenAI types
         callParams.enable_thinking = true;
         // @ts-expect-error — DashScope extension: thinking_budget not in OpenAI types (T-03-06-04)
-        callParams.thinking_budget = 8000;
+        callParams.thinking_budget = PASS2_THINKING_BUDGET;
+        // @ts-expect-error — temperature pairs with thinking mode; not in base OpenAI types here
+        callParams.temperature = 0; // temp:0 — reproducible segment attention scores (de-noises retention curves)
+        // @ts-expect-error — seed not in base OpenAI types via this DashScope param path
+        callParams.seed = QWEN_SEED; // pin residual nondeterminism for reproducible curves
         const response = await ai.chat.completions.create(
           callParams as never,
           { signal: controller.signal },
@@ -153,11 +203,19 @@ export async function runWave3Pass2(
         const latencyMs = Math.round(performance.now() - callStart);
         const costCents = +callCostAccum.toFixed(6);
 
+        // Fill in a drop point from the Pass 1 signal when the model returned an
+        // all-false swipe timeline (otherwise the retention curve stays flat).
+        const segmentReactions = applyPass1DropFallback(
+          validated.data.segment_reactions,
+          pass1,
+          segments,
+        );
+
         const result: Pass2PersonaResult = {
           persona_id: slot.persona_id,
           archetype: slot.archetype as Pass2PersonaResult["archetype"],
           slot_type: slot.slot_type as Pass2PersonaResult["slot_type"],
-          segment_reactions: validated.data.segment_reactions,
+          segment_reactions: segmentReactions,
           pass2_latency_ms: latencyMs,
           pass2_cost_cents: costCents,
         };

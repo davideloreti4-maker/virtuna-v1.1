@@ -15,10 +15,11 @@ import {
   buildPersonaSystemPrompt,
   buildPersonaUserMessage,
   PersonaResponseSchema,
+  type OmniHookGrounding,
 } from "./wave3/persona-prompts";
 import { aggregatePersonaResults } from "./wave3/aggregator";
 import { isCircuitOpen } from "./deepseek";
-import { getQwenClient, QWEN_FAST_MODEL } from "./qwen/client";
+import { getQwenClient, QWEN_FAST_MODEL, QWEN_SEED } from "./qwen/client";
 
 const log = createLogger({ module: "wave3" });
 
@@ -71,6 +72,7 @@ export async function runWave3(
   wave0Result: Wave0Result,
   creatorContext: CreatorContext,
   onEvent?: StageEventCallback,
+  hookGrounding?: OmniHookGrounding | null,
 ): Promise<Wave3Outcome> {
   const stageStart = emitStageStart(onEvent, "wave_3_personas", 3);
 
@@ -133,6 +135,7 @@ export async function runWave3(
       creatorContext,
       wave0Result,
       slot,
+      hookGrounding,
     );
 
     let attempt = 0;
@@ -158,6 +161,8 @@ export async function runWave3(
               { role: "user", content: userMessage }, // VOLATILE per-call
             ],
             response_format: { type: "json_object" },
+            temperature: 0, // temp:0 — reproducible persona scores (de-noises retention curves)
+            seed: QWEN_SEED,
           },
           { signal: controller.signal },
         );

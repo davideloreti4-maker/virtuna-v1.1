@@ -28,7 +28,7 @@ function Wrap({ children }: { children: React.ReactNode }) {
 beforeEach(() => vi.clearAllMocks());
 
 describe('OptimalPostCard', () => {
-  it('renders skeleton when window is null', () => {
+  it('renders skeleton when window is null (server backfills real data; null is a transient edge)', () => {
     const { container } = render(<Wrap><OptimalPostCard window={null} override={null} analysisId="aid-1" /></Wrap>);
     expect(container.querySelector('[data-testid="actions-optimal-post-card"]')).toBeTruthy();
     expect(container.querySelector('.animate-pulse')).toBeTruthy();

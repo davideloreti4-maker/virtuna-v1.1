@@ -55,6 +55,13 @@ export interface HeatmapPayload {
   /** Overall weighted_completion_pct − niche_completion_pct (0-1, can be negative).
    *  Positive ⇒ this video plays broader than its niche baseline. null when no niche personas. */
   vs_niche_diff_pct?: number | null;
+  /** Mirror of the top-level PredictionResult.weighted_completion_pct (0-1). Persisted
+   *  here so the Score-frame engine signal survives permalink reload — the top-level
+   *  field is computed at aggregate time but NOT a DB column. Absent on pre-fix rows. */
+  weighted_completion_pct?: number | null;
+  /** Mirror of the top-level PredictionResult.weighted_hook_score. Persisted here for
+   *  the same reload-survival reason as weighted_completion_pct above. */
+  weighted_hook_score?: number | null;
 }
 
 // D-15 (Phase 3) — Streaming partial extension for persona rows.
@@ -323,6 +330,15 @@ export interface PredictionResult {
   hook_decomposition?: HookDecomposition | null;
   /** Audio signals from Wave 1 Gemini audio analysis (GeminiAudioSignals shape). */
   audio_signals?: GeminiAudioSignals | null;
+  /** Content-craft signals surfaced from the Omni Wave-1 analysis for the board's
+   *  "Content craft" frame. Produced by the engine but historically dropped before
+   *  persistence; the analyze route now stashes them into analysis_results.variants.craft
+   *  (no migration). Optional to preserve compile against existing PredictionResult
+   *  constructors (pipeline fallback, fixtures). */
+  video_signals?: GeminiVideoSignals | null;
+  cta_segment?: CtaSegmentResult | null;
+  overall_impression?: string;
+  content_summary?: string;
   /** Matched trends from trend enrichment stage. */
   matched_trends?: Array<{
     sound_name: string;
@@ -397,9 +413,13 @@ export interface SignalAvailability {
 // widens it into a Zod-derived schema that aliases PersonaBehavioralAggregate to
 // BehavioralPredictions. See "Phase 7 — Persona Simulation Result Schemas" block.
 
-/** Stage 10 self-critique result — Phase 9 fills with V3 critique call. */
+/**
+ * Stage 10 self-critique result (deterministic — see stage10-critique.ts).
+ * `confidence_adjustment` is the only score-affecting output; `flags` are creator-cited
+ * strings retained for a future "why we're unsure" surface. (`consistency_score` was
+ * dropped 2026-05-31 — it had zero consumers and is trivially `10 − 2·flags.length`.)
+ */
 export interface CritiqueResult {
-  consistency_score: number;
   flags: string[];
   confidence_adjustment: number;
 }

@@ -6,6 +6,7 @@ import type {
   CtaSegmentResult,
   Factor,
   FeatureVector,
+  GeminiAudioSignals,
   GeminiVideoSignals,
   PersonaBehavioralAggregate,
   PlatformFitResult,
@@ -48,6 +49,9 @@ import { runStage10Critique, applyCritiqueAdjustment } from "./stage10-critique"
 import { runStage11Counterfactuals, maybeAppendLikelyFlopWarning } from "./stage11-counterfactuals";
 import { applyContentTypeWeights } from "./wave0/content-type-weights";
 import { computeAudioPerceptualScore } from "./audio-perceptual";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "aggregator" });
 
 /** Re-export ENGINE_VERSION for back-compat — existing consumers `import { ENGINE_VERSION } from "./aggregator"` keep working. */
 export { ENGINE_VERSION };
@@ -279,7 +283,7 @@ export function selectWeights(
 /**
  * Calculate numeric confidence (0-1) based on:
  * 1. Signal availability (0-0.6) — how much data we have
- * 2. Model agreement (0-0.4) — do Gemini and DeepSeek agree on direction
+ * 2. Model agreement (0-0.4) — do the Qwen omni (vision) and reasoning signals agree on direction
  *
  * RULE-04: Penalizes confidence when rules/trends signals are missing.
  */
@@ -510,6 +514,17 @@ export interface AggregateScoresOptions {
   // D-01 / D-18 — Plan 03 pipeline.ts uploads video once at entry, threads fileUri through here.
   // Plan 02 leaves this optional with null default; Plan 03 callsite supplies real values.
   videoContext?: { fileUri: string; mimeType: string } | null;
+  /**
+   * Latency: defer Stage 11 (counterfactuals) off the synchronous path. When true,
+   * aggregateScores runs Stage 10 (deterministic critique — owns the final score,
+   * confidence + anti-virality gate) but SKIPS the Stage 11 LLM call, leaving
+   * `counterfactuals` null. The caller (analyze route) re-runs `runStage11Counterfactuals`
+   * in a Vercel `after()` and UPDATEs the row, so the user-visible wall drops by the
+   * Stage 11 tail (~30-113s) with no change to the score/gate/confidence. Stage 11 is
+   * purely additive (writes result.counterfactuals only — see the post-pipeline block
+   * below), so deferring it never alters the painted number. Default false = inline.
+   */
+  deferCounterfactuals?: boolean;
 }
 
 /**
@@ -709,6 +724,26 @@ export async function aggregateScores(
     hook_decomposition = null; // non-fatal
   }
 
+  // Content-craft signals (board "Content craft" frame). The Omni Wave-1 analysis
+  // emits these on geminiResult.analysis but the aggregator historically consumed
+  // them only for scoring (video_signals → audio_perceptual; cta_segment → factors)
+  // and dropped them from PredictionResult. Surface them verbatim so the analyze
+  // route can stash them into variants.craft. Non-fatal, read defensively — these
+  // are absent on text/tiktok_url fallback paths. Populated BEFORE Stage 10/11
+  // (matches hook_decomposition / emotion_arc ordering).
+  const craftGemini = geminiResult.analysis as typeof geminiResult.analysis & {
+    video_signals?: GeminiVideoSignals | null;
+    audio_signals?: GeminiAudioSignals | null;
+    cta_segment?: CtaSegmentResult | null;
+    overall_impression?: string;
+    content_summary?: string;
+  };
+  const craft_video_signals = craftGemini.video_signals ?? null;
+  const craft_cta_segment = craftGemini.cta_segment ?? null;
+  const craft_audio_signals = craftGemini.audio_signals ?? null;
+  const craft_overall_impression = craftGemini.overall_impression ?? undefined;
+  const craft_content_summary = craftGemini.content_summary ?? undefined;
+
   // Phase 1 (R6.1, D-13, D-15, Pitfall #5) — optimal_post_window lookup. Inserted
   // BEFORE result assembly so Stage 10/11 critique + counterfactuals see the
   // field on the assembled PredictionResult. Non-fatal — null on Supabase error,
@@ -718,16 +753,24 @@ export async function aggregateScores(
   // `_creator` is unused in P1 per D-12 — passing null until M2-II promotes the
   // creator-aware override path.
   let optimal_post_window: OptimalPostWindow | null = null;
-  try {
-    const serviceClient = createServiceClient();
-    const nicheValue = pipelineResult.payload.niche ?? null;
-    optimal_post_window = await computeOptimalPostWindow(
-      serviceClient,
-      nicheValue,
-      null,
-    );
-  } catch {
-    optimal_post_window = null; // non-fatal per D-15
+  {
+    // board-fix #1: per-stage timing to locate the ~121s post-pipeline tail.
+    const t = performance.now();
+    try {
+      const serviceClient = createServiceClient();
+      const nicheValue = pipelineResult.payload.niche ?? null;
+      optimal_post_window = await computeOptimalPostWindow(
+        serviceClient,
+        nicheValue,
+        null,
+      );
+    } catch {
+      optimal_post_window = null; // non-fatal per D-15
+    }
+    log.info("stage_timing", {
+      stage: "optimal_post_window",
+      ms: Math.round(performance.now() - t),
+    });
   }
 
   // -------------------------------------------------
@@ -746,7 +789,13 @@ export async function aggregateScores(
     adjustedVideoSignals,
   );
   const mlFeatures = featureVectorToMLInput(feature_vector);
+  // board-fix #1: time ML predict — suspected cold-start cost in the tail.
+  const tMl = performance.now();
   const mlScore = await predictWithML(mlFeatures);
+  log.info("stage_timing", {
+    stage: "predict_with_ml",
+    ms: Math.round(performance.now() - tMl),
+  });
 
   // -------------------------------------------------
   // RULE-04: Determine signal availability from pipeline result
@@ -1124,6 +1173,13 @@ export async function aggregateScores(
     emotion_arc,
     // Phase 2 (Quick 260528-nqx) — hook_decomposition surfaced from Gemini analysis.
     hook_decomposition,
+    // Content-craft signals for the board "Content craft" frame. Surfaced here so
+    // the analyze route persists them into variants.craft (no DB column / migration).
+    video_signals: craft_video_signals,
+    cta_segment: craft_cta_segment,
+    audio_signals: craft_audio_signals,
+    overall_impression: craft_overall_impression,
+    content_summary: craft_content_summary,
     // Phase 1 (R1.9, B4) + Phase 3 (Plan 08) — anti-virality gate.
     // Initial value computed from PRE-Stage-10 confidence (post-Platt + post-HARD-03).
     // Phase 3: uses dual-trigger isAntiViralityGatedFull (avGateFull computed above).
@@ -1177,7 +1233,42 @@ export async function aggregateScores(
   // confidence downward (clamped to [-0.20, 0]) via applyCritiqueAdjustment.
   // Stage 10 result is surfaced in PredictionResult.critique.
   // -------------------------------------------------
-  const critiqueResult = await runStage10Critique(result, onStageEvent);
+  // Stage 10 (critique) and Stage 11 (counterfactuals) are independent LLM calls
+  // — run them CONCURRENTLY to halve the post-pipeline tail (previously ~serial
+  // 45-60s + 30s). Stage 11 reads pre-critique confidence purely as prompt
+  // context; its suggestion band is score-based (overall_score, unchanged by
+  // critique), so the small critique delta does not change the output. The
+  // LIKELY_FLOP check below still runs on POST-critique confidence, and the
+  // anti-virality gate is still recomputed from post-critique confidence —
+  // Pitfall 7 ordering invariant preserved.
+  // board-fix #1: time each LLM call individually + the Promise.all wall time.
+  // If (stage10 + stage11) ≈ wall, the two calls are serialized at the DashScope
+  // network layer despite Promise.all; if wall ≈ max(stage10, stage11), they are
+  // truly concurrent. This answers the open latency question in the handoff.
+  // Latency: when deferCounterfactuals is set (analyze route), Stage 11 is pulled
+  // off the sync path and re-run in a Vercel after() — so skip it here. Stage 10
+  // stays inline because it is deterministic TS (no LLM, sub-ms) and OWNS the final
+  // score/confidence/gate; only Stage 11's additive `counterfactuals` arrives late.
+  const deferCounterfactuals = options?.deferCounterfactuals ?? false;
+  const tStages = performance.now();
+  const [critiqueResult, counterfactualResult] = await Promise.all([
+    (async () => {
+      const t = performance.now();
+      const r = await runStage10Critique(result, onStageEvent);
+      log.info("stage_timing", { stage: "stage10_critique", ms: Math.round(performance.now() - t) });
+      return r;
+    })(),
+    // D-01 / D-06 / D-18 — Stage 11 receives videoContext from options (Plan 03
+    // threads real values; Plan 02 default = null). Skipped entirely when deferred.
+    deferCounterfactuals ? Promise.resolve(null) : (async () => {
+      const t = performance.now();
+      const r = await runStage11Counterfactuals(result, options?.videoContext ?? null, onStageEvent);
+      log.info("stage_timing", { stage: "stage11_counterfactuals", ms: Math.round(performance.now() - t) });
+      return r;
+    })(),
+  ]);
+  log.info("stage_timing", { stage: "stage10_11_wall", ms: Math.round(performance.now() - tStages) });
+
   if (critiqueResult) {
     result.confidence = applyCritiqueAdjustment(result.confidence, critiqueResult);
     // Phase 1 (R1.9, B4) + Phase 3 (Plan 08) — re-evaluate anti-virality gate AFTER critique
@@ -1192,18 +1283,6 @@ export async function aggregateScores(
   }
   result.critique = critiqueResult;
 
-  // -------------------------------------------------
-  // Phase 13 — Stage 11: Always-on counterfactual suggestions (D-04 — no score skip).
-  // Runs AFTER critique so maybeAppendLikelyFlopWarning uses POST-CRITIQUE confidence
-  // (Pitfall 7 ordering invariant).
-  // D-01 / D-06 / D-18 — Stage 11 receives videoContext from options (Plan 03 threads
-  // real values; Plan 02 default = null).
-  // -------------------------------------------------
-  const counterfactualResult = await runStage11Counterfactuals(
-    result,
-    options?.videoContext ?? null,
-    onStageEvent,
-  );
   if (counterfactualResult) {
     result.counterfactuals = counterfactualResult;
   }

@@ -1,6 +1,7 @@
 /** @vitest-environment happy-dom */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { fixtures } from './fixtures/prediction-result';
@@ -17,6 +18,29 @@ vi.mock('@/hooks/usePrefersReducedMotion', () => ({ usePrefersReducedMotion: () 
 import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
 import { logger } from '@/lib/logger';
 import { VerdictNode } from '../VerdictNode';
+import { deriveVerdictSummary } from '../verdict-constants';
+
+describe('deriveVerdictSummary', () => {
+  it('picks the highest factor as driver and the lowest (<6) as risk', () => {
+    const s = deriveVerdictSummary(fixtures.complete.factors);
+    // fixtures: visual-hook 8 (top), cta 3 (bottom)
+    expect(s.driver).toEqual({ name: 'Visual hook', rationale: 'Strong cold open' });
+    expect(s.risk).toEqual({ name: 'CTA', tip: 'Add explicit follow request' });
+  });
+
+  it('returns null risk when every factor scores ≥6', () => {
+    const s = deriveVerdictSummary([
+      { id: 'a', name: 'A', score: 9, max_score: 10, rationale: 'r', improvement_tip: 't' },
+      { id: 'b', name: 'B', score: 7, max_score: 10, rationale: 'r', improvement_tip: 't' },
+    ]);
+    expect(s.driver?.name).toBe('A');
+    expect(s.risk).toBeNull();
+  });
+
+  it('returns both null when no factors', () => {
+    expect(deriveVerdictSummary([])).toEqual({ driver: null, risk: null });
+  });
+});
 
 // Wrap with QueryClientProvider since VerdictNode now renders VsHistoryCollapsible
 // which calls useComparisons (TanStack Query hook). (Rule 1 auto-fix - Plan 5.4)
@@ -43,16 +67,45 @@ describe('VerdictNode - shell', () => {
     });
   });
 
-  it('renders verdict-node container with aria-live="polite"', () => {
+  it('renders the verdict-node shell with a single sr-only polite live region', () => {
     renderWithQuery(<VerdictNode camera={{} as never} layout={{} as never} />);
     const node = screen.getByTestId('verdict-node');
     expect(node).toBeInTheDocument();
-    expect(node.getAttribute('aria-live')).toBe('polite');
+    // Root no longer carries aria-live (killed the 3-overlapping-region storm);
+    // the sole polite announcer is the dedicated sr-only span.
+    expect(node.getAttribute('aria-live')).toBeNull();
+    expect(screen.getByTestId('verdict-aria-live').getAttribute('aria-live')).toBe('polite');
   });
 
-  it('reserves verdict-collapsibles-slot for Plan 5.3 / 5.4', () => {
+  it('renders the verdict score hero, and the distribution histogram under its tab', async () => {
+    const user = userEvent.setup();
     renderWithQuery(<VerdictNode camera={{} as never} layout={{} as never} />);
-    expect(screen.getByTestId('verdict-collapsibles-slot')).toBeInTheDocument();
+    // Hero number is always visible.
+    expect(screen.getByTestId('verdict-score')).toHaveTextContent('78');
+    // Distribution histogram now lives behind the Distribution tab (progressive
+    // disclosure — redesign v2). Activate the tab to mount it.
+    await user.click(screen.getByRole('tab', { name: 'Distribution' }));
+    expect(screen.getByTestId('score-distribution')).toBeInTheDocument();
+    expect(screen.getByTestId('band-label')).toBeInTheDocument();
+  });
+
+  it('renders committed factor bars in the default Breakdown tab', () => {
+    renderWithQuery(<VerdictNode camera={{} as never} layout={{} as never} />);
+    const bars = screen.getByTestId('factor-bars');
+    // strongest + weakest factors from fixtures.complete both render as bars
+    expect(bars).toHaveTextContent('Visual hook');
+    expect(bars).toHaveTextContent('CTA');
+  });
+
+  it('renders the 4 behavioral-percentile stat tiles in the hero row', () => {
+    renderWithQuery(<VerdictNode camera={{} as never} layout={{} as never} />);
+    const row = screen.getByTestId('stat-tile-row');
+    expect(row).toHaveTextContent('Share');
+    expect(row).toHaveTextContent('Completion');
+    expect(row).toHaveTextContent('Comment');
+    expect(row).toHaveTextContent('Save');
+    // Share percentile from fixtures.complete = "80th"
+    expect(row).toHaveTextContent('80');
   });
 
   it('announces "Verdict ready: {N}th percentile, confidence HIGH" after 500ms with fixtures.complete', async () => {

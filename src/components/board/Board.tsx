@@ -7,7 +7,7 @@
  * RESEARCH Pitfall 3 + Open Question 2.
  */
 import dynamic from 'next/dynamic';
-import { useEffect, useRef, useState, createRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, createRef } from 'react';
 import type { RefObject } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
@@ -18,12 +18,17 @@ import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useBoardStore } from '@/stores/board-store';
 import type { BoardMachineState } from '@/stores/board-store';
 import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
-import { usePermalinkFilmstrips } from '@/hooks/queries/use-permalink-filmstrips';
 import { CommandBar } from '@/components/command-bar/CommandBar';
 import { useCamera, serializeCamera } from './use-camera';
 import { useBoardKeyboard } from './use-board-keyboard';
 import { CameraOverlay } from './CameraOverlay';
-import { GROUP_FRAMES, CAMERA_DEFAULT_SCALE } from './board-constants';
+import {
+  GROUP_FRAMES,
+  CAMERA_DEFAULT_SCALE,
+  AUTO_HEIGHT_FRAMES,
+  resolveBoardLayout,
+  computePresetTargets,
+} from './board-constants';
 import { GroupFrame } from './GroupFrame';
 import { getFrameAntiViralityState } from './cross-group-state';
 import { GroupFrameOverlay } from './GroupFrameOverlay';
@@ -32,7 +37,7 @@ import { AudienceNode } from './audience/AudienceNode';
 import { VerdictNode } from './verdict/VerdictNode';
 import { ActionsNode } from './actions/ActionsNode';
 import { ContentAnalysisFrame } from './content-analysis/ContentAnalysisFrame';
-import { InputNodeShape, InputNodeOverlay } from './InputNode';
+import { InputResultCard } from './InputResultCard';
 import { nanoid } from 'nanoid';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -41,6 +46,9 @@ import type { GroupId } from './board-types';
 import type { FrameVisualState } from './GroupFrame';
 import { detectInitialTier, startFpsSampler, usePerfStore, nextLowerTier } from '@/lib/perf-tier';
 import { useToast } from '@/components/ui/toast';
+import { useViewMode } from './use-view-mode';
+import { BoardMobile } from './BoardMobile';
+import { ViewModeToggle } from './ViewModeToggle';
 
 /**
  * Derives per-frame visual state from the board machine state.
@@ -70,6 +78,11 @@ export function Board() {
   const effectiveReducedMotion = reducedMotion || tier === 'low';
   const { toast, dismiss } = useToast();
 
+  // View mode: phones default to the vertical card stack, tablets/desktop to the
+  // pannable canvas. The top-center board⇄cards toggle pins either mode (persisted
+  // override) on any viewport.
+  const { mode, setOverride } = useViewMode();
+
   // Board machine state for frame visual derivation (plan 2.2)
   const boardMachineState = useBoardStore((s) => s.boardState);
 
@@ -77,6 +90,16 @@ export function Board() {
   const [expanded, setExpanded] = useState<Record<GroupId, boolean>>(() =>
     Object.fromEntries(GROUP_FRAMES.map((f) => [f.id, true])) as Record<GroupId, boolean>,
   );
+
+  // Auto-height layout: each auto frame measures its natural content height and
+  // reports it here; the layout reflows so frames grow to fit (no in-frame
+  // scroll) and neighbours shift down. Empty = constants until first measure.
+  const [measuredH, setMeasuredH] = useState<Partial<Record<GroupId, number>>>({});
+  const resolvedFrames = useMemo(() => resolveBoardLayout(measuredH), [measuredH]);
+  const presetTargets = useMemo(() => computePresetTargets(resolvedFrames), [resolvedFrames]);
+  const handleMeasureFrame = useCallback((id: GroupId, worldH: number) => {
+    setMeasuredH((prev) => (prev[id] === worldH ? prev : { ...prev, [id]: worldH }));
+  }, []);
 
   // Roving tabindex across group frames (plan 2.11 NF2 — arrow-key navigation).
   // Exactly one frame has tabIndex=0 at a time; all others -1.
@@ -127,9 +150,6 @@ export function Board() {
   const triggerAntiVirality = useBoardStore((s) => s.triggerAntiVirality);
   const resetToIdle = useBoardStore((s) => s.resetToIdle);
   const newAnalysisSignal = useBoardStore((s) => s.newAnalysisSignal);
-  const pendingVideoThumbnail = useBoardStore((s) => s.pendingVideo?.thumbnail ?? null);
-  // Persisted keyframe[0] for the Input thumbnail on permalink replay.
-  const permalinkFilmstrips = usePermalinkFilmstrips();
 
   // WR-01: track which analysisId we started streaming for, so that if the
   // user resets and a new stream starts we don't fire anti-virality against
@@ -335,6 +355,7 @@ export function Board() {
 
   const { goToPreset } = useCamera({
     camera, setCamera, viewport, viewportReady, activePreset, setActivePreset, reducedMotion: effectiveReducedMotion,
+    presetTargets,
   });
 
   // Plan 2.13: EngineGroup sets activePreset on wave boundaries; Board subscribes here
@@ -357,7 +378,35 @@ export function Board() {
     }
   }, [viewport, goToPreset]);
 
+  // Auto-height reflow grows the board past its initial bounds (e.g. a tall
+  // Actions column). Re-fit the overview so the whole board stays framed — but
+  // ONLY while the user is on the overview preset and hasn't interacted (the
+  // 3000ms guard mirrors the auto-pan contract at the top of this file). Skips
+  // during streaming because EngineGroup parks activePreset on a frame preset.
+  useEffect(() => {
+    if (!initialFitApplied.current) return;
+    if (activePreset !== 'overview') return;
+    if (Date.now() - useBoardStore.getState().lastUserInteractionAt < 3000) return;
+    goToPreset('overview');
+  }, [resolvedFrames, activePreset, goToPreset]);
+
   useBoardKeyboard({ goToPreset });
+
+  // Input scorecard data — shared by the canvas frame (InputResultCard) and the
+  // mobile card stack (BoardMobile). Lifted so both views stay in sync.
+  const streamResult = stream.result as {
+    behavioral_predictions?: import('@/lib/engine/types').BehavioralPredictions | null;
+    confidence?: number | null;
+    confidence_label?: import('@/lib/engine/types').ConfidenceLevel | null;
+    anti_virality_gated?: boolean | null;
+  } | null;
+  const inputCard = {
+    behavioral: streamResult?.behavioral_predictions ?? null,
+    confidence: streamResult?.confidence ?? null,
+    confidenceLabel: streamResult?.confidence_label ?? null,
+    gated: Boolean(streamResult?.anti_virality_gated),
+    isStreaming: boardMachineState === 'streaming',
+  };
 
   return (
     <div
@@ -366,6 +415,16 @@ export function Board() {
       role="application"
       aria-label="Analysis board"
     >
+      {mode === 'cards' ? (
+        <BoardMobile
+          boardMachineState={boardMachineState}
+          input={inputCard}
+          // A permalink route or any non-idle state means there's something to show;
+          // bare /analyze with no analysis falls through to the desktop-only hint.
+          hasAnalysis={!!urlAnalysisId || boardMachineState !== 'idle' || !!stream.result}
+        />
+      ) : (
+      <>
       <BoardCanvas
         camera={camera}
         setCamera={setCamera}
@@ -373,15 +432,13 @@ export function Board() {
         width={viewport.width}
         height={viewport.height}
       >
-        {GROUP_FRAMES.map((layout) => (
+        {resolvedFrames.map((layout) => (
           <GroupFrame
             key={layout.id}
             layout={layout}
             visual={deriveFrameVisual(boardMachineState, layout.id)}
           />
         ))}
-        {/* Plan 2.7: Input node Konva hit-test shape; selection wiring deferred to Phase 4 */}
-        <InputNodeShape selected={false} />
       </BoardCanvas>
 
       {/* Plan 2.6: context-aware command bar — z=200, fixed bottom-center.
@@ -395,7 +452,7 @@ export function Board() {
           Group frames use roving tabindex (plan 2.11): one frame has tabIndex=0, rest -1.
           Arrow keys (←→↑↓) move focus within the group. */}
       <div className="pointer-events-none absolute inset-0">
-        {GROUP_FRAMES.map((layout, i) => (
+        {resolvedFrames.map((layout, i) => (
           <GroupFrameOverlay
             key={layout.id}
             ref={(el) => { frameRefs.current[i]!.current = el; }}
@@ -407,7 +464,18 @@ export function Board() {
             expanded={expanded[layout.id]}
             onToggleExpanded={() => setExpanded((s) => ({ ...s, [layout.id]: !s[layout.id] }))}
             reducedMotion={effectiveReducedMotion}
+            autoHeight={AUTO_HEIGHT_FRAMES.has(layout.id)}
+            onMeasure={(worldH) => handleMeasureFrame(layout.id, worldH)}
           >
+            {layout.id === 'input' && (
+              <InputResultCard
+                behavioral={inputCard.behavioral}
+                confidence={inputCard.confidence}
+                confidenceLabel={inputCard.confidenceLabel}
+                gated={inputCard.gated}
+                isStreaming={inputCard.isStreaming}
+              />
+            )}
             {layout.id === 'engine' && <EngineGroup />}
             {layout.id === 'audience' && <AudienceNode camera={camera} layout={layout} />}
             {layout.id === 'verdict' && <VerdictNode camera={camera} layout={layout} />}
@@ -415,30 +483,16 @@ export function Board() {
             {layout.id === 'content-analysis' && <ContentAnalysisFrame camera={camera} layout={layout} />}
           </GroupFrameOverlay>
         ))}
-        {/* Input node — TikTok-style vertical card showing the uploaded video
-            + predicted engagement metrics overlay (derived from overall_score
-            + behavioral_predictions). */}
-        {(() => {
-          const r = stream.result as {
-            video_storage_path?: string | null;
-            behavioral_predictions?: import('@/lib/engine/types').BehavioralPredictions | null;
-          } | null;
-          return (
-            <InputNodeOverlay
-              camera={camera}
-              videoStoragePath={r?.video_storage_path ?? null}
-              videoUrl={null}
-              thumbnailUrl={stream.filmstrips?.[0] ?? permalinkFilmstrips?.[0] ?? pendingVideoThumbnail ?? null}
-              behavioral={r?.behavioral_predictions ?? null}
-              isStreaming={boardMachineState === 'streaming'}
-            />
-          );
-        })()}
       </div>
 
       {/* DOM overlay slots (filled by plans 2.6 command bar, 2.7 input node, etc.) */}
       <CameraOverlay activePreset={activePreset} onSelect={goToPreset} />
+      </>
+      )}
 
+      {/* Manual board⇄cards switch — always available (desktop + mobile), pinned
+          top-center under the camera-preset toolbar. */}
+      <ViewModeToggle mode={mode} onSelect={setOverride} />
     </div>
   );
 }

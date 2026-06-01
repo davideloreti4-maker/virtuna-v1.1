@@ -1,10 +1,12 @@
 import * as Sentry from "@sentry/nextjs";
+import { after } from "next/server";
 import { nanoid } from "nanoid";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createLogger } from "@/lib/logger";
 import { runPredictionPipeline } from "@/lib/engine/pipeline";
 import { aggregateScores } from "@/lib/engine/aggregator";
+import { runStage11Counterfactuals } from "@/lib/engine/stage11-counterfactuals";
 import { AnalysisInputSchema } from "@/lib/engine/types";
 import {
   computeContentHash,
@@ -81,6 +83,138 @@ function cleanupRawUpload(
           path: body.video_storage_path,
         });
       });
+  }
+}
+
+/**
+ * Stash the board "Content craft" frame's signals into analysis_results.variants.craft.
+ *
+ * These four signals (video_signals, cta_segment, audio_signals, audio_perceptual_score)
+ * plus the editorial copy (overall_impression, content_summary) are emitted by the Omni
+ * Wave-1 analysis but have no dedicated DB column. Rather than a migration, we persist
+ * them into the existing `variants` JSONB — the same extensibility bag the filmstrip
+ * background task uses for `filmstrip_segments`.
+ *
+ * Read-merge-write (NOT a wholesale variants overwrite): the filmstrip extract route also
+ * merges into `variants`, and the two writers race (filmstrip extraction is fire-and-forget
+ * and may land before OR after this call). Spreading the current variants preserves
+ * `filmstrip_segments` regardless of order. Non-fatal: a failure here only blanks the Craft
+ * pillars, never the analysis itself.
+ */
+async function persistCraftToVariants(
+  service: ServiceClient,
+  id: string,
+  finalResult: PredictionResult,
+  log: Logger,
+): Promise<void> {
+  const craft = {
+    video_signals: finalResult.video_signals ?? null,
+    cta_segment: finalResult.cta_segment ?? null,
+    audio_signals: finalResult.audio_signals ?? null,
+    audio_perceptual_score: finalResult.audio_perceptual_score ?? null,
+    overall_impression: finalResult.overall_impression ?? null,
+    content_summary: finalResult.content_summary ?? null,
+  };
+  // Skip the round-trip entirely when there is nothing craft-worthy to persist
+  // (text / tiktok_url modes never produce video_signals or a cta_segment).
+  if (craft.video_signals === null && craft.cta_segment === null && craft.audio_signals === null) {
+    return;
+  }
+  try {
+    const { data: row, error: readErr } = await service
+      .from("analysis_results")
+      .select("variants")
+      .eq("id", id)
+      .single();
+    if (readErr || !row) {
+      log.warn("craft_variants_read_failed", { id, error: readErr?.message });
+      return;
+    }
+    const current = (row.variants ?? {}) as Record<string, unknown>;
+    const { error: writeErr } = await service
+      .from("analysis_results")
+      .update({ variants: { ...current, craft } as unknown as Json })
+      .eq("id", id);
+    if (writeErr) {
+      log.warn("craft_variants_write_failed", { id, error: writeErr.message });
+    }
+  } catch (err) {
+    log.warn("craft_variants_persist_threw", {
+      id,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+/**
+ * Latency (stage11-defer): re-run Stage 11 (counterfactuals) OFF the request's
+ * critical path via Vercel `after()`, then UPDATE the row. aggregateScores ran with
+ * deferCounterfactuals:true, so the response + score painted ~30-113s sooner with
+ * counterfactuals=null; this backfills the specific fixes. Score, confidence + the
+ * anti-virality gate are Stage-10 owned and already final — deferral NEVER changes
+ * the painted number, only the additive suggestions list. videoContext is null
+ * (parity with the inline path, which never threaded it).
+ *
+ * Reload-only delivery: the SSE stream is already closed when after() runs, so the
+ * fixes surface on the next permalink read (GET /api/analysis/[id] refetches the row).
+ * The L1 cache is refreshed so a same-content re-analyze HIT also carries them.
+ * Best-effort: on failure the board stays on its graceful score-band advice state
+ * (actions-derive falls back when counterfactuals.band is null).
+ */
+function scheduleDeferredCounterfactuals(
+  service: ServiceClient,
+  analysisId: string,
+  userId: string,
+  contentHash: string,
+  finalResult: PredictionResult,
+  log: Logger,
+): void {
+  const run = async () => {
+    const t = performance.now();
+    try {
+      const cf = await runStage11Counterfactuals(finalResult, null);
+      if (!cf) {
+        log.warn("deferred_counterfactuals_null", { analysisId });
+        return;
+      }
+      const { error } = await service
+        .from("analysis_results")
+        .update({
+          counterfactuals: cf as unknown as Json,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", analysisId)
+        .eq("user_id", userId);
+      if (error) {
+        log.error("deferred_counterfactuals_persist_failed", { analysisId, error: error.message });
+        return;
+      }
+      // Keep L1 consistent so a cache HIT on identical content still carries the
+      // fixes (the cache stored the pre-defer result with counterfactuals=null).
+      populatePredictionCache(contentHash, userId, { ...finalResult, counterfactuals: cf }, { bypass: false });
+      log.info("stage_timing", {
+        stage: "stage11_deferred_after",
+        ms: Math.round(performance.now() - t),
+        analysisId,
+      });
+    } catch (err) {
+      log.error("deferred_counterfactuals_threw", {
+        analysisId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  };
+  // Scheduling is best-effort: after() throws if called outside a Next request
+  // scope (e.g. unit harness). A failure to SCHEDULE the deferred work must never
+  // break the user's response — the board already degrades to score-band advice
+  // when counterfactuals are absent.
+  try {
+    after(run);
+  } catch (err) {
+    log.warn("deferred_counterfactuals_schedule_skipped", {
+      analysisId,
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 }
 
@@ -383,8 +517,14 @@ export async function POST(request: Request) {
       audio_description: finalResult.audio_description ?? null,
       // Phase 11 (INT-05): Persist Supabase Storage path so retention cron can delete it.
       // Only set for video_upload mode; null for tiktok_url/text modes.
+      // Board-fix: when retention is NOT opted in, the video is deleted right after
+      // analysis (cleanupUploadedStorage below), so persisting its path would leave a
+      // stale key that 404s in /api/videos/sign on permalink reload. Null it here so
+      // the board degrades cleanly instead of requesting a dead object.
       video_storage_path:
-        validated.input_mode === "video_upload" && validated.video_storage_path
+        validated.input_mode === "video_upload" &&
+        validated.video_storage_path &&
+        retentionOptedIn
           ? validated.video_storage_path
           : null,
       // Persist the assembled HeatmapPayload so /api/analysis/[id] can return
@@ -433,7 +573,10 @@ export async function POST(request: Request) {
         log.error("Pipeline error (json)", { error: message });
         return Response.json({ error: message }, { status: 500 });
       }
-      const result = await aggregateScores(pipelineResult, undefined);
+      const tAgg = performance.now();
+      // Latency (stage11-defer): Stage 11 runs in after() below, not inline.
+      const result = await aggregateScores(pipelineResult, undefined, { deferCounterfactuals: true });
+      const aggregateMs = Math.round(performance.now() - tAgg);
 
       const ruleContributions = pipelineResult.ruleResult.matched_rules.map(
         (r) => ({
@@ -445,14 +588,17 @@ export async function POST(request: Request) {
         })
       );
 
+      // board-fix #2: persist TRUE E2E latency = pipeline + aggregate (see SSE branch).
       const finalResult: PredictionResult = {
         ...result,
         warnings: [...pipelineResult.warnings, ...result.warnings],
+        latency_ms: (result.latency_ms ?? 0) + aggregateMs,
       };
 
+      const jsonInsertId = nanoid(12);
       const { error: insertError } = await service
         .from("analysis_results")
-        .insert({ ...buildInsertRow(finalResult, ruleContributions), id: nanoid(12) });
+        .insert({ ...buildInsertRow(finalResult, ruleContributions), id: jsonInsertId });
 
       if (insertError) {
         log.error("DB insert failed (json)", { error: insertError.message });
@@ -460,6 +606,11 @@ export async function POST(request: Request) {
         populatePredictionCache(contentHash, user.id, finalResult, {
           bypass: bypassCache,
         });
+        // Persist Content-craft signals into variants.craft (no migration). The
+        // row id was generated inline for the JSON insert above.
+        await persistCraftToVariants(service, jsonInsertId, finalResult, log);
+        // Latency (stage11-defer): backfill counterfactuals after the response.
+        scheduleDeferredCounterfactuals(service, jsonInsertId, user.id, contentHash, finalResult, log);
       }
 
       // Track usage
@@ -564,10 +715,22 @@ export async function POST(request: Request) {
             phase: "scoring",
             message: "Calculating predictions and assembling results...",
           });
+          // board-fix #1: time aggregateScores — the dominant post-pipeline tail
+          // (Stage 10/11 LLM calls + ML + post-window). Per-stage breakdown is
+          // logged inside the aggregator under module "aggregator".
+          const tAgg = performance.now();
+          // Latency (stage11-defer): Stage 11 runs in after() below, not inline —
+          // the dominant tail leaves the user-visible wall, score/gate paint now.
           const result = await aggregateScores(
             pipelineResult,
             /* onStageEvent: */ (event: StageEvent) => { send("stage", event); },
+            { deferCounterfactuals: true },
           );
+          const aggregateMs = Math.round(performance.now() - tAgg);
+          log.info("stage_timing", {
+            stage: "aggregate_scores_total",
+            ms: aggregateMs,
+          });
 
           // Build rule_contributions JSONB for per-rule tracking (RULE-03)
           const ruleContributions = pipelineResult.ruleResult.matched_rules.map(r => ({
@@ -578,12 +741,21 @@ export async function POST(request: Request) {
             tier: r.tier,
           }));
 
-          // Prepend pipeline warnings (partial failures) before DeepSeek warnings
+          // Prepend pipeline warnings (partial failures) before DeepSeek warnings.
+          // board-fix #2: persist TRUE E2E latency = pipeline + aggregate. result.latency_ms
+          // is pipeline-only (set in the aggregator BEFORE Stage 10/11 run), so it undercut
+          // the user-visible wall by the ~Stage-11 tail (~46s). The latency budget tracks
+          // this number — it must include the aggregate.
           const finalResult: PredictionResult = {
             ...result,
             warnings: [...pipelineResult.warnings, ...result.warnings],
+            latency_ms: (result.latency_ms ?? 0) + aggregateMs,
           };
 
+          // board-fix #1: time the 3 serial DB writes (upsert + usage + safety-net
+          // UPDATE) as one block — they run before send("complete"), so they extend
+          // the user-visible tail. Logged at the close just before send("complete").
+          const tDb = performance.now();
           // Persist to DB — UPSERT by id replaces the placeholder row from Pitfall #6
           // Option A. The placeholder INSERT above guarantees the row exists; the
           // UPSERT here populates it with final values (engine_version, latency_ms,
@@ -602,6 +774,11 @@ export async function POST(request: Request) {
             populatePredictionCache(contentHash, user.id, finalResult, {
               bypass: bypassCache,
             });
+            // Persist Content-craft signals into variants.craft (no migration).
+            // analysisId is the upserted row id (Pitfall #6 placeholder → upsert).
+            await persistCraftToVariants(service, analysisId, finalResult, log);
+            // Latency (stage11-defer): backfill counterfactuals after send("complete").
+            scheduleDeferredCounterfactuals(service, analysisId, user.id, contentHash, finalResult, log);
           }
 
           // Track usage (increments AFTER successful analysis)
@@ -659,6 +836,11 @@ export async function POST(request: Request) {
               });
             }
           }
+
+          log.info("stage_timing", {
+            stage: "db_writes_total",
+            ms: Math.round(performance.now() - tDb),
+          });
 
           send("complete", finalResult);
 

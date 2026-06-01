@@ -7,6 +7,7 @@ export interface ComparisonsResponse {
     median: number;
     p75: number;
     count: number;
+    histogram: number[];
   };
 }
 

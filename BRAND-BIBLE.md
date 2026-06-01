@@ -286,6 +286,52 @@ For component index with source files, see [docs/component-index.md](docs/compon
 
 ---
 
+## Board Frame Kit (`src/components/board/_kit/`)
+
+The shared design language for the **prediction board** (the results view after a
+video is analyzed). It exists for one reason: **every board frame must look like
+the same product.** Before the kit, each of the 5 frames (Score, Audience,
+Actions, Input+Engine, Content craft) rolled its own cards/bars/charts and
+visually diverged — the root cause of the board reading "busy / not premium."
+
+**The law — every frame is `Hero + tile-row + tabbed depth`:**
+1. **One dominant hero** — the single number or move the frame is about.
+2. **A calm tile row** — the supporting metrics, equal weight.
+3. **Tabs for depth** — everything else is progressive disclosure, not stacked.
+
+> **Accent rule (load-bearing):** coral is the *only* accent and is reserved for
+> the one thing to act on (the weak link). Deltas/changes use green/red — **never
+> coral**. If two things on a frame are coral, one of them is wrong.
+
+All frames import from `_kit/index.ts`. Tests: `_kit/__tests__/kit.test.tsx`.
+**Build new frames by composing these — do not re-roll bespoke cards/bars** (that
+is exactly what caused the divergence the kit was created to end).
+
+| Primitive | Purpose / API |
+|-----------|---------------|
+| `FrameHero` | The one dominant element. `{ label, prefix?, value?, unit?, delta?, status?{word,tone}, insight?, size?, children? }`. `children` = custom hero visual (Audience passes `PersonaGraph`). `size`: `'display'` (44px tabular number — Score/rank) or `'prose'` (26px — verb/phrase heroes like Actions, so they don't wrap to two cramped lines). |
+| `StatTile` / `StatTileRow` | Caps label · big tabular value · optional delta. Responsive grid: 2 tiles→2-up, 3→3-up, 4→2-up then `@[420px]:`4-up. **Container query** — must sit in a width-constrained parent (`@container`). Labels wrap (no truncate). `tone:'accent'` = the coral weak-link tile. |
+| `FrameTabs` / `FrameTabPanel` | Underline-style tabs on raw Radix (the shared `ui/tabs` is pill-styled — do not use it inside a frame). Active tab gets the coral underline. |
+| `TrendChart` | The one calm chart (recharts area). Current = coral line+fill; previous/comparison = dotted muted. `isAnimationActive={false}`. Fluid via `ResponsiveContainer`. |
+| `PersonaGraph` | Artificial-Societies persona node-cloud (the Audience hero). Deterministic seeded layout (SSR-safe `mulberry32`), `role="img"` + sr-only mirror list. **`reducedMotion` strips the `<animate>` pulse** — always thread `prefers-reduced-motion` through. Fluid (viewBox + `preserveAspectRatio`). |
+| `KeyframeImage` | Real video frame (`<img>`, signed URL — plain img, not next/image) with energy grade + filmic fallback gradient on error/no-src. `{ src, ratio('vertical'\|'square'\|'wide'), energy, label, timecode, badge, play, marked }`. Decorative `alt=""`. |
+| `Delta` | ▲/▼ + green/red. `dir='auto'`, `invert` (down=good). |
+| `MiniSparkline`, `DataTable` | Table/inline primitives. |
+
+**`resolveKeyframeUrl(filmstrips, segments, target)`** (`_kit/keyframe.ts`) — pure;
+`target = 'first' | ms`. **Mind the units:** segment `t_start/t_end` = **seconds**;
+fix timestamps = **milliseconds**; filmstrips = `Record<number,string>` (segment
+idx → signed URL). Every keyframe placement is **gated on real video**
+(`Object.keys(mergedFilmstrips).length > 0`) — text / tiktok-url modes render with
+no keyframe and no broken placeholder.
+
+**Responsive:** all frame bodies are `w-full` fluid. The canvas wrapper
+(`GroupFrameOverlay`) applies the fixed world-space `bounds.width`; the mobile
+`MobileFrameCard` lets the same nodes fill the card (~342px). Verified: no
+horizontal overflow at 390px, tile grids fall back correctly.
+
+---
+
 ## Do's and Don'ts
 
 ### Do

@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Actions — F · Production</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;550;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<style>
+  :root{
+    --bg:#070809;
+    --card:#0c0d10;
+    --line:rgba(255,255,255,0.06);
+    --line2:rgba(255,255,255,0.10);
+    --t1:rgba(255,255,255,0.95);
+    --t2:rgba(255,255,255,0.55);
+    --t3:rgba(255,255,255,0.32);
+    --coral:#FF7F50;
+    --green:#5ec79a; --amber:#eaa94a; --red:#f0625f;
+    --mono:'Geist Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:radial-gradient(1100px 560px at 50% -8%, rgba(255,255,255,0.022), transparent 62%), var(--bg);
+    font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    color:var(--t1);padding:60px 28px 90px;
+  }
+  .lead{max-width:780px;margin:0 auto 38px}
+  .lead h1{font-size:15px;font-weight:600;letter-spacing:-.01em}
+  .lead p{font-size:12.5px;color:var(--t3);line-height:1.65;margin-top:6px;max-width:600px}
+  .row{display:flex;gap:46px;justify-content:center;align-items:flex-start;flex-wrap:wrap}
+  .col{display:flex;flex-direction:column;gap:12px;width:372px}
+  .ctx{font-size:12px;color:var(--t3);letter-spacing:.01em;padding-left:3px}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:16px;
+    box-shadow:0 1px 1px rgba(0,0,0,0.35), 0 10px 30px -20px rgba(0,0,0,0.7);
+  }
+  .hd{display:flex;align-items:center;justify-content:space-between;padding:17px 20px 0}
+  .hd .t{font-size:13px;font-weight:600;letter-spacing:-.01em}
+  .hd i{color:var(--t3);font-size:14px}
+  .pad{padding:20px}
+
+  /* hero */
+  .hero{display:flex;align-items:center;gap:19px}
+  .ring{position:relative;width:74px;height:74px;flex:0 0 auto}
+  .ring .v{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:21px;font-weight:500;letter-spacing:-.03em}
+  .vd .k{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:600;letter-spacing:-.02em;line-height:1}
+  .vd .k i{font-size:16px}
+  .vd .s{font-size:13.5px;color:var(--t2);line-height:1.5;margin-top:7px;max-width:200px}
+
+  .rule{height:1px;background:var(--line);margin:20px 0}
+
+  .eye{font-size:11.5px;color:var(--t3);font-weight:500;letter-spacing:.01em;margin-bottom:13px}
+
+  .act .h{font-size:15px;font-weight:600;letter-spacing:-.012em;color:var(--t1)}
+  .act .d{font-size:13.5px;color:var(--t2);line-height:1.5;margin-top:5px}
+  .act .r{display:flex;align-items:center;gap:13px;margin-top:13px}
+  /* restrained tinted-accent primary — no glow, no bevel */
+  .btn{display:inline-flex;align-items:center;gap:7px;
+    background:rgba(255,127,80,0.12);color:#ff9b72;
+    border:1px solid rgba(255,127,80,0.24);border-radius:8px;
+    font-size:12.5px;font-weight:600;letter-spacing:-.01em;padding:7px 12px;cursor:default}
+  .btn i{font-size:14px}
+  .at{font-family:var(--mono);font-size:11.5px;color:var(--t3);letter-spacing:.02em}
+
+  .next{display:flex;align-items:center;gap:12px;margin-top:20px;cursor:default}
+  .next .h{font-size:14.5px;font-weight:550;letter-spacing:-.01em;color:var(--t1)}
+  .next i{margin-left:auto;color:var(--t3);font-size:15px}
+  .more{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--t3);margin-top:15px;cursor:default}
+  .more i{font-size:13px}
+
+  .meta{display:flex;align-items:center;justify-content:space-between;padding:14px 0}
+  .meta+.meta{border-top:1px solid var(--line)}
+  .meta .l{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--t2)}
+  .meta .l i{font-size:15px;color:var(--t3)}
+  .meta .v{display:flex;align-items:center;gap:11px;font-size:13.5px;color:var(--t1);font-weight:550}
+  .seg{display:flex;gap:3px}
+  .seg span{width:15px;height:4px;border-radius:2px}
+  .seg .g{background:var(--green)} .seg .a{background:var(--amber)} .seg .r{background:var(--red)}
+  .meta .v i{font-size:14px;color:var(--t3);font-weight:400}
+</style>
+</head>
+<body>
+  <div class="lead">
+    <h1>F · Production</h1>
+    <p>Restrained tinted accent (no glowing button) · one disciplined hue · heavier gradient score ring · one-line copy · strict 4/8px rhythm · flatter surface · debug removed. The aim: a frame Linear or Stripe would ship.</p>
+  </div>
+
+  <div class="row">
+
+    <!-- STRONG -->
+    <div class="col">
+      <div class="ctx">Strong video</div>
+      <div class="card">
+        <div class="hd"><span class="t">Actions</span><i class="ph ph-caret-up"></i></div>
+        <div class="pad">
+
+          <div class="hero">
+            <div class="ring">
+              <svg width="74" height="74" viewBox="0 0 74 74">
+                <defs>
+                  <linearGradient id="gg" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#7ee0b4"/><stop offset="1" stop-color="#46b585"/>
+                  </linearGradient>
+                </defs>
+                <circle cx="37" cy="37" r="31" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5"/>
+                <circle cx="37" cy="37" r="31" fill="none" stroke="url(#gg)" stroke-width="5"
+                  stroke-linecap="round" stroke-dasharray="194.8" stroke-dashoffset="35.1"
+                  transform="rotate(-90 37 37)"/>
+              </svg>
+              <span class="v" style="color:var(--green)">8.2</span>
+            </div>
+            <div class="vd">
+              <div class="k"><i class="ph-fill ph-lightning" style="color:var(--green)"></i>Strong</div>
+              <div class="s">Two quick lifts and it’s ready to post.</div>
+            </div>
+          </div>
+
+          <div class="rule"></div>
+
+          <div class="eye">Do this</div>
+          <div class="act">
+            <div class="h">Sharpen the hook</div>
+            <div class="d">Lead with a visual beat in the first second.</div>
+            <div class="r">
+              <button class="btn"><i class="ph ph-copy"></i>Copy rewrite</button>
+              <span class="at">0:01</span>
+            </div>
+          </div>
+
+          <div class="next">
+            <span class="h">Add a viewer prompt</span>
+            <i class="ph ph-caret-right"></i>
+          </div>
+          <div class="more"><i class="ph ph-plus"></i>2 polish notes</div>
+
+          <div class="rule"></div>
+
+          <div class="meta">
+            <span class="l"><i class="ph ph-chart-bar"></i>Breakdown</span>
+            <span class="v"><span class="seg"><span class="a"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span></span><i class="ph ph-caret-right"></i></span>
+          </div>
+          <div class="meta">
+            <span class="l"><i class="ph ph-clock"></i>Best time</span>
+            <span class="v">Tue, 7–10 PM</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- WEAK -->
+    <div class="col">
+      <div class="ctx">Needs work</div>
+      <div class="card">
+        <div class="hd"><span class="t">Actions</span><i class="ph ph-caret-up"></i></div>
+        <div class="pad">
+
+          <div class="hero">
+            <div class="ring">
+              <svg width="74" height="74" viewBox="0 0 74 74">
+                <defs>
+                  <linearGradient id="rg" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#f58784"/><stop offset="1" stop-color="#d94a47"/>
+                  </linearGradient>
+                </defs>
+                <circle cx="37" cy="37" r="31" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5"/>
+                <circle cx="37" cy="37" r="31" fill="none" stroke="url(#rg)" stroke-width="5"
+                  stroke-linecap="round" stroke-dasharray="194.8" stroke-dashoffset="114.9"
+                  transform="rotate(-90 37 37)"/>
+              </svg>
+              <span class="v" style="color:var(--red)">4.1</span>
+            </div>
+            <div class="vd">
+              <div class="k"><i class="ph-fill ph-warning-circle" style="color:var(--red)"></i>Hold off</div>
+              <div class="s">Three fixes before it’s worth posting.</div>
+            </div>
+          </div>
+
+          <div class="rule"></div>
+
+          <div class="eye">Fix first</div>
+          <div class="act">
+            <div class="h">Open with a real hook</div>
+            <div class="d">The first two seconds have no visual cue.</div>
+            <div class="r">
+              <button class="btn"><i class="ph ph-copy"></i>Copy rewrite</button>
+              <span class="at">0:00</span>
+            </div>
+          </div>
+
+          <div class="next">
+            <span class="h">Tighten the slow middle</span>
+            <i class="ph ph-caret-right"></i>
+          </div>
+          <div class="next" style="margin-top:15px">
+            <span class="h">Add a call-to-action</span>
+            <i class="ph ph-caret-right"></i>
+          </div>
+
+          <div class="rule"></div>
+
+          <div class="meta">
+            <span class="l"><i class="ph ph-chart-bar"></i>Breakdown</span>
+            <span class="v"><span class="seg"><span class="r"></span><span class="r"></span><span class="a"></span><span class="a"></span><span class="a"></span></span><i class="ph ph-caret-right"></i></span>
+          </div>
+          <div class="meta">
+            <span class="l"><i class="ph ph-clock"></i>Best time</span>
+            <span class="v">Tue, 7–10 PM <i class="ph ph-info"></i></span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

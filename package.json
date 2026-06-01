@@ -2,6 +2,11 @@
   "name": "virtuna-v1.1",
   "version": "0.1.0",
   "private": true,
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "ffmpeg-static"
+    ]
+  },
   "scripts": {
     "dev": "NODE_OPTIONS='--max-old-space-size=768' next dev --turbopack",
     "build": "next build",
@@ -22,7 +27,8 @@
     "analyze": "npx tsx scripts/analyze-dataset.ts",
     "benchmark": "npx tsx scripts/benchmark.ts",
     "build-corpus": "npx tsx scripts/build-corpus.ts",
-    "eval": "npx tsx scripts/eval.ts"
+    "eval": "npx tsx scripts/eval.ts",
+    "learning": "npx tsx scripts/run-learning.ts"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

@@ -59,6 +59,33 @@ export const ARCHETYPE_DISPLAY_NAME: Record<string, string> = {
   niche_deep:            'Niche Deep',
 };
 
+/** Always-on persona insight: a one-line plain-language finding from the
+ *  per-persona drop times, so the key audience takeaway is visible without
+ *  opening a row. "Most viewers hold to ~Ns" + the earliest-dropping persona
+ *  when it's a clear outlier (>4s before the median). */
+export function derivePersonaInsight(
+  personas: ReadonlyArray<{ id: string; archetype?: string; swipe_predicted_at: number | null }>,
+): string | null {
+  if (!personas.length) return null;
+  const drops = personas
+    .map((p) => p.swipe_predicted_at)
+    .filter((t): t is number => t != null);
+  if (drops.length === 0) return 'All personas watch to the end';
+
+  const sorted = [...drops].sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)]!;
+  const earliestT = sorted[0]!;
+  const earliestP = personas.find((p) => p.swipe_predicted_at === earliestT);
+  const name = earliestP
+    ? ARCHETYPE_DISPLAY_NAME[earliestP.archetype ?? ''] ?? earliestP.archetype ?? earliestP.id
+    : null;
+
+  const base = `Most viewers hold to ~${Math.round(median)}s`;
+  return name && earliestT < median - 4
+    ? `${base} · ${name} drops first at ${Math.round(earliestT)}s`
+    : base;
+}
+
 /** D-11 marker ring colors by archetype slot. */
 export const MARKER_RING_COLOR: Record<PersonaSlotType, string> = {
   fyp:         '#FF7F50',                  // coral-500

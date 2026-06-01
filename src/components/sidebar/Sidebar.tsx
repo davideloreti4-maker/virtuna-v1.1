@@ -20,6 +20,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 import {
   Plus,
+  UserPlus,
   House,
   SlidersHorizontal,
   Star,
@@ -30,6 +31,7 @@ import {
   SidebarSimple,
   SignOut,
   CaretDown,
+  CaretUpDown,
   Check,
   TiktokLogo,
   InstagramLogo,
@@ -44,6 +46,7 @@ import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { NumenMark } from "@/components/brand/numen-logo";
 import { useAnalysisHistory } from "@/hooks/queries";
 import { useProfile } from "@/hooks/queries/use-profile";
 import { useBoardStore } from "@/stores/board-store";
@@ -62,6 +65,24 @@ function relativeTime(iso: string | undefined): string {
   if (abs < 86400) return rtf.format(Math.round(diffSec / 3600), 'hour');
   return rtf.format(Math.round(diffSec / 86400), 'day');
 }
+
+// ─── score tone ───────────────────────────────────────────────────
+// Reserve color for outliers only — strong scores read soft green, weak
+// read soft amber, the calm middle stays muted. Tones are dimmed to 70%
+// so they whisper rather than shout — refined hints, not a traffic-light
+// column. Coral stays reserved for the brand/primary action; the eye
+// still catches the exceptions at a glance.
+function scoreTone(score: number | null | undefined): string {
+  if (score == null) return 'text-foreground-muted';
+  if (score >= 80) return 'text-emerald-400/70';
+  if (score < 50) return 'text-amber-400/70';
+  return 'text-foreground-secondary';
+}
+
+// Branded keyboard-focus ring — replaces the browser-default blue outline on
+// raw <button>s. Inset so it never spills past the panel's rounded clip.
+const focusRing =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/50";
 import { useSidebarStore } from "@/stores/sidebar-store";
 import { createClient } from "@/lib/supabase/client";
 import { useSocialAccounts } from "@/hooks/use-social-accounts";
@@ -74,7 +95,7 @@ function SectionLabel({ children, className }: { children: React.ReactNode; clas
   return (
     <span
       className={cn(
-        "block px-2 mb-1 text-[11px] font-medium text-foreground-muted uppercase tracking-wider",
+        "block px-2.5 mb-1.5 text-[10px] font-semibold text-foreground-muted uppercase tracking-[0.08em]",
         "transition-opacity duration-150",
         className,
       )}
@@ -111,14 +132,15 @@ function NavItem({
       type="button"
       onClick={onClick}
       className={cn(
-        "w-full flex items-center gap-3 px-2 min-h-[36px] rounded-lg text-sm font-medium",
+        "w-full flex items-center gap-2.5 px-2.5 min-h-[34px] rounded-lg text-sm font-medium",
         "transition-colors duration-100",
+        focusRing,
         isCollapsed && "justify-center px-0",
         isActive
-          ? "bg-white/[0.08] text-foreground"
+          ? "bg-white/[0.06] text-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]"
           : accent
-            ? "text-accent hover:bg-accent/10"
-            : "text-foreground-secondary hover:bg-white/[0.05] hover:text-foreground",
+            ? "text-accent hover:bg-accent/[0.08]"
+            : "text-foreground-secondary hover:bg-white/[0.04] hover:text-foreground",
         className,
       )}
       aria-current={isActive ? "page" : undefined}
@@ -190,12 +212,11 @@ function SidebarAccountSelector({ isCollapsed }: { isCollapsed: boolean }) {
       type="button"
       onClick={() => setIsOpen((p) => !p)}
       className={cn(
-        "w-full flex items-center gap-3 px-2 min-h-[36px] rounded-lg text-sm font-medium",
+        "w-full flex items-center gap-2.5 px-2.5 min-h-[34px] rounded-lg text-sm font-medium",
         "transition-colors duration-100",
+        focusRing,
         isCollapsed ? "justify-center px-0" : "",
-        activeAccount
-          ? "text-foreground-secondary hover:bg-white/[0.05] hover:text-foreground"
-          : "text-foreground-secondary hover:bg-white/[0.05] hover:text-foreground",
+        "text-foreground-secondary hover:bg-white/[0.04] hover:text-foreground",
       )}
       aria-label={activeAccount ? `Account: @${activeAccount.handle}` : "Connect account"}
     >
@@ -211,7 +232,7 @@ function SidebarAccountSelector({ isCollapsed }: { isCollapsed: boolean }) {
         </>
       ) : (
         <>
-          <Icon icon={Plus} size={20} className="shrink-0" />
+          <Icon icon={UserPlus} size={20} className="shrink-0" />
           {!isCollapsed && <span className="flex-1 text-left">Connect account</span>}
         </>
       )}
@@ -330,8 +351,11 @@ export function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
-  const { isOpen, close, isCollapsed, toggleCollapsed } = useSidebarStore();
+  const { isOpen, close } = useSidebarStore();
   const triggerNewAnalysis = useBoardStore((s) => s.triggerNewAnalysis);
+
+  // Sidebar is always a full-width overlay (no persistent/collapsed desktop mode)
+  const effectiveCollapsed = false;
 
   // Recent boards
   const { data: historyData, isLoading: historyLoading } = useAnalysisHistory();
@@ -345,19 +369,7 @@ export function Sidebar() {
   // User profile for Account section
   const { data: profile } = useProfile();
 
-  // ⌘\ toggles collapsed mode (desktop only)
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "\\") {
-        e.preventDefault();
-        toggleCollapsed();
-      }
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [toggleCollapsed]);
-
-  const isOnBoard = pathname.startsWith("/analyze");
+const isOnBoard = pathname.startsWith("/analyze");
   const isOnSettings = pathname.startsWith("/settings");
 
   const [accountOpen, setAccountOpen] = useState(false);
@@ -382,7 +394,7 @@ export function Sidebar() {
       {/* Mobile overlay backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-[calc(var(--z-sidebar)-1)] bg-black/50 md:hidden"
+          className="fixed inset-0 z-[calc(var(--z-sidebar)-1)] bg-black/50"
           onClick={close}
           aria-hidden="true"
         />
@@ -394,13 +406,9 @@ export function Sidebar() {
           "fixed top-3 left-3 bottom-3 z-[var(--z-sidebar)]",
           "flex flex-col overflow-hidden rounded-xl",
           "border border-white/[0.06]",
-          // Width transition — collapsed: 40px, expanded: 220px
-          "transition-[transform,width] duration-150 ease-[var(--ease-out-cubic)]",
-          isCollapsed ? "w-[52px]" : "w-[220px]",
-          // Mobile: off-canvas when closed
+          "w-[220px]",
+          "transition-transform duration-150 ease-[var(--ease-out-cubic)]",
           isOpen ? "translate-x-0" : "-translate-x-[calc(100%+12px)]",
-          // Desktop: always visible (transform overridden below)
-          "md:translate-x-0",
         )}
         style={{
           backgroundImage:
@@ -415,92 +423,66 @@ export function Sidebar() {
         <div
           className={cn(
             "flex items-center px-3 pt-4 pb-2",
-            isCollapsed ? "justify-center" : "justify-between",
+            effectiveCollapsed ? "justify-center" : "justify-between",
           )}
         >
-          {!isCollapsed && (
-            <Link href="/" className="flex items-center" aria-label="Virtuna home">
-              <svg
-                width="22"
-                height="22"
-                viewBox="0 0 32 32"
-                fill="none"
-                className="text-white"
-                aria-hidden="true"
-              >
-                <path
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                  d="M16 6H13L8 27H11L16 6ZM16 6L21 27H24L19 6H16Z"
-                  fill="currentColor"
-                />
-              </svg>
+          {!effectiveCollapsed && (
+            <Link href="/" className="group text-foreground pl-2" aria-label="Numen home">
+              <NumenMark size={26} />
             </Link>
           )}
-          {/* Desktop collapse toggle (⌘\) */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleCollapsed}
-            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-keyshortcuts="Meta+\\"
-            className="hidden md:flex text-foreground-muted hover:text-foreground p-1"
-          >
-            <Icon icon={SidebarSimple} size={20} />
-          </Button>
-          {/* Mobile close button */}
           <Button
             variant="ghost"
             size="sm"
             onClick={close}
             aria-label="Close sidebar"
-            className="flex md:hidden text-foreground-muted hover:text-foreground p-1"
+            className="flex text-foreground-muted hover:text-foreground p-1.5 -mr-1"
           >
             <Icon icon={SidebarSimple} size={20} />
           </Button>
         </div>
 
-        {/* Scrollable body */}
-        <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden gap-1 px-2 pb-2">
+        {/* Scrollable body — scrollbar hidden for a clean glass edge */}
+        <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden gap-0.5 px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 
           {/* ── ⊕ New analysis ── */}
-          <div className="py-1">
+          <div className="pb-1">
             <NavItem
               icon={Plus}
               label="New analysis"
-              isCollapsed={isCollapsed}
+              isCollapsed={effectiveCollapsed}
               accent
               onClick={() => { triggerNewAnalysis(); router.push("/analyze"); }}
               badge={
-                !isCollapsed && (
-                  <span className="ml-auto text-[11px] text-foreground-muted font-normal">⌘N</span>
+                !effectiveCollapsed && (
+                  <span className="ml-auto text-[11px] text-foreground-muted font-normal tabular-nums">⌘N</span>
                 )
               }
             />
           </div>
 
           {/* Divider */}
-          <div className="mx-1 border-t border-white/[0.06]" />
+          <div className="mx-2 border-t border-white/[0.06]" />
 
           {/* ── Navigate ── */}
-          <div className="py-1">
-            {!isCollapsed && <SectionLabel>Navigate</SectionLabel>}
+          <div className="pt-3">
+            {!effectiveCollapsed && <SectionLabel>Navigate</SectionLabel>}
             <div className="flex flex-col gap-0.5">
               <NavItem
                 icon={House}
                 label="Boards"
                 isActive={isOnBoard}
-                isCollapsed={isCollapsed}
+                isCollapsed={effectiveCollapsed}
                 onClick={() => router.push("/analyze")}
               />
               <NavItem
                 icon={SlidersHorizontal}
                 label="Settings"
                 isActive={isOnSettings}
-                isCollapsed={isCollapsed}
+                isCollapsed={effectiveCollapsed}
                 onClick={() => router.push("/settings")}
               />
-              <SidebarAccountSelector isCollapsed={isCollapsed} />
+              <SidebarAccountSelector isCollapsed={effectiveCollapsed} />
             </div>
           </div>
 
@@ -512,18 +494,15 @@ export function Sidebar() {
             (correct behavior: not streaming = section hidden).
           */}
 
-          {/* Divider */}
-          <div className="mx-1 border-t border-white/[0.06]" />
-
           {/* ── ⭐ Pinned ── */}
-          <div className="py-1">
-            {!isCollapsed && <SectionLabel>Pinned</SectionLabel>}
-            {!isCollapsed && (
-              <p className="px-2 py-1 text-xs text-foreground-muted">
+          <div className="pt-4">
+            {!effectiveCollapsed && <SectionLabel>Pinned</SectionLabel>}
+            {!effectiveCollapsed && (
+              <p className="px-2.5 py-1 text-xs text-foreground-muted">
                 No pinned boards yet.
               </p>
             )}
-            {isCollapsed && (
+            {effectiveCollapsed && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -540,52 +519,65 @@ export function Sidebar() {
           </div>
 
           {/* ── 🕐 Recent ── */}
-          <div className="py-1 flex-1">
-            {!isCollapsed && <SectionLabel>Recent</SectionLabel>}
-            {historyLoading && !isCollapsed && (
-              <div className="flex flex-col gap-1 px-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-5/6" />
+          <div className="pt-4 flex-1">
+            {!effectiveCollapsed && <SectionLabel>Recent</SectionLabel>}
+            {historyLoading && !effectiveCollapsed && (
+              <div className="flex flex-col gap-2 px-2.5 pt-1">
+                <Skeleton className="h-3.5 w-full" />
+                <Skeleton className="h-3.5 w-3/4" />
+                <Skeleton className="h-3.5 w-5/6" />
               </div>
             )}
-            {!historyLoading && recentBoards.length === 0 && !isCollapsed && (
-              <p className="px-2 py-1 text-xs text-foreground-muted">
+            {!historyLoading && recentBoards.length === 0 && !effectiveCollapsed && (
+              <p className="px-2.5 py-1 text-xs text-foreground-muted">
                 No analyses yet.
               </p>
             )}
-            {!historyLoading && !isCollapsed && (
-              <div className="flex flex-col gap-0.5">
-                {recentBoards.map((board) => (
-                  <button
-                    key={board.id}
-                    type="button"
-                    onClick={() => router.push(`/analyze/${board.id}`)}
-                    className={cn(
-                      "w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left",
-                      "text-xs text-foreground-secondary",
-                      "hover:bg-white/[0.05] hover:text-foreground transition-colors",
-                      pathname === `/analyze/${board.id}` && "bg-white/[0.08] text-foreground",
-                    )}
-                    aria-current={pathname === `/analyze/${board.id}` ? "page" : undefined}
-                  >
-                    <span className="truncate flex-1" data-testid="sidebar-board-label">
-                      {board.content_text
-                        ? board.content_text.slice(0, 38).trim() || `Analysis · ${relativeTime(board.created_at)}`
-                        : `Analysis · ${relativeTime(board.created_at)}`}
-                    </span>
-                    <span
-                      className="shrink-0 rounded px-1 py-0.5 text-[10px] font-medium tabular-nums"
-                      style={{ background: 'rgba(255,127,80,0.15)', color: 'var(--color-accent)' }}
-                      data-testid="sidebar-score-chip"
+            {!historyLoading && !effectiveCollapsed && (
+              <div className="flex flex-col gap-px">
+                {recentBoards.map((board) => {
+                  const isActive = pathname === `/analyze/${board.id}`;
+                  const snippet = board.content_text ? board.content_text.slice(0, 38).trim() : "";
+                  return (
+                    <button
+                      key={board.id}
+                      type="button"
+                      onClick={() => router.push(`/analyze/${board.id}`)}
+                      className={cn(
+                        "group w-full flex items-center gap-2 px-2.5 min-h-[30px] rounded-lg text-left",
+                        "text-[13px] transition-colors",
+                        focusRing,
+                        isActive
+                          ? "bg-white/[0.06] text-foreground"
+                          : "text-foreground-secondary hover:bg-white/[0.04] hover:text-foreground",
+                      )}
+                      aria-current={isActive ? "page" : undefined}
                     >
-                      {board.overall_score != null ? Math.round(board.overall_score) : '—'}
-                    </span>
-                  </button>
-                ))}
+                      <span className="truncate flex-1" data-testid="sidebar-board-label">
+                        {snippet ? (
+                          snippet
+                        ) : (
+                          <>
+                            Analysis{" "}
+                            <span className="text-foreground-muted">· {relativeTime(board.created_at)}</span>
+                          </>
+                        )}
+                      </span>
+                      <span
+                        className={cn(
+                          "shrink-0 text-[11px] font-semibold tabular-nums tracking-tight",
+                          scoreTone(board.overall_score),
+                        )}
+                        data-testid="sidebar-score-chip"
+                      >
+                        {board.overall_score != null ? Math.round(board.overall_score) : '—'}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             )}
-            {isCollapsed && (
+            {effectiveCollapsed && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -603,17 +595,17 @@ export function Sidebar() {
           </div>
 
           {/* ── 📁 Projects (Coming soon placeholder) ── */}
-          <div className="py-1">
-            {!isCollapsed && (
-              <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg">
-                <Folder className="h-4 w-4 shrink-0 text-foreground-muted" />
-                <span className="text-xs text-foreground-muted">Projects</span>
-                <span className="ml-auto text-[10px] text-foreground-muted bg-white/[0.06] rounded px-1.5 py-0.5">
+          <div className="pt-2">
+            {!effectiveCollapsed && (
+              <div className="flex items-center gap-2.5 px-2.5 min-h-[34px] rounded-lg">
+                <Folder className="h-5 w-5 shrink-0 text-foreground-muted" />
+                <span className="text-sm font-medium text-foreground-muted">Projects</span>
+                <span className="ml-auto text-[10px] font-medium uppercase tracking-wide text-foreground-muted bg-white/[0.05] rounded-md px-1.5 py-0.5">
                   Soon
                 </span>
               </div>
             )}
-            {isCollapsed && (
+            {effectiveCollapsed && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div
@@ -631,15 +623,17 @@ export function Sidebar() {
 
         {/* ── 👤 Account (bottom-anchored) ── */}
         <div className="border-t border-white/[0.06] px-2 py-2">
-          {!isCollapsed ? (
+          {!effectiveCollapsed ? (
             <div className="relative" data-account-menu>
               <button
                 type="button"
                 onClick={() => setAccountOpen((prev) => !prev)}
                 className={cn(
-                  "w-full flex items-center gap-2.5 px-2 py-2 rounded-lg",
+                  "w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg",
                   "text-sm text-foreground-secondary",
-                  "hover:bg-white/[0.05] hover:text-foreground transition-colors",
+                  "hover:bg-white/[0.04] hover:text-foreground transition-colors",
+                  focusRing,
+                  accountOpen && "bg-white/[0.04] text-foreground",
                 )}
                 aria-label="Account menu"
                 aria-haspopup="menu"
@@ -653,10 +647,10 @@ export function Sidebar() {
                   }
                   size="xs"
                 />
-                <span className="flex-1 truncate text-left text-xs">
+                <span className="flex-1 truncate text-left text-[13px] font-medium">
                   {profile?.name ?? profile?.email ?? "Account"}
                 </span>
-                <UserCircle className="h-4 w-4 shrink-0 text-foreground-muted" />
+                <CaretUpDown weight="bold" className="h-3.5 w-3.5 shrink-0 text-foreground-muted" />
               </button>
 
               {/* Account popover — CR-04: role=menu, outside-click/Escape handled via useEffect */}
@@ -727,8 +721,7 @@ export function SidebarHamburger() {
         "h-[34px] w-[34px] flex items-center justify-center rounded-[10px]",
         "border border-white/[0.06]",
         "shadow-[rgba(0,0,0,0.4)_0_4px_16px_0]",
-        "flex md:hidden",
-        !isOpen && "md:flex",
+        isOpen ? "hidden" : "flex",
       )}
       style={{
         background: "linear-gradient(137deg, rgba(17,18,20,0.85) 4.87%, rgba(12,13,15,0.95) 75.88%)",

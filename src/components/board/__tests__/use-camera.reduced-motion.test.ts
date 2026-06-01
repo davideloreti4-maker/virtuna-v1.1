@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { easeCameraTowards, easeOutQuart, useCamera } from '../use-camera';
+import { CAMERA_PRESET_TARGETS } from '../board-constants';
 import type { Camera } from '../board-types';
 
 vi.mock('next/navigation', () => ({
@@ -61,6 +62,7 @@ describe('useCamera + reducedMotion', () => {
         activePreset: null,
         setActivePreset,
         reducedMotion: true,
+        presetTargets: CAMERA_PRESET_TARGETS,
       }),
     );
     act(() => {
@@ -81,6 +83,7 @@ describe('useCamera + reducedMotion', () => {
         activePreset: null,
         setActivePreset,
         reducedMotion: false,
+        presetTargets: CAMERA_PRESET_TARGETS,
       }),
     );
 
