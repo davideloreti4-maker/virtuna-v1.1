@@ -5,7 +5,7 @@
 - **Stack:** Next.js 15, TypeScript, Tailwind v4, Supabase
 - **Branding:** Coral (#FF7F50), Raycast aesthetic
 - **Design system:** 36 components, Raycast-extracted tokens — see `BRAND-BIBLE.md`
-- **Repo:** https://github.com/davideloreti/virtuna
+- **Repo:** https://github.com/davideloreti4-maker/virtuna-v1.1
 - **Deployed:** Vercel
 
 ## Phase Numbering
@@ -15,11 +15,33 @@ Historical milestones (pre-2026-02-08) used global numbering 1-63.
 
 ## Worktrees
 
-| Path | Branch | Milestone |
-|------|--------|-----------|
-| `~/virtuna-v1.1/` | `main` | v2.1 (active) |
-| `~/virtuna-landing-page/` | `milestone/landing-page` | Landing Page |
-| `~/virtuna-prediction-engine-integration/` | `milestone/prediction-engine-integration` | Prediction Engine Integration |
+`~/virtuna-v1.1/` IS the repository — every other folder is a worktree hanging
+off its single shared `.git`. Worktrees are not clones: a commit in one is
+instantly visible to all; deleting a worktree folder keeps its branch + commits.
+
+| Path | Branch | Role |
+|------|--------|------|
+| `~/virtuna-v1.1/` | `main` | **Trunk / command center.** Stays on `main`. New milestones launch from here; quick one-session fixes happen here on a short-lived branch. |
+| `~/virtuna-viral-remix/` | `milestone/viral-remix` | Active milestone (v3.2) |
+| `~/virtuna-landing/` | `milestone/landing` | In progress |
+
+> Keep this table current — it's the map. Last reconciled 2026-06-01 (pruned 3
+> merged-milestone worktrees + a stale agent worktree; merged PR #5).
+
+### How to work (don't repeat the multi-session-same-worktree mess)
+
+**Rule: the trunk worktree never holds a long-lived branch.**
+
+- **Multi-session milestone** (spans days) → its OWN worktree + branch.
+  From `~/virtuna-v1.1/` on `main`: `/gsd-new-milestone` creates the sibling
+  `~/virtuna-<name>/` worktree, branch, and clean scoped `.planning/`. Then
+  `cd` there and work. One tmux tab per milestone worktree.
+- **Quick fix** (one sitting) → in `~/virtuna-v1.1/`: `git switch -c fix/<thing>`
+  off `main`, do the work (`/gsd-quick`), then PR + merge + delete the branch
+  the same session. Trunk returns to clean `main`.
+- **Always** run `git worktree list` + check your branch BEFORE launching `cc`.
+- **Merge milestones promptly** — a milestone PR should land in days, not grow
+  to dozens of commits across weeks.
 
 ## Known Technical Issues
 
