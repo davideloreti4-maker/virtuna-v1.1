@@ -3,9 +3,14 @@
  *
  * Drives the whole loop end-to-end on live data:
  *
- *   ingest  → scrape real TikTok videos (Apify), download the raw mp4, store in
- *             the `videos` bucket under `training/`, insert an
- *             engine_training_videos row with the REAL platform metrics.
+ *   feed    → OPERATOR-CURATED ingest (no scraping): you download a video by
+ *             hand, read its real metrics off the post, and feed the raw mp4 in
+ *             with --views/--likes/etc. Stores it 1:1 like a user upload and
+ *             inserts the training row. The intended front door — curated by
+ *             strategy, not an automated sweep of platform users.
+ *   ingest  → (automated alternative) scrape real TikTok videos (Apify),
+ *             download the raw mp4, store in the `videos` bucket under
+ *             `training/`, insert a row with the REAL platform metrics.
  *   sweep   → run each scraped video BLIND through the EXACT production pipeline
  *             (video_upload mode) and capture the engine's feature_vector +
  *             per-signal scores + predicted bucket.  ($$ + slow — real vision runs)
@@ -22,6 +27,7 @@
  *
  * Run:
  *   npx tsx scripts/run-learning.ts status
+ *   npx tsx scripts/run-learning.ts feed --niche fitness --video ~/Downloads/clip.mp4 --views 1200000 --likes 95000 --url https://www.tiktok.com/@x/video/7401234567890
  *   npx tsx scripts/run-learning.ts ingest --niche fitness --config trending,under --pilot
  *   npx tsx scripts/run-learning.ts sweep  --max-rows 40 --max-cost-cents 1500
  *   npx tsx scripts/run-learning.ts label  --min-cohort 8
@@ -32,7 +38,7 @@
  * DASHSCOPE_API_KEY (sweep/doctor), APIFY_TOKEN (ingest).
  */
 import { config } from "dotenv";
-import { resolve } from "path";
+import { resolve, basename } from "path";
 config({ path: resolve(__dirname, "../.env.local") });
 
 import { register } from "tsconfig-paths";
@@ -42,7 +48,7 @@ register({ baseUrl: resolve(__dirname, ".."), paths: tsconfig.compilerOptions.pa
 
 import { ApifyClient } from "apify-client";
 import { createServiceClient } from "../src/lib/supabase/service";
-import { ingestScrapedItems } from "../src/lib/engine/learning/ingest";
+import { ingestScrapedItems, ingestManualVideo, parseTikTokVideoId } from "../src/lib/engine/learning/ingest";
 import { runPredictSweep } from "../src/lib/engine/learning/predict-sweep";
 import { runLabelPass } from "../src/lib/engine/learning/label";
 import { runFitWeights } from "../src/lib/engine/learning/run";
@@ -70,6 +76,11 @@ function parseFlags(argv: string[]): Record<string, string | boolean> {
 }
 const num = (v: string | boolean | undefined, d: number): number =>
   typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v)) ? Number(v) : d;
+/** Optional numeric flag: returns undefined when absent/invalid (lets the row builder apply its own default). */
+const optNum = (v: string | boolean | undefined): number | undefined =>
+  typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v)) ? Number(v) : undefined;
+const optStr = (v: string | boolean | undefined): string | undefined =>
+  typeof v === "string" && v.trim() !== "" ? v : undefined;
 
 function assertNiche(v: string | boolean | undefined): Niche {
   if (typeof v !== "string" || !(NICHES as readonly string[]).includes(v)) {
@@ -112,6 +123,50 @@ async function cmdIngest(flags: Record<string, string | boolean>) {
     log(`config=${kind}: ingested=${res.ingested} skipped=${res.skipped}`);
   }
   log(`DONE ingest — niche=${niche} ingested=${totalIngested} skipped=${totalSkipped}`);
+}
+
+// ─── feed (operator-curated manual ingest — no scraping) ──────────────────────
+async function cmdFeed(flags: Record<string, string | boolean>) {
+  const niche = assertNiche(flags.niche);
+  const videoPath = optStr(flags.video);
+  if (!videoPath) throw new Error("--video <path> required (local mp4 you downloaded)");
+  const views = optNum(flags.views);
+  if (views === undefined || views < 0) throw new Error("--views <N> required (real TikTok view count it achieved)");
+
+  const url = optStr(flags.url) ?? null;
+  // Stable dedup/storage id: explicit --id, else parsed from the URL, else the filename stem.
+  const platformVideoId =
+    optStr(flags.id) ??
+    parseTikTokVideoId(url) ??
+    basename(videoPath).replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9_-]/g, "");
+  if (!platformVideoId) throw new Error("could not derive a video id — pass --id <slug>");
+
+  const buf = readFileSync(videoPath);
+  log(`feed — niche=${niche} id=${platformVideoId} views=${views} (${(buf.length / 1e6).toFixed(1)}MB) → videos/training/…`);
+
+  const res = await ingestManualVideo(new Uint8Array(buf), {
+    niche,
+    platform_video_id: platformVideoId,
+    real_views: views,
+    video_url: url,
+    creator_handle: optStr(flags.handle) ?? null,
+    posted_at: optStr(flags["posted-at"]) ?? null,
+    duration_seconds: optNum(flags.duration) ?? null,
+    real_likes: optNum(flags.likes) ?? null,
+    real_comments: optNum(flags.comments) ?? null,
+    real_shares: optNum(flags.shares) ?? null,
+    real_saves: optNum(flags.saves) ?? null,
+    real_completion_pct: optNum(flags.completion) ?? null,
+    follower_count: optNum(flags.followers) ?? null,
+    society_id: optStr(flags.society) ?? null,
+  });
+
+  if (res.ok) {
+    log(`DONE feed — row inserted (status=scraped). Next: sweep → label → fit.`);
+  } else {
+    log(`feed SKIPPED (${res.skipped}${res.error ? `: ${res.error}` : ""}). Note: re-feeding an existing id is a no-op (dedup).`);
+    process.exitCode = 1;
+  }
 }
 
 // ─── sweep (BLIND prediction, real pipeline — $$ + slow) ──────────────────────
@@ -261,13 +316,15 @@ async function main() {
   const flags = parseFlags(rest);
   switch (cmd) {
     case "ingest": return cmdIngest(flags);
+    case "feed": return cmdFeed(flags);
     case "sweep": return cmdSweep(flags);
     case "label": return cmdLabel(flags);
     case "fit": return cmdFit();
     case "doctor": return cmdDoctor(flags);
     case "status": return cmdStatus();
     default:
-      console.log("usage: run-learning <ingest|sweep|label|fit|doctor|status> [flags]");
+      console.log("usage: run-learning <feed|ingest|sweep|label|fit|doctor|status> [flags]");
+      console.log("  feed   --niche <n> --video <path> --views <N> [--url <u>] [--id <slug>] [--likes N] [--comments N] [--shares N] [--saves N] [--completion P] [--followers N] [--duration S] [--handle @x] [--posted-at ISO] [--society s]");
       console.log("  ingest --niche <n> [--config trending,average,under] [--pilot] [--wait 600] [--version learning-v1]");
       console.log("  sweep  [--max-rows 100] [--max-cost-cents 2000]");
       console.log("  label  [--min-cohort 8]");

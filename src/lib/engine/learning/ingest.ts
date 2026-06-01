@@ -214,6 +214,111 @@ export async function ingestScrapedItem(
   return { ok: true, platform_video_id: normalized.platform_video_id };
 }
 
+// ─── manual feed (operator-curated, no scraping) ─────────────────────────────
+//
+// The operator hand-picks + downloads a video, reads the REAL metrics off the
+// post, and feeds the raw mp4 in directly. This is the intended front door:
+// curated by strategy, NOT an automated sweep of platform users. Downstream
+// (predict-sweep → label → fit) is byte-identical to the scraped path because
+// it keys off `status`/`video_storage_path`, never provenance.
+
+/** Parse the numeric TikTok video id from a share URL; null if absent. */
+export function parseTikTokVideoId(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const m = url.match(/\/video\/(\d+)/) ?? url.match(/[?&]item_id=(\d+)/);
+  return m?.[1] ?? null;
+}
+
+/** Operator-supplied metadata for one hand-fed video (real metrics read off the post). */
+export interface ManualVideoInput {
+  niche: Niche;
+  /** Stable dedup + storage key — TikTok numeric id, else a hand-chosen slug. */
+  platform_video_id: string;
+  real_views: number;
+  video_url?: string | null;
+  creator_handle?: string | null;
+  posted_at?: string | null; // ISO
+  duration_seconds?: number | null;
+  real_likes?: number | null;
+  real_comments?: number | null;
+  real_shares?: number | null;
+  real_saves?: number | null;
+  real_completion_pct?: number | null;
+  follower_count?: number | null;
+  society_id?: string | null;
+}
+
+/** Pure mapper: hand-fed metadata + storage key → insert row (status 'scraped'). */
+export function buildManualTrainingInsert(
+  input: ManualVideoInput,
+  videoStoragePath: string,
+): EngineTrainingVideoInsert {
+  return {
+    platform: "tiktok",
+    platform_video_id: input.platform_video_id,
+    video_url: input.video_url ?? null,
+    creator_handle: input.creator_handle ?? null,
+    posted_at: input.posted_at ?? null,
+    video_storage_path: videoStoragePath,
+    duration_seconds: input.duration_seconds ?? null,
+    society_id: input.society_id ?? input.niche,
+    niche: input.niche,
+    real_views: input.real_views,
+    real_likes: input.real_likes ?? 0,
+    real_comments: input.real_comments ?? 0,
+    real_shares: input.real_shares ?? 0,
+    real_saves: input.real_saves ?? 0,
+    real_completion_pct: input.real_completion_pct ?? null,
+    follower_count: input.follower_count ?? null,
+    status: "scraped",
+  };
+}
+
+/**
+ * Ingest ONE hand-downloaded video: store the provided mp4 bytes in the `videos`
+ * bucket under `training/`, then upsert the training row with the real metrics.
+ * Bytes come from the caller (CLI reads the local file) so this module stays
+ * free of node fs — same IO-decoupling as the scraped path. Skip-on-fail.
+ */
+export async function ingestManualVideo(
+  bytes: Uint8Array,
+  input: ManualVideoInput,
+  supabase?: SupabaseClient,
+): Promise<IngestResult> {
+  const db = supabase ?? createServiceClient();
+  if (bytes.byteLength === 0 || bytes.byteLength > MAX_VIDEO_BYTES) {
+    return {
+      ok: false,
+      platform_video_id: input.platform_video_id,
+      skipped: "download_failed",
+      error: bytes.byteLength === 0 ? "empty file" : "exceeds 200MB cap",
+    };
+  }
+
+  const storageKey = trainingVideoStorageKey(input.platform_video_id);
+  const { error: uploadErr } = await db.storage
+    .from(VIDEO_BUCKET)
+    .upload(storageKey, bytes, { contentType: "video/mp4", upsert: true });
+  if (uploadErr) {
+    return { ok: false, platform_video_id: input.platform_video_id, skipped: "store_failed", error: uploadErr.message };
+  }
+
+  const row = buildManualTrainingInsert(input, storageKey);
+  const { error: insertErr } = await db
+    .from("engine_training_videos")
+    .upsert(row, { onConflict: "platform,platform_video_id", ignoreDuplicates: true });
+  if (insertErr) {
+    return { ok: false, platform_video_id: input.platform_video_id, skipped: "duplicate", error: insertErr.message };
+  }
+
+  log.info("ingested manual training video", {
+    id: input.platform_video_id,
+    niche: input.niche,
+    views: input.real_views,
+  });
+  return { ok: true, platform_video_id: input.platform_video_id };
+}
+
 /** Batch ingest. Sequential to bound memory (videos are large); returns per-item results. */
 export async function ingestScrapedItems(
   items: unknown[],
