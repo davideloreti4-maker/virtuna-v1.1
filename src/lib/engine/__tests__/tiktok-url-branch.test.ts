@@ -337,6 +337,7 @@ const tiktokInput = {
   input_mode: "tiktok_url" as const,
   tiktok_url: "https://www.tiktok.com/@isi_comedy1/video/7645695501630737697",
   content_type: "video" as const,
+  mode: "score" as const,
 };
 
 describe("Plan 03 — tiktok_url Omni branch (RED gate)", () => {

@@ -430,6 +430,7 @@ export async function POST(request: Request) {
       reasoning: finalResult.reasoning,
       warnings: finalResult.warnings,
       input_mode: finalResult.input_mode,
+      mode: validated.mode,
       has_video: finalResult.has_video,
       gemini_score: finalResult.gemini_score,
       ml_score: finalResult.ml_score,
@@ -592,6 +593,7 @@ export async function POST(request: Request) {
         confidence: null,
         engine_version: "pending",                           // sentinel: upsert overwrites
         input_mode: validated.input_mode,
+        mode: validated.mode,
         has_video: validated.input_mode === "video_upload",
         content_hash: contentHash,
         gemini_model: null,

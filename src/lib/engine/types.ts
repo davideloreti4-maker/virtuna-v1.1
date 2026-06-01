@@ -153,6 +153,10 @@ export const AnalysisInputSchema = z
     society_id: z.string().optional(),
     niche: z.string().optional(),
     creator_handle: z.string().optional(),
+
+    // Submission intent: 'score' (predict own content) or 'remix' (decode a viral video for adaptation).
+    // Distinct from input_mode which captures the input mechanism (D-12).
+    mode: z.enum(["score", "remix"]).default("score"),
   })
   .refine(
     (data) => {
@@ -162,6 +166,10 @@ export const AnalysisInputSchema = z
       return false;
     },
     { message: "Required field missing for selected input_mode" }
+  )
+  .refine(
+    (data) => !(data.mode === "remix" && data.input_mode === "text"),
+    { message: "Remix mode requires a video or link source, not text" }
   );
 
 export type AnalysisInput = z.infer<typeof AnalysisInputSchema>;
@@ -352,6 +360,10 @@ export interface PredictionResult {
   weighted_top_dropoff_t?: number | null;
   weighted_hook_score?: number | null;
   heatmap?: HeatmapPayload | null;
+  /** Phase 02 (D-12) — submission intent, carried from analysis_results.mode.
+   *  'score' | 'remix'. Optional to preserve compile against existing PredictionResult
+   *  constructors; the board reads mode from the analysis_results row via select('*'). */
+  mode?: "score" | "remix";
 }
 
 // =====================================================
