@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>NUMEN — identity concepts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#07080a; --panel:#0d0e10; --line:rgba(255,255,255,.06);
+    --fg:#ffffff; --muted:#848586; --coral:#FF7F50;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{
+    background:var(--bg); color:var(--fg);
+    font-family:'Inter',-apple-system,system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased; letter-spacing:.2px;
+    padding:64px 56px 96px;
+  }
+  .head{display:flex; align-items:baseline; gap:16px; margin-bottom:8px}
+  .head h1{font-weight:600; font-size:15px; letter-spacing:.18em; text-transform:uppercase}
+  .head span{color:var(--muted); font-size:12px; letter-spacing:.04em}
+  .sub{color:var(--muted); font-size:13px; max-width:640px; line-height:1.6; margin-bottom:48px}
+
+  .row{
+    display:grid; grid-template-columns:200px 1fr 1fr; align-items:center;
+    gap:32px; padding:40px 36px; border:1px solid var(--line);
+    border-radius:16px; background:var(--panel); margin-bottom:20px;
+  }
+  .cell{display:flex; flex-direction:column; gap:14px}
+  .tag{font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--muted)}
+  .mark-lg{width:96px; height:96px}
+  .mark-md{width:52px; height:52px; flex:0 0 auto}
+
+  /* wordmark */
+  .lockup{display:flex; align-items:center; gap:20px}
+  .word{display:flex; flex-direction:column; justify-content:center}
+  .numen{font-weight:500; font-size:34px; letter-spacing:.34em; line-height:1; text-transform:uppercase; padding-left:.34em}
+  .machines{font-weight:400; font-size:11px; letter-spacing:.62em; line-height:1; text-transform:uppercase; color:var(--muted); margin-top:9px; padding-left:.62em}
+  .concept-name{grid-column:1/-1; font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; display:flex; gap:10px; align-items:center}
+  .concept-name b{color:var(--fg); font-weight:600; letter-spacing:.16em}
+
+  /* scale + inversion strip */
+  .strip{display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:44px}
+  .scalecard{border:1px solid var(--line); border-radius:16px; padding:32px 36px; background:var(--panel)}
+  .scalecard.light{background:#fafafa}
+  .scalecard h3{font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--muted); margin-bottom:26px}
+  .scalecard.light h3{color:#999}
+  .favs{display:flex; align-items:flex-end; gap:34px}
+  .fav{display:flex; flex-direction:column; align-items:center; gap:12px}
+  .fav .lbl{font-size:10px; color:var(--muted); letter-spacing:.05em}
+  .scalecard.light .lbl{color:#aaa}
+  svg{display:block}
+</style>
+</head>
+<body>
+  <div class="head">
+    <h1>NUMEN</h1><span>identity concepts · monochrome · v1</span>
+  </div>
+  <p class="sub">Four geometric directions in the Palantir / Anduril / Anthropic register — restrained, monochrome, infrastructure-grade. Each shown as the bare mark, the <b style="color:#fff">NUMEN</b> wordmark, and the full <b style="color:#fff">NUMEN&nbsp;MACHINES</b> lockup. Scale + inversion tests at the bottom.</p>
+
+  <!-- ============ CONCEPT 1: N MONOGRAM ============ -->
+  <div class="concept-name"><b>01</b> · Geometric N monogram — angular, ownable as initial</div>
+  <div class="row">
+    <div class="cell"><span class="tag">Mark</span>
+      <svg class="mark-lg" viewBox="0 0 120 120" fill="none">
+        <rect x="30" y="28" width="16" height="64" rx="2" fill="#fff"/>
+        <rect x="74" y="28" width="16" height="64" rx="2" fill="#fff"/>
+        <path d="M30 28 H46 L90 92 H74 Z" fill="#fff"/>
+      </svg>
+    </div>
+    <div class="cell"><span class="tag">Wordmark</span>
+      <div class="lockup">
+        <svg class="mark-md" viewBox="0 0 120 120" fill="none">
+          <rect x="30" y="28" width="16" height="64" rx="2" fill="#fff"/>
+          <rect x="74" y="28" width="16" height="64" rx="2" fill="#fff"/>
+          <path d="M30 28 H46 L90 92 H74 Z" fill="#fff"/>
+        </svg>
+        <div class="word"><div class="numen">Numen</div></div>
+      </div>
+    </div>
+    <div class="cell"><span class="tag">Full lockup</span>
+      <div class="lockup">
+        <svg class="mark-md" viewBox="0 0 120 120" fill="none">
+          <rect x="30" y="28" width="16" height="64" rx="2" fill="#fff"/>
+          <rect x="74" y="28" width="16" height="64" rx="2" fill="#fff"/>
+          <path d="M30 28 H46 L90 92 H74 Z" fill="#fff"/>
+        </svg>
+        <div class="word"><div class="numen">Numen</div><div class="machines">Machines</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ CONCEPT 2: APERTURE ============ -->
+  <div class="concept-name"><b>02</b> · Aperture / oracle eye — perception, the divine "nod"</div>
+  <div class="row">
+    <div class="cell"><span class="tag">Mark</span>
+      <svg class="mark-lg" viewBox="0 0 120 120" fill="none">
+        <circle cx="60" cy="60" r="39" stroke="#fff" stroke-width="7" fill="none"/>
+        <path d="M60 36 Q76 60 60 84 Q44 60 60 36 Z" fill="#fff"/>
+      </svg>
+    </div>
+    <div class="cell"><span class="tag">Wordmark</span>
+      <div class="lockup">
+        <svg class="mark-md" viewBox="0 0 120 120" fill="none">
+          <circle cx="60" cy="60" r="39" stroke="#fff" stroke-width="7" fill="none"/>
+          <path d="M60 36 Q76 60 60 84 Q44 60 60 36 Z" fill="#fff"/>
+        </svg>
+        <div class="word"><div class="numen">Numen</div></div>
+      </div>
+    </div>
+    <div class="cell"><span class="tag">Full lockup</span>
+      <div class="lockup">
+        <svg class="mark-md" viewBox="0 0 120 120" fill="none">
+          <circle cx="60" cy="60" r="39" stroke="#fff" stroke-width="7" fill="none"/>
+          <path d="M60 36 Q76 60 60 84 Q44 60 60 36 Z" fill="#fff"/>
+        </svg>
+        <div class="word"><div class="numen">Numen</div><div class="machines">Machines</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ CONCEPT 3: BEAM ============ -->
+  <div class="concept-name"><b>03</b> · Ascending beam — future, ascension, signal</div>
+  <div class="row">
+    <div class="cell"><span class="tag">Mark</span>
+      <svg class="mark-lg" viewBox="0 0 120 120" fill="none">
+        <path d="M32 56 L60 26 L88 56" stroke="#fff" stroke-width="9" fill="none" stroke-linejoin="miter" stroke-linecap="square"/>
+        <rect x="55.5" y="30" width="9" height="66" fill="#fff"/>
+      </svg>
+    </div>
+    <div class="cell"><span class="tag">Wordmark</span>
+      <div class="lockup">
+        <svg class="mark-md" viewBox="0 0 120 120" fill="none">
+          <path d="M32 56 L60 26 L88 56" stroke="#fff" stroke-width="9" fill="none" stroke-linejoin="miter" stroke-linecap="square"/>
+          <rect x="55.5" y="30" width="9" height="66" fill="#fff"/>
+        </svg>
+        <div class="word"><div class="numen">Numen</div></div>
+      </div>
+    </div>
+    <div class="cell"><span class="tag">Full lockup</span>
+      <div class="lockup">
+        <svg class="mark-md" viewBox="0 0 120 120" fill="none">
+          <path d="M32 56 L60 26 L88 56" stroke="#fff" stroke-width="9" fill="none" stroke-linejoin="miter" stroke-linecap="square"/>
+          <rect x="55.5" y="30" width="9" height="66" fill="#fff"/>
+        </svg>
+        <div class="word"><div class="numen">Numen</div><div class="machines">Machines</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ CONCEPT 4: CONSTELLATION ============ -->
+  <div class="concept-name"><b>04</b> · Node constellation — networked intelligence, the engine graph</div>
+  <div class="row">
+    <div class="cell"><span class="tag">Mark</span>
+      <svg class="mark-lg" viewBox="0 0 120 120" fill="none">
+        <path d="M28 92 V28 L92 92 V28" stroke="#fff" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+        <circle cx="28" cy="92" r="7" fill="#fff"/><circle cx="28" cy="28" r="7" fill="#fff"/>
+        <circle cx="92" cy="92" r="7" fill="#fff"/><circle cx="92" cy="28" r="7" fill="#fff"/>
+      </svg>
+    </div>
+    <div class="cell"><span class="tag">Wordmark</span>
+      <div class="lockup">
+        <svg class="mark-md" viewBox="0 0 120 120" fill="none">
+          <path d="M28 92 V28 L92 92 V28" stroke="#fff" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+          <circle cx="28" cy="92" r="7" fill="#fff"/><circle cx="28" cy="28" r="7" fill="#fff"/>
+          <circle cx="92" cy="92" r="7" fill="#fff"/><circle cx="92" cy="28" r="7" fill="#fff"/>
+        </svg>
+        <div class="word"><div class="numen">Numen</div></div>
+      </div>
+    </div>
+    <div class="cell"><span class="tag">Full lockup</span>
+      <div class="lockup">
+        <svg class="mark-md" viewBox="0 0 120 120" fill="none">
+          <path d="M28 92 V28 L92 92 V28" stroke="#fff" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+          <circle cx="28" cy="92" r="7" fill="#fff"/><circle cx="28" cy="28" r="7" fill="#fff"/>
+          <circle cx="92" cy="92" r="7" fill="#fff"/><circle cx="92" cy="28" r="7" fill="#fff"/>
+        </svg>
+        <div class="word"><div class="numen">Numen</div><div class="machines">Machines</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SCALE + INVERSION ============ -->
+  <div class="strip">
+    <div class="scalecard">
+      <h3>Favicon scale · on #07080a (16 / 24 / 32 px)</h3>
+      <div class="favs">
+        <div class="fav">
+          <svg width="32" height="32" viewBox="0 0 120 120" fill="none"><rect x="30" y="28" width="16" height="64" rx="2" fill="#fff"/><rect x="74" y="28" width="16" height="64" rx="2" fill="#fff"/><path d="M30 28 H46 L90 92 H74 Z" fill="#fff"/></svg>
+          <span class="lbl">N</span>
+        </div>
+        <div class="fav">
+          <svg width="32" height="32" viewBox="0 0 120 120" fill="none"><circle cx="60" cy="60" r="39" stroke="#fff" stroke-width="7" fill="none"/><path d="M60 36 Q76 60 60 84 Q44 60 60 36 Z" fill="#fff"/></svg>
+          <span class="lbl">Aperture</span>
+        </div>
+        <div class="fav">
+          <svg width="32" height="32" viewBox="0 0 120 120" fill="none"><path d="M32 56 L60 26 L88 56" stroke="#fff" stroke-width="9" fill="none" stroke-linejoin="miter" stroke-linecap="square"/><rect x="55.5" y="30" width="9" height="66" fill="#fff"/></svg>
+          <span class="lbl">Beam</span>
+        </div>
+        <div class="fav">
+          <svg width="32" height="32" viewBox="0 0 120 120" fill="none"><path d="M28 92 V28 L92 92 V28" stroke="#fff" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round"/><circle cx="28" cy="92" r="7" fill="#fff"/><circle cx="28" cy="28" r="7" fill="#fff"/><circle cx="92" cy="92" r="7" fill="#fff"/><circle cx="92" cy="28" r="7" fill="#fff"/></svg>
+          <span class="lbl">Nodes</span>
+        </div>
+      </div>
+      <div class="favs" style="margin-top:30px">
+        <div class="fav"><svg width="16" height="16" viewBox="0 0 120 120" fill="none"><rect x="30" y="28" width="16" height="64" rx="2" fill="#fff"/><rect x="74" y="28" width="16" height="64" rx="2" fill="#fff"/><path d="M30 28 H46 L90 92 H74 Z" fill="#fff"/></svg><span class="lbl">16</span></div>
+        <div class="fav"><svg width="16" height="16" viewBox="0 0 120 120" fill="none"><circle cx="60" cy="60" r="39" stroke="#fff" stroke-width="7" fill="none"/><path d="M60 36 Q76 60 60 84 Q44 60 60 36 Z" fill="#fff"/></svg><span class="lbl">16</span></div>
+        <div class="fav"><svg width="16" height="16" viewBox="0 0 120 120" fill="none"><path d="M32 56 L60 26 L88 56" stroke="#fff" stroke-width="9" fill="none" stroke-linejoin="miter" stroke-linecap="square"/><rect x="55.5" y="30" width="9" height="66" fill="#fff"/></svg><span class="lbl">16</span></div>
+        <div class="fav"><svg width="16" height="16" viewBox="0 0 120 120" fill="none"><path d="M28 92 V28 L92 92 V28" stroke="#fff" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round"/><circle cx="28" cy="92" r="7" fill="#fff"/><circle cx="28" cy="28" r="7" fill="#fff"/><circle cx="92" cy="92" r="7" fill="#fff"/><circle cx="92" cy="28" r="7" fill="#fff"/></svg><span class="lbl">16</span></div>
+      </div>
+    </div>
+
+    <div class="scalecard light">
+      <h3>Inversion · black on light</h3>
+      <div class="favs">
+        <div class="fav">
+          <svg width="48" height="48" viewBox="0 0 120 120" fill="none"><rect x="30" y="28" width="16" height="64" rx="2" fill="#07080a"/><rect x="74" y="28" width="16" height="64" rx="2" fill="#07080a"/><path d="M30 28 H46 L90 92 H74 Z" fill="#07080a"/></svg>
+          <span class="lbl">N</span>
+        </div>
+        <div class="fav">
+          <svg width="48" height="48" viewBox="0 0 120 120" fill="none"><circle cx="60" cy="60" r="39" stroke="#07080a" stroke-width="7" fill="none"/><path d="M60 36 Q76 60 60 84 Q44 60 60 36 Z" fill="#07080a"/></svg>
+          <span class="lbl">Aperture</span>
+        </div>
+        <div class="fav">
+          <svg width="48" height="48" viewBox="0 0 120 120" fill="none"><path d="M32 56 L60 26 L88 56" stroke="#07080a" stroke-width="9" fill="none" stroke-linejoin="miter" stroke-linecap="square"/><rect x="55.5" y="30" width="9" height="66" fill="#07080a"/></svg>
+          <span class="lbl">Beam</span>
+        </div>
+        <div class="fav">
+          <svg width="48" height="48" viewBox="0 0 120 120" fill="none"><path d="M28 92 V28 L92 92 V28" stroke="#07080a" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round"/><circle cx="28" cy="92" r="7" fill="#07080a"/><circle cx="28" cy="28" r="7" fill="#07080a"/><circle cx="92" cy="92" r="7" fill="#07080a"/><circle cx="92" cy="28" r="7" fill="#07080a"/></svg>
+          <span class="lbl">Nodes</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
