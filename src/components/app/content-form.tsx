@@ -111,6 +111,8 @@ const SOCIAL_URL_PATTERN =
 
 export interface ContentFormData {
   input_mode: "text" | "tiktok_url" | "video_upload";
+  /** User intent: 'score' (grade my content) vs 'remix' (decode a viral video). D-12. */
+  mode: "score" | "remix";
   caption: string;
   niche: string;
   hashtags: string;
@@ -141,6 +143,9 @@ const PLACEHOLDERS: Record<InputMode, string> = {
   video_upload: "Add a caption for your video...",
 };
 
+/** URL placeholder override in Remix mode (UI-SPEC §Copywriting). */
+const REMIX_TIKTOK_PLACEHOLDER = "Paste a TikTok URL to decode...";
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -155,6 +160,9 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
   const [activeTab, setActiveTab] = useState<InputMode>(
     isOnResultRoute ? "text" : "video_upload",
   );
+  // Intent selector state: 'score' | 'remix'. Default 'score' (D-02).
+  // Named `intent` to avoid collision with the InputMode param name in handleTabChange.
+  const [intent, setIntent] = useState<"score" | "remix">("score");
   const apolloTier = useSimulationStore((s) => s.apolloTier);
   const setApolloTier = useSimulationStore((s) => s.setApolloTier);
   const {
@@ -166,6 +174,7 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
   const [tierOpen, setTierOpen] = useState(false);
   const [formData, setFormData] = useState<ContentFormData>({
     input_mode: isOnResultRoute ? "text" : "video_upload",
+    mode: "score",
     caption: "",
     niche: "",
     hashtags: "",
@@ -222,6 +231,33 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
     setFormData((prev) => ({ ...prev, input_mode: mode }));
     setErrors({});
   }, []);
+
+  /**
+   * Handle intent selector change (Score ↔ Remix).
+   * D-04: when flipping to Remix, if activeTab is 'text', reset to 'video_upload'.
+   * D-05: caption textarea is suppressed when intent === 'remix'.
+   * Pitfall 8: coupling reset must mirror handleTabChange body (set both activeTab + formData.input_mode).
+   */
+  const handleIntentChange = useCallback((newIntent: "score" | "remix") => {
+    setIntent(newIntent);
+    setFormData((prev) => ({ ...prev, mode: newIntent }));
+    if (newIntent === "remix" && activeTab === "text") {
+      setActiveTab("video_upload");
+      setFormData((prev) => ({ ...prev, input_mode: "video_upload" }));
+    }
+    setErrors({});
+  }, [activeTab]);
+
+  // Tabs visible in the current intent mode (D-04: Remix hides Text tab)
+  const visibleTabs = intent === "remix"
+    ? MODE_CONFIG.filter((m) => m.value !== "text")
+    : MODE_CONFIG;
+
+  // Effective URL placeholder: override in Remix mode (UI-SPEC §Copywriting)
+  const effectivePlaceholder = (tab: InputMode): string => {
+    if (intent === "remix" && tab === "tiktok_url") return REMIX_TIKTOK_PLACEHOLDER;
+    return PLACEHOLDERS[tab];
+  };
 
   // Current text value based on active mode
   const currentValue =
@@ -305,6 +341,37 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
           "rgba(255,255,255,0.12) 0px 1px 0px 0px inset, 0 1px 2px rgba(0,0,0,0.4), 0 12px 40px -8px rgba(0,0,0,0.5)",
       }}
     >
+      {/* Intent selector: Score / Remix segmented control (D-01/D-02, UI-SPEC §1) */}
+      <div className="px-2.5 pt-2.5 pb-2">
+        <div
+          role="tablist"
+          aria-label="Analysis intent"
+          className="flex w-full items-center rounded-md border border-white/[0.06] bg-white/[0.03] p-0.5"
+          style={{ height: 36 }}
+        >
+          {(["score", "remix"] as const).map((seg) => {
+            const isSelected = intent === seg;
+            return (
+              <button
+                key={seg}
+                type="button"
+                role="tab"
+                aria-selected={isSelected}
+                onClick={() => handleIntentChange(seg)}
+                className={cn(
+                  "flex flex-1 items-center justify-center rounded-md px-4 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                  isSelected
+                    ? "bg-white/[0.08] font-medium text-foreground"
+                    : "text-foreground-muted hover:bg-white/[0.04] hover:text-foreground",
+                )}
+              >
+                {seg === "score" ? "Score my content" : "Remix a viral video"}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Video upload mode */}
       {activeTab === "video_upload" ? (
         <>
@@ -340,7 +407,8 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
               />
             </div>
           )}
-          {formData.video_file && (
+          {/* D-05: suppress caption textarea in Remix mode */}
+          {formData.video_file && intent !== "remix" && (
             <textarea
               value={formData.video_caption}
               onChange={(e) => updateField("video_caption", e.target.value)}
@@ -362,7 +430,7 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
         <textarea
           value={currentValue}
           onChange={(e) => updateField(currentField, e.target.value)}
-          placeholder={PLACEHOLDERS[activeTab]}
+          placeholder={effectivePlaceholder(activeTab)}
           rows={2}
           className={cn(
             "w-full resize-none bg-transparent px-3 pt-2.5 pb-1",
@@ -387,7 +455,7 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
         {/* Mode switcher */}
         <TooltipProvider delayDuration={400}>
           <div className="flex items-center gap-0.5">
-            {MODE_CONFIG.map(({ value, icon: ModeIcon, label }) => {
+            {visibleTabs.map(({ value, icon: ModeIcon, label }) => {
               const isActive = activeTab === value;
               return (
                 <Tooltip key={value}>
