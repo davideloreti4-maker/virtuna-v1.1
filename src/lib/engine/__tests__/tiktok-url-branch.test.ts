@@ -224,6 +224,20 @@ process.env.DASHSCOPE_API_KEY = "test-key";
 process.env.APIFY_TOKEN = "test-apify-token";
 
 // =====================================================
+// Global fetch mock — pipeline calls fetch() to download the mp4.
+// Must be set BEFORE the import of runPredictionPipeline.
+// =====================================================
+
+const mockFetchResponse = {
+  ok: true,
+  status: 200,
+  arrayBuffer: async () => new ArrayBuffer(1024), // ~1KB stub; real is ~7MB
+};
+
+const mockFetch = vi.fn().mockResolvedValue(mockFetchResponse);
+global.fetch = mockFetch as unknown as typeof fetch;
+
+// =====================================================
 // Imports (after mocks)
 // =====================================================
 
@@ -336,6 +350,8 @@ describe("Plan 03 — tiktok_url Omni branch (RED gate)", () => {
       data: { signedUrl: "https://supabase.test/signed/remix-temp.mp4" },
       error: null,
     });
+    // Reset fetch mock to OK for every test
+    mockFetch.mockResolvedValue(mockFetchResponse);
 
     // Route all OpenAI-compat calls through a dispatcher:
     // Omni calls have "expert TikTok content analyst" in system prompt.
