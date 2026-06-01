@@ -67,14 +67,15 @@ function relativeTime(iso: string | undefined): string {
 }
 
 // ─── score tone ───────────────────────────────────────────────────
-// Reserve color for outliers only — strong scores pop green, weak pop
-// orange, the calm middle stays muted. Keeps the recent list quiet
-// (coral is reserved for the brand/primary action) while preserving
-// at-a-glance signal: the eye catches the exceptions, not the column.
+// Reserve color for outliers only — strong scores read soft green, weak
+// read soft amber, the calm middle stays muted. Tones are dimmed to 70%
+// so they whisper rather than shout — refined hints, not a traffic-light
+// column. Coral stays reserved for the brand/primary action; the eye
+// still catches the exceptions at a glance.
 function scoreTone(score: number | null | undefined): string {
   if (score == null) return 'text-foreground-muted';
-  if (score >= 80) return 'text-emerald-400/90';
-  if (score < 50) return 'text-orange-400/90';
+  if (score >= 80) return 'text-emerald-400/70';
+  if (score < 50) return 'text-amber-400/70';
   return 'text-foreground-secondary';
 }
 
