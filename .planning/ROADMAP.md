@@ -56,7 +56,7 @@ The only IP-introducing risk in the milestone is born here: the instant Phase 1 
 ## Phases
 
 - [x] **Phase 1: Ingestion BUILD (HARD GATE)** — A non-owned TikTok URL yields real frame/segment/transcript signal through `analyzeVideoWithOmni`; source media derived-and-dropped, never persisted
-- [ ] **Phase 2: Remix Mode + One-Board-Two-Config** — Explicit "Score / Remix" toggle routes the remix path; board swaps Verdict+Actions → Decode+Adapt (empty shells) on desktop canvas + mobile card-stack; grade board unchanged
+- [x] **Phase 2: Remix Mode + One-Board-Two-Config** — Explicit "Score / Remix" toggle routes the remix path; board swaps Verdict+Actions → Decode+Adapt (empty shells) on desktop canvas + mobile card-stack; grade board unchanged (completed 2026-06-01)
 - [ ] **Phase 3: Decode Frame** — Lightweight Qwen decode path renders a structural teardown + an explicit repeatable-vs-luck split; never "fix this" framing
 - [ ] **Phase 4: Adapt Frame + Niche** — Exactly 3 format-adapted (not content-copied) concepts grounded in the creator-profile niche, with inline fallback prompt when niche is empty
 - [ ] **Phase 5: Develop & Predict + Lineage** — Per-concept "Develop & predict →" scores one concept via the existing pipeline; child stores `parent_id`, shows a working "remixed from" chip, appears in Recent; grade-mode regression confirmed
@@ -92,7 +92,7 @@ The only IP-introducing risk in the milestone is born here: the instant Phase 1 
 **Plans**: 3 plans
 - [x] 02-01-PLAN.md — Data spine: mode migration + [BLOCKING] DB push + Zod schema/refine + score-path-safe content-hash fold + dual INSERT persistence [autonomous: false — blocking DB push]
 - [x] 02-02-PLAN.md — Board mode-awareness: GroupId + mode-aware resolveBoardLayout (1:1 verdict→decode/actions→adapt swap) + camera fallback + DOM Decode/Adapt shells + desktop overlay & mobile dispatch
-- [ ] 02-03-PLAN.md — Intent selector + remix coupling + mode threading (form→stream→API) + boardMode live/permalink derivation
+- [x] 02-03-PLAN.md — Intent selector + remix coupling + mode threading (form→stream→API) + boardMode live/permalink derivation
 **UI hint**: yes
 
 ### Phase 3: Decode Frame
@@ -143,7 +143,7 @@ Phase 1 (hard gate) → Phase 2 (plumbing) → Phases 3 + 4 (parallelizable, Pha
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Ingestion BUILD (HARD GATE) | 3/3 | Complete | 2026-06-01 |
-| 2. Remix Mode + One-Board-Two-Config | 2/3 | In Progress|  |
+| 2. Remix Mode + One-Board-Two-Config | 3/3 | Complete   | 2026-06-01 |
 | 3. Decode Frame | 0/TBD | Not started | - |
 | 4. Adapt Frame + Niche | 0/TBD | Not started | - |
 | 5. Develop & Predict + Lineage | 0/TBD | Not started | - |
