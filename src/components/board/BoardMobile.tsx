@@ -9,6 +9,8 @@ import { VerdictNode } from './verdict/VerdictNode';
 import { ActionsNode } from './actions/ActionsNode';
 import { ContentAnalysisFrame } from './content-analysis/ContentAnalysisFrame';
 import { InputResultCard } from './InputResultCard';
+import { DecodeShellNode } from './decode/DecodeShellNode';
+import { AdaptShellNode } from './adapt/AdaptShellNode';
 import { getFrameAntiViralityState } from './cross-group-state';
 import type { Camera, GroupId, GroupFrameLayout } from './board-types';
 import type { BoardMachineState } from '@/stores/board-store';
@@ -18,10 +20,12 @@ import type { BehavioralPredictions, ConfidenceLevel } from '@/lib/engine/types'
 const CARD_CAMERA: Camera = { x: 0, y: 0, scale: 1 };
 
 /**
- * Mobile reading order — a top-down narrative instead of the spatial canvas:
- * the video → the call → why → what to do → the breakdown → how it was computed.
+ * Mobile reading orders (D-09 one-board-two-config):
+ * Score: the video → the call → why → what to do → the breakdown → how it was computed.
+ * Remix: same structure but Decode (why it worked) + Adapt (niche concepts) replace
+ * Score (verdict) + Actions.
  */
-const MOBILE_ORDER: GroupId[] = [
+const MOBILE_ORDER_SCORE: GroupId[] = [
   'input',
   'verdict',
   'audience',
@@ -29,6 +33,24 @@ const MOBILE_ORDER: GroupId[] = [
   'content-analysis',
   'engine',
 ];
+
+const MOBILE_ORDER_REMIX: GroupId[] = [
+  'input',
+  'decode',
+  'audience',
+  'adapt',
+  'content-analysis',
+  'engine',
+];
+
+/**
+ * Fallback labels for GroupIds not in GROUP_FRAMES (decode/adapt are remix-only
+ * and are not in the score-mode GROUP_FRAMES constant — LAYOUT_BY_ID guard).
+ */
+const MOBILE_LABELS: Partial<Record<GroupId, string>> = {
+  decode: 'Decode',
+  adapt: 'Adapt',
+};
 
 export interface BoardMobileInput {
   behavioral: BehavioralPredictions | null;
@@ -43,6 +65,12 @@ interface Props {
   input: BoardMobileInput;
   /** False when there's no analysis to show (bare /analyze, no permalink id). */
   hasAnalysis: boolean;
+  /**
+   * Intent mode — selects which card order to use (D-08/D-09).
+   * Defaults to 'score' so existing callers are byte-identical.
+   * Plan 03 threads the live value from stream/permalink.
+   */
+  boardMode?: 'score' | 'remix';
 }
 
 const LAYOUT_BY_ID = new Map<GroupId, GroupFrameLayout>(
@@ -55,7 +83,7 @@ const LAYOUT_BY_ID = new Map<GroupId, GroupFrameLayout>(
  * the analysis stream / permalink hooks, so the card stack needs no data wiring
  * beyond the input video card and the cross-group anti-virality accent.
  */
-export function BoardMobile({ boardMachineState, input, hasAnalysis }: Props) {
+export function BoardMobile({ boardMachineState, input, hasAnalysis, boardMode = 'score' }: Props) {
   // No analysis context (bare /analyze on a phone): running one is desktop-first
   // for now, so show a single intentional hint instead of a stack of empty cards.
   if (!hasAnalysis) {
@@ -79,7 +107,9 @@ export function BoardMobile({ boardMachineState, input, hasAnalysis }: Props) {
   }
 
   const renderBody = (id: GroupId) => {
-    const layout = LAYOUT_BY_ID.get(id)!;
+    // LAYOUT_BY_ID only contains score-mode GROUP_FRAMES ids (verdict/actions).
+    // decode/adapt are remix-only — guard the lookup to avoid undefined crashes.
+    const layout = LAYOUT_BY_ID.get(id);
     switch (id) {
       case 'input':
         return (
@@ -94,17 +124,23 @@ export function BoardMobile({ boardMachineState, input, hasAnalysis }: Props) {
       case 'engine':
         return <EngineGroup />;
       case 'audience':
-        return <AudienceNode camera={CARD_CAMERA} layout={layout} />;
+        return <AudienceNode camera={CARD_CAMERA} layout={layout!} />;
       case 'verdict':
-        return <VerdictNode camera={CARD_CAMERA} layout={layout} />;
+        return <VerdictNode camera={CARD_CAMERA} layout={layout!} />;
       case 'actions':
-        return <ActionsNode camera={CARD_CAMERA} layout={layout} />;
+        return <ActionsNode camera={CARD_CAMERA} layout={layout!} />;
       case 'content-analysis':
-        return <ContentAnalysisFrame camera={CARD_CAMERA} layout={layout} />;
+        return <ContentAnalysisFrame camera={CARD_CAMERA} layout={layout!} />;
+      case 'decode':
+        return <DecodeShellNode />;
+      case 'adapt':
+        return <AdaptShellNode />;
       default:
         return null;
     }
   };
+
+  const mobileOrder = boardMode === 'remix' ? MOBILE_ORDER_REMIX : MOBILE_ORDER_SCORE;
 
   return (
     <div
@@ -118,10 +154,10 @@ export function BoardMobile({ boardMachineState, input, hasAnalysis }: Props) {
           titles scroll *behind* it instead of colliding with the hamburger. */}
       <div className="sticky top-0 z-10 h-14 bg-background" aria-hidden="true" />
       <div className="mx-auto flex w-full max-w-[640px] flex-col gap-3 px-3 pb-28">
-        {MOBILE_ORDER.map((id) => (
+        {mobileOrder.map((id) => (
           <MobileFrameCard
             key={id}
-            label={LAYOUT_BY_ID.get(id)!.label}
+            label={LAYOUT_BY_ID.get(id)?.label ?? MOBILE_LABELS[id] ?? id}
             accent={getFrameAntiViralityState(id, boardMachineState) === 'anti-virality'}
           >
             {renderBody(id)}

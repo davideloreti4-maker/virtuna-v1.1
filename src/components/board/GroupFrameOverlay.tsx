@@ -29,6 +29,9 @@ const EMPTY_STATE_COPY: Record<string, { title: string; sub: string }> = {
   },
   input: { title: '', sub: '' },
   engine: { title: '', sub: '' },
+  // Remix shells: empty title so the empty-state block skips (the shell owns the descriptor).
+  decode: { title: '', sub: '' },
+  adapt: { title: '', sub: '' },
 };
 
 function hasRealChildren(children: ReactNode): boolean {
@@ -46,6 +49,9 @@ const ARIA_LABEL: Record<string, string> = {
   'content-analysis': 'Content analysis',
   input: 'Input',
   engine: 'Engine pipeline',
+  // Remix shells (UI-SPEC §Accessibility)
+  decode: 'Decode frame — structural breakdown',
+  adapt: 'Adapt frame — niche concepts',
 };
 
 interface Props {

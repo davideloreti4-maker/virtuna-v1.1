@@ -38,6 +38,8 @@ import { VerdictNode } from './verdict/VerdictNode';
 import { ActionsNode } from './actions/ActionsNode';
 import { ContentAnalysisFrame } from './content-analysis/ContentAnalysisFrame';
 import { InputResultCard } from './InputResultCard';
+import { DecodeShellNode } from './decode/DecodeShellNode';
+import { AdaptShellNode } from './adapt/AdaptShellNode';
 import { nanoid } from 'nanoid';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -95,7 +97,14 @@ export function Board() {
   // reports it here; the layout reflows so frames grow to fit (no in-frame
   // scroll) and neighbours shift down. Empty = constants until first measure.
   const [measuredH, setMeasuredH] = useState<Partial<Record<GroupId, number>>>({});
-  const resolvedFrames = useMemo(() => resolveBoardLayout(measuredH), [measuredH]);
+
+  // Intent mode — selects score (verdict+actions) or remix (decode+adapt) frame set (D-08).
+  // NAMING: `boardMode` for intent to avoid collision with the responsive view `mode`
+  // ('cards'|'desktop') from useViewMode above. Plan 03 threads the live value from
+  // stream.result.mode or the permalink row; for now defaults to 'score'.
+  const boardMode: 'score' | 'remix' = 'score';
+
+  const resolvedFrames = useMemo(() => resolveBoardLayout(measuredH, boardMode), [measuredH, boardMode]);
   const presetTargets = useMemo(() => computePresetTargets(resolvedFrames), [resolvedFrames]);
   const handleMeasureFrame = useCallback((id: GroupId, worldH: number) => {
     setMeasuredH((prev) => (prev[id] === worldH ? prev : { ...prev, [id]: worldH }));
@@ -422,6 +431,7 @@ export function Board() {
           // A permalink route or any non-idle state means there's something to show;
           // bare /analyze with no analysis falls through to the desktop-only hint.
           hasAnalysis={!!urlAnalysisId || boardMachineState !== 'idle' || !!stream.result}
+          boardMode={boardMode}
         />
       ) : (
       <>
@@ -461,8 +471,8 @@ export function Board() {
             layout={layout}
             camera={camera}
             visual={deriveFrameVisual(boardMachineState, layout.id)}
-            expanded={expanded[layout.id]}
-            onToggleExpanded={() => setExpanded((s) => ({ ...s, [layout.id]: !s[layout.id] }))}
+            expanded={expanded[layout.id] ?? true}
+            onToggleExpanded={() => setExpanded((s) => ({ ...s, [layout.id]: !(s[layout.id] ?? true) }))}
             reducedMotion={effectiveReducedMotion}
             autoHeight={AUTO_HEIGHT_FRAMES.has(layout.id)}
             onMeasure={(worldH) => handleMeasureFrame(layout.id, worldH)}
@@ -481,6 +491,8 @@ export function Board() {
             {layout.id === 'verdict' && <VerdictNode camera={camera} layout={layout} />}
             {layout.id === 'actions' && <ActionsNode camera={camera} layout={layout} />}
             {layout.id === 'content-analysis' && <ContentAnalysisFrame camera={camera} layout={layout} />}
+            {layout.id === 'decode' && <DecodeShellNode />}
+            {layout.id === 'adapt' && <AdaptShellNode />}
           </GroupFrameOverlay>
         ))}
       </div>
