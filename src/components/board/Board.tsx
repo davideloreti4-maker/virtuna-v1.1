@@ -98,14 +98,12 @@ export function Board() {
   // scroll) and neighbours shift down. Empty = constants until first measure.
   const [measuredH, setMeasuredH] = useState<Partial<Record<GroupId, number>>>({});
 
-  // Intent mode — selects score (verdict+actions) or remix (decode+adapt) frame set (D-08).
-  // NAMING: `boardMode` for intent to avoid collision with the responsive view `mode`
-  // ('cards'|'desktop') from useViewMode above. Plan 03 threads the live value from
-  // stream.result.mode or the permalink row; for now defaults to 'score'.
-  const boardMode: 'score' | 'remix' = 'score';
+  // submittedIntent — set in handleContentSubmit before stream.start() so the live
+  // board reflects the user's intent immediately (A4 risk: engine complete event
+  // does not populate PredictionResult.mode, so this is the live source of truth).
+  // boardMode derivation (D-08 / REMIX-02) is below, after stream + permalinkQuery are declared.
+  const [submittedIntent, setSubmittedIntent] = useState<'score' | 'remix'>('score');
 
-  const resolvedFrames = useMemo(() => resolveBoardLayout(measuredH, boardMode), [measuredH, boardMode]);
-  const presetTargets = useMemo(() => computePresetTargets(resolvedFrames), [resolvedFrames]);
   const handleMeasureFrame = useCallback((id: GroupId, worldH: number) => {
     setMeasuredH((prev) => (prev[id] === worldH ? prev : { ...prev, [id]: worldH }));
   }, []);
@@ -154,6 +152,24 @@ export function Board() {
   const stream = useAnalysisStream({
     initialData: permalinkQuery.data ?? null,
   });
+
+  // ── boardMode derivation (D-08 / REMIX-02 crit 5, Plan 02-03) ───────────────
+  // NAMING: `boardMode` for intent (score/remix) — avoids collision with the
+  // responsive view `mode` ('cards'|'desktop') from useViewMode at line 86.
+  //
+  // Priority:
+  //   1. stream.result?.mode  — future-proof: if engine ever echoes mode in complete payload
+  //   2. permalinkQuery.data?.mode — source of truth for /analyze/[id] direct nav (D-15)
+  //   3. submittedIntent — live path: set in handleContentSubmit before stream.start()
+  //      (A4 risk: finalResult from engine does not carry mode; this state is set at submit)
+  const boardMode: 'score' | 'remix' =
+    (stream.result as { mode?: 'score' | 'remix' } | null)?.mode ??
+    (permalinkQuery.data as { mode?: 'score' | 'remix' } | null)?.mode ??
+    submittedIntent;
+
+  const resolvedFrames = useMemo(() => resolveBoardLayout(measuredH, boardMode), [measuredH, boardMode]);
+  const presetTargets = useMemo(() => computePresetTargets(resolvedFrames), [resolvedFrames]);
+
   const startStreaming = useBoardStore((s) => s.startStreaming);
   const finishStreaming = useBoardStore((s) => s.finishStreaming);
   const triggerAntiVirality = useBoardStore((s) => s.triggerAntiVirality);
@@ -289,6 +305,9 @@ export function Board() {
   }, [stream.analysisId, router]);
 
   const handleContentSubmit = async (data: ContentFormData) => {
+    // Hold the submitted intent in state for the live board (A4 risk: engine complete
+    // event does not echo mode; submittedIntent is the live source of truth).
+    setSubmittedIntent(data.mode ?? 'score');
     let videoStoragePath: string | null = null;
     if (data.input_mode === 'video_upload' && data.video_file) {
       const supabase = createClient();
