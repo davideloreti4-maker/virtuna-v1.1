@@ -439,7 +439,7 @@ export default function BoardPreviewPage() {
             status={{ word: 'One quick pass', tone: 'warn' }}
             insight="Text overlay is your weakest modality — tighten it and you clear the bar."
           />
-          <div className="mt-4 rounded-[11px] border border-white/[0.06] bg-white/[0.016] p-3">
+          <div className="mt-4 rounded-[12px] border border-white/[0.06] bg-white/[0.016] p-3">
             <div className="text-[10px] uppercase tracking-[0.08em] text-white/45">Best time to post</div>
             <div className="mt-1 text-[15px] font-semibold text-white">Tue 6:00–9:00 PM</div>
             <div className="mt-0.5 text-[11px] text-white/45">Your niche peaks here (n=42)</div>
