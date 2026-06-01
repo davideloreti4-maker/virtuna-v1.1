@@ -17,6 +17,7 @@ import {
   personasFinishing,
   smoothPath,
   statusWord,
+  toRetentionCurve,
   totalDuration,
   worstBadGroupKey,
 } from '../audience-derive';
@@ -59,6 +60,40 @@ describe('normalizeCurve', () => {
   });
   it('clamps out-of-range values', () => {
     expect(normalizeCurve([0.5, -0.2])).toEqual([0.5, 0]);
+  });
+});
+
+describe('toRetentionCurve', () => {
+  it('anchors the hook to 100% even when attention opens below 1', () => {
+    // hook attention 0.5 → retention opens at 1.0, decays relative to the hook
+    expect(toRetentionCurve([0.5, 0.4, 0.25])).toEqual([1, 0.8, 0.5]);
+  });
+  it('models the "30% leave → drops 30%" mental model', () => {
+    // attention falls to 70% of the hook → 70% retention
+    const r = toRetentionCurve([1, 0.7, 0.5]);
+    expect(r[0]).toBe(1);
+    expect(r[1]).toBeCloseTo(0.7, 5);
+    expect(r[2]).toBeCloseTo(0.5, 5);
+  });
+  it('is monotonic non-increasing — viewers who left do not return', () => {
+    // attention recovers (0.4 → 0.9) but retention holds flat at the floor
+    const r = toRetentionCurve([1, 0.4, 0.9, 0.95]);
+    expect(r).toEqual([1, 0.4, 0.4, 0.4]);
+    for (let i = 1; i < r.length; i++) expect(r[i]).toBeLessThanOrEqual(r[i - 1]!);
+  });
+  it('clamps attention rising above the hook to a flat 100%', () => {
+    expect(toRetentionCurve([0.5, 0.8, 0.6, 0.3])).toEqual([1, 1, 1, 0.6]);
+  });
+  it('is identity on a curve that is already a proper survival curve', () => {
+    const survival = [1, 0.95, 0.9, 0.55, 0.55, 0.25, 0.2];
+    expect(toRetentionCurve(survival)).toEqual(survival);
+  });
+  it('handles a degenerate zero-attention hook by anchoring to the peak', () => {
+    expect(toRetentionCurve([0, 0.8, 0.4])).toEqual([0, 0, 0]);
+  });
+  it('handles empty and single-point curves', () => {
+    expect(toRetentionCurve([])).toEqual([]);
+    expect(toRetentionCurve([0.42])).toEqual([1]);
   });
 });
 

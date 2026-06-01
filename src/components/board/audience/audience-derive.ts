@@ -64,6 +64,37 @@ export function normalizeCurve(curve: number[]): number[] {
   return curve.map((v) => Math.min(1, Math.max(0, v / scale)));
 }
 
+/**
+ * Convert a normalized *attention* curve (0-1) into a watch-time *retention*
+ * (survival) curve — TikTok-analytics style.
+ *
+ * The engine only predicts per-segment attention; it has no measured retention.
+ * A retention curve is a survival function: everyone is present at the hook, so
+ * it must open at 100% and can only fall (a viewer who left can't un-leave).
+ * We derive it by anchoring attention to the hook and taking the monotonic
+ * (running-minimum) envelope:
+ *
+ *   relative[i]  = clamp01(a[i] / a[0])   // hook = 100% baseline
+ *   retention[i] = min(relative[0..i])    // survival envelope, never rises
+ *
+ * So "attention falls to 40% of the hook by 0:03" reads as "40% retention at
+ * 0:03" — and the biggest single step is the biggest viewer drop-off. Pure.
+ * Input must already be normalized (0-1) via {@link normalizeCurve}.
+ */
+export function toRetentionCurve(normalized: number[]): number[] {
+  if (normalized.length === 0) return normalized;
+  const head = normalized[0] ?? 0;
+  // Hook baseline. Degenerate 0-attention hook → fall back to the peak so the
+  // curve still opens at 100% rather than dividing by zero.
+  const anchor = head > 0 ? head : Math.max(...normalized) || 1;
+  let floor = 1;
+  return normalized.map((v) => {
+    const relative = Math.min(1, Math.max(0, v / anchor));
+    floor = Math.min(floor, relative);
+    return floor;
+  });
+}
+
 export interface BiggestDrop {
   /** Index of the segment AT which the biggest drop lands (the lower point). */
   index: number;

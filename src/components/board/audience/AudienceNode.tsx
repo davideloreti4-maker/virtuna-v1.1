@@ -30,6 +30,7 @@ import {
   heroVerdict,
   mixLabel,
   normalizeCurve,
+  toRetentionCurve,
   personasFinishing,
   SLOT_GROUPS,
   totalDuration,
@@ -116,10 +117,14 @@ export function AudienceNode(props: AudienceNodeProps) {
     return null;
   })();
 
-  // Survival curve: recomputed (when available) else persisted weighted_curve.
+  // Watch-time retention (survival) curve — TikTok-analytics style: anchored to
+  // 100% at the hook and monotonic non-increasing. Derived from predicted
+  // attention (recomputed weights win, else persisted weighted_curve); the
+  // engine has no measured retention. Feeds the chart, scrubber readout, drop
+  // dot and drop strip so they all read the same survival curve.
   const survivalCurve = useMemo<number[] | null>(() => {
-    if (recomputedCurve.length > 0) return recomputedCurve;
-    return heatmap?.weighted_curve ?? null;
+    const raw = recomputedCurve.length > 0 ? recomputedCurve : heatmap?.weighted_curve ?? null;
+    return raw ? toRetentionCurve(normalizeCurve(raw)) : null;
   }, [recomputedCurve, heatmap?.weighted_curve]);
 
   const drop = useMemo(

@@ -52,10 +52,15 @@ export function RetentionChart({
   const pointCount = normalized.length;
   const total = totalDurationSec > 0 ? totalDurationSec : 1;
 
-  const survivalPath = useMemo(() => {
-    if (normalized.length === 0) return '';
+  const { survivalPath, areaPath } = useMemo(() => {
+    if (normalized.length === 0) return { survivalPath: '', areaPath: '' };
     const pts = normalized.map((v, i) => ({ x: xForIndex(segments, i, pointCount, total), y: yForValue(v) }));
-    return smoothPath(pts);
+    const line = smoothPath(pts);
+    // Close the line down to the floor and back to fill the survival area below
+    // it (TikTok watch-time style gradient fill).
+    const x0 = pts[0]!.x;
+    const xN = pts[pts.length - 1]!.x;
+    return { survivalPath: line, areaPath: `${line} L${xN},${FLOOR_Y} L${x0},${FLOOR_Y} Z` };
   }, [normalized, segments, pointCount, total]);
 
   // Niche ghost line: mean of niche personas, else flat line at nicheCompletionPct.
@@ -123,8 +128,18 @@ export function RetentionChart({
           role="img"
           aria-label={`Audience retention curve over ${formatTime(totalDurationSec)}`}
         >
-          {/* floor */}
+          <defs>
+            <linearGradient id="retentionFill" gradientUnits="userSpaceOnUse" x1="0" y1={PAD_TOP} x2="0" y2={FLOOR_Y}>
+              <stop offset="0%" stopColor="rgba(255,255,255,0.10)" />
+              <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+            </linearGradient>
+          </defs>
+          {/* y guides — 100% (hook baseline) + 50%, dashed; floor = 0% */}
+          <line x1="0" y1={PAD_TOP} x2={VB_W} y2={PAD_TOP} stroke="rgba(255,255,255,0.08)" strokeWidth="1" strokeDasharray="2 4" />
+          <line x1="0" y1={yForValue(0.5)} x2={VB_W} y2={yForValue(0.5)} stroke="rgba(255,255,255,0.06)" strokeWidth="1" strokeDasharray="2 4" />
           <line x1="0" y1={FLOOR_Y} x2={VB_W} y2={FLOOR_Y} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+          {/* survival area fill beneath the curve */}
+          {areaPath && <path d={areaPath} fill="url(#retentionFill)" stroke="none" />}
           {/* niche comparison (dashed ghost) */}
           {ghostPath && (
             <path
@@ -186,6 +201,20 @@ export function RetentionChart({
             niche
           </div>
         )}
+
+        {/* y-axis labels aligned to the 100% / 50% guides (TikTok-style) */}
+        <div
+          className="pointer-events-none absolute right-0 tabular-nums"
+          style={{ top: `${(PAD_TOP / VB_H) * 100}%`, transform: 'translateY(-50%)', fontSize: 10, color: 'rgba(255,255,255,0.34)', fontWeight: 500 }}
+        >
+          100%
+        </div>
+        <div
+          className="pointer-events-none absolute right-0 tabular-nums"
+          style={{ top: `${(yForValue(0.5) / VB_H) * 100}%`, transform: 'translateY(-50%)', fontSize: 10, color: 'rgba(255,255,255,0.34)', fontWeight: 500 }}
+        >
+          50%
+        </div>
       </div>
 
       {/* filmstrip — darkened keyframes, time-aligned; drop cell gets coral outline.
