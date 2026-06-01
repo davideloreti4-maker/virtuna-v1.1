@@ -5,10 +5,10 @@ import { cn } from '@/lib/utils';
 /**
  * PersonaGraph — Artificial-Societies-style persona node cloud, the Audience
  * hero visual. Deterministic golden-angle layout (seeded — stable across
- * renders / SSR), faint nearest-neighbour links, decorative starfield for the
- * "population" feel. Node size ∝ weight; fill ∝ watch-through; the worst
- * cluster reads coral. Hover → glass detail card. An sr-only list mirrors the
- * data for assistive tech.
+ * renders / SSR), faint nearest-neighbour links, 200 viewer dots distributed
+ * proportionally around persona anchors. Node size ∝ weight; fill ∝
+ * watch-through; the worst cluster reads coral. Hover → glass detail card.
+ * An sr-only list mirrors the data for assistive tech.
  */
 export interface PersonaNode {
   id: string;
@@ -71,15 +71,34 @@ export function PersonaGraph({
     });
   }, [personas]);
 
-  const stars = useMemo(() => {
-    const rnd = mulberry32(9173);
-    return Array.from({ length: 70 }, () => ({
-      x: rnd() * VB_W,
-      y: rnd() * VB_H,
-      r: 0.6 + rnd() * 1.3,
-      o: 0.04 + rnd() * 0.1,
-    }));
-  }, []);
+  // 200 viewer dots — distributed across persona clusters proportional to weight.
+  // Gaussian scatter around each anchor; seeded per-persona for stability.
+  const viewerDots = useMemo(() => {
+    if (nodes.length === 0) return [];
+    const TOTAL = 200;
+    const totalW = nodes.reduce((s, nd) => s + Math.max(0.01, nd.weight), 0);
+    const out: Array<{ x: number; y: number; fill: string; opacity: number }> = [];
+    nodes.forEach((nd, i) => {
+      const count = Math.max(1, Math.round((Math.max(0.01, nd.weight) / totalW) * TOTAL));
+      const rnd = mulberry32(9173 + i * 31337);
+      const spread = 10 + (nd.rad - 6) * 1.4;
+      const accent = nd.tone === 'accent';
+      const wt = Math.max(0, Math.min(1, nd.watchThrough));
+      for (let j = 0; j < count; j++) {
+        const u1 = Math.max(0.0001, rnd());
+        const u2 = rnd();
+        const mag = Math.sqrt(-2 * Math.log(u1)) * spread;
+        const angle = u2 * 2 * Math.PI;
+        out.push({
+          x: nd.x + Math.cos(angle) * mag,
+          y: nd.y + Math.sin(angle) * mag,
+          fill: accent ? 'var(--color-accent)' : `rgba(255,255,255,${(0.2 + wt * 0.5).toFixed(2)})`,
+          opacity: 0.35 + rnd() * 0.5,
+        });
+      }
+    });
+    return out;
+  }, [nodes]);
 
   const links = useMemo(() => {
     const out: { x1: number; y1: number; x2: number; y2: number }[] = [];
@@ -117,10 +136,10 @@ export function PersonaGraph({
         preserveAspectRatio="xMidYMid meet"
         className="h-full w-full"
         role="img"
-        aria-label={`${personas.length} predicted audience personas`}
+        aria-label={`200 test viewers across ${personas.length} audience personas`}
       >
-        {stars.map((s, i) => (
-          <circle key={`s${i}`} cx={s.x} cy={s.y} r={s.r} fill="white" opacity={s.o} />
+        {viewerDots.map((d, i) => (
+          <circle key={`v${i}`} cx={d.x} cy={d.y} r={1.5} fill={d.fill} opacity={d.opacity} />
         ))}
         {links.map((l, i) => (
           <line
