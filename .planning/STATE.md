@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Viral Remix
 status: executing
-last_updated: "2026-06-01T08:58:05.814Z"
-last_activity: 2026-06-01 -- Phase 1 planning complete
+last_updated: "2026-06-01T13:00:00.000Z"
+last_activity: 2026-06-01 -- Plan 02 (single-URL resolver) complete
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
-  percent: 0
+  completed_plans: 2
+  percent: 67
 ---
 
 # Project State
@@ -21,14 +21,14 @@ See: .planning/PROJECT.md
 
 ## Current Position
 
-Phase: Not started — roadmap complete, ready to plan Phase 1
-Plan: —
-Status: Ready to execute
-Last activity: 2026-06-01 -- Phase 1 planning complete
+Phase: 01-ingestion-build-hard-gate
+Plan: 03 (next — engine wiring)
+Status: Executing — Plan 02 complete, Plan 03 pending
+Last activity: 2026-06-01 -- Plan 02 (single-URL resolver) complete
 
 Roadmap shape (see `.planning/ROADMAP.md`):
 
-1. Ingestion BUILD (HARD GATE) — INGEST-01
+1. Ingestion BUILD (HARD GATE) — INGEST-01 ← IN PROGRESS (2/3 plans done)
 2. Remix Mode + One-Board-Two-Config — REMIX-01, REMIX-02
 3. Decode Frame — DECODE-01, DECODE-02
 4. Adapt Frame + Niche — ADAPT-01, ADAPT-02
@@ -36,8 +36,19 @@ Roadmap shape (see `.planning/ROADMAP.md`):
 
 Phase 1 (INGEST-01) is the hard gate: every Decode/Adapt/Develop requirement is BLOCKED until a non-owned TikTok URL demonstrably produces real Omni segments. No Decode prompt schema is written until Phase 1 inspects real Omni output.
 
+## Decisions
+
+- Plan 01: mediaUrls[0] confirmed as mp4 field; resolved URL is private api.apify.com KV record
+- Plan 01: SSRF allowlist must include api.apify.com (resolved host is Apify KV, not TikTok CDN)
+- Plan 01: Plan 03 re-hosts to Supabase with derive-and-drop for SECURITY (token non-leak), not TTL
+- Plan 01: Resolve runs INLINE (resolve ~25-38s + Omni ~35s = 60-75s << maxDuration=300)
+- Plan 01: No ASR in Phase 1 — Omni first_words_speech_score + content_summary fidelity sufficient
+- Plan 02: IngestError kind taxonomy = empty_dataset | no_media_url | not_found | ssrf_rejected | scrape_failed
+- Plan 02: not_found detected via item.error/item.errorCode BEFORE mediaUrls extraction
+- Plan 02: SSRF allowlist: .apify.com, .apifyusercontent.com, .tiktokcdn.com, .tiktokcdn-us.com
+
 ## Session Continuity
 
-Last activity: 2026-05-31 — ROADMAP.md written for milestone v3.2 Viral Remix (5 phases, milestone-scoped numbering 1–5). All 9 v1 requirements mapped to exactly one phase; 0 unmapped; Traceability table in REQUIREMENTS.md updated. Phases derived from REQUIREMENTS.md + viral-remix-SPEC.md acceptance criteria + research/SUMMARY.md converged build order. INGEST-01 is the standalone hard gate (Phase 1); Phases 3/4 additionally gated on it.
+Last session: 2026-06-01 -- Plan 02 (single-URL resolver) complete. resolveVideoUrl implemented with typed IngestError (5 kinds), SSRF guard, 35 tests green. Plan 03 (engine wiring) is next: wires resolveVideoUrl into pipeline, adds Supabase re-host + derive-and-drop, feeds signed URL to analyzeVideoWithOmni.
 
-Next: `/gsd-plan-phase 1` — plan the Ingestion BUILD. Phase 1 needs a live Apify actor test (Clockworks `tiktok-scraper`, `shouldDownloadVideos:true`, `mediaUrls[0]`) across ≥5 varied URLs + Omni structured-output fidelity inspection before any Decode-phase code.
+Next: execute Plan 03 -- engine wiring (final plan of Phase 1).

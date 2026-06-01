@@ -12,7 +12,7 @@ Derived 1:1 from the seed SPEC's 8 locked requirements. Each was interview-groun
 
 ### Ingestion (the hard gate)
 
-- [ ] **INGEST-01**: For a non-owned TikTok URL submitted in Remix mode, the pipeline obtains real frame/segment/transcript signal (not just preview metadata) — sufficient for a structural Decode.
+- [x] **INGEST-01**: For a non-owned TikTok URL submitted in Remix mode, the pipeline obtains real frame/segment/transcript signal (not just preview metadata) — sufficient for a structural Decode.
   - *Verified state:* `tiktok_url` mode today analyzes **caption text only**; the multimodal Omni call is gated on `signedVideoUrl`, populated only for `video_upload` (`pipeline.ts:494–606`). This is a BUILD, not a confirm/deny spike, and it GATES every Decode-dependent requirement.
   - *Acceptance:* A non-owned TikTok URL yields non-empty `video_signals`/segments through `analyzeVideoWithOmni`; source media is derived-and-dropped, never persisted (IP boundary).
 
@@ -66,7 +66,7 @@ INGEST-01 (Phase 1) is the hard gate: every Decode/Adapt/Develop requirement is 
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INGEST-01 | Phase 1 | Pending |
+| INGEST-01 | Phase 1 | Complete |
 | REMIX-01 | Phase 2 | Pending |
 | REMIX-02 | Phase 2 | Pending |
 | DECODE-01 | Phase 3 | Pending |
