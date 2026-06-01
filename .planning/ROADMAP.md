@@ -1,193 +1,164 @@
-# Roadmap — MVP Cut
+# Roadmap — Viral Remix (v3.2)
 
-**Branch:** `milestone/mvp-cut`
-**Worktree:** `~/virtuna-mvp-cut/`
-**Phase range:** 1–6 (milestone-scoped numbering)
-**Forks from:** `main` post-PR-#3 + PR-#4 merges
+**Branch:** `milestone/viral-remix`
+**Worktree:** `~/virtuna-viral-remix/`
+**Phase range:** 1–5 (milestone-scoped numbering)
+**Forks from:** `feat/actions-frame-inline-redesign` @ `9626c92` (NOT `main` — see MILESTONE.md "Why this base")
 
-## Strategy
+## Overview
 
-Cut the runtime surface to MVP minimum, fix the visible bugs that Result Surface handed forward, and finish with a regression + cross-browser pass plus one end-to-end happy-path Playwright test. Three middle phases (2, 3, 4) are independent and can fork in parallel from the milestone branch. Phase 5 needs Phases 2–4 visible on screen. Phase 6 sequences last.
+Close the *front half* of the creator loop: paste a third-party viral TikTok in an explicit Remix mode → **Decode** (why it worked, repeatable structure vs luck) → **Adapt** (3 niche-adapted concepts, format-not-content) → per-concept **Develop & predict** through the existing engine → parent/child lineage ("remixed from" chip). Product spine is settled: **Decoder → Translator → Predict.**
+
+This is overwhelmingly a *wiring* milestone, not a build-new-infrastructure one. Research traced every capability to installed deps and existing seams. New surface area is strictly limited to: the Decode frame, the Adapt frame, the remix toggle, and the `parent_id` lineage column. The board, SSE pipeline, scoring engine, mobile card-stack, sidebar, and permalink routing are **reconfigured, not rebuilt**. No new npm dependencies. Any new model call (decode/adapt generation) is **Qwen-only**.
+
+## The hard gate: INGEST-01 blocks everything downstream
+
+Research VERIFIED (4 agents, file+line grounded) that the `tiktok_url` path today analyzes **caption text only**. The multimodal Omni call is gated on `signedVideoUrl` (`pipeline.ts:520`), populated only for `video_upload`; a non-owned URL yields `video_signals: null` and all-false `signalAvailability`. There is no frame, no transcript, no segment. **A structural Decode is impossible on a caption string.**
+
+Therefore req #8 is reframed from spike → **BUILD**, and it is **Phase 1, alone**. Every Decode-, Adapt-, and Develop-dependent requirement (DECODE-01/02, ADAPT-01/02, DEVELOP-01/02) is **BLOCKED until INGEST-01 lands** and a non-owned URL demonstrably produces real Omni segments. No Decode prompt schema is even written until Phase 1 inspects real Omni output. This dependency is non-negotiable and is reflected in every downstream phase's "Depends on" line.
+
+The only IP-introducing risk in the milestone is born here: the instant Phase 1 adds a download step, the pipeline handles third-party MP4s. **Derive-and-drop is mandatory** — source media is derived and dropped, never persisted (no `video_storage_path` on a remix row; delete in `finally`).
 
 ## Parallelization Plan
 
 ```
-        main (post-#3, post-#4)
-              │
-              ▼
-         Phase 1 (sequential — strip retrieval / similar videos / /trending)
-              │
-   ┌──────────┼──────────┐
-   │          │          │
-Phase 2    Phase 3    Phase 4       (parallelizable — independent surfaces)
-   │          │          │
-   └──────────┼──────────┘
-              │
-         Phase 5 (needs 2–4 visible)
-              │
-              ▼
-         Phase 6 (pre-ship audit)
+   feat/actions-frame-inline-redesign @ 9626c92
+                    │
+                    ▼
+              Phase 1  (HARD GATE — ingestion BUILD, sequential, alone)
+              INGEST-01
+              non-owned URL → real Omni segments; derive-and-drop
+                    │
+                    ▼
+              Phase 2  (remix mode + one-board-two-config plumbing)
+              REMIX-01 / REMIX-02
+              toggle UI · mode flag thread · mode-aware frame registry · empty Decode/Adapt shells
+                    │
+          ┌─────────┴─────────┐
+          ▼                   ▼
+       Phase 3             Phase 4          (parallelizable once Phase 2 lands)
+       DECODE-01/02        ADAPT-01/02
+       Decode frame        Adapt frame + niche
+       (also needs P1)     (needs P2 shell only)
+          └─────────┬─────────┘
+                    ▼
+              Phase 5  (composes everything — sequential, last)
+              DEVELOP-01 / DEVELOP-02
+              per-concept Develop & predict · parent_id lineage · regression sweep
 ```
 
-Phase 0 is a scope-statement phase that lives entirely inside this ROADMAP — no code, no separate `phases/00-*` directory. It captures the Phase-8 keep/defer split below so the mobile + onboarding work in Phase 5 has a frozen reference.
+- **Phase 1 (INGEST-01)** forks first and runs alone. Hard gate; live Apify actor confirmation required before any Decode code.
+- **Phase 2 (REMIX-01/02)** is pure plumbing (type/schema/UI + mode-aware registry + empty frame shells). It has no engine dependency and could technically begin alongside Phase 1, but it is sequenced after to keep one clean integration point and because its checkpoint (remix board renders the correct 6-frame layout) is the skeleton Phases 3/4 plug into.
+- **Phase 3 (DECODE-01/02)** is blocked on **both** Phase 1 (needs confirmed ingestion signal) and Phase 2 (needs the frame shell).
+- **Phase 4 (ADAPT-01/02)** is blocked on Phase 2 only (needs the shell). It can run in parallel with Phase 3. Adapt consumes Decode's repeatable-lane output, so if run truly concurrently it stubs against a fixed decode fixture until Phase 3 lands.
+- **Phase 5 (DEVELOP-01/02)** composes Phase 3 + Phase 4 output plus the `parent_id` migration. Sequenced last; also owns the grade-mode regression sweep and Raycast/mobile/error-boundary polish on the two new frames.
 
-## Phase 0: Phase-8 Keep / Defer Split (this section)
+## Phases
 
-Out of the old `phase-8-launch-polish-and-onboarding` package, the MVP cut keeps the items that move signup → first-useful-prediction → act. Polish, telemetry, and accessibility audits get deferred to a post-MVP milestone.
+- [ ] **Phase 1: Ingestion BUILD (HARD GATE)** — A non-owned TikTok URL yields real frame/segment/transcript signal through `analyzeVideoWithOmni`; source media derived-and-dropped, never persisted
+- [ ] **Phase 2: Remix Mode + One-Board-Two-Config** — Explicit "Score / Remix" toggle routes the remix path; board swaps Verdict+Actions → Decode+Adapt (empty shells) on desktop canvas + mobile card-stack; grade board unchanged
+- [ ] **Phase 3: Decode Frame** — Lightweight Qwen decode path renders a structural teardown + an explicit repeatable-vs-luck split; never "fix this" framing
+- [ ] **Phase 4: Adapt Frame + Niche** — Exactly 3 format-adapted (not content-copied) concepts grounded in the creator-profile niche, with inline fallback prompt when niche is empty
+- [ ] **Phase 5: Develop & Predict + Lineage** — Per-concept "Develop & predict →" scores one concept via the existing pipeline; child stores `parent_id`, shows a working "remixed from" chip, appears in Recent; grade-mode regression confirmed
 
-**Keep (rolled into Phase 5):**
+## Phase Details
 
-| Old ID | Item |
-|--------|------|
-| 8.1 | Mobile board layout |
-| 8.2 | Mobile upload flow |
-| 8.3 | Mobile audience touch interaction (Radix Sheet drawer) |
-| 8.5 | First-analysis tutorial |
-| 8.7 | Next-action prompts |
-| 8.9 | Regression audit (run inside Phase 6 instead — kept here for traceability) |
-| 8.12 | Cross-browser smoke (run inside Phase 6 instead — kept here for traceability) |
+### Phase 1: Ingestion BUILD (HARD GATE)
+**Goal**: For a non-owned TikTok URL submitted on the remix/decode path, the pipeline obtains real frame/segment/transcript signal through `analyzeVideoWithOmni` — sufficient for a structural Decode — with source media derived and dropped, never persisted.
+**Depends on**: Nothing (forks first from `feat/actions-frame-inline-redesign` @ `9626c92`). This is the hard gate; nothing downstream begins until it lands.
+**Requirements**: INGEST-01
+**Success Criteria** (what must be TRUE):
+  1. A non-owned TikTok URL fed through the new path produces non-empty `video_signals`/segments via `analyzeVideoWithOmni` (not caption text) — verified by a spike artifact documenting the exact signal obtained
+  2. The same ingestion on two structurally-different viral videos produces *different* structural signal (guards against caption-only hallucination, pitfall C1 — identical fields = no real signal)
+  3. Source media is derive-and-drop: no `video_storage_path`/persisted MP4 on a remix/decode row; the downloaded file is deleted in a `finally` block (IP boundary, pitfall C4)
+  4. A documented failure-mode taxonomy exists (private, region-locked, carousel, 404, `vm.` short link) with confirmed Clockworks reliability + URL-TTL behavior across ≥5 varied live URLs, and the resolve-hop latency is measured against `maxDuration=300` (async resolve or re-host applied if needed)
+  5. The grade-mode `video_upload` path and existing analyze flow are unchanged (no regression)
+**Plans**: TBD
+**Research flag**: NEEDS live Apify actor test (Clockworks `tiktok-scraper`, `shouldDownloadVideos:true`, read `mediaUrls[0]`) across ≥5 varied URLs, plus Omni structured-output fidelity inspection, BEFORE any Decode-phase code is written.
 
-**Defer (out of MVP):**
+### Phase 2: Remix Mode + One-Board-Two-Config
+**Goal**: An explicit intent selector at the input routes a remix submission down the remix path; the board renders one-board-two-configs — keeps Input/Engine/Audience/Content Craft and swaps Verdict+Actions → Decode+Adapt (as empty shells this phase) on both desktop canvas and mobile card-stack — with no separate route, and the grade-mode board entirely unchanged.
+**Depends on**: Phase 1 (sequenced after to keep a single clean integration point; the remix mode is only meaningful once a remix URL can actually be ingested).
+**Requirements**: REMIX-01, REMIX-02
+**Success Criteria** (what must be TRUE):
+  1. The input shows an explicit "Score my content" / "Remix a viral video" selector with no auto-detect; choosing Remix routes the submission down the remix path and persists a row with `mode='remix'`
+  2. With Remix selected, the board renders Input + Engine + Audience + Content Craft + Decode + Adapt (Verdict + Actions swapped out) on the desktop Konva canvas; the layout reflows correctly via the mode-aware remix column plan
+  3. The mobile card-stack (<768px) absorbs the swapped Decode + Adapt as cards in the correct order
+  4. With Score selected, the existing grade board renders unchanged (Verdict + Actions present, no Decode/Adapt) — no regression on the score path
+  5. `mode` is included in the content hash so a remix-decode and a score of the same URL do not collapse into one cache entry; mode survives a permalink reload (live and `/analyze/[id]` agree)
+**Plans**: TBD
+**UI hint**: yes
 
-- Orientation tooltip polish
-- Paced verdict reveal
-- Full telemetry instrumentation
-- Lighthouse 90+ target
-- Full WCAG AA audit
+### Phase 3: Decode Frame
+**Goal**: For a remix-mode video, the Decode frame renders a structural teardown (hook pattern, pacing/structure, the turn, emotional beat) plus an explicit repeatable-vs-luck split — on its own lightweight Qwen path, never the full ~332s scoring pipeline, and never framing the video as something the user should "fix."
+**Depends on**: Phase 1 (needs confirmed real Omni ingestion signal) AND Phase 2 (needs the Decode frame shell + mode routing). Can run in parallel with Phase 4.
+**Requirements**: DECODE-01, DECODE-02
+**Success Criteria** (what must be TRUE):
+  1. For a known viral test video, the Decode frame renders non-empty structural fields (hook pattern, structure/pacing, the turn, emotional beat) — generated by a dedicated Qwen decode call in `engine/remix/decode.ts`, persisted to `variants.remix.decode`
+  2. Decode runs on a lightweight path (Omni segment call → one Qwen decode call), NOT `runPredictionPipeline`; it does not touch `usage_tracking`/`DAILY_LIMITS` and completes well under the full scoring pipeline's latency (pitfall C2)
+  3. The frame renders an explicit repeatable-vs-luck split (reproducible structure vs timing / existing-audience / outlier) with a non-empty luck column — never collapsing everything into "repeatable" (pitfall: luck hallucination)
+  4. Decode never frames the video as something to "fix"; copy is honest teardown of why it worked, on-brand with the Score frame's honest-number ethos
+  5. The grade-mode board and existing analyze flow remain unchanged (no regression)
+**Plans**: TBD
+**Research flag**: Write the decode prompt schema only after inspecting real Omni output from Phase 1 on a non-owned URL (determines whether a Qwen ASR transcript is needed for hook-line fidelity).
+**UI hint**: yes
 
-## Phase 1: Strip Retrieval + Similar Videos + /trending Dashboard
+### Phase 4: Adapt Frame + Niche
+**Goal**: The Adapt frame renders exactly 3 concepts, each adapting the source's *format/structure* (not its content) to the user's niche with actionable specificity (angle, hook, who-it's-for, `format_borrowed`), grounded in the creator-profile niche — and when the profile niche is empty, the user is prompted inline before concepts generate.
+**Depends on**: Phase 2 (needs the Adapt frame shell + mode routing). Consumes Phase 3's Decode repeatable-lane output; if run concurrently with Phase 3 it stubs against a fixed decode fixture until Phase 3 lands.
+**Requirements**: ADAPT-01, ADAPT-02
+**Success Criteria** (what must be TRUE):
+  1. For a populated niche, the Adapt frame renders exactly 3 distinct concepts, each with `hook`, `angle`, `who_its_for`, and `format_borrowed`, generated Qwen-only in `engine/remix/adapt.ts`
+  2. Each concept adapts the source's *format/structure* and references the user's niche; none reproduces the source's specific content/subject — enforced at the prompt level (the adapt prompt receives structural fields only, never the source caption)
+  3. Concepts are drawn from the Decode repeatable lane (not luck-attributed elements)
+  4. With an empty creator-profile niche, the user is prompted inline before concepts generate; once a niche is supplied, the 3 concepts generate (Decode still renders niche-free in the meantime)
+  5. The grade-mode board and existing analyze flow remain unchanged (no regression)
+**Plans**: TBD
+**UI hint**: yes
 
-**Goal:** Remove all M2-corpus-dependent surfaces from the runtime. Ingestion side stays intact for a future corpus milestone.
+### Phase 5: Develop & Predict + Lineage
+**Goal**: Each concept exposes "Develop & predict →" that runs that single concept through the existing `/api/analyze` pipeline, producing one scored `/analyze/[id]` board and navigating to it (no bulk scoring); the developed child stores a non-null `parent_id`, shows a working "remixed from" chip linking back, and appears in the sidebar Recent list. This phase also owns the grade-mode regression sweep and Raycast/mobile/error-boundary polish on the two new frames.
+**Depends on**: Phase 3 AND Phase 4 (composes Decode + Adapt output) plus the `parent_id` migration. Sequenced last.
+**Requirements**: DEVELOP-01, DEVELOP-02
+**Success Criteria** (what must be TRUE):
+  1. Clicking "Develop & predict →" on one concept creates exactly one new analysis through the existing `/api/analyze` SSE pipeline and navigates to its `/analyze/[id]` board; the other concepts are NOT scored unless separately developed (zero streams open until click, then exactly 1 — pitfall C3)
+  2. The developed child row has a non-null `parent_id` set to the **source remix analysis id** (stable, known before Develop starts — NOT derived from the child's `started` SSE frame), written at all insert sites
+  3. The child board shows a working "remixed from" chip linking back to the source remix analysis (`/api/analysis/[id]` returns the minimal parent summary)
+  4. The developed child appears in the sidebar Recent list; a decode/remix row hydrates correctly on permalink reload via a distinct completion marker (`variants.remix != null`, since `overall_score` is null on decode rows — pitfall m3) and the polling ceiling is lifted for remix-developed children
+  5. Full regression confirmed: grade-mode board and existing analyze flow unchanged; both new frames pass Raycast styling, render error boundaries, and verify on the mobile card-stack at <768px
+**Plans**: TBD
+**UI hint**: yes
 
-**Depends on:** Nothing (forks directly from milestone base).
+## Progress
 
-**Scope:**
+**Execution Order:**
+Phase 1 (hard gate) → Phase 2 (plumbing) → Phases 3 + 4 (parallelizable, Phase 3 additionally gated on Phase 1) → Phase 5 (composes 3+4, sequenced last).
 
-- Delete `SimilarVideosCard` from board substrate
-- Remove retrieval reads from `/api/analyze` pipeline (keep `scraped_videos` writes, scraper cron, trend enrichment)
-- Delete `/trending` dashboard page (Next.js route) + `/api/trending/*` routes + supporting client code
-- Keep `scraped_videos`, `trending_sounds`, scraper cron, and trend-enrichment-into-analyze pipeline UNTOUCHED
-- Embedder code stays in the repo (dormant) — Phase 1 only removes its runtime call sites
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 1. Ingestion BUILD (HARD GATE) | 0/TBD | Not started | - |
+| 2. Remix Mode + One-Board-Two-Config | 0/TBD | Not started | - |
+| 3. Decode Frame | 0/TBD | Not started | - |
+| 4. Adapt Frame + Niche | 0/TBD | Not started | - |
+| 5. Develop & Predict + Lineage | 0/TBD | Not started | - |
 
-**Success Criteria:**
+## Coverage
 
-1. `grep -r "SimilarVideosCard"` returns zero src/ hits
-2. `grep -r "/api/trending"` returns zero src/ hits
-3. `grep -r "/dashboard/trending\|trending-dashboard"` returns zero src/ hits
-4. `/api/analyze` still writes `scraped_videos` and reads `trending_sounds` for trend enrichment
-5. `pnpm build` green, `tsc --noEmit` 0 errors, `pnpm test` green
+All 9 v1 requirements mapped to exactly one phase. No orphans. No duplicates. Every Decode/Adapt/Develop requirement is gated on Phase 1 (INGEST-01).
 
-## Phase 2: Wire Hook Decomposition + Emotion Arc End-to-End
+| REQ-ID | Category | Phase | Notes |
+|--------|----------|-------|-------|
+| INGEST-01 | Ingestion | 1 | HARD GATE. Non-owned URL → real Omni segments; derive-and-drop IP boundary. Blocks DECODE/ADAPT/DEVELOP. |
+| REMIX-01 | Remix mode & board | 2 | Explicit "Score / Remix" toggle; no auto-detect; routes the remix path. |
+| REMIX-02 | Remix mode & board | 2 | One board, two configs; swap Verdict+Actions → Decode+Adapt (shells); desktop + mobile; grade board unchanged. |
+| DECODE-01 | Decode | 3 | Structural teardown on a lightweight Qwen path (NOT the 332s scorer). Gated on Phase 1. |
+| DECODE-02 | Decode | 3 | Explicit repeatable-vs-luck split; never "fix this" framing. Gated on Phase 1. |
+| ADAPT-01 | Adapt | 4 | Exactly 3 format-adapted (not content-copied) concepts with angle/hook/who-it's-for/format_borrowed. Gated on Phase 1. |
+| ADAPT-02 | Adapt | 4 | Niche from creator-profile; inline fallback prompt when empty. Gated on Phase 1. |
+| DEVELOP-01 | Develop & lineage | 5 | Per-concept "Develop & predict →" → one scored child via existing pipeline; no bulk scoring. Gated on Phase 1. |
+| DEVELOP-02 | Develop & lineage | 5 | Child stores non-null `parent_id`, shows "remixed from" chip, appears in Recent. Gated on Phase 1. |
 
-**Goal:** Replace the null-fallback path in `aggregator.ts:686-693` with the real hook decomposition + emotion arc emission, and surface both in board nodes.
-
-**Depends on:** Nothing (parallel with 3, 4).
-
-**Scope:**
-
-- Audit the half-wired aggregator path; emit real `hook_decomposition` + `emotion_arc` instead of null fallback
-- Confirm board nodes consume both fields and render correctly (no card placeholders)
-- Tests: aggregator unit coverage for the populated path; component test that the card renders with real data shape
-
-**Success Criteria:**
-
-1. `aggregator.ts:686-693` no longer returns null-shaped hook_decomposition / emotion_arc on the happy path
-2. Verdict node or hook-specific node renders the populated decomposition without "(unavailable)" copy
-3. New aggregator unit tests cover the populated path
-
-## Phase 3: Fix Orphaned Video Storage
-
-**Goal:** Eliminate the upload → orphan storage object failure mode confirmed on analysis `-I4GtlGVCQKO`.
-
-**Depends on:** Nothing (parallel with 2, 4).
-
-**Scope:**
-
-- Diagnose: retention cron timing OR upload → insert race (Phase opens with a 1-day diagnosis pass)
-- Apply the fix that matches root cause:
-  - If retention cron timing: tighten window, add an idempotency check
-  - If upload → insert race: serialize storage insert behind analysis row creation, or move to a single transactional path
-- Add a regression test or observability hook that would have caught the orphan
-
-**Success Criteria:**
-
-1. Root cause documented in a phase artifact (RESEARCH.md or DECISION.md)
-2. Fix lands with a test that fails before the fix and passes after
-3. A re-run of the original orphan repro (or its closest reproducible simulation) produces zero orphaned objects
-
-## Phase 4: Schema Drift Fix
-
-**Goal:** Persist the four columns the engine emits but the DB doesn't store. Revert the script-route inline workaround.
-
-**Depends on:** Nothing (parallel with 2, 3) — coordinates with Phase 2 if hook_decomposition column shape ends up depending on Phase 2's data structure.
-
-**Scope:**
-
-- Migration: add `counterfactuals`, `hook_decomposition`, `confidence_label`, `anti_virality_gated` to `analysis_results` (column types finalized inside the phase)
-- Regenerate `database.types.ts` from live schema
-- Update `buildInsertRow` (and any sibling insert builders) to persist the four columns
-- Revert the script-route workaround (the inline column-drop + label derivation landed 2026-05-28)
-- Backfill strategy (or explicit "no backfill — null is fine" decision) documented
-
-**Success Criteria:**
-
-1. Migration applied to remote Supabase project
-2. `database.types.ts` regenerated; no hand-patched types
-3. `analysis_results` rows persisted by `/api/analyze` contain non-null values for the four columns on a fresh test analysis
-4. Script route SELECTs the persisted columns directly (no inline derivation)
-5. `pnpm build` + `tsc --noEmit` + `pnpm test` green
-
-## Phase 5: Mobile + Onboarding
-
-**Goal:** Land the 7 Phase-8 items kept above so first-time users on mobile and desktop both complete signup → first analysis → next action without friction.
-
-**Depends on:** Phases 2, 3, 4 visible (engine emits the right fields, no orphans, schema persists).
-
-**Scope (each item is a plan inside this phase):**
-
-- 5.1 Mobile board layout (≡ old 8.1)
-- 5.2 Mobile upload flow (≡ old 8.2)
-- 5.3 Mobile audience touch interaction (≡ old 8.3)
-- 5.4 First-analysis tutorial (≡ old 8.5)
-- 5.5 Next-action prompts (≡ old 8.7)
-
-**Success Criteria:**
-
-1. Mobile board renders without horizontal scroll on iOS Safari + Chromium Android
-2. Mobile upload flow completes a video upload from device gallery → analysis end-to-end
-3. Audience node mobile drawer (Radix Sheet) accepts touch interaction across populated heatmap slots
-4. First-analysis tutorial fires once on first signup, never again, and is dismissible
-5. Next-action prompts appear post-verdict and route to the corresponding board node / script
-
-## Phase 6: Pre-Ship Regression + E2E
-
-**Goal:** One pass that closes the door on ship — regression audit, cross-browser smoke, one end-to-end Playwright happy-path test in CI.
-
-**Depends on:** Phases 1, 2, 3, 4, 5 all merged.
-
-**Scope:**
-
-- 6.1 Regression audit (≡ old 8.9): walk every primary surface for regressions introduced by the cut
-- 6.2 Cross-browser smoke (≡ old 8.12): Chromium + WebKit smoke on auth, upload, analysis, board, script, optimal-post
-- 6.3 E2E happy-path Playwright test: signup → upload → wait for analysis complete → assert verdict node populated + reshoot script accessible
-
-**Success Criteria:**
-
-1. Regression audit report lists every surface checked and the outcome
-2. Cross-browser smoke passes on Chromium + WebKit in CI (mobile + desktop viewports)
-3. Happy-path E2E test merged into `e2e/` and green in CI for 3 consecutive runs
-4. No P0 / P1 issues open in MILESTONE.md carryover list
+**Coverage:** 9/9 v1 requirements mapped. 0 unmapped. No duplicates.
 
 ---
-
-## Execution Order
-
-| Phase | Title | Depends on | Status | Notes |
-|-------|-------|-----------|--------|-------|
-| 0 | Phase-8 keep/defer split | — | Done (this doc) | No code, frozen here |
-| 1 | Strip retrieval + similar videos + /trending | — | Pending | Sequential, first |
-| 2 | Wire hook decomposition + emotion arc | 1 | Pending | Parallel with 3, 4 |
-| 3 | Fix orphaned video storage | 1 | Pending | Parallel with 2, 4 |
-| 4 | Schema drift fix | 1 | Pending | Parallel with 2, 3 |
-| 5 | Mobile + onboarding | 2, 3, 4 | Pending | Needs 2–4 visible |
-| 6 | Pre-ship regression + E2E | 1, 2, 3, 4, 5 | Pending | Last |
+*Roadmap created: 2026-05-31 — derived from REQUIREMENTS.md (9 locked reqs), viral-remix-SPEC.md acceptance criteria, and research/SUMMARY.md converged build order. Granularity: fine. INGEST-01 is the hard first gate; all Decode/Adapt/Develop work is blocked until it lands.*
