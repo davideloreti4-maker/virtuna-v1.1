@@ -188,8 +188,6 @@ export function computePresetTargets(
   // In remix mode `verdict` is replaced by `decode` (same bounds, D-07).
   // Fall back to byId.decode so the preset never crashes on a remix layout (Pitfall 3).
   const ver = byId.verdict ?? byId.decode!;
-  // Similarly `actions` may be replaced by `adapt` in remix mode.
-  const act = byId.actions ?? byId.adapt;
 
   // engine preset = left column union (Input + Engine)
   const leftTop = Math.min(inp.y, eng.y);
