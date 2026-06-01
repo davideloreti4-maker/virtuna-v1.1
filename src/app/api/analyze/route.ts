@@ -294,6 +294,10 @@ export async function POST(request: Request) {
     const currentCount = usage?.analysis_count ?? 0;
 
     // Check against limit
+    // Plan 03 (INGEST-01 / T-01-05): this check is MODE-AGNOSTIC — it runs before the
+    // pipeline stream for ALL input_mode values including "tiktok_url".
+    // This is the cost-exhaustion guard for the remix path: paste-spam cannot trigger
+    // unbounded billable Apify resolves. Do NOT add a second rate limiter for tiktok_url.
     const limit = DAILY_LIMITS[tier] ?? DAILY_LIMITS.free!;
     if (currentCount >= limit) {
       // Phase 3 (260528-nsb): cleanup orphan before 429 return — body + retentionOptedIn available here.
