@@ -10,7 +10,8 @@ import { useAudienceChoreography } from './use-audience-choreography';
 import { useClientWeights } from './use-client-weights';
 import { AudienceHero } from './AudienceHero';
 import { DropStrip } from './DropStrip';
-import { RetentionChart } from './RetentionChart';
+import { RetentionPlayer } from './RetentionPlayer';
+import { useUploadedVideoSource } from './use-uploaded-video-source';
 import { SegmentTable } from './SegmentTable';
 import { MixFooter } from './MixFooter';
 import { WeightOverrideDrawer } from './WeightOverrideDrawer';
@@ -198,6 +199,11 @@ export function AudienceNode(props: AudienceNodeProps) {
     return raw > 1.5 ? raw / 100 : raw;
   }, [heatmap?.niche_completion_pct]);
 
+  // Playable video source for the retention scrubber (uploads only): the live
+  // local blob URL on a fresh run, else a signed URL on owner permalink reload.
+  // Null in tiktok_url / text modes → RetentionPlayer renders the static chart.
+  const { src: videoSrc } = useUploadedVideoSource(result, pendingVideo?.objectUrl ?? null);
+
   const mixFooterLabel = useMemo(() => mixLabel(weights), [weights]);
 
   // ── Stat tiles (3): Avg watch-through · Niche completion % · Finishing n/10 ──
@@ -272,7 +278,8 @@ export function AudienceNode(props: AudienceNodeProps) {
             ]}
           >
             <FrameTabPanel value="retention">
-              <RetentionChart
+              <RetentionPlayer
+                videoSrc={videoSrc}
                 curve={survivalCurve}
                 heatmap={heatmap}
                 drop={drop}

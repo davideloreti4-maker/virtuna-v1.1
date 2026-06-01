@@ -9,28 +9,7 @@ import {
   nicheGhostCurve,
   smoothPath,
 } from './audience-derive';
-
-const VB_W = 600;
-const VB_H = 138;
-const PAD_TOP = 14; // headroom for the drop label / lock line
-const FLOOR_Y = 136;
-
-/** Map a 0-1 retention value into the plot band (top = 1.0, floor = 0.0). Pure. */
-function yForValue(v: number): number {
-  return PAD_TOP + (1 - v) * (FLOOR_Y - PAD_TOP);
-}
-
-/** x for a point at curve index i = segment.t_start / total mapped across VB_W. Pure. */
-function xForIndex(
-  segments: HeatmapPayload['segments'],
-  i: number,
-  pointCount: number,
-  total: number,
-): number {
-  const seg = segments[i];
-  const t = seg ? seg.t_start : (i / Math.max(1, pointCount - 1)) * total;
-  return (t / total) * VB_W;
-}
+import { VB_W, VB_H, PAD_TOP, FLOOR_Y, yForValue, xForIndex } from './retention-geometry';
 
 export interface RetentionChartProps {
   /** Survival curve, raw (0-1 or 0-100) — normalized internally. */

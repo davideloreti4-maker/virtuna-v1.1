@@ -192,12 +192,20 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
     let cancelled = false;
     extractingRef.current = true;
 
+    // Persistent playback URL for frame-accurate scrubbing on the board.
+    // extractVideoFrames keeps (and revokes) its OWN object URL internally, so
+    // this one is independent; the board store revokes it on replace/clear.
+    const objectUrl = URL.createObjectURL(file);
+
     extractVideoFrames(file).then(({ thumbnail, duration, frames }) => {
       if (!cancelled) {
-        setPendingVideo({ thumbnail, duration, frames });
+        setPendingVideo({ thumbnail, duration, frames, objectUrl });
         extractingRef.current = false;
+      } else {
+        URL.revokeObjectURL(objectUrl);
       }
     }).catch(() => {
+      URL.revokeObjectURL(objectUrl);
       extractingRef.current = false;
     });
 

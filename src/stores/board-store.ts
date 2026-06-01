@@ -33,6 +33,12 @@ export interface PendingVideo {
   thumbnail: string;
   duration: number;
   frames: Record<number, string>;
+  /**
+   * Object URL (`URL.createObjectURL`) for the locally selected file, kept for
+   * frame-accurate scrubbing on the board before the analysis is persisted. Set
+   * by content-form for video_upload mode only. Revoked when replaced/cleared.
+   */
+  objectUrl?: string;
 }
 
 export interface BoardState {
@@ -261,9 +267,31 @@ export const useBoardStore = create<BoardState & BoardActions>((set) => ({
   },
 
   // ── Pending video ────────────────────────────────────────────────────────────
-  setPendingVideo: (pendingVideo) => set({ pendingVideo }),
-  clearPendingVideo: () => set({ pendingVideo: null }),
+  // Revoke the prior object URL before replacing/clearing so a stream of file
+  // selections (or "New analysis") doesn't leak blob handles for the session.
+  setPendingVideo: (pendingVideo) =>
+    set((s) => {
+      const prev = s.pendingVideo?.objectUrl;
+      if (prev && prev !== pendingVideo?.objectUrl) revokeObjectUrl(prev);
+      return { pendingVideo };
+    }),
+  clearPendingVideo: () =>
+    set((s) => {
+      if (s.pendingVideo?.objectUrl) revokeObjectUrl(s.pendingVideo.objectUrl);
+      return { pendingVideo: null };
+    }),
 }));
+
+/** Best-effort blob URL revoke — guarded for SSR / non-DOM test envs. */
+function revokeObjectUrl(url: string): void {
+  if (typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
+    try {
+      URL.revokeObjectURL(url);
+    } catch {
+      /* no-op */
+    }
+  }
+}
 
 // ── Derived selectors ────────────────────────────────────────────────────────
 
