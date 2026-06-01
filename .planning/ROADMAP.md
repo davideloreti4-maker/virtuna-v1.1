@@ -55,7 +55,7 @@ The only IP-introducing risk in the milestone is born here: the instant Phase 1 
 
 ## Phases
 
-- [ ] **Phase 1: Ingestion BUILD (HARD GATE)** — A non-owned TikTok URL yields real frame/segment/transcript signal through `analyzeVideoWithOmni`; source media derived-and-dropped, never persisted
+- [x] **Phase 1: Ingestion BUILD (HARD GATE)** — A non-owned TikTok URL yields real frame/segment/transcript signal through `analyzeVideoWithOmni`; source media derived-and-dropped, never persisted
 - [ ] **Phase 2: Remix Mode + One-Board-Two-Config** — Explicit "Score / Remix" toggle routes the remix path; board swaps Verdict+Actions → Decode+Adapt (empty shells) on desktop canvas + mobile card-stack; grade board unchanged
 - [ ] **Phase 3: Decode Frame** — Lightweight Qwen decode path renders a structural teardown + an explicit repeatable-vs-luck split; never "fix this" framing
 - [ ] **Phase 4: Adapt Frame + Niche** — Exactly 3 format-adapted (not content-copied) concepts grounded in the creator-profile niche, with inline fallback prompt when niche is empty
@@ -76,7 +76,7 @@ The only IP-introducing risk in the milestone is born here: the instant Phase 1 
 **Plans**: 3 plans
 - [x] 01-01-PLAN.md — Live ingestion spike (resolve A1-A5: Clockworks contract, mp4 field, URL TTL, resolve+Omni latency vs maxDuration=300, C1 two-video differential) → 01-INGESTION-SPIKE.md [autonomous: false — billable live Apify run, gates the build]
 - [x] 01-02-PLAN.md — Single-URL resolveVideoUrl on ApifyScrapingProvider + apifyVideoSchema mp4 field + typed failure taxonomy + SSRF host allowlist (Wave-0 scraping tests)
-- [ ] 01-03-PLAN.md — Additive tiktok_url Omni branch in pipeline.ts + derive-and-drop finally + cost-exhaustion 429 reuse + regression freeze (derive-and-drop test)
+- [x] 01-03-PLAN.md — Additive tiktok_url Omni branch in pipeline.ts + derive-and-drop finally + cost-exhaustion 429 reuse + regression freeze (derive-and-drop test)
 **Research flag**: NEEDS live Apify actor test (Clockworks `tiktok-scraper`, `shouldDownloadVideos:true`, read `mediaUrls[0]`) across ≥5 varied URLs, plus Omni structured-output fidelity inspection, BEFORE any Decode-phase code is written.
 
 ### Phase 2: Remix Mode + One-Board-Two-Config
@@ -139,7 +139,7 @@ Phase 1 (hard gate) → Phase 2 (plumbing) → Phases 3 + 4 (parallelizable, Pha
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Ingestion BUILD (HARD GATE) | 2/3 | In Progress|  |
+| 1. Ingestion BUILD (HARD GATE) | 3/3 | Complete | 2026-06-01 |
 | 2. Remix Mode + One-Board-Two-Config | 0/TBD | Not started | - |
 | 3. Decode Frame | 0/TBD | Not started | - |
 | 4. Adapt Frame + Niche | 0/TBD | Not started | - |
