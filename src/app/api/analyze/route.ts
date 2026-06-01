@@ -726,6 +726,11 @@ export async function POST(request: Request) {
             const { error: updateErr } = await service
               .from("analysis_results")
               .update({
+                // Defense-in-depth (CR-02): mode is already persisted at both
+                // INSERT sites (placeholder + buildInsertRow), but keep it on the
+                // safety-net UPDATE so a remix row can never regress to the
+                // DEFAULT 'score' on any conflict-resolution anomaly (guards D-15).
+                mode: validated.mode,
                 overall_score: finalResult.overall_score,
                 confidence: finalResult.confidence,
                 factors: (finalResult.factors ?? []) as unknown as null,
