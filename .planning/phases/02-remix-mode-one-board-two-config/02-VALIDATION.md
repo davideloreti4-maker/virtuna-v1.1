@@ -38,8 +38,8 @@ created: 2026-06-01
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 01-T1 | 01 | 1 | REMIX-01/02 | T-02-01,02,03 | schema enum/refine + score-path-safe hash gates exist (RED-first) | unit | `npx vitest run src/lib/engine/__tests__/analysis-input-schema.test.ts src/lib/engine/cache/__tests__/prediction-cache.test.ts` | ❌→Wave0 | ⬜ pending |
-| 01-T2 | 01 | 1 | REMIX-01/02 | T-02-01,02,03 | mode validated+folded+persisted; score hash byte-identical | unit+type | `npx vitest run src/lib/engine/__tests__/analysis-input-schema.test.ts src/lib/engine/cache/__tests__/prediction-cache.test.ts && npx tsc --noEmit` | ✅ extend | ⬜ pending |
+| 01-T1 | 01 | 1 | REMIX-01/02 | T-02-01,02,03 | schema enum/refine + score-path-safe hash gates exist (RED-first) | unit | `npx vitest run src/lib/engine/__tests__/analysis-input-schema.test.ts src/lib/engine/__tests__/prediction-cache.test.ts` | ❌→Wave0 | ⬜ pending |
+| 01-T2 | 01 | 1 | REMIX-01/02 | T-02-01,02,03 | mode validated+folded+persisted; score hash byte-identical | unit+type | `npx vitest run src/lib/engine/__tests__/analysis-input-schema.test.ts src/lib/engine/__tests__/prediction-cache.test.ts && npx tsc --noEmit` | ✅ extend | ⬜ pending |
 | 01-T3 | 01 | 1 | REMIX-02 crit5 | T-02-01 | live DB has mode col NOT NULL DEFAULT 'score' + backfill + CHECK | manual (DB) | information_schema query (checkpoint) | n/a | ⬜ pending |
 | 02-T1 | 02 | 1 | REMIX-02 | T-02-06,07 | resolveBoardLayout remix swap, score byte-identical, preset no-crash | unit | `npx vitest run src/components/board/__tests__/board-constants.test.ts` | ✅ extend | ⬜ pending |
 | 02-T2 | 02 | 1 | REMIX-02 | T-02-08 | shells are DOM (no react-konva), descriptors exact, no skeleton | component | `npx vitest run src/components/board/decode/__tests__/DecodeShellNode.test.tsx src/components/board/adapt/__tests__/AdaptShellNode.test.tsx` | ❌→Wave0 | ⬜ pending |
@@ -55,7 +55,7 @@ created: 2026-06-01
 ## Wave 0 Requirements
 
 - [x] `src/lib/engine/__tests__/analysis-input-schema.test.ts` — REMIX-01 schema mode enum + default + remix-not-text refine (NEW, Plan 01 T1)
-- [x] `src/lib/engine/cache/__tests__/prediction-cache.test.ts` — score-path-stability (hardcoded hash) + mode-distinctness (EXTEND, Plan 01 T1)
+- [x] `src/lib/engine/__tests__/prediction-cache.test.ts` — score-path-stability (hardcoded hash) + mode-distinctness (EXTEND, Plan 01 T1)
 - [x] `src/components/board/decode/__tests__/DecodeShellNode.test.tsx` + adapt equivalent — shell renders descriptor, DOM not Konva, no skeleton (NEW, Plan 02 T2)
 - [x] `src/components/board/__tests__/board-constants.test.ts` — remix swap + score byte-identical regression (EXTEND, Plan 02 T1)
 - [x] `src/components/board/__tests__/BoardMobile.test.tsx` — remix order + renderBody cases, score order unchanged (EXTEND, Plan 02 T3)

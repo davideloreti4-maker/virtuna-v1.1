@@ -379,21 +379,24 @@ ALTER TABLE analysis_results
 | A3 | Descriptor copy strings ("Structural breakdown of why this video worked." / "Niche-adapted concepts drawn from the source format.") are acceptable as the locked default. | UI-SPEC §Copywriting | LOW — D-11 leaves exact strings to discretion; these are neutral and date-free. User may tweak wording. |
 | A4 | The board can derive `mode` from `stream.result.mode` during live analysis. The SSE `complete` payload is `finalResult` (`PredictionResult`); it carries `mode` only if `mode` is added to `PredictionResult`/the result object the pipeline returns. | Pitfall 4 / A2 | MEDIUM — if the pipeline/aggregator does NOT echo `mode` onto the result, the live board (pre-reload) won't know mode from `stream.result`. **Mitigation:** the board already holds the submitted `mode` in `handleContentSubmit` scope; the live layout can use the *submitted* mode (client-side state) and rely on the persisted row only for permalink reload. Planner should wire live mode from the form-submit value, and reload mode from the row — both must agree (success criterion 5). |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Where does the live board read `mode` from before reload?**
    - What we know: `handleContentSubmit` knows `mode` at submit time (it's in `ContentFormData`). The board reads layout from `resolveBoardLayout(measuredH)` with no mode today.
    - What's unclear: Whether to (a) hold a `mode` board-store/local state set at submit and on permalink hydrate, or (b) thread `mode` onto `PredictionResult` and read from `stream.result`.
    - Recommendation: Add a small `mode` slice to `board-store` (or local `Board` state) set by `handleContentSubmit` for the live path, and overwritten from the permalink row's `mode` on `/analyze/[id]` hydrate. This guarantees live + reload agree (criterion 5) without depending on the pipeline echoing `mode`. Confirm during planning by reading `board-store.ts`.
+   - **RESOLVED (Plan 03 Task 3):** `boardMode` is derived in `Board.tsx` as `stream.result.mode ?? permalinkQuery.data.mode ?? 'score'`. Plan 01 added optional `mode` to `PredictionResult` + persists it at both INSERT sites, and `/api/analysis/[id]` `select('*')` carries the row field — so the submit→row→result chain echoes mode on the live path and the persisted row is the source of truth on reload. No new `board-store` slice needed (kept simpler than the original recommendation); if the SSE complete payload does not echo mode, Plan 03 T3 additionally holds the submitted intent in local Board state for the live path (A4 fallback).
 
 2. **Does `GroupFrameOverlay` show a title bar (label) for decode/adapt?**
    - What we know: It has a title-bar region and `EMPTY_STATE_COPY`/`ARIA_LABEL` maps keyed by id.
    - What's unclear: Exact title-bar rendering for arbitrary ids (only read lines 1-60).
    - Recommendation: Read `GroupFrameOverlay.tsx` in full during planning; add `decode`/`adapt` to `ARIA_LABEL` and `EMPTY_STATE_COPY` to prevent `undefined` lookups, and decide whether the shell repeats the label.
+   - **RESOLVED (Plan 02 Task 3):** `GroupFrameOverlay.tsx:157` renders the title from `layout.label` (confirmed by reading the full file this session — Assumption A1 holds), so the shell body renders the descriptor `<p>` ONLY (no repeated label). Plan 02 T3 adds `decode`/`adapt` keys to both `ARIA_LABEL` ("Decode frame — structural breakdown" / "Adapt frame — niche concepts") and `EMPTY_STATE_COPY` (empty titles so the empty-state block skips) to prevent `undefined` lookups.
 
 3. **`database.types.ts` regen vs hand-edit?**
    - What we know: It's generated; Supabase MCP `generate_typescript_types` exists.
    - Recommendation: Prefer MCP regen after the migration is applied; fall back to a targeted hand-edit of the `analysis_results` Row/Insert/Update blocks (add `mode: string` / `mode?: string`). Hand-edit is low-risk and avoids a full regen diff.
+   - **RESOLVED (Plan 01 Tasks 2 & 3):** Plan 01 T2 hand-edits `database.types.ts` — `mode: string` on Row, `mode?: string` on Insert/Update — so typecheck passes in the same wave. Plan 01 T3 (the [BLOCKING] DB-push checkpoint) optionally regenerates types via Supabase MCP `generate_typescript_types` after the migration applies and diffs against the hand-edit, reconciling any drift. Hand-edit is the authoritative fallback per this question.
 
 ## Environment Availability
 
