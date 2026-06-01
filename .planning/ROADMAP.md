@@ -90,8 +90,8 @@ The only IP-introducing risk in the milestone is born here: the instant Phase 1 
   4. With Score selected, the existing grade board renders unchanged (Verdict + Actions present, no Decode/Adapt) — no regression on the score path
   5. `mode` is included in the content hash so a remix-decode and a score of the same URL do not collapse into one cache entry; mode survives a permalink reload (live and `/analyze/[id]` agree)
 **Plans**: 3 plans
-- [ ] 02-01-PLAN.md — Data spine: mode migration + [BLOCKING] DB push + Zod schema/refine + score-path-safe content-hash fold + dual INSERT persistence [autonomous: false — blocking DB push]
-- [ ] 02-02-PLAN.md — Board mode-awareness: GroupId + mode-aware resolveBoardLayout (1:1 verdict→decode/actions→adapt swap) + camera fallback + DOM Decode/Adapt shells + desktop overlay & mobile dispatch
+- [x] 02-01-PLAN.md — Data spine: mode migration + [BLOCKING] DB push + Zod schema/refine + score-path-safe content-hash fold + dual INSERT persistence [autonomous: false — blocking DB push]
+- [x] 02-02-PLAN.md — Board mode-awareness: GroupId + mode-aware resolveBoardLayout (1:1 verdict→decode/actions→adapt swap) + camera fallback + DOM Decode/Adapt shells + desktop overlay & mobile dispatch
 - [ ] 02-03-PLAN.md — Intent selector + remix coupling + mode threading (form→stream→API) + boardMode live/permalink derivation
 **UI hint**: yes
 
@@ -143,7 +143,7 @@ Phase 1 (hard gate) → Phase 2 (plumbing) → Phases 3 + 4 (parallelizable, Pha
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Ingestion BUILD (HARD GATE) | 3/3 | Complete | 2026-06-01 |
-| 2. Remix Mode + One-Board-Two-Config | 0/3 | Planned | - |
+| 2. Remix Mode + One-Board-Two-Config | 2/3 | In Progress|  |
 | 3. Decode Frame | 0/TBD | Not started | - |
 | 4. Adapt Frame + Niche | 0/TBD | Not started | - |
 | 5. Develop & Predict + Lineage | 0/TBD | Not started | - |
