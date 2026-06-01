@@ -18,8 +18,8 @@ Derived 1:1 from the seed SPEC's 8 locked requirements. Each was interview-groun
 
 ### Remix mode & board
 
-- [ ] **REMIX-01**: User selects an explicit intent at the input — "Score my content" / "Remix a viral video" — with no auto-detect; Remix routes the submission down the remix path. *(SPEC req 1)*
-- [ ] **REMIX-02**: Remix mode renders one board, two configurations — keeps Input/Engine/Audience/Content Craft and swaps Verdict+Actions → Decode+Adapt, on desktop canvas and mobile card-stack, with no separate route; grade-mode board is unchanged. *(SPEC req 6)*
+- [x] **REMIX-01**: User selects an explicit intent at the input — "Score my content" / "Remix a viral video" — with no auto-detect; Remix routes the submission down the remix path. *(SPEC req 1)*
+- [x] **REMIX-02**: Remix mode renders one board, two configurations — keeps Input/Engine/Audience/Content Craft and swaps Verdict+Actions → Decode+Adapt, on desktop canvas and mobile card-stack, with no separate route; grade-mode board is unchanged. *(SPEC req 6)*
 
 ### Decode
 
@@ -67,8 +67,8 @@ INGEST-01 (Phase 1) is the hard gate: every Decode/Adapt/Develop requirement is 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | INGEST-01 | Phase 1 | Complete |
-| REMIX-01 | Phase 2 | Pending |
-| REMIX-02 | Phase 2 | Pending |
+| REMIX-01 | Phase 2 | Validated (Phase 2) |
+| REMIX-02 | Phase 2 | Validated (Phase 2) |
 | DECODE-01 | Phase 3 | Pending |
 | DECODE-02 | Phase 3 | Pending |
 | ADAPT-01 | Phase 4 | Pending |
