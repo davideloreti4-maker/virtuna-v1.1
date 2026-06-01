@@ -204,3 +204,73 @@ describe('computeBoardBounds + computePresetTargets track growth', () => {
     expect(containsRect(targets.verdict!, ver)).toBe(true);
   });
 });
+
+describe('remix mode (D-07/D-08)', () => {
+  function boundsOf(frames: GroupFrameLayout[], id: string): Rect {
+    const f = frames.find((g) => g.id === id);
+    if (!f) throw new Error(`frame ${id} not found`);
+    return f.bounds;
+  }
+
+  const scoreFrames = resolveBoardLayout({});
+  const remixFrames = resolveBoardLayout({}, 'remix');
+
+  it('default arg call is byte-identical to explicit score call', () => {
+    expect(resolveBoardLayout({})).toEqual(resolveBoardLayout({}, 'score'));
+  });
+
+  it('remix layout contains id "decode" with label "Decode"', () => {
+    const decode = remixFrames.find((f) => f.id === 'decode');
+    expect(decode).toBeDefined();
+    expect(decode!.label).toBe('Decode');
+  });
+
+  it('remix layout contains id "adapt" with label "Adapt"', () => {
+    const adapt = remixFrames.find((f) => f.id === 'adapt');
+    expect(adapt).toBeDefined();
+    expect(adapt!.label).toBe('Adapt');
+  });
+
+  it('remix layout does NOT contain id "verdict"', () => {
+    expect(remixFrames.find((f) => f.id === 'verdict')).toBeUndefined();
+  });
+
+  it('remix layout does NOT contain id "actions"', () => {
+    expect(remixFrames.find((f) => f.id === 'actions')).toBeUndefined();
+  });
+
+  it('decode bounds deep-equal verdict bounds from score mode (1:1 positional swap D-07)', () => {
+    expect(boundsOf(remixFrames, 'decode')).toEqual(boundsOf(scoreFrames, 'verdict'));
+  });
+
+  it('adapt bounds deep-equal actions bounds from score mode (1:1 positional swap D-07)', () => {
+    expect(boundsOf(remixFrames, 'adapt')).toEqual(boundsOf(scoreFrames, 'actions'));
+  });
+
+  it('all non-swapped frames are positionally identical between score and remix', () => {
+    for (const id of ['input', 'engine', 'audience', 'content-analysis'] as const) {
+      expect(boundsOf(remixFrames, id)).toEqual(boundsOf(scoreFrames, id));
+    }
+  });
+
+  it('score layout is byte-identical to pre-change GROUP_FRAMES output (D-03 zero regression)', () => {
+    expect(resolveBoardLayout({})).toEqual(GROUP_FRAMES);
+  });
+
+  it('AUTO_HEIGHT_FRAMES includes "decode"', () => {
+    expect(AUTO_HEIGHT_FRAMES.has('decode' as import('../board-types').GroupId)).toBe(true);
+  });
+
+  it('AUTO_HEIGHT_FRAMES includes "adapt"', () => {
+    expect(AUTO_HEIGHT_FRAMES.has('adapt' as import('../board-types').GroupId)).toBe(true);
+  });
+
+  it('computePresetTargets does not throw on a remix-resolved frame set (Pitfall 3)', () => {
+    expect(() => computePresetTargets(remixFrames)).not.toThrow();
+  });
+
+  it('computePresetTargets over remix still returns a verdict preset', () => {
+    const targets = computePresetTargets(remixFrames);
+    expect(targets.verdict).toBeDefined();
+  });
+});
