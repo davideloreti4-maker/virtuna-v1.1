@@ -317,6 +317,9 @@ export function Board() {
         ...(videoStoragePath && { video_storage_path: videoStoragePath }),
       }),
       ...(data.niche && { niche: data.niche }),
+      // Plan 02-03: explicit key — object is an allowlist, NOT ...data spread (Pitfall 7).
+      // Missing this line silently persists the server default 'score' even for remix submits.
+      mode: data.mode,
     }).catch(() => { /* stream.phase → error transition handles UI */ });
   };
 

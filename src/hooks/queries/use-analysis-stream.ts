@@ -65,6 +65,8 @@ export interface AnalysisStreamInput {
   society_id?: string;
   niche?: string;
   creator_handle?: string;
+  /** Plan 02-03: user intent forwarded into the POST body (mode=remix routes decode+adapt). */
+  mode?: "score" | "remix";
 }
 
 /**

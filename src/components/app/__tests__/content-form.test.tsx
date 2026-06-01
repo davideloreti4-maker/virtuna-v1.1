@@ -13,7 +13,7 @@
  * - Selected segment fill uses bg-white/[0.08] (not coral)
  */
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 
 // Stub heavy child components that are irrelevant to intent-selector behavior
 vi.mock("@/components/app/video-upload", () => ({
@@ -202,7 +202,9 @@ describe("ContentForm — mode in onSubmit payload", () => {
     const submitBtn = screen.getByRole("button", { name: /submit/i });
     fireEvent.click(submitBtn);
     expect(onSubmit).toHaveBeenCalledOnce();
-    const data = onSubmit.mock.calls[0][0] as ContentFormData;
+    const call0 = onSubmit.mock.calls[0];
+    expect(call0).toBeDefined();
+    const data = call0![0] as ContentFormData;
     expect(data.mode).toBe("score");
   });
 
@@ -222,7 +224,9 @@ describe("ContentForm — mode in onSubmit payload", () => {
     const submitBtn = screen.getByRole("button", { name: /submit/i });
     fireEvent.click(submitBtn);
     expect(onSubmit).toHaveBeenCalledOnce();
-    const data = onSubmit.mock.calls[0][0] as ContentFormData;
+    const call1 = onSubmit.mock.calls[0];
+    expect(call1).toBeDefined();
+    const data = call1![0] as ContentFormData;
     expect(data.mode).toBe("remix");
   });
 });
