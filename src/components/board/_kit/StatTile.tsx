@@ -26,7 +26,7 @@ export function StatTile({ k, v, u, delta, s, em, tone = 'default' }: StatTileDa
   return (
     <div
       className={cn(
-        'flex min-h-[72px] flex-col rounded-[11px] border px-3 py-[11px]',
+        'flex min-h-[72px] flex-col rounded-[12px] border px-3 py-[11px]',
         tone === 'accent'
           ? 'border-accent/25 bg-accent/[0.035]'
           : 'border-white/[0.06] bg-white/[0.016]',

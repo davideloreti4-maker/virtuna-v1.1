@@ -105,7 +105,7 @@ export function WeightOverrideDrawer({
           type="button"
           aria-label="Close audience mix override"
           onClick={() => onOpenChange(false)}
-          className="rounded-md p-1 text-white/40 transition-colors hover:bg-white/[0.05] hover:text-white/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF7F50]"
+          className="rounded-md p-1 text-white/40 transition-colors hover:bg-white/[0.05] hover:text-white/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -122,7 +122,7 @@ export function WeightOverrideDrawer({
             className={[
               'rounded-[6px] border px-2 py-0.5 text-[11px] transition-colors',
               activePreset === key
-                ? 'border-[#FF7F50] text-[#FF7F50] bg-[rgba(255,127,80,0.08)]'
+                ? 'border-accent text-accent bg-accent/[0.08]'
                 : 'border-white/[0.06] text-white/70 bg-transparent hover:bg-white/[0.05]',
             ].join(' ')}
           >
@@ -134,7 +134,7 @@ export function WeightOverrideDrawer({
           className={[
             'rounded-[6px] border px-2 py-0.5 text-[11px]',
             activePreset === 'custom'
-              ? 'border-[#FF7F50] text-[#FF7F50] bg-[rgba(255,127,80,0.08)]'
+              ? 'border-accent text-accent bg-accent/[0.08]'
               : 'border-white/[0.06] text-white/40 bg-transparent',
           ].join(' ')}
         >
@@ -167,12 +167,12 @@ export function WeightOverrideDrawer({
                 aria-valuemax={100}
                 aria-valuenow={pct}
                 onChange={(e) => handleSliderChange(key, e.target.value)}
-                className="flex-1 cursor-pointer accent-[#FF7F50]"
+                className="flex-1 cursor-pointer accent-accent"
                 style={{
                   WebkitAppearance: 'none',
                   appearance: 'none',
                   height: '4px',
-                  background: `linear-gradient(to right, #FF7F50 ${pct}%, rgba(255,255,255,0.10) ${pct}%)`,
+                  background: `linear-gradient(to right, var(--color-accent) ${pct}%, rgba(255,255,255,0.10) ${pct}%)`,
                   borderRadius: '9999px',
                 }}
               />
@@ -186,7 +186,7 @@ export function WeightOverrideDrawer({
       <div
         aria-live="polite"
         className="text-right text-[11px] tabular-nums"
-        style={{ color: sumPct === 100 ? 'var(--color-foreground-muted)' : '#E05252' }}
+        style={{ color: sumPct === 100 ? 'var(--color-foreground-muted)' : 'var(--color-error)' }}
       >
         Sum: {sumPct}%{sumPct === 100 ? ' ✓' : ''}
       </div>
@@ -199,7 +199,7 @@ export function WeightOverrideDrawer({
             checked={saveAsDefault}
             onChange={(e) => setSaveAsDefault(e.target.checked)}
             aria-label="Save as my default for future analyses"
-            className="rounded border-white/[0.06] accent-[#FF7F50]"
+            className="rounded border-white/[0.06] accent-accent"
           />
           Save as my default for future analyses
         </label>
@@ -209,7 +209,7 @@ export function WeightOverrideDrawer({
             type="button"
             onClick={handleReset}
             aria-label="Reset to defaults"
-            className="rounded-md border border-white/[0.06] bg-transparent px-2.5 py-1 text-[11px] text-foreground-muted transition-colors hover:text-[#E05252]"
+            className="rounded-md border border-white/[0.06] bg-transparent px-2.5 py-1 text-[11px] text-foreground-muted transition-colors hover:text-[var(--color-error)]"
           >
             Reset
           </button>
@@ -218,7 +218,7 @@ export function WeightOverrideDrawer({
             onClick={handleApply}
             disabled={!isDirty || isApplying}
             aria-label="Apply Audience Mix"
-            className="rounded-md border border-[#FF7F50] bg-[rgba(255,127,80,0.12)] px-3 py-1 text-[11px] text-[#FF7F50] transition-colors hover:bg-[rgba(255,127,80,0.20)] disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-md border border-accent bg-accent/[0.12] px-3 py-1 text-[11px] text-accent transition-colors hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {isApplying ? 'Applying…' : 'Apply mix'}
           </button>

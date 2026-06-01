@@ -10,6 +10,7 @@ import {
   smoothPath,
 } from './audience-derive';
 import { VB_W, VB_H, PAD_TOP, FLOOR_Y, yForValue, xForIndex } from './retention-geometry';
+import { EMPTY_FRAME_BG } from '@/components/board/_kit/keyframe';
 
 export interface RetentionChartProps {
   /** Survival curve, raw (0-1 or 0-100) — normalized internally. */
@@ -172,7 +173,7 @@ export function RetentionChart({
             />
           )}
           {/* single coral mark at the drop */}
-          {dropGeo && <circle cx={dropGeo.x} cy={dropGeo.y} r="3.5" fill="#FF7F50" />}
+          {dropGeo && <circle cx={dropGeo.x} cy={dropGeo.y} r="3.5" fill="var(--color-accent)" />}
         </svg>
 
         {/* drop delta label (coral), positioned above the dot */}
@@ -181,7 +182,7 @@ export function RetentionChart({
             className="absolute tabular-nums"
             style={{
               fontSize: 11,
-              color: '#FF7F50',
+              color: 'var(--color-accent)',
               fontWeight: 600,
               left: `${dropGeo.xPct * 100}%`,
               transform: 'translateX(-50%)',
@@ -233,7 +234,7 @@ export function RetentionChart({
                 width: `${cell.widthPct}%`,
                 aspectRatio: '16 / 9',
                 backgroundImage: cell.url ? `url('${cell.url}')` : undefined,
-                backgroundColor: cell.url ? undefined : 'rgba(255,255,255,0.016)',
+                backgroundColor: cell.url ? undefined : EMPTY_FRAME_BG,
                 borderColor: cell.isDrop ? 'rgba(255,127,80,0.55)' : 'rgba(255,255,255,0.06)',
                 filter: cell.isDrop
                   ? 'brightness(.78) saturate(.8) contrast(1.04)'
@@ -259,7 +260,7 @@ export function RetentionChart({
             style={{
               left: `${dropGeo.xPct * 100}%`,
               transform: 'translateX(-50%)',
-              color: '#FF7F50',
+              color: 'var(--color-accent)',
               fontWeight: 600,
             }}
           >

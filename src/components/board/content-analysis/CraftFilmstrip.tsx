@@ -6,11 +6,7 @@ import type { EmotionArcPoint } from '@/lib/engine/qwen/schemas';
 import type { CraftCell } from './content-analysis-types';
 import { COPY } from './content-analysis-constants';
 import { energyGradeFilter, buildWaveBars, formatTimeSec } from './content-analysis-derive';
-
-// Flat neutral cell surface shown when a keyframe is missing/failed. Deliberately
-// NOT the old warm `fallbackCellGradient` — a neutral placeholder keeps the strip's
-// shape without impersonating footage that didn't load.
-const EMPTY_CELL_BG = 'rgba(255,255,255,0.016)';
+import { EMPTY_FRAME_BG } from '@/components/board/_kit/keyframe';
 
 // Film grain — a single fractal-noise tile, blended over the whole strip so the
 // cut keyframes read as one graded video rather than flat color swatches.
@@ -35,7 +31,7 @@ function Cell({ cell }: { cell: CraftCell }) {
   return (
     <div
       className="relative h-full overflow-hidden"
-      style={{ flex: `1 1 ${cell.widthPct}%`, background: EMPTY_CELL_BG }}
+      style={{ flex: `1 1 ${cell.widthPct}%`, background: EMPTY_FRAME_BG }}
       data-testid="craft-cell"
       data-hook={cell.isHook ? 'true' : 'false'}
     >

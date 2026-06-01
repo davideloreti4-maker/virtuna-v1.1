@@ -1,3 +1,6 @@
+/** Neutral cell surface for a missing/failed keyframe — same across all filmstrip contexts. */
+export const EMPTY_FRAME_BG = 'rgba(255,255,255,0.016)';
+
 /**
  * Resolve a keyframe (signed URL) for a moment in the analysed video.
  *

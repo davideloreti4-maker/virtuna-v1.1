@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { EMPTY_FRAME_BG } from './keyframe';
 
 /**
  * KeyframeImage — a real video keyframe. Renders the signed `<img>` when it
@@ -71,11 +72,7 @@ export function KeyframeImage({
       ) : (
         <div
           className="absolute inset-0"
-          style={{
-            background:
-              fallbackScene ??
-              `radial-gradient(120% 100% at 50% 35%, rgba(255,127,80,${(0.05 + energy * 0.12).toFixed(2)}) 0%, #0b0a10 72%)`,
-          }}
+          style={{ background: fallbackScene ?? EMPTY_FRAME_BG }}
         />
       )}
       <div

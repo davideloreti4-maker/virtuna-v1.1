@@ -154,7 +154,7 @@ function VerdictHero({ result, niche }: { result: PredictionResult; niche: Niche
 
   return (
     <FrameHero
-      label="VIRALITY SCORE"
+      label="Virality score"
       status={
         gated
           ? { word: gatedHero!.word, tone: 'crit' }
@@ -247,7 +247,7 @@ const CONFIDENCE_DOT: Record<'HIGH' | 'MEDIUM' | 'LOW', string> = {
 function VerdictSkeleton() {
   return (
     <div data-testid="verdict-skeleton" className="flex flex-col gap-2">
-      <span className="text-[10px] uppercase tracking-[0.1em] text-white/45">VIRALITY SCORE</span>
+      <span className="text-[10px] uppercase tracking-[0.1em] text-white/45">Virality score</span>
       <div className="flex items-end gap-2">
         <span className="text-[44px] font-semibold leading-none tabular-nums text-white/25 motion-safe:animate-skeleton-breathe">
           --

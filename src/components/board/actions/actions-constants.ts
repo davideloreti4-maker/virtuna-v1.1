@@ -37,7 +37,7 @@ export const TELEMETRY = {
 // the Score frame directly above it, so nothing here repeats a number or verdict.
 export const ACTIONS_COPY = {
   // FrameHero label (caps) — one constant verb anchor across every view-kind.
-  HERO_LABEL: 'NEXT MOVE',
+  HERO_LABEL: 'Next move',
   // Hero verb headlines (the ONE move), tone-keyed.
   HERO_VERB_STRONG: 'Post it',
   HERO_VERB_POLISH: 'Polish the hook',

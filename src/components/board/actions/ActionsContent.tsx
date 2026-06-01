@@ -139,7 +139,7 @@ function HeroRewrite({
   if (rewrite.trim().length === 0) return null;
   return (
     <div
-      className="rounded-[11px] border border-white/[0.06] bg-white/[0.016] px-3 py-[11px]"
+      className="rounded-[12px] border border-white/[0.06] bg-white/[0.016] px-3 py-[11px]"
       data-testid="actions-hero-fix"
     >
       <p className="text-[13px] leading-[1.5] text-white/80">{rewrite}</p>

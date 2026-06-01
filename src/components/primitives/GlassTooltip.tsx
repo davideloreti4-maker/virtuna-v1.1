@@ -175,7 +175,6 @@ export function GlassTooltip({
           "fixed z-50 px-3 py-2",
           "rounded-[var(--rounding-sm)]",
           "border border-white/[0.06]",
-          "shadow-md",
           "text-[13px] text-[var(--color-fg)]",
           "animate-fade-in",
           "pointer-events-none",
@@ -187,6 +186,7 @@ export function GlassTooltip({
           backgroundColor: "var(--color-bg-200)",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
+          boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1), rgba(255,255,255,0.1) 0 1px 0 0 inset',
           ...style,
         }}
       >

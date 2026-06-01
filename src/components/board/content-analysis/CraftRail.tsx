@@ -39,7 +39,7 @@ export function CraftRail({ pillars, weakKey, isLoading }: Props) {
           {PILLAR_ORDER.map((key) => (
             <div
               key={key}
-              className="flex min-h-[72px] flex-col rounded-[11px] border border-white/[0.06] bg-white/[0.016] px-3 py-[11px]"
+              className="flex min-h-[72px] flex-col rounded-[12px] border border-white/[0.06] bg-white/[0.016] px-3 py-[11px]"
             >
               <div className="text-[9.5px] uppercase tracking-[0.08em] text-white/55">
                 {PILLAR_LABELS[key]}

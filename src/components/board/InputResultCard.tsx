@@ -193,7 +193,7 @@ export function InputResultCard({
   const hero = (className?: string) => (
     <FrameHero
       className={className}
-      label="PREDICTED RANK"
+      label="Predicted rank"
       value={heroValue}
       unit={gated ? undefined : '%'}
       status={
