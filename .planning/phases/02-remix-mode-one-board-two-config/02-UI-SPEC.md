@@ -52,14 +52,15 @@ Exceptions:
 
 All text: Inter, `letter-spacing: 0.2px` globally, antialiased. Source: BRAND-BIBLE.md §Typography.
 
+3 sizes declared for this phase:
+
 | Role | Size | Weight | Line Height | Usage in this phase |
 |------|------|--------|-------------|---------------------|
-| Body / input | 14px (text-sm) | 400 (regular) | 1.5 | Form field text, descriptor lines, tab labels |
-| Label / caption | 12px (text-xs) | 500 (medium) | 1.4 | Intent selector labels ("Score my content", "Remix a viral video"), frame descriptor text |
-| Frame title / heading | 10px uppercase, tracking-[0.1em] | 400 | — | FrameHero label (existing pattern from FrameHero.tsx:65) |
-| Shell descriptor | 13px | 400 | 1.4 | Single muted descriptor line inside Decode/Adapt shells |
+| Body / input | 14px (text-sm) | 400 (regular) | 1.5 | Form field text, tab labels, intent selector labels |
+| Label / caption / descriptor | 12px (text-xs) | 500 (medium) | 1.4 | Frame descriptor lines inside Decode/Adapt shells, secondary UI labels |
+| Frame title | 10px uppercase, tracking-[0.1em] | 400 | — | FrameHero label (existing pattern from FrameHero.tsx:65) |
 
-Note: Only 4 sizes declared for this phase. FrameHero value sizes (44px display, 26px prose) are inherited from existing kit — shells render NO value, only the label + descriptor.
+Note: FrameHero value sizes (44px display, 26px prose) are inherited from existing kit — shells render NO value, only the frame title label + descriptor.
 
 ---
 
@@ -78,10 +79,9 @@ Accent (`#FF7F50`) reserved for:
 1. Submit arrow button background (active state) — existing
 2. Active tab underline in `FrameTabs` — existing
 3. Coral weak-link `StatTile` (`tone:'accent'`) — score-mode only, unchanged
-4. Active intent-selector pill fill (selected segment) — new in this phase
-5. Focus rings (outline) on interactive elements
+4. Focus rings (outline) on interactive elements — existing + intent selector
 
-Accent is NOT used for: descriptor text, shell frame borders, mode-switcher inactive tabs, hover states (hover = `rgba(255,255,255,0.08)` only).
+Accent is NOT used for: descriptor text, shell frame borders, mode-switcher inactive tabs, selected segment fill (selected segment = `bg-white/[0.08]` white-transparency, not coral), hover states (hover = `rgba(255,255,255,0.04–0.08)` only).
 
 Border tokens:
 - Default: `rgba(255,255,255,0.06)` (6%) — all cards, frames, form
@@ -105,10 +105,12 @@ Border tokens:
 | Hover (unselected) | `bg-white/[0.04]` | none | `text-foreground` |
 | Container | `bg-white/[0.03]` | `border border-white/[0.06]` | — |
 
+Selected segment fill is `bg-white/[0.08]` (white 8% transparency) — NOT coral. Coral is reserved for focus rings only (see Color §Accent reserved for).
+
 - Border radius: 8px on each segment pill (`rounded-md`), container 8px
 - Padding per segment: `px-4 py-2` (16px / 8px)
-- Gap between segments: 2px
-- Full width of form container
+- Gap between segments: 0px — segments are flush inside the container pill with no gap; segments divide the container width equally via `flex-1`
+- Full width of form container (`flex w-full`)
 - Height: 36px (aligns with TITLE_BAR_HEIGHT)
 
 **Labels (exact copy):**
@@ -160,13 +162,13 @@ Title bar content (Konva Text nodes):
 Body content:
   - Descriptor Text: x=16, y=52, width=328 (frame width minus 2*16 padding)
     text: "Structural breakdown of why this video worked."
-    fontSize=13, fontStyle='normal', fill='rgba(255,255,255,0.35)', lineHeight=1.4, wrap='word'
+    fontSize=12, fontStyle='normal', fill='rgba(255,255,255,0.35)', lineHeight=1.4, wrap='word'
 ```
 
 **DOM (mobile card):** `MobileFrameCard` with label `"Decode"`. Body:
 
 ```tsx
-<p className="text-[13px] leading-[1.4] text-white/35 px-4 py-4">
+<p className="text-xs leading-[1.4] text-white/35 px-4 py-4">
   Structural breakdown of why this video worked.
 </p>
 ```
@@ -192,13 +194,13 @@ Title bar:
 Body content:
   - Descriptor Text: x=16, y=52, width=328
     text: "Niche-adapted concepts drawn from the source format."
-    fontSize=13, fontStyle='normal', fill='rgba(255,255,255,0.35)', lineHeight=1.4, wrap='word'
+    fontSize=12, fontStyle='normal', fill='rgba(255,255,255,0.35)', lineHeight=1.4, wrap='word'
 ```
 
 **DOM (mobile card):** `MobileFrameCard` with label `"Adapt"`. Body:
 
 ```tsx
-<p className="text-[13px] leading-[1.4] text-white/35 px-4 py-4">
+<p className="text-xs leading-[1.4] text-white/35 px-4 py-4">
   Niche-adapted concepts drawn from the source format.
 </p>
 ```
@@ -264,7 +266,7 @@ No "coming soon", no dates, no skeleton copy (D-11). Descriptor copy is neutral 
 | State | Trigger | Visual |
 |-------|---------|--------|
 | Score selected (default) | Page load / selecting Score | Score pill: `bg-white/[0.08]` text-foreground; Remix: transparent text-muted |
-| Remix selected | Click Remix segment | Remix pill highlighted; Text tab disappears; caption textarea hidden |
+| Remix selected | Click Remix segment | Remix pill: `bg-white/[0.08]` text-foreground; Text tab disappears; caption textarea hidden |
 | Hover | Pointer over inactive segment | `bg-white/[0.04]` text-foreground |
 | Focus-visible | Keyboard Tab | `outline: 2px solid #FF7F50`, `outline-offset: 2px` |
 
