@@ -65,18 +65,18 @@ describe('CreatorRulebookCard', () => {
     expect(within(rows[1]!).getByText('Passing rule')).toBeTruthy();
   });
 
-  it('hero shows pass/known ratio and an on-pattern word when all pass', () => {
+  it('summary shows pass/known ratio and an on-pattern word when all pass', () => {
     const rb = book([check('a', 'pass'), check('b', 'pass')]);
     render(<CreatorRulebookCard rulebook={rb} />);
-    const hero = screen.getByTestId('frame-hero');
-    expect(hero).toHaveTextContent('2/2');
-    expect(hero).toHaveTextContent('On-pattern');
+    const summary = screen.getByTestId('rulebook-summary');
+    expect(summary).toHaveTextContent('2/2');
+    expect(summary).toHaveTextContent('On-pattern');
   });
 
-  it('shows the critical (coral) hero word when a rule fails', () => {
+  it('shows the critical (coral) summary word when a rule fails', () => {
     const rb = book([check('a', 'fail'), check('b', 'pass')]);
     render(<CreatorRulebookCard rulebook={rb} />);
-    expect(screen.getByTestId('frame-hero')).toHaveTextContent('Off-pattern');
+    expect(screen.getByTestId('rulebook-summary')).toHaveTextContent('Off-pattern');
   });
 
   it('excludes unknown checks from the table and footnotes the deferred count', () => {

@@ -270,7 +270,6 @@ export function ContentAnalysisFrame({ camera: _camera, layout: _layout }: Conte
           <CraftRail pillars={pillars} weakKey={weakKey} isLoading={railLoading} />
 
           <CreatorRulebookCard
-            className="mt-4"
             result={rulebookInput}
             durationOverride={durationSec}
             isLoading={railLoading}
