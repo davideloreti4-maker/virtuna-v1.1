@@ -201,6 +201,9 @@ export class ApifyScrapingProvider implements ScrapingProvider {
     }
 
     const mp4Url = mediaUrls[0];
+    if (!mp4Url) {
+      throw new IngestError("no_media_url", url);
+    }
 
     // SSRF guard (T-01-04): validate the resolved host before returning.
     // Reject file://, non-HTTPS, internal IPs, and non-allowlisted hosts.
