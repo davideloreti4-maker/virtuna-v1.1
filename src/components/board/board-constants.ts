@@ -79,6 +79,7 @@ export const CAMERA_PRESET_TARGETS: Record<string, Rect> = {
 // Every frame is now content-sized: Input (engagement scorecard) and Engine
 // (state line → findings) join the data-heavy frames so nothing scrolls inside
 // a frame and the Engine can collapse to one line / expand for findings.
+// Includes 'decode' and 'adapt' — the remix-mode counterparts of verdict/actions.
 export const AUTO_HEIGHT_FRAMES: ReadonlySet<GroupId> = new Set<GroupId>([
   'input',
   'engine',
@@ -86,6 +87,8 @@ export const AUTO_HEIGHT_FRAMES: ReadonlySet<GroupId> = new Set<GroupId>([
   'verdict',
   'actions',
   'content-analysis',
+  'decode',
+  'adapt',
 ]);
 
 /**
@@ -98,14 +101,22 @@ export const AUTO_HEIGHT_FRAMES: ReadonlySet<GroupId> = new Set<GroupId>([
  * clipping/scrolling. When every measured height equals its constant this
  * reproduces GROUP_FRAMES exactly.
  *
+ * `mode` selects the frame set returned (D-08 single source of truth):
+ *   - 'score' (default): verdict + actions — the score board config.
+ *   - 'remix': decode + adapt at the exact same bounds (1:1 positional swap D-07).
+ *     All other frames (input, engine, audience, content-analysis) are identical.
+ *
+ * Callers that do not pass `mode` receive the score config unchanged (D-03 zero regression).
+ *
  * Columns:
  *   Left   (x=0):   input → engine
  *   Center (x=272): audience
- *   Right  (x=864): verdict → actions
+ *   Right  (x=864): verdict/decode → actions/adapt
  *   Bottom (x=0):   content-analysis, under the taller of (left col, center col)
  */
 export function resolveBoardLayout(
   measured: Partial<Record<GroupId, number>>,
+  mode: 'score' | 'remix' = 'score',
 ): GroupFrameLayout[] {
   const base = Object.fromEntries(
     GROUP_FRAMES.map((f) => [f.id, f]),
@@ -126,7 +137,8 @@ export function resolveBoardLayout(
   const engineH = h('engine');
   // Center column
   const audienceH = h('audience');
-  // Right column
+  // Right column — keyed on score ids (verdict/actions) since base is GROUP_FRAMES.
+  // Remix reuses these bounds verbatim via the id/label rewrite below (Pitfall 2).
   const verdictH = h('verdict');
   const actionsY = verdictH + GUTTER;
   const actionsH = h('actions');
@@ -136,14 +148,24 @@ export function resolveBoardLayout(
   const caY = Math.max(leftBottom, centerBottom) + GUTTER;
   const caH = h('content-analysis');
 
-  return [
-    { id: 'input',            label: 'Input',            bounds: { x: x('input'),            y: 0,        width: w('input'),            height: inputH } },
-    { id: 'engine',           label: 'Engine',           bounds: { x: x('engine'),           y: engineY,  width: w('engine'),           height: engineH } },
-    { id: 'audience',         label: 'Audience',         bounds: { x: x('audience'),         y: 0,        width: w('audience'),         height: audienceH } },
-    { id: 'verdict',          label: 'Score',            bounds: { x: x('verdict'),          y: 0,        width: w('verdict'),          height: verdictH } },
-    { id: 'actions',          label: 'Actions',          bounds: { x: x('actions'),          y: actionsY, width: w('actions'),          height: actionsH } },
-    { id: 'content-analysis', label: 'Content craft', bounds: { x: x('content-analysis'), y: caY,      width: w('content-analysis'), height: caH } },
+  const scoreFrames: GroupFrameLayout[] = [
+    { id: 'input',            label: 'Input',          bounds: { x: x('input'),            y: 0,        width: w('input'),            height: inputH } },
+    { id: 'engine',           label: 'Engine',         bounds: { x: x('engine'),           y: engineY,  width: w('engine'),           height: engineH } },
+    { id: 'audience',         label: 'Audience',       bounds: { x: x('audience'),         y: 0,        width: w('audience'),         height: audienceH } },
+    { id: 'verdict',          label: 'Score',          bounds: { x: x('verdict'),          y: 0,        width: w('verdict'),          height: verdictH } },
+    { id: 'actions',          label: 'Actions',        bounds: { x: x('actions'),          y: actionsY, width: w('actions'),          height: actionsH } },
+    { id: 'content-analysis', label: 'Content craft',  bounds: { x: x('content-analysis'), y: caY,      width: w('content-analysis'), height: caH } },
   ];
+
+  if (mode !== 'remix') return scoreFrames;
+
+  // Pattern 2(a): rewrite {id, label} on verdict/actions entries — bounds verbatim (D-07).
+  // Do NOT look up base by the new ids (decode/adapt are not in GROUP_FRAMES — Pitfall 2).
+  return scoreFrames.map((entry) => {
+    if (entry.id === 'verdict') return { ...entry, id: 'decode' as GroupId, label: 'Decode' };
+    if (entry.id === 'actions') return { ...entry, id: 'adapt' as GroupId, label: 'Adapt' };
+    return entry;
+  });
 }
 
 /** Bounding box of a resolved layout (overview camera target + board extent). */
@@ -159,16 +181,20 @@ export function computePresetTargets(
 ): Record<string, Rect> {
   const byId = Object.fromEntries(
     frames.map((f) => [f.id, f.bounds]),
-  ) as Record<GroupId, Rect>;
-  const inp = byId.input;
-  const eng = byId.engine;
-  const aud = byId.audience;
-  const ver = byId.verdict;
+  ) as Partial<Record<GroupId, Rect>>;
+  const inp = byId.input!;
+  const eng = byId.engine!;
+  const aud = byId.audience!;
+  // In remix mode `verdict` is replaced by `decode` (same bounds, D-07).
+  // Fall back to byId.decode so the preset never crashes on a remix layout (Pitfall 3).
+  const ver = byId.verdict ?? byId.decode!;
+  // Similarly `actions` may be replaced by `adapt` in remix mode.
+  const act = byId.actions ?? byId.adapt;
 
   // engine preset = left column union (Input + Engine)
   const leftTop = Math.min(inp.y, eng.y);
   const leftBottom = Math.max(inp.y + inp.height, eng.y + eng.height);
-  // verdict preset = Audience + Verdict union (D-07 hero pair)
+  // verdict preset = Audience + Verdict/Decode union (D-07 hero pair)
   const heroLeft = aud.x;
   const heroRight = Math.max(aud.x + aud.width, ver.x + ver.width);
   const heroTop = Math.min(aud.y, ver.y);
@@ -179,6 +205,6 @@ export function computePresetTargets(
     engine: { x: inp.x, y: leftTop, width: Math.max(inp.width, eng.width), height: leftBottom - leftTop },
     verdict: { x: heroLeft, y: heroTop, width: heroRight - heroLeft, height: heroBottom - heroTop },
     audience: aud,
-    'content-analysis': byId['content-analysis'],
+    'content-analysis': byId['content-analysis']!,
   };
 }
