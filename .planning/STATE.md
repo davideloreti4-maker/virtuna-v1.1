@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Viral Remix
 status: executing
-last_updated: "2026-06-02T08:49:21.981Z"
+last_updated: "2026-06-02T09:03:50.804Z"
 last_activity: 2026-06-02
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 9
-  completed_plans: 7
+  completed_plans: 8
   percent: 40
 ---
 
@@ -22,7 +22,7 @@ See: .planning/PROJECT.md
 ## Current Position
 
 Phase: 03 (decode-frame) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-06-02
 
@@ -53,9 +53,12 @@ Phase 1 hard gate is CLOSED: tiktok_url now produces real Omni segments via Supa
 - Phase 3 Plan 01: runDecode returns exactly 4 beats in fixed BEAT_IDS order; Zod + runtime assertion both enforce (D-06)
 - Phase 3 Plan 01: resolveAndRehost extracts pipeline.ts:529-609 derive-and-drop hop; pipeline.ts left unchanged (Plan 02 is first consumer)
 - Phase 3 Plan 01: improvement_tip omitted from buildDecodeContext (advice-voiced, D-06); documented in comment
+- Phase 3 Plan 02: early-return ReadableStream for remix branch keeps score-path start() body byte-for-byte identical; no interleaving risk
+- Phase 3 Plan 02: existing placeholder INSERT reused for remix row (mode:validated.mode='remix' + overall_score:null already correct; no video_storage_path)
+- Phase 3 Plan 02: cleanup() in finally of runDecodeStream inner try — unconditional execution even on Omni/runDecode throw (C4 derive-and-drop)
 
 ## Session Continuity
 
-Last session: 2026-06-02T08:49:21.977Z
+Last session: 2026-06-02T09:03:50.800Z
 
-Next: Phase 3 Plan 02 -- Decode route + SSE branch (03-02-PLAN.md).
+Next: Phase 3 Plan 03 -- DecodeShellNode frame component (03-03-PLAN.md).
