@@ -101,7 +101,10 @@ vi.mock("@/lib/engine/qwen/omni-analysis", () => ({
   analyzeVideoWithOmni: mockAnalyzeVideoWithOmni,
 }));
 
-vi.mock("@/lib/engine/remix/decode", () => ({
+// Keep the REAL omniOutputToStructuralInput so this route test exercises the
+// omni→structural mapping wiring (the cast-bug regression); only runDecode is mocked.
+vi.mock("@/lib/engine/remix/decode", async (importActual) => ({
+  ...(await importActual<typeof import("@/lib/engine/remix/decode")>()),
   runDecode: mockRunDecode,
 }));
 
@@ -232,10 +235,40 @@ const fakeDecodeResult = {
 };
 
 const fakeOmniOutput = {
-  geminiResult: { analysis: { video_signals: { pacing_score: 9 } }, cost_cents: 0.5 },
-  wave0Result: { content_type: "comedy", niche: "comedy" },
+  // Structural fields live under geminiResult.analysis.* (omni assembly shape).
+  // hook_decomposition + factors + video_signals are REQUIRED for
+  // omniOutputToStructuralInput to return non-null (else runDecode is skipped).
+  geminiResult: {
+    analysis: {
+      factors: [{ name: "Scroll-Stop Power", score: 8, rationale: "Strong open" }],
+      overall_impression: "Punchy comedic hook.",
+      content_summary: "Creator lands a quick visual gag up front.",
+      video_signals: {
+        visual_production_quality: 8,
+        hook_visual_impact: 9,
+        pacing_score: 9,
+        transition_quality: 7,
+      },
+      hook_decomposition: {
+        visual_stop_power: 9,
+        audio_hook_quality: 8,
+        text_overlay_score: 7,
+        first_words_speech_score: 9,
+        weakest_modality: "text_overlay_score",
+        visual_audio_coherence: 8,
+        cognitive_load: 3,
+        watermark_detected: { tiktok: false, ig: false, yt: false },
+      },
+    },
+    cost_cents: 0.5,
+  },
+  wave0Result: {
+    content_type: { type: "comedy", confidence: 1 },
+    niche: { primary_slug: "comedy", micro_slug: null, confidence: 1 },
+  },
   audio_perceptual_score: 85,
   signalAvailability: { gemini_hook: true, gemini_body: true, gemini_cta: false },
+  segments: [{ t_start: 0, t_end: 3, visual_event: "gag", audio_event: "punchline", is_hook_zone: true }],
 };
 
 function makeRemixRequest(body = VALID_REMIX_BODY) {
