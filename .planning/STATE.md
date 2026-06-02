@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Viral Remix
 status: executing
-stopped_at: Merged Phase 4 (Adapt) into the Decode trunk; reconciled the Decode↔Adapt contract. Phases 1–4 complete and integrated.
-last_updated: "2026-06-02T10:58:00.143Z"
+stopped_at: "Phase 5 plan 3 complete: ?summary route branch, RemixedFromChip, Sidebar Remix tag, 360s polling ceiling, live-poll remix completion marker."
+last_updated: "2026-06-02T11:20:00.000Z"
 last_activity: 2026-06-02
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 17
-  completed_plans: 15
-  percent: 80
+  completed_plans: 16
+  percent: 84
 ---
 
 # Project State
@@ -23,7 +23,7 @@ See: .planning/PROJECT.md
 ## Current Position
 
 Phase: 05 (develop-predict-lineage) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-06-02
 
@@ -68,10 +68,14 @@ Phases 3 and 4 were built in parallel worktrees (milestone/viral-remix = Decode,
 - Plan 04-02: Zod v4 UUID strictness: test fixture UUIDs must use valid version/variant bits (e.g. 550e8400-e29b-41d4-a716-446655440000), not all-zeros UUIDs
 - Plan 04-02: vi.hoisted() required for all vi.mock factory variables in vitest v4 to avoid temporal dead zone ReferenceError at module load time
 - Merge (3+4): DecodeResult is the canonical decode payload; Adapt's invented DecodeOutput dropped. `decodeResultToAdaptInput` adapter bridges beats→flat fields + repeatable string[]→RepeatableItem[]; luck never mapped in (D-01 preserved)
+- Plan 05-03: ?summary branch runs after user_id-scoped SELECT — ownership enforcement inherited, forged parent_id 404s (T-05-06)
+- Plan 05-03: POLLING_CEILING_MS = 360_000 as named constant — D-13, explicit and grep-discoverable
+- Plan 05-03: Live-poll gate explicitly NOT claimed as permalink-reload fix; comment cites Phase 3 DecodeShellNode dual-read as the correct site
+- Plan 05-03: isRemix derived inline in Sidebar render — sole consumer, cast already there
 
 ## Session Continuity
 
-Last session: 2026-06-02T10:58:00.139Z
+Last session: 2026-06-02T11:20:00.000Z
 
-Stopped at: Merged Phase 4 (Adapt) into the Decode trunk; reconciled the Decode↔Adapt contract. Phases 1–4 complete and integrated.
-Next: Phase 5 (Develop & Predict + Lineage) — /gsd-plan-phase 5
+Stopped at: Phase 5 plan 3 complete — ?summary route branch, RemixedFromChip, Sidebar Remix tag, 360s polling ceiling, live-poll remix completion marker.
+Next: Phase 5 plan 4 — regression sweep + polish (05-04-PLAN.md)
