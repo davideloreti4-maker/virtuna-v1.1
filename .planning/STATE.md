@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Viral Remix
-status: executing
-last_updated: "2026-06-02T09:03:50.804Z"
+status: verifying
+last_updated: "2026-06-02T09:14:28.336Z"
 last_activity: 2026-06-02
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 9
-  completed_plans: 8
-  percent: 40
+  completed_plans: 9
+  percent: 60
 ---
 
 # Project State
@@ -23,7 +23,7 @@ See: .planning/PROJECT.md
 
 Phase: 03 (decode-frame) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-02
 
 Roadmap shape (see `.planning/ROADMAP.md`):
@@ -56,9 +56,13 @@ Phase 1 hard gate is CLOSED: tiktok_url now produces real Omni segments via Supa
 - Phase 3 Plan 02: early-return ReadableStream for remix branch keeps score-path start() body byte-for-byte identical; no interleaving risk
 - Phase 3 Plan 02: existing placeholder INSERT reused for remix row (mode:validated.mode='remix' + overall_score:null already correct; no video_storage_path)
 - Phase 3 Plan 02: cleanup() in finally of runDecodeStream inner try — unconditional execution even on Omni/runDecode throw (C4 derive-and-drop)
+- Phase 3 Plan 03: beat order enforced via beatMap.get(id) loop over BEAT_IDS — deterministic regardless of LLM array order
+- Phase 3 Plan 03: m3 fallback reads permalinkData.variants.remix.decode directly — bypasses use-analysis-stream short-circuit (gates on overall_score != null; null on decode rows)
+- Phase 3 Plan 03: vi.fn() cast for mock pattern — avoids TS2352 on AnalysisStreamReturn shape; matches ContentAnalysisFrame.test.tsx convention
 
 ## Session Continuity
 
-Last session: 2026-06-02T09:03:50.800Z
+Last session: 2026-06-02T11:00:00Z
 
-Next: Phase 3 Plan 03 -- DecodeShellNode frame component (03-03-PLAN.md).
+Stopped at: Completed 03-03-PLAN.md — DecodeShellNode frame body; Phase 3 complete
+Next: Phase 4 (Adapt Frame + Niche) — /gsd-plan-phase 4
