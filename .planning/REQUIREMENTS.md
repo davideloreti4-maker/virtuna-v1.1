@@ -33,8 +33,8 @@ Derived 1:1 from the seed SPEC's 8 locked requirements. Each was interview-groun
 
 ### Develop & lineage
 
-- [ ] **DEVELOP-01**: Each concept exposes "Develop & predict →" that runs that single concept through the existing `/api/analyze` pipeline, producing one scored `/analyze/[id]` board and navigating to it; other concepts are NOT scored unless separately developed (no bulk scoring). *(SPEC req 4)*
-- [ ] **DEVELOP-02**: A developed child analysis stores a non-null `parent_id` (the source remix analysis), shows a working "remixed from" chip linking back, and appears in the sidebar Recent list. *(SPEC req 5)*
+- [x] **DEVELOP-01**: Each concept exposes "Develop & predict →" that runs that single concept through the existing `/api/analyze` pipeline, producing one scored `/analyze/[id]` board and navigating to it; other concepts are NOT scored unless separately developed (no bulk scoring). *(SPEC req 4)*
+- [x] **DEVELOP-02**: A developed child analysis stores a non-null `parent_id` (the source remix analysis), shows a working "remixed from" chip linking back, and appears in the sidebar Recent list. *(SPEC req 5)*
 
 ## v2 / Future Requirements
 
@@ -73,8 +73,8 @@ INGEST-01 (Phase 1) is the hard gate: every Decode/Adapt/Develop requirement is 
 | DECODE-02 | Phase 3 | Complete |
 | ADAPT-01 | Phase 4 | Complete |
 | ADAPT-02 | Phase 4 | Complete |
-| DEVELOP-01 | Phase 5 | Pending |
-| DEVELOP-02 | Phase 5 | Pending |
+| DEVELOP-01 | Phase 5 | Complete |
+| DEVELOP-02 | Phase 5 | Complete |
 
 **Coverage:**
 - v1 requirements: 9 total (8 from SPEC + INGEST-01 split out from req #8 as the gating build)
