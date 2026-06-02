@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Viral Remix
 status: executing
-last_updated: "2026-06-02T08:32:43.589Z"
+last_updated: "2026-06-02T08:47:56.438Z"
 last_activity: 2026-06-02
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 10
-  completed_plans: 7
+  completed_plans: 8
   percent: 40
 ---
 
@@ -22,7 +22,7 @@ See: .planning/PROJECT.md
 ## Current Position
 
 Phase: 04 (adapt-frame-niche) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-06-02
 
@@ -53,9 +53,11 @@ Phase 1 hard gate is CLOSED: tiktok_url now produces real Omni segments via Supa
 - Plan 04-01: AdaptInput uses Pick<DecodeOutput, 4 structural fields + repeatable> & {niche} — omits luck[] and caption (D-01 structural content-leak guard)
 - Plan 04-01: DECODE_FIXTURE uses format-only language (no topic nouns) to enable no-caption-leak test assertions in plan 04-02
 - Plan 04-01: Wave 0 uses it.todo (not it.skip) — suite reports todo count without false-red failures
+- Plan 04-02: Zod v4 UUID strictness: test fixture UUIDs must use valid version/variant bits (e.g. v4 format like 550e8400-e29b-41d4-a716-446655440000), not all-zeros UUIDs
+- Plan 04-02: vi.hoisted() required for all vi.mock factory variables in vitest v4 to avoid temporal dead zone ReferenceError at module load time
 
 ## Session Continuity
 
-Last session: 2026-06-02T08:32:43.586Z
+Last session: 2026-06-02T08:47:56.435Z
 
-Next: Phase 2 -- Remix Mode + One-Board-Two-Config (REMIX-01, REMIX-02).
+Next: Phase 04 Plan 03 — AdaptFrameBody component (UI wave).
