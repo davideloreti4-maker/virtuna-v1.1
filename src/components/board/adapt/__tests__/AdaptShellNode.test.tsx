@@ -19,6 +19,10 @@ import { AdaptShellNode } from '../AdaptShellNode';
 // Module mocks — hooks used by AdaptFrameBody
 // =====================================================
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+}));
+
 vi.mock('@/hooks/queries/use-analysis-stream', () => ({
   useAnalysisStream: vi.fn(() => ({ result: null, status: 'idle' })),
 }));

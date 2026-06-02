@@ -25,6 +25,10 @@ import { DECODE_FIXTURE, DECODE_RESULT_FIXTURE } from '@/lib/engine/remix/decode
 const mockMutateAsync = vi.fn();
 const mockUpdateMutateAsync = vi.fn();
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+}));
+
 vi.mock('@/hooks/queries/use-analysis-stream', () => ({
   useAnalysisStream: vi.fn(() => ({ result: null, status: 'idle' })),
 }));
