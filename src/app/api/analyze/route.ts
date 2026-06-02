@@ -529,6 +529,9 @@ export async function POST(request: Request) {
       warnings: finalResult.warnings,
       input_mode: finalResult.input_mode,
       mode: validated.mode,
+      // Plan 05-01 (D-07): lineage FK — null for ordinary analyses; non-null for developed children.
+      // Covers JSON-branch INSERT (~629) and SSE-branch UPSERT (~836) via buildInsertRow spread.
+      parent_id: validated.parent_id ?? null,
       has_video: finalResult.has_video,
       gemini_score: finalResult.gemini_score,
       ml_score: finalResult.ml_score,
@@ -692,6 +695,9 @@ export async function POST(request: Request) {
         engine_version: "pending",                           // sentinel: upsert overwrites
         input_mode: validated.input_mode,
         mode: validated.mode,
+        // Plan 05-01 (D-07): lineage FK set at placeholder INSERT so the safety-net UPDATE
+        // (which does not list parent_id) preserves it unedited (T-05-11 / SC#2).
+        parent_id: validated.parent_id ?? null,
         has_video: validated.input_mode === "video_upload",
         content_hash: contentHash,
         gemini_model: null,
