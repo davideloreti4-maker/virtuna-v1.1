@@ -1,5 +1,5 @@
 /**
- * Phase 03 Plan 02 — Decode route branch tests (Wave 0 RED tests).
+ * Phase 03 Plan 02 — Decode route branch tests.
  *
  * Covers all C2/m3/C4 behaviors:
  *   C2: remix branch NEVER calls runPredictionPipeline, NEVER upserts usage_tracking
@@ -7,11 +7,53 @@
  *   C4: resolveAndRehost cleanup() runs unconditionally; video_storage_path never written
  *   T-03-04: persistDecodeToVariants read-merge-write preserves sibling craft + filmstrip_segments
  *   T-03-05: DAILY_LIMITS 429 guard still fires on remix mode
+ *   DD-04: cleanup() invoked even when runDecode returns null
+ *   DD-05: INSERT never sets video_storage_path on decode rows
  *
- * Mocking pattern mirrors route.test.ts (module-scope mocks, beforeEach resets).
+ * Mocking pattern: vi.hoisted() for variables used inside vi.mock factories.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+// =====================================================
+// Hoisted variables — safe inside vi.mock factories
+// =====================================================
+
+const {
+  mockGetUser,
+  mockInsert,
+  mockVariantsUpdate,
+  mockVariantsSelect,
+  mockUsageTrackingUpsert,
+  mockResolveAndRehost,
+  mockAnalyzeVideoWithOmni,
+  mockRunDecode,
+  mockVariantsStateHolder,
+} = vi.hoisted(() => {
+  const mockInsert = vi.fn(async (_data?: unknown) => ({ error: null }));
+  const mockVariantsUpdate = vi.fn(async (_data?: unknown) => ({ error: null }));
+  const mockVariantsSelect = vi.fn();
+  const mockUsageTrackingUpsert = vi.fn(async () => ({ error: null }));
+  const mockGetUser = vi.fn();
+  const mockResolveAndRehost = vi.fn();
+  const mockAnalyzeVideoWithOmni = vi.fn();
+  const mockRunDecode = vi.fn();
+  // Holder for mutable variants state — object so factory closure can read it
+  const mockVariantsStateHolder = {
+    existing: { craft: { video_signals: { pacing_score: 8 } }, filmstrip_segments: [{ idx: 0 }] } as Record<string, unknown>,
+  };
+  return {
+    mockGetUser,
+    mockInsert,
+    mockVariantsUpdate,
+    mockVariantsSelect,
+    mockUsageTrackingUpsert,
+    mockResolveAndRehost,
+    mockAnalyzeVideoWithOmni,
+    mockRunDecode,
+    mockVariantsStateHolder,
+  };
+});
 
 // =====================================================
 // Mock engine deps — before importing route
@@ -54,26 +96,34 @@ vi.mock("nanoid", () => ({
 // Mock decode-specific engine deps
 // =====================================================
 
-const mockResolveAndRehost = vi.fn();
 vi.mock("@/lib/engine/remix/resolve-and-rehost", () => ({
   resolveAndRehost: mockResolveAndRehost,
 }));
 
-const mockAnalyzeVideoWithOmni = vi.fn();
 vi.mock("@/lib/engine/qwen/omni-analysis", () => ({
   analyzeVideoWithOmni: mockAnalyzeVideoWithOmni,
 }));
 
-const mockRunDecode = vi.fn();
 vi.mock("@/lib/engine/remix/decode", () => ({
   runDecode: mockRunDecode,
 }));
 
 // =====================================================
-// Mock Supabase auth client
+// Build usage_tracking chain: .select().eq().eq().eq().single()
 // =====================================================
 
-const mockGetUser = vi.fn();
+function makeUsageTrackingChain(count = 0) {
+  const single = vi.fn(async () => ({ data: { analysis_count: count }, error: null }));
+  const eq3 = vi.fn(() => ({ single }));
+  const eq2 = vi.fn(() => ({ eq: eq3 }));
+  const eq1 = vi.fn(() => ({ eq: eq2 }));
+  const select = vi.fn(() => ({ eq: eq1 }));
+  return { select, upsert: mockUsageTrackingUpsert };
+}
+
+// =====================================================
+// Mock Supabase auth client
+// =====================================================
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({
@@ -103,69 +153,37 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 // =====================================================
-// Mock Supabase service client — with full spy coverage
+// Mock Supabase service client
 // =====================================================
-
-// Mutable state so tests can configure returned data
-const mockVariantsState = {
-  existing: { craft: { video_signals: { pacing_score: 8 } }, filmstrip_segments: [{ idx: 0 }] } as Record<string, unknown>,
-};
-
-const mockUsageTrackingUpsert = vi.fn(async () => ({ error: null }));
-const mockUsageTrackingSelect = vi.fn(() => ({
-  eq: vi.fn().mockReturnThis(),
-  single: vi.fn(async () => ({ data: { analysis_count: 0 }, error: null })),
-  // chain for .eq.eq.eq.single
-  get mock() { return this; },
-}));
-
-// Build usage_tracking chain that handles .eq().eq().eq().single()
-function makeUsageTrackingChain(count = 0) {
-  const single = vi.fn(async () => ({ data: { analysis_count: count }, error: null }));
-  const eq3 = vi.fn(() => ({ single }));
-  const eq2 = vi.fn(() => ({ eq: eq3 }));
-  const eq1 = vi.fn(() => ({ eq: eq2 }));
-  const select = vi.fn(() => ({ eq: eq1 }));
-  return { select, upsert: mockUsageTrackingUpsert };
-}
-
-const mockInsert = vi.fn(async () => ({ error: null }));
-const mockUpdate = vi.fn(() => ({
-  eq: vi.fn(() => ({
-    eq: vi.fn(async () => ({ error: null })),
-  })),
-}));
-
-// For variants read-merge-write: select returns existing variants with craft + filmstrip_segments
-const mockVariantsSelect = vi.fn(async () => ({
-  data: { variants: mockVariantsState.existing },
-  error: null,
-}));
-const mockVariantsUpdate = vi.fn(async () => ({ error: null }));
-
-let usageTrackingCallCount = 0;
 
 vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: vi.fn(() => ({
     from: vi.fn((table: string) => {
       if (table === "usage_tracking") {
-        usageTrackingCallCount++;
         return makeUsageTrackingChain(0);
       }
       if (table === "analysis_results") {
         return {
           insert: mockInsert,
           update: vi.fn((data: Record<string, unknown>) => {
-            // If called with variants update payload, track it separately
+            // Variants update (persistDecodeToVariants) — capture it
             if ("variants" in data) {
-              mockVariantsUpdate(data);
+              void mockVariantsUpdate(data);
               return { eq: vi.fn(async () => ({ error: null })) };
             }
-            return mockUpdate(data);
+            // Score-path safety-net update (has mode/overall_score keys)
+            return {
+              eq: vi.fn(() => ({
+                eq: vi.fn(async () => ({ error: null })),
+              })),
+            };
           }),
           select: vi.fn(() => ({
             eq: vi.fn(() => ({
-              single: mockVariantsSelect,
+              single: vi.fn(async () => ({
+                data: { variants: mockVariantsStateHolder.existing },
+                error: null,
+              })),
             })),
           })),
           upsert: vi.fn(async () => ({ error: null })),
@@ -241,7 +259,6 @@ async function readSSE(res: Response): Promise<Record<string, unknown>[]> {
     if (r.value) raw += decoder.decode(r.value);
     done = r.done;
   }
-  // Parse SSE frames: "event: X\ndata: Y\n\n"
   const frames: Record<string, unknown>[] = [];
   const blocks = raw.split("\n\n").filter(Boolean);
   for (const block of blocks) {
@@ -267,25 +284,18 @@ async function readSSE(res: Response): Promise<Record<string, unknown>[]> {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  usageTrackingCallCount = 0;
 
   mockGetUser.mockResolvedValue({
     data: { user: { id: "user-remix-1" } },
     error: null,
   });
 
-  // Reset mockVariantsState to default (has craft + filmstrip_segments)
-  mockVariantsState.existing = {
+  // Reset variants state
+  mockVariantsStateHolder.existing = {
     craft: { video_signals: { pacing_score: 8 } },
     filmstrip_segments: [{ idx: 0 }],
   };
 
-  mockVariantsSelect.mockResolvedValue({
-    data: { variants: mockVariantsState.existing },
-    error: null,
-  });
-
-  mockVariantsUpdate.mockResolvedValue({ error: null });
   mockInsert.mockResolvedValue({ error: null });
 
   const mockCleanup = vi.fn(async () => { /* no-op */ });
@@ -334,8 +344,6 @@ describe("T-03-04: persistDecodeToVariants read-merge-write", () => {
     const res = await POST(req);
     await readSSE(res);
 
-    // mockVariantsUpdate should have been called with a payload containing
-    // the existing craft + filmstrip_segments AND the new decode
     expect(mockVariantsUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         variants: expect.objectContaining({
@@ -449,7 +457,7 @@ describe("T-03-05: DAILY_LIMITS guard still runs on remix mode", () => {
       rpc: vi.fn(async () => ({ error: null })),
     });
 
-    // Also need free-tier subscription for the limit to apply
+    // Free-tier subscription so limit applies
     const { createClient } = await import("@/lib/supabase/server");
     (createClient as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       auth: { getUser: vi.fn(async () => ({ data: { user: { id: "user-remix-1" } }, error: null })) },
@@ -472,7 +480,6 @@ describe("T-03-05: DAILY_LIMITS guard still runs on remix mode", () => {
     const req = makeRemixRequest();
     const res = await POST(req);
     expect(res.status).toBe(429);
-    // Ensure decode engine was NOT invoked
     expect(mockResolveAndRehost).not.toHaveBeenCalled();
     expect(runPredictionPipeline).not.toHaveBeenCalled();
   });
@@ -480,8 +487,6 @@ describe("T-03-05: DAILY_LIMITS guard still runs on remix mode", () => {
 
 // =====================================================
 // C4: derive-and-drop — cleanup() called unconditionally
-// (DD-04: even when runDecode returns null)
-// (DD-05: video_storage_path never on INSERT row)
 // =====================================================
 
 describe("C4: decode route cleanup (derive-and-drop)", () => {
@@ -505,7 +510,6 @@ describe("C4: decode route cleanup (derive-and-drop)", () => {
     const res = await POST(req);
     await readSSE(res);
 
-    // The INSERT row must NOT contain video_storage_path
     expect(mockInsert).toHaveBeenCalledWith(
       expect.not.objectContaining({ video_storage_path: expect.anything() })
     );

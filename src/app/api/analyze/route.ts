@@ -14,6 +14,11 @@ import {
 import type { StageEvent } from "@/lib/engine/events";
 import type { PredictionResult } from "@/lib/engine/types";
 import type { Json } from "@/types/database.types";
+// Phase 03 Plan 02 — decode branch imports
+import { resolveAndRehost } from "@/lib/engine/remix/resolve-and-rehost";
+import { analyzeVideoWithOmni } from "@/lib/engine/qwen/omni-analysis";
+import { runDecode } from "@/lib/engine/remix/decode";
+import type { DecodeResult, OmniStructuralInput } from "@/lib/engine/remix/decode-types";
 
 /**
  * Phase 3 — Vercel Fluid Compute route config.
@@ -141,6 +146,99 @@ async function persistCraftToVariants(
       id,
       error: err instanceof Error ? err.message : String(err),
     });
+  }
+}
+
+/**
+ * Phase 03 Plan 02 — Persist decode result into variants.remix.decode.
+ *
+ * Read-merge-write (three-level spread) to preserve sibling variants
+ * (craft, filmstrip_segments) regardless of concurrent write order.
+ * Non-fatal: a failure here only blanks the Decode frame, never the row itself.
+ *
+ * Threat T-03-04: three-level spread ensures craft + filmstrip_segments survive.
+ */
+async function persistDecodeToVariants(
+  service: ServiceClient,
+  id: string,
+  decode: DecodeResult,
+  log: Logger,
+): Promise<void> {
+  try {
+    const { data: row, error: readErr } = await service
+      .from("analysis_results")
+      .select("variants")
+      .eq("id", id)
+      .single();
+    if (readErr || !row) {
+      log.warn("decode_variants_read_failed", { id, error: readErr?.message });
+      return;
+    }
+    const current = (row.variants ?? {}) as Record<string, unknown>;
+    const remix = (current.remix ?? {}) as Record<string, unknown>;
+    const { error: writeErr } = await service
+      .from("analysis_results")
+      .update({ variants: { ...current, remix: { ...remix, decode } } as unknown as Json })
+      .eq("id", id);
+    if (writeErr) {
+      log.warn("decode_variants_write_failed", { id, error: writeErr.message });
+    }
+  } catch (err) {
+    log.warn("decode_variants_persist_threw", {
+      id,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+/**
+ * Phase 03 Plan 02 — Lightweight decode path for mode:'remix'.
+ *
+ * Runs: resolveAndRehost → analyzeVideoWithOmni → runDecode → persistDecodeToVariants
+ * Emits: started, phase, complete (with overall_score:null + variants.remix.decode)
+ *
+ * NEVER calls runPredictionPipeline, aggregateScores, or usage_tracking upsert (pitfall C2).
+ * ALWAYS calls cleanup() in finally (derive-and-drop, pitfall C4).
+ * overall_score stays null — completion marker is variants.remix != null (pitfall m3).
+ */
+async function runDecodeStream(
+  controller: ReadableStreamDefaultController,
+  send: (event: string, data: unknown) => void,
+  opts: {
+    service: ServiceClient;
+    validated: ReturnType<typeof AnalysisInputSchema.parse>;
+    analysisId: string;
+    log: Logger;
+  },
+): Promise<void> {
+  const { service, validated, analysisId, log } = opts;
+
+  send("started", { id: analysisId });
+  send("phase", { phase: "analyzing", message: "Decoding structure…" });
+
+  // Derive-and-drop: always call cleanup() in finally (T-03-02 / pitfall C4)
+  const { signedUrl, cleanup } = await resolveAndRehost(
+    validated.tiktok_url!,
+    analysisId,
+  );
+
+  let decode: DecodeResult | null = null;
+  try {
+    const omni = await analyzeVideoWithOmni(signedUrl);
+    decode = await runDecode(omni as unknown as OmniStructuralInput);
+    if (decode) {
+      await persistDecodeToVariants(service, analysisId, decode, log);
+    }
+    send("complete", {
+      id: analysisId,
+      mode: "remix",
+      overall_score: null,
+      variants: { remix: { decode } },
+    });
+  } finally {
+    // Unconditional cleanup — deletes temp mp4 regardless of decode outcome (pitfall C4)
+    await cleanup();
+    controller.close();
   }
 }
 
@@ -605,6 +703,52 @@ export async function POST(request: Request) {
     if (placeholderError) {
       log.error("placeholder insert failed", { error: placeholderError.message });
       // Don't fail the analysis — proceed without GET-stream support for this call.
+    }
+
+    // -------------------------------------------------------
+    // Phase 03 Plan 02 — Remix decode branch (early-return stream)
+    //
+    // Branch BEFORE runPredictionPipeline and BEFORE usage_tracking upsert (pitfall C2).
+    // The existing placeholder INSERT above already has overall_score:null + mode:'remix'
+    // (mode: validated.mode) and does NOT set video_storage_path — reused as-is.
+    // Completion marker: variants.remix != null (NOT overall_score — pitfall m3).
+    // -------------------------------------------------------
+    if (validated.mode === "remix") {
+      const decodeEncoder = new TextEncoder();
+      const decodeStream = new ReadableStream({
+        async start(controller) {
+          const send = (event: string, data: unknown) => {
+            controller.enqueue(
+              decodeEncoder.encode(
+                `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
+              )
+            );
+          };
+          try {
+            await runDecodeStream(controller, send, {
+              service,
+              validated,
+              analysisId,
+              log,
+            });
+          } catch (err) {
+            const message = err instanceof Error ? err.message : "Decode failed";
+            log.error("decode_stream_error", { error: message, analysisId });
+            Sentry.captureException(err, { tags: { stage: "decode_stream", analysisId } });
+            send("error", { error: message });
+            controller.close();
+          }
+        },
+      });
+      return new Response(decodeStream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache, no-transform",
+          Connection: "keep-alive",
+          "X-Accel-Buffering": "no",
+          Vary: "Accept",
+        },
+      });
     }
 
     // -------------------------------------------------------
