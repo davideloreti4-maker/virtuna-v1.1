@@ -4,16 +4,15 @@
  *
  * State machine cases:
  *   1 — niche-prompt: empty niche (both primary and sub null) shows inline NichePicker
- *   2 — mutateAsync-then-generate: niche inline → await updateProfile THEN fire adapt (no race, Pitfall 5)
- *   3 — auto-fire-once: niche present + decode present + no persisted adapt → adapt fires exactly once
- *   4 — rehydrate-no-regen: variants.remix.adapt on permalink renders cards with NO fetch call (Pitfall 3)
- *   5 — independent-failure: adapt generation failure shows Adapt error state, Decode unaffected (D-06)
+ *   2 — mutateAsync-then-generate: niche inline → await updateProfile THEN fire adapt (no race)
+ *   3 — auto-fire-once: niche present + decode present + no adapt → fires exactly once
+ *   4 — rehydrate-no-regen: variants.remix.adapt on permalink → cards with NO fetch (Pitfall 3)
+ *   5 — independent-failure: adapt failure → error state, Decode unaffected (D-06)
  *   6 — decode-absent empty state: decode absent + niche present → empty-state copy
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import type { AdaptConcept, DecodeOutput } from '@/lib/engine/remix/decode-types';
@@ -31,7 +30,7 @@ vi.mock('@/hooks/queries/use-analysis-stream', () => ({
 }));
 
 vi.mock('@/hooks/queries/use-permalink-analysis', () => ({
-  usePermalinkAnalysis: vi.fn(() => ({ data: null, id: null })),
+  usePermalinkAnalysis: vi.fn(() => ({ data: null, id: null, isLoading: false })),
 }));
 
 vi.mock('@/hooks/queries/use-creator-profile', () => ({
@@ -45,6 +44,18 @@ vi.mock('@/hooks/queries/use-creator-profile', () => ({
 }));
 
 vi.mock('@/lib/niches/taxonomy', () => ({
+  NICHE_TREE: [
+    {
+      slug: 'fitness',
+      label: 'Fitness',
+      branches: [
+        { slug: 'strength-training', label: 'Strength Training' },
+      ],
+    },
+  ],
+  getNicheBranches: vi.fn((primary: string) =>
+    primary === 'fitness' ? [{ slug: 'strength-training', label: 'Strength Training' }] : [],
+  ),
   getPrimaryLabel: vi.fn((slug: string) => slug),
   getSubLabel: vi.fn((_primary: string, sub: string) => sub),
 }));
@@ -84,30 +95,18 @@ const THREE_CONCEPTS: AdaptConcept[] = [
 ];
 
 const MOCK_ROW_WITH_DECODE = {
-  variants: {
-    remix: {
-      decode: DECODE_FIXTURE as DecodeOutput,
-    },
-  },
+  variants: { remix: { decode: DECODE_FIXTURE as DecodeOutput } },
 };
 
 const MOCK_ROW_WITH_ADAPT = {
-  variants: {
-    remix: {
-      decode: DECODE_FIXTURE as DecodeOutput,
-      adapt: THREE_CONCEPTS,
-    },
-  },
+  variants: { remix: { decode: DECODE_FIXTURE as DecodeOutput, adapt: THREE_CONCEPTS } },
 };
 
 const MOCK_CAMERA = { x: 0, y: 0, scale: 1 };
 const MOCK_LAYOUT = {
   id: 'adapt' as const,
-  x: 0,
-  y: 0,
-  w: 400,
-  h: 600,
   label: 'Adapt',
+  bounds: { x: 0, y: 0, width: 400, height: 600 },
 };
 
 // =====================================================
@@ -115,19 +114,19 @@ const MOCK_LAYOUT = {
 // =====================================================
 
 function createWrapper() {
-  const qc = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } });
+  const qc = new QueryClient({
+    defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
+  });
   return ({ children }: { children: React.ReactNode }) =>
     React.createElement(QueryClientProvider, { client: qc }, children);
 }
 
-async function renderAdaptFrameBody(mocks?: Record<string, unknown>) {
-  // Dynamic import so we can configure mocks before import
+async function renderAdaptFrameBody() {
   const { AdaptFrameBody } = await import('../AdaptFrameBody');
-  const utils = render(
-    React.createElement(AdaptFrameBody, { camera: MOCK_CAMERA, layout: MOCK_LAYOUT, ...(mocks ?? {}) }),
+  return render(
+    React.createElement(AdaptFrameBody, { camera: MOCK_CAMERA, layout: MOCK_LAYOUT }),
     { wrapper: createWrapper() },
   );
-  return utils;
 }
 
 // =====================================================
@@ -147,17 +146,15 @@ describe('AdaptFrameBody', () => {
   it('niche-prompt: empty niche (both null) renders inline NichePicker (D-11)', async () => {
     const { useCreatorProfile } = await import('@/hooks/queries/use-creator-profile');
     const { useAnalysisStream } = await import('@/hooks/queries/use-analysis-stream');
-    vi.mocked(useCreatorProfile).mockReturnValue({
-      data: { niche_primary: null, niche_sub: null } as Parameters<typeof useCreatorProfile>[0] extends undefined ? ReturnType<typeof useCreatorProfile>['data'] : never,
-    } as ReturnType<typeof useCreatorProfile>);
-    vi.mocked(useAnalysisStream).mockReturnValue({
-      result: MOCK_ROW_WITH_DECODE,
-      status: 'complete',
-    } as ReturnType<typeof useAnalysisStream>);
+    vi.mocked(useCreatorProfile).mockReturnValue(
+      { data: { niche_primary: null, niche_sub: null } } as unknown as ReturnType<typeof useCreatorProfile>,
+    );
+    vi.mocked(useAnalysisStream).mockReturnValue(
+      { result: MOCK_ROW_WITH_DECODE } as unknown as ReturnType<typeof useAnalysisStream>,
+    );
 
     await renderAdaptFrameBody();
 
-    // NichePicker or niche-prompt heading should render
     expect(screen.getByText('Add your niche to generate concepts')).toBeDefined();
   });
 
@@ -169,22 +166,23 @@ describe('AdaptFrameBody', () => {
     const { useAnalysisStream } = await import('@/hooks/queries/use-analysis-stream');
     const { usePermalinkAnalysis } = await import('@/hooks/queries/use-permalink-analysis');
 
-    vi.mocked(useCreatorProfile).mockReturnValue({
-      data: { niche_primary: null, niche_sub: null },
-    } as ReturnType<typeof useCreatorProfile>);
-    vi.mocked(useAnalysisStream).mockReturnValue({
-      result: MOCK_ROW_WITH_DECODE,
-      status: 'complete',
-    } as ReturnType<typeof useAnalysisStream>);
-    vi.mocked(usePermalinkAnalysis).mockReturnValue({ data: null, id: '550e8400-e29b-41d4-a716-446655440000' });
+    vi.mocked(useCreatorProfile).mockReturnValue(
+      { data: { niche_primary: null, niche_sub: null } } as unknown as ReturnType<typeof useCreatorProfile>,
+    );
+    vi.mocked(useAnalysisStream).mockReturnValue(
+      { result: MOCK_ROW_WITH_DECODE } as unknown as ReturnType<typeof useAnalysisStream>,
+    );
+    vi.mocked(usePermalinkAnalysis).mockReturnValue(
+      { data: null, id: '550e8400-e29b-41d4-a716-446655440000', isLoading: false },
+    );
 
     await renderAdaptFrameBody();
 
-    // Verify niche prompt renders
+    // Niche prompt renders
     expect(screen.getByText('Add your niche to generate concepts')).toBeDefined();
-    // updateProfile should NOT have been called yet
+    // updateProfile must NOT have been called yet (user hasn't confirmed)
     expect(mockUpdateMutateAsync).not.toHaveBeenCalled();
-    // adapt mutation should NOT have been called (niche is empty)
+    // adapt must NOT have fired (niche is empty)
     expect(mockMutateAsync).not.toHaveBeenCalled();
   });
 
@@ -196,14 +194,15 @@ describe('AdaptFrameBody', () => {
     const { useAnalysisStream } = await import('@/hooks/queries/use-analysis-stream');
     const { usePermalinkAnalysis } = await import('@/hooks/queries/use-permalink-analysis');
 
-    vi.mocked(useCreatorProfile).mockReturnValue({
-      data: { niche_primary: 'fitness', niche_sub: 'strength-training' },
-    } as ReturnType<typeof useCreatorProfile>);
-    vi.mocked(useAnalysisStream).mockReturnValue({
-      result: MOCK_ROW_WITH_DECODE,
-      status: 'complete',
-    } as ReturnType<typeof useAnalysisStream>);
-    vi.mocked(usePermalinkAnalysis).mockReturnValue({ data: null, id: '550e8400-e29b-41d4-a716-446655440000' });
+    vi.mocked(useCreatorProfile).mockReturnValue(
+      { data: { niche_primary: 'fitness', niche_sub: 'strength-training' } } as unknown as ReturnType<typeof useCreatorProfile>,
+    );
+    vi.mocked(useAnalysisStream).mockReturnValue(
+      { result: MOCK_ROW_WITH_DECODE } as unknown as ReturnType<typeof useAnalysisStream>,
+    );
+    vi.mocked(usePermalinkAnalysis).mockReturnValue(
+      { data: null, id: '550e8400-e29b-41d4-a716-446655440000', isLoading: false },
+    );
 
     await act(async () => {
       await renderAdaptFrameBody();
@@ -222,27 +221,28 @@ describe('AdaptFrameBody', () => {
     const { useAnalysisStream } = await import('@/hooks/queries/use-analysis-stream');
     const { usePermalinkAnalysis } = await import('@/hooks/queries/use-permalink-analysis');
 
-    vi.mocked(useCreatorProfile).mockReturnValue({
-      data: { niche_primary: 'fitness', niche_sub: 'strength-training' },
-    } as ReturnType<typeof useCreatorProfile>);
-    vi.mocked(useAnalysisStream).mockReturnValue({
-      result: MOCK_ROW_WITH_ADAPT,
-      status: 'complete',
-    } as ReturnType<typeof useAnalysisStream>);
-    vi.mocked(usePermalinkAnalysis).mockReturnValue({ data: MOCK_ROW_WITH_ADAPT, id: '550e8400-e29b-41d4-a716-446655440000' });
+    vi.mocked(useCreatorProfile).mockReturnValue(
+      { data: { niche_primary: 'fitness', niche_sub: 'strength-training' } } as unknown as ReturnType<typeof useCreatorProfile>,
+    );
+    vi.mocked(useAnalysisStream).mockReturnValue(
+      { result: MOCK_ROW_WITH_ADAPT } as unknown as ReturnType<typeof useAnalysisStream>,
+    );
+    vi.mocked(usePermalinkAnalysis).mockReturnValue(
+      { data: MOCK_ROW_WITH_ADAPT, id: '550e8400-e29b-41d4-a716-446655440000', isLoading: false },
+    );
 
     await act(async () => {
       await renderAdaptFrameBody();
     });
 
-    // Should render 3 cards from persisted data
+    // Renders 3 cards from persisted data
     await waitFor(() => {
       expect(screen.getByText('Concept 1 hook for niche')).toBeDefined();
       expect(screen.getByText('Concept 2 hook for niche')).toBeDefined();
       expect(screen.getByText('Concept 3 hook for niche')).toBeDefined();
     });
 
-    // Must NOT have called the mutation (no regeneration on permalink)
+    // No mutation call — rehydrate-no-regen
     expect(mockMutateAsync).not.toHaveBeenCalled();
   });
 
@@ -255,20 +255,21 @@ describe('AdaptFrameBody', () => {
     const { usePermalinkAnalysis } = await import('@/hooks/queries/use-permalink-analysis');
     const { useAdaptConcepts } = await import('@/hooks/queries/use-adapt-concepts');
 
-    vi.mocked(useCreatorProfile).mockReturnValue({
-      data: { niche_primary: 'fitness', niche_sub: 'strength-training' },
-    } as ReturnType<typeof useCreatorProfile>);
-    vi.mocked(useAnalysisStream).mockReturnValue({
-      result: MOCK_ROW_WITH_DECODE,
-      status: 'complete',
-    } as ReturnType<typeof useAnalysisStream>);
-    vi.mocked(usePermalinkAnalysis).mockReturnValue({ data: null, id: '550e8400-e29b-41d4-a716-446655440000' });
+    vi.mocked(useCreatorProfile).mockReturnValue(
+      { data: { niche_primary: 'fitness', niche_sub: 'strength-training' } } as unknown as ReturnType<typeof useCreatorProfile>,
+    );
+    vi.mocked(useAnalysisStream).mockReturnValue(
+      { result: MOCK_ROW_WITH_DECODE } as unknown as ReturnType<typeof useAnalysisStream>,
+    );
+    vi.mocked(usePermalinkAnalysis).mockReturnValue(
+      { data: null, id: '550e8400-e29b-41d4-a716-446655440000', isLoading: false },
+    );
     vi.mocked(useAdaptConcepts).mockReturnValue({
       mutateAsync: vi.fn().mockRejectedValue(new Error('Generation failed')),
       isPending: false,
       isError: true,
       error: new Error('Generation failed'),
-    } as ReturnType<typeof useAdaptConcepts>);
+    } as unknown as ReturnType<typeof useAdaptConcepts>);
 
     await act(async () => {
       await renderAdaptFrameBody();
@@ -287,14 +288,21 @@ describe('AdaptFrameBody', () => {
   it('decode-absent: niche present but no decode → shows empty-state copy', async () => {
     const { useCreatorProfile } = await import('@/hooks/queries/use-creator-profile');
     const { useAnalysisStream } = await import('@/hooks/queries/use-analysis-stream');
+    const { useAdaptConcepts } = await import('@/hooks/queries/use-adapt-concepts');
 
-    vi.mocked(useCreatorProfile).mockReturnValue({
-      data: { niche_primary: 'fitness', niche_sub: 'strength-training' },
-    } as ReturnType<typeof useCreatorProfile>);
-    vi.mocked(useAnalysisStream).mockReturnValue({
-      result: { variants: { remix: {} } },
-      status: 'complete',
-    } as ReturnType<typeof useAnalysisStream>);
+    vi.mocked(useCreatorProfile).mockReturnValue(
+      { data: { niche_primary: 'fitness', niche_sub: 'strength-training' } } as unknown as ReturnType<typeof useCreatorProfile>,
+    );
+    vi.mocked(useAnalysisStream).mockReturnValue(
+      { result: { variants: { remix: {} } } } as unknown as ReturnType<typeof useAnalysisStream>,
+    );
+    // Ensure no error state from previous test
+    vi.mocked(useAdaptConcepts).mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue({ concepts: THREE_CONCEPTS }),
+      isPending: false,
+      isError: false,
+      error: null,
+    } as unknown as ReturnType<typeof useAdaptConcepts>);
 
     await renderAdaptFrameBody();
 

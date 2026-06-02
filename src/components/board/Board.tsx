@@ -514,7 +514,7 @@ export function Board() {
             {layout.id === 'actions' && <ActionsNode camera={camera} layout={layout} />}
             {layout.id === 'content-analysis' && <ContentAnalysisFrame camera={camera} layout={layout} />}
             {layout.id === 'decode' && <DecodeShellNode />}
-            {layout.id === 'adapt' && <AdaptShellNode />}
+            {layout.id === 'adapt' && <AdaptShellNode camera={camera} layout={layout} />}
           </GroupFrameOverlay>
         ))}
       </div>

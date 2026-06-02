@@ -134,7 +134,7 @@ export function BoardMobile({ boardMachineState, input, hasAnalysis, boardMode =
       case 'decode':
         return <DecodeShellNode />;
       case 'adapt':
-        return <AdaptShellNode />;
+        return <AdaptShellNode camera={CARD_CAMERA} layout={layout} />;
       default:
         return null;
     }
