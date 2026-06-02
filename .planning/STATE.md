@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Viral Remix
-status: executing
-stopped_at: "Phase 5 plan 3 complete: ?summary route branch, RemixedFromChip, Sidebar Remix tag, 360s polling ceiling, live-poll remix completion marker."
-last_updated: "2026-06-02T11:20:00.000Z"
+status: checkpoint-human-verify
+stopped_at: "Phase 5 plan 4 tasks 1-3 complete: FrameErrorBoundary created, Decode+Adapt mounts wrapped, Raycast sweep done, regression gate green (1840 tests). Awaiting Task 4 human-verify checkpoint."
+last_updated: "2026-06-02T12:30:00.000Z"
 last_activity: 2026-06-02
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 17
   completed_plans: 16
-  percent: 84
+  percent: 94
 ---
 
 # Project State
@@ -22,9 +22,9 @@ See: .planning/PROJECT.md
 
 ## Current Position
 
-Phase: 05 (develop-predict-lineage) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
+Phase: 05 (develop-predict-lineage) — CHECKPOINT
+Plan: 4 of 4 (tasks 1-3 complete; task 4 awaiting human-verify)
+Status: Awaiting checkpoint approval
 Last activity: 2026-06-02
 
 Roadmap shape (see `.planning/ROADMAP.md`):
@@ -72,10 +72,14 @@ Phases 3 and 4 were built in parallel worktrees (milestone/viral-remix = Decode,
 - Plan 05-03: POLLING_CEILING_MS = 360_000 as named constant — D-13, explicit and grep-discoverable
 - Plan 05-03: Live-poll gate explicitly NOT claimed as permalink-reload fix; comment cites Phase 3 DecodeShellNode dual-read as the correct site
 - Plan 05-03: isRemix derived inline in Sidebar render — sole consumer, cast already there
+- Plan 05-04: FrameErrorBoundary is a class component (React requirement for getDerivedStateFromError); no external dep (T-05-SC)
+- Plan 05-04: Fallback shows generic '{frame} couldn't render' only — no stack/PII rendered (T-05-10)
+- Plan 05-04: Score-mode frames NOT wrapped in FrameErrorBoundary — minimal scope, D-14 regression surface clean
+- Plan 05-04: AdaptConceptCard Develop trigger: py-3 added for ≥44px mobile tap target
 
 ## Session Continuity
 
-Last session: 2026-06-02T11:20:00.000Z
+Last session: 2026-06-02T12:30:00.000Z
 
-Stopped at: Phase 5 plan 3 complete — ?summary route branch, RemixedFromChip, Sidebar Remix tag, 360s polling ceiling, live-poll remix completion marker.
-Next: Phase 5 plan 4 — regression sweep + polish (05-04-PLAN.md)
+Stopped at: Phase 5 plan 4 tasks 1-3 complete — FrameErrorBoundary, Raycast sweep, regression gate (1840 tests green). Task 4 is a blocking human-verify checkpoint.
+Next: Human approves Task 4 checkpoint (8-step Develop loop verification on running app) → phase complete
