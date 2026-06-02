@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Viral Remix
 status: executing
-last_updated: "2026-06-02T08:39:34.734Z"
-last_activity: 2026-06-02 -- Phase 03 planning complete
+last_updated: "2026-06-02T08:49:21.981Z"
+last_activity: 2026-06-02
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 9
-  completed_plans: 6
+  completed_plans: 7
   percent: 40
 ---
 
@@ -21,9 +21,10 @@ See: .planning/PROJECT.md
 
 ## Current Position
 
-Phase: 3
+Phase: 03 (decode-frame) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-06-02 -- Phase 03 planning complete
+Last activity: 2026-06-02
 
 Roadmap shape (see `.planning/ROADMAP.md`):
 
@@ -49,9 +50,12 @@ Phase 1 hard gate is CLOSED: tiktok_url now produces real Omni segments via Supa
 - Plan 03: signedVideoUrl variable reused (not renamed) — minimal-diff avoids partial-rename hazard at 5 read sites
 - Plan 03: derive-and-drop runs INLINE — resolve+Omni ~70-90s << maxDuration=300 (spike §5 verdict)
 - Plan 03: No second rate limiter — existing DAILY_LIMITS/429 branch at route.ts:296-310 is mode-agnostic
+- Phase 3 Plan 01: runDecode returns exactly 4 beats in fixed BEAT_IDS order; Zod + runtime assertion both enforce (D-06)
+- Phase 3 Plan 01: resolveAndRehost extracts pipeline.ts:529-609 derive-and-drop hop; pipeline.ts left unchanged (Plan 02 is first consumer)
+- Phase 3 Plan 01: improvement_tip omitted from buildDecodeContext (advice-voiced, D-06); documented in comment
 
 ## Session Continuity
 
-Last session: 2026-06-02T08:07:27.244Z
+Last session: 2026-06-02T08:49:21.977Z
 
-Next: Phase 2 -- Remix Mode + One-Board-Two-Config (REMIX-01, REMIX-02).
+Next: Phase 3 Plan 02 -- Decode route + SSE branch (03-02-PLAN.md).

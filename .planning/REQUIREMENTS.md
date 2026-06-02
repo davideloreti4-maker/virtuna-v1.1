@@ -23,8 +23,8 @@ Derived 1:1 from the seed SPEC's 8 locked requirements. Each was interview-groun
 
 ### Decode
 
-- [ ] **DECODE-01**: The Decode frame renders a structural teardown (hook pattern, pacing/structure, the turn, emotional beat) for a remix-mode video, on its own lightweight Qwen path (NOT the full 332s scoring pipeline). *(SPEC req 2)*
-- [ ] **DECODE-02**: The Decode frame renders an explicit repeatable-vs-luck split (reproducible structure vs timing/existing-audience/outlier), and never frames the video as something the user should "fix." *(SPEC req 2)*
+- [x] **DECODE-01**: The Decode frame renders a structural teardown (hook pattern, pacing/structure, the turn, emotional beat) for a remix-mode video, on its own lightweight Qwen path (NOT the full 332s scoring pipeline). *(SPEC req 2)*
+- [x] **DECODE-02**: The Decode frame renders an explicit repeatable-vs-luck split (reproducible structure vs timing/existing-audience/outlier), and never frames the video as something the user should "fix." *(SPEC req 2)*
 
 ### Adapt
 
@@ -69,8 +69,8 @@ INGEST-01 (Phase 1) is the hard gate: every Decode/Adapt/Develop requirement is 
 | INGEST-01 | Phase 1 | Complete |
 | REMIX-01 | Phase 2 | Validated (Phase 2) |
 | REMIX-02 | Phase 2 | Validated (Phase 2) |
-| DECODE-01 | Phase 3 | Pending |
-| DECODE-02 | Phase 3 | Pending |
+| DECODE-01 | Phase 3 | Complete |
+| DECODE-02 | Phase 3 | Complete |
 | ADAPT-01 | Phase 4 | Pending |
 | ADAPT-02 | Phase 4 | Pending |
 | DEVELOP-01 | Phase 5 | Pending |
