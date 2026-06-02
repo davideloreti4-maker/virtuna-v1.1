@@ -66,6 +66,7 @@ export function AdaptConceptCard({ concept, onDevelop, isPending }: AdaptConcept
             className={cn(
               'w-full text-left text-xs font-medium text-white/55',
               'flex items-center justify-between',
+              'py-3',
               'hover:text-foreground transition-colors',
               isPending && 'opacity-40 pointer-events-none',
             )}
