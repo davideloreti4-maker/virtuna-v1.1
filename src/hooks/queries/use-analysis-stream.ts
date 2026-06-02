@@ -67,6 +67,8 @@ export interface AnalysisStreamInput {
   creator_handle?: string;
   /** Plan 02-03: user intent forwarded into the POST body (mode=remix routes decode+adapt). */
   mode?: "score" | "remix";
+  /** Plan 05-01: source remix analysis id forwarded into the POST body for developed-child lineage (D-07). */
+  parent_id?: string;
 }
 
 /**

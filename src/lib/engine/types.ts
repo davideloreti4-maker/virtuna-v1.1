@@ -157,6 +157,11 @@ export const AnalysisInputSchema = z
     // Submission intent: 'score' (predict own content) or 'remix' (decode a viral video for adaptation).
     // Distinct from input_mode which captures the input mechanism (D-12).
     mode: z.enum(["score", "remix"]).default("score"),
+
+    // Plan 05-01: nullable lineage FK to analysis_results.id (D-07/D-08).
+    // Develop always submits mode='score' + input_mode='text', so the existing
+    // remix-vs-text .refine() is not triggered. No new .refine() needed.
+    parent_id: z.string().optional(),
   })
   .refine(
     (data) => {
