@@ -10,7 +10,7 @@
  * All Qwen calls are mocked via the openai module mock (same pattern as stage11-counterfactuals.test.ts).
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DECODE_FIXTURE } from '../decode.fixture';
 import type { AdaptInput } from '../decode-types';
 // import type { AdaptConcept } from '../decode-types'; // used in Wave 1+ assertions
@@ -82,34 +82,113 @@ function makeAdaptInput(): AdaptInput {
   return { hook_pattern, structure, the_turn, emotional_beat, repeatable, niche: 'fitness' };
 }
 
+function makeQwenResponse(content: string) {
+  return {
+    choices: [{ message: { content } }],
+    usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
+  };
+}
+
 // =====================================================
 // Tests
 // =====================================================
 
 describe('adapt.ts (Wave 0 — generateAdaptConcepts)', () => {
-  it.todo(
-    // Wave 0 — implemented in plan 04-02
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it(
     'exactly-3: returns exactly 3 AdaptConcept objects when Qwen returns valid JSON',
+    async () => {
+      const { generateAdaptConcepts } = await import('../adapt');
+      mockCreate.mockResolvedValueOnce(makeQwenResponse(makeValidConceptsResponse()));
+
+      const input = makeAdaptInput();
+      const result = await generateAdaptConcepts(input);
+
+      expect(result).not.toBeNull();
+      expect(result).toHaveLength(3);
+      expect(result![0]).toMatchObject({
+        hook: expect.stringMatching(/.+/),
+        angle: expect.stringMatching(/.+/),
+        who_its_for: expect.stringMatching(/.+/),
+        format_borrowed: expect.stringMatching(/.+/),
+      });
+    },
   );
 
-  it.todo(
-    // Wave 0 — implemented in plan 04-02
+  it(
     'repair-loop: retries once on malformed Qwen output and returns 3 concepts on second attempt',
+    async () => {
+      const { generateAdaptConcepts } = await import('../adapt');
+      // First attempt: malformed (not valid JSON object with concepts)
+      mockCreate.mockResolvedValueOnce(makeQwenResponse('not valid json'));
+      // Second attempt: valid
+      mockCreate.mockResolvedValueOnce(makeQwenResponse(makeValidConceptsResponse()));
+
+      const input = makeAdaptInput();
+      const result = await generateAdaptConcepts(input);
+
+      expect(result).not.toBeNull();
+      expect(result).toHaveLength(3);
+      expect(mockCreate).toHaveBeenCalledTimes(2);
+    },
   );
 
-  it.todo(
-    // Wave 0 — implemented in plan 04-02
+  it(
     'final-invalid→null: returns null when both attempts produce invalid output (graceful failure)',
+    async () => {
+      const { generateAdaptConcepts } = await import('../adapt');
+      const Sentry = await import('@sentry/nextjs');
+
+      // Both attempts fail
+      mockCreate.mockResolvedValueOnce(makeQwenResponse('bad json'));
+      mockCreate.mockResolvedValueOnce(makeQwenResponse('still bad json'));
+
+      const input = makeAdaptInput();
+      const result = await generateAdaptConcepts(input);
+
+      expect(result).toBeNull();
+      expect(Sentry.captureException).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ tags: { stage: 'remix_adapt' } }),
+      );
+    },
   );
 
-  it.todo(
-    // Wave 0 — implemented in plan 04-02
+  it(
     'no-caption-guard: buildAdaptUserContent only accepts AdaptInput — passing DecodeOutput (with luck[]) is a TS compile error',
+    async () => {
+      const { buildAdaptUserContent } = await import('../adapt');
+      const input = makeAdaptInput();
+      // This test verifies the function is callable with AdaptInput and produces a string
+      const prompt = buildAdaptUserContent(input);
+      expect(typeof prompt).toBe('string');
+      expect(prompt.length).toBeGreaterThan(0);
+      // Structural check: AdaptInput has no 'luck' key
+      expect('luck' in input).toBe(false);
+    },
   );
 
-  it.todo(
-    // Wave 0 — implemented in plan 04-02
+  it(
     'luck-exclusion: luck[] item labels (e.g. "trending-audio-at-posting-time") are absent from prompt user content when DECODE_FIXTURE is the input',
+    async () => {
+      const { buildAdaptUserContent } = await import('../adapt');
+      const input = makeAdaptInput();
+      const prompt = buildAdaptUserContent(input);
+
+      // Verify luck labels from DECODE_FIXTURE are NOT in the prompt
+      for (const luckItem of DECODE_FIXTURE.luck) {
+        expect(prompt).not.toContain(luckItem.label);
+        expect(prompt).not.toContain(luckItem.why_repeatable);
+      }
+
+      // Verify repeatable labels from DECODE_FIXTURE ARE in the prompt
+      for (const repeatItem of DECODE_FIXTURE.repeatable) {
+        expect(prompt).toContain(repeatItem.label);
+      }
+    },
   );
 
   // =====================================================

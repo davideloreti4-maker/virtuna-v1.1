@@ -1,0 +1,165 @@
+/**
+ * Adapt generator — Phase 4 (ADAPT-01).
+ *
+ * Single Qwen JSON-mode call that produces exactly 3 niche-adapted concepts
+ * from the structural decode output. Does NOT touch runPredictionPipeline,
+ * usage_tracking, or DAILY_LIMITS (D-04 lightweight path).
+ *
+ * Input structural guard (D-01, Pitfall 1):
+ * `buildAdaptUserContent` accepts only `AdaptInput` (Pick<DecodeOutput, ...> & {niche}),
+ * making it a compile-time error to pass `luck[]` or any caption field.
+ */
+
+import * as Sentry from "@sentry/nextjs";
+import { createLogger } from "@/lib/logger";
+import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "@/lib/engine/qwen/client";
+import { stripModelOutput } from "@/lib/engine/utils/strip";
+import { z } from "zod";
+import type { AdaptInput, AdaptConcept } from "./decode-types";
+
+const log = createLogger({ module: "engine.remix.adapt" });
+
+const TIMEOUT_MS = 90_000; // 90s — adapt is lighter than omni; abort if DashScope stalls
+const MAX_RETRIES = 1;     // 2 total attempts (attempt 0 + 1 repair)
+
+// =========================================================
+// System prompt — stable string for DashScope cache prefix
+// =========================================================
+
+export const ADAPT_SYSTEM_PROMPT = `You are a content strategy expert specializing in format adaptation.
+Your task: given the structural anatomy of a viral video (hook pattern, structure, emotional beat, repeatable format items), generate exactly 3 DISTINCT adapted concepts for the specified creator niche.
+
+RULES:
+- Adapt the FORMAT and STRUCTURE, not the content or topic of the original video.
+- Each concept must be firmly grounded in the creator's niche.
+- All 3 concepts must be meaningfully different from each other.
+- Do NOT reference the original video's topic, subject, or content — only its format patterns.
+
+OUTPUT: Return strict JSON with this exact shape and nothing else:
+{
+  "concepts": [
+    {
+      "hook": "string — bold, actionable headline adapted to the niche (≤ 15 words)",
+      "angle": "string — the structural angle or narrative approach borrowed from the source",
+      "who_its_for": "string — who in the creator's niche this concept targets",
+      "format_borrowed": "string — the specific format pattern borrowed (short label, ≤ 10 words)"
+    }
+  ]
+}
+The "concepts" array MUST contain exactly 3 items.`;
+
+// =========================================================
+// Zod schemas
+// =========================================================
+
+const AdaptConceptZodSchema = z.object({
+  hook:            z.string().min(1).max(200),
+  angle:           z.string().min(1).max(300),
+  who_its_for:     z.string().min(1).max(200),
+  format_borrowed: z.string().min(1).max(200),
+});
+
+const AdaptConceptsZodSchema = z.object({
+  concepts: z.array(AdaptConceptZodSchema).length(3), // ADAPT-01: exactly 3
+});
+
+// =========================================================
+// Input builder — accepts AdaptInput only (D-01 structural guard)
+// =========================================================
+
+/**
+ * Build the Qwen user-turn content from the adapt input.
+ *
+ * Parameter type is `AdaptInput` (Pick<DecodeOutput, 4 structural fields + repeatable> & {niche}).
+ * Passing `luck[]`, `content_summary`, or a raw caption is a compile-time error (Pitfall 1 guard).
+ */
+export function buildAdaptUserContent(input: AdaptInput): string {
+  const repeatableList = input.repeatable
+    .map((item, i) => `  ${i + 1}. "${item.label}" — ${item.why_repeatable}`)
+    .join("\n");
+
+  return `VIRAL VIDEO STRUCTURAL ANATOMY:
+Hook Pattern: ${input.hook_pattern}
+Structure: ${input.structure}
+The Turn: ${input.the_turn}
+Emotional Beat: ${input.emotional_beat}
+
+Repeatable Format Items (adapt these, not the content):
+${repeatableList}
+
+CREATOR NICHE: ${input.niche}
+
+Generate exactly 3 distinct niche-adapted concepts using the format patterns above.`;
+}
+
+// =========================================================
+// Main generator
+// =========================================================
+
+/**
+ * Generate exactly 3 niche-adapted concepts from the structural decode output.
+ *
+ * Returns `null` on graceful failure (never throws). The Adapt frame shows an
+ * error state when null — it does NOT propagate to the Decode frame (D-06).
+ */
+export async function generateAdaptConcepts(input: AdaptInput): Promise<AdaptConcept[] | null> {
+  const ai = getQwenClient();
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    try {
+      const extraInstruction = attempt > 0
+        ? "\nIMPORTANT: Your previous response was not valid JSON. Return ONLY the raw JSON object, no explanation."
+        : "";
+
+      const completion = await ai.chat.completions.create(
+        {
+          model:           QWEN_REASONING_MODEL, // qwen3.6-plus — same as pass2.ts
+          messages: [
+            { role: "system", content: ADAPT_SYSTEM_PROMPT + extraInstruction },
+            { role: "user",   content: buildAdaptUserContent(input) },
+          ],
+          response_format: { type: "json_object" },
+          temperature:     0,         // reproducible (D-04 determinism requirement)
+          seed:            QWEN_SEED, // 7
+        },
+        { signal: controller.signal },
+      );
+
+      clearTimeout(timer);
+
+      const raw     = completion.choices[0]?.message?.content ?? "";
+      const cleaned = stripModelOutput(raw); // strips <think>...</think> + fences
+      const parsed  = JSON.parse(cleaned) as unknown;
+      const result  = AdaptConceptsZodSchema.safeParse(parsed);
+
+      if (!result.success) {
+        log.warn("adapt Zod validation failed", { attempt, error: result.error.message });
+        lastError = result.error;
+        continue; // → repair attempt with extraInstruction on next loop
+      }
+
+      // Belt-and-suspenders count guard (mirrors pass2.ts:197-200)
+      if (result.data.concepts.length !== 3) {
+        throw new Error(`concept count mismatch: ${result.data.concepts.length}`);
+      }
+
+      log.info("adapt concepts generated", { attempt, count: result.data.concepts.length });
+      return result.data.concepts as AdaptConcept[];
+
+    } catch (err: unknown) {
+      clearTimeout(timer);
+      lastError = err;
+      const isAbort = err instanceof Error && err.name === "AbortError";
+      log.warn("adapt attempt failed", { attempt, error: String(err), isAbort });
+      if (attempt >= MAX_RETRIES) break;
+    }
+  }
+
+  Sentry.captureException(lastError, { tags: { stage: "remix_adapt" } });
+  log.error("adapt generation failed after all retries", { error: String(lastError) });
+  return null; // graceful failure → frame shows error state (D-06)
+}
