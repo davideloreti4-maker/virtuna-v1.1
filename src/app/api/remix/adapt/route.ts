@@ -28,7 +28,10 @@ import type { AdaptInput } from "@/lib/engine/remix/decode-types";
 // =====================================================================
 
 const AdaptRequestSchema = z.object({
-  analysis_id: z.string().uuid(),
+  // Analysis ids are url-safe nanoids (nanoid(12)), NOT UUIDs — the previous
+  // .uuid() rejected every real id with a 400 (e.g. "KSW5TluyRy0L"). Matches the
+  // convention in analyze/[id]/{filmstrips,script,comparisons} routes.
+  analysis_id: z.string().min(8).max(64).regex(/^[A-Za-z0-9_-]+$/u, 'analysis_id must be a url-safe id'),
   decode: z.object({
     hook_pattern:   z.string().min(1),
     structure:      z.string().min(1),

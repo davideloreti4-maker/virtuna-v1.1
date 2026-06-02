@@ -204,13 +204,30 @@ describe('/api/remix/adapt route (Wave 0)', () => {
     expect(json.error).toMatch(/validation/i);
   });
 
-  it('zod-body-400: returns 400 when analysis_id is not a valid UUID', async () => {
+  it('zod-body-400: returns 400 when analysis_id is not a url-safe id', async () => {
     mockGetUser.mockResolvedValueOnce({ data: { user: { id: USER_ID } }, error: null });
 
-    const req = makeRequest({ ...VALID_BODY, analysis_id: 'not-a-uuid' });
+    // Contains a space + "!" — fails the url-safe regex.
+    const req = makeRequest({ ...VALID_BODY, analysis_id: 'bad id!' });
     const res = await POST(req);
 
     expect(res.status).toBe(400);
+  });
+
+  it('accepts a nanoid analysis_id (regression: ids are nanoids, NOT UUIDs)', async () => {
+    // "KSW5TluyRy0L" is a real nanoid(12) — the prior z.string().uuid() rejected
+    // every real id with a 400, breaking the whole Adapt generation flow live.
+    mockGetUser.mockResolvedValueOnce({ data: { user: { id: USER_ID } }, error: null });
+    mockFrom
+      .mockReturnValueOnce(makeOwnershipFrom(USER_ID))
+      .mockReturnValueOnce(makeVariantsReadFrom({}))
+      .mockReturnValueOnce(makeVariantsWriteFrom());
+    mockGenerateAdaptConcepts.mockResolvedValueOnce(THREE_CONCEPTS);
+
+    const req = makeRequest({ ...VALID_BODY, analysis_id: 'KSW5TluyRy0L' });
+    const res = await POST(req);
+
+    expect(res.status).toBe(200);
   });
 
   it('ownership-404: returns 404 when analysis_results row belongs to a different user', async () => {
