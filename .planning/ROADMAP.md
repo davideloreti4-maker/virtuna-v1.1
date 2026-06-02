@@ -139,7 +139,11 @@ The only IP-introducing risk in the milestone is born here: the instant Phase 1 
   3. The child board shows a working "remixed from" chip linking back to the source remix analysis (`/api/analysis/[id]` returns the minimal parent summary)
   4. The developed child appears in the sidebar Recent list; a decode/remix row hydrates correctly on permalink reload via a distinct completion marker (`variants.remix != null`, since `overall_score` is null on decode rows — pitfall m3) and the polling ceiling is lifted for remix-developed children
   5. Full regression confirmed: grade-mode board and existing analyze flow unchanged; both new frames pass Raycast styling, render error boundaries, and verify on the mobile card-stack at <768px
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 05-01-PLAN.md — Lineage data layer: parent_id migration + [BLOCKING] DB push + database.types regen + AnalysisInputSchema/AnalysisStreamInput parent_id + thread at all 4 insert sites (D-07/D-08) [autonomous: false — blocking DB push]
+- [ ] 05-02-PLAN.md — Develop trigger + scoring: onDevelop on AdaptConceptCard + content_text brief assembly + one-stream-per-click text submission with parent_id + navigate-on-started (D-01..D-06, C3)
+- [ ] 05-03-PLAN.md — Chip + Recent + hydration: /api/analysis/[id]?summary + RemixedFromChip + Recent "Remix" tag + variants.remix completion marker + 360s polling ceiling (D-09..D-13, m3)
+- [ ] 05-04-PLAN.md — Regression + polish: FrameErrorBoundary on Decode/Adapt + Raycast/mobile sweep + grade-mode regression gate (D-14) [autonomous: false — human-verify checkpoint]
 **UI hint**: yes
 
 ## Progress
@@ -153,7 +157,7 @@ Phase 1 (hard gate) → Phase 2 (plumbing) → Phases 3 + 4 (parallelizable, Pha
 | 2. Remix Mode + One-Board-Two-Config | 3/3 | Complete   | 2026-06-01 |
 | 3. Decode Frame | 3/3 | Complete   | 2026-06-02 |
 | 4. Adapt Frame + Niche | 4/4 | Complete   | 2026-06-02 |
-| 5. Develop & Predict + Lineage | 0/TBD | Not started | - |
+| 5. Develop & Predict + Lineage | 0/4 | Not started | - |
 
 ## Coverage
 
