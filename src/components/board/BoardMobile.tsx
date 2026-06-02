@@ -11,6 +11,7 @@ import { ContentAnalysisFrame } from './content-analysis/ContentAnalysisFrame';
 import { InputResultCard } from './InputResultCard';
 import { DecodeShellNode } from './decode/DecodeShellNode';
 import { AdaptShellNode } from './adapt/AdaptShellNode';
+import { FrameErrorBoundary } from './FrameErrorBoundary';
 import { getFrameAntiViralityState } from './cross-group-state';
 import type { Camera, GroupId, GroupFrameLayout } from './board-types';
 import type { BoardMachineState } from '@/stores/board-store';
@@ -132,9 +133,17 @@ export function BoardMobile({ boardMachineState, input, hasAnalysis, boardMode =
       case 'content-analysis':
         return <ContentAnalysisFrame camera={CARD_CAMERA} layout={layout!} />;
       case 'decode':
-        return <DecodeShellNode />;
+        return (
+          <FrameErrorBoundary frameLabel="Decode">
+            <DecodeShellNode />
+          </FrameErrorBoundary>
+        );
       case 'adapt':
-        return <AdaptShellNode camera={CARD_CAMERA} layout={layout} />;
+        return (
+          <FrameErrorBoundary frameLabel="Adapt">
+            <AdaptShellNode camera={CARD_CAMERA} layout={layout} />
+          </FrameErrorBoundary>
+        );
       default:
         return null;
     }

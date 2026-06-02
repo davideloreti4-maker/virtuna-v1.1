@@ -40,6 +40,7 @@ import { ContentAnalysisFrame } from './content-analysis/ContentAnalysisFrame';
 import { InputResultCard } from './InputResultCard';
 import { DecodeShellNode } from './decode/DecodeShellNode';
 import { AdaptShellNode } from './adapt/AdaptShellNode';
+import { FrameErrorBoundary } from './FrameErrorBoundary';
 import { nanoid } from 'nanoid';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -513,8 +514,16 @@ export function Board() {
             {layout.id === 'verdict' && <VerdictNode camera={camera} layout={layout} />}
             {layout.id === 'actions' && <ActionsNode camera={camera} layout={layout} />}
             {layout.id === 'content-analysis' && <ContentAnalysisFrame camera={camera} layout={layout} />}
-            {layout.id === 'decode' && <DecodeShellNode />}
-            {layout.id === 'adapt' && <AdaptShellNode camera={camera} layout={layout} />}
+            {layout.id === 'decode' && (
+              <FrameErrorBoundary frameLabel="Decode">
+                <DecodeShellNode />
+              </FrameErrorBoundary>
+            )}
+            {layout.id === 'adapt' && (
+              <FrameErrorBoundary frameLabel="Adapt">
+                <AdaptShellNode camera={camera} layout={layout} />
+              </FrameErrorBoundary>
+            )}
           </GroupFrameOverlay>
         ))}
       </div>
