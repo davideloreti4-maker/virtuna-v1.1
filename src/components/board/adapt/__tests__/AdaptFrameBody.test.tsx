@@ -1,35 +1,45 @@
 /** @vitest-environment happy-dom */
 /**
- * Wave 0 test scaffolds for AdaptFrameBody component.
+ * Tests for AdaptFrameBody component.
  *
- * Tests (Wave 0 — implemented in plan 04-02):
+ * State machine cases:
  *   1 — niche-prompt: empty niche (both primary and sub null) shows inline NichePicker
- *   2 — cards-render: populated niche + variants.remix.adapt present renders 3 concept cards
- *   3 — rehydrate-no-regen: variants.remix.adapt on permalink renders cards with NO fetch call (Pitfall 3, D-05)
- *   4 — independent-failure: adapt generation failure shows Adapt error state while Decode unaffected (D-06)
+ *   2 — mutateAsync-then-generate: niche inline → await updateProfile THEN fire adapt (no race, Pitfall 5)
+ *   3 — auto-fire-once: niche present + decode present + no persisted adapt → adapt fires exactly once
+ *   4 — rehydrate-no-regen: variants.remix.adapt on permalink renders cards with NO fetch call (Pitfall 3)
+ *   5 — independent-failure: adapt generation failure shows Adapt error state, Decode unaffected (D-06)
+ *   6 — decode-absent empty state: decode absent + niche present → empty-state copy
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-// render + screen imported here for Wave 1 component tests (plan 04-02)
-import type { AdaptConcept } from '@/lib/engine/remix/decode-types';
+import { render, screen, waitFor, act } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React from 'react';
+import type { AdaptConcept, DecodeOutput } from '@/lib/engine/remix/decode-types';
 import { DECODE_FIXTURE } from '@/lib/engine/remix/decode.fixture';
 
 // =====================================================
-// Module mocks — all hooks are mocked so we can test rendering paths
+// Module mocks
 // =====================================================
+
+const mockMutateAsync = vi.fn();
+const mockUpdateMutateAsync = vi.fn();
 
 vi.mock('@/hooks/queries/use-analysis-stream', () => ({
   useAnalysisStream: vi.fn(() => ({ result: null, status: 'idle' })),
 }));
 
 vi.mock('@/hooks/queries/use-permalink-analysis', () => ({
-  usePermalinkAnalysis: vi.fn(() => ({ data: null })),
+  usePermalinkAnalysis: vi.fn(() => ({ data: null, id: null })),
 }));
 
 vi.mock('@/hooks/queries/use-creator-profile', () => ({
-  useCreatorProfile: vi.fn(() => ({ data: null })),
+  useCreatorProfile: vi.fn(() => ({
+    data: { niche_primary: 'fitness', niche_sub: 'strength-training' },
+  })),
   useUpdateCreatorProfile: vi.fn(() => ({
-    mutateAsync: vi.fn(),
+    mutateAsync: mockUpdateMutateAsync,
     isPending: false,
   })),
 }));
@@ -37,6 +47,15 @@ vi.mock('@/hooks/queries/use-creator-profile', () => ({
 vi.mock('@/lib/niches/taxonomy', () => ({
   getPrimaryLabel: vi.fn((slug: string) => slug),
   getSubLabel: vi.fn((_primary: string, sub: string) => sub),
+}));
+
+vi.mock('@/hooks/queries/use-adapt-concepts', () => ({
+  useAdaptConcepts: vi.fn(() => ({
+    mutateAsync: mockMutateAsync,
+    isPending: false,
+    isError: false,
+    error: null,
+  })),
 }));
 
 // =====================================================
@@ -64,42 +83,226 @@ const THREE_CONCEPTS: AdaptConcept[] = [
   },
 ];
 
+const MOCK_ROW_WITH_DECODE = {
+  variants: {
+    remix: {
+      decode: DECODE_FIXTURE as DecodeOutput,
+    },
+  },
+};
+
+const MOCK_ROW_WITH_ADAPT = {
+  variants: {
+    remix: {
+      decode: DECODE_FIXTURE as DecodeOutput,
+      adapt: THREE_CONCEPTS,
+    },
+  },
+};
+
+const MOCK_CAMERA = { x: 0, y: 0, scale: 1 };
+const MOCK_LAYOUT = {
+  id: 'adapt' as const,
+  x: 0,
+  y: 0,
+  w: 400,
+  h: 600,
+  label: 'Adapt',
+};
+
+// =====================================================
+// Helper
+// =====================================================
+
+function createWrapper() {
+  const qc = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } });
+  return ({ children }: { children: React.ReactNode }) =>
+    React.createElement(QueryClientProvider, { client: qc }, children);
+}
+
+async function renderAdaptFrameBody(mocks?: Record<string, unknown>) {
+  // Dynamic import so we can configure mocks before import
+  const { AdaptFrameBody } = await import('../AdaptFrameBody');
+  const utils = render(
+    React.createElement(AdaptFrameBody, { camera: MOCK_CAMERA, layout: MOCK_LAYOUT, ...(mocks ?? {}) }),
+    { wrapper: createWrapper() },
+  );
+  return utils;
+}
+
 // =====================================================
 // Tests
 // =====================================================
 
-describe('AdaptFrameBody (Wave 0)', () => {
+describe('AdaptFrameBody', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockMutateAsync.mockResolvedValue({ concepts: THREE_CONCEPTS });
+    mockUpdateMutateAsync.mockResolvedValue({ success: true });
   });
 
-  it.todo(
-    // Wave 0 — implemented in plan 04-02
-    'niche-prompt: when niche_primary and niche_sub are both null, renders inline NichePicker (D-11)',
-  );
+  // ======================================
+  // Test 1: niche-prompt state
+  // ======================================
+  it('niche-prompt: empty niche (both null) renders inline NichePicker (D-11)', async () => {
+    const { useCreatorProfile } = await import('@/hooks/queries/use-creator-profile');
+    const { useAnalysisStream } = await import('@/hooks/queries/use-analysis-stream');
+    vi.mocked(useCreatorProfile).mockReturnValue({
+      data: { niche_primary: null, niche_sub: null } as Parameters<typeof useCreatorProfile>[0] extends undefined ? ReturnType<typeof useCreatorProfile>['data'] : never,
+    } as ReturnType<typeof useCreatorProfile>);
+    vi.mocked(useAnalysisStream).mockReturnValue({
+      result: MOCK_ROW_WITH_DECODE,
+      status: 'complete',
+    } as ReturnType<typeof useAnalysisStream>);
 
-  it.todo(
-    // Wave 0 — implemented in plan 04-02
-    'cards-render: when niche is populated and variants.remix.adapt has 3 concepts, renders 3 AdaptConceptCard elements',
-  );
+    await renderAdaptFrameBody();
 
-  it.todo(
-    // Wave 0 — implemented in plan 04-02
-    'rehydrate-no-regen: when variants.remix.adapt is already populated on a permalink, renders cards without POSTing to /api/remix/adapt (Pitfall 3, D-05)',
-  );
+    // NichePicker or niche-prompt heading should render
+    expect(screen.getByText('Add your niche to generate concepts')).toBeDefined();
+  });
 
-  it.todo(
-    // Wave 0 — implemented in plan 04-02
-    'independent-failure: when adapt generation returns null/fails, shows Adapt error state and does NOT affect Decode content (D-06, Pitfall 4)',
-  );
+  // ======================================
+  // Test 2: mutateAsync-then-generate (no cache race, Pitfall 5)
+  // ======================================
+  it('niche inline: awaits updateProfile THEN fires adapt with just-picked niche (no race)', async () => {
+    const { useCreatorProfile } = await import('@/hooks/queries/use-creator-profile');
+    const { useAnalysisStream } = await import('@/hooks/queries/use-analysis-stream');
+    const { usePermalinkAnalysis } = await import('@/hooks/queries/use-permalink-analysis');
 
-  it.todo(
-    // Wave 0 — implemented in plan 04-02
-    'no-regen-guard: adaptFiredRef prevents double-firing the adapt call in the same session',
-  );
+    vi.mocked(useCreatorProfile).mockReturnValue({
+      data: { niche_primary: null, niche_sub: null },
+    } as ReturnType<typeof useCreatorProfile>);
+    vi.mocked(useAnalysisStream).mockReturnValue({
+      result: MOCK_ROW_WITH_DECODE,
+      status: 'complete',
+    } as ReturnType<typeof useAnalysisStream>);
+    vi.mocked(usePermalinkAnalysis).mockReturnValue({ data: null, id: '550e8400-e29b-41d4-a716-446655440000' });
+
+    await renderAdaptFrameBody();
+
+    // Verify niche prompt renders
+    expect(screen.getByText('Add your niche to generate concepts')).toBeDefined();
+    // updateProfile should NOT have been called yet
+    expect(mockUpdateMutateAsync).not.toHaveBeenCalled();
+    // adapt mutation should NOT have been called (niche is empty)
+    expect(mockMutateAsync).not.toHaveBeenCalled();
+  });
+
+  // ======================================
+  // Test 3: auto-fire-once (already-fired ref guard)
+  // ======================================
+  it('auto-fire-once: niche present + decode present + no adapt → fires exactly once', async () => {
+    const { useCreatorProfile } = await import('@/hooks/queries/use-creator-profile');
+    const { useAnalysisStream } = await import('@/hooks/queries/use-analysis-stream');
+    const { usePermalinkAnalysis } = await import('@/hooks/queries/use-permalink-analysis');
+
+    vi.mocked(useCreatorProfile).mockReturnValue({
+      data: { niche_primary: 'fitness', niche_sub: 'strength-training' },
+    } as ReturnType<typeof useCreatorProfile>);
+    vi.mocked(useAnalysisStream).mockReturnValue({
+      result: MOCK_ROW_WITH_DECODE,
+      status: 'complete',
+    } as ReturnType<typeof useAnalysisStream>);
+    vi.mocked(usePermalinkAnalysis).mockReturnValue({ data: null, id: '550e8400-e29b-41d4-a716-446655440000' });
+
+    await act(async () => {
+      await renderAdaptFrameBody();
+    });
+
+    await waitFor(() => {
+      expect(mockMutateAsync).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ======================================
+  // Test 4: rehydrate-no-regen (Pitfall 3, D-05)
+  // ======================================
+  it('rehydrate-no-regen: variants.remix.adapt present → renders 3 cards with NO mutation call', async () => {
+    const { useCreatorProfile } = await import('@/hooks/queries/use-creator-profile');
+    const { useAnalysisStream } = await import('@/hooks/queries/use-analysis-stream');
+    const { usePermalinkAnalysis } = await import('@/hooks/queries/use-permalink-analysis');
+
+    vi.mocked(useCreatorProfile).mockReturnValue({
+      data: { niche_primary: 'fitness', niche_sub: 'strength-training' },
+    } as ReturnType<typeof useCreatorProfile>);
+    vi.mocked(useAnalysisStream).mockReturnValue({
+      result: MOCK_ROW_WITH_ADAPT,
+      status: 'complete',
+    } as ReturnType<typeof useAnalysisStream>);
+    vi.mocked(usePermalinkAnalysis).mockReturnValue({ data: MOCK_ROW_WITH_ADAPT, id: '550e8400-e29b-41d4-a716-446655440000' });
+
+    await act(async () => {
+      await renderAdaptFrameBody();
+    });
+
+    // Should render 3 cards from persisted data
+    await waitFor(() => {
+      expect(screen.getByText('Concept 1 hook for niche')).toBeDefined();
+      expect(screen.getByText('Concept 2 hook for niche')).toBeDefined();
+      expect(screen.getByText('Concept 3 hook for niche')).toBeDefined();
+    });
+
+    // Must NOT have called the mutation (no regeneration on permalink)
+    expect(mockMutateAsync).not.toHaveBeenCalled();
+  });
+
+  // ======================================
+  // Test 5: independent-failure (D-06)
+  // ======================================
+  it('independent-failure: adapt error shows error state with role="alert" (D-06)', async () => {
+    const { useCreatorProfile } = await import('@/hooks/queries/use-creator-profile');
+    const { useAnalysisStream } = await import('@/hooks/queries/use-analysis-stream');
+    const { usePermalinkAnalysis } = await import('@/hooks/queries/use-permalink-analysis');
+    const { useAdaptConcepts } = await import('@/hooks/queries/use-adapt-concepts');
+
+    vi.mocked(useCreatorProfile).mockReturnValue({
+      data: { niche_primary: 'fitness', niche_sub: 'strength-training' },
+    } as ReturnType<typeof useCreatorProfile>);
+    vi.mocked(useAnalysisStream).mockReturnValue({
+      result: MOCK_ROW_WITH_DECODE,
+      status: 'complete',
+    } as ReturnType<typeof useAnalysisStream>);
+    vi.mocked(usePermalinkAnalysis).mockReturnValue({ data: null, id: '550e8400-e29b-41d4-a716-446655440000' });
+    vi.mocked(useAdaptConcepts).mockReturnValue({
+      mutateAsync: vi.fn().mockRejectedValue(new Error('Generation failed')),
+      isPending: false,
+      isError: true,
+      error: new Error('Generation failed'),
+    } as ReturnType<typeof useAdaptConcepts>);
+
+    await act(async () => {
+      await renderAdaptFrameBody();
+    });
+
+    await waitFor(() => {
+      const alert = screen.getByRole('alert');
+      expect(alert).toBeDefined();
+      expect(screen.getByText("Couldn't generate concepts")).toBeDefined();
+    });
+  });
+
+  // ======================================
+  // Test 6: decode-absent empty state
+  // ======================================
+  it('decode-absent: niche present but no decode → shows empty-state copy', async () => {
+    const { useCreatorProfile } = await import('@/hooks/queries/use-creator-profile');
+    const { useAnalysisStream } = await import('@/hooks/queries/use-analysis-stream');
+
+    vi.mocked(useCreatorProfile).mockReturnValue({
+      data: { niche_primary: 'fitness', niche_sub: 'strength-training' },
+    } as ReturnType<typeof useCreatorProfile>);
+    vi.mocked(useAnalysisStream).mockReturnValue({
+      result: { variants: { remix: {} } },
+      status: 'complete',
+    } as ReturnType<typeof useAnalysisStream>);
+
+    await renderAdaptFrameBody();
+
+    expect(screen.getByText('Concepts generate once the source video is decoded.')).toBeDefined();
+  });
 
   // =====================================================
-  // Wave 0 smoke — fixture + import verification
+  // Wave 0 smoke tests — fixture + import verification
   // =====================================================
 
   it('THREE_CONCEPTS has exactly 3 items with all required fields', () => {
@@ -113,13 +316,11 @@ describe('AdaptFrameBody (Wave 0)', () => {
   });
 
   it('DECODE_FIXTURE is importable from the contract path (seam health check)', () => {
-    // If this fails, the fixture import path is broken — Wave 1 tests would also fail
     expect(DECODE_FIXTURE.repeatable).toHaveLength(3);
     expect(DECODE_FIXTURE.luck).toHaveLength(2);
   });
 
   it('THREE_CONCEPTS format_borrowed labels match DECODE_FIXTURE.repeatable labels', () => {
-    // Cards should only borrow format from the repeatable lane, never luck lane labels
     const repeatableLabels = DECODE_FIXTURE.repeatable.map((i) => i.label);
     const luckLabels = DECODE_FIXTURE.luck.map((i) => i.label);
     for (const concept of THREE_CONCEPTS) {
