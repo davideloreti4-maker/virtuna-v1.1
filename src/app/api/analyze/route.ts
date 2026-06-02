@@ -17,8 +17,8 @@ import type { Json } from "@/types/database.types";
 // Phase 03 Plan 02 — decode branch imports
 import { resolveAndRehost } from "@/lib/engine/remix/resolve-and-rehost";
 import { analyzeVideoWithOmni } from "@/lib/engine/qwen/omni-analysis";
-import { runDecode } from "@/lib/engine/remix/decode";
-import type { DecodeResult, OmniStructuralInput } from "@/lib/engine/remix/decode-types";
+import { runDecode, omniOutputToStructuralInput } from "@/lib/engine/remix/decode";
+import type { DecodeResult } from "@/lib/engine/remix/decode-types";
 
 /**
  * Phase 3 — Vercel Fluid Compute route config.
@@ -225,7 +225,8 @@ async function runDecodeStream(
   let decode: DecodeResult | null = null;
   try {
     const omni = await analyzeVideoWithOmni(signedUrl);
-    decode = await runDecode(omni as unknown as OmniStructuralInput);
+    const structural = omniOutputToStructuralInput(omni);
+    decode = structural ? await runDecode(structural) : null;
     if (decode) {
       await persistDecodeToVariants(service, analysisId, decode, log);
     }

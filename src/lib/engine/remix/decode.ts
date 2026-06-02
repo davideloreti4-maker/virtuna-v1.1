@@ -24,6 +24,7 @@ import { stripModelOutput } from "@/lib/engine/utils/strip";
 import { DecodeResultZodSchema, BEAT_IDS } from "./decode-types";
 import { DECODE_SYSTEM_PROMPT, buildDecodeContext } from "./decode-prompts";
 import type { OmniStructuralInput, DecodeResult } from "./decode-types";
+import type { OmniAnalysisOutput } from "@/lib/engine/qwen/omni-analysis";
 
 const log = createLogger({ module: "engine.remix.decode" });
 
@@ -146,6 +147,63 @@ export async function runDecode(
     error: lastError?.message,
   });
   return null;
+}
+
+/**
+ * Map the engine's `OmniAnalysisOutput` into the flat `OmniStructuralInput`
+ * the decode prompt builder consumes.
+ *
+ * Why this exists: `analyzeVideoWithOmni` returns a TRANSFORMED shape
+ * (`geminiResult.analysis.*` + top-level `segments`/`wave0Result`), NOT the
+ * flat structural shape decode expects. The route previously force-cast with
+ * `as unknown as OmniStructuralInput`, which compiled but left
+ * `hook_decomposition` undefined at runtime → "Cannot read properties of
+ * undefined (reading 'visual_stop_power')". This mapper reads each field from
+ * its real location.
+ *
+ * `hook_decomposition` and `emotion_arc` are Omni-only extensions that ride
+ * through the `GeminiVideoAnalysis` cast in the omni assembly, so they are read
+ * via a narrow structural cast here.
+ *
+ * Returns null when the Omni call failed (`geminiResult` null) or the structural
+ * hook block is missing — the caller treats null as "decode unavailable".
+ */
+export function omniOutputToStructuralInput(
+  omni: OmniAnalysisOutput,
+): OmniStructuralInput | null {
+  const analysis = omni.geminiResult?.analysis;
+  if (!analysis) return null;
+
+  const a = analysis as unknown as {
+    hook_decomposition?: OmniStructuralInput["hook_decomposition"];
+    factors?: OmniStructuralInput["factors"];
+    video_signals?: {
+      visual_production_quality: number;
+      pacing_score: number;
+      transition_quality: number;
+    };
+    emotion_arc?: OmniStructuralInput["emotion_arc"];
+    content_summary?: string;
+    overall_impression?: string;
+  };
+
+  if (!a.hook_decomposition || !a.factors || !a.video_signals) return null;
+
+  return {
+    hook_decomposition: a.hook_decomposition,
+    factors: a.factors,
+    segments: omni.segments,
+    video_signals: {
+      visual_production_quality: a.video_signals.visual_production_quality,
+      pacing_score: a.video_signals.pacing_score,
+      transition_quality: a.video_signals.transition_quality,
+    },
+    emotion_arc: a.emotion_arc,
+    content_summary: a.content_summary ?? "",
+    overall_impression: a.overall_impression ?? "",
+    content_type: omni.wave0Result.content_type?.type ?? "other",
+    niche_primary_slug: omni.wave0Result.niche?.primary_slug ?? "general",
+  };
 }
 
 // Re-export types for convenience
