@@ -24,6 +24,7 @@ import {
   toMetrics,
   useCountIn,
 } from './input/input-derive';
+import { RemixedFromChip } from './RemixedFromChip';
 
 interface Props {
   /** Behavioral predictions — the four engagement percentiles. Null until complete. */
@@ -229,6 +230,11 @@ export function InputResultCard({
             }
       }
     >
+      {/* Remixed-from chip — rendered only on developed child boards (parent_id set). */}
+      {(permalinkData as { parent_id?: string | null } | null)?.parent_id && (
+        <RemixedFromChip parentId={(permalinkData as { parent_id?: string | null })!.parent_id!} />
+      )}
+
       {/* Coral edge-flag — gated only (coral = needs attention now). */}
       {gated && (
         <span

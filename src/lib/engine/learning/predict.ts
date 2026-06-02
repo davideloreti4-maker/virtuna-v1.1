@@ -61,6 +61,7 @@ export async function runEngineOnTrainingVideo(
     input_mode: "video_upload",
     video_storage_path: args.videoStoragePath,
     content_type: "video",
+    mode: "score",                    // learning loop trains on score-mode predictions
     niche: args.niche,
     society_id: args.societyId ?? undefined,
   };

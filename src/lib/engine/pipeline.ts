@@ -36,6 +36,8 @@ import {
 import type { StageEventCallback, StageEventWave } from "./events";
 import { emitStageStart, emitStageEnd } from "./events";
 import { runWave3 } from "./wave3";
+import { ApifyScrapingProvider } from "@/lib/scraping/apify-provider";
+import { IngestError } from "@/lib/scraping/types";
 import { createEmptyRetrievalResult } from "./retrieval-empty";
 import { runPlatformFit } from "./wave4/platform-fit";
 // Phase 3 (Plan 08) — Pass 2 orchestrator + filmstrip trigger
@@ -505,6 +507,105 @@ export async function runPredictionPipeline(
       );
     }
     signedVideoUrl = signedData.signedUrl;
+  }
+
+  // -------------------------------------------------------
+  // Plan 03 (INGEST-01 hard gate) — tiktok_url Omni branch (ADDITIVE else-if).
+  //
+  // Strategy: Option B (Supabase re-host with derive-and-drop) — spike §8.
+  //   Rationale: resolved mp4Url is a PRIVATE api.apify.com KV record (anon GET → 403).
+  //   Appending ?token= to feed Omni directly leaks a full-access Apify token to
+  //   DashScope/Alibaba — unacceptable. Instead, download server-side with the token,
+  //   re-host to videos bucket at a temp path, mint a short-TTL signed URL, feed that to
+  //   Omni, then unconditionally delete the temp object in finally (derive-and-drop).
+  //
+  // Latency: resolve(25-38s) + download(~7MB) + upload + sign + Omni(35s) ≈ 70-90s <<
+  //   maxDuration=300s (spike §5) — runs INLINE, no async split needed.
+  //
+  // Threat T-01-07 / pitfall C4: non-owned media must never persist past the request.
+  //   The finally-delete is UNCONDITIONAL — it does NOT consult storage_retention_opted_in.
+  //   buildInsertRow (route.ts:450-455) keeps video_storage_path null for tiktok_url.
+  // -------------------------------------------------------
+  let rehostPath: string | null = null;
+  if (validated.input_mode === "tiktok_url" && validated.tiktok_url) {
+    try {
+      // Step 1: Resolve URL via ApifyScrapingProvider.resolveVideoUrl (Plan 02 impl).
+      // The returned mp4Url is an SSRF-validated https://api.apify.com/...  URL.
+      const resolver = new ApifyScrapingProvider();
+      const resolved = await resolver.resolveVideoUrl(validated.tiktok_url);
+
+      // Step 2: Download mp4 bytes SERVER-SIDE with the Apify token.
+      // Token is ONLY used for this server-side fetch — it is NEVER put in the URL
+      // handed to Omni (which would leak it to DashScope). T-01-05 note: the
+      // DAILY_LIMITS/429 check in route.ts:296-310 runs BEFORE the pipeline and is
+      // mode-agnostic — it is the cost-exhaustion guard for tiktok_url requests.
+      const tokenedUrl = `${resolved.mp4Url}?token=${process.env.APIFY_TOKEN ?? ""}`;
+      const fetchResp = await fetch(tokenedUrl);
+      if (!fetchResp.ok) {
+        throw new Error(`mp4 download failed: HTTP ${fetchResp.status}`);
+      }
+      const mp4Bytes = await fetchResp.arrayBuffer();
+
+      // Step 3: Re-host bytes to the videos bucket at a temp path.
+      // The path uses the requestId so concurrent requests never collide.
+      rehostPath = `remix-temp/${requestId}.mp4`;
+      const { error: uploadError } = await supabase
+        .storage
+        .from("videos")
+        .upload(rehostPath, mp4Bytes, { contentType: "video/mp4", upsert: true });
+      if (uploadError) {
+        throw new Error(`re-host upload failed: ${uploadError.message}`);
+      }
+
+      // Step 4: Mint a short-lived signed URL (1 hour, mirrors pipeline.ts video_upload path).
+      // This is the URL fed to analyzeVideoWithOmni — proven path from spike §8 / omni-analysis.ts
+      // header ("Video is passed as a Supabase signed URL").
+      const { data: signedData, error: signedError } = await supabase
+        .storage
+        .from("videos")
+        .createSignedUrl(rehostPath, 3600);
+      if (signedError || !signedData?.signedUrl) {
+        throw new Error(
+          `re-host signed URL failed: ${signedError?.message ?? "no URL returned"}`,
+        );
+      }
+
+      // Step 5: Assign to signedVideoUrl — the same variable the gate at line 520 reads.
+      // No rename: signedVideoUrl is read at 520/522/542/545/559; assigning here is minimal-diff.
+      signedVideoUrl = signedData.signedUrl;
+    } catch (error) {
+      // On IngestError or any re-host failure: push a warning and leave signedVideoUrl null
+      // (graceful — the existing text branch fires; pipeline does NOT crash).
+      const kind =
+        error instanceof IngestError
+          ? `[${error.kind}]`
+          : "";
+      warnings.push(
+        `tiktok_url resolve/re-host unavailable${kind ? " " + kind : ""}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      // If upload succeeded before the error, rehostPath is still set — cleaned in finally below.
+    }
+  }
+  // DERIVE-AND-DROP: delete rehostPath unconditionally in a finally-equivalent cleanup.
+  // This runs regardless of Omni success/failure. NOT gated on storage_retention_opted_in.
+  // Separate from cleanupUploadedStorage (which governs owned uploads only — route.ts:40-61).
+  // Remix derive-and-drop boundary (T-01-07 / pitfall C4).
+  if (rehostPath !== null) {
+    // Schedule the delete fire-and-forget but bound to the current request scope.
+    // Using .catch() so a delete failure never crashes the pipeline.
+    const pathToDelete = rehostPath;
+    void supabase
+      .storage
+      .from("videos")
+      .remove([pathToDelete])
+      .catch((err: unknown) => {
+        log.warn("remix_rehost_cleanup_failed", {
+          err: err instanceof Error ? err.message : String(err),
+          path: pathToDelete,
+        });
+      });
   }
 
   // -------------------------------------------------------

@@ -18,7 +18,9 @@ export type GroupId =
   | 'audience'
   | 'verdict'
   | 'actions'
-  | 'content-analysis';
+  | 'content-analysis'
+  | 'decode'
+  | 'adapt';
 
 export type CameraPresetKey =
   | 'overview'

@@ -114,6 +114,7 @@ export async function runEvalOverCorpus(
         input_mode: "text",
         content_text: typeof row.caption === "string" ? row.caption : "",
         content_type: "video",                              // corpus is TikTok video-only
+        mode: "score",                                      // eval corpus is always score mode
         niche,
         creator_handle: typeof row.creator_handle === "string" ? row.creator_handle : undefined,
       };

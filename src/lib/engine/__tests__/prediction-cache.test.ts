@@ -196,3 +196,75 @@ describe("cache invalidation on engine version bump (CACHE-05, CACHE-06)", () =>
     expect(oldKey).not.toBe(newKey); // different keys → different L1 slots → invalidation by construction
   });
 });
+
+// ---------------------------------------------------------------------------
+// Phase 02-01 — mode field tests (RED: fail before GREEN implementation)
+// ---------------------------------------------------------------------------
+
+describe("score-path-stability (D-14) — mode fold does NOT alter score hashes", () => {
+  it("score-mode tiktok_url hash matches pre-change hardcoded fixture", () => {
+    // Fixture computed from CURRENT code (no mode field) — any future mode-leak
+    // into the score path will cause this to diverge and fail the test.
+    // URL: https://www.tiktok.com/@creator/video/1234567890
+    const EXPECTED_SCORE_HASH = "8a17705c413788d05d4a1f40db5c879d67b2175ad582b84010132b1fda88070a";
+    const input = {
+      input_mode: "tiktok_url",
+      tiktok_url: "https://www.tiktok.com/@creator/video/1234567890",
+      content_type: "video",
+      mode: "score",
+    } as AnalysisInput;
+    expect(computeContentHash(input)).toBe(EXPECTED_SCORE_HASH);
+  });
+
+  it("score-mode hash equals hash of same input without mode field (backward-compat)", () => {
+    const withMode = {
+      input_mode: "tiktok_url",
+      tiktok_url: "https://www.tiktok.com/@creator/video/1234567890",
+      content_type: "video",
+      mode: "score",
+    } as AnalysisInput;
+    const withoutMode = {
+      input_mode: "tiktok_url",
+      tiktok_url: "https://www.tiktok.com/@creator/video/1234567890",
+      content_type: "video",
+    } as AnalysisInput;
+    // Both must produce the same hash — score path is byte-identical to pre-change output.
+    expect(computeContentHash(withMode)).toBe(computeContentHash(withoutMode));
+  });
+});
+
+describe("mode-distinctness (D-14) — remix hash differs from score hash for same URL", () => {
+  it("remix-mode and score-mode produce different hashes for same tiktok_url", () => {
+    const url = "https://www.tiktok.com/@creator/video/9999999999";
+    const scoreInput = {
+      input_mode: "tiktok_url",
+      tiktok_url: url,
+      content_type: "video",
+      mode: "score",
+    } as AnalysisInput;
+    const remixInput = {
+      input_mode: "tiktok_url",
+      tiktok_url: url,
+      content_type: "video",
+      mode: "remix",
+    } as AnalysisInput;
+    expect(computeContentHash(scoreInput)).not.toBe(computeContentHash(remixInput));
+  });
+
+  it("remix-mode and score-mode produce different hashes for same video_upload path", () => {
+    const path = "user-abc/video.mp4";
+    const scoreInput = {
+      input_mode: "video_upload",
+      video_storage_path: path,
+      content_type: "video",
+      mode: "score",
+    } as AnalysisInput;
+    const remixInput = {
+      input_mode: "video_upload",
+      video_storage_path: path,
+      content_type: "video",
+      mode: "remix",
+    } as AnalysisInput;
+    expect(computeContentHash(scoreInput)).not.toBe(computeContentHash(remixInput));
+  });
+});

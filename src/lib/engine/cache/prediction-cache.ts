@@ -37,13 +37,19 @@ export function computeContentHash(input: AnalysisInput, videoBuffer?: Buffer): 
       // No buffer in new signed-URL path — hash the storage path instead.
       h.update(input.video_storage_path.trim());
     }
+    // D-14: fold mode segment ONLY for remix so score hashes stay byte-identical (strategy 5a).
+    if (input.mode === "remix") h.update("::mode=remix");
     return h.digest("hex");
   }
   if (input.input_mode === "tiktok_url" && input.tiktok_url) {
     h.update(input.tiktok_url.trim());
+    // D-14: fold mode segment ONLY for remix so score hashes stay byte-identical (strategy 5a).
+    if (input.mode === "remix") h.update("::mode=remix");
     return h.digest("hex");
   }
   h.update((input.content_text ?? "").trim());
+  // D-14: fold mode segment ONLY for remix so score hashes stay byte-identical (strategy 5a).
+  if (input.mode === "remix") h.update("::mode=remix");
   return h.digest("hex");
 }
 
