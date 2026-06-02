@@ -19,8 +19,9 @@
  *
  * Analog: src/components/board/content-analysis/ContentAnalysisFrame.tsx (self-sourcing + dual-read).
  */
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { WarningCircle } from '@phosphor-icons/react';
+import { useRouter } from 'next/navigation';
 import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
 import { usePermalinkAnalysis } from '@/hooks/queries/use-permalink-analysis';
 import { useCreatorProfile, useUpdateCreatorProfile } from '@/hooks/queries/use-creator-profile';
@@ -59,6 +60,41 @@ export function AdaptFrameBody({ camera: _camera, layout: _layout }: AdaptFrameB
   const { data: permalinkData, id: analysisId } = usePermalinkAnalysis();
   const stream = useAnalysisStream({ initialData: permalinkData ?? null });
   const row = stream.result as unknown as AdaptRow | null;
+
+  // ── Develop stream — separate instance; only started on explicit card click ──
+  // C3/D-02: zero streams until click; exactly one POST per click; no loop/prefetch.
+  const router = useRouter();
+  const developStream = useAnalysisStream({ initialData: null });
+  const developPrevIdRef = useRef<string | null>(null);
+
+  // Navigate to child board on started event (D-01 — verbatim Board.tsx pattern)
+  useEffect(() => {
+    const id = developStream.analysisId;
+    if (id && developPrevIdRef.current === null) {
+      router.push(`/analyze/${id}`);
+    }
+    developPrevIdRef.current = id;
+  }, [developStream.analysisId, router]);
+
+  // Per-concept Develop handler — assembles brief (D-04/D-05) and starts ONE stream
+  const handleDevelop = useCallback((concept: AdaptConcept) => {
+    if (!analysisId) return;
+    // D-04: full concept context (hook + angle + format_borrowed)
+    // D-05: concept.hook is the first line → label in Recent
+    const brief = [
+      concept.hook,
+      concept.angle,
+      `Format: ${concept.format_borrowed}`,
+    ].join('\n\n');
+
+    void developStream.start({
+      input_mode: 'text',
+      content_text: brief,
+      content_type: 'video',
+      mode: 'score',         // D-06: standard scored analysis (not remix)
+      parent_id: analysisId, // D-07: source remix analysis id (known before started frame)
+    });
+  }, [analysisId, developStream]);
 
   // ── Dual-read adapt: persisted variant takes priority (rehydrate-no-regen)
   const persistedAdapt =
@@ -237,7 +273,16 @@ export function AdaptFrameBody({ camera: _camera, layout: _layout }: AdaptFrameB
         </p>
         <div className="flex flex-col gap-4">
           {adapt.map((concept, i) => (
-            <AdaptConceptCard key={i} concept={concept} />
+            <AdaptConceptCard
+              key={i}
+              concept={concept}
+              onDevelop={() => handleDevelop(concept)}
+              isPending={
+                developStream.phase === 'analyzing' ||
+                developStream.phase === 'reconnecting' ||
+                developStream.phase === 'polling'
+              }
+            />
           ))}
         </div>
       </div>
