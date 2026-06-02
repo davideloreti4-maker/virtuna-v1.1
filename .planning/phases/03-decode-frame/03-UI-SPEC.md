@@ -39,7 +39,7 @@ Declared values — 4px base unit, matching BRAND-BIBLE.md §Spacing:
 
 | Token | Value | Decode Frame Usage |
 |-------|-------|--------------------|
-| xs | 4px | Icon-to-text gap, beat verdict dot spacing |
+| xs | 4px | Icon-to-text gap, beat verdict dot spacing; LuckItem internal gap (category tag → note) |
 | sm | 8px | Gap between beat label and beat body text |
 | md | 16px | Gap between each beat block; gap between beats section and lanes section |
 | lg | 24px | Vertical gap between the two lane blocks (repeatable → luck separator) |
@@ -58,6 +58,8 @@ Exceptions:
 
 All weights and sizes are drawn from `VerdictNode.tsx` and `FrameHero.tsx` (RESEARCH.md §Frontend). Inter font throughout.
 
+**Scale note:** The 10px/11px split (in-flight label vs. beat/lane labels) is inherited directly from codebase patterns — 10px from `FrameHero` label span, 11px from `VerdictNode` `SectionHead`. Both are established Raycast-derived tokens; the 1px difference is intentional in the source components.
+
 | Role | Size | Weight | Line Height | Usage in Decode Frame | Source |
 |------|------|--------|-------------|----------------------|--------|
 | Beat label / lane header | 11px | 400 (regular) | 1.0 | `Hook pattern`, `Structure & pacing`, `The turn`, `Emotional beat`, `What you can repeat`, `What was luck / timing` | VerdictNode `SectionHead`: `text-[11px] uppercase tracking-[0.08em] text-white/45` |
@@ -66,6 +68,7 @@ All weights and sizes are drawn from `VerdictNode.tsx` and `FrameHero.tsx` (RESE
 | Lane bullet item | 13px | 400 (regular) | 1.5 | Repeatable + luck bullet lines | BRAND-BIBLE.md body: 16px base, 1.5 LH; bullets step down one level |
 | Luck category tag | 11px | 500 (medium) | 1.0 | Fixed taxonomy label prefixing the luck note | Matches BRAND-BIBLE.md `--font-medium` for labels |
 | In-flight label | 10px | 400 (regular) | 1.0 | "Decoding structure…" status text | FrameHero `label` span: `text-[10px] uppercase tracking-[0.1em] text-white/45` |
+| In-flight skeleton glyph | 44px | 600 (semibold) | 1.0 | Animated `—` placeholder during in-flight state | VerdictSkeleton pattern: `text-[44px] font-semibold leading-none tabular-nums text-white/25` |
 
 **Letter-spacing:** Beat labels and lane headers use `tracking-[0.08em]` (matches VerdictNode `SectionHead`). In-flight label uses `tracking-[0.1em]` (matches FrameHero `label` span). Beat body text inherits global `letter-spacing: 0.2px` (CLAUDE.md Raycast Design Language Rules).
 
@@ -91,7 +94,7 @@ All values from `BRAND-BIBLE.md` §Color Tokens, enforced by Raycast Design Lang
 | Separator border | `rgba(255,255,255,0.06)` | `border-t` between beats section and lanes section | CLAUDE.md: Universal 6% borders |
 | Beat block border | `rgba(255,255,255,0.06)` | 1px bottom border below each beat block (except last) | CLAUDE.md: `white/[0.06]` |
 | In-flight text | `rgba(255,255,255,0.45)` | "Decoding structure…" status | `text-white/45` (matches FrameHero label) |
-| Skeleton breathe | `rgba(255,255,255,0.25)` | Animated `--` placeholder in in-flight state | VerdictSkeleton: `text-white/25 motion-safe:animate-skeleton-breathe` |
+| Skeleton breathe | `rgba(255,255,255,0.25)` | Animated `—` placeholder in in-flight state | VerdictSkeleton: `text-white/25 motion-safe:animate-skeleton-breathe` |
 
 **Accent reserved for:** Nothing in Phase 3. Coral (#FF7F50) is NOT used anywhere in the Decode frame. Decode is pure analysis; no primary CTA button, no interactive accent element. Coral enters in Phase 4 (Adapt CTAs) and Phase 5 ("Develop & predict →").
 
@@ -126,7 +129,7 @@ DecodeShellNode (flex col gap-2, existing Phase 2 wrapper)
               └── LaneBlock — "What was luck / timing"
                     ├── LaneHeader (11px uppercase tracking-[0.08em] text-white/45 mb-3)
                     └── BulletList (flex col gap-3)
-                          └── LuckItem (flex col gap-0.5)
+                          └── LuckItem (flex col gap-1)
                                 ├── CategoryTag (11px font-medium text-white/40)
                                 └── LuckNote (13px leading-[1.5] text-white/55)
   └── DecodingState (flex col gap-2) — rendered when isDecoding && !decode
@@ -144,7 +147,7 @@ Beat labels and lane headers replicate `SectionHead` exactly: `text-[11px] upper
 
 ### Reused: `VerdictSkeleton` in-flight animation
 
-In-flight state reuses `motion-safe:animate-skeleton-breathe` (defined in `globals.css`). Text: `text-white/25`. No custom animation. Mirrors VerdictSkeleton exactly — one `"--"` glyph at display size, plus the "Decoding structure…" label above it at 10px.
+In-flight state reuses `motion-safe:animate-skeleton-breathe` (defined in `globals.css`). Text: `text-white/25`. No custom animation. Mirrors VerdictSkeleton exactly — one `"—"` glyph at display size (44px, font-semibold), plus the "Decoding structure…" label above it at 10px.
 
 ---
 
@@ -178,7 +181,7 @@ In-flight state reuses `motion-safe:animate-skeleton-breathe` (defined in `globa
 ### Lane 2: "What was luck / timing"
 
 - **Header (exact string):** `What was luck / timing`
-- **Format:** One `LuckItem` per entry. Each item has two stacked lines: a category tag above, a note below.
+- **Format:** One `LuckItem` per entry. Each item has two stacked lines: a category tag above, a note below. Internal `LuckItem` gap (tag → note): `gap-1` (4px).
 - **Category tag strings (fixed taxonomy, D-05):**
   - `timing / trend-moment`
   - `existing audience reach`
@@ -187,7 +190,7 @@ In-flight state reuses `motion-safe:animate-skeleton-breathe` (defined in `globa
 - **Note:** 1 short declarative sentence. Third-person. No advice verbs.
 - **Visual:** `text-white/40` tag + `text-white/55` note. NOT `text-warning`, NOT `text-error`. Neutral palette — luck is not failure.
 - **Empty state:** Not possible (Zod `luck.min(1)` + TS backstop). No defensive empty state needed.
-- **Spacing:** `gap-3` between LuckItems (slightly more than repeatable bullets at `gap-2` — two-line items need more breathing room).
+- **Spacing:** `gap-3` (12px) between LuckItems; `gap-1` (4px) inside each LuckItem between category tag and note.
 
 ### Visual separation between the two lanes
 
@@ -327,10 +330,10 @@ Zero external component blocks. All UI is first-party codebase. Milestone constr
 | Source | Decisions Consumed |
 |--------|-------------------|
 | CONTEXT.md | D-01 (4 stacked beats), D-02 (all-4-always-render + honest absence), D-03 (stacked lanes not side-by-side), D-04 (luck always non-empty), D-05 (fixed luck taxonomy), D-06 (analytical/declarative, no advice verbs), D-07 (third-person, "you" reserved for Adapt), D-08 (auto-run on submit), D-09 (existing pending treatment, no fake skeleton), D-10 (variants.remix.decode persistence + overall_score null) — 10 decisions |
-| RESEARCH.md | SectionHead pattern (11px/tracking-[0.08em]/text-white/45), VerdictSkeleton animation (animate-skeleton-breathe/text-white/25), FrameHero insight typography (13px/leading-[1.4]/text-white/60), m3 permalink hydration concern, Omni→4-beat field mapping, in-flight label "Decoding structure…", prohibited copy tokens |
+| RESEARCH.md | SectionHead pattern (11px/tracking-[0.08em]/text-white/45), VerdictSkeleton animation (animate-skeleton-breathe/text-white/25/font-semibold), FrameHero insight typography (13px/leading-[1.4]/text-white/60), m3 permalink hydration concern, Omni→4-beat field mapping, in-flight label "Decoding structure…", prohibited copy tokens |
 | BRAND-BIBLE.md | Spacing scale, radius scale, color tokens, Inter font, body letter-spacing 0.2px, 1.5 line-height |
 | CLAUDE.md §Raycast Design Language Rules | 6% borders (white/[0.06]), 10% hover, 12px card radius, no glow/tint, #07080a body |
-| VerdictNode.tsx (codebase read) | SectionHead exact classes, VerdictSkeleton exact markup, aria-busy pattern |
+| VerdictNode.tsx (codebase read) | SectionHead exact classes, VerdictSkeleton exact markup (including font-semibold on glyph), aria-busy pattern |
 | FrameHero.tsx (codebase read) | label span classes (text-[10px] uppercase tracking-[0.1em] text-white/45), insight p classes (text-[13px] leading-[1.4] text-white/60) |
 | DecodeShellNode.tsx (codebase read) | Existing wrapper (`flex w-full flex-col gap-2`), muted text level (`text-white/35`), `text-wrap: balance` pattern |
 | BoardMobile.tsx (codebase read) | MOBILE_ORDER_REMIX placement, DecodeShellNode mount point confirmed |
