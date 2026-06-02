@@ -48,20 +48,17 @@ Exceptions: NichePicker tile height 56px (h-14) for primary tiles, 48px (h-12) f
 
 ## Typography
 
-All Inter, antialiased, letter-spacing 0.2px global. This phase uses:
+All Inter, antialiased, letter-spacing 0.2px global. This phase uses exactly 4 sizes and 2 weights.
 
 | Role | Size | Weight | Line Height | Usage |
 |------|------|--------|-------------|-------|
 | Concept hook headline | 16px (text-base) | 600 (semibold) | 1.4 | Hook field — the bold headline of each concept card |
-| Concept sub-row label | 12px (text-xs) | 500 (medium) | 1.4 | "Angle:", "Who it's for:" label prefix |
-| Concept sub-row value | 13px | 400 (regular) | 1.4 | Angle and who-it's-for text value |
-| Format-borrowed chip | 11px | 500 (medium) | 1.0 | Chip label ("Borrowed: open-loop cold open") |
-| Frame section label | 10px uppercase, tracking 0.1em | 400 | 1.0 | Section meta-label above concept list (reuses FrameHero label pattern) |
-| Niche prompt heading | 14px (text-sm) | 500 (medium) | 1.4 | "Your niche" prompt inside empty-niche state |
-| NichePicker tile text | 14px (text-sm) | 500 (medium) | 1.4 | Primary + sub-niche tile labels — existing component, unchanged |
-| Muted descriptor | 12px (text-xs) | 400 | 1.4 | Replaced by concept cards; fallback empty state body text |
+| Niche prompt heading + NichePicker tiles | 14px (text-sm) | 500 (medium) | 1.4 | Niche prompt heading; NichePicker tile labels (existing component, unchanged) |
+| Sub-row values + chip + muted text | 12px (text-xs) | 500 (medium) | 1.4 | Angle/who-it's-for values; format_borrowed chip; empty/error body text |
+| Frame section label | 12px (text-xs) uppercase, tracking-widest | 500 (medium) | 1.0 | Meta-label above concept list ("ADAPTED FOR YOUR NICHE") — uppercase+tracking gives visual smallness without leaving the 4px scale |
 
-Weights used: regular (400) + medium (500) + semibold (600). Semibold is reserved for concept hooks only — the deliverable a creator acts on.
+Weights used: medium (500) for all supporting content + semibold (600) for hook headlines only.
+11px, 13px, 10px, regular (400) are eliminated from this phase.
 
 ---
 
@@ -101,9 +98,9 @@ hover: bg-white/[0.02]   (no translate-y, no border change — Raycast rule)
 
 Internal layout (top-to-bottom):
 1. Hook headline — `text-base font-semibold text-foreground` (16px, 600, #f9f9f9)
-2. format_borrowed chip — `text-[11px] font-medium text-accent bg-accent/[0.12] rounded-full px-2 py-0.5` (coral, pill shape, --radius-full)
+2. format_borrowed chip — `text-xs font-medium text-accent bg-accent/[0.12] rounded-full px-2 py-0.5` (12px, 500, coral, pill shape, --radius-full)
 3. Divider — `border-t border-white/[0.04]` (--color-border-subtle), 8px margin top
-4. Angle row — `text-[11px] font-medium text-white/45 uppercase tracking-[0.06em]` label + `text-[13px] text-foreground-secondary` value, 4px gap
+4. Angle row — `text-xs font-medium text-white/45 uppercase tracking-widest` label + `text-xs font-medium text-foreground-secondary` value, 4px gap
 5. Who-it's-for row — same pattern as angle row
 
 ### Stacked Card Container
@@ -117,7 +114,7 @@ When `niche_primary` AND `niche_sub` are both null on `creator_profile`:
 ```
 Outer wrapper: flex flex-col gap-4 w-full
 Heading: text-sm font-medium text-foreground  ("Add your niche to generate concepts")
-Body: text-xs text-foreground-muted           ("Concepts adapt the source format to your niche.")
+Body: text-xs font-medium text-foreground-muted  ("Concepts adapt the source format to your niche.")
 NichePicker: existing component, no restyling, compact (embedded in frame, not full-page)
 CTA: Button variant="primary" size="sm" label="Generate concepts" — appears after both primary+sub are selected; disabled until sub is selected
 ```
@@ -139,7 +136,7 @@ If Adapt generation fails (D-06 — independent frame failure):
 - Concept card area replaced by a single inline error message:
   - Icon: `WarningCircle` (Phosphor, 16px, `text-white/45`)
   - Heading: `text-sm font-medium text-foreground` — "Couldn't generate concepts"
-  - Body: `text-xs text-foreground-muted` — "Try refreshing the page. Decode results are still available."
+  - Body: `text-xs font-medium text-foreground-muted` — "Try refreshing the page. Decode results are still available."
 - No retry button this phase (D-07 — no regenerate affordance)
 
 ---
@@ -167,7 +164,7 @@ No new npm dependencies. No third-party registries.
 | Element | Copy | Source |
 |---------|------|--------|
 | Frame descriptor (replaces AdaptShellNode default) | Removed once concepts load | D-09 — concepts are the content |
-| Concept card section label | "ADAPTED FOR YOUR NICHE" | Discretion — 10px caps, matches FrameHero label pattern |
+| Concept card section label | "ADAPTED FOR YOUR NICHE" | Discretion — 12px uppercase tracking-widest, matches FrameHero label pattern |
 | format_borrowed chip prefix | "Borrowed:" | D-09 — makes format-not-content link explicit |
 | Primary CTA (niche prompt state) | "Generate concepts" | D-04 — auto-generate post-niche; button label for manual confirm |
 | Niche prompt heading | "Add your niche to generate concepts" | D-11 — action-first, no friction |
@@ -208,7 +205,7 @@ No destructive actions in this phase.
 | Error state | `role="alert"` on error container; icon is decorative (`aria-hidden="true"`) |
 | "Generate concepts" button | Descriptive label; `disabled` when sub-niche not yet selected |
 | Reduced motion | No animated transitions in concept cards; NichePicker uses `transition-all duration-200` CSS — within tolerance |
-| WCAG contrast | Hook text (#f9f9f9 on #07080a) > 15:1. Muted rows (#9c9c9d on #07080a) = 7.3:1 AAA. Chip text (#FF7F50 on transparent over #07080a) = 3.4:1 — large-text exception applies at 11px bold; chip is decorative classification not body copy |
+| WCAG contrast | Hook text (#f9f9f9 on #07080a) > 15:1. Sub-row values + chip (#9c9c9d on #07080a) = 7.3:1 AAA. Chip text (#FF7F50 on transparent over #07080a) = 3.4:1 — chip is decorative classification at 12px medium; muted label at white/45 passes AA at 12px against #07080a |
 
 ---
 
@@ -240,6 +237,7 @@ No third-party registry blocks declared. No vetting gate required.
 | Coral accent reserved-for rule | BRAND-BIBLE.md (board kit accent rule) |
 | DOM component (not Konva), fluid w-full | Phase 2 RESEARCH Pattern 1 / codebase |
 | Mobile mirrors desktop card order | CONTEXT.md D-10 |
+| Typography collapsed to 4 sizes / 2 weights | checker revision 2026-06-02 |
 
 ---
 
