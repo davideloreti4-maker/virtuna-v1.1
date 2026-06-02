@@ -31,8 +31,13 @@ const log = createLogger({ module: "engine.remix.decode" });
 // Env-overridable model — defaults to qwen3.6-plus (same as stage11)
 const QWEN_DECODE_MODEL = process.env.QWEN_DECODE_MODEL ?? QWEN_REASONING_MODEL;
 
-// 45s fail-fast — decode context is smaller than stage11's full signal context
-const PER_CALL_TIMEOUT_MS = 45_000;
+// 90s fail-fast. The original 45s assumed "smaller context than stage11 ⇒ faster",
+// but that assumption was never exercised live (the omni→structural cast bug crashed
+// decode before the LLM call). Measured: qwen3.6-plus WITH thinking takes ~47s for a
+// decode prompt — just over 45s — so every live decode aborted twice (~90s) and
+// returned null. 90s gives headroom for thinking-latency variance; with one retry the
+// worst case (180s) + scrape/omni still fits maxDuration=300.
+const PER_CALL_TIMEOUT_MS = 90_000;
 
 /**
  * Run the decode engine on an Omni structural output.
