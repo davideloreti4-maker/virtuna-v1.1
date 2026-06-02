@@ -1,10 +1,11 @@
 ---
 phase: 4
 slug: adapt-frame-niche
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-06-02
+reviewed_at: 2026-06-02
 ---
 
 # Phase 4 — Adapt Frame + Niche: UI Design Contract
