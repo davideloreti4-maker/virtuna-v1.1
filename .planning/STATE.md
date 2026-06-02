@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Viral Remix
-status: checkpoint-human-verify
-stopped_at: "Phase 5 plan 4 tasks 1-3 complete: FrameErrorBoundary created, Decode+Adapt mounts wrapped, Raycast sweep done, regression gate green (1840 tests). Awaiting Task 4 human-verify checkpoint."
-last_updated: "2026-06-02T12:30:00.000Z"
+status: security-gate-pending
+stopped_at: "Phase 5 UAT COMPLETE — 8 passed, 1 skipped (mobile), 0 open issues. Full Develop&Predict+Lineage loop verified live. Two bugs found+fixed mid-UAT: SSE controller double-close (1b2d67b5) + child-board live-update handoff (2a4ee327). Phase NOT yet marked complete — /gsd-secure-phase 5 required (security_enforcement on, no SECURITY.md)."
+last_updated: "2026-06-02T15:30:00.000Z"
 last_activity: 2026-06-02
 progress:
   total_phases: 5
@@ -22,9 +22,9 @@ See: .planning/PROJECT.md
 
 ## Current Position
 
-Phase: 05 (develop-predict-lineage) — CHECKPOINT
-Plan: 4 of 4 (tasks 1-3 complete; task 4 awaiting human-verify)
-Status: Awaiting checkpoint approval
+Phase: 05 (develop-predict-lineage) — UAT PASSED, security gate pending
+Plan: 4 of 4 complete; Task 4 human-verify checkpoint PASSED (UAT 8/9, 1 skipped)
+Status: /gsd-secure-phase 5 required before marking phase complete
 Last activity: 2026-06-02
 
 Roadmap shape (see `.planning/ROADMAP.md`):
