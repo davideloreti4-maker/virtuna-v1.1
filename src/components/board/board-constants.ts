@@ -137,11 +137,24 @@ export function resolveBoardLayout(
   const engineH = h('engine');
   // Center column
   const audienceH = h('audience');
-  // Right column — keyed on score ids (verdict/actions) since base is GROUP_FRAMES.
-  // Remix reuses these bounds verbatim via the id/label rewrite below (Pitfall 2).
-  const verdictH = h('verdict');
+  // Right column. Bounds (x/width + height fallback) come from the score ids
+  // verdict/actions — the only right-column ids in GROUP_FRAMES (Pitfall 2). But in
+  // remix mode the RENDERED frames are decode/adapt, so onMeasure stores their
+  // measured heights under THOSE ids. Reading measured['verdict'] in remix mode
+  // misses → falls back to the short constant → adapt stacks under a short height
+  // and overlaps the (tall) decode content. Read the measured height by the mode's
+  // actual rendered id; keep the bounds fallback keyed on the score id.
+  const rightTopMeasuredId: GroupId = mode === 'remix' ? 'decode' : 'verdict';
+  const rightBotMeasuredId: GroupId = mode === 'remix' ? 'adapt' : 'actions';
+  const measuredOrBase = (measuredId: GroupId, baseId: GroupId): number => {
+    const m = measured[measuredId];
+    return AUTO_HEIGHT_FRAMES.has(measuredId) && m != null && m > 0
+      ? m
+      : base[baseId].bounds.height;
+  };
+  const verdictH = measuredOrBase(rightTopMeasuredId, 'verdict');
   const actionsY = verdictH + GUTTER;
-  const actionsH = h('actions');
+  const actionsH = measuredOrBase(rightBotMeasuredId, 'actions');
   // Bottom block clears the taller of the left + center columns.
   const leftBottom = engineY + engineH;
   const centerBottom = audienceH; // audience y = 0

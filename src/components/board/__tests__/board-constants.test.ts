@@ -179,6 +179,21 @@ describe('resolveBoardLayout (auto-height reflow)', () => {
     const resolved = resolveBoardLayout({ actions: shorter });
     expect(boundsOf(resolved, 'actions').height).toBe(shorter);
   });
+
+  // Regression: in remix mode the right-column frames render as decode/adapt, so
+  // their measured heights arrive keyed on those ids. The reflow must read them by
+  // the remix id — else a tall decode keeps the short constant height and adapt
+  // overlaps it (observed live: Adapt panel collided with the 4-beat Decode).
+  it('remix mode: a tall measured decode pushes adapt below it (no overlap)', () => {
+    const tallDecode = rectFor('verdict').height + 600;
+    const resolved = resolveBoardLayout({ decode: tallDecode, adapt: 300 }, 'remix');
+    const decode = boundsOf(resolved, 'decode');
+    const adapt = boundsOf(resolved, 'adapt');
+    expect(decode.height).toBe(tallDecode);
+    // adapt starts at or after decode's bottom + the gutter — never overlapping.
+    expect(adapt.y).toBe(bottom(decode) + MIN_GAP);
+    expect(adapt.y).toBeGreaterThanOrEqual(bottom(decode));
+  });
 });
 
 describe('computeBoardBounds + computePresetTargets track growth', () => {
