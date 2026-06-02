@@ -120,7 +120,7 @@ The only IP-introducing risk in the milestone is born here: the instant Phase 1 
   4. With an empty creator-profile niche, the user is prompted inline before concepts generate; once a niche is supplied, the 3 concepts generate (Decode still renders niche-free in the meantime)
   5. The grade-mode board and existing analyze flow remain unchanged (no regression)
 **Plans**: 4 plans
-- [ ] 04-01-PLAN.md — Decode→Adapt contract + fixture + Wave 0 test scaffolds [wave 1]
+- [x] 04-01-PLAN.md — Decode→Adapt contract + fixture + Wave 0 test scaffolds [wave 1]
 - [ ] 04-02-PLAN.md — Qwen-only adapt generator + /api/remix/adapt route (auth/ownership/validate/persist) [wave 2]
 - [ ] 04-03-PLAN.md — AdaptConceptCard (Raycast card, hook-first anatomy) [wave 2]
 - [ ] 04-04-PLAN.md — AdaptFrameBody state machine + niche prompt + shell/Board/BoardMobile wiring [wave 3, checkpoint]
@@ -149,7 +149,7 @@ Phase 1 (hard gate) → Phase 2 (plumbing) → Phases 3 + 4 (parallelizable, Pha
 | 1. Ingestion BUILD (HARD GATE) | 3/3 | Complete | 2026-06-01 |
 | 2. Remix Mode + One-Board-Two-Config | 3/3 | Complete   | 2026-06-01 |
 | 3. Decode Frame | 0/TBD | Not started | - |
-| 4. Adapt Frame + Niche | 0/4 | Planned | - |
+| 4. Adapt Frame + Niche | 1/4 | In Progress|  |
 | 5. Develop & Predict + Lineage | 0/TBD | Not started | - |
 
 ## Coverage

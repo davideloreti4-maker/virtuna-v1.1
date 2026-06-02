@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Viral Remix
 status: executing
-last_updated: "2026-06-02T08:14:34.415Z"
-last_activity: 2026-06-02 -- Phase 04 planning complete
+last_updated: "2026-06-02T08:32:43.589Z"
+last_activity: 2026-06-02
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 10
-  completed_plans: 6
+  completed_plans: 7
   percent: 40
 ---
 
@@ -21,9 +21,10 @@ See: .planning/PROJECT.md
 
 ## Current Position
 
-Phase: 3
+Phase: 04 (adapt-frame-niche) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-06-02 -- Phase 04 planning complete
+Last activity: 2026-06-02
 
 Roadmap shape (see `.planning/ROADMAP.md`):
 
@@ -49,9 +50,12 @@ Phase 1 hard gate is CLOSED: tiktok_url now produces real Omni segments via Supa
 - Plan 03: signedVideoUrl variable reused (not renamed) — minimal-diff avoids partial-rename hazard at 5 read sites
 - Plan 03: derive-and-drop runs INLINE — resolve+Omni ~70-90s << maxDuration=300 (spike §5 verdict)
 - Plan 03: No second rate limiter — existing DAILY_LIMITS/429 branch at route.ts:296-310 is mode-agnostic
+- Plan 04-01: AdaptInput uses Pick<DecodeOutput, 4 structural fields + repeatable> & {niche} — omits luck[] and caption (D-01 structural content-leak guard)
+- Plan 04-01: DECODE_FIXTURE uses format-only language (no topic nouns) to enable no-caption-leak test assertions in plan 04-02
+- Plan 04-01: Wave 0 uses it.todo (not it.skip) — suite reports todo count without false-red failures
 
 ## Session Continuity
 
-Last session: 2026-06-02T07:34:23.680Z
+Last session: 2026-06-02T08:32:43.586Z
 
 Next: Phase 2 -- Remix Mode + One-Board-Two-Config (REMIX-01, REMIX-02).
