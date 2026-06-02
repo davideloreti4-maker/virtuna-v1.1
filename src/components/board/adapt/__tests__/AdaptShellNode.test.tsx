@@ -59,8 +59,10 @@ vi.mock('@/hooks/queries/use-adapt-concepts', () => ({
 
 function createWrapper() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return ({ children }: { children: React.ReactNode }) =>
+  const Wrapper = ({ children }: { children: React.ReactNode }) =>
     React.createElement(QueryClientProvider, { client: qc }, children);
+  Wrapper.displayName = 'TestQueryWrapper';
+  return Wrapper;
 }
 
 function renderShell() {
