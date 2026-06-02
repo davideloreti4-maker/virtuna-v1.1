@@ -19,6 +19,11 @@
  *
  * Tests here exercise the pipeline layer directly (not the route handler), using the
  * same mock patterns as pipeline.test.ts and tiktok-url-branch.test.ts.
+ *
+ * Plan 03-02 additions (C4 — decode route cleanup):
+ *   DD-04: decode branch (mode:'remix') always calls resolveAndRehost's cleanup()
+ *          even when runDecode returns null.
+ *   DD-05: decode branch never sets video_storage_path on the INSERT row.
  */
 
 // =====================================================
