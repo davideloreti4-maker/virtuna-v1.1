@@ -46,6 +46,16 @@ const AdaptRequestSchema = z.object({
 });
 
 // =====================================================================
+// Route config — adapt generation (qwen3.6-plus) measures ~65s live, so the
+// platform default (~60s) would 504 mid-generation. Match the analyze route's
+// budget. This was never set because the adapt route never ran live end-to-end
+// (the upstream remix→decode pipeline was failing first).
+// =====================================================================
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 300;
+
+// =====================================================================
 // POST handler
 // =====================================================================
 
