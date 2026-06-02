@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+// render + screen imported here for Wave 1 component tests (plan 04-02)
 import type { AdaptConcept } from '@/lib/engine/remix/decode-types';
 import { DECODE_FIXTURE } from '@/lib/engine/remix/decode.fixture';
 
