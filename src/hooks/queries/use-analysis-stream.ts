@@ -411,17 +411,29 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
   });
 
   useEffect(() => {
-    if (pollQuery.data?.overall_score != null) {
-      setResult(pollQuery.data as PredictionResult);
+    // Live-poll completion gate — only runs when phase === "polling" (pollEnabled is true).
+    // Does NOT run on a fresh remix permalink reload: remix rows start phase "idle"
+    // (completedFromInitial at line 127 keys on overall_score != null, which is null for
+    // remix rows), so pollEnabled is false. Permalink-reload hydration for remix rows is
+    // handled at the frame level by Phase 3's dual-read (DecodeShellNode ~181-189).
+    const d = pollQuery.data;
+    const isScoreComplete = d?.overall_score != null;
+    const isRemixComplete =
+      (d as { variants?: { remix?: unknown } } | undefined)?.variants?.remix != null;
+    if (isScoreComplete || isRemixComplete) {
+      setResult(d as PredictionResult);
       setPhase("complete");
       // Sibling instances hydrate off the shared detail cache on the polling path too.
       if (analysisId) {
-        queryClient.setQueryData(queryKeys.analysis.detail(analysisId), pollQuery.data);
+        queryClient.setQueryData(queryKeys.analysis.detail(analysisId), d);
       }
     }
   }, [pollQuery.data, analysisId, queryClient]);
 
-  // 90s ceiling on polling
+  // Lift polling ceiling from 90s → 360s to accommodate developed-child full pipeline
+  // runs (D-13). Developed children run the full ~90-332s prediction pipeline; the old
+  // 90s ceiling caused false-timeouts on long analyses.
+  const POLLING_CEILING_MS = 360_000;
   useEffect(() => {
     if (phase !== "polling") return;
     const t = setTimeout(() => {
@@ -429,7 +441,7 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
         setError("Stream timed out — analysis still running");
         setPhase("error");
       }
-    }, 90_000);
+    }, POLLING_CEILING_MS);
     return () => clearTimeout(t);
   }, [phase]);
 

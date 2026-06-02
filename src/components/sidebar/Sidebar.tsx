@@ -362,6 +362,7 @@ export function Sidebar() {
     content_text?: string | null;
     overall_score?: number | null;
     created_at?: string;
+    variants?: { remix?: unknown } | null;
   }>;
 
   // User profile for Account section
@@ -578,15 +579,35 @@ const isOnBoard = pathname.startsWith("/analyze");
                           </>
                         )}
                       </span>
-                      <span
-                        className={cn(
-                          "shrink-0 text-[11px] font-semibold tabular-nums tracking-tight",
-                          scoreTone(board.overall_score),
-                        )}
-                        data-testid="sidebar-score-chip"
-                      >
-                        {board.overall_score != null ? Math.round(board.overall_score) : '—'}
-                      </span>
+                      {(() => {
+                        // D-11/D-12: remix source rows have null overall_score + non-null
+                        // variants.remix — show a "Remix" badge instead of a blank '—' score.
+                        // T-05-08: purely render-side, no trust boundary crossed.
+                        const isRemix =
+                          board.overall_score == null &&
+                          (board.variants as { remix?: unknown } | null)?.remix != null;
+                        if (isRemix) {
+                          return (
+                            <span
+                              className="shrink-0 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[10px] uppercase tracking-widest text-white/45"
+                              data-testid="sidebar-remix-tag"
+                            >
+                              Remix
+                            </span>
+                          );
+                        }
+                        return (
+                          <span
+                            className={cn(
+                              "shrink-0 text-[11px] font-semibold tabular-nums tracking-tight",
+                              scoreTone(board.overall_score),
+                            )}
+                            data-testid="sidebar-score-chip"
+                          >
+                            {board.overall_score != null ? Math.round(board.overall_score) : '—'}
+                          </span>
+                        );
+                      })()}
                     </button>
                   );
                 })}
