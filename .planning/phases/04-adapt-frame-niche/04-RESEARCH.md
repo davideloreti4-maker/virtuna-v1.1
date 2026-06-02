@@ -403,17 +403,17 @@ export interface AdaptConcept {
 | A4 | The "live" adapt source is the mutation response held in client state (not a top-level field on `PredictionResult`) | Pattern 4 | `PredictionResult` has no adapt field (it's generated outside the pipeline). If a future change threads adapt into the SSE complete payload, the dual-read's "live" arm changes. Low risk — additive. |
 | A5 | `RepeatableItem` shape (`label` + `why_repeatable`) | decode-types.ts | Illustrative; the actual repeatable-lane item shape is Phase 3's to finalize against real Omni output. Keep the fixture and type loose enough to absorb Phase 3's reality. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact `repeatable[]` item shape from real Decode output**
    - What we know: Decode produces a repeatable-vs-luck split (ROADMAP Phase 3 crit 3); Adapt draws from repeatable only (D-01).
    - What's unclear: Whether each repeatable item is a plain string or a structured `{label, why}` — Phase 3 finalizes this against real Omni output (its Research flag).
-   - Recommendation: Define `decode-types.ts` with a structured `RepeatableItem` now (richer is safer); hand-author `decode.fixture.ts` to match; flag for reconciliation at the Phase 3↔4 merge. Phase 4 builds entirely against the fixture (D-02), so it is unblocked.
+   - **RESOLVED:** structured `RepeatableItem` (`{label, why_repeatable}`) defined in `decode-types.ts` now (richer is safer); `decode.fixture.ts` hand-authored to match; reconcile at the Phase 3↔4 merge (A5). Phase 4 builds entirely against the fixture (D-02), so it is unblocked. Plan 04-01 implements this.
 
 2. **Endpoint vs pipeline-chained adapt (A1)**
    - What we know: D-04 (lightweight, off pipeline), D-06 (independent failure), D-05 (persist + rehydrate).
    - What's unclear: Whether the planner prefers a standalone `/api/remix/adapt` POST or a server-side chain after Decode.
-   - Recommendation: Standalone endpoint — cleanest fit for D-04/D-06 and keeps adapt off `usage_tracking`. Documented as A1 for the planner to confirm.
+   - **RESOLVED:** standalone `/api/remix/adapt` POST — cleanest fit for D-04/D-06 and keeps adapt off `usage_tracking`. Plan 04-02 implements this.
 
 ## Environment Availability
 
