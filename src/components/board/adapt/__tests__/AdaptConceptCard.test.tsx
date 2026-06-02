@@ -1,18 +1,20 @@
 /** @vitest-environment happy-dom */
 /**
- * Wave 0 test scaffolds for AdaptConceptCard component.
+ * AdaptConceptCard component tests — Wave 1 (plan 04-03).
  *
- * Tests (Wave 0 — implemented in plan 04-02):
+ * Tests:
  *   1 — hook-headline: renders concept.hook as a bold headline element
  *   2 — format-chip: renders concept.format_borrowed as a chip prefixed "Borrowed:"
- *   3 — muted-rows: renders concept.angle + concept.who_its_for as 2 muted sub-rows
- *   (D-09 card anatomy)
+ *   3 — angle-row: renders concept.angle as a muted sub-row
+ *   4 — who-its-for-row: renders concept.who_its_for as a muted sub-row
+ *   5 — card-chrome: root element has Raycast card styling
+ *   6 — article-element: root element is an <article>
  */
 
 import { describe, it, expect } from 'vitest';
-// render + screen imported here for Wave 1 component tests (plan 04-02)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { render, screen } from '@testing-library/react';
 import type { AdaptConcept } from '@/lib/engine/remix/decode-types';
+import { AdaptConceptCard } from '../AdaptConceptCard';
 
 // =====================================================
 // Fixture
@@ -29,39 +31,45 @@ const CONCEPT_FIXTURE: AdaptConcept = {
 // Tests
 // =====================================================
 
-describe('AdaptConceptCard (Wave 0)', () => {
-  it.todo(
-    // Wave 0 — implemented in plan 04-02
-    'hook-headline: renders concept.hook as the primary bold headline',
-  );
+describe('AdaptConceptCard (Wave 1)', () => {
+  it('hook-headline: renders concept.hook as the primary bold headline', () => {
+    render(<AdaptConceptCard concept={CONCEPT_FIXTURE} />);
+    expect(screen.getByText(CONCEPT_FIXTURE.hook)).toBeTruthy();
+  });
 
-  it.todo(
-    // Wave 0 — implemented in plan 04-02
-    'format-chip: renders concept.format_borrowed with "Borrowed:" prefix as a chip element',
-  );
+  it('format-chip: renders concept.format_borrowed with "Borrowed:" prefix as a chip element', () => {
+    render(<AdaptConceptCard concept={CONCEPT_FIXTURE} />);
+    expect(screen.getByText(`Borrowed: ${CONCEPT_FIXTURE.format_borrowed}`)).toBeTruthy();
+  });
 
-  it.todo(
-    // Wave 0 — implemented in plan 04-02
-    'angle-row: renders concept.angle as a muted sub-row',
-  );
+  it('angle-row: renders concept.angle as a muted sub-row', () => {
+    render(<AdaptConceptCard concept={CONCEPT_FIXTURE} />);
+    expect(screen.getByText(CONCEPT_FIXTURE.angle)).toBeTruthy();
+    expect(screen.getByText('Angle')).toBeTruthy();
+  });
 
-  it.todo(
-    // Wave 0 — implemented in plan 04-02
-    'who-its-for-row: renders concept.who_its_for as a muted sub-row',
-  );
+  it('who-its-for-row: renders concept.who_its_for as a muted sub-row', () => {
+    render(<AdaptConceptCard concept={CONCEPT_FIXTURE} />);
+    expect(screen.getByText(CONCEPT_FIXTURE.who_its_for)).toBeTruthy();
+    expect(screen.getByText("Who it's for")).toBeTruthy();
+  });
 
-  it.todo(
-    // Wave 0 — implemented in plan 04-02
-    'card-chrome: root element has Raycast card styling (border-white/[0.06], bg-transparent)',
-  );
+  it('card-chrome: root element has Raycast card styling (border-white/[0.06], bg-transparent)', () => {
+    const { container } = render(<AdaptConceptCard concept={CONCEPT_FIXTURE} />);
+    const article = container.querySelector('article');
+    expect(article).toBeTruthy();
+    expect(article!.className).toContain('border-white/[0.06]');
+    expect(article!.className).toContain('rounded-xl');
+  });
 
-  it.todo(
-    // Wave 0 — implemented in plan 04-02
-    'article-element: root element is an <article> for correct reading order (accessibility)',
-  );
+  it('article-element: root element is an <article> for correct reading order (accessibility)', () => {
+    const { container } = render(<AdaptConceptCard concept={CONCEPT_FIXTURE} />);
+    const article = container.querySelector('article');
+    expect(article).toBeTruthy();
+  });
 
   // =====================================================
-  // Wave 0 smoke — fixture verification
+  // Wave 0 smoke — fixture verification (preserved)
   // =====================================================
 
   it('CONCEPT_FIXTURE has all 4 required AdaptConcept fields', () => {
@@ -72,8 +80,6 @@ describe('AdaptConceptCard (Wave 0)', () => {
   });
 
   it('CONCEPT_FIXTURE.format_borrowed matches a label from DECODE_FIXTURE.repeatable', () => {
-    // The card should display a repeatable-lane label, never a luck label
-    // This smoke checks the fixture is coherent
     const repeatableLabels = ['open-loop cold open', '4-beat emotional arc', 'counter-intuitive turn at 60% mark'];
     expect(repeatableLabels).toContain(CONCEPT_FIXTURE.format_borrowed);
   });
