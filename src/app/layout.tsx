@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { DevLocator } from "@/components/dev/locator";
+import { DebugErrorReporter } from "@/components/dev/debug-error-reporter";
 import "./globals.css";
 
 const inter = Inter({
@@ -44,6 +45,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-background font-sans antialiased">
         {children}
         <DevLocator />
+        <DebugErrorReporter />
       </body>
     </html>
   );
