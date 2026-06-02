@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Viral Remix
-status: milestone-phases-complete
-stopped_at: "Phase 5 COMPLETE — UAT 8/9 (1 mobile skip), security 12/12 threats CLOSED. All 5 milestone phases done. Two bugs fixed mid-UAT: SSE controller double-close (1b2d67b5) + child live-update handoff (2a4ee327). Next: milestone close-out — verify → audit-milestone → resolve feat-branch-before-main merge ordering → ship."
-last_updated: "2026-06-02T15:45:00.000Z"
+status: pr-open
+stopped_at: "Milestone SHIPPED to PR #6 (milestone/viral-remix-pr → main, MERGEABLE, claude-review running). Discovery: feat/actions-frame-inline-redesign was ALREADY merged to main via PR #5, so the 'merge feat first' note in MILESTONE.md is obsolete. PR is a squashed code-only branch (61 files, +7631/-58, zero .planning); 3-way merged vs main, only route.ts needed manual reconcile (stage-11 defer + decode branch both kept — additive). Cherry-pick was abandoned: milestone history contains the P3↔P4 reconciliation merge that linear cherry-pick can't preserve. Next: await claude-review, then merge PR #6 → /gsd-complete-milestone."
+last_updated: "2026-06-02T18:35:00.000Z"
 last_activity: 2026-06-02
 progress:
   total_phases: 5
