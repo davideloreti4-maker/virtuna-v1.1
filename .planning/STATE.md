@@ -7,11 +7,11 @@ last_updated: 2026-06-02T09:19:53.750Z
 last_activity: 2026-06-02
 progress:
   total_phases: 5
-  completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
-  percent: 60
-stopped_at: Phase 03 complete (3/3) — ready to discuss Phase 04
+  completed_phases: 4
+  total_plans: 13
+  completed_plans: 13
+  percent: 80
+stopped_at: Phases 3 (Decode) + 4 (Adapt) complete and integrated — ready to plan Phase 5
 ---
 
 # Project State
@@ -22,7 +22,7 @@ See: .planning/PROJECT.md
 
 ## Current Position
 
-Phase: 04
+Phase: 5
 Plan: Not started
 Status: Ready to plan
 Last activity: 2026-06-02
@@ -30,12 +30,14 @@ Last activity: 2026-06-02
 Roadmap shape (see `.planning/ROADMAP.md`):
 
 1. Ingestion BUILD (HARD GATE) — INGEST-01 ← COMPLETE (3/3 plans done)
-2. Remix Mode + One-Board-Two-Config — REMIX-01, REMIX-02 ← NEXT
-3. Decode Frame — DECODE-01, DECODE-02
-4. Adapt Frame + Niche — ADAPT-01, ADAPT-02
-5. Develop & Predict + Lineage — DEVELOP-01, DEVELOP-02
+2. Remix Mode + One-Board-Two-Config — REMIX-01, REMIX-02 ← COMPLETE (3/3)
+3. Decode Frame — DECODE-01, DECODE-02 ← COMPLETE (3/3)
+4. Adapt Frame + Niche — ADAPT-01, ADAPT-02 ← COMPLETE (4/4)
+5. Develop & Predict + Lineage — DEVELOP-01, DEVELOP-02 ← NEXT
 
 Phase 1 hard gate is CLOSED: tiktok_url now produces real Omni segments via Supabase re-host + derive-and-drop. Phases 2-5 are UNBLOCKED.
+
+Phases 3 and 4 were built in parallel worktrees (milestone/viral-remix = Decode, milestone/viral-remix-adapt = Adapt) and merged here. The Decode↔Adapt contract was reconciled at merge: `DecodeResult` is canonical; Adapt consumes it via the `decodeResultToAdaptInput` adapter in `adapt.ts`.
 
 ## Decisions
 
@@ -60,10 +62,16 @@ Phase 1 hard gate is CLOSED: tiktok_url now produces real Omni segments via Supa
 - Phase 3 Plan 03: beat order enforced via beatMap.get(id) loop over BEAT_IDS — deterministic regardless of LLM array order
 - Phase 3 Plan 03: m3 fallback reads permalinkData.variants.remix.decode directly — bypasses use-analysis-stream short-circuit (gates on overall_score != null; null on decode rows)
 - Phase 3 Plan 03: vi.fn() cast for mock pattern — avoids TS2352 on AnalysisStreamReturn shape; matches ContentAnalysisFrame.test.tsx convention
+- Plan 04-01: AdaptInput carries the 4 structural beats + repeatable lane + niche — omits luck[] and caption (D-01 structural content-leak guard)
+- Plan 04-01: DECODE_FIXTURE uses format-only language (no topic nouns) to enable no-caption-leak test assertions in plan 04-02
+- Plan 04-01: Wave 0 uses it.todo (not it.skip) — suite reports todo count without false-red failures
+- Plan 04-02: Zod v4 UUID strictness: test fixture UUIDs must use valid version/variant bits (e.g. 550e8400-e29b-41d4-a716-446655440000), not all-zeros UUIDs
+- Plan 04-02: vi.hoisted() required for all vi.mock factory variables in vitest v4 to avoid temporal dead zone ReferenceError at module load time
+- Merge (3+4): DecodeResult is the canonical decode payload; Adapt's invented DecodeOutput dropped. `decodeResultToAdaptInput` adapter bridges beats→flat fields + repeatable string[]→RepeatableItem[]; luck never mapped in (D-01 preserved)
 
 ## Session Continuity
 
 Last session: 2026-06-02T11:00:00Z
 
-Stopped at: Completed 03-03-PLAN.md — DecodeShellNode frame body; Phase 3 complete
-Next: Phase 4 (Adapt Frame + Niche) — /gsd-plan-phase 4
+Stopped at: Merged Phase 4 (Adapt) into the Decode trunk; reconciled the Decode↔Adapt contract. Phases 1–4 complete and integrated.
+Next: Phase 5 (Develop & Predict + Lineage) — /gsd-plan-phase 5

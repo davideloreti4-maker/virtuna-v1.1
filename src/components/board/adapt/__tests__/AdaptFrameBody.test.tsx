@@ -15,8 +15,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
-import type { AdaptConcept, DecodeOutput } from '@/lib/engine/remix/decode-types';
-import { DECODE_FIXTURE } from '@/lib/engine/remix/decode.fixture';
+import type { AdaptConcept } from '@/lib/engine/remix/decode-types';
+import { DECODE_FIXTURE, DECODE_RESULT_FIXTURE } from '@/lib/engine/remix/decode.fixture';
 
 // =====================================================
 // Module mocks
@@ -95,11 +95,11 @@ const THREE_CONCEPTS: AdaptConcept[] = [
 ];
 
 const MOCK_ROW_WITH_DECODE = {
-  variants: { remix: { decode: DECODE_FIXTURE as DecodeOutput } },
+  variants: { remix: { decode: DECODE_RESULT_FIXTURE } },
 };
 
 const MOCK_ROW_WITH_ADAPT = {
-  variants: { remix: { decode: DECODE_FIXTURE as DecodeOutput, adapt: THREE_CONCEPTS } },
+  variants: { remix: { decode: DECODE_RESULT_FIXTURE, adapt: THREE_CONCEPTS } },
 };
 
 const MOCK_CAMERA = { x: 0, y: 0, scale: 1 };

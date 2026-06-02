@@ -28,7 +28,8 @@ import { NichePicker } from '@/components/app/cards/niche-picker';
 import { getPrimaryLabel, getSubLabel } from '@/lib/niches/taxonomy';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import type { AdaptConcept, DecodeOutput } from '@/lib/engine/remix/decode-types';
+import type { AdaptConcept, DecodeResult } from '@/lib/engine/remix/decode-types';
+import { decodeResultToAdaptInput } from '@/lib/engine/remix/decode-types';
 import { AdaptConceptCard } from './AdaptConceptCard';
 import { useAdaptConcepts } from '@/hooks/queries/use-adapt-concepts';
 import type { Camera, GroupFrameLayout } from '../board-types';
@@ -37,7 +38,7 @@ import type { Camera, GroupFrameLayout } from '../board-types';
 interface AdaptRow {
   variants?: {
     remix?: {
-      decode?: DecodeOutput | null;
+      decode?: DecodeResult | null;
       adapt?: AdaptConcept[] | null;
     } | null;
   } | null;
@@ -67,9 +68,9 @@ export function AdaptFrameBody({ camera: _camera, layout: _layout }: AdaptFrameB
   // The authoritative source: persisted from DB → live mutation result
   const adapt: AdaptConcept[] | null = persistedAdapt ?? liveAdaptConcepts;
 
-  // ── Decode output (absent until Phase 3 merges; that is correct per D-04) ──
-  const decodeOutput: DecodeOutput | null =
-    (row?.variants?.remix?.decode ?? null) as DecodeOutput | null;
+  // ── Decode output: the canonical DecodeResult persisted by Phase 3 ──────────
+  const decodeOutput: DecodeResult | null =
+    (row?.variants?.remix?.decode ?? null) as DecodeResult | null;
 
   // ── Niche gate (D-11): BOTH must be null for the inline picker to show ───
   const { data: profile } = useCreatorProfile();
@@ -100,14 +101,16 @@ export function AdaptFrameBody({ camera: _camera, layout: _layout }: AdaptFrameB
     if (!decodeOutput || !analysisId) return;
     try {
       setMutationError(false);
+      // Bridge the persisted DecodeResult into the wire shape (D-01: luck never crosses).
+      const adaptInput = decodeResultToAdaptInput(decodeOutput, niche);
       const result = await adaptMutation.mutateAsync({
         analysis_id: analysisId,
         decode: {
-          hook_pattern: decodeOutput.hook_pattern,
-          structure: decodeOutput.structure,
-          the_turn: decodeOutput.the_turn,
-          emotional_beat: decodeOutput.emotional_beat,
-          repeatable: decodeOutput.repeatable,
+          hook_pattern: adaptInput.hook_pattern,
+          structure: adaptInput.structure,
+          the_turn: adaptInput.the_turn,
+          emotional_beat: adaptInput.emotional_beat,
+          repeatable: adaptInput.repeatable,
         },
         niche,
       });

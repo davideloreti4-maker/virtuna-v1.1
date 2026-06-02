@@ -4,14 +4,15 @@
  * Tests (Wave 0 — implemented in plan 04-02):
  *   1 — exactly-3: Zod .length(3) enforcement — returns exactly 3 concepts
  *   2 — repair-loop: malformed/short Qwen output → repair attempt; final invalid → null (graceful)
- *   3 — no-caption-guard: input builder only accepts AdaptInput (not DecodeOutput directly)
+ *   3 — no-caption-guard: input builder only accepts AdaptInput (no luck lane, no caption)
  *   4 — luck-exclusion: luck[] items absent from prompt user content (D-01 structural guard)
  *
  * All Qwen calls are mocked via the openai module mock (same pattern as stage11-counterfactuals.test.ts).
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { DECODE_FIXTURE } from '../decode.fixture';
+import { DECODE_FIXTURE, DECODE_RESULT_FIXTURE } from '../decode.fixture';
+import { decodeResultToAdaptInput } from '../decode-types';
 import type { AdaptInput } from '../decode-types';
 // import type { AdaptConcept } from '../decode-types'; // used in Wave 1+ assertions
 
@@ -158,7 +159,7 @@ describe('adapt.ts (Wave 0 — generateAdaptConcepts)', () => {
   );
 
   it(
-    'no-caption-guard: buildAdaptUserContent only accepts AdaptInput — passing DecodeOutput (with luck[]) is a TS compile error',
+    'no-caption-guard: buildAdaptUserContent only accepts AdaptInput — a luck lane or caption is a TS compile error',
     async () => {
       const { buildAdaptUserContent } = await import('../adapt');
       const input = makeAdaptInput();
@@ -210,7 +211,7 @@ describe('adapt.ts (Wave 0 — generateAdaptConcepts)', () => {
 
   it('makeAdaptInput omits luck[] from DECODE_FIXTURE (structural D-01 guard)', () => {
     const input = makeAdaptInput();
-    // AdaptInput is Pick<DecodeOutput, 4 fields + repeatable> & { niche }
+    // AdaptInput is the 4 structural fields + repeatable lane + niche
     // It must NOT have a 'luck' key — the type system enforces this; runtime check for belt-and-suspenders
     expect('luck' in input).toBe(false);
   });
@@ -230,5 +231,49 @@ describe('adapt.ts (Wave 0 — generateAdaptConcepts)', () => {
   it('makeValidConceptsResponse produces parseable JSON with exactly 3 concepts', () => {
     const parsed = JSON.parse(makeValidConceptsResponse()) as { concepts: unknown[] };
     expect(parsed.concepts).toHaveLength(3);
+  });
+});
+
+// =====================================================
+// Decode↔Adapt reconciliation seam (decodeResultToAdaptInput)
+// =====================================================
+
+describe('decodeResultToAdaptInput (Decode→Adapt seam)', () => {
+  it('maps the 4 beat bodies to flat structural fields (structure_pacing → structure)', () => {
+    const input = decodeResultToAdaptInput(DECODE_RESULT_FIXTURE, 'fitness');
+    expect(input.hook_pattern).toBe('Open with a provocative question, delay the answer');
+    expect(input.structure).toBe(
+      'Hook (0-3s) → tension build (3-12s) → reveal (12-22s) → CTA (22-30s)',
+    );
+    expect(input.the_turn).toBe('Pivot from problem statement to counter-intuitive solution at 15s');
+    expect(input.emotional_beat).toBe('Curiosity → frustration → relief → motivation');
+    expect(input.niche).toBe('fitness');
+  });
+
+  it('converts repeatable string[] to RepeatableItem[] (label set, why_repeatable empty)', () => {
+    const input = decodeResultToAdaptInput(DECODE_RESULT_FIXTURE, 'fitness');
+    expect(input.repeatable).toEqual(
+      DECODE_RESULT_FIXTURE.repeatable.map((label) => ({ label, why_repeatable: '' })),
+    );
+  });
+
+  it('NEVER maps luck into AdaptInput (D-01 content-leak guard)', () => {
+    const input = decodeResultToAdaptInput(DECODE_RESULT_FIXTURE, 'fitness');
+    expect('luck' in input).toBe(false);
+  });
+
+  it('produces an AdaptInput whose prompt omits the dangling dash for empty why_repeatable', async () => {
+    const { buildAdaptUserContent } = await import('../adapt');
+    const input = decodeResultToAdaptInput(DECODE_RESULT_FIXTURE, 'fitness');
+    const prompt = buildAdaptUserContent(input);
+    // No `"label" — ` with an empty rationale, and luck notes never appear.
+    expect(prompt).not.toMatch(/"[^"]+" — \n/);
+    for (const luckItem of DECODE_RESULT_FIXTURE.luck) {
+      expect(prompt).not.toContain(luckItem.note);
+    }
+    // Repeatable move labels DO appear.
+    for (const move of DECODE_RESULT_FIXTURE.repeatable) {
+      expect(prompt).toContain(move);
+    }
   });
 });

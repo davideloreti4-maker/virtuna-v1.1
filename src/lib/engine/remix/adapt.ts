@@ -6,8 +6,9 @@
  * usage_tracking, or DAILY_LIMITS (D-04 lightweight path).
  *
  * Input structural guard (D-01, Pitfall 1):
- * `buildAdaptUserContent` accepts only `AdaptInput` (Pick<DecodeOutput, ...> & {niche}),
- * making it a compile-time error to pass `luck[]` or any caption field.
+ * `buildAdaptUserContent` accepts only `AdaptInput` (4 structural beats + repeatable
+ * lane + niche, produced by `decodeResultToAdaptInput`), making it a compile-time
+ * error to pass `luck[]` or any caption field.
  */
 
 import * as Sentry from "@sentry/nextjs";
@@ -70,12 +71,16 @@ const AdaptConceptsZodSchema = z.object({
 /**
  * Build the Qwen user-turn content from the adapt input.
  *
- * Parameter type is `AdaptInput` (Pick<DecodeOutput, 4 structural fields + repeatable> & {niche}).
+ * Parameter type is `AdaptInput` (4 structural fields + repeatable lane + niche).
  * Passing `luck[]`, `content_summary`, or a raw caption is a compile-time error (Pitfall 1 guard).
  */
 export function buildAdaptUserContent(input: AdaptInput): string {
   const repeatableList = input.repeatable
-    .map((item, i) => `  ${i + 1}. "${item.label}" — ${item.why_repeatable}`)
+    .map((item, i) =>
+      item.why_repeatable
+        ? `  ${i + 1}. "${item.label}" — ${item.why_repeatable}`
+        : `  ${i + 1}. "${item.label}"`,
+    )
     .join("\n");
 
   return `VIRAL VIDEO STRUCTURAL ANATOMY:

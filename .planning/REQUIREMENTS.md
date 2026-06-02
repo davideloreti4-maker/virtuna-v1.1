@@ -28,8 +28,8 @@ Derived 1:1 from the seed SPEC's 8 locked requirements. Each was interview-groun
 
 ### Adapt
 
-- [ ] **ADAPT-01**: The Adapt frame renders exactly 3 concepts, each adapting the source's *format/structure* (not its content) to the user's niche, each with actionable specificity (angle, hook, who-it's-for, format_borrowed). *(SPEC req 3)*
-- [ ] **ADAPT-02**: Adapt is grounded in the user's niche sourced from the creator-profile; with an empty profile the user is prompted inline before concepts generate. *(SPEC req 7)*
+- [x] **ADAPT-01**: The Adapt frame renders exactly 3 concepts, each adapting the source's *format/structure* (not its content) to the user's niche, each with actionable specificity (angle, hook, who-it's-for, format_borrowed). *(SPEC req 3)*
+- [x] **ADAPT-02**: Adapt is grounded in the user's niche sourced from the creator-profile; with an empty profile the user is prompted inline before concepts generate. *(SPEC req 7)*
 
 ### Develop & lineage
 
@@ -71,8 +71,8 @@ INGEST-01 (Phase 1) is the hard gate: every Decode/Adapt/Develop requirement is 
 | REMIX-02 | Phase 2 | Validated (Phase 2) |
 | DECODE-01 | Phase 3 | Complete |
 | DECODE-02 | Phase 3 | Complete |
-| ADAPT-01 | Phase 4 | Pending |
-| ADAPT-02 | Phase 4 | Pending |
+| ADAPT-01 | Phase 4 | Complete |
+| ADAPT-02 | Phase 4 | Complete |
 | DEVELOP-01 | Phase 5 | Pending |
 | DEVELOP-02 | Phase 5 | Pending |
 

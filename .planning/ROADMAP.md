@@ -58,7 +58,7 @@ The only IP-introducing risk in the milestone is born here: the instant Phase 1 
 - [x] **Phase 1: Ingestion BUILD (HARD GATE)** — A non-owned TikTok URL yields real frame/segment/transcript signal through `analyzeVideoWithOmni`; source media derived-and-dropped, never persisted
 - [x] **Phase 2: Remix Mode + One-Board-Two-Config** — Explicit "Score / Remix" toggle routes the remix path; board swaps Verdict+Actions → Decode+Adapt (empty shells) on desktop canvas + mobile card-stack; grade board unchanged (completed 2026-06-01)
 - [x] **Phase 3: Decode Frame** — Lightweight Qwen decode path renders a structural teardown + an explicit repeatable-vs-luck split; never "fix this" framing (completed 2026-06-02)
-- [ ] **Phase 4: Adapt Frame + Niche** — Exactly 3 format-adapted (not content-copied) concepts grounded in the creator-profile niche, with inline fallback prompt when niche is empty
+- [x] **Phase 4: Adapt Frame + Niche** — Exactly 3 format-adapted (not content-copied) concepts grounded in the creator-profile niche, with inline fallback prompt when niche is empty (completed 2026-06-02)
 - [ ] **Phase 5: Develop & Predict + Lineage** — Per-concept "Develop & predict →" scores one concept via the existing pipeline; child stores `parent_id`, shows a working "remixed from" chip, appears in Recent; grade-mode regression confirmed
 
 ## Phase Details
@@ -122,7 +122,11 @@ The only IP-introducing risk in the milestone is born here: the instant Phase 1 
   3. Concepts are drawn from the Decode repeatable lane (not luck-attributed elements)
   4. With an empty creator-profile niche, the user is prompted inline before concepts generate; once a niche is supplied, the 3 concepts generate (Decode still renders niche-free in the meantime)
   5. The grade-mode board and existing analyze flow remain unchanged (no regression)
-**Plans**: TBD
+**Plans**: 4 plans
+- [x] 04-01-PLAN.md — Decode→Adapt contract + fixture + Wave 0 test scaffolds [wave 1]
+- [x] 04-02-PLAN.md — Qwen-only adapt generator + /api/remix/adapt route (auth/ownership/validate/persist) [wave 2]
+- [x] 04-03-PLAN.md — AdaptConceptCard (Raycast card, hook-first anatomy) [wave 2]
+- [x] 04-04-PLAN.md — AdaptFrameBody state machine + niche prompt + shell/Board/BoardMobile wiring [wave 3, checkpoint]
 **UI hint**: yes
 
 ### Phase 5: Develop & Predict + Lineage
@@ -148,7 +152,7 @@ Phase 1 (hard gate) → Phase 2 (plumbing) → Phases 3 + 4 (parallelizable, Pha
 | 1. Ingestion BUILD (HARD GATE) | 3/3 | Complete | 2026-06-01 |
 | 2. Remix Mode + One-Board-Two-Config | 3/3 | Complete   | 2026-06-01 |
 | 3. Decode Frame | 3/3 | Complete   | 2026-06-02 |
-| 4. Adapt Frame + Niche | 0/TBD | Not started | - |
+| 4. Adapt Frame + Niche | 4/4 | Complete   | 2026-06-02 |
 | 5. Develop & Predict + Lineage | 0/TBD | Not started | - |
 
 ## Coverage

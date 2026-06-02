@@ -191,3 +191,32 @@ export interface AdaptConcept {
   /** The format pattern borrowed from the source (chip text, e.g. "open-loop cold open"). */
   format_borrowed: string;
 }
+
+// =====================================================
+// Reconciliation adapter — the single Decode↔Adapt seam
+// =====================================================
+
+/**
+ * Bridge the canonical `DecodeResult` (what Phase 3 persists to
+ * `variants.remix.decode`) into the `AdaptInput` the generator consumes.
+ *
+ * This is the one place the two parallel-worktree shapes meet:
+ * - `beats[id].body` → flat structural fields (note: `structure_pacing` → `structure`)
+ * - `repeatable: string[]` → `RepeatableItem[]` (bare structural labels; `why_repeatable`
+ *   is empty because Decode emits only the move, not a rationale)
+ * - `luck` is intentionally NEVER mapped in (D-01 content-leak guard — luck factors
+ *   are distribution noise, not reusable format)
+ */
+export function decodeResultToAdaptInput(decode: DecodeResult, niche: string): AdaptInput {
+  const beatBody = (id: BeatId): string =>
+    decode.beats.find((b) => b.id === id)?.body ?? "";
+
+  return {
+    hook_pattern: beatBody("hook_pattern"),
+    structure: beatBody("structure_pacing"),
+    the_turn: beatBody("the_turn"),
+    emotional_beat: beatBody("emotional_beat"),
+    repeatable: decode.repeatable.map((label) => ({ label, why_repeatable: "" })),
+    niche,
+  };
+}

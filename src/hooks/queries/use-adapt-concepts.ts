@@ -28,8 +28,9 @@ export interface AdaptMutationInput {
  * On success: invalidates the analysis-by-id query so permalink rehydration picks up
  *             variants.remix.adapt (Pitfall 3 guard — rehydrate-no-regen).
  *
- * `decode` type is Omit<AdaptInput, 'niche'> which is Pick<DecodeOutput, structural fields + repeatable>
- * — luck[] is structurally excluded at the type level (D-01, T-04-11).
+ * `decode` type is Omit<AdaptInput, 'niche'> (the 4 structural fields + repeatable lane),
+ * produced client-side by `decodeResultToAdaptInput` — luck[] is structurally excluded at
+ * the type level (D-01, T-04-11).
  */
 export function useAdaptConcepts(analysisId: string) {
   const queryClient = useQueryClient();
