@@ -239,7 +239,12 @@ async function runDecodeStream(
   } finally {
     // Unconditional cleanup — deletes temp mp4 regardless of decode outcome (pitfall C4)
     await cleanup();
-    controller.close();
+    // Guard: client cancel (navigation) may have already closed the stream.
+    try {
+      controller.close();
+    } catch {
+      /* already closed/cancelled */
+    }
   }
 }
 
@@ -725,11 +730,16 @@ export async function POST(request: Request) {
       const decodeStream = new ReadableStream({
         async start(controller) {
           const send = (event: string, data: unknown) => {
-            controller.enqueue(
-              decodeEncoder.encode(
-                `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
-              )
-            );
+            // Guard: client cancel (navigation) — enqueue after close throws.
+            try {
+              controller.enqueue(
+                decodeEncoder.encode(
+                  `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
+                )
+              );
+            } catch {
+              /* stream already cancelled/closed — drop the frame */
+            }
           };
           try {
             await runDecodeStream(controller, send, {
@@ -743,7 +753,13 @@ export async function POST(request: Request) {
             log.error("decode_stream_error", { error: message, analysisId });
             Sentry.captureException(err, { tags: { stage: "decode_stream", analysisId } });
             send("error", { error: message });
-            controller.close();
+            // Guard: runDecodeStream's finally may have already closed it, or the
+            // client cancelled — either way a double-close throws.
+            try {
+              controller.close();
+            } catch {
+              /* already closed/cancelled */
+            }
           }
         },
       });
@@ -765,9 +781,15 @@ export async function POST(request: Request) {
     const stream = new ReadableStream({
       async start(controller) {
         const send = (event: string, data: unknown) => {
-          controller.enqueue(
-            encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
-          );
+          // Guard: client may have cancelled (navigated away mid-stream) — an
+          // enqueue after cancel throws "Controller is already closed".
+          try {
+            controller.enqueue(
+              encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
+            );
+          } catch {
+            /* stream already cancelled/closed — drop the frame */
+          }
         };
 
         try {
@@ -943,7 +965,12 @@ export async function POST(request: Request) {
           cleanupUploadedStorage(service, validated, retentionOptedIn, log);
           send("error", { error: message });
         } finally {
-          controller.close();
+          // Guard: client cancel (navigation) may have already closed the stream.
+          try {
+            controller.close();
+          } catch {
+            /* already closed/cancelled */
+          }
         }
       },
     });

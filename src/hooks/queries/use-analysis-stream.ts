@@ -382,6 +382,13 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
       }
     },
     onError: (err: Error) => {
+      // Intentional abort (component unmounted / navigated away mid-stream): the
+      // POST was cancelled on purpose. Do NOT reconnect — a reconnect here spawns
+      // a rogue EventSource on the unmounting component and the rejection surfaces
+      // as an unhandled error during the navigation commit (WSOD). Just bail.
+      if (abortRef.current?.signal.aborted || err.name === "AbortError") {
+        return;
+      }
       // If we have an analysisId, try GET-stream reconnect (D-03 single retry).
       if (analysisIdRef.current && phaseRef.current !== "reconnecting") {
         reconnect();

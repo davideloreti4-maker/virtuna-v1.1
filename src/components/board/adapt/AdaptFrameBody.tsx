@@ -87,13 +87,20 @@ export function AdaptFrameBody({ camera: _camera, layout: _layout }: AdaptFrameB
       `Format: ${concept.format_borrowed}`,
     ].join('\n\n');
 
-    void developStream.start({
-      input_mode: 'text',
-      content_text: brief,
-      content_type: 'video',
-      mode: 'score',         // D-06: standard scored analysis (not remix)
-      parent_id: analysisId, // D-07: source remix analysis id (known before started frame)
-    });
+    // navigate-on-started unmounts this frame mid-stream → the POST aborts and
+    // start() rejects with AbortError. Swallow it: an unhandled rejection during
+    // the navigation commit surfaces as a client crash (WSOD). Expected on nav.
+    developStream
+      .start({
+        input_mode: 'text',
+        content_text: brief,
+        content_type: 'video',
+        mode: 'score',         // D-06: standard scored analysis (not remix)
+        parent_id: analysisId, // D-07: source remix analysis id (known before started frame)
+      })
+      .catch(() => {
+        /* aborted on navigation — expected, handled in onError */
+      });
   }, [analysisId, developStream]);
 
   // ── Dual-read adapt: persisted variant takes priority (rehydrate-no-regen)
