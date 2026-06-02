@@ -22,6 +22,9 @@ import { DecodeShellNode } from '../DecodeShellNode';
 import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
 import { usePermalinkAnalysis } from '@/hooks/queries/use-permalink-analysis';
 
+const mockStream = useAnalysisStream as ReturnType<typeof vi.fn>;
+const mockPermalink = usePermalinkAnalysis as ReturnType<typeof vi.fn>;
+
 // =====================================================
 // Inline DecodeResult fixture
 // =====================================================
@@ -61,27 +64,25 @@ const FIXTURE_DECODE: DecodeResult = {
   ],
 };
 
-// A stream result wrapper that nests DecodeResult under variants.remix.decode
-function makeStreamResult(decode: DecodeResult | null) {
-  return decode
-    ? { variants: { remix: { decode } } }
-    : null;
-}
+// Base stream mock — individual tests override as needed
+const BASE_STREAM = {
+  result: null,
+  phase: 'idle',
+  filmstrips: {},
+  stages: [],
+  partial: null,
+  panelReady: {},
+  error: null,
+  reconnect: vi.fn(),
+  analysisId: null,
+  start: vi.fn(),
+  abort: vi.fn(),
+  reset: vi.fn(),
+};
 
 beforeEach(() => {
-  vi.mocked(usePermalinkAnalysis).mockReturnValue({ data: null } as ReturnType<typeof usePermalinkAnalysis>);
-  vi.mocked(useAnalysisStream).mockReturnValue({
-    result: null,
-    phase: 'idle',
-    filmstrips: {},
-    stages: [],
-    partial: null,
-    panelReady: {},
-    error: null,
-    reconnect: () => {},
-    analysisId: null,
-    start: () => {},
-  } as ReturnType<typeof useAnalysisStream>);
+  mockPermalink.mockReturnValue({ data: null });
+  mockStream.mockReturnValue({ ...BASE_STREAM });
 });
 
 // =====================================================
@@ -91,18 +92,12 @@ beforeEach(() => {
 describe('DecodeShellNode', () => {
 
   it('(1) renders all 4 beat labels in fixed order from a completed stream result', () => {
-    vi.mocked(useAnalysisStream).mockReturnValue({
-      result: makeStreamResult(FIXTURE_DECODE),
+    mockStream.mockReturnValue({
+      ...BASE_STREAM,
+      result: { variants: { remix: { decode: FIXTURE_DECODE } } },
       phase: 'complete',
-      filmstrips: {},
-      stages: [],
-      partial: null,
-      panelReady: {},
-      error: null,
-      reconnect: () => {},
       analysisId: 'abc123',
-      start: () => {},
-    } as ReturnType<typeof useAnalysisStream>);
+    });
 
     render(<DecodeShellNode />);
 
@@ -125,18 +120,12 @@ describe('DecodeShellNode', () => {
   });
 
   it('(2) absent beat renders its honest body and carries muted class text-white/35', () => {
-    vi.mocked(useAnalysisStream).mockReturnValue({
-      result: makeStreamResult(FIXTURE_DECODE),
+    mockStream.mockReturnValue({
+      ...BASE_STREAM,
+      result: { variants: { remix: { decode: FIXTURE_DECODE } } },
       phase: 'complete',
-      filmstrips: {},
-      stages: [],
-      partial: null,
-      panelReady: {},
-      error: null,
-      reconnect: () => {},
       analysisId: 'abc123',
-      start: () => {},
-    } as ReturnType<typeof useAnalysisStream>);
+    });
 
     const { container } = render(<DecodeShellNode />);
 
@@ -167,18 +156,12 @@ describe('DecodeShellNode', () => {
   });
 
   it('(3) both lane headers render and luck category renders as "timing / trend-moment" with note', () => {
-    vi.mocked(useAnalysisStream).mockReturnValue({
-      result: makeStreamResult(FIXTURE_DECODE),
+    mockStream.mockReturnValue({
+      ...BASE_STREAM,
+      result: { variants: { remix: { decode: FIXTURE_DECODE } } },
       phase: 'complete',
-      filmstrips: {},
-      stages: [],
-      partial: null,
-      panelReady: {},
-      error: null,
-      reconnect: () => {},
       analysisId: 'abc123',
-      start: () => {},
-    } as ReturnType<typeof useAnalysisStream>);
+    });
 
     render(<DecodeShellNode />);
 
@@ -202,18 +185,12 @@ describe('DecodeShellNode', () => {
   });
 
   it('(4) no prohibited advice verb appears in beat bodies, luck notes, or repeatable bullets', () => {
-    vi.mocked(useAnalysisStream).mockReturnValue({
-      result: makeStreamResult(FIXTURE_DECODE),
+    mockStream.mockReturnValue({
+      ...BASE_STREAM,
+      result: { variants: { remix: { decode: FIXTURE_DECODE } } },
       phase: 'complete',
-      filmstrips: {},
-      stages: [],
-      partial: null,
-      panelReady: {},
-      error: null,
-      reconnect: () => {},
       analysisId: 'abc123',
-      start: () => {},
-    } as ReturnType<typeof useAnalysisStream>);
+    });
 
     const { container } = render(<DecodeShellNode />);
 
@@ -235,27 +212,19 @@ describe('DecodeShellNode', () => {
     });
 
     // "you" outside the sanctioned lane header — the only allowed "you" is in "What you can repeat"
-    // Check the whole render minus the lane header text
     const fullText = container.textContent ?? '';
-    // Remove the exact sanctioned string before checking
+    // Remove the exact sanctioned header before checking
     const withoutSanctioned = fullText.replace('What you can repeat', '');
-    // No standalone "you" should appear
+    // No standalone "you" should appear outside the sanctioned header
     expect(/\byou\b/i.test(withoutSanctioned)).toBe(false);
   });
 
-  it('(5) in-flight: with phase "analyzing" and no decode, renders "Decoding structure…" and "—" glyph and NO beat labels', () => {
-    vi.mocked(useAnalysisStream).mockReturnValue({
+  it('(5) in-flight: with phase "analyzing" and no decode, renders "Decoding structure…" and NO beat labels', () => {
+    mockStream.mockReturnValue({
+      ...BASE_STREAM,
       result: null,
       phase: 'analyzing',
-      filmstrips: {},
-      stages: [],
-      partial: null,
-      panelReady: {},
-      error: null,
-      reconnect: () => {},
-      analysisId: null,
-      start: () => {},
-    } as ReturnType<typeof useAnalysisStream>);
+    });
 
     render(<DecodeShellNode />);
 
@@ -271,26 +240,20 @@ describe('DecodeShellNode', () => {
 
   it('(6) permalink m3: stream has overall_score:null but permalinkData has decode — 4 beats still render', () => {
     // Stream result has overall_score:null — use-analysis-stream short-circuit won't fire
-    vi.mocked(useAnalysisStream).mockReturnValue({
-      result: { overall_score: null } as unknown as ReturnType<typeof useAnalysisStream>['result'],
+    mockStream.mockReturnValue({
+      ...BASE_STREAM,
+      result: { overall_score: null },
       phase: 'idle',
-      filmstrips: {},
-      stages: [],
-      partial: null,
-      panelReady: {},
-      error: null,
-      reconnect: () => {},
       analysisId: 'perm123',
-      start: () => {},
-    } as ReturnType<typeof useAnalysisStream>);
+    });
 
     // Permalink returns the full row with variants.remix.decode
-    vi.mocked(usePermalinkAnalysis).mockReturnValue({
+    mockPermalink.mockReturnValue({
       data: {
         overall_score: null,
         variants: { remix: { decode: FIXTURE_DECODE } },
       },
-    } as ReturnType<typeof usePermalinkAnalysis>);
+    });
 
     render(<DecodeShellNode />);
 
