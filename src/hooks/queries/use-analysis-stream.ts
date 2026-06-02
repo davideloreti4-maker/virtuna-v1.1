@@ -520,6 +520,30 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
       setResult(permalinkRow as PredictionResult);
       if (urlAnalysisId) setAnalysisId(urlAnalysisId);
       setPhase("complete");
+      return;
+    }
+    // Resume-on-mount for an IN-FLIGHT child (Develop & Predict handoff, D-07/D-13).
+    // Develop's stream is owned by AdaptFrameBody, which unmounts on navigate-to-child
+    // — so the board that lands on /analyze/[child] has no live POST reader. The row is
+    // a null-score placeholder (engine_version:'pending') whose pipeline is still running
+    // server-side. Flip this instance to 'polling' so the existing pollQuery converges on
+    // the score (then the completion effect at ~420 hydrates + broadcasts to siblings).
+    // Gate on mode!=='remix': remix decode rows are also null-score+pending but are owned
+    // by Phase 3's DecodeShellNode dual-read, NOT by polling.
+    if (permalinkRow && permalinkScore == null) {
+      const row = permalinkRow as {
+        engine_version?: string | null;
+        mode?: string | null;
+        variants?: { remix?: unknown } | null;
+      };
+      const isInFlightScore =
+        row.engine_version === "pending" &&
+        row.mode !== "remix" &&
+        row.variants?.remix == null;
+      if (isInFlightScore && urlAnalysisId) {
+        setAnalysisId(urlAnalysisId);
+        setPhase("polling");
+      }
     }
   }, [
     initialFromOpts,
