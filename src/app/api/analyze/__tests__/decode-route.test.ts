@@ -23,7 +23,6 @@ const {
   mockGetUser,
   mockInsert,
   mockVariantsUpdate,
-  mockVariantsSelect,
   mockUsageTrackingUpsert,
   mockResolveAndRehost,
   mockAnalyzeVideoWithOmni,
@@ -32,7 +31,6 @@ const {
 } = vi.hoisted(() => {
   const mockInsert = vi.fn(async (_data?: unknown) => ({ error: null }));
   const mockVariantsUpdate = vi.fn(async (_data?: unknown) => ({ error: null }));
-  const mockVariantsSelect = vi.fn();
   const mockUsageTrackingUpsert = vi.fn(async () => ({ error: null }));
   const mockGetUser = vi.fn();
   const mockResolveAndRehost = vi.fn();
@@ -46,7 +44,6 @@ const {
     mockGetUser,
     mockInsert,
     mockVariantsUpdate,
-    mockVariantsSelect,
     mockUsageTrackingUpsert,
     mockResolveAndRehost,
     mockAnalyzeVideoWithOmni,
