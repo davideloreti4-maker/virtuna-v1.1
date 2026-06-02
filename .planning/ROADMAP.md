@@ -59,7 +59,7 @@ The only IP-introducing risk in the milestone is born here: the instant Phase 1 
 - [x] **Phase 2: Remix Mode + One-Board-Two-Config** — Explicit "Score / Remix" toggle routes the remix path; board swaps Verdict+Actions → Decode+Adapt (empty shells) on desktop canvas + mobile card-stack; grade board unchanged (completed 2026-06-01)
 - [x] **Phase 3: Decode Frame** — Lightweight Qwen decode path renders a structural teardown + an explicit repeatable-vs-luck split; never "fix this" framing (completed 2026-06-02)
 - [x] **Phase 4: Adapt Frame + Niche** — Exactly 3 format-adapted (not content-copied) concepts grounded in the creator-profile niche, with inline fallback prompt when niche is empty (completed 2026-06-02)
-- [ ] **Phase 5: Develop & Predict + Lineage** — Per-concept "Develop & predict →" scores one concept via the existing pipeline; child stores `parent_id`, shows a working "remixed from" chip, appears in Recent; grade-mode regression confirmed
+- [x] **Phase 5: Develop & Predict + Lineage** — Per-concept "Develop & predict →" scores one concept via the existing pipeline; child stores `parent_id`, shows a working "remixed from" chip, appears in Recent; grade-mode regression confirmed (completed 2026-06-02; UAT 8/9, security 12/12 closed)
 
 ## Phase Details
 
