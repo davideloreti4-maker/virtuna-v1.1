@@ -1,5 +1,10 @@
 /**
- * Phase 03 Plan 01 — Decode Engine Types + Zod Schemas.
+ * Decode + Adapt contract types — the integration seam between the two parallel
+ * remix worktrees (Phase 3 Decode + Phase 4 Adapt), reconciled at merge.
+ *
+ * Canonical decode payload = `DecodeResult` (what Phase 3 actually produces and
+ * persists to `variants.remix.decode`). The Adapt frame consumes it via the
+ * `decodeResultToAdaptInput` adapter in `adapt.ts` — it does NOT read raw beats.
  *
  * DecodeResult is the payload shape for variants.remix.decode (D-10).
  * overall_score stays null on decode rows — completion is signaled by
@@ -11,6 +16,7 @@
  *   D-04: luck array is always length >= 1 (backstop in runDecode)
  *   D-05: luck categories restricted to fixed taxonomy via Zod enum
  *   D-07: body lines are third-person, no advice verbs
+ *   D-01: Adapt draws ONLY from the repeatable lane; luck is never mapped into AdaptInput
  */
 import { z } from "zod";
 
@@ -127,3 +133,61 @@ export const DecodeResultZodSchema = z.object({
 });
 
 export type DecodeResultZod = z.infer<typeof DecodeResultZodSchema>;
+
+// =====================================================
+// Adapt contract (Phase 4) — consumes DecodeResult via the adapt.ts adapter
+// =====================================================
+
+/**
+ * A single structural item Adapt draws from, derived from Decode's `repeatable[]`
+ * lane. `why_repeatable` may be empty when the source provides only a bare label.
+ */
+export interface RepeatableItem {
+  /** Short structural label, e.g. "open-loop cold open". */
+  label: string;
+  /** Why this pattern is structurally reusable (may be empty). */
+  why_repeatable: string;
+}
+
+/**
+ * Input to the Adapt generator.
+ *
+ * Structural content-leak guard (D-01, Pitfall 1): AdaptInput carries only the four
+ * structural beats + the repeatable lane + niche. It has NO `luck` and NO caption/
+ * content_summary field, so passing luck or a raw source caption to the adapt prompt
+ * is a compile-time error. The `decodeResultToAdaptInput` adapter never maps luck in.
+ */
+export interface AdaptInput {
+  /** The viral hook pattern (from the `hook_pattern` beat body). */
+  hook_pattern: string;
+  /** Temporal structure of the video (from the `structure_pacing` beat body). */
+  structure: string;
+  /** The pivotal moment that changes the emotional trajectory (from the `the_turn` beat). */
+  the_turn: string;
+  /** The dominant emotional arc (from the `emotional_beat` beat body). */
+  emotional_beat: string;
+  /** Structural items that can be replicated in any niche — Adapt draws ONLY from this lane (D-01). */
+  repeatable: RepeatableItem[];
+  /** The creator-profile niche slug/label (ADAPT-02). */
+  niche: string;
+}
+
+/**
+ * A single niche-adapted concept produced by the Adapt generator (ADAPT-01).
+ *
+ * UI mapping (D-09):
+ * - `hook`            → bold headline (text-base font-semibold)
+ * - `format_borrowed` → coral chip prefixed "Borrowed:" in the UI
+ * - `angle`           → muted sub-row
+ * - `who_its_for`     → muted sub-row
+ */
+export interface AdaptConcept {
+  /** Bold actionable headline — the adapted hook in the creator's niche. */
+  hook: string;
+  /** The structural angle or narrative approach borrowed from the source. */
+  angle: string;
+  /** Who this concept is for in the creator's niche. */
+  who_its_for: string;
+  /** The format pattern borrowed from the source (chip text, e.g. "open-loop cold open"). */
+  format_borrowed: string;
+}
