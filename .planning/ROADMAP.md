@@ -105,7 +105,10 @@ The only IP-introducing risk in the milestone is born here: the instant Phase 1 
   3. The frame renders an explicit repeatable-vs-luck split (reproducible structure vs timing / existing-audience / outlier) with a non-empty luck column — never collapsing everything into "repeatable" (pitfall: luck hallucination)
   4. Decode never frames the video as something to "fix"; copy is honest teardown of why it worked, on-brand with the Score frame's honest-number ethos
   5. The grade-mode board and existing analyze flow remain unchanged (no regression)
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 03-01-PLAN.md — Decode engine core: runDecode Qwen call + Zod schema/prompt + resolveAndRehost derive-and-drop helper (Wave-0 decode tests)
+- [ ] 03-02-PLAN.md — Route remix decode branch (skip pipeline + usage_tracking, C2) + persistDecodeToVariants read-merge-write + SSE complete; derive-and-drop preserved
+- [ ] 03-03-PLAN.md — DecodeShellNode body: 4 beats + repeatable/luck lanes + honest in-flight + m3 permalink hydration [autonomous: false — UI human-verify]
 **Research flag**: Write the decode prompt schema only after inspecting real Omni output from Phase 1 on a non-owned URL (determines whether a Qwen ASR transcript is needed for hook-line fidelity).
 **UI hint**: yes
 
@@ -144,7 +147,7 @@ Phase 1 (hard gate) → Phase 2 (plumbing) → Phases 3 + 4 (parallelizable, Pha
 |-------|----------------|--------|-----------|
 | 1. Ingestion BUILD (HARD GATE) | 3/3 | Complete | 2026-06-01 |
 | 2. Remix Mode + One-Board-Two-Config | 3/3 | Complete   | 2026-06-01 |
-| 3. Decode Frame | 0/TBD | Not started | - |
+| 3. Decode Frame | 0/3 | Planned | - |
 | 4. Adapt Frame + Niche | 0/TBD | Not started | - |
 | 5. Develop & Predict + Lineage | 0/TBD | Not started | - |
 
