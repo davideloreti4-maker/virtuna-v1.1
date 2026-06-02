@@ -97,16 +97,27 @@ export function AdaptFrameBody({ camera: _camera, layout: _layout }: AdaptFrameB
   }, [analysisId, developStream]);
 
   // ── Dual-read adapt: persisted variant takes priority (rehydrate-no-regen)
+  // m3 fallback: read directly from permalinkData when the stream result lacks it
+  // (use-analysis-stream short-circuits on overall_score:null remix rows — same
+  // reason DecodeShellNode reads permalinkData directly; without this Adapt sees
+  // "decode absent" even after decode persists).
   const persistedAdapt =
-    (row?.variants?.remix?.adapt ?? null) as AdaptConcept[] | null;
+    (row?.variants?.remix?.adapt ??
+      (permalinkData as { variants?: { remix?: { adapt?: AdaptConcept[] } } } | null)
+        ?.variants?.remix?.adapt ??
+      null) as AdaptConcept[] | null;
   const [liveAdaptConcepts, setLiveAdaptConcepts] = useState<AdaptConcept[] | null>(null);
 
   // The authoritative source: persisted from DB → live mutation result
   const adapt: AdaptConcept[] | null = persistedAdapt ?? liveAdaptConcepts;
 
   // ── Decode output: the canonical DecodeResult persisted by Phase 3 ──────────
+  // m3 fallback (see above): stream.result OR direct permalink read.
   const decodeOutput: DecodeResult | null =
-    (row?.variants?.remix?.decode ?? null) as DecodeResult | null;
+    (row?.variants?.remix?.decode ??
+      (permalinkData as { variants?: { remix?: { decode?: DecodeResult } } } | null)
+        ?.variants?.remix?.decode ??
+      null) as DecodeResult | null;
 
   // ── Niche gate (D-11): BOTH must be null for the inline picker to show ───
   const { data: profile } = useCreatorProfile();

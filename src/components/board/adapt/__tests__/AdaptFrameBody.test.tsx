@@ -220,6 +220,39 @@ describe('AdaptFrameBody', () => {
   });
 
   // ======================================
+  // Test 3b: m3 fallback — decode present ONLY in permalinkData (not stream.result)
+  // Regression: use-analysis-stream short-circuits on overall_score:null remix rows,
+  // so stream.result lacks decode. Adapt must read permalinkData directly (like
+  // DecodeShellNode) or it shows "decode absent" and never generates concepts.
+  // ======================================
+  it('m3 fallback: decode only in permalinkData (stream.result null) still auto-fires', async () => {
+    const { useCreatorProfile } = await import('@/hooks/queries/use-creator-profile');
+    const { useAnalysisStream } = await import('@/hooks/queries/use-analysis-stream');
+    const { usePermalinkAnalysis } = await import('@/hooks/queries/use-permalink-analysis');
+
+    vi.mocked(useCreatorProfile).mockReturnValue(
+      { data: { niche_primary: 'fitness', niche_sub: 'strength-training' } } as unknown as ReturnType<typeof useCreatorProfile>,
+    );
+    // Stream result is empty (the short-circuit) — decode lives ONLY on permalinkData.
+    vi.mocked(useAnalysisStream).mockReturnValue(
+      { result: null } as unknown as ReturnType<typeof useAnalysisStream>,
+    );
+    vi.mocked(usePermalinkAnalysis).mockReturnValue(
+      { data: MOCK_ROW_WITH_DECODE, id: '550e8400-e29b-41d4-a716-446655440000', isLoading: false },
+    );
+
+    await act(async () => {
+      await renderAdaptFrameBody();
+    });
+
+    await waitFor(() => {
+      expect(mockMutateAsync).toHaveBeenCalledTimes(1);
+    });
+    // The decode-absent empty copy must NOT show
+    expect(screen.queryByText('Concepts generate once the source video is decoded.')).toBeNull();
+  });
+
+  // ======================================
   // Test 4: rehydrate-no-regen (Pitfall 3, D-05)
   // ======================================
   it('rehydrate-no-regen: variants.remix.adapt present → renders 3 cards with NO mutation call', async () => {
