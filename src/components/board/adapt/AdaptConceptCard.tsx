@@ -3,6 +3,8 @@ import type { AdaptConcept } from '@/lib/engine/remix/decode-types';
 
 interface AdaptConceptCardProps {
   concept: AdaptConcept;
+  onDevelop?: () => void;
+  isPending?: boolean;
 }
 
 /**
@@ -21,7 +23,7 @@ interface AdaptConceptCardProps {
  *   - coral accent reserved for the chip only (UI-SPEC reserved-for rule)
  *   - no dangerouslySetInnerHTML (T-04-09 XSS mitigation — React escapes text children)
  */
-export function AdaptConceptCard({ concept }: AdaptConceptCardProps) {
+export function AdaptConceptCard({ concept, onDevelop, isPending }: AdaptConceptCardProps) {
   return (
     <article
       className={cn(
@@ -52,6 +54,27 @@ export function AdaptConceptCard({ concept }: AdaptConceptCardProps) {
         <span className="text-xs font-medium text-white/45 uppercase tracking-widest">{"Who it's for"}</span>
         <span className="text-xs font-medium text-foreground-secondary">{concept.who_its_for}</span>
       </div>
+
+      {/* 6. Develop trigger — Raycast secondary action, full-width, bottom of card */}
+      {onDevelop && (
+        <>
+          <div className="border-t border-white/[0.04]" />
+          <button
+            type="button"
+            onClick={onDevelop}
+            disabled={isPending}
+            className={cn(
+              'w-full text-left text-xs font-medium text-white/55',
+              'flex items-center justify-between',
+              'hover:text-foreground transition-colors',
+              isPending && 'opacity-40 pointer-events-none',
+            )}
+          >
+            Develop &amp; predict
+            <span className="text-white/30">→</span>
+          </button>
+        </>
+      )}
     </article>
   );
 }
