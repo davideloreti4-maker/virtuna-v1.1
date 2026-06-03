@@ -26,6 +26,8 @@ Milestone-scoped requirements. Derived from `ENGINE-MAP.md`. Each is testable; p
 
 - **R11 — Grounded engagement estimate.** Replace the fake engagement numbers with a prediction grounded in **what we actually know about the creator + video**: anchor to the creator's baseline reach (follower tier / typical views from creator_context) × the quality read (Apollo + Audience-Sim). Show as a **range + confidence**, relative to the creator's own history — never a false-precise point (virality is fat-tailed). _Verify: two creators of different follower tiers get materially different estimates for the same video; output is a range, not a single number._ → P5 (needs the two brains' quality read; confirm available baseline inputs first)
 
+- **R12 — One brain across modes.** Remix's `decode` (analyze a reference) + `adapt` (generate concepts) are grounded in the **same Apollo knowledge core** as score-mode reasoning — not a separate framework. The engine's existing `mode: 'score' | 'remix'` switch routes to shared senses (Omni) + shared brain (Apollo) with mode-specific prompts/output. _Verify: decode/adapt system prompts reference the shared core; no divergent knowledge base._ → P3
+
 ## Validation gate (the bet)
 
 - **R10 — Fold proven, not assumed.** Before the folded Audience-Sim replaces the 20 personas in production, A/B it against the current 20 on a handful of real videos; the grounded single call must reproduce or beat the retention-curve quality. _Verify: A/B report._ → P4

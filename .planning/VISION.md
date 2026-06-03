@@ -26,6 +26,8 @@ Numen isn't a bundle of features — it's **one expert (Apollo) you reach three 
 
 Building Apollo upgrades all three at once. Had we kept optimizing a score machine, each feature would have needed its own logic.
 
+**This is already half-built in the schema.** `types.ts` carries `mode: 'score' | 'remix'`; Remix's `engine/remix/decode.ts` (analyze a reference) + `adapt.ts` (generate concepts) already run on the same Omni senses + reasoning model + cache-stable prompts. They just don't yet share a knowledge core — P3 fixes that (R12). Chat becomes a third `mode`. The vision isn't aspirational architecture; it's finishing a pattern the code already started.
+
 ## Value, not moat
 
 Don't over-index on a single defensible secret. **Value is the compound of the whole product.** The moat can live anywhere — Apollo's grounding, the UI/UX, speed, brand, marketing. No single axis needs to be unbeatable.

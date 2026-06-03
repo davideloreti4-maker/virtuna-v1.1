@@ -31,6 +31,18 @@
 
 **Today:** ~25 LLM calls. **Target end-state: ~3 calls** — **Omni** (observer/transcriber) + **Apollo Reasoner** (Brain 1, creator-craft) + **Audience Sim** (Brain 2, viewer-psych). ~88% cut. The collapse hinges on S13/S14 — whether one folded Audience-Sim call replaces 20 persona simulations without losing real signal (the milestone's central bet; validate with a few real-video A/B checks).
 
+## ⚠️ Remix path — added after merge (2026-06-03)
+
+The original S0–S19 teardown was done on a fork that predated Remix (PR #6). Merged `origin/main`; Remix is now in tree. It does NOT change the score-path teardown — it ADDS a second orchestration that shares the same senses + (should share) the same brain.
+
+- **`engine/remix/decode.ts`** (216 ln, `QWEN_DECODE_MODEL`=qwen-plus, thinking, seed): reasons about a *reference* viral video's structure → 4 beats (hook_pattern / structure_pacing / the_turn / emotional_beat) + **repeatable vs luck** lanes. Cache-stable system prompt, Omni-fed, analysis-only voice. = **Apollo Reasoner in "decode" mode.**
+- **`engine/remix/adapt.ts`** (170 ln, qwen-plus, seed): generates adapted concepts from the decode. = **Apollo's generate/rewrite muscle** — the same capability P3 adds to score-mode (R2).
+- **`engine/remix/resolve-and-rehost.ts`**: TikTok URL → rehosted Supabase signed URL → `analyzeVideoWithOmni`. Ingestion plumbing (also what the deferred test-rig would reuse).
+- **`pipeline.ts`** gained remix-temp rehost + derive-and-drop cleanup; **`types.ts`** gained `mode: 'score' | 'remix'` on input + `PredictionResult`. **The "modes of one brain" thesis is already in the schema.**
+- UI: `components/board/decode/` + `components/board/adapt/` shell nodes already exist.
+
+**Implication:** Apollo has **three reasoning surfaces that must share one knowledge core** — score-reasoning (deepseek→Apollo), decode, adapt. Today decode/adapt run bespoke frameworks. P3 must establish the shared knowledge core and ground all three in it, or Remix forks the brain. The `decode` "repeatable vs luck" framework is itself a knowledge asset → fold INTO the core. Chat = a future third `mode`.
+
 ## FINAL TALLY — walkthrough complete (S0–S19)
 
 **Today (video mode):** Omni 1 + deepseek 1 + Pass1 10 + Pass2 10 + platform_fit 1 + stage11 1 (+ rule-semantic 1) = **~24–25 LLM calls**, ~332s, over the 300s cap.
@@ -42,7 +54,9 @@
 
 (+ text-mode gemini, 1 call, non-video fallback only.)
 
-**Sequencing:** `Omni → Audience-Sim → Apollo` (rewrites become audience-aware).
+**This tally is SCORE mode.** Remix mode is its own graph sharing the same brain: `Omni → decode → adapt` (+ optional predict). Both modes draw on the one Apollo knowledge core.
+
+**Sequencing (score mode):** `Omni → Audience-Sim → Apollo` (rewrites become audience-aware).
 
 **DELETE:** fabricated `predicted-engagement` (honesty), `ml.ts` (off), most of `aggregator.ts` score-blend (5/7 sources dead), vestigial stage10 flags, dead `audio-fingerprint`/`trends`, the separate stage11/platform_fit/rule-semantic calls. Score → directional band.
 

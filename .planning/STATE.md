@@ -21,7 +21,7 @@ See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Cut-l
 
 **Milestone worktree** `~/virtuna-engine-opt/` on `milestone/engine-opt`. Milestone **Apollo** — turn the ~25-call score machine into a 3-call knowledge-grounded expert (Omni → Audience-Sim → Apollo Reasoner).
 
-Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milestone formalized: MILESTONE.md + REQUIREMENTS.md + ROADMAP.md written. **No phase plans yet.**
+Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milestone formalized. **Synced with `origin/main` (merged in Remix PR #6 + audience change) — branch was stale + blind to Remix.** Re-scanned Remix engine path; folded into the plan (Remix = Apollo modes, R12). **No phase plans yet.**
 
 ## Phases
 
@@ -39,9 +39,19 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 - **Keep engagement prediction — but grounded.** The current `predicted-engagement` is fake (views = f(score)+sine jitter, ignores creator reach). Delete that derivation in P1; rebuild in P5 grounded in creator baseline (follower tier/history) × quality read, shown as a range + confidence (R11). Concept is valid; the implementation wasn't.
 - **Value > moat:** build the value pillars; corpus is multi-source + matures over time, not a build gate. See VISION.md.
 
+## Pre-flight findings — resolved (2026-06-03)
+
+1. ✅ **Stale/Remix-blind** → merged `origin/main`; Remix re-scanned + folded (R12, ENGINE-MAP Remix section).
+2. ✅ **P1 sequencing** → P1 is now subtractive only; score keeps its existing derivation until P3/P5 (no "rederive from Apollo" before Apollo exists).
+3. ✅ **Long-lived branch** → P1 + P2 marked independently shippable to main (ship promptly).
+4. ✅ **A/B referee (R10)** → P4 will revive `corpus/eval-harness.ts` + `eval-runner.ts`.
+5. ✅ **Score = composite** principle banked in P3.
+6. ✅ **Determinism vs creativity** → scoring temp0+seed, rewrite variants may use temp>0 (noted in P3).
+7. 🔲 **Corpus v1** → user's parallel track; the long pole for P3. START NOW.
+
 ## Next action
 
-Fresh context → `/gsd-plan-phase 1` (Strip to Senses — low-risk deletion of the fabricated/dead layer, rederive the score cleanly, get under the latency cap). All planning context is on disk (ENGINE-MAP / VISION / MILESTONE / REQUIREMENTS / ROADMAP) + memory `apollo-direction`.
+Fresh context → `/gsd-plan-phase 1` (Strip to Senses — subtractive deletion of the fabricated/dead layer, keep score on live signals, get under the cap; independently shippable). Context on disk (ENGINE-MAP / VISION / MILESTONE / REQUIREMENTS / ROADMAP) + memory `apollo-direction`. In parallel: begin distilling the corpus v1 (gates P3).
 
 ## Open bets / to verify
 
@@ -49,4 +59,5 @@ Fresh context → `/gsd-plan-phase 1` (Strip to Senses — low-risk deletion of 
 - Cheap DB check: trending_sounds / scraped_videos / outcomes row counts (expected 0).
 - Archetype count in the fold (10 vs ~5).
 - `optimal-post.ts`: honest signal or cut.
-- Chase Hughes corpus: data + distillation form (biggest unknown).
+- Corpus v1: data sources + distillation form + size (→ cached-prompt vs retrieval threshold). Biggest unknown.
+- Remix decode/adapt: confirm clean re-grounding on the shared core without breaking `/api/remix/adapt`.
