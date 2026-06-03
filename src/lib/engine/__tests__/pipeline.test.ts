@@ -242,6 +242,7 @@ const input = {
   content_text:
     "What if you could double your engagement? #viral #trending",
   content_type: "video" as const,
+  mode: "score" as const,
 };
 
 // =====================================================
@@ -791,6 +792,7 @@ describe("Phase 4 — Wave 0 + pre_creator_context", () => {
       video_storage_path: "user-abc/test-content.mp4",
       content_text: "GRWM for date night #beauty",
       content_type: "video" as const,
+      mode: "score" as const,
     };
 
     // Omni call returns the full unified response. mockDeepSeekCreate IS the
@@ -1043,6 +1045,7 @@ describe("Phase 3 (Plan 08) — filmstrip trigger + Pass 2 wiring", () => {
       video_storage_path: "user-abc/test.mp4",
       content_text: "Test video #fyp",
       content_type: "video" as const,
+      mode: "score" as const,
     };
 
     mockDeepSeekCreate.mockImplementation((args: { model?: string; messages: Array<{ role: string; content: unknown }> }) => {
@@ -1131,6 +1134,7 @@ describe("Phase 3 (Plan 08) — filmstrip trigger + Pass 2 wiring", () => {
       video_storage_path: "user-abc/test.mp4",
       content_text: "Test video",
       content_type: "video" as const,
+      mode: "score" as const,
     };
 
     // Pass 2 returns aggregate_built=false

@@ -8,7 +8,7 @@ import { computeOptimalPostWindow } from "@/lib/engine/optimal-post";
  * Returns a single analysis result by ID for the authenticated user.
  */
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -36,6 +36,18 @@ export async function GET(
         { error: "Analysis not found" },
         { status: 404 }
       );
+    }
+
+    // ?summary branch — minimal parent summary for the "remixed from" chip (D-10).
+    // Returns ONLY id + caption + created_at (never the full row).
+    // Runs AFTER the user_id-scoped SELECT above — a forged cross-user parent_id 404s
+    // before reaching here. Ownership is inherited from the SELECT filter above (T-05-06).
+    if (new URL(request.url).searchParams.has("summary")) {
+      return Response.json({
+        id: data.id,
+        caption: (data.content_text ?? "").slice(0, 120) || null,
+        created_at: data.created_at,
+      });
     }
 
     // Derive Phase 5 fields the engine emits at runtime but the DB schema

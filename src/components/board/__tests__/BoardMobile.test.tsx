@@ -12,6 +12,8 @@ vi.mock('../content-analysis/ContentAnalysisFrame', () => ({
   ContentAnalysisFrame: () => <div data-testid="body-content-analysis" />,
 }));
 vi.mock('../InputResultCard', () => ({ InputResultCard: () => <div data-testid="body-input" /> }));
+vi.mock('../decode/DecodeShellNode', () => ({ DecodeShellNode: () => <div data-testid="body-decode" /> }));
+vi.mock('../adapt/AdaptShellNode', () => ({ AdaptShellNode: () => <div data-testid="body-adapt" /> }));
 
 import { BoardMobile } from '../BoardMobile';
 
@@ -70,5 +72,54 @@ describe('BoardMobile', () => {
     // The redesigned filmstrip instrument fits the card width — the old wide
     // 2-column overflow-x-auto workaround is gone.
     expect(body.className).not.toContain('overflow-x-auto');
+  });
+});
+
+describe('BoardMobile remix mode (D-09)', () => {
+  it('score order is unchanged — Input,Score,Audience,Actions,Content craft,Engine', () => {
+    render(<BoardMobile boardMachineState="complete" input={INPUT} hasAnalysis boardMode="score" />);
+    const labels = screen
+      .getAllByRole('region')
+      .map((el) => el.getAttribute('aria-label'))
+      .filter((l) => l !== 'Analysis (card view)');
+    expect(labels).toEqual(['Input', 'Score', 'Audience', 'Actions', 'Content craft', 'Engine']);
+  });
+
+  it('remix order — Input,Decode,Audience,Adapt,Content craft,Engine (D-09)', () => {
+    render(<BoardMobile boardMachineState="complete" input={INPUT} hasAnalysis boardMode="remix" />);
+    const labels = screen
+      .getAllByRole('region')
+      .map((el) => el.getAttribute('aria-label'))
+      .filter((l) => l !== 'Analysis (card view)');
+    expect(labels).toEqual(['Input', 'Decode', 'Audience', 'Adapt', 'Content craft', 'Engine']);
+  });
+
+  it('remix renderBody renders DecodeShellNode for "decode"', () => {
+    render(<BoardMobile boardMachineState="complete" input={INPUT} hasAnalysis boardMode="remix" />);
+    expect(screen.getByTestId('body-decode')).toBeTruthy();
+  });
+
+  it('remix renderBody renders AdaptShellNode for "adapt"', () => {
+    render(<BoardMobile boardMachineState="complete" input={INPUT} hasAnalysis boardMode="remix" />);
+    expect(screen.getByTestId('body-adapt')).toBeTruthy();
+  });
+
+  it('remix mode does not render verdict or actions cards', () => {
+    render(<BoardMobile boardMachineState="complete" input={INPUT} hasAnalysis boardMode="remix" />);
+    expect(screen.queryByTestId('body-verdict')).toBeNull();
+    expect(screen.queryByTestId('body-actions')).toBeNull();
+  });
+
+  it('decode card label does not crash (LAYOUT_BY_ID guard)', () => {
+    render(<BoardMobile boardMachineState="complete" input={INPUT} hasAnalysis boardMode="remix" />);
+    // If the label renders "Decode" the guard works; no "undefined" in the DOM
+    const decodeCard = screen.getByRole('region', { name: 'Decode' });
+    expect(decodeCard).toBeTruthy();
+  });
+
+  it('adapt card label does not crash (LAYOUT_BY_ID guard)', () => {
+    render(<BoardMobile boardMachineState="complete" input={INPUT} hasAnalysis boardMode="remix" />);
+    const adaptCard = screen.getByRole('region', { name: 'Adapt' });
+    expect(adaptCard).toBeTruthy();
   });
 });

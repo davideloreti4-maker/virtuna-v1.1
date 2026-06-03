@@ -3,7 +3,12 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
 vi.mock('@/lib/supabase/client', () => ({
-  createClient: () => ({ auth: { signOut: vi.fn() } }),
+  createClient: () => ({
+    auth: {
+      signOut: vi.fn(),
+      getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
+    },
+  }),
 }));
 
 vi.mock('@/hooks/queries/use-profile', () => ({

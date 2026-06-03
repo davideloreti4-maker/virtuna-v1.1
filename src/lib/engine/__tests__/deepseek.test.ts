@@ -133,6 +133,7 @@ function makeContext() {
       input_mode: "text" as const,
       content_text: "test",
       content_type: "post" as const,
+      mode: "score" as const,
     },
     gemini_analysis: makeGeminiAnalysis(),
     rule_result: makeRuleScoreResult(),
@@ -390,6 +391,7 @@ describe("Phase 3 — cache-prefix stability + telemetry (CACHE-03)", () => {
         input_mode: "text",
         content_text: "different content",
         content_type: "post",
+        mode: "score" as const,
       },
     });
 
