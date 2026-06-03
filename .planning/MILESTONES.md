@@ -1,5 +1,45 @@
 # Milestones — Virtuna
 
+## v3.2 Viral Remix (Shipped: 2026-06-03)
+
+**Delivered:** Closed the front half of the creator loop — paste a third-party viral TikTok in an explicit Remix mode and the board returns a **Decode** (why it worked: repeatable structure vs luck), an **Adapt** frame of 3 niche-adapted concepts (format, not content), and per-concept **Develop & predict** that runs one concept through the existing `/api/analyze` engine with parent/child lineage ("remixed from" chip). Overwhelmingly a wiring milestone — the board, SSE pipeline, scoring engine, mobile card-stack, and permalink routing were reconfigured (one board, two configs), not rebuilt. No new npm deps; every new model call is Qwen-only.
+
+**Phases completed:** 5 phases, 17 plans
+
+**Key accomplishments:**
+
+- **Ingestion hard gate (INGEST-01):** a non-owned TikTok URL now yields real Omni frame/segment signal (was caption-text only) via Supabase re-host + **derive-and-drop** — source MP4 fetched server-side with token, signed, fed to `analyzeVideoWithOmni`, deleted in `finally` (IP boundary); `resolveVideoUrl` + 5-kind `IngestError` taxonomy + SSRF host allowlist.
+- **One-board-two-config:** explicit Score/Remix toggle (no auto-detect); mode-aware `resolveBoardLayout` swaps Verdict+Actions → Decode+Adapt 1:1 at identical bounds on desktop Konva + mobile card-stack; `mode` column live on prod + folded into the content hash; zero score-path regression.
+- **Decode frame:** lightweight Qwen path (`engine/remix/decode.ts`, NOT the 332s scorer, no `usage_tracking`) renders a 4-beat structural teardown + an honest repeatable-vs-luck split; persisted to `variants.remix.decode` via sibling-preserving read-merge-write.
+- **Adapt frame:** Qwen-only `engine/remix/adapt.ts` + standalone `/api/remix/adapt` route generates exactly 3 format-adapted concepts grounded in the creator-profile niche; structural content-leak guard (caption & luck unrepresentable in `AdaptInput`); inline NichePicker when the profile niche is empty.
+- **Develop & predict + lineage:** per-concept "Develop & predict →" runs one concept through the existing pipeline (exactly one stream per click, no bulk scoring), navigates to its `/analyze/[id]` board; `parent_id` FK migration (ON DELETE SET NULL) threads lineage at all insert sites; "remixed from" chip + sidebar Recent tag + remix completion marker (`variants.remix != null`) + 360s polling ceiling.
+- **Post-merge code review** (7 finder angles + adversarial verify) caught what the broken `claude-review` bot missed: fixed a remix+video_upload crash/storage-leak, an ungated billable adapt endpoint, and a silent decode-null "complete"; 6 lower-severity findings filed as issues #7–#12.
+
+**Stats:**
+
+- 139 commits, code-only **+7,773 / −58 across 61 files** (full incl. .planning: 140 files, +22,752 / −517)
+- 9 requirements, all shipped (9/9 mapped, 0 unmapped)
+- 5 phases, 17 plans
+- 2 days (2026-06-02 → 2026-06-03; planning started 2026-05-31)
+
+**Branch / worktree:** `milestone/viral-remix` at `~/virtuna-viral-remix/`. Merged to main via **PR #6** (squash) at `7c089019`. Per-phase history preserved on the branch.
+
+**Test posture at merge:** 1095 engine/analyze/remix tests green; `tsc --noEmit` clean. P5 UAT 8/9 (mobile skipped); security 12/12 T-05-* threats closed.
+
+**Archive:** `.planning/milestones/v3.2-ROADMAP.md`, `.planning/milestones/v3.2-REQUIREMENTS.md`, seed `viral-remix-SPEC.md`.
+
+**Known carryover / tech debt (filed as issues):**
+
+- #7 variants JSONB read-modify-write race (no atomic merge — craft+filmstrip pair can clobber under concurrency)
+- #8 Apify `defaultDatasetId`/scrape* unguarded errors bypass `IngestError` classification
+- #9 SSRF allowlist permits bare apex domains (defense-in-depth)
+- #10 `APIFY_TOKEN` missing → opaque 401, no fail-fast
+- #11 adapt retry leaks AbortController timer (harmless, cosmetic)
+- #12 `AdaptFrameBody` auto-fire effect omits `analysisId` from deps (latent stuck-empty)
+- The `claude-review` GitHub Action is broken (missing `id-token: write`, empty `ANTHROPIC_API_KEY`, deprecated `direct_prompt` input) — fix separately so future PRs get real bot review.
+
+---
+
 ## Result Surface (Shipped: 2026-05-28)
 
 **Phases completed:** 6 phases — Foundation SSE + Engine Signal Extensions; Board Substrate Navigation; Engine Rework Pass 2 (timeline-weighted aggregator + heatmap + filmstrip + Phase 3 SSE); Live Audience Node; Other Group Nodes (Verdict/Actions/Content Analysis populated); Reshoot Script + Optimal Post Time.

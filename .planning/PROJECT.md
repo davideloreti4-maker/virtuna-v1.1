@@ -25,7 +25,14 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 **Abandoned in pre-drop gap (see MILESTONES.md):** Brand Statement Landing (2026-05-11), Landing Page Redesign (2026-05-24), Linear Landing Clone (2026-05-24). Landing surface deferred until Intelligence Surface drop completes.
 
-## Current Milestone: v3.2 Viral Remix
+## Current Milestone: none — v3.2 Viral Remix shipped 2026-06-03
+
+**Most recently shipped:** v3.2 Viral Remix (merged to main `7c089019` via PR #6). Paste a third-party viral TikTok in Remix mode → Decode (repeatable structure vs luck) + Adapt (3 niche concepts) + per-concept Develop & predict through the existing engine + parent/child lineage. 5 phases, 17 plans, 9/9 requirements; 1095 tests green, tsc clean. Post-merge review fixed 3 findings (commit `2ba2c2a3`); 6 lower-sev findings filed as issues #7–#12. See `MILESTONES.md` + `milestones/v3.2-ROADMAP.md`.
+
+**Next milestone goals:** TBD — run `/gsd:new-milestone` to define fresh requirements + roadmap. Candidate directions from the deferred v3.2 backlog: Radar (daily "winning in your niche" trend feed) and Pattern Playbook (accumulated niche formulas across decoded videos).
+
+<details>
+<summary>v3.2 Viral Remix — delivered scope (was: Current Milestone goal + target features)</summary>
 
 **Goal:** A creator can paste a third-party viral TikTok in an explicit Remix mode and the board returns a Decode (why it worked — repeatable structure vs luck) plus an Adapt frame of ~3 niche-adapted concepts, each developable into a real scored analysis through the existing prediction pipeline.
 
@@ -40,9 +47,17 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 **Key context:** Seeded from `.planning/milestones/viral-remix-SPEC.md` (8 locked requirements, ambiguity 0.21). Built off the `feat/actions-frame-inline-redesign` base (not `main` — see MILESTONE.md) because it reuses board + engine work that hasn't merged to main. **First phase is an ingestion-depth spike (req #8):** it is unconfirmed whether `/api/analyze` pulls frames/transcript vs just metadata for a non-owned TikTok URL — Decode depends on the answer. Spine: Decoder → Translator → Predict. Format-adaptation framing only, never content copy. Qwen-only, TikTok-only.
 
+</details>
+
 ## Requirements
 
 ### Validated
+
+- Remix mode: explicit Score/Remix intent toggle, one-board-two-config (Verdict+Actions → Decode+Adapt, desktop + mobile), `mode` column folded into content hash -- v3.2 Viral Remix
+- Ingestion: non-owned TikTok URL → real Omni segments via Supabase re-host + derive-and-drop; `resolveVideoUrl` + IngestError taxonomy + SSRF allowlist -- v3.2 Viral Remix
+- Decode frame: lightweight Qwen structural teardown (4 beats) + honest repeatable-vs-luck split, off the 332s scorer -- v3.2 Viral Remix
+- Adapt frame: Qwen-only 3 format-adapted concepts grounded in creator-profile niche, structural content-leak guard, inline NichePicker fallback -- v3.2 Viral Remix
+- Develop & predict + lineage: per-concept score via existing pipeline (one stream/click), `parent_id` FK, "remixed from" chip, Recent tag -- v3.2 Viral Remix
 
 - Real Supabase auth with middleware enforcement, Google OAuth PKCE, deep link preservation -- MVP Launch
 - Landing page with hero, hive demo (lazy-loaded), features, social proof, FAQ, pricing -- MVP Launch

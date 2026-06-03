@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Viral Remix
-status: pr-open
-stopped_at: "Milestone SHIPPED to PR #6 (milestone/viral-remix-pr → main, MERGEABLE, claude-review running). Discovery: feat/actions-frame-inline-redesign was ALREADY merged to main via PR #5, so the 'merge feat first' note in MILESTONE.md is obsolete. PR is a squashed code-only branch (61 files, +7631/-58, zero .planning); 3-way merged vs main, only route.ts needed manual reconcile (stage-11 defer + decode branch both kept — additive). Cherry-pick was abandoned: milestone history contains the P3↔P4 reconciliation merge that linear cherry-pick can't preserve. Next: await claude-review, then merge PR #6 → /gsd-complete-milestone."
-last_updated: "2026-06-02T18:35:00.000Z"
-last_activity: 2026-06-02
+status: complete
+stopped_at: "Milestone COMPLETE. PR #6 squash-merged to main at 7c089019. Post-merge code review fixed 3 findings (commit 2ba2c2a3: remix+video_upload crash, ungated adapt cost, silent decode-null); 6 lower-sev findings filed as issues #7-12. Archived: ROADMAP collapsed + milestones/v3.2-ROADMAP.md + v3.2-REQUIREMENTS.md; REQUIREMENTS.md deleted; MILESTONES.md + PROJECT.md updated; tagged v3.2. Next: /gsd-new-milestone (fresh requirements + roadmap)."
+last_updated: "2026-06-03T00:00:00.000Z"
+last_activity: 2026-06-03
 progress:
   total_phases: 5
   completed_phases: 5
