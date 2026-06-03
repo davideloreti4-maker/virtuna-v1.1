@@ -33,8 +33,8 @@ Clear the engine down to its senses (low-risk deletion → under the cap), sharp
 
 ## Phase 1 — Strip to Senses
 **Goal:** delete the score-and-fabrication machinery so the engine is honest and under the latency cap before any new brain is built.
-**Does:** remove `predicted-engagement` (fabricated counts), dormant/remove `ml.ts`, `audio-fingerprint`, `trends`; collapse the `aggregator.ts` 7-source blend → a directional band; delete vestigial stage10 flags; remove the separate `platform_fit` + `rule`-semantic + `stage11` calls' wiring (their jobs move to P3). 
-**Success:** R6 (under cap), R9 (no fabricated/dead signal), R5 (directional band stub). Pipeline still runs green on existing tests (minus deleted-feature tests).
+**Does:** delete `predicted-engagement` (fabricated counts) + corpus-percentile framing; dormant/remove `ml.ts`, `audio-fingerprint`, `trends`; collapse the `aggregator.ts` 7-source blend → a clean score derived from Apollo (+ Audience-Sim) with a confidence value (KEEP the 0–100 score, R5); delete vestigial stage10 flags; remove the separate `platform_fit` + `rule`-semantic + `stage11` calls' wiring (their jobs move to P3). 
+**Success:** R6 (under cap), R9 (no fabricated/dead signal), R5 (score + confidence survive, honestly derived). Pipeline still runs green on existing tests (minus deleted-feature tests).
 **Risk:** low — mostly deletion. Watch for blend-coupled consumers in the board UI.
 
 ## Phase 2 — Omni Verbatim

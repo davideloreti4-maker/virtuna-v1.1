@@ -12,7 +12,7 @@ Milestone-scoped requirements. Derived from `ENGINE-MAP.md`. Each is testable; p
 
 - **R4 — Audience-aware insight.** Sequencing is `Omni → Audience-Sim → Apollo`; Apollo's rewrites reference where archetypes drop (e.g. "loses tough_crowd at 0:02"). _Verify: a rewrite cites an archetype bounce point._ → P5
 
-- **R5 — Directional score.** The 0–100 fake-precise score is replaced by an honest directional band (strong/mid/weak) derived from the two brains. No Platt/calibration scaffolding, no 7-source blend. _Verify: UI shows a band, not a fabricated precise number._ → P1, P5
+- **R5 — Honest expert score.** Keep the 0–100 score as **Apollo's expert assessment** of where the video sits (like a chess engine's position eval — ground-truthed by the expert, not an empirical performance claim) + a **confidence** indicator. Rederive it cleanly from Apollo (+ Audience-Sim), NOT the dead 7-source weighted blend; drop Platt/calibration scaffolding + corpus-percentile framing. _Verify: score + confidence render, derived from the two brains; no "top X%" corpus claim._ → P1, P5
 
 ## Non-functional
 
@@ -22,7 +22,7 @@ Milestone-scoped requirements. Derived from `ENGINE-MAP.md`. Each is testable; p
 
 - **R8 — Determinism preserved.** temp 0 + seed on every surviving call; same video → same output. → all
 
-- **R9 — Honest by deletion.** `predicted-engagement` (fabricated counts), `ml.ts` (disabled), `audio-fingerprint` (dead), `trends` (empty), the score-blend, and the vestigial stage10/stage11/platform_fit/rule-semantic calls are removed or dormant — no dead/fabricated signal reaches the user. _Verify: grep + UI audit._ → P1
+- **R9 — Honest by deletion.** Delete the **fabricated empirical layer**: `predicted-engagement` (invented view/like counts) + corpus-percentile claims. Remove/dormant dead machinery: `ml.ts` (disabled), `audio-fingerprint` (dead), `trends` (empty), the 7-source weighted blend, vestigial stage10/stage11/platform_fit/rule-semantic calls. The score stays (R5); only the fake performance claims + dead signal go. _Verify: grep + UI audit._ → P1
 
 ## Validation gate (the bet)
 

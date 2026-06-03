@@ -40,9 +40,9 @@ Don't over-index on a single defensible secret. **Value is the compound of the w
 | **Knowledge grounding** | Brain 1 — Apollo Reasoner (multi-source corpus, cached system prompt) |
 | **Improvement actions** | Apollo's rewrites + actions output (absorbs the old stage11) |
 | **Video breakdown** | Omni observer + verbatim + segments + heatmap |
-| **Score** | the *first-glance directional read* — the entry point, not the product |
+| **Score + confidence** | Apollo's expert assessment of where the video sits — the relatable entry point, not the product |
 
-The score is just the first insight. Everything above it is the real value.
+The score is just the first insight. Everything above it is the real value. **The score stays** — framed as the expert's read (like a chess engine's position eval; the LLM is the ground truth), with a confidence indicator. What dies is the *fabricated empirical layer* (invented engagement counts, fake corpus percentiles) — not the number itself.
 
 ## Corpus
 

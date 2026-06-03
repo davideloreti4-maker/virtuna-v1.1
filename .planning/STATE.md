@@ -33,10 +33,14 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 | 4 | Audience-Sim Fold (Brain 2, the bet) | not started |
 | 5 | Wire + Surface | not started |
 
+## Decisions locked (2026-06-03)
+
+- **Keep the score** (0–100) + a **confidence** indicator — framed as Apollo's expert assessment (the LLM is the ground truth, like a chess engine's position eval). NOT demoted to a band. Rederive it from Apollo (+ Audience-Sim), drop the dead 7-source blend + corpus-percentile framing. Delete only the fabricated engagement counts. (R5/R9 updated.)
+- **Value > moat:** build the value pillars; corpus is multi-source + matures over time, not a build gate. See VISION.md.
+
 ## Next action
 
-- `/gsd-plan-phase 1` to produce the Phase 1 PLAN.md (strip-to-senses — low-risk, corpus-independent, start-able now), **or**
-- pin down the **Chase Hughes corpus** (the P3 moat dependency) in parallel.
+Fresh context → `/gsd-plan-phase 1` (Strip to Senses — low-risk deletion of the fabricated/dead layer, rederive the score cleanly, get under the latency cap). All planning context is on disk (ENGINE-MAP / VISION / MILESTONE / REQUIREMENTS / ROADMAP) + memory `apollo-direction`.
 
 ## Open bets / to verify
 
