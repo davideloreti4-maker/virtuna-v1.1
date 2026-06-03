@@ -227,9 +227,19 @@ async function runDecodeStream(
     const omni = await analyzeVideoWithOmni(signedUrl);
     const structural = omniOutputToStructuralInput(omni);
     decode = structural ? await runDecode(structural) : null;
-    if (decode) {
-      await persistDecodeToVariants(service, analysisId, decode, log);
+    if (!decode) {
+      // Decode failed without throwing: omniOutputToStructuralInput returned null
+      // (missing hook_decomposition/factors/video_signals) or runDecode exhausted
+      // its retries. Surface as an error event — NOT a "complete" with decode:null,
+      // which would mark the analysis done with no variants.remix and no retry path.
+      log.warn("remix decode produced no result", { analysisId });
+      send("error", {
+        id: analysisId,
+        error: "Decode unavailable — the video could not be structurally analyzed.",
+      });
+      return;
     }
+    await persistDecodeToVariants(service, analysisId, decode, log);
     send("complete", {
       id: analysisId,
       mode: "remix",

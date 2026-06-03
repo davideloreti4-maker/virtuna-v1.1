@@ -155,6 +155,35 @@ function makeVariantsWriteFrom(onUpdate?: (payload: unknown) => void) {
   };
 }
 
+// Rate-limit gate (5b): user_subscriptions tier read + usage_tracking count read.
+function makeSubscriptionFrom(tier = 'free') {
+  return {
+    select: vi.fn(() => ({
+      eq: vi.fn(() => ({
+        single: vi.fn().mockResolvedValue({ data: { virtuna_tier: tier }, error: null }),
+      })),
+    })),
+  };
+}
+
+function makeUsageReadFrom(analysisCount = 0) {
+  return {
+    select: vi.fn(() => ({
+      eq: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            single: vi.fn().mockResolvedValue({ data: { analysis_count: analysisCount }, error: null }),
+          })),
+        })),
+      })),
+    })),
+  };
+}
+
+function makeUsageUpsertFrom() {
+  return { upsert: vi.fn().mockResolvedValue({ error: null }) };
+}
+
 // =====================================================
 // Tests
 // =====================================================
@@ -162,6 +191,10 @@ function makeVariantsWriteFrom(onUpdate?: (payload: unknown) => void) {
 describe('/api/remix/adapt route (Wave 0)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Drain any leftover mockReturnValueOnce queue — tests that short-circuit
+    // (e.g. null-engine-500) leave unconsumed from() values that would otherwise
+    // bleed into the next test's call sequence. clearAllMocks does not reset it.
+    mockFrom.mockReset();
   });
 
   it('auth-401: returns 401 when supabase.auth.getUser() returns no user', async () => {
@@ -220,8 +253,11 @@ describe('/api/remix/adapt route (Wave 0)', () => {
     mockGetUser.mockResolvedValueOnce({ data: { user: { id: USER_ID } }, error: null });
     mockFrom
       .mockReturnValueOnce(makeOwnershipFrom(USER_ID))
+      .mockReturnValueOnce(makeSubscriptionFrom())
+      .mockReturnValueOnce(makeUsageReadFrom(0))
       .mockReturnValueOnce(makeVariantsReadFrom({}))
-      .mockReturnValueOnce(makeVariantsWriteFrom());
+      .mockReturnValueOnce(makeVariantsWriteFrom())
+      .mockReturnValueOnce(makeUsageUpsertFrom());
     mockGenerateAdaptConcepts.mockResolvedValueOnce(THREE_CONCEPTS);
 
     const req = makeRequest({ ...VALID_BODY, analysis_id: 'KSW5TluyRy0L' });
@@ -263,11 +299,15 @@ describe('/api/remix/adapt route (Wave 0)', () => {
 
     let capturedUpdate: unknown;
 
-    // Call sequence: 1=ownership check, 2=variants read, 3=variants write
+    // Call sequence: 1=ownership, 2=subscription, 3=usage read, 4=variants read,
+    // 5=variants write, 6=usage upsert
     mockFrom
       .mockReturnValueOnce(makeOwnershipFrom(USER_ID))
+      .mockReturnValueOnce(makeSubscriptionFrom())
+      .mockReturnValueOnce(makeUsageReadFrom(0))
       .mockReturnValueOnce(makeVariantsReadFrom(preSeededVariants))
-      .mockReturnValueOnce(makeVariantsWriteFrom((p) => { capturedUpdate = p; }));
+      .mockReturnValueOnce(makeVariantsWriteFrom((p) => { capturedUpdate = p; }))
+      .mockReturnValueOnce(makeUsageUpsertFrom());
 
     mockGenerateAdaptConcepts.mockResolvedValueOnce(THREE_CONCEPTS);
 
@@ -292,8 +332,11 @@ describe('/api/remix/adapt route (Wave 0)', () => {
 
     mockFrom
       .mockReturnValueOnce(makeOwnershipFrom(USER_ID))
+      .mockReturnValueOnce(makeSubscriptionFrom())
+      .mockReturnValueOnce(makeUsageReadFrom(0))
       .mockReturnValueOnce(makeVariantsReadFrom({}))
-      .mockReturnValueOnce(makeVariantsWriteFrom());
+      .mockReturnValueOnce(makeVariantsWriteFrom())
+      .mockReturnValueOnce(makeUsageUpsertFrom());
 
     mockGenerateAdaptConcepts.mockResolvedValueOnce(THREE_CONCEPTS);
 
@@ -310,8 +353,11 @@ describe('/api/remix/adapt route (Wave 0)', () => {
 
     const mockUpdateFn = vi.fn();
 
+    // generateAdaptConcepts returns null → 500 after the gate, before any write.
     mockFrom
       .mockReturnValueOnce(makeOwnershipFrom(USER_ID))
+      .mockReturnValueOnce(makeSubscriptionFrom())
+      .mockReturnValueOnce(makeUsageReadFrom(0))
       .mockReturnValueOnce(makeVariantsReadFrom({}))
       .mockReturnValueOnce({ update: mockUpdateFn });
 
@@ -323,6 +369,22 @@ describe('/api/remix/adapt route (Wave 0)', () => {
     expect(res.status).toBe(500);
     // Variants must NOT be written when generator returns null
     expect(mockUpdateFn).not.toHaveBeenCalled();
+  });
+
+  it('rate-limit-429: returns 429 and does NOT call the generator when daily limit is reached', async () => {
+    mockGetUser.mockResolvedValueOnce({ data: { user: { id: USER_ID } }, error: null });
+
+    // free tier limit is 50; usage already at 50 → gate must reject.
+    mockFrom
+      .mockReturnValueOnce(makeOwnershipFrom(USER_ID))
+      .mockReturnValueOnce(makeSubscriptionFrom('free'))
+      .mockReturnValueOnce(makeUsageReadFrom(50));
+
+    const req = makeRequest(VALID_BODY);
+    const res = await POST(req);
+
+    expect(res.status).toBe(429);
+    expect(mockGenerateAdaptConcepts).not.toHaveBeenCalled();
   });
 
   // =====================================================

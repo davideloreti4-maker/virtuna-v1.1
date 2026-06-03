@@ -173,8 +173,12 @@ export const AnalysisInputSchema = z
     { message: "Required field missing for selected input_mode" }
   )
   .refine(
-    (data) => !(data.mode === "remix" && data.input_mode === "text"),
-    { message: "Remix mode requires a video or link source, not text" }
+    // Remix decode resolves a TikTok URL (runDecodeStream → resolveAndRehost
+    // dereferences validated.tiktok_url!). Requiring input_mode === "tiktok_url"
+    // blocks BOTH remix+text and remix+video_upload — the latter would otherwise
+    // pass an undefined tiktok_url to Apify and orphan the uploaded storage object.
+    (data) => !(data.mode === "remix") || data.input_mode === "tiktok_url",
+    { message: "Remix mode requires a TikTok URL source" }
   );
 
 export type AnalysisInput = z.infer<typeof AnalysisInputSchema>;

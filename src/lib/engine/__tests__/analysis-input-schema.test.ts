@@ -34,7 +34,7 @@ describe("AnalysisInputSchema — mode field", () => {
         content_type: "video",
         mode: "remix",
       })
-    ).toThrow("Remix mode requires a video or link source, not text");
+    ).toThrow("Remix mode requires a TikTok URL source");
   });
 
   it("rejects invalid mode enum value", () => {
@@ -58,10 +58,24 @@ describe("AnalysisInputSchema — mode field", () => {
     expect(result.mode).toBe("score");
   });
 
-  it("accepts mode='remix' with video_upload input_mode", () => {
+  it("rejects mode='remix' with video_upload input_mode (remix requires a TikTok URL)", () => {
+    // Remix decode dereferences tiktok_url (runDecodeStream → resolveAndRehost).
+    // A video_upload remix submission has no tiktok_url → would crash and orphan
+    // the uploaded object. The schema must reject it at the boundary.
+    expect(() =>
+      AnalysisInputSchema.parse({
+        input_mode: "video_upload",
+        video_storage_path: "user-abc/viral.mp4",
+        content_type: "video",
+        mode: "remix",
+      })
+    ).toThrow("Remix mode requires a TikTok URL source");
+  });
+
+  it("accepts mode='remix' with tiktok_url input_mode", () => {
     const result = AnalysisInputSchema.parse({
-      input_mode: "video_upload",
-      video_storage_path: "user-abc/viral.mp4",
+      input_mode: "tiktok_url",
+      tiktok_url: "https://www.tiktok.com/@creator/video/1234567890",
       content_type: "video",
       mode: "remix",
     });

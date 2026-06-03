@@ -58,6 +58,15 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
+// Cost-exhaustion guard (mirrors /api/analyze DAILY_LIMITS). Adapt is a billable
+// qwen3.6-plus call (~65s); without this gate an authed user can replay any owned
+// analysis_id unboundedly. Adapt consumes the same daily budget as an analysis.
+const DAILY_LIMITS: Record<string, number> = {
+  free: 50,
+  starter: 50,
+  pro: Infinity,
+};
+
 // =====================================================================
 // POST handler
 // =====================================================================
@@ -134,6 +143,37 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     // ----------------------------------------------------------------
+    // 5b. Rate-limit gate — cost-exhaustion guard before the LLM call.
+    //     Reads the same daily counter as /api/analyze so replaying an owned
+    //     analysis_id cannot trigger unbounded billable adapt generations.
+    // ----------------------------------------------------------------
+    const { data: subscription } = await service
+      .from("user_subscriptions")
+      .select("virtuna_tier")
+      .eq("user_id", user.id)
+      .single();
+    const tier = (subscription?.virtuna_tier as string) || "free";
+
+    const today = new Date().toISOString().split("T")[0]!;
+    const { data: usage } = await service
+      .from("usage_tracking")
+      .select("analysis_count")
+      .eq("user_id", user.id)
+      .eq("period_start", today)
+      .eq("period_type", "daily")
+      .single();
+    const currentCount = usage?.analysis_count ?? 0;
+
+    const limit = DAILY_LIMITS[tier] ?? DAILY_LIMITS.free!;
+    if (currentCount >= limit) {
+      log.warn("adapt daily limit reached", { user_id: user.id, currentCount, limit, tier });
+      return Response.json(
+        { error: "Daily limit reached", limit, tier, reset: "midnight UTC" },
+        { status: 429 },
+      );
+    }
+
+    // ----------------------------------------------------------------
     // 6. Build AdaptInput + call generator
     // ----------------------------------------------------------------
     const adaptInput: AdaptInput = {
@@ -187,6 +227,18 @@ export async function POST(request: Request): Promise<Response> {
       log.warn("adapt variants write failed", { analysis_id, error: writeErr.message });
       return Response.json({ error: "Failed to persist adapt concepts" }, { status: 500 });
     }
+
+    // Consume daily budget — increment AFTER successful generation + persist, same
+    // counter /api/analyze uses, so the 5b gate actually bounds replay attempts.
+    await service.from("usage_tracking").upsert(
+      {
+        user_id: user.id,
+        period_start: today,
+        period_type: "daily",
+        analysis_count: currentCount + 1,
+      },
+      { onConflict: "user_id,period_start,period_type" },
+    );
 
     log.info("adapt concepts persisted", { analysis_id, count: concepts.length });
     return Response.json({ concepts });
