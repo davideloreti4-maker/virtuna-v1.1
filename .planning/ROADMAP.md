@@ -33,7 +33,7 @@ Clear the engine down to its senses (low-risk deletion → under the cap), sharp
 
 ## Phase 1 — Strip to Senses
 **Goal:** delete the score-and-fabrication machinery so the engine is honest and under the latency cap before any new brain is built.
-**Does:** delete `predicted-engagement` (fabricated counts) + corpus-percentile framing; dormant/remove `ml.ts`, `audio-fingerprint`, `trends`; collapse the `aggregator.ts` 7-source blend → a clean score derived from Apollo (+ Audience-Sim) with a confidence value (KEEP the 0–100 score, R5); delete vestigial stage10 flags; remove the separate `platform_fit` + `rule`-semantic + `stage11` calls' wiring (their jobs move to P3). 
+**Does:** delete the *fake* `predicted-engagement` (views = f(score)+jitter, ignores reach) + corpus-percentile framing — grounded engagement returns in P5 (R11); dormant/remove `ml.ts`, `audio-fingerprint`, `trends`; collapse the `aggregator.ts` 7-source blend → a clean score derived from Apollo (+ Audience-Sim) with a confidence value (KEEP the 0–100 score, R5); delete vestigial stage10 flags; remove the separate `platform_fit` + `rule`-semantic + `stage11` calls' wiring (their jobs move to P3). 
 **Success:** R6 (under cap), R9 (no fabricated/dead signal), R5 (score + confidence survive, honestly derived). Pipeline still runs green on existing tests (minus deleted-feature tests).
 **Risk:** low — mostly deletion. Watch for blend-coupled consumers in the board UI.
 
@@ -59,8 +59,8 @@ Clear the engine down to its senses (low-risk deletion → under the cap), sharp
 
 ## Phase 5 — Wire + Surface
 **Goal:** connect the three calls and surface the insight.
-**Does:** wire `Omni → Audience-Sim → Apollo` so rewrites are audience-aware; finalize the directional score; update the board to render rewrites (original struck-through + copyable variants) + the heatmap; remove dead UI tied to the old score/engagement.
-**Success:** R4, R5, R7, R6 (final E2E). Full Apollo flow on the board.
+**Does:** wire `Omni → Audience-Sim → Apollo` so rewrites are audience-aware; finalize the score + confidence; build the **grounded engagement estimate** (R11 — creator baseline × quality read, as a range); update the board to render rewrites (original struck-through + copyable variants) + the heatmap + the grounded estimate; remove dead UI tied to the old fake engagement.
+**Success:** R4, R5, R7, R11, R6 (final E2E). Full Apollo flow on the board.
 **Risk:** medium — UI surface area; coordinate with the upcoming UI/UX milestone.
 
 ---

@@ -36,6 +36,7 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 ## Decisions locked (2026-06-03)
 
 - **Keep the score** (0–100) + a **confidence** indicator — framed as Apollo's expert assessment (the LLM is the ground truth, like a chess engine's position eval). NOT demoted to a band. Rederive it from Apollo (+ Audience-Sim), drop the dead 7-source blend + corpus-percentile framing. Delete only the fabricated engagement counts. (R5/R9 updated.)
+- **Keep engagement prediction — but grounded.** The current `predicted-engagement` is fake (views = f(score)+sine jitter, ignores creator reach). Delete that derivation in P1; rebuild in P5 grounded in creator baseline (follower tier/history) × quality read, shown as a range + confidence (R11). Concept is valid; the implementation wasn't.
 - **Value > moat:** build the value pillars; corpus is multi-source + matures over time, not a build gate. See VISION.md.
 
 ## Next action

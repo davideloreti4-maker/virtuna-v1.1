@@ -22,7 +22,9 @@ Milestone-scoped requirements. Derived from `ENGINE-MAP.md`. Each is testable; p
 
 - **R8 — Determinism preserved.** temp 0 + seed on every surviving call; same video → same output. → all
 
-- **R9 — Honest by deletion.** Delete the **fabricated empirical layer**: `predicted-engagement` (invented view/like counts) + corpus-percentile claims. Remove/dormant dead machinery: `ml.ts` (disabled), `audio-fingerprint` (dead), `trends` (empty), the 7-source weighted blend, vestigial stage10/stage11/platform_fit/rule-semantic calls. The score stays (R5); only the fake performance claims + dead signal go. _Verify: grep + UI audit._ → P1
+- **R9 — Honest by deletion.** Delete the **fake derivations**: the current `predicted-engagement` (views = `f(score)` + sine jitter, ignores creator reach) + corpus-percentile claims. Remove/dormant dead machinery: `ml.ts` (disabled), `audio-fingerprint` (dead), `trends` (empty), the 7-source weighted blend, vestigial stage10/stage11/platform_fit/rule-semantic calls. The score stays (R5); engagement prediction is REPLACED not removed (R11); only the ungrounded derivation + dead signal go. _Verify: grep + UI audit._ → P1
+
+- **R11 — Grounded engagement estimate.** Replace the fake engagement numbers with a prediction grounded in **what we actually know about the creator + video**: anchor to the creator's baseline reach (follower tier / typical views from creator_context) × the quality read (Apollo + Audience-Sim). Show as a **range + confidence**, relative to the creator's own history — never a false-precise point (virality is fat-tailed). _Verify: two creators of different follower tiers get materially different estimates for the same video; output is a range, not a single number._ → P5 (needs the two brains' quality read; confirm available baseline inputs first)
 
 ## Validation gate (the bet)
 
