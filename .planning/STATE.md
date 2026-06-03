@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: null
-milestone_name: null
-status: idle
-last_updated: "2026-06-01T09:12:00.000Z"
+milestone: apollo
+milestone_name: Apollo
+status: planning
+last_updated: "2026-06-03T00:00:00.000Z"
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -15,37 +15,33 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md
+See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Cut-list SSOT: .planning/ENGINE-MAP.md
 
 ## Current Position
 
-This is the **`main` trunk worktree** (`~/virtuna-v1.1/`). Main carries no active
-milestone — milestone work happens in dedicated sibling worktrees and lands here
-via PR. Main's `.planning/` holds only shared, append-only artifacts
-(`PROJECT.md`, `MILESTONES.md`, `milestones/`) plus this state file. There is no
-scoped `MILESTONE.md` / `ROADMAP.md` identity on main.
+**Milestone worktree** `~/virtuna-engine-opt/` on `milestone/engine-opt`. Milestone **Apollo** — turn the ~25-call score machine into a 3-call knowledge-grounded expert (Omni → Audience-Sim → Apollo Reasoner).
 
-### Shipped to main (most recent first)
+Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milestone formalized: MILESTONE.md + REQUIREMENTS.md + ROADMAP.md written. **No phase plans yet.**
 
-| Milestone | PR | Merge commit |
-|---|---|---|
-| Engine hardening + board redesign-v2 | #5 | `50428e9c` (2026-06-01) |
-| MVP Cut (Phases 1-4) | — | `23392324` (2026-05-28) |
-| Engine Hardening | #4 | `d7727774` (2026-05-28) |
-| Result Surface | #3 | `94b46631` (2026-05-28) |
+## Phases
 
-### Active milestone worktrees (work-in-progress, not yet merged)
+| # | Phase | Status |
+|---|-------|--------|
+| 1 | Strip to Senses | not started |
+| 2 | Omni Verbatim | not started |
+| 3 | Apollo Reasoner (Brain 1, the moat) | not started — blocked on Chase Hughes corpus |
+| 4 | Audience-Sim Fold (Brain 2, the bet) | not started |
+| 5 | Wire + Surface | not started |
 
-| Worktree | Branch | Notes |
-|---|---|---|
-| `~/virtuna-viral-remix/` | `milestone/viral-remix` | Active milestone (v3.2) |
-| `~/virtuna-landing/` | `milestone/landing` | In progress |
+## Next action
 
-## Starting new work
+- `/gsd-plan-phase 1` to produce the Phase 1 PLAN.md (strip-to-senses — low-risk, corpus-independent, start-able now), **or**
+- pin down the **Chase Hughes corpus** (the P3 moat dependency) in parallel.
 
-- **Multi-session milestone:** from `~/virtuna-v1.1/` on `main`, run
-  `/gsd-new-milestone` → it creates a sibling `~/virtuna-<name>/` worktree +
-  branch + clean scoped `.planning/`. Work there, not here.
-- **Quick one-session fix:** in `~/virtuna-v1.1/`, branch off `main`
-  (`git switch -c fix/<thing>`), run `/gsd-quick`, then PR + merge + delete the
-  branch same session so the trunk stays clean.
+## Open bets / to verify
+
+- Fold quality (R10): grounded-1 Audience-Sim vs current-20 retention curve — A/B on real videos.
+- Cheap DB check: trending_sounds / scraped_videos / outcomes row counts (expected 0).
+- Archetype count in the fold (10 vs ~5).
+- `optimal-post.ts`: honest signal or cut.
+- Chase Hughes corpus: data + distillation form (biggest unknown).
