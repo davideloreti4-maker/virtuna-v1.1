@@ -38,6 +38,9 @@ import { VerdictNode } from './verdict/VerdictNode';
 import { ActionsNode } from './actions/ActionsNode';
 import { ContentAnalysisFrame } from './content-analysis/ContentAnalysisFrame';
 import { InputResultCard } from './InputResultCard';
+import { DecodeShellNode } from './decode/DecodeShellNode';
+import { AdaptShellNode } from './adapt/AdaptShellNode';
+import { FrameErrorBoundary } from './FrameErrorBoundary';
 import { nanoid } from 'nanoid';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -95,8 +98,13 @@ export function Board() {
   // reports it here; the layout reflows so frames grow to fit (no in-frame
   // scroll) and neighbours shift down. Empty = constants until first measure.
   const [measuredH, setMeasuredH] = useState<Partial<Record<GroupId, number>>>({});
-  const resolvedFrames = useMemo(() => resolveBoardLayout(measuredH), [measuredH]);
-  const presetTargets = useMemo(() => computePresetTargets(resolvedFrames), [resolvedFrames]);
+
+  // submittedIntent — set in handleContentSubmit before stream.start() so the live
+  // board reflects the user's intent immediately (A4 risk: engine complete event
+  // does not populate PredictionResult.mode, so this is the live source of truth).
+  // boardMode derivation (D-08 / REMIX-02) is below, after stream + permalinkQuery are declared.
+  const [submittedIntent, setSubmittedIntent] = useState<'score' | 'remix'>('score');
+
   const handleMeasureFrame = useCallback((id: GroupId, worldH: number) => {
     setMeasuredH((prev) => (prev[id] === worldH ? prev : { ...prev, [id]: worldH }));
   }, []);
@@ -145,6 +153,24 @@ export function Board() {
   const stream = useAnalysisStream({
     initialData: permalinkQuery.data ?? null,
   });
+
+  // ── boardMode derivation (D-08 / REMIX-02 crit 5, Plan 02-03) ───────────────
+  // NAMING: `boardMode` for intent (score/remix) — avoids collision with the
+  // responsive view `mode` ('cards'|'desktop') from useViewMode at line 86.
+  //
+  // Priority:
+  //   1. stream.result?.mode  — future-proof: if engine ever echoes mode in complete payload
+  //   2. permalinkQuery.data?.mode — source of truth for /analyze/[id] direct nav (D-15)
+  //   3. submittedIntent — live path: set in handleContentSubmit before stream.start()
+  //      (A4 risk: finalResult from engine does not carry mode; this state is set at submit)
+  const boardMode: 'score' | 'remix' =
+    (stream.result as { mode?: 'score' | 'remix' } | null)?.mode ??
+    (permalinkQuery.data as { mode?: 'score' | 'remix' } | null)?.mode ??
+    submittedIntent;
+
+  const resolvedFrames = useMemo(() => resolveBoardLayout(measuredH, boardMode), [measuredH, boardMode]);
+  const presetTargets = useMemo(() => computePresetTargets(resolvedFrames), [resolvedFrames]);
+
   const startStreaming = useBoardStore((s) => s.startStreaming);
   const finishStreaming = useBoardStore((s) => s.finishStreaming);
   const triggerAntiVirality = useBoardStore((s) => s.triggerAntiVirality);
@@ -280,6 +306,9 @@ export function Board() {
   }, [stream.analysisId, router]);
 
   const handleContentSubmit = async (data: ContentFormData) => {
+    // Hold the submitted intent in state for the live board (A4 risk: engine complete
+    // event does not echo mode; submittedIntent is the live source of truth).
+    setSubmittedIntent(data.mode ?? 'score');
     let videoStoragePath: string | null = null;
     if (data.input_mode === 'video_upload' && data.video_file) {
       const supabase = createClient();
@@ -308,6 +337,9 @@ export function Board() {
         ...(videoStoragePath && { video_storage_path: videoStoragePath }),
       }),
       ...(data.niche && { niche: data.niche }),
+      // Plan 02-03: explicit key — object is an allowlist, NOT ...data spread (Pitfall 7).
+      // Missing this line silently persists the server default 'score' even for remix submits.
+      mode: data.mode,
     }).catch(() => { /* stream.phase → error transition handles UI */ });
   };
 
@@ -422,6 +454,7 @@ export function Board() {
           // A permalink route or any non-idle state means there's something to show;
           // bare /analyze with no analysis falls through to the desktop-only hint.
           hasAnalysis={!!urlAnalysisId || boardMachineState !== 'idle' || !!stream.result}
+          boardMode={boardMode}
         />
       ) : (
       <>
@@ -461,8 +494,8 @@ export function Board() {
             layout={layout}
             camera={camera}
             visual={deriveFrameVisual(boardMachineState, layout.id)}
-            expanded={expanded[layout.id]}
-            onToggleExpanded={() => setExpanded((s) => ({ ...s, [layout.id]: !s[layout.id] }))}
+            expanded={expanded[layout.id] ?? true}
+            onToggleExpanded={() => setExpanded((s) => ({ ...s, [layout.id]: !(s[layout.id] ?? true) }))}
             reducedMotion={effectiveReducedMotion}
             autoHeight={AUTO_HEIGHT_FRAMES.has(layout.id)}
             onMeasure={(worldH) => handleMeasureFrame(layout.id, worldH)}
@@ -481,6 +514,16 @@ export function Board() {
             {layout.id === 'verdict' && <VerdictNode camera={camera} layout={layout} />}
             {layout.id === 'actions' && <ActionsNode camera={camera} layout={layout} />}
             {layout.id === 'content-analysis' && <ContentAnalysisFrame camera={camera} layout={layout} />}
+            {layout.id === 'decode' && (
+              <FrameErrorBoundary frameLabel="Decode">
+                <DecodeShellNode />
+              </FrameErrorBoundary>
+            )}
+            {layout.id === 'adapt' && (
+              <FrameErrorBoundary frameLabel="Adapt">
+                <AdaptShellNode camera={camera} layout={layout} />
+              </FrameErrorBoundary>
+            )}
           </GroupFrameOverlay>
         ))}
       </div>

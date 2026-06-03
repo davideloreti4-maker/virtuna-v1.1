@@ -65,6 +65,7 @@ function makeInput(overrides?: Partial<AnalysisInput>): AnalysisInput {
     input_mode: "text" as const,
     content_text: "Check out this amazing content #viral #trending",
     content_type: "video" as const,
+    mode: "score" as const,
     ...overrides,
   };
 }
@@ -246,6 +247,7 @@ describe("enrichWithTrends", () => {
       input_mode: "text" as const,
       content_text: undefined as unknown as string,
       content_type: "video" as const,
+      mode: "score" as const,
     });
 
     expect(result.trend_score).toBe(0);

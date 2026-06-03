@@ -16,6 +16,11 @@ import {
 import type { StageEvent } from "@/lib/engine/events";
 import type { PredictionResult } from "@/lib/engine/types";
 import type { Json } from "@/types/database.types";
+// Phase 03 Plan 02 — decode branch imports
+import { resolveAndRehost } from "@/lib/engine/remix/resolve-and-rehost";
+import { analyzeVideoWithOmni } from "@/lib/engine/qwen/omni-analysis";
+import { runDecode, omniOutputToStructuralInput } from "@/lib/engine/remix/decode";
+import type { DecodeResult } from "@/lib/engine/remix/decode-types";
 
 /**
  * Phase 3 — Vercel Fluid Compute route config.
@@ -218,6 +223,105 @@ function scheduleDeferredCounterfactuals(
   }
 }
 
+/**
+ * Phase 03 Plan 02 — Persist decode result into variants.remix.decode.
+ *
+ * Read-merge-write (three-level spread) to preserve sibling variants
+ * (craft, filmstrip_segments) regardless of concurrent write order.
+ * Non-fatal: a failure here only blanks the Decode frame, never the row itself.
+ *
+ * Threat T-03-04: three-level spread ensures craft + filmstrip_segments survive.
+ */
+async function persistDecodeToVariants(
+  service: ServiceClient,
+  id: string,
+  decode: DecodeResult,
+  log: Logger,
+): Promise<void> {
+  try {
+    const { data: row, error: readErr } = await service
+      .from("analysis_results")
+      .select("variants")
+      .eq("id", id)
+      .single();
+    if (readErr || !row) {
+      log.warn("decode_variants_read_failed", { id, error: readErr?.message });
+      return;
+    }
+    const current = (row.variants ?? {}) as Record<string, unknown>;
+    const remix = (current.remix ?? {}) as Record<string, unknown>;
+    const { error: writeErr } = await service
+      .from("analysis_results")
+      .update({ variants: { ...current, remix: { ...remix, decode } } as unknown as Json })
+      .eq("id", id);
+    if (writeErr) {
+      log.warn("decode_variants_write_failed", { id, error: writeErr.message });
+    }
+  } catch (err) {
+    log.warn("decode_variants_persist_threw", {
+      id,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+/**
+ * Phase 03 Plan 02 — Lightweight decode path for mode:'remix'.
+ *
+ * Runs: resolveAndRehost → analyzeVideoWithOmni → runDecode → persistDecodeToVariants
+ * Emits: started, phase, complete (with overall_score:null + variants.remix.decode)
+ *
+ * NEVER calls runPredictionPipeline, aggregateScores, or usage_tracking upsert (pitfall C2).
+ * ALWAYS calls cleanup() in finally (derive-and-drop, pitfall C4).
+ * overall_score stays null — completion marker is variants.remix != null (pitfall m3).
+ */
+async function runDecodeStream(
+  controller: ReadableStreamDefaultController,
+  send: (event: string, data: unknown) => void,
+  opts: {
+    service: ServiceClient;
+    validated: ReturnType<typeof AnalysisInputSchema.parse>;
+    analysisId: string;
+    log: Logger;
+  },
+): Promise<void> {
+  const { service, validated, analysisId, log } = opts;
+
+  send("started", { id: analysisId });
+  send("phase", { phase: "analyzing", message: "Decoding structure…" });
+
+  // Derive-and-drop: always call cleanup() in finally (T-03-02 / pitfall C4)
+  const { signedUrl, cleanup } = await resolveAndRehost(
+    validated.tiktok_url!,
+    analysisId,
+  );
+
+  let decode: DecodeResult | null = null;
+  try {
+    const omni = await analyzeVideoWithOmni(signedUrl);
+    const structural = omniOutputToStructuralInput(omni);
+    decode = structural ? await runDecode(structural) : null;
+    if (decode) {
+      await persistDecodeToVariants(service, analysisId, decode, log);
+    }
+    send("complete", {
+      id: analysisId,
+      mode: "remix",
+      overall_score: null,
+      variants: { remix: { decode } },
+    });
+  } finally {
+    // Unconditional cleanup — deletes temp mp4 regardless of decode outcome (pitfall C4)
+    await cleanup();
+    // Guard: client cancel (navigation) may have already closed the stream.
+    try {
+      controller.close();
+    } catch {
+      /* already closed/cancelled */
+    }
+  }
+}
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -368,6 +472,10 @@ export async function POST(request: Request) {
     const currentCount = usage?.analysis_count ?? 0;
 
     // Check against limit
+    // Plan 03 (INGEST-01 / T-01-05): this check is MODE-AGNOSTIC — it runs before the
+    // pipeline stream for ALL input_mode values including "tiktok_url".
+    // This is the cost-exhaustion guard for the remix path: paste-spam cannot trigger
+    // unbounded billable Apify resolves. Do NOT add a second rate limiter for tiktok_url.
     const limit = DAILY_LIMITS[tier] ?? DAILY_LIMITS.free!;
     if (currentCount >= limit) {
       // Phase 3 (260528-nsb): cleanup orphan before 429 return — body + retentionOptedIn available here.
@@ -500,6 +608,10 @@ export async function POST(request: Request) {
       reasoning: finalResult.reasoning,
       warnings: finalResult.warnings,
       input_mode: finalResult.input_mode,
+      mode: validated.mode,
+      // Plan 05-01 (D-07): lineage FK — null for ordinary analyses; non-null for developed children.
+      // Covers JSON-branch INSERT (~629) and SSE-branch UPSERT (~836) via buildInsertRow spread.
+      parent_id: validated.parent_id ?? null,
       has_video: finalResult.has_video,
       gemini_score: finalResult.gemini_score,
       ml_score: finalResult.ml_score,
@@ -665,6 +777,10 @@ export async function POST(request: Request) {
         confidence: null,
         engine_version: "pending",                           // sentinel: upsert overwrites
         input_mode: validated.input_mode,
+        mode: validated.mode,
+        // Plan 05-01 (D-07): lineage FK set at placeholder INSERT so the safety-net UPDATE
+        // (which does not list parent_id) preserves it unedited (T-05-11 / SC#2).
+        parent_id: validated.parent_id ?? null,
         has_video: validated.input_mode === "video_upload",
         content_hash: contentHash,
         gemini_model: null,
@@ -679,15 +795,78 @@ export async function POST(request: Request) {
     }
 
     // -------------------------------------------------------
+    // Phase 03 Plan 02 — Remix decode branch (early-return stream)
+    //
+    // Branch BEFORE runPredictionPipeline and BEFORE usage_tracking upsert (pitfall C2).
+    // The existing placeholder INSERT above already has overall_score:null + mode:'remix'
+    // (mode: validated.mode) and does NOT set video_storage_path — reused as-is.
+    // Completion marker: variants.remix != null (NOT overall_score — pitfall m3).
+    // -------------------------------------------------------
+    if (validated.mode === "remix") {
+      const decodeEncoder = new TextEncoder();
+      const decodeStream = new ReadableStream({
+        async start(controller) {
+          const send = (event: string, data: unknown) => {
+            // Guard: client cancel (navigation) — enqueue after close throws.
+            try {
+              controller.enqueue(
+                decodeEncoder.encode(
+                  `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
+                )
+              );
+            } catch {
+              /* stream already cancelled/closed — drop the frame */
+            }
+          };
+          try {
+            await runDecodeStream(controller, send, {
+              service,
+              validated,
+              analysisId,
+              log,
+            });
+          } catch (err) {
+            const message = err instanceof Error ? err.message : "Decode failed";
+            log.error("decode_stream_error", { error: message, analysisId });
+            Sentry.captureException(err, { tags: { stage: "decode_stream", analysisId } });
+            send("error", { error: message });
+            // Guard: runDecodeStream's finally may have already closed it, or the
+            // client cancelled — either way a double-close throws.
+            try {
+              controller.close();
+            } catch {
+              /* already closed/cancelled */
+            }
+          }
+        },
+      });
+      return new Response(decodeStream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache, no-transform",
+          Connection: "keep-alive",
+          "X-Accel-Buffering": "no",
+          Vary: "Accept",
+        },
+      });
+    }
+
+    // -------------------------------------------------------
     // SSE stream setup (default branch — preserves existing client contract)
     // -------------------------------------------------------
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
         const send = (event: string, data: unknown) => {
-          controller.enqueue(
-            encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
-          );
+          // Guard: client may have cancelled (navigated away mid-stream) — an
+          // enqueue after cancel throws "Controller is already closed".
+          try {
+            controller.enqueue(
+              encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
+            );
+          } catch {
+            /* stream already cancelled/closed — drop the frame */
+          }
         };
 
         try {
@@ -802,6 +981,11 @@ export async function POST(request: Request) {
             const { error: updateErr } = await service
               .from("analysis_results")
               .update({
+                // Defense-in-depth (CR-02): mode is already persisted at both
+                // INSERT sites (placeholder + buildInsertRow), but keep it on the
+                // safety-net UPDATE so a remix row can never regress to the
+                // DEFAULT 'score' on any conflict-resolution anomaly (guards D-15).
+                mode: validated.mode,
                 overall_score: finalResult.overall_score,
                 confidence: finalResult.confidence,
                 factors: (finalResult.factors ?? []) as unknown as null,
@@ -863,7 +1047,12 @@ export async function POST(request: Request) {
           cleanupUploadedStorage(service, validated, retentionOptedIn, log);
           send("error", { error: message });
         } finally {
-          controller.close();
+          // Guard: client cancel (navigation) may have already closed the stream.
+          try {
+            controller.close();
+          } catch {
+            /* already closed/cancelled */
+          }
         }
       },
     });

@@ -205,6 +205,8 @@ export type Database = {
           hook_decomposition: Json | null
           id: string
           input_mode: string | null
+          mode: string
+          parent_id: string | null
           insights: string | null
           latency_ms: number | null
           ml_score: number | null
@@ -257,6 +259,8 @@ export type Database = {
           hook_decomposition?: Json | null
           id: string
           input_mode?: string | null
+          mode?: string
+          parent_id?: string | null
           insights?: string | null
           latency_ms?: number | null
           ml_score?: number | null
@@ -309,6 +313,8 @@ export type Database = {
           hook_decomposition?: Json | null
           id?: string
           input_mode?: string | null
+          mode?: string
+          parent_id?: string | null
           insights?: string | null
           latency_ms?: number | null
           ml_score?: number | null

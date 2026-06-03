@@ -66,6 +66,13 @@ export const apifyVideoSchema = z.object({
   videoMeta: z
     .object({ duration: z.coerce.number().optional() })
     .optional(),
+  /**
+   * Apify KV-store mp4 download URLs.
+   * Populated when `shouldDownloadVideos: true` is passed to the actor.
+   * Confirmed by spike 2026-06-01: mediaUrls[0] is a private api.apify.com KV record.
+   * Optional so existing scrapeVideos (handle-based) calls are unaffected.
+   */
+  mediaUrls: z.array(z.string().url()).optional(),
 });
 
 /** Validated Apify profile data (after Zod parsing) */

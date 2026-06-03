@@ -65,6 +65,10 @@ export interface AnalysisStreamInput {
   society_id?: string;
   niche?: string;
   creator_handle?: string;
+  /** Plan 02-03: user intent forwarded into the POST body (mode=remix routes decode+adapt). */
+  mode?: "score" | "remix";
+  /** Plan 05-01: source remix analysis id forwarded into the POST body for developed-child lineage (D-07). */
+  parent_id?: string;
 }
 
 /**
@@ -378,6 +382,13 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
       }
     },
     onError: (err: Error) => {
+      // Intentional abort (component unmounted / navigated away mid-stream): the
+      // POST was cancelled on purpose. Do NOT reconnect — a reconnect here spawns
+      // a rogue EventSource on the unmounting component and the rejection surfaces
+      // as an unhandled error during the navigation commit (WSOD). Just bail.
+      if (abortRef.current?.signal.aborted || err.name === "AbortError") {
+        return;
+      }
       // If we have an analysisId, try GET-stream reconnect (D-03 single retry).
       if (analysisIdRef.current && phaseRef.current !== "reconnecting") {
         reconnect();
@@ -407,17 +418,29 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
   });
 
   useEffect(() => {
-    if (pollQuery.data?.overall_score != null) {
-      setResult(pollQuery.data as PredictionResult);
+    // Live-poll completion gate — only runs when phase === "polling" (pollEnabled is true).
+    // Does NOT run on a fresh remix permalink reload: remix rows start phase "idle"
+    // (completedFromInitial at line 127 keys on overall_score != null, which is null for
+    // remix rows), so pollEnabled is false. Permalink-reload hydration for remix rows is
+    // handled at the frame level by Phase 3's dual-read (DecodeShellNode ~181-189).
+    const d = pollQuery.data;
+    const isScoreComplete = d?.overall_score != null;
+    const isRemixComplete =
+      (d as { variants?: { remix?: unknown } } | undefined)?.variants?.remix != null;
+    if (isScoreComplete || isRemixComplete) {
+      setResult(d as PredictionResult);
       setPhase("complete");
       // Sibling instances hydrate off the shared detail cache on the polling path too.
       if (analysisId) {
-        queryClient.setQueryData(queryKeys.analysis.detail(analysisId), pollQuery.data);
+        queryClient.setQueryData(queryKeys.analysis.detail(analysisId), d);
       }
     }
   }, [pollQuery.data, analysisId, queryClient]);
 
-  // 90s ceiling on polling
+  // Lift polling ceiling from 90s → 360s to accommodate developed-child full pipeline
+  // runs (D-13). Developed children run the full ~90-332s prediction pipeline; the old
+  // 90s ceiling caused false-timeouts on long analyses.
+  const POLLING_CEILING_MS = 360_000;
   useEffect(() => {
     if (phase !== "polling") return;
     const t = setTimeout(() => {
@@ -425,7 +448,7 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
         setError("Stream timed out — analysis still running");
         setPhase("error");
       }
-    }, 90_000);
+    }, POLLING_CEILING_MS);
     return () => clearTimeout(t);
   }, [phase]);
 
@@ -497,6 +520,30 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
       setResult(permalinkRow as PredictionResult);
       if (urlAnalysisId) setAnalysisId(urlAnalysisId);
       setPhase("complete");
+      return;
+    }
+    // Resume-on-mount for an IN-FLIGHT child (Develop & Predict handoff, D-07/D-13).
+    // Develop's stream is owned by AdaptFrameBody, which unmounts on navigate-to-child
+    // — so the board that lands on /analyze/[child] has no live POST reader. The row is
+    // a null-score placeholder (engine_version:'pending') whose pipeline is still running
+    // server-side. Flip this instance to 'polling' so the existing pollQuery converges on
+    // the score (then the completion effect at ~420 hydrates + broadcasts to siblings).
+    // Gate on mode!=='remix': remix decode rows are also null-score+pending but are owned
+    // by Phase 3's DecodeShellNode dual-read, NOT by polling.
+    if (permalinkRow && permalinkScore == null) {
+      const row = permalinkRow as {
+        engine_version?: string | null;
+        mode?: string | null;
+        variants?: { remix?: unknown } | null;
+      };
+      const isInFlightScore =
+        row.engine_version === "pending" &&
+        row.mode !== "remix" &&
+        row.variants?.remix == null;
+      if (isInFlightScore && urlAnalysisId) {
+        setAnalysisId(urlAnalysisId);
+        setPhase("polling");
+      }
     }
   }, [
     initialFromOpts,
