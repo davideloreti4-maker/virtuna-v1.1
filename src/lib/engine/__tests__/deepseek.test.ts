@@ -402,7 +402,7 @@ describe("Phase 3 — cache-prefix stability + telemetry (CACHE-03)", () => {
     expect(sys1).toBe(sys2); // Identical bytes → DeepSeek cache will match prefix
   });
 
-  it("dynamic content appears only in user message (calibration percentiles, content)", async () => {
+  it("dynamic content appears only in user message (calibration benchmarks, content)", async () => {
     mockCreate.mockResolvedValue({
       choices: [{ message: { content: JSON.stringify(makeDeepSeekReasoning()) } }],
       usage: { prompt_tokens: 1000, completion_tokens: 200 },
@@ -416,16 +416,18 @@ describe("Phase 3 — cache-prefix stability + telemetry (CACHE-03)", () => {
     const sys = callArgs.messages[0]!.content;
     const user = callArgs.messages[1]!.content;
 
-    // Calibration percentiles are dynamic — must NOT be in system
-    expect(sys).not.toMatch(/p50=\d/);
-    expect(sys).not.toMatch(/p75=\d/);
-    expect(sys).not.toMatch(/p90=\d/);
+    // Dynamic calibration benchmarks (viral differentiators + duration sweet spot)
+    // are calibration-version-dependent — must NOT be in the cached system prefix.
+    // (Plan 01-04 removed the p50/p75/p90 percentile-label block per R9; the
+    // differentiators + duration block is the remaining dynamic calibration content.)
+    expect(sys).not.toContain("Top viral differentiators");
+    expect(sys).not.toContain("Duration sweet spot");
     // User content reference must NOT be in system
     expect(sys).not.toContain("test"); // makeContext() content_text is "test"
-    // Calibration percentiles MUST appear in user message
-    expect(user).toMatch(/p50=/);
-    expect(user).toMatch(/p75=/);
-    expect(user).toMatch(/p90=/);
+    // Dynamic calibration benchmarks + content MUST appear in the user message
+    expect(user).toContain("Top viral differentiators");
+    expect(user).toContain("Duration sweet spot");
+    expect(user).toContain("test");
   });
 
   it("NO Cache-Control header is added to the request (DeepSeek caching is automatic)", async () => {
