@@ -195,6 +195,7 @@ export type Database = {
           deepseek_model: string | null
           deleted_at: string | null
           emotion_arc: Json | null
+          verbatim: Json | null
           engine_version: string | null
           factors: Json | null
           feature_vector: Json | null
@@ -249,6 +250,7 @@ export type Database = {
           deepseek_model?: string | null
           deleted_at?: string | null
           emotion_arc?: Json | null
+          verbatim?: Json | null
           engine_version?: string | null
           factors?: Json | null
           feature_vector?: Json | null
@@ -303,6 +305,7 @@ export type Database = {
           deepseek_model?: string | null
           deleted_at?: string | null
           emotion_arc?: Json | null
+          verbatim?: Json | null
           engine_version?: string | null
           factors?: Json | null
           feature_vector?: Json | null

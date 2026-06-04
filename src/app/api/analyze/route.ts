@@ -592,6 +592,10 @@ export async function POST(request: Request) {
       // they survive permalink reload (migration 20260531000000). Structural
       // Json — cast through unknown like the behavioral_predictions casts above.
       emotion_arc: (finalResult.emotion_arc ?? null) as unknown as Json,
+      // Phase 2 (R1) — verbatim transcription (hook + per-segment) from Omni.
+      // Full { hook, segments } object — NOT a { hook }-only subset (Pitfall 2 /
+      // T-2-05: streaming runs use the UPDATE path below; a subset there drops segments).
+      verbatim: (finalResult.verbatim ?? null) as unknown as Json,
       persona_behavioral_aggregate:
         (finalResult.persona_behavioral_aggregate ?? null) as unknown as Json,
       optimal_post_window:
@@ -916,9 +920,12 @@ export async function POST(request: Request) {
                 ml_score: finalResult.ml_score ?? null,
                 score_weights: finalResult.score_weights as unknown as null,
                 signal_availability: finalResult.signal_availability as unknown as null,
-                // Parity with buildInsertRow — keep the three newly-persisted
-                // engine columns in sync on the safety-net UPDATE path too.
+                // Parity with buildInsertRow — keep the newly-persisted engine columns
+                // in sync on the safety-net UPDATE path too (T-2-05: streaming runs use
+                // this path; missing verbatim here = per-segment text lost for board default flow).
                 emotion_arc: (finalResult.emotion_arc ?? null) as unknown as null,
+                // Phase 2 (R1) — full { hook, segments } object on both sites.
+                verbatim: (finalResult.verbatim ?? null) as unknown as null,
                 persona_behavioral_aggregate:
                   (finalResult.persona_behavioral_aggregate ?? null) as unknown as null,
                 optimal_post_window:
