@@ -46,7 +46,7 @@ Clear the engine down to its senses (low-risk deletion → under the cap), sharp
 Plans:
 **Wave 1**
 
-- [ ] 01-01-PLAN.md — Wave 0 scaffolds: extend measure-pipeline (overall_score), fix creator-rules.test cross-import, add null-degrade tests, baseline DB/determinism/latency gates
+- [x] 01-01-PLAN.md — Wave 0 scaffolds: extend measure-pipeline (overall_score), fix creator-rules.test cross-import, add null-degrade tests, baseline DB/determinism/latency gates ✓ COMPLETE (2026-06-04) — baseline band 78–79, latency 154–159s, scraped_videos=7389 benign, R8 amended to tolerance band
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
