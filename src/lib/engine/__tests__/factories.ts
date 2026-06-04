@@ -264,15 +264,11 @@ export function makePipelineResult(
       time_of_day_aware: null,
       pain_points: null,
     },
-    ruleResult: makeRuleScoreResult(),
     trendEnrichment: makeTrendEnrichment(),
     deepseekResult: {
       reasoning: makeDeepSeekReasoning(),
       cost_cents: 0.3,
     },
-    // Phase 6 (D-A4) — replaces the pre-Phase-6 audioResult: null slot.
-    // Default to null in fixtures (no fingerprint match); tests opt in by overriding.
-    audioFingerprintResult: null,
     // Phase 3 — Wave 0/3 stub outputs (Phase 4/7 fill with real logic)
     wave0Result: { content_type: null, niche: null },
     wave3Result: [],

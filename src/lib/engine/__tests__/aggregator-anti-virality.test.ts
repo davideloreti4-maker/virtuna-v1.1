@@ -151,7 +151,7 @@ describe("aggregateScores — anti_virality_gated wiring (B4)", () => {
     lowConfReasoning.confidence = "low";
     const lowPipeline = makePipelineResult({
       deepseekResult: { reasoning: lowConfReasoning, cost_cents: 0.3 },
-      ruleResult: { rule_score: 10, matched_rules: [] }, // no matched rules → rules signal absent
+      // Plan 03 strip: ruleResult removed from PipelineResult; aggregator uses default fallback.
       trendEnrichment: {
         trend_score: 0,
         matched_trends: [],
@@ -177,18 +177,7 @@ describe("aggregateScores — anti_virality_gated wiring (B4)", () => {
     highConfReasoning.confidence = "high";
     const highPipeline = makePipelineResult({
       deepseekResult: { reasoning: highConfReasoning, cost_cents: 0.3 },
-      ruleResult: {
-        rule_score: 80,
-        matched_rules: [
-          {
-            rule_id: "r1",
-            rule_name: "strong-hook",
-            score: 20,
-            max_score: 20,
-            tier: "regex" as const,
-          },
-        ],
-      },
+      // Plan 03 strip: ruleResult removed from PipelineResult; aggregator uses default fallback.
       trendEnrichment: {
         trend_score: 60,
         matched_trends: [
