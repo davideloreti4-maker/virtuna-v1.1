@@ -76,11 +76,11 @@ vi.mock("../stage11-counterfactuals", () => ({
 // Imports (after mocks)
 // =====================================================
 
+// SCORE_WEIGHTS / SCORE_WEIGHT_KEYS imports removed (Plan 04, R9):
+// audio key removed from SCORE_WEIGHT_KEYS; blend-key assertions superseded.
 import {
   selectWeights,
   aggregateScores,
-  SCORE_WEIGHTS,
-  SCORE_WEIGHT_KEYS,
 } from "../aggregator";
 import type {
   GeminiAudioSignals,
@@ -121,20 +121,30 @@ beforeEach(() => {
 });
 
 // =====================================================
-// D-G1 — audio in SCORE_WEIGHTS + SCORE_WEIGHT_KEYS
+// D-G1 — audio provenance (Plan 04: audio removed from blend keys)
 // =====================================================
+// Plan 04 (R9): audio removed from SCORE_WEIGHT_KEYS; blend is behavioral+gemini only.
+// SCORE_WEIGHTS.audio + SCORE_WEIGHT_KEYS assertions superseded.
+// audio_description persistence + signal_availability.audio remain tested below.
 
-describe("D-G1 — audio in SCORE_WEIGHTS + SCORE_WEIGHT_KEYS", () => {
-  it("Test 1: SCORE_WEIGHTS exposes audio = 0.05", () => {
-    expect(SCORE_WEIGHTS.audio).toBe(0.05);
+describe("D-G1 — audio provenance after Plan 04 blend cut", () => {
+  it("Test 1: SCORE_WEIGHT_KEYS is ['behavioral','gemini'] — audio NOT a blend key", () => {
+    // Import SCORE_WEIGHT_KEYS to verify the 2-key shape
+    const { SCORE_WEIGHT_KEYS } = require("../aggregator");
+    expect(SCORE_WEIGHT_KEYS).toEqual(["behavioral", "gemini"]);
+    expect(SCORE_WEIGHT_KEYS as readonly string[]).not.toContain("audio");
+    expect(SCORE_WEIGHT_KEYS as readonly string[]).not.toContain("audio_fingerprint");
   });
 
-  it("Test 2: SCORE_WEIGHT_KEYS includes 'audio' but NOT 'audio_fingerprint'", () => {
-    expect(SCORE_WEIGHT_KEYS).toContain("audio");
-    // Provenance-only key MUST NOT participate in weight math.
-    expect(SCORE_WEIGHT_KEYS as readonly string[]).not.toContain(
-      "audio_fingerprint",
-    );
+  it("Test 2: selectWeights returns no audio key (2-key output: behavioral+gemini only)", () => {
+    const w = selectWeights({
+      behavioral: true, gemini: true, ml: false, rules: false, trends: false,
+      content_type: false, niche: false, gemini_hook: false, gemini_body: false,
+      gemini_cta: false, personas: false, audio: true, retrieval: false, platform_fit: false,
+    });
+    expect(w).not.toHaveProperty("audio");
+    expect(w.behavioral).toBeGreaterThan(0);
+    expect(w.gemini).toBeGreaterThan(0);
   });
 });
 
@@ -416,93 +426,52 @@ describe("D-F3 — matched_trends synthesized from fingerprint", () => {
 // D-G1 + selectWeights — weight redistribution
 // =====================================================
 
-describe("D-G1 + selectWeights — weight redistribution", () => {
-  it("Test 19: when audio is absent, weights.audio = 0 and the audio share redistributes proportionally", () => {
-    const allOnNoAudio = selectWeights({
-      behavioral: true,
-      gemini: true,
-      ml: true,
-      rules: true,
-      trends: true,
-      content_type: false,
-      niche: false,
-      audio: false,
-      gemini_hook: false,
-      gemini_body: false,
-      gemini_cta: false,
-      personas: false,
-    });
-    expect(allOnNoAudio.audio).toBe(0);
-    // Phase 13 D-14/D-15/D-16: ml=0, rules=0, retrieval=0. Available: behavioral=0.40,
-    // gemini=0.35, trends=0.10 → sum=0.85, normalization scales each by 1/0.85.
-    expect(allOnNoAudio.behavioral).toBeCloseTo(0.471, 2);
-    expect(allOnNoAudio.gemini).toBeCloseTo(0.412, 2);
-    expect(allOnNoAudio.ml).toBe(0);
-    expect(allOnNoAudio.rules).toBe(0);
-    expect(allOnNoAudio.trends).toBeCloseTo(0.118, 2);
-    // Total = 1.0 (normalization contract).
-    const sum = Object.values(allOnNoAudio).reduce((a, b) => a + b, 0);
-    expect(sum).toBeCloseTo(1.0, 2);
+describe("D-G1 + selectWeights — 2-key distribution (Plan 04: audio removed from blend)", () => {
+  // Plan 04 (R9): audio is no longer a blend key. selectWeights returns only {behavioral, gemini}.
+  // These tests verify that audio availability does NOT affect the behavioral/gemini split
+  // (audio is now provenance-only, not weight-bearing).
 
-    // Side-effect verification: when BOTH audio AND another signal are missing,
-    // the audio share genuinely lifts other available signals above their base
-    // (proves redistribution is active, not a no-op).
-    const audioAndMLOff = selectWeights({
-      behavioral: true,
-      gemini: true,
-      ml: false,
-      rules: true,
-      trends: true,
-      content_type: false,
-      niche: false,
-      audio: false,
-      gemini_hook: false,
-      gemini_body: false,
-      gemini_cta: false,
-      personas: false,
+  it("Test 19: audio absent/present does NOT affect behavioral/gemini split (audio removed from blend)", () => {
+    const withAudio = selectWeights({
+      behavioral: true, gemini: true, ml: true, rules: true, trends: true,
+      content_type: false, niche: false, audio: true,
+      gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false,
     });
-    expect(audioAndMLOff.audio).toBe(0);
-    expect(audioAndMLOff.ml).toBe(0);
-    expect(audioAndMLOff.behavioral).toBeGreaterThan(0.35);
-    expect(audioAndMLOff.gemini).toBeGreaterThan(0.25);
+    const withoutAudio = selectWeights({
+      behavioral: true, gemini: true, ml: true, rules: true, trends: true,
+      content_type: false, niche: false, audio: false,
+      gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false,
+    });
+    // Both return the same behavioral/gemini split
+    expect(withAudio.behavioral).toBeCloseTo(withoutAudio.behavioral, 3);
+    expect(withAudio.gemini).toBeCloseTo(withoutAudio.gemini, 3);
+    // Neither returns an audio key
+    expect(withAudio).not.toHaveProperty("audio");
+    expect(withoutAudio).not.toHaveProperty("audio");
+    // Sum is always 1.0 for the 2-key blend
+    const sumWith = withAudio.behavioral + withAudio.gemini;
+    const sumWithout = withoutAudio.behavioral + withoutAudio.gemini;
+    expect(sumWith).toBeCloseTo(1.0, 2);
+    expect(sumWithout).toBeCloseTo(1.0, 2);
   });
 
-  it("Test 20: weight redistribution preserves total = 1.0 (normalized across SCORE_WEIGHT_KEYS)", () => {
-    // With audio present: 6 sources sum to 0.92 raw (ml=0 after Phase 10 D-05), normalized → 1.0.
-    const allOn = selectWeights({
-      behavioral: true,
-      gemini: true,
-      ml: true,
-      rules: true,
-      trends: true,
-      content_type: false,
-      niche: false,
-      audio: true,
-      gemini_hook: false,
-      gemini_body: false,
-      gemini_cta: false,
-      personas: false,
-    });
-    const sumOn = Object.values(allOn).reduce((a, b) => a + b, 0);
-    expect(sumOn).toBeCloseTo(1.0, 2);
-
-    // With audio absent: 5 sources sum to 1.0 after redistribution.
-    const noAudio = selectWeights({
-      behavioral: true,
-      gemini: true,
-      ml: true,
-      rules: true,
-      trends: true,
-      content_type: false,
-      niche: false,
-      audio: false,
-      gemini_hook: false,
-      gemini_body: false,
-      gemini_cta: false,
-      personas: false,
-    });
-    const sumOff = Object.values(noAudio).reduce((a, b) => a + b, 0);
-    expect(sumOff).toBeCloseTo(1.0, 2);
+  it("Test 20: 2-key selectWeights always sums to 1.0 regardless of provenance flags", () => {
+    // Any combination of provenance flags (audio, platform_fit, retrieval, etc.) should
+    // yield the same behavioral+gemini split summing to 1.0.
+    const combos = [
+      { behavioral: true, gemini: true, ml: true, rules: true, trends: true, content_type: false, niche: false, audio: true, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false },
+      { behavioral: true, gemini: true, ml: false, rules: false, trends: false, content_type: false, niche: false, audio: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false },
+      { behavioral: false, gemini: true, ml: true, rules: true, trends: true, content_type: true, niche: true, audio: true, gemini_hook: true, gemini_body: true, gemini_cta: true, personas: true },
+      { behavioral: true, gemini: false, ml: false, rules: false, trends: false, content_type: false, niche: false, audio: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false },
+    ];
+    for (const combo of combos) {
+      const w = selectWeights(combo);
+      const sum = w.behavioral + w.gemini;
+      // Allow 0 when both are unavailable
+      if (combo.behavioral || combo.gemini) {
+        expect(sum).toBeCloseTo(1.0, 2);
+      }
+    }
   });
 });
 

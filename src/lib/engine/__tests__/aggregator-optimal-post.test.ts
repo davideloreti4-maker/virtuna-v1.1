@@ -55,10 +55,8 @@ vi.mock("@/lib/cache", () => ({
   }),
 }));
 
-vi.mock("../ml", () => ({
-  predictWithML: vi.fn().mockResolvedValue(50),
-  featureVectorToMLInput: vi.fn().mockReturnValue(Array(15).fill(0.5)),
-}));
+// ml mock removed (Plan 04, R9): ml key removed from blend; ../ml moves to _dormant/ in Plan 05.
+// Leftover mock would strand a dead import and compile-fail the suite after the move.
 
 vi.mock("../calibration", () => ({
   getPlattParameters: vi.fn().mockResolvedValue(null),
@@ -101,44 +99,14 @@ vi.mock("../stage10-critique", () => ({
   applyCritiqueAdjustment: vi.fn((c: number) => c),
 }));
 
+// stage11-counterfactuals mock: keep maybeAppendLikelyFlopWarning (still imported by aggregator.ts
+// until Plan 05 moves the module). runStage11Counterfactuals mock removed (Plan 04, R9):
+// stage11 call removed from aggregator in Plan 02; mock strands nothing here.
 vi.mock("../stage11-counterfactuals", async (importOriginal) => {
   const orig =
     await importOriginal<typeof import("../stage11-counterfactuals")>();
   return {
     ...orig,
-    runStage11Counterfactuals: vi.fn().mockImplementation(
-      async (
-        _result: unknown,
-        _videoContext: unknown,
-        onEvent?: (e: {
-          type: string;
-          stage: string;
-          wave: string;
-          timestamp_ms?: number;
-          duration_ms?: number;
-          cost_cents?: number;
-          ok?: boolean;
-        }) => void,
-      ) => {
-        callOrder.push("stage11");
-        const ts = performance.now();
-        onEvent?.({
-          type: "stage_start",
-          stage: "stage_11_counterfactuals",
-          wave: "post",
-          timestamp_ms: ts,
-        });
-        onEvent?.({
-          type: "stage_end",
-          stage: "stage_11_counterfactuals",
-          wave: "post",
-          duration_ms: 1,
-          cost_cents: 0,
-          ok: true,
-        });
-        return null;
-      },
-    ),
   };
 });
 

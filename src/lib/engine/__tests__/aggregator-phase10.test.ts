@@ -1,15 +1,26 @@
 /**
- * Phase 10 — selectWeights weight redistribution tests.
- * Verifies invariant: sum of weights always ~1.0 (±0.01) regardless of which
- * signals are unavailable. Disabled signals get weight 0, redistributed
- * proportionally to remaining available signals.
+ * Plan 04 — selectWeights 2-key blend assertions.
+ *
+ * Supersedes the Phase 10 8-key redistribution tests. After Plan 04 cuts the dead
+ * blend keys to behavioral+gemini only, the remaining meaningful assertions are:
+ *   - weights.behavioral + weights.gemini sum to ~1.0 for all availability combos
+ *   - platform_fit and audio keys are ABSENT from the returned weights object
+ *   - 2-key redistribution: if behavioral unavailable → gemini=1; vice versa
+ *
+ * Note: The old per-signal redistribution cases (platform_fit unavailable → other 7
+ * redistribute, etc.) are superseded — those keys no longer exist.
  */
 import { describe, it, expect } from "vitest";
 import { selectWeights } from "../aggregator";
 
-describe("selectWeights — Phase 10 weight redistribution", () => {
-  function allAvailable(): Parameters<typeof selectWeights>[0] {
-    return {
+describe("selectWeights — 2-key behavioral+gemini blend (Plan 04)", () => {
+  /**
+   * Test 1 — ALL signals available.
+   * Only behavioral+gemini keys returned; platform_fit/audio ABSENT.
+   * Sum ~1.0.
+   */
+  it("returns only behavioral+gemini keys; platform_fit/audio ABSENT; sum ~1.0", () => {
+    const weights = selectWeights({
       behavioral: true,
       gemini: true,
       ml: true,
@@ -24,124 +35,113 @@ describe("selectWeights — Phase 10 weight redistribution", () => {
       audio: true,
       retrieval: true,
       platform_fit: true,
-    };
-  }
-
-  /**
-   * Test 1 — ALL 8 signals available.
-   * Every non-disabled signal returns a positive weight; ml=0 (Phase 10 D-05).
-   * Sum of all weights must be approximately 1.0 (within ±0.01).
-   */
-  it("returns weights for all 8 signals summing to ~1.0", () => {
-    const weights = selectWeights(allAvailable());
+    });
 
     expect(weights.behavioral).toBeGreaterThan(0);
     expect(weights.gemini).toBeGreaterThan(0);
-    expect(weights.ml).toBe(0); // D-05: disabled
-    expect(weights.rules).toBe(0); // D-14: rules weight=0
-    expect(weights.trends).toBeGreaterThan(0);
-    expect(weights.audio).toBeGreaterThan(0);
-    expect(weights.retrieval).toBe(0); // D-15: retrieval weight=0
-    expect(weights.platform_fit).toBeGreaterThan(0);
+    // Dead keys MUST be absent from the returned 2-key object
+    expect(weights).not.toHaveProperty("platform_fit");
+    expect(weights).not.toHaveProperty("audio");
+    expect(weights).not.toHaveProperty("ml");
+    expect(weights).not.toHaveProperty("rules");
+    expect(weights).not.toHaveProperty("trends");
+    expect(weights).not.toHaveProperty("retrieval");
 
-    const sum = Object.values(weights).reduce((a, b) => a + b, 0);
+    const sum = weights.behavioral + weights.gemini;
     expect(sum).toBeCloseTo(1, 2);
   });
 
   /**
-   * Test 2 — ml signal unavailable.
-   * ml weight must be 0; remaining 7 signals redistribute ml's share
-   * proportionally; sum of all weights must still be ~1.0.
+   * Test 2 — behavioral unavailable → all weight goes to gemini.
    */
-  it("redistributes ml weight when ml=false; sum ~1.0", () => {
-    const availability = allAvailable();
-    availability.ml = false;
+  it("behavioral=false → gemini=1, behavioral=0; sum=1.0", () => {
+    const weights = selectWeights({
+      behavioral: false,
+      gemini: true,
+      ml: true,
+      rules: true,
+      trends: true,
+      content_type: false,
+      niche: false,
+      gemini_hook: false,
+      gemini_body: false,
+      gemini_cta: false,
+      personas: false,
+      retrieval: true,
+      platform_fit: true,
+    });
 
-    const weights = selectWeights(availability);
-
-    expect(weights.ml).toBe(0);
-    expect(weights.behavioral).toBeGreaterThan(0);
-    expect(weights.gemini).toBeGreaterThan(0);
-    expect(weights.rules).toBe(0); // D-14: rules weight=0
-    expect(weights.trends).toBeGreaterThan(0);
-    expect(weights.audio).toBeGreaterThan(0);
-    expect(weights.retrieval).toBe(0); // D-15: retrieval weight=0
-    expect(weights.platform_fit).toBeGreaterThan(0);
-
-    const sum = Object.values(weights).reduce((a, b) => a + b, 0);
+    expect(weights.behavioral).toBe(0);
+    expect(weights.gemini).toBe(1);
+    const sum = weights.behavioral + weights.gemini;
     expect(sum).toBeCloseTo(1, 2);
   });
 
   /**
-   * Test 3 — retrieval signal unavailable.
-   * retrieval weight must be 0; remaining 7 signals redistribute
-   * retrieval's share proportionally; sum still ~1.0.
+   * Test 3 — gemini unavailable → all weight goes to behavioral.
    */
-  it("redistributes retrieval weight when retrieval=false; sum ~1.0", () => {
-    const availability = allAvailable();
-    availability.retrieval = false;
+  it("gemini=false → behavioral=1, gemini=0; sum=1.0", () => {
+    const weights = selectWeights({
+      behavioral: true,
+      gemini: false,
+      ml: false,
+      rules: false,
+      trends: false,
+      content_type: false,
+      niche: false,
+      gemini_hook: false,
+      gemini_body: false,
+      gemini_cta: false,
+      personas: false,
+      retrieval: false,
+    });
 
-    const weights = selectWeights(availability);
-
-    expect(weights.retrieval).toBe(0);
-    expect(weights.behavioral).toBeGreaterThan(0);
-    expect(weights.gemini).toBeGreaterThan(0);
-    expect(weights.ml).toBe(0); // D-05: disabled
-    expect(weights.rules).toBe(0); // D-14: rules weight=0
-    expect(weights.trends).toBeGreaterThan(0);
-    expect(weights.audio).toBeGreaterThan(0);
-    expect(weights.platform_fit).toBeGreaterThan(0);
-
-    const sum = Object.values(weights).reduce((a, b) => a + b, 0);
+    expect(weights.behavioral).toBe(1);
+    expect(weights.gemini).toBe(0);
+    const sum = weights.behavioral + weights.gemini;
     expect(sum).toBeCloseTo(1, 2);
   });
 
   /**
-   * Test 4 — platform_fit signal unavailable.
-   * platform_fit weight must be 0; remaining 7 signals redistribute
-   * platform_fit's share proportionally; sum still ~1.0.
+   * Test 4 — both unavailable → all zeros (no source to redistribute to).
    */
-  it("redistributes platform_fit weight when platform_fit=false; sum ~1.0", () => {
-    const availability = allAvailable();
-    availability.platform_fit = false;
+  it("both unavailable → behavioral=0, gemini=0; sum=0", () => {
+    const weights = selectWeights({
+      behavioral: false,
+      gemini: false,
+      ml: false,
+      rules: false,
+      trends: false,
+      content_type: false,
+      niche: false,
+      gemini_hook: false,
+      gemini_body: false,
+      gemini_cta: false,
+      personas: false,
+      retrieval: false,
+    });
 
-    const weights = selectWeights(availability);
-
-    expect(weights.platform_fit).toBe(0);
-    expect(weights.behavioral).toBeGreaterThan(0);
-    expect(weights.gemini).toBeGreaterThan(0);
-    expect(weights.ml).toBe(0); // D-05: disabled
-    expect(weights.rules).toBe(0); // D-14: rules weight=0
-    expect(weights.trends).toBeGreaterThan(0);
-    expect(weights.audio).toBeGreaterThan(0);
-    expect(weights.retrieval).toBe(0); // D-15: retrieval weight=0
-
-    const sum = Object.values(weights).reduce((a, b) => a + b, 0);
-    expect(sum).toBeCloseTo(1, 2);
+    expect(weights.behavioral).toBe(0);
+    expect(weights.gemini).toBe(0);
   });
 
   /**
-   * Test 5 — ml AND retrieval both unavailable.
-   * Both weights must be 0; remaining 6 signals redistribute the combined
-   * missing share proportionally; sum still ~1.0.
+   * Test 5 — provenance-only flags (audio, platform_fit) do NOT affect weight distribution.
+   * Availability of audio/platform_fit should not change behavioral/gemini split.
    */
-  it("redistributes both ml and retrieval weight when both disabled; sum ~1.0", () => {
-    const availability = allAvailable();
-    availability.ml = false;
-    availability.retrieval = false;
+  it("audio and platform_fit availability do NOT affect behavioral/gemini distribution", () => {
+    const withAudio = selectWeights({
+      behavioral: true, gemini: true, ml: true, rules: true, trends: true,
+      content_type: true, niche: true, gemini_hook: true, gemini_body: true,
+      gemini_cta: true, personas: true, audio: true, retrieval: true, platform_fit: true,
+    });
+    const withoutAudio = selectWeights({
+      behavioral: true, gemini: true, ml: true, rules: true, trends: true,
+      content_type: true, niche: true, gemini_hook: true, gemini_body: true,
+      gemini_cta: true, personas: true, audio: false, retrieval: false, platform_fit: false,
+    });
 
-    const weights = selectWeights(availability);
-
-    expect(weights.ml).toBe(0);
-    expect(weights.retrieval).toBe(0);
-    expect(weights.behavioral).toBeGreaterThan(0);
-    expect(weights.gemini).toBeGreaterThan(0);
-    expect(weights.rules).toBe(0); // D-14: rules weight=0
-    expect(weights.trends).toBeGreaterThan(0);
-    expect(weights.audio).toBeGreaterThan(0);
-    expect(weights.platform_fit).toBeGreaterThan(0);
-
-    const sum = Object.values(weights).reduce((a, b) => a + b, 0);
-    expect(sum).toBeCloseTo(1, 2);
+    expect(withAudio.behavioral).toBeCloseTo(withoutAudio.behavioral, 3);
+    expect(withAudio.gemini).toBeCloseTo(withoutAudio.gemini, 3);
   });
 });

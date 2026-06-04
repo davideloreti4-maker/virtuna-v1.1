@@ -72,7 +72,7 @@ Identify any critical issues that would kill performance regardless of other fac
 Output: Array of warning strings (empty if no fatal flaws).
 
 ### Step 5: Final Scores & Predictions
-Using steps 1-4, produce your final behavioral predictions. The user message will provide percentile benchmarks from the reference dataset — use them to frame your share_percentile, comment_percentile, save_percentile, and completion_percentile responses as "top X%" labels (e.g., p90 = "top 10%", p75 = "top 25%").
+Using steps 1-4, produce your final behavioral predictions. Predict completion_pct, share_pct, comment_pct, and save_pct as percentages. For the relative label fields, provide a concise qualitative assessment (e.g., "above average", "top tier", "below median") without fabricating corpus-rank claims.
 
 ## Output Format
 
@@ -81,13 +81,13 @@ Return a JSON object with exactly these fields:
 {
   "behavioral_predictions": {
     "completion_pct": <number 0-100>,
-    "completion_percentile": "<string, e.g. 'top 30%'>",
+    "completion_relative": "<string, e.g. 'above average'>",
     "share_pct": <number 0-100>,
-    "share_percentile": "<string>",
+    "share_relative": "<string>",
     "comment_pct": <number 0-100>,
-    "comment_percentile": "<string>",
+    "comment_relative": "<string>",
     "save_pct": <number 0-100>,
-    "save_percentile": "<string>"
+    "save_relative": "<string>"
   },
   "component_scores": {
     "hook_effectiveness": <number 0-10>,
@@ -384,9 +384,8 @@ function buildDeepSeekUserMessage(
   context: DeepSeekInput,
   calibration: DeepSeekCalibrationData
 ): string {
-  const shareP = calibration.primary_kpis.share_rate.percentiles;
-  const commentP = calibration.primary_kpis.comment_rate.percentiles;
-  const saveP = calibration.primary_kpis.save_rate.percentiles;
+  // Plan 04 (D1.2, R9): percentile benchmark block removed. calibration-baseline.json
+  // is KEPT — still feeds viral differentiators + duration sweet-spot below (RESEARCH Pitfall 4).
 
   // Get top 5 viral differentiators (dataset-dependent — dynamic per calibration version)
   const topDifferentiators = [...calibration.viral_vs_average.differentiators]
@@ -430,11 +429,6 @@ Top viral differentiators:
 ${topDifferentiators.map((d) => `- ${d.factor}: ${d.description}`).join("\n")}
 
 Duration sweet spot: ${durationSweet[0]}-${durationSweet[1]} seconds
-
-Percentile benchmarks for percentile framing:
-- Share rate: p50=${(shareP.p50 * 100).toFixed(2)}%, p75=${(shareP.p75 * 100).toFixed(2)}%, p90=${(shareP.p90 * 100).toFixed(2)}%
-- Comment rate: p50=${(commentP.p50 * 100).toFixed(2)}%, p75=${(commentP.p75 * 100).toFixed(2)}%, p90=${(commentP.p90 * 100).toFixed(2)}%
-- Save rate: p50=${(saveP.p50 * 100).toFixed(2)}%, p75=${(saveP.p75 * 100).toFixed(2)}%, p90=${(saveP.p90 * 100).toFixed(2)}%
 
 Apply the 5-step framework from the system instructions and return the JSON object specified there.`;
 }

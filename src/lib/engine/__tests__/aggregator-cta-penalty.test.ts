@@ -46,10 +46,8 @@ vi.mock("@/lib/cache", () => ({
   }),
 }));
 
-vi.mock("../ml", () => ({
-  predictWithML: vi.fn().mockResolvedValue(50),
-  featureVectorToMLInput: vi.fn().mockReturnValue(Array(15).fill(0.5)),
-}));
+// ml mock removed (Plan 04, R9): ml key removed from blend; ../ml moves to _dormant/ in Plan 05.
+// Leftover mock would strand a dead import and compile-fail the suite after the move.
 
 vi.mock("../gemini", () => ({
   GEMINI_MODEL: "gemini-test",
@@ -60,15 +58,12 @@ vi.mock("../deepseek", () => ({
   isCircuitOpen: vi.fn(() => true),
 }));
 
+// stage11-counterfactuals mock: keep maybeAppendLikelyFlopWarning (still imported by aggregator.ts
+// until Plan 05 moves the module to _dormant/). runStage11Counterfactuals mock removed
+// (Plan 04, R9): stage11 call removed from aggregator in Plan 02; mock strands nothing here.
 vi.mock("../stage11-counterfactuals", () => ({
   GEMINI_STAGE11_MODEL: "gemini-3.1-pro-preview",
   maybeAppendLikelyFlopWarning: vi.fn(),
-  runStage11Counterfactuals: vi.fn().mockResolvedValue({
-    suggestions: [],
-    reasoning: "mocked",
-    band: "mid",
-    counterfactuals: [],
-  }),
 }));
 
 // =====================================================

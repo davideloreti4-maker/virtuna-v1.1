@@ -150,46 +150,19 @@ import type { EmotionArcPoint } from "../qwen/schemas";
 // selectWeights tests
 // =====================================================
 
-describe("selectWeights", () => {
-  it("returns base weights when all signals are available (D-16 Phase 13 normalized values)", () => {
-    // D-16 weights: behavioral=0.40, gemini=0.35, audio=0.05, trends=0.10, platform_fit=0.05, ml=0, retrieval=0, rules=0
-    // This test call does NOT include audio/platform_fit — activeKeys: behavioral, gemini, ml, rules, trends, retrieval
-    // Base sum for active keys: 0.40 + 0.35 + 0 + 0 + 0.10 + 0 = 0.85
-    // Normalized: behavioral=0.40/0.85≈0.471, gemini=0.35/0.85≈0.412, trends=0.10/0.85≈0.118, ml=0, rules=0, retrieval=0
+// =====================================================
+// Plan 04 (R9) — selectWeights 2-key behavioral+gemini blend
+// =====================================================
+// Dead keys (ml, rules, trends, audio, retrieval, platform_fit) removed from
+// SCORE_WEIGHT_KEYS in Plan 04. selectWeights now returns only {behavioral, gemini}.
+// Old D-16 8-key tests superseded below with 2-key assertions.
+
+describe("selectWeights — 2-key behavioral+gemini blend (Plan 04)", () => {
+  it("returns only behavioral+gemini; sum ~1.0 when both available", () => {
     const weights = selectWeights({
       behavioral: true,
       gemini: true,
       ml: true,
-      rules: true,
-      trends: true,
-      content_type: false, // Phase 4 (D-20) — does NOT participate in weight math
-      niche: false,
-      gemini_hook: false,
-      gemini_body: false,
-      gemini_cta: false,
-      personas: false,
-      retrieval: true, // D-15: retrieval weight=0 in D-16; contributes 0 to sum
-    });
-
-    // D-16 Phase 13: ml=0, rules=0, retrieval=0 → raw sum 0.85 (behavioral 0.40 + gemini 0.35 + trends 0.10)
-    expect(weights.behavioral).toBeCloseTo(0.471, 2);
-    expect(weights.gemini).toBeCloseTo(0.412, 2);
-    expect(weights.ml).toBe(0);
-    expect(weights.rules).toBe(0);
-    expect(weights.trends).toBeCloseTo(0.118, 2);
-    expect(weights.retrieval).toBe(0);
-    const sum = Object.values(weights).reduce((a, b) => a + b, 0);
-    expect(sum).toBeCloseTo(1, 2);
-  });
-
-  it("redistributes weight when ML is unavailable (D-16: ml=0 already; no redistribution change)", () => {
-    // D-16: ml=0 in SCORE_WEIGHTS, rules=0 in SCORE_WEIGHTS — no behavioral weight for ml/rules.
-    // When ml=false in availability and ml=0 in weights, there is nothing to redistribute.
-    // behavioral and gemini receive the full normalized non-zero weight share.
-    const weights = selectWeights({
-      behavioral: true,
-      gemini: true,
-      ml: false,
       rules: true,
       trends: true,
       content_type: false,
@@ -201,19 +174,18 @@ describe("selectWeights", () => {
       retrieval: true,
     });
 
-    expect(weights.ml).toBe(0);
-    // D-16: rules=0 in SCORE_WEIGHTS, so rules weight stays 0 even when rules=true in availability
-    expect(weights.rules).toBe(0);
-    // behavioral and gemini are the primary weight-bearing signals; they dominate
-    expect(weights.behavioral).toBeGreaterThan(0.33);
-    expect(weights.gemini).toBeGreaterThan(0.24);
-    expect(weights.trends).toBeGreaterThan(0.1);
-
-    const sum = Object.values(weights).reduce((a, b) => a + b, 0);
+    expect(weights.behavioral).toBeGreaterThan(0);
+    expect(weights.gemini).toBeGreaterThan(0);
+    // Dead keys ABSENT from the 2-key output
+    expect(weights).not.toHaveProperty("ml");
+    expect(weights).not.toHaveProperty("rules");
+    expect(weights).not.toHaveProperty("trends");
+    expect(weights).not.toHaveProperty("retrieval");
+    const sum = weights.behavioral + weights.gemini;
     expect(sum).toBeCloseTo(1, 2);
   });
 
-  it("redistributes weight when behavioral is unavailable", () => {
+  it("behavioral unavailable → gemini=1, behavioral=0", () => {
     const weights = selectWeights({
       behavioral: false,
       gemini: true,
@@ -230,42 +202,15 @@ describe("selectWeights", () => {
     });
 
     expect(weights.behavioral).toBe(0);
-
-    const sum = Object.values(weights).reduce((a, b) => a + b, 0);
+    expect(weights.gemini).toBe(1);
+    const sum = weights.behavioral + weights.gemini;
     expect(sum).toBeCloseTo(1, 2);
   });
 
-  it("redistributes weight when behavioral + ML are both unavailable", () => {
+  it("gemini unavailable → behavioral=1, gemini=0", () => {
     const weights = selectWeights({
-      behavioral: false,
-      gemini: true,
-      ml: false,
-      rules: true,
-      trends: true,
-      content_type: false,
-      niche: false,
-      gemini_hook: false,
-      gemini_body: false,
-      gemini_cta: false,
-      personas: false,
-      retrieval: true,
-    });
-
-    expect(weights.behavioral).toBe(0);
-    expect(weights.ml).toBe(0);
-    // D-16: rules=0 in SCORE_WEIGHTS
-    expect(weights.rules).toBe(0);
-    expect(weights.gemini).toBeGreaterThan(0.24);
-    expect(weights.trends).toBeGreaterThan(0.1);
-
-    const sum = Object.values(weights).reduce((a, b) => a + b, 0);
-    expect(sum).toBeCloseTo(1, 2);
-  });
-
-  it("assigns ~1.0 to the sole remaining source when only gemini available", () => {
-    const weights = selectWeights({
-      behavioral: false,
-      gemini: true,
+      behavioral: true,
+      gemini: false,
       ml: false,
       rules: false,
       trends: false,
@@ -278,15 +223,11 @@ describe("selectWeights", () => {
       retrieval: false,
     });
 
-    expect(weights.gemini).toBeCloseTo(1, 2);
-    expect(weights.behavioral).toBe(0);
-    expect(weights.ml).toBe(0);
-    expect(weights.rules).toBe(0);
-    expect(weights.trends).toBe(0);
-    expect(weights.retrieval).toBe(0);
+    expect(weights.behavioral).toBe(1);
+    expect(weights.gemini).toBe(0);
   });
 
-  it("returns all zeros when all sources are unavailable and does not throw", () => {
+  it("both unavailable → behavioral=0, gemini=0; does not throw", () => {
     expect(() => {
       const weights = selectWeights({
         behavioral: false,
@@ -302,101 +243,28 @@ describe("selectWeights", () => {
         personas: false,
         retrieval: false,
       });
-
-      // All weights should be 0 (no sources to redistribute to)
       expect(weights.behavioral).toBe(0);
       expect(weights.gemini).toBe(0);
-      expect(weights.ml).toBe(0);
-      expect(weights.rules).toBe(0);
-      expect(weights.trends).toBe(0);
-      expect(weights.retrieval).toBe(0);
     }).not.toThrow();
   });
 
-  it("always sums to ~1.0 for any combination of available signals (except all-false)", () => {
+  it("always sums to ~1.0 for any combination where at least one source is available", () => {
     const combos = [
       { behavioral: true, gemini: true, ml: false, rules: false, trends: true, content_type: false, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: true },
       { behavioral: false, gemini: true, ml: true, rules: false, trends: false, content_type: true, niche: true, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: false },
       { behavioral: true, gemini: false, ml: true, rules: true, trends: false, content_type: false, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: true },
-      { behavioral: false, gemini: false, ml: true, rules: true, trends: true, content_type: true, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: false },
       { behavioral: true, gemini: true, ml: true, rules: false, trends: false, content_type: false, niche: true, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: true },
       { behavioral: true, gemini: true, ml: false, rules: false, trends: true, content_type: false, niche: false, personas: false, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: true },
       { behavioral: false, gemini: true, ml: true, rules: false, trends: false, content_type: true, niche: true, personas: true, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: false },
       { behavioral: true, gemini: false, ml: true, rules: true, trends: false, content_type: false, niche: false, personas: false, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: true },
-      { behavioral: false, gemini: false, ml: true, rules: true, trends: true, content_type: true, niche: false, personas: true, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: false },
       { behavioral: true, gemini: true, ml: true, rules: false, trends: false, content_type: false, niche: true, personas: false, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: true },
     ];
 
     for (const combo of combos) {
       const weights = selectWeights(combo);
-      const sum = Object.values(weights).reduce((a, b) => a + b, 0);
+      const sum = weights.behavioral + weights.gemini;
       expect(sum).toBeCloseTo(1, 2);
     }
-  });
-});
-
-// =====================================================
-// Phase 8 — retrieval slot tests (Plan 04 Task 3)
-// =====================================================
-
-describe("selectWeights — Phase 8 retrieval slot (D-15: retrieval disabled in D-16)", () => {
-  it("returns retrieval=0 when retrieval available — D-15 disabled this phase (weight=0 in D-16)", () => {
-    // D-15 (Phase 13): retrieval weight=0 in SCORE_WEIGHTS. Corpus embeddings are caption-derived;
-    // retrieval signal disabled for video-mode primary flow. Weight=0 means no contribution.
-    const w = selectWeights({
-      behavioral: true,
-      gemini: true,
-      ml: true,
-      rules: true,
-      trends: true,
-      content_type: true,
-      niche: true,
-      gemini_hook: false,
-      gemini_body: false,
-      gemini_cta: false,
-      personas: false,
-      retrieval: true,
-    });
-    // D-15/D-16: retrieval=0 in SCORE_WEIGHTS → normalized weight is 0
-    expect(w.retrieval).toBe(0);
-    const sum = Object.values(w).reduce((a, b) => a + (b ?? 0), 0);
-    expect(sum).toBeCloseTo(1.0, 2);
-  });
-
-  it("retrieval=false: same result as retrieval=true (both contribute 0 — D-15 disabled)", () => {
-    const wTrue = selectWeights({
-      behavioral: true,
-      gemini: true,
-      ml: true,
-      rules: true,
-      trends: true,
-      content_type: true,
-      niche: true,
-      gemini_hook: false,
-      gemini_body: false,
-      gemini_cta: false,
-      personas: false,
-      retrieval: true,
-    });
-    const wFalse = selectWeights({
-      behavioral: true,
-      gemini: true,
-      ml: true,
-      rules: true,
-      trends: true,
-      content_type: true,
-      niche: true,
-      gemini_hook: false,
-      gemini_body: false,
-      gemini_cta: false,
-      personas: false,
-      retrieval: false,
-    });
-    // Both retrieval=true and retrieval=false should yield retrieval weight=0
-    expect(wTrue.retrieval ?? 0).toBe(0);
-    expect(wFalse.retrieval ?? 0).toBe(0);
-    const totalTrue = Object.values(wTrue).reduce((a, b) => a + (b ?? 0), 0);
-    expect(totalTrue).toBeCloseTo(1.0, 2);
   });
 });
 
