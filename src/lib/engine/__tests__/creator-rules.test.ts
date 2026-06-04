@@ -6,13 +6,16 @@ import {
   CREATOR_RULES_PRINCIPLES,
   CREATOR_RULES_CONFLICTS,
 } from "../creator-rules";
-import { STABLE_COUNTERFACTUALS_SYSTEM_PROMPT } from "../stage11-counterfactuals-prompts";
-import { STABLE_PLATFORM_FIT_SYSTEM_PROMPT } from "../wave4/platform-fit-prompts";
 // NOTE: stage 10 critique is now deterministic TS (no LLM prompt) — its creator-rule
 // injection moved into per-check flag templates in stage10-critique.ts. No prompt to assert.
+//
+// REMOVED (2026-06-04, Plan 01-01): cross-imports of the stage-11 counterfactuals prompt
+// and the wave4 platform-fit prompt constants, plus the describe block asserting
+// CREATOR_RULES_BLOCK injection into those prompts. Both prompt files move to _dormant/
+// in Plan 05 — importing them here would break compile at that step. The kept test below
+// verifies creator-rules.ts own exports independently of any cut modules.
 
-// Locks the single-source-of-truth Creator Intelligence rules and their
-// injection into the three cache-stable V3 system prompts. If creator-rules.ts
+// Locks the single-source-of-truth Creator Intelligence rules. If creator-rules.ts
 // drifts from .planning/research/creator-intelligence.md, these break.
 
 describe("CREATOR_RULES single source of truth", () => {
@@ -50,29 +53,6 @@ describe("CREATOR_RULES single source of truth", () => {
   });
 });
 
-describe("creator-rules injection into V3 system prompts", () => {
-  it("stage 11 counterfactuals carries the full rules block + grounding behaviors", () => {
-    expect(STABLE_COUNTERFACTUALS_SYSTEM_PROMPT).toContain(CREATOR_RULES_BLOCK);
-    expect(STABLE_COUNTERFACTUALS_SYSTEM_PROMPT).toContain("Lead-Magnet Formula");
-    expect(STABLE_COUNTERFACTUALS_SYSTEM_PROMPT).toContain("Hoyos");
-  });
-
-  it("platform-fit carries weighted rubrics + never-average guardrail", () => {
-    expect(STABLE_PLATFORM_FIT_SYSTEM_PROMPT).toContain("[weight 25]");
-    expect(STABLE_PLATFORM_FIT_SYSTEM_PROMPT).toContain("NEVER average platforms");
-    expect(STABLE_PLATFORM_FIT_SYSTEM_PROMPT).toContain("Hoyos");
-  });
-
-  it("all three system prompts resolve cleanly (no leaked undefined from a failed import)", () => {
-    // Guards against a broken CREATOR_RULES import surfacing as literal "undefined".
-    // (Literal "${...}" is allowed — stage10 intentionally shows escaped \${placeholder}
-    // example text to the model.)
-    for (const p of [
-      STABLE_COUNTERFACTUALS_SYSTEM_PROMPT,
-      STABLE_PLATFORM_FIT_SYSTEM_PROMPT,
-    ]) {
-      expect(p).not.toContain("undefined");
-      expect(p.length).toBeGreaterThan(500);
-    }
-  });
-});
+// NOTE: "creator-rules injection into V3 system prompts" describe block removed.
+// The cut-module cross-import assertions were removed because the prompt files
+// move to _dormant/ in Plan 05. Cross-module injection is verified at that plan.
