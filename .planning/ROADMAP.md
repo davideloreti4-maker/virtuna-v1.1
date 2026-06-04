@@ -41,6 +41,14 @@ Clear the engine down to its senses (low-risk deletion → under the cap), sharp
 **Success:** R6 (under cap), R9 (no fabricated/dead signal), R5 (score + confidence still render). Engine stays shippable + green (minus deleted-feature tests).
 **Risk:** low — mostly deletion. Watch blend-coupled board UI consumers + remix coupling in `pipeline.ts`/`types.ts`.
 **Ship:** independently mergeable to `main` (honesty + latency win, no dependency on later phases) — merge promptly, don't bank it behind P3/P4.
+**Plans:** 6 plans (5 waves)
+Plans:
+- [ ] 01-01-PLAN.md — Wave 0 scaffolds: extend measure-pipeline (overall_score), fix creator-rules.test cross-import, add null-degrade tests, baseline DB/determinism/latency gates
+- [ ] 01-02-PLAN.md — Remove stage11/ml/engagement-jitter call sites from aggregator.ts + analyze/route.ts; hard-delete predicted-engagement.ts
+- [ ] 01-03-PLAN.md — Remove audio/trends/rules/platform_fit call sites from pipeline.ts (Wave1+Wave2 awaited set)
+- [ ] 01-04-PLAN.md — Blend cut to behavioral+gemini; stage10 flags-only (keep confidence); deepseek 'top X%' label cut (keep calibration JSON)
+- [ ] 01-05-PLAN.md — git mv dead modules + tests to _dormant/; dormant retrain-ml cron route + remove its vercel.json schedule; prove exclusion
+- [ ] 01-06-PLAN.md — Hide FALLBACK_ITEM; bump ENGINE_VERSION 3.1.0; blocking E2E gates (score delta, latency, determinism, remix smoke)
 
 ## Phase 2: Omni Verbatim
 **Goal:** repurpose Omni from eyes-and-judge into observer/transcriber.
