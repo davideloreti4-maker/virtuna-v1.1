@@ -4,7 +4,7 @@
 >
 > **Reading rule for the model:** §2 is the single source of truth for *why content works*. §3 is how it fails. §4/§5/§6 are **task lenses** — they tell you how to *apply* §2 to score, decode, and rewrite. They do not restate §2; when a lens says "apply §2.1," pull the framework from there.
 
-**Status:** v1 real (craft) · **Sources:** Kallaway corpus (13 files) + 3-creator benchmark layer (Hoyos / Hormozi / Ava) for hard numbers; see §8 · **Behavioral layer:** reserved, not yet filled.
+**Status:** v1.1 — **validated** (A/B-tested on 4 real videos via `scripts/apollo-core-smoke.ts`; Omni→reasoner, scores spread 26–86, beats generic baseline). Ready for Phase 3 wiring (open decision: supersede vs merge the live `creator-rules.ts` — see §8). · **Sources:** Kallaway corpus (13 files) + 3-creator benchmark layer (Hoyos / Hormozi / Ava) for hard numbers; see §8 · **Behavioral layer:** reserved (§2.6), not yet filled.
 
 ---
 
@@ -156,7 +156,12 @@ Build the composite 0–100 from these dimensions. For each, grade by matching t
 
 **Weighting:** the hook decides **~80%** of performance (consensus across all four creators, §2.0a) — keep **at least half the judgment weight on the first ~3 seconds**. A weak hook caps the ceiling no matter how strong the body.
 
-**Grading discipline (from the Hook Machine):** holistic, *not* mechanical — don't tally satisfied principles. Some dimensions matter more for a given topic (a conceptual piece may earn an A on contrast+clarity while light on specificity). The §2.0a numbers are anchors that *inform* a band, not gates that auto-set it. Grade honestly; never inflate.
+**Grading discipline (from the Hook Machine):** holistic, *not* mechanical — don't tally satisfied principles. Some dimensions matter more for a given topic (a conceptual piece may earn Strong on contrast+clarity while light on specificity). The §2.0a numbers are anchors that *inform* a band, not gates that auto-set it. Grade honestly; never inflate.
+
+**Output contract (keep assessments comparable across videos):**
+- Grade each dimension on the **same 3-band scale as §2 — Strong / Mid / Weak** — *not* letter grades, *not* a 0–100 per dimension. For each: name the §2 lever that fired/failed + quote the sensor signal as evidence.
+- Give **one composite 0–100**: a holistic, hook-weighted *judgment* (per §2.0a ~80%), with the single ceiling-capper named in one sentence. Do **not** fabricate per-dimension numeric sub-scores, and do **not** present the composite as arithmetic — it is a weighted judgment, not a sum of parts.
+- Always include the **confidence scope** (what §2 signals the sensor could not provide) and **one highest-leverage fix** tied to a §2/§3 lever.
 
 ### 4.1 Platform calibration
 Targets differ by platform — **never average a cross-platform score** (viewers behave differently per platform). Score against the video's *actual* target platform; flag a clear length/format mismatch.
