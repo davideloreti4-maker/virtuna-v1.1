@@ -72,7 +72,7 @@ Plans:
 **Success:** R1 (verbatim persists on a real run). Zero-regret precondition for P3 + P4.
 **Risk:** low — additive to a deterministic call; a few hundred more output tokens. #1 risk is the assembly-hop regression (emotion_arc precedent: declared+prompted but dropped on the assembly literal → 26/26 null rows) — guarded by a real-run proof.
 **Ship:** independently mergeable (Omni also feeds Remix's decode — verbatim helps it too).
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 Plans:
 **Wave 1**
 
@@ -80,7 +80,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 02-02-PLAN.md — Thread verbatim assembly→aggregator→PredictionResult; persist to dedicated verbatim JSONB column (migration + [BLOCKING] live apply + db types + both route sites); bump ENGINE_VERSION 3.2.0
+- [x] 02-02-PLAN.md — Thread verbatim assembly→aggregator→PredictionResult; persist to dedicated verbatim JSONB column (migration + [BLOCKING] live apply + db types + both route sites); bump ENGINE_VERSION 3.2.0 ✓ COMPLETE (2026-06-04)
 
 **Wave 3** *(blocked on Wave 2)*
 

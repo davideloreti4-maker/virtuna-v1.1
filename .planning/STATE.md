@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: apollo
 milestone_name: Apollo
 status: ready_to_execute
-last_updated: "2026-06-04T14:31:26.881Z"
+last_updated: "2026-06-04T14:43:00Z"
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 9
-  completed_plans: 7
-  percent: 20
+  completed_plans: 8
+  percent: 22
 ---
 
 # Project State
@@ -21,7 +21,7 @@ See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Cut-l
 ## Current Position
 
 Phase: 02 (Omni Verbatim) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 **Milestone worktree** `~/virtuna-engine-opt/` on `milestone/engine-opt`. Milestone **Apollo** — turn the ~25-call score machine into a 3-call knowledge-grounded expert (Omni → Audience-Sim → Apollo Reasoner).
 
 Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milestone formalized. **Synced with `origin/main` (merged in Remix PR #6 + audience change) — branch was stale + blind to Remix.** Re-scanned Remix engine path; folded into the plan (Remix = Apollo modes, R12). **No phase plans yet.**
@@ -58,10 +58,10 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 **P1 executed + complete** (6/6 plans, 2026-06-04). **P2 PLANNED** (2026-06-04) — research + validation + pattern-map + 3 verified plans (3 waves). Planner picked **persistence Option A** (dedicated `verbatim` JSONB column, mirrors emotion_arc). Plan-checker caught + the planner fixed a real BLOCKER: per-segment `spoken_text`/`on_screen_text` had no persistence path (declared+prompted but dropped before the DB — the segment-axis twin of the emotion_arc bug); now threaded on BOTH the inline shape AND exported `SegmentSchema` → normalizeSegments → aggregator pluck → `VerbatimPayload.segments` → both route inserts → `verbatim->'segments'` real-run proof. VERIFICATION PASSED iteration 2.
 
 - **02-01** (Wave 1) — ✅ COMPLETE (2026-06-04) — schema + prompt contracts + 20-case Wave 0 regression test all GREEN
-- **02-02** (Wave 2) — thread 4 hops + dedicated `verbatim` JSONB column (migration + **[BLOCKING] live apply** + db types + both route sites :594/:921) + `ENGINE_VERSION` 3.2.0
+- **02-02** (Wave 2) — ✅ COMPLETE (2026-06-04) — VerbatimPayload + aggregator pluck/thread + verbatim JSONB migration (live on prod) + db types + both route sites :594/:921 + ENGINE_VERSION 3.2.0
 - **02-03** (Wave 3) — R1 real-run proof + R6 latency guard + R12 remix no-regression + R8 determinism
 
-**Next:** `/gsd-execute-phase 2` for plan 02-02 (Wave 2). In parallel: keep distilling corpus v1 (gates P3).
+**Next:** `/gsd-execute-phase 2` for plan 02-03 (Wave 3 — R1 real-run proof). In parallel: keep distilling corpus v1 (gates P3).
 
 ## Open bets / to verify
 
