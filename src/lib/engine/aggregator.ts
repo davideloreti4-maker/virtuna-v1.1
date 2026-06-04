@@ -8,7 +8,6 @@ import type {
   FeatureVector,
   GeminiAudioSignals,
   GeminiVideoSignals,
-  PlatformFitResult,
   PredictionResult,
   RuleScoreResult,
   SignalAvailability,
@@ -79,7 +78,6 @@ export const SCORE_WEIGHTS = {
 // iterates ONLY these keys; all SignalAvailability provenance fields (content_type,
 // niche, gemini_hook, etc.) continue to NOT participate in weight math.
 export const SCORE_WEIGHT_KEYS = ["behavioral", "gemini"] as const;
-type ScoreWeightKey = (typeof SCORE_WEIGHT_KEYS)[number];
 
 // =====================================================
 // Phase 5 D-06: CTA Penalty Matrix
@@ -497,7 +495,8 @@ export async function aggregateScores(
   // -------------------------------------------------
   const audioSignals = gemini.audio_signals; // GeminiAudioSignals | undefined (Plan 03 .optional())
   let audio_perceptual_score = 0;
-  let audio_score = 0;
+  // audio_score removed from blend in Plan 04 (R9). audio_perceptual_score still
+  // surfaced on PredictionResult (D-G3) so consumers can read the perceptual baseline.
   let audioPerceptualResult: AudioPerceptualResult | null = null;
   if (audioSignals) {
     audioPerceptualResult = computeAudioPerceptualScore(
@@ -505,18 +504,6 @@ export async function aggregateScores(
       contentTypeSlug,
     );
     audio_perceptual_score = audioPerceptualResult.audio_perceptual_score;
-    // D-G2 trend_phase boost mapping (LOCKED — pass through verbatim).
-    const TREND_PHASE_BOOST: Record<string, number> = {
-      emerging: 15,
-      rising: 10,
-      peak: 5,
-      declining: -5,
-    };
-    const boost =
-      audioFingerprintResult?.trend_phase != null
-        ? TREND_PHASE_BOOST[audioFingerprintResult.trend_phase] ?? 0
-        : 0;
-    audio_score = Math.max(0, Math.min(100, audio_perceptual_score + boost));
   }
 
   // Phase 6 (Note 7 / Q4 RESOLVED) — verbatim Gemini-emitted audio_description
@@ -621,61 +608,39 @@ export async function aggregateScores(
     featureVectorInput,
     adjustedVideoSignals,
   );
-  // ml predict call removed (Plan 02, R9, Pitfall 3). ml.ts moves to _dormant/ in Plan 05.
-  // SCORE_WEIGHT_KEYS ml key + blend math retained until Plan 04 cuts it; ml contribution = 0.
-  const mlScore: number | null = null;
+  // ml call removed (Plan 02, R9): ml.ts moves to _dormant/ in Plan 05.
+  // SCORE_WEIGHT_KEYS ml key removed in Plan 04 blend cut.
 
   // -------------------------------------------------
-  // RULE-04: Determine signal availability from pipeline result
+  // Signal availability — behavioral + gemini (the two blend keys).
+  // All other keys (ml, rules, trends, audio, retrieval, platform_fit) removed
+  // from the blend in Plan 04 (R9). Provenance flags (content_type, niche,
+  // gemini_hook/body/cta, personas, audio, audio_fingerprint, retrieval,
+  // platform_fit, pass2_timeline) are preserved on the struct so they continue
+  // to be persisted to analysis_results.signal_availability JSONB and surfaced
+  // in the UI; they simply no longer participate in selectWeights math.
   // -------------------------------------------------
   const availability: SignalAvailability = {
     behavioral: deepseekResult !== null,
     // Placeholder — overwritten below after per-segment availability is resolved.
     // HARD-03 fallback (factors.some(score > 0)) kicks in only when signalAvailability undefined.
     gemini: false,
-    ml: false, // D-05: disabled after Phase 10 audit — ml model uses engagement features not available at prediction time
-    rules:
-      ruleResult.matched_rules.length > 0 &&
-      !pipelineResult.warnings.some((w) =>
-        w.includes("Rule scoring unavailable")
-      ),
-    trends:
-      effectiveTrendEnrichment.matched_trends.length > 0 &&
-      !pipelineResult.warnings.some((w) =>
-        w.includes("Trend enrichment unavailable")
-      ),
-    // Phase 4 D-20: provenance flags surfaced from Wave 0 detector outcomes.
-    // Persisted to analysis_results.signal_availability JSONB; do NOT participate
-    // in selectWeights math (filtered out by SCORE_WEIGHT_KEYS).
+    // Provenance flags — NOT weight-bearing (not in SCORE_WEIGHT_KEYS after Plan 04 blend cut).
+    // Retained for JSONB persistence and UI surfacing.
+    ml:     false, // Plan 04 (R9): removed from blend. Provenance only.
+    rules:  false, // Plan 04 (R9): removed from blend. Provenance only.
+    trends: false, // Plan 04 (R9): removed from blend. Provenance only.
     content_type: pipelineResult.wave0Result.content_type !== null,
     niche: pipelineResult.wave0Result.niche !== null,
-    // Phase 5 D-12 — per-segment provenance from analyzeVideoSegmented.
-    // `?? false` fallback handles legacy callers (text mode / eval harness) AND
-    // historical JSONB rows that pre-date the segment keys (RESEARCH line 475).
-    // SCORE_WEIGHT_KEYS still excludes these per Phase 4 Cross-File Constraint #3.
     gemini_hook: pipelineResult.geminiResult.signalAvailability?.gemini_hook ?? false,
     gemini_body: pipelineResult.geminiResult.signalAvailability?.gemini_body ?? false,
     gemini_cta:  pipelineResult.geminiResult.signalAvailability?.gemini_cta  ?? false,
-    // Phase 7 D-15: personas provenance flag. Set true when ≥7-of-10 personas succeeded
-    // (i.e., pipelineResult.personaBehavioralAggregate !== null). Persisted to
-    // analysis_results.signal_availability JSONB; does NOT participate in selectWeights math
-    // (filtered out by SCORE_WEIGHT_KEYS per PATTERNS Critical Cross-File Constraint #3).
     personas: pipelineResult.personaBehavioralAggregate !== null,
-    // Phase 6 (D-G1) — weight-bearing (handles Plan 03's .optional() undefined case).
     audio: audioSignals != null,
-    // Phase 6 (D-G1) — provenance only (filtered out of SCORE_WEIGHT_KEYS).
     audio_fingerprint: audioFingerprintResult !== null,
-    // Phase 8 D-10: retrieval signal — IS weight-bearing (included in
-    // SCORE_WEIGHT_KEYS). True when ≥1 match survived hierarchical relaxation
-    // AND D-04b min_corpus_size gate passed (i.e., retrievalResult.score is non-null).
     retrieval: pipelineResult.retrievalResult.availability,
-    // Phase 9 D-07: platform_fit — IS weight-bearing (included in SCORE_WEIGHT_KEYS).
-    // True when Plan 09-07's pipeline platformFitResult is non-null and non-empty.
-    // Uses widened pipeline cast until PipelineResult inherits the feeder interface.
-    platform_fit: ((pipelineResult as PipelineResult & { platformFitResult: PlatformFitResult[] | null }).platformFitResult?.length ?? 0) > 0,
-    // Phase 3 (Plan 08) D-15: pass2_timeline — provenance flag, NOT weight-bearing.
-    // True when Wave 3 Pass 2 ≥7-of-10 personas succeeded (pass2_aggregate_built=true).
-    // Filtered out of SCORE_WEIGHT_KEYS; persisted to signal_availability JSONB.
+    // Plan 04: platform_fit key removed from blend — provenance only, preserved for JSONB.
+    platform_fit: false,
     pass2_timeline: pipelineResult.pass2Outcome?.pass2_aggregate_built ?? false,
   };
 
@@ -750,22 +715,9 @@ export async function aggregateScores(
   }
 
   // -------------------------------------------------
-  // Phase 9 (D-03): mean platform fit score across all scored platforms.
-  // platformFitResult comes from Plan 09-07's pipeline extension (typed via
-  // widenedPipeline cast until PipelineResult inherits PipelinePlatformFitFields).
-  // Mean of 0 when null/empty → term drops out via weights.platform_fit ?? 0.
-  // -------------------------------------------------
-  const widenedPipeline = pipelineResult as PipelineResult & { platformFitResult: PlatformFitResult[] | null };
-  const platformFitScores = widenedPipeline.platformFitResult ?? null;
-  const platformFitMeanScore = platformFitScores && platformFitScores.length > 0
-    ? platformFitScores.reduce((sum, p) => sum + p.fit_score, 0) / platformFitScores.length
-    : 0;
-
-  // -------------------------------------------------
-  // Overall score (dynamic weighted combination)
-  // Phase 6 (D-G1): audio_score is folded in when signal_availability.audio = true.
-  // When audio is absent, weights.audio = 0 (selectWeights redistributes the 0.07
-  // share across the other available signals), so the audio term contributes 0.
+  // Overall score — behavioral + gemini blend (Plan 04, R9).
+  // Dead terms (ml, rules, trends, audio, retrieval, platform_fit) removed.
+  // applyCtaPenalty applied to gemini before the blend (D-06, Pitfall 7 KEPT).
   // -------------------------------------------------
   const raw_overall_score = Math.min(
     100,
@@ -773,18 +725,7 @@ export async function aggregateScores(
       0,
       Math.round(
         behavioral_score * weights.behavioral +
-          ctaPenaltyApplied_gemini_score * weights.gemini + // Phase 5 D-06 — penalty flows here
-          (mlScore ?? 0) * weights.ml +
-          ruleResult.rule_score * weights.rules +
-          effectiveTrendEnrichment.trend_score * weights.trends +
-          audio_score * (weights.audio ?? 0) +
-          // Phase 8 D-03: retrievalResult.score is in [0,1] — scale by 100 to match
-          // the [0,100] range of the other terms before applying the weight.
-          // ?? 0 makes the term null-safe when retrieval is unavailable.
-          ((pipelineResult.retrievalResult.score ?? 0) * 100) * (weights.retrieval ?? 0) +
-          // Phase 9 (D-07): platformFitMeanScore is in [0,100] (from fit_score 0-100).
-          // ?? 0 makes the term null-safe when platform_fit is unavailable.
-          platformFitMeanScore * (weights.platform_fit ?? 0)
+          ctaPenaltyApplied_gemini_score * weights.gemini // Phase 5 D-06 — CTA penalty flows here
       )
     )
   );
@@ -961,11 +902,11 @@ export async function aggregateScores(
     predicted_engagement: null, // Plan 02 D1.1: sine-jitter fabrication deleted; field null until Plan 05 regrounding
     factors,
     suggestions,
-    rule_score: ruleResult.rule_score,
-    trend_score: effectiveTrendEnrichment.trend_score,
+    rule_score: ruleResult.rule_score,   // retained in type; ruleResult always fallback 50 (Plan 03 strip)
+    trend_score: effectiveTrendEnrichment.trend_score, // retained in type; always 0 (Plan 03 strip)
     gemini_score,
     behavioral_score,
-    ml_score: mlScore ?? 0,
+    ml_score: 0, // Plan 04 (R9): ml key removed from blend; field retained in type for back-compat
     // Phase 6 (D-G3) — pre-boost audio_perceptual_score. The fingerprint boost
     // is folded into audio_score (internal) before the weighted sum; consumers
     // who want the perceptual baseline read this field directly.
@@ -1006,7 +947,9 @@ export async function aggregateScores(
     // above (BEFORE Stage 10/11 per Pitfall #5). null on Supabase error,
     // FALLBACK on unknown niche, OptimalPostWindow with source='niche' on hit.
     optimal_post_window,
-    score_weights: weights, // Actual weights used (may differ from BASE if signals missing)
+    // score_weights: 2-key blend (Plan 04 R9). Dead keys set to 0 for back-compat with
+    // PredictionResult.score_weights type (types.ts still includes ml/rules/trends).
+    score_weights: { ...weights, ml: 0, rules: 0, trends: 0 },
     latency_ms: pipelineResult.total_duration_ms,
     cost_cents,
     engine_version: ENGINE_VERSION,
@@ -1027,11 +970,9 @@ export async function aggregateScores(
     // the "similar videos" panel without further DB joins (D-02).
     retrieval_score: pipelineResult.retrievalResult.score,
     retrieval_evidence: pipelineResult.retrievalResult.evidence,
-    // Phase 9 D-07 — platform_fit signal output. Pipeline passes per-platform
-    // results (Plan 09-07) — array widened via cast until PipelineResult inherits
-    // the feeder interface. The first result is the primary (highest-fit) platform.
-    // Plan 09-07 will align the PredictionResult type to match the pipeline shape.
-    platform_fit: widenedPipeline.platformFitResult?.[0] ?? null,
+    // Plan 04 (R9): platform_fit key removed from blend; field set null.
+    // platform_fit module moves to _dormant/ in Plan 05; field retained in type for back-compat.
+    platform_fit: null,
   };
 
   // -------------------------------------------------
