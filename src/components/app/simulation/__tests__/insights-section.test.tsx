@@ -1,6 +1,7 @@
 /** @vitest-environment happy-dom */
 /**
  * Phase 13 Plan 02 — SuggestionsSection tests (D-05 + D-06 + D-30)
+ * Updated Phase 01 Plan 06 — D4.1: empty suggestions → renders nothing (no FALLBACK_ITEM fake advice)
  *
  * Test surface:
  *   1 — low band: renders 3 fix items with "Fix" badge (accent variant)
@@ -8,7 +9,8 @@
  *   3 — reinforcement badge label is "Strength" (not "Reinforcement") with success variant
  *   4 — stretch badge label is "Stretch" with info variant
  *   5 — timestamp renders when timestamp_ms > 0; absent when 0
- *   6 — empty suggestions → fallback item rendered; never returns null
+ *   6 — empty suggestions → renders nothing (no FALLBACK_ITEM surfaced — D4.1 honesty edit)
+ *   7 — non-empty suggestions → items rendered normally
  */
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
@@ -151,19 +153,31 @@ describe('SuggestionsSection — timestamp rendering', () => {
   });
 });
 
-// Test 6: empty suggestions → fallback item rendered; never returns null
+// Test 6: empty suggestions → renders nothing (D4.1 — no FALLBACK_ITEM fake advice)
 describe('SuggestionsSection — empty/degraded state', () => {
-  it('Test 6: empty suggestions → fallback "Analysis in progress" item rendered (D-04 always-on)', () => {
+  it('Test 6: empty suggestions → renders nothing (null/empty fragment — D4.1 honesty edit)', () => {
     const { container } = render(
       <SuggestionsSection band="low" suggestions={[]} />,
     );
-    // Component must render (not null)
-    expect(container.firstChild).not.toBeNull();
-    // Fallback headline
-    expect(screen.getByText('Analysis in progress')).toBeInTheDocument();
-    // Fallback detail
-    expect(screen.getByText(/Suggestions were not available/)).toBeInTheDocument();
-    // Fallback uses reinforcement badge (neutral)
-    expect(screen.getByText('Strength')).toBeInTheDocument();
+    // Must render nothing — no fake advice shown
+    expect(container.firstChild).toBeNull();
+    // Fallback fake advice must NOT appear
+    expect(screen.queryByText('Analysis in progress')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Suggestions were not available/)).not.toBeInTheDocument();
+  });
+});
+
+// Test 7: non-empty suggestions → items rendered normally
+describe('SuggestionsSection — non-empty suggestions', () => {
+  it('Test 7: non-empty suggestions → items rendered with correct headlines', () => {
+    render(
+      <SuggestionsSection
+        band="low"
+        suggestions={[makeFixItem(1), makeFixItem(2)]}
+      />,
+    );
+    expect(screen.getByText('Fix headline 1')).toBeInTheDocument();
+    expect(screen.getByText('Fix headline 2')).toBeInTheDocument();
+    expect(screen.getAllByText('Fix')).toHaveLength(2);
   });
 });

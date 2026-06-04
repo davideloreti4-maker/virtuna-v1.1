@@ -6,4 +6,4 @@
  * D-23 cache invariant: prediction-cache.ts keys on ENGINE_VERSION; this flip auto-invalidates
  * all `3.0.0-dev` cached rows on next analyze-route call.
  */
-export const ENGINE_VERSION = "3.0.0";
+export const ENGINE_VERSION = "3.1.0";

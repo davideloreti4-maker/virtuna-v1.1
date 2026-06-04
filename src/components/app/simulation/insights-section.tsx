@@ -41,24 +41,20 @@ function formatTimestamp(ms: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-const FALLBACK_ITEM: CounterfactualSuggestionItem = {
-  type: 'reinforcement',
-  headline: 'Analysis in progress',
-  detail: 'Suggestions were not available for this prediction. Run another analysis to get actionable feedback.',
-  timestamp_ms: 0,
-  signal_anchor: '',
-};
-
 /**
  * SuggestionsSection — Band-adaptive counterfactual suggestions.
  * Phase 13 D-05 + D-06: consumes result.counterfactuals.suggestions + band.
- * D-04 contract: never returns null. Empty suggestions → fallback item.
+ * Phase 01 Plan 06 D4.1: empty suggestions → renders nothing (no fabricated fallback advice).
+ * Null-guard is at results-panel.tsx (result.counterfactuals && ...) — this component
+ * only fires when counterfactuals is non-null; empty suggestions = render nothing.
  *
  * @param suggestions — CounterfactualSuggestionItem[] from result.counterfactuals
  * @param band — 'low' | 'mid' | 'high' from result.counterfactuals.band
  */
 export function SuggestionsSection({ suggestions, band }: SuggestionsSectionProps) {
-  const items = suggestions.length === 0 ? [FALLBACK_ITEM] : suggestions;
+  if (suggestions.length === 0) return null;
+
+  const items = suggestions;
 
   return (
     <div className="py-1">
