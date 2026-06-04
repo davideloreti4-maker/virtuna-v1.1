@@ -384,11 +384,8 @@ describe("pipeline integration tests", () => {
     expect(result.geminiResult.analysis.factors).toHaveLength(5);
     expect(result.deepseekResult).not.toBeNull();
 
-    // Rule result should be default fallback
-    expect(result.ruleResult.rule_score).toBe(50);
-    expect(result.ruleResult.matched_rules).toEqual([]);
-
-    // Trend enrichment should be default fallback
+    // Rule result removed from PipelineResult in Plan 03 strip.
+    // Trend enrichment should be default fallback (still present until Task 2)
     expect(result.trendEnrichment.trend_score).toBe(0);
 
     // RequestId and metadata still present

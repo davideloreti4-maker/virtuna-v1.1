@@ -83,7 +83,6 @@ import {
   SCORE_WEIGHT_KEYS,
 } from "../aggregator";
 import type {
-  AudioFingerprintResult,
   GeminiAudioSignals,
 } from "../types";
 import {
@@ -111,18 +110,7 @@ function makeAudioSignals(
   };
 }
 
-function makeFingerprint(
-  overrides: Partial<AudioFingerprintResult> = {},
-): AudioFingerprintResult {
-  return {
-    sound_name: "Test Sound",
-    sound_url: null,
-    similarity: 0.85,
-    trend_phase: "rising",
-    velocity_score: 42,
-    ...overrides,
-  };
-}
+// Plan 03: makeFingerprint removed — audioFingerprintResult no longer in PipelineResult.
 
 // =====================================================
 // Test setup
@@ -191,7 +179,6 @@ describe("D-G3 — audio_perceptual_score wiring", () => {
       audio_hook_first_2s_0_10: 6,
       voiceover_ratio: 0.6,
     });
-    const fingerprint = makeFingerprint({ trend_phase: "emerging" });
     const pipeline = makePipelineResult({
       wave0Result: {
         content_type: { type: "talking_head", confidence: 0.9 },
@@ -201,7 +188,7 @@ describe("D-G3 — audio_perceptual_score wiring", () => {
         analysis: makeGeminiAnalysis({ audio_signals: audio }),
         cost_cents: 0.5,
       },
-      audioFingerprintResult: fingerprint,
+      // Plan 03: audioFingerprintResult removed from PipelineResult; aggregator always uses null.
     });
     const result = await aggregateScores(pipeline);
     // talking_head: 0.45*6 + 0.35*6 + 0.20*(0.6*10) = 2.7 + 2.1 + 1.2 = 6.0 → 60
@@ -230,8 +217,9 @@ describe("D-G2 — audio_fingerprint_boost per trend_phase", () => {
     audio_description: "Voice content with background music",
   };
 
+  // Plan 03: audioFingerprintResult removed from PipelineResult; pipelineWithFingerprint now ignores trend_phase.
   function pipelineWithFingerprint(
-    trend_phase: AudioFingerprintResult["trend_phase"] | "none",
+    _trend_phase: string,
   ) {
     return makePipelineResult({
       wave0Result: {
@@ -242,36 +230,37 @@ describe("D-G2 — audio_fingerprint_boost per trend_phase", () => {
         analysis: makeGeminiAnalysis({ audio_signals: baseAudio }),
         cost_cents: 0.5,
       },
-      audioFingerprintResult:
-        trend_phase === "none" ? null : makeFingerprint({ trend_phase }),
+      // audioFingerprintResult removed from PipelineResult in Plan 03 strip.
     });
   }
 
   it("Test 5: emerging trend_phase → boost is applied internally; final audio_score = 75 (base 60 + 15)", async () => {
     const result = await aggregateScores(pipelineWithFingerprint("emerging"));
-    // Audio_score with boost = 75; PredictionResult.audio_perceptual_score stays pre-boost (60).
+    // Plan 03: audio fingerprint always null now; no boost applied.
     expect(result.audio_perceptual_score).toBe(60);
-    // The boost shifts overall_score upward vs the "none" baseline (asserted in Test 9).
-    // Use the matched_trends synthesis side-effect as a cross-check: trend_phase is preserved.
-    expect(result.audio_fingerprint?.trend_phase).toBe("emerging");
+    // Plan 03: audio_fingerprint always null.
+    expect(result.audio_fingerprint).toBeNull();
   });
 
   it("Test 6: rising trend_phase → +10 boost (audio_score = 70 internally)", async () => {
     const result = await aggregateScores(pipelineWithFingerprint("rising"));
     expect(result.audio_perceptual_score).toBe(60);
-    expect(result.audio_fingerprint?.trend_phase).toBe("rising");
+    // Plan 03: audio fingerprint always null.
+    expect(result.audio_fingerprint).toBeNull();
   });
 
   it("Test 7: peak trend_phase → +5 boost (audio_score = 65 internally)", async () => {
     const result = await aggregateScores(pipelineWithFingerprint("peak"));
     expect(result.audio_perceptual_score).toBe(60);
-    expect(result.audio_fingerprint?.trend_phase).toBe("peak");
+    // Plan 03: audio fingerprint always null.
+    expect(result.audio_fingerprint).toBeNull();
   });
 
   it("Test 8: declining trend_phase → -5 boost (audio_score = 55 internally)", async () => {
     const result = await aggregateScores(pipelineWithFingerprint("declining"));
     expect(result.audio_perceptual_score).toBe(60);
-    expect(result.audio_fingerprint?.trend_phase).toBe("declining");
+    // Plan 03: audio fingerprint always null.
+    expect(result.audio_fingerprint).toBeNull();
   });
 
   it("Test 9: no fingerprint match → 0 delta (audio_score = base 60)", async () => {
@@ -304,7 +293,7 @@ describe("D-G2 — audio_fingerprint_boost per trend_phase", () => {
           analysis: makeGeminiAnalysis({ audio_signals: highAudio }),
           cost_cents: 0.5,
         },
-        audioFingerprintResult: makeFingerprint({ trend_phase: "emerging" }),
+        // Plan 03: audioFingerprintResult removed from PipelineResult.
       }),
     );
     // PredictionResult.audio_perceptual_score is computed pre-boost. Voice formula:
@@ -333,7 +322,7 @@ describe("D-G2 — audio_fingerprint_boost per trend_phase", () => {
           analysis: makeGeminiAnalysis({ audio_signals: lowAudio }),
           cost_cents: 0.5,
         },
-        audioFingerprintResult: makeFingerprint({ trend_phase: "declining" }),
+        // Plan 03: audioFingerprintResult removed from PipelineResult.
       }),
     );
     // Voice formula: 0.45*0 + 0.35*0 + 0.20*(0.3*10) = 0.6 → 6 (after *10 + round).
@@ -367,16 +356,15 @@ describe("D-G1 — SignalAvailability widening", () => {
   });
 
   it("Test 13: signal_availability.audio_fingerprint = true when fingerprint result present", async () => {
-    const pipeline = makePipelineResult({
-      audioFingerprintResult: makeFingerprint(),
-    });
+    // Plan 03: audioFingerprintResult removed from PipelineResult; always null → always false.
+    const pipeline = makePipelineResult({});
     const result = await aggregateScores(pipeline);
-    expect(result.signal_availability.audio_fingerprint).toBe(true);
+    expect(result.signal_availability.audio_fingerprint).toBe(false);
   });
 
   it("Test 14: signal_availability.audio_fingerprint = false when fingerprint null", async () => {
     const result = await aggregateScores(
-      makePipelineResult({ audioFingerprintResult: null }),
+      makePipelineResult({}),
     );
     expect(result.signal_availability.audio_fingerprint).toBe(false);
   });
@@ -388,9 +376,8 @@ describe("D-G1 — SignalAvailability widening", () => {
 
 describe("D-G4 — FeatureVector.audioTrendingMatch source swap", () => {
   it("Test 15: sources from fingerprint.similarity when available", async () => {
+    // Plan 03: audioFingerprintResult removed; falls back to trendEnrichment velocity.
     const pipeline = makePipelineResult({
-      audioFingerprintResult: makeFingerprint({ similarity: 0.85 }),
-      // Even with a matched_trends entry present, fingerprint takes priority.
       trendEnrichment: makeTrendEnrichment({
         matched_trends: [
           { sound_name: "X", velocity_score: 30, trend_phase: "rising" },
@@ -398,12 +385,13 @@ describe("D-G4 — FeatureVector.audioTrendingMatch source swap", () => {
       }),
     });
     const result = await aggregateScores(pipeline);
-    expect(result.feature_vector.audioTrendingMatch).toBeCloseTo(0.85, 5);
+    // Fallback: Math.min(1, 30/100) = 0.3
+    expect(result.feature_vector.audioTrendingMatch).toBeCloseTo(0.3, 5);
   });
 
   it("Test 16: falls back to Jaro-Winkler velocity-derived score when fingerprint null", async () => {
     const pipeline = makePipelineResult({
-      audioFingerprintResult: null,
+      // Plan 03: audioFingerprintResult always null now.
       trendEnrichment: makeTrendEnrichment({
         matched_trends: [
           { sound_name: "Y", velocity_score: 50, trend_phase: "rising" },
@@ -417,7 +405,7 @@ describe("D-G4 — FeatureVector.audioTrendingMatch source swap", () => {
 
   it("Test 17: audioTrendingMatch = null when both fingerprint and matched_trends are absent", async () => {
     const pipeline = makePipelineResult({
-      audioFingerprintResult: null,
+      // Plan 03: audioFingerprintResult always null now.
       trendEnrichment: makeTrendEnrichment({ matched_trends: [] }),
     });
     const result = await aggregateScores(pipeline);
@@ -431,25 +419,14 @@ describe("D-G4 — FeatureVector.audioTrendingMatch source swap", () => {
 
 describe("D-F3 — matched_trends synthesized from fingerprint", () => {
   it("Test 18: when fingerprint present, matched_trends contains a synthesized entry (sound_name + trend_phase + velocity_score)", async () => {
-    const fp = makeFingerprint({
-      sound_name: "Test Hip Hop",
-      similarity: 0.9,
-      trend_phase: "rising",
-      velocity_score: 75,
-    });
+    // Plan 03: audioFingerprintResult removed from PipelineResult; synthesis no longer occurs.
     const pipeline = makePipelineResult({
-      audioFingerprintResult: fp,
-      // trends.ts (Plan 05) skipped its Jaro-Winkler loop because audioFingerprintMatched=true;
-      // we simulate that by passing an empty matched_trends here. Aggregator synthesizes the entry.
       trendEnrichment: makeTrendEnrichment({ matched_trends: [] }),
     });
     const result = await aggregateScores(pipeline);
-    // The synthesized entry on trend_enrichment.matched_trends is internal to aggregator;
-    // its observable effect is on signal_availability.trends (since the aggregator sees
-    // matched_trends.length > 0 after synthesis). The fingerprint payload itself is fully
-    // accessible via PredictionResult.audio_fingerprint.
-    expect(result.audio_fingerprint).toEqual(fp);
-    // The synthesis must NOT mutate the input pipelineResult.trendEnrichment.matched_trends.
+    // Plan 03: audio_fingerprint always null; no synthesis.
+    expect(result.audio_fingerprint).toBeNull();
+    // The input trendEnrichment must not be mutated.
     expect(pipeline.trendEnrichment.matched_trends).toEqual([]);
   });
 });
@@ -554,20 +531,14 @@ describe("D-G1 + selectWeights — weight redistribution", () => {
 
 describe("D-G1 — PredictionResult audio fields", () => {
   it("Test 22: PredictionResult.audio_fingerprint passes through the full match record; null when no match", async () => {
-    const fp = makeFingerprint({
-      sound_name: "Test Hit",
-      similarity: 0.92,
-      trend_phase: "emerging",
-      velocity_score: 120,
-    });
-
+    // Plan 03: audioFingerprintResult removed from PipelineResult; always null.
     const withMatch = await aggregateScores(
-      makePipelineResult({ audioFingerprintResult: fp }),
+      makePipelineResult({}),
     );
-    expect(withMatch.audio_fingerprint).toEqual(fp);
+    expect(withMatch.audio_fingerprint).toBeNull();
 
     const withoutMatch = await aggregateScores(
-      makePipelineResult({ audioFingerprintResult: null }),
+      makePipelineResult({}),
     );
     expect(withoutMatch.audio_fingerprint).toBeNull();
   });
