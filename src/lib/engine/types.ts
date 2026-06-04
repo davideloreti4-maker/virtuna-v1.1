@@ -297,17 +297,20 @@ export interface PredictionResult {
    *  Null when audio_signals absent. Sourced verbatim from
    *  geminiResult.analysis.audio_signals?.audio_description ?? null. */
   audio_description?: string | null;
+  // Post-strip (Plan 01, R9): only `behavioral` + `gemini` are live (base 0.40/0.35,
+  // renormalized ≈0.533/0.467). The dead keys are forced to 0 by aggregator.ts and
+  // retained ONLY for back-compat of persisted score_weights JSONB rows.
   score_weights: {
-    behavioral: number; // 0.35 (Phase 8 D-03b redistributed to 0.33)
-    gemini: number; // 0.25 (Phase 8 D-03b redistributed to 0.24)
-    ml: number; // 0.15 (Phase 8 D-03b redistributed to 0.14)
-    rules: number; // 0.15 (Phase 8 D-03b redistributed to 0.14)
-    trends: number; // 0.10
-    /** Phase 6 (D-G1) — audio weight 0.07; redistributes when signal_availability.audio=false. */
+    behavioral: number; // LIVE — base 0.40, normalized ≈0.533
+    gemini: number; // LIVE — base 0.35, normalized ≈0.467
+    ml: number; // dead (0) — removed from blend, dormanted
+    rules: number; // dead (0) — removed from blend, dormanted
+    trends: number; // dead (0) — removed from blend, dormanted
+    /** dead (0/absent) — audio removed from blend, module dormanted (Plan 01). */
     audio?: number;
-    /** Phase 8 (D-03b) — 0.05 base; redistributed when SignalAvailability.retrieval = false. */
+    /** dead (0/absent) — retrieval removed from blend, module dormanted (Plan 01). */
     retrieval?: number;
-    /** Phase 9 — platform_fit weight; redistributed when SignalAvailability.platform_fit = false. */
+    /** dead (0/absent) — platform_fit removed from blend, module dormanted (Plan 01). */
     platform_fit?: number;
   };
 

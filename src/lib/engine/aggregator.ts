@@ -207,9 +207,11 @@ function calculateConfidence(
   if (deepseekConfidence === "high") signal += 0.1;
   else if (deepseekConfidence === "medium") signal += 0.05;
 
-  // RULE-04: Confidence penalty for missing signals
-  if (!availability.rules) signal -= 0.05;
-  if (!availability.trends) signal -= 0.05;
+  // Plan 01 (WR-01, R5/R9): rules + trends were removed from the engine BY DESIGN.
+  // Penalizing confidence for their absence would dishonestly depress every prediction
+  // for signals we deliberately deleted, so the former RULE-04 -0.05/-0.05 penalty is
+  // gone. `availability.rules`/`.trends` remain as provenance flags only.
+  void availability;
 
   // Model agreement component (0-0.4)
   const geminiDirection = geminiScore - 50;
@@ -358,8 +360,10 @@ export interface AggregateScoresOptions {
 /**
  * Aggregate all pipeline stage outputs into a PredictionResult.
  *
- * v2 formula: behavioral 35% + gemini 25% + ml 15% + rules 15% + trends 10%
- * RULE-04: Dynamic weight selection adapts when signals are missing.
+ * Post-strip formula (Plan 01, R9): behavioral 0.40 + gemini 0.35, renormalized to the
+ * two live signals (≈53.3% / 46.7%). The dead v2 sources (ml/rules/trends/audio/retrieval/
+ * platform_fit) were removed from the blend and dormanted.
+ * RULE-04: Dynamic weight selection adapts when a live signal is missing.
  *
  * Takes the full PipelineResult from runPredictionPipeline()
  * and returns a complete PredictionResult.
@@ -654,7 +658,7 @@ export async function aggregateScores(
   const weights = selectWeights(availability);
 
   // -------------------------------------------------
-  // Behavioral score (35% base weight)
+  // Behavioral score (0.40 base weight → ≈53.3% normalized post-strip)
   // Source: DeepSeek's 7 component scores, each 0-10
   // -------------------------------------------------
   const cs = deepseek?.component_scores;
@@ -671,7 +675,7 @@ export async function aggregateScores(
   const behavioral_score = Math.round(behavioralAvg * 10); // Normalize to 0-100
 
   // -------------------------------------------------
-  // Gemini score (25% base weight)
+  // Gemini score (0.35 base weight → ≈46.7% normalized post-strip)
   // Source: Gemini's 5 factor scores, each 0-10
   // -------------------------------------------------
   const geminiAvg =
@@ -778,10 +782,11 @@ export async function aggregateScores(
     );
   }
 
-  // HARD-03: Explicit dual-failure warning
+  // HARD-03: Explicit dual-failure warning. Post-strip (Plan 01) rules + trends are
+  // gone, so when both LLM signals fail there is no model signal left at all.
   if (!availability.gemini && !availability.behavioral) {
     warnings.push(
-      "Both LLM providers failed — result based on rules and trends only"
+      "Both LLM providers failed — this result is unreliable and should not be trusted"
     );
   }
 

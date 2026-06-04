@@ -171,14 +171,20 @@ export function InputResultCard({
   }
 
   // Hero value: count-in number (confident) or the "Hold" verdict word (gated).
+  // Post-strip (Plan 01, CR-02) a percentile label may be absent (deepseek no longer
+  // fabricates them; persona aggregate may be null) — degrade to "—" instead of an
+  // orphan "Top " label with no number.
   const leadRank = heroNum ?? lead?.rank ?? null;
+  const leadValue = leadRank ?? lead?.pct ?? null;
   const heroValue = gated ? (
     'Hold'
-  ) : (
+  ) : leadValue != null ? (
     <>
       <span className="text-[16px] font-medium text-white/55">Top </span>
-      {leadRank ?? lead?.pct}
+      {leadValue}
     </>
+  ) : (
+    '—'
   );
 
   // Tiles: the four percentiles. The lead (strongest rank) is accented; gated
