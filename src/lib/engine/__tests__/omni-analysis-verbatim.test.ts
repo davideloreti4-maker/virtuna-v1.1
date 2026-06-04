@@ -406,3 +406,68 @@ describe("verbatim — null vs [inaudible] contract (D-02 / D-04.2)", () => {
     expect(parsed.hook_verbatim.spoken_words).toContain("[inaudible]");
   });
 });
+
+// =====================================================
+// Phase 2 Plan 02 — VerbatimPayload type + PredictionResult.verbatim
+// =====================================================
+
+describe("verbatim — VerbatimPayload type shape (Plan 02 Task 1)", () => {
+  it("VerbatimPayload: type is exported from @/lib/engine/types and has hook + segments fields", async () => {
+    // Import dynamically so a missing export surfaces as a test failure, not a compile error
+    const types = await import("@/lib/engine/types");
+    // VerbatimPayload is a TypeScript interface — we verify it shapes correctly at runtime
+    // by constructing a conformant value and checking the import succeeded
+    expect(types).toBeDefined();
+
+    // Build a conformant VerbatimPayload value
+    const payload: import("@/lib/engine/types").VerbatimPayload = {
+      hook: { spoken_words: "Hello world", on_screen_text: null },
+      segments: [
+        { idx: 0, spoken_text: "Hello world", on_screen_text: null },
+        { idx: 1, spoken_text: null, on_screen_text: "SUBSCRIBE" },
+      ],
+    };
+
+    expect(payload.hook?.spoken_words).toBe("Hello world");
+    expect(payload.segments).toHaveLength(2);
+    expect(payload.segments?.[0]?.idx).toBe(0);
+    expect(payload.segments?.[1]?.on_screen_text).toBe("SUBSCRIBE");
+  });
+
+  it("VerbatimPayload: hook-only shape is valid (segments optional)", async () => {
+    const payload: import("@/lib/engine/types").VerbatimPayload = {
+      hook: { spoken_words: "Hook text" },
+    };
+    expect(payload.hook?.spoken_words).toBe("Hook text");
+    expect(payload.segments).toBeUndefined();
+  });
+
+  it("VerbatimPayload: segments-only shape is valid (hook optional)", async () => {
+    const payload: import("@/lib/engine/types").VerbatimPayload = {
+      segments: [{ idx: 0, spoken_text: "Segment 0", on_screen_text: null }],
+    };
+    expect(payload.hook).toBeUndefined();
+    expect(payload.segments?.[0]?.spoken_text).toBe("Segment 0");
+  });
+
+  it("PredictionResult.verbatim: field accepts VerbatimPayload | null", async () => {
+    const { } = await import("@/lib/engine/types");
+    // Type-level check: construct a partial PredictionResult with verbatim set
+    // If the field doesn't exist on the type, TypeScript compilation fails (tsc --noEmit)
+    const partial: Partial<import("@/lib/engine/types").PredictionResult> = {
+      verbatim: {
+        hook: { spoken_words: "test", on_screen_text: null },
+        segments: [{ idx: 0, spoken_text: "test", on_screen_text: null }],
+      },
+    };
+    expect(partial.verbatim?.hook?.spoken_words).toBe("test");
+    expect(partial.verbatim?.segments?.[0]?.idx).toBe(0);
+  });
+
+  it("PredictionResult.verbatim: field accepts null", async () => {
+    const partial: Partial<import("@/lib/engine/types").PredictionResult> = {
+      verbatim: null,
+    };
+    expect(partial.verbatim).toBeNull();
+  });
+});

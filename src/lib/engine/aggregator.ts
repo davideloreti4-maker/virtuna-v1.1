@@ -13,6 +13,7 @@ import type {
   SignalAvailability,
   Suggestion,
   TrendEnrichment,
+  VerbatimPayload,
 } from "./types";
 import type { EmotionArcPoint } from "./qwen/schemas";
 import type { HookDecomposition } from "./types";
@@ -528,6 +529,28 @@ export async function aggregateScores(
     if (Array.isArray(arcRaw) && arcRaw.length > 0) emotion_arc = arcRaw;
   } catch {
     emotion_arc = null; // non-fatal
+  }
+
+  // Phase 2 (R1) — verbatim pluck (hook + per-segment). Non-fatal like emotion_arc.
+  // hook: hook_verbatim off geminiResult.analysis (rides the `as` cast like emotion_arc).
+  // segments: derived from omniSegments (= pipelineResult.segments, normalizeSegments output).
+  //   Each SegmentGrid now carries spoken_text/on_screen_text (Plan 01 SegmentSchema extension).
+  //   Derived AFTER omniSegments is set (:866) — see pass2Outcome block below.
+  let verbatim: VerbatimPayload | null = null;
+  try {
+    const hookRaw = (geminiResult.analysis as unknown as {
+      hook_verbatim?: { spoken_words?: string | null; on_screen_text?: string | null };
+    })?.hook_verbatim;
+    const hook = hookRaw ? {
+      spoken_words: hookRaw.spoken_words ?? null,
+      on_screen_text: hookRaw.on_screen_text ?? null,
+    } : undefined;
+
+    // Per-segment verbatim will be derived below from omniSegments after :866.
+    // Temporarily store hook only; segments merged in below.
+    if (hook) verbatim = { hook };
+  } catch {
+    verbatim = null; // non-fatal
   }
 
   // Phase 2 (Quick 260528-nqx) — hook_decomposition pluck from Gemini analysis.

@@ -21,6 +21,20 @@ export type { EmotionArcPoint };
 // Phase 3 (D-07) — re-export SegmentGrid so engine consumers don't reach into qwen/.
 export type { SegmentGrid } from "./qwen/schemas";
 
+// Phase 2 (R1) — verbatim payload from Omni (hook + per-segment).
+// Null when video absent, no speech, or Qwen omitted the field.
+// hook: hook_verbatim from the first ~3s (spoken_words + on_screen_text)
+// segments: per-segment spoken_text/on_screen_text indexed by idx (D-02 null contract;
+//   D-04.2 [inaudible] marker preserved as string, never coerced to null).
+export interface VerbatimPayload {
+  hook?: { spoken_words?: string | null; on_screen_text?: string | null };
+  segments?: Array<{
+    idx: number;
+    spoken_text: string | null;
+    on_screen_text: string | null;
+  }>;
+}
+
 // D-13 (Phase 3) + Phase 4 slot_type (OQ-1 / Plan 04-02): per-persona attention timeline + archetype slot.
 // Backwards-compatible additive payload on PredictionResult. Phase 4 (Audience node)
 // consumes this; null when Pass 2 < SUCCESS_THRESHOLD per D-06.
@@ -266,6 +280,11 @@ export interface PredictionResult {
   /** Phase 1 (R1.7) — Emotion arc timeline from Omni Plus. Null when video absent
    *  or Qwen omitted the field. Optional to preserve compile against existing consumers. */
   emotion_arc?: EmotionArcPoint[] | null;
+  /** Phase 2 (R1) — Verbatim transcription from Omni (hook + per-segment).
+   *  Null when video absent, no speech, or Qwen omitted the field.
+   *  VerbatimPayload.hook = hook_verbatim (first ~3s spoken_words + on_screen_text).
+   *  VerbatimPayload.segments = per-segment spoken_text/on_screen_text (D-02 null; D-04.2 [inaudible]). */
+  verbatim?: VerbatimPayload | null;
   /** Phase 1 (R1.9, Plan 06 T3 B4) — true when confidence < ANTI_VIRALITY_THRESHOLD.
    *  UI renders "Don't post yet" orange verdict state when true. REQUIRED field
    *  (not optional) — aggregator assigns on every PredictionResult; defaults to
