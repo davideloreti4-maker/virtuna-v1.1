@@ -62,34 +62,23 @@ export { ENGINE_VERSION };
 // v2 Score Weights — config-driven for maintainability
 // =====================================================
 
-// D-16 (Phase 13) — re-tuned for video-mode reality.
-// Sources: CONTEXT D-14 (rules=0), D-15 (retrieval=0), D-16 (redistribution).
-// Audio weight 0.05 per CONTEXT D-16 conditional on trending_sounds population (D-32).
-// See .planning/phases/13-.../13-01-SUMMARY.md for trending_sounds count + decision.
-// trending_sounds table: 0 rows (2026-05-22). User decision: audio=0.05 (conservative
-// weight; audio_perceptual_score from Gemini is real but fingerprint match contributes 0).
-// Exported for test introspection (aggregator-audio.test.ts, aggregator.test.ts).
+// Plan 04 (R9) — blend reduced to behavioral + gemini only (dead keys removed).
+// Dead keys: ml=0, rules=0, trends=0.10 (trend_score always 0 post-Plan03 strip),
+// audio=0.05, retrieval=0, platform_fit=0.05. Removing trends 0.10 redistribution
+// produces a small upward score nudge (honesty correction per RESEARCH Pitfall 6);
+// measured in Plan 06. applyCtaPenalty KEPT (modifies live gemini term — not a dead key,
+// Pitfall 7 / Open Q1).
+// Exported for test introspection (aggregator.test.ts, aggregator-audio.test.ts).
 export const SCORE_WEIGHTS = {
-  behavioral:   0.40,  // primary CoT, video-aware via Wave 2 input
-  gemini:       0.35,  // drives Stage 11 too; video understanding is core
-  audio:        0.05,  // D-32 — audio_perceptual_score real; fingerprint match 0 (trending_sounds empty); user decision 2026-05-22
-  trends:       0.10,  // audio-fingerprint based, video-derived
-  platform_fit: 0.05,  // video-derived from Wave 4
-  ml:           0,     // disabled — Phase 10
-  retrieval:    0,     // disabled this phase — D-15 (corpus caption-derived)
-  rules:        0,     // disabled this phase — D-14 (all regex rules operate on caption text)
+  behavioral: 0.40,  // primary CoT, video-aware via Wave 2 input
+  gemini:     0.35,  // video understanding; CTA penalty applied before blend
 } as const;
 
-// PATTERNS Critical Cross-File Constraint #1 (Phase 8) + #3 (Phase 4 + Phase 6):
-// selectWeights() must iterate ONLY weight-bearing SCORE_WEIGHTS keys.
-// - Phase 4 widened SignalAvailability with content_type + niche provenance keys
-//   (D-20) — those do NOT participate in weight math (provenance only).
-// - Phase 6 (D-G1) adds `audio` (weight-bearing) but does NOT add `audio_fingerprint`
-//   (provenance only; the fingerprint boost is folded into audio_score before the
-//   weighted average, so audio_fingerprint must NOT have its own slot in the math).
-// - Phase 8 added `retrieval` as a weight-bearing key — MUST be in this tuple
-//   (skipping it silently drops the new 0.05 slot in the filter below).
-export const SCORE_WEIGHT_KEYS = ["behavioral", "gemini", "ml", "rules", "trends", "audio", "retrieval", "platform_fit"] as const;
+// Plan 04 (R9) — SCORE_WEIGHT_KEYS reduced to the two live signals. Dead keys
+// (ml, rules, trends, audio, retrieval, platform_fit) removed. selectWeights
+// iterates ONLY these keys; all SignalAvailability provenance fields (content_type,
+// niche, gemini_hook, etc.) continue to NOT participate in weight math.
+export const SCORE_WEIGHT_KEYS = ["behavioral", "gemini"] as const;
 type ScoreWeightKey = (typeof SCORE_WEIGHT_KEYS)[number];
 
 // =====================================================
@@ -160,9 +149,10 @@ export function applyCtaPenalty(
 // Aggregator computes the values; route layer persists them via PredictionResult.
 
 /**
- * Select weights based on which signal sources are available.
- * When a source is missing, its weight is redistributed proportionally
- * to the remaining sources so weights always sum to ~1.0.
+ * Select weights for the behavioral + gemini 2-key blend.
+ * When a source is missing its weight redistributes to the remaining source
+ * so weights always sum to ~1.0. Dead keys (ml, rules, trends, audio,
+ * retrieval, platform_fit) removed in Plan 04 (R9).
  *
  * Exported for benchmarking and testing.
  */
@@ -171,111 +161,25 @@ export function selectWeights(
 ): {
   behavioral: number;
   gemini: number;
-  ml: number;
-  rules: number;
-  trends: number;
-  audio?: number;
-  retrieval?: number;
-  platform_fit?: number;
 } {
-  // Filter Object.entries to ONLY known SCORE_WEIGHTS keys. Phase 4+ extensions
-  // that add provenance keys to SignalAvailability (content_type, niche, future
-  // hook_decomp) MUST NOT participate in the weight math.
-  // PATTERNS Critical Cross-File Constraints #1 (Phase 8) + #3 (Phase 4 + Phase 6).
-  // - Phase 6 (D-G1): `audio` IS in SCORE_WEIGHT_KEYS (weight-bearing);
-  //   `audio_fingerprint` is NOT (provenance only — the fingerprint boost folds into
-  //   audio_score before the weighted average, so it must not get its own slot here).
-  // - Phase 8 (D-03b): `retrieval` IS in SCORE_WEIGHT_KEYS (weight-bearing).
-  //
-  // BACK-COMPAT: SignalAvailability.audio and SignalAvailability.retrieval are both
-  // `.optional()` (Phase 6 + Phase 8 declared them optionally to preserve compile
-  // against pre-Phase-6/Phase-8 construction sites). When the caller passes a legacy
-  // availability object that LACKS one or both of those keys, we treat the missing
-  // signal as "not in the math at all" — preserving the legacy base-weight semantics
-  // for those callers. When the caller passes the new full shape, every key participates.
-  const audioInInput = Object.prototype.hasOwnProperty.call(availability, "audio");
-  const retrievalInInput = Object.prototype.hasOwnProperty.call(availability, "retrieval");
-  const platformFitInInput = Object.prototype.hasOwnProperty.call(availability, "platform_fit");
-  const activeKeys = (SCORE_WEIGHT_KEYS.filter(
-    (k) => (k !== "audio" || audioInInput) && (k !== "retrieval" || retrievalInInput) && (k !== "platform_fit" || platformFitInInput),
-  ) as readonly ScoreWeightKey[]);
+  const behavioralOn = availability.behavioral;
+  const geminiOn = availability.gemini;
 
-  const filtered = (Object.entries(availability) as Array<[string, boolean]>)
-    .filter(([key]) => (activeKeys as readonly string[]).includes(key)) as Array<
-    [ScoreWeightKey, boolean]
-  >;
-
-  const available = filtered.filter(([, v]) => v);
-  const missing = filtered.filter(([, v]) => !v);
-
-  // Phase 6 (D-G1) + Phase 8 (D-03b) normalization contract — see SCORE_WEIGHTS comment above.
-  // Raw weights for the 7-key path sum to 1.12; 6-key (no retrieval) sums to 1.07; 5-key
-  // legacy path sums to 1.0. The downstream weighted-average math in aggregateScores
-  // expects weights to sum to ~1.0 to keep overall_score in [0, 100]. Therefore BOTH
-  // branches (all-available + redistribution) normalize via `weight / total * 1000`
-  // rounding pass below. The Phase 8 D-03b matrix (behavioral=0.33, gemini=0.24, ml=0.14,
-  // rules=0.14, trends=0.10, retrieval=0.05) is the deterministic output of this
-  // normalization step applied to the 6-key path (without audio) — i.e., the values
-  // tests in Phase 8 assert against.
-  type WeightsOut = {
-    behavioral: number;
-    gemini: number;
-    ml: number;
-    rules: number;
-    trends: number;
-    audio?: number;
-    retrieval?: number;
-    platform_fit?: number;
-  };
-  const initWeights = (): WeightsOut => {
-    const w: WeightsOut = { behavioral: 0, gemini: 0, ml: 0, rules: 0, trends: 0 };
-    if (audioInInput) w.audio = 0;
-    if (retrievalInInput) w.retrieval = 0;
-    if (platformFitInInput) w.platform_fit = 0;
-    return w;
-  };
-
-  // All sources available — use base weights (normalized below).
-  if (missing.length === 0) {
-    const baseSum = activeKeys.reduce((s, k) => s + SCORE_WEIGHTS[k], 0);
-    const normalized = initWeights();
-    for (const key of activeKeys) {
-      normalized[key] = Math.round((SCORE_WEIGHTS[key] / baseSum) * 1000) / 1000;
-    }
-    return normalized;
+  // Both sources available — normalize base weights (0.40 + 0.35 = 0.75).
+  if (behavioralOn && geminiOn) {
+    const baseSum = SCORE_WEIGHTS.behavioral + SCORE_WEIGHTS.gemini;
+    return {
+      behavioral: Math.round((SCORE_WEIGHTS.behavioral / baseSum) * 1000) / 1000,
+      gemini:     Math.round((SCORE_WEIGHTS.gemini     / baseSum) * 1000) / 1000,
+    };
   }
 
-  // Redistribute missing weight proportionally to available sources
-  const missingWeight = missing.reduce(
-    (sum, [key]) => sum + SCORE_WEIGHTS[key], 0
-  );
-  const availableWeight = available.reduce(
-    (sum, [key]) => sum + SCORE_WEIGHTS[key], 0
-  );
+  // One source missing — full weight goes to the available source.
+  if (behavioralOn && !geminiOn) return { behavioral: 1, gemini: 0 };
+  if (!behavioralOn && geminiOn) return { behavioral: 0, gemini: 1 };
 
-  // Each available source gets its base weight + proportional share of missing weight.
-  // initWeights() seeds the audio + retrieval slots only when the caller provided them
-  // (back-compat per Phase 6 + Phase 8 .optional() flags).
-  const result = initWeights();
-  for (const [key, isAvailable] of filtered) {
-    if (isAvailable) {
-      result[key] = SCORE_WEIGHTS[key] + (SCORE_WEIGHTS[key] / availableWeight) * missingWeight;
-    }
-    // Missing sources get weight 0
-  }
-
-  // Round to avoid floating point noise, ensure they sum to ~1
-  const total = Object.values(result).reduce(
-    (a: number, b: number | undefined) => a + (b ?? 0),
-    0,
-  );
-  if (total === 0) return result; // All sources unavailable — return all zeros
-  for (const key of activeKeys) {
-    const v = result[key] ?? 0;
-    result[key] = Math.round((v / total) * 1000) / 1000;
-  }
-
-  return result;
+  // Both unavailable — all zeros.
+  return { behavioral: 0, gemini: 0 };
 }
 
 // =====================================================
