@@ -42,7 +42,7 @@ Clear the engine down to its senses (low-risk deletion → under the cap), sharp
 **Success:** R6 (under cap), R9 (no fabricated/dead signal), R5 (score + confidence still render). Engine stays shippable + green (minus deleted-feature tests).
 **Risk:** low — mostly deletion. Watch blend-coupled board UI consumers + remix coupling in `pipeline.ts`/`types.ts`.
 **Ship:** independently mergeable to `main` (honesty + latency win, no dependency on later phases) — merge promptly, don't bank it behind P3/P4.
-**Plans:** 6 plans (5 waves)
+**Plans:** 2/6 plans executed
 Plans:
 **Wave 1**
 
@@ -50,7 +50,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01-02-PLAN.md — Remove stage11/ml/engagement-jitter call sites from aggregator.ts + analyze/route.ts; hard-delete predicted-engagement.ts
+- [x] 01-02-PLAN.md — Remove stage11/ml/engagement-jitter call sites from aggregator.ts + analyze/route.ts; hard-delete predicted-engagement.ts
 - [ ] 01-03-PLAN.md — Remove audio/trends/rules/platform_fit call sites from pipeline.ts (Wave1+Wave2 awaited set)
 
 **Wave 3** *(blocked on Wave 2 completion)*
