@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: apollo
 milestone_name: Apollo
 status: ready_to_execute
-last_updated: "2026-06-04T14:43:00Z"
+last_updated: "2026-06-04T16:00:00Z"
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 9
-  completed_plans: 8
-  percent: 22
+  completed_plans: 9
+  percent: 44
 ---
 
 # Project State
@@ -20,8 +20,9 @@ See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Cut-l
 
 ## Current Position
 
-Phase: 02 (Omni Verbatim) — EXECUTING
-Plan: 3 of 3
+Phase: 02 (Omni Verbatim) — COMPLETE
+Phase: 03 (Apollo Reasoner) — NOT STARTED (blocked on corpus v1)
+Last completed plan: 02-03
 **Milestone worktree** `~/virtuna-engine-opt/` on `milestone/engine-opt`. Milestone **Apollo** — turn the ~25-call score machine into a 3-call knowledge-grounded expert (Omni → Audience-Sim → Apollo Reasoner).
 
 Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milestone formalized. **Synced with `origin/main` (merged in Remix PR #6 + audience change) — branch was stale + blind to Remix.** Re-scanned Remix engine path; folded into the plan (Remix = Apollo modes, R12). **No phase plans yet.**
@@ -30,8 +31,8 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | Strip to Senses | context gathered (2026-06-04) — ready to plan |
-| 2 | Omni Verbatim | planned (2026-06-04) — 3 plans verified, ready to execute |
+| 1 | Strip to Senses | COMPLETE (2026-06-04) — 6/6 plans done |
+| 2 | Omni Verbatim | COMPLETE (2026-06-04) — 3/3 plans done; R1 proven on real run (gwxLeHphZCxK); D-02 silent deferred HUMAN-UAT |
 | 3 | Apollo Reasoner (Brain 1, the moat) | not started — blocked on Chase Hughes corpus |
 | 4 | Audience-Sim Fold (Brain 2, the bet) | not started |
 | 5 | Wire + Surface | not started |
@@ -59,9 +60,9 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 
 - **02-01** (Wave 1) — ✅ COMPLETE (2026-06-04) — schema + prompt contracts + 20-case Wave 0 regression test all GREEN
 - **02-02** (Wave 2) — ✅ COMPLETE (2026-06-04) — VerbatimPayload + aggregator pluck/thread + verbatim JSONB migration (live on prod) + db types + both route sites :594/:921 + ENGINE_VERSION 3.2.0
-- **02-03** (Wave 3) — R1 real-run proof + R6 latency guard + R12 remix no-regression + R8 determinism
+- **02-03** (Wave 3) — ✅ COMPLETE (2026-06-04) — R1 proven on real DB rows (gwxLeHphZCxK: hook+5-seg both axes), R6 ~106s under 300s cap, R12 51/51 green, R8 grep=2; D-02 silent deferred HUMAN-UAT
 
-**Next:** `/gsd-execute-phase 2` for plan 02-03 (Wave 3 — R1 real-run proof). In parallel: keep distilling corpus v1 (gates P3).
+**P2 COMPLETE.** Next: merge P1+P2 to `main` promptly (independently shippable). Then start corpus v1 distillation (gates P3). `/gsd-plan-phase 3` when corpus v1 is ready.
 
 ## Open bets / to verify
 

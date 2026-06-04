@@ -72,7 +72,7 @@ Plans:
 **Success:** R1 (verbatim persists on a real run). Zero-regret precondition for P3 + P4.
 **Risk:** low — additive to a deterministic call; a few hundred more output tokens. #1 risk is the assembly-hop regression (emotion_arc precedent: declared+prompted but dropped on the assembly literal → 26/26 null rows) — guarded by a real-run proof.
 **Ship:** independently mergeable (Omni also feeds Remix's decode — verbatim helps it too).
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete — PHASE COMPLETE
 Plans:
 **Wave 1**
 
@@ -84,7 +84,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 02-03-PLAN.md — R1 real-run proof (speech→non-empty, silent→null not [inaudible]) + R6 latency + R12 remix no-regression + R8 determinism guard
+- [x] 02-03-PLAN.md — R1 real-run proof (speech→non-empty, silent→null not [inaudible]) + R6 latency + R12 remix no-regression + R8 determinism guard ✓ COMPLETE (2026-06-04) — R1 hook+seg PROVEN (gwxLeHphZCxK), R6 ~106s under cap, R8 grep=2, R12 51/51; D-02 silent deferred HUMAN-UAT
 
 ## Phase 3: Apollo Reasoner (Brain 1) — THE MOAT + shared knowledge core
 
