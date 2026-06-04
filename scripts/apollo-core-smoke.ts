@@ -1,22 +1,21 @@
 /**
- * Apollo KNOWLEDGE-CORE — validation smoke test (A/B).
+ * Apollo KNOWLEDGE-CORE — validation smoke test (A/B), batch.
  *
- * Proves the distilled scoring brain works on a REAL video, inside the real
- * Qwen pipeline, isolating the core's delta vs the engine's generic judging:
+ * For each video:
+ *   1. Host the mp4 → Supabase signed URL (transcode non-mp4 via ffmpeg first).
+ *   2. Qwen-Omni watches it → structured sensor signals + its OWN generic
+ *      "expert analyst" factor scores (the baseline).
+ *   3. Reasoning Qwen reads the SAME signals with KNOWLEDGE-CORE.md as system
+ *      prompt → grounded, framework-cited assessment (the interpreter under test).
+ *   4. Print both side by side.
  *
- *   1. Host the local mp4 → Supabase signed URL (same path the engine uses).
- *   2. Qwen-Omni (qwen3.5-omni-plus) watches it → structured sensor signals
- *      + its OWN generic "expert TikTok analyst" factor scores (the baseline).
- *   3. Reasoning Qwen (qwen3.6-plus) reads the SAME signals but with
- *      KNOWLEDGE-CORE.md as its system prompt → grounded, framework-cited
- *      assessment (the interpreter under test).
- *   4. Print both side by side so we can judge sharpness + band calibration.
- *
- * Usage: pnpm tsx scripts/apollo-core-smoke.ts "<path-to.mp4>"
+ * Usage: pnpm tsx scripts/apollo-core-smoke.ts "<a.mp4>" "<b.mov>" ...
  */
 import { config } from "dotenv";
-import { resolve } from "path";
+import { resolve, basename, extname } from "path";
 import { readFileSync } from "fs";
+import { execFileSync } from "child_process";
+import { tmpdir } from "os";
 import { register } from "tsconfig-paths";
 
 config({ path: resolve(__dirname, "../.env.local") });
@@ -30,9 +29,9 @@ const { analyzeVideoWithOmni } = require("../src/lib/engine/qwen/omni-analysis")
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } = require("../src/lib/engine/qwen/client");
 
-const videoPath = process.argv[2];
-if (!videoPath) {
-  console.error("Usage: pnpm tsx scripts/apollo-core-smoke.ts \"<path-to.mp4>\"");
+const videoPaths = process.argv.slice(2);
+if (videoPaths.length === 0) {
+  console.error('Usage: pnpm tsx scripts/apollo-core-smoke.ts "<a.mp4>" "<b.mov>" ...');
   process.exit(1);
 }
 
@@ -50,47 +49,48 @@ You are handed the structured SENSOR signals for one TikTok video (JSON below), 
 
 Cite section numbers (e.g. §2.1, §2.0a) so the reasoning is auditable. Be specific and concrete.`;
 
-async function main() {
-  const core = readFileSync(CORE_PATH, "utf-8");
-  const bytes = readFileSync(videoPath);
-  console.log(`[smoke] video: ${videoPath} (${(bytes.length / 1e6).toFixed(1)} MB)`);
-  console.log(`[smoke] core:  ${(core.length / 4) | 0} ~tokens\n`);
+/** Omni/DashScope wants mp4; transcode anything else (e.g. .mov) first. */
+function toMp4(path: string): Buffer {
+  if (extname(path).toLowerCase() === ".mp4") return readFileSync(path);
+  const out = resolve(tmpdir(), `apollo-${Date.now()}.mp4`);
+  console.log(`  [transcode] ${extname(path)} → mp4 …`);
+  execFileSync("ffmpeg", ["-y", "-i", path, "-c:v", "libx264", "-c:a", "aac", "-movflags", "+faststart", out], { stdio: "ignore" });
+  return readFileSync(out);
+}
 
-  const supabase = createServiceClient();
+async function runOne(supabase: any, ai: any, core: string, videoPath: string) {
+  console.log(`\n\n████████████████████████████████████████████████████████████`);
+  console.log(`█ VIDEO: ${basename(videoPath)}`);
+  console.log(`████████████████████████████████████████████████████████████`);
+
+  const bytes = toMp4(videoPath);
   const path = `apollo-smoke/${Date.now()}-${Math.random().toString(36).slice(2)}.mp4`;
-
-  console.log("[smoke] uploading → videos bucket …");
   const up = await supabase.storage.from("videos").upload(path, bytes, { contentType: "video/mp4", upsert: true });
   if (up.error) throw new Error(`upload failed: ${up.error.message}`);
   const signed = await supabase.storage.from("videos").createSignedUrl(path, 3600);
   if (signed.error || !signed.data?.signedUrl) throw new Error(`signed URL failed: ${signed.error?.message}`);
 
-  console.log("[smoke] Omni (qwen3.5-omni-plus) watching video …");
+  console.log("  [smoke] Omni watching …");
   const t0 = Date.now();
   const omni = await analyzeVideoWithOmni(signed.data.signedUrl);
-  console.log(`[smoke] Omni done in ${((Date.now() - t0) / 1000).toFixed(1)}s\n`);
+  console.log(`  [smoke] Omni ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 
   const analysis = omni.geminiResult?.analysis ?? null;
+  // Fattened bundle: pass the FULL omni output (minus cost) so §2.0a / §2.1 checks see everything Omni emits.
   const signalBundle = {
     content_type: omni.wave0Result?.content_type,
     niche: omni.wave0Result?.niche,
     audio_perceptual_score: omni.audio_perceptual_score,
+    signalAvailability: omni.signalAvailability,
     analysis,
     segments: omni.segments,
   };
 
-  // ---- BASELINE: Omni's own generic factor scores ----
-  console.log("══════════════════════════════════════════════════════════");
-  console.log(" BASELINE — Omni's generic 'expert analyst' judgment");
-  console.log("══════════════════════════════════════════════════════════");
-  if (analysis?.factors) {
-    for (const f of analysis.factors) console.log(`  ${f.name.padEnd(20)} ${f.score}/10  — ${f.rationale}`);
-  }
-  console.log(`  overall: ${analysis?.overall_impression ?? "n/a"}\n`);
+  console.log("\n  ── BASELINE (Omni generic factors) ──");
+  if (analysis?.factors) for (const f of analysis.factors) console.log(`     ${f.name.padEnd(20)} ${f.score}/10`);
+  console.log(`     overall: ${analysis?.overall_impression ?? "n/a"}`);
 
-  // ---- UNDER TEST: KNOWLEDGE-CORE-grounded interpreter ----
-  console.log("[smoke] Apollo reasoner (qwen3.6-plus + KNOWLEDGE-CORE) …");
-  const ai = getQwenClient();
+  console.log("\n  [smoke] Apollo reasoner (core) …");
   const t1 = Date.now();
   const completion = await ai.chat.completions.create({
     model: QWEN_REASONING_MODEL,
@@ -101,19 +101,23 @@ async function main() {
     temperature: 0,
     seed: QWEN_SEED,
   });
-  console.log(`[smoke] reasoner done in ${((Date.now() - t1) / 1000).toFixed(1)}s\n`);
-
-  console.log("══════════════════════════════════════════════════════════");
-  console.log(" UNDER TEST — KNOWLEDGE-CORE grounded assessment");
-  console.log("══════════════════════════════════════════════════════════\n");
+  console.log(`  [smoke] reasoner ${((Date.now() - t1) / 1000).toFixed(1)}s\n`);
+  console.log("  ── UNDER TEST (KNOWLEDGE-CORE assessment) ──\n");
   console.log(completion.choices[0]?.message?.content ?? "(no output)");
 
-  // cleanup
   await supabase.storage.from("videos").remove([path]).catch(() => {});
-  console.log(`\n[smoke] cleaned up temp upload. done.`);
 }
 
-main().catch((e) => {
-  console.error("[smoke] FAILED:", e?.message ?? e);
-  process.exit(1);
-});
+async function main() {
+  const core = readFileSync(CORE_PATH, "utf-8");
+  console.log(`[smoke] core: ${(core.length / 4) | 0} ~tokens · ${videoPaths.length} video(s)`);
+  const supabase = createServiceClient();
+  const ai = getQwenClient();
+  for (const v of videoPaths) {
+    try { await runOne(supabase, ai, core, v); }
+    catch (e: any) { console.error(`\n  [smoke] FAILED on ${basename(v)}: ${e?.message ?? e}`); }
+  }
+  console.log("\n[smoke] all done.");
+}
+
+main().catch((e) => { console.error("[smoke] FATAL:", e?.message ?? e); process.exit(1); });
