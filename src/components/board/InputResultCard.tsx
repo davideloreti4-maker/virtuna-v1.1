@@ -185,7 +185,7 @@ export function InputResultCard({
   // dims them all to directional-only. tabular-nums via StatTile.
   const tiles: StatTileData[] = metrics.map((m) => ({
     k: m.name,
-    v: titleCasePct(m.pct),
+    v: m.pct ? titleCasePct(m.pct) : '—',
     tone: !gated && m.key === lead?.key ? 'accent' : 'default',
   }));
 

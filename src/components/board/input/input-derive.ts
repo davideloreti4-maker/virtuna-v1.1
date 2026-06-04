@@ -34,7 +34,10 @@ export const CONF_WORD: Record<ConfidenceLevel, string> = {
 export interface InputMetric {
   key: string;
   name: string;
-  pct: string;
+  /** Percentile label, e.g. "top 15%". Optional: deepseek's fabricated labels were
+   *  removed (Plan 01-04/01-06, R9); honest labels come from the persona aggregate
+   *  but may be absent — null-degrade at the render site. */
+  pct?: string;
   /** Parsed "top X%" magnitude — lower = stronger. null when unparseable. */
   rank: number | null;
 }

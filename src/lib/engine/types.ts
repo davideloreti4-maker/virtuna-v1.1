@@ -613,13 +613,19 @@ export const SuggestionSchema = z.object({
 
 export const BehavioralPredictionsSchema = z.object({
   completion_pct: z.number().min(0).max(100),
-  completion_percentile: z.string(),
+  // *_percentile labels are OPTIONAL (Plan 01-04/01-06, R9): the deepseek "top X%"
+  // percentile framing was removed from the system prompt as fabricated, so the model
+  // no longer emits these on its raw behavioral_predictions. The HONEST percentile
+  // labels are still set by the Wave-3 persona aggregate (wave3/aggregator.ts via
+  // percentileLabel, WR-05). Optional so deepseek's v2 response validates without them
+  // while the persona path keeps populating them — same pattern as loop_percentile.
+  completion_percentile: z.string().optional(),
   share_pct: z.number().min(0).max(100),
-  share_percentile: z.string(),
+  share_percentile: z.string().optional(),
   comment_pct: z.number().min(0).max(100),
-  comment_percentile: z.string(),
+  comment_percentile: z.string().optional(),
   save_pct: z.number().min(0).max(100),
-  save_percentile: z.string(),
+  save_percentile: z.string().optional(),
   // Optional: present on the Wave-3 PersonaBehavioralAggregate (drives the Audience
   // LOOP chip), absent on raw DeepSeek behavioral_predictions. Optional so the
   // DeepSeek v2 response still validates without emitting it.
