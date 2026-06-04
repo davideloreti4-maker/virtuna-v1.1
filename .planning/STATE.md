@@ -28,7 +28,7 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | Strip to Senses | not started |
+| 1 | Strip to Senses | context gathered (2026-06-04) — ready to plan |
 | 2 | Omni Verbatim | not started |
 | 3 | Apollo Reasoner (Brain 1, the moat) | not started — blocked on Chase Hughes corpus |
 | 4 | Audience-Sim Fold (Brain 2, the bet) | not started |
@@ -52,7 +52,9 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 
 ## Next action
 
-Fresh context → `/gsd-plan-phase 1` (Strip to Senses — subtractive deletion of the fabricated/dead layer, keep score on live signals, get under the cap; independently shippable). Context on disk (ENGINE-MAP / VISION / MILESTONE / REQUIREMENTS / ROADMAP) + memory `apollo-direction`. In parallel: begin distilling the corpus v1 (gates P3).
+**P1 context captured** (`.planning/phases/01-strip-to-senses/01-CONTEXT.md`, 2026-06-04). Decisions D1–D4 locked + 15-item reverification checklist (D5). Also fixed: ROADMAP headings (em-dash→colon, SDK now parses) + archived stale pre-Apollo P1 to `.planning/_archive/`.
+
+`/clear` then → `/gsd-plan-phase 1` (Strip to Senses — subtractive: delete fabricated stats [sine-jitter engagement + "top X%" labels], dormant dead machinery, cut dead blend keys + prove score-identity, null-degrade UI; keep score derivation unchanged; independently shippable). In parallel: begin distilling corpus v1 (gates P3).
 
 ## Open bets / to verify
 
