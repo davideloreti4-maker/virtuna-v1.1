@@ -76,12 +76,13 @@ vi.mock("../stage11-counterfactuals", () => ({
 // Imports (after mocks)
 // =====================================================
 
-// SCORE_WEIGHTS / SCORE_WEIGHT_KEYS imports removed (Plan 04, R9):
-// audio key removed from SCORE_WEIGHT_KEYS; blend-key assertions superseded.
 import {
   selectWeights,
   aggregateScores,
+  SCORE_WEIGHT_KEYS,
 } from "../aggregator";
+// SCORE_WEIGHTS import removed (Plan 04, R9): audio key removed from blend.
+// SCORE_WEIGHT_KEYS retained for the 2-key assertion in Test 1.
 import type {
   GeminiAudioSignals,
 } from "../types";
@@ -129,8 +130,6 @@ beforeEach(() => {
 
 describe("D-G1 — audio provenance after Plan 04 blend cut", () => {
   it("Test 1: SCORE_WEIGHT_KEYS is ['behavioral','gemini'] — audio NOT a blend key", () => {
-    // Import SCORE_WEIGHT_KEYS to verify the 2-key shape
-    const { SCORE_WEIGHT_KEYS } = require("../aggregator");
     expect(SCORE_WEIGHT_KEYS).toEqual(["behavioral", "gemini"]);
     expect(SCORE_WEIGHT_KEYS as readonly string[]).not.toContain("audio");
     expect(SCORE_WEIGHT_KEYS as readonly string[]).not.toContain("audio_fingerprint");

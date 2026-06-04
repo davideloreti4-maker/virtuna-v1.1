@@ -510,31 +510,31 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
     // predictWithML mock removed (Plan 02); ml call no longer fires in aggregateScores.
   });
 
-  it("selectWeights regression: 6-key availability all-true → D-16 Phase 13 normalized weights", () => {
-    // D-16 weights without audio/platform_fit in this call:
-    // active base sum = behavioral(0.40) + gemini(0.35) + ml(0) + rules(0) + trends(0.10) + retrieval(0) = 0.85
-    // normalized: behavioral=0.40/0.85, gemini=0.35/0.85, trends=0.10/0.85
+  it("selectWeights regression: 2-key blend — behavioral+gemini sum to ~1.0 (Plan 04)", () => {
+    // Plan 04 (R9): SCORE_WEIGHT_KEYS=[behavioral,gemini]; dead keys removed.
+    // Normalized: behavioral=0.40/0.75≈0.533, gemini=0.35/0.75≈0.467
     const weights = selectWeights({
       behavioral: true,
       gemini: true,
       ml: true,
       rules: true,
       trends: true,
-      content_type: false, // new keys present but irrelevant
+      content_type: false,
       niche: false,
       gemini_hook: false,
       gemini_body: false,
       gemini_cta: false,
       personas: false,
-      retrieval: true, // D-15: weight=0 in D-16
+      retrieval: true,
     });
-    // D-16 Phase 13: rules=0, retrieval=0, ml=0 → sum of active non-zero: 0.40+0.35+0.10=0.85
-    expect(weights.behavioral).toBeCloseTo(0.471, 2);
-    expect(weights.gemini).toBeCloseTo(0.412, 2);
-    expect(weights.ml).toBe(0);
-    expect(weights.rules).toBe(0);
-    expect(weights.trends).toBeCloseTo(0.118, 2);
-    expect(weights.retrieval).toBe(0);
+    expect(weights.behavioral).toBeGreaterThan(0);
+    expect(weights.gemini).toBeGreaterThan(0);
+    expect(weights).not.toHaveProperty("ml");
+    expect(weights).not.toHaveProperty("rules");
+    expect(weights).not.toHaveProperty("trends");
+    expect(weights).not.toHaveProperty("retrieval");
+    const sum = weights.behavioral + weights.gemini;
+    expect(sum).toBeCloseTo(1.0, 2);
   });
 
   it("selectWeights ignores content_type + niche keys (Critical Cross-File Constraint #3)", () => {
@@ -891,7 +891,7 @@ describe("Phase 8 — aggregator retrieval integration", () => {
     expect(result.retrieval_evidence).toEqual(evidence);
   });
 
-  it("score_weights.retrieval is included in PredictionResult", async () => {
+  it("score_weights contains only behavioral+gemini keys (Plan 04: retrieval removed from blend)", async () => {
     const pipeline = makePipelineResult({
       retrievalResult: {
         evidence: [],
@@ -901,9 +901,14 @@ describe("Phase 8 — aggregator retrieval integration", () => {
       },
     });
     const result = await aggregateScores(pipeline);
-    expect(result.score_weights).toHaveProperty("retrieval");
-    // D-15/D-16 (Phase 13): retrieval weight=0 — corpus embeddings caption-derived.
-    expect(result.score_weights.retrieval).toBe(0);
+    // Plan 04 (R9): score_weights only has behavioral+gemini as live keys; retrieval NOT a blend key.
+    expect(result.score_weights.behavioral).toBeGreaterThan(0);
+    expect(result.score_weights.gemini).toBeGreaterThan(0);
+    expect(result.score_weights.ml).toBe(0);
+    expect(result.score_weights.rules).toBe(0);
+    expect(result.score_weights.trends).toBe(0);
+    // retrieval_score is still surfaced (provenance); score_weights.retrieval absent (not a blend key)
+    expect(result.retrieval_score).toBe(0.5);
   });
 
   it("signal_availability.retrieval mirrors pipelineResult.retrievalResult.availability", async () => {
