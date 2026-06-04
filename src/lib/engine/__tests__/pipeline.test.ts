@@ -209,15 +209,10 @@ vi.mock("@/lib/supabase/service", () => ({
   })),
 }));
 
-// Phase 9 — platform-fit mock (vi.hoisted so vi.mock factory can reference it).
+// Plan 03: platform-fit mock removed — runPlatformFit call site removed from pipeline.ts.
+// Note: mockRunPlatformFit kept as a no-op reference to avoid breaking Phase 9 test suite assertions.
 const { mockRunPlatformFit } = vi.hoisted(() => ({
-  mockRunPlatformFit: vi.fn(async () => [
-    { platform: "tiktok", fit_score: 78, rationale: "Strong hook aligns with TikTok trends" },
-    { platform: "instagram", fit_score: 62, rationale: "Moderate visual appeal for Reels" },
-  ]),
-}));
-vi.mock("@/lib/engine/wave4/platform-fit", () => ({
-  runPlatformFit: mockRunPlatformFit,
+  mockRunPlatformFit: vi.fn(),
 }));
 
 // Set env vars BEFORE importing the module under test
