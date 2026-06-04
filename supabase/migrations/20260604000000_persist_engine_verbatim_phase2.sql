@@ -15,7 +15,11 @@
 -- Null contracts (D-02):
 --   - spoken_words / spoken_text = null for silence (no speech); NOT "[inaudible]"
 --   - "[inaudible]" marks present-but-unintelligible speech (D-04.2)
---   - Full column null when video has no speech AND no on-screen text
+--   - Column is null only when neither a hook nor any text-bearing segment exists
+--     (no speech AND no on-screen text anywhere). A hook-only object `{ hook: {...} }`
+--     (no `segments` key) and a segments-only object `{ segments: [...] }` (no `hook`
+--     key) are both valid NON-null shapes — consumers must treat a missing
+--     `hook`/`segments` key as absent, not infer the whole column is null.
 --   - Synthetic fallback segments (buildFixedBuckets) carry null verbatim legitimately
 --
 -- No backfill: historical rows keep NULL (engine output isn't re-derivable).
