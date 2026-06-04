@@ -573,11 +573,12 @@ describe("Phase 3 — onStageEvent + stub invocations", () => {
       .map((e) => e.stage);
     expect(stageStartNames).toContain("validate");
     expect(stageStartNames).toContain("normalize");
-    expect(stageStartNames).toContain("rule_scoring");
+    // Plan 03 strip: rule_scoring + trend_enrichment stages removed.
+    expect(stageStartNames).not.toContain("rule_scoring");
     expect(stageStartNames).toContain("wave_1");
     expect(stageStartNames).toContain("wave_2");
     expect(stageStartNames).toContain("deepseek_reasoning");
-    expect(stageStartNames).toContain("trend_enrichment");
+    expect(stageStartNames).not.toContain("trend_enrichment");
 
     // Each stage_start should have a paired stage_end
     const stageEndNames = events
