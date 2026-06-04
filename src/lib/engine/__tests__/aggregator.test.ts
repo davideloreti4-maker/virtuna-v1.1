@@ -52,27 +52,12 @@ vi.mock("../deepseek", () => ({
   isCircuitOpen: vi.fn(() => true),
 }));
 
-// Phase 13 Plan 02: Stage 11 rebuilt to use Gemini (not DeepSeek).
-// Mock to prevent real GoogleGenAI calls during aggregator unit tests.
-// Emits stage_start + stage_end events so PIPE-09 event emission test passes.
-vi.mock("../stage11-counterfactuals", async (importOriginal) => {
-  const orig = await importOriginal<typeof import("../stage11-counterfactuals")>();
-  return {
-    ...orig,
-    runStage11Counterfactuals: vi.fn().mockImplementation(
-      async (
-        _result: unknown,
-        _videoContext: unknown,
-        onEvent?: (e: { type: string; stage: string; wave: string; timestamp_ms?: number; duration_ms?: number; cost_cents?: number; ok?: boolean }) => void,
-      ) => {
-        const ts = performance.now();
-        onEvent?.({ type: "stage_start", stage: "stage_11_counterfactuals", wave: "post", timestamp_ms: ts });
-        onEvent?.({ type: "stage_end", stage: "stage_11_counterfactuals", wave: "post", duration_ms: 1, cost_cents: 0, ok: true });
-        return null;
-      },
-    ),
-  };
-});
+// Plan 01-05 Task 0: aggregator no longer imports stage11-counterfactuals (moved to _dormant/).
+// maybeAppendLikelyFlopWarning now lives in ./flop-warning — mock that instead.
+// runStage11Counterfactuals was already removed from aggregator in Plan 02; this mock was residual.
+vi.mock("../flop-warning", () => ({
+  maybeAppendLikelyFlopWarning: vi.fn(),
+}));
 
 // Phase 3 (Plan 08) — hoisted mock factories for weighted-aggregator + persona-weights + anti-virality.
 // These must be declared BEFORE vi.mock() calls so closures capture them correctly.
