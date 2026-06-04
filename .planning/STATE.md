@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: apollo
 milestone_name: Apollo
-status: ready_to_plan
-last_updated: "2026-06-04T13:44:51.368Z"
+status: ready_to_execute
+last_updated: "2026-06-04T14:19:01.000Z"
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 6
+  total_plans: 9
   completed_plans: 6
   percent: 20
 ---
@@ -21,7 +21,7 @@ See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Cut-l
 ## Current Position
 
 Phase: 2
-Plan: Not started
+Plan: Planned — 3 plans, 3 waves (verified, ready to execute)
 **Milestone worktree** `~/virtuna-engine-opt/` on `milestone/engine-opt`. Milestone **Apollo** — turn the ~25-call score machine into a 3-call knowledge-grounded expert (Omni → Audience-Sim → Apollo Reasoner).
 
 Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milestone formalized. **Synced with `origin/main` (merged in Remix PR #6 + audience change) — branch was stale + blind to Remix.** Re-scanned Remix engine path; folded into the plan (Remix = Apollo modes, R12). **No phase plans yet.**
@@ -31,7 +31,7 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 | # | Phase | Status |
 |---|-------|--------|
 | 1 | Strip to Senses | context gathered (2026-06-04) — ready to plan |
-| 2 | Omni Verbatim | context gathered (2026-06-04) — ready to plan |
+| 2 | Omni Verbatim | planned (2026-06-04) — 3 plans verified, ready to execute |
 | 3 | Apollo Reasoner (Brain 1, the moat) | not started — blocked on Chase Hughes corpus |
 | 4 | Audience-Sim Fold (Brain 2, the bet) | not started |
 | 5 | Wire + Surface | not started |
@@ -55,9 +55,13 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 
 ## Next action
 
-**P1 executed + complete** (6/6 plans, 2026-06-04). **P2 context captured** (`.planning/phases/02-omni-verbatim/02-CONTEXT.md`, 2026-06-04). Decisions D-01–D-04 locked: **additive-only** (add `hook_verbatim` + per-segment `spoken_text`/`on_screen_text`, KEEP the 0–10 judgments — drop deferred to P3); **honest `null`** for silent/no-text (never fabricate); **dedicated hook_verbatim + per-segment text** shape; all 4 fidelity rules (original language, `[inaudible]` marker distinct from null, preserve casing/punct, cap ~280/500). Thread via the emotion_arc precedent; bump cache key; prove persistence on a real run (R1).
+**P1 executed + complete** (6/6 plans, 2026-06-04). **P2 PLANNED** (2026-06-04) — research + validation + pattern-map + 3 verified plans (3 waves). Planner picked **persistence Option A** (dedicated `verbatim` JSONB column, mirrors emotion_arc). Plan-checker caught + the planner fixed a real BLOCKER: per-segment `spoken_text`/`on_screen_text` had no persistence path (declared+prompted but dropped before the DB — the segment-axis twin of the emotion_arc bug); now threaded on BOTH the inline shape AND exported `SegmentSchema` → normalizeSegments → aggregator pluck → `VerbatimPayload.segments` → both route inserts → `verbatim->'segments'` real-run proof. VERIFICATION PASSED iteration 2.
 
-`/clear` then → `/gsd-plan-phase 2` (Omni Verbatim — additive schema+prompt extension, zero-regret precondition for P3/P4, independently shippable). In parallel: keep distilling corpus v1 (gates P3).
+- **02-01** (Wave 1) — schema + prompt contracts + Wave 0 regression test
+- **02-02** (Wave 2) — thread 4 hops + dedicated `verbatim` JSONB column (migration + **[BLOCKING] live apply** + db types + both route sites :594/:921) + `ENGINE_VERSION` 3.2.0
+- **02-03** (Wave 3) — R1 real-run proof + R6 latency guard + R12 remix no-regression + R8 determinism
+
+`/clear` then → `/gsd-execute-phase 2`. In parallel: keep distilling corpus v1 (gates P3).
 
 ## Open bets / to verify
 
