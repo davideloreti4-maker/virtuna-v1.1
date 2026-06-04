@@ -72,6 +72,15 @@ export const SegmentSchema = z.object({
   scene_boundary_reason: z.string().max(300).optional(),
   is_hook_zone: z.boolean().optional(),
   idx: z.number().int().min(0).optional(),
+  /** Phase 2 (R1) — Verbatim speech for this segment. null = silence/no speech (D-02).
+   *  [inaudible] = present-but-unclear speech (D-04.2). Max 500 chars (D-04.4).
+   *  Declared on the EXPORTED SegmentSchema (not just the inline validator) so
+   *  SegmentGrid carries these fields through normalizeSegments into the aggregator.
+   *  A field absent from SegmentSchema is stripped before persistence (the segment-axis
+   *  emotion_arc drop). Both shapes must declare it: inline for parse-time acceptance,
+   *  SegmentSchema for transport. */
+  spoken_text:    z.string().max(500).nullable().optional(),
+  on_screen_text: z.string().max(500).nullable().optional(),
 });
 export type SegmentGrid = z.infer<typeof SegmentSchema>;
 
@@ -151,15 +160,30 @@ export const OmniAnalysisZodSchema = z.object({
    *  Omni responses without this field continue to validate (Assumption A3). */
   emotion_arc: z.array(EmotionArcPointSchema).optional(),
 
+  /** Phase 2 (R1) — Optional verbatim hook transcription. null per field = no speech/text (D-02).
+   *  [inaudible] in spoken_words = present-but-unclear (D-04.2). Max 280 chars (D-04.4).
+   *  .optional() mirrors emotion_arc backward-compat (A3): existing responses without this
+   *  field continue to validate. */
+  hook_verbatim: z.object({
+    spoken_words:   z.string().max(280).nullable().optional(),
+    on_screen_text: z.string().max(280).nullable().optional(),
+  }).optional(),
+
   /** Phase 3 (D-07) — Optional segment grid from Wave 0 omni. Backward compat:
    *  existing responses without this field continue to validate. Server-side normalizer
-   *  sets is_hook_zone and idx after validation. */
+   *  sets is_hook_zone and idx after validation.
+   *  PITFALL 4: This INLINE z.object is the shape Omni output is parsed against at
+   *  parse-time (NOT the exported SegmentSchema). Per-segment verbatim MUST be declared
+   *  HERE for parse-time acceptance, AND on the exported SegmentSchema for transport. */
   segments: z.array(z.object({
     t_start: z.number().min(0),
     t_end:   z.number().min(0),
     visual_event: z.string().max(200),
     audio_event:  z.string().max(200),
     scene_boundary_reason: z.string().max(300).optional(),
+    /** Phase 2 (R1) — Per-segment verbatim speech. null = silence (D-02). [inaudible] = unclear (D-04.2). */
+    spoken_text:    z.string().max(500).nullable().optional(),
+    on_screen_text: z.string().max(500).nullable().optional(),
   })).optional(),
 });
 
