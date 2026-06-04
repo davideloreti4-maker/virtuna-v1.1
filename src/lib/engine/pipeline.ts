@@ -8,8 +8,6 @@ import {
   type ContentPayload,
   type GeminiAnalysis,
   type DeepSeekReasoning,
-  type PlatformFitResult,
-  type TrendEnrichment,
   type Wave0Result,
   type PersonaSimulationResult,
   type PersonaBehavioralAggregate,
@@ -22,7 +20,6 @@ import { getQwenClient, QWEN_REASONING_MODEL } from "./qwen/client";
 import { calculateCost } from "./qwen/cost";
 import { stripModelOutput } from "./utils/strip";
 import { reasonWithDeepSeek } from "./deepseek";
-import { enrichWithTrends } from "./trends";
 import {
   fetchCreatorContext,
   formatCreatorContext,
@@ -34,7 +31,6 @@ import { runWave3 } from "./wave3";
 import { ApifyScrapingProvider } from "@/lib/scraping/apify-provider";
 import { IngestError } from "@/lib/scraping/types";
 import { createEmptyRetrievalResult } from "./retrieval-empty";
-import { runPlatformFit } from "./wave4/platform-fit";
 // Phase 3 (Plan 08) — Pass 2 orchestrator + filmstrip trigger
 import { runWave3Pass2, type Wave3Pass2Outcome } from "./wave3/pass2";
 import type { DemographicContext } from "./wave3/persona-prompts-pass2";
@@ -69,7 +65,6 @@ export interface PipelineResult {
     };
   };
   creatorContext: CreatorContext;
-  trendEnrichment: TrendEnrichment;
   deepseekResult: { reasoning: DeepSeekReasoning; cost_cents: number } | null;
 
   // Phase 3 — Wave 0/3 stub outputs (Phase 4/7 fill with real logic)
@@ -97,11 +92,6 @@ export interface PipelineResult {
   // Phase 8 — Wave 1 retrieval sibling (Plan 04). Graceful empty on any failure;
   // aggregator folds retrievalResult.score into overall_score at weight 0.05.
   retrievalResult: BenchmarkRetrievalResult;
-
-  // Phase 9 — Platform-fit V3 result (Plan 03). Null when V3 call fails or circuit
-  // breaker is open. Aggregator reads this (via widenedPipeline cast) to compute
-  // platform_fit signal availability + fold mean fit_score into overall_score.
-  platformFitResult: PlatformFitResult[] | null;
 
   // Phase 3 (Plan 08) — Pass 2 outcome from runWave3Pass2.
   // Null when no segments (text mode / tiktok_url mode) or when Pass 2 itself is skipped.
@@ -229,13 +219,6 @@ const DEFAULT_CREATOR_CONTEXT: CreatorContext = {
   past_flops: null,
   time_of_day_aware: null,
   pain_points: null,
-};
-
-const DEFAULT_TREND_ENRICHMENT: TrendEnrichment = {
-  trend_score: 0,
-  matched_trends: [],
-  trend_context: "Trend data unavailable.",
-  hashtag_relevance: 0,
 };
 
 const DEFAULT_GEMINI_RESULT: PipelineResult["geminiResult"] = {
@@ -769,67 +752,11 @@ export async function runPredictionPipeline(
     }
   })();
 
-  // Stage 8: Trend Enrichment -- NON-CRITICAL (fallback with warning).
-  // Phase 6 D-F3: when the audio_fingerprint stage matched a sound (audioFingerprintResult
-  // !== null), the aggregator synthesizes a matched_trends entry from the fingerprint result
-  // (single source of truth). Pass that boolean down so enrichWithTrends skips its
-  // Jaro-Winkler caption ↔ sound_name fallback loop. Hashtag scoring loop in trends.ts is
-  // orthogonal and remains UNGATED.
-  const trendPromise = (async (): Promise<TrendEnrichment> => {
-    try {
-      return await timed("trend_enrichment", timings, () =>
-        enrichWithTrends(supabase, validated, {
-          audioFingerprintMatched: false, // Plan 03: audio fingerprint removed
-        }),
-        { wave: 2, onEvent: onStageEvent }
-      );
-    } catch (error) {
-      Sentry.captureException(error, {
-        tags: { stage: "trend_enrichment", requestId },
-      });
-      warnings.push(
-        `Trend enrichment unavailable: ${error instanceof Error ? error.message : String(error)}`
-      );
-      timings.push({ stage: "trend_enrichment", duration_ms: 0 });
-      return DEFAULT_TREND_ENRICHMENT;
-    }
-  })();
-
-  // Wave 2 (deepseek + trends) — OVERLAPPED with Wave 3. Both gracefully degrade
-  // (deepseekPromise→null, trendPromise→DEFAULT on failure; neither REJECTS), so we
-  // start them and let Wave 3 run concurrently instead of blocking on them.
-  //
-  // Measured E2E: deepseek's ~60s reasoning previously ran SERIALLY before the ~67s
-  // persona path (Pass 1→Pass 2). deepseek finishes (~91s) just before Pass 2 ends
-  // (~98s), so overlapping hides it almost entirely (~−50s wall). Pass 1 loses
-  // deepseek's hook/retention grounding — the `?? null` path in persona-prompts is
-  // already graceful — which the curve/behavioral A/B validates.
+  // Wave 2: DeepSeek only (Plan 03: trends + platform_fit call sites removed).
   const wave2Promise = timed("wave_2", timings, () =>
-    Promise.all([deepseekPromise, trendPromise]),
+    Promise.all([deepseekPromise]),
     { wave: 2, onEvent: onStageEvent }
   );
-
-  // -------------------------------------------------------
-  // Platform-fit — needs deepseek reasoning + Omni watermark, NOT Wave 3. Chain it
-  // off Wave 2 so it auto-starts the instant deepseek resolves (concurrent with the
-  // tail of Wave 3), keeping its deepseek grounding intact (no quality loss on the
-  // 5%-weight platform signal).
-  // -------------------------------------------------------
-  const watermarkDetected =
-    ((geminiResult.analysis as import("./types").GeminiVideoAnalysis).hook_decomposition)?.watermark_detected ?? null;
-  const platformFitPromise = wave2Promise
-    .then(([ds]) =>
-      runPlatformFit(payload, creatorContext, ds?.reasoning ?? null, watermarkDetected, onStageEvent),
-    )
-    .catch((error) => {
-      Sentry.captureException(error, {
-        tags: { stage: "platform_fit", requestId },
-      });
-      warnings.push(
-        `Platform-fit unavailable: ${error instanceof Error ? error.message : String(error)}`,
-      );
-      return null;
-    });
 
   // -------------------------------------------------------
   // Wave 3: Multi-persona simulation (Phase 7 fills the stub).
@@ -918,24 +845,8 @@ export async function runPredictionPipeline(
     data: { requestId, pass2_aggregate_built: pass2Outcome?.pass2_aggregate_built ?? false },
   });
 
-  // deepseek + trends ran CONCURRENTLY with Wave 3 (overlap above). They finished
-  // during the persona path, so this await resolves effectively instantly and gives
-  // us the full-quality deepseek reasoning for behavioral_score/suggestions assembly.
-  const [deepseekRaw, trendEnrichment] = await wave2Promise;
-
-  // -------------------------------------------------------
-  // Phase 9 — Platform-fit: chained off Wave 2 (see platformFitPromise above) so it
-  // runs concurrently with Wave 3 rather than serially after Pass 2. Awaited here,
-  // where its result is needed for PipelineResult assembly.
-  // -------------------------------------------------------
-  const platformFitResult = await platformFitPromise;
-
-  Sentry.addBreadcrumb({
-    category: "engine.pipeline",
-    message: "Platform-fit complete",
-    level: "info",
-    data: { requestId, resultCount: platformFitResult?.length ?? 0 },
-  });
+  // Plan 03: Wave 2 = deepseek only (trends + platform_fit removed). Await deepseek.
+  const [deepseekRaw] = await wave2Promise;
 
   // -------------------------------------------------------
   // Stage 9: Aggregate (delegated -- caller uses PipelineResult)
@@ -964,7 +875,6 @@ export async function runPredictionPipeline(
     payload,
     geminiResult,
     creatorContext,
-    trendEnrichment,
     deepseekResult: deepseekRaw,
     wave0Result,
     wave3Result,
@@ -975,8 +885,7 @@ export async function runPredictionPipeline(
     // CR-01: surfaced so aggregator can fold Wave 3 spend into PredictionResult.cost_cents
     // (eval-runner cost cap reads that rolled-up field).
     wave3CostCents,
-    retrievalResult, // NEW Phase 8 D-09 (Plan 04) — graceful-degradation BenchmarkRetrievalResult
-    platformFitResult, // NEW Phase 9 (Plan 03) — platform-fit V3 result array or null
+    retrievalResult, // Phase 8 D-09 (Plan 04) — graceful-degradation BenchmarkRetrievalResult
     pass2Outcome,      // Phase 3 (Plan 08) — Pass 2 outcome; null when no segments or skipped
     segments: omniSegments, // Phase 3 (Plan 08) — SegmentGrid[] for aggregator.assembleHeatmapPayload
     requestId,

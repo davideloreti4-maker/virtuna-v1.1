@@ -471,13 +471,7 @@ describe("aggregateScores", () => {
         cost_cents: 0.5,
       },
       deepseekResult: null,
-      // Plan 03 strip: ruleResult removed from PipelineResult.
-      trendEnrichment: {
-        trend_score: 0,
-        matched_trends: [],
-        trend_context: "No trends",
-        hashtag_relevance: 0,
-      },
+      // Plan 03 strip: ruleResult + trendEnrichment removed from PipelineResult.
     });
     const lowResult = await aggregateScores(lowPipeline);
     expect(lowResult.overall_score).toBeGreaterThanOrEqual(0);
@@ -547,12 +541,7 @@ describe("aggregateScores", () => {
     const lowPipeline = makePipelineResult({
       deepseekResult: null,
       // Plan 03 strip: ruleResult removed from PipelineResult.
-      trendEnrichment: {
-        trend_score: 0,
-        matched_trends: [],
-        trend_context: "No trends",
-        hashtag_relevance: 0,
-      },
+      // Plan 03 strip: trendEnrichment removed from PipelineResult.
       warnings: [],
     });
     const lowResult = await aggregateScores(lowPipeline);

@@ -384,9 +384,7 @@ describe("pipeline integration tests", () => {
     expect(result.geminiResult.analysis.factors).toHaveLength(5);
     expect(result.deepseekResult).not.toBeNull();
 
-    // Rule result removed from PipelineResult in Plan 03 strip.
-    // Trend enrichment should be default fallback (still present until Task 2)
-    expect(result.trendEnrichment.trend_score).toBe(0);
+    // Rule result + trend enrichment removed from PipelineResult in Plan 03 strip.
 
     // RequestId and metadata still present
     expect(result.requestId).toBe("test-req-id");
@@ -1241,43 +1239,22 @@ describe("Phase 9 — Platform-fit V3 result in PipelineResult", () => {
     };
   });
 
-  it("PipelineResult includes platformFitResult with per-platform scores", async () => {
-    mockRunPlatformFit.mockClear();
-    mockRunPlatformFit.mockResolvedValue([
-      { platform: "tiktok", fit_score: 85, rationale: "Strong hook" },
-    ]);
-
+  it("PipelineResult does not include platformFitResult (Plan 03 strip: platform_fit call site removed)", async () => {
+    // Plan 03: platformFitResult removed from PipelineResult; runPlatformFit no longer called.
     const result = await runPredictionPipeline(input);
-
-    expect(result.platformFitResult).toBeDefined();
-    expect(result.platformFitResult).toHaveLength(1);
-    expect(result.platformFitResult![0]!.platform).toBe("tiktok");
-    expect(result.platformFitResult![0]!.fit_score).toBe(85);
+    expect((result as unknown as Record<string, unknown>).platformFitResult).toBeUndefined();
+    expect(mockRunPlatformFit).not.toHaveBeenCalled();
   });
 
-  it("runPlatformFit invoked once after Wave 3 (ordering invariant)", async () => {
+  it("runPlatformFit NOT invoked after Plan 03 strip", async () => {
     mockRunPlatformFit.mockClear();
-    mockRunPlatformFit.mockResolvedValue([
-      { platform: "tiktok", fit_score: 70, rationale: "Decent fit" },
-    ]);
-
     const result = await runPredictionPipeline(input);
-
-    expect(mockRunPlatformFit).toHaveBeenCalledTimes(1);
-    // platformFitResult in the return confirms platform-fit ran after Wave 3
-    // (Wave 3 must finish before PipelineResult is assembled).
-    expect(result.platformFitResult).toBeDefined();
+    // Plan 03: platform_fit call site removed from pipeline.ts.
+    expect(mockRunPlatformFit).not.toHaveBeenCalled();
     expect(result.wave3Result).toHaveLength(10);
   });
 
-  it("platform-fit stage events fire (delegated to runPlatformFit self-emission)", async () => {
-    mockRunPlatformFit.mockImplementation((async (_payload: unknown, _ctx: unknown, _ds: unknown, _wm: unknown, onEvent?: (e: { type: string; stage: string; wave: number }) => void) => {
-      onEvent?.({ type: "stage_start" as const, stage: "platform_fit", wave: 4 });
-      await Promise.resolve();
-      onEvent?.({ type: "stage_end" as const, stage: "platform_fit", wave: 4 });
-      return [{ platform: "tiktok", fit_score: 70, rationale: "Decent fit" }];
-    }) as unknown as () => Promise<{ platform: string; fit_score: number; rationale: string }[]>);
-
+  it("platform-fit stage events do NOT fire (call site removed in Plan 03)", async () => {
     const events: Array<{ type: string; stage: string }> = [];
     await runPredictionPipeline(input, {
       onStageEvent: (e) => {
@@ -1286,19 +1263,18 @@ describe("Phase 9 — Platform-fit V3 result in PipelineResult", () => {
         }
       },
     });
-
-    expect(events.filter((e) => e.stage === "platform_fit")).toHaveLength(2);
+    // Plan 03: platform_fit stage events no longer emitted.
+    expect(events.filter((e) => e.stage === "platform_fit")).toHaveLength(0);
   });
 
-  it("platform-fit null on failure produces null platformFitResult (graceful degradation)", async () => {
+  it("pipeline completes without platform_fit (Plan 03 strip: graceful removal)", async () => {
     mockRunPlatformFit.mockClear();
     mockRunPlatformFit.mockRejectedValue(new Error("V3 API timeout"));
 
     const result = await runPredictionPipeline(input);
 
-    expect(result.platformFitResult).toBeNull();
-    expect(
-      result.warnings.some((w) => w.includes("Platform-fit unavailable")),
-    ).toBe(true);
+    // Plan 03: platform_fit removed; no warning about it, pipeline still completes.
+    expect(result).toBeDefined();
+    expect(result.warnings.some((w) => w.includes("Platform-fit unavailable"))).toBe(false);
   });
 });

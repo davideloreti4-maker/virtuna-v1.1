@@ -88,7 +88,6 @@ import type {
 import {
   makePipelineResult,
   makeGeminiAnalysis,
-  makeTrendEnrichment,
 } from "./factories";
 // predictWithML import removed (Plan 02, R9): ml call gone from aggregator; no coupling to ../ml here.
 
@@ -376,38 +375,24 @@ describe("D-G1 — SignalAvailability widening", () => {
 
 describe("D-G4 — FeatureVector.audioTrendingMatch source swap", () => {
   it("Test 15: sources from fingerprint.similarity when available", async () => {
-    // Plan 03: audioFingerprintResult removed; falls back to trendEnrichment velocity.
-    const pipeline = makePipelineResult({
-      trendEnrichment: makeTrendEnrichment({
-        matched_trends: [
-          { sound_name: "X", velocity_score: 30, trend_phase: "rising" },
-        ],
-      }),
-    });
+    // Plan 03: audioFingerprintResult + trendEnrichment removed from PipelineResult.
+    // audioTrendingMatch always null now (no signal source).
+    const pipeline = makePipelineResult({});
     const result = await aggregateScores(pipeline);
-    // Fallback: Math.min(1, 30/100) = 0.3
-    expect(result.feature_vector.audioTrendingMatch).toBeCloseTo(0.3, 5);
+    expect(result.feature_vector.audioTrendingMatch).toBeNull();
   });
 
   it("Test 16: falls back to Jaro-Winkler velocity-derived score when fingerprint null", async () => {
-    const pipeline = makePipelineResult({
-      // Plan 03: audioFingerprintResult always null now.
-      trendEnrichment: makeTrendEnrichment({
-        matched_trends: [
-          { sound_name: "Y", velocity_score: 50, trend_phase: "rising" },
-        ],
-      }),
-    });
+    // Plan 03: audioFingerprintResult + trendEnrichment removed from PipelineResult.
+    // audioTrendingMatch always null now.
+    const pipeline = makePipelineResult({});
     const result = await aggregateScores(pipeline);
-    // Math.min(1, 50/100) = 0.5
-    expect(result.feature_vector.audioTrendingMatch).toBeCloseTo(0.5, 5);
+    expect(result.feature_vector.audioTrendingMatch).toBeNull();
   });
 
   it("Test 17: audioTrendingMatch = null when both fingerprint and matched_trends are absent", async () => {
-    const pipeline = makePipelineResult({
-      // Plan 03: audioFingerprintResult always null now.
-      trendEnrichment: makeTrendEnrichment({ matched_trends: [] }),
-    });
+    // Plan 03: always null now.
+    const pipeline = makePipelineResult({});
     const result = await aggregateScores(pipeline);
     expect(result.feature_vector.audioTrendingMatch).toBeNull();
   });
@@ -419,15 +404,11 @@ describe("D-G4 — FeatureVector.audioTrendingMatch source swap", () => {
 
 describe("D-F3 — matched_trends synthesized from fingerprint", () => {
   it("Test 18: when fingerprint present, matched_trends contains a synthesized entry (sound_name + trend_phase + velocity_score)", async () => {
-    // Plan 03: audioFingerprintResult removed from PipelineResult; synthesis no longer occurs.
-    const pipeline = makePipelineResult({
-      trendEnrichment: makeTrendEnrichment({ matched_trends: [] }),
-    });
+    // Plan 03: audioFingerprintResult + trendEnrichment removed from PipelineResult; synthesis no longer occurs.
+    const pipeline = makePipelineResult({});
     const result = await aggregateScores(pipeline);
     // Plan 03: audio_fingerprint always null; no synthesis.
     expect(result.audio_fingerprint).toBeNull();
-    // The input trendEnrichment must not be mutated.
-    expect(pipeline.trendEnrichment.matched_trends).toEqual([]);
   });
 });
 

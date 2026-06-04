@@ -264,7 +264,7 @@ export function makePipelineResult(
       time_of_day_aware: null,
       pain_points: null,
     },
-    trendEnrichment: makeTrendEnrichment(),
+    // Plan 03: trendEnrichment removed from PipelineResult.
     deepseekResult: {
       reasoning: makeDeepSeekReasoning(),
       cost_cents: 0.3,
@@ -286,8 +286,7 @@ export function makePipelineResult(
       availability: false,
       cost_cents: 0,
     },
-    // Phase 9 — Wave 4 platform-fit V3 sibling default (null = V3 not run / unavailable)
-    platformFitResult: null,
+    // Plan 03: platformFitResult removed from PipelineResult.
     // Phase 3 (Plan 08) — Pass 2 outcome default (null = text mode / no segments)
     pass2Outcome: null,
     // Phase 3 (Plan 08) — Omni segments default (undefined = text mode, no video segments)

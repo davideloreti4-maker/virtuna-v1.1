@@ -151,13 +151,7 @@ describe("aggregateScores — anti_virality_gated wiring (B4)", () => {
     lowConfReasoning.confidence = "low";
     const lowPipeline = makePipelineResult({
       deepseekResult: { reasoning: lowConfReasoning, cost_cents: 0.3 },
-      // Plan 03 strip: ruleResult removed from PipelineResult; aggregator uses default fallback.
-      trendEnrichment: {
-        trend_score: 0,
-        matched_trends: [],
-        trend_context: "",
-        hashtag_relevance: 0,
-      },
+      // Plan 03 strip: ruleResult + trendEnrichment removed from PipelineResult.
     });
     const result = await aggregateScores(lowPipeline);
     // Functional contract: anti_virality_gated MUST match isAntiViralityGated(result.confidence).
@@ -177,15 +171,7 @@ describe("aggregateScores — anti_virality_gated wiring (B4)", () => {
     highConfReasoning.confidence = "high";
     const highPipeline = makePipelineResult({
       deepseekResult: { reasoning: highConfReasoning, cost_cents: 0.3 },
-      // Plan 03 strip: ruleResult removed from PipelineResult; aggregator uses default fallback.
-      trendEnrichment: {
-        trend_score: 60,
-        matched_trends: [
-          { sound_name: "Trend Sound", velocity_score: 70, trend_phase: "rising" },
-        ],
-        trend_context: "",
-        hashtag_relevance: 0.8,
-      },
+      // Plan 03 strip: ruleResult + trendEnrichment removed from PipelineResult.
     });
     const result = await aggregateScores(highPipeline);
     expect(result.anti_virality_gated).toBe(

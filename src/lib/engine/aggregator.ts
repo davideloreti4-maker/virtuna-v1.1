@@ -354,10 +354,11 @@ function assembleFeatureVector(
   pipelineResult: PipelineResult,
   adjustedVideoSignals?: GeminiVideoSignals | VideoSignalsPartial | null,
 ): FeatureVector {
-  const { payload, geminiResult, deepseekResult, trendEnrichment } =
+  const { payload, geminiResult, deepseekResult } =
     pipelineResult;
-  // Plan 03 strip: ruleResult + audioFingerprintResult removed from pipeline; use fallback defaults.
+  // Plan 03 strip: ruleResult + audioFingerprintResult + trendEnrichment removed from pipeline; use fallback defaults.
   const ruleResult: import("./types").RuleScoreResult = { rule_score: 50, matched_rules: [] };
+  const trendEnrichment: import("./types").TrendEnrichment = { trend_score: 0, matched_trends: [], trend_context: "", hashtag_relevance: 0 };
   const gemini = geminiResult.analysis;
   const deepseek = deepseekResult?.reasoning;
   // Phase 6 D-G4 — fingerprint cosine takes priority over the Jaro-Winkler-derived score.
@@ -471,13 +472,13 @@ export async function aggregateScores(
     payload,
     geminiResult,
     deepseekResult,
-    trendEnrichment,
   } = pipelineResult;
 
   const gemini = geminiResult.analysis;
   const deepseek = deepseekResult?.reasoning ?? null;
-  // Plan 03 strip: ruleResult + audioFingerprintResult removed from pipeline; use fallback defaults.
+  // Plan 03 strip: ruleResult + audioFingerprintResult + trendEnrichment removed from pipeline; use fallback defaults.
   const ruleResult: import("./types").RuleScoreResult = { rule_score: 50, matched_rules: [] };
+  const trendEnrichment: TrendEnrichment = { trend_score: 0, matched_trends: [], trend_context: "", hashtag_relevance: 0 };
   // Plan 03: audio fingerprint stage removed; always null. Cast prevents TypeScript narrowing to never.
   const audioFingerprintResult = null as AudioFingerprintResult | null;
 
@@ -707,9 +708,10 @@ export async function aggregateScores(
   // sees the synthesized matched_trends entry on fallback. assembleFeatureVector
   // reads pipelineResult.audioFingerprintResult independently for the priority
   // source (D-G4); the trend_enrichment slot is the fallback source-of-data.
+  // Plan 03: trendEnrichment removed from PipelineResult; pass pipelineResult directly.
+  // effectiveTrendEnrichment is already the fallback default (always empty) now.
   const featureVectorInput: PipelineResult = {
     ...pipelineResult,
-    trendEnrichment: effectiveTrendEnrichment,
   };
   const feature_vector = assembleFeatureVector(
     featureVectorInput,
