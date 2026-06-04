@@ -247,7 +247,8 @@ export interface PredictionResult {
   warnings: string[]; // Fatal flaw warnings from DeepSeek Step 4
 
   // Predicted engagement metrics (RES-2)
-  predicted_engagement: PredictedEngagement;
+  // Plan 02 D1.1: field is null after sine-jitter fabrication deleted; type nullable per D1.3 (UI shell kept).
+  predicted_engagement: PredictedEngagement | null;
 
   // Factors and suggestions (from Gemini + DeepSeek)
   factors: Factor[];

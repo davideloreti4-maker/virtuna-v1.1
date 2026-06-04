@@ -1,6 +1,5 @@
 import type {
   AudioPerceptualResult,
-  BehavioralPredictions,
   ConfidenceLevel,
   ContentTypeSlug,
   CtaSegmentResult,
@@ -8,9 +7,7 @@ import type {
   FeatureVector,
   GeminiAudioSignals,
   GeminiVideoSignals,
-  PersonaBehavioralAggregate,
   PlatformFitResult,
-  PredictedEngagement,
   PredictionResult,
   RuleScoreResult,
   SignalAvailability,
@@ -23,7 +20,8 @@ import type { PipelineResult } from "./pipeline";
 import type { StageEventCallback } from "./events";
 import { QWEN_OMNI_MODEL as GEMINI_MODEL } from "./qwen/client";
 import { QWEN_REASONING_MODEL as DEEPSEEK_MODEL } from "./qwen/client";
-import { predictWithML, featureVectorToMLInput } from "./ml";
+// ml.ts call removed (Plan 02, R9): ml predict + feature-vector-to-ml-input no longer called here.
+// ml.ts moves to _dormant/ in Plan 05. SCORE_WEIGHT_KEYS ml key retained until Plan 04 blend cut.
 // Phase 1 (R1.9, Plan 06 T3 B4) — anti-virality gating helper. Wires
 // ANTI_VIRALITY_THRESHOLD into a real consumer; eliminates the dead-code
 // threshold per checker B4. Gating is computed AFTER confidence calibration
@@ -46,7 +44,10 @@ import { computeOptimalPostWindow, type OptimalPostWindow } from "./optimal-post
 import { createServiceClient } from "@/lib/supabase/service";
 import { ENGINE_VERSION } from "./version";
 import { runStage10Critique, applyCritiqueAdjustment } from "./stage10-critique";
-import { runStage11Counterfactuals, maybeAppendLikelyFlopWarning } from "./stage11-counterfactuals";
+// stage11 call removed (Plan 02, R9): the stage11 counterfactuals call sites deleted here + in analyze/route.ts.
+// stage11-counterfactuals.ts stays on disk until Plan 05 dormant move.
+// maybeAppendLikelyFlopWarning is a pure-TS helper; retain its import until Plan 05 moves the module.
+import { maybeAppendLikelyFlopWarning } from "./stage11-counterfactuals";
 import { applyContentTypeWeights } from "./wave0/content-type-weights";
 import { computeAudioPerceptualScore } from "./audio-perceptual";
 import { createLogger } from "@/lib/logger";
@@ -421,82 +422,9 @@ function assembleFeatureVector(
   };
 }
 
-// =====================================================
-// Predicted Engagement Generation (RES-2)
-// =====================================================
-
-/**
- * Generate realistic predicted engagement numbers from the viral score
- * and behavioral predictions. Numbers are intentionally non-round to feel
- * authentic (e.g., 12.4K not 12,000).
- *
- * Base view range: 5K-500K scaled by overall_score.
- * Engagement rates derived from behavioral_predictions percentages.
- */
-function computePredictedEngagement(
-  overallScore: number,
-  behavioral: { share_pct: number; comment_pct: number; save_pct: number; completion_pct: number },
-): PredictedEngagement {
-  // Deterministic jitter from score (avoids true randomness for reproducibility)
-  const jitter = (seed: number) => {
-    const x = Math.sin(seed * 12.9898 + overallScore * 78.233) * 43758.5453;
-    return x - Math.floor(x); // 0-1
-  };
-
-  // Base views: exponential curve from score (low scores get ~5K, high scores get ~200K+)
-  const scoreNorm = overallScore / 100;
-  const baseViews = Math.round(
-    5000 + (scoreNorm ** 2.2) * 450000 * (0.8 + jitter(1) * 0.4)
-  );
-
-  // Like rate: 3-12% of views, influenced by score
-  const likeRate = 0.03 + scoreNorm * 0.09 + jitter(2) * 0.02;
-  const likes = Math.round(baseViews * likeRate);
-
-  // Comment rate: from behavioral prediction (0.5-3% typical)
-  const commentRate = Math.max(0.005, (behavioral.comment_pct / 100) * (0.6 + jitter(3) * 0.3));
-  const comments = Math.round(baseViews * commentRate);
-
-  // Share rate: from behavioral prediction (0.2-2% typical)
-  const shareRate = Math.max(0.002, (behavioral.share_pct / 100) * (0.5 + jitter(4) * 0.3));
-  const shares = Math.round(baseViews * shareRate);
-
-  // Save rate: from behavioral prediction (0.5-4% typical)
-  const saveRate = Math.max(0.005, (behavioral.save_pct / 100) * (0.7 + jitter(5) * 0.3));
-  const saves = Math.round(baseViews * saveRate);
-
-  return { likes, comments, shares, saves, views: baseViews };
-}
-
-/**
- * WR-01 fix: convert PersonaBehavioralAggregate intent scores (0-100) into
- * BehavioralPredictions percentage-of-views units (typical 0.2-5%) before feeding
- * `computePredictedEngagement`. Without this conversion, persona share_pct=75 (intent
- * "75 out of 100 intent strength") would be interpreted as "75% of views share" — a
- * 15-20× inflation.
- *
- * Scaling factor 0.05 derived from DeepSeek's empirical output ranges (share/save 0.5-5%,
- * comment 0.5-3%) anchored at intent=100 → view-rate=5%. Phase 10 may revise after
- * corpus-calibrated mapping is available.
- *
- * `completion_pct` is in identical units (0-100 percent watched) on both sides, so it
- * passes through unchanged.
- */
-const PERSONA_INTENT_TO_VIEW_RATE = 0.05;
-function rescalePersonaIntentToViewRate(
-  aggregate: PersonaBehavioralAggregate,
-): BehavioralPredictions {
-  return {
-    completion_pct: aggregate.completion_pct,
-    completion_percentile: aggregate.completion_percentile,
-    share_pct: aggregate.share_pct * PERSONA_INTENT_TO_VIEW_RATE,
-    share_percentile: aggregate.share_percentile,
-    comment_pct: aggregate.comment_pct * PERSONA_INTENT_TO_VIEW_RATE,
-    comment_percentile: aggregate.comment_percentile,
-    save_pct: aggregate.save_pct * PERSONA_INTENT_TO_VIEW_RATE,
-    save_percentile: aggregate.save_percentile,
-  };
-}
+// Fabricated engagement jitter (D1.1, R9) deleted (Plan 02): sine-jitter view/like/comment/share/save
+// estimation functions removed. predicted_engagement field is null — UI card null-guarded (Plan 01 reverify #5).
+// PredictedEngagement type + UI shell are retained per D1.3; field will be regrounded in Plan 05.
 
 // =====================================================
 // Score Aggregation
@@ -515,14 +443,8 @@ export interface AggregateScoresOptions {
   // Plan 02 leaves this optional with null default; Plan 03 callsite supplies real values.
   videoContext?: { fileUri: string; mimeType: string } | null;
   /**
-   * Latency: defer Stage 11 (counterfactuals) off the synchronous path. When true,
-   * aggregateScores runs Stage 10 (deterministic critique — owns the final score,
-   * confidence + anti-virality gate) but SKIPS the Stage 11 LLM call, leaving
-   * `counterfactuals` null. The caller (analyze route) re-runs `runStage11Counterfactuals`
-   * in a Vercel `after()` and UPDATEs the row, so the user-visible wall drops by the
-   * Stage 11 tail (~30-113s) with no change to the score/gate/confidence. Stage 11 is
-   * purely additive (writes result.counterfactuals only — see the post-pipeline block
-   * below), so deferring it never alters the painted number. Default false = inline.
+   * Retained for back-compat. Stage 11 call removed (Plan 02); this flag is now a no-op.
+   * counterfactuals is always null after Plan 02 until Plan 05 regrounding.
    */
   deferCounterfactuals?: boolean;
 }
@@ -788,14 +710,9 @@ export async function aggregateScores(
     featureVectorInput,
     adjustedVideoSignals,
   );
-  const mlFeatures = featureVectorToMLInput(feature_vector);
-  // board-fix #1: time ML predict — suspected cold-start cost in the tail.
-  const tMl = performance.now();
-  const mlScore = await predictWithML(mlFeatures);
-  log.info("stage_timing", {
-    stage: "predict_with_ml",
-    ms: Math.round(performance.now() - tMl),
-  });
+  // ml predict call removed (Plan 02, R9, Pitfall 3). ml.ts moves to _dormant/ in Plan 05.
+  // SCORE_WEIGHT_KEYS ml key + blend math retained until Plan 04 cuts it; ml contribution = 0.
+  const mlScore: number | null = null;
 
   // -------------------------------------------------
   // RULE-04: Determine signal availability from pipeline result
@@ -1080,30 +997,9 @@ export async function aggregateScores(
       ? pipelineResult.personaBehavioralAggregate
       : (deepseek?.behavioral_predictions ?? FALLBACK_BEHAVIORAL);
 
-  // -------------------------------------------------
-  // Predicted Engagement (RES-2)
-  // WR-01: PersonaBehavioralAggregate.share_pct / comment_pct / save_pct are top-3-weighted
-  // INTENT SCORES (0-100), whereas DeepSeek's share_pct / comment_pct / save_pct are
-  // PERCENTAGES OF VIEWS (typical 0.2-5%). Without conversion, `computePredictedEngagement`
-  // would treat persona share_pct=75 as "75/100 = 0.75 of views share" → 37-60% share rate,
-  // ~15-20× inflated. Convert intent scores into view-rate units before feeding the
-  // engagement math, but keep `behavioral_predictions` output unchanged (downstream
-  // consumers reading the persona aggregate get the documented intent scores).
-  // Conversion factor 0.05: intent 100 → 5% view rate, intent 50 → 2.5% view rate.
-  // This matches DeepSeek's typical upper-bound output range and is documented in
-  // WR-01 fix notes; Phase 10 may revise after corpus calibration.
-  // `completion_pct` is already in the same units on both sides (0-100 percent watched),
-  // so it is passed through unchanged.
-  // -------------------------------------------------
-  const engagementBehavioral =
-    behavioralSource === "personas" && pipelineResult.personaBehavioralAggregate !== null
-      ? rescalePersonaIntentToViewRate(pipelineResult.personaBehavioralAggregate)
-      : behavioral_predictions;
-
-  const predicted_engagement = computePredictedEngagement(
-    overall_score,
-    engagementBehavioral,
-  );
+  // predicted_engagement removed (Plan 02, D1.1, R9): engagement jitter derivation deleted.
+  // Field set null below; UI card already null-guarded (Plan 01 reverify #5 confirmed).
+  // Will be regrounded in Plan 05.
 
   // -------------------------------------------------
   // Phase 3 (Plan 08) — Pass 2 timeline → heatmap + weighted_* fields.
@@ -1151,7 +1047,7 @@ export async function aggregateScores(
     feature_vector,
     reasoning: "", // DeepSeek reasoning text — not exposed in current schema
     warnings,
-    predicted_engagement,
+    predicted_engagement: null, // Plan 02 D1.1: sine-jitter fabrication deleted; field null until Plan 05 regrounding
     factors,
     suggestions,
     rule_score: ruleResult.rule_score,
@@ -1241,33 +1137,20 @@ export async function aggregateScores(
   // LIKELY_FLOP check below still runs on POST-critique confidence, and the
   // anti-virality gate is still recomputed from post-critique confidence —
   // Pitfall 7 ordering invariant preserved.
-  // board-fix #1: time each LLM call individually + the Promise.all wall time.
-  // If (stage10 + stage11) ≈ wall, the two calls are serialized at the DashScope
-  // network layer despite Promise.all; if wall ≈ max(stage10, stage11), they are
-  // truly concurrent. This answers the open latency question in the handoff.
-  // Latency: when deferCounterfactuals is set (analyze route), Stage 11 is pulled
-  // off the sync path and re-run in a Vercel after() — so skip it here. Stage 10
-  // stays inline because it is deterministic TS (no LLM, sub-ms) and OWNS the final
-  // score/confidence/gate; only Stage 11's additive `counterfactuals` arrives late.
-  const deferCounterfactuals = options?.deferCounterfactuals ?? false;
+  // board-fix #1: time stage10.
+  // Stage 11 slot removed (Plan 02, R9): stage11 call deleted from Promise.all;
+  // counterfactuals stays null. stage11-counterfactuals.ts moves to _dormant/ in Plan 05.
+  // Stage 10 (deterministic TS, sub-ms) is KEPT — owns the final score/confidence/gate (Plan 04 scope).
+  // deferCounterfactuals option kept in AggregateScoresOptions for back-compat but no longer used.
   const tStages = performance.now();
-  const [critiqueResult, counterfactualResult] = await Promise.all([
-    (async () => {
-      const t = performance.now();
-      const r = await runStage10Critique(result, onStageEvent);
-      log.info("stage_timing", { stage: "stage10_critique", ms: Math.round(performance.now() - t) });
-      return r;
-    })(),
-    // D-01 / D-06 / D-18 — Stage 11 receives videoContext from options (Plan 03
-    // threads real values; Plan 02 default = null). Skipped entirely when deferred.
-    deferCounterfactuals ? Promise.resolve(null) : (async () => {
-      const t = performance.now();
-      const r = await runStage11Counterfactuals(result, options?.videoContext ?? null, onStageEvent);
-      log.info("stage_timing", { stage: "stage11_counterfactuals", ms: Math.round(performance.now() - t) });
-      return r;
-    })(),
-  ]);
-  log.info("stage_timing", { stage: "stage10_11_wall", ms: Math.round(performance.now() - tStages) });
+  const critiqueResult = await (async () => {
+    const t = performance.now();
+    const r = await runStage10Critique(result, onStageEvent);
+    log.info("stage_timing", { stage: "stage10_critique", ms: Math.round(performance.now() - t) });
+    return r;
+  })();
+  const counterfactualResult = null; // stage11 removed (Plan 02)
+  log.info("stage_timing", { stage: "stage10_wall", ms: Math.round(performance.now() - tStages) });
 
   if (critiqueResult) {
     result.confidence = applyCritiqueAdjustment(result.confidence, critiqueResult);

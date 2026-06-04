@@ -71,10 +71,9 @@ describe('ResultsPanel — predicted_engagement gate (null-safety confirmation)'
     expect(screen.queryByTestId('tiktok-result-card')).toBeNull();
   });
 
-  it('does NOT render TikTokResultCard when predicted_engagement is absent (undefined)', () => {
-    const result = baseResult();
-    // Ensure the field is absent (not just undefined in the spread)
-    delete (result as Record<string, unknown>).predicted_engagement;
+  it('does NOT render TikTokResultCard when predicted_engagement is null (Plan 02: field is now nullable)', () => {
+    // Plan 02 D1.1: predicted_engagement is nullable; null produces the same guard as absent.
+    const result = baseResult({ predicted_engagement: null });
     render(<ResultsPanel result={result} onRunAnother={() => {}} />);
     expect(screen.queryByTestId('tiktok-result-card')).toBeNull();
   });
