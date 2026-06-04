@@ -622,15 +622,8 @@ export async function POST(request: Request) {
       const result = await aggregateScores(pipelineResult, undefined);
       const aggregateMs = Math.round(performance.now() - tAgg);
 
-      const ruleContributions = pipelineResult.ruleResult.matched_rules.map(
-        (r) => ({
-          rule_id: r.rule_id,
-          rule_name: r.rule_name,
-          score: r.score,
-          max_score: r.max_score,
-          tier: r.tier,
-        })
-      );
+      // Plan 03 strip: ruleResult removed from pipeline — rule_contributions empty.
+      const ruleContributions: { rule_id: string; rule_name: string; score: number; max_score: number; tier: string }[] = [];
 
       // board-fix #2: persist TRUE E2E latency = pipeline + aggregate (see SSE branch).
       const finalResult: PredictionResult = {
@@ -839,14 +832,8 @@ export async function POST(request: Request) {
             ms: aggregateMs,
           });
 
-          // Build rule_contributions JSONB for per-rule tracking (RULE-03)
-          const ruleContributions = pipelineResult.ruleResult.matched_rules.map(r => ({
-            rule_id: r.rule_id,
-            rule_name: r.rule_name,
-            score: r.score,
-            max_score: r.max_score,
-            tier: r.tier,
-          }));
+          // Plan 03 strip: ruleResult removed from pipeline — rule_contributions empty.
+          const ruleContributions: { rule_id: string; rule_name: string; score: number; max_score: number; tier: string }[] = [];
 
           // Prepend pipeline warnings (partial failures) before DeepSeek warnings.
           // board-fix #2: persist TRUE E2E latency = pipeline + aggregate. result.latency_ms

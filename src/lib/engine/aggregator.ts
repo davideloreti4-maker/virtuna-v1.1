@@ -353,12 +353,14 @@ function assembleFeatureVector(
   pipelineResult: PipelineResult,
   adjustedVideoSignals?: GeminiVideoSignals | VideoSignalsPartial | null,
 ): FeatureVector {
-  const { payload, geminiResult, deepseekResult, ruleResult, trendEnrichment } =
+  const { payload, geminiResult, deepseekResult, trendEnrichment } =
     pipelineResult;
+  // Plan 03 strip: ruleResult + audioFingerprintResult removed from pipeline; use fallback defaults.
+  const ruleResult: import("./types").RuleScoreResult = { rule_score: 50, matched_rules: [] };
   const gemini = geminiResult.analysis;
   const deepseek = deepseekResult?.reasoning;
   // Phase 6 D-G4 — fingerprint cosine takes priority over the Jaro-Winkler-derived score.
-  const audioFingerprintResult = pipelineResult.audioFingerprintResult;
+  const audioFingerprintResult = null;
 
   // Helper to find a Gemini factor by name
   const findFactor = (name: string) =>
@@ -467,14 +469,14 @@ export async function aggregateScores(
     payload,
     geminiResult,
     deepseekResult,
-    ruleResult,
     trendEnrichment,
   } = pipelineResult;
 
   const gemini = geminiResult.analysis;
   const deepseek = deepseekResult?.reasoning ?? null;
-  // Phase 6 (D-A4) — fingerprint result from Wave 1 audio_fingerprint stage.
-  const audioFingerprintResult = pipelineResult.audioFingerprintResult;
+  // Plan 03 strip: ruleResult + audioFingerprintResult removed from pipeline; use fallback defaults.
+  const ruleResult: import("./types").RuleScoreResult = { rule_score: 50, matched_rules: [] };
+  const audioFingerprintResult = null;
 
   // -------------------------------------------------
   // Phase 4 D-12 + D-19 (RESEARCH Topic #5 locked interpretation):
