@@ -65,11 +65,10 @@ vi.mock("../deepseek", () => ({
   isCircuitOpen: vi.fn(() => true),
 }));
 
-vi.mock("../stage11-counterfactuals", () => ({
-  GEMINI_STAGE11_MODEL: "gemini-3.1-pro-preview",
+// Plan 01-05 Task 0: aggregator now imports maybeAppendLikelyFlopWarning from ./flop-warning.
+// ../stage11-counterfactuals mock removed (module moves to _dormant/ — path won't resolve after move).
+vi.mock("../flop-warning", () => ({
   maybeAppendLikelyFlopWarning: vi.fn(),
-  // runStage11Counterfactuals mock removed (Plan 02, R9): call site gone from aggregator.ts.
-  // Module stays on disk until Plan 05 dormant move; maybeAppendLikelyFlopWarning still imported.
 }));
 
 // =====================================================

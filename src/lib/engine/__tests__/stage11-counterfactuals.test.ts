@@ -14,7 +14,9 @@
  *  10 — D-10: cost_cents is numeric in emitStageEnd
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { runStage11Counterfactuals, maybeAppendLikelyFlopWarning } from "../stage11-counterfactuals";
+// Plan 01-05 Task 0: maybeAppendLikelyFlopWarning moved to flop-warning.ts + flop-warning.test.ts.
+// This test file retains only the runStage11Counterfactuals tests (travels with module to _dormant/).
+import { runStage11Counterfactuals } from "../stage11-counterfactuals";
 import { buildSignalContextUserMessage, CounterfactualsResponseSchema } from "../stage11-counterfactuals-prompts";
 import type { PredictionResult } from "../types";
 import type { StageEvent } from "../events";
@@ -460,49 +462,7 @@ describe("buildSignalContextUserMessage — D-03 full signal context (no truncat
   });
 });
 
-// Test 8 — maybeAppendLikelyFlopWarning: 4 boundary tests (PRESERVED VERBATIM from original file)
-describe("maybeAppendLikelyFlopWarning — 4 boundary fixtures (COUNTER LIKELY_FLOP)", () => {
-  it("adds warning when score < 30 AND confidence > 0.70", () => {
-    const result = makeFakePredictionResult({
-      overall_score: 25,
-      confidence: 0.75,
-      warnings: [],
-    });
-    maybeAppendLikelyFlopWarning(result);
-    expect(result.warnings.length).toBe(1);
-    expect(result.warnings[0]).toContain("LIKELY_FLOP");
-  });
-
-  it("does NOT add warning when score >= 30 AND confidence > 0.70", () => {
-    const result = makeFakePredictionResult({
-      overall_score: 30,
-      confidence: 0.75,
-      warnings: [],
-    });
-    maybeAppendLikelyFlopWarning(result);
-    expect(result.warnings.length).toBe(0);
-  });
-
-  it("does NOT add warning when score < 30 AND confidence <= 0.70", () => {
-    const result = makeFakePredictionResult({
-      overall_score: 25,
-      confidence: 0.70,
-      warnings: [],
-    });
-    maybeAppendLikelyFlopWarning(result);
-    expect(result.warnings.length).toBe(0);
-  });
-
-  it("does NOT add warning when score >= 30 AND confidence <= 0.70", () => {
-    const result = makeFakePredictionResult({
-      overall_score: 85,
-      confidence: 0.65,
-      warnings: [],
-    });
-    maybeAppendLikelyFlopWarning(result);
-    expect(result.warnings.length).toBe(0);
-  });
-});
+// Test 8 (maybeAppendLikelyFlopWarning 4 boundary tests) moved to flop-warning.test.ts (Plan 01-05 Task 0).
 
 describe("runStage11Counterfactuals — circuit-breaker guard", () => {
   beforeEach(() => {

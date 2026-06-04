@@ -44,10 +44,9 @@ import { computeOptimalPostWindow, type OptimalPostWindow } from "./optimal-post
 import { createServiceClient } from "@/lib/supabase/service";
 import { ENGINE_VERSION } from "./version";
 import { runStage10Critique, applyCritiqueAdjustment } from "./stage10-critique";
-// stage11 call removed (Plan 02, R9): the stage11 counterfactuals call sites deleted here + in analyze/route.ts.
-// stage11-counterfactuals.ts stays on disk until Plan 05 dormant move.
-// maybeAppendLikelyFlopWarning is a pure-TS helper; retain its import until Plan 05 moves the module.
-import { maybeAppendLikelyFlopWarning } from "./stage11-counterfactuals";
+// Plan 01-05 Task 0: maybeAppendLikelyFlopWarning extracted from stage11-counterfactuals.ts
+// to flop-warning.ts (kept module). stage11-counterfactuals.ts moves to _dormant/ in Task 1.
+import { maybeAppendLikelyFlopWarning } from "./flop-warning";
 import { applyContentTypeWeights } from "./wave0/content-type-weights";
 import { computeAudioPerceptualScore } from "./audio-perceptual";
 import { createLogger } from "@/lib/logger";

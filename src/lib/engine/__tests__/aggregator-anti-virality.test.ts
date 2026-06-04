@@ -74,15 +74,11 @@ vi.mock("../stage10-critique", () => ({
   applyCritiqueAdjustment: vi.fn((c: number) => c),
 }));
 
-// stage11-counterfactuals mock: keep maybeAppendLikelyFlopWarning (still imported by aggregator.ts
-// until Plan 05 moves the module). runStage11Counterfactuals mock removed (Plan 04, R9):
-// stage11 call removed from aggregator in Plan 02; mock strands nothing here.
-vi.mock("../stage11-counterfactuals", async (importOriginal) => {
-  const orig = await importOriginal<typeof import("../stage11-counterfactuals")>();
-  return {
-    ...orig,
-  };
-});
+// Plan 01-05 Task 0: aggregator now imports maybeAppendLikelyFlopWarning from ./flop-warning.
+// ../stage11-counterfactuals mock removed (module moves to _dormant/ — path won't resolve after move).
+vi.mock("../flop-warning", () => ({
+  maybeAppendLikelyFlopWarning: vi.fn(),
+}));
 
 // =====================================================
 // Imports (after mocks)
