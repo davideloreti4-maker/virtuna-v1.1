@@ -68,10 +68,23 @@ Plans:
 ## Phase 2: Omni Verbatim
 
 **Goal:** repurpose Omni from eyes-and-judge into observer/transcriber.
-**Does:** extend `qwen/schemas.ts` + `omni-analysis.ts` prompt to emit `hook_verbatim` + per-segment `spoken_text`/`on_screen_text`; drop the redundant 0–10 judgment fields; thread verbatim through `aggregator.ts` → `PredictionResult`.
-**Success:** R1 (verbatim persists). Zero-regret precondition for P3 + P4.
-**Risk:** low — additive to a deterministic call; a few hundred more output tokens.
+**Does:** extend `qwen/schemas.ts` + `omni-analysis.ts` prompt to emit `hook_verbatim` + per-segment `spoken_text`/`on_screen_text`; thread verbatim through `aggregator.ts` → `PredictionResult` → persistence (dedicated `verbatim` JSONB column); bump the engine cache key. **Additive-only** (D-01) — the 0–10 judgment fields STAY; their drop is deferred to P3 (dropping them here would orphan the gemini half of the live score blend before Apollo replaces it).
+**Success:** R1 (verbatim persists on a real run). Zero-regret precondition for P3 + P4.
+**Risk:** low — additive to a deterministic call; a few hundred more output tokens. #1 risk is the assembly-hop regression (emotion_arc precedent: declared+prompted but dropped on the assembly literal → 26/26 null rows) — guarded by a real-run proof.
 **Ship:** independently mergeable (Omni also feeds Remix's decode — verbatim helps it too).
+**Plans:** 3 plans
+Plans:
+**Wave 1**
+
+- [ ] 02-01-PLAN.md — Verbatim contracts: extend OmniAnalysisZodSchema (hook_verbatim + per-segment text) + buildSystemPrompt (fidelity rules + null/[inaudible] contract) + Wave 0 regression test
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 02-02-PLAN.md — Thread verbatim assembly→aggregator→PredictionResult; persist to dedicated verbatim JSONB column (migration + [BLOCKING] live apply + db types + both route sites); bump ENGINE_VERSION 3.2.0
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 02-03-PLAN.md — R1 real-run proof (speech→non-empty, silent→null not [inaudible]) + R6 latency + R12 remix no-regression + R8 determinism guard
 
 ## Phase 3: Apollo Reasoner (Brain 1) — THE MOAT + shared knowledge core
 
