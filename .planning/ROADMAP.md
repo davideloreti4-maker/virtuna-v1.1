@@ -42,7 +42,7 @@ Clear the engine down to its senses (low-risk deletion → under the cap), sharp
 **Success:** R6 (under cap), R9 (no fabricated/dead signal), R5 (score + confidence still render). Engine stays shippable + green (minus deleted-feature tests).
 **Risk:** low — mostly deletion. Watch blend-coupled board UI consumers + remix coupling in `pipeline.ts`/`types.ts`.
 **Ship:** independently mergeable to `main` (honesty + latency win, no dependency on later phases) — merge promptly, don't bank it behind P3/P4.
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 Plans:
 **Wave 1**
 
@@ -63,7 +63,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 01-06-PLAN.md — Hide FALLBACK_ITEM; bump ENGINE_VERSION 3.1.0; blocking E2E gates (score delta, latency, determinism, remix smoke)
+- [x] 01-06-PLAN.md — Hide FALLBACK_ITEM; bump ENGINE_VERSION 3.1.0; blocking E2E gates (score delta, latency, determinism, remix smoke)
 
 ## Phase 2: Omni Verbatim
 
