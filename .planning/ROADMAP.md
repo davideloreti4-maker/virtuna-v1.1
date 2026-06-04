@@ -72,11 +72,11 @@ Plans:
 **Success:** R1 (verbatim persists on a real run). Zero-regret precondition for P3 + P4.
 **Risk:** low — additive to a deterministic call; a few hundred more output tokens. #1 risk is the assembly-hop regression (emotion_arc precedent: declared+prompted but dropped on the assembly literal → 26/26 null rows) — guarded by a real-run proof.
 **Ship:** independently mergeable (Omni also feeds Remix's decode — verbatim helps it too).
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 02-01-PLAN.md — Verbatim contracts: extend OmniAnalysisZodSchema (hook_verbatim + per-segment text) + buildSystemPrompt (fidelity rules + null/[inaudible] contract) + Wave 0 regression test
+- [x] 02-01-PLAN.md — Verbatim contracts: extend OmniAnalysisZodSchema (hook_verbatim + per-segment text) + buildSystemPrompt (fidelity rules + null/[inaudible] contract) + Wave 0 regression test
 
 **Wave 2** *(blocked on Wave 1)*
 
