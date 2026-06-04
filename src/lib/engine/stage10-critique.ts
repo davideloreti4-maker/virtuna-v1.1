@@ -55,35 +55,22 @@ export function deriveCritique(
   result: PredictionResult,
   creatorContext?: CreatorContext | null,
 ): CritiqueResult {
-  const flags: string[] = [];
+  // flags[] removed (Plan 04, D2.3): flag strings were never persisted (no critique DB column)
+  // nor rendered. The only consumed effect, confidence_adjustment, is KEPT (D1.4/R5).
   let penalty = 0;
 
   // Check #1 — Signal Agreement: vision and behavioral disagree by >30 points.
   const gap = Math.abs(result.gemini_score - result.behavioral_score);
   if (gap > SIGNAL_GAP_THRESHOLD) {
-    flags.push(
-      `Signal disagreement — vision ${Math.round(result.gemini_score)}/100 vs behavioral ` +
-        `${Math.round(result.behavioral_score)}/100 (Δ${Math.round(gap)} > ${SIGNAL_GAP_THRESHOLD}). ` +
-        `The two models read this video differently; the blended score is lower-confidence.`,
-    );
     penalty += PENALTY_SIGNAL_DISAGREEMENT;
   }
 
   // Check #2 — Score vs Factors: high score on weak factors, or low score on strong ones.
   const top3 = [...(result.factors ?? [])].sort((a, b) => b.score - a.score).slice(0, 3);
   if (top3.length === 3) {
-    const names = top3.map((f) => f.name).join(", ");
     if (result.overall_score > HIGH_SCORE && top3.every((f) => f.score <= WEAK_FACTOR)) {
-      flags.push(
-        `Score–factor contradiction — overall ${result.overall_score}/100 but the top factors ` +
-          `(${names}) all score ≤${WEAK_FACTOR}/10. The score rides signal weighting, not factor quality.`,
-      );
       penalty += PENALTY_SCORE_FACTOR_CONFLICT;
     } else if (result.overall_score < LOW_SCORE && top3.every((f) => f.score >= STRONG_FACTOR)) {
-      flags.push(
-        `Score–factor contradiction — overall ${result.overall_score}/100 but the top factors ` +
-          `(${names}) all score ≥${STRONG_FACTOR}/10. Strong factors held down by signal weighting.`,
-      );
       penalty += PENALTY_SCORE_FACTOR_CONFLICT;
     }
   }
@@ -95,32 +82,23 @@ export function deriveCritique(
     (result.hook_decomposition?.visual_stop_power ?? 10) < WEAK_HOOK ||
     result.signal_availability.gemini_hook === false;
   if (flopCount > 0 && result.confidence > HIGH_CONFIDENCE && hookWeak) {
-    flags.push(
-      `Historical-flop match — this creator has ${flopCount} documented flop(s) and this ` +
-        `prediction shares their pattern (high confidence + weak hook). The creators agree the ` +
-        `hook decides ~80% of performance — warrants skepticism.`,
-    );
     penalty += PENALTY_HISTORICAL_FLOP;
   }
 
   // Check #4 — Over-confidence on thin signals: confidence>0.7 with ≥2 signals unavailable.
+  // sa.audio and sa.retrieval sub-conditions removed (Plan 04, R9): those keys no longer
+  // contribute to the blend. gemini_hook + personas remain as the thin-signal indicators.
   const sa = result.signal_availability;
   const unavailable = [
-    sa.audio !== true && "audio",
-    sa.retrieval !== true && "retrieval",
     sa.gemini_hook !== true && "gemini_hook",
     sa.personas !== true && "personas",
   ].filter(Boolean) as string[];
   if (result.confidence > HIGH_CONFIDENCE && unavailable.length >= 2) {
-    flags.push(
-      `Thin-signal over-confidence — confidence ${result.confidence.toFixed(2)} but ` +
-        `${unavailable.join(", ")} unavailable. Coverage is thin; confidence is reduced.`,
-    );
     penalty += PENALTY_THIN_SIGNAL;
   }
 
   return {
-    flags,
+    flags: [], // Plan 04 (D2.3): flags vestigial — array retained in CritiqueResult type for back-compat
     confidence_adjustment: penalty === 0 ? 0 : Math.max(-0.2, -penalty),
   };
 }

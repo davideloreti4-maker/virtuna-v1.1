@@ -128,19 +128,21 @@ describe("deriveCritique — clean result", () => {
 });
 
 describe("deriveCritique — Check #1 Signal Agreement", () => {
-  it("|gemini − behavioral| > 30 → flag + penalty", () => {
+  // Plan 04 (D2.3): flags[] always empty (vestigial strings removed). Assert via confidence_adjustment.
+  it("|gemini − behavioral| > 30 → penalty applied (no flags — strings vestigial)", () => {
     const c = deriveCritique(cleanResult({ gemini_score: 85, behavioral_score: 45 }));
-    expect(c.flags.some((f) => /disagreement/i.test(f))).toBe(true);
+    expect(c.flags).toHaveLength(0); // flags always empty after Plan 04
     expect(c.confidence_adjustment).toBeCloseTo(-0.06, 10);
   });
   it("gap exactly 30 does NOT fire (strict >)", () => {
     const c = deriveCritique(cleanResult({ gemini_score: 80, behavioral_score: 50 }));
-    expect(c.flags.some((f) => /disagreement/i.test(f))).toBe(false);
+    expect(c.confidence_adjustment).toBe(0);
   });
 });
 
 describe("deriveCritique — Check #2 Score vs Factors", () => {
-  it("high score on uniformly weak top factors → contradiction flag", () => {
+  // Plan 04 (D2.3): flags[] always empty. Assert via confidence_adjustment.
+  it("high score on uniformly weak top factors → penalty applied", () => {
     const c = deriveCritique(
       cleanResult({
         overall_score: 78,
@@ -151,9 +153,10 @@ describe("deriveCritique — Check #2 Score vs Factors", () => {
         ],
       }),
     );
-    expect(c.flags.some((f) => /contradiction/i.test(f))).toBe(true);
+    expect(c.flags).toHaveLength(0);
+    expect(c.confidence_adjustment).toBeCloseTo(-0.07, 10);
   });
-  it("low score on uniformly strong top factors → contradiction flag", () => {
+  it("low score on uniformly strong top factors → penalty applied", () => {
     const c = deriveCritique(
       cleanResult({
         overall_score: 22,
@@ -164,7 +167,8 @@ describe("deriveCritique — Check #2 Score vs Factors", () => {
         ],
       }),
     );
-    expect(c.flags.some((f) => /contradiction/i.test(f))).toBe(true);
+    expect(c.flags).toHaveLength(0);
+    expect(c.confidence_adjustment).toBeCloseTo(-0.07, 10);
   });
 });
 
@@ -181,27 +185,32 @@ describe("deriveCritique — Check #3 Historical-flop match", () => {
     time_of_day_aware: null, pain_points: null,
   };
 
-  it("flops + high confidence + weak hook → flag, and NEVER leaks a URL", () => {
+  // Plan 04 (D2.3): flags[] always empty; check fires via confidence_adjustment penalty.
+  // URL-safety invariant: no URL in flags (trivially satisfied — flags is always empty).
+  it("flops + high confidence + weak hook → penalty applied (flags empty, URL-safety invariant holds)", () => {
     const c = deriveCritique(
       cleanResult({ confidence: 0.82, signal_availability: { ...cleanResult().signal_availability, gemini_hook: false } }),
       creatorWithFlops,
     );
-    const flag = c.flags.find((f) => /flop/i.test(f));
-    expect(flag).toBeDefined();
-    expect(flag).toContain("2 documented flop"); // count only
-    expect(c.flags.join(" ")).not.toContain("tiktok.com"); // URL-safety invariant
+    expect(c.flags).toHaveLength(0); // flags always empty after Plan 04
+    expect(c.confidence_adjustment).toBeCloseTo(-0.05, 10); // PENALTY_HISTORICAL_FLOP
+    // URL-safety invariant: trivially satisfied (no flags to contain URLs)
+    expect(c.flags.join(" ")).not.toContain("tiktok.com");
   });
 
   it("does not fire without creator history", () => {
     const c = deriveCritique(
       cleanResult({ confidence: 0.82, signal_availability: { ...cleanResult().signal_availability, gemini_hook: false } }),
     );
-    expect(c.flags.some((f) => /flop/i.test(f))).toBe(false);
+    expect(c.confidence_adjustment).toBe(0);
   });
 });
 
 describe("deriveCritique — Check #4 thin-signal over-confidence", () => {
-  it("confidence>0.7 + ≥2 unavailable signals → flag", () => {
+  // Plan 04 (D2.3): flags[] always empty; sa.audio/sa.retrieval sub-conditions removed
+  // (those keys no longer in the blend). Check now fires when gemini_hook=false + personas=false
+  // (both ≥2-unavailable indicators remaining after the audio/retrieval sub-condition removal).
+  it("confidence>0.7 + gemini_hook=false + personas=false → penalty applied", () => {
     const c = deriveCritique(
       makeFakePredictionResult({
         gemini_score: 70, behavioral_score: 65, overall_score: 65, confidence: 0.82,
@@ -212,25 +221,48 @@ describe("deriveCritique — Check #4 thin-signal over-confidence", () => {
         },
       }),
     );
-    expect(c.flags.some((f) => /thin|unavailable/i.test(f))).toBe(true);
+    expect(c.flags).toHaveLength(0); // flags always empty after Plan 04
+    expect(c.confidence_adjustment).toBeCloseTo(-0.08, 10); // PENALTY_THIN_SIGNAL
+  });
+
+  it("confidence>0.7 but only 1 unavailable signal (personas=false only) → no penalty", () => {
+    const c = deriveCritique(
+      makeFakePredictionResult({
+        gemini_score: 70, behavioral_score: 65, overall_score: 65, confidence: 0.82,
+        signal_availability: {
+          behavioral: true, gemini: true, ml: true, rules: true, trends: true,
+          content_type: true, niche: true, gemini_hook: true, gemini_body: true,
+          gemini_cta: true, personas: false, audio: false, retrieval: false,
+        },
+      }),
+    );
+    expect(c.confidence_adjustment).toBe(0);
   });
 });
 
 describe("deriveCritique — aggregation & clamping", () => {
-  it("multiple checks → penalty clamps at -0.20, consistency floors", () => {
+  // Plan 04 (D2.3): flags[] always empty. Penalties still accumulate via confidence_adjustment.
+  // Default makeFakePredictionResult: gemini_score=85, behavioral_score=45 → Check #1 fires.
+  // Default also has gemini_hook: true, personas: true → Check #4 does NOT fire (need both false).
+  it("multiple checks fire → penalty clamps at -0.20", () => {
     const c = deriveCritique(
       makeFakePredictionResult({
-        gemini_score: 90, behavioral_score: 30, // #1
+        gemini_score: 90, behavioral_score: 30, // #1 fires (gap=60 > 30)
         overall_score: 80,
         factors: [
           { id: "a", name: "Hook Power", score: 2, max_score: 10, rationale: "x", improvement_tip: "y" },
           { id: "b", name: "Retention Pull", score: 3, max_score: 10, rationale: "x", improvement_tip: "y" },
           { id: "c", name: "Share Trigger", score: 1, max_score: 10, rationale: "x", improvement_tip: "y" },
-        ], // #2
-        confidence: 0.9, // #4 (audio/retrieval false in default)
+        ], // #2 fires (high score + weak factors)
+        confidence: 0.9,
+        signal_availability: {
+          behavioral: true, gemini: true, ml: true, rules: true, trends: true,
+          content_type: true, niche: true, gemini_hook: false, gemini_body: true,
+          gemini_cta: true, personas: false, audio: false, retrieval: false,
+        }, // #4 fires (gemini_hook=false + personas=false)
       }),
     );
-    expect(c.flags.length).toBeGreaterThanOrEqual(3);
+    expect(c.flags).toHaveLength(0); // flags always empty after Plan 04
     expect(c.confidence_adjustment).toBe(-0.2); // 0.06+0.07+0.08 = 0.21 → clamped
   });
 
