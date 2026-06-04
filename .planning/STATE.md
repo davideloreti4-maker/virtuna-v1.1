@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: apollo
 milestone_name: Apollo
 status: planning
-last_updated: "2026-06-04T08:19:25.394Z"
+last_updated: "2026-06-04T08:30:00.477Z"
 progress:
   total_phases: 5
   completed_phases: 0
@@ -20,6 +20,8 @@ See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Cut-l
 
 ## Current Position
 
+Phase: 01 (strip-to-senses) — EXECUTING
+Plan: 1 of 6 — AT CHECKPOINT (Tasks 1-3 done; Task 4 baseline gate pending)
 **Milestone worktree** `~/virtuna-engine-opt/` on `milestone/engine-opt`. Milestone **Apollo** — turn the ~25-call score machine into a 3-call knowledge-grounded expert (Omni → Audience-Sim → Apollo Reasoner).
 
 Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milestone formalized. **Synced with `origin/main` (merged in Remix PR #6 + audience change) — branch was stale + blind to Remix.** Re-scanned Remix engine path; folded into the plan (Remix = Apollo modes, R12). **No phase plans yet.**
