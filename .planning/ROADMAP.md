@@ -42,7 +42,7 @@ Clear the engine down to its senses (low-risk deletion → under the cap), sharp
 **Success:** R6 (under cap), R9 (no fabricated/dead signal), R5 (score + confidence still render). Engine stays shippable + green (minus deleted-feature tests).
 **Risk:** low — mostly deletion. Watch blend-coupled board UI consumers + remix coupling in `pipeline.ts`/`types.ts`.
 **Ship:** independently mergeable to `main` (honesty + latency win, no dependency on later phases) — merge promptly, don't bank it behind P3/P4.
-**Plans:** 3/6 plans executed
+**Plans:** 4/6 plans executed
 Plans:
 **Wave 1**
 
@@ -55,7 +55,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 01-04-PLAN.md — Blend cut to behavioral+gemini; stage10 flags-only (keep confidence); deepseek 'top X%' label cut (keep calibration JSON)
+- [x] 01-04-PLAN.md — Blend cut to behavioral+gemini; stage10 flags-only (keep confidence); deepseek 'top X%' label cut (keep calibration JSON)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
