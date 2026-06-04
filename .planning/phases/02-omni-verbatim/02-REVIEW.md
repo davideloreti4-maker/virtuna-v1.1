@@ -17,10 +17,25 @@ findings:
   warning: 3
   info: 2
   total: 6
-status: issues_found
+status: resolved
+resolution:
+  fixed: [CR-01, WR-02]
+  wontfix: [IN-02]
+  deferred: [WR-01, WR-03, IN-01]
+  fixed_in: 2026-06-04
 ---
 
 # Phase 02: Code Review Report — Omni Verbatim Threading
+
+> **Resolution (2026-06-04):** CR-01 fixed — verbatim now survives segment merge
+> (concatenated, not dropped) and is no longer duplicated across the hook-zone split
+> (continuation child `spoken_text` nulled; `on_screen_text` retained). 4 regression
+> tests added in `normalize-segments.test.ts`. WR-02 fixed (migration null-contract
+> comment corrected). IN-02 reviewed and intentionally left as-is (`!= null` is the
+> correct present-flag guard; the suggested `!== undefined` would mislabel silence as
+> present). WR-01 (hook vs segment field-name divergence), WR-03 (no segments-array
+> length cap — per-field D-04.4 caps already bound element size), and IN-01 (null-guard
+> style) deferred as low-severity polish. Full suite green (1776 passed).
 
 **Reviewed:** 2026-06-04
 **Depth:** standard
