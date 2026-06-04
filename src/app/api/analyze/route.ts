@@ -1,12 +1,12 @@
 import * as Sentry from "@sentry/nextjs";
-import { after } from "next/server";
+// `after` import removed (Plan 02, R9): scheduleDeferredCounterfactuals deleted; after() no longer used.
 import { nanoid } from "nanoid";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createLogger } from "@/lib/logger";
 import { runPredictionPipeline } from "@/lib/engine/pipeline";
 import { aggregateScores } from "@/lib/engine/aggregator";
-import { runStage11Counterfactuals } from "@/lib/engine/stage11-counterfactuals";
+// stage11-counterfactuals import removed (Plan 02, R9): deferred re-run block deleted below.
 import { AnalysisInputSchema } from "@/lib/engine/types";
 import {
   computeContentHash,
@@ -151,77 +151,9 @@ async function persistCraftToVariants(
   }
 }
 
-/**
- * Latency (stage11-defer): re-run Stage 11 (counterfactuals) OFF the request's
- * critical path via Vercel `after()`, then UPDATE the row. aggregateScores ran with
- * deferCounterfactuals:true, so the response + score painted ~30-113s sooner with
- * counterfactuals=null; this backfills the specific fixes. Score, confidence + the
- * anti-virality gate are Stage-10 owned and already final — deferral NEVER changes
- * the painted number, only the additive suggestions list. videoContext is null
- * (parity with the inline path, which never threaded it).
- *
- * Reload-only delivery: the SSE stream is already closed when after() runs, so the
- * fixes surface on the next permalink read (GET /api/analysis/[id] refetches the row).
- * The L1 cache is refreshed so a same-content re-analyze HIT also carries them.
- * Best-effort: on failure the board stays on its graceful score-band advice state
- * (actions-derive falls back when counterfactuals.band is null).
- */
-function scheduleDeferredCounterfactuals(
-  service: ServiceClient,
-  analysisId: string,
-  userId: string,
-  contentHash: string,
-  finalResult: PredictionResult,
-  log: Logger,
-): void {
-  const run = async () => {
-    const t = performance.now();
-    try {
-      const cf = await runStage11Counterfactuals(finalResult, null);
-      if (!cf) {
-        log.warn("deferred_counterfactuals_null", { analysisId });
-        return;
-      }
-      const { error } = await service
-        .from("analysis_results")
-        .update({
-          counterfactuals: cf as unknown as Json,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", analysisId)
-        .eq("user_id", userId);
-      if (error) {
-        log.error("deferred_counterfactuals_persist_failed", { analysisId, error: error.message });
-        return;
-      }
-      // Keep L1 consistent so a cache HIT on identical content still carries the
-      // fixes (the cache stored the pre-defer result with counterfactuals=null).
-      populatePredictionCache(contentHash, userId, { ...finalResult, counterfactuals: cf }, { bypass: false });
-      log.info("stage_timing", {
-        stage: "stage11_deferred_after",
-        ms: Math.round(performance.now() - t),
-        analysisId,
-      });
-    } catch (err) {
-      log.error("deferred_counterfactuals_threw", {
-        analysisId,
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
-  };
-  // Scheduling is best-effort: after() throws if called outside a Next request
-  // scope (e.g. unit harness). A failure to SCHEDULE the deferred work must never
-  // break the user's response — the board already degrades to score-band advice
-  // when counterfactuals are absent.
-  try {
-    after(run);
-  } catch (err) {
-    log.warn("deferred_counterfactuals_schedule_skipped", {
-      analysisId,
-      error: err instanceof Error ? err.message : String(err),
-    });
-  }
-}
+// scheduleDeferredCounterfactuals removed (Plan 02, R9): stage11 deferred re-run deleted.
+// counterfactuals stays null (whatever the pipeline produced). stage11-counterfactuals.ts
+// moves to _dormant/ in Plan 05. The after() import above is also removed.
 
 /**
  * Phase 03 Plan 02 — Persist decode result into variants.remix.decode.
@@ -686,8 +618,8 @@ export async function POST(request: Request) {
         return Response.json({ error: message }, { status: 500 });
       }
       const tAgg = performance.now();
-      // Latency (stage11-defer): Stage 11 runs in after() below, not inline.
-      const result = await aggregateScores(pipelineResult, undefined, { deferCounterfactuals: true });
+      // Stage 11 removed (Plan 02, R9); aggregateScores no longer needs deferCounterfactuals.
+      const result = await aggregateScores(pipelineResult, undefined);
       const aggregateMs = Math.round(performance.now() - tAgg);
 
       const ruleContributions = pipelineResult.ruleResult.matched_rules.map(
@@ -721,8 +653,7 @@ export async function POST(request: Request) {
         // Persist Content-craft signals into variants.craft (no migration). The
         // row id was generated inline for the JSON insert above.
         await persistCraftToVariants(service, jsonInsertId, finalResult, log);
-        // Latency (stage11-defer): backfill counterfactuals after the response.
-        scheduleDeferredCounterfactuals(service, jsonInsertId, user.id, contentHash, finalResult, log);
+        // stage11 deferred backfill removed (Plan 02, R9); counterfactuals stays null.
       }
 
       // Track usage
@@ -895,15 +826,12 @@ export async function POST(request: Request) {
             message: "Calculating predictions and assembling results...",
           });
           // board-fix #1: time aggregateScores — the dominant post-pipeline tail
-          // (Stage 10/11 LLM calls + ML + post-window). Per-stage breakdown is
-          // logged inside the aggregator under module "aggregator".
+          // (Stage 10 + ML + post-window). Per-stage breakdown is logged inside
+          // the aggregator under module "aggregator". Stage 11 removed (Plan 02, R9).
           const tAgg = performance.now();
-          // Latency (stage11-defer): Stage 11 runs in after() below, not inline —
-          // the dominant tail leaves the user-visible wall, score/gate paint now.
           const result = await aggregateScores(
             pipelineResult,
             /* onStageEvent: */ (event: StageEvent) => { send("stage", event); },
-            { deferCounterfactuals: true },
           );
           const aggregateMs = Math.round(performance.now() - tAgg);
           log.info("stage_timing", {
@@ -956,8 +884,7 @@ export async function POST(request: Request) {
             // Persist Content-craft signals into variants.craft (no migration).
             // analysisId is the upserted row id (Pitfall #6 placeholder → upsert).
             await persistCraftToVariants(service, analysisId, finalResult, log);
-            // Latency (stage11-defer): backfill counterfactuals after send("complete").
-            scheduleDeferredCounterfactuals(service, analysisId, user.id, contentHash, finalResult, log);
+            // stage11 deferred backfill removed (Plan 02, R9); counterfactuals stays null.
           }
 
           // Track usage (increments AFTER successful analysis)
