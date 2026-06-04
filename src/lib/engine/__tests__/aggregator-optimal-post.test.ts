@@ -189,19 +189,17 @@ describe("aggregateScores — optimal_post_window", () => {
     expect(result.optimal_post_window).toBeNull();
   });
 
-  it("computeOptimalPostWindow is called BEFORE Stage 10/11 (Pitfall #5 ordering)", async () => {
+  it("computeOptimalPostWindow is called BEFORE Stage 10 (Pitfall #5 ordering)", async () => {
     mockCompute.mockImplementationOnce(async () => {
       callOrder.push("optimal_post");
       return FALLBACK_POST_WINDOW;
     });
     await aggregateScores(makePipelineResult());
-    // Ordering invariant: helper resolves before Stage 10 critique fires, which
-    // itself runs before Stage 11 counterfactuals.
+    // Ordering invariant: helper resolves before Stage 10 critique fires.
+    // (Stage 11 counterfactuals removed in Plan 01-02 — no longer in the aggregate path.)
     const opIdx = callOrder.indexOf("optimal_post");
     const s10Idx = callOrder.indexOf("stage10");
-    const s11Idx = callOrder.indexOf("stage11");
     expect(opIdx).toBeGreaterThanOrEqual(0);
     expect(s10Idx).toBeGreaterThan(opIdx);
-    expect(s11Idx).toBeGreaterThan(s10Idx);
   });
 });
