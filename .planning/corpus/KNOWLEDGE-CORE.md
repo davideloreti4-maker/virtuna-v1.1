@@ -4,7 +4,7 @@
 >
 > **Reading rule for the model:** §2 is the single source of truth for *why content works*. §3 is how it fails. §4/§5/§6 are **task lenses** — they tell you how to *apply* §2 to score, decode, and rewrite. They do not restate §2; when a lens says "apply §2.1," pull the framework from there.
 
-**Status:** v1 real (craft only) · **Sources:** Kallaway corpus, 13 files (~11 distinct sources; see §8) · **Behavioral layer:** reserved, not yet filled.
+**Status:** v1 real (craft) · **Sources:** Kallaway corpus (13 files) + 3-creator benchmark layer (Hoyos / Hormozi / Ava) for hard numbers; see §8 · **Behavioral layer:** reserved, not yet filled.
 
 ---
 
@@ -35,6 +35,20 @@ Each entry is a **detect-triple**: *Signal* (what to look for in the transcript/
 ### 2.0 Core mechanism (everything below inherits this)
 Dopamine is the **prediction chemical**, not the pleasure chemical — it fires while the brain *anticipates* an answer, peaks just *before* the reveal, and spikes hardest on a **prediction error** (an outcome that breaks expectation but, in hindsight, makes sense). Attention is held by keeping an **unresolved prediction** running at all times. Every framework below is a way to open, sustain, or reopen that loop. A video loses the viewer the instant no prediction is pending.
 
+### 2.0a Calibration anchors  *(hard numbers — Hoyos / Hormozi / Ava)*
+Kallaway grades holistically; these three creators supply the concrete thresholds he leaves implicit. **Use as calibration anchors, not pass/fail gates** — a 4s hook isn't auto-fail, but it's past the line and should pull the band down *with a reason*. Cite the number when it drives a judgment.
+
+| Anchor | Value |
+|---|---|
+| Hook lands | ≤3s, ideally ≤1–2s (hook + foreshadow ≤3s total) |
+| Viral retention | 90%+ (sub-30s short needs ~100%) |
+| Scroll-through (held past hook) | 70%+ |
+| Reading level | ≤5th grade (MrBeast ≈1st) |
+| Audio-off viewers | ~50% → burned-in text mandatory, mute-readable |
+| Visual discipline | ≤3 objects in frame · first 5s = multiple scene changes · cuts every 3–4s |
+| Value : Ask at close | short-form ~98 : 2 |
+| Hook's share of outcome | ~80% → weight critique on the first ~3s |
+
 ### 2.1 Hooks  (first ~1–3 sentences)
 The hook ends where the creator stops *getting you to stay* and starts *delivering the content*. Judge it line by line.
 
@@ -48,7 +62,8 @@ The hook ends where the creator stops *getting you to stay* and starts *deliveri
 - **Instant value promise** — *Signal:* does the hook itself contain the payoff, or just tease that something's coming? · *Mechanism:* the value promise IS the hook, not a gateway to it; if you must watch 5 more seconds to learn what it's about, it's broken. · *Strong:* promise is explicit and self-contained. *Weak:* pure tease ("you won't believe what happened").
 - **Credibility anchor** *(bonus)* — *Signal:* proof point in lines 2–3 (result, stat, case, named source)? · *Mechanism:* validates the claim, buys willingness to stay; lifts performance when natural. · *Grade:* reward when present and earned; **do not penalize** clean curiosity/contrast hooks that skip it.
 - **3-hook alignment** *(multimodal — needs video, not just transcript)* — *Signal:* do the **spoken** hook, **on-screen text** hook, and **visual** hook all mean the same thing? · *Mechanism:* misalignment makes the viewer freeze and reconcile, missing what's said → churn. · *Strong:* all three say the same thing. *Weak:* spoken says "teeth," visual shows candy, text says "gum health." *(Flag low confidence if only transcript is available.)*
-- **Scroll-stop visual** *(multimodal — needs video)* — *Signal:* does the first 1–2s use one of the four differentiation levers — (a) attractive/unique-looking person, (b) recognizable person/brand/subject, (c) atypical visuals that contrast the category norm, (d) atypical format/layout? · *Mechanism:* the feed-numbed brain filters the normal; differentiation is what lifts the thumb before any comprehension happens. · *Strong:* at least one lever clearly firing, unlike the category feed. *Weak:* looks like everything else around it. *(Name which lever fired; flag low confidence if transcript-only.)*
+- **Scroll-stop visual** *(multimodal — needs video)* — *Signal:* does the first 1–2s use one of the four differentiation levers — (a) attractive/unique-looking person, (b) recognizable person/brand/subject, (c) atypical visuals that contrast the category norm, (d) atypical format/layout? · *Mechanism:* the feed-numbed brain filters the normal; differentiation is what lifts the thumb before any comprehension happens. · *Strong:* at least one lever clearly firing, unlike the category feed. *Weak:* looks like everything else around it. *(Name which lever fired; flag low confidence if transcript-only. Supporting discipline per §2.0a: ≤3 objects, scene changes in first 5s. Note: leading on the creator's face when a known object/logo would be more recognizable wastes the recognition lever — see §3.)*
+- **Mute-readability** *(multimodal)* — *Signal:* with sound off, do burned-in text + visuals alone convey the hook? · *Mechanism:* ~50% watch muted (§2.0a); a hook whose meaning lives only in audio is invisible to half the audience. "So clear they understand it on mute." · *Strong:* fully grasped on mute. *Weak:* no on-screen text; meaning is audio-only.
 
 ### 2.2 Retention / story-loop
 Two lenses on the same prediction engine — use whichever the content invites.
@@ -68,6 +83,11 @@ Two lenses on the same prediction engine — use whichever the content invites.
 6. **Revelation** — viewer realizes this creator is a *repeat* source of value → Pavlovian pull. *Education ascends here faster than entertainment.*
 > Levels 1–4 = the *message* (per-video, scorable from one video). 5–6 = the *messenger* (cross-video; note but don't over-weight in a single-video score).
 
+**Structural retention devices** *(Hoyos/Hormozi — concrete, highly scoreable):*
+- **But/Therefore spine** — *Signal:* is the narrative joined by causal tension ("but / therefore / so / that's when / instead") rather than flat sequence ("and then")? · *Mechanism:* "but" makes the brain ask "but what?" and blocks the scroll; "and then" is an exit ramp. · *Strong:* causal connectives drive the story. *Weak:* flat "and then" chronology.
+- **Mechanism / progress device** — *Signal:* a structural pull to the end — "3 things," a countdown, visible progress toward the promised payoff? · *Mechanism:* an open structural loop keeps a prediction pending until completion. · *Strong:* clear device present. *Weak:* no reason to reach the end.
+- **Peak-end shape** — *Signal:* a memorable peak placed mid-video + a fast, emotionally-charged ending? · *Mechanism:* viewers judge the whole video by its peak and its final emotion (peak-end rule). · *Strong:* strong mid peak + landed ending. *Weak:* flat, or trails off at the close.
+
 ### 2.3 Share & trust psychology
 Why a viewer trusts the video enough to keep watching, act, and share. Trust = belief that more watching → closer to a desired outcome.
 
@@ -80,7 +100,7 @@ Why a viewer trusts the video enough to keep watching, act, and share. Trust = b
 - **Identity / stance for shares** — *Signal:* a clear, often contrarian stance; emotion; cult-loved subjects (named brands/people). · *Mechanism:* people share/comment to signal identity or when they violently (dis)agree; hedging kills it. · *Strong:* takes a side, emotionally charged. *Weak:* middle-of-road, no one compelled to react.
 
 ### 2.4 CTA / conversion
-*Hooks and closes optimized for leads/sales, not raw reach. Score these when the video has commercial intent. The desire-based hook is the corpus's strongest conversion lever — weight it accordingly.*
+*Hooks and closes optimized for leads/sales, not raw reach. Score these when the video has commercial intent. The desire-based hook is the corpus's strongest conversion lever — weight it accordingly. Hormozi's Value Equation is the backbone: maximize **dream outcome** + **perceived likelihood of achievement**, minimize **time delay** + **effort/sacrifice** — the same four levers the desire-based hook pulls.*
 
 - **Desire-based hook (open)** — *Signal:* do the first 1–2 lines name a **dream outcome** the target viewer wants, delivered by a **relatable, constraint-free character** (creator / viewer / relatable third party)? · *Mechanism:* a buyer with a latent problem locks onto the stated dream outcome, then instantly judges the character's relatability — an unfair advantage ("$1,200 machine") breaks it → dismissal. Painting the dream *outcome* pulls harder than naming the problem (one step away, the brain completes the puzzle). · *Strong:* clear dream outcome + character the avatar sees themselves in + explicit constraint-free framing ("one simple thing," "in 3 steps"). *Mid:* dream outcome present but character carries an unaddressed advantage. *Weak:* flat problem statement, no dream outcome, or an intimidating/irrelevant character.
 - **Value-delivering close** — *Signal:* does the payoff hand over a usable method tied to the promised outcome, with a low-friction next step? · *Mechanism:* viewers who bought the dream outcome want the method; the close collects them without killing retention. · *Strong:* method delivered + clean step that flows from the value. *Weak:* abrupt ask unrelated to payoff, or close that lands before the value does.
@@ -114,6 +134,10 @@ Detect these as **negative evidence** — presence should pull the relevant dime
 - **Dead air between loops** — section closes, next opens slowly → exit ramp.
 - **Direct desire-naming** — trips the BS detector (see §2.3 one-standard-deviation).
 - **Em-dash in a generated hook** — reads AI-written (generation/rewrite rule, not a scoring axis).
+- **More than one core message** — short-form rewards a single takeaway; multiple competing messages dilute and kill virality (Hoyos). *(distinct from the hook-level "multiple points" above — this is whole-video.)*
+- **Edutainment/education straddle** — a video trying to both entertain and teach often does neither; flag the straddle (Hormozi).
+- **Suppressed power-words** — *banned / free / secret / cheap / one-dollar* can throttle reach on some platforms (Hoyos). Flag presence, don't assume fatal.
+- **Face-first over a more recognizable object** — leading on the creator's face when a known logo/object/subject would be more universally recognized wastes the recognition lever (Hoyos). *(multimodal)*
 
 ---
 
@@ -130,7 +154,15 @@ Build the composite 0–100 from these dimensions. For each, grade by matching t
 | **Substance / originality** | §2.5 | Specific topic + a non-obvious/contrarian take, or recycled category-level advice. |
 | **Credibility** *(bonus)* | §2.1 anchor + §2.3 proof | Is the claim backed early. Rewards, doesn't punish absence. |
 
-**Grading discipline (from the Hook Machine):** holistic, *not* mechanical — don't tally satisfied principles. Some dimensions matter more for a given topic (a conceptual piece may earn an A on contrast+clarity while light on specificity). Grade honestly; never inflate.
+**Weighting:** the hook decides **~80%** of performance (consensus across all four creators, §2.0a) — keep **at least half the judgment weight on the first ~3 seconds**. A weak hook caps the ceiling no matter how strong the body.
+
+**Grading discipline (from the Hook Machine):** holistic, *not* mechanical — don't tally satisfied principles. Some dimensions matter more for a given topic (a conceptual piece may earn an A on contrast+clarity while light on specificity). The §2.0a numbers are anchors that *inform* a band, not gates that auto-set it. Grade honestly; never inflate.
+
+### 4.1 Platform calibration
+Targets differ by platform — **never average a cross-platform score** (viewers behave differently per platform). Score against the video's *actual* target platform; flag a clear length/format mismatch.
+- **YT Shorts** — ≈34s ideal (sub-30s needs ~100% retention), story-driven, slightly slower, foreshadow early, "mechanism" device present.
+- **TikTok** — 10–20s, information-dense, hook ≤2s, fewer jokes.
+- **IG Reels** — ≤60s, 9:16, assume muted (subtitles + mute-readable), shareability-first.
 
 **Confidence:** lower it when key signals are unobservable. Transcript-only loses all *visual* signals (stimulation, 3-hook alignment, emulation, packaging) — say so explicitly and scope the score to what was observable. Confidence rises with signal coverage, falls with ambiguity.
 
@@ -176,5 +208,10 @@ Ground-to-inform, not regurgitate — this is *synthesis of principles* applied 
 - *6-step content system* / *personal brands* / *2026 shifts* (topic-vs-take, originality) → §2.5 (the video-level craft extracted); their channel/business strategy → **parked**.
 - *Algorithm* → §2.4 actionability (the video-scoreable driver extracted); its distribution mechanics → **parked**.
 - *7 pitfalls* → **parked** in creator-strategy (channel-level, not single-video scoring); not in this core by design.
+
+**Creator benchmark layer** (`.planning/research/creator-intelligence.md` → `src/lib/engine/creator-rules.ts`; Jenny Hoyos, Alex Hormozi, Ava Yuergens) — the hard numbers + structural devices Kallaway left qualitative:
+- → §2.0a calibration anchors · §2.1 mute-readability + visual discipline · §2.2 But/Therefore + mechanism + peak-end · §2.4 Value Equation · §3 (one-message, edutainment straddle, power-words, face-vs-object) · §4 weighting + §4.1 platform calibration.
+- Their channel/business rules (cadence, idea funnel, monetization, ad math, repurposing) → **parked** in creator-strategy, not in this core.
+- Note: the live engine already injects `creator-rules.ts` into the V3 prompts (stages 10/11, wave 4). This core does **not** wire into that yet — supersede-vs-merge is a deferred integration decision.
 
 **Behavioral layer** — Chase Hughes → reserved §2.6 + §6. Not yet ingested.
