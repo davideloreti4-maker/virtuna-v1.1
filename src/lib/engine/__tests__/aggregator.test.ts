@@ -38,10 +38,8 @@ vi.mock("@/lib/cache", () => ({
 // Mocks — direct dependencies of aggregator.ts
 // =====================================================
 
-vi.mock("../ml", () => ({
-  predictWithML: vi.fn().mockResolvedValue(50),
-  featureVectorToMLInput: vi.fn().mockReturnValue(Array(15).fill(0.5)),
-}));
+// ml mock removed (Plan 02, R9): predictWithML/featureVectorToMLInput calls gone from aggregator.ts.
+// ml.ts moves to _dormant/ in Plan 05. No aggregator test imports from ../ml after this point.
 
 vi.mock("../gemini", () => ({
   GEMINI_MODEL: "gemini-test",
@@ -144,7 +142,7 @@ vi.mock("../anti-virality", async (importOriginal) => {
 
 import { selectWeights, aggregateScores } from "../aggregator";
 import { makePipelineResult, makeGeminiAnalysis } from "./factories";
-import { predictWithML } from "../ml";
+// predictWithML import removed (Plan 02, R9): ml call gone from aggregator; no coupling to ../ml here.
 import type { PersonaBehavioralAggregate, PersonaSimulationResult, SegmentGrid, HookDecomposition } from "../types";
 import type { EmotionArcPoint } from "../qwen/schemas";
 
@@ -410,7 +408,7 @@ describe("aggregateScores", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Reset default mock behaviors
-    vi.mocked(predictWithML).mockResolvedValue(50);
+    // predictWithML mock removed (Plan 02); ml call no longer fires in aggregateScores.
   });
 
   it("returns valid result with all signals (happy path)", async () => {
@@ -423,7 +421,8 @@ describe("aggregateScores", () => {
     expect(["HIGH", "MEDIUM", "LOW"]).toContain(result.confidence_label);
     expect(result.gemini_score).toBeGreaterThan(0);
     expect(result.behavioral_score).toBeGreaterThan(0);
-    expect(result.ml_score).toBe(50); // mocked
+    expect(result.ml_score).toBe(0); // Plan 02: ml call removed; mlScore=null → ml_score=0
+    expect(result.predicted_engagement).toBeNull(); // Plan 02 D1.1: sine-jitter fabrication deleted
     expect(result.engine_version).toBeDefined();
     expect(result.score_weights).toHaveProperty("behavioral");
     expect(result.score_weights).toHaveProperty("gemini");
@@ -433,8 +432,8 @@ describe("aggregateScores", () => {
   });
 
   it("clamps overall_score to 0-100 range", async () => {
-    // Test upper bound: mock ML to return 200 (above max)
-    vi.mocked(predictWithML).mockResolvedValue(200);
+    // Test upper bound: high Gemini + behavioral scores
+    // (predictWithML mock removed Plan 02 — ml contribution is 0)
     const highPipeline = makePipelineResult({
       geminiResult: {
         analysis: {
@@ -455,7 +454,7 @@ describe("aggregateScores", () => {
     expect(highResult.overall_score).toBeLessThanOrEqual(100);
 
     // Test lower bound: all zeros
-    vi.mocked(predictWithML).mockResolvedValue(0);
+    // (predictWithML mock removed Plan 02; ml contribution is already 0)
     const lowPipeline = makePipelineResult({
       geminiResult: {
         analysis: {
@@ -550,7 +549,7 @@ describe("aggregateScores", () => {
     // signal ~= 0.2 (base) - 0.05 (no rules) - 0.05 (no trends) + 0 (no deepseek conf) = 0.1
     // agreement: geminiDirection=70-50=20 > 0, behavioralDirection=0-50=-50 < 0, |20-(-50)|=70 > 15 -> 0
     // total = 0.1 -> LOW
-    vi.mocked(predictWithML).mockResolvedValue(null);
+    // predictWithML mock removed (Plan 02); ml contribution is null → 0 (same as before for null)
     const lowPipeline = makePipelineResult({
       deepseekResult: null,
       ruleResult: { rule_score: 0, matched_rules: [] },
@@ -574,7 +573,7 @@ describe("aggregateScores", () => {
 describe("Phase 3 — provenance + stub invocations", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(predictWithML).mockResolvedValue(50);
+    // predictWithML mock removed (Plan 02); ml call no longer fires in aggregateScores.
   });
 
   it("returns signal_availability populated from internal computation (PIPE-07)", async () => {
@@ -600,7 +599,8 @@ describe("Phase 3 — provenance + stub invocations", () => {
     expect(result.engine_version).toBe(ENGINE_VERSION);
   });
 
-  it("invokes Stage 10 + Stage 11 stubs with onStageEvent forwarding (PIPE-09)", async () => {
+  it("invokes Stage 10 stub with onStageEvent forwarding; stage11 removed (Plan 02) (PIPE-09)", async () => {
+    // Plan 02 R9: stage11 call removed from aggregateScores. Only stage10 fires.
     const events: string[] = [];
     await aggregateScores(makePipelineResult(), (e) => {
       if (e.type === "stage_start" || e.type === "stage_end") {
@@ -608,33 +608,16 @@ describe("Phase 3 — provenance + stub invocations", () => {
       }
     });
     expect(events).toContain("stage_10_critique");
-    expect(events).toContain("stage_11_counterfactuals");
+    expect(events).not.toContain("stage_11_counterfactuals"); // Plan 02: stage11 gone
   });
 
-  it("deferCounterfactuals=true skips Stage 11 but still runs Stage 10 (latency: after() path)", async () => {
-    const events: string[] = [];
-    const result = await aggregateScores(
-      makePipelineResult(),
-      (e) => {
-        if ((e.type === "stage_start" || e.type === "stage_end") && "stage" in e && e.stage) {
-          events.push(e.stage);
-        }
-      },
-      { deferCounterfactuals: true },
-    );
-    // Stage 10 (deterministic critique) MUST still run — it owns the final
-    // confidence + anti-virality gate that paint synchronously.
-    expect(events).toContain("stage_10_critique");
-    expect(result.critique).not.toBeNull();
-    // Stage 11 is skipped entirely — no LLM call, no event, counterfactuals left
-    // null for the route's after() to populate via a later DB UPDATE.
-    expect(events).not.toContain("stage_11_counterfactuals");
+  it("counterfactuals always null after Plan 02 stage11 removal (deferCounterfactuals no-op)", async () => {
+    // Plan 02 R9: stage11 removed; counterfactuals is null unconditionally.
+    // deferCounterfactuals option is back-compat only; no effect.
+    const result = await aggregateScores(makePipelineResult());
     expect(result.counterfactuals ?? null).toBeNull();
-    // The painted number is untouched by deferral — score/gate are Stage-10 owned.
-    const inline = await aggregateScores(makePipelineResult());
-    expect(result.overall_score).toBe(inline.overall_score);
-    expect(result.confidence).toBe(inline.confidence);
-    expect(result.anti_virality_gated).toBe(inline.anti_virality_gated);
+    // Stage 10 still runs (KEPT for Plan 04 scope)
+    expect(result.critique).not.toBeNull();
   });
 
   it("overall_score is unchanged for identical input (PIPE-06 math invariance)", async () => {
@@ -673,7 +656,7 @@ describe("Phase 3 — provenance + stub invocations", () => {
 describe("Phase 4 — Wave 0 aggregator integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(predictWithML).mockResolvedValue(50);
+    // predictWithML mock removed (Plan 02); ml call no longer fires in aggregateScores.
   });
 
   it("selectWeights regression: 6-key availability all-true → D-16 Phase 13 normalized weights", () => {
@@ -863,7 +846,7 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
 describe("aggregateScores Phase 7 widening", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(predictWithML).mockResolvedValue(50);
+    // predictWithML mock removed (Plan 02); ml call no longer fires in aggregateScores.
   });
 
   const samplePersonaAggregate: PersonaBehavioralAggregate = {
@@ -990,7 +973,7 @@ import type { RetrievalEvidenceItem } from "../types";
 describe("Phase 8 — aggregator retrieval integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(predictWithML).mockResolvedValue(50);
+    // predictWithML mock removed (Plan 02); ml call no longer fires in aggregateScores.
   });
 
   it("populates retrieval_score on PredictionResult when retrieval is available", async () => {
@@ -1160,7 +1143,7 @@ describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
       weights: { fyp: 0.65, niche: 0.20, loyalist: 0.10, cross_niche: 0.05 },
       source: "default" as const,
     });
-    vi.mocked(predictWithML).mockResolvedValue(50);
+    // predictWithML mock removed (Plan 02); ml call no longer fires in aggregateScores.
   });
 
   it("Phase 3: heatmap populated via assembleHeatmapPayload when pass2_aggregate_built === true", async () => {
@@ -1283,7 +1266,7 @@ describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
 describe("hook_decomposition + emotion_arc pluck (Quick 260528-nqx)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(predictWithML).mockResolvedValue(50);
+    // predictWithML mock removed (Plan 02); ml call no longer fires in aggregateScores.
   });
 
   it("populates hook_decomposition on result when geminiResult.analysis.hook_decomposition is present", async () => {

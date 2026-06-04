@@ -53,10 +53,8 @@ vi.mock("@/lib/cache", () => ({
   }),
 }));
 
-vi.mock("../ml", () => ({
-  predictWithML: vi.fn().mockResolvedValue(50),
-  featureVectorToMLInput: vi.fn().mockReturnValue(Array(15).fill(0.5)),
-}));
+// ml mock removed (Plan 02, R9): predictWithML/featureVectorToMLInput calls gone from aggregator.ts.
+// ml.ts moves to _dormant/ in Plan 05. No aggregator-audio test imports from ../ml after this point.
 
 vi.mock("../gemini", () => ({
   GEMINI_MODEL: "gemini-test",
@@ -70,12 +68,8 @@ vi.mock("../deepseek", () => ({
 vi.mock("../stage11-counterfactuals", () => ({
   GEMINI_STAGE11_MODEL: "gemini-3.1-pro-preview",
   maybeAppendLikelyFlopWarning: vi.fn(),
-  runStage11Counterfactuals: vi.fn().mockResolvedValue({
-    suggestions: [],
-    reasoning: "mocked",
-    band: "mid",
-    counterfactuals: [],
-  }),
+  // runStage11Counterfactuals mock removed (Plan 02, R9): call site gone from aggregator.ts.
+  // Module stays on disk until Plan 05 dormant move; maybeAppendLikelyFlopWarning still imported.
 }));
 
 // =====================================================
@@ -97,7 +91,7 @@ import {
   makeGeminiAnalysis,
   makeTrendEnrichment,
 } from "./factories";
-import { predictWithML } from "../ml";
+// predictWithML import removed (Plan 02, R9): ml call gone from aggregator; no coupling to ../ml here.
 
 // =====================================================
 // Builders
@@ -136,7 +130,7 @@ function makeFingerprint(
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(predictWithML).mockResolvedValue(50);
+  // predictWithML mock removed (Plan 02, R9): ml call no longer fires in aggregateScores.
 });
 
 // =====================================================
