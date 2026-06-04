@@ -31,7 +31,7 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 | # | Phase | Status |
 |---|-------|--------|
 | 1 | Strip to Senses | context gathered (2026-06-04) — ready to plan |
-| 2 | Omni Verbatim | not started |
+| 2 | Omni Verbatim | context gathered (2026-06-04) — ready to plan |
 | 3 | Apollo Reasoner (Brain 1, the moat) | not started — blocked on Chase Hughes corpus |
 | 4 | Audience-Sim Fold (Brain 2, the bet) | not started |
 | 5 | Wire + Surface | not started |
@@ -55,9 +55,9 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 
 ## Next action
 
-**P1 context captured** (`.planning/phases/01-strip-to-senses/01-CONTEXT.md`, 2026-06-04). Decisions D1–D4 locked + 15-item reverification checklist (D5). Also fixed: ROADMAP headings (em-dash→colon, SDK now parses) + archived stale pre-Apollo P1 to `.planning/_archive/`.
+**P1 executed + complete** (6/6 plans, 2026-06-04). **P2 context captured** (`.planning/phases/02-omni-verbatim/02-CONTEXT.md`, 2026-06-04). Decisions D-01–D-04 locked: **additive-only** (add `hook_verbatim` + per-segment `spoken_text`/`on_screen_text`, KEEP the 0–10 judgments — drop deferred to P3); **honest `null`** for silent/no-text (never fabricate); **dedicated hook_verbatim + per-segment text** shape; all 4 fidelity rules (original language, `[inaudible]` marker distinct from null, preserve casing/punct, cap ~280/500). Thread via the emotion_arc precedent; bump cache key; prove persistence on a real run (R1).
 
-`/clear` then → `/gsd-plan-phase 1` (Strip to Senses — subtractive: delete fabricated stats [sine-jitter engagement + "top X%" labels], dormant dead machinery, cut dead blend keys + prove score-identity, null-degrade UI; keep score derivation unchanged; independently shippable). In parallel: begin distilling corpus v1 (gates P3).
+`/clear` then → `/gsd-plan-phase 2` (Omni Verbatim — additive schema+prompt extension, zero-regret precondition for P3/P4, independently shippable). In parallel: keep distilling corpus v1 (gates P3).
 
 ## Open bets / to verify
 
