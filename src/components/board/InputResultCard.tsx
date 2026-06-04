@@ -202,7 +202,7 @@ export function InputResultCard({
       className={className}
       label="PREDICTED RANK"
       value={heroValue}
-      unit={gated ? undefined : '%'}
+      unit={gated || leadValue == null ? undefined : '%'}
       status={
         gated
           ? { word: 'Hold', tone: 'crit' }
