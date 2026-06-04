@@ -887,6 +887,42 @@ export async function aggregateScores(
   // -------------------------------------------------
   const pass2Outcome = pipelineResult.pass2Outcome;
   const omniSegments = pipelineResult.segments;
+
+  // Phase 2 (R1) — derive verbatim.segments from omniSegments now that they are available.
+  // Each SegmentGrid carries spoken_text/on_screen_text (Plan 01 SegmentSchema extension).
+  // D-02: spoken_text null for silence; D-04.2: [inaudible] preserved as string, never coerced.
+  // Synthetic fallback segments (buildFixedBuckets) legitimately have null verbatim — no invented text.
+  if (omniSegments && omniSegments.length > 0) {
+    try {
+      const verbatimSegments = omniSegments.map((seg, i) => {
+        const s = seg as unknown as {
+          idx?: number;
+          spoken_text?: string | null;
+          on_screen_text?: string | null;
+        };
+        return {
+          idx: s.idx ?? i,
+          spoken_text: s.spoken_text ?? null,
+          on_screen_text: s.on_screen_text ?? null,
+        };
+      });
+
+      // Only populate verbatim.segments when any segment carries non-null text.
+      // (All-null segments array = video with no speech/on-screen text = verbatim stays null/hook-only)
+      const hasAnyText = verbatimSegments.some(
+        (s) => s.spoken_text !== null || s.on_screen_text !== null,
+      );
+
+      if (hasAnyText) {
+        verbatim = verbatim
+          ? { ...verbatim, segments: verbatimSegments }
+          : { segments: verbatimSegments };
+      }
+    } catch {
+      // non-fatal — verbatim stays as-is (hook-only or null)
+    }
+  }
+
   let heatmap: HeatmapPayload | null = null;
   let weighted_completion_pct: number | null = null;
   let weighted_top_dropoff_t: number | null = null;
@@ -946,6 +982,10 @@ export async function aggregateScores(
     // Phase 1 (R1.7) — emotion arc timeline plucked from Omni Plus output above.
     // Null when video absent or Qwen omitted the field; non-fatal per Pitfall #5.
     emotion_arc,
+    // Phase 2 (R1) — verbatim transcription (hook + per-segment) from Omni.
+    // Null when video absent, no speech/on-screen text, or Qwen omitted the fields.
+    // Non-fatal: absence doesn't break the pipeline.
+    verbatim,
     // Phase 2 (Quick 260528-nqx) — hook_decomposition surfaced from Gemini analysis.
     hook_decomposition,
     // Content-craft signals for the board "Content craft" frame. Surfaced here so
