@@ -268,12 +268,19 @@ export async function analyzeVideoWithOmni(
         // `as` cast and the aggregator's matching `as unknown as { emotion_arc? }` read.
         // Do NOT "clean up" by removing it — that re-introduces the drop.
         emotion_arc:        data.emotion_arc,
+        // Phase 2 (R1) — hook_verbatim MUST be threaded here via the same pattern as
+        // emotion_arc above. The aggregator plucks it off geminiResult.analysis.hook_verbatim
+        // via `as unknown as { hook_verbatim? }`. Omitting it would silently drop all
+        // verbatim on every run — the segment-axis version of the emotion_arc bug.
+        // GeminiVideoAnalysis doesn't declare this field; it rides the `as` cast.
+        // Do NOT remove — that re-introduces the drop.
+        hook_verbatim:      data.hook_verbatim,
       } as GeminiVideoAnalysis;
 
       // emotion_arc_points surfaces whether the MODEL actually emitted the field
       // (vs the assembly dropping it). After this fix, a run logging 0 points means
       // the model genuinely returned none — a prompt problem, not a plumbing one.
-      log.info("omni analysis complete", { model, cost_cents, attempt, emotion_arc_points: data.emotion_arc?.length ?? 0 });
+      log.info("omni analysis complete", { model, cost_cents, attempt, emotion_arc_points: data.emotion_arc?.length ?? 0, verbatim_present: data.hook_verbatim != null });
 
       return {
         geminiResult: { analysis, cost_cents },

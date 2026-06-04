@@ -105,9 +105,14 @@ function makeOmniResponse(
       { timestamp_ms: 5000,  intensity_0_1: 0.6, label: "mid" },
       { timestamp_ms: 15000, intensity_0_1: 0.8, label: "high" },
     ],
+    // 5 segments so normalizeSegments does NOT fall back to fixed buckets
+    // (MIN_BOUNDARY_COUNT=4; 2-segment fixture triggers fallback, stripping verbatim)
     segments: [
-      { t_start: 0, t_end: 3,  visual_event: "talking head", audio_event: "greeting" },
-      { t_start: 3, t_end: 30, visual_event: "screen share", audio_event: "explanation" },
+      { t_start: 0,  t_end: 3,  visual_event: "talking head", audio_event: "greeting" },
+      { t_start: 3,  t_end: 8,  visual_event: "screen share", audio_event: "explanation" },
+      { t_start: 8,  t_end: 16, visual_event: "demo",         audio_event: "walkthrough" },
+      { t_start: 16, t_end: 24, visual_event: "cta card",     audio_event: "call to action" },
+      { t_start: 24, t_end: 30, visual_event: "outro",        audio_event: "sign off" },
     ],
   };
 
@@ -130,7 +135,7 @@ function makeOmniResponse(
         on_screen_text: "SUBSCRIBE NOW",
       };
     }
-    // Per-segment verbatim on first segment
+    // Per-segment verbatim on first segment (hook zone 0-3s)
     (body.segments as Record<string, unknown>[])[0] = {
       ...(body.segments as Record<string, unknown>[])[0],
       spoken_text:    silent ? null : (hasUnclearSpeech ? "[inaudible]" : "Welcome to my channel"),
