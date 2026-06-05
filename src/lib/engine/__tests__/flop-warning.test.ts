@@ -81,7 +81,8 @@ function makeFakePredictionResult(
     ml_score: 50,
     score_weights: {
       behavioral: 0.40,
-      gemini: 0.35,
+      apollo: 0.35, // Plan 03-04 D-04: apollo replaces gemini as live blend term
+      gemini: 0,    // retired (D-04)
       ml: 0,
       rules: 0,
       trends: 0.10,

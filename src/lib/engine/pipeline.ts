@@ -13,6 +13,7 @@ import {
   type PersonaBehavioralAggregate,
   type BenchmarkRetrievalResult,
   type SegmentGrid,
+  type VerbatimPayload,
 } from "./types";
 import { normalizeInput } from "./normalize";
 import { analyzeVideoWithOmni } from "./qwen/omni-analysis";
@@ -722,6 +723,21 @@ export async function runPredictionPipeline(
   } | null> => {
     try {
       return await timed("deepseek_reasoning", timings, async () => {
+        // Plan 03-04 (R2): Thread verbatim hook into DeepSeekInput so Apollo can ground
+        // rewrite.original in the literal spoken/on-screen line. Non-fatal — degrades
+        // gracefully when hook_verbatim absent (text mode or Omni omitted the field).
+        const hookRaw = (geminiResult.analysis as unknown as {
+          hook_verbatim?: { spoken_words?: string | null; on_screen_text?: string | null };
+        })?.hook_verbatim;
+        const verbatim: VerbatimPayload | null = hookRaw
+          ? {
+              hook: {
+                spoken_words: hookRaw.spoken_words ?? null,
+                on_screen_text: hookRaw.on_screen_text ?? null,
+              },
+            }
+          : null;
+
         const result = await reasonWithDeepSeek({
           input: validated,
           gemini_analysis: geminiResult.analysis,
@@ -736,6 +752,7 @@ export async function runPredictionPipeline(
             hashtag_relevance: 0,
           },
           creator_context: creatorContextString,
+          verbatim, // Plan 03-04 (R2): verbatim hook for Apollo rewrite grounding
         });
 
         return result;

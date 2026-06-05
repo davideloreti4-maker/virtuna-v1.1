@@ -123,18 +123,19 @@ beforeEach(() => {
 // =====================================================
 // D-G1 — audio provenance (Plan 04: audio removed from blend keys)
 // =====================================================
-// Plan 04 (R9): audio removed from SCORE_WEIGHT_KEYS; blend is behavioral+gemini only.
-// SCORE_WEIGHTS.audio + SCORE_WEIGHT_KEYS assertions superseded.
+// Plan 03-04 (D-04): audio removed from SCORE_WEIGHT_KEYS; blend is behavioral+apollo.
+// gemini also retired from blend (provenance only). SCORE_WEIGHTS.audio + SCORE_WEIGHT_KEYS assertions updated.
 // audio_description persistence + signal_availability.audio remain tested below.
 
 describe("D-G1 — audio provenance after Plan 04 blend cut", () => {
-  it("Test 1: SCORE_WEIGHT_KEYS is ['behavioral','gemini'] — audio NOT a blend key", () => {
-    expect(SCORE_WEIGHT_KEYS).toEqual(["behavioral", "gemini"]);
+  it("Test 1: SCORE_WEIGHT_KEYS is ['behavioral','apollo'] — audio NOT a blend key (Plan 03-04 D-04)", () => {
+    expect(SCORE_WEIGHT_KEYS).toEqual(["behavioral", "apollo"]);
     expect(SCORE_WEIGHT_KEYS as readonly string[]).not.toContain("audio");
     expect(SCORE_WEIGHT_KEYS as readonly string[]).not.toContain("audio_fingerprint");
+    expect(SCORE_WEIGHT_KEYS as readonly string[]).not.toContain("gemini"); // retired D-04
   });
 
-  it("Test 2: selectWeights returns no audio key (2-key output: behavioral+gemini only)", () => {
+  it("Test 2: selectWeights returns no audio key (2-key output: behavioral+apollo only)", () => {
     const w = selectWeights({
       behavioral: true, gemini: true, ml: false, rules: false, trends: false,
       content_type: false, niche: false, gemini_hook: false, gemini_body: false,
@@ -142,7 +143,7 @@ describe("D-G1 — audio provenance after Plan 04 blend cut", () => {
     });
     expect(w).not.toHaveProperty("audio");
     expect(w.behavioral).toBeGreaterThan(0);
-    expect(w.gemini).toBeGreaterThan(0);
+    expect(w.apollo).toBeGreaterThan(0); // Plan 03-04 D-04
   });
 });
 
@@ -440,22 +441,22 @@ describe("D-G1 + selectWeights — 2-key distribution (Plan 04: audio removed fr
       content_type: false, niche: false, audio: false,
       gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false,
     });
-    // Both return the same behavioral/gemini split
+    // Both return the same behavioral/apollo split (Plan 03-04 D-04)
     expect(withAudio.behavioral).toBeCloseTo(withoutAudio.behavioral, 3);
-    expect(withAudio.gemini).toBeCloseTo(withoutAudio.gemini, 3);
+    expect(withAudio.apollo).toBeCloseTo(withoutAudio.apollo, 3);
     // Neither returns an audio key
     expect(withAudio).not.toHaveProperty("audio");
     expect(withoutAudio).not.toHaveProperty("audio");
     // Sum is always 1.0 for the 2-key blend
-    const sumWith = withAudio.behavioral + withAudio.gemini;
-    const sumWithout = withoutAudio.behavioral + withoutAudio.gemini;
+    const sumWith = withAudio.behavioral + withAudio.apollo;
+    const sumWithout = withoutAudio.behavioral + withoutAudio.apollo;
     expect(sumWith).toBeCloseTo(1.0, 2);
     expect(sumWithout).toBeCloseTo(1.0, 2);
   });
 
-  it("Test 20: 2-key selectWeights always sums to 1.0 regardless of provenance flags", () => {
+  it("Test 20: 2-key selectWeights always sums to 1.0 regardless of provenance flags (Plan 03-04 D-04)", () => {
     // Any combination of provenance flags (audio, platform_fit, retrieval, etc.) should
-    // yield the same behavioral+gemini split summing to 1.0.
+    // yield the same behavioral+apollo split summing to 1.0.
     const combos = [
       { behavioral: true, gemini: true, ml: true, rules: true, trends: true, content_type: false, niche: false, audio: true, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false },
       { behavioral: true, gemini: true, ml: false, rules: false, trends: false, content_type: false, niche: false, audio: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false },
@@ -464,9 +465,10 @@ describe("D-G1 + selectWeights — 2-key distribution (Plan 04: audio removed fr
     ];
     for (const combo of combos) {
       const w = selectWeights(combo);
-      const sum = w.behavioral + w.gemini;
-      // Allow 0 when both are unavailable
-      if (combo.behavioral || combo.gemini) {
+      const sum = w.behavioral + w.apollo;
+      // Plan 03-04 (D-04): apollo availability = behavioral (same deepseek source).
+      // Only assert sum~1.0 when behavioral=true (both present). behavioral=false → both 0.
+      if (combo.behavioral) {
         expect(sum).toBeCloseTo(1.0, 2);
       }
     }

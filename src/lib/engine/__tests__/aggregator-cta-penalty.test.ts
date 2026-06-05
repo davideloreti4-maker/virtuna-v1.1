@@ -259,9 +259,13 @@ describe("aggregateScores end-to-end — CTA penalty + per-segment SignalAvailab
   });
 
   // -------------------------------------------------
-  // Test 18: CTA-penalty differentiator end-to-end
+  // Test 18: CTA-penalty behavior after Plan 03-04 (D-04) — gemini retired from blend
   // -------------------------------------------------
-  it("Test 18: tutorial × cta_present=false produces overall_score 5 points lower than cta_present=true (with other factors held constant)", async () => {
+  it("Test 18 (Plan 03-04 D-04): CTA penalty does NOT affect overall_score — gemini left the blend; gemini_score still computed as provenance", async () => {
+    // Plan 03-04 (D-04): gemini retired from raw_overall_score blend.
+    // applyCtaPenalty on gemini is dropped (Open Q2): CTA surfaces as Apollo §2.4 critique evidence.
+    // overall_score = behavioral * weights.behavioral + apollo_composite * weights.apollo
+    // → CTA penalty on gemini_score has NO effect on overall_score.
     const noPenaltyResult = await aggregateScores(
       buildPipelineResult({
         contentTypeSlug: "tutorial",
@@ -278,11 +282,8 @@ describe("aggregateScores end-to-end — CTA penalty + per-segment SignalAvailab
     // gemini_score in PredictionResult is PRE-penalty (exposed for UI breakdown card).
     expect(noPenaltyResult.gemini_score).toBe(penaltyResult.gemini_score);
 
-    // overall_score reflects POST-penalty math. Penalty = 5 * weights.gemini.
-    // weights.gemini in the full-signals case is 0.25; 5 * 0.25 = 1.25 → 1 point delta after Math.round.
-    // We only need to assert "strictly lower" — not the exact magnitude — because
-    // weight redistribution + clamping can adjust the delta by 1 point.
-    expect(penaltyResult.overall_score).toBeLessThan(noPenaltyResult.overall_score);
+    // overall_score is IDENTICAL regardless of CTA penalty (gemini not in blend post-D-04).
+    expect(penaltyResult.overall_score).toBe(noPenaltyResult.overall_score);
   });
 
   // -------------------------------------------------

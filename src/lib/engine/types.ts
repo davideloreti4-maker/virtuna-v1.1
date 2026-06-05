@@ -316,12 +316,14 @@ export interface PredictionResult {
    *  Null when audio_signals absent. Sourced verbatim from
    *  geminiResult.analysis.audio_signals?.audio_description ?? null. */
   audio_description?: string | null;
-  // Post-strip (Plan 01, R9): only `behavioral` + `gemini` are live (base 0.40/0.35,
-  // renormalized ≈0.533/0.467). The dead keys are forced to 0 by aggregator.ts and
-  // retained ONLY for back-compat of persisted score_weights JSONB rows.
+  // Plan 03-04 (D-04): only `behavioral` + `apollo` are live (base 0.40/0.35,
+  // renormalized ≈0.533/0.467). gemini retired from blend (now provenance only).
+  // Dead keys are forced to 0 by aggregator.ts and retained for back-compat of persisted JSONB rows.
   score_weights: {
     behavioral: number; // LIVE — base 0.40, normalized ≈0.533
-    gemini: number; // LIVE — base 0.35, normalized ≈0.467
+    apollo: number; // LIVE — base 0.35, normalized ≈0.467 (replaces gemini as blend term, D-04)
+    /** dead (0) — gemini retired from blend in Plan 03-04 (D-04); retained for back-compat. */
+    gemini?: number;
     ml: number; // dead (0) — removed from blend, dormanted
     rules: number; // dead (0) — removed from blend, dormanted
     trends: number; // dead (0) — removed from blend, dormanted
@@ -405,7 +407,13 @@ export interface PredictionResult {
  */
 export interface SignalAvailability {
   behavioral: boolean;
-  gemini: boolean;
+  /**
+   * Plan 03-04 (D-04) — Apollo composite availability: true when deepseekResult is non-null
+   * and composite_score is available. Used as the BLEND KEY replacing gemini in SCORE_WEIGHTS.
+   * Optional for back-compat with pre-Plan-04 callsites.
+   */
+  apollo?: boolean;
+  gemini: boolean;  // PROVENANCE ONLY after Plan 03-04 (D-04) — Omni video signal fired. NOT a blend key.
   ml: boolean;
   rules: boolean;
   trends: boolean;
@@ -413,8 +421,7 @@ export interface SignalAvailability {
   niche: boolean;          // NEW Phase 4 (D-20) — set by aggregator from wave0Result.niche !== null
   // NEW Phase 5 (D-12) — per-segment availability from analyzeVideoSegmented.
   // PROVENANCE KEYS — must NOT be added to SCORE_WEIGHT_KEYS (Phase 4 Cross-File Constraint #3).
-  // The existing `gemini` field becomes derived: gemini = gemini_hook || gemini_body || gemini_cta
-  // (computed in aggregator — Plan 03 wires this; Plan 01 ships placeholders only).
+  // The existing `gemini` field is provenance only (D-04: gemini retired from blend).
   gemini_hook: boolean;
   gemini_body: boolean;
   gemini_cta: boolean;

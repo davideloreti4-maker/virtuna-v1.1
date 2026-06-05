@@ -136,14 +136,14 @@ import type { EmotionArcPoint } from "../qwen/schemas";
 // =====================================================
 
 // =====================================================
-// Plan 04 (R9) — selectWeights 2-key behavioral+gemini blend
+// Plan 03-04 (D-04) — selectWeights 2-key behavioral+apollo blend
 // =====================================================
-// Dead keys (ml, rules, trends, audio, retrieval, platform_fit) removed from
-// SCORE_WEIGHT_KEYS in Plan 04. selectWeights now returns only {behavioral, gemini}.
-// Old D-16 8-key tests superseded below with 2-key assertions.
+// Dead keys (ml, rules, trends, audio, retrieval, platform_fit, gemini) removed from
+// SCORE_WEIGHT_KEYS in Plan 03-04. selectWeights now returns only {behavioral, apollo}.
+// gemini is provenance-only (still in SignalAvailability for UI/JSONB persistence).
 
-describe("selectWeights — 2-key behavioral+gemini blend (Plan 04)", () => {
-  it("returns only behavioral+gemini; sum ~1.0 when both available", () => {
+describe("selectWeights — 2-key behavioral+apollo blend (Plan 03-04)", () => {
+  it("returns only behavioral+apollo; sum ~1.0 when both available", () => {
     const weights = selectWeights({
       behavioral: true,
       gemini: true,
@@ -160,17 +160,20 @@ describe("selectWeights — 2-key behavioral+gemini blend (Plan 04)", () => {
     });
 
     expect(weights.behavioral).toBeGreaterThan(0);
-    expect(weights.gemini).toBeGreaterThan(0);
+    expect(weights.apollo).toBeGreaterThan(0);
     // Dead keys ABSENT from the 2-key output
     expect(weights).not.toHaveProperty("ml");
     expect(weights).not.toHaveProperty("rules");
     expect(weights).not.toHaveProperty("trends");
     expect(weights).not.toHaveProperty("retrieval");
-    const sum = weights.behavioral + weights.gemini;
+    expect(weights).not.toHaveProperty("gemini"); // retired D-04
+    const sum = weights.behavioral + weights.apollo;
     expect(sum).toBeCloseTo(1, 2);
   });
 
-  it("behavioral unavailable → gemini=1, behavioral=0", () => {
+  it("behavioral unavailable → both apollo and behavioral=0 (same deepseek source, D-04)", () => {
+    // Plan 03-04 (D-04): apollo availability is sourced from behavioral (both = deepseekResult !== null).
+    // When behavioral=false (deepseek didn't run), apollo is also false → both unavailable → all zeros.
     const weights = selectWeights({
       behavioral: false,
       gemini: true,
@@ -187,12 +190,12 @@ describe("selectWeights — 2-key behavioral+gemini blend (Plan 04)", () => {
     });
 
     expect(weights.behavioral).toBe(0);
-    expect(weights.gemini).toBe(1);
-    const sum = weights.behavioral + weights.gemini;
-    expect(sum).toBeCloseTo(1, 2);
+    expect(weights.apollo).toBe(0); // apollo sourced from same deepseek signal as behavioral
+    // Sum is 0 when both unavailable
+    expect(weights.behavioral + weights.apollo).toBe(0);
   });
 
-  it("gemini unavailable → behavioral=1, gemini=0", () => {
+  it("gemini unavailable → behavioral+apollo still both present (apollo availability = behavioral)", () => {
     const weights = selectWeights({
       behavioral: true,
       gemini: false,
@@ -208,11 +211,14 @@ describe("selectWeights — 2-key behavioral+gemini blend (Plan 04)", () => {
       retrieval: false,
     });
 
-    expect(weights.behavioral).toBe(1);
-    expect(weights.gemini).toBe(0);
+    // When behavioral=true and gemini=false, apollo falls back to behavioral=true → both live
+    expect(weights.behavioral).toBeGreaterThan(0);
+    expect(weights.apollo).toBeGreaterThan(0);
+    const sum = weights.behavioral + weights.apollo;
+    expect(sum).toBeCloseTo(1, 2);
   });
 
-  it("both unavailable → behavioral=0, gemini=0; does not throw", () => {
+  it("both unavailable → behavioral=0, apollo=0; does not throw", () => {
     expect(() => {
       const weights = selectWeights({
         behavioral: false,
@@ -229,25 +235,26 @@ describe("selectWeights — 2-key behavioral+gemini blend (Plan 04)", () => {
         retrieval: false,
       });
       expect(weights.behavioral).toBe(0);
-      expect(weights.gemini).toBe(0);
+      expect(weights.apollo).toBe(0);
     }).not.toThrow();
   });
 
-  it("always sums to ~1.0 for any combination where at least one source is available", () => {
+  it("always sums to ~1.0 for any combination where behavioral is available (D-04: apollo sourced from same deepseek signal)", () => {
+    // Plan 03-04 (D-04): apollo availability = behavioral (same deepseek source).
+    // When behavioral=false, apollo=false → both 0 (excluded from this test).
+    // Only test combos where behavioral=true → sum should be ~1.0.
     const combos = [
       { behavioral: true, gemini: true, ml: false, rules: false, trends: true, content_type: false, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: true },
-      { behavioral: false, gemini: true, ml: true, rules: false, trends: false, content_type: true, niche: true, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: false },
       { behavioral: true, gemini: false, ml: true, rules: true, trends: false, content_type: false, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: true },
       { behavioral: true, gemini: true, ml: true, rules: false, trends: false, content_type: false, niche: true, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: true },
       { behavioral: true, gemini: true, ml: false, rules: false, trends: true, content_type: false, niche: false, personas: false, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: true },
-      { behavioral: false, gemini: true, ml: true, rules: false, trends: false, content_type: true, niche: true, personas: true, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: false },
       { behavioral: true, gemini: false, ml: true, rules: true, trends: false, content_type: false, niche: false, personas: false, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: true },
       { behavioral: true, gemini: true, ml: true, rules: false, trends: false, content_type: false, niche: true, personas: false, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: true },
     ];
 
     for (const combo of combos) {
       const weights = selectWeights(combo);
-      const sum = weights.behavioral + weights.gemini;
+      const sum = weights.behavioral + weights.apollo;
       expect(sum).toBeCloseTo(1, 2);
     }
   });
@@ -278,7 +285,7 @@ describe("aggregateScores", () => {
     expect(result.predicted_engagement).toBeNull(); // Plan 02 D1.1: sine-jitter fabrication deleted
     expect(result.engine_version).toBeDefined();
     expect(result.score_weights).toHaveProperty("behavioral");
-    expect(result.score_weights).toHaveProperty("gemini");
+    expect(result.score_weights).toHaveProperty("apollo"); // Plan 03-04 D-04: apollo replaces gemini
     expect(result.score_weights).toHaveProperty("ml");
     expect(result.score_weights).toHaveProperty("rules");
     expect(result.score_weights).toHaveProperty("trends");
@@ -495,9 +502,9 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
     // predictWithML mock removed (Plan 02); ml call no longer fires in aggregateScores.
   });
 
-  it("selectWeights regression: 2-key blend — behavioral+gemini sum to ~1.0 (Plan 04)", () => {
-    // Plan 04 (R9): SCORE_WEIGHT_KEYS=[behavioral,gemini]; dead keys removed.
-    // Normalized: behavioral=0.40/0.75≈0.533, gemini=0.35/0.75≈0.467
+  it("selectWeights regression: 2-key blend — behavioral+apollo sum to ~1.0 (Plan 03-04, D-04)", () => {
+    // Plan 03-04 (D-04): SCORE_WEIGHT_KEYS=[behavioral,apollo]; gemini retired from blend.
+    // Normalized: behavioral=0.40/0.75≈0.533, apollo=0.35/0.75≈0.467
     const weights = selectWeights({
       behavioral: true,
       gemini: true,
@@ -513,12 +520,13 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
       retrieval: true,
     });
     expect(weights.behavioral).toBeGreaterThan(0);
-    expect(weights.gemini).toBeGreaterThan(0);
+    expect(weights.apollo).toBeGreaterThan(0);
     expect(weights).not.toHaveProperty("ml");
     expect(weights).not.toHaveProperty("rules");
     expect(weights).not.toHaveProperty("trends");
     expect(weights).not.toHaveProperty("retrieval");
-    const sum = weights.behavioral + weights.gemini;
+    expect(weights).not.toHaveProperty("gemini"); // retired D-04
+    const sum = weights.behavioral + weights.apollo;
     expect(sum).toBeCloseTo(1.0, 2);
   });
 
@@ -556,10 +564,12 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
     expect(sum).toBeCloseTo(1.0, 2);
   });
 
-  it("selectWeights redistribution still works with new keys present (1 missing)", () => {
+  it("selectWeights redistribution with provenance flags present — behavioral=true full blend (D-04)", () => {
+    // Plan 03-04 (D-04): both behavioral and apollo source from deepseek.
+    // When behavioral=true, apollo=true → both present → normalized blend (sum~1.0).
     const weights = selectWeights({
-      behavioral: false,
-      gemini: true,
+      behavioral: true,
+      gemini: false, // provenance only — does NOT affect blend
       ml: true,
       rules: true,
       trends: true,
@@ -572,10 +582,10 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
       retrieval: true,
     });
     // 2-decimal precision matches existing "always sums to ~1.0" test convention
-    // (rounding step inside selectWeights can introduce ±0.001 floating drift).
     const sum = Object.values(weights).reduce((a, b) => a + b, 0);
     expect(sum).toBeCloseTo(1.0, 2);
-    expect(weights.behavioral).toBe(0);
+    expect(weights.behavioral).toBeGreaterThan(0);
+    expect(weights.apollo).toBeGreaterThan(0);
   });
 
   it("signal_availability.content_type set to true when wave0Result.content_type is non-null", async () => {
@@ -876,7 +886,7 @@ describe("Phase 8 — aggregator retrieval integration", () => {
     expect(result.retrieval_evidence).toEqual(evidence);
   });
 
-  it("score_weights contains only behavioral+gemini keys (Plan 04: retrieval removed from blend)", async () => {
+  it("score_weights contains behavioral+apollo as live keys (Plan 03-04 D-04: gemini retired, retrieval not a blend key)", async () => {
     const pipeline = makePipelineResult({
       retrievalResult: {
         evidence: [],
@@ -886,9 +896,10 @@ describe("Phase 8 — aggregator retrieval integration", () => {
       },
     });
     const result = await aggregateScores(pipeline);
-    // Plan 04 (R9): score_weights only has behavioral+gemini as live keys; retrieval NOT a blend key.
+    // Plan 03-04 (D-04): score_weights has behavioral+apollo as live keys; gemini/retrieval NOT blend keys.
     expect(result.score_weights.behavioral).toBeGreaterThan(0);
-    expect(result.score_weights.gemini).toBeGreaterThan(0);
+    expect(result.score_weights.apollo).toBeGreaterThan(0);
+    expect(result.score_weights.gemini).toBe(0); // retired from blend (D-04)
     expect(result.score_weights.ml).toBe(0);
     expect(result.score_weights.rules).toBe(0);
     expect(result.score_weights.trends).toBe(0);

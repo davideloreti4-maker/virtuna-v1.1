@@ -61,23 +61,22 @@ export { ENGINE_VERSION };
 // v2 Score Weights — config-driven for maintainability
 // =====================================================
 
-// Plan 04 (R9) — blend reduced to behavioral + gemini only (dead keys removed).
-// Dead keys: ml=0, rules=0, trends=0.10 (trend_score always 0 post-Plan03 strip),
-// audio=0.05, retrieval=0, platform_fit=0.05. Removing trends 0.10 redistribution
-// produces a small upward score nudge (honesty correction per RESEARCH Pitfall 6);
-// measured in Plan 06. applyCtaPenalty KEPT (modifies live gemini term — not a dead key,
-// Pitfall 7 / Open Q1).
+// Plan 03-04 (D-04) — blend rewired to behavioral + apollo (Apollo composite replaces gemini).
+// gemini term retired from blend (now provenance only for UI/back-compat).
+// applyCtaPenalty on gemini dropped (gemini left the blend; CTA surfaces as Apollo §2.4 critique).
+// apollo weight value kept at 0.35 (RESEARCH:230) to preserve 53.3/46.7 renorm split —
+// satisfies STATE.md "derivation structurally unchanged" determinism band.
 // Exported for test introspection (aggregator.test.ts, aggregator-audio.test.ts).
 export const SCORE_WEIGHTS = {
   behavioral: 0.40,  // primary CoT, video-aware via Wave 2 input
-  gemini:     0.35,  // video understanding; CTA penalty applied before blend
+  apollo:     0.35,  // Apollo knowledge-grounded composite (D-04, replaces gemini term)
 } as const;
 
-// Plan 04 (R9) — SCORE_WEIGHT_KEYS reduced to the two live signals. Dead keys
-// (ml, rules, trends, audio, retrieval, platform_fit) removed. selectWeights
-// iterates ONLY these keys; all SignalAvailability provenance fields (content_type,
-// niche, gemini_hook, etc.) continue to NOT participate in weight math.
-export const SCORE_WEIGHT_KEYS = ["behavioral", "gemini"] as const;
+// Plan 03-04 (D-04) — SCORE_WEIGHT_KEYS updated to two live signals: behavioral + apollo.
+// Dead keys (ml, rules, trends, audio, retrieval, platform_fit, gemini) removed.
+// selectWeights iterates ONLY these keys; all SignalAvailability provenance fields
+// (gemini, content_type, niche, gemini_hook, etc.) continue to NOT participate in weight math.
+export const SCORE_WEIGHT_KEYS = ["behavioral", "apollo"] as const;
 
 // =====================================================
 // Phase 5 D-06: CTA Penalty Matrix
@@ -147,10 +146,13 @@ export function applyCtaPenalty(
 // Aggregator computes the values; route layer persists them via PredictionResult.
 
 /**
- * Select weights for the behavioral + gemini 2-key blend.
+ * Select weights for the behavioral + apollo 2-key blend (Plan 03-04, D-04).
  * When a source is missing its weight redistributes to the remaining source
  * so weights always sum to ~1.0. Dead keys (ml, rules, trends, audio,
- * retrieval, platform_fit) removed in Plan 04 (R9).
+ * retrieval, platform_fit, gemini) removed from blend.
+ *
+ * apollo availability = availability.apollo (deepseekResult non-null + composite_score present).
+ * gemini stays in SignalAvailability as a provenance-only flag (NOT read here).
  *
  * Exported for benchmarking and testing.
  */
@@ -158,26 +160,26 @@ export function selectWeights(
   availability: SignalAvailability
 ): {
   behavioral: number;
-  gemini: number;
+  apollo: number;
 } {
   const behavioralOn = availability.behavioral;
-  const geminiOn = availability.gemini;
+  const apolloOn = availability.apollo ?? availability.behavioral; // apollo available iff deepseek ran (same signal)
 
   // Both sources available — normalize base weights (0.40 + 0.35 = 0.75).
-  if (behavioralOn && geminiOn) {
-    const baseSum = SCORE_WEIGHTS.behavioral + SCORE_WEIGHTS.gemini;
+  if (behavioralOn && apolloOn) {
+    const baseSum = SCORE_WEIGHTS.behavioral + SCORE_WEIGHTS.apollo;
     return {
       behavioral: Math.round((SCORE_WEIGHTS.behavioral / baseSum) * 1000) / 1000,
-      gemini:     Math.round((SCORE_WEIGHTS.gemini     / baseSum) * 1000) / 1000,
+      apollo:     Math.round((SCORE_WEIGHTS.apollo     / baseSum) * 1000) / 1000,
     };
   }
 
   // One source missing — full weight goes to the available source.
-  if (behavioralOn && !geminiOn) return { behavioral: 1, gemini: 0 };
-  if (!behavioralOn && geminiOn) return { behavioral: 0, gemini: 1 };
+  if (behavioralOn && !apolloOn) return { behavioral: 1, apollo: 0 };
+  if (!behavioralOn && apolloOn) return { behavioral: 0, apollo: 1 };
 
   // Both unavailable — all zeros.
-  return { behavioral: 0, gemini: 0 };
+  return { behavioral: 0, apollo: 0 };
 }
 
 // =====================================================
@@ -187,12 +189,14 @@ export function selectWeights(
 /**
  * Calculate numeric confidence (0-1) based on:
  * 1. Signal availability (0-0.6) — how much data we have
- * 2. Model agreement (0-0.4) — do the Qwen omni (vision) and reasoning signals agree on direction
+ * 2. Model agreement (0-0.4) — do Apollo composite and behavioral signals agree on direction
  *
- * RULE-04: Penalizes confidence when rules/trends signals are missing.
+ * Plan 03-04 (D-04): replaces gemini-vs-behavioral agreement check with
+ * Apollo-composite-vs-behavioral direction agreement. Gemini term retired from blend.
+ * HARD-03 LOW floor on dual failure preserved.
  */
 function calculateConfidence(
-  geminiScore: number,
+  apolloScore: number,  // Plan 03-04: Apollo composite_score (0-100) replaces geminiScore
   behavioralScore: number,
   ruleResult: RuleScoreResult,
   trendEnrichment: TrendEnrichment,
@@ -215,17 +219,18 @@ function calculateConfidence(
   void availability;
 
   // Model agreement component (0-0.4)
-  const geminiDirection = geminiScore - 50;
+  // Plan 03-04 (D-04): Apollo-composite-vs-behavioral direction agreement (replaces gemini agreement).
+  const apolloDirection = apolloScore - 50;
   const behavioralDirection = behavioralScore - 50;
   let agreement: number;
 
   if (
-    (geminiDirection >= 0 && behavioralDirection >= 0) ||
-    (geminiDirection < 0 && behavioralDirection < 0)
+    (apolloDirection >= 0 && behavioralDirection >= 0) ||
+    (apolloDirection < 0 && behavioralDirection < 0)
   ) {
-    // Same sign — both models agree on direction
+    // Same sign — Apollo and behavioral agree on direction
     agreement = 0.4;
-  } else if (Math.abs(geminiDirection - behavioralDirection) <= 15) {
+  } else if (Math.abs(apolloDirection - behavioralDirection) <= 15) {
     // Different signs but close together
     agreement = 0.2;
   } else {
@@ -638,7 +643,8 @@ export async function aggregateScores(
   // SCORE_WEIGHT_KEYS ml key removed in Plan 04 blend cut.
 
   // -------------------------------------------------
-  // Signal availability — behavioral + gemini (the two blend keys).
+  // Signal availability — behavioral + apollo (the two blend keys post-Plan-03-04 D-04).
+  // gemini retired from blend; remains as provenance flag for JSONB/UI.
   // All other keys (ml, rules, trends, audio, retrieval, platform_fit) removed
   // from the blend in Plan 04 (R9). Provenance flags (content_type, niche,
   // gemini_hook/body/cta, personas, audio, audio_fingerprint, retrieval,
@@ -648,9 +654,12 @@ export async function aggregateScores(
   // -------------------------------------------------
   const availability: SignalAvailability = {
     behavioral: deepseekResult !== null,
+    // Plan 03-04 (D-04): apollo availability = deepseekResult non-null (composite_score present).
+    // Same source as behavioral; exposed separately for JSONB provenance.
+    apollo: deepseekResult !== null,
     // Placeholder — overwritten below after per-segment availability is resolved.
     // HARD-03 fallback (factors.some(score > 0)) kicks in only when signalAvailability undefined.
-    gemini: false,
+    gemini: false, // PROVENANCE ONLY after D-04 (Omni video signal fired). NOT a blend key.
     // Provenance flags — NOT weight-bearing (not in SCORE_WEIGHT_KEYS after Plan 04 blend cut).
     // Retained for JSONB persistence and UI surfacing.
     ml:     false, // Plan 04 (R9): removed from blend. Provenance only.
@@ -670,7 +679,7 @@ export async function aggregateScores(
     pass2_timeline: pipelineResult.pass2Outcome?.pass2_aggregate_built ?? false,
   };
 
-  // Phase 5 D-12: derived `gemini` key.
+  // Phase 5 D-12: derived `gemini` provenance key (PROVENANCE ONLY, not blend after D-04).
   // - Segmented path (signalAvailability present): gemini = hook || body || cta.
   // - Legacy text + tiktok_url paths (signalAvailability undefined): HARD-03 fallback —
   //   the value is `true` when at least one Gemini factor scored > 0.
@@ -698,52 +707,27 @@ export async function aggregateScores(
   const behavioral_score = Math.round(behavioralAvg * 10); // Normalize to 0-100
 
   // -------------------------------------------------
-  // Gemini score (0.35 base weight → ≈46.7% normalized post-strip)
-  // Source: Gemini's 5 factor scores, each 0-10
+  // Gemini score — PROVENANCE ONLY after Plan 03-04 (D-04).
+  // gemini_score is still computed and exposed on PredictionResult.gemini_score
+  // for UI/back-compat (M2 breakdown card), but NO LONGER feeds raw_overall_score.
   // -------------------------------------------------
   const geminiAvg =
     gemini.factors.reduce((sum, f) => sum + f.score, 0) /
     gemini.factors.length;
-  const gemini_score = Math.round(geminiAvg * 10); // Normalize to 0-100
+  const gemini_score = Math.round(geminiAvg * 10); // Normalize to 0-100 (provenance only)
 
   // -------------------------------------------------
-  // Phase 5 D-06: Apply CTA penalty to gemini_score.
-  // Reads wave0Result.content_type.type (Phase 4) × geminiResult.analysis.cta_segment
-  // (Phase 5 mergeSegments). Pure function — does NOT modify SCORE_WEIGHTS or
-  // selectWeights (those stay stable per Phase 4 Cross-File Constraint #3).
-  //
-  // Two separate values flow downstream:
-  //   - `gemini_score` (UNCHANGED here) → exposed on PredictionResult.gemini_score
-  //     so the M2 UI breakdown card shows the model's raw Gemini average.
-  //   - `ctaPenaltyApplied_gemini_score` → feeds raw_overall_score below so the
-  //     final number reflects the CTA-expectation penalty for tutorial/b_roll content.
+  // Apollo score (Plan 03-04, D-04) — replaces gemini term in the blend.
+  // Source: deepseekResult.reasoning.composite_score (Apollo §4 output, 0-100).
+  // Falls back to 0 when deepseek is unavailable (behavioral gets full weight via selectWeights).
+  // applyCtaPenalty dropped (Open Q2): gemini left the blend; CTA surfaces as Apollo §2.4 critique.
   // -------------------------------------------------
-  const widenedGemini = gemini as typeof gemini & { cta_segment?: CtaSegmentResult | null };
-  const ctaPenaltyApplied_gemini_score = applyCtaPenalty(
-    gemini_score,
-    contentTypeSlug,
-    widenedGemini.cta_segment ?? null,
-  );
-  // Phase 5 IN-03: emit a pipeline_warning breadcrumb when the CTA penalty
-  // actually fired. Keeps applyCtaPenalty pure (no side-effects) by computing
-  // the delta and routing the event through the aggregator's onStageEvent
-  // channel. Phase 10 ML audit (CONTEXT D-06) needs the penalty firing rate
-  // for magnitude calibration — without this breadcrumb, the only evidence
-  // is reconstructing it from `gemini_score` vs `overall_score` deltas, which
-  // is fragile across rule/trend/ml interactions.
-  if (ctaPenaltyApplied_gemini_score < gemini_score) {
-    const penaltyDelta = gemini_score - ctaPenaltyApplied_gemini_score;
-    onStageEvent?.({
-      type: "pipeline_warning",
-      stage: "cta_penalty_applied",
-      message: `CTA penalty fired: ${penaltyDelta} points deducted from gemini_score (content_type=${contentTypeSlug}, cta_present=false). Pre-penalty=${gemini_score}, post-penalty=${ctaPenaltyApplied_gemini_score}.`,
-    });
-  }
+  const apollo_score = deepseek?.composite_score ?? 0;
 
   // -------------------------------------------------
-  // Overall score — behavioral + gemini blend (Plan 04, R9).
-  // Dead terms (ml, rules, trends, audio, retrieval, platform_fit) removed.
-  // applyCtaPenalty applied to gemini before the blend (D-06, Pitfall 7 KEPT).
+  // Overall score — behavioral + apollo blend (Plan 03-04, D-04).
+  // Dead terms (ml, rules, trends, audio, retrieval, platform_fit, gemini) removed.
+  // apollo_score sourced from Apollo composite (deepseekResult.reasoning.composite_score).
   // -------------------------------------------------
   const raw_overall_score = Math.min(
     100,
@@ -751,7 +735,7 @@ export async function aggregateScores(
       0,
       Math.round(
         behavioral_score * weights.behavioral +
-          ctaPenaltyApplied_gemini_score * weights.gemini // Phase 5 D-06 — CTA penalty flows here
+          apollo_score * weights.apollo // Plan 03-04 D-04: Apollo composite replaces gemini
       )
     )
   );
@@ -766,7 +750,7 @@ export async function aggregateScores(
   // -------------------------------------------------
   const hasVideo = payload.input_mode !== "text";
   let conf = calculateConfidence(
-    gemini_score,
+    apollo_score, // Plan 03-04 (D-04): Apollo composite-vs-behavioral agreement (replaces gemini)
     behavioral_score,
     ruleResult,
     effectiveTrendEnrichment,
@@ -780,6 +764,7 @@ export async function aggregateScores(
   // zero-scores produce the same direction (-50), triggering the
   // "models agree" branch (agreement = 0.4). In reality, two zeros
   // agreeing is meaningless — force LOW to reflect actual data quality.
+  // Plan 03-04 (D-04): dual failure = Omni (gemini provenance) AND DeepSeek (behavioral/apollo) both failed.
   if (!availability.gemini && !availability.behavioral) {
     conf = { confidence: 0.2, confidence_label: "LOW" };
   }
@@ -1014,9 +999,9 @@ export async function aggregateScores(
     // above (BEFORE Stage 10/11 per Pitfall #5). null on Supabase error,
     // FALLBACK on unknown niche, OptimalPostWindow with source='niche' on hit.
     optimal_post_window,
-    // score_weights: 2-key blend (Plan 04 R9). Dead keys set to 0 for back-compat with
-    // PredictionResult.score_weights type (types.ts still includes ml/rules/trends).
-    score_weights: { ...weights, ml: 0, rules: 0, trends: 0 },
+    // score_weights: behavioral + apollo blend (Plan 03-04, D-04). Dead keys set to 0 for back-compat.
+    // gemini: 0 marks it retired from blend (provenance only). apollo is the new live term.
+    score_weights: { ...weights, ml: 0, rules: 0, trends: 0, gemini: 0 },
     latency_ms: pipelineResult.total_duration_ms,
     cost_cents,
     engine_version: ENGINE_VERSION,

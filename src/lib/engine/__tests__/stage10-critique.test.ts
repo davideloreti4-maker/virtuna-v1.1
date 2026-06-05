@@ -71,7 +71,7 @@ function makeFakePredictionResult(overrides?: Partial<PredictionResult>): Predic
     gemini_score: 85,
     behavioral_score: 45,
     ml_score: 50,
-    score_weights: { behavioral: 0.35, gemini: 0.25, ml: 0.15, rules: 0.15, trends: 0.1 },
+    score_weights: { behavioral: 0.35, apollo: 0.25, gemini: 0, ml: 0.15, rules: 0.15, trends: 0.1 },
     latency_ms: 1500,
     cost_cents: 5,
     engine_version: "9.0.0",

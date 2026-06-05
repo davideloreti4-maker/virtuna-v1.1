@@ -242,10 +242,11 @@ const base: PredictionResult = {
   // Heatmap (not needed for Phase 5 tests)
   heatmap: null,
 
-  // Score weights
+  // Score weights — Plan 03-04 (D-04): apollo replaces gemini as live blend term
   score_weights: {
     behavioral: 0.33,
-    gemini: 0.24,
+    apollo: 0.24,  // Plan 03-04: live blend term (replaces gemini)
+    gemini: 0,     // RETIRED (D-04) — kept for back-compat
     ml: 0.14,
     rules: 0.14,
     trends: 0.10,
