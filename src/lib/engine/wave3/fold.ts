@@ -115,26 +115,118 @@ export interface Wave3FoldOutcome {
 }
 
 // =====================================================
-// Plan 03 adapter stubs — exported so fold-adapter.test.ts
-// resolves its import; the real implementations live in Plan 03.
+// Plan 03 adapters — lossless mapping from FoldResponse to the two engine-compatible shapes.
+// D-11/D-12: aggregatePersonaResults + buildWeightedCurve are NOT modified; the fold output
+// is adapted to their input shapes instead.
 // =====================================================
 
-// Plan 03 adapts
-export function adaptFoldToPersonaSimResults(
-  _fold: FoldResponse,
-  _slots: PersonaSlot[],
-): PersonaSimulationResult[] {
-  // Plan 03 implements — returns [] so the fold compiles and the adapter test can import
-  return [];
+/**
+ * niche_deep → niche slot_type map (Pitfall 5 / T-04-04 mitigation).
+ * Pass2PersonaResult.slot_type has 4 values: fyp, niche, loyalist, cross_niche.
+ * PersonaSlot.slot_type has a 5th value: niche_deep — which maps to the "niche" weight bucket.
+ * assembleHeatmapPayload:240 applies the same map — this adapter must match exactly.
+ */
+function mapSlotType(
+  slotType: string,
+): "fyp" | "niche" | "loyalist" | "cross_niche" {
+  if (slotType === "niche_deep") return "niche";
+  return slotType as "fyp" | "niche" | "loyalist" | "cross_niche";
 }
 
-// Plan 03 adapts
+/**
+ * Build a slot lookup map keyed by persona_id for O(1) access.
+ * Falls back to archetype-keyed lookup when persona_id doesn't match.
+ */
+function buildSlotMap(slots: PersonaSlot[]): Map<string, PersonaSlot> {
+  const map = new Map<string, PersonaSlot>();
+  for (const slot of slots) {
+    map.set(slot.persona_id, slot);
+    // Also index by archetype for fallback (some fold fixture archetypes share the pattern)
+    if (!map.has(slot.archetype)) map.set(slot.archetype, slot);
+  }
+  return map;
+}
+
+/**
+ * Adapt FoldResponse → PersonaSimulationResult[] (Pass-1 shape).
+ * aggregatePersonaResults accepts this array without modification (D-11).
+ *
+ * Field mapping (RESEARCH §Lossless output mapping):
+ *   persona_id ← fold.persona_id
+ *   archetype  ← fold.archetype (as string — typed assertion to PersonaArchetype for schema compat)
+ *   slot_type  ← matching slot.slot_type (niche_deep allowed — PersonaSimulationResultSchema includes it)
+ *   niche      ← matching slot.niche
+ *   watch_through_pct ← fold.watch_through_pct
+ *   share_intent      ← fold.share_intent
+ *   comment_intent    ← fold.comment_intent
+ *   save_intent       ← fold.save_intent
+ *   rewatch_intent    ← fold.rewatch_intent
+ *   scroll_past_second ← fold.scroll_past_second
+ *   reasoning  ← synthesized from archetype (required field with min(1), not in fold output)
+ */
+export function adaptFoldToPersonaSimResults(
+  fold: FoldResponse,
+  slots: PersonaSlot[],
+): PersonaSimulationResult[] {
+  const slotMap = buildSlotMap(slots);
+  return fold.personas.map((persona) => {
+    // Prefer persona_id match, fall back to archetype match
+    const slot = slotMap.get(persona.persona_id) ?? slotMap.get(persona.archetype);
+    return {
+      persona_id: persona.persona_id,
+      archetype: persona.archetype as PersonaSimulationResult["archetype"],
+      slot_type: (slot?.slot_type ?? "fyp") as PersonaSimulationResult["slot_type"],
+      niche: slot?.niche ?? "general",
+      watch_through_pct: persona.watch_through_pct,
+      share_intent: persona.share_intent,
+      comment_intent: persona.comment_intent,
+      save_intent: persona.save_intent,
+      rewatch_intent: persona.rewatch_intent,
+      scroll_past_second: persona.scroll_past_second,
+      // reasoning is required (min 1) but absent from fold output — synthesize from archetype
+      reasoning: `fold-derived: ${persona.archetype}`,
+    };
+  });
+}
+
+/**
+ * Adapt FoldResponse → Pass2PersonaResult[] (Pass-2 shape).
+ * buildWeightedCurve + assembleHeatmapPayload accept this array without modification (D-12).
+ *
+ * Field mapping (RESEARCH §Lossless output mapping):
+ *   persona_id     ← fold.persona_id
+ *   slot_type      ← mapSlotType(slot.slot_type)  — niche_deep→niche (Pitfall 5 / T-04-04)
+ *   archetype      ← fold.archetype
+ *   segment_reactions ← fold.segment_reactions (t_start, t_end, attention, reason, swipe_predicted)
+ *   pass2_latency_ms  = 0 (fold is a single call — no per-persona latency)
+ *   pass2_cost_cents  = 0 (fold cost is tracked on Wave3FoldOutcome.cost_cents)
+ * assembleHeatmapPayload derives swipe_predicted_at + segment_reasons from segment_reactions.
+ */
 export function adaptFoldToPass2Results(
-  _fold: FoldResponse,
-  _slots: PersonaSlot[],
+  fold: FoldResponse,
+  slots: PersonaSlot[],
 ): Pass2PersonaResult[] {
-  // Plan 03 implements — returns [] so the fold compiles and the adapter test can import
-  return [];
+  const slotMap = buildSlotMap(slots);
+  return fold.personas.map((persona) => {
+    const slot = slotMap.get(persona.persona_id) ?? slotMap.get(persona.archetype);
+    // Pitfall 5 / T-04-04: apply the niche_deep→niche map (same map assembleHeatmapPayload:240 uses)
+    const slotType = mapSlotType(slot?.slot_type ?? "fyp");
+
+    return {
+      persona_id: persona.persona_id,
+      archetype: persona.archetype as Pass2PersonaResult["archetype"],
+      slot_type: slotType,
+      segment_reactions: persona.segment_reactions.map((r) => ({
+        t_start: r.t_start,
+        t_end: r.t_end,
+        attention: r.attention,
+        reason: r.reason,
+        swipe_predicted: r.swipe_predicted,
+      })),
+      pass2_latency_ms: 0,   // fold is a single call — no per-persona latency
+      pass2_cost_cents: 0,   // fold cost tracked on Wave3FoldOutcome.cost_cents
+    } satisfies Pass2PersonaResult;
+  });
 }
 
 // =====================================================
@@ -167,6 +259,7 @@ export async function runFold(
   const warnings: string[] = [];
   let fold_success = false;
   let costCents = 0;
+  let foldPersonas: FoldResponse | null = null; // set on successful parse + segment-count guard
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PER_CALL_TIMEOUT_MS);
@@ -246,10 +339,15 @@ export async function runFold(
           tags: { stage: "wave_3_fold", archetype: "all_10" },
         });
       } else {
-        // D-07 diversity guard: warn when curves are homogenized.
+        // D-07 diversity guard: warn when curves are homogenized (warn-only per D-07, never throw).
         const avgRange = computeAvgCurveRange(validated.data.personas);
-        checkDiversityGuard(avgRange);
+        const { warn } = checkDiversityGuard(avgRange);
+        if (warn) {
+          warnings.push(`fold diversity guard: avgCurveRange=${avgRange} below DIVERSITY_FLOOR=${DIVERSITY_FLOOR} (D-07)`);
+        }
 
+        // Plan 03 adapters: stash validated data for post-try adapter calls.
+        foldPersonas = validated.data;
         fold_success = true;
       }
     }
@@ -283,9 +381,15 @@ export async function runFold(
     warning: fold_success ? undefined : "wave_3_fold_failed",
   });
 
+  // Plan 03 adapters: populate pass2Results + personaSimResults from the validated fold output.
+  // Empty arrays when fold_success=false (parse failed or segment-count mismatch) so the
+  // aggregator can detect fold_success=false and fall back gracefully.
+  const pass2Results = foldPersonas ? adaptFoldToPass2Results(foldPersonas, slots) : [];
+  const personaSimResults = foldPersonas ? adaptFoldToPersonaSimResults(foldPersonas, slots) : [];
+
   return {
-    pass2Results: [], // Plan 03 adapts
-    personaSimResults: [], // Plan 03 adapts
+    pass2Results,
+    personaSimResults,
     warnings,
     cost_cents: waveCostCents,
     fold_success,
