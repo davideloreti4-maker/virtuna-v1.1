@@ -51,6 +51,9 @@ import { maybeAppendLikelyFlopWarning } from "./flop-warning";
 import { applyContentTypeWeights } from "./wave0/content-type-weights";
 import { computeAudioPerceptualScore } from "./audio-perceptual";
 import { createLogger } from "@/lib/logger";
+// Plan 04-03: "fold" behavioralSource branch — aggregatePersonaResults receives the fold-adapted
+// PersonaSimulationResult[] to produce the behavioral aggregate (D-11: function unchanged).
+import { aggregatePersonaResults } from "./wave3/aggregator";
 
 const log = createLogger({ module: "aggregator" });
 
@@ -352,7 +355,7 @@ function assembleFeatureVector(
  * supplies real values.
  */
 export interface AggregateScoresOptions {
-  behavioralSource?: "deepseek" | "personas";
+  behavioralSource?: "deepseek" | "personas" | "fold";
   // D-01 / D-18 — Plan 03 pipeline.ts uploads video once at entry, threads fileUri through here.
   // Plan 02 leaves this optional with null default; Plan 03 callsite supplies real values.
   videoContext?: { fileUri: string; mimeType: string } | null;
@@ -856,10 +859,19 @@ export async function aggregateScores(
     save_percentile: "N/A",
   } as const;
 
-  const behavioral_predictions =
-    behavioralSource === "personas" && pipelineResult.personaBehavioralAggregate !== null
-      ? pipelineResult.personaBehavioralAggregate
-      : (deepseek?.behavioral_predictions ?? FALLBACK_BEHAVIORAL);
+  // Plan 04-03: "fold" branch — derive behavioral aggregate from fold-adapted PersonaSimulationResult[].
+  // aggregatePersonaResults is called here (not pre-aggregated on PipelineResult) to keep fold.ts
+  // free of aggregator coupling. Default "deepseek" path is byte-unchanged (D-09).
+  const behavioral_predictions = (() => {
+    if (behavioralSource === "fold" && pipelineResult.foldOutcome?.fold_success) {
+      const { aggregate } = aggregatePersonaResults(pipelineResult.foldOutcome.personaSimResults);
+      if (aggregate !== null) return aggregate;
+    }
+    if (behavioralSource === "personas" && pipelineResult.personaBehavioralAggregate !== null) {
+      return pipelineResult.personaBehavioralAggregate;
+    }
+    return deepseek?.behavioral_predictions ?? FALLBACK_BEHAVIORAL;
+  })();
 
   // predicted_engagement removed (Plan 02, D1.1, R9): engagement jitter derivation deleted.
   // Field set null below; UI card already null-guarded (Plan 01 reverify #5 confirmed).
@@ -913,7 +925,21 @@ export async function aggregateScores(
   let weighted_top_dropoff_t: number | null = null;
   let weighted_hook_score: number | null = null;
 
-  if (pass2Outcome?.pass2_aggregate_built && omniSegments && omniSegments.length > 0) {
+  // Plan 04-03: select pass2Results source based on behavioralSource.
+  // "fold" → use fold-adapted Pass2PersonaResult[] (foldOutcome.pass2Results, D-12 D-11).
+  // "deepseek" / "personas" → use the existing 10-pass pass2Outcome (production default, D-09).
+  // D-11/D-12: buildWeightedCurve + assembleHeatmapPayload are NOT modified; only the input source changes.
+  const heatmapPass2Results =
+    behavioralSource === "fold" && pipelineResult.foldOutcome?.fold_success
+      ? pipelineResult.foldOutcome.pass2Results
+      : (pass2Outcome?.pass2Results ?? null);
+
+  const heatmapAggregateBuilt =
+    behavioralSource === "fold"
+      ? (pipelineResult.foldOutcome?.fold_success && (heatmapPass2Results?.length ?? 0) > 0)
+      : (pass2Outcome?.pass2_aggregate_built ?? false);
+
+  if (heatmapAggregateBuilt && heatmapPass2Results && heatmapPass2Results.length > 0 && omniSegments && omniSegments.length > 0) {
     // Resolve persona weights (default mix unless niche override exists).
     // Phase 3 Plan 08: niche primary_slug from wave0Result (may be null → default mix).
     const { weights: personaWeights, source: weightsSource } = resolveWeights(
@@ -921,13 +947,13 @@ export async function aggregateScores(
       { niche: pipelineResult.wave0Result.niche?.primary_slug ?? undefined },
     );
     // Build retention curve scalars (D-12)
-    const curveResult = buildWeightedCurve(pass2Outcome.pass2Results, omniSegments, personaWeights);
+    const curveResult = buildWeightedCurve(heatmapPass2Results, omniSegments, personaWeights);
     weighted_completion_pct = curveResult.weighted_completion_pct;
     weighted_top_dropoff_t  = curveResult.weighted_top_dropoff_t;
     weighted_hook_score     = curveResult.weighted_hook_score;
     // Assemble full HeatmapPayload (D-13) — WR-07: pass curveResult to avoid
     // a second buildWeightedCurve call inside assembleHeatmapPayload.
-    heatmap = assembleHeatmapPayload(pass2Outcome.pass2Results, omniSegments, personaWeights, weightsSource, curveResult);
+    heatmap = assembleHeatmapPayload(heatmapPass2Results, omniSegments, personaWeights, weightsSource, curveResult);
   }
 
   // -------------------------------------------------

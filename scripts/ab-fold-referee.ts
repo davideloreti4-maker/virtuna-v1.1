@@ -108,10 +108,7 @@ async function runPath(
   onEvent: (e: StageEvent) => void,
 ): Promise<{ overall_score: number | null; cost_cents: number }> {
   const opts: AggregateScoresOptions = {
-    behavioralSource: source === "personas" ? "personas" : (
-      // @ts-expect-error — "fold" not yet in the union; Plan 03 adds it and removes this comment
-      "fold"
-    ),
+    behavioralSource: source === "personas" ? "personas" : "fold",
   };
   const result = await aggregateScores(pipelineResult, onEvent, opts);
   return {

@@ -319,6 +319,8 @@ export function makePipelineResult(
     // Plan 03: platformFitResult removed from PipelineResult.
     // Phase 3 (Plan 08) — Pass 2 outcome default (null = text mode / no segments)
     pass2Outcome: null,
+    // Plan 04-03 — Fold outcome default (null = ENGINE_USE_FOLD off / no segments)
+    foldOutcome: null,
     // Phase 3 (Plan 08) — Omni segments default (undefined = text mode, no video segments)
     segments: undefined,
     requestId: "test-req-123",

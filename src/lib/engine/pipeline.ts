@@ -14,6 +14,7 @@ import {
   type BenchmarkRetrievalResult,
   type SegmentGrid,
   type VerbatimPayload,
+  type EmotionArcPoint,
 } from "./types";
 import { normalizeInput } from "./normalize";
 import { analyzeVideoWithOmni } from "./qwen/omni-analysis";
@@ -34,6 +35,8 @@ import { IngestError } from "@/lib/scraping/types";
 import { createEmptyRetrievalResult } from "./retrieval-empty";
 // Phase 3 (Plan 08) — Pass 2 orchestrator + filmstrip trigger
 import { runWave3Pass2, type Wave3Pass2Outcome } from "./wave3/pass2";
+// Plan 04-03 — Fold orchestrator + outcome type; invoked when ENGINE_USE_FOLD=1 (default OFF).
+import { runFold, type Wave3FoldOutcome } from "./wave3/fold";
 import type { DemographicContext } from "./wave3/persona-prompts-pass2";
 import { triggerFilmstripGeneration } from "./filmstrip/queue";
 
@@ -98,6 +101,11 @@ export interface PipelineResult {
   // Null when no segments (text mode / tiktok_url mode) or when Pass 2 itself is skipped.
   // Aggregator reads this to populate weighted_* + heatmap + isAntiViralityGatedFull.
   pass2Outcome: Wave3Pass2Outcome | null;
+
+  // Plan 04-03 — Fold outcome from runFold (the 20→1 audience-sim fold).
+  // Null when ENGINE_USE_FOLD != "1" (default OFF — D-09 one-flag rollback).
+  // Populated when ENGINE_USE_FOLD=1; aggregateScores reads this when behavioralSource="fold".
+  foldOutcome: Wave3FoldOutcome | null;
 
   // Phase 3 (Plan 08) — Omni segments from Wave 0 (SegmentGrid[]).
   // Required by aggregator.assembleHeatmapPayload + buildWeightedCurve.
@@ -862,6 +870,55 @@ export async function runPredictionPipeline(
     data: { requestId, pass2_aggregate_built: pass2Outcome?.pass2_aggregate_built ?? false },
   });
 
+  // -------------------------------------------------------
+  // Plan 04-03 — Wave 3 Fold: runs AFTER Pass 2 (reuses same keyframeUris + slots).
+  // Default OFF (ENGINE_USE_FOLD != "1") — D-09 dormant-not-deleted (T-04-05/T-04-06).
+  // The 10-pass path above stays production until the Plan 05 flip.
+  // Only invoked when segments exist (same guard as Pass 2 above).
+  // -------------------------------------------------------
+  let foldOutcome: Wave3FoldOutcome | null = null;
+  const useFold = process.env.ENGINE_USE_FOLD === "1" || (opts as { useFold?: boolean } | undefined)?.useFold === true;
+  if (useFold && omniSegments && omniSegments.length > 0) {
+    try {
+      const analysisId = opts?.analysisId;
+      const keyframeUrisForFold = analysisId
+        ? await readKeyframeUris(supabase, analysisId, omniSegments.length)
+        : new Array<string | null>(omniSegments.length).fill(null);
+      // Build verbatim string from geminiResult (same source as the aggregator + deepseek path).
+      // Mirrors aggregator.ts ~544 verbatim pluck pattern; non-fatal — fold proceeds with "" on omission.
+      const hookRawForFold = (geminiResult.analysis as unknown as {
+        hook_verbatim?: { spoken_words?: string | null; on_screen_text?: string | null };
+      })?.hook_verbatim;
+      const verbatimText = hookRawForFold
+        ? [hookRawForFold.spoken_words, hookRawForFold.on_screen_text].filter(Boolean).join(" ")
+        : "";
+      // emotion_arc: same pluck from geminiResult.analysis (mirrors aggregator.ts ~533-537).
+      const emotionArcRaw = (geminiResult.analysis as unknown as {
+        emotion_arc?: EmotionArcPoint[];
+      })?.emotion_arc;
+      const emotionArc: EmotionArcPoint[] = Array.isArray(emotionArcRaw) ? emotionArcRaw : [];
+      // Select persona slots from the same routing as Pass 1 (CR-02 — same slot_type allocation)
+      const { selectPersonaSlots } = await import("./wave3/persona-registry");
+      const foldSlots = selectPersonaSlots(
+        wave0Result.content_type?.type ?? null,
+        wave0Result.niche?.primary_slug ?? null,
+      );
+      foldOutcome = await runFold(
+        foldSlots,
+        omniSegments,
+        keyframeUrisForFold,
+        verbatimText,
+        emotionArc,
+        onStageEvent,
+      );
+      warnings.push(...foldOutcome.warnings);
+    } catch (error) {
+      Sentry.captureException(error, { tags: { stage: "wave_3_fold", requestId } });
+      warnings.push(`Fold unavailable: ${error instanceof Error ? error.message : String(error)}`);
+      // foldOutcome remains null — aggregator falls back to deepseek/personas path
+    }
+  }
+
   // Plan 03: Wave 2 = deepseek only (trends + platform_fit removed). Await deepseek.
   const [deepseekRaw] = await wave2Promise;
 
@@ -904,6 +961,7 @@ export async function runPredictionPipeline(
     wave3CostCents,
     retrievalResult, // Phase 8 D-09 (Plan 04) — graceful-degradation BenchmarkRetrievalResult
     pass2Outcome,      // Phase 3 (Plan 08) — Pass 2 outcome; null when no segments or skipped
+    foldOutcome,       // Plan 04-03 — Fold outcome; null when ENGINE_USE_FOLD != "1" (default OFF)
     segments: omniSegments, // Phase 3 (Plan 08) — SegmentGrid[] for aggregator.assembleHeatmapPayload
     requestId,
     timings,
