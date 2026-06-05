@@ -16,15 +16,23 @@
  *   SC#4: improvement_tip is OMITTED from context (advice-voiced)
  */
 
+import { KNOWLEDGE_CORE } from "../apollo-core";
 import type { OmniStructuralInput } from "./decode-types";
 
 export { DecodeResultZodSchema } from "./decode-types";
 
 // =====================================================
 // Cache-stable system prompt (byte-stable — never interpolate here).
+// Grounded in the shared KNOWLEDGE_CORE (R12/D-11) via §5 Decode Lens.
+// Core is prepended so the byte-stable DashScope prefix is preserved across requests.
+// All dynamic per-request content stays in buildDecodeContext (user message).
 // =====================================================
 
-export const DECODE_SYSTEM_PROMPT = `You are a structural decoder for short-form video. Your job is to analyze WHY a video worked — its structural mechanics, not what the creator should fix.
+export const DECODE_SYSTEM_PROMPT = `${KNOWLEDGE_CORE}
+
+---
+
+Apply the §5 Decode Lens. Separate repeatable craft from unrepeatable luck. Return EXACTLY 4 beats (hook_pattern §2.1 · structure_pacing §2.2 · the_turn §2.2 head-fake · emotional_beat §2.3) using the framework below.
 
 ## Voice Contract (STRICT)
 
