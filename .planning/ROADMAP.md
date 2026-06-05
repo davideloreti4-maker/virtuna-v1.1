@@ -94,7 +94,7 @@ Plans:
 **Success:** R2, R5, R12. Rewrites quote the real line; decode/adapt share the core.
 **Risk:** medium — corpus distillation is the unknown; code skeletons (deepseek + decode/adapt) already exist.
 **Note (supersede):** D-10 (CONTEXT) supersedes the "rewrites MAY use temp>0" line above — P3 uses a SINGLE deterministic call (temp0+seed) for score + critique + rewrites.
-**Plans:** 1/4 plans executed
+**Plans:** 3/4 plans executed
 Plans:
 **Wave 1**
 
@@ -102,8 +102,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 03-02-PLAN.md — Reframe deepseek.ts → Apollo (APOLLO_SYSTEM_PROMPT prefix, additive output schema, verbatim-grounded rewrites, calibration cleanup) + dormant creator-rules.ts (R2, R5-partial, D-01)
-- [ ] 03-03-PLAN.md — Re-ground Remix decode + adapt on the shared core (§5 / §6+§2), preserve output contracts (R12, D-11/D-12)
+- [x] 03-02-PLAN.md — Reframe deepseek.ts → Apollo (APOLLO_SYSTEM_PROMPT prefix, additive output schema, verbatim-grounded rewrites, calibration cleanup) + dormant creator-rules.ts (R2, R5-partial, D-01)
+- [x] 03-03-PLAN.md — Re-ground Remix decode + adapt on the shared core (§5 / §6+§2), preserve output contracts (R12, D-11/D-12)
 
 **Wave 3** *(blocked on Wave 2 / Plan 02)*
 
