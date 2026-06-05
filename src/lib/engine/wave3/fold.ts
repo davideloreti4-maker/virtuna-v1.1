@@ -218,7 +218,8 @@ export function adaptFoldToPersonaSimResults(
  *   persona_id     ← fold.persona_id
  *   slot_type      ← mapSlotType(slot.slot_type)  — niche_deep→niche (Pitfall 5 / T-04-04)
  *   archetype      ← fold.archetype
- *   segment_reactions ← fold.segment_reactions (t_start, t_end, attention, reason, swipe_predicted)
+ *   segment_reactions ← fold.segment_reactions (attention, swipe_predicted); t_start/t_end
+ *                       re-attached from segments[i] by index (not requested from the model)
  *   pass2_latency_ms  = 0 (fold is a single call — no per-persona latency)
  *   pass2_cost_cents  = 0 (fold cost is tracked on Wave3FoldOutcome.cost_cents)
  * assembleHeatmapPayload derives swipe_predicted_at + segment_reasons from segment_reactions.
@@ -226,6 +227,7 @@ export function adaptFoldToPersonaSimResults(
 export function adaptFoldToPass2Results(
   fold: FoldResponse,
   slots: PersonaSlot[],
+  segments: SegmentGrid[],
 ): Pass2PersonaResult[] {
   const slotMap = buildSlotMap(slots);
   return fold.personas.map((persona) => {
@@ -237,12 +239,15 @@ export function adaptFoldToPass2Results(
       persona_id: persona.persona_id,
       archetype: persona.archetype as Pass2PersonaResult["archetype"],
       slot_type: slotType,
-      segment_reactions: persona.segment_reactions.map((r) => ({
-        t_start: r.t_start,
-        t_end: r.t_end,
+      // t_start/t_end + reason dropped from the fold OUTPUT (2026-06-05) — they only
+      // echoed the input grid / were discarded downstream. Timing is re-attached here
+      // from segments[i] by index (the model returns one reaction per segment, in grid
+      // order; the segment-count guard in runFold guarantees alignment). segment_reasons
+      // downstream yields {} gracefully now that reason is gone.
+      segment_reactions: persona.segment_reactions.map((r, i) => ({
+        t_start: segments[i]?.t_start ?? 0,
+        t_end: segments[i]?.t_end ?? 0,
         attention: r.attention,
-        // `reason` dropped from the fold (2026-06-05) — was discarded at the serving
-        // boundary + rendered nowhere. segment_reasons downstream yields {} gracefully.
         swipe_predicted: r.swipe_predicted,
       })),
       pass2_latency_ms: 0,   // fold is a single call — no per-persona latency
@@ -408,7 +413,7 @@ export async function runFold(
   // Plan 03 adapters: populate pass2Results + personaSimResults from the validated fold output.
   // Empty arrays when fold_success=false (parse failed or segment-count mismatch) so the
   // aggregator can detect fold_success=false and fall back gracefully.
-  const pass2Results = foldPersonas ? adaptFoldToPass2Results(foldPersonas, slots) : [];
+  const pass2Results = foldPersonas ? adaptFoldToPass2Results(foldPersonas, slots, segments) : [];
   const personaSimResults = foldPersonas ? adaptFoldToPersonaSimResults(foldPersonas, slots) : [];
 
   return {

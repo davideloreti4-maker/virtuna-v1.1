@@ -96,8 +96,6 @@ Return a JSON object with EXACTLY this shape:
       "scroll_past_second": <seconds into video when this archetype scrolls away, 0 if watches fully>,
       "segment_reactions": [
         {
-          "t_start": <segment start seconds>,
-          "t_end": <segment end seconds>,
           "attention": <0.0-1.0>,
           "swipe_predicted": <boolean — true at swipe moment, stays true for all subsequent segments>
         }
@@ -111,7 +109,9 @@ Rules:
 - attention MUST be in [0.0, 1.0] — no exceptions
 - swipe_predicted becomes true at the scroll-away moment and stays true for all subsequent segments
 - Return EXACTLY 10 persona entries — one per archetype
-- Return EXACTLY N segment_reactions per persona matching the input segment grid
+- Return EXACTLY N segment_reactions per persona, ONE PER INPUT SEGMENT, IN THE SAME
+  ORDER as the segment grid (index i = segment i). Do NOT include timestamps — the
+  segment timing is taken from the input grid by position.
 - Output strict JSON only — no markdown, no code fences, no explanatory text`;
 
 // =====================================================
@@ -235,11 +235,11 @@ const FoldArchetypeSchema = z.object({
   save_intent: z.number().min(0).max(100),
   rewatch_intent: z.number().min(0).max(100),
   scroll_past_second: z.number().min(0),
-  // Pass-2 segment reactions (source for heatmap)
+  // Pass-2 segment reactions (source for heatmap). One per input segment, IN GRID
+  // ORDER — t_start/t_end are NOT requested (they'd just echo the input grid 10×);
+  // the adapter re-attaches timing from segments[i] by index. (2026-06-05 trim.)
   segment_reactions: z.array(
     z.object({
-      t_start: z.number().min(0),
-      t_end: z.number().min(0),
       attention: z.number().min(0).max(1),       // clamped [0,1] — T-04-01
       swipe_predicted: z.boolean(),
     }),

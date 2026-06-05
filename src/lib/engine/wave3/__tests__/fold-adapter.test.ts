@@ -23,8 +23,19 @@ const ARCHETYPES = [
 
 const SLOT_TYPES = ["fyp", "niche", "loyalist", "cross_niche"] as const;
 
-function makeSegmentReaction(t_start: number, t_end: number, attention = 0.8) {
-  return { t_start, t_end, attention, swipe_predicted: false };
+// t_start/t_end dropped from the fold output (2026-06-05) — adapter re-attaches them
+// from the segment grid by index. Args kept for call-site readability (which segment).
+function makeSegmentReaction(_t_start: number, _t_end: number, attention = 0.8) {
+  return { attention, swipe_predicted: false };
+}
+
+/** Segment grid matching the 3 reactions in makeFoldResponse (timing source for the adapter). */
+function makeSegments() {
+  return [
+    { t_start: 0, t_end: 5, is_hook_zone: true, visual_event: "" },
+    { t_start: 5, t_end: 10, is_hook_zone: false, visual_event: "" },
+    { t_start: 10, t_end: 15, is_hook_zone: false, visual_event: "" },
+  ];
 }
 
 function makeFoldResponse(): FoldResponse {
@@ -73,12 +84,11 @@ describe("fold output adapter", () => {
   it("adaptFoldToPass2Results produces Pass2PersonaResult[] buildWeightedCurve accepts", () => {
     const fold = makeFoldResponse();
     const slots = makeSlots();
-    const pass2Results = adaptFoldToPass2Results(fold, slots);
-    const segments = [
-      { t_start: 0, t_end: 5, is_hook_zone: true, visual_event: "" },
-      { t_start: 5, t_end: 10, is_hook_zone: false, visual_event: "" },
-      { t_start: 10, t_end: 15, is_hook_zone: false, visual_event: "" },
-    ];
+    const segments = makeSegments();
+    const pass2Results = adaptFoldToPass2Results(fold, slots, segments);
+    // adapter re-attaches timing from the grid → reactions carry segment t_start/t_end
+    expect(pass2Results[0]!.segment_reactions[0]!.t_start).toBe(0);
+    expect(pass2Results[0]!.segment_reactions[1]!.t_end).toBe(10);
     const weights = { fyp: 0.65, niche: 0.20, loyalist: 0.10, cross_niche: 0.05 };
     // buildWeightedCurve should not throw
     expect(() => buildWeightedCurve(pass2Results, segments, weights)).not.toThrow();
@@ -92,7 +102,7 @@ describe("fold output adapter", () => {
     const slotsWithNicheDeep = slots.map((s, i) =>
       i === 0 ? { ...s, slot_type: "niche_deep" as never } : s,
     );
-    const pass2Results = adaptFoldToPass2Results(fold, slotsWithNicheDeep);
+    const pass2Results = adaptFoldToPass2Results(fold, slotsWithNicheDeep, makeSegments());
     const validSlotTypes = ["fyp", "niche", "loyalist", "cross_niche"];
     // Every adapted result must have a valid slot_type — niche_deep must have become "niche"
     for (const r of pass2Results) {
