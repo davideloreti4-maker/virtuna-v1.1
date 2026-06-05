@@ -141,6 +141,14 @@ export async function generateAdaptConcepts(input: AdaptInput): Promise<AdaptCon
           response_format: { type: "json_object" },
           temperature:     0,         // reproducible (D-04 determinism requirement)
           seed:            QWEN_SEED, // 7
+          // Bound generation: ADAPT_SYSTEM_PROMPT now carries the full KNOWLEDGE_CORE
+          // (Plan 03-03), so without these the reasoning model emits unbounded CoT and
+          // times out (>90s) — the same failure fixed for deepseek.ts at the 03-04
+          // checkpoint. Mirrors decode.ts (1200/2000); 3 concepts fit comfortably.
+          max_tokens: 1400,
+          // @ts-expect-error — DashScope extensions not in OpenAI SDK types
+          enable_thinking: true,
+          thinking_budget: 2000,
         },
         { signal: controller.signal },
       );
