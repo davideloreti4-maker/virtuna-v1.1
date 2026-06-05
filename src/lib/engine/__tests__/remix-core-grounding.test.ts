@@ -78,48 +78,37 @@ describe("D-13 §5 beat mapping — static assert (GREEN now)", () => {
 // Status: RED until Plan 03
 // =====================================================
 
-describe("R12 decode prompt references KNOWLEDGE_CORE (Wave 0 scaffold — RED until Plan 03)", () => {
+describe("R12 decode prompt references KNOWLEDGE_CORE (Plan 03 — GREEN)", () => {
   it("decode prompt references KNOWLEDGE_CORE — DECODE_SYSTEM_PROMPT contains the core brain", async () => {
-    // DOCUMENTED-RED: DECODE_SYSTEM_PROMPT currently does NOT include KNOWLEDGE_CORE.
-    // After Plan 03 re-grounds decode-prompts.ts, this must pass:
-    //   DECODE_SYSTEM_PROMPT.includes(KNOWLEDGE_CORE.slice(0, 100)) === true
+    // Plan 03: DECODE_SYSTEM_PROMPT now prepends KNOWLEDGE_CORE.
+    //   DECODE_SYSTEM_PROMPT = `${KNOWLEDGE_CORE}\n\n---\n\n` + [voice contract + JSON schema]
     const { DECODE_SYSTEM_PROMPT } = await import("../remix/decode-prompts");
 
-    // The core's opening line — must be present in the decode prompt after Plan 03.
+    // The core's opening line — must be present in the decode prompt (R12 verify).
     const coreOpening = "Apollo Knowledge Core";
-    // DOCUMENTED-RED: expect(DECODE_SYSTEM_PROMPT).toContain(coreOpening);
-    // For the scaffold: assert current state is RED
-    expect(DECODE_SYSTEM_PROMPT).not.toContain(coreOpening);
-    // This assertion will be INVERTED once Plan 03 ships (the comment above becomes the live assertion)
+    expect(DECODE_SYSTEM_PROMPT).toContain(coreOpening);
   });
 
   it("DECODE_SYSTEM_PROMPT references §5 Decode Lens (the knowledge-grounded lens)", async () => {
-    // After Plan 03: DECODE_SYSTEM_PROMPT will reference "§5 Decode Lens" (from KNOWLEDGE_CORE §5).
+    // Plan 03: DECODE_SYSTEM_PROMPT references "§5 Decode Lens" (from KNOWLEDGE_CORE §5).
     const { DECODE_SYSTEM_PROMPT } = await import("../remix/decode-prompts");
-    // DOCUMENTED-RED: expect(DECODE_SYSTEM_PROMPT).toContain("§5");
-    // Current state: the prompt uses its own framework, not the core §5 lens.
-    // After Plan 03 this will flip.
-    expect(typeof DECODE_SYSTEM_PROMPT).toBe("string"); // structural guard (always green)
+    expect(DECODE_SYSTEM_PROMPT).toContain("§5");
   });
 });
 
-describe("R12 adapt prompt references KNOWLEDGE_CORE (Wave 0 scaffold — RED until Plan 03)", () => {
+describe("R12 adapt prompt references KNOWLEDGE_CORE (Plan 03 — GREEN)", () => {
   it("adapt prompt references KNOWLEDGE_CORE — ADAPT_SYSTEM_PROMPT contains the core brain", async () => {
-    // DOCUMENTED-RED: ADAPT_SYSTEM_PROMPT currently does NOT include KNOWLEDGE_CORE.
-    // After Plan 03 re-grounds adapt.ts: ADAPT_SYSTEM_PROMPT = `${KNOWLEDGE_CORE}\n\n---\n\n...`
+    // Plan 03: ADAPT_SYSTEM_PROMPT now prepends KNOWLEDGE_CORE.
+    //   ADAPT_SYSTEM_PROMPT = `${KNOWLEDGE_CORE}\n\n---\n\n` + [§6+§2 lens + existing rules]
     const { ADAPT_SYSTEM_PROMPT } = await import("../remix/adapt");
 
     const coreOpening = "Apollo Knowledge Core";
-    // DOCUMENTED-RED: expect(ADAPT_SYSTEM_PROMPT).toContain(coreOpening);
-    // For the scaffold: assert current state is RED
-    expect(ADAPT_SYSTEM_PROMPT).not.toContain(coreOpening);
+    expect(ADAPT_SYSTEM_PROMPT).toContain(coreOpening);
   });
 
   it("ADAPT_SYSTEM_PROMPT references §6 Rewrite lens (the knowledge-grounded lens)", async () => {
-    // After Plan 03: ADAPT_SYSTEM_PROMPT will reference "§6 Rewrite" (from KNOWLEDGE_CORE §6).
+    // Plan 03: ADAPT_SYSTEM_PROMPT references "§6 Rewrite" (from KNOWLEDGE_CORE §6).
     const { ADAPT_SYSTEM_PROMPT } = await import("../remix/adapt");
-    // DOCUMENTED-RED: expect(ADAPT_SYSTEM_PROMPT).toContain("§6");
-    // Current state: the prompt uses its own framework, not the core §6 lens.
-    expect(typeof ADAPT_SYSTEM_PROMPT).toBe("string"); // structural guard (always green)
+    expect(ADAPT_SYSTEM_PROMPT).toContain("§6");
   });
 });
