@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: apollo
 milestone_name: Apollo
 status: ready_to_plan
-last_updated: "2026-06-05T12:54:29.308Z"
+last_updated: "2026-06-05T13:11:33.730Z"
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 5
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -20,10 +20,10 @@ See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Cut-l
 
 ## Current Position
 
-Phase: 4
-Plan: Not started
+Phase: 04 (audience-sim-fold-brain-2-the-bet) — EXECUTING
+Plan: 2 of 5
 Phase: 03 (Apollo Reasoner) — NOT STARTED (blocked on corpus v1)
-Last completed plan: 02-03
+Last completed plan: 04-01
 **Milestone worktree** `~/virtuna-engine-opt/` on `milestone/engine-opt`. Milestone **Apollo** — turn the ~25-call score machine into a 3-call knowledge-grounded expert (Omni → Audience-Sim → Apollo Reasoner).
 
 Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milestone formalized. **Synced with `origin/main` (merged in Remix PR #6 + audience change) — branch was stale + blind to Remix.** Re-scanned Remix engine path; folded into the plan (Remix = Apollo modes, R12). **No phase plans yet.**
@@ -35,8 +35,12 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 | 1 | Strip to Senses | COMPLETE (2026-06-04) — 6/6 plans done |
 | 2 | Omni Verbatim | COMPLETE (2026-06-04) — 3/3 plans done; R1 proven on real run (gwxLeHphZCxK); D-02 silent deferred HUMAN-UAT |
 | 3 | Apollo Reasoner (Brain 1, the moat) | not started — blocked on Chase Hughes corpus |
-| 4 | Audience-Sim Fold (Brain 2, the bet) | not started |
+| 4 | Audience-Sim Fold (Brain 2, the bet) | in progress (1/5 plans complete) |
 | 5 | Wire + Surface | not started |
+
+## Decisions locked (2026-06-05, 04-01)
+
+- **REDUCED referee VIDEO_SET (2 of 6)** — user decision 2026-06-05; D-03 composite degrades gracefully (drop-point agreement is per-video); deferred 4 D-04 slots (hook-strength × niche spread) to be added before Plan 04 referee runs. `gwxLeHphZCxK` (.mp4, good) + `IMG_0012` (.mov, bad/weak hook) confirmed on disk.
 
 ## Decisions locked (2026-06-03)
 
