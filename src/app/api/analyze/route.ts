@@ -156,6 +156,57 @@ async function persistCraftToVariants(
 // moves to _dormant/ in Plan 05. The after() import above is also removed.
 
 /**
+ * Phase 03 Plan 04 (D-04) — Persist Apollo §4 output into variants.apollo.
+ *
+ * Read-merge-write (same pattern as persistCraftToVariants / persistDecodeToVariants)
+ * to preserve sibling variants (craft, remix/decode) regardless of concurrent write order.
+ * Non-fatal: a failure here only blanks the Apollo frame, never the row itself.
+ *
+ * Threat T-03-09: three-level spread (...current) ensures craft + remix survive.
+ * Threat T-03-10: .eq("user_id") enforces V4 access control.
+ *
+ * Score-mode path only (NOT remix): called after the SSE upsert + craft persist.
+ */
+async function persistApolloToVariants(
+  service: ServiceClient,
+  id: string,
+  userId: string,
+  finalResult: PredictionResult,
+  log: Logger,
+): Promise<void> {
+  const apollo = finalResult.apollo_reasoning;
+  // Skip when Apollo didn't run (circuit breaker, fallback path, or deepseek unavailable).
+  if (!apollo) return;
+
+  try {
+    const { data: row, error: readErr } = await service
+      .from("analysis_results")
+      .select("variants")
+      .eq("id", id)
+      .eq("user_id", userId) // T-03-10: V4 access control — never write across user boundary
+      .single();
+    if (readErr || !row) {
+      log.warn("apollo_variants_read_failed", { id, error: readErr?.message });
+      return;
+    }
+    const current = (row.variants ?? {}) as Record<string, unknown>;
+    const { error: writeErr } = await service
+      .from("analysis_results")
+      .update({ variants: { ...current, apollo } as unknown as Json })
+      .eq("id", id)
+      .eq("user_id", userId); // T-03-10: V4 access control preserved on write
+    if (writeErr) {
+      log.warn("apollo_variants_write_failed", { id, error: writeErr.message });
+    }
+  } catch (err) {
+    log.warn("apollo_variants_persist_threw", {
+      id,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+/**
  * Phase 03 Plan 02 — Persist decode result into variants.remix.decode.
  *
  * Read-merge-write (three-level spread) to preserve sibling variants
@@ -650,6 +701,9 @@ export async function POST(request: Request) {
         // Persist Content-craft signals into variants.craft (no migration). The
         // row id was generated inline for the JSON insert above.
         await persistCraftToVariants(service, jsonInsertId, finalResult, log);
+        // Plan 03-04 (D-04): Persist Apollo §4 output into variants.apollo (read-merge-write).
+        // Non-fatal: failure only blanks Apollo frame, never the row itself (T-03-09, T-03-10).
+        await persistApolloToVariants(service, jsonInsertId, user.id, finalResult, log);
         // stage11 deferred backfill removed (Plan 02, R9); counterfactuals stays null.
       }
 
@@ -875,6 +929,9 @@ export async function POST(request: Request) {
             // Persist Content-craft signals into variants.craft (no migration).
             // analysisId is the upserted row id (Pitfall #6 placeholder → upsert).
             await persistCraftToVariants(service, analysisId, finalResult, log);
+            // Plan 03-04 (D-04): Persist Apollo §4 output into variants.apollo (read-merge-write).
+            // Non-fatal: failure only blanks Apollo frame, never the row itself (T-03-09, T-03-10).
+            await persistApolloToVariants(service, analysisId, user.id, finalResult, log);
             // stage11 deferred backfill removed (Plan 02, R9); counterfactuals stays null.
           }
 

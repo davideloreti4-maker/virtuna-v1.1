@@ -4,8 +4,10 @@
  * by Qwen-migration deviation sign-off; see 13-FINAL-VALIDATION-REPORT.md).
  * Bumped 3.1.0 → 3.2.0 by Phase 2 Plan 02 (R1 verbatim threading): stale pre-verbatim
  * cached rows must not serve a verbatim-less result after this plan ships.
+ * Bumped 3.2.0 → 3.3.0 by Phase 3 Plan 04 (Apollo blend rewire, D-04): stale pre-Apollo
+ * cached rows must not serve an old gemini-term score after this plan ships.
  *
  * D-23 cache invariant: prediction-cache.ts keys on ENGINE_VERSION; this bump auto-invalidates
- * all `3.1.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
+ * all `3.2.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
  */
-export const ENGINE_VERSION = "3.2.0";
+export const ENGINE_VERSION = "3.3.0";

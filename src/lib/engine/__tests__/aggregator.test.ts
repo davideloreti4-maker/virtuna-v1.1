@@ -433,7 +433,7 @@ describe("Phase 3 — provenance + stub invocations", () => {
     const { ENGINE_VERSION } = await import("../aggregator");
     const { ENGINE_VERSION: viaVersion } = await import("../version");
     expect(ENGINE_VERSION).toBe(viaVersion);
-    expect(ENGINE_VERSION).toBe("3.2.0");
+    expect(ENGINE_VERSION).toBe("3.3.0"); // Plan 03-04: bumped from 3.2.0 (Apollo blend rewire)
   });
 
   it("PredictionResult.engine_version reads from ./version module", async () => {

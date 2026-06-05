@@ -946,6 +946,16 @@ export async function aggregateScores(
     behavioral_predictions,
     feature_vector,
     reasoning: "", // DeepSeek reasoning text — not exposed in current schema
+    // Plan 03-04 (D-04): Apollo §4 output surfaced for variants.apollo persist (route.ts).
+    // Null when deepseek unavailable (circuit breaker open or failed).
+    apollo_reasoning: deepseek && deepseek.rewrites && deepseek.dimensions && deepseek.composite_score !== undefined
+      ? {
+          rewrites: deepseek.rewrites,
+          dimensions: deepseek.dimensions,
+          composite_score: deepseek.composite_score,
+          confidence_scope: deepseek.confidence_scope ?? "",
+        }
+      : null,
     warnings,
     predicted_engagement: null, // Plan 02 D1.1: sine-jitter fabrication deleted; field null until Plan 05 regrounding
     factors,

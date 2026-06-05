@@ -285,6 +285,19 @@ export interface PredictionResult {
    *  VerbatimPayload.hook = hook_verbatim (first ~3s spoken_words + on_screen_text).
    *  VerbatimPayload.segments = per-segment spoken_text/on_screen_text (D-02 null; D-04.2 [inaudible]). */
   verbatim?: VerbatimPayload | null;
+  /**
+   * Phase 3 Plan 04 (D-04) — Apollo §4 reasoning output for variants.apollo persist.
+   * Contains: rewrites (2–3 verbatim-grounded hook variants), dimensions (6 §4 rubric),
+   * composite_score (0–100, the live apollo blend term), confidence_scope.
+   * Null when deepseekResult unavailable (DeepSeek circuit breaker open or failed).
+   * Optional for back-compat with pre-Plan-04 callsites.
+   */
+  apollo_reasoning?: {
+    rewrites: ApolloRewrite[];
+    dimensions: ApolloDimension[];
+    composite_score: number;
+    confidence_scope: string;
+  } | null;
   /** Phase 1 (R1.9, Plan 06 T3 B4) — true when confidence < ANTI_VIRALITY_THRESHOLD.
    *  UI renders "Don't post yet" orange verdict state when true. REQUIRED field
    *  (not optional) — aggregator assigns on every PredictionResult; defaults to
