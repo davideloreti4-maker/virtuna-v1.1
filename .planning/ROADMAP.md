@@ -94,7 +94,7 @@ Plans:
 **Success:** R2, R5, R12. Rewrites quote the real line; decode/adapt share the core.
 **Risk:** medium — corpus distillation is the unknown; code skeletons (deepseek + decode/adapt) already exist.
 **Note (supersede):** D-10 (CONTEXT) supersedes the "rewrites MAY use temp>0" line above — P3 uses a SINGLE deterministic call (temp0+seed) for score + critique + rewrites.
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 Plans:
 **Wave 1**
 
@@ -107,7 +107,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 / Plan 02)*
 
-- [ ] 03-04-PLAN.md — Rewire blend to behavioral + Apollo (D-04/D-05) + thread verbatim + variants.apollo persist + ENGINE_VERSION 3.3.0 + live R2/R8/R6 checkpoint (R5)
+- [x] 03-04-PLAN.md — Rewire blend to behavioral + Apollo (D-04/D-05) + thread verbatim + variants.apollo persist + ENGINE_VERSION 3.3.0 + live R2/R8/R6 checkpoint (R5)
 
 ## Phase 4: Audience-Sim Fold (Brain 2) — THE BET
 
