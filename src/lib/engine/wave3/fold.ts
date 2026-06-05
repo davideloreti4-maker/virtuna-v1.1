@@ -32,7 +32,7 @@ import {
   type FoldResponse,
 } from "./fold-prompts";
 import type { PersonaSlot } from "./persona-registry";
-import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "../qwen/client";
+import { getQwenClient, QWEN_REASONING_MODEL, QWEN_FAST_MODEL, QWEN_SEED } from "../qwen/client";
 import type { PersonaSimulationResult, SegmentGrid, EmotionArcPoint } from "../types";
 import type { Pass2PersonaResult } from "./weighted-aggregator";
 
@@ -56,6 +56,12 @@ const PER_CALL_TIMEOUT_MS = 90_000;
 // Do NOT raise PER_CALL_TIMEOUT_MS — the fold only earns the flip if it beats the 10-pass.
 const FOLD_THINKING_BUDGET = Number(process.env.FOLD_THINKING_BUDGET) || 1000;
 const FOLD_MAX_TOKENS = Number(process.env.FOLD_MAX_TOKENS) || 8000;
+// Model + thinking are env-gated for the flash-vs-plus latency/quality experiment.
+// Defaults UNCHANGED (committed): plus reasoning model + thinking ON.
+//   FOLD_MODEL=flash      → swap to QWEN_FAST_MODEL (qwen3.6-flash)
+//   FOLD_NO_THINKING=1    → drop enable_thinking + thinking_budget (flash's proven Pass-1 config)
+const FOLD_MODEL = process.env.FOLD_MODEL === "flash" ? QWEN_FAST_MODEL : QWEN_REASONING_MODEL;
+const FOLD_USE_THINKING = process.env.FOLD_NO_THINKING !== "1";
 const COST_ALERT_THRESHOLD_CENTS = 50; // D-24 pattern from pass2.ts
 
 // Cache-aware pricing constants — mirrors wave3.ts:34-36.
@@ -275,7 +281,7 @@ export async function runFold(
   try {
     // Build the bounded call — mirrors pass2.ts:157-181 + PATTERNS.md §fold.ts.
     const callParams = {
-      model: QWEN_REASONING_MODEL,
+      model: FOLD_MODEL,
       messages: [
         { role: "system" as const, content: STABLE_FOLD_SYSTEM_PROMPT }, // byte-stable cache prefix (D-17)
         {
@@ -286,10 +292,12 @@ export async function runFold(
       response_format: { type: "json_object" as const },
     };
 
-    // @ts-expect-error — DashScope extension: enable_thinking not in OpenAI types
-    callParams.enable_thinking = true;
-    // @ts-expect-error — DashScope extension: thinking_budget not in OpenAI types (D-08)
-    callParams.thinking_budget = FOLD_THINKING_BUDGET;
+    if (FOLD_USE_THINKING) {
+      // @ts-expect-error — DashScope extension: enable_thinking not in OpenAI types
+      callParams.enable_thinking = true;
+      // @ts-expect-error — DashScope extension: thinking_budget not in OpenAI types (D-08)
+      callParams.thinking_budget = FOLD_THINKING_BUDGET;
+    }
     // @ts-expect-error — temperature:0 + seed = reproducible fold scores (R8)
     callParams.temperature = 0;
     // @ts-expect-error — seed pins residual nondeterminism in thinking mode (R8)
