@@ -373,10 +373,9 @@ describe("Phase 3 — cache-prefix stability + telemetry (CACHE-03)", () => {
     expect(callArgs.messages).toHaveLength(2);
     expect(callArgs.messages[0]!.role).toBe("system");
     expect(callArgs.messages[1]!.role).toBe("user");
-    // System message must contain the 5-step rubric markers (stable content)
-    expect(callArgs.messages[0]!.content).toContain("5-Step Reasoning Framework");
-    expect(callArgs.messages[0]!.content).toContain("Step 1");
-    expect(callArgs.messages[0]!.content).toContain("Step 5");
+    // Plan 03-02: system message is APOLLO_SYSTEM_PROMPT (knowledge core), not the old 5-step framework
+    expect(callArgs.messages[0]!.content).toContain("Apollo Knowledge Core");
+    expect(callArgs.messages[0]!.content).not.toContain("5-Step Reasoning Framework");
   });
 
   it("STABLE system content is byte-identical across calls (cache prefix invariant)", async () => {
@@ -403,13 +402,18 @@ describe("Phase 3 — cache-prefix stability + telemetry (CACHE-03)", () => {
     expect(sys1).toBe(sys2); // Identical bytes → DeepSeek cache will match prefix
   });
 
-  it("dynamic content appears only in user message (calibration benchmarks, content)", async () => {
+  it("dynamic content appears only in user message (content text, gemini signals)", async () => {
     mockCreate.mockResolvedValue({
       choices: [{ message: { content: JSON.stringify(makeDeepSeekReasoning()) } }],
       usage: { prompt_tokens: 1000, completion_tokens: 200 },
     });
 
-    await reasonWithDeepSeek(makeContext());
+    // Use a distinctive content text that won't appear in the byte-stable knowledge core
+    const ctx = {
+      ...makeContext(),
+      input: { ...makeContext().input, content_text: "UNIQUE_DYNAMIC_CONTENT_XYZ" },
+    };
+    await reasonWithDeepSeek(ctx);
 
     const callArgs = mockCreate.mock.calls[0]![0] as {
       messages: Array<{ role: string; content: string }>;
@@ -417,18 +421,14 @@ describe("Phase 3 — cache-prefix stability + telemetry (CACHE-03)", () => {
     const sys = callArgs.messages[0]!.content;
     const user = callArgs.messages[1]!.content;
 
-    // Dynamic calibration benchmarks (viral differentiators + duration sweet spot)
-    // are calibration-version-dependent — must NOT be in the cached system prefix.
-    // (Plan 01-04 removed the p50/p75/p90 percentile-label block per R9; the
-    // differentiators + duration block is the remaining dynamic calibration content.)
+    // Plan 03-02: calibration benchmark blocks removed (RESEARCH:283-285 cleanup).
+    // Dynamic content is creator content + Omni sensor signals — must NOT be in the cached system prefix.
     expect(sys).not.toContain("Top viral differentiators");
     expect(sys).not.toContain("Duration sweet spot");
-    // User content reference must NOT be in system
-    expect(sys).not.toContain("test"); // makeContext() content_text is "test"
-    // Dynamic calibration benchmarks + content MUST appear in the user message
-    expect(user).toContain("Top viral differentiators");
-    expect(user).toContain("Duration sweet spot");
-    expect(user).toContain("test");
+    // Dynamic per-request content must NOT leak into the byte-stable system prefix
+    expect(sys).not.toContain("UNIQUE_DYNAMIC_CONTENT_XYZ");
+    // Per-request content MUST appear in user message
+    expect(user).toContain("UNIQUE_DYNAMIC_CONTENT_XYZ");
   });
 
   it("NO Cache-Control header is added to the request (DeepSeek caching is automatic)", async () => {
