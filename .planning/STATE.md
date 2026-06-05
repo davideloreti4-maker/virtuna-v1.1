@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: apollo
 milestone_name: Apollo
 status: ready_to_plan
-last_updated: "2026-06-05T13:31:39.209Z"
+last_updated: "2026-06-05T13:39:37.624Z"
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 5
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -21,7 +21,7 @@ See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Cut-l
 ## Current Position
 
 Phase: 04 (audience-sim-fold-brain-2-the-bet) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Phase: 03 (Apollo Reasoner) — NOT STARTED (blocked on corpus v1)
 Last completed plan: 04-01
 **Milestone worktree** `~/virtuna-engine-opt/` on `milestone/engine-opt`. Milestone **Apollo** — turn the ~25-call score machine into a 3-call knowledge-grounded expert (Omni → Audience-Sim → Apollo Reasoner).
@@ -37,6 +37,13 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 | 3 | Apollo Reasoner (Brain 1, the moat) | not started — blocked on Chase Hughes corpus |
 | 4 | Audience-Sim Fold (Brain 2, the bet) | in progress (2/5 plans complete) |
 | 5 | Wire + Surface | not started |
+
+## Decisions locked (2026-06-05, 04-04)
+
+- **Both aggregateScores paths share ONE pipeline call per run (useFold:true)** — fold LLM call counted exactly once per pipeline invocation; R7 call-count assertion is structurally honest.
+- **swipeSegments uses run1 values as representative for drop-point comparison** — segment ordering stable across runs; averaging indices would be lossy.
+- **wave_3_persona_* + wave_3_pass2_persona_* regex counts the 20 individual calls** — matches actual stage names in wave3.ts (10 pass1 personas) + pass2.ts (10 pass2 personas).
+- **04-04 COMPLETE (2026-06-05)** — ab-fold-referee.ts composite complete: 3-metric gate (parity<=5, diversity>=0.8x, drop>=6/10), R7 call-count assertion, R8 2-runs averaging, per-video table, advisory overall verdict (D-05). tsc zero errors in script. Commit: `aa3a8428`. Next: `/gsd-execute-phase 4 04-05` — real-API referee run + production-flip human checkpoint.
 
 ## Decisions locked (2026-06-05, 04-03)
 
@@ -85,7 +92,9 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 
 **P4-02 COMPLETE (2026-06-05)** — fold LLM layer: `fold-prompts.ts` (byte-stable 10-archetype system prompt + FoldResponseSchema + buildFoldUserContent) + `fold.ts` (single bounded qwen3.6-plus thinking call — the 20→1 fold — with Zod boundary validation, segment-count guard, diversity guard, cache-aware cost telemetry). fold-schema.test.ts 5/5 GREEN. Commits: `42a6e85b` (fold-prompts), `18b8bdc2` (fold).
 
-**P4-03 COMPLETE (2026-06-05)** — fold adapters (real implementations replacing stubs): `adaptFoldToPersonaSimResults` + `adaptFoldToPass2Results` (with niche_deep→niche normalization); aggregator "fold" branch (behavioral aggregate + heatmap from foldOutcome); pipeline `foldOutcome: Wave3FoldOutcome | null` default OFF (ENGINE_USE_FOLD=1); ab-fold-referee @ts-expect-error shim removed. 1826/1826 tests GREEN. Commits: `f289eaf5` (adapters), `bf44f0d3` (aggregator + pipeline). Next: `/gsd-execute-phase 4 04-04` — A/B referee 3-metric composite (D-03.2).
+**P4-03 COMPLETE (2026-06-05)** — fold adapters (real implementations replacing stubs): `adaptFoldToPersonaSimResults` + `adaptFoldToPass2Results` (with niche_deep→niche normalization); aggregator "fold" branch (behavioral aggregate + heatmap from foldOutcome); pipeline `foldOutcome: Wave3FoldOutcome | null` default OFF (ENGINE_USE_FOLD=1); ab-fold-referee @ts-expect-error shim removed. 1826/1826 tests GREEN. Commits: `f289eaf5` (adapters), `bf44f0d3` (aggregator + pipeline).
+
+**P4-04 COMPLETE (2026-06-05)** — ab-fold-referee.ts 3-metric composite: behavioral parity <=5, diversity >=0.8x avgCurveRange, drop-point agreement >=6/10 archetypes; R7 call-count assertion (wave_3_fold=1 vs wave_3_persona_*+wave_3_pass2_persona_*=20); R8 2-runs-per-path averaging; per-video table; advisory overall verdict (REPRODUCE/BEAT/PARTIAL/MISS, D-05 no exit-1 on metric miss); COST_CAP_CENTS wired. tsc zero errors. Commit: `aa3a8428`. Next: `/gsd-execute-phase 4 04-05` — real-API referee run + production-flip human checkpoint.
 
 ## Open bets / to verify
 

@@ -6,7 +6,7 @@
 **Harness deviation (RESEARCH-overrides-CONTEXT):** CONTEXT D-04 said "revive `corpus/eval-harness.ts`"; research found it is a corpus bucket-classifier benchmark (macro-F1 over `training_corpus` → `benchmark_results`), structurally wrong for a retention-curve A/B. Build a NEW referee on the `measure-pipeline.ts` scaffold; leave the corpus harness dormant.
 **Success:** R3, R7, R10. Heatmap from one call; 1-vs-20 call count; fold proven.
 **Risk:** medium-high — homogenization (one call flattening 10 curves); mitigated by the D-06 in-call divergence requirement, the D-07 post-parse guard, and the A/B gate (with the D-02 ~5-core fallback + D-10 shadow contingency).
-**Plans:** 3/5 plans executed
+**Plans:** 4/5 plans executed
 Plans:
 **Wave 1**
 
@@ -19,7 +19,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 04-04-PLAN.md — A/B referee composite: 3-metric (parity/diversity/drop-point) + R7 1-vs-20 call-count assertion + cost cap (advisory exit)
+- [x] 04-04-PLAN.md — A/B referee composite: 3-metric (parity/diversity/drop-point) + R7 1-vs-20 call-count assertion + cost cap (advisory exit)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
