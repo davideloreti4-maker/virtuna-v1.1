@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: apollo
 milestone_name: Apollo
 status: ready_to_plan
-last_updated: "2026-06-05T13:11:33.730Z"
+last_updated: "2026-06-05T13:19:35.686Z"
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 5
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -21,7 +21,7 @@ See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Cut-l
 ## Current Position
 
 Phase: 04 (audience-sim-fold-brain-2-the-bet) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Phase: 03 (Apollo Reasoner) — NOT STARTED (blocked on corpus v1)
 Last completed plan: 04-01
 **Milestone worktree** `~/virtuna-engine-opt/` on `milestone/engine-opt`. Milestone **Apollo** — turn the ~25-call score machine into a 3-call knowledge-grounded expert (Omni → Audience-Sim → Apollo Reasoner).
@@ -35,8 +35,14 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 | 1 | Strip to Senses | COMPLETE (2026-06-04) — 6/6 plans done |
 | 2 | Omni Verbatim | COMPLETE (2026-06-04) — 3/3 plans done; R1 proven on real run (gwxLeHphZCxK); D-02 silent deferred HUMAN-UAT |
 | 3 | Apollo Reasoner (Brain 1, the moat) | not started — blocked on Chase Hughes corpus |
-| 4 | Audience-Sim Fold (Brain 2, the bet) | in progress (1/5 plans complete) |
+| 4 | Audience-Sim Fold (Brain 2, the bet) | in progress (2/5 plans complete) |
 | 5 | Wire + Surface | not started |
+
+## Decisions locked (2026-06-05, 04-02)
+
+- **FoldArchetypeSchema uses z.string() for archetype** — test fixture (fold-schema.test.ts) uses a different archetype set than the real registry; z.enum would reject all 5 test cases; structural constraints (.length(10), attention [0,1], reason ≤200) still enforced; real archetype enum is a Plan 03 adapter concern.
+- **computeAvgCurveRange + checkDiversityGuard exported from fold.ts** — fold-internal utilities used post-parse in runFold; fold-diversity-guard.test.ts imports them from fold.ts per PATTERNS.md; not deferred to Plan 03.
+- **04-02 COMPLETE (2026-06-05)** — fold-prompts.ts (byte-stable 10-archetype prompt + FoldResponseSchema + buildFoldUserContent) + fold.ts (single bounded qwen3.6-plus thinking call, R7); fold-schema.test.ts 5/5 GREEN; tsc 0 errors in new files; exactly 1 completions.create.
 
 ## Decisions locked (2026-06-05, 04-01)
 
@@ -68,6 +74,8 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 - **02-03** (Wave 3) — ✅ COMPLETE (2026-06-04) — R1 proven on real DB rows (gwxLeHphZCxK: hook+5-seg both axes), R6 ~106s under 300s cap, R12 51/51 green, R8 grep=2; D-02 silent deferred HUMAN-UAT
 
 **P2 COMPLETE.** **SHIPPED 2026-06-05 → PR #13** (`milestone/engine-opt` → `main`, 88 commits, 103 files). Code fully verified; both VERIFICATIONs `human_needed` only for live-env/deferred-UAT reasons — carried as a post-merge checklist in the PR body (R6 latency, R8 determinism, R12 remix smoke, D-02 silence honesty, R1 row reconfirm). Corpus v1 **ready** (`KNOWLEDGE-CORE.md` v1.1 validated) → **P3 unblocked.** Next: merge PR #13, then `/gsd-plan-phase 3` (or `/gsd-discuss-phase 3` for the §8 supersede-vs-merge + rewrites-temp + Remix re-grounding decisions).
+
+**P4-02 COMPLETE (2026-06-05)** — fold LLM layer: `fold-prompts.ts` (byte-stable 10-archetype system prompt + FoldResponseSchema + buildFoldUserContent) + `fold.ts` (single bounded qwen3.6-plus thinking call — the 20→1 fold — with Zod boundary validation, segment-count guard, diversity guard, cache-aware cost telemetry). fold-schema.test.ts 5/5 GREEN. Commits: `42a6e85b` (fold-prompts), `18b8bdc2` (fold). Next: `/gsd-execute-phase 4 04-03` — fold adapters + diversity guard wiring.
 
 ## Open bets / to verify
 
