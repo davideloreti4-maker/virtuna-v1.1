@@ -8,8 +8,11 @@
  * cached rows must not serve an old gemini-term score after this plan ships.
  * Bumped 3.3.0 → 3.4.0 by Phase 4 Plan 05 (10-pass deletion): fold is now the sole
  * audience-sim path; stale rows produced by the 10-pass era must not mix with fold-era rows.
+ * Bumped 3.4.0 → 3.5.0 by Phase 4 Plan 05 (fold model flip): fold default → qwen3.6-flash,
+ * no-thinking (A/B-validated); behavioral scores shift from the plus-thinking era, so stale
+ * 3.4.0 rows must not mix with flash-era rows.
  *
  * D-23 cache invariant: prediction-cache.ts keys on ENGINE_VERSION; this bump auto-invalidates
- * all `3.3.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
+ * all `3.4.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
  */
-export const ENGINE_VERSION = "3.4.0";
+export const ENGINE_VERSION = "3.5.0";

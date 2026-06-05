@@ -56,12 +56,15 @@ const PER_CALL_TIMEOUT_MS = 90_000;
 // Do NOT raise PER_CALL_TIMEOUT_MS — the fold only earns the flip if it beats the 10-pass.
 const FOLD_THINKING_BUDGET = Number(process.env.FOLD_THINKING_BUDGET) || 1000;
 const FOLD_MAX_TOKENS = Number(process.env.FOLD_MAX_TOKENS) || 8000;
-// Model + thinking are env-gated for the flash-vs-plus latency/quality experiment.
-// Defaults UNCHANGED (committed): plus reasoning model + thinking ON.
-//   FOLD_MODEL=flash      → swap to QWEN_FAST_MODEL (qwen3.6-flash)
-//   FOLD_NO_THINKING=1    → drop enable_thinking + thinking_budget (flash's proven Pass-1 config)
-const FOLD_MODEL = process.env.FOLD_MODEL === "flash" ? QWEN_FAST_MODEL : QWEN_REASONING_MODEL;
-const FOLD_USE_THINKING = process.env.FOLD_NO_THINKING !== "1";
+// P4 flip (A/B-validated 2026-06-05): the fold runs on qwen3.6-flash WITHOUT thinking
+// by DEFAULT. Why: flash lands the single fold call at ~25-62s vs plus's ~88s — plus hit
+// the 90s wall and timed out on long videos. Diversity held above the D-07 floor; behavioral
+// score 67-73 ≈ the deleted 10-pass's 72.5. Thinking on flash is a no-op (no quality gain,
+// within run-to-run noise). Escape hatches:
+//   FOLD_MODEL=plus   → qwen3.6-plus reasoning model (higher/tighter score, ~88s — short videos only)
+//   FOLD_THINKING=1   → re-enable enable_thinking + thinking_budget (only meaningful with FOLD_MODEL=plus)
+const FOLD_MODEL = process.env.FOLD_MODEL === "plus" ? QWEN_REASONING_MODEL : QWEN_FAST_MODEL;
+const FOLD_USE_THINKING = process.env.FOLD_THINKING === "1";
 const COST_ALERT_THRESHOLD_CENTS = 50; // D-24 pattern from pass2.ts
 
 // Cache-aware pricing constants — mirrors wave3.ts:34-36.
