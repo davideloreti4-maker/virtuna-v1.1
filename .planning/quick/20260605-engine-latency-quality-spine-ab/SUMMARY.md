@@ -9,9 +9,20 @@ engine_version: 3.6.0
 
 # Engine Latency + Quality — Spine A/B (SUMMARY)
 
-**One-liner:** First-ever measurement of the engine's 115s spine (omni→deepseek),
-plus a sweep proving Apollo insight is NOT thinking-budget-bound. Shipped a
-quality-verified **116s → ~91s (−22%)** cut. New bottleneck identified: the fold.
+**One-liner:** First-ever measurement of the engine's 116s spine (omni→deepseek),
+a sweep proving Apollo insight is NOT thinking-budget-bound, plus a fold output trim.
+Shipped a quality-verified **116s → 87s (−25%)** cut across 3 real measured runs.
+
+## Final measured stack (Run C, ENGINE_VERSION 3.6.0)
+
+omni 36s · **fold 46s** · deepseek 51s (budget 1500) · **E2E 87.1s** · score 67 (within
+±4 noise) · factors 5 · personas 10 · critique ✓. No mismatch/Zod/retry/diversity warning.
+
+| Run | Config | E2E | fold | deepseek | score |
+|-----|--------|-----|------|----------|-------|
+| A baseline | 3.5.0 | 116.2s | 63s | 76s | 70 |
+| B candidate | reason-drop + deepseek 2000 | 96.6s | 54s | 59s | 71 |
+| C +fold trim | + t_start/t_end drop + deepseek 1500 | **87.1s** | 46s | 51s | 67 |
 
 ## What shipped (commit-ready, tests 939/0)
 
@@ -56,10 +67,23 @@ prefix → doesn't need deep CoT.
 - 1 sample per config (provider noise ±3–4). Insight *text* depth unambiguous; composite *determinism* would want a 2-run confirm.
 - omni cap left in code but OFF by default (near-useless + emotion_arc risk).
 
+## Fold trim (DONE — Run C)
+
+Dropped per-segment `t_start`/`t_end` from the fold output — they only echoed the input
+grid 10× (same dead-redundancy as `reason`). Adapter re-attaches timing from `segments[i]`
+by index (segment-count guard guarantees alignment). Fold 54→46s, cheaper, output stayed
+aligned. NOTE: smoke fold has NO keyframes fed (`measure-pipeline` passes no `analysisId`
+→ `readKeyframeUris` returns nulls) — so 46s is text-only; a real authed `/analyze` run
+should confirm prod fold latency (filmstrip is async, so keyframes likely aren't ready at
+fold time in prod either).
+
 ## Next (carry-forward)
 
-1. **Trim the fold (~54s)** — investigate flash output size / segment count; target ~40s.
-2. **Prototype defer-Apollo** — score paints from fold, Apollo backfills; the <45s path (needs omni-flash + fold-trim too).
+1. **Prototype defer-Apollo** — score paints from fold, Apollo backfills; the <45s path.
+   Still needs omni→flash (omni alone = 36s, video-bound) + the fold (~46s) to overlap/trim.
+2. **2-run determinism confirm** — score drifted 70→71→67 (Apollo composite noise 74–82 on
+   identical input); a 2× repeat per config would tighten the parity claim.
+3. **Prod fold-latency check** — one authed run to see if keyframes get fed to the fold.
 
 ## Artifacts
 

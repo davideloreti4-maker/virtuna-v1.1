@@ -42,7 +42,7 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 
 | Date | Slug | Result |
 |------|------|--------|
-| 2026-06-05 | engine-latency-quality-spine-ab | Spine A/B + Apollo budget sweep. **E2E 116→~91s (−22%), quality verified.** Shipped: fold reason-drop, FOLD_MAX 8000→4000, Apollo thinking_budget 3000→1500, ENGINE_VERSION 3.6.0. Sweep proved insight NOT budget-bound (depth held 3000→1000). **New bottleneck = fold (~54s).** Next: trim fold → defer-Apollo for <45s. → `.planning/quick/20260605-engine-latency-quality-spine-ab/` |
+| 2026-06-05 | engine-latency-quality-spine-ab | Spine A/B + Apollo budget sweep + fold trim. **E2E 116→87s (−25%) across 3 real runs, quality verified.** Shipped (ENGINE_VERSION 3.6.0): fold reason-drop + t_start/t_end drop (54→46s), FOLD_MAX 8000→4000, Apollo thinking_budget 3000→1500 (sweep proved insight NOT budget-bound, depth held 3000→1000). Final: omni 36 / fold 46 / deepseek 51 = 87s. **<45s needs defer-Apollo + omni→flash (omni alone=36s, video-bound).** Next: prototype defer-Apollo; 2-run determinism confirm. → `.planning/quick/20260605-engine-latency-quality-spine-ab/` |
 
 ## Decisions locked (2026-06-05, 04-05 FLIP-AND-DELETE)
 
