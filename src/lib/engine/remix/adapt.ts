@@ -16,6 +16,7 @@ import { createLogger } from "@/lib/logger";
 import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "@/lib/engine/qwen/client";
 import { stripModelOutput } from "@/lib/engine/utils/strip";
 import { z } from "zod";
+import { KNOWLEDGE_CORE } from "@/lib/engine/apollo-core";
 import type { AdaptInput, AdaptConcept } from "./decode-types";
 
 const log = createLogger({ module: "engine.remix.adapt" });
@@ -24,11 +25,18 @@ const TIMEOUT_MS = 90_000; // 90s — adapt is lighter than omni; abort if DashS
 const MAX_RETRIES = 1;     // 2 total attempts (attempt 0 + 1 repair)
 
 // =========================================================
-// System prompt — stable string for DashScope cache prefix
+// System prompt — stable string for DashScope cache prefix.
+// Grounded in the shared KNOWLEDGE_CORE (R12/D-11) via §6 Rewrite + §2 frameworks.
+// Core is prepended so the byte-stable DashScope prefix is preserved across requests.
+// NOTE: extraInstruction (retry nudge) is NOT concatenated here — it goes on the USER
+//       message (buildAdaptUserContent) to preserve the cached prefix on retries (T-03-08).
 // =========================================================
 
-export const ADAPT_SYSTEM_PROMPT = `You are a content strategy expert specializing in format adaptation.
-Your task: given the structural anatomy of a viral video (hook pattern, structure, emotional beat, repeatable format items), generate exactly 3 DISTINCT adapted concepts for the specified creator niche.
+export const ADAPT_SYSTEM_PROMPT = `${KNOWLEDGE_CORE}
+
+---
+
+Apply the §6 Rewrite Lens + §2 frameworks for FORMAT adaptation. Given the structural anatomy of a viral video (hook pattern, structure, emotional beat, repeatable format items), generate exactly 3 DISTINCT adapted concepts for the specified creator niche.
 
 RULES:
 - Adapt the FORMAT and STRUCTURE, not the content or topic of the original video.
@@ -116,6 +124,9 @@ export async function generateAdaptConcepts(input: AdaptInput): Promise<AdaptCon
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
     try {
+      // Retry nudge goes on the USER message (not system) to preserve the byte-stable
+      // ADAPT_SYSTEM_PROMPT prefix for DashScope cache hits on retries (T-03-08).
+      // Aligns with decode.ts:67 and deepseek.ts:471 patterns.
       const extraInstruction = attempt > 0
         ? "\nIMPORTANT: Your previous response was not valid JSON. Return ONLY the raw JSON object, no explanation."
         : "";
@@ -124,8 +135,8 @@ export async function generateAdaptConcepts(input: AdaptInput): Promise<AdaptCon
         {
           model:           QWEN_REASONING_MODEL, // qwen3.6-plus — same as pass2.ts
           messages: [
-            { role: "system", content: ADAPT_SYSTEM_PROMPT + extraInstruction },
-            { role: "user",   content: buildAdaptUserContent(input) },
+            { role: "system", content: ADAPT_SYSTEM_PROMPT },
+            { role: "user",   content: buildAdaptUserContent(input) + extraInstruction },
           ],
           response_format: { type: "json_object" },
           temperature:     0,         // reproducible (D-04 determinism requirement)
