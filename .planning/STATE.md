@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: apollo
 milestone_name: Apollo
 status: ready_to_plan
-last_updated: "2026-06-05T13:19:35.686Z"
+last_updated: "2026-06-05T13:31:39.209Z"
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 5
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -21,7 +21,7 @@ See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Cut-l
 ## Current Position
 
 Phase: 04 (audience-sim-fold-brain-2-the-bet) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Phase: 03 (Apollo Reasoner) — NOT STARTED (blocked on corpus v1)
 Last completed plan: 04-01
 **Milestone worktree** `~/virtuna-engine-opt/` on `milestone/engine-opt`. Milestone **Apollo** — turn the ~25-call score machine into a 3-call knowledge-grounded expert (Omni → Audience-Sim → Apollo Reasoner).
@@ -37,6 +37,14 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 | 3 | Apollo Reasoner (Brain 1, the moat) | not started — blocked on Chase Hughes corpus |
 | 4 | Audience-Sim Fold (Brain 2, the bet) | in progress (2/5 plans complete) |
 | 5 | Wire + Surface | not started |
+
+## Decisions locked (2026-06-05, 04-03)
+
+- **adaptFoldToPersonaSimResults synthesizes reasoning from archetype** — `PersonaSimulationResult.reasoning` is required (min 1) but absent from FoldResponse; `"fold-derived: {archetype}"` satisfies the constraint without inventing data.
+- **Pass2PersonaResult does NOT have swipe_predicted_at / segment_reasons** — those are computed by `assembleHeatmapPayload` from `segment_reactions`; adapter populates only the 6 required fields; heatmap derivation unchanged (D-11/D-12).
+- **behavioralSource:"fold" branch uses IIFE** — clean 3-way fallback (fold → personas → deepseek) without nested ternaries; production default "deepseek" byte-unchanged (D-09).
+- **pipeline foldOutcome uses ENGINE_USE_FOLD=1 flag** — default OFF; 10-pass `runWave3Pass2` call site preserved dormant-not-deleted (D-09 rollback path, T-04-06).
+- **04-03 COMPLETE (2026-06-05)** — fold adapters real (fold-adapter.test.ts + fold-diversity-guard.test.ts 6/6 GREEN); aggregator "fold" branch routes behavioral aggregate + heatmap from foldOutcome; pipeline threads foldOutcome default OFF; ab-fold-referee @ts-expect-error shim removed; 1826/1826 tests GREEN. Commits: `f289eaf5` (adapters), `bf44f0d3` (aggregator + pipeline).
 
 ## Decisions locked (2026-06-05, 04-02)
 
@@ -75,7 +83,9 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 
 **P2 COMPLETE.** **SHIPPED 2026-06-05 → PR #13** (`milestone/engine-opt` → `main`, 88 commits, 103 files). Code fully verified; both VERIFICATIONs `human_needed` only for live-env/deferred-UAT reasons — carried as a post-merge checklist in the PR body (R6 latency, R8 determinism, R12 remix smoke, D-02 silence honesty, R1 row reconfirm). Corpus v1 **ready** (`KNOWLEDGE-CORE.md` v1.1 validated) → **P3 unblocked.** Next: merge PR #13, then `/gsd-plan-phase 3` (or `/gsd-discuss-phase 3` for the §8 supersede-vs-merge + rewrites-temp + Remix re-grounding decisions).
 
-**P4-02 COMPLETE (2026-06-05)** — fold LLM layer: `fold-prompts.ts` (byte-stable 10-archetype system prompt + FoldResponseSchema + buildFoldUserContent) + `fold.ts` (single bounded qwen3.6-plus thinking call — the 20→1 fold — with Zod boundary validation, segment-count guard, diversity guard, cache-aware cost telemetry). fold-schema.test.ts 5/5 GREEN. Commits: `42a6e85b` (fold-prompts), `18b8bdc2` (fold). Next: `/gsd-execute-phase 4 04-03` — fold adapters + diversity guard wiring.
+**P4-02 COMPLETE (2026-06-05)** — fold LLM layer: `fold-prompts.ts` (byte-stable 10-archetype system prompt + FoldResponseSchema + buildFoldUserContent) + `fold.ts` (single bounded qwen3.6-plus thinking call — the 20→1 fold — with Zod boundary validation, segment-count guard, diversity guard, cache-aware cost telemetry). fold-schema.test.ts 5/5 GREEN. Commits: `42a6e85b` (fold-prompts), `18b8bdc2` (fold).
+
+**P4-03 COMPLETE (2026-06-05)** — fold adapters (real implementations replacing stubs): `adaptFoldToPersonaSimResults` + `adaptFoldToPass2Results` (with niche_deep→niche normalization); aggregator "fold" branch (behavioral aggregate + heatmap from foldOutcome); pipeline `foldOutcome: Wave3FoldOutcome | null` default OFF (ENGINE_USE_FOLD=1); ab-fold-referee @ts-expect-error shim removed. 1826/1826 tests GREEN. Commits: `f289eaf5` (adapters), `bf44f0d3` (aggregator + pipeline). Next: `/gsd-execute-phase 4 04-04` — A/B referee 3-metric composite (D-03.2).
 
 ## Open bets / to verify
 
