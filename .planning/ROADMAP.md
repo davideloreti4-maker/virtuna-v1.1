@@ -8,10 +8,21 @@
 **Risk:** medium-high — homogenization (one call flattening 10 curves); mitigated by the D-06 in-call divergence requirement, the D-07 post-parse guard, and the A/B gate (with the D-02 ~5-core fallback + D-10 shadow contingency).
 **Plans:** 5 plans (5 waves)
 Plans:
+**Wave 1**
+
 - [ ] 04-01-PLAN.md — Wave 0: 3 vitest scaffolds (schema/adapter/diversity-guard) + ab-fold-referee skeleton + stage/confirm the 6 referee videos (checkpoint)
 - [ ] 04-02-PLAN.md — Fold LLM layer: byte-stable STABLE_FOLD_SYSTEM_PROMPT + FoldResponseSchema + runFold (one bounded temp0+seed thinking call, both intent+reaction families)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 04-03-PLAN.md — Lossless adapters + D-07 diversity guard + aggregator "fold" branch (behavioral + heatmap) + pipeline foldOutcome wiring (default OFF, 10-pass dormant-not-deleted)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 04-04-PLAN.md — A/B referee composite: 3-metric (parity/diversity/drop-point) + R7 1-vs-20 call-count assertion + cost cap (advisory exit)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 04-05-PLAN.md — Run the A/B, advisory human sign-off (D-05), separately-revertable production flip (FLIP/SHADOW/FALLBACK-5; D-09 one-flag rollback)
 
 ## Phase 5: Wire + Surface

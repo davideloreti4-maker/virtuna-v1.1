@@ -342,14 +342,16 @@ The fold's per-archetype output must produce every field both downstream consume
 | A3 | DashScope returns `prompt_cache_hit_tokens`/`prompt_cache_miss_tokens` (codebase field names) rather than `cached_tokens` (doc name) to this account | Pattern 1 | Cost telemetry only; the existing `wave3.ts` path already handles both (`hasBreakdown` fallback). Low risk. |
 | A4 | `gwxLeHphZCxK` + "bestfriend" clip are available as local video files / re-runnable through `video_upload` mode for the referee | Validation Architecture | If only DB rows (not raw bytes) exist, the referee needs the source mp4s. CONTEXT D-04 says reuse the P2 baseline — confirm the files are on disk. Medium risk — verify before building the script. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Where do the 6 fixed referee videos physically live?**
+> Both operationally resolved by the plan structure: OQ1 → staged via Plan 04-01 Task 3 blocking human-verify checkpoint BEFORE the referee runs; OQ2 → default OFF at merge, production flip is Plan 04-05's gated, separately-revertable task (D-09/D-10).
+
+1. **Where do the 6 fixed referee videos physically live?** *(RESOLVED: Plan 04-01 Task 3 blocking checkpoint stages/verifies the 6 mp4s before the referee task.)*
    - What we know: `gwxLeHphZCxK` was the P2 determinism baseline; "bestfriend" clip ran through the live pipeline. `measure-pipeline.ts` takes a local `.mp4` path and uploads it.
    - What's unclear: Are all 6 source mp4s on disk / in the `videos` bucket, re-runnable via `video_upload`? The corpus harness used `text` mode (caption only) because "the corpus does not store raw video bytes" (`eval-runner.ts:111`).
    - Recommendation: First referee task = locate/stage the 6 mp4s (or signed URLs). The A/B is video-mode only (the heatmap requires segments + keyframes); text mode cannot exercise the fold.
 
-2. **Does the fold run in `pipeline.ts` (production hot path) or only the referee in P4?**
+2. **Does the fold run in `pipeline.ts` (production hot path) or only the referee in P4?** *(RESOLVED: default OFF at P4 merge; production flip is Plan 04-05's gated task per D-09.)*
    - What we know: D-09 = flip production at END of P4 gated on A/B pass; D-10 = if borderline, shadow-only and defer flip to P5.
    - What's unclear: The default state at P4 merge.
    - Recommendation: Build the fold callable from BOTH the pipeline (behind `behavioralSource: "fold"`, default OFF) and the referee. Plan the production flip as a final, separately-revertable task gated on the A/B result + user sign-off (D-05).
