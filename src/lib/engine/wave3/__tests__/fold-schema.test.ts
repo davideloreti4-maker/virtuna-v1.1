@@ -92,23 +92,19 @@ describe("FoldResponseSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("accepts optional reason ≤ 200 chars and rejects > 200", () => {
+  it("strips any per-segment reason the model still emits (reason dropped 2026-06-05)", () => {
+    // `reason` was removed from the fold output (discarded at the serving boundary,
+    // rendered nowhere). The schema no longer declares it, so Zod's default object
+    // strip drops any stray `reason` — parse still succeeds and reason never surfaces.
     const data = makeValid10();
-    // ≤ 200 should succeed
-    data.personas[0].segment_reactions[0] = {
-      ...makeSegmentReaction(0, 5),
-      reason: "a".repeat(200),
-    };
-    const okResult = FoldResponseSchema.safeParse(data);
-    expect(okResult.success).toBe(true);
-
-    // > 200 should fail
-    const overData = makeValid10();
-    overData.personas[0].segment_reactions[0] = {
-      ...makeSegmentReaction(0, 5),
-      reason: "a".repeat(201),
-    };
-    const failResult = FoldResponseSchema.safeParse(overData);
-    expect(failResult.success).toBe(false);
+    (data.personas[0].segment_reactions[0] as Record<string, unknown>).reason =
+      "a".repeat(500); // even an over-long stray reason must not fail parse
+    const result = FoldResponseSchema.safeParse(data);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(
+        (result.data.personas[0]!.segment_reactions[0] as Record<string, unknown>).reason,
+      ).toBeUndefined();
+    }
   });
 });

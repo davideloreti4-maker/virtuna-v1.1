@@ -55,7 +55,11 @@ const PER_CALL_TIMEOUT_MS = 90_000;
 // Margin is thin; future work may trim FOLD_MAX_TOKENS for additional headroom.
 // Do NOT raise PER_CALL_TIMEOUT_MS — the fold only earns the flip if it beats the 10-pass.
 const FOLD_THINKING_BUDGET = Number(process.env.FOLD_THINKING_BUDGET) || 1000;
-const FOLD_MAX_TOKENS = Number(process.env.FOLD_MAX_TOKENS) || 8000;
+// FOLD_MAX_TOKENS default 4000 (was 8000, trimmed 2026-06-05): with per-segment
+// `reason` dropped, the output is smaller + tighter — 4000 covers 10-archetype ×
+// N-segment numeric output and buys headroom against the thin 90s timeout. Override
+// via env if a long video truncates (→ Zod fail → graceful deepseek fallback).
+const FOLD_MAX_TOKENS = Number(process.env.FOLD_MAX_TOKENS) || 4000;
 // P4 flip (A/B-validated 2026-06-05): the fold runs on qwen3.6-flash WITHOUT thinking
 // by DEFAULT. Why: flash lands the single fold call at ~25-62s vs plus's ~88s — plus hit
 // the 90s wall and timed out on long videos. Diversity held above the D-07 floor; behavioral
@@ -237,7 +241,8 @@ export function adaptFoldToPass2Results(
         t_start: r.t_start,
         t_end: r.t_end,
         attention: r.attention,
-        reason: r.reason,
+        // `reason` dropped from the fold (2026-06-05) — was discarded at the serving
+        // boundary + rendered nowhere. segment_reasons downstream yields {} gracefully.
         swipe_predicted: r.swipe_predicted,
       })),
       pass2_latency_ms: 0,   // fold is a single call — no per-persona latency

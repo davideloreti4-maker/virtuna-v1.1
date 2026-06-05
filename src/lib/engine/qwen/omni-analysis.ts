@@ -24,6 +24,10 @@ const log = createLogger({ module: "engine.qwen.omni" });
 
 const MAX_RETRIES = 1; // 2 total attempts
 const TIMEOUT_MS  = 60_000;
+// Omni output cap — env-gated for the spine latency A/B (2026-06-05). Default UNSET
+// (uncapped = current baseline behaviour). When set, bounds the omni JSON output to
+// trim tail generation. Size carefully: too low truncates JSON → Zod fail → 60s retry.
+const OMNI_MAX_TOKENS = Number(process.env.OMNI_MAX_TOKENS) || 0;
 
 export interface OmniAnalysisOptions {
   niche?:        string;
@@ -207,6 +211,7 @@ export async function analyzeVideoWithOmni(
           response_format: { type: "json_object" },
           temperature: 0, // reproducible factors/hook/segments — same video → same score
           seed: QWEN_SEED,
+          ...(OMNI_MAX_TOKENS ? { max_tokens: OMNI_MAX_TOKENS } : {}),
         },
         { signal: controller.signal },
       );

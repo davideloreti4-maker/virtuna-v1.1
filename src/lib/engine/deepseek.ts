@@ -24,6 +24,10 @@ const log = createLogger({ module: "deepseek" });
 const DEEPSEEK_MODEL = QWEN_REASONING_MODEL;
 const MAX_RETRIES = 2; // 3 total attempts
 const TIMEOUT_MS = 120_000; // 120s — bounded-thinking Apollo call on the full KNOWLEDGE_CORE prefix; headroom under the 300s pipeline cap
+// Apollo thinking budget — env-gated for the spine latency A/B (2026-06-05).
+// Default 3000 (unchanged baseline). DashScope counts thinking_budget toward
+// max_tokens(3000), so budget<max leaves room for the JSON answer (budget 2000 → 1000 out).
+const DEEPSEEK_THINKING_BUDGET = Number(process.env.DEEPSEEK_THINKING_BUDGET) || 3000;
 
 // Circuit breaker state (INFRA-03: exponential backoff with half-open)
 interface CircuitBreakerState {
@@ -387,7 +391,7 @@ export async function reasonWithDeepSeek(
           max_tokens: 3000,
           // @ts-expect-error — DashScope extensions not in OpenAI SDK types
           enable_thinking: true,
-          thinking_budget: 3000,
+          thinking_budget: DEEPSEEK_THINKING_BUDGET,
         },
         { signal: controller.signal }
       );
