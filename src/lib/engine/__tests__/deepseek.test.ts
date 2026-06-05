@@ -513,49 +513,41 @@ describe("Phase 3 — cache-prefix stability + telemetry (CACHE-03)", () => {
 });
 
 // =====================================================
-// Wave 0 — Apollo schema + R2 scaffolds (Plan 03-01)
+// Plan 03-02 Task 1 — Apollo schema validates (GREEN after schema extension)
 // =====================================================
-// These tests assert the INTENDED extended Apollo output schema and R2 behavior.
-// They are RED until Plan 02 (which extends DeepSeekResponseSchema with Apollo fields).
+// These tests assert the extended Apollo output schema and R2 behavior.
+// Plan 02 extends DeepSeekResponseSchema with Apollo fields; these tests verify the contract.
 // The names are exact and must NOT be renamed — downstream plans check by name.
-//
-// Status: documented-red (expected to fail until Plan 02 wires the Apollo schema)
 // =====================================================
 
-describe("apollo schema validates (Wave 0 scaffold — RED until Plan 02)", () => {
-  // DOCUMENTED-RED: DeepSeekResponseSchema does not yet include the Apollo
-  // extension fields (dimensions, composite_score, rewrites, confidence_scope).
-  // Plan 02 will extend the schema; at that point these tests must turn green.
+describe("apollo schema validates", () => {
+  const apolloDimension = {
+    name: "hook" as const,
+    band: "strong" as const,
+    lever: "Contrast / curiosity gap (§2.1)",
+    evidence: "Hook opens with a clear contrarian claim in sentence 1",
+  };
+  const apolloRewrite = {
+    original: "This is the verbatim hook line from the creator",
+    variant: "Variant fixing distillation lever",
+    lever_fixed: "Distillation (§2.1) — trimmed 3 filler words",
+  };
 
-  it("apollo schema validates — 6 dims + composite 0–100 + confidence_scope + rewrites 2–3", () => {
-    // The extended Apollo response shape (per RESEARCH:243-265).
-    // Documents the INTENDED schema after Plan 02 extends DeepSeekResponseSchema.
-    //
-    // DOCUMENTED-RED marker: The current DeepSeekResponseSchema (Plan 01) does NOT
-    // include dimensions/composite_score/rewrites/confidence_scope. When Plan 02 ships,
-    // the INTENDED contract below must parse successfully. The test body documents the
-    // shape contract; the RED marker is that these fields are absent from the parsed result.
-
-    const apolloDimension = {
-      name: "hook",
-      band: "strong",
-      lever: "Contrast / curiosity gap (§2.1)",
-      evidence: "Hook opens with a clear contrarian claim in sentence 1",
-    };
-    const apolloRewrite = {
-      original: "This is the verbatim hook line from the creator",
-      variant: "Variant fixing distillation lever",
-      lever_fixed: "Distillation (§2.1) — trimmed 3 filler words",
-    };
-    const apolloResponse = {
-      // Existing fields (must stay present, always valid in current schema)
+  function makeApolloResponse(overrides?: Record<string, unknown>) {
+    return {
       behavioral_predictions: makeDeepSeekReasoning().behavioral_predictions,
       component_scores: makeDeepSeekReasoning().component_scores,
       suggestions: makeDeepSeekReasoning().suggestions,
       warnings: [],
       confidence: "high" as const,
-      // Apollo extension fields (Plan 02 adds these to the schema)
-      dimensions: Array(6).fill(apolloDimension),
+      dimensions: [
+        apolloDimension,
+        { ...apolloDimension, name: "retention" as const },
+        { ...apolloDimension, name: "clarity" as const },
+        { ...apolloDimension, name: "share_pull" as const },
+        { ...apolloDimension, name: "substance" as const },
+        { ...apolloDimension, name: "credibility" as const },
+      ],
       composite_score: 72,
       ceiling_capper: "Hook runs 4.2s — past the ≤3s threshold (§2.0a)",
       confidence_scope:
@@ -564,79 +556,94 @@ describe("apollo schema validates (Wave 0 scaffold — RED until Plan 02)", () =
         apolloRewrite,
         { ...apolloRewrite, variant: "Variant fixing specificity lever", lever_fixed: "Specificity (§2.1)" },
       ],
+      ...overrides,
     };
+  }
 
-    // Assert the mock shape is internally consistent (GREEN always)
-    expect(apolloResponse.dimensions).toHaveLength(6);
-    expect(apolloResponse.composite_score).toBeGreaterThanOrEqual(0);
-    expect(apolloResponse.composite_score).toBeLessThanOrEqual(100);
-    expect(apolloResponse.rewrites.length).toBeGreaterThanOrEqual(2);
-    expect(apolloResponse.rewrites.length).toBeLessThanOrEqual(3);
-    expect(apolloResponse.confidence_scope.length).toBeGreaterThan(0);
-
-    // DOCUMENTED-RED: after Plan 02 extends DeepSeekResponseSchema, the parsed result
-    // MUST include composite_score, dimensions, rewrites, confidence_scope.
-    // Currently these are stripped by Zod (unknown keys silently removed).
-    const result = DeepSeekResponseSchema.safeParse(apolloResponse);
-    expect(result.success).toBe(true); // base parse always succeeds (existing fields valid)
+  it("apollo schema validates — 6 dims + composite 0–100 + confidence_scope + rewrites 2–3", () => {
+    const result = DeepSeekResponseSchema.safeParse(makeApolloResponse());
+    expect(result.success).toBe(true);
     if (result.success) {
-      // DOCUMENTED-RED: these will be defined after Plan 02; currently undefined (stripped)
-      // After Plan 02: expect(result.data.composite_score).toBe(72);
-      // After Plan 02: expect(result.data.dimensions).toHaveLength(6);
-      // After Plan 02: expect(result.data.rewrites).toHaveLength(2);
-      // Current state (RED marker): Apollo extension fields are NOT in the result
-      expect((result.data as Record<string, unknown>).composite_score).toBeUndefined();
-      expect((result.data as Record<string, unknown>).dimensions).toBeUndefined();
-      expect((result.data as Record<string, unknown>).rewrites).toBeUndefined();
+      expect(result.data.composite_score).toBe(72);
+      expect(result.data.dimensions).toHaveLength(6);
+      expect(result.data.rewrites).toHaveLength(2);
+      expect(result.data.confidence_scope.length).toBeGreaterThan(0);
+      expect(result.data.ceiling_capper.length).toBeGreaterThan(0);
+      // Existing fields still required (additive, no regression)
+      expect(result.data.behavioral_predictions).toBeDefined();
+      expect(result.data.component_scores).toBeDefined();
     }
   });
 
-  it("rewrite original matches verbatim hook (R2 verify — Wave 0 scaffold)", () => {
+  it("composite_score outside 0–100 fails parse", () => {
+    const tooHigh = DeepSeekResponseSchema.safeParse(makeApolloResponse({ composite_score: 101 }));
+    expect(tooHigh.success).toBe(false);
+    const tooLow = DeepSeekResponseSchema.safeParse(makeApolloResponse({ composite_score: -1 }));
+    expect(tooLow.success).toBe(false);
+  });
+
+  it("rewrites.length === 1 fails (min 2); rewrites.length === 4 fails (max 3)", () => {
+    const oneRewrite = DeepSeekResponseSchema.safeParse(makeApolloResponse({ rewrites: [apolloRewrite] }));
+    expect(oneRewrite.success).toBe(false);
+    const fourRewrites = DeepSeekResponseSchema.safeParse(makeApolloResponse({
+      rewrites: [
+        apolloRewrite,
+        { ...apolloRewrite, lever_fixed: "A" },
+        { ...apolloRewrite, lever_fixed: "B" },
+        { ...apolloRewrite, lever_fixed: "C" },
+      ],
+    }));
+    expect(fourRewrites.success).toBe(false);
+  });
+
+  it("dimensions.length !== 6 fails", () => {
+    const fiveDims = DeepSeekResponseSchema.safeParse(makeApolloResponse({
+      dimensions: Array(5).fill(apolloDimension),
+    }));
+    expect(fiveDims.success).toBe(false);
+    const sevenDims = DeepSeekResponseSchema.safeParse(makeApolloResponse({
+      dimensions: Array(7).fill(apolloDimension),
+    }));
+    expect(sevenDims.success).toBe(false);
+  });
+
+  it("existing behavioral_predictions/component_scores still required (additive, no regression)", () => {
+    const noBehavioral = DeepSeekResponseSchema.safeParse({
+      ...makeApolloResponse(),
+      behavioral_predictions: undefined,
+    });
+    expect(noBehavioral.success).toBe(false);
+    const noComponentScores = DeepSeekResponseSchema.safeParse({
+      ...makeApolloResponse(),
+      component_scores: undefined,
+    });
+    expect(noComponentScores.success).toBe(false);
+  });
+
+  it("rewrite original matches verbatim hook (R2 verify)", () => {
     // R2 verify: the rewrite's `original` field must equal the verbatim hook line.
-    // This test documents the expected behavior; it passes structurally (pure TS assertion)
-    // but the deepseek.ts integration (backstop) is built in Plan 02.
+    // The backstop in deepseek.ts normalizes whitespace and enforces this.
     const verbatimHook = "The exact hook line from the video transcript";
     const rewrite = {
-      original: verbatimHook,  // Must match verbatim
+      original: verbatimHook,
       variant: "A directional variant fixing the curiosity gap (§2.1)",
       lever_fixed: "Contrast / curiosity gap (§2.1)",
     };
-
-    // The backstop in deepseek.ts (Plan 02) normalizes whitespace and enforces this:
-    // if rewrite.original !== verbatim.hook, set original from the fed verbatim (TS, not model).
-    // This assertion pins the contract:
     expect(rewrite.original).toBe(verbatimHook);
     expect(rewrite.variant).not.toBe(rewrite.original);
     expect(rewrite.lever_fixed.length).toBeGreaterThan(0);
   });
 
-  it("rewrites fix distinct §2 levers (D-08 — Wave 0 scaffold)", () => {
+  it("rewrites fix distinct §2 levers (D-08)", () => {
     // D-08: each of the 2–3 rewrites must fix a DIFFERENT §2 lever.
-    // The Apollo output schema has `lever_fixed` per rewrite to enforce this.
     const rewrites = [
-      {
-        original: "Same verbatim hook line",
-        variant: "Variant 1 — tightens distillation",
-        lever_fixed: "Distillation (§2.1)",
-      },
-      {
-        original: "Same verbatim hook line",
-        variant: "Variant 2 — adds curiosity gap",
-        lever_fixed: "Contrast / curiosity gap (§2.1)",
-      },
-      {
-        original: "Same verbatim hook line",
-        variant: "Variant 3 — injects specificity",
-        lever_fixed: "Specificity (§2.1)",
-      },
+      { original: "Same verbatim hook line", variant: "Variant 1", lever_fixed: "Distillation (§2.1)" },
+      { original: "Same verbatim hook line", variant: "Variant 2", lever_fixed: "Contrast / curiosity gap (§2.1)" },
+      { original: "Same verbatim hook line", variant: "Variant 3", lever_fixed: "Specificity (§2.1)" },
     ];
-
-    // All lever_fixed values must be distinct
     const levers = rewrites.map((r) => r.lever_fixed);
     const uniqueLevers = new Set(levers);
     expect(uniqueLevers.size).toBe(levers.length);
-
-    // Count: 2–3 rewrites
     expect(rewrites.length).toBeGreaterThanOrEqual(2);
     expect(rewrites.length).toBeLessThanOrEqual(3);
   });
