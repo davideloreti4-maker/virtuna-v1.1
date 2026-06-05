@@ -72,6 +72,12 @@ export function makeGeminiAnalysis(
 export function makeDeepSeekReasoning(
   overrides?: Partial<DeepSeekReasoning>
 ): DeepSeekReasoning {
+  const baseDimension = {
+    name: "hook" as const,
+    band: "mid" as const,
+    lever: "Contrast / curiosity gap (§2.1)",
+    evidence: "Hook opens with a clear contrarian claim in sentence 1",
+  };
   return {
     behavioral_predictions: {
       completion_pct: 68,
@@ -101,6 +107,30 @@ export function makeDeepSeekReasoning(
     ],
     warnings: [],
     confidence: "medium",
+    // Apollo §4 extension (Plan 03-02) — required fields with sensible defaults
+    dimensions: [
+      { ...baseDimension, name: "hook" as const },
+      { ...baseDimension, name: "retention" as const },
+      { ...baseDimension, name: "clarity" as const },
+      { ...baseDimension, name: "share_pull" as const },
+      { ...baseDimension, name: "substance" as const },
+      { ...baseDimension, name: "credibility" as const },
+    ],
+    composite_score: 65,
+    ceiling_capper: "Hook runs past the ≤3s threshold (§2.0a)",
+    confidence_scope: "Transcript-only: visual signals not observable",
+    rewrites: [
+      {
+        original: "Test hook line verbatim",
+        variant: "Rewritten variant fixing distillation",
+        lever_fixed: "Distillation (§2.1)",
+      },
+      {
+        original: "Test hook line verbatim",
+        variant: "Rewritten variant fixing curiosity gap",
+        lever_fixed: "Contrast / curiosity gap (§2.1)",
+      },
+    ],
     ...overrides,
   };
 }

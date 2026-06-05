@@ -97,6 +97,12 @@ function makeWave0Result(
 }
 
 function makeDeepSeekResult(): DeepSeekReasoning {
+  const baseDimension = {
+    name: "hook" as const,
+    band: "mid" as const,
+    lever: "Contrast / curiosity gap (§2.1)",
+    evidence: "Hook opens with a contrarian claim",
+  };
   return {
     behavioral_predictions: {
       completion_pct: 50,
@@ -120,6 +126,22 @@ function makeDeepSeekResult(): DeepSeekReasoning {
     suggestions: [{ text: "x", priority: "high", category: "hook" }],
     warnings: [],
     confidence: "medium",
+    // Apollo §4 extension (Plan 03-02)
+    dimensions: [
+      { ...baseDimension, name: "hook" as const },
+      { ...baseDimension, name: "retention" as const },
+      { ...baseDimension, name: "clarity" as const },
+      { ...baseDimension, name: "share_pull" as const },
+      { ...baseDimension, name: "substance" as const },
+      { ...baseDimension, name: "credibility" as const },
+    ],
+    composite_score: 60,
+    ceiling_capper: "Hook runs past the ≤3s threshold",
+    confidence_scope: "Transcript-only: visual signals not observable",
+    rewrites: [
+      { original: "Test hook", variant: "Rewritten variant 1", lever_fixed: "Distillation (§2.1)" },
+      { original: "Test hook", variant: "Rewritten variant 2", lever_fixed: "Contrast / curiosity gap (§2.1)" },
+    ],
   };
 }
 

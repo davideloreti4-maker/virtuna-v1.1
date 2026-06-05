@@ -723,12 +723,52 @@ export const ComponentScoresSchema = z.object({
 
 export type ComponentScores = z.infer<typeof ComponentScoresSchema>;
 
+// =====================================================
+// Phase 3 Plan 02 — Apollo Reasoner output contract (§4)
+// Additive extension to DeepSeekResponseSchema.
+// Per RESEARCH:243-265 + D-06/D-08 decision locks.
+// =====================================================
+
+/**
+ * Apollo dimension — one per §4 rubric dimension (exactly 6 total).
+ * Each names the lever (§2) and quotes the sensor signal that triggered the grade.
+ */
+export const ApolloDimensionSchema = z.object({
+  name: z.enum(["hook", "retention", "clarity", "share_pull", "substance", "credibility"]),
+  band: z.enum(["strong", "mid", "weak"]),
+  lever: z.string().min(1),    // §2 lever named, e.g. "Contrast / curiosity gap (§2.1)"
+  evidence: z.string().min(1), // quoted sensor signal that triggered the grade
+});
+
+export type ApolloDimension = z.infer<typeof ApolloDimensionSchema>;
+
+/**
+ * Apollo rewrite — one per directional variant (2–3 total, D-08).
+ * `original` MUST equal the verbatim hook line (R2 verify); TS backstop in deepseek.ts enforces.
+ * `lever_fixed` MUST be a DIFFERENT §2 lever per rewrite (D-08).
+ */
+export const ApolloRewriteSchema = z.object({
+  original: z.string().min(1),    // verbatim hook line — R2 grounding
+  variant: z.string().min(1),
+  lever_fixed: z.string().min(1), // the DIFFERENT §2 lever this variant addresses (D-08)
+});
+
+export type ApolloRewrite = z.infer<typeof ApolloRewriteSchema>;
+
 export const DeepSeekResponseSchema = z.object({
+  // ── Existing fields — REQUIRED; behavioral term stays separate until P4 folds into Audience-Sim (D-05) ──
   behavioral_predictions: BehavioralPredictionsSchema,
-  component_scores: ComponentScoresSchema,
+  component_scores: ComponentScoresSchema,       // feeds behavioral_score blend (D-05)
   suggestions: z.array(SuggestionSchema).min(1),
   warnings: z.array(z.string()).default([]),
-  confidence: z.enum(["high", "medium", "low"]),
+  confidence: z.enum(["high", "medium", "low"]), // already present (D-06)
+  // ── Apollo §4 extension (Plan 03-02) — additive, no removal ──
+  dimensions: z.array(ApolloDimensionSchema).length(6),      // exactly 6 §4 rubric dimensions (D-06)
+  composite_score: z.number().min(0).max(100),               // Apollo expert composite 0–100 (D-04 Apollo term)
+  ceiling_capper: z.string().min(1),                         // one-sentence ceiling rationale (§4 contract)
+  confidence_scope: z.string().min(1),                       // which §2 signals were unobservable
+  rewrites: z.array(ApolloRewriteSchema).min(2).max(3),      // 2–3 directional variants (D-08)
+  platform_note: z.string().optional(),                      // watermark/cross-post warning (S12 absorb)
 });
 
 export type DeepSeekReasoning = z.infer<typeof DeepSeekResponseSchema>;
