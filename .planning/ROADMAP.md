@@ -93,6 +93,21 @@ Plans:
 **Blocked by:** corpus v1 (start distilling now, in parallel with P1/P2 — the long pole).
 **Success:** R2, R5, R12. Rewrites quote the real line; decode/adapt share the core.
 **Risk:** medium — corpus distillation is the unknown; code skeletons (deepseek + decode/adapt) already exist.
+**Note (supersede):** D-10 (CONTEXT) supersedes the "rewrites MAY use temp>0" line above — P3 uses a SINGLE deterministic call (temp0+seed) for score + critique + rewrites.
+**Plans:** 4 plans (3 waves)
+Plans:
+**Wave 1**
+
+- [ ] 03-01-PLAN.md — D-02 number port into core §2.0a + byte-stable apollo-core.ts constant + Wave 0 test scaffolds (R2/R5/R12)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 03-02-PLAN.md — Reframe deepseek.ts → Apollo (APOLLO_SYSTEM_PROMPT prefix, additive output schema, verbatim-grounded rewrites, calibration cleanup) + dormant creator-rules.ts (R2, R5-partial, D-01)
+- [ ] 03-03-PLAN.md — Re-ground Remix decode + adapt on the shared core (§5 / §6+§2), preserve output contracts (R12, D-11/D-12)
+
+**Wave 3** *(blocked on Wave 2 / Plan 02)*
+
+- [ ] 03-04-PLAN.md — Rewire blend to behavioral + Apollo (D-04/D-05) + thread verbatim + variants.apollo persist + ENGINE_VERSION 3.3.0 + live R2/R8/R6 checkpoint (R5)
 
 ## Phase 4: Audience-Sim Fold (Brain 2) — THE BET
 
