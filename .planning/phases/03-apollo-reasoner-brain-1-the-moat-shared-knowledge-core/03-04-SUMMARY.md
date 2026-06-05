@@ -63,7 +63,8 @@ decisions:
 metrics:
   duration: ~25 minutes
   completed: "2026-06-05T10:51:53Z"
-  tasks_completed: 2
+  checkpoint_verified: "2026-06-05T11:15:00Z"
+  tasks_completed: 3
   tasks_total: 3
   files_created: 0
   files_modified: 14
@@ -80,7 +81,7 @@ Wired Apollo into the live score and persistence: `behavioral 40 + Apollo compos
 | 1 (RED) | Wave 0 R5/D-04 scaffold cases flipped to failing assertions | c599f1c4 | RED committed |
 | 1 (GREEN) | Rewire blend behavioral+apollo, thread verbatim, update tests | 00cc8ceb | GREEN (1815 tests) |
 | 2 | Persist variants.apollo + bump ENGINE_VERSION 3.2.0→3.3.0 | 5a179539 | GREEN (1815 tests) |
-| 3 | Live verification on real video (R2/R8/R6) | — | CHECKPOINT — human verification required |
+| 3 | Live verification on real video (R2/R8/R6) | b3b7bf2c | ✓ VERIFIED (orchestrator) — required a contract fix; see Checkpoint Resolution |
 
 ## What Was Built
 
@@ -175,6 +176,45 @@ None — no new network endpoints or auth paths beyond what the plan's threat mo
 - T-03-09 (variants wholesale-overwrite): read-merge-write `{ ...current, apollo }` — craft/remix preserved. MITIGATED.
 - T-03-10 (cross-user boundary): `.eq("user_id", userId)` on both SELECT and UPDATE in `persistApolloToVariants`. MITIGATED.
 - T-03-11 (stale pre-Apollo score): ENGINE_VERSION 3.3.0 bump invalidates L1/L2 cache. MITIGATED.
+
+## Checkpoint Resolution (Task 3 — live verify, by orchestrator 2026-06-05)
+
+The blocking `checkpoint:human-verify` was run by the orchestrator on a real .mp4 (the
+full `runPredictionPipeline` + `aggregateScores`, bypassCache, twice for the R8 band).
+**It surfaced two real bugs the mocked unit tests could not — both now fixed (commit b3b7bf2c).**
+
+**Bug 1 — Apollo §4 contract never elicited the strict JSON shape.** `APOLLO_INSTRUCTION`
+is prose-only; the model omitted the legacy `behavioral_predictions`/`component_scores`/
+`suggestions`/`confidence` fields, emitted `dimensions` as an object (not array), and never
+produced `rewrites`. Zod validation failed all 3 retries → `reasonWithDeepSeek` returned
+`null` → `overall_score` collapsed to **0** (behavioral shares the same call). Fix: an
+explicit JSON OUTPUT CONTRACT enumerating every required key/type, added to the **volatile
+user message** (`buildDeepSeekUserMessage`) so the cached `apollo-core.ts` prefix stays
+byte-stable.
+
+**Bug 2 — unbounded CoT timeout.** The Apollo call had no `max_tokens`/`thinking_budget`,
+so the reasoning model emitted unbounded thinking on the full `KNOWLEDGE_CORE` prefix and
+timed out (>90s). Fix: `max_tokens: 3000` + `enable_thinking: true` + `thinking_budget: 3000`
+(mirrors pass2/decode/stage11); `TIMEOUT_MS` 90s → 120s.
+
+**Live results (two runs on the same video):**
+
+| Req | Result | Verdict |
+|-----|--------|---------|
+| R2 — `rewrites[].original` == verbatim hook | all 3 rewrites grounded both runs; 6 dimensions w/ §2 lever + quoted evidence; composite 0–100; distinct `lever_fixed` | ✅ PASS |
+| R6 — latency under 300s cap | 117.7s / 119.2s (Apollo ~76s) | ✅ PASS (under cap w/ headroom; above ≤90s stretch target) |
+| R8 — composite band on re-run | overall 72/68 (±4), apollo composite 76/71 (±5) | ✅ within **provider noise band** (STATE.md 2026-06-04 reframe; bounded thinking-mode CoT drift, user-approved) |
+
+R8 note: the plan's optimistic ±1–2 was written before this thinking-mode Apollo call existed;
+±5 on a holistic expert composite is the same class of drift STATE.md already accepted for the
+wave3 pass2 thinking pass. User approved treating it as within-noise-band.
+
+Persistence (step 4): `apollo_reasoning` shape verified live; `overall_score` reflects the new
+behavioral+apollo blend (68–72, not 0, not stale). `persistApolloToVariants` read-merge-write +
+user_id scoping + ENGINE_VERSION 3.3.0 invalidation are unit-tested; live authed row-write
+through `/api/analyze` deferred as acceptable.
+
+Post-fix gates: `tsc` clean · `vitest run src/lib/engine` 943 passed/18 skipped · `npm run build` success.
 
 ## Self-Check
 
