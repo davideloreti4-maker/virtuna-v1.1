@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: apollo
 milestone_name: Apollo
 status: ready_to_plan
-last_updated: 2026-06-04T15:49:57.398Z
+last_updated: 2026-06-05
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 9
   completed_plans: 9
   percent: 40
-stopped_at: Phase 02 complete (3/3) — ready to discuss Phase 3
+stopped_at: P1+P2 SHIPPED → PR #13 (milestone/engine-opt → main); ready to plan Phase 3 (corpus v1 ready)
 ---
 
 # Project State
@@ -63,7 +63,7 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 - **02-02** (Wave 2) — ✅ COMPLETE (2026-06-04) — VerbatimPayload + aggregator pluck/thread + verbatim JSONB migration (live on prod) + db types + both route sites :594/:921 + ENGINE_VERSION 3.2.0
 - **02-03** (Wave 3) — ✅ COMPLETE (2026-06-04) — R1 proven on real DB rows (gwxLeHphZCxK: hook+5-seg both axes), R6 ~106s under 300s cap, R12 51/51 green, R8 grep=2; D-02 silent deferred HUMAN-UAT
 
-**P2 COMPLETE.** Next: merge P1+P2 to `main` promptly (independently shippable). Then start corpus v1 distillation (gates P3). `/gsd-plan-phase 3` when corpus v1 is ready.
+**P2 COMPLETE.** **SHIPPED 2026-06-05 → PR #13** (`milestone/engine-opt` → `main`, 88 commits, 103 files). Code fully verified; both VERIFICATIONs `human_needed` only for live-env/deferred-UAT reasons — carried as a post-merge checklist in the PR body (R6 latency, R8 determinism, R12 remix smoke, D-02 silence honesty, R1 row reconfirm). Corpus v1 **ready** (`KNOWLEDGE-CORE.md` v1.1 validated) → **P3 unblocked.** Next: merge PR #13, then `/gsd-plan-phase 3` (or `/gsd-discuss-phase 3` for the §8 supersede-vs-merge + rewrites-temp + Remix re-grounding decisions).
 
 ## Open bets / to verify
 
