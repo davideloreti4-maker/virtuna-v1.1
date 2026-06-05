@@ -10,7 +10,7 @@ progress:
   total_plans: 9
   completed_plans: 9
   percent: 40
-stopped_at: P1+P2 SHIPPED → PR #13 (milestone/engine-opt → main); ready to plan Phase 3 (corpus v1 ready)
+stopped_at: Phase 3 context gathered (03-CONTEXT.md) — ready to /gsd-plan-phase 3. P1+P2 SHIPPED → PR #13.
 ---
 
 # Project State
