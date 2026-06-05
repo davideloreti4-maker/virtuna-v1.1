@@ -48,6 +48,7 @@ Kallaway grades holistically; these three creators supply the concrete threshold
 | Visual discipline | ≤3 objects in frame · first 5s = multiple scene changes · cuts every 3–4s |
 | Value : Ask at close | short-form ~98 : 2 |
 | Hook's share of outcome | ~80% → weight critique on the first ~3s |
+| Outlier benchmark | a video is an algorithmic outlier when views ≥ 5× the creator's follower count (Ava) |
 
 ### 2.1 Hooks  (first ~1–3 sentences)
 The hook ends where the creator stops *getting you to stay* and starts *delivering the content*. Judge it line by line.
