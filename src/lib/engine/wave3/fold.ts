@@ -41,6 +41,10 @@ const log = createLogger({ module: "wave3.fold" });
 // =====================================================
 // D-08 bounds — env-overridable for latency tuning.
 // PER_CALL_TIMEOUT_MS mirrors pass2.ts:36 (CR-03 tail latency lesson).
+// 90s is also the fold's LATENCY BUDGET: the fold only earns the flip if its
+// single call beats the 10-pass on wall-clock, so the cap is a hard ceiling,
+// not a soft limit to be raised. If the fold can't fit, make it cheaper
+// (lower FOLD_THINKING_BUDGET), don't extend the timeout.
 // FOLD_THINKING_BUDGET: 2× pass2's 2000 (single call outputs 10 archetypes).
 // FOLD_MAX_TOKENS: sized for 10-archetype × N-segment output.
 // =====================================================
