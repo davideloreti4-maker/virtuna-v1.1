@@ -116,6 +116,7 @@ process.env.GEMINI_API_KEY = "test-key";
 
 import { isCircuitOpen, resetCircuitBreaker, reasonWithDeepSeek } from "../deepseek";
 import { DeepSeekResponseSchema } from "../types";
+import { APOLLO_SYSTEM_PROMPT } from "../apollo-core";
 import {
   makeGeminiAnalysis,
   makeRuleScoreResult,
@@ -372,10 +373,9 @@ describe("Phase 3 — cache-prefix stability + telemetry (CACHE-03)", () => {
     expect(callArgs.messages).toHaveLength(2);
     expect(callArgs.messages[0]!.role).toBe("system");
     expect(callArgs.messages[1]!.role).toBe("user");
-    // System message must contain the 5-step rubric markers (stable content)
-    expect(callArgs.messages[0]!.content).toContain("5-Step Reasoning Framework");
-    expect(callArgs.messages[0]!.content).toContain("Step 1");
-    expect(callArgs.messages[0]!.content).toContain("Step 5");
+    // Plan 03-02: system message is APOLLO_SYSTEM_PROMPT (knowledge core), not the old 5-step framework
+    expect(callArgs.messages[0]!.content).toContain("Apollo Knowledge Core");
+    expect(callArgs.messages[0]!.content).not.toContain("5-Step Reasoning Framework");
   });
 
   it("STABLE system content is byte-identical across calls (cache prefix invariant)", async () => {
@@ -402,13 +402,18 @@ describe("Phase 3 — cache-prefix stability + telemetry (CACHE-03)", () => {
     expect(sys1).toBe(sys2); // Identical bytes → DeepSeek cache will match prefix
   });
 
-  it("dynamic content appears only in user message (calibration benchmarks, content)", async () => {
+  it("dynamic content appears only in user message (content text, gemini signals)", async () => {
     mockCreate.mockResolvedValue({
       choices: [{ message: { content: JSON.stringify(makeDeepSeekReasoning()) } }],
       usage: { prompt_tokens: 1000, completion_tokens: 200 },
     });
 
-    await reasonWithDeepSeek(makeContext());
+    // Use a distinctive content text that won't appear in the byte-stable knowledge core
+    const ctx = {
+      ...makeContext(),
+      input: { ...makeContext().input, content_text: "UNIQUE_DYNAMIC_CONTENT_XYZ" },
+    };
+    await reasonWithDeepSeek(ctx);
 
     const callArgs = mockCreate.mock.calls[0]![0] as {
       messages: Array<{ role: string; content: string }>;
@@ -416,18 +421,14 @@ describe("Phase 3 — cache-prefix stability + telemetry (CACHE-03)", () => {
     const sys = callArgs.messages[0]!.content;
     const user = callArgs.messages[1]!.content;
 
-    // Dynamic calibration benchmarks (viral differentiators + duration sweet spot)
-    // are calibration-version-dependent — must NOT be in the cached system prefix.
-    // (Plan 01-04 removed the p50/p75/p90 percentile-label block per R9; the
-    // differentiators + duration block is the remaining dynamic calibration content.)
+    // Plan 03-02: calibration benchmark blocks removed (RESEARCH:283-285 cleanup).
+    // Dynamic content is creator content + Omni sensor signals — must NOT be in the cached system prefix.
     expect(sys).not.toContain("Top viral differentiators");
     expect(sys).not.toContain("Duration sweet spot");
-    // User content reference must NOT be in system
-    expect(sys).not.toContain("test"); // makeContext() content_text is "test"
-    // Dynamic calibration benchmarks + content MUST appear in the user message
-    expect(user).toContain("Top viral differentiators");
-    expect(user).toContain("Duration sweet spot");
-    expect(user).toContain("test");
+    // Dynamic per-request content must NOT leak into the byte-stable system prefix
+    expect(sys).not.toContain("UNIQUE_DYNAMIC_CONTENT_XYZ");
+    // Per-request content MUST appear in user message
+    expect(user).toContain("UNIQUE_DYNAMIC_CONTENT_XYZ");
   });
 
   it("NO Cache-Control header is added to the request (DeepSeek caching is automatic)", async () => {
@@ -513,49 +514,41 @@ describe("Phase 3 — cache-prefix stability + telemetry (CACHE-03)", () => {
 });
 
 // =====================================================
-// Wave 0 — Apollo schema + R2 scaffolds (Plan 03-01)
+// Plan 03-02 Task 1 — Apollo schema validates (GREEN after schema extension)
 // =====================================================
-// These tests assert the INTENDED extended Apollo output schema and R2 behavior.
-// They are RED until Plan 02 (which extends DeepSeekResponseSchema with Apollo fields).
+// These tests assert the extended Apollo output schema and R2 behavior.
+// Plan 02 extends DeepSeekResponseSchema with Apollo fields; these tests verify the contract.
 // The names are exact and must NOT be renamed — downstream plans check by name.
-//
-// Status: documented-red (expected to fail until Plan 02 wires the Apollo schema)
 // =====================================================
 
-describe("apollo schema validates (Wave 0 scaffold — RED until Plan 02)", () => {
-  // DOCUMENTED-RED: DeepSeekResponseSchema does not yet include the Apollo
-  // extension fields (dimensions, composite_score, rewrites, confidence_scope).
-  // Plan 02 will extend the schema; at that point these tests must turn green.
+describe("apollo schema validates", () => {
+  const apolloDimension = {
+    name: "hook" as const,
+    band: "strong" as const,
+    lever: "Contrast / curiosity gap (§2.1)",
+    evidence: "Hook opens with a clear contrarian claim in sentence 1",
+  };
+  const apolloRewrite = {
+    original: "This is the verbatim hook line from the creator",
+    variant: "Variant fixing distillation lever",
+    lever_fixed: "Distillation (§2.1) — trimmed 3 filler words",
+  };
 
-  it("apollo schema validates — 6 dims + composite 0–100 + confidence_scope + rewrites 2–3", () => {
-    // The extended Apollo response shape (per RESEARCH:243-265).
-    // Documents the INTENDED schema after Plan 02 extends DeepSeekResponseSchema.
-    //
-    // DOCUMENTED-RED marker: The current DeepSeekResponseSchema (Plan 01) does NOT
-    // include dimensions/composite_score/rewrites/confidence_scope. When Plan 02 ships,
-    // the INTENDED contract below must parse successfully. The test body documents the
-    // shape contract; the RED marker is that these fields are absent from the parsed result.
-
-    const apolloDimension = {
-      name: "hook",
-      band: "strong",
-      lever: "Contrast / curiosity gap (§2.1)",
-      evidence: "Hook opens with a clear contrarian claim in sentence 1",
-    };
-    const apolloRewrite = {
-      original: "This is the verbatim hook line from the creator",
-      variant: "Variant fixing distillation lever",
-      lever_fixed: "Distillation (§2.1) — trimmed 3 filler words",
-    };
-    const apolloResponse = {
-      // Existing fields (must stay present, always valid in current schema)
+  function makeApolloResponse(overrides?: Record<string, unknown>) {
+    return {
       behavioral_predictions: makeDeepSeekReasoning().behavioral_predictions,
       component_scores: makeDeepSeekReasoning().component_scores,
       suggestions: makeDeepSeekReasoning().suggestions,
       warnings: [],
       confidence: "high" as const,
-      // Apollo extension fields (Plan 02 adds these to the schema)
-      dimensions: Array(6).fill(apolloDimension),
+      dimensions: [
+        apolloDimension,
+        { ...apolloDimension, name: "retention" as const },
+        { ...apolloDimension, name: "clarity" as const },
+        { ...apolloDimension, name: "share_pull" as const },
+        { ...apolloDimension, name: "substance" as const },
+        { ...apolloDimension, name: "credibility" as const },
+      ],
       composite_score: 72,
       ceiling_capper: "Hook runs 4.2s — past the ≤3s threshold (§2.0a)",
       confidence_scope:
@@ -564,80 +557,211 @@ describe("apollo schema validates (Wave 0 scaffold — RED until Plan 02)", () =
         apolloRewrite,
         { ...apolloRewrite, variant: "Variant fixing specificity lever", lever_fixed: "Specificity (§2.1)" },
       ],
+      ...overrides,
     };
+  }
 
-    // Assert the mock shape is internally consistent (GREEN always)
-    expect(apolloResponse.dimensions).toHaveLength(6);
-    expect(apolloResponse.composite_score).toBeGreaterThanOrEqual(0);
-    expect(apolloResponse.composite_score).toBeLessThanOrEqual(100);
-    expect(apolloResponse.rewrites.length).toBeGreaterThanOrEqual(2);
-    expect(apolloResponse.rewrites.length).toBeLessThanOrEqual(3);
-    expect(apolloResponse.confidence_scope.length).toBeGreaterThan(0);
-
-    // DOCUMENTED-RED: after Plan 02 extends DeepSeekResponseSchema, the parsed result
-    // MUST include composite_score, dimensions, rewrites, confidence_scope.
-    // Currently these are stripped by Zod (unknown keys silently removed).
-    const result = DeepSeekResponseSchema.safeParse(apolloResponse);
-    expect(result.success).toBe(true); // base parse always succeeds (existing fields valid)
+  it("apollo schema validates — 6 dims + composite 0–100 + confidence_scope + rewrites 2–3", () => {
+    const result = DeepSeekResponseSchema.safeParse(makeApolloResponse());
+    expect(result.success).toBe(true);
     if (result.success) {
-      // DOCUMENTED-RED: these will be defined after Plan 02; currently undefined (stripped)
-      // After Plan 02: expect(result.data.composite_score).toBe(72);
-      // After Plan 02: expect(result.data.dimensions).toHaveLength(6);
-      // After Plan 02: expect(result.data.rewrites).toHaveLength(2);
-      // Current state (RED marker): Apollo extension fields are NOT in the result
-      expect((result.data as Record<string, unknown>).composite_score).toBeUndefined();
-      expect((result.data as Record<string, unknown>).dimensions).toBeUndefined();
-      expect((result.data as Record<string, unknown>).rewrites).toBeUndefined();
+      expect(result.data.composite_score).toBe(72);
+      expect(result.data.dimensions).toHaveLength(6);
+      expect(result.data.rewrites).toHaveLength(2);
+      expect(result.data.confidence_scope.length).toBeGreaterThan(0);
+      expect(result.data.ceiling_capper.length).toBeGreaterThan(0);
+      // Existing fields still required (additive, no regression)
+      expect(result.data.behavioral_predictions).toBeDefined();
+      expect(result.data.component_scores).toBeDefined();
     }
   });
 
-  it("rewrite original matches verbatim hook (R2 verify — Wave 0 scaffold)", () => {
+  it("composite_score outside 0–100 fails parse", () => {
+    const tooHigh = DeepSeekResponseSchema.safeParse(makeApolloResponse({ composite_score: 101 }));
+    expect(tooHigh.success).toBe(false);
+    const tooLow = DeepSeekResponseSchema.safeParse(makeApolloResponse({ composite_score: -1 }));
+    expect(tooLow.success).toBe(false);
+  });
+
+  it("rewrites.length === 1 fails (min 2); rewrites.length === 4 fails (max 3)", () => {
+    const oneRewrite = DeepSeekResponseSchema.safeParse(makeApolloResponse({ rewrites: [apolloRewrite] }));
+    expect(oneRewrite.success).toBe(false);
+    const fourRewrites = DeepSeekResponseSchema.safeParse(makeApolloResponse({
+      rewrites: [
+        apolloRewrite,
+        { ...apolloRewrite, lever_fixed: "A" },
+        { ...apolloRewrite, lever_fixed: "B" },
+        { ...apolloRewrite, lever_fixed: "C" },
+      ],
+    }));
+    expect(fourRewrites.success).toBe(false);
+  });
+
+  it("dimensions.length !== 6 fails", () => {
+    const fiveDims = DeepSeekResponseSchema.safeParse(makeApolloResponse({
+      dimensions: Array(5).fill(apolloDimension),
+    }));
+    expect(fiveDims.success).toBe(false);
+    const sevenDims = DeepSeekResponseSchema.safeParse(makeApolloResponse({
+      dimensions: Array(7).fill(apolloDimension),
+    }));
+    expect(sevenDims.success).toBe(false);
+  });
+
+  it("existing behavioral_predictions/component_scores still required (additive, no regression)", () => {
+    const noBehavioral = DeepSeekResponseSchema.safeParse({
+      ...makeApolloResponse(),
+      behavioral_predictions: undefined,
+    });
+    expect(noBehavioral.success).toBe(false);
+    const noComponentScores = DeepSeekResponseSchema.safeParse({
+      ...makeApolloResponse(),
+      component_scores: undefined,
+    });
+    expect(noComponentScores.success).toBe(false);
+  });
+
+  it("rewrite original matches verbatim hook (R2 verify)", () => {
     // R2 verify: the rewrite's `original` field must equal the verbatim hook line.
-    // This test documents the expected behavior; it passes structurally (pure TS assertion)
-    // but the deepseek.ts integration (backstop) is built in Plan 02.
+    // The backstop in deepseek.ts normalizes whitespace and enforces this.
     const verbatimHook = "The exact hook line from the video transcript";
     const rewrite = {
-      original: verbatimHook,  // Must match verbatim
+      original: verbatimHook,
       variant: "A directional variant fixing the curiosity gap (§2.1)",
       lever_fixed: "Contrast / curiosity gap (§2.1)",
     };
-
-    // The backstop in deepseek.ts (Plan 02) normalizes whitespace and enforces this:
-    // if rewrite.original !== verbatim.hook, set original from the fed verbatim (TS, not model).
-    // This assertion pins the contract:
     expect(rewrite.original).toBe(verbatimHook);
     expect(rewrite.variant).not.toBe(rewrite.original);
     expect(rewrite.lever_fixed.length).toBeGreaterThan(0);
   });
 
-  it("rewrites fix distinct §2 levers (D-08 — Wave 0 scaffold)", () => {
+  it("rewrites fix distinct §2 levers (D-08)", () => {
     // D-08: each of the 2–3 rewrites must fix a DIFFERENT §2 lever.
-    // The Apollo output schema has `lever_fixed` per rewrite to enforce this.
     const rewrites = [
-      {
-        original: "Same verbatim hook line",
-        variant: "Variant 1 — tightens distillation",
-        lever_fixed: "Distillation (§2.1)",
-      },
-      {
-        original: "Same verbatim hook line",
-        variant: "Variant 2 — adds curiosity gap",
-        lever_fixed: "Contrast / curiosity gap (§2.1)",
-      },
-      {
-        original: "Same verbatim hook line",
-        variant: "Variant 3 — injects specificity",
-        lever_fixed: "Specificity (§2.1)",
-      },
+      { original: "Same verbatim hook line", variant: "Variant 1", lever_fixed: "Distillation (§2.1)" },
+      { original: "Same verbatim hook line", variant: "Variant 2", lever_fixed: "Contrast / curiosity gap (§2.1)" },
+      { original: "Same verbatim hook line", variant: "Variant 3", lever_fixed: "Specificity (§2.1)" },
     ];
-
-    // All lever_fixed values must be distinct
     const levers = rewrites.map((r) => r.lever_fixed);
     const uniqueLevers = new Set(levers);
     expect(uniqueLevers.size).toBe(levers.length);
-
-    // Count: 2–3 rewrites
     expect(rewrites.length).toBeGreaterThanOrEqual(2);
     expect(rewrites.length).toBeLessThanOrEqual(3);
+  });
+});
+
+// =====================================================
+// Plan 03-02 Task 2 — Apollo Reasoner integration tests
+// "apollo uses shared core prefix", "rewrite original matches verbatim hook",
+// "rewrite original backstopped on mismatch", composite_score clamped
+// =====================================================
+
+describe("apollo uses shared core prefix", () => {
+  beforeEach(() => {
+    resetCircuitBreaker();
+    mockCreate.mockReset();
+  });
+
+  it("system message === APOLLO_SYSTEM_PROMPT (byte-stable prefix, mock captures messages[0].content)", async () => {
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(makeDeepSeekReasoning()) } }],
+      usage: { prompt_tokens: 1000, completion_tokens: 200 },
+    });
+
+    await reasonWithDeepSeek(makeContext());
+
+    const callArgs = mockCreate.mock.calls[0]![0] as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    expect(callArgs.messages[0]!.role).toBe("system");
+    // System message must equal APOLLO_SYSTEM_PROMPT exactly (byte-stable)
+    expect(callArgs.messages[0]!.content).toBe(APOLLO_SYSTEM_PROMPT);
+    // Must contain core content markers (not the old 5-step framework)
+    expect(callArgs.messages[0]!.content).toContain("Apollo Knowledge Core");
+    expect(callArgs.messages[0]!.content).not.toContain("5-Step Reasoning Framework");
+  });
+});
+
+describe("rewrite original matches verbatim hook (R2 integration)", () => {
+  beforeEach(() => {
+    resetCircuitBreaker();
+    mockCreate.mockReset();
+  });
+
+  const VERBATIM_HOOK = "The exact creator hook line from the transcript";
+
+  function makeContextWithVerbatim() {
+    return {
+      ...makeContext(),
+      verbatim: {
+        hook: {
+          spoken_words: VERBATIM_HOOK,
+          on_screen_text: "Screen text variant",
+        },
+      },
+    };
+  }
+
+  it("rewrite original matches verbatim hook — when model returns correct original", async () => {
+    const reasoningWithCorrectOriginal = makeDeepSeekReasoning({
+      rewrites: [
+        { original: VERBATIM_HOOK, variant: "Variant fixing distillation", lever_fixed: "Distillation (§2.1)" },
+        { original: VERBATIM_HOOK, variant: "Variant fixing curiosity gap", lever_fixed: "Contrast / curiosity gap (§2.1)" },
+      ],
+    });
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(reasoningWithCorrectOriginal) } }],
+      usage: { prompt_tokens: 1000, completion_tokens: 200 },
+    });
+
+    const result = await reasonWithDeepSeek(makeContextWithVerbatim());
+    expect(result).not.toBeNull();
+    for (const rewrite of result!.reasoning.rewrites) {
+      // Normalize whitespace for comparison
+      expect(rewrite.original.replace(/\s+/g, " ").trim()).toBe(
+        VERBATIM_HOOK.replace(/\s+/g, " ").trim()
+      );
+    }
+  });
+
+  it("rewrite original backstopped on mismatch — model paraphrase gets overwritten from verbatim (R2 verify)", async () => {
+    const paraphrasedReasoning = makeDeepSeekReasoning({
+      rewrites: [
+        { original: "A paraphrased version of the hook that the model changed", variant: "Variant 1", lever_fixed: "Distillation (§2.1)" },
+        { original: "Another LLM paraphrase that diverges from verbatim", variant: "Variant 2", lever_fixed: "Contrast / curiosity gap (§2.1)" },
+      ],
+    });
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(paraphrasedReasoning) } }],
+      usage: { prompt_tokens: 1000, completion_tokens: 200 },
+    });
+
+    const result = await reasonWithDeepSeek(makeContextWithVerbatim());
+    expect(result).not.toBeNull();
+    // Backstop must have overwritten the paraphrased original with the verbatim hook
+    for (const rewrite of result!.reasoning.rewrites) {
+      expect(rewrite.original.replace(/\s+/g, " ").trim()).toBe(
+        VERBATIM_HOOK.replace(/\s+/g, " ").trim()
+      );
+    }
+  });
+
+  it("verbatim in user message — hook spoken_words appears in user content, not system", async () => {
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(makeDeepSeekReasoning()) } }],
+      usage: { prompt_tokens: 1000, completion_tokens: 200 },
+    });
+
+    await reasonWithDeepSeek(makeContextWithVerbatim());
+
+    const callArgs = mockCreate.mock.calls[0]![0] as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    const sys = callArgs.messages[0]!.content;
+    const user = callArgs.messages[1]!.content;
+    // Verbatim hook must NOT leak into the byte-stable system prefix (Pitfall 1)
+    expect(sys).not.toContain(VERBATIM_HOOK);
+    // Verbatim hook MUST appear in the volatile user message
+    expect(user).toContain(VERBATIM_HOOK);
   });
 });

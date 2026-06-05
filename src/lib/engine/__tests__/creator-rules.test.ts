@@ -1,11 +1,14 @@
 import { describe, it, expect } from "vitest";
+// creator-rules.ts is DORMANT (Plan 03-02, D-01): moved to _dormant/engine/.
+// KNOWLEDGE-CORE.md (apollo-core.ts) is now the single SSOT prompt brain.
+// This test is kept to document the dormanted constants; its import follows the file.
 import {
   CREATOR_RULES_BLOCK,
   CREATOR_RULES_CONSENSUS,
   CREATOR_RULES_NUMERIC,
   CREATOR_RULES_PRINCIPLES,
   CREATOR_RULES_CONFLICTS,
-} from "../creator-rules";
+} from "../_dormant/engine/creator-rules";
 // NOTE: stage 10 critique is now deterministic TS (no LLM prompt) — its creator-rule
 // injection moved into per-check flag templates in stage10-critique.ts. No prompt to assert.
 //

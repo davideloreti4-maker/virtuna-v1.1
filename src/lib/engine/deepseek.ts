@@ -1,7 +1,4 @@
 import * as Sentry from "@sentry/nextjs";
-import { promises as fs } from "node:fs";
-import path from "node:path";
-import { z } from "zod";
 import { createLogger } from "@/lib/logger";
 import {
   DeepSeekResponseSchema,
@@ -10,7 +7,9 @@ import {
   type GeminiAnalysis,
   type RuleScoreResult,
   type TrendEnrichment,
+  type VerbatimPayload,
 } from "./types";
+import { APOLLO_SYSTEM_PROMPT } from "./apollo-core";
 import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "./qwen/client";
 import { calculateCost } from "./qwen/cost";
 import { stripModelOutput } from "./utils/strip";
@@ -25,88 +24,6 @@ const log = createLogger({ module: "deepseek" });
 const DEEPSEEK_MODEL = QWEN_REASONING_MODEL;
 const MAX_RETRIES = 2; // 3 total attempts
 const TIMEOUT_MS = 90_000; // 90s — reasoning model produces many CoT thinking tokens on complex prompts
-
-
-/**
- * STABLE system prompt — byte-identical across calls so DeepSeek's automatic
- * input cache can match the prefix and apply the cache-hit discount.
- *
- * Per RESEARCH Pattern 4 + Pitfall 3: dynamic content (calibration percentiles,
- * creator context, content text, gemini signals, matched rules) MUST live in the
- * user message — never here. The split is intentional and load-bearing for caching.
- *
- * Per RESEARCH State of the Art: DeepSeek caching is automatic — no opt-in header required.
- */
-const STABLE_SYSTEM_PROMPT = `You are an expert TikTok content strategist. Analyze the content provided in the user message using the 5-step framework below. Your reasoning is INTERNAL — the user only sees your final JSON output.
-
-## 5-Step Reasoning Framework
-
-### Step 1: Completion Analysis
-Evaluate: Would viewers watch this to the end?
-Consider: Hook strength, narrative tension, pacing, payoff anticipation, information drip.
-Output: hook_effectiveness (0-10), retention_strength (0-10), completion_pct prediction.
-
-### Step 2: Engagement Prediction
-Evaluate: Would viewers take action?
-Consider: Share triggers (relatability, identity signaling, "tag someone"), comment provocation (controversy, questions, relatable frustrations), save worthiness (reference value, tutorial quality, bookmark-worthy tips).
-Output: shareability (0-10), comment_provocation (0-10), save_worthiness (0-10), share_pct/comment_pct/save_pct predictions.
-
-### Step 3: Pattern Match
-Compare this content against known viral patterns from the dataset:
-- Loop structure (videos that naturally restart)
-- Duet/stitch bait (content that invites responses)
-- Trending sound alignment
-- Hook-first structure (value in first 3 seconds)
-- Emotional escalation pattern
-- "Wait for it" payoff structure
-Output: trend_alignment (0-10), originality (0-10).
-
-### Step 4: Fatal Flaw Check
-Identify any critical issues that would kill performance regardless of other factors:
-- No clear hook in first 2 seconds
-- Content too long for topic (>60s for simple content)
-- Misleading hook that doesn't pay off
-- Poor audio quality or no audio strategy
-- Caption too long (>100 chars for non-educational content)
-- Content that actively discourages sharing (controversial without being shareable)
-Output: Array of warning strings (empty if no fatal flaws).
-
-### Step 5: Final Scores & Predictions
-Using steps 1-4, produce your final behavioral predictions. Predict completion_pct, share_pct, comment_pct, and save_pct as percentages. For the relative label fields, provide a concise qualitative assessment (e.g., "above average", "top tier", "below median") without fabricating corpus-rank claims.
-
-## Output Format
-
-Return a JSON object with exactly these fields:
-
-{
-  "behavioral_predictions": {
-    "completion_pct": <number 0-100>,
-    "completion_relative": "<string, e.g. 'above average'>",
-    "share_pct": <number 0-100>,
-    "share_relative": "<string>",
-    "comment_pct": <number 0-100>,
-    "comment_relative": "<string>",
-    "save_pct": <number 0-100>,
-    "save_relative": "<string>"
-  },
-  "component_scores": {
-    "hook_effectiveness": <number 0-10>,
-    "retention_strength": <number 0-10>,
-    "shareability": <number 0-10>,
-    "comment_provocation": <number 0-10>,
-    "save_worthiness": <number 0-10>,
-    "trend_alignment": <number 0-10>,
-    "originality": <number 0-10>
-  },
-  "suggestions": [
-    { "text": "<actionable advice>", "priority": "high"|"medium"|"low", "category": "<hook|content|format|timing|audio>" }
-  ],
-  "warnings": ["<fatal flaw string>"],
-  "confidence": "high"|"medium"|"low"
-}
-
-Provide 3-5 suggestions. Warnings array should be empty if no fatal flaws found.
-Set confidence based on signal availability: "high" if video + text + trends available, "medium" if text + some signals, "low" if limited context.`;
 
 // Circuit breaker state (INFRA-03: exponential backoff with half-open)
 interface CircuitBreakerState {
@@ -128,102 +45,6 @@ let breaker: CircuitBreakerState = {
 
 // HARD-04: Mutex to prevent concurrent half-open probes (thundering herd prevention)
 let probeInFlight = false;
-
-
-// Calibration data cache
-interface DeepSeekCalibrationData {
-  primary_kpis: {
-    share_rate: {
-      percentiles: { p50: number; p75: number; p90: number };
-    };
-    comment_rate: {
-      percentiles: { p50: number; p75: number; p90: number };
-    };
-    save_rate: {
-      percentiles: { p50: number; p75: number; p90: number };
-    };
-    weighted_engagement_score: {
-      percentiles: { p50: number; p75: number; p90: number };
-    };
-  };
-  virality_tiers: Array<{
-    tier: number;
-    label: string;
-    score_range: number[];
-    median_share_rate: number;
-    median_comment_rate: number;
-    median_save_rate: number;
-  }>;
-  viral_vs_average: {
-    differentiators: Array<{
-      factor: string;
-      difference_pct: number;
-      description: string;
-    }>;
-  };
-  duration_analysis: {
-    sweet_spot_by_weighted_score: {
-      optimal_range_seconds: number[];
-    };
-  };
-}
-
-const DeepSeekCalibrationBaselineSchema = z.object({
-  primary_kpis: z.object({
-    share_rate: z.object({
-      percentiles: z.object({ p50: z.number(), p75: z.number(), p90: z.number() }),
-    }),
-    comment_rate: z.object({
-      percentiles: z.object({ p50: z.number(), p75: z.number(), p90: z.number() }),
-    }),
-    save_rate: z.object({
-      percentiles: z.object({ p50: z.number(), p75: z.number(), p90: z.number() }),
-    }),
-    weighted_engagement_score: z.object({
-      percentiles: z.object({ p50: z.number(), p75: z.number(), p90: z.number() }),
-    }),
-  }),
-  virality_tiers: z.array(
-    z.object({
-      tier: z.number(),
-      label: z.string(),
-      score_range: z.array(z.number()),
-      median_share_rate: z.number(),
-      median_comment_rate: z.number(),
-      median_save_rate: z.number(),
-    })
-  ),
-  viral_vs_average: z.object({
-    differentiators: z.array(
-      z.object({
-        factor: z.string(),
-        difference_pct: z.number(),
-        description: z.string(),
-      })
-    ),
-  }),
-  duration_analysis: z.object({
-    sweet_spot_by_weighted_score: z.object({
-      optimal_range_seconds: z.array(z.number()),
-    }),
-  }),
-});
-
-const FALLBACK_DEEPSEEK_CALIBRATION: DeepSeekCalibrationData = {
-  primary_kpis: {
-    share_rate: { percentiles: { p50: 0.005, p75: 0.01, p90: 0.02 } },
-    comment_rate: { percentiles: { p50: 0.003, p75: 0.006, p90: 0.012 } },
-    save_rate: { percentiles: { p50: 0.002, p75: 0.005, p90: 0.01 } },
-    weighted_engagement_score: { percentiles: { p50: 45, p75: 65, p90: 85 } },
-  },
-  virality_tiers: [],
-  viral_vs_average: { differentiators: [] },
-  duration_analysis: {
-    sweet_spot_by_weighted_score: { optimal_range_seconds: [15, 60] },
-  },
-};
-
-let cachedCalibration: DeepSeekCalibrationData | null = null;
 
 /** Check if circuit breaker is open (INFRA-03: half-open probe support, HARD-04: probe mutex) */
 function isCircuitOpen(): boolean {
@@ -287,15 +108,61 @@ function stripFences(text: string): string {
   return fenced ? fenced[1]!.trim() : text.trim();
 }
 
-/** Parse and validate DeepSeek response with Zod */
-function parseDeepSeekResponse(raw: string): DeepSeekReasoning {
+/**
+ * Normalize whitespace for verbatim comparison (Pitfall 4 guard).
+ * Trims + collapses internal whitespace to single spaces.
+ */
+function normalizeWs(s: string): string {
+  return s.replace(/\s+/g, " ").trim();
+}
+
+/** Parse and validate Apollo response with Zod + post-parse backstop (Pattern 2) */
+function parseDeepSeekResponse(
+  raw: string,
+  verbatim?: VerbatimPayload | null
+): DeepSeekReasoning {
   const cleaned = stripFences(raw);
   const parsed = JSON.parse(cleaned);
   const result = DeepSeekResponseSchema.safeParse(parsed);
   if (!result.success) {
     throw new Error(`DeepSeek response validation failed: ${result.error.message}`);
   }
-  return result.data;
+  const data = result.data;
+
+  // ── Post-parse backstop (RESEARCH Pattern 2, Pitfall 4) ──────────────────
+  // Assert dimensions.length === 6 (Zod .length(6) handles schema rejection, but
+  // clamp here for belt-and-suspenders on partial-success paths).
+  if (data.dimensions.length !== 6) {
+    log.warn("Apollo dimensions length mismatch post-parse", { count: data.dimensions.length });
+  }
+
+  // Clamp composite_score to 0–100 (provider nondeterminism can produce slightly out-of-range)
+  data.composite_score = Math.min(100, Math.max(0, data.composite_score));
+
+  // Assert rewrites.length >= 2 (Zod .min(2) handles schema rejection)
+  if (data.rewrites.length < 2) {
+    log.warn("Apollo rewrites too few post-parse", { count: data.rewrites.length });
+  }
+
+  // R2 backstop: normalize-whitespace-compare rewrite.original to verbatim hook.
+  // On mismatch — LLM paraphrased instead of copying verbatim — overwrite from TS.
+  if (verbatim?.hook) {
+    const feedHook = verbatim.hook.spoken_words || verbatim.hook.on_screen_text || "";
+    if (feedHook) {
+      const normFeed = normalizeWs(feedHook);
+      for (const rewrite of data.rewrites) {
+        if (normalizeWs(rewrite.original) !== normFeed) {
+          log.warn("Apollo rewrite.original mismatch — backstopped from verbatim (R2)", {
+            was: rewrite.original.slice(0, 60),
+            fixed: feedHook.slice(0, 60),
+          });
+          rewrite.original = feedHook;
+        }
+      }
+    }
+  }
+
+  return data;
 }
 
 /**
@@ -305,65 +172,31 @@ function parseDeepSeekResponse(raw: string): DeepSeekReasoning {
  * usage.prompt_cache_miss_tokens are both present (at least one > 0). Falls back
  * to legacy uncached pricing when the breakdown is missing — backwards-compat with
  * pre-Phase-3 callers and providers that don't expose the cache fields.
- *
- * All token args are treated as "0 or undefined → use fallback in legacy branch."
  */
 
-/** Load calibration data from JSON file, cached after first read.
- *  Returns null on malformed/missing file -- callers must handle null. */
-async function loadCalibrationData(): Promise<DeepSeekCalibrationData | null> {
-  if (cachedCalibration) return cachedCalibration;
-
-  try {
-    const calibrationPath = path.join(
-      path.dirname(new URL(import.meta.url).pathname),
-      "calibration-baseline.json"
-    );
-    const raw = await fs.readFile(calibrationPath, "utf-8");
-    const parsed = JSON.parse(raw);
-    cachedCalibration = DeepSeekCalibrationBaselineSchema.parse(
-      parsed
-    ) as DeepSeekCalibrationData;
-    return cachedCalibration;
-  } catch (error) {
-    log.warn("Failed to load calibration data", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    cachedCalibration = null;
-    return null;
-  }
-}
-
 /**
- * Format Gemini analysis signals for DeepSeek consumption.
+ * Format Gemini analysis signals for Apollo consumption.
  * Strips numeric scores to prevent anchoring — passes only rationales and tips.
  */
 function formatGeminiSignals(analysis: GeminiAnalysis): string {
   const sections: string[] = [];
 
-  // Factor rationales and tips (no scores)
-  sections.push("## Gemini Content Analysis (qualitative signals only)");
+  sections.push("## Omni Content Analysis (qualitative signals only)");
   for (const factor of analysis.factors) {
     sections.push(`\n**${factor.name}:**`);
     sections.push(`- Assessment: ${factor.rationale}`);
     sections.push(`- Improvement: ${factor.improvement_tip}`);
   }
 
-  // Overall impression
   sections.push(`\n**Overall Impression:** ${analysis.overall_impression}`);
-
-  // Content summary
   sections.push(`\n**Content Summary:** ${analysis.content_summary}`);
 
-  // Video signals descriptions (if available)
   if (analysis.video_signals) {
     sections.push(`\n**Video Production Signals:**`);
     sections.push(`- Visual production quality: assessed`);
     sections.push(`- Hook visual impact: assessed`);
     sections.push(`- Pacing: assessed`);
     sections.push(`- Transition quality: assessed`);
-    // Note: We include that video signals exist but strip the numeric values
-    // The presence of video analysis context helps DeepSeek weight visual factors
   }
 
   return sections.join("\n");
@@ -372,65 +205,75 @@ function formatGeminiSignals(analysis: GeminiAnalysis): string {
 /**
  * Build the VOLATILE user message containing all per-request dynamic content.
  *
- * Phase 3 (CACHE-03): the system prompt (STABLE_SYSTEM_PROMPT) contains the static
- * 5-step rubric and output schema. This function builds only the per-request
- * dynamic portion — calibration percentiles, content text, gemini signals,
- * matched rules, trend context, creator context, and viral differentiators.
+ * Apollo Reasoner reframe (Plan 03-02): the system prompt is APOLLO_SYSTEM_PROMPT
+ * (the knowledge core — byte-stable, cached). This function builds only the
+ * per-request dynamic portion: verbatim hook/segments, Omni sensor signals,
+ * creator context, trend context, and platform target.
  *
- * Per RESEARCH Pitfall 3: dynamic content here MUST NOT leak into STABLE_SYSTEM_PROMPT
- * or DeepSeek's automatic input cache will invalidate the prefix.
+ * Per RESEARCH Pitfall 1: ZERO dynamic content in the system prefix.
+ * Per RESEARCH Pitfall 4: verbatim hook MUST appear in the user message so the model
+ * can copy it into `original` — instruct "copy the hook line VERBATIM into each rewrite's `original`".
  */
-function buildDeepSeekUserMessage(
-  context: DeepSeekInput,
-  calibration: DeepSeekCalibrationData
-): string {
-  // Plan 04 (D1.2, R9): percentile benchmark block removed. calibration-baseline.json
-  // is KEPT — still feeds viral differentiators + duration sweet-spot below (RESEARCH Pitfall 4).
+function buildDeepSeekUserMessage(context: DeepSeekInput): string {
+  const sections: string[] = [];
 
-  // Get top 5 viral differentiators (dataset-dependent — dynamic per calibration version)
-  const topDifferentiators = [...calibration.viral_vs_average.differentiators]
-    .sort((a, b) => Math.abs(b.difference_pct) - Math.abs(a.difference_pct))
-    .slice(0, 5);
+  // ── Verbatim hook + segments (R2 load-bearing) ───────────────────────────
+  // Fed in the VOLATILE user message ONLY — never the system prefix.
+  // The model is instructed to copy the hook line verbatim into each rewrite's `original`.
+  if (context.verbatim?.hook) {
+    const hook = context.verbatim.hook;
+    sections.push("## Verbatim Hook (copy EXACTLY into each rewrite's `original` field)");
+    if (hook.spoken_words) {
+      sections.push(`Spoken: ${hook.spoken_words}`);
+    }
+    if (hook.on_screen_text) {
+      sections.push(`On-screen: ${hook.on_screen_text}`);
+    }
+    sections.push(
+      "\n> INSTRUCTION: Copy the spoken hook line VERBATIM into each rewrite's `original` field. Do NOT paraphrase, re-case, or rephrase it."
+    );
+    sections.push("");
+  }
 
-  const durationSweet = calibration.duration_analysis.sweet_spot_by_weighted_score.optimal_range_seconds;
+  if (context.verbatim?.segments && context.verbatim.segments.length > 0) {
+    sections.push("## Verbatim Segments");
+    for (const seg of context.verbatim.segments) {
+      sections.push(`[${seg.idx}] Spoken: ${seg.spoken_text} | On-screen: ${seg.on_screen_text}`);
+    }
+    sections.push("");
+  }
 
-  // Gemini signals (no scores — qualitative rationales only)
-  const geminiSignals = formatGeminiSignals(context.gemini_analysis);
+  // ── Content being analyzed ────────────────────────────────────────────────
+  sections.push("## Content to Analyze");
+  sections.push(`Content type: ${context.input.content_type}`);
+  sections.push(`Content:\n${context.input.content_text}`);
+  sections.push("");
 
-  // Rule context (names only, no scores)
-  const matchedRuleNames = context.rule_result.matched_rules
-    .map((r) => r.rule_name)
-    .join(", ") || "None";
+  // ── Omni sensor signals (qualitative only, no scores) ────────────────────
+  sections.push("---");
+  sections.push(formatGeminiSignals(context.gemini_analysis));
+  sections.push("");
 
-  return `## Content to Analyze
+  // ── Rule matches ─────────────────────────────────────────────────────────
+  sections.push("---");
+  const matchedRuleNames =
+    context.rule_result.matched_rules.map((r) => r.rule_name).join(", ") || "None";
+  sections.push(`## Rule Matches\nMatched rules: ${matchedRuleNames}`);
+  sections.push("");
 
-Content type: ${context.input.content_type}
-Content:
-${context.input.content_text}
+  // ── Trend context ─────────────────────────────────────────────────────────
+  sections.push("## Trend Context");
+  sections.push(context.trend_enrichment.trend_context);
+  if (context.creator_context) {
+    sections.push(`\n${context.creator_context}`);
+  }
+  sections.push("");
 
----
+  sections.push(
+    "Apply the §4 OUTPUT CONTRACT from the system instructions. Return the JSON object specified there."
+  );
 
-${geminiSignals}
-
----
-
-## Rule Matches
-Matched rules: ${matchedRuleNames}
-
-## Trend Context
-${context.trend_enrichment.trend_context}
-${context.creator_context ? `\n${context.creator_context}` : ""}
-
----
-
-## Reference Benchmarks (from current calibration dataset)
-
-Top viral differentiators:
-${topDifferentiators.map((d) => `- ${d.factor}: ${d.description}`).join("\n")}
-
-Duration sweet spot: ${durationSweet[0]}-${durationSweet[1]} seconds
-
-Apply the 5-step framework from the system instructions and return the JSON object specified there.`;
+  return sections.join("\n");
 }
 
 export interface DeepSeekInput {
@@ -439,14 +282,22 @@ export interface DeepSeekInput {
   rule_result: RuleScoreResult;
   trend_enrichment: TrendEnrichment;
   creator_context?: string;
+  /**
+   * P2 verbatim payload — threaded into the volatile user message so Apollo
+   * can quote the real hook line in each rewrite's `original` (R2).
+   * Optional: aggregator wires it in Plan 04; accepted optionally until then.
+   */
+  verbatim?: VerbatimPayload | null;
 }
 
 /**
- * Reason with DeepSeek V3.2-reasoning (ENGINE-02, ENGINE-09, ENGINE-14)
- * Returns null if circuit breaker is open.
+ * Apollo Reasoner — reframed from the generic 5-step reasoner (Plan 03-02).
  *
- * Uses 5-step CoT framework with calibration data embedding.
- * Gemini signals passed without numeric scores to prevent anchoring.
+ * Uses the shared APOLLO_SYSTEM_PROMPT (knowledge core, §4 output contract) as
+ * the byte-stable cached system prefix. Emits 6 dimensions + composite 0–100 +
+ * 2–3 verbatim-grounded hook rewrites in one deterministic call (D-10).
+ *
+ * Returns null if circuit breaker is open.
  */
 export async function reasonWithDeepSeek(
   context: DeepSeekInput
@@ -458,33 +309,31 @@ export async function reasonWithDeepSeek(
 
   const startTime = performance.now();
   const ai = getQwenClient();
-  const calibration =
-    (await loadCalibrationData()) ?? FALLBACK_DEEPSEEK_CALIBRATION;
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-
-      const baseUserMessage = buildDeepSeekUserMessage(context, calibration);
+      // Retry-nudge on the USER message only (Pattern 3) — keeps the byte-stable
+      // system prefix intact across retries (preserves DashScope prefix-cache hit).
+      const baseUserMessage = buildDeepSeekUserMessage(context);
       const userMessage =
         attempt === 0
           ? baseUserMessage
           : `Your previous response was not valid JSON. Return ONLY the JSON object with no extra text.\n\n${baseUserMessage}`;
 
-      // Phase 3 (CACHE-03): 2-message structure with stable system prefix.
-      // DeepSeek's automatic input cache matches on the system prefix bytes.
-      // Per RESEARCH State of the Art: caching is automatic — no opt-in header needed.
+      // Apollo call: byte-stable system prefix (APOLLO_SYSTEM_PROMPT) + volatile user message.
+      // temp:0 + seed for determinism (D-10). json_object for structured output.
       const response = await ai.chat.completions.create(
         {
           model: DEEPSEEK_MODEL,
           messages: [
-            { role: "system", content: STABLE_SYSTEM_PROMPT },
-            { role: "user",   content: userMessage },
+            { role: "system", content: APOLLO_SYSTEM_PROMPT }, // byte-stable knowledge core
+            { role: "user",   content: userMessage },           // verbatim + sensor signals here ONLY
           ],
           response_format: { type: "json_object" },
-          temperature: 0, // reproducible behavioral component scores (40% of the blend)
+          temperature: 0, // D-10: single deterministic call
           seed: QWEN_SEED,
         },
         { signal: controller.signal }
@@ -494,7 +343,8 @@ export async function reasonWithDeepSeek(
 
       const raw  = response.choices[0]?.message?.content ?? "";
       const text = stripModelOutput(raw);
-      const reasoning = parseDeepSeekResponse(text);
+      // Post-parse backstop: assert dims===6, clamp composite 0-100, R2 original check
+      const reasoning = parseDeepSeekResponse(text, context.verbatim);
 
       recordSuccess();
 
@@ -508,7 +358,7 @@ export async function reasonWithDeepSeek(
       }
 
       const duration_ms = Math.round(performance.now() - startTime);
-      log.info("Reasoning complete", {
+      log.info("Apollo reasoning complete", {
         stage: "deepseek_reasoning",
         duration_ms,
         cost_cents: +cost_cents.toFixed(4),
@@ -517,7 +367,7 @@ export async function reasonWithDeepSeek(
 
       Sentry.addBreadcrumb({
         category: "engine.deepseek",
-        message: "Reasoning complete",
+        message: "Apollo reasoning complete",
         level: "info",
         data: { duration_ms, cost_cents: +cost_cents.toFixed(4), model: DEEPSEEK_MODEL },
       });
@@ -529,7 +379,7 @@ export async function reasonWithDeepSeek(
       if (lastError.name === "AbortError") {
         recordFailure();
         log.warn("DeepSeek request timed out", { timeout_ms: TIMEOUT_MS, attempt });
-        break; // Fall through to Gemini fallback instead of throwing
+        break; // Fall through instead of throwing
       }
       // Retry on parse/validation errors, but record API failures
       if (
@@ -548,7 +398,7 @@ export async function reasonWithDeepSeek(
   }
 
   recordFailure();
-  log.error("DeepSeek failed after retries", {
+  log.error("Apollo reasoning failed after retries", {
     attempts: MAX_RETRIES + 1,
     error: lastError?.message,
   });
@@ -557,7 +407,7 @@ export async function reasonWithDeepSeek(
   });
 
   // No fallback — circuit breaker failure returns null; caller handles graceful degradation.
-  log.warn("Qwen reasoning failed after all retries — returning null");
+  log.warn("Apollo reasoning failed after all retries — returning null");
   return null;
 }
 
