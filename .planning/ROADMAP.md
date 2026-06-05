@@ -6,7 +6,7 @@
 **Harness deviation (RESEARCH-overrides-CONTEXT):** CONTEXT D-04 said "revive `corpus/eval-harness.ts`"; research found it is a corpus bucket-classifier benchmark (macro-F1 over `training_corpus` → `benchmark_results`), structurally wrong for a retention-curve A/B. Build a NEW referee on the `measure-pipeline.ts` scaffold; leave the corpus harness dormant.
 **Success:** R3, R7, R10. Heatmap from one call; 1-vs-20 call count; fold proven.
 **Risk:** medium-high — homogenization (one call flattening 10 curves); mitigated by the D-06 in-call divergence requirement, the D-07 post-parse guard, and the A/B gate (with the D-02 ~5-core fallback + D-10 shadow contingency).
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete — P4 COMPLETE (SHADOW D-10; fold deferred to P5)
 Plans:
 **Wave 1**
 
@@ -23,6 +23,6 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 04-05-PLAN.md — Run the A/B, advisory human sign-off (D-05), separately-revertable production flip (FLIP/SHADOW/FALLBACK-5; D-09 one-flag rollback)
+- [x] 04-05-PLAN.md — Run the A/B, advisory human sign-off (D-05), separately-revertable production flip (FLIP/SHADOW/FALLBACK-5; D-09 one-flag rollback) — SHADOW (D-10): fold timed out at 90s (thinking_budget=4000), R7 confirmed; flip deferred to P5 pending thinking_budget cut to ~1000
 
 ## Phase 5: Wire + Surface

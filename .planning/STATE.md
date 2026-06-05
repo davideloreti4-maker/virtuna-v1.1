@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: apollo
 milestone_name: Apollo
-status: ready_to_plan
-last_updated: "2026-06-05T13:39:37.624Z"
+status: phase_4_complete
+last_updated: "2026-06-05T14:10:00.000Z"
 progress:
   total_phases: 2
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 5
-  completed_plans: 4
-  percent: 0
+  completed_plans: 5
+  percent: 50
 ---
 
 # Project State
@@ -20,10 +20,10 @@ See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Cut-l
 
 ## Current Position
 
-Phase: 04 (audience-sim-fold-brain-2-the-bet) — EXECUTING
-Plan: 5 of 5
+Phase: 04 (audience-sim-fold-brain-2-the-bet) — COMPLETE (5/5 plans, 2026-06-05)
+Plan: 5 of 5 — COMPLETE
 Phase: 03 (Apollo Reasoner) — NOT STARTED (blocked on corpus v1)
-Last completed plan: 04-01
+Last completed plan: 04-05
 **Milestone worktree** `~/virtuna-engine-opt/` on `milestone/engine-opt`. Milestone **Apollo** — turn the ~25-call score machine into a 3-call knowledge-grounded expert (Omni → Audience-Sim → Apollo Reasoner).
 
 Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milestone formalized. **Synced with `origin/main` (merged in Remix PR #6 + audience change) — branch was stale + blind to Remix.** Re-scanned Remix engine path; folded into the plan (Remix = Apollo modes, R12). **No phase plans yet.**
@@ -35,8 +35,16 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 | 1 | Strip to Senses | COMPLETE (2026-06-04) — 6/6 plans done |
 | 2 | Omni Verbatim | COMPLETE (2026-06-04) — 3/3 plans done; R1 proven on real run (gwxLeHphZCxK); D-02 silent deferred HUMAN-UAT |
 | 3 | Apollo Reasoner (Brain 1, the moat) | not started — blocked on Chase Hughes corpus |
-| 4 | Audience-Sim Fold (Brain 2, the bet) | in progress (2/5 plans complete) |
+| 4 | Audience-Sim Fold (Brain 2, the bet) | COMPLETE (2026-06-05) — 5/5 plans done; fold built+wired+dormant; SHADOW (D-10) — flip deferred to P5 pending thinking_budget cut |
 | 5 | Wire + Surface | not started |
+
+## Decisions locked (2026-06-05, 04-05)
+
+- **SHADOW (D-10): fold timed out at 90s (thinking_budget=4000) on every run** — all 4 pipeline runs (2 videos × 2 runs) hit the 90s PER_CALL_TIMEOUT_MS; `foldOutcome`=null; aggregator fell back to 10-pass data; diversity=0.000, drop=0/10. R7 CONFIRMED (fold=1 vs tenpass=20 calls on all runs). MISS 0/2.
+- **90s is the fold's LATENCY BUDGET — do NOT raise it** — the fold only earns the flip if its single call fits within the time envelope (otherwise R7 wall-clock win is lost). The fix is to lower `FOLD_THINKING_BUDGET` (4000→~1000).
+- **10-pass production default unchanged** — `useFold` default OFF; `behavioralSource` default unchanged; `runWave3Pass2` preserved (D-09, count=3); no ENGINE_VERSION bump.
+- **P5 carry-forward**: lower `FOLD_THINKING_BUDGET` in `fold.ts` → re-run `scripts/ab-fold-referee.ts` → if composite passes, execute the FLIP branch from 04-05 Task 2.
+- **04-05 COMPLETE (2026-06-05)** — referee run captured (16c, exit 0), SHADOW decision recorded, build green, wave3 tests 20/0. Commit: `1923ad77`. P4 complete.
 
 ## Decisions locked (2026-06-05, 04-04)
 
@@ -94,11 +102,13 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 
 **P4-03 COMPLETE (2026-06-05)** — fold adapters (real implementations replacing stubs): `adaptFoldToPersonaSimResults` + `adaptFoldToPass2Results` (with niche_deep→niche normalization); aggregator "fold" branch (behavioral aggregate + heatmap from foldOutcome); pipeline `foldOutcome: Wave3FoldOutcome | null` default OFF (ENGINE_USE_FOLD=1); ab-fold-referee @ts-expect-error shim removed. 1826/1826 tests GREEN. Commits: `f289eaf5` (adapters), `bf44f0d3` (aggregator + pipeline).
 
-**P4-04 COMPLETE (2026-06-05)** — ab-fold-referee.ts 3-metric composite: behavioral parity <=5, diversity >=0.8x avgCurveRange, drop-point agreement >=6/10 archetypes; R7 call-count assertion (wave_3_fold=1 vs wave_3_persona_*+wave_3_pass2_persona_*=20); R8 2-runs-per-path averaging; per-video table; advisory overall verdict (REPRODUCE/BEAT/PARTIAL/MISS, D-05 no exit-1 on metric miss); COST_CAP_CENTS wired. tsc zero errors. Commit: `aa3a8428`. Next: `/gsd-execute-phase 4 04-05` — real-API referee run + production-flip human checkpoint.
+**P4-04 COMPLETE (2026-06-05)** — ab-fold-referee.ts 3-metric composite: behavioral parity <=5, diversity >=0.8x avgCurveRange, drop-point agreement >=6/10 archetypes; R7 call-count assertion (wave_3_fold=1 vs wave_3_persona_*+wave_3_pass2_persona_*=20); R8 2-runs-per-path averaging; per-video table; advisory overall verdict (REPRODUCE/BEAT/PARTIAL/MISS, D-05 no exit-1 on metric miss); COST_CAP_CENTS wired. tsc zero errors. Commit: `aa3a8428`.
+
+**P4-05 COMPLETE (2026-06-05) — P4 COMPLETE.** Real-API referee run: MISS 0/2 (fold timed out at 90s, thinking_budget=4000, every run). R7 CONFIRMED. SHADOW decision (D-10): 10-pass production default intact, fold dormant (ENGINE_USE_FOLD=1), no ENGINE_VERSION bump. **P5 carry-forward:** lower `FOLD_THINKING_BUDGET` (~1000 from 4000) in `fold.ts` → re-run referee → flip if composite passes. Commit: `1923ad77`.
 
 ## Open bets / to verify
 
-- Fold quality (R10): grounded-1 Audience-Sim vs current-20 retention curve — A/B on real videos.
+- Fold quality (R10): **DEFERRED TO P5** — fold timed out at 90s budget (thinking_budget=4000); lower budget + re-run referee; R7 architecture confirmed correct.
 - ✅ **DB row counts (01-01 Task 4):** trending_sounds=0, outcomes=0, scraped_videos=7389 (benign — Plan 03 removes trends.ts call site before Plan 05 dormant move).
 - Archetype count in the fold (10 vs ~5).
 - `optimal-post.ts`: honest signal or cut.
