@@ -109,6 +109,7 @@ function cleanupRawUpload(
 async function persistCraftToVariants(
   service: ServiceClient,
   id: string,
+  userId: string,
   finalResult: PredictionResult,
   log: Logger,
 ): Promise<void> {
@@ -130,6 +131,7 @@ async function persistCraftToVariants(
       .from("analysis_results")
       .select("variants")
       .eq("id", id)
+      .eq("user_id", userId) // V4 access control — never read/write across user boundary (CR-02)
       .single();
     if (readErr || !row) {
       log.warn("craft_variants_read_failed", { id, error: readErr?.message });
@@ -139,7 +141,8 @@ async function persistCraftToVariants(
     const { error: writeErr } = await service
       .from("analysis_results")
       .update({ variants: { ...current, craft } as unknown as Json })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("user_id", userId); // V4 access control preserved on write (CR-02)
     if (writeErr) {
       log.warn("craft_variants_write_failed", { id, error: writeErr.message });
     }
@@ -218,6 +221,7 @@ async function persistApolloToVariants(
 async function persistDecodeToVariants(
   service: ServiceClient,
   id: string,
+  userId: string,
   decode: DecodeResult,
   log: Logger,
 ): Promise<void> {
@@ -226,6 +230,7 @@ async function persistDecodeToVariants(
       .from("analysis_results")
       .select("variants")
       .eq("id", id)
+      .eq("user_id", userId) // V4 access control — never read/write across user boundary (CR-02)
       .single();
     if (readErr || !row) {
       log.warn("decode_variants_read_failed", { id, error: readErr?.message });
@@ -236,7 +241,8 @@ async function persistDecodeToVariants(
     const { error: writeErr } = await service
       .from("analysis_results")
       .update({ variants: { ...current, remix: { ...remix, decode } } as unknown as Json })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("user_id", userId); // V4 access control preserved on write (CR-02)
     if (writeErr) {
       log.warn("decode_variants_write_failed", { id, error: writeErr.message });
     }
@@ -265,10 +271,11 @@ async function runDecodeStream(
     service: ServiceClient;
     validated: ReturnType<typeof AnalysisInputSchema.parse>;
     analysisId: string;
+    userId: string;
     log: Logger;
   },
 ): Promise<void> {
-  const { service, validated, analysisId, log } = opts;
+  const { service, validated, analysisId, userId, log } = opts;
 
   send("started", { id: analysisId });
   send("phase", { phase: "analyzing", message: "Decoding structure…" });
@@ -285,7 +292,7 @@ async function runDecodeStream(
     const structural = omniOutputToStructuralInput(omni);
     decode = structural ? await runDecode(structural) : null;
     if (decode) {
-      await persistDecodeToVariants(service, analysisId, decode, log);
+      await persistDecodeToVariants(service, analysisId, userId, decode, log);
     }
     send("complete", {
       id: analysisId,
@@ -700,7 +707,7 @@ export async function POST(request: Request) {
         });
         // Persist Content-craft signals into variants.craft (no migration). The
         // row id was generated inline for the JSON insert above.
-        await persistCraftToVariants(service, jsonInsertId, finalResult, log);
+        await persistCraftToVariants(service, jsonInsertId, user.id, finalResult, log);
         // Plan 03-04 (D-04): Persist Apollo §4 output into variants.apollo (read-merge-write).
         // Non-fatal: failure only blanks Apollo frame, never the row itself (T-03-09, T-03-10).
         await persistApolloToVariants(service, jsonInsertId, user.id, finalResult, log);
@@ -805,6 +812,7 @@ export async function POST(request: Request) {
               service,
               validated,
               analysisId,
+              userId: user.id,
               log,
             });
           } catch (err) {
@@ -928,7 +936,7 @@ export async function POST(request: Request) {
             });
             // Persist Content-craft signals into variants.craft (no migration).
             // analysisId is the upserted row id (Pitfall #6 placeholder → upsert).
-            await persistCraftToVariants(service, analysisId, finalResult, log);
+            await persistCraftToVariants(service, analysisId, user.id, finalResult, log);
             // Plan 03-04 (D-04): Persist Apollo §4 output into variants.apollo (read-merge-write).
             // Non-fatal: failure only blanks Apollo frame, never the row itself (T-03-09, T-03-10).
             await persistApolloToVariants(service, analysisId, user.id, finalResult, log);
