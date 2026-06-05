@@ -116,6 +116,7 @@ process.env.GEMINI_API_KEY = "test-key";
 
 import { isCircuitOpen, resetCircuitBreaker, reasonWithDeepSeek } from "../deepseek";
 import { DeepSeekResponseSchema } from "../types";
+import { APOLLO_SYSTEM_PROMPT } from "../apollo-core";
 import {
   makeGeminiAnalysis,
   makeRuleScoreResult,
@@ -646,5 +647,121 @@ describe("apollo schema validates", () => {
     expect(uniqueLevers.size).toBe(levers.length);
     expect(rewrites.length).toBeGreaterThanOrEqual(2);
     expect(rewrites.length).toBeLessThanOrEqual(3);
+  });
+});
+
+// =====================================================
+// Plan 03-02 Task 2 — Apollo Reasoner integration tests
+// "apollo uses shared core prefix", "rewrite original matches verbatim hook",
+// "rewrite original backstopped on mismatch", composite_score clamped
+// =====================================================
+
+describe("apollo uses shared core prefix", () => {
+  beforeEach(() => {
+    resetCircuitBreaker();
+    mockCreate.mockReset();
+  });
+
+  it("system message === APOLLO_SYSTEM_PROMPT (byte-stable prefix, mock captures messages[0].content)", async () => {
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(makeDeepSeekReasoning()) } }],
+      usage: { prompt_tokens: 1000, completion_tokens: 200 },
+    });
+
+    await reasonWithDeepSeek(makeContext());
+
+    const callArgs = mockCreate.mock.calls[0]![0] as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    expect(callArgs.messages[0]!.role).toBe("system");
+    // System message must equal APOLLO_SYSTEM_PROMPT exactly (byte-stable)
+    expect(callArgs.messages[0]!.content).toBe(APOLLO_SYSTEM_PROMPT);
+    // Must contain core content markers (not the old 5-step framework)
+    expect(callArgs.messages[0]!.content).toContain("Apollo Knowledge Core");
+    expect(callArgs.messages[0]!.content).not.toContain("5-Step Reasoning Framework");
+  });
+});
+
+describe("rewrite original matches verbatim hook (R2 integration)", () => {
+  beforeEach(() => {
+    resetCircuitBreaker();
+    mockCreate.mockReset();
+  });
+
+  const VERBATIM_HOOK = "The exact creator hook line from the transcript";
+
+  function makeContextWithVerbatim() {
+    return {
+      ...makeContext(),
+      verbatim: {
+        hook: {
+          spoken_words: VERBATIM_HOOK,
+          on_screen_text: "Screen text variant",
+        },
+      },
+    };
+  }
+
+  it("rewrite original matches verbatim hook — when model returns correct original", async () => {
+    const reasoningWithCorrectOriginal = makeDeepSeekReasoning({
+      rewrites: [
+        { original: VERBATIM_HOOK, variant: "Variant fixing distillation", lever_fixed: "Distillation (§2.1)" },
+        { original: VERBATIM_HOOK, variant: "Variant fixing curiosity gap", lever_fixed: "Contrast / curiosity gap (§2.1)" },
+      ],
+    });
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(reasoningWithCorrectOriginal) } }],
+      usage: { prompt_tokens: 1000, completion_tokens: 200 },
+    });
+
+    const result = await reasonWithDeepSeek(makeContextWithVerbatim());
+    expect(result).not.toBeNull();
+    for (const rewrite of result!.reasoning.rewrites) {
+      // Normalize whitespace for comparison
+      expect(rewrite.original.replace(/\s+/g, " ").trim()).toBe(
+        VERBATIM_HOOK.replace(/\s+/g, " ").trim()
+      );
+    }
+  });
+
+  it("rewrite original backstopped on mismatch — model paraphrase gets overwritten from verbatim (R2 verify)", async () => {
+    const paraphrasedReasoning = makeDeepSeekReasoning({
+      rewrites: [
+        { original: "A paraphrased version of the hook that the model changed", variant: "Variant 1", lever_fixed: "Distillation (§2.1)" },
+        { original: "Another LLM paraphrase that diverges from verbatim", variant: "Variant 2", lever_fixed: "Contrast / curiosity gap (§2.1)" },
+      ],
+    });
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(paraphrasedReasoning) } }],
+      usage: { prompt_tokens: 1000, completion_tokens: 200 },
+    });
+
+    const result = await reasonWithDeepSeek(makeContextWithVerbatim());
+    expect(result).not.toBeNull();
+    // Backstop must have overwritten the paraphrased original with the verbatim hook
+    for (const rewrite of result!.reasoning.rewrites) {
+      expect(rewrite.original.replace(/\s+/g, " ").trim()).toBe(
+        VERBATIM_HOOK.replace(/\s+/g, " ").trim()
+      );
+    }
+  });
+
+  it("verbatim in user message — hook spoken_words appears in user content, not system", async () => {
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(makeDeepSeekReasoning()) } }],
+      usage: { prompt_tokens: 1000, completion_tokens: 200 },
+    });
+
+    await reasonWithDeepSeek(makeContextWithVerbatim());
+
+    const callArgs = mockCreate.mock.calls[0]![0] as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    const sys = callArgs.messages[0]!.content;
+    const user = callArgs.messages[1]!.content;
+    // Verbatim hook must NOT leak into the byte-stable system prefix (Pitfall 1)
+    expect(sys).not.toContain(VERBATIM_HOOK);
+    // Verbatim hook MUST appear in the volatile user message
+    expect(user).toContain(VERBATIM_HOOK);
   });
 });
