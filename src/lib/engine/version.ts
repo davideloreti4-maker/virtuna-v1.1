@@ -11,8 +11,12 @@
  * Bumped 3.4.0 → 3.5.0 by Phase 4 Plan 05 (fold model flip): fold default → qwen3.6-flash,
  * no-thinking (A/B-validated); behavioral scores shift from the plus-thinking era, so stale
  * 3.4.0 rows must not mix with flash-era rows.
+ * Bumped 3.5.0 → 3.6.0 by quick/20260605-engine-latency-quality-spine-ab (latency+quality A/B):
+ * fold per-segment `reason` dropped (dead weight) + FOLD_MAX_TOKENS 8000→4000 + Apollo
+ * thinking_budget 3000→1500 (sweep-validated: insight depth held, latency 76→49s). Apollo
+ * composite shifts within provider noise across the era boundary, so isolate the cache.
  *
  * D-23 cache invariant: prediction-cache.ts keys on ENGINE_VERSION; this bump auto-invalidates
- * all `3.4.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
+ * all `3.5.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
  */
-export const ENGINE_VERSION = "3.5.0";
+export const ENGINE_VERSION = "3.6.0";

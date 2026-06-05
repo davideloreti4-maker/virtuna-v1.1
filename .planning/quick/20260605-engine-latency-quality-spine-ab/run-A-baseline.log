@@ -1,0 +1,71 @@
+[Run A] pristine baseline 3.5.0 — Fr.  5 Juni 2026 19:19:54 CEST
+[dotenv@17.3.1] injecting env (8) from .env.local -- tip: ⚙️  override existing env vars with { override: true }
+[measure] video=/Users/davideloreti/Downloads/TikTok Video Downloader.mp4 (5.5MB)
+[measure] uploading → videos/smoke-measure/1780679996415.mp4
+
+========== PIPELINE ==========
+[2026-06-05T17:20:05.915Z] INFO Pipeline started {"requestId":"measure-1780680005914","module":"pipeline","input_mode":"video_upload"}
+  [   0.0s] start  validate
+  [   0.0s] END    validate                            2ms  $0.0000
+  [   0.0s] start  normalize
+  [   0.0s] END    normalize                           0ms  $0.0000
+  [   0.0s] start  pre_creator_context
+[2026-06-05T17:20:06.822Z] DEBUG No creator handle provided, using cold-start context {"module":"creator"}
+  [   0.9s] END    pre_creator_context               902ms  $0.0000
+[2026-06-05T17:20:06.931Z] INFO omni analysis start {"module":"engine.qwen.omni","model":"qwen3.5-omni-plus","attempt":0,"videoUrl":"https://qyxvxleheckijapurisj.supabase.co/storage/v1/object/sign/videos/smoke-mea"}
+[2026-06-05T17:20:45.923Z] INFO omni analysis complete {"module":"engine.qwen.omni","model":"qwen3.5-omni-plus","cost_cents":0,"attempt":0,"emotion_arc_points":7,"verbatim_present":true}
+  [  40.0s] start  creator_context
+  [  40.0s] start  wave_1
+  [  40.0s] END    creator_context                     0ms  $0.0000
+  [  40.0s] END    wave_1                              0ms  $0.0000
+  [  40.0s] start  deepseek_reasoning
+  [  40.0s] start  wave_2
+  [  40.0s] start  wave_3_fold
+  [ 103.4s] END    wave_3_fold                     63344ms  $0.3087
+[2026-06-05T17:22:02.102Z] WARN Reasoning cost exceeds soft cap {"module":"deepseek","cost_cents":1.3547,"soft_cap":1}
+[2026-06-05T17:22:02.103Z] INFO Apollo reasoning complete {"module":"deepseek","stage":"deepseek_reasoning","duration_ms":76159,"cost_cents":1.3547,"model":"qwen3.6-plus"}
+  [ 116.2s] END    deepseek_reasoning              76160ms  $0.0000
+  [ 116.2s] END    wave_2                          76159ms  $0.0000
+[2026-06-05T17:22:02.103Z] INFO Pipeline complete {"requestId":"measure-1780680005914","module":"pipeline","stage":"pipeline","duration_ms":116189,"cost_cents":1.6634,"warnings_count":0}
+
+========== AGGREGATE (post-pipeline tail) ==========
+[2026-06-05T17:22:02.421Z] INFO stage_timing {"module":"aggregator","stage":"optimal_post_window","ms":316}
+  [ 116.5s] start  stage_10_critique
+  [ 116.5s] END    stage_10_critique                   0ms  $0.0000
+[2026-06-05T17:22:02.424Z] INFO stage_timing {"module":"aggregator","stage":"stage10_critique","ms":0}
+[2026-06-05T17:22:02.424Z] INFO stage_timing {"module":"aggregator","stage":"stage10_wall","ms":0}
+
+========== SUMMARY ==========
+pipeline wall      : 116.2s
+aggregate tail     : 0.3s
+TOTAL_LATENCY_MS   : 116513
+TOTAL              : 116.5s
+engine latency_ms  : 116.189s   cost_cents=1.6634
+OVERALL_SCORE=70 CONFIDENCE=0.75 LABEL=HIGH
+behavioral_score   : 66 | gemini_score=82
+persona_aggregate  : watch=? scroll=? share=?
+counterfactuals    : NULL (schema fail / timeout)
+critique           : PRESENT
+emotion_arc        : 7 pts
+factors            : 5
+personas (heatmap) : 10
+
+PASS-2 CONCURRENCY : n/a (no pass2 events)
+STAGE10/11         : n/a
+
+PASS-2 CURVE QUALITY (thinking_budget=8000 default):
+  AGGREGATE: avg curve range=0 (higher=more varied, ~0=flat) | personas w/ real swipe=0/0
+
+STAGES BY DURATION (stage_end events):
+    76160ms  deepseek_reasoning
+    76159ms  wave_2
+    63344ms  wave_3_fold
+      902ms  pre_creator_context
+        2ms  validate
+        0ms  normalize
+        0ms  creator_context
+        0ms  wave_1
+        0ms  stage_10_critique
+
+[measure] cleaned up videos/smoke-measure/1780679996415.mp4
+[Run A] EXIT=0 Fr.  5 Juni 2026 19:22:02 CEST

@@ -24,10 +24,15 @@ const log = createLogger({ module: "deepseek" });
 const DEEPSEEK_MODEL = QWEN_REASONING_MODEL;
 const MAX_RETRIES = 2; // 3 total attempts
 const TIMEOUT_MS = 120_000; // 120s — bounded-thinking Apollo call on the full KNOWLEDGE_CORE prefix; headroom under the 300s pipeline cap
-// Apollo thinking budget — env-gated for the spine latency A/B (2026-06-05).
-// Default 3000 (unchanged baseline). DashScope counts thinking_budget toward
-// max_tokens(3000), so budget<max leaves room for the JSON answer (budget 2000 → 1000 out).
-const DEEPSEEK_THINKING_BUDGET = Number(process.env.DEEPSEEK_THINKING_BUDGET) || 3000;
+// Apollo thinking budget. Default 1500 (was 3000) — A/B-validated 2026-06-05
+// (quick/20260605-engine-latency-quality-spine-ab): a budget sweep on identical omni
+// input showed Apollo insight (6 §-cited dimensions + 3 verbatim-grounded rewrites) is
+// NOT thinking-bound — depth held identically from 3000 down to 1000 while latency fell
+// 76s→44s. 1500 (~49s) sits just under the fold (~54s) so Apollo is fully hidden on the
+// critical path with maximum thinking headroom for dense/long content. Going lower buys
+// no E2E (the fold gates). DashScope counts thinking_budget toward max_tokens(3000), so
+// 1500 leaves ample room for the §4 JSON answer. Override via env for experimentation.
+const DEEPSEEK_THINKING_BUDGET = Number(process.env.DEEPSEEK_THINKING_BUDGET) || 1500;
 
 // Circuit breaker state (INFRA-03: exponential backoff with half-open)
 interface CircuitBreakerState {

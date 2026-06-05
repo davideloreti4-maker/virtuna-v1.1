@@ -38,6 +38,12 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 | 4 | Audience-Sim Fold (Brain 2, the bet) | COMPLETE (2026-06-05) — 5/5 plans done; **10-pass DELETED** (2026-06-05 user mandate); fold is sole audience-sim path; ENGINE_VERSION 3.4.0 |
 | 5 | Wire + Surface | not started |
 
+## Quick Tasks Completed
+
+| Date | Slug | Result |
+|------|------|--------|
+| 2026-06-05 | engine-latency-quality-spine-ab | Spine A/B + Apollo budget sweep. **E2E 116→~91s (−22%), quality verified.** Shipped: fold reason-drop, FOLD_MAX 8000→4000, Apollo thinking_budget 3000→1500, ENGINE_VERSION 3.6.0. Sweep proved insight NOT budget-bound (depth held 3000→1000). **New bottleneck = fold (~54s).** Next: trim fold → defer-Apollo for <45s. → `.planning/quick/20260605-engine-latency-quality-spine-ab/` |
+
 ## Decisions locked (2026-06-05, 04-05 FLIP-AND-DELETE)
 
 - **FLIP EXECUTED (user mandate, supersedes D-09/D-10)** — 10-pass (runWave3Pass2 + runWave3 Pass-1 loop) DELETED; fold (runFold) is the sole audience-sim path; no fallback to persona loops; no ENGINE_USE_FOLD flag.

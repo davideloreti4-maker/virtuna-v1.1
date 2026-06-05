@@ -8,7 +8,8 @@
  * - `buildFoldUserContent(slots, segments, keyframeUris, verbatim, emotionArc)` — OpenAI content
  *   array with image_url items FIRST + text block LAST (mirrors buildPass2UserContent ordering).
  * - `FoldResponseSchema` — Zod validates the 20→1 fold output at the model boundary:
- *   exactly 10 archetypes (.length(10), D-01), attention clamped [0,1], reason ≤ 200 chars.
+ *   exactly 10 archetypes (.length(10), D-01), attention clamped [0,1]. Per-segment
+ *   `reason` was dropped 2026-06-05 (dead weight) — any stray reason is Zod-stripped.
  *
  * This fold emits BOTH Pass-1 behavioral intents AND Pass-2 segment_reactions in ONE call (R7).
  * The adapters that split these into engine-compatible shapes live in Plan 03 (fold.ts exports).
