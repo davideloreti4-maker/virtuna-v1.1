@@ -23,7 +23,7 @@ const log = createLogger({ module: "deepseek" });
 // Legacy constant name — resolves to QWEN_REASONING_MODEL (qwen3.6-plus).
 const DEEPSEEK_MODEL = QWEN_REASONING_MODEL;
 const MAX_RETRIES = 2; // 3 total attempts
-const TIMEOUT_MS = 90_000; // 90s — reasoning model produces many CoT thinking tokens on complex prompts
+const TIMEOUT_MS = 120_000; // 120s — bounded-thinking Apollo call on the full KNOWLEDGE_CORE prefix; headroom under the 300s pipeline cap
 
 // Circuit breaker state (INFRA-03: exponential backoff with half-open)
 interface CircuitBreakerState {
@@ -269,8 +269,53 @@ function buildDeepSeekUserMessage(context: DeepSeekInput): string {
   }
   sections.push("");
 
+  // ── JSON OUTPUT CONTRACT (machine shape for the §4 narrative) ─────────────
+  // The system prefix (§4) describes WHAT to assess; this enumerates the exact
+  // JSON object DeepSeekResponseSchema requires. Lives in the volatile user
+  // message so the cached system prefix (apollo-core.ts) stays byte-stable.
+  // The request also sets response_format: { type: "json_object" }.
+  sections.push("---");
   sections.push(
-    "Apply the §4 OUTPUT CONTRACT from the system instructions. Return the JSON object specified there."
+    `## OUTPUT — return ONE JSON object, no prose, with EXACTLY these keys:
+
+{
+  "behavioral_predictions": {
+    "completion_pct": <number 0-100>,   // est. % who watch to the end
+    "share_pct": <number 0-100>,
+    "comment_pct": <number 0-100>,
+    "save_pct": <number 0-100>
+  },
+  "component_scores": {                  // your 0-10 estimate per lever, grounded in the signals
+    "hook_effectiveness": <number 0-10>,
+    "retention_strength": <number 0-10>,
+    "shareability": <number 0-10>,
+    "comment_provocation": <number 0-10>,
+    "save_worthiness": <number 0-10>,
+    "trend_alignment": <number 0-10>,
+    "originality": <number 0-10>
+  },
+  "suggestions": [                       // ≥1; lead with the §4 highest-leverage fix (priority "high")
+    { "text": "<actionable fix tied to a §2/§3 lever>", "priority": "high"|"medium"|"low", "category": "<short tag>" }
+  ],
+  "confidence": "high"|"medium"|"low",   // overall assessment confidence
+  "dimensions": [                        // EXACTLY 6, one per name below, in this order
+    { "name": "hook",        "band": "strong"|"mid"|"weak", "lever": "<§2 lever that fired/failed>", "evidence": "<quoted sensor signal>" },
+    { "name": "retention",   "band": "strong"|"mid"|"weak", "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" },
+    { "name": "clarity",     "band": "strong"|"mid"|"weak", "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" },
+    { "name": "share_pull",  "band": "strong"|"mid"|"weak", "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" },
+    { "name": "substance",   "band": "strong"|"mid"|"weak", "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" },
+    { "name": "credibility", "band": "strong"|"mid"|"weak", "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" }
+  ],
+  "composite_score": <number 0-100>,     // ONE holistic, hook-weighted judgment (§2.0a ~80%). Not arithmetic.
+  "ceiling_capper": "<one sentence naming the single thing capping the score; note any §3 anti-pattern present>",
+  "confidence_scope": "<which §2 signals the sensor could NOT provide, lowering confidence>",
+  "rewrites": [                          // 2-3 directional hook variants
+    { "original": "<the verbatim hook line above, copied EXACTLY>", "variant": "<rewritten hook>", "lever_fixed": "<the §2 lever this variant fixes — a DIFFERENT lever per rewrite>" }
+  ],
+  "platform_note": "<optional: watermark/cross-post warning, or omit>"
+}
+
+Rules: "dimensions" is an ARRAY of exactly 6 objects (not an object map). Every "rewrites[].original" MUST be the verbatim hook line above, byte-for-byte. Each "rewrites[].lever_fixed" MUST name a different §2 lever. Cite §-numbers inside "lever"/"evidence"/"ceiling_capper". Return ONLY the JSON object.`
   );
 
   return sections.join("\n");
@@ -335,6 +380,14 @@ export async function reasonWithDeepSeek(
           response_format: { type: "json_object" },
           temperature: 0, // D-10: single deterministic call
           seed: QWEN_SEED,
+          // Bound generation so the single Apollo call lands under TIMEOUT_MS on the
+          // full KNOWLEDGE_CORE prefix (mirrors pass2/decode/stage11). Without these
+          // the reasoning model emits unbounded CoT and times out (>90s). Sized up
+          // vs decode (1200) because Apollo emits a larger §4 JSON object.
+          max_tokens: 3000,
+          // @ts-expect-error — DashScope extensions not in OpenAI SDK types
+          enable_thinking: true,
+          thinking_budget: 3000,
         },
         { signal: controller.signal }
       );
