@@ -1177,43 +1177,34 @@ describe("hook_decomposition + emotion_arc pluck (Quick 260528-nqx)", () => {
 });
 
 // =====================================================
-// Wave 0 — R5 / D-04 Apollo blend scaffolds (Plan 03-01)
+// R5 / D-04 Apollo blend assertions (Plan 03-04 — GREEN after blend rewire)
 // =====================================================
-// These tests assert the INTENDED blend rewire: behavioral 40 + Apollo replaces
-// behavioral 40 + gemini. They are RED until Plan 04 (which rewires the blend).
+// These tests assert the post-Plan-04 state: behavioral 40 + Apollo replaces
+// behavioral 40 + gemini. Plan 04 (03-04) wired the blend.
 // The names are exact and must NOT be renamed.
-//
-// Status: documented-red (expected to fail until Plan 04 rewires SCORE_WEIGHTS)
 // =====================================================
 
 describe("blend uses behavioral + apollo (Wave 0 scaffold — RED until Plan 04)", () => {
-  // DOCUMENTED-RED: SCORE_WEIGHTS currently uses "gemini" key (behavioral + gemini blend).
-  // Plan 04 renames the key to "apollo" and sources the term from composite_score.
-  // These tests document the INTENDED post-Plan-04 state.
+  // Plan 04 (03-04): SCORE_WEIGHTS now uses "apollo" key (behavioral + apollo blend).
+  // composite_score from deepseekResult.reasoning is the apollo term.
   //
   // The dynamic import pattern is used to avoid hoisting issues with the module mock.
 
   it("blend uses behavioral + apollo — SCORE_WEIGHTS has apollo key (not gemini) after Plan 04", async () => {
     // Import SCORE_WEIGHTS from aggregator to check the key structure.
-    // DOCUMENTED-RED: Currently SCORE_WEIGHTS = { behavioral: 0.40, gemini: 0.35 }.
-    // After Plan 04: SCORE_WEIGHTS = { behavioral: 0.40, apollo: 0.35 }.
+    // Plan 04 (03-04): SCORE_WEIGHTS = { behavioral: 0.40, apollo: 0.35 }.
     const { SCORE_WEIGHTS } = await import("../aggregator");
-    // DOCUMENTED-RED: These assertions will flip after Plan 04:
-    // After Plan 04: expect(SCORE_WEIGHTS).toHaveProperty("apollo");
-    // After Plan 04: expect(SCORE_WEIGHTS).not.toHaveProperty("gemini");
-    // Current state (RED marker): gemini key present, apollo key absent
-    expect(SCORE_WEIGHTS).toHaveProperty("gemini");   // Currently true (will be removed in Plan 04)
-    expect(SCORE_WEIGHTS).not.toHaveProperty("apollo"); // Currently true (will flip in Plan 04)
+    // GREEN assertions (post-Plan-04 state):
+    expect(SCORE_WEIGHTS).toHaveProperty("apollo");   // apollo term added (D-04)
+    expect(SCORE_WEIGHTS).not.toHaveProperty("gemini"); // gemini retired from blend key
   });
 
   it("gemini retired from raw_overall_score (R5/D-04 — Wave 0 scaffold)", async () => {
     // D-04: Apollo replaces the gemini term in raw_overall_score.
-    // After Plan 04, SCORE_WEIGHT_KEYS should not include "gemini" as a blend term.
+    // Plan 04 (03-04): SCORE_WEIGHT_KEYS = ["behavioral", "apollo"].
     const { SCORE_WEIGHT_KEYS } = await import("../aggregator");
-    // DOCUMENTED-RED: Currently SCORE_WEIGHT_KEYS = ["behavioral", "gemini"].
-    // After Plan 04: SCORE_WEIGHT_KEYS = ["behavioral", "apollo"].
-    // Current state (RED marker): gemini present, apollo absent
-    expect(SCORE_WEIGHT_KEYS).toContain("gemini");    // Currently true (will be removed in Plan 04)
-    expect(SCORE_WEIGHT_KEYS).not.toContain("apollo"); // Currently true (will flip in Plan 04)
+    // GREEN assertions (post-Plan-04 state):
+    expect(SCORE_WEIGHT_KEYS).not.toContain("gemini"); // gemini retired from blend
+    expect(SCORE_WEIGHT_KEYS).toContain("apollo");     // apollo is now the blend term
   });
 });
