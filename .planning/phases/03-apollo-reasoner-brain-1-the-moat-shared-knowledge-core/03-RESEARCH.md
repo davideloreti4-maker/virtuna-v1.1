@@ -364,22 +364,21 @@ export const DECODE_SYSTEM_PROMPT = `${KNOWLEDGE_CORE}\n\n---\n\n` +
 
 **Note:** The knowledge core's *content claims* (hard numbers, frameworks) are sourced [CITED: .planning/corpus/KNOWLEDGE-CORE.md §8] from the Kallaway corpus + 3-creator benchmark layer and were A/B-validated via the smoke harness — they are the user's curated SSOT, not assumptions of this research.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Persist target for Apollo rewrites/composite.**
+> All three were resolved during planning and are encoded in the plans. Markers added 2026-06-05 post-plan-check.
+
+1. **Persist target for Apollo rewrites/composite.** — **RESOLVED → `variants.apollo` (no migration).**
    - What we know: route persists JSONB at `:598`/`:928`; `variants` already holds craft + remix sub-objects.
-   - What's unclear: whether the planner wants a typed `apollo` column vs `variants.apollo`.
-   - Recommendation: `variants.apollo` (no migration; mirrors P2 craft pattern). Surface composite via existing `overall_score` (the blend output).
+   - Resolution (Plan 04 Task 2): adopt `variants.apollo` via read-merge-write (mirrors P2 craft pattern); composite surfaced through existing `overall_score` (the blend output). No typed column, no migration.
 
-2. **CTA-penalty fate when the gemini term leaves the blend (D-04).**
+2. **CTA-penalty fate when the gemini term leaves the blend (D-04).** — **RESOLVED → drop the penalty math, fold into Apollo §2.4 critique.**
    - What we know: `applyCtaPenalty` modifies `gemini_score` before the blend (aggregator.ts:722).
-   - What's unclear: with gemini retired, should the penalty disappear or fold into Apollo critique?
-   - Recommendation: drop the separate penalty math; let Apollo's §2.4 CTA lens surface it as critique evidence (cleaner, grounded). Confirm with planner.
+   - Resolution (Plan 04 Task 1d): drop the separate penalty math; Apollo's §2.4 CTA lens surfaces it as critique evidence (cleaner, grounded).
 
-3. **Transition vs hard-cut of `behavioral_predictions`/`component_scores`.**
+3. **Transition vs hard-cut of `behavioral_predictions`/`component_scores`.** — **RESOLVED → keep `component_scores` REQUIRED (additive schema).**
    - What we know: aggregator's `behavioral_score` reads DeepSeek's 7 `component_scores`; behavioral term stays (D-05).
-   - What's unclear: does the SAME Apollo call still emit the 7 component scores (for the behavioral term) AND the new dimensions, or does behavioral now come only from wave3 personas?
-   - Recommendation: per ENGINE-MAP, behavioral = wave3 personas (S13/S14) until P4. Apollo's component_scores were the *reasoner's* behavioral guess. Keep emitting them for the behavioral term in P3 (additive schema), OR confirm behavioral sources from personas already — **flag for the planner**, as it affects whether the old schema fields stay required.
+   - Resolution (Plan 02 Task 1): the same Apollo call keeps emitting the 7 `component_scores`/`behavioral_predictions` (kept REQUIRED) for the behavioral term in P3; the new dimensions are additive. Behavioral folds into Audience-Sim in P4, not P3.
 
 ## Environment Availability
 
