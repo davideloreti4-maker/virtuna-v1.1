@@ -52,22 +52,21 @@ const COST_CAP_CENTS = Number(process.env.AB_REFEREE_COST_CAP_CENTS) || 2000;
 let totalCostCents = 0;
 
 // ==========================================================================
-// Referee video set — D-04: fixed 6 videos spanning hook-strength + niche
-// Task 3 checkpoint: VIDEO_SET is a PLACEHOLDER until the user confirms the
-// 6 video file paths. Do not run the referee against real API until confirmed.
-// gwxLeHphZCxK and the "bestfriend" clip are the two named entries (D-04).
+// REDUCED referee set (2 of 6) — user decision 2026-06-05.
+// D-03 composite degrades gracefully (per-video drop-point agreement).
+// The other 4 D-04 slots (hook-strength × niche spread) are deferred.
+//
+// D-04 coverage with these 2 entries:
+//   gwxLeHphZCxK  — good rating, P2 determinism baseline (measure-pipeline.ts default)
+//   IMG_0012      — bad rating (.mov), weak hook / low quality
+//
+// To expand to the full 6-video set: add the missing 4 entries here and re-run.
+// Files must be locally accessible with raw bytes (video_upload mode requires
+// raw bytes — eval-runner.ts:111 notes corpus does NOT store raw bytes).
 // ==========================================================================
 const VIDEO_SET: { id: string; path: string }[] = [
-  // TODO Task 3 (checkpoint:human-verify): replace with confirmed file paths.
-  // Example: { id: "gwxLeHphZCxK", path: "/Users/davideloreti/Downloads/gwxLeHphZCxK.mp4" }
-  // The referee requires video_upload mode (raw bytes on disk — eval-runner.ts:111
-  // notes the corpus does NOT store raw bytes, so DB rows alone are insufficient).
-  { id: "gwxLeHphZCxK",     path: "PLACEHOLDER_PATH_1" },
-  { id: "bestfriend_clip",  path: "PLACEHOLDER_PATH_2" },
-  { id: "referee_video_3",  path: "PLACEHOLDER_PATH_3" },
-  { id: "referee_video_4",  path: "PLACEHOLDER_PATH_4" },
-  { id: "referee_video_5",  path: "PLACEHOLDER_PATH_5" },
-  { id: "referee_video_6",  path: "PLACEHOLDER_PATH_6" },
+  { id: "gwxLeHphZCxK", path: "/Users/davideloreti/Downloads/TikTok Video Downloader.mp4" },
+  { id: "IMG_0012",     path: "/Users/davideloreti/Downloads/IMG_0012.mov" },
 ];
 
 // ==========================================================================
@@ -136,7 +135,7 @@ async function main() {
   const hasPlaceholders = VIDEO_SET.some((v) => v.path.startsWith("PLACEHOLDER_PATH"));
   if (hasPlaceholders) {
     throw new Error(
-      "VIDEO_SET contains placeholder paths — complete Task 3 checkpoint (confirm 6 referee video files) before running the referee.",
+      "VIDEO_SET contains placeholder paths — replace with confirmed local file paths before running the referee.",
     );
   }
 
@@ -148,12 +147,16 @@ async function main() {
     console.log(`\n========== VIDEO: ${video.id} ==========`);
 
     // Upload once; run both paths on the same pipelineResult (D-10 — same run, no upload variance)
+    // Use the file's actual extension (.mp4 or .mov etc.) — do NOT transcode.
     const buf = readFileSync(video.path);
-    const storagePath = `ab-referee/${video.id}-${Date.now()}.mp4`;
-    console.log(`[referee] uploading ${video.path} (${(buf.length / 1e6).toFixed(1)}MB) → videos/${storagePath}`);
+    const extMatch = video.path.match(/\.([^.]+)$/);
+    const ext = extMatch ? extMatch[1].toLowerCase() : "mp4";
+    const contentType = ext === "mov" ? "video/quicktime" : "video/mp4";
+    const storagePath = `ab-referee/${video.id}-${Date.now()}.${ext}`;
+    console.log(`[referee] uploading ${video.path} (${(buf.length / 1e6).toFixed(1)}MB, ${contentType}) → videos/${storagePath}`);
 
     const up = await supabase.storage.from("videos").upload(storagePath, buf, {
-      contentType: "video/mp4",
+      contentType,
       upsert: true,
     });
     if (up.error) throw new Error(`upload failed for ${video.id}: ${up.error.message}`);
