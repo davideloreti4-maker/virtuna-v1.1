@@ -349,12 +349,16 @@ export interface DeepSeekInput {
  * Returns null if circuit breaker is open.
  */
 export async function reasonWithDeepSeek(
-  context: DeepSeekInput
+  context: DeepSeekInput,
+  opts?: { thinkingBudgetOverride?: number },
 ): Promise<{ reasoning: DeepSeekReasoning; cost_cents: number } | null> {
   // Circuit breaker check
   if (isCircuitOpen()) {
     return null;
   }
+
+  // Thinking budget: explicit override (experimentation/sweep harness) > env > default.
+  const thinkingBudget = opts?.thinkingBudgetOverride ?? DEEPSEEK_THINKING_BUDGET;
 
   const startTime = performance.now();
   const ai = getQwenClient();
@@ -391,7 +395,7 @@ export async function reasonWithDeepSeek(
           max_tokens: 3000,
           // @ts-expect-error — DashScope extensions not in OpenAI SDK types
           enable_thinking: true,
-          thinking_budget: DEEPSEEK_THINKING_BUDGET,
+          thinking_budget: thinkingBudget,
         },
         { signal: controller.signal }
       );
