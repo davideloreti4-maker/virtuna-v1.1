@@ -433,7 +433,7 @@ describe("Phase 3 — provenance + stub invocations", () => {
     const { ENGINE_VERSION } = await import("../aggregator");
     const { ENGINE_VERSION: viaVersion } = await import("../version");
     expect(ENGINE_VERSION).toBe(viaVersion);
-    expect(ENGINE_VERSION).toBe("3.3.0"); // Plan 03-04: bumped from 3.2.0 (Apollo blend rewire)
+    expect(ENGINE_VERSION).toBe("3.4.0"); // Plan 04-05: bumped from 3.3.0 (10-pass deletion, fold-only)
   });
 
   it("PredictionResult.engine_version reads from ./version module", async () => {
@@ -759,36 +759,80 @@ describe("aggregateScores Phase 7 widening", () => {
     expect(result.signal_availability.personas).toBe(true);
   });
 
-  it("Test 4 (D-14): behavioralSource='personas' with non-null aggregate substitutes the source", async () => {
+  it("Test 4 (Plan 04-05): fold succeeded (≥7 personas) → behavioral_predictions from fold aggregate, not deepseek", async () => {
+    // Build 7 persona results so aggregatePersonaResults returns non-null aggregate.
+    const foldPersonaSimResults: PersonaSimulationResult[] = Array.from({ length: 7 }, (_, i) => ({
+      persona_id: `fyp-${i}-high_engager-beauty`,
+      archetype: "high_engager" as const,
+      slot_type: "fyp" as const,
+      niche: "beauty",
+      scroll_past_second: 5,
+      watch_through_pct: 90, // all watch 90% — completion_pct should be 90
+      comment_intent: 30,
+      share_intent: 40,
+      save_intent: 50,
+      rewatch_intent: 20,
+      reasoning: `fold persona ${i}`,
+    }));
     const pipelineResult = makePipelineResult({
-      personaBehavioralAggregate: samplePersonaAggregate,
+      foldOutcome: {
+        pass2Results: [],
+        personaSimResults: foldPersonaSimResults,
+        warnings: [],
+        cost_cents: 0.1,
+        fold_success: true,
+      },
     });
-    const result = await aggregateScores(pipelineResult, undefined, {
-      behavioralSource: "personas",
-    });
-    expect(result.behavioral_predictions.completion_pct).toBe(99.5);
-    expect(result.behavioral_predictions).toEqual(samplePersonaAggregate);
+    const result = await aggregateScores(pipelineResult);
+    // Fold succeeded: behavioral_predictions from fold aggregate (completion_pct=90),
+    // NOT from deepseek (which uses a different fixture value in makeDeepSeekReasoning).
+    expect(result.behavioral_predictions.completion_pct).toBe(90);
   });
 
-  it("Test 5 (D-14 fallback): behavioralSource='personas' with null aggregate falls back to deepseek", async () => {
-    const pipelineResult = makePipelineResult({ personaBehavioralAggregate: null });
-    const result = await aggregateScores(pipelineResult, undefined, {
-      behavioralSource: "personas",
+  it("Test 5 (Plan 04-05): fold failed (fold_success=false) → falls back to deepseek behavioral_predictions", async () => {
+    const pipelineResult = makePipelineResult({
+      foldOutcome: {
+        pass2Results: [],
+        personaSimResults: [],
+        warnings: ["fold call aborted"],
+        cost_cents: 0,
+        fold_success: false,
+      },
     });
+    const result = await aggregateScores(pipelineResult);
+    // Fold failed: must fall back to deepseek.behavioral_predictions
     expect(result.behavioral_predictions).toEqual(
       pipelineResult.deepseekResult!.reasoning.behavioral_predictions,
     );
   });
 
-  it("Test 6 (Pitfall 10): explicit 'deepseek' source equals default behavior", async () => {
+  it("Test 6 (Plan 04-05): explicit behavioralSource='deepseek' bypasses fold even when fold succeeded", async () => {
+    const foldPersonaSimResults: PersonaSimulationResult[] = Array.from({ length: 7 }, (_, i) => ({
+      persona_id: `fyp-${i}-high_engager-beauty`,
+      archetype: "high_engager" as const,
+      slot_type: "fyp" as const,
+      niche: "beauty",
+      scroll_past_second: 5,
+      watch_through_pct: 90,
+      comment_intent: 30, share_intent: 40, save_intent: 50, rewatch_intent: 20,
+      reasoning: `fold persona ${i}`,
+    }));
     const pipelineResult = makePipelineResult({
-      personaBehavioralAggregate: samplePersonaAggregate,
+      foldOutcome: {
+        pass2Results: [],
+        personaSimResults: foldPersonaSimResults,
+        warnings: [],
+        cost_cents: 0.1,
+        fold_success: true,
+      },
     });
-    const defaultResult = await aggregateScores(pipelineResult);
     const explicitResult = await aggregateScores(pipelineResult, undefined, {
       behavioralSource: "deepseek",
     });
-    expect(explicitResult.behavioral_predictions).toEqual(defaultResult.behavioral_predictions);
+    // When "deepseek" is forced, must use deepseek source, not fold
+    expect(explicitResult.behavioral_predictions).toEqual(
+      pipelineResult.deepseekResult!.reasoning.behavioral_predictions,
+    );
   });
 
   it("Test 7 (PERSONA-11 + D-09): persona_simulation_results persisted from pipelineResult.wave3Result", async () => {
@@ -935,11 +979,12 @@ describe("Phase 8 — aggregator retrieval integration", () => {
 });
 
 // =====================================================
-// Phase 3 (Plan 08) — aggregator.ts Pass 2 wiring
+// Phase 4 Plan 05 — aggregator fold wiring
+// (Pass 2 tests removed; fold.pass2Results is the sole heatmap source)
 // Tests: weighted_* fields + heatmap + isAntiViralityGatedFull + signal_availability.pass2_timeline
 // =====================================================
 
-describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
+describe("aggregateScores Phase 4 Plan 05 — fold heatmap wiring", () => {
   // Shared fixtures
   const sampleSegments: SegmentGrid[] = [
     { t_start: 0, t_end: 3, visual_event: "hook reveal", audio_event: "beat drop", is_hook_zone: true },
@@ -971,6 +1016,17 @@ describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
     },
   ];
 
+  // Helper: build a foldOutcome with pass2Results so heatmap path fires.
+  function makeFoldOutcome(opts?: { fold_success?: boolean; pass2Results?: typeof samplePass2Results }) {
+    return {
+      pass2Results: opts?.pass2Results ?? samplePass2Results,
+      personaSimResults: [],
+      warnings: [] as string[],
+      cost_cents: 0.1,
+      fold_success: opts?.fold_success ?? true,
+    };
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
     // Reset mocks to their default implementations
@@ -998,15 +1054,9 @@ describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
     // predictWithML mock removed (Plan 02); ml call no longer fires in aggregateScores.
   });
 
-  it("Phase 3: heatmap populated via assembleHeatmapPayload when pass2_aggregate_built === true", async () => {
+  it("Phase 4: heatmap populated via assembleHeatmapPayload when fold_success=true and pass2Results present", async () => {
     const pipeline = makePipelineResult({
-      pass2Outcome: {
-        pass2Results: samplePass2Results,
-        warnings: [] as string[],
-        cost_cents: 0.1,
-        pass2_success_count: 2,
-        pass2_aggregate_built: true,
-      },
+      foldOutcome: makeFoldOutcome(),
       segments: sampleSegments,
     });
     const result = await aggregateScores(pipeline);
@@ -1015,15 +1065,9 @@ describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
     expect(result.heatmap).toBeDefined();
   });
 
-  it("Phase 3: weighted_completion_pct / weighted_top_dropoff_t / weighted_hook_score populated from buildWeightedCurve", async () => {
+  it("Phase 4: weighted_completion_pct / weighted_top_dropoff_t / weighted_hook_score populated from buildWeightedCurve", async () => {
     const pipeline = makePipelineResult({
-      pass2Outcome: {
-        pass2Results: samplePass2Results,
-        warnings: [] as string[],
-        cost_cents: 0.1,
-        pass2_success_count: 2,
-        pass2_aggregate_built: true,
-      },
+      foldOutcome: makeFoldOutcome(),
       segments: sampleSegments,
     });
     const result = await aggregateScores(pipeline);
@@ -1032,36 +1076,24 @@ describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
     expect(result.weighted_hook_score).toBe(0.9);
   });
 
-  it("Phase 3: signal_availability.pass2_timeline === true when pass2_aggregate_built", async () => {
+  it("Phase 4: signal_availability.pass2_timeline === true when fold_success=true", async () => {
     const pipeline = makePipelineResult({
-      pass2Outcome: {
-        pass2Results: samplePass2Results,
-        warnings: [] as string[],
-        cost_cents: 0.1,
-        pass2_success_count: 2,
-        pass2_aggregate_built: true,
-      },
+      foldOutcome: makeFoldOutcome({ fold_success: true }),
       segments: sampleSegments,
     });
     const result = await aggregateScores(pipeline);
     expect(result.signal_availability.pass2_timeline).toBe(true);
   });
 
-  it("Phase 3: signal_availability.pass2_timeline === false when pass2Outcome is null", async () => {
-    const pipeline = makePipelineResult({ pass2Outcome: null });
+  it("Phase 4: signal_availability.pass2_timeline === false when foldOutcome is null", async () => {
+    const pipeline = makePipelineResult({ foldOutcome: null });
     const result = await aggregateScores(pipeline);
     expect(result.signal_availability.pass2_timeline).toBe(false);
   });
 
-  it("Phase 3: when pass2_aggregate_built === false, heatmap=null and weighted_* fields=null (Pass 1 fallback)", async () => {
+  it("Phase 4: when fold_success=false, heatmap=null and weighted_* fields=null", async () => {
     const pipeline = makePipelineResult({
-      pass2Outcome: {
-        pass2Results: [] as typeof samplePass2Results,
-        warnings: ["Too few personas succeeded"] as string[],
-        cost_cents: 0.05,
-        pass2_success_count: 3,
-        pass2_aggregate_built: false,
-      },
+      foldOutcome: makeFoldOutcome({ fold_success: false, pass2Results: [] }),
       segments: sampleSegments,
     });
     const result = await aggregateScores(pipeline);
@@ -1071,22 +1103,16 @@ describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
     expect(result.weighted_hook_score).toBeNull();
   });
 
-  it("Phase 3: isAntiViralityGatedFull called instead of isAntiViralityGated when heatmap present", async () => {
+  it("Phase 4: isAntiViralityGatedFull called when heatmap present (fold succeeded)", async () => {
     const pipeline = makePipelineResult({
-      pass2Outcome: {
-        pass2Results: samplePass2Results,
-        warnings: [] as string[],
-        cost_cents: 0.1,
-        pass2_success_count: 2,
-        pass2_aggregate_built: true,
-      },
+      foldOutcome: makeFoldOutcome(),
       segments: sampleSegments,
     });
     await aggregateScores(pipeline);
     expect(mockIsAntiViralityGatedFull).toHaveBeenCalled();
   });
 
-  it("Phase 3: when heatmap triggers timeline pattern with confidence above 0.4, anti_virality_gated=true with reason='timeline_pattern'", async () => {
+  it("Phase 4: when fold triggers timeline pattern, anti_virality_gated=true with reason='timeline_pattern'", async () => {
     // Mock isAntiViralityGatedFull to return timeline_pattern gating. Persistent (not Once):
     // deterministic Stage 10 now always runs, so the POST-critique re-eval calls this a 2nd
     // time — the real fn is heatmap-deterministic and returns timeline_pattern on both calls.
@@ -1096,13 +1122,7 @@ describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
       dropoff_segment_indices: [1],
     });
     const pipeline = makePipelineResult({
-      pass2Outcome: {
-        pass2Results: samplePass2Results,
-        warnings: [] as string[],
-        cost_cents: 0.1,
-        pass2_success_count: 2,
-        pass2_aggregate_built: true,
-      },
+      foldOutcome: makeFoldOutcome(),
       segments: sampleSegments,
     });
     const result = await aggregateScores(pipeline);

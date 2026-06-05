@@ -50,10 +50,11 @@ export interface EvalRunnerOptions {
   rateLimitDelayMs?: number;                         // default 2000 (matches benchmark.ts:582)
   /**
    * Phase 7 D-14: optional aggregator behavioral source override.
-   * Defaults to "deepseek" (production aggregator default). Pass "personas" to
-   * run the lightweight A/B substituted variant. Production callers should not pass this.
+   * Defaults to "fold" (Phase 4 Plan 05 — fold is sole audience-sim path).
+   * Pass "deepseek" to force DeepSeek behavioral predictions (eval back-compat).
+   * "personas" option removed — 10-pass deleted.
    */
-  behavioralSource?: "deepseek" | "personas";
+  behavioralSource?: "deepseek" | "fold";
 }
 
 const FETCH_BATCH = 50;

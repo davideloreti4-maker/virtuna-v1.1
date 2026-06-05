@@ -50,7 +50,11 @@ const log = createLogger({ module: "wave3.fold" });
 // =====================================================
 
 const PER_CALL_TIMEOUT_MS = 90_000;
-const FOLD_THINKING_BUDGET = Number(process.env.FOLD_THINKING_BUDGET) || 4000;
+// FOLD_THINKING_BUDGET default 1000: A/B-validated (2026-06-05) — budget=1000 returned
+// in 89.9s (just under PER_CALL_TIMEOUT_MS=90s) with diverse curves on the good video.
+// Margin is thin; future work may trim FOLD_MAX_TOKENS for additional headroom.
+// Do NOT raise PER_CALL_TIMEOUT_MS — the fold only earns the flip if it beats the 10-pass.
+const FOLD_THINKING_BUDGET = Number(process.env.FOLD_THINKING_BUDGET) || 1000;
 const FOLD_MAX_TOKENS = Number(process.env.FOLD_MAX_TOKENS) || 8000;
 const COST_ALERT_THRESHOLD_CENTS = 50; // D-24 pattern from pass2.ts
 

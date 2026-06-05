@@ -348,14 +348,12 @@ function assembleFeatureVector(
 // =====================================================
 
 /**
- * Phase 7 D-14 (lightweight A/B eval). Default "deepseek" → production read.
- * Phase 10 owns the eventual production swap based on D-14 corpus evidence.
- * Phase 13 D-01 / D-18 — Plan 03 pipeline.ts uploads video once at entry,
- * threads fileUri through here. Plan 02 leaves this optional; Plan 03 callsite
- * supplies real values.
+ * Phase 7 D-14 (lightweight A/B eval). Default: fold (Phase 4 Plan 05 — fold is sole path).
+ * Pass "deepseek" to force-use DeepSeek behavioral predictions (eval harness back-compat).
+ * "personas" option removed — 10-pass deleted (Phase 4 Plan 05).
  */
 export interface AggregateScoresOptions {
-  behavioralSource?: "deepseek" | "personas" | "fold";
+  behavioralSource?: "deepseek" | "fold";
   // D-01 / D-18 — Plan 03 pipeline.ts uploads video once at entry, threads fileUri through here.
   // Plan 02 leaves this optional with null default; Plan 03 callsite supplies real values.
   videoContext?: { fileUri: string; mimeType: string } | null;
@@ -679,7 +677,7 @@ export async function aggregateScores(
     retrieval: pipelineResult.retrievalResult.availability,
     // Plan 04: platform_fit key removed from blend — provenance only, preserved for JSONB.
     platform_fit: false,
-    pass2_timeline: pipelineResult.pass2Outcome?.pass2_aggregate_built ?? false,
+    pass2_timeline: pipelineResult.foldOutcome?.fold_success ?? false,
   };
 
   // Phase 5 D-12: derived `gemini` provenance key (PROVENANCE ONLY, not blend after D-04).
@@ -842,12 +840,12 @@ export async function aggregateScores(
     ) / 10000;
 
   // -------------------------------------------------
-  // Behavioral predictions (single source of truth for result + engagement)
-  // Phase 7 D-08 + D-14: production read is unchanged (default behavioralSource "deepseek").
-  // The optional "personas" override is the eval-harness A/B substrate; production callers
-  // never pass this option, so default behavior matches pre-Phase-7 byte-for-byte.
+  // Behavioral predictions — fold is the sole audience-sim source (Phase 4 Plan 05).
+  // "personas" option removed (10-pass deleted). "deepseek" override still accepted
+  // for eval harness back-compat (pass behavioralSource:"deepseek" to skip fold).
+  // Priority: fold (when succeeded) → deepseek.behavioral_predictions → FALLBACK_BEHAVIORAL.
   // -------------------------------------------------
-  const behavioralSource = options?.behavioralSource ?? "deepseek";
+  const behavioralSource = options?.behavioralSource ?? "fold";
   const FALLBACK_BEHAVIORAL = {
     completion_pct: 0,
     completion_percentile: "N/A",
@@ -859,16 +857,14 @@ export async function aggregateScores(
     save_percentile: "N/A",
   } as const;
 
-  // Plan 04-03: "fold" branch — derive behavioral aggregate from fold-adapted PersonaSimulationResult[].
-  // aggregatePersonaResults is called here (not pre-aggregated on PipelineResult) to keep fold.ts
-  // free of aggregator coupling. Default "deepseek" path is byte-unchanged (D-09).
+  // Fold path: derive behavioral aggregate from fold-adapted PersonaSimulationResult[].
+  // aggregatePersonaResults is called here (not pre-aggregated on PipelineResult) to keep
+  // fold.ts free of aggregator coupling. When fold failed → deepseek fallback → FALLBACK.
+  // Callers that explicitly pass behavioralSource:"deepseek" bypass fold (eval back-compat).
   const behavioral_predictions = (() => {
-    if (behavioralSource === "fold" && pipelineResult.foldOutcome?.fold_success) {
+    if (behavioralSource !== "deepseek" && pipelineResult.foldOutcome?.fold_success) {
       const { aggregate } = aggregatePersonaResults(pipelineResult.foldOutcome.personaSimResults);
       if (aggregate !== null) return aggregate;
-    }
-    if (behavioralSource === "personas" && pipelineResult.personaBehavioralAggregate !== null) {
-      return pipelineResult.personaBehavioralAggregate;
     }
     return deepseek?.behavioral_predictions ?? FALLBACK_BEHAVIORAL;
   })();
@@ -878,11 +874,10 @@ export async function aggregateScores(
   // Will be regrounded in Plan 05.
 
   // -------------------------------------------------
-  // Phase 3 (Plan 08) — Pass 2 timeline → heatmap + weighted_* fields.
-  // Only runs when pass2_aggregate_built=true AND segments are present.
-  // Pass 1 fallback: heatmap=null, weighted_*=null.
+  // Heatmap + weighted_* fields — sourced from fold (Phase 4 Plan 05).
+  // pass2Outcome always null (10-pass deleted). Fold provides pass2Results via adapter.
+  // Falls through to heatmap=null / weighted_*=null when fold failed or no segments.
   // -------------------------------------------------
-  const pass2Outcome = pipelineResult.pass2Outcome;
   const omniSegments = pipelineResult.segments;
 
   // Phase 2 (R1) — derive verbatim.segments from omniSegments now that they are available.
@@ -925,19 +920,15 @@ export async function aggregateScores(
   let weighted_top_dropoff_t: number | null = null;
   let weighted_hook_score: number | null = null;
 
-  // Plan 04-03: select pass2Results source based on behavioralSource.
-  // "fold" → use fold-adapted Pass2PersonaResult[] (foldOutcome.pass2Results, D-12 D-11).
-  // "deepseek" / "personas" → use the existing 10-pass pass2Outcome (production default, D-09).
-  // D-11/D-12: buildWeightedCurve + assembleHeatmapPayload are NOT modified; only the input source changes.
+  // Phase 4 Plan 05: heatmap always sourced from fold (10-pass deleted).
+  // D-11/D-12: buildWeightedCurve + assembleHeatmapPayload unchanged; only input source changed.
   const heatmapPass2Results =
-    behavioralSource === "fold" && pipelineResult.foldOutcome?.fold_success
+    pipelineResult.foldOutcome?.fold_success
       ? pipelineResult.foldOutcome.pass2Results
-      : (pass2Outcome?.pass2Results ?? null);
+      : null;
 
   const heatmapAggregateBuilt =
-    behavioralSource === "fold"
-      ? (pipelineResult.foldOutcome?.fold_success && (heatmapPass2Results?.length ?? 0) > 0)
-      : (pass2Outcome?.pass2_aggregate_built ?? false);
+    pipelineResult.foldOutcome?.fold_success === true && (heatmapPass2Results?.length ?? 0) > 0;
 
   if (heatmapAggregateBuilt && heatmapPass2Results && heatmapPass2Results.length > 0 && omniSegments && omniSegments.length > 0) {
     // Resolve persona weights (default mix unless niche override exists).
