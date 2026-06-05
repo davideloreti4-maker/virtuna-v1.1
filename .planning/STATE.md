@@ -3,14 +3,13 @@ gsd_state_version: 1.0
 milestone: apollo
 milestone_name: Apollo
 status: ready_to_plan
-last_updated: 2026-06-05T14:10:07.181Z
+last_updated: "2026-06-05T14:45:49.537Z"
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 5
-  completed_plans: 18
+  completed_plans: 5
   percent: 50
-stopped_at: Phase 04 complete (5/5) — ready to discuss Phase 5
 ---
 
 # Project State
@@ -36,16 +35,17 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 | 1 | Strip to Senses | COMPLETE (2026-06-04) — 6/6 plans done |
 | 2 | Omni Verbatim | COMPLETE (2026-06-04) — 3/3 plans done; R1 proven on real run (gwxLeHphZCxK); D-02 silent deferred HUMAN-UAT |
 | 3 | Apollo Reasoner (Brain 1, the moat) | not started — blocked on Chase Hughes corpus |
-| 4 | Audience-Sim Fold (Brain 2, the bet) | COMPLETE (2026-06-05) — 5/5 plans done; fold built+wired+dormant; SHADOW (D-10) — flip deferred to P5 pending thinking_budget cut |
+| 4 | Audience-Sim Fold (Brain 2, the bet) | COMPLETE (2026-06-05) — 5/5 plans done; **10-pass DELETED** (2026-06-05 user mandate); fold is sole audience-sim path; ENGINE_VERSION 3.4.0 |
 | 5 | Wire + Surface | not started |
 
-## Decisions locked (2026-06-05, 04-05)
+## Decisions locked (2026-06-05, 04-05 FLIP-AND-DELETE)
 
-- **SHADOW (D-10): fold timed out at 90s (thinking_budget=4000) on every run** — all 4 pipeline runs (2 videos × 2 runs) hit the 90s PER_CALL_TIMEOUT_MS; `foldOutcome`=null; aggregator fell back to 10-pass data; diversity=0.000, drop=0/10. R7 CONFIRMED (fold=1 vs tenpass=20 calls on all runs). MISS 0/2.
-- **90s is the fold's LATENCY BUDGET — do NOT raise it** — the fold only earns the flip if its single call fits within the time envelope (otherwise R7 wall-clock win is lost). The fix is to lower `FOLD_THINKING_BUDGET` (4000→~1000).
-- **10-pass production default unchanged** — `useFold` default OFF; `behavioralSource` default unchanged; `runWave3Pass2` preserved (D-09, count=3); no ENGINE_VERSION bump.
-- **P5 carry-forward**: lower `FOLD_THINKING_BUDGET` in `fold.ts` → re-run `scripts/ab-fold-referee.ts` → if composite passes, execute the FLIP branch from 04-05 Task 2.
-- **04-05 COMPLETE (2026-06-05)** — referee run captured (16c, exit 0), SHADOW decision recorded, build green, wave3 tests 20/0. Commit: `1923ad77`. P4 complete.
+- **FLIP EXECUTED (user mandate, supersedes D-09/D-10)** — 10-pass (runWave3Pass2 + runWave3 Pass-1 loop) DELETED; fold (runFold) is the sole audience-sim path; no fallback to persona loops; no ENGINE_USE_FOLD flag.
+- **FOLD_THINKING_BUDGET 4000→1000** — A/B validated: budget=1000 returned in 89.9s (just under 90s ceiling) with diverse curves. Margin thin — do NOT raise timeout; trim FOLD_MAX_TOKENS for headroom if needed.
+- **ENGINE_VERSION 3.4.0** — cache invalidation required for pre-fold era rows; bumped from 3.3.0.
+- **behavioralSource default: "fold"** — deepseek fallback kept for fold failures and eval harness back-compat; "personas" option removed.
+- **FLIP commit: `2a96e1b7`** — build green, 939 tests pass, grep confirms zero live runWave3Pass2 references.
+- **SHADOW (D-10 original)** — 04-05 referee run captured (16c, MISS 0/2 due to timeout artifact). See 04-05-SUMMARY.md §Referee Run for details.
 
 ## Decisions locked (2026-06-05, 04-04)
 

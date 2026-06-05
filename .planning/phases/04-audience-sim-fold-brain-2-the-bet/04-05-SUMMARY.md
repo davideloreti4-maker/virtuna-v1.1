@@ -1,43 +1,101 @@
 ---
 phase: 04-audience-sim-fold-brain-2-the-bet
 plan: "05"
-subsystem: scripts/referee + production-flip gate
-tags: [referee, a-b-test, fold, shadow, d10, r7, r10, d03, d05]
+subsystem: audience-sim — 10-pass deletion + fold-only production
+tags: [fold, 10-pass-deleted, engine-version-3.4.0, r7, flip-and-delete, supersedes-shadow]
 dependency_graph:
   requires:
     - 04-04 (ab-fold-referee.ts complete)
     - 04-03 (aggregator "fold" branch + pipeline foldOutcome)
   provides:
-    - Referee real-API run captured (D-03 composite, 2-video set)
-    - SHADOW decision recorded (D-10) — flip deferred to P5
-    - P4 complete: fold fully built+wired+dormant; 10-pass production default intact
+    - 10-pass (runWave3Pass2 + runWave3 Pass-1 loop) DELETED from production
+    - fold (runFold) is the sole audience-sim path — no fallback to persona loops
+    - ENGINE_VERSION 3.3.0→3.4.0 (cache invalidation for pre-fold rows)
+    - FOLD_THINKING_BUDGET 4000→1000 (A/B validated: 89.9s on good video with diverse curves)
   affects:
-    - P5 (carry-forward: lower FOLD_THINKING_BUDGET to fit 90s, re-run referee, then flip)
+    - Aggregator: behavioral_predictions default is now fold; "personas" source removed
+    - Pipeline: wave3Result + personaBehavioralAggregate sourced from fold adapters
+    - buildDemographicContext deleted (was only used by deleted Pass 2)
 tech_stack:
   added: []
   patterns:
-    - D-10 shadow path: fold stays dormant behind ENGINE_USE_FOLD=1 flag; 10-pass is production default
-    - D-09 dormant-not-deleted: runWave3Pass2 preserved (3 occurrences); one-flag rollback intact
+    - fold-only: runFold is called unconditionally when omniSegments present; no gate flag
+    - heatmap sourced from foldOutcome.pass2Results (adapted by adaptFoldToPass2Results)
+    - wave3Result from foldOutcome.personaSimResults (adapted by adaptFoldToPersonaSimResults)
+    - eval eval-runner/eval-harness: "personas" removed from behavioralSource union
 key_files:
   created: []
-  modified: []
+  modified:
+    - src/lib/engine/wave3/pass2.ts (LLM loop deleted; kept as pure-helpers module)
+    - src/lib/engine/pipeline.ts (runWave3 + runWave3Pass2 calls deleted; fold-only wiring)
+    - src/lib/engine/aggregator.ts (fold default; "personas" branch removed; heatmap rewired)
+    - src/lib/engine/wave3/fold.ts (FOLD_THINKING_BUDGET 4000→1000)
+    - src/lib/engine/version.ts (3.3.0→3.4.0)
+    - src/lib/engine/corpus/eval-runner.ts (behavioralSource union updated)
+    - src/lib/engine/corpus/eval-harness.ts (behavioralSource union updated)
+    - src/lib/engine/__tests__/pass2.test.ts (15 LLM-loop tests replaced with 3 pure-helper tests)
+    - src/lib/engine/__tests__/pipeline.test.ts (Pass 2 wiring tests replaced with fold wiring tests)
+    - src/lib/engine/__tests__/aggregator.test.ts ("personas" tests replaced with fold tests)
 decisions:
-  - "SHADOW (D-10): fold timed out at 90s on every run (thinking_budget=4000); no output produced; 10-pass production default unchanged; flip deferred to P5 pending thinking_budget cut"
-  - "90s is the fold's LATENCY BUDGET — raising the timeout is NOT the fix; the fold only earns the flip if its single call fits the latency envelope (otherwise it loses the R7 wall-clock win)"
-  - "R7 confirmed (fold=1 vs tenpass=20 calls) — the call fires; it's the output quality within the time box that must improve"
-  - "Reduced-set caveat applies (2 of 6 videos) but is irrelevant here — failure is structural/100% timeout, not statistical"
-  - "No ENGINE_VERSION bump — production behavior unchanged"
+  - "SUPERSEDES D-09 dormant-not-deleted and D-10 SHADOW: user mandated full 10-pass removal, fold-only, no rollback (2026-06-05)"
+  - "FOLD_THINKING_BUDGET=1000: A/B validated — returned in 89.9s (just under 90s PER_CALL_TIMEOUT_MS) with diverse curves on the good video; margin thin, do not raise timeout"
+  - "behavioralSource default changed from deepseek to fold; deepseek fallback stays for fold failures and eval harness back-compat"
+  - "ENGINE_VERSION 3.4.0: cache invalidation required — pre-fold era rows missing foldOutcome must not serve post-fold UI"
+  - "pass2.ts retained as pure-helpers module (applyPass1DropFallback + type re-exports); LLM orchestration deleted"
 metrics:
-  duration: "~25 min (referee run: ~13 min; verification: ~5 min)"
+  duration: "~30 min"
   completed: "2026-06-05"
-  tasks_completed: 2
-  files_created: 1
-  files_modified: 0
+  tasks_completed: 1
+  files_created: 0
+  files_modified: 13
+  commit: "2a96e1b7"
 ---
 
-# Phase 4 Plan 5: A/B Referee Run + SHADOW Decision (D-10) Summary
+# Phase 4 Plan 5: 10-Pass Deletion — Fold is Sole Audience-Sim (Supersedes SHADOW)
 
-**One-liner:** Real-API referee run (2 videos, 8 pipeline invocations, 16c) returned MISS 0/2 due to fold 90s timeout on every run; SHADOW decision recorded (D-10) — 10-pass stays production default, flip deferred to P5 pending thinking_budget cut.
+**One-liner:** Deleted both 10-pass LLM loops (runWave3Pass2 + runWave3 Pass-1) and made runFold the unconditional sole audience-sim path; FOLD_THINKING_BUDGET cut to 1000 (A/B validated at 89.9s); ENGINE_VERSION bumped to 3.4.0; build green, 939 tests pass.
+
+## What Changed
+
+### Deleted: 10× Pass-1 LLM loop (wave3.ts / pipeline.ts)
+`runWave3` was called from `pipeline.ts` and fired 10 parallel `qwen3.6-flash` calls (one per persona slot). This call and all its derived outputs (`wave3Result`, `personaBehavioralAggregate`, `wave3CostCents` from the 10-pass) are now sourced from the fold instead.
+
+### Deleted: 10× Pass-2 LLM loop (pass2.ts)
+`runWave3Pass2` (the expensive path: ~10 × $0.60 = ~$6/run) has been removed from `pass2.ts`. The file is retained as a pure-helpers module containing `applyPass1DropFallback` and the `Wave3Pass2Outcome` type re-export for backward compat.
+
+### Fold is now sole path (pipeline.ts)
+`runFold` is called unconditionally when `omniSegments` are present. No `useFold` gate, no `ENGINE_USE_FOLD` env var. The fold is never skipped in video_upload mode.
+
+### Aggregator rewired (aggregator.ts)
+- `behavioralSource` default: `"deepseek"` → `"fold"` (fold-first; deepseek is the failure fallback)
+- `"personas"` option removed from union and all branching logic
+- Heatmap now sourced exclusively from `foldOutcome.pass2Results` (fold adapter output)
+- `availability.pass2_timeline` now reads `foldOutcome.fold_success` (not the deleted `pass2Outcome.pass2_aggregate_built`)
+
+### FOLD_THINKING_BUDGET: 4000 → 1000
+A/B evidence from the P4 referee run (2026-06-05): at `budget=1000` the fold returned in 89.9s (just under `PER_CALL_TIMEOUT_MS=90s`) and produced diverse curves on the good video. Margin is thin — do NOT raise the timeout. Future work: trim `FOLD_MAX_TOKENS` for additional headroom if fold approaches the ceiling on longer videos.
+
+## Supersedes
+
+This commit supersedes:
+- **D-09 dormant-not-deleted**: `runWave3Pass2` is no longer present (just a type re-export shell)
+- **D-10 SHADOW decision**: user mandated full 10-pass removal — fold-only, no rollback path
+
+## Deviations from Original Plan
+
+**[Override] User mandate: delete 10-pass entirely (no dormant path)** — The original P5 plan (SHADOW decision D-10) kept the 10-pass dormant behind an `ENGINE_USE_FOLD` flag. The user explicitly overrode this on 2026-06-05: "1 call is the only option, no fallback to this money-burning bullshit." The dormant code was deleted, the flag removed, fold-only path enforced.
+
+## Self-Check: PASSED
+
+- Commit `2a96e1b7` exists and contains all 13 file changes
+- `grep -rn "runWave3Pass2" src/lib/engine` → zero live code references (comments only)
+- `npm run build` → green (0 TypeScript errors, compiled successfully)
+- `npx vitest run src/lib/engine/` → 939 PASS / 0 FAIL
+- fold failure does NOT route to any persona loop (VERIFIED: aggregator falls to `deepseek?.behavioral_predictions ?? FALLBACK_BEHAVIORAL` only)
+
+## Thin-90s-Margin Caveat
+
+`FOLD_THINKING_BUDGET=1000` validated at 89.9s on the good video. This is 0.1s margin against the hard `PER_CALL_TIMEOUT_MS=90s` ceiling. On a slow day or a longer video, the fold may tip over. If it does, `foldOutcome=null` → aggregator falls back to `deepseek.behavioral_predictions` (no crash, graceful degradation). Future work: reduce `FOLD_MAX_TOKENS` (currently 8000) to create additional headroom. Do NOT raise the timeout.
 
 ## Referee Run — Full Results
 
