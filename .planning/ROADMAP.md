@@ -94,11 +94,11 @@ Plans:
 **Success:** R2, R5, R12. Rewrites quote the real line; decode/adapt share the core.
 **Risk:** medium — corpus distillation is the unknown; code skeletons (deepseek + decode/adapt) already exist.
 **Note (supersede):** D-10 (CONTEXT) supersedes the "rewrites MAY use temp>0" line above — P3 uses a SINGLE deterministic call (temp0+seed) for score + critique + rewrites.
-**Plans:** 4 plans (3 waves)
+**Plans:** 1/4 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 03-01-PLAN.md — D-02 number port into core §2.0a + byte-stable apollo-core.ts constant + Wave 0 test scaffolds (R2/R5/R12)
+- [x] 03-01-PLAN.md — D-02 number port into core §2.0a + byte-stable apollo-core.ts constant + Wave 0 test scaffolds (R2/R5/R12)
 
 **Wave 2** *(blocked on Wave 1)*
 

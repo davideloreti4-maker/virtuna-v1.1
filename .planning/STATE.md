@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: apollo
 milestone_name: Apollo
 status: ready_to_plan
-last_updated: "2026-06-05T09:46:07.268Z"
+last_updated: "2026-06-05T10:03:52.053Z"
 progress:
   total_phases: 5
   completed_phases: 2
@@ -20,7 +20,8 @@ See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Cut-l
 
 ## Current Position
 
-Phase: 3
+Phase: 03 (apollo-reasoner-brain-1-the-moat-shared-knowledge-core) — EXECUTING
+Plan: 1 of 4
 Phase: 03 (Apollo Reasoner) — NOT STARTED (blocked on corpus v1)
 Last completed plan: 02-03
 **Milestone worktree** `~/virtuna-engine-opt/` on `milestone/engine-opt`. Milestone **Apollo** — turn the ~25-call score machine into a 3-call knowledge-grounded expert (Omni → Audience-Sim → Apollo Reasoner).
