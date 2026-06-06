@@ -30,16 +30,15 @@ vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }));
 
-// usePermalinkAnalysis returns null by default; per-test overrides via the mock
+// Mutable mock state — closed over by the factory functions below.
+// Tests mutate these before each render; mocks capture by closure at call time.
 let mockPermalinkData: Record<string, unknown> | null = null;
+let mockStreamResult: Record<string, unknown> | null = null;
+let mockPanelReady: Record<string, string> = {};
 
 vi.mock('@/hooks/queries/use-permalink-analysis', () => ({
   usePermalinkAnalysis: () => ({ data: mockPermalinkData }),
 }));
-
-// useAnalysisStream result that tests can override
-let mockStreamResult: Record<string, unknown> | null = null;
-let mockPanelReady: Record<string, string> = {};
 
 vi.mock('@/hooks/queries/use-analysis-stream', () => ({
   useAnalysisStream: () => ({
@@ -109,33 +108,32 @@ const PERMALINK_RESULT = {
   heatmap: HEATMAP,
 };
 
+// Static import — resolved once at module load time (mocks already hoisted by vi.mock).
+import { InsightHeroFrame } from '../InsightHeroFrame';
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function setup(result: Record<string, unknown> | null = LIVE_RESULT) {
   mockStreamResult = result;
   mockPanelReady = { insight_hero: 'ready' };
   mockPermalinkData = null;
-  const { InsightHeroFrame } = require('../InsightHeroFrame');
   const camera = { x: 0, y: 0, scale: 1 };
-  const layout = { id: 'insight-hero', label: 'Insight', bounds: { x: 0, y: 0, width: 800, height: 600 } };
-  return render(<InsightHeroFrame camera={camera} layout={layout} />);
+  const layout = { id: 'insight-hero' as const, label: 'Insight', bounds: { x: 0, y: 0, width: 800, height: 600 } };
+  return render(<InsightHeroFrame camera={camera} layout={layout as never} />);
 }
 
 function setupPermalink() {
-  // Permalink: stream result omits apollo at top level; variants.apollo has it.
   mockStreamResult = PERMALINK_RESULT;
   mockPanelReady = { insight_hero: 'ready' };
   mockPermalinkData = PERMALINK_RESULT;
-  const { InsightHeroFrame } = require('../InsightHeroFrame');
   const camera = { x: 0, y: 0, scale: 1 };
-  const layout = { id: 'insight-hero', label: 'Insight', bounds: { x: 0, y: 0, width: 800, height: 600 } };
-  return render(<InsightHeroFrame camera={camera} layout={layout} />);
+  const layout = { id: 'insight-hero' as const, label: 'Insight', bounds: { x: 0, y: 0, width: 800, height: 600 } };
+  return render(<InsightHeroFrame camera={camera} layout={layout as never} />);
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
-  vi.resetModules();
   mockStreamResult = null;
   mockPermalinkData = null;
   mockPanelReady = {};
