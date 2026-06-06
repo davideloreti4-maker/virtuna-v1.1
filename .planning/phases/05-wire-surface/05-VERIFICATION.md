@@ -1,9 +1,11 @@
 ---
 phase: 05-wire-surface
 verified: 2026-06-06T20:32:00Z
-status: human_needed
+status: pass
+human_verified: 2026-06-06T19:48:00Z
 score: 17/17 must-haves verified
 overrides_applied: 0
+human_verification_resolution: "All 5 human items exercised + PASS — see 05-HUMAN-UAT.md (status: complete, 5/5 PASS). Live: E2E 62.4s (≤90s, clean run); determinism band-stable; DB persist + permalink dual-read confirmed (analysis H4EwvOGMV0iu); R11 range NOW surfaced on the board + persisted (item #4's 'results-panel live-only' expectation SUPERSEDED by the surface+persist work, commit 22ccddff); D-08 + IN-02 hierarchy correct (hero leads with ceiling_capper)."
 human_verification:
   - test: "Run scripts/measure-pipeline.ts (or /analyze) on a real video; assert total E2E ≤90s with fold ∥ Apollo unchanged, omni ~17s first paint"
     expected: "Total ≤90s; no latency regression from the wire+surface work (no new LLM call added in P5)"
@@ -25,9 +27,9 @@ human_verification:
 # Phase 5: Wire + Surface Verification Report
 
 **Phase Goal:** Connect the three calls and surface the insight — finalize the score via D-01 rubric-sum (band→fixed-anchor deterministic composite); build the grounded engagement estimate (R11); build the insight-hero board frame (dual-read apollo_reasoning, struck-through/copyable rewrites, 6 scored dimensions, demoted D-02 band, D-07 heatmap drop-point join at surface-time, D-03 progressive reveal); strip the dead fake-engagement UI. Full Apollo flow on the board.
-**Verified:** 2026-06-06T20:32:00Z
-**Status:** human_needed
-**Re-verification:** No — initial verification
+**Verified:** 2026-06-06T20:32:00Z (code) · 2026-06-06T19:48Z (human items)
+**Status:** pass — 17/17 code must-haves + all 5 human items PASS (see 05-HUMAN-UAT.md, status: complete)
+**Re-verification:** Human items resolved this session; R11 item #4 superseded by board surface+persist (22ccddff)
 
 ## Goal Achievement
 
