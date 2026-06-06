@@ -146,7 +146,7 @@ Plans:
 **Success:** R4, R5, R7, R11, R6 (final E2E). Full Apollo flow on the board.
 **Risk:** medium — UI surface area (insight-hero is net-new, nothing reads apollo_reasoning today); coordinate with the upcoming UI/UX milestone.
 **Note (2026-06-06):** the P4 fold-flip carry-forward (lower budget → flip) is already DONE in code — not P5 work. D-04 (<45s) is DROPPED — no latency work. D-07 keeps fold ∥ Apollo PARALLEL (R4 is satisfied at the board layer). R12 is out of P5 build scope (Remix re-grounded in P3; verify untouched).
-**Plans:** 1/4 plans executed
+**Plans:** 3/4 plans executed
 Plans:
 **Wave 1**
 
@@ -154,8 +154,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 05-02-PLAN.md — R11 grounded engagement estimate: EngagementRange type + computeEngagementRange (follower_count × quality read, tier-sensitive range, null when no baseline) wired at the aggregator assembly site (R11, D-05/D-06)
-- [ ] 05-03-PLAN.md — Insight-hero frame (net-new): dual-read apollo_reasoning, struck-through/copyable rewrites, 6 scored dimensions, D-07 heatmap drop-point join, demoted D-02 band, insight_hero panel + board-layout mount (D-03/D-08, R4)
+- [x] 05-02-PLAN.md — R11 grounded engagement estimate: EngagementRange type + computeEngagementRange (follower_count × quality read, tier-sensitive range, null when no baseline) wired at the aggregator assembly site (R11, D-05/D-06)
+- [x] 05-03-PLAN.md — Insight-hero frame (net-new): dual-read apollo_reasoning, struck-through/copyable rewrites, 6 scored dimensions, D-07 heatmap drop-point join, demoted D-02 band, insight_hero panel + board-layout mount (D-03/D-08, R4)
 
 **Wave 3** *(blocked on Wave 2)*
 
