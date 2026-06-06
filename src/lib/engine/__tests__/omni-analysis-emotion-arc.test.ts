@@ -162,6 +162,50 @@ describe("emotion_arc — schema validation", () => {
 });
 
 // =====================================================
+// label drift guard — qwen3.5-omni-flash returns synonyms instead of the strict
+// low|mid|high enum. Before this guard a single drifted label failed the WHOLE
+// ~17s Omni response → full retry (~50% on a sample, 05-HUMAN-UAT #1). label is
+// optional + non-critical, so it must degrade (normalize or drop), never throw.
+// =====================================================
+describe("emotion_arc — label drift guard", () => {
+  it("normalizes known synonyms to the enum (medium→mid, peak→high, calm→low)", () => {
+    expect(EmotionArcPointSchema.parse({ timestamp_ms: 0, intensity_0_1: 0.5, label: "medium" }).label).toBe("mid");
+    expect(EmotionArcPointSchema.parse({ timestamp_ms: 0, intensity_0_1: 0.5, label: "peak" }).label).toBe("high");
+    expect(EmotionArcPointSchema.parse({ timestamp_ms: 0, intensity_0_1: 0.5, label: "calm" }).label).toBe("low");
+  });
+
+  it("normalizes case + whitespace ('  HIGH ' → high)", () => {
+    expect(EmotionArcPointSchema.parse({ timestamp_ms: 0, intensity_0_1: 0.5, label: "  HIGH " }).label).toBe("high");
+  });
+
+  it("drops an unknown label to undefined instead of throwing (no retry trigger)", () => {
+    const p = EmotionArcPointSchema.parse({ timestamp_ms: 0, intensity_0_1: 0.5, label: "ecstatic" });
+    expect(p.label).toBeUndefined();
+    expect(p.intensity_0_1).toBe(0.5); // rest of the point survives
+  });
+
+  it("a drifted label does NOT fail the parent OmniAnalysisZodSchema (the ~17s-response guarantee)", () => {
+    const driftedArc = {
+      emotion_arc: [
+        { timestamp_ms: 0, intensity_0_1: 0.3, label: "rising" },     // synonym → mid
+        { timestamp_ms: 5000, intensity_0_1: 0.8, label: "berserk" }, // unknown → dropped
+      ],
+    };
+    expect(() => OmniAnalysisZodSchema.partial().parse(driftedArc)).not.toThrow();
+    const parsed = OmniAnalysisZodSchema.partial().parse(driftedArc);
+    expect(parsed.emotion_arc?.[0]?.label).toBe("mid");
+    expect(parsed.emotion_arc?.[1]?.label).toBeUndefined();
+    expect(parsed.emotion_arc?.[1]?.intensity_0_1).toBe(0.8);
+  });
+
+  it("still rejects a structurally-invalid point (intensity > 1) — guard is label-only", () => {
+    expect(() =>
+      EmotionArcPointSchema.parse({ timestamp_ms: 0, intensity_0_1: 1.5, label: "medium" }),
+    ).toThrow();
+  });
+});
+
+// =====================================================
 // Regression: emotion_arc must survive analyzeVideoWithOmni's assembly.
 // The schema parsed it and the prompt asked for it, but the assembled
 // OmniAnalysisOutput dropped emotion_arc → 26/26 persisted rows null in prod.
