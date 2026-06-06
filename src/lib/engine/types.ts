@@ -236,12 +236,34 @@ export type ConfidenceLevel = "HIGH" | "MEDIUM" | "LOW";
 // Predicted Engagement — TikTok-style engagement metrics
 // =====================================================
 
+/** @deprecated Point-shape fabrication replaced by EngagementRange (R11, Plan 05-02). Kept for back-compat with pre-R11 consumers. */
 export interface PredictedEngagement {
   likes: number;
   comments: number;
   shares: number;
   saves: number;
   views: number;
+}
+
+// =====================================================
+// Engagement Range — R11 grounded estimate (Plan 05-02)
+// =====================================================
+
+/**
+ * R11 grounded engagement estimate expressed as a range rather than a false-precise point.
+ * Anchored to the creator's real follower_count × Apollo+fold quality read (overall_score).
+ * Virality is fat-tailed — the range widens when quality/confidence is low.
+ * null when follower_count is absent (no creator baseline exists — honesty over fabrication, R9).
+ */
+export interface EngagementRange {
+  /** Lower bound of expected view reach (≥ 0, rounded). */
+  lo: number;
+  /** Upper bound of expected view reach (> lo, rounded). */
+  hi: number;
+  /** Confidence in the estimate: 0–1. Wider range when confidence is lower. */
+  confidence: number;
+  /** Short human-readable label describing the anchor source. */
+  basis: string;
 }
 
 // =====================================================
@@ -260,9 +282,10 @@ export interface PredictionResult {
   reasoning: string; // DeepSeek's reasoning text
   warnings: string[]; // Fatal flaw warnings from DeepSeek Step 4
 
-  // Predicted engagement metrics (RES-2)
-  // Plan 02 D1.1: field is null after sine-jitter fabrication deleted; type nullable per D1.3 (UI shell kept).
-  predicted_engagement: PredictedEngagement | null;
+  // Predicted engagement metrics (R11 — grounded range, Plan 05-02).
+  // EngagementRange: lo/hi/confidence/basis anchored to follower_count × quality read.
+  // null when no creator baseline exists (honesty, R9) or on permalink reload (live-only this phase).
+  predicted_engagement: EngagementRange | null;
 
   // Factors and suggestions (from Gemini + DeepSeek)
   factors: Factor[];

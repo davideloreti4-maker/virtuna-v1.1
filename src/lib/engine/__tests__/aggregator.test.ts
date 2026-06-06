@@ -125,7 +125,7 @@ vi.mock("../anti-virality", async (importOriginal) => {
 // Imports (after mocks)
 // =====================================================
 
-import { selectWeights, aggregateScores } from "../aggregator";
+import { selectWeights, aggregateScores, computeEngagementRange } from "../aggregator";
 import { makePipelineResult, makeGeminiAnalysis, makeDeepSeekReasoning } from "./factories";
 // predictWithML import removed (Plan 02, R9): ml call gone from aggregator; no coupling to ../ml here.
 import type { PersonaBehavioralAggregate, PersonaSimulationResult, SegmentGrid, HookDecomposition } from "../types";
@@ -1284,5 +1284,131 @@ describe("Phase 5 Plan 01 — D-01 threading: dimensions[].score survives aggreg
     const firstDim = dims?.[0];
     expect(typeof (firstDim as { score?: unknown })?.score).toBe("number");
     expect(Number.isFinite((firstDim as { score?: unknown })?.score as number)).toBe(true);
+  });
+});
+
+// =====================================================
+// Phase 5 Plan 02 — R11 computeEngagementRange (Wave 0 RED)
+// =====================================================
+// Tests reference the not-yet-written computeEngagementRange — ALL MUST FAIL (RED).
+// GREEN after Task 2 implements the function.
+// Spec: follower_count × quality read (overall_score) → EngagementRange | null
+// =====================================================
+
+describe("Phase 5 Plan 02 — R11 computeEngagementRange: tier sensitivity + range honesty", () => {
+  // R11 verify: two creators of materially different follower tiers get materially different
+  // ranges for the same overall_score.
+  it("high follower_count (500k) produces a materially higher range than low (5k) at same score", () => {
+    const highTierCtx = {
+      found: true,
+      follower_count: 500_000,
+      avg_views: null,
+      engagement_rate: null,
+      niche: null,
+      posting_frequency: null,
+      platform_averages: { avg_views: 50000, avg_engagement_rate: 0.06, avg_share_rate: 0.008, avg_comment_rate: 0.005 },
+      target_platforms: null, niche_primary: null, niche_sub: null, target_audience: null,
+      primary_goal: null, creator_stage: null, content_style: null, cuts_per_second: null,
+      reference_creators: null, past_wins: null, past_flops: null, time_of_day_aware: null, pain_points: null,
+    };
+    const lowTierCtx = {
+      ...highTierCtx,
+      follower_count: 5_000,
+    };
+    const overall_score = 70;
+
+    const highRange = computeEngagementRange(highTierCtx, overall_score);
+    const lowRange = computeEngagementRange(lowTierCtx, overall_score);
+
+    expect(highRange).not.toBeNull();
+    expect(lowRange).not.toBeNull();
+    // Both tiers non-null (both have follower_count)
+    // High tier hi must be materially larger than low tier hi (>5× difference for 100× follower gap)
+    expect(highRange!.hi).toBeGreaterThan(lowRange!.hi * 5);
+  });
+
+  // D-06: output is a RANGE — lo < hi strictly; never a single point.
+  it("returns lo < hi strictly (range, not a point)", () => {
+    const ctx = {
+      found: true,
+      follower_count: 50_000,
+      avg_views: null,
+      engagement_rate: null,
+      niche: null,
+      posting_frequency: null,
+      platform_averages: { avg_views: 50000, avg_engagement_rate: 0.06, avg_share_rate: 0.008, avg_comment_rate: 0.005 },
+      target_platforms: null, niche_primary: null, niche_sub: null, target_audience: null,
+      primary_goal: null, creator_stage: null, content_style: null, cuts_per_second: null,
+      reference_creators: null, past_wins: null, past_flops: null, time_of_day_aware: null, pain_points: null,
+    };
+    const range = computeEngagementRange(ctx, 65);
+    expect(range).not.toBeNull();
+    expect(range!.lo).toBeLessThan(range!.hi);
+  });
+
+  // Quality multiplier: higher overall_score shifts the range upward for the same follower tier.
+  it("higher overall_score shifts range upward (quality multiplies the anchor)", () => {
+    const ctx = {
+      found: true,
+      follower_count: 100_000,
+      avg_views: null,
+      engagement_rate: null,
+      niche: null,
+      posting_frequency: null,
+      platform_averages: { avg_views: 50000, avg_engagement_rate: 0.06, avg_share_rate: 0.008, avg_comment_rate: 0.005 },
+      target_platforms: null, niche_primary: null, niche_sub: null, target_audience: null,
+      primary_goal: null, creator_stage: null, content_style: null, cuts_per_second: null,
+      reference_creators: null, past_wins: null, past_flops: null, time_of_day_aware: null, pain_points: null,
+    };
+    const lowScoreRange = computeEngagementRange(ctx, 20);
+    const highScoreRange = computeEngagementRange(ctx, 90);
+
+    expect(lowScoreRange).not.toBeNull();
+    expect(highScoreRange).not.toBeNull();
+    // High quality → higher expected reach
+    expect(highScoreRange!.hi).toBeGreaterThan(lowScoreRange!.hi);
+  });
+
+  // Fat-tailed honesty: lower overall_score widens the range (more uncertainty at low quality).
+  it("low overall_score produces a wider range (fat-tailed — uncertainty widens band)", () => {
+    const ctx = {
+      found: true,
+      follower_count: 100_000,
+      avg_views: null,
+      engagement_rate: null,
+      niche: null,
+      posting_frequency: null,
+      platform_averages: { avg_views: 50000, avg_engagement_rate: 0.06, avg_share_rate: 0.008, avg_comment_rate: 0.005 },
+      target_platforms: null, niche_primary: null, niche_sub: null, target_audience: null,
+      primary_goal: null, creator_stage: null, content_style: null, cuts_per_second: null,
+      reference_creators: null, past_wins: null, past_flops: null, time_of_day_aware: null, pain_points: null,
+    };
+    const lowQuality = computeEngagementRange(ctx, 15);
+    const highQuality = computeEngagementRange(ctx, 90);
+
+    expect(lowQuality).not.toBeNull();
+    expect(highQuality).not.toBeNull();
+    const lowWidth = lowQuality!.hi - lowQuality!.lo;
+    const highWidth = highQuality!.hi - highQuality!.lo;
+    // Lower quality = wider band (more uncertainty)
+    expect(lowWidth).toBeGreaterThan(highWidth);
+  });
+
+  // Null honesty (R9): follower_count == null → return null (no fabricated number).
+  it("returns null when creatorContext.follower_count is null (R9 honesty)", () => {
+    const ctxNoFollowers = {
+      found: false,
+      follower_count: null,
+      avg_views: null,
+      engagement_rate: null,
+      niche: null,
+      posting_frequency: null,
+      platform_averages: { avg_views: 50000, avg_engagement_rate: 0.06, avg_share_rate: 0.008, avg_comment_rate: 0.005 },
+      target_platforms: null, niche_primary: null, niche_sub: null, target_audience: null,
+      primary_goal: null, creator_stage: null, content_style: null, cuts_per_second: null,
+      reference_creators: null, past_wins: null, past_flops: null, time_of_day_aware: null, pain_points: null,
+    };
+    const result = computeEngagementRange(ctxNoFollowers, 70);
+    expect(result).toBeNull();
   });
 });
