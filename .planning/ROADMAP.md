@@ -146,7 +146,7 @@ Plans:
 **Success:** R4, R5, R7, R11, R6 (final E2E). Full Apollo flow on the board.
 **Risk:** medium — UI surface area (insight-hero is net-new, nothing reads apollo_reasoning today); coordinate with the upcoming UI/UX milestone.
 **Note (2026-06-06):** the P4 fold-flip carry-forward (lower budget → flip) is already DONE in code — not P5 work. D-04 (<45s) is DROPPED — no latency work. D-07 keeps fold ∥ Apollo PARALLEL (R4 is satisfied at the board layer). R12 is out of P5 build scope (Remix re-grounded in P3; verify untouched).
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 Plans:
 **Wave 1**
 
@@ -159,7 +159,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 05-04-PLAN.md — Strip dead fake-engagement UI (TikTokResultCard) + surface the grounded R11 range (EngagementRangeCard, null-gated) + update the predicted-engagement null test for the range shape (D-08, R11)
+- [x] 05-04-PLAN.md — Strip dead fake-engagement UI (TikTokResultCard) + surface the grounded R11 range (EngagementRangeCard, null-gated) + update the predicted-engagement null test for the range shape (D-08, R11)
 
 ---
 
