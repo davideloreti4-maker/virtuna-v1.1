@@ -146,11 +146,11 @@ Plans:
 **Success:** R4, R5, R7, R11, R6 (final E2E). Full Apollo flow on the board.
 **Risk:** medium — UI surface area (insight-hero is net-new, nothing reads apollo_reasoning today); coordinate with the upcoming UI/UX milestone.
 **Note (2026-06-06):** the P4 fold-flip carry-forward (lower budget → flip) is already DONE in code — not P5 work. D-04 (<45s) is DROPPED — no latency work. D-07 keeps fold ∥ Apollo PARALLEL (R4 is satisfied at the board layer). R12 is out of P5 build scope (Remix re-grounded in P3; verify untouched).
-**Plans:** 4 plans complete
+**Plans:** 1/4 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 05-01-PLAN.md — D-01 rubric-sum engine contract: bounded dimension `score` + deterministic hook-weighted composite sum (deepseek post-parse) + invert corpus §4 + ENGINE_VERSION bump + Wave 0 determinism/sum/threading scaffolds (R5, R7, R8)
+- [x] 05-01-PLAN.md — D-01 rubric-sum engine contract: bounded dimension `score` + deterministic hook-weighted composite sum (deepseek post-parse) + invert corpus §4 + ENGINE_VERSION bump + Wave 0 determinism/sum/threading scaffolds (R5, R7, R8)
 
 **Wave 2** *(blocked on Wave 1)*
 
