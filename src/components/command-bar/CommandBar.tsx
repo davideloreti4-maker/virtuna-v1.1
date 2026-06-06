@@ -143,7 +143,7 @@ export function CommandBar({ onContentSubmit, completedAnalysisId, analysisRow }
   return (
     <div
       ref={containerRef}
-      className="group fixed bottom-4 left-1/2 z-[200] -translate-x-1/2 flex flex-col items-center gap-1.5"
+      className="group fixed bottom-4 left-1/2 z-[200] -translate-x-1/2 flex flex-col items-center gap-1.5 max-sm:bottom-0 max-sm:left-0 max-sm:right-0 max-sm:translate-x-0"
       style={{ width: 'min(720px, calc(100vw - 32px))' }}
     >
       {/* Grabber chevron — shown only at rest (no conversation) or when collapsed.
@@ -175,7 +175,7 @@ export function CommandBar({ onContentSubmit, completedAnalysisId, analysisRow }
           {isPostAnalysis ? (
             /* ── Unified expert chat panel ──────────────────────────────────── */
             <div
-              className="w-full flex flex-col rounded-xl border border-white/[0.06] overflow-hidden"
+              className="w-full flex flex-col rounded-xl border border-white/[0.06] overflow-hidden max-sm:rounded-none max-sm:w-screen max-sm:h-dvh"
               style={{
                 background:
                   'linear-gradient(137deg, rgba(17,18,20,0.92) 4.87%, rgba(12,13,15,0.97) 75.88%)',
@@ -183,8 +183,6 @@ export function CommandBar({ onContentSubmit, completedAnalysisId, analysisRow }
                 WebkitBackdropFilter: 'blur(5px)',
                 boxShadow:
                   'rgba(255,255,255,0.15) 0 1px 1px 0 inset, 0 4px 24px rgba(0,0,0,0.4)',
-                // Desktop: max ~60vh; Mobile: full-height (NOT overridden on mobile)
-                maxHeight: panelExpanded ? undefined : undefined,
               }}
             >
               {/* ── Sticky header — only when conversation exists ────────── */}
@@ -231,15 +229,11 @@ export function CommandBar({ onContentSubmit, completedAnalysisId, analysisRow }
               {/* ── Scrollable thread ───────────────────────────────────────── */}
               {panelExpanded && (
                 <div
-                  className={cn(
-                    // Desktop: cap at ~55vh; Mobile: unconstrained (no maxHeight override)
-                    'sm:max-h-[55vh]',
-                  )}
-                  style={{
-                    // Gate inline maxHeight to desktop only — fixes mobile full-height bug
-                    // (mobile overrides this via max-sm:max-h-none which was being blocked)
-                  }}
+                  className="overflow-hidden sm:max-h-[55vh] max-sm:flex-1"
                 >
+                  {/* Mobile full-height fix: sm:max-h-[55vh] only applies ≥640px.
+                      On mobile, the wrapper is flex-1 so the panel fills the screen.
+                      NO inline maxHeight here (that was the v1 bug — it overrode CSS). */}
                   <ExpertChatThread
                     messages={chat.messages}
                     streamingText={chat.streamingText}
