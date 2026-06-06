@@ -37,6 +37,7 @@ import { AudienceNode } from './audience/AudienceNode';
 import { VerdictNode } from './verdict/VerdictNode';
 import { ActionsNode } from './actions/ActionsNode';
 import { ContentAnalysisFrame } from './content-analysis/ContentAnalysisFrame';
+import { InsightHeroFrame } from './InsightHeroFrame';
 import { InputResultCard } from './InputResultCard';
 import { DecodeShellNode } from './decode/DecodeShellNode';
 import { AdaptShellNode } from './adapt/AdaptShellNode';
@@ -514,6 +515,7 @@ export function Board() {
             {layout.id === 'verdict' && <VerdictNode camera={camera} layout={layout} />}
             {layout.id === 'actions' && <ActionsNode camera={camera} layout={layout} />}
             {layout.id === 'content-analysis' && <ContentAnalysisFrame camera={camera} layout={layout} />}
+            {layout.id === 'insight-hero' && <InsightHeroFrame camera={camera} layout={layout} />}
             {layout.id === 'decode' && (
               <FrameErrorBoundary frameLabel="Decode">
                 <DecodeShellNode />

@@ -42,6 +42,10 @@ export const GROUP_FRAMES: GroupFrameLayout[] = [
   // edge (832) aligns with Audience; left edge fills under the short Input/Engine
   // column. Right edge clears the Actions column (x864) by 32px.
   { id: 'content-analysis', label: 'Content craft', bounds: { x:    0, y:  832, width:  832, height: 240 } },
+  // D-08 hero: insight-hero sits below content-analysis (bottom 1072) + 32px gutter.
+  // Same left+center span (x0..832) mirrors content-analysis. Auto-height so the
+  // rich surface (rewrites + dimensions + band) sizes to content.
+  { id: 'insight-hero',     label: 'Insight',       bounds: { x:    0, y: 1104, width:  832, height: 480 } },
 ];
 
 export const BOARD_BOUNDS: Rect = (() => {
@@ -89,6 +93,7 @@ export const AUTO_HEIGHT_FRAMES: ReadonlySet<GroupId> = new Set<GroupId>([
   'content-analysis',
   'decode',
   'adapt',
+  'insight-hero',  // D-08: sizes to its rich content (rewrites + dimensions + band)
 ]);
 
 /**
@@ -113,6 +118,7 @@ export const AUTO_HEIGHT_FRAMES: ReadonlySet<GroupId> = new Set<GroupId>([
  *   Center (x=272): audience
  *   Right  (x=864): verdict/decode → actions/adapt
  *   Bottom (x=0):   content-analysis, under the taller of (left col, center col)
+ *                   insight-hero, below content-analysis (D-08 hero)
  */
 export function resolveBoardLayout(
   measured: Partial<Record<GroupId, number>>,
@@ -126,10 +132,10 @@ export function resolveBoardLayout(
     const m = measured[id];
     return AUTO_HEIGHT_FRAMES.has(id) && m != null && m > 0
       ? m
-      : base[id].bounds.height;
+      : base[id]?.bounds.height ?? 0;
   };
-  const x = (id: GroupId) => base[id].bounds.x;
-  const w = (id: GroupId) => base[id].bounds.width;
+  const x = (id: GroupId) => base[id]?.bounds.x ?? 0;
+  const w = (id: GroupId) => base[id]?.bounds.width ?? 0;
 
   // Left column
   const inputH = h('input');
@@ -150,7 +156,7 @@ export function resolveBoardLayout(
     const m = measured[measuredId];
     return AUTO_HEIGHT_FRAMES.has(measuredId) && m != null && m > 0
       ? m
-      : base[baseId].bounds.height;
+      : base[baseId]?.bounds.height ?? 0;
   };
   const verdictH = measuredOrBase(rightTopMeasuredId, 'verdict');
   const actionsY = verdictH + GUTTER;
@@ -160,6 +166,9 @@ export function resolveBoardLayout(
   const centerBottom = audienceH; // audience y = 0
   const caY = Math.max(leftBottom, centerBottom) + GUTTER;
   const caH = h('content-analysis');
+  // Insight-hero: D-08 hero, below content-analysis + 32px gutter.
+  const ihY = caY + caH + GUTTER;
+  const ihH = h('insight-hero');
 
   const scoreFrames: GroupFrameLayout[] = [
     { id: 'input',            label: 'Input',          bounds: { x: x('input'),            y: 0,        width: w('input'),            height: inputH } },
@@ -168,6 +177,7 @@ export function resolveBoardLayout(
     { id: 'verdict',          label: 'Score',          bounds: { x: x('verdict'),          y: 0,        width: w('verdict'),          height: verdictH } },
     { id: 'actions',          label: 'Actions',        bounds: { x: x('actions'),          y: actionsY, width: w('actions'),          height: actionsH } },
     { id: 'content-analysis', label: 'Content craft',  bounds: { x: x('content-analysis'), y: caY,      width: w('content-analysis'), height: caH } },
+    { id: 'insight-hero',     label: 'Insight',        bounds: { x: x('insight-hero'),     y: ihY,      width: w('insight-hero'),     height: ihH } },
   ];
 
   if (mode !== 'remix') return scoreFrames;

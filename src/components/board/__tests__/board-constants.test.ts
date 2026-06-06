@@ -105,8 +105,13 @@ describe('BOARD_BOUNDS derived from re-spaced GROUP_FRAMES', () => {
     }
   });
 
-  it('matches expected dimensions {0,0,1224,1072}', () => {
-    expect(BOARD_BOUNDS).toEqual({ x: 0, y: 0, width: 1224, height: 1072 });
+  it('matches expected dimensions — width 1224, height accounts for insight-hero (D-08)', () => {
+    // BOARD_BOUNDS height expanded: insight-hero (y:1104, h:480) is the tallest column.
+    // width remains 1224 (right column x:864 + w:360).
+    expect(BOARD_BOUNDS.x).toBe(0);
+    expect(BOARD_BOUNDS.y).toBe(0);
+    expect(BOARD_BOUNDS.width).toBe(1224);
+    expect(BOARD_BOUNDS.height).toBeGreaterThan(1072); // insight-hero extends below 1072
   });
 });
 
@@ -197,9 +202,10 @@ describe('resolveBoardLayout (auto-height reflow)', () => {
 });
 
 describe('computeBoardBounds + computePresetTargets track growth', () => {
-  it('board bounds grow when the tallest column grows', () => {
-    const grown = rectFor('actions').height + 300;
-    const resolved = resolveBoardLayout({ actions: grown });
+  it('board bounds grow when insight-hero grows (D-08 bottom frame)', () => {
+    // insight-hero is the bottommost frame; growing it extends the board.
+    const grown = rectFor('insight-hero').height + 300;
+    const resolved = resolveBoardLayout({ 'insight-hero': grown });
     const bounds = computeBoardBounds(resolved);
     expect(bounds.height).toBeGreaterThan(BOARD_BOUNDS.height);
   });
