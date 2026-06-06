@@ -142,10 +142,9 @@ export interface PipelineOptions {
    */
   creatorContext?: CreatorContext;
   /**
-   * Phase 3 (Plan 08) D-11: analysis row ID. Required for:
-   *   1. triggerFilmstripGeneration (filmstrip API needs analysisId to write keyframe_uri).
-   *   2. readKeyframeUris (reads analysis_results.heatmap.segments[].keyframe_uri for fold).
-   * When absent: filmstrip trigger is skipped; fold receives all-null keyframeUris.
+   * Phase 3 (Plan 08) D-11: analysis row ID. Required for triggerFilmstripGeneration
+   * (the filmstrip API needs analysisId to write keyframe_uri for the board filmstrip UI).
+   * When absent: filmstrip trigger is skipped.
    */
   analysisId?: string;
 }
@@ -272,40 +271,6 @@ const DEFAULT_GEMINI_RESULT: PipelineResult["geminiResult"] = {
 // =====================================================
 // Phase 3 (Plan 08) — Helpers for Pass 2 orchestration
 // =====================================================
-
-/**
- * Read current keyframe URIs from analyses.analysis_results JSONB.
- * Returns all-null array when DB read fails (graceful degradation per D-03).
- */
-async function readKeyframeUris(
-  supabase: ReturnType<typeof createServiceClient>,
-  analysisId: string,
-  segmentCount: number,
-): Promise<(string | null)[]> {
-  try {
-    // Use type cast to bypass Supabase generated types — "analyses" is a real table
-    // but the generated types don't include it in all environments.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
-      .from("analyses")
-      .select("analysis_results")
-      .eq("id", analysisId)
-      .single() as { data: { analysis_results: unknown } | null; error: unknown };
-    if (error || !data) {
-      return new Array<string | null>(segmentCount).fill(null);
-    }
-    // analysis_results is a JSONB column; heatmap.segments[].keyframe_uri are set by
-    // /api/filmstrip/extract after filmstrip generation completes (Plan 07).
-    const ar = data.analysis_results as { heatmap?: { segments?: Array<{ keyframe_uri?: string | null }> } } | null;
-    const segments = ar?.heatmap?.segments;
-    if (!Array.isArray(segments)) {
-      return new Array<string | null>(segmentCount).fill(null);
-    }
-    return segments.map((s) => (s as { keyframe_uri?: string | null }).keyframe_uri ?? null);
-  } catch {
-    return new Array<string | null>(segmentCount).fill(null);
-  }
-}
 
 // =====================================================
 // 10-Stage Prediction Pipeline with Wave Parallelism
@@ -741,10 +706,6 @@ export async function runPredictionPipeline(
   let foldOutcome: Wave3FoldOutcome | null = null;
   if (omniSegments && omniSegments.length > 0) {
     try {
-      const analysisId = opts?.analysisId;
-      const keyframeUrisForFold = analysisId
-        ? await readKeyframeUris(supabase, analysisId, omniSegments.length)
-        : new Array<string | null>(omniSegments.length).fill(null);
       // Verbatim from geminiResult (same pluck as aggregator.ts ~544).
       // Non-fatal — fold proceeds with "" on omission.
       const hookRawForFold = (geminiResult.analysis as unknown as {
@@ -767,7 +728,6 @@ export async function runPredictionPipeline(
       foldOutcome = await runFold(
         foldSlots,
         omniSegments,
-        keyframeUrisForFold,
         verbatimText,
         emotionArc,
         onStageEvent,
