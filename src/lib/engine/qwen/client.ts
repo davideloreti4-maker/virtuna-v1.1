@@ -28,6 +28,11 @@ export function getQwenClient(): OpenAI {
 export const QWEN_SEED = 7;
 
 // Model ID constants — env-overridable, defaults to the agreed stack.
-export const QWEN_OMNI_MODEL      = process.env.QWEN_OMNI_MODEL      ?? "qwen3.5-omni-plus";
+// Default flipped plus→flash 2026-06-06 (quick/20260605-engine-latency-quality-spine-ab):
+// A/B-validated on 2 videos (easy + hard) — omni-flash HALVED the read (36→17s), held/
+// improved the text substrate (richer verbatim, emotion_arc intact, correct flop detection
+// on the weak-hook case) at ~5× lower GA cost. omni is the foundation the fold + Apollo
+// both reason over → highest-leverage latency lever. Rollback: QWEN_OMNI_MODEL=qwen3.5-omni-plus.
+export const QWEN_OMNI_MODEL      = process.env.QWEN_OMNI_MODEL      ?? "qwen3.5-omni-flash";
 export const QWEN_REASONING_MODEL = process.env.QWEN_REASONING_MODEL ?? "qwen3.6-plus";
 export const QWEN_FAST_MODEL      = process.env.QWEN_FAST_MODEL      ?? "qwen3.6-flash";

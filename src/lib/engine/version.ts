@@ -15,8 +15,12 @@
  * fold per-segment `reason` dropped (dead weight) + FOLD_MAX_TOKENS 8000→4000 + Apollo
  * thinking_budget 3000→1500 (sweep-validated: insight depth held, latency 76→49s). Apollo
  * composite shifts within provider noise across the era boundary, so isolate the cache.
+ * Bumped 3.6.0 → 3.7.0 by the same quick task (omni model flip): default omni read
+ * qwen3.5-omni-plus → qwen3.5-omni-flash (A/B-validated, 2 videos: 36→17s, substrate held/
+ * richer). omni is the substrate the whole engine reasons over → scores shift across the
+ * boundary; stale plus-era rows must not mix with flash-era rows.
  *
  * D-23 cache invariant: prediction-cache.ts keys on ENGINE_VERSION; this bump auto-invalidates
- * all `3.5.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
+ * all `3.6.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
  */
-export const ENGINE_VERSION = "3.6.0";
+export const ENGINE_VERSION = "3.7.0";

@@ -433,7 +433,7 @@ describe("Phase 3 — provenance + stub invocations", () => {
     const { ENGINE_VERSION } = await import("../aggregator");
     const { ENGINE_VERSION: viaVersion } = await import("../version");
     expect(ENGINE_VERSION).toBe(viaVersion);
-    expect(ENGINE_VERSION).toBe("3.6.0"); // spine A/B: reason-drop + FOLD_MAX 4000 + Apollo budget 1500
+    expect(ENGINE_VERSION).toBe("3.7.0"); // spine A/B: + omni-flash default (plus→flash)
   });
 
   it("PredictionResult.engine_version reads from ./version module", async () => {
