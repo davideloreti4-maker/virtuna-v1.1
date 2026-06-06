@@ -60,14 +60,19 @@ const FOLD_THINKING_BUDGET = Number(process.env.FOLD_THINKING_BUDGET) || 1000;
 // N-segment numeric output and buys headroom against the thin 90s timeout. Override
 // via env if a long video truncates (→ Zod fail → graceful deepseek fallback).
 const FOLD_MAX_TOKENS = Number(process.env.FOLD_MAX_TOKENS) || 4000;
-// P4 flip (A/B-validated 2026-06-05): the fold runs on qwen3.6-flash WITHOUT thinking
-// by DEFAULT. Why: flash lands the single fold call at ~25-62s vs plus's ~88s — plus hit
-// the 90s wall and timed out on long videos. Diversity held above the D-07 floor; behavioral
-// score 67-73 ≈ the deleted 10-pass's 72.5. Thinking on flash is a no-op (no quality gain,
-// within run-to-run noise). Escape hatches:
-//   FOLD_MODEL=plus   → qwen3.6-plus reasoning model (higher/tighter score, ~88s — short videos only)
-//   FOLD_THINKING=1   → re-enable enable_thinking + thinking_budget (only meaningful with FOLD_MODEL=plus)
-const FOLD_MODEL = process.env.FOLD_MODEL === "plus" ? QWEN_REASONING_MODEL : QWEN_FAST_MODEL;
+// Sense-complete fold (2026-06-06): the fold runs on qwen3.5-omni-plus and WATCHES the
+// video directly (video+audio). Why: the fold simulates moment-to-moment viewer attention,
+// which is driven by what's seen AND heard — only an omni model has both senses. Spike
+// (scripts/fold-vision-spike.ts) ruled out omni-flash (curves collapse to ~0.0 — perception
+// without enough reasoning) and 3.6-plus (same diversity but ~87s — too slow, and deaf);
+// omni-plus held diversity (~0.35) at ~42s with native audio. Escape hatches:
+//   FOLD_MODEL=plus   → qwen3.6-plus reasoning model (deaf, ~88s — diagnostic only)
+//   FOLD_MODEL=flash  → qwen3.6-flash (the deaf+blind text fold — pre-2026-06-06 default)
+//   FOLD_THINKING=1   → enable_thinking + thinking_budget (omni does not think — no-op unless FOLD_MODEL=plus)
+const FOLD_MODEL =
+  process.env.FOLD_MODEL === "plus"  ? QWEN_REASONING_MODEL
+  : process.env.FOLD_MODEL === "flash" ? QWEN_FAST_MODEL
+  : (process.env.FOLD_MODEL ?? "qwen3.5-omni-plus");
 const FOLD_USE_THINKING = process.env.FOLD_THINKING === "1";
 const COST_ALERT_THRESHOLD_CENTS = 50; // D-24 pattern from pass2.ts
 
@@ -277,6 +282,7 @@ export async function runFold(
   segments: SegmentGrid[],
   verbatim: string,
   emotionArc: EmotionArcPoint[],
+  videoUrl: string | null,
   onStageEvent?: StageEventCallback,
 ): Promise<Wave3FoldOutcome> {
   const stageStart = emitStageStart(onStageEvent, "wave_3_fold", 4);
@@ -298,7 +304,7 @@ export async function runFold(
         { role: "system" as const, content: STABLE_FOLD_SYSTEM_PROMPT }, // byte-stable cache prefix (D-17)
         {
           role: "user" as const,
-          content: buildFoldUserContent(slots, segments, verbatim, emotionArc) as never,
+          content: buildFoldUserContent(slots, segments, verbatim, emotionArc, videoUrl) as never,
         },
       ],
       response_format: { type: "json_object" as const },

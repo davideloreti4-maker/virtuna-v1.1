@@ -25,7 +25,14 @@
  * composite diverged from the arithmetic sum; stale 3.7.0 rows must not mix with rubric-sum-era
  * rows. Auto-invalidates all 3.7.0 L1+L2 cached rows on next analyze-route call (D-23).
  *
+ * Bumped 3.8.0 → 3.9.0 (2026-06-06, sense-complete perception): the fold moved from the
+ * deaf+blind qwen3.6-flash TEXT call to qwen3.5-omni-plus WATCHING the video (video+audio),
+ * and the reasoner (qwen3.6-plus) now WATCHES the video too (sighted hook judgment instead of
+ * blind). Both behavioral and apollo terms shift because the models now perceive the video
+ * directly rather than reasoning over the read's text compression. Stale 3.8.0 rows (text-fold
+ * + blind-reason era) must not mix with sighted-era rows.
+ *
  * D-23 cache invariant: prediction-cache.ts keys on ENGINE_VERSION; this bump auto-invalidates
- * all `3.7.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
+ * all `3.8.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
  */
-export const ENGINE_VERSION = "3.8.0";
+export const ENGINE_VERSION = "3.9.0";

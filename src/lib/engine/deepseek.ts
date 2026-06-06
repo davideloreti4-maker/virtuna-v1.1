@@ -360,6 +360,14 @@ export interface DeepSeekInput {
    * Optional: aggregator wires it in Plan 04; accepted optionally until then.
    */
   verbatim?: VerbatimPayload | null;
+  /**
+   * Signed video URL (2026-06-06 sighted reasoner). When present, prepended to the
+   * volatile user message so qwen3.6-plus WATCHES the video and grades the hook with
+   * eyes instead of reasoning blind over the read's text. The read still supplies the
+   * audio half (qwen3.6-plus is deaf): transcript + audio_signals. Null in
+   * text/tiktok_url mode → reason runs text-only (byte-identical to the pre-video path).
+   */
+  videoUrl?: string | null;
 }
 
 /**
@@ -401,12 +409,22 @@ export async function reasonWithDeepSeek(
 
       // Apollo call: byte-stable system prefix (APOLLO_SYSTEM_PROMPT) + volatile user message.
       // temp:0 + seed for determinism (D-10). json_object for structured output.
+      // Sighted reasoner (2026-06-06): when a video URL is present, prepend it so qwen3.6-plus
+      // WATCHES the hook it grades. The system prefix stays byte-stable → DashScope prefix-cache
+      // still hits; only the (already-volatile) user message carries the video. Null → string
+      // user message, byte-identical to the pre-video path (preserves text/tiktok_url behavior).
+      const userContent = context.videoUrl
+        ? [
+            { type: "video_url" as const, video_url: { url: context.videoUrl } },
+            { type: "text" as const, text: userMessage },
+          ]
+        : userMessage;
       const response = await ai.chat.completions.create(
         {
           model: DEEPSEEK_MODEL,
           messages: [
             { role: "system", content: APOLLO_SYSTEM_PROMPT }, // byte-stable knowledge core
-            { role: "user",   content: userMessage },           // verbatim + sensor signals here ONLY
+            { role: "user",   content: userContent as never },  // verbatim + sensor signals (+ video) here ONLY
           ],
           response_format: { type: "json_object" },
           temperature: 0, // D-10: single deterministic call
