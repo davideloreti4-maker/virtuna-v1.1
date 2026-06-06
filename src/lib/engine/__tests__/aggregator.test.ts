@@ -1239,3 +1239,49 @@ describe("blend uses behavioral + apollo (Wave 0 scaffold — RED until Plan 04)
     expect(SCORE_WEIGHT_KEYS).toContain("apollo");     // apollo is now the blend term
   });
 });
+
+// =====================================================
+// Phase 5 Plan 01 — Wave 0 threading guard (D-01 assembly-hop)
+// RED scaffold: apollo_reasoning.dimensions[0].score must survive aggregator→PredictionResult.
+// Fails until Task 2 (schema) + Task 3 (sum) land — dimension.score is undefined pre-D-01.
+// =====================================================
+
+describe("Phase 5 Plan 01 — D-01 threading: dimensions[].score survives aggregator assembly", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("apollo_reasoning.dimensions[0].score is a finite number after aggregateScores (assembly-hop guard)", async () => {
+    // Dimensions carry `score` in the pipeline input (post-D-01 factory).
+    // After aggregateScores, result.apollo_reasoning.dimensions[0].score must be a finite number.
+    // RED: makeDeepSeekReasoning factory has no `score` on dimensions → score is undefined.
+    // GREEN after Tasks 2+3: factory updated + schema accepts score → score is a number.
+    const pipelineWithScores = makePipelineResult({
+      deepseekResult: {
+        reasoning: {
+          ...makeDeepSeekReasoning(),
+          dimensions: [
+            { name: "hook" as const, band: "mid" as const, lever: "§2.1", evidence: "e", score: 85 },
+            { name: "retention" as const, band: "mid" as const, lever: "§2.2", evidence: "e", score: 50 },
+            { name: "clarity" as const, band: "mid" as const, lever: "§2.1", evidence: "e", score: 50 },
+            { name: "share_pull" as const, band: "mid" as const, lever: "§2.3", evidence: "e", score: 50 },
+            { name: "substance" as const, band: "mid" as const, lever: "§2.5", evidence: "e", score: 50 },
+            { name: "credibility" as const, band: "mid" as const, lever: "§2.1", evidence: "e", score: 50 },
+          ],
+        },
+        cost_cents: 0.3,
+      },
+    });
+
+    const result = await aggregateScores(pipelineWithScores);
+    // Assembly-hop guard: dimensions with .score must ride through unchanged.
+    const dims = result.apollo_reasoning?.dimensions;
+    expect(dims).toBeDefined();
+    expect(dims).not.toBeNull();
+    expect(Array.isArray(dims)).toBe(true);
+    // RED: score is undefined (not a number) until ApolloDimensionSchema has `score`.
+    // GREEN: score is 85 (finite number).
+    expect(typeof dims![0].score).toBe("number");
+    expect(Number.isFinite(dims![0].score)).toBe(true);
+  });
+});
