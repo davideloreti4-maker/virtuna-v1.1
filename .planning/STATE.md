@@ -102,7 +102,7 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 
 ## Next action
 
-> **CURRENT (2026-06-06):** Phases 1–4 COMPLETE. **Phase 5 (Wire + Surface) is the only remaining phase — unplanned, ROADMAP entry is a stub.** Next step: `/gsd-discuss-phase 5` to scope it (score rederive from Apollo R5/R9, grounded engagement-prediction rebuild R11, confidence indicator, insight-as-hero surfacing), then plan. **Also outstanding: PR #13 (P1+P2 → main) is still OPEN — merge to stop the branch diverging further.** The notes below are HISTORICAL per-plan records.
+> **CURRENT (2026-06-06):** Phases 1–4 COMPLETE + engine optimized **312→74s (−76%, ENGINE_VERSION 3.7.0, pushed)**. **Phase 5 (Wire + Surface) is the only remaining phase — unplanned.** Next step (FRESH SESSION): read **`.planning/HANDOFF-phase5.md`** then `/gsd-discuss-phase 5`. The handoff carries: the new engine state to surface (74s, fold=text-sim, score ±5-noisy, insight=hero) + routes the 4 engine follow-ups (composite score-trust + <45/progressive-paint = Phase 5 discussion inputs; dead-code cleanup + broader flash validation = standalone hygiene backlog). **Also outstanding: PR #13 (P1+P2 → main) still OPEN.** Notes below are HISTORICAL per-plan records.
 
 ---
 
