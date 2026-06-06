@@ -571,7 +571,13 @@ export async function POST(request: Request) {
     // cold-starts, but the column is populated for the user's next analysis — which
     // is what "backfill on first analyze" means. Self-healing for any handle-having
     // user regardless of how their handle was set (onboarding or otherwise).
-    if (creatorProfile?.tiktok_handle && creatorProfile.tiktok_followers == null) {
+    // Trigger when the count is null/undefined OR <= 0: computeEngagementRange
+    // (aggregator.ts) treats follower_count <= 0 as "no baseline" and suppresses
+    // the range, so a stale `0` is just as dormant as null and must also backfill.
+    if (
+      creatorProfile?.tiktok_handle &&
+      (creatorProfile.tiktok_followers == null || creatorProfile.tiktok_followers <= 0)
+    ) {
       backfillCreatorFollowers(service, user.id, creatorProfile.tiktok_handle, log);
     }
 
