@@ -6,8 +6,8 @@ import { describe, it, expect } from "vitest";
 import { ENGINE_VERSION } from "../version";
 
 describe("version", () => {
-  it("exports ENGINE_VERSION = '3.7.0' (spine A/B: + omni-flash default)", () => {
-    expect(ENGINE_VERSION).toBe("3.7.0");
+  it("exports ENGINE_VERSION = '3.8.0' (Phase 5 Plan 01: D-01 rubric-sum)", () => {
+    expect(ENGINE_VERSION).toBe("3.8.0");
   });
 
   it("ENGINE_VERSION is a literal string", () => {
