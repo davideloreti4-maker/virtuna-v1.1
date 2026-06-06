@@ -53,10 +53,28 @@ const HookFactorSchema = z.object({
 // downstream P3 emotion-arc panel renders. Existing factors[].name="Emotional
 // Charge" single-score remains unchanged (multiple downstream consumers).
 // Backward compat: emotion_arc is .optional() on OmniAnalysisZodSchema (see A3).
+// emotion_arc.label drift guard: qwen3.5-omni-flash intermittently returns a
+// synonym ("medium", "rising", "calm", capitalised "Low") instead of the strict
+// low|mid|high enum. Because the parent OmniAnalysisZodSchema validates in one shot,
+// a single drifted label used to fail the WHOLE ~17s Omni response → full retry
+// (observed ~50% on a sample video, 05-HUMAN-UAT #1). label is an OPTIONAL,
+// non-critical UI/fold-input field — dropping a bad value is the correct
+// degradation, never a reason to nuke the expensive call. Normalize known
+// synonyms, then .catch(undefined) so any remaining unknown degrades to absent.
+const EMOTION_LABEL_SYNONYMS: Record<string, "low" | "mid" | "high"> = {
+  low: "low", weak: "low", calm: "low", flat: "low", quiet: "low", minimal: "low",
+  mid: "mid", medium: "mid", med: "mid", moderate: "mid", neutral: "mid", rising: "mid",
+  high: "high", peak: "high", intense: "high", strong: "high", elevated: "high",
+};
+const EmotionLabelSchema = z.preprocess(
+  (v) => (typeof v === "string" ? (EMOTION_LABEL_SYNONYMS[v.trim().toLowerCase()] ?? v) : v),
+  z.enum(["low", "mid", "high"]).optional().catch(undefined),
+);
+
 export const EmotionArcPointSchema = z.object({
   timestamp_ms:  z.number().min(0),
   intensity_0_1: z.number().min(0).max(1),
-  label:         z.enum(["low", "mid", "high"]).optional(),
+  label:         EmotionLabelSchema,
 });
 
 /** Phase 1 (R1.7) — Inferred TS type used by aggregator + types.ts. */
