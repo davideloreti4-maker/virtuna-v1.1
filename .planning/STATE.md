@@ -20,7 +20,7 @@ See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Cut-l
 
 ## Current Position
 
-Phase: 5 (Wire + Surface) — **NOT STARTED / unplanned** (ROADMAP entry is a stub; no CONTEXT, no plans)
+Phase: 5 (Wire + Surface) — **DISCUSSED / ready to plan** (`05-CONTEXT.md` written 2026-06-06; no plans yet)
 Last completed plan: 04-05 (P4 COMPLETE)
 **Phases 1–4 ALL COMPLETE on disk** (P1 6/6, P2 3/3, P3 4/4, P4 5/5 = 18/18 plans). Milestone 80%.
 **Milestone worktree** `~/virtuna-engine-opt/` on `milestone/engine-opt`. Milestone **Apollo** — turn the ~25-call score machine into a 3-call knowledge-grounded expert (Omni → Audience-Sim → Apollo Reasoner).
@@ -102,7 +102,7 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 
 ## Next action
 
-> **CURRENT (2026-06-06):** Phases 1–4 COMPLETE + engine optimized **312→74s (−76%, ENGINE_VERSION 3.7.0, pushed)**. **Phase 5 (Wire + Surface) is the only remaining phase — unplanned.** Next step (FRESH SESSION): read **`.planning/HANDOFF-phase5.md`** then `/gsd-discuss-phase 5`. The handoff carries: the new engine state to surface (74s, fold=text-sim, score ±5-noisy, insight=hero) + routes the 4 engine follow-ups (composite score-trust + <45/progressive-paint = Phase 5 discussion inputs; dead-code cleanup + broader flash validation = standalone hygiene backlog). **Also outstanding: PR #13 (P1+P2 → main) still OPEN.** Notes below are HISTORICAL per-plan records.
+> **CURRENT (2026-06-06):** Phases 1–4 COMPLETE + engine optimized **312→74s (−76%, ENGINE_VERSION 3.7.0, pushed)**. **Phase 5 DISCUSSED** — `05-CONTEXT.md` written (4 areas locked: rubric-sum score→band, progressive per-frame reveal + <45s dropped, R11 gated on researcher input-check, R4 satisfied surface-time to protect R6, insight-hero surface set). Next step (FRESH SESSION): `/clear` then **`/gsd-plan-phase 5`** (reads `05-CONTEXT.md`). ⚠ Two context decisions hand the researcher real work: (D-05) confirm whether creator-baseline data reaches the engine → gates R11; (D-07) R4 reinterpreted generation→surface. **Standalone backlog (any time):** dead keyframe→fold cleanup (`/gsd-quick` #2), broader omni-flash QA (#4). **Also outstanding: PR #13 (P1+P2 → main) still OPEN.** Notes below are HISTORICAL per-plan records.
 
 ---
 
