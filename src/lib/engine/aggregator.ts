@@ -1062,7 +1062,10 @@ export async function aggregateScores(
           // insight-hero's intended LEAD — it was being dropped here, so the
           // frame always fell back to confidence_scope. platform_note carries the
           // watermark/cross-post warning. Both are part of the §4 contract.
-          ceiling_capper: deepseek.ceiling_capper ?? "",
+          // `|| undefined` (not `?? ""`): keep the optional contract honest — an
+          // empty capper degrades to absent so the hero falls back to confidence_scope,
+          // never persists a falsy-but-present "" that a strict consumer could misread.
+          ceiling_capper: deepseek.ceiling_capper || undefined,
           confidence_scope: deepseek.confidence_scope ?? "",
           platform_note: deepseek.platform_note,
         }

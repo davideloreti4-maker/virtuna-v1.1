@@ -54,6 +54,12 @@ type Logger = ReturnType<typeof createLogger>;
  * slow/flaky and must not enter the ≤90s critical path. Populates the column for the
  * user's next run; failures are swallowed (the R11 range simply stays absent until a
  * later scrape succeeds — honest null, never fabricated).
+ *
+ * Concurrency note (code review): N analyses submitted before the first scrape
+ * writes back will each see followers<=0 and fire their own scrape (N Apify runs
+ * for one user). Accepted at current traffic — Apify resolves to the same profile
+ * (idempotent last-write-wins) and the cost is a few redundant runs, not corruption.
+ * Revisit with an advisory lock / short-TTL suppress flag if scrape volume grows.
  */
 function backfillCreatorFollowers(
   service: ServiceClient,
