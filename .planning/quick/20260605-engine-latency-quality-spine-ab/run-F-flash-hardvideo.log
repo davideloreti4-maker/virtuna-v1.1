@@ -22,3 +22,52 @@
   [  13.3s] start  deepseek_reasoning
   [  13.3s] start  wave_2
   [  13.3s] start  wave_3_fold
+[2026-06-06T16:18:04.204Z] WARN Reasoning cost exceeds soft cap {"module":"deepseek","cost_cents":1.0562,"soft_cap":1}
+[2026-06-06T16:18:04.204Z] INFO Apollo reasoning complete {"module":"deepseek","stage":"deepseek_reasoning","duration_ms":54015,"cost_cents":1.0562,"model":"qwen3.6-plus"}
+  [  67.3s] END    deepseek_reasoning              54016ms  $0.0000
+  [  67.3s] END    wave_2                          54015ms  $0.0000
+  [  67.3s] END    wave_3_fold                     54012ms  $0.2408
+[2026-06-06T16:18:04.206Z] INFO Pipeline complete {"requestId":"measure-1780762616858","module":"pipeline","stage":"pipeline","duration_ms":67347,"cost_cents":1.4519,"warnings_count":0}
+
+========== AGGREGATE (post-pipeline tail) ==========
+[2026-06-06T16:18:04.763Z] INFO stage_timing {"module":"aggregator","stage":"optimal_post_window","ms":556}
+  [  67.9s] start  stage_10_critique
+  [  67.9s] END    stage_10_critique                   0ms  $0.0000
+[2026-06-06T16:18:04.767Z] INFO stage_timing {"module":"aggregator","stage":"stage10_critique","ms":0}
+[2026-06-06T16:18:04.767Z] INFO stage_timing {"module":"aggregator","stage":"stage10_wall","ms":1}
+[2026-06-06T16:18:04.768Z] WARN LIKELY_FLOP detected {"module":"flop-warning","score":16,"confidence":0.75}
+
+========== SUMMARY ==========
+pipeline wall      : 67.3s
+aggregate tail     : 0.6s
+TOTAL_LATENCY_MS   : 67910
+TOTAL              : 67.9s
+engine latency_ms  : 67.347s   cost_cents=1.4519
+OVERALL_SCORE=16 CONFIDENCE=0.75 LABEL=HIGH
+behavioral_score   : 16 | gemini_score=36
+persona_aggregate  : watch=? scroll=? share=?
+counterfactuals    : NULL (schema fail / timeout)
+critique           : PRESENT
+emotion_arc        : 5 pts
+factors            : 5
+personas (heatmap) : 10
+
+PASS-2 CONCURRENCY : n/a (no pass2 events)
+STAGE10/11         : n/a
+
+PASS-2 CURVE QUALITY (thinking_budget=8000 default):
+  AGGREGATE: avg curve range=0 (higher=more varied, ~0=flat) | personas w/ real swipe=0/0
+
+STAGES BY DURATION (stage_end events):
+    54016ms  deepseek_reasoning
+    54015ms  wave_2
+    54012ms  wave_3_fold
+     1300ms  pre_creator_context
+        1ms  validate
+        0ms  normalize
+        0ms  creator_context
+        0ms  wave_1
+        0ms  stage_10_critique
+
+[measure] cleaned up videos/smoke-measure/1780762606994.mp4
+[Run F] EXIT=0 Sa.  6 Juni 2026 18:18:04 CEST

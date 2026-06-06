@@ -43,7 +43,7 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 
 | Date | Slug | Result |
 |------|------|--------|
-| 2026-06-05 | engine-latency-quality-spine-ab | Spine A/B + Apollo budget sweep + fold trim. **E2E 116→87s (−25%) across 3 real runs, quality verified.** Shipped (ENGINE_VERSION 3.6.0): fold reason-drop + t_start/t_end drop (54→46s), FOLD_MAX 8000→4000, Apollo thinking_budget 3000→1500 (sweep proved insight NOT budget-bound, depth held 3000→1000). Final: omni 36 / fold 46 / deepseek 51 = 87s. **<45s needs defer-Apollo + omni→flash (omni alone=36s, video-bound).** Next: prototype defer-Apollo; 2-run determinism confirm. → `.planning/quick/20260605-engine-latency-quality-spine-ab/` |
+| 2026-06-05 | engine-latency-quality-spine-ab | Spine A/B + Apollo budget sweep + fold trim + **omni-flash flip**. **E2E 116→74s (−36%; −76% from original ~312s) across 6 real runs, quality verified.** Shipped (ENGINE_VERSION 3.7.0): omni plus→**flash** (36→17s, A/B'd 2 videos: verbatim richer + correct flop), Apollo thinking_budget 3000→1500 (insight NOT budget-bound), fold reason+t_start/t_end drops (63→46s), FOLD_MAX 8000→4000. Final: omni 17 / fold ~50 / deepseek ~53. **Key audit: the FOLD NEVER sees video frames** (analysisId never threaded → keyframes always null; fold reasons over omni's TEXT). **<45s is now a PRODUCT decision** (2×5 fold split [conflicts 1-call mandate] OR progressive painting [number shifts]), not tuning. → `.planning/quick/20260605-engine-latency-quality-spine-ab/` |
 
 ## Decisions locked (2026-06-05, 04-05 FLIP-AND-DELETE) — ✅ LIVE IN CODE (verified 2026-06-06)
 

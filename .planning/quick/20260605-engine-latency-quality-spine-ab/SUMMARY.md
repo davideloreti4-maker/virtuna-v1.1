@@ -22,7 +22,20 @@ omni 36s · **fold 46s** · deepseek 51s (budget 1500) · **E2E 87.1s** · score
 |-----|--------|-----|------|----------|-------|
 | A baseline | 3.5.0 | 116.2s | 63s | 76s | 70 |
 | B candidate | reason-drop + deepseek 2000 | 96.6s | 54s | 59s | 71 |
-| C +fold trim | + t_start/t_end drop + deepseek 1500 | **87.1s** | 46s | 51s | 67 |
+| C +fold trim | + t_start/t_end drop + deepseek 1500 | 87.1s | 46s | 51s | 67 |
+| **D omni-flash** | + qwen3.5-omni-flash (ENGINE_VERSION 3.7.0) | **73.8s** | 57s | 53s | 78 |
+
+**omni-flash A/B (Runs D/E/F):** omni read **36→17s (HALVED)**, ~5× cheaper, substrate held/
+improved — easy video: verbatim RICHER (full hook vs truncated), score 78, insight deep;
+hard video (weak-hook .mov): score 16 correct flop detection, valid structure. **Shipped as
+default** (rollback: `QWEN_OMNI_MODEL=qwen3.5-omni-plus`). Final E2E **116→74s (−36%; −76%
+from the original ~312s 5-min engine).**
+
+**<45s verdict (settled):** NOT a tuning problem anymore. With omni at 17s the fold (~50s) +
+deepseek (~53s) gate; defer-Apollo lands ~67s. Breaking <45 needs the fold to halve →
+**2×5 parallel fold split (conflicts with the 1-call mandate)** OR **progressive painting**
+(omni's instant score at ~17s, fold+Apollo refine async — the number shifts). A product-
+architecture decision, not tuning.
 
 ## What shipped (commit-ready, tests 939/0)
 
