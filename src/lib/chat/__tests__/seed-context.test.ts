@@ -99,7 +99,7 @@ describe('buildChatSystemContext', () => {
     expect(ctx).toContain('72/100');
     expect(ctx).toContain('Low hook retention');
     expect(ctx).not.toContain('Intro'); // no heatmap segments
-    expect(ctx).not.toContain('Audience');
+    expect(ctx).not.toContain('AUDIENCE SIMULATION'); // no audience section header
   });
 
   it('audience scope: includes heatmap + behavioral, excludes apollo rewrites detail', () => {
@@ -139,13 +139,20 @@ describe('deriveSeedPrompts', () => {
 
   it('includes a ceiling_capper-driven prompt when capper is present', () => {
     const prompts = deriveSeedPrompts(populatedRow);
-    expect(prompts.some((p) => p.toLowerCase().includes('flop') || p.toLowerCase().includes('hold'))).toBe(true);
+    // New sharp copy: "biggest risk killing this video's reach"
+    expect(prompts.some((p) => p.toLowerCase().includes('risk') || p.toLowerCase().includes('flop') || p.toLowerCase().includes('hold'))).toBe(true);
   });
 
-  it('includes a weakest-dimension prompt', () => {
+  it('includes a weakest-dimension prompt mentioning the dimension name', () => {
     const prompts = deriveSeedPrompts(populatedRow);
-    // Hook strength is score 4 — the weakest
+    // Hook strength is score 4 — the weakest; prompt should mention "Hook strength" or "hook"
     expect(prompts.some((p) => p.toLowerCase().includes('hook'))).toBe(true);
+  });
+
+  it('weakest-dimension prompt uses urgency framing for very low scores (≤4)', () => {
+    const prompts = deriveSeedPrompts(populatedRow);
+    // Hook strength = 4/10 → "fix it fast" framing
+    expect(prompts.some((p) => p.includes('4/10') || p.toLowerCase().includes('fix'))).toBe(true);
   });
 
   it('returns generic fallback prompts for a bare row', () => {
@@ -157,8 +164,8 @@ describe('deriveSeedPrompts', () => {
   it('uses variants.apollo for prompt derivation', () => {
     const prompts = deriveSeedPrompts(variantsRow);
     expect(prompts.length).toBeGreaterThanOrEqual(2);
-    // ceiling_capper "Weak storytelling arc" → flop prompt
-    expect(prompts.some((p) => p.toLowerCase().includes('flop') || p.toLowerCase().includes('hold'))).toBe(true);
+    // ceiling_capper "Weak storytelling arc" → risk/reach prompt
+    expect(prompts.some((p) => p.toLowerCase().includes('risk') || p.toLowerCase().includes('flop') || p.toLowerCase().includes('hold'))).toBe(true);
   });
 
   it('returns unique prompts (no duplicates)', () => {
