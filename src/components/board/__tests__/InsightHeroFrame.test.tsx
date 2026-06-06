@@ -252,4 +252,37 @@ describe('InsightHeroFrame', () => {
     expect(band.textContent).toMatch(/High potential|Solid contender|Needs work/);
   });
 
+  it('Test 7: (IN-02) hero LEADS with ceiling_capper; confidence_scope is the demoted caveat below it', () => {
+    setup(LIVE_RESULT);
+    const frame = screen.getByTestId('insight-hero-frame');
+
+    const lead = within(frame).getByTestId('insight-hero-lead');
+    const caveat = within(frame).getByTestId('insight-hero-caveat');
+
+    // Lead is the highest-leverage ceiling_capper, NOT the confidence caveat.
+    expect(lead.textContent).toBe('Thin substance caps ceiling at 74.');
+    expect(caveat.textContent).toBe('All six §2 signals observed.');
+
+    // Lead sits ABOVE the caveat in DOM order.
+    const nodes = Array.from(frame.querySelectorAll('[data-testid]'));
+    expect(nodes.findIndex((n) => n === lead)).toBeLessThan(
+      nodes.findIndex((n) => n === caveat),
+    );
+  });
+
+  it('Test 8: (IN-02) ceiling_capper absent → confidence_scope becomes the lead, no caveat line', () => {
+    const noCapper = {
+      ...LIVE_RESULT,
+      apollo_reasoning: { ...APOLLO_REASONING, ceiling_capper: undefined },
+    };
+    setup(noCapper as unknown as Record<string, unknown>);
+    const frame = screen.getByTestId('insight-hero-frame');
+
+    expect(within(frame).getByTestId('insight-hero-lead').textContent).toBe(
+      'All six §2 signals observed.',
+    );
+    // No duplicated caveat line when confidence_scope is already the lead.
+    expect(within(frame).queryByTestId('insight-hero-caveat')).toBeNull();
+  });
+
 });

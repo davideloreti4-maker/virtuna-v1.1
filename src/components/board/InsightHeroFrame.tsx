@@ -259,14 +259,25 @@ export function InsightHeroFrame({ camera: _camera, layout: _layout }: InsightHe
       data-testid="insight-hero-frame"
       className="flex w-full flex-col gap-4 p-3"
     >
-      {/* ── 1. Hero read ─────────────────────────────────────────────────── */}
+      {/* ── 1. Hero read (IN-02) ─────────────────────────────────────────────
+          Lead with ceiling_capper — the single highest-leverage thing capping the
+          score (§4 actionable insight). confidence_scope is a sensor-coverage caveat,
+          so it demotes to the secondary line. Falls back to confidence_scope as the
+          lead only when ceiling_capper is absent (defensive on pre-D-01 rows), so the
+          hero is never empty and the caveat is never duplicated. */}
       <div className="flex flex-col gap-1">
-        <p className="text-[15px] font-[500] leading-[1.4] text-white">
-          {apollo.confidence_scope}
+        <p
+          data-testid="insight-hero-lead"
+          className="text-[15px] font-[500] leading-[1.4] text-white"
+        >
+          {apollo.ceiling_capper || apollo.confidence_scope}
         </p>
-        {apollo.ceiling_capper && (
-          <p className="text-[12px] leading-[1.4] text-white/50">
-            {apollo.ceiling_capper}
+        {apollo.ceiling_capper && apollo.confidence_scope && (
+          <p
+            data-testid="insight-hero-caveat"
+            className="text-[12px] leading-[1.4] text-white/50"
+          >
+            {apollo.confidence_scope}
           </p>
         )}
         {apollo.platform_note && (
