@@ -114,7 +114,7 @@ process.env.DEEPSEEK_API_KEY = "test-key";
 process.env.DASHSCOPE_API_KEY = "test-key";
 process.env.GEMINI_API_KEY = "test-key";
 
-import { isCircuitOpen, resetCircuitBreaker, reasonWithDeepSeek } from "../deepseek";
+import { isCircuitOpen, resetCircuitBreaker, reasonWithDeepSeek, buildDeepSeekUserMessage } from "../deepseek";
 import { DeepSeekResponseSchema } from "../types";
 import { APOLLO_SYSTEM_PROMPT } from "../apollo-core";
 import {
@@ -938,5 +938,43 @@ describe("rewrite original matches verbatim hook (R2 integration)", () => {
     expect(sys).not.toContain(VERBATIM_HOOK);
     // Verbatim hook MUST appear in the volatile user message
     expect(user).toContain(VERBATIM_HOOK);
+  });
+});
+
+describe("D-01 prompt-contract guard — user-message blueprint stays in sync with schema (CR-01/CR-02)", () => {
+  // The live LLM reads buildDeepSeekUserMessage's JSON blueprint. If the blueprint
+  // omits the required `score` field, every real response fails Zod → null →
+  // Apollo silently breaks. Unit tests that construct dimension objects in-code
+  // CANNOT catch this — only an assertion on the rendered prompt can.
+  function makeContext() {
+    return {
+      input: {
+        input_mode: "text" as const,
+        content_text: "test",
+        content_type: "post" as const,
+        mode: "score" as const,
+      },
+      gemini_analysis: makeGeminiAnalysis(),
+      rule_result: makeRuleScoreResult(),
+      trend_enrichment: makeTrendEnrichment(),
+    };
+  }
+
+  it("dimensions blueprint includes the required `score` field", () => {
+    const user = buildDeepSeekUserMessage(makeContext() as never);
+    expect(user).toContain('"score"');
+  });
+
+  it("instructs the fixed band→score anchors (strong→85, mid→50, weak→20)", () => {
+    const user = buildDeepSeekUserMessage(makeContext() as never);
+    expect(user).toMatch(/strong\s*→\s*85/);
+    expect(user).toMatch(/mid\s*→\s*50/);
+    expect(user).toMatch(/weak\s*→\s*20/);
+  });
+
+  it("does NOT carry the stale pre-D-01 holistic-composite language", () => {
+    const user = buildDeepSeekUserMessage(makeContext() as never);
+    expect(user).not.toContain("Not arithmetic");
+    expect(user).not.toMatch(/ONE holistic, hook-weighted judgment/);
   });
 });

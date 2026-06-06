@@ -238,7 +238,10 @@ function formatGeminiSignals(analysis: GeminiAnalysis): string {
  * Per RESEARCH Pitfall 4: verbatim hook MUST appear in the user message so the model
  * can copy it into `original` — instruct "copy the hook line VERBATIM into each rewrite's `original`".
  */
-function buildDeepSeekUserMessage(context: DeepSeekInput): string {
+// Exported for the prompt-contract guard test (deepseek.test.ts): the live LLM
+// reads this user-message blueprint, so it must stay in sync with the D-01
+// schema (each dimension carries a required band-anchored `score`).
+export function buildDeepSeekUserMessage(context: DeepSeekInput): string {
   const sections: string[] = [];
 
   // ── Verbatim hook + segments (R2 load-bearing) ───────────────────────────
@@ -322,15 +325,15 @@ function buildDeepSeekUserMessage(context: DeepSeekInput): string {
     { "text": "<actionable fix tied to a §2/§3 lever>", "priority": "high"|"medium"|"low", "category": "<short tag>" }
   ],
   "confidence": "high"|"medium"|"low",   // overall assessment confidence
-  "dimensions": [                        // EXACTLY 6, one per name below, in this order
-    { "name": "hook",        "band": "strong"|"mid"|"weak", "lever": "<§2 lever that fired/failed>", "evidence": "<quoted sensor signal>" },
-    { "name": "retention",   "band": "strong"|"mid"|"weak", "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" },
-    { "name": "clarity",     "band": "strong"|"mid"|"weak", "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" },
-    { "name": "share_pull",  "band": "strong"|"mid"|"weak", "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" },
-    { "name": "substance",   "band": "strong"|"mid"|"weak", "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" },
-    { "name": "credibility", "band": "strong"|"mid"|"weak", "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" }
+  "dimensions": [                        // EXACTLY 6, one per name below, in this order. "score" is REQUIRED and MUST use the fixed band anchors: strong→85, mid→50, weak→20 (do NOT deviate — this fixed mapping is what makes the composite deterministic, §4).
+    { "name": "hook",        "band": "strong"|"mid"|"weak", "score": 85|50|20, "lever": "<§2 lever that fired/failed>", "evidence": "<quoted sensor signal>" },
+    { "name": "retention",   "band": "strong"|"mid"|"weak", "score": 85|50|20, "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" },
+    { "name": "clarity",     "band": "strong"|"mid"|"weak", "score": 85|50|20, "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" },
+    { "name": "share_pull",  "band": "strong"|"mid"|"weak", "score": 85|50|20, "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" },
+    { "name": "substance",   "band": "strong"|"mid"|"weak", "score": 85|50|20, "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" },
+    { "name": "credibility", "band": "strong"|"mid"|"weak", "score": 85|50|20, "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" }
   ],
-  "composite_score": <number 0-100>,     // ONE holistic, hook-weighted judgment (§2.0a ~80%). Not arithmetic.
+  "composite_score": <number 0-100>,     // Emit your best estimate, but it is IGNORED — TypeScript overwrites it with the deterministic hook-weighted sum of the six dimension scores (§4). Do NOT reason about it as a holistic whole.
   "ceiling_capper": "<one sentence naming the single thing capping the score; note any §3 anti-pattern present>",
   "confidence_scope": "<which §2 signals the sensor could NOT provide, lowering confidence>",
   "rewrites": [                          // 2-3 directional hook variants

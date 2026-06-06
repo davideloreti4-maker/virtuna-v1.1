@@ -93,10 +93,16 @@ function RewriteItem({ rewrite, dropLabel }: RewriteItemProps) {
   const [copied, setCopied] = useState(false);
 
   function handleCopy() {
-    navigator.clipboard.writeText(rewrite.variant).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
+    navigator.clipboard
+      .writeText(rewrite.variant)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      })
+      .catch(() => {
+        // clipboard unavailable (insecure context / permission denied) — no-op,
+        // the visual "copied" affordance simply doesn't fire.
+      });
   }
 
   return (
@@ -276,7 +282,7 @@ export function InsightHeroFrame({ camera: _camera, layout: _layout }: InsightHe
           <p className="text-[11px] font-[500] uppercase tracking-[0.08em] text-white/40">
             Hook rewrites
           </p>
-          {apollo.rewrites.map((rw, i) => {
+          {apollo.rewrites.map((rw) => {
             // D-07: attach drop label to the rewrite whose lever_fixed references retention
             const isRetentionLever =
               rw.lever_fixed.toLowerCase().includes('retention') ||
@@ -286,7 +292,7 @@ export function InsightHeroFrame({ camera: _camera, layout: _layout }: InsightHe
                 ? `targets the ${dropInfo.dropTime} dip`
                 : null;
             return (
-              <RewriteItem key={i} rewrite={rw} dropLabel={dropLabel} />
+              <RewriteItem key={rw.lever_fixed} rewrite={rw} dropLabel={dropLabel} />
             );
           })}
         </div>
@@ -299,8 +305,8 @@ export function InsightHeroFrame({ camera: _camera, layout: _layout }: InsightHe
             Dimension scores
           </p>
           <div className="divide-y divide-white/[0.04]">
-            {apollo.dimensions.map((dim, i) => (
-              <DimensionRow key={i} dim={dim} />
+            {apollo.dimensions.map((dim) => (
+              <DimensionRow key={dim.name} dim={dim} />
             ))}
           </div>
         </div>

@@ -183,8 +183,14 @@ export function computeEngagementRange(
   creatorContext: Pick<CreatorContext, "follower_count">,
   overall_score: number,
 ): EngagementRange | null {
-  // R9 honesty: return null when no creator baseline exists.
-  if (creatorContext.follower_count === null || creatorContext.follower_count === undefined) {
+  // R9 honesty: return null when no creator baseline exists. follower_count <= 0
+  // is treated as "no baseline" — a 0-follower count yields a nonsense 0–1 range
+  // that violates R9, so it must suppress the estimate just like null/undefined.
+  if (
+    creatorContext.follower_count === null ||
+    creatorContext.follower_count === undefined ||
+    creatorContext.follower_count <= 0
+  ) {
     return null;
   }
 
