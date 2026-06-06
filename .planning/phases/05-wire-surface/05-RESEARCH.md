@@ -370,16 +370,15 @@ const overall_score = raw_overall_score;                         // no calibrati
 | A2 | `follower_count` alone suffices for the R11 "different tiers → different estimates" verify (per-creator `avg_views` is null today) | Q1 / R11 | Medium — if the user wants the "vs your ~15k median" exact framing, a new per-creator avg-views query from `scraped_videos` is needed. Confirm scope with user before building. |
 | A3 | The biggest-drop timestamp attaches to the retention-lever rewrite (via `lever_fixed` §2.2) for the D-07 label | Q4 / D-07 | Low — UI decision; planner may map all 3 rewrites or just one. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **R11 anchor: `follower_count` vs computed per-creator `avg_views`?**
+1. **R11 anchor: `follower_count` vs computed per-creator `avg_views`? — RESOLVED (planning, locked).**
    - What we know: `follower_count` + `platform_averages.avg_views` are live; per-creator `avg_views` is null (creator.ts:219).
-   - What's unclear: whether the user wants the exact "vs your ~15k median" (needs per-creator history) or a follower-tier-based range is acceptable.
-   - Recommendation: build the range off `follower_count` × quality read first (satisfies R11 verify); add per-creator avg-views as a follow-up only if the user insists on the median framing. **Confirm with user during planning.**
+   - **Answer:** `follower_count` anchor LOCKED for P5 — the range is built off `follower_count` × quality read (satisfies the R11 verify: different tiers → different ranges). The exact per-creator "vs your ~15k median" framing (needs per-creator `avg_views` history) is **DEFERRED to a follow-up (D-06)**. Additional scope decision (revision iter 1): the R11 range is **LIVE-RESULTS-PANEL-ONLY this phase — NOT persisted** (`analysis_results` has no `predicted_engagement` column and none is added); permalink/DB persistence is bundled into the same per-creator-`avg_views` follow-up.
 
-2. **D-01 dimension scoring: fixed band→score anchors vs numeric per-dimension?**
+2. **D-01 dimension scoring: fixed band→score anchors vs numeric per-dimension? — RESOLVED (planning, locked).**
    - What we know: both satisfy "composite = sum of dimensions"; band→fixed-anchor is fully deterministic.
-   - Recommendation: band→fixed weighted anchors (most de-noise). Planner/user to confirm.
+   - **Answer:** band→fixed weighted anchors LOCKED (D-01) — each dimension's strong/mid/weak band maps to a fixed numeric anchor; the composite is the deterministic hook-weighted SUM of the 6 anchors (most de-noise, kills the ±5 swing). NOT numeric per-dimension LLM scoring.
 
 ## Environment Availability
 
