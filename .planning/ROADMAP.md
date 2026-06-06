@@ -139,7 +139,7 @@ Plans:
 
 - [x] 04-05-PLAN.md — Run the A/B + production flip. Referee MISS 0/2 at budget=4000 (timeout artifact); R7 confirmed. **Superseded by FLIP-AND-DELETE mandate:** budget cut to 1000, 10-pass deleted, fold live as sole path.
 
-## Phase 5: Wire + Surface — ⬜ PLANNED (2026-06-06) — 4 plans, 3 waves
+## Phase 5: Wire + Surface — ✅ COMPLETE (2026-06-06) — 4 plans, 3 waves
 
 **Goal:** connect the three calls and surface the insight.
 **Does:** finalize the score via D-01 rubric-sum (band→fixed-anchor deterministic composite, kills ±5 swing) + ENGINE_VERSION bump; build the **grounded engagement estimate** (R11 — follower_count × quality read, as a history-relative range; per-creator avg_views median framing DEFERRED); build the **insight-hero** board frame (read + struck-through/copyable rewrites + 6 scored dimensions + demoted score band) with dual-read permalink safety; join each rewrite to fold's heatmap drop-point at surface-time (R4, no latency cost); progressive per-frame reveal (D-03); strip the dead fake-engagement UI.

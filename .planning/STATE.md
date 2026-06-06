@@ -6,10 +6,10 @@ status: milestone_complete
 last_updated: 2026-06-06T18:34:52.960Z
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 22
   completed_plans: 22
-  percent: 80
+  percent: 100
 stopped_at: Milestone complete (Phase 05 was final phase)
 ---
 
@@ -21,10 +21,11 @@ See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Cut-l
 
 ## Current Position
 
-Phase: 05
-Plan: Not started
-Last completed plan: 04-05 (P4 COMPLETE)
-**Phases 1–4 ALL COMPLETE on disk** (P1 6/6, P2 3/3, P3 4/4, P4 5/5 = 18/18 plans). Milestone 80%.
+Phase: 05 — **COMPLETE (2026-06-06)** — MILESTONE APOLLO COMPLETE (5/5 phases)
+Last completed plan: 05-04 (P5 COMPLETE)
+**ALL 5 PHASES COMPLETE on disk** (P1 6/6, P2 3/3, P3 4/4, P4 5/5, P5 4/4 = 22/22 plans). Milestone 100%.
+P5 verifier: 18/18 code must-haves PASS; status `human_needed` for 5 live/manual UAT items (`05-HUMAN-UAT.md`). Code review: 2 critical + 3 warnings fixed (`7ab7ffd9`, prompt/schema-drift guard added). Branch pushed.
+**Before merge:** run `05-HUMAN-UAT.md` (E2E≤90s, same-video-twice determinism, real-run DB persist, live R11, D-08 visual) · `/gsd-secure-phase 5` (no SECURITY.md, enforcement on) · `/gsd-complete-milestone` (reconcile shared PROJECT.md/MILESTONES.md on main) · PR #13 (P1+P2→main) still open — engine-opt now carries all 5 phases.
 **Milestone worktree** `~/virtuna-engine-opt/` on `milestone/engine-opt`. Milestone **Apollo** — turn the ~25-call score machine into a 3-call knowledge-grounded expert (Omni → Audience-Sim → Apollo Reasoner).
 
 > **State reconciled 2026-06-06** — prior STATE claimed "Phase 3 NOT STARTED / 50%". Disk + code disprove it: P3 (Apollo Reasoner) executed (4 SUMMARYs), P4 fold-flip is LIVE in code. STATE was never updated after P3 ran.
@@ -39,7 +40,7 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 | 2 | Omni Verbatim | COMPLETE (2026-06-04) — 3/3 plans done; R1 proven on real run (gwxLeHphZCxK); D-02 silent deferred HUMAN-UAT |
 | 3 | Apollo Reasoner (Brain 1, the moat) | COMPLETE — 4/4 plans done (corpus v1 unblocked it; reasoner + remix re-grounding + aggregator/route/pipeline wiring) |
 | 4 | Audience-Sim Fold (Brain 2, the bet) | COMPLETE (2026-06-05) — 5/5 plans done; **10-pass DELETED**, fold is sole audience-sim path (verified in code); FOLD_THINKING_BUDGET=1000; ENGINE_VERSION 3.6.0 |
-| 5 | Wire + Surface | NOT STARTED — unplanned, ROADMAP stub |
+| 5 | Wire + Surface | COMPLETE (2026-06-06) — 4/4 plans done; D-01 rubric-sum + R11 range + InsightHeroFrame (hero) + dead-UI strip; verifier 18/18 code, `human_needed` for 5 live UAT items |
 
 ## Quick Tasks Completed
 
