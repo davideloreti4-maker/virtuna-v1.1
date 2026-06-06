@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/nextjs";
 import { nanoid } from "nanoid";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { createScrapingProvider } from "@/lib/scraping";
 import { createLogger } from "@/lib/logger";
 import { runPredictionPipeline } from "@/lib/engine/pipeline";
 import { aggregateScores } from "@/lib/engine/aggregator";
@@ -43,6 +44,46 @@ import type { DecodeResult } from "@/lib/engine/remix/decode-types";
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
 type Logger = ReturnType<typeof createLogger>;
+
+/**
+ * R11 layer 2 — lazy follower backfill (fire-and-forget).
+ *
+ * Mirrors the best-effort scrape /api/profile PATCH fires, but triggered from the
+ * analyze path so a handle set during onboarding (which never hit that PATCH) still
+ * gets its `tiktok_followers` populated. Intentionally NOT awaited: the scrape can be
+ * slow/flaky and must not enter the ≤90s critical path. Populates the column for the
+ * user's next run; failures are swallowed (the R11 range simply stays absent until a
+ * later scrape succeeds — honest null, never fabricated).
+ */
+function backfillCreatorFollowers(
+  service: ServiceClient,
+  userId: string,
+  tiktokHandle: string,
+  log: Logger
+): void {
+  const handle = tiktokHandle.replace(/^@/, "");
+  void (async () => {
+    try {
+      const scraper = createScrapingProvider();
+      const profileData = await scraper.scrapeProfile(handle);
+      await service
+        .from("creator_profiles")
+        .update({
+          display_name: profileData.displayName,
+          tiktok_followers: profileData.followerCount,
+          avatar_url: profileData.avatarUrl,
+          bio: profileData.bio,
+        })
+        .eq("user_id", userId);
+      log.info("R11 follower backfill complete", { handle });
+    } catch (err) {
+      log.warn("R11 follower backfill failed (non-blocking)", {
+        handle,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  })();
+}
 
 function cleanupUploadedStorage(
   service: ServiceClient,
@@ -445,7 +486,7 @@ export async function POST(request: Request) {
     // Phase 11 (INT-05/D-04): Read retention opt-in preference once — gates both branches.
     const { data: creatorProfile } = await supabase
       .from("creator_profiles")
-      .select("storage_retention_opted_in, tiktok_handle")
+      .select("storage_retention_opted_in, tiktok_handle, tiktok_followers")
       .eq("user_id", user.id)
       .maybeSingle();
     const retentionOptedIn = creatorProfile?.storage_retention_opted_in ?? false;
@@ -519,6 +560,19 @@ export async function POST(request: Request) {
     // EngagementRange stays dormant in the product even though the compute is correct.
     if (!validated.creator_handle && creatorProfile?.tiktok_handle) {
       validated.creator_handle = creatorProfile.tiktok_handle;
+    }
+
+    // R11 layer 2 (backfill on first analyze): the onboarding handle step writes
+    // tiktok_handle directly and never fires the follower scrape that /api/profile
+    // PATCH triggers, so tiktok_followers stays null → R11's range can't render even
+    // with the handle threaded above. Lazily fire that same best-effort scrape here
+    // whenever a handle exists but the follower count is missing. Fire-and-forget
+    // (never awaited) so it adds ZERO latency to the ≤90s budget: THIS run still
+    // cold-starts, but the column is populated for the user's next analysis — which
+    // is what "backfill on first analyze" means. Self-healing for any handle-having
+    // user regardless of how their handle was set (onboarding or otherwise).
+    if (creatorProfile?.tiktok_handle && creatorProfile.tiktok_followers == null) {
+      backfillCreatorFollowers(service, user.id, creatorProfile.tiktok_handle, log);
     }
 
     // CONTEXT D-15 — bypass_cache from query param OR body (eval harness)
