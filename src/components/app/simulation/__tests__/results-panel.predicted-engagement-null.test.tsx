@@ -1,12 +1,12 @@
 /** @vitest-environment happy-dom */
 /**
- * Plan 01-01 Task 3 — ResultsPanel predicted_engagement null-safety confirmation.
+ * Plan 05-04 Task 1 — ResultsPanel predicted_engagement null-safety + range rendering.
  *
- * These tests confirm EXISTING behavior (not new handling):
- * - TikTokResultCard is gated on `{result.predicted_engagement && ...}` in results-panel.tsx
- * - When predicted_engagement is null or absent, TikTokResultCard must NOT render.
- *
- * Production source is NOT modified by this task.
+ * Tests:
+ * - When predicted_engagement is null/absent, NO engagement card renders (R9 honesty).
+ * - When predicted_engagement is a populated EngagementRange, EngagementRangeCard renders
+ *   with lo + hi range bounds — never a single bare point number.
+ * - TikTokResultCard is no longer imported or rendered by results-panel (D-08 dead path removed).
  */
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
@@ -18,11 +18,7 @@ vi.mock('@/stores/simulation-store', () => ({
     sel({ videoSrc: null, thumbnailSrc: null }),
 }));
 
-// Stub child components that carry their own heavy deps (Recharts, Lucide, etc.)
-// so the test focuses only on the predicted_engagement gate.
-vi.mock('../tiktok-result-card', () => ({
-  TikTokResultCard: () => <div data-testid="tiktok-result-card" />,
-}));
+// Stub child components that carry their own heavy deps
 vi.mock('../impact-score', () => ({
   HeroScore: () => <div data-testid="hero-score" />,
 }));
@@ -60,39 +56,52 @@ const baseResult = (over: Partial<PredictionResult> = {}): PredictionResult =>
     ...over,
   }) as unknown as PredictionResult;
 
-describe('ResultsPanel — predicted_engagement gate (null-safety confirmation)', () => {
-  it('does NOT render TikTokResultCard when predicted_engagement is null', () => {
+describe('ResultsPanel — predicted_engagement gate (null-safety + range shape)', () => {
+  it('does NOT render EngagementRangeCard when predicted_engagement is null', () => {
     render(
       <ResultsPanel
-        result={baseResult({ predicted_engagement: null as unknown as PredictionResult['predicted_engagement'] })}
+        result={baseResult({ predicted_engagement: null })}
         onRunAnother={() => {}}
       />,
     );
-    expect(screen.queryByTestId('tiktok-result-card')).toBeNull();
+    expect(screen.queryByTestId('engagement-range-card')).toBeNull();
   });
 
-  it('does NOT render TikTokResultCard when predicted_engagement is null (Plan 02: field is now nullable)', () => {
-    // Plan 02 D1.1: predicted_engagement is nullable; null produces the same guard as absent.
+  it('does NOT render EngagementRangeCard when predicted_engagement is absent (undefined cast to null)', () => {
     const result = baseResult({ predicted_engagement: null });
     render(<ResultsPanel result={result} onRunAnother={() => {}} />);
-    expect(screen.queryByTestId('tiktok-result-card')).toBeNull();
+    expect(screen.queryByTestId('engagement-range-card')).toBeNull();
   });
 
-  it('DOES render TikTokResultCard when predicted_engagement is present', () => {
+  it('renders EngagementRangeCard with lo and hi when predicted_engagement is a populated EngagementRange', () => {
     render(
       <ResultsPanel
         result={baseResult({
           predicted_engagement: {
-            views: 50000,
-            likes: 5000,
-            comments: 200,
-            shares: 300,
-            saves: 150,
+            lo: 8000,
+            hi: 40000,
+            confidence: 0.65,
+            basis: 'vs your follower tier',
           } as PredictionResult['predicted_engagement'],
         })}
         onRunAnother={() => {}}
       />,
     );
-    expect(screen.getByTestId('tiktok-result-card')).toBeTruthy();
+    const card = screen.getByTestId('engagement-range-card');
+    expect(card).toBeTruthy();
+    // Both range bounds must be present — never a single point
+    expect(card.textContent).toMatch(/8[Kk]|8,000/);
+    expect(card.textContent).toMatch(/40[Kk]|40,000/);
+  });
+
+  it('does NOT render TikTokResultCard (dead path removed — D-08)', () => {
+    // TikTokResultCard is no longer imported or used in results-panel.
+    render(
+      <ResultsPanel
+        result={baseResult({ predicted_engagement: null })}
+        onRunAnother={() => {}}
+      />,
+    );
+    expect(screen.queryByTestId('tiktok-result-card')).toBeNull();
   });
 });
