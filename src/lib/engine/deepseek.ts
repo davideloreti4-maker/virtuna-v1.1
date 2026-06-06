@@ -148,6 +148,21 @@ function parseDeepSeekResponse(
   // Clamp composite_score to 0–100 (provider nondeterminism can produce slightly out-of-range)
   data.composite_score = Math.min(100, Math.max(0, data.composite_score));
 
+  // D-01: deterministic rubric-sum overwrites the LLM's holistic composite (R8 de-noise).
+  // Hook carries ~80% weight (apollo-core §4 weighting, §2.0a consensus).
+  // The 5 body dimensions share the remaining 20% equally.
+  // Clamp + round are applied to the sum output as defense-in-depth (V5).
+  // This must execute AFTER the schema clamp and BEFORE any rewrite-backstop reads composite.
+  {
+    const HOOK_WEIGHT = 0.80;
+    const BODY_WEIGHT = 0.20 / 5; // 5 non-hook dims share remaining 20%
+    const sum = data.dimensions.reduce((acc, dim) => {
+      const w = dim.name === "hook" ? HOOK_WEIGHT : BODY_WEIGHT;
+      return acc + dim.score * w;
+    }, 0);
+    data.composite_score = Math.min(100, Math.max(0, Math.round(sum)));
+  }
+
   // Assert rewrites.length >= 2 (Zod .min(2) handles schema rejection)
   if (data.rewrites.length < 2) {
     log.warn("Apollo rewrites too few post-parse", { count: data.rewrites.length });

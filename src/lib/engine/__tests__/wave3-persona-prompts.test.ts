@@ -100,6 +100,7 @@ function makeDeepSeekResult(): DeepSeekReasoning {
   const baseDimension = {
     name: "hook" as const,
     band: "mid" as const,
+    score: 50, // D-01: band-anchored numeric score (mid band → 50)
     lever: "Contrast / curiosity gap (§2.1)",
     evidence: "Hook opens with a contrarian claim",
   };

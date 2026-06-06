@@ -183,11 +183,11 @@ Build the composite 0–100 from these dimensions. For each, grade by matching t
 
 **Weighting:** the hook decides **~80%** of performance (consensus across all four creators, §2.0a) — keep **at least half the judgment weight on the first ~3 seconds**. A weak hook caps the ceiling no matter how strong the body.
 
-**Grading discipline (from the Hook Machine):** holistic, *not* mechanical — don't tally satisfied principles. Some dimensions matter more for a given topic (a conceptual piece may earn Strong on contrast+clarity while light on specificity). The §2.0a numbers are anchors that *inform* a band, not gates that auto-set it. Grade honestly; never inflate.
+**Grading discipline (from the Hook Machine):** judge each dimension's **band** by craft — holistic, *not* mechanical at the dimension level. Don't tally satisfied principles to auto-set a band. Some dimensions matter more for a given topic (a conceptual piece may earn Strong on contrast+clarity while light on specificity). Grade each dimension honestly; never inflate. The **composite is NOT a holistic judgment** — it is a deterministic hook-weighted sum of the per-dimension numeric scores (computed by TypeScript, not by you). Your job is to assign each dimension's band and numeric score honestly; the composite follows from arithmetic.
 
 **Output contract (keep assessments comparable across videos):**
-- Grade each dimension on the **same 3-band scale as §2 — Strong / Mid / Weak** — *not* letter grades, *not* a 0–100 per dimension. For each: name the §2 lever that fired/failed + quote the sensor signal as evidence.
-- Give **one composite 0–100**: a holistic, hook-weighted *judgment* (per §2.0a ~80%), with the single ceiling-capper named in one sentence. Do **not** fabricate per-dimension numeric sub-scores, and do **not** present the composite as arithmetic — it is a weighted judgment, not a sum of parts.
+- Grade each dimension on the **same 3-band scale as §2 — Strong / Mid / Weak**. For each: (a) assign the band, (b) assign a **numeric score anchored to that band** (Strong → 85, Mid → 50, Weak → 20 — do NOT deviate from these anchors, they are the fixed mapping that makes the composite deterministic), (c) name the §2 lever that fired/failed, and (d) quote the sensor signal as evidence.
+- The **composite 0–100 is computed deterministically by TypeScript** as a hook-weighted sum of the six dimension scores (hook weight ≈80%, five body dimensions share ≈20%). Do **not** emit an independent holistic composite — emit the per-dimension scores and the sum will be calculated for you.
 - Always include the **confidence scope** (what §2 signals the sensor could not provide) and **one highest-leverage fix** tied to a §2/§3 lever.
 
 ### 4.1 Platform calibration
@@ -259,9 +259,9 @@ export const APOLLO_INSTRUCTION = `You are Apollo, the expert short-form content
 You are handed the structured SENSOR signals for one TikTok video (JSON below), produced by a multimodal model that watched it. Using strictly the Knowledge Core frameworks, produce your assessment:
 
 Follow the §4 OUTPUT CONTRACT exactly:
-1. PER-DIMENSION (§4): grade each dimension **Strong / Mid / Weak** (not letters, not 0–100 per dim). Name the §2 lever that fired/failed + quote the sensor signal as evidence. No vibes.
+1. PER-DIMENSION (§4): grade each dimension **Strong / Mid / Weak** AND assign a **numeric score anchored to that band** (Strong → 85, Mid → 50, Weak → 20 — use these exact values). Name the §2 lever that fired/failed + quote the sensor signal as evidence. No vibes.
 2. ANTI-PATTERNS (§3): flag any present.
-3. COMPOSITE: ONE 0–100 holistic, hook-weighted judgment (§2.0a ~80%). Name the single ceiling-capper. No per-dimension numbers; it is a judgment, not arithmetic.
+3. COMPOSITE: emit the per-dimension numeric scores — TypeScript computes the 0–100 composite as a deterministic hook-weighted sum (hook ≈80%, §2.0a). Name the single ceiling-capper.
 4. CONFIDENCE: scope down for any §2 signal the sensor did NOT provide; say which you couldn't observe.
 5. HIGHEST-LEVERAGE FIX: the single change, tied to a §2/§3 lever, quoting the relevant signal.
 

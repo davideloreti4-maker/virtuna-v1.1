@@ -126,7 +126,7 @@ vi.mock("../anti-virality", async (importOriginal) => {
 // =====================================================
 
 import { selectWeights, aggregateScores } from "../aggregator";
-import { makePipelineResult, makeGeminiAnalysis } from "./factories";
+import { makePipelineResult, makeGeminiAnalysis, makeDeepSeekReasoning } from "./factories";
 // predictWithML import removed (Plan 02, R9): ml call gone from aggregator; no coupling to ../ml here.
 import type { PersonaBehavioralAggregate, PersonaSimulationResult, SegmentGrid, HookDecomposition } from "../types";
 import type { EmotionArcPoint } from "../qwen/schemas";
@@ -433,7 +433,7 @@ describe("Phase 3 — provenance + stub invocations", () => {
     const { ENGINE_VERSION } = await import("../aggregator");
     const { ENGINE_VERSION: viaVersion } = await import("../version");
     expect(ENGINE_VERSION).toBe(viaVersion);
-    expect(ENGINE_VERSION).toBe("3.7.0"); // spine A/B: + omni-flash default (plus→flash)
+    expect(ENGINE_VERSION).toBe("3.8.0"); // Phase 5 Plan 01 (D-01 rubric-sum): bump from 3.7.0
   });
 
   it("PredictionResult.engine_version reads from ./version module", async () => {
@@ -1237,5 +1237,52 @@ describe("blend uses behavioral + apollo (Wave 0 scaffold — RED until Plan 04)
     // GREEN assertions (post-Plan-04 state):
     expect(SCORE_WEIGHT_KEYS).not.toContain("gemini"); // gemini retired from blend
     expect(SCORE_WEIGHT_KEYS).toContain("apollo");     // apollo is now the blend term
+  });
+});
+
+// =====================================================
+// Phase 5 Plan 01 — Wave 0 threading guard (D-01 assembly-hop)
+// RED scaffold: apollo_reasoning.dimensions[0].score must survive aggregator→PredictionResult.
+// Fails until Task 2 (schema) + Task 3 (sum) land — dimension.score is undefined pre-D-01.
+// =====================================================
+
+describe("Phase 5 Plan 01 — D-01 threading: dimensions[].score survives aggregator assembly", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("apollo_reasoning.dimensions[0].score is a finite number after aggregateScores (assembly-hop guard)", async () => {
+    // Dimensions carry `score` in the pipeline input (post-D-01 factory).
+    // After aggregateScores, result.apollo_reasoning.dimensions[0].score must be a finite number.
+    // RED: makeDeepSeekReasoning factory has no `score` on dimensions → score is undefined.
+    // GREEN after Tasks 2+3: factory updated + schema accepts score → score is a number.
+    const pipelineWithScores = makePipelineResult({
+      deepseekResult: {
+        reasoning: {
+          ...makeDeepSeekReasoning(),
+          dimensions: [
+            { name: "hook" as const, band: "mid" as const, lever: "§2.1", evidence: "e", score: 85 },
+            { name: "retention" as const, band: "mid" as const, lever: "§2.2", evidence: "e", score: 50 },
+            { name: "clarity" as const, band: "mid" as const, lever: "§2.1", evidence: "e", score: 50 },
+            { name: "share_pull" as const, band: "mid" as const, lever: "§2.3", evidence: "e", score: 50 },
+            { name: "substance" as const, band: "mid" as const, lever: "§2.5", evidence: "e", score: 50 },
+            { name: "credibility" as const, band: "mid" as const, lever: "§2.1", evidence: "e", score: 50 },
+          ],
+        },
+        cost_cents: 0.3,
+      },
+    });
+
+    const result = await aggregateScores(pipelineWithScores);
+    // Assembly-hop guard: dimensions with .score must ride through unchanged.
+    const dims = result.apollo_reasoning?.dimensions;
+    expect(dims).toBeDefined();
+    expect(dims).not.toBeNull();
+    expect(Array.isArray(dims)).toBe(true);
+    // RED: score is undefined (not a number) until ApolloDimensionSchema has `score`.
+    // GREEN: score is 85 (finite number).
+    const firstDim = dims?.[0];
+    expect(typeof (firstDim as { score?: unknown })?.score).toBe("number");
+    expect(Number.isFinite((firstDim as { score?: unknown })?.score as number)).toBe(true);
   });
 });

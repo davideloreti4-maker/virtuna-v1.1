@@ -525,6 +525,7 @@ describe("apollo schema validates", () => {
   const apolloDimension = {
     name: "hook" as const,
     band: "strong" as const,
+    score: 85, // D-01: band-anchored numeric score (strong band → 85)
     lever: "Contrast / curiosity gap (§2.1)",
     evidence: "Hook opens with a clear contrarian claim in sentence 1",
   };
@@ -647,6 +648,180 @@ describe("apollo schema validates", () => {
     expect(uniqueLevers.size).toBe(levers.length);
     expect(rewrites.length).toBeGreaterThanOrEqual(2);
     expect(rewrites.length).toBeLessThanOrEqual(3);
+  });
+});
+
+// =====================================================
+// Phase 5 Plan 01 — Wave 0 rubric-sum + determinism + threading scaffolds (D-01)
+// RED scaffolds: fail until Tasks 2–4 land.
+// =====================================================
+
+describe("D-01 rubric-sum — score field schema (V5 boundary defense)", () => {
+  // Band-anchor values that should map to numeric scores (names match Task 3 constants).
+  // Strong=85, Mid=50, Weak=20 are the expected band anchors baked into the corpus §4.
+  // These tests RED-fail because ApolloDimensionSchema does not yet have `score`.
+
+  function makeDimWithScore(name: string, score: number) {
+    return {
+      name,
+      band: "mid" as const,
+      lever: "Contrast / curiosity gap (§2.1)",
+      evidence: "Test evidence",
+      score,
+    };
+  }
+
+  it("dimension with score in [0,100] parses — schema must accept the numeric score field (V5)", () => {
+    const dim = makeDimWithScore("hook", 75);
+    // RED: ApolloDimensionSchema does not have `score` yet — parse strips it or rejects.
+    // GREEN after Task 2: schema accepts score and parses it.
+    const result = DeepSeekResponseSchema.safeParse({
+      ...makeDeepSeekReasoning(),
+      dimensions: [
+        makeDimWithScore("hook", 85),
+        makeDimWithScore("retention", 50),
+        makeDimWithScore("clarity", 50),
+        makeDimWithScore("share_pull", 50),
+        makeDimWithScore("substance", 50),
+        makeDimWithScore("credibility", 50),
+      ],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(typeof result.data.dimensions[0]!.score).toBe("number");
+      expect(result.data.dimensions[0]!.score).toBe(85);
+    }
+    // Verify the dim fixture itself
+    expect(dim.score).toBe(75);
+  });
+
+  it("dimension score > 100 is rejected by zod bound (V5 — LLM output is untrusted)", () => {
+    const result = DeepSeekResponseSchema.safeParse({
+      ...makeDeepSeekReasoning(),
+      dimensions: [
+        makeDimWithScore("hook", 101),   // > 100 — must fail
+        makeDimWithScore("retention", 50),
+        makeDimWithScore("clarity", 50),
+        makeDimWithScore("share_pull", 50),
+        makeDimWithScore("substance", 50),
+        makeDimWithScore("credibility", 50),
+      ],
+    });
+    // RED: schema has no score field — the invalid score is ignored (passes).
+    // GREEN after Task 2: schema rejects score > 100.
+    expect(result.success).toBe(false);
+  });
+
+  it("dimension score < 0 is rejected by zod bound (V5 — LLM output is untrusted)", () => {
+    const result = DeepSeekResponseSchema.safeParse({
+      ...makeDeepSeekReasoning(),
+      dimensions: [
+        makeDimWithScore("hook", -1),    // < 0 — must fail
+        makeDimWithScore("retention", 50),
+        makeDimWithScore("clarity", 50),
+        makeDimWithScore("share_pull", 50),
+        makeDimWithScore("substance", 50),
+        makeDimWithScore("credibility", 50),
+      ],
+    });
+    // RED: schema has no score field — the invalid score is ignored (passes).
+    // GREEN after Task 2: schema rejects score < 0.
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("D-01 rubric-sum — sum-identity + determinism (R8)", () => {
+  // HOOK_WEIGHT = 0.80; BODY_WEIGHT = 0.20 / 5 = 0.04 each.
+  // Expected composite = Math.round(80 * 0.80 + 60 * 0.04 * 5) = Math.round(64 + 12) = 76.
+  // The LLM emits composite_score: 99 (deliberately wrong) — must be overwritten by the sum.
+  // RED: the sum logic doesn't exist in deepseek.ts yet — composite stays 99.
+  // GREEN after Task 3: composite_score == 76 (the deterministic sum).
+
+  const HOOK_SCORE = 80;
+  const BODY_SCORE = 60;
+  const HOOK_WEIGHT = 0.80;
+  const BODY_WEIGHT = 0.20 / 5;
+  const EXPECTED_COMPOSITE = Math.round(
+    HOOK_SCORE * HOOK_WEIGHT +
+    BODY_SCORE * BODY_WEIGHT +
+    BODY_SCORE * BODY_WEIGHT +
+    BODY_SCORE * BODY_WEIGHT +
+    BODY_SCORE * BODY_WEIGHT +
+    BODY_SCORE * BODY_WEIGHT
+  ); // = Math.round(64 + 12) = 76
+
+  function makeDimWithScore(name: string, score: number) {
+    return {
+      name,
+      band: "mid" as const,
+      lever: "Contrast / curiosity gap (§2.1)",
+      evidence: "Test evidence",
+      score,
+    };
+  }
+
+  function makeRubricSumResponse(emittedComposite: number) {
+    return {
+      ...makeDeepSeekReasoning(),
+      composite_score: emittedComposite, // deliberately wrong — must be overwritten
+      dimensions: [
+        makeDimWithScore("hook", HOOK_SCORE),
+        makeDimWithScore("retention", BODY_SCORE),
+        makeDimWithScore("clarity", BODY_SCORE),
+        makeDimWithScore("share_pull", BODY_SCORE),
+        makeDimWithScore("substance", BODY_SCORE),
+        makeDimWithScore("credibility", BODY_SCORE),
+      ],
+    };
+  }
+
+  beforeEach(() => {
+    resetCircuitBreaker();
+    mockCreate.mockReset();
+  });
+
+  it("sum-identity: post-parse composite_score == hook-weighted sum, overwriting wrong emitted value (D-01)", async () => {
+    vi.useFakeTimers();
+    // Emit composite_score: 99 (wrong); dimensions carry correct scores.
+    // After post-parse, composite must be EXPECTED_COMPOSITE (76), not 99.
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(makeRubricSumResponse(99)) } }],
+      usage: { prompt_tokens: 1000, completion_tokens: 200 },
+    });
+
+    const result = await reasonWithDeepSeek(makeContext());
+    expect(result).not.toBeNull();
+    // RED: sum logic absent — composite stays 99.
+    // GREEN: composite == EXPECTED_COMPOSITE (76).
+    expect(result!.reasoning.composite_score).toBe(EXPECTED_COMPOSITE);
+    vi.useRealTimers();
+  });
+
+  it("determinism: same dimension scores parsed twice yield byte-identical composite (R8)", async () => {
+    vi.useFakeTimers();
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(makeRubricSumResponse(99)) } }],
+      usage: { prompt_tokens: 1000, completion_tokens: 200 },
+    });
+
+    const result1 = await reasonWithDeepSeek(makeContext());
+    expect(result1).not.toBeNull();
+
+    resetCircuitBreaker();
+    mockCreate.mockReset();
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(makeRubricSumResponse(99)) } }],
+      usage: { prompt_tokens: 1000, completion_tokens: 200 },
+    });
+
+    const result2 = await reasonWithDeepSeek(makeContext());
+    expect(result2).not.toBeNull();
+
+    // RED: sum logic absent — both return 99 (technically equal by coincidence, but
+    // the sum-identity assertion in the previous test is what gates GREEN).
+    // After Task 3 both return EXPECTED_COMPOSITE and this determinism check holds.
+    expect(result1!.reasoning.composite_score).toBe(result2!.reasoning.composite_score);
+    vi.useRealTimers();
   });
 });
 
