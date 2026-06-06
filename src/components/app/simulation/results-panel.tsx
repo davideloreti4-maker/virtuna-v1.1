@@ -6,13 +6,12 @@ import type { PredictionResult } from '@/lib/engine/types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Text, Caption } from '@/components/ui/typography';
-import { useSimulationStore } from '@/stores/simulation-store';
 import { HeroScore } from './impact-score';
 import { FactorBreakdown } from './attention-breakdown';
 import { BehavioralPredictionsSection } from './behavioral-predictions';
 import { SuggestionsSection } from './insights-section';
 import { ShareButton } from './share-button';
-import { TikTokResultCard } from './tiktok-result-card';
+import { EngagementRangeCard } from './EngagementRangeCard';
 import { SignalAvailabilityChips } from './signal-availability-chips';
 import { GoalRecheckBanner } from './goal-recheck-banner';
 
@@ -137,8 +136,6 @@ function BottomBar({
 }
 
 export function ResultsPanel({ result, onRunAnother, analysisCount, primaryGoal }: ResultsPanelProps) {
-  const videoSrc = useSimulationStore((s) => s.videoSrc);
-  const thumbnailSrc = useSimulationStore((s) => s.thumbnailSrc);
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
   return (
@@ -156,13 +153,10 @@ export function ResultsPanel({ result, onRunAnother, analysisCount, primaryGoal 
         )
       }
 
-      {/* TikTok Result Card — shows video + predicted engagement (RES-1) */}
+      {/* R11: grounded engagement range — renders only when a creator baseline exists (honesty, R9).
+           Null on permalink reload by design (live-only this phase, D-06). */}
       {result.predicted_engagement && (
-        <TikTokResultCard
-          videoSrc={videoSrc}
-          thumbnailSrc={thumbnailSrc}
-          engagement={result.predicted_engagement}
-        />
+        <EngagementRangeCard range={result.predicted_engagement} />
       )}
 
       {/* Warnings */}
