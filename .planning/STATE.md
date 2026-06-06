@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: apollo
 milestone_name: Apollo
 status: ready_to_plan
-last_updated: "2026-06-05T14:45:49.537Z"
+last_updated: "2026-06-06T00:00:00.000Z"
 progress:
-  total_phases: 2
-  completed_phases: 1
-  total_plans: 5
-  completed_plans: 5
-  percent: 50
+  total_phases: 5
+  completed_phases: 4
+  total_plans: 18
+  completed_plans: 18
+  percent: 80
 ---
 
 # Project State
@@ -20,13 +20,14 @@ See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Cut-l
 
 ## Current Position
 
-Phase: 5
-Plan: Not started
-Phase: 03 (Apollo Reasoner) — NOT STARTED (blocked on corpus v1)
-Last completed plan: 04-05
+Phase: 5 (Wire + Surface) — **NOT STARTED / unplanned** (ROADMAP entry is a stub; no CONTEXT, no plans)
+Last completed plan: 04-05 (P4 COMPLETE)
+**Phases 1–4 ALL COMPLETE on disk** (P1 6/6, P2 3/3, P3 4/4, P4 5/5 = 18/18 plans). Milestone 80%.
 **Milestone worktree** `~/virtuna-engine-opt/` on `milestone/engine-opt`. Milestone **Apollo** — turn the ~25-call score machine into a 3-call knowledge-grounded expert (Omni → Audience-Sim → Apollo Reasoner).
 
-Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milestone formalized. **Synced with `origin/main` (merged in Remix PR #6 + audience change) — branch was stale + blind to Remix.** Re-scanned Remix engine path; folded into the plan (Remix = Apollo modes, R12). **No phase plans yet.**
+> **State reconciled 2026-06-06** — prior STATE claimed "Phase 3 NOT STARTED / 50%". Disk + code disprove it: P3 (Apollo Reasoner) executed (4 SUMMARYs), P4 fold-flip is LIVE in code. STATE was never updated after P3 ran.
+
+Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milestone formalized. **Synced with `origin/main` (merged in Remix PR #6 + audience change).** Remix engine path folded in (Remix = Apollo modes, R12).
 
 ## Phases
 
@@ -34,9 +35,9 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 |---|-------|--------|
 | 1 | Strip to Senses | COMPLETE (2026-06-04) — 6/6 plans done |
 | 2 | Omni Verbatim | COMPLETE (2026-06-04) — 3/3 plans done; R1 proven on real run (gwxLeHphZCxK); D-02 silent deferred HUMAN-UAT |
-| 3 | Apollo Reasoner (Brain 1, the moat) | not started — blocked on Chase Hughes corpus |
-| 4 | Audience-Sim Fold (Brain 2, the bet) | COMPLETE (2026-06-05) — 5/5 plans done; **10-pass DELETED** (2026-06-05 user mandate); fold is sole audience-sim path; ENGINE_VERSION 3.4.0 |
-| 5 | Wire + Surface | not started |
+| 3 | Apollo Reasoner (Brain 1, the moat) | COMPLETE — 4/4 plans done (corpus v1 unblocked it; reasoner + remix re-grounding + aggregator/route/pipeline wiring) |
+| 4 | Audience-Sim Fold (Brain 2, the bet) | COMPLETE (2026-06-05) — 5/5 plans done; **10-pass DELETED**, fold is sole audience-sim path (verified in code); FOLD_THINKING_BUDGET=1000; ENGINE_VERSION 3.6.0 |
+| 5 | Wire + Surface | NOT STARTED — unplanned, ROADMAP stub |
 
 ## Quick Tasks Completed
 
@@ -44,14 +45,18 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 |------|------|--------|
 | 2026-06-05 | engine-latency-quality-spine-ab | Spine A/B + Apollo budget sweep + fold trim. **E2E 116→87s (−25%) across 3 real runs, quality verified.** Shipped (ENGINE_VERSION 3.6.0): fold reason-drop + t_start/t_end drop (54→46s), FOLD_MAX 8000→4000, Apollo thinking_budget 3000→1500 (sweep proved insight NOT budget-bound, depth held 3000→1000). Final: omni 36 / fold 46 / deepseek 51 = 87s. **<45s needs defer-Apollo + omni→flash (omni alone=36s, video-bound).** Next: prototype defer-Apollo; 2-run determinism confirm. → `.planning/quick/20260605-engine-latency-quality-spine-ab/` |
 
-## Decisions locked (2026-06-05, 04-05 FLIP-AND-DELETE)
+## Decisions locked (2026-06-05, 04-05 FLIP-AND-DELETE) — ✅ LIVE IN CODE (verified 2026-06-06)
 
-- **FLIP EXECUTED (user mandate, supersedes D-09/D-10)** — 10-pass (runWave3Pass2 + runWave3 Pass-1 loop) DELETED; fold (runFold) is the sole audience-sim path; no fallback to persona loops; no ENGINE_USE_FOLD flag.
-- **FOLD_THINKING_BUDGET 4000→1000** — A/B validated: budget=1000 returned in 89.9s (just under 90s ceiling) with diverse curves. Margin thin — do NOT raise timeout; trim FOLD_MAX_TOKENS for headroom if needed.
-- **ENGINE_VERSION 3.4.0** — cache invalidation required for pre-fold era rows; bumped from 3.3.0.
+> This block is the CURRENT truth. The older "SHADOW / fold dormant / deferred to P5" framing below
+> (in the P4-05 COMPLETE narrative) was superseded same day by this user mandate and is STALE.
+> Code verification 2026-06-06: `runWave3Pass2` DELETED (pass2.ts + pipeline.ts:734); no live
+> `ENGINE_USE_FOLD` flag; `FOLD_THINKING_BUDGET` default = 1000 (fold.ts:57); ENGINE_VERSION 3.6.0.
+
+- **FLIP EXECUTED (user mandate, supersedes D-09/D-10)** — 10-pass (runWave3Pass2 + runWave3 Pass-1 loop) DELETED; fold (runFold) is the sole audience-sim path; no fallback to persona loops; no ENGINE_USE_FOLD flag. **The P4-05 carry-forward (lower budget → re-run referee → flip) is therefore DONE — not deferred to P5.**
+- **FOLD_THINKING_BUDGET 4000→1000** — A/B validated: budget=1000 returned in 89.9s with diverse curves. Margin thin — do NOT raise timeout; trim FOLD_MAX_TOKENS for headroom if needed. **Live: fold.ts:57 default 1000.**
+- **ENGINE_VERSION 3.6.0** — later spine-A/B quick task bumped 3.4.0 → 3.6.0 (reason-drop + FOLD_MAX 4000 + Apollo budget 1500). Cache invalidation required for pre-fold rows.
 - **behavioralSource default: "fold"** — deepseek fallback kept for fold failures and eval harness back-compat; "personas" option removed.
 - **FLIP commit: `2a96e1b7`** — build green, 939 tests pass, grep confirms zero live runWave3Pass2 references.
-- **SHADOW (D-10 original)** — 04-05 referee run captured (16c, MISS 0/2 due to timeout artifact). See 04-05-SUMMARY.md §Referee Run for details.
 
 ## Decisions locked (2026-06-05, 04-04)
 
@@ -97,13 +102,17 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 
 ## Next action
 
+> **CURRENT (2026-06-06):** Phases 1–4 COMPLETE. **Phase 5 (Wire + Surface) is the only remaining phase — unplanned, ROADMAP entry is a stub.** Next step: `/gsd-discuss-phase 5` to scope it (score rederive from Apollo R5/R9, grounded engagement-prediction rebuild R11, confidence indicator, insight-as-hero surfacing), then plan. **Also outstanding: PR #13 (P1+P2 → main) is still OPEN — merge to stop the branch diverging further.** The notes below are HISTORICAL per-plan records.
+
+---
+
 **P1 executed + complete** (6/6 plans, 2026-06-04). **P2 PLANNED** (2026-06-04) — research + validation + pattern-map + 3 verified plans (3 waves). Planner picked **persistence Option A** (dedicated `verbatim` JSONB column, mirrors emotion_arc). Plan-checker caught + the planner fixed a real BLOCKER: per-segment `spoken_text`/`on_screen_text` had no persistence path (declared+prompted but dropped before the DB — the segment-axis twin of the emotion_arc bug); now threaded on BOTH the inline shape AND exported `SegmentSchema` → normalizeSegments → aggregator pluck → `VerbatimPayload.segments` → both route inserts → `verbatim->'segments'` real-run proof. VERIFICATION PASSED iteration 2.
 
 - **02-01** (Wave 1) — ✅ COMPLETE (2026-06-04) — schema + prompt contracts + 20-case Wave 0 regression test all GREEN
 - **02-02** (Wave 2) — ✅ COMPLETE (2026-06-04) — VerbatimPayload + aggregator pluck/thread + verbatim JSONB migration (live on prod) + db types + both route sites :594/:921 + ENGINE_VERSION 3.2.0
 - **02-03** (Wave 3) — ✅ COMPLETE (2026-06-04) — R1 proven on real DB rows (gwxLeHphZCxK: hook+5-seg both axes), R6 ~106s under 300s cap, R12 51/51 green, R8 grep=2; D-02 silent deferred HUMAN-UAT
 
-**P2 COMPLETE.** **SHIPPED 2026-06-05 → PR #13** (`milestone/engine-opt` → `main`, 88 commits, 103 files). Code fully verified; both VERIFICATIONs `human_needed` only for live-env/deferred-UAT reasons — carried as a post-merge checklist in the PR body (R6 latency, R8 determinism, R12 remix smoke, D-02 silence honesty, R1 row reconfirm). Corpus v1 **ready** (`KNOWLEDGE-CORE.md` v1.1 validated) → **P3 unblocked.** Next: merge PR #13, then `/gsd-plan-phase 3` (or `/gsd-discuss-phase 3` for the §8 supersede-vs-merge + rewrites-temp + Remix re-grounding decisions).
+**P2 COMPLETE.** **SHIPPED 2026-06-05 → PR #13** (`milestone/engine-opt` → `main`, 88 commits, 103 files). Code fully verified; both VERIFICATIONs `human_needed` only for live-env/deferred-UAT reasons — carried as a post-merge checklist in the PR body (R6 latency, R8 determinism, R12 remix smoke, D-02 silence honesty, R1 row reconfirm). Corpus v1 **ready** (`KNOWLEDGE-CORE.md` v1.1 validated) → P3 unblocked. **[HISTORICAL — P3 has since been planned, executed, and completed (4/4 plans). PR #13 still open.]**
 
 **P4-02 COMPLETE (2026-06-05)** — fold LLM layer: `fold-prompts.ts` (byte-stable 10-archetype system prompt + FoldResponseSchema + buildFoldUserContent) + `fold.ts` (single bounded qwen3.6-plus thinking call — the 20→1 fold — with Zod boundary validation, segment-count guard, diversity guard, cache-aware cost telemetry). fold-schema.test.ts 5/5 GREEN. Commits: `42a6e85b` (fold-prompts), `18b8bdc2` (fold).
 
@@ -111,11 +120,11 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 
 **P4-04 COMPLETE (2026-06-05)** — ab-fold-referee.ts 3-metric composite: behavioral parity <=5, diversity >=0.8x avgCurveRange, drop-point agreement >=6/10 archetypes; R7 call-count assertion (wave_3_fold=1 vs wave_3_persona_*+wave_3_pass2_persona_*=20); R8 2-runs-per-path averaging; per-video table; advisory overall verdict (REPRODUCE/BEAT/PARTIAL/MISS, D-05 no exit-1 on metric miss); COST_CAP_CENTS wired. tsc zero errors. Commit: `aa3a8428`.
 
-**P4-05 COMPLETE (2026-06-05) — P4 COMPLETE.** Real-API referee run: MISS 0/2 (fold timed out at 90s, thinking_budget=4000, every run). R7 CONFIRMED. SHADOW decision (D-10): 10-pass production default intact, fold dormant (ENGINE_USE_FOLD=1), no ENGINE_VERSION bump. **P5 carry-forward:** lower `FOLD_THINKING_BUDGET` (~1000 from 4000) in `fold.ts` → re-run referee → flip if composite passes. Commit: `1923ad77`.
+**P4-05 COMPLETE (2026-06-05) — P4 COMPLETE.** Real-API referee run: MISS 0/2 (fold timed out at 90s, thinking_budget=4000, every run). R7 CONFIRMED. Commit: `1923ad77`. ~~SHADOW decision (D-10): 10-pass intact, fold dormant; P5 carry-forward to lower budget → re-run → flip.~~ **⚠ SUPERSEDED SAME DAY** by the FLIP-AND-DELETE mandate (block above): 10-pass deleted, fold is live, budget already 1000. The carry-forward is DONE, not pending in P5.
 
 ## Open bets / to verify
 
-- Fold quality (R10): **DEFERRED TO P5** — fold timed out at 90s budget (thinking_budget=4000); lower budget + re-run referee; R7 architecture confirmed correct.
+- Fold quality (R10): **RESOLVED** — budget cut to 1000 (89.9s, diverse curves), flip executed, fold live as sole path. R7 confirmed. (Was "deferred to P5" — no longer.)
 - ✅ **DB row counts (01-01 Task 4):** trending_sounds=0, outcomes=0, scraped_videos=7389 (benign — Plan 03 removes trends.ts call site before Plan 05 dormant move).
 - Archetype count in the fold (10 vs ~5).
 - `optimal-post.ts`: honest signal or cut.
