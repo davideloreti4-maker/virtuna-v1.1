@@ -1,5 +1,26 @@
 # Milestones — Virtuna
 
+## v4.0 Apollo (Shipped: 2026-06-06)
+
+**Phases completed:** 5 phases, 22 plans, 26 tasks · ENGINE_VERSION 3.8.0 · merged to main via PR #13
+
+**Delivered:** Turned the ~25-call score-and-fabrication engine into **Apollo** — a 3-call, knowledge-grounded expert (Omni verbatim sensor → fold ∥ Apollo reasoner). Insight is the hero; the score demoted to an honest band. E2E latency ~312s → ~62–74s.
+
+**Key accomplishments:**
+
+- **P1 Strip to Senses** — deleted the fabricated `predicted-engagement` (views=f(score)+jitter) + dead machinery (ml.ts, audio-fingerprint, trends, platform_fit, stage11); blend cut to live signals only (R9 honest-by-deletion).
+- **P2 Omni Verbatim** — sharpened the sensor to verbatim hook/segments (R1 proven on real runs); Omni plus→flash flip (36s→17s first paint).
+- **P3 Apollo Reasoner (the moat)** — knowledge-core-grounded §4 reasoner (distilled Chase Hughes corpus, cached system prompt — not fine-tuning); rewrites + 6 band-anchored scored dimensions; one brain across score AND remix modes (R12).
+- **P4 Audience-Sim Fold (the bet)** — DELETED the 10-pass persona loop; a single bounded fold call is the sole audience-sim path (FOLD_THINKING_BUDGET tuned).
+- **P5 Wire + Surface** — D-01 deterministic rubric-sum score (kills ±5 swing); R11 grounded engagement range (follower_count × quality read); insight-hero board frame (dual-read, copyable rewrites, demoted band); dead fake-engagement UI stripped.
+- **Close-out** — R11 positive path surfaced on the board + persisted (was computed but stranded on an orphaned surface); IN-02 hero leads with ceiling_capper (UI + aggregator fix); omni-flash drift hardened (emotion_arc.label + weakest_modality); `/gsd-secure-phase 5` SECURED 12/12.
+
+**Verification:** 5/5 human UAT PASS (live E2E 62.4s; R11 render→persist→reload); 1429 tests green.
+
+**Known deferred at close** (see STATE.md Deferred Items): 6 orphaned quick-task refs (dirs gone), 2 uat_gaps + 2 verification_gaps (stale / superseded by P5 close-out).
+
+---
+
 ## Result Surface (Shipped: 2026-05-28)
 
 **Phases completed:** 6 phases — Foundation SSE + Engine Signal Extensions; Board Substrate Navigation; Engine Rework Pass 2 (timeline-weighted aggregator + heatmap + filmstrip + Phase 3 SSE); Live Audience Node; Other Group Nodes (Verdict/Actions/Content Analysis populated); Reshoot Script + Optimal Post Time.
@@ -7,6 +28,7 @@
 **Branch / worktree:** `milestone/result-surface` at `~/virtuna-result-surface/`. Merged to main via PR #3 at `94b4663`.
 
 **Key accomplishments:**
+
 - Board-substrate result surface replacing legacy /dashboard (atomic /dashboard sunset with 307 redirect to /analyze)
 - Pass 2 timeline-weighted aggregator + persona weights + `assembleHeatmapPayload`
 - Phase 3 dual-trigger anti-virality gating via `isAntiViralityGatedFull` (confidence + timeline_pattern reason discriminator + dropoff segment indices)
@@ -21,6 +43,7 @@
 **Archive:** `.planning/milestones/result-surface/`
 
 **Known carryover handed to MVP-cut milestone:**
+
 - Schema drift: `counterfactuals`, `hook_decomposition`, `confidence_label`, `anti_virality_gated` columns not yet persisted; `/api/script` route had to drop nonexistent columns inline and derive label
 - Orphaned video storage observed on analysis `-I4GtlGVCQKO` — retention cron timing or upload→insert race
 - Hook decomposition + emotion arc only half-wired (aggregator.ts:686-693 path with null fallback)
