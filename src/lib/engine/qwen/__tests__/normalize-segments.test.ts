@@ -198,3 +198,70 @@ describe("always sets is_hook_zone=true for segments with t_start < 3 after norm
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// CR-01: verbatim fidelity through merge + hook-zone split
+// (the absorbed segment's words must not vanish on merge; a forced split must
+//  not duplicate spoken_text onto both children)
+// ---------------------------------------------------------------------------
+
+describe("CR-01: verbatim survives merge and is not duplicated across a hook-zone split", () => {
+  it("merge into NEXT concatenates the absorbed sub-1s segment's spoken_text (no drop)", () => {
+    const input: SegmentGrid[] = [
+      seg(0, 3, { spoken_text: "intro" }),
+      seg(3, 5, { spoken_text: "before the cut" }),
+      seg(5, 5.4, { spoken_text: "tiny cut words" }), // sub-1s → merges into next
+      seg(5.4, 9, { spoken_text: "after the cut" }),
+      seg(9, 12, { spoken_text: "later" }),
+      seg(12, 16, { spoken_text: "end" }),
+    ];
+    const result = mergeSubMinSegments(input);
+    // The sub-1s segment merges forward into seg(5.4,9); its words must survive.
+    const merged = result.find((s) => s.t_start === 5 && s.t_end === 9);
+    expect(merged).toBeDefined();
+    expect(merged!.spoken_text).toBe("tiny cut words after the cut");
+  });
+
+  it("merge into PREVIOUS concatenates a trailing sub-1s segment's spoken_text (no drop)", () => {
+    // Last segment is sub-1s → merges into previous; prev is earlier in time.
+    const input: SegmentGrid[] = [
+      seg(0, 3, { spoken_text: "a" }),
+      seg(3, 6, { spoken_text: "b" }),
+      seg(6, 9, { spoken_text: "c" }),
+      seg(9, 11, { spoken_text: "second to last" }),
+      seg(11, 11.4, { spoken_text: "trailing words" }), // sub-1s last → merge into prev
+    ];
+    const result = mergeSubMinSegments(input);
+    const merged = result.find((s) => s.t_start === 9 && s.t_end === 11.4);
+    expect(merged).toBeDefined();
+    expect(merged!.spoken_text).toBe("second to last trailing words");
+  });
+
+  it("merge dedupes identical on_screen_text instead of producing 'X X'", () => {
+    const input: SegmentGrid[] = [
+      seg(0, 3, { on_screen_text: "caption" }),
+      seg(3, 5, { on_screen_text: "CAP A" }),
+      seg(5, 5.4, { on_screen_text: "CAP A" }), // sub-1s, same caption as next
+      seg(5.4, 9, { on_screen_text: "CAP A" }),
+      seg(9, 12, { on_screen_text: "z" }),
+      seg(12, 16, { on_screen_text: "z" }),
+    ];
+    const result = mergeSubMinSegments(input);
+    const merged = result.find((s) => s.t_start === 5 && s.t_end === 9);
+    expect(merged!.on_screen_text).toBe("CAP A"); // not "CAP A CAP A"
+  });
+
+  it("hook-zone split does NOT duplicate spoken_text — continuation child is null; left child keeps it", () => {
+    const input: SegmentGrid[] = [
+      seg(2, 5, { spoken_text: "spans the boundary", on_screen_text: "overlay" }),
+    ];
+    const result = enforceHookZoneBoundary(input);
+    const left = result.find((s) => s.t_start === 2 && s.t_end === HOOK_ZONE_END_S);
+    const right = result.find((s) => s.t_start === HOOK_ZONE_END_S && s.t_end === 5);
+    expect(left!.spoken_text).toBe("spans the boundary");
+    expect(right!.spoken_text).toBeNull(); // not the same words copied twice
+    // on_screen_text (a visual caption) legitimately spans the split — retained on both.
+    expect(left!.on_screen_text).toBe("overlay");
+    expect(right!.on_screen_text).toBe("overlay");
+  });
+});

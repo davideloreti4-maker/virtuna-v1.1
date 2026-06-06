@@ -47,9 +47,10 @@ export interface RunEvalHarnessOptions {
   persist?: boolean;                // default true
   /**
    * Phase 7 D-14: optional aggregator behavioral source override. Threaded into
-   * runEvalOverCorpus. Defaults to "deepseek" (production aggregator default).
+   * runEvalOverCorpus. Defaults to "fold" (Phase 4 Plan 05). Pass "deepseek" for back-compat.
+   * "personas" option removed — 10-pass deleted.
    */
-  behavioralSource?: "deepseek" | "personas";
+  behavioralSource?: "deepseek" | "fold";
   /**
    * Phase 7 D-14 (Rule 3 deviation): optional row cap for smoke/dev runs.
    * Threaded into runEvalOverCorpus. Production callers omit; full corpus runs use undefined.

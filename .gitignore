@@ -73,3 +73,8 @@ tests/fixtures/audio-smoke/smoke-test-results.json
 # (root-scoped — public/ and .planning/sketches/ images are still tracked)
 /*.png
 /*.jpeg
+
+# Apollo corpus pipeline — operator-local artifacts (regeneratable from URLs)
+.planning/corpus/audio-cache/
+.planning/corpus/models/
+.planning/corpus/raw/

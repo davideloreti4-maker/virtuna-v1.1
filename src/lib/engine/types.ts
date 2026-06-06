@@ -21,6 +21,20 @@ export type { EmotionArcPoint };
 // Phase 3 (D-07) — re-export SegmentGrid so engine consumers don't reach into qwen/.
 export type { SegmentGrid } from "./qwen/schemas";
 
+// Phase 2 (R1) — verbatim payload from Omni (hook + per-segment).
+// Null when video absent, no speech, or Qwen omitted the field.
+// hook: hook_verbatim from the first ~3s (spoken_words + on_screen_text)
+// segments: per-segment spoken_text/on_screen_text indexed by idx (D-02 null contract;
+//   D-04.2 [inaudible] marker preserved as string, never coerced to null).
+export interface VerbatimPayload {
+  hook?: { spoken_words?: string | null; on_screen_text?: string | null };
+  segments?: Array<{
+    idx: number;
+    spoken_text: string | null;
+    on_screen_text: string | null;
+  }>;
+}
+
 // D-13 (Phase 3) + Phase 4 slot_type (OQ-1 / Plan 04-02): per-persona attention timeline + archetype slot.
 // Backwards-compatible additive payload on PredictionResult. Phase 4 (Audience node)
 // consumes this; null when Pass 2 < SUCCESS_THRESHOLD per D-06.
@@ -222,12 +236,34 @@ export type ConfidenceLevel = "HIGH" | "MEDIUM" | "LOW";
 // Predicted Engagement — TikTok-style engagement metrics
 // =====================================================
 
+/** @deprecated Point-shape fabrication replaced by EngagementRange (R11, Plan 05-02). Kept for back-compat with pre-R11 consumers. */
 export interface PredictedEngagement {
   likes: number;
   comments: number;
   shares: number;
   saves: number;
   views: number;
+}
+
+// =====================================================
+// Engagement Range — R11 grounded estimate (Plan 05-02)
+// =====================================================
+
+/**
+ * R11 grounded engagement estimate expressed as a range rather than a false-precise point.
+ * Anchored to the creator's real follower_count × Apollo+fold quality read (overall_score).
+ * Virality is fat-tailed — the range widens when quality/confidence is low.
+ * null when follower_count is absent (no creator baseline exists — honesty over fabrication, R9).
+ */
+export interface EngagementRange {
+  /** Lower bound of expected view reach (≥ 0, rounded). */
+  lo: number;
+  /** Upper bound of expected view reach (> lo, rounded). */
+  hi: number;
+  /** Confidence in the estimate: 0–1. Wider range when confidence is lower. */
+  confidence: number;
+  /** Short human-readable label describing the anchor source. */
+  basis: string;
 }
 
 // =====================================================
@@ -246,8 +282,10 @@ export interface PredictionResult {
   reasoning: string; // DeepSeek's reasoning text
   warnings: string[]; // Fatal flaw warnings from DeepSeek Step 4
 
-  // Predicted engagement metrics (RES-2)
-  predicted_engagement: PredictedEngagement;
+  // Predicted engagement metrics (R11 — grounded range, Plan 05-02).
+  // EngagementRange: lo/hi/confidence/basis anchored to follower_count × quality read.
+  // null when no creator baseline exists (honesty, R9) or on permalink reload (live-only this phase).
+  predicted_engagement: EngagementRange | null;
 
   // Factors and suggestions (from Gemini + DeepSeek)
   factors: Factor[];
@@ -265,6 +303,28 @@ export interface PredictionResult {
   /** Phase 1 (R1.7) — Emotion arc timeline from Omni Plus. Null when video absent
    *  or Qwen omitted the field. Optional to preserve compile against existing consumers. */
   emotion_arc?: EmotionArcPoint[] | null;
+  /** Phase 2 (R1) — Verbatim transcription from Omni (hook + per-segment).
+   *  Null when video absent, no speech, or Qwen omitted the field.
+   *  VerbatimPayload.hook = hook_verbatim (first ~3s spoken_words + on_screen_text).
+   *  VerbatimPayload.segments = per-segment spoken_text/on_screen_text (D-02 null; D-04.2 [inaudible]). */
+  verbatim?: VerbatimPayload | null;
+  /**
+   * Phase 3 Plan 04 (D-04) — Apollo §4 reasoning output for variants.apollo persist.
+   * Contains: rewrites (2–3 verbatim-grounded hook variants), dimensions (6 §4 rubric),
+   * composite_score (0–100, the live apollo blend term), confidence_scope.
+   * Null when deepseekResult unavailable (DeepSeek circuit breaker open or failed).
+   * Optional for back-compat with pre-Plan-04 callsites.
+   */
+  apollo_reasoning?: {
+    rewrites: ApolloRewrite[];
+    dimensions: ApolloDimension[];
+    composite_score: number;
+    /** IN-02: highest-leverage §4 ceiling rationale — the insight-hero's intended lead. */
+    ceiling_capper?: string;
+    confidence_scope: string;
+    /** Watermark / cross-post warning (S12 absorb). */
+    platform_note?: string;
+  } | null;
   /** Phase 1 (R1.9, Plan 06 T3 B4) — true when confidence < ANTI_VIRALITY_THRESHOLD.
    *  UI renders "Don't post yet" orange verdict state when true. REQUIRED field
    *  (not optional) — aggregator assigns on every PredictionResult; defaults to
@@ -296,17 +356,22 @@ export interface PredictionResult {
    *  Null when audio_signals absent. Sourced verbatim from
    *  geminiResult.analysis.audio_signals?.audio_description ?? null. */
   audio_description?: string | null;
+  // Plan 03-04 (D-04): only `behavioral` + `apollo` are live (base 0.40/0.35,
+  // renormalized ≈0.533/0.467). gemini retired from blend (now provenance only).
+  // Dead keys are forced to 0 by aggregator.ts and retained for back-compat of persisted JSONB rows.
   score_weights: {
-    behavioral: number; // 0.35 (Phase 8 D-03b redistributed to 0.33)
-    gemini: number; // 0.25 (Phase 8 D-03b redistributed to 0.24)
-    ml: number; // 0.15 (Phase 8 D-03b redistributed to 0.14)
-    rules: number; // 0.15 (Phase 8 D-03b redistributed to 0.14)
-    trends: number; // 0.10
-    /** Phase 6 (D-G1) — audio weight 0.07; redistributes when signal_availability.audio=false. */
+    behavioral: number; // LIVE — base 0.40, normalized ≈0.533
+    apollo: number; // LIVE — base 0.35, normalized ≈0.467 (replaces gemini as blend term, D-04)
+    /** dead (0) — gemini retired from blend in Plan 03-04 (D-04); retained for back-compat. */
+    gemini?: number;
+    ml: number; // dead (0) — removed from blend, dormanted
+    rules: number; // dead (0) — removed from blend, dormanted
+    trends: number; // dead (0) — removed from blend, dormanted
+    /** dead (0/absent) — audio removed from blend, module dormanted (Plan 01). */
     audio?: number;
-    /** Phase 8 (D-03b) — 0.05 base; redistributed when SignalAvailability.retrieval = false. */
+    /** dead (0/absent) — retrieval removed from blend, module dormanted (Plan 01). */
     retrieval?: number;
-    /** Phase 9 — platform_fit weight; redistributed when SignalAvailability.platform_fit = false. */
+    /** dead (0/absent) — platform_fit removed from blend, module dormanted (Plan 01). */
     platform_fit?: number;
   };
 
@@ -382,7 +447,13 @@ export interface PredictionResult {
  */
 export interface SignalAvailability {
   behavioral: boolean;
-  gemini: boolean;
+  /**
+   * Plan 03-04 (D-04) — Apollo composite availability: true when deepseekResult is non-null
+   * and composite_score is available. Used as the BLEND KEY replacing gemini in SCORE_WEIGHTS.
+   * Optional for back-compat with pre-Plan-04 callsites.
+   */
+  apollo?: boolean;
+  gemini: boolean;  // PROVENANCE ONLY after Plan 03-04 (D-04) — Omni video signal fired. NOT a blend key.
   ml: boolean;
   rules: boolean;
   trends: boolean;
@@ -390,8 +461,7 @@ export interface SignalAvailability {
   niche: boolean;          // NEW Phase 4 (D-20) — set by aggregator from wave0Result.niche !== null
   // NEW Phase 5 (D-12) — per-segment availability from analyzeVideoSegmented.
   // PROVENANCE KEYS — must NOT be added to SCORE_WEIGHT_KEYS (Phase 4 Cross-File Constraint #3).
-  // The existing `gemini` field becomes derived: gemini = gemini_hook || gemini_body || gemini_cta
-  // (computed in aggregator — Plan 03 wires this; Plan 01 ships placeholders only).
+  // The existing `gemini` field is provenance only (D-04: gemini retired from blend).
   gemini_hook: boolean;
   gemini_body: boolean;
   gemini_cta: boolean;
@@ -612,13 +682,19 @@ export const SuggestionSchema = z.object({
 
 export const BehavioralPredictionsSchema = z.object({
   completion_pct: z.number().min(0).max(100),
-  completion_percentile: z.string(),
+  // *_percentile labels are OPTIONAL (Plan 01-04/01-06, R9): the deepseek "top X%"
+  // percentile framing was removed from the system prompt as fabricated, so the model
+  // no longer emits these on its raw behavioral_predictions. The HONEST percentile
+  // labels are still set by the Wave-3 persona aggregate (wave3/aggregator.ts via
+  // percentileLabel, WR-05). Optional so deepseek's v2 response validates without them
+  // while the persona path keeps populating them — same pattern as loop_percentile.
+  completion_percentile: z.string().optional(),
   share_pct: z.number().min(0).max(100),
-  share_percentile: z.string(),
+  share_percentile: z.string().optional(),
   comment_pct: z.number().min(0).max(100),
-  comment_percentile: z.string(),
+  comment_percentile: z.string().optional(),
   save_pct: z.number().min(0).max(100),
-  save_percentile: z.string(),
+  save_percentile: z.string().optional(),
   // Optional: present on the Wave-3 PersonaBehavioralAggregate (drives the Audience
   // LOOP chip), absent on raw DeepSeek behavioral_predictions. Optional so the
   // DeepSeek v2 response still validates without emitting it.
@@ -694,12 +770,53 @@ export const ComponentScoresSchema = z.object({
 
 export type ComponentScores = z.infer<typeof ComponentScoresSchema>;
 
+// =====================================================
+// Phase 3 Plan 02 — Apollo Reasoner output contract (§4)
+// Additive extension to DeepSeekResponseSchema.
+// Per RESEARCH:243-265 + D-06/D-08 decision locks.
+// =====================================================
+
+/**
+ * Apollo dimension — one per §4 rubric dimension (exactly 6 total).
+ * Each names the lever (§2) and quotes the sensor signal that triggered the grade.
+ */
+export const ApolloDimensionSchema = z.object({
+  name: z.enum(["hook", "retention", "clarity", "share_pull", "substance", "credibility"]),
+  band: z.enum(["strong", "mid", "weak"]),
+  score: z.number().min(0).max(100), // D-01: band-anchored numeric score (V5 — LLM output is untrusted)
+  lever: z.string().min(1),    // §2 lever named, e.g. "Contrast / curiosity gap (§2.1)"
+  evidence: z.string().min(1), // quoted sensor signal that triggered the grade
+});
+
+export type ApolloDimension = z.infer<typeof ApolloDimensionSchema>;
+
+/**
+ * Apollo rewrite — one per directional variant (2–3 total, D-08).
+ * `original` MUST equal the verbatim hook line (R2 verify); TS backstop in deepseek.ts enforces.
+ * `lever_fixed` MUST be a DIFFERENT §2 lever per rewrite (D-08).
+ */
+export const ApolloRewriteSchema = z.object({
+  original: z.string().min(1),    // verbatim hook line — R2 grounding
+  variant: z.string().min(1),
+  lever_fixed: z.string().min(1), // the DIFFERENT §2 lever this variant addresses (D-08)
+});
+
+export type ApolloRewrite = z.infer<typeof ApolloRewriteSchema>;
+
 export const DeepSeekResponseSchema = z.object({
+  // ── Existing fields — REQUIRED; behavioral term stays separate until P4 folds into Audience-Sim (D-05) ──
   behavioral_predictions: BehavioralPredictionsSchema,
-  component_scores: ComponentScoresSchema,
+  component_scores: ComponentScoresSchema,       // feeds behavioral_score blend (D-05)
   suggestions: z.array(SuggestionSchema).min(1),
   warnings: z.array(z.string()).default([]),
-  confidence: z.enum(["high", "medium", "low"]),
+  confidence: z.enum(["high", "medium", "low"]), // already present (D-06)
+  // ── Apollo §4 extension (Plan 03-02) — additive, no removal ──
+  dimensions: z.array(ApolloDimensionSchema).length(6),      // exactly 6 §4 rubric dimensions (D-06)
+  composite_score: z.number().min(0).max(100),               // Apollo expert composite 0–100 (D-04 Apollo term)
+  ceiling_capper: z.string().min(1),                         // one-sentence ceiling rationale (§4 contract)
+  confidence_scope: z.string().min(1),                       // which §2 signals were unobservable
+  rewrites: z.array(ApolloRewriteSchema).min(2).max(3),      // 2–3 directional variants (D-08)
+  platform_note: z.string().optional(),                      // watermark/cross-post warning (S12 absorb)
 });
 
 export type DeepSeekReasoning = z.infer<typeof DeepSeekResponseSchema>;

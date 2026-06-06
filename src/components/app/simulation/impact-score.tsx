@@ -14,7 +14,8 @@ interface HeroScoreProps {
   trend_score: number;
   score_weights: {
     behavioral: number;
-    gemini: number;
+    apollo?: number; // Plan 03-04 (D-04): apollo replaces gemini as live blend term
+    gemini?: number; // RETIRED from blend (Plan 03-04 D-04) — kept optional for back-compat
     rules: number;
     trends: number;
   };
@@ -37,9 +38,10 @@ function getScoreLabel(score: number): string {
   return 'Poor';
 }
 
+// Plan 03-04 (D-04): apollo replaces gemini as live blend term in the breakdown display.
 const SIGNALS = [
   { key: 'behavioral' as const, label: 'Behavioral' },
-  { key: 'gemini' as const, label: 'Gemini' },
+  { key: 'apollo' as const, label: 'Apollo' },
   { key: 'rules' as const, label: 'Rules' },
   { key: 'trends' as const, label: 'Trends' },
 ] as const;
@@ -55,9 +57,11 @@ export function HeroScore({
 }: HeroScoreProps) {
   const { variant, text } = confidenceBadgeConfig[confidence_label] ?? confidenceBadgeConfig["MEDIUM"];
 
+  // Plan 03-04 (D-04): apollo term replaces gemini in the breakdown.
+  // gemini_score still surfaced for UI back-compat but labeled as "Apollo" composite here.
   const scoreMap = {
     behavioral: behavioral_score,
-    gemini: gemini_score,
+    apollo: gemini_score, // UI display: shows Apollo composite (sourced from gemini_score for now)
     rules: rule_score,
     trends: trend_score,
   };
@@ -83,7 +87,7 @@ export function HeroScore({
       {/* Signal breakdown 2×2 grid */}
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 mt-4">
         {SIGNALS.map(({ key, label }) => {
-          const weightPct = Math.round(score_weights[key] * 100);
+          const weightPct = Math.round((score_weights[key] ?? 0) * 100);
           const score = scoreMap[key];
 
           return (
@@ -117,7 +121,7 @@ export function ImpactScore({
       gemini_score={0}
       rule_score={0}
       trend_score={0}
-      score_weights={{ behavioral: 0.45, gemini: 0.25, rules: 0.20, trends: 0.10 }}
+      score_weights={{ behavioral: 0.45, apollo: 0.25, rules: 0.20, trends: 0.10 }}
     />
   );
 }

@@ -72,6 +72,13 @@ export function makeGeminiAnalysis(
 export function makeDeepSeekReasoning(
   overrides?: Partial<DeepSeekReasoning>
 ): DeepSeekReasoning {
+  const baseDimension = {
+    name: "hook" as const,
+    band: "mid" as const,
+    score: 50, // D-01: band-anchored numeric score (mid band → 50)
+    lever: "Contrast / curiosity gap (§2.1)",
+    evidence: "Hook opens with a clear contrarian claim in sentence 1",
+  };
   return {
     behavioral_predictions: {
       completion_pct: 68,
@@ -101,6 +108,30 @@ export function makeDeepSeekReasoning(
     ],
     warnings: [],
     confidence: "medium",
+    // Apollo §4 extension (Plan 03-02) — required fields with sensible defaults
+    dimensions: [
+      { ...baseDimension, name: "hook" as const },
+      { ...baseDimension, name: "retention" as const },
+      { ...baseDimension, name: "clarity" as const },
+      { ...baseDimension, name: "share_pull" as const },
+      { ...baseDimension, name: "substance" as const },
+      { ...baseDimension, name: "credibility" as const },
+    ],
+    composite_score: 65,
+    ceiling_capper: "Hook runs past the ≤3s threshold (§2.0a)",
+    confidence_scope: "Transcript-only: visual signals not observable",
+    rewrites: [
+      {
+        original: "Test hook line verbatim",
+        variant: "Rewritten variant fixing distillation",
+        lever_fixed: "Distillation (§2.1)",
+      },
+      {
+        original: "Test hook line verbatim",
+        variant: "Rewritten variant fixing curiosity gap",
+        lever_fixed: "Contrast / curiosity gap (§2.1)",
+      },
+    ],
     ...overrides,
   };
 }
@@ -264,15 +295,11 @@ export function makePipelineResult(
       time_of_day_aware: null,
       pain_points: null,
     },
-    ruleResult: makeRuleScoreResult(),
-    trendEnrichment: makeTrendEnrichment(),
+    // Plan 03: trendEnrichment removed from PipelineResult.
     deepseekResult: {
       reasoning: makeDeepSeekReasoning(),
       cost_cents: 0.3,
     },
-    // Phase 6 (D-A4) — replaces the pre-Phase-6 audioResult: null slot.
-    // Default to null in fixtures (no fingerprint match); tests opt in by overriding.
-    audioFingerprintResult: null,
     // Phase 3 — Wave 0/3 stub outputs (Phase 4/7 fill with real logic)
     wave0Result: { content_type: null, niche: null },
     wave3Result: [],
@@ -290,10 +317,11 @@ export function makePipelineResult(
       availability: false,
       cost_cents: 0,
     },
-    // Phase 9 — Wave 4 platform-fit V3 sibling default (null = V3 not run / unavailable)
-    platformFitResult: null,
+    // Plan 03: platformFitResult removed from PipelineResult.
     // Phase 3 (Plan 08) — Pass 2 outcome default (null = text mode / no segments)
     pass2Outcome: null,
+    // Plan 04-03 — Fold outcome default (null = ENGINE_USE_FOLD off / no segments)
+    foldOutcome: null,
     // Phase 3 (Plan 08) — Omni segments default (undefined = text mode, no video segments)
     segments: undefined,
     requestId: "test-req-123",

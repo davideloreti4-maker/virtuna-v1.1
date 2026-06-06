@@ -119,9 +119,11 @@ async function main() {
   console.log("\n========== SUMMARY ==========");
   console.log(`pipeline wall      : ${(pipeMs / 1000).toFixed(1)}s`);
   console.log(`aggregate tail     : ${(aggMs / 1000).toFixed(1)}s`);
+  console.log(`TOTAL_LATENCY_MS   : ${Math.round(totalMs)}`);
   console.log(`TOTAL              : ${(totalMs / 1000).toFixed(1)}s`);
   console.log(`engine latency_ms  : ${(result.latency_ms ?? 0) / 1000}s   cost_cents=${result.cost_cents}`);
-  console.log(`overall_score=${result.overall_score} confidence=${result.confidence} label=${result.confidence_label}`);
+  // Greppable score line — used by Plan 06 pre/post diff (D3.2 anchor)
+  console.log(`OVERALL_SCORE=${result.overall_score} CONFIDENCE=${result.confidence} LABEL=${result.confidence_label}`);
   // Behavioral driver (40% weight) — the field most exposed to the deepseek-overlap
   // (Pass 1 grounding) change. Watch this across the A/B.
   const pba = result.persona_behavioral_aggregate as Record<string, unknown> | null;

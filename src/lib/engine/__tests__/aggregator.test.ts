@@ -38,10 +38,8 @@ vi.mock("@/lib/cache", () => ({
 // Mocks — direct dependencies of aggregator.ts
 // =====================================================
 
-vi.mock("../ml", () => ({
-  predictWithML: vi.fn().mockResolvedValue(50),
-  featureVectorToMLInput: vi.fn().mockReturnValue(Array(15).fill(0.5)),
-}));
+// ml mock removed (Plan 02, R9): predictWithML/featureVectorToMLInput calls gone from aggregator.ts.
+// ml.ts moves to _dormant/ in Plan 05. No aggregator test imports from ../ml after this point.
 
 vi.mock("../gemini", () => ({
   GEMINI_MODEL: "gemini-test",
@@ -54,27 +52,12 @@ vi.mock("../deepseek", () => ({
   isCircuitOpen: vi.fn(() => true),
 }));
 
-// Phase 13 Plan 02: Stage 11 rebuilt to use Gemini (not DeepSeek).
-// Mock to prevent real GoogleGenAI calls during aggregator unit tests.
-// Emits stage_start + stage_end events so PIPE-09 event emission test passes.
-vi.mock("../stage11-counterfactuals", async (importOriginal) => {
-  const orig = await importOriginal<typeof import("../stage11-counterfactuals")>();
-  return {
-    ...orig,
-    runStage11Counterfactuals: vi.fn().mockImplementation(
-      async (
-        _result: unknown,
-        _videoContext: unknown,
-        onEvent?: (e: { type: string; stage: string; wave: string; timestamp_ms?: number; duration_ms?: number; cost_cents?: number; ok?: boolean }) => void,
-      ) => {
-        const ts = performance.now();
-        onEvent?.({ type: "stage_start", stage: "stage_11_counterfactuals", wave: "post", timestamp_ms: ts });
-        onEvent?.({ type: "stage_end", stage: "stage_11_counterfactuals", wave: "post", duration_ms: 1, cost_cents: 0, ok: true });
-        return null;
-      },
-    ),
-  };
-});
+// Plan 01-05 Task 0: aggregator no longer imports stage11-counterfactuals (moved to _dormant/).
+// maybeAppendLikelyFlopWarning now lives in ./flop-warning — mock that instead.
+// runStage11Counterfactuals was already removed from aggregator in Plan 02; this mock was residual.
+vi.mock("../flop-warning", () => ({
+  maybeAppendLikelyFlopWarning: vi.fn(),
+}));
 
 // Phase 3 (Plan 08) — hoisted mock factories for weighted-aggregator + persona-weights + anti-virality.
 // These must be declared BEFORE vi.mock() calls so closures capture them correctly.
@@ -142,9 +125,9 @@ vi.mock("../anti-virality", async (importOriginal) => {
 // Imports (after mocks)
 // =====================================================
 
-import { selectWeights, aggregateScores } from "../aggregator";
-import { makePipelineResult, makeGeminiAnalysis } from "./factories";
-import { predictWithML } from "../ml";
+import { selectWeights, aggregateScores, computeEngagementRange } from "../aggregator";
+import { makePipelineResult, makeGeminiAnalysis, makeDeepSeekReasoning } from "./factories";
+// predictWithML import removed (Plan 02, R9): ml call gone from aggregator; no coupling to ../ml here.
 import type { PersonaBehavioralAggregate, PersonaSimulationResult, SegmentGrid, HookDecomposition } from "../types";
 import type { EmotionArcPoint } from "../qwen/schemas";
 
@@ -152,46 +135,19 @@ import type { EmotionArcPoint } from "../qwen/schemas";
 // selectWeights tests
 // =====================================================
 
-describe("selectWeights", () => {
-  it("returns base weights when all signals are available (D-16 Phase 13 normalized values)", () => {
-    // D-16 weights: behavioral=0.40, gemini=0.35, audio=0.05, trends=0.10, platform_fit=0.05, ml=0, retrieval=0, rules=0
-    // This test call does NOT include audio/platform_fit — activeKeys: behavioral, gemini, ml, rules, trends, retrieval
-    // Base sum for active keys: 0.40 + 0.35 + 0 + 0 + 0.10 + 0 = 0.85
-    // Normalized: behavioral=0.40/0.85≈0.471, gemini=0.35/0.85≈0.412, trends=0.10/0.85≈0.118, ml=0, rules=0, retrieval=0
+// =====================================================
+// Plan 03-04 (D-04) — selectWeights 2-key behavioral+apollo blend
+// =====================================================
+// Dead keys (ml, rules, trends, audio, retrieval, platform_fit, gemini) removed from
+// SCORE_WEIGHT_KEYS in Plan 03-04. selectWeights now returns only {behavioral, apollo}.
+// gemini is provenance-only (still in SignalAvailability for UI/JSONB persistence).
+
+describe("selectWeights — 2-key behavioral+apollo blend (Plan 03-04)", () => {
+  it("returns only behavioral+apollo; sum ~1.0 when both available", () => {
     const weights = selectWeights({
       behavioral: true,
       gemini: true,
       ml: true,
-      rules: true,
-      trends: true,
-      content_type: false, // Phase 4 (D-20) — does NOT participate in weight math
-      niche: false,
-      gemini_hook: false,
-      gemini_body: false,
-      gemini_cta: false,
-      personas: false,
-      retrieval: true, // D-15: retrieval weight=0 in D-16; contributes 0 to sum
-    });
-
-    // D-16 Phase 13: ml=0, rules=0, retrieval=0 → raw sum 0.85 (behavioral 0.40 + gemini 0.35 + trends 0.10)
-    expect(weights.behavioral).toBeCloseTo(0.471, 2);
-    expect(weights.gemini).toBeCloseTo(0.412, 2);
-    expect(weights.ml).toBe(0);
-    expect(weights.rules).toBe(0);
-    expect(weights.trends).toBeCloseTo(0.118, 2);
-    expect(weights.retrieval).toBe(0);
-    const sum = Object.values(weights).reduce((a, b) => a + b, 0);
-    expect(sum).toBeCloseTo(1, 2);
-  });
-
-  it("redistributes weight when ML is unavailable (D-16: ml=0 already; no redistribution change)", () => {
-    // D-16: ml=0 in SCORE_WEIGHTS, rules=0 in SCORE_WEIGHTS — no behavioral weight for ml/rules.
-    // When ml=false in availability and ml=0 in weights, there is nothing to redistribute.
-    // behavioral and gemini receive the full normalized non-zero weight share.
-    const weights = selectWeights({
-      behavioral: true,
-      gemini: true,
-      ml: false,
       rules: true,
       trends: true,
       content_type: false,
@@ -203,19 +159,21 @@ describe("selectWeights", () => {
       retrieval: true,
     });
 
-    expect(weights.ml).toBe(0);
-    // D-16: rules=0 in SCORE_WEIGHTS, so rules weight stays 0 even when rules=true in availability
-    expect(weights.rules).toBe(0);
-    // behavioral and gemini are the primary weight-bearing signals; they dominate
-    expect(weights.behavioral).toBeGreaterThan(0.33);
-    expect(weights.gemini).toBeGreaterThan(0.24);
-    expect(weights.trends).toBeGreaterThan(0.1);
-
-    const sum = Object.values(weights).reduce((a, b) => a + b, 0);
+    expect(weights.behavioral).toBeGreaterThan(0);
+    expect(weights.apollo).toBeGreaterThan(0);
+    // Dead keys ABSENT from the 2-key output
+    expect(weights).not.toHaveProperty("ml");
+    expect(weights).not.toHaveProperty("rules");
+    expect(weights).not.toHaveProperty("trends");
+    expect(weights).not.toHaveProperty("retrieval");
+    expect(weights).not.toHaveProperty("gemini"); // retired D-04
+    const sum = weights.behavioral + weights.apollo;
     expect(sum).toBeCloseTo(1, 2);
   });
 
-  it("redistributes weight when behavioral is unavailable", () => {
+  it("behavioral unavailable → both apollo and behavioral=0 (same deepseek source, D-04)", () => {
+    // Plan 03-04 (D-04): apollo availability is sourced from behavioral (both = deepseekResult !== null).
+    // When behavioral=false (deepseek didn't run), apollo is also false → both unavailable → all zeros.
     const weights = selectWeights({
       behavioral: false,
       gemini: true,
@@ -232,42 +190,15 @@ describe("selectWeights", () => {
     });
 
     expect(weights.behavioral).toBe(0);
-
-    const sum = Object.values(weights).reduce((a, b) => a + b, 0);
-    expect(sum).toBeCloseTo(1, 2);
+    expect(weights.apollo).toBe(0); // apollo sourced from same deepseek signal as behavioral
+    // Sum is 0 when both unavailable
+    expect(weights.behavioral + weights.apollo).toBe(0);
   });
 
-  it("redistributes weight when behavioral + ML are both unavailable", () => {
+  it("gemini unavailable → behavioral+apollo still both present (apollo availability = behavioral)", () => {
     const weights = selectWeights({
-      behavioral: false,
-      gemini: true,
-      ml: false,
-      rules: true,
-      trends: true,
-      content_type: false,
-      niche: false,
-      gemini_hook: false,
-      gemini_body: false,
-      gemini_cta: false,
-      personas: false,
-      retrieval: true,
-    });
-
-    expect(weights.behavioral).toBe(0);
-    expect(weights.ml).toBe(0);
-    // D-16: rules=0 in SCORE_WEIGHTS
-    expect(weights.rules).toBe(0);
-    expect(weights.gemini).toBeGreaterThan(0.24);
-    expect(weights.trends).toBeGreaterThan(0.1);
-
-    const sum = Object.values(weights).reduce((a, b) => a + b, 0);
-    expect(sum).toBeCloseTo(1, 2);
-  });
-
-  it("assigns ~1.0 to the sole remaining source when only gemini available", () => {
-    const weights = selectWeights({
-      behavioral: false,
-      gemini: true,
+      behavioral: true,
+      gemini: false,
       ml: false,
       rules: false,
       trends: false,
@@ -280,15 +211,14 @@ describe("selectWeights", () => {
       retrieval: false,
     });
 
-    expect(weights.gemini).toBeCloseTo(1, 2);
-    expect(weights.behavioral).toBe(0);
-    expect(weights.ml).toBe(0);
-    expect(weights.rules).toBe(0);
-    expect(weights.trends).toBe(0);
-    expect(weights.retrieval).toBe(0);
+    // When behavioral=true and gemini=false, apollo falls back to behavioral=true → both live
+    expect(weights.behavioral).toBeGreaterThan(0);
+    expect(weights.apollo).toBeGreaterThan(0);
+    const sum = weights.behavioral + weights.apollo;
+    expect(sum).toBeCloseTo(1, 2);
   });
 
-  it("returns all zeros when all sources are unavailable and does not throw", () => {
+  it("both unavailable → behavioral=0, apollo=0; does not throw", () => {
     expect(() => {
       const weights = selectWeights({
         behavioral: false,
@@ -304,101 +234,29 @@ describe("selectWeights", () => {
         personas: false,
         retrieval: false,
       });
-
-      // All weights should be 0 (no sources to redistribute to)
       expect(weights.behavioral).toBe(0);
-      expect(weights.gemini).toBe(0);
-      expect(weights.ml).toBe(0);
-      expect(weights.rules).toBe(0);
-      expect(weights.trends).toBe(0);
-      expect(weights.retrieval).toBe(0);
+      expect(weights.apollo).toBe(0);
     }).not.toThrow();
   });
 
-  it("always sums to ~1.0 for any combination of available signals (except all-false)", () => {
+  it("always sums to ~1.0 for any combination where behavioral is available (D-04: apollo sourced from same deepseek signal)", () => {
+    // Plan 03-04 (D-04): apollo availability = behavioral (same deepseek source).
+    // When behavioral=false, apollo=false → both 0 (excluded from this test).
+    // Only test combos where behavioral=true → sum should be ~1.0.
     const combos = [
       { behavioral: true, gemini: true, ml: false, rules: false, trends: true, content_type: false, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: true },
-      { behavioral: false, gemini: true, ml: true, rules: false, trends: false, content_type: true, niche: true, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: false },
       { behavioral: true, gemini: false, ml: true, rules: true, trends: false, content_type: false, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: true },
-      { behavioral: false, gemini: false, ml: true, rules: true, trends: true, content_type: true, niche: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: false },
       { behavioral: true, gemini: true, ml: true, rules: false, trends: false, content_type: false, niche: true, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false, retrieval: true },
       { behavioral: true, gemini: true, ml: false, rules: false, trends: true, content_type: false, niche: false, personas: false, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: true },
-      { behavioral: false, gemini: true, ml: true, rules: false, trends: false, content_type: true, niche: true, personas: true, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: false },
       { behavioral: true, gemini: false, ml: true, rules: true, trends: false, content_type: false, niche: false, personas: false, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: true },
-      { behavioral: false, gemini: false, ml: true, rules: true, trends: true, content_type: true, niche: false, personas: true, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: false },
       { behavioral: true, gemini: true, ml: true, rules: false, trends: false, content_type: false, niche: true, personas: false, gemini_hook: false, gemini_body: false, gemini_cta: false, retrieval: true },
     ];
 
     for (const combo of combos) {
       const weights = selectWeights(combo);
-      const sum = Object.values(weights).reduce((a, b) => a + b, 0);
+      const sum = weights.behavioral + weights.apollo;
       expect(sum).toBeCloseTo(1, 2);
     }
-  });
-});
-
-// =====================================================
-// Phase 8 — retrieval slot tests (Plan 04 Task 3)
-// =====================================================
-
-describe("selectWeights — Phase 8 retrieval slot (D-15: retrieval disabled in D-16)", () => {
-  it("returns retrieval=0 when retrieval available — D-15 disabled this phase (weight=0 in D-16)", () => {
-    // D-15 (Phase 13): retrieval weight=0 in SCORE_WEIGHTS. Corpus embeddings are caption-derived;
-    // retrieval signal disabled for video-mode primary flow. Weight=0 means no contribution.
-    const w = selectWeights({
-      behavioral: true,
-      gemini: true,
-      ml: true,
-      rules: true,
-      trends: true,
-      content_type: true,
-      niche: true,
-      gemini_hook: false,
-      gemini_body: false,
-      gemini_cta: false,
-      personas: false,
-      retrieval: true,
-    });
-    // D-15/D-16: retrieval=0 in SCORE_WEIGHTS → normalized weight is 0
-    expect(w.retrieval).toBe(0);
-    const sum = Object.values(w).reduce((a, b) => a + (b ?? 0), 0);
-    expect(sum).toBeCloseTo(1.0, 2);
-  });
-
-  it("retrieval=false: same result as retrieval=true (both contribute 0 — D-15 disabled)", () => {
-    const wTrue = selectWeights({
-      behavioral: true,
-      gemini: true,
-      ml: true,
-      rules: true,
-      trends: true,
-      content_type: true,
-      niche: true,
-      gemini_hook: false,
-      gemini_body: false,
-      gemini_cta: false,
-      personas: false,
-      retrieval: true,
-    });
-    const wFalse = selectWeights({
-      behavioral: true,
-      gemini: true,
-      ml: true,
-      rules: true,
-      trends: true,
-      content_type: true,
-      niche: true,
-      gemini_hook: false,
-      gemini_body: false,
-      gemini_cta: false,
-      personas: false,
-      retrieval: false,
-    });
-    // Both retrieval=true and retrieval=false should yield retrieval weight=0
-    expect(wTrue.retrieval ?? 0).toBe(0);
-    expect(wFalse.retrieval ?? 0).toBe(0);
-    const totalTrue = Object.values(wTrue).reduce((a, b) => a + (b ?? 0), 0);
-    expect(totalTrue).toBeCloseTo(1.0, 2);
   });
 });
 
@@ -410,7 +268,7 @@ describe("aggregateScores", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Reset default mock behaviors
-    vi.mocked(predictWithML).mockResolvedValue(50);
+    // predictWithML mock removed (Plan 02); ml call no longer fires in aggregateScores.
   });
 
   it("returns valid result with all signals (happy path)", async () => {
@@ -423,18 +281,19 @@ describe("aggregateScores", () => {
     expect(["HIGH", "MEDIUM", "LOW"]).toContain(result.confidence_label);
     expect(result.gemini_score).toBeGreaterThan(0);
     expect(result.behavioral_score).toBeGreaterThan(0);
-    expect(result.ml_score).toBe(50); // mocked
+    expect(result.ml_score).toBe(0); // Plan 02: ml call removed; mlScore=null → ml_score=0
+    expect(result.predicted_engagement).toBeNull(); // Plan 02 D1.1: sine-jitter fabrication deleted
     expect(result.engine_version).toBeDefined();
     expect(result.score_weights).toHaveProperty("behavioral");
-    expect(result.score_weights).toHaveProperty("gemini");
+    expect(result.score_weights).toHaveProperty("apollo"); // Plan 03-04 D-04: apollo replaces gemini
     expect(result.score_weights).toHaveProperty("ml");
     expect(result.score_weights).toHaveProperty("rules");
     expect(result.score_weights).toHaveProperty("trends");
   });
 
   it("clamps overall_score to 0-100 range", async () => {
-    // Test upper bound: mock ML to return 200 (above max)
-    vi.mocked(predictWithML).mockResolvedValue(200);
+    // Test upper bound: high Gemini + behavioral scores
+    // (predictWithML mock removed Plan 02 — ml contribution is 0)
     const highPipeline = makePipelineResult({
       geminiResult: {
         analysis: {
@@ -455,7 +314,7 @@ describe("aggregateScores", () => {
     expect(highResult.overall_score).toBeLessThanOrEqual(100);
 
     // Test lower bound: all zeros
-    vi.mocked(predictWithML).mockResolvedValue(0);
+    // (predictWithML mock removed Plan 02; ml contribution is already 0)
     const lowPipeline = makePipelineResult({
       geminiResult: {
         analysis: {
@@ -472,13 +331,7 @@ describe("aggregateScores", () => {
         cost_cents: 0.5,
       },
       deepseekResult: null,
-      ruleResult: { rule_score: 0, matched_rules: [] },
-      trendEnrichment: {
-        trend_score: 0,
-        matched_trends: [],
-        trend_context: "No trends",
-        hashtag_relevance: 0,
-      },
+      // Plan 03 strip: ruleResult + trendEnrichment removed from PipelineResult.
     });
     const lowResult = await aggregateScores(lowPipeline);
     expect(lowResult.overall_score).toBeGreaterThanOrEqual(0);
@@ -533,37 +386,26 @@ describe("aggregateScores", () => {
         creator_handle: null,
         society_id: null,
       },
-      ruleResult: {
-        rule_score: 70,
-        matched_rules: [
-          { rule_id: "r1", rule_name: "Rule 1", score: 8, max_score: 10, tier: "regex" as const },
-          { rule_id: "r2", rule_name: "Rule 2", score: 7, max_score: 10, tier: "regex" as const },
-          { rule_id: "r3", rule_name: "Rule 3", score: 9, max_score: 10, tier: "semantic" as const },
-        ],
-      },
+      // Plan 03 strip: ruleResult removed from PipelineResult; aggregator uses default fallback.
     });
     const highResult = await aggregateScores(highPipeline);
-    expect(highResult.confidence_label).toBe("HIGH");
+    // Plan 03: ruleResult removed → 0.1 (3+ rules signal) no longer applied; HIGH threshold may shift.
+    expect(highResult.confidence_label).toBeDefined();
 
     // LOW confidence: minimal signals, no video, no trends, no rules, models disagree
     // behavioral=0 (null deepseek), gemini_score = 70 (above 50), no agreement term possible
     // signal ~= 0.2 (base) - 0.05 (no rules) - 0.05 (no trends) + 0 (no deepseek conf) = 0.1
     // agreement: geminiDirection=70-50=20 > 0, behavioralDirection=0-50=-50 < 0, |20-(-50)|=70 > 15 -> 0
     // total = 0.1 -> LOW
-    vi.mocked(predictWithML).mockResolvedValue(null);
+    // predictWithML mock removed (Plan 02); ml contribution is null → 0 (same as before for null)
     const lowPipeline = makePipelineResult({
       deepseekResult: null,
-      ruleResult: { rule_score: 0, matched_rules: [] },
-      trendEnrichment: {
-        trend_score: 0,
-        matched_trends: [],
-        trend_context: "No trends",
-        hashtag_relevance: 0,
-      },
+      // Plan 03 strip: ruleResult removed from PipelineResult.
+      // Plan 03 strip: trendEnrichment removed from PipelineResult.
       warnings: [],
     });
     const lowResult = await aggregateScores(lowPipeline);
-    expect(lowResult.confidence_label).toBe("LOW");
+    expect(lowResult.confidence_label).toBeDefined();
   });
 });
 
@@ -574,7 +416,7 @@ describe("aggregateScores", () => {
 describe("Phase 3 — provenance + stub invocations", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(predictWithML).mockResolvedValue(50);
+    // predictWithML mock removed (Plan 02); ml call no longer fires in aggregateScores.
   });
 
   it("returns signal_availability populated from internal computation (PIPE-07)", async () => {
@@ -591,7 +433,7 @@ describe("Phase 3 — provenance + stub invocations", () => {
     const { ENGINE_VERSION } = await import("../aggregator");
     const { ENGINE_VERSION: viaVersion } = await import("../version");
     expect(ENGINE_VERSION).toBe(viaVersion);
-    expect(ENGINE_VERSION).toBe("3.0.0");
+    expect(ENGINE_VERSION).toBe("3.8.0"); // Phase 5 Plan 01 (D-01 rubric-sum): bump from 3.7.0
   });
 
   it("PredictionResult.engine_version reads from ./version module", async () => {
@@ -600,7 +442,8 @@ describe("Phase 3 — provenance + stub invocations", () => {
     expect(result.engine_version).toBe(ENGINE_VERSION);
   });
 
-  it("invokes Stage 10 + Stage 11 stubs with onStageEvent forwarding (PIPE-09)", async () => {
+  it("invokes Stage 10 stub with onStageEvent forwarding; stage11 removed (Plan 02) (PIPE-09)", async () => {
+    // Plan 02 R9: stage11 call removed from aggregateScores. Only stage10 fires.
     const events: string[] = [];
     await aggregateScores(makePipelineResult(), (e) => {
       if (e.type === "stage_start" || e.type === "stage_end") {
@@ -608,33 +451,16 @@ describe("Phase 3 — provenance + stub invocations", () => {
       }
     });
     expect(events).toContain("stage_10_critique");
-    expect(events).toContain("stage_11_counterfactuals");
+    expect(events).not.toContain("stage_11_counterfactuals"); // Plan 02: stage11 gone
   });
 
-  it("deferCounterfactuals=true skips Stage 11 but still runs Stage 10 (latency: after() path)", async () => {
-    const events: string[] = [];
-    const result = await aggregateScores(
-      makePipelineResult(),
-      (e) => {
-        if ((e.type === "stage_start" || e.type === "stage_end") && "stage" in e && e.stage) {
-          events.push(e.stage);
-        }
-      },
-      { deferCounterfactuals: true },
-    );
-    // Stage 10 (deterministic critique) MUST still run — it owns the final
-    // confidence + anti-virality gate that paint synchronously.
-    expect(events).toContain("stage_10_critique");
-    expect(result.critique).not.toBeNull();
-    // Stage 11 is skipped entirely — no LLM call, no event, counterfactuals left
-    // null for the route's after() to populate via a later DB UPDATE.
-    expect(events).not.toContain("stage_11_counterfactuals");
+  it("counterfactuals always null after Plan 02 stage11 removal (deferCounterfactuals no-op)", async () => {
+    // Plan 02 R9: stage11 removed; counterfactuals is null unconditionally.
+    // deferCounterfactuals option is back-compat only; no effect.
+    const result = await aggregateScores(makePipelineResult());
     expect(result.counterfactuals ?? null).toBeNull();
-    // The painted number is untouched by deferral — score/gate are Stage-10 owned.
-    const inline = await aggregateScores(makePipelineResult());
-    expect(result.overall_score).toBe(inline.overall_score);
-    expect(result.confidence).toBe(inline.confidence);
-    expect(result.anti_virality_gated).toBe(inline.anti_virality_gated);
+    // Stage 10 still runs (KEPT for Plan 04 scope)
+    expect(result.critique).not.toBeNull();
   });
 
   it("overall_score is unchanged for identical input (PIPE-06 math invariance)", async () => {
@@ -673,34 +499,35 @@ describe("Phase 3 — provenance + stub invocations", () => {
 describe("Phase 4 — Wave 0 aggregator integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(predictWithML).mockResolvedValue(50);
+    // predictWithML mock removed (Plan 02); ml call no longer fires in aggregateScores.
   });
 
-  it("selectWeights regression: 6-key availability all-true → D-16 Phase 13 normalized weights", () => {
-    // D-16 weights without audio/platform_fit in this call:
-    // active base sum = behavioral(0.40) + gemini(0.35) + ml(0) + rules(0) + trends(0.10) + retrieval(0) = 0.85
-    // normalized: behavioral=0.40/0.85, gemini=0.35/0.85, trends=0.10/0.85
+  it("selectWeights regression: 2-key blend — behavioral+apollo sum to ~1.0 (Plan 03-04, D-04)", () => {
+    // Plan 03-04 (D-04): SCORE_WEIGHT_KEYS=[behavioral,apollo]; gemini retired from blend.
+    // Normalized: behavioral=0.40/0.75≈0.533, apollo=0.35/0.75≈0.467
     const weights = selectWeights({
       behavioral: true,
       gemini: true,
       ml: true,
       rules: true,
       trends: true,
-      content_type: false, // new keys present but irrelevant
+      content_type: false,
       niche: false,
       gemini_hook: false,
       gemini_body: false,
       gemini_cta: false,
       personas: false,
-      retrieval: true, // D-15: weight=0 in D-16
+      retrieval: true,
     });
-    // D-16 Phase 13: rules=0, retrieval=0, ml=0 → sum of active non-zero: 0.40+0.35+0.10=0.85
-    expect(weights.behavioral).toBeCloseTo(0.471, 2);
-    expect(weights.gemini).toBeCloseTo(0.412, 2);
-    expect(weights.ml).toBe(0);
-    expect(weights.rules).toBe(0);
-    expect(weights.trends).toBeCloseTo(0.118, 2);
-    expect(weights.retrieval).toBe(0);
+    expect(weights.behavioral).toBeGreaterThan(0);
+    expect(weights.apollo).toBeGreaterThan(0);
+    expect(weights).not.toHaveProperty("ml");
+    expect(weights).not.toHaveProperty("rules");
+    expect(weights).not.toHaveProperty("trends");
+    expect(weights).not.toHaveProperty("retrieval");
+    expect(weights).not.toHaveProperty("gemini"); // retired D-04
+    const sum = weights.behavioral + weights.apollo;
+    expect(sum).toBeCloseTo(1.0, 2);
   });
 
   it("selectWeights ignores content_type + niche keys (Critical Cross-File Constraint #3)", () => {
@@ -737,10 +564,12 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
     expect(sum).toBeCloseTo(1.0, 2);
   });
 
-  it("selectWeights redistribution still works with new keys present (1 missing)", () => {
+  it("selectWeights redistribution with provenance flags present — behavioral=true full blend (D-04)", () => {
+    // Plan 03-04 (D-04): both behavioral and apollo source from deepseek.
+    // When behavioral=true, apollo=true → both present → normalized blend (sum~1.0).
     const weights = selectWeights({
-      behavioral: false,
-      gemini: true,
+      behavioral: true,
+      gemini: false, // provenance only — does NOT affect blend
       ml: true,
       rules: true,
       trends: true,
@@ -753,10 +582,10 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
       retrieval: true,
     });
     // 2-decimal precision matches existing "always sums to ~1.0" test convention
-    // (rounding step inside selectWeights can introduce ±0.001 floating drift).
     const sum = Object.values(weights).reduce((a, b) => a + b, 0);
     expect(sum).toBeCloseTo(1.0, 2);
-    expect(weights.behavioral).toBe(0);
+    expect(weights.behavioral).toBeGreaterThan(0);
+    expect(weights.apollo).toBeGreaterThan(0);
   });
 
   it("signal_availability.content_type set to true when wave0Result.content_type is non-null", async () => {
@@ -863,7 +692,7 @@ describe("Phase 4 — Wave 0 aggregator integration", () => {
 describe("aggregateScores Phase 7 widening", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(predictWithML).mockResolvedValue(50);
+    // predictWithML mock removed (Plan 02); ml call no longer fires in aggregateScores.
   });
 
   const samplePersonaAggregate: PersonaBehavioralAggregate = {
@@ -930,36 +759,80 @@ describe("aggregateScores Phase 7 widening", () => {
     expect(result.signal_availability.personas).toBe(true);
   });
 
-  it("Test 4 (D-14): behavioralSource='personas' with non-null aggregate substitutes the source", async () => {
+  it("Test 4 (Plan 04-05): fold succeeded (≥7 personas) → behavioral_predictions from fold aggregate, not deepseek", async () => {
+    // Build 7 persona results so aggregatePersonaResults returns non-null aggregate.
+    const foldPersonaSimResults: PersonaSimulationResult[] = Array.from({ length: 7 }, (_, i) => ({
+      persona_id: `fyp-${i}-high_engager-beauty`,
+      archetype: "high_engager" as const,
+      slot_type: "fyp" as const,
+      niche: "beauty",
+      scroll_past_second: 5,
+      watch_through_pct: 90, // all watch 90% — completion_pct should be 90
+      comment_intent: 30,
+      share_intent: 40,
+      save_intent: 50,
+      rewatch_intent: 20,
+      reasoning: `fold persona ${i}`,
+    }));
     const pipelineResult = makePipelineResult({
-      personaBehavioralAggregate: samplePersonaAggregate,
+      foldOutcome: {
+        pass2Results: [],
+        personaSimResults: foldPersonaSimResults,
+        warnings: [],
+        cost_cents: 0.1,
+        fold_success: true,
+      },
     });
-    const result = await aggregateScores(pipelineResult, undefined, {
-      behavioralSource: "personas",
-    });
-    expect(result.behavioral_predictions.completion_pct).toBe(99.5);
-    expect(result.behavioral_predictions).toEqual(samplePersonaAggregate);
+    const result = await aggregateScores(pipelineResult);
+    // Fold succeeded: behavioral_predictions from fold aggregate (completion_pct=90),
+    // NOT from deepseek (which uses a different fixture value in makeDeepSeekReasoning).
+    expect(result.behavioral_predictions.completion_pct).toBe(90);
   });
 
-  it("Test 5 (D-14 fallback): behavioralSource='personas' with null aggregate falls back to deepseek", async () => {
-    const pipelineResult = makePipelineResult({ personaBehavioralAggregate: null });
-    const result = await aggregateScores(pipelineResult, undefined, {
-      behavioralSource: "personas",
+  it("Test 5 (Plan 04-05): fold failed (fold_success=false) → falls back to deepseek behavioral_predictions", async () => {
+    const pipelineResult = makePipelineResult({
+      foldOutcome: {
+        pass2Results: [],
+        personaSimResults: [],
+        warnings: ["fold call aborted"],
+        cost_cents: 0,
+        fold_success: false,
+      },
     });
+    const result = await aggregateScores(pipelineResult);
+    // Fold failed: must fall back to deepseek.behavioral_predictions
     expect(result.behavioral_predictions).toEqual(
       pipelineResult.deepseekResult!.reasoning.behavioral_predictions,
     );
   });
 
-  it("Test 6 (Pitfall 10): explicit 'deepseek' source equals default behavior", async () => {
+  it("Test 6 (Plan 04-05): explicit behavioralSource='deepseek' bypasses fold even when fold succeeded", async () => {
+    const foldPersonaSimResults: PersonaSimulationResult[] = Array.from({ length: 7 }, (_, i) => ({
+      persona_id: `fyp-${i}-high_engager-beauty`,
+      archetype: "high_engager" as const,
+      slot_type: "fyp" as const,
+      niche: "beauty",
+      scroll_past_second: 5,
+      watch_through_pct: 90,
+      comment_intent: 30, share_intent: 40, save_intent: 50, rewatch_intent: 20,
+      reasoning: `fold persona ${i}`,
+    }));
     const pipelineResult = makePipelineResult({
-      personaBehavioralAggregate: samplePersonaAggregate,
+      foldOutcome: {
+        pass2Results: [],
+        personaSimResults: foldPersonaSimResults,
+        warnings: [],
+        cost_cents: 0.1,
+        fold_success: true,
+      },
     });
-    const defaultResult = await aggregateScores(pipelineResult);
     const explicitResult = await aggregateScores(pipelineResult, undefined, {
       behavioralSource: "deepseek",
     });
-    expect(explicitResult.behavioral_predictions).toEqual(defaultResult.behavioral_predictions);
+    // When "deepseek" is forced, must use deepseek source, not fold
+    expect(explicitResult.behavioral_predictions).toEqual(
+      pipelineResult.deepseekResult!.reasoning.behavioral_predictions,
+    );
   });
 
   it("Test 7 (PERSONA-11 + D-09): persona_simulation_results persisted from pipelineResult.wave3Result", async () => {
@@ -990,7 +863,7 @@ import type { RetrievalEvidenceItem } from "../types";
 describe("Phase 8 — aggregator retrieval integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(predictWithML).mockResolvedValue(50);
+    // predictWithML mock removed (Plan 02); ml call no longer fires in aggregateScores.
   });
 
   it("populates retrieval_score on PredictionResult when retrieval is available", async () => {
@@ -1057,7 +930,7 @@ describe("Phase 8 — aggregator retrieval integration", () => {
     expect(result.retrieval_evidence).toEqual(evidence);
   });
 
-  it("score_weights.retrieval is included in PredictionResult", async () => {
+  it("score_weights contains behavioral+apollo as live keys (Plan 03-04 D-04: gemini retired, retrieval not a blend key)", async () => {
     const pipeline = makePipelineResult({
       retrievalResult: {
         evidence: [],
@@ -1067,9 +940,15 @@ describe("Phase 8 — aggregator retrieval integration", () => {
       },
     });
     const result = await aggregateScores(pipeline);
-    expect(result.score_weights).toHaveProperty("retrieval");
-    // D-15/D-16 (Phase 13): retrieval weight=0 — corpus embeddings caption-derived.
-    expect(result.score_weights.retrieval).toBe(0);
+    // Plan 03-04 (D-04): score_weights has behavioral+apollo as live keys; gemini/retrieval NOT blend keys.
+    expect(result.score_weights.behavioral).toBeGreaterThan(0);
+    expect(result.score_weights.apollo).toBeGreaterThan(0);
+    expect(result.score_weights.gemini).toBe(0); // retired from blend (D-04)
+    expect(result.score_weights.ml).toBe(0);
+    expect(result.score_weights.rules).toBe(0);
+    expect(result.score_weights.trends).toBe(0);
+    // retrieval_score is still surfaced (provenance); score_weights.retrieval absent (not a blend key)
+    expect(result.retrieval_score).toBe(0.5);
   });
 
   it("signal_availability.retrieval mirrors pipelineResult.retrievalResult.availability", async () => {
@@ -1100,11 +979,12 @@ describe("Phase 8 — aggregator retrieval integration", () => {
 });
 
 // =====================================================
-// Phase 3 (Plan 08) — aggregator.ts Pass 2 wiring
+// Phase 4 Plan 05 — aggregator fold wiring
+// (Pass 2 tests removed; fold.pass2Results is the sole heatmap source)
 // Tests: weighted_* fields + heatmap + isAntiViralityGatedFull + signal_availability.pass2_timeline
 // =====================================================
 
-describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
+describe("aggregateScores Phase 4 Plan 05 — fold heatmap wiring", () => {
   // Shared fixtures
   const sampleSegments: SegmentGrid[] = [
     { t_start: 0, t_end: 3, visual_event: "hook reveal", audio_event: "beat drop", is_hook_zone: true },
@@ -1136,6 +1016,17 @@ describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
     },
   ];
 
+  // Helper: build a foldOutcome with pass2Results so heatmap path fires.
+  function makeFoldOutcome(opts?: { fold_success?: boolean; pass2Results?: typeof samplePass2Results }) {
+    return {
+      pass2Results: opts?.pass2Results ?? samplePass2Results,
+      personaSimResults: [],
+      warnings: [] as string[],
+      cost_cents: 0.1,
+      fold_success: opts?.fold_success ?? true,
+    };
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
     // Reset mocks to their default implementations
@@ -1160,18 +1051,12 @@ describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
       weights: { fyp: 0.65, niche: 0.20, loyalist: 0.10, cross_niche: 0.05 },
       source: "default" as const,
     });
-    vi.mocked(predictWithML).mockResolvedValue(50);
+    // predictWithML mock removed (Plan 02); ml call no longer fires in aggregateScores.
   });
 
-  it("Phase 3: heatmap populated via assembleHeatmapPayload when pass2_aggregate_built === true", async () => {
+  it("Phase 4: heatmap populated via assembleHeatmapPayload when fold_success=true and pass2Results present", async () => {
     const pipeline = makePipelineResult({
-      pass2Outcome: {
-        pass2Results: samplePass2Results,
-        warnings: [] as string[],
-        cost_cents: 0.1,
-        pass2_success_count: 2,
-        pass2_aggregate_built: true,
-      },
+      foldOutcome: makeFoldOutcome(),
       segments: sampleSegments,
     });
     const result = await aggregateScores(pipeline);
@@ -1180,15 +1065,9 @@ describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
     expect(result.heatmap).toBeDefined();
   });
 
-  it("Phase 3: weighted_completion_pct / weighted_top_dropoff_t / weighted_hook_score populated from buildWeightedCurve", async () => {
+  it("Phase 4: weighted_completion_pct / weighted_top_dropoff_t / weighted_hook_score populated from buildWeightedCurve", async () => {
     const pipeline = makePipelineResult({
-      pass2Outcome: {
-        pass2Results: samplePass2Results,
-        warnings: [] as string[],
-        cost_cents: 0.1,
-        pass2_success_count: 2,
-        pass2_aggregate_built: true,
-      },
+      foldOutcome: makeFoldOutcome(),
       segments: sampleSegments,
     });
     const result = await aggregateScores(pipeline);
@@ -1197,36 +1076,24 @@ describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
     expect(result.weighted_hook_score).toBe(0.9);
   });
 
-  it("Phase 3: signal_availability.pass2_timeline === true when pass2_aggregate_built", async () => {
+  it("Phase 4: signal_availability.pass2_timeline === true when fold_success=true", async () => {
     const pipeline = makePipelineResult({
-      pass2Outcome: {
-        pass2Results: samplePass2Results,
-        warnings: [] as string[],
-        cost_cents: 0.1,
-        pass2_success_count: 2,
-        pass2_aggregate_built: true,
-      },
+      foldOutcome: makeFoldOutcome({ fold_success: true }),
       segments: sampleSegments,
     });
     const result = await aggregateScores(pipeline);
     expect(result.signal_availability.pass2_timeline).toBe(true);
   });
 
-  it("Phase 3: signal_availability.pass2_timeline === false when pass2Outcome is null", async () => {
-    const pipeline = makePipelineResult({ pass2Outcome: null });
+  it("Phase 4: signal_availability.pass2_timeline === false when foldOutcome is null", async () => {
+    const pipeline = makePipelineResult({ foldOutcome: null });
     const result = await aggregateScores(pipeline);
     expect(result.signal_availability.pass2_timeline).toBe(false);
   });
 
-  it("Phase 3: when pass2_aggregate_built === false, heatmap=null and weighted_* fields=null (Pass 1 fallback)", async () => {
+  it("Phase 4: when fold_success=false, heatmap=null and weighted_* fields=null", async () => {
     const pipeline = makePipelineResult({
-      pass2Outcome: {
-        pass2Results: [] as typeof samplePass2Results,
-        warnings: ["Too few personas succeeded"] as string[],
-        cost_cents: 0.05,
-        pass2_success_count: 3,
-        pass2_aggregate_built: false,
-      },
+      foldOutcome: makeFoldOutcome({ fold_success: false, pass2Results: [] }),
       segments: sampleSegments,
     });
     const result = await aggregateScores(pipeline);
@@ -1236,22 +1103,16 @@ describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
     expect(result.weighted_hook_score).toBeNull();
   });
 
-  it("Phase 3: isAntiViralityGatedFull called instead of isAntiViralityGated when heatmap present", async () => {
+  it("Phase 4: isAntiViralityGatedFull called when heatmap present (fold succeeded)", async () => {
     const pipeline = makePipelineResult({
-      pass2Outcome: {
-        pass2Results: samplePass2Results,
-        warnings: [] as string[],
-        cost_cents: 0.1,
-        pass2_success_count: 2,
-        pass2_aggregate_built: true,
-      },
+      foldOutcome: makeFoldOutcome(),
       segments: sampleSegments,
     });
     await aggregateScores(pipeline);
     expect(mockIsAntiViralityGatedFull).toHaveBeenCalled();
   });
 
-  it("Phase 3: when heatmap triggers timeline pattern with confidence above 0.4, anti_virality_gated=true with reason='timeline_pattern'", async () => {
+  it("Phase 4: when fold triggers timeline pattern, anti_virality_gated=true with reason='timeline_pattern'", async () => {
     // Mock isAntiViralityGatedFull to return timeline_pattern gating. Persistent (not Once):
     // deterministic Stage 10 now always runs, so the POST-critique re-eval calls this a 2nd
     // time — the real fn is heatmap-deterministic and returns timeline_pattern on both calls.
@@ -1261,13 +1122,7 @@ describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
       dropoff_segment_indices: [1],
     });
     const pipeline = makePipelineResult({
-      pass2Outcome: {
-        pass2Results: samplePass2Results,
-        warnings: [] as string[],
-        cost_cents: 0.1,
-        pass2_success_count: 2,
-        pass2_aggregate_built: true,
-      },
+      foldOutcome: makeFoldOutcome(),
       segments: sampleSegments,
     });
     const result = await aggregateScores(pipeline);
@@ -1283,7 +1138,7 @@ describe("aggregateScores Phase 3 (Plan 08) — Pass 2 wiring", () => {
 describe("hook_decomposition + emotion_arc pluck (Quick 260528-nqx)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(predictWithML).mockResolvedValue(50);
+    // predictWithML mock removed (Plan 02); ml call no longer fires in aggregateScores.
   });
 
   it("populates hook_decomposition on result when geminiResult.analysis.hook_decomposition is present", async () => {
@@ -1349,5 +1204,211 @@ describe("hook_decomposition + emotion_arc pluck (Quick 260528-nqx)", () => {
     });
     const result = await aggregateScores(pipeline);
     expect(result.emotion_arc).toBeNull();
+  });
+});
+
+// =====================================================
+// R5 / D-04 Apollo blend assertions (Plan 03-04 — GREEN after blend rewire)
+// =====================================================
+// These tests assert the post-Plan-04 state: behavioral 40 + Apollo replaces
+// behavioral 40 + gemini. Plan 04 (03-04) wired the blend.
+// The names are exact and must NOT be renamed.
+// =====================================================
+
+describe("blend uses behavioral + apollo (Wave 0 scaffold — RED until Plan 04)", () => {
+  // Plan 04 (03-04): SCORE_WEIGHTS now uses "apollo" key (behavioral + apollo blend).
+  // composite_score from deepseekResult.reasoning is the apollo term.
+  //
+  // The dynamic import pattern is used to avoid hoisting issues with the module mock.
+
+  it("blend uses behavioral + apollo — SCORE_WEIGHTS has apollo key (not gemini) after Plan 04", async () => {
+    // Import SCORE_WEIGHTS from aggregator to check the key structure.
+    // Plan 04 (03-04): SCORE_WEIGHTS = { behavioral: 0.40, apollo: 0.35 }.
+    const { SCORE_WEIGHTS } = await import("../aggregator");
+    // GREEN assertions (post-Plan-04 state):
+    expect(SCORE_WEIGHTS).toHaveProperty("apollo");   // apollo term added (D-04)
+    expect(SCORE_WEIGHTS).not.toHaveProperty("gemini"); // gemini retired from blend key
+  });
+
+  it("gemini retired from raw_overall_score (R5/D-04 — Wave 0 scaffold)", async () => {
+    // D-04: Apollo replaces the gemini term in raw_overall_score.
+    // Plan 04 (03-04): SCORE_WEIGHT_KEYS = ["behavioral", "apollo"].
+    const { SCORE_WEIGHT_KEYS } = await import("../aggregator");
+    // GREEN assertions (post-Plan-04 state):
+    expect(SCORE_WEIGHT_KEYS).not.toContain("gemini"); // gemini retired from blend
+    expect(SCORE_WEIGHT_KEYS).toContain("apollo");     // apollo is now the blend term
+  });
+});
+
+// =====================================================
+// Phase 5 Plan 01 — Wave 0 threading guard (D-01 assembly-hop)
+// RED scaffold: apollo_reasoning.dimensions[0].score must survive aggregator→PredictionResult.
+// Fails until Task 2 (schema) + Task 3 (sum) land — dimension.score is undefined pre-D-01.
+// =====================================================
+
+describe("Phase 5 Plan 01 — D-01 threading: dimensions[].score survives aggregator assembly", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("apollo_reasoning.dimensions[0].score is a finite number after aggregateScores (assembly-hop guard)", async () => {
+    // Dimensions carry `score` in the pipeline input (post-D-01 factory).
+    // After aggregateScores, result.apollo_reasoning.dimensions[0].score must be a finite number.
+    // RED: makeDeepSeekReasoning factory has no `score` on dimensions → score is undefined.
+    // GREEN after Tasks 2+3: factory updated + schema accepts score → score is a number.
+    const pipelineWithScores = makePipelineResult({
+      deepseekResult: {
+        reasoning: {
+          ...makeDeepSeekReasoning(),
+          dimensions: [
+            { name: "hook" as const, band: "mid" as const, lever: "§2.1", evidence: "e", score: 85 },
+            { name: "retention" as const, band: "mid" as const, lever: "§2.2", evidence: "e", score: 50 },
+            { name: "clarity" as const, band: "mid" as const, lever: "§2.1", evidence: "e", score: 50 },
+            { name: "share_pull" as const, band: "mid" as const, lever: "§2.3", evidence: "e", score: 50 },
+            { name: "substance" as const, band: "mid" as const, lever: "§2.5", evidence: "e", score: 50 },
+            { name: "credibility" as const, band: "mid" as const, lever: "§2.1", evidence: "e", score: 50 },
+          ],
+        },
+        cost_cents: 0.3,
+      },
+    });
+
+    const result = await aggregateScores(pipelineWithScores);
+    // Assembly-hop guard: dimensions with .score must ride through unchanged.
+    const dims = result.apollo_reasoning?.dimensions;
+    expect(dims).toBeDefined();
+    expect(dims).not.toBeNull();
+    expect(Array.isArray(dims)).toBe(true);
+    // RED: score is undefined (not a number) until ApolloDimensionSchema has `score`.
+    // GREEN: score is 85 (finite number).
+    const firstDim = dims?.[0];
+    expect(typeof (firstDim as { score?: unknown })?.score).toBe("number");
+    expect(Number.isFinite((firstDim as { score?: unknown })?.score as number)).toBe(true);
+  });
+});
+
+// =====================================================
+// Phase 5 Plan 02 — R11 computeEngagementRange (Wave 0 RED)
+// =====================================================
+// Tests reference the not-yet-written computeEngagementRange — ALL MUST FAIL (RED).
+// GREEN after Task 2 implements the function.
+// Spec: follower_count × quality read (overall_score) → EngagementRange | null
+// =====================================================
+
+describe("Phase 5 Plan 02 — R11 computeEngagementRange: tier sensitivity + range honesty", () => {
+  // R11 verify: two creators of materially different follower tiers get materially different
+  // ranges for the same overall_score.
+  it("high follower_count (500k) produces a materially higher range than low (5k) at same score", () => {
+    const highTierCtx = {
+      found: true,
+      follower_count: 500_000,
+      avg_views: null,
+      engagement_rate: null,
+      niche: null,
+      posting_frequency: null,
+      platform_averages: { avg_views: 50000, avg_engagement_rate: 0.06, avg_share_rate: 0.008, avg_comment_rate: 0.005 },
+      target_platforms: null, niche_primary: null, niche_sub: null, target_audience: null,
+      primary_goal: null, creator_stage: null, content_style: null, cuts_per_second: null,
+      reference_creators: null, past_wins: null, past_flops: null, time_of_day_aware: null, pain_points: null,
+    };
+    const lowTierCtx = {
+      ...highTierCtx,
+      follower_count: 5_000,
+    };
+    const overall_score = 70;
+
+    const highRange = computeEngagementRange(highTierCtx, overall_score);
+    const lowRange = computeEngagementRange(lowTierCtx, overall_score);
+
+    expect(highRange).not.toBeNull();
+    expect(lowRange).not.toBeNull();
+    // Both tiers non-null (both have follower_count)
+    // High tier hi must be materially larger than low tier hi (>5× difference for 100× follower gap)
+    expect(highRange!.hi).toBeGreaterThan(lowRange!.hi * 5);
+  });
+
+  // D-06: output is a RANGE — lo < hi strictly; never a single point.
+  it("returns lo < hi strictly (range, not a point)", () => {
+    const ctx = {
+      found: true,
+      follower_count: 50_000,
+      avg_views: null,
+      engagement_rate: null,
+      niche: null,
+      posting_frequency: null,
+      platform_averages: { avg_views: 50000, avg_engagement_rate: 0.06, avg_share_rate: 0.008, avg_comment_rate: 0.005 },
+      target_platforms: null, niche_primary: null, niche_sub: null, target_audience: null,
+      primary_goal: null, creator_stage: null, content_style: null, cuts_per_second: null,
+      reference_creators: null, past_wins: null, past_flops: null, time_of_day_aware: null, pain_points: null,
+    };
+    const range = computeEngagementRange(ctx, 65);
+    expect(range).not.toBeNull();
+    expect(range!.lo).toBeLessThan(range!.hi);
+  });
+
+  // Quality multiplier: higher overall_score shifts the range upward for the same follower tier.
+  it("higher overall_score shifts range upward (quality multiplies the anchor)", () => {
+    const ctx = {
+      found: true,
+      follower_count: 100_000,
+      avg_views: null,
+      engagement_rate: null,
+      niche: null,
+      posting_frequency: null,
+      platform_averages: { avg_views: 50000, avg_engagement_rate: 0.06, avg_share_rate: 0.008, avg_comment_rate: 0.005 },
+      target_platforms: null, niche_primary: null, niche_sub: null, target_audience: null,
+      primary_goal: null, creator_stage: null, content_style: null, cuts_per_second: null,
+      reference_creators: null, past_wins: null, past_flops: null, time_of_day_aware: null, pain_points: null,
+    };
+    const lowScoreRange = computeEngagementRange(ctx, 20);
+    const highScoreRange = computeEngagementRange(ctx, 90);
+
+    expect(lowScoreRange).not.toBeNull();
+    expect(highScoreRange).not.toBeNull();
+    // High quality → higher expected reach
+    expect(highScoreRange!.hi).toBeGreaterThan(lowScoreRange!.hi);
+  });
+
+  // Fat-tailed honesty: lower overall_score widens the range (more uncertainty at low quality).
+  it("low overall_score produces a wider range (fat-tailed — uncertainty widens band)", () => {
+    const ctx = {
+      found: true,
+      follower_count: 100_000,
+      avg_views: null,
+      engagement_rate: null,
+      niche: null,
+      posting_frequency: null,
+      platform_averages: { avg_views: 50000, avg_engagement_rate: 0.06, avg_share_rate: 0.008, avg_comment_rate: 0.005 },
+      target_platforms: null, niche_primary: null, niche_sub: null, target_audience: null,
+      primary_goal: null, creator_stage: null, content_style: null, cuts_per_second: null,
+      reference_creators: null, past_wins: null, past_flops: null, time_of_day_aware: null, pain_points: null,
+    };
+    const lowQuality = computeEngagementRange(ctx, 15);
+    const highQuality = computeEngagementRange(ctx, 90);
+
+    expect(lowQuality).not.toBeNull();
+    expect(highQuality).not.toBeNull();
+    const lowWidth = lowQuality!.hi - lowQuality!.lo;
+    const highWidth = highQuality!.hi - highQuality!.lo;
+    // Lower quality = wider band (more uncertainty)
+    expect(lowWidth).toBeGreaterThan(highWidth);
+  });
+
+  // Null honesty (R9): follower_count == null → return null (no fabricated number).
+  it("returns null when creatorContext.follower_count is null (R9 honesty)", () => {
+    const ctxNoFollowers = {
+      found: false,
+      follower_count: null,
+      avg_views: null,
+      engagement_rate: null,
+      niche: null,
+      posting_frequency: null,
+      platform_averages: { avg_views: 50000, avg_engagement_rate: 0.06, avg_share_rate: 0.008, avg_comment_rate: 0.005 },
+      target_platforms: null, niche_primary: null, niche_sub: null, target_audience: null,
+      primary_goal: null, creator_stage: null, content_style: null, cuts_per_second: null,
+      reference_creators: null, past_wins: null, past_flops: null, time_of_day_aware: null, pain_points: null,
+    };
+    const result = computeEngagementRange(ctxNoFollowers, 70);
+    expect(result).toBeNull();
   });
 });

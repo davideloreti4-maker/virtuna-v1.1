@@ -50,6 +50,7 @@ const PANEL_LABEL: Record<PanelId, string> = {
   comparative_baseline: "Comparative baseline",
   optimal_post: "When to post",
   anti_virality: "Anti-virality",
+  insight_hero: "Apollo insight",  // D-08 hero (Plan 05-03)
 };
 
 export function ResultCard({ analysisId, initialData }: ResultCardProps) {

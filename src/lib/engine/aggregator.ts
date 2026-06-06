@@ -1,29 +1,30 @@
 import type {
+  AudioFingerprintResult,
   AudioPerceptualResult,
-  BehavioralPredictions,
   ConfidenceLevel,
   ContentTypeSlug,
   CtaSegmentResult,
+  EngagementRange,
   Factor,
   FeatureVector,
   GeminiAudioSignals,
   GeminiVideoSignals,
-  PersonaBehavioralAggregate,
-  PlatformFitResult,
-  PredictedEngagement,
   PredictionResult,
   RuleScoreResult,
   SignalAvailability,
   Suggestion,
   TrendEnrichment,
+  VerbatimPayload,
 } from "./types";
+import type { CreatorContext } from "./creator";
 import type { EmotionArcPoint } from "./qwen/schemas";
 import type { HookDecomposition } from "./types";
 import type { PipelineResult } from "./pipeline";
 import type { StageEventCallback } from "./events";
 import { QWEN_OMNI_MODEL as GEMINI_MODEL } from "./qwen/client";
 import { QWEN_REASONING_MODEL as DEEPSEEK_MODEL } from "./qwen/client";
-import { predictWithML, featureVectorToMLInput } from "./ml";
+// ml.ts call removed (Plan 02, R9): ml predict + feature-vector-to-ml-input no longer called here.
+// ml.ts moves to _dormant/ in Plan 05. SCORE_WEIGHT_KEYS ml key retained until Plan 04 blend cut.
 // Phase 1 (R1.9, Plan 06 T3 B4) — anti-virality gating helper. Wires
 // ANTI_VIRALITY_THRESHOLD into a real consumer; eliminates the dead-code
 // threshold per checker B4. Gating is computed AFTER confidence calibration
@@ -46,10 +47,15 @@ import { computeOptimalPostWindow, type OptimalPostWindow } from "./optimal-post
 import { createServiceClient } from "@/lib/supabase/service";
 import { ENGINE_VERSION } from "./version";
 import { runStage10Critique, applyCritiqueAdjustment } from "./stage10-critique";
-import { runStage11Counterfactuals, maybeAppendLikelyFlopWarning } from "./stage11-counterfactuals";
+// Plan 01-05 Task 0: maybeAppendLikelyFlopWarning extracted from stage11-counterfactuals.ts
+// to flop-warning.ts (kept module). stage11-counterfactuals.ts moves to _dormant/ in Task 1.
+import { maybeAppendLikelyFlopWarning } from "./flop-warning";
 import { applyContentTypeWeights } from "./wave0/content-type-weights";
 import { computeAudioPerceptualScore } from "./audio-perceptual";
 import { createLogger } from "@/lib/logger";
+// Plan 04-03: "fold" behavioralSource branch — aggregatePersonaResults receives the fold-adapted
+// PersonaSimulationResult[] to produce the behavioral aggregate (D-11: function unchanged).
+import { aggregatePersonaResults } from "./wave3/aggregator";
 
 const log = createLogger({ module: "aggregator" });
 
@@ -60,35 +66,22 @@ export { ENGINE_VERSION };
 // v2 Score Weights — config-driven for maintainability
 // =====================================================
 
-// D-16 (Phase 13) — re-tuned for video-mode reality.
-// Sources: CONTEXT D-14 (rules=0), D-15 (retrieval=0), D-16 (redistribution).
-// Audio weight 0.05 per CONTEXT D-16 conditional on trending_sounds population (D-32).
-// See .planning/phases/13-.../13-01-SUMMARY.md for trending_sounds count + decision.
-// trending_sounds table: 0 rows (2026-05-22). User decision: audio=0.05 (conservative
-// weight; audio_perceptual_score from Gemini is real but fingerprint match contributes 0).
-// Exported for test introspection (aggregator-audio.test.ts, aggregator.test.ts).
+// Plan 03-04 (D-04) — blend rewired to behavioral + apollo (Apollo composite replaces gemini).
+// gemini term retired from blend (now provenance only for UI/back-compat).
+// applyCtaPenalty on gemini dropped (gemini left the blend; CTA surfaces as Apollo §2.4 critique).
+// apollo weight value kept at 0.35 (RESEARCH:230) to preserve 53.3/46.7 renorm split —
+// satisfies STATE.md "derivation structurally unchanged" determinism band.
+// Exported for test introspection (aggregator.test.ts, aggregator-audio.test.ts).
 export const SCORE_WEIGHTS = {
-  behavioral:   0.40,  // primary CoT, video-aware via Wave 2 input
-  gemini:       0.35,  // drives Stage 11 too; video understanding is core
-  audio:        0.05,  // D-32 — audio_perceptual_score real; fingerprint match 0 (trending_sounds empty); user decision 2026-05-22
-  trends:       0.10,  // audio-fingerprint based, video-derived
-  platform_fit: 0.05,  // video-derived from Wave 4
-  ml:           0,     // disabled — Phase 10
-  retrieval:    0,     // disabled this phase — D-15 (corpus caption-derived)
-  rules:        0,     // disabled this phase — D-14 (all regex rules operate on caption text)
+  behavioral: 0.40,  // primary CoT, video-aware via Wave 2 input
+  apollo:     0.35,  // Apollo knowledge-grounded composite (D-04, replaces gemini term)
 } as const;
 
-// PATTERNS Critical Cross-File Constraint #1 (Phase 8) + #3 (Phase 4 + Phase 6):
-// selectWeights() must iterate ONLY weight-bearing SCORE_WEIGHTS keys.
-// - Phase 4 widened SignalAvailability with content_type + niche provenance keys
-//   (D-20) — those do NOT participate in weight math (provenance only).
-// - Phase 6 (D-G1) adds `audio` (weight-bearing) but does NOT add `audio_fingerprint`
-//   (provenance only; the fingerprint boost is folded into audio_score before the
-//   weighted average, so audio_fingerprint must NOT have its own slot in the math).
-// - Phase 8 added `retrieval` as a weight-bearing key — MUST be in this tuple
-//   (skipping it silently drops the new 0.05 slot in the filter below).
-export const SCORE_WEIGHT_KEYS = ["behavioral", "gemini", "ml", "rules", "trends", "audio", "retrieval", "platform_fit"] as const;
-type ScoreWeightKey = (typeof SCORE_WEIGHT_KEYS)[number];
+// Plan 03-04 (D-04) — SCORE_WEIGHT_KEYS updated to two live signals: behavioral + apollo.
+// Dead keys (ml, rules, trends, audio, retrieval, platform_fit, gemini) removed.
+// selectWeights iterates ONLY these keys; all SignalAvailability provenance fields
+// (gemini, content_type, niche, gemini_hook, etc.) continue to NOT participate in weight math.
+export const SCORE_WEIGHT_KEYS = ["behavioral", "apollo"] as const;
 
 // =====================================================
 // Phase 5 D-06: CTA Penalty Matrix
@@ -152,15 +145,105 @@ export function applyCtaPenalty(
 }
 
 // =====================================================
+// R11 Engagement Range — grounded estimate (Plan 05-02)
+// =====================================================
+// Pure function: follower_count × quality read (overall_score) → EngagementRange | null.
+// No jitter, no sine — deterministic formula (R9/D-01 honesty).
+// null when follower_count is absent (no fabricated number).
+// =====================================================
+
+/**
+ * Compute a grounded engagement range anchored to the creator's real follower_count
+ * × Apollo+fold quality read (overall_score 0–100).
+ *
+ * Design principles (R11, D-05, D-06):
+ *   - Range (lo, hi), never a false-precise point — virality is fat-tailed.
+ *   - Width widens when quality is low (more uncertainty) — honest fat-tail.
+ *   - Higher quality (overall_score) shifts the range upward (quality multiplier).
+ *   - Returns null when follower_count is absent — no fabrication (R9).
+ *   - Pure, deterministic, no LLM call, no side effects (R7/R6 preserved).
+ *
+ * Formula:
+ *   anchor        = follower_count (real creator baseline)
+ *   quality_ratio = overall_score / 100                              (0–1 quality read)
+ *   reach_factor  = quality_ratio² × 0.20 + 0.005                   (0.5%–20.5% reach)
+ *   mid_estimate  = anchor × reach_factor
+ *   uncertainty   = (1 - quality_ratio)² × 0.25 + 0.02              (2%–27% of followers)
+ *   half_width    = max(mid_estimate × 0.5, anchor × uncertainty)    (floor on absolute width)
+ *   lo            = max(0, round(mid_estimate - half_width))
+ *   hi            = round(mid_estimate + half_width)
+ *
+ * The uncertainty term is anchored to follower_count so low-quality ranges are WIDER
+ * in absolute terms even when mid_estimate is tiny (fat-tailed honesty).
+ *
+ * Confidence is the quality_ratio (0–1) — higher quality = more confident estimate.
+ * Clamped: lo ≥ 0, hi > lo (minimum gap enforced).
+ */
+export function computeEngagementRange(
+  creatorContext: Pick<CreatorContext, "follower_count">,
+  overall_score: number,
+): EngagementRange | null {
+  // R9 honesty: return null when no creator baseline exists. follower_count <= 0
+  // is treated as "no baseline" — a 0-follower count yields a nonsense 0–1 range
+  // that violates R9, so it must suppress the estimate just like null/undefined.
+  if (
+    creatorContext.follower_count === null ||
+    creatorContext.follower_count === undefined ||
+    creatorContext.follower_count <= 0
+  ) {
+    return null;
+  }
+
+  const followerCount = creatorContext.follower_count;
+  // Clamp overall_score to 0–100 (post-parse clamp idiom — untrusted upstream).
+  const score = Math.min(100, Math.max(0, overall_score));
+  const quality_ratio = score / 100; // 0–1
+
+  // Reach factor: quadratic so low scores give near-zero reach, high scores give up to ~20%.
+  // Range: quality_ratio=0 → 0.5% reach; quality_ratio=1 → 20.5% reach.
+  const reach_factor = quality_ratio * quality_ratio * 0.20 + 0.005;
+  const mid_estimate = followerCount * reach_factor;
+
+  // Uncertainty anchored to follower_count (not mid_estimate) so width is large at low quality.
+  // quality_ratio=0 → uncertainty = 0.25+0.02 = 0.27 (27% of followers)
+  // quality_ratio=1 → uncertainty = 0+0.02    = 0.02  (2% of followers)
+  const uncertainty = (1 - quality_ratio) * (1 - quality_ratio) * 0.25 + 0.02;
+  // half_width: take the larger of relative-to-midpoint or absolute-to-followers.
+  // This ensures low-quality ranges remain wide even when mid_estimate is tiny.
+  const half_width = Math.max(mid_estimate * 0.5, followerCount * uncertainty);
+
+  const lo = Math.max(0, Math.round(mid_estimate - half_width));
+  let hi = Math.round(mid_estimate + half_width);
+
+  // Ensure lo < hi (strict range — D-06).
+  if (hi <= lo) {
+    hi = lo + 1;
+  }
+
+  const confidence = quality_ratio;
+
+  return {
+    lo,
+    hi,
+    confidence,
+    basis: "follower-tier × quality read",
+  };
+}
+
+// =====================================================
 // Signal Availability & Dynamic Weight Selection (RULE-04)
 // =====================================================
 // SignalAvailability interface lives in ./types (Phase 3 — D-07).
 // Aggregator computes the values; route layer persists them via PredictionResult.
 
 /**
- * Select weights based on which signal sources are available.
- * When a source is missing, its weight is redistributed proportionally
- * to the remaining sources so weights always sum to ~1.0.
+ * Select weights for the behavioral + apollo 2-key blend (Plan 03-04, D-04).
+ * When a source is missing its weight redistributes to the remaining source
+ * so weights always sum to ~1.0. Dead keys (ml, rules, trends, audio,
+ * retrieval, platform_fit, gemini) removed from blend.
+ *
+ * apollo availability = availability.apollo (deepseekResult non-null + composite_score present).
+ * gemini stays in SignalAvailability as a provenance-only flag (NOT read here).
  *
  * Exported for benchmarking and testing.
  */
@@ -168,112 +251,26 @@ export function selectWeights(
   availability: SignalAvailability
 ): {
   behavioral: number;
-  gemini: number;
-  ml: number;
-  rules: number;
-  trends: number;
-  audio?: number;
-  retrieval?: number;
-  platform_fit?: number;
+  apollo: number;
 } {
-  // Filter Object.entries to ONLY known SCORE_WEIGHTS keys. Phase 4+ extensions
-  // that add provenance keys to SignalAvailability (content_type, niche, future
-  // hook_decomp) MUST NOT participate in the weight math.
-  // PATTERNS Critical Cross-File Constraints #1 (Phase 8) + #3 (Phase 4 + Phase 6).
-  // - Phase 6 (D-G1): `audio` IS in SCORE_WEIGHT_KEYS (weight-bearing);
-  //   `audio_fingerprint` is NOT (provenance only — the fingerprint boost folds into
-  //   audio_score before the weighted average, so it must not get its own slot here).
-  // - Phase 8 (D-03b): `retrieval` IS in SCORE_WEIGHT_KEYS (weight-bearing).
-  //
-  // BACK-COMPAT: SignalAvailability.audio and SignalAvailability.retrieval are both
-  // `.optional()` (Phase 6 + Phase 8 declared them optionally to preserve compile
-  // against pre-Phase-6/Phase-8 construction sites). When the caller passes a legacy
-  // availability object that LACKS one or both of those keys, we treat the missing
-  // signal as "not in the math at all" — preserving the legacy base-weight semantics
-  // for those callers. When the caller passes the new full shape, every key participates.
-  const audioInInput = Object.prototype.hasOwnProperty.call(availability, "audio");
-  const retrievalInInput = Object.prototype.hasOwnProperty.call(availability, "retrieval");
-  const platformFitInInput = Object.prototype.hasOwnProperty.call(availability, "platform_fit");
-  const activeKeys = (SCORE_WEIGHT_KEYS.filter(
-    (k) => (k !== "audio" || audioInInput) && (k !== "retrieval" || retrievalInInput) && (k !== "platform_fit" || platformFitInInput),
-  ) as readonly ScoreWeightKey[]);
+  const behavioralOn = availability.behavioral;
+  const apolloOn = availability.apollo ?? availability.behavioral; // apollo available iff deepseek ran (same signal)
 
-  const filtered = (Object.entries(availability) as Array<[string, boolean]>)
-    .filter(([key]) => (activeKeys as readonly string[]).includes(key)) as Array<
-    [ScoreWeightKey, boolean]
-  >;
-
-  const available = filtered.filter(([, v]) => v);
-  const missing = filtered.filter(([, v]) => !v);
-
-  // Phase 6 (D-G1) + Phase 8 (D-03b) normalization contract — see SCORE_WEIGHTS comment above.
-  // Raw weights for the 7-key path sum to 1.12; 6-key (no retrieval) sums to 1.07; 5-key
-  // legacy path sums to 1.0. The downstream weighted-average math in aggregateScores
-  // expects weights to sum to ~1.0 to keep overall_score in [0, 100]. Therefore BOTH
-  // branches (all-available + redistribution) normalize via `weight / total * 1000`
-  // rounding pass below. The Phase 8 D-03b matrix (behavioral=0.33, gemini=0.24, ml=0.14,
-  // rules=0.14, trends=0.10, retrieval=0.05) is the deterministic output of this
-  // normalization step applied to the 6-key path (without audio) — i.e., the values
-  // tests in Phase 8 assert against.
-  type WeightsOut = {
-    behavioral: number;
-    gemini: number;
-    ml: number;
-    rules: number;
-    trends: number;
-    audio?: number;
-    retrieval?: number;
-    platform_fit?: number;
-  };
-  const initWeights = (): WeightsOut => {
-    const w: WeightsOut = { behavioral: 0, gemini: 0, ml: 0, rules: 0, trends: 0 };
-    if (audioInInput) w.audio = 0;
-    if (retrievalInInput) w.retrieval = 0;
-    if (platformFitInInput) w.platform_fit = 0;
-    return w;
-  };
-
-  // All sources available — use base weights (normalized below).
-  if (missing.length === 0) {
-    const baseSum = activeKeys.reduce((s, k) => s + SCORE_WEIGHTS[k], 0);
-    const normalized = initWeights();
-    for (const key of activeKeys) {
-      normalized[key] = Math.round((SCORE_WEIGHTS[key] / baseSum) * 1000) / 1000;
-    }
-    return normalized;
+  // Both sources available — normalize base weights (0.40 + 0.35 = 0.75).
+  if (behavioralOn && apolloOn) {
+    const baseSum = SCORE_WEIGHTS.behavioral + SCORE_WEIGHTS.apollo;
+    return {
+      behavioral: Math.round((SCORE_WEIGHTS.behavioral / baseSum) * 1000) / 1000,
+      apollo:     Math.round((SCORE_WEIGHTS.apollo     / baseSum) * 1000) / 1000,
+    };
   }
 
-  // Redistribute missing weight proportionally to available sources
-  const missingWeight = missing.reduce(
-    (sum, [key]) => sum + SCORE_WEIGHTS[key], 0
-  );
-  const availableWeight = available.reduce(
-    (sum, [key]) => sum + SCORE_WEIGHTS[key], 0
-  );
+  // One source missing — full weight goes to the available source.
+  if (behavioralOn && !apolloOn) return { behavioral: 1, apollo: 0 };
+  if (!behavioralOn && apolloOn) return { behavioral: 0, apollo: 1 };
 
-  // Each available source gets its base weight + proportional share of missing weight.
-  // initWeights() seeds the audio + retrieval slots only when the caller provided them
-  // (back-compat per Phase 6 + Phase 8 .optional() flags).
-  const result = initWeights();
-  for (const [key, isAvailable] of filtered) {
-    if (isAvailable) {
-      result[key] = SCORE_WEIGHTS[key] + (SCORE_WEIGHTS[key] / availableWeight) * missingWeight;
-    }
-    // Missing sources get weight 0
-  }
-
-  // Round to avoid floating point noise, ensure they sum to ~1
-  const total = Object.values(result).reduce(
-    (a: number, b: number | undefined) => a + (b ?? 0),
-    0,
-  );
-  if (total === 0) return result; // All sources unavailable — return all zeros
-  for (const key of activeKeys) {
-    const v = result[key] ?? 0;
-    result[key] = Math.round((v / total) * 1000) / 1000;
-  }
-
-  return result;
+  // Both unavailable — all zeros.
+  return { behavioral: 0, apollo: 0 };
 }
 
 // =====================================================
@@ -283,12 +280,14 @@ export function selectWeights(
 /**
  * Calculate numeric confidence (0-1) based on:
  * 1. Signal availability (0-0.6) — how much data we have
- * 2. Model agreement (0-0.4) — do the Qwen omni (vision) and reasoning signals agree on direction
+ * 2. Model agreement (0-0.4) — do Apollo composite and behavioral signals agree on direction
  *
- * RULE-04: Penalizes confidence when rules/trends signals are missing.
+ * Plan 03-04 (D-04): replaces gemini-vs-behavioral agreement check with
+ * Apollo-composite-vs-behavioral direction agreement. Gemini term retired from blend.
+ * HARD-03 LOW floor on dual failure preserved.
  */
 function calculateConfidence(
-  geminiScore: number,
+  apolloScore: number,  // Plan 03-04: Apollo composite_score (0-100) replaces geminiScore
   behavioralScore: number,
   ruleResult: RuleScoreResult,
   trendEnrichment: TrendEnrichment,
@@ -304,22 +303,25 @@ function calculateConfidence(
   if (deepseekConfidence === "high") signal += 0.1;
   else if (deepseekConfidence === "medium") signal += 0.05;
 
-  // RULE-04: Confidence penalty for missing signals
-  if (!availability.rules) signal -= 0.05;
-  if (!availability.trends) signal -= 0.05;
+  // Plan 01 (WR-01, R5/R9): rules + trends were removed from the engine BY DESIGN.
+  // Penalizing confidence for their absence would dishonestly depress every prediction
+  // for signals we deliberately deleted, so the former RULE-04 -0.05/-0.05 penalty is
+  // gone. `availability.rules`/`.trends` remain as provenance flags only.
+  void availability;
 
   // Model agreement component (0-0.4)
-  const geminiDirection = geminiScore - 50;
+  // Plan 03-04 (D-04): Apollo-composite-vs-behavioral direction agreement (replaces gemini agreement).
+  const apolloDirection = apolloScore - 50;
   const behavioralDirection = behavioralScore - 50;
   let agreement: number;
 
   if (
-    (geminiDirection >= 0 && behavioralDirection >= 0) ||
-    (geminiDirection < 0 && behavioralDirection < 0)
+    (apolloDirection >= 0 && behavioralDirection >= 0) ||
+    (apolloDirection < 0 && behavioralDirection < 0)
   ) {
-    // Same sign — both models agree on direction
+    // Same sign — Apollo and behavioral agree on direction
     agreement = 0.4;
-  } else if (Math.abs(geminiDirection - behavioralDirection) <= 15) {
+  } else if (Math.abs(apolloDirection - behavioralDirection) <= 15) {
     // Different signs but close together
     agreement = 0.2;
   } else {
@@ -352,12 +354,16 @@ function assembleFeatureVector(
   pipelineResult: PipelineResult,
   adjustedVideoSignals?: GeminiVideoSignals | VideoSignalsPartial | null,
 ): FeatureVector {
-  const { payload, geminiResult, deepseekResult, ruleResult, trendEnrichment } =
+  const { payload, geminiResult, deepseekResult } =
     pipelineResult;
+  // Plan 03 strip: ruleResult + audioFingerprintResult + trendEnrichment removed from pipeline; use fallback defaults.
+  const ruleResult: import("./types").RuleScoreResult = { rule_score: 50, matched_rules: [] };
+  const trendEnrichment: import("./types").TrendEnrichment = { trend_score: 0, matched_trends: [], trend_context: "", hashtag_relevance: 0 };
   const gemini = geminiResult.analysis;
   const deepseek = deepseekResult?.reasoning;
   // Phase 6 D-G4 — fingerprint cosine takes priority over the Jaro-Winkler-derived score.
-  const audioFingerprintResult = pipelineResult.audioFingerprintResult;
+  // Plan 03: audio fingerprint stage removed; always null. Cast prevents TypeScript narrowing to never.
+  const audioFingerprintResult = null as AudioFingerprintResult | null;
 
   // Helper to find a Gemini factor by name
   const findFactor = (name: string) =>
@@ -421,108 +427,27 @@ function assembleFeatureVector(
   };
 }
 
-// =====================================================
-// Predicted Engagement Generation (RES-2)
-// =====================================================
-
-/**
- * Generate realistic predicted engagement numbers from the viral score
- * and behavioral predictions. Numbers are intentionally non-round to feel
- * authentic (e.g., 12.4K not 12,000).
- *
- * Base view range: 5K-500K scaled by overall_score.
- * Engagement rates derived from behavioral_predictions percentages.
- */
-function computePredictedEngagement(
-  overallScore: number,
-  behavioral: { share_pct: number; comment_pct: number; save_pct: number; completion_pct: number },
-): PredictedEngagement {
-  // Deterministic jitter from score (avoids true randomness for reproducibility)
-  const jitter = (seed: number) => {
-    const x = Math.sin(seed * 12.9898 + overallScore * 78.233) * 43758.5453;
-    return x - Math.floor(x); // 0-1
-  };
-
-  // Base views: exponential curve from score (low scores get ~5K, high scores get ~200K+)
-  const scoreNorm = overallScore / 100;
-  const baseViews = Math.round(
-    5000 + (scoreNorm ** 2.2) * 450000 * (0.8 + jitter(1) * 0.4)
-  );
-
-  // Like rate: 3-12% of views, influenced by score
-  const likeRate = 0.03 + scoreNorm * 0.09 + jitter(2) * 0.02;
-  const likes = Math.round(baseViews * likeRate);
-
-  // Comment rate: from behavioral prediction (0.5-3% typical)
-  const commentRate = Math.max(0.005, (behavioral.comment_pct / 100) * (0.6 + jitter(3) * 0.3));
-  const comments = Math.round(baseViews * commentRate);
-
-  // Share rate: from behavioral prediction (0.2-2% typical)
-  const shareRate = Math.max(0.002, (behavioral.share_pct / 100) * (0.5 + jitter(4) * 0.3));
-  const shares = Math.round(baseViews * shareRate);
-
-  // Save rate: from behavioral prediction (0.5-4% typical)
-  const saveRate = Math.max(0.005, (behavioral.save_pct / 100) * (0.7 + jitter(5) * 0.3));
-  const saves = Math.round(baseViews * saveRate);
-
-  return { likes, comments, shares, saves, views: baseViews };
-}
-
-/**
- * WR-01 fix: convert PersonaBehavioralAggregate intent scores (0-100) into
- * BehavioralPredictions percentage-of-views units (typical 0.2-5%) before feeding
- * `computePredictedEngagement`. Without this conversion, persona share_pct=75 (intent
- * "75 out of 100 intent strength") would be interpreted as "75% of views share" — a
- * 15-20× inflation.
- *
- * Scaling factor 0.05 derived from DeepSeek's empirical output ranges (share/save 0.5-5%,
- * comment 0.5-3%) anchored at intent=100 → view-rate=5%. Phase 10 may revise after
- * corpus-calibrated mapping is available.
- *
- * `completion_pct` is in identical units (0-100 percent watched) on both sides, so it
- * passes through unchanged.
- */
-const PERSONA_INTENT_TO_VIEW_RATE = 0.05;
-function rescalePersonaIntentToViewRate(
-  aggregate: PersonaBehavioralAggregate,
-): BehavioralPredictions {
-  return {
-    completion_pct: aggregate.completion_pct,
-    completion_percentile: aggregate.completion_percentile,
-    share_pct: aggregate.share_pct * PERSONA_INTENT_TO_VIEW_RATE,
-    share_percentile: aggregate.share_percentile,
-    comment_pct: aggregate.comment_pct * PERSONA_INTENT_TO_VIEW_RATE,
-    comment_percentile: aggregate.comment_percentile,
-    save_pct: aggregate.save_pct * PERSONA_INTENT_TO_VIEW_RATE,
-    save_percentile: aggregate.save_percentile,
-  };
-}
+// Fabricated engagement jitter (D1.1, R9) deleted (Plan 02): sine-jitter view/like/comment/share/save
+// estimation functions removed. predicted_engagement field is null — UI card null-guarded (Plan 01 reverify #5).
+// PredictedEngagement type + UI shell are retained per D1.3; field will be regrounded in Plan 05.
 
 // =====================================================
 // Score Aggregation
 // =====================================================
 
 /**
- * Phase 7 D-14 (lightweight A/B eval). Default "deepseek" → production read.
- * Phase 10 owns the eventual production swap based on D-14 corpus evidence.
- * Phase 13 D-01 / D-18 — Plan 03 pipeline.ts uploads video once at entry,
- * threads fileUri through here. Plan 02 leaves this optional; Plan 03 callsite
- * supplies real values.
+ * Phase 7 D-14 (lightweight A/B eval). Default: fold (Phase 4 Plan 05 — fold is sole path).
+ * Pass "deepseek" to force-use DeepSeek behavioral predictions (eval harness back-compat).
+ * "personas" option removed — 10-pass deleted (Phase 4 Plan 05).
  */
 export interface AggregateScoresOptions {
-  behavioralSource?: "deepseek" | "personas";
+  behavioralSource?: "deepseek" | "fold";
   // D-01 / D-18 — Plan 03 pipeline.ts uploads video once at entry, threads fileUri through here.
   // Plan 02 leaves this optional with null default; Plan 03 callsite supplies real values.
   videoContext?: { fileUri: string; mimeType: string } | null;
   /**
-   * Latency: defer Stage 11 (counterfactuals) off the synchronous path. When true,
-   * aggregateScores runs Stage 10 (deterministic critique — owns the final score,
-   * confidence + anti-virality gate) but SKIPS the Stage 11 LLM call, leaving
-   * `counterfactuals` null. The caller (analyze route) re-runs `runStage11Counterfactuals`
-   * in a Vercel `after()` and UPDATEs the row, so the user-visible wall drops by the
-   * Stage 11 tail (~30-113s) with no change to the score/gate/confidence. Stage 11 is
-   * purely additive (writes result.counterfactuals only — see the post-pipeline block
-   * below), so deferring it never alters the painted number. Default false = inline.
+   * Retained for back-compat. Stage 11 call removed (Plan 02); this flag is now a no-op.
+   * counterfactuals is always null after Plan 02 until Plan 05 regrounding.
    */
   deferCounterfactuals?: boolean;
 }
@@ -530,8 +455,10 @@ export interface AggregateScoresOptions {
 /**
  * Aggregate all pipeline stage outputs into a PredictionResult.
  *
- * v2 formula: behavioral 35% + gemini 25% + ml 15% + rules 15% + trends 10%
- * RULE-04: Dynamic weight selection adapts when signals are missing.
+ * Post-strip formula (Plan 01, R9): behavioral 0.40 + gemini 0.35, renormalized to the
+ * two live signals (≈53.3% / 46.7%). The dead v2 sources (ml/rules/trends/audio/retrieval/
+ * platform_fit) were removed from the blend and dormanted.
+ * RULE-04: Dynamic weight selection adapts when a live signal is missing.
  *
  * Takes the full PipelineResult from runPredictionPipeline()
  * and returns a complete PredictionResult.
@@ -545,14 +472,15 @@ export async function aggregateScores(
     payload,
     geminiResult,
     deepseekResult,
-    ruleResult,
-    trendEnrichment,
   } = pipelineResult;
 
   const gemini = geminiResult.analysis;
   const deepseek = deepseekResult?.reasoning ?? null;
-  // Phase 6 (D-A4) — fingerprint result from Wave 1 audio_fingerprint stage.
-  const audioFingerprintResult = pipelineResult.audioFingerprintResult;
+  // Plan 03 strip: ruleResult + audioFingerprintResult + trendEnrichment removed from pipeline; use fallback defaults.
+  const ruleResult: import("./types").RuleScoreResult = { rule_score: 50, matched_rules: [] };
+  const trendEnrichment: TrendEnrichment = { trend_score: 0, matched_trends: [], trend_context: "", hashtag_relevance: 0 };
+  // Plan 03: audio fingerprint stage removed; always null. Cast prevents TypeScript narrowing to never.
+  const audioFingerprintResult = null as AudioFingerprintResult | null;
 
   // -------------------------------------------------
   // Phase 4 D-12 + D-19 (RESEARCH Topic #5 locked interpretation):
@@ -665,7 +593,8 @@ export async function aggregateScores(
   // -------------------------------------------------
   const audioSignals = gemini.audio_signals; // GeminiAudioSignals | undefined (Plan 03 .optional())
   let audio_perceptual_score = 0;
-  let audio_score = 0;
+  // audio_score removed from blend in Plan 04 (R9). audio_perceptual_score still
+  // surfaced on PredictionResult (D-G3) so consumers can read the perceptual baseline.
   let audioPerceptualResult: AudioPerceptualResult | null = null;
   if (audioSignals) {
     audioPerceptualResult = computeAudioPerceptualScore(
@@ -673,18 +602,6 @@ export async function aggregateScores(
       contentTypeSlug,
     );
     audio_perceptual_score = audioPerceptualResult.audio_perceptual_score;
-    // D-G2 trend_phase boost mapping (LOCKED — pass through verbatim).
-    const TREND_PHASE_BOOST: Record<string, number> = {
-      emerging: 15,
-      rising: 10,
-      peak: 5,
-      declining: -5,
-    };
-    const boost =
-      audioFingerprintResult?.trend_phase != null
-        ? TREND_PHASE_BOOST[audioFingerprintResult.trend_phase] ?? 0
-        : 0;
-    audio_score = Math.max(0, Math.min(100, audio_perceptual_score + boost));
   }
 
   // Phase 6 (Note 7 / Q4 RESOLVED) — verbatim Gemini-emitted audio_description
@@ -706,6 +623,28 @@ export async function aggregateScores(
     if (Array.isArray(arcRaw) && arcRaw.length > 0) emotion_arc = arcRaw;
   } catch {
     emotion_arc = null; // non-fatal
+  }
+
+  // Phase 2 (R1) — verbatim pluck (hook + per-segment). Non-fatal like emotion_arc.
+  // hook: hook_verbatim off geminiResult.analysis (rides the `as` cast like emotion_arc).
+  // segments: derived from omniSegments (= pipelineResult.segments, normalizeSegments output).
+  //   Each SegmentGrid now carries spoken_text/on_screen_text (Plan 01 SegmentSchema extension).
+  //   Derived AFTER omniSegments is set (:866) — see pass2Outcome block below.
+  let verbatim: VerbatimPayload | null = null;
+  try {
+    const hookRaw = (geminiResult.analysis as unknown as {
+      hook_verbatim?: { spoken_words?: string | null; on_screen_text?: string | null };
+    })?.hook_verbatim;
+    const hook = hookRaw ? {
+      spoken_words: hookRaw.spoken_words ?? null,
+      on_screen_text: hookRaw.on_screen_text ?? null,
+    } : undefined;
+
+    // Per-segment verbatim will be derived below from omniSegments after :866.
+    // Temporarily store hook only; segments merged in below.
+    if (hook) verbatim = { hook };
+  } catch {
+    verbatim = null; // non-fatal
   }
 
   // Phase 2 (Quick 260528-nqx) — hook_decomposition pluck from Gemini analysis.
@@ -780,78 +719,56 @@ export async function aggregateScores(
   // sees the synthesized matched_trends entry on fallback. assembleFeatureVector
   // reads pipelineResult.audioFingerprintResult independently for the priority
   // source (D-G4); the trend_enrichment slot is the fallback source-of-data.
+  // Plan 03: trendEnrichment removed from PipelineResult; pass pipelineResult directly.
+  // effectiveTrendEnrichment is already the fallback default (always empty) now.
   const featureVectorInput: PipelineResult = {
     ...pipelineResult,
-    trendEnrichment: effectiveTrendEnrichment,
   };
   const feature_vector = assembleFeatureVector(
     featureVectorInput,
     adjustedVideoSignals,
   );
-  const mlFeatures = featureVectorToMLInput(feature_vector);
-  // board-fix #1: time ML predict — suspected cold-start cost in the tail.
-  const tMl = performance.now();
-  const mlScore = await predictWithML(mlFeatures);
-  log.info("stage_timing", {
-    stage: "predict_with_ml",
-    ms: Math.round(performance.now() - tMl),
-  });
+  // ml call removed (Plan 02, R9): ml.ts moves to _dormant/ in Plan 05.
+  // SCORE_WEIGHT_KEYS ml key removed in Plan 04 blend cut.
 
   // -------------------------------------------------
-  // RULE-04: Determine signal availability from pipeline result
+  // Signal availability — behavioral + apollo (the two blend keys post-Plan-03-04 D-04).
+  // gemini retired from blend; remains as provenance flag for JSONB/UI.
+  // All other keys (ml, rules, trends, audio, retrieval, platform_fit) removed
+  // from the blend in Plan 04 (R9). Provenance flags (content_type, niche,
+  // gemini_hook/body/cta, personas, audio, audio_fingerprint, retrieval,
+  // platform_fit, pass2_timeline) are preserved on the struct so they continue
+  // to be persisted to analysis_results.signal_availability JSONB and surfaced
+  // in the UI; they simply no longer participate in selectWeights math.
   // -------------------------------------------------
   const availability: SignalAvailability = {
     behavioral: deepseekResult !== null,
+    // Plan 03-04 (D-04): apollo availability = deepseekResult non-null (composite_score present).
+    // Same source as behavioral; exposed separately for JSONB provenance.
+    apollo: deepseekResult !== null,
     // Placeholder — overwritten below after per-segment availability is resolved.
     // HARD-03 fallback (factors.some(score > 0)) kicks in only when signalAvailability undefined.
-    gemini: false,
-    ml: false, // D-05: disabled after Phase 10 audit — ml model uses engagement features not available at prediction time
-    rules:
-      ruleResult.matched_rules.length > 0 &&
-      !pipelineResult.warnings.some((w) =>
-        w.includes("Rule scoring unavailable")
-      ),
-    trends:
-      effectiveTrendEnrichment.matched_trends.length > 0 &&
-      !pipelineResult.warnings.some((w) =>
-        w.includes("Trend enrichment unavailable")
-      ),
-    // Phase 4 D-20: provenance flags surfaced from Wave 0 detector outcomes.
-    // Persisted to analysis_results.signal_availability JSONB; do NOT participate
-    // in selectWeights math (filtered out by SCORE_WEIGHT_KEYS).
+    gemini: false, // PROVENANCE ONLY after D-04 (Omni video signal fired). NOT a blend key.
+    // Provenance flags — NOT weight-bearing (not in SCORE_WEIGHT_KEYS after Plan 04 blend cut).
+    // Retained for JSONB persistence and UI surfacing.
+    ml:     false, // Plan 04 (R9): removed from blend. Provenance only.
+    rules:  false, // Plan 04 (R9): removed from blend. Provenance only.
+    trends: false, // Plan 04 (R9): removed from blend. Provenance only.
     content_type: pipelineResult.wave0Result.content_type !== null,
     niche: pipelineResult.wave0Result.niche !== null,
-    // Phase 5 D-12 — per-segment provenance from analyzeVideoSegmented.
-    // `?? false` fallback handles legacy callers (text mode / eval harness) AND
-    // historical JSONB rows that pre-date the segment keys (RESEARCH line 475).
-    // SCORE_WEIGHT_KEYS still excludes these per Phase 4 Cross-File Constraint #3.
     gemini_hook: pipelineResult.geminiResult.signalAvailability?.gemini_hook ?? false,
     gemini_body: pipelineResult.geminiResult.signalAvailability?.gemini_body ?? false,
     gemini_cta:  pipelineResult.geminiResult.signalAvailability?.gemini_cta  ?? false,
-    // Phase 7 D-15: personas provenance flag. Set true when ≥7-of-10 personas succeeded
-    // (i.e., pipelineResult.personaBehavioralAggregate !== null). Persisted to
-    // analysis_results.signal_availability JSONB; does NOT participate in selectWeights math
-    // (filtered out by SCORE_WEIGHT_KEYS per PATTERNS Critical Cross-File Constraint #3).
     personas: pipelineResult.personaBehavioralAggregate !== null,
-    // Phase 6 (D-G1) — weight-bearing (handles Plan 03's .optional() undefined case).
     audio: audioSignals != null,
-    // Phase 6 (D-G1) — provenance only (filtered out of SCORE_WEIGHT_KEYS).
     audio_fingerprint: audioFingerprintResult !== null,
-    // Phase 8 D-10: retrieval signal — IS weight-bearing (included in
-    // SCORE_WEIGHT_KEYS). True when ≥1 match survived hierarchical relaxation
-    // AND D-04b min_corpus_size gate passed (i.e., retrievalResult.score is non-null).
     retrieval: pipelineResult.retrievalResult.availability,
-    // Phase 9 D-07: platform_fit — IS weight-bearing (included in SCORE_WEIGHT_KEYS).
-    // True when Plan 09-07's pipeline platformFitResult is non-null and non-empty.
-    // Uses widened pipeline cast until PipelineResult inherits the feeder interface.
-    platform_fit: ((pipelineResult as PipelineResult & { platformFitResult: PlatformFitResult[] | null }).platformFitResult?.length ?? 0) > 0,
-    // Phase 3 (Plan 08) D-15: pass2_timeline — provenance flag, NOT weight-bearing.
-    // True when Wave 3 Pass 2 ≥7-of-10 personas succeeded (pass2_aggregate_built=true).
-    // Filtered out of SCORE_WEIGHT_KEYS; persisted to signal_availability JSONB.
-    pass2_timeline: pipelineResult.pass2Outcome?.pass2_aggregate_built ?? false,
+    // Plan 04: platform_fit key removed from blend — provenance only, preserved for JSONB.
+    platform_fit: false,
+    pass2_timeline: pipelineResult.foldOutcome?.fold_success ?? false,
   };
 
-  // Phase 5 D-12: derived `gemini` key.
+  // Phase 5 D-12: derived `gemini` provenance key (PROVENANCE ONLY, not blend after D-04).
   // - Segmented path (signalAvailability present): gemini = hook || body || cta.
   // - Legacy text + tiktok_url paths (signalAvailability undefined): HARD-03 fallback —
   //   the value is `true` when at least one Gemini factor scored > 0.
@@ -862,7 +779,7 @@ export async function aggregateScores(
   const weights = selectWeights(availability);
 
   // -------------------------------------------------
-  // Behavioral score (35% base weight)
+  // Behavioral score (0.40 base weight → ≈53.3% normalized post-strip)
   // Source: DeepSeek's 7 component scores, each 0-10
   // -------------------------------------------------
   const cs = deepseek?.component_scores;
@@ -879,65 +796,27 @@ export async function aggregateScores(
   const behavioral_score = Math.round(behavioralAvg * 10); // Normalize to 0-100
 
   // -------------------------------------------------
-  // Gemini score (25% base weight)
-  // Source: Gemini's 5 factor scores, each 0-10
+  // Gemini score — PROVENANCE ONLY after Plan 03-04 (D-04).
+  // gemini_score is still computed and exposed on PredictionResult.gemini_score
+  // for UI/back-compat (M2 breakdown card), but NO LONGER feeds raw_overall_score.
   // -------------------------------------------------
   const geminiAvg =
     gemini.factors.reduce((sum, f) => sum + f.score, 0) /
     gemini.factors.length;
-  const gemini_score = Math.round(geminiAvg * 10); // Normalize to 0-100
+  const gemini_score = Math.round(geminiAvg * 10); // Normalize to 0-100 (provenance only)
 
   // -------------------------------------------------
-  // Phase 5 D-06: Apply CTA penalty to gemini_score.
-  // Reads wave0Result.content_type.type (Phase 4) × geminiResult.analysis.cta_segment
-  // (Phase 5 mergeSegments). Pure function — does NOT modify SCORE_WEIGHTS or
-  // selectWeights (those stay stable per Phase 4 Cross-File Constraint #3).
-  //
-  // Two separate values flow downstream:
-  //   - `gemini_score` (UNCHANGED here) → exposed on PredictionResult.gemini_score
-  //     so the M2 UI breakdown card shows the model's raw Gemini average.
-  //   - `ctaPenaltyApplied_gemini_score` → feeds raw_overall_score below so the
-  //     final number reflects the CTA-expectation penalty for tutorial/b_roll content.
+  // Apollo score (Plan 03-04, D-04) — replaces gemini term in the blend.
+  // Source: deepseekResult.reasoning.composite_score (Apollo §4 output, 0-100).
+  // Falls back to 0 when deepseek is unavailable (behavioral gets full weight via selectWeights).
+  // applyCtaPenalty dropped (Open Q2): gemini left the blend; CTA surfaces as Apollo §2.4 critique.
   // -------------------------------------------------
-  const widenedGemini = gemini as typeof gemini & { cta_segment?: CtaSegmentResult | null };
-  const ctaPenaltyApplied_gemini_score = applyCtaPenalty(
-    gemini_score,
-    contentTypeSlug,
-    widenedGemini.cta_segment ?? null,
-  );
-  // Phase 5 IN-03: emit a pipeline_warning breadcrumb when the CTA penalty
-  // actually fired. Keeps applyCtaPenalty pure (no side-effects) by computing
-  // the delta and routing the event through the aggregator's onStageEvent
-  // channel. Phase 10 ML audit (CONTEXT D-06) needs the penalty firing rate
-  // for magnitude calibration — without this breadcrumb, the only evidence
-  // is reconstructing it from `gemini_score` vs `overall_score` deltas, which
-  // is fragile across rule/trend/ml interactions.
-  if (ctaPenaltyApplied_gemini_score < gemini_score) {
-    const penaltyDelta = gemini_score - ctaPenaltyApplied_gemini_score;
-    onStageEvent?.({
-      type: "pipeline_warning",
-      stage: "cta_penalty_applied",
-      message: `CTA penalty fired: ${penaltyDelta} points deducted from gemini_score (content_type=${contentTypeSlug}, cta_present=false). Pre-penalty=${gemini_score}, post-penalty=${ctaPenaltyApplied_gemini_score}.`,
-    });
-  }
+  const apollo_score = deepseek?.composite_score ?? 0;
 
   // -------------------------------------------------
-  // Phase 9 (D-03): mean platform fit score across all scored platforms.
-  // platformFitResult comes from Plan 09-07's pipeline extension (typed via
-  // widenedPipeline cast until PipelineResult inherits PipelinePlatformFitFields).
-  // Mean of 0 when null/empty → term drops out via weights.platform_fit ?? 0.
-  // -------------------------------------------------
-  const widenedPipeline = pipelineResult as PipelineResult & { platformFitResult: PlatformFitResult[] | null };
-  const platformFitScores = widenedPipeline.platformFitResult ?? null;
-  const platformFitMeanScore = platformFitScores && platformFitScores.length > 0
-    ? platformFitScores.reduce((sum, p) => sum + p.fit_score, 0) / platformFitScores.length
-    : 0;
-
-  // -------------------------------------------------
-  // Overall score (dynamic weighted combination)
-  // Phase 6 (D-G1): audio_score is folded in when signal_availability.audio = true.
-  // When audio is absent, weights.audio = 0 (selectWeights redistributes the 0.07
-  // share across the other available signals), so the audio term contributes 0.
+  // Overall score — behavioral + apollo blend (Plan 03-04, D-04).
+  // Dead terms (ml, rules, trends, audio, retrieval, platform_fit, gemini) removed.
+  // apollo_score sourced from Apollo composite (deepseekResult.reasoning.composite_score).
   // -------------------------------------------------
   const raw_overall_score = Math.min(
     100,
@@ -945,18 +824,7 @@ export async function aggregateScores(
       0,
       Math.round(
         behavioral_score * weights.behavioral +
-          ctaPenaltyApplied_gemini_score * weights.gemini + // Phase 5 D-06 — penalty flows here
-          (mlScore ?? 0) * weights.ml +
-          ruleResult.rule_score * weights.rules +
-          effectiveTrendEnrichment.trend_score * weights.trends +
-          audio_score * (weights.audio ?? 0) +
-          // Phase 8 D-03: retrievalResult.score is in [0,1] — scale by 100 to match
-          // the [0,100] range of the other terms before applying the weight.
-          // ?? 0 makes the term null-safe when retrieval is unavailable.
-          ((pipelineResult.retrievalResult.score ?? 0) * 100) * (weights.retrieval ?? 0) +
-          // Phase 9 (D-07): platformFitMeanScore is in [0,100] (from fit_score 0-100).
-          // ?? 0 makes the term null-safe when platform_fit is unavailable.
-          platformFitMeanScore * (weights.platform_fit ?? 0)
+          apollo_score * weights.apollo // Plan 03-04 D-04: Apollo composite replaces gemini
       )
     )
   );
@@ -971,7 +839,7 @@ export async function aggregateScores(
   // -------------------------------------------------
   const hasVideo = payload.input_mode !== "text";
   let conf = calculateConfidence(
-    gemini_score,
+    apollo_score, // Plan 03-04 (D-04): Apollo composite-vs-behavioral agreement (replaces gemini)
     behavioral_score,
     ruleResult,
     effectiveTrendEnrichment,
@@ -985,6 +853,7 @@ export async function aggregateScores(
   // zero-scores produce the same direction (-50), triggering the
   // "models agree" branch (agreement = 0.4). In reality, two zeros
   // agreeing is meaningless — force LOW to reflect actual data quality.
+  // Plan 03-04 (D-04): dual failure = Omni (gemini provenance) AND DeepSeek (behavioral/apollo) both failed.
   if (!availability.gemini && !availability.behavioral) {
     conf = { confidence: 0.2, confidence_label: "LOW" };
   }
@@ -1010,10 +879,11 @@ export async function aggregateScores(
     );
   }
 
-  // HARD-03: Explicit dual-failure warning
+  // HARD-03: Explicit dual-failure warning. Post-strip (Plan 01) rules + trends are
+  // gone, so when both LLM signals fail there is no model signal left at all.
   if (!availability.gemini && !availability.behavioral) {
     warnings.push(
-      "Both LLM providers failed — result based on rules and trends only"
+      "Both LLM providers failed — this result is unreliable and should not be trusted"
     );
   }
 
@@ -1058,12 +928,12 @@ export async function aggregateScores(
     ) / 10000;
 
   // -------------------------------------------------
-  // Behavioral predictions (single source of truth for result + engagement)
-  // Phase 7 D-08 + D-14: production read is unchanged (default behavioralSource "deepseek").
-  // The optional "personas" override is the eval-harness A/B substrate; production callers
-  // never pass this option, so default behavior matches pre-Phase-7 byte-for-byte.
+  // Behavioral predictions — fold is the sole audience-sim source (Phase 4 Plan 05).
+  // "personas" option removed (10-pass deleted). "deepseek" override still accepted
+  // for eval harness back-compat (pass behavioralSource:"deepseek" to skip fold).
+  // Priority: fold (when succeeded) → deepseek.behavioral_predictions → FALLBACK_BEHAVIORAL.
   // -------------------------------------------------
-  const behavioralSource = options?.behavioralSource ?? "deepseek";
+  const behavioralSource = options?.behavioralSource ?? "fold";
   const FALLBACK_BEHAVIORAL = {
     completion_pct: 0,
     completion_percentile: "N/A",
@@ -1075,49 +945,80 @@ export async function aggregateScores(
     save_percentile: "N/A",
   } as const;
 
-  const behavioral_predictions =
-    behavioralSource === "personas" && pipelineResult.personaBehavioralAggregate !== null
-      ? pipelineResult.personaBehavioralAggregate
-      : (deepseek?.behavioral_predictions ?? FALLBACK_BEHAVIORAL);
+  // Fold path: derive behavioral aggregate from fold-adapted PersonaSimulationResult[].
+  // aggregatePersonaResults is called here (not pre-aggregated on PipelineResult) to keep
+  // fold.ts free of aggregator coupling. When fold failed → deepseek fallback → FALLBACK.
+  // Callers that explicitly pass behavioralSource:"deepseek" bypass fold (eval back-compat).
+  const behavioral_predictions = (() => {
+    if (behavioralSource !== "deepseek" && pipelineResult.foldOutcome?.fold_success) {
+      const { aggregate } = aggregatePersonaResults(pipelineResult.foldOutcome.personaSimResults);
+      if (aggregate !== null) return aggregate;
+    }
+    return deepseek?.behavioral_predictions ?? FALLBACK_BEHAVIORAL;
+  })();
+
+  // predicted_engagement removed (Plan 02, D1.1, R9): engagement jitter derivation deleted.
+  // Field set null below; UI card already null-guarded (Plan 01 reverify #5 confirmed).
+  // Will be regrounded in Plan 05.
 
   // -------------------------------------------------
-  // Predicted Engagement (RES-2)
-  // WR-01: PersonaBehavioralAggregate.share_pct / comment_pct / save_pct are top-3-weighted
-  // INTENT SCORES (0-100), whereas DeepSeek's share_pct / comment_pct / save_pct are
-  // PERCENTAGES OF VIEWS (typical 0.2-5%). Without conversion, `computePredictedEngagement`
-  // would treat persona share_pct=75 as "75/100 = 0.75 of views share" → 37-60% share rate,
-  // ~15-20× inflated. Convert intent scores into view-rate units before feeding the
-  // engagement math, but keep `behavioral_predictions` output unchanged (downstream
-  // consumers reading the persona aggregate get the documented intent scores).
-  // Conversion factor 0.05: intent 100 → 5% view rate, intent 50 → 2.5% view rate.
-  // This matches DeepSeek's typical upper-bound output range and is documented in
-  // WR-01 fix notes; Phase 10 may revise after corpus calibration.
-  // `completion_pct` is already in the same units on both sides (0-100 percent watched),
-  // so it is passed through unchanged.
+  // Heatmap + weighted_* fields — sourced from fold (Phase 4 Plan 05).
+  // pass2Outcome always null (10-pass deleted). Fold provides pass2Results via adapter.
+  // Falls through to heatmap=null / weighted_*=null when fold failed or no segments.
   // -------------------------------------------------
-  const engagementBehavioral =
-    behavioralSource === "personas" && pipelineResult.personaBehavioralAggregate !== null
-      ? rescalePersonaIntentToViewRate(pipelineResult.personaBehavioralAggregate)
-      : behavioral_predictions;
-
-  const predicted_engagement = computePredictedEngagement(
-    overall_score,
-    engagementBehavioral,
-  );
-
-  // -------------------------------------------------
-  // Phase 3 (Plan 08) — Pass 2 timeline → heatmap + weighted_* fields.
-  // Only runs when pass2_aggregate_built=true AND segments are present.
-  // Pass 1 fallback: heatmap=null, weighted_*=null.
-  // -------------------------------------------------
-  const pass2Outcome = pipelineResult.pass2Outcome;
   const omniSegments = pipelineResult.segments;
+
+  // Phase 2 (R1) — derive verbatim.segments from omniSegments now that they are available.
+  // Each SegmentGrid carries spoken_text/on_screen_text (Plan 01 SegmentSchema extension).
+  // D-02: spoken_text null for silence; D-04.2: [inaudible] preserved as string, never coerced.
+  // Synthetic fallback segments (buildFixedBuckets) legitimately have null verbatim — no invented text.
+  if (omniSegments && omniSegments.length > 0) {
+    try {
+      const verbatimSegments = omniSegments.map((seg, i) => {
+        const s = seg as unknown as {
+          idx?: number;
+          spoken_text?: string | null;
+          on_screen_text?: string | null;
+        };
+        return {
+          idx: s.idx ?? i,
+          spoken_text: s.spoken_text ?? null,
+          on_screen_text: s.on_screen_text ?? null,
+        };
+      });
+
+      // Only populate verbatim.segments when any segment carries non-null text.
+      // (All-null segments array = video with no speech/on-screen text = verbatim stays null/hook-only)
+      const hasAnyText = verbatimSegments.some(
+        (s) => s.spoken_text !== null || s.on_screen_text !== null,
+      );
+
+      if (hasAnyText) {
+        verbatim = verbatim
+          ? { ...verbatim, segments: verbatimSegments }
+          : { segments: verbatimSegments };
+      }
+    } catch {
+      // non-fatal — verbatim stays as-is (hook-only or null)
+    }
+  }
+
   let heatmap: HeatmapPayload | null = null;
   let weighted_completion_pct: number | null = null;
   let weighted_top_dropoff_t: number | null = null;
   let weighted_hook_score: number | null = null;
 
-  if (pass2Outcome?.pass2_aggregate_built && omniSegments && omniSegments.length > 0) {
+  // Phase 4 Plan 05: heatmap always sourced from fold (10-pass deleted).
+  // D-11/D-12: buildWeightedCurve + assembleHeatmapPayload unchanged; only input source changed.
+  const heatmapPass2Results =
+    pipelineResult.foldOutcome?.fold_success
+      ? pipelineResult.foldOutcome.pass2Results
+      : null;
+
+  const heatmapAggregateBuilt =
+    pipelineResult.foldOutcome?.fold_success === true && (heatmapPass2Results?.length ?? 0) > 0;
+
+  if (heatmapAggregateBuilt && heatmapPass2Results && heatmapPass2Results.length > 0 && omniSegments && omniSegments.length > 0) {
     // Resolve persona weights (default mix unless niche override exists).
     // Phase 3 Plan 08: niche primary_slug from wave0Result (may be null → default mix).
     const { weights: personaWeights, source: weightsSource } = resolveWeights(
@@ -1125,13 +1026,13 @@ export async function aggregateScores(
       { niche: pipelineResult.wave0Result.niche?.primary_slug ?? undefined },
     );
     // Build retention curve scalars (D-12)
-    const curveResult = buildWeightedCurve(pass2Outcome.pass2Results, omniSegments, personaWeights);
+    const curveResult = buildWeightedCurve(heatmapPass2Results, omniSegments, personaWeights);
     weighted_completion_pct = curveResult.weighted_completion_pct;
     weighted_top_dropoff_t  = curveResult.weighted_top_dropoff_t;
     weighted_hook_score     = curveResult.weighted_hook_score;
     // Assemble full HeatmapPayload (D-13) — WR-07: pass curveResult to avoid
     // a second buildWeightedCurve call inside assembleHeatmapPayload.
-    heatmap = assembleHeatmapPayload(pass2Outcome.pass2Results, omniSegments, personaWeights, weightsSource, curveResult);
+    heatmap = assembleHeatmapPayload(heatmapPass2Results, omniSegments, personaWeights, weightsSource, curveResult);
   }
 
   // -------------------------------------------------
@@ -1150,15 +1051,37 @@ export async function aggregateScores(
     behavioral_predictions,
     feature_vector,
     reasoning: "", // DeepSeek reasoning text — not exposed in current schema
+    // Plan 03-04 (D-04): Apollo §4 output surfaced for variants.apollo persist (route.ts).
+    // Null when deepseek unavailable (circuit breaker open or failed).
+    apollo_reasoning: deepseek && deepseek.rewrites && deepseek.dimensions && deepseek.composite_score !== undefined
+      ? {
+          rewrites: deepseek.rewrites,
+          dimensions: deepseek.dimensions,
+          composite_score: deepseek.composite_score,
+          // IN-02: ceiling_capper is the highest-leverage insight and the
+          // insight-hero's intended LEAD — it was being dropped here, so the
+          // frame always fell back to confidence_scope. platform_note carries the
+          // watermark/cross-post warning. Both are part of the §4 contract.
+          // `|| undefined` (not `?? ""`): keep the optional contract honest — an
+          // empty capper degrades to absent so the hero falls back to confidence_scope,
+          // never persists a falsy-but-present "" that a strict consumer could misread.
+          ceiling_capper: deepseek.ceiling_capper || undefined,
+          confidence_scope: deepseek.confidence_scope ?? "",
+          platform_note: deepseek.platform_note,
+        }
+      : null,
     warnings,
-    predicted_engagement,
+    // R11 (Plan 05-02): grounded range = follower_count × quality read. Null when no creator baseline (R9).
+    // LIVE-RESULTS-ONLY this phase — NOT persisted (no DB column, no buildInsertRow entry, no route.ts change).
+    // Permalink reload correctly shows no range (live in-memory result only; persistence deferred, D-06).
+    predicted_engagement: computeEngagementRange(pipelineResult.creatorContext, overall_score) ?? null,
     factors,
     suggestions,
-    rule_score: ruleResult.rule_score,
-    trend_score: effectiveTrendEnrichment.trend_score,
+    rule_score: ruleResult.rule_score,   // retained in type; ruleResult always fallback 50 (Plan 03 strip)
+    trend_score: effectiveTrendEnrichment.trend_score, // retained in type; always 0 (Plan 03 strip)
     gemini_score,
     behavioral_score,
-    ml_score: mlScore ?? 0,
+    ml_score: 0, // Plan 04 (R9): ml key removed from blend; field retained in type for back-compat
     // Phase 6 (D-G3) — pre-boost audio_perceptual_score. The fingerprint boost
     // is folded into audio_score (internal) before the weighted sum; consumers
     // who want the perceptual baseline read this field directly.
@@ -1171,6 +1094,10 @@ export async function aggregateScores(
     // Phase 1 (R1.7) — emotion arc timeline plucked from Omni Plus output above.
     // Null when video absent or Qwen omitted the field; non-fatal per Pitfall #5.
     emotion_arc,
+    // Phase 2 (R1) — verbatim transcription (hook + per-segment) from Omni.
+    // Null when video absent, no speech/on-screen text, or Qwen omitted the fields.
+    // Non-fatal: absence doesn't break the pipeline.
+    verbatim,
     // Phase 2 (Quick 260528-nqx) — hook_decomposition surfaced from Gemini analysis.
     hook_decomposition,
     // Content-craft signals for the board "Content craft" frame. Surfaced here so
@@ -1199,7 +1126,9 @@ export async function aggregateScores(
     // above (BEFORE Stage 10/11 per Pitfall #5). null on Supabase error,
     // FALLBACK on unknown niche, OptimalPostWindow with source='niche' on hit.
     optimal_post_window,
-    score_weights: weights, // Actual weights used (may differ from BASE if signals missing)
+    // score_weights: behavioral + apollo blend (Plan 03-04, D-04). Dead keys set to 0 for back-compat.
+    // gemini: 0 marks it retired from blend (provenance only). apollo is the new live term.
+    score_weights: { ...weights, ml: 0, rules: 0, trends: 0, gemini: 0 },
     latency_ms: pipelineResult.total_duration_ms,
     cost_cents,
     engine_version: ENGINE_VERSION,
@@ -1220,11 +1149,9 @@ export async function aggregateScores(
     // the "similar videos" panel without further DB joins (D-02).
     retrieval_score: pipelineResult.retrievalResult.score,
     retrieval_evidence: pipelineResult.retrievalResult.evidence,
-    // Phase 9 D-07 — platform_fit signal output. Pipeline passes per-platform
-    // results (Plan 09-07) — array widened via cast until PipelineResult inherits
-    // the feeder interface. The first result is the primary (highest-fit) platform.
-    // Plan 09-07 will align the PredictionResult type to match the pipeline shape.
-    platform_fit: widenedPipeline.platformFitResult?.[0] ?? null,
+    // Plan 04 (R9): platform_fit key removed from blend; field set null.
+    // platform_fit module moves to _dormant/ in Plan 05; field retained in type for back-compat.
+    platform_fit: null,
   };
 
   // -------------------------------------------------
@@ -1241,33 +1168,20 @@ export async function aggregateScores(
   // LIKELY_FLOP check below still runs on POST-critique confidence, and the
   // anti-virality gate is still recomputed from post-critique confidence —
   // Pitfall 7 ordering invariant preserved.
-  // board-fix #1: time each LLM call individually + the Promise.all wall time.
-  // If (stage10 + stage11) ≈ wall, the two calls are serialized at the DashScope
-  // network layer despite Promise.all; if wall ≈ max(stage10, stage11), they are
-  // truly concurrent. This answers the open latency question in the handoff.
-  // Latency: when deferCounterfactuals is set (analyze route), Stage 11 is pulled
-  // off the sync path and re-run in a Vercel after() — so skip it here. Stage 10
-  // stays inline because it is deterministic TS (no LLM, sub-ms) and OWNS the final
-  // score/confidence/gate; only Stage 11's additive `counterfactuals` arrives late.
-  const deferCounterfactuals = options?.deferCounterfactuals ?? false;
+  // board-fix #1: time stage10.
+  // Stage 11 slot removed (Plan 02, R9): stage11 call deleted from Promise.all;
+  // counterfactuals stays null. stage11-counterfactuals.ts moves to _dormant/ in Plan 05.
+  // Stage 10 (deterministic TS, sub-ms) is KEPT — owns the final score/confidence/gate (Plan 04 scope).
+  // deferCounterfactuals option kept in AggregateScoresOptions for back-compat but no longer used.
   const tStages = performance.now();
-  const [critiqueResult, counterfactualResult] = await Promise.all([
-    (async () => {
-      const t = performance.now();
-      const r = await runStage10Critique(result, onStageEvent);
-      log.info("stage_timing", { stage: "stage10_critique", ms: Math.round(performance.now() - t) });
-      return r;
-    })(),
-    // D-01 / D-06 / D-18 — Stage 11 receives videoContext from options (Plan 03
-    // threads real values; Plan 02 default = null). Skipped entirely when deferred.
-    deferCounterfactuals ? Promise.resolve(null) : (async () => {
-      const t = performance.now();
-      const r = await runStage11Counterfactuals(result, options?.videoContext ?? null, onStageEvent);
-      log.info("stage_timing", { stage: "stage11_counterfactuals", ms: Math.round(performance.now() - t) });
-      return r;
-    })(),
-  ]);
-  log.info("stage_timing", { stage: "stage10_11_wall", ms: Math.round(performance.now() - tStages) });
+  const critiqueResult = await (async () => {
+    const t = performance.now();
+    const r = await runStage10Critique(result, onStageEvent);
+    log.info("stage_timing", { stage: "stage10_critique", ms: Math.round(performance.now() - t) });
+    return r;
+  })();
+  const counterfactualResult = null; // stage11 removed (Plan 02)
+  log.info("stage_timing", { stage: "stage10_wall", ms: Math.round(performance.now() - tStages) });
 
   if (critiqueResult) {
     result.confidence = applyCritiqueAdjustment(result.confidence, critiqueResult);

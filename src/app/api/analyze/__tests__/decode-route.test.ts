@@ -166,10 +166,11 @@ vi.mock("@/lib/supabase/service", () => ({
         return {
           insert: mockInsert,
           update: vi.fn((data: Record<string, unknown>) => {
-            // Variants update (persistDecodeToVariants) — capture it
+            // Variants update (persistDecodeToVariants) — capture it.
+            // Chain: .eq("id").eq("user_id") (CR-02 access-control scoping).
             if ("variants" in data) {
               void mockVariantsUpdate(data);
-              return { eq: vi.fn(async () => ({ error: null })) };
+              return { eq: vi.fn(() => ({ eq: vi.fn(async () => ({ error: null })) })) };
             }
             // Score-path safety-net update (has mode/overall_score keys)
             return {
@@ -178,11 +179,14 @@ vi.mock("@/lib/supabase/service", () => ({
               })),
             };
           }),
+          // persist read chain: .eq("id").eq("user_id").single() (CR-02 scoping)
           select: vi.fn(() => ({
             eq: vi.fn(() => ({
-              single: vi.fn(async () => ({
-                data: { variants: mockVariantsStateHolder.existing },
-                error: null,
+              eq: vi.fn(() => ({
+                single: vi.fn(async () => ({
+                  data: { variants: mockVariantsStateHolder.existing },
+                  error: null,
+                })),
               })),
             })),
           })),

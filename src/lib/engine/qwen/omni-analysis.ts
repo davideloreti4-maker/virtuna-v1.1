@@ -24,6 +24,10 @@ const log = createLogger({ module: "engine.qwen.omni" });
 
 const MAX_RETRIES = 1; // 2 total attempts
 const TIMEOUT_MS  = 60_000;
+// Omni output cap — env-gated for the spine latency A/B (2026-06-05). Default UNSET
+// (uncapped = current baseline behaviour). When set, bounds the omni JSON output to
+// trim tail generation. Size carefully: too low truncates JSON → Zod fail → 60s retry.
+const OMNI_MAX_TOKENS = Number(process.env.OMNI_MAX_TOKENS) || 0;
 
 export interface OmniAnalysisOptions {
   niche?:        string;
@@ -116,13 +120,20 @@ Return ONLY valid JSON matching this exact structure:
     { "timestamp_ms": 5000, "intensity_0_1": 0.8, "label": "high" }
   ],
 
+  "hook_verbatim": {
+    "spoken_words": "<verbatim speech from first ~3s, or null if no speech>",
+    "on_screen_text": "<verbatim overlay text visible in first ~3s, or null if none>"
+  },
+
   "segments": [
     {
       "t_start": 0.0,
       "t_end": 2.8,
       "visual_event": "<brief description of dominant visual change>",
       "audio_event": "<brief description of dominant audio/speech change>",
-      "scene_boundary_reason": "<why this is a scene boundary, optional>"
+      "scene_boundary_reason": "<why this is a scene boundary, optional>",
+      "spoken_text": "<verbatim speech in this segment, [inaudible] for unclear speech, or null for silence>",
+      "on_screen_text": "<verbatim overlay text visible in this segment, or null if none>"
     }
   ]
 }
@@ -143,7 +154,13 @@ Rules for segments:
 - Hook zone 0-3s MUST be its own segment even if no boundary detected.
 - Minimum segment duration: 1s (merge shorter cuts into adjacent segment).
 - If fewer than 4 boundaries detected: return 2s fixed buckets (1s for <8s videos).
-- Sort by t_start ascending. No overlap. t_end of segment[i] = t_start of segment[i+1].`;
+- Sort by t_start ascending. No overlap. t_end of segment[i] = t_start of segment[i+1].
+
+Rules for verbatim (hook_verbatim + per-segment spoken_text/on_screen_text):
+- Transcribe in the spoken language; do NOT translate to English or any other language (D-04.1).
+- Use [inaudible] ONLY for speech that is present but unintelligible; use null when there is no speech or no on-screen text — NEVER describe sound, NEVER write a music description like "[music plays]" (D-02 / D-04.2).
+- Preserve exact casing, punctuation, and emoji in on_screen_text — do not normalise or paraphrase (D-04.3).
+- Cap hook_verbatim fields at ~280 chars; per-segment spoken_text and on_screen_text at ~500 chars (D-04.4).`;
 }
 
 export async function analyzeVideoWithOmni(
@@ -194,6 +211,7 @@ export async function analyzeVideoWithOmni(
           response_format: { type: "json_object" },
           temperature: 0, // reproducible factors/hook/segments — same video → same score
           seed: QWEN_SEED,
+          ...(OMNI_MAX_TOKENS ? { max_tokens: OMNI_MAX_TOKENS } : {}),
         },
         { signal: controller.signal },
       );
@@ -255,12 +273,19 @@ export async function analyzeVideoWithOmni(
         // `as` cast and the aggregator's matching `as unknown as { emotion_arc? }` read.
         // Do NOT "clean up" by removing it — that re-introduces the drop.
         emotion_arc:        data.emotion_arc,
+        // Phase 2 (R1) — hook_verbatim MUST be threaded here via the same pattern as
+        // emotion_arc above. The aggregator plucks it off geminiResult.analysis.hook_verbatim
+        // via `as unknown as { hook_verbatim? }`. Omitting it would silently drop all
+        // verbatim on every run — the segment-axis version of the emotion_arc bug.
+        // GeminiVideoAnalysis doesn't declare this field; it rides the `as` cast.
+        // Do NOT remove — that re-introduces the drop.
+        hook_verbatim:      data.hook_verbatim,
       } as GeminiVideoAnalysis;
 
       // emotion_arc_points surfaces whether the MODEL actually emitted the field
       // (vs the assembly dropping it). After this fix, a run logging 0 points means
       // the model genuinely returned none — a prompt problem, not a plumbing one.
-      log.info("omni analysis complete", { model, cost_cents, attempt, emotion_arc_points: data.emotion_arc?.length ?? 0 });
+      log.info("omni analysis complete", { model, cost_cents, attempt, emotion_arc_points: data.emotion_arc?.length ?? 0, verbatim_present: data.hook_verbatim != null });
 
       return {
         geminiResult: { analysis, cost_cents },

@@ -12,17 +12,28 @@ import { z } from "zod";
 
 const ScoreSchema = z.number().min(0).max(10);
 
+// weakest_modality drift guard: qwen3.5-omni-flash intermittently returns a value
+// OUTSIDE the 4-key enum (a synonym, a sentence, or an invented label). Because the
+// parent OmniAnalysisZodSchema validates in one shot, a single drifted value used to
+// fail the WHOLE ~17s Omni response → full retry (observed live, 05-HUMAN-UAT). But
+// weakest_modality is a DERIVED field — the lowest-scoring of the 4 hook modalities —
+// so the model never needed to name it. Accept a valid value when present, otherwise
+// (.catch → undefined) compute it authoritatively from the 4 scores in a transform.
+// Never a reason to nuke the expensive call. This also fixes model self-inconsistency
+// (a named modality that isn't actually its lowest score).
+const MODALITY_KEYS = [
+  "visual_stop_power",
+  "audio_hook_quality",
+  "text_overlay_score",
+  "first_words_speech_score",
+] as const;
+
 export const HookDecompositionZodSchema = z.object({
   visual_stop_power:        ScoreSchema,
   audio_hook_quality:       ScoreSchema,
   text_overlay_score:       ScoreSchema,
   first_words_speech_score: ScoreSchema,
-  weakest_modality: z.enum([
-    "visual_stop_power",
-    "audio_hook_quality",
-    "text_overlay_score",
-    "first_words_speech_score",
-  ]),
+  weakest_modality: z.enum(MODALITY_KEYS).optional().catch(undefined),
   visual_audio_coherence: ScoreSchema,
   // POLARITY INVERTED: higher score = MORE cognitive load = WORSE retention.
   cognitive_load: ScoreSchema,
@@ -31,7 +42,13 @@ export const HookDecompositionZodSchema = z.object({
     ig:     z.boolean().optional(),
     yt:     z.boolean().optional(),
   }).optional(),
-});
+}).transform((h) => ({
+  ...h,
+  // Derive the weakest modality from the scores when the model omitted or drifted it.
+  weakest_modality:
+    h.weakest_modality ??
+    MODALITY_KEYS.reduce((min, k) => (h[k] < h[min] ? k : min), MODALITY_KEYS[0]),
+}));
 
 const HookFactorSchema = z.object({
   name: z.enum([
@@ -53,10 +70,28 @@ const HookFactorSchema = z.object({
 // downstream P3 emotion-arc panel renders. Existing factors[].name="Emotional
 // Charge" single-score remains unchanged (multiple downstream consumers).
 // Backward compat: emotion_arc is .optional() on OmniAnalysisZodSchema (see A3).
+// emotion_arc.label drift guard: qwen3.5-omni-flash intermittently returns a
+// synonym ("medium", "rising", "calm", capitalised "Low") instead of the strict
+// low|mid|high enum. Because the parent OmniAnalysisZodSchema validates in one shot,
+// a single drifted label used to fail the WHOLE ~17s Omni response → full retry
+// (observed ~50% on a sample video, 05-HUMAN-UAT #1). label is an OPTIONAL,
+// non-critical UI/fold-input field — dropping a bad value is the correct
+// degradation, never a reason to nuke the expensive call. Normalize known
+// synonyms, then .catch(undefined) so any remaining unknown degrades to absent.
+const EMOTION_LABEL_SYNONYMS: Record<string, "low" | "mid" | "high"> = {
+  low: "low", weak: "low", calm: "low", flat: "low", quiet: "low", minimal: "low",
+  mid: "mid", medium: "mid", med: "mid", moderate: "mid", neutral: "mid", rising: "mid",
+  high: "high", peak: "high", intense: "high", strong: "high", elevated: "high",
+};
+const EmotionLabelSchema = z.preprocess(
+  (v) => (typeof v === "string" ? (EMOTION_LABEL_SYNONYMS[v.trim().toLowerCase()] ?? v) : v),
+  z.enum(["low", "mid", "high"]).optional().catch(undefined),
+);
+
 export const EmotionArcPointSchema = z.object({
   timestamp_ms:  z.number().min(0),
   intensity_0_1: z.number().min(0).max(1),
-  label:         z.enum(["low", "mid", "high"]).optional(),
+  label:         EmotionLabelSchema,
 });
 
 /** Phase 1 (R1.7) — Inferred TS type used by aggregator + types.ts. */
@@ -72,6 +107,15 @@ export const SegmentSchema = z.object({
   scene_boundary_reason: z.string().max(300).optional(),
   is_hook_zone: z.boolean().optional(),
   idx: z.number().int().min(0).optional(),
+  /** Phase 2 (R1) — Verbatim speech for this segment. null = silence/no speech (D-02).
+   *  [inaudible] = present-but-unclear speech (D-04.2). Max 500 chars (D-04.4).
+   *  Declared on the EXPORTED SegmentSchema (not just the inline validator) so
+   *  SegmentGrid carries these fields through normalizeSegments into the aggregator.
+   *  A field absent from SegmentSchema is stripped before persistence (the segment-axis
+   *  emotion_arc drop). Both shapes must declare it: inline for parse-time acceptance,
+   *  SegmentSchema for transport. */
+  spoken_text:    z.string().max(500).nullable().optional(),
+  on_screen_text: z.string().max(500).nullable().optional(),
 });
 export type SegmentGrid = z.infer<typeof SegmentSchema>;
 
@@ -151,15 +195,30 @@ export const OmniAnalysisZodSchema = z.object({
    *  Omni responses without this field continue to validate (Assumption A3). */
   emotion_arc: z.array(EmotionArcPointSchema).optional(),
 
+  /** Phase 2 (R1) — Optional verbatim hook transcription. null per field = no speech/text (D-02).
+   *  [inaudible] in spoken_words = present-but-unclear (D-04.2). Max 280 chars (D-04.4).
+   *  .optional() mirrors emotion_arc backward-compat (A3): existing responses without this
+   *  field continue to validate. */
+  hook_verbatim: z.object({
+    spoken_words:   z.string().max(280).nullable().optional(),
+    on_screen_text: z.string().max(280).nullable().optional(),
+  }).optional(),
+
   /** Phase 3 (D-07) — Optional segment grid from Wave 0 omni. Backward compat:
    *  existing responses without this field continue to validate. Server-side normalizer
-   *  sets is_hook_zone and idx after validation. */
+   *  sets is_hook_zone and idx after validation.
+   *  PITFALL 4: This INLINE z.object is the shape Omni output is parsed against at
+   *  parse-time (NOT the exported SegmentSchema). Per-segment verbatim MUST be declared
+   *  HERE for parse-time acceptance, AND on the exported SegmentSchema for transport. */
   segments: z.array(z.object({
     t_start: z.number().min(0),
     t_end:   z.number().min(0),
     visual_event: z.string().max(200),
     audio_event:  z.string().max(200),
     scene_boundary_reason: z.string().max(300).optional(),
+    /** Phase 2 (R1) — Per-segment verbatim speech. null = silence (D-02). [inaudible] = unclear (D-04.2). */
+    spoken_text:    z.string().max(500).nullable().optional(),
+    on_screen_text: z.string().max(500).nullable().optional(),
   })).optional(),
 });
 

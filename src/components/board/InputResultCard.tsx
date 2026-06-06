@@ -171,21 +171,27 @@ export function InputResultCard({
   }
 
   // Hero value: count-in number (confident) or the "Hold" verdict word (gated).
+  // Post-strip (Plan 01, CR-02) a percentile label may be absent (deepseek no longer
+  // fabricates them; persona aggregate may be null) — degrade to "—" instead of an
+  // orphan "Top " label with no number.
   const leadRank = heroNum ?? lead?.rank ?? null;
+  const leadValue = leadRank ?? lead?.pct ?? null;
   const heroValue = gated ? (
     'Hold'
-  ) : (
+  ) : leadValue != null ? (
     <>
       <span className="text-[16px] font-medium text-white/55">Top </span>
-      {leadRank ?? lead?.pct}
+      {leadValue}
     </>
+  ) : (
+    '—'
   );
 
   // Tiles: the four percentiles. The lead (strongest rank) is accented; gated
   // dims them all to directional-only. tabular-nums via StatTile.
   const tiles: StatTileData[] = metrics.map((m) => ({
     k: m.name,
-    v: titleCasePct(m.pct),
+    v: m.pct ? titleCasePct(m.pct) : '—',
     tone: !gated && m.key === lead?.key ? 'accent' : 'default',
   }));
 
@@ -196,7 +202,7 @@ export function InputResultCard({
       className={className}
       label="PREDICTED RANK"
       value={heroValue}
-      unit={gated ? undefined : '%'}
+      unit={gated || leadValue == null ? undefined : '%'}
       status={
         gated
           ? { word: 'Hold', tone: 'crit' }

@@ -6,11 +6,11 @@ import { PANEL_IDS, STAGE_TO_PANEL, panelReadyFromStages } from "@/lib/engine/pa
 import { STAGE_EVENT_SEQUENCE } from "@/test/fixtures/stage-events";
 
 describe("panel-mapping", () => {
-  it("PANEL_IDS contains all 10 documented panels", () => {
+  it("PANEL_IDS contains all 11 documented panels", () => {
     expect(PANEL_IDS).toEqual([
       "verdict", "retention", "persona_breakdown", "hook_decomp",
       "similar_videos", "reasoning", "emotion_arc", "comparative_baseline",
-      "optimal_post", "anti_virality",
+      "optimal_post", "anti_virality", "insight_hero",
     ]);
   });
 
@@ -18,8 +18,8 @@ describe("panel-mapping", () => {
     expect(STAGE_TO_PANEL.wave_1).toEqual(expect.arrayContaining(["hook_decomp", "similar_videos", "emotion_arc"]));
   });
 
-  it("STAGE_TO_PANEL['wave_2'] includes reasoning", () => {
-    expect(STAGE_TO_PANEL.wave_2).toEqual(["reasoning"]);
+  it("STAGE_TO_PANEL['wave_2'] includes reasoning + insight_hero", () => {
+    expect(STAGE_TO_PANEL.wave_2).toEqual(["reasoning", "insight_hero"]);
   });
 
   it("STAGE_TO_PANEL['wave_3_personas'] includes retention + persona_breakdown", () => {

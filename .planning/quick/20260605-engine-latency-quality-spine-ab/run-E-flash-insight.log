@@ -1,0 +1,40 @@
+[Run E] omni-flash insight-depth check: flash omni → Apollo @1500 — Sa.  6 Juni 2026 18:14:17 CEST
+[dotenv@17.3.1] injecting env (8) from .env.local -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[sweep] video=/Users/davideloreti/Downloads/TikTok Video Downloader.mp4 (5.5MB)
+[sweep] running omni once …
+[2026-06-06T16:14:33.646Z] INFO omni analysis start {"module":"engine.qwen.omni","model":"qwen3.5-omni-flash","attempt":0,"videoUrl":"https://qyxvxleheckijapurisj.supabase.co/storage/v1/object/sign/videos/smoke-mea"}
+[2026-06-06T16:14:47.826Z] INFO omni analysis complete {"module":"engine.qwen.omni","model":"qwen3.5-omni-flash","cost_cents":0.26449000000000006,"attempt":0,"emotion_arc_points":8,"verbatim_present":true}
+[sweep] omni done in 14.2s
+[2026-06-06T16:15:39.528Z] WARN Reasoning cost exceeds soft cap {"module":"deepseek","cost_cents":1.0262,"soft_cap":1}
+[2026-06-06T16:15:39.528Z] INFO Apollo reasoning complete {"module":"deepseek","stage":"deepseek_reasoning","duration_ms":51702,"cost_cents":1.0262,"model":"qwen3.6-plus"}
+
+========== BUDGET=1500 ==========
+  latency        : 51.7s   cost=1.0262¢
+  composite_score: 72   confidence=medium
+  confidence_scope: Sensor did not provide exact visual cut timing, mute-readability verification, or precise audio/visual alignment data. Assessment relies on Omni's qualitative summary rather than frame-level multimodal signals.
+  dimensions:
+    · hook         strong  | §2.1 Specificity + §2.1 Rapid Context
+        evidence: Spoken hook delivers concrete details immediately ('Emily Rose Johnson', 'May 2nd, 2003', 'walking the beach, shopping, and makeup!') while on-screen text establishes the premise in ≤1 second.
+    · retention    strong  | §2.2 But/Therefore Spine + §2.2 Re-hook
+        evidence: Uses a tight setup-punchline structure where the audience actively predicts the male response, creating a sustained curiosity loop with no reported dead air.
+    · clarity      strong  | §2.1 Clarity / Comprehension + §2.3 Light-bulb
+        evidence: Zero ambiguity, plain language, and instantly graspable contrast. The premise lands on first listen with no cognitive friction.
+    · share_pull   mid     | §2.3 Identity / Stance for Shares
+        evidence: Relatable gender-difference framing drives shares among friend groups, but lacks a strong contrarian stance or deep emotional charge to trigger viral identity signaling.
+    · substance    weak    | §2.5 Non-obvious Take
+        evidence: The 'girls vs guys' friendship comparison is a well-worn comedy trope. Execution is clean, but the core idea is recycled common advice rather than a fresh, defensible angle.
+    · credibility  mid     | §2.1 Credibility Anchor (Bonus)
+        evidence: Not applicable for comedy skits; no proof point needed, but none present. Does not penalize the hook, but offers no credibility lift.
+  rewrites:
+    · [§2.2 Head Fake / Contrast Gap]
+        orig: My best friend is Emily Rose Johnson. Her birthday is May 2nd, 2003. Her interests are walking the beach, shopping, and makeup!
+        var : My best friend is Emily Rose Johnson. I know her birthday, her coffee order, and exactly why she hates the beach. But ask me what we did last weekend? I have no idea.
+    · [§2.1 Specificity + §2.5 Non-obvious Take]
+        orig: My best friend is Emily Rose Johnson. Her birthday is May 2nd, 2003. Her interests are walking the beach, shopping, and makeup!
+        var : I can recite my best friend's entire life story: Emily Rose Johnson, born May 2nd, 2003, loves beach walks and makeup. Yet somehow, I still don't know her Wi-Fi password.
+    · [§2.3 Identity / Relatability Proxy]
+        orig: My best friend is Emily Rose Johnson. Her birthday is May 2nd, 2003. Her interests are walking the beach, shopping, and makeup!
+        var : Girls memorize their best friend's entire life. I know Emily Rose Johnson's birthday, her favorite makeup shade, and her beach routine. But if you ask me what we actually do together? We just sit in silence.
+
+[sweep] done — cleaned up smoke-measure/apollo-sweep-1780762459088.mp4
+[Run E] EXIT=0 Sa.  6 Juni 2026 18:15:40 CEST

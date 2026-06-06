@@ -1,12 +1,13 @@
 import * as Sentry from "@sentry/nextjs";
-import { after } from "next/server";
+// `after` import removed (Plan 02, R9): scheduleDeferredCounterfactuals deleted; after() no longer used.
 import { nanoid } from "nanoid";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { createScrapingProvider } from "@/lib/scraping";
 import { createLogger } from "@/lib/logger";
 import { runPredictionPipeline } from "@/lib/engine/pipeline";
 import { aggregateScores } from "@/lib/engine/aggregator";
-import { runStage11Counterfactuals } from "@/lib/engine/stage11-counterfactuals";
+// stage11-counterfactuals import removed (Plan 02, R9): deferred re-run block deleted below.
 import { AnalysisInputSchema } from "@/lib/engine/types";
 import {
   computeContentHash,
@@ -43,6 +44,52 @@ import type { DecodeResult } from "@/lib/engine/remix/decode-types";
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
 type Logger = ReturnType<typeof createLogger>;
+
+/**
+ * R11 layer 2 — lazy follower backfill (fire-and-forget).
+ *
+ * Mirrors the best-effort scrape /api/profile PATCH fires, but triggered from the
+ * analyze path so a handle set during onboarding (which never hit that PATCH) still
+ * gets its `tiktok_followers` populated. Intentionally NOT awaited: the scrape can be
+ * slow/flaky and must not enter the ≤90s critical path. Populates the column for the
+ * user's next run; failures are swallowed (the R11 range simply stays absent until a
+ * later scrape succeeds — honest null, never fabricated).
+ *
+ * Concurrency note (code review): N analyses submitted before the first scrape
+ * writes back will each see followers<=0 and fire their own scrape (N Apify runs
+ * for one user). Accepted at current traffic — Apify resolves to the same profile
+ * (idempotent last-write-wins) and the cost is a few redundant runs, not corruption.
+ * Revisit with an advisory lock / short-TTL suppress flag if scrape volume grows.
+ */
+function backfillCreatorFollowers(
+  service: ServiceClient,
+  userId: string,
+  tiktokHandle: string,
+  log: Logger
+): void {
+  const handle = tiktokHandle.replace(/^@/, "");
+  void (async () => {
+    try {
+      const scraper = createScrapingProvider();
+      const profileData = await scraper.scrapeProfile(handle);
+      await service
+        .from("creator_profiles")
+        .update({
+          display_name: profileData.displayName,
+          tiktok_followers: profileData.followerCount,
+          avatar_url: profileData.avatarUrl,
+          bio: profileData.bio,
+        })
+        .eq("user_id", userId);
+      log.info("R11 follower backfill complete", { handle });
+    } catch (err) {
+      log.warn("R11 follower backfill failed (non-blocking)", {
+        handle,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  })();
+}
 
 function cleanupUploadedStorage(
   service: ServiceClient,
@@ -109,6 +156,7 @@ function cleanupRawUpload(
 async function persistCraftToVariants(
   service: ServiceClient,
   id: string,
+  userId: string,
   finalResult: PredictionResult,
   log: Logger,
 ): Promise<void> {
@@ -130,6 +178,7 @@ async function persistCraftToVariants(
       .from("analysis_results")
       .select("variants")
       .eq("id", id)
+      .eq("user_id", userId) // V4 access control — never read/write across user boundary (CR-02)
       .single();
     if (readErr || !row) {
       log.warn("craft_variants_read_failed", { id, error: readErr?.message });
@@ -139,7 +188,8 @@ async function persistCraftToVariants(
     const { error: writeErr } = await service
       .from("analysis_results")
       .update({ variants: { ...current, craft } as unknown as Json })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("user_id", userId); // V4 access control preserved on write (CR-02)
     if (writeErr) {
       log.warn("craft_variants_write_failed", { id, error: writeErr.message });
     }
@@ -151,73 +201,63 @@ async function persistCraftToVariants(
   }
 }
 
+// scheduleDeferredCounterfactuals removed (Plan 02, R9): stage11 deferred re-run deleted.
+// counterfactuals stays null (whatever the pipeline produced). stage11-counterfactuals.ts
+// moves to _dormant/ in Plan 05. The after() import above is also removed.
+
 /**
- * Latency (stage11-defer): re-run Stage 11 (counterfactuals) OFF the request's
- * critical path via Vercel `after()`, then UPDATE the row. aggregateScores ran with
- * deferCounterfactuals:true, so the response + score painted ~30-113s sooner with
- * counterfactuals=null; this backfills the specific fixes. Score, confidence + the
- * anti-virality gate are Stage-10 owned and already final — deferral NEVER changes
- * the painted number, only the additive suggestions list. videoContext is null
- * (parity with the inline path, which never threaded it).
+ * Phase 03 Plan 04 (D-04) — Persist Apollo §4 output into variants.apollo.
  *
- * Reload-only delivery: the SSE stream is already closed when after() runs, so the
- * fixes surface on the next permalink read (GET /api/analysis/[id] refetches the row).
- * The L1 cache is refreshed so a same-content re-analyze HIT also carries them.
- * Best-effort: on failure the board stays on its graceful score-band advice state
- * (actions-derive falls back when counterfactuals.band is null).
+ * Read-merge-write (same pattern as persistCraftToVariants / persistDecodeToVariants)
+ * to preserve sibling variants (craft, remix/decode) regardless of concurrent write order.
+ * Non-fatal: a failure here only blanks the Apollo frame, never the row itself.
+ *
+ * Threat T-03-09: three-level spread (...current) ensures craft + remix survive.
+ * Threat T-03-10: .eq("user_id") enforces V4 access control.
+ *
+ * Score-mode path only (NOT remix): called after the SSE upsert + craft persist.
  */
-function scheduleDeferredCounterfactuals(
+async function persistApolloToVariants(
   service: ServiceClient,
-  analysisId: string,
+  id: string,
   userId: string,
-  contentHash: string,
   finalResult: PredictionResult,
   log: Logger,
-): void {
-  const run = async () => {
-    const t = performance.now();
-    try {
-      const cf = await runStage11Counterfactuals(finalResult, null);
-      if (!cf) {
-        log.warn("deferred_counterfactuals_null", { analysisId });
-        return;
-      }
-      const { error } = await service
-        .from("analysis_results")
-        .update({
-          counterfactuals: cf as unknown as Json,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", analysisId)
-        .eq("user_id", userId);
-      if (error) {
-        log.error("deferred_counterfactuals_persist_failed", { analysisId, error: error.message });
-        return;
-      }
-      // Keep L1 consistent so a cache HIT on identical content still carries the
-      // fixes (the cache stored the pre-defer result with counterfactuals=null).
-      populatePredictionCache(contentHash, userId, { ...finalResult, counterfactuals: cf }, { bypass: false });
-      log.info("stage_timing", {
-        stage: "stage11_deferred_after",
-        ms: Math.round(performance.now() - t),
-        analysisId,
-      });
-    } catch (err) {
-      log.error("deferred_counterfactuals_threw", {
-        analysisId,
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
-  };
-  // Scheduling is best-effort: after() throws if called outside a Next request
-  // scope (e.g. unit harness). A failure to SCHEDULE the deferred work must never
-  // break the user's response — the board already degrades to score-band advice
-  // when counterfactuals are absent.
+): Promise<void> {
+  const apollo = finalResult.apollo_reasoning;
+  // R11 (surface + persist): the grounded engagement range. computeEngagementRange
+  // returns null when no creator baseline exists (R9 honesty) — persist only a real
+  // range, so permalink reload mirrors the live null-gate exactly.
+  const engagement_range = finalResult.predicted_engagement;
+  // Skip only when there's nothing to persist (Apollo skipped AND no range).
+  if (!apollo && !engagement_range) return;
+
   try {
-    after(run);
+    const { data: row, error: readErr } = await service
+      .from("analysis_results")
+      .select("variants")
+      .eq("id", id)
+      .eq("user_id", userId) // T-03-10: V4 access control — never write across user boundary
+      .single();
+    if (readErr || !row) {
+      log.warn("apollo_variants_read_failed", { id, error: readErr?.message });
+      return;
+    }
+    const current = (row.variants ?? {}) as Record<string, unknown>;
+    const merged: Record<string, unknown> = { ...current };
+    if (apollo) merged.apollo = apollo;
+    if (engagement_range) merged.engagement_range = engagement_range;
+    const { error: writeErr } = await service
+      .from("analysis_results")
+      .update({ variants: merged as unknown as Json })
+      .eq("id", id)
+      .eq("user_id", userId); // T-03-10: V4 access control preserved on write
+    if (writeErr) {
+      log.warn("apollo_variants_write_failed", { id, error: writeErr.message });
+    }
   } catch (err) {
-    log.warn("deferred_counterfactuals_schedule_skipped", {
-      analysisId,
+    log.warn("apollo_variants_persist_threw", {
+      id,
       error: err instanceof Error ? err.message : String(err),
     });
   }
@@ -235,6 +275,7 @@ function scheduleDeferredCounterfactuals(
 async function persistDecodeToVariants(
   service: ServiceClient,
   id: string,
+  userId: string,
   decode: DecodeResult,
   log: Logger,
 ): Promise<void> {
@@ -243,6 +284,7 @@ async function persistDecodeToVariants(
       .from("analysis_results")
       .select("variants")
       .eq("id", id)
+      .eq("user_id", userId) // V4 access control — never read/write across user boundary (CR-02)
       .single();
     if (readErr || !row) {
       log.warn("decode_variants_read_failed", { id, error: readErr?.message });
@@ -253,7 +295,8 @@ async function persistDecodeToVariants(
     const { error: writeErr } = await service
       .from("analysis_results")
       .update({ variants: { ...current, remix: { ...remix, decode } } as unknown as Json })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("user_id", userId); // V4 access control preserved on write (CR-02)
     if (writeErr) {
       log.warn("decode_variants_write_failed", { id, error: writeErr.message });
     }
@@ -282,10 +325,11 @@ async function runDecodeStream(
     service: ServiceClient;
     validated: ReturnType<typeof AnalysisInputSchema.parse>;
     analysisId: string;
+    userId: string;
     log: Logger;
   },
 ): Promise<void> {
-  const { service, validated, analysisId, log } = opts;
+  const { service, validated, analysisId, userId, log } = opts;
 
   send("started", { id: analysisId });
   send("phase", { phase: "analyzing", message: "Decoding structure…" });
@@ -302,7 +346,7 @@ async function runDecodeStream(
     const structural = omniOutputToStructuralInput(omni);
     decode = structural ? await runDecode(structural) : null;
     if (decode) {
-      await persistDecodeToVariants(service, analysisId, decode, log);
+      await persistDecodeToVariants(service, analysisId, userId, decode, log);
     }
     send("complete", {
       id: analysisId,
@@ -455,7 +499,7 @@ export async function POST(request: Request) {
     // Phase 11 (INT-05/D-04): Read retention opt-in preference once — gates both branches.
     const { data: creatorProfile } = await supabase
       .from("creator_profiles")
-      .select("storage_retention_opted_in")
+      .select("storage_retention_opted_in, tiktok_handle, tiktok_followers")
       .eq("user_id", user.id)
       .maybeSingle();
     const retentionOptedIn = creatorProfile?.storage_retention_opted_in ?? false;
@@ -520,6 +564,34 @@ export async function POST(request: Request) {
         { error: error instanceof Error ? error.message : "Invalid input" },
         { status: 400 }
       );
+    }
+
+    // R11 (P5 UAT fix): thread the signed-in user's own creator handle into the
+    // pipeline input so fetchCreatorContext can load their follower_count for the
+    // grounded engagement range. The client input never carries creator_handle, so
+    // without this the pipeline always cold-starts (follower_count null) and R11's
+    // EngagementRange stays dormant in the product even though the compute is correct.
+    if (!validated.creator_handle && creatorProfile?.tiktok_handle) {
+      validated.creator_handle = creatorProfile.tiktok_handle;
+    }
+
+    // R11 layer 2 (backfill on first analyze): the onboarding handle step writes
+    // tiktok_handle directly and never fires the follower scrape that /api/profile
+    // PATCH triggers, so tiktok_followers stays null → R11's range can't render even
+    // with the handle threaded above. Lazily fire that same best-effort scrape here
+    // whenever a handle exists but the follower count is missing. Fire-and-forget
+    // (never awaited) so it adds ZERO latency to the ≤90s budget: THIS run still
+    // cold-starts, but the column is populated for the user's next analysis — which
+    // is what "backfill on first analyze" means. Self-healing for any handle-having
+    // user regardless of how their handle was set (onboarding or otherwise).
+    // Trigger when the count is null/undefined OR <= 0: computeEngagementRange
+    // (aggregator.ts) treats follower_count <= 0 as "no baseline" and suppresses
+    // the range, so a stale `0` is just as dormant as null and must also backfill.
+    if (
+      creatorProfile?.tiktok_handle &&
+      (creatorProfile.tiktok_followers == null || creatorProfile.tiktok_followers <= 0)
+    ) {
+      backfillCreatorFollowers(service, user.id, creatorProfile.tiktok_handle, log);
     }
 
     // CONTEXT D-15 — bypass_cache from query param OR body (eval harness)
@@ -660,6 +732,10 @@ export async function POST(request: Request) {
       // they survive permalink reload (migration 20260531000000). Structural
       // Json — cast through unknown like the behavioral_predictions casts above.
       emotion_arc: (finalResult.emotion_arc ?? null) as unknown as Json,
+      // Phase 2 (R1) — verbatim transcription (hook + per-segment) from Omni.
+      // Full { hook, segments } object — NOT a { hook }-only subset (Pitfall 2 /
+      // T-2-05: streaming runs use the UPDATE path below; a subset there drops segments).
+      verbatim: (finalResult.verbatim ?? null) as unknown as Json,
       persona_behavioral_aggregate:
         (finalResult.persona_behavioral_aggregate ?? null) as unknown as Json,
       optimal_post_window:
@@ -686,19 +762,12 @@ export async function POST(request: Request) {
         return Response.json({ error: message }, { status: 500 });
       }
       const tAgg = performance.now();
-      // Latency (stage11-defer): Stage 11 runs in after() below, not inline.
-      const result = await aggregateScores(pipelineResult, undefined, { deferCounterfactuals: true });
+      // Stage 11 removed (Plan 02, R9); aggregateScores no longer needs deferCounterfactuals.
+      const result = await aggregateScores(pipelineResult, undefined);
       const aggregateMs = Math.round(performance.now() - tAgg);
 
-      const ruleContributions = pipelineResult.ruleResult.matched_rules.map(
-        (r) => ({
-          rule_id: r.rule_id,
-          rule_name: r.rule_name,
-          score: r.score,
-          max_score: r.max_score,
-          tier: r.tier,
-        })
-      );
+      // Plan 03 strip: ruleResult removed from pipeline — rule_contributions empty.
+      const ruleContributions: { rule_id: string; rule_name: string; score: number; max_score: number; tier: string }[] = [];
 
       // board-fix #2: persist TRUE E2E latency = pipeline + aggregate (see SSE branch).
       const finalResult: PredictionResult = {
@@ -720,9 +789,11 @@ export async function POST(request: Request) {
         });
         // Persist Content-craft signals into variants.craft (no migration). The
         // row id was generated inline for the JSON insert above.
-        await persistCraftToVariants(service, jsonInsertId, finalResult, log);
-        // Latency (stage11-defer): backfill counterfactuals after the response.
-        scheduleDeferredCounterfactuals(service, jsonInsertId, user.id, contentHash, finalResult, log);
+        await persistCraftToVariants(service, jsonInsertId, user.id, finalResult, log);
+        // Plan 03-04 (D-04): Persist Apollo §4 output into variants.apollo (read-merge-write).
+        // Non-fatal: failure only blanks Apollo frame, never the row itself (T-03-09, T-03-10).
+        await persistApolloToVariants(service, jsonInsertId, user.id, finalResult, log);
+        // stage11 deferred backfill removed (Plan 02, R9); counterfactuals stays null.
       }
 
       // Track usage
@@ -823,6 +894,7 @@ export async function POST(request: Request) {
               service,
               validated,
               analysisId,
+              userId: user.id,
               log,
             });
           } catch (err) {
@@ -895,15 +967,12 @@ export async function POST(request: Request) {
             message: "Calculating predictions and assembling results...",
           });
           // board-fix #1: time aggregateScores — the dominant post-pipeline tail
-          // (Stage 10/11 LLM calls + ML + post-window). Per-stage breakdown is
-          // logged inside the aggregator under module "aggregator".
+          // (Stage 10 + ML + post-window). Per-stage breakdown is logged inside
+          // the aggregator under module "aggregator". Stage 11 removed (Plan 02, R9).
           const tAgg = performance.now();
-          // Latency (stage11-defer): Stage 11 runs in after() below, not inline —
-          // the dominant tail leaves the user-visible wall, score/gate paint now.
           const result = await aggregateScores(
             pipelineResult,
             /* onStageEvent: */ (event: StageEvent) => { send("stage", event); },
-            { deferCounterfactuals: true },
           );
           const aggregateMs = Math.round(performance.now() - tAgg);
           log.info("stage_timing", {
@@ -911,14 +980,8 @@ export async function POST(request: Request) {
             ms: aggregateMs,
           });
 
-          // Build rule_contributions JSONB for per-rule tracking (RULE-03)
-          const ruleContributions = pipelineResult.ruleResult.matched_rules.map(r => ({
-            rule_id: r.rule_id,
-            rule_name: r.rule_name,
-            score: r.score,
-            max_score: r.max_score,
-            tier: r.tier,
-          }));
+          // Plan 03 strip: ruleResult removed from pipeline — rule_contributions empty.
+          const ruleContributions: { rule_id: string; rule_name: string; score: number; max_score: number; tier: string }[] = [];
 
           // Prepend pipeline warnings (partial failures) before DeepSeek warnings.
           // board-fix #2: persist TRUE E2E latency = pipeline + aggregate. result.latency_ms
@@ -955,9 +1018,11 @@ export async function POST(request: Request) {
             });
             // Persist Content-craft signals into variants.craft (no migration).
             // analysisId is the upserted row id (Pitfall #6 placeholder → upsert).
-            await persistCraftToVariants(service, analysisId, finalResult, log);
-            // Latency (stage11-defer): backfill counterfactuals after send("complete").
-            scheduleDeferredCounterfactuals(service, analysisId, user.id, contentHash, finalResult, log);
+            await persistCraftToVariants(service, analysisId, user.id, finalResult, log);
+            // Plan 03-04 (D-04): Persist Apollo §4 output into variants.apollo (read-merge-write).
+            // Non-fatal: failure only blanks Apollo frame, never the row itself (T-03-09, T-03-10).
+            await persistApolloToVariants(service, analysisId, user.id, finalResult, log);
+            // stage11 deferred backfill removed (Plan 02, R9); counterfactuals stays null.
           }
 
           // Track usage (increments AFTER successful analysis)
@@ -1002,9 +1067,12 @@ export async function POST(request: Request) {
                 ml_score: finalResult.ml_score ?? null,
                 score_weights: finalResult.score_weights as unknown as null,
                 signal_availability: finalResult.signal_availability as unknown as null,
-                // Parity with buildInsertRow — keep the three newly-persisted
-                // engine columns in sync on the safety-net UPDATE path too.
+                // Parity with buildInsertRow — keep the newly-persisted engine columns
+                // in sync on the safety-net UPDATE path too (T-2-05: streaming runs use
+                // this path; missing verbatim here = per-segment text lost for board default flow).
                 emotion_arc: (finalResult.emotion_arc ?? null) as unknown as null,
+                // Phase 2 (R1) — full { hook, segments } object on both sites.
+                verbatim: (finalResult.verbatim ?? null) as unknown as null,
                 persona_behavioral_aggregate:
                   (finalResult.persona_behavioral_aggregate ?? null) as unknown as null,
                 optimal_post_window:

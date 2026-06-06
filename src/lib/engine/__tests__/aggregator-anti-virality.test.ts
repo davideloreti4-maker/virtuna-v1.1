@@ -49,10 +49,8 @@ vi.mock("@/lib/cache", () => ({
   }),
 }));
 
-vi.mock("../ml", () => ({
-  predictWithML: vi.fn().mockResolvedValue(50),
-  featureVectorToMLInput: vi.fn().mockReturnValue(Array(15).fill(0.5)),
-}));
+// ml mock removed (Plan 04, R9): ml key removed from blend; ../ml moves to _dormant/ in Plan 05.
+// Leftover mock would strand a dead import and compile-fail the suite after the move.
 
 vi.mock("../calibration", () => ({
   getPlattParameters: vi.fn().mockResolvedValue(null),
@@ -76,47 +74,11 @@ vi.mock("../stage10-critique", () => ({
   applyCritiqueAdjustment: vi.fn((c: number) => c),
 }));
 
-// Stage 11 mock — emit stage events without running real Gemini calls.
-vi.mock("../stage11-counterfactuals", async (importOriginal) => {
-  const orig = await importOriginal<typeof import("../stage11-counterfactuals")>();
-  return {
-    ...orig,
-    runStage11Counterfactuals: vi
-      .fn()
-      .mockImplementation(
-        async (
-          _result: unknown,
-          _videoContext: unknown,
-          onEvent?: (e: {
-            type: string;
-            stage: string;
-            wave: string;
-            timestamp_ms?: number;
-            duration_ms?: number;
-            cost_cents?: number;
-            ok?: boolean;
-          }) => void,
-        ) => {
-          const ts = performance.now();
-          onEvent?.({
-            type: "stage_start",
-            stage: "stage_11_counterfactuals",
-            wave: "post",
-            timestamp_ms: ts,
-          });
-          onEvent?.({
-            type: "stage_end",
-            stage: "stage_11_counterfactuals",
-            wave: "post",
-            duration_ms: 1,
-            cost_cents: 0,
-            ok: true,
-          });
-          return null;
-        },
-      ),
-  };
-});
+// Plan 01-05 Task 0: aggregator now imports maybeAppendLikelyFlopWarning from ./flop-warning.
+// ../stage11-counterfactuals mock removed (module moves to _dormant/ — path won't resolve after move).
+vi.mock("../flop-warning", () => ({
+  maybeAppendLikelyFlopWarning: vi.fn(),
+}));
 
 // =====================================================
 // Imports (after mocks)
@@ -151,13 +113,7 @@ describe("aggregateScores — anti_virality_gated wiring (B4)", () => {
     lowConfReasoning.confidence = "low";
     const lowPipeline = makePipelineResult({
       deepseekResult: { reasoning: lowConfReasoning, cost_cents: 0.3 },
-      ruleResult: { rule_score: 10, matched_rules: [] }, // no matched rules → rules signal absent
-      trendEnrichment: {
-        trend_score: 0,
-        matched_trends: [],
-        trend_context: "",
-        hashtag_relevance: 0,
-      },
+      // Plan 03 strip: ruleResult + trendEnrichment removed from PipelineResult.
     });
     const result = await aggregateScores(lowPipeline);
     // Functional contract: anti_virality_gated MUST match isAntiViralityGated(result.confidence).
@@ -177,26 +133,7 @@ describe("aggregateScores — anti_virality_gated wiring (B4)", () => {
     highConfReasoning.confidence = "high";
     const highPipeline = makePipelineResult({
       deepseekResult: { reasoning: highConfReasoning, cost_cents: 0.3 },
-      ruleResult: {
-        rule_score: 80,
-        matched_rules: [
-          {
-            rule_id: "r1",
-            rule_name: "strong-hook",
-            score: 20,
-            max_score: 20,
-            tier: "regex" as const,
-          },
-        ],
-      },
-      trendEnrichment: {
-        trend_score: 60,
-        matched_trends: [
-          { sound_name: "Trend Sound", velocity_score: 70, trend_phase: "rising" },
-        ],
-        trend_context: "",
-        hashtag_relevance: 0.8,
-      },
+      // Plan 03 strip: ruleResult + trendEnrichment removed from PipelineResult.
     });
     const result = await aggregateScores(highPipeline);
     expect(result.anti_virality_gated).toBe(

@@ -55,10 +55,8 @@ vi.mock("@/lib/cache", () => ({
   }),
 }));
 
-vi.mock("../ml", () => ({
-  predictWithML: vi.fn().mockResolvedValue(50),
-  featureVectorToMLInput: vi.fn().mockReturnValue(Array(15).fill(0.5)),
-}));
+// ml mock removed (Plan 04, R9): ml key removed from blend; ../ml moves to _dormant/ in Plan 05.
+// Leftover mock would strand a dead import and compile-fail the suite after the move.
 
 vi.mock("../calibration", () => ({
   getPlattParameters: vi.fn().mockResolvedValue(null),
@@ -101,46 +99,11 @@ vi.mock("../stage10-critique", () => ({
   applyCritiqueAdjustment: vi.fn((c: number) => c),
 }));
 
-vi.mock("../stage11-counterfactuals", async (importOriginal) => {
-  const orig =
-    await importOriginal<typeof import("../stage11-counterfactuals")>();
-  return {
-    ...orig,
-    runStage11Counterfactuals: vi.fn().mockImplementation(
-      async (
-        _result: unknown,
-        _videoContext: unknown,
-        onEvent?: (e: {
-          type: string;
-          stage: string;
-          wave: string;
-          timestamp_ms?: number;
-          duration_ms?: number;
-          cost_cents?: number;
-          ok?: boolean;
-        }) => void,
-      ) => {
-        callOrder.push("stage11");
-        const ts = performance.now();
-        onEvent?.({
-          type: "stage_start",
-          stage: "stage_11_counterfactuals",
-          wave: "post",
-          timestamp_ms: ts,
-        });
-        onEvent?.({
-          type: "stage_end",
-          stage: "stage_11_counterfactuals",
-          wave: "post",
-          duration_ms: 1,
-          cost_cents: 0,
-          ok: true,
-        });
-        return null;
-      },
-    ),
-  };
-});
+// Plan 01-05 Task 0: aggregator now imports maybeAppendLikelyFlopWarning from ./flop-warning.
+// ../stage11-counterfactuals mock removed (module moves to _dormant/ — path won't resolve after move).
+vi.mock("../flop-warning", () => ({
+  maybeAppendLikelyFlopWarning: vi.fn(),
+}));
 
 // =====================================================
 // Imports (after mocks)
@@ -189,19 +152,17 @@ describe("aggregateScores — optimal_post_window", () => {
     expect(result.optimal_post_window).toBeNull();
   });
 
-  it("computeOptimalPostWindow is called BEFORE Stage 10/11 (Pitfall #5 ordering)", async () => {
+  it("computeOptimalPostWindow is called BEFORE Stage 10 (Pitfall #5 ordering)", async () => {
     mockCompute.mockImplementationOnce(async () => {
       callOrder.push("optimal_post");
       return FALLBACK_POST_WINDOW;
     });
     await aggregateScores(makePipelineResult());
-    // Ordering invariant: helper resolves before Stage 10 critique fires, which
-    // itself runs before Stage 11 counterfactuals.
+    // Ordering invariant: helper resolves before Stage 10 critique fires.
+    // (Stage 11 counterfactuals removed in Plan 01-02 — no longer in the aggregate path.)
     const opIdx = callOrder.indexOf("optimal_post");
     const s10Idx = callOrder.indexOf("stage10");
-    const s11Idx = callOrder.indexOf("stage11");
     expect(opIdx).toBeGreaterThanOrEqual(0);
     expect(s10Idx).toBeGreaterThan(opIdx);
-    expect(s11Idx).toBeGreaterThan(s10Idx);
   });
 });

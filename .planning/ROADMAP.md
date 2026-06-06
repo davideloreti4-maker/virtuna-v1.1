@@ -1,193 +1,169 @@
-# Roadmap — MVP Cut
+# Roadmap — Apollo
 
-**Branch:** `milestone/mvp-cut`
-**Worktree:** `~/virtuna-mvp-cut/`
-**Phase range:** 1–6 (milestone-scoped numbering)
-**Forks from:** `main` post-PR-#3 + PR-#4 merges
+**Branch:** `milestone/engine-opt` · **Worktree:** `~/virtuna-engine-opt/` · **Phases:** 1–5
+**Forks from:** `main` post-PR-#5 · **SSOT:** `ENGINE-MAP.md`
+
+> **Reconstructed 2026-06-06** — P1–3 were accidentally truncated out of this file at commit `1827b44a` (P4 plan creation overwrote it), which drove the STATE `total_phases: 2` drift. Full 5-phase roadmap restored from `a3562245`; P4/P5 statuses brought to current reality.
 
 ## Strategy
 
-Cut the runtime surface to MVP minimum, fix the visible bugs that Result Surface handed forward, and finish with a regression + cross-browser pass plus one end-to-end happy-path Playwright test. Three middle phases (2, 3, 4) are independent and can fork in parallel from the milestone branch. Phase 5 needs Phases 2–4 visible on screen. Phase 6 sequences last.
+Clear the engine down to its senses (low-risk deletion → under the cap), sharpen the senses (verbatim), build the expert brain (the moat), fold the crowd brain (the bet), then wire + surface. Phase 1 is corpus-independent and can start immediately; the multi-source corpus is pinned down in parallel and lands in Phase 3.
 
-## Parallelization Plan
+**Ship incrementally, don't bank a giant merge.** P1 + P2 are independently shippable to `main` (honesty/latency wins, no downstream dependency) — merge them promptly (CLAUDE.md rule: milestones land in days, not weeks). This also keeps us continuously reconciled with `main` (which now carries Remix) instead of one painful end-of-milestone collision.
+
+**Remix is part of this milestone's brain, not separate.** `main` now has Remix (`engine/remix/decode.ts` + `adapt.ts`, `mode: score|remix`). It runs on the same engine and must share the Apollo knowledge core (P3 / R12) — Apollo is the brain for score-mode AND remix-mode.
+
+## Dependency / parallelization
 
 ```
-        main (post-#3, post-#4)
+        main (post-#5)
               │
               ▼
-         Phase 1 (sequential — strip retrieval / similar videos / /trending)
+        Phase 1  (strip to senses — deletion, corpus-independent)
               │
-   ┌──────────┼──────────┐
-   │          │          │
-Phase 2    Phase 3    Phase 4       (parallelizable — independent surfaces)
-   │          │          │
-   └──────────┼──────────┘
+        Phase 2  (Omni verbatim — sharpen the senses)
               │
-         Phase 5 (needs 2–4 visible)
-              │
-              ▼
-         Phase 6 (pre-ship audit)
+        ├───────────────┐
+        ▼               ▼
+   Phase 3          Phase 4
+  (Apollo Reasoner  (Audience-Sim fold
+   — needs corpus)   — needs P2 verbatim/segments)
+        └───────┬───────┘
+                ▼
+           Phase 5  (wire sequencing + directional score + surface)
 ```
 
-Phase 0 is a scope-statement phase that lives entirely inside this ROADMAP — no code, no separate `phases/00-*` directory. It captures the Phase-8 keep/defer split below so the mobile + onboarding work in Phase 5 has a frozen reference.
-
-## Phase 0: Phase-8 Keep / Defer Split (this section)
-
-Out of the old `phase-8-launch-polish-and-onboarding` package, the MVP cut keeps the items that move signup → first-useful-prediction → act. Polish, telemetry, and accessibility audits get deferred to a post-MVP milestone.
-
-**Keep (rolled into Phase 5):**
-
-| Old ID | Item |
-|--------|------|
-| 8.1 | Mobile board layout |
-| 8.2 | Mobile upload flow |
-| 8.3 | Mobile audience touch interaction (Radix Sheet drawer) |
-| 8.5 | First-analysis tutorial |
-| 8.7 | Next-action prompts |
-| 8.9 | Regression audit (run inside Phase 6 instead — kept here for traceability) |
-| 8.12 | Cross-browser smoke (run inside Phase 6 instead — kept here for traceability) |
-
-**Defer (out of MVP):**
-
-- Orientation tooltip polish
-- Paced verdict reveal
-- Full telemetry instrumentation
-- Lighthouse 90+ target
-- Full WCAG AA audit
-
-## Phase 1: Strip Retrieval + Similar Videos + /trending Dashboard
-
-**Goal:** Remove all M2-corpus-dependent surfaces from the runtime. Ingestion side stays intact for a future corpus milestone.
-
-**Depends on:** Nothing (forks directly from milestone base).
-
-**Scope:**
-
-- Delete `SimilarVideosCard` from board substrate
-- Remove retrieval reads from `/api/analyze` pipeline (keep `scraped_videos` writes, scraper cron, trend enrichment)
-- Delete `/trending` dashboard page (Next.js route) + `/api/trending/*` routes + supporting client code
-- Keep `scraped_videos`, `trending_sounds`, scraper cron, and trend-enrichment-into-analyze pipeline UNTOUCHED
-- Embedder code stays in the repo (dormant) — Phase 1 only removes its runtime call sites
-
-**Success Criteria:**
-
-1. `grep -r "SimilarVideosCard"` returns zero src/ hits
-2. `grep -r "/api/trending"` returns zero src/ hits
-3. `grep -r "/dashboard/trending\|trending-dashboard"` returns zero src/ hits
-4. `/api/analyze` still writes `scraped_videos` and reads `trending_sounds` for trend enrichment
-5. `pnpm build` green, `tsc --noEmit` 0 errors, `pnpm test` green
-
-## Phase 2: Wire Hook Decomposition + Emotion Arc End-to-End
-
-**Goal:** Replace the null-fallback path in `aggregator.ts:686-693` with the real hook decomposition + emotion arc emission, and surface both in board nodes.
-
-**Depends on:** Nothing (parallel with 3, 4).
-
-**Scope:**
-
-- Audit the half-wired aggregator path; emit real `hook_decomposition` + `emotion_arc` instead of null fallback
-- Confirm board nodes consume both fields and render correctly (no card placeholders)
-- Tests: aggregator unit coverage for the populated path; component test that the card renders with real data shape
-
-**Success Criteria:**
-
-1. `aggregator.ts:686-693` no longer returns null-shaped hook_decomposition / emotion_arc on the happy path
-2. Verdict node or hook-specific node renders the populated decomposition without "(unavailable)" copy
-3. New aggregator unit tests cover the populated path
-
-## Phase 3: Fix Orphaned Video Storage
-
-**Goal:** Eliminate the upload → orphan storage object failure mode confirmed on analysis `-I4GtlGVCQKO`.
-
-**Depends on:** Nothing (parallel with 2, 4).
-
-**Scope:**
-
-- Diagnose: retention cron timing OR upload → insert race (Phase opens with a 1-day diagnosis pass)
-- Apply the fix that matches root cause:
-  - If retention cron timing: tighten window, add an idempotency check
-  - If upload → insert race: serialize storage insert behind analysis row creation, or move to a single transactional path
-- Add a regression test or observability hook that would have caught the orphan
-
-**Success Criteria:**
-
-1. Root cause documented in a phase artifact (RESEARCH.md or DECISION.md)
-2. Fix lands with a test that fails before the fix and passes after
-3. A re-run of the original orphan repro (or its closest reproducible simulation) produces zero orphaned objects
-
-## Phase 4: Schema Drift Fix
-
-**Goal:** Persist the four columns the engine emits but the DB doesn't store. Revert the script-route inline workaround.
-
-**Depends on:** Nothing (parallel with 2, 3) — coordinates with Phase 2 if hook_decomposition column shape ends up depending on Phase 2's data structure.
-
-**Scope:**
-
-- Migration: add `counterfactuals`, `hook_decomposition`, `confidence_label`, `anti_virality_gated` to `analysis_results` (column types finalized inside the phase)
-- Regenerate `database.types.ts` from live schema
-- Update `buildInsertRow` (and any sibling insert builders) to persist the four columns
-- Revert the script-route workaround (the inline column-drop + label derivation landed 2026-05-28)
-- Backfill strategy (or explicit "no backfill — null is fine" decision) documented
-
-**Success Criteria:**
-
-1. Migration applied to remote Supabase project
-2. `database.types.ts` regenerated; no hand-patched types
-3. `analysis_results` rows persisted by `/api/analyze` contain non-null values for the four columns on a fresh test analysis
-4. Script route SELECTs the persisted columns directly (no inline derivation)
-5. `pnpm build` + `tsc --noEmit` + `pnpm test` green
-
-## Phase 5: Mobile + Onboarding
-
-**Goal:** Land the 7 Phase-8 items kept above so first-time users on mobile and desktop both complete signup → first analysis → next action without friction.
-
-**Depends on:** Phases 2, 3, 4 visible (engine emits the right fields, no orphans, schema persists).
-
-**Scope (each item is a plan inside this phase):**
-
-- 5.1 Mobile board layout (≡ old 8.1)
-- 5.2 Mobile upload flow (≡ old 8.2)
-- 5.3 Mobile audience touch interaction (≡ old 8.3)
-- 5.4 First-analysis tutorial (≡ old 8.5)
-- 5.5 Next-action prompts (≡ old 8.7)
-
-**Success Criteria:**
-
-1. Mobile board renders without horizontal scroll on iOS Safari + Chromium Android
-2. Mobile upload flow completes a video upload from device gallery → analysis end-to-end
-3. Audience node mobile drawer (Radix Sheet) accepts touch interaction across populated heatmap slots
-4. First-analysis tutorial fires once on first signup, never again, and is dismissible
-5. Next-action prompts appear post-verdict and route to the corresponding board node / script
-
-## Phase 6: Pre-Ship Regression + E2E
-
-**Goal:** One pass that closes the door on ship — regression audit, cross-browser smoke, one end-to-end Playwright happy-path test in CI.
-
-**Depends on:** Phases 1, 2, 3, 4, 5 all merged.
-
-**Scope:**
-
-- 6.1 Regression audit (≡ old 8.9): walk every primary surface for regressions introduced by the cut
-- 6.2 Cross-browser smoke (≡ old 8.12): Chromium + WebKit smoke on auth, upload, analysis, board, script, optimal-post
-- 6.3 E2E happy-path Playwright test: signup → upload → wait for analysis complete → assert verdict node populated + reshoot script accessible
-
-**Success Criteria:**
-
-1. Regression audit report lists every surface checked and the outcome
-2. Cross-browser smoke passes on Chromium + WebKit in CI (mobile + desktop viewports)
-3. Happy-path E2E test merged into `e2e/` and green in CI for 3 consecutive runs
-4. No P0 / P1 issues open in MILESTONE.md carryover list
+> **Corpus track (parallel to P1/P2):** pin down the Chase Hughes data + distillation form → feeds P3. Biggest unknown; start early. **RESOLVED** — corpus v1 (`KNOWLEDGE-CORE.md` v1.1) validated, P3 executed.
 
 ---
 
-## Execution Order
+## Phase 1: Strip to Senses — ✅ COMPLETE (2026-06-04)
 
-| Phase | Title | Depends on | Status | Notes |
-|-------|-------|-----------|--------|-------|
-| 0 | Phase-8 keep/defer split | — | Done (this doc) | No code, frozen here |
-| 1 | Strip retrieval + similar videos + /trending | — | Pending | Sequential, first |
-| 2 | Wire hook decomposition + emotion arc | 1 | Pending | Parallel with 3, 4 |
-| 3 | Fix orphaned video storage | 1 | Pending | Parallel with 2, 4 |
-| 4 | Schema drift fix | 1 | Pending | Parallel with 2, 3 |
-| 5 | Mobile + onboarding | 2, 3, 4 | Pending | Needs 2–4 visible |
-| 6 | Pre-ship regression + E2E | 1, 2, 3, 4, 5 | Pending | Last |
+**Goal:** delete the fabrication + dead machinery so the engine is honest and under the latency cap — WITHOUT breaking the live product. **Subtractive only** (Apollo doesn't exist yet).
+**Does:** delete the *fake* `predicted-engagement` (views = f(score)+jitter, ignores reach) + corpus-percentile framing — grounded engagement returns in P5 (R11); dormant/remove `ml.ts`, `audio-fingerprint`, `trends`; remove the separate `platform_fit` + `rule`-semantic + `stage11` calls (their jobs move to P3); delete vestigial stage10 flags. **Score stays, derivation UNCHANGED for now** — it keeps computing off the existing live signals (behavioral + gemini); the clean Apollo-derived score + confidence lands in P3/P5, not here. Just remove the dead terms from the blend so it reflects only live signals.
+**Success:** R6 (under cap), R9 (no fabricated/dead signal), R5 (score + confidence still render). Engine stays shippable + green (minus deleted-feature tests).
+**Risk:** low — mostly deletion. Watch blend-coupled board UI consumers + remix coupling in `pipeline.ts`/`types.ts`.
+**Ship:** independently mergeable to `main` (honesty + latency win, no dependency on later phases) — merge promptly, don't bank it behind P3/P4.
+**Plans:** 6/6 plans complete
+Plans:
+**Wave 1**
+
+- [x] 01-01-PLAN.md — Wave 0 scaffolds: extend measure-pipeline (overall_score), fix creator-rules.test cross-import, add null-degrade tests, baseline DB/determinism/latency gates ✓ COMPLETE (2026-06-04) — baseline band 78–79, latency 154–159s, scraped_videos=7389 benign, R8 amended to tolerance band
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 01-02-PLAN.md — Remove stage11/ml/engagement-jitter call sites from aggregator.ts + analyze/route.ts; hard-delete predicted-engagement.ts
+- [x] 01-03-PLAN.md — Remove audio/trends/rules/platform_fit call sites from pipeline.ts (Wave1+Wave2 awaited set)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 01-04-PLAN.md — Blend cut to behavioral+gemini; stage10 flags-only (keep confidence); deepseek 'top X%' label cut (keep calibration JSON)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 01-05-PLAN.md — git mv dead modules + tests to _dormant/; dormant retrain-ml cron route + remove its vercel.json schedule; prove exclusion
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [x] 01-06-PLAN.md — Hide FALLBACK_ITEM; bump ENGINE_VERSION 3.1.0; blocking E2E gates (score delta, latency, determinism, remix smoke)
+
+## Phase 2: Omni Verbatim — ✅ COMPLETE (2026-06-04)
+
+**Goal:** repurpose Omni from eyes-and-judge into observer/transcriber.
+**Does:** extend `qwen/schemas.ts` + `omni-analysis.ts` prompt to emit `hook_verbatim` + per-segment `spoken_text`/`on_screen_text`; thread verbatim through `aggregator.ts` → `PredictionResult` → persistence (dedicated `verbatim` JSONB column); bump the engine cache key. **Additive-only** (D-01) — the 0–10 judgment fields STAY; their drop is deferred to P3 (dropping them here would orphan the gemini half of the live score blend before Apollo replaces it).
+**Success:** R1 (verbatim persists on a real run). Zero-regret precondition for P3 + P4.
+**Risk:** low — additive to a deterministic call; a few hundred more output tokens. #1 risk is the assembly-hop regression (emotion_arc precedent: declared+prompted but dropped on the assembly literal → 26/26 null rows) — guarded by a real-run proof.
+**Ship:** independently mergeable (Omni also feeds Remix's decode — verbatim helps it too).
+**Plans:** 3/3 plans complete — PHASE COMPLETE
+Plans:
+**Wave 1**
+
+- [x] 02-01-PLAN.md — Verbatim contracts: extend OmniAnalysisZodSchema (hook_verbatim + per-segment text) + buildSystemPrompt (fidelity rules + null/[inaudible] contract) + Wave 0 regression test
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [x] 02-02-PLAN.md — Thread verbatim assembly→aggregator→PredictionResult; persist to dedicated verbatim JSONB column (migration + [BLOCKING] live apply + db types + both route sites); bump ENGINE_VERSION 3.2.0 ✓ COMPLETE (2026-06-04)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [x] 02-03-PLAN.md — R1 real-run proof (speech→non-empty, silent→null not [inaudible]) + R6 latency + R12 remix no-regression + R8 determinism guard ✓ COMPLETE (2026-06-04) — R1 hook+seg PROVEN (gwxLeHphZCxK), R6 ~106s under cap, R8 grep=2, R12 51/51; D-02 silent deferred HUMAN-UAT
+
+## Phase 3: Apollo Reasoner (Brain 1) — THE MOAT + shared knowledge core — ✅ COMPLETE
+
+**Goal:** establish the shared knowledge core and reframe `deepseek.ts` into the knowledge-grounded expert. **Score-composite principle:** the 0–100 is composed from named dimensions the brain scores (hook / retention / share-pull / …) + confidence — not a black-box number. Explainable, defensible, and it IS the "first insight that leads into the pillars."
+**Does:** build the distilled multi-source knowledge core as a stable cached system prompt; wire it into the score-mode reasoner (swap the generic 5-step); feed verbatim; extend output with `rewrites` (original + 2–3 variants — these MAY use temp>0 even though scoring stays temp0+seed) + composite score + platform/watermark note; drop calibration/percentile. Keep infra (circuit breaker, retries, cache split). **Ground Remix's `decode` + `adapt` in the SAME knowledge core** (R12) — fold their bespoke frameworks (incl. decode's "repeatable vs luck") into the core so Remix doesn't fork the brain.
+**Blocked by:** corpus v1 — RESOLVED (corpus v1 validated; phase executed).
+**Success:** R2, R5, R12. Rewrites quote the real line; decode/adapt share the core.
+**Risk:** medium — corpus distillation is the unknown; code skeletons (deepseek + decode/adapt) already exist.
+**Note (supersede):** D-10 (CONTEXT) supersedes the "rewrites MAY use temp>0" line above — P3 uses a SINGLE deterministic call (temp0+seed) for score + critique + rewrites.
+**Plans:** 4/4 plans complete
+Plans:
+**Wave 1**
+
+- [x] 03-01-PLAN.md — D-02 number port into core §2.0a + byte-stable apollo-core.ts constant + Wave 0 test scaffolds (R2/R5/R12)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [x] 03-02-PLAN.md — Reframe deepseek.ts → Apollo (APOLLO_SYSTEM_PROMPT prefix, additive output schema, verbatim-grounded rewrites, calibration cleanup) + dormant creator-rules.ts (R2, R5-partial, D-01)
+- [x] 03-03-PLAN.md — Re-ground Remix decode + adapt on the shared core (§5 / §6+§2), preserve output contracts (R12, D-11/D-12)
+
+**Wave 3** *(blocked on Wave 2 / Plan 02)*
+
+- [x] 03-04-PLAN.md — Rewire blend to behavioral + Apollo (D-04/D-05) + thread verbatim + variants.apollo persist + ENGINE_VERSION 3.3.0 + live R2/R8/R6 checkpoint (R5)
+
+## Phase 4: Audience-Sim Fold (Brain 2) — THE BET — ✅ COMPLETE (2026-06-05)
+
+**Goal:** fold 20 persona calls (Pass-1 ×10 + Pass-2 ×10) into one grounded reasoning call that emits the per-archetype × per-segment matrix → heatmap + behavioral aggregate, A/B-proven before it replaces the live 10-pass.
+**Does:** one `qwen3.6-plus` thinking call using `persona-registry.ts` knowledge, fed verbatim + segments + keyframes + emotion arc, emitting all 10 archetypes each carrying BOTH behavioral intents AND segment_reactions; two pure adapters split it back into the existing `PersonaSimulationResult[]` + `Pass2PersonaResult[]` shapes (aggregator + board byte-untouched, D-11/D-12); a `behavioralSource:"fold"` branch; a NEW `scripts/ab-fold-referee.ts` (modeled on `measure-pipeline.ts`, NOT the corpus harness) running the D-03 3-metric composite; the production flip gated on the A/B + human sign-off.
+**Gate:** R10 — the 3-metric composite (behavioral parity ±5, diversity ≥0.8×, drop-point agreement ±1 for ≥6/10) on fixed videos × 2 runs each (R8 band), advisory per D-05.
+**Harness deviation (RESEARCH-overrides-CONTEXT):** CONTEXT D-04 said "revive `corpus/eval-harness.ts`"; research found it is a corpus bucket-classifier benchmark (macro-F1), structurally wrong for a retention-curve A/B. Built a NEW referee on the `measure-pipeline.ts` scaffold; left the corpus harness dormant.
+**Success:** R3, R7, R10. Heatmap from one call; 1-vs-20 call count; fold proven.
+**Risk:** medium-high — homogenization (one call flattening 10 curves); mitigated by the D-06 in-call divergence requirement, the D-07 post-parse guard, and the A/B gate.
+**Outcome:** **FLIP EXECUTED** (user mandate, supersedes the original SHADOW plan) — 10-pass (`runWave3Pass2` + Pass-1 loop) DELETED, fold is the sole audience-sim path, no `ENGINE_USE_FOLD` flag. `FOLD_THINKING_BUDGET` cut 4000→1000 (89.9s, diverse curves). Verified live in code 2026-06-06.
+**Plans:** 5/5 plans complete
+Plans:
+**Wave 1**
+
+- [x] 04-01-PLAN.md — Wave 0: 3 vitest scaffolds (schema/adapter/diversity-guard) + ab-fold-referee skeleton + stage/confirm the referee videos (checkpoint)
+- [x] 04-02-PLAN.md — Fold LLM layer: byte-stable STABLE_FOLD_SYSTEM_PROMPT + FoldResponseSchema + runFold (one bounded temp0+seed thinking call, both intent+reaction families)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 04-03-PLAN.md — Lossless adapters + D-07 diversity guard + aggregator "fold" branch (behavioral + heatmap) + pipeline foldOutcome wiring
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 04-04-PLAN.md — A/B referee composite: 3-metric (parity/diversity/drop-point) + R7 1-vs-20 call-count assertion + cost cap (advisory exit)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 04-05-PLAN.md — Run the A/B + production flip. Referee MISS 0/2 at budget=4000 (timeout artifact); R7 confirmed. **Superseded by FLIP-AND-DELETE mandate:** budget cut to 1000, 10-pass deleted, fold live as sole path.
+
+## Phase 5: Wire + Surface — ✅ COMPLETE (2026-06-06) — 4 plans, 3 waves
+
+**Goal:** connect the three calls and surface the insight.
+**Does:** finalize the score via D-01 rubric-sum (band→fixed-anchor deterministic composite, kills ±5 swing) + ENGINE_VERSION bump; build the **grounded engagement estimate** (R11 — follower_count × quality read, as a history-relative range; per-creator avg_views median framing DEFERRED); build the **insight-hero** board frame (read + struck-through/copyable rewrites + 6 scored dimensions + demoted score band) with dual-read permalink safety; join each rewrite to fold's heatmap drop-point at surface-time (R4, no latency cost); progressive per-frame reveal (D-03); strip the dead fake-engagement UI.
+**Success:** R4, R5, R7, R11, R6 (final E2E). Full Apollo flow on the board.
+**Risk:** medium — UI surface area (insight-hero is net-new, nothing reads apollo_reasoning today); coordinate with the upcoming UI/UX milestone.
+**Note (2026-06-06):** the P4 fold-flip carry-forward (lower budget → flip) is already DONE in code — not P5 work. D-04 (<45s) is DROPPED — no latency work. D-07 keeps fold ∥ Apollo PARALLEL (R4 is satisfied at the board layer). R12 is out of P5 build scope (Remix re-grounded in P3; verify untouched).
+**Plans:** 4/4 plans complete
+Plans:
+**Wave 1**
+
+- [x] 05-01-PLAN.md — D-01 rubric-sum engine contract: bounded dimension `score` + deterministic hook-weighted composite sum (deepseek post-parse) + invert corpus §4 + ENGINE_VERSION bump + Wave 0 determinism/sum/threading scaffolds (R5, R7, R8)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [x] 05-02-PLAN.md — R11 grounded engagement estimate: EngagementRange type + computeEngagementRange (follower_count × quality read, tier-sensitive range, null when no baseline) wired at the aggregator assembly site (R11, D-05/D-06)
+- [x] 05-03-PLAN.md — Insight-hero frame (net-new): dual-read apollo_reasoning, struck-through/copyable rewrites, 6 scored dimensions, D-07 heatmap drop-point join, demoted D-02 band, insight_hero panel + board-layout mount (D-03/D-08, R4)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [x] 05-04-PLAN.md — Strip dead fake-engagement UI (TikTokResultCard) + surface the grounded R11 range (EngagementRangeCard, null-gated) + update the predicted-engagement null test for the range shape (D-08, R11)
+
+---
+
+## Deferred (next milestone)
+
+- **Chat surface** — Apollo + engine-as-tool ("analyze this video, give me hooks").
+- **Outcome test-rig** as anything beyond a P4 validation tool.

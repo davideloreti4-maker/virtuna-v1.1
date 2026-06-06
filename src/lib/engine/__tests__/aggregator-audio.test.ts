@@ -53,10 +53,8 @@ vi.mock("@/lib/cache", () => ({
   }),
 }));
 
-vi.mock("../ml", () => ({
-  predictWithML: vi.fn().mockResolvedValue(50),
-  featureVectorToMLInput: vi.fn().mockReturnValue(Array(15).fill(0.5)),
-}));
+// ml mock removed (Plan 02, R9): predictWithML/featureVectorToMLInput calls gone from aggregator.ts.
+// ml.ts moves to _dormant/ in Plan 05. No aggregator-audio test imports from ../ml after this point.
 
 vi.mock("../gemini", () => ({
   GEMINI_MODEL: "gemini-test",
@@ -67,15 +65,10 @@ vi.mock("../deepseek", () => ({
   isCircuitOpen: vi.fn(() => true),
 }));
 
-vi.mock("../stage11-counterfactuals", () => ({
-  GEMINI_STAGE11_MODEL: "gemini-3.1-pro-preview",
+// Plan 01-05 Task 0: aggregator now imports maybeAppendLikelyFlopWarning from ./flop-warning.
+// ../stage11-counterfactuals mock removed (module moves to _dormant/ — path won't resolve after move).
+vi.mock("../flop-warning", () => ({
   maybeAppendLikelyFlopWarning: vi.fn(),
-  runStage11Counterfactuals: vi.fn().mockResolvedValue({
-    suggestions: [],
-    reasoning: "mocked",
-    band: "mid",
-    counterfactuals: [],
-  }),
 }));
 
 // =====================================================
@@ -85,19 +78,18 @@ vi.mock("../stage11-counterfactuals", () => ({
 import {
   selectWeights,
   aggregateScores,
-  SCORE_WEIGHTS,
   SCORE_WEIGHT_KEYS,
 } from "../aggregator";
+// SCORE_WEIGHTS import removed (Plan 04, R9): audio key removed from blend.
+// SCORE_WEIGHT_KEYS retained for the 2-key assertion in Test 1.
 import type {
-  AudioFingerprintResult,
   GeminiAudioSignals,
 } from "../types";
 import {
   makePipelineResult,
   makeGeminiAnalysis,
-  makeTrendEnrichment,
 } from "./factories";
-import { predictWithML } from "../ml";
+// predictWithML import removed (Plan 02, R9): ml call gone from aggregator; no coupling to ../ml here.
 
 // =====================================================
 // Builders
@@ -117,18 +109,7 @@ function makeAudioSignals(
   };
 }
 
-function makeFingerprint(
-  overrides: Partial<AudioFingerprintResult> = {},
-): AudioFingerprintResult {
-  return {
-    sound_name: "Test Sound",
-    sound_url: null,
-    similarity: 0.85,
-    trend_phase: "rising",
-    velocity_score: 42,
-    ...overrides,
-  };
-}
+// Plan 03: makeFingerprint removed — audioFingerprintResult no longer in PipelineResult.
 
 // =====================================================
 // Test setup
@@ -136,24 +117,33 @@ function makeFingerprint(
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(predictWithML).mockResolvedValue(50);
+  // predictWithML mock removed (Plan 02, R9): ml call no longer fires in aggregateScores.
 });
 
 // =====================================================
-// D-G1 — audio in SCORE_WEIGHTS + SCORE_WEIGHT_KEYS
+// D-G1 — audio provenance (Plan 04: audio removed from blend keys)
 // =====================================================
+// Plan 03-04 (D-04): audio removed from SCORE_WEIGHT_KEYS; blend is behavioral+apollo.
+// gemini also retired from blend (provenance only). SCORE_WEIGHTS.audio + SCORE_WEIGHT_KEYS assertions updated.
+// audio_description persistence + signal_availability.audio remain tested below.
 
-describe("D-G1 — audio in SCORE_WEIGHTS + SCORE_WEIGHT_KEYS", () => {
-  it("Test 1: SCORE_WEIGHTS exposes audio = 0.05", () => {
-    expect(SCORE_WEIGHTS.audio).toBe(0.05);
+describe("D-G1 — audio provenance after Plan 04 blend cut", () => {
+  it("Test 1: SCORE_WEIGHT_KEYS is ['behavioral','apollo'] — audio NOT a blend key (Plan 03-04 D-04)", () => {
+    expect(SCORE_WEIGHT_KEYS).toEqual(["behavioral", "apollo"]);
+    expect(SCORE_WEIGHT_KEYS as readonly string[]).not.toContain("audio");
+    expect(SCORE_WEIGHT_KEYS as readonly string[]).not.toContain("audio_fingerprint");
+    expect(SCORE_WEIGHT_KEYS as readonly string[]).not.toContain("gemini"); // retired D-04
   });
 
-  it("Test 2: SCORE_WEIGHT_KEYS includes 'audio' but NOT 'audio_fingerprint'", () => {
-    expect(SCORE_WEIGHT_KEYS).toContain("audio");
-    // Provenance-only key MUST NOT participate in weight math.
-    expect(SCORE_WEIGHT_KEYS as readonly string[]).not.toContain(
-      "audio_fingerprint",
-    );
+  it("Test 2: selectWeights returns no audio key (2-key output: behavioral+apollo only)", () => {
+    const w = selectWeights({
+      behavioral: true, gemini: true, ml: false, rules: false, trends: false,
+      content_type: false, niche: false, gemini_hook: false, gemini_body: false,
+      gemini_cta: false, personas: false, audio: true, retrieval: false, platform_fit: false,
+    });
+    expect(w).not.toHaveProperty("audio");
+    expect(w.behavioral).toBeGreaterThan(0);
+    expect(w.apollo).toBeGreaterThan(0); // Plan 03-04 D-04
   });
 });
 
@@ -197,7 +187,6 @@ describe("D-G3 — audio_perceptual_score wiring", () => {
       audio_hook_first_2s_0_10: 6,
       voiceover_ratio: 0.6,
     });
-    const fingerprint = makeFingerprint({ trend_phase: "emerging" });
     const pipeline = makePipelineResult({
       wave0Result: {
         content_type: { type: "talking_head", confidence: 0.9 },
@@ -207,7 +196,7 @@ describe("D-G3 — audio_perceptual_score wiring", () => {
         analysis: makeGeminiAnalysis({ audio_signals: audio }),
         cost_cents: 0.5,
       },
-      audioFingerprintResult: fingerprint,
+      // Plan 03: audioFingerprintResult removed from PipelineResult; aggregator always uses null.
     });
     const result = await aggregateScores(pipeline);
     // talking_head: 0.45*6 + 0.35*6 + 0.20*(0.6*10) = 2.7 + 2.1 + 1.2 = 6.0 → 60
@@ -236,8 +225,9 @@ describe("D-G2 — audio_fingerprint_boost per trend_phase", () => {
     audio_description: "Voice content with background music",
   };
 
+  // Plan 03: audioFingerprintResult removed from PipelineResult; pipelineWithFingerprint now ignores trend_phase.
   function pipelineWithFingerprint(
-    trend_phase: AudioFingerprintResult["trend_phase"] | "none",
+    _trend_phase: string,
   ) {
     return makePipelineResult({
       wave0Result: {
@@ -248,36 +238,37 @@ describe("D-G2 — audio_fingerprint_boost per trend_phase", () => {
         analysis: makeGeminiAnalysis({ audio_signals: baseAudio }),
         cost_cents: 0.5,
       },
-      audioFingerprintResult:
-        trend_phase === "none" ? null : makeFingerprint({ trend_phase }),
+      // audioFingerprintResult removed from PipelineResult in Plan 03 strip.
     });
   }
 
   it("Test 5: emerging trend_phase → boost is applied internally; final audio_score = 75 (base 60 + 15)", async () => {
     const result = await aggregateScores(pipelineWithFingerprint("emerging"));
-    // Audio_score with boost = 75; PredictionResult.audio_perceptual_score stays pre-boost (60).
+    // Plan 03: audio fingerprint always null now; no boost applied.
     expect(result.audio_perceptual_score).toBe(60);
-    // The boost shifts overall_score upward vs the "none" baseline (asserted in Test 9).
-    // Use the matched_trends synthesis side-effect as a cross-check: trend_phase is preserved.
-    expect(result.audio_fingerprint?.trend_phase).toBe("emerging");
+    // Plan 03: audio_fingerprint always null.
+    expect(result.audio_fingerprint).toBeNull();
   });
 
   it("Test 6: rising trend_phase → +10 boost (audio_score = 70 internally)", async () => {
     const result = await aggregateScores(pipelineWithFingerprint("rising"));
     expect(result.audio_perceptual_score).toBe(60);
-    expect(result.audio_fingerprint?.trend_phase).toBe("rising");
+    // Plan 03: audio fingerprint always null.
+    expect(result.audio_fingerprint).toBeNull();
   });
 
   it("Test 7: peak trend_phase → +5 boost (audio_score = 65 internally)", async () => {
     const result = await aggregateScores(pipelineWithFingerprint("peak"));
     expect(result.audio_perceptual_score).toBe(60);
-    expect(result.audio_fingerprint?.trend_phase).toBe("peak");
+    // Plan 03: audio fingerprint always null.
+    expect(result.audio_fingerprint).toBeNull();
   });
 
   it("Test 8: declining trend_phase → -5 boost (audio_score = 55 internally)", async () => {
     const result = await aggregateScores(pipelineWithFingerprint("declining"));
     expect(result.audio_perceptual_score).toBe(60);
-    expect(result.audio_fingerprint?.trend_phase).toBe("declining");
+    // Plan 03: audio fingerprint always null.
+    expect(result.audio_fingerprint).toBeNull();
   });
 
   it("Test 9: no fingerprint match → 0 delta (audio_score = base 60)", async () => {
@@ -310,7 +301,7 @@ describe("D-G2 — audio_fingerprint_boost per trend_phase", () => {
           analysis: makeGeminiAnalysis({ audio_signals: highAudio }),
           cost_cents: 0.5,
         },
-        audioFingerprintResult: makeFingerprint({ trend_phase: "emerging" }),
+        // Plan 03: audioFingerprintResult removed from PipelineResult.
       }),
     );
     // PredictionResult.audio_perceptual_score is computed pre-boost. Voice formula:
@@ -339,7 +330,7 @@ describe("D-G2 — audio_fingerprint_boost per trend_phase", () => {
           analysis: makeGeminiAnalysis({ audio_signals: lowAudio }),
           cost_cents: 0.5,
         },
-        audioFingerprintResult: makeFingerprint({ trend_phase: "declining" }),
+        // Plan 03: audioFingerprintResult removed from PipelineResult.
       }),
     );
     // Voice formula: 0.45*0 + 0.35*0 + 0.20*(0.3*10) = 0.6 → 6 (after *10 + round).
@@ -373,16 +364,15 @@ describe("D-G1 — SignalAvailability widening", () => {
   });
 
   it("Test 13: signal_availability.audio_fingerprint = true when fingerprint result present", async () => {
-    const pipeline = makePipelineResult({
-      audioFingerprintResult: makeFingerprint(),
-    });
+    // Plan 03: audioFingerprintResult removed from PipelineResult; always null → always false.
+    const pipeline = makePipelineResult({});
     const result = await aggregateScores(pipeline);
-    expect(result.signal_availability.audio_fingerprint).toBe(true);
+    expect(result.signal_availability.audio_fingerprint).toBe(false);
   });
 
   it("Test 14: signal_availability.audio_fingerprint = false when fingerprint null", async () => {
     const result = await aggregateScores(
-      makePipelineResult({ audioFingerprintResult: null }),
+      makePipelineResult({}),
     );
     expect(result.signal_availability.audio_fingerprint).toBe(false);
   });
@@ -394,38 +384,24 @@ describe("D-G1 — SignalAvailability widening", () => {
 
 describe("D-G4 — FeatureVector.audioTrendingMatch source swap", () => {
   it("Test 15: sources from fingerprint.similarity when available", async () => {
-    const pipeline = makePipelineResult({
-      audioFingerprintResult: makeFingerprint({ similarity: 0.85 }),
-      // Even with a matched_trends entry present, fingerprint takes priority.
-      trendEnrichment: makeTrendEnrichment({
-        matched_trends: [
-          { sound_name: "X", velocity_score: 30, trend_phase: "rising" },
-        ],
-      }),
-    });
+    // Plan 03: audioFingerprintResult + trendEnrichment removed from PipelineResult.
+    // audioTrendingMatch always null now (no signal source).
+    const pipeline = makePipelineResult({});
     const result = await aggregateScores(pipeline);
-    expect(result.feature_vector.audioTrendingMatch).toBeCloseTo(0.85, 5);
+    expect(result.feature_vector.audioTrendingMatch).toBeNull();
   });
 
   it("Test 16: falls back to Jaro-Winkler velocity-derived score when fingerprint null", async () => {
-    const pipeline = makePipelineResult({
-      audioFingerprintResult: null,
-      trendEnrichment: makeTrendEnrichment({
-        matched_trends: [
-          { sound_name: "Y", velocity_score: 50, trend_phase: "rising" },
-        ],
-      }),
-    });
+    // Plan 03: audioFingerprintResult + trendEnrichment removed from PipelineResult.
+    // audioTrendingMatch always null now.
+    const pipeline = makePipelineResult({});
     const result = await aggregateScores(pipeline);
-    // Math.min(1, 50/100) = 0.5
-    expect(result.feature_vector.audioTrendingMatch).toBeCloseTo(0.5, 5);
+    expect(result.feature_vector.audioTrendingMatch).toBeNull();
   });
 
   it("Test 17: audioTrendingMatch = null when both fingerprint and matched_trends are absent", async () => {
-    const pipeline = makePipelineResult({
-      audioFingerprintResult: null,
-      trendEnrichment: makeTrendEnrichment({ matched_trends: [] }),
-    });
+    // Plan 03: always null now.
+    const pipeline = makePipelineResult({});
     const result = await aggregateScores(pipeline);
     expect(result.feature_vector.audioTrendingMatch).toBeNull();
   });
@@ -437,26 +413,11 @@ describe("D-G4 — FeatureVector.audioTrendingMatch source swap", () => {
 
 describe("D-F3 — matched_trends synthesized from fingerprint", () => {
   it("Test 18: when fingerprint present, matched_trends contains a synthesized entry (sound_name + trend_phase + velocity_score)", async () => {
-    const fp = makeFingerprint({
-      sound_name: "Test Hip Hop",
-      similarity: 0.9,
-      trend_phase: "rising",
-      velocity_score: 75,
-    });
-    const pipeline = makePipelineResult({
-      audioFingerprintResult: fp,
-      // trends.ts (Plan 05) skipped its Jaro-Winkler loop because audioFingerprintMatched=true;
-      // we simulate that by passing an empty matched_trends here. Aggregator synthesizes the entry.
-      trendEnrichment: makeTrendEnrichment({ matched_trends: [] }),
-    });
+    // Plan 03: audioFingerprintResult + trendEnrichment removed from PipelineResult; synthesis no longer occurs.
+    const pipeline = makePipelineResult({});
     const result = await aggregateScores(pipeline);
-    // The synthesized entry on trend_enrichment.matched_trends is internal to aggregator;
-    // its observable effect is on signal_availability.trends (since the aggregator sees
-    // matched_trends.length > 0 after synthesis). The fingerprint payload itself is fully
-    // accessible via PredictionResult.audio_fingerprint.
-    expect(result.audio_fingerprint).toEqual(fp);
-    // The synthesis must NOT mutate the input pipelineResult.trendEnrichment.matched_trends.
-    expect(pipeline.trendEnrichment.matched_trends).toEqual([]);
+    // Plan 03: audio_fingerprint always null; no synthesis.
+    expect(result.audio_fingerprint).toBeNull();
   });
 });
 
@@ -464,93 +425,53 @@ describe("D-F3 — matched_trends synthesized from fingerprint", () => {
 // D-G1 + selectWeights — weight redistribution
 // =====================================================
 
-describe("D-G1 + selectWeights — weight redistribution", () => {
-  it("Test 19: when audio is absent, weights.audio = 0 and the audio share redistributes proportionally", () => {
-    const allOnNoAudio = selectWeights({
-      behavioral: true,
-      gemini: true,
-      ml: true,
-      rules: true,
-      trends: true,
-      content_type: false,
-      niche: false,
-      audio: false,
-      gemini_hook: false,
-      gemini_body: false,
-      gemini_cta: false,
-      personas: false,
-    });
-    expect(allOnNoAudio.audio).toBe(0);
-    // Phase 13 D-14/D-15/D-16: ml=0, rules=0, retrieval=0. Available: behavioral=0.40,
-    // gemini=0.35, trends=0.10 → sum=0.85, normalization scales each by 1/0.85.
-    expect(allOnNoAudio.behavioral).toBeCloseTo(0.471, 2);
-    expect(allOnNoAudio.gemini).toBeCloseTo(0.412, 2);
-    expect(allOnNoAudio.ml).toBe(0);
-    expect(allOnNoAudio.rules).toBe(0);
-    expect(allOnNoAudio.trends).toBeCloseTo(0.118, 2);
-    // Total = 1.0 (normalization contract).
-    const sum = Object.values(allOnNoAudio).reduce((a, b) => a + b, 0);
-    expect(sum).toBeCloseTo(1.0, 2);
+describe("D-G1 + selectWeights — 2-key distribution (Plan 04: audio removed from blend)", () => {
+  // Plan 04 (R9): audio is no longer a blend key. selectWeights returns only {behavioral, gemini}.
+  // These tests verify that audio availability does NOT affect the behavioral/gemini split
+  // (audio is now provenance-only, not weight-bearing).
 
-    // Side-effect verification: when BOTH audio AND another signal are missing,
-    // the audio share genuinely lifts other available signals above their base
-    // (proves redistribution is active, not a no-op).
-    const audioAndMLOff = selectWeights({
-      behavioral: true,
-      gemini: true,
-      ml: false,
-      rules: true,
-      trends: true,
-      content_type: false,
-      niche: false,
-      audio: false,
-      gemini_hook: false,
-      gemini_body: false,
-      gemini_cta: false,
-      personas: false,
+  it("Test 19: audio absent/present does NOT affect behavioral/gemini split (audio removed from blend)", () => {
+    const withAudio = selectWeights({
+      behavioral: true, gemini: true, ml: true, rules: true, trends: true,
+      content_type: false, niche: false, audio: true,
+      gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false,
     });
-    expect(audioAndMLOff.audio).toBe(0);
-    expect(audioAndMLOff.ml).toBe(0);
-    expect(audioAndMLOff.behavioral).toBeGreaterThan(0.35);
-    expect(audioAndMLOff.gemini).toBeGreaterThan(0.25);
+    const withoutAudio = selectWeights({
+      behavioral: true, gemini: true, ml: true, rules: true, trends: true,
+      content_type: false, niche: false, audio: false,
+      gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false,
+    });
+    // Both return the same behavioral/apollo split (Plan 03-04 D-04)
+    expect(withAudio.behavioral).toBeCloseTo(withoutAudio.behavioral, 3);
+    expect(withAudio.apollo).toBeCloseTo(withoutAudio.apollo, 3);
+    // Neither returns an audio key
+    expect(withAudio).not.toHaveProperty("audio");
+    expect(withoutAudio).not.toHaveProperty("audio");
+    // Sum is always 1.0 for the 2-key blend
+    const sumWith = withAudio.behavioral + withAudio.apollo;
+    const sumWithout = withoutAudio.behavioral + withoutAudio.apollo;
+    expect(sumWith).toBeCloseTo(1.0, 2);
+    expect(sumWithout).toBeCloseTo(1.0, 2);
   });
 
-  it("Test 20: weight redistribution preserves total = 1.0 (normalized across SCORE_WEIGHT_KEYS)", () => {
-    // With audio present: 6 sources sum to 0.92 raw (ml=0 after Phase 10 D-05), normalized → 1.0.
-    const allOn = selectWeights({
-      behavioral: true,
-      gemini: true,
-      ml: true,
-      rules: true,
-      trends: true,
-      content_type: false,
-      niche: false,
-      audio: true,
-      gemini_hook: false,
-      gemini_body: false,
-      gemini_cta: false,
-      personas: false,
-    });
-    const sumOn = Object.values(allOn).reduce((a, b) => a + b, 0);
-    expect(sumOn).toBeCloseTo(1.0, 2);
-
-    // With audio absent: 5 sources sum to 1.0 after redistribution.
-    const noAudio = selectWeights({
-      behavioral: true,
-      gemini: true,
-      ml: true,
-      rules: true,
-      trends: true,
-      content_type: false,
-      niche: false,
-      audio: false,
-      gemini_hook: false,
-      gemini_body: false,
-      gemini_cta: false,
-      personas: false,
-    });
-    const sumOff = Object.values(noAudio).reduce((a, b) => a + b, 0);
-    expect(sumOff).toBeCloseTo(1.0, 2);
+  it("Test 20: 2-key selectWeights always sums to 1.0 regardless of provenance flags (Plan 03-04 D-04)", () => {
+    // Any combination of provenance flags (audio, platform_fit, retrieval, etc.) should
+    // yield the same behavioral+apollo split summing to 1.0.
+    const combos = [
+      { behavioral: true, gemini: true, ml: true, rules: true, trends: true, content_type: false, niche: false, audio: true, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false },
+      { behavioral: true, gemini: true, ml: false, rules: false, trends: false, content_type: false, niche: false, audio: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false },
+      { behavioral: false, gemini: true, ml: true, rules: true, trends: true, content_type: true, niche: true, audio: true, gemini_hook: true, gemini_body: true, gemini_cta: true, personas: true },
+      { behavioral: true, gemini: false, ml: false, rules: false, trends: false, content_type: false, niche: false, audio: false, gemini_hook: false, gemini_body: false, gemini_cta: false, personas: false },
+    ];
+    for (const combo of combos) {
+      const w = selectWeights(combo);
+      const sum = w.behavioral + w.apollo;
+      // Plan 03-04 (D-04): apollo availability = behavioral (same deepseek source).
+      // Only assert sum~1.0 when behavioral=true (both present). behavioral=false → both 0.
+      if (combo.behavioral) {
+        expect(sum).toBeCloseTo(1.0, 2);
+      }
+    }
   });
 });
 
@@ -560,20 +481,14 @@ describe("D-G1 + selectWeights — weight redistribution", () => {
 
 describe("D-G1 — PredictionResult audio fields", () => {
   it("Test 22: PredictionResult.audio_fingerprint passes through the full match record; null when no match", async () => {
-    const fp = makeFingerprint({
-      sound_name: "Test Hit",
-      similarity: 0.92,
-      trend_phase: "emerging",
-      velocity_score: 120,
-    });
-
+    // Plan 03: audioFingerprintResult removed from PipelineResult; always null.
     const withMatch = await aggregateScores(
-      makePipelineResult({ audioFingerprintResult: fp }),
+      makePipelineResult({}),
     );
-    expect(withMatch.audio_fingerprint).toEqual(fp);
+    expect(withMatch.audio_fingerprint).toBeNull();
 
     const withoutMatch = await aggregateScores(
-      makePipelineResult({ audioFingerprintResult: null }),
+      makePipelineResult({}),
     );
     expect(withoutMatch.audio_fingerprint).toBeNull();
   });

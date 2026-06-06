@@ -18,6 +18,7 @@ export const PANEL_IDS = [
   "comparative_baseline",
   "optimal_post",
   "anti_virality",
+  "insight_hero",  // D-03: Apollo wave_2 hero frame (Plan 05-03)
 ] as const;
 
 export type PanelId = (typeof PANEL_IDS)[number];
@@ -31,7 +32,7 @@ export type PanelReadyState = "idle" | "loading" | "ready" | "error";
  */
 export const STAGE_TO_PANEL: Record<string, readonly PanelId[]> = {
   wave_1: ["hook_decomp", "similar_videos", "emotion_arc"],
-  wave_2: ["reasoning"],
+  wave_2: ["reasoning", "insight_hero"],  // D-03: Apollo stage paints both reasoning + hero
   wave_3_personas: ["retention", "persona_breakdown"],
   aggregator: ["verdict", "comparative_baseline", "optimal_post", "anti_virality"],
 };

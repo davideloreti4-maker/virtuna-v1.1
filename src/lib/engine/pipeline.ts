@@ -5,29 +5,23 @@ import { createServiceClient } from "@/lib/supabase/service";
 import {
   AnalysisInputSchema,
   type AnalysisInput,
-  type AudioFingerprintResult,
   type ContentPayload,
   type GeminiAnalysis,
   type DeepSeekReasoning,
-  type PipelineAudioFingerprintFields,
-  type PlatformFitResult,
-  type RuleScoreResult,
-  type TrendEnrichment,
   type Wave0Result,
   type PersonaSimulationResult,
   type PersonaBehavioralAggregate,
   type BenchmarkRetrievalResult,
   type SegmentGrid,
+  type VerbatimPayload,
+  type EmotionArcPoint,
 } from "./types";
 import { normalizeInput } from "./normalize";
-import { matchAudioFingerprint } from "./audio-fingerprint"; // Phase 6 Plan 04 — pgvector fingerprint match
 import { analyzeVideoWithOmni } from "./qwen/omni-analysis";
 import { getQwenClient, QWEN_REASONING_MODEL } from "./qwen/client";
 import { calculateCost } from "./qwen/cost";
 import { stripModelOutput } from "./utils/strip";
 import { reasonWithDeepSeek } from "./deepseek";
-import { loadActiveRules, scoreContentAgainstRules } from "./rules";
-import { enrichWithTrends } from "./trends";
 import {
   fetchCreatorContext,
   formatCreatorContext,
@@ -35,14 +29,14 @@ import {
 } from "./creator";
 import type { StageEventCallback, StageEventWave } from "./events";
 import { emitStageStart, emitStageEnd } from "./events";
-import { runWave3 } from "./wave3";
 import { ApifyScrapingProvider } from "@/lib/scraping/apify-provider";
 import { IngestError } from "@/lib/scraping/types";
 import { createEmptyRetrievalResult } from "./retrieval-empty";
-import { runPlatformFit } from "./wave4/platform-fit";
-// Phase 3 (Plan 08) — Pass 2 orchestrator + filmstrip trigger
-import { runWave3Pass2, type Wave3Pass2Outcome } from "./wave3/pass2";
-import type { DemographicContext } from "./wave3/persona-prompts-pass2";
+// Phase 4 Plan 05 — fold is the sole audience-sim path (10-pass deleted).
+// Wave3Pass2Outcome kept for PipelineResult back-compat (field always null after deletion).
+import type { Wave3Pass2Outcome } from "./wave3/pass2";
+import { runFold, type Wave3FoldOutcome } from "./wave3/fold";
+import { aggregatePersonaResults } from "./wave3/aggregator";
 import { triggerFilmstripGeneration } from "./filmstrip/queue";
 
 // =====================================================
@@ -54,7 +48,7 @@ export interface StageTiming {
   duration_ms: number;
 }
 
-export interface PipelineResult extends PipelineAudioFingerprintFields {
+export interface PipelineResult {
   // Stage outputs
   payload: ContentPayload;
   geminiResult: {
@@ -74,14 +68,7 @@ export interface PipelineResult extends PipelineAudioFingerprintFields {
     };
   };
   creatorContext: CreatorContext;
-  ruleResult: RuleScoreResult;
-  trendEnrichment: TrendEnrichment;
   deepseekResult: { reasoning: DeepSeekReasoning; cost_cents: number } | null;
-  // Phase 6 (D-A4) — audioFingerprintResult: AudioFingerprintResult | null
-  // is inherited from PipelineAudioFingerprintFields above. Replaces the
-  // pre-Phase-6 `audioResult: null` no-op slot. Aggregator (Plan 06-06) reads
-  // `pipelineResult.audioFingerprintResult` to compute the audio_fingerprint
-  // signal availability flag + the phase-aware boost in D-G2.
 
   // Phase 3 — Wave 0/3 stub outputs (Phase 4/7 fill with real logic)
   wave0Result: Wave0Result;
@@ -109,15 +96,14 @@ export interface PipelineResult extends PipelineAudioFingerprintFields {
   // aggregator folds retrievalResult.score into overall_score at weight 0.05.
   retrievalResult: BenchmarkRetrievalResult;
 
-  // Phase 9 — Platform-fit V3 result (Plan 03). Null when V3 call fails or circuit
-  // breaker is open. Aggregator reads this (via widenedPipeline cast) to compute
-  // platform_fit signal availability + fold mean fit_score into overall_score.
-  platformFitResult: PlatformFitResult[] | null;
-
-  // Phase 3 (Plan 08) — Pass 2 outcome from runWave3Pass2.
-  // Null when no segments (text mode / tiktok_url mode) or when Pass 2 itself is skipped.
-  // Aggregator reads this to populate weighted_* + heatmap + isAntiViralityGatedFull.
+  // Phase 4 Plan 05: pass2Outcome is always null (10-pass deleted). Field kept for
+  // type back-compat with persisted analysis_results rows produced before Plan 05.
   pass2Outcome: Wave3Pass2Outcome | null;
+
+  // Plan 04-03 / Phase 4 Plan 05 — Fold outcome from runFold (the sole audience-sim path).
+  // Populated when omniSegments are present (video_upload mode with Omni success).
+  // Null in text mode / tiktok_url mode (no segments). Aggregator reads this unconditionally.
+  foldOutcome: Wave3FoldOutcome | null;
 
   // Phase 3 (Plan 08) — Omni segments from Wave 0 (SegmentGrid[]).
   // Required by aggregator.assembleHeatmapPayload + buildWeightedCurve.
@@ -156,10 +142,9 @@ export interface PipelineOptions {
    */
   creatorContext?: CreatorContext;
   /**
-   * Phase 3 (Plan 08) D-11: analysis row ID. Required for:
-   *   1. triggerFilmstripGeneration (filmstrip API needs analysisId to write keyframe_uri).
-   *   2. readKeyframeUris (reads analysis_results.heatmap.segments[].keyframe_uri for Pass 2).
-   * When absent: filmstrip trigger is skipped; Pass 2 receives all-null keyframeUris.
+   * Phase 3 (Plan 08) D-11: analysis row ID. Required for triggerFilmstripGeneration
+   * (the filmstrip API needs analysisId to write keyframe_uri for the board filmstrip UI).
+   * When absent: filmstrip trigger is skipped.
    */
   analysisId?: string;
 }
@@ -242,18 +227,6 @@ const DEFAULT_CREATOR_CONTEXT: CreatorContext = {
   pain_points: null,
 };
 
-const DEFAULT_RULE_RESULT: RuleScoreResult = {
-  rule_score: 50,
-  matched_rules: [],
-};
-
-const DEFAULT_TREND_ENRICHMENT: TrendEnrichment = {
-  trend_score: 0,
-  matched_trends: [],
-  trend_context: "Trend data unavailable.",
-  hashtag_relevance: 0,
-};
-
 const DEFAULT_GEMINI_RESULT: PipelineResult["geminiResult"] = {
   analysis: {
     factors: [
@@ -298,92 +271,6 @@ const DEFAULT_GEMINI_RESULT: PipelineResult["geminiResult"] = {
 // =====================================================
 // Phase 3 (Plan 08) — Helpers for Pass 2 orchestration
 // =====================================================
-
-/**
- * Read current keyframe URIs from analyses.analysis_results JSONB.
- * Returns all-null array when DB read fails (graceful degradation per D-03).
- */
-async function readKeyframeUris(
-  supabase: ReturnType<typeof createServiceClient>,
-  analysisId: string,
-  segmentCount: number,
-): Promise<(string | null)[]> {
-  try {
-    // Use type cast to bypass Supabase generated types — "analyses" is a real table
-    // but the generated types don't include it in all environments.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any)
-      .from("analyses")
-      .select("analysis_results")
-      .eq("id", analysisId)
-      .single() as { data: { analysis_results: unknown } | null; error: unknown };
-    if (error || !data) {
-      return new Array<string | null>(segmentCount).fill(null);
-    }
-    // analysis_results is a JSONB column; heatmap.segments[].keyframe_uri are set by
-    // /api/filmstrip/extract after filmstrip generation completes (Plan 07).
-    const ar = data.analysis_results as { heatmap?: { segments?: Array<{ keyframe_uri?: string | null }> } } | null;
-    const segments = ar?.heatmap?.segments;
-    if (!Array.isArray(segments)) {
-      return new Array<string | null>(segmentCount).fill(null);
-    }
-    return segments.map((s) => (s as { keyframe_uri?: string | null }).keyframe_uri ?? null);
-  } catch {
-    return new Array<string | null>(segmentCount).fill(null);
-  }
-}
-
-/**
- * Build DemographicContext from creator profile + server clock heuristics (D-04).
- * time_of_day derived from UTC hour; scrolling_state inferred from time_of_day.
- * All fields optional — unknown/missing values fall back to undefined (omitted).
- */
-function buildDemographicContext(
-  creatorCtx: import("./creator").CreatorContext,
-  now: Date,
-): DemographicContext {
-  const utcHour = now.getUTCHours();
-  // Map UTC hour ranges to time_of_day buckets (interfaces section heuristic).
-  type KnownTimeOfDay = "morning" | "midday" | "afternoon" | "evening" | "late_night";
-  let time_of_day: KnownTimeOfDay | undefined;
-  if (utcHour >= 23 || utcHour < 6)       time_of_day = "late_night";
-  else if (utcHour >= 6 && utcHour < 11)  time_of_day = "morning";
-  else if (utcHour >= 11 && utcHour < 14) time_of_day = "midday";
-  else if (utcHour >= 14 && utcHour < 18) time_of_day = "afternoon";
-  else if (utcHour >= 18 && utcHour < 23) time_of_day = "evening";
-  // else: undefined (unknown hour) → omit field
-
-  // scrolling_state derived from time_of_day (simple heuristic per interfaces section).
-  type ScrollingState = "commute" | "work_break" | "leisure" | "pre_sleep";
-  const scrollingStateMap: Record<KnownTimeOfDay, ScrollingState> = {
-    morning:    "commute",
-    midday:     "work_break",
-    afternoon:  "leisure",
-    evening:    "leisure",
-    late_night: "pre_sleep",
-  };
-  const scrolling_state = time_of_day ? scrollingStateMap[time_of_day] : undefined;
-
-  // follower_tier mapped from follower_count to DemographicContext union:
-  // "new" | "growing" | "established" | "creator"
-  const fc = creatorCtx.follower_count;
-  type FollowerTier = DemographicContext["follower_tier"];
-  const follower_tier: FollowerTier = (() => {
-    if (!fc) return undefined;
-    if (fc < 10_000) return "new";
-    if (fc < 100_000) return "growing";
-    if (fc < 1_000_000) return "established";
-    return "creator";
-  })();
-
-  return {
-    // geo comes from target_audience.geo (Card 2 JSONB nested field)
-    geo: creatorCtx.target_audience?.geo ?? undefined,
-    follower_tier,
-    time_of_day,
-    scrolling_state,
-  };
-}
 
 // =====================================================
 // 10-Stage Prediction Pipeline with Wave Parallelism
@@ -706,50 +593,6 @@ export async function runPredictionPipeline(
     }
   })();
 
-  // Stage 4: Audio Fingerprint — NON-CRITICAL (graceful degradation via null return per D-A4).
-  // Sub-awaits geminiPromise's audio_description (RESEARCH Q3 Architectural Option A); this
-  // preserves Wave 1 parallelism visible to SSE consumers: stage_start fires immediately
-  // alongside gemini_video_analysis's stage_start, stage_end fires after the pgvector match
-  // completes. The inner `await geminiPromise` is the known tradeoff (RESEARCH Pitfall 2) —
-  // audio_fingerprint GENUINELY depends on Gemini's audio_description and cannot run earlier.
-  //
-  // 06-REVIEW.md IN-04 — clarification for SSE consumers: the wall-clock duration between
-  // audio_fingerprint stage_start and stage_end will include the gemini call latency that
-  // this stage awaits internally. Consumers should NOT interpret total_duration as the
-  // fingerprint-specific cost — only the segment AFTER gemini completes (embed + RPC) is
-  // attributable to this stage. The internal `await geminiPromise` is sequentially ordered
-  // by design (Pitfall 2), even though the outer Promise.all looks parallel.
-  //
-  // matchAudioFingerprint() never throws — it returns null on every soft-failure path
-  // (no description, empty embedding, RPC error object, no row above threshold). The outer
-  // try/catch here exists solely as a defense-in-depth net for unexpected hard failures
-  // (e.g., geminiPromise itself throws before yielding a value). Per HARD-03 + Phase 3 D-04,
-  // audio is enhancement, never gating: a null result means signal_availability.audio_fingerprint
-  // = false and weight redistribution flows through the existing aggregator math.
-  const audioFingerprintPromise = (async (): Promise<AudioFingerprintResult | null> => {
-    try {
-      return await timed("audio_fingerprint", timings, async () => {
-        // Sub-await — audio_fingerprint genuinely depends on Gemini's audio_description.
-        const geminiInner = await geminiPromise;
-        // `audio_signals` is `.optional()` on the Zod schema (Plan 03 Test 9 + BLOCKER 2);
-        // optional chaining produces `string | undefined` — coerce to `string | null` for the
-        // matchAudioFingerprint contract.
-        const audioDescription =
-          geminiInner.analysis.audio_signals?.audio_description ?? null;
-        return matchAudioFingerprint(audioDescription, supabase);
-      }, { wave: 1, onEvent: onStageEvent });
-    } catch (error) {
-      Sentry.captureException(error, {
-        tags: { stage: "audio_fingerprint", requestId },
-      });
-      warnings.push(
-        `Audio fingerprint unavailable: ${error instanceof Error ? error.message : String(error)}`
-      );
-      timings.push({ stage: "audio_fingerprint", duration_ms: 0 });
-      return null;
-    }
-  })();
-
   // Stage 5: Creator Context -- Phase 4 PASSTHROUGH (reuses pre_creator_context).
   // The actual fetch happened above in the pre_creator_context stage (D-17/D-18).
   // We keep emitting the `creator_context` stage event for backwards-compat with
@@ -764,42 +607,15 @@ export async function runPredictionPipeline(
     );
   })();
 
-  // Stage 6: Rule Loading + Scoring -- NON-CRITICAL (fallback with warning)
-  const rulePromise = (async (): Promise<RuleScoreResult> => {
-    try {
-      return await timed("rule_scoring", timings, async () => {
-        const rules = await loadActiveRules(supabase, payload.content_type);
-        return scoreContentAgainstRules(payload.content_text, rules);
-      }, { wave: 1, onEvent: onStageEvent });
-    } catch (error) {
-      Sentry.captureException(error, {
-        tags: { stage: "rule_scoring", requestId },
-      });
-      warnings.push(
-        `Rule scoring unavailable: ${error instanceof Error ? error.message : String(error)}`
-      );
-      timings.push({ stage: "rule_scoring", duration_ms: 0 });
-      return DEFAULT_RULE_RESULT;
-    }
-  })();
-
   // Run Wave 1 in parallel -- all stages gracefully degrade (HARD-03).
-  // Phase 4: the third slot (creatorPromise) returns the same value as the
-  // outer-scope `creatorContext` (pre-fetched above), so we discard the array
-  // slot to avoid redeclaration.
-  // Phase 6: 2nd slot is audioFingerprintPromise (renamed from audio_analysis per D-A4);
-  // returns AudioFingerprintResult | null.
-  // Phase 1 (MVP Cut D-09/D-10): retrieval removed from Wave 1; synthesized empty result
-  // assigned from createEmptyRetrievalResult() helper — single swap point for M2 restore.
-  const [geminiResult, audioFingerprintResult, , ruleResult] = await timed(
+  // Plan 03 strip: audio + rules call sites removed; Wave 1 = gemini + creator only.
+  const [geminiResult] = await timed(
     "wave_1",
     timings,
     () =>
       Promise.all([
         geminiPromise,
-        audioFingerprintPromise,
         creatorPromise,
-        rulePromise,
       ]),
     { wave: 1, onEvent: onStageEvent }
   );
@@ -809,7 +625,7 @@ export async function runPredictionPipeline(
     category: "engine.pipeline",
     message: "Wave 1 complete",
     level: "info",
-    data: { requestId, stages: ["gemini", "audio_fingerprint", "creator", "rules"] },
+    data: { requestId, stages: ["gemini", "creator"] },
   });
 
   // Format creator context for DeepSeek prompt injection
@@ -826,10 +642,25 @@ export async function runPredictionPipeline(
   } | null> => {
     try {
       return await timed("deepseek_reasoning", timings, async () => {
+        // Plan 03-04 (R2): Thread verbatim hook into DeepSeekInput so Apollo can ground
+        // rewrite.original in the literal spoken/on-screen line. Non-fatal — degrades
+        // gracefully when hook_verbatim absent (text mode or Omni omitted the field).
+        const hookRaw = (geminiResult.analysis as unknown as {
+          hook_verbatim?: { spoken_words?: string | null; on_screen_text?: string | null };
+        })?.hook_verbatim;
+        const verbatim: VerbatimPayload | null = hookRaw
+          ? {
+              hook: {
+                spoken_words: hookRaw.spoken_words ?? null,
+                on_screen_text: hookRaw.on_screen_text ?? null,
+              },
+            }
+          : null;
+
         const result = await reasonWithDeepSeek({
           input: validated,
           gemini_analysis: geminiResult.analysis,
-          rule_result: ruleResult,
+          rule_result: { rule_score: 50, matched_rules: [] },
           trend_enrichment: {
             // Trend enrichment runs in parallel -- use empty placeholder for DeepSeek prompt.
             // The final trend data will be in the pipeline result for the aggregator.
@@ -840,6 +671,7 @@ export async function runPredictionPipeline(
             hashtag_relevance: 0,
           },
           creator_context: creatorContextString,
+          verbatim, // Plan 03-04 (R2): verbatim hook for Apollo rewrite grounding
         });
 
         return result;
@@ -856,173 +688,82 @@ export async function runPredictionPipeline(
     }
   })();
 
-  // Stage 8: Trend Enrichment -- NON-CRITICAL (fallback with warning).
-  // Phase 6 D-F3: when the audio_fingerprint stage matched a sound (audioFingerprintResult
-  // !== null), the aggregator synthesizes a matched_trends entry from the fingerprint result
-  // (single source of truth). Pass that boolean down so enrichWithTrends skips its
-  // Jaro-Winkler caption ↔ sound_name fallback loop. Hashtag scoring loop in trends.ts is
-  // orthogonal and remains UNGATED.
-  const trendPromise = (async (): Promise<TrendEnrichment> => {
-    try {
-      return await timed("trend_enrichment", timings, () =>
-        enrichWithTrends(supabase, validated, {
-          audioFingerprintMatched: audioFingerprintResult !== null,
-        }),
-        { wave: 2, onEvent: onStageEvent }
-      );
-    } catch (error) {
-      Sentry.captureException(error, {
-        tags: { stage: "trend_enrichment", requestId },
-      });
-      warnings.push(
-        `Trend enrichment unavailable: ${error instanceof Error ? error.message : String(error)}`
-      );
-      timings.push({ stage: "trend_enrichment", duration_ms: 0 });
-      return DEFAULT_TREND_ENRICHMENT;
-    }
-  })();
-
-  // Wave 2 (deepseek + trends) — OVERLAPPED with Wave 3. Both gracefully degrade
-  // (deepseekPromise→null, trendPromise→DEFAULT on failure; neither REJECTS), so we
-  // start them and let Wave 3 run concurrently instead of blocking on them.
-  //
-  // Measured E2E: deepseek's ~60s reasoning previously ran SERIALLY before the ~67s
-  // persona path (Pass 1→Pass 2). deepseek finishes (~91s) just before Pass 2 ends
-  // (~98s), so overlapping hides it almost entirely (~−50s wall). Pass 1 loses
-  // deepseek's hook/retention grounding — the `?? null` path in persona-prompts is
-  // already graceful — which the curve/behavioral A/B validates.
+  // Wave 2: DeepSeek only (Plan 03: trends + platform_fit call sites removed).
   const wave2Promise = timed("wave_2", timings, () =>
-    Promise.all([deepseekPromise, trendPromise]),
+    Promise.all([deepseekPromise]),
     { wave: 2, onEvent: onStageEvent }
   );
 
   // -------------------------------------------------------
-  // Platform-fit — needs deepseek reasoning + Omni watermark, NOT Wave 3. Chain it
-  // off Wave 2 so it auto-starts the instant deepseek resolves (concurrent with the
-  // tail of Wave 3), keeping its deepseek grounding intact (no quality loss on the
-  // 5%-weight platform signal).
+  // Wave 3: Single-call fold — the sole audience-sim path (Phase 4 Plan 05).
+  // The 10× Pass-1 loop (runWave3) and 10× Pass-2 loop (runWave3Pass2) are DELETED.
+  // runFold replaces both: one bounded qwen3.6-plus thinking call → all 10 archetypes.
+  // Only invoked when omniSegments are present (video_upload mode with Omni success).
+  // Skipped in text mode + tiktok_url mode (no segments) — foldOutcome stays null.
+  // LATENCY NOTE: budget=1000 → ~90s (thin margin vs PER_CALL_TIMEOUT_MS=90s).
+  //   Do not raise the timeout; lower budget or trim max_tokens for more headroom.
   // -------------------------------------------------------
-  const watermarkDetected =
-    ((geminiResult.analysis as import("./types").GeminiVideoAnalysis).hook_decomposition)?.watermark_detected ?? null;
-  const platformFitPromise = wave2Promise
-    .then(([ds]) =>
-      runPlatformFit(payload, creatorContext, ds?.reasoning ?? null, watermarkDetected, onStageEvent),
-    )
-    .catch((error) => {
-      Sentry.captureException(error, {
-        tags: { stage: "platform_fit", requestId },
-      });
-      warnings.push(
-        `Platform-fit unavailable: ${error instanceof Error ? error.message : String(error)}`,
-      );
-      return null;
-    });
-
-  // -------------------------------------------------------
-  // Wave 3: Multi-persona simulation (Phase 7 fills the stub).
-  // OVERLAP: starts immediately with NULL deepseek grounding so Pass 1 does not
-  // wait for Wave 2 (deepseek runs concurrently above). Soft dependency — the
-  // persona prompt injects deepseek component_scores only when present.
-  // Phase 7 Plan 07-02b: wave0Result (D-11 routing) + creatorContext (D-03 loyalist).
-  // Omni-grounded: Pass 1 uses hook_decomposition + factor scores from Gemini (available
-  // now, no Wave 2 wait) instead of deepseek's 2 numbers — restores pre-overlap
-  // retention-curve quality with richer signals.
-  // -------------------------------------------------------
-
-  // Re-ground Pass 1 on Omni's hook decomposition + factor scores (available now,
-  // no Wave 2 wait) so the overlap keeps grounding without deepseek — restores the
-  // pre-overlap retention curves. Richer than deepseek's 2 numbers.
-  const omniAnalysis = geminiResult.analysis as import("./types").GeminiVideoAnalysis;
-  const hookGrounding = omniAnalysis.hook_decomposition
-    ? {
-        hook: omniAnalysis.hook_decomposition,
-        factors: (omniAnalysis.factors ?? []).map((f) => ({ name: f.name, score: f.score })),
-      }
-    : null;
-
-  const wave3Outcome = await runWave3(
-    payload,
-    null, // OVERLAP: deepseek grounding omitted so Pass 1 doesn't block on Wave 2
-    wave0Result,
-    creatorContext,
-    onStageEvent,
-    hookGrounding, // Omni hook decomposition + factors ground Pass 1 without Wave 2 wait
-  );
-  const wave3Result: PersonaSimulationResult[] = wave3Outcome.results;
-  const personaBehavioralAggregate: PersonaBehavioralAggregate | null = wave3Outcome.aggregate;
-  // CR-01: wave-level cost surfaced to PipelineResult so the aggregator can fold Wave 3
-  // spend into PredictionResult.cost_cents.
-  const wave3CostCents = wave3Outcome.cost_cents;
-  warnings.push(...wave3Outcome.warnings);
-
-  Sentry.addBreadcrumb({
-    category: "engine.pipeline",
-    message: "Wave 3 complete",
-    level: "info",
-    data: { requestId, stages: ["wave_3_personas"] },
-  });
-
-  // -------------------------------------------------------
-  // Phase 3 (Plan 08) — Wave 3 Pass 2: runs AFTER Pass 1 (wave3Outcome),
-  // BEFORE aggregateScores. Fire-and-forget filmstrip happened earlier at
-  // wave_0_complete (D-11). Pass 2 receives whatever keyframeUris exist now
-  // (some may be null — D-03 fallback to omni text descriptions is in pass2.ts).
-  //
-  // Only invoked when segments exist (video_upload mode with Omni success).
-  // Skipped in text mode + tiktok_url mode (no segments).
-  // -------------------------------------------------------
-  let pass2Outcome: Wave3Pass2Outcome | null = null;
-  if (omniSegments && omniSegments.length > 0 && wave3Result.length > 0) {
+  let foldOutcome: Wave3FoldOutcome | null = null;
+  if (omniSegments && omniSegments.length > 0) {
     try {
-      const analysisId = opts?.analysisId;
-      const keyframeUris = analysisId
-        ? await readKeyframeUris(supabase, analysisId, omniSegments.length)
-        : new Array<string | null>(omniSegments.length).fill(null);
-      const demoContext = buildDemographicContext(creatorContext, new Date());
-      pass2Outcome = await runWave3Pass2(
-        omniSegments,
-        keyframeUris,
-        wave3Result,
-        demoContext,
-        onStageEvent,
-        // CR-02: forward wave0 content_type + niche slugs so Pass 2 uses the same
-        // slot routing as Pass 1 — prevents slot_type mismatch between passes.
+      // Verbatim from geminiResult (same pluck as aggregator.ts ~544).
+      // Non-fatal — fold proceeds with "" on omission.
+      const hookRawForFold = (geminiResult.analysis as unknown as {
+        hook_verbatim?: { spoken_words?: string | null; on_screen_text?: string | null };
+      })?.hook_verbatim;
+      const verbatimText = hookRawForFold
+        ? [hookRawForFold.spoken_words, hookRawForFold.on_screen_text].filter(Boolean).join(" ")
+        : "";
+      // emotion_arc: same pluck from geminiResult.analysis (mirrors aggregator.ts ~533-537).
+      const emotionArcRaw = (geminiResult.analysis as unknown as {
+        emotion_arc?: EmotionArcPoint[];
+      })?.emotion_arc;
+      const emotionArc: EmotionArcPoint[] = Array.isArray(emotionArcRaw) ? emotionArcRaw : [];
+      // Select persona slots (same routing as the deleted Pass 1 for slot_type consistency).
+      const { selectPersonaSlots } = await import("./wave3/persona-registry");
+      const foldSlots = selectPersonaSlots(
         wave0Result.content_type?.type ?? null,
         wave0Result.niche?.primary_slug ?? null,
       );
-      warnings.push(...pass2Outcome.warnings);
+      foldOutcome = await runFold(
+        foldSlots,
+        omniSegments,
+        verbatimText,
+        emotionArc,
+        onStageEvent,
+      );
+      warnings.push(...foldOutcome.warnings);
     } catch (error) {
-      Sentry.captureException(error, { tags: { stage: "wave_3_pass2", requestId } });
-      warnings.push(`Pass 2 unavailable: ${error instanceof Error ? error.message : String(error)}`);
-      // pass2Outcome remains null — aggregator uses Pass 1 fallback
+      Sentry.captureException(error, { tags: { stage: "wave_3_fold", requestId } });
+      warnings.push(`Fold unavailable: ${error instanceof Error ? error.message : String(error)}`);
+      // foldOutcome remains null — aggregator falls back to deepseek.behavioral_predictions
     }
   }
 
-  Sentry.addBreadcrumb({
-    category: "engine.pipeline",
-    message: "Wave 3 Pass 2 complete",
-    level: "info",
-    data: { requestId, pass2_aggregate_built: pass2Outcome?.pass2_aggregate_built ?? false },
-  });
-
-  // deepseek + trends ran CONCURRENTLY with Wave 3 (overlap above). They finished
-  // during the persona path, so this await resolves effectively instantly and gives
-  // us the full-quality deepseek reasoning for behavioral_score/suggestions assembly.
-  const [deepseekRaw, trendEnrichment] = await wave2Promise;
-
-  // -------------------------------------------------------
-  // Phase 9 — Platform-fit: chained off Wave 2 (see platformFitPromise above) so it
-  // runs concurrently with Wave 3 rather than serially after Pass 2. Awaited here,
-  // where its result is needed for PipelineResult assembly.
-  // -------------------------------------------------------
-  const platformFitResult = await platformFitPromise;
+  // Derive wave3Result + personaBehavioralAggregate from fold output (replaces the deleted
+  // runWave3 return values). These fields are consumed by aggregator + audience-viz UI.
+  // When fold failed (null or fold_success=false), fall back to empty / null.
+  const foldPersonaSimResults = foldOutcome?.personaSimResults ?? [];
+  const wave3Result: PersonaSimulationResult[] = foldPersonaSimResults;
+  const { aggregate: foldAggregate } = foldPersonaSimResults.length > 0
+    ? aggregatePersonaResults(foldPersonaSimResults)
+    : { aggregate: null };
+  const personaBehavioralAggregate: PersonaBehavioralAggregate | null = foldAggregate;
+  // CR-01: wave-level cost (fold replaces the deleted Pass1+Pass2 cost).
+  const wave3CostCents = foldOutcome?.cost_cents ?? 0;
 
   Sentry.addBreadcrumb({
     category: "engine.pipeline",
-    message: "Platform-fit complete",
+    message: "Wave 3 fold complete",
     level: "info",
-    data: { requestId, resultCount: platformFitResult?.length ?? 0 },
+    data: { requestId, fold_success: foldOutcome?.fold_success ?? false },
   });
+
+  // Pass 2 outcome always null — 10-pass deleted (Phase 4 Plan 05).
+  const pass2Outcome: Wave3Pass2Outcome | null = null;
+
+  // Plan 03: Wave 2 = deepseek only (trends + platform_fit removed). Await deepseek.
+  const [deepseekRaw] = await wave2Promise;
 
   // -------------------------------------------------------
   // Stage 9: Aggregate (delegated -- caller uses PipelineResult)
@@ -1039,7 +780,7 @@ export async function runPredictionPipeline(
   const total_cost_cents =
     (geminiResult.cost_cents ?? 0)
     + (deepseekRaw?.cost_cents ?? 0)
-    + wave3CostCents; // CR-01: include Wave 3 cost in pipeline-level log so true spend is observable.
+    + wave3CostCents; // CR-01: fold cost tracked here; replaces deleted Pass1+Pass2 spend
   log.info("Pipeline complete", {
     stage: "pipeline",
     duration_ms: total_duration_ms,
@@ -1051,25 +792,20 @@ export async function runPredictionPipeline(
     payload,
     geminiResult,
     creatorContext,
-    ruleResult,
-    trendEnrichment,
     deepseekResult: deepseekRaw,
-    // Phase 6 (D-A4): replaces the pre-Phase-6 audioResult: null slot. Plan 06-06's
-    // aggregator reads this directly via `pipelineResult.audioFingerprintResult`.
-    audioFingerprintResult,
     wave0Result,
+    // wave3Result sourced from fold adapters (fold.ts adaptFoldToPersonaSimResults).
+    // Empty array when fold failed (no video segments, or fold call errored).
     wave3Result,
-    // Phase 7 (Plan 07-02b) — real aggregate from Wave 3 orchestrator. Null when <7 personas
-    // succeed (D-13 threshold) OR when circuit-breaker fast-failed (W-3); the aggregator
-    // surfaces null as signal_availability.personas = false via Plan 07-03.
+    // personaBehavioralAggregate from fold-sourced aggregatePersonaResults.
+    // Null when fold failed or fewer than threshold personas returned.
     personaBehavioralAggregate,
-    // CR-01: surfaced so aggregator can fold Wave 3 spend into PredictionResult.cost_cents
-    // (eval-runner cost cap reads that rolled-up field).
+    // CR-01: fold cost in cents (replaces deleted Pass1+Pass2 wave cost).
     wave3CostCents,
-    retrievalResult, // NEW Phase 8 D-09 (Plan 04) — graceful-degradation BenchmarkRetrievalResult
-    platformFitResult, // NEW Phase 9 (Plan 03) — platform-fit V3 result array or null
-    pass2Outcome,      // Phase 3 (Plan 08) — Pass 2 outcome; null when no segments or skipped
-    segments: omniSegments, // Phase 3 (Plan 08) — SegmentGrid[] for aggregator.assembleHeatmapPayload
+    retrievalResult, // Phase 8 D-09 (Plan 04) — graceful-degradation BenchmarkRetrievalResult
+    pass2Outcome,    // Always null — 10-pass deleted (Phase 4 Plan 05).
+    foldOutcome,     // Phase 4 Plan 05 — sole audience-sim; null in text/tiktok_url mode.
+    segments: omniSegments, // SegmentGrid[] for aggregator.assembleHeatmapPayload
     requestId,
     timings,
     total_duration_ms,

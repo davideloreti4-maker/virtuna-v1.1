@@ -8,14 +8,17 @@
  * Full signal context via buildSignalContextUserMessage (D-03 — no truncation).
  * Discriminated-union output schema per band (D-05).
  * Cost telemetry via calculateCost (Qwen pricing, D-10).
+ *
+ * Plan 01-05 Task 0: maybeAppendLikelyFlopWarning extracted to ./flop-warning.ts.
+ * This module moves to _dormant/ in Plan 01-05 Task 1.
  */
 import * as Sentry from "@sentry/nextjs";
-import { createLogger } from "@/lib/logger";
 import type { PredictionResult, CounterfactualResult } from "./types";
 import type { StageEventCallback } from "./events";
 import { emitStageStart, emitStageEnd } from "./events";
 import { calculateCost } from "./qwen/cost";
 import { isCircuitOpen } from "./deepseek";
+import { createLogger } from "@/lib/logger";
 import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "./qwen/client";
 import {
   STABLE_COUNTERFACTUALS_SYSTEM_PROMPT,
@@ -34,25 +37,6 @@ export const QWEN_STAGE11_MODEL = QWEN_REASONING_MODEL;
 // call exceeded the timeout) effectively never fires on the happy path. The cap
 // here is now a genuine fail-fast for a stuck call, not a near-finish guillotine.
 const PER_CALL_TIMEOUT_MS = 60_000;
-
-/**
- * Pure-TS check (NOT model-generated). Appends a LIKELY_FLOP warning to
- * result.warnings[] when overall_score < 30 AND post-critique confidence > 0.70.
- * Uses POST-CRITIQUE confidence (PredictionResult.confidence after Stage 10 adjustment).
- */
-export function maybeAppendLikelyFlopWarning(result: PredictionResult): void {
-  const score = result.overall_score;
-  const confidence = result.confidence;
-
-  if (score < 30 && confidence > 0.70) {
-    log.warn("LIKELY_FLOP detected", { score, confidence });
-    result.warnings.push(
-      "LIKELY_FLOP: This content scores below 30 with high confidence (>70%), " +
-        "indicating strong consensus that it will underperform. Consider significant " +
-        "revisions to the hook, structure, or platform targeting before publishing.",
-    );
-  }
-}
 
 /**
  * Phase 13 D-01..D-06 contract: always-on counterfactual generation via Qwen reasoning (qwen3.6-plus).

@@ -78,6 +78,28 @@ export function normalizeSegments(
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * CR-01: Join two verbatim strings in time order without dropping or duplicating speech.
+ * Used when a sub-1s segment is absorbed into an adjacent one (merge): the absorbed
+ * segment's words must survive, not vanish. `earlier` is the segment that comes first
+ * in time so concatenation preserves spoken order.
+ *   - both nullish        → null
+ *   - one present         → that one
+ *   - both present, equal  → one copy (never "X X")
+ *   - both present, differ → "earlier later"
+ */
+function joinVerbatim(
+  earlier: string | null | undefined,
+  later: string | null | undefined,
+): string | null {
+  const a = earlier ?? null;
+  const b = later ?? null;
+  if (a === null) return b;
+  if (b === null) return a;
+  if (a === b) return a;
+  return `${a} ${b}`;
+}
+
 /** Returns true if the segment array has any NaN, negative, or non-monotonic timestamps. */
 function hasMalformedTimestamps(segments: SegmentGrid[]): boolean {
   for (let i = 0; i < segments.length; i++) {
@@ -108,6 +130,11 @@ export function enforceHookZoneBoundary(segments: SegmentGrid[]): SegmentGrid[] 
         ...seg,
         t_start: HOOK_ZONE_END_S,
         scene_boundary_reason: "hook_zone_split_continuation",
+        // CR-01: a forced hook-zone split cannot attribute spoken words to a time-half,
+        // so do NOT copy spoken_text onto both children (that fabricates a "said twice"
+        // signal). Keep it on the left (primary) child; null it here. on_screen_text is
+        // retained via the spread — a visual caption legitimately spans the boundary.
+        spoken_text: null,
       });
     } else {
       result.push(seg);
@@ -140,8 +167,14 @@ export function mergeSubMinSegments(segments: SegmentGrid[]): SegmentGrid[] {
             seg.t_start < HOOK_ZONE_END_S && nextSeg.t_end > HOOK_ZONE_END_S ||
             (seg.t_start < HOOK_ZONE_END_S) !== (nextSeg.t_start < HOOK_ZONE_END_S);
           if (!crossesBoundary) {
-            // Merge seg into nextSeg
-            next.push({ ...nextSeg, t_start: seg.t_start });
+            // Merge seg into nextSeg. CR-01: concatenate verbatim (seg is earlier in
+            // time) so the absorbed segment's speech/on-screen text is not dropped.
+            next.push({
+              ...nextSeg,
+              t_start: seg.t_start,
+              spoken_text: joinVerbatim(seg.spoken_text, nextSeg.spoken_text),
+              on_screen_text: joinVerbatim(seg.on_screen_text, nextSeg.on_screen_text),
+            });
             i += 2;
             changed = true;
             continue;
@@ -153,7 +186,14 @@ export function mergeSubMinSegments(segments: SegmentGrid[]): SegmentGrid[] {
           const crossesBoundary =
             (prevSeg.t_start < HOOK_ZONE_END_S) !== (seg.t_start < HOOK_ZONE_END_S);
           if (!crossesBoundary) {
-            next[next.length - 1] = { ...prevSeg, t_end: seg.t_end };
+            // Merge seg into prevSeg. CR-01: prevSeg is earlier in time, so concatenate
+            // prev→seg to keep the absorbed segment's verbatim instead of dropping it.
+            next[next.length - 1] = {
+              ...prevSeg,
+              t_end: seg.t_end,
+              spoken_text: joinVerbatim(prevSeg.spoken_text, seg.spoken_text),
+              on_screen_text: joinVerbatim(prevSeg.on_screen_text, seg.on_screen_text),
+            };
             i++;
             changed = true;
             continue;
