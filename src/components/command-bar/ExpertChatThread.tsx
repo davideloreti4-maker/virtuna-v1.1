@@ -116,7 +116,7 @@ export function ExpertChatThread({
 
   const lastAssistantIndex = (() => {
     for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === 'assistant') return i;
+      if (messages[i]?.role === 'assistant') return i;
     }
     return -1;
   })();
@@ -403,7 +403,7 @@ function AssistantContent({ content, isStreaming, reducedMotion }: AssistantCont
 
 function parseFrameTag(content: string): { cleanContent: string; frameTag: string | null } {
   const match = content.match(/\bFRAME:([^\n]+)/);
-  if (!match) return { cleanContent: content, frameTag: null };
+  if (!match || !match[1]) return { cleanContent: content, frameTag: null };
 
   const frameName = match[1].trim();
   if (!VALID_FRAMES.has(frameName)) return { cleanContent: content, frameTag: null };
