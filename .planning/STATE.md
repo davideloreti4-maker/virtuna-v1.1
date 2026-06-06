@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: apollo
 milestone_name: Apollo
 status: ready_to_plan
-last_updated: "2026-06-06T16:36:22.361Z"
+last_updated: "2026-06-06T17:22:56.431Z"
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 18
+  total_plans: 22
   completed_plans: 18
   percent: 80
 ---
