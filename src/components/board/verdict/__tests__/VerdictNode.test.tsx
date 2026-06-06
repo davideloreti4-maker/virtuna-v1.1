@@ -135,3 +135,49 @@ describe('VerdictNode - shell', () => {
     );
   });
 });
+
+// R11 engagement-range surface (live render + persist dual-read + honest null-gate).
+describe('VerdictNode - R11 engagement range', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ history: [], niche: null }), { status: 200 }),
+    );
+  });
+
+  function mockResult(result: unknown) {
+    (useAnalysisStream as ReturnType<typeof vi.fn>).mockReturnValue({
+      result, phase: 'complete', analysisId: 'r11-test',
+    });
+  }
+
+  it('renders the projected-views range from the live predicted_engagement', () => {
+    mockResult({
+      ...fixtures.complete,
+      predicted_engagement: { lo: 8000, hi: 42000, confidence: 0.75, basis: 'follower-tier × quality read' },
+    });
+    renderWithQuery(<VerdictNode camera={{} as never} layout={{} as never} />);
+    const block = screen.getByTestId('engagement-range');
+    expect(block.textContent).toContain('Projected views');
+    expect(block.textContent).toContain('8K–42K');
+    expect(block.textContent).toContain('High confidence');
+  });
+
+  it('honest null-gate: no range block when there is no creator baseline', () => {
+    mockResult({ ...fixtures.complete, predicted_engagement: null });
+    renderWithQuery(<VerdictNode camera={{} as never} layout={{} as never} />);
+    expect(screen.queryByTestId('engagement-range')).toBeNull();
+  });
+
+  it('persist dual-read: renders from variants.engagement_range on permalink (no live field)', () => {
+    mockResult({
+      ...fixtures.complete,
+      predicted_engagement: null,
+      variants: { engagement_range: { lo: 1200000, hi: 3000000, confidence: 0.3, basis: 'follower-tier × quality read' } },
+    });
+    renderWithQuery(<VerdictNode camera={{} as never} layout={{} as never} />);
+    const block = screen.getByTestId('engagement-range');
+    expect(block.textContent).toContain('1.2M–3M');
+    expect(block.textContent).toContain('Low confidence');
+  });
+});

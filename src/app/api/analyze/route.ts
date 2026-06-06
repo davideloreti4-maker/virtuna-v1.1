@@ -219,8 +219,12 @@ async function persistApolloToVariants(
   log: Logger,
 ): Promise<void> {
   const apollo = finalResult.apollo_reasoning;
-  // Skip when Apollo didn't run (circuit breaker, fallback path, or deepseek unavailable).
-  if (!apollo) return;
+  // R11 (surface + persist): the grounded engagement range. computeEngagementRange
+  // returns null when no creator baseline exists (R9 honesty) — persist only a real
+  // range, so permalink reload mirrors the live null-gate exactly.
+  const engagement_range = finalResult.predicted_engagement;
+  // Skip only when there's nothing to persist (Apollo skipped AND no range).
+  if (!apollo && !engagement_range) return;
 
   try {
     const { data: row, error: readErr } = await service
@@ -234,9 +238,12 @@ async function persistApolloToVariants(
       return;
     }
     const current = (row.variants ?? {}) as Record<string, unknown>;
+    const merged: Record<string, unknown> = { ...current };
+    if (apollo) merged.apollo = apollo;
+    if (engagement_range) merged.engagement_range = engagement_range;
     const { error: writeErr } = await service
       .from("analysis_results")
-      .update({ variants: { ...current, apollo } as unknown as Json })
+      .update({ variants: merged as unknown as Json })
       .eq("id", id)
       .eq("user_id", userId); // T-03-10: V4 access control preserved on write
     if (writeErr) {
