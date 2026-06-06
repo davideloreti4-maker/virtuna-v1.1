@@ -19,8 +19,13 @@
  * qwen3.5-omni-plus → qwen3.5-omni-flash (A/B-validated, 2 videos: 36→17s, substrate held/
  * richer). omni is the substrate the whole engine reasons over → scores shift across the
  * boundary; stale plus-era rows must not mix with flash-era rows.
+ * Bumped 3.7.0 → 3.8.0 by Phase 5 Plan 01 (D-01 rubric-sum): Apollo composite_score is now
+ * a deterministic hook-weighted sum of per-dimension scores (HOOK_WEIGHT=0.80) rather than a
+ * separately-asked holistic LLM judgment. Scores shift for any video where the LLM's holistic
+ * composite diverged from the arithmetic sum; stale 3.7.0 rows must not mix with rubric-sum-era
+ * rows. Auto-invalidates all 3.7.0 L1+L2 cached rows on next analyze-route call (D-23).
  *
  * D-23 cache invariant: prediction-cache.ts keys on ENGINE_VERSION; this bump auto-invalidates
- * all `3.6.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
+ * all `3.7.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
  */
-export const ENGINE_VERSION = "3.7.0";
+export const ENGINE_VERSION = "3.8.0";

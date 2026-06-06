@@ -433,7 +433,7 @@ describe("Phase 3 — provenance + stub invocations", () => {
     const { ENGINE_VERSION } = await import("../aggregator");
     const { ENGINE_VERSION: viaVersion } = await import("../version");
     expect(ENGINE_VERSION).toBe(viaVersion);
-    expect(ENGINE_VERSION).toBe("3.7.0"); // spine A/B: + omni-flash default (plus→flash)
+    expect(ENGINE_VERSION).toBe("3.8.0"); // Phase 5 Plan 01 (D-01 rubric-sum): bump from 3.7.0
   });
 
   it("PredictionResult.engine_version reads from ./version module", async () => {
