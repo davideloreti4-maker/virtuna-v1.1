@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: apollo
 milestone_name: Apollo
-status: milestone_complete
-last_updated: 2026-06-06T18:34:52.960Z
+status: Awaiting next milestone
+last_updated: "2026-06-06T20:06:34.493Z"
+last_activity: 2026-06-06 — Milestone v4.0 completed and archived
 progress:
   total_phases: 5
   completed_phases: 5
   total_plans: 22
   completed_plans: 22
   percent: 100
-stopped_at: Milestone complete (Phase 05 was final phase)
 ---
 
 # Project State
@@ -21,25 +21,26 @@ See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Cut-l
 
 ## Current Position
 
-Phase: 05 — **COMPLETE (2026-06-06)** — MILESTONE APOLLO COMPLETE (5/5 phases)
-Last completed plan: 05-04 (P5 COMPLETE)
-**ALL 5 PHASES COMPLETE on disk** (P1 6/6, P2 3/3, P3 4/4, P4 5/5, P5 4/4 = 22/22 plans). Milestone 100%.
-P5 verifier: 18/18 code must-haves PASS. Code review: 2 critical + 3 warnings fixed (`7ab7ffd9`).
-**Close-out (2026-06-06) — SHIP-READY:**
-- ✅ `05-HUMAN-UAT.md` **complete, 5/5 PASS** — live E2E 62.4s (≤90s), determinism band-stable, DB persist + permalink reload, **R11 positive path surfaced**, D-08/IN-02 hierarchy (analysis `H4EwvOGMV0iu`).
-- ✅ **R11 fully delivered** — handle-thread (`dce80a43`) + follower-backfill incl. stale-0 guard (`0b99e0f2`/`6b55b08d`) + **surfaced on board + persisted** (`22ccddff` — VerdictNode "Projected views" + `variants.engagement_range`). Prior PARTIAL root cause: range computed but had NO live surface (renderer orphaned on results-panel by the board redesign).
-- ✅ **IN-02 fixed** (UI `05f1ca68` + engine `d097749e` — aggregator was dropping ceiling_capper).
-- ✅ **Omni-flash drift hardened** — emotion_arc.label (PR #15 merged `fc79b5a7`) + NEW weakest_modality vector (`d097749e`); killed ~17s retry (79.5s→62.4s).
-- ✅ `/gsd-secure-phase 5` → **SECURED 12/12** (`05-SECURITY.md`; new persist + backfill verified user-scoped + SSRF-safe).
-- ✅ Close-out code review — no critical; 1 fix applied (`3ec0b83b`).
-- ✅ `05-VERIFICATION.md` reconciled `human_needed`→**pass**.
-- ✅ **PR #13 repurposed** to the full milestone (P1–P5 + close-out), title/body updated, base `main`, pushed. 1429 tests green; tsc + lint clean.
-- **REMAINING (user's call — irreversible/outward-facing):** merge PR #13 → `main`, then `/gsd-complete-milestone` (archive + reconcile shared PROJECT.md/MILESTONES.md on main).
-**Milestone worktree** `~/virtuna-engine-opt/` on `milestone/engine-opt`. Milestone **Apollo** — turn the ~25-call score machine into a 3-call knowledge-grounded expert (Omni → Audience-Sim → Apollo Reasoner).
+Phase: Milestone v4.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-06 — Milestone v4.0 Apollo completed, archived, tagged, merged to main (PR #13)
 
-> **State reconciled 2026-06-06** — prior STATE claimed "Phase 3 NOT STARTED / 50%". Disk + code disprove it: P3 (Apollo Reasoner) executed (4 SUMMARYs), P4 fold-flip is LIVE in code. STATE was never updated after P3 ran.
+## Deferred Items
 
-Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milestone formalized. **Synced with `origin/main` (merged in Remix PR #6 + audience change).** Remix engine path folded in (Remix = Apollo modes, R12).
+Acknowledged and deferred at v4.0 Apollo milestone close (2026-06-06):
+
+| Category | Item | Status | Note |
+|----------|------|--------|------|
+| quick_task | 260505-jdk-initialize-shadcn-ui-cli-components-json | missing | orphaned ref — dir gone |
+| quick_task | 260528-mzd-strip-retrieval-similar-videos-trending | missing | orphaned ref — dir gone |
+| quick_task | 260528-nqx-wire-hook-decomp-emotion-arc | missing | orphaned ref — dir gone |
+| quick_task | 260528-nsb-phase-3-fix-orphaned-video-storage-diagn | missing | orphaned ref — dir gone |
+| quick_task | (2 more orphaned quick-task refs) | missing | dirs gone |
+| uat_gap | 2 UAT gap flags | stale | P5 UAT now complete (5/5 PASS); flags predate close-out |
+| verification_gap | 2 verification gap flags | stale | P5 VERIFICATION reconciled human_needed→pass |
+
+These are bookkeeping orphans / superseded-by-close-out flags, not live work. The milestone shipped to main with all requirements satisfied.
 
 ## Phases
 
@@ -142,3 +143,7 @@ Engine teardown **complete** (S0–S19, 2026-06-03) → `ENGINE-MAP.md`. Milesto
 - `optimal-post.ts`: honest signal or cut.
 - Corpus v1: data sources + distillation form + size (→ cached-prompt vs retrieval threshold). Biggest unknown.
 - Remix decode/adapt: confirm clean re-grounding on the shared core without breaking `/api/remix/adapt`.
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone
