@@ -139,14 +139,27 @@ Plans:
 
 - [x] 04-05-PLAN.md — Run the A/B + production flip. Referee MISS 0/2 at budget=4000 (timeout artifact); R7 confirmed. **Superseded by FLIP-AND-DELETE mandate:** budget cut to 1000, 10-pass deleted, fold live as sole path.
 
-## Phase 5: Wire + Surface — ⬜ NOT STARTED (unplanned — needs `/gsd-discuss-phase 5`)
+## Phase 5: Wire + Surface — ⬜ PLANNED (2026-06-06) — 4 plans, 3 waves
 
 **Goal:** connect the three calls and surface the insight.
-**Does:** wire `Omni → Audience-Sim → Apollo` so rewrites are audience-aware; finalize the score + confidence; build the **grounded engagement estimate** (R11 — creator baseline × quality read, as a range); update the board to render rewrites (original struck-through + copyable variants) + the heatmap + the grounded estimate; remove dead UI tied to the old fake engagement.
+**Does:** finalize the score via D-01 rubric-sum (band→fixed-anchor deterministic composite, kills ±5 swing) + ENGINE_VERSION bump; build the **grounded engagement estimate** (R11 — follower_count × quality read, as a history-relative range; per-creator avg_views median framing DEFERRED); build the **insight-hero** board frame (read + struck-through/copyable rewrites + 6 scored dimensions + demoted score band) with dual-read permalink safety; join each rewrite to fold's heatmap drop-point at surface-time (R4, no latency cost); progressive per-frame reveal (D-03); strip the dead fake-engagement UI.
 **Success:** R4, R5, R7, R11, R6 (final E2E). Full Apollo flow on the board.
-**Risk:** medium — UI surface area; coordinate with the upcoming UI/UX milestone.
-**Note (2026-06-06):** the P4 fold-flip carry-forward (lower budget → flip) is already DONE in code — not P5 work. P5 scope is the wiring/score-finalize/grounded-engagement/surfacing items above.
-**Plans:** none yet.
+**Risk:** medium — UI surface area (insight-hero is net-new, nothing reads apollo_reasoning today); coordinate with the upcoming UI/UX milestone.
+**Note (2026-06-06):** the P4 fold-flip carry-forward (lower budget → flip) is already DONE in code — not P5 work. D-04 (<45s) is DROPPED — no latency work. D-07 keeps fold ∥ Apollo PARALLEL (R4 is satisfied at the board layer). R12 is out of P5 build scope (Remix re-grounded in P3; verify untouched).
+**Plans:** 4 plans complete
+Plans:
+**Wave 1**
+
+- [ ] 05-01-PLAN.md — D-01 rubric-sum engine contract: bounded dimension `score` + deterministic hook-weighted composite sum (deepseek post-parse) + invert corpus §4 + ENGINE_VERSION bump + Wave 0 determinism/sum/threading scaffolds (R5, R7, R8)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 05-02-PLAN.md — R11 grounded engagement estimate: EngagementRange type + computeEngagementRange (follower_count × quality read, tier-sensitive range, null when no baseline) wired at the aggregator assembly site (R11, D-05/D-06)
+- [ ] 05-03-PLAN.md — Insight-hero frame (net-new): dual-read apollo_reasoning, struck-through/copyable rewrites, 6 scored dimensions, D-07 heatmap drop-point join, demoted D-02 band, insight_hero panel + board-layout mount (D-03/D-08, R4)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 05-04-PLAN.md — Strip dead fake-engagement UI (TikTokResultCard) + surface the grounded R11 range (EngagementRangeCard, null-gated) + update the predicted-engagement null test for the range shape (D-08, R11)
 
 ---
 
