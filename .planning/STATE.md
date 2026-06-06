@@ -24,8 +24,17 @@ See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Cut-l
 Phase: 05 — **COMPLETE (2026-06-06)** — MILESTONE APOLLO COMPLETE (5/5 phases)
 Last completed plan: 05-04 (P5 COMPLETE)
 **ALL 5 PHASES COMPLETE on disk** (P1 6/6, P2 3/3, P3 4/4, P4 5/5, P5 4/4 = 22/22 plans). Milestone 100%.
-P5 verifier: 18/18 code must-haves PASS; status `human_needed` for 5 live/manual UAT items (`05-HUMAN-UAT.md`). Code review: 2 critical + 3 warnings fixed (`7ab7ffd9`, prompt/schema-drift guard added). Branch pushed.
-**Before merge:** run `05-HUMAN-UAT.md` (E2E≤90s, same-video-twice determinism, real-run DB persist, live R11, D-08 visual) · `/gsd-secure-phase 5` (no SECURITY.md, enforcement on) · `/gsd-complete-milestone` (reconcile shared PROJECT.md/MILESTONES.md on main) · PR #13 (P1+P2→main) still open — engine-opt now carries all 5 phases.
+P5 verifier: 18/18 code must-haves PASS. Code review: 2 critical + 3 warnings fixed (`7ab7ffd9`).
+**Close-out (2026-06-06) — SHIP-READY:**
+- ✅ `05-HUMAN-UAT.md` **complete, 5/5 PASS** — live E2E 62.4s (≤90s), determinism band-stable, DB persist + permalink reload, **R11 positive path surfaced**, D-08/IN-02 hierarchy (analysis `H4EwvOGMV0iu`).
+- ✅ **R11 fully delivered** — handle-thread (`dce80a43`) + follower-backfill incl. stale-0 guard (`0b99e0f2`/`6b55b08d`) + **surfaced on board + persisted** (`22ccddff` — VerdictNode "Projected views" + `variants.engagement_range`). Prior PARTIAL root cause: range computed but had NO live surface (renderer orphaned on results-panel by the board redesign).
+- ✅ **IN-02 fixed** (UI `05f1ca68` + engine `d097749e` — aggregator was dropping ceiling_capper).
+- ✅ **Omni-flash drift hardened** — emotion_arc.label (PR #15 merged `fc79b5a7`) + NEW weakest_modality vector (`d097749e`); killed ~17s retry (79.5s→62.4s).
+- ✅ `/gsd-secure-phase 5` → **SECURED 12/12** (`05-SECURITY.md`; new persist + backfill verified user-scoped + SSRF-safe).
+- ✅ Close-out code review — no critical; 1 fix applied (`3ec0b83b`).
+- ✅ `05-VERIFICATION.md` reconciled `human_needed`→**pass**.
+- ✅ **PR #13 repurposed** to the full milestone (P1–P5 + close-out), title/body updated, base `main`, pushed. 1429 tests green; tsc + lint clean.
+- **REMAINING (user's call — irreversible/outward-facing):** merge PR #13 → `main`, then `/gsd-complete-milestone` (archive + reconcile shared PROJECT.md/MILESTONES.md on main).
 **Milestone worktree** `~/virtuna-engine-opt/` on `milestone/engine-opt`. Milestone **Apollo** — turn the ~25-call score machine into a 3-call knowledge-grounded expert (Omni → Audience-Sim → Apollo Reasoner).
 
 > **State reconciled 2026-06-06** — prior STATE claimed "Phase 3 NOT STARTED / 50%". Disk + code disprove it: P3 (Apollo Reasoner) executed (4 SUMMARYs), P4 fold-flip is LIVE in code. STATE was never updated after P3 ran.
