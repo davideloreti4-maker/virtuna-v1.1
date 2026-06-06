@@ -4,6 +4,7 @@ import type {
   ConfidenceLevel,
   ContentTypeSlug,
   CtaSegmentResult,
+  EngagementRange,
   Factor,
   FeatureVector,
   GeminiAudioSignals,
@@ -15,6 +16,7 @@ import type {
   TrendEnrichment,
   VerbatimPayload,
 } from "./types";
+import type { CreatorContext } from "./creator";
 import type { EmotionArcPoint } from "./qwen/schemas";
 import type { HookDecomposition } from "./types";
 import type { PipelineResult } from "./pipeline";
@@ -140,6 +142,86 @@ export function applyCtaPenalty(
   if (contentTypeSlug === null) return geminiScore;
   const penalty = CTA_PENALTY_POINTS[contentTypeSlug] ?? 0;
   return Math.max(0, Math.min(100, geminiScore - penalty));
+}
+
+// =====================================================
+// R11 Engagement Range — grounded estimate (Plan 05-02)
+// =====================================================
+// Pure function: follower_count × quality read (overall_score) → EngagementRange | null.
+// No jitter, no sine — deterministic formula (R9/D-01 honesty).
+// null when follower_count is absent (no fabricated number).
+// =====================================================
+
+/**
+ * Compute a grounded engagement range anchored to the creator's real follower_count
+ * × Apollo+fold quality read (overall_score 0–100).
+ *
+ * Design principles (R11, D-05, D-06):
+ *   - Range (lo, hi), never a false-precise point — virality is fat-tailed.
+ *   - Width widens when quality is low (more uncertainty) — honest fat-tail.
+ *   - Higher quality (overall_score) shifts the range upward (quality multiplier).
+ *   - Returns null when follower_count is absent — no fabrication (R9).
+ *   - Pure, deterministic, no LLM call, no side effects (R7/R6 preserved).
+ *
+ * Formula:
+ *   anchor        = follower_count (real creator baseline)
+ *   quality_ratio = overall_score / 100                              (0–1 quality read)
+ *   reach_factor  = quality_ratio² × 0.20 + 0.005                   (0.5%–20.5% reach)
+ *   mid_estimate  = anchor × reach_factor
+ *   uncertainty   = (1 - quality_ratio)² × 0.25 + 0.02              (2%–27% of followers)
+ *   half_width    = max(mid_estimate × 0.5, anchor × uncertainty)    (floor on absolute width)
+ *   lo            = max(0, round(mid_estimate - half_width))
+ *   hi            = round(mid_estimate + half_width)
+ *
+ * The uncertainty term is anchored to follower_count so low-quality ranges are WIDER
+ * in absolute terms even when mid_estimate is tiny (fat-tailed honesty).
+ *
+ * Confidence is the quality_ratio (0–1) — higher quality = more confident estimate.
+ * Clamped: lo ≥ 0, hi > lo (minimum gap enforced).
+ */
+export function computeEngagementRange(
+  creatorContext: Pick<CreatorContext, "follower_count">,
+  overall_score: number,
+): EngagementRange | null {
+  // R9 honesty: return null when no creator baseline exists.
+  if (creatorContext.follower_count === null || creatorContext.follower_count === undefined) {
+    return null;
+  }
+
+  const followerCount = creatorContext.follower_count;
+  // Clamp overall_score to 0–100 (post-parse clamp idiom — untrusted upstream).
+  const score = Math.min(100, Math.max(0, overall_score));
+  const quality_ratio = score / 100; // 0–1
+
+  // Reach factor: quadratic so low scores give near-zero reach, high scores give up to ~20%.
+  // Range: quality_ratio=0 → 0.5% reach; quality_ratio=1 → 20.5% reach.
+  const reach_factor = quality_ratio * quality_ratio * 0.20 + 0.005;
+  const mid_estimate = followerCount * reach_factor;
+
+  // Uncertainty anchored to follower_count (not mid_estimate) so width is large at low quality.
+  // quality_ratio=0 → uncertainty = 0.25+0.02 = 0.27 (27% of followers)
+  // quality_ratio=1 → uncertainty = 0+0.02    = 0.02  (2% of followers)
+  const uncertainty = (1 - quality_ratio) * (1 - quality_ratio) * 0.25 + 0.02;
+  // half_width: take the larger of relative-to-midpoint or absolute-to-followers.
+  // This ensures low-quality ranges remain wide even when mid_estimate is tiny.
+  const half_width = Math.max(mid_estimate * 0.5, followerCount * uncertainty);
+
+  const lo = Math.max(0, Math.round(mid_estimate - half_width));
+  let hi = Math.round(mid_estimate + half_width);
+
+  // Ensure lo < hi (strict range — D-06).
+  if (hi <= lo) {
+    hi = lo + 1;
+  }
+
+  const confidence = quality_ratio;
+
+  return {
+    lo,
+    hi,
+    confidence,
+    basis: "follower-tier × quality read",
+  };
 }
 
 // =====================================================
@@ -974,7 +1056,10 @@ export async function aggregateScores(
         }
       : null,
     warnings,
-    predicted_engagement: null, // Plan 02 D1.1: sine-jitter fabrication deleted; field null until Plan 05 regrounding
+    // R11 (Plan 05-02): grounded range = follower_count × quality read. Null when no creator baseline (R9).
+    // LIVE-RESULTS-ONLY this phase — NOT persisted (no DB column, no buildInsertRow entry, no route.ts change).
+    // Permalink reload correctly shows no range (live in-memory result only; persistence deferred, D-06).
+    predicted_engagement: computeEngagementRange(pipelineResult.creatorContext, overall_score) ?? null,
     factors,
     suggestions,
     rule_score: ruleResult.rule_score,   // retained in type; ruleResult always fallback 50 (Plan 03 strip)
