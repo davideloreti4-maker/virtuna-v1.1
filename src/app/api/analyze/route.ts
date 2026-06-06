@@ -445,7 +445,7 @@ export async function POST(request: Request) {
     // Phase 11 (INT-05/D-04): Read retention opt-in preference once — gates both branches.
     const { data: creatorProfile } = await supabase
       .from("creator_profiles")
-      .select("storage_retention_opted_in")
+      .select("storage_retention_opted_in, tiktok_handle")
       .eq("user_id", user.id)
       .maybeSingle();
     const retentionOptedIn = creatorProfile?.storage_retention_opted_in ?? false;
@@ -510,6 +510,15 @@ export async function POST(request: Request) {
         { error: error instanceof Error ? error.message : "Invalid input" },
         { status: 400 }
       );
+    }
+
+    // R11 (P5 UAT fix): thread the signed-in user's own creator handle into the
+    // pipeline input so fetchCreatorContext can load their follower_count for the
+    // grounded engagement range. The client input never carries creator_handle, so
+    // without this the pipeline always cold-starts (follower_count null) and R11's
+    // EngagementRange stays dormant in the product even though the compute is correct.
+    if (!validated.creator_handle && creatorProfile?.tiktok_handle) {
+      validated.creator_handle = creatorProfile.tiktok_handle;
     }
 
     // CONTEXT D-15 — bypass_cache from query param OR body (eval harness)
