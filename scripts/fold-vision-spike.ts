@@ -145,9 +145,13 @@ async function main() {
 
   // -------- Three fold arms (sequential, isolate latency) --------
   const arms: ArmResult[] = [];
-  arms.push(await foldArm("A baseline (text)", "qwen3.6-flash", null, slots, segments, verbatim, emotionArc));
-  arms.push(await foldArm("B sense-flash    ", "qwen3.5-omni-flash", videoUrl, slots, segments, verbatim, emotionArc));
-  arms.push(await foldArm("C sense-plus     ", "qwen3.5-omni-plus", videoUrl, slots, segments, verbatim, emotionArc));
+  arms.push(await foldArm("A baseline 3.6f txt", "qwen3.6-flash", null, slots, segments, verbatim, emotionArc));
+  arms.push(await foldArm("B omni-flash +vid  ", "qwen3.5-omni-flash", videoUrl, slots, segments, verbatim, emotionArc));
+  arms.push(await foldArm("C omni-plus  +vid  ", "qwen3.5-omni-plus", videoUrl, slots, segments, verbatim, emotionArc));
+  // D — the arm the first spike missed: strongest reasoner WITH eyes (deaf, fed omni audio-as-text).
+  arms.push(await foldArm("D 3.6-plus   +vid  ", "qwen3.6-plus", videoUrl, slots, segments, verbatim, emotionArc));
+  // E — 3.6-plus reasoning but TEXT only (isolates: does giving 3.6-plus eyes change diversity vs its own text baseline?)
+  arms.push(await foldArm("E 3.6-plus    txt  ", "qwen3.6-plus", null, slots, segments, verbatim, emotionArc));
 
   // -------- Report --------
   console.log(`\n========== FOLD VISION SPIKE — DIVERSITY_FLOOR=0.10 ==========`);
