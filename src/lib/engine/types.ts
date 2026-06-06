@@ -756,6 +756,7 @@ export type ComponentScores = z.infer<typeof ComponentScoresSchema>;
 export const ApolloDimensionSchema = z.object({
   name: z.enum(["hook", "retention", "clarity", "share_pull", "substance", "credibility"]),
   band: z.enum(["strong", "mid", "weak"]),
+  score: z.number().min(0).max(100), // D-01: band-anchored numeric score (V5 — LLM output is untrusted)
   lever: z.string().min(1),    // §2 lever named, e.g. "Contrast / curiosity gap (§2.1)"
   evidence: z.string().min(1), // quoted sensor signal that triggered the grade
 });

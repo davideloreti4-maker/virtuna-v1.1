@@ -126,7 +126,7 @@ vi.mock("../anti-virality", async (importOriginal) => {
 // =====================================================
 
 import { selectWeights, aggregateScores } from "../aggregator";
-import { makePipelineResult, makeGeminiAnalysis } from "./factories";
+import { makePipelineResult, makeGeminiAnalysis, makeDeepSeekReasoning } from "./factories";
 // predictWithML import removed (Plan 02, R9): ml call gone from aggregator; no coupling to ../ml here.
 import type { PersonaBehavioralAggregate, PersonaSimulationResult, SegmentGrid, HookDecomposition } from "../types";
 import type { EmotionArcPoint } from "../qwen/schemas";
@@ -1281,7 +1281,8 @@ describe("Phase 5 Plan 01 — D-01 threading: dimensions[].score survives aggreg
     expect(Array.isArray(dims)).toBe(true);
     // RED: score is undefined (not a number) until ApolloDimensionSchema has `score`.
     // GREEN: score is 85 (finite number).
-    expect(typeof dims![0].score).toBe("number");
-    expect(Number.isFinite(dims![0].score)).toBe(true);
+    const firstDim = dims?.[0];
+    expect(typeof (firstDim as { score?: unknown })?.score).toBe("number");
+    expect(Number.isFinite((firstDim as { score?: unknown })?.score as number)).toBe(true);
   });
 });

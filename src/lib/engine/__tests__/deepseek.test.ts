@@ -525,6 +525,7 @@ describe("apollo schema validates", () => {
   const apolloDimension = {
     name: "hook" as const,
     band: "strong" as const,
+    score: 85, // D-01: band-anchored numeric score (strong band → 85)
     lever: "Contrast / curiosity gap (§2.1)",
     evidence: "Hook opens with a clear contrarian claim in sentence 1",
   };
@@ -687,8 +688,8 @@ describe("D-01 rubric-sum — score field schema (V5 boundary defense)", () => {
     });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(typeof result.data.dimensions[0].score).toBe("number");
-      expect(result.data.dimensions[0].score).toBe(85);
+      expect(typeof result.data.dimensions[0]!.score).toBe("number");
+      expect(result.data.dimensions[0]!.score).toBe(85);
     }
     // Verify the dim fixture itself
     expect(dim.score).toBe(75);
