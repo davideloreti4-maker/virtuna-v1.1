@@ -14,23 +14,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockGetUser = vi.fn();
 const mockInsert = vi.fn();
-const mockSelect = vi.fn();
-
-// Chainable Supabase mock factory
-function makeChainableSelect(resolveValue: { data?: unknown; error?: unknown; count?: number | null }) {
-  const chain = {
-    eq: vi.fn().mockReturnThis(),
-    is: vi.fn().mockReturnThis(),
-    order: vi.fn().mockResolvedValue(resolveValue),
-    single: vi.fn().mockResolvedValue(resolveValue),
-    head: vi.fn().mockResolvedValue(resolveValue),
-    gte: vi.fn().mockReturnThis(),
-  };
-  chain.eq.mockReturnValue(chain);
-  chain.is.mockReturnValue(chain);
-  chain.gte.mockReturnValue(chain);
-  return chain;
-}
 
 // We need a flexible mock that handles different tables and query chains
 let supabaseMockImpl: ReturnType<typeof createSupabaseMock>;
@@ -143,7 +126,7 @@ vi.mock("@/lib/chat/seed-context", () => ({
 
 import { GET, POST } from "../route";
 import { buildChatSystemContext } from "@/lib/chat/seed-context";
-import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
+import { QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
 
 // ──────────────────────────────────────────────────────────────────────────
 // Helpers
