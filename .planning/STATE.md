@@ -24,7 +24,7 @@ See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Cut-l
 Phase: Milestone v4.0 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-06-06 — Milestone v4.0 Apollo completed, archived, tagged, merged to main (PR #13)
+Last activity: 2026-06-06 — Completed quick task 260607-00u: "Ask the expert" chat dock (v1) — dual-mode CommandBar + streaming Qwen route + analysis_chats persistence
 
 ## Deferred Items
 
@@ -57,6 +57,7 @@ These are bookkeeping orphans / superseded-by-close-out flags, not live work. Th
 | Date | Slug | Result |
 |------|------|--------|
 | 2026-06-05 | engine-latency-quality-spine-ab | Spine A/B + Apollo budget sweep + fold trim + **omni-flash flip**. **E2E 116→74s (−36%; −76% from original ~312s) across 6 real runs, quality verified.** Shipped (ENGINE_VERSION 3.7.0): omni plus→**flash** (36→17s, A/B'd 2 videos: verbatim richer + correct flop), Apollo thinking_budget 3000→1500 (insight NOT budget-bound), fold reason+t_start/t_end drops (63→46s), FOLD_MAX 8000→4000. Final: omni 17 / fold ~50 / deepseek ~53. **Key audit: the FOLD NEVER sees video frames** (analysisId never threaded → keyframes always null; fold reasons over omni's TEXT). **<45s is now a PRODUCT decision** (2×5 fold split [conflicts 1-call mandate] OR progressive painting [number shifts]), not tuning. → `.planning/quick/20260605-engine-latency-quality-spine-ab/` |
+| 2026-06-06 | 260607-00u-build-ask-the-expert-chat-dock | **"Ask the expert" chat dock — v1 shipped.** Dual-mode CommandBar (pre-analysis form untouched; post-analysis = Ask input + demoted New analysis), fixed-DOM upward ~60vh thread surviving Konva pan/zoom, seeded prompts (from ceiling_capper/weakest dim/top rewrite), scope chip wired to board-store `selectedNodeId`, permalink replay, mobile full-height sheet. Backend: `analysis_chats` migration (RLS ownership-join, applied to remote) + streaming Qwen/DashScope route `/api/analyze/[id]/chat` (SSE token/done, per-analysis cap + rate limit, **zero new engine cost** — grounded on cached row) + GET history. **Qwen-only honored** (no Claude/Gemini imports); frame-citation camera-jump + coach/what-if **deferred to v2**. 26 tests green, build clean (fixed: regen'd Supabase types for `analysis_chats`). 4 commits. → `.planning/quick/260607-00u-build-ask-the-expert-chat-dock-for-the-a/` |
 
 ## Decisions locked (2026-06-05, 04-05 FLIP-AND-DELETE) — ✅ LIVE IN CODE (verified 2026-06-06)
 
