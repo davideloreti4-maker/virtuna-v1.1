@@ -24,7 +24,7 @@ import { reasonWithDeepSeek } from "../src/lib/engine/deepseek";
 import type { AnalysisInput } from "../src/lib/engine/types";
 
 const VIDEO_PATH = process.argv[2] ?? "/Users/davideloreti/Downloads/TikTok Video Downloader.mp4";
-const BUDGETS = [3000, 2000, 1500, 1000];
+const BUDGETS = (process.env.SWEEP_BUDGETS?.split(",").map(Number)) || [3000, 2000, 1500, 1000];
 
 async function main() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
