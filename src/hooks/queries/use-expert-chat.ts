@@ -28,6 +28,8 @@ export interface UseExpertChatReturn {
   isStreaming: boolean;
   error: string | null;
   send: (message: string, scope?: string | null) => Promise<void>;
+  stop: () => void;
+  clearMessages: () => void;
   loadHistory: () => Promise<void>;
 }
 
@@ -182,12 +184,30 @@ export function useExpertChat({ analysisId }: UseExpertChatOptions): UseExpertCh
     [analysisId, isStreaming]
   );
 
+  /** Stop the current in-flight stream (for the Stop button). */
+  const stop = useCallback(() => {
+    abortRef.current?.abort();
+    if (isMountedRef.current) {
+      setIsStreaming(false);
+      setStreamingText('');
+    }
+  }, []);
+
+  /** Clear conversation messages (for ⌘⌫ clear). */
+  const clearMessages = useCallback(() => {
+    setMessages([]);
+    setError(null);
+    setStreamingText('');
+  }, []);
+
   return {
     messages,
     streamingText,
     isStreaming,
     error,
     send,
+    stop,
+    clearMessages,
     loadHistory,
   };
 }
