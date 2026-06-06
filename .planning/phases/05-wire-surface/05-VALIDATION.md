@@ -1,10 +1,11 @@
 ---
 phase: 5
 slug: wire-surface
-status: draft
-nyquist_compliant: false
+status: signed
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-06-06
+signed: 2026-06-06
 ---
 
 # Phase 5 — Validation Strategy
@@ -69,16 +70,23 @@ created: 2026-06-06
 |----------|-------------|------------|-------------------|
 | E2E latency ≤90s with fold ∥ Apollo unchanged | R6 | Needs live engine + real video + API quota | `npx tsx scripts/measure-pipeline.ts <video-url>` — assert total ≤90s, omni ~17s first paint |
 | Real run persists `variants.apollo.dimensions[].score` non-null to DB | D-01 threading | Requires live Supabase write + Qwen run | Run a real `/analyze`, query `analysis_results` row, confirm dimension scores present + permalink reload renders hero |
+| **Same video twice → identical OR same-D-02-band `overall_score`** (live determinism gate) | R8/D-01 | The W0 unit test proves the rubric *adder* (same parsed dims → same sum), NOT the live cure — thinking-mode residual can flip a dimension band, and the untouched behavioral 53.3% half can still move the composite. Per [[engine-determinism-gate]]: assert same-video-twice identity on a REAL run before trusting the determinism claim. | Run `scripts/measure-pipeline.ts <video>` (or `/analyze`) on the SAME video twice; record both `overall_score` values; PASS if byte-identical OR both land in the same D-02 band. Document the two composites in sign-off. **Required before phase sign-off.** |
 
 ---
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 5s (single-file quick run)
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 5s (single-file quick run)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Accepted cuts (not silent — recorded here):**
+- **R11 estimate is live-only** (05-02/05-04): `predicted_engagement` is computed on the live result and deliberately not persisted, so the engagement range card shows on a fresh analysis and is absent on permalink reload. This is an accepted UX cut (per-creator-median persistence is a deferred follow-up), not a regression. 05-04 should render a one-line "estimate available on fresh run" affordance so reload reads as intentional, not broken.
+
+**Open before sign-off (gates verify, not execution):**
+- Live same-video-twice determinism gate (manual-only table) must be run + its two composites recorded here.
+
+**Approval:** signed 2026-06-06 (contract approved for execution; live determinism gate + real-run threading remain as manual verify items before phase completion)
