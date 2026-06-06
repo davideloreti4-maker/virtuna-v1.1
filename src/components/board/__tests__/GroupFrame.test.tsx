@@ -71,15 +71,15 @@ describe('GroupFrame integration', () => {
     useBoardStore.setState({ boardState: 'idle' });
   });
 
-  it('renders 6 frames with role=region in idle state', async () => {
+  it('renders 7 frames with role=region in idle state', async () => {
     renderBoard();
     // Dynamic import resolves async — wait for re-render
     await act(async () => {
       await new Promise((r) => setTimeout(r, 50));
     });
     const regions = screen.getAllByRole('region');
-    // 6 group frames + the wrapper role=application div = separate; region count = 6
-    expect(regions.length).toBe(6);
+    // 7 group frames (insight-hero added in Plan 05-03); region count = 7
+    expect(regions.length).toBe(7);
   });
 
   it('renders real node bodies for verdict, actions, content-analysis frames in idle (plan 05-09 wiring)', async () => {

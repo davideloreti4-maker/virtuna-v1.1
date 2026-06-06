@@ -20,7 +20,8 @@ export type GroupId =
   | 'actions'
   | 'content-analysis'
   | 'decode'
-  | 'adapt';
+  | 'adapt'
+  | 'insight-hero';  // D-08: Apollo insight hero frame (Plan 05-03)
 
 export type CameraPresetKey =
   | 'overview'
