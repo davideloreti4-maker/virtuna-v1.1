@@ -5,8 +5,9 @@
  * - `STABLE_FOLD_SYSTEM_PROMPT` — byte-identical across every video (cache prefix, D-17 + D-03).
  *   Contains ALL 10 ARCHETYPE_DEFINITIONS verbatim + the Critical Divergence Requirement (D-06).
  *   Never interpolates Date.now() / Math.random() / request IDs.
- * - `buildFoldUserContent(slots, segments, keyframeUris, verbatim, emotionArc)` — OpenAI content
- *   array with image_url items FIRST + text block LAST (mirrors buildPass2UserContent ordering).
+ * - `buildFoldUserContent(slots, segments, verbatim, emotionArc)` — OpenAI content array with a
+ *   single text block. Fold reasons over Omni's TEXT (verbatim + segments + emotion arc); it does
+ *   NOT consume video frames (the keyframe-read path was dead — filmstrip lands async, after fold).
  * - `FoldResponseSchema` — Zod validates the 20→1 fold output at the model boundary:
  *   exactly 10 archetypes (.length(10), D-01), attention clamped [0,1]. Per-segment
  *   `reason` was dropped 2026-06-05 (dead weight) — any stray reason is Zod-stripped.
@@ -27,7 +28,7 @@ import type { SegmentGrid, EmotionArcPoint } from "../types";
 // Same inputs → byte-identical output.
 // NEVER interpolate Date.now() / Math.random() / request IDs here.
 // The 10 ARCHETYPE_DEFINITIONS block is the cache prefix — byte-identical across every video.
-// All volatile data (verbatim, segments, keyframes, emotion arc) goes in the USER message.
+// All volatile data (verbatim, segments, emotion arc) goes in the USER message.
 // =====================================================
 
 export const STABLE_FOLD_SYSTEM_PROMPT = `You are simulating TEN TikTok viewer archetypes watching a video.
@@ -116,42 +117,27 @@ Rules:
 
 // =====================================================
 // Volatile per-request user content builder.
-// Returns OpenAI content array: image_url items (non-null URIs) FIRST + text block LAST.
+// Returns OpenAI content array with a single text block. Fold reasons over Omni's
+// TEXT output (verbatim + segments + emotion arc) — it does not consume video frames.
 // =====================================================
 
-type ContentItem =
-  | { type: "image_url"; image_url: { url: string } }
-  | { type: "text"; text: string };
+type ContentItem = { type: "text"; text: string };
 
 /**
- * Builds the OpenAI-compatible content array for the fold call.
- * - One image_url item per non-null entry in keyframeUris (in order).
- * - One text item at the end (always present).
- * Mirrors buildPass2UserContent ordering (image_url first, text last).
+ * Builds the OpenAI-compatible content array for the fold call: one text item carrying
+ * the verbatim transcript, segment grid, and emotion arc. Fold is text-only — Omni (the
+ * eyes) already extracted everything visual into these fields before fold runs.
  */
 export function buildFoldUserContent(
   slots: PersonaSlot[],
   segments: SegmentGrid[],
-  keyframeUris: (string | null)[],
   verbatim: string,
   emotionArc: EmotionArcPoint[],
 ): ContentItem[] {
-  const items: ContentItem[] = [];
-
-  // Push image_url items for non-null keyframes (in order) — FIRST
-  for (const uri of keyframeUris) {
-    if (uri !== null && uri !== undefined) {
-      items.push({ type: "image_url", image_url: { url: uri } });
-    }
-  }
-
-  // Always push the text block LAST
-  items.push({
+  return [{
     type: "text",
     text: buildFoldTextBlock(slots, segments, verbatim, emotionArc),
-  });
-
-  return items;
+  }];
 }
 
 /**

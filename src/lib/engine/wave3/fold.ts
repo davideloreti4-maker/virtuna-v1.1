@@ -275,7 +275,6 @@ export function adaptFoldToPass2Results(
 export async function runFold(
   slots: PersonaSlot[],
   segments: SegmentGrid[],
-  keyframeUris: (string | null)[],
   verbatim: string,
   emotionArc: EmotionArcPoint[],
   onStageEvent?: StageEventCallback,
@@ -299,7 +298,7 @@ export async function runFold(
         { role: "system" as const, content: STABLE_FOLD_SYSTEM_PROMPT }, // byte-stable cache prefix (D-17)
         {
           role: "user" as const,
-          content: buildFoldUserContent(slots, segments, keyframeUris, verbatim, emotionArc) as never,
+          content: buildFoldUserContent(slots, segments, verbatim, emotionArc) as never,
         },
       ],
       response_format: { type: "json_object" as const },
