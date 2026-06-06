@@ -1058,7 +1058,13 @@ export async function aggregateScores(
           rewrites: deepseek.rewrites,
           dimensions: deepseek.dimensions,
           composite_score: deepseek.composite_score,
+          // IN-02: ceiling_capper is the highest-leverage insight and the
+          // insight-hero's intended LEAD — it was being dropped here, so the
+          // frame always fell back to confidence_scope. platform_note carries the
+          // watermark/cross-post warning. Both are part of the §4 contract.
+          ceiling_capper: deepseek.ceiling_capper ?? "",
           confidence_scope: deepseek.confidence_scope ?? "",
+          platform_note: deepseek.platform_note,
         }
       : null,
     warnings,

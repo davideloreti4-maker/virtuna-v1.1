@@ -319,7 +319,11 @@ export interface PredictionResult {
     rewrites: ApolloRewrite[];
     dimensions: ApolloDimension[];
     composite_score: number;
+    /** IN-02: highest-leverage §4 ceiling rationale — the insight-hero's intended lead. */
+    ceiling_capper?: string;
     confidence_scope: string;
+    /** Watermark / cross-post warning (S12 absorb). */
+    platform_note?: string;
   } | null;
   /** Phase 1 (R1.9, Plan 06 T3 B4) — true when confidence < ANTI_VIRALITY_THRESHOLD.
    *  UI renders "Don't post yet" orange verdict state when true. REQUIRED field

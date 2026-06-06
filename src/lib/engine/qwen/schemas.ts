@@ -12,17 +12,28 @@ import { z } from "zod";
 
 const ScoreSchema = z.number().min(0).max(10);
 
+// weakest_modality drift guard: qwen3.5-omni-flash intermittently returns a value
+// OUTSIDE the 4-key enum (a synonym, a sentence, or an invented label). Because the
+// parent OmniAnalysisZodSchema validates in one shot, a single drifted value used to
+// fail the WHOLE ~17s Omni response → full retry (observed live, 05-HUMAN-UAT). But
+// weakest_modality is a DERIVED field — the lowest-scoring of the 4 hook modalities —
+// so the model never needed to name it. Accept a valid value when present, otherwise
+// (.catch → undefined) compute it authoritatively from the 4 scores in a transform.
+// Never a reason to nuke the expensive call. This also fixes model self-inconsistency
+// (a named modality that isn't actually its lowest score).
+const MODALITY_KEYS = [
+  "visual_stop_power",
+  "audio_hook_quality",
+  "text_overlay_score",
+  "first_words_speech_score",
+] as const;
+
 export const HookDecompositionZodSchema = z.object({
   visual_stop_power:        ScoreSchema,
   audio_hook_quality:       ScoreSchema,
   text_overlay_score:       ScoreSchema,
   first_words_speech_score: ScoreSchema,
-  weakest_modality: z.enum([
-    "visual_stop_power",
-    "audio_hook_quality",
-    "text_overlay_score",
-    "first_words_speech_score",
-  ]),
+  weakest_modality: z.enum(MODALITY_KEYS).optional().catch(undefined),
   visual_audio_coherence: ScoreSchema,
   // POLARITY INVERTED: higher score = MORE cognitive load = WORSE retention.
   cognitive_load: ScoreSchema,
@@ -31,7 +42,13 @@ export const HookDecompositionZodSchema = z.object({
     ig:     z.boolean().optional(),
     yt:     z.boolean().optional(),
   }).optional(),
-});
+}).transform((h) => ({
+  ...h,
+  // Derive the weakest modality from the scores when the model omitted or drifted it.
+  weakest_modality:
+    h.weakest_modality ??
+    MODALITY_KEYS.reduce((min, k) => (h[k] < h[min] ? k : min), MODALITY_KEYS[0]),
+}));
 
 const HookFactorSchema = z.object({
   name: z.enum([
