@@ -55,13 +55,15 @@ const CONTENT_TYPE_VALUES = [
   "tutorial", "vlog", "comedy", "other",
 ] as const;
 
-export function buildSystemPrompt(opts: OmniAnalysisOptions): string {
-  const nicheHint = opts.niche        ? `\nCreator niche hint: ${opts.niche}` : "";
-  const ctypeHint = opts.content_type ? `\nContent-type hint: ${opts.content_type}` : "";
-
+// T3.4 (2026-06-07): the niche/content-type hints were interpolated INTO this system
+// prompt, busting the DashScope omni prefix-cache once per niche/content-type combo (the
+// system prefix is the cache key; any per-request variance = a fresh miss). They moved to
+// the VOLATILE user message (buildUserHints) so the system prefix is byte-stable across all
+// runs. `opts` is accepted (signature compat) but no longer read here.
+export function buildSystemPrompt(_opts: OmniAnalysisOptions = {}): string {
   return `You are an expert TikTok content analyst. Analyze the provided video and return a single JSON object with the exact structure below. All scores are 0-10 unless noted otherwise.
 
-IMPORTANT: cognitive_load uses INVERTED polarity — higher score means MORE cognitive load and WORSE viewer retention.${nicheHint}${ctypeHint}
+IMPORTANT: cognitive_load uses INVERTED polarity — higher score means MORE cognitive load and WORSE viewer retention.
 
 Return ONLY valid JSON matching this exact structure:
 
@@ -163,6 +165,18 @@ Rules for verbatim (hook_verbatim + per-segment spoken_text/on_screen_text):
 - Cap hook_verbatim fields at ~280 chars; per-segment spoken_text and on_screen_text at ~500 chars (D-04.4).`;
 }
 
+/**
+ * T3.4 — per-request niche/content-type hints for the VOLATILE user message.
+ * Kept OUT of the system prefix (buildSystemPrompt) so the omni prefix-cache stays
+ * warm across niches. Empty string when neither hint is present (byte-identical to
+ * the pre-T3.4 no-hint path).
+ */
+export function buildUserHints(opts: OmniAnalysisOptions): string {
+  const nicheHint = opts.niche        ? `\nCreator niche hint: ${opts.niche}` : "";
+  const ctypeHint = opts.content_type ? `\nContent-type hint: ${opts.content_type}` : "";
+  return nicheHint + ctypeHint;
+}
+
 export async function analyzeVideoWithOmni(
   videoUrl: string,
   opts: OmniAnalysisOptions = {},
@@ -203,7 +217,7 @@ export async function analyzeVideoWithOmni(
                 } as never,
                 {
                   type: "text",
-                  text: "Analyze this TikTok video and return the JSON object as specified.",
+                  text: `Analyze this TikTok video and return the JSON object as specified.${buildUserHints(opts)}`,
                 },
               ],
             },

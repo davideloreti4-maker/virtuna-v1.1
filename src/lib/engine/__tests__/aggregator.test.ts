@@ -462,7 +462,7 @@ describe("Phase 3 — provenance + stub invocations", () => {
     const { ENGINE_VERSION } = await import("../aggregator");
     const { ENGINE_VERSION: viaVersion } = await import("../version");
     expect(ENGINE_VERSION).toBe(viaVersion);
-    expect(ENGINE_VERSION).toBe("3.11.0"); // T1.1: fold folded into overall_score ensemble (bump from 3.9.0)
+    expect(ENGINE_VERSION).toBe("3.12.0"); // Tier-3 prompt trims (T3.1 lean core + T3.3 behavioral gate + T3.4 omni byte-stable)
   });
 
   it("PredictionResult.engine_version reads from ./version module", async () => {

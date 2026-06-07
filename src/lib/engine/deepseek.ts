@@ -299,18 +299,27 @@ export function buildDeepSeekUserMessage(context: DeepSeekInput): string {
   // JSON object DeepSeekResponseSchema requires. Lives in the volatile user
   // message so the cached system prefix (apollo-core.ts) stays byte-stable.
   // The request also sets response_format: { type: "json_object" }.
-  sections.push("---");
-  sections.push(
-    `## OUTPUT — return ONE JSON object, no prose, with EXACTLY these keys:
-
-{
-  "behavioral_predictions": {
+  //
+  // T3.3 (2026-06-07): on video runs the fold owns behavioral_predictions, so we drop
+  // the ask (Apollo spent output tokens + reasoning on 4 discarded numbers). In
+  // text/tiktok_url mode (videoUrl null → no fold) Apollo IS the behavioral source, so
+  // the block stays. videoUrl presence aligns with fold presence (both gated on omni video).
+  const isVideoMode = context.videoUrl != null;
+  const behavioralPredictionsBlock = isVideoMode
+    ? ""
+    : `  "behavioral_predictions": {
     "completion_pct": <number 0-100>,   // est. % who watch to the end
     "share_pct": <number 0-100>,
     "comment_pct": <number 0-100>,
     "save_pct": <number 0-100>
   },
-  "component_scores": {                  // your 0-10 estimate per lever, grounded in the signals
+`;
+  sections.push("---");
+  sections.push(
+    `## OUTPUT — return ONE JSON object, no prose, with EXACTLY these keys:
+
+{
+${behavioralPredictionsBlock}  "component_scores": {                  // your 0-10 estimate per lever, grounded in the signals
     "hook_effectiveness": <number 0-10>,
     "retention_strength": <number 0-10>,
     "shareability": <number 0-10>,

@@ -43,7 +43,18 @@
  * were removed from the pipeline; they injected phantom-system text). Apollo's prompt changes
  * slightly, so its composite/dimensions may shift; isolate the cache.
  *
+ * Bumped 3.11.0 → 3.12.0 (2026-06-07, Tier-3 prompt trims — bundled):
+ *   - T3.1 (KNOWLEDGE_CORE lean variant): dropped §2.6/§7/§8 + header provenance meta from
+ *     the Apollo/decode/adapt cached system prefix (sections the rubric never scores against).
+ *     Craft layer §1–§6 byte-unchanged, but the system-prefix bytes change → isolate the cache.
+ *   - T3.3 (Apollo behavioral_predictions gated to text mode): on video runs the fold owns
+ *     audience prediction, so the Apollo prompt no longer asks for the 4 numbers; schema made
+ *     optional. Apollo's prompt + (rarely) its output shape change on video → isolate the cache.
+ *   - T3.4 (Omni read prompt byte-stable): niche/content-type hints moved from the omni SYSTEM
+ *     prefix to the volatile USER message (prefix-cache no longer busts per niche). The omni
+ *     system prompt bytes change once → isolate the cache.
+ *
  * D-23 cache invariant: prediction-cache.ts keys on ENGINE_VERSION; this bump auto-invalidates
- * all `3.10.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
+ * all `3.11.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
  */
-export const ENGINE_VERSION = "3.11.0";
+export const ENGINE_VERSION = "3.12.0";

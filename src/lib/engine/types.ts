@@ -805,7 +805,12 @@ export type ApolloRewrite = z.infer<typeof ApolloRewriteSchema>;
 
 export const DeepSeekResponseSchema = z.object({
   // ── Existing fields — REQUIRED; behavioral term stays separate until P4 folds into Audience-Sim (D-05) ──
-  behavioral_predictions: BehavioralPredictionsSchema,
+  // T3.3 (2026-06-07): now OPTIONAL. On video runs the fold (10-archetype audience sim) owns
+  // behavioral_predictions and Apollo's were discarded — so the prompt no longer asks for them
+  // on video (buildDeepSeekUserMessage gates on videoUrl), saving Apollo output tokens + reasoning
+  // on 4 unread numbers. Still emitted + REQUIRED-in-practice in text/tiktok_url mode (no fold),
+  // where Apollo IS the behavioral source. Optional schema tolerates the omission on video.
+  behavioral_predictions: BehavioralPredictionsSchema.optional(),
   component_scores: ComponentScoresSchema,       // feeds behavioral_score blend (D-05)
   suggestions: z.array(SuggestionSchema).min(1),
   warnings: z.array(z.string()).default([]),
