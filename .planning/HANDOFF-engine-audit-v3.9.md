@@ -4,6 +4,13 @@
 > All findings below were **verified against source** (file:line confirmed) — not agent guesses.
 > Author session: 2026-06-06. Branch: `milestone/engine-opt`.
 
+## STATUS — shipped 2026-06-06 (update)
+
+- ✅ **3.9.0 sighted perception** (omni-plus+video fold · 3.6-plus+video reason) — committed.
+- ✅ **T1.1 fold→score** (commit `b5b35146`) — `overall_score` is now `0.5·apollo + 0.5·fold_audience` on video; text mode unchanged. Live: score 71→61. Regression test added. **ENGINE_VERSION 3.11.0.**
+- ✅ **T3.2 phantom rule/trend injection removed** (commit `e08fd80a`) — dead Apollo prompt sections gone; Apollo output verified intact live.
+- ⏳ **REMAINING:** T1.2, T1.3, T1.4, T1.5 (UI/board honesty), T2.1, T2.2 (insight-first board), T3.1 (KNOWLEDGE_CORE trim — needs A/B), T3.3, T3.4, T4.x. The Tier-1 UI fixes (dead PREDICTED-RANK, projected-views, percentiles) + Tier-2 (insight-hero promotion) are the **highest remaining value** — all need the dev server for visual verification, which is why they were left for a focused session. Note: T3.4/T4.3 are now partly moot post-T1.1 (selectWeights only governs the text-mode fallback). NOTE: a background auto-commit hook on this branch injects junk "test/feat: changes" commits — commit your own work promptly with real messages.
+
 ## 0. Where things stand
 
 **Just shipped this session (UNCOMMITTED — commit first):** sense-complete perception, ENGINE_VERSION 3.8.0→**3.9.0**.
