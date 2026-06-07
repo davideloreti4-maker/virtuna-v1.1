@@ -1,7 +1,14 @@
 #!/bin/sh
-# Auto-push after commit so Web Claude sessions can access the branch.
-# Fails silently if offline or no remote configured.
-git push origin HEAD 2>/dev/null || true
+# Auto-push after every commit so Web Claude sessions can access the branch.
+#
+# Push output + failures are LOGGED to ~/.claude/auto-commit-push.log rather than
+# silenced — a silent pile-up of unpushed commits (offline, non-fast-forward, or no
+# upstream) is exactly the failure this is meant to surface. Still non-blocking: a
+# failed push never aborts anything, it just leaves a visible trail to `tail`.
+LOG="$HOME/.claude/auto-commit-push.log"
+if ! git push origin HEAD >> "$LOG" 2>&1; then
+  echo "[$(date '+%F %T')] auto-push FAILED: branch=$(git rev-parse --abbrev-ref HEAD) repo=$(git rev-parse --show-toplevel)" >> "$LOG"
+fi
 
 # Telegram notification (non-blocking)
 "$HOME/.claude/hooks/telegram-notify.sh" commit 2>/dev/null &
