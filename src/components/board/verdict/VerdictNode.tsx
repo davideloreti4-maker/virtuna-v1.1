@@ -16,7 +16,6 @@ import {
   confidenceRange,
   deriveBehavioralTiles,
   deriveGatedHero,
-  deriveSignalTiles,
   nicheDelta,
 } from './verdict-derive';
 import type { VerdictNodeProps } from './verdict-types';
@@ -74,7 +73,6 @@ export function VerdictNode({ camera: _camera, layout: _layout }: VerdictNodePro
     });
   }, [isComplete, result]);
 
-  const signalTiles = useMemo(() => (result ? deriveSignalTiles(result) : []), [result]);
   const behavioralTiles = useMemo(
     () => (result ? deriveBehavioralTiles(result) : []),
     [result],
@@ -130,12 +128,11 @@ export function VerdictNode({ camera: _camera, layout: _layout }: VerdictNodePro
                 <FactorBars factors={result.factors} />
               </div>
             )}
-            {signalTiles.length > 0 && (
-              <div>
-                <SectionHead>Engine signals</SectionHead>
-                <StatTileRow tiles={signalTiles} />
-              </div>
-            )}
+            {/* T4.5: the "Engine signals" tile row (Hook/Completion/Sound/Fit) was
+                removed — it restated numbers the Content-craft frame (hook quality) and
+                the Audience frame (watch-through/retention) already own, forcing
+                disambiguation sub-labels ("weighted hold", "weighted curve"). One owner
+                per number: Hook → Content-craft, Retention/Completion → Audience. */}
           </FrameTabPanel>
 
           <FrameTabPanel value="distribution">

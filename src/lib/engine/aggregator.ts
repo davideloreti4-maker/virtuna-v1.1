@@ -556,32 +556,13 @@ export async function aggregateScores(
       ? applyContentTypeWeights(rawVideoSignals as GeminiVideoSignals, contentTypeSlug)
       : rawVideoSignals;
 
-  // -------------------------------------------------
-  // Phase 6 D-F3 — single source of truth for matched_trends.
-  //
-  // When the audio_fingerprint stage matched a sound, trends.ts (Plan 06-05)
-  // skipped its Jaro-Winkler caption ↔ sound_name fallback loop. We synthesize
-  // an equivalent matched_trends entry from the fingerprint result so downstream
-  // consumers (signal_availability.trends, assembleFeatureVector fallback path)
-  // see a unified view. NEVER mutate the input pipelineResult — derive a fresh
-  // TrendEnrichment shape for aggregator-local use.
-  // -------------------------------------------------
-  const enrichedMatchedTrends =
-    audioFingerprintResult !== null && trendEnrichment.matched_trends.length === 0
-      ? [
-          ...trendEnrichment.matched_trends,
-          {
-            sound_name: audioFingerprintResult.sound_name,
-            velocity_score: audioFingerprintResult.velocity_score,
-            trend_phase: audioFingerprintResult.trend_phase,
-          },
-        ]
-      : trendEnrichment.matched_trends;
-
-  const effectiveTrendEnrichment: TrendEnrichment = {
-    ...trendEnrichment,
-    matched_trends: enrichedMatchedTrends,
-  };
+  // T4.4 (2026-06-07): the Phase-6 enrichedMatchedTrends/effectiveTrendEnrichment block
+  // was deleted — it synthesized a matched_trends entry from the audio-fingerprint result,
+  // but the fingerprint stage was stripped (Plan 03) so audioFingerprintResult is now a
+  // hardcoded null in this scope. The `audioFingerprintResult !== null` guard was therefore
+  // always false → effectiveTrendEnrichment was byte-identical to the empty trendEnrichment
+  // fallback on every run. Downstream refs (calculateConfidence, result.trend_score) now read
+  // `trendEnrichment` directly.
 
   // -------------------------------------------------
   // Phase 6 (D-G3, D-G2) — audio signal computation.
@@ -713,14 +694,11 @@ export async function aggregateScores(
   }
 
   // -------------------------------------------------
-  // ML prediction (async — loads model from Supabase Storage on cold start)
+  // FeatureVector assembly (persisted; read by the learning loop + board niche/duration).
   // -------------------------------------------------
-  // Phase 6 D-F3: feed effectiveTrendEnrichment so FeatureVector.audioTrendingMatch
-  // sees the synthesized matched_trends entry on fallback. assembleFeatureVector
-  // reads pipelineResult.audioFingerprintResult independently for the priority
-  // source (D-G4); the trend_enrichment slot is the fallback source-of-data.
-  // Plan 03: trendEnrichment removed from PipelineResult; pass pipelineResult directly.
-  // effectiveTrendEnrichment is already the fallback default (always empty) now.
+  // Plan 03: trendEnrichment was removed from PipelineResult; pass pipelineResult directly.
+  // The trend/fingerprint enrichment that used to feed FeatureVector.audioTrendingMatch is
+  // gone (T4.4) — the fallback is always the empty trendEnrichment now.
   const featureVectorInput: PipelineResult = {
     ...pipelineResult,
   };
@@ -885,7 +863,7 @@ export async function aggregateScores(
     apollo_score, // Plan 03-04 (D-04): Apollo composite-vs-behavioral agreement (replaces gemini)
     behavioral_score,
     ruleResult,
-    effectiveTrendEnrichment,
+    trendEnrichment,
     hasVideo,
     deepseek?.confidence ?? "low",
     availability
@@ -1121,7 +1099,7 @@ export async function aggregateScores(
     factors,
     suggestions,
     rule_score: ruleResult.rule_score,   // retained in type; ruleResult always fallback 50 (Plan 03 strip)
-    trend_score: effectiveTrendEnrichment.trend_score, // retained in type; always 0 (Plan 03 strip)
+    trend_score: trendEnrichment.trend_score, // retained in type; always 0 (Plan 03 strip)
     gemini_score,
     behavioral_score,
     ml_score: 0, // Plan 04 (R9): ml key removed from blend; field retained in type for back-compat

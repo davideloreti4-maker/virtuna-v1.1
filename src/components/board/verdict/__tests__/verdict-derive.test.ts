@@ -7,7 +7,6 @@ import {
   confidenceRange,
   deriveBehavioralTiles,
   deriveGatedHero,
-  deriveSignalTiles,
   nicheDelta,
 } from '../verdict-derive';
 import type { NicheCohort } from '../ScoreDistribution';
@@ -66,50 +65,8 @@ describe('comparativeLine — honest cohort position (never a fabricated percent
   });
 });
 
-describe('deriveSignalTiles — only present fields, defensive scales', () => {
-  it('normalizes hook to /10 and tags it as the weighted-panel hold (not the craft hook)', () => {
-    expect(deriveSignalTiles(result({ weighted_hook_score: 0.72 }))[0]).toMatchObject({ k: 'Hook', v: '7.2', s: 'weighted hold' });
-    expect(deriveSignalTiles(result({ weighted_hook_score: 7.2 }))[0]).toMatchObject({ v: '7.2' });
-    expect(deriveSignalTiles(result({ weighted_hook_score: 72 }))[0]).toMatchObject({ v: '7.2' });
-  });
-  it('builds completion %, sound, and platform fit from real fields', () => {
-    const tiles = deriveSignalTiles(
-      result({
-        weighted_completion_pct: 0.68,
-        matched_trends: [{ sound_name: 's', velocity_score: 87, trend_phase: 'Rising' }],
-        platform_fit: { fit_score: 72 } as unknown as PredictionResult['platform_fit'],
-      }),
-    );
-    // Provenance tag distinguishes this from the Audience predicted watch-through.
-    expect(tiles.find((t) => t.k === 'Completion')).toMatchObject({ v: '68', u: '%', s: 'weighted curve' });
-    expect(tiles.find((t) => t.k === 'Sound')).toMatchObject({ v: 'Rising', em: 'vel 87' });
-    expect(tiles.find((t) => t.k === 'TikTok fit')).toMatchObject({ v: '72', u: '/100' });
-  });
-  it('omits tiles whose source data is absent', () => {
-    expect(deriveSignalTiles(result())).toEqual([]);
-  });
-  it('falls back to heatmap mirror when top-level weighted_* absent (permalink reload)', () => {
-    // Live SSE carries weighted_* top-level; the persisted DB row drops them and
-    // only the heatmap mirror survives. Both Hook + Completion must still render.
-    const reloaded = result({
-      weighted_hook_score: undefined,
-      weighted_completion_pct: undefined,
-      heatmap: { weighted_hook_score: 4.8, weighted_completion_pct: 0.15 } as unknown as PredictionResult['heatmap'],
-    });
-    const tiles = deriveSignalTiles(reloaded);
-    expect(tiles.find((t) => t.k === 'Hook')).toMatchObject({ v: '4.8', u: '/10' });
-    expect(tiles.find((t) => t.k === 'Completion')).toMatchObject({ v: '15', u: '%' });
-  });
-  it('prefers the top-level value over the heatmap mirror when both present', () => {
-    const tiles = deriveSignalTiles(
-      result({
-        weighted_hook_score: 7.2,
-        heatmap: { weighted_hook_score: 1.0 } as unknown as PredictionResult['heatmap'],
-      }),
-    );
-    expect(tiles.find((t) => t.k === 'Hook')).toMatchObject({ v: '7.2' });
-  });
-});
+// T4.5: deriveSignalTiles + its tests removed — the Score frame's "Engine signals"
+// row duplicated numbers owned by Content-craft (hook) and Audience (retention).
 
 /* ── redesign-v2 selectors ── */
 

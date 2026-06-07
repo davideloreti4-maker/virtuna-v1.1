@@ -43,56 +43,12 @@ export function comparativeLine(score: number, niche: NicheCohort | null): strin
   return `${lead} · ${suffix}`;
 }
 
-/** Hook score arrives on an uncertain scale (0-1 | 0-10 | 0-100 across engine
- *  versions). Normalize to a 0-10 display defensively rather than assume. */
-function hookTo10(v: number): string {
-  const s = v <= 1 ? v * 10 : v <= 10 ? v : v / 10;
-  return s.toFixed(1);
-}
-
-/** Surfaces engine signals unused by the old Score frame. Each tile is included
- *  only when its source field is present + finite. */
-export function deriveSignalTiles(result: PredictionResult): StatTileData[] {
-  const tiles: StatTileData[] = [];
-
-  // Top-level fields exist on the LIVE SSE result but are NOT persisted (no DB
-  // column) — fall back to the mirror persisted inside heatmap so these tiles
-  // survive permalink reload. (Same live-vs-persisted split as the craft frame.)
-  // Provenance sub-labels disambiguate these from the same-named numbers elsewhere:
-  // these are the WEIGHTED persona-simulation aggregates (the panel's hold/retention),
-  // NOT the Content-craft hook-quality score nor the Audience predicted watch-through.
-  const hook = result.weighted_hook_score ?? result.heatmap?.weighted_hook_score;
-  if (typeof hook === 'number' && Number.isFinite(hook)) {
-    tiles.push({ k: 'Hook', v: hookTo10(hook), u: '/10', s: 'weighted hold' });
-  }
-
-  const completion = result.weighted_completion_pct ?? result.heatmap?.weighted_completion_pct;
-  if (typeof completion === 'number' && Number.isFinite(completion)) {
-    tiles.push({
-      k: 'Completion',
-      v: String(Math.round(completion * 100)),
-      u: '%',
-      s: 'weighted curve',
-    });
-  }
-
-  const sound = result.matched_trends?.[0];
-  if (sound) {
-    tiles.push({
-      k: 'Sound',
-      v: sound.trend_phase ?? 'Matched',
-      em: `vel ${Math.round(sound.velocity_score)}`,
-      s: 'trending',
-    });
-  }
-
-  const fit = (result.platform_fit as { fit_score?: number } | null | undefined)?.fit_score;
-  if (typeof fit === 'number' && Number.isFinite(fit)) {
-    tiles.push({ k: 'TikTok fit', v: String(Math.round(fit)), u: '/100', s: 'platform' });
-  }
-
-  return tiles.slice(0, 4);
-}
+// T4.5 (2026-06-07): deriveSignalTiles (the Score frame's "Engine signals" row) was
+// removed. It restated the WEIGHTED persona-sim hook/completion numbers that the
+// Content-craft frame (hook quality) and Audience frame (watch-through/retention)
+// already own — the "weighted hold" / "weighted curve" provenance sub-labels existed
+// only to disambiguate the duplicates. One owner per number now: Hook → Content-craft,
+// Retention/Completion → Audience. The Score frame keeps the hero score + factor bars.
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Redesign-v2 selectors — map the same engine fields onto the shared kit's
