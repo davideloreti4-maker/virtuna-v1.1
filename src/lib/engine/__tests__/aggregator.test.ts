@@ -291,6 +291,35 @@ describe("aggregateScores", () => {
     expect(result.score_weights).toHaveProperty("trends");
   });
 
+  it("T1.1: overall_score is a true ensemble — the fold moves the headline number", async () => {
+    const mkAgg = (v: number) => ({
+      completion_pct: v,
+      completion_percentile: "high intent",
+      share_pct: v,
+      share_percentile: "high intent",
+      comment_pct: v,
+      comment_percentile: "high intent",
+      save_pct: v,
+      save_percentile: "high intent",
+    });
+    const foldOk = { fold_success: true, personaSimResults: [], warnings: [], cost_cents: 0 } as never;
+
+    // Apollo-only fallback (no fold) — the pre-T1.1 baseline.
+    const noFold = await aggregateScores(makePipelineResult());
+
+    // A maxed-out simulated audience must pull the score ABOVE the Apollo-only baseline...
+    const withHighFold = await aggregateScores(
+      makePipelineResult({ personaBehavioralAggregate: mkAgg(100), foldOutcome: foldOk }),
+    );
+    // ...and a floor-low audience must pull it BELOW. Proves the fold is in the blend.
+    const withLowFold = await aggregateScores(
+      makePipelineResult({ personaBehavioralAggregate: mkAgg(0), foldOutcome: foldOk }),
+    );
+
+    expect(withHighFold.overall_score).toBeGreaterThan(noFold.overall_score);
+    expect(withLowFold.overall_score).toBeLessThan(noFold.overall_score);
+  });
+
   it("clamps overall_score to 0-100 range", async () => {
     // Test upper bound: high Gemini + behavioral scores
     // (predictWithML mock removed Plan 02 — ml contribution is 0)
@@ -368,6 +397,27 @@ describe("aggregateScores", () => {
     expect(result.warnings.some((w) => w.includes("missing signals") && w.includes("behavioral"))).toBe(true);
   });
 
+  it("T1.5 — analysis_unavailable=false on a healthy run; true when BOTH core signals die", async () => {
+    // Healthy default: gemini factors > 0 AND deepseek present → analyzable.
+    const healthy = await aggregateScores(makePipelineResult());
+    expect(healthy.analysis_unavailable).toBe(false);
+
+    // Dual failure: deepseek null (behavioral/apollo dead) + all gemini factors 0 (no
+    // usable read, factor-fallback availability path → gemini=false). overall_score
+    // collapses to 0; the flag must mark it "couldn't analyze", not a confident verdict.
+    const deadGemini = makeGeminiAnalysis({
+      factors: makeGeminiAnalysis().factors.map((f) => ({ ...f, score: 0 })),
+    });
+    const dead = await aggregateScores(
+      makePipelineResult({
+        deepseekResult: null,
+        geminiResult: { analysis: deadGemini, cost_cents: 0 },
+      }),
+    );
+    expect(dead.analysis_unavailable).toBe(true);
+    expect(dead.overall_score).toBe(0);
+  });
+
   it("maps confidence_label correctly based on confidence thresholds", async () => {
     // HIGH confidence: all signals available, video mode, matched trends/rules, high agreement
     // With all signals scoring 7, both gemini and behavioral > 50, they agree -> agreement = 0.4
@@ -433,7 +483,7 @@ describe("Phase 3 — provenance + stub invocations", () => {
     const { ENGINE_VERSION } = await import("../aggregator");
     const { ENGINE_VERSION: viaVersion } = await import("../version");
     expect(ENGINE_VERSION).toBe(viaVersion);
-    expect(ENGINE_VERSION).toBe("3.8.0"); // Phase 5 Plan 01 (D-01 rubric-sum): bump from 3.7.0
+    expect(ENGINE_VERSION).toBe("3.13.0"); // T1.5 degradation honesty (analysis_unavailable flag)
   });
 
   it("PredictionResult.engine_version reads from ./version module", async () => {

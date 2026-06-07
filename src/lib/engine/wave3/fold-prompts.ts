@@ -117,27 +117,37 @@ Rules:
 
 // =====================================================
 // Volatile per-request user content builder.
-// Returns OpenAI content array with a single text block. Fold reasons over Omni's
-// TEXT output (verbatim + segments + emotion arc) — it does not consume video frames.
+// Returns OpenAI content array: an optional video item + one text block. The fold now
+// runs on a sense-complete omni model (qwen3.5-omni-plus) and WATCHES the video directly
+// (video+audio) — the text block (verbatim + segments + emotion arc) is the shared
+// skeleton from the read that keeps the fold's curves aligned to the canonical timeline.
 // =====================================================
 
-type ContentItem = { type: "text"; text: string };
+type ContentItem =
+  | { type: "text"; text: string }
+  | { type: "video_url"; video_url: { url: string } };
 
 /**
- * Builds the OpenAI-compatible content array for the fold call: one text item carrying
- * the verbatim transcript, segment grid, and emotion arc. Fold is text-only — Omni (the
- * eyes) already extracted everything visual into these fields before fold runs.
+ * Builds the OpenAI-compatible content array for the fold call. When `videoUrl` is
+ * present, the video is prepended so the omni model sees+hears the actual timeline;
+ * the text block always carries the shared skeleton (verbatim + segment grid + emotion
+ * arc) so the model's per-segment reactions align to the read's canonical segments.
+ * `videoUrl` is null in text/tiktok_url mode (no upload) — then the fold is text-only.
  */
 export function buildFoldUserContent(
   slots: PersonaSlot[],
   segments: SegmentGrid[],
   verbatim: string,
   emotionArc: EmotionArcPoint[],
+  videoUrl?: string | null,
 ): ContentItem[] {
-  return [{
+  const textItem: ContentItem = {
     type: "text",
     text: buildFoldTextBlock(slots, segments, verbatim, emotionArc),
-  }];
+  };
+  return videoUrl
+    ? [{ type: "video_url", video_url: { url: videoUrl } }, textItem]
+    : [textItem];
 }
 
 /**

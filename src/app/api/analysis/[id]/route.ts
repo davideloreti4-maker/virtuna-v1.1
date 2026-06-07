@@ -131,8 +131,17 @@ export async function GET(
       confidence_label?: string | null;
       is_calibrated?: boolean | null;
       anti_virality_gated?: boolean | null;
+      analysis_unavailable?: boolean | null;
+      signal_availability?: { gemini?: boolean; behavioral?: boolean } | null;
       heatmap?: unknown;
     };
+    // T1.5 — degradation honesty. No dedicated column; derive from the persisted
+    // signal_availability JSONB (both core signals dead = "couldn't analyze") so a
+    // reloaded permalink renders the same honest state the live run did.
+    const sa = extras.signal_availability ?? null;
+    const analysis_unavailable =
+      extras.analysis_unavailable ??
+      (sa ? !sa.gemini && !sa.behavioral : false);
     const heatmap = extras.heatmap ?? synthHeatmap();
 
     // Optimal posting window — like the heatmap/confidence shims above, older
@@ -179,6 +188,7 @@ export async function GET(
       anti_virality_gated:
         extras.anti_virality_gated ??
         (confidence == null ? false : confidence < 0.4),
+      analysis_unavailable,
       heatmap,
       optimal_post_window,
     };

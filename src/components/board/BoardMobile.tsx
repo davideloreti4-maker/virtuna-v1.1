@@ -8,6 +8,7 @@ import { AudienceNode } from './audience/AudienceNode';
 import { VerdictNode } from './verdict/VerdictNode';
 import { ActionsNode } from './actions/ActionsNode';
 import { ContentAnalysisFrame } from './content-analysis/ContentAnalysisFrame';
+import { InsightHeroFrame } from './InsightHeroFrame';
 import { InputResultCard } from './InputResultCard';
 import { DecodeShellNode } from './decode/DecodeShellNode';
 import { AdaptShellNode } from './adapt/AdaptShellNode';
@@ -22,12 +23,18 @@ const CARD_CAMERA: Camera = { x: 0, y: 0, scale: 1 };
 
 /**
  * Mobile reading orders (D-09 one-board-two-config):
- * Score: the video → the call → why → what to do → the breakdown → how it was computed.
+ * Score: the video → the INSIGHT (hero) → the call → why → what to do → the
+ *   breakdown → how it was computed.
  * Remix: same structure but Decode (why it worked) + Adapt (niche concepts) replace
- * Score (verdict) + Actions.
+ *   Score (verdict) + Actions.
+ *
+ * T2.1: insight-hero leads (right after the video), demoting the Score "call" below
+ * it — "insight is the hero" (VISION). Previously insight-hero was ABSENT from the
+ * mobile stack entirely (a worse burial than the desktop bottom slot).
  */
 const MOBILE_ORDER_SCORE: GroupId[] = [
   'input',
+  'insight-hero',
   'verdict',
   'audience',
   'actions',
@@ -132,6 +139,8 @@ export function BoardMobile({ boardMachineState, input, hasAnalysis, boardMode =
         return <ActionsNode camera={CARD_CAMERA} layout={layout!} />;
       case 'content-analysis':
         return <ContentAnalysisFrame camera={CARD_CAMERA} layout={layout!} />;
+      case 'insight-hero':
+        return <InsightHeroFrame camera={CARD_CAMERA} layout={layout!} />;
       case 'decode':
         return (
           <FrameErrorBoundary frameLabel="Decode">

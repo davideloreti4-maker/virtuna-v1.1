@@ -556,32 +556,13 @@ export async function aggregateScores(
       ? applyContentTypeWeights(rawVideoSignals as GeminiVideoSignals, contentTypeSlug)
       : rawVideoSignals;
 
-  // -------------------------------------------------
-  // Phase 6 D-F3 — single source of truth for matched_trends.
-  //
-  // When the audio_fingerprint stage matched a sound, trends.ts (Plan 06-05)
-  // skipped its Jaro-Winkler caption ↔ sound_name fallback loop. We synthesize
-  // an equivalent matched_trends entry from the fingerprint result so downstream
-  // consumers (signal_availability.trends, assembleFeatureVector fallback path)
-  // see a unified view. NEVER mutate the input pipelineResult — derive a fresh
-  // TrendEnrichment shape for aggregator-local use.
-  // -------------------------------------------------
-  const enrichedMatchedTrends =
-    audioFingerprintResult !== null && trendEnrichment.matched_trends.length === 0
-      ? [
-          ...trendEnrichment.matched_trends,
-          {
-            sound_name: audioFingerprintResult.sound_name,
-            velocity_score: audioFingerprintResult.velocity_score,
-            trend_phase: audioFingerprintResult.trend_phase,
-          },
-        ]
-      : trendEnrichment.matched_trends;
-
-  const effectiveTrendEnrichment: TrendEnrichment = {
-    ...trendEnrichment,
-    matched_trends: enrichedMatchedTrends,
-  };
+  // T4.4 (2026-06-07): the Phase-6 enrichedMatchedTrends/effectiveTrendEnrichment block
+  // was deleted — it synthesized a matched_trends entry from the audio-fingerprint result,
+  // but the fingerprint stage was stripped (Plan 03) so audioFingerprintResult is now a
+  // hardcoded null in this scope. The `audioFingerprintResult !== null` guard was therefore
+  // always false → effectiveTrendEnrichment was byte-identical to the empty trendEnrichment
+  // fallback on every run. Downstream refs (calculateConfidence, result.trend_score) now read
+  // `trendEnrichment` directly.
 
   // -------------------------------------------------
   // Phase 6 (D-G3, D-G2) — audio signal computation.
@@ -713,14 +694,11 @@ export async function aggregateScores(
   }
 
   // -------------------------------------------------
-  // ML prediction (async — loads model from Supabase Storage on cold start)
+  // FeatureVector assembly (persisted; read by the learning loop + board niche/duration).
   // -------------------------------------------------
-  // Phase 6 D-F3: feed effectiveTrendEnrichment so FeatureVector.audioTrendingMatch
-  // sees the synthesized matched_trends entry on fallback. assembleFeatureVector
-  // reads pipelineResult.audioFingerprintResult independently for the priority
-  // source (D-G4); the trend_enrichment slot is the fallback source-of-data.
-  // Plan 03: trendEnrichment removed from PipelineResult; pass pipelineResult directly.
-  // effectiveTrendEnrichment is already the fallback default (always empty) now.
+  // Plan 03: trendEnrichment was removed from PipelineResult; pass pipelineResult directly.
+  // The trend/fingerprint enrichment that used to feed FeatureVector.audioTrendingMatch is
+  // gone (T4.4) — the fallback is always the empty trendEnrichment now.
   const featureVectorInput: PipelineResult = {
     ...pipelineResult,
   };
@@ -814,25 +792,68 @@ export async function aggregateScores(
   const apollo_score = deepseek?.composite_score ?? 0;
 
   // -------------------------------------------------
-  // Overall score — behavioral + apollo blend (Plan 03-04, D-04).
-  // Dead terms (ml, rules, trends, audio, retrieval, platform_fit, gemini) removed.
-  // apollo_score sourced from Apollo composite (deepseekResult.reasoning.composite_score).
+  // Fold audience score (T1.1, 2026-06-06) — the SIMULATED-AUDIENCE half of the score.
+  // Until now `overall_score` was one Apollo call graded twice (behavioral_score = avg of
+  // Apollo's component_scores; apollo_score = same call's composite). The fold — the real
+  // 10-archetype audience sim (qwen3.5-omni-plus + video) — drove the heatmap + behavioral
+  // predictions but was STRUCTURALLY EXCLUDED from the headline number. This folds it in.
+  //
+  // fold_audience_score (0-100) = retention-dominant blend of the persona aggregate:
+  //   0.50·completion (watch-through, the #1 virality signal) + 0.25·share (reach/algo)
+  //   + 0.15·save (value) + 0.10·comment (engagement). All fields are 0-100 population/
+  //   top-3-weighted intents from aggregatePersonaResults (wave3/aggregator.ts).
   // -------------------------------------------------
+  const foldAgg = pipelineResult.personaBehavioralAggregate;
+  const foldOn = (pipelineResult.foldOutcome?.fold_success ?? false) && foldAgg !== null;
+  const fold_audience_score = foldOn
+    ? Math.round(
+        0.50 * foldAgg!.completion_pct +
+          0.25 * foldAgg!.share_pct +
+          0.15 * foldAgg!.save_pct +
+          0.10 * foldAgg!.comment_pct,
+      )
+    : 0;
+
+  // -------------------------------------------------
+  // Overall score — TRUE ensemble: expert read (Apollo composite) × simulated audience (fold).
+  // - video + both signals: 0.5·apollo + 0.5·fold_audience (the real ensemble).
+  // - no fold (text/tiktok_url mode): fall back to the prior Apollo-only blend
+  //   (behavioral_score·w.beh + apollo_score·w.apollo) — byte-identical to pre-T1.1 text mode.
+  // - apollo failed but fold ok: fold drives 100% (don't halve a valid audience read).
+  // - both dead: 0 (T1.5 will null this into an "unavailable" state — out of scope here).
+  // Dead terms (ml/rules/trends/audio/retrieval/platform_fit/gemini) remain removed.
+  // -------------------------------------------------
+  const apolloOn = deepseek != null; // apollo_score + behavioral_score valid
   const raw_overall_score = Math.min(
     100,
     Math.max(
       0,
       Math.round(
-        behavioral_score * weights.behavioral +
-          apollo_score * weights.apollo // Plan 03-04 D-04: Apollo composite replaces gemini
-      )
-    )
+        apolloOn && foldOn
+          ? 0.5 * apollo_score + 0.5 * fold_audience_score
+          : apolloOn
+            ? behavioral_score * weights.behavioral + apollo_score * weights.apollo
+            : foldOn
+              ? fold_audience_score
+              : 0,
+      ),
+    ),
   );
 
   // Platt calibration was dropped 2026-05-24 — uncalibrated raw score is the
   // user-facing score. See .planning/phases/15-.../15-DISCUSSION-LOG.md (text-mode
   // eval + corpus-vs-production shape mismatch made the calibration premise unsound).
   const overall_score = raw_overall_score;
+
+  // -------------------------------------------------
+  // T1.5 — degradation honesty. When BOTH core signals died (no usable Omni gemini
+  // provenance AND DeepSeek/Apollo failed), overall_score above collapses to 0 with
+  // zeroed weights — indistinguishable from a confident "will flop" verdict. Flag it so
+  // the UI renders a distinct "couldn't analyze" state instead of presenting the 0 as a
+  // real score. Same dual-failure condition the HARD-03 confidence floor + warning use
+  // below. `availability.gemini` is resolved above (segmented OR factor-fallback path).
+  // -------------------------------------------------
+  const analysis_unavailable = !availability.gemini && !availability.behavioral;
 
   // -------------------------------------------------
   // Confidence (with signal availability penalties)
@@ -842,7 +863,7 @@ export async function aggregateScores(
     apollo_score, // Plan 03-04 (D-04): Apollo composite-vs-behavioral agreement (replaces gemini)
     behavioral_score,
     ruleResult,
-    effectiveTrendEnrichment,
+    trendEnrichment,
     hasVideo,
     deepseek?.confidence ?? "low",
     availability
@@ -1078,7 +1099,7 @@ export async function aggregateScores(
     factors,
     suggestions,
     rule_score: ruleResult.rule_score,   // retained in type; ruleResult always fallback 50 (Plan 03 strip)
-    trend_score: effectiveTrendEnrichment.trend_score, // retained in type; always 0 (Plan 03 strip)
+    trend_score: trendEnrichment.trend_score, // retained in type; always 0 (Plan 03 strip)
     gemini_score,
     behavioral_score,
     ml_score: 0, // Plan 04 (R9): ml key removed from blend; field retained in type for back-compat
@@ -1112,6 +1133,9 @@ export async function aggregateScores(
     // Phase 3: uses dual-trigger isAntiViralityGatedFull (avGateFull computed above).
     // Re-evaluated POST-critique below (Pitfall 7 ordering invariant).
     anti_virality_gated: avGateFull.gated,
+    // T1.5 — degradation honesty flag (computed above from the dual-failure condition).
+    // Not adjusted post-critique: it reflects raw signal availability, not confidence.
+    analysis_unavailable,
     // Phase 3 (Plan 08) — reason + dropoff indices from dual-trigger gate.
     // null when not gated or when heatmap absent (confidence-only path).
     anti_virality_reason: avGateFull.reason,

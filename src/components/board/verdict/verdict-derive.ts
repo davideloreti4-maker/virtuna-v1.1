@@ -43,56 +43,12 @@ export function comparativeLine(score: number, niche: NicheCohort | null): strin
   return `${lead} · ${suffix}`;
 }
 
-/** Hook score arrives on an uncertain scale (0-1 | 0-10 | 0-100 across engine
- *  versions). Normalize to a 0-10 display defensively rather than assume. */
-function hookTo10(v: number): string {
-  const s = v <= 1 ? v * 10 : v <= 10 ? v : v / 10;
-  return s.toFixed(1);
-}
-
-/** Surfaces engine signals unused by the old Score frame. Each tile is included
- *  only when its source field is present + finite. */
-export function deriveSignalTiles(result: PredictionResult): StatTileData[] {
-  const tiles: StatTileData[] = [];
-
-  // Top-level fields exist on the LIVE SSE result but are NOT persisted (no DB
-  // column) — fall back to the mirror persisted inside heatmap so these tiles
-  // survive permalink reload. (Same live-vs-persisted split as the craft frame.)
-  // Provenance sub-labels disambiguate these from the same-named numbers elsewhere:
-  // these are the WEIGHTED persona-simulation aggregates (the panel's hold/retention),
-  // NOT the Content-craft hook-quality score nor the Audience predicted watch-through.
-  const hook = result.weighted_hook_score ?? result.heatmap?.weighted_hook_score;
-  if (typeof hook === 'number' && Number.isFinite(hook)) {
-    tiles.push({ k: 'Hook', v: hookTo10(hook), u: '/10', s: 'weighted hold' });
-  }
-
-  const completion = result.weighted_completion_pct ?? result.heatmap?.weighted_completion_pct;
-  if (typeof completion === 'number' && Number.isFinite(completion)) {
-    tiles.push({
-      k: 'Completion',
-      v: String(Math.round(completion * 100)),
-      u: '%',
-      s: 'weighted curve',
-    });
-  }
-
-  const sound = result.matched_trends?.[0];
-  if (sound) {
-    tiles.push({
-      k: 'Sound',
-      v: sound.trend_phase ?? 'Matched',
-      em: `vel ${Math.round(sound.velocity_score)}`,
-      s: 'trending',
-    });
-  }
-
-  const fit = (result.platform_fit as { fit_score?: number } | null | undefined)?.fit_score;
-  if (typeof fit === 'number' && Number.isFinite(fit)) {
-    tiles.push({ k: 'TikTok fit', v: String(Math.round(fit)), u: '/100', s: 'platform' });
-  }
-
-  return tiles.slice(0, 4);
-}
+// T4.5 (2026-06-07): deriveSignalTiles (the Score frame's "Engine signals" row) was
+// removed. It restated the WEIGHTED persona-sim hook/completion numbers that the
+// Content-craft frame (hook quality) and Audience frame (watch-through/retention)
+// already own — the "weighted hold" / "weighted curve" provenance sub-labels existed
+// only to disambiguate the duplicates. One owner per number now: Hook → Content-craft,
+// Retention/Completion → Audience. The Score frame keeps the hero score + factor bars.
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Redesign-v2 selectors — map the same engine fields onto the shared kit's
@@ -116,51 +72,52 @@ export function nicheDelta(score: number, niche: NicheCohort | null): number | n
   return Math.round(score - niche.median);
 }
 
-/** Parses an engine percentile string ("74th", "9th", "100th") to its integer.
- *  Returns null for the malformed / empty case so the tile can degrade. */
-export function parsePercentile(raw: string | null | undefined): number | null {
-  if (!raw) return null;
-  const m = /\d+/.exec(raw);
-  if (!m) return null;
-  const n = Number(m[0]);
-  return Number.isFinite(n) ? n : null;
+/** Title-case a qualitative intent label: "high intent" → "High intent".
+ *  undefined when absent — the engine emits these only on the persona aggregate. */
+function intentChip(s: string | null | undefined): string | undefined {
+  if (!s) return undefined;
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-/** The 4 behavioral-percentile tiles for the hero's StatTileRow (Share ·
- *  Completion · Comment · Save). Each value is the raw engine percentile; the
- *  sub-caption carries the predicted absolute %. Tiles whose percentile is
- *  absent are omitted (never fabricated). Niche-cohort deltas are not derivable
- *  — the comparisons endpoint exposes only an aggregate score histogram, no
- *  per-metric cohort percentiles — so no `delta` is attached. */
-/** "X% predicted" — but a nonzero rate that rounds to 0 (e.g. 0.28% share) reads
- *  as broken "0% predicted". Show "<1%" so a tiny-but-real prediction stays honest
- *  (a true zero still reads "0%"). */
-function predictedPctLabel(abs: number): string {
-  if (abs <= 0) return '0% predicted';
+/** Tile value for an absolute predicted rate. A nonzero rate that rounds to 0
+ *  (e.g. 0.28% share) reads as broken "0%"; show "<1" so a tiny-but-real
+ *  prediction stays honest (a true zero still reads "0"). */
+function pctValue(abs: number): string {
+  if (abs <= 0) return '0';
   const rounded = Math.round(abs);
-  return rounded === 0 ? '<1% predicted' : `${rounded}% predicted`;
+  return rounded === 0 ? '<1' : String(rounded);
 }
 
+/** The 4 behavioral tiles for the hero's StatTileRow (Share · Completion ·
+ *  Comment · Save). Each value is the absolute predicted % the engine actually
+ *  emits (`*_pct`); the sub-caption carries the qualitative intent label when
+ *  present. Tiles whose absolute % is absent are omitted (never fabricated).
+ *
+ *  T1.2/T1.4: previously keyed on the `*_percentile` string parsed for a digit —
+ *  but the engine emits digit-less intent labels ("high intent"), so the parse
+ *  always returned null and every tile was dropped. Self-referential percentiles
+ *  are gone; absolute rates + intent chips are the honest surface. Niche-cohort
+ *  deltas are not derivable (the comparisons endpoint exposes only an aggregate
+ *  score histogram, no per-metric cohort percentiles) — so no `delta` is attached. */
 export function deriveBehavioralTiles(result: PredictionResult): StatTileData[] {
   const bp = result.behavioral_predictions;
   if (!bp) return [];
 
-  const rows: Array<{ k: string; pctl: string | undefined; abs: number | undefined }> = [
-    { k: 'Share', pctl: bp.share_percentile, abs: bp.share_pct },
-    { k: 'Completion', pctl: bp.completion_percentile, abs: bp.completion_pct },
-    { k: 'Comment', pctl: bp.comment_percentile, abs: bp.comment_pct },
-    { k: 'Save', pctl: bp.save_percentile, abs: bp.save_pct },
+  const rows: Array<{ k: string; intent: string | undefined; abs: number | undefined }> = [
+    { k: 'Share', intent: bp.share_percentile, abs: bp.share_pct },
+    { k: 'Completion', intent: bp.completion_percentile, abs: bp.completion_pct },
+    { k: 'Comment', intent: bp.comment_percentile, abs: bp.comment_pct },
+    { k: 'Save', intent: bp.save_percentile, abs: bp.save_pct },
   ];
 
   const tiles: StatTileData[] = [];
   for (const r of rows) {
-    const p = parsePercentile(r.pctl);
-    if (p == null) continue;
+    if (typeof r.abs !== 'number' || !Number.isFinite(r.abs)) continue;
     tiles.push({
       k: r.k,
-      v: String(p),
-      u: 'th',
-      s: typeof r.abs === 'number' && Number.isFinite(r.abs) ? predictedPctLabel(r.abs) : undefined,
+      v: pctValue(r.abs),
+      u: '%',
+      s: intentChip(r.intent),
     });
   }
   return tiles;

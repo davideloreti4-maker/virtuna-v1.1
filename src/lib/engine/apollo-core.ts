@@ -1,9 +1,22 @@
 /**
  * Apollo Knowledge Core — byte-stable cached system prompt constants.
  *
- * Source of truth: .planning/corpus/KNOWLEDGE-CORE.md
+ * Source of truth: .planning/corpus/KNOWLEDGE-CORE.md (the FULL brain).
  * To regenerate: copy KNOWLEDGE-CORE.md content into KNOWLEDGE_CORE below,
  * escaping backticks (\`) and dollar-braces (\${).
+ *
+ * T3.1 (2026-06-07) — RUNTIME LEAN VARIANT: this constant intentionally OMITS the
+ * sections the Apollo rubric never scores against, to trim ~ every Apollo/decode/adapt
+ * call's cached prefix (the model was told to ignore them):
+ *   - §2.6 Behavioral layer (reserved/"Empty in v1")
+ *   - §7 Audience knowledge (defers to wave3/persona-registry.ts — not in this call's scope)
+ *   - §8 Sources & Provenance (~2k chars of IP/citation bookkeeping)
+ *   - header status/sources meta
+ * The craft layer (§1–§6: frameworks, anti-patterns, scoring rubric, decode + rewrite
+ * lenses) is byte-for-byte unchanged, so scoring behavior is unaffected (no A/B needed).
+ * The DEFERRED structural split — moving §5 Decode Lens out of the shared prefix into the
+ * Remix decode call only — is NOT done here (it needs the decode-consumer refactor + an A/B).
+ * When regenerating from the .md, re-apply these omissions (the .md remains the full brain).
  *
  * BYTE-STABILITY CONTRACT: every export here is a build-time constant string with
  * NO interpolation of Date.now()/Math.random()/per-request data. It is safe to
@@ -26,11 +39,9 @@
 
 export const KNOWLEDGE_CORE = `# Apollo Knowledge Core — v1 (craft foundation)
 
-> The distilled brain Apollo reasons with. Loaded into the **stable, cached system prompt** (score-mode reasoner + Remix decode + adapt all share it). This is the **craft layer** (content mechanics). A later **behavioral layer** (Chase Hughes) slots into §2.6 + §6 without restructuring.
+> The distilled brain Apollo reasons with. Loaded into the **stable, cached system prompt** (score-mode reasoner + Remix decode + adapt all share it). This is the **craft layer** (content mechanics).
 >
 > **Reading rule for the model:** §2 is the single source of truth for *why content works*. §3 is how it fails. §4/§5/§6 are **task lenses** — they tell you how to *apply* §2 to score, decode, and rewrite. They do not restate §2; when a lens says "apply §2.1," pull the framework from there.
-
-**Status:** v1.1 — **validated** (A/B-tested on 4 real videos via \`scripts/apollo-core-smoke.ts\`; Omni→reasoner, scores spread 26–86, beats generic baseline). Ready for Phase 3 wiring (open decision: supersede vs merge the live \`creator-rules.ts\` — see §8). · **Sources:** Kallaway corpus (13 files) + 3-creator benchmark layer (Hoyos / Hormozi / Ava) for hard numbers; see §8 · **Behavioral layer:** reserved (§2.6), not yet filled.
 
 ---
 
@@ -139,9 +150,6 @@ Why a viewer trusts the video enough to keep watching, act, and share. Trust = b
 - **Topic specificity** — *Signal:* is the video about a specific, narrow subject (a 3–5-word framing), or a vague category? · *Mechanism:* a category-level video ("growth," "hooks") can't pop a single shared question; specificity is what lets the viewer lock on. · *Strong:* tight, specific topic. *Weak:* broad category with no angle.
 - **Non-obvious take** — *Signal:* does the substance contain a genuinely contrarian or non-obvious claim — something most viewers would be surprised by but can quickly accept — or is it recycled common advice? · *Mechanism:* in a feed converging toward sameness, the *angle* is what cuts through; regurgitated advice is noise. Real expertise shows as non-obvious insight. · *Strong:* a fresh, defensible "everyone's wrong about X" angle, backed by evidence (fact/case/story/example). *Weak:* generic advice anyone could parrot, no original perspective.
 
-### 2.6 Behavioral layer *(reserved — Chase Hughes)*
-Persuasion / behavioral-influence frameworks slot here later, same detect-triple format. Empty in v1.
-
 ---
 
 ## 3. Anti-Patterns / Failure Signals
@@ -217,36 +225,6 @@ Turn critique into action without robotic AI-script feel.
 - Score each variant against §2/§3; iterate internally until it clears the bar before presenting.
 - **Desire-hook templates** — the five generation forms of the §2.4 desire-based hook (dream outcome + relatable, constraint-free character): *about-me* ("I achieved X using simple Y") · *if-I* ("if I wanted X, I'd do Y") · *to-you* ("if you want X, this one thing…") · *can-you* ("is it possible to X under Y?") · *he/she-just-did* ("Z just hit X under relatable Y"). Use only when the topic genuinely fits; forcing a case-study/metric template onto a conceptual topic fails the word-substitution test (does the filled-in line read like something a human would say out loud?).
 - Honor §1 voice rules — no em-dash, no fabricated proof, quote-grounded.
-
----
-
-## 7. Audience knowledge (Brain 2)
-
-Archetype/avatar knowledge lives in \`src/lib/engine/wave3/persona-registry.ts\` (already built) — source of truth for who's watching. Apollo additionally knows from §2.3: viewers watch for *their own* desire (money/time/health/status or a proxy), not for the creator; relevance of the curiosity question to the avatar is what converts stimulation into retention. Otherwise defer to the registry.
-
----
-
-## 8. Sources & Provenance
-
-Ground-to-inform, not regurgitate — this is *synthesis of principles* applied to short-form, not copied passages. (IP hygiene + keeps the core updatable.)
-
-**Kallaway corpus** (13 files: 11 transcripts + 2 Hook Machine assets, the latter near-duplicate) — craft layer:
-- *Hook Machine* skill + prompt + transcript (8 Universal Hook Principles, anti-patterns, A–F grading) → §1 voice rules, §2.1, §3, §4 grading discipline
-- *4 hook mistakes* (single-subject-single-question, 3-hook alignment, scroll-stop visuals' 4 levers, derisk-with-data) → §2.1, §3
-- *Desire-based hook* (5 templates) → §2.4, §6
-- *Neuroscience of addictive storytelling* (4-step loop) → §2.0, §2.2, §5
-- *Dopamine ladder* (6 levels) → §2.0, §2.2
-- *8 psychology principles* → §2.3
-- *6-step content system* / *personal brands* / *2026 shifts* (topic-vs-take, originality) → §2.5 (the video-level craft extracted); their channel/business strategy → **parked**.
-- *Algorithm* → §2.4 actionability (the video-scoreable driver extracted); its distribution mechanics → **parked**.
-- *7 pitfalls* → **parked** in creator-strategy (channel-level, not single-video scoring); not in this core by design.
-
-**Creator benchmark layer** (\`.planning/research/creator-intelligence.md\` → \`src/lib/engine/creator-rules.ts\`; Jenny Hoyos, Alex Hormozi, Ava Yuergens) — the hard numbers + structural devices Kallaway left qualitative:
-- → §2.0a calibration anchors · §2.1 mute-readability + visual discipline · §2.2 But/Therefore + mechanism + peak-end · §2.4 Value Equation · §3 (one-message, edutainment straddle, power-words, face-vs-object) · §4 weighting + §4.1 platform calibration.
-- Their channel/business rules (cadence, idea funnel, monetization, ad math, repurposing) → **parked** in creator-strategy, not in this core.
-- Note: the live engine already injects \`creator-rules.ts\` into the V3 prompts (stages 10/11, wave 4). This core does **not** wire into that yet — supersede-vs-merge is a deferred integration decision.
-
-**Behavioral layer** — Chase Hughes → reserved §2.6 + §6. Not yet ingested.
 `;
 
 // =====================================================

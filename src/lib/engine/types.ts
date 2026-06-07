@@ -332,6 +332,15 @@ export interface PredictionResult {
    *  per checker B4. Gated on POST-CRITIQUE confidence (Pitfall 7 ordering invariant —
    *  matches the gate `maybeAppendLikelyFlopWarning` uses). */
   anti_virality_gated: boolean;
+  /** T1.5 (2026-06-07) — degradation honesty. TRUE when BOTH core signals died
+   *  (Omni read gave no usable gemini provenance AND Apollo/DeepSeek reasoning failed),
+   *  i.e. !signal_availability.gemini && !signal_availability.behavioral. In that state
+   *  overall_score collapses to a confident-looking 0 with zeroed weights — a fabricated
+   *  "will flop" verdict. This flag lets the UI render a distinct "couldn't analyze this
+   *  video" state instead of presenting the 0 as a real score. REQUIRED (not optional) —
+   *  aggregator assigns on every PredictionResult; false on every healthy run. Derivable
+   *  from the persisted signal_availability JSONB on permalink reload (no new DB column). */
+  analysis_unavailable: boolean;
   /** Phase 3 (Plan 08, D-17) — reason discriminator from isAntiViralityGatedFull.
    *  "confidence" | "timeline_pattern" | "both" | null. null when not gated. */
   anti_virality_reason?: "confidence" | "timeline_pattern" | "both" | null;
@@ -805,7 +814,12 @@ export type ApolloRewrite = z.infer<typeof ApolloRewriteSchema>;
 
 export const DeepSeekResponseSchema = z.object({
   // ── Existing fields — REQUIRED; behavioral term stays separate until P4 folds into Audience-Sim (D-05) ──
-  behavioral_predictions: BehavioralPredictionsSchema,
+  // T3.3 (2026-06-07): now OPTIONAL. On video runs the fold (10-archetype audience sim) owns
+  // behavioral_predictions and Apollo's were discarded — so the prompt no longer asks for them
+  // on video (buildDeepSeekUserMessage gates on videoUrl), saving Apollo output tokens + reasoning
+  // on 4 unread numbers. Still emitted + REQUIRED-in-practice in text/tiktok_url mode (no fold),
+  // where Apollo IS the behavioral source. Optional schema tolerates the omission on video.
+  behavioral_predictions: BehavioralPredictionsSchema.optional(),
   component_scores: ComponentScoresSchema,       // feeds behavioral_score blend (D-05)
   suggestions: z.array(SuggestionSchema).min(1),
   warnings: z.array(z.string()).default([]),

@@ -1,15 +1,11 @@
 import { useEffect, useState } from 'react';
 import type { BehavioralPredictions, ConfidenceLevel } from '@/lib/engine/types';
 
-/** "top 5%" → 5. Lower = stronger rank. null when unparseable. */
-export function parsePercentile(s: string | undefined | null): number | null {
+/** Title-case a qualitative intent label: "high intent" → "High intent".
+ *  null when absent — the engine emits these labels only on the persona aggregate,
+ *  never on raw DeepSeek predictions, so the render site must degrade. */
+export function intentChip(s: string | undefined | null): string | null {
   if (!s) return null;
-  const m = s.match(/(\d+(?:\.\d+)?)/);
-  return m ? parseFloat(m[1]!) : null;
-}
-
-/** "top 20%" → "Top 20%". */
-export function titleCasePct(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
@@ -34,46 +30,47 @@ export const CONF_WORD: Record<ConfidenceLevel, string> = {
 export interface InputMetric {
   key: string;
   name: string;
-  /** Percentile label, e.g. "top 15%". Optional: deepseek's fabricated labels were
-   *  removed (Plan 01-04/01-06, R9); honest labels come from the persona aggregate
-   *  but may be absent — null-degrade at the render site. */
-  pct?: string;
-  /** Parsed "top X%" magnitude — lower = stronger. null when unparseable. */
-  rank: number | null;
+  /** Absolute predicted engagement rate, 0-100 — the honest field the engine
+   *  actually emits (`behavioral_predictions.*_pct`), not a corpus rank. */
+  pct: number;
+  /** Qualitative intent label from the persona aggregate (e.g. "high intent").
+   *  Absent on raw DeepSeek predictions — null-degrade at the render site. */
+  intent?: string;
 }
 
-/** The four engagement percentiles in a stable order. */
+/** The four engagement predictions in a stable order (completion leads — it's the
+ *  watch-through hero; the other three are the engagement actions). Each carries
+ *  the absolute predicted % plus the optional qualitative intent label. */
 export function toMetrics(b: BehavioralPredictions | null): InputMetric[] {
   if (!b) return [];
-  const raw = [
-    { key: 'share', name: 'Shares', pct: b.share_percentile },
-    { key: 'completion', name: 'Completion', pct: b.completion_percentile },
-    { key: 'comment', name: 'Comments', pct: b.comment_percentile },
-    { key: 'save', name: 'Saves', pct: b.save_percentile },
+  return [
+    { key: 'completion', name: 'Completion', pct: b.completion_pct, intent: b.completion_percentile },
+    { key: 'share', name: 'Shares', pct: b.share_pct, intent: b.share_percentile },
+    { key: 'comment', name: 'Comments', pct: b.comment_pct, intent: b.comment_percentile },
+    { key: 'save', name: 'Saves', pct: b.save_pct, intent: b.save_percentile },
   ];
-  return raw.map((m) => ({ ...m, rank: parsePercentile(m.pct) }));
 }
 
 /**
- * Status word for the hero, keyed off the strongest percentile (lower = better):
- * ≤5% Elite · ≤15% Strong · ≤35% Solid · else Modest.
+ * Reach band for the hero, keyed off the absolute completion % (higher = better):
+ * ≥75 Elite · ≥50 Strong · ≥30 Solid · else Modest. null → "Predicted" (no band).
  */
-export function rankStatusWord(rank: number | null): string {
-  if (rank == null) return 'Predicted';
-  if (rank <= 5) return 'Elite reach';
-  if (rank <= 15) return 'Strong reach';
-  if (rank <= 35) return 'Solid reach';
+export function reachWord(pct: number | null): string {
+  if (pct == null) return 'Predicted';
+  if (pct >= 75) return 'Elite reach';
+  if (pct >= 50) return 'Strong reach';
+  if (pct >= 30) return 'Solid reach';
   return 'Modest reach';
 }
 
 /**
- * Counts the hero percentile in from a worse rank down to its real value
- * (e.g. 34 → 5) on mount — reads as "homing in on your rank". Returns the
- * target immediately under reduced motion. null target → null (no number).
+ * Counts the hero % up from a lower start to its real value (e.g. 34 → 62) on
+ * mount — reads as "homing in". Returns the target immediately under reduced
+ * motion. null target → null (no number).
  */
 export function useCountIn(target: number | null, enabled: boolean): number | null {
   const [val, setVal] = useState<number | null>(() =>
-    enabled && target != null ? Math.min(60, Math.round(target + 28)) : target,
+    enabled && target != null ? Math.max(0, Math.round(target - 28)) : target,
   );
   useEffect(() => {
     // setState only ever fires inside a rAF callback (never synchronously in the
@@ -82,7 +79,7 @@ export function useCountIn(target: number | null, enabled: boolean): number | nu
       const id = requestAnimationFrame(() => setVal(target));
       return () => cancelAnimationFrame(id);
     }
-    const from = Math.min(60, Math.round(target + 28));
+    const from = Math.max(0, Math.round(target - 28));
     const dur = 620;
     let startTs = 0;
     let raf = requestAnimationFrame(function tick(now: number) {

@@ -13,13 +13,14 @@ export const CAMERA_DEFAULT_SCALE = 1;
  * Layout reads left→right, top→bottom:
  *   Input (top-left, compact) + Engine (under Input, compact)
  *   Audience (large central centerpiece)
- *   Verdict (large hero, right column) + Actions (tall, fills right column)
- *   Content Analysis (lower-left+center block, under Input/Engine+Audience)
+ *   Verdict (compact band, right column) + Actions (tall, fills right column)
+ *   Insight (lower-left+center block — the promoted hero, leads the block)
+ *   Content Analysis (below Insight, same left+center span)
  *
- * Phase 3 re-space: Content Analysis moved UP from a full-width footer (y904)
- * into the lower-left+center void (x0..832, under the short Input/Engine column
- * and Audience), and Actions grown so the right column reaches the same bottom
- * (1072) — killing the ~328px lower-left dead space without a far-bottom strip.
+ * T2.1: Insight leads the lower block (was dead-last at the bottom) — "insight is
+ * the hero" (VISION). Content Analysis follows below it. Phase-3 lineage: the
+ * lower-left+center void (x0..832) under the short Input/Engine column + Audience
+ * holds both wide frames stacked, killing the lower-left dead space.
  *
  * World-space gaps: 32px between every adjacent frame edge.
  */
@@ -38,14 +39,15 @@ export const GROUP_FRAMES: GroupFrameLayout[] = [
   // and "When to post" (all inline, no drawers). Grown to bottom 1072 so the
   // right column matches the Content Analysis block on the left (Phase 3).
   { id: 'actions',          label: 'Actions',          bounds: { x:  864, y:  312, width:  360, height: 760 } },
-  // Lower-left+center block: top clears Audience (800) by the 32px gutter; right
-  // edge (832) aligns with Audience; left edge fills under the short Input/Engine
-  // column. Right edge clears the Actions column (x864) by 32px.
-  { id: 'content-analysis', label: 'Content craft', bounds: { x:    0, y:  832, width:  832, height: 240 } },
-  // D-08 hero: insight-hero sits below content-analysis (bottom 1072) + 32px gutter.
-  // Same left+center span (x0..832) mirrors content-analysis. Auto-height so the
-  // rich surface (rewrites + dimensions + band) sizes to content.
-  { id: 'insight-hero',     label: 'Insight',       bounds: { x:    0, y: 1104, width:  832, height: 480 } },
+  // T2.1: insight-hero LEADS the lower-left+center block (was dead-last at the
+  // bottom; VISION: "insight is the hero"). Top clears Audience (800) by the 32px
+  // gutter; left+center span (x0..832) aligns with Audience; right edge clears the
+  // Actions column (x864) by 32px. Auto-height so the rich surface (rewrites +
+  // dimensions + band) sizes to content.
+  { id: 'insight-hero',     label: 'Insight',       bounds: { x:    0, y:  832, width:  832, height: 480 } },
+  // Content craft now sits BELOW insight-hero (insight bottom 1312) + 32px gutter.
+  // Same left+center span mirrors insight-hero.
+  { id: 'content-analysis', label: 'Content craft', bounds: { x:    0, y: 1344, width:  832, height: 240 } },
 ];
 
 export const BOARD_BOUNDS: Rect = (() => {
@@ -117,8 +119,8 @@ export const AUTO_HEIGHT_FRAMES: ReadonlySet<GroupId> = new Set<GroupId>([
  *   Left   (x=0):   input → engine
  *   Center (x=272): audience
  *   Right  (x=864): verdict/decode → actions/adapt
- *   Bottom (x=0):   content-analysis, under the taller of (left col, center col)
- *                   insight-hero, below content-analysis (D-08 hero)
+ *   Bottom (x=0):   insight-hero, under the taller of (left col, center col) — T2.1 hero
+ *                   content-analysis, below insight-hero
  */
 export function resolveBoardLayout(
   measured: Partial<Record<GroupId, number>>,
@@ -161,14 +163,14 @@ export function resolveBoardLayout(
   const verdictH = measuredOrBase(rightTopMeasuredId, 'verdict');
   const actionsY = verdictH + GUTTER;
   const actionsH = measuredOrBase(rightBotMeasuredId, 'actions');
-  // Bottom block clears the taller of the left + center columns.
+  // Bottom block clears the taller of the left + center columns. T2.1: insight-hero
+  // LEADS the block (the promoted hero); content-analysis follows below it.
   const leftBottom = engineY + engineH;
   const centerBottom = audienceH; // audience y = 0
-  const caY = Math.max(leftBottom, centerBottom) + GUTTER;
-  const caH = h('content-analysis');
-  // Insight-hero: D-08 hero, below content-analysis + 32px gutter.
-  const ihY = caY + caH + GUTTER;
+  const ihY = Math.max(leftBottom, centerBottom) + GUTTER;
   const ihH = h('insight-hero');
+  const caY = ihY + ihH + GUTTER;
+  const caH = h('content-analysis');
 
   const scoreFrames: GroupFrameLayout[] = [
     { id: 'input',            label: 'Input',          bounds: { x: x('input'),            y: 0,        width: w('input'),            height: inputH } },
@@ -176,8 +178,8 @@ export function resolveBoardLayout(
     { id: 'audience',         label: 'Audience',       bounds: { x: x('audience'),         y: 0,        width: w('audience'),         height: audienceH } },
     { id: 'verdict',          label: 'Score',          bounds: { x: x('verdict'),          y: 0,        width: w('verdict'),          height: verdictH } },
     { id: 'actions',          label: 'Actions',        bounds: { x: x('actions'),          y: actionsY, width: w('actions'),          height: actionsH } },
-    { id: 'content-analysis', label: 'Content craft',  bounds: { x: x('content-analysis'), y: caY,      width: w('content-analysis'), height: caH } },
     { id: 'insight-hero',     label: 'Insight',        bounds: { x: x('insight-hero'),     y: ihY,      width: w('insight-hero'),     height: ihH } },
+    { id: 'content-analysis', label: 'Content craft',  bounds: { x: x('content-analysis'), y: caY,      width: w('content-analysis'), height: caH } },
   ];
 
   if (mode !== 'remix') return scoreFrames;

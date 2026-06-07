@@ -377,17 +377,21 @@ export function buildHeadline(pillars: CraftPillar[], ctaPresent: boolean): Head
 }
 
 /**
- * Audio-activity bars (0–1) for the waveform under the strip. Amplitude tracks
- * emotion-arc energy (a proxy for on-screen activity / loudness) with a
- * deterministic cadence flutter — no randomness, so renders are stable.
+ * Audio-activity bars (0–1) for the band under the strip — the REAL emotion-arc
+ * energy envelope (a proxy for on-screen activity / loudness), sampled across the
+ * clip. Deterministic, no randomness.
+ *
+ * T4.6: the prior synthetic `sin(i*1.7)` "flutter" was dropped. It fabricated
+ * waveform-like per-bar detail unrelated to any measured signal — the band read as
+ * a real audio waveform when it was decoration over the energy arc. The bars now
+ * reflect only the measured energy.
  */
 export function buildWaveBars(arc: EmotionArcPoint[], durationSec: number, count = 64): number[] {
   const total = durationSec > 0 ? durationSec : 1;
   return Array.from({ length: count }, (_, i) => {
     const t = (i / Math.max(1, count - 1)) * total;
     const e = intensityAt(arc, t * 1000);
-    const flutter = 0.6 + 0.4 * Math.abs(Math.sin(i * 1.7));
-    return clamp01((0.28 + e * 0.6) * flutter);
+    return clamp01(0.28 + e * 0.6);
   });
 }
 

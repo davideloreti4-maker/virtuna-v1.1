@@ -672,6 +672,10 @@ export async function runPredictionPipeline(
           },
           creator_context: creatorContextString,
           verbatim, // Plan 03-04 (R2): verbatim hook for Apollo rewrite grounding
+          // Sighted reasoner (2026-06-06): Apollo (qwen3.6-plus) watches the video so its
+          // hook judgment is grounded, not blind. Null in text/tiktok_url mode (no upload)
+          // → reason degrades to text-only (byte-identical to the pre-video behavior + cache).
+          videoUrl: signedVideoUrl,
         });
 
         return result;
@@ -730,6 +734,7 @@ export async function runPredictionPipeline(
         omniSegments,
         verbatimText,
         emotionArc,
+        signedVideoUrl, // sense-complete fold: omni-plus watches the video directly (video+audio)
         onStageEvent,
       );
       warnings.push(...foldOutcome.warnings);

@@ -64,28 +64,41 @@ describe('GROUP_FRAMES world-space gaps (UAT gap 1 regression — 2026-05-26)', 
     expect(b.y - bottom(a)).toBeGreaterThanOrEqual(MIN_GAP);
   });
 
-  it('audience → content-analysis vertical gap is ≥ 32px', () => {
+  // T2.1: insight-hero now leads the lower block (directly under Audience);
+  // content-analysis follows below insight-hero.
+  it('audience → insight-hero vertical gap is ≥ 32px', () => {
     const a = rectFor('audience');
-    const b = rectFor('content-analysis');
+    const b = rectFor('insight-hero');
     expect(b.y - bottom(a)).toBeGreaterThanOrEqual(MIN_GAP);
   });
 
-  // Phase 3: content-analysis moved up-left into the lower-left+center void, so
-  // it now sits BESIDE the (grown) Actions column rather than stacked beneath it.
-  // The vertical gutter became a horizontal one.
-  it('content-analysis → actions horizontal gap is ≥ 32px', () => {
-    const a = rectFor('content-analysis');
+  it('insight-hero → content-analysis vertical gap is the 32px gutter', () => {
+    const a = rectFor('insight-hero');
+    const b = rectFor('content-analysis');
+    expect(b.y - bottom(a)).toBe(MIN_GAP);
+  });
+
+  // The lower-left+center block (insight-hero + content-analysis) spans x0..832;
+  // the Actions column starts at x864 — they never horizontally overlap.
+  it('lower block (insight-hero) → actions horizontal gap is ≥ 32px', () => {
+    const a = rectFor('insight-hero');
     const b = rectFor('actions');
     expect(b.x - right(a)).toBeGreaterThanOrEqual(MIN_GAP);
   });
 
-  it('content-analysis and actions share the board bottom (right column matches left block)', () => {
-    expect(bottom(rectFor('content-analysis'))).toBe(bottom(rectFor('actions')));
+  // T2.1: stacking two tall frames (insight-hero + content-analysis) on the left
+  // makes content-analysis the bottommost frame, below the right column's Actions.
+  // (The Phase-3 "content-analysis shares actions' bottom" invariant no longer
+  // applies — Insight's promotion pushed content-analysis down.)
+  it('content-analysis is the bottommost frame (below insight-hero and the Actions column)', () => {
+    const ca = rectFor('content-analysis');
+    expect(bottom(ca)).toBeGreaterThan(bottom(rectFor('insight-hero')));
+    expect(bottom(ca)).toBeGreaterThanOrEqual(bottom(rectFor('actions')));
   });
 
-  it('engine → content-analysis vertical gap is ≥ 32px', () => {
+  it('engine → insight-hero vertical gap is ≥ 32px', () => {
     const a = rectFor('engine');
-    const b = rectFor('content-analysis');
+    const b = rectFor('insight-hero');
     expect(b.y - bottom(a)).toBeGreaterThanOrEqual(MIN_GAP);
   });
 
@@ -105,13 +118,13 @@ describe('BOARD_BOUNDS derived from re-spaced GROUP_FRAMES', () => {
     }
   });
 
-  it('matches expected dimensions — width 1224, height accounts for insight-hero (D-08)', () => {
-    // BOARD_BOUNDS height expanded: insight-hero (y:1104, h:480) is the tallest column.
-    // width remains 1224 (right column x:864 + w:360).
+  it('matches expected dimensions — width 1224, height accounts for the stacked lower block (T2.1)', () => {
+    // BOARD_BOUNDS height: the lower block (insight-hero y:832 h:480 → content-analysis
+    // y:1344 h:240) is the tallest column. width remains 1224 (right column x:864 + w:360).
     expect(BOARD_BOUNDS.x).toBe(0);
     expect(BOARD_BOUNDS.y).toBe(0);
     expect(BOARD_BOUNDS.width).toBe(1224);
-    expect(BOARD_BOUNDS.height).toBeGreaterThan(1072); // insight-hero extends below 1072
+    expect(BOARD_BOUNDS.height).toBeGreaterThan(1072); // lower block extends below the right column
   });
 });
 
@@ -153,12 +166,15 @@ describe('resolveBoardLayout (auto-height reflow)', () => {
     expect(resolved).toEqual(GROUP_FRAMES);
   });
 
-  it('growing Audience pushes Content Analysis down by the same delta (gutter preserved)', () => {
+  it('growing Audience pushes the lower block (insight-hero) down by the same delta (gutter preserved)', () => {
     const grown = rectFor('audience').height + 200;
     const resolved = resolveBoardLayout({ audience: grown });
+    // T2.1: insight-hero leads the lower block, so IT clears the (now taller)
+    // audience by exactly the 32px gutter; content-analysis stacks below it.
+    const ih = boundsOf(resolved, 'insight-hero');
+    expect(ih.y - bottom(boundsOf(resolved, 'audience'))).toBe(MIN_GAP);
     const ca = boundsOf(resolved, 'content-analysis');
-    // CA clears the (now taller) audience by exactly the 32px gutter.
-    expect(ca.y - bottom(boundsOf(resolved, 'audience'))).toBe(MIN_GAP);
+    expect(ca.y - bottom(ih)).toBe(MIN_GAP);
     expect(boundsOf(resolved, 'audience').height).toBe(grown);
   });
 
@@ -202,8 +218,9 @@ describe('resolveBoardLayout (auto-height reflow)', () => {
 });
 
 describe('computeBoardBounds + computePresetTargets track growth', () => {
-  it('board bounds grow when insight-hero grows (D-08 bottom frame)', () => {
-    // insight-hero is the bottommost frame; growing it extends the board.
+  it('board bounds grow when insight-hero grows (T2.1: pushes content-analysis down)', () => {
+    // insight-hero now leads the lower block; growing it pushes content-analysis
+    // (the bottommost frame) down, extending the board.
     const grown = rectFor('insight-hero').height + 300;
     const resolved = resolveBoardLayout({ 'insight-hero': grown });
     const bounds = computeBoardBounds(resolved);

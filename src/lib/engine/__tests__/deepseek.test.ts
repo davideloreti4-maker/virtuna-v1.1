@@ -268,13 +268,13 @@ describe("DeepSeek response validation", () => {
     expect(result.success).toBe(true);
   });
 
-  it("missing behavioral_predictions fails", () => {
-    const invalid = {
+  it("missing behavioral_predictions parses (T3.3: optional — fold owns it on video runs)", () => {
+    const noBehavioral = {
       ...makeDeepSeekReasoning(),
       behavioral_predictions: undefined,
     };
-    const result = DeepSeekResponseSchema.safeParse(invalid);
-    expect(result.success).toBe(false);
+    const result = DeepSeekResponseSchema.safeParse(noBehavioral);
+    expect(result.success).toBe(true);
   });
 
   it("missing component_scores fails", () => {
@@ -609,12 +609,14 @@ describe("apollo schema validates", () => {
     expect(sevenDims.success).toBe(false);
   });
 
-  it("existing behavioral_predictions/component_scores still required (additive, no regression)", () => {
+  it("behavioral_predictions optional (T3.3), component_scores still required", () => {
+    // T3.3: behavioral_predictions is OPTIONAL — Apollo omits it on video runs where the
+    // fold owns audience prediction. component_scores stays REQUIRED (feeds behavioral_score).
     const noBehavioral = DeepSeekResponseSchema.safeParse({
       ...makeApolloResponse(),
       behavioral_predictions: undefined,
     });
-    expect(noBehavioral.success).toBe(false);
+    expect(noBehavioral.success).toBe(true);
     const noComponentScores = DeepSeekResponseSchema.safeParse({
       ...makeApolloResponse(),
       component_scores: undefined,
@@ -976,5 +978,18 @@ describe("D-01 prompt-contract guard — user-message blueprint stays in sync wi
     const user = buildDeepSeekUserMessage(makeContext() as never);
     expect(user).not.toContain("Not arithmetic");
     expect(user).not.toMatch(/ONE holistic, hook-weighted judgment/);
+  });
+
+  it("T3.3 — asks for behavioral_predictions in text mode (no fold), omits on video runs (fold owns it)", () => {
+    const textUser = buildDeepSeekUserMessage(makeContext() as never);
+    expect(textUser).toContain('"behavioral_predictions"');
+
+    const videoUser = buildDeepSeekUserMessage({
+      ...makeContext(),
+      videoUrl: "https://example.com/signed-video.mp4",
+    } as never);
+    expect(videoUser).not.toContain('"behavioral_predictions"');
+    // component_scores stays in both — it feeds behavioral_score regardless of mode.
+    expect(videoUser).toContain('"component_scores"');
   });
 });

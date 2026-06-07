@@ -281,38 +281,45 @@ export function buildDeepSeekUserMessage(context: DeepSeekInput): string {
   sections.push(formatGeminiSignals(context.gemini_analysis));
   sections.push("");
 
-  // ── Rule matches ─────────────────────────────────────────────────────────
-  sections.push("---");
-  const matchedRuleNames =
-    context.rule_result.matched_rules.map((r) => r.rule_name).join(", ") || "None";
-  sections.push(`## Rule Matches\nMatched rules: ${matchedRuleNames}`);
-  sections.push("");
-
-  // ── Trend context ─────────────────────────────────────────────────────────
-  sections.push("## Trend Context");
-  sections.push(context.trend_enrichment.trend_context);
+  // ── Creator context ──────────────────────────────────────────────────────
+  // T3.2 (2026-06-06): the "## Rule Matches" + "## Trend Context" sections were
+  // DELETED — both stages were removed from the pipeline, so they injected dead
+  // text ("Matched rules: None", "Trend analysis running in parallel…") that
+  // described phantom systems and risked the model weighting a non-existent trend
+  // lever. rule_result/trend_enrichment are still accepted on DeepSeekInput (passed
+  // by the pipeline) but no longer rendered. Creator context (real) is preserved.
   if (context.creator_context) {
-    sections.push(`\n${context.creator_context}`);
+    sections.push("---");
+    sections.push(context.creator_context);
+    sections.push("");
   }
-  sections.push("");
 
   // ── JSON OUTPUT CONTRACT (machine shape for the §4 narrative) ─────────────
   // The system prefix (§4) describes WHAT to assess; this enumerates the exact
   // JSON object DeepSeekResponseSchema requires. Lives in the volatile user
   // message so the cached system prefix (apollo-core.ts) stays byte-stable.
   // The request also sets response_format: { type: "json_object" }.
-  sections.push("---");
-  sections.push(
-    `## OUTPUT — return ONE JSON object, no prose, with EXACTLY these keys:
-
-{
-  "behavioral_predictions": {
+  //
+  // T3.3 (2026-06-07): on video runs the fold owns behavioral_predictions, so we drop
+  // the ask (Apollo spent output tokens + reasoning on 4 discarded numbers). In
+  // text/tiktok_url mode (videoUrl null → no fold) Apollo IS the behavioral source, so
+  // the block stays. videoUrl presence aligns with fold presence (both gated on omni video).
+  const isVideoMode = context.videoUrl != null;
+  const behavioralPredictionsBlock = isVideoMode
+    ? ""
+    : `  "behavioral_predictions": {
     "completion_pct": <number 0-100>,   // est. % who watch to the end
     "share_pct": <number 0-100>,
     "comment_pct": <number 0-100>,
     "save_pct": <number 0-100>
   },
-  "component_scores": {                  // your 0-10 estimate per lever, grounded in the signals
+`;
+  sections.push("---");
+  sections.push(
+    `## OUTPUT — return ONE JSON object, no prose, with EXACTLY these keys:
+
+{
+${behavioralPredictionsBlock}  "component_scores": {                  // your 0-10 estimate per lever, grounded in the signals
     "hook_effectiveness": <number 0-10>,
     "retention_strength": <number 0-10>,
     "shareability": <number 0-10>,
@@ -360,6 +367,14 @@ export interface DeepSeekInput {
    * Optional: aggregator wires it in Plan 04; accepted optionally until then.
    */
   verbatim?: VerbatimPayload | null;
+  /**
+   * Signed video URL (2026-06-06 sighted reasoner). When present, prepended to the
+   * volatile user message so qwen3.6-plus WATCHES the video and grades the hook with
+   * eyes instead of reasoning blind over the read's text. The read still supplies the
+   * audio half (qwen3.6-plus is deaf): transcript + audio_signals. Null in
+   * text/tiktok_url mode → reason runs text-only (byte-identical to the pre-video path).
+   */
+  videoUrl?: string | null;
 }
 
 /**
@@ -401,12 +416,22 @@ export async function reasonWithDeepSeek(
 
       // Apollo call: byte-stable system prefix (APOLLO_SYSTEM_PROMPT) + volatile user message.
       // temp:0 + seed for determinism (D-10). json_object for structured output.
+      // Sighted reasoner (2026-06-06): when a video URL is present, prepend it so qwen3.6-plus
+      // WATCHES the hook it grades. The system prefix stays byte-stable → DashScope prefix-cache
+      // still hits; only the (already-volatile) user message carries the video. Null → string
+      // user message, byte-identical to the pre-video path (preserves text/tiktok_url behavior).
+      const userContent = context.videoUrl
+        ? [
+            { type: "video_url" as const, video_url: { url: context.videoUrl } },
+            { type: "text" as const, text: userMessage },
+          ]
+        : userMessage;
       const response = await ai.chat.completions.create(
         {
           model: DEEPSEEK_MODEL,
           messages: [
             { role: "system", content: APOLLO_SYSTEM_PROMPT }, // byte-stable knowledge core
-            { role: "user",   content: userMessage },           // verbatim + sensor signals here ONLY
+            { role: "user",   content: userContent as never },  // verbatim + sensor signals (+ video) here ONLY
           ],
           response_format: { type: "json_object" },
           temperature: 0, // D-10: single deterministic call

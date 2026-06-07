@@ -25,7 +25,43 @@
  * composite diverged from the arithmetic sum; stale 3.7.0 rows must not mix with rubric-sum-era
  * rows. Auto-invalidates all 3.7.0 L1+L2 cached rows on next analyze-route call (D-23).
  *
+ * Bumped 3.8.0 → 3.9.0 (2026-06-06, sense-complete perception): the fold moved from the
+ * deaf+blind qwen3.6-flash TEXT call to qwen3.5-omni-plus WATCHING the video (video+audio),
+ * and the reasoner (qwen3.6-plus) now WATCHES the video too (sighted hook judgment instead of
+ * blind). Both behavioral and apollo terms shift because the models now perceive the video
+ * directly rather than reasoning over the read's text compression. Stale 3.8.0 rows (text-fold
+ * + blind-reason era) must not mix with sighted-era rows.
+ *
+ * Bumped 3.9.0 → 3.10.0 (2026-06-06, T1.1 fold→score): overall_score is now a TRUE ensemble
+ * of the Apollo composite (expert read) and a fold-derived audience score (0.5·apollo +
+ * 0.5·fold_audience on video). Previously the fold (the real audience sim) was excluded and
+ * the score was one Apollo call graded twice. Scores shift on every video row; text/tiktok_url
+ * mode is unchanged (Apollo-only fallback). Stale 3.9.0 rows must not mix with ensemble-era rows.
+ *
+ * Bumped 3.10.0 → 3.11.0 (2026-06-06, T3.2 phantom-injection removal): deleted the dead
+ * "## Rule Matches" + "## Trend Context" sections from the Apollo user message (both stages
+ * were removed from the pipeline; they injected phantom-system text). Apollo's prompt changes
+ * slightly, so its composite/dimensions may shift; isolate the cache.
+ *
+ * Bumped 3.11.0 → 3.12.0 (2026-06-07, Tier-3 prompt trims — bundled):
+ *   - T3.1 (KNOWLEDGE_CORE lean variant): dropped §2.6/§7/§8 + header provenance meta from
+ *     the Apollo/decode/adapt cached system prefix (sections the rubric never scores against).
+ *     Craft layer §1–§6 byte-unchanged, but the system-prefix bytes change → isolate the cache.
+ *   - T3.3 (Apollo behavioral_predictions gated to text mode): on video runs the fold owns
+ *     audience prediction, so the Apollo prompt no longer asks for the 4 numbers; schema made
+ *     optional. Apollo's prompt + (rarely) its output shape change on video → isolate the cache.
+ *   - T3.4 (Omni read prompt byte-stable): niche/content-type hints moved from the omni SYSTEM
+ *     prefix to the volatile USER message (prefix-cache no longer busts per niche). The omni
+ *     system prompt bytes change once → isolate the cache.
+ *
+ * Bumped 3.12.0 → 3.13.0 (2026-06-07, T1.5 degradation honesty): PredictionResult gains a
+ * REQUIRED `analysis_unavailable` flag — true when BOTH core signals die (Omni read + Apollo
+ * reasoning), where overall_score collapses to a fabricated, confident-looking 0. The board
+ * now renders a distinct "couldn't analyze" state instead of that 0. Invalidate so stale
+ * 3.12.0 cached rows (which lack the flag) don't deserialize as a real-looking 0 verdict.
+ * The flag is also derivable from the persisted signal_availability JSONB on permalink reload.
+ *
  * D-23 cache invariant: prediction-cache.ts keys on ENGINE_VERSION; this bump auto-invalidates
- * all `3.7.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
+ * all `3.12.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
  */
-export const ENGINE_VERSION = "3.8.0";
+export const ENGINE_VERSION = "3.13.0";

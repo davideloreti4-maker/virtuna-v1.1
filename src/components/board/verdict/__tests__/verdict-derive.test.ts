@@ -7,9 +7,7 @@ import {
   confidenceRange,
   deriveBehavioralTiles,
   deriveGatedHero,
-  deriveSignalTiles,
   nicheDelta,
-  parsePercentile,
 } from '../verdict-derive';
 import type { NicheCohort } from '../ScoreDistribution';
 
@@ -67,50 +65,8 @@ describe('comparativeLine — honest cohort position (never a fabricated percent
   });
 });
 
-describe('deriveSignalTiles — only present fields, defensive scales', () => {
-  it('normalizes hook to /10 and tags it as the weighted-panel hold (not the craft hook)', () => {
-    expect(deriveSignalTiles(result({ weighted_hook_score: 0.72 }))[0]).toMatchObject({ k: 'Hook', v: '7.2', s: 'weighted hold' });
-    expect(deriveSignalTiles(result({ weighted_hook_score: 7.2 }))[0]).toMatchObject({ v: '7.2' });
-    expect(deriveSignalTiles(result({ weighted_hook_score: 72 }))[0]).toMatchObject({ v: '7.2' });
-  });
-  it('builds completion %, sound, and platform fit from real fields', () => {
-    const tiles = deriveSignalTiles(
-      result({
-        weighted_completion_pct: 0.68,
-        matched_trends: [{ sound_name: 's', velocity_score: 87, trend_phase: 'Rising' }],
-        platform_fit: { fit_score: 72 } as unknown as PredictionResult['platform_fit'],
-      }),
-    );
-    // Provenance tag distinguishes this from the Audience predicted watch-through.
-    expect(tiles.find((t) => t.k === 'Completion')).toMatchObject({ v: '68', u: '%', s: 'weighted curve' });
-    expect(tiles.find((t) => t.k === 'Sound')).toMatchObject({ v: 'Rising', em: 'vel 87' });
-    expect(tiles.find((t) => t.k === 'TikTok fit')).toMatchObject({ v: '72', u: '/100' });
-  });
-  it('omits tiles whose source data is absent', () => {
-    expect(deriveSignalTiles(result())).toEqual([]);
-  });
-  it('falls back to heatmap mirror when top-level weighted_* absent (permalink reload)', () => {
-    // Live SSE carries weighted_* top-level; the persisted DB row drops them and
-    // only the heatmap mirror survives. Both Hook + Completion must still render.
-    const reloaded = result({
-      weighted_hook_score: undefined,
-      weighted_completion_pct: undefined,
-      heatmap: { weighted_hook_score: 4.8, weighted_completion_pct: 0.15 } as unknown as PredictionResult['heatmap'],
-    });
-    const tiles = deriveSignalTiles(reloaded);
-    expect(tiles.find((t) => t.k === 'Hook')).toMatchObject({ v: '4.8', u: '/10' });
-    expect(tiles.find((t) => t.k === 'Completion')).toMatchObject({ v: '15', u: '%' });
-  });
-  it('prefers the top-level value over the heatmap mirror when both present', () => {
-    const tiles = deriveSignalTiles(
-      result({
-        weighted_hook_score: 7.2,
-        heatmap: { weighted_hook_score: 1.0 } as unknown as PredictionResult['heatmap'],
-      }),
-    );
-    expect(tiles.find((t) => t.k === 'Hook')).toMatchObject({ v: '7.2' });
-  });
-});
+// T4.5: deriveSignalTiles + its tests removed — the Score frame's "Engine signals"
+// row duplicated numbers owned by Content-craft (hook) and Audience (retention).
 
 /* ── redesign-v2 selectors ── */
 
@@ -132,56 +88,49 @@ describe('nicheDelta — score vs niche median, in points (only with a cohort)',
   });
 });
 
-describe('parsePercentile', () => {
-  it('extracts the integer from "Nth" forms', () => {
-    expect(parsePercentile('74th')).toBe(74);
-    expect(parsePercentile('9th')).toBe(9);
-    expect(parsePercentile('100th')).toBe(100);
-  });
-  it('returns null for empty / malformed', () => {
-    expect(parsePercentile(undefined)).toBeNull();
-    expect(parsePercentile('')).toBeNull();
-    expect(parsePercentile('top')).toBeNull();
-  });
-});
-
-describe('deriveBehavioralTiles — Share/Completion/Comment/Save percentiles', () => {
+describe('deriveBehavioralTiles — absolute predicted rates + intent chips', () => {
   const bp = (over = {}) =>
     result({
       behavioral_predictions: {
         completion_pct: 62,
-        completion_percentile: '74th',
+        completion_percentile: 'high intent',
         share_pct: 8,
-        share_percentile: '80th',
+        share_percentile: 'very high intent',
         comment_pct: 5,
-        comment_percentile: '70th',
+        comment_percentile: 'moderate intent',
         save_pct: 4,
-        save_percentile: '68th',
+        save_percentile: 'low intent',
         ...over,
       },
     } as Partial<PredictionResult>);
 
-  it('builds the 4 percentile tiles with predicted-% sub-captions, in order', () => {
+  it('builds the 4 tiles with absolute %% values + intent sub-captions, in order', () => {
     const tiles = deriveBehavioralTiles(bp());
     expect(tiles.map((t) => t.k)).toEqual(['Share', 'Completion', 'Comment', 'Save']);
-    expect(tiles[0]).toMatchObject({ k: 'Share', v: '80', u: 'th', s: '8% predicted' });
-    expect(tiles[1]).toMatchObject({ k: 'Completion', v: '74', s: '62% predicted' });
+    expect(tiles[0]).toMatchObject({ k: 'Share', v: '8', u: '%', s: 'Very high intent' });
+    expect(tiles[1]).toMatchObject({ k: 'Completion', v: '62', u: '%', s: 'High intent' });
     // No niche-cohort per-metric percentiles exist → no delta attached.
     expect(tiles[0]!.delta).toBeUndefined();
   });
 
-  it('omits a tile whose percentile is malformed', () => {
-    const tiles = deriveBehavioralTiles(bp({ comment_percentile: '' }));
+  it('omits the intent sub-caption when the label is absent (raw DeepSeek predictions)', () => {
+    const tiles = deriveBehavioralTiles(bp({ comment_percentile: undefined }));
+    expect(tiles.map((t) => t.k)).toEqual(['Share', 'Completion', 'Comment', 'Save']);
+    expect(tiles.find((t) => t.k === 'Comment')!.s).toBeUndefined();
+  });
+
+  it('omits a tile whose absolute % is absent', () => {
+    const tiles = deriveBehavioralTiles(bp({ comment_pct: undefined }));
     expect(tiles.map((t) => t.k)).toEqual(['Share', 'Completion', 'Save']);
   });
 
-  it('shows "<1% predicted" for a nonzero rate that rounds to 0, and "0%" for a true zero', () => {
-    // Real WPk976kozfWs: share 0.28%, comment 0.09% → must NOT read "0% predicted".
+  it('shows "<1" for a nonzero rate that rounds to 0, and "0" for a true zero', () => {
+    // Real WPk976kozfWs: share 0.28%, comment 0.09% → must NOT read "0%".
     const tiles = deriveBehavioralTiles(bp({ share_pct: 0.28, comment_pct: 0.09, save_pct: 0.65, completion_pct: 0 }));
-    expect(tiles.find((t) => t.k === 'Share')!.s).toBe('<1% predicted');
-    expect(tiles.find((t) => t.k === 'Comment')!.s).toBe('<1% predicted');
-    expect(tiles.find((t) => t.k === 'Save')!.s).toBe('1% predicted'); // 0.65 → rounds to 1
-    expect(tiles.find((t) => t.k === 'Completion')!.s).toBe('0% predicted'); // true zero stays 0%
+    expect(tiles.find((t) => t.k === 'Share')!.v).toBe('<1');
+    expect(tiles.find((t) => t.k === 'Comment')!.v).toBe('<1');
+    expect(tiles.find((t) => t.k === 'Save')!.v).toBe('1'); // 0.65 → rounds to 1
+    expect(tiles.find((t) => t.k === 'Completion')!.v).toBe('0'); // true zero stays 0
   });
 
   it('returns [] when behavioral_predictions is absent', () => {

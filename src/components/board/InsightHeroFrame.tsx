@@ -42,6 +42,11 @@ interface InsightHeroRow {
   anti_virality_gated?: boolean;
   apollo_reasoning?: ApolloShape | null;
   variants?: { apollo?: ApolloShape | null } | null;
+  // T2.2: computed-but-thrown-away signals now surfaced.
+  // verbatim.hook = the exact judged line (grounds the rewrites' struck-through originals).
+  verbatim?: { hook?: { spoken_words?: string | null; on_screen_text?: string | null } | null } | null;
+  // warnings[] = DeepSeek Step-4 fatal-flaw text (only the derived bool surfaced before).
+  warnings?: string[] | null;
   heatmap?: {
     weighted_curve?: number[];
     segments?: Array<{
@@ -201,6 +206,31 @@ export function InsightHeroFrame({ camera: _camera, layout: _layout }: InsightHe
     return { dropTime: formatTime(seg.t_start), leverHint: 'retention' };
   }, [row?.heatmap]);
 
+  // T2.2: the exact hook line we judged — grounds the rewrites' struck-through
+  // originals. Combine spoken_words + on_screen_text; null when neither present.
+  const hookLine = useMemo(() => {
+    const h = row?.verbatim?.hook;
+    const spoken = h?.spoken_words?.trim() || null;
+    const onScreen = h?.on_screen_text?.trim() || null;
+    if (!spoken && !onScreen) return null;
+    return { spoken, onScreen };
+  }, [row?.verbatim?.hook]);
+
+  // T2.2: DeepSeek fatal-flaw warnings. Filter the internal engine-status lines
+  // (weight redistribution + the generic low-confidence note, which the gated
+  // state itself already conveys) so creators see only real flaws.
+  const fatalWarnings = useMemo(() => {
+    const w = row?.warnings;
+    if (!Array.isArray(w)) return [] as string[];
+    return w.filter(
+      (s) =>
+        typeof s === 'string' &&
+        s.trim().length > 0 &&
+        !s.startsWith('Weights redistributed') &&
+        !s.startsWith('Low confidence'),
+    );
+  }, [row?.warnings]);
+
   // D-02: score band from overall_score + confidence (verdict-derive reuse)
   const scoreBand = useMemo(() => {
     const score = row?.overall_score;
@@ -287,6 +317,30 @@ export function InsightHeroFrame({ camera: _camera, layout: _layout }: InsightHe
         )}
       </div>
 
+      {/* ── 1b. Verbatim hook (T2.2) — the exact line we judged, so the
+              struck-through rewrite originals below have visible grounding. ── */}
+      {hookLine && (
+        <div
+          data-testid="insight-verbatim-hook"
+          className="flex flex-col gap-1 rounded-[8px] border border-white/[0.06] bg-white/[0.016] p-3"
+        >
+          <p className="text-[11px] font-[500] uppercase tracking-[0.08em] text-white/40">
+            Your hook (as we heard it)
+          </p>
+          {hookLine.spoken && (
+            <p className="text-[13px] leading-[1.5] text-white/85">
+              &ldquo;{hookLine.spoken}&rdquo;
+            </p>
+          )}
+          {hookLine.onScreen && (
+            <p className="text-[11.5px] leading-[1.4] text-white/45">
+              <span className="text-white/35">On-screen: </span>
+              {hookLine.onScreen}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* ── 2. Rewrites ──────────────────────────────────────────────────── */}
       {apollo.rewrites.length > 0 && (
         <div className="flex flex-col gap-2">
@@ -338,12 +392,41 @@ export function InsightHeroFrame({ camera: _camera, layout: _layout }: InsightHe
         </div>
       )}
 
-      {/* ── 5. Flop warning ──────────────────────────────────────────────── */}
-      {row?.anti_virality_gated && (
-        <div className="rounded-[8px] border border-amber-500/30 bg-amber-500/10 p-3">
-          <p className="text-[12px] font-[500] text-amber-400">
-            Don&apos;t post yet — confidence too low for viral potential.
+      {/* ── 5. Fatal-flaw warnings (T2.2) — surface the actual DeepSeek Step-4
+              fatal-flaw text (warnings[]) as explicit red bullets. Shown whenever
+              real flaws exist (NOT gated on anti_virality_gated, which is ~never
+              set — that would keep these buried on the weak videos that need them
+              most). The gate only escalates the headline. ── */}
+      {(fatalWarnings.length > 0 || row?.anti_virality_gated) && (
+        <div
+          data-testid="insight-flaw-warnings"
+          className="flex flex-col gap-1.5 rounded-[8px] border border-red-500/30 bg-red-500/10 p-3"
+        >
+          <p className="text-[12px] font-[500] text-red-400">
+            {row?.anti_virality_gated
+              ? "Don't post yet — fix these first."
+              : 'Fix these before posting.'}
           </p>
+          {fatalWarnings.length > 0 ? (
+            <ul className="flex flex-col gap-1">
+              {fatalWarnings.map((w, i) => (
+                <li
+                  key={i}
+                  data-testid="insight-flaw-bullet"
+                  className="flex gap-1.5 text-[12px] leading-[1.4] text-red-300/90"
+                >
+                  <span aria-hidden className="text-red-400/70">
+                    •
+                  </span>
+                  <span>{w}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[12px] leading-[1.4] text-red-300/80">
+              Confidence too low for viral potential.
+            </p>
+          )}
         </div>
       )}
     </div>

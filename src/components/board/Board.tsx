@@ -478,8 +478,21 @@ export function Board() {
       {/* Plan 2.6: context-aware command bar — z=200, fixed bottom-center.
           IMPORTANT: Rendered BEFORE the frame overlay loop so its <input> is the
           first tab stop inside the canvas region (DOM order = tab order for z=0 elements).
-          Tab order: Sidebar → CommandBar → Group frames (roving) → CameraOverlay presets */}
-      <CommandBar onContentSubmit={handleContentSubmit} />
+          Tab order: Sidebar → CommandBar → Group frames (roving) → CameraOverlay presets
+          260607-00u: dual-mode — passes completedAnalysisId + analysisRow when board is complete. */}
+      <CommandBar
+        onContentSubmit={handleContentSubmit}
+        completedAnalysisId={
+          (boardMachineState === 'complete' || boardMachineState === 'anti-virality')
+            ? (stream.analysisId ?? urlAnalysisId)
+            : null
+        }
+        analysisRow={
+          (boardMachineState === 'complete' || boardMachineState === 'anti-virality')
+            ? ((stream.result ?? permalinkQuery.data) as import('@/lib/chat/seed-context').AnalysisRow | null)
+            : null
+        }
+      />
 
       {/* DOM overlay layer: title bars, ARIA, empty-state copy. pointer-events-none
           keeps Konva pan/zoom hit-test alive; individual overlays restore pointer-events-auto.

@@ -18,9 +18,9 @@ import {
 } from './_kit';
 import {
   CONF_WORD,
+  intentChip,
   posterDurationLabel,
-  rankStatusWord,
-  titleCasePct,
+  reachWord,
   toMetrics,
   useCountIn,
 } from './input/input-derive';
@@ -42,11 +42,17 @@ interface Props {
 
 /**
  * InputResultCard — the Input frame's engagement scorecard, in the shared board
- * language: a single dominant hero (the strongest "Top X%" percentile, label
- * "PREDICTED RANK", status word by band) over a calm 4-up tile row of the
- * engagement percentiles. The gated path flips the hero to a coral "Hold"
- * verdict and dims the tiles to directional-only. The model's own confidence
- * anchors the footer. The hero number still counts in (`useCountIn`).
+ * language: a single dominant hero (predicted completion %, label "PREDICTED
+ * COMPLETION", reach band by absolute %) over a calm tile row of the three
+ * engagement actions (Shares · Comments · Saves) as predicted rates. The gated
+ * path flips the hero to a coral "Hold" verdict and dims the tiles to
+ * directional-only. The model's own confidence anchors the footer. The hero
+ * number still counts in (`useCountIn`).
+ *
+ * Honesty (T1.2): every value is an absolute predicted rate the engine actually
+ * emits (`behavioral_predictions.*_pct`). The old "Top X%/PREDICTED RANK" framing
+ * was dead — the engine emits digit-less intent labels, so the rank parse always
+ * returned null and the hero was permanently "Top —".
  */
 export function InputResultCard({
   behavioral,
@@ -124,12 +130,14 @@ export function InputResultCard({
     return () => cancelAnimationFrame(id);
   }, []);
 
-  // Four metrics in a stable order; the strongest (lowest "top X%") leads the hero.
+  // Completion leads the hero (watch-through, the headline rate); the other three
+  // are the engagement-action tiles. Strongest action is accented.
   const metrics = toMetrics(behavioral);
-  const ranked = [...metrics].sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999));
-  const lead = ranked[0];
+  const completion = metrics.find((m) => m.key === 'completion') ?? metrics[0] ?? null;
+  const actions = metrics.filter((m) => m.key !== 'completion');
+  const topAction = [...actions].sort((a, b) => b.pct - a.pct)[0] ?? null;
   const heroNum = useCountIn(
-    showResult && !gated ? (lead?.rank ?? null) : null,
+    showResult && !gated ? (completion?.pct ?? null) : null,
     !reducedMotion,
   );
 
@@ -170,29 +178,21 @@ export function InputResultCard({
     );
   }
 
-  // Hero value: count-in number (confident) or the "Hold" verdict word (gated).
-  // Post-strip (Plan 01, CR-02) a percentile label may be absent (deepseek no longer
-  // fabricates them; persona aggregate may be null) — degrade to "—" instead of an
-  // orphan "Top " label with no number.
-  const leadRank = heroNum ?? lead?.rank ?? null;
-  const leadValue = leadRank ?? lead?.pct ?? null;
-  const heroValue = gated ? (
-    'Hold'
-  ) : leadValue != null ? (
-    <>
-      <span className="text-[16px] font-medium text-white/55">Top </span>
-      {leadValue}
-    </>
-  ) : (
-    '—'
-  );
+  // Hero value: count-in completion % (confident) or the "Hold" verdict word
+  // (gated). completion_pct is a required engine field, so a confident result
+  // always has a real number — no orphan "—" hero.
+  const heroPct = heroNum ?? completion?.pct ?? null;
+  const heroValue = gated ? 'Hold' : heroPct != null ? Math.round(heroPct) : '—';
 
-  // Tiles: the four percentiles. The lead (strongest rank) is accented; gated
-  // dims them all to directional-only. tabular-nums via StatTile.
-  const tiles: StatTileData[] = metrics.map((m) => ({
+  // Tiles: the three engagement actions as predicted rates, intent label as the
+  // sub-caption chip. Strongest action accented; gated dims them all to
+  // directional-only. tabular-nums via StatTile.
+  const tiles: StatTileData[] = actions.map((m) => ({
     k: m.name,
-    v: m.pct ? titleCasePct(m.pct) : '—',
-    tone: !gated && m.key === lead?.key ? 'accent' : 'default',
+    v: String(Math.round(m.pct)),
+    u: '%',
+    s: intentChip(m.intent) ?? undefined,
+    tone: !gated && m.key === topAction?.key ? 'accent' : 'default',
   }));
 
   // The hero, factored so it renders identically standalone (no poster) or as the
@@ -200,21 +200,28 @@ export function InputResultCard({
   const hero = (className?: string) => (
     <FrameHero
       className={className}
-      label="PREDICTED RANK"
+      label="PREDICTED COMPLETION"
       value={heroValue}
-      unit={gated || leadValue == null ? undefined : '%'}
+      unit={gated || heroPct == null ? undefined : '%'}
       status={
         gated
           ? { word: 'Hold', tone: 'crit' }
-          : { word: rankStatusWord(lead?.rank ?? null), tone: 'neutral' }
+          : { word: reachWord(completion?.pct ?? null), tone: 'neutral' }
       }
       insight={
         gated ? (
-          'Directional only — confidence too low to rank.'
+          'Directional only — confidence too low to predict.'
         ) : (
           <>
-            predicted rank in{' '}
-            <span className="font-medium text-white/75">{lead?.name}</span>
+            predicted watch-through
+            {intentChip(completion?.intent) && (
+              <>
+                {' · '}
+                <span className="font-medium text-white/75">
+                  {intentChip(completion?.intent)}
+                </span>
+              </>
+            )}
           </>
         )
       }

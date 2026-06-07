@@ -270,6 +270,89 @@ describe('InsightHeroFrame', () => {
     );
   });
 
+  it('Test 9: (T2.2) verbatim hook surfaces as "Your hook (as we heard it)" with spoken + on-screen', () => {
+    setup({
+      ...LIVE_RESULT,
+      verbatim: { hook: { spoken_words: 'My best friend is Emily...', on_screen_text: 'Girls vs guys' } },
+    } as unknown as Record<string, unknown>);
+    const frame = screen.getByTestId('insight-hero-frame');
+    const hook = within(frame).getByTestId('insight-verbatim-hook');
+    expect(hook.textContent).toContain('Your hook (as we heard it)');
+    expect(hook.textContent).toContain('My best friend is Emily...');
+    expect(hook.textContent).toContain('Girls vs guys');
+
+    // Grounding: the verbatim hook sits ABOVE the rewrites in DOM order.
+    const nodes = Array.from(frame.querySelectorAll('[data-testid]'));
+    const firstRewrite = within(frame).getAllByTestId('insight-rewrite')[0]!;
+    expect(nodes.findIndex((n) => n === hook)).toBeLessThan(
+      nodes.findIndex((n) => n === firstRewrite),
+    );
+  });
+
+  it('Test 9b: (T2.2) no verbatim hook → no grounding block, no crash', () => {
+    setup(LIVE_RESULT); // no verbatim field
+    const frame = screen.getByTestId('insight-hero-frame');
+    expect(within(frame).queryByTestId('insight-verbatim-hook')).toBeNull();
+  });
+
+  it('Test 10: (T2.2) gated state lists fatal-flaw warnings as red bullets, filtering engine-status noise', () => {
+    setup({
+      ...LIVE_RESULT,
+      anti_virality_gated: true,
+      warnings: [
+        'Hook fails to establish stakes in the first 2 seconds',
+        'No clear payoff — viewers have no reason to finish',
+        'Weights redistributed — missing signals: retrieval', // internal — must be filtered
+        'Low confidence — limited signal data', // generic — must be filtered
+      ],
+    } as unknown as Record<string, unknown>);
+    const frame = screen.getByTestId('insight-hero-frame');
+    const block = within(frame).getByTestId('insight-flaw-warnings');
+    const bullets = within(block).getAllByTestId('insight-flaw-bullet');
+    expect(bullets).toHaveLength(2);
+    expect(block.textContent).toContain('Hook fails to establish stakes');
+    expect(block.textContent).toContain('No clear payoff');
+    expect(block.textContent).not.toContain('Weights redistributed');
+    expect(block.textContent).not.toContain('limited signal data');
+  });
+
+  it('Test 10b: (T2.2) gated with no real warnings → generic line, no bullets', () => {
+    setup({
+      ...LIVE_RESULT,
+      anti_virality_gated: true,
+      warnings: ['Weights redistributed — missing signals: retrieval'],
+    } as unknown as Record<string, unknown>);
+    const frame = screen.getByTestId('insight-hero-frame');
+    const block = within(frame).getByTestId('insight-flaw-warnings');
+    expect(within(block).queryAllByTestId('insight-flaw-bullet')).toHaveLength(0);
+    expect(block.textContent).toContain('Confidence too low');
+  });
+
+  it('Test 10c: (T2.2) not gated but real flaws present → block shows with softer headline + bullets', () => {
+    setup({
+      ...LIVE_RESULT,
+      anti_virality_gated: false,
+      warnings: ['Hook fails to establish stakes', 'No clear payoff'],
+    } as unknown as Record<string, unknown>);
+    const frame = screen.getByTestId('insight-hero-frame');
+    const block = within(frame).getByTestId('insight-flaw-warnings');
+    // Surfaced even though not gated (anti_virality_gated is ~never set).
+    expect(within(block).getAllByTestId('insight-flaw-bullet')).toHaveLength(2);
+    // Softer non-gated headline.
+    expect(block.textContent).toContain('Fix these before posting');
+    expect(block.textContent).not.toContain("Don't post yet");
+  });
+
+  it('Test 10d: (T2.2) not gated + only engine-status noise → no flaw-warnings block', () => {
+    setup({
+      ...LIVE_RESULT,
+      anti_virality_gated: false,
+      warnings: ['Weights redistributed — missing signals: retrieval', 'Low confidence — limited signal data'],
+    } as unknown as Record<string, unknown>);
+    const frame = screen.getByTestId('insight-hero-frame');
+    expect(within(frame).queryByTestId('insight-flaw-warnings')).toBeNull();
+  });
+
   it('Test 8: (IN-02) ceiling_capper absent → confidence_scope becomes the lead, no caveat line', () => {
     const noCapper = {
       ...LIVE_RESULT,
