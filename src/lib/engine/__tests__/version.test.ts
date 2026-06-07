@@ -6,7 +6,7 @@ import { describe, it, expect } from "vitest";
 import { ENGINE_VERSION } from "../version";
 
 describe("version", () => {
-  it("exports ENGINE_VERSION = '3.11.0' (T1.1: fold folded into overall_score ensemble)", () => {
+  it("exports ENGINE_VERSION = '3.11.0' (T1.1 fold→score ensemble + T3.2 phantom-injection removal)", () => {
     expect(ENGINE_VERSION).toBe("3.11.0");
   });
 

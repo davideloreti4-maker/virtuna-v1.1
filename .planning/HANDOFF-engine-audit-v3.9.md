@@ -13,15 +13,15 @@
 
 ## 0. Where things stand
 
-**Just shipped this session (UNCOMMITTED — commit first):** sense-complete perception, ENGINE_VERSION 3.8.0→**3.9.0**.
-- Read = `qwen3.5-omni-flash` (unchanged) · Fold = `qwen3.5-omni-plus` + **video** · Reason/Apollo = `qwen3.6-plus` + **video**.
-- Files modified: `wave3/fold-prompts.ts`, `wave3/fold.ts`, `pipeline.ts`, `deepseek.ts`, `version.ts` + 2 test version-pins (`__tests__/version.test.ts`, `__tests__/aggregator.test.ts`).
-- Live E2E verified: 78.3s, score 71, 0 warnings, 958 engine tests pass.
-- ⚠️ `.planning/MILESTONES.md` + `.planning/PROJECT.md` have **pre-existing `UU` merge conflicts** — DO NOT `git stash`/`git add -A`. Commit ONLY the engine source/test files explicitly. (See memory `git-autocommit-during-merge`.)
+**Current HEAD state (all committed + pushed, working tree clean):** `ENGINE_VERSION = 3.11.0`, **959 engine tests green**.
+- Engine: Read = `qwen3.5-omni-flash` · Fold = `qwen3.5-omni-plus` + **video** · Reason/Apollo = `qwen3.6-plus` + **video** (3.9.0). Fold folded into `overall_score` (T1.1, 3.10.0). Phantom Apollo-prompt injection removed (T3.2, 3.11.0).
+- Live E2E: ~78s, score 61, 0 warnings.
+- Git history is messy — a background auto-commit hook injected junk `"test/feat: changes"` commits between the real ones. **HEAD is correct** (verified); don't rebase (shared branch, concurrent session). When you work: **commit your own changes promptly with real messages** so the hook doesn't grab them.
+- The earlier `.planning/*.md` `UU` merge conflicts are **RESOLVED** (working tree is clean now).
 
 **Model facts (don't re-research):** omni-plus/flash = video+audio (only models that hear). qwen3.6-plus/flash = video+text, **NO audio**. qwen3-max = text-only. See memory `engine-model-assignment`.
 
-**Cross-cutting rule:** every change to scoring math OR any prompt MUST bump `ENGINE_VERSION` (`src/lib/engine/version.ts:38`) to invalidate cached rows (L1 in-memory + L2 Supabase keyed on it). If shipping this whole remediation in one batch, **one cumulative bump** (3.9.0→3.10.0) + update the 2 test pins (`version.test.ts:10`, `aggregator.test.ts:436`). Run `npx vitest run src/lib/engine` after each tier.
+**Cross-cutting rule:** every change to scoring math OR any prompt MUST bump `ENGINE_VERSION` (`src/lib/engine/version.ts`) to invalidate cached rows (L1 in-memory + L2 Supabase keyed on it). Update the 2 test pins (`version.test.ts`, `aggregator.test.ts` ~`:436`). Run `npx vitest run src/lib/engine` after each tier. **15 pre-existing tsc errors** in test/fixture files are NOT yours — ignore.
 
 ---
 
@@ -29,7 +29,8 @@
 
 ### TIER 1 — Honesty (engine shows dead chrome / fabricated numbers) — HIGHEST VALUE
 
-**T1.1 — Fold the fold INTO `overall_score` ⭐ (the headline fix).** **[M]**
+**T1.1 — Fold the fold INTO `overall_score` ⭐ (the headline fix). ✅ DONE (commit `b5b35146`, ENGINE_VERSION 3.10.0).** **[M]**
+> Shipped as `0.5·apollo_composite + 0.5·fold_audience` on video (fold_audience = 0.50·completion + 0.25·share + 0.15·save + 0.10·comment); text mode = Apollo-only fallback. Regression test added. Original analysis kept below for reference.
 - VERIFIED: `aggregator.ts:785-796` `behavioral_score` = avg of Apollo's 7 `component_scores`; `:814` `apollo_score` = same call's `composite_score`; `:821-830` `raw_overall_score` blends only those two. The fold (`foldOutcome`/`personaBehavioralAggregate`) is **absent from score math**. `:744-748` `availability.behavioral` and `.apollo` are BOTH `deepseekResult !== null` → the `selectWeights` renorm can never split (theatre).
 - The fold — just upgraded to omni-plus+video, the real audience sim — drives `behavioral_predictions` + heatmap (`:952-958`) but NOT the number creators see.
 - **Change:** make `overall_score` a true ensemble of **expert read (Apollo composite)** + **simulated audience (fold)**. Recommended: replace the fake `behavioral_score` (Apollo component-avg) with a fold-derived 0-100 metric (e.g. `weighted_completion_pct`, or a blend of the persona aggregate's `watch_through` + `share_intent`). Net blend becomes `apollo_composite × w1 + fold_audience × w2`. Decide weights (start 0.5/0.5; the old 0.53/0.47 was arbitrary). Keep graceful fallback when fold absent (text mode → Apollo-only).
@@ -67,7 +68,7 @@
 
 **T3.1 — Trim KNOWLEDGE_CORE.** **[M]** `apollo-core.ts:27-250`. ~7.4k tokens on every Apollo call (re-measure precisely via `tsx` — escaped backticks break naive char-count); ~40% is content the model is told to ignore: §2.6 ("Empty in v1"), §7 (defer to registry, not in call context), §8 (~2k chars IP/citation bookkeeping), §5 (Decode lens — Remix-only). Split a lean "scoring core" (§1, §2.0-2.5, §3, §4); move §5 to the Remix decode call (which imports `APOLLO_SYSTEM_PROMPT`). Keep byte-stability (no Date/random). Ensure §-number citations in the output contract still resolve. Bump ENGINE_VERSION.
 
-**T3.2 — Strip phantom rule/trend injection.** **[S]** VERIFIED: `pipeline.ts:663-672` passes `rule_result:{rule_score:50}` + `trend_context:"…running in parallel"` (both stages DELETED) into Apollo; renders as "Rule Matches: None" + empty trend block (`deepseek.ts:284-297`), then asks for `component_scores.trend_alignment` (`:321`) the model guesses from nothing. Remove the Rule/Trend sections from `buildDeepSeekUserMessage` + `trend_alignment` from the contract + the fields from `DeepSeekInput`. (Note: `trend_alignment` feeds `behavioralAvg` at `aggregator.ts:792` — adjust the 7→6 component average.)
+**T3.2 — Strip phantom rule/trend injection. ✅ DONE (commit `e08fd80a`, ENGINE_VERSION 3.11.0)** — removed the Rule Matches + Trend Context prompt sections (creator_context kept). NOTE: `trend_alignment` was LEFT in the contract + `behavioralAvg` /7 (removing it is coupled to scoring math — deferred). Original below. **[S]** VERIFIED: `pipeline.ts:663-672` passes `rule_result:{rule_score:50}` + `trend_context:"…running in parallel"` (both stages DELETED) into Apollo; renders as "Rule Matches: None" + empty trend block (`deepseek.ts:284-297`), then asks for `component_scores.trend_alignment` (`:321`) the model guesses from nothing. Remove the Rule/Trend sections from `buildDeepSeekUserMessage` + `trend_alignment` from the contract + the fields from `DeepSeekInput`. (Note: `trend_alignment` feeds `behavioralAvg` at `aggregator.ts:792` — adjust the 7→6 component average.)
 
 **T3.3 — Stop asking Apollo for `behavioral_predictions` on video runs.** **[S-M]** VERIFIED: `aggregator.ts:952-958` fold wins; Apollo's `behavioral_predictions` (`deepseek.ts:309-314`) is fallback-only on video. Make it `.optional()` in the schema / gate to text mode so Apollo doesn't spend output tokens + reasoning on 4 discarded numbers. Verify text-mode fallback still has a behavioral source.
 
