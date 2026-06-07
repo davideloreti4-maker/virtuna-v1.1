@@ -34,10 +34,14 @@ vi.mock('@/hooks/usePrefersReducedMotion', () => ({
 import { InputResultCard } from '../InputResultCard';
 
 const BEHAVIORAL: BehavioralPredictions = {
-  share_percentile: 'top 8%',
-  completion_percentile: 'top 22%',
-  comment_percentile: 'top 40%',
-  save_percentile: 'top 15%',
+  completion_pct: 62,
+  completion_percentile: 'high intent',
+  share_pct: 8,
+  share_percentile: 'moderate intent',
+  comment_pct: 5,
+  comment_percentile: 'low intent',
+  save_pct: 4,
+  save_percentile: 'low intent',
 } as unknown as BehavioralPredictions;
 
 beforeEach(() => {

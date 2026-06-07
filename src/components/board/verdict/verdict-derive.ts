@@ -116,51 +116,52 @@ export function nicheDelta(score: number, niche: NicheCohort | null): number | n
   return Math.round(score - niche.median);
 }
 
-/** Parses an engine percentile string ("74th", "9th", "100th") to its integer.
- *  Returns null for the malformed / empty case so the tile can degrade. */
-export function parsePercentile(raw: string | null | undefined): number | null {
-  if (!raw) return null;
-  const m = /\d+/.exec(raw);
-  if (!m) return null;
-  const n = Number(m[0]);
-  return Number.isFinite(n) ? n : null;
+/** Title-case a qualitative intent label: "high intent" → "High intent".
+ *  undefined when absent — the engine emits these only on the persona aggregate. */
+function intentChip(s: string | null | undefined): string | undefined {
+  if (!s) return undefined;
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-/** The 4 behavioral-percentile tiles for the hero's StatTileRow (Share ·
- *  Completion · Comment · Save). Each value is the raw engine percentile; the
- *  sub-caption carries the predicted absolute %. Tiles whose percentile is
- *  absent are omitted (never fabricated). Niche-cohort deltas are not derivable
- *  — the comparisons endpoint exposes only an aggregate score histogram, no
- *  per-metric cohort percentiles — so no `delta` is attached. */
-/** "X% predicted" — but a nonzero rate that rounds to 0 (e.g. 0.28% share) reads
- *  as broken "0% predicted". Show "<1%" so a tiny-but-real prediction stays honest
- *  (a true zero still reads "0%"). */
-function predictedPctLabel(abs: number): string {
-  if (abs <= 0) return '0% predicted';
+/** Tile value for an absolute predicted rate. A nonzero rate that rounds to 0
+ *  (e.g. 0.28% share) reads as broken "0%"; show "<1" so a tiny-but-real
+ *  prediction stays honest (a true zero still reads "0"). */
+function pctValue(abs: number): string {
+  if (abs <= 0) return '0';
   const rounded = Math.round(abs);
-  return rounded === 0 ? '<1% predicted' : `${rounded}% predicted`;
+  return rounded === 0 ? '<1' : String(rounded);
 }
 
+/** The 4 behavioral tiles for the hero's StatTileRow (Share · Completion ·
+ *  Comment · Save). Each value is the absolute predicted % the engine actually
+ *  emits (`*_pct`); the sub-caption carries the qualitative intent label when
+ *  present. Tiles whose absolute % is absent are omitted (never fabricated).
+ *
+ *  T1.2/T1.4: previously keyed on the `*_percentile` string parsed for a digit —
+ *  but the engine emits digit-less intent labels ("high intent"), so the parse
+ *  always returned null and every tile was dropped. Self-referential percentiles
+ *  are gone; absolute rates + intent chips are the honest surface. Niche-cohort
+ *  deltas are not derivable (the comparisons endpoint exposes only an aggregate
+ *  score histogram, no per-metric cohort percentiles) — so no `delta` is attached. */
 export function deriveBehavioralTiles(result: PredictionResult): StatTileData[] {
   const bp = result.behavioral_predictions;
   if (!bp) return [];
 
-  const rows: Array<{ k: string; pctl: string | undefined; abs: number | undefined }> = [
-    { k: 'Share', pctl: bp.share_percentile, abs: bp.share_pct },
-    { k: 'Completion', pctl: bp.completion_percentile, abs: bp.completion_pct },
-    { k: 'Comment', pctl: bp.comment_percentile, abs: bp.comment_pct },
-    { k: 'Save', pctl: bp.save_percentile, abs: bp.save_pct },
+  const rows: Array<{ k: string; intent: string | undefined; abs: number | undefined }> = [
+    { k: 'Share', intent: bp.share_percentile, abs: bp.share_pct },
+    { k: 'Completion', intent: bp.completion_percentile, abs: bp.completion_pct },
+    { k: 'Comment', intent: bp.comment_percentile, abs: bp.comment_pct },
+    { k: 'Save', intent: bp.save_percentile, abs: bp.save_pct },
   ];
 
   const tiles: StatTileData[] = [];
   for (const r of rows) {
-    const p = parsePercentile(r.pctl);
-    if (p == null) continue;
+    if (typeof r.abs !== 'number' || !Number.isFinite(r.abs)) continue;
     tiles.push({
       k: r.k,
-      v: String(p),
-      u: 'th',
-      s: typeof r.abs === 'number' && Number.isFinite(r.abs) ? predictedPctLabel(r.abs) : undefined,
+      v: pctValue(r.abs),
+      u: '%',
+      s: intentChip(r.intent),
     });
   }
   return tiles;

@@ -97,11 +97,10 @@ export function VerdictNode({ camera: _camera, layout: _layout }: VerdictNodePro
       {/* ── Hero: the single dominant number ── */}
       {!result ? <VerdictSkeleton /> : <VerdictHero result={result} niche={niche} />}
 
-      {/* ── R11: grounded engagement range — null-gated (no creator baseline → absent,
-             never a fabricated number). Dual-reads the live result + persisted variant. ── */}
-      {result && <EngagementRangeBlock result={result} />}
+      {/* ── T1.3: the "Projected views" range block was cut (formula off the score,
+             not a measured view model — see note below). ── */}
 
-      {/* ── Tiles: behavioral percentiles (new row, not the engine signals) ── */}
+      {/* ── Tiles: behavioral predictions (absolute predicted rates) ── */}
       {result && behavioralTiles.length > 0 && <StatTileRow tiles={behavioralTiles} />}
 
       {/* ── Tabs: progressive depth ── */}
@@ -248,59 +247,12 @@ const CONFIDENCE_DOT: Record<'HIGH' | 'MEDIUM' | 'LOW', string> = {
   LOW: 'var(--color-error)', // coral is reserved for "you"/the fix
 };
 
-/** Compact view-count formatting — 8000 → "8K", 1_200_000 → "1.2M". */
-function formatViews(n: number): string {
-  if (n >= 1_000_000) {
-    const m = n / 1_000_000;
-    return `${(m >= 10 ? Math.round(m) : Number(m.toFixed(1))).toString()}M`;
-  }
-  if (n >= 1_000) {
-    const k = n / 1_000;
-    return `${(k >= 10 ? Math.round(k) : Number(k.toFixed(1))).toString()}K`;
-  }
-  return Math.round(n).toString();
-}
-
-function rangeConfidenceLabel(c: number): string {
-  if (c >= 0.7) return 'High';
-  if (c >= 0.4) return 'Medium';
-  return 'Low';
-}
-
-/**
- * R11 engagement-range block — the creator-baseline-relative projected-views range.
- *
- * Dual-read (live SSE result ?? persisted variants.engagement_range) so it survives
- * permalink reload, mirroring InsightHeroFrame's variants dual-read. Renders nothing
- * when no range exists (no creator baseline → R9 honest null, never a fabricated point).
- */
-function EngagementRangeBlock({ result }: { result: PredictionResult }) {
-  const range =
-    result.predicted_engagement ??
-    (result as unknown as { variants?: { engagement_range?: PredictionResult['predicted_engagement'] } })
-      .variants?.engagement_range ??
-    null;
-  if (!range) return null;
-
-  return (
-    <div
-      data-testid="engagement-range"
-      className="flex items-center justify-between rounded-[8px] border border-white/[0.06] px-3 py-2"
-    >
-      <div className="flex flex-col">
-        <span className="text-[10px] uppercase tracking-[0.08em] text-white/45">
-          Projected views
-        </span>
-        <span className="text-[15px] font-semibold tabular-nums text-white">
-          {formatViews(range.lo)}–{formatViews(range.hi)}
-        </span>
-      </div>
-      <span className="text-[11px] text-white/50">
-        {rangeConfidenceLabel(range.confidence)} confidence
-      </span>
-    </div>
-  );
-}
+// T1.3: the "Projected views lo–hi" block was CUT. It was the invented-engagement
+// layer VISION says must die, lightly rebuilt as R11 — `predicted_engagement` is
+// `followers × (score/100)² × 0.20` (aggregator.ts:182-231), a formula off the
+// score, not a measured/corpus view model. No honest "projected views" surface
+// exists, so the board shows none. (`predicted_engagement` stays in the schema +
+// the legacy simulation EngagementRangeCard for back-compat; only the board cut.)
 
 function VerdictSkeleton() {
   return (

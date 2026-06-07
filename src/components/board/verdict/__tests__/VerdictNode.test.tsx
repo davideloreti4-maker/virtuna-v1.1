@@ -136,8 +136,10 @@ describe('VerdictNode - shell', () => {
   });
 });
 
-// R11 engagement-range surface (live render + persist dual-read + honest null-gate).
-describe('VerdictNode - R11 engagement range', () => {
+// T1.3: the projected-views ("engagement-range") block was CUT from the board —
+// it was a formula off the score (followers × (score/100)² × 0.20), not a measured
+// view model. The board must never render it.
+describe('VerdictNode - T1.3 projected-views block removed', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(global, 'fetch').mockResolvedValue(
@@ -151,33 +153,23 @@ describe('VerdictNode - R11 engagement range', () => {
     });
   }
 
-  it('renders the projected-views range from the live predicted_engagement', () => {
+  it('never renders the engagement-range block, even with a populated predicted_engagement', () => {
     mockResult({
       ...fixtures.complete,
       predicted_engagement: { lo: 8000, hi: 42000, confidence: 0.75, basis: 'follower-tier × quality read' },
     });
     renderWithQuery(<VerdictNode camera={{} as never} layout={{} as never} />);
-    const block = screen.getByTestId('engagement-range');
-    expect(block.textContent).toContain('Projected views');
-    expect(block.textContent).toContain('8K–42K');
-    expect(block.textContent).toContain('High confidence');
-  });
-
-  it('honest null-gate: no range block when there is no creator baseline', () => {
-    mockResult({ ...fixtures.complete, predicted_engagement: null });
-    renderWithQuery(<VerdictNode camera={{} as never} layout={{} as never} />);
     expect(screen.queryByTestId('engagement-range')).toBeNull();
+    expect(screen.queryByText('Projected views')).toBeNull();
   });
 
-  it('persist dual-read: renders from variants.engagement_range on permalink (no live field)', () => {
+  it('never renders it from a persisted variants.engagement_range either', () => {
     mockResult({
       ...fixtures.complete,
       predicted_engagement: null,
       variants: { engagement_range: { lo: 1200000, hi: 3000000, confidence: 0.3, basis: 'follower-tier × quality read' } },
     });
     renderWithQuery(<VerdictNode camera={{} as never} layout={{} as never} />);
-    const block = screen.getByTestId('engagement-range');
-    expect(block.textContent).toContain('1.2M–3M');
-    expect(block.textContent).toContain('Low confidence');
+    expect(screen.queryByTestId('engagement-range')).toBeNull();
   });
 });
