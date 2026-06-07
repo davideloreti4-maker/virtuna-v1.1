@@ -279,6 +279,17 @@ describe('buildWaveBars', () => {
     expect(bars).toHaveLength(32);
     expect(bars.every((b) => b >= 0 && b <= 1)).toBe(true);
   });
+
+  it('T4.6: no synthetic flutter — a flat energy arc yields uniform bars', () => {
+    // With constant intensity the bars must all be equal. The removed sin() flutter
+    // would have made adjacent bars oscillate independently of the (flat) data.
+    const flatArc: EmotionArcPoint[] = [
+      { timestamp_ms: 0, intensity_0_1: 0.5 },
+      { timestamp_ms: 34000, intensity_0_1: 0.5 },
+    ];
+    const bars = buildWaveBars(flatArc, 34, 16);
+    expect(new Set(bars.map((b) => b.toFixed(6))).size).toBe(1);
+  });
 });
 
 describe('firstSentence', () => {
