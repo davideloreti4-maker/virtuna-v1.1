@@ -281,20 +281,18 @@ export function buildDeepSeekUserMessage(context: DeepSeekInput): string {
   sections.push(formatGeminiSignals(context.gemini_analysis));
   sections.push("");
 
-  // ── Rule matches ─────────────────────────────────────────────────────────
-  sections.push("---");
-  const matchedRuleNames =
-    context.rule_result.matched_rules.map((r) => r.rule_name).join(", ") || "None";
-  sections.push(`## Rule Matches\nMatched rules: ${matchedRuleNames}`);
-  sections.push("");
-
-  // ── Trend context ─────────────────────────────────────────────────────────
-  sections.push("## Trend Context");
-  sections.push(context.trend_enrichment.trend_context);
+  // ── Creator context ──────────────────────────────────────────────────────
+  // T3.2 (2026-06-06): the "## Rule Matches" + "## Trend Context" sections were
+  // DELETED — both stages were removed from the pipeline, so they injected dead
+  // text ("Matched rules: None", "Trend analysis running in parallel…") that
+  // described phantom systems and risked the model weighting a non-existent trend
+  // lever. rule_result/trend_enrichment are still accepted on DeepSeekInput (passed
+  // by the pipeline) but no longer rendered. Creator context (real) is preserved.
   if (context.creator_context) {
-    sections.push(`\n${context.creator_context}`);
+    sections.push("---");
+    sections.push(context.creator_context);
+    sections.push("");
   }
-  sections.push("");
 
   // ── JSON OUTPUT CONTRACT (machine shape for the §4 narrative) ─────────────
   // The system prefix (§4) describes WHAT to assess; this enumerates the exact
