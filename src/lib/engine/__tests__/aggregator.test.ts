@@ -433,7 +433,7 @@ describe("Phase 3 — provenance + stub invocations", () => {
     const { ENGINE_VERSION } = await import("../aggregator");
     const { ENGINE_VERSION: viaVersion } = await import("../version");
     expect(ENGINE_VERSION).toBe(viaVersion);
-    expect(ENGINE_VERSION).toBe("3.9.0"); // sense-complete perception: omni-plus fold + sighted reasoner (bump from 3.8.0)
+    expect(ENGINE_VERSION).toBe("3.10.0"); // T1.1: fold folded into overall_score ensemble (bump from 3.9.0)
   });
 
   it("PredictionResult.engine_version reads from ./version module", async () => {

@@ -814,19 +814,52 @@ export async function aggregateScores(
   const apollo_score = deepseek?.composite_score ?? 0;
 
   // -------------------------------------------------
-  // Overall score — behavioral + apollo blend (Plan 03-04, D-04).
-  // Dead terms (ml, rules, trends, audio, retrieval, platform_fit, gemini) removed.
-  // apollo_score sourced from Apollo composite (deepseekResult.reasoning.composite_score).
+  // Fold audience score (T1.1, 2026-06-06) — the SIMULATED-AUDIENCE half of the score.
+  // Until now `overall_score` was one Apollo call graded twice (behavioral_score = avg of
+  // Apollo's component_scores; apollo_score = same call's composite). The fold — the real
+  // 10-archetype audience sim (qwen3.5-omni-plus + video) — drove the heatmap + behavioral
+  // predictions but was STRUCTURALLY EXCLUDED from the headline number. This folds it in.
+  //
+  // fold_audience_score (0-100) = retention-dominant blend of the persona aggregate:
+  //   0.50·completion (watch-through, the #1 virality signal) + 0.25·share (reach/algo)
+  //   + 0.15·save (value) + 0.10·comment (engagement). All fields are 0-100 population/
+  //   top-3-weighted intents from aggregatePersonaResults (wave3/aggregator.ts).
   // -------------------------------------------------
+  const foldAgg = pipelineResult.personaBehavioralAggregate;
+  const foldOn = (pipelineResult.foldOutcome?.fold_success ?? false) && foldAgg !== null;
+  const fold_audience_score = foldOn
+    ? Math.round(
+        0.50 * foldAgg!.completion_pct +
+          0.25 * foldAgg!.share_pct +
+          0.15 * foldAgg!.save_pct +
+          0.10 * foldAgg!.comment_pct,
+      )
+    : 0;
+
+  // -------------------------------------------------
+  // Overall score — TRUE ensemble: expert read (Apollo composite) × simulated audience (fold).
+  // - video + both signals: 0.5·apollo + 0.5·fold_audience (the real ensemble).
+  // - no fold (text/tiktok_url mode): fall back to the prior Apollo-only blend
+  //   (behavioral_score·w.beh + apollo_score·w.apollo) — byte-identical to pre-T1.1 text mode.
+  // - apollo failed but fold ok: fold drives 100% (don't halve a valid audience read).
+  // - both dead: 0 (T1.5 will null this into an "unavailable" state — out of scope here).
+  // Dead terms (ml/rules/trends/audio/retrieval/platform_fit/gemini) remain removed.
+  // -------------------------------------------------
+  const apolloOn = deepseek != null; // apollo_score + behavioral_score valid
   const raw_overall_score = Math.min(
     100,
     Math.max(
       0,
       Math.round(
-        behavioral_score * weights.behavioral +
-          apollo_score * weights.apollo // Plan 03-04 D-04: Apollo composite replaces gemini
-      )
-    )
+        apolloOn && foldOn
+          ? 0.5 * apollo_score + 0.5 * fold_audience_score
+          : apolloOn
+            ? behavioral_score * weights.behavioral + apollo_score * weights.apollo
+            : foldOn
+              ? fold_audience_score
+              : 0,
+      ),
+    ),
   );
 
   // Platt calibration was dropped 2026-05-24 — uncalibrated raw score is the

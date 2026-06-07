@@ -32,7 +32,13 @@
  * directly rather than reasoning over the read's text compression. Stale 3.8.0 rows (text-fold
  * + blind-reason era) must not mix with sighted-era rows.
  *
+ * Bumped 3.9.0 → 3.10.0 (2026-06-06, T1.1 fold→score): overall_score is now a TRUE ensemble
+ * of the Apollo composite (expert read) and a fold-derived audience score (0.5·apollo +
+ * 0.5·fold_audience on video). Previously the fold (the real audience sim) was excluded and
+ * the score was one Apollo call graded twice. Scores shift on every video row; text/tiktok_url
+ * mode is unchanged (Apollo-only fallback). Stale 3.9.0 rows must not mix with ensemble-era rows.
+ *
  * D-23 cache invariant: prediction-cache.ts keys on ENGINE_VERSION; this bump auto-invalidates
- * all `3.8.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
+ * all `3.9.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
  */
-export const ENGINE_VERSION = "3.9.0";
+export const ENGINE_VERSION = "3.10.0";
