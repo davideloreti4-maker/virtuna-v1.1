@@ -397,6 +397,27 @@ describe("aggregateScores", () => {
     expect(result.warnings.some((w) => w.includes("missing signals") && w.includes("behavioral"))).toBe(true);
   });
 
+  it("T1.5 — analysis_unavailable=false on a healthy run; true when BOTH core signals die", async () => {
+    // Healthy default: gemini factors > 0 AND deepseek present → analyzable.
+    const healthy = await aggregateScores(makePipelineResult());
+    expect(healthy.analysis_unavailable).toBe(false);
+
+    // Dual failure: deepseek null (behavioral/apollo dead) + all gemini factors 0 (no
+    // usable read, factor-fallback availability path → gemini=false). overall_score
+    // collapses to 0; the flag must mark it "couldn't analyze", not a confident verdict.
+    const deadGemini = makeGeminiAnalysis({
+      factors: makeGeminiAnalysis().factors.map((f) => ({ ...f, score: 0 })),
+    });
+    const dead = await aggregateScores(
+      makePipelineResult({
+        deepseekResult: null,
+        geminiResult: { analysis: deadGemini, cost_cents: 0 },
+      }),
+    );
+    expect(dead.analysis_unavailable).toBe(true);
+    expect(dead.overall_score).toBe(0);
+  });
+
   it("maps confidence_label correctly based on confidence thresholds", async () => {
     // HIGH confidence: all signals available, video mode, matched trends/rules, high agreement
     // With all signals scoring 7, both gemini and behavioral > 50, they agree -> agreement = 0.4
@@ -462,7 +483,7 @@ describe("Phase 3 — provenance + stub invocations", () => {
     const { ENGINE_VERSION } = await import("../aggregator");
     const { ENGINE_VERSION: viaVersion } = await import("../version");
     expect(ENGINE_VERSION).toBe(viaVersion);
-    expect(ENGINE_VERSION).toBe("3.12.0"); // Tier-3 prompt trims (T3.1 lean core + T3.3 behavioral gate + T3.4 omni byte-stable)
+    expect(ENGINE_VERSION).toBe("3.13.0"); // T1.5 degradation honesty (analysis_unavailable flag)
   });
 
   it("PredictionResult.engine_version reads from ./version module", async () => {

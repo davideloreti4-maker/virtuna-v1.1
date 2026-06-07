@@ -90,21 +90,29 @@ export function VerdictNode({ camera: _camera, layout: _layout }: VerdictNodePro
         {ariaText}
       </span>
 
-      {/* Gated override band — folded lead lives in the hero; this thin band
-          keeps the "Post anyway →" escape hatch + the role="status" announcement. */}
-      <AntiViralityHeader result={result} analysisId={analysisId} />
+      {/* ── T1.5: degradation honesty. When both core signals died the engine emits
+             overall_score=0 with zeroed weights — a fabricated "will flop" verdict. Show a
+             distinct "couldn't analyze" state instead of presenting the 0 + its tiles/tabs
+             (which would all read as a real, confident assessment). ── */}
+      {result?.analysis_unavailable ? (
+        <VerdictUnavailable />
+      ) : (
+        <>
+          {/* Gated override band — folded lead lives in the hero; this thin band
+              keeps the "Post anyway →" escape hatch + the role="status" announcement. */}
+          <AntiViralityHeader result={result} analysisId={analysisId} />
 
-      {/* ── Hero: the single dominant number ── */}
-      {!result ? <VerdictSkeleton /> : <VerdictHero result={result} niche={niche} />}
+          {/* ── Hero: the single dominant number ── */}
+          {!result ? <VerdictSkeleton /> : <VerdictHero result={result} niche={niche} />}
 
-      {/* ── T1.3: the "Projected views" range block was cut (formula off the score,
-             not a measured view model — see note below). ── */}
+          {/* ── T1.3: the "Projected views" range block was cut (formula off the score,
+                 not a measured view model — see note below). ── */}
 
-      {/* ── Tiles: behavioral predictions (absolute predicted rates) ── */}
-      {result && behavioralTiles.length > 0 && <StatTileRow tiles={behavioralTiles} />}
+          {/* ── Tiles: behavioral predictions (absolute predicted rates) ── */}
+          {result && behavioralTiles.length > 0 && <StatTileRow tiles={behavioralTiles} />}
 
-      {/* ── Tabs: progressive depth ── */}
-      {result && (
+          {/* ── Tabs: progressive depth ── */}
+          {result && (
         <FrameTabs
           tabs={[
             { value: 'breakdown', label: 'Breakdown' },
@@ -143,7 +151,35 @@ export function VerdictNode({ camera: _camera, layout: _layout }: VerdictNodePro
             </FrameTabPanel>
           )}
         </FrameTabs>
+          )}
+        </>
       )}
+    </div>
+  );
+}
+
+/**
+ * T1.5 — "couldn't analyze" state. Rendered in place of the score hero/tiles/tabs when
+ * BOTH core signals (Omni read + Apollo reasoning) failed, so the engine's fabricated
+ * overall_score=0 is never presented as a real verdict. Honest empty state, not a number.
+ */
+function VerdictUnavailable() {
+  return (
+    <div
+      role="status"
+      data-testid="verdict-unavailable"
+      className="flex flex-col gap-2 rounded-[12px] border border-white/[0.06] bg-white/[0.02] px-5 py-6"
+    >
+      <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-white/40">
+        VIRALITY SCORE
+      </span>
+      <span className="text-[20px] font-semibold leading-tight text-white/85">
+        Couldn&apos;t analyze this video
+      </span>
+      <span className="text-[13px] leading-relaxed text-white/50">
+        Both core signals failed to read it, so we can&apos;t give you a score we&apos;d
+        trust. Try re-running the analysis, or upload a clearer/longer clip.
+      </span>
     </div>
   );
 }

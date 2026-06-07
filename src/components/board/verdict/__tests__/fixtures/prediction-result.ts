@@ -84,6 +84,7 @@ const base: PredictionResult = {
 
   // Anti-virality
   anti_virality_gated: false,
+  analysis_unavailable: false,
 
   // Hook decomposition
   hook_decomposition: {

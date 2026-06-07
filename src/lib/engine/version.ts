@@ -54,7 +54,14 @@
  *     prefix to the volatile USER message (prefix-cache no longer busts per niche). The omni
  *     system prompt bytes change once → isolate the cache.
  *
+ * Bumped 3.12.0 → 3.13.0 (2026-06-07, T1.5 degradation honesty): PredictionResult gains a
+ * REQUIRED `analysis_unavailable` flag — true when BOTH core signals die (Omni read + Apollo
+ * reasoning), where overall_score collapses to a fabricated, confident-looking 0. The board
+ * now renders a distinct "couldn't analyze" state instead of that 0. Invalidate so stale
+ * 3.12.0 cached rows (which lack the flag) don't deserialize as a real-looking 0 verdict.
+ * The flag is also derivable from the persisted signal_availability JSONB on permalink reload.
+ *
  * D-23 cache invariant: prediction-cache.ts keys on ENGINE_VERSION; this bump auto-invalidates
- * all `3.11.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
+ * all `3.12.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
  */
-export const ENGINE_VERSION = "3.12.0";
+export const ENGINE_VERSION = "3.13.0";

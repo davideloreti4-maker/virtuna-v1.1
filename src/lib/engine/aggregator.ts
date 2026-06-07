@@ -868,6 +868,16 @@ export async function aggregateScores(
   const overall_score = raw_overall_score;
 
   // -------------------------------------------------
+  // T1.5 — degradation honesty. When BOTH core signals died (no usable Omni gemini
+  // provenance AND DeepSeek/Apollo failed), overall_score above collapses to 0 with
+  // zeroed weights — indistinguishable from a confident "will flop" verdict. Flag it so
+  // the UI renders a distinct "couldn't analyze" state instead of presenting the 0 as a
+  // real score. Same dual-failure condition the HARD-03 confidence floor + warning use
+  // below. `availability.gemini` is resolved above (segmented OR factor-fallback path).
+  // -------------------------------------------------
+  const analysis_unavailable = !availability.gemini && !availability.behavioral;
+
+  // -------------------------------------------------
   // Confidence (with signal availability penalties)
   // -------------------------------------------------
   const hasVideo = payload.input_mode !== "text";
@@ -1145,6 +1155,9 @@ export async function aggregateScores(
     // Phase 3: uses dual-trigger isAntiViralityGatedFull (avGateFull computed above).
     // Re-evaluated POST-critique below (Pitfall 7 ordering invariant).
     anti_virality_gated: avGateFull.gated,
+    // T1.5 — degradation honesty flag (computed above from the dual-failure condition).
+    // Not adjusted post-critique: it reflects raw signal availability, not confidence.
+    analysis_unavailable,
     // Phase 3 (Plan 08) — reason + dropoff indices from dual-trigger gate.
     // null when not gated or when heatmap absent (confidence-only path).
     anti_virality_reason: avGateFull.reason,

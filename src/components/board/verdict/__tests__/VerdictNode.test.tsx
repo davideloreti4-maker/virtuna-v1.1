@@ -89,6 +89,20 @@ describe('VerdictNode - shell', () => {
     expect(screen.getByTestId('band-label')).toBeInTheDocument();
   });
 
+  it('T1.5 — renders the "couldn\'t analyze" state (not the 0 hero) when analysis_unavailable', () => {
+    (useAnalysisStream as ReturnType<typeof vi.fn>).mockReturnValue({
+      result: { ...fixtures.complete, overall_score: 0, analysis_unavailable: true },
+      phase: 'complete',
+      analysisId: 'test-unavailable-id',
+    });
+    renderWithQuery(<VerdictNode camera={{} as never} layout={{} as never} />);
+    expect(screen.getByTestId('verdict-unavailable')).toBeInTheDocument();
+    expect(screen.getByTestId('verdict-unavailable')).toHaveTextContent(/couldn.t analyze/i);
+    // The fabricated 0 score + its tiles/tabs must NOT render.
+    expect(screen.queryByTestId('verdict-score')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('stat-tile-row')).not.toBeInTheDocument();
+  });
+
   it('renders committed factor bars in the default Breakdown tab', () => {
     renderWithQuery(<VerdictNode camera={{} as never} layout={{} as never} />);
     const bars = screen.getByTestId('factor-bars');

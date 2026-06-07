@@ -332,6 +332,15 @@ export interface PredictionResult {
    *  per checker B4. Gated on POST-CRITIQUE confidence (Pitfall 7 ordering invariant —
    *  matches the gate `maybeAppendLikelyFlopWarning` uses). */
   anti_virality_gated: boolean;
+  /** T1.5 (2026-06-07) — degradation honesty. TRUE when BOTH core signals died
+   *  (Omni read gave no usable gemini provenance AND Apollo/DeepSeek reasoning failed),
+   *  i.e. !signal_availability.gemini && !signal_availability.behavioral. In that state
+   *  overall_score collapses to a confident-looking 0 with zeroed weights — a fabricated
+   *  "will flop" verdict. This flag lets the UI render a distinct "couldn't analyze this
+   *  video" state instead of presenting the 0 as a real score. REQUIRED (not optional) —
+   *  aggregator assigns on every PredictionResult; false on every healthy run. Derivable
+   *  from the persisted signal_availability JSONB on permalink reload (no new DB column). */
+  analysis_unavailable: boolean;
   /** Phase 3 (Plan 08, D-17) — reason discriminator from isAntiViralityGatedFull.
    *  "confidence" | "timeline_pattern" | "both" | null. null when not gated. */
   anti_virality_reason?: "confidence" | "timeline_pattern" | "both" | null;
