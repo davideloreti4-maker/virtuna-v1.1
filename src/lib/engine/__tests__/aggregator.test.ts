@@ -291,6 +291,35 @@ describe("aggregateScores", () => {
     expect(result.score_weights).toHaveProperty("trends");
   });
 
+  it("T1.1: overall_score is a true ensemble — the fold moves the headline number", async () => {
+    const mkAgg = (v: number) => ({
+      completion_pct: v,
+      completion_percentile: "high intent",
+      share_pct: v,
+      share_percentile: "high intent",
+      comment_pct: v,
+      comment_percentile: "high intent",
+      save_pct: v,
+      save_percentile: "high intent",
+    });
+    const foldOk = { fold_success: true, personaSimResults: [], warnings: [], cost_cents: 0 } as never;
+
+    // Apollo-only fallback (no fold) — the pre-T1.1 baseline.
+    const noFold = await aggregateScores(makePipelineResult());
+
+    // A maxed-out simulated audience must pull the score ABOVE the Apollo-only baseline...
+    const withHighFold = await aggregateScores(
+      makePipelineResult({ personaBehavioralAggregate: mkAgg(100), foldOutcome: foldOk }),
+    );
+    // ...and a floor-low audience must pull it BELOW. Proves the fold is in the blend.
+    const withLowFold = await aggregateScores(
+      makePipelineResult({ personaBehavioralAggregate: mkAgg(0), foldOutcome: foldOk }),
+    );
+
+    expect(withHighFold.overall_score).toBeGreaterThan(noFold.overall_score);
+    expect(withLowFold.overall_score).toBeLessThan(noFold.overall_score);
+  });
+
   it("clamps overall_score to 0-100 range", async () => {
     // Test upper bound: high Gemini + behavioral scores
     // (predictWithML mock removed Plan 02 — ml contribution is 0)
