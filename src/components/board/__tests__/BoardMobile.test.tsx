@@ -12,6 +12,7 @@ vi.mock('../content-analysis/ContentAnalysisFrame', () => ({
   ContentAnalysisFrame: () => <div data-testid="body-content-analysis" />,
 }));
 vi.mock('../InputResultCard', () => ({ InputResultCard: () => <div data-testid="body-input" /> }));
+vi.mock('../InsightHeroFrame', () => ({ InsightHeroFrame: () => <div data-testid="body-insight-hero" /> }));
 vi.mock('../decode/DecodeShellNode', () => ({ DecodeShellNode: () => <div data-testid="body-decode" /> }));
 vi.mock('../adapt/AdaptShellNode', () => ({ AdaptShellNode: () => <div data-testid="body-adapt" /> }));
 
@@ -30,6 +31,7 @@ describe('BoardMobile', () => {
 
     expect(labels).toEqual([
       'Input',
+      'Insight',
       'Score',
       'Audience',
       'Actions',
@@ -40,7 +42,7 @@ describe('BoardMobile', () => {
 
   it('reuses the canvas content nodes inside each card', () => {
     render(<BoardMobile boardMachineState="complete" input={INPUT} hasAnalysis />);
-    for (const id of ['input', 'verdict', 'audience', 'actions', 'content-analysis', 'engine']) {
+    for (const id of ['input', 'insight-hero', 'verdict', 'audience', 'actions', 'content-analysis', 'engine']) {
       expect(screen.getByTestId(`body-${id}`)).toBeTruthy();
     }
   });
@@ -82,7 +84,7 @@ describe('BoardMobile remix mode (D-09)', () => {
       .getAllByRole('region')
       .map((el) => el.getAttribute('aria-label'))
       .filter((l) => l !== 'Analysis (card view)');
-    expect(labels).toEqual(['Input', 'Score', 'Audience', 'Actions', 'Content craft', 'Engine']);
+    expect(labels).toEqual(['Input', 'Insight', 'Score', 'Audience', 'Actions', 'Content craft', 'Engine']);
   });
 
   it('remix order — Input,Decode,Audience,Adapt,Content craft,Engine (D-09)', () => {
