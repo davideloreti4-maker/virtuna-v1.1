@@ -38,7 +38,12 @@
  * the score was one Apollo call graded twice. Scores shift on every video row; text/tiktok_url
  * mode is unchanged (Apollo-only fallback). Stale 3.9.0 rows must not mix with ensemble-era rows.
  *
+ * Bumped 3.10.0 → 3.11.0 (2026-06-06, T3.2 phantom-injection removal): deleted the dead
+ * "## Rule Matches" + "## Trend Context" sections from the Apollo user message (both stages
+ * were removed from the pipeline; they injected phantom-system text). Apollo's prompt changes
+ * slightly, so its composite/dimensions may shift; isolate the cache.
+ *
  * D-23 cache invariant: prediction-cache.ts keys on ENGINE_VERSION; this bump auto-invalidates
- * all `3.9.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
+ * all `3.10.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
  */
-export const ENGINE_VERSION = "3.10.0";
+export const ENGINE_VERSION = "3.11.0";
