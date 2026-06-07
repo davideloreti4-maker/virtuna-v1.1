@@ -84,7 +84,7 @@
 - **T4.3** Collapse `selectWeights` 2-key renorm + the unreachable "weights redistributed" warning (`:256-273,870-880`) — both flags share one boolean. **[S]**
 - **T4.4** Delete dead branches: `enrichedMatchedTrends`/`effectiveTrendEnrichment` (`:569-584`, guarded by always-null fingerprint). **[S]**
 - **T4.5** Reduce number-soup: 3 different "hook" scores + 2 retention numbers across Score/Audience/Content-craft (`verdict-derive.ts:61-77` literally adds disambiguation sub-labels). Pick one owner each (Hook→Content-craft, Retention→Audience), drop Score's "Engine signals" tile row. **[M]**
-- **T4.6** Drop/relabel the synthetic `sin(i*1.7)` waveform bars (`content-analysis-derive.ts:384-392`) — keep the real energy-grading. **[S]**
+- **T4.6** ✅ DONE (commit on `milestone/engine-opt`, 2026-06-07) — dropped the synthetic `sin(i*1.7)` flutter from `buildWaveBars`; the craft audio band now reflects only the real emotion-arc energy. Pure UI, no version bump. 51 tests green.
 - Dormant modules (`_dormant/`: ml/rules/trends/retrieval/platform-fit/audio-fingerprint) confirmed zero live imports — safe to ignore or delete.
 
 ---
