@@ -188,7 +188,7 @@ export function CommandBar({ onContentSubmit, completedAnalysisId, analysisRow }
               {/* ── Sticky header — only when conversation exists ────────── */}
               {panelExpanded && (
                 <div
-                  className="sticky top-0 z-10 flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06]"
+                  className="sticky top-0 z-10 flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06] max-sm:pl-14"
                   style={{
                     background:
                       'linear-gradient(137deg, rgba(17,18,20,0.95) 4.87%, rgba(12,13,15,0.98) 75.88%)',
