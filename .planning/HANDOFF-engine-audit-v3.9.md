@@ -25,6 +25,10 @@
 ## 0. Where things stand
 
 **Current HEAD state (all committed + pushed, working tree clean):** `ENGINE_VERSION = 3.13.0`, **961 engine tests green** (board + engine suites: 1430 green).
+
+**✅ LIVE E2E VERIFIED (2026-06-07, `scripts/measure-pipeline.ts`, cache-bypassed, real DashScope):** on `~/Downloads/TikTok Video Downloader.mp4` → `OVERALL_SCORE=47 CONFIDENCE=0.75 LABEL=HIGH`, `behavioral_score=69 gemini_score=76`, 5 factors / 8-pt emotion arc / 10 heatmap personas, TOTAL **69.7s** (under the ~78s baseline), cost 2.27¢. Confirms: T3.1 Apollo parses cleanly against the lean §1–§6 core (no schema-fail/retry); T3.3 video-run Apollo tolerates the dropped behavioral_predictions ask (fold supplies them); T3.4 omni emits valid output with the hint in the user message; T1.5 healthy run yields a real score, not a fabricated 0. (Note: `bypassCache:true` means T3.1's prefix-cache *token* savings aren't measured — that's a warm-cache cost benefit, not a cold-run wall-time one. `counterfactuals: NULL` is expected — stage-11 removed in Plan 02.)
+
+**All 4 audit tiers are now resolved** (shipped, or documented-skip with cause). No remaining actionable items from the original audit.
 - Engine: Read = `qwen3.5-omni-flash` · Fold = `qwen3.5-omni-plus` + **video** · Reason/Apollo = `qwen3.6-plus` + **video** (3.9.0). Fold folded into `overall_score` (T1.1, 3.10.0). Phantom Apollo-prompt injection removed (T3.2, 3.11.0).
 - Live E2E: ~78s, score 61, 0 warnings.
 - Git history is messy — a background auto-commit hook injected junk `"test/feat: changes"` commits between the real ones. **HEAD is correct** (verified); don't rebase (shared branch, concurrent session). When you work: **commit your own changes promptly with real messages** so the hook doesn't grab them.
