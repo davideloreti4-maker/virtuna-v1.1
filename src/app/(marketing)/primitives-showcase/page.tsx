@@ -1,7 +1,7 @@
 import { GlassPanel, TrafficLights } from "@/components/primitives";
 
 export const metadata = {
-  title: "Primitives Showcase | Virtuna",
+  title: "Primitives Showcase | Numen",
   description: "Visual showcase of glassmorphism design primitives",
 };
 
@@ -73,7 +73,7 @@ export default function PrimitivesShowcasePage() {
             <div className="flex items-center gap-4 p-4 border-b border-white/10">
               <TrafficLights size="md" />
               <span className="text-text-secondary text-sm flex-1 text-center">
-                Virtuna Dashboard
+                Numen Dashboard
               </span>
               <div className="w-12" /> {/* Spacer for symmetry */}
             </div>

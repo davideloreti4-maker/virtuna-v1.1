@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { VirtunaTier } from "@/lib/whop/config";
+import type { NumenTier } from "@/lib/whop/config";
 
 interface SubscriptionData {
-  tier: VirtunaTier;
+  tier: NumenTier;
   status: string;
   isTrial: boolean;
   trialEndsAt: string | null;
@@ -58,7 +58,7 @@ export function useSubscription() {
   }, [fetchSubscription]);
 
   const pollForTierChange = useCallback(
-    (currentTier: VirtunaTier): Promise<VirtunaTier> => {
+    (currentTier: NumenTier): Promise<NumenTier> => {
       return new Promise((resolve) => {
         setIsPolling(true);
         const startTime = Date.now();
@@ -68,7 +68,7 @@ export function useSubscription() {
             const res = await fetch("/api/subscription");
             if (res.ok) {
               const json = await res.json();
-              const newTier = (json.tier ?? "free") as VirtunaTier;
+              const newTier = (json.tier ?? "free") as NumenTier;
 
               if (newTier !== currentTier) {
                 if (pollingRef.current) clearInterval(pollingRef.current);
@@ -115,7 +115,7 @@ export function useSubscription() {
       : null;
 
   return {
-    tier: (data?.tier ?? "free") as VirtunaTier,
+    tier: (data?.tier ?? "free") as NumenTier,
     status: data?.status ?? "active",
     isTrial: data?.isTrial ?? false,
     trialEndsAt: data?.trialEndsAt ?? null,

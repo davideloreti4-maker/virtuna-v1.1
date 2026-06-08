@@ -10,7 +10,7 @@ import {
 import { ComparisonClient } from "./comparison-client";
 
 export const metadata: Metadata = {
-  title: "Compare | Competitors | Virtuna",
+  title: "Compare | Competitors | Numen",
 };
 
 export interface ComparisonData {

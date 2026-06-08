@@ -21,7 +21,7 @@ export function SidebarNav({ items }: SidebarNavProps) {
   return (
     <aside className="hidden w-56 shrink-0 border-r border-border-glass p-6 md:block sticky top-0 h-screen overflow-y-auto">
       <Heading level={4} className="mb-6 text-foreground">
-        Virtuna UI
+        Numen UI
       </Heading>
       <nav>
         <ul className="space-y-1">

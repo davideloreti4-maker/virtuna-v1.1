@@ -7,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "Dashboard | Virtuna",
+  title: "Dashboard | Numen",
   description: "AI-powered content intelligence for TikTok creators.",
 };
 

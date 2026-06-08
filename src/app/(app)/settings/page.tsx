@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { SettingsPage } from "@/components/app/settings";
 
 export const metadata: Metadata = {
-  title: "Settings | Virtuna",
+  title: "Settings | Numen",
   description: "Manage your account settings and preferences",
 };
 

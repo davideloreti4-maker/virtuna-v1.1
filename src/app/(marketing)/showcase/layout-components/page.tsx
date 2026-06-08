@@ -6,7 +6,7 @@ import { ShowcaseSection } from "../_components/showcase-section";
 import { CodeBlock } from "../_components/code-block";
 
 export const metadata = {
-  title: "Layout Components - Virtuna UI Showcase",
+  title: "Layout Components - Numen UI Showcase",
   description:
     "GlassPanel with Raycast-style frosted glass and Divider with horizontal, vertical, and labeled variants.",
 };

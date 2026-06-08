@@ -20,7 +20,7 @@ import {
 } from "../_components/select-demo";
 
 export const metadata: Metadata = {
-  title: "Inputs | Virtuna UI Showcase",
+  title: "Inputs | Numen UI Showcase",
   description:
     "Input, InputField, Select, SearchableSelect, and Toggle components with all variants and states.",
 };

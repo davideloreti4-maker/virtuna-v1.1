@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { BrandDealsPage } from "@/components/app/brand-deals";
 
 export const metadata: Metadata = {
-  title: "Partnerships | Virtuna",
+  title: "Partnerships | Numen",
   description: "Manage brand deals, affiliate links, and earnings",
 };
 

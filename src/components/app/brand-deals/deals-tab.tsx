@@ -98,7 +98,7 @@ export function DealsTab({
         // Featured first
         if (a.isFeatured && !b.isFeatured) return -1;
         if (!a.isFeatured && b.isFeatured) return 1;
-        // Virtuna deals before external
+        // Numen deals before external
         if (a.source !== "external" && b.source === "external") return -1;
         if (a.source === "external" && b.source !== "external") return 1;
         return 0;

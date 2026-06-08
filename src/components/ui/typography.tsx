@@ -50,7 +50,7 @@ export interface HeadingProps
  * @example
  * ```tsx
  * // Page title
- * <Heading level={1}>Welcome to Virtuna</Heading>
+ * <Heading level={1}>Welcome to Numen</Heading>
  *
  * // Section heading
  * <Heading level={2}>Features</Heading>

@@ -2,12 +2,12 @@
 
 import { useState, type ReactNode } from "react";
 import { useSubscription } from "@/hooks/use-subscription";
-import { hasAccessToTier, type VirtunaTier } from "@/lib/whop/config";
+import { hasAccessToTier, type NumenTier } from "@/lib/whop/config";
 import { UpgradeBanner } from "@/components/ui/upgrade-banner";
 import { CheckoutModal } from "@/components/app/checkout-modal";
 
 interface TierGateProps {
-  requiredTier: VirtunaTier;
+  requiredTier: NumenTier;
   children: ReactNode;
   fallback?: ReactNode;
 }

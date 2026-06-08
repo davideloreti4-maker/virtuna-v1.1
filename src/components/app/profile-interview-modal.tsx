@@ -59,7 +59,7 @@ const CARD_COPY: Record<number, CardCopy> = {
   0: {
     heading: "Tell us about your content",
     description:
-      "Help Virtuna understand what you create so predictions are calibrated to you.",
+      "Help Numen understand what you create so predictions are calibrated to you.",
   },
   1: {
     heading: "What's your niche?",

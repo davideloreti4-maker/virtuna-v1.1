@@ -20,7 +20,7 @@ import { CodeBlock } from "../_components/code-block";
 import { ComponentGrid } from "../_components/component-grid";
 
 export const metadata = {
-  title: "Data Display - Virtuna UI Showcase",
+  title: "Data Display - Numen UI Showcase",
   description:
     "Avatar, Skeleton, Card, GlassCard, ExtensionCard, and TestimonialCard components.",
 };
@@ -491,7 +491,7 @@ export default function DataDisplayPage() {
       >
         <ComponentGrid columns={2}>
           <TestimonialCard
-            quote="Virtuna transformed our workflow. The design system is incredibly polished and consistent."
+            quote="Numen transformed our workflow. The design system is incredibly polished and consistent."
             author={{
               name: "Sarah Chen",
               role: "Design Lead",
@@ -527,7 +527,7 @@ export default function DataDisplayPage() {
             title="TestimonialCard"
             code={`// Basic testimonial
 <TestimonialCard
-  quote="Virtuna transformed our workflow."
+  quote="Numen transformed our workflow."
   author={{
     name: "Sarah Chen",
     role: "Design Lead",

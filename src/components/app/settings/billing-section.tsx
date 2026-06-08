@@ -3,23 +3,23 @@
 import { useState, useEffect, useCallback } from "react";
 import { CreditCard, ExternalLink, Zap, Calendar, Check } from "lucide-react";
 import { CheckoutModal } from "@/components/app/checkout-modal";
-import type { VirtunaTier } from "@/lib/whop/config";
+import type { NumenTier } from "@/lib/whop/config";
 
 interface SubscriptionData {
-  tier: VirtunaTier;
+  tier: NumenTier;
   status: string;
   whopConnected: boolean;
   cancelAtPeriodEnd: boolean;
   currentPeriodEnd: string | null;
 }
 
-const TIER_LABELS: Record<VirtunaTier, string> = {
+const TIER_LABELS: Record<NumenTier, string> = {
   free: "Free",
   starter: "Starter",
   pro: "Pro",
 };
 
-const PLAN_COLORS: Record<VirtunaTier, string> = {
+const PLAN_COLORS: Record<NumenTier, string> = {
   free: "text-zinc-400 bg-zinc-400/10",
   starter: "text-emerald-400 bg-emerald-400/10",
   pro: "text-purple-400 bg-purple-400/10",

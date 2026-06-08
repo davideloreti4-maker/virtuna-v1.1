@@ -202,7 +202,7 @@
   --animate-shimmer: shimmer 2s ease-in-out infinite;
 
   /* --- sugar-high Syntax Highlighting Theme --- */
-  /* Dark theme matching Virtuna aesthetic */
+  /* Dark theme matching Numen aesthetic */
   --sh-class: #e5a869;
   --sh-identifier: #c9d1d9;
   --sh-sign: #6a6b6c;
@@ -217,7 +217,7 @@
 /* ============================================
  * RAYCAST VARIABLE ALIASES
  * Maps Raycast CSS variable names used in primitives
- * to Virtuna semantic tokens. Keeps primitives working
+ * to Numen semantic tokens. Keeps primitives working
  * without rewriting 16+ component files.
  * ============================================ */
 :root {

@@ -1064,7 +1064,7 @@ export const AFFILIATE_PROGRAMS: AffiliateProgram[] = [
 
 /**
  * Converts an AffiliateProgram entry into a BrandDeal so it can be
- * rendered alongside Virtuna-native deals in the same grid.
+ * rendered alongside Numen-native deals in the same grid.
  */
 export function affiliateProgramToDeal(program: AffiliateProgram): BrandDeal {
   return {

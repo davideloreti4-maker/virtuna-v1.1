@@ -7,7 +7,7 @@ import { TestimonialQuote } from "./testimonial-quote";
 const testimonials = [
   {
     quote:
-      "Virtuna told me my dance video would flop — and it was right. I pivoted to a storytelling format and got 2M views instead.",
+      "Numen told me my dance video would flop — and it was right. I pivoted to a storytelling format and got 2M views instead.",
     authorName: "Maya Chen",
     authorTitle: "500K followers",
     authorCompany: "TikTok",
