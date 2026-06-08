@@ -22,11 +22,16 @@ instantly visible to all; deleting a worktree folder keeps its branch + commits.
 | Path | Branch | Role |
 |------|--------|------|
 | `~/virtuna-v1.1/` | `main` | **Trunk / command center.** Stays on `main`. New milestones launch from here; quick one-session fixes happen here on a short-lived branch. |
-| `~/virtuna-viral-remix/` | `milestone/viral-remix` | Active milestone (v3.2) |
+| `~/virtuna-mvp-ready/` | `milestone/mvp-ready` | **Active milestone.** Product refinement → MVP-ready (e2e testing, UI wiring/redesign, engine-layer optimization). |
+| `~/virtuna-engine-opt/` | `milestone/engine-opt` | **Merged (PR #17) — prune.** v4.0 Apollo engine audit remediation; ENGINE_VERSION 3.13.0. Safe to `git worktree remove`. |
+| `~/virtuna-ui-opt/` | `milestone/ui-opt` | In progress |
+| `~/virtuna-viral-remix/` | `milestone/viral-remix` | In progress (v3.2) |
+| `~/virtuna-viral-remix-adapt/` | `milestone/viral-remix-adapt` | In progress |
 | `~/virtuna-landing/` | `milestone/landing` | In progress |
 
-> Keep this table current — it's the map. Last reconciled 2026-06-01 (pruned 3
-> merged-milestone worktrees + a stale agent worktree; merged PR #5).
+> Keep this table current — it's the map. Last reconciled 2026-06-08 (engine-opt
+> merged to main via PR #17; created mvp-ready worktree; added ui-opt +
+> viral-remix-adapt that were missing from the table).
 
 ### How to work (don't repeat the multi-session-same-worktree mess)
 
