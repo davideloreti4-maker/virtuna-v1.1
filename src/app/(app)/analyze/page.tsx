@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Analyze | Virtuna',
-  description: "Analyze your TikTok content with Virtuna's prediction engine.",
+  title: 'Analyze | Numen',
+  description: "Analyze your TikTok content with Numen's prediction engine.",
 };
 
 /**

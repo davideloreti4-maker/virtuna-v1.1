@@ -13,7 +13,7 @@ const STORAGE_KEY = "virtuna-settings";
 const DEFAULT_PROFILE: UserProfile = {
   name: "Davide Loreti",
   email: "davide.loreti4@gmail.com",
-  company: "Virtuna",
+  company: "Numen",
   role: "Founder",
 };
 

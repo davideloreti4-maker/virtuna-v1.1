@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = {
-  title: "Sign In | Virtuna",
+  title: "Sign In | Numen",
 };
 
 interface LoginPageProps {

@@ -9,8 +9,8 @@ import { getUserTier } from "@/lib/whop/subscription";
 import { ReferralsUpgradeFallback } from "@/components/referral/ReferralsUpgradeFallback";
 
 export const metadata: Metadata = {
-  title: "Referrals | Virtuna",
-  description: "Share Virtuna and earn rewards for every conversion.",
+  title: "Referrals | Numen",
+  description: "Share Numen and earn rewards for every conversion.",
 };
 
 export default async function ReferralsPage() {
@@ -81,7 +81,7 @@ export default async function ReferralsPage() {
             Referral Program
           </h1>
           <p className="text-muted">
-            Invite friends to Virtuna and earn $10 for every successful
+            Invite friends to Numen and earn $10 for every successful
             conversion.
           </p>
         </div>

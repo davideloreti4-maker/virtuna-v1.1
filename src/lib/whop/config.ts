@@ -2,7 +2,7 @@
  * Whop integration configuration and tier management utilities
  */
 
-export type VirtunaTier = 'free' | 'starter' | 'pro';
+export type NumenTier = 'free' | 'starter' | 'pro';
 
 export type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'past_due';
 
@@ -17,7 +17,7 @@ export const WHOP_PRODUCT_IDS = {
   pro: process.env.WHOP_PRODUCT_ID_PRO!,
 };
 
-export function mapWhopProductToTier(productId: string): VirtunaTier {
+export function mapWhopProductToTier(productId: string): NumenTier {
   if (productId === WHOP_PRODUCT_IDS.starter) return 'starter';
   if (productId === WHOP_PRODUCT_IDS.pro) return 'pro';
   return 'free';
@@ -28,8 +28,8 @@ export function getTierFromPlanId(planId: 'starter' | 'pro'): string {
 }
 
 export function hasAccessToTier(
-  userTier: VirtunaTier,
-  requiredTier: VirtunaTier
+  userTier: NumenTier,
+  requiredTier: NumenTier
 ): boolean {
   return TIER_HIERARCHY[userTier] >= TIER_HIERARCHY[requiredTier];
 }

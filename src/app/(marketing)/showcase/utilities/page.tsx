@@ -17,7 +17,7 @@ import { HoverScaleDemo } from "../_components/motion-demo";
 import { TrafficLightsDemo } from "../_components/traffic-lights-demo";
 
 export const metadata: Metadata = {
-  title: "Utilities - Virtuna UI Showcase",
+  title: "Utilities - Numen UI Showcase",
   description:
     "Motion animations, visual effects, and decorative utilities.",
 };

@@ -106,7 +106,7 @@ export function BoardMobile({ boardMachineState, input, hasAnalysis, boardMode =
         <div className="flex flex-col gap-1.5">
           <p className="text-sm font-medium text-foreground">Analysis is desktop-only for now</p>
           <p className="max-w-[34ch] text-xs leading-snug text-foreground-muted">
-            Open Virtuna on a larger screen to run a new analysis. Shared result links open here
+            Open Numen on a larger screen to run a new analysis. Shared result links open here
             just fine.
           </p>
         </div>

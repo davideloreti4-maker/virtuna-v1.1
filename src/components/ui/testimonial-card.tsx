@@ -61,7 +61,7 @@ function getInitials(name: string): string {
  * ```tsx
  * // Basic testimonial
  * <TestimonialCard
- *   quote="Virtuna transformed our workflow. The design system is incredibly polished."
+ *   quote="Numen transformed our workflow. The design system is incredibly polished."
  *   author={{
  *     name: "Sarah Chen",
  *     role: "Design Lead",

@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import type { VirtunaTier } from "@/lib/whop/config";
+import type { NumenTier } from "@/lib/whop/config";
 import { hasAccessToTier } from "@/lib/whop/config";
 
 interface FeatureGateProps {
-  requiredTier: VirtunaTier;
-  userTier: VirtunaTier;
+  requiredTier: NumenTier;
+  userTier: NumenTier;
   children: ReactNode;
   fallback?: ReactNode;
 }

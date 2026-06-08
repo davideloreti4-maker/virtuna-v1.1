@@ -16,7 +16,7 @@ import { CodeBlock } from "../_components/code-block";
 import { ComponentGrid } from "../_components/component-grid";
 
 export const metadata: Metadata = {
-  title: "Navigation | Virtuna UI Showcase",
+  title: "Navigation | Numen UI Showcase",
   description: "Tabs, CategoryTabs, Kbd, and ShortcutBadge components.",
 };
 

@@ -1,11 +1,11 @@
 "use client";
 
 import { Zap } from "lucide-react";
-import type { VirtunaTier } from "@/lib/whop/config";
+import type { NumenTier } from "@/lib/whop/config";
 
 interface UpgradeBannerProps {
-  requiredTier: VirtunaTier;
-  onUpgrade: (tier: VirtunaTier) => void;
+  requiredTier: NumenTier;
+  onUpgrade: (tier: NumenTier) => void;
 }
 
 export function UpgradeBanner({ requiredTier, onUpgrade }: UpgradeBannerProps) {

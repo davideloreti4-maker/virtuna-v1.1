@@ -9,7 +9,7 @@ import { DialogDemo } from "../_components/dialog-demo";
 import { SpinnerDemo } from "../_components/spinner-demo";
 
 export const metadata: Metadata = {
-  title: "Feedback | Virtuna UI Showcase",
+  title: "Feedback | Numen UI Showcase",
   description: "Badge, Toast, Dialog, and Spinner feedback components.",
 };
 

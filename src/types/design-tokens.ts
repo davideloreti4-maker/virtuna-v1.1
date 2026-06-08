@@ -1,5 +1,5 @@
 /**
- * Design Token Types for Virtuna v2.0
+ * Design Token Types for Numen v2.0
  *
  * These types provide type safety for design token usage across the codebase.
  * Values correspond to CSS custom properties defined in globals.css @theme.

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { VirtunaTier } from "./config";
+import type { NumenTier } from "./config";
 
 export async function getUserSubscription() {
   const supabase = await createClient();
@@ -16,7 +16,7 @@ export async function getUserSubscription() {
   return data;
 }
 
-export async function getUserTier(): Promise<VirtunaTier> {
+export async function getUserTier(): Promise<NumenTier> {
   const subscription = await getUserSubscription();
-  return (subscription?.virtuna_tier as VirtunaTier) || "free";
+  return (subscription?.virtuna_tier as NumenTier) || "free";
 }

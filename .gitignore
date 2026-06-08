@@ -78,3 +78,4 @@ tests/fixtures/audio-smoke/smoke-test-results.json
 .planning/corpus/audio-cache/
 .planning/corpus/models/
 .planning/corpus/raw/
+.scratch/

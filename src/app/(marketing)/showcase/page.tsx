@@ -231,7 +231,7 @@ export default function ShowcasePage() {
           Design Tokens
         </Heading>
         <Text size="lg" muted className="max-w-2xl">
-          Virtuna uses a two-tier token architecture. Primitive tokens (Layer 1)
+          Numen uses a two-tier token architecture. Primitive tokens (Layer 1)
           define raw color scales and values. Semantic tokens (Layer 2)
           reference primitives via{" "}
           <code className="rounded bg-surface-elevated px-1.5 py-0.5 font-mono text-sm text-accent">
@@ -484,7 +484,7 @@ export default function ShowcasePage() {
                     className="truncate leading-none"
                     style={{ fontSize: `var(--text-${size.css.replace("text-", "")})` }}
                   >
-                    Virtuna
+                    Numen
                   </span>
                 </div>
               ))}
