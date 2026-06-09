@@ -2,9 +2,10 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: MVP Ready
-status: planning
-last_updated: "2026-06-09T00:00:00.000Z"
-last_activity: 2026-06-09
+status: Ready to discuss / plan
+stopped_at: Phase 1 context gathered
+last_updated: "2026-06-09T08:24:25.231Z"
+last_activity: 2026-06-09 — Roadmap created (5 pillar phases, brownfield refinement)
 progress:
   total_phases: 5
   completed_phases: 0
@@ -57,6 +58,7 @@ Full decision log in PROJECT.md Key Decisions. Carried into this milestone:
 ### Pending Todos
 
 None tracked yet. Standalone backlog candidates surfaced at v4.0 close (peel via `/gsd-quick`):
+
 - Dead keyframe→fold cleanup (fold never sees video frames; analysisId never threaded).
 - Broader omni-flash QA.
 
@@ -83,6 +85,6 @@ Bookkeeping orphans / superseded flags, not live work. v4.0 shipped to main with
 
 ## Session Continuity
 
-Last session: 2026-06-09
-Stopped at: ROADMAP.md + STATE.md created; REQUIREMENTS.md traceability filled (5 pillar phases, 21 reqs mapped).
-Resume file: None — next: `/gsd-discuss-phase 1` then `/gsd-plan-phase 1`
+Last session: 2026-06-09T08:24:25.227Z
+Stopped at: Phase 1 context gathered
+Resume file: .planning/phases/01-engine-pipeline/01-CONTEXT.md
