@@ -349,19 +349,24 @@ Engine refine handles **untrusted LLM output** as its primary boundary; ASVS V5 
 | A3 | `rule_score:50`/`trend_score:0` constants on PredictionResult are dead (not rendered) — board consumption is a Phase 2 concern | ENG-04 | If the board renders them they're misleading fake numbers — cross-check in Phase 2 |
 | A4 | DashScope qwen3.5-omni-flash/plus + qwen3.6-plus model IDs are current/valid — taken from as-built env defaults, not re-verified against DashScope docs this session | Stack | A model deprecation would break the engine — these are SHIPPED + running, so live-validated by production; re-verify only if a flip is proposed |
 
-## Open Questions
+## Open Questions (RESOLVED — deferred to execution checkpoints per D-00)
 
-1. **Which §-grounding option does Davide want (restore/remap/redesign)?**
+> These are not unresolved research gaps. Per D-00 (human-in-the-loop), each is a live
+> decision wired to a blocking co-review checkpoint task, fed by an evidence-gathering
+> audit: Q1 → Plan 01-01 Task 2 · Q2 → Plan 01-02 Task 2 · Q3 → Plan 01-04 Task 2.
+> Pre-resolving them in research would violate D-00.
+
+1. **Which §-grounding option does Davide want (restore/remap/redesign)?** → gated by Plan 01-01 Task 2
    - Known: the board has no §-cite bug; the engine emits free-text cites into §2.x/§4 which are present in the lean core; §2.6/§7/§8 are dropped + §2.6 is empty.
    - Unclear: whether the dangling-cite risk justifies a fundamental redesign (D-06) or just a remap guard.
    - Recommendation: run `apollo-core-smoke.ts` FIRST, then co-review the three options.
 
-2. **Flip read flash→plus (D-10)?**
+2. **Flip read flash→plus (D-10)?** → gated by Plan 01-02 Task 2
    - Known: flash picked on 2 videos; budget allows plus.
    - Unclear: real richness delta on a wider sample.
    - Recommendation: env-flip A/B (two smoke runs) before deciding.
 
-3. **Should single-signal failure (not just dual) get a user-visible honesty annotation (ENG-01 + D-15)?**
+3. **Should single-signal failure (not just dual) get a user-visible honesty annotation (ENG-01 + D-15)?** → gated by Plan 01-04 Task 2
    - Recommendation: surface to Davide; cheap output-flag add but needs version bump.
 
 ## Sources
