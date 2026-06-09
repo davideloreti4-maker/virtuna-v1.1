@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: apollo
-milestone_name: Apollo
-status: Awaiting next milestone
-last_updated: "2026-06-06T20:06:34.493Z"
-last_activity: 2026-06-06 — Milestone v4.0 completed and archived
+milestone: v4.1
+milestone_name: MVP Ready
+status: planning
+last_updated: "2026-06-09T06:47:54.533Z"
+last_activity: 2026-06-09
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 22
-  completed_plans: 22
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,10 +21,10 @@ See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Cut-l
 
 ## Current Position
 
-Phase: Milestone v4.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-06-06 — Shipped chat dock v2 UI/UX refinement (unified panel, markdown + §citations + frame-tags, composer variant A, streaming/stop, mobile full-height sheet) — browser-verified desktop+mobile
+Status: Defining requirements
+Last activity: 2026-06-09 — Milestone v4.1 started
 
 ## Deferred Items
 

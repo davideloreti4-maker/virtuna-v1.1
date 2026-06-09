@@ -8,6 +8,19 @@ A social media intelligence platform for TikTok creators. Helps creators predict
 
 AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
 
+## Current Milestone: v4.1 MVP Ready
+
+**Goal:** Walk each major pillar of the platform one at a time and fix, optimize, and refine it toward an MVP-ready state — not a feature build, a brownfield refinement pass.
+
+**Pillars (loose phases — audit → fix → verify):**
+- Engine pipeline — Apollo 3-call flow (Qwen I/O, prompt quality, latency, correctness)
+- Board / Test mode — analyze board UI/UX (frames, rendering, wiring)
+- Board / Remix mode — remix board UI/UX
+- Chat feature — "ask the expert" dock UI/UX + grounding
+- General UI/UX — cross-cutting polish (Numen brand, Raycast language, mobile, a11y, dead UI)
+
+**Flexible by design:** phases are loose; surfaced to-dos get added via `/gsd-phase add` or peeled off with `/gsd-quick`. No upfront research (refinement of shipped surfaces).
+
 ## Status: Intelligence Surface drop — Milestone 1b shipped
 
 **Most recently shipped:** Engine Hardening (v3.1, 2026-05-25). Type hygiene (tsc 0 errors), smoke runner cost field rename, SSRF guard on sound_url, timer leak fixes, pgvector centralization, all VERIF-04 code-review follow-ups closed. VERIF-01/02/03 deferred permanently (no prod deploy).
@@ -227,7 +240,7 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 **Shipped:** **v4.0 Apollo (2026-06-06)** — engine rearchitected from a ~25-call score-and-fabrication machine into a 3-call knowledge-grounded expert (Omni verbatim → fold ∥ Apollo reasoner); insight is the hero, score demoted to an honest band, E2E ~312s→~62–74s, ENGINE_VERSION 3.8.0. Result Surface (2026-05-28), v3.1 Engine Hardening (2026-05-25), Engine Foundation v3.0.0 (2026-05-24), UI Dashboard (2026-03-18), Prediction Engine Integration (2026-02-27), Backend Reliability (2026-02-18), Prediction Engine v2 (2026-02-17), Competitors Tool (2026-02-17), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
-**Current milestone:** none active — v4.0 Apollo shipped + archived. Next: `/gsd-new-milestone`.
+**Current milestone:** **v4.1 MVP Ready** — active in `~/virtuna-mvp-ready/` (`milestone/mvp-ready`), started 2026-06-09. Brownfield refinement pass walking every pillar (engine, board/test, board/remix, chat, general UI) toward MVP-ready. Loose pillar phases; add via `/gsd-phase` or `/gsd-quick`.
 
 **Apollo north star (now live):** expert insight is the hero, not the score; the moat is Brain 1's distilled knowledge (Chase Hughes) grounded at inference via a cached system prompt — not fine-tuning, not RAG.
 
@@ -261,4 +274,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-25 after v3.1 Engine Hardening milestone. Engine Hardening shipped: tsc 0 errors, SSRF guard, timer leaks fixed, pgvector centralized, Platt calibration removed. Result Surface (M2-I) active in `~/virtuna-result-surface/`. VERIF-01/02/03 deferred permanently — re-run on first prod deploy.*
+*Last updated: 2026-06-09 — started v4.1 MVP Ready milestone in `~/virtuna-mvp-ready/`. Brownfield refinement pass across all pillars (engine pipeline, board/test, board/remix, chat, general UI/UX); loose pillar phases, no upfront research. Forks from main @1d9e3294 (post Numen rebrand). Prior: v4.0 Apollo shipped + archived 2026-06-06.*
