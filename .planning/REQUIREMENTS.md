@@ -80,4 +80,24 @@ Carried from PROJECT.md backlog; reactivate selectively post-MVP-ready:
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| _(filled by roadmapper)_ | | |
+| ENG-01 | Phase 1 — Engine Pipeline | Pending |
+| ENG-02 | Phase 1 — Engine Pipeline | Pending |
+| ENG-03 | Phase 1 — Engine Pipeline | Pending |
+| ENG-04 | Phase 1 — Engine Pipeline | Pending |
+| ENG-05 | Phase 1 — Engine Pipeline | Pending |
+| ENG-06 | Phase 1 — Engine Pipeline | Pending |
+| BTEST-01 | Phase 2 — Board / Test Mode | Pending |
+| BTEST-02 | Phase 2 — Board / Test Mode | Pending |
+| BTEST-03 | Phase 2 — Board / Test Mode | Pending |
+| BTEST-04 | Phase 2 — Board / Test Mode | Pending |
+| BTEST-05 | Phase 2 — Board / Test Mode | Pending |
+| BRMX-01 | Phase 3 — Board / Remix Mode | Pending |
+| BRMX-02 | Phase 3 — Board / Remix Mode | Pending |
+| BRMX-03 | Phase 3 — Board / Remix Mode | Pending |
+| CHAT-01 | Phase 4 — Chat Feature | Pending |
+| CHAT-02 | Phase 4 — Chat Feature | Pending |
+| CHAT-03 | Phase 4 — Chat Feature | Pending |
+| UIUX-01 | Phase 5 — General UI/UX | Pending |
+| UIUX-02 | Phase 5 — General UI/UX | Pending |
+| UIUX-03 | Phase 5 — General UI/UX | Pending |
+| UIUX-04 | Phase 5 — General UI/UX | Pending |
