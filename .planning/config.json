@@ -1,16 +1,16 @@
 {
   "model_profile": "balanced",
   "model_overrides": {
-    "gsd-planner": "opus",
-    "gsd-roadmapper": "opus",
+    "gsd-planner": "claude-opus-4-8",
+    "gsd-roadmapper": "claude-opus-4-8",
     "gsd-executor": "sonnet",
-    "gsd-phase-researcher": "opus",
-    "gsd-project-researcher": "opus",
+    "gsd-phase-researcher": "claude-opus-4-8",
+    "gsd-project-researcher": "claude-opus-4-8",
     "gsd-research-synthesizer": "sonnet",
     "gsd-debugger": "sonnet",
     "gsd-codebase-mapper": "sonnet",
-    "gsd-verifier": "opus",
-    "gsd-plan-checker": "opus",
+    "gsd-verifier": "claude-opus-4-8",
+    "gsd-plan-checker": "claude-opus-4-8",
     "gsd-integration-checker": "sonnet",
     "gsd-nyquist-auditor": "sonnet",
     "gsd-pattern-mapper": "sonnet",
@@ -19,7 +19,7 @@
     "gsd-ui-auditor": "sonnet",
     "gsd-doc-writer": "sonnet",
     "gsd-doc-verifier": "sonnet",
-    "gsd-advisor-researcher": "opus",
+    "gsd-advisor-researcher": "claude-opus-4-8",
     "gsd-ai-researcher": "sonnet",
     "gsd-assumptions-analyzer": "sonnet",
     "gsd-code-fixer": "sonnet",
@@ -83,13 +83,5 @@
   },
   "hooks": {
     "context_warnings": true
-  },
-  "models": {
-    "planning": "sonnet",
-    "discuss": "sonnet",
-    "research": "sonnet",
-    "execution": "sonnet",
-    "verification": "sonnet",
-    "completion": "sonnet"
   }
 }
