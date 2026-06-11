@@ -328,3 +328,59 @@ body {
     }
   }
 }
+
+/* ============================================================================
+ * NUMEN SURFACE — parallel warm-neutral kit (v5.0)
+ * ----------------------------------------------------------------------------
+ * D-01: This is a PARALLEL, namespaced layer. It coexists with the live
+ *       coral/Raycast @theme block above WITHOUT touching it. Old pages keep
+ *       working untouched; a surface opts in by mounting under `.numen-surface`.
+ * D-02: Coexistence mechanism = scope class. Warm-neutral values are plain
+ *       custom properties overridden under `.numen-surface`, bridged to Tailwind
+ *       utilities via the `@theme inline` block below (multi-theme pattern,
+ *       stacking on the existing `@custom-variant dark`).
+ * D-03: Every dark token is authored as EXACT HEX, never oklch() — Tailwind v4
+ *       compiles L<0.15 oklch inaccurately (CLAUDE.md known issue).
+ * D-07: NO coral / gradient / beam / glow / shimmer token is carried into this
+ *       layer — those are the "AI-spaceship" effects §6 forbids.
+ * D-11: Hexes below are the calibration PROPOSAL; the APCA gate
+ *       (scripts/check-apca.ts) is the objective pass/fail on whatever is locked
+ *       at the Task 4 palette sign-off. If a hue changes there, update BOTH this
+ *       block and scripts/check-apca.ts to the identical value.
+ * ==========================================================================*/
+
+/* Phase 1 is a dark-only kit: the warm-neutral values are identical whether or
+ * not `.dark` is active, so a single `.numen-surface` rule suffices. A
+ * `.dark .numen-surface { … }` override is intentionally omitted (no value
+ * differs under `.dark` yet); add one only if a future light variant lands. */
+.numen-surface {
+  --numen-bg:            #1a1714;              /* warm near-black base (no pure black) */
+  --numen-panel:         #211e1a;              /* +1 warm step — cards, panels */
+  --numen-panel-2:       #2a2622;              /* +2 warm step — elevated panels */
+  --numen-text:          #f0ebe3;              /* warm off-white body */
+  --numen-text-muted:    #a39c91;              /* warm-grey muted (non-body UI) */
+  --numen-accent:        #d98a5e;              /* clay — matured from #FF7F50, used sparingly */
+  --numen-verdict-good:  #7faf7a;              /* muted green — positive band only */
+  --numen-verdict-mixed: #d6a85a;              /* amber — first-class "mixed signals" band */
+  --numen-verdict-bad:   #c97a64;              /* clay-red — negative band only */
+  --numen-border:        rgba(240, 235, 227, 0.06); /* hairline warm border */
+}
+
+/* Bridge the scoped custom properties to Tailwind's utility namespace.
+ * `inline` is LOAD-BEARING (Pitfall 1): a plain `@theme {}` would resolve
+ * `var(--numen-bg)` at :root — where it is undefined — making `bg-bg` empty
+ * under the scope. `@theme inline` emits the value so it resolves at the usage
+ * site, where `.numen-surface` has overridden it. */
+@theme inline {
+  --color-bg:            var(--numen-bg);
+  --color-panel:         var(--numen-panel);
+  --color-panel-2:       var(--numen-panel-2);
+  --color-text:          var(--numen-text);
+  --color-text-muted:    var(--numen-text-muted);
+  --color-accent:        var(--numen-accent);
+  --color-verdict-good:  var(--numen-verdict-good);
+  --color-verdict-mixed: var(--numen-verdict-mixed);
+  --color-verdict-bad:   var(--numen-verdict-bad);
+  --color-border:        var(--numen-border);
+  --font-serif:          var(--font-serif);    /* value supplied by next/font in Task 5 */
+}

@@ -21,12 +21,24 @@ import { resolve } from "node:path";
 
 const GLOBALS = resolve(process.cwd(), "src/app/globals.css");
 
-/** Extract the `.numen-surface { ... }` scope block (first occurrence). */
-function numenSurfaceBlock(css: string): string {
-  const start = css.indexOf(".numen-surface");
-  if (start === -1) return "";
-  const open = css.indexOf("{", start);
-  if (open === -1) return "";
+/** Strip `/* … *\/` CSS comments so prose mentions don't confuse the parser. */
+function stripComments(css: string): string {
+  return css.replace(/\/\*[\s\S]*?\*\//g, "");
+}
+
+/**
+ * Extract the `.numen-surface { ... }` scope-RULE block. Comments are stripped
+ * first, then the selector is matched only when immediately followed (modulo
+ * whitespace) by `{`, so prose mentions of `.numen-surface` are skipped.
+ */
+function numenSurfaceBlock(rawCss: string): string {
+  const css = stripComments(rawCss);
+  // Anchor on the bare `.numen-surface {` rule, not the `.dark .numen-surface`
+  // variant nor any compound selector — require the selector start.
+  const ruleRe = /(^|[\s}])\.numen-surface\s*\{/g;
+  const match = ruleRe.exec(css);
+  if (!match) return "";
+  const open = css.indexOf("{", match.index);
   let depth = 0;
   for (let i = open; i < css.length; i++) {
     if (css[i] === "{") depth++;
@@ -62,7 +74,7 @@ describe("numen token layer — globals.css source rules (DS-01 / D-03)", () => 
 
   it("bridges tokens through a @theme inline block (Pitfall 1 — inline is load-bearing)", () => {
     expect(css).toMatch(/@theme\s+inline\b/);
-    expect(css).toContain("--color-bg: var(--numen-bg)");
+    expect(css).toMatch(/--color-bg:\s*var\(--numen-bg\)/);
   });
 
   it("does NOT carry the forbidden coral/gradient/shimmer keyframes into the scope block (D-07)", () => {
