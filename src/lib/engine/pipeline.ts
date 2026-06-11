@@ -475,14 +475,17 @@ export async function runPredictionPipeline(
       // If upload succeeded before the error, rehostPath is still set — cleaned in finally below.
     }
   }
-  // DERIVE-AND-DROP: delete rehostPath unconditionally in a finally-equivalent cleanup.
-  // This runs regardless of Omni success/failure. NOT gated on storage_retention_opted_in.
-  // Separate from cleanupUploadedStorage (which governs owned uploads only — route.ts:40-61).
-  // Remix derive-and-drop boundary (T-01-07 / pitfall C4).
-  if (rehostPath !== null) {
-    // Schedule the delete fire-and-forget but bound to the current request scope.
-    // Using .catch() so a delete failure never crashes the pipeline.
+  // DERIVE-AND-DROP: delete rehostPath unconditionally — but only AFTER the sighted calls
+  // (Omni + fold) have fetched the signed URL. F7 (plan 01-05): the previous inline delete here
+  // ran the fire-and-forget remove BEFORE those calls, racing their server-side fetch of the
+  // signed URL (it only "worked" on nondeterministic timing). Deferred into a true post-pipeline
+  // finally (see the Stage-9 await below) so cleanup runs on EVERY path (success AND failure)
+  // without the race. NOT gated on storage_retention_opted_in. Separate from cleanupUploadedStorage
+  // (owned uploads only — route.ts). Remix derive-and-drop boundary (T-01-07 / pitfall C4 / T-04-01).
+  const dropRehostTemp = () => {
+    if (rehostPath === null) return;
     const pathToDelete = rehostPath;
+    // Fire-and-forget + .catch() so a delete failure never crashes the pipeline.
     void supabase
       .storage
       .from("videos")
@@ -493,7 +496,7 @@ export async function runPredictionPipeline(
           path: pathToDelete,
         });
       });
-  }
+  };
 
   // -------------------------------------------------------
   // Wave 0 + Wave 1 visual/audio: unified Omni-Plus call (replaces Wave 0 + Gemini segmented)
@@ -768,7 +771,16 @@ export async function runPredictionPipeline(
   const pass2Outcome: Wave3Pass2Outcome | null = null;
 
   // Plan 03: Wave 2 = deepseek only (trends + platform_fit removed). Await deepseek.
-  const [deepseekRaw] = await wave2Promise;
+  // F7 (plan 01-05): this is the last sighted-call await (Omni + fold already resolved above),
+  // so the rehost temp cleanup runs HERE in a finally — after every sighted call has fetched the
+  // signed URL, unconditionally on success OR failure (T-04-01), with no race.
+  let wave2Result: Awaited<typeof wave2Promise>;
+  try {
+    wave2Result = await wave2Promise;
+  } finally {
+    dropRehostTemp();
+  }
+  const [deepseekRaw] = wave2Result;
 
   // -------------------------------------------------------
   // Stage 9: Aggregate (delegated -- caller uses PipelineResult)

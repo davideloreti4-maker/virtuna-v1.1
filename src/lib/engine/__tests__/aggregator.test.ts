@@ -418,6 +418,28 @@ describe("aggregateScores", () => {
     expect(dead.overall_score).toBe(0);
   });
 
+  it("F18 honesty (01-05): partial_analysis true iff EXACTLY one core signal is dead", async () => {
+    // Both live (healthy default) → neither flag.
+    const healthy = await aggregateScores(makePipelineResult());
+    expect(healthy.partial_analysis).toBe(false);
+    expect(healthy.analysis_unavailable).toBe(false);
+
+    // Single dead: deepseek null (behavioral dead) but gemini factors present (gemini live) → partial.
+    const partial = await aggregateScores(makePipelineResult({ deepseekResult: null }));
+    expect(partial.partial_analysis).toBe(true);
+    expect(partial.analysis_unavailable).toBe(false);
+
+    // Dual dead: deepseek null + all gemini factors 0 → analysis_unavailable, NOT partial.
+    const deadGemini = makeGeminiAnalysis({
+      factors: (makeGeminiAnalysis().factors ?? []).map((f) => ({ ...f, score: 0 })),
+    });
+    const dual = await aggregateScores(
+      makePipelineResult({ deepseekResult: null, geminiResult: { analysis: deadGemini, cost_cents: 0 } }),
+    );
+    expect(dual.analysis_unavailable).toBe(true);
+    expect(dual.partial_analysis).toBe(false);
+  });
+
   it("maps confidence_label correctly based on confidence thresholds", async () => {
     // HIGH confidence: all signals available, video mode, matched trends/rules, high agreement
     // With all signals scoring 7, both gemini and behavioral > 50, they agree -> agreement = 0.4

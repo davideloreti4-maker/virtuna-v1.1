@@ -373,6 +373,15 @@ export interface PredictionResult {
    *  aggregator assigns on every PredictionResult; false on every healthy run. Derivable
    *  from the persisted signal_availability JSONB on permalink reload (no new DB column). */
   analysis_unavailable: boolean;
+  /** F18 honesty / ENG-01 (plan 01-05) — TRUE when EXACTLY ONE core signal is dead (the Omni read
+   *  gave no usable gemini provenance XOR Apollo/fold behavioral failed), i.e.
+   *  signal_availability.gemini !== signal_availability.behavioral. In that state the score is
+   *  built on HALF the basis (the other half silently dropped), yet the board today only surfaces
+   *  the DUAL-failure analysis_unavailable. This flag lets the UI annotate a single-signal partial
+   *  read instead of presenting half a basis as a full one. REQUIRED (not optional) — aggregator
+   *  assigns on every PredictionResult; false on a healthy (both-live) or dual-dead run. Derivable
+   *  from the persisted signal_availability JSONB on permalink reload (no new DB column). */
+  partial_analysis: boolean;
   /** Phase 3 (Plan 08, D-17) — reason discriminator from isAntiViralityGatedFull.
    *  "confidence" | "timeline_pattern" | "both" | null. null when not gated. */
   anti_virality_reason?: "confidence" | "timeline_pattern" | "both" | null;

@@ -911,6 +911,11 @@ export async function aggregateScores(
   // -------------------------------------------------
   const analysis_unavailable = !availability.gemini && !availability.behavioral;
 
+  // F18 honesty / ENG-01 (plan 01-05) — exactly ONE core signal dead (read XOR behavioral/fold).
+  // The score is then built on half the basis with the other half silently dropped; surface it as
+  // a partial read instead of letting only the dual-failure case (analysis_unavailable) annotate.
+  const partial_analysis = availability.gemini !== availability.behavioral;
+
   // -------------------------------------------------
   // Confidence (with signal availability penalties)
   // -------------------------------------------------
@@ -1196,6 +1201,8 @@ export async function aggregateScores(
     // T1.5 — degradation honesty flag (computed above from the dual-failure condition).
     // Not adjusted post-critique: it reflects raw signal availability, not confidence.
     analysis_unavailable,
+    // F18 honesty (plan 01-05) — single-signal partial read (computed above from availability XOR).
+    partial_analysis,
     // Phase 3 (Plan 08) — reason + dropoff indices from dual-trigger gate.
     // null when not gated or when heatmap absent (confidence-only path).
     anti_virality_reason: avGateFull.reason,
