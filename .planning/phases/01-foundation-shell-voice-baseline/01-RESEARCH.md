@@ -8,9 +8,9 @@
 
 Phase 1 rebuilds the existing `(marketing)` route in place to mount a clean Numen landing shell (nav + footer + ordered semantic section slots) under the already-built `.numen-surface` token scope, authors `.planning/VOICE.md` + applies in-voice placeholder copy, and ships baseline SEO metadata. All primitives, the logo, and the token bridge already exist and are importable — this is assembly + authoring work, not net-new design-system work.
 
-**The one real landmine:** there are TWO layouts rendering `<html>`/`<body>` — the root `src/app/layout.tsx` AND `src/app/(marketing)/layout.tsx`. Next.js App Router permits exactly one root layout with `<html>`/`<body>` (verified via Context7/official docs). The marketing layout's `<html><body>` is invalid nesting. The phase MUST resolve this: the `.numen-surface` body class belongs on the **root** layout's `<body>` (or the marketing layout becomes a fragment/`<div>` passthrough). Do NOT add a second `<html>`. This decision is load-bearing for D-02/D-09 and is the planner's first task.
+**The one real landmine:** there are TWO layouts rendering `<html>`/`<body>` — the root `src/app/layout.tsx` AND `src/app/(marketing)/layout.tsx`. Next.js App Router permits exactly one root layout with `<html>`/`<body>` (verified via Context7/official docs). The marketing layout's `<html><body>` is invalid nesting. The phase MUST resolve this: collapse the marketing layout to a no-html passthrough that mounts the `.numen-surface` scope on a wrapper `<div>` (RESOLVED to Option B — the root `<body>` stays scope-free). Do NOT add a second `<html>`. This decision is load-bearing for D-02/D-09 and is the planner's first task.
 
-**Primary recommendation:** Make `(marketing)/layout.tsx` a non-html passthrough that wraps children in the Numen nav/footer shell + a `numen-surface` wrapper; move (or set) `className="numen-surface"` on the root `<body>`. No surface in this repo currently mounts `.numen-surface` — Phase 1 is its first real consumer, so verify rendered token resolution on a live dev server (success criterion #1).
+**Primary recommendation (RESOLVED — Option B):** Make `(marketing)/layout.tsx` a non-html passthrough that wraps children in a `<div className="numen-surface min-h-screen bg-bg text-text">` containing the Numen nav/footer shell. The root `src/app/layout.tsx` `<body>` stays scope-free (NOT given `.numen-surface`), keeping the scope marketing-scoped per locked D-02 and leaving sibling routes untouched. No surface in this repo currently mounts `.numen-surface` — Phase 1 is its first real consumer, so verify rendered token resolution on a live dev server (success criterion #1).
 
 ## Architectural Responsibility Map
 
@@ -127,9 +127,9 @@ Current state `[VERIFIED]`:
 
 Next 16 (Context7-confirmed): **only the root layout may define `<html>`/`<body>`.** Two is invalid → nested html/body, hydration breakage. The marketing layout's html/body is a migration artifact.
 
-**Recommended fix (one of):**
-- **Option A (preferred):** Set `className="numen-surface"` on the ROOT `<body>` (and drop the legacy `bg-background font-sans` there or coexist), then make `(marketing)/layout.tsx` a passthrough that renders the Numen `<Nav/>{children}<Footer/>` (no html/body), and exports the marketing metadata override.
-- **Option B:** Keep root body neutral; marketing layout wraps `{children}` in `<div className="numen-surface min-h-screen bg-bg text-text">`. Body class then doesn't apply, but the wrapping div scopes the tokens. CONTEXT D-02/D-09 literally say `<body className="numen-surface ...">` so Option A matches the locked decision text more closely — but the body lives in the ROOT layout, so the planner must reconcile that D-02's "the `(marketing)` layout mounts the body class" is mechanically impossible without the root layout. Flag this to the user if strict literal compliance matters.
+**Recommended fix — RESOLVED to Option B (user decision, see Open Questions RESOLVED Q1):**
+- **Option B (CHOSEN):** Keep root body neutral (scope-free); `(marketing)/layout.tsx` wraps `{children}` in `<div className="numen-surface min-h-screen bg-bg text-text">`. The wrapping div scopes the tokens to the marketing subtree only, honoring D-02's marketing-scoped intent and leaving the 7 sibling routes on the untouched root body (zero repaint blast radius). Next 16 forbids a second `<body>`, so the wrapper `<div>` is the legal expression of "the `(marketing)` layout mounts the scope."
+- **Option A (SUPERSEDED — user chose Option B):** ~~Set `className="numen-surface"` on the ROOT `<body>`.~~ Rejected: root-body mount repaints sibling routes and is a literal-D-02 deviation that gains nothing over the wrapper div.
 
 Either way: the marketing layout STOPS importing the stale `<Header/>`, STOPS rendering html/body, and replaces metadata. Root layout's `font-inter`/`font-serif` variables stay (Numen logo wordmark is Inter; serif reserved for later).
 
@@ -228,7 +228,7 @@ This is greenfield scaffold work (new components, rebuilt route) — not a renam
 
 ## Code Examples
 
-### Marketing layout (passthrough, no html/body) — Option A shape
+### Marketing layout (passthrough, no html/body) — Option B shape
 ```tsx
 // src/app/(marketing)/layout.tsx
 import type { Metadata } from "next";
@@ -243,15 +243,15 @@ export const metadata: Metadata = {
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    <div className="numen-surface min-h-screen bg-bg text-text">
       <Nav />
       <main>{children}</main>
       <Footer />
-    </>
+    </div>
   );
 }
 ```
-(Root `layout.tsx` body gets `className="numen-surface min-h-screen bg-bg text-text font-sans antialiased"`. Verify the legacy `bg-background` removal doesn't break other route groups — those routes are dev/showcase and use their own scopes, but confirm on dev server.)
+(Root `src/app/layout.tsx` body stays scope-free — do NOT add `numen-surface` to it. The `.numen-surface` scope mounts only on this marketing wrapper `<div>`, so `bg-bg`/`text-text` resolve for the marketing subtree and the sibling routes on the root body are untouched.)
 
 ### Metadata baseline (PERF-02)
 Minimal correct Next 16 object — title + description suffice for Phase 1; OG/twitter art is Phase 4. Root layout already has OG/twitter scaffolding (`layout.tsx:31-45`) which can stay as inherited defaults; marketing layout overrides title/description.
