@@ -5,14 +5,14 @@
 ## v5.0 Requirements
 
 ### DS — Design System Foundation
-- [ ] **DS-01**: Warm-neutral dark token system (no pure black; base ~`#1a1714`, panels stepped warmer, warm off-white text), with L<0.15 darks as exact **hex not oklch** (Tailwind v4 bug this repo has hit)
+- [x] **DS-01**: Warm-neutral dark token system (no pure black; base ~`#1a1714`, panels stepped warmer, warm off-white text), with L<0.15 darks as exact **hex not oklch** (Tailwind v4 bug this repo has hit)
 - [x] **DS-02**: Verdict color scale (muted green / amber / clay-red) is the ONLY load-bearing functional color; everything else near-neutral
-- [ ] **DS-03**: Brand accent = coral matured to warm clay/terracotta (evolve `#FF7F50`), used sparingly — logo, primary action, focus only
-- [ ] **DS-04**: Sans-led type system with serif reserved for voice moments (greeting/hero + the verdict line)
+- [x] **DS-03**: Brand accent = coral matured to warm clay/terracotta (evolve `#FF7F50`), used sparingly — logo, primary action, focus only
+- [x] **DS-04**: Sans-led type system with serif reserved for voice moments (greeting/hero + the verdict line)
 - [x] **DS-05**: Component vocabulary — full-pill tool chips, circular icon buttons, hairline warm borders, soft elevation, glass restricted to ephemeral elements (composer, tool sheet); backdrop-filter via inline style not class (Lightning CSS strips it)
 - [x] **DS-06**: Migration boundary — inventory + retire Raycast GlassPanel-everywhere, scattered hardcoded coral, fake macOS window chrome, **and the chat dock** (absorbed into the thread); ground-up kit, not a retheme of the 36 components
 - [x] **DS-07**: Calm motion system (soft, never bouncy/snappy); the stage-reveal is the key motion moment
-- [ ] **DS-08**: Keyframes ARE the imagery/chroma (load-bearing §6 principle) — the user's video stills are the only atmosphere (hero, accents, empty states); warm-neutral chrome recedes so the (often cool) content + verdict carry all the color and energy
+- [x] **DS-08**: Keyframes ARE the imagery/chroma (load-bearing §6 principle) — the user's video stills are the only atmosphere (hero, accents, empty states); warm-neutral chrome recedes so the (often cool) content + verdict carry all the color and energy
 
 ### DATA — Data Contract / View-Model (ENG-06 D-12)
 - [ ] **DATA-01**: Pure `lib/reading/view-model.ts` `toReadingBlocks()` mapping ~40 engine fields → ~10 value-bearing Reading blocks
@@ -91,14 +91,14 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DS-01 | Phase 1 | Pending |
+| DS-01 | Phase 1 | Complete |
 | DS-02 | Phase 1 | Complete |
-| DS-03 | Phase 1 | Pending |
-| DS-04 | Phase 1 | Pending |
+| DS-03 | Phase 1 | Complete |
+| DS-04 | Phase 1 | Complete |
 | DS-05 | Phase 1 | Complete |
 | DS-06 | Phase 1 | Complete |
 | DS-07 | Phase 1 | Complete |
-| DS-08 | Phase 1 | Pending |
+| DS-08 | Phase 1 | Complete |
 | DATA-01 | Phase 2 | Pending |
 | DATA-02 | Phase 2 | Pending |
 | DATA-03 | Phase 2 | Pending |

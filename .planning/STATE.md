@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Numen Surface
 status: executing
-stopped_at: Phase 01 Plan 03 complete (DS-07 StageBlock calm stage-reveal, 2/2 tests green) — next = Wave 3 Plan 04 (kit showcase + serif specimen + deployed-build glass check)
-last_updated: "2026-06-11T20:15:29.445Z"
-last_activity: "2026-06-11 -- Plan 03 complete (DS-07 calm motion: StageBlock opacity tween + high-damping spring, reduced-motion gate, --numen-ease-calm token; 2/2 tests green)"
+stopped_at: Phase 01 COMPLETE (5/5 plans done; all DS-01–DS-08 closed) — next = /gsd-plan-phase 2 (View-Model + Data Contract)
+last_updated: "2026-06-11T23:15:00Z"
+last_activity: "2026-06-11 -- Plan 04 complete (kit showcase /numen-kit deployed, Glass blur(12px) Lightning CSS verified, Source Serif 4 locked as voice serif, DS-04/DS-08 closed; 1938 tests green; axe green)"
 progress:
   total_phases: 7
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 5
-  completed_plans: 4
-  percent: 80
+  completed_plans: 5
+  percent: 100
 ---
 
 # Project State
@@ -21,35 +21,36 @@ progress:
 See: .planning/PROJECT.md · Vision (authoritative): .planning/NUMEN-SURFACE-VISION.md · Worktree identity: .planning/MILESTONE.md · Research: .planning/research/SUMMARY.md
 
 **Core value:** AI content intelligence that tells TikTok creators whether their content will resonate — re-presented as one thread per video where the AI's first turn is the Reading (verdict = band + why).
-**Current focus:** Phase 01 — design-system-foundation-brand-migration (Plans 01 + 05 + 02 + 03 done; Wave 3 Plan 04 next)
+**Current focus:** Phase 01 COMPLETE — next = /gsd-plan-phase 2 (View-Model + Data Contract)
 
 ## Current Position
 
-Phase: 01 (design-system-foundation-brand-migration) — EXECUTING
-Plan: 4/5 (Plans 01 + 05 + 02 + 03 complete; Wave 3 Plan 04 next)
-Status: Executing Phase 01
-Last activity: 2026-06-11 -- Plan 03 complete (DS-07 calm motion: StageBlock opacity tween + high-damping spring 220/30, reduced-motion gate strips translate, --numen-ease-calm token; 2/2 tests green)
+Phase: 01 (design-system-foundation-brand-migration) — COMPLETE ✓
+Plan: 5/5 (Plans 01 + 05 + 02 + 03 + 04 all complete)
+Status: Phase 01 done; awaiting /gsd-plan-phase 2
+Last activity: 2026-06-11 -- Plan 04 complete (kit showcase /numen-kit deployed, Glass blur(12px) Lightning CSS verified, Source Serif 4 locked as voice serif, DS-04/DS-08 closed; 1938 tests green; axe green)
 
-Progress: [████████░░] 80%
+Progress: [██████████] 100% (Phase 01)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 1
-- Average duration: 140 min
-- Total execution time: 140 min
+- Total plans completed: 5
+- Average duration: ~66 min
+- Total execution time: ~330 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01 design-system | 1/5 | 140 min | 140 min |
+| 01 design-system | 5/5 | ~330 min | ~66 min |
 
 *Updated after each plan completion*
 | Phase 01 P05 | 10 | 1 tasks | 1 files |
 | Phase 01 P02 | 18 | 2 tasks | 5 files |
 | Phase 01 P03 | 11 | 1 tasks | 2 files |
+| Phase 01 P04 | 150 | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,10 @@ Recent decisions affecting current work:
 - Plan 01: framer-motion retained (D-04 deferral) — 4 OLD files untouched; standardize new code on motion; defer removal to surface-rebuild phases.
 - [Phase ?]: Plan 05 (DS-06): chat dock FOUND via widened grep at command-bar/CommandBar.tsx ('bottom-pinned dock' / unified expert chat panel) — Q8 'absent' caveat resolved; absorbed into thread, owned Phase 4/5.
 - Plan 02 (DS-05): kit primitives expose their tailwind-variants `tv()` result as a NAMED export (`surface`/`pillChip`/`iconButton`/`verdictSwatch`) + an ergonomic wrapper component — tests import the tv function directly.
+- Plan 04 (DS-04): voice serif = Source Serif 4 (confirmed on deployed prod build, Newsreader specimened + rejected; layout.tsx unchanged).
+- Plan 04 (DS-05): Glass `backdrop-filter: blur(12px)` LIVE on deployed build — Lightning CSS does NOT strip the inline-style form (Playwright-verified 2026-06-11).
+- Plan 04 (testing): next/font/google mock must be an explicit named-export object, NOT a catch-all Proxy — Proxy returns a function for `then`, making the mock thenable and hanging `await import()` forever.
+- Plan 04 (config): vitest.config.ts `include` must cover `tests/**/*.test.tsx` (not just `.ts`) for a11y tests in the tests/ directory.
 - Plan 02 (D-05): Glass blur still needs DEPLOYED-build verification (Plan 04); happy-dom/dev don't exercise the Lightning CSS pass. Documented in glass.tsx header.
 - Plan 03 (DS-07): StageBlock = the ONE key motion moment. Opacity tween (ease [0.215,0.61,0.355,1]) + high-damping spring on translate (stiffness 220 / damping 30, ratio ≥ 1 → no overshoot); reduced-motion zeroes the translate → static opacity appear (D-14). New `--numen-ease-calm` token added to `.numen-surface`; forbidden `--ease-spring` (1.56 bounce) byte-unchanged + unreferenced by the kit. No presence theater on other primitives.
 
@@ -98,6 +103,6 @@ From Plan 01 execution:
 
 ## Session Continuity
 
-Last session: 2026-06-11T20:15:29.439Z
-Stopped at: Phase 01 Plan 03 complete (DS-07 StageBlock calm stage-reveal, 2/2 tests green) — next = Wave 3 Plan 04 (kit showcase + serif specimen + deployed-build glass check)
+Last session: 2026-06-11T23:15:00Z
+Stopped at: Phase 01 COMPLETE (5/5 plans done; all DS-01–DS-08 closed) — next = /gsd-plan-phase 2 (View-Model + Data Contract)
 Resume file: None

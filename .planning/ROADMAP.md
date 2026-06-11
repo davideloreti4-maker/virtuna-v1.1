@@ -13,7 +13,7 @@ Numen Surface is a presentation-layer rebuild: it replaces the Konva canvas boar
 
 Milestone-scoped numbering (fresh worktree, `--reset-phase-numbers`): phases start at 1.
 
-- [ ] **Phase 1: Design System Foundation + Brand Migration** - Warm-neutral dark kit, verdict scale, ground-up component vocabulary; retire Raycast/coral/glass-everywhere
+- [x] **Phase 1: Design System Foundation + Brand Migration** - Warm-neutral dark kit, verdict scale, ground-up component vocabulary; retire Raycast/coral/glass-everywhere — COMPLETE 2026-06-11
 - [ ] **Phase 2: View-Model + Data Contract** - Pure `toReadingBlocks()` mapping ~40 engine fields → ~10 Reading blocks; live + replay funnel through one module
 - [ ] **Phase 3: SMOKE GATE + Verdict-Banding Calibration** - Hard precondition: real-video E2E proves honest live output; band buffers wider than score noise
 - [ ] **Phase 4: Mobile Reading Thread + PWA Shell** - The core paradigm: AI pronounces first, stage-reveal blocks, throne verdict, re-openable resting document, installable PWA
@@ -50,7 +50,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 01-04-PLAN.md — Kit showcase route + serif specimen + keyframe-chroma + deployed-build verification (DS-04/05/07/08)
+- [x] 01-04-PLAN.md — Kit showcase route + serif specimen + keyframe-chroma + deployed-build verification (DS-04/05/07/08) — DONE 2026-06-11
 
 **UI hint**: yes
 
@@ -152,7 +152,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Design System Foundation + Brand Migration | 4/5 | In Progress|  |
+| 1. Design System Foundation + Brand Migration | 5/5 | Complete | 2026-06-11 |
 | 2. View-Model + Data Contract | 0/TBD | Not started | - |
 | 3. SMOKE GATE + Verdict-Banding Calibration | 0/TBD | Not started | - |
 | 4. Mobile Reading Thread + PWA Shell | 0/TBD | Not started | - |
