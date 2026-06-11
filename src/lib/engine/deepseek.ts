@@ -10,18 +10,18 @@ import {
   type VerbatimPayload,
 } from "./types";
 import { APOLLO_SYSTEM_PROMPT, PRESENT_SECTIONS } from "./apollo-core";
-import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "./qwen/client";
+import { getQwenClient, QWEN_APOLLO_MODEL, QWEN_SEED } from "./qwen/client";
 import { calculateCost } from "./qwen/cost";
 import { stripModelOutput } from "./utils/strip";
 
 // NOTE: "deepseek" is a LEGACY module/stage name — this stage actually runs Qwen
-// (QWEN_REASONING_MODEL = qwen3.6-plus) via DashScope, not DeepSeek. The pipeline
+// (QWEN_APOLLO_MODEL = qwen3.7-plus) via DashScope, not DeepSeek. The pipeline
 // is Qwen-only. The string is kept because log dashboards + tests key off the
 // "deepseek" / "deepseek_reasoning" stage names.
 const log = createLogger({ module: "deepseek" });
 
-// Legacy constant name — resolves to QWEN_REASONING_MODEL (qwen3.6-plus).
-const DEEPSEEK_MODEL = QWEN_REASONING_MODEL;
+// Legacy constant name — resolves to QWEN_APOLLO_MODEL (qwen3.7-plus, scoped to Apollo).
+const DEEPSEEK_MODEL = QWEN_APOLLO_MODEL;
 const MAX_RETRIES = 2; // 3 total attempts
 const TIMEOUT_MS = 120_000; // 120s — bounded-thinking Apollo call on the full KNOWLEDGE_CORE prefix; headroom under the 300s pipeline cap
 // Apollo thinking budget. Default 1500 (was 3000) — A/B-validated 2026-06-05

@@ -47,8 +47,8 @@ const FOLD_THINKING_BUDGET = 1000;
 const PER_CALL_TIMEOUT_MS = 120_000;
 
 const VARIANTS = [
-  { key: "A omni-plus (audio)", model: "qwen3.5-omni-plus", thinking: false },
-  { key: "B 3.7-plus (deaf)",   model: "qwen3.7-plus",      thinking: true  },
+  { key: "A omni-plus (audio)",  model: "qwen3.5-omni-plus",  thinking: false },
+  { key: "B omni-flash (audio)", model: "qwen3.5-omni-flash", thinking: false },
 ];
 
 function toMp4(p: string): Buffer {
@@ -89,9 +89,18 @@ async function runVariant(ai: any, v: any, slots: any, segments: any, verbatim: 
   const usage = res.usage ?? {};
   const inTok = usage.prompt_tokens ?? 0, outTok = usage.completion_tokens ?? 0;
   // omni-plus pricing ~$0.4 in / $2.2? we just report tokens; cost varies by model — report both raw.
-  const text = res.choices[0]?.message?.content ?? "{}";
+  const rawText = res.choices[0]?.message?.content ?? "{}";
+  // Strip markdown fences (omni-flash wraps JSON in ```json; omni-plus doesn't).
+  const fenced = rawText.match(/```(?:json)?\n?([\s\S]*?)\n?```/);
+  const text = (fenced ? fenced[1]! : rawText).trim();
+  const wasFenced = !!fenced;
   let parsed: any;
-  try { parsed = JSON.parse(text); } catch { return { ...v, ms, error: "JSON parse fail", raw: text.slice(0, 200) }; }
+  try { parsed = JSON.parse(text); } catch {
+    console.log(`\n  [raw dump] ${v.model} output: ${text.length} chars, finish_reason=${res.choices[0]?.finish_reason}`);
+    console.log(`  --- first 400 ---\n${text.slice(0, 400)}`);
+    console.log(`  --- last 200 ---\n${text.slice(-200)}\n`);
+    return { ...v, ms, error: `JSON parse fail (${text.length} chars, finish=${res.choices[0]?.finish_reason})` };
+  }
   const val = FoldResponseSchema.safeParse(parsed);
   if (!val.success) return { ...v, ms, inTok, outTok, error: `Zod fail: ${val.error.message.slice(0, 160)}` };
 
@@ -115,7 +124,7 @@ async function runVariant(ai: any, v: any, slots: any, segments: any, verbatim: 
   const avgShare = +(personas.reduce((a: number, p: any) => a + (p.share_intent ?? 0), 0) / personas.length).toFixed(2);
 
   return {
-    ...v, ms, inTok, outTok, error: null,
+    ...v, ms, inTok, outTok, error: null, wasFenced,
     nPersonas: personas.length, segMismatch,
     avgRange, diverse: avgRange >= DIVERSITY_FLOOR,
     avgWatch, avgShare,
@@ -168,6 +177,7 @@ async function main() {
     row("avg watch %", (r) => r.avgWatch);
     row("avg share intent", (r) => r.avgShare);
     row("biggest drop", (r) => r.dropAt);
+    row("fenced JSON?", (r) => (r.wasFenced ? "YES (needs strip)" : "no"));
     console.log("\n  mean attention curve (per segment, across 10 personas):");
     for (const r of results) if (!r.error) console.log(`    ${r.key.padEnd(22)} [${r.meanAtt.join(", ")}]`);
     for (const r of results) if (r.error) console.log(`    ${r.key}: ERROR — ${r.error}`);

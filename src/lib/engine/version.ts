@@ -71,7 +71,16 @@
  * from prose, so the faithful-runtime leak (7 prose cites observed on the test video) can't reach
  * the board. Apollo's prose output shape changes (cites removed) → stale 3.13.0 rows must not mix.
  *
+ * Bumped 3.14.0 → 3.15.0 (2026-06-11, Apollo model flip — harness A/B): the Apollo reasoner
+ * moved qwen3.6-plus → qwen3.7-plus (scoped via new QWEN_APOLLO_MODEL, separate from the shared
+ * QWEN_REASONING_MODEL so chat/decode/adapt/text-mode stay on 3.6-plus). A/B on the test video:
+ * faster (50s vs 64s) + cheaper (output $1.6 vs $2.4/M) at identical insight quality, §-cites,
+ * and guard behavior; deaf like 3.6-plus (no capability lost). Apollo composite may shift within
+ * provider noise across the model boundary, so isolate the cache. Fold stays qwen3.5-omni-plus
+ * (sense-complete + free in preview + fastest; omni-flash rejected — malformed JSON + collapsed
+ * curves; 3.7-plus rejected for fold — deaf + 65s on the gating call).
+ *
  * D-23 cache invariant: prediction-cache.ts keys on ENGINE_VERSION; this bump auto-invalidates
- * all `3.13.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
+ * all `3.14.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
  */
-export const ENGINE_VERSION = "3.14.0";
+export const ENGINE_VERSION = "3.15.0";

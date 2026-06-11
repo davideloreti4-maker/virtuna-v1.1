@@ -36,3 +36,11 @@ export const QWEN_SEED = 7;
 export const QWEN_OMNI_MODEL      = process.env.QWEN_OMNI_MODEL      ?? "qwen3.5-omni-flash";
 export const QWEN_REASONING_MODEL = process.env.QWEN_REASONING_MODEL ?? "qwen3.6-plus";
 export const QWEN_FAST_MODEL      = process.env.QWEN_FAST_MODEL      ?? "qwen3.6-flash";
+// Apollo reasoner model (the score-mode judge in deepseek.ts) — SCOPED separately from
+// QWEN_REASONING_MODEL so Apollo can move independently of chat/decode/adapt/text-mode.
+// Flipped 3.6-plus → 3.7-plus 2026-06-11 (harness A/B, scripts/apollo-cite-harness.ts):
+// on the test video 3.7-plus was faster (50s vs 64s) + cheaper (output $1.6 vs $2.4/M) at
+// identical insight quality / §-cites / guard behavior; all DashScope params (enable_thinking,
+// thinking_budget, seed, json_object) accepted. 3.7-plus is deaf (no audio) but Apollo was
+// already deaf on 3.6-plus, so no capability lost. Rollback: QWEN_APOLLO_MODEL=qwen3.6-plus.
+export const QWEN_APOLLO_MODEL    = process.env.QWEN_APOLLO_MODEL    ?? "qwen3.7-plus";

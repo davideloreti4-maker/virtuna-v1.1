@@ -22,7 +22,9 @@ import type { HookDecomposition } from "./types";
 import type { PipelineResult } from "./pipeline";
 import type { StageEventCallback } from "./events";
 import { QWEN_OMNI_MODEL as GEMINI_MODEL } from "./qwen/client";
-import { QWEN_REASONING_MODEL as DEEPSEEK_MODEL } from "./qwen/client";
+// Apollo's persisted model label must reflect the Apollo model (QWEN_APOLLO_MODEL),
+// not the shared reasoning constant — they diverged 2026-06-11 (Apollo → qwen3.7-plus).
+import { QWEN_APOLLO_MODEL as DEEPSEEK_MODEL } from "./qwen/client";
 // ml.ts call removed (Plan 02, R9): ml predict + feature-vector-to-ml-input no longer called here.
 // ml.ts moves to _dormant/ in Plan 05. SCORE_WEIGHT_KEYS ml key retained until Plan 04 blend cut.
 // Phase 1 (R1.9, Plan 06 T3 B4) — anti-virality gating helper. Wires
