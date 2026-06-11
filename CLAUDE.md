@@ -21,7 +21,8 @@ instantly visible to all; deleting a worktree folder keeps its branch + commits.
 
 | Path | Branch | Role |
 |------|--------|------|
-| `~/virtuna-v1.1/` | `main` | **Trunk / command center.** Stays on `main`. New milestones launch from here; quick one-session fixes happen here on a short-lived branch. **Next:** launch *Numen Surface* (v5.0 rebrand) via `/gsd-new-milestone` → feed `.planning/NUMEN-SURFACE-VISION.md`. |
+| `~/virtuna-v1.1/` | `main` | **Trunk / command center.** Stays on `main`. New milestones launch from here; quick one-session fixes happen here on a short-lived branch. |
+| `~/virtuna-numen-surface/` | `milestone/numen-surface` | **Active milestone (v5.0, scaffolded 2026-06-11).** Mobile-first rebrand + UX rework (oracle "Reading" thread replaces canvas board). Input: `.planning/NUMEN-SURFACE-VISION.md`. Next: define requirements + roadmap **in this worktree**. |
 | `~/virtuna-mvp-ready/` | `milestone/mvp-ready` | **Merged + pruned (2026-06-11).** v4.1 Phase 1 (engine, ENGINE_VERSION 3.19.0) merged to main; P2–5 superseded by Numen Surface. Branch retained in `.git`. |
 | `~/virtuna-engine-opt/` | `milestone/engine-opt` | **Merged (PR #17) + pruned (2026-06-11).** v4.0 Apollo engine audit remediation. |
 | `~/virtuna-ui-opt/` | `milestone/ui-opt` | In progress |
