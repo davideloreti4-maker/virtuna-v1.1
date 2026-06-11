@@ -111,7 +111,17 @@
  * is assembled from already-emitted Apollo materials and (F42) persisted into variants.hero. Both
  * the confidence value and the output shape change on video rows → isolate the cache.
  *
+ * Bumped 3.18.0 → 3.19.0 (2026-06-11, robustness + honesty + dead-tail prune — plan 01-05): an
+ * OUTPUT-SHAPE change. (1) partial_analysis: new REQUIRED honesty flag — true when exactly one
+ * core signal is dead (single-signal partial read, previously silent; only dual-failure surfaced).
+ * (2) Dead-tail prune (F43): rule_score/trend_score/ml_score/reasoning stop emitting fake fixed
+ * constants (50/0/0/"") and now emit null (DB columns kept for back-compat); audio_fingerprint +
+ * platform_fit dropped from the emitted contract (optional, always null, no consumer). Fold
+ * robustness (retry/salvage/diversity-nudge) + the F7 rehost-delete-race fix do NOT change scores,
+ * but the partial_analysis + prune shape change → isolate the cache so stale 3.18.0 rows (which
+ * lack partial_analysis + carry the fake constants) don't deserialize as current.
+ *
  * D-23 cache invariant: prediction-cache.ts keys on ENGINE_VERSION; this bump auto-invalidates
- * all `3.17.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
+ * all `3.18.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
  */
-export const ENGINE_VERSION = "3.18.0";
+export const ENGINE_VERSION = "3.19.0";

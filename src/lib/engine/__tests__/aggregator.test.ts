@@ -281,7 +281,7 @@ describe("aggregateScores", () => {
     expect(["HIGH", "MEDIUM", "LOW"]).toContain(result.confidence_label);
     expect(result.gemini_score).toBeGreaterThan(0);
     expect(result.behavioral_score).toBeGreaterThan(0);
-    expect(result.ml_score).toBe(0); // Plan 02: ml call removed; mlScore=null → ml_score=0
+    expect(result.ml_score).toBeNull(); // F43 (01-05): ml dead signal → emits null (was a fake 0)
     expect(result.predicted_engagement).toBeNull(); // Plan 02 D1.1: sine-jitter fabrication deleted
     expect(result.engine_version).toBeDefined();
     expect(result.score_weights).toHaveProperty("behavioral");
@@ -560,6 +560,56 @@ describe("Plan 01-04 — coupled aggregator closeout", () => {
 });
 
 // =====================================================
+// ENG-04 honesty LOCK (plan 01-05) — regression guards. These assert the honesty invariants
+// against the UNCHANGED honesty code so a future regression that re-introduces fabrication
+// (Math.sin jitter, a non-grounded range, or a single-signal masquerading as unavailable) fails CI.
+// =====================================================
+
+describe("ENG-04 honesty LOCK (01-05)", () => {
+  it("engagement range is null when there is no creator baseline (follower_count <= 0 / null)", () => {
+    expect(computeEngagementRange({ follower_count: null }, 80)).toBeNull();
+    expect(computeEngagementRange({ follower_count: 0 }, 80)).toBeNull();
+  });
+
+  it("engagement range is grounded, bounded, and DETERMINISTIC (no Math.sin/random jitter)", () => {
+    const a = computeEngagementRange({ follower_count: 100_000 }, 80);
+    const b = computeEngagementRange({ follower_count: 100_000 }, 80);
+    expect(a).not.toBeNull();
+    expect(a!.lo).toBeLessThan(a!.hi);
+    expect(Number.isFinite(a!.lo) && Number.isFinite(a!.hi)).toBe(true);
+    expect(a).toEqual(b); // a sine/random jitter path would break determinism
+    // Grounded: the range scales with follower_count (more followers → wider absolute range),
+    // which a fabricated oscillation would not honor.
+    const bigger = computeEngagementRange({ follower_count: 1_000_000 }, 80)!;
+    expect(bigger.hi).toBeGreaterThan(a!.hi);
+  });
+
+  it("analysis_unavailable is true IFF both core signals are dead (dual-failure only)", async () => {
+    const healthy = await aggregateScores(makePipelineResult());
+    expect(healthy.analysis_unavailable).toBe(false);
+
+    const single = await aggregateScores(makePipelineResult({ deepseekResult: null }));
+    expect(single.analysis_unavailable).toBe(false); // single dead ≠ unavailable (that's partial_analysis)
+
+    const deadGemini = makeGeminiAnalysis({
+      factors: (makeGeminiAnalysis().factors ?? []).map((f) => ({ ...f, score: 0 })),
+    });
+    const dual = await aggregateScores(
+      makePipelineResult({ deepseekResult: null, geminiResult: { analysis: deadGemini, cost_cents: 0 } }),
+    );
+    expect(dual.analysis_unavailable).toBe(true);
+  });
+
+  it("dead-tail prune (F43): rule/trend/ml/reasoning emit null, not fake constants", async () => {
+    const result = await aggregateScores(makePipelineResult());
+    expect(result.rule_score).toBeNull();
+    expect(result.trend_score).toBeNull();
+    expect(result.ml_score).toBeNull();
+    expect(result.reasoning).toBeNull();
+  });
+});
+
+// =====================================================
 // Phase 3 — provenance + stub invocations
 // =====================================================
 
@@ -583,7 +633,7 @@ describe("Phase 3 — provenance + stub invocations", () => {
     const { ENGINE_VERSION } = await import("../aggregator");
     const { ENGINE_VERSION: viaVersion } = await import("../version");
     expect(ENGINE_VERSION).toBe(viaVersion);
-    expect(ENGINE_VERSION).toBe("3.18.0"); // 01-04 coupled aggregator closeout
+    expect(ENGINE_VERSION).toBe("3.19.0"); // 01-05 robustness + honesty + prune
   });
 
   it("PredictionResult.engine_version reads from ./version module", async () => {
