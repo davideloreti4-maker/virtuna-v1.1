@@ -34,7 +34,10 @@ Milestone-scoped numbering (fresh worktree): phases start at 1.
   2. A visitor sees a minimal, product-focused top nav and a footer on every viewport (mobile-first)
   3. Page copy reads in the calm, plain-language, confident-mentor voice with zero engine jargon — the established voice baseline later sections inherit
   4. The page exposes SEO meta (title/description) and a kero-modeled section-rhythm scaffold (ordered section slots) that later phases fill
-**Plans**: TBD
+**Plans**: 3 plans
+  - [ ] 01-01-PLAN.md — Mount `.numen-surface` scope on root body + de-hype root metadata + author canonical `.planning/VOICE.md` baseline
+  - [ ] 01-02-PLAN.md — Build the three `numen-landing/` shell components: SectionShell slot, sticky opaque Nav (mobile hamburger), static Footer
+  - [ ] 01-03-PLAN.md — Wire it: marketing layout → no-html passthrough (Nav/main/Footer) + page → ordered SectionShell slots + de-hype OG image copy
 
 ### Phase 2: Hero Centerpiece & Reading Explainer
 
@@ -80,10 +83,11 @@ Milestone-scoped numbering (fresh worktree): phases start at 1.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation, Shell & Voice Baseline | 0/0 | Not started | - |
+| 1. Foundation, Shell & Voice Baseline | 0/3 | Planned | - |
 | 2. Hero Centerpiece & Reading Explainer | 0/0 | Not started | - |
 | 3. Honesty Moat, Gallery, Proof & Conversion | 0/0 | Not started | - |
 | 4. Token Lock, Motion & Launch Polish | 0/0 | Not started | - |
 
 ---
 *Roadmap created: 2026-06-11 — milestone v5.1 Landing. Source: `.planning/LANDING-STRUCTURE.md` + `REQUIREMENTS.md`. Consumes Numen Surface Phase 1 design system (DS-01); token swap gated on Phase 1 calibration (D-L3).*
+*Phase 1 planned: 2026-06-11 — 3 plans (foundation/voice, shell components, wiring) in 2 waves.*
