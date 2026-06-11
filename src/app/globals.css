@@ -364,6 +364,12 @@ body {
   --numen-verdict-mixed: #d6a85a;              /* amber — first-class "mixed signals" band */
   --numen-verdict-bad:   #d4866f;              /* clay-red — negative band only — lifted from #c97a64 for Lc ≥ 45 (D-11 lock) */
   --numen-border:        rgba(240, 235, 227, 0.06); /* hairline warm border */
+  /* Calm easing for the kit's motion (DS-07 stage-reveal). Design source of
+   * truth for opacity tweens — the component inlines the equivalent array.
+   * Deliberately NON-overshooting: this REPLACES the forbidden bouncy
+   * `--ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1)` (1.56 > 1 overshoots);
+   * the Numen kit never references that token. */
+  --numen-ease-calm:     cubic-bezier(0.215, 0.61, 0.355, 1);
 }
 
 /* Bridge the scoped custom properties to Tailwind's utility namespace.
