@@ -210,10 +210,54 @@ The Reading re-presents **existing engine output**. So:
 - The rebrand only swaps *presentation*. Engine and surface don't entangle.
   Ideal milestone boundary.
 
+## 7a. Engine findings this surface resolves (from mvp-ready Phase-1 audit)
+
+The Phase-1 engine audit produced 47 findings (F1–F47; canonical catalog:
+`virtuna-mvp-ready/.planning/phases/01-engine-pipeline/01-WALKTHROUGH-LOG.md`).
+A cluster of them are **value/output-contract/user-facing** findings that should
+NOT be fixed on the old board — they are **resolved by this surface design.** The
+engine audit and the rebrand reached the same conclusions from two directions:
+
+| Finding | Audit found | This surface resolves it by |
+|---|---|---|
+| **F36** (HIGH, open) | THREE parallel scorecards | Reading collapses to ONE verdict |
+| **F41** (open) | "Verdict" tab shows *score* not verdict | verdict = band + why, not a number |
+| **F45** (open) | score "/100" false precision | calibrated band; number demoted to evidence |
+| **F38** (open) | engine jargon shown to user | calm restraint, plain language |
+| **F43** (sched) | output bloat ~40 fields, ~10 valuable | Reading re-composes only value-bearing fields |
+| **F37** (FIXED) | MOAT (Apollo insight) buried | insight = hero (aligns; keep) |
+| **F39** (out-of-scope) | monetization value-gap | in-thread monetization tool |
+| **F40** (deferred) | projected-views absent | strategic outcome model (still deferred) |
+| **F32** (sched→P2) | board "what drives it" re-source | n/a on new surface |
+
+These belong to the rebrand's **data-contract design**, not mvp-ready Phase 2.
+
+## 7b. Carried forward from mvp-ready Phase 1 (preconditions + inputs)
+
+Phase 1 is **code-complete (5/5 plans 01-01→01-05, unit-green, shipped+pushed)**.
+Three items were deliberately deferred INTO this milestone rather than blocking
+the engine close-out:
+
+- **SMOKE GATE (hard precondition).** Before building any Reading-against-real-
+  engine-output, run **one real-video E2E** that returns sane, honest output —
+  confirms the "FIXED" findings hold live (F46/F47 read truncation, F22
+  confidence, F23 §-cites) and yields the ENG-03 latency number. *Non-negotiable*
+  — the stage-reveal + verdict premise rests on the contract being real. (Watch:
+  **DashScope 429** risk on the live rig.) Early design/kit phases do NOT need
+  this; only the data-consuming Reading build does.
+- **UAT sign-off (can slip).** F42 permalink UAT (authenticated) + full
+  measure-pipeline pass. Do during the milestone, not a blocker to start it.
+- **ENG-06 D-12 = the data-contract design step (NOT a standalone session).**
+  The "3-call prompt I/O co-review + consumed-vs-dead field prune (F27/F28/F43)"
+  IS the same question as "what does the Reading consume." Fold it in here, driven
+  by the surface's demand signal — don't do it twice. (The surface-independent
+  sliver — prompt accuracy/token tuning — can ride along or be a quick later pass.)
+
 ## 8. Sequencing recommendation
 
-1. **Finish mvp-ready Phase 1 (all 4 plans).** Engine honest/grounded/fast/
-   deterministic. (~1/4 done as of 2026-06-11.)
+1. **mvp-ready Phase 1 is code-complete** (5/5 plans, unit-green, shipped). Merge
+   to main gated on the §7b SMOKE GATE only; UAT + ENG-06 D-12 carry forward into
+   THIS milestone (see §7b), not blockers.
 2. **Do NOT run mvp-ready Phases 2–5 as written** — they polish surfaces this
    rebrand replaces (Board/Test, Board/Remix, Chat dock, Raycast brand
    consistency). That's wasted work. (The milestone charter explicitly allows
