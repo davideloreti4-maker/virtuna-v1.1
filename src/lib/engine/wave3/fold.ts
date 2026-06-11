@@ -33,6 +33,7 @@ import {
 } from "./fold-prompts";
 import type { PersonaSlot } from "./persona-registry";
 import { getQwenClient, QWEN_REASONING_MODEL, QWEN_FAST_MODEL, QWEN_SEED } from "../qwen/client";
+import { stripModelOutput } from "../utils/strip";
 import type { PersonaSimulationResult, SegmentGrid, EmotionArcPoint } from "../types";
 import type { Pass2PersonaResult } from "./weighted-aggregator";
 
@@ -347,7 +348,14 @@ export async function runFold(
       : (usage?.prompt_tokens ?? 0) * CACHE_MISS_PRICE;
     costCents = (inputCost + completion * OUTPUT_PRICE) * 100;
 
-    const text = response.choices[0]?.message?.content ?? "{}";
+    // ROBUST parse: mirror deepseek.ts — some fold models (notably qwen3.5-omni-flash)
+    // wrap output in ```json fences, append a stray trailing ``` , or add prose after the
+    // JSON object. Bare JSON.parse then throws → fold_success=false → silent audience-half
+    // drop (the latent bug found in the fold-audio-ab harness). stripModelOutput removes
+    // <think> blocks + fences and extracts the first balanced JSON value — a no-op on the
+    // clean omni-plus output, a salvage on flash.
+    const raw = response.choices[0]?.message?.content ?? "{}";
+    const text = stripModelOutput(raw);
     const parsed = JSON.parse(text) as unknown;
 
     // T-04-01 mitigation: validate at the model boundary (V5).
