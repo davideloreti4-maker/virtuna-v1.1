@@ -358,7 +358,7 @@ body {
   --numen-panel:         #211e1a;              /* +1 warm step — cards, panels */
   --numen-panel-2:       #2a2622;              /* +2 warm step — elevated panels */
   --numen-text:          #f0ebe3;              /* warm off-white body */
-  --numen-text-muted:    #b8b0a3;              /* warm-grey muted (non-body UI) — lifted from #a39c91 for Lc ≥ 60 (D-11 lock) */
+  --numen-text-muted:    #bab2a5;              /* warm-grey muted (non-body UI) — lifted from #a39c91 for Lc ≥ 60 (D-11 lock; #b8b0a3 was Lc 59.0, nudged to #bab2a5 = Lc 60.1) */
   --numen-accent:        #d98a5e;              /* clay — matured from #FF7F50, used sparingly */
   --numen-verdict-good:  #7faf7a;              /* muted green — positive band only */
   --numen-verdict-mixed: #d6a85a;              /* amber — first-class "mixed signals" band */

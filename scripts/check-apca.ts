@@ -18,7 +18,7 @@
  * `colorparsley` package (not re-exported by `apca-w3`); `calcAPCA` bundles it.
  *
  * Hexes below are the D-11 LOCKED palette (signed off Task 4, Option B):
- *   muted:       #a39c91 → #b8b0a3 (lifted for Lc ≥ 60)
+ *   muted:       #a39c91 → #bab2a5 (lifted for Lc ≥ 60; #b8b0a3 was Lc 59.0, nudged to #bab2a5 = Lc 60.1)
  *   verdict-bad: #c97a64 → #d4866f (lifted for Lc ≥ 45)
  * All other hues unchanged. Must match `.numen-surface` in globals.css exactly.
  */
@@ -53,7 +53,7 @@ interface Pairing {
 //  - verdict band labels (large/heavy):             Lc ≥ 45
 const PAIRINGS: Pairing[] = [
   { label: "body", text: "#f0ebe3", target: 75, role: "body / fluent text (floor 75, 90 preferred)" },
-  { label: "muted", text: "#b8b0a3", target: 60, role: "non-body UI label" },
+  { label: "muted", text: "#bab2a5", target: 60, role: "non-body UI label" },
   { label: "accent", text: "#d98a5e", target: 45, role: "accent text-on-base (large/heavy)" },
   { label: "verdict-good", text: "#7faf7a", target: 45, role: "verdict band label (large/heavy)" },
   { label: "verdict-mixed", text: "#d6a85a", target: 45, role: "verdict band label (large/heavy)" },
