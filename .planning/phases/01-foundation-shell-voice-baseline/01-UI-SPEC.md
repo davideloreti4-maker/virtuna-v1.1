@@ -1,7 +1,8 @@
 ---
 phase: 1
 slug: foundation-shell-voice-baseline
-status: draft
+status: approved
+reviewed_at: 2026-06-11
 shadcn_initialized: false
 preset: none
 created: 2026-06-11
