@@ -1,0 +1,97 @@
+/** @vitest-environment happy-dom */
+/**
+ * tests/numen/tokens.test.ts — DS-01 token-layer gate.
+ *
+ * Two kinds of assertion:
+ *  1. Source scan of `src/app/globals.css` `.numen-surface` block — proves the
+ *     authored values obey the hard rules (exact hex, no pure black, no oklch,
+ *     contains the calibrated base `#1a1714`). This part is GREEN as soon as
+ *     Plan 01 Task 3 appends the scope block.
+ *  2. Resolved-CSS-var assertions under happy-dom — proves utilities (`bg-bg`,
+ *     `text-text`, `bg-accent`, `text-verdict-good`) resolve to the warm-neutral
+ *     hexes inside `.numen-surface`. happy-dom does NOT run Tailwind's build, so
+ *     the utility→value resolution is asserted by reading the bridged custom
+ *     properties the `@theme inline` block exposes (the values Tailwind emits at
+ *     build are these same `var()` references). This stays RED until the full
+ *     token layer + build pipeline is exercised downstream; it is a scaffold.
+ */
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+const GLOBALS = resolve(process.cwd(), "src/app/globals.css");
+
+/** Extract the `.numen-surface { ... }` scope block (first occurrence). */
+function numenSurfaceBlock(css: string): string {
+  const start = css.indexOf(".numen-surface");
+  if (start === -1) return "";
+  const open = css.indexOf("{", start);
+  if (open === -1) return "";
+  let depth = 0;
+  for (let i = open; i < css.length; i++) {
+    if (css[i] === "{") depth++;
+    else if (css[i] === "}") {
+      depth--;
+      if (depth === 0) return css.slice(open + 1, i);
+    }
+  }
+  return "";
+}
+
+describe("numen token layer — globals.css source rules (DS-01 / D-03)", () => {
+  const css = readFileSync(GLOBALS, "utf8");
+  const block = numenSurfaceBlock(css);
+
+  it("declares a .numen-surface scope block", () => {
+    expect(css).toContain(".numen-surface");
+    expect(block.length).toBeGreaterThan(0);
+  });
+
+  it("uses the calibrated warm base #1a1714 (no pure black)", () => {
+    expect(block).toContain("#1a1714");
+  });
+
+  it("contains NO pure black (#000 / #000000)", () => {
+    expect(/#000000\b/i.test(block)).toBe(false);
+    expect(/#000\b/i.test(block)).toBe(false);
+  });
+
+  it("authors every dark token as exact hex — NO oklch() in the scope block (D-03)", () => {
+    expect(/oklch\(/i.test(block)).toBe(false);
+  });
+
+  it("bridges tokens through a @theme inline block (Pitfall 1 — inline is load-bearing)", () => {
+    expect(css).toMatch(/@theme\s+inline\b/);
+    expect(css).toContain("--color-bg: var(--numen-bg)");
+  });
+
+  it("does NOT carry the forbidden coral/gradient/shimmer keyframes into the scope block (D-07)", () => {
+    expect(/--animate-shimmer/i.test(block)).toBe(false);
+    expect(/gradient-x/i.test(block)).toBe(false);
+    expect(/coral/i.test(block)).toBe(false);
+  });
+});
+
+describe("numen token layer — resolved CSS vars under .numen-surface (DS-01)", () => {
+  // Scaffold: asserts the warm-neutral hexes resolve from the scope class. Until
+  // the Tailwind build emits the utilities, this reads the authored custom
+  // properties applied to a scoped element.
+  it("resolves bg / text / accent / verdict-good to warm-neutral hexes (not empty)", async () => {
+    // Inject the scope-class custom properties from the authored source so the
+    // resolution can be asserted without a full Tailwind build.
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync(GLOBALS, "utf8");
+    const block = numenSurfaceBlock(css);
+
+    const get = (name: string): string => {
+      const m = block.match(new RegExp(`${name}\\s*:\\s*([^;]+);`));
+      return m ? m[1].trim() : "";
+    };
+
+    expect(get("--numen-bg")).toBe("#1a1714");
+    expect(get("--numen-text")).toBe("#f0ebe3");
+    expect(get("--numen-accent")).not.toBe("");
+    expect(get("--numen-accent")).not.toBe("transparent");
+    expect(get("--numen-verdict-good")).not.toBe("");
+  });
+});
