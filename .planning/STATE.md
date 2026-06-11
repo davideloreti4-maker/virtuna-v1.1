@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: MVP Ready
 status: executing
-stopped_at: 01-01 complete + 3 model swaps shipped; 01-02 next
-last_updated: "2026-06-11T10:30:00.000Z"
-last_activity: 2026-06-11 -- 01-01 §-cite honesty shipped; Apollo→3.7-plus + fold→omni-flash A/B'd & shipped
+stopped_at: 01-02 shipped (read robustness) + D-R1 atomic (3.17.0) + F26 shipped & pushed; 01-03 chunk B + 01-04 next
+last_updated: "2026-06-11T13:35:00.000Z"
+last_activity: 2026-06-11 -- 01-02 (F46/F47/F9/F16) + D-R1 Read→pure sensor (3.17.0) + F26 composite_score ask removal
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
-  percent: 5
+  completed_plans: 2
+  percent: 18
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Roadm
 ## Current Position
 
 Phase: 01 (engine-pipeline) — EXECUTING
-Plan: 1 of 4
+Plan: 01-01 ✓ · 01-02 ✓ · 01-03 PARTIAL (D-R1 + F26 done; chunk B pending) · 01-04 next
 Status: Executing Phase 01
-Last activity: 2026-06-10 -- Phase 01 execution started
+Last activity: 2026-06-11 -- D-R1 Read→pure sensor (3.17.0) + F26 shipped & pushed
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] ~18%
 
 ## Phases
 
@@ -85,20 +85,39 @@ Bookkeeping orphans / superseded flags, not live work. v4.0 shipped to main with
 
 ## Session Continuity
 
-Last session: 2026-06-11 — 01-01 shipped + 3-stage model decisions + quality analysis.
-Stopped at: 01-01 DONE (ENG-02 §-cite honesty: remap guard + prose discipline, 3.14.0). Then
-3 model A/Bs via faithful harnesses → SHIPPED: Apollo qwen3.6-plus→qwen3.7-plus (3.15.0, scoped
-QWEN_APOLLO_MODEL); fold omni-plus→omni-flash (3.16.0, FOLD_MODEL=omni-plus rollback); read stays
-omni-flash (D-10/F8 closed). runFold robust-parse fix (stripModelOutput) shipped. Read flash on
-both substrate stages (Davide locked). Engine E2E ~113s→~59s — a ~50s quality/robustness surplus.
+Last session: 2026-06-11 (pt 2) — 01-02 read robustness + D-R1 (Read→pure sensor) + F26 shipped & pushed.
 
-Resume file: **.planning/phases/01-engine-pipeline/01-QUALITY-OPTIMIZATION.md** (the 3-stage
-quality plan + prioritized per-stage fixes + sequence), alongside 01-SYNTHESIS.md + 01-WALKTHROUGH-LOG.md
-(flags F1–F47; F46/F47 new this session).
+SHIPPED & PUSHED this session (origin/milestone/mvp-ready, all green — 1073 engine/board tests):
+- `5707b6f1` **01-02 read robustness** — F46 (nullable speech fields → no-speech videos read) +
+  F47 (OMNI_MAX_TOKENS=8000 truncation guard) + F9 (critical-field bounded retry + read_drift
+  telemetry) + F16 (audio_description min 10→1). NO version bump (acceptance-widening). NOT
+  live-verified — UAT was auth-blocked; Ashton Hall 79s no-speech clip is the F46/F47 repro.
+- `6595ec96` **D-R1 Read→pure sensor (ENGINE_VERSION 3.17.0)** — atomic across read prompt+assembly,
+  schemas (.optional()), deepseek formatGeminiSignals (rebuilt = RICH perception skeleton), gemini_score
+  (number|null, null on video), stage10 (skip on null), eval-runner, impact-score board prop. Decisions:
+  rich skeleton · stop-compute/keep-column-nullable · D-R1-first. See [[dr1-read-pure-sensor-coordinated]].
+- `fe74635f` **F26** — stop asking Apollo for composite_score (rubric-sum overwrites it). No bump.
 
-Resume how: NEXT = **01-02 Read** (re-scope + execute). Read 01-QUALITY-OPTIMIZATION.md first.
-01-02 scope: F47 (set OMNI_MAX_TOKENS ~8000) + F46 (nullable speech fields on no-speech videos)
-+ F9 (retry on empty critical fields) + D-R1 (drop Read judgment → pure sensor; gemini_score dies)
-+ F16. Then 01-03 (Apollo D-R1 input rebuild F27/F6 + thinking-budget sweep on 3.7) → 01-04
-(fold F18/F20/F19 robustness — now cheap; F22 real Apollo-vs-Fold confidence; dead-tail prune; F7).
-Op: DashScope hit a 429 quota cap mid-session — check Alibaba billing if live calls fail.
+Resume files (READ FIRST): **.planning/phases/01-engine-pipeline/01-03-SUMMARY.md** (what's done +
+the 01-04 bundle), then 01-QUALITY-OPTIMIZATION.md (3-stage plan) + 01-SYNTHESIS.md + 01-WALKTHROUGH-LOG.md
+(flags F1–F47). Memory [[dr1-read-pure-sensor-coordinated]] carries the D-R1 detail.
+
+Resume how — TWO open chunks, pick one:
+  (A) **01-04** (the bigger bundle, recommended next) = F24 (drop component_scores on video) +
+      **F22/F44** (re-base confidence on Apollo-vs-Fold, kill self-agreement) + F34 (stage10 rebase;
+      currently SKIPS on null gemini_score) + **hero block F37** {verdict_line, ceiling, the_one_fix,
+      go_no_go, post_window} assembly + fold robustness F18/F20/F19 (cheap now) + dead-tail prune
+      (F12/F35/F43) + F7 (rehost delete race verify) + persist (F42) + E2E verify. F24+F22+hero are
+      COUPLED (all touch calculateConfidence / final assembly) — do together. `/gsd-plan-phase` rescope 01-04.
+  (B) **01-03 chunk B** (the deep co-review walk, WITH Davide, D-12) = step-by-step 3-prompt I/O walk,
+      T3.x trim restore/keep (D-13), 9-card creator-context trim (F6/F27), thinking-budget sweep on
+      qwen3.7-plus, consumed-vs-dead field map (D-14). Its own interactive session.
+
+Milestone rule (binding): human-in-the-loop everywhere (D-00) — audit→discuss→co-review→execute,
+accuracy over speed, surface decisions + Qwen I/O. NO autonomous fire-and-forget. See [[mvp-ready-human-in-loop]].
+
+Ops notes:
+- DashScope hit a 429 quota cap earlier — check Alibaba Model Studio billing if live calls fail.
+- /analyze is login-gated ((app)/layout.tsx getUser→/login) — live UAT needs Davide to authenticate; can't drive it solo.
+- Stop-hook auto-commits a `chore(auto-wip)` checkpoint + post-commit auto-pushes — commit own work with a REAL message promptly (see [[git-autocommit-during-merge]]).
+- tsc baseline = 12 PRE-EXISTING errors (prediction-result fixture, flop-warning/stage10 `views`, fold-adapter/diversity/schema) — unrelated to this work; don't chase them.
