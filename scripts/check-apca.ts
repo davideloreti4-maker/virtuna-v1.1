@@ -17,9 +17,10 @@
  * documented low-level path. NOTE: `colorParsley` ships in the companion
  * `colorparsley` package (not re-exported by `apca-w3`); `calcAPCA` bundles it.
  *
- * Hexes below are the D-11 calibration PROPOSAL. If Task 4 (palette sign-off)
- * adjusts any hue, update the corresponding hex here AND in
- * `src/app/globals.css` `.numen-surface` so the gate matches the locked palette.
+ * Hexes below are the D-11 LOCKED palette (signed off Task 4, Option B):
+ *   muted:       #a39c91 → #b8b0a3 (lifted for Lc ≥ 60)
+ *   verdict-bad: #c97a64 → #d4866f (lifted for Lc ≥ 45)
+ * All other hues unchanged. Must match `.numen-surface` in globals.css exactly.
  */
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck -- apca-w3 ships no type declarations
@@ -52,11 +53,11 @@ interface Pairing {
 //  - verdict band labels (large/heavy):             Lc ≥ 45
 const PAIRINGS: Pairing[] = [
   { label: "body", text: "#f0ebe3", target: 75, role: "body / fluent text (floor 75, 90 preferred)" },
-  { label: "muted", text: "#a39c91", target: 60, role: "non-body UI label" },
+  { label: "muted", text: "#b8b0a3", target: 60, role: "non-body UI label" },
   { label: "accent", text: "#d98a5e", target: 45, role: "accent text-on-base (large/heavy)" },
   { label: "verdict-good", text: "#7faf7a", target: 45, role: "verdict band label (large/heavy)" },
   { label: "verdict-mixed", text: "#d6a85a", target: 45, role: "verdict band label (large/heavy)" },
-  { label: "verdict-bad", text: "#c97a64", target: 45, role: "verdict band label (large/heavy)" },
+  { label: "verdict-bad", text: "#d4866f", target: 45, role: "verdict band label (large/heavy)" },
 ];
 
 let failed = false;
