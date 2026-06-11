@@ -1,161 +1,89 @@
-# Roadmap: Numen Surface (v5.0)
+# Roadmap: Numen Landing (v5.1)
 
 ## Overview
 
-Numen Surface is a presentation-layer rebuild: it replaces the Konva canvas board with **one thread per video** where the AI's first turn IS the **Reading** (stage-revealed engine output; verdict = calibrated band + one-line why in a reserved "throne" slot). The engine (v4.1, ENGINE_VERSION 3.19.0) is frozen — every phase re-composes existing output, never touches `lib/engine/`. The journey is forced by its dependency graph: build the new warm-neutral design kit (no gate dependency, runs early), build the view-model crux that both live and replay paths funnel through, pass the SMOKE GATE + verdict-banding calibration before any Reading-against-real-output, then build the mobile Reading thread, wrap it in the app shell + ingestion, add the follow-ups + agentic-tool tail (the moat) and in-thread monetization, and finally — only after mobile ships — the desktop instrument layer where the Konva-keep-vs-retire decision is made.
+A net-new public marketing landing for the Numen brand, built in its own worktree (`milestone/numen-landing`) parallel to the Numen Surface app. The landing **consumes** the Numen Surface Phase 1 `.numen-surface` design system (token layer + primitives + StageBlock) — it never forks or invents tokens (DS-01). The journey is forced by a deliberate timing decouple (DS-02 / D-L3): everything token-independent — section architecture, copy, layout, hero artifact, the page's content sections — is built **now against placeholder tokens**, so the landing is never blocked waiting on Numen Surface Phase 1; a final phase performs the token swap + motion choreography + perf/SEO/a11y polish once Phase 1 calibration signs off.
+
+Structure follows the kero spine → Numen content → krea/luma staging wireframe in `LANDING-STRUCTURE.md`. Phase 1 lays the shell + voice baseline (the anti-snake-oil, confident-mentor register that shapes copy page-wide). Phase 2 builds the content-as-hero centerpiece (a real Reading on a real creator video — resolving the open D-L2 live-vs-recorded decision via a light spike) plus the 3-step Reading explainer. Phase 3 builds the conviction sections — the honesty moat, the comparison move, the real-Readings gallery, and social proof — and closes the conversion loop. Phase 4 swaps in the final tokens, layers the calm scroll-reveal motion, and clears the launch bar (LCP, OG, a11y).
+
+The honesty/anti-snake-oil posture (TRUST) is not a single section — it is the positioning moat, baked into the voice baseline (Phase 1) and explicit in copy (Phase 3). Zero "X% accuracy" claims appear anywhere on the page.
 
 ## Phases
 
 **Phase Numbering:**
 
-- Integer phases (1, 2, 3): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
+- Integer phases (1, 2, 3, 4): Planned milestone work
+- Decimal phases (2.1, 2.2): Urgent insertions (marked INSERTED)
 
-Milestone-scoped numbering (fresh worktree, `--reset-phase-numbers`): phases start at 1.
+Milestone-scoped numbering (fresh worktree): phases start at 1.
 
-- [ ] **Phase 1: Design System Foundation + Brand Migration** - Warm-neutral dark kit, verdict scale, ground-up component vocabulary; retire Raycast/coral/glass-everywhere
-- [ ] **Phase 2: View-Model + Data Contract** - Pure `toReadingBlocks()` mapping ~40 engine fields → ~10 Reading blocks; live + replay funnel through one module
-- [ ] **Phase 3: SMOKE GATE + Verdict-Banding Calibration** - Hard precondition: real-video E2E proves honest live output; band buffers wider than score noise
-- [ ] **Phase 4: Mobile Reading Thread + PWA Shell** - The core paradigm: AI pronounces first, stage-reveal blocks, throne verdict, re-openable resting document, installable PWA
-- [ ] **Phase 5: App Shell + Ingestion** - Home = list of past Readings, per-video thread routing, upload + paste-URL + Android share_target entry
-- [ ] **Phase 6: Follow-ups + Agentic Tools + Monetization** - Suggested taps → free text; instant (re-interpret) vs agentic (Apify competitors); oracle-initiated brand-deal-fit turn
-- [ ] **Phase 7: Desktop Instrument Layer** - Same thread widened on desktop + dense instrument for powerusers; Konva keep-vs-retire decided here (mobile ships first)
+- [ ] **Phase 1: Foundation, Shell & Voice Baseline** - Next.js landing scaffold consuming `.numen-surface` placeholder tokens; minimal nav + footer; calm confident-mentor voice baseline; SEO meta + kero-paced section rhythm scaffold
+- [ ] **Phase 2: Hero Centerpiece & Reading Explainer** - Content-as-hero — a real Reading staged on a real creator video (resolve live-vs-recorded D-L2); calibrated-band verdict; 3-step upload→reads→verdict explainer with real content; primary CTA
+- [ ] **Phase 3: Honesty Moat, Gallery, Proof & Conversion** - Anti-snake-oil trust section + Numen-vs-rivals comparison; gallery-quality real Readings across ≥3 niches; social proof; positioning copy; conversion CTA wired to waitlist/app entry
+- [ ] **Phase 4: Token Lock, Motion & Launch Polish** - Swap in final `.numen-surface` tokens on Phase 1 calibration sign-off; calm scroll-driven reveals; LCP/perf, OG cards, accessibility, brand-DNA coherence
 
 ## Phase Details
 
-### Phase 1: Design System Foundation + Brand Migration
+### Phase 1: Foundation, Shell & Voice Baseline
 
-**Goal**: A ground-up warm-neutral dark design kit exists — verdict-scale color discipline, warm-clay brand accent, sans-led + serif voice type — so every later Reading component is built on it, and the old Raycast/coral/glass-everywhere brand is bounded and retired.
-**Depends on**: Nothing (first phase; no gate dependency — runs early/parallel to Phase 2)
-**Requirements**: DS-01, DS-02, DS-03, DS-04, DS-05, DS-06, DS-07, DS-08
+**Goal**: A deployable Next.js landing scaffold exists that consumes the `.numen-surface` design system (placeholder tokens, build-tolerant), with a minimal product-focused nav + footer, the calm confident-mentor voice baseline that will shape every section's copy, and the kero-modeled section rhythm scaffold + base SEO meta — all token-independent so nothing blocks on Numen Surface Phase 1.
+**Depends on**: Nothing (first phase)
+**Requirements**: DS-01, DS-02, NAV-01, CONTENT-01, MOT-02, PERF-02
 **Success Criteria** (what must be TRUE):
-
-  1. A new warm-neutral dark theme renders with no pure black; all L<0.15 dark tokens authored as exact hex (Tailwind v4 oklch bug avoided), verified on a deployed build
-  2. The verdict color scale (muted green / amber / clay-red) is the only load-bearing functional color; everything else reads near-neutral; brand accent is matured warm clay used only on logo, primary action, focus
-  3. The component vocabulary (full-pill tool chips, circular icon buttons, hairline warm borders, soft elevation) and a glass primitive (backdrop-filter via inline style, not class) render correctly without Lightning CSS stripping the blur
-  4. Type system shows sans for body and serif reserved for voice moments (greeting/hero + verdict line); calm motion (no bounce/snap) on the key reveal; keyframe stills carry the chroma while warm-neutral chrome recedes
-  5. A documented migration boundary exists: a grep audit of hardcoded `#07080a` / `#FF7F50` / Raycast GlassPanel / fake macOS chrome / chat dock, with a decision of what v5.0 replaces vs defers
-
-**Plans**: 5 plans
-Plans:
-**Wave 1**
-
-- [x] 01-01-PLAN.md — Foundation: install gate + Wave-0 tests + APCA script + .numen-surface token layer + palette calibration + serif wiring (DS-01/02/03/04) — DONE 2026-06-11
-- [x] 01-05-PLAN.md — DS-06 migration boundary: grep inventory + replace/defer boundary doc (DS-06) — DONE 2026-06-11
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 01-02-PLAN.md — Core primitives: glass (inline backdrop), surface, pill-chip, icon-button, verdict-swatch on tailwind-variants (DS-05/02) — DONE 2026-06-11
-- [x] 01-03-PLAN.md — Calm motion: StageBlock stage-reveal + reduced-motion + new calm easing token (DS-07) — DONE 2026-06-11
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [ ] 01-04-PLAN.md — Kit showcase route + serif specimen + keyframe-chroma + deployed-build verification (DS-04/05/07/08)
-
-**UI hint**: yes
-
-### Phase 2: View-Model + Data Contract (ENG-06 D-12)
-
-**Goal**: One pure module maps the engine's ~40 fields to ~10 value-bearing Reading blocks plus a verdict (band + why), and both the live `complete` path and the persisted-row replay path funnel through it — so a Reading and its re-opened resting document are identical. This is the architectural crux; it ships before any UI consumes it.
-**Depends on**: Phase 1 (token/type direction informs block shapes; can overlap)
-**Requirements**: DATA-01, DATA-02, DATA-03, DATA-04
-**Success Criteria** (what must be TRUE):
-
-  1. `lib/reading/view-model.ts` `toReadingBlocks()` is a pure function (no React, no fetch) that, given a persisted `PredictionResult` fixture, returns ~10 value-bearing blocks — unit-tested against real persisted fixtures
-  2. The live `complete` path and the persisted-row replay path call the SAME view-model; the same fixture yields identical blocks via both
-  3. A consumed-vs-dead field map is documented (resolves F27/F28/F43) — which engine fields the Reading uses and which it drops — with no `lib/engine/` edits and ENGINE_VERSION unchanged
-  4. Verdict derivation returns a band + one-line why grounded in a specific signal; the `/100` number is demoted to supporting evidence (resolves F41/F45)
-
+  1. The landing renders under the `.numen-surface` token scope with NO forked or reinvented tokens — it imports the Numen Surface primitives, and visibly tolerates placeholder tokens without breaking layout
+  2. A visitor sees a minimal, product-focused top nav and a footer on every viewport (mobile-first)
+  3. Page copy reads in the calm, plain-language, confident-mentor voice with zero engine jargon — the established voice baseline later sections inherit
+  4. The page exposes SEO meta (title/description) and a kero-modeled section-rhythm scaffold (ordered section slots) that later phases fill
 **Plans**: TBD
 
-### Phase 3: SMOKE GATE + Verdict-Banding Calibration
+### Phase 2: Hero Centerpiece & Reading Explainer
 
-**Goal**: A hard precondition is cleared — one real-video E2E on live infra proves the engine returns sane/honest output and yields the real latency number, and the verdict banding is calibrated so band buffer zones are wider than the engine's known score noise. No Reading-against-real-output is built before this passes.
-**Depends on**: Phase 2 (need the field contract to know what to smoke-test; the prune is the test subject)
-**Requirements**: GATE-01, GATE-02, GATE-03
+**Goal**: The above-fold hero leads with the product itself — a real Reading staged on a real creator video, full-bleed with minimal chrome (krea/luma content-as-hero), verdict shown as a calibrated band + one-line why (never a naked number) — with the live-interactive-vs-recorded-loop implementation (D-L2) resolved via a light spike; immediately below, a 3-step explainer (upload → engine reads → verdict + why) demonstrates the flow with real content; the primary CTA is present in the hero.
+**Depends on**: Phase 1
+**Requirements**: HERO-01, HERO-02, HERO-03, HERO-04, READ-01, READ-02, CTA-01
 **Success Criteria** (what must be TRUE):
-
-  1. One real-video E2E on live Vercel returns sane/honest output (F46/F47 truncation, F22 confidence, F23 §-cites hold live) and the real ENG-03 latency number is measured with DashScope-429 behavior documented
-  2. A same-video-N-times variance check produces a documented score-noise figure (~±15pt over the ~26–86 range)
-  3. Calibrated band thresholds exist with buffer zones provably WIDER than that measured variance, and "Mixed signals" fires on boundary scores as a first-class, common verdict
-  4. UAT sign-off passes: F42 authenticated permalink + full measure-pipeline, with a recorded verdict-banding go/no-go (a fail blocks Phase 4)
-
-**Plans**: TBD
-
-### Phase 4: Mobile Reading Thread + PWA Shell
-
-**Goal**: The core paradigm works on mobile — the AI pronounces first (unprompted), engine stages stage-reveal into structured blocks below a reserved throne that crystallizes the verdict last, the expert insight is foregrounded, and a completed Reading persists as a re-openable resting document that opens on the verdict. The surface is an installable PWA. Replaces the Konva canvas as the primary surface.
-**Depends on**: Phase 3 (gates), Phase 2 (view-model), Phase 1 (design kit)
-**Requirements**: READ-01, READ-02, READ-03, READ-04, READ-05, READ-06, READ-07, SHELL-04
-**Success Criteria** (what must be TRUE):
-
-  1. On a new analysis the AI pronounces first with no blank prompt; each completed engine stage materializes its structured block (reshaped from existing `StageEvent`/SSE — NOT chatbot token streaming)
-  2. The verdict sits in a reserved top throne slot, visibly forming while evidence assembles below and crystallizing last as the climax, reading as a calibrated band + one-sentence why (judgment, not metric; confidence in the band's language)
-  3. ~10 evidence blocks render from value-bearing engine fields with the Apollo expert insight foregrounded (not buried), in plain language with no engine jargon surfaced
-  4. A completed Reading re-opens as a resting document that opens on the verdict, identical to the live render (via the Phase 2 view-model)
-  5. The app installs as a PWA (Serwist + `manifest.ts`) with mobile-native feel; iOS shows Add-to-Home-Screen coaching (installability verified via Lighthouse on a deployed build)
-
+  1. A visitor on mobile sees, above the fold, an intelligence/verdict headline + subhead + primary CTA, with a real Reading on a real creator video as the full-bleed centerpiece — NOT a stock photo or fake browser window
+  2. The hero verdict reads as a calibrated band + one-line why — no naked number and no "X% accuracy" anywhere in the hero
+  3. The hero animates with the calm stage-reveal language (StageBlock / `numen-ease-calm`) and degrades to a static appear under `prefers-reduced-motion`
+  4. A visitor can read a three-step explainer (upload → engine reads → verdict + why) where each step is demonstrated with real content, not an abstract diagram
 **Plans**: TBD
 **UI hint**: yes
 
-### Phase 5: App Shell + Ingestion
+### Phase 3: Honesty Moat, Gallery, Proof & Conversion
 
-**Goal**: The full app spine wraps the Reading thread — home is a vertical list of past Readings (a content-intelligence portfolio), per-video thread routing reuses the existing persistence, and content gets in via upload, paste-URL, and Android share_target. iOS native share-sheet is explicitly out (WebKit #194593 → Capacitor milestone).
-**Depends on**: Phase 4 (the thread must work before wiring the shell around it)
-**Requirements**: SHELL-01, SHELL-02, SHELL-03, IN-01, IN-02, IN-03
+**Goal**: The page earns belief and converts: an anti-snake-oil trust section contrasts Numen's calibrated honest verdict against the "virality score" snake-oil tier using a kero-style comparison move (zero fake-precision claims); a luma-style gallery presents gallery-quality real Readings across ≥3 distinct creator niches; a social-proof block anchors credibility early where real assets exist; positioning copy reads "honest verdict creators can believe, explicitly not hype"; and the conversion CTA (repeated near the footer) routes to app entry / waitlist capture and records the signup.
+**Depends on**: Phase 2
+**Requirements**: TRUST-01, TRUST-02, GALLERY-01, GALLERY-02, PROOF-01, PROOF-02, CONTENT-02, CTA-02
 **Success Criteria** (what must be TRUE):
-
-  1. Home shows a vertical list of past Readings, each a compact verdict card (keyframe thumb + band + why + date), with one persistent "analyze new" action
-  2. Tapping a card opens its per-video thread; thread routing (list → conversation) reuses `analysis_results` + `analysis_chats` + the existing history API
-  3. In-app video upload kicks the stage-reveal immediately
-  4. Paste-URL ingestion (TikTok/Reels) works with clipboard auto-detect, and an Android `share_target` entry from the native share sheet lands an analysis
-
+  1. A visitor sees a trust section that contrasts Numen's calibrated honest verdict against fake-precision "virality score" rivals via a comparison framing — and finds zero "X% accuracy" claims anywhere on the page
+  2. A visitor browses a gallery of real Readings spanning ≥3 distinct creator niches, each rendered as a gallery-quality content centerpiece (luma staging), not a feature diagram
+  3. A visitor encounters a social-proof block (testimonials and/or live waitlist count) with credibility anchored early on the page
+  4. The page's positioning copy reads "an honest verdict creators can believe," explicitly not hype, in the inherited confident-mentor voice
+  5. A visitor can act on a conversion CTA (repeated near the footer) that routes to app entry or waitlist capture and records the signup
 **Plans**: TBD
 **UI hint**: yes
 
-### Phase 6: Follow-ups + Agentic Tools + Monetization
+### Phase 4: Token Lock, Motion & Launch Polish
 
-**Goal**: The thread tail — the moat — works: scoped suggested follow-ups (instant re-interpretation vs agentic fetch), at least one agentic tool turn (competitor analysis via the existing Apify provider) appended as a structured tool result, in-persona failure voicing, and an oracle-initiated brand-deal-fit monetization turn inside the thread. Persists via a minimal `analysis_chats` schema extension.
-**Depends on**: Phase 5 (needs the thread + shell + persistence spine)
-**Requirements**: TOOL-01, TOOL-02, TOOL-03, TOOL-04, TOOL-05, TOOL-06, MON-01
+**Goal**: Once Numen Surface Phase 1 calibration signs off (D-L3), the landing swaps placeholder tokens for the final `.numen-surface` tokens + primitives while preserving brand-DNA coherence with the app (logo, verdict color language; landing tone may diverge per D-L1); calm scroll-driven section reveals reuse the in-app motion language (no bounce, no presence theater); and the launch bar is cleared — mobile-first responsive with LCP-optimized hero media, OG/social-share cards, APCA contrast + reduced-motion + semantic structure.
+**Depends on**: Phase 3 (and externally gated on Numen Surface Phase 1 calibration sign-off, D-L3)
+**Requirements**: DS-03, MOT-01, PERF-01, PERF-03, PERF-02
 **Success Criteria** (what must be TRUE):
-
-  1. After a Reading, 3–4 contextual suggested follow-up taps appear (scoped to "about this Reading / your content"), with free text below; instant follow-ups (why this score, rewrite the hook, highest-leverage fix) re-interpret existing data via the existing chat route with no engine spend
-  2. One agentic tool turn (competitor analysis via the existing Apify `ScrapingProvider`) runs and appends a structured tool-result turn; agentic taps are visually distinct from instant chips and show a natural "working…" beat
-  3. Tool failures are voiced in-persona with partial-result/timeout copy — never a red error toast or modal
-  4. An oracle-initiated monetization turn (brand-deal fit for the creator's niche) appears inside the thread, not as a separate tab
-  5. Structured tool and monetization turns persist (via the `kind` + `payload` columns and `'tool'` role) and replay correctly on reload
-
+  1. The page renders on the final `.numen-surface` tokens (placeholders gone) and is visibly brand-coherent with the app (logo, verdict color language), with no broken layout from the swap
+  2. Sections reveal with calm scroll-driven motion reusing the in-app language — no bounce/snappy, no presence theater — and honor `prefers-reduced-motion`
+  3. The hero media is optimized for fast mobile load (good LCP) and the page is mobile-first responsive end-to-end
+  4. The page ships SEO meta + OG/social-share cards, and passes accessibility — inherited APCA contrast, reduced-motion fallback, semantic structure
 **Plans**: TBD
 **UI hint**: yes
-
-### Phase 7: Desktop Instrument Layer
-
-**Goal**: Desktop gets the same thread widened (one product, two densities — not a separate app) plus a dense instrument layer for the ~10% poweruser path. The Konva-keep-vs-retire decision is made here, based on what mobile shipped. Deliberately last — mobile is non-negotiably first.
-**Depends on**: Phase 6 (and the full mobile thread; the Konva decision can't be made until mobile proves the paradigm)
-**Requirements**: DESK-01, DESK-02
-**Success Criteria** (what must be TRUE):
-
-  1. On a desktop breakpoint the same thread renders widened — visibly one product at two densities, not a divergent app
-  2. A dense instrument layer survives desktop-only for powerusers (today's Konva board or a dense linear successor), behind the desktop breakpoint
-  3. A recorded keep-vs-retire decision exists for the Konva canvas, with the chosen dense successor specified if it retires
-
-**Plans**: TBD
-**UI hint**: yes
-
-> **Research flag (Phase 7):** Konva-keep-vs-retire is open (vision §9) and the dense-linear successor is undefined. Plan this phase with `/gsd-plan-phase --research-phase`.
 
 ## Progress
 
-**Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
-
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Design System Foundation + Brand Migration | 4/5 | In Progress|  |
-| 2. View-Model + Data Contract | 0/TBD | Not started | - |
-| 3. SMOKE GATE + Verdict-Banding Calibration | 0/TBD | Not started | - |
-| 4. Mobile Reading Thread + PWA Shell | 0/TBD | Not started | - |
-| 5. App Shell + Ingestion | 0/TBD | Not started | - |
-| 6. Follow-ups + Agentic Tools + Monetization | 0/TBD | Not started | - |
-| 7. Desktop Instrument Layer | 0/TBD | Not started | - |
+| 1. Foundation, Shell & Voice Baseline | 0/0 | Not started | - |
+| 2. Hero Centerpiece & Reading Explainer | 0/0 | Not started | - |
+| 3. Honesty Moat, Gallery, Proof & Conversion | 0/0 | Not started | - |
+| 4. Token Lock, Motion & Launch Polish | 0/0 | Not started | - |
+
+---
+*Roadmap created: 2026-06-11 — milestone v5.1 Landing. Source: `.planning/LANDING-STRUCTURE.md` + `REQUIREMENTS.md`. Consumes Numen Surface Phase 1 design system (DS-01); token swap gated on Phase 1 calibration (D-L3).*

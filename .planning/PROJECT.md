@@ -8,22 +8,21 @@ A social media intelligence platform for TikTok creators. Helps creators predict
 
 AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
 
-## Current Milestone: v5.0 Numen Surface
+## Current Milestone: v5.1 Landing
 
-**Goal:** Net-new paradigm rebuild — mobile-first rebrand + UX rework. Replace the Konva canvas board with **one thread per video**, where the AI's first turn IS the **Reading** (engine output re-presented compact, stage-revealed; verdict = calibrated band + one-line why, not a naked number), followed by suggested follow-ups + agentic tools.
+**Goal:** Net-new public landing page on the new Numen brand — a creator-facing marketing surface that converts TikTok creators (and signals credibility to investors). Runs as its own worktree (`~/virtuna-numen-landing/`, branch `milestone/numen-landing`), parallel to the Numen Surface app milestone whose Phase 1 design system it consumes. The old `~/virtuna-landing` (Raycast/coral) is dead — ground-up rebuild.
 
 **Target features:**
-- **The Reading** — stage-reveal of engine-output blocks; verdict in reserved "throne" slot, crystallizes last (band + why, number demoted to evidence)
-- **Follow-ups + tools** — suggested taps → free text; *instant* (re-interpret) vs *agentic* (Apify competitors, back-catalog, trends) — the moat
-- **App shell** — home = vertical list of past Readings; per-video threads; first-run live demo Reading
-- **Ingestion** — native share-sheet (TikTok/Reels) + in-app upload/paste URL
-- **Ground-up design system** — warm-neutral dark-only (coral→clay), Whoop color discipline (color only in verdict scale + keyframes), sans-led + serif voice moments
-- **In-thread monetization** — oracle-initiated brand-deal-fit tool turn
-- **Desktop** — same thread widened + instrument layer (only place the dense board survives)
+- **Hero** — real Reading staged on a real creator video as the centerpiece (content-as-hero); verdict = calibrated band + one-line why, no naked number/no hype score
+- **How the Reading works** — 3-step explainer (upload → engine reads → verdict + why), real content as demo
+- **Honesty moat** — anti-snake-oil section: calibrated honest verdict vs "virality score" fake-precision rivals
+- **Real Readings gallery** — gallery-quality real Readings across creator niches (specificity)
+- **Social proof + conversion** — creator proof / waitlist, primary CTA to app entry
+- **Calm motion** — in-app stage-reveal language, kero-paced rhythm, reduced-motion fallback
 
-**Engine untouched:** presentation-layer change only. Engine v4.1 (ENGINE_VERSION 3.19.0) is sound; the surface re-presents existing output. Primary input: `.planning/NUMEN-SURFACE-VISION.md`; worktree identity: `.planning/MILESTONE.md`.
+**Base/refs (locked):** kero (spine + intelligence voice, bones not skin), krea/luma (content-as-hero staging), live Reading (the hero), virality snake-oil rivals (anti-reference). Anthropic/Whoop = in-app refs only, off the landing. Authoritative spec: `.planning/LANDING-STRUCTURE.md`.
 
-**Carried forward (vision §7b):** SMOKE GATE (hard precondition before building Reading against real engine output — not yet run), UAT sign-off (can slip), ENG-06 D-12 = this milestone's data-contract design step.
+**Dependency/timing:** consumes Numen Surface Phase 1 `.numen-surface` design system (no forked tokens); build structure/copy/motion now, swap final tokens on Phase 1 calibration lock. Worktree identity: `.planning/MILESTONE.md`.
 
 ## Status: Intelligence Surface drop — Milestone 1b shipped
 

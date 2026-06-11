@@ -1,135 +1,144 @@
-# Requirements — v5.0 Numen Surface
+# Requirements: Numen Landing (v5.1)
 
-> Mobile-first rebrand + UX rework. Replace the Konva canvas board with **one thread per video** where the AI's first turn IS the **Reading**. Presentation-layer only — engine v4.1 (ENGINE_VERSION 3.19.0) is frozen. Source: `.planning/NUMEN-SURFACE-VISION.md` + `.planning/research/SUMMARY.md`.
+**Defined:** 2026-06-11
+**Core Value:** The intelligence that tells creators whether their content will resonate — an honest verdict they can believe, not a hype score. The landing must make that legible in seconds and convert.
+**Source spec:** `.planning/LANDING-STRUCTURE.md` (locked reference set + section wireframe + discipline)
 
-## v5.0 Requirements
+## v1 Requirements
 
-### DS — Design System Foundation
-- [ ] **DS-01**: Warm-neutral dark token system (no pure black; base ~`#1a1714`, panels stepped warmer, warm off-white text), with L<0.15 darks as exact **hex not oklch** (Tailwind v4 bug this repo has hit)
-- [x] **DS-02**: Verdict color scale (muted green / amber / clay-red) is the ONLY load-bearing functional color; everything else near-neutral
-- [ ] **DS-03**: Brand accent = coral matured to warm clay/terracotta (evolve `#FF7F50`), used sparingly — logo, primary action, focus only
-- [ ] **DS-04**: Sans-led type system with serif reserved for voice moments (greeting/hero + the verdict line)
-- [x] **DS-05**: Component vocabulary — full-pill tool chips, circular icon buttons, hairline warm borders, soft elevation, glass restricted to ephemeral elements (composer, tool sheet); backdrop-filter via inline style not class (Lightning CSS strips it)
-- [x] **DS-06**: Migration boundary — inventory + retire Raycast GlassPanel-everywhere, scattered hardcoded coral, fake macOS window chrome, **and the chat dock** (absorbed into the thread); ground-up kit, not a retheme of the 36 components
-- [x] **DS-07**: Calm motion system (soft, never bouncy/snappy); the stage-reveal is the key motion moment
-- [ ] **DS-08**: Keyframes ARE the imagery/chroma (load-bearing §6 principle) — the user's video stills are the only atmosphere (hero, accents, empty states); warm-neutral chrome recedes so the (often cool) content + verdict carry all the color and energy
+Requirements for the shippable MVP landing. Each maps to roadmap phases.
 
-### DATA — Data Contract / View-Model (ENG-06 D-12)
-- [ ] **DATA-01**: Pure `lib/reading/view-model.ts` `toReadingBlocks()` mapping ~40 engine fields → ~10 value-bearing Reading blocks
-- [ ] **DATA-02**: Both the live `complete` path and persisted-row replay funnel through the SAME view-model, so a Reading and its re-opened resting document are identical
-- [ ] **DATA-03**: Consumed-vs-dead field prune documented (resolves F27/F28/F43) — which engine fields the Reading uses vs drops
-- [ ] **DATA-04**: Verdict derivation (band + one-line why) from engine output; the `/100` number demoted to supporting evidence (resolves F41/F45)
+### Hero (HERO)
 
-### GATE — Preconditions
-- [ ] **GATE-01**: SMOKE GATE — one real-video E2E on live infra returns sane/honest output (confirms F46/F47 truncation, F22 confidence, F23 §-cites hold live) + yields the real ENG-03 latency number (watch DashScope-429)
-- [ ] **GATE-02**: Verdict-banding calibration — band buffer zones WIDER than measured score variance (~±15pt over ~26–86); "Mixed signals" is a first-class, common verdict (kills "confident lie → trust dies")
-- [ ] **GATE-03**: UAT sign-off — F42 permalink (authenticated) + full measure-pipeline pass (can land during the milestone)
+- [ ] **HERO-01**: Above-fold hero with an intelligence/verdict headline + subhead + primary CTA, mobile-first
+- [ ] **HERO-02**: Hero centerpiece is a real Reading staged on a real creator video (krea/luma content-as-hero), full-bleed, chrome minimal — NOT a stock photo or fake browser window
+- [ ] **HERO-03**: Verdict shown as a calibrated band + one-line why (no naked number, no "X% accuracy")
+- [ ] **HERO-04**: Hero uses the calm stage-reveal motion language (StageBlock / `numen-ease-calm`) with a reduced-motion fallback
 
-### READ — The Reading
-- [ ] **READ-01**: AI pronounces first, unprompted — the Reading is the thread's first turn; user never faces a blank prompt
-- [ ] **READ-02**: Stage-reveal — each completed engine stage materializes its structured block (NOT chatbot token-streaming); reshape existing `StageEvent`/SSE into the Reading's block vocabulary
-- [ ] **READ-03**: Verdict in a reserved top "throne" slot, visibly forming while evidence assembles below, crystallizing last as the climax
-- [ ] **READ-04**: Verdict = calibrated band + one-sentence why (reads as judgment, not metric); confidence lives in the band's language, never a hedge (resolves F36 — collapses 3 scorecards to ONE verdict)
-- [ ] **READ-05**: ~10 evidence blocks re-composed from value-bearing engine fields (reusing the existing card vocabulary as message blocks), with the **expert insight (Apollo interpretation) foregrounded, not buried** (keeps F37)
-- [ ] **READ-06**: A completed Reading persists as a re-openable resting document that opens on the verdict
-- [ ] **READ-07**: Plain language throughout — calm restraint, NO engine jargon surfaced to the user (resolves F38)
+### The Reading explained (READ)
 
-### SHELL — App Shell
-- [ ] **SHELL-01**: Home = a vertical list of past Readings, each a compact verdict card (content-intelligence portfolio over time)
-- [ ] **SHELL-02**: One persistent "analyze new" action
-- [ ] **SHELL-03**: Per-video thread routing — chat-app spine (list → conversation); reuses `analysis_results` + `analysis_chats` + history API
-- [ ] **SHELL-04**: Installable PWA (Serwist + `manifest.ts`) with mobile-native feel + iOS add-to-home coaching
+- [ ] **READ-01**: Three-step explainer of the real flow — upload → engine reads → verdict + why
+- [ ] **READ-02**: Each step shows real content as the demonstration (content is both demo and navigation)
 
-### IN — Ingestion
-- [ ] **IN-01**: In-app video upload kicks the stage-reveal immediately
-- [ ] **IN-02**: Paste-URL ingestion (TikTok/Reels) with clipboard auto-detect
-- [ ] **IN-03**: Android `share_target` entry from the TikTok/Reels native share sheet
+### Honesty moat / anti-snake-oil (TRUST)
 
-### TOOL — Follow-ups + Agentic Tools (the moat)
-- [ ] **TOOL-01**: 3–4 suggested follow-up taps after the Reading, scoped to competence ("about this Reading / your content"), then free text
-- [ ] **TOOL-02**: Instant follow-ups re-interpret existing data (why this score, rewrite the hook, highest-leverage fix) via the existing chat route — no engine spend
-- [ ] **TOOL-03**: One agentic tool turn — competitor analysis via the existing Apify `ScrapingProvider` — appended as a structured tool-result turn
-- [ ] **TOOL-04**: Agentic taps are visually distinct from instant chips (they cost time + can fail), with a natural "working…" beat
-- [ ] **TOOL-05**: Tool failures voiced in-persona, NEVER red error toasts
-- [ ] **TOOL-06**: `analysis_chats` schema extension (`kind` + `payload` cols, `'tool'` role) to persist structured tool turns
+- [ ] **TRUST-01**: A trust section contrasting Numen's calibrated, honest verdict against the "virality score" snake-oil tier
+- [ ] **TRUST-02**: Comparison framing (kero comparison-table move) of Numen vs fake-precision rivals — zero "X% accuracy" claims anywhere on the page
 
-### MON — In-thread Monetization
-- [ ] **MON-01**: Oracle-initiated monetization turn/tool inside the thread (brand-deal fit for the creator's niche) — NOT a separate tab
+### Real Readings gallery (GALLERY)
 
-### DESK — Desktop Instrument
-- [ ] **DESK-01**: Same thread widened on desktop — one product, two densities, not a separate app (mobile ships first)
-- [ ] **DESK-02**: A dense instrument layer survives desktop-only for powerusers (today's Konva board, or a dense linear successor — keep-vs-retire decided here)
+- [ ] **GALLERY-01**: Gallery of real Readings across ≥3 distinct creator niches (specificity over abstract claims)
+- [ ] **GALLERY-02**: Gallery items render as gallery-quality content centerpieces (luma staging), not feature diagrams
 
-## Future Requirements (deferred to a follow-up milestone)
-- [ ] First-run demo Reading — pre-baked Reading on a recognizable viral video shown before first upload
-- [ ] iOS native share-sheet ingestion — requires the Capacitor native-wrapper milestone (WebKit #194593 blocks PWA share-target on iOS)
-- [ ] Additional agentic tools — back-catalog comparison, trending sounds, best-post-time
-- [ ] Shareable Reading export — image card vs link (growth-loop mechanics unresolved, vision §9)
-- [ ] Cross-video insight — "your hooks consistently underperform" (surfaces at the home/list level)
-- [ ] Projected-views / strategic outcome model — F40, explicitly still deferred (vision §7a)
-- [ ] Prompt accuracy + token tuning — the surface-independent sliver of ENG-06 (vision §7b); rides along or a quick later pass
+### Social proof / credibility (PROOF)
 
-## Open Decisions (resolve during discuss/plan-phase — vision §9, not gaps)
-- Exact clay/terracotta brand hue + exact verdict-scale green/amber/red values (calibration, not direction) — owned by **DS-02/DS-03**
-- Exact serif typeface for the voice moments — owned by **DS-04**
-- How the Reading *settles* (reveal moment → resting document) in detail — owned by **READ-03/READ-06**
-- Desktop instrument: keep the Konva canvas vs a dense *linear* successor (willing to retire the canvas entirely) — owned by **DESK-02**
-- How much desktop diverges (lean: same thread widened, minimal divergence) — owned by **DESK-01**
+- [ ] **PROOF-01**: Social-proof block (creator testimonials and/or live waitlist count)
+- [ ] **PROOF-02**: Credibility anchored early on the page where real assets exist
+
+### Conversion (CTA)
+
+- [ ] **CTA-01**: Primary conversion CTA (try / join waitlist) in hero and repeated near footer
+- [ ] **CTA-02**: CTA routes to the app entry or waitlist capture and records the signup
+
+### Copy / voice (CONTENT)
+
+- [ ] **CONTENT-01**: All copy uses the calm, confident-mentor voice, plain language, NO engine jargon (inherits in-app voice baseline)
+- [ ] **CONTENT-02**: Positioning reads "honest verdict creators can believe," explicitly not hype
+
+### Design-system consumption (DS)
+
+- [ ] **DS-01**: Landing consumes the Numen Surface Phase 1 `.numen-surface` token layer + primitives — no forked or reinvented tokens
+- [ ] **DS-02**: Build tolerates placeholder tokens and swaps to final tokens on Phase 1 calibration lock
+- [ ] **DS-03**: Brand-DNA coherence with the app (logo, verdict color language); landing palette tone may diverge per D-L1
+
+### Motion & structure (MOT)
+
+- [ ] **MOT-01**: Calm scroll-driven section reveals reusing the in-app motion language; no bounce/snappy, no presence theater
+- [ ] **MOT-02**: Section rhythm/pacing modeled on kero's spine
+
+### Nav & shell (NAV)
+
+- [ ] **NAV-01**: Minimal, product-focused top nav + footer
+
+### Performance / SEO / a11y (PERF)
+
+- [ ] **PERF-01**: Mobile-first responsive; hero media optimized for fast load (LCP)
+- [ ] **PERF-02**: SEO meta + social share/OG cards
+- [ ] **PERF-03**: Accessibility — APCA contrast inherited from DS, reduced-motion fallback, semantic structure
+
+## v2 Requirements
+
+Deferred to future release. Tracked, not in this roadmap.
+
+### Use cases / personas (USECASE)
+
+- **USECASE-01**: Segmented use-case/persona section (solo creators, agencies, brands)
+
+### Content marketing (BLOG)
+
+- **BLOG-01**: Blog / articles section (kero has one; not MVP)
+
+### Localization (I18N)
+
+- **I18N-01**: Multi-language landing
 
 ## Out of Scope
-- **Engine changes** — presentation-only milestone; engine v4.1 / ENGINE_VERSION 3.19.0 is frozen
-- **Light mode** — dark-only, decided 2026-06-11
-- **Mysticism / oracle theater** — temple / light-as-presence / amber gravitas explicitly cut as gimmicky
-- **Open-ended assistant** — follow-ups scoped to competence, not a general chatbot
-- **Naked-number verdict / three parallel scorecards / 40-field bloat** — resolved by READ + DATA
-- **Konva canvas as the PRIMARY surface** — demoted to the desktop-only instrument
-- **Retheme of the 36 Raycast components** — this is a ground-up kit
-- **iOS share-target in a PWA** — structurally unbuildable (WebKit #194593); deferred to Capacitor
-- **`next-pwa`** — unmaintained; use Serwist
+
+Explicitly excluded. Documented to prevent scope creep.
+
+| Feature | Reason |
+|---------|--------|
+| "X% accuracy" / "predict virality" hype claims | Anti-thesis; the honesty stance IS the differentiator (TRUST) |
+| Stock photography, fake browser/window chrome, glass-over-photo | Kero "skin" the vision forbids; product is the hero instead |
+| Content generation features/demos | Numen is intelligence, not a generation tool (why Runway/Krea dropped as positioning) |
+| Auth, payments, onboarding flows | Landing only; the app owns those |
+| Anthropic-landing palette cloning | Anthropic was an in-app palette reference only, off the landing |
+| Forking/redefining design tokens | Must consume Numen Surface Phase 1 kit (DS-01) |
+
+## Open Decisions (resolve during build)
+
+| ID | Decision | Lean | Resolving phase |
+|----|----------|------|-----------------|
+| D-L1 | Landing palette: inherit app warm-neutral vs run cooler/cinematic | keyframes carry chroma either way; chrome tone TBD | Phase 4 (token lock) |
+| D-L2 | Hero: live interactive Reading vs recorded stage-reveal loop | perf/reliability vs interactivity | Phase 2 (hero spike) |
+| D-L3 | Final token swap gated on Phase 1 calibration sign-off | placeholder-tolerant until then | Phase 4 (token lock) |
+| D-L4 | Launch credibility assets (testimonials/waitlist/investor logos) | depends what exists at launch | Phase 3 (proof) |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | DS-01 | Phase 1 | Pending |
-| DS-02 | Phase 1 | Complete |
-| DS-03 | Phase 1 | Pending |
-| DS-04 | Phase 1 | Pending |
-| DS-05 | Phase 1 | Complete |
-| DS-06 | Phase 1 | Complete |
-| DS-07 | Phase 1 | Complete |
-| DS-08 | Phase 1 | Pending |
-| DATA-01 | Phase 2 | Pending |
-| DATA-02 | Phase 2 | Pending |
-| DATA-03 | Phase 2 | Pending |
-| DATA-04 | Phase 2 | Pending |
-| GATE-01 | Phase 3 | Pending |
-| GATE-02 | Phase 3 | Pending |
-| GATE-03 | Phase 3 | Pending |
-| READ-01 | Phase 4 | Pending |
-| READ-02 | Phase 4 | Pending |
-| READ-03 | Phase 4 | Pending |
-| READ-04 | Phase 4 | Pending |
-| READ-05 | Phase 4 | Pending |
-| READ-06 | Phase 4 | Pending |
-| READ-07 | Phase 4 | Pending |
-| SHELL-01 | Phase 5 | Pending |
-| SHELL-02 | Phase 5 | Pending |
-| SHELL-03 | Phase 5 | Pending |
-| SHELL-04 | Phase 4 | Pending |
-| IN-01 | Phase 5 | Pending |
-| IN-02 | Phase 5 | Pending |
-| IN-03 | Phase 5 | Pending |
-| TOOL-01 | Phase 6 | Pending |
-| TOOL-02 | Phase 6 | Pending |
-| TOOL-03 | Phase 6 | Pending |
-| TOOL-04 | Phase 6 | Pending |
-| TOOL-05 | Phase 6 | Pending |
-| TOOL-06 | Phase 6 | Pending |
-| MON-01 | Phase 6 | Pending |
-| DESK-01 | Phase 7 | Pending |
-| DESK-02 | Phase 7 | Pending |
+| DS-02 | Phase 1 | Pending |
+| NAV-01 | Phase 1 | Pending |
+| CONTENT-01 | Phase 1 | Pending |
+| MOT-02 | Phase 1 | Pending |
+| PERF-02 | Phase 1 | Pending |
+| HERO-01 | Phase 2 | Pending |
+| HERO-02 | Phase 2 | Pending |
+| HERO-03 | Phase 2 | Pending |
+| HERO-04 | Phase 2 | Pending |
+| READ-01 | Phase 2 | Pending |
+| READ-02 | Phase 2 | Pending |
+| CTA-01 | Phase 2 | Pending |
+| TRUST-01 | Phase 3 | Pending |
+| TRUST-02 | Phase 3 | Pending |
+| GALLERY-01 | Phase 3 | Pending |
+| GALLERY-02 | Phase 3 | Pending |
+| PROOF-01 | Phase 3 | Pending |
+| PROOF-02 | Phase 3 | Pending |
+| CONTENT-02 | Phase 3 | Pending |
+| CTA-02 | Phase 3 | Pending |
+| DS-03 | Phase 4 | Pending |
+| MOT-01 | Phase 4 | Pending |
+| PERF-01 | Phase 4 | Pending |
+| PERF-03 | Phase 4 | Pending |
 
-**Coverage:** 38/38 requirements mapped — no orphans, no duplicates.
+**Coverage:**
+- v1 requirements: 24 total (DS-01, DS-02, NAV-01, CONTENT-01, MOT-02, PERF-02 in P1; HERO-01..04, READ-01, READ-02, CTA-01 in P2; TRUST-01/02, GALLERY-01/02, PROOF-01/02, CONTENT-02, CTA-02 in P3; DS-03, MOT-01, PERF-01, PERF-03 in P4)
+- Mapped to phases: 24 ✓
+- Unmapped: 0 ✓
 
-> Note: SHELL-04 (installable PWA) is delivered in Phase 4 alongside the mobile Reading thread (the PWA shell and the mobile surface ship together); the remaining SHELL reqs (home list, persistent action, thread routing) land in Phase 5.
+---
+*Requirements defined: 2026-06-11*
+*Last updated: 2026-06-11 — roadmap created, all 24 v1 requirements mapped across 4 phases*

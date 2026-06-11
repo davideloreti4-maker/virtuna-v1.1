@@ -1,43 +1,48 @@
-# MILESTONE — Numen Surface
+# MILESTONE — Landing
 
 > Immutable worktree identity. Created 2026-06-11. Do not edit after creation.
 
-**Name:** Numen Surface
-**Version:** v5.0
-**Branch:** `milestone/numen-surface`
-**Worktree:** `~/virtuna-numen-surface/`
-**Forks from:** `main` at `1b3157d3` (post v4.1 Phase-1 engine merge; ENGINE_VERSION 3.19.0)
+**Name:** Landing
+**Version:** v5.1
+**Branch:** `milestone/numen-landing`
+**Worktree:** `~/virtuna-numen-landing/`
+**Forks from:** `milestone/numen-surface @ 148930a` (Numen Surface Phase 1 design system mid-flight)
 **Phase numbering:** milestone-scoped, restarts at Phase 1.
 
 ## What this milestone is
 
-A **net-new paradigm rebuild** — the mobile-first rebrand + UX rework. NOT a
-refinement of shipped surfaces (that distinction is why this is its own milestone,
-not mvp-ready Phases 2–5, which it supersedes).
-
-Replaces the canvas board with **one thread per video**, where the AI's first turn
-IS the **Reading** (engine output re-presented compact, stage-revealed; verdict =
-calibrated band + one-line why, not a naked number), followed by suggested
-follow-ups + agentic tools (Apify competitors, etc.). Warm-neutral **dark-only**
-design system (coral→clay, Whoop color discipline, keyframes as chroma),
-ground-up component kit.
-
-**Primary input:** `.planning/NUMEN-SURFACE-VISION.md` — the full vision (brand,
-surface architecture, design language, engine-finding mapping §7a, carried-forward
-items §7b). Use it as the requirements source.
+The **net-new public landing page** for Numen — a creator-facing marketing surface
+that converts TikTok creators (and signals credibility to investors). NOT the
+in-app product (that is the parallel Numen Surface milestone). The old
+`~/virtuna-landing` (Raycast/coral) is dead; this is a ground-up rebuild on the
+new brand.
 
 ## North star
 
-A creator uploads a video and receives a calm, trustworthy **Reading** — a verdict
-they believe + the fixes that matter — on mobile, in a single thread they can
-interrogate. Premium, restrained, distinctly not-another-AI-spaceship. The engine
-is sound (v4.1); this milestone is the surface that finally does it justice.
+A creator lands, immediately sees a **real Reading on a real video** — an honest
+verdict (band + one-line why), not a hype score — and understands in seconds that
+Numen tells them whether their content will resonate. Calm, premium, distinctly
+not-another-AI-spaceship and distinctly not virality-score snake-oil.
 
-## Carried forward from mvp-ready (see vision §7b)
+## Base / references (locked)
 
-- **SMOKE GATE** (hard precondition before building the Reading against real engine
-  output): one real-video E2E returns sane/honest output (confirms F46/F47/F22/F23
-  live; DashScope-429 risk) + ENG-03 latency number. **Not yet run.**
-- **UAT sign-off** (F42 permalink) — can slip into the milestone.
-- **ENG-06 D-12** (3-call prompt I/O + dead-field prune F27/F28/F43) = this
-  milestone's **data-contract design step**, not a standalone session.
+See `.planning/LANDING-STRUCTURE.md` (authoritative base spec):
+- **kero** — section spine + intelligence voice (bones, not skin)
+- **krea / luma** — content-as-hero cinematic staging
+- **live Reading** — the hero artifact
+- **virality snake-oil rivals** — anti-reference
+- Anthropic / Whoop — in-app references only, OFF the landing
+
+## Dependency & timing
+
+- Consumes the Numen Surface **Phase 1** `.numen-surface` design system (tokens,
+  primitives, StageBlock). Does not fork tokens.
+- Build timing: structure / copy / layout / motion **now**; swap final tokens on
+  Phase 1 calibration sign-off.
+
+## Brand source
+
+Brand/voice authority lives in the Numen Surface worktree:
+`~/virtuna-numen-surface/.planning/NUMEN-SURFACE-VISION.md` and the in-app design
+contract `01-UI-SPEC.md`. (Inherited copies archived under
+`.planning/_archive/inherited-numen-surface/`.)
