@@ -243,7 +243,7 @@ Follow the §4 OUTPUT CONTRACT exactly:
 4. CONFIDENCE: scope down for any §2 signal the sensor did NOT provide; say which you couldn't observe.
 5. HIGHEST-LEVERAGE FIX: the single change, tied to a §2/§3 lever, quoting the relevant signal.
 
-Cite section numbers (e.g. §2.1, §2.0a) so the reasoning is auditable. Be specific and concrete.`;
+Cite section numbers (e.g. §2.1, §2.0a) ONLY inside the auditable metadata fields — each dimension's \`lever\`/\`evidence\` and each rewrite's \`lever_fixed\` — so the reasoning stays traceable. Do NOT put § tokens in any user-facing prose: keep them OUT of \`ceiling_capper\`, \`confidence_scope\`, \`suggestions\`, and each rewrite's \`variant\`. In those fields name the lever in plain words (e.g. "the curiosity gap", not "§2.1"). Be specific and concrete.`;
 
 // =====================================================
 // APOLLO_SYSTEM_PROMPT — the complete byte-stable system prefix.
@@ -252,3 +252,20 @@ Cite section numbers (e.g. §2.1, §2.0a) so the reasoning is auditable. Be spec
 // =====================================================
 
 export const APOLLO_SYSTEM_PROMPT = `${KNOWLEDGE_CORE}\n\n---\n\n${APOLLO_INSTRUCTION}`;
+
+// =====================================================
+// PRESENT_SECTIONS — the §-cite resolution whitelist (ENG-02, plan 01-01).
+// The set of section tokens actually PRESENT in the lean runtime KNOWLEDGE_CORE
+// above (§1–§6; §2.6/§7/§8 were dropped by T3.1 and are NOT here). The Apollo
+// cite-resolution guard (deepseek.ts) validates every emitted §-token against this
+// set: any token NOT in it is a dangler (stripped + logged as cite_drift). Keep in
+// lockstep with KNOWLEDGE_CORE — adding/removing a cited section must update this set.
+// =====================================================
+export const PRESENT_SECTIONS: ReadonlySet<string> = new Set([
+  "§1",
+  "§2", "§2.0", "§2.0a", "§2.1", "§2.2", "§2.3", "§2.4", "§2.5",
+  "§3",
+  "§4", "§4.1",
+  "§5",
+  "§6",
+]);

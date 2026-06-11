@@ -4,8 +4,8 @@ milestone: v4.1
 milestone_name: MVP Ready
 status: executing
 stopped_at: Phase 1 context gathered
-last_updated: "2026-06-09T08:55:23.611Z"
-last_activity: 2026-06-09 -- Phase 01 planning complete
+last_updated: "2026-06-10T10:10:23.737Z"
+last_activity: 2026-06-10 -- Phase 01 execution started
 progress:
   total_phases: 5
   completed_phases: 0
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Roadmap: .planning/ROADMAP.md · Cut-list SSOT: .planning/ENGINE-MAP.md
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization.
-**Current focus:** Phase 1 — Engine Pipeline (audit → refine the Apollo 3-call flow)
+**Current focus:** Phase 01 — engine-pipeline
 
 ## Current Position
 
-Phase: 1 of 5 (Engine Pipeline)
-Plan: — of TBD
-Status: Ready to execute
-Last activity: 2026-06-09 -- Phase 01 planning complete
+Phase: 01 (engine-pipeline) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 01
+Last activity: 2026-06-10 -- Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -85,6 +85,14 @@ Bookkeeping orphans / superseded flags, not live work. v4.0 shipped to main with
 
 ## Session Continuity
 
-Last session: 2026-06-09T08:24:25.227Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-engine-pipeline/01-CONTEXT.md
+Last session: 2026-06-11 — full engine e2e walkthrough + value audit complete
+Stopped at: Audit/synthesis done (45 flags, D-R1, scope B locked). Ready to EXECUTE 01-01.
+Resume file: .planning/phases/01-engine-pipeline/01-SYNTHESIS.md
+Resume how: read 01-SYNTHESIS.md (build map + scope B) + 01-WALKTHROUGH-LOG.md (flags) +
+01-01-PLAN.md. Scope B = Tier 1 (honesty/correctness) + D-R1 (Read pure-sensor) + Tier 2
+(cheatcode output contract). First action: build a FAITHFUL runtime §-cite harness (Read once →
+real Apollo path: lean APOLLO_SYSTEM_PROMPT + buildDeepSeekUserMessage + sighted video_url) and
+capture emitted §-cites on ~/Downloads/TikTok Video Downloader.mp4 → resolution table for the
+01-01 remap+prose decision (NOT the unfaithful apollo-core-smoke.ts). ENG-02 leaning remap-guard +
+prose-discipline (keep § internal), redesign deferred. Note: 01-03/01-04 plans need re-scope to
+absorb Tier 2 before executing them.

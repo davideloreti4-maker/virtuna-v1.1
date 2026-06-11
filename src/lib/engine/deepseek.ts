@@ -9,7 +9,7 @@ import {
   type TrendEnrichment,
   type VerbatimPayload,
 } from "./types";
-import { APOLLO_SYSTEM_PROMPT } from "./apollo-core";
+import { APOLLO_SYSTEM_PROMPT, PRESENT_SECTIONS } from "./apollo-core";
 import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "./qwen/client";
 import { calculateCost } from "./qwen/cost";
 import { stripModelOutput } from "./utils/strip";
@@ -125,6 +125,77 @@ function normalizeWs(s: string): string {
   return s.replace(/\s+/g, " ").trim();
 }
 
+// ── §-cite resolution guard (ENG-02, plan 01-01) ───────────────────────────
+// Two jobs, both belt-and-suspenders backstops to the prompt instructions
+// (the LLM is untrusted, V5): (1) AUDITABLE-METADATA fields (lever/evidence/
+// lever_fixed) may carry §-cites, but only ones that RESOLVE to the lean
+// KNOWLEDGE_CORE — strip danglers (§2.6/§7/§8/hallucinated §9+). (2) USER-FACING
+// PROSE fields (ceiling_capper/confidence_scope/suggestions/variant) must carry
+// NO §-cites — strip them all so cryptic "(§2.1)" tokens never reach the board.
+// One literal regex per call (no shared /g lastIndex state).
+const CITE_TOKEN = /§\s*\d+(?:\.\d+)?[a-z]?/;
+function normalizeCite(raw: string): string {
+  return raw.replace(/\s+/g, ""); // "§ 2.1" → "§2.1"
+}
+/** Tidy whitespace/orphaned punctuation left behind after removing a cite. */
+function tidyAfterStrip(s: string): string {
+  return s
+    .replace(/\(\s*\)/g, "")        // empty parens "()"
+    .replace(/\s+([.,;:!?])/g, "$1") // space before punctuation
+    .replace(/\s{2,}/g, " ")        // collapsed double spaces
+    .trim();
+}
+/** METADATA: keep cites that resolve to the lean core, strip danglers. */
+function stripDanglingCites(s: string, drift: string[]): string {
+  const out = s.replace(new RegExp(CITE_TOKEN.source, "g"), (m) => {
+    const c = normalizeCite(m);
+    if (PRESENT_SECTIONS.has(c)) return m;
+    drift.push(c);
+    return "";
+  });
+  const tidied = tidyAfterStrip(out);
+  return tidied.length > 0 ? tidied : s; // never empty a required string
+}
+/** PROSE: strip ALL cites; drop an enclosing paren group if it held only cites. */
+function stripAllCites(s: string, drift: string[]): string {
+  // First collapse parenthetical groups that contain a cite.
+  let out = s.replace(/\(([^()]*)\)/g, (full, inner: string) => {
+    if (!/§/.test(inner)) return full; // no cite — leave the paren intact
+    const cleaned = inner
+      .replace(new RegExp(CITE_TOKEN.source, "g"), (m) => { drift.push(normalizeCite(m)); return ""; })
+      .replace(/^[\s,;/&]+|[\s,;/&]+$/g, "")
+      .trim();
+    return cleaned ? `(${cleaned})` : "";
+  });
+  // Then any remaining inline/bare cites.
+  out = out.replace(new RegExp(CITE_TOKEN.source, "g"), (m) => { drift.push(normalizeCite(m)); return ""; });
+  const tidied = tidyAfterStrip(out);
+  return tidied.length > 0 ? tidied : s; // never empty a required string
+}
+
+/**
+ * Apply the §-cite resolution guard to a parsed Apollo response, in place.
+ * Returns the set of §-tokens it removed (danglers from metadata + any cite
+ * leaked into prose). Exported for the apollo-cite-resolution test (V5 boundary).
+ */
+export function guardApolloCites(data: DeepSeekReasoning): { drift: string[] } {
+  const drift: string[] = [];
+  // (1) auditable metadata — strip danglers only
+  for (const dim of data.dimensions) {
+    dim.lever = stripDanglingCites(dim.lever, drift);
+    dim.evidence = stripDanglingCites(dim.evidence, drift);
+  }
+  for (const rw of data.rewrites) {
+    rw.lever_fixed = stripDanglingCites(rw.lever_fixed, drift);
+  }
+  // (2) user-facing prose — strip ALL cites (prose discipline)
+  if (data.ceiling_capper) data.ceiling_capper = stripAllCites(data.ceiling_capper, drift);
+  data.confidence_scope = stripAllCites(data.confidence_scope, drift);
+  for (const s of data.suggestions) s.text = stripAllCites(s.text, drift);
+  for (const rw of data.rewrites) rw.variant = stripAllCites(rw.variant, drift);
+  return { drift };
+}
+
 /** Parse and validate Apollo response with Zod + post-parse backstop (Pattern 2) */
 function parseDeepSeekResponse(
   raw: string,
@@ -166,6 +237,16 @@ function parseDeepSeekResponse(
   // Assert rewrites.length >= 2 (Zod .min(2) handles schema rejection)
   if (data.rewrites.length < 2) {
     log.warn("Apollo rewrites too few post-parse", { count: data.rewrites.length });
+  }
+
+  // ── §-cite resolution guard (ENG-02): strip danglers from metadata + ALL cites
+  // from user-facing prose, so no unresolvable / cryptic §-token reaches the board.
+  const { drift } = guardApolloCites(data);
+  if (drift.length > 0) {
+    log.warn("Apollo cite_drift — §-cites stripped (danglers + prose leaks)", {
+      cite_drift: [...new Set(drift)].sort(),
+      count: drift.length,
+    });
   }
 
   // R2 backstop: normalize-whitespace-compare rewrite.original to verbatim hook.
@@ -349,7 +430,7 @@ ${behavioralPredictionsBlock}  "component_scores": {                  // your 0-
   "platform_note": "<optional: watermark/cross-post warning, or omit>"
 }
 
-Rules: "dimensions" is an ARRAY of exactly 6 objects (not an object map). Every "rewrites[].original" MUST be the verbatim hook line above, byte-for-byte. Each "rewrites[].lever_fixed" MUST name a different §2 lever. Cite §-numbers inside "lever"/"evidence"/"ceiling_capper". Return ONLY the JSON object.`
+Rules: "dimensions" is an ARRAY of exactly 6 objects (not an object map). Every "rewrites[].original" MUST be the verbatim hook line above, byte-for-byte. Each "rewrites[].lever_fixed" MUST name a different §2 lever. Cite §-numbers ONLY inside "lever"/"evidence"/"lever_fixed" — NEVER inside "ceiling_capper", "confidence_scope", "suggestions", or rewrite "variant" (those are user-facing prose; name the lever in plain words there, e.g. "the curiosity gap" not "§2.1"). Return ONLY the JSON object.`
   );
 
   return sections.join("\n");

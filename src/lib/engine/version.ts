@@ -61,7 +61,17 @@
  * 3.12.0 cached rows (which lack the flag) don't deserialize as a real-looking 0 verdict.
  * The flag is also derivable from the persisted signal_availability JSONB on permalink reload.
  *
+ * Bumped 3.13.0 → 3.14.0 (2026-06-11, ENG-02 §-cite honesty — plan 01-01): two changes to the
+ * Apollo path. (1) Prose-discipline: APOLLO_INSTRUCTION (in the cached system prefix) + the
+ * user-message JSON contract now instruct Apollo to keep § tokens OUT of user-facing prose
+ * (ceiling_capper/confidence_scope/suggestions/rewrite variant) and only in the auditable
+ * lever/evidence/lever_fixed metadata. The system-prefix bytes change → isolate the cache.
+ * (2) Cite-resolution guard: a post-parse backstop strips danglers (§-cites that don't resolve
+ * to the lean KNOWLEDGE_CORE — §2.6/§7/§8/hallucinated) from metadata and strips ALL § tokens
+ * from prose, so the faithful-runtime leak (7 prose cites observed on the test video) can't reach
+ * the board. Apollo's prose output shape changes (cites removed) → stale 3.13.0 rows must not mix.
+ *
  * D-23 cache invariant: prediction-cache.ts keys on ENGINE_VERSION; this bump auto-invalidates
- * all `3.12.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
+ * all `3.13.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
  */
-export const ENGINE_VERSION = "3.13.0";
+export const ENGINE_VERSION = "3.14.0";
