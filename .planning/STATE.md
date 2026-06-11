@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: MVP Ready
 status: executing
-last_updated: "2026-06-11T14:20:00.000Z"
-last_activity: 2026-06-11 -- 01-04 SHIPPED (coupled aggregator closeout, 3.18.0); 01-05 next
+last_updated: "2026-06-11T14:50:00.000Z"
+last_activity: 2026-06-11 -- 01-05 SHIPPED (fold robustness/partial_analysis/F7/prune/LOCK, 3.19.0); deferred live gates + ENG-06 remain
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 5
-  completed_plans: 4
-  percent: 80
+  completed_plans: 5
+  percent: 100
 ---
 
 # Project State
@@ -24,16 +24,22 @@ See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Roadm
 
 ## Current Position
 
-Phase: 01 (engine-pipeline) — EXECUTING
-Plan: 01-01 ✓ · 01-02 ✓ · 01-03 PARTIAL (chunk B / ENG-06 pending) · 01-04 ✓ (SHIPPED 01b08752) · 01-05 next (wave 5)
-Status: Executing Phase 01
-Last activity: 2026-06-11 -- 01-04 coupled aggregator closeout SHIPPED (3.18.0)
+Phase: 01 (engine-pipeline) — CODE COMPLETE (5/5 plans), NOT fully closed
+Plan: 01-01 ✓ · 01-02 ✓ · 01-03 PARTIAL (chunk B / ENG-06 pending) · 01-04 ✓ (01b08752) · 01-05 ✓ (db892434, 3.19.0)
+Status: Phase 01 code shipped + unit-green; 3 deferred live gates + ENG-06 chunk B remain before close
+Last activity: 2026-06-11 -- 01-05 robustness + honesty + prune SHIPPED (3.19.0)
+
+PHASE 01 NOT CLOSED — remaining before close:
+  1. Live phase-gate rig run (smoke + measure-pipeline on a real video; no thrown frames, TOTAL <300s, latency map) — deferred per "skip live runs"; needs DashScope (429 cap risk).
+  2. F42 permalink-reload UAT (Davide-authenticated — /analyze login-gated): live run → reload permalink → confirm hero block + engagement range survive.
+  3. ENG-03 latency posture: accepted-under-cap PENDING the measure-pipeline number from gate 1.
+  4. ENG-06 (D-12 3-call prompt I/O co-review = chunk B) — its own owning open plan.
 
 01-04 ✓ SHIPPED (commit 01b08752, ENGINE_VERSION 3.18.0): F22/F44 confidence rebased apollo-vs-FOLD (self-agreement dead; falls back to apollo-vs-behavioral when fold off) · F24 component_scores dropped on video (feature_vector fields null on video; behavioral_score unchanged; live board verified unaffected — impact-score path is dead/unmounted) · F34 Stage-10 Check #1 DROPPED, #2/#3/#4 kept (co-review: 3 checks live, dropping #1 avoids double-count w/ F22) · F37/F41 hero block assembled from Apollo materials (verdict_line reuses board bandLabel) · F42 hero persisted to variants.hero (no migration). 83 targeted + 1903 full tests green; tsc baseline (12). requirements [ENG-04].
 01-05 (wave 5, depends 01-04 ✓): F18/F20/F19 fold robustness + partial_analysis single-signal honesty · F12/F35/F43 dead-tail prune (gated on safety-list confirm) · F7 rehost delete race · ENG-04 honesty LOCK tests · ENG-03 latency measure/reclaim · ENGINE_VERSION → 3.19.0. **Owns the DEFERRED live phase-gate rig run + F42 permalink-reload UAT** (Davide-authenticated). requirements [ENG-01,ENG-03,ENG-04].
 ENG-06 (D-12 deep 3-call prompt I/O co-review = "chunk B") deliberately OUT of 01-04/05 — its own owning open plan, must land before phase close.
 
-Progress: [████████░░] ~80% (4/5 plans; 01-05 + ENG-06 chunk B remain)
+Progress: [██████████] 5/5 plans CODE-complete; phase close gated on 3 deferred live gates + ENG-06 chunk B
 
 ## Phases
 

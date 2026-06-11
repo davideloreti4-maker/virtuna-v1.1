@@ -11,7 +11,7 @@ A **brownfield refinement pass**. The platform already ships end-to-end; this mi
 - Integer phases (1, 2, 3): planned pillar work.
 - Decimal phases (2.1, 2.2): urgent insertions (marked INSERTED).
 
-- [ ] **Phase 1: Engine Pipeline** - Audit → refine the Apollo 3-call flow toward correct, fast, honest output
+- [x] **Phase 1: Engine Pipeline** - Audit → refine the Apollo 3-call flow toward correct, fast, honest output (completed 2026-06-11)
 - [ ] **Phase 2: Board / Test Mode** - Audit → refine the analyze board so every frame renders real engine output
 - [ ] **Phase 3: Board / Remix Mode** - Audit → refine the remix board to the Test-mode quality bar
 - [ ] **Phase 4: Chat Feature** - Audit → refine the "ask the expert" dock for trustworthy, grounded answers
@@ -34,7 +34,7 @@ A **brownfield refinement pass**. The platform already ships end-to-end; this mi
 - [x] 01-02-PLAN.md — ENG-05 read-model re-audit (flash vs plus A/B) co-review + D-11 critical-field retry + drift logging
 - [x] 01-03-PLAN.md — ENG-06 step-by-step prompt I/O co-review (3 calls) + T3.x trim audit + consumed-vs-dead field map prune/tighten
 - [x] 01-04-PLAN.md — ENG-04/06 coupled aggregator set: audit + co-review (Stage-10 fate / verdict_line) → F22/F44 confidence apollo-vs-fold + F24 drop + F34 + hero block (F37/F41) + persist (F42) + version bump
-- [ ] 01-05-PLAN.md — ENG-01/03/04/06 closeout: F7 race + fold robustness (F18/F20/F19) + partial_analysis + dead-tail prune (F12/F35/F43) + E2E verify + honesty LOCK + latency reclaim
+- [x] 01-05-PLAN.md — ENG-01/03/04/06 closeout: F7 race + fold robustness (F18/F20/F19) + partial_analysis + dead-tail prune (F12/F35/F43) + E2E verify + honesty LOCK + latency reclaim
 
 ### Phase 2: Board / Test Mode
 **Goal**: Audit → refine pass over the EXISTING analyze board (Test mode) UI/UX — frames, rendering, wiring, mobile. Confirm every frame holds together against real engine output and strip dead UI. Refinement of a shipped surface; concrete to-dos discovered at discuss-phase time.
@@ -90,7 +90,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Engine Pipeline | 4/5 | In Progress|  |
+| 1. Engine Pipeline | 5/5 | Complete   | 2026-06-11 |
 | 2. Board / Test Mode | 0/TBD | Not started | - |
 | 3. Board / Remix Mode | 0/TBD | Not started | - |
 | 4. Chat Feature | 0/TBD | Not started | - |
