@@ -6,41 +6,65 @@
  * WCAG 3 draft) is the correct perceptual metric for dark mode — WCAG 2 ratios
  * mislead on dark backgrounds.
  *
- * Run: `pnpm tsx scripts/check-apca.ts`
+ * Run: `pnpm tsx scripts/check-apca.ts`  (also wired into `pnpm test` via
+ * tests/numen/apca.test.ts so CI runs the gate — see WR-05).
  * Exits non-zero on ANY failing pairing so it is a real pass/fail gate.
  *
- * Source: github.com/Myndex/apca-w3 (W3C reference impl). The canonical math is
- * `APCAcontrast(sRGBtoY(colorParsley(text)), sRGBtoY(colorParsley(bg)))`; the
- * library's `calcAPCA(text, bg)` wrapper performs exactly that pipeline and
- * accepts hex strings directly, so we use it for the per-pairing Lc value while
- * keeping the underlying `APCAcontrast`/`sRGBtoY` primitives referenced for the
- * documented low-level path. NOTE: `colorParsley` ships in the companion
- * `colorparsley` package (not re-exported by `apca-w3`); `calcAPCA` bundles it.
+ * Source: github.com/Myndex/apca-w3 (W3C reference impl). `calcAPCA(text, bg)`
+ * accepts hex strings directly and performs the canonical
+ * `APCAcontrast(sRGBtoY(...), sRGBtoY(...))` pipeline.
  *
- * Hexes below are the D-11 LOCKED palette (signed off Task 4, Option B):
- *   muted:       #a39c91 → #bab2a5 (lifted for Lc ≥ 60; #b8b0a3 was Lc 59.0, nudged to #bab2a5 = Lc 60.1)
- *   verdict-bad: #c97a64 → #d4866f (lifted for Lc ≥ 45)
- * All other hues unchanged. Must match `.numen-surface` in globals.css exactly.
+ * WR-05: the palette hexes are PARSED out of `.numen-surface` in globals.css —
+ * NOT hand-duplicated here. globals.css is the single source of truth; a drift
+ * there is impossible to miss because this gate reads the same values.
  */
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck -- apca-w3 ships no type declarations
-import { APCAcontrast, sRGBtoY, calcAPCA } from "apca-w3";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
-// Re-export-free reference to the low-level primitives so they are not
-// tree-shaken away and remain the documented contrast pipeline (D-12).
-void APCAcontrast;
-void sRGBtoY;
+import { calcAPCA } from "apca-w3";
+
+const GLOBALS = resolve(process.cwd(), "src/app/globals.css");
+
+/** Strip CSS comments so prose mentions of hexes don't confuse the parser. */
+function stripComments(css: string): string {
+  return css.replace(/\/\*[\s\S]*?\*\//g, "");
+}
+
+/** Extract the bare `.numen-surface { ... }` rule body (comments stripped). */
+function numenSurfaceBlock(rawCss: string): string {
+  const css = stripComments(rawCss);
+  const ruleRe = /(^|[\s}])\.numen-surface\s*\{/g;
+  const match = ruleRe.exec(css);
+  if (!match) return "";
+  const open = css.indexOf("{", match.index);
+  let depth = 0;
+  for (let i = open; i < css.length; i++) {
+    if (css[i] === "{") depth++;
+    else if (css[i] === "}") {
+      depth--;
+      if (depth === 0) return css.slice(open + 1, i);
+    }
+  }
+  return "";
+}
+
+/** Read a single `--name: value;` declaration out of the scope block. */
+function tokenValue(block: string, name: string): string {
+  const m = block.match(new RegExp(`${name}\\s*:\\s*([^;]+);`));
+  return m ? m[1].trim() : "";
+}
 
 /** Absolute APCA Lc for `textHex` on `bgHex` (abs because dark-mode polarity). */
 function lc(textHex: string, bgHex: string): number {
   return Math.abs(calcAPCA(textHex, bgHex) as number);
 }
 
-const BASE = "#1a1714"; // --numen-bg (warm near-black; no pure black, D-11)
-
 interface Pairing {
   label: string;
-  text: string;
+  /** `.numen-surface` custom property whose value supplies the text hex. */
+  token: string;
   /** APCA Lc floor for this role on BASE (Q4 targets). */
   target: number;
   role: string;
@@ -52,32 +76,83 @@ interface Pairing {
 //  - accent text-on-base (large/heavy, ≥24px bold): Lc ≥ 45
 //  - verdict band labels (large/heavy):             Lc ≥ 45
 const PAIRINGS: Pairing[] = [
-  { label: "body", text: "#f0ebe3", target: 75, role: "body / fluent text (floor 75, 90 preferred)" },
-  { label: "muted", text: "#bab2a5", target: 60, role: "non-body UI label" },
-  { label: "accent", text: "#d98a5e", target: 45, role: "accent text-on-base (large/heavy)" },
-  { label: "verdict-good", text: "#7faf7a", target: 45, role: "verdict band label (large/heavy)" },
-  { label: "verdict-mixed", text: "#d6a85a", target: 45, role: "verdict band label (large/heavy)" },
-  { label: "verdict-bad", text: "#d4866f", target: 45, role: "verdict band label (large/heavy)" },
+  { label: "body", token: "--numen-text", target: 75, role: "body / fluent text (floor 75, 90 preferred)" },
+  { label: "muted", token: "--numen-text-muted", target: 60, role: "non-body UI label" },
+  { label: "accent", token: "--numen-accent", target: 45, role: "accent text-on-base (large/heavy)" },
+  { label: "verdict-good", token: "--numen-verdict-good", target: 45, role: "verdict band label (large/heavy)" },
+  { label: "verdict-mixed", token: "--numen-verdict-mixed", target: 45, role: "verdict band label (large/heavy)" },
+  { label: "verdict-bad", token: "--numen-verdict-bad", target: 45, role: "verdict band label (large/heavy)" },
 ];
 
-let failed = false;
-console.log(`APCA contrast gate — all pairings measured on base ${BASE}\n`);
-for (const p of PAIRINGS) {
-  const value = lc(p.text, BASE);
-  const pass = value >= p.target;
-  if (!pass) failed = true;
-  const verdict = pass ? "PASS" : "FAIL";
-  console.log(
-    `  [${verdict}] ${p.label.padEnd(14)} ${p.text} → Lc ${value.toFixed(1).padStart(5)} ` +
-      `(target ≥ ${p.target}) — ${p.role}`,
-  );
+export interface ApcaResult {
+  label: string;
+  hex: string;
+  lc: number;
+  target: number;
+  role: string;
+  pass: boolean;
 }
 
-if (failed) {
-  console.error(
-    "\nAPCA gate FAILED — one or more pairings are below their Lc target. " +
-      "Adjust the failing hex(es) in both this script and `.numen-surface` in globals.css.",
-  );
-  process.exit(1);
+export interface ApcaGateReport {
+  base: string;
+  results: ApcaResult[];
+  passed: boolean;
 }
-console.log("\nAPCA gate passed — every pairing meets its Lc target on the locked palette.");
+
+/**
+ * Run the APCA gate against the LIVE `.numen-surface` hexes in globals.css.
+ * Pure (no process exit / logging) so it is unit-testable; the CLI wrapper at
+ * the bottom handles logging + `process.exit`.
+ */
+export function runApcaGate(cssPath: string = GLOBALS): ApcaGateReport {
+  const block = numenSurfaceBlock(readFileSync(cssPath, "utf8"));
+  const base = tokenValue(block, "--numen-bg");
+  if (!base) {
+    throw new Error("check-apca: could not parse --numen-bg from .numen-surface");
+  }
+
+  const results: ApcaResult[] = PAIRINGS.map((p) => {
+    const hex = tokenValue(block, p.token);
+    if (!hex) {
+      throw new Error(`check-apca: could not parse ${p.token} from .numen-surface`);
+    }
+    const value = lc(hex, base);
+    return {
+      label: p.label,
+      hex,
+      lc: value,
+      target: p.target,
+      role: p.role,
+      pass: value >= p.target,
+    };
+  });
+
+  return { base, results, passed: results.every((r) => r.pass) };
+}
+
+// CLI entrypoint — run the gate, log each pairing, exit non-zero on any failure.
+// Guarded so `import`ing this module (the vitest gate) does NOT exit the process.
+function isCliRun(): boolean {
+  const entry = process.argv[1] ?? "";
+  return entry.includes("check-apca");
+}
+
+if (isCliRun()) {
+  const report = runApcaGate();
+  console.log(`APCA contrast gate — all pairings measured on base ${report.base}\n`);
+  for (const r of report.results) {
+    const verdict = r.pass ? "PASS" : "FAIL";
+    console.log(
+      `  [${verdict}] ${r.label.padEnd(14)} ${r.hex} → Lc ${r.lc.toFixed(1).padStart(5)} ` +
+        `(target ≥ ${r.target}) — ${r.role}`,
+    );
+  }
+  if (!report.passed) {
+    console.error(
+      "\nAPCA gate FAILED — one or more pairings are below their Lc target. " +
+        "Adjust the failing hex(es) in `.numen-surface` in globals.css.",
+    );
+    process.exit(1);
+  }
+  console.log("\nAPCA gate passed — every pairing meets its Lc target on the locked palette.");
+}

@@ -12,6 +12,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "check:apca": "tsx scripts/check-apca.ts",
     "extraction": "npx tsx extraction/scripts/capture-all-session.ts",
     "extraction:auth": "npx playwright test --project=setup --config=extraction/playwright.config.ts",
     "extraction:all": "npx playwright test --project=desktop --config=extraction/playwright.config.ts",
