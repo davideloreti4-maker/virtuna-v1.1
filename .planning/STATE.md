@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Numen Surface
 status: executing
-stopped_at: Phase 01 Plan 01 complete — awaiting Wave 2 execution (Plans 02/03)
-last_updated: "2026-06-11T19:51:00Z"
-last_activity: 2026-06-11 -- Phase 01 Plan 01 (foundation + tokens + palette + serif) completed
+stopped_at: Phase 01 Plans 01 + 05 complete — next = Wave 2 (Plan 02 core primitives + Plan 03 calm motion in parallel)
+last_updated: "2026-06-11T19:59:31.814Z"
+last_activity: 2026-06-11 -- Phase 01 Plan 05 (DS-06 migration boundary doc) completed
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 5
-  completed_plans: 1
-  percent: 4
+  completed_plans: 2
+  percent: 40
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md · Vision (authoritative): .planning/NUMEN-SURFACE-VISION.md · Worktree identity: .planning/MILESTONE.md · Research: .planning/research/SUMMARY.md
 
 **Core value:** AI content intelligence that tells TikTok creators whether their content will resonate — re-presented as one thread per video where the AI's first turn is the Reading (verdict = band + why).
-**Current focus:** Phase 01 — design-system-foundation-brand-migration (Plan 01 done; Plans 02/03 next)
+**Current focus:** Phase 01 — design-system-foundation-brand-migration (Plans 01 + 05 done; Wave 2 Plans 02/03/04 next)
 
 ## Current Position
 
 Phase: 01 (design-system-foundation-brand-migration) — EXECUTING
-Plan: 2 of 5 (Plan 01 complete; Wave 2 unblocked)
+Plan: 2/5 (Plans 01 + 05 complete; Wave 2 = 02/03 unblocked, 04 follows)
 Status: Executing Phase 01
-Last activity: 2026-06-11 -- Plan 01 complete (token layer + APCA palette + serif font)
+Last activity: 2026-06-11 -- Plan 05 complete (DS-06 migration boundary doc; chat dock located via widened grep)
 
-Progress: [█░░░░░░░░░] 4%
+Progress: [████░░░░░░] 40%
 
 ## Performance Metrics
 
@@ -47,6 +47,7 @@ Progress: [█░░░░░░░░░] 4%
 | 01 design-system | 1/5 | 140 min | 140 min |
 
 *Updated after each plan completion*
+| Phase 01 P05 | 10 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -62,6 +63,7 @@ Recent decisions affecting current work:
 - Plan 01: D-11 palette locked (Option B) — muted #bab2a5 (Lc 60.1), verdict-bad #d4866f (Lc 46.7); all other hexes as proposed. APCA gate exits 0.
 - Plan 01: colorParsley not re-exported by apca-w3; use calcAPCA(textHex, bgHex) wrapper in all contrast scripts — accepts hex strings, bundles colorParsley internally.
 - Plan 01: framer-motion retained (D-04 deferral) — 4 OLD files untouched; standardize new code on motion; defer removal to surface-rebuild phases.
+- [Phase ?]: Plan 05 (DS-06): chat dock FOUND via widened grep at command-bar/CommandBar.tsx ('bottom-pinned dock' / unified expert chat panel) — Q8 'absent' caveat resolved; absorbed into thread, owned Phase 4/5.
 
 ### Pending Todos
 
@@ -91,6 +93,6 @@ From Plan 01 execution:
 
 ## Session Continuity
 
-Last session: 2026-06-11T19:51:00Z
+Last session: 2026-06-11T19:59:25.804Z
 Stopped at: Phase 01 Plan 01 complete — next = Plan 02 (core primitives) + Plan 03 (calm motion) in parallel (Wave 2)
-Resume file: .planning/phases/01-design-system-foundation-brand-migration/01-01-SUMMARY.md
+Resume file: None

@@ -41,7 +41,7 @@ Plans:
 **Wave 1**
 
 - [x] 01-01-PLAN.md — Foundation: install gate + Wave-0 tests + APCA script + .numen-surface token layer + palette calibration + serif wiring (DS-01/02/03/04) — DONE 2026-06-11
-- [ ] 01-05-PLAN.md — DS-06 migration boundary: grep inventory + replace/defer boundary doc (DS-06)
+- [x] 01-05-PLAN.md — DS-06 migration boundary: grep inventory + replace/defer boundary doc (DS-06) — DONE 2026-06-11
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -152,7 +152,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Design System Foundation + Brand Migration | 1/5 | In progress | - |
+| 1. Design System Foundation + Brand Migration | 2/5 | In Progress|  |
 | 2. View-Model + Data Contract | 0/TBD | Not started | - |
 | 3. SMOKE GATE + Verdict-Banding Calibration | 0/TBD | Not started | - |
 | 4. Mobile Reading Thread + PWA Shell | 0/TBD | Not started | - |
