@@ -533,9 +533,8 @@ export async function aggregateScores(
   // Plan 03 strip: ruleResult + audioFingerprintResult + trendEnrichment removed from pipeline; use fallback defaults.
   const ruleResult: import("./types").RuleScoreResult = { rule_score: 50, matched_rules: [] };
   const trendEnrichment: TrendEnrichment = { trend_score: 0, matched_trends: [], trend_context: "", hashtag_relevance: 0 };
-  // F43 (01-05): audio_fingerprint dropped from the output contract (stage removed in Plan 03; the
-  // field was always null + had no live consumer + is not persisted). The aggregateScores-scope
-  // audioFingerprintResult const is removed with the emit (its only remaining reference).
+  // Plan 03: audio fingerprint stage removed — the result emits a null audio_fingerprint literal
+  // (see assembly below) and signal_availability.audio_fingerprint is always false.
 
   // -------------------------------------------------
   // Phase 4 D-12 + D-19 (RESEARCH Topic #5 locked interpretation):
@@ -1177,6 +1176,11 @@ export async function aggregateScores(
     // is folded into audio_score (internal) before the weighted sum; consumers
     // who want the perceptual baseline read this field directly.
     audio_perceptual_score,
+    // Phase 6 (D-G1) — fingerprint match record. Always null since the fingerprint stage was
+    // stripped (Plan 03). F43 (01-05) considered dropping it, but it already emits null (honest
+    // absence, NOT a fake number) and has explicit null-lock test coverage — so it stays as a
+    // null passthrough (the F43 prune targets fake CONSTANTS like rule_score:50, not honest nulls).
+    audio_fingerprint: null,
     // Phase 6 (Note 7 / Q4 RESOLVED) — verbatim audio_description for
     // persistence into analysis_results.audio_description (route.ts pluck).
     audio_description,
@@ -1243,9 +1247,10 @@ export async function aggregateScores(
     // the "similar videos" panel without further DB joins (D-02).
     retrieval_score: pipelineResult.retrievalResult.score,
     retrieval_evidence: pipelineResult.retrievalResult.evidence,
-    // F43 (01-05): platform_fit dropped from the output contract (removed from the blend in Plan 04,
-    // module dormanted; always null, no live consumer, not persisted). Field stays optional on the
-    // type for back-compat with old persisted rows; the aggregator no longer emits it.
+    // Plan 04 (R9): platform_fit removed from the blend; module dormanted. Already null (honest
+    // absence) — F43 (01-05) leaves it as a null passthrough rather than dropping the optional
+    // field (the prune targets fake CONSTANTS, not honest nulls).
+    platform_fit: null,
   };
 
   // -------------------------------------------------
