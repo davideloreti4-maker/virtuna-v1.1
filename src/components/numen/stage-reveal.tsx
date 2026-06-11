@@ -47,7 +47,12 @@ export interface StageBlockProps {
  * ```
  */
 export function StageBlock({ show, children }: StageBlockProps) {
-  const reduce = useReducedMotion();
+  // WR-04 / D-14: `useReducedMotion()` returns `null` (unknown) until the media
+  // query resolves on the client — NOT `false`. Treating `null` as falsy would
+  // let a reduced-motion user get a transient slide on the very first paint
+  // before the hook updates. Fail SAFE: only the explicit `false` (motion OK)
+  // enables the translate; `null` (unknown) and `true` both suppress it.
+  const reduce = useReducedMotion() !== false;
 
   return (
     <AnimatePresence>
