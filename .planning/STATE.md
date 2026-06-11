@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Numen Surface
 status: executing
-stopped_at: Phase 01 Plans 01 + 05 + 02 complete — next = Wave 2 Plan 03 (calm motion), then Wave 3 Plan 04 (kit showcase)
-last_updated: "2026-06-11T22:12:00.000Z"
-last_activity: 2026-06-11 -- Phase 01 Plan 02 (DS-05/02 core primitives) completed
+stopped_at: Phase 01 Plan 03 complete (DS-07 StageBlock calm stage-reveal, 2/2 tests green) — next = Wave 3 Plan 04 (kit showcase + serif specimen + deployed-build glass check)
+last_updated: "2026-06-11T20:15:29.445Z"
+last_activity: "2026-06-11 -- Plan 03 complete (DS-07 calm motion: StageBlock opacity tween + high-damping spring, reduced-motion gate, --numen-ease-calm token; 2/2 tests green)"
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 5
-  completed_plans: 3
-  percent: 60
+  completed_plans: 4
+  percent: 80
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md · Vision (authoritative): .planning/NUMEN-SURFACE-VISION.md · Worktree identity: .planning/MILESTONE.md · Research: .planning/research/SUMMARY.md
 
 **Core value:** AI content intelligence that tells TikTok creators whether their content will resonate — re-presented as one thread per video where the AI's first turn is the Reading (verdict = band + why).
-**Current focus:** Phase 01 — design-system-foundation-brand-migration (Plans 01 + 05 done; Wave 2 Plans 02/03/04 next)
+**Current focus:** Phase 01 — design-system-foundation-brand-migration (Plans 01 + 05 + 02 + 03 done; Wave 3 Plan 04 next)
 
 ## Current Position
 
 Phase: 01 (design-system-foundation-brand-migration) — EXECUTING
-Plan: 3/5 (Plans 01 + 05 + 02 complete; Wave 2 Plan 03 next, Wave 3 Plan 04 follows)
+Plan: 4/5 (Plans 01 + 05 + 02 + 03 complete; Wave 3 Plan 04 next)
 Status: Executing Phase 01
-Last activity: 2026-06-11 -- Plan 02 complete (DS-05/02 core primitives: glass/surface/pill-chip/icon-button/verdict-swatch on tailwind-variants; 7/7 tests green)
+Last activity: 2026-06-11 -- Plan 03 complete (DS-07 calm motion: StageBlock opacity tween + high-damping spring 220/30, reduced-motion gate strips translate, --numen-ease-calm token; 2/2 tests green)
 
-Progress: [██████░░░░] 60%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
@@ -49,6 +49,7 @@ Progress: [██████░░░░] 60%
 *Updated after each plan completion*
 | Phase 01 P05 | 10 | 1 tasks | 1 files |
 | Phase 01 P02 | 18 | 2 tasks | 5 files |
+| Phase 01 P03 | 11 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,7 @@ Recent decisions affecting current work:
 - [Phase ?]: Plan 05 (DS-06): chat dock FOUND via widened grep at command-bar/CommandBar.tsx ('bottom-pinned dock' / unified expert chat panel) — Q8 'absent' caveat resolved; absorbed into thread, owned Phase 4/5.
 - Plan 02 (DS-05): kit primitives expose their tailwind-variants `tv()` result as a NAMED export (`surface`/`pillChip`/`iconButton`/`verdictSwatch`) + an ergonomic wrapper component — tests import the tv function directly.
 - Plan 02 (D-05): Glass blur still needs DEPLOYED-build verification (Plan 04); happy-dom/dev don't exercise the Lightning CSS pass. Documented in glass.tsx header.
+- Plan 03 (DS-07): StageBlock = the ONE key motion moment. Opacity tween (ease [0.215,0.61,0.355,1]) + high-damping spring on translate (stiffness 220 / damping 30, ratio ≥ 1 → no overshoot); reduced-motion zeroes the translate → static opacity appear (D-14). New `--numen-ease-calm` token added to `.numen-surface`; forbidden `--ease-spring` (1.56 bounce) byte-unchanged + unreferenced by the kit. No presence theater on other primitives.
 
 ### Pending Todos
 
@@ -96,6 +98,6 @@ From Plan 01 execution:
 
 ## Session Continuity
 
-Last session: 2026-06-11T22:12:00.000Z
-Stopped at: Phase 01 Plan 02 complete (DS-05/02 core primitives, 7/7 tests green) — next = Wave 2 Plan 03 (calm motion / StageBlock), then Wave 3 Plan 04 (kit showcase + deployed-build glass check)
+Last session: 2026-06-11T20:15:29.439Z
+Stopped at: Phase 01 Plan 03 complete (DS-07 StageBlock calm stage-reveal, 2/2 tests green) — next = Wave 3 Plan 04 (kit showcase + serif specimen + deployed-build glass check)
 Resume file: None

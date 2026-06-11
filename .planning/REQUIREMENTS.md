@@ -11,7 +11,7 @@
 - [ ] **DS-04**: Sans-led type system with serif reserved for voice moments (greeting/hero + the verdict line)
 - [x] **DS-05**: Component vocabulary — full-pill tool chips, circular icon buttons, hairline warm borders, soft elevation, glass restricted to ephemeral elements (composer, tool sheet); backdrop-filter via inline style not class (Lightning CSS strips it)
 - [x] **DS-06**: Migration boundary — inventory + retire Raycast GlassPanel-everywhere, scattered hardcoded coral, fake macOS window chrome, **and the chat dock** (absorbed into the thread); ground-up kit, not a retheme of the 36 components
-- [ ] **DS-07**: Calm motion system (soft, never bouncy/snappy); the stage-reveal is the key motion moment
+- [x] **DS-07**: Calm motion system (soft, never bouncy/snappy); the stage-reveal is the key motion moment
 - [ ] **DS-08**: Keyframes ARE the imagery/chroma (load-bearing §6 principle) — the user's video stills are the only atmosphere (hero, accents, empty states); warm-neutral chrome recedes so the (often cool) content + verdict carry all the color and energy
 
 ### DATA — Data Contract / View-Model (ENG-06 D-12)
@@ -97,7 +97,7 @@
 | DS-04 | Phase 1 | Pending |
 | DS-05 | Phase 1 | Complete |
 | DS-06 | Phase 1 | Complete |
-| DS-07 | Phase 1 | Pending |
+| DS-07 | Phase 1 | Complete |
 | DS-08 | Phase 1 | Pending |
 | DATA-01 | Phase 2 | Pending |
 | DATA-02 | Phase 2 | Pending |

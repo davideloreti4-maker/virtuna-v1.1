@@ -46,7 +46,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 01-02-PLAN.md — Core primitives: glass (inline backdrop), surface, pill-chip, icon-button, verdict-swatch on tailwind-variants (DS-05/02) — DONE 2026-06-11
-- [ ] 01-03-PLAN.md — Calm motion: StageBlock stage-reveal + reduced-motion + new calm easing token (DS-07)
+- [x] 01-03-PLAN.md — Calm motion: StageBlock stage-reveal + reduced-motion + new calm easing token (DS-07) — DONE 2026-06-11
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -152,7 +152,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Design System Foundation + Brand Migration | 3/5 | In Progress|  |
+| 1. Design System Foundation + Brand Migration | 4/5 | In Progress|  |
 | 2. View-Model + Data Contract | 0/TBD | Not started | - |
 | 3. SMOKE GATE + Verdict-Banding Calibration | 0/TBD | Not started | - |
 | 4. Mobile Reading Thread + PWA Shell | 0/TBD | Not started | - |
