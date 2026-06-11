@@ -63,10 +63,10 @@ describe("Numen kit showcase a11y", () => {
     expect(keyframe).not.toBeNull();
     expect(keyframe!.getAttribute("alt")).toBeTruthy();
 
-    // A near-neutral chrome container (bg-panel + border-border) sits adjacent
-    // to the keyframe (same flex row → shares the keyframe's parent).
+    // A near-neutral chrome container (bg-numen-panel + border-numen-border) sits
+    // adjacent to the keyframe (same flex row → shares the keyframe's parent).
     const row = keyframe!.parentElement!;
-    const chrome = row.querySelector(".bg-panel.border-border");
+    const chrome = row.querySelector(".bg-numen-panel.border-numen-border");
     expect(chrome).not.toBeNull();
 
     // The chrome is a SIBLING of the keyframe (adjacent), not the keyframe itself.

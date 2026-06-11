@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
  * Verify the blur actually renders on a DEPLOYED build (Plan 04) — happy-dom and
  * dev builds do not exercise the Lightning CSS pass.
  *
- * Warm-neutral tokens only (`bg-panel/70`, `border-border`) — no Raycast 137deg
+ * Warm-neutral tokens only (`bg-numen-panel/70`, `border-numen-border`) — no Raycast 137deg
  * gradient, no inset glow, no neon/beam/shimmer (D-07).
  */
 export interface GlassProps {
@@ -42,7 +42,7 @@ export function Glass({
 }: GlassProps) {
   return (
     <Component
-      className={cn("rounded-[12px] border border-border bg-panel/70", className)}
+      className={cn("rounded-[12px] border border-numen-border bg-numen-panel/70", className)}
       style={{
         backdropFilter: `blur(${blur}px)`,
         WebkitBackdropFilter: `blur(${blur}px)`,

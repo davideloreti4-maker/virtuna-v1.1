@@ -25,13 +25,13 @@ export function KitStageDemo() {
       </div>
       <StageBlock show={show}>
         <Surface className="p-6">
-          <p className="text-base text-text">
+          <p className="text-base text-numen-text">
             This block materialized with a calm reveal — opacity tween plus a
             high-damping spring, no overshoot.
           </p>
         </Surface>
       </StageBlock>
-      <p className="text-sm text-text-muted">
+      <p className="text-sm text-numen-text-muted">
         Toggle OS reduced-motion: the reveal becomes a static appear with no
         slide.
       </p>

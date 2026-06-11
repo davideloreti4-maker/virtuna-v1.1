@@ -74,7 +74,50 @@ describe("numen token layer — globals.css source rules (DS-01 / D-03)", () => 
 
   it("bridges tokens through a @theme inline block (Pitfall 1 — inline is load-bearing)", () => {
     expect(css).toMatch(/@theme\s+inline\b/);
-    expect(css).toMatch(/--color-bg:\s*var\(--numen-bg\)/);
+    expect(css).toMatch(/--color-numen-bg:\s*var\(--numen-bg\)/);
+  });
+
+  it("CR-01: numen bridge namespaces EVERY color key as --color-numen-* (no bare global keys)", () => {
+    // The numen @theme inline block must only emit `--color-numen-*` keys — never
+    // the bare `--color-bg`/`--color-text`/`--color-accent`/`--color-border` that
+    // would collide with (or claim) global Tailwind utility keys.
+    const numenBridge = css.match(/@theme\s+inline\s*\{[^}]*--color-numen-bg[^}]*\}/);
+    expect(numenBridge).not.toBeNull();
+    const bridge = numenBridge![0];
+    for (const key of [
+      "--color-numen-bg",
+      "--color-numen-panel",
+      "--color-numen-panel-2",
+      "--color-numen-text",
+      "--color-numen-text-muted",
+      "--color-numen-accent",
+      "--color-numen-verdict-good",
+      "--color-numen-verdict-mixed",
+      "--color-numen-verdict-bad",
+      "--color-numen-border",
+    ]) {
+      expect(bridge).toContain(key);
+    }
+    // No bare (un-namespaced) color key may appear in the numen bridge.
+    expect(/--color-bg\b/.test(bridge)).toBe(false);
+    expect(/--color-text\b/.test(bridge)).toBe(false);
+    expect(/--color-accent\b/.test(bridge)).toBe(false);
+    expect(/--color-border\b/.test(bridge)).toBe(false);
+  });
+
+  it("CR-01: the numen layer does NOT redefine the legacy --color-accent / --color-border keys (D-01)", () => {
+    // The legacy coral @theme owns these utility keys. The numen layer must leave
+    // them untouched so `bg-accent` / `border-border` stay coral / 6% app-wide.
+    // Each must be defined EXACTLY ONCE (the legacy block), never bridged to
+    // var(--numen-*) (which would be undefined outside .numen-surface).
+    const accentDefs = css.match(/--color-accent:\s*[^;]+;/g) ?? [];
+    const borderDefs = css.match(/--color-border:\s*[^;]+;/g) ?? [];
+    expect(accentDefs).toHaveLength(1);
+    expect(borderDefs).toHaveLength(1);
+    expect(accentDefs[0]).toContain("var(--color-coral-500)");
+    expect(borderDefs[0]).toContain("rgba(255, 255, 255, 0.06)");
+    expect(accentDefs[0]).not.toContain("numen");
+    expect(borderDefs[0]).not.toContain("numen");
   });
 
   it("does NOT carry the forbidden coral/gradient/shimmer keyframes into the scope block (D-07)", () => {

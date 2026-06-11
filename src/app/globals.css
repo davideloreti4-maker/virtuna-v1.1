@@ -374,19 +374,28 @@ body {
 
 /* Bridge the scoped custom properties to Tailwind's utility namespace.
  * `inline` is LOAD-BEARING (Pitfall 1): a plain `@theme {}` would resolve
- * `var(--numen-bg)` at :root — where it is undefined — making `bg-bg` empty
- * under the scope. `@theme inline` emits the value so it resolves at the usage
- * site, where `.numen-surface` has overridden it. */
+ * `var(--numen-bg)` at :root — where it is undefined — making `bg-numen-bg`
+ * empty under the scope. `@theme inline` emits the value so it resolves at the
+ * usage site, where `.numen-surface` has overridden it.
+ *
+ * CR-01: every color key is `--color-numen-*` namespaced (yielding `bg-numen-bg`,
+ * `text-numen-text`, `bg-numen-accent`, `border-numen-border`, etc.) so this
+ * PARALLEL layer NEVER redefines the legacy coral `@theme` keys (`--color-accent`,
+ * `--color-border`). Tailwind v4 merges all `@theme` blocks last-wins into one
+ * global registry; sharing a key would override `bg-accent`/`border-border`
+ * app-wide to a `var(--numen-*)` that is undefined outside `.numen-surface` —
+ * breaking the live coral app (D-01 violation). The `.numen-surface` scope CLASS
+ * name is unchanged; only the token UTILITY keys carry the `numen-` prefix. */
 @theme inline {
-  --color-bg:            var(--numen-bg);
-  --color-panel:         var(--numen-panel);
-  --color-panel-2:       var(--numen-panel-2);
-  --color-text:          var(--numen-text);
-  --color-text-muted:    var(--numen-text-muted);
-  --color-accent:        var(--numen-accent);
-  --color-verdict-good:  var(--numen-verdict-good);
-  --color-verdict-mixed: var(--numen-verdict-mixed);
-  --color-verdict-bad:   var(--numen-verdict-bad);
-  --color-border:        var(--numen-border);
-  --font-serif:          var(--font-serif);    /* value supplied by next/font in Task 5 */
+  --color-numen-bg:            var(--numen-bg);
+  --color-numen-panel:         var(--numen-panel);
+  --color-numen-panel-2:       var(--numen-panel-2);
+  --color-numen-text:          var(--numen-text);
+  --color-numen-text-muted:    var(--numen-text-muted);
+  --color-numen-accent:        var(--numen-accent);
+  --color-numen-verdict-good:  var(--numen-verdict-good);
+  --color-numen-verdict-mixed: var(--numen-verdict-mixed);
+  --color-numen-verdict-bad:   var(--numen-verdict-bad);
+  --color-numen-border:        var(--numen-border);
+  --font-serif:                var(--font-serif);    /* value supplied by next/font in Task 5 */
 }

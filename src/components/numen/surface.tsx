@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
  * Surface — the DEFAULT hairline-border container of the Numen kit.
  *
  * A plain `<div>` (no glass, no blur) with a warm hairline border
- * (`border-border`), `bg-panel` fill, 12px radius, and a SOFT low-opacity
+ * (`border-numen-border`), `bg-numen-panel` fill, 12px radius, and a SOFT low-opacity
  * elevation shadow — NOT the Raycast `rgba(255,255,255,0.15) inset` glow (D-07).
  *
  * This is what cards and panels use; reserve `<Glass>` for the rare
@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
  * the caller `className` is still merged through `cn()` so external overrides win.
  */
 export const surface = tv({
-  base: "rounded-[12px] border border-border bg-panel shadow-[0_1px_2px_0_rgba(0,0,0,0.24),0_2px_8px_-2px_rgba(0,0,0,0.20)]",
+  base: "rounded-[12px] border border-numen-border bg-numen-panel shadow-[0_1px_2px_0_rgba(0,0,0,0.24),0_2px_8px_-2px_rgba(0,0,0,0.20)]",
 });
 
 export interface SurfaceProps {

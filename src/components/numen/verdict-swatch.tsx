@@ -19,12 +19,12 @@ import { cn } from "@/lib/utils";
  * (validated by scripts/check-apca.ts from Plan 01).
  */
 export const verdictSwatch = tv({
-  base: "inline-flex items-center justify-center rounded-[8px] border border-border",
+  base: "inline-flex items-center justify-center rounded-[8px] border border-numen-border",
   variants: {
     verdict: {
-      good: "bg-verdict-good",
-      mixed: "bg-verdict-mixed",
-      bad: "bg-verdict-bad",
+      good: "bg-numen-verdict-good",
+      mixed: "bg-numen-verdict-mixed",
+      bad: "bg-numen-verdict-bad",
     },
     size: {
       sm: "size-4",
