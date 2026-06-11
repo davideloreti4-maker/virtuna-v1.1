@@ -90,10 +90,13 @@ async function runVariant(ai: any, v: any, slots: any, segments: any, verbatim: 
   const inTok = usage.prompt_tokens ?? 0, outTok = usage.completion_tokens ?? 0;
   // omni-plus pricing ~$0.4 in / $2.2? we just report tokens; cost varies by model — report both raw.
   const rawText = res.choices[0]?.message?.content ?? "{}";
-  // Strip markdown fences (omni-flash wraps JSON in ```json; omni-plus doesn't).
-  const fenced = rawText.match(/```(?:json)?\n?([\s\S]*?)\n?```/);
-  const text = (fenced ? fenced[1]! : rawText).trim();
-  const wasFenced = !!fenced;
+  // ROBUST strip: omni-flash emits inconsistent wrappers (full ```json fences, OR a
+  // stray trailing ``` with no opener). Remove ALL fence markers, then slice to the
+  // outermost { … } so a leading/trailing stray char can't break JSON.parse.
+  const wasFenced = /```/.test(rawText);
+  let text = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
+  const lo = text.indexOf("{"), hi = text.lastIndexOf("}");
+  if (lo >= 0 && hi > lo) text = text.slice(lo, hi + 1);
   let parsed: any;
   try { parsed = JSON.parse(text); } catch {
     console.log(`\n  [raw dump] ${v.model} output: ${text.length} chars, finish_reason=${res.choices[0]?.finish_reason}`);
