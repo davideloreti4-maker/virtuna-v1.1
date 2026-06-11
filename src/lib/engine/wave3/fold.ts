@@ -61,19 +61,29 @@ const FOLD_THINKING_BUDGET = Number(process.env.FOLD_THINKING_BUDGET) || 1000;
 // N-segment numeric output and buys headroom against the thin 90s timeout. Override
 // via env if a long video truncates (→ Zod fail → graceful deepseek fallback).
 const FOLD_MAX_TOKENS = Number(process.env.FOLD_MAX_TOKENS) || 4000;
-// Sense-complete fold (2026-06-06): the fold runs on qwen3.5-omni-plus and WATCHES the
-// video directly (video+audio). Why: the fold simulates moment-to-moment viewer attention,
-// which is driven by what's seen AND heard — only an omni model has both senses. Spike
-// (scripts/fold-vision-spike.ts) ruled out omni-flash (curves collapse to ~0.0 — perception
-// without enough reasoning) and 3.6-plus (same diversity but ~87s — too slow, and deaf);
-// omni-plus held diversity (~0.35) at ~42s with native audio. Escape hatches:
-//   FOLD_MODEL=plus   → qwen3.6-plus reasoning model (deaf, ~88s — diagnostic only)
-//   FOLD_MODEL=flash  → qwen3.6-flash (the deaf+blind text fold — pre-2026-06-06 default)
-//   FOLD_THINKING=1   → enable_thinking + thinking_budget (omni does not think — no-op unless FOLD_MODEL=plus)
+// Sense-complete fold: the fold runs on an OMNI model and WATCHES the video directly
+// (video+audio) — it simulates moment-to-moment viewer attention, driven by what's seen
+// AND heard, and only omni hears.
+// DEFAULT FLIPPED omni-plus → omni-FLASH 2026-06-11 (harness A/B, scripts/fold-audio-ab.ts,
+// 2 clean videos: 29s comedy + 13s booth): omni-flash is 5–6× FASTER (8s vs 40–52s on the
+// gating call) + ~3.5× cheaper, with diversity tracking omni-plus within ±0.04 (0.27–0.41,
+// PASS) and audio retained. The OLD fold-vision-spike claim that omni-flash "collapses to
+// ~0.0" did NOT reproduce on the current prompt — it was the bare-JSON.parse bug (omni-flash
+// wraps output in fences / a stray trailing ```), now fixed via stripModelOutput above.
+// Drop-off-moment fidelity vs omni-plus diverged on 1 video, but is unprovable either way
+// without retention ground truth (deferred outcome model). DEFERRED (noted, not built):
+// persona-split into 2 calls + a segment cap for long-video output robustness (a 79s video
+// → ~20 segments → fold output may exceed FOLD_MAX_TOKENS; revisit if a long video truncates).
+// Escape hatches:
+//   FOLD_MODEL=omni-plus → qwen3.5-omni-plus (the pre-2026-06-11 sense-complete default — ROLLBACK)
+//   FOLD_MODEL=plus      → qwen3.6-plus reasoning model (deaf, ~88s — diagnostic only)
+//   FOLD_MODEL=flash     → qwen3.6-flash (the deaf+blind text fold — pre-2026-06-06 default)
+//   FOLD_THINKING=1      → enable_thinking + thinking_budget (omni does not think — no-op unless FOLD_MODEL=plus)
 const FOLD_MODEL =
-  process.env.FOLD_MODEL === "plus"  ? QWEN_REASONING_MODEL
-  : process.env.FOLD_MODEL === "flash" ? QWEN_FAST_MODEL
-  : (process.env.FOLD_MODEL ?? "qwen3.5-omni-plus");
+  process.env.FOLD_MODEL === "plus"      ? QWEN_REASONING_MODEL
+  : process.env.FOLD_MODEL === "flash"   ? QWEN_FAST_MODEL
+  : process.env.FOLD_MODEL === "omni-plus" ? "qwen3.5-omni-plus"
+  : (process.env.FOLD_MODEL ?? "qwen3.5-omni-flash");
 const FOLD_USE_THINKING = process.env.FOLD_THINKING === "1";
 const COST_ALERT_THRESHOLD_CENTS = 50; // D-24 pattern from pass2.ts
 

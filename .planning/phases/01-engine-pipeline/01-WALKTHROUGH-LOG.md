@@ -345,3 +345,35 @@ Apollo the fields that demonstrably move the assessment. Pair the onboarding tri
 the ENG-06 "which fields does Apollo actually use" audit so we cut collection AND prompt
 bloat from the same evidence. (Onboarding UX likely Phase 5 / separate; engine-side
 field prune is ENG-06 here.)
+
+## Model decisions + new read flags (2026-06-11, mvp-ready session)
+
+Three model A/Bs run via faithful harnesses (scripts/apollo-cite-harness.ts, fold-audio-ab.ts):
+
+- **Apollo qwen3.6-plus → qwen3.7-plus (SHIPPED, 3.15.0).** Faster (46–50s vs 64s) + cheaper
+  (output $1.6 vs $2.4/M) at identical insight/§-cites/prose-discipline. Scoped via new
+  QWEN_APOLLO_MODEL (chat/decode/adapt/text-mode stay on 3.6-plus). 3.7-plus deaf, but Apollo
+  already was → no loss.
+- **Fold qwen3.5-omni-plus → qwen3.5-omni-flash (SHIPPED, 3.16.0).** 2 clean videos: flash 5–6×
+  faster on the gating call (8s vs 40–52s) + ~3.5× cheaper, diversity tracks plus ±0.04 (0.27–
+  0.41, no collapse), audio retained. Old fold-vision-spike "collapse to ~0.0" was the bare-
+  JSON.parse bug (flash fences output), now fixed via stripModelOutput in runFold. Rollback:
+  FOLD_MODEL=omni-plus. omni-plus now has GA pricing ($1.4/$8.3) — no longer free.
+- **3.7-plus REJECTED for fold:** deaf + 65s on the gating call. **Reduce 10→5 personas REJECTED:**
+  cuts the who-stays/leaves hero output. **DEFERRED (noted, not built):** persona-split into 2
+  flash calls + a fold SEGMENT cap (~12–15) for long-video output robustness — a 79s video →
+  ~20 segments → fold output may exceed FOLD_MAX_TOKENS=4000.
+
+### F46 — Read returns null on speech-derived fields for NO-SPEECH videos (HIGH — ENG-05/F9, 01-02)
+Ashton Hall video (79s, no talking) → omni read attempt-0 Zod fail: `hook_decomposition.
+first_words_speech_score` = null on a required-NUMBER field → whole read rejected. On speechless
+content (b-roll, music-only, ASMR) speech-derived fields are LEGITIMATELY null. Fix (01-02 F9):
+make speech-derived fields nullable (D-A2 already nulls audio fields for slideshow/b_roll/action —
+extend to hook_decomposition speech scores) OR bounded retry/degrade. Pairs with F16 (audio min(10)).
+
+### F47 — Read output TRUNCATES on long videos (MEDIUM — ENG-05/latency, 01-02)
+Same 79s video → omni read attempt-1 truncated JSON ("…End of vid" → SyntaxError). OMNI_MAX_TOKENS=0
+(we set no cap) → DashScope's low default output limit truncates a long video's larger output
+(more segments + longer transcript/emotion_arc). stripModelOutput can't salvage a mid-JSON cut.
+Fix (01-02): set a sane OMNI_MAX_TOKENS for the read; bound segment count so long-video output
+stays under budget (also protects the flash fold — same root cause).

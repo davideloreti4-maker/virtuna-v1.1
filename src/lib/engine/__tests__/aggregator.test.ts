@@ -483,7 +483,7 @@ describe("Phase 3 — provenance + stub invocations", () => {
     const { ENGINE_VERSION } = await import("../aggregator");
     const { ENGINE_VERSION: viaVersion } = await import("../version");
     expect(ENGINE_VERSION).toBe(viaVersion);
-    expect(ENGINE_VERSION).toBe("3.15.0"); // Apollo model flip → qwen3.7-plus (scoped QWEN_APOLLO_MODEL)
+    expect(ENGINE_VERSION).toBe("3.16.0"); // fold model flip → qwen3.5-omni-flash
   });
 
   it("PredictionResult.engine_version reads from ./version module", async () => {

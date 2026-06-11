@@ -80,7 +80,15 @@
  * (sense-complete + free in preview + fastest; omni-flash rejected — malformed JSON + collapsed
  * curves; 3.7-plus rejected for fold — deaf + 65s on the gating call).
  *
+ * Bumped 3.15.0 → 3.16.0 (2026-06-11, fold model flip — harness A/B): the fold (audience-sim)
+ * moved qwen3.5-omni-plus → qwen3.5-omni-FLASH (default; FOLD_MODEL=omni-plus rolls back). A/B on
+ * 2 clean videos: flash is 5–6× faster on the gating call (8s vs 40–52s) + ~3.5× cheaper, with
+ * diversity tracking plus within ±0.04 (no collapse — the old spike's collapse was the bare-
+ * JSON.parse bug, fixed via stripModelOutput in runFold). Both stay omni → audio retained. The
+ * behavioral/audience term feeds 0.5 of overall_score on video, so scores shift across the model
+ * boundary; isolate the cache. Deferred (noted): persona-split + segment cap for long-video output.
+ *
  * D-23 cache invariant: prediction-cache.ts keys on ENGINE_VERSION; this bump auto-invalidates
- * all `3.14.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
+ * all `3.15.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
  */
-export const ENGINE_VERSION = "3.15.0";
+export const ENGINE_VERSION = "3.16.0";
