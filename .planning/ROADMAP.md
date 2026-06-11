@@ -30,10 +30,10 @@ A **brownfield refinement pass**. The platform already ships end-to-end; this mi
   4. Latency stays under the Vercel cap and trends toward the <90s E2E goal where free-tier allows
   5. omni-flash drift is hardened (emotion_arc.label, weakest_modality, verbatim hook/segments hold across runs) and Qwen prompt I/O is reviewed for quality and token efficiency
 **Plans**: 5 plans
-- [ ] 01-01-PLAN.md — ENG-02 §-grounding: apollo-core-smoke audit -> restore/remap/redesign co-review -> engine-side honesty fix
-- [ ] 01-02-PLAN.md — ENG-05 read-model re-audit (flash vs plus A/B) co-review + D-11 critical-field retry + drift logging
-- [ ] 01-03-PLAN.md — ENG-06 step-by-step prompt I/O co-review (3 calls) + T3.x trim audit + consumed-vs-dead field map prune/tighten
-- [ ] 01-04-PLAN.md — ENG-04/06 coupled aggregator set: audit + co-review (Stage-10 fate / verdict_line) → F22/F44 confidence apollo-vs-fold + F24 drop + F34 + hero block (F37/F41) + persist (F42) + version bump
+- [x] 01-01-PLAN.md — ENG-02 §-grounding: apollo-core-smoke audit -> restore/remap/redesign co-review -> engine-side honesty fix
+- [x] 01-02-PLAN.md — ENG-05 read-model re-audit (flash vs plus A/B) co-review + D-11 critical-field retry + drift logging
+- [x] 01-03-PLAN.md — ENG-06 step-by-step prompt I/O co-review (3 calls) + T3.x trim audit + consumed-vs-dead field map prune/tighten
+- [x] 01-04-PLAN.md — ENG-04/06 coupled aggregator set: audit + co-review (Stage-10 fate / verdict_line) → F22/F44 confidence apollo-vs-fold + F24 drop + F34 + hero block (F37/F41) + persist (F42) + version bump
 - [ ] 01-05-PLAN.md — ENG-01/03/04/06 closeout: F7 race + fold robustness (F18/F20/F19) + partial_analysis + dead-tail prune (F12/F35/F43) + E2E verify + honesty LOCK + latency reclaim
 
 ### Phase 2: Board / Test Mode
@@ -90,7 +90,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Engine Pipeline | 0/5 | Not started | - |
+| 1. Engine Pipeline | 4/5 | In Progress|  |
 | 2. Board / Test Mode | 0/TBD | Not started | - |
 | 3. Board / Remix Mode | 0/TBD | Not started | - |
 | 4. Chat Feature | 0/TBD | Not started | - |

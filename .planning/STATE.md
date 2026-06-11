@@ -3,15 +3,14 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: MVP Ready
 status: executing
-stopped_at: 01-04 RESCOPED + new 01-05 written (plan-checker PASSED); ready to execute wave 4 → wave 5. 01-03 chunk B (ENG-06/D-12) still open.
-last_updated: "2026-06-11T13:50:00.000Z"
-last_activity: 2026-06-11 -- rescoped 01-04 (coupled set) + split out 01-05 (robustness/closeout); plan-checker PASSED after ENG-06 frontmatter fix
+last_updated: "2026-06-11T14:20:00.000Z"
+last_activity: 2026-06-11 -- 01-04 SHIPPED (coupled aggregator closeout, 3.18.0); 01-05 next
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 5
-  completed_plans: 2
-  percent: 18
+  completed_plans: 4
+  percent: 80
 ---
 
 # Project State
@@ -26,15 +25,15 @@ See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Roadm
 ## Current Position
 
 Phase: 01 (engine-pipeline) — EXECUTING
-Plan: 01-01 ✓ · 01-02 ✓ · 01-03 PARTIAL (D-R1 + F26 done; chunk B / ENG-06 pending) · 01-04 + 01-05 PLANNED (checker PASSED) — next: /gsd-execute-phase 1
+Plan: 01-01 ✓ · 01-02 ✓ · 01-03 PARTIAL (chunk B / ENG-06 pending) · 01-04 ✓ (SHIPPED 01b08752) · 01-05 next (wave 5)
 Status: Executing Phase 01
-Last activity: 2026-06-11 -- rescoped 01-04 + split 01-05; plan-checker PASSED
+Last activity: 2026-06-11 -- 01-04 coupled aggregator closeout SHIPPED (3.18.0)
 
-01-04 (wave 4, coupled set): F22/F44 confidence apollo-vs-fold · F24 drop component_scores on video · F34 Stage-10 rebase/retire · F37/F41 hero block {verdict_line,ceiling,the_one_fix,go_no_go,post_window} · F42 persist hero into variants JSONB (NO migration) · ENGINE_VERSION → 3.18.0. requirements [ENG-04].
-01-05 (wave 5, depends 01-04): F18/F20/F19 fold robustness + partial_analysis single-signal honesty · F12/F35/F43 dead-tail prune (gated on safety-list confirm) · F7 rehost delete race · ENG-04 honesty LOCK tests · ENG-03 latency measure/reclaim · ENGINE_VERSION → 3.19.0. requirements [ENG-01,ENG-03,ENG-04].
+01-04 ✓ SHIPPED (commit 01b08752, ENGINE_VERSION 3.18.0): F22/F44 confidence rebased apollo-vs-FOLD (self-agreement dead; falls back to apollo-vs-behavioral when fold off) · F24 component_scores dropped on video (feature_vector fields null on video; behavioral_score unchanged; live board verified unaffected — impact-score path is dead/unmounted) · F34 Stage-10 Check #1 DROPPED, #2/#3/#4 kept (co-review: 3 checks live, dropping #1 avoids double-count w/ F22) · F37/F41 hero block assembled from Apollo materials (verdict_line reuses board bandLabel) · F42 hero persisted to variants.hero (no migration). 83 targeted + 1903 full tests green; tsc baseline (12). requirements [ENG-04].
+01-05 (wave 5, depends 01-04 ✓): F18/F20/F19 fold robustness + partial_analysis single-signal honesty · F12/F35/F43 dead-tail prune (gated on safety-list confirm) · F7 rehost delete race · ENG-04 honesty LOCK tests · ENG-03 latency measure/reclaim · ENGINE_VERSION → 3.19.0. **Owns the DEFERRED live phase-gate rig run + F42 permalink-reload UAT** (Davide-authenticated). requirements [ENG-01,ENG-03,ENG-04].
 ENG-06 (D-12 deep 3-call prompt I/O co-review = "chunk B") deliberately OUT of 01-04/05 — its own owning open plan, must land before phase close.
 
-Progress: [██░░░░░░░░] ~18%
+Progress: [████████░░] ~80% (4/5 plans; 01-05 + ENG-06 chunk B remain)
 
 ## Phases
 
@@ -92,14 +91,17 @@ Bookkeeping orphans / superseded flags, not live work. v4.0 shipped to main with
 Last session: 2026-06-11 (pt 2) — 01-02 read robustness + D-R1 (Read→pure sensor) + F26 shipped & pushed.
 
 SHIPPED & PUSHED this session (origin/milestone/mvp-ready, all green — 1073 engine/board tests):
+
 - `5707b6f1` **01-02 read robustness** — F46 (nullable speech fields → no-speech videos read) +
   F47 (OMNI_MAX_TOKENS=8000 truncation guard) + F9 (critical-field bounded retry + read_drift
   telemetry) + F16 (audio_description min 10→1). NO version bump (acceptance-widening). NOT
   live-verified — UAT was auth-blocked; Ashton Hall 79s no-speech clip is the F46/F47 repro.
+
 - `6595ec96` **D-R1 Read→pure sensor (ENGINE_VERSION 3.17.0)** — atomic across read prompt+assembly,
   schemas (.optional()), deepseek formatGeminiSignals (rebuilt = RICH perception skeleton), gemini_score
   (number|null, null on video), stage10 (skip on null), eval-runner, impact-score board prop. Decisions:
   rich skeleton · stop-compute/keep-column-nullable · D-R1-first. See [[dr1-read-pure-sensor-coordinated]].
+
 - `fe74635f` **F26** — stop asking Apollo for composite_score (rubric-sum overwrites it). No bump.
 
 Resume files (READ FIRST): **.planning/phases/01-engine-pipeline/01-03-SUMMARY.md** (what's done +
@@ -121,6 +123,7 @@ Milestone rule (binding): human-in-the-loop everywhere (D-00) — audit→discus
 accuracy over speed, surface decisions + Qwen I/O. NO autonomous fire-and-forget. See [[mvp-ready-human-in-loop]].
 
 Ops notes:
+
 - DashScope hit a 429 quota cap earlier — check Alibaba Model Studio billing if live calls fail.
 - /analyze is login-gated ((app)/layout.tsx getUser→/login) — live UAT needs Davide to authenticate; can't drive it solo.
 - Stop-hook auto-commits a `chore(auto-wip)` checkpoint + post-commit auto-pushes — commit own work with a REAL message promptly (see [[git-autocommit-during-merge]]).
