@@ -32,7 +32,13 @@ Milestone-scoped numbering (fresh worktree, `--reset-phase-numbers`): phases sta
   3. The component vocabulary (full-pill tool chips, circular icon buttons, hairline warm borders, soft elevation) and a glass primitive (backdrop-filter via inline style, not class) render correctly without Lightning CSS stripping the blur
   4. Type system shows sans for body and serif reserved for voice moments (greeting/hero + verdict line); calm motion (no bounce/snap) on the key reveal; keyframe stills carry the chroma while warm-neutral chrome recedes
   5. A documented migration boundary exists: a grep audit of hardcoded `#07080a` / `#FF7F50` / Raycast GlassPanel / fake macOS chrome / chat dock, with a decision of what v5.0 replaces vs defers
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+- [ ] 01-01-PLAN.md — Foundation: install gate + Wave-0 tests + APCA script + .numen-surface token layer + palette calibration + serif wiring (DS-01/02/03/04)
+- [ ] 01-02-PLAN.md — Core primitives: glass (inline backdrop), surface, pill-chip, icon-button, verdict-swatch on tailwind-variants (DS-05/02)
+- [ ] 01-03-PLAN.md — Calm motion: StageBlock stage-reveal + reduced-motion + new calm easing token (DS-07)
+- [ ] 01-04-PLAN.md — Kit showcase route + serif specimen + keyframe-chroma + deployed-build verification (DS-04/05/07/08)
+- [ ] 01-05-PLAN.md — DS-06 migration boundary: grep inventory + replace/defer boundary doc (DS-06)
 **UI hint**: yes
 
 ### Phase 2: View-Model + Data Contract (ENG-06 D-12)
@@ -115,7 +121,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Design System Foundation + Brand Migration | 0/TBD | Not started | - |
+| 1. Design System Foundation + Brand Migration | 0/5 | Not started | - |
 | 2. View-Model + Data Contract | 0/TBD | Not started | - |
 | 3. SMOKE GATE + Verdict-Banding Calibration | 0/TBD | Not started | - |
 | 4. Mobile Reading Thread + PWA Shell | 0/TBD | Not started | - |
