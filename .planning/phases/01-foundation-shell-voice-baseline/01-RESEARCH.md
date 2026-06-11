@@ -273,19 +273,18 @@ Minimal correct Next 16 object — title + description suffice for Phase 1; OG/t
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
-| A1 | Removing legacy `bg-background`/`font-sans` from root `<body>` (or adding `numen-surface` alongside) won't break untouched dev/showcase routes | Architecture / Code Examples | LOW — those routes use their own token scopes (`bg-bg-base`, Raycast `@theme`); but verify on dev server before committing. Mitigation: keep both classes coexisting on body if unsure. |
-| A2 | D-02's literal "the `(marketing)` layout mounts `<body className=numen-surface>`" is satisfied by mounting on the ROOT body (mechanically the only legal place) | dual-html resolution | LOW — intent is clearly "the landing renders under the scope"; flag to user only if strict file-location compliance is required. |
+| A1 | MOOT under Option B: the root `<body>` is NOT modified this phase, so dev/showcase routes cannot regress. `.numen-surface` is contained to the marketing wrapper `<div>`. | Architecture / Open Questions | NONE — no root-body change ships. |
+| A2 | RESOLVED (Option B, user decision): D-02 is satisfied by mounting `.numen-surface` on a wrapper `<div>` INSIDE `(marketing)/layout.tsx`, NOT on the root `<body>`. The root body is untouched. | dual-html resolution / Open Questions | NONE — superseded by the user's Option B decision; see Open Questions (RESOLVED) Q1. |
 | A3 | Phase 1 needs no `motion`/StageBlock usage (MOT-02 = rhythm only) | Stack / Discretion | LOW — CONTEXT explicitly scopes MOT-01 reveals to Phase 4. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Root vs marketing body class placement (D-02 literal wording).**
-   - What we know: Next 16 allows only one html/body, in root layout. D-02 says marketing layout mounts the body class.
-   - What's unclear: whether the user wants strict file-level compliance or just "renders under scope."
-   - Recommendation: Mount `numen-surface` on root `<body>` (Option A); note the deviation from D-02's literal text in the plan. If user objects, use Option B (wrapper div in marketing layout).
+1. **Root vs marketing body class placement (D-02 literal wording). — RESOLVED.**
+   - What we knew: Next 16 allows only one `<html>`/`<body>`, and it lives in the root layout. D-02 says the *marketing layout* mounts the scope.
+   - **Resolution (user decision): Option B.** The `.numen-surface` scope mounts on a wrapper `<div className="numen-surface min-h-screen bg-bg text-text">` rendered INSIDE `(marketing)/layout.tsx`. The root `src/app/layout.tsx` `<body>` is NOT modified to add `.numen-surface`. Next.js forbids a second `<body>`, so a wrapper `<div>` is the legal expression of D-02's "the marketing layout mounts the scope" intent — it keeps the scope marketing-scoped exactly as D-02 specifies (supersedes the earlier Option A recommendation and assumption A2).
 
-2. **Does removing `bg-background` from root body affect showcase/pricing routes?**
-   - Recommendation: Verify by loading `/showcase` and `/primitives-showcase` on the dev server after the change. If they regress, coexist both class sets on the body.
+2. **Does removing `bg-background` from the root body affect showcase/pricing routes? — RESOLVED (moot under Option B).**
+   - Under Option B the root `<body>` is left untouched, so the 7 sibling `(marketing)` routes (showcase, pricing, board-preview, coming-soon, viral-score-test, viz-test, primitives-showcase) cannot be repainted by this phase. There is no root-body change to regress them. Assumption A1's "verify on dev server" mitigation is no longer load-bearing — the scope is contained to the marketing wrapper `<div>`.
 
 ## Environment Availability
 
