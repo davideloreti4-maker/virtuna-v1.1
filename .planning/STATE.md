@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: MVP Ready
 status: executing
-stopped_at: 01-02 shipped (read robustness) + D-R1 atomic (3.17.0) + F26 shipped & pushed; 01-03 chunk B + 01-04 next
-last_updated: "2026-06-11T13:35:00.000Z"
-last_activity: 2026-06-11 -- 01-02 (F46/F47/F9/F16) + D-R1 Read→pure sensor (3.17.0) + F26 composite_score ask removal
+stopped_at: 01-04 RESCOPED + new 01-05 written (plan-checker PASSED); ready to execute wave 4 → wave 5. 01-03 chunk B (ENG-06/D-12) still open.
+last_updated: "2026-06-11T13:50:00.000Z"
+last_activity: 2026-06-11 -- rescoped 01-04 (coupled set) + split out 01-05 (robustness/closeout); plan-checker PASSED after ENG-06 frontmatter fix
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 4
+  total_plans: 5
   completed_plans: 2
   percent: 18
 ---
@@ -26,9 +26,13 @@ See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Roadm
 ## Current Position
 
 Phase: 01 (engine-pipeline) — EXECUTING
-Plan: 01-01 ✓ · 01-02 ✓ · 01-03 PARTIAL (D-R1 + F26 done; chunk B pending) · 01-04 next
+Plan: 01-01 ✓ · 01-02 ✓ · 01-03 PARTIAL (D-R1 + F26 done; chunk B / ENG-06 pending) · 01-04 + 01-05 PLANNED (checker PASSED) — next: /gsd-execute-phase 1
 Status: Executing Phase 01
-Last activity: 2026-06-11 -- D-R1 Read→pure sensor (3.17.0) + F26 shipped & pushed
+Last activity: 2026-06-11 -- rescoped 01-04 + split 01-05; plan-checker PASSED
+
+01-04 (wave 4, coupled set): F22/F44 confidence apollo-vs-fold · F24 drop component_scores on video · F34 Stage-10 rebase/retire · F37/F41 hero block {verdict_line,ceiling,the_one_fix,go_no_go,post_window} · F42 persist hero into variants JSONB (NO migration) · ENGINE_VERSION → 3.18.0. requirements [ENG-04].
+01-05 (wave 5, depends 01-04): F18/F20/F19 fold robustness + partial_analysis single-signal honesty · F12/F35/F43 dead-tail prune (gated on safety-list confirm) · F7 rehost delete race · ENG-04 honesty LOCK tests · ENG-03 latency measure/reclaim · ENGINE_VERSION → 3.19.0. requirements [ENG-01,ENG-03,ENG-04].
+ENG-06 (D-12 deep 3-call prompt I/O co-review = "chunk B") deliberately OUT of 01-04/05 — its own owning open plan, must land before phase close.
 
 Progress: [██░░░░░░░░] ~18%
 
