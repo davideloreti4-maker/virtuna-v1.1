@@ -217,14 +217,12 @@ function parseDeepSeekResponse(
     log.warn("Apollo dimensions length mismatch post-parse", { count: data.dimensions.length });
   }
 
-  // Clamp composite_score to 0–100 (provider nondeterminism can produce slightly out-of-range)
-  data.composite_score = Math.min(100, Math.max(0, data.composite_score));
-
-  // D-01: deterministic rubric-sum overwrites the LLM's holistic composite (R8 de-noise).
-  // Hook carries ~80% weight (apollo-core §4 weighting, §2.0a consensus).
-  // The 5 body dimensions share the remaining 20% equally.
-  // Clamp + round are applied to the sum output as defense-in-depth (V5).
-  // This must execute AFTER the schema clamp and BEFORE any rewrite-backstop reads composite.
+  // D-01 + F26 (2026-06-11): composite_score is a deterministic rubric-sum of the six dimension
+  // scores — the LLM is no longer asked to produce it (it was emitted then discarded; the prompt
+  // contract dropped the ask, schema made it .optional()). Computed here from dimensions only.
+  // Hook carries ~80% weight (apollo-core §4 weighting, §2.0a consensus); the 5 body dimensions
+  // share the remaining 20% equally. Clamp + round as defense-in-depth (V5). Runs BEFORE any
+  // rewrite-backstop reads composite.
   {
     const HOOK_WEIGHT = 0.80;
     const BODY_WEIGHT = 0.20 / 5; // 5 non-hook dims share remaining 20%
@@ -451,7 +449,6 @@ ${behavioralPredictionsBlock}  "component_scores": {                  // your 0-
     { "name": "substance",   "band": "strong"|"mid"|"weak", "score": 85|50|20, "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" },
     { "name": "credibility", "band": "strong"|"mid"|"weak", "score": 85|50|20, "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" }
   ],
-  "composite_score": <number 0-100>,     // Emit your best estimate, but it is IGNORED — TypeScript overwrites it with the deterministic hook-weighted sum of the six dimension scores (§4). Do NOT reason about it as a holistic whole.
   "ceiling_capper": "<one sentence naming the single thing capping the score; note any §3 anti-pattern present>",
   "confidence_scope": "<which §2 signals the sensor could NOT provide, lowering confidence>",
   "rewrites": [                          // 2-3 directional hook variants

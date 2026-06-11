@@ -830,7 +830,10 @@ export const DeepSeekResponseSchema = z.object({
   confidence: z.enum(["high", "medium", "low"]), // already present (D-06)
   // ── Apollo §4 extension (Plan 03-02) — additive, no removal ──
   dimensions: z.array(ApolloDimensionSchema).length(6),      // exactly 6 §4 rubric dimensions (D-06)
-  composite_score: z.number().min(0).max(100),               // Apollo expert composite 0–100 (D-04 Apollo term)
+  // F26 (2026-06-11): the LLM no longer emits composite_score (it was discarded — deepseek.ts
+  // overwrites it with the deterministic rubric-sum of the 6 dimension scores). .optional() so the
+  // LLM's omission validates; reasonWithDeepSeek ALWAYS sets it from the rubric-sum post-parse.
+  composite_score: z.number().min(0).max(100).optional(),    // Apollo composite 0–100 (rubric-sum, set post-parse)
   ceiling_capper: z.string().min(1),                         // one-sentence ceiling rationale (§4 contract)
   confidence_scope: z.string().min(1),                       // which §2 signals were unobservable
   rewrites: z.array(ApolloRewriteSchema).min(2).max(3),      // 2–3 directional variants (D-08)
