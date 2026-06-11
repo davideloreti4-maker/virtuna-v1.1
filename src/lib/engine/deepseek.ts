@@ -5,6 +5,7 @@ import {
   type AnalysisInput,
   type DeepSeekReasoning,
   type GeminiAnalysis,
+  type HookDecomposition,
   type RuleScoreResult,
   type TrendEnrichment,
   type VerbatimPayload,
@@ -280,28 +281,57 @@ function parseDeepSeekResponse(
  */
 
 /**
- * Format Gemini analysis signals for Apollo consumption.
- * Strips numeric scores to prevent anchoring — passes only rationales and tips.
+ * Format the Read's PERCEPTION for Apollo consumption (D-R1, 2026-06-11).
+ *
+ * The Read is now a pure sensor: it no longer supplies factor rationales /
+ * overall_impression / content_summary (generic JUDGMENT — Apollo is the sole judge).
+ * Instead Apollo receives the raw PERCEPTUAL reading it interprets itself: hook-modality
+ * strengths, production signals, the audio reading, and the emotional-intensity curve.
+ * These are SENSOR measurements (how strong/clear/fast), explicitly NOT quality grades —
+ * so handing Apollo the numbers does not anchor its verdict the way the old factor SCORES
+ * (deliberately stripped) would have. emotion_arc + hook_decomposition ride the
+ * GeminiVideoAnalysis cast (Omni-only extensions, not on the base GeminiAnalysis type).
  */
 function formatGeminiSignals(analysis: GeminiAnalysis): string {
   const sections: string[] = [];
+  sections.push("## Perceptual Sensor Reading (objective signals — YOU interpret them; these are measurements, NOT grades)");
 
-  sections.push("## Omni Content Analysis (qualitative signals only)");
-  for (const factor of analysis.factors) {
-    sections.push(`\n**${factor.name}:**`);
-    sections.push(`- Assessment: ${factor.rationale}`);
-    sections.push(`- Improvement: ${factor.improvement_tip}`);
+  const hook = (analysis as unknown as { hook_decomposition?: HookDecomposition | null }).hook_decomposition;
+  if (hook) {
+    sections.push("\n**Hook modalities (0-10 perceptual strength, first ~3s):**");
+    sections.push(`- Visual stop power: ${hook.visual_stop_power}`);
+    sections.push(`- Audio hook: ${hook.audio_hook_quality ?? "n/a (no audio)"}`);
+    sections.push(`- On-screen text: ${hook.text_overlay_score}`);
+    sections.push(`- First-words speech: ${hook.first_words_speech_score ?? "n/a (no speech)"}`);
+    sections.push(`- Weakest modality: ${hook.weakest_modality}`);
+    sections.push(`- Visual/audio coherence: ${hook.visual_audio_coherence}`);
+    sections.push(`- Cognitive load (higher = harder to follow): ${hook.cognitive_load}`);
   }
 
-  sections.push(`\n**Overall Impression:** ${analysis.overall_impression}`);
-  sections.push(`\n**Content Summary:** ${analysis.content_summary}`);
-
   if (analysis.video_signals) {
-    sections.push(`\n**Video Production Signals:**`);
-    sections.push(`- Visual production quality: assessed`);
-    sections.push(`- Hook visual impact: assessed`);
-    sections.push(`- Pacing: assessed`);
-    sections.push(`- Transition quality: assessed`);
+    const v = analysis.video_signals;
+    sections.push("\n**Production signals (0-10 perceptual):**");
+    sections.push(`- Visual production quality: ${v.visual_production_quality}`);
+    sections.push(`- Hook visual impact: ${v.hook_visual_impact}`);
+    sections.push(`- Pacing: ${v.pacing_score}`);
+    sections.push(`- Transition quality: ${v.transition_quality}`);
+  }
+
+  if (analysis.audio_signals) {
+    const a = analysis.audio_signals;
+    sections.push("\n**Audio reading:**");
+    sections.push(`- Description: ${a.audio_description}`);
+    if (a.voice_clarity_0_10 != null) sections.push(`- Voice clarity: ${a.voice_clarity_0_10}/10`);
+    if (a.audio_hook_first_2s_0_10 != null) sections.push(`- Audio hook (first 2s): ${a.audio_hook_first_2s_0_10}/10`);
+    sections.push(`- Mix: ${Math.round(a.voiceover_ratio * 100)}% voice / ${Math.round(a.music_ratio * 100)}% music / ${Math.round(a.silence_ratio * 100)}% silence`);
+  }
+
+  const arc = (analysis as unknown as { emotion_arc?: { timestamp_ms: number; intensity_0_1: number; label?: string }[] | null }).emotion_arc;
+  if (arc && arc.length > 0) {
+    const curve = arc
+      .map((p) => `${Math.round(p.timestamp_ms / 1000)}s:${p.intensity_0_1.toFixed(2)}${p.label ? `(${p.label})` : ""}`)
+      .join("  ");
+    sections.push(`\n**Emotional intensity curve:** ${curve}`);
   }
 
   return sections.join("\n");

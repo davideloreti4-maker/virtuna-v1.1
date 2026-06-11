@@ -227,7 +227,7 @@ function extractSignalScores(
 ): RawEvalResult["signalScores"] {
   return {
     behavioral: prediction.behavioral_score,
-    gemini: prediction.gemini_score,
+    gemini: prediction.gemini_score ?? 0, // D-R1: null on video (Read no longer scores) → 0 for offline ablation
     ml: prediction.ml_score,
     rules: prediction.rule_score,
     trends: prediction.trend_score,

@@ -177,10 +177,13 @@ export const OmniAnalysisZodSchema = z.object({
   // Wave 0
   ...Wave0FieldsSchema.shape,
 
-  // Overall (from Gemini legacy shape)
-  factors:            z.array(HookFactorSchema).length(5),
-  overall_impression: z.string().min(1).max(500),
-  content_summary:    z.string().min(1).max(500),
+  // D-R1 (2026-06-11): Read = pure sensor. Generic JUDGMENT (factors scores/rationale,
+  // overall_impression, content_summary) is no longer requested in the prompt and no longer
+  // emitted — Apollo is the sole judge. Kept .optional() (not removed) so a stray legacy/cached
+  // response that still includes them parses without error; the assembly drops them regardless.
+  factors:            z.array(HookFactorSchema).length(5).optional(),
+  overall_impression: z.string().min(1).max(500).optional(),
+  content_summary:    z.string().min(1).max(500).optional(),
 
   // Hook segment
   hook_decomposition: HookDecompositionZodSchema,

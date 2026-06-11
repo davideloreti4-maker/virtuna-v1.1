@@ -60,9 +60,13 @@ export function deriveCritique(
   let penalty = 0;
 
   // Check #1 — Signal Agreement: vision and behavioral disagree by >30 points.
-  const gap = Math.abs(result.gemini_score - result.behavioral_score);
-  if (gap > SIGNAL_GAP_THRESHOLD) {
-    penalty += PENALTY_SIGNAL_DISAGREEMENT;
+  // D-R1 (2026-06-11): gemini_score is null on video (the Read no longer scores) — skip when
+  // absent. Re-basing this agreement on apollo-vs-fold is plan 01-04 (F22/F34).
+  if (result.gemini_score != null) {
+    const gap = Math.abs(result.gemini_score - result.behavioral_score);
+    if (gap > SIGNAL_GAP_THRESHOLD) {
+      penalty += PENALTY_SIGNAL_DISAGREEMENT;
+    }
   }
 
   // Check #2 — Score vs Factors: high score on weak factors, or low score on strong ones.

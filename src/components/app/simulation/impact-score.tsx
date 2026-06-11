@@ -9,7 +9,7 @@ interface HeroScoreProps {
   overall_score: number;
   confidence_label: ConfidenceLevel;
   behavioral_score: number;
-  gemini_score: number;
+  gemini_score: number | null; // D-R1: null on video (Read no longer scores). Board re-sources the "Apollo" breakdown off the real Apollo composite in Phase 2 (F32).
   rule_score: number;
   trend_score: number;
   score_weights: {
@@ -61,7 +61,7 @@ export function HeroScore({
   // gemini_score still surfaced for UI back-compat but labeled as "Apollo" composite here.
   const scoreMap = {
     behavioral: behavioral_score,
-    apollo: gemini_score, // UI display: shows Apollo composite (sourced from gemini_score for now)
+    apollo: gemini_score ?? 0, // D-R1: gemini_score null on video → 0 placeholder; Phase 2 (F32) re-sources this off the real Apollo composite
     rules: rule_score,
     trends: trend_score,
   };

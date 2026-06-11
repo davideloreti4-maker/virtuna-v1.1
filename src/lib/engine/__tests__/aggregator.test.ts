@@ -406,7 +406,7 @@ describe("aggregateScores", () => {
     // usable read, factor-fallback availability path → gemini=false). overall_score
     // collapses to 0; the flag must mark it "couldn't analyze", not a confident verdict.
     const deadGemini = makeGeminiAnalysis({
-      factors: makeGeminiAnalysis().factors.map((f) => ({ ...f, score: 0 })),
+      factors: (makeGeminiAnalysis().factors ?? []).map((f) => ({ ...f, score: 0 })),
     });
     const dead = await aggregateScores(
       makePipelineResult({
@@ -483,7 +483,7 @@ describe("Phase 3 — provenance + stub invocations", () => {
     const { ENGINE_VERSION } = await import("../aggregator");
     const { ENGINE_VERSION: viaVersion } = await import("../version");
     expect(ENGINE_VERSION).toBe(viaVersion);
-    expect(ENGINE_VERSION).toBe("3.16.0"); // fold model flip → qwen3.5-omni-flash
+    expect(ENGINE_VERSION).toBe("3.17.0"); // D-R1 Read→pure sensor
   });
 
   it("PredictionResult.engine_version reads from ./version module", async () => {

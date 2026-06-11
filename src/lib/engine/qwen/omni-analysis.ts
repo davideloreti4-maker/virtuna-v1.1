@@ -101,7 +101,7 @@ function detectCriticalFieldDrift(data: OmniAnalysisResult): string[] {
 // the VOLATILE user message (buildUserHints) so the system prefix is byte-stable across all
 // runs. `opts` is accepted (signature compat) but no longer read here.
 export function buildSystemPrompt(_opts: OmniAnalysisOptions = {}): string {
-  return `You are an expert TikTok content analyst. Analyze the provided video and return a single JSON object with the exact structure below. All scores are 0-10 unless noted otherwise.
+  return `You are an expert TikTok content analyst operating as a pure PERCEPTION sensor. Watch the provided video and return a single JSON object describing WHAT YOU PERCEIVE — the objective sensor reading. You do NOT grade, score holistically, or give improvement advice; a separate expert judge interprets your perception. All scores are 0-10 unless noted otherwise and are PERCEPTUAL measurements (e.g. how loud/clear/fast), not quality verdicts.
 
 IMPORTANT: cognitive_load uses INVERTED polarity — higher score means MORE cognitive load and WORSE viewer retention.
 
@@ -111,16 +111,6 @@ Return ONLY valid JSON matching this exact structure:
   "content_type": "<one of: talking_head|b_roll|slideshow|action|tutorial|vlog|comedy|other>",
   "niche_primary_slug": "<primary niche slug e.g. fitness, cooking, comedy, education>",
   "niche_micro_slug": "<specific sub-niche or null>",
-
-  "factors": [
-    { "name": "Scroll-Stop Power", "score": 0-10, "rationale": "...", "improvement_tip": "..." },
-    { "name": "Completion Pull",   "score": 0-10, "rationale": "...", "improvement_tip": "..." },
-    { "name": "Rewatch Potential", "score": 0-10, "rationale": "...", "improvement_tip": "..." },
-    { "name": "Share Trigger",     "score": 0-10, "rationale": "...", "improvement_tip": "..." },
-    { "name": "Emotional Charge",  "score": 0-10, "rationale": "...", "improvement_tip": "..." }
-  ],
-  "overall_impression": "<overall assessment, max 500 chars>",
-  "content_summary": "<brief content description, max 500 chars>",
 
   "hook_visual_impact": 0-10,
   "hook_decomposition": {
@@ -327,10 +317,11 @@ export async function analyzeVideoWithOmni(
         },
       };
 
+      // D-R1 (2026-06-11): the Read is a PURE SENSOR. It no longer emits generic JUDGMENT
+      // (factors[] scores/rationale, overall_impression, content_summary) — Apollo is the sole
+      // judge. gemini_score (the factor-mean) dies with them. Perception (hook_decomposition,
+      // video_signals, audio, emotion_arc, verbatim, segments, content_type, niche) is preserved.
       const analysis = {
-        factors:            data.factors,
-        overall_impression: data.overall_impression,
-        content_summary:    data.content_summary,
         video_signals: {
           visual_production_quality: data.video_signals.visual_production_quality,
           hook_visual_impact:        data.hook_visual_impact,

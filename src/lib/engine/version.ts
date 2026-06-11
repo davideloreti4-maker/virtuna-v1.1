@@ -88,7 +88,18 @@
  * behavioral/audience term feeds 0.5 of overall_score on video, so scores shift across the model
  * boundary; isolate the cache. Deferred (noted): persona-split + segment cap for long-video output.
  *
+ * Bumped 3.16.0 → 3.17.0 (2026-06-11, D-R1 Read→pure sensor — plan 01-03): the Omni read STOPS
+ * emitting generic JUDGMENT (factors[] scores/rationale, overall_impression, content_summary) —
+ * it is now a pure perception sensor; Apollo is the sole judge. gemini_score dies with the factors
+ * (null on video, nullable for legacy/text + permalink back-compat). Apollo's user message is
+ * rebuilt: formatGeminiSignals now feeds the raw PERCEPTUAL reading (hook-modality strengths,
+ * production signals, audio reading, emotion curve) instead of the Omni's prose judgment. Both the
+ * read output shape AND Apollo's volatile user message change → scores shift on every video row;
+ * isolate the cache. stage10 signal-agreement skips when gemini_score is null (re-base on
+ * apollo-vs-fold is plan 01-04, F22/F34). Deferred to 01-03 follow-ons: hero block + scorecard
+ * collapse (F37/F24/F26). NOTE: 01-02 read-robustness (F46/F47/F9/F16) did NOT bump.
+ *
  * D-23 cache invariant: prediction-cache.ts keys on ENGINE_VERSION; this bump auto-invalidates
- * all `3.15.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
+ * all `3.16.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
  */
-export const ENGINE_VERSION = "3.16.0";
+export const ENGINE_VERSION = "3.17.0";

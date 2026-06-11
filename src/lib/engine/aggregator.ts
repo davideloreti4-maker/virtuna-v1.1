@@ -369,7 +369,7 @@ function assembleFeatureVector(
 
   // Helper to find a Gemini factor by name
   const findFactor = (name: string) =>
-    gemini.factors.find((f) => f.name === name);
+    gemini.factors?.find((f) => f.name === name);
 
   // Phase 4 D-12 + D-19: use content-type-adjusted video signals when provided;
   // fall back to raw video_signals (Wave 0 failure or no video).
@@ -754,7 +754,7 @@ export async function aggregateScores(
   //   the value is `true` when at least one Gemini factor scored > 0.
   availability.gemini = pipelineResult.geminiResult.signalAvailability
     ? availability.gemini_hook || availability.gemini_body || availability.gemini_cta
-    : geminiResult.analysis.factors.some((f) => f.score > 0);
+    : (geminiResult.analysis.factors?.some((f) => f.score > 0) ?? false);
 
   const weights = selectWeights(availability);
 
@@ -776,14 +776,16 @@ export async function aggregateScores(
   const behavioral_score = Math.round(behavioralAvg * 10); // Normalize to 0-100
 
   // -------------------------------------------------
-  // Gemini score — PROVENANCE ONLY after Plan 03-04 (D-04).
-  // gemini_score is still computed and exposed on PredictionResult.gemini_score
-  // for UI/back-compat (M2 breakdown card), but NO LONGER feeds raw_overall_score.
+  // Gemini score — D-R1 (2026-06-11): the Read is a pure sensor and no longer scores, so on
+  // video there are NO factors → gemini_score is null. Kept nullable on PredictionResult for
+  // legacy/text rows + permalink back-compat (don't migrate the column away). The confidence
+  // basis that used to lean on it (stage10 signal-agreement) re-bases on apollo-vs-fold in plan
+  // 01-04 (F22/F34); until then stage10 skips the check when gemini_score is null.
   // -------------------------------------------------
-  const geminiAvg =
-    gemini.factors.reduce((sum, f) => sum + f.score, 0) /
-    gemini.factors.length;
-  const gemini_score = Math.round(geminiAvg * 10); // Normalize to 0-100 (provenance only)
+  const gemini_score =
+    gemini.factors && gemini.factors.length > 0
+      ? Math.round((gemini.factors.reduce((sum, f) => sum + f.score, 0) / gemini.factors.length) * 10)
+      : null;
 
   // -------------------------------------------------
   // Apollo score (Plan 03-04, D-04) — replaces gemini term in the blend.
@@ -916,8 +918,10 @@ export async function aggregateScores(
 
   // -------------------------------------------------
   // Factors (from Gemini — v2 shape with rationale/improvement_tip)
+  // D-R1 (2026-06-11): the Read no longer emits factors on video → empty array. Board re-sources
+  // "What drives it" off Apollo dimensions (Phase 2, F32). Text/legacy rows still carry factors.
   // -------------------------------------------------
-  const factors: Factor[] = gemini.factors.map((f, i) => ({
+  const factors: Factor[] = (gemini.factors ?? []).map((f, i) => ({
     id: `factor-${i + 1}`,
     name: f.name,
     score: f.score,

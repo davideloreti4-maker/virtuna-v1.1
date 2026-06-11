@@ -294,7 +294,7 @@ export interface PredictionResult {
   // Scoring breakdown
   rule_score: number;
   trend_score: number;
-  gemini_score: number; // Gemini's contribution
+  gemini_score: number | null; // D-R1: null on video (Read is a pure sensor, no longer scores); provenance-only on legacy/text rows
   behavioral_score: number; // DeepSeek behavioral contribution
   ml_score: number; // ML classifier score (0-100), 0 if model unavailable
   /** Phase 6 (D-G3) — 0-100 audio perceptual score before fingerprint boost. 0 when audio absent.
@@ -607,9 +607,13 @@ export const GeminiAudioSignalsSchema = z
 // = false → audio weight redistributes via the existing selectWeights math.
 // Mirrors the existing `video_signals.optional()` pattern below it.
 export const GeminiResponseSchema = z.object({
-  factors: z.array(FactorSchema).length(5),
-  overall_impression: z.string(),
-  content_summary: z.string(),
+  // D-R1 (2026-06-11): Read = pure sensor — factors/overall_impression/content_summary are no
+  // longer emitted by the video read (Apollo is sole judge; gemini_score dies). Made .optional()
+  // so the video-read shape (perception-only) validates AND text-mode/legacy responses that still
+  // carry them continue to parse. Downstream consumers guard absence (factors → [] / skipped).
+  factors: z.array(FactorSchema).length(5).optional(),
+  overall_impression: z.string().optional(),
+  content_summary: z.string().optional(),
   video_signals: GeminiVideoSignalsSchema.nullable().optional(),
   // .nullable().optional() — accept both omitted-key and explicit-null (06-REVIEW.md WR-02):
   // if Gemini emits `audio_signals: null` instead of omitting the key, .optional()-only
