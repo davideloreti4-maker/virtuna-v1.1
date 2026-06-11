@@ -27,7 +27,18 @@ findings:
   warning: 5
   info: 4
   total: 10
-status: issues_found
+status: resolved
+resolved: 2026-06-11
+resolution:
+  fixed: [CR-01, WR-01, WR-02, WR-03, WR-04, WR-05]
+  deferred: [IN-01, IN-03, IN-04]
+  note: >
+    Blocker + all 5 warnings fixed in a sequential fix pass (commits
+    19ce82e0, 332765ba, 050a3276, 3f1bb60f, d117dc0c). IN-02 folded into the
+    WR-05 fix (dead void imports removed). IN-01/IN-03/IN-04 left as-is (info,
+    out of scope). Verified: full suite 1944 pass / 0 fail, APCA gate exit 0,
+    build compiled + 56 static pages, legacy --color-accent/--color-border are
+    the only definitions of those keys.
 ---
 
 # Phase 01: Code Review Report
