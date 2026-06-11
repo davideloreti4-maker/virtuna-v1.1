@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: MVP Ready
 status: executing
-stopped_at: Phase 1 context gathered
-last_updated: "2026-06-10T10:10:23.737Z"
-last_activity: 2026-06-10 -- Phase 01 execution started
+stopped_at: 01-01 complete + 3 model swaps shipped; 01-02 next
+last_updated: "2026-06-11T10:30:00.000Z"
+last_activity: 2026-06-11 -- 01-01 §-cite honesty shipped; Apollo→3.7-plus + fold→omni-flash A/B'd & shipped
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 4
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 5
 ---
 
 # Project State
@@ -85,14 +85,20 @@ Bookkeeping orphans / superseded flags, not live work. v4.0 shipped to main with
 
 ## Session Continuity
 
-Last session: 2026-06-11 — full engine e2e walkthrough + value audit complete
-Stopped at: Audit/synthesis done (45 flags, D-R1, scope B locked). Ready to EXECUTE 01-01.
-Resume file: .planning/phases/01-engine-pipeline/01-SYNTHESIS.md
-Resume how: read 01-SYNTHESIS.md (build map + scope B) + 01-WALKTHROUGH-LOG.md (flags) +
-01-01-PLAN.md. Scope B = Tier 1 (honesty/correctness) + D-R1 (Read pure-sensor) + Tier 2
-(cheatcode output contract). First action: build a FAITHFUL runtime §-cite harness (Read once →
-real Apollo path: lean APOLLO_SYSTEM_PROMPT + buildDeepSeekUserMessage + sighted video_url) and
-capture emitted §-cites on ~/Downloads/TikTok Video Downloader.mp4 → resolution table for the
-01-01 remap+prose decision (NOT the unfaithful apollo-core-smoke.ts). ENG-02 leaning remap-guard +
-prose-discipline (keep § internal), redesign deferred. Note: 01-03/01-04 plans need re-scope to
-absorb Tier 2 before executing them.
+Last session: 2026-06-11 — 01-01 shipped + 3-stage model decisions + quality analysis.
+Stopped at: 01-01 DONE (ENG-02 §-cite honesty: remap guard + prose discipline, 3.14.0). Then
+3 model A/Bs via faithful harnesses → SHIPPED: Apollo qwen3.6-plus→qwen3.7-plus (3.15.0, scoped
+QWEN_APOLLO_MODEL); fold omni-plus→omni-flash (3.16.0, FOLD_MODEL=omni-plus rollback); read stays
+omni-flash (D-10/F8 closed). runFold robust-parse fix (stripModelOutput) shipped. Read flash on
+both substrate stages (Davide locked). Engine E2E ~113s→~59s — a ~50s quality/robustness surplus.
+
+Resume file: **.planning/phases/01-engine-pipeline/01-QUALITY-OPTIMIZATION.md** (the 3-stage
+quality plan + prioritized per-stage fixes + sequence), alongside 01-SYNTHESIS.md + 01-WALKTHROUGH-LOG.md
+(flags F1–F47; F46/F47 new this session).
+
+Resume how: NEXT = **01-02 Read** (re-scope + execute). Read 01-QUALITY-OPTIMIZATION.md first.
+01-02 scope: F47 (set OMNI_MAX_TOKENS ~8000) + F46 (nullable speech fields on no-speech videos)
++ F9 (retry on empty critical fields) + D-R1 (drop Read judgment → pure sensor; gemini_score dies)
++ F16. Then 01-03 (Apollo D-R1 input rebuild F27/F6 + thinking-budget sweep on 3.7) → 01-04
+(fold F18/F20/F19 robustness — now cheap; F22 real Apollo-vs-Fold confidence; dead-tail prune; F7).
+Op: DashScope hit a 429 quota cap mid-session — check Alibaba billing if live calls fail.
