@@ -8,18 +8,22 @@ A social media intelligence platform for TikTok creators. Helps creators predict
 
 AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
 
-## Current Milestone: v4.1 MVP Ready
+## Current Milestone: v5.0 Numen Surface
 
-**Goal:** Walk each major pillar of the platform one at a time and fix, optimize, and refine it toward an MVP-ready state — not a feature build, a brownfield refinement pass.
+**Goal:** Net-new paradigm rebuild — mobile-first rebrand + UX rework. Replace the Konva canvas board with **one thread per video**, where the AI's first turn IS the **Reading** (engine output re-presented compact, stage-revealed; verdict = calibrated band + one-line why, not a naked number), followed by suggested follow-ups + agentic tools.
 
-**Pillars (loose phases — audit → fix → verify):**
-- Engine pipeline — Apollo 3-call flow (Qwen I/O, prompt quality, latency, correctness)
-- Board / Test mode — analyze board UI/UX (frames, rendering, wiring)
-- Board / Remix mode — remix board UI/UX
-- Chat feature — "ask the expert" dock UI/UX + grounding
-- General UI/UX — cross-cutting polish (Numen brand, Raycast language, mobile, a11y, dead UI)
+**Target features:**
+- **The Reading** — stage-reveal of engine-output blocks; verdict in reserved "throne" slot, crystallizes last (band + why, number demoted to evidence)
+- **Follow-ups + tools** — suggested taps → free text; *instant* (re-interpret) vs *agentic* (Apify competitors, back-catalog, trends) — the moat
+- **App shell** — home = vertical list of past Readings; per-video threads; first-run live demo Reading
+- **Ingestion** — native share-sheet (TikTok/Reels) + in-app upload/paste URL
+- **Ground-up design system** — warm-neutral dark-only (coral→clay), Whoop color discipline (color only in verdict scale + keyframes), sans-led + serif voice moments
+- **In-thread monetization** — oracle-initiated brand-deal-fit tool turn
+- **Desktop** — same thread widened + instrument layer (only place the dense board survives)
 
-**Flexible by design:** phases are loose; surfaced to-dos get added via `/gsd-phase add` or peeled off with `/gsd-quick`. No upfront research (refinement of shipped surfaces).
+**Engine untouched:** presentation-layer change only. Engine v4.1 (ENGINE_VERSION 3.19.0) is sound; the surface re-presents existing output. Primary input: `.planning/NUMEN-SURFACE-VISION.md`; worktree identity: `.planning/MILESTONE.md`.
+
+**Carried forward (vision §7b):** SMOKE GATE (hard precondition before building Reading against real engine output — not yet run), UAT sign-off (can slip), ENG-06 D-12 = this milestone's data-contract design step.
 
 ## Status: Intelligence Surface drop — Milestone 1b shipped
 
@@ -274,4 +278,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-09 — started v4.1 MVP Ready milestone in `~/virtuna-mvp-ready/`. Brownfield refinement pass across all pillars (engine pipeline, board/test, board/remix, chat, general UI/UX); loose pillar phases, no upfront research. Forks from main @1d9e3294 (post Numen rebrand). Prior: v4.0 Apollo shipped + archived 2026-06-06.*
+*Last updated: 2026-06-11 — started v5.0 Numen Surface milestone in `~/virtuna-numen-surface/` (`milestone/numen-surface`). Net-new paradigm rebuild: mobile-first rebrand + UX rework — canvas board → one thread per video, AI's first turn = the Reading (stage-revealed engine output, verdict = band + why), agentic tools (Apify), ground-up warm-neutral dark design system. Presentation-layer only; engine v4.1 (3.19.0) untouched. Forks from main @1b3157d3. Input: `.planning/NUMEN-SURFACE-VISION.md`. Prior: v4.1 MVP Ready Phase 1 (engine) merged to main 2026-06-11; Phases 2–5 superseded by this milestone.*
