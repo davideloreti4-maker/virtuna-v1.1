@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Source_Serif_4 } from "next/font/google";
 import { DevLocator } from "@/components/dev/locator";
 import "./globals.css";
 
@@ -7,6 +7,15 @@ const inter = Inter({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-inter",
+});
+
+// Voice serif — reserved for greeting/hero + verdict line ONLY (D-13).
+// Variable font: no `weight` array needed; opsz axis auto via font-optical-sizing:auto.
+// Self-hosted at build time by next/font — no runtime CDN fetch (T-01-FNT accepted).
+const serif = Source_Serif_4({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-serif",
 });
 
 export const viewport: Viewport = {
@@ -40,7 +49,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable}`}>
+    <html lang="en" className={`${inter.variable} ${serif.variable}`}>
       <body className="min-h-screen bg-background font-sans antialiased">
         {children}
         <DevLocator />
