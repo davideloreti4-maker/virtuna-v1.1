@@ -16,7 +16,7 @@ import type { StageEventCallback } from "../events";
 import { getQwenClient, QWEN_OMNI_MODEL, QWEN_SEED } from "./client";
 import { calculateCost } from "./cost";
 import { OmniAnalysisZodSchema } from "./schemas";
-import type { SegmentGrid } from "./schemas";
+import type { SegmentGrid, OmniAnalysisResult } from "./schemas";
 import { normalizeSegments } from "./normalize-segments";
 import { stripModelOutput } from "../utils/strip";
 
@@ -24,10 +24,14 @@ const log = createLogger({ module: "engine.qwen.omni" });
 
 const MAX_RETRIES = 1; // 2 total attempts
 const TIMEOUT_MS  = 60_000;
-// Omni output cap — env-gated for the spine latency A/B (2026-06-05). Default UNSET
-// (uncapped = current baseline behaviour). When set, bounds the omni JSON output to
-// trim tail generation. Size carefully: too low truncates JSON → Zod fail → 60s retry.
-const OMNI_MAX_TOKENS = Number(process.env.OMNI_MAX_TOKENS) || 0;
+// Omni output cap. F47 (2026-06-11): was UNSET (0 = uncapped) → DashScope's low default
+// output limit TRUNCATED long/dense videos' larger output mid-JSON (more segments + longer
+// transcript/emotion_arc) → SyntaxError → silent read failure (Ashton Hall 79s clip repro;
+// stripModelOutput can't salvage a mid-JSON cut). Default to a sane 8000-token cap that fits
+// a long video's full read while bounding tail generation. Env-overridable (OMNI_MAX_TOKENS).
+// Size carefully: too low truncates JSON → Zod fail → 60s retry. Do NOT raise TIMEOUT_MS to
+// buy headroom — bound output here instead (PITFALL 2).
+const OMNI_MAX_TOKENS = Number(process.env.OMNI_MAX_TOKENS) || 8000;
 
 export interface OmniAnalysisOptions {
   niche?:        string;
@@ -54,6 +58,42 @@ const CONTENT_TYPE_VALUES = [
   "talking_head", "b_roll", "slideshow", "action",
   "tutorial", "vlog", "comedy", "other",
 ] as const;
+
+// F9/D-11: the system nudge re-sent on a malformed-JSON retry. Appended to the END of the
+// system content so the cached prefix (buildSystemPrompt) stays byte-stable (prefix-cache hits).
+const JSON_RETRY_NUDGE =
+  "\nIMPORTANT: Your previous response was not valid JSON. Return ONLY the raw JSON object, no explanation.";
+
+/**
+ * F9/D-11 — critical-field drift detection. The Zod parse can SUCCEED yet a perception-critical
+ * field be empty/absent on content that should have it (the gap MAX_RETRIES never covered — it
+ * fired only on whole-response JSON/Zod failure). Returns the drifted field names so the caller
+ * can fire ONE bounded retry, then (if still drifted) emit a read_drift log instead of silently
+ * dropping to undefined. Gated to avoid false retries on legitimately-empty content:
+ *   - emotion_arc: required 3-8 points for video WITH affect; legit-absent for slideshow/b_roll.
+ *   - hook_verbatim.spoken_words: expected only when speech is present (F46 nulls speech-derived
+ *     fields on no-speech videos — a no-speech video's null verbatim is correct, not drift).
+ *   - weakest_modality is intentionally NOT checked: F46's derive guarantees it (visual_stop_power
+ *     + text_overlay_score are never nullable), so it can never be underivable.
+ */
+function detectCriticalFieldDrift(data: OmniAnalysisResult): string[] {
+  const drift: string[] = [];
+
+  const isSlideshowLike = data.content_type === "slideshow" || data.content_type === "b_roll";
+  if (!isSlideshowLike && (!data.emotion_arc || data.emotion_arc.length === 0)) {
+    drift.push("emotion_arc");
+  }
+
+  const hasSpeech =
+    data.hook_decomposition.first_words_speech_score != null ||
+    (data.audio_signals.voiceover_ratio ?? 0) > 0.05;
+  const verbatimEmpty = !data.hook_verbatim || data.hook_verbatim.spoken_words == null;
+  if (hasSpeech && verbatimEmpty) {
+    drift.push("hook_verbatim");
+  }
+
+  return drift;
+}
 
 // T3.4 (2026-06-07): the niche/content-type hints were interpolated INTO this system
 // prompt, busting the DashScope omni prefix-cache once per niche/content-type combo (the
@@ -188,6 +228,10 @@ export async function analyzeVideoWithOmni(
   const nullWave0: Wave0Result = { content_type: null, niche: null };
 
   let lastError: unknown;
+  // F9/D-11: the nudge appended to the next attempt's system content. Set on failure
+  // (malformed JSON / Zod fail / critical-field drift) and consumed on the retry. Appended
+  // at the END so the cached system prefix stays byte-stable. "" on attempt 0 (cache-warm path).
+  let retryHint = "";
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController();
@@ -196,9 +240,7 @@ export async function analyzeVideoWithOmni(
     try {
       log.info("omni analysis start", { model, attempt, videoUrl: videoUrl.slice(0, 80) });
 
-      const extraInstruction = attempt > 0
-        ? "\nIMPORTANT: Your previous response was not valid JSON. Return ONLY the raw JSON object, no explanation."
-        : "";
+      const extraInstruction = attempt > 0 ? retryHint : "";
 
       const completion = await ai.chat.completions.create(
         {
@@ -240,10 +282,30 @@ export async function analyzeVideoWithOmni(
       if (!result.success) {
         log.warn("Omni Zod validation failed", { attempt, error: result.error.message });
         lastError = result.error;
+        retryHint = JSON_RETRY_NUDGE;
         continue;
       }
 
       const data       = result.data;
+
+      // F9/D-11: critical-field drift — the parse succeeded but a perception-critical field is
+      // empty on content that should have it. Fire ONE bounded retry (within MAX_RETRIES; re-sends
+      // the volatile user message, keeps the cached system prefix). On persistent drift after the
+      // retry, accept the read but emit a read_drift log — no longer a silent drop-to-undefined.
+      const drift = detectCriticalFieldDrift(data);
+      if (drift.length > 0 && attempt < MAX_RETRIES) {
+        log.warn("omni critical-field drift — retrying", { attempt, model, drifted_fields: drift });
+        lastError = new Error(`omni critical-field drift: ${drift.join(",")}`);
+        retryHint =
+          `\nIMPORTANT: Your previous response omitted required perception fields: ${drift.join(", ")}. ` +
+          "Re-analyze the video and INCLUDE them — emotion_arc: 3-8 points across the timeline for any video with affect; " +
+          "hook_verbatim.spoken_words: the verbatim speech from the first ~3s (null only if there is genuinely no speech).";
+        continue;
+      }
+      if (drift.length > 0) {
+        log.warn("read_drift", { attempt, model, drifted_fields: drift });
+      }
+
       const cost_cents = calculateCost(model, completion.usage ?? undefined);
 
       // D-07 + D-08: normalize segments after Zod parse, before returning to consumers.
@@ -312,6 +374,9 @@ export async function analyzeVideoWithOmni(
     } catch (err: unknown) {
       clearTimeout(timer);
       lastError = err;
+      // A thrown error here is most often a JSON.parse SyntaxError (truncation/fence) — nudge
+      // the retry toward clean JSON, mirroring the !result.success path.
+      retryHint = JSON_RETRY_NUDGE;
       const isAbort = err instanceof Error && err.name === "AbortError";
       log.warn("Omni analysis attempt failed", { attempt, error: String(err), isAbort });
       if (attempt >= MAX_RETRIES) break;
