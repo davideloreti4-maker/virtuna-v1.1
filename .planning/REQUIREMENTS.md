@@ -1,103 +1,91 @@
-# Requirements — v4.1 MVP Ready
+# Requirements — v5.0 Numen Surface
 
-> **Brownfield refinement milestone.** These are not new-feature user stories.
-> Each pillar is a category; each category maps to exactly one loose phase run as
-> *audit → fix-list → verify*. The bullets below are the **starting audit
-> backlog** — known issues to confirm and fix. Real to-do discovery happens at
-> `/gsd-discuss-phase` time, and new items get added via `/gsd-phase` or
-> `/gsd-quick` without reopening this file.
->
-> "Done" for a pillar = audited end-to-end, known issues resolved or explicitly
-> deferred, surface holds together for a real user.
+> Mobile-first rebrand + UX rework. Replace the Konva canvas board with **one thread per video** where the AI's first turn IS the **Reading**. Presentation-layer only — engine v4.1 (ENGINE_VERSION 3.19.0) is frozen. Source: `.planning/NUMEN-SURFACE-VISION.md` + `.planning/research/SUMMARY.md`.
 
----
+## v5.0 Requirements
 
-## Pillar 1 — Engine Pipeline (ENG)
+### DS — Design System Foundation
+- [ ] **DS-01**: Warm-neutral dark token system (no pure black; base ~`#1a1714`, panels stepped warmer, warm off-white text), with L<0.15 darks as exact **hex not oklch** (Tailwind v4 bug this repo has hit)
+- [ ] **DS-02**: Verdict color scale (muted green / amber / clay-red) is the ONLY load-bearing functional color; everything else near-neutral
+- [ ] **DS-03**: Brand accent = coral matured to warm clay/terracotta (evolve `#FF7F50`), used sparingly — logo, primary action, focus only
+- [ ] **DS-04**: Sans-led type system with serif reserved for voice moments (greeting/hero + the verdict line)
+- [ ] **DS-05**: Component vocabulary — full-pill tool chips, circular icon buttons, hairline warm borders, soft elevation, glass restricted to ephemeral elements (composer, tool sheet); backdrop-filter via inline style not class (Lightning CSS strips it)
+- [ ] **DS-06**: Migration boundary — inventory + retire Raycast GlassPanel-everywhere, scattered hardcoded coral, fake macOS window chrome, **and the chat dock** (absorbed into the thread); ground-up kit, not a retheme of the 36 components
+- [ ] **DS-07**: Calm motion system (soft, never bouncy/snappy); the stage-reveal is the key motion moment
+- [ ] **DS-08**: Keyframes ARE the imagery/chroma (load-bearing §6 principle) — the user's video stills are the only atmosphere (hero, accents, empty states); warm-neutral chrome recedes so the (often cool) content + verdict carry all the color and energy
 
-The Apollo 3-call flow: Omni verbatim sensor → fold ∥ Apollo reasoner. Qwen
-inputs/outputs, prompt quality, latency, correctness, honesty.
+### DATA — Data Contract / View-Model (ENG-06 D-12)
+- [ ] **DATA-01**: Pure `lib/reading/view-model.ts` `toReadingBlocks()` mapping ~40 engine fields → ~10 value-bearing Reading blocks
+- [ ] **DATA-02**: Both the live `complete` path and persisted-row replay funnel through the SAME view-model, so a Reading and its re-opened resting document are identical
+- [ ] **DATA-03**: Consumed-vs-dead field prune documented (resolves F27/F28/F43) — which engine fields the Reading uses vs drops
+- [ ] **DATA-04**: Verdict derivation (band + one-line why) from engine output; the `/100` number demoted to supporting evidence (resolves F41/F45)
 
-- [ ] **ENG-01**: Full E2E analyze run is correct and stable on real videos — every Qwen call returns usable output, no silent fallbacks, no thrown frames
-- [ ] **ENG-02**: Apollo reasoner stays grounded in the knowledge core (§ citations resolve to real corpus, not flat fake legend labels)
-- [ ] **ENG-03**: Latency held under target (Vercel cap safe; pursue the <90s E2E goal where free-tier allows)
-- [ ] **ENG-04**: Score is deterministic (same video twice → identical score) and honestly banded; engagement range stays grounded (follower_count × quality read), no fabrication
-- [ ] **ENG-05**: omni-flash drift hardened (emotion_arc.label, weakest_modality, verbatim hook/segments hold across runs)
-- [ ] **ENG-06**: Qwen prompt inputs/outputs reviewed end-to-end for quality and token efficiency
+### GATE — Preconditions
+- [ ] **GATE-01**: SMOKE GATE — one real-video E2E on live infra returns sane/honest output (confirms F46/F47 truncation, F22 confidence, F23 §-cites hold live) + yields the real ENG-03 latency number (watch DashScope-429)
+- [ ] **GATE-02**: Verdict-banding calibration — band buffer zones WIDER than measured score variance (~±15pt over ~26–86); "Mixed signals" is a first-class, common verdict (kills "confident lie → trust dies")
+- [ ] **GATE-03**: UAT sign-off — F42 permalink (authenticated) + full measure-pipeline pass (can land during the milestone)
 
-## Pillar 2 — Board / Test Mode (BTEST)
+### READ — The Reading
+- [ ] **READ-01**: AI pronounces first, unprompted — the Reading is the thread's first turn; user never faces a blank prompt
+- [ ] **READ-02**: Stage-reveal — each completed engine stage materializes its structured block (NOT chatbot token-streaming); reshape existing `StageEvent`/SSE into the Reading's block vocabulary
+- [ ] **READ-03**: Verdict in a reserved top "throne" slot, visibly forming while evidence assembles below, crystallizing last as the climax
+- [ ] **READ-04**: Verdict = calibrated band + one-sentence why (reads as judgment, not metric); confidence lives in the band's language, never a hedge (resolves F36 — collapses 3 scorecards to ONE verdict)
+- [ ] **READ-05**: ~10 evidence blocks re-composed from value-bearing engine fields (reusing the existing card vocabulary as message blocks), with the **expert insight (Apollo interpretation) foregrounded, not buried** (keeps F37)
+- [ ] **READ-06**: A completed Reading persists as a re-openable resting document that opens on the verdict
+- [ ] **READ-07**: Plain language throughout — calm restraint, NO engine jargon surfaced to the user (resolves F38)
 
-The analyze board UI/UX: frames, rendering, wiring, mobile.
+### SHELL — App Shell
+- [ ] **SHELL-01**: Home = a vertical list of past Readings, each a compact verdict card (content-intelligence portfolio over time)
+- [ ] **SHELL-02**: One persistent "analyze new" action
+- [ ] **SHELL-03**: Per-video thread routing — chat-app spine (list → conversation); reuses `analysis_results` + `analysis_chats` + history API
+- [ ] **SHELL-04**: Installable PWA (Serwist + `manifest.ts`) with mobile-native feel + iOS add-to-home coaching
 
-- [ ] **BTEST-01**: All board frames render end-to-end with real engine output — no throwing frames, no grey-cell / warm-gradient fallbacks masking missing data
-- [ ] **BTEST-02**: Insight-hero frame leads the board (dual-read, copyable rewrites, demoted band) and reads correctly
-- [ ] **BTEST-03**: Filmstrip / keyframes persist across reload; content-craft frame stable
-- [ ] **BTEST-04**: Mobile card-stack view coherent (auto <768px + manual toggle)
-- [ ] **BTEST-05**: Dead UI removed (dead percentile rank, fake-engagement remnants, number overload, aria-live storm)
+### IN — Ingestion
+- [ ] **IN-01**: In-app video upload kicks the stage-reveal immediately
+- [ ] **IN-02**: Paste-URL ingestion (TikTok/Reels) with clipboard auto-detect
+- [ ] **IN-03**: Android `share_target` entry from the TikTok/Reels native share sheet
 
-## Pillar 3 — Board / Remix Mode (BRMX)
+### TOOL — Follow-ups + Agentic Tools (the moat)
+- [ ] **TOOL-01**: 3–4 suggested follow-up taps after the Reading, scoped to competence ("about this Reading / your content"), then free text
+- [ ] **TOOL-02**: Instant follow-ups re-interpret existing data (why this score, rewrite the hook, highest-leverage fix) via the existing chat route — no engine spend
+- [ ] **TOOL-03**: One agentic tool turn — competitor analysis via the existing Apify `ScrapingProvider` — appended as a structured tool-result turn
+- [ ] **TOOL-04**: Agentic taps are visually distinct from instant chips (they cost time + can fail), with a natural "working…" beat
+- [ ] **TOOL-05**: Tool failures voiced in-persona, NEVER red error toasts
+- [ ] **TOOL-06**: `analysis_chats` schema extension (`kind` + `payload` cols, `'tool'` role) to persist structured tool turns
 
-The remix board UI/UX.
+### MON — In-thread Monetization
+- [ ] **MON-01**: Oracle-initiated monetization turn/tool inside the thread (brand-deal fit for the creator's niche) — NOT a separate tab
 
-- [ ] **BRMX-01**: Remix mode runs end-to-end and renders correctly against the shared Apollo reasoner (R12 one-brain path)
-- [ ] **BRMX-02**: Remix board UI/UX audited and refined to match Test-mode quality bar (frames, wiring, mobile)
-- [ ] **BRMX-03**: Remix ↔ Test mode transitions and shared components behave consistently
+### DESK — Desktop Instrument
+- [ ] **DESK-01**: Same thread widened on desktop — one product, two densities, not a separate app (mobile ships first)
+- [ ] **DESK-02**: A dense instrument layer survives desktop-only for powerusers (today's Konva board, or a dense linear successor — keep-vs-retire decided here)
 
-## Pillar 4 — Chat Feature (CHAT)
+## Future Requirements (deferred to a follow-up milestone)
+- [ ] First-run demo Reading — pre-baked Reading on a recognizable viral video shown before first upload
+- [ ] iOS native share-sheet ingestion — requires the Capacitor native-wrapper milestone (WebKit #194593 blocks PWA share-target on iOS)
+- [ ] Additional agentic tools — back-catalog comparison, trending sounds, best-post-time
+- [ ] Shareable Reading export — image card vs link (growth-loop mechanics unresolved, vision §9)
+- [ ] Cross-video insight — "your hooks consistently underperform" (surfaces at the home/list level)
+- [ ] Projected-views / strategic outcome model — F40, explicitly still deferred (vision §7a)
+- [ ] Prompt accuracy + token tuning — the surface-independent sliver of ENG-06 (vision §7b); rides along or a quick later pass
 
-The "ask the expert" chat dock: UI/UX + grounding.
+## Open Decisions (resolve during discuss/plan-phase — vision §9, not gaps)
+- Exact clay/terracotta brand hue + exact verdict-scale green/amber/red values (calibration, not direction) — owned by **DS-02/DS-03**
+- Exact serif typeface for the voice moments — owned by **DS-04**
+- How the Reading *settles* (reveal moment → resting document) in detail — owned by **READ-03/READ-06**
+- Desktop instrument: keep the Konva canvas vs a dense *linear* successor (willing to retire the canvas entirely) — owned by **DESK-02**
+- How much desktop diverges (lean: same thread widened, minimal divergence) — owned by **DESK-01**
 
-- [ ] **CHAT-01**: Chat citations are real and grounded (resolve the §-scheme mismatch — inject KNOWLEDGE-CORE / fix taxonomy, or drop fake citations) so the chat is trustworthy
-- [ ] **CHAT-02**: Chat dock UI/UX refined (markdown, frame-tags, streaming/stop, composer, mobile full-height sheet) — verified desktop + mobile
-- [ ] **CHAT-03**: Chat answers stay tied to the analyzed video's engine output (context grounding), not generic
-
-## Pillar 5 — General UI/UX (UIUX)
-
-Cross-cutting polish toward a coherent MVP surface.
-
-- [ ] **UIUX-01**: Numen rebrand fully consistent (logo, wordmark, titles, meta, OG, copy) — no stray "Virtuna" anywhere user-facing
-- [ ] **UIUX-02**: Raycast design language adherence audited (6% borders, 10% hover, 12px card radius, Inter, glass pattern) across all surfaces
-- [ ] **UIUX-03**: Mobile responsiveness + accessibility (WCAG AA) pass on the core flow (analyze → board → chat)
-- [ ] **UIUX-04**: End-to-end first-run flow holds together for a real user (auth → analyze → result → chat), no dead routes or broken handoffs
-
----
-
-## Out of Scope (this milestone)
-
-- **Net-new features** — idea generator, A/B variants, cross-platform repurposing, watermark detection, hook archetype library, outcome feedback loop, trend velocity → backlog (refinement milestone, not feature build)
-- **Landing rebuild** — deferred (separate `milestone/landing` worktree)
-- **iOS Capacitor wrapper** — future milestone
-- **Domain research** — refining shipped surfaces, no upfront research
-- **Brand-deals / competitors / trending pillars** — not part of the core MVP-ready loop unless surfaced as blockers
-
-## Future Requirements (deferred)
-
-Carried from PROJECT.md backlog; reactivate selectively post-MVP-ready:
-- History view connected to real prediction results
-- Analytics dashboard (confidence distributions, cost trends, model drift)
-- Outcomes feedback loop (auto-scrape posted content after 48h)
+## Out of Scope
+- **Engine changes** — presentation-only milestone; engine v4.1 / ENGINE_VERSION 3.19.0 is frozen
+- **Light mode** — dark-only, decided 2026-06-11
+- **Mysticism / oracle theater** — temple / light-as-presence / amber gravitas explicitly cut as gimmicky
+- **Open-ended assistant** — follow-ups scoped to competence, not a general chatbot
+- **Naked-number verdict / three parallel scorecards / 40-field bloat** — resolved by READ + DATA
+- **Konva canvas as the PRIMARY surface** — demoted to the desktop-only instrument
+- **Retheme of the 36 Raycast components** — this is a ground-up kit
+- **iOS share-target in a PWA** — structurally unbuildable (WebKit #194593); deferred to Capacitor
+- **`next-pwa`** — unmaintained; use Serwist
 
 ## Traceability
-
-| REQ-ID | Phase | Status |
-|--------|-------|--------|
-| ENG-01 | Phase 1 — Engine Pipeline | Pending |
-| ENG-02 | Phase 1 — Engine Pipeline | Pending |
-| ENG-03 | Phase 1 — Engine Pipeline | Pending |
-| ENG-04 | Phase 1 — Engine Pipeline | Pending |
-| ENG-05 | Phase 1 — Engine Pipeline | Pending |
-| ENG-06 | Phase 1 — Engine Pipeline | Pending |
-| BTEST-01 | Phase 2 — Board / Test Mode | Pending |
-| BTEST-02 | Phase 2 — Board / Test Mode | Pending |
-| BTEST-03 | Phase 2 — Board / Test Mode | Pending |
-| BTEST-04 | Phase 2 — Board / Test Mode | Pending |
-| BTEST-05 | Phase 2 — Board / Test Mode | Pending |
-| BRMX-01 | Phase 3 — Board / Remix Mode | Pending |
-| BRMX-02 | Phase 3 — Board / Remix Mode | Pending |
-| BRMX-03 | Phase 3 — Board / Remix Mode | Pending |
-| CHAT-01 | Phase 4 — Chat Feature | Pending |
-| CHAT-02 | Phase 4 — Chat Feature | Pending |
-| CHAT-03 | Phase 4 — Chat Feature | Pending |
-| UIUX-01 | Phase 5 — General UI/UX | Pending |
-| UIUX-02 | Phase 5 — General UI/UX | Pending |
-| UIUX-03 | Phase 5 — General UI/UX | Pending |
-| UIUX-04 | Phase 5 — General UI/UX | Pending |
+<!-- Filled by the roadmapper: REQ-ID → Phase -->
