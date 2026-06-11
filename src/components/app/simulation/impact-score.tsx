@@ -10,8 +10,8 @@ interface HeroScoreProps {
   confidence_label: ConfidenceLevel;
   behavioral_score: number;
   gemini_score: number | null; // D-R1: null on video (Read no longer scores). Board re-sources the "Apollo" breakdown off the real Apollo composite in Phase 2 (F32).
-  rule_score: number;
-  trend_score: number;
+  rule_score: number | null; // F43 (01-05): dead signal — emits null; rendered as 0 here (legacy/unmounted view)
+  trend_score: number | null; // F43 (01-05): dead signal — emits null; rendered as 0 here (legacy/unmounted view)
   score_weights: {
     behavioral: number;
     apollo?: number; // Plan 03-04 (D-04): apollo replaces gemini as live blend term
@@ -62,8 +62,8 @@ export function HeroScore({
   const scoreMap = {
     behavioral: behavioral_score,
     apollo: gemini_score ?? 0, // D-R1: gemini_score null on video → 0 placeholder; Phase 2 (F32) re-sources this off the real Apollo composite
-    rules: rule_score,
-    trends: trend_score,
+    rules: rule_score ?? 0, // F43: dead signal emits null → 0 for the (legacy/unmounted) breakdown bar
+    trends: trend_score ?? 0, // F43: dead signal emits null → 0 for the (legacy/unmounted) breakdown bar
   };
 
   return (

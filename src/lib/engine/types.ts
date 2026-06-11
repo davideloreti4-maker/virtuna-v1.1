@@ -306,7 +306,7 @@ export interface PredictionResult {
   // v2 outputs
   behavioral_predictions: BehavioralPredictions;
   feature_vector: FeatureVector;
-  reasoning: string; // DeepSeek's reasoning text
+  reasoning: string | null; // F43 (01-05): always "" in production (no consumer) → emitted null; nullable for back-compat
   warnings: string[]; // Fatal flaw warnings from DeepSeek Step 4
 
   // Predicted engagement metrics (R11 — grounded range, Plan 05-02).
@@ -319,11 +319,14 @@ export interface PredictionResult {
   suggestions: Suggestion[];
 
   // Scoring breakdown
-  rule_score: number;
-  trend_score: number;
+  // F43 (01-05): rule/trend/ml are dead signals (rules/trends/ml removed from the blend) — they
+  // emitted fake fixed constants (50/0/0). Now emitted null (honest "no value"); DB columns kept
+  // for back-compat (route.ts buildInsertRow persists `?? null`). Nullable type follows the emit.
+  rule_score: number | null;
+  trend_score: number | null;
   gemini_score: number | null; // D-R1: null on video (Read is a pure sensor, no longer scores); provenance-only on legacy/text rows
   behavioral_score: number; // DeepSeek behavioral contribution
-  ml_score: number; // ML classifier score (0-100), 0 if model unavailable
+  ml_score: number | null; // F43 (01-05): ML removed from blend; was a fake 0, now null. DB column kept for back-compat
   /** Phase 6 (D-G3) — 0-100 audio perceptual score before fingerprint boost. 0 when audio absent.
    *  Optional to preserve compile against existing consumers; plans 06-05/06-06 will start emitting it. */
   audio_perceptual_score?: number;

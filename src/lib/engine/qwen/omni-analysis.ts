@@ -308,12 +308,16 @@ export async function analyzeVideoWithOmni(
         ? (data.content_type as (typeof CONTENT_TYPE_VALUES)[number])
         : "other";
 
+      // F12 (01-05): `confidence: 1.0` here is a DEAD placeholder, NOT a model output — the Omni read
+      // never emits a content-type/niche confidence, so 1.0 is fabricated certainty. No consumer
+      // trusts it (grep-confirmed: nothing reads content_type.confidence / niche.confidence). Left at
+      // 1.0 only because Wave0Result's shape requires the field; treat as meaningless (do not surface).
       const wave0Result: Wave0Result = {
-        content_type: { type: ctypeSlug, confidence: 1.0 },
+        content_type: { type: ctypeSlug, confidence: 1.0 }, // DEAD placeholder (F12) — not a real confidence
         niche: {
           primary_slug: data.niche_primary_slug,
           micro_slug:   data.niche_micro_slug ?? null,
-          confidence:   1.0,
+          confidence:   1.0, // DEAD placeholder (F12) — not a real confidence
         },
       };
 

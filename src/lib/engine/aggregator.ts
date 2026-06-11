@@ -533,8 +533,9 @@ export async function aggregateScores(
   // Plan 03 strip: ruleResult + audioFingerprintResult + trendEnrichment removed from pipeline; use fallback defaults.
   const ruleResult: import("./types").RuleScoreResult = { rule_score: 50, matched_rules: [] };
   const trendEnrichment: TrendEnrichment = { trend_score: 0, matched_trends: [], trend_context: "", hashtag_relevance: 0 };
-  // Plan 03: audio fingerprint stage removed; always null. Cast prevents TypeScript narrowing to never.
-  const audioFingerprintResult = null as AudioFingerprintResult | null;
+  // F43 (01-05): audio_fingerprint dropped from the output contract (stage removed in Plan 03; the
+  // field was always null + had no live consumer + is not persisted). The aggregateScores-scope
+  // audioFingerprintResult const is removed with the emit (its only remaining reference).
 
   // -------------------------------------------------
   // Phase 4 D-12 + D-19 (RESEARCH Topic #5 locked interpretation):
@@ -793,7 +794,7 @@ export async function aggregateScores(
     gemini_cta:  pipelineResult.geminiResult.signalAvailability?.gemini_cta  ?? false,
     personas: pipelineResult.personaBehavioralAggregate !== null,
     audio: audioSignals != null,
-    audio_fingerprint: audioFingerprintResult !== null,
+    audio_fingerprint: false, // F43 (01-05): fingerprint stage removed (Plan 03) — was always false (audioFingerprintResult hardcoded null)
     retrieval: pipelineResult.retrievalResult.availability,
     // Plan 04: platform_fit key removed from blend — provenance only, preserved for JSONB.
     platform_fit: false,
@@ -1136,7 +1137,7 @@ export async function aggregateScores(
     confidence_label: conf.confidence_label,
     behavioral_predictions,
     feature_vector,
-    reasoning: "", // DeepSeek reasoning text — not exposed in current schema
+    reasoning: null, // F43 (01-05): always "" (no consumer) — emit null, not a fake empty string
     // Plan 03-04 (D-04): Apollo §4 output surfaced for variants.apollo persist (route.ts).
     // Null when deepseek unavailable (circuit breaker open or failed).
     apollo_reasoning: deepseek && deepseek.rewrites && deepseek.dimensions && deepseek.composite_score !== undefined
@@ -1163,17 +1164,19 @@ export async function aggregateScores(
     predicted_engagement: computeEngagementRange(pipelineResult.creatorContext, overall_score) ?? null,
     factors,
     suggestions,
-    rule_score: ruleResult.rule_score,   // retained in type; ruleResult always fallback 50 (Plan 03 strip)
-    trend_score: trendEnrichment.trend_score, // retained in type; always 0 (Plan 03 strip)
+    // F43 (01-05): rule/trend/ml are dead (removed from the blend) — stop emitting the fake fixed
+    // constants (50/0/0) that leaked to the UI as meaningful. Emit null; DB columns kept for
+    // back-compat (route.ts persists `?? null`). ruleResult/trendEnrichment locals are now unused
+    // for output (they were always the Plan-03-strip fallbacks anyway).
+    rule_score: null,
+    trend_score: null,
     gemini_score,
     behavioral_score,
-    ml_score: 0, // Plan 04 (R9): ml key removed from blend; field retained in type for back-compat
+    ml_score: null,
     // Phase 6 (D-G3) — pre-boost audio_perceptual_score. The fingerprint boost
     // is folded into audio_score (internal) before the weighted sum; consumers
     // who want the perceptual baseline read this field directly.
     audio_perceptual_score,
-    // Phase 6 (D-G1) — full fingerprint match record or null.
-    audio_fingerprint: audioFingerprintResult,
     // Phase 6 (Note 7 / Q4 RESOLVED) — verbatim audio_description for
     // persistence into analysis_results.audio_description (route.ts pluck).
     audio_description,
@@ -1240,9 +1243,9 @@ export async function aggregateScores(
     // the "similar videos" panel without further DB joins (D-02).
     retrieval_score: pipelineResult.retrievalResult.score,
     retrieval_evidence: pipelineResult.retrievalResult.evidence,
-    // Plan 04 (R9): platform_fit key removed from blend; field set null.
-    // platform_fit module moves to _dormant/ in Plan 05; field retained in type for back-compat.
-    platform_fit: null,
+    // F43 (01-05): platform_fit dropped from the output contract (removed from the blend in Plan 04,
+    // module dormanted; always null, no live consumer, not persisted). Field stays optional on the
+    // type for back-compat with old persisted rows; the aggregator no longer emits it.
   };
 
   // -------------------------------------------------
