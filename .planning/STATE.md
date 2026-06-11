@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Numen Surface
 status: executing
-stopped_at: Phase 01 Plans 01 + 05 complete — next = Wave 2 (Plan 02 core primitives + Plan 03 calm motion in parallel)
-last_updated: "2026-06-11T19:59:31.814Z"
-last_activity: 2026-06-11 -- Phase 01 Plan 05 (DS-06 migration boundary doc) completed
+stopped_at: Phase 01 Plans 01 + 05 + 02 complete — next = Wave 2 Plan 03 (calm motion), then Wave 3 Plan 04 (kit showcase)
+last_updated: "2026-06-11T22:12:00.000Z"
+last_activity: 2026-06-11 -- Phase 01 Plan 02 (DS-05/02 core primitives) completed
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 5
-  completed_plans: 2
-  percent: 40
+  completed_plans: 3
+  percent: 60
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md · Vision (authoritative): .planning/NUMEN-SURFACE-VIS
 ## Current Position
 
 Phase: 01 (design-system-foundation-brand-migration) — EXECUTING
-Plan: 2/5 (Plans 01 + 05 complete; Wave 2 = 02/03 unblocked, 04 follows)
+Plan: 3/5 (Plans 01 + 05 + 02 complete; Wave 2 Plan 03 next, Wave 3 Plan 04 follows)
 Status: Executing Phase 01
-Last activity: 2026-06-11 -- Plan 05 complete (DS-06 migration boundary doc; chat dock located via widened grep)
+Last activity: 2026-06-11 -- Plan 02 complete (DS-05/02 core primitives: glass/surface/pill-chip/icon-button/verdict-swatch on tailwind-variants; 7/7 tests green)
 
-Progress: [████░░░░░░] 40%
+Progress: [██████░░░░] 60%
 
 ## Performance Metrics
 
@@ -48,6 +48,7 @@ Progress: [████░░░░░░] 40%
 
 *Updated after each plan completion*
 | Phase 01 P05 | 10 | 1 tasks | 1 files |
+| Phase 01 P02 | 18 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,8 @@ Recent decisions affecting current work:
 - Plan 01: colorParsley not re-exported by apca-w3; use calcAPCA(textHex, bgHex) wrapper in all contrast scripts — accepts hex strings, bundles colorParsley internally.
 - Plan 01: framer-motion retained (D-04 deferral) — 4 OLD files untouched; standardize new code on motion; defer removal to surface-rebuild phases.
 - [Phase ?]: Plan 05 (DS-06): chat dock FOUND via widened grep at command-bar/CommandBar.tsx ('bottom-pinned dock' / unified expert chat panel) — Q8 'absent' caveat resolved; absorbed into thread, owned Phase 4/5.
+- Plan 02 (DS-05): kit primitives expose their tailwind-variants `tv()` result as a NAMED export (`surface`/`pillChip`/`iconButton`/`verdictSwatch`) + an ergonomic wrapper component — tests import the tv function directly.
+- Plan 02 (D-05): Glass blur still needs DEPLOYED-build verification (Plan 04); happy-dom/dev don't exercise the Lightning CSS pass. Documented in glass.tsx header.
 
 ### Pending Todos
 
@@ -93,6 +96,6 @@ From Plan 01 execution:
 
 ## Session Continuity
 
-Last session: 2026-06-11T19:59:25.804Z
-Stopped at: Phase 01 Plan 01 complete — next = Plan 02 (core primitives) + Plan 03 (calm motion) in parallel (Wave 2)
+Last session: 2026-06-11T22:12:00.000Z
+Stopped at: Phase 01 Plan 02 complete (DS-05/02 core primitives, 7/7 tests green) — next = Wave 2 Plan 03 (calm motion / StageBlock), then Wave 3 Plan 04 (kit showcase + deployed-build glass check)
 Resume file: None
