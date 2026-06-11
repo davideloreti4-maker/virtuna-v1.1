@@ -114,14 +114,19 @@ export interface FeatureVector {
   pacingScore: number | null;
   transitionQuality: number | null;
 
-  // DeepSeek component scores (0-10)
-  hookEffectiveness: number;
-  retentionStrength: number;
-  shareability: number;
-  commentProvocation: number;
-  saveWorthiness: number;
-  trendAlignment: number;
-  originality: number;
+  // DeepSeek component scores (0-10).
+  // F24 (plan 01-04, D-04): NULL on video (input_mode !== "text"). On video the fold
+  // (independent 10-archetype audience sim) owns the audience read, and confidence rebased
+  // onto apollo-vs-fold (F22) — so Apollo's self-graded component scores are no longer a
+  // meaningful output signal and are dropped from the video output contract. Still populated
+  // in text/tiktok_url mode, where Apollo IS the behavioral source (overall_score fallback blend).
+  hookEffectiveness: number | null;
+  retentionStrength: number | null;
+  shareability: number | null;
+  commentProvocation: number | null;
+  saveWorthiness: number | null;
+  trendAlignment: number | null;
+  originality: number | null;
 
   // Rules engine (0-100)
   ruleScore: number;
@@ -270,6 +275,28 @@ export interface EngagementRange {
 // Full Prediction Result v2
 // =====================================================
 
+/**
+ * F37/F41 (plan 01-04) — first-class hero block. The moat insight assembled from already-emitted
+ * Apollo materials so it LEADS the board instead of being buried only in `ceiling_capper` prose.
+ * Each field individually nullable + non-throwing (ceiling/the_one_fix degrade to null when Apollo
+ * is unavailable; verdict_line + go_no_go always resolve from overall_score + anti_virality_gated).
+ * Persisted into variants.hero (F42, no migration — rides the JSONB bag).
+ */
+export interface HeroBlock {
+  /** Lead verdict. Gated → "Don't post yet"; else bandLabel(overall_score) (mirrors
+   *  components/board/verdict/verdict-derive.ts bandLabel — kept in the engine to avoid a
+   *  component dependency). Never null (overall_score is always present). */
+  verdict_line: string;
+  /** Apollo §4 ceiling rationale (deepseek.ceiling_capper). Null when Apollo unavailable. */
+  ceiling: string | null;
+  /** Highest-leverage rewrite (deepseek.rewrites[0].variant). Null when Apollo unavailable / no rewrites. */
+  the_one_fix: string | null;
+  /** Post / don't-post call derived from anti_virality_gated. */
+  go_no_go: "go" | "no-go";
+  /** Niche-aware optimal posting window (result.optimal_post_window). Null on Supabase error / unknown niche. */
+  post_window: OptimalPostWindow | null;
+}
+
 export interface PredictionResult {
   // Core prediction
   overall_score: number; // 0-100
@@ -325,6 +352,11 @@ export interface PredictionResult {
     /** Watermark / cross-post warning (S12 absorb). */
     platform_note?: string;
   } | null;
+  /** F37/F41 (plan 01-04) — first-class hero block (verdict_line/ceiling/the_one_fix/go_no_go/
+   *  post_window) assembled from already-emitted Apollo materials. Optional for back-compat with
+   *  pre-3.18.0 persisted rows / callsites; the aggregator assigns it on every fresh run.
+   *  Persisted into variants.hero on permalink reload (F42). */
+  hero?: HeroBlock | null;
   /** Phase 1 (R1.9, Plan 06 T3 B4) — true when confidence < ANTI_VIRALITY_THRESHOLD.
    *  UI renders "Don't post yet" orange verdict state when true. REQUIRED field
    *  (not optional) — aggregator assigns on every PredictionResult; defaults to

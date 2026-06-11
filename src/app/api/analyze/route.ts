@@ -229,8 +229,11 @@ async function persistApolloToVariants(
   // returns null when no creator baseline exists (R9 honesty) — persist only a real
   // range, so permalink reload mirrors the live null-gate exactly.
   const engagement_range = finalResult.predicted_engagement;
-  // Skip only when there's nothing to persist (Apollo skipped AND no range).
-  if (!apollo && !engagement_range) return;
+  // F42 (plan 01-04): persist the hero block alongside apollo + engagement_range so a shared/
+  // saved board permalink shows what the live run showed. Rides variants.hero — NO migration.
+  const hero = finalResult.hero;
+  // Skip only when there's nothing to persist (Apollo skipped AND no range AND no hero).
+  if (!apollo && !engagement_range && !hero) return;
 
   try {
     const { data: row, error: readErr } = await service
@@ -247,6 +250,7 @@ async function persistApolloToVariants(
     const merged: Record<string, unknown> = { ...current };
     if (apollo) merged.apollo = apollo;
     if (engagement_range) merged.engagement_range = engagement_range;
+    if (hero) merged.hero = hero; // F42 — hero block survives permalink reload
     const { error: writeErr } = await service
       .from("analysis_results")
       .update({ variants: merged as unknown as Json })

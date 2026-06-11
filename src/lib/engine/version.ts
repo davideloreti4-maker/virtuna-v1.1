@@ -99,7 +99,19 @@
  * apollo-vs-fold is plan 01-04, F22/F34). Deferred to 01-03 follow-ons: hero block + scorecard
  * collapse (F37/F24/F26). NOTE: 01-02 read-robustness (F46/F47/F9/F16) did NOT bump.
  *
+ * Bumped 3.17.0 → 3.18.0 (2026-06-11, coupled aggregator closeout — plan 01-04): an OUTPUT-SHAPE
+ * change bundling four flags that all touch the final assembly. (F22/F44) confidence "model
+ * agreement" rebased onto Apollo-composite-vs-FOLD-audience (two independent signals) instead of
+ * apollo-vs-behavioral (one Apollo call graded twice → self-agreement); falls back to
+ * apollo-vs-behavioral only when the fold is unavailable. (F24) the 7 component scores are dropped
+ * from the video output contract (feature_vector component fields null on video; kept in
+ * text/tiktok_url mode) — they no longer feed confidence after F22. (F34) Stage-10 Check #1
+ * (signal-agreement) dropped (dead on video post-D-R1 + now subsumed by F22); Checks #2/#3/#4 kept.
+ * (F37/F41) a first-class hero block { verdict_line, ceiling, the_one_fix, go_no_go, post_window }
+ * is assembled from already-emitted Apollo materials and (F42) persisted into variants.hero. Both
+ * the confidence value and the output shape change on video rows → isolate the cache.
+ *
  * D-23 cache invariant: prediction-cache.ts keys on ENGINE_VERSION; this bump auto-invalidates
- * all `3.16.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
+ * all `3.17.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
  */
-export const ENGINE_VERSION = "3.17.0";
+export const ENGINE_VERSION = "3.18.0";

@@ -6,8 +6,12 @@
  * its output — `flags` are never persisted (no `critique` DB column) nor rendered, the
  * old `consistency_score` had zero consumers (since removed), and the only consumed
  * effect, `confidence_adjustment`, is fully determined by values already on the assembled
- * PredictionResult. The four D-13 checks are pure arithmetic, so the LLM only ever
+ * PredictionResult. The D-13 checks are pure arithmetic, so the LLM only ever
  * approximated them stochastically.
+ *
+ * F34 (plan 01-04): Check #1 (signal-agreement) dropped — dead on video after D-R1 and now
+ * subsumed by the apollo-vs-fold agreement in calculateConfidence (F22). Three checks remain
+ * (score-vs-factors, historical-flop, over-confidence-on-thin-signals) — all live and free.
  *
  * Now computed in TypeScript: instant, free, and fully reproducible — removing a ~42s
  * reasoning call from the post-pipeline tail and the non-determinism it introduced on the
@@ -21,12 +25,14 @@ import type { CreatorContext } from "./creator";
 
 // Per-check confidence penalties (magnitude, subtracted). Sum clamped to [-0.20, 0] —
 // preserves the prior prompt's "reduce 0.05–0.08 per fired check, cap -0.20" rule.
-const PENALTY_SIGNAL_DISAGREEMENT = 0.06;
+// F34 (plan 01-04): Check #1 (signal-agreement) was DROPPED — its |gemini − behavioral| basis
+// died with D-R1 (gemini_score null on video) and the apollo-vs-fold agreement signal now lives
+// in calculateConfidence (F22); re-checking it here as a penalty would double-count. Checks
+// #2/#3/#4 (all live, free, orthogonal) are kept.
 const PENALTY_SCORE_FACTOR_CONFLICT = 0.07;
 const PENALTY_HISTORICAL_FLOP = 0.05;
 const PENALTY_THIN_SIGNAL = 0.08;
 
-const SIGNAL_GAP_THRESHOLD = 30; // Check #1 — |gemini − behavioral|
 const HIGH_SCORE = 70; // Check #2
 const LOW_SCORE = 30;
 const WEAK_FACTOR = 4; // factor score treated as "negative"
@@ -59,15 +65,9 @@ export function deriveCritique(
   // nor rendered. The only consumed effect, confidence_adjustment, is KEPT (D1.4/R5).
   let penalty = 0;
 
-  // Check #1 — Signal Agreement: vision and behavioral disagree by >30 points.
-  // D-R1 (2026-06-11): gemini_score is null on video (the Read no longer scores) — skip when
-  // absent. Re-basing this agreement on apollo-vs-fold is plan 01-04 (F22/F34).
-  if (result.gemini_score != null) {
-    const gap = Math.abs(result.gemini_score - result.behavioral_score);
-    if (gap > SIGNAL_GAP_THRESHOLD) {
-      penalty += PENALTY_SIGNAL_DISAGREEMENT;
-    }
-  }
+  // Check #1 (signal-agreement) DROPPED — F34 (plan 01-04). Its |gemini − behavioral| basis died
+  // with D-R1 (gemini_score null on video); the independent apollo-vs-fold agreement now lives in
+  // calculateConfidence (F22), so re-checking it here would double-count the same signal.
 
   // Check #2 — Score vs Factors: high score on weak factors, or low score on strong ones.
   const top3 = [...(result.factors ?? [])].sort((a, b) => b.score - a.score).slice(0, 3);

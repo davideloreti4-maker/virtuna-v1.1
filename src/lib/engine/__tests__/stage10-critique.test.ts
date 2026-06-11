@@ -3,7 +3,8 @@
  *
  * The LLM path (mocked OpenAI, circuit breaker, Zod schema, thinking-mode args) is gone:
  * deriveCritique is pure arithmetic over the assembled PredictionResult. These tests lock
- * the four D-13 checks, the clamped confidence penalty, flag attribution, and determinism.
+ * the three live D-13 checks (Check #1 signal-agreement DROPPED in plan 01-04 / F34), the
+ * clamped confidence penalty, flag attribution, and determinism.
  */
 import { describe, it, expect } from "vitest";
 import {
@@ -127,15 +128,17 @@ describe("deriveCritique — clean result", () => {
   });
 });
 
-describe("deriveCritique — Check #1 Signal Agreement", () => {
-  // Plan 04 (D2.3): flags[] always empty (vestigial strings removed). Assert via confidence_adjustment.
-  it("|gemini − behavioral| > 30 → penalty applied (no flags — strings vestigial)", () => {
+describe("deriveCritique — Check #1 Signal Agreement DROPPED (F34, plan 01-04)", () => {
+  // F34: Check #1 (|gemini − behavioral| > 30) was removed. Its basis died with D-R1
+  // (gemini_score null on video) and the independent apollo-vs-fold agreement now lives in
+  // calculateConfidence (F22) — re-checking it here would double-count. A large gemini/behavioral
+  // gap must now contribute ZERO penalty.
+  it("a large |gemini − behavioral| gap no longer fires any penalty", () => {
     const c = deriveCritique(cleanResult({ gemini_score: 85, behavioral_score: 45 }));
-    expect(c.flags).toHaveLength(0); // flags always empty after Plan 04
-    expect(c.confidence_adjustment).toBeCloseTo(-0.06, 10);
+    expect(c.confidence_adjustment).toBe(0);
   });
-  it("gap exactly 30 does NOT fire (strict >)", () => {
-    const c = deriveCritique(cleanResult({ gemini_score: 80, behavioral_score: 50 }));
+  it("even an extreme gap (90 vs 10) contributes nothing (Check #1 is gone)", () => {
+    const c = deriveCritique(cleanResult({ gemini_score: 90, behavioral_score: 10 }));
     expect(c.confidence_adjustment).toBe(0);
   });
 });
@@ -241,29 +244,39 @@ describe("deriveCritique — Check #4 thin-signal over-confidence", () => {
 });
 
 describe("deriveCritique — aggregation & clamping", () => {
-  // Plan 04 (D2.3): flags[] always empty. Penalties still accumulate via confidence_adjustment.
-  // Default makeFakePredictionResult: gemini_score=85, behavioral_score=45 → Check #1 fires.
-  // Default also has gemini_hook: true, personas: true → Check #4 does NOT fire (need both false).
-  it("multiple checks fire → penalty clamps at -0.20", () => {
+  // Plan 04 (D2.3): flags[] always empty. F34 (01-04): Check #1 dropped, so the three live checks
+  // are #2 (0.07) + #3 (0.05) + #4 (0.08) = 0.20 — the natural max equals the [-0.20, 0] clamp.
+  const creatorWithFlops: CreatorContext = {
+    found: true, follower_count: 50000, avg_views: 10000, engagement_rate: 0.05,
+    niche: "gaming", posting_frequency: "daily",
+    platform_averages: { avg_views: 50000, avg_engagement_rate: 0.06, avg_share_rate: 0.008, avg_comment_rate: 0.004 },
+    target_platforms: ["tiktok"], niche_primary: "gaming", niche_sub: null, target_audience: null,
+    primary_goal: "growth", creator_stage: "mid", content_style: null, cuts_per_second: null,
+    reference_creators: null,
+    past_wins: null,
+    past_flops: [{ url: "https://tiktok.com/@t/flop1" }],
+    time_of_day_aware: null, pain_points: null,
+  };
+  it("all three live checks fire → penalty sums to the -0.20 floor", () => {
     const c = deriveCritique(
       makeFakePredictionResult({
-        gemini_score: 90, behavioral_score: 30, // #1 fires (gap=60 > 30)
         overall_score: 80,
         factors: [
           { id: "a", name: "Hook Power", score: 2, max_score: 10, rationale: "x", improvement_tip: "y" },
           { id: "b", name: "Retention Pull", score: 3, max_score: 10, rationale: "x", improvement_tip: "y" },
           { id: "c", name: "Share Trigger", score: 1, max_score: 10, rationale: "x", improvement_tip: "y" },
         ], // #2 fires (high score + weak factors)
-        confidence: 0.9,
+        confidence: 0.9, // >0.7 → enables #3 and #4
         signal_availability: {
           behavioral: true, gemini: true, ml: true, rules: true, trends: true,
           content_type: true, niche: true, gemini_hook: false, gemini_body: true,
           gemini_cta: true, personas: false, audio: false, retrieval: false,
-        }, // #4 fires (gemini_hook=false + personas=false)
+        }, // #4 fires (gemini_hook=false + personas=false); gemini_hook=false also makes #3's hook weak
       }),
+      creatorWithFlops, // #3 fires (past_flops + confidence>0.7 + weak hook)
     );
     expect(c.flags).toHaveLength(0); // flags always empty after Plan 04
-    expect(c.confidence_adjustment).toBe(-0.2); // 0.06+0.07+0.08 = 0.21 → clamped
+    expect(c.confidence_adjustment).toBe(-0.2); // 0.07+0.05+0.08 = 0.20
   });
 
   it("is deterministic — same input twice yields identical critique", () => {
