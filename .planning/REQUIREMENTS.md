@@ -88,4 +88,48 @@
 - **`next-pwa`** — unmaintained; use Serwist
 
 ## Traceability
-<!-- Filled by the roadmapper: REQ-ID → Phase -->
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| DS-01 | Phase 1 | Pending |
+| DS-02 | Phase 1 | Pending |
+| DS-03 | Phase 1 | Pending |
+| DS-04 | Phase 1 | Pending |
+| DS-05 | Phase 1 | Pending |
+| DS-06 | Phase 1 | Pending |
+| DS-07 | Phase 1 | Pending |
+| DS-08 | Phase 1 | Pending |
+| DATA-01 | Phase 2 | Pending |
+| DATA-02 | Phase 2 | Pending |
+| DATA-03 | Phase 2 | Pending |
+| DATA-04 | Phase 2 | Pending |
+| GATE-01 | Phase 3 | Pending |
+| GATE-02 | Phase 3 | Pending |
+| GATE-03 | Phase 3 | Pending |
+| READ-01 | Phase 4 | Pending |
+| READ-02 | Phase 4 | Pending |
+| READ-03 | Phase 4 | Pending |
+| READ-04 | Phase 4 | Pending |
+| READ-05 | Phase 4 | Pending |
+| READ-06 | Phase 4 | Pending |
+| READ-07 | Phase 4 | Pending |
+| SHELL-01 | Phase 5 | Pending |
+| SHELL-02 | Phase 5 | Pending |
+| SHELL-03 | Phase 5 | Pending |
+| SHELL-04 | Phase 4 | Pending |
+| IN-01 | Phase 5 | Pending |
+| IN-02 | Phase 5 | Pending |
+| IN-03 | Phase 5 | Pending |
+| TOOL-01 | Phase 6 | Pending |
+| TOOL-02 | Phase 6 | Pending |
+| TOOL-03 | Phase 6 | Pending |
+| TOOL-04 | Phase 6 | Pending |
+| TOOL-05 | Phase 6 | Pending |
+| TOOL-06 | Phase 6 | Pending |
+| MON-01 | Phase 6 | Pending |
+| DESK-01 | Phase 7 | Pending |
+| DESK-02 | Phase 7 | Pending |
+
+**Coverage:** 38/38 requirements mapped — no orphans, no duplicates.
+
+> Note: SHELL-04 (installable PWA) is delivered in Phase 4 alongside the mobile Reading thread (the PWA shell and the mobile surface ship together); the remaining SHELL reqs (home list, persistent action, thread routing) land in Phase 5.

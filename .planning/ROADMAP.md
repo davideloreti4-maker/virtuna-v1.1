@@ -1,97 +1,124 @@
-# Roadmap — v4.1 MVP Ready
+# Roadmap: Numen Surface (v5.0)
 
 ## Overview
 
-A **brownfield refinement pass**. The platform already ships end-to-end; this milestone walks each major pillar one at a time — fixing, optimizing, and refining toward an MVP-ready state. The walk follows the natural data flow: fix the brain first (engine), then the surfaces that render it (test board → remix board → chat), then cross-cutting polish last (general UI/UX). Every phase is a pillar run as **audit → fix-list → verify** over an EXISTING surface. Concrete to-dos are discovered at `/gsd-discuss-phase` time, not frozen here. The requirements are a starting audit backlog, not a contract — surfaced issues get added via `/gsd-phase add` or peeled off with `/gsd-quick`.
+Numen Surface is a presentation-layer rebuild: it replaces the Konva canvas board with **one thread per video** where the AI's first turn IS the **Reading** (stage-revealed engine output; verdict = calibrated band + one-line why in a reserved "throne" slot). The engine (v4.1, ENGINE_VERSION 3.19.0) is frozen — every phase re-composes existing output, never touches `lib/engine/`. The journey is forced by its dependency graph: build the new warm-neutral design kit (no gate dependency, runs early), build the view-model crux that both live and replay paths funnel through, pass the SMOKE GATE + verdict-banding calibration before any Reading-against-real-output, then build the mobile Reading thread, wrap it in the app shell + ingestion, add the follow-ups + agentic-tool tail (the moat) and in-thread monetization, and finally — only after mobile ships — the desktop instrument layer where the Konva-keep-vs-retire decision is made.
 
 ## Phases
 
 **Phase Numbering:**
-- Milestone-scoped: restarts at Phase 1 (v4.0 Apollo phases archived to `milestones/v4.0-phases/`).
-- Integer phases (1, 2, 3): planned pillar work.
-- Decimal phases (2.1, 2.2): urgent insertions (marked INSERTED).
+- Integer phases (1, 2, 3): Planned milestone work
+- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
-- [x] **Phase 1: Engine Pipeline** - Audit → refine the Apollo 3-call flow toward correct, fast, honest output (completed 2026-06-11)
-- [ ] **Phase 2: Board / Test Mode** - Audit → refine the analyze board so every frame renders real engine output
-- [ ] **Phase 3: Board / Remix Mode** - Audit → refine the remix board to the Test-mode quality bar
-- [ ] **Phase 4: Chat Feature** - Audit → refine the "ask the expert" dock for trustworthy, grounded answers
-- [ ] **Phase 5: General UI/UX** - Cross-cutting polish so the product holds together for a real user
+Milestone-scoped numbering (fresh worktree, `--reset-phase-numbers`): phases start at 1.
+
+- [ ] **Phase 1: Design System Foundation + Brand Migration** - Warm-neutral dark kit, verdict scale, ground-up component vocabulary; retire Raycast/coral/glass-everywhere
+- [ ] **Phase 2: View-Model + Data Contract** - Pure `toReadingBlocks()` mapping ~40 engine fields → ~10 Reading blocks; live + replay funnel through one module
+- [ ] **Phase 3: SMOKE GATE + Verdict-Banding Calibration** - Hard precondition: real-video E2E proves honest live output; band buffers wider than score noise
+- [ ] **Phase 4: Mobile Reading Thread + PWA Shell** - The core paradigm: AI pronounces first, stage-reveal blocks, throne verdict, re-openable resting document, installable PWA
+- [ ] **Phase 5: App Shell + Ingestion** - Home = list of past Readings, per-video thread routing, upload + paste-URL + Android share_target entry
+- [ ] **Phase 6: Follow-ups + Agentic Tools + Monetization** - Suggested taps → free text; instant (re-interpret) vs agentic (Apify competitors); oracle-initiated brand-deal-fit turn
+- [ ] **Phase 7: Desktop Instrument Layer** - Same thread widened on desktop + dense instrument for powerusers; Konva keep-vs-retire decided here (mobile ships first)
 
 ## Phase Details
 
-### Phase 1: Engine Pipeline
-**Goal**: Audit → refine pass over the EXISTING Apollo 3-call pipeline (Omni verbatim sensor → fold ∥ Apollo reasoner). Walk Qwen inputs/outputs, prompt quality, latency, and correctness end-to-end; resolve known drift/grounding/determinism issues. This is a refinement of a shipped engine — concrete to-dos are discovered at discuss-phase time.
-**Depends on**: Nothing (first phase — fix the brain before the surfaces that render it)
-**Requirements**: ENG-01, ENG-02, ENG-03, ENG-04, ENG-05, ENG-06
-**Success Criteria** (what must be TRUE — the pillar is MVP-ready):
-  1. A full E2E analyze run completes on a real video with every Qwen call returning usable output — no silent fallbacks, no thrown frames
-  2. The Apollo reasoner stays grounded in the knowledge core (§ citations resolve to the real corpus, not flat fake legend labels)
-  3. The same video analyzed twice yields an identical (within provider noise band) honestly-banded score, with the engagement range grounded in follower_count × quality read — no fabrication
-  4. Latency stays under the Vercel cap and trends toward the <90s E2E goal where free-tier allows
-  5. omni-flash drift is hardened (emotion_arc.label, weakest_modality, verbatim hook/segments hold across runs) and Qwen prompt I/O is reviewed for quality and token efficiency
-**Plans**: 5 plans
-- [x] 01-01-PLAN.md — ENG-02 §-grounding: apollo-core-smoke audit -> restore/remap/redesign co-review -> engine-side honesty fix
-- [x] 01-02-PLAN.md — ENG-05 read-model re-audit (flash vs plus A/B) co-review + D-11 critical-field retry + drift logging
-- [x] 01-03-PLAN.md — ENG-06 step-by-step prompt I/O co-review (3 calls) + T3.x trim audit + consumed-vs-dead field map prune/tighten
-- [x] 01-04-PLAN.md — ENG-04/06 coupled aggregator set: audit + co-review (Stage-10 fate / verdict_line) → F22/F44 confidence apollo-vs-fold + F24 drop + F34 + hero block (F37/F41) + persist (F42) + version bump
-- [x] 01-05-PLAN.md — ENG-01/03/04/06 closeout: F7 race + fold robustness (F18/F20/F19) + partial_analysis + dead-tail prune (F12/F35/F43) + E2E verify + honesty LOCK + latency reclaim
-
-### Phase 2: Board / Test Mode
-**Goal**: Audit → refine pass over the EXISTING analyze board (Test mode) UI/UX — frames, rendering, wiring, mobile. Confirm every frame holds together against real engine output and strip dead UI. Refinement of a shipped surface; concrete to-dos discovered at discuss-phase time.
-**Depends on**: Phase 1 (board renders the engine's output — engine must be sound first)
-**Requirements**: BTEST-01, BTEST-02, BTEST-03, BTEST-04, BTEST-05
-**Success Criteria** (what must be TRUE — the pillar is MVP-ready):
-  1. Every board frame renders end-to-end with real engine output — no throwing frames, no grey-cell / warm-gradient fallbacks masking missing data
-  2. The insight-hero frame leads the board (dual-read, copyable rewrites, demoted band) and reads correctly
-  3. Filmstrip / keyframes persist across reload and the content-craft frame is stable
-  4. The mobile card-stack view is coherent (auto <768px + manual toggle)
-  5. Dead UI is removed (dead percentile rank, fake-engagement remnants, number overload, aria-live storm)
+### Phase 1: Design System Foundation + Brand Migration
+**Goal**: A ground-up warm-neutral dark design kit exists — verdict-scale color discipline, warm-clay brand accent, sans-led + serif voice type — so every later Reading component is built on it, and the old Raycast/coral/glass-everywhere brand is bounded and retired.
+**Depends on**: Nothing (first phase; no gate dependency — runs early/parallel to Phase 2)
+**Requirements**: DS-01, DS-02, DS-03, DS-04, DS-05, DS-06, DS-07, DS-08
+**Success Criteria** (what must be TRUE):
+  1. A new warm-neutral dark theme renders with no pure black; all L<0.15 dark tokens authored as exact hex (Tailwind v4 oklch bug avoided), verified on a deployed build
+  2. The verdict color scale (muted green / amber / clay-red) is the only load-bearing functional color; everything else reads near-neutral; brand accent is matured warm clay used only on logo, primary action, focus
+  3. The component vocabulary (full-pill tool chips, circular icon buttons, hairline warm borders, soft elevation) and a glass primitive (backdrop-filter via inline style, not class) render correctly without Lightning CSS stripping the blur
+  4. Type system shows sans for body and serif reserved for voice moments (greeting/hero + verdict line); calm motion (no bounce/snap) on the key reveal; keyframe stills carry the chroma while warm-neutral chrome recedes
+  5. A documented migration boundary exists: a grep audit of hardcoded `#07080a` / `#FF7F50` / Raycast GlassPanel / fake macOS chrome / chat dock, with a decision of what v5.0 replaces vs defers
 **Plans**: TBD
 **UI hint**: yes
 
-### Phase 3: Board / Remix Mode
-**Goal**: Audit → refine pass over the EXISTING remix board UI/UX, bringing it to the Test-mode quality bar against the shared Apollo reasoner. Refinement of a shipped surface; concrete to-dos discovered at discuss-phase time.
-**Depends on**: Phase 2 (Remix shares components and the quality bar set by Test mode)
-**Requirements**: BRMX-01, BRMX-02, BRMX-03
-**Success Criteria** (what must be TRUE — the pillar is MVP-ready):
-  1. Remix mode runs end-to-end and renders correctly against the shared Apollo reasoner (R12 one-brain path)
-  2. The remix board UI/UX matches the Test-mode quality bar (frames, wiring, mobile)
-  3. Remix ↔ Test mode transitions and shared components behave consistently
+### Phase 2: View-Model + Data Contract (ENG-06 D-12)
+**Goal**: One pure module maps the engine's ~40 fields to ~10 value-bearing Reading blocks plus a verdict (band + why), and both the live `complete` path and the persisted-row replay path funnel through it — so a Reading and its re-opened resting document are identical. This is the architectural crux; it ships before any UI consumes it.
+**Depends on**: Phase 1 (token/type direction informs block shapes; can overlap)
+**Requirements**: DATA-01, DATA-02, DATA-03, DATA-04
+**Success Criteria** (what must be TRUE):
+  1. `lib/reading/view-model.ts` `toReadingBlocks()` is a pure function (no React, no fetch) that, given a persisted `PredictionResult` fixture, returns ~10 value-bearing blocks — unit-tested against real persisted fixtures
+  2. The live `complete` path and the persisted-row replay path call the SAME view-model; the same fixture yields identical blocks via both
+  3. A consumed-vs-dead field map is documented (resolves F27/F28/F43) — which engine fields the Reading uses and which it drops — with no `lib/engine/` edits and ENGINE_VERSION unchanged
+  4. Verdict derivation returns a band + one-line why grounded in a specific signal; the `/100` number is demoted to supporting evidence (resolves F41/F45)
+**Plans**: TBD
+
+### Phase 3: SMOKE GATE + Verdict-Banding Calibration
+**Goal**: A hard precondition is cleared — one real-video E2E on live infra proves the engine returns sane/honest output and yields the real latency number, and the verdict banding is calibrated so band buffer zones are wider than the engine's known score noise. No Reading-against-real-output is built before this passes.
+**Depends on**: Phase 2 (need the field contract to know what to smoke-test; the prune is the test subject)
+**Requirements**: GATE-01, GATE-02, GATE-03
+**Success Criteria** (what must be TRUE):
+  1. One real-video E2E on live Vercel returns sane/honest output (F46/F47 truncation, F22 confidence, F23 §-cites hold live) and the real ENG-03 latency number is measured with DashScope-429 behavior documented
+  2. A same-video-N-times variance check produces a documented score-noise figure (~±15pt over the ~26–86 range)
+  3. Calibrated band thresholds exist with buffer zones provably WIDER than that measured variance, and "Mixed signals" fires on boundary scores as a first-class, common verdict
+  4. UAT sign-off passes: F42 authenticated permalink + full measure-pipeline, with a recorded verdict-banding go/no-go (a fail blocks Phase 4)
+**Plans**: TBD
+
+### Phase 4: Mobile Reading Thread + PWA Shell
+**Goal**: The core paradigm works on mobile — the AI pronounces first (unprompted), engine stages stage-reveal into structured blocks below a reserved throne that crystallizes the verdict last, the expert insight is foregrounded, and a completed Reading persists as a re-openable resting document that opens on the verdict. The surface is an installable PWA. Replaces the Konva canvas as the primary surface.
+**Depends on**: Phase 3 (gates), Phase 2 (view-model), Phase 1 (design kit)
+**Requirements**: READ-01, READ-02, READ-03, READ-04, READ-05, READ-06, READ-07, SHELL-04
+**Success Criteria** (what must be TRUE):
+  1. On a new analysis the AI pronounces first with no blank prompt; each completed engine stage materializes its structured block (reshaped from existing `StageEvent`/SSE — NOT chatbot token streaming)
+  2. The verdict sits in a reserved top throne slot, visibly forming while evidence assembles below and crystallizing last as the climax, reading as a calibrated band + one-sentence why (judgment, not metric; confidence in the band's language)
+  3. ~10 evidence blocks render from value-bearing engine fields with the Apollo expert insight foregrounded (not buried), in plain language with no engine jargon surfaced
+  4. A completed Reading re-opens as a resting document that opens on the verdict, identical to the live render (via the Phase 2 view-model)
+  5. The app installs as a PWA (Serwist + `manifest.ts`) with mobile-native feel; iOS shows Add-to-Home-Screen coaching (installability verified via Lighthouse on a deployed build)
 **Plans**: TBD
 **UI hint**: yes
 
-### Phase 4: Chat Feature
-**Goal**: Audit → refine pass over the EXISTING "ask the expert" chat dock — UI/UX and grounding. Make the chat trustworthy and tied to the analyzed video. Refinement of a shipped surface; concrete to-dos discovered at discuss-phase time.
-**Depends on**: Phase 2 (chat is docked on the board and grounds on its engine output)
-**Requirements**: CHAT-01, CHAT-02, CHAT-03
-**Success Criteria** (what must be TRUE — the pillar is MVP-ready):
-  1. Chat citations are real and grounded — the §-scheme mismatch is resolved (inject KNOWLEDGE-CORE / fix taxonomy, or drop fake citations) so the chat is trustworthy
-  2. The chat dock UI/UX is refined (markdown, frame-tags, streaming/stop, composer, mobile full-height sheet) and verified on desktop + mobile
-  3. Chat answers stay tied to the analyzed video's engine output (context grounding), not generic
+### Phase 5: App Shell + Ingestion
+**Goal**: The full app spine wraps the Reading thread — home is a vertical list of past Readings (a content-intelligence portfolio), per-video thread routing reuses the existing persistence, and content gets in via upload, paste-URL, and Android share_target. iOS native share-sheet is explicitly out (WebKit #194593 → Capacitor milestone).
+**Depends on**: Phase 4 (the thread must work before wiring the shell around it)
+**Requirements**: SHELL-01, SHELL-02, SHELL-03, IN-01, IN-02, IN-03
+**Success Criteria** (what must be TRUE):
+  1. Home shows a vertical list of past Readings, each a compact verdict card (keyframe thumb + band + why + date), with one persistent "analyze new" action
+  2. Tapping a card opens its per-video thread; thread routing (list → conversation) reuses `analysis_results` + `analysis_chats` + the existing history API
+  3. In-app video upload kicks the stage-reveal immediately
+  4. Paste-URL ingestion (TikTok/Reels) works with clipboard auto-detect, and an Android `share_target` entry from the native share sheet lands an analysis
 **Plans**: TBD
 **UI hint**: yes
 
-### Phase 5: General UI/UX
-**Goal**: Cross-cutting refinement pass over the EXISTING surfaces — Numen brand consistency, Raycast design language adherence, mobile, accessibility, dead routes — so the whole product holds together for a real user. Refinement, not a feature build; concrete to-dos discovered at discuss-phase time.
-**Depends on**: Phase 4 (cross-cutting polish runs last, over all surfaces refined above)
-**Requirements**: UIUX-01, UIUX-02, UIUX-03, UIUX-04
-**Success Criteria** (what must be TRUE — the pillar is MVP-ready):
-  1. The Numen rebrand is fully consistent (logo, wordmark, titles, meta, OG, copy) — no stray "Virtuna" anywhere user-facing
-  2. Raycast design language adherence holds across all surfaces (6% borders, 10% hover, 12px card radius, Inter, glass pattern)
-  3. Mobile responsiveness + accessibility (WCAG AA) pass on the core flow (analyze → board → chat)
-  4. The end-to-end first-run flow holds together for a real user (auth → analyze → result → chat) — no dead routes or broken handoffs
+### Phase 6: Follow-ups + Agentic Tools + Monetization
+**Goal**: The thread tail — the moat — works: scoped suggested follow-ups (instant re-interpretation vs agentic fetch), at least one agentic tool turn (competitor analysis via the existing Apify provider) appended as a structured tool result, in-persona failure voicing, and an oracle-initiated brand-deal-fit monetization turn inside the thread. Persists via a minimal `analysis_chats` schema extension.
+**Depends on**: Phase 5 (needs the thread + shell + persistence spine)
+**Requirements**: TOOL-01, TOOL-02, TOOL-03, TOOL-04, TOOL-05, TOOL-06, MON-01
+**Success Criteria** (what must be TRUE):
+  1. After a Reading, 3–4 contextual suggested follow-up taps appear (scoped to "about this Reading / your content"), with free text below; instant follow-ups (why this score, rewrite the hook, highest-leverage fix) re-interpret existing data via the existing chat route with no engine spend
+  2. One agentic tool turn (competitor analysis via the existing Apify `ScrapingProvider`) runs and appends a structured tool-result turn; agentic taps are visually distinct from instant chips and show a natural "working…" beat
+  3. Tool failures are voiced in-persona with partial-result/timeout copy — never a red error toast or modal
+  4. An oracle-initiated monetization turn (brand-deal fit for the creator's niche) appears inside the thread, not as a separate tab
+  5. Structured tool and monetization turns persist (via the `kind` + `payload` columns and `'tool'` role) and replay correctly on reload
 **Plans**: TBD
 **UI hint**: yes
+
+### Phase 7: Desktop Instrument Layer
+**Goal**: Desktop gets the same thread widened (one product, two densities — not a separate app) plus a dense instrument layer for the ~10% poweruser path. The Konva-keep-vs-retire decision is made here, based on what mobile shipped. Deliberately last — mobile is non-negotiably first.
+**Depends on**: Phase 6 (and the full mobile thread; the Konva decision can't be made until mobile proves the paradigm)
+**Requirements**: DESK-01, DESK-02
+**Success Criteria** (what must be TRUE):
+  1. On a desktop breakpoint the same thread renders widened — visibly one product at two densities, not a divergent app
+  2. A dense instrument layer survives desktop-only for powerusers (today's Konva board or a dense linear successor), behind the desktop breakpoint
+  3. A recorded keep-vs-retire decision exists for the Konva canvas, with the chosen dense successor specified if it retires
+**Plans**: TBD
+**UI hint**: yes
+
+> **Research flag (Phase 7):** Konva-keep-vs-retire is open (vision §9) and the dense-linear successor is undefined. Plan this phase with `/gsd-plan-phase --research-phase`.
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Engine Pipeline | 5/5 | Complete   | 2026-06-11 |
-| 2. Board / Test Mode | 0/TBD | Not started | - |
-| 3. Board / Remix Mode | 0/TBD | Not started | - |
-| 4. Chat Feature | 0/TBD | Not started | - |
-| 5. General UI/UX | 0/TBD | Not started | - |
+| 1. Design System Foundation + Brand Migration | 0/TBD | Not started | - |
+| 2. View-Model + Data Contract | 0/TBD | Not started | - |
+| 3. SMOKE GATE + Verdict-Banding Calibration | 0/TBD | Not started | - |
+| 4. Mobile Reading Thread + PWA Shell | 0/TBD | Not started | - |
+| 5. App Shell + Ingestion | 0/TBD | Not started | - |
+| 6. Follow-ups + Agentic Tools + Monetization | 0/TBD | Not started | - |
+| 7. Desktop Instrument Layer | 0/TBD | Not started | - |
