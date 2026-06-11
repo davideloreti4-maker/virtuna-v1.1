@@ -126,7 +126,7 @@ vi.mock("../anti-virality", async (importOriginal) => {
 // =====================================================
 
 import { selectWeights, aggregateScores, computeEngagementRange } from "../aggregator";
-import { makePipelineResult, makeGeminiAnalysis, makeDeepSeekReasoning } from "./factories";
+import { makePipelineResult, makeGeminiAnalysis, makeDeepSeekReasoning, makeContentPayload } from "./factories";
 // predictWithML import removed (Plan 02, R9): ml call gone from aggregator; no coupling to ../ml here.
 import type { PersonaBehavioralAggregate, PersonaSimulationResult, SegmentGrid, HookDecomposition } from "../types";
 import type { EmotionArcPoint } from "../qwen/schemas";
@@ -281,7 +281,7 @@ describe("aggregateScores", () => {
     expect(["HIGH", "MEDIUM", "LOW"]).toContain(result.confidence_label);
     expect(result.gemini_score).toBeGreaterThan(0);
     expect(result.behavioral_score).toBeGreaterThan(0);
-    expect(result.ml_score).toBe(0); // Plan 02: ml call removed; mlScore=null → ml_score=0
+    expect(result.ml_score).toBeNull(); // F43 (01-05): ml dead signal → emits null (was a fake 0)
     expect(result.predicted_engagement).toBeNull(); // Plan 02 D1.1: sine-jitter fabrication deleted
     expect(result.engine_version).toBeDefined();
     expect(result.score_weights).toHaveProperty("behavioral");
@@ -406,7 +406,7 @@ describe("aggregateScores", () => {
     // usable read, factor-fallback availability path → gemini=false). overall_score
     // collapses to 0; the flag must mark it "couldn't analyze", not a confident verdict.
     const deadGemini = makeGeminiAnalysis({
-      factors: makeGeminiAnalysis().factors.map((f) => ({ ...f, score: 0 })),
+      factors: (makeGeminiAnalysis().factors ?? []).map((f) => ({ ...f, score: 0 })),
     });
     const dead = await aggregateScores(
       makePipelineResult({
@@ -416,6 +416,28 @@ describe("aggregateScores", () => {
     );
     expect(dead.analysis_unavailable).toBe(true);
     expect(dead.overall_score).toBe(0);
+  });
+
+  it("F18 honesty (01-05): partial_analysis true iff EXACTLY one core signal is dead", async () => {
+    // Both live (healthy default) → neither flag.
+    const healthy = await aggregateScores(makePipelineResult());
+    expect(healthy.partial_analysis).toBe(false);
+    expect(healthy.analysis_unavailable).toBe(false);
+
+    // Single dead: deepseek null (behavioral dead) but gemini factors present (gemini live) → partial.
+    const partial = await aggregateScores(makePipelineResult({ deepseekResult: null }));
+    expect(partial.partial_analysis).toBe(true);
+    expect(partial.analysis_unavailable).toBe(false);
+
+    // Dual dead: deepseek null + all gemini factors 0 → analysis_unavailable, NOT partial.
+    const deadGemini = makeGeminiAnalysis({
+      factors: (makeGeminiAnalysis().factors ?? []).map((f) => ({ ...f, score: 0 })),
+    });
+    const dual = await aggregateScores(
+      makePipelineResult({ deepseekResult: null, geminiResult: { analysis: deadGemini, cost_cents: 0 } }),
+    );
+    expect(dual.analysis_unavailable).toBe(true);
+    expect(dual.partial_analysis).toBe(false);
   });
 
   it("maps confidence_label correctly based on confidence thresholds", async () => {
@@ -460,6 +482,134 @@ describe("aggregateScores", () => {
 });
 
 // =====================================================
+// Plan 01-04 — coupled aggregator closeout (F22/F44 + F24 + F37/F41)
+// =====================================================
+
+describe("Plan 01-04 — coupled aggregator closeout", () => {
+  const mkAgg = (v: number) => ({
+    completion_pct: v, completion_percentile: "high intent",
+    share_pct: v, share_percentile: "high intent",
+    comment_pct: v, comment_percentile: "high intent",
+    save_pct: v, save_percentile: "high intent",
+  });
+  const foldOk = { fold_success: true, personaSimResults: [], warnings: [], cost_cents: 0 } as never;
+  const videoPayload = () => makeContentPayload({ input_mode: "video_upload" });
+
+  it("F22: confidence agreement reads apollo-vs-FOLD on video (self-agreement is dead)", async () => {
+    // Apollo composite is 65 (>50) in the default fixture. A fold that AGREES (high) lands the
+    // agreement term at its 0.4 max; a fold that DISAGREES (low) drops it to 0 → lower confidence.
+    // Under the old apollo-vs-behavioral self-agreement, the fold could not move confidence at all.
+    const agree = await aggregateScores(
+      makePipelineResult({ payload: videoPayload(), personaBehavioralAggregate: mkAgg(95), foldOutcome: foldOk }),
+    );
+    const disagree = await aggregateScores(
+      makePipelineResult({ payload: videoPayload(), personaBehavioralAggregate: mkAgg(5), foldOutcome: foldOk }),
+    );
+    expect(agree.confidence).toBeGreaterThan(disagree.confidence);
+  });
+
+  it("F22: with no fold (text mode) confidence falls back to apollo-vs-behavioral (no agree-against-zero crater)", async () => {
+    // Default text/no-fold: apollo 65 + behavioral 70 both >50 → agreement stays 0.4, NOT 0.
+    const textNoFold = await aggregateScores(makePipelineResult());
+    expect(textNoFold.confidence).toBeGreaterThanOrEqual(0.4);
+  });
+
+  it("F24: video-mode feature_vector drops the component scores (null); text mode keeps them", async () => {
+    const video = await aggregateScores(makePipelineResult({ payload: videoPayload() }));
+    expect(video.feature_vector.hookEffectiveness).toBeNull();
+    expect(video.feature_vector.originality).toBeNull();
+
+    const text = await aggregateScores(makePipelineResult()); // default = text mode
+    expect(typeof text.feature_vector.hookEffectiveness).toBe("number");
+    expect(typeof text.feature_vector.originality).toBe("number");
+  });
+
+  it("F37: assembles a hero block from live Apollo materials with the approved verdict_line rule", async () => {
+    const result = await aggregateScores(makePipelineResult()); // deepseek present → apollo materials live
+    expect(result.hero).toBeDefined();
+    expect(result.hero?.ceiling).toBe("Hook runs past the ≤3s threshold (§2.0a)");
+    expect(result.hero?.the_one_fix).toBe("Rewritten variant fixing distillation");
+    expect(["go", "no-go"]).toContain(result.hero?.go_no_go);
+    // Not gated on a healthy run → verdict_line is a bandLabel tier (not "Don't post yet").
+    expect(["High potential", "Solid contender", "Needs work"]).toContain(result.hero?.verdict_line);
+  });
+
+  it("F37: hero fields degrade to null when Apollo is unavailable (non-throwing)", async () => {
+    const result = await aggregateScores(makePipelineResult({ deepseekResult: null }));
+    expect(result.hero?.ceiling).toBeNull();
+    expect(result.hero?.the_one_fix).toBeNull();
+    // verdict_line + go_no_go still resolve from overall_score + anti_virality_gated.
+    expect(result.hero?.verdict_line).toBeTruthy();
+    expect(["go", "no-go"]).toContain(result.hero?.go_no_go);
+  });
+
+  it("F37: a gated result leads with \"Don't post yet\" + no-go", async () => {
+    // Force the gate via the mocked isAntiViralityGatedFull (anti-virality mock at top of file).
+    // aggregateScores calls it pre- and post-critique, so use a persistent return value, then
+    // restore the default implementation so later tests are unaffected.
+    mockIsAntiViralityGatedFull.mockReturnValue({
+      gated: true, reason: "confidence", dropoff_segment_indices: [],
+    });
+    const result = await aggregateScores(makePipelineResult());
+    expect(result.hero?.verdict_line).toBe("Don't post yet");
+    expect(result.hero?.go_no_go).toBe("no-go");
+    mockIsAntiViralityGatedFull.mockImplementation(() => ({
+      gated: false, reason: null, dropoff_segment_indices: [],
+    }));
+  });
+});
+
+// =====================================================
+// ENG-04 honesty LOCK (plan 01-05) — regression guards. These assert the honesty invariants
+// against the UNCHANGED honesty code so a future regression that re-introduces fabrication
+// (Math.sin jitter, a non-grounded range, or a single-signal masquerading as unavailable) fails CI.
+// =====================================================
+
+describe("ENG-04 honesty LOCK (01-05)", () => {
+  it("engagement range is null when there is no creator baseline (follower_count <= 0 / null)", () => {
+    expect(computeEngagementRange({ follower_count: null }, 80)).toBeNull();
+    expect(computeEngagementRange({ follower_count: 0 }, 80)).toBeNull();
+  });
+
+  it("engagement range is grounded, bounded, and DETERMINISTIC (no Math.sin/random jitter)", () => {
+    const a = computeEngagementRange({ follower_count: 100_000 }, 80);
+    const b = computeEngagementRange({ follower_count: 100_000 }, 80);
+    expect(a).not.toBeNull();
+    expect(a!.lo).toBeLessThan(a!.hi);
+    expect(Number.isFinite(a!.lo) && Number.isFinite(a!.hi)).toBe(true);
+    expect(a).toEqual(b); // a sine/random jitter path would break determinism
+    // Grounded: the range scales with follower_count (more followers → wider absolute range),
+    // which a fabricated oscillation would not honor.
+    const bigger = computeEngagementRange({ follower_count: 1_000_000 }, 80)!;
+    expect(bigger.hi).toBeGreaterThan(a!.hi);
+  });
+
+  it("analysis_unavailable is true IFF both core signals are dead (dual-failure only)", async () => {
+    const healthy = await aggregateScores(makePipelineResult());
+    expect(healthy.analysis_unavailable).toBe(false);
+
+    const single = await aggregateScores(makePipelineResult({ deepseekResult: null }));
+    expect(single.analysis_unavailable).toBe(false); // single dead ≠ unavailable (that's partial_analysis)
+
+    const deadGemini = makeGeminiAnalysis({
+      factors: (makeGeminiAnalysis().factors ?? []).map((f) => ({ ...f, score: 0 })),
+    });
+    const dual = await aggregateScores(
+      makePipelineResult({ deepseekResult: null, geminiResult: { analysis: deadGemini, cost_cents: 0 } }),
+    );
+    expect(dual.analysis_unavailable).toBe(true);
+  });
+
+  it("dead-tail prune (F43): rule/trend/ml/reasoning emit null, not fake constants", async () => {
+    const result = await aggregateScores(makePipelineResult());
+    expect(result.rule_score).toBeNull();
+    expect(result.trend_score).toBeNull();
+    expect(result.ml_score).toBeNull();
+    expect(result.reasoning).toBeNull();
+  });
+});
+
+// =====================================================
 // Phase 3 — provenance + stub invocations
 // =====================================================
 
@@ -483,7 +633,7 @@ describe("Phase 3 — provenance + stub invocations", () => {
     const { ENGINE_VERSION } = await import("../aggregator");
     const { ENGINE_VERSION: viaVersion } = await import("../version");
     expect(ENGINE_VERSION).toBe(viaVersion);
-    expect(ENGINE_VERSION).toBe("3.13.0"); // T1.5 degradation honesty (analysis_unavailable flag)
+    expect(ENGINE_VERSION).toBe("3.19.0"); // 01-05 robustness + honesty + prune
   });
 
   it("PredictionResult.engine_version reads from ./version module", async () => {

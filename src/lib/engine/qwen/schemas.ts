@@ -30,9 +30,15 @@ const MODALITY_KEYS = [
 
 export const HookDecompositionZodSchema = z.object({
   visual_stop_power:        ScoreSchema,
-  audio_hook_quality:       ScoreSchema,
+  // F46: audio_hook_quality + first_words_speech_score are SPEECH/AUDIO-derived — on a
+  // NO-SPEECH / no-audio video (b-roll, music-only, ASMR) the model legitimately returns
+  // null (observed: Ashton Hall 79s clip). A required-NUMBER field rejected the WHOLE read
+  // → silent total failure. Make them nullable (mirrors GeminiAudioSignalsSchema's D-A2
+  // audio nulling). The weakest_modality derive below skips nulls so an absent modality is
+  // not miscounted as "weakest".
+  audio_hook_quality:       ScoreSchema.nullable(),
   text_overlay_score:       ScoreSchema,
-  first_words_speech_score: ScoreSchema,
+  first_words_speech_score: ScoreSchema.nullable(),
   weakest_modality: z.enum(MODALITY_KEYS).optional().catch(undefined),
   visual_audio_coherence: ScoreSchema,
   // POLARITY INVERTED: higher score = MORE cognitive load = WORSE retention.
@@ -42,13 +48,17 @@ export const HookDecompositionZodSchema = z.object({
     ig:     z.boolean().optional(),
     yt:     z.boolean().optional(),
   }).optional(),
-}).transform((h) => ({
-  ...h,
+}).transform((h) => {
   // Derive the weakest modality from the scores when the model omitted or drifted it.
-  weakest_modality:
-    h.weakest_modality ??
-    MODALITY_KEYS.reduce((min, k) => (h[k] < h[min] ? k : min), MODALITY_KEYS[0]),
-}));
+  // F46: reduce only over the NON-null scores — a null modality (no speech/audio) is
+  // absent, not "weakest". If the model already named a valid modality, keep it.
+  if (h.weakest_modality) return { ...h, weakest_modality: h.weakest_modality };
+  // scored is always non-empty: visual_stop_power + text_overlay_score are never
+  // nullable, so a weakest_modality is always derivable (stays a required field).
+  const scored = MODALITY_KEYS.filter((k) => typeof h[k] === "number");
+  const weakest_modality = scored.reduce((min, k) => ((h[k] as number) < (h[min] as number) ? k : min));
+  return { ...h, weakest_modality };
+});
 
 const HookFactorSchema = z.object({
   name: z.enum([
@@ -147,7 +157,9 @@ const GeminiAudioSignalsSchema = z.object({
   silence_ratio:            z.number().min(0).max(1),
   voiceover_ratio:          z.number().min(0).max(1),
   music_ratio:              z.number().min(0).max(1),
-  audio_description:        z.string().min(10).max(280),
+  // F16: was min(10) — a terse but legit audio ("music", "silence") failed the WHOLE
+  // parse on the length edge. min(1) keeps non-empty while accepting short descriptions.
+  audio_description:        z.string().min(1).max(280),
 });
 
 // Wave 0 fields merged into the unified Omni response
@@ -165,10 +177,13 @@ export const OmniAnalysisZodSchema = z.object({
   // Wave 0
   ...Wave0FieldsSchema.shape,
 
-  // Overall (from Gemini legacy shape)
-  factors:            z.array(HookFactorSchema).length(5),
-  overall_impression: z.string().min(1).max(500),
-  content_summary:    z.string().min(1).max(500),
+  // D-R1 (2026-06-11): Read = pure sensor. Generic JUDGMENT (factors scores/rationale,
+  // overall_impression, content_summary) is no longer requested in the prompt and no longer
+  // emitted — Apollo is the sole judge. Kept .optional() (not removed) so a stray legacy/cached
+  // response that still includes them parses without error; the assembly drops them regardless.
+  factors:            z.array(HookFactorSchema).length(5).optional(),
+  overall_impression: z.string().min(1).max(500).optional(),
+  content_summary:    z.string().min(1).max(500).optional(),
 
   // Hook segment
   hook_decomposition: HookDecompositionZodSchema,

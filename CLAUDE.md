@@ -21,17 +21,17 @@ instantly visible to all; deleting a worktree folder keeps its branch + commits.
 
 | Path | Branch | Role |
 |------|--------|------|
-| `~/virtuna-v1.1/` | `main` | **Trunk / command center.** Stays on `main`. New milestones launch from here; quick one-session fixes happen here on a short-lived branch. |
-| `~/virtuna-mvp-ready/` | `milestone/mvp-ready` | **Active milestone.** Product refinement → MVP-ready (e2e testing, UI wiring/redesign, engine-layer optimization). |
-| `~/virtuna-engine-opt/` | `milestone/engine-opt` | **Merged (PR #17) — prune.** v4.0 Apollo engine audit remediation; ENGINE_VERSION 3.13.0. Safe to `git worktree remove`. |
+| `~/virtuna-v1.1/` | `main` | **Trunk / command center.** Stays on `main`. New milestones launch from here; quick one-session fixes happen here on a short-lived branch. **Next:** launch *Numen Surface* (v5.0 rebrand) via `/gsd-new-milestone` → feed `.planning/NUMEN-SURFACE-VISION.md`. |
+| `~/virtuna-mvp-ready/` | `milestone/mvp-ready` | **Merged + pruned (2026-06-11).** v4.1 Phase 1 (engine, ENGINE_VERSION 3.19.0) merged to main; P2–5 superseded by Numen Surface. Branch retained in `.git`. |
+| `~/virtuna-engine-opt/` | `milestone/engine-opt` | **Merged (PR #17) + pruned (2026-06-11).** v4.0 Apollo engine audit remediation. |
 | `~/virtuna-ui-opt/` | `milestone/ui-opt` | In progress |
 | `~/virtuna-viral-remix/` | `milestone/viral-remix` | In progress (v3.2) |
 | `~/virtuna-viral-remix-adapt/` | `milestone/viral-remix-adapt` | In progress |
 | `~/virtuna-landing/` | `milestone/landing` | In progress |
 
-> Keep this table current — it's the map. Last reconciled 2026-06-08 (engine-opt
-> merged to main via PR #17; created mvp-ready worktree; added ui-opt +
-> viral-remix-adapt that were missing from the table).
+> Keep this table current — it's the map. Last reconciled 2026-06-11 (mvp-ready
+> Phase 1 merged to main + worktree pruned; engine-opt worktree pruned; next up =
+> Numen Surface rebrand milestone, see `.planning/NUMEN-SURFACE-VISION.md`).
 
 ### How to work (don't repeat the multi-session-same-worktree mess)
 

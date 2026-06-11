@@ -162,7 +162,8 @@ function deriveThreeHookStack(
   const present = [
     hook.visual_stop_power >= STACK_PRESENT,
     hook.text_overlay_score >= STACK_PRESENT,
-    hook.audio_hook_quality >= STACK_PRESENT,
+    // F46: null audio_hook_quality (no-audio video) → audio hook absent → not "present".
+    (hook.audio_hook_quality ?? 0) >= STACK_PRESENT,
   ].filter(Boolean).length;
   const status: RuleStatus = present === 3 ? "pass" : present === 2 ? "warn" : "fail";
   return { status, actual: `${present}/3` };

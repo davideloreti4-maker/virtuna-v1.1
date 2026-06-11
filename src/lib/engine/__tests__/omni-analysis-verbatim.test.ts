@@ -384,8 +384,8 @@ describe("verbatim — analyzeVideoWithOmni assembly (regression)", () => {
     })?.hook_verbatim;
 
     expect(verbatim).toBeUndefined();
-    // Sanity: rest of assembly still succeeded
-    expect(out.geminiResult?.analysis.factors).toHaveLength(5);
+    // Sanity: rest of assembly still succeeded (D-R1: factors no longer assembled — pure sensor)
+    expect(out.geminiResult?.analysis.audio_signals).toBeDefined();
   });
 });
 

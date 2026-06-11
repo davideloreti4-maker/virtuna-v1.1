@@ -9,6 +9,7 @@ import type {
   FeatureVector,
   GeminiAudioSignals,
   GeminiVideoSignals,
+  HeroBlock,
   PredictionResult,
   RuleScoreResult,
   SignalAvailability,
@@ -22,7 +23,9 @@ import type { HookDecomposition } from "./types";
 import type { PipelineResult } from "./pipeline";
 import type { StageEventCallback } from "./events";
 import { QWEN_OMNI_MODEL as GEMINI_MODEL } from "./qwen/client";
-import { QWEN_REASONING_MODEL as DEEPSEEK_MODEL } from "./qwen/client";
+// Apollo's persisted model label must reflect the Apollo model (QWEN_APOLLO_MODEL),
+// not the shared reasoning constant — they diverged 2026-06-11 (Apollo → qwen3.7-plus).
+import { QWEN_APOLLO_MODEL as DEEPSEEK_MODEL } from "./qwen/client";
 // ml.ts call removed (Plan 02, R9): ml predict + feature-vector-to-ml-input no longer called here.
 // ml.ts moves to _dormant/ in Plan 05. SCORE_WEIGHT_KEYS ml key retained until Plan 04 blend cut.
 // Phase 1 (R1.9, Plan 06 T3 B4) — anti-virality gating helper. Wires
@@ -280,15 +283,24 @@ export function selectWeights(
 /**
  * Calculate numeric confidence (0-1) based on:
  * 1. Signal availability (0-0.6) — how much data we have
- * 2. Model agreement (0-0.4) — do Apollo composite and behavioral signals agree on direction
+ * 2. Model agreement (0-0.4) — do TWO INDEPENDENT signals agree on direction?
  *
- * Plan 03-04 (D-04): replaces gemini-vs-behavioral agreement check with
- * Apollo-composite-vs-behavioral direction agreement. Gemini term retired from blend.
- * HARD-03 LOW floor on dual failure preserved.
+ * F22/F44 (plan 01-04): on video the agreement term reads Apollo composite vs the FOLD
+ * audience score (two genuinely independent signals — the expert read vs the 10-archetype
+ * audience sim). Previously it compared apolloScore vs behavioralScore, but both are derived
+ * from the SAME Apollo call (composite + avg of its own component_scores) → self-agreement, a
+ * fake trust anchor that pinned the term at its 0.4 max on every healthy run.
+ *
+ * When the fold is unavailable (text/tiktok_url mode, or a fold failure), there is no
+ * independent counterpart, so we FALL BACK to the prior apollo-vs-behavioral basis rather than
+ * agree-against-a-zero (which would crater confidence on every fold-less run). HARD-03 LOW
+ * floor on dual failure preserved by the caller.
  */
 function calculateConfidence(
   apolloScore: number,  // Plan 03-04: Apollo composite_score (0-100) replaces geminiScore
   behavioralScore: number,
+  foldAudienceScore: number, // F22 — independent audience-sim signal (0-100); the agreement counterpart on video
+  foldOn: boolean,           // F22 — true when the fold produced a usable audience score
   ruleResult: RuleScoreResult,
   trendEnrichment: TrendEnrichment,
   hasVideo: boolean,
@@ -310,18 +322,20 @@ function calculateConfidence(
   void availability;
 
   // Model agreement component (0-0.4)
-  // Plan 03-04 (D-04): Apollo-composite-vs-behavioral direction agreement (replaces gemini agreement).
+  // F22/F44 (plan 01-04): Apollo composite vs the INDEPENDENT fold audience score on video;
+  // fall back to apollo-vs-behavioral when the fold is unavailable (no independent counterpart).
+  const counterpartScore = foldOn ? foldAudienceScore : behavioralScore;
   const apolloDirection = apolloScore - 50;
-  const behavioralDirection = behavioralScore - 50;
+  const counterpartDirection = counterpartScore - 50;
   let agreement: number;
 
   if (
-    (apolloDirection >= 0 && behavioralDirection >= 0) ||
-    (apolloDirection < 0 && behavioralDirection < 0)
+    (apolloDirection >= 0 && counterpartDirection >= 0) ||
+    (apolloDirection < 0 && counterpartDirection < 0)
   ) {
-    // Same sign — Apollo and behavioral agree on direction
+    // Same sign — the two independent signals agree on direction
     agreement = 0.4;
-  } else if (Math.abs(apolloDirection - behavioralDirection) <= 15) {
+  } else if (Math.abs(apolloDirection - counterpartDirection) <= 15) {
     // Different signs but close together
     agreement = 0.2;
   } else {
@@ -367,11 +381,18 @@ function assembleFeatureVector(
 
   // Helper to find a Gemini factor by name
   const findFactor = (name: string) =>
-    gemini.factors.find((f) => f.name === name);
+    gemini.factors?.find((f) => f.name === name);
 
   // Phase 4 D-12 + D-19: use content-type-adjusted video signals when provided;
   // fall back to raw video_signals (Wave 0 failure or no video).
   const videoSignals = adjustedVideoSignals ?? gemini.video_signals ?? null;
+
+  // F24 (plan 01-04, D-04): on video the fold owns the audience read and confidence rebased
+  // onto apollo-vs-fold, so Apollo's self-graded component scores are dropped from the output
+  // contract — null them here. Text/tiktok_url mode still surfaces them (Apollo IS the
+  // behavioral source there). Note: behavioral_score is computed separately (directly off
+  // deepseek.component_scores) and is unaffected, so the text-mode fallback blend still works.
+  const hasVideo = payload.input_mode !== "text";
 
   return {
     // Gemini factors (0-10)
@@ -388,14 +409,15 @@ function assembleFeatureVector(
     pacingScore: videoSignals?.pacing_score ?? null,
     transitionQuality: videoSignals?.transition_quality ?? null,
 
-    // DeepSeek component scores (0-10)
-    hookEffectiveness: deepseek?.component_scores.hook_effectiveness ?? 0,
-    retentionStrength: deepseek?.component_scores.retention_strength ?? 0,
-    shareability: deepseek?.component_scores.shareability ?? 0,
-    commentProvocation: deepseek?.component_scores.comment_provocation ?? 0,
-    saveWorthiness: deepseek?.component_scores.save_worthiness ?? 0,
-    trendAlignment: deepseek?.component_scores.trend_alignment ?? 0,
-    originality: deepseek?.component_scores.originality ?? 0,
+    // DeepSeek component scores (0-10) — F24: null on video (dropped from the video output
+    // contract), populated in text/tiktok_url mode.
+    hookEffectiveness: hasVideo ? null : (deepseek?.component_scores.hook_effectiveness ?? 0),
+    retentionStrength: hasVideo ? null : (deepseek?.component_scores.retention_strength ?? 0),
+    shareability: hasVideo ? null : (deepseek?.component_scores.shareability ?? 0),
+    commentProvocation: hasVideo ? null : (deepseek?.component_scores.comment_provocation ?? 0),
+    saveWorthiness: hasVideo ? null : (deepseek?.component_scores.save_worthiness ?? 0),
+    trendAlignment: hasVideo ? null : (deepseek?.component_scores.trend_alignment ?? 0),
+    originality: hasVideo ? null : (deepseek?.component_scores.originality ?? 0),
 
     // Rules and trends
     ruleScore: ruleResult.rule_score,
@@ -424,6 +446,38 @@ function assembleFeatureVector(
     // Content metadata
     durationSeconds: payload.duration_hint,
     hasVideo: payload.input_mode !== "text",
+  };
+}
+
+// =====================================================
+// Hero block (F37/F41, plan 01-04)
+// =====================================================
+
+/**
+ * Score → lead verdict band. Mirrors components/board/verdict/verdict-derive.ts `bandLabel`
+ * (≥70 "High potential", 40–69 "Solid contender", <40 "Needs work") — duplicated here so the
+ * engine doesn't depend on a board component. Approved verdict_line rule (01-04 co-review, D-00).
+ */
+function heroBandLabel(score: number): string {
+  if (score >= 70) return "High potential";
+  if (score >= 40) return "Solid contender";
+  return "Needs work";
+}
+
+/**
+ * Assemble the first-class hero block from already-emitted materials on the (final, post-critique)
+ * result. Each field individually nullable + non-throwing: ceiling/the_one_fix degrade to null
+ * when Apollo is unavailable; verdict_line + go_no_go always resolve. verdict_line follows the
+ * approved rule — gated → "Don't post yet"; else heroBandLabel(overall_score).
+ */
+function assembleHero(result: PredictionResult): HeroBlock {
+  const gated = result.anti_virality_gated;
+  return {
+    verdict_line: gated ? "Don't post yet" : heroBandLabel(result.overall_score),
+    ceiling: result.apollo_reasoning?.ceiling_capper ?? null,
+    the_one_fix: result.apollo_reasoning?.rewrites?.[0]?.variant ?? null,
+    go_no_go: gated ? "no-go" : "go",
+    post_window: result.optimal_post_window ?? null,
   };
 }
 
@@ -479,8 +533,8 @@ export async function aggregateScores(
   // Plan 03 strip: ruleResult + audioFingerprintResult + trendEnrichment removed from pipeline; use fallback defaults.
   const ruleResult: import("./types").RuleScoreResult = { rule_score: 50, matched_rules: [] };
   const trendEnrichment: TrendEnrichment = { trend_score: 0, matched_trends: [], trend_context: "", hashtag_relevance: 0 };
-  // Plan 03: audio fingerprint stage removed; always null. Cast prevents TypeScript narrowing to never.
-  const audioFingerprintResult = null as AudioFingerprintResult | null;
+  // Plan 03: audio fingerprint stage removed — the result emits a null audio_fingerprint literal
+  // (see assembly below) and signal_availability.audio_fingerprint is always false.
 
   // -------------------------------------------------
   // Phase 4 D-12 + D-19 (RESEARCH Topic #5 locked interpretation):
@@ -739,7 +793,7 @@ export async function aggregateScores(
     gemini_cta:  pipelineResult.geminiResult.signalAvailability?.gemini_cta  ?? false,
     personas: pipelineResult.personaBehavioralAggregate !== null,
     audio: audioSignals != null,
-    audio_fingerprint: audioFingerprintResult !== null,
+    audio_fingerprint: false, // F43 (01-05): fingerprint stage removed (Plan 03) — was always false (audioFingerprintResult hardcoded null)
     retrieval: pipelineResult.retrievalResult.availability,
     // Plan 04: platform_fit key removed from blend — provenance only, preserved for JSONB.
     platform_fit: false,
@@ -752,7 +806,7 @@ export async function aggregateScores(
   //   the value is `true` when at least one Gemini factor scored > 0.
   availability.gemini = pipelineResult.geminiResult.signalAvailability
     ? availability.gemini_hook || availability.gemini_body || availability.gemini_cta
-    : geminiResult.analysis.factors.some((f) => f.score > 0);
+    : (geminiResult.analysis.factors?.some((f) => f.score > 0) ?? false);
 
   const weights = selectWeights(availability);
 
@@ -774,14 +828,16 @@ export async function aggregateScores(
   const behavioral_score = Math.round(behavioralAvg * 10); // Normalize to 0-100
 
   // -------------------------------------------------
-  // Gemini score — PROVENANCE ONLY after Plan 03-04 (D-04).
-  // gemini_score is still computed and exposed on PredictionResult.gemini_score
-  // for UI/back-compat (M2 breakdown card), but NO LONGER feeds raw_overall_score.
+  // Gemini score — D-R1 (2026-06-11): the Read is a pure sensor and no longer scores, so on
+  // video there are NO factors → gemini_score is null. Kept nullable on PredictionResult for
+  // legacy/text rows + permalink back-compat (don't migrate the column away). The confidence
+  // basis that used to lean on it (stage10 signal-agreement) re-bases on apollo-vs-fold in plan
+  // 01-04 (F22/F34); until then stage10 skips the check when gemini_score is null.
   // -------------------------------------------------
-  const geminiAvg =
-    gemini.factors.reduce((sum, f) => sum + f.score, 0) /
-    gemini.factors.length;
-  const gemini_score = Math.round(geminiAvg * 10); // Normalize to 0-100 (provenance only)
+  const gemini_score =
+    gemini.factors && gemini.factors.length > 0
+      ? Math.round((gemini.factors.reduce((sum, f) => sum + f.score, 0) / gemini.factors.length) * 10)
+      : null;
 
   // -------------------------------------------------
   // Apollo score (Plan 03-04, D-04) — replaces gemini term in the blend.
@@ -855,13 +911,20 @@ export async function aggregateScores(
   // -------------------------------------------------
   const analysis_unavailable = !availability.gemini && !availability.behavioral;
 
+  // F18 honesty / ENG-01 (plan 01-05) — exactly ONE core signal dead (read XOR behavioral/fold).
+  // The score is then built on half the basis with the other half silently dropped; surface it as
+  // a partial read instead of letting only the dual-failure case (analysis_unavailable) annotate.
+  const partial_analysis = availability.gemini !== availability.behavioral;
+
   // -------------------------------------------------
   // Confidence (with signal availability penalties)
   // -------------------------------------------------
   const hasVideo = payload.input_mode !== "text";
   let conf = calculateConfidence(
-    apollo_score, // Plan 03-04 (D-04): Apollo composite-vs-behavioral agreement (replaces gemini)
-    behavioral_score,
+    apollo_score, // F22/F44 (01-04): apollo-vs-FOLD agreement on video (fold = independent audience sim)
+    behavioral_score, // fallback counterpart when fold is unavailable (text/tiktok_url / fold failure)
+    fold_audience_score,
+    foldOn,
     ruleResult,
     trendEnrichment,
     hasVideo,
@@ -914,8 +977,10 @@ export async function aggregateScores(
 
   // -------------------------------------------------
   // Factors (from Gemini — v2 shape with rationale/improvement_tip)
+  // D-R1 (2026-06-11): the Read no longer emits factors on video → empty array. Board re-sources
+  // "What drives it" off Apollo dimensions (Phase 2, F32). Text/legacy rows still carry factors.
   // -------------------------------------------------
-  const factors: Factor[] = gemini.factors.map((f, i) => ({
+  const factors: Factor[] = (gemini.factors ?? []).map((f, i) => ({
     id: `factor-${i + 1}`,
     name: f.name,
     score: f.score,
@@ -1071,7 +1136,7 @@ export async function aggregateScores(
     confidence_label: conf.confidence_label,
     behavioral_predictions,
     feature_vector,
-    reasoning: "", // DeepSeek reasoning text — not exposed in current schema
+    reasoning: null, // F43 (01-05): always "" (no consumer) — emit null, not a fake empty string
     // Plan 03-04 (D-04): Apollo §4 output surfaced for variants.apollo persist (route.ts).
     // Null when deepseek unavailable (circuit breaker open or failed).
     apollo_reasoning: deepseek && deepseek.rewrites && deepseek.dimensions && deepseek.composite_score !== undefined
@@ -1098,17 +1163,24 @@ export async function aggregateScores(
     predicted_engagement: computeEngagementRange(pipelineResult.creatorContext, overall_score) ?? null,
     factors,
     suggestions,
-    rule_score: ruleResult.rule_score,   // retained in type; ruleResult always fallback 50 (Plan 03 strip)
-    trend_score: trendEnrichment.trend_score, // retained in type; always 0 (Plan 03 strip)
+    // F43 (01-05): rule/trend/ml are dead (removed from the blend) — stop emitting the fake fixed
+    // constants (50/0/0) that leaked to the UI as meaningful. Emit null; DB columns kept for
+    // back-compat (route.ts persists `?? null`). ruleResult/trendEnrichment locals are now unused
+    // for output (they were always the Plan-03-strip fallbacks anyway).
+    rule_score: null,
+    trend_score: null,
     gemini_score,
     behavioral_score,
-    ml_score: 0, // Plan 04 (R9): ml key removed from blend; field retained in type for back-compat
+    ml_score: null,
     // Phase 6 (D-G3) — pre-boost audio_perceptual_score. The fingerprint boost
     // is folded into audio_score (internal) before the weighted sum; consumers
     // who want the perceptual baseline read this field directly.
     audio_perceptual_score,
-    // Phase 6 (D-G1) — full fingerprint match record or null.
-    audio_fingerprint: audioFingerprintResult,
+    // Phase 6 (D-G1) — fingerprint match record. Always null since the fingerprint stage was
+    // stripped (Plan 03). F43 (01-05) considered dropping it, but it already emits null (honest
+    // absence, NOT a fake number) and has explicit null-lock test coverage — so it stays as a
+    // null passthrough (the F43 prune targets fake CONSTANTS like rule_score:50, not honest nulls).
+    audio_fingerprint: null,
     // Phase 6 (Note 7 / Q4 RESOLVED) — verbatim audio_description for
     // persistence into analysis_results.audio_description (route.ts pluck).
     audio_description,
@@ -1136,6 +1208,8 @@ export async function aggregateScores(
     // T1.5 — degradation honesty flag (computed above from the dual-failure condition).
     // Not adjusted post-critique: it reflects raw signal availability, not confidence.
     analysis_unavailable,
+    // F18 honesty (plan 01-05) — single-signal partial read (computed above from availability XOR).
+    partial_analysis,
     // Phase 3 (Plan 08) — reason + dropoff indices from dual-trigger gate.
     // null when not gated or when heatmap absent (confidence-only path).
     anti_virality_reason: avGateFull.reason,
@@ -1173,8 +1247,9 @@ export async function aggregateScores(
     // the "similar videos" panel without further DB joins (D-02).
     retrieval_score: pipelineResult.retrievalResult.score,
     retrieval_evidence: pipelineResult.retrievalResult.evidence,
-    // Plan 04 (R9): platform_fit key removed from blend; field set null.
-    // platform_fit module moves to _dormant/ in Plan 05; field retained in type for back-compat.
+    // Plan 04 (R9): platform_fit removed from the blend; module dormanted. Already null (honest
+    // absence) — F43 (01-05) leaves it as a null passthrough rather than dropping the optional
+    // field (the prune targets fake CONSTANTS, not honest nulls).
     platform_fit: null,
   };
 
@@ -1227,6 +1302,10 @@ export async function aggregateScores(
 
   // Pure-TS LIKELY_FLOP check — uses POST-CRITIQUE confidence per Pitfall 7.
   maybeAppendLikelyFlopWarning(result);
+
+  // F37/F41 (plan 01-04) — assemble the hero block LAST, from the FINAL (post-critique)
+  // result so verdict_line + go_no_go reflect the post-critique anti_virality_gated state.
+  result.hero = assembleHero(result);
 
   return result;
 }

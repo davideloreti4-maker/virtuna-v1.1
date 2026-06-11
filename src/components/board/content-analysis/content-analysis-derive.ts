@@ -37,17 +37,24 @@ export function durationFromSegments(segments: CraftSegment[], fallback = 30): n
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
-/** Composite hook score = mean of the four modality scores (0–10). null if absent. */
+/** Composite hook score = mean of the present modality scores (0–10). null if absent.
+ *  F46: audio/speech modalities are null on no-speech/no-audio videos — average only the
+ *  present (non-null) modalities so an absent modality isn't counted as a 0. */
 export function meanHookScore(decomp: HookDecomposition | null): number | null {
   if (!decomp) return null;
-  const vals = HOOK_MODALITY_ORDER.map((k) => decomp[k]);
+  const vals = HOOK_MODALITY_ORDER.map((k) => decomp[k]).filter((v): v is number => v != null);
+  if (vals.length === 0) return null;
   return vals.reduce((a, b) => a + b, 0) / vals.length;
 }
 
-/** The strongest modality — names the hook's character in the caption. */
+/** The strongest modality — names the hook's character in the caption.
+ *  F46: skip null (absent) modalities; visual_stop_power/text_overlay are always present. */
 export function strongestModality(decomp: HookDecomposition): HookModality {
-  return HOOK_MODALITY_ORDER.reduce((best, k) =>
-    decomp[k] > decomp[best] ? k : best,
+  const scored = HOOK_MODALITY_ORDER.filter((k) => decomp[k] != null);
+  if (scored.length === 0) return HOOK_MODALITY_ORDER[0]!;
+  return scored.reduce(
+    (best, k) => ((decomp[k] as number) > (decomp[best] as number) ? k : best),
+    scored[0]!,
   );
 }
 

@@ -5,23 +5,24 @@ import {
   type AnalysisInput,
   type DeepSeekReasoning,
   type GeminiAnalysis,
+  type HookDecomposition,
   type RuleScoreResult,
   type TrendEnrichment,
   type VerbatimPayload,
 } from "./types";
-import { APOLLO_SYSTEM_PROMPT } from "./apollo-core";
-import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "./qwen/client";
+import { APOLLO_SYSTEM_PROMPT, PRESENT_SECTIONS } from "./apollo-core";
+import { getQwenClient, QWEN_APOLLO_MODEL, QWEN_SEED } from "./qwen/client";
 import { calculateCost } from "./qwen/cost";
 import { stripModelOutput } from "./utils/strip";
 
 // NOTE: "deepseek" is a LEGACY module/stage name — this stage actually runs Qwen
-// (QWEN_REASONING_MODEL = qwen3.6-plus) via DashScope, not DeepSeek. The pipeline
+// (QWEN_APOLLO_MODEL = qwen3.7-plus) via DashScope, not DeepSeek. The pipeline
 // is Qwen-only. The string is kept because log dashboards + tests key off the
 // "deepseek" / "deepseek_reasoning" stage names.
 const log = createLogger({ module: "deepseek" });
 
-// Legacy constant name — resolves to QWEN_REASONING_MODEL (qwen3.6-plus).
-const DEEPSEEK_MODEL = QWEN_REASONING_MODEL;
+// Legacy constant name — resolves to QWEN_APOLLO_MODEL (qwen3.7-plus, scoped to Apollo).
+const DEEPSEEK_MODEL = QWEN_APOLLO_MODEL;
 const MAX_RETRIES = 2; // 3 total attempts
 const TIMEOUT_MS = 120_000; // 120s — bounded-thinking Apollo call on the full KNOWLEDGE_CORE prefix; headroom under the 300s pipeline cap
 // Apollo thinking budget. Default 1500 (was 3000) — A/B-validated 2026-06-05
@@ -125,6 +126,77 @@ function normalizeWs(s: string): string {
   return s.replace(/\s+/g, " ").trim();
 }
 
+// ── §-cite resolution guard (ENG-02, plan 01-01) ───────────────────────────
+// Two jobs, both belt-and-suspenders backstops to the prompt instructions
+// (the LLM is untrusted, V5): (1) AUDITABLE-METADATA fields (lever/evidence/
+// lever_fixed) may carry §-cites, but only ones that RESOLVE to the lean
+// KNOWLEDGE_CORE — strip danglers (§2.6/§7/§8/hallucinated §9+). (2) USER-FACING
+// PROSE fields (ceiling_capper/confidence_scope/suggestions/variant) must carry
+// NO §-cites — strip them all so cryptic "(§2.1)" tokens never reach the board.
+// One literal regex per call (no shared /g lastIndex state).
+const CITE_TOKEN = /§\s*\d+(?:\.\d+)?[a-z]?/;
+function normalizeCite(raw: string): string {
+  return raw.replace(/\s+/g, ""); // "§ 2.1" → "§2.1"
+}
+/** Tidy whitespace/orphaned punctuation left behind after removing a cite. */
+function tidyAfterStrip(s: string): string {
+  return s
+    .replace(/\(\s*\)/g, "")        // empty parens "()"
+    .replace(/\s+([.,;:!?])/g, "$1") // space before punctuation
+    .replace(/\s{2,}/g, " ")        // collapsed double spaces
+    .trim();
+}
+/** METADATA: keep cites that resolve to the lean core, strip danglers. */
+function stripDanglingCites(s: string, drift: string[]): string {
+  const out = s.replace(new RegExp(CITE_TOKEN.source, "g"), (m) => {
+    const c = normalizeCite(m);
+    if (PRESENT_SECTIONS.has(c)) return m;
+    drift.push(c);
+    return "";
+  });
+  const tidied = tidyAfterStrip(out);
+  return tidied.length > 0 ? tidied : s; // never empty a required string
+}
+/** PROSE: strip ALL cites; drop an enclosing paren group if it held only cites. */
+function stripAllCites(s: string, drift: string[]): string {
+  // First collapse parenthetical groups that contain a cite.
+  let out = s.replace(/\(([^()]*)\)/g, (full, inner: string) => {
+    if (!/§/.test(inner)) return full; // no cite — leave the paren intact
+    const cleaned = inner
+      .replace(new RegExp(CITE_TOKEN.source, "g"), (m) => { drift.push(normalizeCite(m)); return ""; })
+      .replace(/^[\s,;/&]+|[\s,;/&]+$/g, "")
+      .trim();
+    return cleaned ? `(${cleaned})` : "";
+  });
+  // Then any remaining inline/bare cites.
+  out = out.replace(new RegExp(CITE_TOKEN.source, "g"), (m) => { drift.push(normalizeCite(m)); return ""; });
+  const tidied = tidyAfterStrip(out);
+  return tidied.length > 0 ? tidied : s; // never empty a required string
+}
+
+/**
+ * Apply the §-cite resolution guard to a parsed Apollo response, in place.
+ * Returns the set of §-tokens it removed (danglers from metadata + any cite
+ * leaked into prose). Exported for the apollo-cite-resolution test (V5 boundary).
+ */
+export function guardApolloCites(data: DeepSeekReasoning): { drift: string[] } {
+  const drift: string[] = [];
+  // (1) auditable metadata — strip danglers only
+  for (const dim of data.dimensions) {
+    dim.lever = stripDanglingCites(dim.lever, drift);
+    dim.evidence = stripDanglingCites(dim.evidence, drift);
+  }
+  for (const rw of data.rewrites) {
+    rw.lever_fixed = stripDanglingCites(rw.lever_fixed, drift);
+  }
+  // (2) user-facing prose — strip ALL cites (prose discipline)
+  if (data.ceiling_capper) data.ceiling_capper = stripAllCites(data.ceiling_capper, drift);
+  data.confidence_scope = stripAllCites(data.confidence_scope, drift);
+  for (const s of data.suggestions) s.text = stripAllCites(s.text, drift);
+  for (const rw of data.rewrites) rw.variant = stripAllCites(rw.variant, drift);
+  return { drift };
+}
+
 /** Parse and validate Apollo response with Zod + post-parse backstop (Pattern 2) */
 function parseDeepSeekResponse(
   raw: string,
@@ -145,14 +217,12 @@ function parseDeepSeekResponse(
     log.warn("Apollo dimensions length mismatch post-parse", { count: data.dimensions.length });
   }
 
-  // Clamp composite_score to 0–100 (provider nondeterminism can produce slightly out-of-range)
-  data.composite_score = Math.min(100, Math.max(0, data.composite_score));
-
-  // D-01: deterministic rubric-sum overwrites the LLM's holistic composite (R8 de-noise).
-  // Hook carries ~80% weight (apollo-core §4 weighting, §2.0a consensus).
-  // The 5 body dimensions share the remaining 20% equally.
-  // Clamp + round are applied to the sum output as defense-in-depth (V5).
-  // This must execute AFTER the schema clamp and BEFORE any rewrite-backstop reads composite.
+  // D-01 + F26 (2026-06-11): composite_score is a deterministic rubric-sum of the six dimension
+  // scores — the LLM is no longer asked to produce it (it was emitted then discarded; the prompt
+  // contract dropped the ask, schema made it .optional()). Computed here from dimensions only.
+  // Hook carries ~80% weight (apollo-core §4 weighting, §2.0a consensus); the 5 body dimensions
+  // share the remaining 20% equally. Clamp + round as defense-in-depth (V5). Runs BEFORE any
+  // rewrite-backstop reads composite.
   {
     const HOOK_WEIGHT = 0.80;
     const BODY_WEIGHT = 0.20 / 5; // 5 non-hook dims share remaining 20%
@@ -166,6 +236,16 @@ function parseDeepSeekResponse(
   // Assert rewrites.length >= 2 (Zod .min(2) handles schema rejection)
   if (data.rewrites.length < 2) {
     log.warn("Apollo rewrites too few post-parse", { count: data.rewrites.length });
+  }
+
+  // ── §-cite resolution guard (ENG-02): strip danglers from metadata + ALL cites
+  // from user-facing prose, so no unresolvable / cryptic §-token reaches the board.
+  const { drift } = guardApolloCites(data);
+  if (drift.length > 0) {
+    log.warn("Apollo cite_drift — §-cites stripped (danglers + prose leaks)", {
+      cite_drift: [...new Set(drift)].sort(),
+      count: drift.length,
+    });
   }
 
   // R2 backstop: normalize-whitespace-compare rewrite.original to verbatim hook.
@@ -199,28 +279,57 @@ function parseDeepSeekResponse(
  */
 
 /**
- * Format Gemini analysis signals for Apollo consumption.
- * Strips numeric scores to prevent anchoring — passes only rationales and tips.
+ * Format the Read's PERCEPTION for Apollo consumption (D-R1, 2026-06-11).
+ *
+ * The Read is now a pure sensor: it no longer supplies factor rationales /
+ * overall_impression / content_summary (generic JUDGMENT — Apollo is the sole judge).
+ * Instead Apollo receives the raw PERCEPTUAL reading it interprets itself: hook-modality
+ * strengths, production signals, the audio reading, and the emotional-intensity curve.
+ * These are SENSOR measurements (how strong/clear/fast), explicitly NOT quality grades —
+ * so handing Apollo the numbers does not anchor its verdict the way the old factor SCORES
+ * (deliberately stripped) would have. emotion_arc + hook_decomposition ride the
+ * GeminiVideoAnalysis cast (Omni-only extensions, not on the base GeminiAnalysis type).
  */
 function formatGeminiSignals(analysis: GeminiAnalysis): string {
   const sections: string[] = [];
+  sections.push("## Perceptual Sensor Reading (objective signals — YOU interpret them; these are measurements, NOT grades)");
 
-  sections.push("## Omni Content Analysis (qualitative signals only)");
-  for (const factor of analysis.factors) {
-    sections.push(`\n**${factor.name}:**`);
-    sections.push(`- Assessment: ${factor.rationale}`);
-    sections.push(`- Improvement: ${factor.improvement_tip}`);
+  const hook = (analysis as unknown as { hook_decomposition?: HookDecomposition | null }).hook_decomposition;
+  if (hook) {
+    sections.push("\n**Hook modalities (0-10 perceptual strength, first ~3s):**");
+    sections.push(`- Visual stop power: ${hook.visual_stop_power}`);
+    sections.push(`- Audio hook: ${hook.audio_hook_quality ?? "n/a (no audio)"}`);
+    sections.push(`- On-screen text: ${hook.text_overlay_score}`);
+    sections.push(`- First-words speech: ${hook.first_words_speech_score ?? "n/a (no speech)"}`);
+    sections.push(`- Weakest modality: ${hook.weakest_modality}`);
+    sections.push(`- Visual/audio coherence: ${hook.visual_audio_coherence}`);
+    sections.push(`- Cognitive load (higher = harder to follow): ${hook.cognitive_load}`);
   }
 
-  sections.push(`\n**Overall Impression:** ${analysis.overall_impression}`);
-  sections.push(`\n**Content Summary:** ${analysis.content_summary}`);
-
   if (analysis.video_signals) {
-    sections.push(`\n**Video Production Signals:**`);
-    sections.push(`- Visual production quality: assessed`);
-    sections.push(`- Hook visual impact: assessed`);
-    sections.push(`- Pacing: assessed`);
-    sections.push(`- Transition quality: assessed`);
+    const v = analysis.video_signals;
+    sections.push("\n**Production signals (0-10 perceptual):**");
+    sections.push(`- Visual production quality: ${v.visual_production_quality}`);
+    sections.push(`- Hook visual impact: ${v.hook_visual_impact}`);
+    sections.push(`- Pacing: ${v.pacing_score}`);
+    sections.push(`- Transition quality: ${v.transition_quality}`);
+  }
+
+  if (analysis.audio_signals) {
+    const a = analysis.audio_signals;
+    sections.push("\n**Audio reading:**");
+    sections.push(`- Description: ${a.audio_description}`);
+    if (a.voice_clarity_0_10 != null) sections.push(`- Voice clarity: ${a.voice_clarity_0_10}/10`);
+    if (a.audio_hook_first_2s_0_10 != null) sections.push(`- Audio hook (first 2s): ${a.audio_hook_first_2s_0_10}/10`);
+    sections.push(`- Mix: ${Math.round(a.voiceover_ratio * 100)}% voice / ${Math.round(a.music_ratio * 100)}% music / ${Math.round(a.silence_ratio * 100)}% silence`);
+  }
+
+  const arc = (analysis as unknown as { emotion_arc?: { timestamp_ms: number; intensity_0_1: number; label?: string }[] | null }).emotion_arc;
+  if (arc && arc.length > 0) {
+    const curve = arc
+      .map((p) => `${Math.round(p.timestamp_ms / 1000)}s:${p.intensity_0_1.toFixed(2)}${p.label ? `(${p.label})` : ""}`)
+      .join("  ");
+    sections.push(`\n**Emotional intensity curve:** ${curve}`);
   }
 
   return sections.join("\n");
@@ -340,7 +449,6 @@ ${behavioralPredictionsBlock}  "component_scores": {                  // your 0-
     { "name": "substance",   "band": "strong"|"mid"|"weak", "score": 85|50|20, "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" },
     { "name": "credibility", "band": "strong"|"mid"|"weak", "score": 85|50|20, "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" }
   ],
-  "composite_score": <number 0-100>,     // Emit your best estimate, but it is IGNORED — TypeScript overwrites it with the deterministic hook-weighted sum of the six dimension scores (§4). Do NOT reason about it as a holistic whole.
   "ceiling_capper": "<one sentence naming the single thing capping the score; note any §3 anti-pattern present>",
   "confidence_scope": "<which §2 signals the sensor could NOT provide, lowering confidence>",
   "rewrites": [                          // 2-3 directional hook variants
@@ -349,7 +457,7 @@ ${behavioralPredictionsBlock}  "component_scores": {                  // your 0-
   "platform_note": "<optional: watermark/cross-post warning, or omit>"
 }
 
-Rules: "dimensions" is an ARRAY of exactly 6 objects (not an object map). Every "rewrites[].original" MUST be the verbatim hook line above, byte-for-byte. Each "rewrites[].lever_fixed" MUST name a different §2 lever. Cite §-numbers inside "lever"/"evidence"/"ceiling_capper". Return ONLY the JSON object.`
+Rules: "dimensions" is an ARRAY of exactly 6 objects (not an object map). Every "rewrites[].original" MUST be the verbatim hook line above, byte-for-byte. Each "rewrites[].lever_fixed" MUST name a different §2 lever. Cite §-numbers ONLY inside "lever"/"evidence"/"lever_fixed" — NEVER inside "ceiling_capper", "confidence_scope", "suggestions", or rewrite "variant" (those are user-facing prose; name the lever in plain words there, e.g. "the curiosity gap" not "§2.1"). Return ONLY the JSON object.`
   );
 
   return sections.join("\n");

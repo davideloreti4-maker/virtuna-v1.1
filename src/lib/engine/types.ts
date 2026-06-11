@@ -114,14 +114,19 @@ export interface FeatureVector {
   pacingScore: number | null;
   transitionQuality: number | null;
 
-  // DeepSeek component scores (0-10)
-  hookEffectiveness: number;
-  retentionStrength: number;
-  shareability: number;
-  commentProvocation: number;
-  saveWorthiness: number;
-  trendAlignment: number;
-  originality: number;
+  // DeepSeek component scores (0-10).
+  // F24 (plan 01-04, D-04): NULL on video (input_mode !== "text"). On video the fold
+  // (independent 10-archetype audience sim) owns the audience read, and confidence rebased
+  // onto apollo-vs-fold (F22) — so Apollo's self-graded component scores are no longer a
+  // meaningful output signal and are dropped from the video output contract. Still populated
+  // in text/tiktok_url mode, where Apollo IS the behavioral source (overall_score fallback blend).
+  hookEffectiveness: number | null;
+  retentionStrength: number | null;
+  shareability: number | null;
+  commentProvocation: number | null;
+  saveWorthiness: number | null;
+  trendAlignment: number | null;
+  originality: number | null;
 
   // Rules engine (0-100)
   ruleScore: number;
@@ -270,6 +275,28 @@ export interface EngagementRange {
 // Full Prediction Result v2
 // =====================================================
 
+/**
+ * F37/F41 (plan 01-04) — first-class hero block. The moat insight assembled from already-emitted
+ * Apollo materials so it LEADS the board instead of being buried only in `ceiling_capper` prose.
+ * Each field individually nullable + non-throwing (ceiling/the_one_fix degrade to null when Apollo
+ * is unavailable; verdict_line + go_no_go always resolve from overall_score + anti_virality_gated).
+ * Persisted into variants.hero (F42, no migration — rides the JSONB bag).
+ */
+export interface HeroBlock {
+  /** Lead verdict. Gated → "Don't post yet"; else bandLabel(overall_score) (mirrors
+   *  components/board/verdict/verdict-derive.ts bandLabel — kept in the engine to avoid a
+   *  component dependency). Never null (overall_score is always present). */
+  verdict_line: string;
+  /** Apollo §4 ceiling rationale (deepseek.ceiling_capper). Null when Apollo unavailable. */
+  ceiling: string | null;
+  /** Highest-leverage rewrite (deepseek.rewrites[0].variant). Null when Apollo unavailable / no rewrites. */
+  the_one_fix: string | null;
+  /** Post / don't-post call derived from anti_virality_gated. */
+  go_no_go: "go" | "no-go";
+  /** Niche-aware optimal posting window (result.optimal_post_window). Null on Supabase error / unknown niche. */
+  post_window: OptimalPostWindow | null;
+}
+
 export interface PredictionResult {
   // Core prediction
   overall_score: number; // 0-100
@@ -279,7 +306,7 @@ export interface PredictionResult {
   // v2 outputs
   behavioral_predictions: BehavioralPredictions;
   feature_vector: FeatureVector;
-  reasoning: string; // DeepSeek's reasoning text
+  reasoning: string | null; // F43 (01-05): always "" in production (no consumer) → emitted null; nullable for back-compat
   warnings: string[]; // Fatal flaw warnings from DeepSeek Step 4
 
   // Predicted engagement metrics (R11 — grounded range, Plan 05-02).
@@ -292,11 +319,14 @@ export interface PredictionResult {
   suggestions: Suggestion[];
 
   // Scoring breakdown
-  rule_score: number;
-  trend_score: number;
-  gemini_score: number; // Gemini's contribution
+  // F43 (01-05): rule/trend/ml are dead signals (rules/trends/ml removed from the blend) — they
+  // emitted fake fixed constants (50/0/0). Now emitted null (honest "no value"); DB columns kept
+  // for back-compat (route.ts buildInsertRow persists `?? null`). Nullable type follows the emit.
+  rule_score: number | null;
+  trend_score: number | null;
+  gemini_score: number | null; // D-R1: null on video (Read is a pure sensor, no longer scores); provenance-only on legacy/text rows
   behavioral_score: number; // DeepSeek behavioral contribution
-  ml_score: number; // ML classifier score (0-100), 0 if model unavailable
+  ml_score: number | null; // F43 (01-05): ML removed from blend; was a fake 0, now null. DB column kept for back-compat
   /** Phase 6 (D-G3) — 0-100 audio perceptual score before fingerprint boost. 0 when audio absent.
    *  Optional to preserve compile against existing consumers; plans 06-05/06-06 will start emitting it. */
   audio_perceptual_score?: number;
@@ -325,6 +355,11 @@ export interface PredictionResult {
     /** Watermark / cross-post warning (S12 absorb). */
     platform_note?: string;
   } | null;
+  /** F37/F41 (plan 01-04) — first-class hero block (verdict_line/ceiling/the_one_fix/go_no_go/
+   *  post_window) assembled from already-emitted Apollo materials. Optional for back-compat with
+   *  pre-3.18.0 persisted rows / callsites; the aggregator assigns it on every fresh run.
+   *  Persisted into variants.hero on permalink reload (F42). */
+  hero?: HeroBlock | null;
   /** Phase 1 (R1.9, Plan 06 T3 B4) — true when confidence < ANTI_VIRALITY_THRESHOLD.
    *  UI renders "Don't post yet" orange verdict state when true. REQUIRED field
    *  (not optional) — aggregator assigns on every PredictionResult; defaults to
@@ -341,6 +376,15 @@ export interface PredictionResult {
    *  aggregator assigns on every PredictionResult; false on every healthy run. Derivable
    *  from the persisted signal_availability JSONB on permalink reload (no new DB column). */
   analysis_unavailable: boolean;
+  /** F18 honesty / ENG-01 (plan 01-05) — TRUE when EXACTLY ONE core signal is dead (the Omni read
+   *  gave no usable gemini provenance XOR Apollo/fold behavioral failed), i.e.
+   *  signal_availability.gemini !== signal_availability.behavioral. In that state the score is
+   *  built on HALF the basis (the other half silently dropped), yet the board today only surfaces
+   *  the DUAL-failure analysis_unavailable. This flag lets the UI annotate a single-signal partial
+   *  read instead of presenting half a basis as a full one. REQUIRED (not optional) — aggregator
+   *  assigns on every PredictionResult; false on a healthy (both-live) or dual-dead run. Derivable
+   *  from the persisted signal_availability JSONB on permalink reload (no new DB column). */
+  partial_analysis: boolean;
   /** Phase 3 (Plan 08, D-17) — reason discriminator from isAntiViralityGatedFull.
    *  "confidence" | "timeline_pattern" | "both" | null. null when not gated. */
   anti_virality_reason?: "confidence" | "timeline_pattern" | "both" | null;
@@ -607,9 +651,13 @@ export const GeminiAudioSignalsSchema = z
 // = false → audio weight redistributes via the existing selectWeights math.
 // Mirrors the existing `video_signals.optional()` pattern below it.
 export const GeminiResponseSchema = z.object({
-  factors: z.array(FactorSchema).length(5),
-  overall_impression: z.string(),
-  content_summary: z.string(),
+  // D-R1 (2026-06-11): Read = pure sensor — factors/overall_impression/content_summary are no
+  // longer emitted by the video read (Apollo is sole judge; gemini_score dies). Made .optional()
+  // so the video-read shape (perception-only) validates AND text-mode/legacy responses that still
+  // carry them continue to parse. Downstream consumers guard absence (factors → [] / skipped).
+  factors: z.array(FactorSchema).length(5).optional(),
+  overall_impression: z.string().optional(),
+  content_summary: z.string().optional(),
   video_signals: GeminiVideoSignalsSchema.nullable().optional(),
   // .nullable().optional() — accept both omitted-key and explicit-null (06-REVIEW.md WR-02):
   // if Gemini emits `audio_signals: null` instead of omitting the key, .optional()-only
@@ -826,7 +874,10 @@ export const DeepSeekResponseSchema = z.object({
   confidence: z.enum(["high", "medium", "low"]), // already present (D-06)
   // ── Apollo §4 extension (Plan 03-02) — additive, no removal ──
   dimensions: z.array(ApolloDimensionSchema).length(6),      // exactly 6 §4 rubric dimensions (D-06)
-  composite_score: z.number().min(0).max(100),               // Apollo expert composite 0–100 (D-04 Apollo term)
+  // F26 (2026-06-11): the LLM no longer emits composite_score (it was discarded — deepseek.ts
+  // overwrites it with the deterministic rubric-sum of the 6 dimension scores). .optional() so the
+  // LLM's omission validates; reasonWithDeepSeek ALWAYS sets it from the rubric-sum post-parse.
+  composite_score: z.number().min(0).max(100).optional(),    // Apollo composite 0–100 (rubric-sum, set post-parse)
   ceiling_capper: z.string().min(1),                         // one-sentence ceiling rationale (§4 contract)
   confidence_scope: z.string().min(1),                       // which §2 signals were unobservable
   rewrites: z.array(ApolloRewriteSchema).min(2).max(3),      // 2–3 directional variants (D-08)

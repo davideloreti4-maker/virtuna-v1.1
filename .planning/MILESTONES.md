@@ -1,5 +1,32 @@
 # Milestones — Virtuna
 
+## v4.1 MVP Ready (Phase 1 shipped + merged: 2026-06-11 · closed early by decision)
+
+**Phases completed:** 1 of 5 chartered (Phase 1 Engine Pipeline) · ENGINE_VERSION 3.19.0 · merged to main `--no-ff`
+
+**Delivered:** An audit→fix→verify refinement pass over the shipped Apollo engine (Omni verbatim sensor → fold ∥ Apollo reasoner). Produced a 47-finding audit (F1–F47; catalog in `milestones/v4.1-mvp-ready/01-engine-pipeline/01-WALKTHROUGH-LOG.md`) and shipped the engine-internal fixes.
+
+**Key accomplishments (Phase 1, plans 01-01→01-05):**
+
+- **ENG-02 §-cite honesty** — remap + prose discipline; §-cites validated, no fake legend leak (F23/F30/F31).
+- **ENG-05 read robustness** — speech-derived fields nullable (F46), long-video truncation fixed via `OMNI_MAX_TOKENS=8000` (F47), critical-field retry (F9), audio min→1 (F16).
+- **D-R1 Read → pure sensor** — dropped Read's judgment fields; Apollo is sole judge (F14); stopped asking for discarded composite_score (F26).
+- **ENG-04 confidence honesty (test-locked)** — confidence = apollo-vs-fold agreement, not self-agreement (F22/F44); component_scores dropped from contract (F24); MOAT insight promoted to hero (F37); permalink persists hero (F42).
+- **01-05 robustness + honesty LOCK** — fold retry/salvage/nudge + partial_analysis; dead-tail prune (F12/F35/F43); ENGINE_VERSION → 3.19.0.
+- **Model swaps** — Apollo reasoner qwen3.6→3.7-plus; fold omni-plus→omni-flash.
+
+**Closed early by decision (2026-06-11):** Phases 2–5 (Board/Test, Board/Remix, Chat dock, Raycast brand polish) are **superseded by the Numen Surface rebrand** — those surfaces are being *replaced*, not polished. See `.planning/NUMEN-SURFACE-VISION.md`.
+
+**Carried forward into Numen Surface (not lost):**
+- **SMOKE GATE** (hard precondition before the Reading-vs-real-data build): one real-video E2E returns sane/honest output (confirms F46/F47/F22/F23 live; DashScope-429 risk) + ENG-03 latency number.
+- **UAT sign-off** (F42 permalink, full measure-pipeline) — can slip into the milestone.
+- **ENG-06 D-12** (3-call prompt I/O co-review + dead-field prune F27/F28/F43) → becomes the rebrand's **data-contract design step**, not a standalone session.
+- **Value-finding cluster** F36/F38/F40/F41/F43/F45 → resolved BY the new surface (see vision §7a).
+
+**Git range:** `milestone/mvp-ready` (36 commits) → merged to main.
+
+---
+
 ## v4.0 Apollo (Shipped: 2026-06-06)
 
 **Phases completed:** 5 phases, 22 plans, 26 tasks · ENGINE_VERSION 3.8.0 · merged to main via PR #13

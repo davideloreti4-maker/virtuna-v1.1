@@ -246,7 +246,8 @@ describe("emotion_arc — analyzeVideoWithOmni assembly (regression)", () => {
       emotion_arc?: unknown[];
     })?.emotion_arc;
     expect(arc).toBeUndefined();
-    // Sanity: the rest of the assembly still succeeded.
-    expect(out.geminiResult?.analysis.factors).toHaveLength(5);
+    // Sanity: the rest of the assembly still succeeded. (D-R1: factors no longer assembled —
+    // Read is a pure sensor; assert a perception field instead.)
+    expect(out.geminiResult?.analysis.audio_signals).toBeDefined();
   });
 });

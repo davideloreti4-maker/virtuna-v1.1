@@ -33,6 +33,7 @@ import {
 } from "./fold-prompts";
 import type { PersonaSlot } from "./persona-registry";
 import { getQwenClient, QWEN_REASONING_MODEL, QWEN_FAST_MODEL, QWEN_SEED } from "../qwen/client";
+import { stripModelOutput } from "../utils/strip";
 import type { PersonaSimulationResult, SegmentGrid, EmotionArcPoint } from "../types";
 import type { Pass2PersonaResult } from "./weighted-aggregator";
 
@@ -60,21 +61,44 @@ const FOLD_THINKING_BUDGET = Number(process.env.FOLD_THINKING_BUDGET) || 1000;
 // N-segment numeric output and buys headroom against the thin 90s timeout. Override
 // via env if a long video truncates (→ Zod fail → graceful deepseek fallback).
 const FOLD_MAX_TOKENS = Number(process.env.FOLD_MAX_TOKENS) || 4000;
-// Sense-complete fold (2026-06-06): the fold runs on qwen3.5-omni-plus and WATCHES the
-// video directly (video+audio). Why: the fold simulates moment-to-moment viewer attention,
-// which is driven by what's seen AND heard — only an omni model has both senses. Spike
-// (scripts/fold-vision-spike.ts) ruled out omni-flash (curves collapse to ~0.0 — perception
-// without enough reasoning) and 3.6-plus (same diversity but ~87s — too slow, and deaf);
-// omni-plus held diversity (~0.35) at ~42s with native audio. Escape hatches:
-//   FOLD_MODEL=plus   → qwen3.6-plus reasoning model (deaf, ~88s — diagnostic only)
-//   FOLD_MODEL=flash  → qwen3.6-flash (the deaf+blind text fold — pre-2026-06-06 default)
-//   FOLD_THINKING=1   → enable_thinking + thinking_budget (omni does not think — no-op unless FOLD_MODEL=plus)
+// Sense-complete fold: the fold runs on an OMNI model and WATCHES the video directly
+// (video+audio) — it simulates moment-to-moment viewer attention, driven by what's seen
+// AND heard, and only omni hears.
+// DEFAULT FLIPPED omni-plus → omni-FLASH 2026-06-11 (harness A/B, scripts/fold-audio-ab.ts,
+// 2 clean videos: 29s comedy + 13s booth): omni-flash is 5–6× FASTER (8s vs 40–52s on the
+// gating call) + ~3.5× cheaper, with diversity tracking omni-plus within ±0.04 (0.27–0.41,
+// PASS) and audio retained. The OLD fold-vision-spike claim that omni-flash "collapses to
+// ~0.0" did NOT reproduce on the current prompt — it was the bare-JSON.parse bug (omni-flash
+// wraps output in fences / a stray trailing ```), now fixed via stripModelOutput above.
+// Drop-off-moment fidelity vs omni-plus diverged on 1 video, but is unprovable either way
+// without retention ground truth (deferred outcome model). DEFERRED (noted, not built):
+// persona-split into 2 calls + a segment cap for long-video output robustness (a 79s video
+// → ~20 segments → fold output may exceed FOLD_MAX_TOKENS; revisit if a long video truncates).
+// Escape hatches:
+//   FOLD_MODEL=omni-plus → qwen3.5-omni-plus (the pre-2026-06-11 sense-complete default — ROLLBACK)
+//   FOLD_MODEL=plus      → qwen3.6-plus reasoning model (deaf, ~88s — diagnostic only)
+//   FOLD_MODEL=flash     → qwen3.6-flash (the deaf+blind text fold — pre-2026-06-06 default)
+//   FOLD_THINKING=1      → enable_thinking + thinking_budget (omni does not think — no-op unless FOLD_MODEL=plus)
 const FOLD_MODEL =
-  process.env.FOLD_MODEL === "plus"  ? QWEN_REASONING_MODEL
-  : process.env.FOLD_MODEL === "flash" ? QWEN_FAST_MODEL
-  : (process.env.FOLD_MODEL ?? "qwen3.5-omni-plus");
+  process.env.FOLD_MODEL === "plus"      ? QWEN_REASONING_MODEL
+  : process.env.FOLD_MODEL === "flash"   ? QWEN_FAST_MODEL
+  : process.env.FOLD_MODEL === "omni-plus" ? "qwen3.5-omni-plus"
+  : (process.env.FOLD_MODEL ?? "qwen3.5-omni-flash");
 const FOLD_USE_THINKING = process.env.FOLD_THINKING === "1";
 const COST_ALERT_THRESHOLD_CENTS = 50; // D-24 pattern from pass2.ts
+
+// F18/F19/F20 (plan 01-05) — bounded fold retry. The default fold (omni-flash, no thinking) is
+// ~8s, so it gets ONE re-attempt on a transient parse/validation/timeout failure (and one
+// diversity retry-nudge), each bounded by FOLD_ATTEMPT_TIMEOUT_MS — 2 × 40s = 80s < the 90s
+// PER_CALL_TIMEOUT_MS HARD ceiling, which is NEVER raised (PITFALL 2). The thinking/plus
+// diagnostic path (a single legit ~88s call) keeps its prior single-attempt 90s budget so the
+// retry never aborts a legitimately-slow plus call.
+const FOLD_RETRY_ATTEMPTS = FOLD_USE_THINKING ? 1 : 2;
+const FOLD_ATTEMPT_TIMEOUT_MS =
+  Number(process.env.FOLD_ATTEMPT_TIMEOUT_MS) || (FOLD_USE_THINKING ? PER_CALL_TIMEOUT_MS : 40_000);
+// F20 salvage floor — keep the audience read meaningful: succeed when ≥6 of 10 archetype personas
+// have a valid segment-reaction count, dropping only the mismatched ones (was all-or-nothing).
+const MIN_VALID_PERSONAS = 6;
 
 // Cache-aware pricing constants — mirrors wave3.ts:34-36.
 const CACHE_HIT_PRICE = 0.0028 / 1_000_000;
@@ -291,109 +315,142 @@ export async function runFold(
   const warnings: string[] = [];
   let fold_success = false;
   let costCents = 0;
-  let foldPersonas: FoldResponse | null = null; // set on successful parse + segment-count guard
+  let foldPersonas: FoldResponse | null = null; // set on a successful parse + (salvaged) segment guard
+  // F19 fallback: a valid-but-homogenized result kept across a diversity retry-nudge so a failed
+  // nudge re-attempt never costs us a usable (if homogenized) fold.
+  let bestEffort: FoldResponse | null = null;
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), PER_CALL_TIMEOUT_MS);
+  // Build the bounded call ONCE — identical input across attempts (mirrors pass2.ts:157-181).
+  const callParams = {
+    model: FOLD_MODEL,
+    messages: [
+      { role: "system" as const, content: STABLE_FOLD_SYSTEM_PROMPT }, // byte-stable cache prefix (D-17)
+      {
+        role: "user" as const,
+        content: buildFoldUserContent(slots, segments, verbatim, emotionArc, videoUrl) as never,
+      },
+    ],
+    response_format: { type: "json_object" as const },
+  };
+  if (FOLD_USE_THINKING) {
+    // @ts-expect-error — DashScope extension: enable_thinking not in OpenAI types
+    callParams.enable_thinking = true;
+    // @ts-expect-error — DashScope extension: thinking_budget not in OpenAI types (D-08)
+    callParams.thinking_budget = FOLD_THINKING_BUDGET;
+  }
+  // @ts-expect-error — temperature:0 + seed = reproducible fold scores (R8)
+  callParams.temperature = 0;
+  // @ts-expect-error — seed pins residual nondeterminism in thinking mode (R8)
+  callParams.seed = QWEN_SEED;
+  // @ts-expect-error — max_tokens caps the 10-archetype × N-segment output (D-08)
+  callParams.max_tokens = FOLD_MAX_TOKENS;
 
-  try {
-    // Build the bounded call — mirrors pass2.ts:157-181 + PATTERNS.md §fold.ts.
-    const callParams = {
-      model: FOLD_MODEL,
-      messages: [
-        { role: "system" as const, content: STABLE_FOLD_SYSTEM_PROMPT }, // byte-stable cache prefix (D-17)
-        {
-          role: "user" as const,
-          content: buildFoldUserContent(slots, segments, verbatim, emotionArc, videoUrl) as never,
-        },
-      ],
-      response_format: { type: "json_object" as const },
-    };
+  // F18/F19/F20 (plan 01-05) — bounded retry loop. ONE re-attempt on a transient
+  // parse/validation/timeout failure (F18) so a single hiccup no longer silently drops the
+  // audience half; salvage valid personas instead of all-or-nothing (F20); one diversity
+  // retry-nudge when the curves are homogenized (F19). Each attempt is bounded by
+  // FOLD_ATTEMPT_TIMEOUT_MS; the 90s PER_CALL_TIMEOUT_MS ceiling is NEVER raised (PITFALL 2).
+  for (let attempt = 1; attempt <= FOLD_RETRY_ATTEMPTS; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FOLD_ATTEMPT_TIMEOUT_MS);
+    try {
+      const response = await ai.chat.completions.create(callParams as never, { signal: controller.signal });
+      clearTimeout(timer);
 
-    if (FOLD_USE_THINKING) {
-      // @ts-expect-error — DashScope extension: enable_thinking not in OpenAI types
-      callParams.enable_thinking = true;
-      // @ts-expect-error — DashScope extension: thinking_budget not in OpenAI types (D-08)
-      callParams.thinking_budget = FOLD_THINKING_BUDGET;
-    }
-    // @ts-expect-error — temperature:0 + seed = reproducible fold scores (R8)
-    callParams.temperature = 0;
-    // @ts-expect-error — seed pins residual nondeterminism in thinking mode (R8)
-    callParams.seed = QWEN_SEED;
-    // @ts-expect-error — max_tokens caps the 10-archetype × N-segment output (D-08)
-    callParams.max_tokens = FOLD_MAX_TOKENS;
+      // Cache-aware cost telemetry — ACCUMULATE across attempts (mirrors wave3.ts hasBreakdown).
+      const usage = response.usage as unknown as
+        | {
+            prompt_tokens?: number;
+            prompt_cache_hit_tokens?: number;
+            prompt_cache_miss_tokens?: number;
+            completion_tokens?: number;
+          }
+        | undefined;
+      const cacheHit = usage?.prompt_cache_hit_tokens ?? 0;
+      const cacheMiss = usage?.prompt_cache_miss_tokens ?? 0;
+      const completion = usage?.completion_tokens ?? 0;
+      const hasBreakdown = cacheHit > 0 || cacheMiss > 0;
+      const inputCost = hasBreakdown
+        ? cacheHit * CACHE_HIT_PRICE + cacheMiss * CACHE_MISS_PRICE
+        : (usage?.prompt_tokens ?? 0) * CACHE_MISS_PRICE;
+      costCents += (inputCost + completion * OUTPUT_PRICE) * 100;
 
-    const response = await ai.chat.completions.create(
-      callParams as never,
-      { signal: controller.signal },
-    );
-    clearTimeout(timer);
+      // ROBUST parse: stripModelOutput removes <think>/fences + extracts the first balanced JSON
+      // value (no-op on clean omni-plus, salvage on flash). Bare JSON.parse would throw → the
+      // latent silent audience-half drop.
+      const raw = response.choices[0]?.message?.content ?? "{}";
+      const text = stripModelOutput(raw);
+      const parsed = JSON.parse(text) as unknown;
 
-    // Cache-aware cost telemetry — mirrors wave3.ts:171-188 hasBreakdown pattern verbatim.
-    const usage = response.usage as unknown as
-      | {
-          prompt_tokens?: number;
-          prompt_cache_hit_tokens?: number;
-          prompt_cache_miss_tokens?: number;
-          completion_tokens?: number;
-        }
-      | undefined;
-    const cacheHit = usage?.prompt_cache_hit_tokens ?? 0;
-    const cacheMiss = usage?.prompt_cache_miss_tokens ?? 0;
-    const completion = usage?.completion_tokens ?? 0;
-    const hasBreakdown = cacheHit > 0 || cacheMiss > 0;
-    const inputCost = hasBreakdown
-      ? cacheHit * CACHE_HIT_PRICE + cacheMiss * CACHE_MISS_PRICE
-      : (usage?.prompt_tokens ?? 0) * CACHE_MISS_PRICE;
-    costCents = (inputCost + completion * OUTPUT_PRICE) * 100;
-
-    const text = response.choices[0]?.message?.content ?? "{}";
-    const parsed = JSON.parse(text) as unknown;
-
-    // T-04-01 mitigation: validate at the model boundary (V5).
-    const validated = FoldResponseSchema.safeParse(parsed);
-
-    if (!validated.success) {
-      const msg = `fold validation failed: ${validated.error.message}`;
-      warnings.push(msg);
-      Sentry.captureException(new Error(msg), {
-        tags: { stage: "wave_3_fold", archetype: "all_10" },
-      });
-    } else {
-      // T-04-01 mitigation: segment-count guard — mirrors pass2.ts:197-201.
-      // Each persona's segment_reactions.length must match segments.length.
-      const mismatchedPersonas = validated.data.personas.filter(
-        (p) => p.segment_reactions.length !== segments.length,
-      );
-      if (mismatchedPersonas.length > 0) {
-        const archetypes = mismatchedPersonas.map((p) => p.archetype).join(", ");
-        const msg = `fold segment-count mismatch for archetypes: ${archetypes} (expected ${segments.length} reactions each)`;
+      // T-04-01 mitigation: validate at the model boundary (V5).
+      const validated = FoldResponseSchema.safeParse(parsed);
+      if (!validated.success) {
+        const msg = `fold validation failed (attempt ${attempt}/${FOLD_RETRY_ATTEMPTS}): ${validated.error.message}`;
         warnings.push(msg);
-        Sentry.captureException(new Error(msg), {
-          tags: { stage: "wave_3_fold", archetype: "all_10" },
-        });
-      } else {
-        // D-07 diversity guard: warn when curves are homogenized (warn-only per D-07, never throw).
-        const avgRange = computeAvgCurveRange(validated.data.personas);
-        const { warn } = checkDiversityGuard(avgRange);
-        if (warn) {
-          warnings.push(`fold diversity guard: avgCurveRange=${avgRange} below DIVERSITY_FLOOR=${DIVERSITY_FLOOR} (D-07)`);
-        }
-
-        // Plan 03 adapters: stash validated data for post-try adapter calls.
-        foldPersonas = validated.data;
-        fold_success = true;
+        Sentry.captureException(new Error(msg), { tags: { stage: "wave_3_fold", archetype: "all_10" } });
+        continue; // F18 — retry on a transient parse/validation failure
       }
+
+      // F20 salvage (T-04-01 segment-count guard): keep personas whose segment_reactions match
+      // segments.length, DROP only the mismatched ones (was all-or-nothing). Succeed when ≥
+      // MIN_VALID_PERSONAS remain so the audience read stays meaningful.
+      const validPersonas = validated.data.personas.filter((p) => p.segment_reactions.length === segments.length);
+      const mismatched = validated.data.personas.filter((p) => p.segment_reactions.length !== segments.length);
+      if (mismatched.length > 0) {
+        const archetypes = mismatched.map((p) => p.archetype).join(", ");
+        const msg = `fold dropped ${mismatched.length} persona(s) with a segment-count mismatch: ${archetypes} (expected ${segments.length} each)`;
+        warnings.push(msg);
+        Sentry.captureException(new Error(msg), { tags: { stage: "wave_3_fold", archetype: "all_10" } });
+      }
+      if (validPersonas.length < MIN_VALID_PERSONAS) {
+        warnings.push(
+          `fold has only ${validPersonas.length}/${validated.data.personas.length} valid personas (< ${MIN_VALID_PERSONAS} floor) (attempt ${attempt}/${FOLD_RETRY_ATTEMPTS})`,
+        );
+        continue; // F18 — too few to trust; retry if attempts remain
+      }
+
+      const salvaged: FoldResponse = { ...validated.data, personas: validPersonas };
+
+      // F19 diversity nudge: below DIVERSITY_FLOOR the curves are homogenized. Keep this result as
+      // a fallback, then nudge ONE retry (cheap on flash) before accepting; on the final attempt,
+      // accept with the warn-only fallback (never throw — D-07).
+      const avgRange = computeAvgCurveRange(validPersonas);
+      const { warn } = checkDiversityGuard(avgRange);
+      if (warn && attempt < FOLD_RETRY_ATTEMPTS) {
+        bestEffort = salvaged;
+        warnings.push(
+          `fold diversity retry-nudge: avgCurveRange=${avgRange} below DIVERSITY_FLOOR=${DIVERSITY_FLOOR} (attempt ${attempt}) — retrying for diversity (D-07/F19)`,
+        );
+        continue;
+      }
+      if (warn) {
+        warnings.push(
+          `fold diversity guard: avgCurveRange=${avgRange} below DIVERSITY_FLOOR=${DIVERSITY_FLOOR} (accepted on final attempt) (D-07)`,
+        );
+      }
+
+      foldPersonas = salvaged;
+      fold_success = true;
+      break;
+    } catch (err) {
+      clearTimeout(timer);
+      const error = err instanceof Error ? err : new Error(String(err));
+      const isTimeout = error.name === "AbortError";
+      const msg = isTimeout
+        ? `fold call aborted (FOLD_ATTEMPT_TIMEOUT_MS exceeded, attempt ${attempt}/${FOLD_RETRY_ATTEMPTS})`
+        : `${error.message} (attempt ${attempt}/${FOLD_RETRY_ATTEMPTS})`;
+      warnings.push(msg);
+      Sentry.captureException(error, { tags: { stage: "wave_3_fold", archetype: "all_10" } });
+      // loop retries if attempts remain (F18)
     }
-  } catch (err) {
-    clearTimeout(timer);
-    const error = err instanceof Error ? err : new Error(String(err));
-    const isTimeout = error.name === "AbortError";
-    const msg = isTimeout ? "fold call aborted (PER_CALL_TIMEOUT_MS exceeded)" : error.message;
-    warnings.push(msg);
-    Sentry.captureException(error, {
-      tags: { stage: "wave_3_fold", archetype: "all_10" },
-    });
+  }
+
+  // F19 fallback: if every attempt after a diversity nudge failed, accept the homogenized-but-valid
+  // result rather than dropping the whole audience half (a homogenized fold beats no fold).
+  if (!fold_success && bestEffort !== null) {
+    warnings.push("fold accepted a homogenized result after the diversity retry-nudge re-attempt failed (F19 fallback)");
+    foldPersonas = bestEffort;
+    fold_success = true;
   }
 
   // D-24 cost ceiling alert (mirrors pass2.ts pattern).

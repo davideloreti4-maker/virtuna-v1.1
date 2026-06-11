@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: apollo
-milestone_name: Apollo
+milestone: mvp-ready
+milestone_name: MVP Ready (v4.1, Phase 1 only)
 status: Awaiting next milestone
-last_updated: "2026-06-06T20:06:34.493Z"
-last_activity: 2026-06-06 — Milestone v4.0 completed and archived
+last_updated: "2026-06-11T00:00:00.000Z"
+last_activity: 2026-06-11 — v4.1 Phase 1 (engine) merged to main; milestone closed early (P2–5 superseded by Numen Surface)
 progress:
   total_phases: 5
-  completed_phases: 5
+  completed_phases: 1
   total_plans: 22
-  completed_plans: 22
+  completed_plans: 5
   percent: 100
 ---
 
@@ -17,14 +17,14 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md · Milestone identity: .planning/MILESTONE.md · Cut-list SSOT: .planning/ENGINE-MAP.md
+See: .planning/PROJECT.md · Rebrand vision (next milestone): .planning/NUMEN-SURFACE-VISION.md · Cut-list SSOT: .planning/ENGINE-MAP.md
 
 ## Current Position
 
-Phase: Milestone v4.0 complete
+Phase: v4.1 MVP Ready — Phase 1 (engine) merged; milestone closed early
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-06-06 — Shipped chat dock v2 UI/UX refinement (unified panel, markdown + §citations + frame-tags, composer variant A, streaming/stop, mobile full-height sheet) — browser-verified desktop+mobile
+Status: Awaiting next milestone — **Numen Surface (v5.0 rebrand/UX rework)**. Launch from trunk via `/gsd-new-milestone`; feed it `.planning/NUMEN-SURFACE-VISION.md`. Carries forward: SMOKE GATE, UAT sign-off, ENG-06 D-12 (see vision §7b).
+Last activity: 2026-06-11 — Merged milestone/mvp-ready Phase 1 (engine, ENGINE_VERSION 3.19.0) into main; archived phase dir to milestones/v4.1-mvp-ready/
 
 ## Deferred Items
 

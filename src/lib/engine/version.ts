@@ -61,7 +61,67 @@
  * 3.12.0 cached rows (which lack the flag) don't deserialize as a real-looking 0 verdict.
  * The flag is also derivable from the persisted signal_availability JSONB on permalink reload.
  *
+ * Bumped 3.13.0 → 3.14.0 (2026-06-11, ENG-02 §-cite honesty — plan 01-01): two changes to the
+ * Apollo path. (1) Prose-discipline: APOLLO_INSTRUCTION (in the cached system prefix) + the
+ * user-message JSON contract now instruct Apollo to keep § tokens OUT of user-facing prose
+ * (ceiling_capper/confidence_scope/suggestions/rewrite variant) and only in the auditable
+ * lever/evidence/lever_fixed metadata. The system-prefix bytes change → isolate the cache.
+ * (2) Cite-resolution guard: a post-parse backstop strips danglers (§-cites that don't resolve
+ * to the lean KNOWLEDGE_CORE — §2.6/§7/§8/hallucinated) from metadata and strips ALL § tokens
+ * from prose, so the faithful-runtime leak (7 prose cites observed on the test video) can't reach
+ * the board. Apollo's prose output shape changes (cites removed) → stale 3.13.0 rows must not mix.
+ *
+ * Bumped 3.14.0 → 3.15.0 (2026-06-11, Apollo model flip — harness A/B): the Apollo reasoner
+ * moved qwen3.6-plus → qwen3.7-plus (scoped via new QWEN_APOLLO_MODEL, separate from the shared
+ * QWEN_REASONING_MODEL so chat/decode/adapt/text-mode stay on 3.6-plus). A/B on the test video:
+ * faster (50s vs 64s) + cheaper (output $1.6 vs $2.4/M) at identical insight quality, §-cites,
+ * and guard behavior; deaf like 3.6-plus (no capability lost). Apollo composite may shift within
+ * provider noise across the model boundary, so isolate the cache. Fold stays qwen3.5-omni-plus
+ * (sense-complete + free in preview + fastest; omni-flash rejected — malformed JSON + collapsed
+ * curves; 3.7-plus rejected for fold — deaf + 65s on the gating call).
+ *
+ * Bumped 3.15.0 → 3.16.0 (2026-06-11, fold model flip — harness A/B): the fold (audience-sim)
+ * moved qwen3.5-omni-plus → qwen3.5-omni-FLASH (default; FOLD_MODEL=omni-plus rolls back). A/B on
+ * 2 clean videos: flash is 5–6× faster on the gating call (8s vs 40–52s) + ~3.5× cheaper, with
+ * diversity tracking plus within ±0.04 (no collapse — the old spike's collapse was the bare-
+ * JSON.parse bug, fixed via stripModelOutput in runFold). Both stay omni → audio retained. The
+ * behavioral/audience term feeds 0.5 of overall_score on video, so scores shift across the model
+ * boundary; isolate the cache. Deferred (noted): persona-split + segment cap for long-video output.
+ *
+ * Bumped 3.16.0 → 3.17.0 (2026-06-11, D-R1 Read→pure sensor — plan 01-03): the Omni read STOPS
+ * emitting generic JUDGMENT (factors[] scores/rationale, overall_impression, content_summary) —
+ * it is now a pure perception sensor; Apollo is the sole judge. gemini_score dies with the factors
+ * (null on video, nullable for legacy/text + permalink back-compat). Apollo's user message is
+ * rebuilt: formatGeminiSignals now feeds the raw PERCEPTUAL reading (hook-modality strengths,
+ * production signals, audio reading, emotion curve) instead of the Omni's prose judgment. Both the
+ * read output shape AND Apollo's volatile user message change → scores shift on every video row;
+ * isolate the cache. stage10 signal-agreement skips when gemini_score is null (re-base on
+ * apollo-vs-fold is plan 01-04, F22/F34). Deferred to 01-03 follow-ons: hero block + scorecard
+ * collapse (F37/F24/F26). NOTE: 01-02 read-robustness (F46/F47/F9/F16) did NOT bump.
+ *
+ * Bumped 3.17.0 → 3.18.0 (2026-06-11, coupled aggregator closeout — plan 01-04): an OUTPUT-SHAPE
+ * change bundling four flags that all touch the final assembly. (F22/F44) confidence "model
+ * agreement" rebased onto Apollo-composite-vs-FOLD-audience (two independent signals) instead of
+ * apollo-vs-behavioral (one Apollo call graded twice → self-agreement); falls back to
+ * apollo-vs-behavioral only when the fold is unavailable. (F24) the 7 component scores are dropped
+ * from the video output contract (feature_vector component fields null on video; kept in
+ * text/tiktok_url mode) — they no longer feed confidence after F22. (F34) Stage-10 Check #1
+ * (signal-agreement) dropped (dead on video post-D-R1 + now subsumed by F22); Checks #2/#3/#4 kept.
+ * (F37/F41) a first-class hero block { verdict_line, ceiling, the_one_fix, go_no_go, post_window }
+ * is assembled from already-emitted Apollo materials and (F42) persisted into variants.hero. Both
+ * the confidence value and the output shape change on video rows → isolate the cache.
+ *
+ * Bumped 3.18.0 → 3.19.0 (2026-06-11, robustness + honesty + dead-tail prune — plan 01-05): an
+ * OUTPUT-SHAPE change. (1) partial_analysis: new REQUIRED honesty flag — true when exactly one
+ * core signal is dead (single-signal partial read, previously silent; only dual-failure surfaced).
+ * (2) Dead-tail prune (F43): rule_score/trend_score/ml_score/reasoning stop emitting fake fixed
+ * constants (50/0/0/"") and now emit null (DB columns kept for back-compat); audio_fingerprint +
+ * platform_fit dropped from the emitted contract (optional, always null, no consumer). Fold
+ * robustness (retry/salvage/diversity-nudge) + the F7 rehost-delete-race fix do NOT change scores,
+ * but the partial_analysis + prune shape change → isolate the cache so stale 3.18.0 rows (which
+ * lack partial_analysis + carry the fake constants) don't deserialize as current.
+ *
  * D-23 cache invariant: prediction-cache.ts keys on ENGINE_VERSION; this bump auto-invalidates
- * all `3.12.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
+ * all `3.18.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
  */
-export const ENGINE_VERSION = "3.13.0";
+export const ENGINE_VERSION = "3.19.0";

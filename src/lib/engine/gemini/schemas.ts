@@ -47,9 +47,13 @@ const ScoreSchema = z.number().min(0).max(10);
  */
 export const HookDecompositionZodSchema = z.object({
   visual_stop_power: ScoreSchema,          // HOOK-01
-  audio_hook_quality: ScoreSchema,         // HOOK-02 (D-04: derived from Gemini Pro multi-modal hook analysis)
+  // F46: audio/speech-derived modalities are nullable on NO-SPEECH / no-audio videos
+  // (b-roll, music-only, ASMR). Mirrors qwen/schemas.ts HookDecompositionZodSchema —
+  // the two schemas must stay field-compatible (this is the TYPE surface consumers use
+  // via types.ts; the qwen one is the live read path). null = modality absent, not 0.
+  audio_hook_quality: ScoreSchema.nullable(),         // HOOK-02 (D-04: derived from Gemini Pro multi-modal hook analysis)
   text_overlay_score: ScoreSchema,         // HOOK-03
-  first_words_speech_score: ScoreSchema,   // HOOK-04
+  first_words_speech_score: ScoreSchema.nullable(),   // HOOK-04
   weakest_modality: z.enum([                // HOOK-05
     "visual_stop_power",
     "audio_hook_quality",
