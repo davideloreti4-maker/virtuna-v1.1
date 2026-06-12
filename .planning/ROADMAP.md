@@ -88,7 +88,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 — needs the measured variance figure)*
 
-- [ ] 03-02-PLAN.md — Band calibration: DEAD_BAND_FLOOR + inDeadBand() in verdict-bands.ts + one-line OR in view-model.ts + additive verdict.test.ts cases (D-02/03/04/05) (GATE-02)
+- [x] 03-02-PLAN.md — Band calibration: DEAD_BAND_FLOOR + inDeadBand() in verdict-bands.ts + one-line OR in view-model.ts + additive verdict.test.ts cases (D-02/03/04/05) (GATE-02)
 
 **Wave 3** *(blocked on Wave 1 + 2)*
 
@@ -166,7 +166,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Design System Foundation + Brand Migration | 5/5 | Complete | 2026-06-11 |
 | 2. View-Model + Data Contract | 4/4 | Complete (DATA-01/02/03/04 — deep-equal GREEN vs real pair WEkihfOzJphv) | 2026-06-12 |
-| 3. SMOKE GATE + Verdict-Banding Calibration | 0/3 | Planned | - |
+| 3. SMOKE GATE + Verdict-Banding Calibration | 1/3 | In Progress|  |
 | 4. Mobile Reading Thread + PWA Shell | 0/TBD | Not started | - |
 | 5. App Shell + Ingestion | 0/TBD | Not started | - |
 | 6. Follow-ups + Agentic Tools + Monetization | 0/TBD | Not started | - |
