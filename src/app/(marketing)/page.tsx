@@ -1,4 +1,5 @@
 import { Hero } from "@/components/numen-landing/hero";
+import { HowItWorks } from "@/components/numen-landing/how-it-works";
 import { SectionShell } from "@/components/numen-landing/section-shell";
 
 /**
@@ -23,7 +24,9 @@ export default function HomePage() {
       </SectionShell>
 
       {/* 2 — How the Reading works */}
-      <SectionShell id="how-it-works" heading="How the Reading works" />
+      <SectionShell id="how-it-works" heading="How the Reading works">
+        <HowItWorks />
+      </SectionShell>
 
       {/* 3 — Honesty moat */}
       <SectionShell id="honesty" heading="An honest verdict, not a hype score." />
