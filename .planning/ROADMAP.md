@@ -17,7 +17,7 @@ The honesty/anti-snake-oil posture (TRUST) is not a single section — it is the
 
 Milestone-scoped numbering (fresh worktree): phases start at 1.
 
-- [ ] **Phase 1: Foundation, Shell & Voice Baseline** - Next.js landing scaffold consuming `.numen-surface` placeholder tokens; minimal nav + footer; calm confident-mentor voice baseline; SEO meta + kero-paced section rhythm scaffold
+- [x] **Phase 1: Foundation, Shell & Voice Baseline** - Next.js landing scaffold consuming `.numen-surface` placeholder tokens; minimal nav + footer; calm confident-mentor voice baseline; SEO meta + kero-paced section rhythm scaffold (completed 2026-06-12)
 - [ ] **Phase 2: Hero Centerpiece & Reading Explainer** - Content-as-hero — a real Reading staged on a real creator video (resolve live-vs-recorded D-L2); calibrated-band verdict; 3-step upload→reads→verdict explainer with real content; primary CTA
 - [ ] **Phase 3: Honesty Moat, Gallery, Proof & Conversion** - Anti-snake-oil trust section + Numen-vs-rivals comparison; gallery-quality real Readings across ≥3 niches; social proof; positioning copy; conversion CTA wired to waitlist/app entry
 - [ ] **Phase 4: Token Lock, Motion & Launch Polish** - Swap in final `.numen-surface` tokens on Phase 1 calibration sign-off; calm scroll-driven reveals; LCP/perf, OG cards, accessibility, brand-DNA coherence
@@ -37,7 +37,7 @@ Milestone-scoped numbering (fresh worktree): phases start at 1.
 **Plans**: 3 plans
   - [x] 01-01-PLAN.md — De-hype root metadata + author canonical `.planning/VOICE.md` baseline (scope mount moved to 01-03 marketing wrapper per Option B / D-02)
   - [x] 01-02-PLAN.md — Build the three `numen-landing/` shell components: SectionShell slot, sticky opaque Nav (mobile hamburger), static Footer
-  - [ ] 01-03-PLAN.md — Wire it: marketing layout → no-html passthrough mounting `.numen-surface` wrapper `<div>` (Nav/main/Footer) + page → ordered SectionShell slots + de-hype OG image copy
+  - [x] 01-03-PLAN.md — Wire it: marketing layout → no-html passthrough mounting `.numen-surface` wrapper `<div>` (Nav/main/Footer) + page → ordered SectionShell slots + de-hype OG image copy
 
 ### Phase 2: Hero Centerpiece & Reading Explainer
 
@@ -83,7 +83,7 @@ Milestone-scoped numbering (fresh worktree): phases start at 1.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation, Shell & Voice Baseline | 2/3 | In Progress|  |
+| 1. Foundation, Shell & Voice Baseline | 3/3 | Complete   | 2026-06-12 |
 | 2. Hero Centerpiece & Reading Explainer | 0/0 | Not started | - |
 | 3. Honesty Moat, Gallery, Proof & Conversion | 0/0 | Not started | - |
 | 4. Token Lock, Motion & Launch Polish | 0/0 | Not started | - |

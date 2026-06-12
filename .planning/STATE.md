@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.1
 milestone_name: Landing
-status: executing
-stopped_at: Phase 1 UI-SPEC approved
-last_updated: "2026-06-12T06:24:49.090Z"
+status: verifying
+stopped_at: Completed 01-03-PLAN.md
+last_updated: "2026-06-12T06:32:44.901Z"
 last_activity: 2026-06-12
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
-  percent: 67
+  completed_plans: 3
+  percent: 25
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md · Base spec (authoritative): .planning/LANDING-STRUCT
 
 Phase: 01 (foundation-shell-voice-baseline) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
-Last activity: 2026-06-12 -- Completed Plan 01-02 (nav/footer/section-shell shells)
+Status: Phase complete — ready for verification
+Last activity: 2026-06-12 -- Completed Plan 01-03 (marketing layout scope-mount + page composition + OG de-hype); build green
 
 ## Performance Metrics
 
@@ -47,6 +47,7 @@ Last activity: 2026-06-12 -- Completed Plan 01-02 (nav/footer/section-shell shel
 *Updated after each plan completion*
 | Phase 01 P01 | 3m | 2 tasks | 3 files |
 | Phase 01 P02 | 6m | 3 tasks | 3 files |
+| Phase 01 P03 | 7m | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -61,6 +62,7 @@ Recent decisions affecting current work:
 - D-L2 (open): hero implementation (live interactive Reading vs recorded stage-reveal loop) is resolved IN Phase 2 via a light spike — perf/reliability vs interactivity tradeoff.
 - [Phase ?]: Plan 01-01: VOICE.md authored + root metadata de-hyped (D-08/D-11); root body scope-free per Option B.
 - Plan 01-02: nav/footer/section-shell built in src/components/numen-landing/ on bridged .numen-surface tokens (no stale-shell imports, no Phosphor, no forked tokens); CTA label "Try Numen" locked across nav+footer; footer anchor-repeat is a plain <div> to keep single <nav> landmark.
+- [Phase ?]: Plan 01-03: marketing layout = no-html .numen-surface passthrough (Option B); page = 7 kero-ordered SectionShell slots, single hero h1; OG copy de-hyped; SectionShell heading made optional.
 
 ### Pending Todos
 
@@ -82,6 +84,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-06-12T06:24:49.087Z
-Stopped at: Phase 1 UI-SPEC approved
+Last session: 2026-06-12T06:32:44.898Z
+Stopped at: Completed 01-03-PLAN.md
 Resume file: None

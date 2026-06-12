@@ -48,7 +48,7 @@ Requirements for the shippable MVP landing. Each maps to roadmap phases.
 ### Design-system consumption (DS)
 
 - [x] **DS-01**: Landing consumes the Numen Surface Phase 1 `.numen-surface` token layer + primitives — no forked or reinvented tokens
-- [ ] **DS-02**: Build tolerates placeholder tokens and swaps to final tokens on Phase 1 calibration lock
+- [x] **DS-02**: Build tolerates placeholder tokens and swaps to final tokens on Phase 1 calibration lock
 - [ ] **DS-03**: Brand-DNA coherence with the app (logo, verdict color language); landing palette tone may diverge per D-L1
 
 ### Motion & structure (MOT)
@@ -109,7 +109,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | DS-01 | Phase 1 | Complete |
-| DS-02 | Phase 1 | Pending |
+| DS-02 | Phase 1 | Complete |
 | NAV-01 | Phase 1 | Complete |
 | CONTENT-01 | Phase 1 | Complete |
 | MOT-02 | Phase 1 | Complete |
