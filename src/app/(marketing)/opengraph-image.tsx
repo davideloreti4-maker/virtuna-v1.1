@@ -1,7 +1,8 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "Numen - AI Content Intelligence for TikTok Creators";
+export const alt =
+  "Numen — an honest verdict on your content, before you post";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -57,7 +58,7 @@ export default async function Image() {
             marginBottom: 16,
           }}
         >
-          Know what will go viral before you post
+          An honest verdict on your content — before you post.
         </div>
 
         {/* Subtitle */}
@@ -70,8 +71,8 @@ export default async function Image() {
             lineHeight: 1.5,
           }}
         >
-          AI-powered predictions, trend intelligence, and audience insights for
-          TikTok creators
+          Numen reads your video like your sharpest audience would and gives you
+          a verdict you can act on.
         </div>
       </div>
     ),
