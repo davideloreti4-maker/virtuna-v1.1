@@ -4,14 +4,14 @@ milestone: v5.1
 milestone_name: Landing
 status: executing
 stopped_at: Phase 1 UI-SPEC approved
-last_updated: "2026-06-11T21:48:08.851Z"
-last_activity: 2026-06-11 -- Phase 01 planning complete
+last_updated: "2026-06-12T06:18:58.490Z"
+last_activity: 2026-06-12
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 33
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md · Base spec (authoritative): .planning/LANDING-STRUCTURE.md · Requirements: .planning/REQUIREMENTS.md · Roadmap: .planning/ROADMAP.md · Worktree identity: .planning/MILESTONE.md
 
 **Core value:** The intelligence that tells creators whether their content will resonate — an honest verdict they can believe, not a hype score. The landing must make that legible in seconds and convert.
-**Current focus:** Roadmap created (4 phases). Next — plan Phase 1.
+**Current focus:** Phase 01 — foundation-shell-voice-baseline
 
 ## Current Position
 
-Phase: Not started (roadmap approved, awaiting Phase 1 planning)
-Plan: —
+Phase: 01 (foundation-shell-voice-baseline) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-06-11 -- Phase 01 planning complete
+Last activity: 2026-06-12 -- Completed Plan 01-01 (metadata de-hype + VOICE.md)
 
 ## Performance Metrics
 
@@ -45,6 +45,7 @@ Last activity: 2026-06-11 -- Phase 01 planning complete
 | — | 0/0 | — | — |
 
 *Updated after each plan completion*
+| Phase 01 P01 | 3m | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -57,6 +58,7 @@ Recent decisions affecting current work:
 - DS-02 / D-L3 (timing decouple): build all token-independent work (structure, copy, hero, sections) NOW against placeholder tokens; final token swap is its own last phase (Phase 4), gated on Numen Surface Phase 1 calibration sign-off — landing is never blocked waiting on Phase 1.
 - TRUST is the moat, not just a section: anti-snake-oil / confident-mentor voice baseline set in Phase 1, made explicit in Phase 3 copy. ZERO "X% accuracy" claims anywhere on the page.
 - D-L2 (open): hero implementation (live interactive Reading vs recorded stage-reveal loop) is resolved IN Phase 2 via a light spike — perf/reliability vs interactivity tradeoff.
+- [Phase ?]: Plan 01-01: VOICE.md authored + root metadata de-hyped (D-08/D-11); root body scope-free per Option B.
 
 ### Pending Todos
 
@@ -78,6 +80,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-06-11T21:13:54.064Z
+Last session: 2026-06-12T06:18:47.268Z
 Stopped at: Phase 1 UI-SPEC approved
-Resume file: .planning/phases/01-foundation-shell-voice-baseline/01-UI-SPEC.md
+Resume file: None

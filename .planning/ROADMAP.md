@@ -35,7 +35,7 @@ Milestone-scoped numbering (fresh worktree): phases start at 1.
   3. Page copy reads in the calm, plain-language, confident-mentor voice with zero engine jargon — the established voice baseline later sections inherit
   4. The page exposes SEO meta (title/description) and a kero-modeled section-rhythm scaffold (ordered section slots) that later phases fill
 **Plans**: 3 plans
-  - [ ] 01-01-PLAN.md — De-hype root metadata + author canonical `.planning/VOICE.md` baseline (scope mount moved to 01-03 marketing wrapper per Option B / D-02)
+  - [x] 01-01-PLAN.md — De-hype root metadata + author canonical `.planning/VOICE.md` baseline (scope mount moved to 01-03 marketing wrapper per Option B / D-02)
   - [ ] 01-02-PLAN.md — Build the three `numen-landing/` shell components: SectionShell slot, sticky opaque Nav (mobile hamburger), static Footer
   - [ ] 01-03-PLAN.md — Wire it: marketing layout → no-html passthrough mounting `.numen-surface` wrapper `<div>` (Nav/main/Footer) + page → ordered SectionShell slots + de-hype OG image copy
 
@@ -83,7 +83,7 @@ Milestone-scoped numbering (fresh worktree): phases start at 1.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation, Shell & Voice Baseline | 0/3 | Planned | - |
+| 1. Foundation, Shell & Voice Baseline | 1/3 | In Progress|  |
 | 2. Hero Centerpiece & Reading Explainer | 0/0 | Not started | - |
 | 3. Honesty Moat, Gallery, Proof & Conversion | 0/0 | Not started | - |
 | 4. Token Lock, Motion & Launch Polish | 0/0 | Not started | - |

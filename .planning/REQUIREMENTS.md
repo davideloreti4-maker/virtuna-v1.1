@@ -42,7 +42,7 @@ Requirements for the shippable MVP landing. Each maps to roadmap phases.
 
 ### Copy / voice (CONTENT)
 
-- [ ] **CONTENT-01**: All copy uses the calm, confident-mentor voice, plain language, NO engine jargon (inherits in-app voice baseline)
+- [x] **CONTENT-01**: All copy uses the calm, confident-mentor voice, plain language, NO engine jargon (inherits in-app voice baseline)
 - [ ] **CONTENT-02**: Positioning reads "honest verdict creators can believe," explicitly not hype
 
 ### Design-system consumption (DS)
@@ -63,7 +63,7 @@ Requirements for the shippable MVP landing. Each maps to roadmap phases.
 ### Performance / SEO / a11y (PERF)
 
 - [ ] **PERF-01**: Mobile-first responsive; hero media optimized for fast load (LCP)
-- [ ] **PERF-02**: SEO meta + social share/OG cards
+- [x] **PERF-02**: SEO meta + social share/OG cards
 - [ ] **PERF-03**: Accessibility — APCA contrast inherited from DS, reduced-motion fallback, semantic structure
 
 ## v2 Requirements
@@ -111,9 +111,9 @@ Explicitly excluded. Documented to prevent scope creep.
 | DS-01 | Phase 1 | Pending |
 | DS-02 | Phase 1 | Pending |
 | NAV-01 | Phase 1 | Pending |
-| CONTENT-01 | Phase 1 | Pending |
+| CONTENT-01 | Phase 1 | Complete |
 | MOT-02 | Phase 1 | Pending |
-| PERF-02 | Phase 1 | Pending |
+| PERF-02 | Phase 1 | Complete |
 | HERO-01 | Phase 2 | Pending |
 | HERO-02 | Phase 2 | Pending |
 | HERO-03 | Phase 2 | Pending |
