@@ -16,8 +16,8 @@
 
 ### DATA — Data Contract / View-Model (ENG-06 D-12)
 - [x] **DATA-01**: Pure `lib/reading/view-model.ts` `toReadingBlocks()` mapping ~40 engine fields → ~10 value-bearing Reading blocks
-- [x] **DATA-02**: Both the live `complete` path and persisted-row replay funnel through the SAME view-model, so a Reading and its re-opened resting document are identical
-- [ ] **DATA-03**: Consumed-vs-dead field prune documented (resolves F27/F28/F43) — which engine fields the Reading uses vs drops
+- [ ] **DATA-02**: Both the live `complete` path and persisted-row replay funnel through the SAME view-model, so a Reading and its re-opened resting document are identical — view-model built + both adapters converge on CanonicalReading, but the deep-equal (`identical-render.test.ts`) is RED pending the 02-01 human-action real-fixture capture (NOT satisfied until it passes against a real pair)
+- [x] **DATA-03**: Consumed-vs-dead field prune documented (resolves F27/F28/F43) — which engine fields the Reading uses vs drops
 - [x] **DATA-04**: Verdict derivation (band + one-line why) from engine output; the `/100` number demoted to supporting evidence (resolves F41/F45)
 
 ### GATE — Preconditions
@@ -100,8 +100,8 @@
 | DS-07 | Phase 1 | Complete |
 | DS-08 | Phase 1 | Complete |
 | DATA-01 | Phase 2 | Complete |
-| DATA-02 | Phase 2 | Complete |
-| DATA-03 | Phase 2 | Pending |
+| DATA-02 | Phase 2 | Pending (deep-equal RED, 02-01 fixture gate) |
+| DATA-03 | Phase 2 | Complete |
 | DATA-04 | Phase 2 | Complete |
 | GATE-01 | Phase 3 | Pending |
 | GATE-02 | Phase 3 | Pending |

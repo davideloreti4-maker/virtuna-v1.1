@@ -153,7 +153,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Design System Foundation + Brand Migration | 5/5 | Complete | 2026-06-11 |
-| 2. View-Model + Data Contract | 3/4 | In Progress|  |
+| 2. View-Model + Data Contract | 3/4 | In Progress (02-04 built: DATA-01/03/04 done + green; DATA-02 deep-equal pending the 02-01 human-action fixture capture) |  |
 | 3. SMOKE GATE + Verdict-Banding Calibration | 0/TBD | Not started | - |
 | 4. Mobile Reading Thread + PWA Shell | 0/TBD | Not started | - |
 | 5. App Shell + Ingestion | 0/TBD | Not started | - |

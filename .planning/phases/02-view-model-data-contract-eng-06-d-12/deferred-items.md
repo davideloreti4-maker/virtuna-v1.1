@@ -16,3 +16,13 @@ and live in files this plan does not touch:
 
 The `../view-model` errors resolve when 02-04 builds the module. The others are
 pre-existing and belong to their owning phases.
+
+## 02-04 update (view-model built)
+
+- The 3 `../view-model` TS2307 errors above are now RESOLVED — `src/lib/reading/view-model.ts`
+  is built and `src/lib/reading/` compiles with **zero** tsc errors.
+- Additional pre-existing engine-test errors surfaced in the full `tsc --noEmit`
+  (out-of-scope, FROZEN engine surface — NOT fixed):
+  `src/lib/engine/wave3/__tests__/fold-adapter.test.ts` (TS2345/TS2532),
+  `fold-diversity-guard.test.ts` (TS2345). These predate 02-04 and live in the
+  frozen engine's own tests — do not edit.
