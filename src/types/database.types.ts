@@ -233,7 +233,6 @@ export type Database = {
           deepseek_model: string | null
           deleted_at: string | null
           emotion_arc: Json | null
-          verbatim: Json | null
           engine_version: string | null
           factors: Json | null
           feature_vector: Json | null
@@ -244,14 +243,14 @@ export type Database = {
           hook_decomposition: Json | null
           id: string
           input_mode: string | null
-          mode: string
-          parent_id: string | null
           insights: string | null
           latency_ms: number | null
           ml_score: number | null
+          mode: string
           optimal_post_override: Json | null
           optimal_post_window: Json | null
           overall_score: number | null
+          parent_id: string | null
           persona_behavioral_aggregate: Json | null
           personas: Json | null
           project_id: string | null
@@ -268,6 +267,7 @@ export type Database = {
           updated_at: string | null
           user_id: string
           variants: Json | null
+          verbatim: Json | null
           video_storage_path: string | null
           warnings: string[] | null
         }
@@ -288,7 +288,6 @@ export type Database = {
           deepseek_model?: string | null
           deleted_at?: string | null
           emotion_arc?: Json | null
-          verbatim?: Json | null
           engine_version?: string | null
           factors?: Json | null
           feature_vector?: Json | null
@@ -299,14 +298,14 @@ export type Database = {
           hook_decomposition?: Json | null
           id: string
           input_mode?: string | null
-          mode?: string
-          parent_id?: string | null
           insights?: string | null
           latency_ms?: number | null
           ml_score?: number | null
+          mode?: string
           optimal_post_override?: Json | null
           optimal_post_window?: Json | null
           overall_score?: number | null
+          parent_id?: string | null
           persona_behavioral_aggregate?: Json | null
           personas?: Json | null
           project_id?: string | null
@@ -323,6 +322,7 @@ export type Database = {
           updated_at?: string | null
           user_id: string
           variants?: Json | null
+          verbatim?: Json | null
           video_storage_path?: string | null
           warnings?: string[] | null
         }
@@ -343,7 +343,6 @@ export type Database = {
           deepseek_model?: string | null
           deleted_at?: string | null
           emotion_arc?: Json | null
-          verbatim?: Json | null
           engine_version?: string | null
           factors?: Json | null
           feature_vector?: Json | null
@@ -354,14 +353,14 @@ export type Database = {
           hook_decomposition?: Json | null
           id?: string
           input_mode?: string | null
-          mode?: string
-          parent_id?: string | null
           insights?: string | null
           latency_ms?: number | null
           ml_score?: number | null
+          mode?: string
           optimal_post_override?: Json | null
           optimal_post_window?: Json | null
           overall_score?: number | null
+          parent_id?: string | null
           persona_behavioral_aggregate?: Json | null
           personas?: Json | null
           project_id?: string | null
@@ -378,10 +377,18 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           variants?: Json | null
+          verbatim?: Json | null
           video_storage_path?: string | null
           warnings?: string[] | null
         }
         Relationships: [
+          {
+            foreignKeyName: "analysis_results_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "analysis_results"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "analysis_results_project_id_fkey"
             columns: ["project_id"]
@@ -1801,6 +1808,27 @@ export type Database = {
         }
         Relationships: []
       }
+      waitlist: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          source?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          source?: string
+        }
+        Relationships: []
+      }
       wallet_transactions: {
         Row: {
           amount_cents: number
@@ -1851,15 +1879,15 @@ export type Database = {
       cleanup_expired_filmstrips: { Args: never; Returns: undefined }
       compute_niche_percentiles: {
         Args: {
-          p_society_id: string
-          p_exclude_user_id?: string | null
+          p_exclude_user_id?: string
           p_min_cohort_size?: number
+          p_society_id: string
         }
         Returns: {
-          median: number
-          p75: number
           count: number
           histogram: number[]
+          median: number
+          p75: number
         }[]
       }
       increment_creator_analysis_count: {
@@ -1936,6 +1964,7 @@ export type Database = {
         }[]
       }
       refresh_niche_post_windows: { Args: never; Returns: undefined }
+      waitlist_count: { Args: never; Returns: number }
     }
     Enums: {
       [_ in never]: never
