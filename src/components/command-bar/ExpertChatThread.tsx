@@ -23,18 +23,27 @@ import { Copy, RotateCcw, ChevronDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/hooks/queries/use-expert-chat';
 
-// ── Corpus section map for §citation tooltips ──────────────────────────────
+// ── Corpus section map for §citation tooltips (real engine §-scheme) ───────
 const CORPUS_SECTIONS: Record<string, string> = {
-  '1': 'Hook & first-3-seconds retention',
-  '2': 'Pacing & editing rhythm',
-  '3': 'Storytelling arc & narrative',
-  '4': 'CTA placement & conversion',
-  '5': 'Authenticity & creator trust',
-  '6': 'Visual quality & production',
-  '7': 'Audio & sound design',
-  '8': 'Viewer psychology & retention',
-  '9': 'Platform-specific optimization',
-  '10': 'Viral triggers & shareability',
+  '1': 'Persona & voice',
+  '2.0a': 'Calibration anchors (benchmarks)',
+  '2.1': 'Hooks',
+  '2.2': 'Retention & story-loop',
+  '2.3': 'Share & trust psychology',
+  '2.4': 'CTA & conversion',
+  '2.5': 'Substance & originality',
+  '2.6': 'Behavioral layer',
+  '2.6.1': 'Authority & composure signals',
+  '2.6.2': 'Pre-perception & framing',
+  '2.6.3': 'Limbic bypass & emotional encoding',
+  '2.6.4': 'Attention capture & focus',
+  '2.6.5': 'Identity & shareability',
+  '2.6.6': 'Compliance & conversion mechanics',
+  '2.6.7': 'Cognitive-loop & open-tension levers',
+  '3': 'Anti-patterns & failure signals',
+  '4': 'Scoring rubric',
+  '5': 'Decode lens',
+  '6': 'Rewrite & action',
 };
 
 // ── Valid board frame names ────────────────────────────────────────────────
@@ -333,7 +342,8 @@ interface AssistantContentProps {
  * can render them as coral-outline pills, cleanly separated from real code.
  */
 function insertCitationMarkers(content: string): string {
-  return content.replace(/§(\d+)/g, '`§cite:$1`');
+  // Capture dotted/letter sub-sections too (§2.1, §2.6.3, §2.0a), not just §N.
+  return content.replace(/§(\d+(?:\.\d+){0,2}[a-z]?)/g, '`§cite:$1`');
 }
 
 function AssistantContent({ content, isStreaming, reducedMotion }: AssistantContentProps) {
