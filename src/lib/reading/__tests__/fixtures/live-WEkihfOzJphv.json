@@ -1,0 +1,769 @@
+{
+  "overall_score": 71,
+  "confidence": 0.8,
+  "confidence_label": "HIGH",
+  "behavioral_predictions": {
+    "completion_pct": 62.8,
+    "completion_percentile": "moderate intent",
+    "share_pct": 55.542857142857144,
+    "share_percentile": "moderate intent",
+    "comment_pct": 50.85714285714286,
+    "comment_percentile": "moderate intent",
+    "save_pct": 43.714285714285715,
+    "save_percentile": "low intent",
+    "loop_pct": 38.714285714285715,
+    "loop_percentile": "low intent"
+  },
+  "feature_vector": {
+    "hookScore": 0,
+    "completionPull": 0,
+    "rewatchPotential": 0,
+    "shareTrigger": 0,
+    "emotionalCharge": 0,
+    "visualProductionQuality": 6.3,
+    "hookVisualImpact": 7.2,
+    "pacingScore": 7.2,
+    "transitionQuality": 7.2,
+    "hookEffectiveness": null,
+    "retentionStrength": null,
+    "shareability": null,
+    "commentProvocation": null,
+    "saveWorthiness": null,
+    "trendAlignment": null,
+    "originality": null,
+    "ruleScore": 50,
+    "trendScore": 0,
+    "audioTrendingMatch": null,
+    "captionScore": 0,
+    "hashtagRelevance": 0,
+    "hashtagCount": 0,
+    "durationSeconds": null,
+    "hasVideo": true
+  },
+  "reasoning": null,
+  "apollo_reasoning": {
+    "rewrites": [
+      {
+        "original": "First person to agree to let us come to work with you for a day gets $1,000.",
+        "variant": "We're paying $1,000 to the first person who lets us be their coworker for 8 hours.",
+        "lever_fixed": "§2.1 Distillation (tightening the phrasing for faster absorption)"
+      },
+      {
+        "original": "First person to agree to let us come to work with you for a day gets $1,000.",
+        "variant": "What happens when we pay a stranger $1,000 to let us ruin their workday?",
+        "lever_fixed": "§2.1 Contrast / Curiosity Gap (shifting from a statement to a question that implies chaos)"
+      },
+      {
+        "original": "First person to agree to let us come to work with you for a day gets $1,000.",
+        "variant": "I'm giving $1,000 to the first Uber driver who lets us ride along all day.",
+        "lever_fixed": "§2.1 Specificity (narrowing the target from 'work' to 'Uber driver' for immediate context)"
+      }
+    ],
+    "dimensions": [
+      {
+        "name": "hook",
+        "band": "strong",
+        "score": 85,
+        "lever": "§2.1 Specificity & Contrast",
+        "evidence": "Visual stop power: 10, On-screen text: 9. The sign 'FIRST PERSON TO AGREE TO LET US WORK WITH YOU FOR A DAY GETS $1,000' is highly specific and creates an immediate curiosity gap."
+      },
+      {
+        "name": "retention",
+        "band": "strong",
+        "score": 85,
+        "lever": "§2.2 Stakes & Re-hook",
+        "evidence": "Emotional intensity curve: 0s:0.40(low) 5s:0.60(mid) 15s:0.70(mid) 30s:0.80(high) 50s:0.90(high). The video maintains high engagement through the escalating awkwardness of the 'work' day."
+      },
+      {
+        "name": "clarity",
+        "band": "strong",
+        "score": 85,
+        "lever": "§2.1 Clarity / Comprehension",
+        "evidence": "Cognitive load: 2. The premise is instantly understandable, and the execution follows a clear, logical progression without confusing jargon or complex edits."
+      },
+      {
+        "name": "share_pull",
+        "band": "strong",
+        "score": 85,
+        "lever": "§2.3 Identity / Stance for Shares",
+        "evidence": "The comedic, slightly chaotic energy of the creators invading someone's workday is highly relatable and shareable for the 18-24 demographic, fitting the 'comedy > storytelling' niche perfectly."
+      },
+      {
+        "name": "substance",
+        "band": "mid",
+        "score": 50,
+        "lever": "§2.5 Non-obvious take",
+        "evidence": "While entertaining, the video relies on a common prank/challenge format rather than a unique, contrarian insight. It's well-executed but not groundbreaking in concept."
+      },
+      {
+        "name": "credibility",
+        "band": "strong",
+        "score": 85,
+        "lever": "§2.1 Credibility anchor",
+        "evidence": "The physical sign, the cash shown at the end, and the genuine reactions of the Uber driver provide strong proof that the challenge is real."
+      }
+    ],
+    "composite_score": 84,
+    "ceiling_capper": "The video's ceiling is capped by its reliance on a familiar prank format, which limits its 'substance' score despite excellent execution and retention.",
+    "confidence_scope": "All key visual and audio signals were provided by the sensor, allowing for a high-confidence assessment. No significant signals were missing.",
+    "platform_note": "Optimized for TikTok with fast pacing and high visual engagement. Ensure captions are burned in for sound-off viewing."
+  },
+  "warnings": [],
+  "predicted_engagement": {
+    "lo": 13228,
+    "hi": 39683,
+    "confidence": 0.71,
+    "basis": "follower-tier × quality read"
+  },
+  "factors": [],
+  "suggestions": [
+    {
+      "id": "suggestion-1",
+      "text": "The hook is strong, but the middle section of the video (the actual 'work' day) drags slightly. Tighten the montage of them being annoying passengers to keep the pacing relentless and avoid any mid-video drop-off.",
+      "priority": "high",
+      "category": "retention"
+    },
+    {
+      "id": "suggestion-2",
+      "text": "Add a quick text overlay or sound effect when the driver realizes they are stuck with them for the whole day to heighten the comedic stakes early on.",
+      "priority": "medium",
+      "category": "engagement"
+    }
+  ],
+  "rule_score": null,
+  "trend_score": null,
+  "gemini_score": null,
+  "behavioral_score": 74,
+  "ml_score": null,
+  "audio_perceptual_score": 59,
+  "audio_fingerprint": null,
+  "audio_description": "Upbeat electronic music plays throughout most of the video, accompanied by clear dialogue between three men and ambient street/restaurant sounds.",
+  "emotion_arc": [
+    {
+      "timestamp_ms": 0,
+      "intensity_0_1": 0.4,
+      "label": "low"
+    },
+    {
+      "timestamp_ms": 5000,
+      "intensity_0_1": 0.6,
+      "label": "mid"
+    },
+    {
+      "timestamp_ms": 15000,
+      "intensity_0_1": 0.7,
+      "label": "mid"
+    },
+    {
+      "timestamp_ms": 30000,
+      "intensity_0_1": 0.8,
+      "label": "high"
+    },
+    {
+      "timestamp_ms": 50000,
+      "intensity_0_1": 0.9,
+      "label": "high"
+    },
+    {
+      "timestamp_ms": 70000,
+      "intensity_0_1": 0.9,
+      "label": "high"
+    },
+    {
+      "timestamp_ms": 90000,
+      "intensity_0_1": 0.9,
+      "label": "high"
+    },
+    {
+      "timestamp_ms": 120000,
+      "intensity_0_1": 0.5,
+      "label": "mid"
+    }
+  ],
+  "verbatim": {
+    "hook": {
+      "spoken_words": "First person to agree to let us come to work with you for a day gets $1,000.",
+      "on_screen_text": "First Person to Agree to Let Us Come To Work With You For A Day Gets $1,000"
+    },
+    "segments": [
+      {
+        "idx": 0,
+        "spoken_text": "First person to agree to let us come to work with you for a day gets $1,000... Don't know how that would work, I'm an Uber driver...",
+        "on_screen_text": "First Person to Agree to Let Us Come To Work With You For A Day Gets $1,000 | Interesting | Don't know how that would work | I'm an Uber driver | You want to come deliver food with me"
+      },
+      {
+        "idx": 1,
+        "spoken_text": null,
+        "on_screen_text": "First Person to Agree to Let Us Come To Work With You For A Day Gets $1,000 | Interesting | Don't know how that would work | I'm an Uber driver | You want to come deliver food with me"
+      },
+      {
+        "idx": 2,
+        "spoken_text": "Today we're going to be delivering food with our new friend Forrest... Ready to deliver some food? ... We have an order. We're getting some Pasta House.",
+        "on_screen_text": null
+      },
+      {
+        "idx": 3,
+        "spoken_text": "Got a pickup order... Have a good rest of your day... Fettuccine Alfredo at 11 AM.",
+        "on_screen_text": null
+      },
+      {
+        "idx": 4,
+        "spoken_text": "Would you be cool if we do the next one? ... Say it's for Rodney G... Thank you so much. ... We'll be there in 10 minutes.",
+        "on_screen_text": null
+      },
+      {
+        "idx": 5,
+        "spoken_text": "Are you gonna eat his food? ... We have to turn around now. We gotta go get more. ... Oh my god. Who says our turn to eat the food?",
+        "on_screen_text": null
+      },
+      {
+        "idx": 6,
+        "spoken_text": "We gotta go back now... Here you go sir... Love all around. Enjoy that man. Enjoy the meal.",
+        "on_screen_text": null
+      },
+      {
+        "idx": 7,
+        "spoken_text": "Hey hey Rodney! ... I feel alive delivering people's food!",
+        "on_screen_text": null
+      },
+      {
+        "idx": 8,
+        "spoken_text": "So what's the biggest tip you ever got from delivering food? ... Well, we promised $1,000. Here you go. ... And I'm gonna order some food so you might see him again in like 20 minutes.",
+        "on_screen_text": null
+      }
+    ]
+  },
+  "hook_decomposition": {
+    "visual_stop_power": 10,
+    "audio_hook_quality": 8,
+    "text_overlay_score": 9,
+    "first_words_speech_score": 7,
+    "weakest_modality": "first_words_speech_score",
+    "visual_audio_coherence": 9,
+    "cognitive_load": 2,
+    "watermark_detected": {
+      "tiktok": false,
+      "ig": false,
+      "yt": false
+    }
+  },
+  "video_signals": {
+    "visual_production_quality": 7,
+    "hook_visual_impact": 9,
+    "pacing_score": 8,
+    "transition_quality": 8
+  },
+  "cta_segment": {
+    "cta_present": false,
+    "strength": null,
+    "type": null,
+    "rationale": "No explicit call to action observed."
+  },
+  "audio_signals": {
+    "voice_clarity_0_10": 9,
+    "audio_hook_first_2s_0_10": 8,
+    "silence_ratio": 0.05,
+    "voiceover_ratio": 0.1,
+    "music_ratio": 0.85,
+    "audio_description": "Upbeat electronic music plays throughout most of the video, accompanied by clear dialogue between three men and ambient street/restaurant sounds."
+  },
+  "anti_virality_gated": false,
+  "analysis_unavailable": false,
+  "partial_analysis": false,
+  "anti_virality_reason": null,
+  "dropoff_segment_indices": [],
+  "heatmap": {
+    "segments": [
+      {
+        "idx": 0,
+        "t_start": 0,
+        "t_end": 3,
+        "label": "Two men set up a social experiment in a park with a sign on one man's chest offering $1,000 to a passerby.",
+        "is_hook_zone": true,
+        "keyframe_uri": null
+      },
+      {
+        "idx": 1,
+        "t_start": 3,
+        "t_end": 18,
+        "label": "Two men set up a social experiment in a park with a sign on one man's chest offering $1,000 to a passerby.",
+        "is_hook_zone": false,
+        "keyframe_uri": null
+      },
+      {
+        "idx": 2,
+        "t_start": 18,
+        "t_end": 32,
+        "label": "The group enters a car; the new friend is now driving while the other two are passengers.",
+        "is_hook_zone": false,
+        "keyframe_uri": null
+      },
+      {
+        "idx": 3,
+        "t_start": 32,
+        "t_end": 41,
+        "label": "The driver picks up a pasta order from a restaurant and delivers it to a doorstep.",
+        "is_hook_zone": false,
+        "keyframe_uri": null
+      },
+      {
+        "idx": 4,
+        "t_start": 41,
+        "t_end": 55,
+        "label": "The group stops at a drive-thru window to pick up more food.",
+        "is_hook_zone": false,
+        "keyframe_uri": null
+      },
+      {
+        "idx": 5,
+        "t_start": 55,
+        "t_end": 69,
+        "label": "Back in the car, the passengers start eating the food they just picked up.",
+        "is_hook_zone": false,
+        "keyframe_uri": null
+      },
+      {
+        "idx": 6,
+        "t_start": 69,
+        "t_end": 88,
+        "label": "They return to the drive-thru, then stop to hand-deliver food to a customer standing by their car.",
+        "is_hook_zone": false,
+        "keyframe_uri": null
+      },
+      {
+        "idx": 7,
+        "t_start": 88,
+        "t_end": 109,
+        "label": "Montage of picking up more food, running through a hotel hallway, and posing for a photo.",
+        "is_hook_zone": false,
+        "keyframe_uri": null
+      },
+      {
+        "idx": 8,
+        "t_start": 109,
+        "t_end": 121,
+        "label": "The group stands outside an apartment complex; the host pays the friend $1,000.",
+        "is_hook_zone": false,
+        "keyframe_uri": null
+      }
+    ],
+    "personas": [
+      {
+        "id": "high_engager_01",
+        "slot_type": "fyp",
+        "archetype": "high_engager",
+        "attentions": [
+          0.9,
+          0.9,
+          0.9,
+          0.9,
+          0.9,
+          0.9,
+          0.9,
+          0.9,
+          0.9
+        ],
+        "swipe_predicted_at": null,
+        "segment_reasons": {}
+      },
+      {
+        "id": "saver_01",
+        "slot_type": "fyp",
+        "archetype": "saver",
+        "attentions": [
+          0.8,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "swipe_predicted_at": 0,
+        "segment_reasons": {}
+      },
+      {
+        "id": "lurker_01",
+        "slot_type": "fyp",
+        "archetype": "lurker",
+        "attentions": [
+          0.9,
+          0.9,
+          0.9,
+          0.9,
+          0.9,
+          0.9,
+          0.9,
+          0.9,
+          0.9
+        ],
+        "swipe_predicted_at": null,
+        "segment_reasons": {}
+      },
+      {
+        "id": "sharer_01",
+        "slot_type": "fyp",
+        "archetype": "sharer",
+        "attentions": [
+          0.9,
+          0.9,
+          0.8,
+          0.8,
+          0.8,
+          0.7,
+          0.7,
+          0.7,
+          0.7
+        ],
+        "swipe_predicted_at": null,
+        "segment_reasons": {}
+      },
+      {
+        "id": "tough_crowd_01",
+        "slot_type": "fyp",
+        "archetype": "tough_crowd",
+        "attentions": [
+          0.9,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "swipe_predicted_at": 0,
+        "segment_reasons": {}
+      },
+      {
+        "id": "purposeful_viewer_01",
+        "slot_type": "fyp",
+        "archetype": "purposeful_viewer",
+        "attentions": [
+          0.8,
+          0.8,
+          0.7,
+          0.6,
+          0.5,
+          0.4,
+          0.4,
+          0.4,
+          0.4
+        ],
+        "swipe_predicted_at": null,
+        "segment_reasons": {}
+      },
+      {
+        "id": "niche_deep_buyer_01",
+        "slot_type": "niche",
+        "archetype": "niche_deep_buyer",
+        "attentions": [
+          0.9,
+          0.9,
+          0.8,
+          0.7,
+          0.6,
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "swipe_predicted_at": null,
+        "segment_reasons": {}
+      },
+      {
+        "id": "niche_deep_scout_01",
+        "slot_type": "niche",
+        "archetype": "niche_deep_scout",
+        "attentions": [
+          0.8,
+          0.8,
+          0.7,
+          0.6,
+          0.5,
+          0.4,
+          0.4,
+          0.4,
+          0.4
+        ],
+        "swipe_predicted_at": null,
+        "segment_reasons": {}
+      },
+      {
+        "id": "loyalist_01",
+        "slot_type": "loyalist",
+        "archetype": "loyalist",
+        "attentions": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "swipe_predicted_at": null,
+        "segment_reasons": {}
+      },
+      {
+        "id": "cross_niche_curiosity_01",
+        "slot_type": "cross_niche",
+        "archetype": "cross_niche_curiosity",
+        "attentions": [
+          0.8,
+          0.8,
+          0.7,
+          0.7,
+          0.7,
+          0.6,
+          0.6,
+          0.6,
+          0.6
+        ],
+        "swipe_predicted_at": null,
+        "segment_reasons": {}
+      }
+    ],
+    "weighted_curve": [
+      0.8674157303370789,
+      0.6191011235955058,
+      0.5797752808988766,
+      0.5561797752808991,
+      0.5325842696629216,
+      0.4932584269662922,
+      0.4932584269662922,
+      0.4932584269662922,
+      0.4932584269662922
+    ],
+    "weights": {
+      "fyp": 0.65,
+      "niche": 0.2,
+      "loyalist": 0.1,
+      "cross_niche": 0.05
+    },
+    "weights_source": "default",
+    "niche_completion_pct": 0.6055555555555556,
+    "vs_niche_diff_pct": -0.03576779026217225,
+    "weighted_completion_pct": 0.5697877652933834,
+    "weighted_hook_score": 0.8674157303370789
+  },
+  "weighted_completion_pct": 0.5697877652933834,
+  "weighted_top_dropoff_t": 3,
+  "weighted_hook_score": 0.8674157303370789,
+  "optimal_post_window": {
+    "day_of_week": "Tue",
+    "hour_range": [
+      18,
+      21
+    ],
+    "timezone": "UTC",
+    "reasoning": "Default recommendation — niche-specific data unavailable",
+    "source": "fallback"
+  },
+  "score_weights": {
+    "behavioral": 0.533,
+    "apollo": 0.467,
+    "ml": 0,
+    "rules": 0,
+    "trends": 0,
+    "gemini": 0
+  },
+  "latency_ms": 104778,
+  "cost_cents": 5.4035,
+  "engine_version": "3.19.0",
+  "gemini_model": "qwen3.5-omni-flash",
+  "deepseek_model": "qwen3.7-plus",
+  "input_mode": "tiktok_url",
+  "has_video": true,
+  "signal_availability": {
+    "behavioral": true,
+    "apollo": true,
+    "gemini": true,
+    "ml": false,
+    "rules": false,
+    "trends": false,
+    "content_type": true,
+    "niche": true,
+    "gemini_hook": true,
+    "gemini_body": true,
+    "gemini_cta": true,
+    "personas": true,
+    "audio": true,
+    "audio_fingerprint": false,
+    "retrieval": false,
+    "platform_fit": false,
+    "pass2_timeline": true
+  },
+  "persona_behavioral_aggregate": {
+    "completion_pct": 62.8,
+    "completion_percentile": "moderate intent",
+    "share_pct": 55.542857142857144,
+    "share_percentile": "moderate intent",
+    "comment_pct": 50.85714285714286,
+    "comment_percentile": "moderate intent",
+    "save_pct": 43.714285714285715,
+    "save_percentile": "low intent",
+    "loop_pct": 38.714285714285715,
+    "loop_percentile": "low intent"
+  },
+  "persona_simulation_results": [
+    {
+      "persona_id": "high_engager_01",
+      "archetype": "high_engager",
+      "slot_type": "fyp",
+      "niche": "lifestyle",
+      "watch_through_pct": 92,
+      "share_intent": 85,
+      "comment_intent": 70,
+      "save_intent": 40,
+      "rewatch_intent": 60,
+      "scroll_past_second": 121,
+      "reasoning": "fold-derived: high_engager"
+    },
+    {
+      "persona_id": "saver_01",
+      "archetype": "saver",
+      "slot_type": "fyp",
+      "niche": "lifestyle",
+      "watch_through_pct": 35,
+      "share_intent": 10,
+      "comment_intent": 5,
+      "save_intent": 80,
+      "rewatch_intent": 10,
+      "scroll_past_second": 3,
+      "reasoning": "fold-derived: saver"
+    },
+    {
+      "persona_id": "lurker_01",
+      "archetype": "lurker",
+      "slot_type": "fyp",
+      "niche": "lifestyle",
+      "watch_through_pct": 88,
+      "share_intent": 2,
+      "comment_intent": 0,
+      "save_intent": 5,
+      "rewatch_intent": 15,
+      "scroll_past_second": 121,
+      "reasoning": "fold-derived: lurker"
+    },
+    {
+      "persona_id": "sharer_01",
+      "archetype": "sharer",
+      "slot_type": "fyp",
+      "niche": "general",
+      "watch_through_pct": 75,
+      "share_intent": 95,
+      "comment_intent": 60,
+      "save_intent": 10,
+      "rewatch_intent": 30,
+      "scroll_past_second": 121,
+      "reasoning": "fold-derived: sharer"
+    },
+    {
+      "persona_id": "tough_crowd_01",
+      "archetype": "tough_crowd",
+      "slot_type": "fyp",
+      "niche": "lifestyle",
+      "watch_through_pct": 15,
+      "share_intent": 5,
+      "comment_intent": 10,
+      "save_intent": 5,
+      "rewatch_intent": 0,
+      "scroll_past_second": 2,
+      "reasoning": "fold-derived: tough_crowd"
+    },
+    {
+      "persona_id": "purposeful_viewer_01",
+      "archetype": "purposeful_viewer",
+      "slot_type": "fyp",
+      "niche": "general",
+      "watch_through_pct": 60,
+      "share_intent": 20,
+      "comment_intent": 30,
+      "save_intent": 40,
+      "rewatch_intent": 10,
+      "scroll_past_second": 121,
+      "reasoning": "fold-derived: purposeful_viewer"
+    },
+    {
+      "persona_id": "niche_deep_buyer_01",
+      "archetype": "niche_deep_buyer",
+      "slot_type": "niche_deep",
+      "niche": "lifestyle",
+      "watch_through_pct": 40,
+      "share_intent": 15,
+      "comment_intent": 25,
+      "save_intent": 60,
+      "rewatch_intent": 20,
+      "scroll_past_second": 121,
+      "reasoning": "fold-derived: niche_deep_buyer"
+    },
+    {
+      "persona_id": "niche_deep_scout_01",
+      "archetype": "niche_deep_scout",
+      "slot_type": "niche_deep",
+      "niche": "lifestyle",
+      "watch_through_pct": 55,
+      "share_intent": 30,
+      "comment_intent": 40,
+      "save_intent": 20,
+      "rewatch_intent": 15,
+      "scroll_past_second": 121,
+      "reasoning": "fold-derived: niche_deep_scout"
+    },
+    {
+      "persona_id": "loyalist_01",
+      "archetype": "loyalist",
+      "slot_type": "loyalist",
+      "niche": "lifestyle",
+      "watch_through_pct": 98,
+      "share_intent": 60,
+      "comment_intent": 80,
+      "save_intent": 30,
+      "rewatch_intent": 70,
+      "scroll_past_second": 121,
+      "reasoning": "fold-derived: loyalist"
+    },
+    {
+      "persona_id": "cross_niche_curiosity_01",
+      "archetype": "cross_niche_curiosity",
+      "slot_type": "cross_niche",
+      "niche": "fashion-style",
+      "watch_through_pct": 70,
+      "share_intent": 50,
+      "comment_intent": 45,
+      "save_intent": 25,
+      "rewatch_intent": 35,
+      "scroll_past_second": 121,
+      "reasoning": "fold-derived: cross_niche_curiosity"
+    }
+  ],
+  "retrieval_score": null,
+  "retrieval_evidence": [],
+  "platform_fit": null,
+  "critique": {
+    "flags": [],
+    "confidence_adjustment": 0
+  },
+  "hero": {
+    "verdict_line": "High potential",
+    "ceiling": "The video's ceiling is capped by its reliance on a familiar prank format, which limits its 'substance' score despite excellent execution and retention.",
+    "the_one_fix": "We're paying $1,000 to the first person who lets us be their coworker for 8 hours.",
+    "go_no_go": "go",
+    "post_window": {
+      "day_of_week": "Tue",
+      "hour_range": [
+        18,
+        21
+      ],
+      "timezone": "UTC",
+      "reasoning": "Default recommendation — niche-specific data unavailable",
+      "source": "fallback"
+    }
+  }
+}
