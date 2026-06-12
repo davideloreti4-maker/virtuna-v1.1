@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Numen Surface
-status: executing
-stopped_at: "Phase 02 COMPLETE — all 4 plans done; DATA-01/02/03/04 satisfied; identical-render deep-equal GREEN vs real captured pair WEkihfOzJphv"
-last_updated: "2026-06-12T07:45:00.000Z"
-last_activity: 2026-06-12
+status: DATA-01/02/03/04 all satisfied. block-types + verdict-bands (02-02), fromPersistedRow + thin route (02-03), view-model + FIELD-MAP (02-04), fixtures + capture helper (02-01).
+stopped_at: Phase 3 context gathered
+last_updated: "2026-06-12T08:07:37.538Z"
+last_activity: "2026-06-12 -- Phase 02 closed: DATA-02 deep-equal GREEN against a REAL captured pair. Live half captured via authenticated browser fetch to /api/analyze (smoke --direct can't auth; UI mode writes wrong-shape live half) → scripts/capture-reading-fixture.ts pairs the live SSE payload with the settled persisted row."
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 9
   completed_plans: 9
-  percent: 100
+  percent: 29
 ---
 
 # Project State
@@ -113,6 +113,6 @@ From Plan 01 execution:
 
 ## Session Continuity
 
-Last session: 2026-06-12T07:15:00.000Z
-Stopped at: Phase 02 COMPLETE (4/4 plans) — DATA-01/02/03/04 satisfied; identical-render deep-equal GREEN vs real captured pair WEkihfOzJphv. Next: Phase 03 (SMOKE GATE + Verdict-Banding Calibration)
-Resume file: None
+Last session: 2026-06-12T08:07:37.532Z
+Stopped at: Phase 3 context gathered
+Resume file: .planning/phases/03-smoke-gate-verdict-banding-calibration/03-CONTEXT.md
