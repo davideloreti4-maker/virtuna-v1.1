@@ -80,7 +80,19 @@ Plans:
   3. Calibrated band thresholds exist with buffer zones provably WIDER than that measured variance, and "Mixed signals" fires on boundary scores as a first-class, common verdict
   4. UAT sign-off passes: F42 authenticated permalink + full measure-pipeline, with a recorded verdict-banding go/no-go (a fail blocks Phase 4)
 
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+**Wave 1**
+
+- [ ] 03-01-PLAN.md — Live gate run + variance batch: gate-assert.ts (D-06) + 3 sequential deployed-Vercel runs (D-01/09/10) + latency + human honesty sign-off (D-07) (GATE-01)
+
+**Wave 2** *(blocked on Wave 1 — needs the measured variance figure)*
+
+- [ ] 03-02-PLAN.md — Band calibration: DEAD_BAND_FLOOR + inDeadBand() in verdict-bands.ts + one-line OR in view-model.ts + additive verdict.test.ts cases (D-02/03/04/05) (GATE-02)
+
+**Wave 3** *(blocked on Wave 1 + 2)*
+
+- [ ] 03-03-PLAN.md — Recorded go/no-go: measure-pipeline pass + F42 permalink + dated GATE-DECISION composing all-GREEN ∧ honest/sane ∧ buffer>variance (D-08) (GATE-03)
 
 ### Phase 4: Mobile Reading Thread + PWA Shell
 
@@ -154,7 +166,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Design System Foundation + Brand Migration | 5/5 | Complete | 2026-06-11 |
 | 2. View-Model + Data Contract | 4/4 | Complete (DATA-01/02/03/04 — deep-equal GREEN vs real pair WEkihfOzJphv) | 2026-06-12 |
-| 3. SMOKE GATE + Verdict-Banding Calibration | 0/TBD | Not started | - |
+| 3. SMOKE GATE + Verdict-Banding Calibration | 0/3 | Planned | - |
 | 4. Mobile Reading Thread + PWA Shell | 0/TBD | Not started | - |
 | 5. App Shell + Ingestion | 0/TBD | Not started | - |
 | 6. Follow-ups + Agentic Tools + Monetization | 0/TBD | Not started | - |
