@@ -1,5 +1,4 @@
-import Link from "next/link";
-
+import { Hero } from "@/components/numen-landing/hero";
 import { SectionShell } from "@/components/numen-landing/section-shell";
 
 /**
@@ -14,31 +13,13 @@ import { SectionShell } from "@/components/numen-landing/section-shell";
  * Every string obeys .planning/VOICE.md (no hype, no fake precision, no jargon).
  */
 
-const FOCUS_RING =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
-
 export default function HomePage() {
   return (
     <>
-      {/* 1 — Hero: the page's single top-level heading, no heading= prop */}
+      {/* 1 — Hero: the page's single top-level heading, no heading= prop.
+          The Hero component owns the h1/subhead/CTA column + full-bleed ReadingLoop. */}
       <SectionShell id="hero" className="pt-28 pb-24 md:pt-40 md:pb-32">
-        <div className="mx-auto flex max-w-3xl flex-col gap-6">
-          <h1 className="text-text text-4xl md:text-6xl font-bold tracking-tight">
-            Know if your content will land — before you post.
-          </h1>
-          <p className="text-base md:text-lg leading-relaxed text-text-muted">
-            Numen reads your video like your sharpest audience would and gives
-            you an honest verdict you can act on.
-          </p>
-          <div>
-            <Link
-              href="#cta"
-              className={`inline-flex h-11 items-center rounded-lg bg-accent px-5 text-sm font-medium text-bg transition-opacity hover:opacity-90 ${FOCUS_RING}`}
-            >
-              Try Numen
-            </Link>
-          </div>
-        </div>
+        <Hero />
       </SectionShell>
 
       {/* 2 — How the Reading works */}
