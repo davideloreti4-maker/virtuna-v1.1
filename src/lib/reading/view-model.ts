@@ -31,7 +31,7 @@
 
 import type { PredictionResult } from '@/lib/engine/types';
 import type { CanonicalReading, Fix, ReadingBlock } from './block-types';
-import { bandFor } from './verdict-bands';
+import { bandFor, inDeadBand } from './verdict-bands';
 
 // Re-export the block + canonical types so test files + Phase 4 consumers can
 // import the contract from the view-model they call.
@@ -227,7 +227,7 @@ function deriveWhy(c: CanonicalReading): string {
  * (the gate already routes here — a clear seam, no new branch needed).
  */
 function confidenceLanguage(c: CanonicalReading): string {
-  if (c.antiViralityGated) return 'Mixed signals';
+  if (c.antiViralityGated || inDeadBand(c.overallScore)) return 'Mixed signals';
   switch (c.confidenceLabel) {
     case 'HIGH':
       return 'Confident read';

@@ -92,3 +92,44 @@ describe("verdict block (DATA-04)", () => {
     expect(v.why).not.toMatch(/\/\s*100/);
   });
 });
+
+describe("dead-band buffer (GATE-02)", () => {
+  // The factory default anti_virality_gated:false isolates the new dead-band
+  // trigger — a near-boundary score must read "Mixed signals" on its own.
+  it("reads 'Mixed signals' just above the 70 threshold (71)", () => {
+    expect(verdictBlock({ overall_score: 71 }).confidenceLanguage).toBe(
+      "Mixed signals"
+    );
+  });
+
+  it("reads 'Mixed signals' just below the 70 threshold (69)", () => {
+    expect(verdictBlock({ overall_score: 69 }).confidenceLanguage).toBe(
+      "Mixed signals"
+    );
+  });
+
+  it("reads 'Mixed signals' just above the 40 threshold (41)", () => {
+    expect(verdictBlock({ overall_score: 41 }).confidenceLanguage).toBe(
+      "Mixed signals"
+    );
+  });
+
+  it("reads 'Mixed signals' just below the 40 threshold (39)", () => {
+    expect(verdictBlock({ overall_score: 39 }).confidenceLanguage).toBe(
+      "Mixed signals"
+    );
+  });
+
+  it("does NOT read 'Mixed signals' for a score clear of any threshold (85, HIGH)", () => {
+    const v = verdictBlock({ overall_score: 85, confidence_label: "HIGH" });
+    expect(v.confidenceLanguage).not.toBe("Mixed signals");
+    expect(v.confidenceLanguage).toBe("Confident read");
+  });
+
+  it("still fires 'Mixed signals' via the existing antiViralityGated trigger", () => {
+    expect(
+      verdictBlock({ overall_score: 85, anti_virality_gated: true })
+        .confidenceLanguage
+    ).toBe("Mixed signals");
+  });
+});
