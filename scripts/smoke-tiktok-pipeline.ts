@@ -120,6 +120,17 @@ interface SmokeVideoResult {
   stage_events: Array<{ type: string; stage?: string; latency_ms?: number }>;
   gate_pass: boolean;
   gate_failures: string[];
+  /**
+   * Raw live PredictionResult from the `complete` SSE (direct mode only).
+   * Carried for Phase 2 DATA-02 fixture capture — NOT part of the
+   * --json-out contract. Null in UI mode (no SSE captured).
+   */
+  _liveResult?: Record<string, unknown> | null;
+  /**
+   * Raw persisted analysis_results row (the `select("*")` shape).
+   * Carried for fixture capture so captureReadingFixtures can resolve the id.
+   */
+  _persistedRow?: Record<string, unknown> | null;
 }
 
 // =====================================================
@@ -190,6 +201,158 @@ async function getDefaultUserId(): Promise<string | null> {
     return null;
   }
   return data.users[0]?.id ?? null;
+}
+
+// =====================================================
+// Phase 2 (DATA-02 / D-12) — REAL fixture capture
+//
+// The view-model identical-render contract test deep-equals
+// toReadingBlocks(canonicalFromLive(live)) against
+// toReadingBlocks(fromPersistedRow(persisted)) for the SAME analysis id.
+// Both halves MUST come from a genuine captured run — hand-authored mocks
+// are explicitly unacceptable (success criteria 1+2). This step dumps the
+// pair into src/lib/reading/__tests__/fixtures/.
+//
+// `persisted-<id>.json` is the RAW analysis_results row (what
+// `GET /api/analysis/[id]` runs `select("*")` over) — fromPersistedRow
+// (D-11) consolidates the route's inline reload shims, so it consumes the
+// raw row, not the route's already-enriched output. We re-read it through
+// the same user_id-scoped query the route uses (`.eq("user_id", ...)` is
+// NOT weakened) and, when a reachable authenticated session is provided
+// (SMOKE_SESSION_COOKIE), also exercise the live GET /api/analysis/<id>
+// HTTP route to confirm the row resolves end-to-end.
+// =====================================================
+const READING_FIXTURES_DIR = resolve(
+  __dirname,
+  "../src/lib/reading/__tests__/fixtures"
+);
+
+/** Resolve the analysis id this video run produced, from a raw row. */
+function resolveAnalysisId(row: Record<string, unknown> | null): string | null {
+  if (!row) return null;
+  const id = row.id;
+  return typeof id === "string" && id.length > 0 ? id : null;
+}
+
+/**
+ * Re-read the persisted row for `id` until the post-`complete` `variants`
+ * writes have settled (Pitfall 2 — persistApolloToVariants fires AFTER the
+ * `complete` SSE, so a fresh row can briefly have `variants.apollo == null`).
+ * Bounded retry; returns the row once `variants.apollo` is present, or null
+ * if it never settles. The query reuses the route's `user_id` ownership
+ * filter — ownership is NOT weakened.
+ */
+async function fetchSettledPersistedRow(
+  id: string,
+  userId: string | null,
+  attempts = 5,
+  delayMs = 2000
+): Promise<Record<string, unknown> | null> {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const query = supabase
+      .from("analysis_results")
+      .select("*")
+      .eq("id", id)
+      .is("deleted_at", null)
+      .limit(1);
+    // Mirror GET /api/analysis/[id] ownership filter — never widen it.
+    if (userId) query.eq("user_id", userId);
+
+    const { data, error } = await query;
+    if (!error && data && data.length > 0) {
+      const row = data[0] as Record<string, unknown>;
+      const variants = (row.variants ?? null) as { apollo?: unknown } | null;
+      const apolloSettled = variants != null && variants.apollo != null;
+      if (apolloSettled) {
+        console.log(
+          `[smoke] persisted row ${id} settled (variants.apollo present) on attempt ${attempt}`
+        );
+        return row;
+      }
+      console.log(
+        `[smoke] attempt ${attempt}/${attempts}: variants.apollo not yet present for ${id} — waiting ${delayMs}ms`
+      );
+    } else {
+      console.log(
+        `[smoke] attempt ${attempt}/${attempts}: row ${id} not readable yet — waiting ${delayMs}ms`
+      );
+    }
+    if (attempt < attempts) {
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  return null;
+}
+
+/**
+ * Capture the (live, persisted) fixture pair for a successful video run.
+ * Gated by the caller behind the per-video success path (skip on GATE
+ * FAIL / no result). Returns true when both fixtures were written.
+ */
+async function captureReadingFixtures(
+  liveResult: Record<string, unknown> | null,
+  persistedRowHint: Record<string, unknown> | null,
+  userId: string | null
+): Promise<boolean> {
+  const id =
+    resolveAnalysisId(persistedRowHint) ?? resolveAnalysisId(liveResult);
+  if (!id) {
+    console.warn(
+      "[smoke] fixture capture skipped — could not resolve analysis id from the run."
+    );
+    return false;
+  }
+
+  // Settle-the-race guard: re-read until variants.apollo is present.
+  const persistedRow = await fetchSettledPersistedRow(id, userId);
+  if (!persistedRow) {
+    console.warn(
+      `[smoke] fixture capture ABORTED for ${id} — variants.apollo never settled after retries.`
+    );
+    return false;
+  }
+
+  // The live half: prefer the full live PredictionResult (direct mode); fall
+  // back to the persisted row only if the live result was unavailable (UI mode
+  // captures the row, which is the closest live snapshot the script can drive).
+  const liveHalf = liveResult ?? persistedRow;
+
+  // Optionally exercise the real reload HTTP route end-to-end when an
+  // authenticated session cookie is supplied — confirms the row resolves
+  // through GET /api/analysis/<id> with the user_id ownership filter intact.
+  const sessionCookie = process.env.SMOKE_SESSION_COOKIE ?? null;
+  if (sessionCookie) {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    try {
+      const routeRes = await fetch(`${baseUrl}/api/analysis/${id}`, {
+        headers: { Cookie: sessionCookie },
+      });
+      console.log(
+        `[smoke] GET /api/analysis/${id} → HTTP ${routeRes.status} (reload route reachable)`
+      );
+    } catch (err) {
+      console.warn(
+        `[smoke] GET /api/analysis/${id} reload probe failed (non-fatal): ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      );
+    }
+  } else {
+    console.log(
+      `[smoke] (set SMOKE_SESSION_COOKIE to also probe the live GET /api/analysis/${id} reload route)`
+    );
+  }
+
+  mkdirSync(READING_FIXTURES_DIR, { recursive: true });
+  const livePath = resolve(READING_FIXTURES_DIR, `live-${id}.json`);
+  const persistedPath = resolve(READING_FIXTURES_DIR, `persisted-${id}.json`);
+  writeFileSync(livePath, JSON.stringify(liveHalf, null, 2));
+  writeFileSync(persistedPath, JSON.stringify(persistedRow, null, 2));
+
+  console.log(`[smoke] REAL fixture pair written for analysis ${id}:`);
+  console.log(`  live      → ${livePath}`);
+  console.log(`  persisted → ${persistedPath} (variants.apollo settled)`);
+  return true;
 }
 
 // =====================================================
@@ -267,6 +430,9 @@ async function runUIMode(
     stage_events: [], // UI-driven: no stage events captured
     gate_pass: false,
     gate_failures: [],
+    // UI mode has no SSE — the raw persisted row IS the closest live snapshot.
+    _liveResult: null,
+    _persistedRow: row,
   };
 
   result.gate_failures = checkSignalGate(result);
@@ -456,6 +622,9 @@ async function runDirectMode(
     stage_events: stageEvents,
     gate_pass: false,
     gate_failures: [],
+    // Direct mode captured the full live PredictionResult from the SSE.
+    _liveResult: finalResult,
+    _persistedRow: null,
   };
 
   result.gate_failures = checkSignalGate(result);
@@ -517,6 +686,27 @@ async function main(): Promise<void> {
     const rawJsonPath = resolve(validationsDir, `video-${String(videoNum).padStart(2, "0")}-raw.json`);
     writeFileSync(rawJsonPath, JSON.stringify(videoResult, null, 2));
     console.log(`[smoke] raw JSON written → ${rawJsonPath}`);
+
+    // Phase 2 (DATA-02 / D-12) — capture the REAL (live, persisted) fixture
+    // pair for the SAME analysis id. Gated behind the per-video success path:
+    // only capture when the signal-completeness gate PASSED (a degraded run is
+    // not a faithful contract fixture). Race-guarded inside the helper.
+    if (videoResult.gate_pass) {
+      const captured = await captureReadingFixtures(
+        videoResult._liveResult ?? null,
+        videoResult._persistedRow ?? null,
+        userId
+      );
+      if (!captured) {
+        console.warn(
+          `[smoke] video-${videoNum}: reading fixture pair NOT captured (see log above).`
+        );
+      }
+    } else {
+      console.log(
+        `[smoke] video-${videoNum}: skipping fixture capture — GATE did not pass.`
+      );
+    }
 
     results.push(videoResult);
   }
