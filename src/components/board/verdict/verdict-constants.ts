@@ -1,6 +1,11 @@
 import type { Factor } from '@/lib/engine/types';
 
 // Band thresholds derived from overall_score (0-100). Per 05-UI-SPEC.md §Copywriting Contract.
+//
+// DRIFT NOTE (Phase 2, D-04): this is a LEGACY board-only copy. The single source of
+// truth for verdict bands is now `VERDICT_BANDS` in `@/lib/reading/verdict-bands`.
+// Phase 3 verdict-band CALIBRATION edits VERDICT_BANDS, NOT this constant — do not
+// re-tune the numbers here (they are intentionally left byte-unchanged for the board).
 export const BAND_THRESHOLDS = {
   STRONG: 70, // >=70 -> 'Strong' + coral percentile
   MID: 40,    // 40-69 -> 'Mid'

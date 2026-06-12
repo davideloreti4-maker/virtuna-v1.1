@@ -22,6 +22,10 @@ export function confidenceRange(score: number, confidence: number): ConfidenceRa
   return { lo: Math.max(0, score - half), hi: Math.min(100, score + half) };
 }
 
+// DRIFT NOTE (Phase 2, D-04): LEGACY board-only copy. The single source of truth for
+// verdict bands is `VERDICT_BANDS` in `@/lib/reading/verdict-bands` (same thresholds,
+// same Reading labels). Phase 3 band CALIBRATION edits VERDICT_BANDS, NOT this function
+// — the thresholds here are intentionally left byte-unchanged for the board.
 export function bandLabel(score: number): string {
   if (score >= 70) return 'High potential';
   if (score >= 40) return 'Solid contender';
