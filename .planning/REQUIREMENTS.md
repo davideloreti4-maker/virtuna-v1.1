@@ -17,8 +17,8 @@ Requirements for the shippable MVP landing. Each maps to roadmap phases.
 
 ### The Reading explained (READ)
 
-- [ ] **READ-01**: Three-step explainer of the real flow — upload → engine reads → verdict + why
-- [ ] **READ-02**: Each step shows real content as the demonstration (content is both demo and navigation)
+- [x] **READ-01**: Three-step explainer of the real flow — upload → engine reads → verdict + why
+- [x] **READ-02**: Each step shows real content as the demonstration (content is both demo and navigation)
 
 ### Honesty moat / anti-snake-oil (TRUST)
 
@@ -118,8 +118,8 @@ Explicitly excluded. Documented to prevent scope creep.
 | HERO-02 | Phase 2 | Complete |
 | HERO-03 | Phase 2 | Complete |
 | HERO-04 | Phase 2 | Complete |
-| READ-01 | Phase 2 | Pending |
-| READ-02 | Phase 2 | Pending |
+| READ-01 | Phase 2 | Complete |
+| READ-02 | Phase 2 | Complete |
 | CTA-01 | Phase 2 | Complete |
 | TRUST-01 | Phase 3 | Pending |
 | TRUST-02 | Phase 3 | Pending |

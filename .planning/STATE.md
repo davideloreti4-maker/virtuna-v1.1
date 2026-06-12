@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.1
 milestone_name: milestone
-status: executing
-stopped_at: Completed 02-03-PLAN.md (hero column + reading loop)
-last_updated: "2026-06-12T08:08:00.000Z"
+status: verifying
+stopped_at: Completed 02-04-PLAN.md (Reading explainer + page integration) — Phase 02 complete
+last_updated: "2026-06-12T08:14:09.217Z"
 last_activity: 2026-06-12
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 7
-  completed_plans: 6
-  percent: 86
+  completed_plans: 7
+  percent: 50
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md · Base spec (authoritative): .planning/LANDING-STRUCT
 
 Phase: 02 (hero-centerpiece-reading-explainer) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-12
 
 ## Performance Metrics
@@ -51,6 +51,7 @@ Last activity: 2026-06-12
 | Phase 02 P01 | 3m | 3 tasks | 6 files |
 | Phase 02 P02 | 6m | 2 tasks | 2 files |
 | Phase 02 P03 | 14m | 2 tasks | 4 files |
+| Phase 02 P04 | 4m | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,7 @@ Recent decisions affecting current work:
 - [Phase ?]: Plan 02-01: 5 RED Phase-2 test scaffolds + APCA on-band gate; verdict-good label on #7faf7a = Lc 41.8 < 60 → Plan 02 VerdictThrone MUST use bg-panel plate (target 60 not relaxed).
 - Plan 02-02: keyframe.webp landed (real comedy-skit creator still, HERO-02 satisfied); VerdictThrone (HERO-03) built on VerdictSwatch good band + bg-panel plate (APCA gate FAIL Lc 41.8) + bold label + specific why, zero naked numbers (VOICE Rule 3); reusable by Wave 2 hero loop + Wave 3 explainer step 3.
 - Plan 02-03: ReadingLoop (HERO-02/04) + Hero column (HERO-01/CTA-01) shipped. Keyframe is the always-present LCP base layer (not a revealed stage); only the stage-read line + VerdictThrone reveal as sequenced StageBlock overlays. Reduced-motion controller returns before any timer + inits revealed=full (no auto-cycle, no translate). Added vitest staticImageStub plugin (mirrors Next StaticImageData) so next/image sizes under test. how-it-works/voice tests stay RED (Plan 02-04 deliverable).
+- [Phase ?]: Plan 02-04: HowItWorks 3-step explainer (READ-01/02) reuses the SAME real artifacts per step (keyframe / real stage-read line / VerdictThrone reuse), never icon-only; wired into #how-it-works. APCA on-band-label demoted to composition diagnostic (bg-panel plate mitigation shipped) so check-apca gate exits 0. Phase 2 complete.
 
 ### Pending Todos
 
@@ -90,7 +92,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-06-12T08:08:00.000Z
-Stopped at: Completed 02-03-PLAN.md (hero column + reading loop)
+Last session: 2026-06-12T08:13:56.515Z
+Stopped at: Completed 02-04-PLAN.md (Reading explainer + page integration) — Phase 02 complete
 Resume file: None
-Next command: /gsd-execute-phase 2
+Next command: /gsd-verify-phase 2

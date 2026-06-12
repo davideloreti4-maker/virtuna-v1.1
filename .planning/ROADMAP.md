@@ -18,7 +18,7 @@ The honesty/anti-snake-oil posture (TRUST) is not a single section — it is the
 Milestone-scoped numbering (fresh worktree): phases start at 1.
 
 - [x] **Phase 1: Foundation, Shell & Voice Baseline** - Next.js landing scaffold consuming `.numen-surface` placeholder tokens; minimal nav + footer; calm confident-mentor voice baseline; SEO meta + kero-paced section rhythm scaffold (completed 2026-06-12)
-- [ ] **Phase 2: Hero Centerpiece & Reading Explainer** - Content-as-hero — a real Reading staged on a real creator video (resolve live-vs-recorded D-L2); calibrated-band verdict; 3-step upload→reads→verdict explainer with real content; primary CTA
+- [x] **Phase 2: Hero Centerpiece & Reading Explainer** - Content-as-hero — a real Reading staged on a real creator video (resolve live-vs-recorded D-L2); calibrated-band verdict; 3-step upload→reads→verdict explainer with real content; primary CTA (completed 2026-06-12)
 - [ ] **Phase 3: Honesty Moat, Gallery, Proof & Conversion** - Anti-snake-oil trust section + Numen-vs-rivals comparison; gallery-quality real Readings across ≥3 niches; social proof; positioning copy; conversion CTA wired to waitlist/app entry
 - [ ] **Phase 4: Token Lock, Motion & Launch Polish** - Swap in final `.numen-surface` tokens on Phase 1 calibration sign-off; calm scroll-driven reveals; LCP/perf, OG cards, accessibility, brand-DNA coherence
 
@@ -53,7 +53,7 @@ Milestone-scoped numbering (fresh worktree): phases start at 1.
   - [x] 02-01-PLAN.md — Wave 0: Nyquist test scaffolds (5 RED component tests) + APCA label-on-band gate extension
   - [x] 02-02-PLAN.md — Verdict throne (HERO-03) on VerdictSwatch + real-keyframe human checkpoint (HERO-02 asset)
   - [x] 02-03-PLAN.md — Recorded stage-reveal ReadingLoop (HERO-02/04) + Hero column with locked CTA (HERO-01/CTA-01)
-  - [ ] 02-04-PLAN.md — 3-step real-content explainer (READ-01/02) + page slot wiring
+  - [x] 02-04-PLAN.md — 3-step real-content explainer (READ-01/02) + page slot wiring
 **UI hint**: yes
 
 ### Phase 3: Honesty Moat, Gallery, Proof & Conversion
@@ -88,7 +88,7 @@ Milestone-scoped numbering (fresh worktree): phases start at 1.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation, Shell & Voice Baseline | 3/3 | Complete   | 2026-06-12 |
-| 2. Hero Centerpiece & Reading Explainer | 3/4 | In Progress|  |
+| 2. Hero Centerpiece & Reading Explainer | 4/4 | Complete   | 2026-06-12 |
 | 3. Honesty Moat, Gallery, Proof & Conversion | 0/0 | Not started | - |
 | 4. Token Lock, Motion & Launch Polish | 0/0 | Not started | - |
 
