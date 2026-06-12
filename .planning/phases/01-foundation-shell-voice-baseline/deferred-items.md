@@ -37,3 +37,25 @@ Logged during execution per SCOPE BOUNDARY. NOT fixed — unrelated to the curre
   Each new shell file is verified type+lint clean in isolation instead.
 - **Error codes:** TS2352 (1), TS2353 (2), TS2345 (5), TS2532 (5), TS2769 (1).
 - **Suggested owner:** engine/test-debt pass or Phase 4 polish.
+
+## Plan 01-03
+
+### Pre-existing hype string in a dev/showcase route (`board-preview/page.tsx`)
+
+- **Found during:** Plan 01-03 Task 3 route-wide anti-snake-oil grep
+  (`grep -riE "...|virality" "src/app/(marketing)"`).
+- **Match:** `src/app/(marketing)/board-preview/page.tsx:281` — `label="Virality score"`.
+- **Scope:** `board-preview/` is a pre-existing dev/showcase route (last touched by
+  unrelated commit `a6add456` "fix(board): soften preview…", NOT this plan). The
+  `(marketing)` route group also holds other dev/test routes — `showcase/`,
+  `primitives-showcase/`, `viral-score-test/`, `viz-test/`, `coming-soon/`,
+  `pricing/`. Per the plan `<interfaces>` note + D-04 these dev/showcase routes are
+  explicitly UNTOUCHED by this phase; only the root marketing `layout.tsx`/`page.tsx`/
+  `opengraph-image.tsx` are in scope.
+- **Why deferred:** Out of scope — not customer-facing landing copy, not introduced
+  by this plan, and the plan's per-task gate only requires the OG image to be
+  hype-free (which it is). The route-wide grep in `<verification>` is broader than
+  the plan's stated scope (dev/showcase untouched) and surfaces this pre-existing
+  dev-label leak. The three in-scope files are verified hype-free.
+- **Suggested owner:** Phase 4 polish (alongside the stale-component cleanup), or a
+  dedicated dev/showcase de-hype pass once those routes are reviewed for retention.
