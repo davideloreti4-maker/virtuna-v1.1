@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Numen Surface
 status: executing
-stopped_at: Phase 4 context gathered
-last_updated: "2026-06-12T13:28:38.031Z"
-last_activity: 2026-06-12 -- Phase 03 planning complete
+stopped_at: Phase 4 planned (4 plans, checker PASSED)
+last_updated: "2026-06-12T16:00:00.000Z"
+last_activity: 2026-06-12 -- Phase 04 planning complete (research + plan + verify)
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 12
+  total_plans: 16
   completed_plans: 10
   percent: 29
 ---
@@ -21,14 +21,17 @@ progress:
 See: .planning/PROJECT.md · Vision (authoritative): .planning/NUMEN-SURFACE-VISION.md · Worktree identity: .planning/MILESTONE.md · Research: .planning/research/SUMMARY.md
 
 **Core value:** AI content intelligence that tells TikTok creators whether their content will resonate — re-presented as one thread per video where the AI's first turn is the Reading (verdict = band + why).
-**Current focus:** Phase 02 COMPLETE — next: Phase 03 (SMOKE GATE + Verdict-Banding Calibration)
+**Current focus:** Phase 04 PLANNED (Mobile Reading Thread + PWA Shell) — next: `/gsd-execute-phase 4`
 
 ## Current Position
 
-Phase: 02 (view-model-data-contract-eng-06-d-12) — COMPLETE (4/4 plans)
-Plan: All 4 plans done. 02-01 Task 2 (real fixture capture) closed via authenticated browser fetch → genuine live `complete` payload + settled persisted row paired (analysis WEkihfOzJphv, score 71). identical-render deep-equal GREEN. Full src/lib/reading suite 31/31.
+Phase: 04 (mobile-reading-thread-pwa-shell) — PLANNED (4 plans, checker VERIFICATION PASSED 2nd round)
+Plan: research (HIGH confidence, crux resolved: view-model is all-at-complete) → 4 plans in 3 waves → checker 0-blockers/4-warnings → targeted revision (band-id↔confidenceLanguage "mixed" seam + resting fromPersistedRow data-path) → re-verify PASSED. All 8 req IDs (READ-01..07, SHELL-04) covered. VALIDATION nyquist_compliant. Builds against live-WEkihfOzJphv.json (build-not-ship: must NOT ship until deferred Phase-3 GO).
 Status: Ready to execute
-Last activity: 2026-06-12 -- Phase 03 planning complete
+
+Wave plan: W1=[04-01 block kit, 04-04 PWA shell (2 human checkpoints)] · W2=[04-02 throne+crux thread] · W3=[04-03 routes+shell+a11y]
+
+Last activity: 2026-06-12 -- Phase 04 planning complete
 
 Progress: [█████████░] 89%
 
@@ -115,6 +118,6 @@ From Plan 01 execution:
 
 ## Session Continuity
 
-Last session: 2026-06-12T13:28:38.022Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-mobile-reading-thread-pwa-shell/04-CONTEXT.md
+Last session: 2026-06-12T13:43:05.150Z
+Stopped at: Phase 4 UI-SPEC approved
+Resume file: .planning/phases/04-mobile-reading-thread-pwa-shell/04-UI-SPEC.md

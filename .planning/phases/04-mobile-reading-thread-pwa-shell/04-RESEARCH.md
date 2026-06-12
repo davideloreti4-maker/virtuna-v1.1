@@ -604,9 +604,11 @@ export const { dynamic, dynamicParams, revalidate, generateStaticParams, GET } =
 | A4 | The icon assets (icon-192/512, maskable) need to be created — the repo has `apple-icon.png`/`icon.svg` but not the manifest PNG sizes | Manifest example | If existing assets suffice, no new asset work; if not, a design task is needed. [ASSUMED — repo has icon.svg + apple-icon.png 1.2K, sizes unverified for manifest] |
 | A5 | `@serwist/next/worker` exports `defaultCache` on 9.5.11 | sw.ts example | If the subpath/export name differs, the import fails. Context7 shows `@serwist/vite/worker` and `@serwist/next/worker` both export `defaultCache`; the LogRocket Next 16 article uses `@serwist/next/worker`. Verify at install. [ASSUMED — cross-referenced two sources, not run] |
 
-## Open Questions
+## Open Questions (RESOLVED in plans)
 
-1. **Where does the mobile thread route live, and does it replace `/analyze`?**
+> All three resolved during planning (round-1 checker accepted as non-blocking): Q1 → Plan 03 picks `(app)/reading` + `[id]`; Q2 → Plan 04 checkpoint locks Path A; Q3 → Plan 04 Task 2 generates 192/512/maskable icons.
+
+1. **Where does the mobile thread route live, and does it replace `/analyze`?** — RESOLVED: Plan 03 → new `(app)/reading` + `[id]` route, board untouched.
    - What we know: the board stays for desktop until Phase 7; the thread is the new primary mobile surface. The Reading thread "replaces the Konva board as the primary `/analyze`-class entry."
    - What's unclear: exact route (`/reading`, `/analyze` swapped by viewport, or a new path) and how it coexists with the kept `/analyze` board layout (which mounts `<Board>` in `analyze/layout.tsx`).
    - Recommendation: planner decides the route; a new `(app)/reading/[id]` + `(app)/reading/page.tsx` keeps the board untouched and avoids breaking the desktop surface. Mobile/desktop split can be a later (Phase 7) concern.
