@@ -4,13 +4,13 @@ milestone: v5.1
 milestone_name: milestone
 status: executing
 stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-06-12T14:12:35.292Z"
+last_updated: "2026-06-12T14:23:28.987Z"
 last_activity: 2026-06-12
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 12
-  completed_plans: 8
+  completed_plans: 9
   percent: 50
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md · Base spec (authoritative): .planning/LANDING-STRUCT
 ## Current Position
 
 Phase: 03 (honesty-moat-gallery-proof-conversion) — EXECUTING
-Plan: 2 of 5
+Plan: 03-04 complete (waitlist persistence backbone)
 Status: Ready to execute
 Last activity: 2026-06-12
 
@@ -53,6 +53,7 @@ Last activity: 2026-06-12
 | Phase 02 P03 | 14m | 2 tasks | 4 files |
 | Phase 02 P04 | 4m | 2 tasks | 3 files |
 | Phase 03 P01 | 5m | 4 tasks | 8 files |
+| Phase 03 P03-04 | 8m | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,7 @@ Recent decisions affecting current work:
 - Plan 02-03: ReadingLoop (HERO-02/04) + Hero column (HERO-01/CTA-01) shipped. Keyframe is the always-present LCP base layer (not a revealed stage); only the stage-read line + VerdictThrone reveal as sequenced StageBlock overlays. Reduced-motion controller returns before any timer + inits revealed=full (no auto-cycle, no translate). Added vitest staticImageStub plugin (mirrors Next StaticImageData) so next/image sizes under test. how-it-works/voice tests stay RED (Plan 02-04 deliverable).
 - [Phase ?]: Plan 02-04: HowItWorks 3-step explainer (READ-01/02) reuses the SAME real artifacts per step (keyframe / real stage-read line / VerdictThrone reuse), never icon-only; wired into #how-it-works. APCA on-band-label demoted to composition diagnostic (bg-panel plate mitigation shipped) so check-apca gate exits 0. Phase 2 complete.
 - [Phase ?]: Plan 03-01: 7 RED Wave-0 scaffolds + extended voice gate; page-headings RED via async-RSC Promise marker (page exists as sync skeleton); voice gate bans rival strings in 4 new components, positively scopes to honesty-comparison only (D-05); zero new packages.
+- [Phase ?]: Plan 03-04: waitlist table applied live to remote virtuna-v1.1 via Supabase MCP apply_migration (insert-only RLS, 0 SELECT policies, SECURITY DEFINER waitlist_count() granted to anon, count=0); types regenerated; db:types script added — schema-push gate satisfied before Wave 3 wiring (D-01/D-02/D-08).
 
 ### Pending Todos
 
@@ -94,7 +96,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-06-12T14:12:35.285Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-06-12
+Stopped at: Completed 03-04-PLAN.md (waitlist persistence backbone)
 Resume file: None
-Next command: /gsd-verify-phase 2
+Next command: continue Phase 03 remaining plans / wire Wave 3 waitlist server action

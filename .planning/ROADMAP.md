@@ -71,7 +71,7 @@ Milestone-scoped numbering (fresh worktree): phases start at 1.
   - [x] 03-01-PLAN.md — Wave 0: 8 RED Nyquist scaffolds (actions, count, honesty, gallery, social-proof, proof-placement, page-headings) + voice-gate extension scoping rival strings to honesty-comparison
   - [ ] 03-02-PLAN.md — `#honesty` kero comparison move — semantic table, Numen (band+why) vs unnamed virality-score tier (D-04/D-05 sanctioned rival strings)
   - [ ] 03-03-PLAN.md — `#gallery` luma real-Readings gallery — parametrized VerdictThrone + ≥3 cards across niches with a good/mixed/bad verdict range (+ non-blocking still-extraction checkpoint)
-  - [ ] 03-04-PLAN.md — [BLOCKING] waitlist migration (insert-only RLS + SECURITY DEFINER count RPC) + remote apply + `database.types.ts` regen
+  - [x] 03-04-PLAN.md — [BLOCKING] waitlist migration (insert-only RLS + SECURITY DEFINER count RPC) + remote apply + `database.types.ts` regen
   - [ ] 03-05-PLAN.md — Conversion loop: joinWaitlist action + cached count read + waitlist form + proof strip/#proof + `#cta` + page wiring (single h1)
 **UI hint**: yes
 
@@ -94,7 +94,7 @@ Milestone-scoped numbering (fresh worktree): phases start at 1.
 |-------|----------------|--------|-----------|
 | 1. Foundation, Shell & Voice Baseline | 3/3 | Complete   | 2026-06-12 |
 | 2. Hero Centerpiece & Reading Explainer | 4/4 | Complete   | 2026-06-12 |
-| 3. Honesty Moat, Gallery, Proof & Conversion | 1/5 | In Progress|  |
+| 3. Honesty Moat, Gallery, Proof & Conversion | 2/5 | In Progress|  |
 | 4. Token Lock, Motion & Launch Polish | 0/0 | Not started | - |
 
 ---
