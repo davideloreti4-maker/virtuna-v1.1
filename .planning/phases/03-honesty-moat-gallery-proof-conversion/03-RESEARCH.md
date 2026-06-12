@@ -582,16 +582,15 @@ This is a net-new feature phase (adding a table + sections), not a rename/refact
 | A4 | Default EXECUTE grant + explicit `GRANT … TO anon` exposes the RPC to the anon role | Target 1 | Low — explicit grant removes ambiguity; existing RPCs rely on default grant and work |
 | A5 | User may supply 0–2 niche clips | Target 4 | None — D-07 makes this explicitly non-blocking (vary the existing still) |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does the landing deploy share the app's Supabase env or deploy standalone?**
-   - What we know: Supabase exists in-repo; anon key path is intended (D-01).
-   - What's unclear: whether the landing's Vercel project has the env vars wired.
-   - Recommendation: planner adds a `checkpoint:human-verify` confirming `NEXT_PUBLIC_SUPABASE_URL` + anon key are set in the landing deploy before relying on live count in prod (dev works locally regardless).
+   - **RESOLVED:** deploy-env confirmed via Plan 05 Task 3 checkpoint (`NEXT_PUBLIC_SUPABASE_URL` + anon key); flagged as a launch-checklist item if the landing deploys standalone. Dev works locally regardless.
+   - What we knew: Supabase exists in-repo; anon key path is intended (D-01).
 
 2. **Threshold value for D-09 count display.**
-   - What we know: must never show "0 creators"; threshold is Claude's discretion.
-   - Recommendation: default 50; surface the chosen value in the plan as a one-line decision.
+   - **RESOLVED:** threshold = 50, surfaced in Plans 01/05 and UI-SPEC §3 (planner-locked default; never shows "0 creators").
+   - What we knew: must never show "0 creators"; threshold is Claude's discretion.
 
 ## Environment Availability
 
