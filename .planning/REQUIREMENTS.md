@@ -47,18 +47,18 @@ Requirements for the shippable MVP landing. Each maps to roadmap phases.
 
 ### Design-system consumption (DS)
 
-- [ ] **DS-01**: Landing consumes the Numen Surface Phase 1 `.numen-surface` token layer + primitives — no forked or reinvented tokens
+- [x] **DS-01**: Landing consumes the Numen Surface Phase 1 `.numen-surface` token layer + primitives — no forked or reinvented tokens
 - [ ] **DS-02**: Build tolerates placeholder tokens and swaps to final tokens on Phase 1 calibration lock
 - [ ] **DS-03**: Brand-DNA coherence with the app (logo, verdict color language); landing palette tone may diverge per D-L1
 
 ### Motion & structure (MOT)
 
 - [ ] **MOT-01**: Calm scroll-driven section reveals reusing the in-app motion language; no bounce/snappy, no presence theater
-- [ ] **MOT-02**: Section rhythm/pacing modeled on kero's spine
+- [x] **MOT-02**: Section rhythm/pacing modeled on kero's spine
 
 ### Nav & shell (NAV)
 
-- [ ] **NAV-01**: Minimal, product-focused top nav + footer
+- [x] **NAV-01**: Minimal, product-focused top nav + footer
 
 ### Performance / SEO / a11y (PERF)
 
@@ -108,11 +108,11 @@ Explicitly excluded. Documented to prevent scope creep.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DS-01 | Phase 1 | Pending |
+| DS-01 | Phase 1 | Complete |
 | DS-02 | Phase 1 | Pending |
-| NAV-01 | Phase 1 | Pending |
+| NAV-01 | Phase 1 | Complete |
 | CONTENT-01 | Phase 1 | Complete |
-| MOT-02 | Phase 1 | Pending |
+| MOT-02 | Phase 1 | Complete |
 | PERF-02 | Phase 1 | Complete |
 | HERO-01 | Phase 2 | Pending |
 | HERO-02 | Phase 2 | Pending |
