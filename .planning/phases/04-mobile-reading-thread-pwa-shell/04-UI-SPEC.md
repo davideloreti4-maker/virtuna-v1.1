@@ -1,10 +1,11 @@
 ---
 phase: 4
 slug: mobile-reading-thread-pwa-shell
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-06-12
+reviewed_at: 2026-06-12
 ---
 
 # Phase 4 — UI Design Contract
@@ -197,11 +198,18 @@ No third-party registry blocks enter this contract. All components are first-par
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved (gsd-ui-checker, 2026-06-12) — all token/color/type/spacing/block/band claims traceable to the shipped kit; no invented values, no parallel system; presentation-only + mobile-first scope honored.
+
+### Non-Blocking Recommendations (carry into planning)
+
+1. **Typography size count (5 vs 4-size ceiling).** Spec declares 5 sizes (30/20/18/16/14); passes because they self-segregate into 4 reading *roles* (30 band display · 20 serif voice · 18 block heading · 16 body) with 14px fenced to a pure caption/label tier and 12px unused. Planner: confirm 18 (sans block heading) and 20 (serif voice) don't collide in practice — they're role-separated by font family. If visual noise appears, collapse block-heading to 16-semibold → 4 sizes.
+2. **Weight discipline guard.** 500 must never appear above the 14px label tier; 700 must never appear in `.numen-surface` thread scope. This currently relies on executor discipline — add a lint/review note to make it structural.
+3. **Forming-state APCA.** The "Forming the read…" throne placeholder pulses `animate-skeleton-breathe` (opacity 0.4↔0.6) on `text-numen-text-muted` (#bab2a5, Lc 60.1 at full opacity) — at 0.4 opacity it may drop below APCA Lc 60 mid-pulse. Planner: verify the forming line passes APCA at its lowest pulse opacity, or pulse a non-text container instead.
+4. **Bare pre-first-analysis thread state.** The empty/new-thread-before-first-analysis state (Analyze new + pronounce-first, never a blank prompt) is in scope for Phase 4 even though the designed home is Phase 5 — make it an explicit, testable acceptance condition so it isn't silently dropped as "Phase 5's problem."
