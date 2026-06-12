@@ -52,7 +52,7 @@ Milestone-scoped numbering (fresh worktree): phases start at 1.
 **Plans**: 4 plans
   - [x] 02-01-PLAN.md — Wave 0: Nyquist test scaffolds (5 RED component tests) + APCA label-on-band gate extension
   - [x] 02-02-PLAN.md — Verdict throne (HERO-03) on VerdictSwatch + real-keyframe human checkpoint (HERO-02 asset)
-  - [ ] 02-03-PLAN.md — Recorded stage-reveal ReadingLoop (HERO-02/04) + Hero column with locked CTA (HERO-01/CTA-01)
+  - [x] 02-03-PLAN.md — Recorded stage-reveal ReadingLoop (HERO-02/04) + Hero column with locked CTA (HERO-01/CTA-01)
   - [ ] 02-04-PLAN.md — 3-step real-content explainer (READ-01/02) + page slot wiring
 **UI hint**: yes
 
@@ -88,7 +88,7 @@ Milestone-scoped numbering (fresh worktree): phases start at 1.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation, Shell & Voice Baseline | 3/3 | Complete   | 2026-06-12 |
-| 2. Hero Centerpiece & Reading Explainer | 2/4 | In Progress|  |
+| 2. Hero Centerpiece & Reading Explainer | 3/4 | In Progress|  |
 | 3. Honesty Moat, Gallery, Proof & Conversion | 0/0 | Not started | - |
 | 4. Token Lock, Motion & Launch Polish | 0/0 | Not started | - |
 

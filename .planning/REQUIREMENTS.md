@@ -10,10 +10,10 @@ Requirements for the shippable MVP landing. Each maps to roadmap phases.
 
 ### Hero (HERO)
 
-- [ ] **HERO-01**: Above-fold hero with an intelligence/verdict headline + subhead + primary CTA, mobile-first
+- [x] **HERO-01**: Above-fold hero with an intelligence/verdict headline + subhead + primary CTA, mobile-first
 - [x] **HERO-02**: Hero centerpiece is a real Reading staged on a real creator video (krea/luma content-as-hero), full-bleed, chrome minimal — NOT a stock photo or fake browser window
 - [x] **HERO-03**: Verdict shown as a calibrated band + one-line why (no naked number, no "X% accuracy")
-- [ ] **HERO-04**: Hero uses the calm stage-reveal motion language (StageBlock / `numen-ease-calm`) with a reduced-motion fallback
+- [x] **HERO-04**: Hero uses the calm stage-reveal motion language (StageBlock / `numen-ease-calm`) with a reduced-motion fallback
 
 ### The Reading explained (READ)
 
@@ -37,7 +37,7 @@ Requirements for the shippable MVP landing. Each maps to roadmap phases.
 
 ### Conversion (CTA)
 
-- [ ] **CTA-01**: Primary conversion CTA (try / join waitlist) in hero and repeated near footer
+- [x] **CTA-01**: Primary conversion CTA (try / join waitlist) in hero and repeated near footer
 - [ ] **CTA-02**: CTA routes to the app entry or waitlist capture and records the signup
 
 ### Copy / voice (CONTENT)
@@ -114,13 +114,13 @@ Explicitly excluded. Documented to prevent scope creep.
 | CONTENT-01 | Phase 1 | Complete |
 | MOT-02 | Phase 1 | Complete |
 | PERF-02 | Phase 1 | Complete |
-| HERO-01 | Phase 2 | Pending |
+| HERO-01 | Phase 2 | Complete |
 | HERO-02 | Phase 2 | Complete |
 | HERO-03 | Phase 2 | Complete |
-| HERO-04 | Phase 2 | Pending |
+| HERO-04 | Phase 2 | Complete |
 | READ-01 | Phase 2 | Pending |
 | READ-02 | Phase 2 | Pending |
-| CTA-01 | Phase 2 | Pending |
+| CTA-01 | Phase 2 | Complete |
 | TRUST-01 | Phase 3 | Pending |
 | TRUST-02 | Phase 3 | Pending |
 | GALLERY-01 | Phase 3 | Pending |
