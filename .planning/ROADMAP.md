@@ -67,7 +67,12 @@ Milestone-scoped numbering (fresh worktree): phases start at 1.
   3. A visitor encounters a social-proof block (testimonials and/or live waitlist count) with credibility anchored early on the page
   4. The page's positioning copy reads "an honest verdict creators can believe," explicitly not hype, in the inherited confident-mentor voice
   5. A visitor can act on a conversion CTA (repeated near the footer) that routes to app entry or waitlist capture and records the signup
-**Plans**: TBD
+**Plans**: 5 plans
+  - [ ] 03-01-PLAN.md — Wave 0: RED Nyquist scaffolds (actions, count, honesty, gallery, social-proof) + voice-gate extension scoping rival strings to honesty-comparison
+  - [ ] 03-02-PLAN.md — `#honesty` kero comparison move — semantic table, Numen (band+why) vs unnamed virality-score tier (D-04/D-05 sanctioned rival strings)
+  - [ ] 03-03-PLAN.md — `#gallery` luma real-Readings gallery — parametrized VerdictThrone + ≥3 cards across niches with a good/mixed/bad verdict range (+ non-blocking still-extraction checkpoint)
+  - [ ] 03-04-PLAN.md — [BLOCKING] waitlist migration (insert-only RLS + SECURITY DEFINER count RPC) + remote apply + `database.types.ts` regen
+  - [ ] 03-05-PLAN.md — Conversion loop: joinWaitlist action + cached count read + waitlist form + proof strip/#proof + `#cta` + page wiring (single h1)
 **UI hint**: yes
 
 ### Phase 4: Token Lock, Motion & Launch Polish
@@ -89,9 +94,10 @@ Milestone-scoped numbering (fresh worktree): phases start at 1.
 |-------|----------------|--------|-----------|
 | 1. Foundation, Shell & Voice Baseline | 3/3 | Complete   | 2026-06-12 |
 | 2. Hero Centerpiece & Reading Explainer | 4/4 | Complete   | 2026-06-12 |
-| 3. Honesty Moat, Gallery, Proof & Conversion | 0/0 | Not started | - |
+| 3. Honesty Moat, Gallery, Proof & Conversion | 0/5 | Planned | - |
 | 4. Token Lock, Motion & Launch Polish | 0/0 | Not started | - |
 
 ---
 *Roadmap created: 2026-06-11 — milestone v5.1 Landing. Source: `.planning/LANDING-STRUCTURE.md` + `REQUIREMENTS.md`. Consumes Numen Surface Phase 1 design system (DS-01); token swap gated on Phase 1 calibration (D-L3).*
 *Phase 1 planned: 2026-06-11 — 3 plans (foundation/voice, shell components, wiring) in 2 waves.*
+*Phase 3 planned: 2026-06-12 — 5 plans in 3 waves (W1: test scaffolds; W2: honesty + gallery + [BLOCKING] migration; W3: conversion loop). All 8 requirements covered.*
