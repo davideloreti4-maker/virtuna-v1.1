@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Numen Surface
 status: executing
-stopped_at: "Phase 2 Plan 01 — paused at Task 2 human-action checkpoint (live fixture capture)"
-last_updated: "2026-06-12T06:52:00.000Z"
-last_activity: 2026-06-12 -- Phase 02 Plan 01 Tasks 1+3 done; Task 2 (live capture) blocked on human-action
+stopped_at: "Phase 02 Plan 02 complete (type contract: VERDICT_BANDS + ReadingBlock/CanonicalReading)"
+last_updated: "2026-06-12T07:00:18.232Z"
+last_activity: 2026-06-12 -- Plan 01 reached human-action checkpoint (real fixture pair capture needs live infra + UI upload)
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 9
-  completed_plans: 5
-  percent: 14
+  completed_plans: 7
+  percent: 78
 ---
 
 # Project State
@@ -30,7 +30,7 @@ Plan: 1 of 4 (PAUSED at Task 2 human-action checkpoint)
 Status: Executing Phase 02 — Plan 01 Tasks 1+3 committed; Task 2 (live fixture capture) awaiting human-run
 Last activity: 2026-06-12 -- Plan 01 reached human-action checkpoint (real fixture pair capture needs live infra + UI upload)
 
-Progress: [██████████] 100% (Phase 01)
+Progress: [████████░░] 78%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [██████████] 100% (Phase 01)
 | Phase 01 P02 | 18 | 2 tasks | 5 files |
 | Phase 01 P03 | 11 | 1 tasks | 2 files |
 | Phase 01 P04 | 150 | 3 tasks | 4 files |
+| Phase 02 P02 | 3 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,8 @@ Recent decisions affecting current work:
 - Plan 02 (D-05): Glass blur still needs DEPLOYED-build verification (Plan 04); happy-dom/dev don't exercise the Lightning CSS pass. Documented in glass.tsx header.
 - Plan 02-01 (DATA-02 fixtures): `persisted-<id>.json` = RAW `analysis_results` row, NOT the `/api/analysis/[id]` enriched output — `fromPersistedRow` (D-11) consolidates the route shims, so it consumes the raw row. Capture reuses the user_id-scoped service-client read (route ownership filter untouched); settle-the-race poll on `variants.apollo` aborts rather than writing a partial fixture. Three RED scaffolds (identical-render/view-model/verdict) collected by vitest, fail on the not-yet-built `../view-model`/`../from-persisted-row`/`../verdict-bands` imports (expected Wave-0).
 - Plan 03 (DS-07): StageBlock = the ONE key motion moment. Opacity tween (ease [0.215,0.61,0.355,1]) + high-damping spring on translate (stiffness 220 / damping 30, ratio ≥ 1 → no overshoot); reduced-motion zeroes the translate → static opacity appear (D-14). New `--numen-ease-calm` token added to `.numen-surface`; forbidden `--ease-spring` (1.56 bounce) byte-unchanged + unreferenced by the kit. No presence theater on other primitives.
+- Plan 02-02 (D-04): VERDICT_BANDS in `src/lib/reading/verdict-bands.ts` is the single Phase-3 band calibration target (high/70, solid/40, needs-work/0) + total `bandFor(score)`; legacy board copies (BAND_THRESHOLDS, bandLabel) carry drift-redirect comments, numeric logic byte-unchanged (board still compiles).
+- Plan 02-02 (D-09/D-13): `ReadingBlock` discriminated union is pure data (no presentation hints) with NO `audio` member (audio_fingerprint live-only → would break the intersection). `CanonicalReading` is the narrow live∩persisted shape that physically excludes live-only fields (predicted-engagement range, optimal_post_window, audio_fingerprint) → compile-time intersection enforcement. Re-exports VerdictBand; field types imported from `@/lib/engine/types`.
 
 ### Pending Todos
 
@@ -106,6 +109,6 @@ From Plan 01 execution:
 
 ## Session Continuity
 
-Last session: 2026-06-11T21:51:59.999Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-view-model-data-contract-eng-06-d-12/02-CONTEXT.md
+Last session: 2026-06-12T07:00:18.108Z
+Stopped at: Phase 02 Plan 02 complete (type contract: VERDICT_BANDS + ReadingBlock/CanonicalReading)
+Resume file: None
