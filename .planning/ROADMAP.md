@@ -107,7 +107,20 @@ Plans:
   4. A completed Reading re-opens as a resting document that opens on the verdict, identical to the live render (via the Phase 2 view-model)
   5. The app installs as a PWA (Serwist + `manifest.ts`) with mobile-native feel; iOS shows Add-to-Home-Screen coaching (installability verified via Lighthouse on a deployed build)
 
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+**Wave 1**
+
+- [ ] 04-01-PLAN.md — Block-rendering kit: stage-slots.ts curated reshape map + 9 per-block renderers + block-view dispatcher (READ-05/07)
+- [ ] 04-04-PLAN.md — PWA shell: Serwist install gate + sw.ts (NetworkFirst auth-cache) + manifest.ts + icons + viewport-fit (SHELL-04)
+
+**Wave 2** *(blocked on 04-01)*
+
+- [ ] 04-02-PLAN.md — The crux: throne (forming↔crystallize) + verdict-block + reading-thread container (all-at-complete stage-reveal) (READ-01/02/03/04/05)
+
+**Wave 3** *(blocked on 04-02 + 04-04)*
+
+- [ ] 04-03-PLAN.md — Thread shell: live + resting routes + inert reply-composer + iOS install-hint + a11y suite (READ-01/06/07, SHELL-04)
 **UI hint**: yes
 
 ### Phase 5: App Shell + Ingestion
@@ -167,7 +180,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Design System Foundation + Brand Migration | 5/5 | Complete | 2026-06-11 |
 | 2. View-Model + Data Contract | 4/4 | Complete (DATA-01/02/03/04 — deep-equal GREEN vs real pair WEkihfOzJphv) | 2026-06-12 |
 | 3. SMOKE GATE + Verdict-Banding Calibration | 1/3 | In Progress|  |
-| 4. Mobile Reading Thread + PWA Shell | 0/TBD | Not started | - |
+| 4. Mobile Reading Thread + PWA Shell | 0/4 | Planned | - |
 | 5. App Shell + Ingestion | 0/TBD | Not started | - |
 | 6. Follow-ups + Agentic Tools + Monetization | 0/TBD | Not started | - |
 | 7. Desktop Instrument Layer | 0/TBD | Not started | - |
