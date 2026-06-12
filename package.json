@@ -28,7 +28,8 @@
     "benchmark": "npx tsx scripts/benchmark.ts",
     "build-corpus": "npx tsx scripts/build-corpus.ts",
     "eval": "npx tsx scripts/eval.ts",
-    "learning": "npx tsx scripts/run-learning.ts"
+    "learning": "npx tsx scripts/run-learning.ts",
+    "db:types": "supabase gen types typescript --project-id virtuna-v1.1 --schema public > src/types/database.types.ts"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
