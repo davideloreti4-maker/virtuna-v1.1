@@ -22,10 +22,16 @@ import { createClient } from "@/lib/supabase/server";
 
 /** The raw RLS-safe count read (fail-soft → 0). Cache-independent. */
 async function readWaitlistCount(): Promise<number> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("waitlist_count");
-  if (error || typeof data !== "number") return 0;
-  return data;
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("waitlist_count");
+    if (error || typeof data !== "number") return 0;
+    return data;
+  } catch {
+    // createClient()/cookies()/env or the RPC threw — the count read must NEVER
+    // crash the page render. Fail-soft to 0 → D-09 qualitative anchor.
+    return 0;
+  }
 }
 
 const cachedWaitlistCount = unstable_cache(readWaitlistCount, ["waitlist-count"], {
