@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Numen Surface
 status: executing
-stopped_at: Phase 3 context gathered
+stopped_at: Phase 3 partial — 03-01 Task1 + 03-02 done; SMOKE RUN DEFERRED (03-01 Task2), 03-03 blocked
 last_updated: "2026-06-12T08:43:18.537Z"
 last_activity: 2026-06-12 -- Phase 03 planning complete
 progress:
@@ -92,6 +92,7 @@ None.
 
 - **Plan 02-01 human-action checkpoint RESOLVED (2026-06-12):** the REAL (live, persisted) fixture pair was captured (analysis `WEkihfOzJphv`, score 71) and committed (`4350612f`). The smoke script's `--direct` mode can't authenticate (route requires a session; POST sends no cookie) and its UI mode writes the raw row as the live half (wrong shape for `canonicalFromLive`, which reads `result.hero`/`result.apollo_reasoning` TOP-LEVEL). Resolution: logged in as the e2e test user via Playwright, fired the analysis with an in-browser authenticated `fetch` to `/api/analyze` (tiktok_url mode, ~112s, 18 stages), captured the genuine live `complete` SSE payload, then `scripts/capture-reading-fixture.ts` paired it with the settled persisted row (variants.apollo present). PII-reviewed (no secrets/tokens/emails). DATA-02 deep-equal GREEN; full src/lib/reading suite 31/31.
 - Phase 3 GATE is pass/fail: a verdict-banding no-go blocks Phase 4. Band thresholds cannot be hardcoded before the same-video-N-times variance data exists.
+- **Phase 3 SMOKE RUN DEFERRED (2026-06-12, user direction):** 03-01 Task 1 (`scripts/gate-assert.ts`, GREEN/RED honesty harness — GREEN on `live-WEkihfOzJphv.json`) DONE + committed; 03-02 (dead-band buffer, `DEAD_BAND_FLOOR=5` + `inDeadBand`, reading suite 37/37, build green) DONE + committed + summary. **OUTSTANDING:** 03-01 Task 2 = the live deployed-Vercel ≥3× batch (variance + ENG-03 latency + human honesty sign-off → `03-GATE-RUNS.md`) + 03-01-SUMMARY; then 03-03 = dated GO/NO-GO (`03-GATE-DECISION.md`, needs the sign-off + BUFFER_HALFWIDTH=5 > measured VARIANCE_HALFWIDTH). Resume: run the smoke batch, then `/gsd-execute-phase 3` picks up 03-01 (continuation) → 03-03. Phase NOT verified, NOT complete.
 - Phase 7 (Desktop): Konva-keep-vs-retire is open (vision §9), dense-linear successor undefined — plan with `/gsd-plan-phase --research-phase`.
 
 ## Deferred Items
