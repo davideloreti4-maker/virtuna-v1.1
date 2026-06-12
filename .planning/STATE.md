@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Numen Surface
-status: DATA-01/02/03/04 all satisfied. block-types + verdict-bands (02-02), fromPersistedRow + thin route (02-03), view-model + FIELD-MAP (02-04), fixtures + capture helper (02-01).
+status: executing
 stopped_at: Phase 3 context gathered
-last_updated: "2026-06-12T08:07:37.538Z"
-last_activity: "2026-06-12 -- Phase 02 closed: DATA-02 deep-equal GREEN against a REAL captured pair. Live half captured via authenticated browser fetch to /api/analyze (smoke --direct can't auth; UI mode writes wrong-shape live half) → scripts/capture-reading-fixture.ts pairs the live SSE payload with the settled persisted row."
+last_updated: "2026-06-12T08:43:18.537Z"
+last_activity: 2026-06-12 -- Phase 03 planning complete
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 9
+  total_plans: 12
   completed_plans: 9
   percent: 29
 ---
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md · Vision (authoritative): .planning/NUMEN-SURFACE-VIS
 
 Phase: 02 (view-model-data-contract-eng-06-d-12) — COMPLETE (4/4 plans)
 Plan: All 4 plans done. 02-01 Task 2 (real fixture capture) closed via authenticated browser fetch → genuine live `complete` payload + settled persisted row paired (analysis WEkihfOzJphv, score 71). identical-render deep-equal GREEN. Full src/lib/reading suite 31/31.
-Status: DATA-01/02/03/04 all satisfied. block-types + verdict-bands (02-02), fromPersistedRow + thin route (02-03), view-model + FIELD-MAP (02-04), fixtures + capture helper (02-01).
-Last activity: 2026-06-12 -- Phase 02 closed: DATA-02 deep-equal GREEN against a REAL captured pair. Live half captured via authenticated browser fetch to /api/analyze (smoke --direct can't auth; UI mode writes wrong-shape live half) → scripts/capture-reading-fixture.ts pairs the live SSE payload with the settled persisted row.
+Status: Ready to execute
+Last activity: 2026-06-12 -- Phase 03 planning complete
 
 Progress: [█████████░] 89%
 
