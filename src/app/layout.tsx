@@ -25,13 +25,13 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://virtuna.ai"),
-  title: "Numen | AI Content Intelligence for TikTok Creators",
+  title: "Numen — an honest verdict on your content, before you post",
   description:
-    "Know what will go viral before you post. AI-powered predictions, trend intelligence, and audience insights for TikTok creators.",
+    "Numen reads your video like your sharpest audience would and gives you an honest verdict you can act on. No hype score.",
   openGraph: {
-    title: "Numen | AI Content Intelligence for TikTok Creators",
+    title: "Numen — an honest verdict on your content, before you post",
     description:
-      "Know what will go viral before you post. AI-powered predictions and audience insights for TikTok creators.",
+      "Numen reads your video like your sharpest audience would and gives you an honest verdict you can act on. No hype score.",
     url: "https://virtuna.ai",
     siteName: "Numen",
     locale: "en_US",
@@ -39,9 +39,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Numen | AI Content Intelligence for TikTok Creators",
+    title: "Numen — an honest verdict on your content, before you post",
     description:
-      "Know what will go viral before you post. AI-powered predictions and audience insights for TikTok creators.",
+      "Numen reads your video like your sharpest audience would and gives you an honest verdict you can act on. No hype score.",
   },
 };
 
