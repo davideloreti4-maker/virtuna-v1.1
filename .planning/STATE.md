@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Numen Surface
 status: executing
-stopped_at: "Phase 02 Plan 02 complete (type contract: VERDICT_BANDS + ReadingBlock/CanonicalReading)"
-last_updated: "2026-06-12T07:00:18.232Z"
-last_activity: 2026-06-12 -- Plan 01 reached human-action checkpoint (real fixture pair capture needs live infra + UI upload)
+stopped_at: "Phase 02 Plan 03 complete (deterministic fromPersistedRow normalizer + thin [id] route — DATA-02 precondition)"
+last_updated: "2026-06-12T07:08:00.376Z"
+last_activity: 2026-06-12
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 9
-  completed_plans: 7
-  percent: 78
+  completed_plans: 8
+  percent: 89
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md · Vision (authoritative): .planning/NUMEN-SURFACE-VIS
 ## Current Position
 
 Phase: 02 (view-model-data-contract-eng-06-d-12) — EXECUTING
-Plan: 1 of 4 (PAUSED at Task 2 human-action checkpoint)
-Status: Executing Phase 02 — Plan 01 Tasks 1+3 committed; Task 2 (live fixture capture) awaiting human-run
-Last activity: 2026-06-12 -- Plan 01 reached human-action checkpoint (real fixture pair capture needs live infra + UI upload)
+Plan: 03 of 4 COMPLETE (Wave 2). 02-02 done; 02-01 still PAUSED at its Task 2 human-action (live fixture capture). Next: 02-04 (view-model + identical-render — needs 02-01's fixture pair).
+Status: 02-03 complete — fromPersistedRow normalizer (pure/deterministic) + thin route shipped
+Last activity: 2026-06-12 -- Plan 02-03 complete: dropped non-deterministic load-time reconstruction (synthHeatmap/optimal_post_window), absorbed deterministic shims into fromPersistedRow
 
-Progress: [████████░░] 78%
+Progress: [█████████░] 89%
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Progress: [████████░░] 78%
 | Phase 01 P03 | 11 | 1 tasks | 2 files |
 | Phase 01 P04 | 150 | 3 tasks | 4 files |
 | Phase 02 P02 | 3 | 2 tasks | 4 files |
+| Phase 02 P03 | 22 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,7 @@ Recent decisions affecting current work:
 - Plan 03 (DS-07): StageBlock = the ONE key motion moment. Opacity tween (ease [0.215,0.61,0.355,1]) + high-damping spring on translate (stiffness 220 / damping 30, ratio ≥ 1 → no overshoot); reduced-motion zeroes the translate → static opacity appear (D-14). New `--numen-ease-calm` token added to `.numen-surface`; forbidden `--ease-spring` (1.56 bounce) byte-unchanged + unreferenced by the kit. No presence theater on other primitives.
 - Plan 02-02 (D-04): VERDICT_BANDS in `src/lib/reading/verdict-bands.ts` is the single Phase-3 band calibration target (high/70, solid/40, needs-work/0) + total `bandFor(score)`; legacy board copies (BAND_THRESHOLDS, bandLabel) carry drift-redirect comments, numeric logic byte-unchanged (board still compiles).
 - Plan 02-02 (D-09/D-13): `ReadingBlock` discriminated union is pure data (no presentation hints) with NO `audio` member (audio_fingerprint live-only → would break the intersection). `CanonicalReading` is the narrow live∩persisted shape that physically excludes live-only fields (predicted-engagement range, optimal_post_window, audio_fingerprint) → compile-time intersection enforcement. Re-exports VerdictBand; field types imported from `@/lib/engine/types`.
+- [Phase ?]: Plan 02-03 (D-11/DATA-02): fromPersistedRow(row) → CanonicalReading is PURE + DETERMINISTIC (no Math.random/Date/DB). Absorbs the [id] route's deterministic shims (numeric coercion, degradation derive incl. new partialAnalysis, defensive variants.* reads); DROPS the non-deterministic ones (synthHeatmap Math.random persona ids → heatmap column read-only, null stays null; optimal_post_window recompute + creator_profiles lookup gone). Route now thin caller (256→110 lines); user_id ownership + 401 + ?summary preserved. apolloReasoning narrowed to {rewrites, ceiling_capper?} per D-09.
 
 ### Pending Todos
 
@@ -109,6 +111,6 @@ From Plan 01 execution:
 
 ## Session Continuity
 
-Last session: 2026-06-12T07:00:18.108Z
+Last session: 2026-06-12T07:07:41.829Z
 Stopped at: Phase 02 Plan 02 complete (type contract: VERDICT_BANDS + ReadingBlock/CanonicalReading)
 Resume file: None
