@@ -22,28 +22,28 @@ Requirements for the shippable MVP landing. Each maps to roadmap phases.
 
 ### Honesty moat / anti-snake-oil (TRUST)
 
-- [ ] **TRUST-01**: A trust section contrasting Numen's calibrated, honest verdict against the "virality score" snake-oil tier
-- [ ] **TRUST-02**: Comparison framing (kero comparison-table move) of Numen vs fake-precision rivals — zero "X% accuracy" claims anywhere on the page
+- [x] **TRUST-01**: A trust section contrasting Numen's calibrated, honest verdict against the "virality score" snake-oil tier
+- [x] **TRUST-02**: Comparison framing (kero comparison-table move) of Numen vs fake-precision rivals — zero "X% accuracy" claims anywhere on the page
 
 ### Real Readings gallery (GALLERY)
 
-- [ ] **GALLERY-01**: Gallery of real Readings across ≥3 distinct creator niches (specificity over abstract claims)
-- [ ] **GALLERY-02**: Gallery items render as gallery-quality content centerpieces (luma staging), not feature diagrams
+- [x] **GALLERY-01**: Gallery of real Readings across ≥3 distinct creator niches (specificity over abstract claims)
+- [x] **GALLERY-02**: Gallery items render as gallery-quality content centerpieces (luma staging), not feature diagrams
 
 ### Social proof / credibility (PROOF)
 
-- [ ] **PROOF-01**: Social-proof block (creator testimonials and/or live waitlist count)
-- [ ] **PROOF-02**: Credibility anchored early on the page where real assets exist
+- [x] **PROOF-01**: Social-proof block (creator testimonials and/or live waitlist count)
+- [x] **PROOF-02**: Credibility anchored early on the page where real assets exist
 
 ### Conversion (CTA)
 
 - [x] **CTA-01**: Primary conversion CTA (try / join waitlist) in hero and repeated near footer
-- [ ] **CTA-02**: CTA routes to the app entry or waitlist capture and records the signup
+- [x] **CTA-02**: CTA routes to the app entry or waitlist capture and records the signup
 
 ### Copy / voice (CONTENT)
 
 - [x] **CONTENT-01**: All copy uses the calm, confident-mentor voice, plain language, NO engine jargon (inherits in-app voice baseline)
-- [ ] **CONTENT-02**: Positioning reads "honest verdict creators can believe," explicitly not hype
+- [x] **CONTENT-02**: Positioning reads "honest verdict creators can believe," explicitly not hype
 
 ### Design-system consumption (DS)
 
@@ -121,14 +121,14 @@ Explicitly excluded. Documented to prevent scope creep.
 | READ-01 | Phase 2 | Complete |
 | READ-02 | Phase 2 | Complete |
 | CTA-01 | Phase 2 | Complete |
-| TRUST-01 | Phase 3 | Pending |
-| TRUST-02 | Phase 3 | Pending |
-| GALLERY-01 | Phase 3 | Pending |
-| GALLERY-02 | Phase 3 | Pending |
-| PROOF-01 | Phase 3 | Pending |
-| PROOF-02 | Phase 3 | Pending |
-| CONTENT-02 | Phase 3 | Pending |
-| CTA-02 | Phase 3 | Pending |
+| TRUST-01 | Phase 3 | Complete |
+| TRUST-02 | Phase 3 | Complete |
+| GALLERY-01 | Phase 3 | Complete |
+| GALLERY-02 | Phase 3 | Complete |
+| PROOF-01 | Phase 3 | Complete |
+| PROOF-02 | Phase 3 | Complete |
+| CONTENT-02 | Phase 3 | Complete |
+| CTA-02 | Phase 3 | Complete |
 | DS-03 | Phase 4 | Pending |
 | MOT-01 | Phase 4 | Pending |
 | PERF-01 | Phase 4 | Pending |
