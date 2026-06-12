@@ -49,7 +49,11 @@ Milestone-scoped numbering (fresh worktree): phases start at 1.
   2. The hero verdict reads as a calibrated band + one-line why — no naked number and no "X% accuracy" anywhere in the hero
   3. The hero animates with the calm stage-reveal language (StageBlock / `numen-ease-calm`) and degrades to a static appear under `prefers-reduced-motion`
   4. A visitor can read a three-step explainer (upload → engine reads → verdict + why) where each step is demonstrated with real content, not an abstract diagram
-**Plans**: TBD
+**Plans**: 4 plans
+  - [ ] 02-01-PLAN.md — Wave 0: Nyquist test scaffolds (5 RED component tests) + APCA label-on-band gate extension
+  - [ ] 02-02-PLAN.md — Verdict throne (HERO-03) on VerdictSwatch + real-keyframe human checkpoint (HERO-02 asset)
+  - [ ] 02-03-PLAN.md — Recorded stage-reveal ReadingLoop (HERO-02/04) + Hero column with locked CTA (HERO-01/CTA-01)
+  - [ ] 02-04-PLAN.md — 3-step real-content explainer (READ-01/02) + page slot wiring
 **UI hint**: yes
 
 ### Phase 3: Honesty Moat, Gallery, Proof & Conversion
@@ -84,7 +88,7 @@ Milestone-scoped numbering (fresh worktree): phases start at 1.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation, Shell & Voice Baseline | 3/3 | Complete   | 2026-06-12 |
-| 2. Hero Centerpiece & Reading Explainer | 0/0 | Not started | - |
+| 2. Hero Centerpiece & Reading Explainer | 0/4 | Planned | - |
 | 3. Honesty Moat, Gallery, Proof & Conversion | 0/0 | Not started | - |
 | 4. Token Lock, Motion & Launch Polish | 0/0 | Not started | - |
 
