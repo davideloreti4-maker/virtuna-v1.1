@@ -1,0 +1,50 @@
+[dotenv@17.3.1] injecting env (9) from .env.local -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+[ab] full core 15870~tok · stripped 7308~tok (Δ 8561~tok = §2.6) · 1 video(s)
+████████████████████████████████████████████████████████████
+█ VIDEO: TikTok Video Downloader.mp4
+████████████████████████████████████████████████████████████
+  [ab] Omni watching …
+[2026-06-12T14:09:39.633Z] INFO omni analysis start {"module":"engine.qwen.omni","model":"qwen3.5-omni-flash","attempt":0,"videoUrl":"https://qyxvxleheckijapurisj.supabase.co/storage/v1/object/sign/videos/apollo-ab"}
+[2026-06-12T14:09:53.286Z] INFO omni analysis complete {"module":"engine.qwen.omni","model":"qwen3.5-omni-flash","cost_cents":0.23817000000000005,"attempt":0,"emotion_arc_points":7,"verbatim_present":true}
+  [ab] Omni 13.7s
+  [ab] reasoner → CONTROL (no §2.6) …
+  [ab] reasoner → TREATMENT (with §2.6) …
+──────────── CONTROL (core MINUS §2.6) ────────────
+**1. PER-DIMENSION GRADING**
+- **Hook:** Strong. §2.1 Rapid context + Specificity. The on-screen text "Girls talking about their bestfriend vs guys" sets the premise instantly. The spoken line "My best friend is Emily Rose Johnson. Her birthday is May 2nd, 2003." delivers concrete details that lock the viewer into the contrast. Sensor reports cognitive load of 2 and audio hook quality of 9. The subject is clear in sentence one.
+- **Retention:** Strong. §2.2 Re-hook + Peak-end shape. The video uses character cuts as structural re-hooks. Pacing score is 8. The payoff lands cleanly at 21s with the male punchline: "In our 16 years of friendship, and thousands of hours we've spent together, we've never taken a picture once." The emotion arc peaks at 17s and resolves sharply. No dead air between loops.
+- **Clarity:** Strong. §2.1 Clarity/comprehension + §2.3 Light-bulb. Language is plain and conversational. Sensor reports voice clarity of 9 and cognitive load of 2. The contrast is processed at speaking speed with zero ambiguity.
+- **Share-pull:** Strong. §2.3 Identity/stance. The premise taps into a widely recognized gender dynamic. Viewers will tag friends or comment to signal identity. The relatable proxy drives shares without needing a direct call to action.
+- **Substance/Originality:** Mid. §2.5 Non-obvious take. The topic is specific, but the take is a recycled internet trope. It executes the familiar angle cleanly but offers no contrarian twist or fresh perspective.
+- **Credibility:** N/A (Bonus). §2.1 Credibility anchor. Not applicable to scripted comedy. No penalty applied per rubric.
+**2. ANTI-PATTERNS (§3)**
+- None detected. The video avoids delayed context, throat-clearing, and multi-point cramming. The hook aligns across text, audio, and visual. The pacing prevents dead air between loops.
+**3. COMPOSITE SCORE**
+- **81/100**
+- This is a platform-optimized comedy skit that wins on execution, not novelty. The hook lands the premise instantly, the cuts sustain the loop, and the payoff resolves cleanly. The single ceiling-capper is the recycled gender-trope premise, which caps algorithmic breakout to viewers already primed for the joke rather than pulling in cold audiences with a fresh angle.
+**4. CONFIDENCE**
+- High confidence on hook, retention, clarity, and share-pull. The sensor provided full transcript, pacing, emotion arc, and modality alignment. Confidence is scoped down on §2.1 Scroll-stop visual and §2.1 Mute-readability because the sensor only gave a text overlay score of 6 without confirming if the burned-in text alone carries the full hook meaning without audio. The TikTok watermark confirms platform format, aligning with the ~29s runtime.
+**5. HIGHEST-LEVERAGE FIX**
+- Inject a micro-head-fake into the opening line to break the predictable trope. §2.2 Head-fake + §2.5 Non-obvious take. The current hook "My best friend is Emily Rose Johnson" immediately confirms the expected detail-obsessed setup. Change the first spoken line to subvert the expectation before delivering the contrast. Example: "My best friend is Emily Rose Johnson. I know her blood type, her Wi-Fi password, and the exact day she stopped liking me." This keeps the specificity but adds a curiosity gap that forces the viewer to stay for the explanation. It lifts the hook from a standard setup to a prediction loop.
+──────────── TREATMENT (core WITH §2.6) ────────────
+1. PER-DIMENSION
+**Hook:** Strong. §2.1 rapid context + specificity. The subject and premise land in the first sentence. The spoken hook uses concrete details instead of vague framing. Sensor signal: "My best friend is Emily Rose Johnson. Her birthday is May 2nd, 2003. Her interests are walking the beach, shopping, and makeup!"
+**Retention:** Strong. §2.2 loop integrity + re-hook. The video opens a clear prediction loop (how will the male side compare) and closes it with a clean punchline. Cuts happen at attention-decay points with no dead air. Sensor signal: "Cut to man in tank top... Cut back to man in hoodie... Cut back to man in tank top" paired with pacing_score: 8.
+**Clarity:** Strong. §2.1 clarity + §2.3 light-bulb. The language is plain. The premise requires zero re-reading. The brain processes it at speaking speed. Sensor signal: cognitive_load: 2.
+**Share-pull:** Mid. §2.3 identity/stance. The bit taps into a widely recognized cultural trope. It will trigger tags and relatable comments. It lacks a sharp contrarian edge or deep identity installation that forces a wider audience to share. Sensor signal: emotion_arc peaks at 0.9 at 4s, but the premise stays observational rather than identity-defining.
+**Substance / originality:** Mid. §2.5 non-obvious take. The video executes a standard gender-comparison premise cleanly. It does not offer a fresh angle or a surprising insight. It relies on familiar territory. Sensor signal: on_screen_text: "Girls talking about their bestfriend vs guys" sets a well-worn frame.
+**Credibility:** N/A. Comedy format. Proof and credibility anchors do not apply to skit execution.
+2. ANTI-PATTERNS
+None detected. The script avoids throat-clearing, vague superlatives, delayed context, and dead air. The hook aligns across modalities.
+3. COMPOSITE
+78/100. The hook is strong and carries the weight per §2.0a. The pacing and clarity are tight. The ceiling is capped by the familiar gender-trope premise, which limits breakout share potential and originality.
+4. CONFIDENCE
+High on craft and structural mechanics. Medium on multimodal behavioral signals. The sensor provided aggregate pacing and transition scores but not frame-level visual data. I could not directly observe §2.6.1 composure (fear-speed tells), §2.6.4 pattern-interrupt placement at exact decay points, or §2.1 scroll-stop visual differentiation levers. The score reflects observable transcript and audio/visual aggregate data.
+5. HIGHEST-LEVERAGE FIX
+Target §2.1 specificity + §2.1 3-hook alignment. The on-screen text is the weakest modality. Sensor signal: text_overlay_score: 6 with the line "Girls talking about their bestfriend vs guys". Replace it with a tighter, more specific frame that matches the spoken hook. Use "How girls vs guys actually describe their best friend" or "The exact difference in how we talk about our best friends." This removes the generic phrasing, aligns the text with the high-specificity audio, and sharpens the first-second frame.
+════════════ A/B DIFF — TikTok Video Downloader.mp4 ════════════
+Composite:   control=81/100   treatment=78/100
+§2.6 cites:  control=0   treatment=2   (does the layer fire?)
+Behavioral terms (authority/composure/limbic/identity/compliance) — control=2 treatment=4
+Length:      control=3354ch   treatment=2995ch
+[ab] done.
