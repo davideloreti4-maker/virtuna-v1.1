@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.1
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-01-PLAN.md (Wave 0 scaffolds RED)
-last_updated: "2026-06-12T07:51:22.288Z"
+stopped_at: Completed 02-02-PLAN.md (keyframe + verdict throne)
+last_updated: "2026-06-12T07:59:40.493Z"
 last_activity: 2026-06-12
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 7
-  completed_plans: 4
-  percent: 57
+  completed_plans: 5
+  percent: 71
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md · Base spec (authoritative): .planning/LANDING-STRUCT
 ## Current Position
 
 Phase: 02 (hero-centerpiece-reading-explainer) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-06-12
 
@@ -49,6 +49,7 @@ Last activity: 2026-06-12
 | Phase 01 P02 | 6m | 3 tasks | 3 files |
 | Phase 01 P03 | 7m | 3 tasks | 5 files |
 | Phase 02 P01 | 3m | 3 tasks | 6 files |
+| Phase 02 P02 | 6m | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,7 @@ Recent decisions affecting current work:
 - Plan 01-02: nav/footer/section-shell built in src/components/numen-landing/ on bridged .numen-surface tokens (no stale-shell imports, no Phosphor, no forked tokens); CTA label "Try Numen" locked across nav+footer; footer anchor-repeat is a plain <div> to keep single <nav> landmark.
 - [Phase ?]: Plan 01-03: marketing layout = no-html .numen-surface passthrough (Option B); page = 7 kero-ordered SectionShell slots, single hero h1; OG copy de-hyped; SectionShell heading made optional.
 - [Phase ?]: Plan 02-01: 5 RED Phase-2 test scaffolds + APCA on-band gate; verdict-good label on #7faf7a = Lc 41.8 < 60 → Plan 02 VerdictThrone MUST use bg-panel plate (target 60 not relaxed).
+- Plan 02-02: keyframe.webp landed (real comedy-skit creator still, HERO-02 satisfied); VerdictThrone (HERO-03) built on VerdictSwatch good band + bg-panel plate (APCA gate FAIL Lc 41.8) + bold label + specific why, zero naked numbers (VOICE Rule 3); reusable by Wave 2 hero loop + Wave 3 explainer step 3.
 
 ### Pending Todos
 
@@ -86,7 +88,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-06-12T07:51:22.284Z
-Stopped at: Completed 02-01-PLAN.md (Wave 0 scaffolds RED)
+Last session: 2026-06-12T08:00:00.000Z
+Stopped at: Completed 02-02-PLAN.md (keyframe + verdict throne)
 Resume file: None
 Next command: /gsd-execute-phase 2

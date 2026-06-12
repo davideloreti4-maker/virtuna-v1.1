@@ -11,8 +11,8 @@ Requirements for the shippable MVP landing. Each maps to roadmap phases.
 ### Hero (HERO)
 
 - [ ] **HERO-01**: Above-fold hero with an intelligence/verdict headline + subhead + primary CTA, mobile-first
-- [ ] **HERO-02**: Hero centerpiece is a real Reading staged on a real creator video (krea/luma content-as-hero), full-bleed, chrome minimal — NOT a stock photo or fake browser window
-- [ ] **HERO-03**: Verdict shown as a calibrated band + one-line why (no naked number, no "X% accuracy")
+- [x] **HERO-02**: Hero centerpiece is a real Reading staged on a real creator video (krea/luma content-as-hero), full-bleed, chrome minimal — NOT a stock photo or fake browser window
+- [x] **HERO-03**: Verdict shown as a calibrated band + one-line why (no naked number, no "X% accuracy")
 - [ ] **HERO-04**: Hero uses the calm stage-reveal motion language (StageBlock / `numen-ease-calm`) with a reduced-motion fallback
 
 ### The Reading explained (READ)
@@ -115,8 +115,8 @@ Explicitly excluded. Documented to prevent scope creep.
 | MOT-02 | Phase 1 | Complete |
 | PERF-02 | Phase 1 | Complete |
 | HERO-01 | Phase 2 | Pending |
-| HERO-02 | Phase 2 | Pending |
-| HERO-03 | Phase 2 | Pending |
+| HERO-02 | Phase 2 | Complete |
+| HERO-03 | Phase 2 | Complete |
 | HERO-04 | Phase 2 | Pending |
 | READ-01 | Phase 2 | Pending |
 | READ-02 | Phase 2 | Pending |
