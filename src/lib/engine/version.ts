@@ -121,7 +121,15 @@
  * but the partial_analysis + prune shape change → isolate the cache so stale 3.18.0 rows (which
  * lack partial_analysis + carry the fake constants) don't deserialize as current.
  *
+ * Bumped 3.19.0 → 3.20.0 (2026-06-12, Chase Hughes §2.6 behavioral layer added to Apollo knowledge
+ * core): §2.6 filled with 33 detect-triples across 7 sub-groups (§2.6.1 authority/composure,
+ * §2.6.2 pre-perception/framing, §2.6.3 limbic bypass, §2.6.4 attention capture, §2.6.5 identity/
+ * shareability, §2.6.6 compliance/conversion, §2.6.7 cognitive-loop/open-tension). PRESENT_SECTIONS
+ * updated to include §2.6 + sub-tokens; Apollo's cached system prefix expands. Scores may shift on
+ * videos where behavioral signals (authority composure, identity install, limbic framing) are salient;
+ * isolate the cache.
+ *
  * D-23 cache invariant: prediction-cache.ts keys on ENGINE_VERSION; this bump auto-invalidates
- * all `3.18.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
+ * all `3.19.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
  */
-export const ENGINE_VERSION = "3.19.0";
+export const ENGINE_VERSION = "3.20.0";

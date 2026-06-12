@@ -633,7 +633,7 @@ describe("Phase 3 — provenance + stub invocations", () => {
     const { ENGINE_VERSION } = await import("../aggregator");
     const { ENGINE_VERSION: viaVersion } = await import("../version");
     expect(ENGINE_VERSION).toBe(viaVersion);
-    expect(ENGINE_VERSION).toBe("3.19.0"); // 01-05 robustness + honesty + prune
+    expect(ENGINE_VERSION).toBe("3.20.0"); // §2.6 Chase Hughes behavioral layer
   });
 
   it("PredictionResult.engine_version reads from ./version module", async () => {

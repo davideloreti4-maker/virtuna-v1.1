@@ -8,6 +8,8 @@
  *   'audience' | 'engine' | 'verdict' | 'actions' | 'content' | null (whole-analysis)
  */
 
+import { BEHAVIORAL_CORE } from './behavioral-core';
+
 /** Subset of an analysis_results row relevant to chat grounding. */
 export interface AnalysisRow {
   overall_score?: number | string | null;
@@ -104,6 +106,9 @@ export function buildChatSystemContext(row: AnalysisRow, scope: ChatScope = null
     `§8 = Viewer psychology & retention`,
     `§9 = Platform-specific optimization`,
     `§10 = Viral triggers & shareability`,
+    ``,
+    `=== BEHAVIORAL REASONING (how people perceive, decide, comply) ===`,
+    BEHAVIORAL_CORE,
     ``,
     `=== ANALYSIS DATA ===`,
   ];
