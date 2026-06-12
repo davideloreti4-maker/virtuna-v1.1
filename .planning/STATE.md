@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Numen Surface
 status: executing
-stopped_at: "Phase 02 Plan 04 built (view-model + verdict + FIELD-MAP): DATA-01/03/04 done + green; DATA-02 deep-equal RED pending the 02-01 human-action fixture capture"
-last_updated: "2026-06-12T07:15:00.000Z"
+stopped_at: "Phase 02 COMPLETE — all 4 plans done; DATA-01/02/03/04 satisfied; identical-render deep-equal GREEN vs real captured pair WEkihfOzJphv"
+last_updated: "2026-06-12T07:45:00.000Z"
 last_activity: 2026-06-12
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 9
-  completed_plans: 8
-  percent: 89
+  completed_plans: 9
+  percent: 100
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md · Vision (authoritative): .planning/NUMEN-SURFACE-VISION.md · Worktree identity: .planning/MILESTONE.md · Research: .planning/research/SUMMARY.md
 
 **Core value:** AI content intelligence that tells TikTok creators whether their content will resonate — re-presented as one thread per video where the AI's first turn is the Reading (verdict = band + why).
-**Current focus:** Phase 02 — view-model-data-contract-eng-06-d-12
+**Current focus:** Phase 02 COMPLETE — next: Phase 03 (SMOKE GATE + Verdict-Banding Calibration)
 
 ## Current Position
 
-Phase: 02 (view-model-data-contract-eng-06-d-12) — EXECUTING
-Plan: 02-04 BUILT (Wave 3, final) but NOT fully complete — DATA-01/03/04 done + green; DATA-02 deep-equal RED pending the 02-01 human-action fixture pair. Plan counter held at 3/4 (02-04 closes only when the deep-equal passes against the real fixture). 02-01 still PAUSED at its Task 2 human-action.
-Status: 02-04 view-model.ts (toReadingBlocks + canonicalFromLive + verdict) + FIELD-MAP.md shipped; view-model/verdict tests green; identical-render RED on absent real fixture.
-Last activity: 2026-06-12 -- Plan 02-04: pure toReadingBlocks (DATA-01), canonicalFromLive mirrors fromPersistedRow (both converge → CanonicalReading), grounded verdict (DATA-04, /100 demoted), consumed-vs-dead FIELD-MAP (DATA-03). DATA-02 awaits the 02-01 smoke-capture (re-run vitest → green, no code change).
+Phase: 02 (view-model-data-contract-eng-06-d-12) — COMPLETE (4/4 plans)
+Plan: All 4 plans done. 02-01 Task 2 (real fixture capture) closed via authenticated browser fetch → genuine live `complete` payload + settled persisted row paired (analysis WEkihfOzJphv, score 71). identical-render deep-equal GREEN. Full src/lib/reading suite 31/31.
+Status: DATA-01/02/03/04 all satisfied. block-types + verdict-bands (02-02), fromPersistedRow + thin route (02-03), view-model + FIELD-MAP (02-04), fixtures + capture helper (02-01).
+Last activity: 2026-06-12 -- Phase 02 closed: DATA-02 deep-equal GREEN against a REAL captured pair. Live half captured via authenticated browser fetch to /api/analyze (smoke --direct can't auth; UI mode writes wrong-shape live half) → scripts/capture-reading-fixture.ts pairs the live SSE payload with the settled persisted row.
 
 Progress: [█████████░] 89%
 
@@ -90,7 +90,7 @@ None.
 
 ### Blockers/Concerns
 
-- **Plan 02-01 BLOCKED at human-action checkpoint:** the REAL (live, persisted) fixture pair (`src/lib/reading/__tests__/fixtures/live-<id>.json` + `persisted-<id>.json`) is the single execution prerequisite for the whole phase and MUST come from a genuine smoke-pipeline run (hand-authoring forbidden, success criteria 1+2). Capture step is built + committed (`754f6ce4`); running it needs live engine API keys + Supabase + a UI video upload (interactive). RESUME: `pnpm dev`, then `pnpm tsx scripts/smoke-tiktok-pipeline.ts urls.txt` for one synthetic video; confirm both fixtures exist for the same id + `variants.apollo` present; PII-review then commit. DATA-02 stays unsatisfied (plan counter NOT advanced) until then.
+- **Plan 02-01 human-action checkpoint RESOLVED (2026-06-12):** the REAL (live, persisted) fixture pair was captured (analysis `WEkihfOzJphv`, score 71) and committed (`4350612f`). The smoke script's `--direct` mode can't authenticate (route requires a session; POST sends no cookie) and its UI mode writes the raw row as the live half (wrong shape for `canonicalFromLive`, which reads `result.hero`/`result.apollo_reasoning` TOP-LEVEL). Resolution: logged in as the e2e test user via Playwright, fired the analysis with an in-browser authenticated `fetch` to `/api/analyze` (tiktok_url mode, ~112s, 18 stages), captured the genuine live `complete` SSE payload, then `scripts/capture-reading-fixture.ts` paired it with the settled persisted row (variants.apollo present). PII-reviewed (no secrets/tokens/emails). DATA-02 deep-equal GREEN; full src/lib/reading suite 31/31.
 - Phase 3 GATE is pass/fail: a verdict-banding no-go blocks Phase 4. Band thresholds cannot be hardcoded before the same-video-N-times variance data exists.
 - Phase 7 (Desktop): Konva-keep-vs-retire is open (vision §9), dense-linear successor undefined — plan with `/gsd-plan-phase --research-phase`.
 
@@ -114,5 +114,5 @@ From Plan 01 execution:
 ## Session Continuity
 
 Last session: 2026-06-12T07:15:00.000Z
-Stopped at: Phase 02 Plan 04 built — DATA-01/03/04 done + green; DATA-02 deep-equal RED pending the 02-01 human-action fixture capture (run scripts/smoke-tiktok-pipeline.ts, then re-run `pnpm test src/lib/reading` → green, no code change)
+Stopped at: Phase 02 COMPLETE (4/4 plans) — DATA-01/02/03/04 satisfied; identical-render deep-equal GREEN vs real captured pair WEkihfOzJphv. Next: Phase 03 (SMOKE GATE + Verdict-Banding Calibration)
 Resume file: None

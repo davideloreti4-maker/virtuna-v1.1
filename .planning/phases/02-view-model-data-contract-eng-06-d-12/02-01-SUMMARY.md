@@ -162,7 +162,26 @@ exist in git history. Task 2 (live fixture capture) remains a human-action
 checkpoint — the `live-<id>.json` / `persisted-<id>.json` pair is intentionally
 absent until the human runs the smoke pipeline.
 
+## Task 2 — RESOLVED (2026-06-12)
+
+The real fixture pair was captured. The smoke script's `--direct` mode can't
+authenticate (`/api/analyze` requires a Supabase session; the direct POST sends
+no cookie) and its UI mode writes the RAW row as the live half — the wrong shape
+for `canonicalFromLive`, which reads `result.hero`/`result.apollo_reasoning`
+TOP-LEVEL. Resolution: logged in as the e2e test user via Playwright, fired the
+analysis through an in-browser authenticated `fetch` to `/api/analyze`
+(tiktok_url mode, ~112s / 18 stages) to capture the genuine live `complete` SSE
+payload, then `scripts/capture-reading-fixture.ts` paired it with the settled
+persisted row (variants.apollo present).
+
+- analysis `WEkihfOzJphv` (overall_score 71); `live-WEkihfOzJphv.json` +
+  `persisted-WEkihfOzJphv.json` committed (`4350612f`).
+- PII-reviewed: no secrets/tokens/emails; synthetic e2e test user; tiktok_url
+  mode (`video_storage_path` null).
+- `identical-render.test.ts` (DATA-02/D-12, the crux) GREEN; full
+  `src/lib/reading` suite 31/31.
+
 ---
 *Phase: 02-view-model-data-contract-eng-06-d-12*
-*Status: PARTIAL — paused at Task 2 human-action checkpoint*
-*Completed (Tasks 1+3): 2026-06-12*
+*Status: COMPLETE — all 3 tasks done (Task 2 resolved 2026-06-12)*
+*Completed: 2026-06-12*

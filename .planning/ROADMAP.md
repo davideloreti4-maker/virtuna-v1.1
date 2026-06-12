@@ -14,7 +14,7 @@ Numen Surface is a presentation-layer rebuild: it replaces the Konva canvas boar
 Milestone-scoped numbering (fresh worktree, `--reset-phase-numbers`): phases start at 1.
 
 - [x] **Phase 1: Design System Foundation + Brand Migration** - Warm-neutral dark kit, verdict scale, ground-up component vocabulary; retire Raycast/coral/glass-everywhere — COMPLETE 2026-06-11
-- [ ] **Phase 2: View-Model + Data Contract** - Pure `toReadingBlocks()` mapping ~40 engine fields → ~10 Reading blocks; live + replay funnel through one module
+- [x] **Phase 2: View-Model + Data Contract** - Pure `toReadingBlocks()` mapping ~40 engine fields → ~10 Reading blocks; live + replay funnel through one module
 - [ ] **Phase 3: SMOKE GATE + Verdict-Banding Calibration** - Hard precondition: real-video E2E proves honest live output; band buffers wider than score noise
 - [ ] **Phase 4: Mobile Reading Thread + PWA Shell** - The core paradigm: AI pronounces first, stage-reveal blocks, throne verdict, re-openable resting document, installable PWA
 - [ ] **Phase 5: App Shell + Ingestion** - Home = list of past Readings, per-video thread routing, upload + paste-URL + Android share_target entry
@@ -153,7 +153,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Design System Foundation + Brand Migration | 5/5 | Complete | 2026-06-11 |
-| 2. View-Model + Data Contract | 3/4 | In Progress (02-04 built: DATA-01/03/04 done + green; DATA-02 deep-equal pending the 02-01 human-action fixture capture) |  |
+| 2. View-Model + Data Contract | 4/4 | Complete (DATA-01/02/03/04 — deep-equal GREEN vs real pair WEkihfOzJphv) | 2026-06-12 |
 | 3. SMOKE GATE + Verdict-Banding Calibration | 0/TBD | Not started | - |
 | 4. Mobile Reading Thread + PWA Shell | 0/TBD | Not started | - |
 | 5. App Shell + Ingestion | 0/TBD | Not started | - |
