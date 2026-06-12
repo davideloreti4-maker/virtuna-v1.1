@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Numen Surface
 status: executing
-stopped_at: Phase 2 context gathered
-last_updated: "2026-06-12T06:40:34.814Z"
-last_activity: 2026-06-12 -- Phase 02 planning complete
+stopped_at: "Phase 2 Plan 01 — paused at Task 2 human-action checkpoint (live fixture capture)"
+last_updated: "2026-06-12T06:52:00.000Z"
+last_activity: 2026-06-12 -- Phase 02 Plan 01 Tasks 1+3 done; Task 2 (live capture) blocked on human-action
 progress:
   total_phases: 7
   completed_phases: 1
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md · Vision (authoritative): .planning/NUMEN-SURFACE-VISION.md · Worktree identity: .planning/MILESTONE.md · Research: .planning/research/SUMMARY.md
 
 **Core value:** AI content intelligence that tells TikTok creators whether their content will resonate — re-presented as one thread per video where the AI's first turn is the Reading (verdict = band + why).
-**Current focus:** Phase 2 — view model + data contract (eng 06 d 12)
+**Current focus:** Phase 02 — view-model-data-contract-eng-06-d-12
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-12 -- Phase 02 planning complete
+Phase: 02 (view-model-data-contract-eng-06-d-12) — EXECUTING
+Plan: 1 of 4 (PAUSED at Task 2 human-action checkpoint)
+Status: Executing Phase 02 — Plan 01 Tasks 1+3 committed; Task 2 (live fixture capture) awaiting human-run
+Last activity: 2026-06-12 -- Plan 01 reached human-action checkpoint (real fixture pair capture needs live infra + UI upload)
 
 Progress: [██████████] 100% (Phase 01)
 
@@ -74,6 +74,7 @@ Recent decisions affecting current work:
 - Plan 04 (testing): next/font/google mock must be an explicit named-export object, NOT a catch-all Proxy — Proxy returns a function for `then`, making the mock thenable and hanging `await import()` forever.
 - Plan 04 (config): vitest.config.ts `include` must cover `tests/**/*.test.tsx` (not just `.ts`) for a11y tests in the tests/ directory.
 - Plan 02 (D-05): Glass blur still needs DEPLOYED-build verification (Plan 04); happy-dom/dev don't exercise the Lightning CSS pass. Documented in glass.tsx header.
+- Plan 02-01 (DATA-02 fixtures): `persisted-<id>.json` = RAW `analysis_results` row, NOT the `/api/analysis/[id]` enriched output — `fromPersistedRow` (D-11) consolidates the route shims, so it consumes the raw row. Capture reuses the user_id-scoped service-client read (route ownership filter untouched); settle-the-race poll on `variants.apollo` aborts rather than writing a partial fixture. Three RED scaffolds (identical-render/view-model/verdict) collected by vitest, fail on the not-yet-built `../view-model`/`../from-persisted-row`/`../verdict-bands` imports (expected Wave-0).
 - Plan 03 (DS-07): StageBlock = the ONE key motion moment. Opacity tween (ease [0.215,0.61,0.355,1]) + high-damping spring on translate (stiffness 220 / damping 30, ratio ≥ 1 → no overshoot); reduced-motion zeroes the translate → static opacity appear (D-14). New `--numen-ease-calm` token added to `.numen-surface`; forbidden `--ease-spring` (1.56 bounce) byte-unchanged + unreferenced by the kit. No presence theater on other primitives.
 
 ### Pending Todos
@@ -82,6 +83,7 @@ None.
 
 ### Blockers/Concerns
 
+- **Plan 02-01 BLOCKED at human-action checkpoint:** the REAL (live, persisted) fixture pair (`src/lib/reading/__tests__/fixtures/live-<id>.json` + `persisted-<id>.json`) is the single execution prerequisite for the whole phase and MUST come from a genuine smoke-pipeline run (hand-authoring forbidden, success criteria 1+2). Capture step is built + committed (`754f6ce4`); running it needs live engine API keys + Supabase + a UI video upload (interactive). RESUME: `pnpm dev`, then `pnpm tsx scripts/smoke-tiktok-pipeline.ts urls.txt` for one synthetic video; confirm both fixtures exist for the same id + `variants.apollo` present; PII-review then commit. DATA-02 stays unsatisfied (plan counter NOT advanced) until then.
 - Phase 3 GATE is pass/fail: a verdict-banding no-go blocks Phase 4. Band thresholds cannot be hardcoded before the same-video-N-times variance data exists.
 - Phase 7 (Desktop): Konva-keep-vs-retire is open (vision §9), dense-linear successor undefined — plan with `/gsd-plan-phase --research-phase`.
 
