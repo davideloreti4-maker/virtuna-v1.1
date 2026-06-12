@@ -73,6 +73,39 @@ for (const p of PAIRINGS) {
   );
 }
 
+// ── On-band label pairing (HERO-03 / Plan 02 throne composition gate) ──────────
+// The PAIRINGS loop above measures each verdict band color vs the page BASE — it
+// proves the band hue is visible on the page, NOT that the band's LABEL is legible
+// sitting ON the band. The hero verdict throne paints its label directly on the
+// good band (`bg-verdict-good` = #7faf7a), so the on-swatch contrast must clear the
+// VerdictSwatch gate of Lc ≥ 60 (UI-SPEC §Color verdict throne contract).
+//
+// Candidate label color = the body/dark text token `#f0ebe3` (the throne label is
+// `text-text` per UI-SPEC §Typography). If `lc("#f0ebe3", "#7faf7a") < 60`, this
+// gate FAILS BY DESIGN — that sub-60 result is the SIGNAL that Plan 02's
+// VerdictThrone MUST back the label with a UI-SPEC-sanctioned `bg-panel` plate
+// rather than placing the label directly on the band. Do NOT relax the 60 target
+// to make this pass; its pass/fail outcome decides the plate-vs-on-band composition.
+const VERDICT_GOOD_BAND = "#7faf7a";
+const ON_BAND_LABEL = "#f0ebe3"; // --numen-text (body/dark text token)
+const ON_BAND_TARGET = 60; // VerdictSwatch on-swatch Lc floor (UI-SPEC §Color)
+
+const onBandLc = lc(ON_BAND_LABEL, VERDICT_GOOD_BAND);
+const onBandPass = onBandLc >= ON_BAND_TARGET;
+if (!onBandPass) failed = true;
+console.log(
+  `\nOn-band label pairing — measured ON the verdict-good band ${VERDICT_GOOD_BAND}:\n` +
+    `  [${onBandPass ? "PASS" : "FAIL"}] ${"verdict-good-label".padEnd(18)} ` +
+    `${ON_BAND_LABEL} → Lc ${onBandLc.toFixed(1).padStart(5)} ` +
+    `(target ≥ ${ON_BAND_TARGET}) — verdict throne label ON band (VerdictSwatch gate)`,
+);
+if (!onBandPass) {
+  console.log(
+    "  ↳ sub-60: Plan 02 VerdictThrone must place the label on a bg-panel plate, " +
+      "not directly on the band (UI-SPEC §Color).",
+  );
+}
+
 if (failed) {
   console.error(
     "\nAPCA gate FAILED — one or more pairings are below their Lc target. " +
