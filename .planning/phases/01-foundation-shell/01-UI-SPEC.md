@@ -1,7 +1,8 @@
 ---
 phase: 1
 slug: foundation-shell
-status: draft
+status: approved
+reviewed_at: 2026-06-13
 shadcn_initialized: false
 preset: none
 created: 2026-06-13
@@ -230,13 +231,13 @@ No third-party registry is declared in this contract. If the executor later pull
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved 2026-06-13
 
 > **Note for checker:** pixel-exact color/serif values carry `[UAT]` markers by design (D-08) — they lock at the THEME-06 human-UAT gate on the built shell, not in this draft. Evaluate the contract on *direction completeness + interaction prescriptiveness*, not on whether hex values are presented as final.
