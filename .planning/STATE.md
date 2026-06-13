@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Numen Rework
 status: executing
-stopped_at: Completed 01-01-PLAN.md (plan 1 of 5)
-last_updated: "2026-06-13T17:21:48.518Z"
+stopped_at: Completed 01-02-PLAN.md (plan 2 of 5)
+last_updated: "2026-06-13T17:36:35.538Z"
 last_activity: 2026-06-13
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 5
-  completed_plans: 1
-  percent: 20
+  completed_plans: 2
+  percent: 40
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md · Milestone brief (LOCKED): .planning/NUMEN-REWORK-BR
 ## Current Position
 
 Phase: 01 (foundation-shell) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-06-13
 
-Progress: [██░░░░░░░░] 20%
+Progress: [████░░░░░░] 40%
 
 ## Hard Constraints (this milestone)
 
@@ -63,6 +63,7 @@ Progress: [██░░░░░░░░] 20%
 
 *Updated after each plan completion*
 | Phase 01 P01 | 5 | 3 tasks | 2 files |
+| Phase 1 P2 | 10min | 3 tasks | 6 files |
 
 ## Phases
 
@@ -87,6 +88,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - v5.0: Engine frozen 3.19.0 — this is a presentation-layer milestone.
 - [Phase ?]: P1-01: Flat-warm @theme migration — charcoal surfaces as exact HEX (oklch L<0.15 miscompiles), Raycast glass/glow stripped (Layer A), --shadow-float the lone shadow; all values [UAT], lock at THEME-06.
 - [Phase ?]: P1-01: Newsreader wired as --font-newsreader -> @theme --font-serif (mirrors Inter pattern, no self-reference); serif available, not yet consumed (greeting = 01-03).
+- [Phase ?]: P1-02: Flat-warm sidebar — Layer-B inline glass stripped, dead affordances (Pinned/Projects/Boards/Running) cut, 'Recent' relabelled 'Simulations'; SidebarAccountSelector extracted to hold Sidebar.tsx under 500 lines.
+- [Phase ?]: P1-02: Revived desktop sidebar collapse (Cmd/Ctrl-\ icon rail, persisted sidebar-store) + mobile drawer; app-shell main marginLeft offset wired to real sidebar width (0 mobile / rail / 220 expanded). New Simulation CTA -> /home; history rows KEEP /analyze/[id] (no /s/[id] rename).
 
 ### Pending Todos
 
@@ -107,6 +110,6 @@ Deferred to later milestones per brief §3 (NOT v1): agentic tools (Apify compet
 
 ## Session Continuity
 
-Last session: 2026-06-13T17:21:48.509Z
-Stopped at: Completed 01-01-PLAN.md (plan 1 of 5)
+Last session: 2026-06-13T17:35:58.015Z
+Stopped at: Completed 01-02-PLAN.md (plan 2 of 5)
 Resume file: None

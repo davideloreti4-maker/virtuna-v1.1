@@ -14,9 +14,9 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 - [ ] **SHELL-02**: User can start a Reading by pasting a video URL into the composer (URL auto-detected).
 - [ ] **SHELL-03**: User can start a Reading by uploading a video file via the composer `+` control.
 - [ ] **SHELL-04**: Once a Reading exists, the composer drops to bottom-pinned and the thread fills the scroll area; the same composer serves follow-ups (no separate dock).
-- [ ] **SHELL-05**: User sees past Readings in a sidebar — collapsible on desktop, drawer on mobile — sourced from `useAnalysisHistory` / `/api/analysis/history`.
+- [x] **SHELL-05**: User sees past Readings in a sidebar — collapsible on desktop, drawer on mobile — sourced from `useAnalysisHistory` / `/api/analysis/history`.
 - [ ] **SHELL-06**: User can reopen a past Reading from the sidebar and the full thread is restored (permalink).
-- [ ] **SHELL-07**: The shell is mobile-first and renders correctly on phones; desktop is the same thread, widened.
+- [x] **SHELL-07**: The shell is mobile-first and renders correctly on phones; desktop is the same thread, widened.
 
 ### Reading — the consolidated result thread
 
@@ -98,9 +98,9 @@ Each v1 requirement maps to exactly one phase. 28/28 mapped — no orphans, no d
 | SHELL-02 | Phase 1 | Pending |
 | SHELL-03 | Phase 1 | Pending |
 | SHELL-04 | Phase 1 | Pending |
-| SHELL-05 | Phase 1 | Pending |
+| SHELL-05 | Phase 1 | Complete |
 | SHELL-06 | Phase 1 | Pending |
-| SHELL-07 | Phase 1 | Pending |
+| SHELL-07 | Phase 1 | Complete |
 | THEME-01 | Phase 1 | Complete |
 | THEME-02 | Phase 1 | Complete |
 | THEME-03 | Phase 1 | Complete |
