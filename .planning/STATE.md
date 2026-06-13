@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Numen Rework
 status: executing
-stopped_at: Completed 01-03-PLAN.md (plan 3 of 5)
-last_updated: "2026-06-13T17:51:26.701Z"
+stopped_at: Completed 01-04-PLAN.md (plan 4 of 5)
+last_updated: "2026-06-13T18:02:00.273Z"
 last_activity: 2026-06-13
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 5
-  completed_plans: 3
-  percent: 60
+  completed_plans: 4
+  percent: 80
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md · Milestone brief (LOCKED): .planning/NUMEN-REWORK-BR
 ## Current Position
 
 Phase: 01 (foundation-shell) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-06-13
 
-Progress: [██████░░░░] 60%
+Progress: [████████░░] 80%
 
 ## Hard Constraints (this milestone)
 
@@ -65,6 +65,7 @@ Progress: [██████░░░░] 60%
 | Phase 01 P01 | 5 | 3 tasks | 2 files |
 | Phase 1 P2 | 10min | 3 tasks | 6 files |
 | Phase 1 P3 | 5min | 3 tasks | 6 files |
+| Phase 1 P4 | 4min | 2 tasks | 3 files |
 
 ## Phases
 
@@ -94,6 +95,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase ?]: P1-03: Built /home (authed server page in (app), inherits getUser gate + AppShell) + serif greeting (font-serif, useProfile name italic, isLoading name-less so no [Name] flash, NumenMark stele coral) + centered composer; NO chips (D-18), NO demo (D-25), NO Simulation list under composer.
 - [Phase ?]: P1-03: Slim composer reuses validated sub-parts (VideoUpload bare + TikTok-only regex mirroring server /api/analyze L465 + lifted Board navigate-on-id loop) — NOT ContentForm (Pitfall 5: no intent/tier/3-tab/IG). Rejects non-TikTok incl. Instagram with exact D-21 copy + disabled submit.
 - [Phase ?]: P1-03: Two-layout = one component, data-layout centered (no route id) / pinned (id present) via useParams; permalink kept as /analyze/[id] (no /s/[id] rename, RESEARCH A2); composer navigates there on stream.analysisId. Authed-landing repoint to /home is plan 01-04.
+- [Phase ?]: P1-04: Default authed landing repointed to /home (D-23) at BOTH decision points — middleware authed-off-auth-page redirect (/analyze->/home) + auth/callback default (?? /dashboard -> ?? /home); /dashboard sunset 308 also retargeted /home. Same-origin (open-redirect guard V5).
+- [Phase ?]: P1-04: /home auth-gated twice — (app) layout getUser gate (01-03) + PROTECTED_PREFIXES entry (defense-in-depth, Spoofing); unauthenticated /home -> /login w/ deep link. /analyze + /analyze/[id] kept dormant-but-reachable (still protected, IDOR-defended permalink untouched).
+- [Phase ?]: P1-04: Fixed latent bug — the authed-auth-page redirect was DEAD CODE shadowed by the public-path early-returns (/login & /signup are public). Added AUTH_PAGES carve-out + moved the redirect before the public-skip so signed-in /login/signup visitors actually reach /home; anon visitors still see the page.
 
 ### Pending Todos
 
@@ -114,6 +118,6 @@ Deferred to later milestones per brief §3 (NOT v1): agentic tools (Apify compet
 
 ## Session Continuity
 
-Last session: 2026-06-13T17:49:02.466Z
-Stopped at: Completed 01-03-PLAN.md (plan 3 of 5)
+Last session: 2026-06-13T18:01:28.171Z
+Stopped at: Completed 01-04-PLAN.md (plan 4 of 5)
 Resume file: None
