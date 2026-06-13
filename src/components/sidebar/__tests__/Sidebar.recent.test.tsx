@@ -29,6 +29,15 @@ vi.mock('@/stores/sidebar-store', () => ({
   }),
 }));
 
+// Desktop + expanded so the full Simulations list renders (not the icon rail).
+vi.mock('@/hooks/useIsMobile', () => ({
+  useIsMobile: () => false,
+}));
+
+vi.mock('@/hooks/usePrefersReducedMotion', () => ({
+  usePrefersReducedMotion: () => true,
+}));
+
 // Sidebar imported dynamically per test to pick up vi.doMock overrides
 void 0; // placeholder — see dynamic imports below
 
@@ -92,5 +101,36 @@ describe('Sidebar recent boards label', () => {
     render(<Fresh />);
     const chips = screen.getAllByTestId('sidebar-score-chip');
     expect(chips[0]?.textContent?.trim()).toBe('—');
+  });
+});
+
+describe('Sidebar composition — Simulations label + no dead affordances (D-11/D-13)', () => {
+  it('labels the history section "Simulations" (not "Recent")', async () => {
+    vi.resetModules();
+    mockHistory([
+      { id: 'abc', content_text: 'A simulated video', overall_score: 80 },
+    ]);
+    const { Sidebar: Fresh } = await import('../Sidebar');
+    render(<Fresh />);
+    expect(screen.getByText('Simulations')).toBeInTheDocument();
+    expect(screen.queryByText('Recent')).toBeNull();
+  });
+
+  it('renders no Pinned / Projects / Boards dead affordances', async () => {
+    vi.resetModules();
+    mockHistory([]);
+    const { Sidebar: Fresh } = await import('../Sidebar');
+    render(<Fresh />);
+    expect(screen.queryByText('Pinned')).toBeNull();
+    expect(screen.queryByText('Projects')).toBeNull();
+    expect(screen.queryByText('Boards')).toBeNull();
+  });
+
+  it('empty state reads "No simulations yet."', async () => {
+    vi.resetModules();
+    mockHistory([]);
+    const { Sidebar: Fresh } = await import('../Sidebar');
+    render(<Fresh />);
+    expect(screen.getByText(/no simulations yet/i)).toBeInTheDocument();
   });
 });
