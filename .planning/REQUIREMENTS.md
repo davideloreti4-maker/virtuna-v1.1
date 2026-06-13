@@ -1,103 +1,106 @@
-# Requirements — v4.1 MVP Ready
+# Requirements: Numen Rework (v5.0)
 
-> **Brownfield refinement milestone.** These are not new-feature user stories.
-> Each pillar is a category; each category maps to exactly one loose phase run as
-> *audit → fix-list → verify*. The bullets below are the **starting audit
-> backlog** — known issues to confirm and fix. Real to-do discovery happens at
-> `/gsd-discuss-phase` time, and new items get added via `/gsd-phase` or
-> `/gsd-quick` without reopening this file.
->
-> "Done" for a pillar = audited end-to-end, known issues resolved or explicitly
-> deferred, surface holds together for a real user.
+**Defined:** 2026-06-13
+**Core Value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate — delivered as one clean thread per video (a "Reading").
+**Source:** `.planning/NUMEN-REWORK-BRIEF.md` (LOCKED). Presentation-layer only — engine frozen at 3.19.0.
 
----
+## v1 Requirements
 
-## Pillar 1 — Engine Pipeline (ENG)
+Requirements for this milestone. Each maps to exactly one roadmap phase.
 
-The Apollo 3-call flow: Omni verbatim sensor → fold ∥ Apollo reasoner. Qwen
-inputs/outputs, prompt quality, latency, correctness, honesty.
+### Shell — home, composer & ingestion
 
-- [ ] **ENG-01**: Full E2E analyze run is correct and stable on real videos — every Qwen call returns usable output, no silent fallbacks, no thrown frames
-- [ ] **ENG-02**: Apollo reasoner stays grounded in the knowledge core (§ citations resolve to real corpus, not flat fake legend labels)
-- [ ] **ENG-03**: Latency held under target (Vercel cap safe; pursue the <90s E2E goal where free-tier allows)
-- [ ] **ENG-04**: Score is deterministic (same video twice → identical score) and honestly banded; engagement range stays grounded (follower_count × quality read), no fabrication
-- [ ] **ENG-05**: omni-flash drift hardened (emotion_arc.label, weakest_modality, verbatim hook/segments hold across runs)
-- [ ] **ENG-06**: Qwen prompt inputs/outputs reviewed end-to-end for quality and token efficiency
+- [ ] **SHELL-01**: User lands on a clean home — serif greeting + the universal composer, centered, with starter chips (Paste link · Upload · Try a demo) and the Numen stele glyph. No Reading list under the composer.
+- [ ] **SHELL-02**: User can start a Reading by pasting a video URL into the composer (URL auto-detected).
+- [ ] **SHELL-03**: User can start a Reading by uploading a video file via the composer `+` control.
+- [ ] **SHELL-04**: Once a Reading exists, the composer drops to bottom-pinned and the thread fills the scroll area; the same composer serves follow-ups (no separate dock).
+- [ ] **SHELL-05**: User sees past Readings in a sidebar — collapsible on desktop, drawer on mobile — sourced from `useAnalysisHistory` / `/api/analysis/history`.
+- [ ] **SHELL-06**: User can reopen a past Reading from the sidebar and the full thread is restored (permalink).
+- [ ] **SHELL-07**: The shell is mobile-first and renders correctly on phones; desktop is the same thread, widened.
 
-## Pillar 2 — Board / Test Mode (BTEST)
+### Reading — the consolidated result thread
 
-The analyze board UI/UX: frames, rendering, wiring, mobile.
+- [ ] **READ-01**: The Reading lays out top-to-bottom: hero → 3 driver rows → Fix First → deeper read → composer.
+- [ ] **READ-02**: The hero shows `overall_score`, zone-colored (green/amber/red), with no prose narration.
+- [ ] **READ-03**: The hero surfaces the go/no-go gate (`anti_virality_gated` + reason) when the video is gated.
+- [ ] **READ-04**: The hero shows watch-through % (`weighted_completion_pct`/`completion_pct`) — shown exactly once, owned here — plus an audience persona cloud.
+- [ ] **READ-05**: The Reading shows 3 always-visible driver rows: Hook (stop-power), Retention (where they drop — `weighted_top_dropoff_t`), Shareability (`share_pull`).
+- [ ] **READ-06**: Tapping a driver row reveals its detail (e.g. Hook → modality breakdown + weakest modality).
+- [ ] **READ-07**: A "Fix First" block shows the top timestamped fix(es) + copyable hook rewrite(s); extra fixes collapse behind "N more fixes →".
+- [ ] **READ-08**: A "Deeper read" expand reveals the remaining 3 Apollo dims (clarity / substance / credibility) + supporting signals.
+- [ ] **READ-09**: All existing rich board visuals (RetentionChart, PersonaGraph, filmstrip, FactorBars, SegmentTable, emotion arc, niche/ghost curves…) are preserved as drill-downs — nothing visual is deleted.
+- [ ] **READ-10**: Cut data never appears in the Reading (`feature_vector`, `score_weights`, `signal_availability`, dead sub-scores, telemetry, model names, `critique`, `predicted_engagement`, dead modules).
 
-- [ ] **BTEST-01**: All board frames render end-to-end with real engine output — no throwing frames, no grey-cell / warm-gradient fallbacks masking missing data
-- [ ] **BTEST-02**: Insight-hero frame leads the board (dual-read, copyable rewrites, demoted band) and reads correctly
-- [ ] **BTEST-03**: Filmstrip / keyframes persist across reload; content-craft frame stable
-- [ ] **BTEST-04**: Mobile card-stack view coherent (auto <768px + manual toggle)
-- [ ] **BTEST-05**: Dead UI removed (dead percentile rank, fake-engagement remnants, number overload, aria-live storm)
+### Reveal — stage-by-stage materialization
 
-## Pillar 3 — Board / Remix Mode (BRMX)
+- [ ] **REVEAL-01**: While analysis runs, each Reading block/headline materializes as its engine stage completes (driven by `useAnalysisStream`), so the ~45–60s wait reads as progress, not a spinner.
+- [ ] **REVEAL-02**: When all stages complete, the thread settles into a stable resting Reading (no layout thrash on completion).
 
-The remix board UI/UX.
+### Theme — flat-warm visual system (HUMAN-UAT-GATED)
 
-- [ ] **BRMX-01**: Remix mode runs end-to-end and renders correctly against the shared Apollo reasoner (R12 one-brain path)
-- [ ] **BRMX-02**: Remix board UI/UX audited and refined to match Test-mode quality bar (frames, wiring, mobile)
-- [ ] **BRMX-03**: Remix ↔ Test mode transitions and shared components behave consistently
+- [ ] **THEME-01**: A flat-warm token system replaces the cold base — warm-neutral hue, matte (no glow / shine / halo / ambient lighting); contrast comes from elevation, not effects.
+- [ ] **THEME-02**: The Raycast glass (137deg gradient + blur + inset white shine) is removed everywhere it appears, including the sidebar.
+- [ ] **THEME-03**: Score zones (green / amber / red) + an evolved (warmer) coral are the only colors; everything else is neutral.
+- [ ] **THEME-04**: Serif is used for voice moments (greeting, hero line); sans for all data.
+- [ ] **THEME-05**: Hairline borders, generous spacing, and calm/soft motion throughout (Linear / Things restraint).
+- [ ] **THEME-06**: The flat-warm visual system passes an explicit human-UAT review gate before it is locked for rollout.
 
-## Pillar 4 — Chat Feature (CHAT)
+### Chat — basic text follow-up
 
-The "ask the expert" chat dock: UI/UX + grounding.
+- [ ] **CHAT-01**: After the Reading, the user can ask a free-text follow-up in the same composer and receive a response inline in the thread (reuse "Ask the expert" `/api/analyze/[id]/chat`).
+- [ ] **CHAT-02**: Quick-action chips (e.g. "why this?", "rewrite hook") seed follow-up prompts in the composer.
 
-- [ ] **CHAT-01**: Chat citations are real and grounded (resolve the §-scheme mismatch — inject KNOWLEDGE-CORE / fix taxonomy, or drop fake citations) so the chat is trustworthy
-- [ ] **CHAT-02**: Chat dock UI/UX refined (markdown, frame-tags, streaming/stop, composer, mobile full-height sheet) — verified desktop + mobile
-- [ ] **CHAT-03**: Chat answers stay tied to the analyzed video's engine output (context grounding), not generic
+### Demo — first-run magic
 
-## Pillar 5 — General UI/UX (UIUX)
+- [ ] **DEMO-01**: A first-time user sees a live demo Reading on a known viral video before uploading anything (rendered with the real Reading components).
 
-Cross-cutting polish toward a coherent MVP surface.
+## v2 Requirements
 
-- [ ] **UIUX-01**: Numen rebrand fully consistent (logo, wordmark, titles, meta, OG, copy) — no stray "Virtuna" anywhere user-facing
-- [ ] **UIUX-02**: Raycast design language adherence audited (6% borders, 10% hover, 12px card radius, Inter, glass pattern) across all surfaces
-- [ ] **UIUX-03**: Mobile responsiveness + accessibility (WCAG AA) pass on the core flow (analyze → board → chat)
-- [ ] **UIUX-04**: End-to-end first-run flow holds together for a real user (auth → analyze → result → chat), no dead routes or broken handoffs
+Acknowledged but deferred — not in this roadmap. ("The moat gets built on top of a shipped surface, not before it.")
 
----
+### Agentic tools
 
-## Out of Scope (this milestone)
+- **TOOLS-01**: In-thread agentic tools (e.g. Apify competitor analysis) as follow-up turns.
 
-- **Net-new features** — idea generator, A/B variants, cross-platform repurposing, watermark detection, hook archetype library, outcome feedback loop, trend velocity → backlog (refinement milestone, not feature build)
-- **Landing rebuild** — deferred (separate `milestone/landing` worktree)
-- **iOS Capacitor wrapper** — future milestone
-- **Domain research** — refining shipped surfaces, no upfront research
-- **Brand-deals / competitors / trending pillars** — not part of the core MVP-ready loop unless surfaced as blockers
+### Monetization
 
-## Future Requirements (deferred)
+- **MON-01**: In-thread monetization turns.
 
-Carried from PROJECT.md backlog; reactivate selectively post-MVP-ready:
-- History view connected to real prediction results
-- Analytics dashboard (confidence distributions, cost trends, model drift)
-- Outcomes feedback loop (auto-scrape posted content after 48h)
+### Desktop instrument
+
+- **DESK-01**: Desktop dense-instrument (Konva successor) — revisit only if power users demand it.
+
+### Growth
+
+- **SHARE-01**: Share a Reading as an exported image or public link (growth loop).
+
+## Out of Scope
+
+Explicitly excluded for this milestone.
+
+| Feature | Reason |
+|---------|--------|
+| Engine / `lib/engine/` changes | Frozen at 3.19.0 — this milestone is presentation-only |
+| Konva canvas board | Retired; DOM/React/SVG frames transplant, the canvas shell (pan/zoom/camera) dies |
+| Reusing `milestone/numen-surface` `numen/` + `reading/` kit | Reference only — fresh build on the existing board components instead |
+| Deleting `/analyze` | Left dormant (not deleted) until we're sure the thread fully replaces it |
+| Prose narration / horoscope verdict copy | Vetoed — score-forward instrument, confidence shows through restraint |
+| Glow / shine / halo / ambient "presence" lighting | Vetoed — flat-warm matte; contrast from elevation |
+| `predicted_engagement` "projected views" | Code flags it false precision (`followers×(score/100)²`) — cut |
 
 ## Traceability
 
-| REQ-ID | Phase | Status |
-|--------|-------|--------|
-| ENG-01 | Phase 1 — Engine Pipeline | Pending |
-| ENG-02 | Phase 1 — Engine Pipeline | Pending |
-| ENG-03 | Phase 1 — Engine Pipeline | Pending |
-| ENG-04 | Phase 1 — Engine Pipeline | Pending |
-| ENG-05 | Phase 1 — Engine Pipeline | Pending |
-| ENG-06 | Phase 1 — Engine Pipeline | Pending |
-| BTEST-01 | Phase 2 — Board / Test Mode | Pending |
-| BTEST-02 | Phase 2 — Board / Test Mode | Pending |
-| BTEST-03 | Phase 2 — Board / Test Mode | Pending |
-| BTEST-04 | Phase 2 — Board / Test Mode | Pending |
-| BTEST-05 | Phase 2 — Board / Test Mode | Pending |
-| BRMX-01 | Phase 3 — Board / Remix Mode | Pending |
-| BRMX-02 | Phase 3 — Board / Remix Mode | Pending |
-| BRMX-03 | Phase 3 — Board / Remix Mode | Pending |
-| CHAT-01 | Phase 4 — Chat Feature | Pending |
-| CHAT-02 | Phase 4 — Chat Feature | Pending |
-| CHAT-03 | Phase 4 — Chat Feature | Pending |
-| UIUX-01 | Phase 5 — General UI/UX | Pending |
-| UIUX-02 | Phase 5 — General UI/UX | Pending |
-| UIUX-03 | Phase 5 — General UI/UX | Pending |
-| UIUX-04 | Phase 5 — General UI/UX | Pending |
+Populated during roadmap creation (each requirement maps to exactly one phase).
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| *(all v1 REQ-IDs — filled by roadmapper)* | TBD | Pending |
+
+**Coverage:**
+- v1 requirements: 28 total (SHELL ×7, READ ×10, REVEAL ×2, THEME ×6, CHAT ×2, DEMO ×1)
+- Mapped to phases: 0 (pending roadmap)
+- Unmapped: 28 ⚠️ (resolved at roadmap creation)
+
+---
+*Requirements defined: 2026-06-13*
+*Last updated: 2026-06-13 after initial definition (derived from locked NUMEN-REWORK-BRIEF.md)*
