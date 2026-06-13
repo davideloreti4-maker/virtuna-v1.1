@@ -90,17 +90,44 @@ Explicitly excluded for this milestone.
 
 ## Traceability
 
-Populated during roadmap creation (each requirement maps to exactly one phase).
+Each v1 requirement maps to exactly one phase. 28/28 mapped — no orphans, no duplicates.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| *(all v1 REQ-IDs — filled by roadmapper)* | TBD | Pending |
+| SHELL-01 | Phase 1 | Pending |
+| SHELL-02 | Phase 1 | Pending |
+| SHELL-03 | Phase 1 | Pending |
+| SHELL-04 | Phase 1 | Pending |
+| SHELL-05 | Phase 1 | Pending |
+| SHELL-06 | Phase 1 | Pending |
+| SHELL-07 | Phase 1 | Pending |
+| THEME-01 | Phase 1 | Pending |
+| THEME-02 | Phase 1 | Pending |
+| THEME-03 | Phase 1 | Pending |
+| THEME-04 | Phase 1 | Pending |
+| THEME-05 | Phase 1 | Pending |
+| THEME-06 | Phase 1 | Pending |
+| READ-01 | Phase 2 | Pending |
+| READ-02 | Phase 2 | Pending |
+| READ-03 | Phase 2 | Pending |
+| READ-04 | Phase 2 | Pending |
+| READ-05 | Phase 2 | Pending |
+| READ-06 | Phase 2 | Pending |
+| READ-07 | Phase 2 | Pending |
+| READ-08 | Phase 2 | Pending |
+| READ-10 | Phase 2 | Pending |
+| READ-09 | Phase 3 | Pending |
+| REVEAL-01 | Phase 4 | Pending |
+| REVEAL-02 | Phase 4 | Pending |
+| CHAT-01 | Phase 5 | Pending |
+| CHAT-02 | Phase 5 | Pending |
+| DEMO-01 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 28 total (SHELL ×7, READ ×10, REVEAL ×2, THEME ×6, CHAT ×2, DEMO ×1)
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 28 ⚠️ (resolved at roadmap creation)
+- Mapped to phases: 28 ✓ (Phase 1: 13 · Phase 2: 9 · Phase 3: 1 · Phase 4: 2 · Phase 5: 3)
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-13*
-*Last updated: 2026-06-13 after initial definition (derived from locked NUMEN-REWORK-BRIEF.md)*
+*Last updated: 2026-06-13 — traceability populated by roadmapper (28/28 v1 requirements mapped across 5 phases).*
