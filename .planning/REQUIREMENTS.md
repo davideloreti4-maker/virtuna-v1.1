@@ -10,12 +10,12 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 ### Shell — home, composer & ingestion
 
-- [ ] **SHELL-01**: User lands on a clean home — serif greeting + the universal composer, centered, with starter chips (Paste link · Upload · Try a demo) and the Numen stele glyph. No Reading list under the composer.
-- [ ] **SHELL-02**: User can start a Reading by pasting a video URL into the composer (URL auto-detected).
-- [ ] **SHELL-03**: User can start a Reading by uploading a video file via the composer `+` control.
-- [ ] **SHELL-04**: Once a Reading exists, the composer drops to bottom-pinned and the thread fills the scroll area; the same composer serves follow-ups (no separate dock).
+- [x] **SHELL-01**: User lands on a clean home — serif greeting + the universal composer, centered, with starter chips (Paste link · Upload · Try a demo) and the Numen stele glyph. No Reading list under the composer.
+- [x] **SHELL-02**: User can start a Reading by pasting a video URL into the composer (URL auto-detected).
+- [x] **SHELL-03**: User can start a Reading by uploading a video file via the composer `+` control.
+- [x] **SHELL-04**: Once a Reading exists, the composer drops to bottom-pinned and the thread fills the scroll area; the same composer serves follow-ups (no separate dock).
 - [x] **SHELL-05**: User sees past Readings in a sidebar — collapsible on desktop, drawer on mobile — sourced from `useAnalysisHistory` / `/api/analysis/history`.
-- [ ] **SHELL-06**: User can reopen a past Reading from the sidebar and the full thread is restored (permalink).
+- [x] **SHELL-06**: User can reopen a past Reading from the sidebar and the full thread is restored (permalink).
 - [x] **SHELL-07**: The shell is mobile-first and renders correctly on phones; desktop is the same thread, widened.
 
 ### Reading — the consolidated result thread
@@ -94,12 +94,12 @@ Each v1 requirement maps to exactly one phase. 28/28 mapped — no orphans, no d
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SHELL-01 | Phase 1 | Pending |
-| SHELL-02 | Phase 1 | Pending |
-| SHELL-03 | Phase 1 | Pending |
-| SHELL-04 | Phase 1 | Pending |
+| SHELL-01 | Phase 1 | Complete |
+| SHELL-02 | Phase 1 | Complete |
+| SHELL-03 | Phase 1 | Complete |
+| SHELL-04 | Phase 1 | Complete |
 | SHELL-05 | Phase 1 | Complete |
-| SHELL-06 | Phase 1 | Pending |
+| SHELL-06 | Phase 1 | Complete |
 | SHELL-07 | Phase 1 | Complete |
 | THEME-01 | Phase 1 | Complete |
 | THEME-02 | Phase 1 | Complete |

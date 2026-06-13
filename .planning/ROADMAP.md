@@ -36,7 +36,7 @@ The journey: lay the flat-warm visual foundation and the shell the Reading lives
 **Plans**: 5 plans
 - [x] 01-01-PLAN.md — Flat-warm @theme token migration (charcoal hex, terracotta coral, glass strip Layer A) + serif wiring (THEME-01..05)
 - [x] 01-02-PLAN.md — Sidebar reskin: strip inline glass (Layer B), revive collapse (⌘\), cut dead affordances, "Simulations" list + app-shell offset (SHELL-05/07, THEME-02/05)
-- [ ] 01-03-PLAN.md — Clean home + slim TikTok/upload composer (two-layout) + serif greeting + NumenMark (SHELL-01..04/06, THEME-04/05)
+- [x] 01-03-PLAN.md — Clean home + slim TikTok/upload composer (two-layout) + serif greeting + NumenMark (SHELL-01..04/06, THEME-04/05)
 - [ ] 01-04-PLAN.md — Repoint authed landing → /home (middleware + auth callback), keep /analyze dormant (SHELL-06, D-23)
 - [ ] 01-05-PLAN.md — THEME-06 human-UAT gate: full-suite + clean-build precondition, 4 UAT screenshots, blocking sign-off (THEME-01/03/06, SHELL-07)
 **UI hint**: yes
@@ -94,7 +94,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Shell | 2/5 | In Progress|  |
+| 1. Foundation & Shell | 3/5 | In Progress|  |
 | 2. The Reading | 0/TBD | Not started | - |
 | 3. Rich Visuals as Drill-Downs | 0/TBD | Not started | - |
 | 4. Stage-Reveal | 0/TBD | Not started | - |
