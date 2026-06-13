@@ -12,8 +12,15 @@
  * Written first (Task 1) — RED against the current sidebar (hardcoded
  * effectiveCollapsed = false + no keybind); Task 3 makes it green.
  */
+import type { ReactElement } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent, cleanup } from '@testing-library/react';
+import { TooltipProvider } from '@/components/ui/tooltip';
+
+// The collapsed icon-rail renders Radix Tooltips (icon-only nav). The real app
+// mounts <TooltipProvider> in (app)/layout.tsx around <AppShell>; mirror that
+// so the collapsed branch can mount under happy-dom.
+const render = (ui: ReactElement) => rtlRender(<TooltipProvider>{ui}</TooltipProvider>);
 
 // ── shared mocks (hoisted) ───────────────────────────────────────────
 const toggleCollapsed = vi.fn();

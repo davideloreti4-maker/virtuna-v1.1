@@ -173,7 +173,7 @@ export function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
-  const { isOpen, close, isCollapsed } = useSidebarStore();
+  const { isOpen, close, isCollapsed, toggleCollapsed } = useSidebarStore();
   const isMobile = useIsMobile();
   const reducedMotion = usePrefersReducedMotion();
   const triggerNewAnalysis = useBoardStore((s) => s.triggerNewAnalysis);
@@ -181,6 +181,19 @@ export function Sidebar() {
   // Desktop persistent+collapsible (D-14): collapse to an icon rail.
   // Mobile (D-15): a slide-in drawer driven by isOpen — never the collapsed rail.
   const effectiveCollapsed = !isMobile && isCollapsed;
+
+  // ⌘\ / Ctrl-\ toggles the persisted collapse (D-14). Choice survives reload
+  // via the sidebar-store 'virtuna-sidebar' persist key.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "\\") {
+        e.preventDefault();
+        toggleCollapsed();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [toggleCollapsed]);
 
   // Past Simulations (D-13) — reuse useAnalysisHistory; rows route to /analyze/[id]
   const { data: historyData, isLoading: historyLoading } = useAnalysisHistory();
