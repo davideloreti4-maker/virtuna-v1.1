@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Numen — neutral charcoal (Claude-match) · P1 THEME</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,16..72,400;0,16..72,500;1,16..72,400&display=swap" rel="stylesheet" />
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    background: #0e0e0d; color: #ddd; padding: 26px 22px 70px; letter-spacing: 0.2px;
+  }
+  .lede { max-width: 1100px; margin: 0 auto 22px; }
+  .lede h1 { font-size: 15px; font-weight: 600; color:#fff; }
+  .lede p { font-size: 13px; color:#8a8a88; margin-top: 6px; line-height: 1.55; max-width: 860px; }
+  .lede b { color:#e6e1d8; font-weight:600; }
+  .lede .coral { color:#d97757; }
+
+  .frame-label { max-width:1100px; margin:30px auto 8px; font-size:12px; text-transform:uppercase; letter-spacing:0.1em; color:#807c74; }
+  .frame-label b { color:#d9d4cb; }
+  .frame-label .rec { color:#d97757; }
+  .frame-label .hex { font-family: ui-monospace, monospace; text-transform:none; letter-spacing:0; color:#6a6a66; font-size:11px; margin-left:8px;}
+
+  /* ── app frame ── */
+  .app {
+    max-width:1100px; margin:0 auto; height:440px;
+    display:flex; border-radius:14px; overflow:hidden;
+    border:1px solid rgba(255,255,255,0.07);
+    background: var(--app-bg);
+  }
+  /* sidebar */
+  .sb { width:206px; flex-shrink:0; background: var(--sb-bg); border-right:1px solid var(--border);
+        display:flex; flex-direction:column; padding:14px 10px; gap:2px; }
+  .sb .brand { font-family:'Newsreader',serif; font-size:19px; color:var(--fg); padding:2px 8px 12px; font-weight:500; }
+  .sb .nav { display:flex; align-items:center; gap:10px; padding:8px 9px; border-radius:8px; font-size:13px; color:var(--fg-soft); }
+  .sb .nav.coral { color:var(--coral); }
+  .sb .nav .ic { width:15px; height:15px; border-radius:4px; border:1.5px solid currentColor; opacity:0.75; }
+  .sb .seclabel { font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); padding:14px 9px 5px; }
+  .sb .item { display:flex; align-items:center; gap:8px; padding:6px 9px; border-radius:7px; font-size:12.5px; color:var(--fg-soft); }
+  .sb .item .t { flex:1; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .sb .item .chip { font-size:11px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .sb .item.active { background: rgba(255,255,255,0.05); color:var(--fg); }
+  .acct { margin-top:auto; display:flex; align-items:center; gap:9px; padding:8px 9px; border-top:1px solid var(--border); font-size:12.5px; color:var(--fg-soft); }
+  .acct .av { width:22px;height:22px;border-radius:50%; background:var(--coral); color:#241008; display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600; }
+
+  /* main */
+  .main { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; gap:18px; }
+  .glyph-row { display:flex; align-items:center; gap:16px; }
+  .stele { font-size:42px; color:var(--coral); line-height:1; }
+  .greeting { font-family:'Newsreader',serif; font-weight:400; font-size:38px; color:var(--fg); letter-spacing:0; }
+  .greeting em { font-style:italic; }
+  .composer {
+    width:min(560px,90%); display:flex; align-items:center; gap:12px;
+    background: var(--composer-bg); border:1px solid var(--border); border-radius:14px;
+    padding:15px 16px; box-shadow:0 10px 30px rgba(0,0,0,0.35);
+  }
+  .composer .ph { flex:1; font-size:14px; color:var(--muted); }
+  .composer .plus { width:28px;height:28px;border-radius:8px;border:1px solid var(--border); color:var(--fg-soft);
+                    display:flex;align-items:center;justify-content:center;font-size:17px; }
+  .chips { display:flex; gap:9px; }
+  .chip { font-size:12.5px; color:var(--fg-soft); background:var(--chip-bg); border:1px solid var(--border); border-radius:999px; padding:7px 14px; }
+
+  /* zone tones for the score chips in sidebar (color lives in data) */
+  .z-green { color: oklch(0.74 0.15 145); }
+  .z-amber { color: oklch(0.80 0.14 85); }
+  .z-mute  { color: var(--muted); }
+</style>
+</head>
+<body>
+  <div class="lede">
+    <h1>Numen home — neutral charcoal (your Claude reference), two depths</h1>
+    <p>Surfaces are <b>neutral dark gray, not brown</b>. Warmth comes from the <b>cream text</b> (never pure white) + the <span class="coral">terracotta coral</span> accent — exactly your reference. Flat, matte, hairline borders, no glass. <b>Only difference between the two frames: how dark the surfaces sit.</b> Score color shows only in the data (the sidebar score chips).</p>
+    <p style="margin-top:8px"><b>Pick:</b> Frame A (Claude-match, softer mid-charcoal) or Frame B (deeper, more "instrument"). My rec = <span class="coral">Frame A</span> — it's the exact softness you pointed to.</p>
+  </div>
+
+  <!-- FRAME A — Claude-match -->
+  <div class="frame-label"><b>Frame A</b> — Claude-match, softer charcoal <span class="rec">◄ rec</span><span class="hex">app #262624 · sidebar #1a1a18 · composer #1e1d1b · text #ece7de · coral #d97757</span></div>
+  <div class="app" style="
+      --app-bg:#262624; --sb-bg:#1a1a18; --composer-bg:#1e1d1b; --chip-bg:#2f2e2b;
+      --border:rgba(255,255,255,0.07); --fg:#ece7de; --fg-soft:#c2bdb4; --muted:#8a857c; --coral:#d97757;">
+    <div class="sb">
+      <div class="brand">Numen</div>
+      <div class="nav coral"><span class="ic"></span> New Reading</div>
+      <div class="nav"><span class="ic"></span> Readings</div>
+      <div class="seclabel">Recent</div>
+      <div class="item active"><span class="t">Gym fail skit — open hook</span><span class="chip z-green">82</span></div>
+      <div class="item"><span class="t">POV: monday standup</span><span class="chip z-mute">—</span></div>
+      <div class="item"><span class="t">Cold plunge challenge</span><span class="chip z-amber">48</span></div>
+      <div class="item"><span class="t">3 ways to edit faster</span><span class="chip z-green">71</span></div>
+      <div class="acct"><span class="av">D</span><span>Davide</span></div>
+    </div>
+    <div class="main">
+      <div class="glyph-row"><span class="stele">✳</span><span class="greeting">What should I read, <em>Davide?</em></span></div>
+      <div class="composer"><span class="plus">+</span><span class="ph">Paste a link or drop a video…</span></div>
+      <div class="chips"><span class="chip">Paste link</span><span class="chip">Upload</span><span class="chip">Try a demo</span></div>
+    </div>
+  </div>
+
+  <!-- FRAME B — deeper -->
+  <div class="frame-label"><b>Frame B</b> — deeper, instrument-dark<span class="hex">app #1b1b1a · sidebar #121211 · composer #161615 · text #ece7de · coral #d97757</span></div>
+  <div class="app" style="
+      --app-bg:#1b1b1a; --sb-bg:#121211; --composer-bg:#161615; --chip-bg:#232321;
+      --border:rgba(255,255,255,0.06); --fg:#ece7de; --fg-soft:#bfbab1; --muted:#82817b; --coral:#d97757;">
+    <div class="sb">
+      <div class="brand">Numen</div>
+      <div class="nav coral"><span class="ic"></span> New Reading</div>
+      <div class="nav"><span class="ic"></span> Readings</div>
+      <div class="seclabel">Recent</div>
+      <div class="item active"><span class="t">Gym fail skit — open hook</span><span class="chip z-green">82</span></div>
+      <div class="item"><span class="t">POV: monday standup</span><span class="chip z-mute">—</span></div>
+      <div class="item"><span class="t">Cold plunge challenge</span><span class="chip z-amber">48</span></div>
+      <div class="item"><span class="t">3 ways to edit faster</span><span class="chip z-green">71</span></div>
+      <div class="acct"><span class="av">D</span><span>Davide</span></div>
+    </div>
+    <div class="main">
+      <div class="glyph-row"><span class="stele">✳</span><span class="greeting">What should I read, <em>Davide?</em></span></div>
+      <div class="composer"><span class="plus">+</span><span class="ph">Paste a link or drop a video…</span></div>
+      <div class="chips"><span class="chip">Paste link</span><span class="chip">Upload</span><span class="chip">Try a demo</span></div>
+    </div>
+  </div>
+
+</body>
+</html>
