@@ -15,7 +15,10 @@ import {
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/dashboard";
+  // D-23 — default authed landing is /home (was /dashboard, which 308-redirects anyway).
+  // `next` may be a user-supplied param; it is only ever resolved via new URL(next, origin)
+  // below (same-origin), never followed as an absolute external URL (open-redirect guard, V5).
+  const next = searchParams.get("next") ?? "/home";
   const origin = request.nextUrl.origin;
 
   if (!code) {
