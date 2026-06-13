@@ -462,21 +462,21 @@ Note: coral as oklch is fine (it's not a dark surface — L is ~0.68, well above
 
 **Note:** Every `[UAT]`-flagged value (hex ramp, coral, serif, score zones, greeting copy) is by-design provisional (D-08). These are NOT assumptions to confirm pre-build — they confirm at the gate. A1/A4 are the only items needing planner/discuss attention.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Exact authed-home path (`/home` vs `/app` vs reclaim `/dashboard`).**
-   - What we know: D-23 leaves it to the planner; `/` is taken (public marketing); `/dashboard` is currently 308→`/analyze`.
-   - What's unclear: product preference for the URL users see.
-   - Recommendation: `/home`. If `/dashboard` is preferred for familiarity, the plan must remove the `/dashboard`→`/analyze` 308 (middleware L55–59) first.
+> All three resolved during planning (b9a2d3cf); resolutions are encoded in plans 03/04. Retained for traceability.
 
-2. **Does `auth/callback/route.ts` hardcode a post-login landing?** (A4)
-   - What we know: middleware sends authed users off `/login`/`/signup` to `/analyze` (L130).
-   - What's unclear: whether the OAuth callback also hardcodes `/analyze` as the final destination.
-   - Recommendation: planner adds a grep/read of `src/app/auth/callback/route.ts` as the first task of the routing work; repoint any landing target to `/home`.
+1. **Exact authed-home path (`/home` vs `/app` vs reclaim `/dashboard`).** — **RESOLVED: `/home`** (plans 01-03 + 01-04).
+   - What we knew: D-23 leaves it to the planner; `/` is taken (public marketing); `/dashboard` is currently 308→`/analyze`.
+   - Resolution: new authed home = `/home` in the `(app)` group; middleware authed-landing repointed `/analyze`→`/home`; `/analyze` stays dormant-but-reachable.
 
-3. **Greeting loading/empty state.** `useProfile` is async; `profile?.name` is undefined on first paint.
-   - What we know: Sidebar falls back `profile?.name ?? profile?.email ?? "Account"` (Sidebar.tsx:672).
-   - Recommendation: greeting shows a serif skeleton (or name-less "Ready to simulate your audience?") while `isLoading`, then fills the name. Don't flash "[Name]". (Final copy is `[UAT]`.)
+2. **Does `auth/callback/route.ts` hardcode a post-login landing?** (A4) — **RESOLVED: yes, repointed** (plan 01-04).
+   - What we knew: middleware sends authed users off `/login`/`/signup` to `/analyze` (L130).
+   - Resolution: the grep was performed — `auth/callback/route.ts:18` defaults `?? "/dashboard"`; plan 01-04 repoints the callback landing alongside middleware (same-origin), so both paths land on `/home`.
+
+3. **Greeting loading/empty state.** `useProfile` is async; `profile?.name` is undefined on first paint. — **RESOLVED: serif skeleton, no `[Name]` flash** (plan 01-03 Task 3).
+   - What we knew: Sidebar falls back `profile?.name ?? profile?.email ?? "Account"` (Sidebar.tsx:672).
+   - Resolution: greeting shows a serif skeleton (or name-less "Ready to simulate your audience?") while `isLoading`, then fills the name. Never flashes "[Name]". (Final copy is `[UAT]`.)
 
 ## Environment Availability
 
