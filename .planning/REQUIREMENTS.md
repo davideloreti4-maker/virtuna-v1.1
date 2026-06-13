@@ -38,11 +38,11 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 ### Theme — flat-warm visual system (HUMAN-UAT-GATED)
 
-- [ ] **THEME-01**: A flat-warm token system replaces the cold base — warm-neutral hue, matte (no glow / shine / halo / ambient lighting); contrast comes from elevation, not effects.
-- [ ] **THEME-02**: The Raycast glass (137deg gradient + blur + inset white shine) is removed everywhere it appears, including the sidebar.
-- [ ] **THEME-03**: Score zones (green / amber / red) + an evolved (warmer) coral are the only colors; everything else is neutral.
-- [ ] **THEME-04**: Serif is used for voice moments (greeting, hero line); sans for all data.
-- [ ] **THEME-05**: Hairline borders, generous spacing, and calm/soft motion throughout (Linear / Things restraint).
+- [x] **THEME-01**: A flat-warm token system replaces the cold base — warm-neutral hue, matte (no glow / shine / halo / ambient lighting); contrast comes from elevation, not effects.
+- [x] **THEME-02**: The Raycast glass (137deg gradient + blur + inset white shine) is removed everywhere it appears, including the sidebar.
+- [x] **THEME-03**: Score zones (green / amber / red) + an evolved (warmer) coral are the only colors; everything else is neutral.
+- [x] **THEME-04**: Serif is used for voice moments (greeting, hero line); sans for all data.
+- [x] **THEME-05**: Hairline borders, generous spacing, and calm/soft motion throughout (Linear / Things restraint).
 - [ ] **THEME-06**: The flat-warm visual system passes an explicit human-UAT review gate before it is locked for rollout.
 
 ### Chat — basic text follow-up
@@ -101,11 +101,11 @@ Each v1 requirement maps to exactly one phase. 28/28 mapped — no orphans, no d
 | SHELL-05 | Phase 1 | Pending |
 | SHELL-06 | Phase 1 | Pending |
 | SHELL-07 | Phase 1 | Pending |
-| THEME-01 | Phase 1 | Pending |
-| THEME-02 | Phase 1 | Pending |
-| THEME-03 | Phase 1 | Pending |
-| THEME-04 | Phase 1 | Pending |
-| THEME-05 | Phase 1 | Pending |
+| THEME-01 | Phase 1 | Complete |
+| THEME-02 | Phase 1 | Complete |
+| THEME-03 | Phase 1 | Complete |
+| THEME-04 | Phase 1 | Complete |
+| THEME-05 | Phase 1 | Complete |
 | THEME-06 | Phase 1 | Pending |
 | READ-01 | Phase 2 | Pending |
 | READ-02 | Phase 2 | Pending |

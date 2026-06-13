@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Numen Rework
 status: executing
-stopped_at: Phase 1 UI-SPEC approved
-last_updated: "2026-06-13T17:07:54.419Z"
-last_activity: 2026-06-13 -- Phase 1 planning complete
+stopped_at: Completed 01-01-PLAN.md (plan 1 of 5)
+last_updated: "2026-06-13T17:21:48.518Z"
+last_activity: 2026-06-13
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 5
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 20
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md · Milestone brief (LOCKED): .planning/NUMEN-REWORK-BRIEF.md · Worktree identity: .planning/MILESTONE.md
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate — delivered as one clean thread per video (a "Reading").
-**Current focus:** Phase 1 — Foundation & Shell (flat-warm tokens + the home/composer/sidebar shell, human-UAT-gated)
+**Current focus:** Phase 01 — foundation-shell
 
 ## Current Position
 
-Phase: 1 of 5 (Foundation & Shell)
-Plan: — (not yet planned)
+Phase: 01 (foundation-shell) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-06-13 -- Phase 1 planning complete
+Last activity: 2026-06-13
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] 20%
 
 ## Hard Constraints (this milestone)
 
@@ -62,6 +62,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: —
 
 *Updated after each plan completion*
+| Phase 01 P01 | 5 | 3 tasks | 2 files |
 
 ## Phases
 
@@ -84,6 +85,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - v5.0: Stand down the Numen Surface ground-up rebuild; retheme + restructure the EXISTING board/app components instead (ground-up proved too costly for the payoff; rich board visuals reused as drill-downs, not rebuilt).
 - v5.0: Visual system is human-UAT-gated; component/motion libs (Radix/shadcn/MagicUI/Aceternity/motion+Framer Motion) permitted at executor discretion within the flat-warm + calm-motion taste bar.
 - v5.0: Engine frozen 3.19.0 — this is a presentation-layer milestone.
+- [Phase ?]: P1-01: Flat-warm @theme migration — charcoal surfaces as exact HEX (oklch L<0.15 miscompiles), Raycast glass/glow stripped (Layer A), --shadow-float the lone shadow; all values [UAT], lock at THEME-06.
+- [Phase ?]: P1-01: Newsreader wired as --font-newsreader -> @theme --font-serif (mirrors Inter pattern, no self-reference); serif available, not yet consumed (greeting = 01-03).
 
 ### Pending Todos
 
@@ -104,6 +107,6 @@ Deferred to later milestones per brief §3 (NOT v1): agentic tools (Apify compet
 
 ## Session Continuity
 
-Last session: 2026-06-13T16:23:52.937Z
-Stopped at: Phase 1 UI-SPEC approved
-Resume file: .planning/phases/01-foundation-shell/01-UI-SPEC.md
+Last session: 2026-06-13T17:21:48.509Z
+Stopped at: Completed 01-01-PLAN.md (plan 1 of 5)
+Resume file: None
