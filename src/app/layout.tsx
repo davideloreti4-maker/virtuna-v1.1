@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Newsreader } from "next/font/google";
 import { DevLocator } from "@/components/dev/locator";
 import "./globals.css";
 
@@ -7,6 +7,16 @@ const inter = Inter({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-inter",
+});
+
+// [UAT] serif typeface — Newsreader (Frame A); may swap to Source Serif 4 at THEME-06.
+// Voice moments ONLY (greeting/hero); 400 + italic (italic = name accent in the greeting). No element consumes it yet (plan 01-03).
+const newsreader = Newsreader({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-newsreader",
+  style: ["normal", "italic"],
+  weight: ["400"],
 });
 
 export const viewport: Viewport = {
@@ -40,7 +50,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable}`}>
+    <html lang="en" className={`${inter.variable} ${newsreader.variable}`}>
       <body className="min-h-screen bg-background font-sans antialiased">
         {children}
         <DevLocator />

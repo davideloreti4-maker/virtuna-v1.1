@@ -117,8 +117,10 @@
   --color-disabled: rgba(128, 128, 128, 0.5);
 
   /* --- Font Families --- */
-  /* Source: raycast.com - Inter for all text (matching Raycast 1:1) */
+  /* Inter for ALL data/UI/chrome (THEME-04). Serif is voice-moments ONLY (greeting/hero) — wired here, consumed in plan 01-03. */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* [UAT] serif typeface — Newsreader (Frame A); may swap to Source Serif 4 at THEME-06 */
+  --font-serif: var(--font-newsreader), ui-serif, Georgia, serif;
   --font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", monospace;
 
   /* --- Font Sizes (from extraction) --- */
