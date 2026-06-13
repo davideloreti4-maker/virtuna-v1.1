@@ -33,7 +33,12 @@ The journey: lay the flat-warm visual foundation and the shell the Reading lives
   3. A user sees their past Readings in a sidebar — collapsible on desktop, drawer on mobile (sourced from `useAnalysisHistory`) — and reopening one restores the full thread via permalink
   4. The shell renders correctly on a phone (mobile-first) and as the same shell widened on desktop, with the Raycast glass (137deg gradient + blur + inset shine) gone everywhere including the sidebar — surfaces read flat-warm matte (no glow/shine/halo), serif for the greeting, sans for chrome, hairline borders, calm motion, coral as the lone accent
   5. The flat-warm visual system passes an explicit **human-UAT review gate** on this built shell and is signed off as locked for rollout before later phases reskin onto it
-**Plans**: TBD
+**Plans**: 5 plans
+- [ ] 01-01-PLAN.md — Flat-warm @theme token migration (charcoal hex, terracotta coral, glass strip Layer A) + serif wiring (THEME-01..05)
+- [ ] 01-02-PLAN.md — Sidebar reskin: strip inline glass (Layer B), revive collapse (⌘\), cut dead affordances, "Simulations" list + app-shell offset (SHELL-05/07, THEME-02/05)
+- [ ] 01-03-PLAN.md — Clean home + slim TikTok/upload composer (two-layout) + serif greeting + NumenMark (SHELL-01..04/06, THEME-04/05)
+- [ ] 01-04-PLAN.md — Repoint authed landing → /home (middleware + auth callback), keep /analyze dormant (SHELL-06, D-23)
+- [ ] 01-05-PLAN.md — THEME-06 human-UAT gate: full-suite + clean-build precondition, 4 UAT screenshots, blocking sign-off (THEME-01/03/06, SHELL-07)
 **UI hint**: yes
 
 ### Phase 2: The Reading
@@ -89,7 +94,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Shell | 0/TBD | Not started | - |
+| 1. Foundation & Shell | 0/5 | Not started | - |
 | 2. The Reading | 0/TBD | Not started | - |
 | 3. Rich Visuals as Drill-Downs | 0/TBD | Not started | - |
 | 4. Stage-Reveal | 0/TBD | Not started | - |
