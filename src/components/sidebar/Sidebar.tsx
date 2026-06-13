@@ -1,41 +1,32 @@
 "use client";
 
 /**
- * Sidebar — Phase 2.5 restructured nav (D-11, D-12, R1.10)
+ * Sidebar — lean flat-warm shell (Numen Rework P1, D-10..D-16)
  *
  * Sections (top → bottom):
- *  ⊕ New analysis   — coral primary CTA, ⌘N shortcut, always visible
- *  Navigate         — Boards / Trending / Settings compact nav
- *  ● Running        — visible only when streaming (board-store Phase 2.4)
- *  ⭐ Pinned         — starred boards (stub: empty state until pinning lands)
- *  🕐 Recent         — chronological history from useAnalysisHistory
- *  📁 Projects       — collapsed placeholder, "Coming soon"
- *  👤 Account        — bottom-anchored, user avatar + settings link
+ *  ⊕ New Simulation — coral primary CTA, ⌘N shortcut, always visible
+ *  Settings         — settings link + @handle account selector (D-12)
+ *  Simulations      — chronological history from useAnalysisHistory (D-13);
+ *                     score chips + remix tag; rows route to /analyze/[id]
+ *  👤 Account        — bottom-anchored, user avatar + settings/logout
  *
- * Desktop: collapsible to 52px icon-only mode via ⌘\  (D-12, UI-SPEC exception: 40px target)
- * Mobile: hidden behind hamburger, slides as full-height Sheet
+ * Flat-warm matte: no Raycast glass, no blur, no inset shine (THEME-02 Layer B).
+ * Desktop: persistent + collapsible to an icon rail via ⌘\ (D-14), choice
+ *   persisted via sidebar-store; main content offset by app-shell.
+ * Mobile: slide-in drawer from the left with a backdrop (D-15); never a rail.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 import {
   Plus,
-  UserPlus,
-  House,
   SlidersHorizontal,
-  Star,
   ClockCountdown,
-  Folder,
   UserCircle,
   List,
   SidebarSimple,
   SignOut,
-  CaretDown,
   CaretUpDown,
-  Check,
-  TiktokLogo,
-  InstagramLogo,
-  X,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -50,6 +41,8 @@ import { NumenMark } from "@/components/brand/numen-logo";
 import { useAnalysisHistory } from "@/hooks/queries";
 import { useProfile } from "@/hooks/queries/use-profile";
 import { useBoardStore } from "@/stores/board-store";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 
 // ─── relative-time helper ─────────────────────────────────────────
 const rtf = typeof Intl !== 'undefined'
@@ -85,8 +78,7 @@ const focusRing =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/50";
 import { useSidebarStore } from "@/stores/sidebar-store";
 import { createClient } from "@/lib/supabase/client";
-import { useSocialAccounts } from "@/hooks/use-social-accounts";
-import type { Platform } from "@/hooks/use-social-accounts";
+import { SidebarAccountSelector } from "./SidebarAccountSelector";
 
 // ─── sub-components ──────────────────────────────────────────────
 
@@ -175,189 +167,22 @@ function NavItem({
   return item;
 }
 
-// ─── SidebarAccountSelector ──────────────────────────────────────
-
-function SidebarAccountSelector({ isCollapsed }: { isCollapsed: boolean }) {
-  const { accounts, activeAccount, isLoading, switchAccount, addAccount, removeAccount } = useSocialAccounts();
-  const [isOpen, setIsOpen] = useState(false);
-  const [isAdding, setIsAdding] = useState(false);
-  const [newHandle, setNewHandle] = useState("");
-  const [newPlatform, setNewPlatform] = useState<Platform>("tiktok");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (isAdding && inputRef.current) inputRef.current.focus();
-  }, [isAdding]);
-
-  const handleAdd = async () => {
-    const trimmed = newHandle.trim();
-    if (!trimmed) return;
-    await addAccount(trimmed, newPlatform);
-    setNewHandle("");
-    setNewPlatform("tiktok");
-    setIsAdding(false);
-  };
-
-  if (isLoading) return null;
-
-  const PlatformIconComp = (platform: Platform) =>
-    platform === "instagram" ? (
-      <InstagramLogo weight="bold" className="h-5 w-5 shrink-0" />
-    ) : (
-      <TiktokLogo weight="bold" className="h-5 w-5 shrink-0" />
-    );
-
-  const trigger = (
-    <button
-      type="button"
-      onClick={() => setIsOpen((p) => !p)}
-      className={cn(
-        "w-full flex items-center gap-2.5 px-2.5 min-h-[34px] rounded-lg text-sm font-medium",
-        "transition-colors duration-100",
-        focusRing,
-        isCollapsed ? "justify-center px-0" : "",
-        "text-foreground-secondary hover:bg-white/[0.04] hover:text-foreground",
-      )}
-      aria-label={activeAccount ? `Account: @${activeAccount.handle}` : "Connect account"}
-    >
-      {activeAccount ? (
-        <>
-          {PlatformIconComp(activeAccount.platform as Platform)}
-          {!isCollapsed && (
-            <>
-              <span className="flex-1 truncate text-left">@{activeAccount.handle}</span>
-              <CaretDown weight="bold" className="h-3 w-3 shrink-0 text-foreground-muted" />
-            </>
-          )}
-        </>
-      ) : (
-        <>
-          <Icon icon={UserPlus} size={20} className="shrink-0" />
-          {!isCollapsed && <span className="flex-1 text-left">Connect account</span>}
-        </>
-      )}
-    </button>
-  );
-
-  if (isCollapsed) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>{trigger}</TooltipTrigger>
-        <TooltipContent side="right">
-          {activeAccount ? `@${activeAccount.handle}` : "Connect account"}
-        </TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  return (
-    <div>
-      {trigger}
-      {isOpen && (
-        <div
-          className="mt-0.5 rounded-lg border border-white/[0.06] overflow-hidden"
-          style={{ backgroundColor: "rgba(17,18,20,0.95)" }}
-        >
-          {accounts.length > 0 && (
-            <div className="py-1">
-              {accounts.map((account) => (
-                <div
-                  key={account.id}
-                  className="group flex items-center gap-2 px-3 min-h-[40px] text-sm transition-colors hover:bg-white/[0.05] cursor-pointer"
-                  onClick={() => { switchAccount(account.id); setIsOpen(false); }}
-                >
-                  {account.is_active ? (
-                    <Check weight="bold" className="h-4 w-4 shrink-0 text-accent" />
-                  ) : (
-                    <span className="h-4 w-4 shrink-0" />
-                  )}
-                  {PlatformIconComp(account.platform as Platform)}
-                  <span className={cn("flex-1 truncate text-xs", account.is_active ? "text-foreground" : "text-foreground-secondary")}>
-                    @{account.handle}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); removeAccount(account.id); }}
-                    className="opacity-0 group-hover:opacity-100 text-foreground-muted hover:text-foreground transition-opacity"
-                    aria-label={`Remove @${account.handle}`}
-                  >
-                    <X weight="bold" className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-          {accounts.length > 0 && <div className="mx-3 border-t border-white/[0.06]" />}
-          {isAdding ? (
-            <div className="p-3 space-y-2">
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => setNewPlatform("tiktok")}
-                  className={cn("flex items-center justify-center h-7 w-7 rounded-md transition-colors", newPlatform === "tiktok" ? "bg-white/[0.1] text-foreground" : "text-foreground-muted hover:text-foreground")}
-                >
-                  <TiktokLogo weight="bold" className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setNewPlatform("instagram")}
-                  className={cn("flex items-center justify-center h-7 w-7 rounded-md transition-colors", newPlatform === "instagram" ? "bg-white/[0.1] text-foreground" : "text-foreground-muted hover:text-foreground")}
-                >
-                  <InstagramLogo weight="bold" className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={newHandle}
-                  onChange={(e) => setNewHandle(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleAdd();
-                    if (e.key === "Escape") { setIsAdding(false); setNewHandle(""); setNewPlatform("tiktok"); }
-                  }}
-                  placeholder="@handle"
-                  className="flex-1 h-8 rounded-md bg-white/[0.05] border border-white/[0.06] px-2 text-xs text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-1 focus:ring-accent/30"
-                />
-                <button
-                  type="button"
-                  onClick={handleAdd}
-                  disabled={!newHandle.trim()}
-                  className="shrink-0 h-8 rounded-md bg-accent px-2.5 text-xs font-medium text-accent-foreground disabled:opacity-50"
-                >
-                  Add
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setIsAdding(true)}
-              className="flex w-full items-center gap-2 px-3 min-h-[40px] text-xs text-foreground-secondary transition-colors hover:bg-white/[0.05] hover:text-foreground"
-            >
-              <Plus weight="bold" className="h-3.5 w-3.5" />
-              <span>Add account</span>
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Sidebar ─────────────────────────────────────────────────────
 
 export function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
-  const { isOpen, close } = useSidebarStore();
+  const { isOpen, close, isCollapsed } = useSidebarStore();
+  const isMobile = useIsMobile();
+  const reducedMotion = usePrefersReducedMotion();
   const triggerNewAnalysis = useBoardStore((s) => s.triggerNewAnalysis);
 
-  // Sidebar is always a full-width overlay (no persistent/collapsed desktop mode)
-  const effectiveCollapsed = false;
+  // Desktop persistent+collapsible (D-14): collapse to an icon rail.
+  // Mobile (D-15): a slide-in drawer driven by isOpen — never the collapsed rail.
+  const effectiveCollapsed = !isMobile && isCollapsed;
 
-  // Recent boards
+  // Past Simulations (D-13) — reuse useAnalysisHistory; rows route to /analyze/[id]
   const { data: historyData, isLoading: historyLoading } = useAnalysisHistory();
   const recentBoards = (historyData ?? []).slice(0, 8) as Array<{
     id: string;
@@ -370,7 +195,6 @@ export function Sidebar() {
   // User profile for Account section
   const { data: profile } = useProfile();
 
-const isOnBoard = pathname.startsWith("/analyze");
   const isOnSettings = pathname.startsWith("/settings");
 
   const [accountOpen, setAccountOpen] = useState(false);
@@ -403,21 +227,14 @@ const isOnBoard = pathname.startsWith("/analyze");
 
       <nav
         className={cn(
-          // Base
+          // Base — flat-warm matte: solid charcoal sidebar + hairline (no glass, no blur, no inset shine)
           "fixed top-3 left-3 bottom-3 z-[var(--z-sidebar)]",
           "flex flex-col overflow-hidden rounded-xl",
-          "border border-white/[0.06]",
-          "w-[220px]",
-          "transition-transform duration-150 ease-[var(--ease-out-cubic)]",
+          "bg-background-elevated border border-white/[0.06]",
+          effectiveCollapsed ? "w-[60px]" : "w-[220px]",
+          !reducedMotion && "transition-[transform,width] duration-150 ease-[var(--ease-out-cubic)]",
           isOpen ? "translate-x-0" : "-translate-x-[calc(100%+12px)]",
         )}
-        style={{
-          backgroundImage:
-            "linear-gradient(137deg, rgba(17, 18, 20, 0.75) 4.87%, rgba(12, 13, 15, 0.9) 75.88%)",
-          backdropFilter: "blur(5px)",
-          WebkitBackdropFilter: "blur(5px)",
-          boxShadow: "rgba(255,255,255,0.15) 0px 1px 1px 0px inset",
-        }}
         aria-label="App navigation"
       >
         {/* ── Header: Logo + collapse/close ── */}
@@ -446,14 +263,14 @@ const isOnBoard = pathname.startsWith("/analyze");
         {/* Scrollable body — scrollbar hidden for a clean glass edge */}
         <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden gap-0.5 px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 
-          {/* ── ⊕ New analysis ── */}
+          {/* ── ⊕ New Simulation ── */}
           <div className="pb-1">
             <NavItem
               icon={Plus}
-              label="New analysis"
+              label="New Simulation"
               isCollapsed={effectiveCollapsed}
               accent
-              onClick={() => { triggerNewAnalysis(); router.push("/analyze"); }}
+              onClick={() => { triggerNewAnalysis(); router.push("/home"); }}
               badge={
                 !effectiveCollapsed && (
                   <span className="ml-auto text-[11px] text-foreground-muted font-normal tabular-nums">⌘N</span>
@@ -465,17 +282,9 @@ const isOnBoard = pathname.startsWith("/analyze");
           {/* Divider */}
           <div className="mx-2 border-t border-white/[0.06]" />
 
-          {/* ── Navigate ── */}
+          {/* ── Settings + @handle account selector (D-12) ── */}
           <div className="pt-3">
-            {!effectiveCollapsed && <SectionLabel>Navigate</SectionLabel>}
             <div className="flex flex-col gap-0.5">
-              <NavItem
-                icon={House}
-                label="Boards"
-                isActive={isOnBoard}
-                isCollapsed={effectiveCollapsed}
-                onClick={() => router.push("/analyze")}
-              />
               <NavItem
                 icon={SlidersHorizontal}
                 label="Settings"
@@ -487,41 +296,9 @@ const isOnBoard = pathname.startsWith("/analyze");
             </div>
           </div>
 
-          {/* ── ● Running (stub — wired to board-store in plan 2.4) ── */}
-          {/*
-            Running section is only visible when streaming.
-            Board-store (plan 2.4) owns the streaming state; the sidebar
-            subscribes to it once it exists. For now we render nothing
-            (correct behavior: not streaming = section hidden).
-          */}
-
-          {/* ── ⭐ Pinned ── */}
-          <div className="pt-4">
-            {!effectiveCollapsed && <SectionLabel>Pinned</SectionLabel>}
-            {!effectiveCollapsed && (
-              <p className="px-2.5 py-1 text-xs text-foreground-muted">
-                No pinned boards yet.
-              </p>
-            )}
-            {effectiveCollapsed && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="w-full flex justify-center py-2 text-foreground-muted"
-                    aria-label="Pinned boards (empty)"
-                  >
-                    <Star className="h-5 w-5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right">Pinned (empty)</TooltipContent>
-              </Tooltip>
-            )}
-          </div>
-
-          {/* ── 🕐 Recent ── */}
+          {/* ── Simulations (D-13) ── */}
           <div className="pt-4 flex-1">
-            {!effectiveCollapsed && <SectionLabel>Recent</SectionLabel>}
+            {!effectiveCollapsed && <SectionLabel>Simulations</SectionLabel>}
             {historyLoading && !effectiveCollapsed && (
               <div className="flex flex-col gap-2 px-2.5 pt-1">
                 <Skeleton className="h-3.5 w-full" />
@@ -531,7 +308,7 @@ const isOnBoard = pathname.startsWith("/analyze");
             )}
             {!historyLoading && recentBoards.length === 0 && !effectiveCollapsed && (
               <p className="px-2.5 py-1 text-xs text-foreground-muted">
-                No analyses yet.
+                No simulations yet.
               </p>
             )}
             {!historyLoading && !effectiveCollapsed && (
@@ -559,7 +336,7 @@ const isOnBoard = pathname.startsWith("/analyze");
                           snippet
                         ) : (
                           <>
-                            Analysis{" "}
+                            Simulation{" "}
                             <span className="text-foreground-muted">· {relativeTime(board.created_at)}</span>
                           </>
                         )}
@@ -603,40 +380,14 @@ const isOnBoard = pathname.startsWith("/analyze");
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    onClick={() => router.push("/analyze")}
+                    onClick={() => router.push("/home")}
                     className="w-full flex justify-center py-2 text-foreground-muted hover:text-foreground transition-colors"
-                    aria-label="Recent boards"
+                    aria-label="Simulations"
                   >
                     <ClockCountdown className="h-5 w-5" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right">Recent boards</TooltipContent>
-              </Tooltip>
-            )}
-          </div>
-
-          {/* ── 📁 Projects (Coming soon placeholder) ── */}
-          <div className="pt-2">
-            {!effectiveCollapsed && (
-              <div className="flex items-center gap-2.5 px-2.5 min-h-[34px] rounded-lg">
-                <Folder className="h-5 w-5 shrink-0 text-foreground-muted" />
-                <span className="text-sm font-medium text-foreground-muted">Projects</span>
-                <span className="ml-auto text-[10px] font-medium uppercase tracking-wide text-foreground-muted bg-white/[0.05] rounded-md px-1.5 py-0.5">
-                  Soon
-                </span>
-              </div>
-            )}
-            {effectiveCollapsed && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div
-                    className="w-full flex justify-center py-2 text-foreground-muted opacity-50 cursor-default"
-                    aria-label="Projects — coming soon"
-                  >
-                    <Folder className="h-5 w-5" />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="right">Projects · Coming soon</TooltipContent>
+                <TooltipContent side="right">Simulations</TooltipContent>
               </Tooltip>
             )}
           </div>
@@ -678,12 +429,7 @@ const isOnBoard = pathname.startsWith("/analyze");
               {accountOpen && (
                 <div
                   role="menu"
-                  className="absolute bottom-full left-0 right-0 mb-1 rounded-lg border border-white/[0.06] overflow-hidden"
-                  style={{
-                    backgroundColor: "rgba(22, 23, 25, 0.98)",
-                    backdropFilter: "blur(12px)",
-                    WebkitBackdropFilter: "blur(12px)",
-                  }}
+                  className="absolute bottom-full left-0 right-0 mb-1 rounded-lg border border-white/[0.06] overflow-hidden bg-surface-elevated shadow-float"
                 >
                   <button
                     type="button"
@@ -740,15 +486,10 @@ export function SidebarHamburger() {
       className={cn(
         "fixed left-4 top-4 z-[var(--z-sidebar)]",
         "h-[34px] w-[34px] flex items-center justify-center rounded-[10px]",
-        "border border-white/[0.06]",
-        "shadow-[rgba(0,0,0,0.4)_0_4px_16px_0]",
+        // flat-warm matte: solid charcoal + hairline + soft float shadow (no glass, no blur)
+        "bg-background-elevated border border-white/[0.06] shadow-float",
         isOpen ? "hidden" : "flex",
       )}
-      style={{
-        background: "linear-gradient(137deg, rgba(17,18,20,0.85) 4.87%, rgba(12,13,15,0.95) 75.88%)",
-        backdropFilter: "blur(8px)",
-        WebkitBackdropFilter: "blur(8px)",
-      }}
     >
       <List className="h-4 w-4 text-foreground/70" />
     </button>

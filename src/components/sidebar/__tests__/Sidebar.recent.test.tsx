@@ -70,7 +70,7 @@ describe('Sidebar recent boards label', () => {
     expect((labels[0]?.textContent ?? '').length).toBeLessThanOrEqual(38);
   });
 
-  it('falls back to "Analysis · ..." when content_text is null', async () => {
+  it('falls back to "Simulation · ..." when content_text is null', async () => {
     vi.resetModules();
     mockHistory([
       { id: 'xyz', content_text: null, overall_score: null, created_at: new Date().toISOString() },
@@ -78,7 +78,7 @@ describe('Sidebar recent boards label', () => {
     const { Sidebar: Fresh } = await import('../Sidebar');
     render(<Fresh />);
     const labels = screen.getAllByTestId('sidebar-board-label');
-    expect(labels[0]?.textContent).toMatch(/^Analysis\s·/);
+    expect(labels[0]?.textContent).toMatch(/^Simulation\s·/);
   });
 
   it('shows score chip with rounded overall_score', async () => {
