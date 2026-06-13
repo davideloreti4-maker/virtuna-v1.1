@@ -8,35 +8,21 @@ A social media intelligence platform for TikTok creators. Helps creators predict
 
 AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
 
-## Current Milestone: v4.1 MVP Ready
+## Current Milestone: v5.0 Numen Rework
 
-**Goal:** Walk each major pillar of the platform one at a time and fix, optimize, and refine it toward an MVP-ready state — not a feature build, a brownfield refinement pass.
+**Goal:** Rework the existing UI/UX into the Numen vision — collapse the product to **one thread per video (a "Reading")**, mobile-first — by **rethemeing + restructuring the existing board/app components** (NOT a ground-up rebuild). Presentation-layer only; engine frozen at 3.19.0.
 
-**Pillars (loose phases — audit → fix → verify):**
-- Engine pipeline — Apollo 3-call flow (Qwen I/O, prompt quality, latency, correctness)
-- Board / Test mode — analyze board UI/UX (frames, rendering, wiring)
-- Board / Remix mode — remix board UI/UX
-- Chat feature — "ask the expert" dock UI/UX + grounding
-- General UI/UX — cross-cutting polish (Numen brand, Raycast language, mobile, a11y, dead UI)
+**Target features (v1):**
+- Home (serif greeting + universal composer) + reskinned sidebar (reuse `useAnalysisHistory`); ingestion via the composer (`+` upload / paste-URL auto-detect); two layouts (centered empty → bottom-pinned active)
+- Consolidated Reading thread: hero (`overall_score` + go/no-go gate + watch-through % + persona cloud) → 3 driver rows (Hook / Retention = *where they drop* / Shareability) → Fix First → deeper-read → **all rich board visuals kept as drill-downs**
+- Stage-reveal (blocks materialize as each engine stage completes)
+- Flat-warm visual system + token migration (retire Raycast glass; warm-dark matte; serif voice / sans data; coral evolved; score zones green/amber/red)
+- Basic text follow-up (reuse "Ask the expert" chat as the thread tail)
+- First-run live demo Reading on a known viral video
 
-**Flexible by design:** phases are loose; surfaced to-dos get added via `/gsd-phase add` or peeled off with `/gsd-quick`. No upfront research (refinement of shipped surfaces).
+**Locked constraints:** Reuse `src/components/board/**` visuals as drill-downs (transplant off Konva, reskin). Do NOT reuse the `milestone/numen-surface` `numen/`+`reading/` kit (reference only). Konva retired; `/analyze` left dormant (not deleted). Score-forward, **no prose narration**. Engine **FROZEN 3.19.0** — no `lib/engine/` changes. The flat-warm visual system is **HUMAN-UAT-GATED** (locked only after human review). Component & motion libraries (Radix / shadcn / MagicUI / Aceternity / motion (Framer Motion)) permitted at executor discretion, subject to the flat-warm + calm-motion taste bar. Full brief: `.planning/NUMEN-REWORK-BRIEF.md`.
 
-## Status: Intelligence Surface drop — Milestone 1b shipped
-
-**Most recently shipped:** Engine Hardening (v3.1, 2026-05-25). Type hygiene (tsc 0 errors), smoke runner cost field rename, SSRF guard on sound_url, timer leak fixes, pgvector centralization, all VERIF-04 code-review follow-ups closed. VERIF-01/02/03 deferred permanently (no prod deploy).
-
-**Also shipped:** Engine Foundation (v3.0.0, 2026-05-24). 13-phase backend rebuild: Qwen-only architecture, video segmentation, audio fingerprint, multi-persona simulation, benchmark retrieval.
-
-**Intelligence Surface drop** — 3 milestones, single public release. Wraps the validated engine in the UX that makes Virtuna a content intelligence cheatcode for creators. All 3 milestones merge to main behind feature flag (`FEATURE_INTELLIGENCE_SURFACE`); public drop event fires when all 3 ship.
-
-| Order | Milestone | Worktree | Status |
-|-------|-----------|----------|--------|
-| 1a | **Result Surface** — polished result card, live persona viz, mobile route, share/export, reshoot script, optimal post time, WOW onboarding | `~/virtuna-result-surface/` | **Active (started 2026-05-24)** |
-| 1b | **Engine Hardening** — type hygiene, SSRF guard, timer leaks, pgvector centralization, VERIF-04 code-review follow-ups | `~/virtuna-engine-hardening/` | **✅ Shipped v3.1 (2026-05-25)** |
-| 2 | **Iteration & Niche Intelligence** — concept mode, A/B variants, cross-platform repurposing, watermark detection, trending sounds for my niche, idea generator, steal-this-playbook | TBD | Forks after 1a + 1b land |
-| 3 | **Compounding Intelligence** — hook archetype library, trend velocity, outcome feedback loop, wins/flops trend | TBD | Forks after 1a + 1b land |
-
-**Abandoned in pre-drop gap (see MILESTONES.md):** Brand Statement Landing (2026-05-11), Landing Page Redesign (2026-05-24), Linear Landing Clone (2026-05-24). Landing surface deferred until Intelligence Surface drop completes.
+**Deferred (not v1):** agentic tools (Apify competitor analysis — "the moat"), in-thread monetization, desktop dense-instrument (Konva successor).
 
 ## Requirements
 
@@ -221,6 +207,8 @@ AI-powered content intelligence that tells TikTok creators whether their content
 | Class weights capped at 3x minimum | Good -- prevents ML overfitting to rare tiers |
 | Per-instance circuit breaker mutex (not distributed) | Good -- matches serverless-per-instance scope |
 | Global aggregate test coverage (not per-file) | Good -- avoids over-testing low-value branches |
+| Stand down the Numen Surface ground-up rebuild; retheme existing components instead (v5.0) | New -- ground-up proved too costly for the payoff; rich board visuals reused as drill-downs, not rebuilt |
+| Visual system human-UAT-gated + component/motion libs (Radix/shadcn/MagicUI/Aceternity/motion+Framer Motion) permitted (v5.0) | New -- nail the flat-warm look exactly via human review; libs allowed at executor discretion within the taste bar |
 
 ## Constraints
 
@@ -238,9 +226,9 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 ## Current State
 
-**Shipped:** **v4.0 Apollo (2026-06-06)** — engine rearchitected from a ~25-call score-and-fabrication machine into a 3-call knowledge-grounded expert (Omni verbatim → fold ∥ Apollo reasoner); insight is the hero, score demoted to an honest band, E2E ~312s→~62–74s, ENGINE_VERSION 3.8.0. Result Surface (2026-05-28), v3.1 Engine Hardening (2026-05-25), Engine Foundation v3.0.0 (2026-05-24), UI Dashboard (2026-03-18), Prediction Engine Integration (2026-02-27), Backend Reliability (2026-02-18), Prediction Engine v2 (2026-02-17), Competitors Tool (2026-02-17), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
+**Shipped:** **v4.1 MVP Ready — Phase 1 engine (2026-06-11, ENGINE_VERSION 3.19.0)** merged to main + milestone closed early (P2–5 superseded by Numen Rework). **v4.0 Apollo (2026-06-06)** — engine rearchitected from a ~25-call score-and-fabrication machine into a 3-call knowledge-grounded expert (Omni verbatim → fold ∥ Apollo reasoner); insight is the hero, score demoted to an honest band, E2E ~312s→~62–74s, ENGINE_VERSION 3.8.0. Result Surface (2026-05-28), v3.1 Engine Hardening (2026-05-25), Engine Foundation v3.0.0 (2026-05-24), UI Dashboard (2026-03-18), Prediction Engine Integration (2026-02-27), Backend Reliability (2026-02-18), Prediction Engine v2 (2026-02-17), Competitors Tool (2026-02-17), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
-**Current milestone:** **v4.1 MVP Ready** — active in `~/virtuna-mvp-ready/` (`milestone/mvp-ready`), started 2026-06-09. Brownfield refinement pass walking every pillar (engine, board/test, board/remix, chat, general UI) toward MVP-ready. Loose pillar phases; add via `/gsd-phase` or `/gsd-quick`.
+**Current milestone:** **v5.0 Numen Rework** — active in `~/virtuna-numen-rework/` (`milestone/numen-rework`), started 2026-06-13. Presentation-layer UI/UX rework to the Numen vision: one-thread-per-video "Reading", flat-warm reskin, reuse of the existing board/app components. Engine frozen 3.19.0. Visual system human-UAT-gated; component libs (Radix/shadcn/MagicUI/Aceternity) permitted. Full brief: `.planning/NUMEN-REWORK-BRIEF.md`.
 
 **Apollo north star (now live):** expert insight is the hero, not the score; the moat is Brain 1's distilled knowledge (Chase Hughes) grounded at inference via a cached system prompt — not fine-tuning, not RAG.
 
@@ -274,4 +262,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-09 — started v4.1 MVP Ready milestone in `~/virtuna-mvp-ready/`. Brownfield refinement pass across all pillars (engine pipeline, board/test, board/remix, chat, general UI/UX); loose pillar phases, no upfront research. Forks from main @1d9e3294 (post Numen rebrand). Prior: v4.0 Apollo shipped + archived 2026-06-06.*
+*Last updated: 2026-06-13 — started v5.0 Numen Rework milestone in `~/virtuna-numen-rework/`. Presentation-layer UI/UX rework to the Numen vision (one-thread-per-video "Reading", flat-warm reskin, reuse of the existing board/app components); engine frozen 3.19.0. Visual system human-UAT-gated; component/motion libs (Radix/shadcn/MagicUI/Aceternity/motion+Framer Motion) permitted at executor discretion. Forks from main @e07dbd6d. Prior: v4.1 MVP Ready Phase 1 (engine) merged + closed early 2026-06-11.*

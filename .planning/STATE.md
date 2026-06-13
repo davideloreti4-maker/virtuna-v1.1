@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: mvp-ready
-milestone_name: MVP Ready (v4.1, Phase 1 only)
-status: Awaiting next milestone
-last_updated: "2026-06-11T00:00:00.000Z"
-last_activity: 2026-06-11 — v4.1 Phase 1 (engine) merged to main; milestone closed early (P2–5 superseded by Numen Surface)
+milestone: v5.0
+milestone_name: Numen Rework
+status: planning
+last_updated: "2026-06-13T14:48:02.200Z"
+last_activity: 2026-06-13
 progress:
-  total_phases: 5
-  completed_phases: 1
-  total_plans: 22
-  completed_plans: 5
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,10 +21,10 @@ See: .planning/PROJECT.md · Rebrand vision (next milestone): .planning/NUMEN-SU
 
 ## Current Position
 
-Phase: v4.1 MVP Ready — Phase 1 (engine) merged; milestone closed early
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone — **Numen Surface (v5.0 rebrand/UX rework)**. Launch from trunk via `/gsd-new-milestone`; feed it `.planning/NUMEN-SURFACE-VISION.md`. Carries forward: SMOKE GATE, UAT sign-off, ENG-06 D-12 (see vision §7b).
-Last activity: 2026-06-11 — Merged milestone/mvp-ready Phase 1 (engine, ENGINE_VERSION 3.19.0) into main; archived phase dir to milestones/v4.1-mvp-ready/
+Status: Defining requirements
+Last activity: 2026-06-13 — Milestone v5.0 started
 
 ## Deferred Items
 
