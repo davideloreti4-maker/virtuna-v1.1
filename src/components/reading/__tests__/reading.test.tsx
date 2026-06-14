@@ -67,8 +67,8 @@ describe('Reading container — composition + hero (READ-01/03/04/07)', () => {
     mockState = { id: 'sim-1', data: makeReadingResult({ overall_score: 71 }), isLoading: false };
     const { container } = render(<Reading />);
 
-    // The gauge exposes the score via its aria-label.
-    expect(screen.getByRole('img', { name: /Score 71 of 100/ })).toBeInTheDocument();
+    // The gauge exposes the score via its aria-label (now a button — D-02 tap target).
+    expect(screen.getByRole('button', { name: /Score 71 of 100/ })).toBeInTheDocument();
 
     // The hero-owned "{n}% watch" caption renders EXACTLY ONCE (the cloud no
     // longer renders an aggregate caption — the container owns it). Count the
@@ -100,8 +100,8 @@ describe('Reading container — composition + hero (READ-01/03/04/07)', () => {
     };
     const { container } = render(<Reading />);
 
-    // Gauge (score) still rendered.
-    const gauge = screen.getByRole('img', { name: /Score 38 of 100/ });
+    // Gauge (score) still rendered (now a button — D-02 tap target).
+    const gauge = screen.getByRole('button', { name: /Score 38 of 100/ });
     expect(gauge).toBeInTheDocument();
 
     // The gate banner sits before the hero section in DOM order.
@@ -155,7 +155,10 @@ describe('Reading container — composition + hero (READ-01/03/04/07)', () => {
     const user = userEvent.setup();
     const { container } = render(<Reading />);
 
-    const cloud = container.querySelector('[role="button"]') as HTMLElement;
+    // Target the cloud SPECIFICALLY (the gauge is now also a button — D-02 score tap).
+    const cloud = container
+      .querySelector('svg[aria-label="Audience watch-through by persona"]')!
+      .closest('[role="button"]') as HTMLElement;
     await user.click(cloud);
 
     const dialog = await screen.findByRole('dialog', { name: 'Audience' });

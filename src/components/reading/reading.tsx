@@ -15,6 +15,12 @@ import {
   averageWatchThrough,
   formatTime,
 } from '@/components/board/audience/audience-derive';
+// Phase-3 transplanted LEAF visuals (NEVER a *Node/*Frame/*Hero — those drag
+// useBoardStore back, breaking the reading cluster's store-free invariant). Props
+// are re-derived here from the already-authorized `data`.
+import { ScoreDistribution } from '@/components/board/verdict/ScoreDistribution';
+import { confidenceRange } from '@/components/board/verdict/verdict-derive';
+import { useComparisons } from '@/components/board/verdict/use-comparisons';
 
 import { ThumbnailStrip } from './thumbnail-strip';
 import { AntiViralityHeader } from './anti-virality-header';
@@ -62,14 +68,18 @@ import { DrillSheet } from './drill-sheet';
 //      renders. NO verdict/horoscope prose (D-15).
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Closed allow-list for the drill panel (Security V5 — never reflect a raw key). */
-type PanelId = 'hook' | 'retention' | 'shareability' | 'personas';
+/** Closed allow-list for the drill panel (Security V5 — never reflect a raw key).
+ *  P3 (D-02) extends it with `score` — a LITERAL, set only via setPanel('score');
+ *  the Record<PanelId,string> below makes a missing/extra key a compile error, so
+ *  the title/content switch can never index a reflected key (threat T-02-12). */
+type PanelId = 'hook' | 'retention' | 'shareability' | 'personas' | 'score';
 
 const PANEL_TITLE: Record<PanelId, string> = {
   hook: 'Hook',
   retention: 'Retention',
   shareability: 'Shareability',
   personas: 'Audience',
+  score: 'Score',
 };
 
 /** Whitelisted dual-read: Apollo lives at variants.apollo on permalink reload,
@@ -140,7 +150,8 @@ export function Reading() {
         className="flex flex-col items-center gap-6 md:flex-row md:items-center md:gap-10"
       >
         <div className="flex flex-col items-center gap-2">
-          <ScoreGauge score={data.overall_score} />
+          {/* D-02: the hero gauge taps open the new `score` drill-down. */}
+          <ScoreGauge score={data.overall_score} onOpen={() => setPanel('score')} />
           {data.partial_analysis && (
             <p data-testid="reading-partial" className="text-xs text-foreground-muted">
               Partial read — based on half the usual signals.
@@ -182,7 +193,7 @@ export function Reading() {
         onOpenChange={(open) => !open && setPanel(null)}
         title={panel ? PANEL_TITLE[panel] : ''}
       >
-        {panel && <PanelContent panel={panel} data={data} dims={dims} />}
+        {panel && <PanelContent panel={panel} data={data} dims={dims} id={id} />}
       </DrillSheet>
     </div>
   );
@@ -200,10 +211,14 @@ function PanelContent({
   panel,
   data,
   dims,
+  id,
 }: {
   panel: PanelId;
   data: PredictionResult;
   dims: ApolloDimension[] | null | undefined;
+  /** Analysis id (from the container's single subscription) — the score panel's
+   *  panel-local useComparisons(id) reads the niche cohort from it. */
+  id: string | null;
 }) {
   switch (panel) {
     case 'hook':
@@ -219,7 +234,36 @@ function PanelContent({
       return <DimensionPanel dim={dims?.find((d) => d.name === 'share_pull')} />;
     case 'personas':
       return <PersonasPanel heatmap={data.heatmap ?? null} />;
+    case 'score':
+      return <ScorePanel data={data} id={id} />;
   }
+}
+
+/**
+ * ScorePanel (D-02) — "where your score sits in your niche, and how sure we are."
+ * Mirrors VerdictNode.tsx L244–272 byte-for-byte: round(overall_score), the
+ * confidenceRange derived from the numeric confidence, and showRangeText gated off
+ * HIGH confidence. The niche cohort is fetched panel-local (lazy useComparisons) —
+ * NOT a second analysis subscription. niche null/thin → ScoreDistribution's own
+ * lane/absolute mode (the in-panel honest degrade — no throw, no fabricated 0; D-13).
+ *
+ * READ-10: reads ONLY overall_score / confidence / confidence_label + the derived
+ * niche; the raw PredictionResult is never spread into JSX.
+ */
+function ScorePanel({ data, id }: { data: PredictionResult; id: string | null }) {
+  const { data: comparisons } = useComparisons(id);
+  const niche = comparisons?.niche ?? null;
+  const score = Math.round(data.overall_score);
+  const range = confidenceRange(score, data.confidence);
+  const showRangeText = data.confidence_label !== 'HIGH';
+  return (
+    <ScoreDistribution
+      score={score}
+      niche={niche}
+      range={range}
+      showRangeText={showRangeText}
+    />
+  );
 }
 
 /** Modality labels for the hook decomposition rows. */

@@ -44,9 +44,13 @@ export interface ScoreGaugeProps {
   size?: number;
   /** Track + fill stroke width in px (UI-SPEC: 8). */
   stroke?: number;
+  /** Phase-3 seam (D-02): opens the `score` drill-down (niche histogram +
+   *  confidence range) in the DrillSheet. When provided, the gauge becomes a
+   *  button (click + Enter/Space); when absent it stays a plain role="img". */
+  onOpen?: () => void;
 }
 
-export function ScoreGauge({ score, size = 120, stroke = 8 }: ScoreGaugeProps) {
+export function ScoreGauge({ score, size = 120, stroke = 8, onOpen }: ScoreGaugeProps) {
   const reduced = usePrefersReducedMotion();
 
   // WR-03: clamp + finite-guard the DISPLAYED score ONCE, then reuse it for the
@@ -69,12 +73,33 @@ export function ScoreGauge({ score, size = 120, stroke = 8 }: ScoreGaugeProps) {
   // WR-02: remap "Low"→"Weak" for the user-facing word (zone logic untouched).
   const band = GAUGE_BAND_LABEL[bandFromScore(shown)] ?? bandFromScore(shown);
 
+  // D-02 seam: when onOpen is wired the gauge is an interactive button (click +
+  // Enter/Space), mirroring persona-cloud's affordance. The ~120/96px diameter is
+  // already ≥44px (no size change). Matte: only a focus-visible ring, no hover glow.
+  const interactive = typeof onOpen === 'function';
+
   return (
     <div
-      role="img"
+      role={interactive ? 'button' : 'img'}
       aria-label={`Score ${shown} of 100, ${band}`}
-      className="relative inline-flex items-center justify-center"
-      style={{ width: size, height: size }}
+      tabIndex={interactive ? 0 : undefined}
+      onClick={onOpen}
+      onKeyDown={
+        interactive
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onOpen?.();
+              }
+            }
+          : undefined
+      }
+      className={
+        interactive
+          ? 'relative inline-flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-accent/50'
+          : 'relative inline-flex items-center justify-center'
+      }
+      style={{ width: size, height: size, cursor: interactive ? 'pointer' : undefined }}
     >
       <svg
         width={size}

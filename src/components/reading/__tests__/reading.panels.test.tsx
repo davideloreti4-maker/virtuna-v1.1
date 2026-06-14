@@ -12,6 +12,18 @@ import {
   makeNoBehavioralResult,
 } from './fixtures/reading-fixture';
 
+// The score panel runs a panel-local useComparisons(id) (lazy useQuery → fetch
+// /api/analyze/{id}/comparisons). Mock it so the niche cohort is deterministic
+// and no real network is hit. `null` niche → ScoreDistribution's absolute/lane
+// mode (the in-panel honest degrade); a real cohort → field/lane mode.
+let mockComparisons: { history: number[]; niche: null | { median: number; p75: number; count: number; histogram: number[] } } = {
+  history: [],
+  niche: null,
+};
+vi.mock('@/components/board/verdict/use-comparisons', () => ({
+  useComparisons: () => ({ data: mockComparisons }),
+}));
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Wave-0 panel scaffold (03-01) — the per-panel render + degradation gate the
 // rest of Phase 3 verifies against (03-VALIDATION § Wave 0). The SVG leaf charts
@@ -45,6 +57,7 @@ import { Reading } from '../reading';
 
 beforeEach(() => {
   mockState = { id: 'sim-1', data: makeReadingResult(), isLoading: false };
+  mockComparisons = { history: [], niche: null };
 });
 
 /** Calm degradation copy every transplanted visual falls to (02-UI-SPEC / D-13). */
@@ -184,23 +197,22 @@ describe('drill-down: personas panel (READ-09)', () => {
     const user = userEvent.setup();
     const { container } = render(<Reading />);
 
-    const cloud = container.querySelector('[role="button"]') as HTMLElement;
+    // The hero now has TWO tap sources (the gauge=score + the cloud=audience), so
+    // target the cloud SPECIFICALLY via its svg (the gauge's button is /Score …/).
+    const cloud = container
+      .querySelector('svg[aria-label="Audience watch-through by persona"]')!
+      .closest('[role="button"]') as HTMLElement;
     await user.click(cloud);
     const dialog = await screen.findByRole('dialog', { name: 'Audience' });
     expect(within(dialog).getByTestId('panel-personas')).toBeInTheDocument();
   });
 
   it('degrades to PanelEmpty on empty personas (no throw, no grey-cell)', async () => {
-    // personas:[] → PersonasPanel renders PanelEmpty. The hero cloud also omits
-    // itself on this path, so the panel is opened directly via setPanel through a
-    // retention row tap would NOT reach personas — instead drive personas via the
-    // cloud when present. With empty personas the cloud is null, so assert the
-    // degraded panel by opening through the only remaining persona affordance:
-    // the container still maps 'personas' on the cloud, which is absent here. We
-    // therefore assert the NATIVE empty path by mounting with empty personas and
-    // confirming no throw + the cloud's absence (the panel itself is unreachable
-    // by tap when the cloud is gone — its degradation is covered by the unit-level
-    // PanelEmpty copy below).
+    // personas:[] → PersonaCloud returns null (the hero cloud omits itself); the
+    // gauge button stays (it's score-driven, independent of personas). Assert the
+    // CLOUD svg is gone — not "no buttons" (the gauge is always a button now after
+    // D-02). The open-sheet PanelEmpty for empty personas is asserted in the
+    // dedicated test below (03-04 opens the sheet via the gauge-independent path).
     mockState = {
       id: 'sim-1',
       data: makeEmptyPersonasResult(),
@@ -208,8 +220,10 @@ describe('drill-down: personas panel (READ-09)', () => {
     };
     const { container } = render(<Reading />);
 
-    // Empty personas → the hero cloud omits itself (no role=button tap source).
-    expect(container.querySelector('[role="button"]')).toBeNull();
+    // Empty personas → the hero cloud omits itself (no cloud svg / tap source).
+    expect(
+      container.querySelector('svg[aria-label="Audience watch-through by persona"]'),
+    ).toBeNull();
     // And no throw occurred reaching this assertion (render above did not throw).
   });
 
@@ -225,12 +239,70 @@ describe('drill-down: personas panel (READ-09)', () => {
 // todos here so this file is the agreed contract surface for that wiring.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('drill-down: score panel (READ-09, D-02 — NEW in 03-04)', () => {
-  it.todo("score panel opens from the hero gauge onOpen → setPanel('score') (wired in 03-04)");
-  it.todo("PANEL_TITLE.score === 'Score' and the closed union stays type-enforced (03-04)");
-  it.todo('score panel mounts ScoreDistribution (niche histogram + confidence range) (03-04)');
-  it.todo(
-    'score panel degrades honestly when niche is null/thin → ScoreDistribution lane/absolute mode, no throw (03-04)',
-  );
+  it("opens from the hero gauge onOpen → setPanel('score'), titled 'Score'", async () => {
+    const user = userEvent.setup();
+    render(<Reading />);
+
+    // No dialog before tapping the gauge.
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    // The gauge is the only role="button" exposing the score (aria-label "Score N…").
+    await user.click(screen.getByRole('button', { name: /Score 71 of 100/ }));
+    // PANEL_TITLE.score === 'Score' → the single DrillSheet opens named "Score".
+    const dialog = await screen.findByRole('dialog', { name: 'Score' });
+    expect(dialog).toBeInTheDocument();
+  });
+
+  it('mounts ScoreDistribution (niche histogram + confidence range) on a real cohort', async () => {
+    // A real ≥20-count cohort → ScoreDistribution renders its field histogram.
+    mockComparisons = {
+      history: [],
+      niche: { median: 58, p75: 74, count: 120, histogram: [2, 4, 8, 14, 22, 26, 18, 12, 8, 6] },
+    };
+    const user = userEvent.setup();
+    render(<Reading />);
+
+    await user.click(screen.getByRole('button', { name: /Score 71 of 100/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Score' });
+    const dist = within(dialog).getByTestId('score-distribution');
+    expect(dist).toBeInTheDocument();
+    // overall_score=71 + count=120 → field mode (the grounded histogram).
+    expect(dist.dataset.mode).toBe('field');
+    expect(within(dialog).getByTestId('score-field')).toBeInTheDocument();
+  });
+
+  it('degrades honestly when niche is null → ScoreDistribution absolute/lane mode, no throw', async () => {
+    // mockComparisons.niche stays null (the beforeEach default) → the panel-local
+    // useComparisons returns no cohort → ScoreDistribution falls to absolute mode
+    // (the in-panel honest degrade — NEVER a throw, NEVER a fabricated 0).
+    const user = userEvent.setup();
+    expect(() => render(<Reading />)).not.toThrow();
+
+    await user.click(screen.getByRole('button', { name: /Score 71 of 100/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Score' });
+    const dist = within(dialog).getByTestId('score-distribution');
+    // null niche → 'absolute' mode (lane plot, no histogram) — still renders the score.
+    expect(dist.dataset.mode).toBe('absolute');
+    expect(within(dialog).getByTestId('score-lane')).toBeInTheDocument();
+  });
+
+  it('suppresses the "likely lo–hi" range text on HIGH confidence (showRangeText gate)', async () => {
+    // confidence_label HIGH → showRangeText=false → no "likely N–N" caption; the
+    // band is still drawn. MEDIUM/LOW would show it (VerdictNode recipe parity).
+    mockState = {
+      id: 'sim-1',
+      data: makeReadingResult({ confidence_label: 'HIGH', confidence: 0.9 }),
+      isLoading: false,
+    };
+    const user = userEvent.setup();
+    render(<Reading />);
+
+    await user.click(screen.getByRole('button', { name: /Score 71 of 100/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Score' });
+    expect(within(dialog).getByTestId('score-distribution')).toBeInTheDocument();
+    // The band always draws; the numeric range caption is suppressed for HIGH.
+    expect(within(dialog).queryByText(/likely\s/i)).not.toBeInTheDocument();
+  });
 });
 
 // Reference so makeNoBehavioralResult is exercised by the type-checker now (its
