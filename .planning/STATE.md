@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: landing-v2
 milestone_name: Refined Marketing Site
-status: verifying
-stopped_at: Completed 01-05-PLAN.md
-last_updated: "2026-06-14T18:48:24.429Z"
+status: ready_to_plan
+stopped_at: Phase 01 complete (5/5) — ready to discuss Phase 2
+last_updated: 2026-06-14T19:18:39.576Z
 last_activity: 2026-06-14
 progress:
   total_phases: 5
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-14) · Milestone: .planning/MILESTONE.md
 
 **Core value:** A refined, premium marketing landing that makes a creator instantly *get* Numen — "know if it'll pop before you post" — and click "Try it free."
-**Current focus:** Phase 01 — foundation-shell
+**Current focus:** Phase 2 — hero & signature moment
 
 ## Current Position
 
-Phase: 01 (foundation-shell) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
+Phase: 2
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-06-14
 
 Progress: [██████████] 100%
@@ -36,7 +36,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 0
+- Total plans completed: 5
 - Average duration: —
 - Total execution time: —
 
@@ -44,7 +44,7 @@ Progress: [██████████] 100%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 01 | 5 | - | - |
 
 **Recent Trend:**
 

@@ -1,9 +1,10 @@
 ---
-status: partial
+status: passed
 phase: 01-foundation-shell
 source: [01-VERIFICATION.md]
 started: "2026-06-14T19:02:59Z"
-updated: "2026-06-14T19:02:59Z"
+updated: "2026-06-14T19:08:00Z"
+verified_by: live Playwright browser pass + user approval (2026-06-14)
 ---
 
 ## Current Test
