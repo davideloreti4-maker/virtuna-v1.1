@@ -81,6 +81,37 @@ describe('Sidebar recent boards label', () => {
     expect(labels[0]?.textContent).toMatch(/^Simulation\s·/);
   });
 
+  it('WR-06: drops the dangling separator when created_at is absent/malformed', async () => {
+    vi.resetModules();
+    mockHistory([
+      // No created_at AND null content_text — the empty-time fallback path.
+      { id: 'no-date', content_text: null, overall_score: null },
+    ]);
+    const { Sidebar: Fresh } = await import('../Sidebar');
+    render(<Fresh />);
+    const labels = screen.getAllByTestId('sidebar-board-label');
+    const text = (labels[0]?.textContent ?? '').trim();
+    // Label is exactly "Simulation" — no trailing "·", no "NaN".
+    expect(text).toBe('Simulation');
+    expect(text).not.toContain('·');
+    expect(text).not.toMatch(/nan/i);
+  });
+
+  it('WR-06: rolls up old dates past "day" (no raw large day counts)', async () => {
+    vi.resetModules();
+    const fortyFiveDaysAgo = new Date(Date.now() - 45 * 86400 * 1000).toISOString();
+    mockHistory([
+      { id: 'old', content_text: null, overall_score: null, created_at: fortyFiveDaysAgo },
+    ]);
+    const { Sidebar: Fresh } = await import('../Sidebar');
+    render(<Fresh />);
+    const labels = screen.getAllByTestId('sidebar-board-label');
+    const text = labels[0]?.textContent ?? '';
+    // 45 days rolls up to a month bucket — must NOT print "45 day(s)".
+    expect(text).not.toMatch(/45\s*day/i);
+    expect(text).toMatch(/month|mo\b/i);
+  });
+
   it('shows score chip with rounded overall_score', async () => {
     vi.resetModules();
     mockHistory([

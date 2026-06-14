@@ -51,12 +51,21 @@ const rtf = typeof Intl !== 'undefined'
 
 function relativeTime(iso: string | undefined): string {
   if (!iso || !rtf) return '';
-  const diffSec = (Date.parse(iso) - Date.now()) / 1000;
+  const parsed = Date.parse(iso);
+  // WR-06: guard NaN (undefined/malformed created_at) — Math.round(NaN) feeds
+  // RelativeTimeFormat "NaN days ago"; return '' so the caller drops the
+  // separator entirely instead of rendering a broken label.
+  if (Number.isNaN(parsed)) return '';
+  const diffSec = (parsed - Date.now()) / 1000;
   const abs = Math.abs(diffSec);
   if (abs < 60) return rtf.format(Math.round(diffSec), 'second');
   if (abs < 3600) return rtf.format(Math.round(diffSec / 60), 'minute');
   if (abs < 86400) return rtf.format(Math.round(diffSec / 3600), 'hour');
-  return rtf.format(Math.round(diffSec / 86400), 'day');
+  // WR-06: roll up past a day so a 45-day-old simulation reads "1mo"/"2mo"
+  // instead of "45d" (the 'narrow' style expects coarse buckets here).
+  if (abs < 2592000) return rtf.format(Math.round(diffSec / 86400), 'day');
+  if (abs < 31536000) return rtf.format(Math.round(diffSec / 2592000), 'month');
+  return rtf.format(Math.round(diffSec / 31536000), 'year');
 }
 
 // ─── score tone ───────────────────────────────────────────────────
@@ -348,10 +357,20 @@ export function Sidebar() {
                         {snippet ? (
                           snippet
                         ) : (
-                          <>
-                            Simulation{" "}
-                            <span className="text-foreground-muted">· {relativeTime(board.created_at)}</span>
-                          </>
+                          (() => {
+                            // WR-06: only render the "·" separator when there is a
+                            // time string — a malformed/absent created_at yields ''
+                            // and must not leave a dangling "Simulation ·".
+                            const when = relativeTime(board.created_at);
+                            return (
+                              <>
+                                Simulation
+                                {when && (
+                                  <span className="text-foreground-muted"> · {when}</span>
+                                )}
+                              </>
+                            );
+                          })()
                         )}
                       </span>
                       {(() => {
