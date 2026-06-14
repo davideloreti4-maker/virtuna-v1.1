@@ -444,16 +444,18 @@ src/components/reading/        # NEW — avoids the legacy app/simulation/ colli
 
 **All other claims in this research are VERIFIED against repo source or CITED to Next.js docs.**
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Thread mount location (`layout.tsx` vs `[id]/page.tsx`).**
    - Known: Board mounted in `layout.tsx`; pages return `null`; `usePermalinkAnalysis` reads `useParams()`.
    - Unclear: whether the no-id `/analyze` composer needs the same persistent mount.
    - Recommendation: mount `<Reading/>` in `layout.tsx`, keep `[id]/page.tsx` metadata-only. Planner validates against the Phase-1 composer/shell during task breakdown.
+   - **RESOLVED** by plan 02-05 Task 2 — mount `<Reading/>` in `src/app/(app)/analyze/layout.tsx` (Board mount retired), `[id]/page.tsx` stays metadata-only.
 
 2. **Driver-row degrade when dimensions absent.**
    - Known: gauge + gate never go null; `dimensions` does (via `apollo_reasoning: null`).
    - Recommendation: hide bars/values gracefully; never render `0`. Exact treatment = executor discretion within D-13.
+   - **RESOLVED** by plan 02-03 Task 1 + CONTEXT D-13 — DriverRows hides bars/values gracefully when dimensions are absent and never renders a fabricated `0`.
 
 ## Environment Availability
 
