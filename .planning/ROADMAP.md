@@ -40,14 +40,14 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Motion is wired via motion (Framer Motion) plus the permitted libs (shadcn/Radix/Magic UI/Aceternity) and every animation respects a global reduced-motion fallback
   4. A header shows the Stele logo + "Numen" wordmark and a "Try it free" CTA, and on small screens it collapses to a mobile-appropriate nav (menu and/or CTA)
   5. A footer provides brand, in-page section links, and legal/social placeholders
-**Plans**: TBD
+**Plans**: 5 plans (3 waves)
 
 Plans:
-- [ ] 01-01: TBD — flat-warm design-system port (charcoal/cream/terracotta + Newsreader) + route mount at `/` (FOUND-01, FOUND-02)
-- [ ] 01-02: TBD — placeholder-slot component (image/video/avatar/logo variants) (FOUND-03)
-- [ ] 01-03: TBD — motion foundation + global reduced-motion fallback (FOUND-04)
-- [ ] 01-04: TBD — header chrome (logo + wordmark + CTA, mobile collapse) (NAV-01, NAV-03)
-- [ ] 01-05: TBD — footer chrome (brand, section links, legal/social placeholders) (NAV-02)
+- [ ] 01-01-PLAN.md (wave 1) — flat-warm theme port + Newsreader wiring + scroll-skeleton route mount at `/` + `(marketing)/layout` pass-through fix + delete `landing/*` & dead routes + `/pricing` surgical fix (FOUND-01, FOUND-02)
+- [ ] 01-02-PLAN.md (wave 2) — reusable `<Placeholder>` slot (image/video/avatar/logo, `src` one-prop swap, aspect-locked, reduced-motion-gated breathe) (FOUND-03)
+- [ ] 01-03-PLAN.md (wave 3) — motion foundation: `<MotionConfig reducedMotion="user">` + CSS `@media (prefers-reduced-motion: reduce)` block + D-16 verify (FOUND-04)
+- [ ] 01-04-PLAN.md (wave 3) — flat-matte header (NumenLogo + anchor nav + "Try it free"→`/signup` + "Sign in"→`/login` + mobile collapse) (NAV-01, NAV-03)
+- [ ] 01-05-PLAN.md (wave 3) — flat-warm footer (brand + tagline + anchor mirror + Privacy/Terms/X/TikTok placeholders) (NAV-02)
 
 ### Phase 2: Hero & Signature Moment
 **Goal**: Deliver the hero — a hybrid-voice headline and "Try it free" CTA — anchored by the signature "crowd → score" moment: a synthetic audience reacts to a video and resolves into a virality score, with a static fallback so it never blocks first paint or breaks accessibility.
