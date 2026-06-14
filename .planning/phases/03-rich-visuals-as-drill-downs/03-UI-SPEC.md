@@ -1,10 +1,11 @@
 ---
 phase: 3
 slug: rich-visuals-as-drill-downs
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-06-14
+reviewed_at: 2026-06-14
 ---
 
 # Phase 3 — UI Design Contract
