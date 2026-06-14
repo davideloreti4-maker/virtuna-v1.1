@@ -127,8 +127,11 @@ export function Reading() {
       {/* 1 — thumbnail poster (omits itself when there's no real keyframe) */}
       <ThumbnailStrip heatmap={data.heatmap ?? null} />
 
-      {/* 2 — gate banner ABOVE the gauge (D-04); renders null when not gated */}
-      <AntiViralityHeader result={data} analysisId={id ?? ''} />
+      {/* 2 — gate banner ABOVE the gauge (D-04); renders null when not gated.
+              WR-05: only render once a REAL id exists — analysisId='' would
+              collapse the per-id localStorage dismissal key to a shared constant,
+              bleeding a dismissal across all id-less streaming reads. */}
+      {id && <AntiViralityHeader result={data} analysisId={id} />}
 
       {/* 3 — HERO: gauge | (cloud + hero-owned watch%). CSS-responsive stack→row,
               NOT a useIsMobile switch (the gauge + cloud both render either way). */}
