@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Numen Rework
-status: executing
-stopped_at: Completed 01-04-PLAN.md (plan 4 of 5)
-last_updated: "2026-06-13T18:02:00.273Z"
-last_activity: 2026-06-13
+status: verifying
+stopped_at: Completed 01-05-PLAN.md (plan 5 of 5) — Phase 01 code-complete, ready for verification
+last_updated: "2026-06-14T14:32:45.365Z"
+last_activity: 2026-06-14
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 5
-  completed_plans: 4
-  percent: 80
+  completed_plans: 5
+  percent: 20
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md · Milestone brief (LOCKED): .planning/NUMEN-REWORK-BR
 
 ## Current Position
 
-Phase: 01 (foundation-shell) — EXECUTING
-Plan: 5 of 5
-Status: Ready to execute
-Last activity: 2026-06-13
+Phase: 01 (foundation-shell) — CODE-COMPLETE (all 5 plans done; verification pending)
+Plan: 5 of 5 (complete)
+Status: Phase complete — ready for verification
+Last activity: 2026-06-14
 
-Progress: [████████░░] 80%
+Progress: [██████████] 100%
 
 ## Hard Constraints (this milestone)
 
@@ -46,32 +46,33 @@ Progress: [████████░░] 80%
 
 **Velocity:**
 
-- Total plans completed: 0
-- Average duration: —
-- Total execution time: —
+- Total plans completed: 5
+- Average duration: ~5 min/plan
+- Total execution time: ~25 min (Phase 01)
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 01 Foundation & Shell | 5/5 | ~25 min | ~5 min |
 
 **Recent Trend:**
 
-- Last 5 plans: —
-- Trend: —
+- Last 5 plans: 5min · 10min · 5min · 4min · 1min
+- Trend: Phase 01 code-complete
 
 *Updated after each plan completion*
 | Phase 01 P01 | 5 | 3 tasks | 2 files |
 | Phase 1 P2 | 10min | 3 tasks | 6 files |
 | Phase 1 P3 | 5min | 3 tasks | 6 files |
 | Phase 1 P4 | 4min | 2 tasks | 3 files |
+| Phase 01 P05 | 1min | 3 tasks | 2 files |
 
 ## Phases
 
 | # | Phase | Requirements | Status |
 |---|-------|--------------|--------|
-| 1 | Foundation & Shell | SHELL-01..07, THEME-01..06 (13) | Not started |
+| 1 | Foundation & Shell | SHELL-01..07, THEME-01..06 (13) | Complete (code; verification pending) |
 | 2 | The Reading | READ-01..08, READ-10 (9) | Not started |
 | 3 | Rich Visuals as Drill-Downs | READ-09 (1) | Not started |
 | 4 | Stage-Reveal | REVEAL-01, REVEAL-02 (2) | Not started |
@@ -98,6 +99,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase ?]: P1-04: Default authed landing repointed to /home (D-23) at BOTH decision points — middleware authed-off-auth-page redirect (/analyze->/home) + auth/callback default (?? /dashboard -> ?? /home); /dashboard sunset 308 also retargeted /home. Same-origin (open-redirect guard V5).
 - [Phase ?]: P1-04: /home auth-gated twice — (app) layout getUser gate (01-03) + PROTECTED_PREFIXES entry (defense-in-depth, Spoofing); unauthenticated /home -> /login w/ deep link. /analyze + /analyze/[id] kept dormant-but-reachable (still protected, IDOR-defended permalink untouched).
 - [Phase ?]: P1-04: Fixed latent bug — the authed-auth-page redirect was DEAD CODE shadowed by the public-path early-returns (/login & /signup are public). Added AUTH_PAGES carve-out + moved the redirect before the public-skip so signed-in /login/signup visitors actually reach /home; anon visitors still see the page.
+- [Phase 01]: P1-05: THEME-06 / D-07 SIGNED via a live human review on the running shell — the flat-warm system is LOCKED for rollout. Locked values: charcoal app #262624 / sidebar #1a1a18 / composer #1e1d1b / chip #2f2e2b; lone-accent coral oklch(0.68 0.13 33) ≈ #d97757 (text-on-coral #1a0f0a); serif = Newsreader; score zones green oklch(0.68 0.17 145) / amber oklch(0.75 0.15 85) / red oklch(0.60 0.20 25); greeting "Ready to simulate your audience, [Name]?". Phase 01 code-complete (13/13 reqs). Follow-ups: UAT screenshots 0/4 (env-gated, harness committed at 8f8e8acb), sidebar score-chip token-unify deferred to Phase 2.
 
 ### Pending Todos
 
@@ -109,8 +111,9 @@ None yet.
 
 [Issues that affect future work]
 
-- **THEME-06 UAT gate (Phase 1):** the flat-warm visual system must be reviewed/approved by a human against the built shell before later phases reskin onto it — plan a real surface to gate against, not the abstract.
-- **Open calibration items** (brief §7, decide during build): warm-neutral hex ramp + score-zone green/amber/red values + matured coral hue; exact serif typeface; how the thread settles (reveal → resting doc); mobile sidebar drawer vs bottom-sheet.
+- **THEME-06 UAT gate (Phase 1): RESOLVED 2026-06-14** — the flat-warm system was reviewed live on the running shell by the human and SIGNED OFF (LOCKED for rollout). Locked values recorded in Decisions (P1-05) + 01-05-SUMMARY.md. Phases 2-5 reskin onto these as the fixed source of truth.
+- **Calibration items (brief §7): LOCKED at THEME-06** — charcoal ramp (app #262624 / sidebar #1a1a18 / composer #1e1d1b / chip #2f2e2b), score zones (green oklch(0.68 0.17 145) / amber 0.75 0.15 85 / red 0.60 0.20 25), coral oklch(0.68 0.13 33)≈#d97757, serif=Newsreader. Still OPEN (Phase 2+): how the thread settles (reveal → resting doc, Phase 4); mobile sidebar drawer vs bottom-sheet.
+- **Minor follow-ups (non-blocking):** (1) UAT screenshots 0/4 — env-gated at capture time; harness committed at 8f8e8acb, run once E2E creds + a completed Simulation id exist. (2) Sidebar score chips use Tailwind emerald-400/amber-400, not the --color-success/warning/error score-zone tokens — unify in Phase 2 when the hero score lands.
 
 ## Deferred Items
 
@@ -118,6 +121,6 @@ Deferred to later milestones per brief §3 (NOT v1): agentic tools (Apify compet
 
 ## Session Continuity
 
-Last session: 2026-06-13T18:01:28.171Z
-Stopped at: Completed 01-04-PLAN.md (plan 4 of 5)
+Last session: 2026-06-14T14:30:58.806Z
+Stopped at: Completed 01-05-PLAN.md (plan 5 of 5) — Phase 01 code-complete, THEME-06 locked, ready for verification
 Resume file: None

@@ -43,7 +43,7 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 - [x] **THEME-03**: Score zones (green / amber / red) + an evolved (warmer) coral are the only colors; everything else is neutral.
 - [x] **THEME-04**: Serif is used for voice moments (greeting, hero line); sans for all data.
 - [x] **THEME-05**: Hairline borders, generous spacing, and calm/soft motion throughout (Linear / Things restraint).
-- [ ] **THEME-06**: The flat-warm visual system passes an explicit human-UAT review gate before it is locked for rollout.
+- [x] **THEME-06**: The flat-warm visual system passes an explicit human-UAT review gate before it is locked for rollout.
 
 ### Chat — basic text follow-up
 
@@ -106,7 +106,7 @@ Each v1 requirement maps to exactly one phase. 28/28 mapped — no orphans, no d
 | THEME-03 | Phase 1 | Complete |
 | THEME-04 | Phase 1 | Complete |
 | THEME-05 | Phase 1 | Complete |
-| THEME-06 | Phase 1 | Pending |
+| THEME-06 | Phase 1 | Complete |
 | READ-01 | Phase 2 | Pending |
 | READ-02 | Phase 2 | Pending |
 | READ-03 | Phase 2 | Pending |

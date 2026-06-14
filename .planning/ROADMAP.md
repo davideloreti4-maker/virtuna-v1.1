@@ -15,7 +15,7 @@ The journey: lay the flat-warm visual foundation and the shell the Reading lives
 - Integer phases (1, 2, 3): planned milestone work.
 - Decimal phases (2.1, 2.2): urgent insertions (marked INSERTED).
 
-- [ ] **Phase 1: Foundation & Shell** - Flat-warm token system + the home/composer/sidebar shell the Reading lives in, locked by a human visual-UAT gate
+- [x] **Phase 1: Foundation & Shell** - Flat-warm token system + the home/composer/sidebar shell the Reading lives in, locked by a human visual-UAT gate (completed 2026-06-14)
 - [ ] **Phase 2: The Reading** - The consolidated result thread's information architecture: hero → 3 driver rows → Fix First → deeper read, cut-data clean
 - [ ] **Phase 3: Rich Visuals as Drill-Downs** - Transplant the board visuals (RetentionChart, PersonaGraph, filmstrip, FactorBars, SegmentTable…) off Konva, reskinned, into the Reading's disclosure surfaces
 - [ ] **Phase 4: Stage-Reveal** - The Reading materializes block-by-block as engine stages complete, then settles to a stable resting document
@@ -38,7 +38,7 @@ The journey: lay the flat-warm visual foundation and the shell the Reading lives
 - [x] 01-02-PLAN.md — Sidebar reskin: strip inline glass (Layer B), revive collapse (⌘\), cut dead affordances, "Simulations" list + app-shell offset (SHELL-05/07, THEME-02/05)
 - [x] 01-03-PLAN.md — Clean home + slim TikTok/upload composer (two-layout) + serif greeting + NumenMark (SHELL-01..04/06, THEME-04/05)
 - [x] 01-04-PLAN.md — Repoint authed landing → /home (middleware + auth callback), keep /analyze dormant (SHELL-06, D-23)
-- [ ] 01-05-PLAN.md — THEME-06 human-UAT gate: full-suite + clean-build precondition, 4 UAT screenshots, blocking sign-off (THEME-01/03/06, SHELL-07)
+- [x] 01-05-PLAN.md — THEME-06 human-UAT gate: full-suite + clean-build precondition, 4 UAT screenshots, blocking sign-off (THEME-01/03/06, SHELL-07)
 **UI hint**: yes
 
 ### Phase 2: The Reading
@@ -94,7 +94,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Shell | 4/5 | In Progress|  |
+| 1. Foundation & Shell | 5/5 | Complete   | 2026-06-14 |
 | 2. The Reading | 0/TBD | Not started | - |
 | 3. Rich Visuals as Drill-Downs | 0/TBD | Not started | - |
 | 4. Stage-Reveal | 0/TBD | Not started | - |
