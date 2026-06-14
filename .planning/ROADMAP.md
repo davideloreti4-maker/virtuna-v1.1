@@ -67,7 +67,13 @@ The journey: lay the flat-warm visual foundation and the shell the Reading lives
   1. From a driver row or the deeper-read expand, a user can open the rich visuals — RetentionChart, PersonaGraph, filmstrip, FactorBars, SegmentTable, emotion arc, niche/ghost curves — as drill-downs from the Reading
   2. Every preserved visual renders correctly outside the Konva canvas (transplanted to DOM/React/SVG, no pan/zoom shell) with real engine output, no throwing or grey-cell fallbacks
   3. The drill-down visuals are reskinned to the flat-warm system — no Raycast glass, no glow/shine — and read consistently with the rest of the Reading
-**Plans**: TBD
+**Plans**: 6 plans
+- [ ] 03-01-PLAN.md — Wave-0 test scaffold: reading.panels.test.tsx (per-panel render + degradation) + empty-data fixtures + reskin-matte grep lint
+- [ ] 03-02-PLAN.md — Tier-2 re-treat (heavy reskin): ScoreDistribution + RetentionChart + CraftFilmstrip + RetentionPlayer to matte flat-warm (kill glows/blur/old-coral, keep footage grading, fix --color-frame bug)
+- [ ] 03-03-PLAN.md — Tier-1 token-swaps (SegmentTable/DataTable/StatTile/KeyframeImage) + PersonaGraph re-treat (SVG matte, reduced-motion gate, mobile tap-to-reveal)
+- [ ] 03-04-PLAN.md — New score panel (D-02): gauge onOpen + closed-union extension + ScoreDistribution wiring; swap personas→PersonaGraph + shareability→StatTileRow (PanelEmpty guards)
+- [ ] 03-05-PLAN.md — Retention composed watch-journey (RetentionChart + CraftFilmstrip + SegmentTable, aligned/scrollable, store-free via usePermalinkFilmstrips) + hook reskin-verify + degradation guard
+- [ ] 03-06-PLAN.md — Blocking D-07 human-UAT gate: full-suite-green + clean-build precondition, live mobile+desktop review of all 5 reskinned drill-downs
 **UI hint**: yes
 
 ### Phase 4: Stage-Reveal
@@ -101,6 +107,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Foundation & Shell | 5/5 | Complete   | 2026-06-14 |
 | 2. The Reading | 5/5 | Complete   | 2026-06-14 |
-| 3. Rich Visuals as Drill-Downs | 0/TBD | Not started | - |
+| 3. Rich Visuals as Drill-Downs | 0/6 | Not started | - |
 | 4. Stage-Reveal | 0/TBD | Not started | - |
 | 5. Follow-up & Demo | 0/TBD | Not started | - |
